@@ -65,8 +65,12 @@ class LogDatasetSamplingRatiosCallback(BaseCallback):
         example_id = batch[0]["example_id"]
 
         if trainer.fabric.is_global_zero:
-            dataset_string = "/".join(parse_example_id(example_id)["datasets"])
-            self.dataset_sampling_counts[dataset_string] += 1
+            try:
+                dataset_string = "/".join(parse_example_id(str(example_id[0]),permissive=True)["datasets"])
+                self.dataset_sampling_counts[dataset_string] += 1
+            except (KeyError, ValueError, TypeError):
+                dataset_string = "/none"
+                self.dataset_sampling_counts[dataset_string] += 1
 
     def on_train_epoch_end(self, trainer):
         if trainer.fabric.is_global_zero:
