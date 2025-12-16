@@ -66,7 +66,7 @@ class LogDatasetSamplingRatiosCallback(BaseCallback):
 
         if trainer.fabric.is_global_zero:
             try:
-                dataset_string = "/".join(parse_example_id(str(example_id[0]),permissive=True)["datasets"])
+                dataset_string = "/".join(parse_example_id(str(example_id),permissive=True)["datasets"])
                 self.dataset_sampling_counts[dataset_string] += 1
             except (KeyError, ValueError, TypeError):
                 dataset_string = "/none"
