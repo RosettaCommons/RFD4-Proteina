@@ -94,7 +94,7 @@ class BaseInferenceEngine:
 
         base_overrides = {
             "trainer.seed": seed,
-            "trainer.metrics": {},
+            "trainer.metrics": None,  # Must be None, not {} - empty dict doesn't override nested configs
             "trainer.loss": None,
             "trainer.num_nodes": num_nodes,
             "trainer.devices_per_node": devices_per_node,
