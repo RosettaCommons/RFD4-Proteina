@@ -1,5 +1,6 @@
 import logging
 import os
+import warnings
 from os import PathLike
 from pathlib import Path
 from typing import Any, Dict
@@ -46,6 +47,9 @@ class BaseInferenceEngine:
         trainer_overrides={},
         # Debug
         verbose: bool = False,
+        # Multi-seed support
+        model_seeds: list[int] | None = None,
+        # Backward compatibility (deprecated)
         seed: int | None = None,
     ):
         """Initialize inference engine and load model.
@@ -54,7 +58,9 @@ class BaseInferenceEngine:
 
         Args:
           ckpt_path: Path to model checkpoint.
-          seed: Random seed. If None, uses external RNG state. Defaults to ``None``.
+          model_seeds: List of random seeds. If empty or None, uses external RNG state.
+            Multiple seeds will run inference for each seed. Defaults to ``None``.
+          seed: (Deprecated) Use model_seeds instead. Converted to model_seeds=[seed].
           num_nodes: Number of nodes for distributed inference. Defaults to ``1``.
           devices_per_node: Number of devices per node. Defaults to ``1``.
           verbose: If True, show detailed logging and config trees. Defaults to ``False``.
@@ -90,20 +96,33 @@ class BaseInferenceEngine:
             )
         self.ckpt_path = Path(ckpt_path).resolve()
 
-        # Set random seed (only if seed is not None)
+        # Handle backward compatibility: convert old seed parameter to model_seeds
+        if seed is not None and model_seeds is not None:
+            raise ValueError(
+                "Cannot specify both 'seed' (deprecated) and 'model_seeds'. "
+                "Use 'model_seeds' for multi-seed support."
+            )
         if seed is not None:
-            ranked_logger.info(f"Seeding everything with seed={seed}...")
-            seed_everything(seed, workers=True, verbose=True)
+            warnings.warn(
+                "'seed' parameter is deprecated. Use 'model_seeds=[seed]' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            model_seeds = [seed]
+
+        # Store model_seeds (None or list) - seeding happens before each forward pass
+        self.model_seeds = model_seeds
+        if model_seeds:
+            ranked_logger.info(f"Model seeds configured: {model_seeds}")
         else:
-            ranked_logger.info("Seed is None - using external RNG state")
-        self.seed = seed
+            ranked_logger.info("No model seeds configured - using external RNG state")
 
         # Stored for later;
         self.transform_overrides = transform_overrides
         self.overrides: dict[str, Any] = {}
 
         base_overrides = {
-            "trainer.seed": seed,
+            "trainer.seed": model_seeds[0] if model_seeds else None,
             "trainer.metrics": None,  # Must be None, not {} - empty dict doesn't override nested configs
             "trainer.loss": None,
             "trainer.num_nodes": num_nodes,
@@ -227,6 +246,18 @@ class BaseInferenceEngine:
             )
 
         self.pipeline = hydra.utils.instantiate(transform)
+
+    def _seed_for_inference(self, seed: int | None) -> None:
+        """Set random seed before inference forward pass.
+
+        Called by subclasses before each forward pass when using multi-seed inference.
+
+        Args:
+            seed: Random seed to set. If None, no seeding is performed.
+        """
+        if seed is not None:
+            ranked_logger.info(f"Seeding everything with seed={seed}...")
+            seed_everything(seed, verbose=True)
 
     # aliases for run
     def forward(self, *args, **kwargs):
