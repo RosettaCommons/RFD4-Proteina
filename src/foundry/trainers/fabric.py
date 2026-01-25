@@ -920,4 +920,4 @@ class FabricTrainer(ABC):
     @property
     def should_validate(self) -> bool:
         """Whether to currently run validation."""
-        return (self.state["current_epoch"]+1) % self.validate_every_n_epochs == 0
+        return (self.state["current_epoch"] + 1) % self.validate_every_n_epochs == 0
