@@ -120,14 +120,22 @@ def _extract_input_data(inputs: PathLike | list[PathLike]):
         return data, use_design_problem_dataset
 
 
-def _get_num_replicates(num_examples: int, num_samples: int) -> int:
-    num_replicates = ((num_samples - 1) // num_examples + 1) if num_samples > 1 else 1
-    if num_replicates * num_examples > num_samples:
-        logger.warning(
-            f"Number of samples {num_samples} is not a multiple of number of examples {num_examples}. All examples "
-            f"will be designed {num_replicates} times, resulting in {num_replicates * num_examples} total samples."
-        )
-    return num_replicates
+def split_replicates_by_job(num_replicates: int, job_id: int, njobs: int) -> int:
+    """Split total replicates across multiple jobs.
+
+    Args:
+        num_replicates: Total number of replicates per example.
+        job_id: Current job ID (0-indexed).
+        njobs: Total number of parallel jobs.
+
+    Returns:
+        Number of replicates for this job_id.
+    """
+    replicates_per_split = (num_replicates - 1) // njobs + 1
+    if replicates_per_split * job_id >= num_replicates:
+        logger.info(f"Job id {job_id} gets 0 replicates. Finishing job...")
+        sys.exit(0)
+    return min(replicates_per_split, num_replicates - replicates_per_split * job_id)
 
 
 def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Dataset:
@@ -135,16 +143,16 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     cfg_gen = cfg.generation
     check_cfg_validity(cfg_gen.args)
 
-    # Get the desired number of samples and adjust for job splitting
+    # Get the desired number of replicates and adjust for job splitting
     njobs = cfg.get("gen_njobs", 1)
-    nsamples = cfg.get("nsamples", 2)
-    nsamples = split_samples_by_job(nsamples, job_id, njobs)
+    num_replicates = cfg.get("num_replicates", 1)
+    num_replicates = split_replicates_by_job(num_replicates, job_id, njobs)
 
     # If a design Dataset was passed, use it directly
-    cfg_gen.dataset.num_replicates = 1  # We use nsamples in generate.py
+    cfg_gen.dataset.num_replicates = 1  # Temporarily set to 1 to get the number of examples
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
     if isinstance(instantiated_dset, (DesignProblemDataset | ContigJsonDataset)):
-        cfg_gen.dataset.num_replicates = _get_num_replicates(num_examples=len(instantiated_dset), num_samples=nsamples)
+        cfg_gen.dataset.num_replicates = num_replicates
         instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)  # Re-instantiate with correct num_replicates
         return instantiated_dset
 
@@ -158,7 +166,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
 
     dataset = get_contig_or_design_problem_dataset(
         cfg.inputs,
-        nsamples=nsamples,
+        num_replicates=num_replicates,
         transform=inference_pipeline,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
@@ -169,7 +177,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
 
 def get_contig_or_design_problem_dataset(
     json_or_design_problem_inputs: str | list[str],
-    nsamples: int | None = None,
+    num_replicates: int | None = None,
     transform: Transform | None = None,
     subset_to_examples: list[str] | str | None = None,
     specification_overrides: dict = {},
@@ -178,7 +186,7 @@ def get_contig_or_design_problem_dataset(
 
     Args:
         json_or_design_problem_inputs: A PFM-style json/yaml file, or a list/directory of Condition-annotated CIF files.
-        nsamples: Total number of samples to be generated across all examples. If None, defaults to 1 replicate per example.
+        num_replicates: Number of times to replicate each example. If None, defaults to 1 replicate per example.
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
         specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
@@ -189,10 +197,8 @@ def get_contig_or_design_problem_dataset(
     # Determine which dataset class to create
     data, use_design_problem_dataset = _extract_input_data(json_or_design_problem_inputs)
 
-    # Determine the number of replicates per example
-    if exists(nsamples):
-        num_replicates = _get_num_replicates(num_examples=len(data), num_samples=nsamples)
-    else:
+    # Default to 1 replicate per example
+    if not exists(num_replicates):
         num_replicates = 1
 
     # Create the appropriate Dataset
@@ -407,18 +413,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     return model
 
 
-def split_samples_by_job(nsamples: int, job_id: int, njobs: int) -> int:
-    """
-    Splits total samples across multiple jobs.
-
-    Returns:
-        Number of samples for this job_id.
-    """
-    nsamples_per_split = (nsamples - 1) // njobs + 1
-    if nsamples_per_split * job_id >= nsamples:
-        logger.info(f"Job id {job_id} gets 0 samples. Finishing job...")
-        sys.exit(0)
-    return min(nsamples_per_split, nsamples - nsamples_per_split * job_id)
 
 
 def save_predictions(

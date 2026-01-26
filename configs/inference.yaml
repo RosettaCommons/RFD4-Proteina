@@ -17,7 +17,7 @@ ckpt_path: ???
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
-nsamples: 8 # Number of samples to generate
+num_replicates: 1 # Number of times to replicate each example
 batch_size: 1
 seed: null # Will set a random seed if null
 
