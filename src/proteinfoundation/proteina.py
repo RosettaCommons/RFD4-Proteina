@@ -150,6 +150,10 @@ class Proteina(L.LightningModule):
             inf_cfg = self.cfg_exp.inf_cfg
         else:
             inf_cfg = None
+        
+        # If True, these will be set in configure_inference
+        self.offline_validation = False
+        self.is_inference = False
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "store", cfg_exp.run_name_)
@@ -654,29 +658,32 @@ class Proteina(L.LightningModule):
 
         metrics_output = {}
         if self.metrics is not None:
-            # Compute effective rank for file naming
-            # In offline validation mode, use job_id as the effective rank
-            if getattr(self, "offline_validation", False):
+            # Compute prefixes and suffixes for file naming to avoid overwriting results
+            # Note than any global_prefix will have also been passed to the Dataset, so will be part of the example_id
+            if self.offline_validation:
                 if self.job_id is None:
                     raise ValueError("offline_validation=True requires job_id to be set")
-                effective_rank = self.job_id
+                output_suffix = f"_rank{self.job_id}"
+            elif self.is_inference:
+                output_suffix = ""
             else:
-                effective_rank = self.global_rank
+                output_suffix = f"_rank{self.global_rank}"
 
             # Log where we are saving validation structures
             # Flatten structure: step_X/generated/ instead of step_X/rank_Y/generated/
             output_base = (
                 Path(self.store_dir)
-                / "val_samples"
-                / dataset_name
-                / f"step_{self.global_step}"
+                / ("val_samples" if not self.is_inference else "inference_samples")
             )
+            if not self.is_inference:
+                output_base = output_base / dataset_name / f"step_{self.global_step}"
+
             output_base.mkdir(parents=True, exist_ok=True)
 
             for i in range(len(generation_list)):  # metrics were not written for batches
                 example_id_base = batch["example_id_batch"][i]
                 # Include rank/job suffix for unique identification across parallel workers
-                example_id = f"{example_id_base}_rank{effective_rank}"
+                example_id = f"{example_id_base}{output_suffix}"
                 prediction_metadata = generation_list[i]["prediction_metadata"]
 
                 # Log unindexed insertion RMSD to console (this is the motif RMSD)
@@ -719,13 +726,20 @@ class Proteina(L.LightningModule):
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
                 ]
-                save_atom_array_with_conditions_to_cif(
-                    generation_list[i]["input_atom_array"],
-                    output_base / "input" / f"{example_id}_input.cif",
-                )
+
+                # Skip input saving during inference to lighten the filesystem load
+                if not self.is_inference:
+                    save_atom_array_with_conditions_to_cif(
+                        generation_list[i]["input_atom_array"],
+                        output_base / "input" / f"{example_id}_input.cif",
+                    )
+                    generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
+                else:
+                    generated_output_path = output_base / f"{example_id}_generated.cif"
+
                 save_atom_array_with_conditions_to_cif(
                     predicted_structure_to_save,
-                    output_base / "generated" / f"{example_id}_generated.cif",
+                    generated_output_path,
                     extra_annotations=extra_annotations_to_save,
                 )
 
@@ -799,7 +813,7 @@ class Proteina(L.LightningModule):
             return
 
         # 3. Save per-example CSV (one row per example)
-        metrics_dir = Path(self.store_dir) / "val_metrics"
+        metrics_dir = Path(self.store_dir) / ("val_metrics" if not self.is_inference else "inference_metrics")
         metrics_dir.mkdir(parents=True, exist_ok=True)
 
         per_example_df = pd.DataFrame(all_example_metrics)
@@ -808,7 +822,7 @@ class Proteina(L.LightningModule):
             lambda row: str(
                 (
                     Path(self.store_dir)
-                    / "val_samples"
+                    / ("val_samples" if not self.is_inference else "inference_samples")
                     / row["dataset_name"]
                     / f"step_{self.global_step}"
                     / "generated"
@@ -824,11 +838,25 @@ class Proteina(L.LightningModule):
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
 
-        # Use job_id suffix for offline validation to avoid file conflicts across parallel jobs
-        if getattr(self, "offline_validation", False) and self.job_id is not None:
-            per_example_path = metrics_dir / f"per_example_metrics_job{self.job_id}.csv"
+
+        # Add prefixes or suffixes to avoid file conflicts across jobs
+        # To align with the rfd3 inference settings, we use a prefix in that case
+        if self.offline_validation:
+            if self.job_id is None:
+                raise ValueError("offline_validation=True requires job_id to be set")
+            output_prefix = ""
+            output_suffix = f"_job{self.job_id}"
+        elif self.is_inference:
+            if self.global_prefix is None:
+                output_prefix = ""
+            else:
+                output_prefix = self.global_prefix + "_"
+            output_suffix = ""
         else:
-            per_example_path = metrics_dir / f"per_example_step_{self.global_step}.csv"
+            output_prefix = ""
+            output_suffix = f"_step{self.global_step}"
+
+        per_example_path = metrics_dir / f"{output_prefix}per_example_metrics{output_suffix}.csv"
         per_example_df.to_csv(per_example_path, index=False)
         logger.info(f"Saved per-example metrics to {per_example_path}")
 
@@ -859,11 +887,8 @@ class Proteina(L.LightningModule):
         agg_df = pd.DataFrame(agg_rows)
         print_df_as_table(agg_df, title="Validation Metrics")
 
-        # Use job_id suffix for offline validation to avoid file conflicts across parallel jobs
-        if getattr(self, "offline_validation", False) and self.job_id is not None:
-            agg_path = metrics_dir / f"aggregated_metrics_job{self.job_id}.csv"
-        else:
-            agg_path = metrics_dir / f"metrics_step_{self.global_step}.csv"
+        # Add prefixes or suffixes to avoid file conflicts across jobs
+        agg_path = metrics_dir / f"{output_prefix}aggregated_metrics{output_suffix}.csv"
         agg_df.to_csv(agg_path, index=False)
         logger.info(f"Saved aggregate metrics to {agg_path}")
 
@@ -885,6 +910,8 @@ class Proteina(L.LightningModule):
         metrics_cfg=None,
         offline_validation: bool = False,
         job_id: int | None = None,
+        is_inference: bool = False,
+        global_prefix: str | None = None,
     ):
         """Sets inference config with all sampling parameters required by the method (dt, etc)
         and autoguidance network (or None if not provided).
@@ -896,16 +923,25 @@ class Proteina(L.LightningModule):
             metrics_cfg: Metrics configuration.
             offline_validation: Whether running in offline validation mode.
             job_id: Job ID for offline validation (required when offline_validation=True).
+            is_inference: Whether running in inference mode.
+            global_prefix: Global prefix for inference outputs.
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
         self.metrics = MetricManager.instantiate_from_hydra(metrics_cfg=metrics_cfg) if metrics_cfg else None
         if store_dir is not None:
             self.store_dir = store_dir
-
-        # Offline validation settings
+        
+        if is_inference and offline_validation:
+            raise ValueError("is_inference and offline_validation cannot both be True.")
+        
+        # Record inference type and configure relevant settings
+        self.is_inference = is_inference
         self.offline_validation = offline_validation
-        self.job_id = job_id
+        if self.offline_validation:
+            self.job_id = job_id
+        elif self.is_inference:
+            self.global_prefix = global_prefix
 
     def configure_search(self, search_strategy, search_reward_model=None):
         """Configure search strategy and reward model for reward-guided generation.

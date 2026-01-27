@@ -198,6 +198,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
         transform=inference_pipeline,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
+        global_prefix=cfg.get("global_prefix"),
     )
 
     return dataset
@@ -209,6 +210,7 @@ def get_contig_or_design_problem_dataset(
     transform: Transform | None = None,
     subset_to_examples: list[str] | str | None = None,
     specification_overrides: dict = {},
+    global_prefix: str | None = None,
 ) -> torch.utils.data.Dataset:
     """Create either a ContigJsonDataset or DesignProblemDataset based on the input type.
 
@@ -218,6 +220,7 @@ def get_contig_or_design_problem_dataset(
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
         specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
+        global_prefix: Optional global prefix for output example ids.
 
     Returns:
         A torch Dataset instance.
@@ -236,6 +239,7 @@ def get_contig_or_design_problem_dataset(
             transform=transform if exists(transform) else Identity(),
             filter_fn=lambda x: str(x).endswith((".cif", ".json", ".yaml")),
             num_replicates=num_replicates,
+            global_prefix=global_prefix,
         )
 
     data = _assemble_dataset_inputs_from_dict(
@@ -250,6 +254,7 @@ def get_contig_or_design_problem_dataset(
         transform=transform if exists(transform) else Identity(),
         name="inference-dataset",
         num_replicates=num_replicates,
+        global_prefix=global_prefix,
     )
 
 
@@ -372,12 +377,15 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
             "No metrics will be computed."
         )
 
+    is_offline_val = cfg.get("offline_validation", False)
     model.configure_inference(
         cfg.generation,
         nn_ag=nn_ag,
         store_dir=cfg.get("out_dir"),
         metrics_cfg=metrics,
-        offline_validation=cfg.get("offline_validation", False),
+        offline_validation=is_offline_val,
+        is_inference=not is_offline_val,
+        global_prefix=cfg.get("global_prefix"),
         job_id=cfg.get("job_id"),
     )
 
