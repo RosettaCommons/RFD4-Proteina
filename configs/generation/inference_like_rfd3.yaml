@@ -6,7 +6,6 @@ defaults:
 insert_unindexed_regions: True
 
 dataset:
-  subset_to_examples: null
 
   #########################################################
   # Design spec args: overrides args from input json
