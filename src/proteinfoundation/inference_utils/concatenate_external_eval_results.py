@@ -323,7 +323,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
     output_path = Path(output_dir)
 
     # Find all per-example metric files
-    per_example_files = sorted(output_path.glob("per_example_metrics_job*.csv"))
+    per_example_files = sorted(output_path.glob("*per_example_metrics*.csv"))
 
     if not per_example_files:
         print(f"No per-example metric files found in {output_dir}")
