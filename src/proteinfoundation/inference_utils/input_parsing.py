@@ -751,7 +751,9 @@ class InputSpecification(BaseModel):
 
             # ... Set defaults if not provided
             if not exists(data.get("select_fixed_atoms")):
-                data["select_fixed_atoms"] = InputSelection.from_any(True, atom_array=atom_array)
+                raise ValueError(
+                    "`select_fixed_atoms` must be specified. The simplest way to do this is to set it to `true` or `false`."
+                )
             if not exists(data.get("select_unfixed_sequence")):
                 data["select_unfixed_sequence"] = InputSelection.from_any(False, atom_array=atom_array)
 
@@ -800,11 +802,21 @@ class InputSpecification(BaseModel):
                 ),
             ]
 
+            names_and_exclusive_mask_lists = []
             for name, excl_set in exclusive_sets:
                 masks = [getattr(self, field, None) for field in excl_set]
                 masks = [m.get_mask() for m in masks if m is not None]
                 if not masks:
                     continue
+                names_and_exclusive_mask_lists.append((name, excl_set, masks))
+
+            # Handle coord conditioning, with an unknown number of selections
+            coord_masks = [getattr(self, "select_fixed_atoms", None)] + getattr(self, "internal_coord_groups", [])
+            coord_masks = [m.get_mask() for m in coord_masks if m is not None]
+            if coord_masks:
+                names_and_exclusive_mask_lists.append(("Coordinate Conditioning", ("select_fixed_atoms", "internal_coord_groups"), coord_masks))
+
+            for name, excl_set, masks in names_and_exclusive_mask_lists:
                 mask_sum = np.zeros_like(masks[0], dtype=int)
                 for m in masks:
                     if m is not None:
@@ -969,7 +981,7 @@ class InputSpecification(BaseModel):
         unindexed_tokens = self.unindex.get_tokens(atom_array_input_annotated) if exists(self.unindex) else {}
         # Subset to only fixed coordindate atoms
         unindexed_tokens = {
-            k: tok[tok.is_motif_atom_with_fixed_coord.astype(bool)] for k, tok in unindexed_tokens.items()
+            k: tok[tok.is_motif_atom_with_fixed_coord.astype(bool) | C_INTCRD.mask(tok)] for k, tok in unindexed_tokens.items()
         }
         unindexed_components, unindexed_breaks = self.break_unindexed(self.unindex)
 

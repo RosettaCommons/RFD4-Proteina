@@ -27,7 +27,7 @@ from biotite.structure import AtomArray
 from foundry.common import exists
 from foundry.utils.ddp import RankedLogger
 
-from proteinfoundation.conditions import C_HOT
+from proteinfoundation.conditions import C_HOT, C_INTCRD
 from proteinfoundation.inference_utils.components import (
     fetch_mask_from_component,
     get_name_mask,
@@ -568,7 +568,7 @@ def get_motif_features(atom_array: AtomArray) -> dict[str, np.ndarray]:
     is_unindexed = atom_array.is_motif_atom_unindexed.astype(bool)
 
     # Motif atom if has any conditioning
-    is_motif_atom = is_fixed | is_sequence_fixed | is_unindexed
+    is_motif_atom = is_fixed | is_sequence_fixed | is_unindexed | C_INTCRD.mask(atom_array)
     is_motif_token = apply_and_spread_token_wise(
         atom_array, is_motif_atom, function=lambda x: np.any(x)
     )  # Has any atoms with conditioning

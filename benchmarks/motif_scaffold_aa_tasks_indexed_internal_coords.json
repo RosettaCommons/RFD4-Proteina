@@ -7,8 +7,7 @@
             [
                 "A16-35",
                 "A52-71"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "1BCF_AA": {
         "dialect": 2,
@@ -20,8 +19,7 @@
                 "A123-130",
                 "A47-54",
                 "A18-25"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "5IUS_AA": {
         "dialect": 2,
@@ -31,8 +29,7 @@
             [
                 "A119-140",
                 "A63-82"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "5YUI_AA": {
         "dialect": 2,
@@ -43,8 +40,7 @@
                 "A93-97",
                 "A118-120",
                 "A198-200"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "4JHW_AA": {
         "dialect": 2,
@@ -54,8 +50,7 @@
             [
                 "F196-212",
                 "F63-69"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "6VW1_AA": {
         "dialect": 2,
@@ -65,8 +60,7 @@
             [
                 "A24-42",
                 "A64-82"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "1QJG_AA": {
         "dialect": 2,
@@ -77,8 +71,7 @@
                 "A38",
                 "A14",
                 "A99"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "1QJG_AA_NATIVE": {
         "dialect": 2,
@@ -89,8 +82,7 @@
                 "A14",
                 "A38",
                 "A99"
-            ],
-        "select_fixed_atoms": true
+            ]
     },
     "2KL8_AA": {
         "dialect": 2,
@@ -100,7 +92,6 @@
             [
                 "A1-7",
                 "A28-79"
-            ],
-        "select_fixed_atoms": true
+            ]
     }
 }
