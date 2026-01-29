@@ -34,6 +34,20 @@ class BaseInferenceEngine:
     """
     Base inference engine.
     Separates model setup (expensive, once) from inference (can run multiple times).
+
+    Supports deferred weight loading via ``load_weights=False``, which allows
+    multiple engine instances to coexist while only one holds model weights in
+    GPU memory at a time::
+
+        engine_a = SomeEngine("ckpt_a.pt", load_weights=False)
+        engine_b = SomeEngine("ckpt_b.pt", load_weights=False)
+
+        engine_a.load_weights()
+        results_a = engine_a.run(inputs_a)
+        engine_a.unload_weights()
+
+        engine_b.load_weights()
+        results_b = engine_b.run(inputs_b)
     """
 
     def __init__(
@@ -45,6 +59,8 @@ class BaseInferenceEngine:
         transform_overrides={},
         inference_sampler_overrides={},
         trainer_overrides={},
+        # Weight loading control
+        load_weights: bool = True,
         # Debug
         verbose: bool = False,
         # Multi-seed support
@@ -63,6 +79,8 @@ class BaseInferenceEngine:
           seed: (Deprecated) Use model_seeds instead. Converted to model_seeds=[seed].
           num_nodes: Number of nodes for distributed inference. Defaults to ``1``.
           devices_per_node: Number of devices per node. Defaults to ``1``.
+          load_weights: Whether to load model weights during initialization.
+              If False, call ``load_weights()`` before first inference. Defaults to ``True``.
           verbose: If True, show detailed logging and config trees. Defaults to ``False``.
         """
         if not verbose:
@@ -70,9 +88,12 @@ class BaseInferenceEngine:
 
         # Set attrs
         self.initialized_ = False
+        self._weights_loaded = False
+        self._external_distributed_context = False
         self.trainer = None
         self.pipeline = None
         self.verbose = verbose
+        self._load_weights = load_weights
 
         # Resolve checkpoint path
         if "." not in str(ckpt_path):
@@ -145,6 +166,15 @@ class BaseInferenceEngine:
         if self.initialized_:
             return getattr(self, "cfg", None)
 
+        # Detect external distributed context before any fabric/DDP setup
+        self._external_distributed_context = torch.distributed.is_initialized()
+        if self._external_distributed_context:
+            ranked_logger.info(
+                "Existing distributed context detected - overriding strategy to 'auto' "
+                "to avoid nested DDP"
+            )
+            self._assign_override("trainer.strategy", "auto")
+
         # Load checkpoint and config
         ranked_logger.info(
             f"Loading checkpoint from {Path(self.ckpt_path).resolve()}..."
@@ -173,6 +203,54 @@ class BaseInferenceEngine:
         )
 
     ###################################################################################
+    # Weight management
+    ###################################################################################
+
+    def load_weights(self):
+        """Load model weights from checkpoint into GPU memory.
+
+        If ``initialize()`` hasn't been called yet, calls it first to build the
+        trainer and pipeline. Weights are then loaded into the existing model
+        structure.
+        """
+        if self._weights_loaded:
+            ranked_logger.debug("Weights already loaded")
+            return
+
+        if not self.initialized_:
+            self.initialize()
+            return
+
+        # Load weights into existing model structure (after init with
+        # load_weights=False, or after a previous unload_weights() call)
+        self._load_model_weights(
+            getattr(self, "_stored_checkpoint", None) or self.ckpt_path
+        )
+
+    def unload_weights(self):
+        """Unload model weights from GPU to free memory.
+
+        The engine remains usable — call ``load_weights()`` to reload.
+        This is useful for freeing GPU memory between inference runs when
+        multiple engine instances share the same device.
+        """
+        if not self._weights_loaded:
+            ranked_logger.debug("Weights not loaded, nothing to unload")
+            return
+
+        ranked_logger.info("Unloading model weights from GPU...")
+
+        if self.trainer is not None and self.trainer.state.get("model") is not None:
+            del self.trainer.state["model"]
+            self.trainer.state["model"] = None
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        self._weights_loaded = False
+        ranked_logger.info("Model weights unloaded, GPU memory freed")
+
+    ###################################################################################
     # Util methods
     ###################################################################################
 
@@ -182,10 +260,18 @@ class BaseInferenceEngine:
         return cfg
 
     def _construct_trainer(self, cfg, checkpoint=None):
+        """Build trainer, model structure, and optionally load weights.
+
+        When ``self._load_weights`` is False, the trainer and model graph are
+        constructed but checkpoint weights are not loaded — call
+        ``load_weights()`` later to populate them.
+
+        When an external distributed context is detected (``torch.distributed``
+        already initialized), ``fabric.launch()`` is skipped to avoid nested DDP.
         """
-        Sets attr self.trainer
-        """
-        # Instantiate trainer
+        # Store checkpoint for later use by load_weights()/unload_weights()
+        self._stored_checkpoint = checkpoint
+
         ranked_logger.info("Instantiating trainer...")
         if self.verbose:
             print_config_tree(
@@ -199,21 +285,40 @@ class BaseInferenceEngine:
 
         # Setup model
         ranked_logger.info("Setting up model...")
-        trainer.fabric.launch()
+        if self._external_distributed_context:
+            ranked_logger.info(
+                "Distributed process group already initialized - skipping fabric.launch()"
+            )
+        else:
+            trainer.fabric.launch()
+
         trainer.initialize_or_update_trainer_state(
             {"train_cfg": cfg}
         )  # config from training stores net params
         trainer.construct_model()
 
+        if self._load_weights:
+            self._load_model_weights(checkpoint or self.ckpt_path, trainer=trainer)
+        else:
+            ranked_logger.info(
+                "Deferring weight loading (load_weights=False). "
+                "Call load_weights() before inference."
+            )
+
+        self.trainer = trainer
+
+    def _load_model_weights(self, checkpoint, trainer=None):
+        """Load checkpoint weights into the trainer model and set to eval mode."""
+        trainer = trainer or self.trainer
         ranked_logger.info("Loading model weights from checkpoint...")
-        trainer.load_checkpoint(checkpoint=checkpoint or self.ckpt_path)
+        trainer.load_checkpoint(checkpoint=checkpoint)
 
         # Ensure optimizer isn't loaded
         trainer.state["optimizer"] = None
         trainer.state["train_cfg"].model.optimizer = None
         trainer.setup_model_optimizers_and_schedulers()
         trainer.state["model"].eval()
-        self.trainer = trainer
+        self._weights_loaded = True
 
     def _assign_override(self, dotted_key: str, value: Any) -> None:
         """Assign ``value`` into ``self.overrides`` using a dotted path."""
@@ -274,3 +379,4 @@ class BaseInferenceEngine:
         self.trainer = None
         self.pipeline = None
         self.initialized_ = False
+        self._weights_loaded = False
