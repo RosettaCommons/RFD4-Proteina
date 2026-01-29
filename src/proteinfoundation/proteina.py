@@ -725,6 +725,7 @@ class Proteina(L.LightningModule):
                 extra_annotations_to_save = [
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
+                    "coords_with_insertion",
                 ]
 
                 # Skip input saving during inference to lighten the filesystem load

@@ -694,6 +694,7 @@ def run_external_eval(
                 extra_annotations=[
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
+                    "coords_with_insertion",
                 ],
             )
 

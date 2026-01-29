@@ -477,6 +477,7 @@ def save_predictions(
         extra_annotations_to_save = [
             "mapped_to_coordinate_conditioned_region",
             "mapped_to_coordinate_conditioned_region_token_lvl",
+            "coords_with_insertion",
         ]
 
         save_atom_array_with_conditions_to_cif(atom_array, file_path, extra_annotations=extra_annotations_to_save)
