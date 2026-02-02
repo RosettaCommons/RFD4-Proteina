@@ -811,7 +811,7 @@ class InputSpecification(BaseModel):
                 names_and_exclusive_mask_lists.append((name, excl_set, masks))
 
             # Handle coord conditioning, with an unknown number of selections
-            coord_masks = [getattr(self, "select_fixed_atoms", None)] + getattr(self, "internal_coord_groups", [])
+            coord_masks = [getattr(self, "select_fixed_atoms", None)] + [getattr(self, "internal_coord_groups", None)]
             coord_masks = [m.get_mask() for m in coord_masks if m is not None]
             if coord_masks:
                 names_and_exclusive_mask_lists.append(("Coordinate Conditioning", ("select_fixed_atoms", "internal_coord_groups"), coord_masks))
