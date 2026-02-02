@@ -221,6 +221,7 @@ def atom37_collate_fn(batch: list[dict], fixed_max_length: int | None = None) ->
     collated["task_batch"] = [ex.get("task") for ex in batch]
     collated["example_id_batch"] = [ex["example_id"] for ex in batch]
     collated["metrics_tags_batch"] = [ex.get("metrics_tags", set()) for ex in batch]
+    collated["specification_batch"] = [ex.get("specification", {}) for ex in batch]
     if "extra_info" in batch[0]:
         collated["extra_info_batch"] = [ex["extra_info"] for ex in batch]
 
