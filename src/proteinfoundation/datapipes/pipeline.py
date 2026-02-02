@@ -1415,6 +1415,7 @@ def _build_design_featurize_pipeline(
         "task",
         "metrics_tags",
         "num_tokens",
+        "specification",
     ]
 
     T += SubsetToKeys(keys_to_keep)

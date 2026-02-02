@@ -56,6 +56,8 @@ from omegaconf import OmegaConf
 from rich.panel import Panel
 from torch import Tensor
 
+from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
+
 from proteinfoundation.conditions import C_INTCRD, C_CRDGRP
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
@@ -116,6 +118,9 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
         if key in ("dataset_name", "example_id", "task"):
             cleaned[key] = str(value)
             continue
+        elif key == "input_cif_path" or key.startswith("input_spec."):
+            cleaned[key] = str(value) if value is not None else None
+            continue
         elif key.endswith("chain_of_interest"):
             chain_of_interest_values.append(str(value))
             continue
@@ -150,10 +155,11 @@ class Proteina(L.LightningModule):
             inf_cfg = self.cfg_exp.inf_cfg
         else:
             inf_cfg = None
-        
+
         # If True, these will be set in configure_inference
         self.offline_validation = False
         self.is_inference = False
+        self.inference_seed: int | None = None  # Set via generate.py, not during training
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "store", cfg_exp.run_name_)
@@ -671,10 +677,7 @@ class Proteina(L.LightningModule):
 
             # Log where we are saving validation structures
             # Flatten structure: step_X/generated/ instead of step_X/rank_Y/generated/
-            output_base = (
-                Path(self.store_dir)
-                / ("val_samples" if not self.is_inference else "inference_samples")
-            )
+            output_base = Path(self.store_dir) / ("val_samples" if not self.is_inference else "inference_samples")
             if not self.is_inference:
                 output_base = output_base / dataset_name / f"step_{self.global_step}"
 
@@ -711,7 +714,9 @@ class Proteina(L.LightningModule):
                 for metric_name in metrics_output:
                     if metric_name.endswith("aligned_predicted_structure"):
                         aligned_aa.append(metrics_output[metric_name])
-                metrics_output = {k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")}
+                metrics_output = {
+                    k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")
+                }
 
                 # If the model failed to reproduce the motif, the aligned coords would be all NaNs
                 if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
@@ -748,6 +753,20 @@ class Proteina(L.LightningModule):
                     # Add dataset_name and task as metadata
                     metrics_output["dataset_name"] = dataset_name
                     metrics_output["task"] = "_".join(example_id_base.split("_")[:-1])
+
+                    # Add seed used for generation
+                    if self.inference_seed is not None:
+                        metrics_output["seed"] = self.inference_seed
+
+                    # Add input specification or CIF path
+                    spec = batch.get("specification_batch", [{}])[i]
+                    if spec:
+                        if "input_cif" in spec:
+                            metrics_output["input_cif_path"] = str(spec["input_cif"])
+                        else:
+                            flat_spec = flatten_nested_dict(spec, fuse_keys=".")
+                            for key, value in flat_spec.items():
+                                metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
 
                     # Add insertion RMSD metrics to output for epoch-end aggregation
                     if prediction_metadata and "insertion_rmsd" in prediction_metadata:
@@ -833,12 +852,19 @@ class Proteina(L.LightningModule):
             axis=1,
         )
 
-        # Reorder columns: example_id first, then dataset_name, then metrics
+        # Reorder columns: example_id first, then metadata, then metrics
         cols = per_example_df.columns.tolist()
-        priority = ["example_id", "designed_structure_path", "task", "dataset_name", "chain_of_interest"]
+        priority = [
+            "example_id",
+            "designed_structure_path",
+            "task",
+            "dataset_name",
+            "chain_of_interest",
+            "seed",
+            "input_cif_path",
+        ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
-
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
         # To align with the rfd3 inference settings, we use a prefix in that case
@@ -865,9 +891,17 @@ class Proteina(L.LightningModule):
         agg_rows = []
         for dataset_name in per_example_df["dataset_name"].unique():
             dataset_df = per_example_df[per_example_df["dataset_name"] == dataset_name]
+            _non_metric_cols = {
+                "example_id",
+                "dataset_name",
+                "task",
+                "designed_structure_path",
+                "chain_of_interest",
+                "seed",
+                "input_cif_path",
+            }
             metric_cols = [
-                c for c in dataset_df.columns if c not in
-                ("example_id", "dataset_name", "task", "designed_structure_path", "chain_of_interest")
+                c for c in dataset_df.columns if c not in _non_metric_cols and not c.startswith("input_spec.")
             ]
             for metric_name in metric_cols:
                 values = dataset_df[metric_name].dropna()
@@ -932,10 +966,10 @@ class Proteina(L.LightningModule):
         self.metrics = MetricManager.instantiate_from_hydra(metrics_cfg=metrics_cfg) if metrics_cfg else None
         if store_dir is not None:
             self.store_dir = store_dir
-        
+
         if is_inference and offline_validation:
             raise ValueError("is_inference and offline_validation cannot both be True.")
-        
+
         # Record inference type and configure relevant settings
         self.is_inference = is_inference
         self.offline_validation = offline_validation
@@ -1215,10 +1249,12 @@ class Proteina(L.LightningModule):
                 "mapped_to_coordinate_conditioned_region", np.zeros(updated_array.array_length(), dtype=bool)
             )
             metadata = {}
-        
+
         # Include indexed coord conditioning in mapped_to_coordinate_conditioned_region
-        updated_array.mapped_to_coordinate_conditioned_region |= C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
-        
+        updated_array.mapped_to_coordinate_conditioned_region |= C_CRD.mask(updated_array) | C_INTCRD.mask(
+            updated_array
+        )
+
         # Check unindexed coord conditioning count
         total_coord_conditioned_count = indexed_coord_conditioned_count + unindexeded_coord_conditioned_count
         if updated_array.mapped_to_coordinate_conditioned_region.sum() != total_coord_conditioned_count:
@@ -1237,7 +1273,9 @@ class Proteina(L.LightningModule):
         mapped_to_coordinate_conditioned_region_token_lvl = apply_and_spread_token_wise(
             updated_array, updated_array.mapped_to_coordinate_conditioned_region, np.any
         )
-        updated_array.set_annotation("mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl)
+        updated_array.set_annotation(
+            "mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl
+        )
 
         return {
             "generated_atom_array": as_atom_array_plus(updated_array),

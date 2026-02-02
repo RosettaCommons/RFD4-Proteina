@@ -37,6 +37,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 # If the user has set `PROJECT_PATH`, use it to build the config path; otherwise, fall back to `PROJECT_ROOT`
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
 
+
 def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value=None):
     """Get exactly one of two mutually exclusive config keys.
 
@@ -65,6 +66,7 @@ def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, defaul
         return cfg[key1]
     else:
         return cfg[key2]
+
 
 def _assemble_dataset_inputs_from_dict(
     data: dict,
@@ -186,7 +188,9 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
 
     # Otherwise, we will create a Dataset based on the user specifications
     assert exists(cfg.inputs), "Must provide `inputs` config if not using a pre-instantiated Dataset."
-    subset_to_examples = _get_mutually_exclusive_config(cfg, "subset_to_examples", "json_keys_subset", default_value=None)
+    subset_to_examples = _get_mutually_exclusive_config(
+        cfg, "subset_to_examples", "json_keys_subset", default_value=None
+    )
     specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
 
     metrics_tags = cfg_gen.dataset.transform.get("metrics_tags") if "transform" in cfg_gen.dataset else None
@@ -483,6 +487,85 @@ def save_predictions(
         save_atom_array_with_conditions_to_cif(atom_array, file_path, extra_annotations=extra_annotations_to_save)
 
 
+def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:
+    """Extract example IDs from a dataset without loading data.
+
+    Args:
+        dataset: A ContigJsonDataset or DesignProblemDataset instance.
+
+    Returns:
+        List of example ID strings, one per dataset index.
+    """
+    if isinstance(dataset, ContigJsonDataset):
+        return dataset.names
+    elif isinstance(dataset, DesignProblemDataset):
+        ids = []
+        for idx in range(len(dataset)):
+            base_id = dataset.base_ids[idx]
+            if dataset.num_replicates > 1:
+                path = dataset.file_paths[idx]
+                previous_occurrences = dataset.file_paths[:idx].count(path)
+                ids.append(f"{base_id}_rep{previous_occurrences}")
+            else:
+                ids.append(base_id)
+        return ids
+    else:
+        raise ValueError(f"Unexpected Dataset type: {type(dataset).__name__}")
+
+
+def _filter_existing_outputs(
+    dataset: torch.utils.data.Dataset,
+    model: Proteina,
+    root_path: str,
+    job_id: int,
+) -> torch.utils.data.Dataset:
+    """Filter a dataset to exclude examples that already have output structure files.
+
+    Args:
+        dataset: The inference dataset.
+        model: The loaded Proteina model (used to determine output paths).
+        root_path: Root output path for this inference run.
+        job_id: Job ID for parallel job splitting.
+
+    Returns:
+        A Subset of the original dataset excluding already-completed examples,
+        or the original dataset if no outputs exist yet.
+    """
+    store_dir = model.store_dir
+    if model.metrics is not None:
+        output_dir = Path(store_dir) / "inference_samples"
+        suffix = "_generated.cif"
+    else:
+        output_dir = Path(root_path)
+        suffix = f"_job_{job_id}.cif"
+
+    # Collect example IDs that already have outputs
+    existing_ids: set[str] = set()
+    if output_dir.exists():
+        for p in output_dir.glob(f"*{suffix}"):
+            # Strip the suffix from the stem to recover the example ID
+            # e.g. "my_example_generated" -> "my_example" (for "_generated.cif")
+            example_id = p.name.removesuffix(suffix)
+            existing_ids.add(example_id)
+
+    if not existing_ids:
+        return dataset
+
+    # Determine which indices to keep
+    all_ids = _get_example_ids_from_dataset(dataset)
+    keep_indices = [i for i, eid in enumerate(all_ids) if eid not in existing_ids]
+    n_skipped = len(all_ids) - len(keep_indices)
+
+    if n_skipped > 0:
+        logger.info(
+            f"skip_existing: Found {len(existing_ids)} existing outputs in {output_dir}. "
+            f"Skipping {n_skipped}/{len(all_ids)} examples."
+        )
+        return torch.utils.data.Subset(dataset, keep_indices)
+
+    return dataset
+
+
 def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = None) -> None:
     """
     Core generation function that runs inference given a Hydra config.
@@ -522,8 +605,18 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     # Load model
     model = load_ckpt_n_configure_inference(cfg)
+    model.inference_seed = cfg.seed
 
     dataset = get_dataset_from_cfg(cfg, job_id)
+
+    # Optionally skip examples that already have outputs on disk
+    if cfg.get("skip_existing", False):
+        dataset = _filter_existing_outputs(
+            dataset,
+            model=model,
+            root_path=root_path,
+            job_id=job_id,
+        )
 
     # Support either batch_size argument for backwards compatibility with rfd3 syntax
     batch_size = _get_mutually_exclusive_config(cfg, "batch_size", "diffusion_batch_size", default_value=1)
