@@ -725,12 +725,12 @@ class Proteina(L.LightningModule):
                     predicted_structure_to_save = generation_list[i]["generated_atom_array"]
 
                 # Save CIF files incrementally with rank suffix in filename
-                # NOTE: Biotite currently errors when saving multidimensional annotations.
-                # Getting around this would enable saving the coords_with_insertion.
                 extra_annotations_to_save = [
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
                     "coords_with_insertion",
+                    "src_coordinate_conditioned_region",
+                    "src_component",
                 ]
 
                 # Skip input saving during inference to lighten the filesystem load
@@ -1249,13 +1249,19 @@ class Proteina(L.LightningModule):
             updated_array.set_annotation(
                 "mapped_to_coordinate_conditioned_region", np.zeros(updated_array.array_length(), dtype=bool)
             )
+            updated_array.set_annotation(
+                "src_coordinate_conditioned_region", np.full(updated_array.array_length(), ".", dtype=str)
+            )
             metadata = {}
-
-        # Include indexed coord conditioning in mapped_to_coordinate_conditioned_region
-        updated_array.mapped_to_coordinate_conditioned_region |= C_CRD.mask(updated_array) | C_INTCRD.mask(
-            updated_array
-        )
-
+        
+        # Include indexed coord conditioning in mapping mask/annotation
+        # TODO: Should this mapping annotation be added as a Condition? It is semantically different but practically similar
+        indexed_coord_conditioned_mask = C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
+        updated_array.mapped_to_coordinate_conditioned_region |= indexed_coord_conditioned_mask
+        updated_array.src_coordinate_conditioned_region[
+            indexed_coord_conditioned_mask
+        ] = updated_array.src_component[indexed_coord_conditioned_mask]
+        
         # Check unindexed coord conditioning count
         total_coord_conditioned_count = indexed_coord_conditioned_count + unindexeded_coord_conditioned_count
         if updated_array.mapped_to_coordinate_conditioned_region.sum() != total_coord_conditioned_count:

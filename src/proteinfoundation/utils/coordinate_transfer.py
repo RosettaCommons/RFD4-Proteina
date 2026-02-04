@@ -222,6 +222,7 @@ def copy_generated_coordinates_to_input(
             existing_annotations = get_annotation_categories(template, n_body="all")
             annotations_to_default = set(annotations_to_default) - set(existing_annotations)
             template = default_annotations_and_conditions_from_registry(template, annotations=annotations_to_default)
+            template.set_annotation("src_component", np.full(len(template), ".", dtype=str))
 
             # Set coordinates from generated atom array
             _copy_coords_by_atom_name(
