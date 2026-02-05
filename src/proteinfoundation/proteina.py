@@ -759,8 +759,9 @@ class Proteina(L.LightningModule):
                         metrics_output["seed"] = self.inference_seed
 
                     # Add input specification or CIF path
-                    spec = batch.get("specification_batch", [{}])[i]
-                    if spec:
+                    spec_batch = batch.get("specification_batch")
+                    if spec_batch is not None:
+                        spec = spec_batch[i]
                         if "input_cif" in spec:
                             metrics_output["input_cif_path"] = str(spec["input_cif"])
                         else:
