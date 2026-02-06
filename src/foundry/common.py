@@ -1,5 +1,6 @@
 from functools import wraps
 
+import numpy as np
 import torch
 from beartype.typing import Any, Callable, Iterable
 from toolz import merge_with
@@ -101,6 +102,51 @@ def listmap_with_idx(fn: Callable[[int, Any], Any], lst: Iterable[Any]) -> list:
         ['0_a', '1_b', '2_c']
     """
     return [fn(idx, x) for idx, x in enumerate(lst)]
+
+
+def true_with_prob(
+    p: float | np.ndarray, rng: np.random.Generator | None = None
+) -> bool | np.ndarray:
+    """Return True with probability `p`, vectorized for scalars or arrays.
+
+    Args:
+        p: Probability or array of probabilities (each in [0.0, 1.0]).
+        rng: Random number generator to use. If None, uses numpy's global
+            random state.
+
+    Returns:
+        bool or np.ndarray: True/False or boolean array, True with probability `p`.
+
+    Raises:
+        ValueError: If any probability is not in [0.0, 1.0].
+
+    Example:
+        >>> true_with_prob(0.5)
+        True  # or False, with 50% chance
+        >>> true_with_prob(np.array([0.0, 0.5, 1.0]))
+        array([False, True, True])  # stochastic for 0.5
+    """
+    rng = default(rng, np.random)
+    p_arr = np.asarray(p)
+    if np.any(p_arr < 0.0):
+        raise ValueError(f"`p` must be >= 0. Got {p}")
+    if np.any(p_arr > 1.0):
+        raise ValueError(f"`p` must be <= 1. Got {p}")
+
+    # Handle edge cases efficiently
+    if np.isscalar(p):
+        if p == 0.0:
+            return False
+        if p == 1.0:
+            return True
+        return rng.random() < p
+    else:
+        result = np.zeros_like(p_arr, dtype=bool)
+        result[p_arr == 1.0] = True
+        mask = (p_arr > 0.0) & (p_arr < 1.0)
+        if np.any(mask):
+            result[mask] = rng.random(size=np.count_nonzero(mask)) < p_arr[mask]
+        return result
 
 
 def ensure_dtype(tensor: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
