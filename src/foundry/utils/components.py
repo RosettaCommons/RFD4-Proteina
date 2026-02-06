@@ -213,15 +213,16 @@ def get_motif_components_and_breaks(unindexed_contig, index_all=False):
                         breaks.append(False)
         elif part == "/0":
             components.append(part)
-            breaks.append(None)
+            breaks.append(True)
         else:
             if "-" in part:
                 raise ComponentValidationError(
                     "Partial unindexing without fixed length is not supported.",
                     component=part,
                 )
+            # ... Numbers indicate free residues so it doesn't matter
             components.append(part)
-            breaks.append(None)
+            breaks.append(True)
 
     breaks[0] = True  # Decouple unindexed region from global index
     if index_all:
