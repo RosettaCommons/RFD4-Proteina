@@ -409,20 +409,21 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
     ]
     sequence_redesigned_atom_array.set_annotation("coords_with_insertion", coords_with_insertion)
 
-    # Copy over src_coordinate_conditioned_region annotation
-    src_coordinate_conditioned_region = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype=str)
-    src_coordinate_conditioned_region[matched_mapped_indices] = generated_atom_array.src_coordinate_conditioned_region[
-        generated_atom_array.mapped_to_coordinate_conditioned_region
-    ]
-    sequence_redesigned_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
-
-    # If present, copy over src_component annotation (optional since not strictly necessary for downstream tasks)
+    # If present, copy over src_component and src_coordinate_conditioned_region annotations
+    # NOTE: These are optional because they are not strictly necessary for downstream tasks
     if "src_component" in generated_atom_array.get_annotation_categories():
         src_component = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype=str)
         src_component[matched_mapped_indices] = generated_atom_array.src_component[
             generated_atom_array.mapped_to_coordinate_conditioned_region
         ]
         sequence_redesigned_atom_array.set_annotation("src_component", src_component)
+
+        src_coordinate_conditioned_region = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype=str)
+        src_coordinate_conditioned_region[matched_mapped_indices] = generated_atom_array.src_coordinate_conditioned_region[
+            generated_atom_array.mapped_to_coordinate_conditioned_region
+        ]
+        sequence_redesigned_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
+
 
     # Copy over relevant masks within the mapped regions, using the defaults everywhere else
     for cond in (C_CRD, C_IDX, C_INTCRD):
