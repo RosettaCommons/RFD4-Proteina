@@ -19,6 +19,8 @@ import pandas as pd
 import pytest
 import torch
 from atomworks.io.utils.io_utils import load_any
+from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
+from biotite.structure import get_residue_starts
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
 from dotenv import load_dotenv
@@ -474,3 +476,63 @@ class TestEndToEndInference:
         df_1 = _load_output_dataframe(out_dirs[1], check_spec_columns=True)
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
+
+    def test_output_cif_annotations(self, tmp_output_dir):
+        """Verify that generated CIF files contain expected annotations."""
+        input_data = {
+            "example_a": {
+                "contig": "5-5,A16-20",
+                "dialect": 2,
+                "input": str(BENCHMARKS_DIR / "motif_data_aa/1prw_aa.pdb"),
+                "select_fixed_atoms": True
+            },
+        }
+
+        # Test subset_to_examples
+        out = os.path.join(tmp_output_dir, "subset")
+        os.makedirs(out)
+        input_path = _write_input_json(out, input_data)
+
+        cfg = _build_test_cfg(
+            [
+                f"inputs={input_path}",
+                f"out_dir={out}",
+            ]
+        )
+        run_generation(cfg, job_id=0, config_name="test_subset")
+
+        cif_files = list(Path(out).glob("inference_samples/*.cif"))
+        assert len(cif_files) == 1
+        assert "example_a" in cif_files[0].name
+
+        EXPECTED_EXTRA_FIELDS_AND_DEFAULTS = [
+            ("mapped_to_coordinate_conditioned_region", False),
+            ("mapped_to_coordinate_conditioned_region_token_lvl", False),
+            ("coords_with_insertion", None), # The defaults will just be generated coords
+            ("src_coordinate_conditioned_region", "."),
+            ("src_component", "."),
+        ] 
+        generated_path = str(cif_files[0])
+        generated_aa = load_atom_array_with_conditions_from_cif(
+            generated_path,
+            extra_fields=[v[0] for v in EXPECTED_EXTRA_FIELDS_AND_DEFAULTS],
+        )
+
+        for field, default in EXPECTED_EXTRA_FIELDS_AND_DEFAULTS:
+            assert field in generated_aa.get_annotation_categories(), f"Expected annotation '{field}' not found in generated CIF"
+            if default is None:
+                continue # No default to check, just presence of the field
+            residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
+            fraction_default = np.mean(residue_starts_aa.get_annotation(field) == default)
+            assert fraction_default == 0.5, (
+                f"Expected exactly half of residue starts to have default value '{default}' for annotation '{field}', " 
+                f"but got {fraction_default:.2f} in generated CIF"
+            )
+            
+
+        df = _load_output_dataframe(out, check_spec_columns=True)
+        assert len(df) == 1
+        assert "example_a" in df["example_id"].iloc[0]
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
