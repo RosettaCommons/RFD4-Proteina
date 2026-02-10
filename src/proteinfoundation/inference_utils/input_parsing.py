@@ -612,7 +612,8 @@ class InputSpecification(BaseModel):
     plddt_enhanced: bool | None = Field(True, description="Enable pLDDT enhancement")
     is_non_loopy: bool | None = Field(True, description="Non-loopy conditioning")
     # Partial diffusion
-    partial_t: float | None = Field(None, ge=0.0, description="Angstroms of noise to add for partial diffusion (None turns off partial diffusion), t <= 15 recommended.")
+    partial_t_backbone: float | None = Field(None, ge=0.0, le=1.0, description="Backbone time step for partial diffusion. 0 is noise, 1 is data.")
+    partial_t_latent: float | None = Field(None, ge=0.0, le=1.0, description="Sequence/rotamer time step for partial diffusion. 0 is noise, 1 is data.")
     add_cath_code: dict[str, bool | str | dict[str, str | list[str]]] | None = Field(None, description="CATH-style fold type conditioning. Dict of the form {'1.2.x': 'A1-100'}")
     # fmt: on
 
@@ -623,7 +624,7 @@ class InputSpecification(BaseModel):
     @property
     def is_partial_diffusion(self) -> bool:
         """Whether partial diffusion is enabled."""
-        return exists(self.partial_t)
+        return exists(self.partial_t_backbone) or exists(self.partial_t_latent)
 
     # ========================================================================
     # Loading / saving
@@ -667,16 +668,17 @@ class InputSpecification(BaseModel):
             raise ValueError("Either 'input' or 'contig' or 'length' must be provided.")
 
         # unused input check
+        is_partial_diffusion = exists(data.get("partial_t_backbone")) or exists(data.get("partial_t_latent"))
         if exists(data.get("input")) and not (
             exists(data.get("contig"))
             or exists(data.get("unindex"))
-            or exists(data.get("partial_t"))
+            or is_partial_diffusion
             or exists(data.get("ligand"))
             or exists(data.get("internal_coord_groups"))
         ):
             raise ValueError("Input provided but unused in composition specification.")
 
-        if not exists(data.get("partial_t")):
+        if not is_partial_diffusion:
             # non-partial diffusion checks
             if exists(data.get("unindex")) and not (exists(data.get("contig")) or exists(data.get("length"))):
                 raise ValueError("Unindex provided but neither a length nor contig was specified.")
@@ -1188,8 +1190,10 @@ class InputSpecification(BaseModel):
             atom_array.set_annotation("ref_plddt", np.full((atom_array.array_length(),), True, dtype=int))
 
         # Partial diffusion time annotation
-        if self.is_partial_diffusion:
-            atom_array.set_annotation("partial_t", np.full(atom_array.shape[0], self.partial_t, dtype=float))
+        if exists(self.partial_t_backbone):
+            atom_array.set_annotation("partial_t_backbone", np.full(atom_array.shape[0], self.partial_t_backbone, dtype=float))
+        if exists(self.partial_t_latent):
+            atom_array.set_annotation("partial_t_latent", np.full(atom_array.shape[0], self.partial_t_latent, dtype=float))
         return atom_array
 
     @classmethod
