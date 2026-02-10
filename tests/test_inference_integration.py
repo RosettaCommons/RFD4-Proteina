@@ -55,6 +55,9 @@ _EXPECTED_DF_COLUMNS = {
     "task",
     "dataset_name",
     "seed",
+    "bb_ca_noise_scale",
+    "latents_noise_scale",
+    "nsteps",
 }
 
 # ---------------------------------------------------------------------------
@@ -153,7 +156,6 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
         "num_workers=0",
         "metrics_tags=[]",
         "generation.args.nsteps=10",
-        "generation.args.self_cond=False",
     ]
 
     all_overrides = base_overrides + (overrides or [])
@@ -312,6 +314,8 @@ class TestEndToEndInference:
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
         prefix = "testprefix"
         num_replicates = 2
+        bb_ca_noise_scale = 0.2
+        latents_noise_scale = 0.3
         input_path = _write_input_json(
             tmp_output_dir,
             {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
@@ -324,6 +328,8 @@ class TestEndToEndInference:
                 f"num_replicates={num_replicates}",
                 f"global_prefix={prefix}",
                 "diffusion_batch_size=1",
+                f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
+                f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_replicates_prefix")
@@ -340,6 +346,8 @@ class TestEndToEndInference:
         df = _load_output_dataframe(tmp_output_dir, global_prefix=prefix, check_spec_columns=True)
         assert len(df) == num_replicates
         assert all(df["seed"] == 42)
+        assert all(df["bb_ca_noise_scale"] == bb_ca_noise_scale)
+        assert all(df["latents_noise_scale"] == latents_noise_scale)
         for eid in df["example_id"]:
             assert prefix in eid
 
