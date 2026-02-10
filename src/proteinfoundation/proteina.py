@@ -757,6 +757,12 @@ class Proteina(L.LightningModule):
                     # Add seed used for generation
                     if self.inference_seed is not None:
                         metrics_output["seed"] = self.inference_seed
+                    
+                    # Add temperature and number of timesteps used for generation
+                    if self.inf_cfg is not None:
+                        metrics_output["bb_ca_noise_scale"] = self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
+                        metrics_output["latents_noise_scale"] = self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
+                        metrics_output["nsteps"] = self.inf_cfg.args.nsteps
 
                     # Add input specification or CIF path
                     spec_batch = batch.get("specification_batch")
