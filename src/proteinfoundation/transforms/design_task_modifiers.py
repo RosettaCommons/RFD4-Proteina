@@ -375,8 +375,9 @@ def add_hbond_condition(
     # Get mask for valid atoms to receive hbond conditioning
     seq_mask = C_SEQ.mask(atom_array, default="generate")
     crd_mask = C_CRD.mask(atom_array, default="generate")
+    intcrd_mask = C_INTCRD.mask(atom_array, default="generate")
     dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-    motif_mask = seq_mask | crd_mask | dis_mask
+    motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
 
     atom_array, hbonds, _, hbond_calculation_failed = calculate_hbonds(
         atom_array,
