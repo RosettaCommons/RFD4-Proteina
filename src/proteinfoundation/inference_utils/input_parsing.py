@@ -1333,6 +1333,8 @@ def adapt_legacy_atom_array_for_condition_pipeline(atom_array):
     if "active_acceptor" in atom_array.get_annotation_categories():
         acceptor_values = atom_array.get_annotation("active_acceptor").astype(bool)
         hbond_annot[acceptor_values] = HBondEnum.ACCEPTOR
+    
+    C_HB.set_annotation(atom_array, hbond_annot)
 
     # 5. Convert secondary structure annotations if present
     # Old: is_helix, is_sheet, is_loop (separate boolean annotations)
