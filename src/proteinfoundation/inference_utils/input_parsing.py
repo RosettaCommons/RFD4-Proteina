@@ -1014,7 +1014,7 @@ class InputSpecification(BaseModel):
             # ... Set common annotations
             atom_array_in = copy.deepcopy(atom_array_input_annotated)
             ensure_annotations(atom_array_in, "is_standard_aa")
-            atom_array = atom_array[atom_array.is_standard_aa]
+            atom_array_in = atom_array_in[atom_array_in.is_standard_aa]
             atom_array_in = set_common_annotations(atom_array_in, set_src_component_to_res_name=False)
 
             # ... Override motif annotations from pipeline
@@ -1028,6 +1028,7 @@ class InputSpecification(BaseModel):
             ).astype(int)
 
             # ... Subset to residues only
+            ensure_annotations(atom_array_in, "is_protein")
             atom_array_in = atom_array_in[atom_array_in.is_protein]
 
             # ... Set chain ID for unindexed residues as whatever the input has
@@ -1129,7 +1130,7 @@ class InputSpecification(BaseModel):
                 # For symmetric structures, avoid COM centering that would collapse chains
                 logger.info("Partial diffusion with symmetry: skipping COM centering to preserve chain spacing")
             else:
-                atom_array = set_com(atom_array, infer_ori_strategy="com")
+                atom_array = set_com(atom_array)
         else:
             # Standard: set ori token, zero out diffused atoms
             atom_array = set_com(
