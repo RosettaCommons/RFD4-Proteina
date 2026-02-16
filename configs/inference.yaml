@@ -24,6 +24,10 @@ seed: null # Will set a random seed if null
 skip_existing: false # If true, skip examples whose output structure files already exist in the output directory
 metrics_tags: [] # If specified, determines which metrics are computed during inference
 
+# MSA module: override to true in experiment configs that set load_msa per-dataset
+nn:
+  use_msa_module: false
+
 num_workers: 4  # Number of dataloader workers
 
 hardware:

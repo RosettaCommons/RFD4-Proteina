@@ -542,5 +542,80 @@ class TestEndToEndInference:
         assert len(df) == 1
         assert "example_a" in df["example_id"].iloc[0]
 
+    def test_partial_diffusion(self, tmp_output_dir):
+        """Partial diffusion: fixed atoms are preserved, non-fixed atoms change.
+
+        Runs partial diffusion on a stretch of 1PRW chain A, fixing a subset of
+        residues with ``select_fixed_atoms``.  After aligning the generated structure
+        onto the fixed region of the input, the fixed-region CA RMSD should be near
+        zero while the diffused region should show meaningful coordinate change.
+        """
+        import biotite.structure as struc
+        from atomworks.io.utils.io_utils import load_any
+        from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
+
+        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.pdb")
+
+        input_data = {
+            "partial_diffusion_test_0": {
+                "input": input_pdb,
+                "contig": "B19-22",
+                "select_fixed_atoms": "B19-22",
+                "select_unfixed_sequence": "B23-26",
+                "partial_t_backbone": 0.5,
+                "partial_t_latent": 0.5,
+                "dialect": 2,
+            }
+        }
+
+        input_path = _write_input_json(tmp_output_dir, input_data)
+        cfg = _build_test_cfg(
+            [
+                f"inputs={input_path}",
+                f"out_dir={tmp_output_dir}",
+                "generation.args.nsteps=400",
+            ]
+        )
+        run_generation(cfg, job_id=0, config_name="test_partial_diffusion")
+
+        cif_files = list(Path(tmp_output_dir).glob("inference_samples/*.cif"))
+        assert len(cif_files) == 1, f"Expected 1 output CIF, got {len(cif_files)}"
+
+        # Load input and subset to CA atoms
+        input_aa = parse(input_pdb, **STANDARD_PARSER_ARGS)["asym_unit"][0]
+        input_ca = input_aa[(input_aa.atom_name == "CA")]
+
+        # Load generated CA atoms (output contains the same 10 residues in order)
+        output_aa = load_any(str(cif_files[0]))[0]
+        output_ca = output_aa[output_aa.atom_name == "CA"]
+
+        # Superimpose output onto input using only the fixed region (first 5 CA atoms)
+        fixed_mask =  (input_ca.res_id >= 19) & (input_ca.res_id <= 22)
+        _, transform = struc.superimpose(input_ca[fixed_mask], output_ca[fixed_mask])
+
+        # Apply the same rigid-body transform to the full output
+        output_ca_aligned = transform.apply(output_ca)
+
+        # Fixed region (B19-22): CA RMSD should be near zero, sequence should be identical
+        fixed_rmsd = struc.rmsd(input_ca[fixed_mask], output_ca_aligned[fixed_mask])
+        assert fixed_rmsd < 0.5, (
+            f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å"
+            " — fixed atoms should retain input coordinates"
+        )
+        assert np.array_equal(input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]), (
+            "Fixed-region residue types should be unchanged in output"
+        )
+
+        # Non-fixed region: CA RMSD should be meaningfully > 0, sequences should be non-identical
+        nonfixed_rmsd = struc.rmsd(input_ca[~fixed_mask], output_ca_aligned[~fixed_mask])
+        assert nonfixed_rmsd > 1, (
+            f"Non-fixed-region CA RMSD {nonfixed_rmsd:.3f} Å should be > 1 Å"
+            " — diffused atoms should differ from input coordinates"
+        )
+        assert not np.array_equal(input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]), (
+            "Non-fixed-region residue types should be different in output"
+        )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

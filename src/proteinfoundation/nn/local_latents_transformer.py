@@ -75,8 +75,8 @@ class LocalLatentsTransformer(torch.nn.Module):
             **kwargs,
         )
 
-        # MSA module is optional (default: True for backward compatibility)
-        self.use_msa_module = kwargs.get("use_msa_module", True)
+        # MSA module is optional
+        self.use_msa_module = kwargs.get("use_msa_module", False)
         if self.use_msa_module:
             self.msa_module = MSAModule(
                 **kwargs["msa_module"]
