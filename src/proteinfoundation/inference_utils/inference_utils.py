@@ -49,8 +49,8 @@ _aa_like_res_names = sequence_encoding.all_res_names[sequence_encoding.is_aa_lik
 # way to quickly get signal.
 
 REQUIRED_CONDITIONING_ANNOTATION_VALUES = {
-    "is_motif_atom_with_fixed_seq": True,
-    "is_motif_atom_with_fixed_coord": True,
+    "is_motif_atom_with_fixed_seq": False,
+    "is_motif_atom_with_fixed_coord": False,
     "is_motif_atom_unindexed": False,
     "is_motif_atom_unindexed_motif_breakpoint": False,
 }
