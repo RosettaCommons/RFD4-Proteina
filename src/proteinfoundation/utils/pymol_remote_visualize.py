@@ -2,9 +2,12 @@ import logging
 
 import biotite.structure as struc
 import numpy as np
+import torch
+from typing import Any
 from atomworks.io.utils.visualize import get_pymol_session, view_pymol
 from atomworks.ml.conditions import C_DIS, Condition
 from atomworks.ml.conditions.base import Level
+from proteinfoundation.proteina import Proteina
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -209,3 +212,27 @@ def viz(
                 f"set sphere_transparency, 0.5, ori_{obj_name}",
             ]
         )
+
+def viz_x_decoded(batch: dict[str, Any], x: dict[str, torch.Tensor], model: Proteina, **kwargs):
+    """Decode a partially-latent sample and visualize it using pymol-remote.
+    
+    Args:
+        batch: input batch containing the sample to visualize, input AtomArray, padding mask, and encoding mask
+        x: the latent sample to decode and visualize
+        model: A Proteina instance to be used for decoding/formatting
+        **kwargs: additional keyword arguments to pass to the viz function
+    
+    Returns:
+        None, visualizes the decoded sample in PyMOL
+    """
+    
+    # Decode from latent space
+    sample_prots = model.sample_formatting(
+        x=x,
+        extra_info={"padding_mask": batch["padding_mask"], "can_be_encoded": batch["can_be_encoded"]},
+        ret_mode="coors37_n_aatype",
+    )
+
+    formatted_results = model.format_sample_prots_to_atom_arrays(sample_prots, batch, batch_idx=0)
+
+    viz(formatted_results[0]["generated_atom_array"], **kwargs)
