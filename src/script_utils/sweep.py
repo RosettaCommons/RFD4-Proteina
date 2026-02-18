@@ -25,7 +25,7 @@ Python API:
     from script_utils.sweep import generate_sweep_configs
     configs = generate_sweep_configs(
         base_config_name="inference",
-        sweeper={"generation.args.nsteps": [100, 400], "nsamples": [50, 200]},
+        sweeper={"generation.args.nsteps": [100, 400], "num_replicates": [50, 200]},
     )
 """
 
@@ -229,7 +229,7 @@ Examples:
   # Inline sweep:
   python sweep.py --base-config inference \\
       --sweep 'generation.args.nsteps=[100,400]' \\
-      --sweep 'nsamples=[50,200]'
+      --sweep 'num_replicates=[50,200]'
 
   # Dry run (shows what would be generated):
   python sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run

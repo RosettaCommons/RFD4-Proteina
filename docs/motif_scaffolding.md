@@ -87,7 +87,7 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/motif_scaffold_aa_tasks_indexed.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ---
@@ -159,7 +159,7 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/motif_scaffold_aa_tasks_unindexed.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ---

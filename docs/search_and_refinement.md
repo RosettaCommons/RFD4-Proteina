@@ -60,7 +60,7 @@ python proteinfoundation/generate.py \
     inputs=design.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 **When to use:** Initial exploration, unconditional generation, quick screening.
@@ -77,7 +77,7 @@ python proteinfoundation/generate.py \
     inputs=design.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=50 \
+    num_replicates=50 \
     search.strategy.n_samples=50
 ```
 
@@ -450,7 +450,7 @@ sweep:                            # Parameters to sweep (Cartesian product)
 # Optional
 base_config_overrides:            # Applied before sweep
   - inference_experiment=inference_like_rfd3
-  - nsamples=100
+  - num_replicates=100
 output_dir: ./configs/sweep_configs/my_sweep
 run_name_prefix: my_sweep
 ```

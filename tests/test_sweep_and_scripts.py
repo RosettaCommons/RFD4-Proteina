@@ -91,11 +91,11 @@ class TestGenerateSweepConfigs:
     """Test end-to-end config generation (requires Hydra)."""
 
     def test_generates_correct_number_of_configs(self, tmp_path):
-        """Sweep over 2 nsteps × 2 nsamples → 4 configs."""
+        """Sweep over 2 num_replicates × 2 gen_njobs → 4 configs."""
         output_dir = str(tmp_path / "sweep_out")
         configs = sweep.generate_sweep_configs(
             base_config_name="inference",
-            sweeper={"nsamples": [10, 50], "gen_njobs": [1, 2]},
+            sweeper={"num_replicates": [10, 50], "gen_njobs": [1, 2]},
             output_dir=output_dir,
             config_path=str(CONFIGS_DIR),
         )
@@ -118,20 +118,20 @@ class TestGenerateSweepConfigs:
         output_dir = str(tmp_path / "sweep_out")
         configs = sweep.generate_sweep_configs(
             base_config_name="inference",
-            sweeper={"nsamples": [42]},
+            sweeper={"num_replicates": [42]},
             output_dir=output_dir,
             config_path=str(CONFIGS_DIR),
         )
         assert len(configs) == 1
         with open(configs[0]) as f:
             cfg = yaml.safe_load(f)
-        assert cfg["nsamples"] == 42
+        assert cfg["num_replicates"] == 42
 
     def test_run_name_prefix(self, tmp_path):
         output_dir = str(tmp_path / "sweep_out")
         configs = sweep.generate_sweep_configs(
             base_config_name="inference",
-            sweeper={"nsamples": [10, 20]},
+            sweeper={"num_replicates": [10, 20]},
             output_dir=output_dir,
             run_name_prefix="test_prefix",
             config_path=str(CONFIGS_DIR),
@@ -252,7 +252,7 @@ class TestSweepCLI:
         """--dry-run should print info and exit 0 without creating files."""
         cfg = {
             "base_config": "inference",
-            "sweep": {"nsamples": [10, 50]},
+            "sweep": {"num_replicates": [10, 50]},
             "output_dir": str(tmp_path / "should_not_exist"),
         }
         cfg_path = tmp_path / "sweep.yaml"
@@ -274,7 +274,7 @@ class TestSweepCLI:
             [
                 sys.executable, str(SWEEP_PY),
                 "--base-config", "inference",
-                "--sweep", "nsamples=[10,20]",
+                "--sweep", "num_replicates=[10,20]",
                 "--output-dir", output_dir,
                 "--config-path", str(CONFIGS_DIR),
             ],

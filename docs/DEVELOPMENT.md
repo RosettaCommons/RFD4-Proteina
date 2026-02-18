@@ -406,7 +406,7 @@ bash slurm_utils/launch_train_latents.sh digs --submissions 2
 bash slurm_utils/launch_train_latents.sh digs --no-copy
 
 # Inference with extra Hydra args
-bash slurm_utils/launch_infer.sh digs "nsamples=100"
+bash slurm_utils/launch_infer.sh digs "num_replicates=100"
 
 # Search with extra args
 bash slurm_utils/launch_search.sh digs "search.strategy.beam_width=8"
@@ -453,7 +453,7 @@ For large inference/evaluation runs, the scripts automatically use SLURM job arr
 # configs/inference.yaml
 gen_njobs: 10   # 10 parallel generation jobs
 eval_njobs: 4   # 4 parallel evaluation jobs
-nsamples: 1000  # Total samples (split across gen_njobs)
+num_replicates: 1000  # Total designs per example (split across gen_njobs)
 ```
 
 ### Parameter Sweeps
