@@ -47,7 +47,7 @@ python proteinfoundation/generate.py \
     inputs=my_dna_binder.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Examples
@@ -108,7 +108,7 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/paper_dna.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 The benchmark includes targets from PDB structures `7n5u`, `7rte`, `7m5w`, `7rcu`, `1tgh` with single-chain, dimer, and structure-conditioned variants.

@@ -50,7 +50,7 @@ python proteinfoundation/generate.py \
     inputs=my_sm_binder.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ### 3. Evaluate
@@ -132,14 +132,14 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/sm_binder_hbonds.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 
 # RASA-conditioned binders
 python proteinfoundation/generate.py \
     inputs=benchmarks/rasa_IAI.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Tips

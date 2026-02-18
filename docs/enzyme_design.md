@@ -54,7 +54,7 @@ python proteinfoundation/generate.py \
     inputs=my_enzyme.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ### 3. Evaluate
@@ -152,21 +152,21 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/mcsa_41.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 
 # Without ligands
 python proteinfoundation/generate.py \
     inputs=benchmarks/mcsa_41_no_ligand.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 
 # With fixed ligand coordinates
 python proteinfoundation/generate.py \
     inputs=benchmarks/mcsa_41_fixed_ligand.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Tips

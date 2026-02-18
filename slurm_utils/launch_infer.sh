@@ -15,7 +15,7 @@
 #
 # Examples:
 #   ./launch_infer.sh digs ckpt_path=./checkpoints ckpt_name=model.ckpt
-#   ./launch_infer.sh ord inference_experiment=myexp nsamples=100
+#   ./launch_infer.sh ord inference_experiment=myexp num_replicates=100
 #   ./launch_infer.sh gb200 --gpus-per-job=4 gen_njobs=8
 #
 # Note: If gen_njobs or eval_njobs > 1 in config, uses SLURM job arrays.
