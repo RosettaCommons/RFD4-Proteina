@@ -716,7 +716,7 @@ def process_unindexed_outputs(
     # Track which indices have been mapped to unindexed regions and their remapped coordinates
     mapped_to_coordinate_conditioned_region = np.zeros(model_generated_atom_array.array_length(), dtype=bool)
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
-    src_coordinate_conditioned_region = np.full(model_generated_atom_array.array_length(), ".", dtype=str)
+    src_coordinate_conditioned_region = np.full(model_generated_atom_array.array_length(), ".", dtype="<U10")
 
     # If we cannot find a valid insertion mapping, fall back to simply removing the unindexed region
     try:
