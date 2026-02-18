@@ -505,6 +505,7 @@ class TestEndToEndInference:
             [
                 f"inputs={input_path}",
                 f"out_dir={out}",
+                "generation.args.nsteps=100",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
@@ -518,7 +519,7 @@ class TestEndToEndInference:
             ("mapped_to_coordinate_conditioned_region_token_lvl", False),
             ("coords_with_insertion", None), # The defaults will just be generated coords
             ("src_coordinate_conditioned_region", "."),
-            ("src_component", "."),
+            ("src_component", "5"),
         ] 
         generated_path = str(cif_files[0])
         generated_aa = load_atom_array_with_conditions_from_cif(

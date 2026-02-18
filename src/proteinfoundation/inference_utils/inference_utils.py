@@ -202,10 +202,10 @@ def set_common_annotations(array: AtomArray, set_src_component_to_res_name: bool
         if set_src_component_to_res_name:
             array.set_annotation(
                 "src_component",
-                np.full(array.shape[0], array.res_name.copy(), dtype=array.res_name.dtype),
+                np.full(array.shape[0], array.res_name.copy(), dtype="<U10"),
             )
         else:
-            array.set_annotation("src_component", np.full(array.shape[0], "", dtype=array.res_name.dtype))
+            array.set_annotation("src_component", np.full(array.shape[0], ".", dtype="<U10"))
     return array
 
 
@@ -214,7 +214,7 @@ def set_indices(array: AtomArray, chain: str, res_id_start: int, molecule_id: in
     array.chain_id = np.full(n, chain, dtype=array.chain_id.dtype)
     array.res_id = np.full(n, res_id_start + array.res_id - 1, dtype=array.res_id.dtype)
     array.molecule_id = np.full(n, molecule_id, dtype=np.int32)
-    array.set_annotation("src_component", np.full(n, component, dtype=array.chain_id.dtype))
+    array.set_annotation("src_component", np.full(n, component, dtype="<U10"))
     return array
 
 

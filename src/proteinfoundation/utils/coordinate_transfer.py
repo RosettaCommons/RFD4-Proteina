@@ -54,6 +54,29 @@ def _copy_coords_by_atom_name(
         target_atom_mask = target_mask & (target_array.atom_name == atom_name)
         target_array.coord[target_atom_mask] = source_array.coord[source_atom_mask]
 
+def _broadcast_src_component_residue_wise(atom_array):
+    """Ensure that the src_component annotation reflects the residue-level nature of the input component syntax.
+
+    Examples:
+        - An indexed residue with only tip-atoms fixed is fully annotated with the tip-atom source residue
+        - A residue that will be mapped to unindexed in-context conditioning is still an arbitrary diffused residue
+            at this point, and is annotated as such. Its `src_coordinate_conditioned_region` will be added later.
+    """
+
+    # NOTE: Operations are residue-wise rather than token-wise since atomized residues have a single src_component
+    if np.any(struc.apply_residue_wise(atom_array, atom_array.src_component, lambda x: len(set(x) - {"."}) > 1)):
+        raise ValueError(f"Found multiple non-trivial src_component values within a single residue.")
+    
+    residue_level_src_component = struc.apply_residue_wise(
+        atom_array,
+        atom_array.src_component,
+        lambda x: np.array(x[x != "."][0] if np.any(x != ".") else ".", dtype="<U10")
+    )
+    broadcasted_src_component = struc.spread_residue_wise(atom_array, residue_level_src_component)
+
+    atom_array.set_annotation("src_component", broadcasted_src_component)
+
+    return atom_array
 
 def get_residue_level_annotations(
     atom_array: AtomArray,
@@ -222,7 +245,7 @@ def copy_generated_coordinates_to_input(
             existing_annotations = get_annotation_categories(template, n_body="all")
             annotations_to_default = set(annotations_to_default) - set(existing_annotations)
             template = default_annotations_and_conditions_from_registry(template, annotations=annotations_to_default)
-            template.set_annotation("src_component", np.full(len(template), ".", dtype=str))
+            template.set_annotation("src_component", np.full(len(template), ".", dtype="<U10"))
 
             # Set coordinates from generated atom array
             _copy_coords_by_atom_name(
@@ -259,5 +282,8 @@ def copy_generated_coordinates_to_input(
     reshaped_original_input_coords = np.full_like(input_atom_array.coord, np.nan)
     reshaped_original_input_coords[derived_from_original_input] = original_input_coords[reshaped_original_global_index]
     input_atom_array.set_annotation("original_input_coord", reshaped_original_input_coords)
+
+    # Broadcast src_component to generated sidechain atoms
+    input_atom_array = _broadcast_src_component_residue_wise(input_atom_array)
 
     return input_atom_array

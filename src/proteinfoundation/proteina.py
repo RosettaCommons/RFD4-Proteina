@@ -1256,7 +1256,7 @@ class Proteina(L.LightningModule):
                 "mapped_to_coordinate_conditioned_region", np.zeros(updated_array.array_length(), dtype=bool)
             )
             updated_array.set_annotation(
-                "src_coordinate_conditioned_region", np.full(updated_array.array_length(), ".", dtype=str)
+                "src_coordinate_conditioned_region", np.full(updated_array.array_length(), ".", dtype="<U10")
             )
             metadata = {}
         

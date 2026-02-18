@@ -15,9 +15,9 @@ from atomworks.ml.utils.token import (
     get_token_starts,
 )
 from biotite import structure as struc
-from biotite.structure import AtomArray, BondList, get_residue_starts, spread_residue_wise
-from foundry.common import exists
-from foundry.utils.ddp import RankedLogger
+from biotite.structure import AtomArray, BondList, get_residue_starts, spread_residue_wise, apply_residue_wise
+from modelhub.common import exists
+from modelhub.utils.ddp import RankedLogger
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -1196,6 +1196,7 @@ class InputSpecification(BaseModel):
         if exists(self.partial_t_latent):
             atom_array.set_annotation("partial_t_latent", np.full(atom_array.shape[0], self.partial_t_latent, dtype=float))
         return atom_array
+
 
     @classmethod
     def safe_init(cls, **spec_kwargs):
