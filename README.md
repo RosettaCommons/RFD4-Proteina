@@ -56,6 +56,7 @@ Inputs can be JSON, YAML, CIF, or PDB files. See the [input specification](docs/
 | `generation.args.nsteps` | Diffusion steps — higher is slower but often better quality | 400 |
 | `generation.args.guidance_w` | Guidance weight (1.0 = unconditional; increase for stronger conditioning) | 1.0 |
 | `generation.args.self_cond` | Self-conditioning — leave enabled for best quality | true |
+| `metrics_tags` | Tags that activate specific evaluation metrics (see [Metrics Tags](#metrics-tags)) | `[]` |
 
 > **RFD3 users**: `diffusion_batch_size` is accepted as an alias for `batch_size`, and `json_keys_subset` for `subset_to_examples`.
 

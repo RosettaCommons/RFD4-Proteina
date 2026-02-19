@@ -310,7 +310,7 @@ class TestEndToEndInference:
         export AE_CKPT_PATH=/path/to/ae_checkpoint.ckpt
     """
 
-    def test_generation_with_replicates_and_prefix(self, tmp_output_dir):
+    def test_generation_with_replicates_and_prefix_and_refolding(self, tmp_output_dir):
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
         prefix = "testprefix"
         num_replicates = 2
@@ -330,6 +330,7 @@ class TestEndToEndInference:
                 "diffusion_batch_size=1",
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
+                "metrics_tags=unconditional_refolding"
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_replicates_prefix")
@@ -348,6 +349,7 @@ class TestEndToEndInference:
         assert all(df["seed"] == 42)
         assert all(df["bb_ca_noise_scale"] == bb_ca_noise_scale)
         assert all(df["latents_noise_scale"] == latents_noise_scale)
+        assert any("rf3_metric_unconditional" in col for col in df.columns), "RF3Metric did not run."
         for eid in df["example_id"]:
             assert prefix in eid
 
