@@ -58,6 +58,7 @@ _EXPECTED_DF_COLUMNS = {
     "bb_ca_noise_scale",
     "latents_noise_scale",
     "nsteps",
+    "chain_of_interest",
 }
 
 # ---------------------------------------------------------------------------
@@ -349,6 +350,7 @@ class TestEndToEndInference:
         assert all(df["seed"] == 42)
         assert all(df["bb_ca_noise_scale"] == bb_ca_noise_scale)
         assert all(df["latents_noise_scale"] == latents_noise_scale)
+        assert all(df["chain_of_interest"].notna())
         assert any("rf3_metric_unconditional" in col for col in df.columns), "RF3Metric did not run."
         for eid in df["example_id"]:
             assert prefix in eid

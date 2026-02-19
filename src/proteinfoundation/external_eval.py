@@ -22,6 +22,7 @@ from foundry.metrics import MetricManager
 import numpy as np
 import torch
 from proteinfoundation.conditions import C_IDXGRP, C_INTCRD, C_HOT
+from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.generate import get_contig_or_design_problem_dataset
 from proteinfoundation.inference_utils.datasets import DesignProblemDataset, ContigJsonDataset
@@ -745,12 +746,17 @@ def run_external_eval(
         if not exists(metric_manager):
             continue
 
+        # Pre-compute chain of interest so it is shared across all metrics
+        coi, coi_unambiguous = get_chain_of_interest(rf3_input_atom_array)
+        chain_of_interest = coi if coi_unambiguous else None
+
         metric_output = metric_manager(
             network_input=None,
             network_output=None,
             extra_info={
                 "example_id": str(Path(generated_structure_path).stem).split(".")[0],
                 "output_base_dir": Path(output_dir),
+                "chain_of_interest": chain_of_interest,
             },
             predicted_atom_array=[rf3_input_atom_array],
         )
