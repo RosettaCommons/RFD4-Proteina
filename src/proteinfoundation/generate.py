@@ -194,6 +194,8 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
 
     metrics_tags = cfg_gen.dataset.transform.get("metrics_tags") if "transform" in cfg_gen.dataset else None
+    if isinstance(metrics_tags, str):
+        metrics_tags = metrics_tags.split(",")
     inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags)
 
     dataset = get_contig_or_design_problem_dataset(

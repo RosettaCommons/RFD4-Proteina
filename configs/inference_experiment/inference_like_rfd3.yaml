@@ -2,7 +2,7 @@
 
 defaults:
   - /generation: inference_base
-  - /metrics: design_metrics # Will be subsetted according to metrics_tags
+  - /metrics: all_metrics # Will be subsetted according to metrics_tags
   - _self_
 
 inputs: ??? # json/yaml/cif path or cif directory
