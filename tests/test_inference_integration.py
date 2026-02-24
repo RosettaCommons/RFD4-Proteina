@@ -19,6 +19,7 @@ import pandas as pd
 import pytest
 import torch
 from atomworks.io.utils.io_utils import load_any
+from atomworks.enums import ChainType
 from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
 from biotite.structure import get_residue_starts
 
@@ -36,6 +37,7 @@ from proteinfoundation.generate import (
     get_contig_or_design_problem_dataset,
     run_generation,
 )
+from pydantic_core._pydantic_core import ValidationError
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset
 
 # ---------------------------------------------------------------------------
@@ -100,6 +102,35 @@ def minimal_monomer_json(tmp_output_dir):
         json.dump(data, f)
     return path
 
+@pytest.fixture
+def diffused_na_json(tmp_output_dir):
+    """Write a single-example JSON with a mix of RNA, DNA, and protein residues."""
+    data = {
+        "diffused_na": {
+            "length": "15-15",
+            "contig": "5D,/0,5R,/0,5P",
+            "dialect": 2,
+        }
+    }
+    path = os.path.join(tmp_output_dir, "diffused_na.json")
+    with open(path, "w") as f:
+        json.dump(data, f)
+    return path
+
+@pytest.fixture
+def bad_diffused_na_json(tmp_output_dir):
+    """Write a single-example JSON with an invalid polymer type setup (varies within chain)."""
+    data = {
+        "bad_diffused_na": {
+            "length": "15-15",
+            "contig": "5D,/0,5R,5P",
+            "dialect": 2,
+        }
+    }
+    path = os.path.join(tmp_output_dir, "bad_diffused_na.json")
+    with open(path, "w") as f:
+        json.dump(data, f)
+    return path
 
 @pytest.fixture
 def two_example_json(tmp_output_dir):
@@ -225,6 +256,48 @@ class TestDatasetConstruction:
         assert "atom_array" in example
         assert "example_id" in example
         assert "feats" in example
+    
+    def test_diffused_na_contigs(self, diffused_na_json, bad_diffused_na_json, inference_pipeline):
+        """Verify ContigJsonDataset loads a single example and applies transforms."""
+        dataset = get_contig_or_design_problem_dataset(
+            diffused_na_json,
+            num_replicates=1,
+            transform=inference_pipeline,
+        )
+
+        example = dataset[0]
+        assert "atom_array" in example
+        atom_array = example["atom_array"]
+        annots = ["chain_type", "is_protein", "is_rna", "is_dna", "is_ligand"]
+        for annot in annots:
+            assert annot in atom_array.get_annotation_categories(), f"Expected '{annot}' annotation in atom array"
+
+        residue_starts = get_residue_starts(atom_array)
+        assert len(residue_starts) == 15, f"Expected 15 residues but got {len(residue_starts)}"
+        rna_start, protein_start = residue_starts[5], residue_starts[10]
+
+        aa_and_expectations = [
+            (atom_array[:rna_start], ChainType.DNA, False, False, True, False),  # DNA residues
+            (atom_array[rna_start:protein_start], ChainType.RNA, False, True, False, False), # RNA residues
+            (atom_array[protein_start:], ChainType.POLYPEPTIDE_L, True, False, False, False),  # Protein residues
+        ]
+
+        for chain_group in aa_and_expectations:
+            aa = chain_group[0]
+            for annot, expectation in zip(annots, chain_group[1:]):
+                values = aa.get_annotation(annot)
+                assert np.all(values == expectation), (
+                    f"Expected annotation '{annot}' to be {expectation} but got values {values}."
+                )
+
+
+        with pytest.raises(ValidationError, match="Chain types must be consistent"):
+            _ = get_contig_or_design_problem_dataset(
+                bad_diffused_na_json,
+                num_replicates=1,
+                transform=inference_pipeline,
+            )
+
 
     def test_num_replicates(self, minimal_monomer_json, inference_pipeline):
         """Verify num_replicates correctly multiplies dataset size."""
@@ -295,12 +368,6 @@ _CKPT_PATH = os.environ.get(
 _CKPT_NAME = os.environ.get("CKPT_NAME", "last.ckpt")
 _AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH", None)
 
-_has_gpu = torch.cuda.is_available()
-
-skip_if_no_gpu = pytest.mark.skipif(not _has_gpu, reason="GPU not available")
-
-
-@skip_if_no_gpu
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures.
 
@@ -310,6 +377,10 @@ class TestEndToEndInference:
         export CKPT_NAME=model.ckpt
         export AE_CKPT_PATH=/path/to/ae_checkpoint.ckpt
     """
+    @pytest.fixture(autouse=True, scope="class")
+    def require_gpu(self):
+        if not torch.cuda.is_available():
+            pytest.skip("GPU not available")
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, tmp_output_dir):
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""

@@ -41,6 +41,48 @@ sequence_encoding = AF3SequenceEncoding()
 _aa_like_res_names = sequence_encoding.all_res_names[sequence_encoding.is_aa_like]
 
 
+
+#########################################
+######### CONSTANTS #####################
+#########################################
+BACKBONE_ATOM_NAMES_DNA = [
+    "P",
+    "OP1",
+    "OP2",
+    "O5'",
+    "C5'",
+    "C4'",
+    "O4'",
+    "C3'",
+    "O3'",
+    "C2'",
+    "C1'",
+]
+
+BACKBONE_ATOM_NAMES_RNA = [
+    "P",
+    "OP1",
+    "OP2",
+    "O5'",
+    "C5'",
+    "C4'",
+    "O4'",
+    "C3'",
+    "O3'",
+    "C2'",
+    "O2'",
+    "C1'",
+]
+"""RNA backbone atom names"""
+
+BACKBONE_ATOM_ELEMENTS_RNA = np.array(
+    ["P", "O", "O", "O", "C", "C", "O", "C", "O", "C", "O", "C"]
+)
+"""RNA backbone atom elements"""
+
+NA_BACKBONE_ATOM_NAME_TO_ELEMENT = dict(zip(BACKBONE_ATOM_NAMES_RNA, BACKBONE_ATOM_ELEMENTS_RNA))
+"""Atom name to element mapping for NA backbone atoms"""
+
 #########################################
 ######### HACKS TO BE REMOVED ###########
 #########################################
