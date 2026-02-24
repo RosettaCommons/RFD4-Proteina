@@ -1,0 +1,38 @@
+# Toy datasets for debugging adherence to 2d conditioning
+
+val:
+  toy_ala_benchmark_no_atomization:
+    dataset:
+      _target_: proteinfoundation.inference.datasets.DesignProblemDataset
+      dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
+      transform:
+        _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+        metrics_tags:
+          - 2d_distance_conditioning
+
+  toy_ala_benchmark_atomization:
+    dataset:
+      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
+      transform:
+        _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+        metrics_tags:
+          - 2d_distance_conditioning
+
+  toy_eoh_benchmark:
+    dataset:
+      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/eoh_toys
+      transform:
+        _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+        metrics_tags:
+          - 2d_distance_conditioning
+      
+  toy_ala_all_atoms_benchmark:
+    dataset:
+      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
+      transform:
+        _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+        metrics_tags:
+          - 2d_distance_conditioning

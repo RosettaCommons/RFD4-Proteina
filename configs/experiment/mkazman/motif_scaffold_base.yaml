@@ -1,0 +1,42 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... protein distillation
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  # - /datasets/train/distill/mgnify_june_2025@datasets.train.mgnify_june_2025  # TODO: Kieran only has june 2025 on lustre for now
+
+  # Validation datasets
+  # ... unconditional
+  # - /datasets/val/unconditional@datasets.val.unconditional
+  # ... motif scaffolding (indexed and unindexed)
+  # - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  # - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+
+  - _self_
+
+run_name_: motif_scaffold_base_fast
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      # mgnify_june_2025:
+      #   probability: 0.5
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "baseline"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:
+

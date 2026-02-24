@@ -1,0 +1,31 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_afdb
+  # Proteina motif scaffolding design tasks
+  - /design_tasks/presets/motif_pretraining_proteina@_motif_proteina_design_tasks
+  - _self_
+
+run_name_: motif_scaffold_afdb_proteina
+
+_motif_proteina_design_tasks:
+  motif_scaffold_proteina_ame:
+    transform:
+      atom_selection_mode: all
+      residue_selection_mode: absolute_number
+      motif_min_n_res: 2
+      motif_max_n_res: 20
+      unindex_mode: simple
+      p_unindex_motif: 0.5
+
+# Dataset mixing probabilities and design tasks
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_motif_proteina_design_tasks}
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "baseline", "afdb-monomer"]

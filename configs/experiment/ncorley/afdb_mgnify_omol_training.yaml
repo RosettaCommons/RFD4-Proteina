@@ -1,0 +1,42 @@
+# @package _global_
+
+# Mixed AFDB + MGnify + OMol training: 45% AFDB, 45% MGnify, 10% OMol
+
+defaults:
+  # Train datasets
+  # ... protein distillation
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  # ... small molecule distillation
+  - /datasets/train/distill/omol@datasets.train.omol
+
+  # Validation datasets
+  # ... small molecule
+  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+  # ... structure prediction
+  - /datasets/val/structure_prediction/de_novo@datasets.val.de_novo
+  # ... unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+  # ... motif scaffolding (indexed and unindexed)
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+
+  - _self_
+
+run_name_: afdb_mgnify_omol_training_${now:%Y_%m_%d_%H_%M}
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.45
+    mgnify_dec_2025:
+      probability: 0.45
+    omol:
+      probability: 0.1
+    
+log:
+  tags: ["motif-scaffolding", "debug"]
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

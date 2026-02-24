@@ -1,0 +1,24 @@
+# @package _global_
+# Autoencoder training where DECODER does NOT receive token type
+# Ablation: Can decoder reconstruct protein/RNA/DNA from latent alone?
+# Encoder still receives token_type, decoder must infer molecule type from latent
+
+defaults:
+  - /nn_ae/nn_60m_unified_decoder_no_token_type@nn_ae
+  - /datasets/ae_mixed_datasets@datasets
+  - _self_
+
+run_name_: ae_unified_decoder_no_token_type
+
+hardware:
+  ncpus_per_task_train_: 16
+  ngpus_per_node_: 4
+  nnodes_: 6
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 24
+
+log:
+  tags: ["ae", "60m", "unified", "protein", "rna", "dna", "decoder_no_token_type", "ablation"]

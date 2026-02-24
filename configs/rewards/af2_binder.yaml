@@ -1,0 +1,19 @@
+# AlphaFold2 binder reward configuration
+# Differentiable - can be used for gradient-based refinement
+
+metrics:
+  af2:
+    _target_: proteinfoundation.metrics.af2_metric.AF2Metric
+    model_name: model_1_ptm
+    num_recycles: 3
+    use_templates: false
+    protocol: binder
+
+weights:
+  af2.plddt: 1.0        # Overall confidence
+  af2.ptm: 2.0          # Complex confidence
+  af2.pae: -1.0         # Lower PAE is better
+  af2.max_pae: -0.5     # Control worst case
+
+differentiable: true    # AF2 supports gradients for refinement
+

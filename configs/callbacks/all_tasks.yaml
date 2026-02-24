@@ -1,0 +1,31 @@
+defaults:
+  - default
+  - _self_
+
+# add in our new stuff here
+
+design_task_frequency_callback:
+    _target_: proteinfoundation.callbacks.design_task_logging.DesignTaskStatsCallback
+    log_every_n: 1000
+
+t_bb_loss_monitoring_callback:
+    _target_: proteinfoundation.callbacks.t_loss_monitoring.TLossMonitoringCallback
+    n_buckets: 50
+    log_every_n_steps: 10000
+    baseline_capture_steps: 2000
+    normalize_by_baseline: true
+    data_mode: "bb_ca"
+    sync_baseline: true
+    sync_snapshots: false
+    freeze_during_baseline: false
+
+t_latents_loss_monitoring_callback:
+    _target_: proteinfoundation.callbacks.t_loss_monitoring.TLossMonitoringCallback
+    n_buckets: 50
+    log_every_n_steps: 10000
+    baseline_capture_steps: 2000
+    normalize_by_baseline: true
+    data_mode: "local_latents"
+    sync_baseline: true
+    sync_snapshots: false
+    freeze_during_baseline: false

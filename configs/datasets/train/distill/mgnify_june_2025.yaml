@@ -1,0 +1,21 @@
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: mgnify_june_2025
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_distillation_big.parquet
+  columns_to_load:
+    - example_id
+    - path
+    - ptm
+
+  loader:
+    parser_args:
+      add_missing_atoms: True  # When it's false we get a ton of warnings. Would be good to suppress these or change the warning
+
+  filters:
+    - "ptm > 0.75"

@@ -1,0 +1,18 @@
+# TED Dimers Training Dataset - Protein dimers for PPI design
+# Uses TED (Tertiary structure-based Evaluation of Dimers) dataset
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/ppi_design@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: ted_dimers_train
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/ted_dimers.parquet
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+

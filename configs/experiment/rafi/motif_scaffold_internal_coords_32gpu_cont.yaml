@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+
+  # internal coordinate conditioning validation
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_internal_coords@datasets.val.indexed_motif_scaffold_internal_coords
+
+  - _self_
+
+run_name_: motif_scaffold_internal_coords_32gpu_cont
+
+# Continue from 48gpu run checkpoint (epoch 156)
+pretrain_ckpt_path: /path/to/shared/storage
+
+# Dataset config with 50% internal coords (cranked up from 33%)
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks:
+            motif_scaffold:
+              transform:
+                p_internal_coords: 0.5
+
+log:
+  tags: ["motif-scaffolding", "internal-coordinate-conditioning", "pretrain", "continuation", "50pct-internal"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1

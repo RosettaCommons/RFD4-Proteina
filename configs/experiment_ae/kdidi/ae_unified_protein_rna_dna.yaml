@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - /nn_ae/nn_60m_unified@nn_ae
+  - /datasets/ae_protein_rna_dna_datasets@datasets
+  - _self_
+
+run_name_: ae_unified_protein_rna_dna_3
+
+hardware:
+  ncpus_per_task_train_: 16
+  ngpus_per_node_: 8
+  nnodes_: 6
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 12
+
+log:
+  tags: ["ae", "60m", "unified", "protein", "rna", "dna", "token_type"]

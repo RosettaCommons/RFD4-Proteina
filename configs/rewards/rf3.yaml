@@ -1,0 +1,20 @@
+# RF3 refolding reward configuration
+# Use RF3 confidence metrics for reward-guided generation
+
+metrics:
+  rf3:
+    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    ckpt_path: /path/to/shared/storage
+    num_steps: 50
+    n_recycles: 5
+    diffusion_batch_size: 1
+    rng_seed: 1
+
+weights:
+  rf3.plddt: 1.0        # Higher pLDDT is better
+  rf3.iptm: 2.0         # Higher ipTM is better (weighted more)
+  rf3.ipae: -1.0        # Lower ipAE is better (negative weight)
+  rf3.min_ipae: -0.5    # Lower min_ipAE is better
+
+differentiable: false   # RF3 is not differentiable
+

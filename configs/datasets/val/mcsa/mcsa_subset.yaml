@@ -1,0 +1,19 @@
+defaults:
+  # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
+  - /datasets/val/mcsa@_here_: mcsa_full
+  - _self_
+
+dataset:
+  name: mcsa_subset
+  subset_to_keys:
+    # easy
+    - M0664_2dhn
+    - M0711_2esd
+    # medium
+    - M0097_1ctt
+    - M0500_1e3i
+    # hard
+    - M0732_1xs1
+    - M0375_4ts9
+
+  num_replicates: 200

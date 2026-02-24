@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - mkazman/ppi_base
+  - _self_
+
+run_name_: ppi_base_32
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 8
+
+opt:
+  accumulate_grad_batches: 1

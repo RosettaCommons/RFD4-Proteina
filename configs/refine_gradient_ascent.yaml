@@ -1,0 +1,39 @@
+# Standalone Gradient Ascent refinement config  
+# Usage: python proteinfoundation/refine.py --config-name refine_gradient_ascent inputs=my_structure.pdb
+
+# Input (single file or directory)
+inputs: ???  # REQUIRED: path to PDB/CIF file or directory
+
+# Output directory
+output_dir: refined_structures
+
+# Refinement strategy
+refinement:
+  strategy:
+    _target_: proteinfoundation.refinement.gradient_ascent.GradientAscentRefinement
+    n_iterations: 50
+    line_search_steps: [1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2]
+    update_bb_ca: false  # Only optimize local_latents
+    normalize_logits: true
+
+# Autoencoder (REQUIRED for gradient ascent)
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+# Reward model (must be differentiable)
+rewards:
+  metrics:
+    af2:
+      _target_: proteinfoundation.metrics.af2_metric.AF2Metric
+      model_name: model_1_ptm
+      num_recycles: 3
+      use_templates: false
+      protocol: binder
+      data_dir: ${oc.env:DATA_PATH}/tools/AF2
+  
+  weights:
+    af2.plddt: 1.0
+    af2.ptm: 2.0
+    af2.pae: -1.0
+  
+  differentiable: true  # CRITICAL: Must be true for refinement
+

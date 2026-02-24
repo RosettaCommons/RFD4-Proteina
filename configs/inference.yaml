@@ -1,0 +1,37 @@
+# Default configs for inference through generate.py
+# The defaults are geared more towards ease-of-use by designers, so running with
+# the existing analysis scripts will necessitate overrides
+
+defaults:
+  - _self_
+  - inference_experiment: inference_like_rfd3 # Default for design
+
+# NOTE: The experiment configs can override values specified in this config
+
+run_name_: inference
+
+out_dir: null  # Inferred if not specified at command line
+
+ckpt_name: ???
+ckpt_path: ???
+
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+nsamples: 8 # Number of samples to generate
+batch_size: 1
+seed: null # Will set a random seed if null
+
+num_workers: 4  # Number of dataloader workers
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+# Cluster job settings (used by launch_infer_from_local.sh)
+ncpus_: 24  # Number of CPUs per task
+gen_njobs: 1  # Number of parallel generation jobs per config
+eval_njobs: 1  # Number of parallel evaluation jobs per config
+# Offline validation settings
+offline_validation: false  # Set to true when running via launch_offline_val.sh
+job_id: null  # Job ID for offline validation (required when offline_validation=true)

@@ -1,0 +1,12 @@
+# Neural network config: Flash attention, with MSA module
+# Based on local_latents_score_nn_160M_atom37.yaml
+
+defaults:
+  - local_latents_score_nn_160M_atom37
+  - _self_
+
+# Flash attention for efficient training
+attention_type: flash
+
+# Enable MSA module (structure prediction with MSAs)
+use_msa_module: true

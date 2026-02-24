@@ -1,0 +1,49 @@
+# @package _global_
+
+defaults:
+  - motif_scaffold_base
+  - /design_tasks/presets/motif_pretraining@_design_tasks
+  - _self_
+
+run_name_: motif_scaffold_proteina_fast
+
+_design_tasks:
+  motif_scaffold:
+    transform:
+      _target_: proteinfoundation.transforms.design_task.MotifScaffoldProteinaTask
+      atom_selection_mode: all
+      residue_selection_mode: absolute_number
+      motif_min_n_res: 2
+      motif_max_n_res: 8
+      unindex_mode: simple
+      p_unindex_motif: 0.5
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${_design_tasks}
+    mgnify_june_2025:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${_design_tasks}
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "baseline"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

@@ -1,0 +1,9 @@
+defaults:
+  - default
+  - _self_
+
+grad_and_weight_analysis_callback:
+    _target_: proteinfoundation.utils.training_analysis_utils.GradAndWeightAnalysisCallback
+
+skip_nan_grad_callback:
+    _target_: proteinfoundation.utils.training_analysis_utils.SkipNanGradCallback

@@ -1,0 +1,97 @@
+# =============================================================================
+# DIGS Cluster Configuration - EXAMPLE
+# =============================================================================
+# Copy this file to .user_info_digs and fill in your values:
+#   cp .user_info_digs_example .user_info_digs
+#
+# DIGS uses Apptainer containers with auto-mounted filesystems
+# No ACCOUNT needed for SLURM submissions on this cluster
+#
+# Container Discovery:
+#   Training scripts use shebangs that auto-discover the container from
+#   .ipd/apptainer/latent-dev.sif - no CONTAINER_IMAGE setting needed.
+# =============================================================================
+
+# Source shared environment variables from .ipd/.env
+# This provides: DATA_PATH, CACHE_DIR, PDB_MIRROR_PATH, CCD_MIRROR_PATH,
+#                HBPLUS_PATH, MACE_MODEL_PATH, DSSP_PATH, etc.
+# If .ipd/.env doesn't exist, you'll need to set these manually below.
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_REPO_ROOT="$(cd "$_SCRIPT_DIR/../../.." && pwd)"
+if [ -f "$_REPO_ROOT/.ipd/.env" ]; then
+    set -a  # auto-export variables
+    source "$_REPO_ROOT/.ipd/.env"
+    set +a
+fi
+unset _SCRIPT_DIR _REPO_ROOT
+
+# =============================================================================
+# Cluster-specific settings (override or add to .ipd/.env values)
+# =============================================================================
+
+# Cluster identification
+CLUSTER_TYPE="digs"
+SKIP_ACCOUNT="true"
+
+# Remote cluster login node
+REMOTE="<login-host>"
+
+# Your username on the cluster
+USER="${USER:-your_username}"
+
+# Root directory on remote for runs
+ROOT_REMOTE="/path/to/shared/storage"
+
+# Executables (shebang scripts handle container; these are used by .env creation)
+FOLDSEEK_REMOTE="/usr/local/bin/foldseek"
+
+# Weights & Biases API key (get from https://wandb.ai/authorize)
+WANDBKEY=""
+
+# Slurm configuration
+PARTITION="gpu-train"
+GPUS_PER_NODE_CLUSTER=8
+RUNTIME="04:00:00"
+SIGNAL_TIME=600
+
+# GPU type on this cluster
+GPU_TYPE="L40"
+
+# Nodes to exclude (optional)
+EXCLUDE_NODES=""
+
+# Extra SLURM options (optional)
+SLURM_EXTRA_OPTIONS=""
+
+# Dataset squashfs mounts (semicolon-separated squash:mountpoint pairs)
+# Configured in .ipd/.env - uncomment below to override for cluster-specific mounts
+# DATASET_SQUASH_MOUNTS=""
+
+# cuEquivariance (leave empty for default behavior)
+USE_CUEQUIVARIANCE=""
+
+# =============================================================================
+# MPNN Settings (for launch_mpnn.sh)
+# =============================================================================
+# These settings are used by launch_mpnn.sh for running ProteinMPNN/LigandMPNN
+# MPNN runs quickly on CPU nodes, no GPU required.
+#
+# REQUIRED settings (launch_mpnn.sh will error if not set):
+#   MPNN_SCRIPT_PATH      - Path to the fused_mpnn run.py script
+#   MPNN_CONTAINER_IMAGE  - Container image for running MPNN
+
+# SLURM settings for MPNN jobs (optional, these are the defaults)
+MPNN_PARTITION="cpu"
+MPNN_TIME="1:00:00"
+MPNN_CPUS=1
+MPNN_MEM="16G"
+
+# REQUIRED: Path to the mpnn run script
+MPNN_SCRIPT_PATH="/path/to/shared/storage"
+
+# REQUIRED: Container image for MPNN
+# For DIGS (Apptainer): path to .sif file
+MPNN_CONTAINER_IMAGE="/path/to/data"
+
+# Optional: Apptainer bind mounts
+MPNN_CONTAINER_BINDS="--bind /databases:/databases --bind /path/to/shared/storage:/path/to/shared/storage --bind /projects:/projects --bind /home:/home"

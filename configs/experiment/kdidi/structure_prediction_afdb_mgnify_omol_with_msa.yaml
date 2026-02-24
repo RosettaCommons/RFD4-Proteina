@@ -1,0 +1,86 @@
+# @package _global_
+# Structure prediction with AFDB + MGnify + OMol WITH MSAs
+# 32 GPUs (8 nodes x 4 GPUs), folding-only task, crop_size=256, fixed_dim=256
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - /datasets/train/distill/omol@datasets.train.omol
+
+  # Validation datasets
+  - /datasets/val/structure_prediction/de_novo@datasets.val.de_novo
+  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+
+  # Design task: folding only
+  - /design_tasks/presets/folding_only@_folding_design_tasks
+
+  # Neural network: Flash attention, with MSA
+  - override /nn: local_latents_score_nn_160M_atom37_flash_with_msa
+
+  # Override metrics to avoid MACE dependency
+  - override /metrics: structure_prediction_metrics
+
+  - _self_
+
+run_name_: structure_prediction_debug_03_02
+
+# Dataset mixing probabilities (45% AFDB, 45% MGnify, 10% OMol)
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.45
+      dataset:
+        transform:
+          crop_size: 256
+          design_tasks: ${_folding_design_tasks}
+    mgnify_dec_2025:
+      probability: 0.45
+      dataset:
+        transform:
+          crop_size: 256
+          design_tasks: ${_folding_design_tasks}
+    omol:
+      probability: 0.1
+      dataset:
+        transform:
+          crop_size: 256
+          design_tasks:
+            folding:
+              frequency: 1.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                global_design_task_kwargs:
+                  rasa_kwargs:
+                    p_add_rasa_condition: 0.0
+                  hbond_kwargs:
+                    p_add_hbond_condition: 0.0
+                  secondary_structure_kwargs:
+                    p_add_secondary_structure_condition: 0.0
+
+# Fixed dimensions for torch.compile (I=256, S=256)
+dataloaders:
+  train:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256, S: 256}
+  val:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256, S: 256}
+
+log:
+  tags: ["structure-prediction", "folding", "with-msa", "afdb-monomer", "mgnify", "omol", "32gpu"]
+
+# Hardware: 32 GPUs (8 nodes x 4 GPUs)
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 8
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

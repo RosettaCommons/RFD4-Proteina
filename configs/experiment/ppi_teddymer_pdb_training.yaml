@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - /datasets/ppi_teddymer_pdb@datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  - /datasets/val/ppi_subset@datasets.val.ppi_subset
+  - _self_
+
+run_name_: ppi_teddymer_pdb_training_fixed_ratios
+
+# Pre-training checkpoint to start from (optional)
+# DIGS path: /path/to/data
+pretrain_ckpt_path: /path/to/data
+
+log:
+  tags: ["fine-tune", "ppi", "motif-scaffold"]

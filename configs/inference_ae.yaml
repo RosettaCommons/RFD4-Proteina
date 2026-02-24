@@ -1,0 +1,57 @@
+# Checkpoint path
+# For old 20-AA autoencoder: use legacy checkpoint
+# For new 33-type unified autoencoder: use unified checkpoint
+ckpt_file: /path/to/shared/storage  # UPDATE THIS PATH
+
+# Load dataset config using Hydra defaults (matches training)
+defaults:
+  - datasets: ae_mixed_datasets  # Can also use train/ae/afdb_monomer, train/ae/na_complex, etc.
+  - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs
+  - dataloaders: default  # Use same dataloader config as training
+  - _self_
+
+# Job management
+ncpus_: 24
+seed: 5
+
+# Inference settings
+n_structs: 100  # Number of structures to evaluate
+bs: 10  # Batch size
+
+# Structure saving options
+save_structures:
+  enabled: true  # Set to false to disable saving structures
+  save_input_cif: true  # Save original input structures as CIF
+  save_output_cif: true  # Save reconstructed structures as CIF
+  save_output_pt: true  # Save raw autoencoder outputs (latents, etc.) as .pt
+  output_dir: ./structures  # Directory relative to inference root
+
+# Metrics to compute
+metrics:
+  bb_rmsd: false
+  all_atom_rmsd: true
+  seq_rec_rate: true
+  seq_cross_entropy: false
+  kl_latent_dist: true
+  std_latent_dist: false
+
+plot:
+  pca_latents: false
+  pca_latents_per_residue_type: true
+
+# Latent space analysis configuration
+latent_analysis:
+  enabled: false  # Set to true to run latent analysis after inference
+  output_dir: ./latent_analysis
+  projection_method: tsne  # Options: tsne, pca, lda
+  n_samples: 10000  # Maximum number of tokens to analyze (subsample if needed)
+  filter_residues: null  # Optional: list of residue type indices to include (e.g., [0, 1, 2])
+  
+  # Method-specific parameters
+  tsne:
+    perplexity: 30
+    max_iter: 1000  # Number of iterations for t-SNE optimization
+  
+  lda:
+    n_components: 2
+

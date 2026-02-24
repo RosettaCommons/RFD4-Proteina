@@ -1,0 +1,31 @@
+# @package _global_
+# Unconditional AFDB 256 training - resumed from v3 checkpoint
+# With rasa/hbond/secondary_structure conditioning enabled at 10%
+
+defaults:
+  - /experiment/unconditional_afdb_256
+  - _self_
+
+run_name_: design_unconditional_v4
+
+# Resume from v3 checkpoint
+pretrain_ckpt_path: /path/to/shared/storage
+
+# Hardware: 32 GPUs (8 nodes x 4 GPUs)
+hardware:
+  ngpus_per_node_: 4
+  nnodes_: 8
+  ncpus_per_task_train_: 16
+
+# Enable conditioning: rasa, hbond, secondary structure at 10%
+datasets:
+  global_design_task_kwargs:
+    rasa_kwargs:
+      p_add_rasa_condition: 0.1
+    hbond_kwargs:
+      p_add_hbond_condition: 0.1
+    secondary_structure_kwargs:
+      p_add_secondary_structure_condition: 0.1
+
+log:
+  tags: ["unconditional", "resumed-v3", "afdb-monomer-256", "32gpu", "rasa-hbond-ss"]

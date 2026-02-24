@@ -1,0 +1,87 @@
+general_metrics:
+  _target_: proteinfoundation.metrics.design_metrics.AtomArrayMetrics
+  compute_for_diffused_region_only: False
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+backbone_metrics:
+  _target_: proteinfoundation.metrics.design_metrics.BackboneMetrics
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+sidechain_metrics:
+  _target_: proteinfoundation.metrics.sidechain_metrics.SidechainMetrics
+  dist_threshold_min: 1.0 # min distance for identifying a bond
+  dist_threshold_max: 2.0 # max distance for identifying a bond
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+hbond_metrics:
+  _target_: proteinfoundation.metrics.hbonds_hbplus_metrics.HbondMetrics
+  cutoff_HA_dist: 2.2
+  cutoff_DA_distance: 3.2
+  required_tags_any: ["hbond_conditioning"]
+
+unindexed_metrics:
+  _target_: proteinfoundation.metrics.unindexing_metrics.UnindexedInsertionMetric
+  required_tags_any: ["unindexed"]
+
+hotspot_obedience:
+  _target_: proteinfoundation.metrics.hotspots.HotspotObedience
+  max_hotspot_distance: 4.5
+  required_tags_any: ["hotspot_conditioning"]
+
+rasa_adherence:
+  _target_: proteinfoundation.metrics.rasa_metrics.RasaAdherenceMetric
+  required_tags_any: ["rasa_conditioning"]
+
+sse_distribution:
+  _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureDistribution
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+sse_accuracy:
+  _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureAccuracy
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+posebusters_metrics:
+  _target_: proteinfoundation.metrics.posebusters_metrics.PoseBustersMetric
+  atom_array_input_key: predicted_atom_array
+  required_tags_any: ["small_molecule_only"]  # Only run for small molecule validation
+
+mace_energy:
+  _target_: proteinfoundation.metrics.mace_energy_metric.MACEEnergyMetric
+  model_path: null  # Uses MACE_MODEL_PATH env var
+  max_chain_atoms: 300
+  hydrogen_policy: infer  # "infer" to add H with hydride
+  device: cuda
+  split_by_metals: true
+  required_tags_any: ["small_molecule_only"]  # Only run for small molecule validation
+
+internal_coord_adherence:
+  _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric
+  apply_mask_queries_to_pred: true
+  required_tags_any: ["internal_coordinate_conditioning"]
+
+# NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
+# equivalent to aligning directly to the ground-truth input motif
+indexed_motif_allatom_rmsd:
+  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: (mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein
+  subset_mask: (mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein
+  metric_type: rmsd
+  input_kwarg_names:
+    ground_truth_atom_array_stack: predicted_atom_array
+    predicted_atom_array_stack: predicted_atom_array
+  keep_aligned_predicted_structure: true
+  gt_coord_annotation_name: coords_with_insertion
+  required_tags_any: ["3d_coordinate_conditioning"]
+  prohibited_tags: ["unindexed"]
+
+unindexed_motif_allatom_rmsd:
+  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: mapped_to_coordinate_conditioned_region & is_protein
+  subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+  gt_coord_annotation_name: coords_with_insertion
+  metric_type: rmsd
+  input_kwarg_names:
+    ground_truth_atom_array_stack: predicted_atom_array
+    predicted_atom_array_stack: predicted_atom_array
+  keep_aligned_predicted_structure: true
+  required_tags_any: ["unindexed"]

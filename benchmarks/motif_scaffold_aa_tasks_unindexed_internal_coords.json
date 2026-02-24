@@ -1,0 +1,115 @@
+{
+    "1PRW_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1prw_aa.pdb",
+        "unindex": "A16-35,A52-71",
+        "internal_coord_groups":
+            [
+                "A16-35",
+                "A52-71"
+            ],
+        "select_fixed_atoms": true,
+        "length": "60-105"
+    },
+    "1BCF_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1bcf_aa.pdb",
+        "unindex": "A92-99,A123-130,A47-54,A18-25",
+        "internal_coord_groups":
+            [
+                "A92-99",
+                "A123-130",
+                "A47-54",
+                "A18-25"
+            ],
+        "select_fixed_atoms": true,
+        "length": "96-152"
+    },
+    "5IUS_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5ius_aa.pdb",
+        "unindex": "A119-140,A63-82",
+        "internal_coord_groups":
+            [
+                "A119-140",
+                "A63-82"
+            ],
+        "select_fixed_atoms": true,
+        "length": "57-142"
+    },
+    "5YUI_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5yui_aa.pdb",
+        "unindex": "A93-97,A118-120,A198-200",
+        "internal_coord_groups":
+            [
+                "A93-97",
+                "A118-120",
+                "A198-200"
+            ],
+        "select_fixed_atoms": true,
+        "length": "41-126"
+    },
+    "4JHW_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/4jhw_aa.pdb",
+        "unindex": "F196-212,F63-69",
+        "internal_coord_groups":
+            [
+                "F196-212",
+                "F63-69"
+            ],
+        "select_fixed_atoms": true,
+        "length": "59-104"
+    },
+    "6VW1_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/6vw1_aa.pdb",
+        "unindex": "A24-42,A64-82",
+        "internal_coord_groups":
+            [
+                "A24-42",
+                "A64-82"
+            ],
+        "select_fixed_atoms": true,
+        "length": "51-78"
+    },
+    "1QJG_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1qjg_aa.pdb",
+        "unindex": "A38,A14,A99",
+        "internal_coord_groups":
+            [
+                "A38",
+                "A14",
+                "A99"
+            ],
+        "select_fixed_atoms": true,
+        "length": "53-103"
+    },
+    "1QJG_AA_NATIVE": {
+        "dialect": 2,
+        "input": "motif_data_aa/1qjg_aa.pdb",
+        "unindex": "A14,A38,A99",
+        "internal_coord_groups":
+            [
+                "A14",
+                "A38",
+                "A99"
+            ],
+        "select_fixed_atoms": true,
+        "length": "63-143"
+    },
+    "2KL8_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/2kl8_aa.pdb",
+        "unindex": "A1-7,A28-79",
+        "internal_coord_groups":
+            [
+                "A1-7",
+                "A28-79"
+            ],
+        "select_fixed_atoms": true,
+        "length": "79-79"
+    }
+}

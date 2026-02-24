@@ -1,0 +1,26 @@
+# MGnify Nov 2025 Distillation Dataset
+# Uses newer MGnify structures with RF3 distillation
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: mgnify_dec_2025
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_dec_2025.parquet
+  columns_to_load:
+    - example_id
+    - path
+    - ptm
+
+  loader:
+    base_path: /squash/mgnify_dec_2025
+    parser_args:
+      add_missing_atoms: False
+
+  # We use filters of ptm > 0.7 for old-RF3 distillation and ptm > 0.75 for new-RF3 distillation
+  filters:
+    - "ptm > 0.75"

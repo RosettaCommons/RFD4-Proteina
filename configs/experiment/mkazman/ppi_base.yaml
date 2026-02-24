@@ -1,0 +1,48 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... monomer distillation
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/mgnify_june_2025@datasets.train.mgnify_june_2025  # TODO: Kieran only has june 2025 on lustre for now
+
+  # ... dimer distillation
+  - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer
+
+  # Validation datasets
+  # ... unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+  # ... motif scaffolding (indexed and unindexed)
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  # ... PPI subset
+  - /datasets/val/ppi_subset@datasets.val.ppi_subset
+
+  - _self_
+
+run_name_: ppi_base_fast
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.25
+    mgnify_june_2025:
+      probability: 0.25
+    afdb_dimer:
+      probability: 0.5
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+    
+log:
+  tags: ["ppi", "motif-scaffold", "pretrain", "baseline"]
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

@@ -1,0 +1,56 @@
+# @package _global_
+
+defaults:
+  - mkazman/structure_prediction_afdb_omol
+  # Add mgnify
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - _self_
+
+run_name_: structure_prediction_afdb_omol_mgnify_test10
+
+datasets:
+  train:
+    mgnify_dec_2025:
+      probability: 0.45
+      dataset:
+        transform:
+          design_tasks: ${_folding_design_tasks}
+    afdb_monomer:
+      probability: 0.45
+      dataset:
+        transform:
+          design_tasks: ${_folding_design_tasks}
+    omol:
+      probability: 0.1
+      dataset:
+        transform:
+          design_tasks:
+            folding:
+              frequency: 1.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                global_design_task_kwargs:
+                  rasa_kwargs:
+                    p_add_rasa_condition: 0.0
+                  hbond_kwargs:
+                    p_add_hbond_condition: 0.0
+                  secondary_structure_kwargs:
+                    p_add_secondary_structure_condition: 0.0
+
+log:
+  tags: ["structure-prediction", "folding", "omol", "pretrain", "afdb-monomer", "mgnify"]
+  checkpoint_every_n_epochs: 10  # General checkpoint every 10 epochs
+  last_ckpt_every_n_epochs: 1    # last.ckpt every epoch for resume
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 1
+  ncpus_per_task_train_: 8
+
+opt:
+  accumulate_grad_batches: 1
+  steps_per_epoch: 2000       # Epoch = 2000 steps
+  val_every_n_epochs: 10      # Validate every 10 epochs
+
+pretrain_ckpt_path:  # Set if continuing from checkpoint

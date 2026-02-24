@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - mkazman/motif_scaffold_base
+
+  # ... cath conditioning
+  - /datasets/val/unconditional_helical@datasets.val.unconditional_helical
+  - /datasets/val/unconditional_ig@datasets.val.unconditional_ig
+  - _self_
+
+datasets:
+  global_design_task_kwargs:
+    cath_kwargs:
+      p_add_cath_c_condition: 0.1
+      p_add_cath_ca_condition: 0.15
+      p_add_cath_cat_condition: 0.25
+
+run_name_: motif_scaffold_base_with_cath

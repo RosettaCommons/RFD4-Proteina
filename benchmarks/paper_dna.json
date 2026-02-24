@@ -1,0 +1,94 @@
+{   "7n5u_dimer_ori": {
+        "input": "dna_pdbs/7n5u.pdb",
+        "contig": "B83-92,/0,C93-102,/0,50-80,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": false,
+        "ori_token": [-10.080, 43.118, 7.702],
+        "atomwise_hbond": null,
+        "dialect": 2
+    },
+    "7rte_dimer_ori": {
+        "input": "dna_pdbs/7rte.pdb",
+        "contig": "B421-430,/0,C431-440,/0,50-80,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": false,
+        "ori_token": [22.134, -14.888, -23.271],
+        "atomwise_hbond": null,
+        "dialect": 2
+    },
+    "7m5w_dimer_ori": {
+        "input": "dna_pdbs/7m5w.pdb",
+        "contig": "B139-148,/0,C149-158,/0,50-80,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": false,
+        "ori_token": [-2.613, 5.874, 15.491],
+        "dialect": 2
+    },
+    "7rte_sequence_only": {
+        "input": "dna_pdbs/7rte.pdb",
+        "contig": "B421-430,/0,C431-440,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    },    
+    "7n5u_sequence_only": {
+        "input": "dna_pdbs/7n5u.pdb",
+        "contig": "B83-92,/0,C93-102,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    },
+    "7m5w_sequence_only": {
+        "input": "dna_pdbs/7m5w.pdb",
+        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    },
+    "7n5u_with_structure_and_ori": {
+        "input": "dna_pdbs/7n5u.pdb",
+        "contig": "B83-92,/0,C93-102,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": false,
+        "ori_token": [-10.080, 43.118, 7.702],
+        "dialect": 2
+    },
+    "7m5w_with_structure_and_ori": {
+        "input": "dna_pdbs/7m5w.pdb",
+        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": false,
+        "ori_token": [-2.613, 5.874, 15.491],
+        "dialect": 2
+    },
+    "7rte_with_structure_and_ori": {
+        "input": "dna_pdbs/7rte.pdb",
+        "contig": "B421-430,/0,C431-440,/0,50-80",
+        "length": "70-100",
+        "select_unfixed_sequence": false,
+        "ori_token": [22.134, -14.888, -23.271],
+        "dialect": 2
+    },
+    "7n5u_dimer": {
+        "input": "dna_pdbs/7n5u.pdb",
+        "contig": "B83-92,/0,C93-102,/0,50-80,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    },
+    "7rte_dimer": {
+        "input": "dna_pdbs/7rte.pdb",
+        "contig": "B421-430,/0,C431-440,/0,50-80,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    },
+    "7m5w_dimer": {
+        "input": "dna_pdbs/7m5w.pdb",
+        "contig": "B139-148,/0,C149-158,/0,50-110,/0,50-80",
+        "length": "120-180",
+        "select_unfixed_sequence": true,
+        "dialect": 2
+    }
+
+}

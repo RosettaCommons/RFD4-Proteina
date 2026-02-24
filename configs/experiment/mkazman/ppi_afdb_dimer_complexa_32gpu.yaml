@@ -1,0 +1,75 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/ppi_base
+  # Add complexa_filtered_pdb dataset
+  - /datasets/train/pdb/complexa_filtered_pdb@datasets.train.complexa_filtered_pdb
+  # Add PPI validation dataset
+  - /datasets/val/ppi_subset@datasets.val.ppi_subset
+  - _self_
+
+run_name_: ppi_afdb_dimer_complexa_32gpu_3
+
+# Continue from previous run (or start from unconditional if no previous run exists)
+pretrain_ckpt_path: /path/to/shared/storage
+
+# Override: 80% afdb_dimer + 20% complexa_filtered_pdb, remove other train datasets
+# Also null out motif scaffolding val datasets inherited from ppi_base
+datasets:
+  train:
+    afdb_monomer: null
+    mgnify_june_2025: null
+    afdb_dimer:
+      probability: 0.8
+      dataset:
+        transform:
+          crop_size: 500
+          design_tasks: ${_ppi_only_design_tasks}
+    complexa_filtered_pdb:
+      probability: 0.2
+      dataset:
+        transform:
+          crop_size: 500
+          design_tasks: ${_ppi_only_design_tasks}
+  val:
+    # Remove motif scaffolding validation datasets (inherited from ppi_base)
+    indexed_motif_scaffold_subset: null
+    unindexed_motif_scaffold_subset: null
+    unconditional: null
+
+# Override design tasks: 100% PPI only
+_ppi_only_design_tasks:
+  ppi_hotspot_with_3d_target:
+    frequency: 100.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.PPIHotspotWith3DTarget
+      max_hotspots_frac_to_provide: 0.5
+      hotspot_max_distance: 4.5
+      motif_distance_knockout_p: 0.95
+      min_dropout_2d_dist: 0.5
+      max_dropout_2d_dist: 0.9
+      jitter_sigma: 5.0
+      crop_size: 500
+      max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
+      crop_center_cutoff_distance: 15.0
+      ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+      p_sample_ppi_crop: 0.75
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+# Half batch size for crop_size 500
+dataloaders:
+  batch_size: 4
+
+hardware:
+  ngpus_per_node_: 8
+  nnodes_: 4
+
+# Epoch = 2k steps, last.ckpt every epoch, validation disabled (set very high)
+opt:
+  steps_per_epoch: 2000
+  val_every_n_epochs: 99999
+
+log:
+  tags: ["ppi", "afdb-dimer", "complexa-pdb", "pretrain"]
+  checkpoint_every_n_epochs: 10
+  last_ckpt_every_n_epochs: 1

@@ -272,11 +272,11 @@ def assemble_distributed_loader(
             shuffle=shuffle,
             drop_last=drop_last,
         )
-    elif isinstance(sampler, (RandomSampler, SequentialSampler)):
-        # (If given a RandomSampler or SequentialSampler, we must convert to a DistributedSampler)
+    elif isinstance(sampler, (RandomSampler, WeightedRandomSampler, SequentialSampler)):
+        # (If given a RandomSampler, WeightedRandomSampler, or SequentialSampler, we must convert to a DistributedSampler)
         assert (
             rank is not None and world_size is not None
-        ), "Rank and world_size must be provided for RandomSampler or SequentialSampler"
+        ), "Rank and world_size must be provided for RandomSampler, WeightedRandomSampler, or SequentialSampler"
         sampler = DistributedSampler(
             dataset=dataset,
             num_replicas=world_size,
@@ -313,12 +313,19 @@ def assemble_distributed_loader(
             n_fallback_retries=loader_cfg.n_fallback_retries,
         )
 
+    loader_params = {
+        "collate_fn": lambda x: x
+    }  # always need a collate function, default to no collation
+    if "dataloader_params" in loader_cfg:
+        loader_params.update(
+            loader_cfg.dataloader_params
+        )  # Note: collate_fn can be overridden here!
+
     # ... assemble the final loader
     loader = DataLoader(
         dataset=dataset,
         sampler=sampler,
-        collate_fn=lambda x: x,  # No collation
-        **loader_cfg.dataloader_params if "dataloader_params" in loader_cfg else {},
+        **loader_params,
     )
 
     return loader

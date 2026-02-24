@@ -1,0 +1,7 @@
+# @package _global_
+
+defaults:
+  - /datasets/train/debug/mock_atomworks@datasets.train
+  - _self_
+
+run_name_: single_batch_overfit

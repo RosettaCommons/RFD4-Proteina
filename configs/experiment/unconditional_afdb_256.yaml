@@ -1,0 +1,50 @@
+# @package _global_
+
+# Unconditional-only training on AFDB monomers (256 max tokens)
+# Simple setup without tip-atom or motif scaffolding tasks
+# This avoids token expansion issues with fixed_dimensions
+
+defaults:
+  # Neural network
+  - /nn/local_latents_score_nn_160M_atom37@nn
+  
+  # Train dataset
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  
+  # Validation dataset (optional - for monitoring)
+  - /datasets/val/unconditional@datasets.val.unconditional
+  
+  # Unconditional-only design task
+  - /design_tasks/presets/unconditional_only@_unconditional_design_tasks
+  
+  - _self_
+
+run_name_: unconditional_afdb_256
+
+# Dataset configuration
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          crop_size: 512
+          design_tasks: ${_unconditional_design_tasks}
+
+# Training settings
+training:
+  self_cond: true
+  self_cond_p: 0.5
+
+opt:
+  lr: 0.0002
+  warmup_steps: 2000
+  max_steps: 100000
+
+hardware:
+  ngpus_per_node_: 8
+  nnodes_: 2
+  ncpus_per_task_train_: 8
+
+log:
+  tags: ["unconditional", "afdb-monomer", "256"]

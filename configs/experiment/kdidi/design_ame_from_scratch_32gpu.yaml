@@ -1,0 +1,77 @@
+# @package _global_
+# AME motif-scaffold training from scratch (32 GPUs)
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_afdb_256
+  # Add omol
+  - /datasets/train/distill/omol@datasets.train.omol
+  - _self_
+
+run_name_: design_ame_from_scratch_64gpu_varlen_v3
+
+# From-scratch training (no pretrain_ckpt_path)
+
+# Validation disabled (set very high)
+opt:
+  val_every_n_epochs: 99999
+
+# Hardware: 64 GPUs (16 nodes x 4 GPUs)
+hardware:
+  ngpus_per_node_: 4
+  nnodes_: 16
+  ncpus_per_task_train_: 16
+
+# Dataset mixing: 90% afdb, 10% omol
+datasets:
+  train:
+    afdb_monomer_256:
+      probability: 0.9
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    omol:
+      probability: 0.1
+      dataset:
+        transform:
+          design_tasks: ${_omol_design_tasks}
+
+# Override design tasks: 100% motif scaffold with 100% unindexing (AME-like)
+_tip_atom_design_tasks:
+  motif_scaffold:
+    frequency: 100.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
+      min_tokens_per_motif: 1
+      max_tokens_per_motif: 50
+      min_coverage_fraction: 0.05
+      max_coverage_fraction: 1.0
+      p_unindex_any: 1.0
+      p_merge_unindexed_groups: 0.1
+      p_split_unindexed_groups: 0.01
+      p_increase_group_id_gap: 0.1
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+# Omol design tasks: 75% partial ligand, 25% folding
+_omol_design_tasks:
+  partial_ligand:
+    frequency: 3.0  # 75% partial ligand
+    transform:
+      _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+      min_coverage_fraction: 0.0  # 0% = fully generate ligand (no coords given)
+      max_coverage_fraction: 1.0  # 100% = all ligand coords given
+  folding:
+    frequency: 1.0  # 25% folding
+    transform:
+      _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.0
+        hbond_kwargs:
+          p_add_hbond_condition: 0.0
+        secondary_structure_kwargs:
+          p_add_secondary_structure_condition: 0.0
+
+log:
+  tags: ["ame", "from-scratch", "afdb-monomer-256", "omol", "64gpu"]
+  checkpoint_every_n_epochs: 10
+  last_ckpt_every_n_epochs: 1

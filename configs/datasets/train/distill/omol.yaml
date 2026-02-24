@@ -1,0 +1,48 @@
+# OMol Training - Small molecules from OMol25 (~10M of 100M total)
+# Uses dataset of pre-processed CIF files with bonds inferred
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/none@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: omol_train
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/omol_30m_labeled.parquet
+  columns_to_load:
+    - example_id
+    - path
+    - data_id
+    - passes_stereochemical_validation
+
+  # Filter to only examples that pass validation checks
+  # Exclude trans1x, reactivity, rgd (reactive)
+  filters:
+    - "passes_stereochemical_validation == True"
+    - "data_id not in ['trans1x', 'reactivity', 'rgd']"
+
+  loader:
+    base_path: /squash/omol_30m_labeled
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+      fix_bond_types: False
+      fix_ligands_at_symmetry_centers: False
+      extra_fields: ["nhyd"]  # Load number of hydrogens annotation from CIF
+
+  # Design tasks: 80% structure prediction, 20% unconditional
+  transform:
+    design_tasks:
+      unconditional:
+        frequency: 20.0
+        transform:
+          _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+          global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+      folding:
+        frequency: 80.0
+        transform:
+          _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+          global_design_task_kwargs: ${datasets.global_design_task_kwargs}

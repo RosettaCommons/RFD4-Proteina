@@ -1,0 +1,14 @@
+# Gradient ascent refinement in latent space
+# Optimizes latents (structure + sequence can both change)
+# Uses adaptive line search for step size selection
+
+strategy:
+  _target_: proteinfoundation.refinement.gradient_ascent.GradientAscentRefinement
+  n_iterations: 50
+  line_search_steps: [1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2]
+  update_bb_ca: false  # Only optimize local_latents (not backbone CA)
+  normalize_logits: true  # Apply logit normalization
+
+# Reward model must be differentiable (AF2)
+# Inherits from parent config's 'rewards' section
+

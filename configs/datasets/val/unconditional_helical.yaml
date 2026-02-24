@@ -1,0 +1,13 @@
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer_helical.json
+  name: unindexed_new_pipeline
+  subset_to_keys: null
+
+  num_replicates: 50
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - unconditional_refolding

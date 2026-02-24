@@ -1,0 +1,292 @@
+# Metric: Unconditional refolding (pass rate based on backbone RMSD <= 1.5A)
+rf3_metric_unconditional:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["unconditional_refolding"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+  pass_criteria:
+    backbone_rmsd.rmsd:
+      max: 1.5
+
+# NOTE: In standard PPI, there are no internal coordinate groups. For a case
+# like antibodies, this metric would align on regions with absolute coordinate
+# conditioning (e.g. the target) and evaluate RMSD on all other regions, including
+# those with internal coordinate conditioning (e.g. the framework).
+rf3_metric_ppi:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  template_annotations: ["mask_coordinate_1_atom"]
+  required_tags_any: ["ppi_refolding"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      target_aligned_binder_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mask_coordinate_1_atom
+        subset_mask: ~mask_coordinate_1_atom
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+  pass_criteria:
+    ptm_coi:
+      min: 80.0
+    min_ipae_coi:
+      max: 1.5
+    target_aligned_binder_rmsd.rmsd:
+      max: 2.5
+
+rf3_metric_motif_scaffold:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["motif_scaffold_refolding"]
+  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      motif_allatom_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mapped_to_coordinate_conditioned_region & is_protein
+        subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+        gt_coord_annotation_name: coords_with_insertion
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+      motif_ca_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
+        subset_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
+        gt_coord_annotation_name: coords_with_insertion
+        metric_type: rmsd
+  pass_criteria:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_allatom_rmsd.rmsd:
+      max: 2.0
+    motif_ca_rmsd.rmsd:
+      max: 1.0
+
+rf3_metric_sm_binder:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["sm_binder_refolding"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      backbone_aligned_ligand_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_ligand
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+  pass_criteria:
+    min_ipae_coi:
+      max: 1.5
+    iptm_coi:
+      min: 80
+    backbone_rmsd.rmsd:
+      max: 1.5
+    backbone_aligned_ligand_rmsd.rmsd:
+      max: 5
+  
+# This is a stricter version of the ame that enforces global refolding.
+# It also aligns on the motif directly rather than using backbone-aligned all-atom RMSD
+rf3_metric_ame:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["ame_refolding"]
+  prohibited_tags: ["no_ligand"]
+  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      motif_aligned_motif_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mapped_to_coordinate_conditioned_region & is_protein
+        subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+        gt_coord_annotation_name: coords_with_insertion
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+      ligand_clash_metric:
+        _target_: proteinfoundation.metrics.design_metrics.LigandClashMetric
+        input_kwarg_names:
+          # NOTE: After refolding, the "ground-truth" is actually the designed structure!
+          predicted_atom_array_stack: ground_truth_atom_array_stack
+        ligand_clash_threshold: 1.5
+  pass_criteria:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_aligned_motif_rmsd.rmsd:
+      max: 1.5
+    ligand_clash_metric.n_clashing.allatom_ligand_clashes:
+      max: 0
+
+# Same as above except we remove the ligand clash requirement
+rf3_metric_ame_no_ligand:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_all: ["ame_refolding", "no_ligand"]
+  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      motif_aligned_motif_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mapped_to_coordinate_conditioned_region & is_protein
+        subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+        gt_coord_annotation_name: coords_with_insertion
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+  pass_criteria:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_aligned_motif_rmsd.rmsd:
+      max: 1.5
+
+
+# This does not include any global refolding metric and uses the precise alignment strategy of the original benchmark.
+rf3_metric_ame_original_benchmark:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["ame_refolding_original_benchmark"]
+  prohibited_tags: ["no_ligand"]
+  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      motif_aligned_motif_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mapped_to_coordinate_conditioned_region_token_lvl & is_protein_backbone
+        subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+        gt_coord_annotation_name: coords_with_insertion
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+      ligand_clash_metric:
+        _target_: proteinfoundation.metrics.design_metrics.LigandClashMetric
+        input_kwarg_names:
+          # NOTE: After refolding, the "ground-truth" is actually the designed structure!
+          predicted_atom_array_stack: ground_truth_atom_array_stack
+        ligand_clash_threshold: 1.5
+  pass_criteria:
+    motif_aligned_motif_rmsd.rmsd:
+      max: 1.5
+    ligand_clash_metric.n_clashing.allatom_ligand_clashes:
+      max: 0
+
+rf3_metric_motif_scaffold_internal_coords:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["internal_coordinate_motif_scaffold_refolding"]
+  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      motif_allatom_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        additional_align_mask: mapped_to_coordinate_conditioned_region & is_protein
+        additional_subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+      motif_ca_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        additional_align_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
+        additional_subset_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
+        metric_type: rmsd
+  pass_criteria:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_allatom_rmsd.rmsd:
+      max: 2.0
+    motif_ca_rmsd.rmsd:
+      max: 1.0

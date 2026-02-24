@@ -19,6 +19,7 @@ def register_resolvers():
     resolvers = {
         "resolve_import": resolve_import,
         "chain_type_info_to_regex": chain_type_info_to_regex,
+        "eval": eval,  # evaluate a string as a Python expression
     }
 
     for name, resolver in resolvers.items():

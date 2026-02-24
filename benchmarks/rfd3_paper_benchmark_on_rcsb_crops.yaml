@@ -1,0 +1,49 @@
+global_args:
+  dialect: 2
+
+insulinr:
+  input: rfd3_ppi_paper_benchmark/4zxb_cropped.pdb
+  contig: 40-120,/0,E6-155
+  select_hotspots:
+    E64: CD2,CZ
+    E88: CG,CZ
+    E96: CD1,CZ
+
+pdl1:
+  input: rfd3_ppi_paper_benchmark/5o45_cropped.pdb
+  contig: 50-120,/0,A17-131
+  select_hotspots:
+    A56: CG,OH
+    A115: CG,SD
+    A123: CD2,OH
+
+il7ra:
+  input: rfd3_ppi_paper_benchmark/3di3_cropped.pdb
+  contig: 50-120,/0,B21-213
+  select_hotspots:
+    B62: CG1,CG2
+    B84: CG,CD1
+    B143: CD2,OH
+
+il2ra:
+  input: rfd3_ppi_paper_benchmark/1z92_cropped.pdb
+  contig: 65-120,/0,B0-47,B53-64,B104-165
+  select_hotspots:
+    B2: CB,CD1
+    B25: CE,SD
+    B42: CB,CD1
+    B43: CD2,OH
+    B120: CD2,CE1
+tie2:
+  input: rfd3_ppi_paper_benchmark/2gy5_cropped.pdb
+  contig: 65-120,/0,A23-210
+  select_hotspots:
+    A154: CG1,CG2
+    A156: CG,CZ
+    A157: CG,CD
+    A161: CG,CZ
+    A162: CD1,CG2
+    A176: CG1,CG2
+    A178: CG,CD1
+    A189: CG,CZ
+    A194: CD1,CG2

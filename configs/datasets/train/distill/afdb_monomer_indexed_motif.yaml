@@ -1,0 +1,18 @@
+# Monomer Distillation Dataset - AFDB monomers with INDEXED motif scaffolding
+# Uses AlphaFold Database structures with indexed motif scaffolding (no unindexing)
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/indexed_motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: afdb_monomer_indexed_motif
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/afdb_proteina_512_direct.parquet
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+

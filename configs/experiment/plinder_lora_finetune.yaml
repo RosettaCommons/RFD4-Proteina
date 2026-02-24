@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/plinder/plinder_valid@datasets.train.plinder_valid
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+
+  # design_tasks that we want to replace
+  - /design_tasks/presets/tip_atom_tasks@tip_atom_tasks
+
+  # Val datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - _self_
+
+run_name_: plinder_lora_finetune
+
+# Start from a good motif scaffolding checkpoint
+pretrain_ckpt_path: /path/to/home
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${tip_atom_tasks}
+    plinder_valid:
+      probability: 0.5  # design tasks should already be tip_atom_tasks
+
+lora:
+  r: 32
+
+log:
+  tags: ["finetune", "motif-scaffold", "ame"]

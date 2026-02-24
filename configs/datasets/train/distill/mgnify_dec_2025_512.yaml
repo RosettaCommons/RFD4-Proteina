@@ -1,0 +1,30 @@
+# MGnify Dec 2025 Distillation Dataset - Subset filtered to max 512 residues
+# Uses newer MGnify structures with RF3 distillation
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/unconditional_heavy@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: mgnify_dec_2025_512
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_dec_2025.parquet
+  columns_to_load:
+    - example_id
+    - path
+    - ptm
+    - n_tokens
+
+  loader:
+    # Mounted squashfs path for mgnify december 2025
+    base_path: /path/to/shared/storage
+    parser_args:
+      add_missing_atoms: False
+
+  # Filter for ptm > 0.75 and n_tokens <= 512
+  filters:
+    - "ptm > 0.75"
+    - "n_tokens <= 512"
+

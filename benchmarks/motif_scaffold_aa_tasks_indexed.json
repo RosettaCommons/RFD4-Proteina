@@ -1,0 +1,140 @@
+{
+    "1PRW_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1prw_aa.pdb",
+        "contig": "5-20,A16-35,10-25,A52-71,5-20",
+        "select_fixed_atoms": true
+    },
+    "1BCF_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1bcf_aa.pdb",
+        "contig": "8-15,A92-99,16-30,A123-130,16-30,A47-54,16-30,A18-25,8-15",
+        "select_fixed_atoms": true
+    },
+    "5TPN_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5tpn_aa.pdb",
+        "contig": "10-40,A163-181,10-40",
+        "select_fixed_atoms": true
+    },
+    "5IUS_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5ius_aa.pdb",
+        "contig": "0-30,A119-140,15-40,A63-82,0-30",
+        "select_fixed_atoms": true
+    },
+    "3IXT_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/3ixt_aa.pdb",
+        "contig": "10-40,P254-277,10-40",
+        "select_fixed_atoms": true
+    },
+    "5YUI_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5yui_aa.pdb",
+        "contig": "5-30,A93-97,5-20,A118-120,10-35,A198-200,10-30",
+        "select_fixed_atoms": true
+    },
+    "1YCR_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1ycr_aa.pdb",
+        "contig": "10-40,B19-27,10-40",
+        "select_fixed_atoms": true
+    },
+    "4JHW_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/4jhw_aa.pdb",
+        "contig": "10-25,F196-212,15-30,F63-69,10-25",
+        "select_fixed_atoms": true
+    },
+    "5WN9_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/5wn9_aa.pdb",
+        "contig": "10-40,A170-189,10-40",
+        "select_fixed_atoms": true
+    },
+    "4ZYP_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/4zyp_aa.pdb",
+        "contig": "10-40,A422-436,10-40",
+        "select_fixed_atoms": true
+    },
+    "6VW1_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/6vw1_aa.pdb",
+        "contig": "5-15,A24-42,3-10,A64-82,5-15",
+        "select_fixed_atoms": true
+    },
+    "1QJG_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/1qjg_aa.pdb",
+        "contig": "10-20,A38,15-30,A14,15-30,A99,10-20",
+        "select_fixed_atoms": true
+    },
+    "1QJG_AA_NATIVE": {
+        "dialect": 2,
+        "input": "motif_data_aa/1qjg_aa.pdb",
+        "contig": "10-30,A14,20-40,A38,20-40,A99,10-30",
+        "select_fixed_atoms": true
+    },
+    "2KL8_AA": {
+        "dialect": 2,
+        "input": "motif_data_aa/2kl8_aa.pdb",
+        "contig": "A1-7,20,A28-79",
+        "select_fixed_atoms": true
+    },
+    "7MRX_AA_60": {
+        "dialect": 2,
+        "input": "motif_data_aa/7mrx_aa.pdb",
+        "contig": "0-38,B25-46,0-38",
+        "select_fixed_atoms": true
+    },
+    "7MRX_AA_85": {
+        "dialect": 2,
+        "input": "motif_data_aa/7mrx_aa.pdb",
+        "contig": "0-63,B25-46,0-63",
+        "select_fixed_atoms": true
+    },
+    "7MRX_AA_128": {
+        "dialect": 2,
+        "input": "motif_data_aa/7mrx_aa.pdb",
+        "contig": "0-122,B25-46,0-122",
+        "select_fixed_atoms": true
+    },
+    "5TRV_AA_SHORT": {
+        "dialect": 2,
+        "input": "motif_data_aa/5trv_aa.pdb",
+        "contig": "0-35,A45-65,0-35",
+        "select_fixed_atoms": true
+    },
+    "5TRV_AA_MED": {
+        "dialect": 2,
+        "input": "motif_data_aa/5trv_aa.pdb",
+        "contig": "0-65,A45-65,0-65",
+        "select_fixed_atoms": true
+    },
+    "5TRV_AA_LONG": {
+        "dialect": 2,
+        "input": "motif_data_aa/5trv_aa.pdb",
+        "contig": "0-95,A45-65,0-95",
+        "select_fixed_atoms": true
+    },
+    "6E6R_AA_SHORT": {
+        "dialect": 2,
+        "input": "motif_data_aa/6e6r_aa.pdb",
+        "contig": "0-35,A23-35,0-35",
+        "select_fixed_atoms": true
+    },
+    "6E6R_AA_MED": {
+        "dialect": 2,
+        "input": "motif_data_aa/6e6r_aa.pdb",
+        "contig": "0-65,A23-35,0-65",
+        "select_fixed_atoms": true
+    },
+    "6E6R_AA_LONG": {
+        "dialect": 2,
+        "input": "motif_data_aa/6e6r_aa.pdb",
+        "contig": "0-95,A23-35,0-95",
+        "select_fixed_atoms": true
+    }
+}
