@@ -1,0 +1,26 @@
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+
+  # Required parameters for each inheriting dataset
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/mcsa_41_no_ligand.json  
+  name: mcsa_subset
+  subset_to_keys:
+    # easy
+    - M0664_2dhn
+    - M0711_2esd
+    # medium
+    - M0097_1ctt
+    - M0500_1e3i
+    # hard
+    - M0732_1xs1
+    - M0375_4ts9
+  
+  num_replicates: 200
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - unindexed
+      - 3d_coordinate_conditioning
+      - ame_refolding
+      - no_ligand

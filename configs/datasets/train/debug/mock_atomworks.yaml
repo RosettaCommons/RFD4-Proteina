@@ -1,0 +1,31 @@
+# Mock dataset config for atomworks overfitting test
+# Uses pickled batch for quick iteration and debugging
+
+defaults:
+  - ../base@dataset
+  - _self_
+
+dataset:
+  _target_: proteinfoundation.datapipes.mock_datamodule.MockAtomworksDataset
+  name: mock_atomworks
+  data: ${oc.env:DATA_PATH}/dummy_batches/proteina_mgnify_batch.pkl
+  num_samples: 1600
+
+  # Transform pipeline (simple for debugging)
+  transform:
+    p_random_rotation: 0.0  # No rotation for reproducibility
+
+    # Minimal design tasks for fast overfitting - only unconditional
+    design_tasks:
+      unconditional:
+        frequency: 1.0
+        # Disable all conditioning
+        transform:
+          _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+          global_design_task_kwargs:
+            rasa_kwargs:
+              p_add_rasa_condition: 0.0
+            hbond_kwargs:
+              p_add_hbond_condition: 0.0
+            secondary_structure_kwargs:
+              p_add_secondary_structure_condition: 0.0

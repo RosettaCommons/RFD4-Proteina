@@ -1,0 +1,8 @@
+# Unconditional generation only
+# For simple monomer training without any conditioning
+
+unconditional:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

@@ -1,0 +1,33 @@
+# =============================================================================
+# Autoencoder Dataset Mix: Default (NA Complex Only)
+# =============================================================================
+# Default dataset config for autoencoder training.
+# Currently set to 100% NA complexes for debugging DNA/RNA support.
+#
+# For balanced training, use ae_protein_rna_dna_datasets.yaml instead:
+#   defaults:
+#     - /datasets/ae_protein_rna_dna_datasets@datasets
+#
+# Probabilities must sum to 1.0. Adjust as needed for your experiment.
+# =============================================================================
+
+defaults:
+  - train/ae/afdb_monomer@train.afdb_monomer
+  - train/ae/na_complex@train.na_complex
+  - train/ae/rna_monomer@train.rna_monomer
+  - _self_
+
+# Mixed dataset with probabilities (must sum to 1.0)
+train:
+  # Protein monomers from AlphaFold Database
+  afdb_monomer:
+    probability: 0.0
+  
+  # Protein-DNA/RNA complexes (transcription factors)
+  na_complex:
+    probability: 1.0
+  
+  # RNA monomer structures
+  rna_monomer:
+    probability: 0.0
+

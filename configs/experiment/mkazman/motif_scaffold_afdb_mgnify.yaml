@@ -1,0 +1,32 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_afdb
+  # Add mgnify
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - _self_
+
+run_name_: motif_scaffold_afdb_mgnify_fast
+
+# Dataset mixing probabilities and design tasks
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${_motif_scaffold_design_tasks}
+    mgnify_dec_2025:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${_motif_scaffold_design_tasks}
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "baseline", "afdb-monomer", "mgnify"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16

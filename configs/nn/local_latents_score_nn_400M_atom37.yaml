@@ -1,0 +1,8 @@
+defaults:
+  - local_latents_score_nn_160M_atom37@_here_
+  - _self_
+
+# 400M parameter size overrides (160M -> 400M)
+nlayers: 24   # 14 -> 24
+token_dim: 1024  # 768 -> 1024
+nheads: 16   # 12 -> 16

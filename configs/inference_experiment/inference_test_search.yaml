@@ -1,0 +1,59 @@
+# @package _global_
+
+# Quick test search config for 70k checkpoint with Best-of-N
+# Usage: python proteinfoundation/generate.py --config-name inference_test_search
+
+defaults:
+  - inference_like_rfd3
+  - _self_
+
+# Checkpoint
+ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ldm_checkpoints
+ckpt_name: ???
+
+# Autoencoder
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+# Use the unconditional benchmark JSON directly
+inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer.json
+
+nsamples: 1  # Number of input problems (not search samples)
+
+# Output
+out_dir: outputs/search_test_70k
+run_name_: search_test
+
+# Search configuration
+search:
+  # Strategy definition
+  strategy:
+    _target_: proteinfoundation.search.best_of_n.BestOfNStrategy
+    n_samples: 5
+    keep_all: false
+  
+  # Reward model for scoring (nested under search)
+  rewards:
+    metrics:
+      rf3:
+        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+        ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+        num_steps: 50
+        n_recycles: 5
+    
+    weights:
+      rf3.plddt: 1.0
+      rf3.iptm: 2.0
+      rf3.ipae: -1.0
+    
+    differentiable: false
+
+# Generation settings
+generation:
+  args:
+    nsteps: 100
+    self_cond: true
+    guidance_w: 1.0
+
+# Dataloader
+num_workers: 4
+

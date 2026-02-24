@@ -1,0 +1,23 @@
+# @package _global_
+# Base OMOL training config
+
+defaults:
+  - /datasets/train/distill/omol@datasets.train
+  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+  - _self_
+
+run_name_: omol_30m_baseline_new_design_tasks
+
+hardware:
+  nnodes_: 1
+  ngpus_per_node_: 8
+  gpu_type_: "L40"
+
+dataloaders:
+  batch_size: 32
+
+opt:
+  accumulate_grad_batches: 2
+
+log:
+  tags: ["pretrain", "omol"]

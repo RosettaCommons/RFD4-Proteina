@@ -1,0 +1,18 @@
+# AFDB Monomer 256 Dataset - Subset filtered to max 256 residues
+# Uses AlphaFold Database structures with residue_count <= 256
+# Contains 278,239 samples
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: afdb_monomer_256
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/afdb_proteina_256_direct_with_cath.parquet
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False

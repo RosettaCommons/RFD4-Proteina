@@ -1,0 +1,47 @@
+# =============================================================================
+# Autoencoder Dataset Mix: 5-Way Equal Split
+# =============================================================================
+# Balanced dataset for training the unified autoencoder with all modalities.
+# All samples are unconditional (design_task frequency: 1) for AE training.
+#
+# Dataset Mix (20% each, probabilities sum to 1.0):
+#   - 20% MGnify Dec 2025 (diverse protein structures)
+#   - 20% AFDB monomers (protein structures from AlphaFold DB)
+#   - 20% TED dimers (protein-protein dimers)
+#   - 20% RNA monomers (single-chain RNA structures)
+#   - 20% NA complexes (protein-DNA/RNA transcription factor complexes)
+#
+# Usage in experiment config:
+#   defaults:
+#     - /datasets/ae_5way_datasets@datasets
+# =============================================================================
+
+defaults:
+  - train/ae/mgnify_dec_2025@train.mgnify_dec_2025
+  - train/ae/afdb_monomer@train.afdb_monomer
+  - train/ae/ted_dimers@train.ted_dimers
+  - train/ae/rna_monomer@train.rna_monomer
+  - train/ae/na_complex@train.na_complex
+  - _self_
+
+# Mixed dataset with probabilities (must sum to 1.0)
+train:
+  # MGnify Dec 2025 protein structures (20%)
+  mgnify_dec_2025:
+    probability: 0.2
+
+  # AFDB protein monomers (20%)
+  afdb_monomer:
+    probability: 0.2
+
+  # TED protein dimers (20%)
+  ted_dimers:
+    probability: 0.2
+
+  # RNA monomer structures (20%)
+  rna_monomer:
+    probability: 0.2
+
+  # Protein-DNA/RNA complexes (20%)
+  na_complex:
+    probability: 0.2

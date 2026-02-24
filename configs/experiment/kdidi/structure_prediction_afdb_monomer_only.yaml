@@ -1,0 +1,27 @@
+# @package _global_
+
+defaults:
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/val/structure_prediction/de_novo@datasets.val.de_novo
+  - /design_tasks/presets/folding_only@_folding_design_tasks
+  - _self_
+
+run_name_: structure_prediction_afdb_monomer_only
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_folding_design_tasks}
+
+log:
+  tags: ["structure-prediction", "folding", "afdb-monomer"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 8
+
+

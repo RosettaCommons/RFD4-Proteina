@@ -1,0 +1,36 @@
+# Multi-source reward configuration
+# Combines AF2, TMOL, and structure quality metrics
+# Example: "I want af2 with -5 on ipae and +2 on iptm, tmol with +3 on num_hbonds, 
+#           and generated metrics with +2 on rasa and -2 on clashes"
+
+metrics:
+  af2:
+    _target_: proteinfoundation.metrics.af2_metric.AF2Metric
+    model_name: model_1_ptm
+    num_recycles: 3
+    use_templates: false
+    protocol: binder
+  
+  tmol:
+    _target_: proteinfoundation.metrics.tmol_metric.TMOLMetric
+  
+  rasa:
+    _target_: proteinfoundation.metrics.rasa_metrics.RASAMetrics
+  
+  molprobity:
+    _target_: proteinfoundation.metrics.molprobity_metrics.MolprobityMetrics
+
+weights:
+  # AF2 confidence metrics
+  af2.pae: -5.0         # Lower PAE is better
+  af2.ptm: 2.0          # Higher pTM is better
+  
+  # TMOL energy terms
+  tmol.num_hbonds: 3.0  # More H-bonds is better
+  
+  # Structure quality metrics
+  rasa.mean_rasa: 2.0   # Higher RASA is better
+  molprobity.clashes: -2.0  # Fewer clashes is better
+
+differentiable: false   # Set to true only if all metrics are differentiable
+

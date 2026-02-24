@@ -1,0 +1,161 @@
+# All available design tasks with default frequencies
+# Datasets can inherit this and override individual task frequencies as needed
+
+# NOTE: All distance tasks are disabled for now as we cannot provide distance information to the model yet.
+
+unconditional:
+  frequency: 2.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+folding:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+inverse_folding:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+random_atom_distance:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.RandomAtomDistanceTask
+    min_atoms: 2
+    max_atoms: 16
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom:
+  frequency: 2.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomTask
+    min_residues: 2
+    max_residues: 8
+    p_tip_atom: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_distance:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomDistanceTask
+    min_residues: 2
+    max_residues: 8
+    p_tip_atom: 0.5
+    knockout_p: 0.9
+    dropout_min_fraction: 0.5
+    dropout_max_fraction: 0.99
+    p_unindex_all: 0.9
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_partial_ligand:
+  frequency: 2.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomPartialLigandTask
+    n_max_ligands: 3
+    n_hops_expected_ligand: 5
+    n_max_residues: 8
+    n_hops_expected_tip_atom: 3
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_partial_ligand_distance:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomPartialLigandDistanceTask
+    n_max_ligands: 3
+    n_hops_expected_ligand: 5
+    n_max_residues: 8
+    n_hops_expected_tip_atom: 3
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    p_knockout_dist: 0.95
+    knockout_dist_min_fraction: 0.9
+    knockout_dist_max_fraction: 0.99
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+motif_scaffold:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
+    min_tokens_per_motif: 1
+    max_tokens_per_motif: 50
+    min_coverage_fraction: 0.05
+    max_coverage_fraction: 1.0
+    max_unindexed_tokens: 50
+    p_unindex_any: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+
+motif_scaffold_2d:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.MotifScaffold2DDistTask
+    min_tokens_per_motif: 1
+    max_tokens_per_motif: 50
+    min_coverage_fraction: 0.05
+    max_coverage_fraction: 1.0
+    inter_motif_distance_p: 0.2
+    knockout_p: 0.95
+    dropout_min_fraction: 0.5
+    dropout_max_fraction: 0.9
+    p_unindex_any: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+ppi_hotspot_with_internal_coord_target_motif:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.PPIHotspotWithInternalCoordTargetMotifTask
+    max_hotspots_frac_to_provide: 0.5
+    hotspot_max_distance: 4.5
+    p_flexible_target: 0.1
+    motif_distance_knockout_p: 0.95
+    min_dropout_2d_dist: 0.5
+    max_dropout_2d_dist: 0.9
+    crop_size: ${....crop_size}  # grab crop_size from current dataset config
+    crop_center_cutoff_distance: 15.0
+    max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
+    ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+    p_sample_ppi_crop: 0.75
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+ppi_hotspot_with_3d_target:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.PPIHotspotWith3DTarget
+    max_hotspots_frac_to_provide: 0.5
+    hotspot_max_distance: 4.5
+    motif_distance_knockout_p: 0.95
+    min_dropout_2d_dist: 0.5
+    max_dropout_2d_dist: 0.9
+    jitter_sigma: 5.0
+    crop_size: ${....crop_size}  # grab crop_size from current dataset config
+    max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
+    crop_center_cutoff_distance: 15.0
+    ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+    p_sample_ppi_crop: 0.75
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

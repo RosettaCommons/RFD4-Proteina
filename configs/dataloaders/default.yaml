@@ -1,0 +1,36 @@
+batch_size: 16
+num_workers: 4
+prefetch_factor: 1
+pin_memory: False
+multiprocessing_context: 'spawn'
+
+train:
+  dataloader_params:
+    batch_size: ${dataloaders.batch_size}
+    num_workers: ${dataloaders.num_workers}
+    prefetch_factor: ${dataloaders.prefetch_factor}
+    pin_memory: ${dataloaders.pin_memory}
+    persistent_workers: True
+    drop_last: True
+    multiprocessing_context: ${dataloaders.multiprocessing_context}  
+    collate_fn:
+      _target_: proteinfoundation.datapipes.collate.collate_batch
+      _partial_: True
+      schema: proteinfoundation.datapipes.schema.proteina.ProteinaDataSample  # Just a string now!
+      fixed_dimensions: null # {I: 450, S: 1024}  # Or use: {I: 512, S: 128}
+  n_fallback_retries: 4
+
+val:
+  dataloader_params:
+    batch_size: ${dataloaders.batch_size}
+    num_workers: 2
+    prefetch_factor: 1
+    pin_memory: ${dataloaders.pin_memory}
+    persistent_workers: False
+    drop_last: False  # Keep all validation examples
+    multiprocessing_context: ${dataloaders.multiprocessing_context}
+    collate_fn:
+      _target_: proteinfoundation.datapipes.collate.collate_batch
+      _partial_: True
+      schema: proteinfoundation.datapipes.schema.proteina.ProteinaDataSample
+      fixed_dimensions: null

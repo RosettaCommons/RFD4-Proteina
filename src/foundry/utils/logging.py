@@ -33,6 +33,9 @@ def silence_warnings():
         "ignore", message="All-NaN slice encountered", category=RuntimeWarning
     )
 
+    # Suppress atomworks cached data warnings
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+
     warnings.filterwarnings(
         "ignore",
         message="Category 'chem_comp_bond' not found. No bonds will be parsed",
@@ -47,11 +50,17 @@ def silence_warnings():
         module="cuequivariance_ops_torch.triangle_attention",
     )
 
+    # Suppress atomworks cached data warnings
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+
     warnings.filterwarnings(
         "ignore",
         message=".*multi-threaded.*fork.*may lead to deadlocks.*",
         category=DeprecationWarning,
     )
+
+    # Suppress atomworks cached data warnings
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
 
     warnings.filterwarnings(
         "ignore",
@@ -59,9 +68,22 @@ def silence_warnings():
         category=DeprecationWarning,
     )
 
+    # Suppress atomworks cached data warnings
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+
     warnings.filterwarnings(
         "ignore",
         message=".*index_reduce.*is in beta.*API may change.*",
+        category=UserWarning,
+    )
+
+    # Lightning sync_dist warnings - we handle distributed aggregation manually
+    # Suppress atomworks cached data warnings
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+
+    warnings.filterwarnings(
+        "ignore",
+        message=".*recommended.*sync_dist=True.*",
         category=UserWarning,
     )
 

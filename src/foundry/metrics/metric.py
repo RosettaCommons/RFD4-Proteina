@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from functools import cached_property
 
 import hydra
+import pandas as pd
 from atomworks.common import exists
 from atomworks.ml.utils import error, nested_dict
 from beartype.typing import Any
@@ -10,6 +11,7 @@ from omegaconf import DictConfig
 from toolz import keymap
 
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.logging import print_df_as_table
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -23,12 +25,19 @@ def instantiate_metric_manager(
         metrics: A dictionary where keys are metric names and values are Hydra configurations for the metrics.
     """
     metrics = {}
+    metric_info = []
+
     for name, cfg in metrics_cfg.items():
         metric = hydra.utils.instantiate(cfg)
         if not isinstance(metric, Metric):
             raise TypeError(f"{name} must be a Metric instance")
-        ranked_logger.info(f"Adding metric {name} to the validation metrics...")
         metrics[name] = metric
+        metric_info.append({"Name": name, "Type": type(metric).__name__})
+
+    if metric_info:
+        df = pd.DataFrame(metric_info)
+        print_df_as_table(df, title="Validation Metrics", console_width=120)
+
     return MetricManager(metrics)
 
 
@@ -120,6 +129,16 @@ class MetricManager:
         """Return a string representation of the MetricManager."""
         return f"MetricManager({', '.join(self.metrics.keys())})"
 
+    def on_validation_epoch_start(self) -> None:
+        """Setup all metrics for validation. Call at start of validation epoch."""
+        for metric in self.metrics.values():
+            metric.setup()
+
+    def on_validation_epoch_end(self) -> None:
+        """Teardown all metrics after validation. Call at end of validation epoch."""
+        for metric in self.metrics.values():
+            metric.teardown()
+
     def __call__(self, **kwargs: Any) -> dict[str, Any]:
         """Compute all metrics and return their results as a dictionary mapping metric names to their computed values."""
 
@@ -159,7 +178,13 @@ class MetricManager:
             with error.context(
                 msg=f"Computing '{name}' ({type(metric).__name__}){example_msg}",
                 raise_error=self.raise_errors,
-                exc_types=(MetricInputError, ValueError, TypeError, AttributeError),
+                exc_types=(
+                    MetricInputError,
+                    ValueError,
+                    TypeError,
+                    AttributeError,
+                    AssertionError,
+                ),
             ):
                 # ... compute the metric
                 metric_result = metric.compute_from_kwargs(**kwargs)
@@ -317,3 +342,11 @@ class Metric(ABC):
         ```
         """
         raise NotImplementedError
+
+    def setup(self) -> None:
+        """Called at validation epoch start. Override to load expensive resources."""
+        pass
+
+    def teardown(self) -> None:
+        """Called at validation epoch end. Override to clean up resources."""
+        pass

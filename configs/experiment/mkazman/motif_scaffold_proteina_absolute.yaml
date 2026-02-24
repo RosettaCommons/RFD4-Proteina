@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_base
+  - /design_tasks/presets/motif_pretraining@_design_tasks
+  - _self_
+
+run_name_: motif_scaffold_proteina_absolute
+
+_design_tasks:
+  motif_scaffold:
+    transform:
+      _target_: proteinfoundation.transforms.design_task.MotifScaffoldProteinaTask
+      atom_selection_mode: ame
+      residue_selection_mode: relative_fraction
+      motif_min_pct_res: 0.05
+      motif_max_pct_res: 0.5
+      motif_min_n_seg: 1
+      motif_max_n_seg: 4
+      unindex_mode: simple
+      p_unindex_motif: 0.5
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_design_tasks}
+
+log:
+  tags: ["motif-scaffolding", "pretrain", "absolute", "ame"]
+
+hardware:
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+

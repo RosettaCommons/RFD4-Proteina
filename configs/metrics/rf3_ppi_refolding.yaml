@@ -1,0 +1,29 @@
+# NOTE: In standard PPI, there are no internal coordinate groups. For a case
+# like antibodies, this metric would align on regions with absolute coordinate
+# conditioning (e.g. the target) and evaluate RMSD on all other regions, including
+# those with internal coordinate conditioning (e.g. the framework).
+rf3_metric_ppi:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  template_annotations: ["mask_coordinate_1_atom"]
+  required_tags_any: ["ppi_refolding"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      target_aligned_binder_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: mask_coordinate_1_atom
+        subset_mask: ~mask_coordinate_1_atom
+        metric_type: rmsd
+  pass_criteria:
+    ptm_coi:
+      min: 80.0
+    min_ipae_coi:
+      max: 1.5
+    target_aligned_binder_rmsd.rmsd:
+      max: 2.5

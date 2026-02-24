@@ -1,0 +1,19 @@
+# @package _global_
+# DEBUG: Structure prediction with AFDB + MGnify + OMol WITH MSAs
+# 1 node with 4 GPUs for troubleshooting
+
+defaults:
+  - /experiment/kdidi/structure_prediction_afdb_mgnify_omol_with_msa
+  - _self_
+
+run_name_: structure_prediction_afdb_mgnify_omol_with_msa_debug
+
+# Debug hardware: 1 node with 4 GPUs
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 1
+  ncpus_per_task_train_: 16
+
+log:
+  tags: ["structure-prediction", "folding", "with-msa", "debug", "4gpu"]

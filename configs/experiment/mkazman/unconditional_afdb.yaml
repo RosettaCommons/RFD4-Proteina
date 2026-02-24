@@ -1,0 +1,40 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+
+  # Validation datasets - only unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+
+  # Design task presets
+  - /design_tasks/presets/unconditional_only@_unconditional_design_tasks
+
+  - _self_
+
+run_name_: unconditional_afdb_fast
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_unconditional_design_tasks}
+
+log:
+  tags: ["unconditional", "pretrain", "afdb-monomer"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:
+

@@ -1,0 +1,41 @@
+# @package _global_
+
+defaults:
+  - /experiment/kdidi/structure_prediction_afdb_monomer_only
+  - /nn/local_latents_score_nn_400M_atom37@nn
+  - _self_
+
+run_name_: struc_pred_afdb_256_nomsa_400M_v2
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+
+dataloaders:
+  batch_size: 8
+  train:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256}
+  val:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256}
+
+datasets:
+  train:
+    afdb_monomer:
+      dataset:
+        transform:
+          load_msa: false
+  val:
+    de_novo:
+      dataset:
+        transform:
+          load_msa: false
+
+nn:
+  attention_type: flash  # "torch", "flash", "cuequivariance", or "te"
+  use_msa_module: false
+  use_torch_compile: true

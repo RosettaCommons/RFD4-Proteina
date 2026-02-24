@@ -1,0 +1,15 @@
+# BindCraft full refinement protocol
+# Soft optimization + hard optimization + greedy search
+# Optimizes sequence only (structure fixed)
+
+strategy:
+  _target_: proteinfoundation.refinement.bindcraft.BindCraftRefinement
+  mode: full
+  n_soft_iters: 45
+  n_hard_iters: 5
+  n_greedy_iters: 15
+  n_recycles: 3
+
+# Reward model must be differentiable (AF2)
+# Inherits from parent config's 'rewards' section
+

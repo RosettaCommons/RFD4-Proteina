@@ -1,0 +1,36 @@
+# Heavy unconditional with light motif scaffolding
+# 80% unconditional, 5% folding, 5% inverse folding, 10% motif scaffolding
+
+unconditional:
+  frequency: 80.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+folding:
+  frequency: 5.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+inverse_folding:
+  frequency: 5.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+motif_scaffold:
+  frequency: 10.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
+    min_tokens_per_motif: 1
+    max_tokens_per_motif: 50
+    min_coverage_fraction: 0.05
+    max_coverage_fraction: 1.0
+    max_unindexed_tokens: 50
+    p_unindex_any: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+

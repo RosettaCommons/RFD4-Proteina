@@ -1,0 +1,57 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_uncond
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_motif
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_ame_ligand
+  - /datasets/train/distill/omol@datasets.train.omol
+  - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
+
+  # Design task presets
+  - /design_tasks/presets/unconditional_only@_unconditional_tasks
+  - /design_tasks/presets/motif_pretraining@_motif_tasks
+  - /design_tasks/presets/tip_atom_tasks@_ame_ligand_tasks
+  - /design_tasks/presets/ppi_motif_scaffold@_ppi_tasks
+
+  - _self_
+
+run_name_: multitask_uncond_motif_ame_omol_ppi_ted_07_02
+
+datasets:
+  train:
+    afdb_uncond:
+      probability: 0.2
+      dataset:
+        transform:
+          design_tasks: ${_unconditional_tasks}
+    afdb_motif:
+      probability: 0.2
+      dataset:
+        transform:
+          design_tasks: ${_motif_tasks}
+    afdb_ame_ligand:
+      probability: 0.2
+      dataset:
+        transform:
+          design_tasks: ${_ame_ligand_tasks}
+    omol:
+      probability: 0.2
+    ted_dimers:
+      probability: 0.2
+      dataset:
+        transform:
+          design_tasks: ${_ppi_tasks}
+
+log:
+  tags: ["multitask", "unconditional", "motif", "ame-ligand", "omol", "ppi-ted"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+
+dataloaders:
+  batch_size: 8
+
+

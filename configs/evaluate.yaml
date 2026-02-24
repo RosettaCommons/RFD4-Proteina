@@ -1,0 +1,57 @@
+# Default config for evaluation with evaluate.py
+# Evaluates generated structures using configured metrics
+
+defaults:
+  # - metrics: refolding_metrics  # Default metrics (can override: metrics=all_metrics, metrics=refolding_metrics)
+  - _self_
+
+# Input/output paths
+input_dir: ???  # REQUIRED: Directory containing generated structures (supports subdirectories)
+output_csv: ${input_dir}/evaluation_results_job_${job_id}.csv  # Output CSV path (can override)
+
+# File discovery
+file_pattern: "*.cif"  # Glob pattern for finding structure files (*.cif, *.pdb, *.bcif)
+
+# CIF parser arguments (passed to atomworks load_atom_array_with_conditions_from_cif)
+cif_parser_args: 
+  fix_formal_charges: false
+
+# Optional: Parallel evaluation support
+job_id: 0  # Job ID for parallel evaluation (0-indexed)
+njobs: 1  # Total number of evaluation jobs
+
+# Logging
+verbose: true  # Enable verbose logging
+
+metrics:  # Turn off some other metrics
+  rf3_metric_motif_scaffold:
+    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+    num_steps: 50
+    n_recycles: 5
+    required_tags_any: ["motif_scaffold_refolding"]
+    metric_manager:
+      _target_: foundry.metrics.metric.MetricManager
+      metrics:
+        backbone_rmsd:
+          _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+          input_kwarg_names:
+            ground_truth_atom_array_stack: ground_truth_atom_array_stack
+            predicted_atom_array_stack: predicted_atom_array_stack
+          align_mask: is_protein
+          subset_mask: is_protein_backbone
+          metric_type: rmsd
+        motif_rmsd:
+          _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+          input_kwarg_names:
+            ground_truth_atom_array_stack: ground_truth_atom_array_stack
+            predicted_atom_array_stack: predicted_atom_array_stack
+          align_mask: is_protein & mask_coordinate_1_atom
+          subset_mask: is_protein & mask_coordinate_1_atom
+          metric_type: rmsd
+    pass_criteria:
+      backbone_rmsd.rmsd_align=<is_protein>_subset=<is_protein_backbone>:
+        max: 2.0
+      motif_rmsd.rmsd_align=<is_protein&mask_coordinate_1_atom>_subset=<is_protein&mask_coordinate_1_atom>:
+        max: 1.0
+

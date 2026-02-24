@@ -1,0 +1,7 @@
+# @package _global_
+
+defaults:
+  - /generation: inference_like_rfd3
+  - _self_
+
+inputs: ??? # json/yaml/cif path or cif directory

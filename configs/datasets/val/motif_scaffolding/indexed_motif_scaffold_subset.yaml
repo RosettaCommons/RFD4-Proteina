@@ -1,0 +1,19 @@
+defaults: 
+  # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
+  - /datasets/val/motif_scaffolding@_here_: indexed_motif_scaffold_full
+  - _self_
+
+dataset:
+  name: indexed_motif_scaffold_subset
+  subset_to_keys:
+    # easy
+    - 6E6R_AA_MED
+    - 1YCR_AA
+    # medium
+    - 1QJG_AA
+    - 5TRV_AA_MED
+    # hard
+    - 5IUS_AA
+    - 4ZYP_AA
+  
+  num_replicates: 100

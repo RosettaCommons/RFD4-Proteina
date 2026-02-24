@@ -1,0 +1,50 @@
+{
+    "FAD": {
+        "dialect": 2,
+        "input": "rfbench/sm_binder/FAD_aa_ep10_run_binder_7bkc_cond2_0-atomized-bb-False.pdb",
+        "contig": "150-150",
+        "ligand":"FAD",
+        "select_hbond_donor": {
+            "B412": "N6A,O2B,O3B,O2A,O2P,O4',O3',O2',N3"
+        },
+        "select_hbond_acceptor": {
+            "B412": "N1A,N7A,N3A,O4B,O2B,O3B,O5B,O1A,O2A,O3P,O2P,O1P,O5',O4',O3',O2',N10,N5,N1,O2,O4,N3"
+        }
+    },
+    "IAI": {
+        "dialect": 2,
+        "input": "rfbench/sm_binder/IAI_aa_ep10_run_binder_5sdv_cond0_0-atomized-bb-False.pdb",
+        "contig": "150-150",
+        "ligand":"IAI",
+        "select_hbond_donor": {
+            "B392": "N9,N27"
+        },
+        "select_hbond_acceptor": {
+            "B392": "N13,N12,O8,N5,N28,O31"
+        }
+    },
+    "OQO": {
+        "dialect": 2,
+        "input": "rfbench/sm_binder/OQO_aa_ep10_run_binder_7v11_cond1_0-atomized-bb-False.pdb",
+        "contig": "150-150",
+        "ligand":"OQO",
+        "select_hbond_donor": {
+            "B397": "N5"
+        },
+        "select_hbond_acceptor": {
+            "B397": "F28,N38,N37,N36,O25,N11,N3"
+        }
+    },
+    "SAM": {
+        "dialect": 2,
+        "input": "rfbench/sm_binder/SAM_aa_ep10_run_binder_7c7m_cond3_0-atomized-bb-False.pdb",
+        "contig": "150-150",
+        "ligand":"SAM",
+        "select_hbond_donor": {
+            "B386": "N6,O2',O3',N"
+        },
+        "select_hbond_acceptor": {
+            "B386": "N,O,OXT,O4',O3',O2',N7,N3,N1"
+        }
+    }
+}

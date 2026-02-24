@@ -1,0 +1,35 @@
+# @package _global_
+#
+# Debug configuration for CPU development
+# Usage: ./train.py --config-name=my_config debug=cpu
+
+# Override hardware settings for CPU
+hardware:
+  accelerator: cpu
+  ngpus_per_node_: 1
+  nnodes_: 1     
+
+# Override dataloader settings for debugging (no parallel workers)
+dataloaders:
+  num_workers: 0
+  batch_size: 1
+  prefetch_factor: null  # Must be null when num_workers=0
+  multiprocessing_context: null  # Must be null when num_workers=0
+  train:
+    dataloader_params:
+      persistent_workers: False  # Can't use persistent workers with 0 workers
+
+# Override training settings for quick testing
+opt:
+  max_epochs: 5  # Run 5 epochs only
+  limit_train_batches: 50  # Only n batches per epoch for fast testing
+  limit_val_batches: 5  # Only n batches
+  steps_per_epoch: 10     # Short epochs for quick debugging
+  val_every_n_epochs: 1   # Validate at end of each epoch
+  val_start_epoch: 0
+
+# Disable wandb logging
+nolog: true
+
+# No SLURM environment
+single: true

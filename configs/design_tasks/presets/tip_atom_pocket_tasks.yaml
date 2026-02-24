@@ -1,0 +1,75 @@
+unconditional:
+  frequency: 10.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+folding:
+  frequency: 5.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+inverse_folding:
+  frequency: 5.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+motif_scaffold:
+  frequency: 10.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
+    min_tokens_per_motif: 1
+    max_tokens_per_motif: 50
+    min_coverage_fraction: 0.05
+    max_coverage_fraction: 1.0
+    max_unindexed_tokens: 50
+    p_unindex_any: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_partial_ligand:
+  frequency: 10.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomPartialLigandTask
+    n_max_ligands: 3
+    n_hops_expected_ligand: 5
+    n_max_residues: 8
+    n_hops_expected_tip_atom: 3
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom:
+  frequency: 10.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomTask
+    min_residues: 2
+    max_residues: 8
+    p_tip_atom: 0.5
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_pocket:
+  frequency: 50.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomActiveSiteTask
+    tip_atom_rasa_threshold: 0.2
+    min_tip_atoms: 2
+    max_tip_atoms: 15
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    p_unindex_all: 0.5
+    p_unindex_any: 0.05
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

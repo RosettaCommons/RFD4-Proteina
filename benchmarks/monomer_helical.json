@@ -1,0 +1,22 @@
+{
+    "global_args": {
+        "add_cath_code": {
+            "1.x.x": {
+                "A": "ALL"
+            }
+        }
+    },
+    "monomer-short": {
+        "length": "100-100",
+        "dialect": 2
+
+    },
+    "monomer-medium": {
+        "length": "150-150",
+        "dialect": 2
+    },
+    "monomer-long": {
+        "length": "250-250",
+        "dialect": 2
+    }
+}

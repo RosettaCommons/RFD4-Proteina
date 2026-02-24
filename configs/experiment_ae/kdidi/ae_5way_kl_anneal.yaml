@@ -1,0 +1,38 @@
+# @package _global_
+# Autoencoder training with 5-way dataset mix, KL annealing, decoder knows token type
+# Data: 20% mgnify, 20% afdb, 20% teddymer, 20% rna distill, 20% na protein distill
+
+defaults:
+  - /nn_ae/nn_60m_unified@nn_ae
+  - /datasets/ae_5way_datasets@datasets
+  - _self_
+
+run_name_: ae_5way_kl_anneal
+
+hardware:
+  ncpus_per_task_train_: 16
+  ngpus_per_node_: 8
+  nnodes_: 4  # 4 nodes × 8 GPUs = 32 GPUs
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 6
+      collate_fn:
+        fixed_dimensions: {I: 384}
+
+loss:
+  kl:
+    anneal: true
+    patience: 50000  # Linear ramp-up over 50k steps
+
+# Enable flash attention and torch.compile for encoder/decoder
+nn_ae:
+  use_torch_compile: true
+  encoder:
+    attention_type: flash
+  decoder:
+    attention_type: flash
+
+log:
+  tags: ["ae", "60m", "unified", "5way", "kl_anneal", "token_type", "protein", "rna", "dna", "teddymer", "mgnify", "flash", "compile"]

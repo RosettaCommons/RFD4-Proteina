@@ -1,0 +1,30 @@
+# Mixed dataset config for PPI design finetuning
+# 80% TED dimers (PPI tasks) + 20% AFDB monomers (unconditional/motif)
+# Uses Hydra composition to reference existing dataset configs
+
+# Reference individual dataset configs
+defaults:
+  - train/distill/ted_dimers@train.ted_dimers
+  - train/distill/afdb_monomer@train.afdb_monomer
+  - _self_
+
+# Mixed dataset with probabilities (80% ted, 20% afdb)
+train:
+  ted_dimers:
+    probability: 0.8
+  
+  afdb_monomer:
+    probability: 0.2
+    # Override task frequencies for afdb_monomer to focus on unconditional
+    dataset:
+      transform:
+        design_tasks:
+          unconditional:
+            frequency: 70.0
+          folding:
+            frequency: 10.0
+          inverse_folding:
+            frequency: 10.0
+          motif_scaffold_proteina_ame:
+            frequency: 10.0
+

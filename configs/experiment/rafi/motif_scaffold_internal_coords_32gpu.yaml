@@ -1,0 +1,45 @@
+# @package _global_
+
+defaults:
+  - mkazman/motif_scaffold_base
+
+  # Validation datasets
+  # ... internal coordinate conditioning
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_internal_coords@datasets.val.indexed_motif_scaffold_internal_coords
+
+  # ... motif scaffolding (indexed and unindexed)
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+
+  # ... unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+
+  - _self_
+
+datasets:
+  train:
+    afdb_monomer:
+      dataset:
+        transform:
+          design_tasks:
+            motif_scaffold:
+              transform:
+                p_internal_coords: 0.33
+
+    # mgnify_june_2025:
+    #   dataset:
+    #     transform:
+    #       design_tasks:
+    #         motif_scaffold:
+    #           transform:
+    #             p_internal_coords: 0.33
+
+run_name_: motif_scaffold_internal_coords_32gpu
+
+log:
+  tags: ["motif-scaffolding", "internal-coordinate-conditioning", "pretrain"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4

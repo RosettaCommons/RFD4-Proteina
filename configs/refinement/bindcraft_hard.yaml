@@ -1,0 +1,15 @@
+# BindCraft hard-only refinement protocol
+# Skips soft optimization, runs hard + greedy only (faster)
+# Optimizes sequence only (structure fixed)
+
+strategy:
+  _target_: proteinfoundation.refinement.bindcraft.BindCraftRefinement
+  mode: hard_only
+  n_soft_iters: 0  # Skipped in hard_only mode
+  n_hard_iters: 10
+  n_greedy_iters: 20
+  n_recycles: 3
+
+# Reward model must be differentiable (AF2)
+# Inherits from parent config's 'rewards' section
+

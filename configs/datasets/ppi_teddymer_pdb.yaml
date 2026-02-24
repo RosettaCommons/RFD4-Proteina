@@ -1,0 +1,12 @@
+
+defaults:
+  - train/distill/afdb_dimer@train.afdb_dimer
+  - train/pdb/complexa_filtered_pdb@train.complexa_filtered_pdb
+  - _self_
+
+train:
+  afdb_dimer:
+    probability: 0.8
+
+  complexa_filtered_pdb:
+    probability: 0.2

@@ -1,0 +1,12 @@
+# Trains on floating alanines to debug the model's adherence to 2d conditioning
+
+defaults:
+  - ../base@dataset
+  - _self_
+  
+# Datasets:
+dataset:
+  _target_: projects.aa_design.data.toys.CCDCloudDataset
+  ccd_codes: ALA
+  min_distance: 3.0
+  num_examples: 20_000

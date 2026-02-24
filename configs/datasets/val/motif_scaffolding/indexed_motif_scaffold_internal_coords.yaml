@@ -1,0 +1,26 @@
+
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+
+  # Required parameters for each inheriting dataset
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/motif_scaffold_aa_tasks_indexed_internal_coords.json  
+  name: indexed_motif_scaffold_full
+  
+  num_replicates: 100
+
+  subset_to_keys:
+    - 1PRW_AA
+    - 1BCF_AA
+    - 1QJG_AA
+    - 5YUI_AA
+    - 5IUS_AA
+    - 6VW1_AA
+    - 4JHW_AA
+    - 2KL8_AA
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - 3d_coordinate_conditioning
+      - internal_coordinate_conditioning
+      - internal_coordinate_motif_scaffold_refolding

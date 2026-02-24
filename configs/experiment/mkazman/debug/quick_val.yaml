@@ -1,0 +1,35 @@
+# @package _global_
+
+defaults:
+  # ... protein distillation
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+
+  # Validation datasets
+  # ... unconditional
+  # - /datasets/val/unconditional@datasets.val.unconditional
+  # ... motif scaffolding (indexed and unindexed)
+  # - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  # - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  # ... AME datasets
+  # - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  # - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  # - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/mcsa/tip_atom_no_ligand_afdb@datasets.val.tip_atom_no_ligand_afdb
+  - /datasets/val/mcsa/tip_atom_plinder@datasets.val.tip_atom_plinder
+
+  - _self_
+
+run_name_: quick_val
+
+pretrain_ckpt_path: null
+
+nolog: true
+single: true
+
+opt:
+  steps_per_epoch: 2      # Very short epochs for quick validation testing
+  val_every_n_epochs: 1   # Validate at end of each epoch
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1

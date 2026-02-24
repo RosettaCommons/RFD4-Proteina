@@ -1,0 +1,17 @@
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/paper_dna.json
+  name: paper_dna
+
+  # Monomer design, fixed dna for now. There are also cases of dimer design and unfixed dna.
+  subset_to_keys: 
+    - 7n5u_with_structure_and_ori
+    - 7m5w_with_structure_and_ori
+    - 7rte_with_structure_and_ori
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - dna_binder_design
+      - 3d_coordinate_conditioning # NOTE: This holds for the key subset we've chosen above, not globally in this json

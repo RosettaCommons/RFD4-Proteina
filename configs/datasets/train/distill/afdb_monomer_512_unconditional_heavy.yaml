@@ -1,0 +1,20 @@
+# AFDB Monomer 512 Dataset with unconditional-heavy design tasks
+# Uses AlphaFold Database structures (pre-filtered to <= 512 residues)
+# Design tasks: 80% unconditional, 5% folding, 5% inverse folding, 10% motif scaffolding
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/unconditional_heavy@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: afdb_monomer_512_unconditional_heavy
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/afdb_proteina_512_direct.parquet
+
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+

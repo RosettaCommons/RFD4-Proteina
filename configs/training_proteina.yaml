@@ -1,0 +1,151 @@
+# Example training config using the new rf3-style dataset infrastructure
+# Combines PDB interfaces (50%) with AFDB monomer distillation (50%)
+
+run_name_: test_no_val_datasets
+
+# Co-generation mode: whether to co-generate coordinate-conditioned targets (ligands, ions, protein targets)
+# True: targets are noised and lossed during training, co-generated during inference
+# False: targets are kept fixed (sequence + coordinate conditioned) during training/inference
+co_generate_targets: true
+
+# NOTE: order of defaults determines the order in which configs override each other (higher up items are overridden by lower items)
+defaults:
+  - generation/inference_base@inf_cfg
+  - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
+  - dataloaders: default
+  - nn: local_latents_score_nn_160M_atom37
+  - generation: inference_base
+  - metrics: all_metrics # includes refolding
+  - callbacks: all_tasks
+  # We must keep _self_ before experiment and debug to ensure that the experiment and debug configs can override
+  - _self_
+
+  # experiment configs allow for version control of specific hyperparameters
+  # e.g. best hyperparameters for given model and datamodule
+  - experiment: unconditional_afdb_256
+
+
+  # debug configs to add onto any experiment for quickly testing or debugging code
+  - optional debug: null
+
+datasets:
+  # Must be overidden for training; validation is not strictly necessary
+  train: ???
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:
+
+# Weight loading policies (only used when loading pretrain_ckpt_path)
+# When null, falls back to strict=False (legacy behaviour).
+# Set to a WeightLoadingConfig to control per-parameter handling:
+weight_loading: null
+# Example:
+#   _target_: foundry.utils.weights.WeightLoadingConfig
+#   default_policy: copy          # copy checkpoint weights by default
+#   fallback_policy: reinit       # reinit if copy fails (missing/shape mismatch)
+#   param_policies:
+#     "score_network.seq_emb.new_feature_emb.*": zero_init
+#     "score_network.pair_emb.resized_layer.*": copy_and_zero_pad
+
+# Parameter freezing (applied after weight loading from pretrain_ckpt_path)
+# When null, no parameters are frozen.
+parameter_freezing: null
+# Example:
+#   _target_: foundry.utils.weights.ParameterFreezingConfig
+#   freeze_by_default: false
+#   param_policies:
+#     "score_network.trunk.*": true   # freeze backbone
+
+# Hardware configuration
+# (Workers are controlled in dataloader section)
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+inf_cfg:
+  insert_unindexed_regions: False # TODO: I'm not sure we ever want this on
+
+# TODO: Move these into "model" or other appropriate section, following the train.yaml approach in RF3
+# Modalities to use
+product_flowmatcher:
+  bb_ca:
+    zero_com_noise: True
+    guidance_enabled: True
+    dim: 3
+    stochastic_centering_mode: "x_0"
+    stochastic_centering_scale: 0.2
+  local_latents:
+    zero_com_noise: False
+    guidance_enabled: True
+    dim: null  # Overwritten by autoencoder
+    stochastic_centering_mode: "none"
+    stochastic_centering_scale: null
+
+
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+# MSA module: override to true in experiment configs that set load_msa per-dataset
+nn:
+  use_msa_module: false
+
+
+# Loss
+loss:
+  t_distribution:
+    bb_ca:
+      name: mix_unif_beta
+      p1: 1.9
+      p2: 1.0
+      p3: 0.02
+    local_latents:
+      name: mix_unif_beta
+      p1: 1.0
+      p2: 1.5
+      p3: 0.2
+    shared_groups:
+
+# Precision
+# Options: "32" (full precision), "bf16-mixed" (default), "fp8" (requires Transformer Engine)
+# Note: force_precision_f32 is deprecated, use precision instead
+precision: "bf16-mixed"
+force_precision_f32: False  # Deprecated: use precision: "32" instead
+
+# Training
+training:
+  n_recycle: 0
+  motif_conditioning: False
+  self_cond: True
+
+# LoRA fine-tuning configuration
+# Set r to a positive integer (e.g., 8, 16, 32) to enable LoRA
+# Leave as null to disable LoRA (train full model)
+lora:
+  r: null  # LoRA rank (null = disabled, typical values: 8, 16, 32, 64)
+  lora_alpha: 64.0  # LoRA scaling factor
+  lora_dropout: 0.0  # Dropout for LoRA layers
+  train_bias: none  # Bias training: "none", "all", or "lora_only"
+  exclude_keys: []  # List of module names to exclude from LoRA (e.g., ["final_layer"])
+
+# Optimization
+opt:
+  lr: 0.0001
+  max_epochs: 10000000
+  accumulate_grad_batches: 1
+  dist_strategy: ddp
+  steps_per_epoch: 2000       # Defines epoch length in steps (not full dataset)
+  val_every_n_epochs: 10      # Validate at end of every N epochs
+  val_start_epoch: 50          # Delay validation until this epoch (0 = start immediately)
+
+# Logging and checkpoints
+log:
+  wandb_project: latent_training
+  wandb_entity: bakerlab
+  tags: []
+  log_wandb: True
+  log_every_n_steps: 10
+  checkpoint: True
+  checkpoint_every_n_epochs: 10  # Save top-k checkpoint every N epochs (matches val frequency)
+  last_ckpt_every_n_epochs: 1    # Save last.ckpt every N epochs (for resume)
+
+seed: 42

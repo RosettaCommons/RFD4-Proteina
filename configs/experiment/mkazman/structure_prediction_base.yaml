@@ -1,0 +1,65 @@
+
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... monomer distillation
+  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  # - /datasets/train/distill/mgnify_june_2025@datasets.train.mgnify_june_2025  # TODO: Kieran only has june 2025 on lustre for now
+
+  # ... dimer distillation
+  - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer
+
+  # Validation datasets (structure prediction only)
+  - /datasets/val/structure_prediction/de_novo@datasets.val.de_novo
+
+  - _self_
+
+_design_tasks:
+  folding:
+    frequency: 1.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.0
+        hbond_kwargs:
+          p_add_hbond_condition: 0.0
+        secondary_structure_kwargs:
+          p_add_secondary_structure_condition: 0.0
+
+run_name_: structure_prediction_base_fast
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.75
+      dataset:
+        transform:
+          design_tasks: ${_design_tasks}
+    # mgnify_june_2025:
+    #   probability: 0.5
+    #   dataset:
+    #     transform:
+    #       design_tasks: ${_design_tasks}
+    afdb_dimer:
+      probability: 0.25
+      dataset:
+        transform:
+          design_tasks: ${_design_tasks}
+    
+log:
+  tags: ["structure-prediction", "pretrain", "baseline"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+opt:
+  accumulate_grad_batches: 1
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

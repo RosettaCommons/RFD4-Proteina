@@ -1,0 +1,35 @@
+# @package _global_
+#
+# Debug configuration for GPU development
+# Usage: ./train.py experiment=example_experiment debug=gpu
+
+# Override hardware settings for single GPU
+hardware:
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+# Override dataset settings for faster iteration
+dataloaders:
+  batch_size: 1  # Small batch size for quick testing
+  num_workers: 0  # No parallel data loading (easier debugging)
+  prefetch_factor: null
+  multiprocessing_context: null # No workers -> no multiprocessing needed
+  train:
+    dataloader_params:
+      persistent_workers: false
+    n_fallback_retries: 0
+
+# Override training settings for quick testing
+opt:
+  max_epochs: 5  # Run 5 epochs only
+  limit_train_batches: 50  # Only n batches per epoch for fast testing
+  limit_val_batches: 5  # Only n batches
+  steps_per_epoch: 10     # Short epochs for quick debugging
+  val_every_n_epochs: 1   # Validate at end of each epoch
+  val_start_epoch: 0
+
+# Disable wandb logging
+nolog: true
+
+# No SLURM environment
+single: true

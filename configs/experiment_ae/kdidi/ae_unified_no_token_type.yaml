@@ -1,0 +1,22 @@
+# @package _global_
+# Autoencoder training WITHOUT token type embeddings (ablation experiment)
+
+defaults:
+  - /nn_ae/nn_60m_unified_no_token_type@nn_ae
+  - /datasets/ae_mixed_datasets@datasets
+  - _self_
+
+run_name_: ae_unified_no_token_type_v1
+
+hardware:
+  ncpus_per_task_train_: 16
+  ngpus_per_node_: 8
+  nnodes_: 6
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 12
+
+log:
+  tags: ["ae", "60m", "unified", "protein", "rna", "dna", "no_token_type", "ablation"]

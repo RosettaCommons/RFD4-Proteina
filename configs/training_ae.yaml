@@ -1,0 +1,79 @@
+run_name_: ae_unified_run2_25each_no_token_type_v10
+
+hardware:
+  ncpus_per_task_train_: 16  # Number of CPUs per task during training
+  accelerator: gpu
+  ngpus_per_node_: 1  # Number of GPUs per node
+  nnodes_: 1  # Number of nodes
+
+defaults:
+  - nn_ae: nn_60m_unified  # NEW: 33 residue types (20 AA + RNA + DNA + unknowns)
+  - datasets: ae_mixed_datasets  # Autoencoder-specific dataset (no design tasks)
+  - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
+  - dataloaders: default  
+  - callbacks: autoencoder
+  - _self_
+  
+  # Experiment configs override specific hyperparameters
+  - experiment_ae: kdidi/ae_unified_no_token_type
+  
+  # Debug configs for quick testing
+  - optional debug: null
+
+# Pre-training checkpoint to start from (must be None for unified - cannot use 20-AA checkpoints)
+pretrain_ckpt_path:
+
+# Backward compatibility flag
+use_legacy_encoding: false  # Set to true to use old 20-AA autoencoder (requires different config)
+
+# Override batch size from dataloader config
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 12  # Adjust based on GPU memory
+
+# Loss
+loss:
+  kl:
+    weight: 1e-4
+    anneal: false
+    patience: 10000
+  struct:
+    type: l2
+    # type: l2cut_0.01
+    weight: 1.0
+  seq:
+    weight: 1.0
+
+
+# Precision
+force_precision_f32: False  # If false will use bf16-mixed precision
+
+# Optimization
+opt:
+  lr: 0.0001
+  max_epochs: 10000000
+  accumulate_grad_batches: 1
+  dist_strategy: ddp  # For multi GPU training, do not change
+  steps_per_epoch: 2000       # Defines epoch length in steps (not full dataset)
+  val_every_n_epochs: 10      # Validate at end of every N epochs
+
+# wandb logging and checkpoints
+log:
+  wandb_project: ae_training
+  wandb_entity: bakerlab
+  tags: ["ae"]
+  log_wandb: True  # whether to log to wandb
+  log_every_n_steps: 10  # wandb logging frequency
+  checkpoint: True  # whether to store checkpoints
+  checkpoint_every_n_epochs: 10  # Save top-k checkpoint every N epochs (matches val frequency)
+  last_ckpt_every_n_epochs: 1    # Save last.ckpt every N epochs (for resume)
+  
+  # Latent space projection visualization (training-time logging)
+  projection_method: tsne  # Options: tsne, pca, lda (set to null to disable)
+  projection_every_n: 1000  # Log projection plot every N steps
+  projection_max_samples: 5000  # Max tokens to project (subsample if needed)
+  save_projections_locally: false  # Set to true to save plots locally
+  local_projection_dir: ./latent_projections  # Directory for saved plots
+
+seed: 42

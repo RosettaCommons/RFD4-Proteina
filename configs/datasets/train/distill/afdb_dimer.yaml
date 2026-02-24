@@ -1,0 +1,17 @@
+# AFDB Dimer Training - Protein dimers from TED dataset
+# Uses extracted PDB files for dimer training with PPI tasks
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: afdb_dimer_train
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/ted_dimers.parquet
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False

@@ -1,0 +1,46 @@
+# @package _global_
+
+defaults:
+  - /experiment/kdidi/structure_prediction_afdb_monomer_only
+  - /nn/local_latents_score_nn_160M_atom37@nn
+  - _self_
+
+run_name_: struc_pred_afdb_256_msa256_160M_compile
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+
+dataloaders:
+  batch_size: 6
+  train:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256, S: 256}
+  val:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256, S: 256}
+
+datasets:
+  train:
+    afdb_monomer:
+      dataset:
+        transform:
+          load_msa: true
+          msa_featurize_n_msa: 256
+  val:
+    de_novo:
+      dataset:
+        transform:
+          load_msa: true
+          msa_featurize_n_msa: 256
+
+nn:
+  attention_type: flash  # "torch", "flash", "cuequivariance", or "te"
+  use_msa_module: true
+  use_torch_compile: true
+  
+  msa_module:
+    use_cuequivariance: false  # Disable: buggy meta kernel breaks torch.compile

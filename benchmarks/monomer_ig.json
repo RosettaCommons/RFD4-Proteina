@@ -1,0 +1,12 @@
+{
+    "monomer-short": {
+        "length": "100-100",
+        "dialect": 2,
+        "add_cath_code": {
+            "2.60.40": {
+                "A": "ALL"
+            }
+        }
+
+    }
+}

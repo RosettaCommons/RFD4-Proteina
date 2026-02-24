@@ -1,0 +1,8 @@
+# Structure prediction (folding) only
+
+folding:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
