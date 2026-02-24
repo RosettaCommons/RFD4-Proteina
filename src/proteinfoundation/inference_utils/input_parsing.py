@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 from atomworks.constants import STANDARD_AA
+from atomworks.enums import ChainType
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.annotator import ensure_annotations
@@ -91,9 +92,38 @@ def validator_context(validator_name: str, data: dict = None):
         raise e
 
 
-def create_diffused_residues(n, additional_annotations=None):
+def create_diffused_residues(n, additional_annotations=None, polymer_type="P"):
+    from proteinfoundation.inference_utils.inference_utils import (
+        NA_BACKBONE_ATOM_NAME_TO_ELEMENT,
+        BACKBONE_ATOM_NAMES_DNA,
+        BACKBONE_ATOM_NAMES_RNA,
+    )
+
     if n <= 0:
         raise ValueError(f"Negative/null residue count ({n}) not allowed.")
+
+    if polymer_type == "P":
+        res_name = "ALA"
+        bb_len = 5
+        bb_atom_names = ["N", "CA", "C", "O", "CB"]
+        bb_elements = ["N", "C", "C", "O", "C"]
+        chain_type = ChainType.POLYPEPTIDE_L
+    elif polymer_type == "R":
+        res_name = "A"
+        bb_len = len(BACKBONE_ATOM_NAMES_RNA)
+        bb_atom_names = BACKBONE_ATOM_NAMES_RNA
+        chain_type = ChainType.RNA
+        bb_elements = [NA_BACKBONE_ATOM_NAME_TO_ELEMENT[item] for item in bb_atom_names]
+    elif polymer_type == "D":
+        res_name = "DA"
+        bb_len = len(BACKBONE_ATOM_NAMES_DNA)
+        bb_atom_names = BACKBONE_ATOM_NAMES_DNA
+        chain_type = ChainType.DNA
+        bb_elements = [NA_BACKBONE_ATOM_NAME_TO_ELEMENT[item] for item in bb_atom_names]
+    else:
+        raise ValueError(
+            f"invalid polymer type detected: {polymer_type}, check contig!"
+        )
 
     atoms = []
     [
@@ -101,19 +131,24 @@ def create_diffused_residues(n, additional_annotations=None):
             [
                 struc.Atom(
                     np.array([0.0, 0.0, 0.0], dtype=np.float32),
-                    res_name="ALA",
+                    res_name=res_name,
                     res_id=idx,
                 )
-                for _ in range(5)
+                for _ in range(bb_len)
             ]
         )
         for idx in range(1, n + 1)
     ]
     array = struc.array(atoms)
-    array.set_annotation("element", np.array(["N", "C", "C", "O", "C"] * n, dtype="<U2"))
-    array.set_annotation("atom_name", np.array(["N", "CA", "C", "O", "CB"] * n, dtype="<U2"))
-    array = set_default_conditioning_annotations(array, motif=False, additional=additional_annotations)
+    array.set_annotation("element", np.array(bb_elements * n, dtype="<U3"))
+    array.set_annotation("atom_name", np.array(bb_atom_names * n, dtype="<U3"))
+    array.set_annotation("chain_type", np.array([chain_type] * array.array_length(), dtype=np.int8))
+    ensure_annotations(array, "is_protein", "is_rna", "is_dna", "is_ligand")
+    array = set_default_conditioning_annotations(
+        array, motif=False, additional=additional_annotations
+    )
     array = set_common_annotations(array)
+
     return array
 
 
@@ -445,14 +480,20 @@ def accumulate_components(
                     np.zeros(token.shape[0], dtype=int),
                 )
         else:
-            n = int(component)
+            if component[-1] in ["P", "R", "D"]:  # if polymer type specified
+                polymer_type = component[-1]  # can be 'P'rotein, 'R'NA, 'D'NA
+                n = int(component[:-1])
+            else:
+                polymer_type = "P"
+                n = int(component)
+
             # ... Skip if none or unindexed
             if n == 0 or unindexed_components_started:
                 res_id += n
                 continue
 
             # ... Create diffused residues
-            token = create_diffused_residues(n, all_annots)
+            token = create_diffused_residues(n, all_annots, polymer_type)
 
         # ... Set index of insertion
         token = set_indices(
@@ -709,11 +750,25 @@ class InputSpecification(BaseModel):
             ]
             selections = [s for s in selections if s in data]
 
+            if exists(data.get("contig")) and not isinstance(data["contig"], str):
+                raise ValueError(f"Contig selection must be a string or None, got {type(data['contig'])} instead.")
+
             # ... Early return if no input file provided / atom array input
             if not exists(data.get("input")) and not exists(data.get("atom_array_input")):
-                if selections:
+                if not selections:
+                    return data
+                # Allow for entirely-diffused contigs without input structures
+                elif selections == ["contig"] and exists(data["contig"]):
+                    contig_components = data["contig"].split(",")
+                    if any([c[0].isalpha() for c in contig_components]):
+                        raise ValueError(f"Contig selection without input structure must contain only diffused components")
+
+                    # The length has not yet been selected so we only store the raw contig string
+                    data["contig"] = InputSelection(data={}, raw=data["contig"], mask=None, tokens=None)
+
+                    return data
+                else:
                     raise ValueError(f"Atom array input must be provided before parsing selections: {selections}")
-                return data
 
             # ... Load atom array from input file if provided
             if exists(data["input"]):
@@ -742,9 +797,6 @@ class InputSpecification(BaseModel):
 
             # Coerce selections
             for sele in selections:
-                if sele == "contig":
-                    if exists(data[sele]) and not isinstance(data[sele], str):
-                        raise ValueError(f"Contig selection must be a string or None, got {type(data[sele])} instead.")
                 if not isinstance(data.get(sele), InputSelection):
                     data[sele] = InputSelection.from_any(data[sele], atom_array=atom_array)
 
@@ -821,6 +873,37 @@ class InputSpecification(BaseModel):
             except Exception as e:
                 raise ValueError(f"Failed to expand contig ({contig.raw}): {e}")
         return self
+
+    @model_validator(mode="after")
+    def validate_contig(self):
+        if exists(self.contig):
+            components = self.contig.raw.split(",")
+            current_chain_type = None
+            for c in components:
+                if c[0].isalpha():
+                    continue
+                if c == "/0":
+                    current_chain_type = None
+                    continue
+
+                chain_type = "P"
+                if c[-1].upper() == "D":
+                    chain_type = "D"
+                elif c[-1].upper() == "R":
+                    chain_type = "R"
+                elif c[-1].isalpha() and c[-1].upper() != "P":
+                    raise ValueError(
+                        f"Invalid component in contig: {c}. Final character must be numeric or one of 'D', 'R', 'P'."
+                    )
+
+                if current_chain_type is None:
+                    current_chain_type = chain_type
+                elif current_chain_type != chain_type:
+                    raise ComponentValidationError(
+                        f"Chain types must be consistent within a single chain, got: {current_chain_type} and {chain_type}"
+                    )
+        return self
+
 
     @model_validator(mode="after")
     def _assign_types_to_input(self):
@@ -960,8 +1043,14 @@ class InputSpecification(BaseModel):
 
     def _build_init(self, atom_array_input_annotated):
         # ... Fetch tokens
-        indexed_tokens = self.contig.get_tokens(atom_array_input_annotated) if exists(self.contig) else {}
-        unindexed_tokens = self.unindex.get_tokens(atom_array_input_annotated) if exists(self.unindex) else {}
+        indexed_tokens = {}
+        unindexed_tokens = {}
+        if exists(atom_array_input_annotated):
+            if exists(self.contig):
+                indexed_tokens = self.contig.get_tokens(atom_array_input_annotated)
+            if exists(self.unindex):
+                unindexed_tokens = self.unindex.get_tokens(atom_array_input_annotated)
+
         # Subset to only fixed coordindate atoms
         unindexed_tokens = {
             k: tok[tok.is_motif_atom_with_fixed_coord.astype(bool) | C_INTCRD.mask(tok)] for k, tok in unindexed_tokens.items()
