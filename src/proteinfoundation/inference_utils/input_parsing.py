@@ -59,9 +59,6 @@ from proteinfoundation.inference_utils.inference_utils import (
     set_default_conditioning_annotations,
     set_indices,
 )
-from proteinfoundation.inference_utils.legacy_input_parsing import (
-    create_atom_array_from_design_specification_legacy,
-)
 from proteinfoundation.inference_utils.parsing import InputSelection
 from proteinfoundation.inference_utils.symmetry.symmetry_utils import (
     SymmetryConfig,
@@ -514,22 +511,6 @@ def accumulate_components(
     if atom_array_accum.bonds is None:
         atom_array_accum.bonds = BondList(atom_array_accum.array_length())
     return atom_array_accum
-
-
-class LegacySpecification(BaseModel):
-    """Legacy specification for compatibility with legacy input parsing."""
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        extra="allow",
-    )
-
-    def build(self):
-        """Build atom array using legacy input parsing."""
-        atom_array = create_atom_array_from_design_specification_legacy(
-            design_specification=self.model_dump(),
-        )
-        return atom_array, self.model_dump()
 
 
 # ========================================================================
@@ -1201,13 +1182,10 @@ class InputSpecification(BaseModel):
     @classmethod
     def safe_init(cls, **spec_kwargs):
         if spec_kwargs.get("dialect", 2) < 2:
-            warn = (
-                "Using dialect==1, which is deprecated and will be removed in future releases. "
-                "Please update your input specification to dialect=2 and use the new schema if possible"
+            raise ValueError(
+                "Dialect 1 has been deprecated and is no longer supported. Please switch to using dialect 2. " 
+                "See detailed comparison of the two syntaxes in the RFD3 documentation."
             )
-            warnings.warn(warn, DeprecationWarning)
-            logger.warning(warn)
-            return LegacySpecification(**spec_kwargs)
         else:
             return cls(**spec_kwargs)
 
@@ -1221,14 +1199,10 @@ def create_atom_array_from_design_specification(
     **spec_kwargs,
 ) -> tuple[AtomArray, dict]:
     if int(spec_kwargs.get("dialect", 2)) < 2:
-        warn = (
-            "Using dialect==1, which is deprecated and will be removed in future releases. "
-            "Please update your input specification to dialect=2 and use the new schema if possible"
+        raise ValueError(
+            "Dialect 1 has been deprecated and is no longer supported. Please switch to using dialect 2. " 
+            "See detailed comparison of the two syntaxes in the RFD3 documentation."
         )
-        warnings.warn(warn, DeprecationWarning, stacklevel=2)
-        logger.warning(warn)
-        atom_array = create_atom_array_from_design_specification_legacy(**spec_kwargs)
-        return atom_array, {}
 
     # Create input specfication and build
     spec = InputSpecification(**spec_kwargs)
