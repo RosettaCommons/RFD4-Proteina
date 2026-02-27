@@ -12,7 +12,7 @@ from proteinfoundation.conditions import (
     C_HB, C_HOT, C_IDXGRP, C_CRDGRP, C_INTCRD, C_RAS, C_SEC, C_CATH,
     HBondEnum, RasaEnum, SSEnum,
 )
-from proteinfoundation.datapipes.schema.base import DataSample
+from foundry.data.schema.base import DataSample
 
 
 # Specs: name -> (dtype, default_value, dim_string)
