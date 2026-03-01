@@ -4,7 +4,7 @@ import os
 import shutil
 
 import hydra
-from modelhub.utils.ddp import RankedLogger
+from foundry.utils.ddp import RankedLogger
 from omegaconf import OmegaConf
 
 logger = RankedLogger(__name__, rank_zero_only=True)
