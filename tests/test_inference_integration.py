@@ -595,7 +595,7 @@ class TestEndToEndInference:
             ("mapped_to_coordinate_conditioned_region_token_lvl", False),
             ("coords_with_insertion", None), # The defaults will just be generated coords
             ("src_coordinate_conditioned_region", "."),
-            ("src_component", "5"),
+            ("src_component", "5P"),
         ] 
         generated_path = str(cif_files[0])
         generated_aa = load_atom_array_with_conditions_from_cif(
