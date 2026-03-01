@@ -17,8 +17,8 @@ from atomworks.ml.utils.token import (
 )
 from biotite import structure as struc
 from biotite.structure import AtomArray, BondList, get_residue_starts, spread_residue_wise, apply_residue_wise
-from modelhub.common import exists
-from modelhub.utils.ddp import RankedLogger
+from foundry.common import exists
+from foundry.utils.ddp import RankedLogger
 from pydantic import (
     BaseModel,
     ConfigDict,

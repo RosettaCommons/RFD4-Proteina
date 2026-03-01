@@ -4,7 +4,7 @@ import numpy as np
 from atomworks.ml.conditions import C_CRD, C_DIS
 from atomworks.ml.conditions.annotator import ensure_annotations
 from biotite.structure import AtomArray
-from modelhub.utils.ddp import RankedLogger
+from foundry.utils.ddp import RankedLogger
 
 from proteinfoundation.conditions import C_INTCRD
 
