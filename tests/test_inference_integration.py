@@ -363,10 +363,13 @@ class TestDatasetConstruction:
 # TODO: This default path should be updated to a checkpoint trained on latest main!
 _CKPT_PATH = os.environ.get(
     "CKPT_PATH",
-    "/path/to/shared/storage",
+    "/path/to/user-data/mkazman/PFM_runs/train_latents/motif_scaffold_afdb_coreweave/store/motif_scaffold_afdb_coreweave/checkpoints",
 )
 _CKPT_NAME = os.environ.get("CKPT_NAME", "last.ckpt")
-_AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH", None)
+_AE_CKPT_PATH = os.environ.get(
+    "AE_CKPT_PATH",
+    "/path/to/data"
+)
 
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures.
