@@ -32,6 +32,8 @@ from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
 
+from foundry.testing import gpu  # noqa: F401
+
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.generate import (
     get_contig_or_design_problem_dataset,
@@ -380,12 +382,8 @@ class TestEndToEndInference:
         export CKPT_NAME=model.ckpt
         export AE_CKPT_PATH=/path/to/ae_checkpoint.ckpt
     """
-    @pytest.fixture(autouse=True, scope="class")
-    def require_gpu(self):
-        if not torch.cuda.is_available():
-            pytest.skip("GPU not available")
 
-    def test_generation_with_replicates_and_prefix_and_refolding(self, tmp_output_dir):
+    def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
         prefix = "testprefix"
         num_replicates = 2
@@ -429,7 +427,7 @@ class TestEndToEndInference:
         for eid in df["example_id"]:
             assert prefix in eid
 
-    def test_generation_with_subsetting(self, tmp_output_dir):
+    def test_generation_with_subsetting(self, gpu, tmp_output_dir):
         """Verify subset_to_examples and json_keys_subset (RFD3 alias)."""
         input_data = {
             "example_a": {"length": _TEST_LENGTH, "dialect": 2},
@@ -480,7 +478,7 @@ class TestEndToEndInference:
         assert len(df_b) == 1
         assert "example_b" in df_b["example_id"].iloc[0]
 
-    def test_skip_existing_prevents_regeneration(self, tmp_output_dir):
+    def test_skip_existing_prevents_regeneration(self, gpu, tmp_output_dir):
         """Verify skip_existing=True skips examples whose outputs already exist."""
         input_path = _write_input_json(
             tmp_output_dir,
@@ -520,7 +518,7 @@ class TestEndToEndInference:
         for name in mtimes_before:
             assert mtimes_before[name] == mtimes_after[name], f"File {name} was regenerated despite skip_existing=True"
 
-    def test_seeded_generation_is_deterministic(self, tmp_output_dir):
+    def test_seeded_generation_is_deterministic(self, gpu, tmp_output_dir):
         """Verify that two runs with the same seed produce identical outputs."""
         input_path = _write_input_json(
             tmp_output_dir,
@@ -563,7 +561,7 @@ class TestEndToEndInference:
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
 
-    def test_output_cif_annotations(self, tmp_output_dir):
+    def test_output_cif_annotations(self, gpu, tmp_output_dir):
         """Verify that generated CIF files contain expected annotations."""
         input_data = {
             "example_a": {
@@ -621,7 +619,7 @@ class TestEndToEndInference:
         assert len(df) == 1
         assert "example_a" in df["example_id"].iloc[0]
 
-    def test_partial_diffusion(self, tmp_output_dir):
+    def test_partial_diffusion(self, gpu, tmp_output_dir):
         """Partial diffusion: fixed atoms are preserved, non-fixed atoms change.
 
         Runs partial diffusion on a stretch of 1PRW chain A, fixing a subset of
