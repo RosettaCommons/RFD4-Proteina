@@ -639,8 +639,8 @@ class TestEndToEndInference:
                 "contig": "B19-22",
                 "select_fixed_atoms": "B19-22",
                 "select_unfixed_sequence": "B23-26",
-                "partial_t_backbone": 0.5,
-                "partial_t_latent": 0.5,
+                "partial_t_backbone": 0.4,
+                "partial_t_latent": 0.4,
                 "dialect": 2,
             }
         }
