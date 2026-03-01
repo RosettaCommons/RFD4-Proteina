@@ -731,7 +731,8 @@ class Proteina(L.LightningModule):
 
                 if metrics_output is not None:
                     # Add dataset_name and task as metadata
-                    metrics_output["dataset_name"] = dataset_name
+                    metrics_output["dataset_name"] = actual_dataset_name
+                    metrics_output["_output_base"] = str(output_base)
                     metrics_output["task"] = "_".join(example_id_base.split("_")[:-1])
 
                     # Add insertion RMSD metrics to output for epoch-end aggregation
@@ -806,17 +807,11 @@ class Proteina(L.LightningModule):
 
         per_example_df["designed_structure_path"] = per_example_df.apply(
             lambda row: str(
-                (
-                    Path(self.store_dir)
-                    / "val_samples"
-                    / row["dataset_name"]
-                    / f"step_{self.global_step}"
-                    / "generated"
-                    / f"{row['example_id']}_generated.cif"
-                ).resolve()
+                (Path(row["_output_base"]) / "generated" / f"{row['example_id']}_generated.cif").resolve()
             ),
             axis=1,
         )
+        per_example_df.drop(columns=["_output_base"], inplace=True)
 
         # Reorder columns: example_id first, then dataset_name, then metrics
         cols = per_example_df.columns.tolist()
