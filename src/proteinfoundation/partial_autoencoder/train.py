@@ -9,7 +9,7 @@ import lightning as L
 import rootutils
 import torch
 import wandb
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
@@ -44,7 +44,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 RELATIVE_CONFIG_PATH = "../../configs"
 """Path to configs relative to this file."""
 
-load_dotenv(override=True)
+load_dotenv()
 
 
 class DelayedValidationCallback(Callback):

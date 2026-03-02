@@ -29,7 +29,7 @@ source "$SCRIPT_DIR/common.sh"
 CLUSTER=""
 COPY_CODE="true"
 FOLLOW_LOGS="false"
-NUM_SUBMISSIONS=5  # Submit multiple times with --dependency=singleton for auto-requeue
+NUM_SUBMISSIONS=1  # Submit multiple times with --dependency=singleton for auto-requeue
 EXTRA_ARGS=""
 
 while [[ $# -gt 0 ]]; do
@@ -142,16 +142,8 @@ if [ "$COPY_CODE" == "true" ]; then
 
     cp "$REPO_ROOT/.project-root" "$RUN_DIR/"
     mkdir -p "$RUN_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$RUN_DIR/.ipd/shebang/"
+    rsync -a "$REPO_ROOT/.ipd/".env.* "$RUN_DIR/.ipd/"
     mkdir -p "$RUN_DIR/.ipd/apptainer"
-
-    # DIGS: recreate container symlink with /mnt/net prefix for compute nodes
-    if [ "$CLUSTER_TYPE" = "digs" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
-        CONTAINER_TARGET="$(readlink -f "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
-        if [ -n "$CONTAINER_TARGET" ]; then
-            [[ "$CONTAINER_TARGET" == /net/* ]] && CONTAINER_TARGET="/mnt${CONTAINER_TARGET}"
-            ln -sf "$CONTAINER_TARGET" "$RUN_DIR/.ipd/apptainer/latent-dev.sif"
-        fi
-    fi
     CODE_DIR="$RUN_DIR"
 else
     print_header "Using Code In-Place"
@@ -197,24 +189,20 @@ export MKL_NUM_THREADS=1
 scontrol show job \$SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works - auto-requeue enabled' || echo '[slurm] WARNING: scontrol not working - auto-requeue disabled'
 EOF
 
-# Add DIGS-specific environment variables
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+# Apptainer clusters: pass cluster identity to exec_core.sh (via shebang) and
+# compute distributed training endpoints dynamically at job time.
+# Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    cat >> "$SBATCH_FILE" << EOF
 
-# DIGS-specific environment settings
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export NCCL_P2P_DISABLE=1
-export NCCL_DEBUG=INFO
+# Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
 
 # Distributed training coordination (unique port per job, master = first node)
-export MASTER_PORT=$((1024 + RANDOM % 64512))
-export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=\$((1024 + RANDOM % 64512))
+export MASTER_ADDR=\$(scontrol show hostnames "\$SLURM_JOB_NODELIST" | head -n 1)
 EOF
-fi
-
-# Add DATASET_SQUASH_MOUNTS if specified (for Apptainer squashfs bind mounts)
-if [ -n "$DATASET_SQUASH_MOUNTS" ]; then
-    echo "export DATASET_SQUASH_MOUNTS=\"$DATASET_SQUASH_MOUNTS\"" >> "$SBATCH_FILE"
 fi
 
 # Add cuEquivariance control (DISABLE_CUEQUIVARIANCE=true to disable Triton-based attention)
@@ -226,8 +214,8 @@ fi
 # Add container execution command
 SCRIPT_TRAIN="$CODE_DIR/projects/proteinfoundation/proteinfoundation/train.py"
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    # DIGS: Use shebang in train.py to handle container execution
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    # Apptainer: shebang in train.py handles container execution via exec_core.sh
     cat >> "$SBATCH_FILE" << EOF
 
 # Run training (shebang handles apptainer container)

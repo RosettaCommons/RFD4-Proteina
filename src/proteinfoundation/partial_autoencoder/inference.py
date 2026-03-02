@@ -14,7 +14,7 @@ import lightning as L
 import numpy as np
 import pandas as pd
 import torch
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
