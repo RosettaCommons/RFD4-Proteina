@@ -7,7 +7,7 @@ These invariants are properties that must hold for ALL pipeline outputs across:
 """
 
 import rootutils
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 
 # Setup the project root
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

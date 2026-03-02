@@ -9,7 +9,7 @@ import lightning as L
 import rootutils
 import torch
 import wandb
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
@@ -45,7 +45,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 RELATIVE_CONFIG_PATH = "../configs/experiment_config"
 """Path to experiment configs relative to this file."""
 
-load_dotenv(override=True)
+load_dotenv()
 
 
 class DelayedValidationCallback(Callback):
@@ -315,7 +315,7 @@ def main(cfg_exp: DictConfig) -> None:
         callbacks.append(
             DelayedValidationCallback(
                 start_epoch=val_start_epoch,
-                limit_val_batches=cfg_exp.opt.get("limit_val_batches", None),
+                limit_val_batches=cfg_exp.opt.get("limit_val_batches", 1.0),
             )
         )
 

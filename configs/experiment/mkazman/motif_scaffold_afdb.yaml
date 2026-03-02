@@ -22,7 +22,7 @@ defaults:
 
   - _self_
 
-run_name_: motif_scaffold_afdb_fast
+run_name_: motif_scaffold_afdb_coreweave_continue
 
 # Dataset mixing probabilities
 datasets:
@@ -42,8 +42,16 @@ hardware:
   nnodes_: 6
   ncpus_per_task_train_: 16
 
+dataloader:
+  batch_size: 24
+  num_workers: 16
+
+  val:
+    num_workers: 4
+
 opt:
   accumulate_grad_batches: 1
+  val_start_epoch: 0
 
 # Pre-training checkpoint to start from (optional)
-pretrain_ckpt_path:
+pretrain_ckpt_path: /path/to/home

@@ -28,7 +28,7 @@ import hydra
 import pandas as pd
 import rootutils
 from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.logging import print_config_tree
