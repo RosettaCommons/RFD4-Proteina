@@ -7,7 +7,7 @@ insert_unindexed_regions: False  # Whether to insert unindexed regions back into
 # False: targets are copied from input at every diffusion timestep (like la proteina public repo)
 co_generate_targets: false
 
-val_set_name_override: val_dataset # Used for labeling output metrics if computed
+val_set_name_override: null  # val_dataset # Used for labeling output metrics if computed
 
 dataset:
   transform:

@@ -1,0 +1,36 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_ame_afdb_mgnify_omol_partial
+  - _self_
+
+run_name_: motif_scaffold_ame_afdb_omol_partial_coreweave
+
+datasets:
+  train:
+    mgnify_dec_2025:
+      probability: 0.0
+    afdb_monomer:
+      probability: 0.8
+    omol:
+      probability: 0.2
+
+log:
+  tags: ["motif-scaffolding", "ame", "omol", "pretrain", "baseline", "afdb-monomer", "mgnify"]
+
+opt:
+  num_sanity_val_steps: 0
+
+# dataloaders:
+  # num_workers: 0
+  # prefetch_factor: null
+  # multiprocessing_context: null
+  # train:
+  #   dataloader_params:
+  #     persistent_workers: False
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 3
+  ncpus_per_task_train_: 16

@@ -311,6 +311,10 @@ class BaseInferenceEngine:
         """Load checkpoint weights into the trainer model and set to eval mode."""
         trainer = trainer or self.trainer
         ranked_logger.info("Loading model weights from checkpoint...")
+
+        if trainer.state.get("model") is None:
+            trainer.construct_model()
+
         trainer.load_checkpoint(checkpoint=checkpoint)
 
         # Ensure optimizer isn't loaded

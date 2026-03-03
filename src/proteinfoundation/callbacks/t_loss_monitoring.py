@@ -315,13 +315,9 @@ class TLossMonitoringCallback(L.Callback):
         t = outputs["t"][self.data_mode].cpu().numpy()  # (batch,)
         loss = outputs["losses_per_sample"][self.data_mode].cpu().numpy()  # (batch,)
 
-        # Get task names from batch
+        # Get task names from batch.
         task_dicts = batch.get("task_batch", [])
-        # Handle both dict format ({"name": ...}) and string format
-        task_names = [
-            str(td["name"]) if isinstance(td, dict) else (str(td) if td is not None else "unknown")
-            for td in task_dicts
-        ]
+        task_names = [str(n) if n is not None else "unknown" for n in task_dicts.get("name", [])]
 
         # Ensure we have matching lengths
         if len(task_names) != len(t):

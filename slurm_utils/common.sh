@@ -44,13 +44,7 @@ load_user_info() {
     
     echo "Loading cluster config: $user_info_file"
     source "$user_info_file"
-    
-    # Validate required variables
-    if [ -z "$CLUSTER_TYPE" ]; then
-        echo "Error: CLUSTER_TYPE not set in $user_info_file"
-        return 1
-    fi
-    
+
     return 0
 }
 
@@ -76,7 +70,7 @@ setup_env_vars() {
     export MKL_NUM_THREADS=${MKL_NUM_THREADS:-1}
     
     # DIGS-specific settings
-    if [ "$CLUSTER_TYPE" == "digs" ]; then
+    if [ "$CLUSTER" == "digs" ]; then
         # CUDA memory allocation
         export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
         
@@ -107,31 +101,19 @@ resolve_hydra_config() {
 # Get the srun command with appropriate container settings
 # Usage: SRUN_CMD=$(get_srun_cmd)
 get_srun_cmd() {
-    if [ -z "$CLUSTER_TYPE" ]; then
-        echo "Error: CLUSTER_TYPE not set. Call load_user_info first." >&2
+    if [ -z "$CLUSTER" ]; then
+        echo "Error: CLUSTER not set. Call load_user_info first." >&2
         return 1
     fi
     
-    case "$CLUSTER_TYPE" in
-        digs)
-            # DIGS uses Apptainer - wrap srun with apptainer exec
-            if [ -z "$CONTAINER_IMAGE" ]; then
-                echo "Error: CONTAINER_IMAGE not set for DIGS cluster" >&2
-                return 1
-            fi
-            echo "apptainer exec --nv $CONTAINER_IMAGE"
-            ;;
+    case "$CLUSTER" in 
         ord|gb200)
             # OCI/GB200 use Docker squash images via srun --container-image
             if [ -z "$CONTAINER_IMAGE" ]; then
-                echo "Error: CONTAINER_IMAGE not set for $CLUSTER_TYPE cluster" >&2
+                echo "Error: CONTAINER_IMAGE not set for $CLUSTER cluster" >&2
                 return 1
             fi
             echo "--container-image=$CONTAINER_IMAGE"
-            ;;
-        *)
-            echo "Error: Unknown CLUSTER_TYPE: $CLUSTER_TYPE" >&2
-            return 1
             ;;
     esac
 }
@@ -296,7 +278,7 @@ print_header() {
 # Print cluster configuration summary
 print_cluster_config() {
     print_header "Cluster Configuration"
-    echo "  Cluster Type:    $CLUSTER_TYPE"
+    echo "  Cluster:         $CLUSTER"
     echo "  Partition:       ${PARTITION:-not set}"
     echo "  GPUs per node:   ${GPUS_PER_NODE:-not set}"
     echo "  Runtime:         ${RUNTIME:-not set}"

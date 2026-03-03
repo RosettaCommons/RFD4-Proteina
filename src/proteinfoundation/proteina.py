@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.distributed as dist
+import wandb
 
 # Lazy import Transformer Engine for FP8 support
 TE_AVAILABLE = None
@@ -867,18 +868,13 @@ class Proteina(L.LightningModule):
         logger.info(f"Saved aggregate metrics to {agg_path}")
 
         # 5. Log to WandB: val_generation_{dataset}/{metric}
-        # Note: sync_dist=False is intentional - we handle aggregation via gather_object
-        for _, row in agg_df.iterrows():
-            self.log(
-                f"val_generation_{row['dataset']}/{row['metric']}",
-                row["value"],
-                on_step=False,
-                on_epoch=True,
-                prog_bar=False,
-                logger=True,
-                sync_dist=False,
-                rank_zero_only=False,
-                add_dataloader_idx=False,
+        if wandb.run is not None:
+            wandb.log(
+                {
+                    f"val_generation_{row['dataset']}/{row['metric']}": row["value"]
+                    for _, row in agg_df.iterrows()
+                },
+                step=self.global_step,
             )
 
     def configure_inference(

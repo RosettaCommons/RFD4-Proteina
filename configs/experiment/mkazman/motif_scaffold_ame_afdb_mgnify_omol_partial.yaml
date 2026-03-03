@@ -8,10 +8,10 @@ defaults:
   - /datasets/train/distill/omol@datasets.train.omol
 
   # Add omol validation set
-  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+  # - /datasets/val/structure_prediction/ccd@datasets.val.ccd
   - _self_
 
-run_name_: motif_scaffold_ame_afdb_mgnify_omol_partial_fast
+run_name_: motif_scaffold_ame_afdb_mgnify_omol_partial_coreweave
 
 datasets:
   train:
@@ -51,8 +51,14 @@ datasets:
 log:
   tags: ["motif-scaffolding", "ame", "omol", "pretrain", "baseline", "afdb-monomer", "mgnify"]
 
+opt:
+  val_start_epoch: 0
+  val_every_n_epochs: 5
+
 hardware:
   accelerator: gpu
   ngpus_per_node_: 8
-  nnodes_: 6
+  nnodes_: 3
   ncpus_per_task_train_: 16
+
+pretrain_ckpt_path: null
