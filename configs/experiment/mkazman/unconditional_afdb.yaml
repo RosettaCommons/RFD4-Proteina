@@ -12,7 +12,7 @@ defaults:
 
   - _self_
 
-run_name_: unconditional_afdb_fast
+run_name_: unconditional_afdb_coreweave
 
 # Dataset mixing probabilities
 datasets:

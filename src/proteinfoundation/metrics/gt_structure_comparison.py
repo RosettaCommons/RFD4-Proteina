@@ -532,7 +532,10 @@ class StructureComparisonMetric(Metric):
         # Optionally substitute ground truth coordinates
         updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array_stack).copy()
         if self.gt_coord_annotation_name != "coord":
-            updated_gt_coords = updated_gt_stack.get_annotation(self.gt_coord_annotation_name)
+            if self.gt_coord_annotation_name in updated_gt_stack.get_per_stack_annotation_categories():
+                updated_gt_coords = updated_gt_stack.get_per_stack_annotation(self.gt_coord_annotation_name)
+            else:
+                updated_gt_coords = updated_gt_stack.get_annotation(self.gt_coord_annotation_name)
             updated_gt_stack.coord = updated_gt_coords if updated_gt_coords.ndim == 3 else updated_gt_coords[None]
 
         return structure_comparison_metric(

@@ -48,13 +48,9 @@ class DesignTaskStatsCallback(L.Callback):
         batch_idx: int,
     ) -> None:
         """Track design task from batch and log statistics."""
-        # Extract task names from batch (filter out None values)
-        # Handle both dict format ({"name": ...}) and string format
+
         task_dicts = batch.get("task_batch", [])
-        task_names = [
-            str(td["name"]) if isinstance(td, dict) else str(td)
-            for td in task_dicts if td is not None
-        ]
+        task_names = [str(n) for n in task_dicts.get("name", []) if n is not None]
 
         for task_name in task_names:
             self.task_counts[task_name] += 1

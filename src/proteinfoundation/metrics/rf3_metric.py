@@ -152,6 +152,7 @@ class RF3Metric(Metric):
                 metrics_cfg=None,
                 num_nodes=1,
                 devices_per_node=[current_device],
+                verbose=True,  # Don't silence warnings
             )
         return RF3Metric._engine_cache[self.ckpt_path]
 
@@ -311,6 +312,17 @@ class RF3Metric(Metric):
         # Set the MetricManager to correspond to the current Metric
         self.engine._metrics_cfg = self.metric_manager
 
+        # Set dataset overrides for this RF3Metric instance, then rebuild the Transform pipeline
+        for override in ["diffusion_batch_size", "n_recycles"]:
+            self.engine.transform_overrides[override] = getattr(self, override)
+
+        self.engine._construct_pipeline(self.engine.cfg)
+
+        # Update the number of inference timesteps (only needed in shadow model, done in both for future-proofing)
+        self.engine.trainer.state["model"].model.inference_sampler.num_timesteps = self.num_steps
+        self.engine.trainer.state["model"].shadow.inference_sampler.num_timesteps = self.num_steps
+
+        # Try to fold inputs and collect Metrics
         try:
             atom_arrays = normalize_to_atom_array_list(input_atom_array)
 
@@ -485,16 +497,13 @@ class RF3Metric(Metric):
                 metrics = {k: v for k, v in metrics.items() if not k.endswith("aligned_predicted_structure")}
 
                 if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
-                    predicted_structures = aligned_aa
+                    predicted_structure = aligned_aa[0]
                 else:
-                    predicted_structures = result.atom_array
+                    predicted_structure = result.atom_array
 
-                if predicted_structures:
-                    predicted = (
-                        predicted_structures[0] if hasattr(predicted_structures, "__len__") else predicted_structures
-                    )
+                if predicted_structure:
                     save_path = out_dir / "rf3_refolding"
-                    self._save_structures(input_atom_array, predicted, save_path, rf3_example_id)
+                    self._save_structures(input_atom_array, predicted_structure, save_path, rf3_example_id)
 
             return metrics
 

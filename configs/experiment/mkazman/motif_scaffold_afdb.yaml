@@ -22,7 +22,7 @@ defaults:
 
   - _self_
 
-run_name_: motif_scaffold_afdb_coreweave_continue
+run_name_: motif_scaffold_afdb_coreweave_continue_fixed_3
 
 # Dataset mixing probabilities
 datasets:
@@ -34,7 +34,7 @@ datasets:
           design_tasks: ${_motif_scaffold_design_tasks}
     
 log:
-  tags: ["motif-scaffolding", "pretrain", "baseline", "afdb-monomer"]
+  tags: ["motif-scaffolding", "pretrain", "baseline", "afdb-monomer", "debug"]
 
 hardware:
   accelerator: gpu
@@ -42,16 +42,20 @@ hardware:
   nnodes_: 6
   ncpus_per_task_train_: 16
 
-dataloader:
+dataloaders:
   batch_size: 24
   num_workers: 16
 
   val:
-    num_workers: 4
+    dataloader_params:
+      num_workers: 4
 
 opt:
   accumulate_grad_batches: 1
   val_start_epoch: 0
+  val_every_n_epochs: 1
+
 
 # Pre-training checkpoint to start from (optional)
 pretrain_ckpt_path: /path/to/home
+# pretrain_ckpt_path: /path/to/home

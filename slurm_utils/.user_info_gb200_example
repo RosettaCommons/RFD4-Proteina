@@ -9,8 +9,8 @@
 # Requires ACCOUNT for SLURM submissions
 # =============================================================================
 
-# Cluster identification
-CLUSTER_TYPE="gb200"
+# Cluster identity
+CLUSTER=gb200
 SKIP_ACCOUNT="false"
 
 # Remote cluster login node

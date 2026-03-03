@@ -8,8 +8,8 @@
 # Requires ACCOUNT for SLURM submissions
 # =============================================================================
 
-# Cluster identification
-CLUSTER_TYPE="ord"
+# Cluster identity
+CLUSTER=ord
 SKIP_ACCOUNT="false"
 
 # Remote cluster login node

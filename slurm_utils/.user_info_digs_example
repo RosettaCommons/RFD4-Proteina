@@ -34,8 +34,6 @@ CONTAINER_TYPE=apptainer
 # Cluster-specific settings
 # =============================================================================
 
-# Cluster identification for launch script logic
-CLUSTER_TYPE="digs"
 SKIP_ACCOUNT="true"
 
 # Remote cluster login node
