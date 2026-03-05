@@ -2,68 +2,51 @@
 # =============================================================================
 # launch_sweep.sh - Generate sweep configs and submit SLURM jobs for each
 # =============================================================================
-# End-to-end script that:
-#   1. Runs sweep.py to generate a set of inference configs
-#   2. For each generated config, submits a job via launch_infer.sh
-#
-# Each sweep config gets its own run directory and (optionally) its own
-# concatenation job, so results are aggregated per-config, not across configs.
+# Runs sweep.py to generate a set of Hydra inference configs, then calls
+# launch_infer.sh once per config. Each config gets its own run directory
+# and concatenation job, so results are aggregated per-config.
 #
 # Usage:
-#   ./launch_sweep.sh <cluster> --sweep-config <path> [options] [extra_args...]
+#   ./launch_sweep.sh <cluster> --sweep-config <path> [options] [hydra_overrides...]
+#
+# Required:
+#   <cluster>                    Cluster name (e.g. digs, ord, gb200)
+#   --sweep-config <path>        Path to YAML sweep config file
 #
 # Options:
-#   --sweep-config <path>        Path to YAML sweep config file (required)
-#   --mode <infer|val>           Submission mode: infer (default) or val
-#                                  (val sets inference_experiment=inference_on_val_set
-#                                   and offline_validation=true automatically)
 #   --gpus-per-job N             GPUs per SLURM job (default: 1)
-#   --njobs N                    Parallel jobs per config (default: 1)
-#   --ckpt-path <path>           Checkpoint directory. Applied to every config.
-#                                  Can also be embedded in the sweep config itself.
-#   --concatenate                Submit a dependent concatenation job per config.
-#                                  Default: on for val mode, off for infer mode.
-#   --no-concatenate             Disable concatenation (overrides the mode default).
-#   --concatenate-foldseek       Enable Foldseek structural clustering in concatenation.
-#                                  Implies --concatenate.
-#   --base-out-dir <path>        Base directory for model outputs; each config writes
-#                                  to <path>/<config_name> (prevents overwriting).
-#   --sweep-config-output-dir <p>  Override output directory for generated configs.
-#   --dry-run                    Generate configs only; do not submit jobs.
-#   --no-copy                    Don't copy code to the run directory.
-#   --overwrite-rundir           Allow overwriting existing run directories.
-#   --delay <seconds>            Delay between job submissions (default: 2).
+#   --njobs N                    Parallel jobs per config (default: reads
+#                                gen_njobs from each per-config Hydra config)
+#   --no-concatenate             Skip the per-config concatenation job
+#   --foldseek                   Enable Foldseek clustering in concatenation
+#   --base-out-dir <path>        Base directory for model outputs; each config
+#                                writes to <path>/<config_name>
+#   --sweep-config-output-dir <p>  Override output dir for generated configs
+#   --dry-run                    Generate configs only; do not submit jobs
+#   --no-copy                    Don't copy code to the run directory
+#   --overwrite-rundir           Allow overwriting existing run directories
+#   --delay <seconds>            Delay between job submissions (default: 2)
 #
-# Extra hydra overrides (extra_args):
-#   Any remaining arguments are passed as Hydra overrides to every config.
-#   Examples:
-#     ckpt_path=/path/to/ckpts   (alternative to --ckpt-path for Hydra-style passing)
+# Hydra overrides:
+#   Any remaining arguments are forwarded to every launch_infer.sh call.
+#   This is the idiomatic way to share settings across all configs in a sweep:
+#     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=5
+#     inference_experiment=inference_on_val_set offline_validation=true
 #
 # Examples:
-#   # PPI benchmark sweep - generates N configs, submits each as a SLURM job
+#   # Benchmark sweep
 #   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
 #       ckpt_path=/path/to/checkpoints
 #
-#   # Dry run: just generate configs, don't submit
-#   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run
-#
-#   # Val sweep: 8 parallel jobs per config, Foldseek clustering
+#   # Validation sweep with 8 parallel jobs and Foldseek per config
 #   ./launch_sweep.sh ord --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
-#       --mode val --ckpt-path /path/to/checkpoints \
-#       --njobs 8 --gpus-per-job 4 --concatenate-foldseek
+#       --njobs 8 --foldseek \
+#       inference_experiment=inference_on_val_set offline_validation=true
 #
-#   # Inference sweep with per-config result concatenation
+#   # Dry run: show configs without submitting
 #   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
-#       --concatenate ckpt_path=/path/to/checkpoints
-#
-# Notes:
-#   - launch_infer.sh is called once per generated config.
-#   - For val mode, the sweep config's base_config_overrides should include
-#     +datasets/val@generation=<name> to specify the validation dataset.
-#   - Concatenation runs as a separate SLURM job per config (non-blocking).
-#   - Results for each config land in separate directories; there is no
-#     cross-config aggregation.
+#       --dry-run
 # =============================================================================
 
 set -e
@@ -75,11 +58,9 @@ source "$SCRIPT_DIR/common.sh"
 # Parse arguments
 CLUSTER=""
 SWEEP_CONFIG=""
-MODE="infer"
 GPUS_PER_JOB=1
 NJOBS=""    # empty = each per-config launch_infer.sh reads gen_njobs from the config
-CKPT_PATH=""
-DO_CONCATENATE=""      # empty = use mode default in launch_infer.sh
+DO_CONCATENATE="true"
 CONCATENATE_FOLDSEEK="false"
 DRY_RUN="false"
 NO_COPY="false"
@@ -95,10 +76,6 @@ while [[ $# -gt 0 ]]; do
             SWEEP_CONFIG="$2"
             shift 2
             ;;
-        --mode)
-            MODE="$2"
-            shift 2
-            ;;
         --gpus-per-job=*)
             GPUS_PER_JOB="${1#*=}"
             shift
@@ -111,20 +88,11 @@ while [[ $# -gt 0 ]]; do
             NJOBS="$2"
             shift 2
             ;;
-        --ckpt-path)
-            CKPT_PATH="$2"
-            shift 2
-            ;;
-        --concatenate)
-            DO_CONCATENATE="true"
-            shift
-            ;;
         --no-concatenate)
             DO_CONCATENATE="false"
             shift
             ;;
-        --concatenate-foldseek)
-            DO_CONCATENATE="true"
+        --foldseek)
             CONCATENATE_FOLDSEEK="true"
             shift
             ;;
@@ -152,10 +120,6 @@ while [[ $# -gt 0 ]]; do
             DELAY="$2"
             shift 2
             ;;
-        -*)
-            EXTRA_ARGS="$EXTRA_ARGS $1"
-            shift
-            ;;
         *)
             if [ -z "$CLUSTER" ]; then
                 CLUSTER="$1"
@@ -168,20 +132,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
-    echo "Usage: $0 <cluster> --sweep-config <path> [options] [extra_args...]"
+    echo "Usage: $0 <cluster> --sweep-config <path> [options] [hydra_overrides...]"
     echo ""
     echo "Required:"
     echo "  <cluster>              Cluster name: digs, ord, gb200"
     echo "  --sweep-config <path>  Path to YAML sweep config file"
     echo ""
     echo "Options:"
-    echo "  --mode <infer|val>     Submission mode (default: infer)"
     echo "  --gpus-per-job N       GPUs per SLURM job (default: 1)"
     echo "  --njobs N              Parallel jobs per config (default: reads gen_njobs from each config)"
-    echo "  --ckpt-path <path>     Checkpoint dir (applied to every config)"
-    echo "  --concatenate          Submit per-config concatenation job"
-    echo "  --no-concatenate       Disable concatenation"
-    echo "  --concatenate-foldseek Enable Foldseek in concatenation"
+    echo "  --no-concatenate       Skip per-config concatenation job"
+    echo "  --foldseek             Enable Foldseek in concatenation"
     echo "  --dry-run              Generate configs only, don't submit"
     echo "  --no-copy              Don't copy code to run directory"
     echo "  --base-out-dir <path>  Base dir for model outputs"
@@ -219,7 +180,6 @@ setup_env_vars
 # =============================================================================
 print_header "Generating Sweep Configs"
 echo "  Sweep config: $SWEEP_CONFIG"
-echo "  Mode: $MODE"
 
 SWEEP_SCRIPT="$REPO_ROOT/projects/proteinfoundation/script_utils/sweep.py"
 
@@ -270,9 +230,10 @@ echo "Generated $NUM_CONFIGS config(s) in: $CONFIG_DIR"
 # Step 2: Submit each config as a SLURM job via launch_infer.sh
 # =============================================================================
 print_header "Submitting Jobs"
-echo "  Mode: $MODE"
 echo "  GPUs per job: $GPUS_PER_JOB"
 echo "  Jobs per config: ${NJOBS:-from config gen_njobs}"
+echo "  Concatenate: $DO_CONCATENATE"
+[ "$CONCATENATE_FOLDSEEK" == "true" ] && echo "  Foldseek: true"
 echo "  Configs to submit: $NUM_CONFIGS"
 echo "  Delay between submissions: ${DELAY}s"
 echo ""
@@ -301,32 +262,22 @@ print(os.path.splitext(os.path.relpath(cf, hd))[0])
     # Build common flags for launch_infer.sh
     # --njobs is only passed if explicitly set; otherwise launch_infer.sh reads
     # gen_njobs from the per-config Hydra config (allowing per-config control).
-    COMMON_FLAGS="--mode $MODE --gpus-per-job $GPUS_PER_JOB"
+    COMMON_FLAGS="--gpus-per-job $GPUS_PER_JOB"
     if [ -n "$NJOBS" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --njobs $NJOBS"
     fi
-
     if [ "$NO_COPY" == "true" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --no-copy"
     fi
     if [ "$OVERWRITE_RUNDIR" == "true" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --overwrite-rundir"
     fi
-    if [ -n "$CKPT_PATH" ]; then
-        COMMON_FLAGS="$COMMON_FLAGS --ckpt-path $CKPT_PATH"
-    fi
-
-    # Concatenation flags (if explicitly set; otherwise launch_infer.sh uses mode defaults)
-    if [ "$DO_CONCATENATE" == "true" ]; then
-        if [ "$CONCATENATE_FOLDSEEK" == "true" ]; then
-            COMMON_FLAGS="$COMMON_FLAGS --concatenate-foldseek"
-        else
-            COMMON_FLAGS="$COMMON_FLAGS --concatenate"
-        fi
-    elif [ "$DO_CONCATENATE" == "false" ]; then
+    if [ "$DO_CONCATENATE" == "false" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --no-concatenate"
     fi
-    # If DO_CONCATENATE is empty, launch_infer.sh uses the mode default (on for val, off for infer)
+    if [ "$CONCATENATE_FOLDSEEK" == "true" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --foldseek"
+    fi
 
     "$SCRIPT_DIR/launch_infer.sh" "$CLUSTER" \
         $COMMON_FLAGS \
