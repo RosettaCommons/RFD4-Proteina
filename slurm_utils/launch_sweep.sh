@@ -142,6 +142,10 @@ if [ ! -f "$SWEEP_CONFIG" ]; then
     exit 1
 fi
 
+# Resolve to absolute paths before cd changes CWD
+SWEEP_CONFIG=$(realpath "$SWEEP_CONFIG")
+[ -n "$SWEEP_OUTPUT_DIR" ] && SWEEP_OUTPUT_DIR=$(realpath "$SWEEP_OUTPUT_DIR")
+
 # Load cluster configuration
 load_user_info "$CLUSTER" || exit 1
 
@@ -174,25 +178,25 @@ fi
 if [ "$DRY_RUN" == "true" ]; then
     echo ""
     echo "=== DRY RUN: showing what would be generated ==="
-    python "$SWEEP_SCRIPT" --sweep-config "$SWEEP_CONFIG" --dry-run
+    (cd "$REPO_ROOT/projects/proteinfoundation" && python "$SWEEP_SCRIPT" --sweep-config "$SWEEP_CONFIG" --dry-run)
     echo ""
     echo "To generate and submit, remove --dry-run"
     exit 0
 fi
 
-# Run the sweep generator
-eval $SWEEP_CMD
+# Run the sweep generator from proteinfoundation/ so output_dir resolves correctly
+(cd "$REPO_ROOT/projects/proteinfoundation" && eval $SWEEP_CMD)
 
 # Find generated configs
-# Read output_dir from sweep config
+# Read output_dir from sweep config; resolve to absolute path from proteinfoundation/
 if [ -n "$SWEEP_OUTPUT_DIR" ]; then
     CONFIG_DIR="$SWEEP_OUTPUT_DIR"
 else
-    CONFIG_DIR=$(python3 -c "
-import yaml
+    CONFIG_DIR=$(cd "$REPO_ROOT/projects/proteinfoundation" && python3 -c "
+import yaml, os
 with open('$SWEEP_CONFIG') as f:
     cfg = yaml.safe_load(f)
-print(cfg.get('output_dir', './configs/sweep_configs'))
+print(os.path.realpath(cfg.get('output_dir', './configs/sweep_configs')))
 ")
 fi
 
@@ -268,11 +272,20 @@ print(cfg.get('ckpt_name', ''))
             run_name_="$config_name" \
             $EXTRA_ARGS && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
     else
-        # Inference mode: submit via launch_infer.sh with the config as Hydra overrides
-        # We pass the generated config values as extra overrides
+        # Inference mode: load the generated config via --config-name so swept
+        # parameter values actually take effect. Configs live inside the Hydra
+        # config search path (projects/proteinfoundation/configs/), so the name
+        # is the path relative to that directory, without the .yaml extension.
+        config_hydra_name=$(python3 -c "
+import os
+cf = os.path.realpath('$config_file')
+hd = os.path.realpath('$REPO_ROOT/projects/proteinfoundation/configs')
+print(os.path.splitext(os.path.relpath(cf, hd))[0])
+")
         "$SCRIPT_DIR/launch_infer.sh" "$CLUSTER" \
             --gpus-per-job "$GPUS_PER_JOB" \
             $COMMON_FLAGS \
+            --config-name "$config_hydra_name" \
             run_name_="$config_name" \
             $EXTRA_ARGS && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
     fi

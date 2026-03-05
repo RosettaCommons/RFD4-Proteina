@@ -22,8 +22,10 @@ Shell usage:
 """
 
 import sys
+from pathlib import Path
 
 import hydra
+from hydra import initialize_config_dir
 from omegaconf import OmegaConf
 
 
@@ -44,12 +46,19 @@ def main() -> int:
             i += 1
 
     # Config path is relative to this script's location (slurm_utils/)
-    # Hydra requires a relative path string
-    config_path = "../configs"
+    script_dir = Path(__file__).parent
+    configs_root = (script_dir / "../configs").resolve()
+
+    if "/" in config_name:
+        config_subdir, config_base = config_name.rsplit("/", 1)
+        config_dir = str(configs_root / config_subdir)
+    else:
+        config_base = config_name
+        config_dir = str(configs_root)
 
     try:
-        with hydra.initialize(config_path=config_path, version_base=None):
-            cfg = hydra.compose(config_name=config_name, overrides=overrides)
+        with initialize_config_dir(config_dir=config_dir, version_base=None):
+            cfg = hydra.compose(config_name=config_base, overrides=overrides)
 
             # Selectively resolve only the keys we need
             # This avoids failing on unresolved interpolations in other parts of config
