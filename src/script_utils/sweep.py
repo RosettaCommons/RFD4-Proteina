@@ -146,7 +146,7 @@ def generate_sweep_configs(
             # Truncate long values
             if len(short_val) > 30:
                 short_val = short_val[:27] + "..."
-            name_parts.append(f"{short_key}={short_val}")
+            name_parts.append(f"{short_key}-{short_val}")
 
         if name_parts:
             suffix = "__".join(name_parts)
