@@ -77,6 +77,9 @@ def main() -> int:
                     cfg, "dataloaders.num_workers", throw_on_resolution_failure=False, default=8
                 )
 
+            # Parallel generation jobs (used by launch_infer.sh)
+            gen_njobs = OmegaConf.select(cfg, "gen_njobs", throw_on_resolution_failure=False, default=1)
+
             # Optional hardware overrides (only output if set)
             gpu_type = OmegaConf.select(cfg, "hardware.gpu_type_", throw_on_resolution_failure=False, default=None)
             slurm_constraint = OmegaConf.select(
@@ -95,6 +98,7 @@ def main() -> int:
     print(f"NGPUS_PER_NODE={ngpus_per_node}")
     print(f"NNODES={nnodes}")
     print(f"CPUS_PER_TASK={cpus_per_task}")
+    print(f"GEN_NJOBS={gen_njobs}")
 
     # Optional overrides (only output if explicitly set in config)
     if gpu_type is not None:
