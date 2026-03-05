@@ -383,14 +383,12 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
             "No metrics will be computed."
         )
 
-    is_offline_val = cfg.get("offline_validation", False)
     model.configure_inference(
         cfg.generation,
         nn_ag=nn_ag,
         store_dir=cfg.get("out_dir"),
         metrics_cfg=metrics,
-        offline_validation=is_offline_val,
-        is_inference=not is_offline_val,
+        is_inference=True,
         global_prefix=cfg.get("global_prefix"),
         job_id=cfg.get("job_id"),
     )

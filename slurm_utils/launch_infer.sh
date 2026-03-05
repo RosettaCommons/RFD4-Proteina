@@ -1,114 +1,59 @@
 #!/bin/bash
 # =============================================================================
-# launch_infer.sh - Unified cluster launch for inference and offline validation
+# launch_infer.sh - Cluster launch for inference and offline validation
 # =============================================================================
-# Consolidates inference and offline validation into a single script. Handles:
-#   - Pure inference/generation (--mode infer, the default)
-#   - Offline validation on a val dataset with metrics (--mode val)
-#   - Optional result concatenation via a dependent SLURM job (non-blocking)
-#   - Sweep-friendly: each config gets its own run directory and concat job
+# Submits generate.py as a SLURM job (optionally a job array for parallel
+# execution) and automatically queues a dependent concatenation job to merge
+# per-job CSV metrics into a single file once generation finishes.
 #
 # Usage:
-#   ./launch_infer.sh <cluster> [options] [extra_hydra_args...]
+#   ./launch_infer.sh <cluster> [options] [hydra_overrides...]
 #
 # Positional:
 #   <cluster>               Cluster name (e.g. digs, ord, gb200)
 #
-# Mode:
-#   --mode <infer|val>      Run mode:
-#                             infer (default) - pure inference/generation
-#                             val             - offline validation with metrics
-#                                              (automatically sets inference_experiment
-#                                               and offline_validation=true)
+# Options:
+#   --njobs N               Parallel generation jobs (default: reads gen_njobs
+#                           from Hydra config, fallback 1)
+#   --gpus-per-job N        GPUs per SLURM array task (default: 1)
+#   --config-name NAME      Hydra config name (default: inference). May be a
+#                           path relative to configs/, e.g.
+#                           sweep_configs/my_sweep/inf_000
+#   --no-concatenate        Skip the automatic post-generation concatenation job
+#   --foldseek              Enable Foldseek clustering during concatenation
+#   --no-copy               Use the current repo in-place (skip rsync)
+#   --overwrite-rundir      Allow overwriting an existing code directory
+#   --follow, -f            Follow logs after submission (Ctrl+C to exit)
 #
-# Parallelism:
-#   --njobs N               Number of parallel generation jobs. Each job runs on
-#                           its own GPU and processes a slice of the dataset.
-#                           Default: reads gen_njobs from the Hydra config, or 1.
-#   --gpus-per-job N        GPUs per SLURM array task (default: 1). Each GPU runs
-#                           an independent generation job within the task.
-#
-# Checkpoint (convenience wrappers; can also be passed as Hydra overrides):
-#   --ckpt-path PATH        Checkpoint directory (equivalent to ckpt_path=PATH)
-#   --ckpt-name NAME        Checkpoint file name (equivalent to ckpt_name=NAME)
-#
-# Concatenation (aggregates per-job CSV results into a single file):
-#   --concatenate           [infer mode] Submit a dependent SLURM job to concatenate
-#                           results. Useful when metrics are configured and njobs > 1.
-#   --no-concatenate        [val mode]  Skip the automatic concatenation step.
-#   --concatenate-foldseek  Run Foldseek structural clustering during concatenation.
-#                           Implies --concatenate.
-#
-# Config:
-#   --config-name NAME      Hydra config name (default: inference). Can be a path
-#                           relative to configs/, e.g. sweep_configs/my_sweep/inf_000.
-#
-# Job setup:
-#   --no-copy               Skip copying code to a new run directory; use current repo.
-#   --overwrite-rundir      Allow overwriting an existing code directory in the run dir.
-#   --follow, -f            Follow log output after submission (Ctrl+C to exit).
-#
-# Hydra overrides (extra_hydra_args):
-#   Any remaining arguments are passed as Hydra overrides to generate.py.
-#   Examples:
+# Hydra overrides:
+#   Any remaining arguments are passed directly to generate.py. Examples:
 #     run_name_=my_run
+#     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=10
-#     generation.args.nsteps=200
-#     +datasets/val@generation=mcsa_full   (val mode: specify val dataset)
-#     metrics=all_metrics                  (add metrics to inference)
+#     inference_experiment=inference_on_val_set
+#     +datasets/val@generation=mcsa_subset
 #
-# -----------------------------------------------------------------------
-# EXAMPLES
-# -----------------------------------------------------------------------
+# Concatenation:
+#   By default a dependent SLURM job is submitted that runs
+#   concatenate_external_eval_results.py after all generation tasks finish.
+#   Results land in <run_dir>/generation_outputs/val_metrics/.
+#   Use --no-concatenate to skip, --foldseek to add structural clustering.
 #
-#   # Basic inference
-#   ./launch_infer.sh digs \
+# Offline validation:
+#   Pass inference_experiment=inference_on_val_set plus the dataset override
+#   +datasets/val@generation=<name>. See the README for full examples.
+#
+# Examples:
+#   # Parallel inference with 8 jobs
+#   ./launch_infer.sh digs --njobs 8 \
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inputs=benchmarks/monomer.json run_name_=my_run
 #
-#   # Inference with 8 parallel jobs and result concatenation
-#   ./launch_infer.sh digs --njobs 8 --concatenate \
+#   # Offline validation with Foldseek clustering
+#   ./launch_infer.sh digs --njobs 8 --foldseek \
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
-#       inputs=benchmarks/monomer.json run_name_=my_run
-#
-#   # Offline validation on MCSA subset
-#   ./launch_infer.sh digs --mode val \
-#       --ckpt-path /path/to/ckpts --ckpt-name model.ckpt \
-#       +datasets/val@generation=mcsa_subset \
-#       run_name_=mcsa_val
-#
-#   # Offline validation with 8 parallel jobs and Foldseek clustering
-#   ./launch_infer.sh digs --mode val --njobs 8 --concatenate-foldseek \
-#       --ckpt-path /path/to/ckpts --ckpt-name model.ckpt \
-#       +datasets/val@generation=mcsa_subset \
-#       run_name_=mcsa_val_foldseek
-#
-#   # Load a custom/sweep config
-#   ./launch_infer.sh digs --config-name sweep_configs/my_sweep/inf_000 \
-#       run_name_=sweep_run_000
-#
-# -----------------------------------------------------------------------
-# NOTES
-# -----------------------------------------------------------------------
-#
-#   - gen_njobs / gpus-per-job: Total logical jobs = njobs. Each SLURM array task
-#     handles --gpus-per-job of those jobs. Array size = ceil(njobs / gpus-per-job).
-#
-#   - Concatenation: submitted as a separate SLURM job with --dependency=afterany
-#     so the launch script never blocks. Results are written to:
-#       <run_dir>/generation_outputs/val_metrics/
-#
-#   - Sweep integration: launch_sweep.sh calls this script once per config.
-#     Concatenation runs independently per config (not across configs).
-#
-#   - Val mode adds these Hydra overrides automatically:
-#       inference_experiment=inference_on_val_set
-#       offline_validation=true
-#     You must still pass +datasets/val@generation=<name> and run_name_=<name>.
-#
-#   - out_dir is always set explicitly to <run_dir>/generation_outputs so that
-#     concatenation knows where to look. Pass out_dir=... to override.
-#
+#       inference_experiment=inference_on_val_set \
+#       +datasets/val@generation=mcsa_subset run_name_=mcsa_val
 # =============================================================================
 
 set -e
@@ -121,13 +66,10 @@ source "$SCRIPT_DIR/common.sh"
 # Argument parsing
 # ============================================================
 CLUSTER=""
-MODE="infer"           # infer | val
 NJOBS=""               # empty = read from config's gen_njobs
 GPUS_PER_JOB=1
 CONFIG_NAME="inference"
-CKPT_PATH=""
-CKPT_NAME=""
-DO_CONCATENATE=""      # empty = use mode default; "true"/"false" = explicit
+DO_CONCATENATE="true"  # concatenate by default
 CONCATENATE_FOLDSEEK="false"
 COPY_CODE="true"
 FOLLOW_LOGS="false"
@@ -136,10 +78,6 @@ EXTRA_ARGS=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --mode)
-            MODE="$2"
-            shift 2
-            ;;
         --njobs)
             NJOBS="$2"
             shift 2
@@ -156,24 +94,11 @@ while [[ $# -gt 0 ]]; do
             CONFIG_NAME="$2"
             shift 2
             ;;
-        --ckpt-path)
-            CKPT_PATH="$2"
-            shift 2
-            ;;
-        --ckpt-name)
-            CKPT_NAME="$2"
-            shift 2
-            ;;
-        --concatenate)
-            DO_CONCATENATE="true"
-            shift
-            ;;
         --no-concatenate)
             DO_CONCATENATE="false"
             shift
             ;;
-        --concatenate-foldseek)
-            DO_CONCATENATE="true"
+        --foldseek)
             CONCATENATE_FOLDSEEK="true"
             shift
             ;;
@@ -187,10 +112,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --follow|-f)
             FOLLOW_LOGS="true"
-            shift
-            ;;
-        -*)
-            EXTRA_ARGS="$EXTRA_ARGS $1"
             shift
             ;;
         *)
@@ -208,24 +129,10 @@ done
 # Validate arguments
 # ============================================================
 if [ -z "$CLUSTER" ]; then
-    echo "Usage: $0 <cluster> [--mode infer|val] [--njobs N] [--gpus-per-job N] [options] [extra_hydra_args...]"
+    echo "Usage: $0 <cluster> [--njobs N] [--gpus-per-job N] [options] [hydra_overrides...]"
     echo "Available clusters: digs, ord, gb200"
     echo "See script header for full documentation."
     exit 1
-fi
-
-if [ "$MODE" != "infer" ] && [ "$MODE" != "val" ]; then
-    echo "Error: --mode must be 'infer' or 'val', got '$MODE'"
-    exit 1
-fi
-
-# Apply mode-specific default for concatenation
-if [ -z "$DO_CONCATENATE" ]; then
-    if [ "$MODE" == "val" ]; then
-        DO_CONCATENATE="true"    # val mode: concatenate by default (non-blocking)
-    else
-        DO_CONCATENATE="false"   # infer mode: no concatenation by default
-    fi
 fi
 
 # ============================================================
@@ -262,38 +169,17 @@ else
     CONFIG_HYDRA_ARGS="--config-name $CONFIG_NAME"
 fi
 
-# For val mode, add the val experiment to config resolution so that
-# val-specific requirements (e.g. run_name_: ???) are enforced up front.
-RESOLVE_MODE_ARGS=""
-if [ "$MODE" == "val" ]; then
-    RESOLVE_MODE_ARGS="inference_experiment=inference_on_val_set"
-fi
-
-# Add ckpt_path to resolve args if provided (needed for some interpolations)
-RESOLVE_CKPT_ARGS=""
-if [ -n "$CKPT_PATH" ]; then
-    RESOLVE_CKPT_ARGS="ckpt_path='$CKPT_PATH'"
-fi
-
 print_header "Resolving Hydra Config"
 echo "  Config name: $CONFIG_NAME"
-echo "  Mode:        $MODE"
 echo "  Extra args:  $EXTRA_ARGS"
 
-# Pass CONFIG_NAME (not CONFIG_BASE) so resolve_config.py can locate sweep configs
-# that live in subdirectories (e.g. sweep_configs/my_sweep/inf_000).
-eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $RESOLVE_MODE_ARGS $RESOLVE_CKPT_ARGS $EXTRA_ARGS)
+eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $EXTRA_ARGS)
 
 # Validate that run_name_ was resolved
 if [ -z "$RUN_NAME" ]; then
     echo ""
     echo "Error: run_name_ was not found in the resolved config."
-    if [ "$MODE" == "val" ]; then
-        echo "  For val mode, pass run_name_=<name> as an argument."
-        echo "  Example: ./launch_infer.sh $CLUSTER --mode val run_name_=my_val_run ..."
-    else
-        echo "  Pass run_name_=<name> as an argument, or set run_name_: in your config."
-    fi
+    echo "  Pass run_name_=<name> as an argument, or set run_name_: in your config."
     exit 1
 fi
 
@@ -302,7 +188,6 @@ fi
 # ============================================================
 # Priority: --njobs CLI flag > gen_njobs from resolved config > 1
 if [ -z "$NJOBS" ]; then
-    # GEN_NJOBS is emitted by resolve_config.py
     NJOBS="${GEN_NJOBS:-1}"
 fi
 
@@ -312,11 +197,7 @@ NUM_ARRAY_TASKS=$(( (NJOBS + GPUS_PER_JOB - 1) / GPUS_PER_JOB ))
 # ============================================================
 # Set up run directory
 # ============================================================
-if [ "$MODE" == "val" ]; then
-    RUN_DIR="$ROOT_REMOTE/validation/${RUN_NAME}"
-else
-    RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
-fi
+RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
 
 # All generated outputs land here; concatenation also reads from here
 GENERATION_OUTPUT_DIR="$RUN_DIR/generation_outputs"
@@ -366,10 +247,11 @@ if [ "$COPY_CODE" == "true" ]; then
 
     cp "$REPO_ROOT/.project-root" "$RUN_DIR/"
     mkdir -p "$RUN_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$RUN_DIR/.ipd/shebang/"
+    rsync -a "$REPO_ROOT/.ipd/".env.* "$RUN_DIR/.ipd/"
     mkdir -p "$RUN_DIR/.ipd/apptainer"
 
-    # DIGS: recreate container symlink with /mnt/net prefix for compute nodes
-    if [ "$CLUSTER_TYPE" = "digs" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
+    # Apptainer: recreate container symlink with /mnt/net prefix for compute nodes
+    if [ "$CONTAINER_TYPE" == "apptainer" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
         CONTAINER_TARGET="$(readlink -f "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
         if [ -n "$CONTAINER_TARGET" ]; then
             [[ "$CONTAINER_TARGET" == /net/* ]] && CONTAINER_TARGET="/mnt${CONTAINER_TARGET}"
@@ -386,47 +268,20 @@ fi
 # ============================================================
 # Create .env file
 # ============================================================
-cat > "$RUN_DIR/.env" << EOF
-# Proteina Inference Environment Variables
-DATA_PATH=$DATA_PATH
-CACHE_DIR=$CACHE_DIR
-PDB_MIRROR_PATH=$PDB_MIRROR_PATH
-CCD_MIRROR_PATH=$CCD_MIRROR_PATH
-FOLDSEEK_EXEC=$FOLDSEEK_REMOTE
-HBPLUS_PATH=$HBPLUS_PATH
-MOLPROBITY_PATH=$MOLPROBITY_PATH
-MACE_MODEL_PATH=$MACE_MODEL_PATH
-LOGURU_LEVEL='INFO'
-EOF
+write_env_file "$RUN_DIR/.env"
 
 # ============================================================
 # Assemble Hydra arguments for generate.py
 # ============================================================
 
-# Checkpoint convenience args (placed early so EXTRA_ARGS can override)
-CKPT_HYDRA_ARGS=""
-if [ -n "$CKPT_PATH" ]; then
-    CKPT_HYDRA_ARGS="ckpt_path='$CKPT_PATH'"
-fi
-if [ -n "$CKPT_NAME" ]; then
-    CKPT_HYDRA_ARGS="$CKPT_HYDRA_ARGS 'ckpt_name=\"$CKPT_NAME\"'"
-fi
-
-# Val-mode overrides (added before EXTRA_ARGS so users can still override them)
-VAL_HYDRA_ARGS=""
-if [ "$MODE" == "val" ]; then
-    VAL_HYDRA_ARGS="inference_experiment=inference_on_val_set offline_validation=true"
-fi
-
 # Always set out_dir explicitly so concatenation knows where to look.
-# Place before EXTRA_ARGS so users can override with out_dir=... if needed.
+# Placed before EXTRA_ARGS so users can override with out_dir=... if needed.
 OUT_DIR_HYDRA="out_dir=$GENERATION_OUTPUT_DIR"
 
 # ============================================================
 # Print configuration summary
 # ============================================================
 print_header "Job Configuration"
-echo "  Mode:             $MODE"
 echo "  Run name:         $RUN_NAME"
 echo "  Run directory:    $RUN_DIR"
 echo "  Output directory: $GENERATION_OUTPUT_DIR"
@@ -458,11 +313,8 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --output ./slurm_run_outputs/slurm.out
 #SBATCH --error ./slurm_run_outputs/slurm.err
 
-# Environment setup
+# Environment setup (all clusters)
 export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export NCCL_P2P_DISABLE=1
-export NCCL_DEBUG=INFO
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -474,6 +326,17 @@ NJOBS=$NJOBS
 
 echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB, total jobs: \$NJOBS"
 EOF
+
+# Apptainer clusters: pass cluster identity to exec_core.sh (via shebang).
+# Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    cat >> "$SBATCH_FILE" << EOF
+
+# Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
+EOF
+fi
 
 # Optional mounts
 if [ -n "$DATASET_SQUASH_MOUNTS" ]; then
@@ -496,7 +359,8 @@ EOF
 # Platform-specific generation command
 SCRIPT_GENERATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/generate.py"
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    # Apptainer: shebang in generate.py handles container execution via exec_core.sh
     cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run generation - each GPU gets its own job_id slice of the dataset
@@ -507,11 +371,9 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
 EOF
     cat >> "$SBATCH_FILE" << EOF
         srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
-            --kill-on-bad-exit $PYTHON $SCRIPT_GENERATE \\
+            --kill-on-bad-exit $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
             $OUT_DIR_HYDRA \\
-            $VAL_HYDRA_ARGS \\
-            $CKPT_HYDRA_ARGS \\
             $EXTRA_ARGS \\
             hardware.ngpus_per_node_=1 \\
             hardware.nnodes_=1 \\
@@ -526,6 +388,8 @@ EOF
 else
     # OCI/GB200: Docker/Pyxis container via srun --container-image
     CONTAINER_CMD=$(get_srun_cmd)
+    CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
+    CONTAINER_ENV_CMDS=$(build_container_env_cmds)
     cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run generation - each GPU gets its own job_id slice of the dataset
@@ -535,17 +399,17 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running generation with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none $CONTAINER_CMD \\
-            $PYTHON $SCRIPT_GENERATE \\
+        srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
+            --container-mounts="$CONTAINER_MOUNTS_STR" \\
+            --container-workdir=$RUN_DIR \\
+            bash -c "$CONTAINER_ENV_CMDS && $PYTHON $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
             $OUT_DIR_HYDRA \\
-            $VAL_HYDRA_ARGS \\
-            $CKPT_HYDRA_ARGS \\
             $EXTRA_ARGS \\
             hardware.ngpus_per_node_=1 \\
             hardware.nnodes_=1 \\
-            job_id=\$JOB_ID \\
-            gen_njobs=\$NJOBS &
+            job_id=\\\$JOB_ID \\
+            gen_njobs=\\\$NJOBS" &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
     fi
@@ -595,15 +459,24 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "echo \"Concat dir: $CONCAT_DIR\""
     } > "$CONCAT_SBATCH_FILE"
 
-    if [ "$CLUSTER_TYPE" == "digs" ]; then
+    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+        # Apptainer: shebang in concatenate_external_eval_results.py handles container
         cat >> "$CONCAT_SBATCH_FILE" << EOF
-$PYTHON "$CONCAT_SCRIPT" --output-dir "$CONCAT_DIR" $FOLDSEEK_FLAG
+# Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
+
+"$CONCAT_SCRIPT" --output-dir "$CONCAT_DIR" $FOLDSEEK_FLAG
 EOF
     else
         CONTAINER_CMD_CONCAT=$(get_srun_cmd)
+        CONTAINER_MOUNTS_STR_CONCAT=$(build_container_mounts_string)
+        CONTAINER_ENV_CMDS_CONCAT=$(build_container_env_cmds)
         cat >> "$CONCAT_SBATCH_FILE" << EOF
 srun --ntasks=1 $CONTAINER_CMD_CONCAT \\
-    $PYTHON "$CONCAT_SCRIPT" --output-dir "$CONCAT_DIR" $FOLDSEEK_FLAG
+    --container-mounts="$CONTAINER_MOUNTS_STR_CONCAT" \\
+    --container-workdir=$RUN_DIR \\
+    bash -c "$CONTAINER_ENV_CMDS_CONCAT && $PYTHON \"$CONCAT_SCRIPT\" --output-dir \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
 EOF
     fi
 

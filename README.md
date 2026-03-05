@@ -376,6 +376,82 @@ FoldSeek must be installed and available on `$PATH`. For monomer designs, cluste
 
 ---
 
+## Cluster Launching (SLURM)
+
+The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All Hydra options (checkpoint, datasets, metrics, etc.) are passed directly as Hydra overrides.
+
+After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file. Pass `--no-concatenate` to skip this, or `--foldseek` to additionally run structural clustering.
+
+> **Note:** All scripts must be run from within the SLURM cluster environment. `<cluster>` is the cluster name (e.g. `digs`, `ord`, `gb200`).
+
+### Inference
+
+```bash
+# Parallel inference across 8 GPUs, results concatenated automatically
+./slurm_utils/launch_infer.sh digs --njobs 8 \
+    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
+    inputs=benchmarks/monomer.json run_name_=my_run
+
+# Use a custom Hydra experiment config
+./slurm_utils/launch_infer.sh digs \
+    --config-name inference_beam_smoke \
+    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
+    run_name_=beam_test
+```
+
+### Offline Validation
+
+Offline validation is plain inference against a validation dataset — just pass the appropriate Hydra overrides:
+
+```bash
+# Validate on MCSA subset with 8 parallel jobs and Foldseek clustering
+./slurm_utils/launch_infer.sh digs --njobs 8 --foldseek \
+    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
+    inference_experiment=inference_on_val_set \
+    +datasets/val@generation=mcsa_subset \
+    run_name_=mcsa_val
+```
+
+The `inference_experiment=inference_on_val_set` override loads the validation dataset and metric configs. Results land in `<run_dir>/generation_outputs/val_metrics/`.
+
+### Parameter Sweeps
+
+Generate many configs from a sweep YAML, then submit one SLURM job per config. Results are aggregated per-config, not across configs.
+
+```bash
+# Inference sweep
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/ppi_benchmark.yaml \
+    ckpt_path=/path/to/checkpoints
+
+# Validation sweep with Foldseek per config
+./slurm_utils/launch_sweep.sh ord \
+    --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
+    --njobs 8 --foldseek \
+    inference_experiment=inference_on_val_set
+
+# Preview configs without submitting
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/ppi_benchmark.yaml \
+    --dry-run
+```
+
+See `configs/sweeps/` for example sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for sweep config format.
+
+### Search (Beam / Best-of-N)
+
+Search strategies are configured entirely via Hydra experiment configs — just pass `--config-name` with a search experiment:
+
+```bash
+# Beam search (configured in the experiment config)
+./slurm_utils/launch_infer.sh digs \
+    --config-name inference_beam_smoke \
+    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
+    run_name_=beam_run
+```
+
+---
+
 ## For Developers
 
 Training, SLURM launching, dataset configuration, design task implementation, adding new metrics/rewards, and architecture details are documented in the **[Developer Guide](docs/DEVELOPMENT.md)**.

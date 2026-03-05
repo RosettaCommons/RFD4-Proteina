@@ -12,7 +12,6 @@ base_config: inference
 
 base_config_overrides:
   - inference_experiment=inference_on_val_set
-  - offline_validation=true
 
 output_dir: ./configs/sweep_configs/offline_val_ckpt_sweep
 run_name_prefix: offval

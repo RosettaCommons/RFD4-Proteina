@@ -158,7 +158,6 @@ class Proteina(L.LightningModule):
             inf_cfg = None
 
         # If True, these will be set in configure_inference
-        self.offline_validation = False
         self.is_inference = False
         self.inference_seed: int | None = None  # Set via generate.py, not during training
 
@@ -667,12 +666,8 @@ class Proteina(L.LightningModule):
         if self.metrics is not None:
             # Compute prefixes and suffixes for file naming to avoid overwriting results
             # Note than any global_prefix will have also been passed to the Dataset, so will be part of the example_id
-            if self.offline_validation:
-                if self.job_id is None:
-                    raise ValueError("offline_validation=True requires job_id to be set")
-                output_suffix = f"_rank{self.job_id}"
-            elif self.is_inference:
-                output_suffix = ""
+            if self.is_inference:
+                output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
             else:
                 output_suffix = f"_rank{self.global_rank}"
 
@@ -880,18 +875,9 @@ class Proteina(L.LightningModule):
         per_example_df = per_example_df[ordered_cols]
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
-        # To align with the rfd3 inference settings, we use a prefix in that case
-        if self.offline_validation:
-            if self.job_id is None:
-                raise ValueError("offline_validation=True requires job_id to be set")
-            output_prefix = ""
-            output_suffix = f"_job{self.job_id}"
-        elif self.is_inference:
-            if self.global_prefix is None:
-                output_prefix = ""
-            else:
-                output_prefix = self.global_prefix + "_"
-            output_suffix = ""
+        if self.is_inference:
+            output_prefix = "" if self.global_prefix is None else self.global_prefix + "_"
+            output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
         else:
             output_prefix = ""
             output_suffix = f"_step{self.global_step}"
@@ -956,7 +942,6 @@ class Proteina(L.LightningModule):
         nn_ag,
         store_dir=None,
         metrics_cfg=None,
-        offline_validation: bool = False,
         job_id: int | None = None,
         is_inference: bool = False,
         global_prefix: str | None = None,
@@ -969,10 +954,9 @@ class Proteina(L.LightningModule):
             nn_ag: Autoguidance neural network (or None).
             store_dir: Directory to store outputs.
             metrics_cfg: Metrics configuration.
-            offline_validation: Whether running in offline validation mode.
-            job_id: Job ID for offline validation (required when offline_validation=True).
-            is_inference: Whether running in inference mode.
-            global_prefix: Global prefix for inference outputs.
+            job_id: Job ID used to disambiguate per-job output files.
+            is_inference: Whether running in inference mode (via generate.py).
+            global_prefix: Global prefix for inference output filenames.
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
@@ -980,16 +964,9 @@ class Proteina(L.LightningModule):
         if store_dir is not None:
             self.store_dir = store_dir
 
-        if is_inference and offline_validation:
-            raise ValueError("is_inference and offline_validation cannot both be True.")
-
-        # Record inference type and configure relevant settings
         self.is_inference = is_inference
-        self.offline_validation = offline_validation
-        if self.offline_validation:
-            self.job_id = job_id
-        elif self.is_inference:
-            self.global_prefix = global_prefix
+        self.job_id = job_id
+        self.global_prefix = global_prefix
 
     def configure_search(self, search_strategy, search_reward_model=None):
         """Configure search strategy and reward model for reward-guided generation.

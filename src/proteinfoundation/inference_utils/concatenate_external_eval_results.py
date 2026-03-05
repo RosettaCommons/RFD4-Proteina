@@ -373,7 +373,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
             print(f"  Moved {file.name}")
 
         # Move aggregated files
-        agg_files = sorted(output_path.glob("aggregated_metrics_job*.csv"))
+        agg_files = sorted(output_path.glob("*aggregated_metrics*.csv"))
         for file in agg_files:
             file.rename(job_files_dir / file.name)
             print(f"  Moved {file.name}")
