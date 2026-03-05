@@ -12,14 +12,16 @@
 #
 # Options:
 #   --sweep-config <path>   Path to YAML sweep config file (required)
-#   --mode <infer|val>      Submission mode: infer (default) or val (offline validation)
+#   --base-out-dir <path>   Base directory for model outputs; each sweep job writes
+#                           to <path>/<config_name> so jobs don't overwrite each other
 #   --gpus-per-job N        GPUs per SLURM job (default: 1)
 #   --njobs N               Parallel jobs per config (default: 1)
+#   --mode <infer|val>      Submission mode: infer (default) or val (offline validation)
 #   --ckpt-path <path>      Checkpoint directory (required for val mode)
+#   --sweep-config-output-dir <p>  Override output directory for generated configs
 #   --dry-run               Generate configs only, don't submit jobs
 #   --no-copy               Don't copy code to run directory
 #   --overwrite-rundir      Allow overwriting existing run directories
-#   --sweep-output-dir <p>  Override output directory for generated configs
 #   --delay <seconds>       Delay between job submissions (default: 2)
 #
 # Examples:
@@ -54,7 +56,8 @@ CKPT_PATH=""
 DRY_RUN="false"
 NO_COPY="false"
 OVERWRITE_RUNDIR="false"
-SWEEP_OUTPUT_DIR=""
+SWEEP_CONFIG_OUTPUT_DIR=""
+BASE_OUT_DIR=""
 DELAY=2
 EXTRA_ARGS=""
 
@@ -96,8 +99,12 @@ while [[ $# -gt 0 ]]; do
             OVERWRITE_RUNDIR="true"
             shift
             ;;
-        --sweep-output-dir)
-            SWEEP_OUTPUT_DIR="$2"
+        --sweep-config-output-dir)
+            SWEEP_CONFIG_OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        --base-out-dir)
+            BASE_OUT_DIR="$2"
             shift 2
             ;;
         --delay)
@@ -133,6 +140,7 @@ if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
     echo "  --ckpt-path <path>     Checkpoint dir (required for val mode)"
     echo "  --dry-run              Generate configs only, don't submit"
     echo "  --no-copy              Don't copy code to run directory"
+    echo "  --base-out-dir <path>  Base dir for model outputs; each config writes to <path>/<config_name>"
     echo "  --delay <seconds>      Delay between submissions (default: 2)"
     exit 1
 fi
@@ -144,7 +152,8 @@ fi
 
 # Resolve to absolute paths before cd changes CWD
 SWEEP_CONFIG=$(realpath "$SWEEP_CONFIG")
-[ -n "$SWEEP_OUTPUT_DIR" ] && SWEEP_OUTPUT_DIR=$(realpath "$SWEEP_OUTPUT_DIR")
+[ -n "$SWEEP_CONFIG_OUTPUT_DIR" ] && SWEEP_CONFIG_OUTPUT_DIR=$(realpath "$SWEEP_CONFIG_OUTPUT_DIR")
+[ -n "$BASE_OUT_DIR" ] && BASE_OUT_DIR=$(realpath "$BASE_OUT_DIR")
 
 # Load cluster configuration
 load_user_info "$CLUSTER" || exit 1
@@ -171,8 +180,8 @@ echo "  Mode: $MODE"
 SWEEP_SCRIPT="$REPO_ROOT/projects/proteinfoundation/script_utils/sweep.py"
 
 SWEEP_CMD="python $SWEEP_SCRIPT --sweep-config $SWEEP_CONFIG"
-if [ -n "$SWEEP_OUTPUT_DIR" ]; then
-    SWEEP_CMD="$SWEEP_CMD --output-dir $SWEEP_OUTPUT_DIR"
+if [ -n "$SWEEP_CONFIG_OUTPUT_DIR" ]; then
+    SWEEP_CMD="$SWEEP_CMD --output-dir $SWEEP_CONFIG_OUTPUT_DIR"
 fi
 
 if [ "$DRY_RUN" == "true" ]; then
@@ -189,8 +198,8 @@ fi
 
 # Find generated configs
 # Read output_dir from sweep config; resolve to absolute path from proteinfoundation/
-if [ -n "$SWEEP_OUTPUT_DIR" ]; then
-    CONFIG_DIR="$SWEEP_OUTPUT_DIR"
+if [ -n "$SWEEP_CONFIG_OUTPUT_DIR" ]; then
+    CONFIG_DIR="$SWEEP_CONFIG_OUTPUT_DIR"
 else
     CONFIG_DIR=$(cd "$REPO_ROOT/projects/proteinfoundation" && python3 -c "
 import yaml, os
@@ -232,6 +241,12 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     config_name=$(basename "$config_file" .yaml)
     echo "--- Submitting: $config_name ---"
 
+    # Build per-config out_dir override if a base directory was specified
+    OUT_DIR_OVERRIDE=""
+    if [ -n "$BASE_OUT_DIR" ]; then
+        OUT_DIR_OVERRIDE="out_dir=$BASE_OUT_DIR/$config_name"
+    fi
+
     # Build common flags
     COMMON_FLAGS=""
     if [ "$NO_COPY" == "true" ]; then
@@ -270,6 +285,7 @@ print(cfg.get('ckpt_name', ''))
             --no-cleanup \
             $COMMON_FLAGS \
             run_name_="$config_name" \
+            $OUT_DIR_OVERRIDE \
             $EXTRA_ARGS && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
     else
         # Inference mode: load the generated config via --config-name so swept
@@ -287,6 +303,7 @@ print(os.path.splitext(os.path.relpath(cf, hd))[0])
             $COMMON_FLAGS \
             --config-name "$config_hydra_name" \
             run_name_="$config_name" \
+            $OUT_DIR_OVERRIDE \
             $EXTRA_ARGS && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
     fi
 
