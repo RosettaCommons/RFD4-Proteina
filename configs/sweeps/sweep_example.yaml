@@ -1,0 +1,39 @@
+# =============================================================================
+# Inference Sweep Example
+# =============================================================================
+# 4-config sweep (2 nsteps × 2 sc_scale_noise) over a validation dataset.
+# Generates all configs and submits them as separate SLURM jobs in one command.
+#
+# Usage:
+#   ./slurm_utils/launch_sweep.sh coreweave \
+#       --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
+#       --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+#       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
+#
+# To sweep over regular inference instead of a val set, swap:
+#   - inference_experiment=inference_like_rfd3
+#   - inputs=benchmarks/monomer.json
+# (remove the +datasets/val line)
+# =============================================================================
+
+base_config: inference
+
+base_config_overrides:
+  - inference_experiment=inference_on_val_set
+  - +datasets/val@generation=unconditional
+  # For regular inference, use instead:
+  # - inference_experiment=inference_like_rfd3
+  # - inputs=benchmarks/monomer.json
+  - subset_to_examples=monomer-short
+  - num_replicates=4
+  - batch_size=2
+
+run_name_prefix: sweep_example
+
+sweep:
+  generation.args.nsteps:
+    - 200
+    - 400
+  generation.model.bb_ca.simulation_step_params.sc_scale_noise:
+    - 0.1
+    - 0.2
