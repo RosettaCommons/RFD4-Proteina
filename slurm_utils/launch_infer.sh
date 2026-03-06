@@ -247,6 +247,7 @@ if [ "$COPY_CODE" == "true" ]; then
     print_header "Copying Code"
     echo "  $REPO_ROOT -> $CODE_DIR"
 
+    mkdir -p "$CODE_DIR"
     rsync -a "$REPO_ROOT/src/" "$CODE_DIR/src/"
     mkdir -p "$CODE_DIR/models/rf3" && rsync -a "$REPO_ROOT/models/rf3/src/" "$CODE_DIR/models/rf3/src/"
     mkdir -p "$CODE_DIR/lib/atomworks" && rsync -a "$REPO_ROOT/lib/atomworks/src/" "$CODE_DIR/lib/atomworks/src/"

@@ -378,70 +378,59 @@ FoldSeek must be installed and available on `$PATH`. For monomer designs, cluste
 
 ## Cluster Launching (SLURM)
 
-The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All Hydra options (checkpoint, datasets, metrics, etc.) are passed directly as Hydra overrides.
+The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All Hydra options (checkpoint, datasets, metrics, etc.) can be passed directly as Hydra overrides.
+
+The `--no-copy` argument can be passed to avoid copying the codebase to the output destination. This copying can be useful for exact reproducibility.
 
 After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file. Pass `--no-concatenate` to skip this, or `--foldseek` to additionally run structural clustering.
 
-> **Note:** All scripts must be run from within the SLURM cluster environment. `<cluster>` is the cluster name (e.g. `digs`, `ord`, `gb200`).
+For full details on possible non-Hydra arguments to `launch_infer.sh` and `launch_sweep.sh`, please see the comments in their headers.
+
+> **Note:** All scripts must be run with a `.user_info_<cluster>` file present in `slurm_utils`. `<cluster>` is the cluster name (e.g. `digs`, `ord`, `coreweave`).
 
 ### Inference
 
 ```bash
-# Parallel inference across 8 GPUs, results concatenated automatically
-./slurm_utils/launch_infer.sh digs --njobs 8 \
-    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
-    inputs=benchmarks/monomer.json run_name_=my_run
+# 4 replicates over a subset of an input file, split across 2 jobs
+./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+    inference_experiment=inference_like_rfd3 \
+    inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
 ```
 
-### Offline Validation
-
-Offline validation is plain inference against a validation dataset — just pass the appropriate Hydra overrides:
-
-```bash
-# Validate on MCSA subset with 8 parallel jobs and Foldseek clustering
-./slurm_utils/launch_infer.sh digs --njobs 8 --foldseek \
-    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
-    inference_experiment=inference_on_val_set \
-    +datasets/val@generation=mcsa_subset \
-    run_name_=mcsa_val
-```
-
-The `inference_experiment=inference_on_val_set` override loads the validation dataset and metric configs. Results land in `<run_dir>/generation_outputs/val_metrics/`.
+Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. So instead of these command-line overrides, you could also create a new config in `configs/inference_experiment` that inherits from `inference_like_rfd3`, then defines your desired overrides.
 
 ### Parameter Sweeps
 
-Generate many configs from a sweep YAML, then submit one SLURM job per config. Results are aggregated per-config, not across configs.
+Sweeps generate one config per parameter combination and submit each as a separate SLURM job:
 
 ```bash
-# Inference sweep
+# Sweep nsteps x noise scale on a val set, with FoldSeek clustering (per-combination).
 ./slurm_utils/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/ppi_benchmark.yaml \
-    ckpt_path=/path/to/checkpoints
-
-# Validation sweep with Foldseek per config
-./slurm_utils/launch_sweep.sh ord \
-    --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
-    --njobs 8 --foldseek \
-    inference_experiment=inference_on_val_set
+    --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
+    --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
 
 # Preview configs without submitting
 ./slurm_utils/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/ppi_benchmark.yaml \
-    --dry-run
+    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 ```
 
-See `configs/sweeps/` for example sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for sweep config format.
+The sweep example at `configs/sweeps/sweep_example.yaml` uses a validation dataset by default. To sweep over regular inference instead, swap `inference_experiment=inference_on_val_set` for `inference_like_rfd3` and add your `inputs` config as usual (see comments in that file).
+
+See `configs/sweeps/` for more sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for the sweep config format.
 
 ### Search (Beam / Best-of-N)
 
-Search strategies are configured entirely via Hydra experiment configs — just pass `--config-name` with a search experiment:
+Search strategies are configured via experiment configs — pass `--config-name` to select one:
 
 ```bash
-# Beam search (configured in the experiment config)
-./slurm_utils/launch_infer.sh digs \
-    --config-name inference_experiment/inference_beam_smoke \
-    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
-    run_name_=beam_run
+# Beam search with RF3 reward (parameters set in the experiment config)
+./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+    inference_experiment=inference_beam_example \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs
 ```
 
 ---

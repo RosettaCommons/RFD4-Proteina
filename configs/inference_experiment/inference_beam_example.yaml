@@ -1,16 +1,15 @@
 # @package _global_
 #
-# Minimal beam search smoke test.
-# Tests BeamSearchStrategy + RF3 reward model integration with low compute:
+# Beam search inference example.
+# BeamSearchStrategy with RF3 reward on the monomer-short benchmark:
 #   - 200 diffusion steps, checkpointed at [0,50,100,150,200]
-#   - n_branch=2, beam_width=2 (minimal branching factor)
-#   - sc_scale_noise=0.2/0.3 (bb_ca/latents) — exercises noise-scale params from integration tests
+#   - n_branch=2, beam_width=2
+#   - sc_scale_noise=0.2/0.3 (bb_ca/latents)
 #   - RF3 reward: pLDDT only, num_steps=5, n_recycles=0
-#   - 1 replicate of monomer-short, seed=42
 #
 # Usage:
-#   ./slurm_utils/launch_infer.sh digs --no-copy \
-#       --config-name inference_experiment/inference_beam_smoke \
+#   ./slurm_utils/launch_infer.sh coreweave --no-copy gen_njobs=2 \
+#       --config-name inference_experiment/inference_beam_example \
 #       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
 
 defaults:
@@ -28,10 +27,10 @@ subset_to_examples: monomer-short
 num_replicates: 1
 batch_size: 1
 seed: 42
-global_prefix: smoke_beam
+global_prefix: beam_example
 
-out_dir: outputs/beam_smoke
-run_name_: beam_smoke
+out_dir: outputs/beam_example
+run_name_: beam_example
 
 metrics_tags: unconditional_refolding
 
