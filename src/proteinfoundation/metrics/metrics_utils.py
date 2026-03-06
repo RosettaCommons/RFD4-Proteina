@@ -1,4 +1,5 @@
 import itertools
+from pathlib import Path
 
 import numpy as np
 from atomworks.io.utils.atom_array_plus import as_atom_array
@@ -9,6 +10,65 @@ from atomworks.ml.preprocessing.utils.structure_utils import (
 from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack, CellList, annotate_sse, gyration_radius
 from biotite.structure.residues import spread_residue_wise
+from foundry.metrics.metric import MetricManager
+
+from proteinfoundation.utils.chain_utils import get_chain_of_interest
+
+
+def run_metrics_for_result(
+    result: dict,
+    batch: dict,
+    batch_item_idx: int,
+    metric_manager: MetricManager,
+    output_base_dir: Path,
+    example_id: str | None = None,
+) -> dict:
+    """Run metrics for a single generation result, matching the logic in validation_step.
+
+    Builds the proper extra_info (example_id, metrics_tags, output_base_dir,
+    chain_of_interest) and calls the metric manager with ground truth and prediction.
+
+    Args:
+        result: Single result dict from :py:meth:`~proteinfoundation.proteina.Proteina.format_sample_prots_to_atom_arrays`,
+            with keys 'generated_atom_array', 'input_atom_array', and optionally
+            'prediction_metadata' and 'example_id'.
+        batch: Original input batch dict, used to extract metrics_tags.
+        batch_item_idx: Index into the batch for this result (for metrics_tags lookup).
+        metric_manager: MetricManager to call.
+        output_base_dir: Directory for saving metric outputs (e.g. folded structures).
+        example_id: Override for the example ID. If None, uses result['example_id'].
+            Pass this when a rank/job suffix is needed (as in validation_step).
+
+    Returns:
+        Metrics output dictionary from MetricManager.
+    """
+    if output_base_dir is not None:
+        output_base_dir = Path(output_base_dir)
+        output_base_dir.mkdir(parents=True, exist_ok=True)
+
+    coi, coi_unambiguous = get_chain_of_interest(result["generated_atom_array"])
+
+    metrics_tags_batch = batch.get("metrics_tags_batch", [])
+    metrics_tags = metrics_tags_batch[batch_item_idx] if batch_item_idx < len(metrics_tags_batch) else []
+
+    metrics_result = metric_manager(
+        network_input=None,
+        network_output=None,
+        extra_info={
+            "example_id": example_id if example_id is not None else result.get("example_id", "sample"),
+            "metrics_tags": metrics_tags,
+            "output_base_dir": output_base_dir,
+            "chain_of_interest": coi if coi_unambiguous else None,
+        },
+        ground_truth_atom_array=[result["input_atom_array"]],
+        predicted_atom_array=[result["generated_atom_array"]],
+        prediction_metadata=[result.get("prediction_metadata")],
+    )
+    # Ensure chain_of_interest is always in the output regardless of which metrics are configured.
+    # Only rf3_metric echoes it back; other metrics (af2, design) do not.
+    if not any(k.endswith("chain_of_interest") for k in metrics_result):
+        metrics_result["chain_of_interest"] = coi if coi_unambiguous else None
+    return metrics_result
 
 
 def normalize_to_atom_array_list(

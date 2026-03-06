@@ -209,6 +209,7 @@ if [ -n "$OUT_DIR" ]; then
 else
     RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
 fi
+RUN_DIR="${RUN_DIR%/}"
 
 # generate.py writes outputs directly into RUN_DIR (as out_dir);
 # concatenation looks for inference_metrics/ within that same directory.

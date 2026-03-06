@@ -20,11 +20,13 @@ estimation if they meet success criteria, significantly improving total successe
 """
 
 from functools import partial
+from pathlib import Path
 from typing import Any
 
 import torch
 from foundry.utils.ddp import RankedLogger
 
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.utils.tensor_utils import concat_dict_tensors
 
@@ -430,16 +432,14 @@ class BeamSearchStrategy(SearchStrategy):
         # NOTE: Expects interleaved format [1,2,3,1,2,3]!!!
         atom_array_results = model.format_sample_prots_to_atom_arrays(sample_prots, model._current_batch, batch_idx=0)
 
+        batch = model._current_batch
+
         # Compute rewards for each atom array
         rewards = []
-        for result in atom_array_results:
-            atom_array = result["generated_atom_array"]
-            reward = reward_model.compute_reward(
-                predicted_atom_array=atom_array,
-                extra_info={
-                    "example_id": "sample",
-                },
-            )
+        for i, result in enumerate(atom_array_results):
+            orig_batch_idx = i % max(len(batch.get("atom_array_batch", [batch.get("atom_array")])), 1)
+            metrics_output = run_metrics_for_result(result, batch, orig_batch_idx, reward_model.metric_manager, output_base_dir=None)
+            reward = reward_model.aggregate_metrics_output(metrics_output)
             rewards.append(reward)
 
         # tear down all metrics
