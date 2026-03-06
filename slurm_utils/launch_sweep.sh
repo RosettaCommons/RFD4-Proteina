@@ -19,9 +19,8 @@
 #                                gen_njobs from each per-config Hydra config)
 #   --no-concatenate             Skip the per-config concatenation job
 #   --foldseek                   Enable Foldseek clustering in concatenation
-#   --base-out-dir <path>        Base directory for model outputs; each config
-#                                writes to <path>/<config_name>
-#   --sweep-config-output-dir <p>  Override output dir for generated configs
+#   --base-out-dir <path>        Base directory for all sweep runs; each config
+#                                gets its own subdirectory at <path>/<config_name>
 #   --dry-run                    Generate configs only; do not submit jobs
 #   --no-copy                    Don't copy code to the run directory
 #   --overwrite-rundir           Allow overwriting existing run directories
@@ -32,7 +31,7 @@
 #   This is the idiomatic way to share settings across all configs in a sweep:
 #     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=5
-#     inference_experiment=inference_on_val_set offline_validation=true
+#     inference_experiment=inference_on_val_set
 #
 # Examples:
 #   # Benchmark sweep
@@ -42,7 +41,7 @@
 #   # Validation sweep with 8 parallel jobs and Foldseek per config
 #   ./launch_sweep.sh ord --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
 #       --njobs 8 --foldseek \
-#       inference_experiment=inference_on_val_set offline_validation=true
+#       inference_experiment=inference_on_val_set
 #
 #   # Dry run: show configs without submitting
 #   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
@@ -108,10 +107,6 @@ while [[ $# -gt 0 ]]; do
             OVERWRITE_RUNDIR="true"
             shift
             ;;
-        --sweep-config-output-dir)
-            SWEEP_CONFIG_OUTPUT_DIR="$2"
-            shift 2
-            ;;
         --base-out-dir)
             BASE_OUT_DIR="$2"
             shift 2
@@ -145,7 +140,7 @@ if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
     echo "  --foldseek             Enable Foldseek in concatenation"
     echo "  --dry-run              Generate configs only, don't submit"
     echo "  --no-copy              Don't copy code to run directory"
-    echo "  --base-out-dir <path>  Base dir for model outputs"
+    echo "  --base-out-dir <path>  Base dir for all sweep runs"
     echo "  --delay <seconds>      Delay between submissions (default: 2)"
     exit 1
 fi
@@ -157,8 +152,10 @@ fi
 
 # Resolve to absolute paths before cd changes CWD
 SWEEP_CONFIG=$(realpath "$SWEEP_CONFIG")
-[ -n "$SWEEP_CONFIG_OUTPUT_DIR" ] && SWEEP_CONFIG_OUTPUT_DIR=$(realpath "$SWEEP_CONFIG_OUTPUT_DIR")
 [ -n "$BASE_OUT_DIR" ] && BASE_OUT_DIR=$(realpath "$BASE_OUT_DIR")
+
+# Save generated sweep configs into $BASE_OUT_DIR/configs/
+SWEEP_CONFIG_OUTPUT_DIR="$BASE_OUT_DIR/configs"
 
 # Load cluster configuration
 load_user_info "$CLUSTER" || exit 1
@@ -245,15 +242,23 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     config_name=$(basename "$config_file" .yaml)
     echo "--- Submitting: $config_name ---"
 
-    # Compute the Hydra-relative config name (path from configs/ root, no .yaml)
+    # Compute the Hydra config name: relative from configs/ root when inside it,
+    # or an absolute dir/basename path when outside.
     config_hydra_name=$(python3 -c "
 import os
 cf = os.path.realpath('$config_file')
 hd = os.path.realpath('$REPO_ROOT/projects/proteinfoundation/configs')
-print(os.path.splitext(os.path.relpath(cf, hd))[0])
+rel = os.path.relpath(cf, hd)
+if rel.startswith('..'):
+    # Config is outside the repo configs dir; use absolute dir + basename
+    print(os.path.dirname(cf) + '/' + os.path.splitext(os.path.basename(cf))[0])
+else:
+    print(os.path.splitext(rel)[0])
 ")
 
-    # Build per-config out_dir override if a base directory was specified
+    # Build per-config out_dir Hydra override if a base directory was specified.
+    # This is passed as a Hydra override so launch_infer.sh's resolve_config.py
+    # picks it up as OUT_DIR and uses it as the run directory.
     OUT_DIR_OVERRIDE=""
     if [ -n "$BASE_OUT_DIR" ]; then
         OUT_DIR_OVERRIDE="out_dir=$BASE_OUT_DIR/$config_name"
