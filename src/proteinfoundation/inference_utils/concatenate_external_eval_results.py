@@ -276,19 +276,19 @@ def aggregate_metrics_from_per_example_df(
     agg_rows = []
     for dataset_name in per_example_df["dataset_name"].unique():
         dataset_df = per_example_df[per_example_df["dataset_name"] == dataset_name]
+        non_metric_cols = {
+            "example_id",
+            "dataset_name",
+            "task",
+            "designed_structure_path",
+            "sequence_redesigned_structure_path",
+            "chain_of_interest",
+            "foldseek_cluster_id",
+        }
         metric_cols = [
             c
-            for c in dataset_df.columns
-            if c
-            not in (
-                "example_id",
-                "dataset_name",
-                "task",
-                "designed_structure_path",
-                "sequence_redesigned_structure_path",
-                "chain_of_interest",
-                "foldseek_cluster_id",
-            )
+            for c in dataset_df.select_dtypes(include="number").columns
+            if c not in non_metric_cols
         ]
 
         for metric_name in metric_cols:
@@ -375,6 +375,8 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
         # Move aggregated files
         agg_files = sorted(output_path.glob("*aggregated_metrics*.csv"))
         for file in agg_files:
+            if file == agg_output:
+                continue  # Skip the final aggregated metrics file
             file.rename(job_files_dir / file.name)
             print(f"  Moved {file.name}")
 
@@ -388,9 +390,10 @@ def main():
         help="Directory containing the individual job result files",
     )
     parser.add_argument(
-        "--no-cleanup",
-        action="store_true",
-        help="Do not move individual job files after concatenation",
+        "--cleanup",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Move individual job files into a subdirectory after concatenation",
     )
     parser.add_argument(
         "--cluster-with-foldseek",
@@ -402,7 +405,7 @@ def main():
 
     concatenate_results(
         output_dir=args.output_dir,
-        cleanup=not args.no_cleanup,
+        cleanup=args.cleanup,
         cluster_with_foldseek=args.cluster_with_foldseek,
     )
 

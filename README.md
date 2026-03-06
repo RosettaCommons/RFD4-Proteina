@@ -391,12 +391,6 @@ After generation, a dependent SLURM job automatically concatenates per-job CSV m
 ./slurm_utils/launch_infer.sh digs --njobs 8 \
     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
     inputs=benchmarks/monomer.json run_name_=my_run
-
-# Use a custom Hydra experiment config
-./slurm_utils/launch_infer.sh digs \
-    --config-name inference_beam_smoke \
-    ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
-    run_name_=beam_test
 ```
 
 ### Offline Validation
@@ -445,7 +439,7 @@ Search strategies are configured entirely via Hydra experiment configs — just 
 ```bash
 # Beam search (configured in the experiment config)
 ./slurm_utils/launch_infer.sh digs \
-    --config-name inference_beam_smoke \
+    --config-name inference_experiment/inference_beam_smoke \
     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
     run_name_=beam_run
 ```

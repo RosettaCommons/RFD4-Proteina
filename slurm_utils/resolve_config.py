@@ -51,7 +51,11 @@ def main() -> int:
 
     if "/" in config_name:
         config_subdir, config_base = config_name.rsplit("/", 1)
-        config_dir = str(configs_root / config_subdir)
+        # If config_subdir is absolute, use it directly.
+        if config_subdir.startswith("/"):
+            config_dir = config_subdir
+        else:
+            config_dir = str(configs_root / config_subdir)
     else:
         config_base = config_name
         config_dir = str(configs_root)
@@ -80,6 +84,9 @@ def main() -> int:
             # Parallel generation jobs (used by launch_infer.sh)
             gen_njobs = OmegaConf.select(cfg, "gen_njobs", throw_on_resolution_failure=False, default=1)
 
+            # Output directory (used by launch_infer.sh to set RUN_DIR)
+            out_dir = OmegaConf.select(cfg, "out_dir", throw_on_resolution_failure=False, default=None)
+
             # Optional hardware overrides (only output if set)
             gpu_type = OmegaConf.select(cfg, "hardware.gpu_type_", throw_on_resolution_failure=False, default=None)
             slurm_constraint = OmegaConf.select(
@@ -95,6 +102,8 @@ def main() -> int:
     # Output shell variable assignments
     # Quote values to handle special characters
     print(f"RUN_NAME='{run_name}'")
+    if out_dir is not None:
+        print(f"OUT_DIR='{out_dir}'")
     print(f"NGPUS_PER_NODE={ngpus_per_node}")
     print(f"NNODES={nnodes}")
     print(f"CPUS_PER_TASK={cpus_per_task}")

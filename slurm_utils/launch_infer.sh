@@ -28,6 +28,7 @@
 # Hydra overrides:
 #   Any remaining arguments are passed directly to generate.py. Examples:
 #     run_name_=my_run
+#     out_dir=/path/to/outputs       Controls where outputs are saved
 #     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=10
 #     inference_experiment=inference_on_val_set
@@ -36,7 +37,7 @@
 # Concatenation:
 #   By default a dependent SLURM job is submitted that runs
 #   concatenate_external_eval_results.py after all generation tasks finish.
-#   Results land in <run_dir>/generation_outputs/val_metrics/.
+#   Results land in <run_dir>/inference_metrics/.
 #   Use --no-concatenate to skip, --foldseek to add structural clustering.
 #
 # Offline validation:
@@ -163,7 +164,13 @@ CONFIGS_ROOT="$REPO_ROOT/projects/proteinfoundation/configs"
 if [[ "$CONFIG_NAME" == */* ]]; then
     CONFIG_SUBDIR="${CONFIG_NAME%/*}"
     CONFIG_BASE="${CONFIG_NAME##*/}"
-    CONFIG_HYDRA_ARGS="--config-path $CONFIGS_ROOT/$CONFIG_SUBDIR --config-name $CONFIG_BASE"
+    # If CONFIG_SUBDIR is absolute, use it directly,
+    # otherwise treat it as relative to the repo's configs root.
+    if [[ "$CONFIG_SUBDIR" == /* ]]; then
+        CONFIG_HYDRA_ARGS="--config-path $CONFIG_SUBDIR --config-name $CONFIG_BASE"
+    else
+        CONFIG_HYDRA_ARGS="--config-path $CONFIGS_ROOT/$CONFIG_SUBDIR --config-name $CONFIG_BASE"
+    fi
 else
     CONFIG_BASE="$CONFIG_NAME"
     CONFIG_HYDRA_ARGS="--config-name $CONFIG_NAME"
@@ -197,10 +204,15 @@ NUM_ARRAY_TASKS=$(( (NJOBS + GPUS_PER_JOB - 1) / GPUS_PER_JOB ))
 # ============================================================
 # Set up run directory
 # ============================================================
-RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
+if [ -n "$OUT_DIR" ]; then
+    RUN_DIR="$OUT_DIR"
+else
+    RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
+fi
 
-# All generated outputs land here; concatenation also reads from here
-GENERATION_OUTPUT_DIR="$RUN_DIR/generation_outputs"
+# generate.py writes outputs directly into RUN_DIR (as out_dir);
+# concatenation looks for inference_metrics/ within that same directory.
+GENERATION_OUTPUT_DIR="$RUN_DIR"
 
 mkdir -p "$RUN_DIR/slurm_run_outputs"
 
@@ -220,45 +232,45 @@ echo "  Local symlink: $REPO_ROOT/runs/${RUN_NAME}"
 # Copy code to run directory (or use repo in-place)
 # ============================================================
 if [ "$COPY_CODE" == "true" ]; then
-    if [ -d "$RUN_DIR/src" ] || [ -d "$RUN_DIR/projects/proteinfoundation/proteinfoundation" ]; then
+    CODE_DIR="$RUN_DIR/code"
+    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/projects/proteinfoundation/proteinfoundation" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
-            echo "Error: Code directory already exists at $RUN_DIR"
+            echo "Error: Code directory already exists at $CODE_DIR"
             echo "  To overwrite, use --overwrite-rundir"
             echo "  To use existing code, use --no-copy"
             exit 1
         fi
-        echo "Warning: Overwriting existing code directory at $RUN_DIR"
+        echo "Warning: Overwriting existing code directory at $CODE_DIR"
     fi
 
     print_header "Copying Code"
-    echo "  $REPO_ROOT -> $RUN_DIR"
+    echo "  $REPO_ROOT -> $CODE_DIR"
 
-    rsync -a "$REPO_ROOT/src/" "$RUN_DIR/src/"
-    mkdir -p "$RUN_DIR/models/rf3" && rsync -a "$REPO_ROOT/models/rf3/src/" "$RUN_DIR/models/rf3/src/"
-    mkdir -p "$RUN_DIR/lib/atomworks" && rsync -a "$REPO_ROOT/lib/atomworks/src/" "$RUN_DIR/lib/atomworks/src/"
+    rsync -a "$REPO_ROOT/src/" "$CODE_DIR/src/"
+    mkdir -p "$CODE_DIR/models/rf3" && rsync -a "$REPO_ROOT/models/rf3/src/" "$CODE_DIR/models/rf3/src/"
+    mkdir -p "$CODE_DIR/lib/atomworks" && rsync -a "$REPO_ROOT/lib/atomworks/src/" "$CODE_DIR/lib/atomworks/src/"
 
     echo "  Copying projects/proteinfoundation..."
-    mkdir -p "$RUN_DIR/projects/proteinfoundation"
+    mkdir -p "$CODE_DIR/projects/proteinfoundation"
     rsync -a --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$REPO_ROOT/projects/proteinfoundation/proteinfoundation/" "$RUN_DIR/projects/proteinfoundation/proteinfoundation/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/configs/" "$RUN_DIR/projects/proteinfoundation/configs/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/benchmarks/" "$RUN_DIR/projects/proteinfoundation/benchmarks/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/data/" "$RUN_DIR/projects/proteinfoundation/data/"
+        "$REPO_ROOT/projects/proteinfoundation/proteinfoundation/" "$CODE_DIR/projects/proteinfoundation/proteinfoundation/"
+    rsync -a "$REPO_ROOT/projects/proteinfoundation/configs/" "$CODE_DIR/projects/proteinfoundation/configs/"
+    rsync -a "$REPO_ROOT/projects/proteinfoundation/benchmarks/" "$CODE_DIR/projects/proteinfoundation/benchmarks/"
+    rsync -a "$REPO_ROOT/projects/proteinfoundation/data/" "$CODE_DIR/projects/proteinfoundation/data/"
 
-    cp "$REPO_ROOT/.project-root" "$RUN_DIR/"
-    mkdir -p "$RUN_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$RUN_DIR/.ipd/shebang/"
-    rsync -a "$REPO_ROOT/.ipd/".env.* "$RUN_DIR/.ipd/"
-    mkdir -p "$RUN_DIR/.ipd/apptainer"
+    cp "$REPO_ROOT/.project-root" "$CODE_DIR/"
+    mkdir -p "$CODE_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$CODE_DIR/.ipd/shebang/"
+    rsync -a "$REPO_ROOT/.ipd/".env.* "$CODE_DIR/.ipd/"
+    mkdir -p "$CODE_DIR/.ipd/apptainer"
 
     # Apptainer: recreate container symlink with /mnt/net prefix for compute nodes
     if [ "$CONTAINER_TYPE" == "apptainer" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
         CONTAINER_TARGET="$(readlink -f "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
         if [ -n "$CONTAINER_TARGET" ]; then
             [[ "$CONTAINER_TARGET" == /net/* ]] && CONTAINER_TARGET="/mnt${CONTAINER_TARGET}"
-            ln -sf "$CONTAINER_TARGET" "$RUN_DIR/.ipd/apptainer/latent-dev.sif"
+            ln -sf "$CONTAINER_TARGET" "$CODE_DIR/.ipd/apptainer/latent-dev.sif"
         fi
     fi
-    CODE_DIR="$RUN_DIR"
 else
     print_header "Using Code In-Place"
     echo "  $REPO_ROOT"
@@ -269,14 +281,6 @@ fi
 # Create .env file
 # ============================================================
 write_env_file "$RUN_DIR/.env"
-
-# ============================================================
-# Assemble Hydra arguments for generate.py
-# ============================================================
-
-# Always set out_dir explicitly so concatenation knows where to look.
-# Placed before EXTRA_ARGS so users can override with out_dir=... if needed.
-OUT_DIR_HYDRA="out_dir=$GENERATION_OUTPUT_DIR"
 
 # ============================================================
 # Print configuration summary
@@ -373,8 +377,8 @@ EOF
         srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
-            $OUT_DIR_HYDRA \\
             $EXTRA_ARGS \\
+            out_dir=$RUN_DIR \\
             hardware.ngpus_per_node_=1 \\
             hardware.nnodes_=1 \\
             job_id=\$JOB_ID \\
@@ -404,8 +408,8 @@ EOF
             --container-workdir=$RUN_DIR \\
             bash -c "$CONTAINER_ENV_CMDS && $PYTHON $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
-            $OUT_DIR_HYDRA \\
             $EXTRA_ARGS \\
+            out_dir=$RUN_DIR \\
             hardware.ngpus_per_node_=1 \\
             hardware.nnodes_=1 \\
             job_id=\\\$JOB_ID \\
@@ -428,8 +432,8 @@ if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
     CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/concatenate_external_eval_results.py"
 
-    # Metrics CSVs are written by generate.py under <out_dir>/val_metrics/
-    CONCAT_DIR="$GENERATION_OUTPUT_DIR/val_metrics"
+    # Metrics CSVs are written by generate.py under <out_dir>/inference_metrics/
+    CONCAT_DIR="$GENERATION_OUTPUT_DIR/inference_metrics"
 
     FOLDSEEK_FLAG=""
     if [ "$CONCATENATE_FOLDSEEK" == "true" ]; then
@@ -534,7 +538,7 @@ echo "  Gen logs:    tail -f $RUN_DIR/slurm_run_outputs/slurm.err"
 if [ -n "$CONCAT_JOB_ID" ]; then
     echo "  Concat job:  squeue -j $CONCAT_JOB_ID"
     echo "  Concat logs: tail -f $RUN_DIR/slurm_run_outputs/slurm_concat.out"
-    echo "  Results:     $GENERATION_OUTPUT_DIR/val_metrics/"
+    echo "  Results:     $GENERATION_OUTPUT_DIR/inference_metrics/"
 fi
 echo ""
 
