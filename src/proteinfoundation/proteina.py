@@ -115,8 +115,9 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     # Standardize types
     cleaned = {}
     chain_of_interest_values = []
+    non_metadata_metrics_detected = False
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "task"):
+        if key in ("dataset_name", "example_id", "task", "designed_structure_path"):
             cleaned[key] = str(value)
             continue
         elif key == "input_cif_path" or key.startswith("input_spec."):
@@ -127,8 +128,10 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
             continue
         if isinstance(value, int | float):
             cleaned[key] = float(value)
+            non_metadata_metrics_detected = True
         elif isinstance(value, torch.Tensor) and value.numel() == 1:
             cleaned[key] = value.item()
+            non_metadata_metrics_detected = True
 
     # Add chain of interest column
     if len(set(chain_of_interest_values)) == 1:
@@ -785,6 +788,7 @@ class Proteina(L.LightningModule):
                             metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
 
                     metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
+                    metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
                     # Store for epoch-end aggregation
                     self.validation_output_generation.append(metrics_output)
 
@@ -845,20 +849,6 @@ class Proteina(L.LightningModule):
         metrics_dir.mkdir(parents=True, exist_ok=True)
 
         per_example_df = pd.DataFrame(all_example_metrics)
-
-        per_example_df["designed_structure_path"] = per_example_df.apply(
-            lambda row: str(
-                (
-                    Path(self.store_dir)
-                    / ("val_samples" if not self.is_inference else "inference_samples")
-                    / row["dataset_name"]
-                    / f"step_{self.global_step}"
-                    / "generated"
-                    / f"{row['example_id']}_generated.cif"
-                ).resolve()
-            ),
-            axis=1,
-        )
 
         # Reorder columns: example_id first, then metadata, then metrics
         cols = per_example_df.columns.tolist()

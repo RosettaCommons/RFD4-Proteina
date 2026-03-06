@@ -224,8 +224,8 @@ def add_foldseek_diversity_to_per_example_df(per_example_df: pd.DataFrame, **kwa
                 )
                 chain_of_interest = kwargs["chains"][0]
             kwargs.pop("chains")
-        if chain_of_interest is None:
-            logger.warning(f"chain_of_interest is None for task {task_name}. This task will not get cluster ids")
+        if pd.isna(chain_of_interest):
+            logger.warning(f"chain_of_interest is missing for task {task_name}. This task will not get cluster ids")
             task_df = task_df.copy()
             task_df["foldseek_cluster_id"] = None
             output_task_dfs.append(task_df)
@@ -255,48 +255,50 @@ def add_foldseek_diversity_to_per_example_df(per_example_df: pd.DataFrame, **kwa
 
 
 def aggregate_metrics_from_per_example_df(
-    per_example_df: pd.DataFrame, title: str = "Aggregated Metrics"
+    per_example_df: pd.DataFrame,
+    title: str = "Aggregated Metrics",
+    group_by: str = "dataset_name",
 ) -> pd.DataFrame:
-    """Aggregate per-example metrics by dataset.
+    """Aggregate per-example metrics by a grouping column.
 
     Args:
         per_example_df: DataFrame with columns including 'example_id', 'dataset_name',
             and metric columns.
         title: Title for the printed table.
+        group_by: Column to group by.
 
     Returns:
-        DataFrame with columns: dataset, metric, value, n.
+        DataFrame with columns: <group_by>, metric, value, n.
     """
-    # Ensure dataset_name column exists
-    if "dataset_name" not in per_example_df.columns:
+    # Ensure dataset_name column exists when grouping by it
+    if group_by == "dataset_name" and "dataset_name" not in per_example_df.columns:
         per_example_df = per_example_df.copy()
         per_example_df["dataset_name"] = "external_eval"
 
-    # Aggregate metrics by dataset
+    non_metric_cols = {
+        "example_id",
+        "dataset_name",
+        "task",
+        "designed_structure_path",
+        "sequence_redesigned_structure_path",
+        "chain_of_interest",
+        "foldseek_cluster_id",
+    }
+
     agg_rows = []
-    for dataset_name in per_example_df["dataset_name"].unique():
-        dataset_df = per_example_df[per_example_df["dataset_name"] == dataset_name]
-        non_metric_cols = {
-            "example_id",
-            "dataset_name",
-            "task",
-            "designed_structure_path",
-            "sequence_redesigned_structure_path",
-            "chain_of_interest",
-            "foldseek_cluster_id",
-        }
+    for group_value, group_df in per_example_df.groupby(group_by):
         metric_cols = [
             c
-            for c in dataset_df.select_dtypes(include="number").columns
+            for c in group_df.select_dtypes(include="number").columns
             if c not in non_metric_cols
         ]
 
         for metric_name in metric_cols:
-            values = dataset_df[metric_name].dropna()
+            values = group_df[metric_name].dropna()
             if len(values) > 0:
                 agg_rows.append(
                     {
-                        "dataset": dataset_name,
+                        group_by: group_value,
                         "metric": metric_name,
                         "value": float(np.nanmean(values)),
                         "n": len(values),
@@ -360,7 +362,16 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
     agg_df.to_csv(agg_output, index=False)
     print(f"\nSaved aggregated metrics to {agg_output}")
 
-    # 3. Clean up individual job files
+    # 3. Aggregate per-task metrics
+    per_task_df = aggregate_metrics_from_per_example_df(
+        concatenated_per_example, title="Per-Task Metrics", group_by="task"
+    )
+
+    per_task_output = output_path / "per_task_metrics.csv"
+    per_task_df.to_csv(per_task_output, index=False)
+    print(f"\nSaved per-task metrics to {per_task_output}")
+
+    # 4. Clean up individual job files
     if cleanup:
         job_files_dir = output_path / "individual_job_results"
         job_files_dir.mkdir(exist_ok=True)
@@ -375,8 +386,8 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
         # Move aggregated files
         agg_files = sorted(output_path.glob("*aggregated_metrics*.csv"))
         for file in agg_files:
-            if file == agg_output:
-                continue  # Skip the final aggregated metrics file
+            if file == agg_output or file == per_task_output:
+                continue
             file.rename(job_files_dir / file.name)
             print(f"  Moved {file.name}")
 
