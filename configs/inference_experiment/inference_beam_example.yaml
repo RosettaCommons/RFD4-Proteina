@@ -38,7 +38,7 @@ search:
     _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
     step_checkpoints: [0, 50, 100, 150, 200]
     n_branch: 2
-    beam_width: 2
+    beam_width: 3
     keep_intermediate_samples: false
 
   rewards:

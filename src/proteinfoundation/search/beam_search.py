@@ -19,6 +19,7 @@ Unlike standard beam search, we keep the clean samples generated during reward
 estimation if they meet success criteria, significantly improving total successes.
 """
 
+import copy
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -170,16 +171,13 @@ class BeamSearchStrategy(SearchStrategy):
                 replica_x_1_pred = (
                     {key: value[start:end] for key, value in x_1_pred.items()} if x_1_pred is not None else None
                 )
+                ts_segment = {k: v[start_step:] for k, v in ts.items()}
+                gt_segment = {k: v[start_step:] for k, v in gt.items()}
 
                 # Generate n_branch branches from this replica
                 for _ in range(self.n_branch):
-                    # Run partial simulation for K steps.
-                    # Slice ts/gt to start from the current position in the schedule so
-                    # the model sees the correct timestep values (not t=0 for every segment).
-                    ts_segment = {k: v[start_step:] for k, v in ts.items()}
-                    gt_segment = {k: v[start_step:] for k, v in gt.items()}
                     branch_xt, branch_x_1_pred, _ = model.fm.partial_simulation(
-                        batch=batch,
+                        batch=copy.deepcopy(batch),
                         x=replica_xt,
                         x_1_pred=replica_x_1_pred,
                         mask=init_mask,
