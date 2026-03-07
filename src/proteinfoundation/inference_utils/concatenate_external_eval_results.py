@@ -268,7 +268,7 @@ def aggregate_metrics_from_per_example_df(
         group_by: Column to group by.
 
     Returns:
-        DataFrame with columns: <group_by>, metric, value, n.
+        DataFrame with one row per group value, columns: <group_by>, n, and one column per metric.
     """
     # Ensure dataset_name column exists when grouping by it
     if group_by == "dataset_name" and "dataset_name" not in per_example_df.columns:
@@ -293,17 +293,17 @@ def aggregate_metrics_from_per_example_df(
             if c not in non_metric_cols
         ]
 
+        row: dict = {group_by: group_value, "n": len(group_df)}
+
         for metric_name in metric_cols:
             values = group_df[metric_name].dropna()
             if len(values) > 0:
-                agg_rows.append(
-                    {
-                        group_by: group_value,
-                        "metric": metric_name,
-                        "value": float(np.nanmean(values)),
-                        "n": len(values),
-                    }
-                )
+                row[metric_name] = float(np.nanmean(values))
+
+        if "foldseek_cluster_id" in group_df.columns:
+            row["cluster_diversity"] = float(group_df["foldseek_cluster_id"].nunique()) / len(group_df)
+
+        agg_rows.append(row)
 
     if not agg_rows:
         raise ValueError("No valid metrics were found after aggregation.")
