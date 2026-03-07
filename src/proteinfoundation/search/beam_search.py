@@ -173,7 +173,11 @@ class BeamSearchStrategy(SearchStrategy):
 
                 # Generate n_branch branches from this replica
                 for _ in range(self.n_branch):
-                    # Run partial simulation for K steps
+                    # Run partial simulation for K steps.
+                    # Slice ts/gt to start from the current position in the schedule so
+                    # the model sees the correct timestep values (not t=0 for every segment).
+                    ts_segment = {k: v[start_step:] for k, v in ts.items()}
+                    gt_segment = {k: v[start_step:] for k, v in gt.items()}
                     branch_xt, branch_x_1_pred, _ = model.fm.partial_simulation(
                         batch=batch,
                         x=replica_xt,
@@ -181,8 +185,8 @@ class BeamSearchStrategy(SearchStrategy):
                         mask=init_mask,
                         predict_for_sampling=fn_predict_for_sampling,
                         nsteps= end_step - start_step,
-                        ts=ts,
-                        gt=gt,
+                        ts=ts_segment,
+                        gt=gt_segment,
                         self_cond=self_cond,
                         simulation_step_params=simulation_step_params,
                         device=model.device,
@@ -349,6 +353,10 @@ class BeamSearchStrategy(SearchStrategy):
                 sampling_model_args=model.inf_cfg.model,
             )
 
+            # Slice ts/gt to start from current_step so the model sees correct timestep values.
+            ts_sim_segment = {k: v[current_step:] for k, v in ts_sim.items()}
+            gt_sim_segment = {k: v[current_step:] for k, v in gt_sim.items()}
+
             batch_final_xt, _, _ = model.fm.partial_simulation(
                 batch=batch,
                 x=batch_xt,
@@ -356,8 +364,8 @@ class BeamSearchStrategy(SearchStrategy):
                 mask=mask,
                 predict_for_sampling=partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0)),
                 nsteps = final_step - current_step,
-                ts=ts_sim,
-                gt=gt_sim,
+                ts=ts_sim_segment,
+                gt=gt_sim_segment,
                 self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params={
                     data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"]
