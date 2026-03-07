@@ -24,9 +24,8 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_
 inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer.json
 subset_to_examples: monomer-short
 
-num_replicates: 1
+num_replicates: 2
 batch_size: 1
-seed: 42
 global_prefix: beam_example
 
 out_dir: outputs/beam_example
