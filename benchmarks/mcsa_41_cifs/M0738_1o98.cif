@@ -3,18 +3,21 @@ data_M0738_1o98.cif
 _entry.id       M0738_1o98.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:55
+_entry.time     20:49:23
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       SDRXX
-_entity_poly.pdbx_seq_one_letter_code_can   SDRXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       SDR
+_entity_poly.pdbx_seq_one_letter_code_can   SDR
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -26,8 +29,6 @@ _entity_poly_seq.num
 1 n SER 62
 1 n ASP 154
 1 n ARG 261
-1 n MN  701
-1 n 2PG 801
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -117,18 +118,18 @@ ATOM   N  NE  . ARG A 1 261 . 261 ARG A NE  2307 7.23  1.0 ? -4.086 -0.492 -0.09
 ATOM   C  CZ  . ARG A 1 261 . 261 ARG A CZ  2308 6.87  1.0 ? -2.789 -0.748 0.024  1
 ATOM   N  NH1 . ARG A 1 261 . 261 ARG A NH1 2309 8.08  1.0 ? -1.893 0.024  -0.576 1
 ATOM   N  NH2 . ARG A 1 261 . 261 ARG A NH2 2310 7.22  1.0 ? -2.39  -1.755 0.785  1
-HETATM MN MN  . MN  A 2 701 . 701 MN  A MN  4328 4.5   1.0 ? 3.81   -3.828 -1.162 1
-HETATM C  C1  . 2PG A 3 801 . 801 2PG A C1  4330 12.21 1.0 ? -0.779 0.434  3.841  1
-HETATM C  C2  . 2PG A 3 801 . 801 2PG A C2  4331 11.69 1.0 ? 0.078  1.04   2.725  1
-HETATM C  C3  . 2PG A 3 801 . 801 2PG A C3  4332 12.54 1.0 ? 0.407  2.456  3.159  1
-HETATM P  P   . 2PG A 3 801 . 801 2PG A P   4333 10.03 1.0 ? 1.187  -1.03  1.462  1
-HETATM O  O1  . 2PG A 3 801 . 801 2PG A O1  4334 12.37 1.0 ? -0.076 0.049  4.857  1
-HETATM O  O2  . 2PG A 3 801 . 801 2PG A O2  4335 11.53 1.0 ? -2.036 0.375  3.694  1
-HETATM O  O3  . 2PG A 3 801 . 801 2PG A O3  4336 11.85 1.0 ? -0.679 3.327  3.318  1
-HETATM O  O1P . 2PG A 3 801 . 801 2PG A O1P 4337 10.21 1.0 ? 1.245  0.228  2.448  1
-HETATM O  O2P . 2PG A 3 801 . 801 2PG A O2P 4338 10.26 1.0 ? 0.16   -1.976 2.016  1
-HETATM O  O3P . 2PG A 3 801 . 801 2PG A O3P 4339 9.28  1.0 ? 0.797  -0.528 0.102  1
-HETATM O  O4P . 2PG A 3 801 . 801 2PG A O4P 4340 10.5  1.0 ? 2.511  -1.647 1.445  1
+HETATM MN MN  . MN  B 2 701 . 701 MN  B MN  4328 4.5   1.0 ? 3.81   -3.828 -1.162 1
+HETATM C  C1  . 2PG B 3 801 . 801 2PG B C1  4330 12.21 1.0 ? -0.779 0.434  3.841  1
+HETATM C  C2  . 2PG B 3 801 . 801 2PG B C2  4331 11.69 1.0 ? 0.078  1.04   2.725  1
+HETATM C  C3  . 2PG B 3 801 . 801 2PG B C3  4332 12.54 1.0 ? 0.407  2.456  3.159  1
+HETATM P  P   . 2PG B 3 801 . 801 2PG B P   4333 10.03 1.0 ? 1.187  -1.03  1.462  1
+HETATM O  O1  . 2PG B 3 801 . 801 2PG B O1  4334 12.37 1.0 ? -0.076 0.049  4.857  1
+HETATM O  O2  . 2PG B 3 801 . 801 2PG B O2  4335 11.53 1.0 ? -2.036 0.375  3.694  1
+HETATM O  O3  . 2PG B 3 801 . 801 2PG B O3  4336 11.85 1.0 ? -0.679 3.327  3.318  1
+HETATM O  O1P . 2PG B 3 801 . 801 2PG B O1P 4337 10.21 1.0 ? 1.245  0.228  2.448  1
+HETATM O  O2P . 2PG B 3 801 . 801 2PG B O2P 4338 10.26 1.0 ? 0.16   -1.976 2.016  1
+HETATM O  O3P . 2PG B 3 801 . 801 2PG B O3P 4339 9.28  1.0 ? 0.797  -0.528 0.102  1
+HETATM O  O4P . 2PG B 3 801 . 801 2PG B O4P 4340 10.5  1.0 ? 2.511  -1.647 1.445  1
 #
 _cell.length_a      58.515
 _cell.length_b      205.787

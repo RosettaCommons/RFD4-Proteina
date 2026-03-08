@@ -3,18 +3,21 @@ data_M0054_1qfe.cif
 _entry.id       M0054_1qfe.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     19:25:52
+_entry.time     20:49:10
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       EHKX
-_entity_poly.pdbx_seq_one_letter_code_can   EHKX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       EHK
+_entity_poly.pdbx_seq_one_letter_code_can   EHK
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -26,13 +29,12 @@ _entity_poly_seq.num
 1 n GLU 86
 1 n HIS 143
 1 n LYS 170
-1 n DHS 301
 #
 _struct_conn.id                        1
 _struct_conn.conn_type_id              covale
 _struct_conn.pdbx_value_order          sing
 _struct_conn.ptnr1_label_asym_id       A
-_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       B
 _struct_conn.ptnr1_label_comp_id       LYS
 _struct_conn.ptnr2_label_comp_id       DHS
 _struct_conn.ptnr1_label_seq_id        170
@@ -138,17 +140,17 @@ ATOM   C CG  . LYS A 1 170 . 170 LYS A CG  1322 10.22 1.0 ? 4.808  3.065  -1.913
 ATOM   C CD  . LYS A 1 170 . 170 LYS A CD  1323 10.0  1.0 ? 4.97   1.898  -0.966 1
 ATOM   C CE  . LYS A 1 170 . 170 LYS A CE  1324 10.0  1.0 ? 4.445  0.609  -1.557 1
 ATOM   N NZ  . LYS A 1 170 . 170 LYS A NZ  1325 15.02 1.0 ? 3.842  -0.231 -0.524 1
-HETATM C C1  . DHS A 2 301 . 301 DHS A C1  3878 14.84 1.0 ? 3.472  -3.143 -2.991 1
-HETATM C C3  . DHS A 2 301 . 301 DHS A C3  3879 11.19 1.0 ? 3.591  -1.546 -1.102 1
-HETATM C C4  . DHS A 2 301 . 301 DHS A C4  3880 10.0  1.0 ? 4.155  -2.68  -0.23  1
-HETATM C C5  . DHS A 2 301 . 301 DHS A C5  3881 13.01 1.0 ? 3.838  -4.084 -0.721 1
-HETATM C C6  . DHS A 2 301 . 301 DHS A C6  3882 15.12 1.0 ? 4.234  -4.195 -2.181 1
-HETATM C C7  . DHS A 2 301 . 301 DHS A C7  3883 13.77 1.0 ? 3.455  -3.341 -4.495 1
-HETATM C C2  . DHS A 2 301 . 301 DHS A C2  3884 14.39 1.0 ? 3.163  -1.97  -2.47  1
-HETATM O O2  . DHS A 2 301 . 301 DHS A O2  3885 16.28 1.0 ? 4.055  -2.491 1.178  1
-HETATM O O3  . DHS A 2 301 . 301 DHS A O3  3886 15.25 1.0 ? 4.583  -5.04  0.041  1
-HETATM O O4  . DHS A 2 301 . 301 DHS A O4  3887 14.95 1.0 ? 2.567  -2.786 -5.167 1
-HETATM O O5  . DHS A 2 301 . 301 DHS A O5  3888 16.09 1.0 ? 4.364  -4.025 -5.011 1
+HETATM C C1  . DHS B 2 301 . 301 DHS B C1  3878 14.84 1.0 ? 3.472  -3.143 -2.991 1
+HETATM C C3  . DHS B 2 301 . 301 DHS B C3  3879 11.19 1.0 ? 3.591  -1.546 -1.102 1
+HETATM C C4  . DHS B 2 301 . 301 DHS B C4  3880 10.0  1.0 ? 4.155  -2.68  -0.23  1
+HETATM C C5  . DHS B 2 301 . 301 DHS B C5  3881 13.01 1.0 ? 3.838  -4.084 -0.721 1
+HETATM C C6  . DHS B 2 301 . 301 DHS B C6  3882 15.12 1.0 ? 4.234  -4.195 -2.181 1
+HETATM C C7  . DHS B 2 301 . 301 DHS B C7  3883 13.77 1.0 ? 3.455  -3.341 -4.495 1
+HETATM C C2  . DHS B 2 301 . 301 DHS B C2  3884 14.39 1.0 ? 3.163  -1.97  -2.47  1
+HETATM O O2  . DHS B 2 301 . 301 DHS B O2  3885 16.28 1.0 ? 4.055  -2.491 1.178  1
+HETATM O O3  . DHS B 2 301 . 301 DHS B O3  3886 15.25 1.0 ? 4.583  -5.04  0.041  1
+HETATM O O4  . DHS B 2 301 . 301 DHS B O4  3887 14.95 1.0 ? 2.567  -2.786 -5.167 1
+HETATM O O5  . DHS B 2 301 . 301 DHS B O5  3888 16.09 1.0 ? 4.364  -4.025 -5.011 1
 #
 _cell.length_a      60.49
 _cell.length_b      45.39

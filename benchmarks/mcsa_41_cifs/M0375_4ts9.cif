@@ -3,18 +3,21 @@ data_M0375_4ts9.cif
 _entry.id       M0375_4ts9.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:48
+_entry.time     20:49:15
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       GRRSDRXX
-_entity_poly.pdbx_seq_one_letter_code_can   GRRSDRXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       GRRSDR
+_entity_poly.pdbx_seq_one_letter_code_can   GRRSDR
 _entity_poly.pdbx_strand_id                 A,C
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -29,8 +32,6 @@ _entity_poly_seq.num
 1 n SER 90
 1 n ASP 204
 1 n ARG 217
-1 n FMC 300
-1 n PO4 301
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -164,30 +165,30 @@ ATOM   N NE    . ARG A 1 217 . 217 ARG A NE    1664 37.97 0.5  ? -5.215 0.593  -
 ATOM   C CZ    . ARG A 1 217 . 217 ARG A CZ    1666 38.73 0.5  ? -4.999 1.62   -2.89   1
 ATOM   N NH1   . ARG A 1 217 . 217 ARG A NH1   1668 35.37 0.5  ? -3.92  2.377  -2.745  1
 ATOM   N NH2   . ARG A 1 217 . 217 ARG A NH2   1670 36.87 0.5  ? -5.867 1.892  -3.856  1
-HETATM N N1    . FMC A 2 300 . 300 FMC A N1    5486 15.0  0.77 ? 1.362  6.491  -6.523  1
-HETATM C C2    . FMC A 2 300 . 300 FMC A C2    5487 15.0  0.77 ? 2.264  6.621  -5.52   1
-HETATM N N3    . FMC A 2 300 . 300 FMC A N3    5488 15.0  0.77 ? 2.384  5.765  -4.491  1
-HETATM C C4    . FMC A 2 300 . 300 FMC A C4    5489 15.0  0.77 ? 1.56   4.69   -4.428  1
-HETATM C C5    . FMC A 2 300 . 300 FMC A C5    5490 15.0  0.77 ? 0.555  4.462  -5.482  1
-HETATM C C6    . FMC A 2 300 . 300 FMC A C6    5491 15.0  0.77 ? 0.491  5.458  -6.571  1
-HETATM N N6    . FMC A 2 300 . 300 FMC A N6    5492 15.0  0.77 ? -0.412 5.329  -7.577  1
-HETATM N N7    . FMC A 2 300 . 300 FMC A N7    5493 15.0  0.77 ? -0.112 3.336  -5.178  1
-HETATM N N8    . FMC A 2 300 . 300 FMC A N8    5494 15.0  0.77 ? 0.391  2.788  -3.983  1
-HETATM C C9    . FMC A 2 300 . 300 FMC A C9    5495 15.0  0.77 ? 1.397  3.549  -3.484  1
-HETATM C "C1'" . FMC A 2 300 . 300 FMC A "C1'" 5496 15.0  0.77 ? 2.195  3.352  -2.229  1
-HETATM C "C2'" . FMC A 2 300 . 300 FMC A "C2'" 5497 15.0  0.77 ? 3.267  4.415  -1.906  1
-HETATM O "O2'" . FMC A 2 300 . 300 FMC A "O2'" 5498 15.0  0.77 ? 4.552  3.838  -1.905  1
-HETATM C "C3'" . FMC A 2 300 . 300 FMC A "C3'" 5499 15.0  0.77 ? 2.855  4.968  -0.535  1
-HETATM O "O3'" . FMC A 2 300 . 300 FMC A "O3'" 5500 15.0  0.77 ? 3.585  4.317  0.505   1
-HETATM C "C4'" . FMC A 2 300 . 300 FMC A "C4'" 5501 15.0  0.77 ? 1.382  4.626  -0.436  1
-HETATM O "O4'" . FMC A 2 300 . 300 FMC A "O4'" 5502 15.0  0.77 ? 1.188  3.444  -1.239  1
-HETATM C "C5'" . FMC A 2 300 . 300 FMC A "C5'" 5503 15.0  0.77 ? 0.43   5.695  -0.914  1
-HETATM O "O5'" . FMC A 2 300 . 300 FMC A "O5'" 5504 15.0  0.77 ? -0.885 5.179  -1.075  1
-HETATM P P     . PO4 A 3 301 . 301 PO4 A P     5505 20.45 1.0  ? 2.735  0.902  0.787   1
-HETATM O O1    . PO4 A 3 301 . 301 PO4 A O1    5506 20.34 1.0  ? 3.455  1.153  -0.504  1
-HETATM O O2    . PO4 A 3 301 . 301 PO4 A O2    5507 20.49 1.0  ? 1.315  0.481  0.511   1
-HETATM O O3    . PO4 A 3 301 . 301 PO4 A O3    5508 22.04 1.0  ? 3.464  -0.175 1.544   1
-HETATM O O4    . PO4 A 3 301 . 301 PO4 A O4    5509 16.96 1.0  ? 2.717  2.167  1.621   1
+HETATM N N1    . FMC D 2 300 . 300 FMC D N1    5486 15.0  0.77 ? 1.362  6.491  -6.523  1
+HETATM C C2    . FMC D 2 300 . 300 FMC D C2    5487 15.0  0.77 ? 2.264  6.621  -5.52   1
+HETATM N N3    . FMC D 2 300 . 300 FMC D N3    5488 15.0  0.77 ? 2.384  5.765  -4.491  1
+HETATM C C4    . FMC D 2 300 . 300 FMC D C4    5489 15.0  0.77 ? 1.56   4.69   -4.428  1
+HETATM C C5    . FMC D 2 300 . 300 FMC D C5    5490 15.0  0.77 ? 0.555  4.462  -5.482  1
+HETATM C C6    . FMC D 2 300 . 300 FMC D C6    5491 15.0  0.77 ? 0.491  5.458  -6.571  1
+HETATM N N6    . FMC D 2 300 . 300 FMC D N6    5492 15.0  0.77 ? -0.412 5.329  -7.577  1
+HETATM N N7    . FMC D 2 300 . 300 FMC D N7    5493 15.0  0.77 ? -0.112 3.336  -5.178  1
+HETATM N N8    . FMC D 2 300 . 300 FMC D N8    5494 15.0  0.77 ? 0.391  2.788  -3.983  1
+HETATM C C9    . FMC D 2 300 . 300 FMC D C9    5495 15.0  0.77 ? 1.397  3.549  -3.484  1
+HETATM C "C1'" . FMC D 2 300 . 300 FMC D "C1'" 5496 15.0  0.77 ? 2.195  3.352  -2.229  1
+HETATM C "C2'" . FMC D 2 300 . 300 FMC D "C2'" 5497 15.0  0.77 ? 3.267  4.415  -1.906  1
+HETATM O "O2'" . FMC D 2 300 . 300 FMC D "O2'" 5498 15.0  0.77 ? 4.552  3.838  -1.905  1
+HETATM C "C3'" . FMC D 2 300 . 300 FMC D "C3'" 5499 15.0  0.77 ? 2.855  4.968  -0.535  1
+HETATM O "O3'" . FMC D 2 300 . 300 FMC D "O3'" 5500 15.0  0.77 ? 3.585  4.317  0.505   1
+HETATM C "C4'" . FMC D 2 300 . 300 FMC D "C4'" 5501 15.0  0.77 ? 1.382  4.626  -0.436  1
+HETATM O "O4'" . FMC D 2 300 . 300 FMC D "O4'" 5502 15.0  0.77 ? 1.188  3.444  -1.239  1
+HETATM C "C5'" . FMC D 2 300 . 300 FMC D "C5'" 5503 15.0  0.77 ? 0.43   5.695  -0.914  1
+HETATM O "O5'" . FMC D 2 300 . 300 FMC D "O5'" 5504 15.0  0.77 ? -0.885 5.179  -1.075  1
+HETATM P P     . PO4 D 3 301 . 301 PO4 D P     5505 20.45 1.0  ? 2.735  0.902  0.787   1
+HETATM O O1    . PO4 D 3 301 . 301 PO4 D O1    5506 20.34 1.0  ? 3.455  1.153  -0.504  1
+HETATM O O2    . PO4 D 3 301 . 301 PO4 D O2    5507 20.49 1.0  ? 1.315  0.481  0.511   1
+HETATM O O3    . PO4 D 3 301 . 301 PO4 D O3    5508 22.04 1.0  ? 3.464  -0.175 1.544   1
+HETATM O O4    . PO4 D 3 301 . 301 PO4 D O4    5509 16.96 1.0  ? 2.717  2.167  1.621   1
 ATOM   N N     . ARG C 1 43  . 43  ARG C N     3993 14.29 1.0  ? -4.257 2.969  7.895   1
 ATOM   C CA    . ARG C 1 43  . 43  ARG C CA    3994 16.06 1.0  ? -2.803 3.003  8.11    1
 ATOM   C C     . ARG C 1 43  . 43  ARG C C     3995 16.24 1.0  ? -2.424 3.438  9.525   1

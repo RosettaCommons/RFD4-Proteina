@@ -3,18 +3,21 @@ data_M0209_1lij.cif
 _entry.id       M0209_1lij.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:47
+_entry.time     20:49:14
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+3 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       RDXXX
-_entity_poly.pdbx_seq_one_letter_code_can   RDXXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       RD
+_entity_poly.pdbx_seq_one_letter_code_can   RD
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -25,9 +28,6 @@ _entity_poly_seq.mon_id
 _entity_poly_seq.num 
 1 n ARG 136
 1 n ASP 318
-1 n MG  999
-1 n RPP 699
-1 n ACP 799
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -151,58 +151,58 @@ ATOM   C  CB    . ASP A 1 318 . 318 ASP A CB    2136 11.73 1.0 ? 0.609  2.155  7
 ATOM   C  CG    . ASP A 1 318 . 318 ASP A CG    2137 17.7  1.0 ? 0.185  2.938  6.048  1
 ATOM   O  OD1   . ASP A 1 318 . 318 ASP A OD1   2138 16.22 1.0 ? 0.953  3.785  5.548  1
 ATOM   O  OD2   . ASP A 1 318 . 318 ASP A OD2   2139 16.99 1.0 ? -0.953 2.671  5.581  1
-HETATM MG MG    . MG  A 3 999 . 999 MG  A MG    2435 27.33 1.0 ? 4.956  -3.389 -0.684 1
-HETATM I  I     . RPP A 4 699 . 699 RPP A I     2436 17.0  1.0 ? -3.95  6.613  -2.945 1
-HETATM N  N1    . RPP A 4 699 . 699 RPP A N1    2437 14.0  1.0 ? -4.232 9.513  1.134  1
-HETATM C  C2    . RPP A 4 699 . 699 RPP A C2    2438 13.99 1.0 ? -4.258 8.803  2.261  1
-HETATM N  N3    . RPP A 4 699 . 699 RPP A N3    2439 13.94 1.0 ? -4.232 7.483  2.416  1
-HETATM C  C4    . RPP A 4 699 . 699 RPP A C4    2440 14.38 1.0 ? -4.152 6.853  1.229  1
-HETATM C  C5    . RPP A 4 699 . 699 RPP A C5    2441 13.66 1.0 ? -4.149 7.436  -0.022 1
-HETATM C  C6    . RPP A 4 699 . 699 RPP A C6    2442 13.76 1.0 ? -4.147 8.86   -0.049 1
-HETATM N  N6    . RPP A 4 699 . 699 RPP A N6    2443 14.77 1.0 ? -4.135 9.594  -1.164 1
-HETATM C  C7    . RPP A 4 699 . 699 RPP A C7    2444 14.64 1.0 ? -4.093 6.438  -0.993 1
-HETATM N  N8    . RPP A 4 699 . 699 RPP A N8    2445 14.85 1.0 ? -4.063 5.311  -0.328 1
-HETATM N  N9    . RPP A 4 699 . 699 RPP A N9    2446 14.32 1.0 ? -4.155 5.489  1.021  1
-HETATM C  "C1'" . RPP A 4 699 . 699 RPP A "C1'" 2447 15.43 1.0 ? -4.189 4.59   2.169  1
-HETATM C  "C2'" . RPP A 4 699 . 699 RPP A "C2'" 2448 15.16 1.0 ? -5.276 3.514  2.081  1
-HETATM C  "C3'" . RPP A 4 699 . 699 RPP A "C3'" 2449 15.0  1.0 ? -4.643 2.316  2.804  1
-HETATM C  "C4'" . RPP A 4 699 . 699 RPP A "C4'" 2450 15.28 1.0 ? -3.177 2.699  3.006  1
-HETATM O  "O4'" . RPP A 4 699 . 699 RPP A "O4'" 2451 15.47 1.0 ? -2.979 3.878  2.199  1
-HETATM O  "O2'" . RPP A 4 699 . 699 RPP A "O2'" 2452 16.47 1.0 ? -6.459 3.957  2.717  1
-HETATM O  "O3'" . RPP A 4 699 . 699 RPP A "O3'" 2453 16.49 1.0 ? -5.257 2.084  4.057  1
-HETATM C  "C5'" . RPP A 4 699 . 699 RPP A "C5'" 2454 16.82 1.0 ? -2.181 1.628  2.59   1
-HETATM O  "O5'" . RPP A 4 699 . 699 RPP A "O5'" 2455 18.27 1.0 ? -0.854 2.047  2.881  1
-HETATM P  PG    . ACP A 5 799 . 799 ACP A PG    2456 51.94 1.0 ? 1.366  0.272  1.586  1
-HETATM O  O1G   . ACP A 5 799 . 799 ACP A O1G   2457 53.11 1.0 ? 0.998  0.639  2.998  1
-HETATM O  O2G   . ACP A 5 799 . 799 ACP A O2G   2458 53.3  1.0 ? 1.641  1.483  0.727  1
-HETATM O  O3G   . ACP A 5 799 . 799 ACP A O3G   2459 53.03 1.0 ? 0.324  -0.679 1.073  1
-HETATM P  PB    . ACP A 5 799 . 799 ACP A PB    2460 47.6  1.0 ? 4.278  -1.143 0.836  1
-HETATM O  O1B   . ACP A 5 799 . 799 ACP A O1B   2461 49.41 1.0 ? 3.56   -2.078 -0.021 1
-HETATM O  O2B   . ACP A 5 799 . 799 ACP A O2B   2462 48.95 1.0 ? 4.897  0.162  0.36   1
-HETATM C  C3B   . ACP A 5 799 . 799 ACP A C3B   2463 51.0  1.0 ? 2.895  -0.648 1.831  1
-HETATM P  PA    . ACP A 5 799 . 799 ACP A PA    2464 42.75 1.0 ? 7.101  -1.832 1.846  1
-HETATM O  O1A   . ACP A 5 799 . 799 ACP A O1A   2465 44.2  1.0 ? 7.867  -2.334 0.671  1
-HETATM O  O2A   . ACP A 5 799 . 799 ACP A O2A   2466 44.14 1.0 ? 7.358  -0.416 2.232  1
-HETATM O  O3A   . ACP A 5 799 . 799 ACP A O3A   2467 46.85 1.0 ? 5.417  -1.927 1.808  1
-HETATM O  "O5'" . ACP A 5 799 . 799 ACP A "O5'" 2468 41.4  1.0 ? 7.443  -2.71  3.015  1
-HETATM C  "C5'" . ACP A 5 799 . 799 ACP A "C5'" 2469 37.48 1.0 ? 7.742  -2.126 4.272  1
-HETATM C  "C4'" . ACP A 5 799 . 799 ACP A "C4'" 2470 33.89 1.0 ? 8.163  -3.186 5.26   1
-HETATM O  "O4'" . ACP A 5 799 . 799 ACP A "O4'" 2471 33.05 1.0 ? 7.208  -4.275 5.228  1
-HETATM C  "C3'" . ACP A 5 799 . 799 ACP A "C3'" 2472 32.86 1.0 ? 9.511  -3.823 4.967  1
-HETATM O  "O3'" . ACP A 5 799 . 799 ACP A "O3'" 2473 33.85 1.0 ? 10.546 -3.054 5.566  1
-HETATM C  "C2'" . ACP A 5 799 . 799 ACP A "C2'" 2474 32.27 1.0 ? 9.349  -5.172 5.65   1
-HETATM O  "O2'" . ACP A 5 799 . 799 ACP A "O2'" 2475 32.98 1.0 ? 9.509  -5.076 7.05   1
-HETATM C  "C1'" . ACP A 5 799 . 799 ACP A "C1'" 2476 32.43 1.0 ? 7.9    -5.51  5.287  1
-HETATM N  N9    . ACP A 5 799 . 799 ACP A N9    2477 30.57 1.0 ? 7.784  -6.165 3.989  1
-HETATM C  C8    . ACP A 5 799 . 799 ACP A C8    2478 30.22 1.0 ? 7.38   -5.85  2.725  1
-HETATM N  N7    . ACP A 5 799 . 799 ACP A N7    2479 30.2  1.0 ? 7.489  -6.847 1.879  1
-HETATM C  C5    . ACP A 5 799 . 799 ACP A C5    2480 30.03 1.0 ? 8.004  -7.885 2.643  1
-HETATM C  C6    . ACP A 5 799 . 799 ACP A C6    2481 30.48 1.0 ? 8.353  -9.221 2.339  1
-HETATM N  N6    . ACP A 5 799 . 799 ACP A N6    2482 31.98 1.0 ? 8.228  -9.757 1.124  1
-HETATM N  N1    . ACP A 5 799 . 799 ACP A N1    2483 30.67 1.0 ? 8.841  -9.991 3.334  1
-HETATM C  C2    . ACP A 5 799 . 799 ACP A C2    2484 30.84 1.0 ? 8.969  -9.459 4.551  1
-HETATM N  N3    . ACP A 5 799 . 799 ACP A N3    2485 30.85 1.0 ? 8.675  -8.225 4.956  1
-HETATM C  C4    . ACP A 5 799 . 799 ACP A C4    2486 30.86 1.0 ? 8.194  -7.481 3.944  1
+HETATM MG MG    . MG  B 3 999 . 999 MG  B MG    2435 27.33 1.0 ? 4.956  -3.389 -0.684 1
+HETATM I  I     . RPP B 4 699 . 699 RPP B I     2436 17.0  1.0 ? -3.95  6.613  -2.945 1
+HETATM N  N1    . RPP B 4 699 . 699 RPP B N1    2437 14.0  1.0 ? -4.232 9.513  1.134  1
+HETATM C  C2    . RPP B 4 699 . 699 RPP B C2    2438 13.99 1.0 ? -4.258 8.803  2.261  1
+HETATM N  N3    . RPP B 4 699 . 699 RPP B N3    2439 13.94 1.0 ? -4.232 7.483  2.416  1
+HETATM C  C4    . RPP B 4 699 . 699 RPP B C4    2440 14.38 1.0 ? -4.152 6.853  1.229  1
+HETATM C  C5    . RPP B 4 699 . 699 RPP B C5    2441 13.66 1.0 ? -4.149 7.436  -0.022 1
+HETATM C  C6    . RPP B 4 699 . 699 RPP B C6    2442 13.76 1.0 ? -4.147 8.86   -0.049 1
+HETATM N  N6    . RPP B 4 699 . 699 RPP B N6    2443 14.77 1.0 ? -4.135 9.594  -1.164 1
+HETATM C  C7    . RPP B 4 699 . 699 RPP B C7    2444 14.64 1.0 ? -4.093 6.438  -0.993 1
+HETATM N  N8    . RPP B 4 699 . 699 RPP B N8    2445 14.85 1.0 ? -4.063 5.311  -0.328 1
+HETATM N  N9    . RPP B 4 699 . 699 RPP B N9    2446 14.32 1.0 ? -4.155 5.489  1.021  1
+HETATM C  "C1'" . RPP B 4 699 . 699 RPP B "C1'" 2447 15.43 1.0 ? -4.189 4.59   2.169  1
+HETATM C  "C2'" . RPP B 4 699 . 699 RPP B "C2'" 2448 15.16 1.0 ? -5.276 3.514  2.081  1
+HETATM C  "C3'" . RPP B 4 699 . 699 RPP B "C3'" 2449 15.0  1.0 ? -4.643 2.316  2.804  1
+HETATM C  "C4'" . RPP B 4 699 . 699 RPP B "C4'" 2450 15.28 1.0 ? -3.177 2.699  3.006  1
+HETATM O  "O4'" . RPP B 4 699 . 699 RPP B "O4'" 2451 15.47 1.0 ? -2.979 3.878  2.199  1
+HETATM O  "O2'" . RPP B 4 699 . 699 RPP B "O2'" 2452 16.47 1.0 ? -6.459 3.957  2.717  1
+HETATM O  "O3'" . RPP B 4 699 . 699 RPP B "O3'" 2453 16.49 1.0 ? -5.257 2.084  4.057  1
+HETATM C  "C5'" . RPP B 4 699 . 699 RPP B "C5'" 2454 16.82 1.0 ? -2.181 1.628  2.59   1
+HETATM O  "O5'" . RPP B 4 699 . 699 RPP B "O5'" 2455 18.27 1.0 ? -0.854 2.047  2.881  1
+HETATM P  PG    . ACP B 5 799 . 799 ACP B PG    2456 51.94 1.0 ? 1.366  0.272  1.586  1
+HETATM O  O1G   . ACP B 5 799 . 799 ACP B O1G   2457 53.11 1.0 ? 0.998  0.639  2.998  1
+HETATM O  O2G   . ACP B 5 799 . 799 ACP B O2G   2458 53.3  1.0 ? 1.641  1.483  0.727  1
+HETATM O  O3G   . ACP B 5 799 . 799 ACP B O3G   2459 53.03 1.0 ? 0.324  -0.679 1.073  1
+HETATM P  PB    . ACP B 5 799 . 799 ACP B PB    2460 47.6  1.0 ? 4.278  -1.143 0.836  1
+HETATM O  O1B   . ACP B 5 799 . 799 ACP B O1B   2461 49.41 1.0 ? 3.56   -2.078 -0.021 1
+HETATM O  O2B   . ACP B 5 799 . 799 ACP B O2B   2462 48.95 1.0 ? 4.897  0.162  0.36   1
+HETATM C  C3B   . ACP B 5 799 . 799 ACP B C3B   2463 51.0  1.0 ? 2.895  -0.648 1.831  1
+HETATM P  PA    . ACP B 5 799 . 799 ACP B PA    2464 42.75 1.0 ? 7.101  -1.832 1.846  1
+HETATM O  O1A   . ACP B 5 799 . 799 ACP B O1A   2465 44.2  1.0 ? 7.867  -2.334 0.671  1
+HETATM O  O2A   . ACP B 5 799 . 799 ACP B O2A   2466 44.14 1.0 ? 7.358  -0.416 2.232  1
+HETATM O  O3A   . ACP B 5 799 . 799 ACP B O3A   2467 46.85 1.0 ? 5.417  -1.927 1.808  1
+HETATM O  "O5'" . ACP B 5 799 . 799 ACP B "O5'" 2468 41.4  1.0 ? 7.443  -2.71  3.015  1
+HETATM C  "C5'" . ACP B 5 799 . 799 ACP B "C5'" 2469 37.48 1.0 ? 7.742  -2.126 4.272  1
+HETATM C  "C4'" . ACP B 5 799 . 799 ACP B "C4'" 2470 33.89 1.0 ? 8.163  -3.186 5.26   1
+HETATM O  "O4'" . ACP B 5 799 . 799 ACP B "O4'" 2471 33.05 1.0 ? 7.208  -4.275 5.228  1
+HETATM C  "C3'" . ACP B 5 799 . 799 ACP B "C3'" 2472 32.86 1.0 ? 9.511  -3.823 4.967  1
+HETATM O  "O3'" . ACP B 5 799 . 799 ACP B "O3'" 2473 33.85 1.0 ? 10.546 -3.054 5.566  1
+HETATM C  "C2'" . ACP B 5 799 . 799 ACP B "C2'" 2474 32.27 1.0 ? 9.349  -5.172 5.65   1
+HETATM O  "O2'" . ACP B 5 799 . 799 ACP B "O2'" 2475 32.98 1.0 ? 9.509  -5.076 7.05   1
+HETATM C  "C1'" . ACP B 5 799 . 799 ACP B "C1'" 2476 32.43 1.0 ? 7.9    -5.51  5.287  1
+HETATM N  N9    . ACP B 5 799 . 799 ACP B N9    2477 30.57 1.0 ? 7.784  -6.165 3.989  1
+HETATM C  C8    . ACP B 5 799 . 799 ACP B C8    2478 30.22 1.0 ? 7.38   -5.85  2.725  1
+HETATM N  N7    . ACP B 5 799 . 799 ACP B N7    2479 30.2  1.0 ? 7.489  -6.847 1.879  1
+HETATM C  C5    . ACP B 5 799 . 799 ACP B C5    2480 30.03 1.0 ? 8.004  -7.885 2.643  1
+HETATM C  C6    . ACP B 5 799 . 799 ACP B C6    2481 30.48 1.0 ? 8.353  -9.221 2.339  1
+HETATM N  N6    . ACP B 5 799 . 799 ACP B N6    2482 31.98 1.0 ? 8.228  -9.757 1.124  1
+HETATM N  N1    . ACP B 5 799 . 799 ACP B N1    2483 30.67 1.0 ? 8.841  -9.991 3.334  1
+HETATM C  C2    . ACP B 5 799 . 799 ACP B C2    2484 30.84 1.0 ? 8.969  -9.459 4.551  1
+HETATM N  N3    . ACP B 5 799 . 799 ACP B N3    2485 30.85 1.0 ? 8.675  -8.225 4.956  1
+HETATM C  C4    . ACP B 5 799 . 799 ACP B C4    2486 30.86 1.0 ? 8.194  -7.481 3.944  1
 #
 _cell.length_a      167.7
 _cell.length_b      46.97

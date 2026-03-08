@@ -3,18 +3,21 @@ data_M0907_1rbl.cif
 _entry.id       M0907_1rbl.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     19:26:07
+_entry.time     20:49:26
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+3 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       KKDEHKXXX
-_entity_poly.pdbx_seq_one_letter_code_can   KKDEHKXXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       KKDEHK
+_entity_poly.pdbx_seq_one_letter_code_can   KKDEHK
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -29,15 +32,12 @@ _entity_poly_seq.num
 1 n GLU 204
 1 n HIS 294
 1 n LYS 334
-1 n MG  477
-1 n CAP 476
-1 n FMT 478
 #
 _struct_conn.id                        1
 _struct_conn.conn_type_id              covale
 _struct_conn.pdbx_value_order          sing
 _struct_conn.ptnr1_label_asym_id       A
-_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       B
 _struct_conn.ptnr1_label_comp_id       LYS
 _struct_conn.ptnr2_label_comp_id       FMT
 _struct_conn.ptnr1_label_seq_id        201
@@ -187,31 +187,31 @@ ATOM   C  CG  . LYS A 1 334 . 334 LYS A CG  2561  14.52 1.0 ? 7.525  5.582  -1.9
 ATOM   C  CD  . LYS A 1 334 . 334 LYS A CD  2562  13.32 1.0 ? 6.104  5.961  -2.324 1
 ATOM   C  CE  . LYS A 1 334 . 334 LYS A CE  2563  12.43 1.0 ? 5.129  4.896  -1.846 1
 ATOM   N  NZ  . LYS A 1 334 . 334 LYS A NZ  2564  11.03 1.0 ? 3.747  5.159  -2.313 1
-HETATM MG MG  . MG  A 3 477 . 477 MG  A MG  36497 19.95 1.0 ? -0.03  -0.263 -0.222 1
-HETATM C  C1  . CAP A 4 476 . 476 CAP A C1  36498 16.28 1.0 ? 2.834  1.385  -3.138 1
-HETATM C  C2  . CAP A 4 476 . 476 CAP A C2  36499 20.07 1.0 ? 2.118  0.93   -1.845 1
-HETATM C  C3  . CAP A 4 476 . 476 CAP A C3  36500 20.04 1.0 ? 2.944  -0.266 -1.285 1
-HETATM C  C4  . CAP A 4 476 . 476 CAP A C4  36501 16.61 1.0 ? 4.263  -0.0   -0.573 1
-HETATM C  C5  . CAP A 4 476 . 476 CAP A C5  36502 13.65 1.0 ? 4.634  -0.665 0.749  1
-HETATM C  C   . CAP A 4 476 . 476 CAP A C   36503 17.88 1.0 ? 1.798  2.033  -0.839 1
-HETATM O  O1  . CAP A 4 476 . 476 CAP A O1  36504 17.6  1.0 ? 2.107  2.249  -4.039 1
-HETATM O  O2  . CAP A 4 476 . 476 CAP A O2  36505 19.85 1.0 ? 0.891  0.502  -2.292 1
-HETATM O  O3  . CAP A 4 476 . 476 CAP A O3  36506 19.05 1.0 ? 2.201  -1.017 -0.399 1
-HETATM O  O4  . CAP A 4 476 . 476 CAP A O4  36507 21.64 1.0 ? 5.154  -0.338 -1.559 1
-HETATM O  O5  . CAP A 4 476 . 476 CAP A O5  36508 15.34 1.0 ? 6.029  -0.605 1.096  1
-HETATM O  O6  . CAP A 4 476 . 476 CAP A O6  36509 20.5  1.0 ? 2.607  3.075  -0.706 1
-HETATM O  O7  . CAP A 4 476 . 476 CAP A O7  36510 19.2  1.0 ? 0.694  2.035  -0.068 1
-HETATM P  P1  . CAP A 4 476 . 476 CAP A P1  36511 13.98 1.0 ? 2.751  2.841  -5.253 1
-HETATM P  P2  . CAP A 4 476 . 476 CAP A P2  36512 16.38 1.0 ? 6.932  -1.765 1.157  1
-HETATM O  O1P . CAP A 4 476 . 476 CAP A O1P 36513 14.79 1.0 ? 1.627  3.806  -5.788 1
-HETATM O  O2P . CAP A 4 476 . 476 CAP A O2P 36514 15.11 1.0 ? 3.067  1.549  -6.128 1
-HETATM O  O3P . CAP A 4 476 . 476 CAP A O3P 36515 15.47 1.0 ? 4.02   3.586  -4.664 1
-HETATM O  O4P . CAP A 4 476 . 476 CAP A O4P 36516 17.33 1.0 ? 6.735  -2.561 -0.198 1
-HETATM O  O5P . CAP A 4 476 . 476 CAP A O5P 36517 17.7  1.0 ? 6.435  -2.566 2.447  1
-HETATM O  O6P . CAP A 4 476 . 476 CAP A O6P 36518 15.17 1.0 ? 8.329  -1.076 1.338  1
-HETATM C  C   . FMT A 5 478 . 478 FMT A C   36519 13.87 1.0 ? -0.095 -3.206 -1.287 1
-HETATM O  O1  . FMT A 5 478 . 478 FMT A O1  36520 15.54 1.0 ? 1.13   -2.982 -1.252 1
-HETATM O  O2  . FMT A 5 478 . 478 FMT A O2  36521 14.23 1.0 ? -0.902 -2.362 -0.883 1
+HETATM MG MG  . MG  B 3 477 . 477 MG  B MG  36497 19.95 1.0 ? -0.03  -0.263 -0.222 1
+HETATM C  C1  . CAP B 4 476 . 476 CAP B C1  36498 16.28 1.0 ? 2.834  1.385  -3.138 1
+HETATM C  C2  . CAP B 4 476 . 476 CAP B C2  36499 20.07 1.0 ? 2.118  0.93   -1.845 1
+HETATM C  C3  . CAP B 4 476 . 476 CAP B C3  36500 20.04 1.0 ? 2.944  -0.266 -1.285 1
+HETATM C  C4  . CAP B 4 476 . 476 CAP B C4  36501 16.61 1.0 ? 4.263  -0.0   -0.573 1
+HETATM C  C5  . CAP B 4 476 . 476 CAP B C5  36502 13.65 1.0 ? 4.634  -0.665 0.749  1
+HETATM C  C   . CAP B 4 476 . 476 CAP B C   36503 17.88 1.0 ? 1.798  2.033  -0.839 1
+HETATM O  O1  . CAP B 4 476 . 476 CAP B O1  36504 17.6  1.0 ? 2.107  2.249  -4.039 1
+HETATM O  O2  . CAP B 4 476 . 476 CAP B O2  36505 19.85 1.0 ? 0.891  0.502  -2.292 1
+HETATM O  O3  . CAP B 4 476 . 476 CAP B O3  36506 19.05 1.0 ? 2.201  -1.017 -0.399 1
+HETATM O  O4  . CAP B 4 476 . 476 CAP B O4  36507 21.64 1.0 ? 5.154  -0.338 -1.559 1
+HETATM O  O5  . CAP B 4 476 . 476 CAP B O5  36508 15.34 1.0 ? 6.029  -0.605 1.096  1
+HETATM O  O6  . CAP B 4 476 . 476 CAP B O6  36509 20.5  1.0 ? 2.607  3.075  -0.706 1
+HETATM O  O7  . CAP B 4 476 . 476 CAP B O7  36510 19.2  1.0 ? 0.694  2.035  -0.068 1
+HETATM P  P1  . CAP B 4 476 . 476 CAP B P1  36511 13.98 1.0 ? 2.751  2.841  -5.253 1
+HETATM P  P2  . CAP B 4 476 . 476 CAP B P2  36512 16.38 1.0 ? 6.932  -1.765 1.157  1
+HETATM O  O1P . CAP B 4 476 . 476 CAP B O1P 36513 14.79 1.0 ? 1.627  3.806  -5.788 1
+HETATM O  O2P . CAP B 4 476 . 476 CAP B O2P 36514 15.11 1.0 ? 3.067  1.549  -6.128 1
+HETATM O  O3P . CAP B 4 476 . 476 CAP B O3P 36515 15.47 1.0 ? 4.02   3.586  -4.664 1
+HETATM O  O4P . CAP B 4 476 . 476 CAP B O4P 36516 17.33 1.0 ? 6.735  -2.561 -0.198 1
+HETATM O  O5P . CAP B 4 476 . 476 CAP B O5P 36517 17.7  1.0 ? 6.435  -2.566 2.447  1
+HETATM O  O6P . CAP B 4 476 . 476 CAP B O6P 36518 15.17 1.0 ? 8.329  -1.076 1.338  1
+HETATM C  C   . FMT B 5 478 . 478 FMT B C   36519 13.87 1.0 ? -0.095 -3.206 -1.287 1
+HETATM O  O1  . FMT B 5 478 . 478 FMT B O1  36520 15.54 1.0 ? 1.13   -2.982 -1.252 1
+HETATM O  O2  . FMT B 5 478 . 478 FMT B O2  36521 14.23 1.0 ? -0.902 -2.362 -0.883 1
 #
 _cell.length_a      223.9
 _cell.length_b      111.9

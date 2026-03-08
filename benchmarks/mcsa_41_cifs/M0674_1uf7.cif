@@ -3,7 +3,7 @@ data_M0674_1uf7.cif
 _entry.id       M0674_1uf7.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:50
+_entry.time     20:49:17
 #
 loop_
 _entity.id 

@@ -3,18 +3,21 @@ data_M0129_1os7.cif
 _entry.id       M0129_1os7.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:45
+_entry.time     20:49:12
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       HDHRXXX
-_entity_poly.pdbx_seq_one_letter_code_can   HDHRXXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       HDHR
+_entity_poly.pdbx_seq_one_letter_code_can   HDHR
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -27,9 +30,6 @@ _entity_poly_seq.num
 1 n ASP 101
 1 n HIS 255
 1 n ARG 270
-1 n FE2 302
-1 n TAU 401
-1 n AKG 501
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -143,24 +143,24 @@ ATOM   N  NE  . ARG A 1 270 . 270 ARG A NE  2185 56.63 1.0 ? 2.843  4.5    2.241
 ATOM   C  CZ  . ARG A 1 270 . 270 ARG A CZ  2186 54.94 1.0 ? 1.544  4.278  2.389  1
 ATOM   N  NH1 . ARG A 1 270 . 270 ARG A NH1 2187 53.01 1.0 ? 1.126  3.208  3.049  1
 ATOM   N  NH2 . ARG A 1 270 . 270 ARG A NH2 2188 54.99 1.0 ? 0.666  5.137  1.893  1
-HETATM FE FE  . FE2 A 2 302 . 302 FE2 A FE  9156 61.74 1.0 ? 0.319  -0.375 1.639  1
-HETATM C  C1  . TAU A 3 401 . 401 TAU A C1  9157 51.89 1.0 ? -4.501 0.825  4.05   1
-HETATM C  C2  . TAU A 3 401 . 401 TAU A C2  9158 50.26 1.0 ? -3.078 1.314  3.915  1
-HETATM N  N1  . TAU A 3 401 . 401 TAU A N1  9159 48.56 1.0 ? -4.507 -0.46  4.453  1
-HETATM S  S   . TAU A 3 401 . 401 TAU A S   9160 49.24 1.0 ? -2.936 2.988  3.234  1
-HETATM O  O1  . TAU A 3 401 . 401 TAU A O1  9161 51.8  1.0 ? -1.556 3.538  3.465  1
-HETATM O  O2  . TAU A 3 401 . 401 TAU A O2  9162 49.76 1.0 ? -3.212 2.923  1.754  1
-HETATM O  O3  . TAU A 3 401 . 401 TAU A O3  9163 50.5  1.0 ? -3.936 3.891  3.892  1
-HETATM C  C1  . AKG A 4 501 . 501 AKG A C1  9164 66.81 1.0 ? 2.423  0.044  3.049  1
-HETATM O  O1  . AKG A 4 501 . 501 AKG A O1  9165 69.32 1.0 ? 1.611  0.553  2.313  1
-HETATM O  O2  . AKG A 4 501 . 501 AKG A O2  9166 70.03 1.0 ? 3.357  0.672  3.517  1
-HETATM C  C2  . AKG A 4 501 . 501 AKG A C2  9167 66.1  1.0 ? 2.264  -1.476 3.413  1
-HETATM O  O5  . AKG A 4 501 . 501 AKG A O5  9168 65.34 1.0 ? 1.316  -2.13  2.944  1
-HETATM C  C3  . AKG A 4 501 . 501 AKG A C3  9169 63.48 1.0 ? 3.233  -2.128 4.31   1
-HETATM C  C4  . AKG A 4 501 . 501 AKG A C4  9170 60.72 1.0 ? 4.271  -2.884 3.484  1
-HETATM C  C5  . AKG A 4 501 . 501 AKG A C5  9171 60.58 1.0 ? 5.274  -3.557 4.385  1
-HETATM O  O3  . AKG A 4 501 . 501 AKG A O3  9172 59.62 1.0 ? 5.205  -3.463 5.6    1
-HETATM O  O4  . AKG A 4 501 . 501 AKG A O4  9173 60.67 1.0 ? 6.168  -4.211 3.893  1
+HETATM FE FE  . FE2 B 2 302 . 302 FE2 B FE  9156 61.74 1.0 ? 0.319  -0.375 1.639  1
+HETATM C  C1  . TAU B 3 401 . 401 TAU B C1  9157 51.89 1.0 ? -4.501 0.825  4.05   1
+HETATM C  C2  . TAU B 3 401 . 401 TAU B C2  9158 50.26 1.0 ? -3.078 1.314  3.915  1
+HETATM N  N1  . TAU B 3 401 . 401 TAU B N1  9159 48.56 1.0 ? -4.507 -0.46  4.453  1
+HETATM S  S   . TAU B 3 401 . 401 TAU B S   9160 49.24 1.0 ? -2.936 2.988  3.234  1
+HETATM O  O1  . TAU B 3 401 . 401 TAU B O1  9161 51.8  1.0 ? -1.556 3.538  3.465  1
+HETATM O  O2  . TAU B 3 401 . 401 TAU B O2  9162 49.76 1.0 ? -3.212 2.923  1.754  1
+HETATM O  O3  . TAU B 3 401 . 401 TAU B O3  9163 50.5  1.0 ? -3.936 3.891  3.892  1
+HETATM C  C1  . AKG B 4 501 . 501 AKG B C1  9164 66.81 1.0 ? 2.423  0.044  3.049  1
+HETATM O  O1  . AKG B 4 501 . 501 AKG B O1  9165 69.32 1.0 ? 1.611  0.553  2.313  1
+HETATM O  O2  . AKG B 4 501 . 501 AKG B O2  9166 70.03 1.0 ? 3.357  0.672  3.517  1
+HETATM C  C2  . AKG B 4 501 . 501 AKG B C2  9167 66.1  1.0 ? 2.264  -1.476 3.413  1
+HETATM O  O5  . AKG B 4 501 . 501 AKG B O5  9168 65.34 1.0 ? 1.316  -2.13  2.944  1
+HETATM C  C3  . AKG B 4 501 . 501 AKG B C3  9169 63.48 1.0 ? 3.233  -2.128 4.31   1
+HETATM C  C4  . AKG B 4 501 . 501 AKG B C4  9170 60.72 1.0 ? 4.271  -2.884 3.484  1
+HETATM C  C5  . AKG B 4 501 . 501 AKG B C5  9171 60.58 1.0 ? 5.274  -3.557 4.385  1
+HETATM O  O3  . AKG B 4 501 . 501 AKG B O3  9172 59.62 1.0 ? 5.205  -3.463 5.6    1
+HETATM O  O4  . AKG B 4 501 . 501 AKG B O4  9173 60.67 1.0 ? 6.168  -4.211 3.893  1
 #
 _cell.length_a      92.594
 _cell.length_b      118.855

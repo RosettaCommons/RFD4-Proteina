@@ -3,18 +3,21 @@ data_M0040_13pk.cif
 _entry.id       M0040_13pk.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:44
+_entry.time     20:49:10
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       RKGGXXX
-_entity_poly.pdbx_seq_one_letter_code_can   RKGGXXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       RKGG
+_entity_poly.pdbx_seq_one_letter_code_can   RKGG
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -27,9 +30,6 @@ _entity_poly_seq.num
 1 n LYS 219
 1 n GLY 376
 1 n GLY 399
-1 n MG  422
-1 n ADP 421
-1 n 3PG 423
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -150,45 +150,45 @@ ATOM   N  N     . GLY A 1 399 . 399 GLY A N     2977  30.64 1.0 ? 1.408  1.796  
 ATOM   C  CA    . GLY A 1 399 . 399 GLY A CA    2978  28.81 1.0 ? 0.898  2.058   -6.104 1
 ATOM   C  C     . GLY A 1 399 . 399 GLY A C     2979  32.11 1.0 ? 1.001  3.54    -6.413 1
 ATOM   O  O     . GLY A 1 399 . 399 GLY A O     2980  35.86 1.0 ? 1.156  3.94    -7.565 1
-HETATM MG MG    . MG  A 2 422 . 422 MG  A MG    12509 47.03 1.0 ? -1.362 -4.103  0.87   1
-HETATM P  PB    . ADP A 4 421 . 421 ADP A PB    12520 29.95 1.0 ? 2.32   -3.149  -0.741 1
-HETATM O  O1B   . ADP A 4 421 . 421 ADP A O1B   12521 28.22 1.0 ? 3.697  -2.985  -0.185 1
-HETATM O  O2B   . ADP A 4 421 . 421 ADP A O2B   12522 32.68 1.0 ? 1.114  -2.994  0.339  1
-HETATM O  O3B   . ADP A 4 421 . 421 ADP A O3B   12523 28.87 1.0 ? 2.121  -2.209  -1.855 1
-HETATM P  PA    . ADP A 4 421 . 421 ADP A PA    12524 30.51 1.0 ? 0.994  -5.451  -1.997 1
-HETATM O  O1A   . ADP A 4 421 . 421 ADP A O1A   12525 32.29 1.0 ? -0.176 -5.455  -1.139 1
-HETATM O  O2A   . ADP A 4 421 . 421 ADP A O2A   12526 30.85 1.0 ? 0.662  -5.061  -3.366 1
-HETATM O  O3A   . ADP A 4 421 . 421 ADP A O3A   12527 32.79 1.0 ? 2.124  -4.586  -1.326 1
-HETATM O  "O5'" . ADP A 4 421 . 421 ADP A "O5'" 12528 27.12 1.0 ? 1.624  -6.867  -1.874 1
-HETATM C  "C5'" . ADP A 4 421 . 421 ADP A "C5'" 12529 28.25 1.0 ? 2.027  -7.385  -0.607 1
-HETATM C  "C4'" . ADP A 4 421 . 421 ADP A "C4'" 12530 29.73 1.0 ? 1.148  -8.595  -0.511 1
-HETATM O  "O4'" . ADP A 4 421 . 421 ADP A "O4'" 12531 35.59 1.0 ? 1.219  -9.507  -1.637 1
-HETATM C  "C3'" . ADP A 4 421 . 421 ADP A "C3'" 12532 30.94 1.0 ? 1.522  -9.333  0.728  1
-HETATM O  "O3'" . ADP A 4 421 . 421 ADP A "O3'" 12533 44.87 1.0 ? 0.416  -9.639  1.579  1
-HETATM C  "C2'" . ADP A 4 421 . 421 ADP A "C2'" 12534 35.47 1.0 ? 2.275  -10.515 0.181  1
-HETATM O  "O2'" . ADP A 4 421 . 421 ADP A "O2'" 12535 41.76 1.0 ? 2.264  -11.689 1.005  1
-HETATM C  "C1'" . ADP A 4 421 . 421 ADP A "C1'" 12536 32.16 1.0 ? 1.549  -10.785 -1.109 1
-HETATM N  N9    . ADP A 4 421 . 421 ADP A N9    12537 30.86 1.0 ? 2.423  -11.699 -1.916 1
-HETATM C  C8    . ADP A 4 421 . 421 ADP A C8    12538 29.22 1.0 ? 3.713  -11.539 -2.236 1
-HETATM N  N7    . ADP A 4 421 . 421 ADP A N7    12539 31.21 1.0 ? 4.121  -12.591 -2.943 1
-HETATM C  C5    . ADP A 4 421 . 421 ADP A C5    12540 33.1  1.0 ? 3.108  -13.419 -3.087 1
-HETATM C  C6    . ADP A 4 421 . 421 ADP A C6    12541 31.75 1.0 ? 2.916  -14.663 -3.697 1
-HETATM N  N6    . ADP A 4 421 . 421 ADP A N6    12542 31.36 1.0 ? 3.944  -15.234 -4.333 1
-HETATM N  N1    . ADP A 4 421 . 421 ADP A N1    12543 32.06 1.0 ? 1.7    -15.276 -3.66  1
-HETATM C  C2    . ADP A 4 421 . 421 ADP A C2    12544 29.67 1.0 ? 0.672  -14.704 -3.02  1
-HETATM N  N3    . ADP A 4 421 . 421 ADP A N3    12545 33.34 1.0 ? 0.844  -13.509 -2.42  1
-HETATM C  C4    . ADP A 4 421 . 421 ADP A C4    12546 30.51 1.0 ? 2.012  -12.84  -2.424 1
-HETATM C  C1    . 3PG A 5 423 . 423 3PG A C1    12547 43.75 1.0 ? -2.424 1.343   -0.531 1
-HETATM O  O1    . 3PG A 5 423 . 423 3PG A O1    12548 48.15 1.0 ? -2.347 0.658   0.47   1
-HETATM O  O2    . 3PG A 5 423 . 423 3PG A O2    12549 47.98 1.0 ? -1.82  0.866   -1.471 1
-HETATM C  C2    . 3PG A 5 423 . 423 3PG A C2    12550 40.82 1.0 ? -3.184 2.659   -0.548 1
-HETATM O  O3    . 3PG A 5 423 . 423 3PG A O3    12551 45.91 1.0 ? -3.57  3.084   0.803  1
-HETATM C  C3    . 3PG A 5 423 . 423 3PG A C3    12552 36.12 1.0 ? -4.472 2.677   -1.284 1
-HETATM O  O1P   . 3PG A 5 423 . 423 3PG A O1P   12553 36.39 1.0 ? -5.604 1.886   -1.62  1
-HETATM P  P     . 3PG A 5 423 . 423 3PG A P     12554 34.42 1.0 ? -5.974 0.648   -2.705 1
-HETATM O  O2P   . 3PG A 5 423 . 423 3PG A O2P   12555 28.34 1.0 ? -6.633 -0.433  -1.87  1
-HETATM O  O3P   . 3PG A 5 423 . 423 3PG A O3P   12556 35.82 1.0 ? -6.888 1.363   -3.703 1
-HETATM O  O4P   . 3PG A 5 423 . 423 3PG A O4P   12557 37.12 1.0 ? -4.685 0.189   -3.391 1
+HETATM MG MG    . MG  B 2 422 . 422 MG  B MG    12509 47.03 1.0 ? -1.362 -4.103  0.87   1
+HETATM P  PB    . ADP B 4 421 . 421 ADP B PB    12520 29.95 1.0 ? 2.32   -3.149  -0.741 1
+HETATM O  O1B   . ADP B 4 421 . 421 ADP B O1B   12521 28.22 1.0 ? 3.697  -2.985  -0.185 1
+HETATM O  O2B   . ADP B 4 421 . 421 ADP B O2B   12522 32.68 1.0 ? 1.114  -2.994  0.339  1
+HETATM O  O3B   . ADP B 4 421 . 421 ADP B O3B   12523 28.87 1.0 ? 2.121  -2.209  -1.855 1
+HETATM P  PA    . ADP B 4 421 . 421 ADP B PA    12524 30.51 1.0 ? 0.994  -5.451  -1.997 1
+HETATM O  O1A   . ADP B 4 421 . 421 ADP B O1A   12525 32.29 1.0 ? -0.176 -5.455  -1.139 1
+HETATM O  O2A   . ADP B 4 421 . 421 ADP B O2A   12526 30.85 1.0 ? 0.662  -5.061  -3.366 1
+HETATM O  O3A   . ADP B 4 421 . 421 ADP B O3A   12527 32.79 1.0 ? 2.124  -4.586  -1.326 1
+HETATM O  "O5'" . ADP B 4 421 . 421 ADP B "O5'" 12528 27.12 1.0 ? 1.624  -6.867  -1.874 1
+HETATM C  "C5'" . ADP B 4 421 . 421 ADP B "C5'" 12529 28.25 1.0 ? 2.027  -7.385  -0.607 1
+HETATM C  "C4'" . ADP B 4 421 . 421 ADP B "C4'" 12530 29.73 1.0 ? 1.148  -8.595  -0.511 1
+HETATM O  "O4'" . ADP B 4 421 . 421 ADP B "O4'" 12531 35.59 1.0 ? 1.219  -9.507  -1.637 1
+HETATM C  "C3'" . ADP B 4 421 . 421 ADP B "C3'" 12532 30.94 1.0 ? 1.522  -9.333  0.728  1
+HETATM O  "O3'" . ADP B 4 421 . 421 ADP B "O3'" 12533 44.87 1.0 ? 0.416  -9.639  1.579  1
+HETATM C  "C2'" . ADP B 4 421 . 421 ADP B "C2'" 12534 35.47 1.0 ? 2.275  -10.515 0.181  1
+HETATM O  "O2'" . ADP B 4 421 . 421 ADP B "O2'" 12535 41.76 1.0 ? 2.264  -11.689 1.005  1
+HETATM C  "C1'" . ADP B 4 421 . 421 ADP B "C1'" 12536 32.16 1.0 ? 1.549  -10.785 -1.109 1
+HETATM N  N9    . ADP B 4 421 . 421 ADP B N9    12537 30.86 1.0 ? 2.423  -11.699 -1.916 1
+HETATM C  C8    . ADP B 4 421 . 421 ADP B C8    12538 29.22 1.0 ? 3.713  -11.539 -2.236 1
+HETATM N  N7    . ADP B 4 421 . 421 ADP B N7    12539 31.21 1.0 ? 4.121  -12.591 -2.943 1
+HETATM C  C5    . ADP B 4 421 . 421 ADP B C5    12540 33.1  1.0 ? 3.108  -13.419 -3.087 1
+HETATM C  C6    . ADP B 4 421 . 421 ADP B C6    12541 31.75 1.0 ? 2.916  -14.663 -3.697 1
+HETATM N  N6    . ADP B 4 421 . 421 ADP B N6    12542 31.36 1.0 ? 3.944  -15.234 -4.333 1
+HETATM N  N1    . ADP B 4 421 . 421 ADP B N1    12543 32.06 1.0 ? 1.7    -15.276 -3.66  1
+HETATM C  C2    . ADP B 4 421 . 421 ADP B C2    12544 29.67 1.0 ? 0.672  -14.704 -3.02  1
+HETATM N  N3    . ADP B 4 421 . 421 ADP B N3    12545 33.34 1.0 ? 0.844  -13.509 -2.42  1
+HETATM C  C4    . ADP B 4 421 . 421 ADP B C4    12546 30.51 1.0 ? 2.012  -12.84  -2.424 1
+HETATM C  C1    . 3PG B 5 423 . 423 3PG B C1    12547 43.75 1.0 ? -2.424 1.343   -0.531 1
+HETATM O  O1    . 3PG B 5 423 . 423 3PG B O1    12548 48.15 1.0 ? -2.347 0.658   0.47   1
+HETATM O  O2    . 3PG B 5 423 . 423 3PG B O2    12549 47.98 1.0 ? -1.82  0.866   -1.471 1
+HETATM C  C2    . 3PG B 5 423 . 423 3PG B C2    12550 40.82 1.0 ? -3.184 2.659   -0.548 1
+HETATM O  O3    . 3PG B 5 423 . 423 3PG B O3    12551 45.91 1.0 ? -3.57  3.084   0.803  1
+HETATM C  C3    . 3PG B 5 423 . 423 3PG B C3    12552 36.12 1.0 ? -4.472 2.677   -1.284 1
+HETATM O  O1P   . 3PG B 5 423 . 423 3PG B O1P   12553 36.39 1.0 ? -5.604 1.886   -1.62  1
+HETATM P  P     . 3PG B 5 423 . 423 3PG B P     12554 34.42 1.0 ? -5.974 0.648   -2.705 1
+HETATM O  O2P   . 3PG B 5 423 . 423 3PG B O2P   12555 28.34 1.0 ? -6.633 -0.433  -1.87  1
+HETATM O  O3P   . 3PG B 5 423 . 423 3PG B O3P   12556 35.82 1.0 ? -6.888 1.363   -3.703 1
+HETATM O  O4P   . 3PG B 5 423 . 423 3PG B O4P   12557 37.12 1.0 ? -4.685 0.189   -3.391 1
 #
 _cell.length_a      113.213
 _cell.length_b      115.959

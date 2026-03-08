@@ -3,18 +3,21 @@ data_M0151_1q0n.cif
 _entry.id       M0151_1q0n.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:45
+_entry.time     20:49:12
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       RRDDXXX
-_entity_poly.pdbx_seq_one_letter_code_can   RRDDXXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       RRDD
+_entity_poly.pdbx_seq_one_letter_code_can   RRDD
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -27,9 +30,6 @@ _entity_poly_seq.num
 1 n ARG 92
 1 n ASP 95
 1 n ASP 97
-1 n MG  162
-1 n APC 171
-1 n PH2 181
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -174,61 +174,61 @@ ATOM   C  CB    . ASP A 1 97  . 97  ASP A CB    768  6.18  1.0 ? 4.987  -4.895 2
 ATOM   C  CG    . ASP A 1 97  . 97  ASP A CG    769  5.19  1.0 ? 4.576  -3.72  2.1    1
 ATOM   O  OD1   . ASP A 1 97  . 97  ASP A OD1   770  6.21  1.0 ? 3.402  -3.652 1.697  1
 ATOM   O  OD2   . ASP A 1 97  . 97  ASP A OD2   771  8.88  1.0 ? 5.524  -2.934 1.795  1
-HETATM MG MG    . MG  A 2 162 . 162 MG  A MG    1297 6.16  1.0 ? 5.409  -1.072 1.087  1
-HETATM P  PG    . APC A 5 171 . 171 APC A PG    1315 6.66  1.0 ? 6.586  -1.656 -1.784 1
-HETATM O  O1G   . APC A 5 171 . 171 APC A O1G   1316 7.96  1.0 ? 6.162  -3.054 -2.036 1
-HETATM O  O2G   . APC A 5 171 . 171 APC A O2G   1317 6.38  1.0 ? 7.76   -1.226 -2.631 1
-HETATM O  O3G   . APC A 5 171 . 171 APC A O3G   1318 8.7   1.0 ? 6.843  -1.374 -0.313 1
-HETATM P  PB    . APC A 5 171 . 171 APC A PB    1319 6.89  1.0 ? 3.882  -0.668 -1.75  1
-HETATM O  O1B   . APC A 5 171 . 171 APC A O1B   1320 6.47  1.0 ? 3.907  -1.386 -0.405 1
-HETATM O  O2B   . APC A 5 171 . 171 APC A O2B   1321 8.35  1.0 ? 3.323  0.715  -1.835 1
-HETATM O  O3B   . APC A 5 171 . 171 APC A O3B   1322 6.76  1.0 ? 5.404  -0.655 -2.247 1
-HETATM P  PA    . APC A 5 171 . 171 APC A PA    1323 6.86  1.0 ? 1.287  -1.835 -2.613 1
-HETATM O  O1A   . APC A 5 171 . 171 APC A O1A   1324 7.26  1.0 ? 1.043  -1.833 -1.101 1
-HETATM O  O2A   . APC A 5 171 . 171 APC A O2A   1325 8.36  1.0 ? 0.526  -0.809 -3.393 1
-HETATM C  C3A   . APC A 5 171 . 171 APC A C3A   1326 6.62  1.0 ? 3.024  -1.718 -2.923 1
-HETATM O  "O5'" . APC A 5 171 . 171 APC A "O5'" 1327 7.06  1.0 ? 0.846  -3.291 -3.096 1
-HETATM C  "C5'" . APC A 5 171 . 171 APC A "C5'" 1328 8.29  1.0 ? 0.802  -3.593 -4.557 1
-HETATM C  "C4'" . APC A 5 171 . 171 APC A "C4'" 1329 6.15  1.0 ? 0.754  -5.09  -4.657 1
-HETATM O  "O4'" . APC A 5 171 . 171 APC A "O4'" 1330 6.79  1.0 ? 1.96   -5.655 -4.149 1
-HETATM C  "C3'" . APC A 5 171 . 171 APC A "C3'" 1331 5.83  1.0 ? -0.367 -5.815 -4.011 1
-HETATM O  "O3'" . APC A 5 171 . 171 APC A "O3'" 1332 9.7   1.0 ? -1.577 -5.735 -4.654 1
-HETATM C  "C2'" . APC A 5 171 . 171 APC A "C2'" 1333 7.43  1.0 ? 0.164  -7.19  -3.839 1
-HETATM O  "O2'" . APC A 5 171 . 171 APC A "O2'" 1334 7.95  1.0 ? -0.494 -8.143 -4.708 1
-HETATM C  "C1'" . APC A 5 171 . 171 APC A "C1'" 1335 5.72  1.0 ? 1.656  -7.089 -4.191 1
-HETATM N  N9    . APC A 5 171 . 171 APC A N9    1336 5.95  1.0 ? 2.595  -7.787 -3.332 1
-HETATM C  C8    . APC A 5 171 . 171 APC A C8    1337 7.13  1.0 ? 3.615  -8.614 -3.907 1
-HETATM N  N7    . APC A 5 171 . 171 APC A N7    1338 6.64  1.0 ? 4.37   -9.097 -2.922 1
-HETATM C  C5    . APC A 5 171 . 171 APC A C5    1339 5.78  1.0 ? 3.823  -8.573 -1.722 1
-HETATM C  C6    . APC A 5 171 . 171 APC A C6    1340 6.47  1.0 ? 4.251  -8.781 -0.437 1
-HETATM N  N6    . APC A 5 171 . 171 APC A N6    1341 6.47  1.0 ? 5.249  -9.5   -0.015 1
-HETATM N  N1    . APC A 5 171 . 171 APC A N1    1342 7.0   1.0 ? 3.529  -8.142 0.564  1
-HETATM C  C2    . APC A 5 171 . 171 APC A C2    1343 7.67  1.0 ? 2.524  -7.409 0.232  1
-HETATM N  N3    . APC A 5 171 . 171 APC A N3    1344 6.55  1.0 ? 1.989  -7.119 -1.046 1
-HETATM C  C4    . APC A 5 171 . 171 APC A C4    1345 6.21  1.0 ? 2.744  -7.779 -2.001 1
-HETATM N  N1    . PH2 A 6 181 . 181 PH2 A N1    1346 7.01  1.0 ? 7.186  2.45   2.023  1
-HETATM C  C2    . PH2 A 6 181 . 181 PH2 A C2    1347 6.88  1.0 ? 7.024  2.743  0.78   1
-HETATM C  C3    . PH2 A 6 181 . 181 PH2 A C3    1348 11.07 1.0 ? 7.621  3.969  0.123  1
-HETATM N  N4    . PH2 A 6 181 . 181 PH2 A N4    1349 7.59  1.0 ? 8.537  4.607  0.98   1
-HETATM N  N5    . PH2 A 6 181 . 181 PH2 A N5    1350 5.75  1.0 ? 9.526  5.097  3.032  1
-HETATM C  C6    . PH2 A 6 181 . 181 PH2 A C6    1351 6.44  1.0 ? 9.61   4.865  4.298  1
-HETATM N  N6    . PH2 A 6 181 . 181 PH2 A N6    1352 7.28  1.0 ? 10.427 5.571  5.101  1
-HETATM N  N7    . PH2 A 6 181 . 181 PH2 A N7    1353 5.42  1.0 ? 8.864  3.877  4.889  1
-HETATM C  C8    . PH2 A 6 181 . 181 PH2 A C8    1354 6.46  1.0 ? 7.964  3.042  4.225  1
-HETATM O  O8    . PH2 A 6 181 . 181 PH2 A O8    1355 7.51  1.0 ? 7.357  2.198  4.86   1
-HETATM C  C9    . PH2 A 6 181 . 181 PH2 A C9    1356 7.0   1.0 ? 7.89   3.319  2.83   1
-HETATM C  C10   . PH2 A 6 181 . 181 PH2 A C10   1357 7.17  1.0 ? 8.683  4.345  2.297  1
-HETATM C  C11   . PH2 A 6 181 . 181 PH2 A C11   1358 7.96  1.0 ? 6.2    1.869  -0.117 1
-HETATM O  O4    . PH2 A 6 181 . 181 PH2 A O4    1359 8.3   1.0 ? 5.396  0.976  0.57   1
-HETATM H  H31   . PH2 A 6 181 . 181 PH2 A H31   1360 13.28 1.0 ? 7.887  3.846  -0.934 1
-HETATM H  H32   . PH2 A 6 181 . 181 PH2 A H32   1361 13.28 1.0 ? 6.808  4.721  0.164  1
-HETATM H  HN4   . PH2 A 6 181 . 181 PH2 A HN4   1362 9.11  1.0 ? 9.068  5.401  0.645  1
-HETATM H  HN61  . PH2 A 6 181 . 181 PH2 A HN61  1363 8.74  1.0 ? 11.092 6.099  4.55   1
-HETATM H  HN62  . PH2 A 6 181 . 181 PH2 A HN62  1364 8.74  1.0 ? 10.818 5.155  5.935  1
-HETATM H  HN7   . PH2 A 6 181 . 181 PH2 A HN7   1365 6.5   1.0 ? 8.959  3.763  5.736  1
-HETATM H  H111  . PH2 A 6 181 . 181 PH2 A H111  1366 9.55  1.0 ? 5.64   2.431  -0.675 1
-HETATM H  H112  . PH2 A 6 181 . 181 PH2 A H112  1367 9.55  1.0 ? 6.793  1.371  -0.702 1
-HETATM H  HO4   . PH2 A 6 181 . 181 PH2 A HO4   1368 9.96  1.0 ? 4.858  0.516  -0.09  1
+HETATM MG MG    . MG  B 2 162 . 162 MG  B MG    1297 6.16  1.0 ? 5.409  -1.072 1.087  1
+HETATM P  PG    . APC B 5 171 . 171 APC B PG    1315 6.66  1.0 ? 6.586  -1.656 -1.784 1
+HETATM O  O1G   . APC B 5 171 . 171 APC B O1G   1316 7.96  1.0 ? 6.162  -3.054 -2.036 1
+HETATM O  O2G   . APC B 5 171 . 171 APC B O2G   1317 6.38  1.0 ? 7.76   -1.226 -2.631 1
+HETATM O  O3G   . APC B 5 171 . 171 APC B O3G   1318 8.7   1.0 ? 6.843  -1.374 -0.313 1
+HETATM P  PB    . APC B 5 171 . 171 APC B PB    1319 6.89  1.0 ? 3.882  -0.668 -1.75  1
+HETATM O  O1B   . APC B 5 171 . 171 APC B O1B   1320 6.47  1.0 ? 3.907  -1.386 -0.405 1
+HETATM O  O2B   . APC B 5 171 . 171 APC B O2B   1321 8.35  1.0 ? 3.323  0.715  -1.835 1
+HETATM O  O3B   . APC B 5 171 . 171 APC B O3B   1322 6.76  1.0 ? 5.404  -0.655 -2.247 1
+HETATM P  PA    . APC B 5 171 . 171 APC B PA    1323 6.86  1.0 ? 1.287  -1.835 -2.613 1
+HETATM O  O1A   . APC B 5 171 . 171 APC B O1A   1324 7.26  1.0 ? 1.043  -1.833 -1.101 1
+HETATM O  O2A   . APC B 5 171 . 171 APC B O2A   1325 8.36  1.0 ? 0.526  -0.809 -3.393 1
+HETATM C  C3A   . APC B 5 171 . 171 APC B C3A   1326 6.62  1.0 ? 3.024  -1.718 -2.923 1
+HETATM O  "O5'" . APC B 5 171 . 171 APC B "O5'" 1327 7.06  1.0 ? 0.846  -3.291 -3.096 1
+HETATM C  "C5'" . APC B 5 171 . 171 APC B "C5'" 1328 8.29  1.0 ? 0.802  -3.593 -4.557 1
+HETATM C  "C4'" . APC B 5 171 . 171 APC B "C4'" 1329 6.15  1.0 ? 0.754  -5.09  -4.657 1
+HETATM O  "O4'" . APC B 5 171 . 171 APC B "O4'" 1330 6.79  1.0 ? 1.96   -5.655 -4.149 1
+HETATM C  "C3'" . APC B 5 171 . 171 APC B "C3'" 1331 5.83  1.0 ? -0.367 -5.815 -4.011 1
+HETATM O  "O3'" . APC B 5 171 . 171 APC B "O3'" 1332 9.7   1.0 ? -1.577 -5.735 -4.654 1
+HETATM C  "C2'" . APC B 5 171 . 171 APC B "C2'" 1333 7.43  1.0 ? 0.164  -7.19  -3.839 1
+HETATM O  "O2'" . APC B 5 171 . 171 APC B "O2'" 1334 7.95  1.0 ? -0.494 -8.143 -4.708 1
+HETATM C  "C1'" . APC B 5 171 . 171 APC B "C1'" 1335 5.72  1.0 ? 1.656  -7.089 -4.191 1
+HETATM N  N9    . APC B 5 171 . 171 APC B N9    1336 5.95  1.0 ? 2.595  -7.787 -3.332 1
+HETATM C  C8    . APC B 5 171 . 171 APC B C8    1337 7.13  1.0 ? 3.615  -8.614 -3.907 1
+HETATM N  N7    . APC B 5 171 . 171 APC B N7    1338 6.64  1.0 ? 4.37   -9.097 -2.922 1
+HETATM C  C5    . APC B 5 171 . 171 APC B C5    1339 5.78  1.0 ? 3.823  -8.573 -1.722 1
+HETATM C  C6    . APC B 5 171 . 171 APC B C6    1340 6.47  1.0 ? 4.251  -8.781 -0.437 1
+HETATM N  N6    . APC B 5 171 . 171 APC B N6    1341 6.47  1.0 ? 5.249  -9.5   -0.015 1
+HETATM N  N1    . APC B 5 171 . 171 APC B N1    1342 7.0   1.0 ? 3.529  -8.142 0.564  1
+HETATM C  C2    . APC B 5 171 . 171 APC B C2    1343 7.67  1.0 ? 2.524  -7.409 0.232  1
+HETATM N  N3    . APC B 5 171 . 171 APC B N3    1344 6.55  1.0 ? 1.989  -7.119 -1.046 1
+HETATM C  C4    . APC B 5 171 . 171 APC B C4    1345 6.21  1.0 ? 2.744  -7.779 -2.001 1
+HETATM N  N1    . PH2 B 6 181 . 181 PH2 B N1    1346 7.01  1.0 ? 7.186  2.45   2.023  1
+HETATM C  C2    . PH2 B 6 181 . 181 PH2 B C2    1347 6.88  1.0 ? 7.024  2.743  0.78   1
+HETATM C  C3    . PH2 B 6 181 . 181 PH2 B C3    1348 11.07 1.0 ? 7.621  3.969  0.123  1
+HETATM N  N4    . PH2 B 6 181 . 181 PH2 B N4    1349 7.59  1.0 ? 8.537  4.607  0.98   1
+HETATM N  N5    . PH2 B 6 181 . 181 PH2 B N5    1350 5.75  1.0 ? 9.526  5.097  3.032  1
+HETATM C  C6    . PH2 B 6 181 . 181 PH2 B C6    1351 6.44  1.0 ? 9.61   4.865  4.298  1
+HETATM N  N6    . PH2 B 6 181 . 181 PH2 B N6    1352 7.28  1.0 ? 10.427 5.571  5.101  1
+HETATM N  N7    . PH2 B 6 181 . 181 PH2 B N7    1353 5.42  1.0 ? 8.864  3.877  4.889  1
+HETATM C  C8    . PH2 B 6 181 . 181 PH2 B C8    1354 6.46  1.0 ? 7.964  3.042  4.225  1
+HETATM O  O8    . PH2 B 6 181 . 181 PH2 B O8    1355 7.51  1.0 ? 7.357  2.198  4.86   1
+HETATM C  C9    . PH2 B 6 181 . 181 PH2 B C9    1356 7.0   1.0 ? 7.89   3.319  2.83   1
+HETATM C  C10   . PH2 B 6 181 . 181 PH2 B C10   1357 7.17  1.0 ? 8.683  4.345  2.297  1
+HETATM C  C11   . PH2 B 6 181 . 181 PH2 B C11   1358 7.96  1.0 ? 6.2    1.869  -0.117 1
+HETATM O  O4    . PH2 B 6 181 . 181 PH2 B O4    1359 8.3   1.0 ? 5.396  0.976  0.57   1
+HETATM H  H31   . PH2 B 6 181 . 181 PH2 B H31   1360 13.28 1.0 ? 7.887  3.846  -0.934 1
+HETATM H  H32   . PH2 B 6 181 . 181 PH2 B H32   1361 13.28 1.0 ? 6.808  4.721  0.164  1
+HETATM H  HN4   . PH2 B 6 181 . 181 PH2 B HN4   1362 9.11  1.0 ? 9.068  5.401  0.645  1
+HETATM H  HN61  . PH2 B 6 181 . 181 PH2 B HN61  1363 8.74  1.0 ? 11.092 6.099  4.55   1
+HETATM H  HN62  . PH2 B 6 181 . 181 PH2 B HN62  1364 8.74  1.0 ? 10.818 5.155  5.935  1
+HETATM H  HN7   . PH2 B 6 181 . 181 PH2 B HN7   1365 6.5   1.0 ? 8.959  3.763  5.736  1
+HETATM H  H111  . PH2 B 6 181 . 181 PH2 B H111  1366 9.55  1.0 ? 5.64   2.431  -0.675 1
+HETATM H  H112  . PH2 B 6 181 . 181 PH2 B H112  1367 9.55  1.0 ? 6.793  1.371  -0.702 1
+HETATM H  HO4   . PH2 B 6 181 . 181 PH2 B HO4   1368 9.96  1.0 ? 4.858  0.516  -0.09  1
 #
 _cell.length_a      73.591
 _cell.length_b      37.743

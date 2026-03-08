@@ -3,18 +3,21 @@ data_M0157_1qh5.cif
 _entry.id       M0157_1qh5.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:45
+_entry.time     20:49:12
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       HHDHHDHXX
-_entity_poly.pdbx_seq_one_letter_code_can   HHDHHDHXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       HHDHHDH
+_entity_poly.pdbx_seq_one_letter_code_can   HHDHHDH
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -30,8 +33,6 @@ _entity_poly_seq.num
 1 n HIS 110
 1 n ASP 134
 1 n HIS 173
-1 n ZN  262
-1 n GSH 463
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -166,27 +167,27 @@ ATOM   N  ND1 . HIS A 1 173 . 173 HIS A ND1 1310 18.62 1.0 ? -4.846 1.129  4.573
 ATOM   C  CD2 . HIS A 1 173 . 173 HIS A CD2 1311 17.61 1.0 ? -2.844 1.916  4.142  1
 ATOM   C  CE1 . HIS A 1 173 . 173 HIS A CE1 1312 17.81 1.0 ? -4.389 0.53   3.476  1
 ATOM   N  NE2 . HIS A 1 173 . 173 HIS A NE2 1313 17.38 1.0 ? -3.198 1.008  3.161  1
-HETATM ZN ZN  . ZN  A 2 262 . 262 ZN  A ZN  4057 17.49 1.0 ? -1.997 0.492  1.482  1
-HETATM N  N1  . GSH A 3 463 . 463 GSH A N1  4059 44.92 1.0 ? -1.913 -7.646 10.107 1
-HETATM C  CA1 . GSH A 3 463 . 463 GSH A CA1 4060 44.29 1.0 ? -2.09  -6.283 9.549  1
-HETATM C  C1  . GSH A 3 463 . 463 GSH A C1  4061 45.41 1.0 ? -3.457 -5.656 9.953  1
-HETATM O  O11 . GSH A 3 463 . 463 GSH A O11 4062 46.66 1.0 ? -4.532 -6.1   9.48   1
-HETATM O  O12 . GSH A 3 463 . 463 GSH A O12 4063 46.87 1.0 ? -3.443 -4.698 10.76  1
-HETATM C  CB1 . GSH A 3 463 . 463 GSH A CB1 4064 42.05 1.0 ? -1.867 -6.342 8.011  1
-HETATM C  CG1 . GSH A 3 463 . 463 GSH A CG1 4065 38.28 1.0 ? -2.175 -5.043 7.195  1
-HETATM C  CD1 . GSH A 3 463 . 463 GSH A CD1 4066 35.63 1.0 ? -1.055 -4.48  6.309  1
-HETATM O  OE1 . GSH A 3 463 . 463 GSH A OE1 4067 35.69 1.0 ? -0.124 -5.204 5.931  1
-HETATM N  N2  . GSH A 3 463 . 463 GSH A N2  4068 32.01 1.0 ? -1.157 -3.182 5.973  1
-HETATM C  CA2 . GSH A 3 463 . 463 GSH A CA2 4069 29.25 1.0 ? -0.055 -2.518 5.236  1
-HETATM C  C2  . GSH A 3 463 . 463 GSH A C2  4070 27.5  1.0 ? 1.122  -2.002 6.164  1
-HETATM O  O2  . GSH A 3 463 . 463 GSH A O2  4071 25.26 1.0 ? 2.185  -1.66  5.644  1
-HETATM C  CB2 . GSH A 3 463 . 463 GSH A CB2 4072 28.5  1.0 ? -0.651 -1.345 4.429  1
-HETATM S  SG2 . GSH A 3 463 . 463 GSH A SG2 4073 31.22 1.0 ? -1.797 -1.848 3.08   1
-HETATM N  N3  . GSH A 3 463 . 463 GSH A N3  4074 27.52 1.0 ? 0.799  -1.868 7.47   1
-HETATM C  CA3 . GSH A 3 463 . 463 GSH A CA3 4075 27.86 1.0 ? 1.765  -1.223 8.392  1
-HETATM C  C3  . GSH A 3 463 . 463 GSH A C3  4076 28.6  1.0 ? 2.021  -1.998 9.682  1
-HETATM O  O31 . GSH A 3 463 . 463 GSH A O31 4077 30.45 1.0 ? 1.693  -3.209 9.797  1
-HETATM O  O32 . GSH A 3 463 . 463 GSH A O32 4078 25.63 1.0 ? 2.598  -1.359 10.576 1
+HETATM ZN ZN  . ZN  B 2 262 . 262 ZN  B ZN  4057 17.49 1.0 ? -1.997 0.492  1.482  1
+HETATM N  N1  . GSH B 3 463 . 463 GSH B N1  4059 44.92 1.0 ? -1.913 -7.646 10.107 1
+HETATM C  CA1 . GSH B 3 463 . 463 GSH B CA1 4060 44.29 1.0 ? -2.09  -6.283 9.549  1
+HETATM C  C1  . GSH B 3 463 . 463 GSH B C1  4061 45.41 1.0 ? -3.457 -5.656 9.953  1
+HETATM O  O11 . GSH B 3 463 . 463 GSH B O11 4062 46.66 1.0 ? -4.532 -6.1   9.48   1
+HETATM O  O12 . GSH B 3 463 . 463 GSH B O12 4063 46.87 1.0 ? -3.443 -4.698 10.76  1
+HETATM C  CB1 . GSH B 3 463 . 463 GSH B CB1 4064 42.05 1.0 ? -1.867 -6.342 8.011  1
+HETATM C  CG1 . GSH B 3 463 . 463 GSH B CG1 4065 38.28 1.0 ? -2.175 -5.043 7.195  1
+HETATM C  CD1 . GSH B 3 463 . 463 GSH B CD1 4066 35.63 1.0 ? -1.055 -4.48  6.309  1
+HETATM O  OE1 . GSH B 3 463 . 463 GSH B OE1 4067 35.69 1.0 ? -0.124 -5.204 5.931  1
+HETATM N  N2  . GSH B 3 463 . 463 GSH B N2  4068 32.01 1.0 ? -1.157 -3.182 5.973  1
+HETATM C  CA2 . GSH B 3 463 . 463 GSH B CA2 4069 29.25 1.0 ? -0.055 -2.518 5.236  1
+HETATM C  C2  . GSH B 3 463 . 463 GSH B C2  4070 27.5  1.0 ? 1.122  -2.002 6.164  1
+HETATM O  O2  . GSH B 3 463 . 463 GSH B O2  4071 25.26 1.0 ? 2.185  -1.66  5.644  1
+HETATM C  CB2 . GSH B 3 463 . 463 GSH B CB2 4072 28.5  1.0 ? -0.651 -1.345 4.429  1
+HETATM S  SG2 . GSH B 3 463 . 463 GSH B SG2 4073 31.22 1.0 ? -1.797 -1.848 3.08   1
+HETATM N  N3  . GSH B 3 463 . 463 GSH B N3  4074 27.52 1.0 ? 0.799  -1.868 7.47   1
+HETATM C  CA3 . GSH B 3 463 . 463 GSH B CA3 4075 27.86 1.0 ? 1.765  -1.223 8.392  1
+HETATM C  C3  . GSH B 3 463 . 463 GSH B C3  4076 28.6  1.0 ? 2.021  -1.998 9.682  1
+HETATM O  O31 . GSH B 3 463 . 463 GSH B O31 4077 30.45 1.0 ? 1.693  -3.209 9.797  1
+HETATM O  O32 . GSH B 3 463 . 463 GSH B O32 4078 25.63 1.0 ? 2.598  -1.359 10.576 1
 #
 _cell.length_a      39.55
 _cell.length_b      73.8

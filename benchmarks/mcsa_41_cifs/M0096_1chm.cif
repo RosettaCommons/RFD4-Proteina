@@ -3,18 +3,21 @@ data_M0096_1chm.cif
 _entry.id       M0096_1chm.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:45
+_entry.time     20:49:11
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       HEEX
-_entity_poly.pdbx_seq_one_letter_code_can   HEEX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       HEE
+_entity_poly.pdbx_seq_one_letter_code_can   HEE
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -26,7 +29,6 @@ _entity_poly_seq.num
 1 n HIS 232
 1 n GLU 262
 1 n GLU 358
-1 n CMS 404
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -113,15 +115,15 @@ ATOM   C CG  . GLU A 1 358 . 358 GLU A CG  2842 11.22 1.0  ? -0.26  -5.508 -1.13
 ATOM   C CD  . GLU A 1 358 . 358 GLU A CD  2843 11.22 1.0  ? 0.395  -4.188 -0.867 1
 ATOM   O OE1 . GLU A 1 358 . 358 GLU A OE1 2844 11.22 1.0  ? -0.2   -3.358 -0.182 1
 ATOM   O OE2 . GLU A 1 358 . 358 GLU A OE2 2845 11.22 1.0  ? 1.527  -3.98  -1.338 1
-HETATM C C1  . CMS A 2 404 . 404 CMS A C1  6375 19.17 0.45 ? 0.704  0.098  -0.14  1
-HETATM C C2  . CMS A 2 404 . 404 CMS A C2  6376 19.17 0.55 ? 2.701  0.647  -1.443 1
-HETATM C C3  . CMS A 2 404 . 404 CMS A C3  6377 19.17 0.55 ? 1.164  -0.633 -2.441 1
-HETATM C C4  . CMS A 2 404 . 404 CMS A C4  6378 19.17 0.68 ? 1.047  -0.289 -3.896 1
-HETATM N N1  . CMS A 2 404 . 404 CMS A N1  6379 19.17 0.76 ? 1.077  -1.088 0.382  1
-HETATM N N3  . CMS A 2 404 . 404 CMS A N3  6380 19.17 0.54 ? 1.276  0.437  -1.388 1
-HETATM O O1  . CMS A 2 404 . 404 CMS A O1  6381 19.17 0.68 ? 0.71   -1.142 -4.757 1
-HETATM O O2  . CMS A 2 404 . 404 CMS A O2  6382 19.17 0.57 ? 1.27   0.891  -4.177 1
-HETATM O O3  . CMS A 2 404 . 404 CMS A O3  6383 19.17 0.4  ? -0.506 0.34   0.02   1
+HETATM C C1  . CMS B 2 404 . 404 CMS B C1  6375 19.17 0.45 ? 0.704  0.098  -0.14  1
+HETATM C C2  . CMS B 2 404 . 404 CMS B C2  6376 19.17 0.55 ? 2.701  0.647  -1.443 1
+HETATM C C3  . CMS B 2 404 . 404 CMS B C3  6377 19.17 0.55 ? 1.164  -0.633 -2.441 1
+HETATM C C4  . CMS B 2 404 . 404 CMS B C4  6378 19.17 0.68 ? 1.047  -0.289 -3.896 1
+HETATM N N1  . CMS B 2 404 . 404 CMS B N1  6379 19.17 0.76 ? 1.077  -1.088 0.382  1
+HETATM N N3  . CMS B 2 404 . 404 CMS B N3  6380 19.17 0.54 ? 1.276  0.437  -1.388 1
+HETATM O O1  . CMS B 2 404 . 404 CMS B O1  6381 19.17 0.68 ? 0.71   -1.142 -4.757 1
+HETATM O O2  . CMS B 2 404 . 404 CMS B O2  6382 19.17 0.57 ? 1.27   0.891  -4.177 1
+HETATM O O3  . CMS B 2 404 . 404 CMS B O3  6383 19.17 0.4  ? -0.506 0.34   0.02   1
 #
 _cell.length_a      60.83
 _cell.length_b      110.55
