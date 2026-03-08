@@ -3,7 +3,7 @@ data_M0110_1c0p.cif
 _entry.id       M0110_1c0p.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     09:01:18
+_entry.time     19:25:53
 #
 _entity.id                 1
 _entity.type               polymer
@@ -29,6 +29,28 @@ _entity_poly_seq.num
 1 n FAD 1363
 1 n DAL 1364
 1 n PER 1365
+#
+loop_
+_struct_conn.id 
+_struct_conn.conn_type_id 
+_struct_conn.pdbx_value_order 
+_struct_conn.ptnr1_label_asym_id 
+_struct_conn.ptnr2_label_asym_id 
+_struct_conn.ptnr1_label_comp_id 
+_struct_conn.ptnr2_label_comp_id 
+_struct_conn.ptnr1_label_seq_id 
+_struct_conn.ptnr2_label_seq_id 
+_struct_conn.ptnr1_label_atom_id 
+_struct_conn.ptnr2_label_atom_id 
+_struct_conn.pdbx_ptnr1_PDB_ins_code 
+_struct_conn.pdbx_ptnr2_PDB_ins_code 
+1 covale sing A A FAD PER 1363 1365 C4X O2 . .
+2 covale sing A A FAD PER 1363 1365 N5  O2 . .
+3 covale sing A A FAD PER 1363 1365 C5X O1 . .
+4 covale sing A A FAD PER 1363 1365 C5X O2 . .
+5 covale sing A A FAD PER 1363 1365 C9A O1 . .
+6 covale sing A A DAL PER 1364 1365 O   O1 . .
+7 covale sing A A DAL PER 1364 1365 C   O2 . .
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 

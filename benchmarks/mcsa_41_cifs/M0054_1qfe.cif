@@ -3,7 +3,7 @@ data_M0054_1qfe.cif
 _entry.id       M0054_1qfe.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:44
+_entry.time     19:25:52
 #
 _entity.id                 1
 _entity.type               polymer
@@ -27,6 +27,20 @@ _entity_poly_seq.num
 1 n HIS 143
 1 n LYS 170
 1 n DHS 301
+#
+_struct_conn.id                        1
+_struct_conn.conn_type_id              covale
+_struct_conn.pdbx_value_order          sing
+_struct_conn.ptnr1_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr1_label_comp_id       LYS
+_struct_conn.ptnr2_label_comp_id       DHS
+_struct_conn.ptnr1_label_seq_id        170
+_struct_conn.ptnr2_label_seq_id        301
+_struct_conn.ptnr1_label_atom_id       NZ
+_struct_conn.ptnr2_label_atom_id       C3
+_struct_conn.pdbx_ptnr1_PDB_ins_code   .
+_struct_conn.pdbx_ptnr2_PDB_ins_code   .
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 

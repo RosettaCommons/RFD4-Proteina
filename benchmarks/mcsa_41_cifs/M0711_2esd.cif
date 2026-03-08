@@ -3,7 +3,7 @@ data_M0711_2esd.cif
 _entry.id       M0711_2esd.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:50
+_entry.time     19:25:59
 #
 _entity.id                 1
 _entity.type               polymer
@@ -28,6 +28,20 @@ _entity_poly_seq.num
 1 n CYS 284
 1 n NAP 1476
 1 n G3H 800
+#
+_struct_conn.id                        1
+_struct_conn.conn_type_id              covale
+_struct_conn.pdbx_value_order          sing
+_struct_conn.ptnr1_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr1_label_comp_id       CYS
+_struct_conn.ptnr2_label_comp_id       G3H
+_struct_conn.ptnr1_label_seq_id        284
+_struct_conn.ptnr2_label_seq_id        800
+_struct_conn.ptnr1_label_atom_id       SG
+_struct_conn.ptnr2_label_atom_id       C1
+_struct_conn.pdbx_ptnr1_PDB_ins_code   .
+_struct_conn.pdbx_ptnr2_PDB_ins_code   .
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
