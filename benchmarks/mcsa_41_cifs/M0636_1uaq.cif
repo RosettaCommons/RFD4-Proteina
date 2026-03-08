@@ -3,18 +3,21 @@ data_M0636_1uaq.cif
 _entry.id       M0636_1uaq.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:49
+_entry.time     20:49:17
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       ESCXX
-_entity_poly.pdbx_seq_one_letter_code_can   ESCXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       ESC
+_entity_poly.pdbx_seq_one_letter_code_can   ESC
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -26,8 +29,6 @@ _entity_poly_seq.num
 1 n GLU 64
 1 n SER 89
 1 n CYS 91
-1 n ZN  200
-1 n DUC 300
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -107,15 +108,15 @@ ATOM   C  C   . CYS A 1 91  . 91  CYS A C   631  18.48 1.0 ? 0.992  -4.815 -0.64
 ATOM   O  O   . CYS A 1 91  . 91  CYS A O   632  15.99 1.0 ? -0.205 -4.748 -0.293 1
 ATOM   C  CB  . CYS A 1 91  . 91  CYS A CB  633  18.16 1.0 ? 2.934  -3.248 -0.253 1
 ATOM   S  SG  . CYS A 1 91  . 91  CYS A SG  634  18.16 1.0 ? 2.583  -3.364 1.502  1
-HETATM ZN ZN  . ZN  A 2 200 . 200 ZN  A ZN  2357 17.83 1.0 ? 1.935  -1.22  2.205  1
-HETATM N  N3  . DUC A 3 300 . 300 DUC A N3  2358 17.39 1.0 ? 2.266  2.042  1.085  1
-HETATM C  C2  . DUC A 3 300 . 300 DUC A C2  2359 15.71 1.0 ? 3.416  2.528  1.65   1
-HETATM O  O2  . DUC A 3 300 . 300 DUC A O2  2360 17.25 1.0 ? 3.377  3.236  2.631  1
-HETATM N  N1  . DUC A 3 300 . 300 DUC A N1  2361 16.56 1.0 ? 4.603  1.982  1.171  1
-HETATM C  C6  . DUC A 3 300 . 300 DUC A C6  2362 16.71 1.0 ? 4.595  1.063  0.144  1
-HETATM C  C5  . DUC A 3 300 . 300 DUC A C5  2363 16.59 1.0 ? 3.454  0.632  -0.444 1
-HETATM C  C4  . DUC A 3 300 . 300 DUC A C4  2364 18.92 1.0 ? 2.172  1.068  0.064  1
-HETATM O  O4  . DUC A 3 300 . 300 DUC A O4  2365 15.56 1.0 ? 1.45   -0.073 0.562  1
+HETATM ZN ZN  . ZN  B 2 200 . 200 ZN  B ZN  2357 17.83 1.0 ? 1.935  -1.22  2.205  1
+HETATM N  N3  . DUC B 3 300 . 300 DUC B N3  2358 17.39 1.0 ? 2.266  2.042  1.085  1
+HETATM C  C2  . DUC B 3 300 . 300 DUC B C2  2359 15.71 1.0 ? 3.416  2.528  1.65   1
+HETATM O  O2  . DUC B 3 300 . 300 DUC B O2  2360 17.25 1.0 ? 3.377  3.236  2.631  1
+HETATM N  N1  . DUC B 3 300 . 300 DUC B N1  2361 16.56 1.0 ? 4.603  1.982  1.171  1
+HETATM C  C6  . DUC B 3 300 . 300 DUC B C6  2362 16.71 1.0 ? 4.595  1.063  0.144  1
+HETATM C  C5  . DUC B 3 300 . 300 DUC B C5  2363 16.59 1.0 ? 3.454  0.632  -0.444 1
+HETATM C  C4  . DUC B 3 300 . 300 DUC B C4  2364 18.92 1.0 ? 2.172  1.068  0.064  1
+HETATM O  O4  . DUC B 3 300 . 300 DUC B O4  2365 15.56 1.0 ? 1.45   -0.073 0.562  1
 #
 _cell.length_a      47.113
 _cell.length_b      53.681

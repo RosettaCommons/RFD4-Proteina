@@ -3,18 +3,21 @@ data_M0552_1fgh.cif
 _entry.id       M0552_1fgh.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:48
+_entry.time     20:49:15
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+3 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       DHDRSRX
-_entity_poly.pdbx_seq_one_letter_code_can   DHDRSRX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       DHDRSR
+_entity_poly.pdbx_seq_one_letter_code_can   DHDRSR
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -29,7 +32,6 @@ _entity_poly_seq.num
 1 n ARG 447
 1 n SER 642
 1 n ARG 644
-1 n ATH 755
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -162,21 +164,21 @@ ATOM   N NE  . ARG A 1 644 . 644 ARG A NE  4929 5.27  1.0 ? 1.063  5.547  1.288 
 ATOM   C CZ  . ARG A 1 644 . 644 ARG A CZ  4930 5.13  1.0 ? 1.016  6.011  0.036  1
 ATOM   N NH1 . ARG A 1 644 . 644 ARG A NH1 4931 5.23  1.0 ? 1.223  7.3    -0.237 1
 ATOM   N NH2 . ARG A 1 644 . 644 ARG A NH2 4932 4.8   1.0 ? 0.742  5.154  -0.952 1
-HETATM C C1  . ATH A 3 755 . 755 ATH A C1  5821 8.66  1.0 ? 2.013  1.506  1.43   1
-HETATM C C2  . ATH A 3 755 . 755 ATH A C2  5822 7.81  1.0 ? 0.635  1.075  1.626  1
-HETATM C C3  . ATH A 3 755 . 755 ATH A C3  5823 8.66  1.0 ? -0.165 0.61   0.667  1
-HETATM C C4  . ATH A 3 755 . 755 ATH A C4  5824 7.08  1.0 ? 0.222  0.4    -0.831 1
-HETATM C C5  . ATH A 3 755 . 755 ATH A C5  5825 6.43  1.0 ? -0.637 1.26   -1.738 1
-HETATM C C6  . ATH A 3 755 . 755 ATH A C6  5826 8.93  1.0 ? -1.613 0.305  1.049  1
-HETATM O O1  . ATH A 3 755 . 755 ATH A O1  5827 9.6   1.0 ? 2.137  2.678  0.984  1
-HETATM O O2  . ATH A 3 755 . 755 ATH A O2  5828 9.98  1.0 ? 3.022  0.742  1.535  1
-HETATM O O3  . ATH A 3 755 . 755 ATH A O3  5829 8.26  1.0 ? -0.74  2.485  -1.528 1
-HETATM O O4  . ATH A 3 755 . 755 ATH A O4  5830 9.01  1.0 ? -1.217 0.697  -2.691 1
-HETATM O O5  . ATH A 3 755 . 755 ATH A O5  5831 6.21  1.0 ? -2.49  0.143  0.188  1
-HETATM O O6  . ATH A 3 755 . 755 ATH A O6  5832 8.84  1.0 ? -1.904 0.161  2.251  1
-HETATM O OH  . ATH A 3 755 . 755 ATH A OH  5833 8.59  1.0 ? 0.272  -1.0   -1.127 1
-HETATM H H2  . ATH A 3 755 . 755 ATH A H2  5834 0.0   1.0 ? 0.211  1.118  2.564  1
-HETATM H H4  . ATH A 3 755 . 755 ATH A H4  5835 0.0   1.0 ? 1.207  0.702  -0.949 1
+HETATM C C1  . ATH B 3 755 . 755 ATH B C1  5821 8.66  1.0 ? 2.013  1.506  1.43   1
+HETATM C C2  . ATH B 3 755 . 755 ATH B C2  5822 7.81  1.0 ? 0.635  1.075  1.626  1
+HETATM C C3  . ATH B 3 755 . 755 ATH B C3  5823 8.66  1.0 ? -0.165 0.61   0.667  1
+HETATM C C4  . ATH B 3 755 . 755 ATH B C4  5824 7.08  1.0 ? 0.222  0.4    -0.831 1
+HETATM C C5  . ATH B 3 755 . 755 ATH B C5  5825 6.43  1.0 ? -0.637 1.26   -1.738 1
+HETATM C C6  . ATH B 3 755 . 755 ATH B C6  5826 8.93  1.0 ? -1.613 0.305  1.049  1
+HETATM O O1  . ATH B 3 755 . 755 ATH B O1  5827 9.6   1.0 ? 2.137  2.678  0.984  1
+HETATM O O2  . ATH B 3 755 . 755 ATH B O2  5828 9.98  1.0 ? 3.022  0.742  1.535  1
+HETATM O O3  . ATH B 3 755 . 755 ATH B O3  5829 8.26  1.0 ? -0.74  2.485  -1.528 1
+HETATM O O4  . ATH B 3 755 . 755 ATH B O4  5830 9.01  1.0 ? -1.217 0.697  -2.691 1
+HETATM O O5  . ATH B 3 755 . 755 ATH B O5  5831 6.21  1.0 ? -2.49  0.143  0.188  1
+HETATM O O6  . ATH B 3 755 . 755 ATH B O6  5832 8.84  1.0 ? -1.904 0.161  2.251  1
+HETATM O OH  . ATH B 3 755 . 755 ATH B OH  5833 8.59  1.0 ? 0.272  -1.0   -1.127 1
+HETATM H H2  . ATH B 3 755 . 755 ATH B H2  5834 0.0   1.0 ? 0.211  1.118  2.564  1
+HETATM H H4  . ATH B 3 755 . 755 ATH B H4  5835 0.0   1.0 ? 1.207  0.702  -0.949 1
 #
 _cell.length_a      185.9
 _cell.length_b      71.799995

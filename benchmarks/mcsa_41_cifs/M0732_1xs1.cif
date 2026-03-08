@@ -3,18 +3,21 @@ data_M0732_1xs1.cif
 _entry.id       M0732_1xs1.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     19:26:04
+_entry.time     20:49:23
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+3 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       AREX
-_entity_poly.pdbx_seq_one_letter_code_can   AREX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       ARE
+_entity_poly.pdbx_seq_one_letter_code_can   ARE
 _entity_poly.pdbx_strand_id                 A,C
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -26,7 +29,6 @@ _entity_poly_seq.num
 1 n ALA 124
 1 n ARG 126
 1 n GLU 138
-1 n DUT 1194
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -140,34 +142,34 @@ ATOM   C CG    . GLU A 1 138  . 138  GLU A CG    1079 19.76 1.0 ? 2.333  0.624  
 ATOM   C CD    . GLU A 1 138  . 138  GLU A CD    1080 24.17 1.0 ? 2.454  0.545  2.983  1
 ATOM   O OE1   . GLU A 1 138  . 138  GLU A OE1   1081 21.07 1.0 ? 3.294  -0.218 2.45   1
 ATOM   O OE2   . GLU A 1 138  . 138  GLU A OE2   1082 23.96 1.0 ? 1.672  1.265  2.338  1
-HETATM N N1    . DUT A 3 1194 . 1194 DUT A N1    9022 20.09 1.0 ? 0.028  1.721  -3.491 1
-HETATM C C2    . DUT A 3 1194 . 1194 DUT A C2    9023 20.92 1.0 ? 0.773  2.68   -2.784 1
-HETATM N N3    . DUT A 3 1194 . 1194 DUT A N3    9024 23.59 1.0 ? 2.022  2.256  -2.273 1
-HETATM C C4    . DUT A 3 1194 . 1194 DUT A C4    9025 25.55 1.0 ? 2.484  0.982  -2.456 1
-HETATM C C5    . DUT A 3 1194 . 1194 DUT A C5    9026 22.06 1.0 ? 1.73   0.068  -3.154 1
-HETATM C C6    . DUT A 3 1194 . 1194 DUT A C6    9027 18.78 1.0 ? 0.507  0.459  -3.66  1
-HETATM O O2    . DUT A 3 1194 . 1194 DUT A O2    9028 22.31 1.0 ? 0.304  3.873  -2.632 1
-HETATM O O4    . DUT A 3 1194 . 1194 DUT A O4    9029 26.09 1.0 ? 3.554  0.621  -2.021 1
-HETATM C "C1'" . DUT A 3 1194 . 1194 DUT A "C1'" 9030 19.73 1.0 ? -1.175 2.054  -4.233 1
-HETATM C "C2'" . DUT A 3 1194 . 1194 DUT A "C2'" 9031 19.05 1.0 ? -0.742 1.71   -5.715 1
-HETATM C "C3'" . DUT A 3 1194 . 1194 DUT A "C3'" 9032 24.63 1.0 ? -1.751 0.716  -6.2   1
-HETATM C "C4'" . DUT A 3 1194 . 1194 DUT A "C4'" 9033 22.61 1.0 ? -2.899 0.81   -5.167 1
-HETATM O "O4'" . DUT A 3 1194 . 1194 DUT A "O4'" 9034 24.31 1.0 ? -2.375 1.407  -3.959 1
-HETATM O "O3'" . DUT A 3 1194 . 1194 DUT A "O3'" 9035 22.16 1.0 ? -2.039 0.697  -7.582 1
-HETATM C "C5'" . DUT A 3 1194 . 1194 DUT A "C5'" 9036 20.0  1.0 ? -3.734 -0.377 -4.876 1
-HETATM O "O5'" . DUT A 3 1194 . 1194 DUT A "O5'" 9037 22.39 1.0 ? -2.889 -1.379 -4.35  1
-HETATM P PA    . DUT A 3 1194 . 1194 DUT A PA    9038 20.67 1.0 ? -3.517 -2.69  -3.937 1
-HETATM O O1A   . DUT A 3 1194 . 1194 DUT A O1A   9039 22.53 1.0 ? -4.5   -3.279 -4.934 1
-HETATM O O2A   . DUT A 3 1194 . 1194 DUT A O2A   9040 17.47 1.0 ? -2.352 -3.592 -3.417 1
-HETATM O O3A   . DUT A 3 1194 . 1194 DUT A O3A   9041 20.98 1.0 ? -4.333 -2.322 -2.608 1
-HETATM P PB    . DUT A 3 1194 . 1194 DUT A PB    9042 24.52 1.0 ? -5.83  -2.607 -2.148 1
-HETATM O O1B   . DUT A 3 1194 . 1194 DUT A O1B   9043 23.47 1.0 ? -5.793 -2.595 -0.648 1
-HETATM O O2B   . DUT A 3 1194 . 1194 DUT A O2B   9044 19.0  1.0 ? -6.328 -3.954 -2.745 1
-HETATM O O3B   . DUT A 3 1194 . 1194 DUT A O3B   9045 26.76 1.0 ? -6.768 -1.454 -2.775 1
-HETATM P PG    . DUT A 3 1194 . 1194 DUT A PG    9046 24.48 1.0 ? -7.853 -1.583 -3.992 1
-HETATM O O1G   . DUT A 3 1194 . 1194 DUT A O1G   9047 22.2  1.0 ? -9.124 -2.024 -3.448 1
-HETATM O O2G   . DUT A 3 1194 . 1194 DUT A O2G   9048 22.58 1.0 ? -7.908 -0.2   -4.538 1
-HETATM O O3G   . DUT A 3 1194 . 1194 DUT A O3G   9049 23.94 1.0 ? -7.195 -2.586 -4.918 1
+HETATM N N1    . DUT D 3 1194 . 1194 DUT D N1    9022 20.09 1.0 ? 0.028  1.721  -3.491 1
+HETATM C C2    . DUT D 3 1194 . 1194 DUT D C2    9023 20.92 1.0 ? 0.773  2.68   -2.784 1
+HETATM N N3    . DUT D 3 1194 . 1194 DUT D N3    9024 23.59 1.0 ? 2.022  2.256  -2.273 1
+HETATM C C4    . DUT D 3 1194 . 1194 DUT D C4    9025 25.55 1.0 ? 2.484  0.982  -2.456 1
+HETATM C C5    . DUT D 3 1194 . 1194 DUT D C5    9026 22.06 1.0 ? 1.73   0.068  -3.154 1
+HETATM C C6    . DUT D 3 1194 . 1194 DUT D C6    9027 18.78 1.0 ? 0.507  0.459  -3.66  1
+HETATM O O2    . DUT D 3 1194 . 1194 DUT D O2    9028 22.31 1.0 ? 0.304  3.873  -2.632 1
+HETATM O O4    . DUT D 3 1194 . 1194 DUT D O4    9029 26.09 1.0 ? 3.554  0.621  -2.021 1
+HETATM C "C1'" . DUT D 3 1194 . 1194 DUT D "C1'" 9030 19.73 1.0 ? -1.175 2.054  -4.233 1
+HETATM C "C2'" . DUT D 3 1194 . 1194 DUT D "C2'" 9031 19.05 1.0 ? -0.742 1.71   -5.715 1
+HETATM C "C3'" . DUT D 3 1194 . 1194 DUT D "C3'" 9032 24.63 1.0 ? -1.751 0.716  -6.2   1
+HETATM C "C4'" . DUT D 3 1194 . 1194 DUT D "C4'" 9033 22.61 1.0 ? -2.899 0.81   -5.167 1
+HETATM O "O4'" . DUT D 3 1194 . 1194 DUT D "O4'" 9034 24.31 1.0 ? -2.375 1.407  -3.959 1
+HETATM O "O3'" . DUT D 3 1194 . 1194 DUT D "O3'" 9035 22.16 1.0 ? -2.039 0.697  -7.582 1
+HETATM C "C5'" . DUT D 3 1194 . 1194 DUT D "C5'" 9036 20.0  1.0 ? -3.734 -0.377 -4.876 1
+HETATM O "O5'" . DUT D 3 1194 . 1194 DUT D "O5'" 9037 22.39 1.0 ? -2.889 -1.379 -4.35  1
+HETATM P PA    . DUT D 3 1194 . 1194 DUT D PA    9038 20.67 1.0 ? -3.517 -2.69  -3.937 1
+HETATM O O1A   . DUT D 3 1194 . 1194 DUT D O1A   9039 22.53 1.0 ? -4.5   -3.279 -4.934 1
+HETATM O O2A   . DUT D 3 1194 . 1194 DUT D O2A   9040 17.47 1.0 ? -2.352 -3.592 -3.417 1
+HETATM O O3A   . DUT D 3 1194 . 1194 DUT D O3A   9041 20.98 1.0 ? -4.333 -2.322 -2.608 1
+HETATM P PB    . DUT D 3 1194 . 1194 DUT D PB    9042 24.52 1.0 ? -5.83  -2.607 -2.148 1
+HETATM O O1B   . DUT D 3 1194 . 1194 DUT D O1B   9043 23.47 1.0 ? -5.793 -2.595 -0.648 1
+HETATM O O2B   . DUT D 3 1194 . 1194 DUT D O2B   9044 19.0  1.0 ? -6.328 -3.954 -2.745 1
+HETATM O O3B   . DUT D 3 1194 . 1194 DUT D O3B   9045 26.76 1.0 ? -6.768 -1.454 -2.775 1
+HETATM P PG    . DUT D 3 1194 . 1194 DUT D PG    9046 24.48 1.0 ? -7.853 -1.583 -3.992 1
+HETATM O O1G   . DUT D 3 1194 . 1194 DUT D O1G   9047 22.2  1.0 ? -9.124 -2.024 -3.448 1
+HETATM O O2G   . DUT D 3 1194 . 1194 DUT D O2G   9048 22.58 1.0 ? -7.908 -0.2   -4.538 1
+HETATM O O3G   . DUT D 3 1194 . 1194 DUT D O3G   9049 23.94 1.0 ? -7.195 -2.586 -4.918 1
 ATOM   N N     . SER C 1 111  . 111  SER C N     3878 18.77 1.0 ? -2.341 -3.156 -0.357 1
 ATOM   C CA    . SER C 1 111  . 111  SER C CA    3879 21.82 1.0 ? -2.027 -1.88  0.283  1
 ATOM   C C     . SER C 1 111  . 111  SER C C     3880 17.6  1.0 ? -2.891 -1.619 1.507  1

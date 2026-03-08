@@ -3,18 +3,21 @@ data_M0731_1mt5.cif
 _entry.id       M0731_1mt5.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     19:26:04
+_entry.time     20:49:22
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       KSSIGGSX
-_entity_poly.pdbx_seq_one_letter_code_can   KSSIGGSX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       KSSIGGS
+_entity_poly.pdbx_seq_one_letter_code_can   KSSIGGS
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -30,13 +33,12 @@ _entity_poly_seq.num
 1 n GLY 239
 1 n GLY 240
 1 n SER 241
-1 n MAY 600
 #
 _struct_conn.id                        1
 _struct_conn.conn_type_id              covale
 _struct_conn.pdbx_value_order          sing
 _struct_conn.ptnr1_label_asym_id       A
-_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       B
 _struct_conn.ptnr1_label_comp_id       SER
 _struct_conn.ptnr2_label_comp_id       MAY
 _struct_conn.ptnr1_label_seq_id        241
@@ -166,30 +168,30 @@ ATOM   C C   . SER A 1 241 . 241 SER A C   1458  40.21 1.0 ? 0.625  -3.624 -0.71
 ATOM   O O   . SER A 1 241 . 241 SER A O   1459  42.34 1.0 ? 0.575  -4.351 0.256  1
 ATOM   C CB  . SER A 1 241 . 241 SER A CB  1460  42.54 1.0 ? 0.292  -1.431 0.436  1
 ATOM   O OG  . SER A 1 241 . 241 SER A OG  1461  46.68 1.0 ? 0.917  -0.255 0.971  1
-HETATM C C1  . MAY A 2 600 . 600 MAY A C1  64141 53.26 1.0 ? 2.092  2.249  -0.032 1
-HETATM O O1  . MAY A 2 600 . 600 MAY A O1  64142 52.79 1.0 ? -0.253 1.245  -0.852 1
-HETATM P P1  . MAY A 2 600 . 600 MAY A P1  64143 50.85 1.0 ? 0.706  1.205  0.402  1
-HETATM C C2  . MAY A 2 600 . 600 MAY A C2  64144 53.89 1.0 ? 3.13   2.366  1.047  1
-HETATM O O2  . MAY A 2 600 . 600 MAY A O2  64145 53.2  1.0 ? -0.091 1.693  1.694  1
-HETATM C C3  . MAY A 2 600 . 600 MAY A C3  64146 54.98 1.0 ? 3.638  3.802  1.024  1
-HETATM C C4  . MAY A 2 600 . 600 MAY A C4  64147 55.37 1.0 ? 4.968  3.932  0.286  1
-HETATM C C5  . MAY A 2 600 . 600 MAY A C5  64148 55.84 1.0 ? 6.024  4.324  1.314  1
-HETATM C C6  . MAY A 2 600 . 600 MAY A C6  64149 55.57 1.0 ? 6.506  5.571  1.487  1
-HETATM C C7  . MAY A 2 600 . 600 MAY A C7  64150 55.49 1.0 ? 6.054  6.737  0.648  1
-HETATM C C8  . MAY A 2 600 . 600 MAY A C8  64151 55.75 1.0 ? 5.273  7.703  1.501  1
-HETATM C C9  . MAY A 2 600 . 600 MAY A C9  64152 55.92 1.0 ? 5.083  8.986  1.159  1
-HETATM C CM  . MAY A 2 600 . 600 MAY A CM  64153 54.46 1.0 ? -1.527 1.686  1.758  1
-HETATM C C10 . MAY A 2 600 . 600 MAY A C10 64154 55.74 1.0 ? 5.667  9.585  -0.096 1
-HETATM C C11 . MAY A 2 600 . 600 MAY A C11 64155 55.97 1.0 ? 4.56   10.12  -0.968 1
-HETATM C C12 . MAY A 2 600 . 600 MAY A C12 64156 55.93 1.0 ? 4.677  10.179 -2.299 1
-HETATM C C13 . MAY A 2 600 . 600 MAY A C13 64157 55.39 1.0 ? 5.901  9.701  -3.051 1
-HETATM C C14 . MAY A 2 600 . 600 MAY A C14 64158 55.48 1.0 ? 5.421  8.901  -4.241 1
-HETATM C C15 . MAY A 2 600 . 600 MAY A C15 64159 55.52 1.0 ? 5.981  8.922  -5.459 1
-HETATM C C16 . MAY A 2 600 . 600 MAY A C16 64160 55.6  1.0 ? 7.157  9.78   -5.814 1
-HETATM C C17 . MAY A 2 600 . 600 MAY A C17 64161 55.4  1.0 ? 8.484  9.003  -5.729 1
-HETATM C C18 . MAY A 2 600 . 600 MAY A C18 64162 55.3  1.0 ? 9.584  9.883  -5.132 1
-HETATM C C19 . MAY A 2 600 . 600 MAY A C19 64163 55.25 1.0 ? 9.731  11.194 -5.918 1
-HETATM C C20 . MAY A 2 600 . 600 MAY A C20 64164 54.86 1.0 ? 9.864  12.361 -4.996 1
+HETATM C C1  . MAY B 2 600 . 600 MAY B C1  64141 53.26 1.0 ? 2.092  2.249  -0.032 1
+HETATM O O1  . MAY B 2 600 . 600 MAY B O1  64142 52.79 1.0 ? -0.253 1.245  -0.852 1
+HETATM P P1  . MAY B 2 600 . 600 MAY B P1  64143 50.85 1.0 ? 0.706  1.205  0.402  1
+HETATM C C2  . MAY B 2 600 . 600 MAY B C2  64144 53.89 1.0 ? 3.13   2.366  1.047  1
+HETATM O O2  . MAY B 2 600 . 600 MAY B O2  64145 53.2  1.0 ? -0.091 1.693  1.694  1
+HETATM C C3  . MAY B 2 600 . 600 MAY B C3  64146 54.98 1.0 ? 3.638  3.802  1.024  1
+HETATM C C4  . MAY B 2 600 . 600 MAY B C4  64147 55.37 1.0 ? 4.968  3.932  0.286  1
+HETATM C C5  . MAY B 2 600 . 600 MAY B C5  64148 55.84 1.0 ? 6.024  4.324  1.314  1
+HETATM C C6  . MAY B 2 600 . 600 MAY B C6  64149 55.57 1.0 ? 6.506  5.571  1.487  1
+HETATM C C7  . MAY B 2 600 . 600 MAY B C7  64150 55.49 1.0 ? 6.054  6.737  0.648  1
+HETATM C C8  . MAY B 2 600 . 600 MAY B C8  64151 55.75 1.0 ? 5.273  7.703  1.501  1
+HETATM C C9  . MAY B 2 600 . 600 MAY B C9  64152 55.92 1.0 ? 5.083  8.986  1.159  1
+HETATM C CM  . MAY B 2 600 . 600 MAY B CM  64153 54.46 1.0 ? -1.527 1.686  1.758  1
+HETATM C C10 . MAY B 2 600 . 600 MAY B C10 64154 55.74 1.0 ? 5.667  9.585  -0.096 1
+HETATM C C11 . MAY B 2 600 . 600 MAY B C11 64155 55.97 1.0 ? 4.56   10.12  -0.968 1
+HETATM C C12 . MAY B 2 600 . 600 MAY B C12 64156 55.93 1.0 ? 4.677  10.179 -2.299 1
+HETATM C C13 . MAY B 2 600 . 600 MAY B C13 64157 55.39 1.0 ? 5.901  9.701  -3.051 1
+HETATM C C14 . MAY B 2 600 . 600 MAY B C14 64158 55.48 1.0 ? 5.421  8.901  -4.241 1
+HETATM C C15 . MAY B 2 600 . 600 MAY B C15 64159 55.52 1.0 ? 5.981  8.922  -5.459 1
+HETATM C C16 . MAY B 2 600 . 600 MAY B C16 64160 55.6  1.0 ? 7.157  9.78   -5.814 1
+HETATM C C17 . MAY B 2 600 . 600 MAY B C17 64161 55.4  1.0 ? 8.484  9.003  -5.729 1
+HETATM C C18 . MAY B 2 600 . 600 MAY B C18 64162 55.3  1.0 ? 9.584  9.883  -5.132 1
+HETATM C C19 . MAY B 2 600 . 600 MAY B C19 64163 55.25 1.0 ? 9.731  11.194 -5.918 1
+HETATM C C20 . MAY B 2 600 . 600 MAY B C20 64164 54.86 1.0 ? 9.864  12.361 -4.996 1
 #
 _cell.length_a      147.107
 _cell.length_b      272.019

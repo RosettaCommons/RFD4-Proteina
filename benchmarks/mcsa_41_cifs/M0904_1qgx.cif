@@ -3,18 +3,21 @@ data_M0904_1qgx.cif
 _entry.id       M0904_1qgx.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:55
+_entry.time     20:49:23
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       DEDIDTDXX
-_entity_poly.pdbx_seq_one_letter_code_can   DEDIDTDXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       DEDIDTD
+_entity_poly.pdbx_seq_one_letter_code_can   DEDIDTD
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -30,8 +33,6 @@ _entity_poly_seq.num
 1 n ASP 145
 1 n THR 147
 1 n ASP 294
-1 n MG  401
-1 n AMP 405
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -173,30 +174,30 @@ ATOM   C  CB    . ASP A 1 294 . 294 ASP A CB    2289 11.35 1.0 ? 7.407  1.721  1
 ATOM   C  CG    . ASP A 1 294 . 294 ASP A CG    2290 14.16 1.0 ? 6.371  1.917  0.747  1
 ATOM   O  OD1   . ASP A 1 294 . 294 ASP A OD1   2291 13.13 1.0 ? 5.227  1.447  0.951  1
 ATOM   O  OD2   . ASP A 1 294 . 294 ASP A OD2   2292 12.14 1.0 ? 6.675  2.521  -0.299 1
-HETATM MG MG    . MG  A 2 401 . 401 MG  A MG    2735 12.96 1.0 ? -0.259 1.079  -0.301 1
-HETATM P  P     . AMP A 5 405 . 405 AMP A P     2747 11.73 1.0 ? 7.649  -3.957 -2.627 1
-HETATM O  O1P   . AMP A 5 405 . 405 AMP A O1P   2748 12.39 1.0 ? 6.442  -4.805 -2.553 1
-HETATM O  O2P   . AMP A 5 405 . 405 AMP A O2P   2749 13.36 1.0 ? 8.245  -3.976 -4.025 1
-HETATM O  O3P   . AMP A 5 405 . 405 AMP A O3P   2750 12.34 1.0 ? 8.675  -4.401 -1.738 1
-HETATM O  "O5'" . AMP A 5 405 . 405 AMP A "O5'" 2751 11.99 1.0 ? 7.419  -2.46  -2.235 1
-HETATM C  "C5'" . AMP A 5 405 . 405 AMP A "C5'" 2752 11.56 1.0 ? 6.067  -1.843 -2.32  1
-HETATM C  "C4'" . AMP A 5 405 . 405 AMP A "C4'" 2753 13.86 1.0 ? 6.22   -0.317 -2.327 1
-HETATM O  "O4'" . AMP A 5 405 . 405 AMP A "O4'" 2754 11.37 1.0 ? 7.069  0.007  -3.506 1
-HETATM C  "C3'" . AMP A 5 405 . 405 AMP A "C3'" 2755 13.72 1.0 ? 4.917  0.441  -2.542 1
-HETATM O  "O3'" . AMP A 5 405 . 405 AMP A "O3'" 2756 15.72 1.0 ? 4.181  0.523  -1.33  1
-HETATM C  "C2'" . AMP A 5 405 . 405 AMP A "C2'" 2757 12.95 1.0 ? 5.356  1.723  -3.252 1
-HETATM O  "O2'" . AMP A 5 405 . 405 AMP A "O2'" 2758 13.04 1.0 ? 5.304  2.89   -2.39  1
-HETATM C  "C1'" . AMP A 5 405 . 405 AMP A "C1'" 2759 12.39 1.0 ? 6.823  1.391  -3.483 1
-HETATM N  N9    . AMP A 5 405 . 405 AMP A N9    2760 14.35 1.0 ? 7.331  1.963  -4.78  1
-HETATM C  C8    . AMP A 5 405 . 405 AMP A C8    2761 15.06 1.0 ? 6.598  2.396  -5.884 1
-HETATM N  N7    . AMP A 5 405 . 405 AMP A N7    2762 16.79 1.0 ? 7.398  2.854  -6.85  1
-HETATM C  C5    . AMP A 5 405 . 405 AMP A C5    2763 14.52 1.0 ? 8.663  2.73   -6.357 1
-HETATM C  C6    . AMP A 5 405 . 405 AMP A C6    2764 16.23 1.0 ? 9.961  3.068  -6.893 1
-HETATM N  N6    . AMP A 5 405 . 405 AMP A N6    2765 18.03 1.0 ? 10.12  3.643  -8.079 1
-HETATM N  N1    . AMP A 5 405 . 405 AMP A N1    2766 14.5  1.0 ? 11.002 2.789  -6.096 1
-HETATM C  C2    . AMP A 5 405 . 405 AMP A C2    2767 15.49 1.0 ? 10.894 2.211  -4.839 1
-HETATM N  N3    . AMP A 5 405 . 405 AMP A N3    2768 15.21 1.0 ? 9.724  1.903  -4.303 1
-HETATM C  C4    . AMP A 5 405 . 405 AMP A C4    2769 14.37 1.0 ? 8.668  2.193  -5.056 1
+HETATM MG MG    . MG  B 2 401 . 401 MG  B MG    2735 12.96 1.0 ? -0.259 1.079  -0.301 1
+HETATM P  P     . AMP B 5 405 . 405 AMP B P     2747 11.73 1.0 ? 7.649  -3.957 -2.627 1
+HETATM O  O1P   . AMP B 5 405 . 405 AMP B O1P   2748 12.39 1.0 ? 6.442  -4.805 -2.553 1
+HETATM O  O2P   . AMP B 5 405 . 405 AMP B O2P   2749 13.36 1.0 ? 8.245  -3.976 -4.025 1
+HETATM O  O3P   . AMP B 5 405 . 405 AMP B O3P   2750 12.34 1.0 ? 8.675  -4.401 -1.738 1
+HETATM O  "O5'" . AMP B 5 405 . 405 AMP B "O5'" 2751 11.99 1.0 ? 7.419  -2.46  -2.235 1
+HETATM C  "C5'" . AMP B 5 405 . 405 AMP B "C5'" 2752 11.56 1.0 ? 6.067  -1.843 -2.32  1
+HETATM C  "C4'" . AMP B 5 405 . 405 AMP B "C4'" 2753 13.86 1.0 ? 6.22   -0.317 -2.327 1
+HETATM O  "O4'" . AMP B 5 405 . 405 AMP B "O4'" 2754 11.37 1.0 ? 7.069  0.007  -3.506 1
+HETATM C  "C3'" . AMP B 5 405 . 405 AMP B "C3'" 2755 13.72 1.0 ? 4.917  0.441  -2.542 1
+HETATM O  "O3'" . AMP B 5 405 . 405 AMP B "O3'" 2756 15.72 1.0 ? 4.181  0.523  -1.33  1
+HETATM C  "C2'" . AMP B 5 405 . 405 AMP B "C2'" 2757 12.95 1.0 ? 5.356  1.723  -3.252 1
+HETATM O  "O2'" . AMP B 5 405 . 405 AMP B "O2'" 2758 13.04 1.0 ? 5.304  2.89   -2.39  1
+HETATM C  "C1'" . AMP B 5 405 . 405 AMP B "C1'" 2759 12.39 1.0 ? 6.823  1.391  -3.483 1
+HETATM N  N9    . AMP B 5 405 . 405 AMP B N9    2760 14.35 1.0 ? 7.331  1.963  -4.78  1
+HETATM C  C8    . AMP B 5 405 . 405 AMP B C8    2761 15.06 1.0 ? 6.598  2.396  -5.884 1
+HETATM N  N7    . AMP B 5 405 . 405 AMP B N7    2762 16.79 1.0 ? 7.398  2.854  -6.85  1
+HETATM C  C5    . AMP B 5 405 . 405 AMP B C5    2763 14.52 1.0 ? 8.663  2.73   -6.357 1
+HETATM C  C6    . AMP B 5 405 . 405 AMP B C6    2764 16.23 1.0 ? 9.961  3.068  -6.893 1
+HETATM N  N6    . AMP B 5 405 . 405 AMP B N6    2765 18.03 1.0 ? 10.12  3.643  -8.079 1
+HETATM N  N1    . AMP B 5 405 . 405 AMP B N1    2766 14.5  1.0 ? 11.002 2.789  -6.096 1
+HETATM C  C2    . AMP B 5 405 . 405 AMP B C2    2767 15.49 1.0 ? 10.894 2.211  -4.839 1
+HETATM N  N3    . AMP B 5 405 . 405 AMP B N3    2768 15.21 1.0 ? 9.724  1.903  -4.303 1
+HETATM C  C4    . AMP B 5 405 . 405 AMP B C4    2769 14.37 1.0 ? 8.668  2.193  -5.056 1
 #
 _cell.length_a      54.68
 _cell.length_b      44.91

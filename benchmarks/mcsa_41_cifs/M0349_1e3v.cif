@@ -3,18 +3,21 @@ data_M0349_1e3v.cif
 _entry.id       M0349_1e3v.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:48
+_entry.time     20:49:14
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       YDDDX
-_entity_poly.pdbx_seq_one_letter_code_can   YDDDX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       YDDD
+_entity_poly.pdbx_seq_one_letter_code_can   YDDD
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -27,7 +30,6 @@ _entity_poly_seq.num
 1 n ASP 40
 1 n ASP 100
 1 n ASP 103
-1 n DXC 801
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -157,34 +159,34 @@ ATOM   O OD1 . ASP A 1 103 . 103 ASP A OD1 926  8.85  1.0 ? 2.296  -1.193  -1.46
 ATOM   O OD2 . ASP A 1 103 . 103 ASP A OD2 927  11.0  1.0 ? 2.075  -2.591  0.21   1
 ATOM   H H   . ASP A 1 103 . 103 ASP A H   928  0.0   1.0 ? 0.652  -3.431  -4.066 1
 ATOM   H HD2 . ASP A 1 103 . 103 ASP A HD2 929  0.0   1.0 ? 1.26   -3.088  0.326  1
-HETATM C C1  . DXC A 2 801 . 801 DXC A C1  2388 17.86 1.0 ? 2.012  10.869  3.605  1
-HETATM C C2  . DXC A 2 801 . 801 DXC A C2  2389 15.72 1.0 ? 0.978  10.175  2.711  1
-HETATM C C3  . DXC A 2 801 . 801 DXC A C3  2390 17.38 1.0 ? -0.385 10.024  3.425  1
-HETATM C C4  . DXC A 2 801 . 801 DXC A C4  2391 18.05 1.0 ? -0.255 9.285   4.795  1
-HETATM C C5  . DXC A 2 801 . 801 DXC A C5  2392 18.76 1.0 ? 0.792  10.053  5.649  1
-HETATM C C6  . DXC A 2 801 . 801 DXC A C6  2393 16.35 1.0 ? 2.161  10.121  4.954  1
-HETATM C C7  . DXC A 2 801 . 801 DXC A C7  2394 14.79 1.0 ? -1.403 9.311   2.498  1
-HETATM C C8  . DXC A 2 801 . 801 DXC A C8  2395 16.53 1.0 ? -1.069 7.82    2.315  1
-HETATM C C9  . DXC A 2 801 . 801 DXC A C9  2396 16.07 1.0 ? -0.907 7.078   3.654  1
-HETATM C C10 . DXC A 2 801 . 801 DXC A C10 2397 16.5  1.0 ? 0.158  7.781   4.546  1
-HETATM C C11 . DXC A 2 801 . 801 DXC A C11 2398 14.86 1.0 ? -0.482 5.606   3.444  1
-HETATM C C12 . DXC A 2 801 . 801 DXC A C12 2399 15.22 1.0 ? -0.324 4.829   4.768  1
-HETATM C C13 . DXC A 2 801 . 801 DXC A C13 2400 15.57 1.0 ? 0.725  5.498   5.676  1
-HETATM C C14 . DXC A 2 801 . 801 DXC A C14 2401 16.63 1.0 ? 0.314  6.986   5.883  1
-HETATM C C15 . DXC A 2 801 . 801 DXC A C15 2402 13.01 1.0 ? -1.324 4.673   2.566  1
-HETATM C C16 . DXC A 2 801 . 801 DXC A C16 2403 14.92 1.0 ? -0.954 3.253   3.035  1
-HETATM C C17 . DXC A 2 801 . 801 DXC A C17 2404 12.88 1.0 ? 0.065  3.44    4.18   1
-HETATM C C18 . DXC A 2 801 . 801 DXC A C18 2405 17.6  1.0 ? -1.593 9.316   5.579  1
-HETATM C C19 . DXC A 2 801 . 801 DXC A C19 2406 13.45 1.0 ? 0.127  2.185   5.12   1
-HETATM O O1  . DXC A 2 801 . 801 DXC A O1  2407 13.64 1.0 ? 2.003  5.408   5.06   1
-HETATM O O2  . DXC A 2 801 . 801 DXC A O2  2408 25.35 1.0 ? 3.22   10.97   2.877  1
-HETATM C C20 . DXC A 2 801 . 801 DXC A C20 2409 13.52 1.0 ? -1.665 4.747   5.541  1
-HETATM C C21 . DXC A 2 801 . 801 DXC A C21 2410 9.42  1.0 ? 0.509  0.923   4.304  1
-HETATM C C22 . DXC A 2 801 . 801 DXC A C22 2411 7.96  1.0 ? 1.89   0.955   3.649  1
-HETATM C C23 . DXC A 2 801 . 801 DXC A C23 2412 13.11 1.0 ? 1.785  0.323   2.267  1
-HETATM O O3  . DXC A 2 801 . 801 DXC A O3  2413 15.45 1.0 ? 1.933  0.903   1.242  1
-HETATM O O4  . DXC A 2 801 . 801 DXC A O4  2414 7.75  1.0 ? 1.505  -0.979  2.331  1
-HETATM C C24 . DXC A 2 801 . 801 DXC A C24 2415 10.34 1.0 ? 1.137  2.362   6.263  1
+HETATM C C1  . DXC B 2 801 . 801 DXC B C1  2388 17.86 1.0 ? 2.012  10.869  3.605  1
+HETATM C C2  . DXC B 2 801 . 801 DXC B C2  2389 15.72 1.0 ? 0.978  10.175  2.711  1
+HETATM C C3  . DXC B 2 801 . 801 DXC B C3  2390 17.38 1.0 ? -0.385 10.024  3.425  1
+HETATM C C4  . DXC B 2 801 . 801 DXC B C4  2391 18.05 1.0 ? -0.255 9.285   4.795  1
+HETATM C C5  . DXC B 2 801 . 801 DXC B C5  2392 18.76 1.0 ? 0.792  10.053  5.649  1
+HETATM C C6  . DXC B 2 801 . 801 DXC B C6  2393 16.35 1.0 ? 2.161  10.121  4.954  1
+HETATM C C7  . DXC B 2 801 . 801 DXC B C7  2394 14.79 1.0 ? -1.403 9.311   2.498  1
+HETATM C C8  . DXC B 2 801 . 801 DXC B C8  2395 16.53 1.0 ? -1.069 7.82    2.315  1
+HETATM C C9  . DXC B 2 801 . 801 DXC B C9  2396 16.07 1.0 ? -0.907 7.078   3.654  1
+HETATM C C10 . DXC B 2 801 . 801 DXC B C10 2397 16.5  1.0 ? 0.158  7.781   4.546  1
+HETATM C C11 . DXC B 2 801 . 801 DXC B C11 2398 14.86 1.0 ? -0.482 5.606   3.444  1
+HETATM C C12 . DXC B 2 801 . 801 DXC B C12 2399 15.22 1.0 ? -0.324 4.829   4.768  1
+HETATM C C13 . DXC B 2 801 . 801 DXC B C13 2400 15.57 1.0 ? 0.725  5.498   5.676  1
+HETATM C C14 . DXC B 2 801 . 801 DXC B C14 2401 16.63 1.0 ? 0.314  6.986   5.883  1
+HETATM C C15 . DXC B 2 801 . 801 DXC B C15 2402 13.01 1.0 ? -1.324 4.673   2.566  1
+HETATM C C16 . DXC B 2 801 . 801 DXC B C16 2403 14.92 1.0 ? -0.954 3.253   3.035  1
+HETATM C C17 . DXC B 2 801 . 801 DXC B C17 2404 12.88 1.0 ? 0.065  3.44    4.18   1
+HETATM C C18 . DXC B 2 801 . 801 DXC B C18 2405 17.6  1.0 ? -1.593 9.316   5.579  1
+HETATM C C19 . DXC B 2 801 . 801 DXC B C19 2406 13.45 1.0 ? 0.127  2.185   5.12   1
+HETATM O O1  . DXC B 2 801 . 801 DXC B O1  2407 13.64 1.0 ? 2.003  5.408   5.06   1
+HETATM O O2  . DXC B 2 801 . 801 DXC B O2  2408 25.35 1.0 ? 3.22   10.97   2.877  1
+HETATM C C20 . DXC B 2 801 . 801 DXC B C20 2409 13.52 1.0 ? -1.665 4.747   5.541  1
+HETATM C C21 . DXC B 2 801 . 801 DXC B C21 2410 9.42  1.0 ? 0.509  0.923   4.304  1
+HETATM C C22 . DXC B 2 801 . 801 DXC B C22 2411 7.96  1.0 ? 1.89   0.955   3.649  1
+HETATM C C23 . DXC B 2 801 . 801 DXC B C23 2412 13.11 1.0 ? 1.785  0.323   2.267  1
+HETATM O O3  . DXC B 2 801 . 801 DXC B O3  2413 15.45 1.0 ? 1.933  0.903   1.242  1
+HETATM O O4  . DXC B 2 801 . 801 DXC B O4  2414 7.75  1.0 ? 1.505  -0.979  2.331  1
+HETATM C C24 . DXC B 2 801 . 801 DXC B C24 2415 10.34 1.0 ? 1.137  2.362   6.263  1
 #
 _cell.length_a      36.58
 _cell.length_b      75.21

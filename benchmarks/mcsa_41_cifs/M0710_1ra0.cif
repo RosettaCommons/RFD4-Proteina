@@ -3,18 +3,21 @@ data_M0710_1ra0.cif
 _entry.id       M0710_1ra0.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:50
+_entry.time     20:49:17
 #
-_entity.id                 1
-_entity.type               polymer
-_entity.pdbx_description   .
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
 #
 _entity_poly.entity_id                      1
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   yes
-_entity_poly.pdbx_seq_one_letter_code       QEXX
-_entity_poly.pdbx_seq_one_letter_code_can   QEXX
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       QE
+_entity_poly.pdbx_seq_one_letter_code_can   QE
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -25,8 +28,6 @@ _entity_poly_seq.mon_id
 _entity_poly_seq.num 
 1 n GLN 156
 1 n GLU 217
-1 n FE  500
-1 n FPY 501
 #
 loop_
 _chem_comp_bond.pdbx_ordinal 
@@ -102,16 +103,16 @@ ATOM   C  CG  . GLU A 1 217 . 217 GLU A CG  1687 5.83  1.0 ? 1.96   -4.109 3.543
 ATOM   C  CD  . GLU A 1 217 . 217 GLU A CD  1688 5.8   1.0 ? 1.862  -2.642 3.171  1
 ATOM   O  OE1 . GLU A 1 217 . 217 GLU A OE1 1689 7.48  1.0 ? 2.021  -1.789 4.081  1
 ATOM   O  OE2 . GLU A 1 217 . 217 GLU A OE2 1690 7.19  1.0 ? 1.62   -2.328 1.982  1
-HETATM FE FE  . FE  A 2 500 . 500 FE  A FE  3322 7.4   0.9 ? 4.681  1.701  0.22   1
-HETATM N  N1  . FPY A 3 501 . 501 FPY A N1  3323 12.16 0.9 ? 0.473  2.062  -0.236 1
-HETATM C  C2  . FPY A 3 501 . 501 FPY A C2  3324 11.27 0.9 ? 0.527  0.672  0.002  1
-HETATM O  O2  . FPY A 3 501 . 501 FPY A O2  3325 10.63 0.9 ? -0.005 -0.21  -0.69  1
-HETATM N  N3  . FPY A 3 501 . 501 FPY A N3  3326 8.89  0.9 ? 1.253  0.322  1.122  1
-HETATM C  C4  . FPY A 3 501 . 501 FPY A C4  3327 8.32  0.9 ? 1.905  1.253  1.991  1
-HETATM O  O4  . FPY A 3 501 . 501 FPY A O4  3328 11.32 0.9 ? 3.364  1.035  1.697  1
-HETATM C  C5  . FPY A 3 501 . 501 FPY A C5  3329 13.59 0.9 ? 1.805  2.659  1.707  1
-HETATM F  F5  . FPY A 3 501 . 501 FPY A F5  3330 10.05 1.0 ? 2.382  3.532  2.514  1
-HETATM C  C6  . FPY A 3 501 . 501 FPY A C6  3331 11.72 0.9 ? 1.114  3.046  0.625  1
+HETATM FE FE  . FE  B 2 500 . 500 FE  B FE  3322 7.4   0.9 ? 4.681  1.701  0.22   1
+HETATM N  N1  . FPY B 3 501 . 501 FPY B N1  3323 12.16 0.9 ? 0.473  2.062  -0.236 1
+HETATM C  C2  . FPY B 3 501 . 501 FPY B C2  3324 11.27 0.9 ? 0.527  0.672  0.002  1
+HETATM O  O2  . FPY B 3 501 . 501 FPY B O2  3325 10.63 0.9 ? -0.005 -0.21  -0.69  1
+HETATM N  N3  . FPY B 3 501 . 501 FPY B N3  3326 8.89  0.9 ? 1.253  0.322  1.122  1
+HETATM C  C4  . FPY B 3 501 . 501 FPY B C4  3327 8.32  0.9 ? 1.905  1.253  1.991  1
+HETATM O  O4  . FPY B 3 501 . 501 FPY B O4  3328 11.32 0.9 ? 3.364  1.035  1.697  1
+HETATM C  C5  . FPY B 3 501 . 501 FPY B C5  3329 13.59 0.9 ? 1.805  2.659  1.707  1
+HETATM F  F5  . FPY B 3 501 . 501 FPY B F5  3330 10.05 1.0 ? 2.382  3.532  2.514  1
+HETATM C  C6  . FPY B 3 501 . 501 FPY B C6  3331 11.72 0.9 ? 1.114  3.046  0.625  1
 #
 _cell.length_a      109.257
 _cell.length_b      109.257
