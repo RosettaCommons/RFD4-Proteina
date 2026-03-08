@@ -1,0 +1,131 @@
+data_M0664_2dhn.cif
+#
+_entry.id       M0664_2dhn.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:50
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       EKX
+_entity_poly.pdbx_seq_one_letter_code_can   EKX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n GLU 22
+1 n LYS 100
+1 n PH2 122
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  GLU N   CA  SING N ?
+2  GLU CA  C   SING N ?
+3  GLU CA  CB  SING N ?
+4  GLU C   O   DOUB N ?
+5  GLU CB  CG  SING N ?
+6  GLU CG  CD  SING N ?
+7  GLU CD  OE1 DOUB N ?
+8  GLU CD  OE2 SING N ?
+9  LYS N   CA  SING N ?
+10 LYS CA  C   SING N ?
+11 LYS CA  CB  SING N ?
+12 LYS C   O   DOUB N ?
+13 LYS CB  CG  SING N ?
+14 LYS CG  CD  SING N ?
+15 LYS CD  CE  SING N ?
+16 LYS CE  NZ  SING N ?
+17 PH2 N1  C2  DOUB N ?
+18 PH2 N1  C9  SING N ?
+19 PH2 C2  C3  SING N ?
+20 PH2 C2  C11 SING N ?
+21 PH2 C3  N4  SING N ?
+22 PH2 N4  C10 SING N ?
+23 PH2 N5  C6  DOUB Y ?
+24 PH2 N5  C10 SING Y ?
+25 PH2 C6  N6  SING N ?
+26 PH2 C6  N7  SING Y ?
+27 PH2 N7  C8  SING Y ?
+28 PH2 C8  O8  DOUB N ?
+29 PH2 C8  C9  SING Y ?
+30 PH2 C9  C10 DOUB Y ?
+31 PH2 C11 O4  SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N N   . GLU A 1 22  . 22  GLU A N   169 47.04 1.0 ? 3.409  3.906  -4.901 1
+ATOM   C CA  . GLU A 1 22  . 22  GLU A CA  170 48.9  1.0 ? 2.016  3.508  -4.749 1
+ATOM   C C   . GLU A 1 22  . 22  GLU A C   171 48.82 1.0 ? 1.102  4.689  -4.416 1
+ATOM   O O   . GLU A 1 22  . 22  GLU A O   172 49.32 1.0 ? -0.092 4.653  -4.721 1
+ATOM   C CB  . GLU A 1 22  . 22  GLU A CB  173 47.95 1.0 ? 1.859  2.355  -3.741 1
+ATOM   C CG  . GLU A 1 22  . 22  GLU A CG  174 44.89 1.0 ? 2.042  2.682  -2.291 1
+ATOM   C CD  . GLU A 1 22  . 22  GLU A CD  175 47.78 1.0 ? 2.027  1.438  -1.417 1
+ATOM   O OE1 . GLU A 1 22  . 22  GLU A OE1 176 46.68 1.0 ? 1.08   0.629  -1.508 1
+ATOM   O OE2 . GLU A 1 22  . 22  GLU A OE2 177 53.63 1.0 ? 2.975  1.267  -0.631 1
+ATOM   N N   . LYS A 1 100 . 100 LYS A N   794 16.5  1.0 ? -5.826 -5.043 0.699  1
+ATOM   C CA  . LYS A 1 100 . 100 LYS A CA  795 17.8  1.0 ? -5.094 -4.564 -0.471 1
+ATOM   C C   . LYS A 1 100 . 100 LYS A C   796 17.66 1.0 ? -4.943 -5.867 -1.293 1
+ATOM   O O   . LYS A 1 100 . 100 LYS A O   797 18.35 1.0 ? -4.115 -6.72  -0.976 1
+ATOM   C CB  . LYS A 1 100 . 100 LYS A CB  798 14.16 1.0 ? -3.709 -4.027 -0.088 1
+ATOM   C CG  . LYS A 1 100 . 100 LYS A CG  799 9.35  1.0 ? -3.636 -2.525 0.178  1
+ATOM   C CD  . LYS A 1 100 . 100 LYS A CD  800 13.8  1.0 ? -2.166 -2.043 0.268  1
+ATOM   C CE  . LYS A 1 100 . 100 LYS A CE  801 12.59 1.0 ? -2.103 -0.58  0.73   1
+ATOM   N NZ  . LYS A 1 100 . 100 LYS A NZ  802 20.29 1.0 ? -0.733 -0.08  1.049  1
+HETATM N N1  . PH2 A 2 122 . 122 PH2 A N1  968 24.94 1.0 ? 1.691  -0.609 4.253  1
+HETATM C C2  . PH2 A 2 122 . 122 PH2 A C2  969 24.3  1.0 ? 2.736  -0.731 3.505  1
+HETATM C C3  . PH2 A 2 122 . 122 PH2 A C3  970 24.13 1.0 ? 3.72   -1.673 3.708  1
+HETATM N N4  . PH2 A 2 122 . 122 PH2 A N4  971 25.86 1.0 ? 3.542  -2.512 4.769  1
+HETATM N N5  . PH2 A 2 122 . 122 PH2 A N5  972 31.53 1.0 ? 2.261  -3.318 6.726  1
+HETATM C C6  . PH2 A 2 122 . 122 PH2 A C6  973 26.75 1.0 ? 1.152  -3.161 7.472  1
+HETATM N N6  . PH2 A 2 122 . 122 PH2 A N6  974 22.26 1.0 ? 0.776  -3.937 8.553  1
+HETATM N N7  . PH2 A 2 122 . 122 PH2 A N7  975 30.11 1.0 ? 0.185  -2.159 7.177  1
+HETATM C C8  . PH2 A 2 122 . 122 PH2 A C8  976 32.09 1.0 ? 0.318  -1.252 6.066  1
+HETATM O O8  . PH2 A 2 122 . 122 PH2 A O8  977 27.39 1.0 ? -0.532 -0.372 5.771  1
+HETATM C C9  . PH2 A 2 122 . 122 PH2 A C9  978 30.03 1.0 ? 1.515  -1.422 5.283  1
+HETATM C C10 . PH2 A 2 122 . 122 PH2 A C10 979 30.83 1.0 ? 2.424  -2.447 5.645  1
+HETATM C C11 . PH2 A 2 122 . 122 PH2 A C11 980 35.9  1.0 ? 2.851  0.178  2.4    1
+HETATM O O4  . PH2 A 2 122 . 122 PH2 A O4  981 38.81 1.0 ? 2.886  -0.596 1.223  1
+#
+_cell.length_a      62.2
+_cell.length_b      62.2
+_cell.length_c      123.8
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

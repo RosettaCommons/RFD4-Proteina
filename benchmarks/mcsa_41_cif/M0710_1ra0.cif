@@ -1,0 +1,122 @@
+data_M0710_1ra0.cif
+#
+_entry.id       M0710_1ra0.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:50
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       QEXX
+_entity_poly.pdbx_seq_one_letter_code_can   QEXX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n GLN 156
+1 n GLU 217
+1 n FE  500
+1 n FPY 501
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  GLN N  CA  SING N ?
+2  GLN CA C   SING N ?
+3  GLN CA CB  SING N ?
+4  GLN C  O   DOUB N ?
+5  GLN CB CG  SING N ?
+6  GLN CG CD  SING N ?
+7  GLN CD OE1 DOUB N ?
+8  GLN CD NE2 SING N ?
+9  GLU N  CA  SING N ?
+10 GLU CA C   SING N ?
+11 GLU CA CB  SING N ?
+12 GLU C  O   DOUB N ?
+13 GLU CB CG  SING N ?
+14 GLU CG CD  SING N ?
+15 GLU CD OE1 DOUB N ?
+16 GLU CD OE2 SING N ?
+17 FPY N1 C2  SING N ?
+18 FPY N1 C6  SING N ?
+19 FPY C2 O2  DOUB N ?
+20 FPY C2 N3  SING N ?
+21 FPY N3 C4  SING N ?
+22 FPY C4 O4  SING N ?
+23 FPY C4 C5  SING N ?
+24 FPY C5 F5  SING N ?
+25 FPY C5 C6  DOUB N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . GLN A 1 156 . 156 GLN A N   1199 5.42  1.0 ? -1.501 1.266  -7.381 1
+ATOM   C  CA  . GLN A 1 156 . 156 GLN A CA  1200 6.27  1.0 ? -2.076 1.129  -6.043 1
+ATOM   C  C   . GLN A 1 156 . 156 GLN A C   1201 6.01  1.0 ? -3.38  0.359  -5.935 1
+ATOM   O  O   . GLN A 1 156 . 156 GLN A O   1202 7.2   1.0 ? -3.61  -0.331 -4.934 1
+ATOM   C  CB  . GLN A 1 156 . 156 GLN A CB  1203 6.78  1.0 ? -2.236 2.525  -5.414 1
+ATOM   C  CG  . GLN A 1 156 . 156 GLN A CG  1204 8.7   1.0 ? -2.952 2.57   -4.058 1
+ATOM   C  CD  . GLN A 1 156 . 156 GLN A CD  1205 7.8   1.0 ? -2.092 2.091  -2.896 1
+ATOM   O  OE1 . GLN A 1 156 . 156 GLN A OE1 1206 10.02 1.0 ? -1.389 2.88   -2.256 1
+ATOM   N  NE2 . GLN A 1 156 . 156 GLN A NE2 1207 9.68  1.0 ? -2.141 0.79   -2.622 1
+ATOM   N  N   . GLU A 1 217 . 217 GLU A N   1682 3.98  1.0 ? 1.772  -7.46  1.65   1
+ATOM   C  CA  . GLU A 1 217 . 217 GLU A CA  1683 4.24  1.0 ? 1.696  -6.533 2.795  1
+ATOM   C  C   . GLU A 1 217 . 217 GLU A C   1684 3.98  1.0 ? 0.34   -6.782 3.47   1
+ATOM   O  O   . GLU A 1 217 . 217 GLU A O   1685 5.31  1.0 ? -0.599 -5.984 3.362  1
+ATOM   C  CB  . GLU A 1 217 . 217 GLU A CB  1686 5.07  1.0 ? 1.81   -5.066 2.353  1
+ATOM   C  CG  . GLU A 1 217 . 217 GLU A CG  1687 5.83  1.0 ? 1.96   -4.109 3.543  1
+ATOM   C  CD  . GLU A 1 217 . 217 GLU A CD  1688 5.8   1.0 ? 1.862  -2.642 3.171  1
+ATOM   O  OE1 . GLU A 1 217 . 217 GLU A OE1 1689 7.48  1.0 ? 2.021  -1.789 4.081  1
+ATOM   O  OE2 . GLU A 1 217 . 217 GLU A OE2 1690 7.19  1.0 ? 1.62   -2.328 1.982  1
+HETATM FE FE  . FE  A 2 500 . 500 FE  A FE  3322 7.4   0.9 ? 4.681  1.701  0.22   1
+HETATM N  N1  . FPY A 3 501 . 501 FPY A N1  3323 12.16 0.9 ? 0.473  2.062  -0.236 1
+HETATM C  C2  . FPY A 3 501 . 501 FPY A C2  3324 11.27 0.9 ? 0.527  0.672  0.002  1
+HETATM O  O2  . FPY A 3 501 . 501 FPY A O2  3325 10.63 0.9 ? -0.005 -0.21  -0.69  1
+HETATM N  N3  . FPY A 3 501 . 501 FPY A N3  3326 8.89  0.9 ? 1.253  0.322  1.122  1
+HETATM C  C4  . FPY A 3 501 . 501 FPY A C4  3327 8.32  0.9 ? 1.905  1.253  1.991  1
+HETATM O  O4  . FPY A 3 501 . 501 FPY A O4  3328 11.32 0.9 ? 3.364  1.035  1.697  1
+HETATM C  C5  . FPY A 3 501 . 501 FPY A C5  3329 13.59 0.9 ? 1.805  2.659  1.707  1
+HETATM F  F5  . FPY A 3 501 . 501 FPY A F5  3330 10.05 1.0 ? 2.382  3.532  2.514  1
+HETATM C  C6  . FPY A 3 501 . 501 FPY A C6  3331 11.72 0.9 ? 1.114  3.046  0.625  1
+#
+_cell.length_a      109.257
+_cell.length_b      109.257
+_cell.length_c      240.842
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   120.0
+#
