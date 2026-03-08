@@ -14,3 +14,6 @@ generation:
   insert_unindexed_regions: False # Set to True in the AME benchmark
   dataset: ???
 
+# These values are often present in the val dataset config
+num_replicates: ${generation.dataset.num_replicates}
+subset_to_keys: ${oc.select:generation.dataset.num_replicates,null}

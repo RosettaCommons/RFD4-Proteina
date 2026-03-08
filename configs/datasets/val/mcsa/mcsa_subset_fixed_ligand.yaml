@@ -1,9 +1,10 @@
-dataset:
-  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+defaults:
+  # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
+  - /datasets/val/mcsa@_here_: mcsa_full_fixed_ligand
+  - _self_
 
-  # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/mcsa_41_fixed_ligand.json  
-  name: mcsa_subset
+dataset:
+  name: mcsa_subset_fixed_ligand
   subset_to_keys:
     # easy
     - M0664_2dhn
@@ -14,12 +15,5 @@ dataset:
     # hard
     - M0732_1xs1
     - M0375_4ts9
-  
-  num_replicates: 200
 
-  transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
-    metrics_tags:
-      - unindexed
-      - 3d_coordinate_conditioning
-      - ame_refolding
+  num_replicates: 200
