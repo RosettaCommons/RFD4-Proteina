@@ -3,7 +3,7 @@ data_M0732_1xs1.cif
 _entry.id       M0732_1xs1.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:55
+_entry.time     19:26:04
 #
 _entity.id                 1
 _entity.type               polymer
@@ -58,40 +58,40 @@ _chem_comp_bond.pdbx_stereo_config
 20 GLU CG    CD    SING N ?
 21 GLU CD    OE1   DOUB N ?
 22 GLU CD    OE2   SING N ?
-23 DUT N1    C2    SING N ?
-24 DUT N1    C6    SING N ?
-25 DUT N1    "C1'" SING N ?
-26 DUT C2    N3    SING N ?
-27 DUT C2    O2    DOUB N ?
-28 DUT N3    C4    SING N ?
-29 DUT C4    C5    SING N ?
-30 DUT C4    O4    DOUB N ?
-31 DUT C5    C6    DOUB N ?
-32 DUT "C1'" "C2'" SING N ?
-33 DUT "C1'" "O4'" SING N ?
-34 DUT "C2'" "C3'" SING N ?
-35 DUT "C3'" "C4'" SING N ?
-36 DUT "C3'" "O3'" SING N ?
-37 DUT "C4'" "O4'" SING N ?
-38 DUT "C4'" "C5'" SING N ?
-39 DUT "C5'" "O5'" SING N ?
-40 DUT "O5'" PA    SING N ?
-41 DUT PA    O1A   DOUB N ?
-42 DUT PA    O2A   SING N ?
-43 DUT PA    O3A   SING N ?
-44 DUT O3A   PB    SING N ?
-45 DUT PB    O1B   DOUB N ?
-46 DUT PB    O2B   SING N ?
-47 DUT PB    O3B   SING N ?
-48 DUT O3B   PG    SING N ?
-49 DUT PG    O1G   DOUB N ?
-50 DUT PG    O2G   SING N ?
-51 DUT PG    O3G   SING N ?
-52 SER N     CA    SING N ?
-53 SER CA    C     SING N ?
-54 SER CA    CB    SING N ?
-55 SER C     O     DOUB N ?
-56 SER CB    OG    SING N ?
+23 SER N     CA    SING N ?
+24 SER CA    C     SING N ?
+25 SER CA    CB    SING N ?
+26 SER C     O     DOUB N ?
+27 SER CB    OG    SING N ?
+28 DUT N1    C2    SING N ?
+29 DUT N1    C6    SING N ?
+30 DUT N1    "C1'" SING N ?
+31 DUT C2    N3    SING N ?
+32 DUT C2    O2    DOUB N ?
+33 DUT N3    C4    SING N ?
+34 DUT C4    C5    SING N ?
+35 DUT C4    O4    DOUB N ?
+36 DUT C5    C6    DOUB N ?
+37 DUT "C1'" "C2'" SING N ?
+38 DUT "C1'" "O4'" SING N ?
+39 DUT "C2'" "C3'" SING N ?
+40 DUT "C3'" "C4'" SING N ?
+41 DUT "C3'" "O3'" SING N ?
+42 DUT "C4'" "O4'" SING N ?
+43 DUT "C4'" "C5'" SING N ?
+44 DUT "C5'" "O5'" SING N ?
+45 DUT "O5'" PA    SING N ?
+46 DUT PA    O1A   DOUB N ?
+47 DUT PA    O2A   SING N ?
+48 DUT PA    O3A   SING N ?
+49 DUT O3A   PB    SING N ?
+50 DUT PB    O1B   DOUB N ?
+51 DUT PB    O2B   SING N ?
+52 DUT PB    O3B   SING N ?
+53 DUT O3B   PG    SING N ?
+54 DUT PG    O1G   DOUB N ?
+55 DUT PG    O2G   SING N ?
+56 DUT PG    O3G   SING N ?
 #
 loop_
 _atom_site.group_PDB 

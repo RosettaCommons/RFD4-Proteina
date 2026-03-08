@@ -3,7 +3,7 @@ data_M0058_1cju.cif
 _entry.id       M0058_1cju.cif
 _entry.author   rib7
 _entry.date     2026-03-08
-_entry.time     08:51:44
+_entry.time     19:25:52
 #
 loop_
 _entity.id 
@@ -59,55 +59,55 @@ _chem_comp_bond.pdbx_stereo_config
 12 ILE CB    CG1   SING N ?
 13 ILE CB    CG2   SING N ?
 14 ILE CG1   CD1   SING N ?
-15 DAD PG    O1G   DOUB N ?
-16 DAD PG    O2G   SING N ?
-17 DAD PG    O3G   SING N ?
-18 DAD PG    O3B   SING N ?
-19 DAD PB    O1B   DOUB N ?
-20 DAD PB    O2B   SING N ?
-21 DAD PB    O3B   SING N ?
-22 DAD PB    O3A   SING N ?
-23 DAD PA    O1A   DOUB N ?
-24 DAD PA    O2A   SING N ?
-25 DAD PA    O3A   SING N ?
-26 DAD PA    "O5'" SING N ?
-27 DAD "O5'" "C5'" SING N ?
-28 DAD "C5'" "C4'" SING N ?
-29 DAD "C4'" "O4'" SING N ?
-30 DAD "C4'" "C3'" SING N ?
-31 DAD "O4'" "C1'" SING N ?
-32 DAD "C3'" "C2'" SING N ?
-33 DAD "C2'" "C1'" SING N ?
-34 DAD "C1'" N9    SING N ?
-35 DAD N9    C8    SING Y ?
-36 DAD N9    C4    SING Y ?
-37 DAD C8    N7    DOUB Y ?
-38 DAD N7    C5    SING Y ?
-39 DAD C5    C6    SING Y ?
-40 DAD C5    C4    DOUB Y ?
-41 DAD C6    N6    SING N ?
-42 DAD C6    N1    DOUB Y ?
-43 DAD N1    C2    SING Y ?
-44 DAD C2    N3    DOUB Y ?
-45 DAD N3    C4    SING Y ?
-46 ARG N     CA    SING N ?
-47 ARG CA    C     SING N ?
-48 ARG CA    CB    SING N ?
-49 ARG C     O     DOUB N ?
-50 ARG CB    CG    SING N ?
-51 ARG CG    CD    SING N ?
-52 ARG CD    NE    SING N ?
-53 ARG NE    CZ    SING N ?
-54 ARG CZ    NH1   SING N ?
-55 ARG CZ    NH2   DOUB N ?
-56 LYS N     CA    SING N ?
-57 LYS CA    C     SING N ?
-58 LYS CA    CB    SING N ?
-59 LYS C     O     DOUB N ?
-60 LYS CB    CG    SING N ?
-61 LYS CG    CD    SING N ?
-62 LYS CD    CE    SING N ?
-63 LYS CE    NZ    SING N ?
+15 ARG N     CA    SING N ?
+16 ARG CA    C     SING N ?
+17 ARG CA    CB    SING N ?
+18 ARG C     O     DOUB N ?
+19 ARG CB    CG    SING N ?
+20 ARG CG    CD    SING N ?
+21 ARG CD    NE    SING N ?
+22 ARG NE    CZ    SING N ?
+23 ARG CZ    NH1   SING N ?
+24 ARG CZ    NH2   DOUB N ?
+25 LYS N     CA    SING N ?
+26 LYS CA    C     SING N ?
+27 LYS CA    CB    SING N ?
+28 LYS C     O     DOUB N ?
+29 LYS CB    CG    SING N ?
+30 LYS CG    CD    SING N ?
+31 LYS CD    CE    SING N ?
+32 LYS CE    NZ    SING N ?
+33 DAD PG    O1G   DOUB N ?
+34 DAD PG    O2G   SING N ?
+35 DAD PG    O3G   SING N ?
+36 DAD PG    O3B   SING N ?
+37 DAD PB    O1B   DOUB N ?
+38 DAD PB    O2B   SING N ?
+39 DAD PB    O3B   SING N ?
+40 DAD PB    O3A   SING N ?
+41 DAD PA    O1A   DOUB N ?
+42 DAD PA    O2A   SING N ?
+43 DAD PA    O3A   SING N ?
+44 DAD PA    "O5'" SING N ?
+45 DAD "O5'" "C5'" SING N ?
+46 DAD "C5'" "C4'" SING N ?
+47 DAD "C4'" "O4'" SING N ?
+48 DAD "C4'" "C3'" SING N ?
+49 DAD "O4'" "C1'" SING N ?
+50 DAD "C3'" "C2'" SING N ?
+51 DAD "C2'" "C1'" SING N ?
+52 DAD "C1'" N9    SING N ?
+53 DAD N9    C8    SING Y ?
+54 DAD N9    C4    SING Y ?
+55 DAD C8    N7    DOUB Y ?
+56 DAD N7    C5    SING Y ?
+57 DAD C5    C6    SING Y ?
+58 DAD C5    C4    DOUB Y ?
+59 DAD C6    N6    SING N ?
+60 DAD C6    N1    DOUB Y ?
+61 DAD N1    C2    SING Y ?
+62 DAD C2    N3    DOUB Y ?
+63 DAD N3    C4    SING Y ?
 #
 loop_
 _atom_site.group_PDB 
