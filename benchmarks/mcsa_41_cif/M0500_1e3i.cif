@@ -1,0 +1,260 @@
+data_M0500_1e3i.cif
+#
+_entry.id       M0500_1e3i.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:48
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       CPTHCSXXX
+_entity_poly.pdbx_seq_one_letter_code_can   CPTHCSXXX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n CYS 46
+1 n PRO 47
+1 n THR 48
+1 n HIS 67
+1 n CYS 178
+1 n SER 182
+1 n NAI 377
+1 n CXF 378
+1 n ZN  380
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  CYS N   CA  SING N ?
+2  CYS CA  C   SING N ?
+3  CYS CA  CB  SING N ?
+4  CYS C   O   DOUB N ?
+5  CYS CB  SG  SING N ?
+6  PRO N   CA  SING N ?
+7  PRO N   CD  SING N ?
+8  PRO CA  C   SING N ?
+9  PRO CA  CB  SING N ?
+10 PRO C   O   DOUB N ?
+11 PRO CB  CG  SING N ?
+12 PRO CG  CD  SING N ?
+13 THR N   CA  SING N ?
+14 THR CA  C   SING N ?
+15 THR CA  CB  SING N ?
+16 THR C   O   DOUB N ?
+17 THR CB  OG1 SING N ?
+18 THR CB  CG2 SING N ?
+19 HIS N   CA  SING N ?
+20 HIS CA  C   SING N ?
+21 HIS CA  CB  SING N ?
+22 HIS C   O   DOUB N ?
+23 HIS CB  CG  SING N ?
+24 HIS CG  ND1 SING Y ?
+25 HIS CG  CD2 DOUB Y ?
+26 HIS ND1 CE1 DOUB Y ?
+27 HIS CD2 NE2 SING Y ?
+28 HIS CE1 NE2 SING Y ?
+29 SER N   CA  SING N ?
+30 SER CA  C   SING N ?
+31 SER CA  CB  SING N ?
+32 SER C   O   DOUB N ?
+33 SER CB  OG  SING N ?
+34 NAI PA  O1A DOUB N ?
+35 NAI PA  O2A SING N ?
+36 NAI PA  O5B SING N ?
+37 NAI PA  O3  SING N ?
+38 NAI O5B C5B SING N ?
+39 NAI C5B C4B SING N ?
+40 NAI C4B O4B SING N ?
+41 NAI C4B C3B SING N ?
+42 NAI O4B C1B SING N ?
+43 NAI C3B O3B SING N ?
+44 NAI C3B C2B SING N ?
+45 NAI C2B O2B SING N ?
+46 NAI C2B C1B SING N ?
+47 NAI C1B N9A SING N ?
+48 NAI N9A C8A SING Y ?
+49 NAI N9A C4A SING Y ?
+50 NAI C8A N7A DOUB Y ?
+51 NAI N7A C5A SING Y ?
+52 NAI C5A C6A SING Y ?
+53 NAI C5A C4A DOUB Y ?
+54 NAI C6A N6A SING N ?
+55 NAI C6A N1A DOUB Y ?
+56 NAI N1A C2A SING Y ?
+57 NAI C2A N3A DOUB Y ?
+58 NAI N3A C4A SING Y ?
+59 NAI O3  PN  SING N ?
+60 NAI PN  O1N SING N ?
+61 NAI PN  O2N DOUB N ?
+62 NAI PN  O5D SING N ?
+63 NAI O5D C5D SING N ?
+64 NAI C5D C4D SING N ?
+65 NAI C4D O4D SING N ?
+66 NAI C4D C3D SING N ?
+67 NAI O4D C1D SING N ?
+68 NAI C3D O3D SING N ?
+69 NAI C3D C2D SING N ?
+70 NAI C2D O2D SING N ?
+71 NAI C2D C1D SING N ?
+72 NAI C1D N1N SING N ?
+73 NAI N1N C2N SING N ?
+74 NAI N1N C6N SING N ?
+75 NAI C2N C3N DOUB N ?
+76 NAI C3N C7N SING N ?
+77 NAI C3N C4N SING N ?
+78 NAI C7N O7N DOUB N ?
+79 NAI C7N N7N SING N ?
+80 NAI C4N C5N SING N ?
+81 NAI C5N C6N DOUB N ?
+82 CXF C1  C2  SING N ?
+83 CXF C1  C6  SING N ?
+84 CXF C1  N8  SING N ?
+85 CXF C2  C3  SING N ?
+86 CXF C3  C4  SING N ?
+87 CXF C4  C5  SING N ?
+88 CXF C5  C6  SING N ?
+89 CXF N8  C7  SING N ?
+90 CXF C7  O9  DOUB N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . CYS A 1 46  . 46  CYS A N   331  24.04 1.0 ? 3.662  -2.147 -2.932 1
+ATOM   C  CA  . CYS A 1 46  . 46  CYS A CA  332  23.92 1.0 ? 3.212  -1.991 -1.56  1
+ATOM   C  C   . CYS A 1 46  . 46  CYS A C   333  23.94 1.0 ? 2.915  -3.373 -0.991 1
+ATOM   O  O   . CYS A 1 46  . 46  CYS A O   334  24.92 1.0 ? 2.527  -4.279 -1.727 1
+ATOM   C  CB  . CYS A 1 46  . 46  CYS A CB  335  22.09 1.0 ? 1.948  -1.141 -1.51  1
+ATOM   S  SG  . CYS A 1 46  . 46  CYS A SG  336  21.56 1.0 ? 0.97   -1.419 -0.027 1
+ATOM   N  N   . PRO A 1 47  . 47  PRO A N   337  24.48 1.0 ? 3.303  -3.703 0.319  1
+ATOM   C  CA  . PRO A 1 47  . 47  PRO A CA  338  25.05 1.0 ? 3.027  -5.02  0.9    1
+ATOM   C  C   . PRO A 1 47  . 47  PRO A C   339  24.94 1.0 ? 1.621  -5.539 0.615  1
+ATOM   O  O   . PRO A 1 47  . 47  PRO A O   340  25.55 1.0 ? 1.391  -6.745 0.625  1
+ATOM   C  CB  . PRO A 1 47  . 47  PRO A CB  341  23.84 1.0 ? 3.298  -4.815 2.396  1
+ATOM   C  CG  . PRO A 1 47  . 47  PRO A CG  342  21.14 1.0 ? 3.174  -3.315 2.591  1
+ATOM   C  CD  . PRO A 1 47  . 47  PRO A CD  343  21.14 1.0 ? 3.799  -2.765 1.339  1
+ATOM   N  N   . THR A 1 48  . 48  THR A N   344  23.33 1.0 ? 0.682  -4.636 0.345  1
+ATOM   C  CA  . THR A 1 48  . 48  THR A CA  345  23.14 1.0 ? -0.685 -5.059 0.062  1
+ATOM   C  C   . THR A 1 48  . 48  THR A C   346  23.42 1.0 ? -0.768 -5.773 -1.282 1
+ATOM   O  O   . THR A 1 48  . 48  THR A O   347  23.63 1.0 ? -1.634 -6.625 -1.488 1
+ATOM   C  CB  . THR A 1 48  . 48  THR A CB  348  23.84 1.0 ? -1.659 -3.86  0.089  1
+ATOM   O  OG1 . THR A 1 48  . 48  THR A OG1 349  22.5  1.0 ? -1.691 -3.321 1.417  1
+ATOM   C  CG2 . THR A 1 48  . 48  THR A CG2 350  21.16 1.0 ? -3.07  -4.296 -0.299 1
+ATOM   N  N   . HIS A 1 67  . 67  HIS A N   486  16.78 1.0 ? -0.929 -0.532 -7.02  1
+ATOM   C  CA  . HIS A 1 67  . 67  HIS A CA  487  18.04 1.0 ? -1.846 0.583  -6.783 1
+ATOM   C  C   . HIS A 1 67  . 67  HIS A C   488  18.04 1.0 ? -1.16  1.868  -6.321 1
+ATOM   O  O   . HIS A 1 67  . 67  HIS A O   489  19.66 1.0 ? -1.825 2.877  -6.11  1
+ATOM   C  CB  . HIS A 1 67  . 67  HIS A CB  490  19.34 1.0 ? -2.903 0.187  -5.764 1
+ATOM   C  CG  . HIS A 1 67  . 67  HIS A CG  491  20.46 1.0 ? -2.328 -0.218 -4.449 1
+ATOM   N  ND1 . HIS A 1 67  . 67  HIS A ND1 492  18.49 1.0 ? -1.736 -1.443 -4.25  1
+ATOM   C  CD2 . HIS A 1 67  . 67  HIS A CD2 493  20.53 1.0 ? -2.202 0.459  -3.285 1
+ATOM   C  CE1 . HIS A 1 67  . 67  HIS A CE1 494  20.52 1.0 ? -1.264 -1.508 -3.019 1
+ATOM   N  NE2 . HIS A 1 67  . 67  HIS A NE2 495  22.32 1.0 ? -1.535 -0.367 -2.414 1
+ATOM   N  N   . CYS A 1 178 . 178 CYS A N   1351 14.41 1.0 ? 0.036  5.769  -2.161 1
+ATOM   C  CA  . CYS A 1 178 . 178 CYS A CA  1352 16.33 1.0 ? -0.417 4.93   -1.052 1
+ATOM   C  C   . CYS A 1 178 . 178 CYS A C   1353 16.22 1.0 ? 0.402  4.958  0.233  1
+ATOM   O  O   . CYS A 1 178 . 178 CYS A O   1354 18.01 1.0 ? -0.062 5.448  1.263  1
+ATOM   C  CB  . CYS A 1 178 . 178 CYS A CB  1355 14.22 1.0 ? -0.548 3.472  -1.49  1
+ATOM   S  SG  . CYS A 1 178 . 178 CYS A SG  1356 16.19 1.0 ? -0.564 2.403  -0.049 1
+ATOM   N  N   . SER A 1 182 . 182 SER A N   1378 15.57 1.0 ? -0.632 7.442  3.42   1
+ATOM   C  CA  . SER A 1 182 . 182 SER A CA  1379 15.61 1.0 ? -1.245 6.66   4.482  1
+ATOM   C  C   . SER A 1 182 . 182 SER A C   1380 13.25 1.0 ? -0.594 6.872  5.845  1
+ATOM   O  O   . SER A 1 182 . 182 SER A O   1381 15.86 1.0 ? -1.286 7.09   6.835  1
+ATOM   C  CB  . SER A 1 182 . 182 SER A CB  1382 16.12 1.0 ? -1.23  5.18   4.106  1
+ATOM   O  OG  . SER A 1 182 . 182 SER A OG  1383 18.85 1.0 ? -2.08  4.952  2.992  1
+HETATM P  PA  . NAI A 2 377 . 377 NAI A PA  5581 26.63 1.0 ? 6.735  -2.738 5.36   1
+HETATM O  O1A . NAI A 2 377 . 377 NAI A O1A 5582 23.33 1.0 ? 7.864  -2.039 4.679  1
+HETATM O  O2A . NAI A 2 377 . 377 NAI A O2A 5583 24.56 1.0 ? 6.74   -4.175 5.166  1
+HETATM O  O5B . NAI A 2 377 . 377 NAI A O5B 5584 24.55 1.0 ? 6.75   -2.378 6.923  1
+HETATM C  C5B . NAI A 2 377 . 377 NAI A C5B 5585 25.36 1.0 ? 6.736  -3.311 8.041  1
+HETATM C  C4B . NAI A 2 377 . 377 NAI A C4B 5586 24.2  1.0 ? 7.771  -2.931 9.064  1
+HETATM O  O4B . NAI A 2 377 . 377 NAI A O4B 5587 23.98 1.0 ? 7.315  -3.383 10.394 1
+HETATM C  C3B . NAI A 2 377 . 377 NAI A C3B 5588 22.56 1.0 ? 9.164  -3.549 8.865  1
+HETATM O  O3B . NAI A 2 377 . 377 NAI A O3B 5589 21.7  1.0 ? 10.213 -2.625 9.021  1
+HETATM C  C2B . NAI A 2 377 . 377 NAI A C2B 5590 22.15 1.0 ? 9.204  -4.69  9.869  1
+HETATM O  O2B . NAI A 2 377 . 377 NAI A O2B 5591 20.34 1.0 ? 10.501 -5.062 10.315 1
+HETATM C  C1B . NAI A 2 377 . 377 NAI A C1B 5592 23.19 1.0 ? 8.319  -4.163 11.005 1
+HETATM N  N9A . NAI A 2 377 . 377 NAI A N9A 5593 24.66 1.0 ? 7.782  -5.233 11.868 1
+HETATM C  C8A . NAI A 2 377 . 377 NAI A C8A 5594 25.67 1.0 ? 7.289  -6.489 11.584 1
+HETATM N  N7A . NAI A 2 377 . 377 NAI A N7A 5595 25.35 1.0 ? 6.905  -7.17  12.687 1
+HETATM C  C5A . NAI A 2 377 . 377 NAI A C5A 5596 24.33 1.0 ? 7.165  -6.311 13.721 1
+HETATM C  C6A . NAI A 2 377 . 377 NAI A C6A 5597 24.47 1.0 ? 6.996  -6.419 15.133 1
+HETATM N  N6A . NAI A 2 377 . 377 NAI A N6A 5598 24.71 1.0 ? 6.503  -7.499 15.752 1
+HETATM N  N1A . NAI A 2 377 . 377 NAI A N1A 5599 23.81 1.0 ? 7.368  -5.339 15.906 1
+HETATM C  C2A . NAI A 2 377 . 377 NAI A C2A 5600 23.96 1.0 ? 7.886  -4.202 15.299 1
+HETATM N  N3A . NAI A 2 377 . 377 NAI A N3A 5601 24.96 1.0 ? 8.078  -4.017 14.011 1
+HETATM C  C4A . NAI A 2 377 . 377 NAI A C4A 5602 24.93 1.0 ? 7.702  -5.105 13.25  1
+HETATM O  O3  . NAI A 2 377 . 377 NAI A O3  5603 22.59 1.0 ? 5.336  -2.071 4.979  1
+HETATM P  PN  . NAI A 2 377 . 377 NAI A PN  5604 24.05 1.0 ? 4.788  -0.599 4.775  1
+HETATM O  O1N . NAI A 2 377 . 377 NAI A O1N 5605 22.17 1.0 ? 4.747  -0.227 3.365  1
+HETATM O  O2N . NAI A 2 377 . 377 NAI A O2N 5606 21.05 1.0 ? 5.594  0.379  5.524  1
+HETATM O  O5D . NAI A 2 377 . 377 NAI A O5D 5607 21.94 1.0 ? 3.274  -0.783 5.293  1
+HETATM C  C5D . NAI A 2 377 . 377 NAI A C5D 5608 21.03 1.0 ? 2.978  -1.141 6.628  1
+HETATM C  C4D . NAI A 2 377 . 377 NAI A C4D 5609 22.12 1.0 ? 1.611  -1.709 6.815  1
+HETATM O  O4D . NAI A 2 377 . 377 NAI A O4D 5610 21.56 1.0 ? 0.535  -0.734 6.611  1
+HETATM C  C3D . NAI A 2 377 . 377 NAI A C3D 5611 21.37 1.0 ? 1.259  -2.901 5.898  1
+HETATM O  O3D . NAI A 2 377 . 377 NAI A O3D 5612 23.18 1.0 ? 0.727  -3.944 6.706  1
+HETATM C  C2D . NAI A 2 377 . 377 NAI A C2D 5613 21.86 1.0 ? 0.292  -2.278 4.874  1
+HETATM O  O2D . NAI A 2 377 . 377 NAI A O2D 5614 23.76 1.0 ? -0.562 -3.222 4.25   1
+HETATM C  C1D . NAI A 2 377 . 377 NAI A C1D 5615 21.04 1.0 ? -0.433 -1.233 5.69   1
+HETATM N  N1N . NAI A 2 377 . 377 NAI A N1N 5616 20.95 1.0 ? -1.046 -0.089 4.981  1
+HETATM C  C2N . NAI A 2 377 . 377 NAI A C2N 5617 19.29 1.0 ? -2.239 0.358  5.508  1
+HETATM C  C3N . NAI A 2 377 . 377 NAI A C3N 5618 19.66 1.0 ? -2.915 1.423  4.938  1
+HETATM C  C7N . NAI A 2 377 . 377 NAI A C7N 5619 19.09 1.0 ? -4.272 2.011  5.461  1
+HETATM O  O7N . NAI A 2 377 . 377 NAI A O7N 5620 20.86 1.0 ? -4.932 2.822  4.806  1
+HETATM N  N7N . NAI A 2 377 . 377 NAI A N7N 5621 17.71 1.0 ? -4.672 1.576  6.682  1
+HETATM C  C4N . NAI A 2 377 . 377 NAI A C4N 5622 18.28 1.0 ? -2.406 2.113  3.777  1
+HETATM C  C5N . NAI A 2 377 . 377 NAI A C5N 5623 21.42 1.0 ? -1.172 1.6    3.287  1
+HETATM C  C6N . NAI A 2 377 . 377 NAI A C6N 5624 21.14 1.0 ? -0.448 0.536  3.813  1
+HETATM C  C1  . CXF A 3 378 . 378 CXF A C1  5625 27.23 1.0 ? -5.007 -1.34  2.062  1
+HETATM C  C2  . CXF A 3 378 . 378 CXF A C2  5626 26.76 1.0 ? -4.29  -1.469 3.461  1
+HETATM C  C3  . CXF A 3 378 . 378 CXF A C3  5627 26.14 1.0 ? -5.067 -2.338 4.507  1
+HETATM C  C4  . CXF A 3 378 . 378 CXF A C4  5628 28.18 1.0 ? -6.501 -1.742 4.663  1
+HETATM C  C5  . CXF A 3 378 . 378 CXF A C5  5629 28.27 1.0 ? -7.24  -1.358 3.328  1
+HETATM C  C6  . CXF A 3 378 . 378 CXF A C6  5630 27.32 1.0 ? -6.341 -0.58  2.311  1
+HETATM N  N8  . CXF A 3 378 . 378 CXF A N8  5631 28.25 1.0 ? -4.26  -0.522 1.11   1
+HETATM C  C7  . CXF A 3 378 . 378 CXF A C7  5632 25.2  1.0 ? -3.032 -0.214 0.652  1
+HETATM O  O9  . CXF A 3 378 . 378 CXF A O9  5633 24.54 1.0 ? -1.995 -0.651 1.01   1
+HETATM ZN ZN  . ZN  A 4 380 . 380 ZN  A ZN  5634 22.27 1.0 ? -0.651 0.158  -0.474 1
+#
+_cell.length_a      79.253
+_cell.length_b      81.07
+_cell.length_c      102.187
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

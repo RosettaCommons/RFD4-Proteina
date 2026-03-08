@@ -1,0 +1,197 @@
+data_M0157_1qh5.cif
+#
+_entry.id       M0157_1qh5.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:45
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       HHDHHDHXX
+_entity_poly.pdbx_seq_one_letter_code_can   HHDHHDHXX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n HIS 54
+1 n HIS 56
+1 n ASP 58
+1 n HIS 59
+1 n HIS 110
+1 n ASP 134
+1 n HIS 173
+1 n ZN  262
+1 n GSH 463
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  HIS N   CA  SING N ?
+2  HIS CA  C   SING N ?
+3  HIS CA  CB  SING N ?
+4  HIS C   O   DOUB N ?
+5  HIS CB  CG  SING N ?
+6  HIS CG  ND1 SING Y ?
+7  HIS CG  CD2 DOUB Y ?
+8  HIS ND1 CE1 DOUB Y ?
+9  HIS CD2 NE2 SING Y ?
+10 HIS CE1 NE2 SING Y ?
+11 ASP N   CA  SING N ?
+12 ASP CA  C   SING N ?
+13 ASP CA  CB  SING N ?
+14 ASP C   O   DOUB N ?
+15 ASP CB  CG  SING N ?
+16 ASP CG  OD1 DOUB N ?
+17 ASP CG  OD2 SING N ?
+18 GSH N1  CA1 SING N ?
+19 GSH CA1 C1  SING N ?
+20 GSH CA1 CB1 SING N ?
+21 GSH C1  O11 DOUB N ?
+22 GSH C1  O12 SING N ?
+23 GSH CB1 CG1 SING N ?
+24 GSH CG1 CD1 SING N ?
+25 GSH CD1 OE1 DOUB N ?
+26 GSH CD1 N2  SING N ?
+27 GSH N2  CA2 SING N ?
+28 GSH CA2 C2  SING N ?
+29 GSH CA2 CB2 SING N ?
+30 GSH C2  O2  DOUB N ?
+31 GSH C2  N3  SING N ?
+32 GSH CB2 SG2 SING N ?
+33 GSH N3  CA3 SING N ?
+34 GSH CA3 C3  SING N ?
+35 GSH C3  O31 DOUB N ?
+36 GSH C3  O32 SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . HIS A 1 54  . 54  HIS A N   411  13.72 1.0 ? 1.9    4.547  -4.904 1
+ATOM   C  CA  . HIS A 1 54  . 54  HIS A CA  412  13.95 1.0 ? 2.562  3.287  -5.201 1
+ATOM   C  C   . HIS A 1 54  . 54  HIS A C   413  13.46 1.0 ? 1.561  2.402  -5.932 1
+ATOM   O  O   . HIS A 1 54  . 54  HIS A O   414  14.41 1.0 ? 0.349  2.664  -5.992 1
+ATOM   C  CB  . HIS A 1 54  . 54  HIS A CB  415  15.22 1.0 ? 3.194  2.649  -3.958 1
+ATOM   C  CG  . HIS A 1 54  . 54  HIS A CG  416  14.54 1.0 ? 2.367  2.256  -2.802 1
+ATOM   N  ND1 . HIS A 1 54  . 54  HIS A ND1 417  13.71 1.0 ? 1.542  3.076  -2.084 1
+ATOM   C  CD2 . HIS A 1 54  . 54  HIS A CD2 418  14.51 1.0 ? 2.236  1.037  -2.154 1
+ATOM   C  CE1 . HIS A 1 54  . 54  HIS A CE1 419  14.95 1.0 ? 0.944  2.434  -1.101 1
+ATOM   N  NE2 . HIS A 1 54  . 54  HIS A NE2 420  12.79 1.0 ? 1.349  1.145  -1.105 1
+ATOM   N  N   . HIS A 1 56  . 56  HIS A N   431  14.83 1.0 ? 0.423  -0.767 -5.187 1
+ATOM   C  CA  . HIS A 1 56  . 56  HIS A CA  432  16.47 1.0 ? -0.472 -1.722 -4.513 1
+ATOM   C  C   . HIS A 1 56  . 56  HIS A C   433  16.75 1.0 ? -1.901 -1.441 -4.907 1
+ATOM   O  O   . HIS A 1 56  . 56  HIS A O   434  16.07 1.0 ? -2.338 -0.297 -5.051 1
+ATOM   C  CB  . HIS A 1 56  . 56  HIS A CB  435  14.49 1.0 ? -0.28  -1.681 -2.997 1
+ATOM   C  CG  . HIS A 1 56  . 56  HIS A CG  436  13.81 1.0 ? 1.036  -2.29  -2.622 1
+ATOM   N  ND1 . HIS A 1 56  . 56  HIS A ND1 437  16.77 1.0 ? 1.567  -2.048 -1.363 1
+ATOM   C  CD2 . HIS A 1 56  . 56  HIS A CD2 438  14.3  1.0 ? 1.916  -3.1   -3.243 1
+ATOM   C  CE1 . HIS A 1 56  . 56  HIS A CE1 439  16.99 1.0 ? 2.709  -2.667 -1.261 1
+ATOM   N  NE2 . HIS A 1 56  . 56  HIS A NE2 440  17.76 1.0 ? 2.98   -3.341 -2.382 1
+ATOM   N  N   . ASP A 1 58  . 58  ASP A N   455  15.59 1.0 ? -4.808 -1.298 -3.447 1
+ATOM   C  CA  . ASP A 1 58  . 58  ASP A CA  456  15.51 1.0 ? -5.628 -0.476 -2.595 1
+ATOM   C  C   . ASP A 1 58  . 58  ASP A C   457  13.86 1.0 ? -5.335 1.024  -2.825 1
+ATOM   O  O   . ASP A 1 58  . 58  ASP A O   458  16.06 1.0 ? -6.125 1.821  -2.337 1
+ATOM   C  CB  . ASP A 1 58  . 58  ASP A CB  459  16.0  1.0 ? -5.502 -0.885 -1.124 1
+ATOM   C  CG  . ASP A 1 58  . 58  ASP A CG  460  13.5  1.0 ? -4.087 -0.995 -0.585 1
+ATOM   O  OD1 . ASP A 1 58  . 58  ASP A OD1 461  16.13 1.0 ? -3.176 -1.573 -1.16  1
+ATOM   O  OD2 . ASP A 1 58  . 58  ASP A OD2 462  17.19 1.0 ? -3.879 -0.38  0.537  1
+ATOM   N  N   . HIS A 1 59  . 59  HIS A N   463  15.08 1.0 ? -4.27  1.298  -3.563 1
+ATOM   C  CA  . HIS A 1 59  . 59  HIS A CA  464  15.97 1.0 ? -3.9   2.678  -3.932 1
+ATOM   C  C   . HIS A 1 59  . 59  HIS A C   465  16.78 1.0 ? -4.14  2.985  -5.416 1
+ATOM   O  O   . HIS A 1 59  . 59  HIS A O   466  17.9  1.0 ? -4.732 4.045  -5.757 1
+ATOM   C  CB  . HIS A 1 59  . 59  HIS A CB  467  14.37 1.0 ? -2.416 2.972  -3.539 1
+ATOM   C  CG  . HIS A 1 59  . 59  HIS A CG  468  15.09 1.0 ? -2.271 2.798  -2.047 1
+ATOM   N  ND1 . HIS A 1 59  . 59  HIS A ND1 469  14.51 1.0 ? -2.368 3.798  -1.117 1
+ATOM   C  CD2 . HIS A 1 59  . 59  HIS A CD2 470  14.33 1.0 ? -2.156 1.656  -1.321 1
+ATOM   C  CE1 . HIS A 1 59  . 59  HIS A CE1 471  14.66 1.0 ? -2.273 3.32   0.122  1
+ATOM   N  NE2 . HIS A 1 59  . 59  HIS A NE2 472  14.06 1.0 ? -2.138 1.982  0.018  1
+ATOM   N  N   . HIS A 1 110 . 110 HIS A N   836  15.43 1.0 ? 8.798  0.482  1.26   1
+ATOM   C  CA  . HIS A 1 110 . 110 HIS A CA  837  15.69 1.0 ? 7.542  -0.286 1.262  1
+ATOM   C  C   . HIS A 1 110 . 110 HIS A C   838  15.52 1.0 ? 7.367  -0.898 -0.126 1
+ATOM   O  O   . HIS A 1 110 . 110 HIS A O   839  16.96 1.0 ? 7.044  -2.104 -0.252 1
+ATOM   C  CB  . HIS A 1 110 . 110 HIS A CB  840  15.28 1.0 ? 6.374  0.613  1.635  1
+ATOM   C  CG  . HIS A 1 110 . 110 HIS A CG  841  15.61 1.0 ? 5.007  0.034  1.623  1
+ATOM   N  ND1 . HIS A 1 110 . 110 HIS A ND1 842  15.07 1.0 ? 4.565  -0.827 2.615  1
+ATOM   C  CD2 . HIS A 1 110 . 110 HIS A CD2 843  15.03 1.0 ? 3.961  0.165  0.767  1
+ATOM   C  CE1 . HIS A 1 110 . 110 HIS A CE1 844  15.88 1.0 ? 3.303  -1.171 2.357  1
+ATOM   N  NE2 . HIS A 1 110 . 110 HIS A NE2 845  15.18 1.0 ? 2.879  -0.584 1.22   1
+ATOM   N  N   . ASP A 1 134 . 134 ASP A N   1010 13.63 1.0 ? 1.942  4.714  1.949  1
+ATOM   C  CA  . ASP A 1 134 . 134 ASP A CA  1011 13.55 1.0 ? 2.252  3.696  2.961  1
+ATOM   C  C   . ASP A 1 134 . 134 ASP A C   1012 14.99 1.0 ? 3.686  3.805  3.432  1
+ATOM   O  O   . ASP A 1 134 . 134 ASP A O   1013 17.17 1.0 ? 4.245  2.854  4.012  1
+ATOM   C  CB  . ASP A 1 134 . 134 ASP A CB  1014 13.55 1.0 ? 1.881  2.284  2.494  1
+ATOM   C  CG  . ASP A 1 134 . 134 ASP A CG  1015 14.79 1.0 ? 0.38   2.099  2.351  1
+ATOM   O  OD1 . ASP A 1 134 . 134 ASP A OD1 1016 16.58 1.0 ? -0.403 3.035  2.593  1
+ATOM   O  OD2 . ASP A 1 134 . 134 ASP A OD2 1017 16.63 1.0 ? -0.027 0.956  1.973  1
+ATOM   N  N   . HIS A 1 173 . 173 HIS A N   1304 15.21 1.0 ? -3.655 5.05   5.191  1
+ATOM   C  CA  . HIS A 1 173 . 173 HIS A CA  1305 16.21 1.0 ? -4.584 4.274  5.997  1
+ATOM   C  C   . HIS A 1 173 . 173 HIS A C   1306 17.42 1.0 ? -4.898 4.85   7.373  1
+ATOM   O  O   . HIS A 1 173 . 173 HIS A O   1307 17.69 1.0 ? -4.096 5.555  7.974  1
+ATOM   C  CB  . HIS A 1 173 . 173 HIS A CB  1308 17.98 1.0 ? -4.008 2.853  6.245  1
+ATOM   C  CG  . HIS A 1 173 . 173 HIS A CG  1309 17.0  1.0 ? -3.861 1.986  5.032  1
+ATOM   N  ND1 . HIS A 1 173 . 173 HIS A ND1 1310 18.62 1.0 ? -4.846 1.129  4.573  1
+ATOM   C  CD2 . HIS A 1 173 . 173 HIS A CD2 1311 17.61 1.0 ? -2.844 1.916  4.142  1
+ATOM   C  CE1 . HIS A 1 173 . 173 HIS A CE1 1312 17.81 1.0 ? -4.389 0.53   3.476  1
+ATOM   N  NE2 . HIS A 1 173 . 173 HIS A NE2 1313 17.38 1.0 ? -3.198 1.008  3.161  1
+HETATM ZN ZN  . ZN  A 2 262 . 262 ZN  A ZN  4057 17.49 1.0 ? -1.997 0.492  1.482  1
+HETATM N  N1  . GSH A 3 463 . 463 GSH A N1  4059 44.92 1.0 ? -1.913 -7.646 10.107 1
+HETATM C  CA1 . GSH A 3 463 . 463 GSH A CA1 4060 44.29 1.0 ? -2.09  -6.283 9.549  1
+HETATM C  C1  . GSH A 3 463 . 463 GSH A C1  4061 45.41 1.0 ? -3.457 -5.656 9.953  1
+HETATM O  O11 . GSH A 3 463 . 463 GSH A O11 4062 46.66 1.0 ? -4.532 -6.1   9.48   1
+HETATM O  O12 . GSH A 3 463 . 463 GSH A O12 4063 46.87 1.0 ? -3.443 -4.698 10.76  1
+HETATM C  CB1 . GSH A 3 463 . 463 GSH A CB1 4064 42.05 1.0 ? -1.867 -6.342 8.011  1
+HETATM C  CG1 . GSH A 3 463 . 463 GSH A CG1 4065 38.28 1.0 ? -2.175 -5.043 7.195  1
+HETATM C  CD1 . GSH A 3 463 . 463 GSH A CD1 4066 35.63 1.0 ? -1.055 -4.48  6.309  1
+HETATM O  OE1 . GSH A 3 463 . 463 GSH A OE1 4067 35.69 1.0 ? -0.124 -5.204 5.931  1
+HETATM N  N2  . GSH A 3 463 . 463 GSH A N2  4068 32.01 1.0 ? -1.157 -3.182 5.973  1
+HETATM C  CA2 . GSH A 3 463 . 463 GSH A CA2 4069 29.25 1.0 ? -0.055 -2.518 5.236  1
+HETATM C  C2  . GSH A 3 463 . 463 GSH A C2  4070 27.5  1.0 ? 1.122  -2.002 6.164  1
+HETATM O  O2  . GSH A 3 463 . 463 GSH A O2  4071 25.26 1.0 ? 2.185  -1.66  5.644  1
+HETATM C  CB2 . GSH A 3 463 . 463 GSH A CB2 4072 28.5  1.0 ? -0.651 -1.345 4.429  1
+HETATM S  SG2 . GSH A 3 463 . 463 GSH A SG2 4073 31.22 1.0 ? -1.797 -1.848 3.08   1
+HETATM N  N3  . GSH A 3 463 . 463 GSH A N3  4074 27.52 1.0 ? 0.799  -1.868 7.47   1
+HETATM C  CA3 . GSH A 3 463 . 463 GSH A CA3 4075 27.86 1.0 ? 1.765  -1.223 8.392  1
+HETATM C  C3  . GSH A 3 463 . 463 GSH A C3  4076 28.6  1.0 ? 2.021  -1.998 9.682  1
+HETATM O  O31 . GSH A 3 463 . 463 GSH A O31 4077 30.45 1.0 ? 1.693  -3.209 9.797  1
+HETATM O  O32 . GSH A 3 463 . 463 GSH A O32 4078 25.63 1.0 ? 2.598  -1.359 10.576 1
+#
+_cell.length_a      39.55
+_cell.length_b      73.8
+_cell.length_c      164.7
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

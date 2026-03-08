@@ -1,0 +1,210 @@
+data_M0717_1x7d.cif
+#
+_entry.id       M0717_1x7d.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:51
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       EDXX
+_entity_poly.pdbx_seq_one_letter_code_can   EDXA
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n GLU 56
+1 n ASP 228
+1 n NAD 1302
+1 n ORN 1101
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  GLU N   CA  SING N ?
+2  GLU CA  C   SING N ?
+3  GLU CA  CB  SING N ?
+4  GLU C   O   DOUB N ?
+5  GLU CB  CG  SING N ?
+6  GLU CG  CD  SING N ?
+7  GLU CD  OE1 DOUB N ?
+8  GLU CD  OE2 SING N ?
+9  ASP N   CA  SING N ?
+10 ASP CA  C   SING N ?
+11 ASP CA  CB  SING N ?
+12 ASP C   O   DOUB N ?
+13 ASP CB  CG  SING N ?
+14 ASP CG  OD1 DOUB N ?
+15 ASP CG  OD2 SING N ?
+16 NAD PA  O1A DOUB N ?
+17 NAD PA  O2A SING N ?
+18 NAD PA  O5B SING N ?
+19 NAD PA  O3  SING N ?
+20 NAD O5B C5B SING N ?
+21 NAD C5B C4B SING N ?
+22 NAD C4B O4B SING N ?
+23 NAD C4B C3B SING N ?
+24 NAD O4B C1B SING N ?
+25 NAD C3B O3B SING N ?
+26 NAD C3B C2B SING N ?
+27 NAD C2B O2B SING N ?
+28 NAD C2B C1B SING N ?
+29 NAD C1B N9A SING N ?
+30 NAD N9A C8A SING Y ?
+31 NAD N9A C4A SING Y ?
+32 NAD C8A N7A DOUB Y ?
+33 NAD N7A C5A SING Y ?
+34 NAD C5A C6A SING Y ?
+35 NAD C5A C4A DOUB Y ?
+36 NAD C6A N6A SING N ?
+37 NAD C6A N1A DOUB Y ?
+38 NAD N1A C2A SING Y ?
+39 NAD C2A N3A DOUB Y ?
+40 NAD N3A C4A SING Y ?
+41 NAD O3  PN  SING N ?
+42 NAD PN  O1N DOUB N ?
+43 NAD PN  O2N SING N ?
+44 NAD PN  O5D SING N ?
+45 NAD O5D C5D SING N ?
+46 NAD C5D C4D SING N ?
+47 NAD C4D O4D SING N ?
+48 NAD C4D C3D SING N ?
+49 NAD O4D C1D SING N ?
+50 NAD C3D O3D SING N ?
+51 NAD C3D C2D SING N ?
+52 NAD C2D O2D SING N ?
+53 NAD C2D C1D SING N ?
+54 NAD C1D N1N SING N ?
+55 NAD N1N C2N SING Y ?
+56 NAD N1N C6N DOUB Y ?
+57 NAD C2N C3N DOUB Y ?
+58 NAD C3N C7N SING N ?
+59 NAD C3N C4N SING Y ?
+60 NAD C7N O7N DOUB N ?
+61 NAD C7N N7N SING N ?
+62 NAD C4N C5N DOUB Y ?
+63 NAD C5N C6N SING Y ?
+64 ORN N   CA  SING N ?
+65 ORN CA  CB  SING N ?
+66 ORN CA  C   SING N ?
+67 ORN CB  CG  SING N ?
+68 ORN CG  CD  SING N ?
+69 ORN CD  NE  SING N ?
+70 ORN C   O   DOUB N ?
+71 ORN C   OXT SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N N   . GLU A 1 56   . 56   GLU A N   422  8.53  1.0 ? -5.072 -1.423 -4.639 1
+ATOM   C CA  . GLU A 1 56   . 56   GLU A CA  423  9.27  1.0 ? -5.956 -1.308 -3.484 1
+ATOM   C C   . GLU A 1 56   . 56   GLU A C   424  8.23  1.0 ? -7.076 -0.289 -3.644 1
+ATOM   O O   . GLU A 1 56   . 56   GLU A O   425  7.67  1.0 ? -6.968 0.652  -4.427 1
+ATOM   C CB  . GLU A 1 56   . 56   GLU A CB  426  13.61 1.0 ? -5.132 -0.923 -2.253 1
+ATOM   C CG  . GLU A 1 56   . 56   GLU A CG  427  17.63 1.0 ? -3.774 -1.59  -2.18  1
+ATOM   C CD  . GLU A 1 56   . 56   GLU A CD  428  19.41 1.0 ? -2.967 -1.146 -0.976 1
+ATOM   O OE1 . GLU A 1 56   . 56   GLU A OE1 429  18.66 1.0 ? -2.876 0.077  -0.73  1
+ATOM   O OE2 . GLU A 1 56   . 56   GLU A OE2 430  22.81 1.0 ? -2.415 -2.024 -0.284 1
+ATOM   N N   . ASP A 1 228  . 228  ASP A N   1701 10.91 1.0 ? 4.493  -0.204 3.031  1
+ATOM   C CA  . ASP A 1 228  . 228  ASP A CA  1702 10.07 1.0 ? 3.066  -0.001 3.217  1
+ATOM   C C   . ASP A 1 228  . 228  ASP A C   1703 11.21 1.0 ? 2.168  -1.181 2.904  1
+ATOM   O O   . ASP A 1 228  . 228  ASP A O   1704 10.03 1.0 ? 1.009  -1.006 2.533  1
+ATOM   C CB  . ASP A 1 228  . 228  ASP A CB  1705 9.84  1.0 ? 2.61   1.223  2.419  1
+ATOM   C CG  . ASP A 1 228  . 228  ASP A CG  1706 10.76 1.0 ? 3.032  1.165  0.964  1
+ATOM   O OD1 . ASP A 1 228  . 228  ASP A OD1 1707 9.85  1.0 ? 3.543  0.114  0.518  1
+ATOM   O OD2 . ASP A 1 228  . 228  ASP A OD2 1708 10.52 1.0 ? 2.847  2.18   0.266  1
+HETATM P PA  . NAD A 3 1302 . 1302 NAD A PA  5237 7.92  1.0 ? 9.5    5.948  -6.489 1
+HETATM O O1A . NAD A 3 1302 . 1302 NAD A O1A 5238 8.92  1.0 ? 9.244  7.131  -7.349 1
+HETATM O O2A . NAD A 3 1302 . 1302 NAD A O2A 5239 8.83  1.0 ? 9.685  4.6    -7.114 1
+HETATM O O5B . NAD A 3 1302 . 1302 NAD A O5B 5240 8.47  1.0 ? 10.742 6.309  -5.584 1
+HETATM C C5B . NAD A 3 1302 . 1302 NAD A C5B 5241 7.73  1.0 ? 11.297 5.355  -4.63  1
+HETATM C C4B . NAD A 3 1302 . 1302 NAD A C4B 5242 8.09  1.0 ? 12.802 5.534  -4.621 1
+HETATM O O4B . NAD A 3 1302 . 1302 NAD A O4B 5243 8.85  1.0 ? 13.386 4.635  -3.704 1
+HETATM C C3B . NAD A 3 1302 . 1302 NAD A C3B 5244 7.79  1.0 ? 13.535 5.253  -5.991 1
+HETATM O O3B . NAD A 3 1302 . 1302 NAD A O3B 5245 8.97  1.0 ? 14.149 6.473  -6.509 1
+HETATM C C2B . NAD A 3 1302 . 1302 NAD A C2B 5246 8.25  1.0 ? 14.533 4.153  -5.694 1
+HETATM O O2B . NAD A 3 1302 . 1302 NAD A O2B 5247 9.09  1.0 ? 15.715 4.132  -6.425 1
+HETATM C C1B . NAD A 3 1302 . 1302 NAD A C1B 5248 8.3   1.0 ? 14.686 4.344  -4.184 1
+HETATM N N9A . NAD A 3 1302 . 1302 NAD A N9A 5249 9.95  1.0 ? 15.116 3.128  -3.514 1
+HETATM C C8A . NAD A 3 1302 . 1302 NAD A C8A 5250 11.76 1.0 ? 14.743 1.789  -3.629 1
+HETATM N N7A . NAD A 3 1302 . 1302 NAD A N7A 5251 12.91 1.0 ? 15.4   0.988  -2.809 1
+HETATM C C5A . NAD A 3 1302 . 1302 NAD A C5A 5252 12.3  1.0 ? 16.244 1.75   -2.103 1
+HETATM C C6A . NAD A 3 1302 . 1302 NAD A C6A 5253 14.6  1.0 ? 17.229 1.454  -1.054 1
+HETATM N N6A . NAD A 3 1302 . 1302 NAD A N6A 5254 14.82 1.0 ? 17.438 0.233  -0.602 1
+HETATM N N1A . NAD A 3 1302 . 1302 NAD A N1A 5255 13.69 1.0 ? 17.917 2.564  -0.575 1
+HETATM C C2A . NAD A 3 1302 . 1302 NAD A C2A 5256 12.32 1.0 ? 17.75  3.831  -0.993 1
+HETATM N N3A . NAD A 3 1302 . 1302 NAD A N3A 5257 11.81 1.0 ? 16.826 4.169  -1.991 1
+HETATM C C4A . NAD A 3 1302 . 1302 NAD A C4A 5258 11.82 1.0 ? 16.096 3.096  -2.521 1
+HETATM O O3  . NAD A 3 1302 . 1302 NAD A O3  5259 8.49  1.0 ? 8.309  5.793  -5.452 1
+HETATM P PN  . NAD A 3 1302 . 1302 NAD A PN  5260 8.02  1.0 ? 7.485  6.883  -4.563 1
+HETATM O O1N . NAD A 3 1302 . 1302 NAD A O1N 5261 8.98  1.0 ? 6.273  7.274  -5.298 1
+HETATM O O2N . NAD A 3 1302 . 1302 NAD A O2N 5262 8.1   1.0 ? 8.475  7.927  -4.174 1
+HETATM O O5D . NAD A 3 1302 . 1302 NAD A O5D 5263 9.19  1.0 ? 7.023  5.972  -3.314 1
+HETATM C C5D . NAD A 3 1302 . 1302 NAD A C5D 5264 9.39  1.0 ? 8.015  5.446  -2.383 1
+HETATM C C4D . NAD A 3 1302 . 1302 NAD A C4D 5265 10.53 1.0 ? 7.35   4.496  -1.459 1
+HETATM O O4D . NAD A 3 1302 . 1302 NAD A O4D 5266 9.51  1.0 ? 6.247  5.198  -0.73  1
+HETATM C C3D . NAD A 3 1302 . 1302 NAD A C3D 5267 10.63 1.0 ? 6.662  3.283  -2.184 1
+HETATM O O3D . NAD A 3 1302 . 1302 NAD A O3D 5268 13.6  1.0 ? 7.096  2.033  -1.634 1
+HETATM C C2D . NAD A 3 1302 . 1302 NAD A C2D 5269 9.97  1.0 ? 5.163  3.497  -1.944 1
+HETATM O O2D . NAD A 3 1302 . 1302 NAD A O2D 5270 10.63 1.0 ? 4.42   2.313  -1.902 1
+HETATM C C1D . NAD A 3 1302 . 1302 NAD A C1D 5271 8.12  1.0 ? 5.121  4.298  -0.596 1
+HETATM N N1N . NAD A 3 1302 . 1302 NAD A N1N 5272 9.97  1.0 ? 3.813  5.017  -0.449 1
+HETATM C C2N . NAD A 3 1302 . 1302 NAD A C2N 5273 9.5   1.0 ? 3.359  5.207  0.916  1
+HETATM C C3N . NAD A 3 1302 . 1302 NAD A C3N 5274 9.85  1.0 ? 2.486  6.164  1.263  1
+HETATM C C7N . NAD A 3 1302 . 1302 NAD A C7N 5275 9.38  1.0 ? 2.017  6.326  2.693  1
+HETATM O O7N . NAD A 3 1302 . 1302 NAD A O7N 5276 8.12  1.0 ? 0.965  6.977  2.904  1
+HETATM N N7N . NAD A 3 1302 . 1302 NAD A N7N 5277 8.55  1.0 ? 2.72   5.765  3.692  1
+HETATM C C4N . NAD A 3 1302 . 1302 NAD A C4N 5278 9.71  1.0 ? 1.931  7.122  0.213  1
+HETATM C C5N . NAD A 3 1302 . 1302 NAD A C5N 5279 10.69 1.0 ? 2.983  7.341  -0.843 1
+HETATM C C6N . NAD A 3 1302 . 1302 NAD A C6N 5280 9.45  1.0 ? 3.616  6.171  -1.327 1
+HETATM N N   . ORN A 4 1101 . 1101 ORN A N   5281 8.67  0.5 ? 0.217  3.261  0.544  1
+HETATM C CA  . ORN A 4 1101 . 1101 ORN A CA  5283 9.4   0.5 ? -0.219 4.047  -0.618 1
+HETATM C CB  . ORN A 4 1101 . 1101 ORN A CB  5285 11.25 0.5 ? -0.763 3.082  -1.68  1
+HETATM C CG  . ORN A 4 1101 . 1101 ORN A CG  5287 13.4  0.5 ? 0.254  2.069  -2.215 1
+HETATM C CD  . ORN A 4 1101 . 1101 ORN A CD  5289 15.14 0.5 ? -0.315 0.841  -2.901 1
+HETATM N NE  . ORN A 4 1101 . 1101 ORN A NE  5291 24.07 0.5 ? 0.762  -0.04  -3.355 1
+HETATM C C   . ORN A 4 1101 . 1101 ORN A C   5293 8.8   0.5 ? -1.348 5.058  -0.193 1
+HETATM O O   . ORN A 4 1101 . 1101 ORN A O   5295 8.64  0.5 ? -1.717 5.065  1.005  1
+HETATM O OXT . ORN A 4 1101 . 1101 ORN A OXT 5297 9.3   0.5 ? -1.837 5.822  -1.073 1
+#
+_cell.length_a      69.88
+_cell.length_b      78.62
+_cell.length_c      119.94
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

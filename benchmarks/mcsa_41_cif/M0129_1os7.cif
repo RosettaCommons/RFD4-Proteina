@@ -1,0 +1,171 @@
+data_M0129_1os7.cif
+#
+_entry.id       M0129_1os7.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     08:51:45
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       HDHRXXX
+_entity_poly.pdbx_seq_one_letter_code_can   HDHRXXX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n HIS 99
+1 n ASP 101
+1 n HIS 255
+1 n ARG 270
+1 n FE2 302
+1 n TAU 401
+1 n AKG 501
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  HIS N   CA  SING N ?
+2  HIS CA  C   SING N ?
+3  HIS CA  CB  SING N ?
+4  HIS C   O   DOUB N ?
+5  HIS CB  CG  SING N ?
+6  HIS CG  ND1 SING Y ?
+7  HIS CG  CD2 DOUB Y ?
+8  HIS ND1 CE1 DOUB Y ?
+9  HIS CD2 NE2 SING Y ?
+10 HIS CE1 NE2 SING Y ?
+11 ASP N   CA  SING N ?
+12 ASP CA  C   SING N ?
+13 ASP CA  CB  SING N ?
+14 ASP C   O   DOUB N ?
+15 ASP CB  CG  SING N ?
+16 ASP CG  OD1 DOUB N ?
+17 ASP CG  OD2 SING N ?
+18 ARG N   CA  SING N ?
+19 ARG CA  C   SING N ?
+20 ARG CA  CB  SING N ?
+21 ARG C   O   DOUB N ?
+22 ARG CB  CG  SING N ?
+23 ARG CG  CD  SING N ?
+24 ARG CD  NE  SING N ?
+25 ARG NE  CZ  SING N ?
+26 ARG CZ  NH1 SING N ?
+27 ARG CZ  NH2 DOUB N ?
+28 TAU C1  C2  SING N ?
+29 TAU C1  N1  SING N ?
+30 TAU C2  S   SING N ?
+31 TAU S   O1  DOUB N ?
+32 TAU S   O2  SING N ?
+33 TAU S   O3  DOUB N ?
+34 AKG C1  O1  DOUB N ?
+35 AKG C1  O2  SING N ?
+36 AKG C1  C2  SING N ?
+37 AKG C2  O5  DOUB N ?
+38 AKG C2  C3  SING N ?
+39 AKG C3  C4  SING N ?
+40 AKG C4  C5  SING N ?
+41 AKG C5  O3  DOUB N ?
+42 AKG C5  O4  SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . HIS A 1 99  . 99  HIS A N   780  34.18 1.0 ? -4.484 -4.326 -1.427 1
+ATOM   C  CA  . HIS A 1 99  . 99  HIS A CA  781  35.19 1.0 ? -4.91  -2.945 -1.545 1
+ATOM   C  C   . HIS A 1 99  . 99  HIS A C   782  35.84 1.0 ? -4.005 -2.074 -2.39  1
+ATOM   O  O   . HIS A 1 99  . 99  HIS A O   783  36.03 1.0 ? -2.936 -2.473 -2.838 1
+ATOM   C  CB  . HIS A 1 99  . 99  HIS A CB  784  35.3  1.0 ? -5.031 -2.312 -0.153 1
+ATOM   C  CG  . HIS A 1 99  . 99  HIS A CG  785  37.92 1.0 ? -3.773 -2.394 0.655  1
+ATOM   N  ND1 . HIS A 1 99  . 99  HIS A ND1 786  39.37 1.0 ? -3.428 -3.511 1.388  1
+ATOM   C  CD2 . HIS A 1 99  . 99  HIS A CD2 787  37.36 1.0 ? -2.755 -1.513 0.811  1
+ATOM   C  CE1 . HIS A 1 99  . 99  HIS A CE1 788  38.28 1.0 ? -2.252 -3.317 1.958  1
+ATOM   N  NE2 . HIS A 1 99  . 99  HIS A NE2 789  39.52 1.0 ? -1.822 -2.113 1.624  1
+ATOM   N  N   . ASP A 1 101 . 101 ASP A N   797  38.01 1.0 ? -2.578 1.755  -1.997 1
+ATOM   C  CA  . ASP A 1 101 . 101 ASP A CA  798  37.19 1.0 ? -2.447 2.863  -1.072 1
+ATOM   C  C   . ASP A 1 101 . 101 ASP A C   799  37.61 1.0 ? -3.31  4.079  -1.334 1
+ATOM   O  O   . ASP A 1 101 . 101 ASP A O   800  37.03 1.0 ? -3.34  4.628  -2.429 1
+ATOM   C  CB  . ASP A 1 101 . 101 ASP A CB  801  37.52 1.0 ? -0.989 3.294  -0.971 1
+ATOM   C  CG  . ASP A 1 101 . 101 ASP A CG  802  40.3  1.0 ? -0.079 2.164  -0.538 1
+ATOM   O  OD1 . ASP A 1 101 . 101 ASP A OD1 803  38.96 1.0 ? -0.436 1.428  0.407  1
+ATOM   O  OD2 . ASP A 1 101 . 101 ASP A OD2 804  44.38 1.0 ? 1.005  2.015  -1.141 1
+ATOM   N  N   . HIS A 1 255 . 255 HIS A N   2046 30.47 1.0 ? -0.673 -4.466 -3.282 1
+ATOM   C  CA  . HIS A 1 255 . 255 HIS A CA  2047 31.16 1.0 ? 0.294  -5.244 -2.522 1
+ATOM   C  C   . HIS A 1 255 . 255 HIS A C   2048 32.92 1.0 ? -0.343 -5.832 -1.285 1
+ATOM   O  O   . HIS A 1 255 . 255 HIS A O   2049 35.42 1.0 ? -1.457 -5.473 -0.916 1
+ATOM   C  CB  . HIS A 1 255 . 255 HIS A CB  2050 31.32 1.0 ? 1.521  -4.407 -2.134 1
+ATOM   C  CG  . HIS A 1 255 . 255 HIS A CG  2051 28.07 1.0 ? 1.198  -3.003 -1.728 1
+ATOM   N  ND1 . HIS A 1 255 . 255 HIS A ND1 2052 27.16 1.0 ? 0.878  -2.023 -2.641 1
+ATOM   C  CD2 . HIS A 1 255 . 255 HIS A CD2 2053 26.49 1.0 ? 1.143  -2.418 -0.511 1
+ATOM   C  CE1 . HIS A 1 255 . 255 HIS A CE1 2054 28.19 1.0 ? 0.641  -0.892 -2.003 1
+ATOM   N  NE2 . HIS A 1 255 . 255 HIS A NE2 2055 27.06 1.0 ? 0.795  -1.104 -0.709 1
+ATOM   N  N   . ARG A 1 270 . 270 ARG A N   2178 58.29 1.0 ? 8.054  4.462  5.188  1
+ATOM   C  CA  . ARG A 1 270 . 270 ARG A CA  2179 57.37 1.0 ? 7.482  4.625  3.859  1
+ATOM   C  C   . ARG A 1 270 . 270 ARG A C   2180 56.19 1.0 ? 7.253  6.069  3.424  1
+ATOM   O  O   . ARG A 1 270 . 270 ARG A O   2181 56.81 1.0 ? 6.801  6.9    4.206  1
+ATOM   C  CB  . ARG A 1 270 . 270 ARG A CB  2182 57.85 1.0 ? 6.155  3.864  3.792  1
+ATOM   C  CG  . ARG A 1 270 . 270 ARG A CG  2183 58.58 1.0 ? 5.251  4.274  2.644  1
+ATOM   C  CD  . ARG A 1 270 . 270 ARG A CD  2184 57.72 1.0 ? 3.886  3.63   2.77   1
+ATOM   N  NE  . ARG A 1 270 . 270 ARG A NE  2185 56.63 1.0 ? 2.843  4.5    2.241  1
+ATOM   C  CZ  . ARG A 1 270 . 270 ARG A CZ  2186 54.94 1.0 ? 1.544  4.278  2.389  1
+ATOM   N  NH1 . ARG A 1 270 . 270 ARG A NH1 2187 53.01 1.0 ? 1.126  3.208  3.049  1
+ATOM   N  NH2 . ARG A 1 270 . 270 ARG A NH2 2188 54.99 1.0 ? 0.666  5.137  1.893  1
+HETATM FE FE  . FE2 A 2 302 . 302 FE2 A FE  9156 61.74 1.0 ? 0.319  -0.375 1.639  1
+HETATM C  C1  . TAU A 3 401 . 401 TAU A C1  9157 51.89 1.0 ? -4.501 0.825  4.05   1
+HETATM C  C2  . TAU A 3 401 . 401 TAU A C2  9158 50.26 1.0 ? -3.078 1.314  3.915  1
+HETATM N  N1  . TAU A 3 401 . 401 TAU A N1  9159 48.56 1.0 ? -4.507 -0.46  4.453  1
+HETATM S  S   . TAU A 3 401 . 401 TAU A S   9160 49.24 1.0 ? -2.936 2.988  3.234  1
+HETATM O  O1  . TAU A 3 401 . 401 TAU A O1  9161 51.8  1.0 ? -1.556 3.538  3.465  1
+HETATM O  O2  . TAU A 3 401 . 401 TAU A O2  9162 49.76 1.0 ? -3.212 2.923  1.754  1
+HETATM O  O3  . TAU A 3 401 . 401 TAU A O3  9163 50.5  1.0 ? -3.936 3.891  3.892  1
+HETATM C  C1  . AKG A 4 501 . 501 AKG A C1  9164 66.81 1.0 ? 2.423  0.044  3.049  1
+HETATM O  O1  . AKG A 4 501 . 501 AKG A O1  9165 69.32 1.0 ? 1.611  0.553  2.313  1
+HETATM O  O2  . AKG A 4 501 . 501 AKG A O2  9166 70.03 1.0 ? 3.357  0.672  3.517  1
+HETATM C  C2  . AKG A 4 501 . 501 AKG A C2  9167 66.1  1.0 ? 2.264  -1.476 3.413  1
+HETATM O  O5  . AKG A 4 501 . 501 AKG A O5  9168 65.34 1.0 ? 1.316  -2.13  2.944  1
+HETATM C  C3  . AKG A 4 501 . 501 AKG A C3  9169 63.48 1.0 ? 3.233  -2.128 4.31   1
+HETATM C  C4  . AKG A 4 501 . 501 AKG A C4  9170 60.72 1.0 ? 4.271  -2.884 3.484  1
+HETATM C  C5  . AKG A 4 501 . 501 AKG A C5  9171 60.58 1.0 ? 5.274  -3.557 4.385  1
+HETATM O  O3  . AKG A 4 501 . 501 AKG A O3  9172 59.62 1.0 ? 5.205  -3.463 5.6    1
+HETATM O  O4  . AKG A 4 501 . 501 AKG A O4  9173 60.67 1.0 ? 6.168  -4.211 3.893  1
+#
+_cell.length_a      92.594
+_cell.length_b      118.855
+_cell.length_c      118.832
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#
