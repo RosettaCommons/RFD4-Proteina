@@ -2,10 +2,10 @@
 #
 # Beam search inference example.
 # BeamSearchStrategy with RF3 reward on the monomer-short benchmark:
-#   - 200 diffusion steps, checkpointed at [0,50,100,150,200]
-#   - n_branch=2, beam_width=2
-#   - sc_scale_noise=0.2/0.3 (bb_ca/latents)
-#   - RF3 reward: pLDDT only, num_steps=5, n_recycles=0
+#   - 400 diffusion steps, checkpointed at [0, 100, 200, 300, 400]
+#   - n_branch=2, beam_width=3
+#   - sc_scale_noise=0.1/0.1 (bb_ca/latents)
+#   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
 #
 # Usage:
 #   ./slurm_utils/launch_infer.sh coreweave --no-copy gen_njobs=2 \
@@ -36,7 +36,7 @@ metrics_tags: unconditional_refolding
 search:
   strategy:
     _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 50, 100, 150, 200]
+    step_checkpoints: [0, 100, 200, 300, 400]
     n_branch: 2
     beam_width: 3
     keep_intermediate_samples: false
@@ -46,8 +46,8 @@ search:
       rf3:
         _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
-        num_steps: 5
-        n_recycles: 0
+        num_steps: 50
+        n_recycles: 5
 
     weights:
       rf3.plddt: 1.0
@@ -56,15 +56,15 @@ search:
 
 generation:
   args:
-    nsteps: 200
+    nsteps: 400
     self_cond: true
     guidance_w: 1.0
   model:
     bb_ca:
       simulation_step_params:
-        sc_scale_noise: 0.2
+        sc_scale_noise: 0.1
     local_latents:
       simulation_step_params:
-        sc_scale_noise: 0.3
+        sc_scale_noise: 0.1
 
 num_workers: 4
