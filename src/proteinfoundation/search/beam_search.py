@@ -21,7 +21,6 @@ estimation if they meet success criteria, significantly improving total successe
 
 import copy
 from functools import partial
-from pathlib import Path
 from typing import Any
 
 import torch
@@ -356,7 +355,7 @@ class BeamSearchStrategy(SearchStrategy):
             gt_sim_segment = {k: v[current_step:] for k, v in gt_sim.items()}
 
             batch_final_xt, _, _ = model.fm.partial_simulation(
-                batch=batch,
+                batch=copy.deepcopy(batch),
                 x=batch_xt,
                 x_1_pred=None,
                 mask=mask,
