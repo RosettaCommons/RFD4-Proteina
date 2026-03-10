@@ -16,4 +16,4 @@ generation:
 
 # These values are often present in the val dataset config
 num_replicates: ${generation.dataset.num_replicates}
-subset_to_keys: ${oc.select:generation.dataset.num_replicates,null}
+subset_to_keys: ${oc.select:generation.dataset.subset_to_keys,null}
