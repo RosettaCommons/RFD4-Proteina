@@ -20,7 +20,7 @@ def run_metrics_for_result(
     batch: dict,
     batch_item_idx: int,
     metric_manager: MetricManager,
-    output_base_dir: Path,
+    output_base_dir: Path | None,
     example_id: str | None = None,
 ) -> dict:
     """Run metrics for a single generation result, matching the logic in validation_step.
