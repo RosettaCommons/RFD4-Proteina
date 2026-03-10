@@ -79,6 +79,10 @@ EXTRA_ARGS=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --njobs=*)
+            NJOBS="${1#*=}"
+            shift
+            ;;
         --njobs)
             NJOBS="$2"
             shift 2
