@@ -60,7 +60,7 @@ Design one protein chain that binds a DNA duplex:
 {
     "single_chain": {
         "dialect": 2,
-        "input": "dna_pdbs/7n5u.pdb",
+        "input": "dna_cifs/7n5u.cif",
         "contig": "B83-92,/0,C93-102,/0,50-80",
         "length": "70-100",
         "select_unfixed_sequence": true
@@ -76,7 +76,7 @@ Design a homodimeric protein that binds DNA:
 {
     "dimer_binder": {
         "dialect": 2,
-        "input": "dna_pdbs/7n5u.pdb",
+        "input": "dna_cifs/7n5u.cif",
         "contig": "B83-92,/0,C93-102,/0,50-80,/0,50-80",
         "length": "120-180",
         "select_unfixed_sequence": false
@@ -92,7 +92,7 @@ Fix both structure and sequence of the DNA, generate protein around it:
 {
     "structure_conditioned": {
         "dialect": 2,
-        "input": "dna_pdbs/7m5w.pdb",
+        "input": "dna_cifs/7m5w.cif",
         "contig": "B139-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_unfixed_sequence": false
