@@ -18,7 +18,7 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
     1. If there is only one unique chain, return that chain.
     2. Subset to only consider protein chains.
     3. Subset to chains with FEWEST coordinate conditioned atoms (absolute or internal).
-    4. Subset to chains with FEWEST internal coordinate conditioned atoms.
+    4. Subset to chains with FEWEST absolute coordinate conditioned atoms.
     5. Subset to chains with FEWEST distance conditioned atoms.
     6. If this is still ambiguous, return the first chain in sorted order and give a warning.
 
@@ -62,7 +62,7 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
 
     # Further subset by absolute coordinate conditioning
     absolute_coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in protein_chain_identifiers
+        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in least_coord_conditioned_chain_identifiers
     }
     least_absolute_coord_conditioned_fraction = min(absolute_coord_conditioned_fraction_by_chain.values())
     least_absolute_coord_conditioned_chain_identifiers = [
