@@ -857,6 +857,9 @@ class Proteina(L.LightningModule):
             "chain_of_interest",
             "seed",
             "input_cif_path",
+            "bb_ca_noise_scale",
+            "latents_noise_scale",
+            "nsteps",
         ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
@@ -885,6 +888,9 @@ class Proteina(L.LightningModule):
                 "chain_of_interest",
                 "seed",
                 "input_cif_path",
+                "bb_ca_noise_scale",
+                "latents_noise_scale",
+                "nsteps",
             }
             metric_cols = [
                 c for c in dataset_df.columns if c not in _non_metric_cols and not c.startswith("input_spec.")
