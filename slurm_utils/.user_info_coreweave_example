@@ -49,6 +49,7 @@ WANDBKEY=""
 PARTITION="hpc-high"
 RUNTIME="03-00:00:00"
 SIGNAL_TIME=600
+MEM="1920g"
 
 # GPU type on this cluster
 GPU_TYPE="H200"
