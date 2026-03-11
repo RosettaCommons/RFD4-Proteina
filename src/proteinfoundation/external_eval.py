@@ -417,6 +417,7 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
         src_component[matched_mapped_indices] = generated_atom_array.src_component[
             generated_atom_array.mapped_to_coordinate_conditioned_region
         ]
+        sequence_redesigned_atom_array.set_annotation("src_component", src_component)
 
         src_coordinate_conditioned_region = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype="<U10")
         src_coordinate_conditioned_region[matched_mapped_indices] = generated_atom_array.src_coordinate_conditioned_region[

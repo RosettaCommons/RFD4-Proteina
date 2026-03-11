@@ -146,22 +146,6 @@ def get_ss_metrics_and_rg(
     return output_metrics
 
 
-def _flatten_dict(d: dict[str, Any], parent: str = "", sep: str = ".") -> dict[str, Any]:
-    """
-    Recursively flatten a nested dictionary.
-    E.g:
-        {"a": {"b": 1, "c": 2}} --> {"a.b": 1, "a.c": 2}
-    """
-    flat = {}
-    for k, v in d.items():
-        name = f"{parent}{sep}{k}" if parent else k
-        if isinstance(v, dict):
-            flat.update(_flatten_dict(v, name, sep=sep))
-        else:
-            flat[name] = v
-    return flat
-
-
 def get_hotspot_contacts(atom_array: AtomArray, hotspot_mask: np.ndarray, distance_cutoff: float = 4.5) -> float:
     """Get the number of inter-chain contacts between diffused atoms and hotspots within a distance cutoff."""
 

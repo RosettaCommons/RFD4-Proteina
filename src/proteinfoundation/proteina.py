@@ -1,4 +1,5 @@
 import os
+import time
 import random
 from contextlib import nullcontext
 from pathlib import Path
@@ -90,8 +91,6 @@ def _log_batch_example_ids(
     """
     if batch_idx % log_frequency != 0:
         return
-
-    import time
 
     current_time = time.time()
     elapsed = current_time - _last_log_time.get(stage, current_time)
