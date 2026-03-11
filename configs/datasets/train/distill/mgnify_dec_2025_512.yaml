@@ -9,6 +9,7 @@ defaults:
 probability: 1.0  # Need this default for mixed samples
 
 dataset:
+  _target_: atomworks.ml.datasets.shared_memory.SharedMemoryDataset
   name: mgnify_dec_2025_512
   data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_dec_2025.parquet
   columns_to_load:

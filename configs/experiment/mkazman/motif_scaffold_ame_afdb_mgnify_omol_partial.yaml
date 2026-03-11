@@ -11,7 +11,7 @@ defaults:
   # - /datasets/val/structure_prediction/ccd@datasets.val.ccd
   - _self_
 
-run_name_: motif_scaffold_ame_afdb_mgnify_omol_partial_coreweave
+run_name_: ame_afdb_mgnify_omol_partial_cw_256
 
 datasets:
   train:
@@ -53,7 +53,8 @@ log:
 
 opt:
   val_start_epoch: 0
-  val_every_n_epochs: 5
+  val_every_n_epochs: 10
+  num_sanity_val_steps: 0
 
 hardware:
   accelerator: gpu

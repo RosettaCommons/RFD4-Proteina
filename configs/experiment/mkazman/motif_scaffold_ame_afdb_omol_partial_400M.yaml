@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_ame_afdb_omol_partial
+  - /nn/local_latents_score_nn_400M_atom37@nn
+  - _self_
+
+run_name_: motif_scaffold_ame_afdb_omol_partial_400M
+
+log:
+  tags: ["motif-scaffolding", "ame", "omol", "pretrain", "baseline", "afdb-monomer", "400M"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 8
+
