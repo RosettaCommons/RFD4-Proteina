@@ -17,7 +17,7 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_
 # Use the unconditional benchmark JSON directly
 inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer.json
 
-nsamples: 1  # Number of input problems (not search samples)
+num_replicates: 1  # Number of times to replicate each example
 
 # Output
 out_dir: outputs/search_test_70k

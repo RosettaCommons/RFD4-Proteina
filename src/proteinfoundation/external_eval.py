@@ -22,6 +22,7 @@ from foundry.metrics import MetricManager
 import numpy as np
 import torch
 from proteinfoundation.conditions import C_IDXGRP, C_INTCRD, C_HOT
+from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.generate import get_contig_or_design_problem_dataset
 from proteinfoundation.inference_utils.datasets import DesignProblemDataset, ContigJsonDataset
@@ -125,7 +126,6 @@ def setup_argparse():
     return args
 
 
-# TODO: There's probably a biotite or atomworks util for this!
 def _ensure_not_atom_array_stack(arr):
     if isinstance(arr, AtomArrayStack):
         assert arr.stack_depth() == 1, "Obtained a stacked AtomArray with depth > 1. "
@@ -409,6 +409,21 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
         generated_atom_array.mapped_to_coordinate_conditioned_region
     ]
     sequence_redesigned_atom_array.set_annotation("coords_with_insertion", coords_with_insertion)
+
+    # If present, copy over src_component and src_coordinate_conditioned_region annotations
+    # NOTE: These are optional because they are not strictly necessary for downstream tasks
+    if "src_component" in generated_atom_array.get_annotation_categories():
+        src_component = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype="<U10")
+        src_component[matched_mapped_indices] = generated_atom_array.src_component[
+            generated_atom_array.mapped_to_coordinate_conditioned_region
+        ]
+
+        src_coordinate_conditioned_region = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype="<U10")
+        src_coordinate_conditioned_region[matched_mapped_indices] = generated_atom_array.src_coordinate_conditioned_region[
+            generated_atom_array.mapped_to_coordinate_conditioned_region
+        ]
+        sequence_redesigned_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
+
 
     # Copy over relevant masks within the mapped regions, using the defaults everywhere else
     for cond in (C_CRD, C_IDX, C_INTCRD):
@@ -694,6 +709,9 @@ def run_external_eval(
                 extra_annotations=[
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
+                    "coords_with_insertion",
+                    "src_coordinate_conditioned_region",
+                    "src_component",
                 ],
             )
 
@@ -728,12 +746,17 @@ def run_external_eval(
         if not exists(metric_manager):
             continue
 
+        # Pre-compute chain of interest so it is shared across all metrics
+        coi, coi_unambiguous = get_chain_of_interest(rf3_input_atom_array)
+        chain_of_interest = coi if coi_unambiguous else None
+
         metric_output = metric_manager(
             network_input=None,
             network_output=None,
             extra_info={
                 "example_id": str(Path(generated_structure_path).stem).split(".")[0],
                 "output_base_dir": Path(output_dir),
+                "chain_of_interest": chain_of_interest,
             },
             predicted_atom_array=[rf3_input_atom_array],
         )

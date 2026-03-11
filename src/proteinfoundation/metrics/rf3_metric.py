@@ -18,8 +18,6 @@ from atomworks.io.transforms.atom_array import (
     add_pn_unit_iid_annotation,
     add_molecule_iid_annotation,
 )
-from atomworks.ml.conditions import C_CRD, C_DIS
-from atomworks.ml.conditions.annotator import ensure_annotations
 from atomworks.ml.utils import nested_dict
 from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
 from biotite.structure import AtomArray, AtomArrayStack
@@ -28,8 +26,8 @@ from foundry.utils.ddp import RankedLogger
 from rf3.inference_engines.rf3 import RF3InferenceEngine
 from rf3.utils.inference import InferenceInput, InputOptions
 
-from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
+from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -167,6 +165,7 @@ class RF3Metric(Metric):
             "example_id": ("extra_info", "example_id"),
             "rf3_extra_info": ("extra_info",),
             "out_dir": ("extra_info", "output_base_dir"),
+            "chain_of_interest": ("extra_info", "chain_of_interest"),
         }
 
     def _cleanup_rf3(self) -> None:
@@ -290,6 +289,7 @@ class RF3Metric(Metric):
         example_id: str | None = None,
         out_dir: Path | None = None,
         rf3_extra_info: dict | None = None,
+        chain_of_interest: str | None = None,
     ) -> dict[str, float]:
         """Refold input structures with RF3 and return confidence metrics.
 
@@ -298,6 +298,9 @@ class RF3Metric(Metric):
             example_id: Identifier for the example (used for saving).
             out_dir: Directory to save input/refolded structures. If None, no saving.
             rf3_extra_info: Extra info dictionary to pass to RF3 inference.
+            chain_of_interest: Pre-computed chain of interest. If provided, skip the
+                heuristic computation. If ``None``, the chain of interest is inferred
+                from the input structure annotations.
 
         Returns:
             Averaged RF3 confidence metrics across all input structures.
@@ -336,6 +339,7 @@ class RF3Metric(Metric):
                         rf3_extra_info=rf3_extra_info,
                         out_dir=out_dir,
                         structure_idx=i,
+                        chain_of_interest=chain_of_interest,
                     )
                 )
                 current_metrics = {".".join(k): v for k, v in current_metrics.items()}
@@ -384,6 +388,7 @@ class RF3Metric(Metric):
         rf3_extra_info: dict | None = None,
         out_dir: Path | None = None,
         structure_idx: int = 0,
+        chain_of_interest: str | None = None,
     ) -> dict[str, float]:
         """Refold structure with RF3 and return confidence metrics.
 
@@ -393,6 +398,8 @@ class RF3Metric(Metric):
             rf3_extra_info: Extra info dictionary to pass to RF3 inference
             out_dir: Directory to save input/refolded structures. If None, no saving.
             structure_idx: Index of structure (fallback for saving if no example_id)
+            chain_of_interest: Pre-computed chain of interest. If ``None``, the
+                chain of interest is inferred from the structure annotations.
 
         Returns:
             Dictionary with RF3 confidence metrics:
@@ -443,11 +450,15 @@ class RF3Metric(Metric):
             summary_confidences = result.summary_confidences
             chains_in_order = np.unique(result.atom_array.chain_iid)
 
-            chain_of_interest, chain_of_interest_unambiguous = get_chain_of_interest(prepared_array)
+            if chain_of_interest is not None:
+                chain_of_interest_unambiguous = True
+                logger.info(f"Using externally-provided chain of interest: {chain_of_interest}")
+            else:
+                chain_of_interest, chain_of_interest_unambiguous = get_chain_of_interest(prepared_array)
+                logger.info(
+                    f"Inferred chain of interest: {chain_of_interest}. This will be used to subset interface metrics."
+                )
             metrics["chain_of_interest"] = chain_of_interest if chain_of_interest_unambiguous else None
-            logger.info(
-                f"Inferred chain of interest: {chain_of_interest}. This will be used to subset interface metrics."
-            )
 
             if summary_confidences:
                 # Overall metrics
@@ -518,85 +529,3 @@ class RF3Metric(Metric):
                 "min_ipae": 100.0,
             }
 
-
-def get_chain_of_interest(atom_array: AtomArray) -> str:
-    """Get the chain ID or IID of the chain of interest in the AtomArray.
-
-    The chain of interest corresponds to the primary designed chain, and is determined by the following heuristic:
-    1. If there is only one unique chain, return that chain.
-    2. Subset to only consider protein chains.
-    3. Subset to chains with FEWEST coordinate conditioned atoms.
-    4. Subset to chains with FEWEST distance conditioned atoms.
-    5. If this is still ambiguous, return the first chain in sorted order and give a warning.
-
-    TODO: This heuristic will need to be adjusted for more complex use-cases.
-
-    Args:
-        atom_array: Input AtomArray
-
-    Returns:
-        str: Chain ID or IID of the chain of interest
-        bool: Whether the chain of interest was unambiguously determined
-    """
-
-    if "chain_iid" in atom_array.get_annotation_categories():
-        chain_identifiers = atom_array.get_annotation("chain_iid")
-    else:
-        chain_identifiers = atom_array.get_annotation("chain_id")
-    unique_chain_identifiers = np.unique(chain_identifiers)
-
-    if len(unique_chain_identifiers) < 2:
-        return unique_chain_identifiers[0], True
-
-    # Only consider protein chains
-    ensure_annotations(atom_array, "is_protein")
-    protein_chain_identifiers = [
-        cid for cid in unique_chain_identifiers if atom_array[chain_identifiers == cid].is_protein.all()
-    ]
-    if len(protein_chain_identifiers) == 1:
-        return protein_chain_identifiers[0], True
-
-    # Subset by all coordinate conditioning (absolute or internal)
-    coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean()
-        + C_INTCRD.mask(atom_array[chain_identifiers == cid]).mean()
-        for cid in protein_chain_identifiers
-    }
-    least_coord_conditioned_fraction = min(coord_conditioned_fraction_by_chain.values())
-    least_coord_conditioned_chain_identifiers = [
-        cid for cid, frac in coord_conditioned_fraction_by_chain.items() if frac == least_coord_conditioned_fraction
-    ]
-    if len(least_coord_conditioned_chain_identifiers) == 1:
-        return least_coord_conditioned_chain_identifiers[0], True
-
-    # Further subset by internal coordinate conditioning
-    internal_coord_conditioned_fraction_by_chain = {
-        cid: C_INTCRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in protein_chain_identifiers
-    }
-    least_internal_coord_conditioned_fraction = min(internal_coord_conditioned_fraction_by_chain.values())
-    least_internal_coord_conditioned_chain_identifiers = [
-        cid
-        for cid, frac in internal_coord_conditioned_fraction_by_chain.items()
-        if frac == least_internal_coord_conditioned_fraction
-    ]
-    if len(least_internal_coord_conditioned_chain_identifiers) == 1:
-        return least_internal_coord_conditioned_chain_identifiers[0], True
-
-    # Further subset by distance conditioning
-    has_distance_conditioning = C_DIS.mask(atom_array).as_dense_array().any(axis=-1)
-    distance_conditioned_fraction_by_chain = {
-        cid: has_distance_conditioning[chain_identifiers == cid].mean()
-        for cid in least_coord_conditioned_chain_identifiers
-    }
-    least_distance_conditioned_fraction = min(distance_conditioned_fraction_by_chain.values())
-    least_distance_conditioned_chain_identifiers = [
-        cid
-        for cid, frac in distance_conditioned_fraction_by_chain.items()
-        if frac == least_distance_conditioned_fraction
-    ]
-    if len(least_distance_conditioned_chain_identifiers) == 1:
-        return least_distance_conditioned_chain_identifiers[0], True
-
-    # Ambiguous - return first chain with warning
-    logger.warning("Could not unambiguously determine chain of interest; defaulting to first chain in sorted order.")
-    return sorted(least_distance_conditioned_chain_identifiers)[0], False
