@@ -60,24 +60,24 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
     if len(least_coord_conditioned_chain_identifiers) == 1:
         return least_coord_conditioned_chain_identifiers[0], True
 
-    # Further subset by internal coordinate conditioning
-    internal_coord_conditioned_fraction_by_chain = {
-        cid: C_INTCRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in protein_chain_identifiers
+    # Further subset by absolute coordinate conditioning
+    absolute_coord_conditioned_fraction_by_chain = {
+        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in protein_chain_identifiers
     }
-    least_internal_coord_conditioned_fraction = min(internal_coord_conditioned_fraction_by_chain.values())
-    least_internal_coord_conditioned_chain_identifiers = [
+    least_absolute_coord_conditioned_fraction = min(absolute_coord_conditioned_fraction_by_chain.values())
+    least_absolute_coord_conditioned_chain_identifiers = [
         cid
-        for cid, frac in internal_coord_conditioned_fraction_by_chain.items()
-        if frac == least_internal_coord_conditioned_fraction
+        for cid, frac in absolute_coord_conditioned_fraction_by_chain.items()
+        if frac == least_absolute_coord_conditioned_fraction
     ]
-    if len(least_internal_coord_conditioned_chain_identifiers) == 1:
-        return least_internal_coord_conditioned_chain_identifiers[0], True
+    if len(least_absolute_coord_conditioned_chain_identifiers) == 1:
+        return least_absolute_coord_conditioned_chain_identifiers[0], True
 
     # Further subset by distance conditioning
     has_distance_conditioning = C_DIS.mask(atom_array).as_dense_array().any(axis=-1)
     distance_conditioned_fraction_by_chain = {
         cid: has_distance_conditioning[chain_identifiers == cid].mean()
-        for cid in least_coord_conditioned_chain_identifiers
+        for cid in least_absolute_coord_conditioned_chain_identifiers
     }
     least_distance_conditioned_fraction = min(distance_conditioned_fraction_by_chain.values())
     least_distance_conditioned_chain_identifiers = [
