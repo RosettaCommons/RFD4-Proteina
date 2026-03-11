@@ -15,7 +15,7 @@ import yaml
 from atomworks.common import exists
 from atomworks.ml.transforms.base import Transform, Identity
 from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.logging import print_config_tree

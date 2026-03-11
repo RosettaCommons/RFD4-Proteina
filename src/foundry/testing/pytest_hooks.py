@@ -2,7 +2,7 @@
 
 import pytest
 import rootutils
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 
 
 class _SkipGpuPlugin:
@@ -24,7 +24,7 @@ def configure_pytest(config, conftest_file: str) -> None:
     rootutils.setup_root(conftest_file, indicator=".project-root", pythonpath=True)
 
     # Setup environment variables
-    load_dotenv(override=True)
+    load_dotenv()
 
     # Auto-skip GPU tests when CUDA is unavailable
     config.pluginmanager.register(_SkipGpuPlugin(), "skip_gpu")
