@@ -536,9 +536,10 @@ def _filter_existing_outputs(
     store_dir = model.store_dir
     if model.metrics is not None:
         output_dir = Path(store_dir) / "inference_samples"
-        # proteina.py uses f"_job{job_id}" (no underscore between "job" and the number)
-        job_suffix = f"_job{job_id}" if job_id is not None else ""
-        suffix = f"{job_suffix}_generated.cif"
+        # proteina.py builds filenames from model.job_id (set via cfg), not the run_generation job_id.
+        # Use model.job_id here so the glob/strip matches the actual saved filenames.
+        model_job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
+        suffix = f"{model_job_suffix}_generated.cif"
     else:
         output_dir = Path(root_path)
         suffix = f"_job_{job_id}.cif"
