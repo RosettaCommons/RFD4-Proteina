@@ -56,6 +56,8 @@ from omegaconf import OmegaConf
 from rich.panel import Panel
 from torch import Tensor
 
+from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
+
 from proteinfoundation.conditions import C_INTCRD, C_CRDGRP
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
@@ -64,6 +66,7 @@ from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransform
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
 
@@ -112,17 +115,23 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     # Standardize types
     cleaned = {}
     chain_of_interest_values = []
+    non_metadata_metrics_detected = False
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "task"):
+        if key in ("dataset_name", "example_id", "task", "designed_structure_path"):
             cleaned[key] = str(value)
+            continue
+        elif key == "input_cif_path" or key.startswith("input_spec."):
+            cleaned[key] = str(value) if value is not None else None
             continue
         elif key.endswith("chain_of_interest"):
             chain_of_interest_values.append(str(value))
             continue
         if isinstance(value, int | float):
             cleaned[key] = float(value)
+            non_metadata_metrics_detected = True
         elif isinstance(value, torch.Tensor) and value.numel() == 1:
             cleaned[key] = value.item()
+            non_metadata_metrics_detected = True
 
     # Add chain of interest column
     if len(set(chain_of_interest_values)) == 1:
@@ -134,8 +143,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
         cleaned["chain_of_interest"] = None
 
     # Return None if only metadata (no actual metrics)
-    metric_keys = [k for k in cleaned if k not in ("dataset_name", "example_id", "task", "chain_of_interest")]
-    return cleaned if metric_keys else None
+    return cleaned if non_metadata_metrics_detected else None
 
 
 class Proteina(L.LightningModule):
@@ -150,6 +158,10 @@ class Proteina(L.LightningModule):
             inf_cfg = self.cfg_exp.inf_cfg
         else:
             inf_cfg = None
+
+        # If True, these will be set in configure_inference
+        self.is_inference = False
+        self.inference_seed: int | None = None  # Set via generate.py, not during training
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "store", cfg_exp.run_name_)
@@ -654,29 +666,32 @@ class Proteina(L.LightningModule):
 
         metrics_output = {}
         if self.metrics is not None:
-            # Compute effective rank for file naming
-            # In offline validation mode, use job_id as the effective rank
-            if getattr(self, "offline_validation", False):
-                if self.job_id is None:
-                    raise ValueError("offline_validation=True requires job_id to be set")
-                effective_rank = self.job_id
+            # Compute prefixes and suffixes for file naming to avoid overwriting results
+            # Note than any global_prefix will have also been passed to the Dataset, so will be part of the example_id
+            if self.is_inference:
+                output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
             else:
-                effective_rank = self.global_rank
+                output_suffix = f"_rank{self.global_rank}"
 
             # Log where we are saving validation structures
             # Flatten structure: step_X/generated/ instead of step_X/rank_Y/generated/
-            output_base = (
-                Path(self.store_dir)
-                / "val_samples"
-                / dataset_name
-                / f"step_{self.global_step}"
-            )
+            output_base = Path(self.store_dir) / ("val_samples" if not self.is_inference else "inference_samples")
+            if not self.is_inference:
+                output_base = output_base / dataset_name / f"step_{self.global_step}"
+
             output_base.mkdir(parents=True, exist_ok=True)
 
+            example_id_batch = batch.get("example_id_batch", [])
+            n_batch = len(example_id_batch)
             for i in range(len(generation_list)):  # metrics were not written for batches
-                example_id_base = batch["example_id_batch"][i]
+                orig_batch_idx = i % n_batch if n_batch > 0 else 0
+                example_id_base = example_id_batch[orig_batch_idx]
+                # When a search strategy produces more samples than batch items (e.g. beam
+                # search with beam_width > 1), append the sample index to keep IDs unique.
+                if len(generation_list) > n_batch:
+                    example_id_base = f"{example_id_base}_s{i}"
                 # Include rank/job suffix for unique identification across parallel workers
-                example_id = f"{example_id_base}_rank{effective_rank}"
+                example_id = f"{example_id_base}{output_suffix}"
                 prediction_metadata = generation_list[i]["prediction_metadata"]
 
                 # Log unindexed insertion RMSD to console (this is the motif RMSD)
@@ -686,17 +701,13 @@ class Proteina(L.LightningModule):
                         f"insertion_mae={prediction_metadata.get('insertion_mae', 0.0):.3f}Å"
                     )
 
-                metrics_output = self.metrics(
-                    network_input=None,
-                    network_output=None,
-                    extra_info={
-                        "example_id": example_id,
-                        "metrics_tags": batch["metrics_tags_batch"][i],
-                        "output_base_dir": output_base,
-                    },
-                    ground_truth_atom_array=[generation_list[i]["input_atom_array"]],
-                    predicted_atom_array=[generation_list[i]["generated_atom_array"]],
-                    prediction_metadata=[prediction_metadata],
+                metrics_output = run_metrics_for_result(
+                    result=generation_list[i],
+                    batch=batch,
+                    batch_item_idx=orig_batch_idx,
+                    metric_manager=self.metrics,
+                    output_base_dir=output_base,
+                    example_id=example_id,
                 )
 
                 # Optionally save an aligned version of the predicted structure
@@ -704,7 +715,9 @@ class Proteina(L.LightningModule):
                 for metric_name in metrics_output:
                     if metric_name.endswith("aligned_predicted_structure"):
                         aligned_aa.append(metrics_output[metric_name])
-                metrics_output = {k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")}
+                metrics_output = {
+                    k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")
+                }
 
                 # If the model failed to reproduce the motif, the aligned coords would be all NaNs
                 if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
@@ -713,19 +726,27 @@ class Proteina(L.LightningModule):
                     predicted_structure_to_save = generation_list[i]["generated_atom_array"]
 
                 # Save CIF files incrementally with rank suffix in filename
-                # NOTE: Biotite currently errors when saving multidimensional annotations.
-                # Getting around this would enable saving the coords_with_insertion.
                 extra_annotations_to_save = [
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
+                    "coords_with_insertion",
+                    "src_coordinate_conditioned_region",
+                    "src_component",
                 ]
-                save_atom_array_with_conditions_to_cif(
-                    generation_list[i]["input_atom_array"],
-                    output_base / "input" / f"{example_id}_input.cif",
-                )
+
+                # Skip input saving during inference to lighten the filesystem load
+                if not self.is_inference:
+                    save_atom_array_with_conditions_to_cif(
+                        generation_list[i]["input_atom_array"],
+                        output_base / "input" / f"{example_id}_input.cif",
+                    )
+                    generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
+                else:
+                    generated_output_path = output_base / f"{example_id}_generated.cif"
+
                 save_atom_array_with_conditions_to_cif(
                     predicted_structure_to_save,
-                    output_base / "generated" / f"{example_id}_generated.cif",
+                    generated_output_path,
                     extra_annotations=extra_annotations_to_save,
                 )
 
@@ -733,6 +754,27 @@ class Proteina(L.LightningModule):
                     # Add dataset_name and task as metadata
                     metrics_output["dataset_name"] = dataset_name
                     metrics_output["task"] = "_".join(example_id_base.split("_")[:-1])
+
+                    # Add seed used for generation
+                    if self.inference_seed is not None:
+                        metrics_output["seed"] = self.inference_seed
+                    
+                    # Add temperature and number of timesteps used for generation
+                    if self.inf_cfg is not None:
+                        metrics_output["bb_ca_noise_scale"] = self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
+                        metrics_output["latents_noise_scale"] = self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
+                        metrics_output["nsteps"] = self.inf_cfg.args.nsteps
+
+                    # Add input specification or CIF path
+                    spec_batch = batch.get("specification_batch")
+                    if spec_batch is not None:
+                        spec = spec_batch[orig_batch_idx]
+                        if "input_cif" in spec:
+                            metrics_output["input_cif_path"] = str(spec["input_cif"])
+                        else:
+                            flat_spec = flatten_nested_dict(spec, fuse_keys=".")
+                            for key, value in flat_spec.items():
+                                metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
 
                     # Add insertion RMSD metrics to output for epoch-end aggregation
                     if prediction_metadata and "insertion_rmsd" in prediction_metadata:
@@ -743,6 +785,7 @@ class Proteina(L.LightningModule):
                             metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
 
                     metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
+                    metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
                     # Store for epoch-end aggregation
                     self.validation_output_generation.append(metrics_output)
 
@@ -799,36 +842,37 @@ class Proteina(L.LightningModule):
             return
 
         # 3. Save per-example CSV (one row per example)
-        metrics_dir = Path(self.store_dir) / "val_metrics"
+        metrics_dir = Path(self.store_dir) / ("val_metrics" if not self.is_inference else "inference_metrics")
         metrics_dir.mkdir(parents=True, exist_ok=True)
 
         per_example_df = pd.DataFrame(all_example_metrics)
 
-        per_example_df["designed_structure_path"] = per_example_df.apply(
-            lambda row: str(
-                (
-                    Path(self.store_dir)
-                    / "val_samples"
-                    / row["dataset_name"]
-                    / f"step_{self.global_step}"
-                    / "generated"
-                    / f"{row['example_id']}_generated.cif"
-                ).resolve()
-            ),
-            axis=1,
-        )
-
-        # Reorder columns: example_id first, then dataset_name, then metrics
+        # Reorder columns: example_id first, then metadata, then metrics
         cols = per_example_df.columns.tolist()
-        priority = ["example_id", "designed_structure_path", "task", "dataset_name", "chain_of_interest"]
+        priority = [
+            "example_id",
+            "designed_structure_path",
+            "task",
+            "dataset_name",
+            "chain_of_interest",
+            "seed",
+            "input_cif_path",
+            "bb_ca_noise_scale",
+            "latents_noise_scale",
+            "nsteps",
+        ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
 
-        # Use job_id suffix for offline validation to avoid file conflicts across parallel jobs
-        if getattr(self, "offline_validation", False) and self.job_id is not None:
-            per_example_path = metrics_dir / f"per_example_metrics_job{self.job_id}.csv"
+        # Add prefixes or suffixes to avoid file conflicts across jobs
+        if self.is_inference:
+            output_prefix = "" if self.global_prefix is None else self.global_prefix + "_"
+            output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
         else:
-            per_example_path = metrics_dir / f"per_example_step_{self.global_step}.csv"
+            output_prefix = ""
+            output_suffix = f"_step{self.global_step}"
+
+        per_example_path = metrics_dir / f"{output_prefix}per_example_metrics{output_suffix}.csv"
         per_example_df.to_csv(per_example_path, index=False)
         logger.info(f"Saved per-example metrics to {per_example_path}")
 
@@ -836,9 +880,20 @@ class Proteina(L.LightningModule):
         agg_rows = []
         for dataset_name in per_example_df["dataset_name"].unique():
             dataset_df = per_example_df[per_example_df["dataset_name"] == dataset_name]
+            _non_metric_cols = {
+                "example_id",
+                "dataset_name",
+                "task",
+                "designed_structure_path",
+                "chain_of_interest",
+                "seed",
+                "input_cif_path",
+                "bb_ca_noise_scale",
+                "latents_noise_scale",
+                "nsteps",
+            }
             metric_cols = [
-                c for c in dataset_df.columns if c not in
-                ("example_id", "dataset_name", "task", "designed_structure_path", "chain_of_interest")
+                c for c in dataset_df.columns if c not in _non_metric_cols and not c.startswith("input_spec.")
             ]
             for metric_name in metric_cols:
                 values = dataset_df[metric_name].dropna()
@@ -859,11 +914,8 @@ class Proteina(L.LightningModule):
         agg_df = pd.DataFrame(agg_rows)
         print_df_as_table(agg_df, title="Validation Metrics")
 
-        # Use job_id suffix for offline validation to avoid file conflicts across parallel jobs
-        if getattr(self, "offline_validation", False) and self.job_id is not None:
-            agg_path = metrics_dir / f"aggregated_metrics_job{self.job_id}.csv"
-        else:
-            agg_path = metrics_dir / f"metrics_step_{self.global_step}.csv"
+        # Add prefixes or suffixes to avoid file conflicts across jobs
+        agg_path = metrics_dir / f"{output_prefix}aggregated_metrics{output_suffix}.csv"
         agg_df.to_csv(agg_path, index=False)
         logger.info(f"Saved aggregate metrics to {agg_path}")
 
@@ -883,8 +935,9 @@ class Proteina(L.LightningModule):
         nn_ag,
         store_dir=None,
         metrics_cfg=None,
-        offline_validation: bool = False,
         job_id: int | None = None,
+        is_inference: bool = False,
+        global_prefix: str | None = None,
     ):
         """Sets inference config with all sampling parameters required by the method (dt, etc)
         and autoguidance network (or None if not provided).
@@ -894,8 +947,9 @@ class Proteina(L.LightningModule):
             nn_ag: Autoguidance neural network (or None).
             store_dir: Directory to store outputs.
             metrics_cfg: Metrics configuration.
-            offline_validation: Whether running in offline validation mode.
-            job_id: Job ID for offline validation (required when offline_validation=True).
+            job_id: Job ID used to disambiguate per-job output files.
+            is_inference: Whether running in inference mode (via generate.py).
+            global_prefix: Global prefix for inference output filenames.
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
@@ -903,9 +957,9 @@ class Proteina(L.LightningModule):
         if store_dir is not None:
             self.store_dir = store_dir
 
-        # Offline validation settings
-        self.offline_validation = offline_validation
+        self.is_inference = is_inference
         self.job_id = job_id
+        self.global_prefix = global_prefix
 
     def configure_search(self, search_strategy, search_reward_model=None):
         """Configure search strategy and reward model for reward-guided generation.
@@ -1177,10 +1231,18 @@ class Proteina(L.LightningModule):
             updated_array.set_annotation(
                 "mapped_to_coordinate_conditioned_region", np.zeros(updated_array.array_length(), dtype=bool)
             )
+            updated_array.set_annotation(
+                "src_coordinate_conditioned_region", np.full(updated_array.array_length(), ".", dtype="<U10")
+            )
             metadata = {}
         
-        # Include indexed coord conditioning in mapped_to_coordinate_conditioned_region
-        updated_array.mapped_to_coordinate_conditioned_region |= C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
+        # Include indexed coord conditioning in mapping mask/annotation
+        # TODO: Should this mapping annotation be added as a Condition? It is semantically different but practically similar
+        indexed_coord_conditioned_mask = C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
+        updated_array.mapped_to_coordinate_conditioned_region |= indexed_coord_conditioned_mask
+        updated_array.src_coordinate_conditioned_region[
+            indexed_coord_conditioned_mask
+        ] = updated_array.src_component[indexed_coord_conditioned_mask]
         
         # Check unindexed coord conditioning count
         total_coord_conditioned_count = indexed_coord_conditioned_count + unindexeded_coord_conditioned_count
@@ -1200,7 +1262,9 @@ class Proteina(L.LightningModule):
         mapped_to_coordinate_conditioned_region_token_lvl = apply_and_spread_token_wise(
             updated_array, updated_array.mapped_to_coordinate_conditioned_region, np.any
         )
-        updated_array.set_annotation("mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl)
+        updated_array.set_annotation(
+            "mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl
+        )
 
         return {
             "generated_atom_array": as_atom_array_plus(updated_array),

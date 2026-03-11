@@ -26,7 +26,7 @@ class RewardModel:
         ...         "hbonds.avg_hbond_energy": -0.5,
         ...     },
         ... )
-        >>> reward = reward_model.compute_reward(predicted_atom_array=structure)
+        >>> reward = reward_model.aggregate_metrics_output(reward_model.metric_manager(predicted_atom_array=structure))
     """
 
     def __init__(
@@ -47,28 +47,23 @@ class RewardModel:
         self.weights = weights
         self.differentiable = differentiable
 
-    def compute_reward(self, **kwargs: Any) -> float:
-        """Compute scalar reward by aggregating metrics.
+    def aggregate_metrics_output(self, metrics_output: dict[str, Any]) -> float:
+        """Aggregate a metrics output dict into a scalar reward using configured weights.
 
         Args:
-            **kwargs: Arguments passed to MetricManager (e.g., predicted_atom_array)
+            metrics_output: Dictionary of metric results, as returned by MetricManager
+                or :py:func:`~proteinfoundation.metrics.metrics_utils.run_metrics_for_result`.
 
         Returns:
-            Scalar reward value
+            Weighted scalar reward.
         """
-        # Compute all metrics
-        results = self.metric_manager(**kwargs)
-
-        # Aggregate with weights
         reward = 0.0
-        for key, value in results.items():
+        for key, value in metrics_output.items():
             if key == "example_id":
                 continue
-
-            weight = self.weights.get(key, 0.0)  # Default weight 0 if not specified
+            weight = self.weights.get(key, 0.0)
             if weight != 0.0:
                 reward += weight * value
-
         return reward
 
     def compute_components(self, **kwargs: Any) -> dict[str, float]:

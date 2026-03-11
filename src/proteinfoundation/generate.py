@@ -38,6 +38,36 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
 
 
+def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value=None):
+    """Get exactly one of two mutually exclusive config keys.
+
+    Primarily used for supporting RFD3 launch syntax, to ease the transition for designers.
+
+    Args:
+        cfg: Configuration DictConfig.
+        key1: First config key.
+        key2: Second config key.
+        default_value: Value to return if neither key is provided.
+
+    Returns:
+        The value of the specified config key.
+
+    Raises:
+        ValueError: If neither or both keys are provided.
+    """
+    has_key1 = exists(cfg.get(key1, None))
+    has_key2 = exists(cfg.get(key2, None))
+
+    if has_key1 and has_key2:
+        raise ValueError(f"Please provide only one of `{key1}` or `{key2}` in the config.")
+    elif not has_key1 and not has_key2:
+        return default_value
+    elif has_key1:
+        return cfg[key1]
+    else:
+        return cfg[key2]
+
+
 def _assemble_dataset_inputs_from_dict(
     data: dict,
     input_file_path: Path,
@@ -120,14 +150,22 @@ def _extract_input_data(inputs: PathLike | list[PathLike]):
         return data, use_design_problem_dataset
 
 
-def _get_num_replicates(num_examples: int, num_samples: int) -> int:
-    num_replicates = ((num_samples - 1) // num_examples + 1) if num_samples > 1 else 1
-    if num_replicates * num_examples > num_samples:
-        logger.warning(
-            f"Number of samples {num_samples} is not a multiple of number of examples {num_examples}. All examples "
-            f"will be designed {num_replicates} times, resulting in {num_replicates * num_examples} total samples."
-        )
-    return num_replicates
+def split_replicates_by_job(num_replicates: int, job_id: int, njobs: int) -> int:
+    """Split total replicates across multiple jobs.
+
+    Args:
+        num_replicates: Total number of replicates per example.
+        job_id: Current job ID (0-indexed).
+        njobs: Total number of parallel jobs.
+
+    Returns:
+        Number of replicates for this job_id.
+    """
+    replicates_per_split = (num_replicates - 1) // njobs + 1
+    if replicates_per_split * job_id >= num_replicates:
+        logger.info(f"Job id {job_id} gets 0 replicates. Finishing job...")
+        sys.exit(0)
+    return min(replicates_per_split, num_replicates - replicates_per_split * job_id)
 
 
 def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Dataset:
@@ -135,33 +173,38 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     cfg_gen = cfg.generation
     check_cfg_validity(cfg_gen.args)
 
-    # Get the desired number of samples and adjust for job splitting
+    # Get the desired number of replicates and adjust for job splitting
     njobs = cfg.get("gen_njobs", 1)
-    nsamples = cfg.get("nsamples", 2)
-    nsamples = split_samples_by_job(nsamples, job_id, njobs)
+    num_replicates = cfg.get("num_replicates", 1)
+    num_replicates = split_replicates_by_job(num_replicates, job_id, njobs)
 
     # If a design Dataset was passed, use it directly
-    cfg_gen.dataset.num_replicates = 1  # We use nsamples in generate.py
+    cfg_gen.dataset.num_replicates = 1  # Temporarily set to 1 to get the number of examples
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
     if isinstance(instantiated_dset, (DesignProblemDataset | ContigJsonDataset)):
-        cfg_gen.dataset.num_replicates = _get_num_replicates(num_examples=len(instantiated_dset), num_samples=nsamples)
+        cfg_gen.dataset.num_replicates = num_replicates
         instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)  # Re-instantiate with correct num_replicates
         return instantiated_dset
 
     # Otherwise, we will create a Dataset based on the user specifications
     assert exists(cfg.inputs), "Must provide `inputs` config if not using a pre-instantiated Dataset."
-    subset_to_examples = (cfg_gen.dataset.pop("subset_to_examples"),)
-    specification_overrides = (dict(cfg_gen.dataset.specification),)
+    subset_to_examples = _get_mutually_exclusive_config(
+        cfg, "subset_to_examples", "json_keys_subset", default_value=None
+    )
+    specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
 
-    inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags)
     metrics_tags = cfg_gen.dataset.transform.get("metrics_tags") if "transform" in cfg_gen.dataset else None
+    if isinstance(metrics_tags, str):
+        metrics_tags = metrics_tags.split(",")
+    inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags)
 
     dataset = get_contig_or_design_problem_dataset(
         cfg.inputs,
-        nsamples=nsamples,
+        num_replicates=num_replicates,
         transform=inference_pipeline,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
+        global_prefix=cfg.get("global_prefix"),
     )
 
     return dataset
@@ -169,19 +212,21 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
 
 def get_contig_or_design_problem_dataset(
     json_or_design_problem_inputs: str | list[str],
-    nsamples: int | None = None,
+    num_replicates: int | None = None,
     transform: Transform | None = None,
     subset_to_examples: list[str] | str | None = None,
     specification_overrides: dict = {},
+    global_prefix: str | None = None,
 ) -> torch.utils.data.Dataset:
     """Create either a ContigJsonDataset or DesignProblemDataset based on the input type.
 
     Args:
         json_or_design_problem_inputs: A PFM-style json/yaml file, or a list/directory of Condition-annotated CIF files.
-        nsamples: Total number of samples to be generated across all examples. If None, defaults to 1 replicate per example.
+        num_replicates: Number of times to replicate each example. If None, defaults to 1 replicate per example.
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
         specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
+        global_prefix: Optional global prefix for output example ids.
 
     Returns:
         A torch Dataset instance.
@@ -189,10 +234,8 @@ def get_contig_or_design_problem_dataset(
     # Determine which dataset class to create
     data, use_design_problem_dataset = _extract_input_data(json_or_design_problem_inputs)
 
-    # Determine the number of replicates per example
-    if exists(nsamples):
-        num_replicates = _get_num_replicates(num_examples=len(data), num_samples=nsamples)
-    else:
+    # Default to 1 replicate per example
+    if not exists(num_replicates):
         num_replicates = 1
 
     # Create the appropriate Dataset
@@ -202,6 +245,7 @@ def get_contig_or_design_problem_dataset(
             transform=transform if exists(transform) else Identity(),
             filter_fn=lambda x: str(x).endswith((".cif", ".json", ".yaml")),
             num_replicates=num_replicates,
+            global_prefix=global_prefix,
         )
 
     data = _assemble_dataset_inputs_from_dict(
@@ -216,6 +260,7 @@ def get_contig_or_design_problem_dataset(
         transform=transform if exists(transform) else Identity(),
         name="inference-dataset",
         num_replicates=num_replicates,
+        global_prefix=global_prefix,
     )
 
 
@@ -343,7 +388,8 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         nn_ag=nn_ag,
         store_dir=cfg.get("out_dir"),
         metrics_cfg=metrics,
-        offline_validation=cfg.get("offline_validation", False),
+        is_inference=True,
+        global_prefix=cfg.get("global_prefix"),
         job_id=cfg.get("job_id"),
     )
 
@@ -407,18 +453,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     return model
 
 
-def split_samples_by_job(nsamples: int, job_id: int, njobs: int) -> int:
-    """
-    Splits total samples across multiple jobs.
-
-    Returns:
-        Number of samples for this job_id.
-    """
-    nsamples_per_split = (nsamples - 1) // njobs + 1
-    if nsamples_per_split * job_id >= nsamples:
-        logger.info(f"Job id {job_id} gets 0 samples. Finishing job...")
-        sys.exit(0)
-    return min(nsamples_per_split, nsamples - nsamples_per_split * job_id)
 
 
 def save_predictions(
@@ -447,9 +481,91 @@ def save_predictions(
         extra_annotations_to_save = [
             "mapped_to_coordinate_conditioned_region",
             "mapped_to_coordinate_conditioned_region_token_lvl",
+            "coords_with_insertion",
+            "src_coordinate_conditioned_region",
+            "src_component",
         ]
 
         save_atom_array_with_conditions_to_cif(atom_array, file_path, extra_annotations=extra_annotations_to_save)
+
+
+def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:
+    """Extract example IDs from a dataset without loading data.
+
+    Args:
+        dataset: A ContigJsonDataset or DesignProblemDataset instance.
+
+    Returns:
+        List of example ID strings, one per dataset index.
+    """
+    if isinstance(dataset, ContigJsonDataset):
+        return dataset.names
+    elif isinstance(dataset, DesignProblemDataset):
+        ids = []
+        for idx in range(len(dataset)):
+            base_id = dataset.base_ids[idx]
+            if dataset.num_replicates > 1:
+                path = dataset.file_paths[idx]
+                previous_occurrences = dataset.file_paths[:idx].count(path)
+                ids.append(f"{base_id}_rep{previous_occurrences}")
+            else:
+                ids.append(base_id)
+        return ids
+    else:
+        raise ValueError(f"Unexpected Dataset type: {type(dataset).__name__}")
+
+
+def _filter_existing_outputs(
+    dataset: torch.utils.data.Dataset,
+    model: Proteina,
+    root_path: str,
+    job_id: int,
+) -> torch.utils.data.Dataset:
+    """Filter a dataset to exclude examples that already have output structure files.
+
+    Args:
+        dataset: The inference dataset.
+        model: The loaded Proteina model (used to determine output paths).
+        root_path: Root output path for this inference run.
+        job_id: Job ID for parallel job splitting.
+
+    Returns:
+        A Subset of the original dataset excluding already-completed examples,
+        or the original dataset if no outputs exist yet.
+    """
+    store_dir = model.store_dir
+    if model.metrics is not None:
+        output_dir = Path(store_dir) / "inference_samples"
+        suffix = "_generated.cif"
+    else:
+        output_dir = Path(root_path)
+        suffix = f"_job_{job_id}.cif"
+
+    # Collect example IDs that already have outputs
+    existing_ids: set[str] = set()
+    if output_dir.exists():
+        for p in output_dir.glob(f"*{suffix}"):
+            # Strip the suffix from the stem to recover the example ID
+            # e.g. "my_example_generated" -> "my_example" (for "_generated.cif")
+            example_id = p.name.removesuffix(suffix)
+            existing_ids.add(example_id)
+
+    if not existing_ids:
+        return dataset
+
+    # Determine which indices to keep
+    all_ids = _get_example_ids_from_dataset(dataset)
+    keep_indices = [i for i, eid in enumerate(all_ids) if eid not in existing_ids]
+    n_skipped = len(all_ids) - len(keep_indices)
+
+    if n_skipped > 0:
+        logger.info(
+            f"skip_existing: Found {len(existing_ids)} existing outputs in {output_dir}. "
+            f"Skipping {n_skipped}/{len(all_ids)} examples."
+        )
+        return torch.utils.data.Subset(dataset, keep_indices)
+
+    return dataset
 
 
 def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = None) -> None:
@@ -491,11 +607,23 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     # Load model
     model = load_ckpt_n_configure_inference(cfg)
+    model.inference_seed = cfg.seed
 
     dataset = get_dataset_from_cfg(cfg, job_id)
 
+    # Optionally skip examples that already have outputs on disk
+    if cfg.get("skip_existing", False):
+        dataset = _filter_existing_outputs(
+            dataset,
+            model=model,
+            root_path=root_path,
+            job_id=job_id,
+        )
+
+    # Support either batch_size argument for backwards compatibility with rfd3 syntax
+    batch_size = _get_mutually_exclusive_config(cfg, "batch_size", "diffusion_batch_size", default_value=1)
+
     # Create dataloader
-    batch_size = cfg.batch_size
     num_workers = cfg.num_workers
     dataloader = DataLoader(
         dataset,

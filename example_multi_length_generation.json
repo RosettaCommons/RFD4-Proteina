@@ -1,6 +1,6 @@
 {
   "global_args": {
-    "nsamples": 5
+    "num_replicates": 5
   },
   "length_50": {
     "nres": 50

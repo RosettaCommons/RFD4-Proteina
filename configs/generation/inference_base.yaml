@@ -10,8 +10,9 @@ co_generate_targets: false
 val_set_name_override: null  # val_dataset # Used for labeling output metrics if computed
 
 dataset:
+  num_replicates: ${num_replicates} # Number of times to replicate each example
   transform:
-    metrics_tags: null # If specified, determines which metrics are computed during inference
+    metrics_tags: ${metrics_tags} # If specified, determines which metrics are computed during inference
 
 # General sampling params
 args:

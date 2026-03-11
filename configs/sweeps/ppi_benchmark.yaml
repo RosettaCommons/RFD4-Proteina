@@ -13,7 +13,7 @@ base_config: inference
 # Apply these overrides before sweeping
 base_config_overrides:
   - inference_experiment=inference_like_rfd3  # PPI-focused generation setup
-  - nsamples=100
+  - num_replicates=100
 
 # Output location for generated configs
 output_dir: ./configs/sweep_configs/ppi_benchmark

@@ -3,6 +3,7 @@
 from collections import defaultdict
 from typing import Any
 
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.search.vanilla import VanillaStrategy
 
@@ -69,12 +70,8 @@ class BestOfNStrategy(SearchStrategy):
 
             # Compute rewards and group by input index
             for idx, sample in enumerate(samples):
-                reward = reward_model.compute_reward(
-                    predicted_atom_array=sample["generated_atom_array"],
-                    extra_info={
-                        "example_id": sample.get("example_id"),
-                    },
-                )
+                metrics_output = run_metrics_for_result(sample, batch, idx, reward_model.metric_manager, output_base_dir=None)
+                reward = reward_model.aggregate_metrics_output(metrics_output)
                 sample["reward"] = reward
                 samples_by_input[idx].append(sample)
 
