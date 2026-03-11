@@ -376,6 +376,65 @@ FoldSeek must be installed and available on `$PATH`. For monomer designs, cluste
 
 ---
 
+## Cluster Launching (SLURM)
+
+The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All Hydra options (checkpoint, datasets, metrics, etc.) can be passed directly as Hydra overrides.
+
+The `--no-copy` argument can be passed to avoid copying the codebase to the output destination. This copying can be useful for exact reproducibility.
+
+After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file. Pass `--no-concatenate` to skip this, or `--foldseek` to additionally run structural clustering.
+
+For full details on possible non-Hydra arguments to `launch_infer.sh` and `launch_sweep.sh`, please see the comments in their headers.
+
+> **Note:** All scripts must be run with a `.user_info_<cluster>` file present in `slurm_utils`. `<cluster>` is the cluster name (e.g. `digs`, `ord`, `coreweave`).
+
+### Inference
+
+```bash
+# 4 replicates over a subset of an input file, split across 2 jobs
+./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+    inference_experiment=inference_like_rfd3 \
+    inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
+```
+
+Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. So instead of these command-line overrides, you could also create a new config in `configs/inference_experiment` that inherits from `inference_like_rfd3`, then defines your desired overrides.
+
+### Parameter Sweeps
+
+Sweeps generate one config per parameter combination and submit each as a separate SLURM job:
+
+```bash
+# Sweep nsteps x noise scale on a val set, with FoldSeek clustering (per-combination).
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
+    --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
+
+# Preview configs without submitting
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
+```
+
+The sweep example at `configs/sweeps/sweep_example.yaml` uses a validation dataset by default. To sweep over regular inference instead, swap `inference_experiment=inference_on_val_set` for `inference_like_rfd3` and add your `inputs` config as usual (see comments in that file).
+
+See `configs/sweeps/` for more sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for the sweep config format.
+
+### Search (Beam / Best-of-N)
+
+Search strategies are configured via experiment configs — pass `--config-name` to select one:
+
+```bash
+# Beam search with RF3 reward (parameters set in the experiment config)
+./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+    inference_experiment=inference_beam_example \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs
+```
+
+---
+
 ## For Developers
 
 Training, SLURM launching, dataset configuration, design task implementation, adding new metrics/rewards, and architecture details are documented in the **[Developer Guide](docs/DEVELOPMENT.md)**.

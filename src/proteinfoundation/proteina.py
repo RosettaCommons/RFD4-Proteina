@@ -66,7 +66,7 @@ from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransform
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
-from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
 
@@ -115,8 +115,9 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     # Standardize types
     cleaned = {}
     chain_of_interest_values = []
+    non_metadata_metrics_detected = False
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "task"):
+        if key in ("dataset_name", "example_id", "task", "designed_structure_path"):
             cleaned[key] = str(value)
             continue
         elif key == "input_cif_path" or key.startswith("input_spec."):
@@ -127,8 +128,10 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
             continue
         if isinstance(value, int | float):
             cleaned[key] = float(value)
+            non_metadata_metrics_detected = True
         elif isinstance(value, torch.Tensor) and value.numel() == 1:
             cleaned[key] = value.item()
+            non_metadata_metrics_detected = True
 
     # Add chain of interest column
     if len(set(chain_of_interest_values)) == 1:
@@ -140,8 +143,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
         cleaned["chain_of_interest"] = None
 
     # Return None if only metadata (no actual metrics)
-    metric_keys = [k for k in cleaned if k not in ("dataset_name", "example_id", "task", "chain_of_interest")]
-    return cleaned if metric_keys else None
+    return cleaned if non_metadata_metrics_detected else None
 
 
 class Proteina(L.LightningModule):
@@ -158,7 +160,6 @@ class Proteina(L.LightningModule):
             inf_cfg = None
 
         # If True, these will be set in configure_inference
-        self.offline_validation = False
         self.is_inference = False
         self.inference_seed: int | None = None  # Set via generate.py, not during training
 
@@ -667,12 +668,8 @@ class Proteina(L.LightningModule):
         if self.metrics is not None:
             # Compute prefixes and suffixes for file naming to avoid overwriting results
             # Note than any global_prefix will have also been passed to the Dataset, so will be part of the example_id
-            if self.offline_validation:
-                if self.job_id is None:
-                    raise ValueError("offline_validation=True requires job_id to be set")
-                output_suffix = f"_rank{self.job_id}"
-            elif self.is_inference:
-                output_suffix = ""
+            if self.is_inference:
+                output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
             else:
                 output_suffix = f"_rank{self.global_rank}"
 
@@ -684,8 +681,15 @@ class Proteina(L.LightningModule):
 
             output_base.mkdir(parents=True, exist_ok=True)
 
+            example_id_batch = batch.get("example_id_batch", [])
+            n_batch = len(example_id_batch)
             for i in range(len(generation_list)):  # metrics were not written for batches
-                example_id_base = batch["example_id_batch"][i]
+                orig_batch_idx = i % n_batch if n_batch > 0 else 0
+                example_id_base = example_id_batch[orig_batch_idx]
+                # When a search strategy produces more samples than batch items (e.g. beam
+                # search with beam_width > 1), append the sample index to keep IDs unique.
+                if len(generation_list) > n_batch:
+                    example_id_base = f"{example_id_base}_s{i}"
                 # Include rank/job suffix for unique identification across parallel workers
                 example_id = f"{example_id_base}{output_suffix}"
                 prediction_metadata = generation_list[i]["prediction_metadata"]
@@ -697,22 +701,13 @@ class Proteina(L.LightningModule):
                         f"insertion_mae={prediction_metadata.get('insertion_mae', 0.0):.3f}Å"
                     )
 
-                # Pre-compute chain of interest so it is shared across all metrics
-                coi, coi_unambiguous = get_chain_of_interest(generation_list[i]["generated_atom_array"])
-                chain_of_interest = coi if coi_unambiguous else None
-
-                metrics_output = self.metrics(
-                    network_input=None,
-                    network_output=None,
-                    extra_info={
-                        "example_id": example_id,
-                        "metrics_tags": batch["metrics_tags_batch"][i],
-                        "output_base_dir": output_base,
-                        "chain_of_interest": chain_of_interest,
-                    },
-                    ground_truth_atom_array=[generation_list[i]["input_atom_array"]],
-                    predicted_atom_array=[generation_list[i]["generated_atom_array"]],
-                    prediction_metadata=[prediction_metadata],
+                metrics_output = run_metrics_for_result(
+                    result=generation_list[i],
+                    batch=batch,
+                    batch_item_idx=orig_batch_idx,
+                    metric_manager=self.metrics,
+                    output_base_dir=output_base,
+                    example_id=example_id,
                 )
 
                 # Optionally save an aligned version of the predicted structure
@@ -773,7 +768,7 @@ class Proteina(L.LightningModule):
                     # Add input specification or CIF path
                     spec_batch = batch.get("specification_batch")
                     if spec_batch is not None:
-                        spec = spec_batch[i]
+                        spec = spec_batch[orig_batch_idx]
                         if "input_cif" in spec:
                             metrics_output["input_cif_path"] = str(spec["input_cif"])
                         else:
@@ -790,6 +785,7 @@ class Proteina(L.LightningModule):
                             metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
 
                     metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
+                    metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
                     # Store for epoch-end aggregation
                     self.validation_output_generation.append(metrics_output)
 
@@ -851,20 +847,6 @@ class Proteina(L.LightningModule):
 
         per_example_df = pd.DataFrame(all_example_metrics)
 
-        per_example_df["designed_structure_path"] = per_example_df.apply(
-            lambda row: str(
-                (
-                    Path(self.store_dir)
-                    / ("val_samples" if not self.is_inference else "inference_samples")
-                    / row["dataset_name"]
-                    / f"step_{self.global_step}"
-                    / "generated"
-                    / f"{row['example_id']}_generated.cif"
-                ).resolve()
-            ),
-            axis=1,
-        )
-
         # Reorder columns: example_id first, then metadata, then metrics
         cols = per_example_df.columns.tolist()
         priority = [
@@ -880,18 +862,9 @@ class Proteina(L.LightningModule):
         per_example_df = per_example_df[ordered_cols]
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
-        # To align with the rfd3 inference settings, we use a prefix in that case
-        if self.offline_validation:
-            if self.job_id is None:
-                raise ValueError("offline_validation=True requires job_id to be set")
-            output_prefix = ""
-            output_suffix = f"_job{self.job_id}"
-        elif self.is_inference:
-            if self.global_prefix is None:
-                output_prefix = ""
-            else:
-                output_prefix = self.global_prefix + "_"
-            output_suffix = ""
+        if self.is_inference:
+            output_prefix = "" if self.global_prefix is None else self.global_prefix + "_"
+            output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
         else:
             output_prefix = ""
             output_suffix = f"_step{self.global_step}"
@@ -956,7 +929,6 @@ class Proteina(L.LightningModule):
         nn_ag,
         store_dir=None,
         metrics_cfg=None,
-        offline_validation: bool = False,
         job_id: int | None = None,
         is_inference: bool = False,
         global_prefix: str | None = None,
@@ -969,10 +941,9 @@ class Proteina(L.LightningModule):
             nn_ag: Autoguidance neural network (or None).
             store_dir: Directory to store outputs.
             metrics_cfg: Metrics configuration.
-            offline_validation: Whether running in offline validation mode.
-            job_id: Job ID for offline validation (required when offline_validation=True).
-            is_inference: Whether running in inference mode.
-            global_prefix: Global prefix for inference outputs.
+            job_id: Job ID used to disambiguate per-job output files.
+            is_inference: Whether running in inference mode (via generate.py).
+            global_prefix: Global prefix for inference output filenames.
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
@@ -980,16 +951,9 @@ class Proteina(L.LightningModule):
         if store_dir is not None:
             self.store_dir = store_dir
 
-        if is_inference and offline_validation:
-            raise ValueError("is_inference and offline_validation cannot both be True.")
-
-        # Record inference type and configure relevant settings
         self.is_inference = is_inference
-        self.offline_validation = offline_validation
-        if self.offline_validation:
-            self.job_id = job_id
-        elif self.is_inference:
-            self.global_prefix = global_prefix
+        self.job_id = job_id
+        self.global_prefix = global_prefix
 
     def configure_search(self, search_strategy, search_reward_model=None):
         """Configure search strategy and reward model for reward-guided generation.
