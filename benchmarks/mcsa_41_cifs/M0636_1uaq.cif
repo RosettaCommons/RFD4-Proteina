@@ -1,0 +1,127 @@
+data_M0636_1uaq.cif
+#
+_entry.id       M0636_1uaq.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     20:49:17
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       ESC
+_entity_poly.pdbx_seq_one_letter_code_can   ESC
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n GLU 64
+1 n SER 89
+1 n CYS 91
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  GLU N  CA  SING N ?
+2  GLU CA C   SING N ?
+3  GLU CA CB  SING N ?
+4  GLU C  O   DOUB N ?
+5  GLU CB CG  SING N ?
+6  GLU CG CD  SING N ?
+7  GLU CD OE1 DOUB N ?
+8  GLU CD OE2 SING N ?
+9  SER N  CA  SING N ?
+10 SER CA C   SING N ?
+11 SER CA CB  SING N ?
+12 SER C  O   DOUB N ?
+13 SER CB OG  SING N ?
+14 CYS N  CA  SING N ?
+15 CYS CA C   SING N ?
+16 CYS CA CB  SING N ?
+17 CYS C  O   DOUB N ?
+18 CYS CB SG  SING N ?
+19 DUC N3 C2  SING N ?
+20 DUC N3 C4  SING N ?
+21 DUC C2 O2  DOUB N ?
+22 DUC C2 N1  SING N ?
+23 DUC N1 C6  SING N ?
+24 DUC C6 C5  SING N ?
+25 DUC C5 C4  SING N ?
+26 DUC C4 O4  DOUB N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . GLU A 1 64  . 64  GLU A N   418  13.98 1.0 ? -1.244 3.082  4.409  1
+ATOM   C  CA  . GLU A 1 64  . 64  GLU A CA  419  16.02 1.0 ? -2.555 2.447  4.664  1
+ATOM   C  C   . GLU A 1 64  . 64  GLU A C   420  16.73 1.0 ? -2.678 1.94   6.106  1
+ATOM   O  O   . GLU A 1 64  . 64  GLU A O   421  17.09 1.0 ? -3.741 2.015  6.751  1
+ATOM   C  CB  . GLU A 1 64  . 64  GLU A CB  422  15.47 1.0 ? -2.748 1.255  3.686  1
+ATOM   C  CG  . GLU A 1 64  . 64  GLU A CG  423  17.06 1.0 ? -2.687 1.646  2.176  1
+ATOM   C  CD  . GLU A 1 64  . 64  GLU A CD  424  15.03 1.0 ? -1.271 1.54   1.561  1
+ATOM   O  OE1 . GLU A 1 64  . 64  GLU A OE1 425  15.78 1.0 ? -0.395 2.307  1.981  1
+ATOM   O  OE2 . GLU A 1 64  . 64  GLU A OE2 426  17.88 1.0 ? -1.033 0.691  0.68   1
+ATOM   N  N   . SER A 1 89  . 89  SER A N   616  17.07 1.0 ? -0.687 2.276  -5.078 1
+ATOM   C  CA  . SER A 1 89  . 89  SER A CA  617  17.5  1.0 ? -1.251 0.933  -5.123 1
+ATOM   C  C   . SER A 1 89  . 89  SER A C   618  18.34 1.0 ? -0.666 0.172  -3.939 1
+ATOM   O  O   . SER A 1 89  . 89  SER A O   619  18.59 1.0 ? 0.535  0.252  -3.705 1
+ATOM   C  CB  . SER A 1 89  . 89  SER A CB  620  19.19 1.0 ? -0.903 0.285  -6.462 1
+ATOM   O  OG  . SER A 1 89  . 89  SER A OG  621  20.15 1.0 ? -1.699 -0.851 -6.692 1
+ATOM   N  N   . CYS A 1 91  . 91  CYS A N   629  17.94 1.0 ? 0.829  -2.454 -1.186 1
+ATOM   C  CA  . CYS A 1 91  . 91  CYS A CA  630  19.67 1.0 ? 1.749  -3.568 -1.159 1
+ATOM   C  C   . CYS A 1 91  . 91  CYS A C   631  18.48 1.0 ? 0.992  -4.815 -0.646 1
+ATOM   O  O   . CYS A 1 91  . 91  CYS A O   632  15.99 1.0 ? -0.205 -4.748 -0.293 1
+ATOM   C  CB  . CYS A 1 91  . 91  CYS A CB  633  18.16 1.0 ? 2.934  -3.248 -0.253 1
+ATOM   S  SG  . CYS A 1 91  . 91  CYS A SG  634  18.16 1.0 ? 2.583  -3.364 1.502  1
+HETATM ZN ZN  . ZN  B 2 200 . 200 ZN  B ZN  2357 17.83 1.0 ? 1.935  -1.22  2.205  1
+HETATM N  N3  . DUC B 3 300 . 300 DUC B N3  2358 17.39 1.0 ? 2.266  2.042  1.085  1
+HETATM C  C2  . DUC B 3 300 . 300 DUC B C2  2359 15.71 1.0 ? 3.416  2.528  1.65   1
+HETATM O  O2  . DUC B 3 300 . 300 DUC B O2  2360 17.25 1.0 ? 3.377  3.236  2.631  1
+HETATM N  N1  . DUC B 3 300 . 300 DUC B N1  2361 16.56 1.0 ? 4.603  1.982  1.171  1
+HETATM C  C6  . DUC B 3 300 . 300 DUC B C6  2362 16.71 1.0 ? 4.595  1.063  0.144  1
+HETATM C  C5  . DUC B 3 300 . 300 DUC B C5  2363 16.59 1.0 ? 3.454  0.632  -0.444 1
+HETATM C  C4  . DUC B 3 300 . 300 DUC B C4  2364 18.92 1.0 ? 2.172  1.068  0.064  1
+HETATM O  O4  . DUC B 3 300 . 300 DUC B O4  2365 15.56 1.0 ? 1.45   -0.073 0.562  1
+#
+_cell.length_a      47.113
+_cell.length_b      53.681
+_cell.length_c      68.076
+_cell.angle_alpha   90.0
+_cell.angle_beta    105.329994
+_cell.angle_gamma   90.0
+#

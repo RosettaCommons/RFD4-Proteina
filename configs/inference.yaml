@@ -39,6 +39,4 @@ hardware:
 ncpus_: 24  # Number of CPUs per task
 gen_njobs: 1  # Number of parallel generation jobs per config
 eval_njobs: 1  # Number of parallel evaluation jobs per config
-# Offline validation settings
-offline_validation: false  # Set to true when running via launch_offline_val.sh
-job_id: null  # Job ID for offline validation (required when offline_validation=true)
+job_id: null  # Set by launch_infer.sh; used to disambiguate per-job output files

@@ -19,12 +19,14 @@ Unlike standard beam search, we keep the clean samples generated during reward
 estimation if they meet success criteria, significantly improving total successes.
 """
 
+import copy
 from functools import partial
 from typing import Any
 
 import torch
 from foundry.utils.ddp import RankedLogger
 
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.utils.tensor_utils import concat_dict_tensors
 
@@ -168,19 +170,20 @@ class BeamSearchStrategy(SearchStrategy):
                 replica_x_1_pred = (
                     {key: value[start:end] for key, value in x_1_pred.items()} if x_1_pred is not None else None
                 )
+                ts_segment = {k: v[start_step:] for k, v in ts.items()}
+                gt_segment = {k: v[start_step:] for k, v in gt.items()}
 
                 # Generate n_branch branches from this replica
                 for _ in range(self.n_branch):
-                    # Run partial simulation for K steps
                     branch_xt, branch_x_1_pred, _ = model.fm.partial_simulation(
-                        batch=batch,
+                        batch=copy.deepcopy(batch),
                         x=replica_xt,
                         x_1_pred=replica_x_1_pred,
                         mask=init_mask,
                         predict_for_sampling=fn_predict_for_sampling,
                         nsteps= end_step - start_step,
-                        ts=ts,
-                        gt=gt,
+                        ts=ts_segment,
+                        gt=gt_segment,
                         self_cond=self_cond,
                         simulation_step_params=simulation_step_params,
                         device=model.device,
@@ -347,15 +350,19 @@ class BeamSearchStrategy(SearchStrategy):
                 sampling_model_args=model.inf_cfg.model,
             )
 
+            # Slice ts/gt to start from current_step so the model sees correct timestep values.
+            ts_sim_segment = {k: v[current_step:] for k, v in ts_sim.items()}
+            gt_sim_segment = {k: v[current_step:] for k, v in gt_sim.items()}
+
             batch_final_xt, _, _ = model.fm.partial_simulation(
-                batch=batch,
+                batch=copy.deepcopy(batch),
                 x=batch_xt,
                 x_1_pred=None,
                 mask=mask,
                 predict_for_sampling=partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0)),
                 nsteps = final_step - current_step,
-                ts=ts_sim,
-                gt=gt_sim,
+                ts=ts_sim_segment,
+                gt=gt_sim_segment,
                 self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params={
                     data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"]
@@ -430,16 +437,14 @@ class BeamSearchStrategy(SearchStrategy):
         # NOTE: Expects interleaved format [1,2,3,1,2,3]!!!
         atom_array_results = model.format_sample_prots_to_atom_arrays(sample_prots, model._current_batch, batch_idx=0)
 
+        batch = model._current_batch
+
         # Compute rewards for each atom array
         rewards = []
-        for result in atom_array_results:
-            atom_array = result["generated_atom_array"]
-            reward = reward_model.compute_reward(
-                predicted_atom_array=atom_array,
-                extra_info={
-                    "example_id": "sample",
-                },
-            )
+        for i, result in enumerate(atom_array_results):
+            orig_batch_idx = i % max(len(batch.get("atom_array_batch", [batch.get("atom_array")])), 1)
+            metrics_output = run_metrics_for_result(result, batch, orig_batch_idx, reward_model.metric_manager, output_base_dir=None)
+            reward = reward_model.aggregate_metrics_output(metrics_output)
             rewards.append(reward)
 
         # tear down all metrics
