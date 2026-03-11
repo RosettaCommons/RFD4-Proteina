@@ -29,10 +29,8 @@ from typing import Literal
 import numpy as np
 from biotite.structure import AtomArray
 
-from atomworks.ml.conditions import C_CRD
 from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
 
-from proteinfoundation.conditions import C_INTCRD
 
 # Extra fields to load for determining fixed residues
 MPNN_EXTRA_FIELDS = {

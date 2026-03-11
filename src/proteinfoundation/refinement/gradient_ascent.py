@@ -581,7 +581,9 @@ class GradientAscentRefinement(RefinementStrategy):
             atom_array = load_structure(pdb_filename)
 
             # Use standard non-differentiable compute (much faster)
-            total_reward = reward_model.compute_reward(predicted_atom_array=atom_array)
+            total_reward = reward_model.aggregate_metrics_output(
+                reward_model.metric_manager(predicted_atom_array=atom_array)
+            )
             rewards.append(total_reward)
 
             # Cleanup

@@ -52,6 +52,7 @@ class ContigJsonDataset(MolecularDataset):
         cif_parser_overrides: dict | None = None,
         subset_to_keys: list[str] | None = None,
         num_replicates: int = 1,
+        global_prefix: str | None = None,
     ):
         """
         Args:
@@ -62,6 +63,7 @@ class ContigJsonDataset(MolecularDataset):
             - evaluate_every_n: how many times should this dataset be evaluated?
             - cif_parser_overrides: overrides to the default CIF parsing arguments
             - num_replicates: number of times to repeat each example in the dataset
+            - global_prefix: optional global prefix for output example ids
         """
 
         if isinstance(data, (PathLike, str)):
@@ -86,6 +88,9 @@ class ContigJsonDataset(MolecularDataset):
         if subset_to_keys is not None:
             assert len(subset_to_keys) > 0, "subset_to_keys must be a non-empty list of keys."
             self._data = {k: v for k, v in self._data.items() if k in subset_to_keys}
+        
+        if exists(global_prefix):
+            self._data = {f"{global_prefix}_{k}": v for k, v in self._data.items()}
 
         self._check_json_keys()
 
@@ -270,6 +275,7 @@ class DesignProblemDataset(FileDataset):
         filter_fn: Callable[[PathLike], bool] | None = _default_design_file_filter,
         transform: Transform | None = None,
         num_replicates: int | None = None,
+        global_prefix: str | None = None,
         **kwargs,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
@@ -279,7 +285,7 @@ class DesignProblemDataset(FileDataset):
             dir_path_or_file_paths: Path to directory with CIF/JSON/YAML files, or list of file paths.
             filter_fn: Optional function to filter which files to include based on filename.
             transform: Optional transform to apply to loaded data.
-            name: Optional name for the dataset.
+            global_prefix: Optional global prefix for output example ids.
             subset_to_keys: Optional list of keys to subset the data to.
             num_replicates: Optional number of times to repeat each file in the dataset
         """
@@ -305,6 +311,7 @@ class DesignProblemDataset(FileDataset):
         )
         self.transform = transform
         self.kwargs = kwargs
+        self.global_prefix = global_prefix
 
         # Generate unique base_ids by taking section after last dash, or more if ambiguous
         def get_base_id_parts(path):
@@ -321,6 +328,8 @@ class DesignProblemDataset(FileDataset):
             candidate_ids = ["-".join(parts[-k:]) for parts in all_parts]
             if len(set(candidate_ids)) == len(candidate_ids):
                 break
+        if exists(self.global_prefix):
+            candidate_ids = [f"{self.global_prefix}_{cid}" for cid in candidate_ids]
         self.base_ids = candidate_ids
 
         # Allow for multiple replicates of the same validation example

@@ -44,7 +44,7 @@ python proteinfoundation/generate.py \
     inputs=my_binder.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ### 3. Evaluate and Filter
@@ -154,7 +154,7 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/complexa_paper_ppi.yaml \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Tips

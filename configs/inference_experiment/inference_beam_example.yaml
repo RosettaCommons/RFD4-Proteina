@@ -1,0 +1,70 @@
+# @package _global_
+#
+# Beam search inference example.
+# BeamSearchStrategy with RF3 reward on the monomer-short benchmark:
+#   - 400 diffusion steps, checkpointed at [0, 100, 200, 300, 400]
+#   - n_branch=2, beam_width=3
+#   - sc_scale_noise=0.1/0.1 (bb_ca/latents)
+#   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
+#
+# Usage:
+#   ./slurm_utils/launch_infer.sh coreweave --no-copy gen_njobs=2 \
+#       --config-name inference_experiment/inference_beam_example \
+#       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
+
+defaults:
+  - inference_like_rfd3
+  - _self_
+
+ckpt_path: ???
+ckpt_name: ???
+
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer.json
+subset_to_examples: monomer-short
+
+num_replicates: 2
+batch_size: 1
+global_prefix: beam_example
+
+out_dir: outputs/beam_example
+run_name_: beam_example
+
+metrics_tags: unconditional_refolding
+
+search:
+  strategy:
+    _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
+    step_checkpoints: [0, 100, 200, 300, 400]
+    n_branch: 2
+    beam_width: 3
+    keep_intermediate_samples: false
+
+  rewards:
+    metrics:
+      rf3:
+        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+        ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+        num_steps: 50
+        n_recycles: 5
+
+    weights:
+      rf3.plddt: 1.0
+
+    differentiable: false
+
+generation:
+  args:
+    nsteps: 400
+    self_cond: true
+    guidance_w: 1.0
+  model:
+    bb_ca:
+      simulation_step_params:
+        sc_scale_noise: 0.1
+    local_latents:
+      simulation_step_params:
+        sc_scale_noise: 0.1
+
+num_workers: 4

@@ -17,9 +17,16 @@ ckpt_path: ???
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
-nsamples: 8 # Number of samples to generate
+num_replicates: 1 # Number of times to replicate each example
 batch_size: 1
+subset_to_examples: null # If specified, only run inference on these example indices
 seed: null # Will set a random seed if null
+skip_existing: false # If true, skip examples whose output structure files already exist in the output directory
+metrics_tags: [] # If specified, determines which metrics are computed during inference
+
+# MSA module: override to true in experiment configs that set load_msa per-dataset
+nn:
+  use_msa_module: false
 
 num_workers: 4  # Number of dataloader workers
 
@@ -32,6 +39,4 @@ hardware:
 ncpus_: 24  # Number of CPUs per task
 gen_njobs: 1  # Number of parallel generation jobs per config
 eval_njobs: 1  # Number of parallel evaluation jobs per config
-# Offline validation settings
-offline_validation: false  # Set to true when running via launch_offline_val.sh
-job_id: null  # Job ID for offline validation (required when offline_validation=true)
+job_id: null  # Set by launch_infer.sh; used to disambiguate per-job output files

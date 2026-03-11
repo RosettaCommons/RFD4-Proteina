@@ -8,7 +8,6 @@
                 "A16-35",
                 "A52-71"
             ],
-        "select_fixed_atoms": true,
         "length": "60-105"
     },
     "1BCF_AA": {
@@ -22,7 +21,6 @@
                 "A47-54",
                 "A18-25"
             ],
-        "select_fixed_atoms": true,
         "length": "96-152"
     },
     "5IUS_AA": {
@@ -34,7 +32,6 @@
                 "A119-140",
                 "A63-82"
             ],
-        "select_fixed_atoms": true,
         "length": "57-142"
     },
     "5YUI_AA": {
@@ -47,7 +44,6 @@
                 "A118-120",
                 "A198-200"
             ],
-        "select_fixed_atoms": true,
         "length": "41-126"
     },
     "4JHW_AA": {
@@ -59,7 +55,6 @@
                 "F196-212",
                 "F63-69"
             ],
-        "select_fixed_atoms": true,
         "length": "59-104"
     },
     "6VW1_AA": {
@@ -71,7 +66,6 @@
                 "A24-42",
                 "A64-82"
             ],
-        "select_fixed_atoms": true,
         "length": "51-78"
     },
     "1QJG_AA": {
@@ -84,7 +78,6 @@
                 "A14",
                 "A99"
             ],
-        "select_fixed_atoms": true,
         "length": "53-103"
     },
     "1QJG_AA_NATIVE": {
@@ -97,7 +90,6 @@
                 "A38",
                 "A99"
             ],
-        "select_fixed_atoms": true,
         "length": "63-143"
     },
     "2KL8_AA": {
@@ -109,7 +101,6 @@
                 "A1-7",
                 "A28-79"
             ],
-        "select_fixed_atoms": true,
         "length": "79-79"
     }
 }
