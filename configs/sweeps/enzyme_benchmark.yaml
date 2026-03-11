@@ -11,7 +11,7 @@ base_config: inference
 
 base_config_overrides:
   - inference_experiment=inference_like_rfd3
-  - nsamples=200
+  - num_replicates=200
 
 output_dir: ./configs/sweep_configs/enzyme_benchmark
 run_name_prefix: enzyme_bench

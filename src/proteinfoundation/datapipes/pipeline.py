@@ -1290,7 +1290,7 @@ def _build_design_featurize_pipeline(
     residue_names_to_encode: list | set,
     metrics_tags: list[str] | set[str] | None = None,
     graph_laplacian_use_bond_order: bool = True,
-    load_msa: bool = True,
+    load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
@@ -1415,6 +1415,7 @@ def _build_design_featurize_pipeline(
         "task",
         "metrics_tags",
         "num_tokens",
+        "specification",
     ]
 
     T += SubsetToKeys(keys_to_keep)
@@ -1424,7 +1425,7 @@ def _build_design_featurize_pipeline(
 
 def _build_design_validation_pipeline(
     # MSA parameters
-    load_msa: bool = True,
+    load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     **kwargs,  # to dump remaining args for now
 ) -> list[Transform]:
@@ -1475,7 +1476,7 @@ def build_design_train_pipeline(
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
     graph_laplacian_use_bond_order: bool = True,
     # MSA parameters
-    load_msa: bool = True,
+    load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
@@ -1548,7 +1549,7 @@ def build_design_validation_pipeline(
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
     graph_laplacian_use_bond_order: bool = True,
     # MSA parameters
-    load_msa: bool = True,
+    load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,

@@ -144,6 +144,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
     def corrupt_batch(
         self,
         batch: dict,
+        t: dict[torch.Tensor] | None = None,
     ) -> dict:
         """
         Runs forward process on x_1. Essentially samples reference and
@@ -155,6 +156,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
 
         Args:
             batch: data batch
+            t: t value to use for corruption. If None, will sample using `self.sample_t`.
 
         Returns:
             The same data batch with additional entries t, x_t, x_1, x_0, all of which are
@@ -162,7 +164,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         """
 
         x_1, padding_mask, batch_shape, n, dtype, device = self.process_batch(batch)
-        t = self.sample_t(shape=batch_shape, device=device)
+        if t is None:
+            t = self.sample_t(shape=batch_shape, device=device)
         x_0 = self.sample_noise(n=n, shape=batch_shape, mask=padding_mask, device=device, training=True)
         x_t = self.interpolate(x_0=x_0, x_1=x_1, t=t, mask=padding_mask)
         batch["x_0"] = x_0
@@ -684,8 +687,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         x_1_pred: dict[str, Tensor] | None,
         mask: Bool[Tensor, "nsamples n"],
         predict_for_sampling: Callable,
-        start_step: int,
-        end_step: int,
+        nsteps: int,
         ts: dict[str, Tensor],
         gt: dict[str, Tensor],
         self_cond: bool,
@@ -694,7 +696,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         guidance_w: float = 1.0,
         ag_ratio: float = 0.0,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
-        """Run partial diffusion simulation from start_step to end_step.
+        """Run partial diffusion simulation for nsteps.
 
         Used by beam search to evaluate partial trajectories at intermediate checkpoints.
 
@@ -704,8 +706,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x_1_pred: Previous clean prediction (for self-conditioning), can be None
             mask: Valid residue mask [nsamples, n]
             predict_for_sampling: Prediction function that takes batch and mode
-            start_step: Starting diffusion step index (inclusive)
-            end_step: Ending diffusion step index (exclusive)
+            nsteps: Number of steps to take in the partial simulation
             ts: Time schedules per modality, dict of tensors [nsteps+1]
             gt: Noise injection schedules per modality, dict of tensors [nsteps]
             self_cond: Whether to use self-conditioning
@@ -724,7 +725,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
 
         with torch.no_grad():
-            for step in range(start_step, end_step):
+            for step in range(nsteps):
                 t = {
                     data_mode: ts[data_mode][step] * torch.ones(nsamples, device=device)
                     for data_mode in self.data_modes

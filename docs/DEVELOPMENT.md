@@ -365,7 +365,7 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_
 
 ## SLURM Job Launching
 
-The `slurm_utils/` directory provides a unified system for launching jobs across multiple clusters with different containerization backends.
+The `slurm_utils/` directory provides a unified system for launching jobs across multiple clusters with different containerization backends. See the [main README Cluster Launching section](../README.md#cluster-launching-slurm) for user-facing examples.
 
 ### Multi-Cluster Architecture
 
@@ -380,37 +380,24 @@ The `slurm_utils/` directory provides a unified system for launching jobs across
 |----------|--------|-------------|
 | Train latent diffusion | `launch_train_latents.sh` | Multi-node distributed training |
 | Train autoencoder | `launch_train_ae.sh` | Autoencoder training |
-| Inference (generation) | `launch_infer.sh` | Parallel generation with job arrays |
+| Inference / validation | `launch_infer.sh` | Parallel generation with job arrays; also used for offline validation |
+| Parameter sweeps | `launch_sweep.sh` | Generates one config per parameter combo and submits via `launch_infer.sh` |
 | Autoencoder inference | `launch_infer_ae.sh` | Autoencoder latent extraction |
-| Search (beam/best-of-N) | `launch_search.sh` | Parallel search with job arrays |
-| Offline validation | `launch_offline_val.sh` | Parallel validation with job arrays |
 
-**Common options:**
+**`launch_infer.sh` options:**
 
 | Option | Description |
 |--------|-------------|
-| `--no-copy` | Skip code copying (use existing code on cluster) |
-| `--follow` | Tail the log file after submission |
-| `--submissions N` | Submit N jobs with `--dependency=singleton` for auto-requeue |
-| `--gpus-per-job N` | (Inference/search only) GPUs per array task |
+| `--njobs N` | Number of parallel generation jobs (overrides `gen_njobs` from config) |
+| `--gpus-per-job N` | GPUs per SLURM array task (default: 1) |
+| `--config-name NAME` | Hydra config name (default: `inference`); use for sweep sub-configs |
+| `--no-copy` | Skip code rsync — use existing code on cluster |
+| `--follow` / `-f` | Tail the log file after submission |
+| `--no-concatenate` | Skip the automatic post-generation CSV concatenation job |
+| `--foldseek` | Enable Foldseek structural clustering in the concatenation job |
+| `--overwrite-rundir` | Allow overwriting an existing code directory |
 
-### Basic Usage
-
-Run scripts from the `projects/proteinfoundation/` directory on cluster:
-
-```bash
-# Training with code sync and auto-requeue
-bash slurm_utils/launch_train_latents.sh digs --submissions 2
-
-# Training without code sync
-bash slurm_utils/launch_train_latents.sh digs --no-copy
-
-# Inference with extra Hydra args
-bash slurm_utils/launch_infer.sh digs "nsamples=100"
-
-# Search with extra args
-bash slurm_utils/launch_search.sh digs "search.strategy.beam_width=8"
-```
+Any remaining arguments are passed directly to `generate.py` as Hydra overrides.
 
 ### Cluster Configuration
 
@@ -445,32 +432,72 @@ GPUS_PER_NODE_CLUSTER=8
 EXTRA_CONTAINER_MOUNTS="/data:/data:ro"
 ```
 
-### Parallel Jobs with SLURM Arrays
+### Inference
 
-For large inference/evaluation runs, the scripts automatically use SLURM job arrays:
+Run from `projects/proteinfoundation/` on the cluster:
 
-```yaml
-# configs/inference.yaml
-gen_njobs: 10   # 10 parallel generation jobs
-eval_njobs: 4   # 4 parallel evaluation jobs
-nsamples: 1000  # Total samples (split across gen_njobs)
+```bash
+# 4 replicates over benchmark inputs, split across 2 parallel jobs
+./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+    inference_experiment=inference_like_rfd3 \
+    inputs=/path/to/benchmarks/monomer.json \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
+```
+
+After all generation jobs finish, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file under `<run_dir>/inference_metrics/`. Pass `--foldseek` to additionally cluster outputs structurally.
+
+### Offline Validation
+
+Offline validation uses the same `launch_infer.sh` script with `inference_experiment=inference_on_val_set` and a `+datasets/val@generation=<dataset>` override that selects the validation dataset:
+
+```bash
+# Validate on the MCSA subset
+./slurm_utils/launch_infer.sh digs --njobs 8 \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    inference_experiment=inference_on_val_set \
+    +datasets/val@generation=mcsa_subset \
+    run_name_=my_run_mcsa_val out_dir=/path/to/outputs
+
+# With Foldseek structural clustering on results
+./slurm_utils/launch_infer.sh digs --njobs 8 --foldseek \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    inference_experiment=inference_on_val_set \
+    +datasets/val@generation=mcsa_subset \
+    run_name_=my_run_mcsa_val out_dir=/path/to/outputs
+```
+
+Available val dataset configs live in `configs/datasets/val/`. The `inference_on_val_set` experiment config drives the generation from the val dataset (rather than an `inputs` file) and loads all metrics.
+
+To sweep for offline validation, use a sweep config as detailed in the main README.
 ```
 
 ### Parameter Sweeps
 
+`launch_sweep.sh` generates one Hydra config per parameter combination and submits each via `launch_infer.sh`:
+
 ```bash
-# Step 1: Create sweep configuration in configs/inference.yaml
-# Step 2: Generate individual configs
-python script_utils/generate_inference_configs.py
-# Step 3: Launch sweep
-bash slurm_utils/launch_infer.sh digs
+# Sweep nsteps x noise scale
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
+    --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
+
+# Preview configs without submitting
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 ```
 
-### Dataset Squashfs Mounting
+See `configs/sweeps/` for available sweep configs.
+
+### Training
 
 ```bash
-# In .user_info_<cluster>
-DATASET_SQUASH_MOUNTS="/data/pdb.sqsh:/mnt/pdb;/data/afdb.sqsh:/mnt/afdb"
+# With code sync and auto-requeue
+bash slurm_utils/launch_train_latents.sh digs --submissions 2
+
+# Without code sync
+bash slurm_utils/launch_train_latents.sh digs --no-copy
 ```
 
 ### What the Launch Scripts Do
@@ -478,7 +505,7 @@ DATASET_SQUASH_MOUNTS="/data/pdb.sqsh:/mnt/pdb;/data/afdb.sqsh:/mnt/afdb"
 1. **Copy code** (default, skip with `--no-copy`): `rsync` selective directories to `$ROOT_REMOTE/<run_name>/`
 2. **Resolve Hydra config**: Reads `run_name_`, `nnodes_`, `ngpus_per_node_` from config
 3. **Build and submit sbatch script**: Generates appropriate container commands
-4. **Follow logs** (optional with `--follow`): Tails the slurm.err log file
+4. **Concatenation job** (inference/val only): Dependent job merges per-task CSVs into `inference_metrics/`
 
 ### Output Structure
 
@@ -493,18 +520,8 @@ $ROOT_REMOTE/<run_name>/
 ├── inference/
 │   ├── sample_0_job_0.cif
 │   └── ...
-└── results/
-    ├── results_inf_0_0.csv
-    └── ...
-```
-
-### Result Analysis
-
-```bash
-python proteinfoundation/result_analysis/analysis.py \
-    --results_dir /path/to/run/results \
-    --success_dir ./successes \
-    --output ./summary.csv
+└── inference_metrics/
+    └── results_concatenated.csv
 ```
 
 ### Adding a New Cluster

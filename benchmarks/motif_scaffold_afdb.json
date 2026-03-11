@@ -1,7 +1,7 @@
 {
     "M0630_1j79_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0630_1j79.pdb",
+        "input": "mcsa_41_cifs/M0630_1j79.cif",
         "unindex": "A250",
         "length": "180-180",
         "select_fixed_atoms": {
@@ -10,7 +10,7 @@
     },
     "M0555_1f8r_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0555_1f8r.pdb",
+        "input": "mcsa_41_cifs/M0555_1f8r.cif",
         "unindex": "A223,A326",
         "length": "180-180",
         "select_fixed_atoms": {
@@ -20,7 +20,7 @@
     },
     "M0157_1qh5_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0157_1qh5.pdb",
+        "input": "mcsa_41_cifs/M0157_1qh5.cif",
         "unindex": "A54,A56,A58,A59,A110,A134,A173",
         "length": "180-180",
         "select_fixed_atoms": {
@@ -35,7 +35,7 @@
     },
     "M0058_1cju_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0058_1cju.pdb",
+        "input": "mcsa_41_cifs/M0058_1cju.cif",
         "unindex": "A396,A397,A440,B1029,B1065",
         "length": "180-180",
         "select_fixed_atoms": {
@@ -48,7 +48,7 @@
     },
     "M0907_1rbl_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0907_1rbl.pdb",
+        "input": "mcsa_41_cifs/M0907_1rbl.cif",
         "unindex": "A175,A201,A203,A204,A294,A334",
         "length": "180-180",
         "select_fixed_atoms": {
@@ -62,7 +62,7 @@
     },
     "M0711_2esd_motif": {
         "dialect": 2,
-        "input": "mcsa_41/M0711_2esd.pdb",
+        "input": "mcsa_41_cifs/M0711_2esd.cif",
         "unindex": "A154,A250,A284",
         "length": "180-180",
         "select_fixed_atoms": {

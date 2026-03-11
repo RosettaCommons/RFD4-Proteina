@@ -716,6 +716,7 @@ def process_unindexed_outputs(
     # Track which indices have been mapped to unindexed regions and their remapped coordinates
     mapped_to_coordinate_conditioned_region = np.zeros(model_generated_atom_array.array_length(), dtype=bool)
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
+    src_coordinate_conditioned_region = np.full(model_generated_atom_array.array_length(), ".", dtype="<U10")
 
     # If we cannot find a valid insertion mapping, fall back to simply removing the unindexed region
     try:
@@ -729,6 +730,7 @@ def process_unindexed_outputs(
             f"No mapping will be reported and the unindexed region will not be reinserted."
         )
         model_generated_atom_array.set_annotation("mapped_to_coordinate_conditioned_region", mapped_to_coordinate_conditioned_region)
+        model_generated_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
         return model_generated_atom_array, {}
 
     old_to_new_atom_index_map = {}
@@ -777,6 +779,7 @@ def process_unindexed_outputs(
 
             # Record that these indices have been mapped to unindexed regions
             mapped_to_coordinate_conditioned_region[permuted_target_indices_generated] = True
+            src_coordinate_conditioned_region[permuted_target_indices_generated] = token_src_id
 
             # We'll need this later if doing 2d conditioning
             if has_distance_conditioning.any():
@@ -828,8 +831,8 @@ def process_unindexed_outputs(
                 remapped_coord[permuted_target_indices_generated] = unindexed_token.coord
 
     # Add an annotation to indicate which residues mapped to unindexed regions, whether inserting or not
-    # NOTE: This annotation should be used by other mapping methods as well, e.g. model-predicted mappings
     model_generated_atom_array.set_annotation("mapped_to_coordinate_conditioned_region", mapped_to_coordinate_conditioned_region)
+    model_generated_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
 
     # Validate remapped coordinates, then add as an annotation
     if has_3d_conditioning.any() and mapped_to_coordinate_conditioned_region.any():

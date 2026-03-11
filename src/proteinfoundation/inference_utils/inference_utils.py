@@ -27,7 +27,7 @@ from biotite.structure import AtomArray
 from foundry.common import exists
 from foundry.utils.ddp import RankedLogger
 
-from proteinfoundation.conditions import C_HOT
+from proteinfoundation.conditions import C_HOT, C_INTCRD
 from proteinfoundation.inference_utils.components import (
     fetch_mask_from_component,
     get_name_mask,
@@ -41,6 +41,48 @@ sequence_encoding = AF3SequenceEncoding()
 _aa_like_res_names = sequence_encoding.all_res_names[sequence_encoding.is_aa_like]
 
 
+
+#########################################
+######### CONSTANTS #####################
+#########################################
+BACKBONE_ATOM_NAMES_DNA = [
+    "P",
+    "OP1",
+    "OP2",
+    "O5'",
+    "C5'",
+    "C4'",
+    "O4'",
+    "C3'",
+    "O3'",
+    "C2'",
+    "C1'",
+]
+
+BACKBONE_ATOM_NAMES_RNA = [
+    "P",
+    "OP1",
+    "OP2",
+    "O5'",
+    "C5'",
+    "C4'",
+    "O4'",
+    "C3'",
+    "O3'",
+    "C2'",
+    "O2'",
+    "C1'",
+]
+"""RNA backbone atom names"""
+
+BACKBONE_ATOM_ELEMENTS_RNA = np.array(
+    ["P", "O", "O", "O", "C", "C", "O", "C", "O", "C", "O", "C"]
+)
+"""RNA backbone atom elements"""
+
+NA_BACKBONE_ATOM_NAME_TO_ELEMENT = dict(zip(BACKBONE_ATOM_NAMES_RNA, BACKBONE_ATOM_ELEMENTS_RNA))
+"""Atom name to element mapping for NA backbone atoms"""
+
 #########################################
 ######### HACKS TO BE REMOVED ###########
 #########################################
@@ -49,8 +91,8 @@ _aa_like_res_names = sequence_encoding.all_res_names[sequence_encoding.is_aa_lik
 # way to quickly get signal.
 
 REQUIRED_CONDITIONING_ANNOTATION_VALUES = {
-    "is_motif_atom_with_fixed_seq": True,
-    "is_motif_atom_with_fixed_coord": True,
+    "is_motif_atom_with_fixed_seq": False,
+    "is_motif_atom_with_fixed_coord": False,
     "is_motif_atom_unindexed": False,
     "is_motif_atom_unindexed_motif_breakpoint": False,
 }
@@ -68,7 +110,8 @@ OPTIONAL_CONDITIONING_VALUES = {
     "rasa_bin": 3,  # NOTE: We are completely insulated against this choice in the adapter
     "ref_plddt": 0,
     "is_non_loopy": 0,
-    "partial_t": np.nan,
+    "partial_t_backbone": np.nan,
+    "partial_t_latent": np.nan,
     "has_2d_condition": 0,
 }
 """Optional conditioning annotations and their default values if not provided."""
@@ -201,10 +244,10 @@ def set_common_annotations(array: AtomArray, set_src_component_to_res_name: bool
         if set_src_component_to_res_name:
             array.set_annotation(
                 "src_component",
-                np.full(array.shape[0], array.res_name.copy(), dtype=array.res_name.dtype),
+                np.full(array.shape[0], array.res_name.copy(), dtype="<U10"),
             )
         else:
-            array.set_annotation("src_component", np.full(array.shape[0], "", dtype=array.res_name.dtype))
+            array.set_annotation("src_component", np.full(array.shape[0], ".", dtype="<U10"))
     return array
 
 
@@ -213,7 +256,7 @@ def set_indices(array: AtomArray, chain: str, res_id_start: int, molecule_id: in
     array.chain_id = np.full(n, chain, dtype=array.chain_id.dtype)
     array.res_id = np.full(n, res_id_start + array.res_id - 1, dtype=array.res_id.dtype)
     array.molecule_id = np.full(n, molecule_id, dtype=np.int32)
-    array.set_annotation("src_component", np.full(n, component, dtype=array.chain_id.dtype))
+    array.set_annotation("src_component", np.full(n, component, dtype="<U10"))
     return array
 
 
@@ -568,7 +611,7 @@ def get_motif_features(atom_array: AtomArray) -> dict[str, np.ndarray]:
     is_unindexed = atom_array.is_motif_atom_unindexed.astype(bool)
 
     # Motif atom if has any conditioning
-    is_motif_atom = is_fixed | is_sequence_fixed | is_unindexed
+    is_motif_atom = is_fixed | is_sequence_fixed | is_unindexed | C_INTCRD.mask(atom_array)
     is_motif_token = apply_and_spread_token_wise(
         atom_array, is_motif_atom, function=lambda x: np.any(x)
     )  # Has any atoms with conditioning

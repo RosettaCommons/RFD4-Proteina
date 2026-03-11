@@ -32,7 +32,7 @@ python proteinfoundation/generate.py \
     inputs=my_generation.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Examples
@@ -100,21 +100,21 @@ python proteinfoundation/generate.py \
     inputs=benchmarks/monomer.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 
 # Helical monomers
 python proteinfoundation/generate.py \
     inputs=benchmarks/monomer_helical.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 
 # Ig-fold monomers
 python proteinfoundation/generate.py \
     inputs=benchmarks/monomer_ig.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
-    nsamples=100
+    num_replicates=100
 ```
 
 ## Evaluation

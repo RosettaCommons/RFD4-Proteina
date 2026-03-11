@@ -19,7 +19,7 @@ PDB_ID: ???
 # Use the unconditional benchmark JSON directly
 inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/hard_motif_scaffold_targets/${PDB_ID}.json
 
-nsamples: 100  # Number of input problems
+num_replicates: 100  # Number of times to replicate each example
 batch_size: 20
 
 gen_njobs: 1

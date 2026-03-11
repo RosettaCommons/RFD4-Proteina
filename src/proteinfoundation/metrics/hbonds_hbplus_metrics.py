@@ -6,7 +6,7 @@ from biotite.structure import AtomArrayStack
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
 
-from proteinfoundation.conditions import C_HB, HBondEnum
+from proteinfoundation.conditions import C_HB, HBondEnum, C_INTCRD
 from proteinfoundation.transforms.design_task_modifiers import (
     calculate_hbonds,
 )
@@ -36,8 +36,9 @@ def calculate_hbond_stats(
 
         seq_mask = C_SEQ.mask(output_atom_array, default="generate")
         crd_mask = C_CRD.mask(output_atom_array, default="generate")
+        intcrd_mask = C_INTCRD.mask(output_atom_array, default="generate")
         dis_mask = C_DIS.mask(output_atom_array, default="generate").as_dense_array(False).any(axis=0)
-        motif_mask = seq_mask | crd_mask | dis_mask
+        motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
 
         # Calculate hydrogen bonds
         (

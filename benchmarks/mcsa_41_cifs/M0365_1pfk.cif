@@ -1,0 +1,246 @@
+data_M0365_1pfk.cif
+#
+_entry.id       M0365_1pfk.cif
+_entry.author   rib7
+_entry.date     2026-03-08
+_entry.time     20:49:15
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       GRTDDR
+_entity_poly.pdbx_seq_one_letter_code_can   GRTDDR
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n GLY 11
+1 n ARG 72
+1 n THR 125
+1 n ASP 127
+1 n ASP 129
+1 n ARG 171
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  GLY N     CA    SING N ?
+2  GLY CA    C     SING N ?
+3  GLY C     O     DOUB N ?
+4  ARG N     CA    SING N ?
+5  ARG CA    C     SING N ?
+6  ARG CA    CB    SING N ?
+7  ARG C     O     DOUB N ?
+8  ARG CB    CG    SING N ?
+9  ARG CG    CD    SING N ?
+10 ARG CD    NE    SING N ?
+11 ARG NE    CZ    SING N ?
+12 ARG CZ    NH1   SING N ?
+13 ARG CZ    NH2   DOUB N ?
+14 THR N     CA    SING N ?
+15 THR CA    C     SING N ?
+16 THR CA    CB    SING N ?
+17 THR C     O     DOUB N ?
+18 THR CB    OG1   SING N ?
+19 THR CB    CG2   SING N ?
+20 ASP N     CA    SING N ?
+21 ASP CA    C     SING N ?
+22 ASP CA    CB    SING N ?
+23 ASP C     O     DOUB N ?
+24 ASP CB    CG    SING N ?
+25 ASP CG    OD1   DOUB N ?
+26 ASP CG    OD2   SING N ?
+27 FBP P1    O1P   DOUB N ?
+28 FBP P1    O2P   SING N ?
+29 FBP P1    O3P   SING N ?
+30 FBP P1    O1    SING N ?
+31 FBP O1    C1    SING N ?
+32 FBP C1    C2    SING N ?
+33 FBP C2    O2    SING N ?
+34 FBP C2    C3    SING N ?
+35 FBP C2    O5    SING N ?
+36 FBP C3    O3    SING N ?
+37 FBP C3    C4    SING N ?
+38 FBP C4    O4    SING N ?
+39 FBP C4    C5    SING N ?
+40 FBP C5    O5    SING N ?
+41 FBP C5    C6    SING N ?
+42 FBP C6    O6    SING N ?
+43 FBP O6    P2    SING N ?
+44 FBP P2    O4P   DOUB N ?
+45 FBP P2    O5P   SING N ?
+46 FBP P2    O6P   SING N ?
+47 ADP PB    O1B   DOUB N ?
+48 ADP PB    O2B   SING N ?
+49 ADP PB    O3B   SING N ?
+50 ADP PB    O3A   SING N ?
+51 ADP PA    O1A   DOUB N ?
+52 ADP PA    O2A   SING N ?
+53 ADP PA    O3A   SING N ?
+54 ADP PA    "O5'" SING N ?
+55 ADP "O5'" "C5'" SING N ?
+56 ADP "C5'" "C4'" SING N ?
+57 ADP "C4'" "O4'" SING N ?
+58 ADP "C4'" "C3'" SING N ?
+59 ADP "O4'" "C1'" SING N ?
+60 ADP "C3'" "O3'" SING N ?
+61 ADP "C3'" "C2'" SING N ?
+62 ADP "C2'" "O2'" SING N ?
+63 ADP "C2'" "C1'" SING N ?
+64 ADP "C1'" N9    SING N ?
+65 ADP N9    C8    SING Y ?
+66 ADP N9    C4    SING Y ?
+67 ADP C8    N7    DOUB Y ?
+68 ADP N7    C5    SING Y ?
+69 ADP C5    C6    SING Y ?
+70 ADP C5    C4    DOUB Y ?
+71 ADP C6    N6    SING N ?
+72 ADP C6    N1    DOUB Y ?
+73 ADP N1    C2    SING Y ?
+74 ADP C2    N3    DOUB Y ?
+75 ADP N3    C4    SING Y ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N     . GLY A 1 11  . 11  GLY A N     79   22.35 1.0 ? -0.897 -2.434 3.97   1
+ATOM   C  CA    . GLY A 1 11  . 11  GLY A CA    80   21.08 1.0 ? -1.708 -3.325 3.124  1
+ATOM   C  C     . GLY A 1 11  . 11  GLY A C     81   22.94 1.0 ? -1.127 -4.733 3.141  1
+ATOM   O  O     . GLY A 1 11  . 11  GLY A O     82   23.47 1.0 ? 0.075  -4.93  2.89   1
+ATOM   N  N     . ARG A 1 72  . 72  ARG A N     534  51.02 1.0 ? -3.967 0.1    9.565  1
+ATOM   C  CA    . ARG A 1 72  . 72  ARG A CA    535  50.16 1.0 ? -3.618 1.429  9.024  1
+ATOM   C  C     . ARG A 1 72  . 72  ARG A C     536  49.81 1.0 ? -3.961 2.331  10.22  1
+ATOM   O  O     . ARG A 1 72  . 72  ARG A O     537  50.54 1.0 ? -5.149 2.612  10.42  1
+ATOM   C  CB    . ARG A 1 72  . 72  ARG A CB    538  49.12 1.0 ? -4.333 1.792  7.74   1
+ATOM   C  CG    . ARG A 1 72  . 72  ARG A CG    539  48.81 1.0 ? -4.079 0.887  6.541  1
+ATOM   C  CD    . ARG A 1 72  . 72  ARG A CD    540  48.92 1.0 ? -4.358 1.58   5.251  1
+ATOM   N  NE    . ARG A 1 72  . 72  ARG A NE    541  50.21 1.0 ? -4.246 0.752  4.082  1
+ATOM   C  CZ    . ARG A 1 72  . 72  ARG A CZ    542  49.76 1.0 ? -3.275 0.431  3.231  1
+ATOM   N  NH1   . ARG A 1 72  . 72  ARG A NH1   543  48.99 1.0 ? -2.028 0.904  3.319  1
+ATOM   N  NH2   . ARG A 1 72  . 72  ARG A NH2   544  46.27 1.0 ? -3.535 -0.416 2.219  1
+ATOM   N  N     . THR A 1 125 . 125 THR A N     937  17.65 1.0 ? 4.533  -5.62  0.295  1
+ATOM   C  CA    . THR A 1 125 . 125 THR A CA    938  12.83 1.0 ? 3.461  -4.895 -0.396 1
+ATOM   C  C     . THR A 1 125 . 125 THR A C     939  13.02 1.0 ? 3.279  -5.389 -1.823 1
+ATOM   O  O     . THR A 1 125 . 125 THR A O     940  11.24 1.0 ? 4.296  -5.592 -2.522 1
+ATOM   C  CB    . THR A 1 125 . 125 THR A CB    941  12.87 1.0 ? 3.8    -3.35  -0.455 1
+ATOM   O  OG1   . THR A 1 125 . 125 THR A OG1   942  13.29 1.0 ? 2.641  -2.729 -1.113 1
+ATOM   C  CG2   . THR A 1 125 . 125 THR A CG2   943  9.66  1.0 ? 5.099  -3.042 -1.209 1
+ATOM   N  N     . ASP A 1 127 . 127 ASP A N     952  26.27 1.0 ? 2.327  -3.656 -4.391 1
+ATOM   C  CA    . ASP A 1 127 . 127 ASP A CA    953  27.22 1.0 ? 2.656  -2.505 -5.224 1
+ATOM   C  C     . ASP A 1 127 . 127 ASP A C     954  27.24 1.0 ? 4.02   -2.405 -5.896 1
+ATOM   O  O     . ASP A 1 127 . 127 ASP A O     955  25.9  1.0 ? 4.067  -1.86  -7.027 1
+ATOM   C  CB    . ASP A 1 127 . 127 ASP A CB    956  29.75 1.0 ? 2.349  -1.223 -4.428 1
+ATOM   C  CG    . ASP A 1 127 . 127 ASP A CG    957  31.19 1.0 ? 0.874  -0.962 -4.191 1
+ATOM   O  OD1   . ASP A 1 127 . 127 ASP A OD1   958  30.31 1.0 ? -0.041 -1.524 -4.814 1
+ATOM   O  OD2   . ASP A 1 127 . 127 ASP A OD2   959  32.68 1.0 ? 0.645  -0.111 -3.297 1
+ATOM   N  N     . ASP A 1 129 . 129 ASP A N     968  36.53 1.0 ? 6.554  -0.582 -4.86  1
+ATOM   C  CA    . ASP A 1 129 . 129 ASP A CA    969  38.87 1.0 ? 6.965  0.816  -4.719 1
+ATOM   C  C     . ASP A 1 129 . 129 ASP A C     970  38.24 1.0 ? 7.995  1.192  -3.672 1
+ATOM   O  O     . ASP A 1 129 . 129 ASP A O     971  39.04 1.0 ? 8.135  2.411  -3.43  1
+ATOM   C  CB    . ASP A 1 129 . 129 ASP A CB    972  40.6  1.0 ? 5.683  1.668  -4.608 1
+ATOM   C  CG    . ASP A 1 129 . 129 ASP A CG    973  41.15 1.0 ? 4.904  1.417  -3.335 1
+ATOM   O  OD1   . ASP A 1 129 . 129 ASP A OD1   974  42.47 1.0 ? 5.34   0.597  -2.512 1
+ATOM   O  OD2   . ASP A 1 129 . 129 ASP A OD2   975  40.38 1.0 ? 3.851  2.073  -3.19  1
+ATOM   N  N     . ARG A 1 171 . 171 ARG A N     1291 49.37 1.0 ? -1.564 1.712  -7.114 1
+ATOM   C  CA    . ARG A 1 171 . 171 ARG A CA    1292 49.31 1.0 ? -1.625 3.054  -6.497 1
+ATOM   C  C     . ARG A 1 171 . 171 ARG A C     1293 47.82 1.0 ? -0.941 4.074  -7.402 1
+ATOM   O  O     . ARG A 1 171 . 171 ARG A O     1294 45.31 1.0 ? -1.565 4.599  -8.343 1
+ATOM   C  CB    . ARG A 1 171 . 171 ARG A CB    1295 51.78 1.0 ? -1.053 2.968  -5.089 1
+ATOM   C  CG    . ARG A 1 171 . 171 ARG A CG    1296 54.85 1.0 ? -1.235 4.13   -4.139 1
+ATOM   C  CD    . ARG A 1 171 . 171 ARG A CD    1297 57.12 1.0 ? -0.95  3.715  -2.723 1
+ATOM   N  NE    . ARG A 1 171 . 171 ARG A NE    1298 60.99 1.0 ? -1.903 4.366  -1.844 1
+ATOM   C  CZ    . ARG A 1 171 . 171 ARG A CZ    1299 62.61 1.0 ? -2.391 3.907  -0.694 1
+ATOM   N  NH1   . ARG A 1 171 . 171 ARG A NH1   1300 62.03 1.0 ? -2.038 2.725  -0.199 1
+ATOM   N  NH2   . ARG A 1 171 . 171 ARG A NH2   1301 63.06 1.0 ? -3.26  4.688  -0.03  1
+HETATM P  P1    . FBP B 2 323 . 323 FBP B P1    4867 45.71 0.5 ? -0.083 -0.721 0.073  1
+HETATM O  O1P   . FBP B 2 323 . 323 FBP B O1P   4868 45.58 0.5 ? 0.594  -2.013 0.322  1
+HETATM O  O2P   . FBP B 2 323 . 323 FBP B O2P   4869 45.4  0.5 ? 0.921  0.357  -0.007 1
+HETATM O  O3P   . FBP B 2 323 . 323 FBP B O3P   4870 45.72 0.5 ? -1.068 -0.403 1.145  1
+HETATM O  O1    . FBP B 2 323 . 323 FBP B O1    4871 41.45 1.0 ? -0.869 -0.832 -1.303 1
+HETATM C  C1    . FBP B 2 323 . 323 FBP B C1    4872 34.73 1.0 ? -1.652 -1.979 -1.609 1
+HETATM C  C2    . FBP B 2 323 . 323 FBP B C2    4873 31.12 1.0 ? -3.031 -1.507 -2.088 1
+HETATM O  O2    . FBP B 2 323 . 323 FBP B O2    4874 27.09 1.0 ? -3.855 -2.641 -2.367 1
+HETATM C  C3    . FBP B 2 323 . 323 FBP B C3    4875 30.56 1.0 ? -2.956 -0.555 -3.296 1
+HETATM O  O3    . FBP B 2 323 . 323 FBP B O3    4876 27.13 1.0 ? -2.715 -1.214 -4.52  1
+HETATM C  C4    . FBP B 2 323 . 323 FBP B C4    4877 30.53 1.0 ? -4.344 0.064  -3.28  1
+HETATM O  O4    . FBP B 2 323 . 323 FBP B O4    4878 27.69 1.0 ? -4.352 1.371  -3.847 1
+HETATM C  C5    . FBP B 2 323 . 323 FBP B C5    4879 30.5  1.0 ? -4.586 0.181  -1.771 1
+HETATM O  O5    . FBP B 2 323 . 323 FBP B O5    4880 30.57 1.0 ? -3.685 -0.713 -1.07  1
+HETATM C  C6    . FBP B 2 323 . 323 FBP B C6    4881 30.26 1.0 ? -6.018 -0.135 -1.404 1
+HETATM O  O6    . FBP B 2 323 . 323 FBP B O6    4882 31.49 1.0 ? -6.251 0.441  -0.121 1
+HETATM P  P2    . FBP B 2 323 . 323 FBP B P2    4883 31.39 1.0 ? -7.259 -0.293 0.866  1
+HETATM O  O4P   . FBP B 2 323 . 323 FBP B O4P   4884 33.88 1.0 ? -7.194 0.387  2.165  1
+HETATM O  O5P   . FBP B 2 323 . 323 FBP B O5P   4885 30.71 1.0 ? -8.609 -0.224 0.268  1
+HETATM O  O6P   . FBP B 2 323 . 323 FBP B O6P   4886 33.05 1.0 ? -6.816 -1.694 1.045  1
+HETATM MG MG    . MG  B 3 325 . 325 MG  B MG    4887 61.49 1.0 ? 2.184  1.907  0.409  1
+HETATM P  PB    . ADP B 4 324 . 324 ADP B PB    4889 46.22 1.0 ? 1.978  0.534  3.604  1
+HETATM O  O1B   . ADP B 4 324 . 324 ADP B O1B   4890 46.31 1.0 ? 2.986  0.44   4.681  1
+HETATM O  O2B   . ADP B 4 324 . 324 ADP B O2B   4891 49.42 1.0 ? 2.625  1.08   2.386  1
+HETATM O  O3B   . ADP B 4 324 . 324 ADP B O3B   4892 46.14 1.0 ? 1.253  -0.725 3.353  1
+HETATM P  PA    . ADP B 4 324 . 324 ADP B PA    4893 46.45 1.0 ? 0.547  2.989  4.619  1
+HETATM O  O1A   . ADP B 4 324 . 324 ADP B O1A   4894 46.38 1.0 ? 1.11   4.067  3.755  1
+HETATM O  O2A   . ADP B 4 324 . 324 ADP B O2A   4895 45.94 1.0 ? -0.904 3.259  4.812  1
+HETATM O  O3A   . ADP B 4 324 . 324 ADP B O3A   4896 47.55 1.0 ? 0.809  1.53   4.025  1
+HETATM O  "O5'" . ADP B 4 324 . 324 ADP B "O5'" 4897 45.03 1.0 ? 1.298  2.994  6.014  1
+HETATM C  "C5'" . ADP B 4 324 . 324 ADP B "C5'" 4898 44.84 1.0 ? 1.076  2.103  7.13   1
+HETATM C  "C4'" . ADP B 4 324 . 324 ADP B "C4'" 4899 44.35 1.0 ? 1.261  2.769  8.469  1
+HETATM O  "O4'" . ADP B 4 324 . 324 ADP B "O4'" 4900 44.66 1.0 ? 2.611  3.29   8.693  1
+HETATM C  "C3'" . ADP B 4 324 . 324 ADP B "C3'" 4901 42.9  1.0 ? 0.377  4.003  8.729  1
+HETATM O  "O3'" . ADP B 4 324 . 324 ADP B "O3'" 4902 41.18 1.0 ? -0.971 3.641  8.909  1
+HETATM C  "C2'" . ADP B 4 324 . 324 ADP B "C2'" 4903 43.33 1.0 ? 1.059  4.525  9.998  1
+HETATM O  "O2'" . ADP B 4 324 . 324 ADP B "O2'" 4904 42.81 1.0 ? 0.743  3.763  11.148 1
+HETATM C  "C1'" . ADP B 4 324 . 324 ADP B "C1'" 4905 45.32 1.0 ? 2.545  4.37   9.609  1
+HETATM N  N9    . ADP B 4 324 . 324 ADP B N9    4906 48.6  1.0 ? 3.05   5.592  8.966  1
+HETATM C  C8    . ADP B 4 324 . 324 ADP B C8    4907 48.35 1.0 ? 2.836  6.009  7.676  1
+HETATM N  N7    . ADP B 4 324 . 324 ADP B N7    4908 48.08 1.0 ? 3.399  7.171  7.414  1
+HETATM C  C5    . ADP B 4 324 . 324 ADP B C5    4909 48.09 1.0 ? 4.011  7.536  8.591  1
+HETATM C  C6    . ADP B 4 324 . 324 ADP B C6    4910 47.22 1.0 ? 4.766  8.669  8.954  1
+HETATM N  N6    . ADP B 4 324 . 324 ADP B N6    4911 46.5  1.0 ? 5.046  9.669  8.129  1
+HETATM N  N1    . ADP B 4 324 . 324 ADP B N1    4912 47.38 1.0 ? 5.242  8.713  10.221 1
+HETATM C  C2    . ADP B 4 324 . 324 ADP B C2    4913 47.79 1.0 ? 4.948  7.685  11.073 1
+HETATM N  N3    . ADP B 4 324 . 324 ADP B N3    4914 48.58 1.0 ? 4.252  6.611  10.846 1
+HETATM C  C4    . ADP B 4 324 . 324 ADP B C4    4915 48.51 1.0 ? 3.806  6.582  9.568  1
+#
+_cell.length_a      112.3
+_cell.length_b      85.4
+_cell.length_c      77.1
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

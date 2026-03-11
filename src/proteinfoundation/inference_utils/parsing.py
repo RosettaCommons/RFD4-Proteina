@@ -31,7 +31,7 @@ class InputSelection(BaseModel):
     )
     data: dict[ComponentStr | str, list[str]] = Field(..., description="Validated selection dictionary", exclude=True)
     raw: Any = Field(..., description="Original input value")
-    mask: np.ndarray[np.bool_] = Field(..., description="Boolean mask over atom array", exclude=True)
+    mask: np.ndarray[np.bool_] | None = Field(..., description="Boolean mask over atom array", exclude=True)
     tokens: dict[ComponentStr | str, AtomArray] | None = Field(
         ..., description="Selected atom arrays per component", exclude=True
     )
