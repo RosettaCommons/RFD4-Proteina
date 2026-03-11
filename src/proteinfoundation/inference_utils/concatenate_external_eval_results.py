@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from typing import List, Optional
 
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 
 from biotite.structure import AtomArrayStack
 from atomworks.io.utils.io_utils import load_any, to_pdb_string

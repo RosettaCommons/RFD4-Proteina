@@ -4,32 +4,44 @@
 # Copy this file to .user_info_digs and fill in your values:
 #   cp .user_info_digs_example .user_info_digs
 #
-# DIGS uses Apptainer containers with auto-mounted filesystems
-# No ACCOUNT needed for SLURM submissions on this cluster
+# DIGS uses Apptainer containers. Shared data paths, SIF paths, and NCCL
+# settings live in .ipd/.env.digs (committed to git). Only user-specific
+# and SLURM settings belong here.
 #
-# Container Discovery:
-#   Training scripts use shebangs that auto-discover the container from
-#   .ipd/apptainer/latent-dev.sif - no CONTAINER_IMAGE setting needed.
+# Prereq: add to ~/.bashrc or ~/.zshrc:
+#   export CLUSTER=digs
+#   export CONTAINER_TYPE=apptainer
+#
+# FAQ: How is this different than .ipd/.env.digs?
+# .ipd/.env.digs is committed to git and contains shared data paths, SIF
+# paths, and settings. .user_info_digs is not committed to git and contains
+# user-specific and/or project-specific SLURM settings. Functionally they both
+# provide environment variables that are loaded during run time, but in order to
+# share things properly between users and clusters, we split them into two files.
 # =============================================================================
 
-# Source shared environment variables from .ipd/.env
-# This provides: DATA_PATH, CACHE_DIR, PDB_MIRROR_PATH, CCD_MIRROR_PATH,
-#                HBPLUS_PATH, MACE_MODEL_PATH, DSSP_PATH, etc.
-# If .ipd/.env doesn't exist, you'll need to set these manually below.
+# Source shared cluster environment (data paths, SIF paths, NCCL settings, etc.)
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _REPO_ROOT="$(cd "$_SCRIPT_DIR/../../.." && pwd)"
-if [ -f "$_REPO_ROOT/.ipd/.env" ]; then
-    set -a  # auto-export variables
-    source "$_REPO_ROOT/.ipd/.env"
+if [ -f "$_REPO_ROOT/.ipd/.env.digs" ]; then
+    set -a
+    source "$_REPO_ROOT/.ipd/.env.digs"
     set +a
 fi
 unset _SCRIPT_DIR _REPO_ROOT
 
 # =============================================================================
-# Cluster-specific settings (override or add to .ipd/.env values)
+# Cluster identity
+# =============================================================================
+# Propagated by SLURM to the job; read by exec_core.sh to source .ipd/.env.${CLUSTER}
+CLUSTER=digs
+CONTAINER_TYPE=apptainer
+
+# =============================================================================
+# Cluster-specific settings
 # =============================================================================
 
-# Cluster identification
+# Cluster identification for launch script logic
 CLUSTER_TYPE="digs"
 SKIP_ACCOUNT="true"
 
@@ -42,16 +54,13 @@ USER="${USER:-your_username}"
 # Root directory on remote for runs
 ROOT_REMOTE="/path/to/shared/storage"
 
-# Executables (shebang scripts handle container; these are used by .env creation)
-FOLDSEEK_REMOTE="/usr/local/bin/foldseek"
-
 # Weights & Biases API key (get from https://wandb.ai/authorize)
 WANDBKEY=""
 
 # Slurm configuration
 PARTITION="gpu-train"
-GPUS_PER_NODE_CLUSTER=8
 RUNTIME="04:00:00"
+CPUS_PER_TASK=4
 SIGNAL_TIME=600
 
 # GPU type on this cluster
@@ -62,10 +71,6 @@ EXCLUDE_NODES=""
 
 # Extra SLURM options (optional)
 SLURM_EXTRA_OPTIONS=""
-
-# Dataset squashfs mounts (semicolon-separated squash:mountpoint pairs)
-# Configured in .ipd/.env - uncomment below to override for cluster-specific mounts
-# DATASET_SQUASH_MOUNTS=""
 
 # cuEquivariance (leave empty for default behavior)
 USE_CUEQUIVARIANCE=""

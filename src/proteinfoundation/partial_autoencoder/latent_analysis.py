@@ -9,7 +9,7 @@ import os
 import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from foundry.utils.ddp import RankedLogger
 
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder

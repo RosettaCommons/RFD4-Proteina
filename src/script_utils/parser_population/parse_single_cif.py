@@ -30,7 +30,7 @@ from atomworks.io import parse
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 
 # setup dotenv
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 
 load_dotenv()
 

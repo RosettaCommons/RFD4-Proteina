@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 
 import pandas as pd
-from dotenv import load_dotenv
+from foundry.utils.env import load_dotenv
 from loguru import logger
 
 # Try to import foldseek diversity function

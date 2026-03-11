@@ -146,7 +146,7 @@ build_sbatch_header() {
     local nodes="${NODES:-1}"
     local gpus_per_node="${GPUS_PER_NODE:-8}"
     local gres="${GRES:-}"
-    local cpus_per_task="${CPUS_PER_TASK:-4}"
+    local cpus_per_task="${CPUS_PER_TASK:-}"
     
     # Scale memory based on number of GPUs if not explicitly set
     # Default: ~60GB per GPU to stay within cluster limits (max ~235GB per GPU on OCI)
@@ -194,7 +194,9 @@ build_sbatch_header() {
     fi
 
     echo "#SBATCH --ntasks-per-node $ntasks_per_node"
-    echo "#SBATCH --cpus-per-task $cpus_per_task"
+    if [ -n "$cpus_per_task" ] && [ "${SKIP_CPUS_PER_TASK:-false}" != "true" ]; then
+        echo "#SBATCH --cpus-per-task $cpus_per_task"
+    fi
     echo "#SBATCH --mem $mem"
     echo "#SBATCH --open-mode append"
     echo "#SBATCH --requeue"
@@ -299,8 +301,8 @@ print_cluster_config() {
     echo "  GPUs per node:   ${GPUS_PER_NODE:-not set}"
     echo "  Runtime:         ${RUNTIME:-not set}"
     
-    if [ "$CLUSTER_TYPE" == "digs" ]; then
-        echo "  Container:       Apptainer ($CONTAINER_IMAGE)"
+    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+        echo "  Container:       Apptainer (exec_core.sh → .ipd/.env.$CLUSTER)"
     else
         echo "  Container:       Docker ($CONTAINER_IMAGE)"
     fi
