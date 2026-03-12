@@ -301,6 +301,9 @@ def main(cfg_exp: DictConfig) -> None:
             entity=cfg_exp.log.wandb_entity,
             tags=cfg_exp.log.tags,
         )
+        
+        cfg_dict = OmegaConf.to_container(cfg_exp, resolve=True)
+        wandb_logger.log_hyperparams(cfg_dict)
 
     # checkpoints
     if cfg_exp.log.checkpoint and not nolog:
