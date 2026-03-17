@@ -1,5 +1,5 @@
 batch_size: 16
-num_workers: 4
+num_workers: 16
 prefetch_factor: 1
 pin_memory: False
 multiprocessing_context: 'spawn'
@@ -23,7 +23,7 @@ train:
 val:
   dataloader_params:
     batch_size: ${dataloaders.batch_size}
-    num_workers: 2
+    num_workers: 4
     prefetch_factor: 1
     pin_memory: ${dataloaders.pin_memory}
     persistent_workers: False

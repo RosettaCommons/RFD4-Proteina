@@ -9,9 +9,8 @@ defaults:
 probability: 1.0  # Need this default for mixed samples
 
 dataset:
-  _target_: atomworks.ml.datasets.shared_memory.SharedMemoryDataset
-  local_drive_mount: ${oc.env:LOCAL_DRIVE_MOUNT}
   name: omol_train
+  memory_map: True
   data: ${oc.env:DATA_PATH}/latent_train_parquet_files/omol_30m_labeled.parquet
   columns_to_load:
     - example_id

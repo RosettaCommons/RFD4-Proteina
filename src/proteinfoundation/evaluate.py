@@ -27,7 +27,7 @@ from pathlib import Path
 import hydra
 import pandas as pd
 import rootutils
-from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
+from atomworks.io.parser import parse
 from foundry.utils.env import load_dotenv
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
@@ -104,9 +104,8 @@ def evaluate_structure(
         Dictionary of metric results with file path and example ID.
     """
     # Load structure using atomworks
-    result_dict = load_atom_array_with_conditions_from_cif(
+    result_dict = parse(
         file_path,
-        return_data_dict=True,
         cif_parser_args=cif_parser_args,
     )
     atom_array = result_dict["atom_array"]

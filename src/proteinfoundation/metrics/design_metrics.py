@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import (
     get_token_starts,
 )

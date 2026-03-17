@@ -10,6 +10,8 @@ dataset:
     - OQO
     - SAM
 
+  num_replicates: 200
+
   transform:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:

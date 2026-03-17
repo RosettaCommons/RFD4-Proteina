@@ -11,7 +11,7 @@ from atomworks.constants import STANDARD_AA
 from atomworks.enums import ChainType
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import (
     get_token_starts,
 )

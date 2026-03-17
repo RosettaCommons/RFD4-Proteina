@@ -9,9 +9,10 @@ from atomworks.common import exists
 from atomworks.io.template import get_empty_ccd_template
 from atomworks.io.utils.atom_array_plus import insert_atoms
 from atomworks.io.utils.selection import get_annotation_categories
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.standard_annotations.base import Level
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
-from atomworks.ml.conditions.base import CONDITIONS, Level
+from atomworks.ml.conditions.base import CONDITIONS
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 from foundry.utils.logging import RankedLogger

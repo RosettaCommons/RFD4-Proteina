@@ -1,0 +1,90 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/4_ame_afdb_omol_30
+
+  # Add plinder
+  - /datasets/train/plinder/plinder_with_missing_atoms@datasets.train.plinder_with_missing_atoms
+
+  # Plinder design tasks
+  - /design_tasks/presets/plinder_tasks@_plinder_multitask_design_tasks
+
+  # Add sm binder val sets
+  - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
+  - /datasets/val/sm_binder_hbonds_fixed@datasets.val.sm_binder_hbonds_fixed
+
+  - _self_
+
+run_name_: 6_ame_afdb_omol_plinder_2
+
+# add rasa and hbond conditioning just to the plinder design tasks
+_plinder_multitask_design_tasks:
+  unconditional:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  folding:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  inverse_folding:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  tip_atom_pocket:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  tip_atom_partial_ligand:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  partial_ligand:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.78
+    omol:
+      probability: 0.2
+    plinder_with_missing_atoms:
+      probability: 0.02
+      dataset:
+        transform:
+          design_tasks: ${_plinder_multitask_design_tasks}
+
+log:
+  tags: ["motif-scaffolding", "pretrain", "afdb-monomer", "omol", "ame", "plinder", "sm-binder"]
+
+
+# A100
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 16

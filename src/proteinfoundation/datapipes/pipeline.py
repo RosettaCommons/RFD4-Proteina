@@ -20,6 +20,7 @@ from atomworks.constants import (
 )
 from atomworks.enums import ChainType
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import (
     C_CRD,
     C_CTR,
@@ -27,7 +28,7 @@ from atomworks.ml.conditions import (
     C_NTR,
     C_SEQ,
 )
-from atomworks.ml.conditions.annotator import (
+from atomworks.io.utils.annotator import (
     ensure_annotations,
 )
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING, TokenEncoding
@@ -64,11 +65,11 @@ from atomworks.ml.transforms.base import (
 from atomworks.ml.transforms.covalent_modifications import (
     FlagAndReassignCovalentModifications,
 )
+from atomworks.ml.transforms.bfactor_conditioned_transforms import SetOccToZeroOnBfactor
 from atomworks.ml.transforms.crop import CropContiguousLikeAF3, CropSpatialLikeAF3
 from atomworks.ml.transforms.design_task import SampleDesignTask
 from atomworks.ml.transforms.encoding import atom_array_to_encoded_resnames
 from atomworks.ml.transforms.featurize_unresolved_residues import (
-    MaskPolymerResiduesWithUnresolvedFrameAtoms,
     PlaceUnresolvedTokenAtomsOnRepresentativeAtom,
     PlaceUnresolvedTokenOnClosestResolvedTokenInSequence,
 )
@@ -96,6 +97,7 @@ from atomworks.ml.utils.token import (
     get_af3_token_center_masks,
     get_af3_token_representative_masks,
     get_token_starts,
+    spread_token_wise,
 )
 from beartype.typing import Any
 from biotite.structure import AtomArray
@@ -445,6 +447,12 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # +------ Two-body conditions ------+
         # TODO: Not yet supported
 
+        # +------ Gap / missing-atom features ------+
+        if "chain_breaks_per_residue" in aa.get_annotation_categories():
+            feats["chain_breaks_per_residue"] = aa.chain_breaks_per_residue  # [L]
+        if "missing_atom_count" in aa.get_annotation_categories():
+            feats["missing_atom_count"] = aa.missing_atom_count  # [L]
+
         ###########################################################
         # MSA features (if available)
         ###########################################################
@@ -478,6 +486,8 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_SEC.full_name,
     C_IDXGRP.full_name,
     C_CATH.full_name,
+    "chain_breaks_per_residue",
+    "missing_atom_count",
 ]
 """Features to convert from atom-level to token-level by taking the first atom in each token."""
 
@@ -875,6 +885,37 @@ class AddShouldBeLossedAnnotation(Transform):
         return data
 
 
+
+class RemoveTokensWithAnyNaNAtom(Transform):
+    """Remove tokens if any atom has NaN coordinates.
+
+    There are a few types of situations where NaNs can show up in a token:
+    1. A residue has a single missing side-chain atom
+        In this case, we cannot generate a latent representation fo the sidechain and therefore cannot create noise to train
+    2. A residue is entirely nan coordinates
+        Obviously in this case we cannot encode the token and therefore cannot make a noisy version of the token
+    3. An atomized token has NaN coordinates (e.g. a ligand is missing an atom coordinate)
+        We would need to have a "CA" coordinate to add noise to, so we cannot encode this token either
+
+    NOTE: With the fixing of the PDB, we are hoping to eliminate most if not all occurances of cases (1) and (3).
+    As we fix those, this Transform will remove fewer and fewer tokens.
+    """
+
+    requires_previous_transforms: ClassVar[list] = [AddWithinPolyResIdxAnnotation, AddWithinChainInstanceResIdx]
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        starts = get_token_starts(atom_array, add_exclusive_stop=True)
+        mask_to_keep = np.ones(atom_array.array_length(), dtype=bool)
+        for i in range(len(starts) - 1):
+            s, e = starts[i], starts[i + 1]
+            if np.any(np.isnan(atom_array.coord[s:e])):
+                mask_to_keep[s:e] = False
+        atom_array = atom_array[mask_to_keep]
+        data["atom_array"] = atom_array
+        return data
+
+
 class ValidateNonEmptyStructure(Transform):
     """Validate that structure has atoms after filtering.
 
@@ -889,6 +930,72 @@ class ValidateNonEmptyStructure(Transform):
             raise ValueError(
                 f"Structure has no atoms after filtering (example_id: {example_id}). " "This structure will be skipped."
             )
+        return data
+
+
+class AddChainBreaksPerResidue(Transform):
+    """Annotate polymer tokens adjacent to a sequence gap with a binary flag.
+
+    Sets ``chain_breaks_per_residue`` to 1.0 for any polymer token whose left
+    or right neighbor in the same chain has a gap (``within_index_group_res_idx``
+    difference > 1), and 0.0 otherwise.  Non-polymer tokens are always 0.
+    """
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        starts = get_token_starts(atom_array, add_exclusive_stop=False)
+        n_tokens = len(starts)
+        chain_breaks = np.zeros(n_tokens, dtype=np.float32)
+        res_idx = atom_array.within_chain_res_idx[starts]
+        chain_iids = atom_array.chain_iid[starts]
+        is_polymer = atom_array.is_polymer[starts]
+        is_indexed = C_IDX.mask(atom_array)[starts]
+
+        for i in range(n_tokens):
+            if not is_polymer[i] or not is_indexed[i]:
+                continue
+            if i < n_tokens - 1 and chain_iids[i] == chain_iids[i + 1] and (res_idx[i + 1] - res_idx[i]) > 1 and is_indexed[i + 1]:
+                chain_breaks[i] = 1.0
+            if i > 0 and chain_iids[i] == chain_iids[i - 1] and (res_idx[i] - res_idx[i - 1]) > 1 and is_indexed[i - 1]:
+                chain_breaks[i] = 1.0
+
+        atom_array.set_annotation(
+            "chain_breaks_per_residue",
+            spread_token_wise(atom_array, chain_breaks),
+        )
+        data["atom_array"] = atom_array
+        return data
+
+
+class AddMissingAtomCount(Transform):
+    """Annotate every atom with the number of unresolved atoms in its token.
+
+    For polymer residues the count reflects how many heavy atoms in that
+    residue have ``occupancy == 0``.  For ligand PN-units the count is the
+    number of unresolved atoms across the whole unit, broadcast to every atom.
+    """
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        is_unresolved = atom_array.occupancy == 0
+
+        missing_count = np.zeros(len(atom_array), dtype=np.float32)
+
+        # Polymer residues: count unresolved atoms per residue
+        starts = get_residue_starts(atom_array, add_exclusive_stop=True)
+        for i in range(len(starts) - 1):
+            s, e = starts[i], starts[i + 1]
+            if atom_array.is_polymer[s]:
+                missing_count[s:e] = float(np.sum(is_unresolved[s:e]))
+
+        # Ligand PN-units: count unresolved atoms per unit
+        is_ligand = ~atom_array.is_polymer
+        for pn_unit in np.unique(atom_array.pn_unit_iid[is_ligand]):
+            unit_mask = (atom_array.pn_unit_iid == pn_unit) & is_ligand
+            missing_count[unit_mask] = float(np.sum(is_unresolved[unit_mask]))
+
+        atom_array.set_annotation("missing_atom_count", missing_count)
+        data["atom_array"] = atom_array
         return data
 
 
@@ -1143,6 +1250,7 @@ def _build_design_train_pipeline(
     p_atomize_residues: float = 0.0,
     design_tasks: dict[str, dict[str, Any]] = {},
     undesired_res_names: list[str] = AF3_EXCLUDED_LIGANDS,
+    b_factor_occupancy_min: float | None = None,  # For filtering out unresolved atoms from PDB or distillation sets
     p_random_rotation: float = 1.0,  # Probability of applying random rotation
     # MSA parameters
     load_msa: bool = False,
@@ -1173,7 +1281,7 @@ def _build_design_train_pipeline(
     T += RemoveUnresolvedPNUnits()
     T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)  # e.g., non-standard residues
     T += RemovePolymersWithTooFewResolvedResidues(min_residues=1)
-    T += MaskPolymerResiduesWithUnresolvedFrameAtoms()
+    T += SetOccToZeroOnBfactor(bmin=b_factor_occupancy_min)
     T += RemoveUnresolvedLigandAtomsIfTooMany(unresolved_ligand_atom_limit=5)
 
     # Validate structure has atoms after filtering
@@ -1195,10 +1303,13 @@ def _build_design_train_pipeline(
         move_atomized_part_to_end=False,
         validate_atomize=False,
     )
+    T += AddGlobalTokenIdAnnotation()
 
     ###########################################################
-    ### Step 3: Crop                                        ###
+    ### Step 3: Crop And Remove Unusable tokens             ###
     ###########################################################
+    T += RemoveTokensWithAnyNaNAtom()  # Remove tokens with any NaN coordinates (e.g., from unresolved atoms). We cannot generate noisy versions of these
+    
     if crop_size and (crop_contiguous_probability > 0 or crop_spatial_probability > 0):
         assert crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
@@ -1324,6 +1435,8 @@ def _build_design_featurize_pipeline(
     # Create in-context conditioning corresponding to unindexed regions
     T += EnsureRepresentativeAndCenterAtomAnnotations()
     T += UnindexFlaggedTokens()
+    T += AddChainBreaksPerResidue()
+    T += AddMissingAtomCount()
 
     ###########################################################
     ### MSA Encoding (if MSAs were loaded)                  ###
@@ -1353,16 +1466,6 @@ def _build_design_featurize_pipeline(
     # Prepare coordinates for noising (without modifying the ground truth)
     # ... add placeholder coordinates for noising
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
-    T += PlaceUnresolvedTokenAtomsOnRepresentativeAtom(
-        annotation_to_update="coord_to_be_noised",
-        annotation_for_token_representatives="is_token_representative_atom",
-        annotation_for_token_centers="is_token_center_atom",
-    )
-    T += PlaceUnresolvedTokenOnClosestResolvedTokenInSequence(
-        annotation_to_update="coord_to_be_noised",
-        annotation_to_copy="coord_to_be_noised",
-        annotation_for_token_representatives="is_token_representative_atom",
-    )
 
     # Center coordinates and add centroid of the atoms without coordinate conditioning as a feature
     T += CenterOnCoordinateConditionedAtoms(coord_annotation="coord_to_be_noised")
@@ -1468,6 +1571,7 @@ def build_design_train_pipeline(
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     crop_center_cutoff_distance: float = 15,
+    b_factor_occupancy_min: float | None = None,
     p_atomize_residues: float = 0.0,
     p_random_rotation: float = 1.0,
     design_tasks: dict[str, dict] | None = None,
@@ -1524,6 +1628,7 @@ def build_design_train_pipeline(
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
         crop_center_cutoff_distance=crop_center_cutoff_distance,
+        b_factor_occupancy_min=b_factor_occupancy_min,
         design_tasks=design_tasks,
         is_inference=is_inference,
         p_atomize_residues=p_atomize_residues,

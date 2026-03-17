@@ -27,7 +27,7 @@ skip_if_no_posebusters = pytest.mark.skipif(not has_posebusters, reason="PoseBus
 
 def _extract_sa8_ligand():
     """Extract SA8 ligand from 6wtf structure."""
-    from atomworks.ml.conditions.annotator import ensure_annotations
+    from atomworks.io.utils.annotator import ensure_annotations
 
     atom_array = cached_parse("6wtf")["atom_array"]
     ensure_annotations(atom_array, "is_ligand")
@@ -111,7 +111,7 @@ def test_posebusters_output_levels(output_level: str):
 
 def _extract_all_ligands():
     """Extract all ligands from 6wtf structure."""
-    from atomworks.ml.conditions.annotator import ensure_annotations
+    from atomworks.io.utils.annotator import ensure_annotations
 
     atom_array = cached_parse("6wtf")["atom_array"]
     ensure_annotations(atom_array, "is_ligand")

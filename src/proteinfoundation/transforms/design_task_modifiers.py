@@ -16,7 +16,7 @@ from atomworks.ml.conditions import (
     C_DIS,
     C_SEQ,
 )
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from atomworks.ml.utils.token import (
     get_token_starts,

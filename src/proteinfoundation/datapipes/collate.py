@@ -48,6 +48,8 @@ TOKEN_LEVEL_SPECS = {
     C_NTR.full_name: (torch.bool, False),
     C_SEC.full_name: (torch.int16, SSEnum.NONE),
     C_IDXGRP.full_name: (torch.int16, -1),
+    "chain_breaks_per_residue": (torch.float32, 0.0),
+    "missing_atom_count": (torch.float32, 0.0),
 }
 
 # Token-level with extra dimensions (shape: [batch, n_tokens, ...])

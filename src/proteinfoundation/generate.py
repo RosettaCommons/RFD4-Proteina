@@ -13,8 +13,8 @@ import rootutils
 import torch
 import yaml
 from atomworks.common import exists
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.transforms.base import Transform, Identity
-from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
 from foundry.utils.env import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from foundry.utils.ddp import RankedLogger
@@ -486,7 +486,7 @@ def save_predictions(
             "src_component",
         ]
 
-        save_atom_array_with_conditions_to_cif(atom_array, file_path, extra_annotations=extra_annotations_to_save)
+        to_cif_file(atom_array, file_path, extra_fields=extra_annotations_to_save)
 
 
 def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:

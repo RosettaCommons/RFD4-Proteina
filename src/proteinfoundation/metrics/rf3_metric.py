@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.distributed
 from atomworks.common import exists
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.transforms.atom_array import (
     add_id_and_entity_annotations,
     add_chain_iid_annotation,
@@ -19,7 +20,6 @@ from atomworks.io.transforms.atom_array import (
     add_molecule_iid_annotation,
 )
 from atomworks.ml.utils import nested_dict
-from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
 from biotite.structure import AtomArray, AtomArrayStack
 from foundry.metrics.metric import Metric, MetricManager
 from foundry.utils.ddp import RankedLogger
@@ -221,11 +221,11 @@ class RF3Metric(Metric):
         save_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            save_atom_array_with_conditions_to_cif(
+            to_cif_file(
                 input_atom_array,
                 save_path / f"{example_id}_rf3_input.cif",
             )
-            save_atom_array_with_conditions_to_cif(
+            to_cif_file(
                 predicted_atom_array,
                 save_path / f"{example_id}_rf3_predicted.cif",
             )

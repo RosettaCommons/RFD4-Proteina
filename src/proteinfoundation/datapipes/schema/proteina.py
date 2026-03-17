@@ -33,6 +33,8 @@ SPECS: Dict[str, tuple] = {
     C_NTR.full_name: (torch.bool, False, "I"),
     C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
+    "chain_breaks_per_residue": (torch.float32, 0.0, "I"),
+    "missing_atom_count": (torch.float32, 0.0, "I"),
     # Token-level with extra dims [I, ...]
     "graph_laplacian_pe_token_level": (torch.float32, 0.0, "I 32"),
     C_CATH.full_name: (torch.int32, -1, "I 3"),

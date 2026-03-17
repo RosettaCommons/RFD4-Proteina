@@ -23,7 +23,10 @@ from atomworks.ml.transforms.atom_array import (
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
+    apply_token_wise,
     get_token_count,
+    get_token_starts,
+    spread_token_wise,
 )
 from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise

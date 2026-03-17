@@ -1,0 +1,22 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/9_ppi_ft_lora
+
+
+datasets:
+  train:
+    afdb_dimer:
+      dataset:
+        transform:
+          design_tasks:
+            ppi_hotspot_with_3d_target:
+              transform:
+                bb_only_coord_conditioning: True
+    complexa_filtered_pdb:
+      dataset:
+        transform:
+          design_tasks:
+            ppi_hotspot_with_3d_target:
+              transform:
+                bb_only_coord_conditioning: True

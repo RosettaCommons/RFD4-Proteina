@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/1_uncond_na_ckpt_1
+
+  - _self_
+
+run_name_: 2_uncond_na_ckpt_2
+
+autoencoder_ckpt_path: null # TODO: @kdidi change to NA-AE ckpt once available!!!

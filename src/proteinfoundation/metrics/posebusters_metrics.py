@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 import numpy as np
 from atomworks.io.tools.rdkit import atom_array_to_rdkit
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.timer import timeout
 from beartype.typing import Sequence
 from biotite.structure import AtomArray, AtomArrayStack

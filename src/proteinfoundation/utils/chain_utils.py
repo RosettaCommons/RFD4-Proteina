@@ -2,7 +2,7 @@
 
 import numpy as np
 from atomworks.ml.conditions import C_CRD, C_DIS
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from biotite.structure import AtomArray
 from foundry.utils.ddp import RankedLogger
 

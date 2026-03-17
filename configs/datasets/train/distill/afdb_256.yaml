@@ -1,0 +1,28 @@
+# AFDB 256 Distillation Dataset
+# Uses extracted AFDB structures with relative paths from metadata parquet.
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/unconditional_heavy@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: afdb_256
+  data: ${oc.env:DATA_PATH}/afdb_256_extracted/metadata.parquet
+  memory_map: True
+  columns_to_load:
+    - example_id
+    - path
+    - length
+    - plddt
+
+  loader:
+    base_path: ${oc.env:DATA_PATH}/afdb_256_extracted
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+
+  transform:
+    crop_size: 256

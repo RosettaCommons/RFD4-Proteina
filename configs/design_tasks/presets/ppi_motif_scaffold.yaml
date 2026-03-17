@@ -44,9 +44,10 @@ ppi_hotspot_with_3d_target:
     min_dropout_2d_dist: 0.5
     max_dropout_2d_dist: 0.9
     jitter_sigma: 5.0
-    crop_size: ${....crop_size}  # grab crop_size from current dataset config
-    max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
+    crop_size: 256
+    max_atoms_in_crop: 2560
     crop_center_cutoff_distance: 15.0
-    ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+    ppi_crop_max_binder_length: 171
     p_sample_ppi_crop: 0.75
+    bb_only_coord_conditioning: False
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}

@@ -1,0 +1,70 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_afdb
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - /datasets/train/distill/omol@datasets.train.omol
+  - _self_
+
+run_name_: motif_scaffold_ame_afdb_mgnify_omol_partial_lessmgnify_cond015_64gpu_memfix
+
+datasets:
+  global_design_task_kwargs:
+    rasa_kwargs:
+      p_add_rasa_condition: 0.15
+    hbond_kwargs:
+      p_add_hbond_condition: 0.15
+    secondary_structure_kwargs:
+      p_add_secondary_structure_condition: 0.15
+
+  train:
+    # Previous mix was afdb=0.45, mgnify=0.45, omol=0.10.
+    # "Half mgnify" -> 0.225 and assign remainder to afdb to keep sum=1.0.
+    mgnify_dec_2025:
+      probability: 0.225
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    afdb_monomer:
+      probability: 0.675
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    omol:
+      probability: 0.1
+      dataset:
+        transform:
+          design_tasks:
+            folding:
+              frequency: 3.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+            partial_ligand:
+              frequency: 1.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+                min_coverage_fraction: 0.0
+                max_coverage_fraction: 1.0
+
+log:
+  tags: ["motif-scaffolding", "ame", "omol", "afdb-monomer", "mgnify", "less-mgnify", "cond015", "64gpu"]
+
+opt:
+  steps_per_epoch: 2000
+  val_start_epoch: 0
+  val_every_n_epochs: 20
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 8
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  num_workers: 8
+  val:
+    dataloader_params:
+      num_workers: 2
+
+pretrain_ckpt_path: null

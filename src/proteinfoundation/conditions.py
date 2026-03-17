@@ -3,7 +3,7 @@ from enum import IntEnum
 import numpy as np
 from atomworks.io.utils.scatter import spread_segment_wise
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
-from atomworks.ml.conditions.base import Level
+from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.transforms.dssp import SSEnum
 from biotite.structure import AtomArray
 

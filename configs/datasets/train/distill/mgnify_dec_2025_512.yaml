@@ -9,9 +9,9 @@ defaults:
 probability: 1.0  # Need this default for mixed samples
 
 dataset:
-  _target_: atomworks.ml.datasets.shared_memory.SharedMemoryDataset
   name: mgnify_dec_2025_512
   data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_dec_2025.parquet
+  memory_map: True
   columns_to_load:
     - example_id
     - path
@@ -29,3 +29,5 @@ dataset:
     - "ptm > 0.75"
     - "n_tokens <= 512"
 
+  transform:
+    b_factor_occupancy_min: 0.7  # Any token with atom plddt < 70 will not be lossed

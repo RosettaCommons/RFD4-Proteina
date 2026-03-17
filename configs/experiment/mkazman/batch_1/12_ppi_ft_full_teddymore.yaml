@@ -1,0 +1,68 @@
+# @package _global_
+
+defaults:
+  # Train dataset
+  - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer
+  - /datasets/train/distill/mgnify_dimer_contiguous@datasets.train.mgnify_dimer_contiguous
+  - /datasets/train/pdb/complexa_filtered_pdb@datasets.train.complexa_filtered_pdb
+
+  # Design task presets
+  - /design_tasks/presets/ppi_motif_scaffold@_ppi_motif_scaffold_design_tasks
+
+  # Validation datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/ppi_subset@datasets.val.ppi_subset
+
+  - _self_
+
+run_name_: 12_ppi_full_lora
+
+# Handle checkpoint mismatches
+weight_loading:
+  _target_: foundry.utils.weights.WeightLoadingConfig
+  default_policy: copy
+  fallback_policy: reinit
+  param_policies:
+    "nn.init_repr_factory.linear_out.*": copy_and_zero_pad
+    "nn.pair_repr_builder.init_repr_factory.linear_out.*": copy_and_zero_pad
+
+datasets:
+  train:
+    afdb_dimer:
+      probability: 0.18
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+    mgnify_dimer_contiguous:
+      probability: 0.62
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+    complexa_filtered_pdb:
+      probability: 0.2
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+
+opt:
+  lr: 0.0002
+  warmup_steps: 2000
+  val_every_n_epochs: 3
+  checkpoint_every_n_epochs: 3
+  accumulate_grad_batches: 2  # twice as long but fewer GPUs. This is fast enough as is
+  num_sanity_val_steps: 0
+
+log:
+  tags: ["ppi", "fine-tune", "teddymore"]
+
+#A100
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 2
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 16
+
+pretrain_ckpt_path: /path/to/user-data/mkazman/PFM_runs/train_latents/unconditional_afdb_coreweave/store/unconditional_afdb_coreweave/checkpoints/chk_epoch=00000209_step=000000420000.ckpt

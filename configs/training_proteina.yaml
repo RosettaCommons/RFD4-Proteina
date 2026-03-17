@@ -134,7 +134,7 @@ opt:
   accumulate_grad_batches: 1
   dist_strategy: ddp
   steps_per_epoch: 2000       # Defines epoch length in steps (not full dataset)
-  val_every_n_epochs: 5      # Validate at end of every N epochs
+  val_every_n_epochs: 10      # Validate at end of every N epochs
   val_start_epoch: 0          # Delay validation until this epoch (0 = start immediately)
 
 # Logging and checkpoints
