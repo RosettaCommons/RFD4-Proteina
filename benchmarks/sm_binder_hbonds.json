@@ -4,6 +4,7 @@
         "input": "rfbench/sm_binder/FAD_aa_ep10_run_binder_7bkc_cond2_0-atomized-bb-False.pdb",
         "contig": "150-150",
         "ligand":"FAD",
+        "select_fixed_atoms": false,
         "select_hbond_donor": {
             "B412": "N6A,O2B,O3B,O2A,O2P,O4',O3',O2',N3"
         },
@@ -16,6 +17,7 @@
         "input": "rfbench/sm_binder/IAI_aa_ep10_run_binder_5sdv_cond0_0-atomized-bb-False.pdb",
         "contig": "150-150",
         "ligand":"IAI",
+        "select_fixed_atoms": false,
         "select_hbond_donor": {
             "B392": "N9,N27"
         },
@@ -28,6 +30,7 @@
         "input": "rfbench/sm_binder/OQO_aa_ep10_run_binder_7v11_cond1_0-atomized-bb-False.pdb",
         "contig": "150-150",
         "ligand":"OQO",
+        "select_fixed_atoms": false,
         "select_hbond_donor": {
             "B397": "N5"
         },
@@ -40,6 +43,7 @@
         "input": "rfbench/sm_binder/SAM_aa_ep10_run_binder_7c7m_cond3_0-atomized-bb-False.pdb",
         "contig": "150-150",
         "ligand":"SAM",
+        "select_fixed_atoms": false,
         "select_hbond_donor": {
             "B386": "N6,O2',O3',N"
         },

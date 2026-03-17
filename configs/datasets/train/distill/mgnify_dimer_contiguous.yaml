@@ -1,0 +1,17 @@
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+dataset:
+  name: mgnify_dimer_contiguous
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/contiguous_teddimore_dimers_cluster_reps.parquet
+  loader:
+    parser_args:
+      add_missing_atoms: False
+      fix_formal_charges: False
+  transform:
+    b_factor_occupancy_min: null  # 0.7  # Any token with atom plddt < 70 will not be lossed

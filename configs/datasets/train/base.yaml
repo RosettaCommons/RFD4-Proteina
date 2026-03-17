@@ -25,6 +25,7 @@ transform:  # Some default transform args
   crop_contiguous_probability: 0.0
   crop_spatial_probability: 1.0
   crop_center_cutoff_distance: 15.0
+  b_factor_occupancy_min: null  # Change for distillation sets where you want to not loss low confidence residues
   p_random_rotation: 1.0
   load_msa: False
   max_msa_sequences: 10000

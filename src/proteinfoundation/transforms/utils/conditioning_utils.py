@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
 from atomworks.ml.conditions import C_CRD, C_DIS
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.utils.geometry import random_rigid_augmentation
 from biotite.structure import superimpose

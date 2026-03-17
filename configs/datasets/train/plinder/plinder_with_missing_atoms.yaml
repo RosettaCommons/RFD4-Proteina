@@ -1,0 +1,34 @@
+# PLINDER with Missing Atoms Dataset - Protein-Ligand Complexes
+# 71,307 protein-ligand complexes from PLINDER with missing sidechain atoms
+# Uses system.cif files mounted from squashfs at /squash/plinder_missing_atoms
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: plinder_with_missing_atoms_train
+  
+  # CSV file with paths to CIF files (paths reference /squash/plinder_missing_atoms mount)
+  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/plinder_with_missing_atoms_dataset.csv
+  
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_base_loader
+    example_id_colname: example_id
+    path_colname: path
+    assembly_id_colname: None
+    parser_args:
+      add_missing_atoms: True
+      fix_formal_charges: True
+      cache_dir: ${oc.env:CACHE_DIR}
+      save_to_cache: True
+      load_from_cache: True
+  
+  columns_to_load:
+    - example_id
+    - path
+
+  transform: {}

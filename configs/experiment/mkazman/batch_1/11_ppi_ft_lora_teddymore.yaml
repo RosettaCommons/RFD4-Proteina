@@ -1,0 +1,16 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/12_ppi_ft_full_teddymore
+
+
+# LoRA settings
+lora:
+  r: 32
+  lora_alpha: 64.0
+  lora_dropout: 0.0
+  train_bias: none
+  exclude_keys: []
+
+log:
+  tags: ["ppi", "fine-tune", "lora", "teddymore"]

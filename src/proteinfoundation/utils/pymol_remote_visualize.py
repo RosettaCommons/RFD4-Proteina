@@ -6,7 +6,7 @@ import torch
 from typing import Any
 from atomworks.io.utils.visualize import get_pymol_session, view_pymol
 from atomworks.ml.conditions import C_DIS, Condition
-from atomworks.ml.conditions.base import Level
+from atomworks.io.utils.standard_annotations.base import Level
 from proteinfoundation.proteina import Proteina
 
 logger = logging.getLogger(__name__)

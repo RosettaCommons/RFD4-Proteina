@@ -10,6 +10,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: pdb_interfaces_train
+  memory_map: True
   data: ${oc.env:DATA_PATH}/latent_train_parquet_files/interfaces_df_train_with_cath.parquet
   loader:
     _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units

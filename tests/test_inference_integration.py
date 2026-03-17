@@ -18,9 +18,9 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
+from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
 from atomworks.enums import ChainType
-from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
 from biotite.structure import get_residue_starts
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
@@ -598,7 +598,7 @@ class TestEndToEndInference:
             ("src_component", "5P"),
         ] 
         generated_path = str(cif_files[0])
-        generated_aa = load_atom_array_with_conditions_from_cif(
+        generated_aa = parse(
             generated_path,
             extra_fields=[v[0] for v in EXPECTED_EXTRA_FIELDS_AND_DEFAULTS],
         )

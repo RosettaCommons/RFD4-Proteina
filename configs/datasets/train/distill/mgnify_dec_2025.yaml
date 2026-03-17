@@ -9,9 +9,8 @@ defaults:
 probability: 1.0  # Need this default for mixed samples
 
 dataset:
-  _target_: atomworks.ml.datasets.shared_memory.SharedMemoryDataset
-  local_drive_mount: ${oc.env:LOCAL_DRIVE_MOUNT}
   name: mgnify_dec_2025
+  memory_map: True
   data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_dec_2025.parquet
   columns_to_load:
     - example_id
@@ -26,3 +25,6 @@ dataset:
   # We use filters of ptm > 0.7 for old-RF3 distillation and ptm > 0.75 for new-RF3 distillation
   filters:
     - "ptm > 0.75"
+
+  transform:
+    b_factor_occupancy_min: 0.7  # Any token with atom plddt < 70 will not be lossed

@@ -338,6 +338,23 @@ class ChainBreakPerResidueSeqFeat(Feature):
         return chain_breaks[..., None]  # [b, n, 1]
 
 
+class MissingAtomCountSeqFeat(Feature):
+    """Sequence feature with the number of missing (unresolved) atoms per token, shape [b, n, 1]."""
+
+    def __init__(self, **kwargs):
+        super().__init__(dim=1)
+
+    def forward(self, batch):
+        if "missing_atom_count" in batch:
+            counts = batch["missing_atom_count"] * 1.0  # [b, n]
+        else:
+            self.assert_defaults_allowed(batch, "Missing atom count")
+            b, n = self.extract_bs_and_n(batch)
+            device = self.extract_device(batch)
+            counts = torch.zeros((b, n), device=device)
+        return counts[..., None]  # [b, n, 1]
+
+
 class XscBBCASeqFeat(Feature):
     """Computes feature from backbone CA self conditining coordinates, seq feature of shape [b, n, 3]."""
 
@@ -1686,6 +1703,8 @@ class FeatureFactory(torch.nn.Module):
                 return IdxEmbeddingSeqFeat(**kwargs)
             elif f == "chain_break_per_res":
                 return ChainBreakPerResidueSeqFeat(**kwargs)
+            elif f == "missing_atom_count_seq":
+                return MissingAtomCountSeqFeat(**kwargs)
             elif f == "chain_idx_seq":
                 return ChainIdxSeqFeat(**kwargs)
             elif f == "cropped_flag_seq":

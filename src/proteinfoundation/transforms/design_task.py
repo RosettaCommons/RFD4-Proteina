@@ -20,7 +20,7 @@ from atomworks.ml.conditions import (
     C_IDX,
     C_SEQ,
 )
-from atomworks.ml.conditions.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.transforms import mask_generator as mg
 from atomworks.ml.transforms.crop import resize_crop_info_if_too_many_atoms
 from atomworks.ml.transforms.design_task import DesignTaskABC
@@ -53,9 +53,9 @@ from proteinfoundation.transforms.utils.ppi_utils import (
 
 
 # Default potential functions for TipAtomPartialLigandTask (module-level for picklability)
-def _default_ligand_potential(x: np.ndarray) -> np.ndarray:
+def _default_ligand_potential(x: np.ndarray, scaling_factor: float = 5.0) -> np.ndarray:
     """Default ligand sampling potential: inverse distance with offset."""
-    return 1.0 / (5.0 + x)
+    return 1.0 / (scaling_factor + x)
 
 
 def _default_tip_atom_potential(x: np.ndarray, scaling_factor: float = 8.0) -> np.ndarray:
@@ -328,11 +328,13 @@ class PartialLigandTask(RFD3DesignTask):
         *,
         min_coverage_fraction: float = 0.0,
         max_coverage_fraction: float = 1.0,
+        p_fix_ligand_surroundings: float = 1.0,  # on omol we always fix things that aren't ligands
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.min_coverage_fraction = min_coverage_fraction
         self.max_coverage_fraction = max_coverage_fraction
+        self.p_fix_ligand_surroundings = p_fix_ligand_surroundings
 
     def can_apply(self, data: dict) -> bool:
         atom_array = data["atom_array"]
@@ -381,19 +383,22 @@ class PartialLigandTask(RFD3DesignTask):
             sampled_ligand_mask = self.sample_ligand_mask(atom_array, ligand_mask)
             coord_conditioned_mask |= sampled_ligand_mask
 
+        sequence_condition_mask = atom_array.is_ligand | atom_array.atomize
+
         # Coord condition everything that is not a ligand
-        coord_conditioned_mask |= ~atom_array.is_ligand
+        if true_with_prob(self.p_fix_ligand_surroundings):
+            coord_conditioned_mask |= ~atom_array.is_ligand
+            sequence_condition_mask |= ~atom_array.is_ligand
 
         # Do not coord condition nan coordinates
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = coord_conditioned_mask & ~nan_coord_mask
         C_CRD.set_mask(atom_array, coord_condition_mask)
+        
+        C_SEQ.set_mask(atom_array, sequence_condition_mask)
 
         n_atoms = atom_array.array_length()
-        C_SEQ.set_mask(atom_array, np.ones(n_atoms, dtype=bool))
-
-        # Index condition everything (no unindexing)
-        C_IDX.set_mask(atom_array, np.ones(n_atoms, dtype=bool))
+        C_IDX.set_mask(atom_array, np.ones(atom_array.array_length(), dtype=bool))
 
         data["atom_array"] = atom_array
 
@@ -426,9 +431,9 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         n_max_ligands: int = 3,
         n_hops_expected_ligand: int = 5,
         n_max_residues: int = 10,
-        n_hops_expected_tip_atom: int = 3,
-        ligand_potential: Callable[[np.ndarray], np.ndarray] | None = None,
-        tip_atom_potential: Callable[[np.ndarray], np.ndarray] | None = None,
+        n_hops_expected_tip_atom: int = 1,
+        ligand_scaling_factor: float = 5.0,
+        tip_atom_scaling_factor: float = 1.5,
         p_seq_conditioned: float = 1.0,  # For now we always sequence condition things with distance conditioning!
         p_knockout_seq: float = 0.0,
         p_unindex_all: float = 0.9,
@@ -441,11 +446,11 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         super().__init__(**kwargs)
         self.n_max_ligands = n_max_ligands
         self.n_hops_expected_ligand = n_hops_expected_ligand
-        self.ligand_potential = ligand_potential or _default_ligand_potential
+        self.ligand_scaling_factor = ligand_scaling_factor
 
         self.n_max_residues = n_max_residues
         self.n_hops_expected_tip_atom = n_hops_expected_tip_atom
-        self.tip_atom_potential = tip_atom_potential or _default_tip_atom_potential
+        self.tip_atom_scaling_factor = tip_atom_scaling_factor
 
         self.p_seq_conditioned = p_seq_conditioned
         self.p_knockout_seq = p_knockout_seq
@@ -492,7 +497,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         fn_sample_seed = mg.SampleWithPotential(
             is_eligible="is_ligand & (res_min_occupancy > 0)",
             avoid_same=_same_ligand,
-            potential=self.ligand_potential,
+            potential=partial(_default_ligand_potential, scaling_factor=self.ligand_scaling_factor),
         )
         fn_grow_seed = mg.GrowByHoppingAlongBondGraph(
             n_hops_expected=self.n_hops_expected_ligand,
@@ -516,7 +521,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         fn_sample_seed = mg.SampleTipAtomWithPotential(
             is_eligible="is_tip_atom & (res_min_occupancy > 0)",
             avoid_same=_same_residue,
-            potential=self.tip_atom_potential,
+            potential=partial(_default_tip_atom_potential, scaling_factor=self.tip_atom_scaling_factor),
         )
         fn_grow_seed = mg.GrowByHoppingAlongBondGraph(
             n_hops_expected=self.n_hops_expected_tip_atom,
@@ -1444,6 +1449,8 @@ class MotifScaffoldTask(RFD3DesignTask):
         # internal coord conditioning. This is fine for training but the unindexed mapping is not supported at inference
         if true_with_prob(self.p_unindex_any):
             unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
+            if "atomize" in atom_array.get_annotation_categories():
+                unindexed_mask &= ~atom_array.atomize
             C_IDX.set_mask(atom_array, ~unindexed_mask)
         else:
             C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
@@ -2015,6 +2022,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         hotspot_max_distance: float = 7.0,
         p_sample_ppi_crop: float = 0.75,
         ppi_crop_max_binder_length: int = 256,  # TODO: Tune in configs!
+        bb_only_coord_conditioning: bool = False,
         **kwargs,
     ):
         """
@@ -2033,6 +2041,8 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
             p_sample_ppi_crop: probability of using the PPI crop, which keeps the entirety of the chain designated as the binder
                 if it's less than ppi_crop_max_binder_length residues.
             ppi_crop_max_binder_length: max binder length to keep in its entirety when using the PPI crop.
+            bb_only_coord_conditioning: If True, only the backbone atoms of the target chain receive coordinate conditioning.
+                NOTE: Sidechain atoms can still be hotspots, but their precise coordinates are not given.
         """
         super().__init__(**kwargs)
         self.max_hotspots_frac_to_provide = max_hotspots_frac_to_provide
@@ -2042,6 +2052,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         self.crop_size = crop_size
         self.crop_center_cutoff_distance = crop_center_cutoff_distance
         self.max_atoms_in_crop = max_atoms_in_crop
+        self.bb_only_coord_conditioning = bb_only_coord_conditioning
 
     def annotate_for_task_selection(self, data: dict) -> dict:
         # NOTE: In principle this could be supported and it's not hard, but adds a lot of extra code for functional
@@ -2149,7 +2160,11 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         C_HOT.set_annotation(atom_array=atom_array, array=hotspot_atom_mask)
         C_HOT.set_mask(atom_array, hotspot_atom_mask, 1, "atom")
 
-        C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask)
+        if self.bb_only_coord_conditioning:
+            ensure_annotations(atom_array, "is_protein_backbone")
+            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask & atom_array.is_protein_backbone)
+        else:
+            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask)
 
         C_SEQ.set_mask(atom_array, is_target_chain)
         # TODO: enable `unindexed` condition

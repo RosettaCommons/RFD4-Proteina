@@ -7,15 +7,14 @@ import pandas as pd
 from pathlib import Path
 from biotite.structure import AtomArray, AtomArrayStack, infer_elements
 from atomworks.constants import ELEMENT_NAME_TO_ATOMIC_NUMBER
-from atomworks.io.utils.io_utils import load_any
+from atomworks.io.utils.io_utils import load_any, to_cif_file
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.transforms.atom_array import add_chain_type_annotation, add_polymer_annotation
 from atomworks.io.utils.non_rcsb import initialize_chain_info_from_atom_array
 from atomworks.io.transforms.atom_array import add_charge_from_ccd_codes
 from atomworks.common import exists
 from atomworks.ml.conditions import C_CRD, C_IDX, C_DIS
-from atomworks.ml.conditions.annotator import ensure_annotations
-from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 import yaml
 from foundry.metrics import MetricManager
@@ -704,10 +703,10 @@ def run_external_eval(
         # Optionally save the annotated designs
         if exists(annotated_design_save_dir):
             annotated_design_save_path = Path(annotated_design_save_dir) / f"{str(Path(generated_structure_path).stem).split('.')[0]}_annotated.cif"
-            save_atom_array_with_conditions_to_cif(
+            to_cif_file(
                 formatted_generated_atom_array,
                 annotated_design_save_path,
-                extra_annotations=[
+                extra_fields=[
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
                     "coords_with_insertion",

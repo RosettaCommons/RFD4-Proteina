@@ -19,3 +19,6 @@ dataset:
 
   filters:
     - "ptm > 0.75"
+
+  transform:
+    b_factor_occupancy_min: 0.7  # Any token with atom plddt < 70 will not be lossed

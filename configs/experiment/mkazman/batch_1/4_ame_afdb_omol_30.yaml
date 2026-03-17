@@ -1,0 +1,72 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... protein distillation
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/omol@datasets.train.omol
+
+  # Validation datasets
+  # ... unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+  # ... motif scaffolding (indexed and unindexed)
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  # ... AME datasets
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+
+  # Design task presets (for ease of use)
+  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
+
+  - _self_
+
+run_name_: 4_ame_afdb_omol_30
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.7
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    omol:
+      probability: 0.3
+      dataset:
+        transform:
+          design_tasks:  # Just structure prediction for omol. TODO: Need to add partial ligand design task
+            folding:
+              frequency: 3.0  # 75% of the time we have to fold the entire thing
+              transform:
+                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                global_design_task_kwargs:
+                  rasa_kwargs:
+                    p_add_rasa_condition: 0.0
+                  hbond_kwargs:
+                    p_add_hbond_condition: 0.0
+                  secondary_structure_kwargs:
+                    p_add_secondary_structure_condition: 0.0
+            partial_ligand:
+              frequency: 1.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+                min_coverage_fraction: 0.0
+                max_coverage_fraction: 1.0
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "afdb-monomer", "omol", "ame"]
+
+# GB200
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 32
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path: null

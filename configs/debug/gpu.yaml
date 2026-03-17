@@ -10,7 +10,7 @@ hardware:
 
 # Override dataset settings for faster iteration
 dataloaders:
-  batch_size: 1  # Small batch size for quick testing
+  batch_size: 8  # Small batch size for quick testing
   num_workers: 0  # No parallel data loading (easier debugging)
   prefetch_factor: null
   multiprocessing_context: null # No workers -> no multiprocessing needed
@@ -22,11 +22,11 @@ dataloaders:
 # Override training settings for quick testing
 opt:
   max_epochs: 5  # Run 5 epochs only
-  limit_train_batches: 50  # Only n batches per epoch for fast testing
-  limit_val_batches: 5  # Only n batches
-  steps_per_epoch: 10     # Short epochs for quick debugging
+  # limit_train_batches: 50  # Only n batches per epoch for fast testing
+  limit_val_batches: 1  # Only n batches
+  steps_per_epoch: 1000     # Short epochs for quick debugging
   val_every_n_epochs: 1   # Validate at end of each epoch
-  val_start_epoch: 0
+  val_start_epoch: 2
 
 # Disable wandb logging
 nolog: true

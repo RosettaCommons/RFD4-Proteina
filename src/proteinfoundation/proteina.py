@@ -41,8 +41,8 @@ def _load_transformer_engine() -> bool:
             DelayedScaling = DelayedScaling_mod
             Format = Format_mod
     return TE_AVAILABLE
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.ml.utils.condition import save_atom_array_with_conditions_to_cif
 from atomworks.ml.conditions import C_IDX, C_CRD
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
@@ -394,7 +394,7 @@ class Proteina(L.LightningModule):
                 prog_bar=False,
                 logger=True,
                 batch_size=bs,
-                sync_dist=True,
+                sync_dist=False,
                 add_dataloader_idx=False,
             )
 
@@ -728,14 +728,14 @@ class Proteina(L.LightningModule):
                 extra_annotations_to_save = [
                     "mapped_to_coordinate_conditioned_region",
                     "mapped_to_coordinate_conditioned_region_token_lvl",
-                    "coords_with_insertion",
+                    # "coords_with_insertion",  # HACK: NEED TO CHANGE THESE TO STANDARDANNOTATIONS AND THEN THEY WILL WORK
                     "src_coordinate_conditioned_region",
                     "src_component",
                 ]
 
                 # Skip input saving during inference to lighten the filesystem load
                 if not self.is_inference:
-                    save_atom_array_with_conditions_to_cif(
+                    to_cif_file(
                         generation_list[i]["input_atom_array"],
                         output_base / "input" / f"{example_id}_input.cif",
                     )
@@ -743,10 +743,10 @@ class Proteina(L.LightningModule):
                 else:
                     generated_output_path = output_base / f"{example_id}_generated.cif"
 
-                save_atom_array_with_conditions_to_cif(
+                to_cif_file(
                     predicted_structure_to_save,
                     generated_output_path,
-                    extra_annotations=extra_annotations_to_save,
+                    extra_fields=extra_annotations_to_save,
                 )
 
                 if metrics_output is not None:

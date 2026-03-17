@@ -1,0 +1,71 @@
+# @package _global_
+# Train on PLINDER with missing atoms dataset (tip_atom design tasks)
+# Uses the plinder_with_missing_atoms squashfs dataset
+
+defaults:
+  # Neural network
+  - /nn/local_latents_score_nn_160M_atom37@nn
+
+  # Train dataset
+  - /datasets/train/plinder/plinder_with_missing_atoms@datasets.train.plinder_with_missing_atoms
+
+  # Validation datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/mcsa/tip_atom_plinder@datasets.val.tip_atom_plinder
+
+  # Design task presets
+  - /design_tasks/presets/tip_atom_tasks@_tip_atom_design_tasks
+
+  - _self_
+
+run_name_: design_plinder_missing_atoms
+
+# Continue from ame_afdb_256 checkpoint
+pretrain_ckpt_path: /path/to/shared/storage
+
+# Handle checkpoint mismatches: copy matching weights, reinit missing ones,
+# zero-pad the resized feature projection layers
+weight_loading:
+  _target_: foundry.utils.weights.WeightLoadingConfig
+  default_policy: copy
+  fallback_policy: reinit
+  param_policies:
+    "nn.init_repr_factory.linear_out.*": copy_and_zero_pad
+    "nn.pair_repr_builder.init_repr_factory.linear_out.*": copy_and_zero_pad
+
+# Hardware: 1 node, 1 GPU for local testing
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1
+  nnodes_: 1
+  ncpus_per_task_train_: 4
+
+# Full model training (no LoRA)
+lora:
+  r: null
+
+# Dataset configuration
+datasets:
+  train:
+    plinder_with_missing_atoms:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+
+training:
+  self_cond: true
+  self_cond_p: 0.5
+
+opt:
+  lr: 0.0002
+  warmup_steps: 2000
+  val_every_n_epochs: 5
+
+log:
+  tags: ["plinder", "missing-atoms", "tip-atom", "design"]
+  checkpoint_every_n_epochs: 10
+  last_ckpt_every_n_epochs: 1

@@ -14,10 +14,9 @@ import numpy as np
 import rootutils
 import yaml
 from atomworks.common import exists
-from atomworks.io.parser import parse_atom_array
+from atomworks.io.parser import parse_atom_array, parse
 from atomworks.ml.datasets import FileDataset, MolecularDataset
 from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
-from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
 from biotite.structure import AtomArray
 from foundry.utils.ddp import RankedLogger
 from omegaconf import DictConfig, OmegaConf
@@ -276,7 +275,7 @@ class DesignProblemDataset(FileDataset):
         transform: Transform | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
-        **kwargs,
+        parser_args: dict | None = None,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
 
@@ -310,7 +309,7 @@ class DesignProblemDataset(FileDataset):
             filter_fn=filter_fn,
         )
         self.transform = transform
-        self.kwargs = kwargs
+        self.parser_args = parser_args or {}
         self.global_prefix = global_prefix
 
         # Generate unique base_ids by taking section after last dash, or more if ambiguous
@@ -349,20 +348,25 @@ class DesignProblemDataset(FileDataset):
         # TODO: Hash out the precise definition of a .ipd file
         #  (suggestion: .msgpack.gz serialized dicts)
         if path.suffix == ".cif":
-            result_dict = load_atom_array_with_conditions_from_cif(path, return_data_dict=True, **self.kwargs)
+            result_dict = parse(path, **self.parser_args)
         elif path.suffix in [".json", ".yaml"]:
             # NOTE: This will run the conversion script each time we load an example for inference. This is to ensure
             # that any random length sampling steps are distinct across different batches. However, it is not maximally
             # efficient -- a long-term solution might involve a single CIF that contains information about variable lengths.
             output_path = _convert_json_or_yaml_to_cif(path)
-            result_dict = load_atom_array_with_conditions_from_cif(output_path, return_data_dict=True, **self.kwargs)
+            result_dict = parse(output_path, **self.parser_args)
         else:
             raise NotImplementedError(f"Unsupported file extension: {path.suffix}")
 
         # Ensure that we have charge information in the output
-        atom_array = result_dict["atom_array"]
+        atom_array = result_dict["assemblies"]["1"][0]
+
         if "charge" not in atom_array.get_annotation_categories():
             atom_array.set_annotation("charge", np.zeros(atom_array.array_length(), dtype=int))
+
+        result_dict["atom_array"] = atom_array
+        _ = result_dict.pop("asym_unit")
+        _ = result_dict.pop("assemblies")
 
         return result_dict
 

@@ -1,0 +1,137 @@
+# @package _global_
+# Finetune AME checkpoint on plinder_with_missing_atoms
+# Multi-task: tip_atom_pocket, tip_atom_partial_ligand, partial_ligand, unconditional, folding, inverse_folding
+# Full model training (no LoRA), 32 GPUs
+
+defaults:
+  # Neural network
+  - /nn/local_latents_score_nn_160M_atom37@nn
+
+  # Train dataset
+  - /datasets/train/plinder/plinder_with_missing_atoms@datasets.train.plinder_with_missing_atoms
+
+  # Validation datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/mcsa/tip_atom_plinder@datasets.val.tip_atom_plinder
+  - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
+
+  - _self_
+
+run_name_: plinder_missing_atoms_multitask_full
+
+# Continue from AME checkpoint (epoch 129)
+pretrain_ckpt_path: /path/to/shared/storage
+
+# Handle checkpoint mismatches
+weight_loading:
+  _target_: foundry.utils.weights.WeightLoadingConfig
+  default_policy: copy
+  fallback_policy: reinit
+  param_policies:
+    "nn.init_repr_factory.linear_out.*": copy_and_zero_pad
+    "nn.pair_repr_builder.init_repr_factory.linear_out.*": copy_and_zero_pad
+
+# Hardware: 32 GPUs (4 nodes x 8 GPUs)
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+# Full model training (no LoRA)
+lora:
+  r: null
+
+# Enable RASA and H-bond conditioning at 15%
+datasets:
+  global_design_task_kwargs:
+    rasa_kwargs:
+      p_add_rasa_condition: 0.15
+    hbond_kwargs:
+      p_add_hbond_condition: 0.15
+  train:
+    plinder_with_missing_atoms:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_plinder_multitask_design_tasks}
+
+_plinder_multitask_design_tasks:
+  # Tip-atom active site (convex hull pocket sampling)
+  tip_atom_pocket:
+    frequency: 30.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.TipAtomActiveSiteTask
+      tip_atom_rasa_threshold: 0.2
+      min_tip_atoms: 2
+      max_tip_atoms: 15
+      p_seq_conditioned: 1.0
+      p_unindex_all: 0.5
+      p_unindex_any: 0.05
+      p_merge_unindexed_groups: 0.1
+      p_split_unindexed_groups: 0.01
+      p_increase_group_id_gap: 0.1
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+  # Tip-atom partial ligand (tip atoms + partial ligand)
+  tip_atom_partial_ligand:
+    frequency: 30.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.TipAtomPartialLigandTask
+      n_max_ligands: 3
+      n_hops_expected_ligand: 5
+      n_max_residues: 8
+      n_hops_expected_tip_atom: 3
+      p_seq_conditioned: 1.0
+      p_knockout_seq: 0.0
+      p_merge_unindexed_groups: 0.1
+      p_split_unindexed_groups: 0.01
+      p_increase_group_id_gap: 0.1
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+  # Partial ligand only (SM binder design, no tip atoms)
+  partial_ligand:
+    frequency: 20.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+      min_coverage_fraction: 0.0
+      max_coverage_fraction: 1.0
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+  # Unconditional generation
+  unconditional:
+    frequency: 10.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+  # Folding
+  folding:
+    frequency: 5.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+  # Inverse folding
+  inverse_folding:
+    frequency: 5.0
+    transform:
+      _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+      global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+training:
+  self_cond: true
+  self_cond_p: 0.5
+
+opt:
+  lr: 0.0002
+  warmup_steps: 2000
+  val_every_n_epochs: 5
+
+log:
+  tags: ["plinder", "missing-atoms", "multitask", "ame", "sm-binder", "rasa", "hbond", "full-training"]
+  checkpoint_every_n_epochs: 10
+  last_ckpt_every_n_epochs: 1

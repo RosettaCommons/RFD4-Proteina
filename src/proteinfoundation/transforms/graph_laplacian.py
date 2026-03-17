@@ -2,10 +2,12 @@
 
 from typing import Any, ClassVar
 
+import networkx as nx
 import numpy as np
 import scipy.sparse
 import torch
 from atomworks.constants import BIOTITE_BOND_TYPE_TO_BOND_ORDER
+from atomworks.io.utils.bonds import _atom_array_to_networkx_graph
 from atomworks.ml.transforms._checks import check_atom_array_annotation
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
@@ -182,52 +184,52 @@ def featurize_bonds_as_laplacian_positional_encoding(
         Token-level positional encoding tensor of shape (n_tokens, encoding_dim).
     """
     token_starts = get_token_starts(atom_array, add_exclusive_stop=False)
-    n_tokens = len(token_starts)
+    n_tokens = len(token_starts)  
 
     # Initialize zero encodings for all tokens
     graph_laplacian_pe = torch.zeros(n_tokens, encoding_dim, dtype=torch.float32)
 
     # Build mapping from atom index to token index
-    # token_id gives the token assignment for each atom
     token_id = atom_array.token_id
     unique_token_ids = np.sort(np.unique(token_id))
-    atom_to_token_idx = np.searchsorted(unique_token_ids, token_id)
+    atom_to_token_idx = np.searchsorted(unique_token_ids, token_id)  # [n_atoms]
 
-    # Get molecule instance IDs of atomized atoms
-    atomized_molecule_iids = np.unique(atom_array.molecule_iid[atom_array.atomize])
+    # Subset to only atomized atoms. Biotite re-indexes the BondList to the subset,
+    # dropping any bonds that cross into non-atomized atoms.
+    atomized_mask = atom_array.atomize  # [n_atoms] bool
+    if not atomized_mask.any():
+        return graph_laplacian_pe
 
-    for molecule_iid in atomized_molecule_iids:
-        molecule_mask_atom = atom_array.molecule_iid == molecule_iid
-        n_molecule_atoms = np.sum(molecule_mask_atom)
+    atomized_aa = atom_array[atomized_mask]
+    atomized_indices = np.where(atomized_mask)[0]  # positions in original atom_array
 
-        if n_molecule_atoms == 1:
-            continue  # Skip ions (single atoms)
+    # Find connected components in the bond graph of atomized atoms.
+    # We use an unweighted graph here — connectivity only, not bond orders.
+    nx_graph = _atom_array_to_networkx_graph(atomized_aa, bond_order=False)
+    components = list(nx.connected_components(nx_graph))
 
-        molecule_atom_array = atom_array[molecule_mask_atom]
+    for component_node_set in components:
+        component_local_idxs = np.array(sorted(component_node_set))
+
+        component_aa = atomized_aa[component_local_idxs]
 
         # Extract adjacency matrix (weighted by bond order or binary)
         if use_bond_order:
-            adjacency_matrix = _get_weighted_adjacency_matrix(molecule_atom_array)
+            adjacency_matrix = _get_weighted_adjacency_matrix(component_aa)
         else:
-            # Binary adjacency: 1 if bonded, 0 otherwise
-            bond_type_matrix = molecule_atom_array.bonds.bond_type_matrix()
+            bond_type_matrix = component_aa.bonds.bond_type_matrix()
             adjacency_matrix = (bond_type_matrix >= 0).astype(np.float32)
 
-        # Compute graph Laplacian positional encodings for this molecule (at atom level)
-        molecule_pe = compute_graph_laplacian_eigenvectors(
+        # Compute graph Laplacian positional encodings for this connected component
+        component_pe = compute_graph_laplacian_eigenvectors(
             adjacency_matrix,
             n_eigenvectors=encoding_dim,
         )
 
-        # Map atom-level encodings to token-level positions
-        # Get atom indices within the full atom_array for this molecule
-        molecule_atom_indices = np.where(molecule_mask_atom)[0]
-
-        # Get corresponding token indices for these atoms
-        molecule_token_indices = atom_to_token_idx[molecule_atom_indices]
-
-        # Assign encodings: molecule_pe[i] goes to token molecule_token_indices[i]
-        graph_laplacian_pe[molecule_token_indices] = molecule_pe
+        # Map component atom positions back to token indices in the original array
+        original_atom_indices = atomized_indices[component_local_idxs]
+        token_indices = atom_to_token_idx[original_atom_indices]
+        graph_laplacian_pe[token_indices] = component_pe
 
     return graph_laplacian_pe
 

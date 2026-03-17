@@ -1,0 +1,51 @@
+# @package _global_
+# Mixed training: 50% AFDB-256, 50% MGnify.
+# Both datasets cropped to 256. Unconditional-heavy design tasks.
+# Validation dataset is unconditional-only.
+
+defaults:
+  - /datasets/train/distill/afdb_256@datasets.train.afdb_256
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - _self_
+
+run_name_: afdb256_mgnify_uncondval_32gpu_4node
+
+datasets:
+  train:
+    afdb_256:
+      probability: 0.5
+      dataset:
+        transform:
+          crop_size: 256
+          design_tasks:
+            unconditional:
+              frequency: 90.0
+            folding:
+              frequency: 5.0
+            inverse_folding:
+              frequency: 5.0
+            motif_scaffold:
+              frequency: 0.0
+    mgnify_dec_2025:
+      probability: 0.5
+      dataset:
+        transform:
+          crop_size: 256
+          design_tasks:
+            unconditional:
+              frequency: 90.0
+            folding:
+              frequency: 5.0
+            inverse_folding:
+              frequency: 5.0
+            motif_scaffold:
+              frequency: 0.0
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+
+log:
+  tags: ["afdb-256", "mgnify", "50-50", "val-unconditional", "32gpu-4node"]

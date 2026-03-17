@@ -1,0 +1,42 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+
+  # Validation datasets - only unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+
+  # Design task presets
+  - /design_tasks/presets/unconditional_only@_unconditional_design_tasks
+
+  - _self_
+
+run_name_: 1_uncond_na_ckpt_1
+
+autoencoder_ckpt_path: null # TODO: @kdidi change to NA-AE ckpt once available!!!
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          design_tasks: ${_unconditional_design_tasks}
+
+log:
+  tags: ["unconditional", "pretrain", "afdb-monomer", "na-ae"]
+
+# GB200
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 4
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 32
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path:

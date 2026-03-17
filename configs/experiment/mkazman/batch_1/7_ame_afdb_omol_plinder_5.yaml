@@ -1,0 +1,24 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/6_ame_afdb_omol_plinder_2
+
+
+run_name_: 7_ame_afdb_omol_plinder_5
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.75
+    plinder_with_missing_atoms:
+      probability: 0.05
+
+# A100
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 16

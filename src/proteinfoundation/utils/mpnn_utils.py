@@ -29,7 +29,7 @@ from typing import Literal
 import numpy as np
 from biotite.structure import AtomArray
 
-from atomworks.ml.utils.condition import load_atom_array_with_conditions_from_cif
+from atomworks.io.parser import parse
 
 
 # Extra fields to load for determining fixed residues
@@ -59,7 +59,7 @@ def get_fixed_residues_from_structure(
     structure_path = Path(structure_path)
 
     # Load the structure with extra fields for MPNN annotations
-    atom_array = load_atom_array_with_conditions_from_cif(
+    atom_array = parse(
         structure_path,
         fill_missing_conditions=True,
         extra_fields=MPNN_EXTRA_FIELDS,
