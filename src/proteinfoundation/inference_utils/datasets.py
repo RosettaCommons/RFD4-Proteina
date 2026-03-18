@@ -221,7 +221,6 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
         fix_arginines=False,
         add_missing_atoms=False,
         fix_formal_charges=False,
-        build_assembly="all",  # So that we get iid annotations
         convert_mse_to_met=False,
         hydrogen_policy="remove",
     )
