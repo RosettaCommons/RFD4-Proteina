@@ -5,7 +5,7 @@ defaults:
 
   - _self_
 
-run_name_: 14_ame_afdb_omol_tedmon_filtered_fixed
+run_name_: 14_ame_afdb_omol_tedmon_filtered_fixed_2
 
 datasets:
   train:
@@ -29,4 +29,5 @@ hardware:
 dataloaders:
   batch_size: 16
 
+# pretrain_ckpt_path: /path/to/home
 pretrain_ckpt_path: /path/to/home
