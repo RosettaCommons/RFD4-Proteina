@@ -11,6 +11,13 @@
 # Prereq: add to ~/.bashrc or ~/.zshrc:
 #   export CLUSTER=digs
 #   export CONTAINER_TYPE=apptainer
+#
+# FAQ: How is this different than .ipd/.env.digs?
+# .ipd/.env.digs is committed to git and contains shared data paths, SIF
+# paths, and settings. .user_info_digs is not committed to git and contains
+# user-specific and/or project-specific SLURM settings. Functionally they both
+# provide environment variables that are loaded during run time, but in order to
+# share things properly between users and clusters, we split them into two files.
 # =============================================================================
 
 # Source shared cluster environment (data paths, SIF paths, NCCL settings, etc.)
