@@ -31,6 +31,7 @@ from atomworks.ml.utils.token import (
 from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
 
 from proteinfoundation.conditions import C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.utils.conditioning_utils import (
@@ -719,7 +720,7 @@ def process_unindexed_outputs(
     # Track which indices have been mapped to unindexed regions and their remapped coordinates
     mapped_to_coordinate_conditioned_region = np.zeros(model_generated_atom_array.array_length(), dtype=bool)
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
-    src_coordinate_conditioned_region = np.full(model_generated_atom_array.array_length(), ".", dtype="<U10")
+    src_coordinate_conditioned_region = SA_CRDSRC.default_annotation(model_generated_atom_array)
 
     # If we cannot find a valid insertion mapping, fall back to simply removing the unindexed region
     try:
@@ -732,8 +733,8 @@ def process_unindexed_outputs(
             f"Could not find a valid insertion mapping for unindexed regions: {e} "
             f"No mapping will be reported and the unindexed region will not be reinserted."
         )
-        model_generated_atom_array.set_annotation("mapped_to_coordinate_conditioned_region", mapped_to_coordinate_conditioned_region)
-        model_generated_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
+        SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
         return model_generated_atom_array, {}
 
     old_to_new_atom_index_map = {}
@@ -750,8 +751,8 @@ def process_unindexed_outputs(
             unindexed_token = in_context_conditioning[unindexed_token_mask]
 
             # Annotate the identified mapping
-            if "src_component" in unindexed_token.get_annotation_categories():
-                token_src_id = unindexed_token.src_component[0]
+            if SA_SRC.has_annotation(unindexed_token):
+                token_src_id = SA_SRC.annotation(unindexed_token)[0]
             else:
                 token_src_id = f"{chain_id}{unindexed_res_id}"
             metadata["diffused_index_map"][token_src_id] = f"{chain_id}{target_res_id}"
@@ -834,18 +835,18 @@ def process_unindexed_outputs(
                 remapped_coord[permuted_target_indices_generated] = unindexed_token.coord
 
     # Add an annotation to indicate which residues mapped to unindexed regions, whether inserting or not
-    model_generated_atom_array.set_annotation("mapped_to_coordinate_conditioned_region", mapped_to_coordinate_conditioned_region)
-    model_generated_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
+    SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+    SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
 
     # Validate remapped coordinates, then add as an annotation
     if has_3d_conditioning.any() and mapped_to_coordinate_conditioned_region.any():
         if np.isnan(remapped_coord[mapped_to_coordinate_conditioned_region]).any():
             raise ValueError("NaN values found in remapped coordinates")
-        model_generated_atom_array.coords_with_insertion[mapped_to_coordinate_conditioned_region] = remapped_coord[
-            mapped_to_coordinate_conditioned_region
-        ]
+        cwi = SA_CWI.annotation(model_generated_atom_array)
+        cwi[mapped_to_coordinate_conditioned_region] = remapped_coord[mapped_to_coordinate_conditioned_region]
+        SA_CWI.set_annotation(model_generated_atom_array, cwi)
 
-    if not model_generated_atom_array.mapped_to_coordinate_conditioned_region.any():
+    if not SA_CRDSRC.mask(model_generated_atom_array).any():
         global_logger.warning(
             "Did not map any indexed regions to unindexed regions. "
             "No mapping will be reported and the unindexed region will not be reinserted."

@@ -120,22 +120,7 @@ if [ "$COPY_CODE" == "true" ]; then
     print_header "Copying Code"
     echo "  $REPO_ROOT -> $RUN_DIR"
 
-    rsync -a --no-compress "$REPO_ROOT/src/" "$RUN_DIR/src/"
-    mkdir -p "$RUN_DIR/models/rf3" && rsync -a --no-compress "$REPO_ROOT/models/rf3/src/" "$RUN_DIR/models/rf3/src/"
-    mkdir -p "$RUN_DIR/lib/atomworks" && rsync -a --no-compress "$REPO_ROOT/lib/atomworks/src/" "$RUN_DIR/lib/atomworks/src/"
-
-    cp "$REPO_ROOT/.project-root" "$RUN_DIR/"
-    mkdir -p "$RUN_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$RUN_DIR/.ipd/shebang/"
-    mkdir -p "$RUN_DIR/.ipd/apptainer"
-
-    # DIGS: recreate container symlink with /mnt/net prefix for compute nodes
-    if [ "$CLUSTER_TYPE" = "digs" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
-        CONTAINER_TARGET="$(readlink -f "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
-        if [ -n "$CONTAINER_TARGET" ]; then
-            [[ "$CONTAINER_TARGET" == /net/* ]] && CONTAINER_TARGET="/mnt${CONTAINER_TARGET}"
-            ln -sf "$CONTAINER_TARGET" "$RUN_DIR/.ipd/apptainer/latent-dev.sif"
-        fi
-    fi
+    copy_code_to_dir "$REPO_ROOT" "$RUN_DIR" "$CLUSTER"
     CODE_DIR="$RUN_DIR"
 else
     print_header "Using Code In-Place"

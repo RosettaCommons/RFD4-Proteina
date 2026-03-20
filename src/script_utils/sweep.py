@@ -47,6 +47,18 @@ from omegaconf import DictConfig, OmegaConf
 
 from atomworks.ml.utils.nested_dict import unflatten
 
+def _get_override_label(override_str: str) -> str:
+    """Extract a short human-readable label from a Hydra override string."""
+    labels = []
+    for token in override_str.split():
+        if "=" in token:
+            val = token.split("=", 1)[1]
+            val = val.split("/")[-1]
+            labels.append(val)
+        else:
+            labels.append(token.lstrip("+"))
+    return ",".join(labels) if labels else "default"
+
 
 def load_sweep_config(sweep_config_path: str | Path) -> dict:
     """Load a YAML sweep config file.
@@ -75,6 +87,7 @@ def generate_sweep_configs(
     base_config_name: str = "inference",
     base_config_overrides: list[str] | None = None,
     sweeper: dict[str, list] | None = None,
+    sweep_overrides: list[str] | None = None,
     output_dir: str = "./configs/sweep_configs",
     run_name_prefix: str | None = None,
     config_path: str = "../configs",
@@ -84,9 +97,11 @@ def generate_sweep_configs(
 
     Args:
         base_config_name: Hydra config name to compose on (e.g., "inference").
-        base_config_overrides: Additional Hydra overrides for the base config.
+        base_config_overrides: Hydra overrides applied to every combination.
         sweeper: Dict mapping dot-notation keys to lists of values to sweep.
-                 Empty dict or None generates a single config with defaults.
+            Empty dict or None generates a single config with defaults.
+        sweep_overrides: List of Hydra override strings to sweep over.
+            Each entry is a whitespace-separated string, as in the Hydra CLI.
         output_dir: Directory to save generated config files.
         run_name_prefix: Optional prefix for generated run names.
         config_path: Relative path to Hydra config directory.
@@ -104,63 +119,77 @@ def generate_sweep_configs(
         shutil.rmtree(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Load base config via Hydra
-    overrides = base_config_overrides or []
+    base_overrides = base_config_overrides or []
     config_path_resolved = str(config_path)
-    if os.path.isabs(config_path_resolved):
-        ctx = initialize_config_dir(config_dir=config_path_resolved, version_base=None)
-    else:
-        ctx = hydra.initialize(config_path=config_path_resolved, version_base=None)
-    with ctx:
-        cfg_base = hydra.compose(config_name=base_config_name, overrides=overrides)
-        logger.info(f"Loaded base config: {base_config_name}")
 
-    # Generate Cartesian product of sweep values
+    # Generate Cartesian product of dot-notation sweep values
     keys = list(sweeper.keys())
     values = list(sweeper.values())
-    combinations = list(itertools.product(*values)) if values else [()]
-    combinations = [dict(zip(keys, combo)) for combo in combinations]
+    dot_combos = [dict(zip(keys, combo)) for combo in (itertools.product(*values) if values else [()])]
+    if not dot_combos:
+        dot_combos = [{}]
 
-    if not combinations:
-        combinations = [{}]
+    # Determine which Hydra override sets to iterate over.
+    # [""] means "one option: no extra overrides" (preserves existing behaviour).
+    override_options = sweep_overrides if sweep_overrides else [""]
 
     generated_files = []
-    for idx, combo in enumerate(combinations):
-        # Convert dot-notation to nested dict and merge
-        nested_override = unflatten(combo, split_keys=".")
-        override_cfg = OmegaConf.create(nested_override)
+    idx = 0
+    for override_option in override_options:
+        # Re-compose the Hydra config for each override option
+        extra_overrides = override_option.split() if override_option else []
+        full_overrides = base_overrides + extra_overrides
 
-        OmegaConf.set_struct(cfg_base, False)
-        cfg_merged = OmegaConf.merge(cfg_base, override_cfg)
-
-        # Set run_name if prefix is given
-        if run_name_prefix:
-            OmegaConf.set_struct(cfg_merged, False)
-            cfg_merged["run_name_"] = f"{run_name_prefix}_{idx}"
-
-        # Build descriptive filename from swept values
-        name_parts = []
-        for key, val in combo.items():
-            short_key = key.split(".")[-1]  # Use last part of dot key
-            short_val = str(val).replace("/", "_").replace(" ", "")
-            # Truncate long values
-            if len(short_val) > 30:
-                short_val = short_val[:27] + "..."
-            name_parts.append(f"{short_key}-{short_val}")
-
-        if name_parts:
-            suffix = "__".join(name_parts)
-            filename = f"inf_{idx:03d}__{suffix}.yaml"
+        if os.path.isabs(config_path_resolved):
+            ctx = initialize_config_dir(config_dir=config_path_resolved, version_base=None)
         else:
-            filename = f"inf_{idx:03d}.yaml"
+            ctx = hydra.initialize(config_path=config_path_resolved, version_base=None)
+        with ctx:
+            cfg_base = hydra.compose(config_name=base_config_name, overrides=full_overrides)
 
-        # Sanitize filename
-        filename = filename.replace("'", "").replace('"', "")
+        logger.info(f"Composed config with overrides: {full_overrides}")
 
-        filepath = output_path / filename
-        OmegaConf.save(config=cfg_merged, f=str(filepath))
-        generated_files.append(filepath)
-        logger.info(f"  Generated: {filename}")
+        override_label = _get_override_label(override_option) if override_option else None
+
+        for combo in dot_combos:
+            # Convert dot-notation to nested dict and merge
+            nested_override = unflatten(combo, split_keys=".")
+            override_cfg = OmegaConf.create(nested_override)
+
+            OmegaConf.set_struct(cfg_base, False)
+            cfg_merged = OmegaConf.merge(cfg_base, override_cfg)
+
+            # Set run_name if prefix is given
+            if run_name_prefix:
+                OmegaConf.set_struct(cfg_merged, False)
+                cfg_merged["run_name_"] = f"{run_name_prefix}_{idx}"
+
+            # Build descriptive filename from swept values
+            name_parts = []
+            if override_label:
+                name_parts.append(f"override-{override_label}")
+            for key, val in combo.items():
+                short_key = key.split(".")[-1]  # Use last part of dot key
+                short_val = str(val).replace("/", "_").replace(" ", "").replace("=", "-")
+                # Truncate long values
+                if len(short_val) > 30:
+                    short_val = short_val[:27] + "..."
+                name_parts.append(f"{short_key}-{short_val}")
+
+            if name_parts:
+                suffix = "__".join(name_parts)
+                filename = f"inf_{idx:03d}__{suffix}.yaml"
+            else:
+                filename = f"inf_{idx:03d}.yaml"
+
+            # Sanitize filename
+            filename = filename.replace("'", "").replace('"', "").replace("=", "-")
+
+            filepath = output_path / filename
+            OmegaConf.save(config=cfg_merged, f=str(filepath))
+            generated_files.append(filepath)
+            logger.info(f"  Generated: {filename}")
+            idx += 1
 
     logger.info(f"Generated {len(generated_files)} config(s) in {output_dir}")
     return generated_files
@@ -287,11 +316,13 @@ Examples:
         base_config = sweep_cfg.get("base_config", "inference")
         base_overrides = sweep_cfg.get("base_config_overrides", [])
         sweeper = sweep_cfg.get("sweep", {})
+        sweep_overrides = sweep_cfg.get("sweep_overrides", None)
         output_dir = args.output_dir or sweep_cfg.get("output_dir", "./configs/sweep_configs")
         run_name_prefix = args.run_name_prefix or sweep_cfg.get("run_name_prefix", None)
     else:
         base_config = args.base_config
         base_overrides = []
+        sweep_overrides = None
         sweeper = {}
         for sweep_str in args.sweep:
             key, values = parse_sweep_arg(sweep_str)
@@ -300,11 +331,16 @@ Examples:
         run_name_prefix = args.run_name_prefix
 
     # Show sweep info
-    total_combos = 1
+    n_override_options = len(sweep_overrides) if sweep_overrides else 1
+    total_combos = n_override_options
     for values in sweeper.values():
         total_combos *= len(values) if isinstance(values, list) else 1
 
     logger.info(f"Base config: {base_config}")
+    if sweep_overrides:
+        logger.info(f"Sweep override options: {n_override_options}")
+        for i, opt in enumerate(sweep_overrides):
+            logger.info(f"  Option {i}: {opt}")
     logger.info(f"Sweep parameters: {len(sweeper)} keys")
     for key, values in sweeper.items():
         n = len(values) if isinstance(values, list) else 1
@@ -314,13 +350,15 @@ Examples:
 
     if args.dry_run:
         logger.info("DRY RUN — no files will be created")
-        # Show combinations
+        override_options = sweep_overrides if sweep_overrides else [""]
         keys = list(sweeper.keys())
         values = list(sweeper.values())
-        combos = list(itertools.product(*values)) if values else [()]
-        for i, combo in enumerate(combos):
-            combo_dict = dict(zip(keys, combo))
-            logger.info(f"  Config {i}: {combo_dict}")
+        dot_combos = [dict(zip(keys, c)) for c in (itertools.product(*values) if values else [()])]
+        i = 0
+        for override_option in override_options:
+            for combo in dot_combos:
+                logger.info(f"  Config {i}: overrides={override_option!r} values={combo}")
+                i += 1
         return
 
     # Generate configs
@@ -328,6 +366,7 @@ Examples:
         base_config_name=base_config,
         base_config_overrides=base_overrides,
         sweeper=sweeper,
+        sweep_overrides=sweep_overrides,
         output_dir=output_dir,
         run_name_prefix=run_name_prefix,
         config_path=args.config_path,

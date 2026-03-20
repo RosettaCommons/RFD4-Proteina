@@ -22,6 +22,7 @@
 #   --no-concatenate        Skip the automatic post-generation concatenation job
 #   --foldseek              Enable Foldseek clustering during concatenation
 #   --no-copy               Use the current repo in-place (skip rsync)
+#   --code-dir <path>       Use a pre-existing code directory (skip copy entirely)
 #   --overwrite-rundir      Allow overwriting an existing code directory
 #   --follow, -f            Follow logs after submission (Ctrl+C to exit)
 #
@@ -73,6 +74,7 @@ CONFIG_NAME="inference"
 DO_CONCATENATE="true"  # concatenate by default
 CONCATENATE_FOLDSEEK="false"
 COPY_CODE="true"
+CODE_DIR_OVERRIDE=""   # pre-existing code dir (set via --code-dir)
 FOLLOW_LOGS="false"
 OVERWRITE_RUNDIR="false"
 EXTRA_ARGS=""
@@ -110,6 +112,11 @@ while [[ $# -gt 0 ]]; do
         --no-copy)
             COPY_CODE="false"
             shift
+            ;;
+        --code-dir)
+            CODE_DIR_OVERRIDE="$2"
+            COPY_CODE="false"
+            shift 2
             ;;
         --overwrite-rundir)
             OVERWRITE_RUNDIR="true"
@@ -234,9 +241,13 @@ ln -sfn "$RUN_DIR" "$REPO_ROOT/runs/${RUN_NAME}"
 echo "  Local symlink: $REPO_ROOT/runs/${RUN_NAME}"
 
 # ============================================================
-# Copy code to run directory (or use repo in-place)
+# Copy code to run directory (or use repo/pre-existing dir)
 # ============================================================
-if [ "$COPY_CODE" == "true" ]; then
+if [ -n "$CODE_DIR_OVERRIDE" ]; then
+    print_header "Using Pre-existing Code Directory"
+    echo "  $CODE_DIR_OVERRIDE"
+    CODE_DIR="$CODE_DIR_OVERRIDE"
+elif [ "$COPY_CODE" == "true" ]; then
     CODE_DIR="$RUN_DIR/code"
     if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/projects/proteinfoundation/proteinfoundation" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
@@ -250,33 +261,7 @@ if [ "$COPY_CODE" == "true" ]; then
 
     print_header "Copying Code"
     echo "  $REPO_ROOT -> $CODE_DIR"
-
-    mkdir -p "$CODE_DIR"
-    rsync -a "$REPO_ROOT/src/" "$CODE_DIR/src/"
-    mkdir -p "$CODE_DIR/models/rf3" && rsync -a "$REPO_ROOT/models/rf3/src/" "$CODE_DIR/models/rf3/src/"
-    mkdir -p "$CODE_DIR/lib/atomworks" && rsync -a "$REPO_ROOT/lib/atomworks/src/" "$CODE_DIR/lib/atomworks/src/"
-
-    echo "  Copying projects/proteinfoundation..."
-    mkdir -p "$CODE_DIR/projects/proteinfoundation"
-    rsync -a --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$REPO_ROOT/projects/proteinfoundation/proteinfoundation/" "$CODE_DIR/projects/proteinfoundation/proteinfoundation/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/configs/" "$CODE_DIR/projects/proteinfoundation/configs/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/benchmarks/" "$CODE_DIR/projects/proteinfoundation/benchmarks/"
-    rsync -a "$REPO_ROOT/projects/proteinfoundation/data/" "$CODE_DIR/projects/proteinfoundation/data/"
-
-    cp "$REPO_ROOT/.project-root" "$CODE_DIR/"
-    mkdir -p "$CODE_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$CODE_DIR/.ipd/shebang/"
-    rsync -a "$REPO_ROOT/.ipd/".env.* "$CODE_DIR/.ipd/"
-    mkdir -p "$CODE_DIR/.ipd/apptainer"
-
-    # Apptainer: recreate container symlink with /mnt/net prefix for compute nodes
-    if [ "$CONTAINER_TYPE" == "apptainer" ] && [ -L "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" ]; then
-        CONTAINER_TARGET="$(readlink -f "$REPO_ROOT/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
-        if [ -n "$CONTAINER_TARGET" ]; then
-            [[ "$CONTAINER_TARGET" == /net/* ]] && CONTAINER_TARGET="/mnt${CONTAINER_TARGET}"
-            ln -sf "$CONTAINER_TARGET" "$CODE_DIR/.ipd/apptainer/latent-dev.sif"
-        fi
-    fi
+    copy_code_to_dir "$REPO_ROOT" "$CODE_DIR" "$CLUSTER"
 else
     print_header "Using Code In-Place"
     echo "  $REPO_ROOT"
@@ -453,7 +438,7 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
             echo "#SBATCH --account $ACCOUNT"
         fi
-        echo "#SBATCH --partition ${PARTITION:-batch}"
+        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
         echo "#SBATCH --time 01:00:00"
         echo "#SBATCH --nodes 1"
         echo "#SBATCH --ntasks-per-node 1"
@@ -530,6 +515,8 @@ if [ "$DO_CONCATENATE" == "true" ] && [ -n "$MAIN_JOB_ID" ]; then
     CONCAT_SBATCH_OUTPUT=$(sbatch --dependency=afterany:$MAIN_JOB_ID slurm_concat_script.sh)
     CONCAT_JOB_ID=$(echo "$CONCAT_SBATCH_OUTPUT" | grep -oP '\d+')
     echo "$CONCAT_SBATCH_OUTPUT"
+    # Emit a parseable line so parent scripts (e.g. launch_sweep.sh) can capture this ID
+    echo "LAUNCH_INFER_CONCAT_JOB_ID=$CONCAT_JOB_ID"
 fi
 
 # ============================================================

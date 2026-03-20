@@ -70,7 +70,7 @@ indexed_motif_allatom_rmsd:
     ground_truth_atom_array_stack: predicted_atom_array
     predicted_atom_array_stack: predicted_atom_array
   keep_aligned_predicted_structure: true
-  gt_coord_annotation_name: coords_with_insertion
+  gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   required_tags_any: ["3d_coordinate_conditioning"]
   prohibited_tags: ["unindexed"]
 
@@ -78,7 +78,7 @@ unindexed_motif_allatom_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_protein
   subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-  gt_coord_annotation_name: coords_with_insertion
+  gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   input_kwarg_names:
     ground_truth_atom_array_stack: predicted_atom_array

@@ -1,6 +1,7 @@
 import numpy as np
 from biotite.structure import AtomArray
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_SRC
 
 from proteinfoundation.inference_utils.inference_utils import get_motif_features
 from proteinfoundation.inference_utils.symmetry.contigs import expand_contig_unsym_motif
@@ -31,7 +32,7 @@ def check_symmetry_config(
         unsym_motif_names = sym_conf["is_unsym_motif"].split(",")
         unsym_motif_names = expand_contig_unsym_motif(unsym_motif_names)
         for n in unsym_motif_names:
-            if (sm and n not in sm.split(",")) and (n not in atom_array.src_component):
+            if (sm and n not in sm.split(",")) and (n not in SA_SRC.annotation(atom_array)):
                 raise ValueError(f"Unsym motif {n} not found in atom_array")
     if (
         get_motif_features(atom_array)["is_motif_token"].any()

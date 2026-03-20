@@ -9,6 +9,7 @@ from atomworks.ml.utils.geometry import random_rigid_augmentation
 from atomworks.ml.utils.testing import cached_parse
 from biotite.structure import superimpose
 
+from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_CRDGRP, C_INTCRD
 from proteinfoundation.metrics.gt_structure_comparison import InternalCoordAdherenceMetric
 from proteinfoundation.transforms.utils.conditioning_utils import (
@@ -189,8 +190,8 @@ def test_insert_internal_coord_conditioned_groups(deterministic_rng, pdb_id):
     atom_array = insert_internal_coord_conditioned_groups(atom_array, original_input_coords=original_coords)
 
     # Verify coords_with_insertion was created
-    assert "coords_with_insertion" in atom_array.get_annotation_categories()
-    inserted_coords = atom_array.coords_with_insertion[group_mask]
+    assert SA_CWI.has_annotation(atom_array)
+    inserted_coords = SA_CWI.annotation(atom_array)[group_mask]
 
     # Verify inserted coords match aligned original coords
     aligned_original, _ = superimpose(fixed=generated_coords[group_mask], mobile=original_coords[group_mask])

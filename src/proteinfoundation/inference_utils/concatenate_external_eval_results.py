@@ -152,7 +152,7 @@ def diversity_foldseek(
     except Exception as e:
         logger.info(f"Foldseek diversity failed: {e} \n Returning None")
         if clean_tmp:
-            shutil.rmtree(path_tmp)
+            shutil.rmtree(path_tmp, ignore_errors=True)
         return None
 
     res_file = os.path.join(path_tmp, "res_cluster.tsv")
@@ -176,7 +176,7 @@ def diversity_foldseek(
     assert nels == len(list_of_pdb_paths), f"Foldseek clustering clustered {nels} from {len(list_of_pdb_paths)} given"
 
     if clean_tmp:
-        shutil.rmtree(path_tmp)
+        shutil.rmtree(path_tmp, ignore_errors=True)
 
     return cluster_assignments
 
@@ -253,6 +253,64 @@ def add_foldseek_diversity_to_per_example_df(per_example_df: pd.DataFrame, **kwa
 
     return pd.concat(output_task_dfs, ignore_index=True)
 
+def _base_pass_rate_cols(df: pd.DataFrame) -> list[str]:
+    """Return pass_rate columns, excluding derived clustered/unclustered variants."""
+    return [
+        c for c in df.columns
+        if c.endswith("pass_rate")
+        and not c.endswith("clustered_pass_rate")
+        and not c.endswith("unclustered_pass_rate")
+    ]
+
+
+def add_diversity_summary_metrics(per_example_df: pd.DataFrame) -> pd.DataFrame:
+    """Broadcast cluster metrics (cluster_diversity, clustered_pass_rate, unclustered_pass_rate) onto per-example rows."""
+
+    if "foldseek_cluster_id" not in per_example_df.columns:
+        raise ValueError("foldseek_cluster_id column not found in per_example_df. Run add_foldseek_diversity_to_per_example_df first.")
+
+    pass_rate_cols = _base_pass_rate_cols(per_example_df)
+
+    # Add unclustered_pass_rate as a per-row coalesced value: the single non-NaN base pass_rate
+    # value for that row, or NaN if zero or multiple base pass_rate columns are non-NaN.
+    per_example_df = per_example_df.copy()
+    if pass_rate_cols:
+        pr_df = per_example_df[pass_rate_cols]
+        non_nan_counts = pr_df.notna().sum(axis=1)
+        coalesced = pr_df.bfill(axis=1).iloc[:, 0]
+        per_example_df["unclustered_pass_rate"] = coalesced.where(non_nan_counts == 1)
+    else:
+        per_example_df["unclustered_pass_rate"] = float("nan")
+
+    cluster_rows = []
+    for task_name, task_df in per_example_df.groupby("task"):
+        n = len(task_df)
+        row: dict = {
+            "task": task_name,
+            "cluster_diversity": float(task_df["foldseek_cluster_id"].nunique()) / n,
+        }
+        cpr_values: dict = {}
+        for pr_col in pass_rate_cols:
+            prefix = pr_col[: -len("pass_rate")]
+            cpr_col = f"{prefix}clustered_pass_rate"
+            if task_df[pr_col].isna().all():
+                cpr_val: float = float("nan")
+            else:
+                passing_clusters = (
+                    task_df.loc[task_df[pr_col] == 1.0, "foldseek_cluster_id"].dropna().nunique()
+                )
+                cpr_val = float(passing_clusters) / n
+            row[cpr_col] = cpr_val
+            cpr_values[cpr_col] = cpr_val
+        if pass_rate_cols:
+            non_nan_cprs = [v for v in cpr_values.values() if pd.notna(v)]
+            row["clustered_pass_rate"] = non_nan_cprs[0] if len(non_nan_cprs) == 1 else float("nan")
+        cluster_rows.append(row)
+
+    cluster_metrics_df = pd.DataFrame(cluster_rows)
+    per_example_df = per_example_df.merge(cluster_metrics_df, on="task", how="left")
+
+    return per_example_df
 
 def aggregate_metrics_from_per_example_df(
     per_example_df: pd.DataFrame,
@@ -295,13 +353,20 @@ def aggregate_metrics_from_per_example_df(
 
         row: dict = {group_by: group_value, "n": len(group_df)}
 
+        # Carry over identifier columns (non-metric, non-group_by) when they
+        # have a unique value within the group (e.g. dataset_name per task).
+        identifier_cols = non_metric_cols - {group_by, "example_id", "designed_structure_path",
+                                             "sequence_redesigned_structure_path", "foldseek_cluster_id"}
+        for col in identifier_cols:
+            if col in group_df.columns:
+                unique_vals = group_df[col].dropna().unique()
+                if len(unique_vals) == 1:
+                    row[col] = unique_vals[0]
+
         for metric_name in metric_cols:
             values = group_df[metric_name].dropna()
             if len(values) > 0:
                 row[metric_name] = float(np.nanmean(values))
-
-        if "foldseek_cluster_id" in group_df.columns:
-            row["cluster_diversity"] = float(group_df["foldseek_cluster_id"].nunique()) / len(group_df)
 
         agg_rows.append(row)
 
@@ -326,6 +391,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
 
     # Find all per-example metric files
     per_example_files = sorted(output_path.glob("*per_example_metrics*.csv"))
+    per_example_files = [f for f in per_example_files if f.name != "per_example_metrics.csv"]
 
     if not per_example_files:
         print(f"No per-example metric files found in {output_dir}")
@@ -345,10 +411,12 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
 
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
-        # Implement Foldseek clustering logic here
         concatenated_per_example = add_foldseek_diversity_to_per_example_df(concatenated_per_example)
+        concatenated_per_example = add_diversity_summary_metrics(concatenated_per_example)
+
 
     # Save concatenated per-example metrics
+    concatenated_per_example = concatenated_per_example.round(4)
     per_example_output = output_path / "per_example_metrics.csv"
     concatenated_per_example.to_csv(per_example_output, index=False)
     print(f"\nSaved concatenated per-example metrics to {per_example_output}")
@@ -358,6 +426,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
     agg_df = aggregate_metrics_from_per_example_df(concatenated_per_example, title="Final Aggregated Metrics")
 
     # Save aggregated metrics
+    agg_df = agg_df.round(4)
     agg_output = output_path / "aggregated_metrics.csv"
     agg_df.to_csv(agg_output, index=False)
     print(f"\nSaved aggregated metrics to {agg_output}")
@@ -367,6 +436,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
         concatenated_per_example, title="Per-Task Metrics", group_by="task"
     )
 
+    per_task_df = per_task_df.round(4)
     per_task_output = output_path / "per_task_metrics.csv"
     per_task_df.to_csv(per_task_output, index=False)
     print(f"\nSaved per-task metrics to {per_task_output}")

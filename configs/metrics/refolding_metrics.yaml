@@ -58,7 +58,7 @@ rf3_metric_motif_scaffold:
   num_steps: 50
   n_recycles: 5
   required_tags_any: ["motif_scaffold_refolding"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:
@@ -77,7 +77,7 @@ rf3_metric_motif_scaffold:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region & is_protein
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
         keep_aligned_predicted_structure: true
       motif_ca_rmsd:
@@ -87,7 +87,7 @@ rf3_metric_motif_scaffold:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
   pass_criteria:
     backbone_rmsd.rmsd:
@@ -142,7 +142,7 @@ rf3_metric_ame:
   n_recycles: 5
   required_tags_any: ["ame_refolding"]
   prohibited_tags: ["no_ligand"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:
@@ -161,7 +161,7 @@ rf3_metric_ame:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region & is_protein
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
         keep_aligned_predicted_structure: true
       ligand_clash_metric:
@@ -185,7 +185,7 @@ rf3_metric_ame_no_ligand:
   num_steps: 50
   n_recycles: 5
   required_tags_all: ["ame_refolding", "no_ligand"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:
@@ -204,7 +204,7 @@ rf3_metric_ame_no_ligand:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region & is_protein
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
         keep_aligned_predicted_structure: true
   pass_criteria:
@@ -222,7 +222,7 @@ rf3_metric_ame_original_benchmark:
   n_recycles: 5
   required_tags_any: ["ame_refolding_original_benchmark"]
   prohibited_tags: ["no_ligand"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:
@@ -233,7 +233,7 @@ rf3_metric_ame_original_benchmark:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region_token_lvl & is_protein_backbone
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
         keep_aligned_predicted_structure: true
       ligand_clash_metric:
@@ -254,7 +254,7 @@ rf3_metric_motif_scaffold_internal_coords:
   num_steps: 50
   n_recycles: 5
   required_tags_any: ["internal_coordinate_motif_scaffold_refolding"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:

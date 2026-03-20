@@ -8,7 +8,7 @@ rf3_metric_ame:
   num_steps: 50
   n_recycles: 5
   required_tags_any: ["ame_refolding"]
-  extra_annots_to_symm_resolve: ["coords_with_insertion"]
+  extra_annots_to_symm_resolve: ["annotation_coords-with-insertion_1_atom"]
   metric_manager:
     _target_: foundry.metrics.metric.MetricManager
     metrics:
@@ -27,7 +27,7 @@ rf3_metric_ame:
           predicted_atom_array_stack: predicted_atom_array_stack
         align_mask: mapped_to_coordinate_conditioned_region & is_protein
         subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-        gt_coord_annotation_name: coords_with_insertion
+        gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
         metric_type: rmsd
       ligand_clash_metric:
         _target_: proteinfoundation.metrics.design_metrics.LigandClashMetric

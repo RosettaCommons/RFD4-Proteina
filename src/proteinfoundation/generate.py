@@ -20,7 +20,7 @@ from foundry.utils.env import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.logging import print_config_tree
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf, DictConfig, ListConfig
 from torch.utils.data import DataLoader
 
 from proteinfoundation.datapipes.collate import atom37_collate_fn
@@ -185,6 +185,14 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     if isinstance(instantiated_dset, (DesignProblemDataset | ContigJsonDataset)):
         cfg_gen.dataset.num_replicates = num_replicates
         instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)  # Re-instantiate with correct num_replicates
+        if cfg_gen.val_set_name_override is None:
+            if "data" in cfg_gen.dataset:
+                cfg_gen.val_set_name_override = cfg_gen.dataset.data
+            elif "dir_path_or_file_paths" in cfg_gen.dataset:
+                if isinstance(cfg_gen.dataset.dir_path_or_file_paths, list | ListConfig):
+                    cfg_gen.val_set_name_override = ",".join(cfg_gen.dataset.dir_path_or_file_paths)
+                else:
+                    cfg_gen.val_set_name_override = cfg_gen.dataset.dir_path_or_file_paths
         return instantiated_dset
 
     # Otherwise, we will create a Dataset based on the user specifications
@@ -392,6 +400,8 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         is_inference=True,
         global_prefix=cfg.get("global_prefix"),
         job_id=cfg.get("job_id"),
+        ckpt_path=ckpt_path,
+        ckpt_name=cfg.ckpt_name,
     )
 
     # Configure search if specified
@@ -479,15 +489,7 @@ def save_predictions(
 
         # Save generated structure (will be saved as CIF format)
         file_path = os.path.join(root_path, out_name)
-        extra_annotations_to_save = [
-            "mapped_to_coordinate_conditioned_region",
-            "mapped_to_coordinate_conditioned_region_token_lvl",
-            "coords_with_insertion",
-            "src_coordinate_conditioned_region",
-            "src_component",
-        ]
-
-        to_cif_file(atom_array, file_path, extra_fields=extra_annotations_to_save)
+        to_cif_file(atom_array, file_path)
 
 
 def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:

@@ -16,6 +16,7 @@ from atomworks.ml.conditions.base import CONDITIONS
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 from foundry.utils.logging import RankedLogger
+from foundry.utils.standard_annotations import SA_SRC
 
 logger = RankedLogger(rank_zero_only=False)
 
@@ -65,17 +66,18 @@ def _broadcast_src_component_residue_wise(atom_array):
     """
 
     # NOTE: Operations are residue-wise rather than token-wise since atomized residues have a single src_component
-    if np.any(struc.apply_residue_wise(atom_array, atom_array.src_component, lambda x: len(set(x) - {"."}) > 1)):
+    src_comp = SA_SRC.annotation(atom_array)
+    if np.any(struc.apply_residue_wise(atom_array, src_comp, lambda x: len(set(x) - {"."}) > 1)):
         raise ValueError(f"Found multiple non-trivial src_component values within a single residue.")
-    
+
     residue_level_src_component = struc.apply_residue_wise(
         atom_array,
-        atom_array.src_component,
+        src_comp,
         lambda x: np.array(x[x != "."][0] if np.any(x != ".") else ".", dtype="<U10")
     )
     broadcasted_src_component = struc.spread_residue_wise(atom_array, residue_level_src_component)
 
-    atom_array.set_annotation("src_component", broadcasted_src_component)
+    SA_SRC.set_annotation(atom_array, broadcasted_src_component)
 
     return atom_array
 
@@ -246,7 +248,7 @@ def copy_generated_coordinates_to_input(
             existing_annotations = get_annotation_categories(template, n_body="all")
             annotations_to_default = set(annotations_to_default) - set(existing_annotations)
             template = default_annotations_and_conditions_from_registry(template, annotations=annotations_to_default)
-            template.set_annotation("src_component", np.full(len(template), ".", dtype="<U10"))
+            SA_SRC.set_annotation(template, SA_SRC.default_annotation(template))
 
             # Set coordinates from generated atom array
             _copy_coords_by_atom_name(
