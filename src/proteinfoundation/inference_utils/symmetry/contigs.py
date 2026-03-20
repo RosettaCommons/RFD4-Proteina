@@ -1,5 +1,6 @@
 import numpy as np
 
+from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.inference_utils.components import fetch_mask_from_idx
 
 
@@ -48,8 +49,8 @@ def get_unsym_motif_mask(atom_array: np.ndarray, unsym_motif_names: list[str]) -
     is_unsym_motif = np.zeros(len(atom_array), dtype=bool)
     for n in unsym_motif_names:
         is_unsym_motif = np.logical_or(is_unsym_motif, atom_array.res_name == n)
-        if "src_component" in atom_array.get_annotation_categories() and n in atom_array.src_component:
-            is_unsym_motif = np.logical_or(is_unsym_motif, atom_array.src_component == n)
+        if SA_SRC.has_annotation(atom_array) and n in SA_SRC.annotation(atom_array):
+            is_unsym_motif = np.logical_or(is_unsym_motif, SA_SRC.annotation(atom_array) == n)
         elif n[0].isalpha() and n[1:].isdigit():
             residue_mask = fetch_mask_from_idx(n, atom_array=atom_array)
             is_unsym_motif = np.logical_or(is_unsym_motif, residue_mask)

@@ -559,6 +559,45 @@ build_container_env_cmds() {
     echo "$cmds"
 }
 
+# Copy codebase to a target directory (used by launch_infer.sh and launch_sweep.sh)
+# Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
+# Copies src, models/rf3, lib/atomworks, projects/proteinfoundation, configs, and .ipd.
+# Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
+copy_code_to_dir() {
+    local repo_root="$1"
+    local code_dir="$2"
+    local cluster="${3:-}"
+
+    mkdir -p "$code_dir"
+    rsync -a --no-compress "$repo_root/src/" "$code_dir/src/"
+    mkdir -p "$code_dir/models/rf3" && rsync -a --no-compress "$repo_root/models/rf3/src/" "$code_dir/models/rf3/src/"
+    mkdir -p "$code_dir/lib/atomworks" && rsync -a --no-compress "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
+
+    mkdir -p "$code_dir/projects/proteinfoundation"
+    rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
+        "$repo_root/projects/proteinfoundation/proteinfoundation/" "$code_dir/projects/proteinfoundation/proteinfoundation/"
+    rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
+        "$repo_root/projects/proteinfoundation/configs/" "$code_dir/projects/proteinfoundation/configs/"
+    rsync -a --no-compress "$repo_root/projects/proteinfoundation/benchmarks/" "$code_dir/projects/proteinfoundation/benchmarks/"
+    rsync -a --no-compress "$repo_root/projects/proteinfoundation/data/" "$code_dir/projects/proteinfoundation/data/"
+    rsync -a --no-compress "$repo_root/projects/proteinfoundation/script_utils/" "$code_dir/projects/proteinfoundation/script_utils/"
+
+    cp "$repo_root/.project-root" "$code_dir/"
+    mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"
+    rsync -a "$repo_root/.ipd/".env.* "$code_dir/.ipd/" 2>/dev/null || true
+    mkdir -p "$code_dir/.ipd/apptainer"
+
+    # Apptainer: recreate container symlink with /mnt/net prefix for compute nodes
+    if [ "${CONTAINER_TYPE:-}" == "apptainer" ] && [ -L "$repo_root/.ipd/apptainer/latent-dev.sif" ]; then
+        local container_target
+        container_target="$(readlink -f "$repo_root/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
+        if [ -n "$container_target" ]; then
+            [[ "$container_target" == /net/* ]] && container_target="/mnt${container_target}"
+            ln -sf "$container_target" "$code_dir/.ipd/apptainer/latent-dev.sif"
+        fi
+    fi
+}
+
 # Print summary of mounts for logging
 print_mount_summary() {
     if [ ${#CONTAINER_MOUNTS[@]} -gt 0 ]; then

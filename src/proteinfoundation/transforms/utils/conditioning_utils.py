@@ -10,6 +10,7 @@ from biotite.structure.atoms import AtomArray
 from biotite.structure.residues import get_residue_starts, spread_residue_wise
 from foundry.common import true_with_prob
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_CWI
 
 from proteinfoundation.conditions import C_IDX, C_IDXGRP, C_INTCRD, C_CRDGRP
 
@@ -334,8 +335,8 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_inp
     if not intcrd_mask.any():
         return atom_array
 
-    if "coords_with_insertion" not in atom_array.get_annotation_categories():
-        atom_array.set_annotation("coords_with_insertion", atom_array.coord.copy())
+    if not SA_CWI.has_annotation(atom_array):
+        SA_CWI.set_annotation(atom_array, SA_CWI.default_annotation(atom_array))
 
     # Find unique internal coordinate groups (exclude absolute coords and unknown coords)
     coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
@@ -365,6 +366,8 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_inp
         )
 
         # Update coords_with_insertion with aligned coordinates
-        atom_array.coords_with_insertion[group_intcrd_mask] = aligned_coords
+        cwi = SA_CWI.annotation(atom_array)
+        cwi[group_intcrd_mask] = aligned_coords
+        SA_CWI.set_annotation(atom_array, cwi)
 
     return atom_array

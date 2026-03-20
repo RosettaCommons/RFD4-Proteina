@@ -22,9 +22,10 @@
 #   --base-out-dir <path>        Base directory for all sweep runs; each config
 #                                gets its own subdirectory at <path>/<config_name>
 #   --dry-run                    Generate configs only; do not submit jobs
-#   --no-copy                    Don't copy code to the run directory
+#   --no-copy                    Don't copy code (use repo in-place for all jobs)
 #   --overwrite-rundir           Allow overwriting existing run directories
 #   --delay <seconds>            Delay between job submissions (default: 2)
+#   --no-sweep-concatenate       Skip the final sweep-level concatenation job
 #
 # Hydra overrides:
 #   Any remaining arguments are forwarded to every launch_infer.sh call.
@@ -67,6 +68,7 @@ OVERWRITE_RUNDIR="false"
 SWEEP_CONFIG_OUTPUT_DIR=""
 BASE_OUT_DIR=""
 DELAY=2
+DO_SWEEP_CONCATENATE="true"
 EXTRA_ARGS=""
 
 while [[ $# -gt 0 ]]; do
@@ -101,6 +103,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-copy)
             NO_COPY="true"
+            shift
+            ;;
+        --no-sweep-concatenate)
+            DO_SWEEP_CONCATENATE="false"
             shift
             ;;
         --overwrite-rundir)
@@ -139,7 +145,8 @@ if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
     echo "  --no-concatenate       Skip per-config concatenation job"
     echo "  --foldseek             Enable Foldseek in concatenation"
     echo "  --dry-run              Generate configs only, don't submit"
-    echo "  --no-copy              Don't copy code to run directory"
+    echo "  --no-copy              Don't copy code (use repo in-place for all jobs)"
+  echo "  --no-sweep-concatenate Skip the final sweep-level concatenation step"
     echo "  --base-out-dir <path>  Base dir for all sweep runs"
     echo "  --delay <seconds>      Delay between submissions (default: 2)"
     exit 1
@@ -158,6 +165,10 @@ SWEEP_CONFIG=$(realpath "$SWEEP_CONFIG")
 SWEEP_CONFIG_OUTPUT_DIR="$BASE_OUT_DIR/configs"
 
 # Load cluster configuration
+# Save the original cluster arg before load_user_info overwrites $CLUSTER.
+# .user_info files set CLUSTER to the runtime cluster name (e.g. "coreweave")
+# so that exec_core.sh can source .ipd/.env.${CLUSTER} inside the job.
+CLUSTER_ARG="$CLUSTER"
 load_user_info "$CLUSTER" || exit 1
 
 # Find repository root
@@ -171,6 +182,35 @@ cd "$REPO_ROOT"
 # Setup PYTHONPATH
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
+
+# =============================================================================
+# Step 0: Copy code once to sweep directory (unless --no-copy)
+# =============================================================================
+SWEEP_CODE_DIR=""
+if [ "$NO_COPY" != "true" ] && [ -n "$BASE_OUT_DIR" ]; then
+    SWEEP_CODE_DIR="$BASE_OUT_DIR/code"
+    if [ -d "$SWEEP_CODE_DIR/src" ] || [ -d "$SWEEP_CODE_DIR/projects/proteinfoundation/proteinfoundation" ]; then
+        if [ "$OVERWRITE_RUNDIR" == "true" ]; then
+            echo "Warning: Overwriting existing sweep code directory at $SWEEP_CODE_DIR"
+        else
+            echo "Reusing existing sweep code directory: $SWEEP_CODE_DIR"
+        fi
+    else
+        print_header "Copying Code for Sweep"
+        echo "  $REPO_ROOT -> $SWEEP_CODE_DIR"
+        copy_code_to_dir "$REPO_ROOT" "$SWEEP_CODE_DIR" "$CLUSTER"
+        echo "  Done."
+    fi
+fi
+
+# =============================================================================
+# Save sweep config to output directory
+# =============================================================================
+if [ -n "$BASE_OUT_DIR" ]; then
+    mkdir -p "$BASE_OUT_DIR"
+    cp "$SWEEP_CONFIG" "$BASE_OUT_DIR/sweep_config.yaml"
+    echo "  Saved sweep config to: $BASE_OUT_DIR/sweep_config.yaml"
+fi
 
 # =============================================================================
 # Step 1: Generate sweep configs
@@ -237,6 +277,7 @@ echo ""
 
 SUBMITTED=0
 FAILED=0
+ALL_CONCAT_JOB_IDS=""  # collect per-config concat job IDs for sweep-level dependency
 
 for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     config_name=$(basename "$config_file" .yaml)
@@ -267,11 +308,16 @@ else:
     # Build common flags for launch_infer.sh
     # --njobs is only passed if explicitly set; otherwise launch_infer.sh reads
     # gen_njobs from the per-config Hydra config (allowing per-config control).
+    # Code is always handled at the sweep level
     COMMON_FLAGS="--gpus-per-job $GPUS_PER_JOB"
     if [ -n "$NJOBS" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --njobs $NJOBS"
     fi
-    if [ "$NO_COPY" == "true" ]; then
+    if [ -n "$SWEEP_CODE_DIR" ]; then
+        # Code was copied once at the sweep level; point each job at that copy
+        COMMON_FLAGS="$COMMON_FLAGS --code-dir $SWEEP_CODE_DIR"
+    else
+        # --no-copy: use repo in-place for all jobs
         COMMON_FLAGS="$COMMON_FLAGS --no-copy"
     fi
     if [ "$OVERWRITE_RUNDIR" == "true" ]; then
@@ -284,12 +330,21 @@ else:
         COMMON_FLAGS="$COMMON_FLAGS --foldseek"
     fi
 
-    "$SCRIPT_DIR/launch_infer.sh" "$CLUSTER" \
+    # Run launch_infer.sh and capture output to extract the concat job ID
+    infer_output=$("$SCRIPT_DIR/launch_infer.sh" "$CLUSTER_ARG" \
         $COMMON_FLAGS \
         --config-name "$config_hydra_name" \
         run_name_="$config_name" \
         $OUT_DIR_OVERRIDE \
-        $EXTRA_ARGS && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
+        $EXTRA_ARGS 2>&1) && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))
+
+    echo "$infer_output"
+
+    # Extract per-config concat job ID emitted by launch_infer.sh
+    config_concat_id=$(echo "$infer_output" | grep -oP 'LAUNCH_INFER_CONCAT_JOB_ID=\K\d+' || true)
+    if [ -n "$config_concat_id" ]; then
+        ALL_CONCAT_JOB_IDS="${ALL_CONCAT_JOB_IDS:+$ALL_CONCAT_JOB_IDS:}$config_concat_id"
+    fi
 
     echo ""
     # Small delay to avoid overwhelming the SLURM scheduler
@@ -297,6 +352,57 @@ else:
         sleep "$DELAY"
     fi
 done
+
+# =============================================================================
+# Step 3: Submit sweep-level concatenation job
+# =============================================================================
+# Concatenates per_example_metrics, per_task_metrics, and aggregated_metrics
+# across all sweep subdirectories once all per-config concat jobs finish.
+SWEEP_CONCAT_JOB_ID=""
+if [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -n "$BASE_OUT_DIR" ] && [ -n "$ALL_CONCAT_JOB_IDS" ]; then
+    print_header "Submitting Sweep Concatenation Job"
+    echo "  Depends on concat jobs: $ALL_CONCAT_JOB_IDS"
+
+    SWEEP_CONCAT_SCRIPT="$BASE_OUT_DIR/slurm_sweep_concat_script.sh"
+    SWEEP_CONCAT_PY="$REPO_ROOT/projects/proteinfoundation/script_utils/concatenate_sweep_results.py"
+    SWEEP_CODE_PY="${SWEEP_CODE_DIR:+$SWEEP_CODE_DIR/projects/proteinfoundation/script_utils/concatenate_sweep_results.py}"
+    # Use copied script if available, else fall back to repo
+    [ -n "$SWEEP_CODE_DIR" ] && [ -f "$SWEEP_CODE_PY" ] && SWEEP_CONCAT_PY="$SWEEP_CODE_PY"
+
+    SWEEP_PYTHONPATH="${SWEEP_CODE_DIR:-$REPO_ROOT}/src:${SWEEP_CODE_DIR:-$REPO_ROOT}/models/rf3/src:${SWEEP_CODE_DIR:-$REPO_ROOT}/projects/proteinfoundation:${SWEEP_CODE_DIR:-$REPO_ROOT}/lib/atomworks/src"
+
+    {
+        echo "#!/bin/bash"
+        echo "#SBATCH --job-name sweep-concat-$(basename "$BASE_OUT_DIR")"
+        if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
+            echo "#SBATCH --account $ACCOUNT"
+        fi
+        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
+        echo "#SBATCH --time 01:00:00"
+        echo "#SBATCH --nodes 1"
+        echo "#SBATCH --ntasks-per-node 1"
+        echo "#SBATCH --mem 32g"
+        echo "#SBATCH --output $BASE_OUT_DIR/slurm_sweep_concat.out"
+        echo "#SBATCH --error $BASE_OUT_DIR/slurm_sweep_concat.err"
+        echo "#SBATCH --open-mode append"
+        echo ""
+        echo "export PYTHONPATH=$SWEEP_PYTHONPATH:\$PYTHONPATH"
+        echo "export PYTHONFAULTHANDLER=1"
+        echo ""
+        echo "echo \"Running sweep-level concatenation for: $BASE_OUT_DIR\""
+        echo "python \"$SWEEP_CONCAT_PY\" --sweep-dir \"$BASE_OUT_DIR\""
+        echo "echo \"Sweep concatenation complete!\""
+    } > "$SWEEP_CONCAT_SCRIPT"
+
+    SWEEP_CONCAT_OUTPUT=$(sbatch --dependency=afterany:$ALL_CONCAT_JOB_IDS "$SWEEP_CONCAT_SCRIPT")
+    SWEEP_CONCAT_JOB_ID=$(echo "$SWEEP_CONCAT_OUTPUT" | grep -oP '\d+')
+    echo "$SWEEP_CONCAT_OUTPUT"
+    echo "  Sweep concat results: $BASE_OUT_DIR/sweep_*.csv"
+elif [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -z "$ALL_CONCAT_JOB_IDS" ]; then
+    echo ""
+    echo "Note: No concat job IDs collected - skipping sweep concatenation."
+    echo "  (This happens when --no-concatenate is used or no jobs were submitted.)"
+fi
 
 # =============================================================================
 # Summary
@@ -307,6 +413,9 @@ echo "  Submitted:     $SUBMITTED"
 echo "  Failed:        $FAILED"
 echo ""
 echo "  Config directory: $CONFIG_DIR"
+[ -n "$SWEEP_CODE_DIR" ] && echo "  Shared code dir:  $SWEEP_CODE_DIR"
+[ -n "$SWEEP_CONCAT_JOB_ID" ] && echo "  Sweep concat job: $SWEEP_CONCAT_JOB_ID"
+[ -n "$BASE_OUT_DIR" ] && echo "  Sweep results:    $BASE_OUT_DIR/sweep_*.csv"
 echo "  Monitor all:      squeue -u $USER"
 echo ""
 

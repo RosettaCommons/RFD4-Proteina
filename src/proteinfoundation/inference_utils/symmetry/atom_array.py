@@ -1,6 +1,7 @@
 import numpy as np
 from biotite.structure import AtomArray
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_SRC
 
 from proteinfoundation.inference_utils.symmetry.frames import (
     decompose_symmetry_frame,
@@ -68,11 +69,12 @@ def add_src_sym_component_annotations(atom_array: AtomArray) -> AtomArray:
     Arguments:
         atom_array: atom array with src_component annotated
     """
-    if "src_component" not in atom_array.get_annotation_categories():
+    if not SA_SRC.has_annotation(atom_array):
         return atom_array
 
-    src_sym_component = atom_array.src_component.copy()
-    src_tokens = np.unique(atom_array.src_component)
+    src_comp = SA_SRC.annotation(atom_array)
+    src_sym_component = src_comp.copy()
+    src_tokens = np.unique(src_comp)
 
     for src_token in src_tokens:
         # Skip non-alphabetic tokens
@@ -82,7 +84,7 @@ def add_src_sym_component_annotations(atom_array: AtomArray) -> AtomArray:
             continue
 
         # Get block of atoms with this src token
-        src_block_mask = atom_array.src_component == src_token
+        src_block_mask = src_comp == src_token
         src_block = atom_array[src_block_mask]
 
         # Skip if not all unindexed motif atoms
@@ -90,11 +92,12 @@ def add_src_sym_component_annotations(atom_array: AtomArray) -> AtomArray:
             continue
 
         # Update src component with chain ID prefix
+        block_src = SA_SRC.annotation(src_block)
         for chain_id in np.unique(src_block.chain_id):
             chain_mask = src_block.chain_id == chain_id
-            src_block.src_component[chain_mask] = chain_id + src_token[1:]
+            block_src[chain_mask] = chain_id + src_token[1:]
 
-        src_sym_component[src_block_mask] = src_block.src_component
+        src_sym_component[src_block_mask] = block_src
 
     atom_array.set_annotation("src_sym_component", src_sym_component)
     return atom_array

@@ -59,6 +59,7 @@ from torch import Tensor
 
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 
+from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
 from proteinfoundation.conditions import C_INTCRD, C_CRDGRP
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
@@ -116,7 +117,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     chain_of_interest_values = []
     non_metadata_metrics_detected = False
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "task", "designed_structure_path"):
+        if key in ("dataset_name", "example_id", "task", "designed_structure_path", "ckpt_path", "ckpt_name"):
             cleaned[key] = str(value)
             continue
         elif key == "input_cif_path" or key.startswith("input_spec."):
@@ -161,6 +162,8 @@ class Proteina(L.LightningModule):
         # If True, these will be set in configure_inference
         self.is_inference = False
         self.inference_seed: int | None = None  # Set via generate.py, not during training
+        self.ckpt_path: str | None = None  # Set via configure_inference
+        self.ckpt_name: str | None = None  # Set via configure_inference
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "store", cfg_exp.run_name_)
@@ -624,7 +627,7 @@ class Proteina(L.LightningModule):
         actual_dataset_name = val_dataset_names[dataloader_idx]
         if self.inf_cfg is not None and self.inf_cfg.get("val_set_name_override") is not None:
             # Use override as prefix, but keep actual name for uniqueness
-            dataset_name = f"{self.inf_cfg.val_set_name_override}/{actual_dataset_name}"
+            dataset_name = f"{self.inf_cfg.val_set_name_override}"
         else:
             dataset_name = actual_dataset_name
 
@@ -725,13 +728,6 @@ class Proteina(L.LightningModule):
                     predicted_structure_to_save = generation_list[i]["generated_atom_array"]
 
                 # Save CIF files incrementally with rank suffix in filename
-                extra_annotations_to_save = [
-                    "mapped_to_coordinate_conditioned_region",
-                    "mapped_to_coordinate_conditioned_region_token_lvl",
-                    # "coords_with_insertion",  # HACK: NEED TO CHANGE THESE TO STANDARDANNOTATIONS AND THEN THEY WILL WORK
-                    "src_coordinate_conditioned_region",
-                    "src_component",
-                ]
 
                 # Skip input saving during inference to lighten the filesystem load
                 if not self.is_inference:
@@ -746,7 +742,6 @@ class Proteina(L.LightningModule):
                 to_cif_file(
                     predicted_structure_to_save,
                     generated_output_path,
-                    extra_fields=extra_annotations_to_save,
                 )
 
                 if metrics_output is not None:
@@ -763,6 +758,12 @@ class Proteina(L.LightningModule):
                         metrics_output["bb_ca_noise_scale"] = self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
                         metrics_output["latents_noise_scale"] = self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
                         metrics_output["nsteps"] = self.inf_cfg.args.nsteps
+
+                    # Add checkpoint identity
+                    if self.ckpt_path is not None:
+                        metrics_output["ckpt_path"] = self.ckpt_path
+                    if self.ckpt_name is not None:
+                        metrics_output["ckpt_name"] = self.ckpt_name
 
                     # Add input specification or CIF path
                     spec_batch = batch.get("specification_batch")
@@ -854,6 +855,8 @@ class Proteina(L.LightningModule):
             "task",
             "dataset_name",
             "chain_of_interest",
+            "ckpt_path",
+            "ckpt_name",
             "seed",
             "input_cif_path",
             "bb_ca_noise_scale",
@@ -862,6 +865,7 @@ class Proteina(L.LightningModule):
         ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
+        per_example_df = per_example_df.round(4)
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
         if self.is_inference:
@@ -885,6 +889,8 @@ class Proteina(L.LightningModule):
                 "task",
                 "designed_structure_path",
                 "chain_of_interest",
+                "ckpt_path",
+                "ckpt_name",
                 "seed",
                 "input_cif_path",
                 "bb_ca_noise_scale",
@@ -911,6 +917,7 @@ class Proteina(L.LightningModule):
             return
 
         agg_df = pd.DataFrame(agg_rows)
+        agg_df = agg_df.round(4)
         print_df_as_table(agg_df, title="Validation Metrics")
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
@@ -937,6 +944,8 @@ class Proteina(L.LightningModule):
         job_id: int | None = None,
         is_inference: bool = False,
         global_prefix: str | None = None,
+        ckpt_path: str | None = None,
+        ckpt_name: str | None = None,
     ):
         """Sets inference config with all sampling parameters required by the method (dt, etc)
         and autoguidance network (or None if not provided).
@@ -949,6 +958,8 @@ class Proteina(L.LightningModule):
             job_id: Job ID used to disambiguate per-job output files.
             is_inference: Whether running in inference mode (via generate.py).
             global_prefix: Global prefix for inference output filenames.
+            ckpt_path: Directory containing the checkpoint (recorded in output metrics).
+            ckpt_name: Checkpoint filename (recorded in output metrics).
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
@@ -959,6 +970,8 @@ class Proteina(L.LightningModule):
         self.is_inference = is_inference
         self.job_id = job_id
         self.global_prefix = global_prefix
+        self.ckpt_path = ckpt_path
+        self.ckpt_name = ckpt_name
 
     def configure_search(self, search_strategy, search_reward_model=None):
         """Configure search strategy and reward model for reward-guided generation.
@@ -1192,7 +1205,7 @@ class Proteina(L.LightningModule):
         # Preserve the original indexed coordinates reshaped to match the output AtomArray
         coords_with_insertion = updated_array.coord.copy()
         coords_with_insertion[C_CRD.mask(updated_array)] = updated_array.original_input_coord[C_CRD.mask(updated_array)]
-        updated_array.set_annotation("coords_with_insertion", coords_with_insertion)
+        SA_CWI.set_annotation(updated_array, coords_with_insertion)
 
         # Insert internal coordinate conditioned groups into the `coords_with_insertion` annotation
         C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
@@ -1215,8 +1228,8 @@ class Proteina(L.LightningModule):
         # NOTE: This must be done after the output AtomArray has been constructed and the coordinates have been added
         if not has_idx_all_token_level.all():
             # Preserve this annotation through concatentation
-            unindexed_input_atom_array.set_annotation(
-                "coords_with_insertion", np.full_like(unindexed_input_atom_array.coord, np.nan)
+            SA_CWI.set_annotation(
+                unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array)
             )
             # NOTE: We use coord_to_be_noised as the unindexed coordinates to match what the model sees
             unindexed_input_atom_array.coord = unindexed_input_atom_array.coord_to_be_noised.copy()
@@ -1227,42 +1240,38 @@ class Proteina(L.LightningModule):
                 inputs_in_same_frame=True,
             )
         else:
-            updated_array.set_annotation(
-                "mapped_to_coordinate_conditioned_region", np.zeros(updated_array.array_length(), dtype=bool)
-            )
-            updated_array.set_annotation(
-                "src_coordinate_conditioned_region", np.full(updated_array.array_length(), ".", dtype="<U10")
-            )
+            SA_CRDSRC.set_mask(updated_array, SA_CRDSRC.default_mask(updated_array))
+            SA_CRDSRC.set_annotation(updated_array, SA_CRDSRC.default_annotation(updated_array))
             metadata = {}
-        
+
         # Include indexed coord conditioning in mapping mask/annotation
         # TODO: Should this mapping annotation be added as a Condition? It is semantically different but practically similar
         indexed_coord_conditioned_mask = C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
-        updated_array.mapped_to_coordinate_conditioned_region |= indexed_coord_conditioned_mask
-        updated_array.src_coordinate_conditioned_region[
-            indexed_coord_conditioned_mask
-        ] = updated_array.src_component[indexed_coord_conditioned_mask]
-        
+        mapped_mask = SA_CRDSRC.mask(updated_array)
+        mapped_mask |= indexed_coord_conditioned_mask
+        SA_CRDSRC.set_mask(updated_array, mapped_mask)
+        src_crd = SA_CRDSRC.annotation(updated_array)
+        src_crd[indexed_coord_conditioned_mask] = SA_SRC.annotation(updated_array)[indexed_coord_conditioned_mask]
+        SA_CRDSRC.set_annotation(updated_array, src_crd)
+
         # Check unindexed coord conditioning count
         total_coord_conditioned_count = indexed_coord_conditioned_count + unindexeded_coord_conditioned_count
-        if updated_array.mapped_to_coordinate_conditioned_region.sum() != total_coord_conditioned_count:
+        if SA_CRDSRC.mask(updated_array).sum() != total_coord_conditioned_count:
             logger.warning(
                 f"Unindexed coord conditioning count ({unindexeded_coord_conditioned_count}) does not match "
-                f"remapped count ({updated_array.mapped_to_coordinate_conditioned_region.sum() - indexed_coord_conditioned_count}). "
+                f"remapped count ({SA_CRDSRC.mask(updated_array).sum() - indexed_coord_conditioned_count}). "
                 "The model has failed to reproduce the input unindexed motif."
             )
             valid_mapping_found = False
 
         # If the model has failed to create valid reproductions of the motif, give NaN values for coords_with_insertion
         if not valid_mapping_found:
-            updated_array.set_annotation("coords_with_insertion", np.full_like(updated_array.coord, np.nan))
+            SA_CWI.set_annotation(updated_array, SA_CWI.default_annotation(updated_array))
 
-        # This information is used when determining which backbone atoms to align on for the AME benchmark
-        mapped_to_coordinate_conditioned_region_token_lvl = apply_and_spread_token_wise(
-            updated_array, updated_array.mapped_to_coordinate_conditioned_region, np.any
-        )
+        # Compute token-level mapped-to-coordinate-conditioned-region annotation from atom-level mask
         updated_array.set_annotation(
-            "mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl
+            "mapped_to_coordinate_conditioned_region_token_lvl",
+            apply_and_spread_token_wise(updated_array, SA_CRDSRC.mask(updated_array), np.any),
         )
 
         return {

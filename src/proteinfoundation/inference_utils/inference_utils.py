@@ -26,6 +26,7 @@ from atomworks.ml.utils.token import (
 from biotite.structure import AtomArray
 from foundry.common import exists
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_SRC
 
 from proteinfoundation.conditions import C_HOT, C_INTCRD
 from proteinfoundation.inference_utils.components import (
@@ -97,7 +98,7 @@ REQUIRED_CONDITIONING_ANNOTATION_VALUES = {
     "is_motif_atom_unindexed_motif_breakpoint": False,
 }
 REQUIRED_CONDITIONING_ANNOTATIONS = list(REQUIRED_CONDITIONING_ANNOTATION_VALUES.keys())
-REQUIRED_INFERENCE_ANNOTATIONS = REQUIRED_CONDITIONING_ANNOTATIONS + ["src_component"]
+REQUIRED_INFERENCE_ANNOTATIONS = REQUIRED_CONDITIONING_ANNOTATIONS + [SA_SRC.full_name]
 """Annotations assigned to every valid atom array"""
 
 OPTIONAL_CONDITIONING_VALUES = {
@@ -240,14 +241,11 @@ def set_common_annotations(array: AtomArray, set_src_component_to_res_name: bool
         array.set_annotation("b_factor", np.zeros(array.shape[0], dtype=float))
     if "charge" not in annots:
         array.set_annotation("charge", np.zeros(array.shape[0], dtype=int))
-    if "src_component" not in annots:
+    if not SA_SRC.has_annotation(array):
         if set_src_component_to_res_name:
-            array.set_annotation(
-                "src_component",
-                np.full(array.shape[0], array.res_name.copy(), dtype="<U10"),
-            )
+            SA_SRC.set_annotation(array, np.full(array.shape[0], array.res_name.copy(), dtype="<U10"))
         else:
-            array.set_annotation("src_component", np.full(array.shape[0], ".", dtype="<U10"))
+            SA_SRC.set_annotation(array, SA_SRC.default_annotation(array))
     return array
 
 
@@ -256,7 +254,7 @@ def set_indices(array: AtomArray, chain: str, res_id_start: int, molecule_id: in
     array.chain_id = np.full(n, chain, dtype=array.chain_id.dtype)
     array.res_id = np.full(n, res_id_start + array.res_id - 1, dtype=array.res_id.dtype)
     array.molecule_id = np.full(n, molecule_id, dtype=np.int32)
-    array.set_annotation("src_component", np.full(n, component, dtype="<U10"))
+    SA_SRC.set_annotation(array, np.full(n, component, dtype="<U10"))
     return array
 
 

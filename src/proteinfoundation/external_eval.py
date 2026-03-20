@@ -18,6 +18,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 import yaml
 from foundry.metrics import MetricManager
+from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
 import numpy as np
 import torch
 from proteinfoundation.conditions import C_IDXGRP, C_INTCRD, C_HOT
@@ -200,6 +201,7 @@ def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | 
     priority = ["designed_structure_path", "sequence_redesigned_structure_path", "example_id", "task", "dataset_name", "chain_of_interest"]
     ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
     per_example_df = per_example_df[ordered_cols]
+    per_example_df = per_example_df.round(4)
 
     per_example_path = metrics_dir / f"per_example_metrics{job_id_str}.csv"
     per_example_df.to_csv(per_example_path, index=False)
@@ -208,6 +210,7 @@ def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | 
     # 3. If single job, aggregate and save final metrics
     if job_id is None:
         agg_df = aggregate_metrics_from_per_example_df(per_example_df, title="Validation Metrics")
+        agg_df = agg_df.round(4)
         agg_path = metrics_dir / "aggregated_metrics.csv"
 
         agg_df.to_csv(agg_path, index=False)
@@ -375,7 +378,7 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
     """Transfer annotations from the generated structure to the sequence-redesigned structure in the mapped region."""
     # Subset to the region mapped to the unindexed coordinate conditioning
     matched_mapped_indices = []
-    for atom in generated_atom_array[generated_atom_array.mapped_to_coordinate_conditioned_region]:
+    for atom in generated_atom_array[SA_CRDSRC.mask(generated_atom_array)]:
         match_mask = (
             (sequence_redesigned_atom_array.chain_id == atom.chain_id)
             & (sequence_redesigned_atom_array.res_id == atom.res_id)
@@ -392,44 +395,36 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
 
     # Annotate regions that mapped to the inserted regions
     matched_mapped_indices = np.array(matched_mapped_indices, dtype=int)
-    mapped_to_coordinate_conditioned_region_redesigned = np.zeros(sequence_redesigned_atom_array.array_length(), dtype=bool)
-    mapped_to_coordinate_conditioned_region_redesigned[matched_mapped_indices] = True
-    sequence_redesigned_atom_array.set_annotation("mapped_to_coordinate_conditioned_region", mapped_to_coordinate_conditioned_region_redesigned)
-    mapped_to_coordinate_conditioned_region_token_lvl = apply_and_spread_token_wise(
-        sequence_redesigned_atom_array, sequence_redesigned_atom_array.mapped_to_coordinate_conditioned_region, np.any
-    )
+    mapped_redesigned = np.zeros(sequence_redesigned_atom_array.array_length(), dtype=bool)
+    mapped_redesigned[matched_mapped_indices] = True
+    SA_CRDSRC.set_mask(sequence_redesigned_atom_array, mapped_redesigned)
     sequence_redesigned_atom_array.set_annotation(
-        "mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl
+        "mapped_to_coordinate_conditioned_region_token_lvl",
+        apply_and_spread_token_wise(sequence_redesigned_atom_array, mapped_redesigned, np.any),
     )
 
     # Copy over coords with insertion
-    coords_with_insertion = np.full_like(sequence_redesigned_atom_array.coord, np.nan)
-    coords_with_insertion[matched_mapped_indices] = generated_atom_array.coord[
-        generated_atom_array.mapped_to_coordinate_conditioned_region
-    ]
-    sequence_redesigned_atom_array.set_annotation("coords_with_insertion", coords_with_insertion)
+    coords_with_insertion = SA_CWI.default_annotation(sequence_redesigned_atom_array)
+    coords_with_insertion[matched_mapped_indices] = generated_atom_array.coord[SA_CRDSRC.mask(generated_atom_array)]
+    SA_CWI.set_annotation(sequence_redesigned_atom_array, coords_with_insertion)
 
-    # If present, copy over src_component and src_coordinate_conditioned_region annotations
+    # If present, copy over SA_SRC and SA_CRDSRC annotations
     # NOTE: These are optional because they are not strictly necessary for downstream tasks
-    if "src_component" in generated_atom_array.get_annotation_categories():
-        src_component = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype="<U10")
-        src_component[matched_mapped_indices] = generated_atom_array.src_component[
-            generated_atom_array.mapped_to_coordinate_conditioned_region
-        ]
-        sequence_redesigned_atom_array.set_annotation("src_component", src_component)
+    if SA_SRC.has_annotation(generated_atom_array):
+        src_component = SA_SRC.default_annotation(sequence_redesigned_atom_array)
+        src_component[matched_mapped_indices] = SA_SRC.annotation(generated_atom_array)[SA_CRDSRC.mask(generated_atom_array)]
+        SA_SRC.set_annotation(sequence_redesigned_atom_array, src_component)
 
-        src_coordinate_conditioned_region = np.full(sequence_redesigned_atom_array.array_length(), fill_value=".", dtype="<U10")
-        src_coordinate_conditioned_region[matched_mapped_indices] = generated_atom_array.src_coordinate_conditioned_region[
-            generated_atom_array.mapped_to_coordinate_conditioned_region
-        ]
-        sequence_redesigned_atom_array.set_annotation("src_coordinate_conditioned_region", src_coordinate_conditioned_region)
+        src_crd = SA_CRDSRC.default_annotation(sequence_redesigned_atom_array)
+        src_crd[matched_mapped_indices] = SA_CRDSRC.annotation(generated_atom_array)[SA_CRDSRC.mask(generated_atom_array)]
+        SA_CRDSRC.set_annotation(sequence_redesigned_atom_array, src_crd)
 
 
     # Copy over relevant masks within the mapped regions, using the defaults everywhere else
     for cond in (C_CRD, C_IDX, C_INTCRD):
         cond_mask = cond.default_mask(sequence_redesigned_atom_array)
         cond_mask[matched_mapped_indices] = generated_atom_array[
-            generated_atom_array.mapped_to_coordinate_conditioned_region
+            SA_CRDSRC.mask(generated_atom_array)
         ].get_annotation(cond.mask_name)
         cond.set_mask(sequence_redesigned_atom_array, cond_mask)
 
@@ -458,10 +453,11 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
     C_CRD.set_mask(generated_atom_array, np.zeros(generated_atom_array.array_length(), dtype=bool))
     C_CRD.set_mask(coord_conditioning_atom_array, np.ones(coord_conditioning_atom_array.array_length(), dtype=bool))
 
-    # Prepare the `coords_with_insertion` annotation
-    generated_atom_array.set_annotation("coords_with_insertion", generated_atom_array.coord.copy())
-    coord_conditioning_atom_array.set_annotation(
-        "coords_with_insertion", np.full_like(coord_conditioning_atom_array.coord, np.nan)
+    # Prepare the coords_with_insertion annotation
+    SA_CWI.set_annotation(generated_atom_array, generated_atom_array.coord.copy().astype(np.float32))
+    SA_CWI.set_annotation(
+        coord_conditioning_atom_array,
+        SA_CWI.default_annotation(coord_conditioning_atom_array)
     )
 
     # Subset to coordinate-conditioned protein regions, as only these need to be mapped
@@ -515,15 +511,21 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
         inputs_in_same_frame=inputs_in_same_frame,
     )
     coord_cond_mask = C_CRD.mask(annotated_model_generated_array, default="raise")
-    coord_cond_mask[annotated_model_generated_array.mapped_to_coordinate_conditioned_region] = True
+    coord_cond_mask[SA_CRDSRC.mask(annotated_model_generated_array)] = True
     C_CRD.set_mask(annotated_model_generated_array, coord_cond_mask)
+    annotated_model_generated_array.set_annotation(
+        "mapped_to_coordinate_conditioned_region_token_lvl",
+        apply_and_spread_token_wise(
+            annotated_model_generated_array, SA_CRDSRC.mask(annotated_model_generated_array), np.any
+        ),
+    )
 
     # If the model has failed to create valid reproductions of the motif, warn and give NaN values for coords_with_insertion
     coord_conditioned_count = modified_coord_conditioning_atom_array.array_length()
-    if annotated_model_generated_array.mapped_to_coordinate_conditioned_region.sum() != coord_conditioned_count:
+    if SA_CRDSRC.mask(annotated_model_generated_array).sum() != coord_conditioned_count:
         print(
             f"WARNING: Unindexed coord conditioning count ({coord_conditioned_count}) does not match "
-            f"remapped count ({annotated_model_generated_array.mapped_to_coordinate_conditioned_region.sum()}). "
+            f"remapped count ({SA_CRDSRC.mask(annotated_model_generated_array).sum()}). "
             "The model has failed to reproduce the atom names of the input motif."
         )
         valid_mapping_found = False
@@ -531,17 +533,10 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
         valid_mapping_found = True
 
     if not valid_mapping_found:
-        annotated_model_generated_array.set_annotation(
-            "coords_with_insertion", np.full_like(annotated_model_generated_array.coord, np.nan)
+        SA_CWI.set_annotation(
+            annotated_model_generated_array,
+            SA_CWI.default_annotation(annotated_model_generated_array)
         )
-
-    # This information is used when determining which backbone atoms to align on for the AME benchmark
-    mapped_to_coordinate_conditioned_region_token_lvl = apply_and_spread_token_wise(
-        annotated_model_generated_array, annotated_model_generated_array.mapped_to_coordinate_conditioned_region, np.any
-    )
-    annotated_model_generated_array.set_annotation(
-        "mapped_to_coordinate_conditioned_region_token_lvl", mapped_to_coordinate_conditioned_region_token_lvl
-    )
 
     return annotated_model_generated_array, insertion_metadata
 
@@ -645,7 +640,7 @@ def run_external_eval(
     for row in df.itertuples():
         # Load the generated structure
         generated_structure_path = row.generated_structure
-        generated_atom_array = load_any(generated_structure_path)
+        generated_atom_array = load_any(generated_structure_path, load_standard_annotations=True)
 
         # Load the annotated input structure and validate
         if isinstance(dataset, DesignProblemDataset):
@@ -703,17 +698,7 @@ def run_external_eval(
         # Optionally save the annotated designs
         if exists(annotated_design_save_dir):
             annotated_design_save_path = Path(annotated_design_save_dir) / f"{str(Path(generated_structure_path).stem).split('.')[0]}_annotated.cif"
-            to_cif_file(
-                formatted_generated_atom_array,
-                annotated_design_save_path,
-                extra_fields=[
-                    "mapped_to_coordinate_conditioned_region",
-                    "mapped_to_coordinate_conditioned_region_token_lvl",
-                    "coords_with_insertion",
-                    "src_coordinate_conditioned_region",
-                    "src_component",
-                ],
-            )
+            to_cif_file(formatted_generated_atom_array, annotated_design_save_path)
 
         # If using a sequence-redesigned structure, we will first transfer annotations in the mapped region.
         if use_sequence_redesign:

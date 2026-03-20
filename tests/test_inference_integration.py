@@ -33,6 +33,7 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
 
 from foundry.testing import gpu  # noqa: F401
+from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
 
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.generate import (
@@ -63,6 +64,8 @@ _EXPECTED_DF_COLUMNS = {
     "latents_noise_scale",
     "nsteps",
     "chain_of_interest",
+    "ckpt_path",
+    "ckpt_name",
 }
 
 # ---------------------------------------------------------------------------
@@ -590,30 +593,30 @@ class TestEndToEndInference:
         assert len(cif_files) == 1
         assert "example_a" in cif_files[0].name
 
-        EXPECTED_EXTRA_FIELDS_AND_DEFAULTS = [
-            ("mapped_to_coordinate_conditioned_region", False),
-            ("mapped_to_coordinate_conditioned_region_token_lvl", False),
-            ("coords_with_insertion", None), # The defaults will just be generated coords
-            ("src_coordinate_conditioned_region", "."),
-            ("src_component", "5P"),
-        ] 
         generated_path = str(cif_files[0])
-        generated_aa = parse(
-            generated_path,
-            extra_fields=[v[0] for v in EXPECTED_EXTRA_FIELDS_AND_DEFAULTS],
+        # StandardAnnotations require load_standard_annotations=True; add_missing_atoms=False for compatibility.
+        generated_aa = load_any(generated_path, load_standard_annotations=True)[0]
+
+        residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
+
+        # Atom-level mapped mask (stored under "mapped_to_coordinate_conditioned_region" for backward compat)
+        assert SA_CRDSRC.has_mask(generated_aa), f"Expected '{SA_CRDSRC.mask_name}' in generated CIF"
+        assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.mask_name) == False) == 0.5, (  # noqa: E712
+            f"Expected exactly half of residue starts to have default value False for '{SA_CRDSRC.mask_name}'"
         )
 
-        for field, default in EXPECTED_EXTRA_FIELDS_AND_DEFAULTS:
-            assert field in generated_aa.get_annotation_categories(), f"Expected annotation '{field}' not found in generated CIF"
-            if default is None:
-                continue # No default to check, just presence of the field
-            residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
-            fraction_default = np.mean(residue_starts_aa.get_annotation(field) == default)
-            assert fraction_default == 0.5, (
-                f"Expected exactly half of residue starts to have default value '{default}' for annotation '{field}', " 
-                f"but got {fraction_default:.2f} in generated CIF"
-            )
-            
+        # Non-mask string annotations (stored under their full_name)
+        assert SA_CRDSRC.has_annotation(generated_aa), f"Expected '{SA_CRDSRC.full_name}' in generated CIF"
+        assert SA_SRC.has_annotation(generated_aa), f"Expected '{SA_SRC.full_name}' in generated CIF"
+        assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5, (
+            f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
+        )
+        assert np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5, (
+            f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
+        )
+
+        # coords_with_insertion is now a StandardAnnotation and is loaded automatically
+        assert SA_CWI.has_annotation(generated_aa), f"Expected '{SA_CWI.full_name}' in generated CIF"
 
         df = _load_output_dataframe(out, check_spec_columns=True)
         assert len(df) == 1

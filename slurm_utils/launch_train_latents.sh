@@ -128,22 +128,7 @@ if [ "$COPY_CODE" == "true" ]; then
     print_header "Copying Code"
     echo "  $REPO_ROOT -> $RUN_DIR"
 
-    # Copy essential directories (matching PYTHONPATH)
-    rsync -a --no-compress "$REPO_ROOT/src/" "$RUN_DIR/src/"
-    mkdir -p "$RUN_DIR/models/rf3" && rsync -a --no-compress --no-compress "$REPO_ROOT/models/rf3/src/" "$RUN_DIR/models/rf3/src/"
-    mkdir -p "$RUN_DIR/lib/atomworks" && rsync -a --no-compress "$REPO_ROOT/lib/atomworks/src/" "$RUN_DIR/lib/atomworks/src/"
-    
-    mkdir -p "$RUN_DIR/projects/proteinfoundation"
-    rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$REPO_ROOT/projects/proteinfoundation/proteinfoundation/" "$RUN_DIR/projects/proteinfoundation/proteinfoundation/"
-    rsync -a --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' "$REPO_ROOT/projects/proteinfoundation/configs/" "$RUN_DIR/projects/proteinfoundation/configs/"
-    rsync -a --no-compress "$REPO_ROOT/projects/proteinfoundation/benchmarks/" "$RUN_DIR/projects/proteinfoundation/benchmarks/"
-    rsync -a --no-compress "$REPO_ROOT/projects/proteinfoundation/data/" "$RUN_DIR/projects/proteinfoundation/data/"
-
-    cp "$REPO_ROOT/.project-root" "$RUN_DIR/"
-    mkdir -p "$RUN_DIR/.ipd/shebang" && rsync -a "$REPO_ROOT/.ipd/shebang/" "$RUN_DIR/.ipd/shebang/"
-    rsync -a "$REPO_ROOT/.ipd/".env.* "$RUN_DIR/.ipd/"
-    mkdir -p "$RUN_DIR/.ipd/apptainer"
+    copy_code_to_dir "$REPO_ROOT" "$RUN_DIR" "$CLUSTER"
     CODE_DIR="$RUN_DIR"
 else
     print_header "Using Code In-Place"

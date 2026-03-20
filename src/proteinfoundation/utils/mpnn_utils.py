@@ -30,12 +30,9 @@ import numpy as np
 from biotite.structure import AtomArray
 
 from atomworks.io.parser import parse
+from atomworks.ml.utils.token import apply_and_spread_token_wise
 
-
-# Extra fields to load for determining fixed residues
-MPNN_EXTRA_FIELDS = {
-    "mapped_to_coordinate_conditioned_region_token_lvl": {"default": False},
-}
+from foundry.utils.standard_annotations import SA_CRDSRC
 
 
 def get_fixed_residues_from_structure(
@@ -46,8 +43,10 @@ def get_fixed_residues_from_structure(
     Fixed residues are determined by checking if any of these annotations are True
     for a given residue:
 
-    - ``mapped_to_coordinate_conditioned_region_token_lvl``: residue was mapped to an coordinate-conditioned motif
-        Includes residues where only a subset of atoms were mapped (e.g. tip-atom motifs).
+    - :py:attr:`~foundry.utils.standard_annotations.SrcCoordinateConditionedRegion` mask
+      (``mapped_to_coordinate_conditioned_region``), spread to token level:
+      residue was mapped to a coordinate-conditioned motif.
+      Includes residues where only a subset of atoms were mapped (e.g. tip-atom motifs).
 
     Args:
         structure_path: Path to the CIF file with condition annotations.
@@ -58,27 +57,24 @@ def get_fixed_residues_from_structure(
     """
     structure_path = Path(structure_path)
 
-    # Load the structure with extra fields for MPNN annotations
+    # SA_CRDSRC requires load_standard_annotations=True; add_missing_atoms=False is required for compatibility.
     atom_array = parse(
         structure_path,
-        fill_missing_conditions=True,
-        extra_fields=MPNN_EXTRA_FIELDS,
-    )
-
-    # Get annotation categories available in this structure
-    annot_categories = atom_array.get_annotation_categories()
+        load_standard_annotations=True,
+        add_missing_atoms=False,
+    )["asym_unit"][0]
 
     # Determine fixed residues at the atom level
     n_atoms = atom_array.array_length()
     fixed_mask = np.zeros(n_atoms, dtype=bool)
 
-    # Check mapped_to_coordinate_conditioned_region_token_lvl
-    if "mapped_to_coordinate_conditioned_region_token_lvl" in annot_categories:
-        mapped_mask = atom_array.get_annotation("mapped_to_coordinate_conditioned_region_token_lvl")
-        fixed_mask |= mapped_mask.astype(bool)
+    # Construct token-level mask from atom-level SA_CRDSRC
+    if SA_CRDSRC.has_mask(atom_array):
+        token_level_mask = apply_and_spread_token_wise(atom_array, SA_CRDSRC.mask(atom_array), np.any)
+        fixed_mask |= token_level_mask.astype(bool)
     else:
         raise ValueError(
-            f"Structure {structure_path} is missing 'mapped_to_coordinate_conditioned_region_token_lvl' annotation."
+            f"Structure {structure_path} is missing '{SA_CRDSRC.mask_name}' annotation."
         )
 
     # Convert atom-level mask to residue-level fixed residue list
@@ -114,7 +110,7 @@ def collect_structures_from_path(
     input_path = Path(input_path)
 
     if input_path.is_file():
-        if input_path.endswith(".cif") or input_path.name.endswith(".cif.gz"):
+        if str(input_path.name).endswith((".cif", ".cif.gz")):
             return [input_path.resolve()]
         return []
 
