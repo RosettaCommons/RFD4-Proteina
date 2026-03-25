@@ -35,13 +35,23 @@ def test_flash_vs_torch_attention_similar(batch_size: int, seq_len: int):
 
     # Create both attention modules with same weights
     torch_attn = PairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     flash_attn = FlashPairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     # Copy weights from torch to flash
@@ -77,13 +87,23 @@ def test_cuequivariance_vs_torch_attention_similar(batch_size: int, seq_len: int
 
     # Create both attention modules with same weights
     torch_attn = PairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     cuet_attn = CuEqPairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     # Copy weights from torch to cuequivariance
@@ -123,13 +143,23 @@ def test_te_vs_torch_attention_similar(batch_size: int, seq_len: int):
 
     # Create both attention modules with same weights
     torch_attn = PairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     te_attn = TEPairBiasAttention(
-        node_dim=node_dim, dim_head=dim_head, heads=heads,
-        bias=True, dim_out=node_dim, qkln=True, pair_dim=pair_dim,
+        node_dim=node_dim,
+        dim_head=dim_head,
+        heads=heads,
+        bias=True,
+        dim_out=node_dim,
+        qkln=True,
+        pair_dim=pair_dim,
     ).to(device)
 
     # Copy weights from torch to TE

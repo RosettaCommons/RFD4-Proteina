@@ -9,8 +9,8 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus, stack_atom_ar
 from atomworks.ml.transforms.dssp import SSEnum
 from atomworks.ml.utils.token import get_token_starts, spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack, annotate_sse
-from foundry.metrics import Metric
 
+from foundry.metrics import Metric
 from proteinfoundation.conditions import C_SEC
 
 

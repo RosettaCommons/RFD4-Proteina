@@ -35,5 +35,5 @@ sweep:
     - 200
     - 400
   generation.model.bb_ca.simulation_step_params.sc_scale_noise:
-    - 0.1
-    - 0.2
+    - 0.3
+    - 0.4

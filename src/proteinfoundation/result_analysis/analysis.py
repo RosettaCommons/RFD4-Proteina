@@ -17,8 +17,9 @@ import shutil
 from pathlib import Path
 
 import pandas as pd
-from foundry.utils.env import load_dotenv
 from loguru import logger
+
+from foundry.utils.env import load_dotenv
 
 # Try to import foldseek diversity function
 try:
@@ -91,7 +92,7 @@ def filter_successes(df: pd.DataFrame, pass_column: str = "pass_rate") -> pd.Dat
 
     # Handle different types of pass values
     if df[pass_column].dtype == bool:
-        successes = df[df[pass_column] == True]
+        successes = df[df[pass_column] is True]
     elif df[pass_column].dtype in [int, float]:
         successes = df[df[pass_column] == 1]
     else:
@@ -243,7 +244,7 @@ def compute_summary(
     return pd.DataFrame(summary_rows)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Simplified analysis for protein generation results")
     parser.add_argument("--results_dir", type=str, required=True, help="Directory containing result CSV files")
     parser.add_argument(

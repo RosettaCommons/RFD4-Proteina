@@ -14,13 +14,14 @@ import numpy as np
 import rootutils
 import yaml
 from atomworks.common import exists
-from atomworks.io.parser import parse_atom_array, parse
+from atomworks.io.config import ParseConfig, PrepareConfig
+from atomworks.io.parser import parse, parse_atom_array
 from atomworks.ml.datasets import FileDataset, MolecularDataset
 from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 from omegaconf import DictConfig, OmegaConf
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.inference_utils.inference_utils import (
     REQUIRED_INFERENCE_ANNOTATIONS,
     check_has_required_conditioning_annotations,
@@ -65,7 +66,7 @@ class ContigJsonDataset(MolecularDataset):
             - global_prefix: optional global prefix for output example ids
         """
 
-        if isinstance(data, (PathLike, str)):
+        if isinstance(data, PathLike | str):
             self.json_path = data
             original_data = self._load_from_path(data)
         elif isinstance(data, DictConfig):
@@ -78,7 +79,7 @@ class ContigJsonDataset(MolecularDataset):
         # These will have already been added at inference time, but this block is useful for validation.
         if "global_args" in original_data:
             global_args = original_data.pop("global_args")
-            for k, v in original_data.items():
+            for k, _v in original_data.items():
                 original_data[k].update(global_args)
 
         self._data = original_data
@@ -87,7 +88,7 @@ class ContigJsonDataset(MolecularDataset):
         if subset_to_keys is not None:
             assert len(subset_to_keys) > 0, "subset_to_keys must be a non-empty list of keys."
             self._data = {k: v for k, v in self._data.items() if k in subset_to_keys}
-        
+
         if exists(global_prefix):
             self._data = {f"{global_prefix}_{k}": v for k, v in self._data.items()}
 
@@ -119,7 +120,7 @@ class ContigJsonDataset(MolecularDataset):
         logger.info(f"Dataset {self.name}: {len(self):,} examples ({fmt_names})")
 
     @staticmethod
-    def _load_from_path(data):
+    def _load_from_path(data: str | PathLike) -> dict:
         """Load data from a JSON or YAML file."""
         assert os.path.exists(data), f"Input file {data} does not exist."
         with open(data) as f:
@@ -131,15 +132,18 @@ class ContigJsonDataset(MolecularDataset):
                 raise ValueError(f"Input file {data} must be a JSON or YAML file.")
         return data
 
-    def _check_json_keys(self):
+    def _check_json_keys(self) -> None:
         """Check if the JSON keys are valid."""
-        for k, data in self.data.items():
+        for _k, data in self.data.items():
             if not isinstance(data, dict):
                 raise ValueError("Each item in the JSON data must be a dictionary.")
 
     @property
-    def data(self):
-        """Expose underlying dataframe as property to discourage changing it (can lead to unexpected behavior with torch ConcatDatasets)."""
+    def data(self) -> dict:
+        """Expose underlying dataframe as property to discourage changing it.
+
+        Changing it can lead to unexpected behavior with torch ConcatDatasets.
+        """
         return self._data
 
     @property
@@ -215,15 +219,17 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
     for atom_index1, atom_index2, bond_type in inferred_bonds.as_array():
         atom_array_orig.bonds.add_bond(atom_index1, atom_index2, bond_type)
 
-    result_dict = parse_atom_array(
-        atom_array_orig,
+    prepare_config = PrepareConfig(
         remove_ccds=[],
         fix_arginines=False,
         add_missing_atoms=False,
         fix_formal_charges=False,
         convert_mse_to_met=False,
         hydrogen_policy="remove",
+        long_bond_policy="keep",
     )
+
+    result_dict = parse_atom_array(atom_array_orig, config=prepare_config)
     atom_array = result_dict["assemblies"]["1"][0]  # First model of first assembly
     # Ensure that we have charge information in the output
     if "charge" not in atom_array.get_annotation_categories():
@@ -312,7 +318,7 @@ class DesignProblemDataset(FileDataset):
         self.global_prefix = global_prefix
 
         # Generate unique base_ids by taking section after last dash, or more if ambiguous
-        def get_base_id_parts(path):
+        def get_base_id_parts(path: PathLike) -> list[str]:
             # Remove extension and get the stem
             stem = pathlib.Path(path).with_suffix("").name
             return str(stem).replace("/", "-").split("-")
@@ -346,14 +352,16 @@ class DesignProblemDataset(FileDataset):
         """
         # TODO: Hash out the precise definition of a .ipd file
         #  (suggestion: .msgpack.gz serialized dicts)
+        parse_config = ParseConfig(**self.parser_args)
         if path.suffix == ".cif":
-            result_dict = parse(path, **self.parser_args)
+            result_dict = parse(path, config=parse_config)
         elif path.suffix in [".json", ".yaml"]:
             # NOTE: This will run the conversion script each time we load an example for inference. This is to ensure
             # that any random length sampling steps are distinct across different batches. However, it is not maximally
-            # efficient -- a long-term solution might involve a single CIF that contains information about variable lengths.
+            # efficient -- a long-term solution might involve a single CIF that contains information about variable
+            # lengths.
             output_path = _convert_json_or_yaml_to_cif(path)
-            result_dict = parse(output_path, **self.parser_args)
+            result_dict = parse(output_path, config=parse_config)
         else:
             raise NotImplementedError(f"Unsupported file extension: {path.suffix}")
 
@@ -384,13 +392,13 @@ class DesignProblemDataset(FileDataset):
 
         data = TransformedDict(data)
         data.__transform_history__.append(
-            dict(
-                name="load_from_path",
-                instance=hex(id(self._load_from_path)),
-                start_time=_start_parse_time,
-                end_time=_stop_parse_time,
-                processing_time=_stop_parse_time - _start_parse_time,
-            )
+            {
+                "name": "load_from_path",
+                "instance": hex(id(self._load_from_path)),
+                "start_time": _start_parse_time,
+                "end_time": _stop_parse_time,
+                "processing_time": _stop_parse_time - _start_parse_time,
+            }
         )
         if self.transform is not None:
             data = self.transform(data)
@@ -424,11 +432,13 @@ def _convert_json_or_yaml_to_cif(path: PathLike) -> PathLike:
     # Get the appropriate conversion script
     if "cif_creation_strategy" not in data:
         raise ValueError(
-            f"File {path} does not contain 'cif_creation_strategy' key, which is required for non-CIF files used in DesignProblemDatasets."
+            f"File {path} does not contain 'cif_creation_strategy' key, "
+            "which is required for non-CIF files used in DesignProblemDatasets."
         )
     elif data["cif_creation_strategy"] not in CIF_CREATION_STRATEGY_TO_SCRIPT_NAME:
         raise ValueError(
-            f"File {path} has unrecognized 'cif_creation_strategy': {data['cif_creation_strategy']}. Supported strategies are: {list(CIF_CREATION_STRATEGY_TO_SCRIPT_NAME.keys())}"
+            f"File {path} has unrecognized 'cif_creation_strategy': {data['cif_creation_strategy']}. "
+            f"Supported strategies are: {list(CIF_CREATION_STRATEGY_TO_SCRIPT_NAME.keys())}"
         )
     script_name = CIF_CREATION_STRATEGY_TO_SCRIPT_NAME[data["cif_creation_strategy"]]
     script_path = (

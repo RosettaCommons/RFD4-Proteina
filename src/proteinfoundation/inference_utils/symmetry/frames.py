@@ -112,7 +112,10 @@ def get_symmetry_frames_from_atom_array(
     return computed_frames
 
 
-def _align(X_fixed, X_moving):
+def _align(
+    X_fixed: np.ndarray | torch.Tensor,
+    X_moving: np.ndarray | torch.Tensor,
+) -> tuple[np.ndarray | torch.Tensor, np.ndarray | torch.Tensor, np.ndarray | torch.Tensor]:
     """
     Align two sets of coordinates using Kabsch algorithm.
     Arguments:
@@ -125,7 +128,7 @@ def _align(X_fixed, X_moving):
     """
     is_torch = isinstance(X_fixed, torch.Tensor)
 
-    def _mean_along_dim(X, dim):
+    def _mean_along_dim(X: np.ndarray | torch.Tensor, dim: int) -> np.ndarray | torch.Tensor:
         if is_torch:
             return X.mean(dim=dim)
         else:
@@ -174,7 +177,13 @@ def _align(X_fixed, X_moving):
     return u_X_moving, R, u_X_fixed
 
 
-def _rms(X_fixed, X_moving, t_pre, R, t_post):
+def _rms(
+    X_fixed: np.ndarray,
+    X_moving: np.ndarray,
+    t_pre: np.ndarray,
+    R: np.ndarray,
+    t_post: np.ndarray,
+) -> float:
     """
     Calculate the RMSD between two sets of coordinates.
     Arguments:
@@ -264,7 +273,7 @@ def get_dihedral_frames(order: int) -> list[tuple[np.ndarray, np.ndarray]]:
     return frames
 
 
-def get_frames_from_file(file_path):
+def get_frames_from_file(file_path: str) -> list[tuple[np.ndarray, np.ndarray]]:
     raise NotImplementedError("Input defined symmetry not implemented")
 
 
@@ -278,7 +287,11 @@ def get_frames_from_file(file_path):
 #    b) a translation and rotation
 # uses Gram-Schmidt orthogonalziation, handles stacked/unstacked
 # support np and torch inputs
-def RTs_to_framecoords(Rs, ts, sig=1.0):
+def RTs_to_framecoords(
+    Rs: np.ndarray | torch.Tensor,
+    ts: np.ndarray | torch.Tensor,
+    sig: float = 1.0,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if isinstance(Rs, np.ndarray):
         Rs = torch.from_numpy(Rs)
         ts = torch.from_numpy(ts)
@@ -290,7 +303,12 @@ def RTs_to_framecoords(Rs, ts, sig=1.0):
 
 # RTs_to_framecoords is used in loss and expects torch inputs
 # (and must support backwards)
-def framecoords_to_RTs(Ori, X, Y, eps=1e-6):
+def framecoords_to_RTs(
+    Ori: torch.Tensor,
+    X: torch.Tensor,
+    Y: torch.Tensor,
+    eps: float = 1e-6,
+) -> tuple[torch.Tensor, torch.Tensor]:
     R1 = X - Ori
     R1 = (R1 + torch.tensor([eps, 0, 0], device=R1.device)) / (torch.linalg.norm(R1, axis=-1, keepdims=True) + eps)
 

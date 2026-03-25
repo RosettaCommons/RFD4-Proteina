@@ -7,9 +7,8 @@ Registering these as StandardAnnotations (rather than plain extra_fields) gives:
 """
 
 import numpy as np
-from biotite.structure import AtomArray
-
 from atomworks.io.utils.standard_annotations.base import Level, StandardAnnotationBase
+from biotite.structure import AtomArray
 
 
 class SrcCoordinateConditionedRegion(StandardAnnotationBase):

@@ -5,21 +5,21 @@ root = os.path.abspath(".")
 sys.path.insert(0, root)  # Adds project's root directory
 # isort: split
 
-import argparse
+import argparse  # noqa: E402
 
-import hydra
-import lightning as L
+import hydra  # noqa: E402
+import lightning as L  # noqa: E402
 
 # import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import torch
-from foundry.utils.env import load_dotenv
-from foundry.utils.ddp import RankedLogger
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import torch  # noqa: E402
+
+from foundry.utils.ddp import RankedLogger  # noqa: E402
+from foundry.utils.env import load_dotenv  # noqa: E402
+from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
-
-from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 
 COLORS_RT = [
     "#FF0000",  # Red
@@ -90,7 +90,7 @@ def parse_args_and_cfg() -> tuple[dict, dict, str]:
     return args, cfg, config_name
 
 
-def extract_ckpt_info(ckpt_file_path):
+def extract_ckpt_info(ckpt_file_path: str) -> tuple[str, str]:
     ae_name = ckpt_file_path.split("/")[-3]
     ckpt_name = ckpt_file_path.split("/")[-1]
     return ae_name, ckpt_name
@@ -118,7 +118,7 @@ def setup(
         os.makedirs(root_path, exist_ok=True)
     else:
         if not os.path.exists(root_path):
-            raise ValueError("Results path %s does not exist" % root_path)
+            raise ValueError(f"Results path {root_path} does not exist")
 
     # Set seed
     logger.info(f"Seeding everything to seed {cfg.seed}")
@@ -127,7 +127,7 @@ def setup(
     return root_path
 
 
-def load_dataloader(cfg):
+def load_dataloader(cfg: object) -> object:
     """
     Load dataloader from dataset config using new atomworks pipeline.
     Matches training's approach EXACTLY - uses assemble_distributed_loader.
@@ -167,7 +167,7 @@ def load_dataloader(cfg):
     return dataloader
 
 
-def extract_pdb_ids(predictions):
+def extract_pdb_ids(predictions: list[tuple]) -> list[str]:
     logger.info("Extracting example IDs")
     vals = []
     for x_in, _ in predictions:
@@ -182,7 +182,7 @@ def extract_pdb_ids(predictions):
     return vals
 
 
-def compute_all_atom_rmsd(predictions, model):
+def compute_all_atom_rmsd(predictions: list[tuple], model: AutoEncoder) -> list[float]:
     logger.info("Computing all-atom RMSD")
     vals = []
     for x_in, x_out in predictions:
@@ -194,7 +194,7 @@ def compute_all_atom_rmsd(predictions, model):
     return vals
 
 
-def compute_sec_rec_rate(predictions, model):
+def compute_sec_rec_rate(predictions: list[tuple], model: AutoEncoder) -> list[float]:
     logger.info("Computing sequence recovery rate")
     vals = []
     for x_in, x_out in predictions:
@@ -206,7 +206,7 @@ def compute_sec_rec_rate(predictions, model):
     return vals
 
 
-def compute_kl_latent(predictions, model):
+def compute_kl_latent(predictions: list[tuple], model: AutoEncoder) -> list[float]:
     logger.info("Computing sequence recovery rate")
     vals = []
     for _, x_out in predictions:
@@ -220,7 +220,7 @@ def compute_kl_latent(predictions, model):
     return vals
 
 
-def compute_metric(metric, predictions, model):
+def compute_metric(metric: str, predictions: list[tuple], model: AutoEncoder) -> list[float]:
     if metric == "all_atom_rmsd":
         return compute_all_atom_rmsd(predictions, model)  # List of floats
     elif metric == "seq_rec_rate":
@@ -231,7 +231,7 @@ def compute_metric(metric, predictions, model):
         raise OSError(f"Metric {metric} not implemented")
 
 
-def get_df_stats(df):
+def get_df_stats(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
 
     means = df[numeric_cols].mean()
@@ -312,7 +312,7 @@ def main() -> None:
     dataset_name = (
         "mixed"
         if "afdb_monomer" in cfg.datasets.train and "na_complex" in cfg.datasets.train
-        else list(cfg.datasets.train.keys())[0]
+        else next(iter(cfg.datasets.train.keys()))
         if hasattr(cfg.datasets, "train")
         else "unknown"
     )
@@ -321,7 +321,7 @@ def main() -> None:
         col_names += [f"{m}_mean", f"{m}_std", f"{m}_max", f"{m}_min"]
         vals_aux = np.array(metrics[m])
         values += [vals_aux.mean(), vals_aux.std(), vals_aux.max(), vals_aux.min()]
-    col_names += [k for k in dir_storages]
+    col_names += list(dir_storages)
     values += [dir_storages[k] for k in dir_storages]
     df_summary = pd.DataFrame({col_names[i]: [values[i]] for i in range(len(col_names))})
 

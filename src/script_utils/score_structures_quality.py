@@ -44,17 +44,16 @@ Usage:
 import argparse
 import subprocess
 import tempfile
+from collections.abc import Generator
 from contextlib import contextmanager
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from tqdm import tqdm
-
 from atomworks.io import parse
 from atomworks.io.tools.quality import CheckName, evaluate_quality
-
+from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
 # Squashfs mount helper
@@ -62,7 +61,7 @@ from atomworks.io.tools.quality import CheckName, evaluate_quality
 
 
 @contextmanager
-def _mount_squashfs(sqsh_path: str):
+def _mount_squashfs(sqsh_path: str) -> Generator[str, None, None]:
     """Mount a squashfs file via squashfuse and yield the mount point.
 
     The mount is torn down automatically on exit. If the script is killed

@@ -7,10 +7,10 @@ from atomworks.ml.conditions import C_CRD
 from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack
 from jaxtyping import Float
+
 from foundry.common import exists
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
-
 from proteinfoundation.conditions import C_HOT
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
@@ -22,9 +22,11 @@ def hotspot_obedience(
     max_hotspot_distance: float = 7.0,
 ) -> float:
     """
-    Computes hotspot obedience. Hotspots are defined as atoms on the target that are within a certain distance of the binder.
-    This metric checks for each hotspot atom whether there is a binder atom within the hotspot distance. Result is returned as a fraction of hotspot atoms
-    that have been obeyed. If there are no hotspots, the metric returns NaN.
+    Computes hotspot obedience. Hotspots are defined as atoms on the target that are
+    within a certain distance of the binder. This metric checks for each hotspot atom
+    whether there is a binder atom within the hotspot distance. Result is returned as a
+    fraction of hotspot atoms that have been obeyed. If there are no hotspots, the
+    metric returns NaN.
 
     Args:
         ground_truth_atom_array_stack (AtomArray | AtomArrayStack | AtomArrayPlus): The ground truth atom array stack.
@@ -94,9 +96,11 @@ def hotspot_obedience(
 
 class HotspotObedience(Metric):
     """
-    Computes how frequently hotspot conditioining is obeyed. Hotspots are defined as atoms on the target that are within a certain distance of the binder.
-    This metric checks for each hotspot atom whether there is a binder atom within the hotspot distance. Result is returned as a fraction of hotspot atoms
-    that have been obeyed. If there are no hotspots, the metric returns NaN.
+    Computes how frequently hotspot conditioining is obeyed. Hotspots are defined as
+    atoms on the target that are within a certain distance of the binder. This metric
+    checks for each hotspot atom whether there is a binder atom within the hotspot
+    distance. Result is returned as a fraction of hotspot atoms that have been obeyed.
+    If there are no hotspots, the metric returns NaN.
 
     Args:
         max_hotspot_distance (float): The maximum distance between a hotspot atom and a binder atom.
@@ -127,8 +131,8 @@ class HotspotObedience(Metric):
         Can accept either predicted atom array stack or predicted coordinates directly.
 
         Args:
-            predicted_atom_array_stack (AtomArray | AtomArrayStack | AtomArrayPlus | None): The predicted atom array stack.
-            predicted_coords (Float[np.ndarray, "D L 3"] | None): The predicted coordinates.
+            predicted_atom_array_stack: The predicted atom array stack.
+            predicted_coords: The predicted coordinates.
 
         Returns:
             Dictionary with keys 'hotspot_obedience'

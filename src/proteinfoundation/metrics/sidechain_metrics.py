@@ -4,8 +4,9 @@ from atomworks.constants import STANDARD_AA
 from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack
 from biotite.structure.info import residue
-from foundry.metrics.metric import Metric
 from scipy.spatial.distance import cdist
+
+from foundry.metrics.metric import Metric
 
 
 def construct_graph(coords: np.ndarray, cutoff_min: float, cutoff_max: float) -> nx.Graph:

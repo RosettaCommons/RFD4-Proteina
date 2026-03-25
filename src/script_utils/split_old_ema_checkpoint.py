@@ -27,7 +27,7 @@ import os
 import torch
 
 
-def build_ema_state_dict_from_params(ema_params, state_dict):
+def build_ema_state_dict_from_params(ema_params: list, state_dict: dict) -> dict:
     """
     Build a model state_dict from EMA parameters.
 
@@ -38,10 +38,11 @@ def build_ema_state_dict_from_params(ema_params, state_dict):
     Returns:
         dict: A state_dict with EMA weights
     """
-    non_autoencoder_state_dict_keys = [key for key in state_dict.keys() if not key.startswith("autoencoder")]
+    non_autoencoder_state_dict_keys = [key for key in state_dict if not key.startswith("autoencoder")]
     if len(ema_params) != len(non_autoencoder_state_dict_keys):
         raise ValueError(
-            f"Mismatch: {len(ema_params)} EMA params but {len(non_autoencoder_state_dict_keys)} non-autoencoder state_dict keys"
+            f"Mismatch: {len(ema_params)} EMA params but "
+            f"{len(non_autoencoder_state_dict_keys)} non-autoencoder state_dict keys"
         )
 
     ema_state_dict = copy.deepcopy(state_dict)
@@ -54,7 +55,7 @@ def build_ema_state_dict_from_params(ema_params, state_dict):
     return ema_state_dict
 
 
-def split_checkpoint(old_ckpt_path):
+def split_checkpoint(old_ckpt_path: str) -> None:
     """
     Split an old-style EMA checkpoint into new two-file format.
 
@@ -77,9 +78,10 @@ def split_checkpoint(old_ckpt_path):
 
     # Get model state dict keys
     state_dict = checkpoint["state_dict"]
-    non_autoencoder_state_dict_keys = [key for key in state_dict.keys() if not key.startswith("autoencoder")]
+    non_autoencoder_state_dict_keys = [key for key in state_dict if not key.startswith("autoencoder")]
     print(
-        f"Model has {len(state_dict)} parameters in state_dict, of which {len(non_autoencoder_state_dict_keys)} are non-autoencoder parameters"
+        f"Model has {len(state_dict)} parameters in state_dict, "
+        f"of which {len(non_autoencoder_state_dict_keys)} are non-autoencoder parameters"
     )
 
     # Create regular checkpoint
@@ -111,7 +113,7 @@ def split_checkpoint(old_ckpt_path):
     print("Success!")
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Split old-style EMA checkpoint into new two-file format",
     )

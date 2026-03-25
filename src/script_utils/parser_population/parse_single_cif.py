@@ -8,7 +8,8 @@ apptainer session).
 
 Usage:
     # Single file
-    python scripts/parse_single_cif.py --cif-path /path/to/file.cif.gz --assembly-id 1 --cif-parser-args '{"cache_dir": "/path/to/cache", ...}'
+    python scripts/parse_single_cif.py --cif-path /path/to/file.cif.gz --assembly-id 1 \
+        --cif-parser-args '{"cache_dir": "/path/to/cache", ...}'
 
     # Multiple files (batch mode)
     python scripts/parse_single_cif.py --command-file commands.txt
@@ -136,7 +137,7 @@ def parse_from_command_line(cif_path_str: str, assembly_id_str: str, parser_args
         return False
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Parse CIF files with specified arguments")
     parser.add_argument("--cif-path", type=Path, help="Path to CIF file (for single file mode)")
@@ -150,7 +151,10 @@ def main():
     parser.add_argument(
         "--command-file",
         type=Path,
-        help="Path to file containing commands (for batch mode). Each line should be: <cif_path> <assembly_id> <parser_args_json>",
+        help=(
+            "Path to file containing commands (for batch mode). "
+            "Each line should be: <cif_path> <assembly_id> <parser_args_json>"
+        ),
     )
 
     args = parser.parse_args()

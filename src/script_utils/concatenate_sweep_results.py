@@ -12,9 +12,9 @@ Usage:
 """
 
 import argparse
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
 
 _METRICS_FILES = [
     ("per_example_metrics.csv", "sweep_per_example_metrics.csv"),
@@ -35,10 +35,7 @@ def concatenate_sweep_results(sweep_dir: str) -> None:
     assert sweep_path.is_dir(), f"Sweep directory not found: {sweep_dir}"
 
     # Collect subdirectories that have inference_metrics/
-    config_dirs = sorted(
-        d for d in sweep_path.iterdir()
-        if d.is_dir() and (d / "inference_metrics").is_dir()
-    )
+    config_dirs = sorted(d for d in sweep_path.iterdir() if d.is_dir() and (d / "inference_metrics").is_dir())
 
     if not config_dirs:
         print(f"No inference_metrics/ subdirectories found under {sweep_dir}")

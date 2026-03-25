@@ -23,7 +23,7 @@ BLOCK_ARG = Any
 BLOCK_ARGS = list[BLOCK_ARG]
 
 
-def get_checkpoint_fn():
+def get_checkpoint_fn() -> Callable:
     # if(deepspeed.checkpointing.is_configured()):
     #     checkpoint = deepspeed.checkpointing.checkpoint
     # else:
@@ -58,16 +58,16 @@ def checkpoint_blocks(
         The output of the final block
     """
 
-    def wrap(a):
+    def wrap(a: Any) -> tuple:
         return (a,) if type(a) is not tuple else a
 
-    def exec(b, a):
+    def exec(b: list[Callable], a: Any) -> Any:
         for block in b:
             a = wrap(block(*a))
         return a
 
-    def chunker(s, e):
-        def exec_sliced(*a):
+    def chunker(s: int, e: int) -> Callable:
+        def exec_sliced(*a: Any) -> Any:
             return exec(blocks[s:e], a)
 
         return exec_sliced

@@ -88,7 +88,7 @@ def atom37_to_atom_array(
         else:
             # For multi-chain, create AtomArray per chain and concatenate
             atom_arrays = []
-            for i, chain_idx in enumerate(unique_chains):
+            for _i, chain_idx in enumerate(unique_chains):
                 chain_mask = chain_index == chain_idx
                 chain_coords = coords_atom37[chain_mask]
                 chain_seq = residue_type[chain_mask]
@@ -148,12 +148,12 @@ def atom37_to_atom_array(
 def write_prot_to_pdb(
     prot_pos: np.ndarray,
     file_path: str,
-    aatype: np.ndarray = None,
-    chain_index: np.ndarray = None,
-    overwrite=False,
-    no_indexing=False,
-    b_factors=None,
-):
+    aatype: np.ndarray | None = None,
+    chain_index: np.ndarray | None = None,
+    overwrite: bool = False,
+    no_indexing: bool = False,
+    b_factors: np.ndarray | None = None,
+) -> str:
     """Write protein structure to CIF file using atomworks.
 
     Note: Despite the function name (kept for backward compatibility),

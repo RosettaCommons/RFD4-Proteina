@@ -12,27 +12,28 @@ import numpy as np
 import torch
 import torch.distributed
 from atomworks.common import exists
-from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.transforms.atom_array import (
-    add_id_and_entity_annotations,
     add_chain_iid_annotation,
-    add_pn_unit_iid_annotation,
+    add_id_and_entity_annotations,
     add_molecule_iid_annotation,
+    add_pn_unit_iid_annotation,
 )
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.utils import nested_dict
 from biotite.structure import AtomArray, AtomArrayStack
+
 from foundry.metrics.metric import Metric, MetricManager
 from foundry.utils.ddp import RankedLogger
-from rf3.inference_engines.rf3 import RF3InferenceEngine
-from rf3.utils.inference import InferenceInput, InputOptions
-
 from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from rf3.inference_engines.rf3 import RF3InferenceEngine
+from rf3.utils.inference import InferenceInput, InputOptions
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-# TODO: Probably a job for the configs, but should have options for the MetricManager to do thresholding operations and alignments
+# TODO: Probably a job for the configs, but should have options for the MetricManager to do thresholding operations
+# and alignments
 class RF3Metric(Metric):
     """RF3-based refolding metric (differentiable).
 
@@ -102,8 +103,9 @@ class RF3Metric(Metric):
             metric_manager: MetricManager for RF3 inference metrics.
             template_annotations: Annotation name(s) to use for templating. Annotations must be
                 boolean arrays. Multiple annotations are OR'd together.
-            extra_annots_to_symm_resolve: List of extra annotation names to apply symmetry resolution to. Intended for coord-like annotations,
-                such as the coordinates of a designed input structure after inserting motif positions.
+            extra_annots_to_symm_resolve: List of extra annotation names to apply symmetry resolution to.
+                Intended for coord-like annotations, such as the coordinates of a designed input structure
+                after inserting motif positions.
             pass_criteria: Pass criteria for design evaluation. Should map metric names to min and/or max values.
             out_dir: Directory to save input/refolded structures. If None, no saving.
             input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
@@ -319,7 +321,11 @@ class RF3Metric(Metric):
         for override in ["diffusion_batch_size", "n_recycles"]:
             self.engine.transform_overrides[override] = getattr(self, override)
 
-        self.engine._construct_pipeline(self.engine.cfg)
+        self.engine.verbose = False  # Do not re-print pipeline config for each call to compute()
+        try:
+            self.engine._construct_pipeline(self.engine.cfg)
+        finally:
+            self.engine.verbose = True
 
         # Update the number of inference timesteps (only needed in shadow model, done in both for future-proofing)
         self.engine.trainer.state["model"].model.inference_sampler.num_timesteps = self.num_steps
@@ -375,12 +381,11 @@ class RF3Metric(Metric):
 
     # Interface metrics for all interfaces involving the COI.
     # Matrices are upper-triangular: [i][j] filled only when i < j.
-    def _coi_interface_vals(self, matrix, coi_idx, n_chains):
-        return (
-            [matrix[i][coi_idx] for i in range(coi_idx) if matrix[i][coi_idx] is not None]
-            + [matrix[coi_idx][j] for j in range(coi_idx + 1, n_chains) if matrix[coi_idx][j] is not None]
-        )
-    
+    def _coi_interface_vals(self, matrix: list, coi_idx: int, n_chains: int) -> list:
+        return [matrix[i][coi_idx] for i in range(coi_idx) if matrix[i][coi_idx] is not None] + [
+            matrix[coi_idx][j] for j in range(coi_idx + 1, n_chains) if matrix[coi_idx][j] is not None
+        ]
+
     def fold_single_atom_array(
         self,
         input_atom_array: AtomArray,
@@ -452,12 +457,8 @@ class RF3Metric(Metric):
 
             if chain_of_interest is not None:
                 chain_of_interest_unambiguous = True
-                logger.info(f"Using externally-provided chain of interest: {chain_of_interest}")
             else:
                 chain_of_interest, chain_of_interest_unambiguous = get_chain_of_interest(prepared_array)
-                logger.info(
-                    f"Inferred chain of interest: {chain_of_interest}. This will be used to subset interface metrics."
-                )
             metrics["chain_of_interest"] = chain_of_interest if chain_of_interest_unambiguous else None
 
             if summary_confidences:
@@ -499,7 +500,6 @@ class RF3Metric(Metric):
 
             # Save structures if out_dir is set
             if out_dir:
-
                 # Optionally save an aligned version of the predicted structure
                 aligned_aa = []
                 for metric_name in metrics:
@@ -528,4 +528,3 @@ class RF3Metric(Metric):
                 "ipae": 100.0,
                 "min_ipae": 100.0,
             }
-

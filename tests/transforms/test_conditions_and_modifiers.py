@@ -453,9 +453,7 @@ class TestIndexGroupCondition:
         annotation = C_IDXGRP.default_annotation(simple_protein)
 
         # Check indexed region (first 20 atoms)
-        assert np.all(
-            annotation[:20] == 0
-        ), f"Indexed atoms should have group 0, got {np.unique(annotation[:20])}"
+        assert np.all(annotation[:20] == 0), f"Indexed atoms should have group 0, got {np.unique(annotation[:20])}"
 
         # Check unindexed region (last 20 atoms) - should all be in group 1
         assert np.all(
@@ -511,9 +509,15 @@ class TestSampleUnindexedGroups:
         first_unindexed_group_id = first_unindexed[0]
         indexed_group_id = indexed_groups[0]
         second_unindexed_group_id = second_unindexed[0]
-        assert first_unindexed_group_id != indexed_group_id, f"First unindexed and indexed should have different IDs, both got {first_unindexed_group_id}"
-        assert first_unindexed_group_id != second_unindexed_group_id, f"First and second unindexed regions should have different IDs, both got {first_unindexed_group_id}"
-        assert indexed_group_id != second_unindexed_group_id, f"Indexed and second unindexed should have different IDs, both got {indexed_group_id}"
+        assert (
+            first_unindexed_group_id != indexed_group_id
+        ), f"First unindexed and indexed should have different IDs, both got {first_unindexed_group_id}"
+        assert (
+            first_unindexed_group_id != second_unindexed_group_id
+        ), f"First and second unindexed regions should have different IDs, both got {first_unindexed_group_id}"
+        assert (
+            indexed_group_id != second_unindexed_group_id
+        ), f"Indexed and second unindexed should have different IDs, both got {indexed_group_id}"
 
 
 if __name__ == "__main__":

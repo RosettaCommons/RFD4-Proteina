@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -75,7 +75,7 @@ def _resolve_metric(
     first_metric_colname_suffix = metric_col[0].split(".")[-1]
     if len(metric_col) == 1:
         resolved_name = metric_col[0]
-    elif all([col.split(".")[-1] == first_metric_colname_suffix for col in metric_col]):
+    elif all(col.split(".")[-1] == first_metric_colname_suffix for col in metric_col):
         resolved_name = first_metric_colname_suffix
     else:
         resolved_name = " / ".join(metric_col)
@@ -204,7 +204,7 @@ def suggest_sweep_cols(
             numeric_cols = list(df.select_dtypes("number").columns)
             print(f"\n  Unresolved keys: {unresolved}")
             print(f"  Available numeric columns: {numeric_cols}")
-            print(f"  Add missing entries to _SWEEP_KEY_ALIASES if the column exists under a different name.")
+            print("  Add missing entries to _SWEEP_KEY_ALIASES if the column exists under a different name.")
     else:
         _meta = {
             "example_id",
@@ -263,7 +263,7 @@ def aggregate_to_task_level(
       >>> agg_df = aggregate_to_task_level(df, ["nsteps"], ["plddt", "tm_score"])
     """
     df, metric_col = _resolve_metric(df, metric_col)
-    group_cols = sweep_cols + [task_col]
+    group_cols = [*sweep_cols, task_col]
     grouped = df.groupby(group_cols)[metric_col]
     agg_fn = grouped.median if agg == "median" else grouped.mean
     result = agg_fn().rename(metric_col).reset_index()
@@ -307,7 +307,7 @@ def _build_2d_pivot(
     metric_col: str,
     task_col: str,
 ) -> dict[str, pd.DataFrame]:
-    """Build one metric pivot table per task over a (col1 × col2) grid.
+    """Build one metric pivot table per task over a (col1 x col2) grid.
 
     Returns:
       Dict mapping task name → pivot DataFrame (col1 as index, col2 as columns),
@@ -322,6 +322,7 @@ def _build_2d_pivot(
 # ---------------------------------------------------------------------------
 # Display helpers
 # ---------------------------------------------------------------------------
+
 
 def _save_or_show(fig: Figure, save_path: str | Path | None) -> None:
     if save_path is not None:
@@ -387,7 +388,8 @@ def _make_compact_fig(
     fig = plt.figure(figsize=(fig_w, fig_h))
 
     outer_gs = GridSpec(
-        n_valid_rows, 1,
+        n_valid_rows,
+        1,
         figure=fig,
         top=top,
         bottom=0.08,
@@ -426,7 +428,7 @@ def _iter_subsets(
     for keys, sub_df in df.groupby(cols_to_iterate, sort=True):
         if not isinstance(keys, tuple):
             keys = (keys,)
-        result.append((dict(zip(cols_to_iterate, keys)), sub_df))
+        result.append((dict(zip(cols_to_iterate, keys, strict=False)), sub_df))
     return result
 
 
@@ -510,8 +512,13 @@ def plot_marginal(
 
     Examples:
       >>> fig, axes = plot_marginal(df, "nsteps", "plddt")
-      >>> fig, axes = plot_marginal(df, "nsteps", "plddt", facet_col="dataset_name",
-      ...     value_labels={"nsteps": {50: "fast", 200: "slow"}})
+      >>> fig, axes = plot_marginal(
+      ...     df,
+      ...     "nsteps",
+      ...     "plddt",
+      ...     facet_col="dataset_name",
+      ...     value_labels={"nsteps": {50: "fast", 200: "slow"}},
+      ... )
       >>> figs = plot_marginal(df, "nsteps", "plddt", cols_to_iterate=["ckpt_path"])
     """
     if cols_to_iterate:
@@ -519,13 +526,24 @@ def plot_marginal(
         for label, sub_df in _iter_subsets(df, cols_to_iterate):
             label_str = "  |  ".join(f"{k}={_display_label(v, k, value_labels)}" for k, v in label.items())
             print(f"--- {label_str} ---")
-            results.append(plot_marginal(
-                sub_df, sweep_col, metric_col,
-                task_col=task_col, facet_col=facet_col, agg=agg, error=error,
-                value_labels=value_labels, metric_label=metric_label, title=title,
-                ylabel=ylabel, cols_to_iterate=None,
-                save_path=_labelled_save_path(save_path, label), **kwargs,
-            ))
+            results.append(
+                plot_marginal(
+                    sub_df,
+                    sweep_col,
+                    metric_col,
+                    task_col=task_col,
+                    facet_col=facet_col,
+                    agg=agg,
+                    error=error,
+                    value_labels=value_labels,
+                    metric_label=metric_label,
+                    title=title,
+                    ylabel=ylabel,
+                    cols_to_iterate=None,
+                    save_path=_labelled_save_path(save_path, label),
+                    **kwargs,
+                )
+            )
         return results
     df, metric_col = _resolve_metric(df, metric_col)
     is_numeric = pd.api.types.is_numeric_dtype(df[sweep_col])
@@ -564,25 +582,21 @@ def plot_marginal(
         ax.grid(True, alpha=0.3)
         return True
 
-    def _sub_df(facet):
+    def _sub_df(facet: Any) -> pd.DataFrame:
         return df[df[facet_col] == facet] if facet is not None else df
 
     # Per-task rows.
     tasks = sorted(df[task_col].unique())
-    agg_by_facet = {
-        facet: _build_1d_agg(_sub_df(facet), sweep_col, metric_col, task_col, error)
-        for facet in facets
-    }
+    agg_by_facet = {facet: _build_1d_agg(_sub_df(facet), sweep_col, metric_col, task_col, error) for facet in facets}
 
     # Pre-compute which (task, facet) cells have data.
-    def _cell_df(task, facet):
+    def _cell_df(task: Any, facet: Any) -> pd.DataFrame:
         adf = agg_by_facet[facet]
         return adf[adf[task_col] == task]
 
     # Determine valid facets per task-row (all tasks in one figure).
     valid_j_per_row = {
-        i: [j for j, facet in enumerate(facets) if not _cell_df(task, facet).empty]
-        for i, task in enumerate(tasks)
+        i: [j for j, facet in enumerate(facets) if not _cell_df(task, facet).empty] for i, task in enumerate(tasks)
     }
     valid_rows = [i for i in range(len(tasks)) if valid_j_per_row[i]]
     if not valid_rows:
@@ -641,7 +655,7 @@ def plot_heatmap(
     """Plot a heatmap of a metric over two sweep axes, faceted by task.
 
     Marginalizes over any remaining sweep dimensions by averaging within
-    cells. Produces one heatmap per (task × facet) combination, tiled 2 per
+    cells. Produces one heatmap per (task x facet) combination, tiled 2 per
     row. Cell values are annotated numerically.
 
     Args:
@@ -651,7 +665,7 @@ def plot_heatmap(
       metric_col: Metric to display in cells. May be a list of candidate
         column names, at most one of which is non-NaN per row.
       task_col: Column identifying tasks. Defaults to ``"task"``.
-      facet_col: If given, produce one heatmap per (task × facet_col value)
+      facet_col: If given, produce one heatmap per (task x facet_col value)
         combination (e.g. ``"dataset_name"``). Defaults to ``None``.
       agg: Aggregation within cells. Defaults to ``"mean"``.
       value_labels: Optional mapping ``{column: {raw_value: display_label}}``
@@ -672,28 +686,41 @@ def plot_heatmap(
 
     Examples:
       >>> plot_heatmap(df, "nsteps", "bb_ca_noise_scale", "plddt")
-      >>> plot_heatmap(df, "nsteps", "bb_ca_noise_scale", ["plddt", "tm_score"],
-      ...     facet_col="dataset_name")
-      >>> figs = plot_heatmap(df, "nsteps", "bb_ca_noise_scale", "plddt",
-      ...     cols_to_iterate=["ckpt_path"])
+      >>> plot_heatmap(
+      ...     df, "nsteps", "bb_ca_noise_scale", ["plddt", "tm_score"], facet_col="dataset_name"
+      ... )
+      >>> figs = plot_heatmap(
+      ...     df, "nsteps", "bb_ca_noise_scale", "plddt", cols_to_iterate=["ckpt_path"]
+      ... )
     """
     if cols_to_iterate:
         results = []
         for label, sub_df in _iter_subsets(df, cols_to_iterate):
             label_str = "  |  ".join(f"{k}={_display_label(v, k, value_labels)}" for k, v in label.items())
             print(f"--- {label_str} ---")
-            results.append(plot_heatmap(
-                sub_df, sweep_col1, sweep_col2, metric_col,
-                task_col=task_col, facet_col=facet_col, agg=agg,
-                value_labels=value_labels, metric_label=metric_label, title=title,
-                ylabel=ylabel, cols_to_iterate=None,
-                save_path=_labelled_save_path(save_path, label), **kwargs,
-            ))
+            results.append(
+                plot_heatmap(
+                    sub_df,
+                    sweep_col1,
+                    sweep_col2,
+                    metric_col,
+                    task_col=task_col,
+                    facet_col=facet_col,
+                    agg=agg,
+                    value_labels=value_labels,
+                    metric_label=metric_label,
+                    title=title,
+                    ylabel=ylabel,
+                    cols_to_iterate=None,
+                    save_path=_labelled_save_path(save_path, label),
+                    **kwargs,
+                )
+            )
         return results
     df, metric_col = _resolve_metric(df, metric_col)
     facets = sorted(df[facet_col].unique()) if facet_col else [None]
     mname = metric_label or metric_col
-    suptitle = title or f"{mname}:  {sweep_col1}  ×  {sweep_col2}"
+    suptitle = title or f"{mname}:  {sweep_col1}  x  {sweep_col2}"
     ylbl = ylabel or sweep_col1
 
     def _apply_vl(pivot: pd.DataFrame) -> pd.DataFrame:
@@ -785,7 +812,7 @@ def plot_surface(
         names, at most one of which is non-NaN per row.
       task_col: Column identifying tasks. Defaults to ``"task"``.
       agg: Aggregation. Defaults to ``"mean"``.
-      title: Figure suptitle. Defaults to ``"{metric_col}: {sweep_col1} × {sweep_col2}"``.
+      title: Figure suptitle. Defaults to ``"{metric_col}: {sweep_col1} x {sweep_col2}"``.
       ylabel: Y-axis label on each surface. Defaults to ``sweep_col1``.
       save_path: If given, save the figure here instead of displaying.
       **kwargs: Forwarded to :py:meth:`~mpl_toolkits.mplot3d.Axes3D.plot_surface`.
@@ -803,7 +830,7 @@ def plot_surface(
     n_tasks = len(tasks)
 
     fig = plt.figure(figsize=(6 * n_tasks, 5))
-    fig.suptitle(title or f"{metric_col}:  {sweep_col1}  ×  {sweep_col2}", fontsize=13)
+    fig.suptitle(title or f"{metric_col}:  {sweep_col1}  x  {sweep_col2}", fontsize=13)
 
     axes = []
     for i, task in enumerate(tasks, 1):
@@ -854,7 +881,7 @@ def _axis_impact_on_ax(
             task_means = agg_df[agg_df[task_col] == task]["mean"]
             impact[col][task] = float(task_means.max() - task_means.min()) if len(task_means) > 1 else 0.0
 
-    for i, (task, color) in enumerate(zip(tasks, colors)):
+    for i, (task, color) in enumerate(zip(tasks, colors, strict=False)):
         values = [impact[col][task] for col in sorted_cols]
         offset = (i - n_tasks / 2 + 0.5) * bar_w
         task_label = _display_label(task, task_col, value_labels)
@@ -880,7 +907,7 @@ def plot_axis_impact(
     cols_to_iterate: list[str] | None = None,
     save_path: str | Path | None = None,
 ) -> tuple[Figure, np.ndarray] | list[tuple[Figure, np.ndarray]]:
-    """Rank sweep axes by their impact on a metric (max − min of marginal mean).
+    """Rank sweep axes by their impact on a metric (max - min of marginal mean).
 
     For each axis in ``sweep_cols``, computes the range of the marginal mean
     of ``metric_col`` (marginalizing over all other axes). Axes are sorted
@@ -900,7 +927,7 @@ def plot_axis_impact(
         Defaults to ``metric_col``.
       title: Figure suptitle override.
       ylabel: Y-axis label override. Defaults to
-        ``"Range of mean {metric_col}  (max − min)"``.
+        ``"Range of mean {metric_col}  (max - min)"``.
       cols_to_iterate: If given, produce a separate figure for each unique value
         combination of these columns. Returns a list of ``(fig, axes)`` pairs.
       save_path: If given, save the figure here instead of displaying.
@@ -919,21 +946,30 @@ def plot_axis_impact(
         for label, sub_df in _iter_subsets(df, cols_to_iterate):
             label_str = "  |  ".join(f"{k}={v}" for k, v in label.items())
             print(f"--- {label_str} ---")
-            results.append(plot_axis_impact(
-                sub_df, sweep_cols, metric_col,
-                task_col=task_col, facet_col=facet_col, agg=agg,
-                value_labels=value_labels, metric_label=metric_label, title=title, ylabel=ylabel,
-                cols_to_iterate=None,
-                save_path=_labelled_save_path(save_path, label),
-            ))
+            results.append(
+                plot_axis_impact(
+                    sub_df,
+                    sweep_cols,
+                    metric_col,
+                    task_col=task_col,
+                    facet_col=facet_col,
+                    agg=agg,
+                    value_labels=value_labels,
+                    metric_label=metric_label,
+                    title=title,
+                    ylabel=ylabel,
+                    cols_to_iterate=None,
+                    save_path=_labelled_save_path(save_path, label),
+                )
+            )
         return results
     df, metric_col = _resolve_metric(df, metric_col)
     mname = metric_label or metric_col
     facets = sorted(df[facet_col].unique()) if facet_col is not None else [None]
     suptitle = title or f"Sweep axis impact on  {mname}"
-    ylbl = ylabel or f"Range of mean {mname}  (max − min)"
+    ylbl = ylabel or f"Range of mean {mname}  (max - min)"
 
-    def _sub_df(facet):
+    def _sub_df(facet: Any) -> pd.DataFrame:
         return df[df[facet_col] == facet] if facet is not None else df
 
     tasks = sorted(df[task_col].unique())
@@ -953,15 +989,18 @@ def plot_axis_impact(
     subplot_w = max(9.0, 2.0 * len(sorted_cols))
     n_facets = len(facets)
     fig, axes = plt.subplots(
-        n_facets, 1,
+        n_facets,
+        1,
         figsize=(subplot_w, 4 * n_facets),
         squeeze=False,
         sharey=True,
     )
     fig.suptitle(suptitle, fontsize=13)
 
-    for ax, facet in zip(axes[:, 0], facets):
-        _axis_impact_on_ax(ax, _sub_df(facet), sweep_cols, sorted_cols, metric_col, task_col, tasks, colors, value_labels)
+    for ax, facet in zip(axes[:, 0], facets, strict=False):
+        _axis_impact_on_ax(
+            ax, _sub_df(facet), sweep_cols, sorted_cols, metric_col, task_col, tasks, colors, value_labels
+        )
         ax.set_ylabel(ylbl)
         if facet is not None:
             ax.set_title(str(facet), fontsize=10)
@@ -1034,8 +1073,13 @@ def plot_all_marginals(
 
     Examples:
       >>> plot_all_marginals(df, ["nsteps", "bb_ca_noise_scale"], "plddt")
-      >>> plot_all_marginals(df, ["nsteps"], "plddt", facet_col="dataset_name",
-      ...     value_labels={"nsteps": {50: "fast", 200: "slow"}})
+      >>> plot_all_marginals(
+      ...     df,
+      ...     ["nsteps"],
+      ...     "plddt",
+      ...     facet_col="dataset_name",
+      ...     value_labels={"nsteps": {50: "fast", 200: "slow"}},
+      ... )
       >>> figs = plot_all_marginals(df, sweep_cols, "plddt", cols_to_iterate=["ckpt_path"])
     """
     if cols_to_iterate:
@@ -1043,13 +1087,24 @@ def plot_all_marginals(
         for label, sub_df in _iter_subsets(df, cols_to_iterate):
             label_str = "  |  ".join(f"{k}={_display_label(v, k, value_labels)}" for k, v in label.items())
             print(f"--- {label_str} ---")
-            results.append(plot_all_marginals(
-                sub_df, sweep_cols, metric_col,
-                task_col=task_col, facet_col=facet_col, agg=agg, error=error,
-                value_labels=value_labels, metric_label=metric_label, title=title,
-                ylabel=ylabel, cols_to_iterate=None,
-                save_path=_labelled_save_path(save_path, label), **kwargs,
-            ))
+            results.append(
+                plot_all_marginals(
+                    sub_df,
+                    sweep_cols,
+                    metric_col,
+                    task_col=task_col,
+                    facet_col=facet_col,
+                    agg=agg,
+                    error=error,
+                    value_labels=value_labels,
+                    metric_label=metric_label,
+                    title=title,
+                    ylabel=ylabel,
+                    cols_to_iterate=None,
+                    save_path=_labelled_save_path(save_path, label),
+                    **kwargs,
+                )
+            )
         return results
     df, metric_col = _resolve_metric(df, metric_col)
     tasks = sorted(df[task_col].unique())
@@ -1061,7 +1116,7 @@ def plot_all_marginals(
     suptitle = title or f"All sweep axis marginals  —  {mname}"
     ylbl = ylabel or mname
 
-    def _sub_df(facet):
+    def _sub_df(facet: Any) -> pd.DataFrame:
         return df[df[facet_col] == facet] if facet is not None else df
 
     def _fill_cell(
@@ -1079,7 +1134,7 @@ def plot_all_marginals(
 
         agg_df = _build_1d_agg(sub_df, sweep_col, metric_col, task_col, error)
         has_data = False
-        for task_i, (task, color) in enumerate(zip(tasks, colors)):
+        for task_i, (task, color) in enumerate(zip(tasks, colors, strict=False)):
             task_df = agg_df[agg_df[task_col] == task].sort_values(sweep_col)
             if task_df.empty:
                 continue
@@ -1115,7 +1170,7 @@ def plot_all_marginals(
         return True
 
     # Pre-compute which (sweep_col, facet) pairs have data.
-    def _has_data(sweep_col: str, facet) -> bool:
+    def _has_data(sweep_col: str, facet: Any) -> bool:
         return not _sub_df(facet)[sweep_col].dropna().empty
 
     # All sweep_cols in one compact figure (no pagination).
@@ -1144,7 +1199,9 @@ def plot_all_marginals(
             facet = facets[j]
             ax = axes_dict[(ri, j)]
             has_data = _fill_cell(
-                ax, sweep_col, _sub_df(facet),
+                ax,
+                sweep_col,
+                _sub_df(facet),
                 is_first_col=(k == 0),
                 is_top_row=(ri == 0),
                 facet=facet,
@@ -1215,9 +1272,13 @@ def print_best_configs(
 
     Examples:
       >>> best = print_best_configs(df, ["nsteps", "bb_ca_noise_scale"], "plddt")
-      >>> best = print_best_configs(df, sweep_cols, "plddt",
+      >>> best = print_best_configs(
+      ...     df,
+      ...     sweep_cols,
+      ...     "plddt",
       ...     facet_col="dataset_name",
-      ...     value_labels={"ckpt_path": {"/very/long/path.pt": "v1"}})
+      ...     value_labels={"ckpt_path": {"/very/long/path.pt": "v1"}},
+      ... )
       >>> best = print_best_configs(df, sweep_cols, "plddt", cols_to_iterate=["ckpt_path"])
     """
     if cols_to_iterate:
@@ -1225,12 +1286,20 @@ def print_best_configs(
         for label, sub_df in _iter_subsets(df, cols_to_iterate):
             label_str = "  |  ".join(f"{k}={v}" for k, v in label.items())
             print(f"\n{'─' * 40}  {label_str}")
-            all_best.append(print_best_configs(
-                sub_df, sweep_cols, metric_col=metric_col,
-                task_col=task_col, facet_col=facet_col, agg=agg,
-                higher_is_better=higher_is_better, value_labels=value_labels,
-                metric_label=metric_label, cols_to_iterate=None,
-            ))
+            all_best.append(
+                print_best_configs(
+                    sub_df,
+                    sweep_cols,
+                    metric_col=metric_col,
+                    task_col=task_col,
+                    facet_col=facet_col,
+                    agg=agg,
+                    higher_is_better=higher_is_better,
+                    value_labels=value_labels,
+                    metric_label=metric_label,
+                    cols_to_iterate=None,
+                )
+            )
         return pd.concat(all_best, ignore_index=True)
     df, metric_col = _resolve_metric(df, metric_col)
     mname = metric_label or metric_col
@@ -1263,11 +1332,13 @@ def print_best_configs(
     print(f"\nBest sweep configurations  (metric: {mname},  {direction} is better)")
     print("=" * 80)
     try:
-        from tabulate import tabulate  # noqa: PLC0415
+        from tabulate import tabulate
 
         print(tabulate(display_df, headers="keys", tablefmt="rounded_outline", floatfmt=".4f", showindex=False))
     except ImportError:
-        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", "{:.4f}".format):
+        with pd.option_context(
+            "display.max_columns", None, "display.width", None, "display.float_format", "{:.4f}".format
+        ):
             print(display_df.to_string(index=False))
 
     return best_df
@@ -1333,13 +1404,17 @@ def plot_sweep_summary(
 
     Examples:
       >>> plot_sweep_summary(
-      ...     df, sweep_cols, metric_col=pass_rate_cols,
-      ...     heatmap_col1="bb_ca_noise_scale", heatmap_col2="latents_noise_scale",
+      ...     df,
+      ...     sweep_cols,
+      ...     metric_col=pass_rate_cols,
+      ...     heatmap_col1="bb_ca_noise_scale",
+      ...     heatmap_col2="latents_noise_scale",
       ...     marginal_sweep_cols=["ckpt_path", "nsteps"],
       ...     task_col="dataset_name",
       ...     value_labels={"ckpt_path": {"/long/path/v1.pt": "v1"}},
       ...     cols_to_iterate=["seed"],
-      ...     metric_label="pass_rate", ylabel="pass_rate",
+      ...     metric_label="pass_rate",
+      ...     ylabel="pass_rate",
       ...     save_dir=Path("sweep_figures"),
       ... )
     """

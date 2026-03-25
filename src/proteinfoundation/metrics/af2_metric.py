@@ -3,6 +3,7 @@
 This metric is DIFFERENTIABLE and can be used for gradient-based refinement.
 """
 
+import contextlib
 import gc
 import warnings
 from functools import cached_property
@@ -11,6 +12,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from biotite.structure import AtomArray
+
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
 
@@ -79,7 +81,7 @@ class AF2Metric(Metric):
         }
 
     @property
-    def af_model(self):
+    def af_model(self) -> Any:
         """Lazy initialize AF2 model."""
         if self._af_model is None:
             from proteinfoundation.rewards.alphafold2_reward_utils import get_af2_model_runner
@@ -175,10 +177,8 @@ class AF2Metric(Metric):
         except Exception as e:
             logger.error(f"AF2 prediction failed: {e}")
             # Clean up JAX memory on error
-            try:
+            with contextlib.suppress(Exception):
                 jax.clear_backends()
-            except:
-                pass
             gc.collect()
 
             return {

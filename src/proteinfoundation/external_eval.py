@@ -1,42 +1,48 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
 
 import argparse
-import os
+import itertools
 import json
-import pandas as pd
+import os
 from pathlib import Path
-from biotite.structure import AtomArray, AtomArrayStack, infer_elements
-from atomworks.constants import ELEMENT_NAME_TO_ATOMIC_NUMBER
-from atomworks.io.utils.io_utils import load_any, to_cif_file
-from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.io.transforms.atom_array import add_chain_type_annotation, add_polymer_annotation
-from atomworks.io.utils.non_rcsb import initialize_chain_info_from_atom_array
-from atomworks.io.transforms.atom_array import add_charge_from_ccd_codes
-from atomworks.common import exists
-from atomworks.ml.conditions import C_CRD, C_IDX, C_DIS
-from atomworks.io.utils.annotator import ensure_annotations
-from atomworks.ml.utils.token import apply_and_spread_token_wise
-import yaml
-from foundry.metrics import MetricManager
-from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
+
 import numpy as np
+import pandas as pd
 import torch
-from proteinfoundation.conditions import C_IDXGRP, C_INTCRD, C_HOT
-from proteinfoundation.utils.chain_utils import get_chain_of_interest
-from proteinfoundation.transforms.unindexing import process_unindexed_outputs
+import yaml
+from atomworks.common import exists
+from atomworks.constants import ELEMENT_NAME_TO_ATOMIC_NUMBER
+from atomworks.io.transforms.atom_array import (
+    add_chain_type_annotation,
+    add_charge_from_ccd_codes,
+    add_polymer_annotation,
+)
+from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
+from atomworks.io.utils.io_utils import load_any, to_cif_file
+from atomworks.io.utils.non_rcsb import initialize_chain_info_from_atom_array
+from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
+from atomworks.ml.utils.token import apply_and_spread_token_wise
+from biotite.structure import AtomArray, AtomArrayStack, infer_elements
+
+from foundry.metrics import MetricManager
+from foundry.utils.logging import RankedLogger
+from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
+from proteinfoundation.conditions import C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.generate import get_contig_or_design_problem_dataset
-from proteinfoundation.inference_utils.datasets import DesignProblemDataset, ContigJsonDataset
-from proteinfoundation.inference_utils.inference_utils import set_com
-from proteinfoundation.metrics.rf3_metric import RF3Metric
 from proteinfoundation.inference_utils.concatenate_external_eval_results import (
     aggregate_metrics_from_per_example_df,
 )
-from foundry.utils.logging import RankedLogger
+from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
+from proteinfoundation.inference_utils.inference_utils import set_com
+from proteinfoundation.metrics.rf3_metric import RF3Metric
+from proteinfoundation.transforms.unindexing import process_unindexed_outputs
+from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
 
-def setup_argparse():
+def setup_argparse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run external evaluation and save the outputs to disk.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -72,7 +78,7 @@ def setup_argparse():
         help="How the motif coordinates were translated to produce the coords that the model saw.",
     )
 
-    def _str_to_bool(v):
+    def _str_to_bool(v: bool | str) -> bool:
         if isinstance(v, bool):
             return v
         if v.lower() in ("yes", "true", "t", "1", "y"):
@@ -126,7 +132,7 @@ def setup_argparse():
     return args
 
 
-def _ensure_not_atom_array_stack(arr):
+def _ensure_not_atom_array_stack(arr: AtomArray | AtomArrayStack) -> AtomArray:
     if isinstance(arr, AtomArrayStack):
         assert arr.stack_depth() == 1, "Obtained a stacked AtomArray with depth > 1. "
         arr = arr[0]
@@ -142,7 +148,13 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     cleaned = {}
     chain_of_interest_values = []
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "designed_structure_path", "sequence_redesigned_structure_path", "task"):
+        if key in (
+            "dataset_name",
+            "example_id",
+            "designed_structure_path",
+            "sequence_redesigned_structure_path",
+            "task",
+        ):
             cleaned[key] = str(value)
             continue
         elif key.endswith("chain_of_interest"):
@@ -150,9 +162,9 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
             continue
         if isinstance(value, int | float):
             cleaned[key] = float(value)
-        elif isinstance(value, torch.Tensor) and value.numel() == 1:
-            cleaned[key] = value.item()
-        elif isinstance(value, np.ndarray) and value.size == 1:
+        elif (isinstance(value, torch.Tensor) and value.numel() == 1) or (
+            isinstance(value, np.ndarray) and value.size == 1
+        ):
             cleaned[key] = value.item()
 
     # Add chain of interest column
@@ -168,12 +180,20 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     metric_keys = [
         k
         for k in cleaned
-        if k not in ("dataset_name", "example_id", "designed_structure_path", "sequence_redesigned_structure_path", "task", "chain_of_interest")
+        if k
+        not in (
+            "dataset_name",
+            "example_id",
+            "designed_structure_path",
+            "sequence_redesigned_structure_path",
+            "task",
+            "chain_of_interest",
+        )
     ]
     return cleaned if metric_keys else None
 
 
-def _add_basic_annots(atom_array):
+def _add_basic_annots(atom_array: AtomArray | AtomArrayStack) -> AtomArray:
     atom_array = _ensure_not_atom_array_stack(atom_array)
     chain_info = initialize_chain_info_from_atom_array(atom_array)
     atom_array = add_chain_type_annotation(atom_array, chain_info)
@@ -183,7 +203,7 @@ def _add_basic_annots(atom_array):
     return atom_array
 
 
-def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | None = None):
+def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | None = None) -> None:
     # 1. Collect and clean per-example metrics
     all_example_metrics = [cleaned for m in all_metric_outputs if (cleaned := _clean_metrics_dict(m)) is not None]
 
@@ -198,7 +218,14 @@ def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | 
     per_example_df = pd.DataFrame(all_example_metrics)
     # Reorder columns: example_id first, then dataset_name, then metrics
     cols = per_example_df.columns.tolist()
-    priority = ["designed_structure_path", "sequence_redesigned_structure_path", "example_id", "task", "dataset_name", "chain_of_interest"]
+    priority = [
+        "designed_structure_path",
+        "sequence_redesigned_structure_path",
+        "example_id",
+        "task",
+        "dataset_name",
+        "chain_of_interest",
+    ]
     ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
     per_example_df = per_example_df[ordered_cols]
     per_example_df = per_example_df.round(4)
@@ -217,7 +244,7 @@ def save_metrics(all_metric_outputs: list[dict], output_dir: str, job_id: int | 
         print(f"Saved aggregate metrics to {agg_path}")
 
 
-def correct_index_groups_for_length_variability(atom_array, spec: dict) -> AtomArray:
+def correct_index_groups_for_length_variability(atom_array: AtomArray, spec: dict) -> AtomArray:
     """Infer where to place index group breaks for mapping indexed components to model outputs.
     This is necessary because variable-length regions between two indexed groups can make the index gaps variable.
     However, if the gaps are fixed-length, we want to enforce that the model respects the relative indices.
@@ -282,7 +309,8 @@ def correct_index_groups_for_length_variability(atom_array, spec: dict) -> AtomA
 
     if len(change_indices) != len(increment_index_group) + 1:
         # Sampling a diffused region of length zero can lead to no detected changes where one was expected
-        # Cases where this is the first or last region in the contig are easily detected and cover all existing benchmarks
+        # Cases where this is the first or last region in the contig are easily detected
+        # and cover all existing benchmarks
         # If other cases arise in the future, this function will need to be revisited
         if contig_parts[0].startswith("0-") and indexed_motif_mask[0]:
             increment_index_group = increment_index_group[1:]
@@ -292,12 +320,13 @@ def correct_index_groups_for_length_variability(atom_array, spec: dict) -> AtomA
         # If the lengths still don't match, we raise an error
         if len(change_indices) != len(increment_index_group) + 1:
             raise ValueError(
-                "The number of detected chain/indexed motif changes does not match the number of expected index group breaks. "
+                "The number of detected chain/indexed motif changes does not match "
+                "the number of expected index group breaks. "
             )
 
     index_groups = C_IDXGRP.annotation(atom_array, default="generate")
     current_max_idxgrp = index_groups.max()
-    for i, (start, stop) in enumerate(zip(change_indices[:-1], change_indices[1:])):
+    for i, (start, stop) in enumerate(itertools.pairwise(change_indices)):
         if increment_index_group[i]:
             index_groups[start:stop] += current_max_idxgrp + 1
             current_max_idxgrp += 1
@@ -307,13 +336,13 @@ def correct_index_groups_for_length_variability(atom_array, spec: dict) -> AtomA
 
 
 def apply_centering_method(
-    row,
-    centering_method,
-    coord_conditioning_atom_array,
-    loaded_atom_array,
-    dataset,
-    pfm_dataset_input,
-):
+    row: object,
+    centering_method: str,
+    coord_conditioning_atom_array: AtomArray,
+    loaded_atom_array: AtomArray,
+    dataset: object,
+    pfm_dataset_input: str,
+) -> AtomArray:
     allow_non_motif_centered = True
     ori_token = None
     infer_ori_strategy = None
@@ -328,7 +357,7 @@ def apply_centering_method(
     elif centering_method == "ori_token":
         # Get the complete input structure file to locate the ORI token (before subsetting to contig)
         if isinstance(dataset, ContigJsonDataset):
-            with open(pfm_dataset_input, "r") as f:
+            with open(pfm_dataset_input) as f:
                 pfm_json_data = json.load(f)
             input_file = pfm_json_data[row.example_id]["input"]
             if not os.path.isabs(input_file):
@@ -353,7 +382,7 @@ def apply_centering_method(
             infer_ori_strategy = "hotspots"
     elif centering_method == "ori_from_rfd3_json":
         rfd3_json_path = row.rfd3_json
-        with open(rfd3_json_path, "r") as f:
+        with open(rfd3_json_path) as f:
             rfd3_json_data = json.load(f)
         ori_token = rfd3_json_data.get("ori_token")
         infer_ori_strategy = rfd3_json_data.get("infer_ori_strategy")
@@ -374,7 +403,9 @@ def apply_centering_method(
 
 
 # TODO: If more annotations are needed down the line, this will need to be updated accordingly.
-def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_redesigned_atom_array):
+def transfer_annotations_to_redesigned_structure(
+    generated_atom_array: AtomArray, sequence_redesigned_atom_array: AtomArray
+) -> AtomArray:
     """Transfer annotations from the generated structure to the sequence-redesigned structure in the mapped region."""
     # Subset to the region mapped to the unindexed coordinate conditioning
     matched_mapped_indices = []
@@ -387,7 +418,8 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
         if match_mask.sum() != 1:
             raise ValueError(
                 "Expected exactly one match for each atom in the mapped region, but found "
-                f"{match_mask.sum()} matches for atom {f'{atom.chain_id} {atom.res_id} {atom.res_name} {atom.atom_name}'}"
+                f"{match_mask.sum()} matches for atom "
+                f"'{atom.chain_id} {atom.res_id} {atom.res_name} {atom.atom_name}'"
             )
 
         matched_idx = np.where(match_mask)[0][0]
@@ -412,33 +444,41 @@ def transfer_annotations_to_redesigned_structure(generated_atom_array, sequence_
     # NOTE: These are optional because they are not strictly necessary for downstream tasks
     if SA_SRC.has_annotation(generated_atom_array):
         src_component = SA_SRC.default_annotation(sequence_redesigned_atom_array)
-        src_component[matched_mapped_indices] = SA_SRC.annotation(generated_atom_array)[SA_CRDSRC.mask(generated_atom_array)]
+        src_component[matched_mapped_indices] = SA_SRC.annotation(generated_atom_array)[
+            SA_CRDSRC.mask(generated_atom_array)
+        ]
         SA_SRC.set_annotation(sequence_redesigned_atom_array, src_component)
 
         src_crd = SA_CRDSRC.default_annotation(sequence_redesigned_atom_array)
-        src_crd[matched_mapped_indices] = SA_CRDSRC.annotation(generated_atom_array)[SA_CRDSRC.mask(generated_atom_array)]
+        src_crd[matched_mapped_indices] = SA_CRDSRC.annotation(generated_atom_array)[
+            SA_CRDSRC.mask(generated_atom_array)
+        ]
         SA_CRDSRC.set_annotation(sequence_redesigned_atom_array, src_crd)
-
 
     # Copy over relevant masks within the mapped regions, using the defaults everywhere else
     for cond in (C_CRD, C_IDX, C_INTCRD):
         cond_mask = cond.default_mask(sequence_redesigned_atom_array)
-        cond_mask[matched_mapped_indices] = generated_atom_array[
-            SA_CRDSRC.mask(generated_atom_array)
-        ].get_annotation(cond.mask_name)
+        cond_mask[matched_mapped_indices] = generated_atom_array[SA_CRDSRC.mask(generated_atom_array)].get_annotation(
+            cond.mask_name
+        )
         cond.set_mask(sequence_redesigned_atom_array, cond_mask)
 
     return sequence_redesigned_atom_array
 
 
-def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, inputs_in_same_frame):
+def convert_to_pfm_format(
+    generated_atom_array: AtomArray,
+    coord_conditioning_atom_array: AtomArray,
+    inputs_in_same_frame: bool,
+) -> tuple[AtomArray, dict]:
     """Convert the generated AtomArray to the format/annotations expected by the MetricManager."""
 
     # Infer element from atom name for RFD3 outputs, which contain 'VX'
     known_elements_mask = np.isin(generated_atom_array.element, list(ELEMENT_NAME_TO_ATOMIC_NUMBER.keys()))
     generated_atom_array.element[~known_elements_mask] = infer_elements(generated_atom_array[~known_elements_mask])
 
-    # Spoof a uniform index group for the generated atoms (unused but allows the annotation to be preserved through concatenation)
+    # Spoof a uniform index group for the generated atoms
+    # (unused but allows the annotation to be preserved through concatenation)
     coord_cond_index_groups = C_IDXGRP.annotation(coord_conditioning_atom_array, default="generate")
     max_conditioning_idxgrp = coord_cond_index_groups.max()
     C_IDXGRP.set_annotation(
@@ -455,10 +495,7 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
 
     # Prepare the coords_with_insertion annotation
     SA_CWI.set_annotation(generated_atom_array, generated_atom_array.coord.copy().astype(np.float32))
-    SA_CWI.set_annotation(
-        coord_conditioning_atom_array,
-        SA_CWI.default_annotation(coord_conditioning_atom_array)
-    )
+    SA_CWI.set_annotation(coord_conditioning_atom_array, SA_CWI.default_annotation(coord_conditioning_atom_array))
 
     # Subset to coordinate-conditioned protein regions, as only these need to be mapped
     coord_conditioning_atom_array = coord_conditioning_atom_array[coord_conditioning_atom_array.is_protein]
@@ -520,7 +557,8 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
         ),
     )
 
-    # If the model has failed to create valid reproductions of the motif, warn and give NaN values for coords_with_insertion
+    # If the model has failed to create valid reproductions of the motif,
+    # warn and give NaN values for coords_with_insertion
     coord_conditioned_count = modified_coord_conditioning_atom_array.array_length()
     if SA_CRDSRC.mask(annotated_model_generated_array).sum() != coord_conditioned_count:
         print(
@@ -534,25 +572,24 @@ def convert_to_pfm_format(generated_atom_array, coord_conditioning_atom_array, i
 
     if not valid_mapping_found:
         SA_CWI.set_annotation(
-            annotated_model_generated_array,
-            SA_CWI.default_annotation(annotated_model_generated_array)
+            annotated_model_generated_array, SA_CWI.default_annotation(annotated_model_generated_array)
         )
 
     return annotated_model_generated_array, insertion_metadata
 
 
 def run_external_eval(
-    input_parquet,
-    output_dir,
-    pfm_dataset_input,
-    metric_manager_config,
-    centering_method,
-    use_sequence_redesign,
-    annotated_design_save_dir=None,
-    subset_to_indices=None,
-    chunk_size=None,
-    job_id=None,
-):
+    input_parquet: str,
+    output_dir: str,
+    pfm_dataset_input: str | list[str],
+    metric_manager_config: str | None,
+    centering_method: str,
+    use_sequence_redesign: bool,
+    annotated_design_save_dir: str | None = None,
+    subset_to_indices: list[int] | None = None,
+    chunk_size: float | None = None,
+    job_id: int | None = None,
+) -> None:
     """Run external evaluation and save the outputs to disk.
 
     NOTE: This function will only add annotations related to abslute 3d coordinate conditioning (indexed or unindexed).
@@ -560,26 +597,36 @@ def run_external_eval(
 
     Args:
         input_parquet (str): Path to the input parquet file, which must contain the following columns:
-            - generated_structure: Paths to the cleaned final outputs of the model. Can be CIF or PDB, optionally gzipped.
+            - generated_structure: Paths to the cleaned final outputs of the model.
+                Can be CIF or PDB, optionally gzipped.
             - example_id: Unique identifier for each example. Either json/yaml key or CIF filepath.
-                If the `pfm_dataset_input` is a directory path, the CIF paths should be relative to that directory.
-            - (optional) sequence_redesigned_structure: Path to the sequence-redesigned output file, e.g. from MPNN.
-                Required if `use_sequence_redesign` is True.
-            - (optional) rfd3_json: Path to the RFD3-style json file. Required if using `ori_from_rfd3_json` centering method.
+                If the `pfm_dataset_input` is a directory path, the CIF paths should be relative
+                to that directory.
+            - (optional) sequence_redesigned_structure: Path to the sequence-redesigned output
+                file, e.g. from MPNN. Required if `use_sequence_redesign` is True.
+            - (optional) rfd3_json: Path to the RFD3-style json file. Required if using
+                `ori_from_rfd3_json` centering method.
         pfm_dataset_input(str | list[str]): Path to a pfm-formatted json/yaml, path to a Condition-annotated CIF,
             or a list or directory of such CIFs.
         output_dir (str): Directory where the outputs of the evaluation will be saved
-        metric_manager_config (str | None): Path to the config file for the MetricManager. If None, no metrics are computed.
-            Note that the metrics must only rely on the generated AtomArray, and possibly the input coordinate conditioning.
-        centering_method (str): How the motif coordinates were translated to produce the coords that the model saw.
-            Options are 'no_centering', 'motif_centered', 'protein_motif_centered', 'hotspots', 'ori_token', 'ori_from_rfd3_json', and 'unknown'.
-            The in-house latent model always uses 'motif_centered', and complexa uses 'protein_motif_centered'. For RFD3, the
-            most common is 'motif_centered', but 'hotspots' is used for PPI tasks. For the MCSA, 'motif_centered' was used for the RFD3
-            paper benchmark but the ori tokens specified in the MCSA input files were actually 'protein_motif_centered'.
-            For boltzgen, all conditioning is distance-based, so this is actually akin to internal coordinate conditioning.
-            Since this is not supported, we instead use 'unknown' for the centering method, which errors if the mapping is ambiguous.
-        use_sequence_redesign (bool, optional): Whether the sequences for refolding should be obtained from an auxiliary model, e.g. MPNN.
-        annotated_design_save_dir (str | None, optional): Path to save the annotated designs as CIFs, including mapping annotations.
+        metric_manager_config (str | None): Path to the config file for the MetricManager.
+            If None, no metrics are computed. Note that the metrics must only rely on the
+            generated AtomArray, and possibly the input coordinate conditioning.
+        centering_method (str): How the motif coordinates were translated to produce the coords
+            that the model saw. Options are 'no_centering', 'motif_centered',
+            'protein_motif_centered', 'hotspots', 'ori_token', 'ori_from_rfd3_json', and
+            'unknown'. The in-house latent model always uses 'motif_centered', and complexa uses
+            'protein_motif_centered'. For RFD3, the most common is 'motif_centered', but
+            'hotspots' is used for PPI tasks. For the MCSA, 'motif_centered' was used for the
+            RFD3 paper benchmark but the ori tokens specified in the MCSA input files were
+            actually 'protein_motif_centered'. For boltzgen, all conditioning is distance-based,
+            so this is actually akin to internal coordinate conditioning. Since this is not
+            supported, we instead use 'unknown' for the centering method, which errors if the
+            mapping is ambiguous.
+        use_sequence_redesign (bool, optional): Whether the sequences for refolding should be
+            obtained from an auxiliary model, e.g. MPNN.
+        annotated_design_save_dir (str | None, optional): Path to save the annotated designs as
+            CIFs, including mapping annotations.
         subset_to_indices (list, optional): A list of indices to subset the input dataframe.
         chunk_size (float, optional): Chunk size - integer for absolute count, or float 0-1 for fraction.
         job_id (int, optional): Job ID for chunk selection (0-indexed). Must be specified with chunk_size.
@@ -626,7 +673,7 @@ def run_external_eval(
 
     # Instantiate the MetricManager
     if exists(metric_manager_config):
-        with open(metric_manager_config, "r") as f:
+        with open(metric_manager_config) as f:
             metric_manager_config_data = yaml.safe_load(f)
         metric_manager = MetricManager.instantiate_from_hydra(metrics_cfg=metric_manager_config_data)
         for metric in metric_manager.metrics.values():
@@ -697,7 +744,8 @@ def run_external_eval(
 
         # Optionally save the annotated designs
         if exists(annotated_design_save_dir):
-            annotated_design_save_path = Path(annotated_design_save_dir) / f"{str(Path(generated_structure_path).stem).split('.')[0]}_annotated.cif"
+            stem = str(Path(generated_structure_path).stem).split(".")[0]
+            annotated_design_save_path = Path(annotated_design_save_dir) / f"{stem}_annotated.cif"
             to_cif_file(formatted_generated_atom_array, annotated_design_save_path)
 
         # If using a sequence-redesigned structure, we will first transfer annotations in the mapped region.
@@ -713,9 +761,10 @@ def run_external_eval(
 
             except ValueError as e:
                 logger.warning(
-                    f"Error transferring annotations: {e}.\n If a remapped atom was not found in the sequence-redesigned structure, "
-                    "this may result from the associated residue having been sequence-redesigned, possibly due to use of a "
-                    "different mapping algorithm to decide which residues should be preserved. This example will return NaN metrics."
+                    f"Error transferring annotations: {e}.\n If a remapped atom was not found in the "
+                    "sequence-redesigned structure, this may result from the associated residue having been "
+                    "sequence-redesigned, possibly due to use of a different mapping algorithm to decide "
+                    "which residues should be preserved. This example will return NaN metrics."
                 )
                 all_metric_outputs.append(
                     {"example_id": str(Path(generated_structure_path).stem).split(".")[0], "task": row.example_id}
@@ -757,7 +806,7 @@ def run_external_eval(
         save_metrics(all_metric_outputs, output_dir, job_id)
 
 
-def main():
+def main() -> None:
     args = setup_argparse()
 
     run_external_eval(

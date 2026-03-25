@@ -1,7 +1,7 @@
 import contextlib
-from typing import Optional
+from collections.abc import Generator
 
-import torch
+import lightning as L
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from lightning.pytorch.utilities.rank_zero import rank_zero_info
 from torch.optim.swa_utils import AveragedModel, get_ema_avg_fn
@@ -35,7 +35,7 @@ class SimpleEMA(Callback):
             trainer = Trainer(callbacks=[SimpleEMA(decay=0.9999, update_every_n=10)])
     """
 
-    def __init__(self, decay: float = 0.9999, update_every_n: int = 1):
+    def __init__(self, decay: float = 0.9999, update_every_n: int = 1) -> None:
         if not (0 <= decay <= 1):
             raise ValueError(f"EMA decay must be between 0 and 1, got {decay}")
         if update_every_n < 1:
@@ -43,13 +43,13 @@ class SimpleEMA(Callback):
 
         self.decay = decay
         self.update_every_n = update_every_n
-        self.ema_model: Optional[AveragedModel] = None
+        self.ema_model: AveragedModel | None = None
 
         # Track which weights are currently loaded in the model
         self._ema_weights_active = False
         self._original_state_dict = None
 
-    def _ensure_ema_initialized(self, pl_module):
+    def _ensure_ema_initialized(self, pl_module: L.LightningModule) -> None:
         """Lazily initialize EMA model if not already initialized.
 
         Creates an AveragedModel wrapping the training model and optionally
@@ -71,11 +71,18 @@ class SimpleEMA(Callback):
                     f"Initialized fresh EMA model (decay={self.decay}, update_every_n={self.update_every_n})"
                 )
 
-    def on_fit_start(self, trainer, pl_module):
+    def on_fit_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Ensure EMA is initialized when training starts."""
         self._ensure_ema_initialized(pl_module)
 
-    def on_train_batch_end(self, trainer, pl_module, *args, **kwargs):
+    def on_train_batch_end(
+        self,
+        trainer: L.Trainer,
+        pl_module: L.LightningModule,
+        outputs: dict,
+        batch: dict,
+        batch_idx: int,
+    ) -> None:
         """Update EMA after training batch.
 
         Updates every update_every_n steps. Use update_every_n > 1 to reduce
@@ -84,7 +91,7 @@ class SimpleEMA(Callback):
         if trainer.global_step % self.update_every_n == 0:
             self.ema_model.update_parameters(pl_module)
 
-    def on_validation_start(self, trainer, pl_module):
+    def on_validation_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Swap to EMA weights for validation.
 
         Temporarily replaces the model's weights with EMA weights so that
@@ -98,7 +105,7 @@ class SimpleEMA(Callback):
             pl_module.load_state_dict(self.ema_model.module.state_dict())
             self._ema_weights_active = True
 
-    def on_validation_end(self, trainer, pl_module):
+    def on_validation_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """Restore training weights after validation.
 
         Swaps back to the original training weights so that gradient updates
@@ -110,7 +117,7 @@ class SimpleEMA(Callback):
             self._ema_weights_active = False
 
     @contextlib.contextmanager
-    def use_training_weights(self, pl_module):
+    def use_training_weights(self, pl_module: L.LightningModule) -> Generator[None, None, None]:
         """Context manager ensuring training weights are active.
 
         Temporarily switches to training weights if EMA is active,
@@ -147,7 +154,7 @@ class SimpleEMA(Callback):
                 self._ema_weights_active = True
 
     @contextlib.contextmanager
-    def use_ema_weights(self, pl_module):
+    def use_ema_weights(self, pl_module: L.LightningModule) -> Generator[None, None, None]:
         """Context manager ensuring EMA weights are active.
 
         Temporarily switches to EMA weights if training is active,
@@ -185,7 +192,7 @@ class SimpleEMA(Callback):
                 self._ema_weights_active = False
                 self._original_state_dict = None
 
-    def state_dict(self):
+    def state_dict(self) -> dict:
         """Save EMA state for checkpointing.
 
         Returns:
@@ -198,7 +205,7 @@ class SimpleEMA(Callback):
             "update_every_n": self.update_every_n,
         }
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: dict) -> None:
         """Load EMA state from checkpoint.
 
         Called by Lightning's checkpoint restoration. Stores the EMA state
@@ -254,7 +261,7 @@ class EMAModelCheckpoint(ModelCheckpoint):
             )
     """
 
-    def __init__(self, save_ema_separately: bool = False, **kwargs):
+    def __init__(self, save_ema_separately: bool = False, **kwargs: bool | int | float | str | None) -> None:
         super().__init__(**kwargs)
         self.save_ema_separately = save_ema_separately
 
@@ -270,7 +277,7 @@ class EMAModelCheckpoint(ModelCheckpoint):
         # Include filename and save_last to differentiate callbacks
         return f"{base_key}_fn={self.filename}_last={self.save_last}"
 
-    def _save_checkpoint(self, trainer, filepath: str) -> None:
+    def _save_checkpoint(self, trainer: L.Trainer, filepath: str) -> None:
         """Save checkpoint(s) with correct weights regardless of current state.
 
         Always saves the training checkpoint with training weights, even if we're
@@ -306,7 +313,7 @@ class EMAModelCheckpoint(ModelCheckpoint):
             with ema_callback.use_ema_weights(pl_module):
                 super()._save_checkpoint(trainer, ema_filepath)
 
-    def _find_ema_callback(self, trainer) -> Optional[SimpleEMA]:
+    def _find_ema_callback(self, trainer: L.Trainer) -> SimpleEMA | None:
         """Find the SimpleEMA callback in trainer callbacks.
 
         Args:

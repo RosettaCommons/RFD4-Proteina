@@ -6,7 +6,7 @@ Usage:
         --config-name refine_bindcraft \
         inputs=my_binder.pdb
 
-    # Refine directory with Gradient Ascent  
+    # Refine directory with Gradient Ascent
     python proteinfoundation/refine.py \
         --config-name refine_gradient_ascent \
         inputs=outputs/generated_structures/
@@ -23,8 +23,9 @@ from pathlib import Path
 import hydra
 from biotite.structure import AtomArray
 from biotite.structure.io import load_structure, save_structure
-from foundryutils.ddp import RankedLogger
 from omegaconf import DictConfig
+
+from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -73,7 +74,7 @@ def save_refined_structures(
     refined_atom_arrays: list[AtomArray],
     original_filenames: list[str],
     output_dir: str | Path,
-):
+) -> None:
     """Save refined structures with _refined suffix.
 
     Args:
@@ -96,7 +97,7 @@ def save_refined_structures(
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="refine_bindcraft")
-def main(cfg: DictConfig):
+def main(cfg: DictConfig) -> None:
     """Main refinement entry point."""
 
     logger.info("=" * 80)
@@ -113,8 +114,7 @@ def main(cfg: DictConfig):
     logger.info(f"Refinement strategy: {type(refinement_strategy).__name__}")
 
     # Instantiate reward model
-    from foundrymetrics.metric import MetricManager
-
+    from foundry.metrics.metric import MetricManager
     from proteinfoundation.rewards import RewardModel
 
     metric_manager = MetricManager.instantiate_from_hydra(cfg.rewards.metrics)

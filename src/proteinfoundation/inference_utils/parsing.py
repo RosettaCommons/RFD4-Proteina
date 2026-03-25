@@ -1,3 +1,4 @@
+import itertools
 from typing import Any, Optional
 
 import numpy as np
@@ -50,9 +51,9 @@ class InputSelection(BaseModel):
         )
 
     @model_validator(mode="after")
-    def check_keys(self):
+    def check_keys(self) -> "InputSelection":
         # lightweight validation that all keys have contig format (are splittable indices)
-        assert all([split_contig(k) for k in self.data.keys()])
+        assert all(split_contig(k) for k in self.data)
         return self
 
     # Wrapper functionality as dict-like
@@ -130,7 +131,7 @@ def canonicalize_(v: Any, atom_array: AtomArray) -> dict[str, str]:
 
     elif isinstance(v, bool):
         starts = get_residue_starts(atom_array, add_exclusive_stop=True)
-        for start, stop in zip(starts[:-1], starts[1:], strict=False):
+        for start, stop in itertools.pairwise(starts):
             token = atom_array[start:stop]
             # All atoms selected for every token or None
             data[f"{token.chain_id[0]}{token.res_id[0]}"] = "ALL" if v else ""

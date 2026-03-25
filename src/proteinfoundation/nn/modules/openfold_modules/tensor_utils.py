@@ -21,28 +21,38 @@ import torch
 import torch.nn as nn
 
 
-def permute_final_dims(tensor: torch.Tensor, inds: list[int]):
+def permute_final_dims(tensor: torch.Tensor, inds: list[int]) -> torch.Tensor:
     zero_index = -1 * len(inds)
     first_inds = list(range(len(tensor.shape[:zero_index])))
     return tensor.permute(first_inds + [zero_index + i for i in inds])
 
 
-def flatten_final_dims(t: torch.Tensor, no_dims: int):
+def flatten_final_dims(t: torch.Tensor, no_dims: int) -> torch.Tensor:
     return t.reshape(t.shape[:-no_dims] + (-1,))
 
 
-def masked_mean(mask, value, dim, eps=1e-4):
+def masked_mean(
+    mask: torch.Tensor,
+    value: torch.Tensor,
+    dim: int | tuple[int, ...],
+    eps: float = 1e-4,
+) -> torch.Tensor:
     mask = mask.expand(*value.shape)
     return torch.sum(mask * value, dim=dim) / (eps + torch.sum(mask, dim=dim))
 
 
-def pts_to_distogram(pts, min_bin=2.3125, max_bin=21.6875, no_bins=64):
+def pts_to_distogram(
+    pts: torch.Tensor,
+    min_bin: float = 2.3125,
+    max_bin: float = 21.6875,
+    no_bins: int = 64,
+) -> torch.Tensor:
     boundaries = torch.linspace(min_bin, max_bin, no_bins - 1, device=pts.device)
     dists = torch.sqrt(torch.sum((pts.unsqueeze(-2) - pts.unsqueeze(-3)) ** 2, dim=-1))
     return torch.bucketize(dists, boundaries)
 
 
-def dict_multimap(fn, dicts):
+def dict_multimap(fn: Callable, dicts: list[dict]) -> dict:
     first = dicts[0]
     new_dict = {}
     for k, v in first.items():
@@ -55,14 +65,14 @@ def dict_multimap(fn, dicts):
     return new_dict
 
 
-def one_hot(x, v_bins):
+def one_hot(x: torch.Tensor, v_bins: torch.Tensor) -> torch.Tensor:
     reshaped_bins = v_bins.view(((1,) * len(x.shape)) + (len(v_bins),))
     diffs = x[..., None] - reshaped_bins
     am = torch.argmin(torch.abs(diffs), dim=-1)
     return nn.functional.one_hot(am, num_classes=len(v_bins)).float()
 
 
-def batched_gather(data, inds, dim=0, no_batch_dims=0):
+def batched_gather(data: torch.Tensor, inds: torch.Tensor, dim: int = 0, no_batch_dims: int = 0) -> torch.Tensor:
     ranges = []
     for i, s in enumerate(data.shape[:no_batch_dims]):
         r = torch.arange(s)
@@ -76,7 +86,7 @@ def batched_gather(data, inds, dim=0, no_batch_dims=0):
 
 
 # With tree_map, a poor man's JAX tree_map
-def dict_map(fn, dic, leaf_type):
+def dict_map(fn: Callable, dic: dict, leaf_type: type) -> dict:
     new_dict = {}
     for k, v in dic.items():
         if type(v) is dict:
@@ -87,7 +97,7 @@ def dict_map(fn, dic, leaf_type):
     return new_dict
 
 
-def tree_map(fn, tree, leaf_type):
+def tree_map(fn: Callable, tree: Any, leaf_type: type) -> Any:
     if isinstance(tree, dict):
         return dict_map(fn, tree, leaf_type)
     elif isinstance(tree, list):
@@ -104,7 +114,7 @@ def tree_map(fn, tree, leaf_type):
 tensor_tree_map = partial(tree_map, leaf_type=torch.Tensor)
 
 
-def _fetch_dims(tree):
+def _fetch_dims(tree: Any) -> list:
     shapes = []
     tree_type = type(tree)
     if tree_type is dict:
@@ -155,7 +165,7 @@ def _get_minimal_slice_set(
     # start_edges and end_edges both indicate whether, starting from any given
     # dimension, the start/end index is at the top/bottom edge of the
     # corresponding tensor, modeled as a tree
-    def reduce_edge_list(l):
+    def reduce_edge_list(l: list) -> None:
         tally = 1
         for i in range(len(l)):
             reversed_idx = -1 * (i + 1)
@@ -172,7 +182,7 @@ def _get_minimal_slice_set(
     # Base cases. Either start/end are empty and we're done, or the final,
     # one-dimensional tensor can be simply sliced
     if len(start) == 0:
-        return [tuple()]
+        return [()]
     elif len(start) == 1:
         return [(slice(start[0], end[0] + 1),)]
 
@@ -193,10 +203,10 @@ def _get_minimal_slice_set(
     if divergence_idx == len(dims):
         return [tuple(path)]
 
-    def upper():
+    def upper() -> list:
         sdi = start[divergence_idx]
         return [
-            path + (slice(sdi, sdi + 1),) + s
+            (*path, slice(sdi, sdi + 1), *s)
             for s in _get_minimal_slice_set(
                 start[divergence_idx + 1 :],
                 [d - 1 for d in dims[divergence_idx + 1 :]],
@@ -206,10 +216,10 @@ def _get_minimal_slice_set(
             )
         ]
 
-    def lower():
+    def lower() -> list:
         edi = end[divergence_idx]
         return [
-            path + (slice(edi, edi + 1),) + s
+            (*path, slice(edi, edi + 1), *s)
             for s in _get_minimal_slice_set(
                 [0 for _ in start[divergence_idx + 1 :]],
                 end[divergence_idx + 1 :],
@@ -222,16 +232,16 @@ def _get_minimal_slice_set(
     # If both start and end are at the edges of the subtree rooted at
     # divergence_idx, we can just select the whole subtree at once
     if start_edges[divergence_idx] and end_edges[divergence_idx]:
-        slices.append(path + (slice(start[divergence_idx], end[divergence_idx] + 1),))
+        slices.append((*path, slice(start[divergence_idx], end[divergence_idx] + 1)))
     # If just start is at the edge, we can grab almost all of the subtree,
     # treating only the ragged bottom edge as an edge case
     elif start_edges[divergence_idx]:
-        slices.append(path + (slice(start[divergence_idx], end[divergence_idx]),))
+        slices.append((*path, slice(start[divergence_idx], end[divergence_idx])))
         slices.extend(lower())
     # Analogous to the previous case, but the top is ragged this time
     elif end_edges[divergence_idx]:
         slices.extend(upper())
-        slices.append(path + (slice(start[divergence_idx] + 1, end[divergence_idx] + 1),))
+        slices.append((*path, slice(start[divergence_idx] + 1, end[divergence_idx] + 1)))
     # If both sides of the range are ragged, we need to handle both sides
     # separately. If there's contiguous meat in between them, we can index it
     # in one big chunk
@@ -239,7 +249,7 @@ def _get_minimal_slice_set(
         slices.extend(upper())
         middle_ground = end[divergence_idx] - start[divergence_idx]
         if middle_ground > 1:
-            slices.append(path + (slice(start[divergence_idx] + 1, end[divergence_idx]),))
+            slices.append((*path, slice(start[divergence_idx] + 1, end[divergence_idx])))
         slices.extend(lower())
 
     return [tuple(s) for s in slices]
@@ -321,7 +331,7 @@ def chunk_layer(
     initial_dims = [shape[:no_batch_dims] for shape in _fetch_dims(inputs)]
     orig_batch_dims = tuple([max(s) for s in zip(*initial_dims, strict=False)])
 
-    def _prep_inputs(t):
+    def _prep_inputs(t: torch.Tensor) -> torch.Tensor:
         # TODO: make this more memory efficient. This sucks
         if not low_mem:
             if sum(t.shape[:no_batch_dims]) != no_batch_dims:
@@ -344,7 +354,9 @@ def chunk_layer(
     for _ in range(no_chunks):
         # Chunk the input
         if not low_mem:
-            select_chunk = lambda t: t[i : i + chunk_size] if t.shape[0] != 1 else t
+
+            def select_chunk(t: torch.Tensor, _i: int = i) -> torch.Tensor:
+                return t[_i : _i + chunk_size] if t.shape[0] != 1 else t
         else:
             select_chunk = partial(
                 _chunk_slice,
@@ -360,19 +372,22 @@ def chunk_layer(
 
         # Allocate space for the output
         if out is None:
-            allocate = lambda t: t.new_zeros((flat_batch_dim,) + t.shape[1:])
+
+            def allocate(t: torch.Tensor) -> torch.Tensor:
+                return t.new_zeros((flat_batch_dim,) + t.shape[1:])
+
             out = tensor_tree_map(allocate, output_chunk)
 
         # Put the chunk in its pre-allocated space
         out_type = type(output_chunk)
         if out_type is dict:
 
-            def assign(d1, d2):
+            def assign(d1: dict, d2: dict, _i: int = i) -> None:
                 for k, v in d1.items():
                     if type(v) is dict:
-                        assign(v, d2[k])
+                        assign(v, d2[k], _i)
                     else:
-                        v[i : i + chunk_size] = d2[k]
+                        v[_i : _i + chunk_size] = d2[k]
 
             assign(out, output_chunk)
         elif out_type is tuple:
@@ -385,7 +400,9 @@ def chunk_layer(
 
         i += chunk_size
 
-    reshape = lambda t: t.view(orig_batch_dims + t.shape[1:])
+    def reshape(t: torch.Tensor) -> torch.Tensor:
+        return t.view(orig_batch_dims + t.shape[1:])
+
     out = tensor_tree_map(reshape, out)
 
     return out

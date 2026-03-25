@@ -16,9 +16,10 @@ from beartype.typing import Any
 from biotite.structure import AtomArray
 from einops import einsum
 from jaxtyping import Bool, Float
+from torch import Tensor
+
 from foundry.common import true_with_prob
 from foundry.utils.ddp import RankedLogger
-from torch import Tensor
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -36,11 +37,15 @@ def stochastic_pair_knockout(
     Randomly knocks out pairs with probability.
 
     Args:
-        eligible_pair_indices: tuple of arrays where eligible_pair_indices[0][i] and eligible_pair_indices[1][i] are the two indices of the i-th eligible pair.
+        eligible_pair_indices: tuple of arrays where eligible_pair_indices[0][i] and
+            eligible_pair_indices[1][i] are the two indices of the i-th eligible pair.
             This must be upper triangle indices (i < j) and must not include the diagonal!
-        min_valid_elements: The minimum number of valid elements that must remain after dropout.
-        low: The lower bound for the random dropout percentage. If 0.1, then a minimum of 10% of the valid elements can be dropped.
-        high: The upper bound for the random dropout percentage. If 0.9, then a maximum of 90% of the valid elements can be dropped.
+        min_valid_elements: The minimum number of valid elements that must remain after
+            dropout.
+        low: The lower bound for the random dropout percentage. If 0.1, then a minimum
+            of 10% of the valid elements can be dropped.
+        high: The upper bound for the random dropout percentage. If 0.9, then a maximum
+            of 90% of the valid elements can be dropped.
 
     Returns:
         tuple of arrays where the i-th pair is knocked out with probability.
@@ -114,9 +119,11 @@ def sample_distance_condition(
 
     #  Generate set of `eligible` pairs
     # A pair is eligible if both atoms can have condition (e.g., outer product of 1-body mask)
-    # eligible_pair_indices is a tuple of arrays where eligible_pair_indices[0][i] and eligible_pair_indices[1][i] are the two indices of the i-th eligible pair
+    # eligible_pair_indices is a tuple of arrays where eligible_pair_indices[0][i] and
+    # eligible_pair_indices[1][i] are the two indices of the i-th eligible pair
     # using can_have_condition_positions. So the i-th eligible pair is:
-    # (can_have_condition__positions[eligible_pair_indices[0][i]], can_have_condition_positions[eligible_pair_indices[1][i]])
+    # (can_have_condition_positions[eligible_pair_indices[0][i]],
+    #  can_have_condition_positions[eligible_pair_indices[1][i]])
     eligible_pair_indices = np.triu_indices(len(can_have_condition_positions), k=1)  # k=1 to exclude the diagonal
 
     # ... knockout some pairs with probability
@@ -173,8 +180,8 @@ def fourier_embed_scales(
 ) -> Float[Tensor, "... L 2*d"]:
     """Applies Fourier feature embedding to input tensor using provided scales.
 
-    Formula (scales σ = [σ1, σ2, ...]):
-        ϕ(x) = [sin(2πx / σ), cos(2πx / σ)]
+    Formula (scales s = [s1, s2, ...]):
+        ϕ(x) = [sin(2πx / s), cos(2πx / s)]
 
     Args:
         x: Input tensor to embed, with arbitrary leading dimensions.
@@ -203,8 +210,8 @@ def exponential_decay_embed_scales(
 ) -> Float[Tensor, "... L d"]:
     """Applies Exponential Decay embedding to input tensor using provided scales.
 
-    Formula (scales σ = [σ1, σ2, ...]):
-        ϕ(x) = exp(-x / σ)
+    Formula (scales s = [s1, s2, ...]):
+        ϕ(x) = exp(-x / s)
 
     Args:
         x: Input tensor to embed, with arbitrary leading dimensions (distances >=0).
@@ -226,8 +233,8 @@ def bessel_radial_embed_scales(
 ) -> Float[Tensor, "... L d"]:
     """Applies Bessel radial embedding to input tensor using provided scales.
 
-    Formula (σ = [σ1, σ2, ...]):
-        R_σ(r) = sqrt(2 / σ_max) * sin(πσr / σ_max) / r
+    Formula (s = [s1, s2, ...]):
+        R_s(r) = sqrt(2 / s_max) * sin(πsr / s_max) / r
 
     Args:
         x: Input tensor to embed, with arbitrary leading dimensions (distances >=0).

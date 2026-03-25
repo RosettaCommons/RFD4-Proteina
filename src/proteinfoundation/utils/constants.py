@@ -46,7 +46,7 @@ af2_atom_types = [
 atom_order = {atom_type: i for i, atom_type in enumerate(af2_atom_types)}
 
 _atom_to_slot = {}
-for res_type in list(STANDARD_AA) + [UNKNOWN_AA]:
+for res_type in [*list(STANDARD_AA), UNKNOWN_AA]:
     if res_type in UNIFIED_ATOM37_ENCODING.token_atoms:
         atom37_layout = UNIFIED_ATOM37_ENCODING.token_atoms[res_type]
         for slot_idx, atom_name in enumerate(atom37_layout):
@@ -292,7 +292,7 @@ def _build_atom37_mask_from_encoding(
 
 # Mask of which atoms are present for each residue type in atom37 representation
 RESTYPE_ATOM37_MASK = _build_atom37_mask_from_encoding(
-    token_names=list(STANDARD_AA) + [UNKNOWN_AA],
+    token_names=[*list(STANDARD_AA), UNKNOWN_AA],
     atom_types_list=af2_atom_types,
     validate_atoms=True,
     exclude_oxt=True,  # Maintain backward compatibility with AF2

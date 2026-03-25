@@ -14,13 +14,18 @@ from atomworks.ml.utils.token import (
     spread_token_wise,
 )
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 from scipy.spatial import KDTree, cKDTree
+
+from foundry.utils.ddp import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def get_hotspot_atoms(atom_array, binder_pn_unit_iids, distance_cutoff=4.5):
+def get_hotspot_atoms(
+    atom_array: AtomArray,
+    binder_pn_unit_iids: list[str],
+    distance_cutoff: float = 4.5,
+) -> np.ndarray:
     """Get hotspot atoms for a given distance cutoff.
 
     Args:

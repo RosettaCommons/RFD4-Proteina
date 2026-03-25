@@ -30,8 +30,14 @@ from jaxtyping import Bool
 from torch import Tensor
 
 nm_to_ang_scale = 10.0
-ang_to_nm = lambda trans: trans / nm_to_ang_scale
-nm_to_ang = lambda trans: trans * nm_to_ang_scale
+
+
+def ang_to_nm(trans: torch.Tensor) -> torch.Tensor:
+    return trans / nm_to_ang_scale
+
+
+def nm_to_ang(trans: torch.Tensor) -> torch.Tensor:
+    return trans * nm_to_ang_scale
 
 
 def get_atom37_ca_mask(n: int, device: torch.device) -> Bool[Tensor, "n 37"]:
@@ -87,7 +93,7 @@ def get_atom37_bb3o_mask(n: int, device: torch.device) -> Bool[Tensor, "n 37"]:
     return mask
 
 
-def trans_nm_to_atom37(ca_coors_nm):
+def trans_nm_to_atom37(ca_coors_nm: torch.Tensor) -> torch.Tensor:
     """
     Converts CA positions (in nm) into atom37 representation (in Å).
 
@@ -100,7 +106,7 @@ def trans_nm_to_atom37(ca_coors_nm):
     return trans_ang_to_atom37(nm_to_ang(ca_coors_nm))
 
 
-def trans_ang_to_atom37(ca_coors):
+def trans_ang_to_atom37(ca_coors: torch.Tensor) -> torch.Tensor:
     """
     Converts CA positions (in Å) into atom37 representation.
 
@@ -114,7 +120,7 @@ def trans_ang_to_atom37(ca_coors):
         Coordinates in atom37 representation, shape [*, N, 37, 3]
     """
     original_shape = ca_coors.shape  # [*, N, 3]
-    atom37_shape = list(original_shape[:-1]) + [37, original_shape[-1]]  # [*, N, 37, 3]
+    atom37_shape = [*original_shape[:-1], 37, original_shape[-1]]  # [*, N, 37, 3]
     ca_coors_atom37 = torch.zeros(atom37_shape, dtype=ca_coors.dtype, device=ca_coors.device)  # [*, N, 37, 3]
     ca_coors_atom37[..., 1, :] = ca_coors  # Sets correct positions for CA [*, N, 37, 3]
     return ca_coors_atom37

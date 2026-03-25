@@ -15,7 +15,7 @@ class EncoderTransformer(torch.nn.Module):
         """
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
-        super(EncoderTransformer, self).__init__()
+        super().__init__()
         self.nlayers = kwargs["encoder"]["nlayers"]
         self.token_dim = kwargs["encoder"]["token_dim"]
         self.pair_repr_dim = kwargs["encoder"]["pair_repr_dim"]
@@ -125,10 +125,8 @@ class EncoderTransformer(torch.nn.Module):
         for i in range(self.nlayers):
             seqs = self.transformer_layers[i](seqs, pair_rep, c, mask)  # [b, n, token_dim]
 
-            if self.update_pair_repr:
-                if i < self.nlayers - 1:
-                    if self.pair_update_layers[i] is not None:
-                        pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
 
         # Get final coordinates
         flat_out = self.latent_decoder_mean_n_log_scale(seqs) * mask[..., None]  # [b, n, 2 * latent_dim]

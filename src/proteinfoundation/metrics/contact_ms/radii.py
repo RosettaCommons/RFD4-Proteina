@@ -188,7 +188,7 @@ def _lookup_radius(res_name: str, atom_name: str) -> float:
 def get_radii_from_names(
     res_names: list[str],
     atom_names: list[str],
-) -> Float[np.ndarray, "N"]:
+) -> Float[np.ndarray, N]:
     """Look up CMS radii for parallel lists of residue and atom names.
 
     Names should be stripped (e.g. ``"N"`` not ``" N  "``).
@@ -201,6 +201,6 @@ def get_radii_from_names(
         Radii array of shape ``(N,)``. Unmatched atoms get ``0.0``.
     """
     radii = np.empty(len(res_names), dtype=np.float64)
-    for i, (res, atom) in enumerate(zip(res_names, atom_names)):
+    for i, (res, atom) in enumerate(zip(res_names, atom_names, strict=False)):
         radii[i] = _lookup_radius(res, atom)
     return radii

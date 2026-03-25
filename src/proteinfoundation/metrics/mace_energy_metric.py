@@ -11,8 +11,8 @@ import torch
 from atomworks.constants import BIOTITE_DEFAULT_ANNOTATIONS, METAL_ELEMENTS
 from biotite.structure import AtomArray, AtomArrayStack
 from mace.calculators import MACECalculator
-from foundry.metrics.metric import Metric
 
+from foundry.metrics.metric import Metric
 from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ def compute_mace_energy(
 
     # Set charge/spin: use existing values in ase_atoms.info, or infer if missing
     for key in ["charge", "spin"]:
-        if key in ase_atoms.info and isinstance(ase_atoms.info[key], (int, float)):
+        if key in ase_atoms.info and isinstance(ase_atoms.info[key], int | float):
             continue  # Valid value exists, keep it
 
         # Missing or invalid - apply infer_charge policy

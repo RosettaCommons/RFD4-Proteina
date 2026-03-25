@@ -1,8 +1,10 @@
+from typing import Any
+
 import numpy as np
 from biotite.structure import AtomArray
+
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.standard_annotations import SA_SRC
-
 from proteinfoundation.inference_utils.inference_utils import get_motif_features
 from proteinfoundation.inference_utils.symmetry.contigs import expand_contig_unsym_motif
 
@@ -51,7 +53,8 @@ def check_symmetry_config(
 
 def check_atom_array_is_symmetric(atom_array: AtomArray) -> bool:
     """
-    Check if the atom array is symmetric. This is NOT to check that the atom array symmetry matches that of the symmetry_id.
+    Check if the atom array is symmetric. This is NOT to check that the atom array symmetry matches
+    that of the symmetry_id.
     Arguments:
         atom_array: atom arrays to check
     Returns:
@@ -84,7 +87,8 @@ def check_atom_array_is_symmetric(atom_array: AtomArray) -> bool:
         chain_mask = atom_array.chain_id == chain
         if len(asu_atoms) != len(atom_array[chain_mask]):
             ranked_logger.info(
-                f"Atom array has different number of atoms in chain {chain}. {len(asu_atoms)} != {len(atom_array[chain_mask])}"
+                f"Atom array has different number of atoms in chain {chain}. "
+                f"{len(asu_atoms)} != {len(atom_array[chain_mask])}"
             )
             return False
 
@@ -94,7 +98,8 @@ def check_atom_array_is_symmetric(atom_array: AtomArray) -> bool:
         for i in range(len(asu_atoms)):
             if asu_atoms.atom_name[i] != atom_array[chain_mask].atom_name[i]:
                 ranked_logger.info(
-                    f"Atom array has different atoms in chain {chain}. {asu_atoms.atom_name[i]} != {atom_array[chain_mask].atom_name[i]}"
+                    f"Atom array has different atoms in chain {chain}. "
+                    f"{asu_atoms.atom_name[i]} != {atom_array[chain_mask].atom_name[i]}"
                 )
                 return False
 
@@ -162,7 +167,10 @@ def find_optimal_rotation(coords1: np.ndarray, coords2: np.ndarray, max_points: 
         return None
 
 
-def check_input_frames_match_symmetry_frames(computed_frames, original_frames) -> None:
+def check_input_frames_match_symmetry_frames(
+    computed_frames: list[tuple[np.ndarray, np.ndarray]],
+    original_frames: list[tuple[np.ndarray, np.ndarray]],
+) -> None:
     """
     Check if the atom array matches the symmetry_id.
     Arguments:
@@ -174,7 +182,7 @@ def check_input_frames_match_symmetry_frames(computed_frames, original_frames) -
     ), "Number of computed frames does not match number of original frames"
 
 
-def check_valid_multiplicity(nids_by_entity) -> None:
+def check_valid_multiplicity(nids_by_entity: dict) -> None:
     """
     Check if the multiplicity is valid.
     Arguments:
@@ -193,19 +201,19 @@ def check_valid_multiplicity(nids_by_entity) -> None:
         raise ValueError("Invalid multiplicities of subunits. Please check your input.")
 
 
-def check_valid_subunit_size(nids_by_entity, pn_unit_id) -> None:
+def check_valid_subunit_size(nids_by_entity: dict, pn_unit_id: np.ndarray) -> None:
     """
     Check that the subunits in the input are of the same size.
     Arguments:
         nids_by_entity: dict mapping entity to ids
     """
-    for i, js in nids_by_entity.items():
+    for _i, js in nids_by_entity.items():
         for j in js[1:]:
             if (pn_unit_id == js[0]).sum() != (pn_unit_id == j).sum():
                 raise ValueError("Size mismatch in the input. Please check your file.")
 
 
-def check_min_atoms_to_align(natm_per_unique, reference_entity) -> None:
+def check_min_atoms_to_align(natm_per_unique: dict, reference_entity: Any) -> None:
     """
     Check that we have enough atoms to align.
     Arguments:
@@ -215,7 +223,7 @@ def check_min_atoms_to_align(natm_per_unique, reference_entity) -> None:
         raise ValueError("Not enough atoms to align. Please check your input.")
 
 
-def check_max_transforms(chains_to_consider) -> None:
+def check_max_transforms(chains_to_consider: list) -> None:
     """
     Check that we are not exceeding the max number of transforms.
     Arguments:
@@ -226,7 +234,7 @@ def check_max_transforms(chains_to_consider) -> None:
         raise ValueError("Number of transforms exceeds the max number of transforms (10)")
 
 
-def check_max_rmsds(rmsds) -> None:
+def check_max_rmsds(rmsds: dict) -> None:
     """
     Check that the RMSD between the reference molecule and the other molecules is not too big.
     Arguments:
@@ -234,6 +242,10 @@ def check_max_rmsds(rmsds) -> None:
     """
     if max(rmsds.values()) > RMSD_CUT:
         ranked_logger.warning(
-            f"RMSD between the reference molecule and the other molecules is too big ({max(rmsds.values())} > {RMSD_CUT}). Please provide a symmetric input PDB file."
+            f"RMSD between the reference molecule and the other molecules is too big "
+            f"({max(rmsds.values())} > {RMSD_CUT}). Please provide a symmetric input PDB file."
         )
-        # raise ValueError(f"RMSD between the reference molecule and the other molecules is too big ({max(rmsds.values())} > {RMSD_CUT}). Please provide a symmetric input PDB file.")
+        # raise ValueError(
+        #     f"RMSD between the reference molecule and the other molecules is too big "
+        #     f"({max(rmsds.values())} > {RMSD_CUT}). Please provide a symmetric input PDB file."
+        # )

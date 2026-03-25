@@ -5,21 +5,20 @@ Also provides shared aggregation logic used by external_eval.py.
 """
 
 import argparse
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import rootutils
-from foundry.utils.logging import print_df_as_table, RankedLogger
-
 import os
 import shutil
 import subprocess
-from typing import List, Optional
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import rootutils
+from atomworks.io.utils.io_utils import load_any, to_pdb_string
+from biotite.structure import AtomArrayStack
 
 from foundry.utils.env import load_dotenv
-
-from biotite.structure import AtomArrayStack
-from atomworks.io.utils.io_utils import load_any, to_pdb_string
+from foundry.utils.logging import RankedLogger, print_df_as_table
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -30,16 +29,17 @@ logger = RankedLogger(__name__, rank_zero_only=False)
 
 
 def diversity_foldseek(
-    list_of_pdb_paths: List[str],
+    list_of_pdb_paths: list[str],
     tm_threshold: float = 0.5,
     tmp_path: str = "./tmp/metrics/",
     clean_tmp: bool = True,
-    chains: Optional[List[str]] = None,
+    chains: list[str] | None = None,
     multimer_tm_threshold: float = 0.65,
     interface_lddt_threshold: float = 0.65,
     alignment_type: int = 1,
     min_seq_id: float = 0.0,
-) -> Optional[List[int]]:
+    timeout: float | None = None,
+) -> list[int] | None:
     """
     Evaluates diversity by clustering designable samples using foldseek. Diversity is measured as
     the number of clusters over number of samples. Supports both monomers and multimers.
@@ -148,7 +148,7 @@ def diversity_foldseek(
         ]
 
     try:
-        subprocess.run(command, check=True, text=True, capture_output=True)
+        subprocess.run(command, check=True, text=True, capture_output=True, timeout=timeout)
     except Exception as e:
         logger.info(f"Foldseek diversity failed: {e} \n Returning None")
         if clean_tmp:
@@ -156,7 +156,7 @@ def diversity_foldseek(
         return None
 
     res_file = os.path.join(path_tmp, "res_cluster.tsv")
-    with open(res_file, "r") as f:
+    with open(res_file) as f:
         reps = []
         els = []
         for line in f:
@@ -181,93 +181,144 @@ def diversity_foldseek(
     return cluster_assignments
 
 
-def add_foldseek_diversity_to_per_example_df(per_example_df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+def add_foldseek_diversity_to_per_example_df(
+    per_example_df: pd.DataFrame,
+    group_by: list[str] | None = None,
+    timeout: float | None = None,
+    **kwargs,
+) -> pd.DataFrame:
     """Add Foldseek clustering information to per-example DataFrame output by validation or external eval.
 
-    Clustering is computed only on unique designed_structure_path values within each task,
+    Clustering is computed only on unique designed_structure_path values within each group,
     then broadcast back to all rows with matching paths.
 
     Args:
         per_example_df: DataFrame with columns including 'designed_structure_path'.
+        group_by: Columns to group by when clustering. Defaults to ``["task"]``.
+        timeout: Total wall-clock budget in seconds for all Foldseek calls combined. Groups that
+            cannot be started within the budget are skipped with ``foldseek_cluster_id=None``.
+            If ``None``, no timeout is applied.
         **kwargs: Additional arguments to pass to `diversity_foldseek`.
 
     Returns:
         DataFrame with additional column: foldseek_cluster_id.
     """
+    if group_by is None:
+        group_by = ["task"]
+
     # Validate input DataFrame
     if "designed_structure_path" not in per_example_df.columns:
         raise ValueError("designed_structure_path column not found in per_example_df")
-    if "task" not in per_example_df.columns:
-        raise ValueError("task column not found in per_example_df")
+    for col in group_by:
+        if col not in per_example_df.columns:
+            raise ValueError(f"{col} column not found in per_example_df")
     if "chain_of_interest" not in per_example_df.columns:
         raise ValueError("chain_of_interest column not found in per_example_df")
 
-    output_task_dfs = []
-    for task_name, task_df in per_example_df.groupby("task"):
-        # Get chain_of_interest (should be unique per task)
-        chains_of_interest = task_df["chain_of_interest"].unique()
+    chains_override = kwargs.pop("chains", None)
+    start_time = time.monotonic()
+    output_group_dfs = []
+    for group_key, group_df in per_example_df.groupby(group_by):
+        group_vals = group_key if isinstance(group_key, tuple) else (group_key,)
+        group_label = "/".join(str(v) for v in group_vals)
+
+        # Get chain_of_interest (should be unique per group)
+        chains_of_interest = group_df["chain_of_interest"].unique()
         if len(chains_of_interest) > 1:
             logger.warning(
-                f"Expected only one chain_of_interest for task {task_name}, found {chains_of_interest}. "
-                "This task will not get cluster ids."
+                f"Expected only one chain_of_interest for group {group_label}, found {chains_of_interest}. "
+                "This group will not get cluster ids."
             )
-            task_df = task_df.copy()
-            task_df["foldseek_cluster_id"] = None
-            output_task_dfs.append(task_df)
+            group_df = group_df.copy()
+            group_df["foldseek_cluster_id"] = None
+            output_group_dfs.append(group_df)
             continue
         chain_of_interest = chains_of_interest[0]
-        if "chains" in kwargs:
-            if kwargs["chains"] != [chain_of_interest]:
-                logger.warning(
-                    f"chains argument {kwargs['chains']} does not match chain_of_interest {chain_of_interest} for task {task_name}. "
-                    "chains argument will take precedence."
-                )
-                chain_of_interest = kwargs["chains"][0]
-            kwargs.pop("chains")
+        if chains_override is not None and chains_override != [chain_of_interest]:
+            logger.warning(
+                f"chains argument {chains_override} does not match chain_of_interest "
+                f"{chain_of_interest} for group {group_label}. "
+                "chains argument will take precedence."
+            )
+            chain_of_interest = chains_override[0]
         if pd.isna(chain_of_interest):
-            logger.warning(f"chain_of_interest is missing for task {task_name}. This task will not get cluster ids")
-            task_df = task_df.copy()
-            task_df["foldseek_cluster_id"] = None
-            output_task_dfs.append(task_df)
+            logger.warning(f"chain_of_interest is missing for group {group_label}. This group will not get cluster ids")
+            group_df = group_df.copy()
+            group_df["foldseek_cluster_id"] = None
+            output_group_dfs.append(group_df)
             continue
 
         # Get unique paths and cluster only those
-        unique_paths = task_df["designed_structure_path"].unique().tolist()
+        unique_paths = group_df["designed_structure_path"].unique().tolist()
+        if timeout is not None:
+            remaining = timeout - (time.monotonic() - start_time)
+            if remaining <= 0:
+                logger.warning(
+                    f"Foldseek timeout budget exhausted before group {group_label}; " "skipping remaining groups"
+                )
+                group_df = group_df.copy()
+                group_df["foldseek_cluster_id"] = None
+                output_group_dfs.append(group_df)
+                continue
+        else:
+            remaining = None
         cluster_assignments = diversity_foldseek(
             list_of_pdb_paths=unique_paths,
             chains=[chain_of_interest],
+            timeout=remaining,
             **kwargs,
         )
         if cluster_assignments is None:
-            logger.warning(f"Foldseek clustering failed for task {task_name}. This task will not get cluster IDs")
-            task_df = task_df.copy()
-            task_df["foldseek_cluster_id"] = None
-            output_task_dfs.append(task_df)
+            logger.warning(f"Foldseek clustering failed for group {group_label}. This group will not get cluster IDs")
+            group_df = group_df.copy()
+            group_df["foldseek_cluster_id"] = None
+            output_group_dfs.append(group_df)
             continue
 
         # Create mapping from path to cluster ID and broadcast to full dataframe
-        path_to_cluster = dict(zip(unique_paths, cluster_assignments))
-        task_df = task_df.copy()
-        task_df["foldseek_cluster_id"] = task_df["designed_structure_path"].map(path_to_cluster)
-        output_task_dfs.append(task_df)
+        path_to_cluster = dict(zip(unique_paths, cluster_assignments, strict=False))
+        group_df = group_df.copy()
+        group_df["foldseek_cluster_id"] = group_df["designed_structure_path"].map(path_to_cluster)
+        output_group_dfs.append(group_df)
 
-    return pd.concat(output_task_dfs, ignore_index=True)
+    return pd.concat(output_group_dfs, ignore_index=True)
+
 
 def _base_pass_rate_cols(df: pd.DataFrame) -> list[str]:
     """Return pass_rate columns, excluding derived clustered/unclustered variants."""
     return [
-        c for c in df.columns
-        if c.endswith("pass_rate")
-        and not c.endswith("clustered_pass_rate")
-        and not c.endswith("unclustered_pass_rate")
+        c
+        for c in df.columns
+        if c.endswith("pass_rate") and not c.endswith("clustered_pass_rate") and not c.endswith("unclustered_pass_rate")
     ]
 
 
-def add_diversity_summary_metrics(per_example_df: pd.DataFrame) -> pd.DataFrame:
-    """Broadcast cluster metrics (cluster_diversity, clustered_pass_rate, unclustered_pass_rate) onto per-example rows."""
+def add_diversity_summary_metrics(
+    per_example_df: pd.DataFrame,
+    group_by: list[str] | None = None,
+) -> pd.DataFrame:
+    """Broadcast cluster metrics (cluster_diversity, clustered_pass_rate, unclustered_pass_rate)
+    onto per-example rows.
+
+    Args:
+        per_example_df: DataFrame with a ``foldseek_cluster_id`` column (added by
+            :py:func:`add_foldseek_diversity_to_per_example_df`).
+        group_by: Columns that define the clustering groups. Must match the ``group_by``
+            used in :py:func:`add_foldseek_diversity_to_per_example_df`. Defaults to
+            ``["task"]``.
+
+    Returns:
+        DataFrame with additional columns: unclustered_pass_rate, cluster_diversity,
+        clustered_pass_rate (and per-prefix variants).
+    """
+    if group_by is None:
+        group_by = ["task"]
 
     if "foldseek_cluster_id" not in per_example_df.columns:
-        raise ValueError("foldseek_cluster_id column not found in per_example_df. Run add_foldseek_diversity_to_per_example_df first.")
+        raise ValueError(
+            "foldseek_cluster_id column not found in per_example_df. "
+            "Run add_foldseek_diversity_to_per_example_df first."
+        )
 
     pass_rate_cols = _base_pass_rate_cols(per_example_df)
 
@@ -283,22 +334,26 @@ def add_diversity_summary_metrics(per_example_df: pd.DataFrame) -> pd.DataFrame:
         per_example_df["unclustered_pass_rate"] = float("nan")
 
     cluster_rows = []
-    for task_name, task_df in per_example_df.groupby("task"):
-        n = len(task_df)
+    for group_key, group_df in per_example_df.groupby(group_by):
+        group_vals = group_key if isinstance(group_key, tuple) else (group_key,)
+        group_dict = dict(zip(group_by, group_vals, strict=False))
+
+        n = len(group_df)
+        all_clusters_missing = group_df["foldseek_cluster_id"].isna().all()
         row: dict = {
-            "task": task_name,
-            "cluster_diversity": float(task_df["foldseek_cluster_id"].nunique()) / n,
+            **group_dict,
+            "cluster_diversity": float("nan")
+            if all_clusters_missing
+            else float(group_df["foldseek_cluster_id"].nunique()) / n,
         }
         cpr_values: dict = {}
         for pr_col in pass_rate_cols:
             prefix = pr_col[: -len("pass_rate")]
             cpr_col = f"{prefix}clustered_pass_rate"
-            if task_df[pr_col].isna().all():
+            if all_clusters_missing or group_df[pr_col].isna().all():
                 cpr_val: float = float("nan")
             else:
-                passing_clusters = (
-                    task_df.loc[task_df[pr_col] == 1.0, "foldseek_cluster_id"].dropna().nunique()
-                )
+                passing_clusters = group_df.loc[group_df[pr_col] == 1.0, "foldseek_cluster_id"].dropna().nunique()
                 cpr_val = float(passing_clusters) / n
             row[cpr_col] = cpr_val
             cpr_values[cpr_col] = cpr_val
@@ -308,9 +363,10 @@ def add_diversity_summary_metrics(per_example_df: pd.DataFrame) -> pd.DataFrame:
         cluster_rows.append(row)
 
     cluster_metrics_df = pd.DataFrame(cluster_rows)
-    per_example_df = per_example_df.merge(cluster_metrics_df, on="task", how="left")
+    per_example_df = per_example_df.merge(cluster_metrics_df, on=group_by, how="left")
 
     return per_example_df
+
 
 def aggregate_metrics_from_per_example_df(
     per_example_df: pd.DataFrame,
@@ -345,18 +401,19 @@ def aggregate_metrics_from_per_example_df(
 
     agg_rows = []
     for group_value, group_df in per_example_df.groupby(group_by):
-        metric_cols = [
-            c
-            for c in group_df.select_dtypes(include="number").columns
-            if c not in non_metric_cols
-        ]
+        metric_cols = [c for c in group_df.select_dtypes(include="number").columns if c not in non_metric_cols]
 
         row: dict = {group_by: group_value, "n": len(group_df)}
 
         # Carry over identifier columns (non-metric, non-group_by) when they
         # have a unique value within the group (e.g. dataset_name per task).
-        identifier_cols = non_metric_cols - {group_by, "example_id", "designed_structure_path",
-                                             "sequence_redesigned_structure_path", "foldseek_cluster_id"}
+        identifier_cols = non_metric_cols - {
+            group_by,
+            "example_id",
+            "designed_structure_path",
+            "sequence_redesigned_structure_path",
+            "foldseek_cluster_id",
+        }
         for col in identifier_cols:
             if col in group_df.columns:
                 unique_vals = group_df[col].dropna().unique()
@@ -379,7 +436,7 @@ def aggregate_metrics_from_per_example_df(
     return agg_df
 
 
-def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cleanup: bool = True):
+def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cleanup: bool = True) -> None:
     """Concatenate per-example and aggregated metrics from multiple jobs.
 
     Args:
@@ -413,7 +470,6 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
     if cluster_with_foldseek:
         concatenated_per_example = add_foldseek_diversity_to_per_example_df(concatenated_per_example)
         concatenated_per_example = add_diversity_summary_metrics(concatenated_per_example)
-
 
     # Save concatenated per-example metrics
     concatenated_per_example = concatenated_per_example.round(4)
@@ -462,7 +518,7 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
             print(f"  Moved {file.name}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Concatenate results from multi-job external evaluation runs.")
     parser.add_argument(
         "--output-dir",

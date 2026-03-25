@@ -6,11 +6,12 @@ import tempfile
 
 import numpy as np
 import torch
+import torch.nn as nn
 from biotite.structure import AtomArray
 from jaxtyping import Bool, Float
-from foundry.utils.ddp import RankedLogger
 from torch import Tensor
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.refinement.base_refinement import RefinementStrategy
 from proteinfoundation.utils.coors_utils import nm_to_ang
 from proteinfoundation.utils.pdb_utils import get_chain_ids_from_pdb, write_prot_to_pdb
@@ -43,7 +44,7 @@ class GradientAscentRefinement(RefinementStrategy):
     def __init__(
         self,
         n_iterations: int = 50,
-        line_search_steps: list[float] = None,
+        line_search_steps: list[float] | None = None,
         update_bb_ca: bool = False,
         normalize_logits: bool = True,
     ):
@@ -63,8 +64,8 @@ class GradientAscentRefinement(RefinementStrategy):
     def refine_atom_arrays(
         self,
         atom_arrays: list[AtomArray],
-        reward_model,
-        autoencoder=None,
+        reward_model: "RewardModel",
+        autoencoder: nn.Module | None = None,
     ) -> list[AtomArray]:
         """Refine AtomArrays using gradient ascent in latent space (STANDALONE interface).
 
@@ -107,7 +108,7 @@ class GradientAscentRefinement(RefinementStrategy):
         bb_ca.requires_grad_(True)
         local_latents.requires_grad_(True)
 
-        batch_size = bb_ca.shape[0]
+        _batch_size = bb_ca.shape[0]
         temp_dir = tempfile.mkdtemp()
 
         try:
@@ -153,7 +154,7 @@ class GradientAscentRefinement(RefinementStrategy):
     def _encode_atom_arrays(
         self,
         atom_arrays: list[AtomArray],
-        autoencoder,
+        autoencoder: nn.Module,
     ) -> tuple[Tensor, Tensor, Tensor, dict]:
         """Encode AtomArrays to latents using atomworks encoding.
 
@@ -180,7 +181,7 @@ class GradientAscentRefinement(RefinementStrategy):
 
             coors = encoding["xyz"]  # [n_tokens, 37, 3]
             residue_types = encoding["seq"]  # [n_tokens]
-            coord_mask = encoding["mask"]  # [n_tokens, 37]
+            _coord_mask = encoding["mask"]  # [n_tokens, 37]
 
             n_tokens = coors.shape[0]
 
@@ -253,7 +254,7 @@ class GradientAscentRefinement(RefinementStrategy):
         bb_ca: Tensor,
         local_latents: Tensor,
         mask: Tensor,
-        autoencoder,
+        autoencoder: nn.Module,
         original_atom_arrays: list[AtomArray],
     ) -> list[AtomArray]:
         """Decode latents back to AtomArrays using atomworks utilities.
@@ -305,8 +306,8 @@ class GradientAscentRefinement(RefinementStrategy):
         bb_ca: Float[Tensor, "batch n 3"],
         local_latents: Float[Tensor, "batch n latent_dim"],
         mask: Bool[Tensor, "batch n"],
-        reward_model,
-        autoencoder,
+        reward_model: "RewardModel",
+        autoencoder: nn.Module,
         chain_info: dict,
         temp_dir: str,
         iteration: int,
@@ -346,8 +347,8 @@ class GradientAscentRefinement(RefinementStrategy):
             pdb_filename = os.path.join(temp_dir, f"refinement_iter_{iteration}_batch_{batch_idx}.pdb")
 
             # Determine chain indices
-            target_chain = chain_info.get("target_chain", "A")
-            binder_chain = chain_info.get("binder_chain", "B")
+            _target_chain = chain_info.get("target_chain", "A")
+            _binder_chain = chain_info.get("binder_chain", "B")
             n = mask[batch_idx].sum().item()
 
             # Simple chain assignment (first half=target, second half=binder)
@@ -456,8 +457,8 @@ class GradientAscentRefinement(RefinementStrategy):
         bb_ca_grads: Tensor,
         local_latents_grads: Tensor,
         mask: Tensor,
-        reward_model,
-        autoencoder,
+        reward_model: "RewardModel",
+        autoencoder: nn.Module,
         chain_info: dict,
         temp_dir: str,
         iteration: int,
@@ -532,8 +533,8 @@ class GradientAscentRefinement(RefinementStrategy):
         bb_ca: Tensor,
         local_latents: Tensor,
         mask: Tensor,
-        reward_model,
-        autoencoder,
+        reward_model: "RewardModel",
+        autoencoder: nn.Module,
         chain_info: dict,
         temp_dir: str,
         iteration: int,
@@ -560,8 +561,8 @@ class GradientAscentRefinement(RefinementStrategy):
             pdb_filename = os.path.join(temp_dir, f"line_search_iter_{iteration}_sample_{sample_idx}.pdb")
 
             # Get chain info for this sample
-            target_chain = chain_info.get("target_chain", "A")
-            binder_chain = chain_info.get("binder_chain", "B")
+            _target_chain = chain_info.get("target_chain", "A")
+            _binder_chain = chain_info.get("binder_chain", "B")
 
             n = mask[sample_idx].sum().item()
             chain_index = np.array(["A"] * (n // 2) + ["B"] * (n - n // 2))

@@ -2,6 +2,8 @@ import biotite.structure as struc
 import numpy as np
 from biotite.structure import AtomArray
 
+_DEFAULT_DIRECTION: np.ndarray = np.array([0.0, 0.0, 1.0])
+
 
 def concat_atom_arrays_without_conflict(atom_array: AtomArray, atom_array_to_add: AtomArray) -> AtomArray:
     """Concatenate two atom arrays without causing conflicts.
@@ -51,7 +53,7 @@ def add_chain_nearby_without_clash(
     atom_array_to_add: AtomArray,
     chain_id: str | None = None,
     min_distance: float = 5.0,
-    direction: np.ndarray[float, np.dtype[np.float32]] | None = np.array([0.0, 0.0, 1.0]),
+    direction: np.ndarray | None = _DEFAULT_DIRECTION,
 ) -> AtomArray:
     """Add a chain nearby without causing clashes.
 

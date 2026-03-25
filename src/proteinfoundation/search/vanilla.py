@@ -3,9 +3,10 @@
 from functools import partial
 from typing import Any
 
-from proteinfoundation.search.base_strategy import SearchStrategy
 import numpy as np
 import torch
+
+from proteinfoundation.search.base_strategy import SearchStrategy
 
 
 class VanillaStrategy(SearchStrategy):
@@ -50,19 +51,21 @@ class VanillaStrategy(SearchStrategy):
         user_prefix_to_dm = {"backbone": "bb_ca", "latent": "local_latents"}
         partial_t_dict = {}
         for aa in batch["atom_array_batch"]:
-            for user_prefix,dm in user_prefix_to_dm.items():
+            for user_prefix, dm in user_prefix_to_dm.items():
                 annot_name = f"partial_t_{user_prefix}"
                 if annot_name in aa.get_annotation_categories() and not np.isnan(aa.get_annotation(annot_name)).all():
                     partial_t_annot = aa.get_annotation(annot_name)
                     non_nan_mask = ~np.isnan(partial_t_annot)
                     if not (partial_t_annot[non_nan_mask] == partial_t_annot[non_nan_mask][0]).all():
-                        # Once we train on this, it will be easy to provide at inference using the contig/AtomArray format
+                        # Once we train on this, it will be easy to provide at inference
+                        # using the contig/AtomArray format
                         raise ValueError("Multiple partial_t values within an AtomArray are not currently supported.")
                     elif dm not in partial_t_dict:
                         partial_t_dict[dm] = partial_t_annot[non_nan_mask][0]
                     elif partial_t_annot[non_nan_mask][0] != partial_t_dict[dm]:
-                        # This is mostly a sanity check since we provide no way of specifying this at inference
-                        # There's nothing wrong with having multiple values across a batch if we find a use-case for this
+                        # This is mostly a sanity check since we provide no way of specifying this at inference.
+                        # There's nothing wrong with having multiple values across a batch
+                        # if we find a use-case for this
                         raise ValueError("Multiple partial_t values across batch elements are not currently supported.")
 
         # Call simulation (batch already has atom37 format from pipeline)
@@ -72,13 +75,14 @@ class VanillaStrategy(SearchStrategy):
         if len(partial_t_dict) > 0:
             # Default to no noise if not specified
             if "bb_ca" not in partial_t_dict:
-                partial_t_dict["bb_ca"] = 0.0  
+                partial_t_dict["bb_ca"] = 0.0
             if "local_latents" not in partial_t_dict:
                 partial_t_dict["local_latents"] = 0.0
-            
+
             # Corrupt the input batch to the given noise level(s)
             batched_partial_t = {
-                dm: torch.full(size=(nsamples,), fill_value=partial_t, device=device) for dm, partial_t in partial_t_dict.items()
+                dm: torch.full(size=(nsamples,), fill_value=partial_t, device=device)
+                for dm, partial_t in partial_t_dict.items()
             }
             batch = model.fm.corrupt_batch(batch, t=batched_partial_t)
 
@@ -93,9 +97,7 @@ class VanillaStrategy(SearchStrategy):
             # in index space, then use that fraction to expand nsteps so the tail of
             # a full schedule covers exactly [partial_t, 1] with nsteps steps.
             nsteps_dense = max(nsteps * 100, 1000)
-            dense_ts, _ = model.fm.sample_schedule(
-                nsteps=nsteps_dense, sampling_model_args=model.inf_cfg.model
-            )
+            dense_ts, _ = model.fm.sample_schedule(nsteps=nsteps_dense, sampling_model_args=model.inf_cfg.model)
 
             partial_ts = {}
             partial_gt = {}
@@ -116,7 +118,7 @@ class VanillaStrategy(SearchStrategy):
                 full_ts, full_gt = model.fm.sample_schedule(
                     nsteps=nsteps_expanded, sampling_model_args=model.inf_cfg.model
                 )
-                partial_ts[data_mode] = full_ts[data_mode][-(nsteps + 1):]
+                partial_ts[data_mode] = full_ts[data_mode][-(nsteps + 1) :]
                 partial_gt[data_mode] = full_gt[data_mode][-nsteps:]
 
             # Start from the corrupted input (not pure noise)

@@ -1,8 +1,8 @@
 """Tests for internal coordinate conditioning metrics and utilities."""
 
 import numpy as np
-import torch
 import pytest
+import torch
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD
 from atomworks.ml.utils.geometry import random_rigid_augmentation
@@ -49,7 +49,7 @@ def setup_two_internal_coord_groups(atom_array, apply_rotations=True):
 
     if apply_rotations:
         # Apply different random rotations to each group (but keep them centered)
-        for group_mask, group_id in [(group1_mask, 1), (group2_mask, 2)]:
+        for group_mask, _group_id in [(group1_mask, 1), (group2_mask, 2)]:
             group_coords = atom_array.coord[group_mask]
             centered = group_coords - group_coords.mean(axis=0, keepdims=True)
             rotated = random_rigid_augmentation(torch.from_numpy(centered)[None], batch_size=1, s=0)[0].numpy()

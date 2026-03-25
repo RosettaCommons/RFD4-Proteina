@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from proteinfoundation.utils import constants as rc
 
 
-def batched_gather(data, inds, dim=0, no_batch_dims=0):
+def batched_gather(data: torch.Tensor, inds: torch.Tensor, dim: int = 0, no_batch_dims: int = 0) -> torch.Tensor:
     """
     Gather data along a specified dimension using indices.
 
@@ -55,7 +55,7 @@ class Rotation:
     Simplified version of OpenFold's Rotation class.
     """
 
-    def __init__(self, rot_mats):
+    def __init__(self, rot_mats: torch.Tensor) -> None:
         """
         Args:
             rot_mats: [..., 3, 3] rotation matrices
@@ -65,18 +65,18 @@ class Rotation:
         self._rot_mats = rot_mats
 
     @staticmethod
-    def identity(shape, device, dtype=torch.float32):
+    def identity(shape: tuple, device: torch.device, dtype: torch.dtype = torch.float32) -> "Rotation":
         """Create identity rotations."""
         rots = torch.eye(3, dtype=dtype, device=device)
         rots = rots.view(*((1,) * len(shape)), 3, 3)
         rots = rots.expand(*shape, -1, -1)
         return Rotation(rot_mats=rots)
 
-    def get_rot_mats(self):
+    def get_rot_mats(self) -> torch.Tensor:
         """Return rotation matrices."""
         return self._rot_mats
 
-    def compose(self, r):
+    def compose(self, r: "Rotation") -> "Rotation":
         """
         Compose this rotation with another.
 
@@ -89,7 +89,7 @@ class Rotation:
         new_rots = torch.matmul(self._rot_mats, r.get_rot_mats())
         return Rotation(rot_mats=new_rots)
 
-    def apply(self, pts):
+    def apply(self, pts: torch.Tensor) -> torch.Tensor:
         """
         Apply rotation to points.
 
@@ -101,7 +101,7 @@ class Rotation:
         """
         return torch.matmul(self._rot_mats, pts.unsqueeze(-1)).squeeze(-1)
 
-    def invert(self):
+    def invert(self) -> "Rotation":
         """Invert the rotation."""
         return Rotation(rot_mats=self._rot_mats.transpose(-1, -2))
 
@@ -112,7 +112,7 @@ class Rigid:
     Simplified version of OpenFold's Rigid class.
     """
 
-    def __init__(self, rots, trans):
+    def __init__(self, rots: "Rotation", trans: torch.Tensor) -> None:
         """
         Args:
             rots: Rotation object or None
@@ -124,7 +124,7 @@ class Rigid:
         self._trans = trans
 
     @staticmethod
-    def identity(shape, device, dtype=torch.float32):
+    def identity(shape: tuple, device: torch.device, dtype: torch.dtype = torch.float32) -> "Rigid":
         """Create identity transformations."""
         return Rigid(
             Rotation.identity(shape, device, dtype),
@@ -133,11 +133,11 @@ class Rigid:
 
     @staticmethod
     def from_3_points(
-        p_neg_x_axis,
-        origin,
-        p_xy_plane,
-        eps=1e-8,
-    ):
+        p_neg_x_axis: torch.Tensor,
+        origin: torch.Tensor,
+        p_xy_plane: torch.Tensor,
+        eps: float = 1e-8,
+    ) -> "Rigid":
         """
         Construct Rigid transformations from 3 points that define a coordinate frame.
 
@@ -171,15 +171,15 @@ class Rigid:
 
         return Rigid(Rotation(rot_mats=rots), origin)
 
-    def get_rots(self):
+    def get_rots(self) -> Rotation:
         """Return rotation component."""
         return self._rots
 
-    def get_trans(self):
+    def get_trans(self) -> torch.Tensor:
         """Return translation component."""
         return self._trans
 
-    def compose(self, r):
+    def compose(self, r: "Rigid") -> "Rigid":
         """
         Compose this transformation with another.
 
@@ -193,7 +193,7 @@ class Rigid:
         new_trans = self._rots.apply(r.get_trans()) + self._trans
         return Rigid(new_rots, new_trans)
 
-    def apply(self, pts):
+    def apply(self, pts: torch.Tensor) -> torch.Tensor:
         """
         Apply transformation to points.
 
@@ -206,13 +206,13 @@ class Rigid:
         rotated = self._rots.apply(pts)
         return rotated + self._trans
 
-    def invert(self):
+    def invert(self) -> "Rigid":
         """Invert the transformation."""
         inv_rots = self._rots.invert()
         inv_trans = inv_rots.apply(-self._trans)
         return Rigid(inv_rots, inv_trans)
 
-    def to_tensor_4x4(self):
+    def to_tensor_4x4(self) -> torch.Tensor:
         """
         Convert to 4x4 homogeneous transformation matrix.
 
@@ -233,7 +233,7 @@ class Rigid:
         return tensor
 
 
-def get_chi_atom_indices():
+def get_chi_atom_indices() -> list:
     """
     Returns atom indices needed to compute chi angles for all residue types.
 
@@ -260,9 +260,9 @@ def get_chi_atom_indices():
 
 
 def atom37_to_torsion_angles(
-    protein,
-    prefix="",
-):
+    protein: dict,
+    prefix: str = "",
+) -> dict:
     """
     Convert coordinates to torsion angles.
 

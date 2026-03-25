@@ -30,14 +30,14 @@ from proteinfoundation.nn.modules.openfold_modules.tensor_utils import (
 )
 
 
-def _prod(nums):
+def _prod(nums: list) -> int:
     out = 1
     for n in nums:
         out = out * n
     return out
 
 
-def _calculate_fan(linear_weight_shape, fan="fan_in"):
+def _calculate_fan(linear_weight_shape: tuple, fan: str = "fan_in") -> float:
     fan_out, fan_in = linear_weight_shape
 
     if fan == "fan_in":
@@ -52,7 +52,7 @@ def _calculate_fan(linear_weight_shape, fan="fan_in"):
     return f
 
 
-def trunc_normal_init_(weights, scale=1.0, fan="fan_in"):
+def trunc_normal_init_(weights: torch.Tensor, scale: float = 1.0, fan: str = "fan_in") -> None:
     shape = weights.shape
     f = _calculate_fan(shape, fan)
     scale = scale / max(1, f)
@@ -66,33 +66,33 @@ def trunc_normal_init_(weights, scale=1.0, fan="fan_in"):
         weights.copy_(torch.tensor(samples, device=weights.device))
 
 
-def lecun_normal_init_(weights):
+def lecun_normal_init_(weights: torch.Tensor) -> None:
     trunc_normal_init_(weights, scale=1.0)
 
 
-def he_normal_init_(weights):
+def he_normal_init_(weights: torch.Tensor) -> None:
     trunc_normal_init_(weights, scale=2.0)
 
 
-def glorot_uniform_init_(weights):
+def glorot_uniform_init_(weights: torch.Tensor) -> None:
     nn.init.xavier_uniform_(weights, gain=1)
 
 
-def final_init_(weights):
+def final_init_(weights: torch.Tensor) -> None:
     with torch.no_grad():
         weights.fill_(0.0)
 
 
-def gating_init_(weights):
+def gating_init_(weights: torch.Tensor) -> None:
     with torch.no_grad():
         weights.fill_(0.0)
 
 
-def normal_init_(weights):
+def normal_init_(weights: torch.Tensor) -> None:
     torch.nn.init.kaiming_normal_(weights, nonlinearity="linear")
 
 
-def ipa_point_weights_init_(weights):
+def ipa_point_weights_init_(weights: torch.Tensor) -> None:
     with torch.no_grad():
         softplus_inverse_1 = 0.541324854612918
         weights.fill_(softplus_inverse_1)
@@ -114,7 +114,7 @@ class Linear(nn.Linear):
         bias: bool = True,
         init: str = "default",
         init_fn: Callable[[torch.Tensor, torch.Tensor], None] | None = None,
-    ):
+    ) -> None:
         """
         Args:
             in_dim:
@@ -138,7 +138,7 @@ class Linear(nn.Linear):
                 A custom initializer taking weight and bias as inputs.
                 Overrides init if not None.
         """
-        super(Linear, self).__init__(in_dim, out_dim, bias=bias)
+        super().__init__(in_dim, out_dim, bias=bias)
 
         if bias:
             with torch.no_grad():
@@ -167,8 +167,8 @@ class Linear(nn.Linear):
 
 
 class LayerNorm(nn.Module):
-    def __init__(self, c_in, eps=1e-5):
-        super(LayerNorm, self).__init__()
+    def __init__(self, c_in: int, eps: float = 1e-5) -> None:
+        super().__init__()
 
         self.c_in = (c_in,)
         self.eps = eps
@@ -176,15 +176,15 @@ class LayerNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(c_in))
         self.bias = nn.Parameter(torch.zeros(c_in))
 
-    def forward(self, x):
-        d = x.dtype
-        # if(d is torch.bfloat16 and not deepspeed.utils.is_initialized()):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        _d = x.dtype
+        # if(_d is torch.bfloat16 and not deepspeed.utils.is_initialized()):
         #     with torch.cuda.amp.autocast(enabled=False):
         #         out = nn.functional.layer_norm(
         #             x,
         #             self.c_in,
-        #             self.weight.to(dtype=d),
-        #             self.bias.to(dtype=d),
+        #             self.weight.to(dtype=_d),
+        #             self.bias.to(dtype=_d),
         #             self.eps
         #         )
         # else:
@@ -205,8 +205,8 @@ def softmax(t: torch.Tensor, dim: int = -1) -> torch.Tensor:
     Softmax, but without automatic casting to fp32 when the input is of
     type bfloat16
     """
-    d = t.dtype
-    # if(d is torch.bfloat16 and not deepspeed.utils.is_initialized()):
+    _d = t.dtype
+    # if(_d is torch.bfloat16 and not deepspeed.utils.is_initialized()):
     #     with torch.cuda.amp.autocast(enabled=False):
     #         s = torch.nn.functional.softmax(t, dim=dim)
     # else:
@@ -245,18 +245,24 @@ def _attention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, bias
 
 @torch.jit.ignore
 def _attention_chunked_trainable(
-    query,
-    key,
-    value,
-    biases,
-    chunk_size,
-    chunk_dim,
-    checkpoint,
-):
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    biases: list[torch.Tensor],
+    chunk_size: int,
+    chunk_dim: int,
+    checkpoint: bool,
+) -> torch.Tensor:
     if checkpoint and len(biases) > 2:
         raise ValueError("Checkpointed version permits only permits two bias terms")
 
-    def _checkpointable_attention(q, k, v, b1, b2):
+    def _checkpointable_attention(
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        b1: torch.Tensor | None,
+        b2: torch.Tensor | None,
+    ) -> torch.Tensor:
         bs = [b for b in [b1, b2] if b is not None]
         return _attention(q, k, v, bs)
 
@@ -272,13 +278,14 @@ def _attention_chunked_trainable(
         k_chunk = key[idx_tup]
         v_chunk = value[idx_tup]
 
-        def _slice_bias(b):
-            idx[chunk_dim] = slice(start, end) if b.shape[chunk_dim] != 1 else slice(None)
-            return b[tuple(idx)]
+        def _slice_bias(b: torch.Tensor, _start: int = start, _end: int = end, _idx: list = idx) -> torch.Tensor:
+            local_idx = list(_idx)
+            local_idx[chunk_dim] = slice(_start, _end) if b.shape[chunk_dim] != 1 else slice(None)
+            return b[tuple(local_idx)]
 
         if checkpoint:
             bias_1_chunk, bias_2_chunk = [
-                _slice_bias(b) if b is not None else None for b in (biases + [None, None])[:2]
+                _slice_bias(b) if b is not None else None for b in ([*biases, None, None])[:2]
             ]
 
             o_chunk = checkpoint_fn(_checkpointable_attention, q_chunk, k_chunk, v_chunk, bias_1_chunk, bias_2_chunk)
@@ -323,7 +330,7 @@ class Attention(nn.Module):
             gating:
                 Whether the output should be gated using query data
         """
-        super(Attention, self).__init__()
+        super().__init__()
 
         self.c_q = c_q
         self.c_k = c_k
@@ -423,8 +430,15 @@ class Attention(nn.Module):
 
 
 class GlobalAttention(nn.Module):
-    def __init__(self, c_in, c_hidden, no_heads, inf, eps):
-        super(GlobalAttention, self).__init__()
+    def __init__(
+        self,
+        c_in: int,
+        c_hidden: int,
+        no_heads: int,
+        inf: float,
+        eps: float,
+    ) -> None:
+        super().__init__()
 
         self.c_in = c_in
         self.c_hidden = c_hidden
@@ -506,7 +520,7 @@ def _lma(
     biases: list[torch.Tensor],
     q_chunk_size: int,
     kv_chunk_size: int,
-):
+) -> torch.Tensor:
     no_q, no_kv = q.shape[-3], k.shape[-3]
 
     # [*, Q, H, C_hidden]

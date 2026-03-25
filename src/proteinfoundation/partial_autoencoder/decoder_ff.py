@@ -5,20 +5,20 @@ from proteinfoundation.nn.feature_factory import FeatureFactory
 from proteinfoundation.utils.constants import RESTYPE_ATOM37_MASK
 
 
-def get_atom_mask(device: torch.device = None):
+def get_atom_mask(device: torch.device = None) -> torch.Tensor:
     return torch.from_numpy(RESTYPE_ATOM37_MASK).to(dtype=torch.bool, device=device)  # [21, 37]
 
 
 class ResidualLayer(torch.nn.Module):
     """Residual layer with pre-LN"""
 
-    def __init__(self, dim):
-        super(ResidualLayer, self).__init__()
+    def __init__(self, dim: int) -> None:
+        super().__init__()
         self.layer_norm = torch.nn.LayerNorm(dim)
         self.linear = torch.nn.Linear(dim, dim)
         self.softplus = torch.nn.Softplus()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.layer_norm(x)
         out = self.linear(out)
         out = self.softplus(out)
@@ -34,7 +34,7 @@ class DecoderFFLocal(torch.nn.Module):
         """
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
-        super(DecoderFFLocal, self).__init__()
+        super().__init__()
         nlayers = kwargs["decoder"]["nlayers"]
         token_dim = kwargs["decoder"]["token_dim"]  # hidden dim
 
@@ -78,7 +78,8 @@ class DecoderFFLocal(torch.nn.Module):
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
                 "seq_logits": logits for the residue types, shape [b, n, 20]
                 "residue_mask": boolean [b, n]
-                "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+                "aatype_max": residue type by taking the most likely logit, shape [b, n],
+                    with integer values {0, ..., 19}
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """

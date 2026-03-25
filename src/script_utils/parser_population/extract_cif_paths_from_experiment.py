@@ -30,7 +30,7 @@ from omegaconf import DictConfig, OmegaConf
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True, dotenv=True)
 
 # setup dotenv
-from foundry.utils.env import load_dotenv
+from foundry.utils.env import load_dotenv  # noqa: E402
 
 load_dotenv()
 

@@ -1,17 +1,56 @@
 import os
-import time
 import random
+import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-import biotite.structure as struc
+if TYPE_CHECKING:
+    from proteinfoundation.refinement.base_refinement import RefinementStrategy  # noqa: F401 - used in type annotations
+    from proteinfoundation.rewards.reward_model import RewardModel
+    from proteinfoundation.search.base_strategy import SearchStrategy
+
 import lightning as L
 import numpy as np
 import pandas as pd
 import torch
 import torch.distributed as dist
 import wandb
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
+from atomworks.io.utils.io_utils import to_cif_file
+from atomworks.ml.conditions import C_CRD, C_IDX
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
+from atomworks.ml.transforms.encoding import atom_array_from_encoding
+from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
+from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
+from atomworks.ml.utils.token import apply_and_spread_token_wise, apply_token_wise, get_token_count, get_token_starts
+from jaxtyping import Bool, Float
+from lightning_utilities import apply_to_collection
+from omegaconf import DictConfig, OmegaConf
+from rich.panel import Panel
+from torch import Tensor
+
+from foundry.metrics.metric import MetricManager
+from foundry.utils.ddp import RankedLogger
+from foundry.utils.logging import print_df_as_table, safe_print
+from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
+from proteinfoundation.conditions import C_INTCRD
+from proteinfoundation.flow_matching.product_space_flow_matcher import (
+    ProductSpaceFlowMatcher,
+)
+from proteinfoundation.inference_utils.concatenate_external_eval_results import (
+    add_diversity_summary_metrics,
+    add_foldseek_diversity_to_per_example_df,
+)
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
+from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
+from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
+from proteinfoundation.transforms.unindexing import process_unindexed_outputs
+from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
+from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
+from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 # Lazy import Transformer Engine for FP8 support
 TE_AVAILABLE = None
@@ -25,11 +64,13 @@ def _load_transformer_engine() -> bool:
     global TE_AVAILABLE, te_autocast, DelayedScaling, Format
     if TE_AVAILABLE is None:
         try:
-            from transformer_engine.pytorch import autocast as te_autocast_mod
             from transformer_engine.common.recipe import (
                 DelayedScaling as DelayedScaling_mod,
+            )
+            from transformer_engine.common.recipe import (
                 Format as Format_mod,
             )
+            from transformer_engine.pytorch import autocast as te_autocast_mod
         except ImportError:
             TE_AVAILABLE = False
             te_autocast = None
@@ -41,38 +82,6 @@ def _load_transformer_engine() -> bool:
             DelayedScaling = DelayedScaling_mod
             Format = Format_mod
     return TE_AVAILABLE
-from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.ml.conditions import C_IDX, C_CRD
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
-from atomworks.ml.transforms.encoding import atom_array_from_encoding
-from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
-from atomworks.ml.utils.token import apply_and_spread_token_wise, apply_token_wise, get_token_count, get_token_starts
-from jaxtyping import Bool, Float
-from lightning_utilities import apply_to_collection
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.logging import print_df_as_table, safe_print
-from omegaconf import OmegaConf
-from rich.panel import Panel
-from torch import Tensor
-
-from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
-
-from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
-from proteinfoundation.conditions import C_INTCRD, C_CRDGRP
-from proteinfoundation.flow_matching.product_space_flow_matcher import (
-    ProductSpaceFlowMatcher,
-)
-from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
-from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
-from proteinfoundation.transforms.unindexing import process_unindexed_outputs
-from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
-from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
-from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
-from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
-
-logger = RankedLogger(__name__, rank_zero_only=True)
 
 
 _last_log_time: dict[str, float] = {}  # Track last log time per stage
@@ -104,7 +113,6 @@ def _log_batch_example_ids(
         f"steps={log_frequency}, elapsed={elapsed:.1f}s, steps/s={steps_per_sec:.2f}, "
         f"n_examples={len(example_ids)}, ids={ids_preview}"
     )
-    
 
 
 def _clean_metrics_dict(metrics: dict) -> dict | None:
@@ -147,7 +155,12 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
 
 
 class Proteina(L.LightningModule):
-    def __init__(self, cfg_exp, store_dir=None, autoencoder_ckpt_path=None):
+    def __init__(
+        self,
+        cfg_exp: DictConfig,
+        store_dir: str | None = None,
+        autoencoder_ckpt_path: str | None = None,
+    ) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.cfg_exp = cfg_exp
@@ -189,7 +202,7 @@ class Proteina(L.LightningModule):
         if self.autoencoder is not None:
             try:
                 cfg_exp.product_flowmatcher.local_latents.dim = self.latent_dim
-            except:
+            except Exception:
                 OmegaConf.set_struct(cfg_exp, False)
                 # Update the configuration with the new key-value pair
                 cfg_exp.product_flowmatcher.local_latents.dim = self.latent_dim
@@ -229,7 +242,7 @@ class Proteina(L.LightningModule):
         else:
             self.fp8_recipe = None
 
-    def load_autoencoder(self, cfg_exp, freeze_params=True):
+    def load_autoencoder(self, cfg_exp: DictConfig, freeze_params: bool = True) -> tuple[Any, int | None]:
         """Loads autoencoder, if required."""
         if "autoencoder_ckpt_path" in cfg_exp:
             # for new runs trained with refactored codebase
@@ -250,21 +263,21 @@ class Proteina(L.LightningModule):
                 param.requires_grad = False
         return autoencoder, autoencoder.latent_dim
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Adam:
         optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr=self.cfg_exp.opt.lr)
         return optimizer
 
-    def on_save_checkpoint(self, checkpoint):
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
         checkpoint["nflops"] = self.nflops
         checkpoint["nsamples_processed"] = self.nsamples_processed
 
-    def on_load_checkpoint(self, checkpoint):
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
         try:
             self.nflops = checkpoint["nflops"]
             self.nsamples_processed = checkpoint["nsamples_processed"]
-        except:
+        except KeyError:
             logger.info("Failed to load nflops and nsamples_processed from checkpoint")
             self.nflops = 0
             self.nsamples_processed = 0
@@ -332,7 +345,7 @@ class Proteina(L.LightningModule):
 
         return nn_out
 
-    def training_step(self, batch: dict, batch_idx: int):
+    def training_step(self, batch: dict, batch_idx: int) -> dict:
         """
         Computes training loss for batch of samples.
 
@@ -444,7 +457,8 @@ class Proteina(L.LightningModule):
 
         Returns:
             Clean sample for the given data mode.
-            For bb_ca, we provide coords for all center atoms (even though some are not resolved and not that meaningful).
+            For bb_ca, we provide coords for all center atoms (even though some are not resolved
+            and not that meaningful).
             For local_latents, we encode only tokens that the autoencoder can encode (standard AAs for now).
         """
         if dm == "bb_ca":
@@ -477,7 +491,9 @@ class Proteina(L.LightningModule):
             # Change this once we retrain AE with correct token encoding
             residue_type_for_ae = batch["residue_type"] - 1  # [b, n_tokens]
             # Clamp for non-encodable tokens to avoid -1 index (invalid for embeddings)
-            residue_type_for_ae = torch.where(encodable_mask, residue_type_for_ae, torch.zeros_like(residue_type_for_ae))
+            residue_type_for_ae = torch.where(
+                encodable_mask, residue_type_for_ae, torch.zeros_like(residue_type_for_ae)
+            )
             ae_batch = {
                 "coords": batch["coords"],  # [b, n_tokens, 37, 3]
                 "coords_nm": batch["coords_nm"],  # [b, n_tokens, 37, 3]
@@ -507,7 +523,7 @@ class Proteina(L.LightningModule):
 
         return batch
 
-    def handle_recycling(self):
+    def handle_recycling(self) -> int:
         n_recycle = self.cfg_exp.training.get("n_recycle", 0)
         if n_recycle == 0:
             return 0
@@ -520,7 +536,7 @@ class Proteina(L.LightningModule):
         log_prefix: str,
         batch: dict,
         val_step: bool = False,
-    ):
+    ) -> None:
         for k in losses:
             log_name = k[: -len("_justlog")] if k.endswith("_justlog") else k
 
@@ -536,7 +552,7 @@ class Proteina(L.LightningModule):
                 add_dataloader_idx=False,
             )
 
-    def log_train_loss_n_prog_bar(self, b: int, train_loss: torch.Tensor):
+    def log_train_loss_n_prog_bar(self, b: int, train_loss: torch.Tensor) -> None:
         self.log(
             "train_loss",
             train_loss,
@@ -549,7 +565,7 @@ class Proteina(L.LightningModule):
             add_dataloader_idx=False,
         )
 
-    def log_nparams(self):
+    def log_nparams(self) -> None:
         self.log(
             "scaling/nparams",
             self.nparams * 1.0,
@@ -561,7 +577,7 @@ class Proteina(L.LightningModule):
             sync_dist=True,
         )  # constant line
 
-    def update_n_log_nsamples_processed(self, b: int):
+    def update_n_log_nsamples_processed(self, b: int) -> None:
         self.nsamples_processed = self.nsamples_processed + b * self.trainer.world_size
         self.log(
             "scaling/nsamples_processed",
@@ -574,13 +590,13 @@ class Proteina(L.LightningModule):
             sync_dist=True,
         )
 
-    def update_n_log_flops(self, b: int, n: int):
+    def update_n_log_flops(self, b: int, n: int) -> None:
         """
         Updates and logs flops, if available
         """
         try:
             nflops_step = self.nn.nflops_computer(b, n)  # nn should implement this function if we want to see nflops
-        except:
+        except Exception:
             nflops_step = None
 
         if nflops_step is not None:
@@ -752,11 +768,15 @@ class Proteina(L.LightningModule):
                     # Add seed used for generation
                     if self.inference_seed is not None:
                         metrics_output["seed"] = self.inference_seed
-                    
+
                     # Add temperature and number of timesteps used for generation
                     if self.inf_cfg is not None:
-                        metrics_output["bb_ca_noise_scale"] = self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
-                        metrics_output["latents_noise_scale"] = self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
+                        metrics_output["bb_ca_noise_scale"] = (
+                            self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
+                        )
+                        metrics_output["latents_noise_scale"] = (
+                            self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
+                        )
                         metrics_output["nsteps"] = self.inf_cfg.args.nsteps
 
                     # Add checkpoint identity
@@ -865,6 +885,35 @@ class Proteina(L.LightningModule):
         ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
+
+        # Add Foldseek clustering if the executable is available
+        # We skip during inference since inference runs may not be using DDP,
+        # so an auxiliary script is used after all jobs complete.
+        if (
+            not self.is_inference
+            and os.getenv("FOLDSEEK_EXEC") is not None
+            and "designed_structure_path" in per_example_df.columns
+            and "chain_of_interest" in per_example_df.columns
+        ):
+            foldseek_tmp = str(metrics_dir / "foldseek_tmp")
+            try:
+                per_example_df = add_foldseek_diversity_to_per_example_df(
+                    per_example_df,
+                    group_by=["dataset_name", "task"],
+                    tmp_path=foldseek_tmp,
+                    timeout=self.cfg_exp.opt.get("foldseek_timeout_minutes", 25) * 60,
+                )
+            except Exception as e:
+                logger.warning(f"Foldseek clustering failed, skipping cluster metrics: {e}")
+            else:
+                try:
+                    per_example_df = add_diversity_summary_metrics(
+                        per_example_df,
+                        group_by=["dataset_name", "task"],
+                    )
+                except Exception as e:
+                    logger.warning(f"Foldseek diversity summary metrics failed, skipping cluster metrics: {e}")
+
         per_example_df = per_example_df.round(4)
 
         # Add prefixes or suffixes to avoid file conflicts across jobs
@@ -889,6 +938,7 @@ class Proteina(L.LightningModule):
                 "task",
                 "designed_structure_path",
                 "chain_of_interest",
+                "foldseek_cluster_id",
                 "ckpt_path",
                 "ckpt_name",
                 "seed",
@@ -928,25 +978,22 @@ class Proteina(L.LightningModule):
         # 5. Log to WandB: val_generation_{dataset}/{metric}
         if wandb.run is not None:
             wandb.log(
-                {
-                    f"val_generation_{row['dataset']}/{row['metric']}": row["value"]
-                    for _, row in agg_df.iterrows()
-                },
+                {f"val_generation_{row['dataset']}/{row['metric']}": row["value"] for _, row in agg_df.iterrows()},
                 step=self.global_step,
             )
 
     def configure_inference(
         self,
-        inf_cfg,
-        nn_ag,
-        store_dir=None,
-        metrics_cfg=None,
+        inf_cfg: DictConfig,
+        nn_ag: torch.nn.Module | None,
+        store_dir: str | None = None,
+        metrics_cfg: DictConfig | None = None,
         job_id: int | None = None,
         is_inference: bool = False,
         global_prefix: str | None = None,
         ckpt_path: str | None = None,
         ckpt_name: str | None = None,
-    ):
+    ) -> None:
         """Sets inference config with all sampling parameters required by the method (dt, etc)
         and autoguidance network (or None if not provided).
 
@@ -973,7 +1020,11 @@ class Proteina(L.LightningModule):
         self.ckpt_path = ckpt_path
         self.ckpt_name = ckpt_name
 
-    def configure_search(self, search_strategy, search_reward_model=None):
+    def configure_search(
+        self,
+        search_strategy: "SearchStrategy",
+        search_reward_model: "RewardModel | None" = None,
+    ) -> None:
         """Configure search strategy and reward model for reward-guided generation.
 
         Args:
@@ -990,7 +1041,7 @@ class Proteina(L.LightningModule):
                 f"differentiable={search_reward_model.differentiable}"
             )
 
-    def configure_refinement(self, refinement_strategy, refinement_reward_model):
+    def configure_refinement(self, refinement_strategy: Any, refinement_reward_model: Any) -> None:
         """Configure refinement strategy for post-generation optimization.
 
         Refinement uses a separate reward model from search.
@@ -1108,7 +1159,7 @@ class Proteina(L.LightningModule):
         coords: torch.Tensor,
         residue_type: torch.Tensor,
         padding_mask: torch.Tensor,
-        input_atom_array,
+        input_atom_array: Any,
         sample_idx: int = 0,
         batch_idx: int = 0,
     ) -> dict:
@@ -1127,9 +1178,11 @@ class Proteina(L.LightningModule):
             batch_idx: Batch index for naming
 
         Returns:
-            Dictionary with 'generated_atom_array', 'input_atom_array', 'prediction_metadata', 'example_id'
+            Dictionary with 'generated_atom_array', 'input_atom_array',
+            'prediction_metadata', 'example_id'
         """
-        # + ------- Remove padding and in-context conditioning tokens from the generated coordinates and residue types ------- +
+        # + ------- Remove padding and in-context conditioning tokens from the generated
+        # coordinates and residue types ------- +
         # (Sanity check - either all or none of the atoms should be indexed per token)
         has_idx_atom_lvl = C_IDX.mask(input_atom_array)  # [n_atoms_in_input]
         has_idx_any_token_level = apply_token_wise(input_atom_array, has_idx_atom_lvl, np.any)
@@ -1143,7 +1196,8 @@ class Proteina(L.LightningModule):
         # Set as padding any tokens that do not have all atoms indexed
         padding_mask[non_padding_indices[~has_idx_all_token_level]] = False  # [n_max_tokens_in_batch]
 
-        # Subset coordinates and residue types to tokens that are (a) not padding and (b) not in-context conditioning (e.g., unindexed)
+        # Subset coordinates and residue types to tokens that are (a) not padding and
+        # (b) not in-context conditioning (e.g., unindexed)
         coords = coords[padding_mask]  # [n_tokens_in_this_sample, 37, 3]
         residue_type = residue_type[padding_mask]  # [n_tokens_in_this_sample]
         assert ~torch.any(
@@ -1228,9 +1282,7 @@ class Proteina(L.LightningModule):
         # NOTE: This must be done after the output AtomArray has been constructed and the coordinates have been added
         if not has_idx_all_token_level.all():
             # Preserve this annotation through concatentation
-            SA_CWI.set_annotation(
-                unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array)
-            )
+            SA_CWI.set_annotation(unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array))
             # NOTE: We use coord_to_be_noised as the unindexed coordinates to match what the model sees
             unindexed_input_atom_array.coord = unindexed_input_atom_array.coord_to_be_noised.copy()
             full_array_with_unindexed = concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
@@ -1245,7 +1297,8 @@ class Proteina(L.LightningModule):
             metadata = {}
 
         # Include indexed coord conditioning in mapping mask/annotation
-        # TODO: Should this mapping annotation be added as a Condition? It is semantically different but practically similar
+        # TODO: Should this mapping annotation be added as a Condition? It is semantically
+        # different but practically similar
         indexed_coord_conditioned_mask = C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
         mapped_mask = SA_CRDSRC.mask(updated_array)
         mapped_mask |= indexed_coord_conditioned_mask
@@ -1327,17 +1380,20 @@ class Proteina(L.LightningModule):
         x: dict[str, Tensor],
         extra_info: dict[str, Tensor],
         ret_mode: str,
-    ):
+    ) -> Any:
         """
-        Given a batch of b samples x produced by the flow matcher, it returns the samples in the requested format (ret_mode).
+        Given a batch of b samples x produced by the flow matcher, it returns the samples in the
+        requested format (ret_mode).
 
         Supports `ret_modes` for:
-            - `samples` returns the original sample from the flow matcher, a dictionary[str, Tensor].
-            for the data modalities, each with batch shape b.
+            - `samples` returns the original sample from the flow matcher, a
+            dictionary[str, Tensor]. for the data modalities, each with batch shape b.
             - `atom37` returns an Tensor of shape [b, n, 37, 3] just for coordinates.
-            - `pdb_string` returns a list of dictionaries {"pdb_string": str, "nres": int}, with one dictionary per sample.
-            - `coors37_n_aatype` returns a dictionary with keys `coors` (atom37), `residue_type`, and `padding_mask`, and
-            values with shapes [b, n, 37, 3] float, [b, n] int, [b, n] boolean, respectively.
+            - `pdb_string` returns a list of dictionaries {"pdb_string": str, "nres": int},
+            with one dictionary per sample.
+            - `coors37_n_aatype` returns a dictionary with keys `coors` (atom37),
+            `residue_type`, and `padding_mask`, and values with shapes [b, n, 37, 3] float,
+            [b, n] int, [b, n] boolean, respectively.
 
         Args:
             x: sample.
@@ -1349,11 +1405,9 @@ class Proteina(L.LightningModule):
         Returns:
             Sample x in the requested format.
         """
-        data_modes = sorted([dm for dm in self.cfg_exp.product_flowmatcher])
+        data_modes = sorted(self.cfg_exp.product_flowmatcher)
         if data_modes == ["bb_ca"]:
-            return self._format_sample_bb_ca(
-                x=x, ret_mode=ret_mode, padding_mask=extra_info["padding_mask"]
-            )
+            return self._format_sample_bb_ca(x=x, ret_mode=ret_mode, padding_mask=extra_info["padding_mask"])
         elif data_modes == ["bb_ca", "local_latents"]:
             return self._format_sample_local_latents(
                 x=x,
@@ -1369,7 +1423,7 @@ class Proteina(L.LightningModule):
         x: dict[str, torch.Tensor],
         ret_mode: str,
         padding_mask: Bool[torch.Tensor, "b n"],
-    ):
+    ) -> dict:
         if ret_mode == "coors37_n_aatype":
             coors = trans_nm_to_atom37(x["bb_ca"].float()) * padding_mask[..., None, None]  # [b, n, 37, 3]
             residue_type = torch.full(coors[..., 0, 0].shape, -1, device=coors.device, dtype=torch.long)  # [b, n]
@@ -1387,7 +1441,7 @@ class Proteina(L.LightningModule):
         ret_mode: str,
         padding_mask: Bool[torch.Tensor, "b n"],
         extra_info: dict[str, torch.Tensor],
-    ):
+    ) -> dict:
         """
         Given a batch of b samples consisting on `bb_ca` and `local_latents` this
         returns formatted samples.
@@ -1451,7 +1505,8 @@ class Proteina(L.LightningModule):
                     # (We use -1 residue mask to indicate these tokens were not encoded/decoded)
                     residue_type_full[i, no_latent_tokens] = -1
 
-            # TEMPORARY HACK: Shift all non-negative residue types by 1 to adjust for differences in AF2 vs. unified Atom37 encoding
+            # TEMPORARY HACK: Shift all non-negative residue types by 1 to adjust for differences
+            # in AF2 vs. unified Atom37 encoding
             residue_type_full = torch.where(residue_type_full >= 0, residue_type_full + 1, residue_type_full)
 
             return {

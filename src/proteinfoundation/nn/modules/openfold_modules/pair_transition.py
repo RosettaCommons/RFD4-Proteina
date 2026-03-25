@@ -23,7 +23,7 @@ from proteinfoundation.nn.modules.openfold_modules.tensor_utils import chunk_lay
 class PairTransition(nn.Module):
     """Pair transition module."""
 
-    def __init__(self, c_z, n):
+    def __init__(self, c_z: int, n: int):
         """
         Args:
             c_z:
@@ -32,7 +32,7 @@ class PairTransition(nn.Module):
                 Factor by which c_z is multiplied to obtain hidden channel
                 dimension
         """
-        super(PairTransition, self).__init__()
+        super().__init__()
 
         self.c_z = c_z
         self.n = n
@@ -42,7 +42,7 @@ class PairTransition(nn.Module):
         self.relu = nn.ReLU()
         self.linear_2 = Linear(self.n * self.c_z, c_z, init="final")
 
-    def _transition(self, z, mask):
+    def _transition(self, z: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         # [*, N_res, N_res, C_hidden]
         z = self.linear_1(z)
         z = self.relu(z)

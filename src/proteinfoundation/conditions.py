@@ -2,8 +2,8 @@ from enum import IntEnum
 
 import numpy as np
 from atomworks.io.utils.scatter import spread_segment_wise
-from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
 from atomworks.io.utils.standard_annotations.base import Level
+from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
 from atomworks.ml.transforms.dssp import SSEnum
 from biotite.structure import AtomArray
 
@@ -151,7 +151,7 @@ class IndexGroup(ConditionBase):
     """Indicates atoms within the same equivalence class of known index offsets.
     Does not differentiate between globally indexed vs unindexed groups (that is annotated in C_IDX.mask)
     While the default annotation is monotonically increasing by one, this should not be expected to always hold.
-    
+
     NOTE: Residues on different chains do NOT have known index offsets, even if both are globally indexed!!
     """
 
@@ -253,7 +253,8 @@ class CoordinateGroup(ConditionBase):
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        # Three groups by default: no coordinate conditioning, absolute coordinate conditioning, and relative coordinate conditioning
+        # Three groups by default: no coordinate conditioning, absolute coordinate conditioning,
+        # and relative coordinate conditioning
         all_coordinate_groups = np.full(atom_array.array_length(), cls.UNKNOWN_COORDS, dtype=int)
         if C_CRD.get_mask_name() in atom_array.get_annotation_categories():
             has_known_absolute_coords = atom_array.get_annotation(C_CRD.get_mask_name())

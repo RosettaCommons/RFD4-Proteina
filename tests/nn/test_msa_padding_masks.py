@@ -1,6 +1,7 @@
 """Test that MSA module correctly masks padding positions (True = valid convention)."""
 
 import torch
+
 from proteinfoundation.nn.modules.msa_module import MSAModule
 
 
@@ -16,15 +17,15 @@ def test_msa_module_padding_does_not_leak():
         p_drop_msa=0.0,
         p_drop_pair=0.0,
         use_cuequivariance=False,
-        msa_subsample_embedder=dict(num_sequences=S, dim_raw_msa=71, c_s_inputs=c_z, c_msa_embed=c_m),
-        outer_product=dict(c_msa_embed=c_m, c_outer_product=16, c_out=c_z),
-        msa_pair_weighted_averaging=dict(n_heads=4, c_weighted_average=16, c_msa_embed=c_m, c_z=c_z),
-        msa_transition=dict(n=2, c=c_m),
-        triangle_multiplication_outgoing=dict(d_pair=c_z, d_hidden=c_z),
-        triangle_multiplication_incoming=dict(d_pair=c_z, d_hidden=c_z),
-        triangle_attention_starting=dict(d_pair=c_z, n_head=4, d_hidden=16),
-        triangle_attention_ending=dict(d_pair=c_z, n_head=4, d_hidden=16),
-        pair_transition=dict(n=2, c=c_z),
+        msa_subsample_embedder={"num_sequences": S, "dim_raw_msa": 71, "c_s_inputs": c_z, "c_msa_embed": c_m},
+        outer_product={"c_msa_embed": c_m, "c_outer_product": 16, "c_out": c_z},
+        msa_pair_weighted_averaging={"n_heads": 4, "c_weighted_average": 16, "c_msa_embed": c_m, "c_z": c_z},
+        msa_transition={"n": 2, "c": c_m},
+        triangle_multiplication_outgoing={"d_pair": c_z, "d_hidden": c_z},
+        triangle_multiplication_incoming={"d_pair": c_z, "d_hidden": c_z},
+        triangle_attention_starting={"d_pair": c_z, "n_head": 4, "d_hidden": 16},
+        triangle_attention_ending={"d_pair": c_z, "n_head": 4, "d_hidden": 16},
+        pair_transition={"n": 2, "c": c_z},
     ).eval()
 
     # Masks: first 5 tokens valid, last 3 padding; first 4 MSA rows valid, last 2 padding
@@ -55,8 +56,6 @@ def test_msa_module_padding_does_not_leak():
     # Valid-position outputs must match regardless of padding content
     valid_out1 = out1[:, :5, :5, :]
     valid_out2 = out2[:, :5, :5, :]
-    assert torch.allclose(valid_out1, valid_out2, atol=1e-5), (
-        f"Padding leaked into valid positions! Max diff: {(valid_out1 - valid_out2).abs().max():.2e}"
-    )
-
-
+    assert torch.allclose(
+        valid_out1, valid_out2, atol=1e-5
+    ), f"Padding leaked into valid positions! Max diff: {(valid_out1 - valid_out2).abs().max():.2e}"

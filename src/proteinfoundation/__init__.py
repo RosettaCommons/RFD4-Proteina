@@ -1,4 +1,4 @@
-import foundry.utils.standard_annotations  # noqa: F401 — registers Foundry StandardAnnotations
+import foundry.utils.standard_annotations
 import proteinfoundation.datapipes
 import proteinfoundation.utils
 

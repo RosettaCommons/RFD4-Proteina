@@ -10,6 +10,7 @@ from typing import Any
 
 import torch
 from biotite.structure import AtomArray
+
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
 

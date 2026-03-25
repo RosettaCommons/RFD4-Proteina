@@ -1,11 +1,11 @@
 """Utilities for identifying the chain of interest in a multi-chain structure."""
 
 import numpy as np
-from atomworks.ml.conditions import C_CRD, C_DIS
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.ml.conditions import C_CRD, C_DIS
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_INTCRD
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -62,7 +62,8 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
 
     # Further subset by absolute coordinate conditioning
     absolute_coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean() for cid in least_coord_conditioned_chain_identifiers
+        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean()
+        for cid in least_coord_conditioned_chain_identifiers
     }
     least_absolute_coord_conditioned_fraction = min(absolute_coord_conditioned_fraction_by_chain.values())
     least_absolute_coord_conditioned_chain_identifiers = [

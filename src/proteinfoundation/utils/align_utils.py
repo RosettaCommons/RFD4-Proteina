@@ -28,7 +28,7 @@ root = os.path.abspath(".")
 sys.path.insert(0, root)  # Adds project's root directory
 
 
-def mean_w_mask(a, mask, keepdim=True):
+def mean_w_mask(a: torch.Tensor, mask: torch.Tensor, keepdim: bool = True) -> torch.Tensor:
     """
     Computes the mean of point cloud a accounting for the mask.
 
@@ -52,7 +52,12 @@ def mean_w_mask(a, mask, keepdim=True):
     return mean
 
 
-def kabsch_align_ind(mobile, target, mask=None, ret_both=False):
+def kabsch_align_ind(
+    mobile: torch.Tensor,
+    target: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    ret_both: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """
     Aligns mobile to target.
 
@@ -76,7 +81,7 @@ def kabsch_align_ind(mobile, target, mask=None, ret_both=False):
     return mobile_aligned[0]  # [n, 3]
 
 
-def kabsch_align(mobile, target, mask=None):
+def kabsch_align(mobile: torch.Tensor, target: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
     """
     Aligns mobile to target.
 
@@ -118,7 +123,7 @@ def kabsch_align(mobile, target, mask=None):
 # This function was adapted from GeoDock's code (MIT License)
 # https://github.com/Graylab/GeoDock/blob/main/geodock/utils/metrics.py#L103
 # We pulled out translation stuff, vecotrize it and added masks
-def _find_rot_alignment(A, B, mask=None):
+def _find_rot_alignment(A: torch.Tensor, B: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
     """
     Finds rotation that alignes two point clouds with zero center of mass.
 

@@ -11,6 +11,7 @@ import pytest
 from atomworks.ml.executables import _EXECUTABLES
 from atomworks.ml.executables.dssp import DSSPExecutable
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
+
 from foundry.testing import configure_pytest, get_test_data_dir, gpu  # noqa: F401
 
 TEST_DATA_DIR = get_test_data_dir(__file__)

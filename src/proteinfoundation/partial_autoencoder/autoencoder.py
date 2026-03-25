@@ -1,3 +1,4 @@
+import contextlib
 import os
 from typing import Literal
 
@@ -8,12 +9,10 @@ import torch
 import wandb
 from jaxtyping import Bool, Float, Int
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
-from foundry.utils.ddp import RankedLogger
-
-logger = RankedLogger(__name__, rank_zero_only=True)
 from sklearn.decomposition import PCA
 from torch import Tensor
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.partial_autoencoder.decoder import DecoderTransformer
 from proteinfoundation.partial_autoencoder.decoder_ff import DecoderFFLocal
 from proteinfoundation.partial_autoencoder.encoder import EncoderTransformer
@@ -23,6 +22,8 @@ from proteinfoundation.partial_autoencoder.latent_viz_utils import (
 )
 from proteinfoundation.utils.coors_utils import nm_to_ang
 from proteinfoundation.utils.pdb_utils import write_prot_to_pdb
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 COLORS_RT = [
     "#FF0000",  # Red
@@ -49,13 +50,13 @@ COLORS_RT = [
 
 
 @rank_zero_only
-def create_dir(dir):
+def create_dir(dir: str) -> None:
     if not os.path.exists(dir):
         os.makedirs(dir, exist_ok=True)
 
 
 class AutoEncoder(L.LightningModule):
-    def __init__(self, cfg_ae, store_dir=None):
+    def __init__(self, cfg_ae: object, store_dir: str | None = None) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.cfg_ae = cfg_ae
@@ -91,17 +92,15 @@ class AutoEncoder(L.LightningModule):
 
         self.latent_dim = self.cfg_ae.nn_ae["latent_z_dim"]
 
-    def log_histogram(self, id_log: str, v: Float[torch.Tensor, "r"]):
+    def log_histogram(self, id_log: str, v: Float[torch.Tensor, "r"]) -> None:
         """
         Logs histogram, v must be a flat tensor.
         """
         assert v.ndim == 1, f"Tensor v has shape {v.shape}, cannot log histogram"
-        try:
+        with contextlib.suppress(Exception):
             self.logger.experiment.log({id_log: wandb.Histogram(v.cpu().detach().numpy())})
-        except:
-            pass
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.AdamW(
             [p for p in self.parameters() if p.requires_grad],
             lr=self.cfg_ae.opt.lr,
@@ -110,15 +109,15 @@ class AutoEncoder(L.LightningModule):
         )
         return optimizer
 
-    def on_save_checkpoint(self, checkpoint):
+    def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
         checkpoint["nsamples_processed"] = self.nsamples_processed
 
-    def on_load_checkpoint(self, checkpoint):
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
         try:
             self.nsamples_processed = checkpoint["nsamples_processed"]
-        except:
+        except KeyError:
             logger.info("Failed to load nsamples_processed from checkpoint")
             self.nsamples_processed = 0
 
@@ -154,7 +153,7 @@ class AutoEncoder(L.LightningModule):
             "atom_mask": atom_mask,
         }
 
-    def training_step(self, batch: dict, batch_idx: int):
+    def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor | tuple[torch.Tensor, dict]:
         """
         Computes training loss for batch of samples.
 
@@ -176,7 +175,7 @@ class AutoEncoder(L.LightningModule):
         batch["coords_nm"] = coords_nm  # For backward compatibility with encoder
         ca_coors_nm = coords_nm[..., 1, :]  # [b, n, 3] - CA is at slot 1
         ca_coors_nm = ca_coors_nm * mask[..., None]  # [b, n, 3]
-        bs, n = mask.shape[0], mask.shape[1]
+        bs, _n = mask.shape[0], mask.shape[1]
 
         output_enc = self.encoder(batch)
         # {
@@ -370,7 +369,8 @@ class AutoEncoder(L.LightningModule):
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
                   "seq_logits": logits for the residue types, shape [b, n, 20]
                   "residue_mask": boolean [b, n]
-                  "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+                  "aatype_max": residue type by taking the most likely logit, shape [b, n],
+                      with integer values {0, ..., 19}
                   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
                 }
             batch: data batch from dataloader
@@ -445,7 +445,8 @@ class AutoEncoder(L.LightningModule):
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
                   "seq_logits": logits for the residue types, shape [b, n, 20]
                   "residue_mask": boolean [b, n]
-                  "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+                  "aatype_max": residue type by taking the most likely logit, shape [b, n],
+                      with integer values {0, ..., 19}
                   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
                 }
             batch: data batch from dataloader
@@ -582,16 +583,20 @@ class AutoEncoder(L.LightningModule):
         Logs PCA components plot of latent variable z.
         """
 
-        def _log_scatter(vals_x, vals_y, xlabel, ylabel, log_id):
+        def _log_scatter(
+            vals_x: np.ndarray,
+            vals_y: np.ndarray,
+            xlabel: str,
+            ylabel: str,
+            log_id: str,
+        ) -> None:
             fig, ax = plt.subplots()
             ax.scatter(vals_x, vals_y)
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
             ax.set_title(f"{xlabel} - {ylabel} - Step: {self.trainer.global_step}")
-            try:
+            with contextlib.suppress(Exception):
                 self.logger.experiment.log({log_id: wandb.Image(fig)})
-            except:
-                pass
             plt.close("all")
 
         if self.global_step % every_n != 0:
@@ -703,10 +708,8 @@ class AutoEncoder(L.LightningModule):
         )
 
         # Log to wandb
-        try:
+        with contextlib.suppress(Exception):
             self.logger.experiment.log({log_prefix: wandb.Image(fig)})
-        except:
-            pass
 
         # Optional: Save locally for debugging
         save_local = self.cfg_ae.get("log", {}).get("save_projections_locally", False)
@@ -749,7 +752,7 @@ class AutoEncoder(L.LightningModule):
             add_dataloader_idx=False,
         )
 
-    def log_nparams(self):
+    def log_nparams(self) -> None:
         self.log(
             "scaling/nparams_enc",
             self.nparams_enc * 1.0,
@@ -772,7 +775,7 @@ class AutoEncoder(L.LightningModule):
             sync_dist=True,
         )  # constant line but ok, easy to compare # params
 
-    def update_n_log_nsamples_processed(self, b: int):
+    def update_n_log_nsamples_processed(self, b: int) -> None:
         self.nsamples_processed = self.nsamples_processed + b * self.trainer.world_size
         self.log(
             "scaling/nsamples_processed",
@@ -785,7 +788,7 @@ class AutoEncoder(L.LightningModule):
             sync_dist=True,
         )
 
-    def validation_step(self, batch: dict, batch_idx: int):
+    def validation_step(self, batch: dict, batch_idx: int) -> None:
         """
         Evalaute validation loss.
 
@@ -813,17 +816,18 @@ class AutoEncoder(L.LightningModule):
                         "coors_nm": rec_sample["coors_nm"][i, ...],  # [n, 37, 3]
                         "aatype": rec_sample["aatype_max"][i, ...],  # [n]
                         "atom_mask": rec_sample["atom_mask"][i, ...],  # [n, 37]
-                        "padding_mask": rec_sample["residue_mask"][i, ...],  # [n], should be the same as mask from orig sample
+                        # [n], should be the same as mask from orig sample
+                        "padding_mask": rec_sample["residue_mask"][i, ...],
                     }
                 )
 
-    def on_validation_epoch_end(self):
+    def on_validation_epoch_end(self) -> None:
         """
         Stores samples as PDBs and cleans validation results.
         """
-        count = 0
-        for sample_data, sample_rec in zip(self.validation_data_samples, self.validation_rec_samples, strict=False):
-            count += 1
+        for count, (sample_data, sample_rec) in enumerate(
+            zip(self.validation_data_samples, self.validation_rec_samples, strict=False), start=1
+        ):
             if count > 10:
                 break
             coors_data = nm_to_ang(sample_data["coors_nm"]).float().detach().cpu().numpy()  # [n, 37, 3]

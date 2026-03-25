@@ -59,7 +59,7 @@ try:
         SoftDDGWithSaltMetric,
     )
 
-    __all__.extend(["SoftDDGMetric", "ChargeComplementarityMetric", "SoftDDGWithSaltMetric"])
+    __all__.extend(["ChargeComplementarityMetric", "SoftDDGMetric", "SoftDDGWithSaltMetric"])
 except ImportError:
     pass
 

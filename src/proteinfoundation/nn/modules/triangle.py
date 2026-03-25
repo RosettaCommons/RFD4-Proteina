@@ -1,4 +1,6 @@
+import logging
 import math
+import os
 
 import torch
 import torch.nn as nn
@@ -6,22 +8,20 @@ import torch.nn.functional as F
 from einops import rearrange
 from jaxtyping import Float
 from opt_einsum import contract as einsum
+
 from rf3.util_module import init_lecun_normal
 
-import os
-import logging
-
-#from foundry import SHOULD_USE_CUEQUIVARIANCE
-#from foundry.training.checkpoint import activation_checkpointing
+# from foundry import SHOULD_USE_CUEQUIVARIANCE
+# from foundry.training.checkpoint import activation_checkpointing
 
 # Check DISABLE_CUEQUIVARIANCE env var (set to 'true' to disable fused kernels)
-_disable_env = os.environ.get('DISABLE_CUEQUIVARIANCE', '').strip().lower()
-SHOULD_USE_CUEQUIVARIANCE = _disable_env not in ('true', '1', 'yes')
+_disable_env = os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower()
+SHOULD_USE_CUEQUIVARIANCE = _disable_env not in ("true", "1", "yes")
 
 if SHOULD_USE_CUEQUIVARIANCE:
     import cuequivariance_torch as cuet
 else:
-    logging.getLogger(__name__).info('cuEquivariance disabled via DISABLE_CUEQUIVARIANCE env var')
+    logging.getLogger(__name__).info("cuEquivariance disabled via DISABLE_CUEQUIVARIANCE env var")
 
 
 class TriangleAttention(nn.Module):
@@ -39,13 +39,13 @@ class TriangleAttention(nn.Module):
 
     def __init__(
         self,
-        d_pair,
-        n_head,
-        d_hidden,
-        start_node=True,
-        use_cuequivariance=True,
-    ):
-        super(TriangleAttention, self).__init__()
+        d_pair: int,
+        n_head: int,
+        d_hidden: int,
+        start_node: bool = True,
+        use_cuequivariance: bool = True,
+    ) -> None:
+        super().__init__()
 
         self.norm = nn.LayerNorm(d_pair)
 
@@ -66,7 +66,7 @@ class TriangleAttention(nn.Module):
 
         self.reset_parameter()
 
-    def reset_parameter(self):
+    def reset_parameter(self) -> None:
         # query/key/value projection: Glorot uniform / Xavier uniform
         nn.init.xavier_uniform_(self.to_q.weight)
         nn.init.xavier_uniform_(self.to_k.weight)
@@ -79,11 +79,12 @@ class TriangleAttention(nn.Module):
         nn.init.zeros_(self.to_g.weight)
         nn.init.ones_(self.to_g.bias)
 
-        # to_out: right before residual connection: zero initialize -- to make it sure residual operation is same to the Identity at the begining
+        # to_out: right before residual connection: zero initialize -- to make it sure residual
+        # operation is same to the Identity at the begining
         nn.init.zeros_(self.to_out.weight)
         nn.init.zeros_(self.to_out.bias)
 
-    def forward(self, pair, mask_I):
+    def forward(self, pair: torch.Tensor, mask_I: torch.Tensor) -> torch.Tensor:
         """Forward pass of triangle attention.
 
         Args:
@@ -109,7 +110,7 @@ class TriangleAttention(nn.Module):
         out = self.to_out(out)
         return out
 
-    def _forward_cuequivariance(self, pair, bias, mask_I):
+    def _forward_cuequivariance(self, pair: torch.Tensor, bias: torch.Tensor, mask_I: torch.Tensor) -> torch.Tensor:
         """cuEquivariance triangle attention implementation."""
         # Handle autocast conversion
         if torch.is_autocast_enabled():
@@ -137,16 +138,14 @@ class TriangleAttention(nn.Module):
         mask = rearrange(mask_II, "b i j -> b i 1 1 j")
 
         # Call cuEquivariance triangle attention
-        out_cueq = cuet.triangle_attention(
-            query, key, value, bias=bias_cueq, scale=self.scaling, mask=mask
-        )
+        out_cueq = cuet.triangle_attention(query, key, value, bias=bias_cueq, scale=self.scaling, mask=mask)
 
         # Reshape back: (B, L, H, L, D) -> (B, L, L, H*D)
         out = rearrange(out_cueq, "b i h j d -> b i j (h d)")
         out = gate * out  # gated attention
         return out
 
-    def _forward_vanilla(self, pair, bias, mask_I):
+    def _forward_vanilla(self, pair: torch.Tensor, bias: torch.Tensor, mask_I: torch.Tensor) -> torch.Tensor:
         """Vanilla PyTorch triangle attention implementation."""
         B, L = pair.shape[:2]
 
@@ -189,13 +188,13 @@ class TriangleMultiplication(nn.Module):
 
     def __init__(
         self,
-        d_pair,
-        d_hidden=None,
-        direction="outgoing",
-        bias=True,
-        use_cuequivariance=True,
-    ):
-        super(TriangleMultiplication, self).__init__()
+        d_pair: int,
+        d_hidden: int | None = None,
+        direction: str = "outgoing",
+        bias: bool = True,
+        use_cuequivariance: bool = True,
+    ) -> None:
+        super().__init__()
 
         # Set d_hidden to d_pair if not specified
         if d_hidden is None:
@@ -206,22 +205,16 @@ class TriangleMultiplication(nn.Module):
 
         # Validate direction parameter
         if direction not in ["outgoing", "incoming"]:
-            raise ValueError(
-                f"direction must be 'outgoing' or 'incoming', got '{direction}'"
-            )
+            raise ValueError(f"direction must be 'outgoing' or 'incoming', got '{direction}'")
         self.direction = direction
 
         self.use_cuequivariance = use_cuequivariance
 
         if self.use_cuequivariance:
             # cuEquivariance kernel requires d_pair == d_hidden...
-            assert (
-                d_pair == d_hidden
-            ), "cuEquivariance triangle multiplication requires d_pair == d_hidden"
+            assert d_pair == d_hidden, "cuEquivariance triangle multiplication requires d_pair == d_hidden"
             # ... and d_pair must be a multiple of 32
-            assert (
-                d_pair % 32 == 0
-            ), "cuEquivariance triangle multiplication requires d_pair to be a multiple of 32"
+            assert d_pair % 32 == 0, "cuEquivariance triangle multiplication requires d_pair to be a multiple of 32"
 
         # Input normalization (optional bias)
         self.norm_in = nn.LayerNorm(d_pair, bias=bias)
@@ -243,7 +236,7 @@ class TriangleMultiplication(nn.Module):
 
         self.reset_parameters()
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
         # Input projections: lecun normal distribution for regular linear weights
         self.p_in = init_lecun_normal(self.p_in)
 
@@ -271,7 +264,7 @@ class TriangleMultiplication(nn.Module):
         self,
         pair: Float[torch.Tensor, "B N N D"],
         mask_I: Float[torch.Tensor, "B N"],
-        eps=1e-3,
+        eps: float = 1e-3,
     ) -> Float[torch.Tensor, "B N N D"]:
         """Vanilla PyTorch triangle multiplication implementation."""
         B, L = pair.shape[:2]
@@ -300,9 +293,7 @@ class TriangleMultiplication(nn.Module):
 
         # Divide by number of valid elements to get mean
         denom = mask_I.sum(dim=-1)
-        right = right / (
-            denom[:, None, None, None] + eps
-        )  # NOTE: avoid division by zero
+        right = right / (denom[:, None, None, None] + eps)  # NOTE: avoid division by zero
 
         # Triangle multiplication based on direction
         if self.direction == "outgoing":
@@ -334,9 +325,7 @@ class TriangleMultiplication(nn.Module):
             dtype = torch.get_autocast_dtype("cuda")
             pair = pair.to(dtype=dtype)
 
-        assert (
-            pair.dtype == torch.bfloat16
-        ), "cuEquivariance requires bfloat16 inputs for optimal performance"
+        assert pair.dtype == torch.bfloat16, "cuEquivariance requires bfloat16 inputs for optimal performance"
         mask_II = (mask_I.unsqueeze(-1) & mask_I.unsqueeze(-2)).bool()  # (B, I, I)
 
         output = cuet.triangle_multiplicative_update(

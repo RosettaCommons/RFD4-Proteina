@@ -24,7 +24,6 @@
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from einops import einsum as einops_einsum
 from torch import Tensor, einsum, nn
 
 from proteinfoundation.nn.modules.adaptive_ln_scale import (
@@ -38,6 +37,7 @@ NEG_INF = -1e4
 # Try to import cuequivariance for fused attention
 try:
     from cuequivariance_torch import attention_pair_bias as cuet_attention_pair_bias
+
     CUET_AVAILABLE = True
 except ImportError:
     CUET_AVAILABLE = False
@@ -68,17 +68,18 @@ def is_transformer_engine_available() -> bool:
     return _load_transformer_engine()
 
 
-def exists(val) -> bool:
+def exists(val: object) -> bool:
     """returns whether val is not none"""
     return val is not None
 
 
-def default(x, y):
+def default(x: object, y: object) -> object:
     """returns x if it exists, otherwise y"""
     return x if exists(x) else y
 
 
-max_neg_value = lambda x: torch.finfo(x.dtype).min
+def max_neg_value(x: torch.Tensor) -> float:
+    return torch.finfo(x.dtype).min
 
 
 class PairBiasAttention(nn.Module):
@@ -97,8 +98,8 @@ class PairBiasAttention(nn.Module):
         dim_out: int,
         qkln: bool,
         pair_dim: int | None = None,
-        **kawrgs,
-    ):
+        **kawrgs: object,
+    ) -> None:
         super().__init__()
         inner_dim = dim_head * heads
         self.node_dim, self.pair_dim = node_dim, pair_dim
@@ -136,12 +137,12 @@ class PairBiasAttention(nn.Module):
         k = self.k_layer_norm(k)
         g = self.to_g(node_feats)
         b = rearrange(self.to_bias(pair_feats), "b ... h -> b h ...") if exists(pair_feats) else 0
-        q, k, v, g = map(lambda t: rearrange(t, "b ... (h d) -> b h ... d", h=h), (q, k, v, g))
+        q, k, v, g = (rearrange(t, "b ... (h d) -> b h ... d", h=h) for t in (q, k, v, g))
         attn_feats = self._attn(q, k, v, b, mask)
         attn_feats = rearrange(torch.sigmoid(g) * attn_feats, "b h n d -> b n (h d)", h=h)
         return self.to_out_node(attn_feats)
 
-    def _attn(self, q, k, v, b, mask: Tensor | None) -> Tensor:
+    def _attn(self, q: Tensor, k: Tensor, v: Tensor, b: Tensor, mask: Tensor | None) -> Tensor:
         """Perform attention update"""
         sim = einsum("b h i d, b h j d -> b h i j", q, k) * self.scale
         if exists(mask):
@@ -169,8 +170,8 @@ class FlashPairBiasAttention(nn.Module):
         dim_out: int,
         qkln: bool,
         pair_dim: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         super().__init__()
         inner_dim = dim_head * heads
         self.node_dim, self.pair_dim = node_dim, pair_dim
@@ -222,7 +223,7 @@ class FlashPairBiasAttention(nn.Module):
         g = self.to_g(node_feats)
 
         # Reshape for attention: [b, n, (h d)] -> [b, h, n, d]
-        q, k, v, g = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q, k, v, g))
+        q, k, v, g = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q, k, v, g))
 
         # Compute pair bias: [b, n, n, pair_dim] -> [b, h, n, n]
         if exists(pair_feats) and exists(self.to_bias):
@@ -241,8 +242,12 @@ class FlashPairBiasAttention(nn.Module):
             else:
                 # Create mask-only bias
                 attn_bias = torch.zeros(
-                    node_feats.shape[0], h, node_feats.shape[1], node_feats.shape[1],
-                    device=node_feats.device, dtype=target_dtype
+                    node_feats.shape[0],
+                    h,
+                    node_feats.shape[1],
+                    node_feats.shape[1],
+                    device=node_feats.device,
+                    dtype=target_dtype,
                 )
                 attn_bias = torch.masked_fill(attn_bias, ~mask_expanded, NEG_INF)
 
@@ -286,8 +291,8 @@ class CuEqPairBiasAttention(nn.Module):
         dim_out: int,
         qkln: bool,
         pair_dim: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         super().__init__()
         if not CUET_AVAILABLE:
             raise ImportError(
@@ -341,7 +346,7 @@ class CuEqPairBiasAttention(nn.Module):
 
         # Reshape for cuequivariance: [b, n, (h d)] -> [b, h, n, d]
         # This matches the original commented code: "b ... (h d) -> b h ... d"
-        q, k, v = map(lambda t: rearrange(t, "b ... (h d) -> b h ... d", h=h), (q, k, v))
+        q, k, v = (rearrange(t, "b ... (h d) -> b h ... d", h=h) for t in (q, k, v))
 
         # Use cuequivariance fused kernel
         # Note: cuet expects raw pair_feats (pre-normalization) and applies LayerNorm internally
@@ -375,7 +380,7 @@ class CuEqMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
     Uses CuEqPairBiasAttention for optimized computation.
     """
 
-    def __init__(self, dim_token, dim_pair, nheads, dim_cond, use_qkln):
+    def __init__(self, dim_token: int, dim_pair: int, nheads: int, dim_cond: int, use_qkln: bool) -> None:
         super().__init__()
         dim_head = int(dim_token // nheads)
         self.adaln = AdaptiveLayerNorm(dim=dim_token, dim_cond=dim_cond)
@@ -390,7 +395,7 @@ class CuEqMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
         )
         self.scale_output = AdaptiveOutputScale(dim=dim_token, dim_cond=dim_cond)
 
-    def forward(self, x, pair_rep, cond, mask):
+    def forward(self, x: Tensor, pair_rep: Tensor, cond: Tensor, mask: Tensor) -> Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim_token]
@@ -413,7 +418,7 @@ class MultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
     """Pair biased multi-head self-attention with adaptive layer norm applied to input
     and adaptive scaling applied to output."""
 
-    def __init__(self, dim_token, dim_pair, nheads, dim_cond, use_qkln):
+    def __init__(self, dim_token: int, dim_pair: int, nheads: int, dim_cond: int, use_qkln: bool) -> None:
         super().__init__()
         dim_head = int(dim_token // nheads)
         self.adaln = AdaptiveLayerNorm(dim=dim_token, dim_cond=dim_cond)
@@ -428,7 +433,7 @@ class MultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
         )
         self.scale_output = AdaptiveOutputScale(dim=dim_token, dim_cond=dim_cond)
 
-    def forward(self, x, pair_rep, cond, mask):
+    def forward(self, x: Tensor, pair_rep: Tensor, cond: Tensor, mask: Tensor) -> Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim_token]
@@ -453,7 +458,7 @@ class FlashMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
     for improved memory efficiency and speed.
     """
 
-    def __init__(self, dim_token, dim_pair, nheads, dim_cond, use_qkln):
+    def __init__(self, dim_token: int, dim_pair: int, nheads: int, dim_cond: int, use_qkln: bool) -> None:
         super().__init__()
         dim_head = int(dim_token // nheads)
         self.adaln = AdaptiveLayerNorm(dim=dim_token, dim_cond=dim_cond)
@@ -468,7 +473,7 @@ class FlashMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
         )
         self.scale_output = AdaptiveOutputScale(dim=dim_token, dim_cond=dim_cond)
 
-    def forward(self, x, pair_rep, cond, mask):
+    def forward(self, x: Tensor, pair_rep: Tensor, cond: Tensor, mask: Tensor) -> Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim_token]
@@ -507,8 +512,8 @@ class TEPairBiasAttention(nn.Module):
         dim_out: int,
         qkln: bool,
         pair_dim: int | None = None,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         super().__init__()
         if not _load_transformer_engine():
             raise ImportError(
@@ -627,7 +632,7 @@ class TEMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
     Uses TEPairBiasAttention for optimized computation with FP8 support.
     """
 
-    def __init__(self, dim_token, dim_pair, nheads, dim_cond, use_qkln):
+    def __init__(self, dim_token: int, dim_pair: int, nheads: int, dim_cond: int, use_qkln: bool) -> None:
         super().__init__()
         dim_head = int(dim_token // nheads)
         self.adaln = AdaptiveLayerNorm(dim=dim_token, dim_cond=dim_cond)
@@ -642,7 +647,7 @@ class TEMultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
         )
         self.scale_output = AdaptiveOutputScale(dim=dim_token, dim_cond=dim_cond)
 
-    def forward(self, x, pair_rep, cond, mask):
+    def forward(self, x: Tensor, pair_rep: Tensor, cond: Tensor, mask: Tensor) -> Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim_token]
