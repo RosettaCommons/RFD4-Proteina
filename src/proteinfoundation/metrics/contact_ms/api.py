@@ -42,7 +42,9 @@ from .surface_calculator import MolecularSurfaceCalculator
 
 
 def _to_tensor(
-    x: np.ndarray, device: str, dtype: torch.dtype = torch.float32,
+    x: np.ndarray,
+    device: str,
+    dtype: torch.dtype = torch.float32,
 ) -> torch.Tensor:
     """Convert a numpy array to a torch tensor on the given device."""
     return torch.as_tensor(x, dtype=dtype, device=device)
@@ -50,12 +52,12 @@ def _to_tensor(
 
 def calculate_contact_ms(
     binder_xyz: Float[np.ndarray, "Nb 3"],
-    binder_radii: Float[np.ndarray, "Nb"],
+    binder_radii: Float[np.ndarray, Nb],
     target_xyz: Float[np.ndarray, "Nt 3"],
-    target_radii: Float[np.ndarray, "Nt"],
+    target_radii: Float[np.ndarray, Nt],
     *,
     device: str | None = None,
-) -> tuple[float, Float[np.ndarray, "Nt"], MolecularSurfaceCalculator | None]:
+) -> tuple[float, Float[np.ndarray, Nt], MolecularSurfaceCalculator | None]:
     """Compute contact molecular surface of binder against target.
 
     CMS has units of Å² and is a distance-weighted surface area.
@@ -78,8 +80,10 @@ def calculate_contact_ms(
     if device is not None:
         calc_t = TorchCMS(device=device)
         cms_t, per_atom_t = calc_t.compute(
-            _to_tensor(binder_xyz, device), _to_tensor(binder_radii, device),
-            _to_tensor(target_xyz, device), _to_tensor(target_radii, device),
+            _to_tensor(binder_xyz, device),
+            _to_tensor(binder_radii, device),
+            _to_tensor(target_xyz, device),
+            _to_tensor(target_radii, device),
         )
         return float(cms_t), per_atom_t.cpu().numpy(), None
 
@@ -91,10 +95,10 @@ def calculate_contact_ms(
 
 def calculate_maximum_possible_contact_ms(
     xyz: Float[np.ndarray, "N 3"],
-    radii: Float[np.ndarray, "N"],
+    radii: Float[np.ndarray, N],
     *,
     device: str | None = None,
-) -> tuple[float, Float[np.ndarray, "N"], MolecularSurfaceCalculator | None]:
+) -> tuple[float, Float[np.ndarray, N], MolecularSurfaceCalculator | None]:
     """Compute maximum possible CMS (total surface area) for a molecule.
 
     Useful for normalising CMS values in small-molecule design.
@@ -111,7 +115,8 @@ def calculate_maximum_possible_contact_ms(
     if device is not None:
         calc_t = TorchCMS(device=device)
         total, per_atom_t = calc_t.compute_max_cms(
-            _to_tensor(xyz, device), _to_tensor(radii, device),
+            _to_tensor(xyz, device),
+            _to_tensor(radii, device),
         )
         return float(total), per_atom_t.cpu().numpy(), None
 
@@ -124,7 +129,7 @@ def calculate_maximum_possible_contact_ms(
 def extract_cms_inputs(
     atom_array: AtomArray,
     mask: np.ndarray | None = None,
-) -> tuple[Float[np.ndarray, "N 3"], Float[np.ndarray, "N"]]:
+) -> tuple[Float[np.ndarray, "N 3"], Float[np.ndarray, N]]:
     """Extract heavy-atom coordinates and CMS radii from a biotite AtomArray.
 
     Filters to heavy atoms, looks up radii from the SC radii table, and

@@ -28,14 +28,13 @@ import hydra
 import pandas as pd
 import rootutils
 from atomworks.io.parser import parse
-from foundry.utils.env import load_dotenv
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.logging import print_config_tree
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-from proteinfoundation.conditions import *
+from foundry.metrics.metric import MetricManager
+from foundry.utils.ddp import RankedLogger
+from foundry.utils.env import load_dotenv
+from foundry.utils.logging import print_config_tree
 
 # Setup root dir and environment variables
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

@@ -1,47 +1,45 @@
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Literal
 from functools import partial
+from typing import ClassVar, Literal
 
 import biotite.structure as struc
 import numpy as np
 from atomworks.common import exists
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array import apply_and_spread
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.io.utils.query import QueryExpression
 from atomworks.io.utils.scatter import (
     apply_segment_wise,
     spread_segment_wise,
 )
-from atomworks.ml.utils.token import apply_and_spread_token_wise
 from atomworks.ml.conditions import (
     C_CRD,
     C_DIS,
     C_IDX,
     C_SEQ,
 )
-from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.transforms import mask_generator as mg
 from atomworks.ml.transforms.crop import resize_crop_info_if_too_many_atoms
 from atomworks.ml.transforms.design_task import DesignTaskABC
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
-from atomworks.ml.utils.token import get_token_count, get_token_starts
+from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
-from foundry.common import true_with_prob
-from foundry.utils.ddp import RankedLogger
 from scipy.spatial import ConvexHull
 from scipy.special import softmax
 
-from proteinfoundation.conditions import C_ABH, C_ABL, C_CDR, C_HOT, C_IDXGRP, C_CRDGRP, C_INTCRD
+from foundry.common import true_with_prob
+from foundry.utils.ddp import RankedLogger
+from proteinfoundation.conditions import C_ABH, C_ABL, C_CDR, C_CRDGRP, C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.design_task_modifiers import (
+    add_cath_condition,
     add_hbond_condition,
     add_rasa_condition,
     add_secondary_structure_condition,
-    add_cath_condition,
 )
 from proteinfoundation.transforms.utils.conditioning_utils import (
-    sample_unindexed_groups,
     convert_to_internal_coords,
+    sample_unindexed_groups,
 )
 from proteinfoundation.transforms.utils.distance_condition import (
     sample_distance_condition,
@@ -85,7 +83,8 @@ RFD3_DESIGN_TASK_DEFAULTS = {
         "p_add_secondary_structure_condition": 0.0,  # 0.1 in RFD3
         "max_secondary_structure_frac_to_provide": 0.4,
         "min_ss_island_len": 1,
-        "max_ss_island_len": 10,  # Might want to expand later, this is only average. Done for now to avoid over-conditioning.
+        # Might want to expand later, this is only average. Done for now to avoid over-conditioning.
+        "max_ss_island_len": 10,
         "n_islands_max": 3,
     },
     "cath_kwargs": {
@@ -200,7 +199,7 @@ class RFD3DesignTask(DesignTaskABC):
 
 
 class NoMotifABC(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -236,7 +235,7 @@ class NoMotifABC(RFD3DesignTask):
 class UnconditionalTask(NoMotifABC):
     """Sample a protein backbone & sequence unconditionally."""
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -257,7 +256,7 @@ class UnconditionalTask(NoMotifABC):
 class StructurePredictionTask(NoMotifABC):
     """Sample a protein backbone, given the sequence information (= structure prediction)."""
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.0},
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
@@ -283,7 +282,7 @@ class InverseFoldingTask(NoMotifABC):
     TODO: Extend to DNA/RNA sequence design as well once the model can generate those sequences.
     """
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.0},
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
@@ -316,7 +315,7 @@ class PartialLigandTask(RFD3DesignTask):
 
     """
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.0},
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
@@ -394,10 +393,10 @@ class PartialLigandTask(RFD3DesignTask):
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = coord_conditioned_mask & ~nan_coord_mask
         C_CRD.set_mask(atom_array, coord_condition_mask)
-        
+
         C_SEQ.set_mask(atom_array, sequence_condition_mask)
 
-        n_atoms = atom_array.array_length()
+        _n_atoms = atom_array.array_length()
         C_IDX.set_mask(atom_array, np.ones(atom_array.array_length(), dtype=bool))
 
         data["atom_array"] = atom_array
@@ -414,7 +413,7 @@ class PartialLigandTask(RFD3DesignTask):
 
 
 class TipAtomPartialLigandTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -462,7 +461,8 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
 
         if p_seq_conditioned < 1.0 or p_knockout_seq > 0.0:
             raise ValueError(
-                "p_seq_conditioned < 1.0 or p_knockout_seq > 0.0 not currently supported. Model must see sequence conditioning if given a distance or coordinate condition"
+                "p_seq_conditioned < 1.0 or p_knockout_seq > 0.0 not currently supported. "
+                "Model must see sequence conditioning if given a distance or coordinate condition"
             )
 
     def can_apply(self, data: dict) -> bool:
@@ -704,13 +704,14 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
             NOTE: In proteina, providing tip atoms inherently gives away sequence information because of Atom37!
         min_protein_length: minimum length of protein chain to sample
         p_unindex_all: probability of unindexing all atoms in the protein chain
-        p_unindex_any: probability of unindexing individual sampled atom. Will only do this is p_index_all was sampled to False
+        p_unindex_any: probability of unindexing individual sampled atom. Will only do this if
+            p_index_all was sampled to False
         p_merge_unindexed_groups: probability of merging unindexed groups
         p_split_unindexed_groups: probability of splitting unindexed groups
         p_increase_group_id_gap: probability of increasing the gap between unindexed group ids
     """
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -745,7 +746,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         self.p_merge_unindexed_groups = p_merge_unindexed_groups
         self.p_split_unindexed_groups = p_split_unindexed_groups
         self.p_increase_group_id_gap = p_increase_group_id_gap
-        
+
         # Internal coords
         self.p_internal_coords = p_internal_coords
 
@@ -791,15 +792,13 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
 
         atom_array.set_annotation("tip_atom_rasa", rasa)
 
-        if (rasa > self.tip_atom_rasa_threshold).sum() < self.min_tip_atoms:
-            return False
-
-        return True
+        return not (rasa > self.tip_atom_rasa_threshold).sum() < self.min_tip_atoms
 
     def sample_protein_pocket(self, atom_array: AtomArray, eligible_tip_atom_mask: np.ndarray) -> int:
         """
-        Calculates convex hull of the protein chain (self.sampled_chain) and samples a tip atom based on distance from the convex hull
-        boundary and the rasa (stored in tip_atom_rasa annotation). Returns the index of the sampled tip atom.
+        Calculates convex hull of the protein chain (self.sampled_chain) and samples a tip atom
+        based on distance from the convex hull boundary and the rasa (stored in tip_atom_rasa
+        annotation). Returns the index of the sampled tip atom.
         """
         # Get chain coordinates, filtering out NaN/Inf values and unresolved atoms
         chain_mask = atom_array.chain_id == self.sampled_chain
@@ -839,7 +838,10 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         return sampled_tip_atom_ind
 
     def sample_mask(self, atom_array: AtomArray) -> np.ndarray:
-        is_eligible_query = f"is_tip_atom & (chain_id == '{self.sampled_chain}') & (token_min_occupancy > 0) & (tip_atom_rasa > {self.tip_atom_rasa_threshold})"
+        is_eligible_query = (
+            f"is_tip_atom & (chain_id == '{self.sampled_chain}') & (token_min_occupancy > 0)"
+            f" & (tip_atom_rasa > {self.tip_atom_rasa_threshold})"
+        )
         if "at_crop_boundary" in atom_array.get_annotation_categories():
             is_eligible_query += " & (at_crop_boundary == False)"
 
@@ -859,7 +861,8 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
             potential=partial(_default_tip_atom_potential, scaling_factor=2.0),
         )
 
-        # remember with seed grow merge, start with the sampled tip atom already as the first all_masks! Then it will sample from there
+        # remember with seed grow merge, start with the sampled tip atom already as the first
+        # all_masks! Then it will sample from there
         total_mask, all_masks = mg.sample_mask_via_seed_grow_merge(
             atom_array,
             all_masks=[
@@ -897,9 +900,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
                 if masked_atom_array.array_length() > 1:
                     all_masks_residue_level.append(mask)
                 else:
-                    residue_data = tuple(
-                        masked_atom_array.get_annotation(category)[0] for category in _same_residue
-                    )
+                    residue_data = tuple(masked_atom_array.get_annotation(category)[0] for category in _same_residue)
                     atom_masks_per_residue[residue_data].append(mask)
             for _, atom_masks in atom_masks_per_residue.items():
                 combined_mask = np.zeros(atom_array.array_length(), dtype=bool)
@@ -918,7 +919,6 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
             selected = np.random.choice(len(all_masks_residue_level), size=n_to_convert, replace=False)
             for idx in selected:
                 atom_array = convert_to_internal_coords(atom_array, all_masks_residue_level[idx])
-
 
         # also sequence condition coordinates with sequence conditioning probability
         if true_with_prob(self.p_seq_conditioned):
@@ -960,7 +960,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
 
 
 class RandomAtomDistanceTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -995,7 +995,8 @@ class RandomAtomDistanceTask(RFD3DesignTask):
 
         if p_seq_conditioned < 1.0 or p_knockout_seq > 0.0:
             raise ValueError(
-                "p_seq_conditioned < 1.0 or p_knockout_seq > 0.0 not currently supported. Model must see sequence conditioning if given a distance or coordinate condition"
+                "p_seq_conditioned < 1.0 or p_knockout_seq > 0.0 not currently supported. "
+                "Model must see sequence conditioning if given a distance or coordinate condition"
             )
 
     def can_apply(self, data: dict) -> bool:
@@ -1093,7 +1094,7 @@ class RandomAtomDistanceTask(RFD3DesignTask):
 
 
 class TipAtomTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -1153,7 +1154,11 @@ class TipAtomTask(RFD3DesignTask):
 
         _same_residue = ("chain_iid", "res_name", "res_id", "transformation_id")
 
-        def fn_sample_seed(atom_array, total_mask, all_masks):
+        def fn_sample_seed(
+            atom_array: AtomArray,
+            total_mask: np.ndarray,
+            all_masks: list,
+        ) -> np.ndarray:
             if true_with_prob(self.p_tip_atom):
                 return mg.SampleTipAtomUniformly(
                     is_eligible="is_tip_atom & (res_min_occupancy > 0)",
@@ -1317,7 +1322,7 @@ class TipAtomDistanceTask(TipAtomTask):
 
 
 class MotifScaffoldTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -1401,10 +1406,11 @@ class MotifScaffoldTask(RFD3DesignTask):
         all_masks: list[np.ndarray],
         token_starts: np.ndarray,
     ) -> np.ndarray:
-        """Samples a mask of tokens to be unindexed, ensuring that only full coordinate-conditioned islands are unindexed.
+        """Samples a mask of tokens to be unindexed, ensuring only full coordinate-conditioned
+        islands are unindexed.
 
-        NOTE: This function assumes that the coordinate-conditioned islands do not contain partial tokens, which is always
-        true for the MotifScaffoldTask.
+        NOTE: This function assumes that the coordinate-conditioned islands do not contain partial
+        tokens, which is always true for the MotifScaffoldTask.
 
         Args:
             all_masks: List of boolean masks for each coordinate-conditioned island (shape of each mask is (n_atoms,))
@@ -1420,15 +1426,17 @@ class MotifScaffoldTask(RFD3DesignTask):
 
         for _ in range(target_num_islands_to_unindex):
             valid_mask_indices = [
-                i for i, mask in enumerate(all_masks) if i not in unindexed_mask_indices and 
-                (mask | unindexed_mask)[token_starts].sum() <= self.max_unindexed_tokens
+                i
+                for i, mask in enumerate(all_masks)
+                if i not in unindexed_mask_indices
+                and (mask | unindexed_mask)[token_starts].sum() <= self.max_unindexed_tokens
             ]
             if len(valid_mask_indices) == 0:
                 break
             mask_index_to_add = np.random.choice(valid_mask_indices)
             unindexed_mask_indices.append(mask_index_to_add)
             unindexed_mask |= all_masks[mask_index_to_add]
-        
+
         return unindexed_mask
 
     def forward(self, data: dict) -> dict:
@@ -1445,8 +1453,9 @@ class MotifScaffoldTask(RFD3DesignTask):
         C_SEQ.set_mask(atom_array, is_seq_conditioned)
 
         # Sample the regions to be unindexed using an island mask
-        # NOTE: Since absolute coords aren't converted to internal coords until later, this may also unindex regions with
-        # internal coord conditioning. This is fine for training but the unindexed mapping is not supported at inference
+        # NOTE: Since absolute coords aren't converted to internal coords until later, this may
+        # also unindex regions with internal coord conditioning. This is fine for training but the
+        # unindexed mapping is not supported at inference
         if true_with_prob(self.p_unindex_any):
             unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
             if "atomize" in atom_array.get_annotation_categories():
@@ -1516,7 +1525,7 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
     Based on MotifMaskTransform from protein-foundation-models public repo.
     """
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -2002,7 +2011,7 @@ class MotifScaffold2DDistTask(MotifScaffoldTask):
 
 
 class PPIHotspotWith3DTarget(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -2026,23 +2035,28 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         **kwargs,
     ):
         """
-        This task samples a set of hotspots (atom level) and provides as 1D conditioning to the model.
-        Logic and implementation is based on Rafi's code here: https://github.com/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
+        This task samples a set of hotspots (atom level) and provides as 1D conditioning to the
+        model. Logic and implementation is based on Rafi's code here:
+        https://github.com/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
 
         The logic is as follows:
-        1. Decide which chain is the binder. We do this by randomly choosing one of the query_pn_unit_iids since we assume these chains form a valid interface.
-        2. Find all possible hotspots based on the target chain based on whether the atom is within hotspot_max_distance to
-            any atom on the target chain.
+        1. Decide which chain is the binder. We do this by randomly choosing one of the
+           query_pn_unit_iids since we assume these chains form a valid interface.
+        2. Find all possible hotspots based on the target chain based on whether the atom is within
+           hotspot_max_distance to any atom on the target chain.
         3. Sample a set of hotspots from the possible hotspots.
 
         Args:
             max_hotspots_frac_to_provide: maximum fraction of the protein to sample as hotspots
             hotspot_max_distance: maximum distance between a hotspot and a protein atom to be considered a hotspot
-            p_sample_ppi_crop: probability of using the PPI crop, which keeps the entirety of the chain designated as the binder
-                if it's less than ppi_crop_max_binder_length residues.
-            ppi_crop_max_binder_length: max binder length to keep in its entirety when using the PPI crop.
-            bb_only_coord_conditioning: If True, only the backbone atoms of the target chain receive coordinate conditioning.
-                NOTE: Sidechain atoms can still be hotspots, but their precise coordinates are not given.
+            p_sample_ppi_crop: probability of using the PPI crop, which keeps the entirety of the
+                chain designated as the binder if it's less than ppi_crop_max_binder_length
+                residues.
+            ppi_crop_max_binder_length: max binder length to keep in its entirety when using the
+                PPI crop.
+            bb_only_coord_conditioning: If True, only the backbone atoms of the target chain
+                receive coordinate conditioning. NOTE: Sidechain atoms can still be hotspots, but
+                their precise coordinates are not given.
         """
         super().__init__(**kwargs)
         self.max_hotspots_frac_to_provide = max_hotspots_frac_to_provide
@@ -2197,7 +2211,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
 
 
 class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict] = {
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
@@ -2209,7 +2223,8 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
     }
 
     """
-    Antibody-specific design task that conditions on framework regions  and the target while leaving CDRs free for design.
+    Antibody-specific design task that conditions on framework regions and the target while leaving
+    CDRs free for design.
 
     This task:
     1. Maps CDR regions from sequence positions to atom positions
@@ -2220,11 +2235,15 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
 
     Args:
         max_hotspots_frac_to_provide: maximum fraction of the protein to sample as hotspots
-        hotspot_max_distance: maximum distance between a hotspot and a protein atom to be considered a hotspot
+        hotspot_max_distance: maximum distance between a hotspot and a protein atom to be
+            considered a hotspot
         p_flexible_target: probability of providing the target chain as a 2D distance motif
-        motif_distance_knockout_p: probability of doing dropout of 2D distance condition at all (otherwise it is a fully connected graph of participating atoms)
-        min_dropout_2d_dist: minimum fraction of distances to keep after dropout during 2D distance conditioning
-        max_dropout_2d_dist: maximum fraction of distances to keep after dropout during 2D distance conditioning
+        motif_distance_knockout_p: probability of doing dropout of 2D distance condition at all
+            (otherwise it is a fully connected graph of participating atoms)
+        min_dropout_2d_dist: minimum fraction of distances to keep after dropout during 2D
+            distance conditioning
+        max_dropout_2d_dist: maximum fraction of distances to keep after dropout during 2D
+            distance conditioning
     """
 
     def __init__(
@@ -2257,7 +2276,7 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
         cdr_1_start_pos: int,
         cdr_2_start_pos: int,
         cdr_3_start_pos: int,
-    ):
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Parse one heavy or light chain and return CDR and chain type masks.
         Args:
@@ -2400,22 +2419,17 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
             return False
 
         # heavy/light chains must have cdrs
-        if heavy_chain_mask.sum() > 0:
-            if cdr_mask[heavy_chain_mask].sum() == 0:
-                return False
-        if light_chain_mask.sum() > 0:
-            if cdr_mask[light_chain_mask].sum() == 0:
-                return False
+        if heavy_chain_mask.sum() > 0 and cdr_mask[heavy_chain_mask].sum() == 0:
+            return False
+        if light_chain_mask.sum() > 0 and cdr_mask[light_chain_mask].sum() == 0:
+            return False
 
         # CDRs must only be on heavy or light chains
         if cdr_mask[~heavy_chain_mask & ~light_chain_mask].sum() > 0:
             return False
 
         # there must be at least one chain that is not annotated with CDRs or heavy/light chains
-        if len(target_chains) == 0:
-            return False
-
-        return True
+        return len(target_chains) != 0
 
     def forward(self, data: dict) -> dict:
         """
@@ -2512,12 +2526,17 @@ class PPIHotspotWithInternalCoordTargetMotifTask(PPIHotspotWith3DTarget):
         **kwargs,
     ):
         """
-        Same as PPIHotspotWith3DTarget, but with internal instead of absolute conditioning for the target chain.
+        Same as PPIHotspotWith3DTarget, but with internal instead of absolute conditioning for
+        the target chain.
         Args:
-            p_flexible_target: Probability of making the target completely flexible (no coordinate conditioning given)
-            motif_distance_knockout_p: probability of doing dropout of 2D distance condition at all (otherwise it is a fully connected graph of participating atoms)
-            min_dropout_2d_dist: minimum fraction of distances to keep after dropout during 2D distance conditioning
-            max_dropout_2d_dist: maximum fraction of distances to keep after dropout during 2D distance conditioning
+            p_flexible_target: Probability of making the target completely flexible (no coordinate
+                conditioning given)
+            motif_distance_knockout_p: probability of doing dropout of 2D distance condition at all
+                (otherwise it is a fully connected graph of participating atoms)
+            min_dropout_2d_dist: minimum fraction of distances to keep after dropout during 2D
+                distance conditioning
+            max_dropout_2d_dist: maximum fraction of distances to keep after dropout during 2D
+                distance conditioning
         """
         super().__init__(*args, **kwargs)
         self.p_flexible_target = p_flexible_target

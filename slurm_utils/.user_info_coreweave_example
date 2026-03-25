@@ -56,7 +56,7 @@ WANDBKEY=""
 PARTITION="hpc-high"
 RUNTIME="03-00:00:00"
 SIGNAL_TIME=600
-MEM="1920g"
+MEM=0  # Request all available memory on the node
 
 # GPU type on this cluster
 GPU_TYPE="H200"

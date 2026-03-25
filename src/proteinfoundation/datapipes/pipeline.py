@@ -1,14 +1,14 @@
 """Pipeline for training for La Proteina-style models."""
 
-import torch
 import functools
-import os
-from typing import ClassVar
 import logging
+import os
 import pickle
-import rootutils
+from typing import ClassVar
 
 import numpy as np
+import rootutils
+import torch
 from atomworks.constants import (
     AF3_EXCLUDED_LIGANDS,
     STANDARD_AA,
@@ -19,6 +19,9 @@ from atomworks.constants import (
     UNKNOWN_RNA,
 )
 from atomworks.enums import ChainType
+from atomworks.io.utils.annotator import (
+    ensure_annotations,
+)
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import (
@@ -27,9 +30,6 @@ from atomworks.ml.conditions import (
     C_IDX,
     C_NTR,
     C_SEQ,
-)
-from atomworks.io.utils.annotator import (
-    ensure_annotations,
 )
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING, TokenEncoding
 from atomworks.ml.preprocessing.msa.finding import get_msa_dirs
@@ -62,17 +62,13 @@ from atomworks.ml.transforms.base import (
     SubsetToKeys,
     Transform,
 )
+from atomworks.ml.transforms.bfactor_conditioned_transforms import SetOccToZeroOnBfactor
 from atomworks.ml.transforms.covalent_modifications import (
     FlagAndReassignCovalentModifications,
 )
-from atomworks.ml.transforms.bfactor_conditioned_transforms import SetOccToZeroOnBfactor
 from atomworks.ml.transforms.crop import CropContiguousLikeAF3, CropSpatialLikeAF3
 from atomworks.ml.transforms.design_task import SampleDesignTask
 from atomworks.ml.transforms.encoding import atom_array_to_encoded_resnames
-from atomworks.ml.transforms.featurize_unresolved_residues import (
-    PlaceUnresolvedTokenAtomsOnRepresentativeAtom,
-    PlaceUnresolvedTokenOnClosestResolvedTokenInSequence,
-)
 from atomworks.ml.transforms.filters import (
     FilterToSpecifiedPNUnits,
     HandleUndesiredResTokens,
@@ -85,10 +81,10 @@ from atomworks.ml.transforms.filters import (
 )
 from atomworks.ml.transforms.msa.msa import (
     EncodeMSA,
+    FeaturizeMSALikeAF3,
+    FillFullMSAFromEncoded,
     LoadPolymerMSAs,
     PairAndMergePolymerMSAs,
-    FillFullMSAFromEncoded,
-    FeaturizeMSALikeAF3,
 )
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
@@ -104,14 +100,14 @@ from biotite.structure import AtomArray
 from einops import rearrange
 
 from proteinfoundation.conditions import (
+    C_CATH,
+    C_CRDGRP,
     C_HB,
     C_HOT,
     C_IDXGRP,
-    C_CRDGRP,
     C_INTCRD,
     C_RAS,
     C_SEC,
-    C_CATH,
     HBondEnum,
     RasaEnum,
 )
@@ -153,9 +149,7 @@ def _resolve_msa_dirs(load_msa: bool) -> tuple[list[dict], list[dict]]:
     protein_msa_env = os.getenv(PROTEIN_MSA_DIRS_ENV_VAR, "").strip()
     rna_msa_env = os.getenv(RNA_MSA_DIRS_ENV_VAR, "").strip()
     if not protein_msa_env and not rna_msa_env:
-        raise ValueError(
-            "load_msa=true but PROTEIN_MSA_DIRS/RNA_MSA_DIRS are not set or empty."
-        )
+        raise ValueError("load_msa=true but PROTEIN_MSA_DIRS/RNA_MSA_DIRS are not set or empty.")
 
     protein_msa_dirs = get_msa_dirs(PROTEIN_MSA_DIRS_ENV_VAR)
     rna_msa_dirs = get_msa_dirs(RNA_MSA_DIRS_ENV_VAR)
@@ -885,13 +879,13 @@ class AddShouldBeLossedAnnotation(Transform):
         return data
 
 
-
 class RemoveTokensWithAnyNaNAtom(Transform):
     """Remove tokens if any atom has NaN coordinates.
 
     There are a few types of situations where NaNs can show up in a token:
     1. A residue has a single missing side-chain atom
-        In this case, we cannot generate a latent representation fo the sidechain and therefore cannot create noise to train
+        In this case, we cannot generate a latent representation fo the sidechain and therefore cannot create noise
+        to train
     2. A residue is entirely nan coordinates
         Obviously in this case we cannot encode the token and therefore cannot make a noisy version of the token
     3. An atomized token has NaN coordinates (e.g. a ligand is missing an atom coordinate)
@@ -954,7 +948,12 @@ class AddChainBreaksPerResidue(Transform):
         for i in range(n_tokens):
             if not is_polymer[i] or not is_indexed[i]:
                 continue
-            if i < n_tokens - 1 and chain_iids[i] == chain_iids[i + 1] and (res_idx[i + 1] - res_idx[i]) > 1 and is_indexed[i + 1]:
+            if (
+                i < n_tokens - 1
+                and chain_iids[i] == chain_iids[i + 1]
+                and (res_idx[i + 1] - res_idx[i]) > 1
+                and is_indexed[i + 1]
+            ):
                 chain_breaks[i] = 1.0
             if i > 0 and chain_iids[i] == chain_iids[i - 1] and (res_idx[i] - res_idx[i - 1]) > 1 and is_indexed[i - 1]:
                 chain_breaks[i] = 1.0
@@ -1153,18 +1152,18 @@ class EncodeQuerySequenceForMSA(Transform):
     def forward(self, data: dict) -> dict:
         aa = data["atom_array"]
         # Encode at atom-level first, then convert to token-level
-        atom_level_encoded = atom_array_to_encoded_resnames(
-            aa, self.encoding, atomize_token=self.atomize_token
-        )
+        atom_level_encoded = atom_array_to_encoded_resnames(aa, self.encoding, atomize_token=self.atomize_token)
         # Convert to token-level by taking first atom of each token
         token_starts = get_token_starts(aa)
         data["msa_query_seq"] = atom_level_encoded[token_starts]
         return data
 
+
 class ConcatenateMSAFeatures(Transform):
     """
     Construct final MSA tensors by taking a dictionary of static and recycle dynamic MSA features
     """
+
     def check_input(self, data: dict) -> None:
         check_contains_keys(
             data,
@@ -1173,9 +1172,9 @@ class ConcatenateMSAFeatures(Transform):
                 "feats",
             ],
         )
-        assert len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1, (
-            "Expected only one recycle for MSA feature concatenation."
-        )
+        assert (
+            len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1
+        ), "Expected only one recycle for MSA feature concatenation."
 
     def forward(self, data: dict) -> dict:
         # Aggregate and stack MSA features
@@ -1216,7 +1215,7 @@ class ConcatenateMSAFeatures(Transform):
         profile = msa_feats["msa_static_features_dict"]["profile"]
         deletion_mean = msa_feats["msa_static_features_dict"]["insertion_mean"]
         # collate all features into a single tensor
-        msa_stack = msa_stack.squeeze(0) # remove recycle dim for final msa input
+        msa_stack = msa_stack.squeeze(0)  # remove recycle dim for final msa input
 
         num_msa_sequences = msa_stack.shape[0]
         data["feats"]["msa_final"] = torch.concatenate(
@@ -1229,6 +1228,7 @@ class ConcatenateMSAFeatures(Transform):
         )  # [n_msa, n_tokens_across_chains, n_types_of_tokens + 3 + n_profile + n_deletion_mean] (float)
 
         return data
+
 
 ######################################################################################
 # Pipelines
@@ -1308,8 +1308,9 @@ def _build_design_train_pipeline(
     ###########################################################
     ### Step 3: Crop And Remove Unusable tokens             ###
     ###########################################################
-    T += RemoveTokensWithAnyNaNAtom()  # Remove tokens with any NaN coordinates (e.g., from unresolved atoms). We cannot generate noisy versions of these
-    
+    # Remove tokens with any NaN coordinates (e.g., from unresolved atoms). We cannot generate noisy versions of these.
+    T += RemoveTokensWithAnyNaNAtom()
+
     if crop_size and (crop_contiguous_probability > 0 or crop_spatial_probability > 0):
         assert crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
@@ -1393,8 +1394,6 @@ def _build_design_train_pipeline(
         # TODO: Template this
 
     return T.tolist()
-
-
 
 
 def _build_design_featurize_pipeline(
@@ -1499,7 +1498,7 @@ def _build_design_featurize_pipeline(
     if protein_msa_dirs or rna_msa_dirs:
         convert_keys.extend(["encoded", "full_msa_details"])
     T += ConvertToTorch(keys=convert_keys)
-    
+
     # MSA featurization - only if MSA is enabled and configured
     if protein_msa_dirs or rna_msa_dirs:
         T += FeaturizeMSALikeAF3(

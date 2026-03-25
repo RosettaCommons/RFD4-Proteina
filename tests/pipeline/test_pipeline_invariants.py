@@ -7,6 +7,7 @@ These invariants are properties that must hold for ALL pipeline outputs across:
 """
 
 import rootutils
+
 from foundry.utils.env import load_dotenv
 
 # Setup the project root
@@ -24,7 +25,6 @@ import pandas as pd
 import pytest
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from atomworks.ml.utils.testing import cached_parse
-from foundry.utils.logging import print_df_as_table
 from projects.proteinfoundation.tests.pipeline.invariant_checks import (
     check_af3_token_centers,
     check_can_be_encoded_requirements,
@@ -39,6 +39,7 @@ from projects.proteinfoundation.tests.pipeline.invariant_checks import (
     check_unresolved_tokens_not_lossed,
 )
 
+from foundry.utils.logging import print_df_as_table
 from proteinfoundation.datapipes.pipeline import build_design_train_pipeline
 from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,

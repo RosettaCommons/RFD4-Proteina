@@ -4,7 +4,7 @@
 # BeamSearchStrategy with RF3 reward on the monomer-short benchmark:
 #   - 400 diffusion steps, checkpointed at [0, 100, 200, 300, 400]
 #   - n_branch=2, beam_width=3
-#   - sc_scale_noise=0.1/0.1 (bb_ca/latents)
+#   - sc_scale_noise=0.3/0.1 (bb_ca/latents)
 #   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
 #
 # Usage:
@@ -62,7 +62,7 @@ generation:
   model:
     bb_ca:
       simulation_step_params:
-        sc_scale_noise: 0.1
+        sc_scale_noise: 0.3
     local_latents:
       simulation_step_params:
         sc_scale_noise: 0.1

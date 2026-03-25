@@ -1,23 +1,32 @@
 """Schema for Proteina with explicit specs: (dtype, default, dims)."""
 
-import torch
-from biotite.structure import AtomArray
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
 from functools import cached_property
+from typing import Any
+
+import torch
+from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
+from biotite.structure import AtomArray
 from torch.nn import functional as F
 
-from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
-from proteinfoundation.conditions import (
-    C_HB, C_HOT, C_IDXGRP, C_CRDGRP, C_INTCRD, C_RAS, C_SEC, C_CATH,
-    HBondEnum, RasaEnum, SSEnum,
-)
 from foundry.data.schema.base import DataSample
-
+from proteinfoundation.conditions import (
+    C_CATH,
+    C_CRDGRP,
+    C_HB,
+    C_HOT,
+    C_IDXGRP,
+    C_INTCRD,
+    C_RAS,
+    C_SEC,
+    HBondEnum,
+    RasaEnum,
+    SSEnum,
+)
 
 # Specs: name -> (dtype, default_value, dim_string)
 # dim_string uses: I=tokens, S=MSA rows, numbers=fixed dims
-SPECS: Dict[str, tuple] = {
+SPECS: dict[str, tuple] = {
     # Token-level [I]
     "residue_type": (torch.int64, -1, "I"),
     C_SEQ.full_name: (torch.int64, -1, "I"),
@@ -66,20 +75,20 @@ SPECS: Dict[str, tuple] = {
 @dataclass
 class ProteinaDataSample(DataSample):
     """Flat data sample - tensors dict with specs-based padding."""
-    
+
     example_id: str
-    tensors: Dict[str, torch.Tensor]
-    atom_array: Optional[AtomArray] = None
+    tensors: dict[str, torch.Tensor]
+    atom_array: AtomArray | None = None
     task: str = ""
     metrics_tags: set = field(default_factory=set)
-    extra_info: Dict[str, Any] = field(default_factory=dict)
-    
+    extra_info: dict[str, Any] = field(default_factory=dict)
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProteinaDataSample":
+    def from_dict(cls, data: dict[str, Any]) -> "ProteinaDataSample":
         feats = data["feats"]
         tensors = {}
         for k, v in feats.items():
-            if not (isinstance(v, torch.Tensor) or hasattr(v, '__array__')):
+            if not (isinstance(v, torch.Tensor) or hasattr(v, "__array__")):
                 continue
             t = v if isinstance(v, torch.Tensor) else torch.as_tensor(v)
             # Apply dtype from specs if defined
@@ -88,7 +97,7 @@ class ProteinaDataSample(DataSample):
                 if t.dtype != dtype:
                     t = t.to(dtype)
             tensors[k] = t
-        
+
         return cls(
             example_id=data["example_id"],
             tensors=tensors,
@@ -99,7 +108,7 @@ class ProteinaDataSample(DataSample):
         )
 
     @cached_property
-    def max_lengths(self) -> Dict[str, int]:
+    def max_lengths(self) -> dict[str, int]:
         lengths = {}
         for name, t in self.tensors.items():
             if t.ndim == 0:
@@ -110,17 +119,17 @@ class ProteinaDataSample(DataSample):
                     lengths[d] = max(lengths.get(d, 0), t.shape[i])
         return lengths
 
-    def pad_to_max_lengths(self, max_lengths: Dict[str, int]) -> "ProteinaDataSample":
+    def pad_to_max_lengths(self, max_lengths: dict[str, int]) -> "ProteinaDataSample":
         padded = {}
         for name, t in self.tensors.items():
             if t.ndim == 0:
                 padded[name] = t
                 continue
-            
+
             spec = SPECS.get(name)
             dims = spec[2].split() if spec else ["I"] + ["?"] * (t.ndim - 1)
             pv = spec[1] if spec else (False if t.dtype == torch.bool else 0)
-            
+
             # Build padding (F.pad: last dim first)
             pad = []
             for i in range(t.ndim - 1, -1, -1):
@@ -128,9 +137,9 @@ class ProteinaDataSample(DataSample):
                     pad.extend([0, max_lengths[dims[i]] - t.shape[i]])
                 else:
                     pad.extend([0, 0])
-            
+
             padded[name] = F.pad(t, pad, value=pv) if any(p > 0 for p in pad) else t
-        
+
         return ProteinaDataSample(
             example_id=self.example_id,
             tensors=padded,

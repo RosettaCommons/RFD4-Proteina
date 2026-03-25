@@ -4,8 +4,8 @@ from proteinfoundation.nn.modules.pair_bias_attn import (
     CuEqMultiHeadBiasedAttentionADALN_MM,
     FlashMultiHeadBiasedAttentionADALN_MM,
     MultiHeadBiasedAttentionADALN_MM,
-    is_transformer_engine_available,
     TEMultiHeadBiasedAttentionADALN_MM,
+    is_transformer_engine_available,
 )
 from proteinfoundation.nn.modules.seq_transition_af3 import TransitionADALN
 
@@ -30,19 +30,19 @@ class MultiheadAttnAndTransition(torch.nn.Module):
 
     def __init__(
         self,
-        dim_token,
-        dim_pair,
-        nheads,
-        dim_cond,
-        residual_mha,
-        residual_transition,
-        parallel_mha_transition,
-        use_attn_pair_bias,
-        use_qkln,
-        dropout=0.0,
-        expansion_factor=4,
+        dim_token: int,
+        dim_pair: int,
+        nheads: int,
+        dim_cond: int,
+        residual_mha: bool,
+        residual_transition: bool,
+        parallel_mha_transition: bool,
+        use_attn_pair_bias: bool,
+        use_qkln: bool,
+        dropout: float = 0.0,
+        expansion_factor: int = 4,
         attention_type: str = "torch",
-    ):
+    ) -> None:
         super().__init__()
         self.parallel = parallel_mha_transition
         self.use_attn_pair_bias = use_attn_pair_bias
@@ -91,23 +91,29 @@ class MultiheadAttnAndTransition(torch.nn.Module):
                 nheads=nheads,
                 dim_cond=dim_cond,
                 use_qkln=use_qkln,
-        )
+            )
 
         self.transition = TransitionADALN(dim=dim_token, dim_cond=dim_cond, expansion_factor=expansion_factor)
 
-    def _apply_mha(self, x, pair_rep, cond, mask):
+    def _apply_mha(
+        self,
+        x: torch.Tensor,
+        pair_rep: torch.Tensor,
+        cond: torch.Tensor,
+        mask: torch.Tensor,
+    ) -> torch.Tensor:
         x_attn = self.mhba(x, pair_rep, cond, mask)
         if self.residual_mha:
             x_attn = x_attn + x
         return x_attn * mask[..., None]
 
-    def _apply_transition(self, x, cond, mask):
+    def _apply_transition(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         x_tr = self.transition(x, cond, mask)
         if self.residual_transition:
             x_tr = x_tr + x
         return x_tr * mask[..., None]
 
-    def forward(self, x, pair_rep, cond, mask):
+    def forward(self, x: torch.Tensor, pair_rep: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim_token]

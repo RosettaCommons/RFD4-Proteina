@@ -68,11 +68,11 @@ def test_design_task_speed(task_class, atom_array_fixture):
     timings = []
 
     # Run the task 10 times
-    for run_idx in range(10):
+    for _run_idx in range(10):
         start_time = time.perf_counter()
 
         # Apply the design task
-        data = apply_design_task(atom_array_fixture, task_class)
+        _data = apply_design_task(atom_array_fixture, task_class)
 
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time

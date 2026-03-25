@@ -1,11 +1,8 @@
 """Tests for sweep.py utilities and launch script sanity checks."""
 
-import json
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -13,7 +10,7 @@ import yaml
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # projects/proteinfoundation
-REPO_ROOT = PROJECT_ROOT.parents[1]                 # foundry/
+REPO_ROOT = PROJECT_ROOT.parents[1]  # foundry/
 SWEEP_PY = PROJECT_ROOT / "script_utils" / "sweep.py"
 SLURM_DIR = PROJECT_ROOT / "slurm_utils"
 CONFIGS_DIR = PROJECT_ROOT / "configs"
@@ -21,7 +18,6 @@ CONFIGS_DIR = PROJECT_ROOT / "configs"
 # Add script_utils to path so we can import sweep
 sys.path.insert(0, str(PROJECT_ROOT / "script_utils"))
 import sweep  # noqa: E402
-
 
 # ==========================================================================
 # sweep.py unit tests
@@ -150,12 +146,15 @@ class TestGenerateSweepConfigs:
 class TestSweepConfigFiles:
     """Test that the provided sweep config examples are valid."""
 
-    @pytest.mark.parametrize("config_name", [
-        "ppi_benchmark.yaml",
-        "enzyme_benchmark.yaml",
-        "offline_val_ckpt_sweep.yaml",
-        "search_strategy_sweep.yaml",
-    ])
+    @pytest.mark.parametrize(
+        "config_name",
+        [
+            "ppi_benchmark.yaml",
+            "enzyme_benchmark.yaml",
+            "offline_val_ckpt_sweep.yaml",
+            "search_strategy_sweep.yaml",
+        ],
+    )
     def test_sweep_config_loads(self, config_name):
         cfg_path = CONFIGS_DIR / "sweeps" / config_name
         if not cfg_path.exists():
@@ -176,64 +175,69 @@ class TestSweepConfigFiles:
 class TestLaunchScripts:
     """Test that launch scripts are syntactically valid and source common.sh."""
 
-    @pytest.mark.parametrize("script", [
-        "launch_infer.sh",
-        "launch_offline_val.sh",
-        "launch_sweep.sh",
-    ])
+    @pytest.mark.parametrize(
+        "script",
+        [
+            "launch_infer.sh",
+            "launch_offline_val.sh",
+            "launch_sweep.sh",
+        ],
+    )
     def test_script_exists_and_executable(self, script):
         path = SLURM_DIR / script
         assert path.exists(), f"Script not found: {path}"
         assert os.access(path, os.X_OK), f"Script not executable: {path}"
 
-    @pytest.mark.parametrize("script", [
-        "launch_infer.sh",
-        "launch_offline_val.sh",
-        "launch_sweep.sh",
-    ])
+    @pytest.mark.parametrize(
+        "script",
+        [
+            "launch_infer.sh",
+            "launch_offline_val.sh",
+            "launch_sweep.sh",
+        ],
+    )
     def test_script_syntax_valid(self, script):
         """bash -n checks syntax without executing."""
         path = SLURM_DIR / script
         result = subprocess.run(
             ["bash", "-n", str(path)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, f"Syntax error in {script}: {result.stderr}"
 
-    @pytest.mark.parametrize("script", [
-        "launch_infer.sh",
-        "launch_offline_val.sh",
-        "launch_sweep.sh",
-    ])
+    @pytest.mark.parametrize(
+        "script",
+        [
+            "launch_infer.sh",
+            "launch_offline_val.sh",
+            "launch_sweep.sh",
+        ],
+    )
     def test_script_sources_common(self, script):
         """Each launch script should source common.sh."""
         path = SLURM_DIR / script
         content = path.read_text()
-        assert 'source "$SCRIPT_DIR/common.sh"' in content, (
-            f"{script} does not source common.sh"
-        )
+        assert 'source "$SCRIPT_DIR/common.sh"' in content, f"{script} does not source common.sh"
 
     def test_common_sh_exists_and_valid(self):
         common = SLURM_DIR / "common.sh"
         assert common.exists()
         result = subprocess.run(
             ["bash", "-n", str(common)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, f"Syntax error in common.sh: {result.stderr}"
 
     def test_launch_infer_uses_resolve_config(self):
         """launch_infer.sh should use resolve_hydra_config, not grep."""
         content = (SLURM_DIR / "launch_infer.sh").read_text()
-        assert "resolve_hydra_config" in content, (
-            "launch_infer.sh should use resolve_hydra_config"
-        )
+        assert "resolve_hydra_config" in content, "launch_infer.sh should use resolve_hydra_config"
 
     def test_launch_infer_has_scontrol_check(self):
         content = (SLURM_DIR / "launch_infer.sh").read_text()
-        assert "scontrol" in content, (
-            "launch_infer.sh should check scontrol for auto-requeue"
-        )
+        assert "scontrol" in content, "launch_infer.sh should check scontrol for auto-requeue"
 
     def test_launch_sweep_has_dry_run(self):
         content = (SLURM_DIR / "launch_sweep.sh").read_text()
@@ -261,7 +265,8 @@ class TestSweepCLI:
 
         result = subprocess.run(
             [sys.executable, str(SWEEP_PY), "--sweep-config", str(cfg_path), "--dry-run"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             cwd=str(PROJECT_ROOT),
             env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "script_utils")},
         )
@@ -272,13 +277,19 @@ class TestSweepCLI:
         output_dir = str(tmp_path / "inline_out")
         result = subprocess.run(
             [
-                sys.executable, str(SWEEP_PY),
-                "--base-config", "inference",
-                "--sweep", "num_replicates=[10,20]",
-                "--output-dir", output_dir,
-                "--config-path", str(CONFIGS_DIR),
+                sys.executable,
+                str(SWEEP_PY),
+                "--base-config",
+                "inference",
+                "--sweep",
+                "num_replicates=[10,20]",
+                "--output-dir",
+                output_dir,
+                "--config-path",
+                str(CONFIGS_DIR),
             ],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             cwd=str(PROJECT_ROOT),
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"

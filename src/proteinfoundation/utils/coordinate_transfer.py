@@ -5,16 +5,16 @@ Handles coordinate transfer for workflows where residue types may change but we 
 
 import biotite.structure as struc
 import numpy as np
-from atomworks.common import exists
 from atomworks.io.template import get_empty_ccd_template
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import insert_atoms
 from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.io.utils.standard_annotations.base import Level
-from atomworks.io.utils.annotator import ensure_annotations
-from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from atomworks.ml.conditions.base import CONDITIONS
+from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
+
 from foundry.utils.logging import RankedLogger
 from foundry.utils.standard_annotations import SA_SRC
 
@@ -56,7 +56,8 @@ def _copy_coords_by_atom_name(
         target_atom_mask = target_mask & (target_array.atom_name == atom_name)
         target_array.coord[target_atom_mask] = source_array.coord[source_atom_mask]
 
-def _broadcast_src_component_residue_wise(atom_array):
+
+def _broadcast_src_component_residue_wise(atom_array: AtomArray) -> AtomArray:
     """Ensure that the src_component annotation reflects the residue-level nature of the input component syntax.
 
     Examples:
@@ -68,18 +69,17 @@ def _broadcast_src_component_residue_wise(atom_array):
     # NOTE: Operations are residue-wise rather than token-wise since atomized residues have a single src_component
     src_comp = SA_SRC.annotation(atom_array)
     if np.any(struc.apply_residue_wise(atom_array, src_comp, lambda x: len(set(x) - {"."}) > 1)):
-        raise ValueError(f"Found multiple non-trivial src_component values within a single residue.")
+        raise ValueError("Found multiple non-trivial src_component values within a single residue.")
 
     residue_level_src_component = struc.apply_residue_wise(
-        atom_array,
-        src_comp,
-        lambda x: np.array(x[x != "."][0] if np.any(x != ".") else ".", dtype="<U10")
+        atom_array, src_comp, lambda x: np.array(x[x != "."][0] if np.any(x != ".") else ".", dtype="<U10")
     )
     broadcasted_src_component = struc.spread_residue_wise(atom_array, residue_level_src_component)
 
     SA_SRC.set_annotation(atom_array, broadcasted_src_component)
 
     return atom_array
+
 
 def get_residue_level_annotations(
     atom_array: AtomArray,

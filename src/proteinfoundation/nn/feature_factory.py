@@ -2,20 +2,20 @@ import gzip
 import math
 import os
 import random
-from typing import Literal
+from typing import Any, Literal
 
 import einops
 import torch
 from jaxtyping import Float
-from foundry.utils.ddp import RankedLogger
-
-logger = RankedLogger(__name__, rank_zero_only=True)
 from torch.nn import functional as F
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.utils.angle_utils import bond_angles, signed_dihedral_angle
 
 # from torch_scatter import scatter_mean
 from proteinfoundation.utils.fold_utils import extract_cath_code_by_level
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 ################################
 # # Some auxiliary functions # #
@@ -23,7 +23,7 @@ from proteinfoundation.utils.fold_utils import extract_cath_code_by_level
 
 
 # From frameflow code
-def get_index_embedding(indices, edim, max_len=2056):
+def get_index_embedding(indices: torch.Tensor, edim: int, max_len: int = 2056) -> torch.Tensor:
     """Creates sine / cosine positional embeddings from a prespecified indices.
 
     Args:
@@ -79,7 +79,7 @@ def get_time_embedding(
     return emb
 
 
-def bin_pairwise_distances(x, min_dist, max_dist, dim):
+def bin_pairwise_distances(x: torch.Tensor, min_dist: float, max_dist: float, dim: int) -> torch.Tensor:
     """
     Takes coordinates and bins the pairwise distances.
 
@@ -97,7 +97,7 @@ def bin_pairwise_distances(x, min_dist, max_dist, dim):
     return bin_and_one_hot(pair_dists_nm, bin_limits)  # [b, n, n, pair_dist_dim]
 
 
-def bin_and_one_hot(tensor, bin_limits):
+def bin_and_one_hot(tensor: torch.Tensor, bin_limits: torch.Tensor) -> torch.Tensor:
     """
     Converts a tensor of shape [*] to a tensor of shape [*, d] using the given bin limits.
 
@@ -113,7 +113,7 @@ def bin_and_one_hot(tensor, bin_limits):
     return torch.nn.functional.one_hot(bin_indices, len(bin_limits) + 1) * 1.0
 
 
-def indices_force_start_w_one(pdb_idx, mask):
+def indices_force_start_w_one(pdb_idx: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     """
     Takes a tensor with pdb indices for a batch and forces them all to start with the index 1.
     Masked elements are still assigned the index -1.
@@ -139,17 +139,17 @@ def indices_force_start_w_one(pdb_idx, mask):
 class Feature(torch.nn.Module):
     """Base class for features."""
 
-    def __init__(self, dim: int):
+    def __init__(self, dim: int) -> None:
         super().__init__()
         self.dim = dim
 
-    def get_dim(self):
+    def get_dim(self) -> int:
         return self.dim
 
-    def forward(self, batch: dict):
+    def forward(self, batch: dict) -> torch.Tensor:
         pass  # Implemented by each class
 
-    def extract_bs_and_n(self, batch: dict):
+    def extract_bs_and_n(self, batch: dict) -> tuple[int, int]:
         """
         Extracts batch size and n from input batch.
         Once we add more modalities just try modaliites until you hit one.
@@ -167,7 +167,7 @@ class Feature(torch.nn.Module):
         bs, n = v.shape[0], v.shape[1]
         return bs, n
 
-    def extract_device(self, batch: dict):
+    def extract_device(self, batch: dict) -> torch.device:
         """Extracts device from input batch."""
         if "x_t" in batch:
             if "bb_ca" in batch["x_t"]:
@@ -180,14 +180,13 @@ class Feature(torch.nn.Module):
             raise OSError("Don't know how to extract device from batch...")
         return v.device
 
-    def assert_defaults_allowed(self, batch: dict, ftype: str):
+    def assert_defaults_allowed(self, batch: dict, ftype: str) -> None:
         """Raises error if default features should not be used to fill-up missing features in the current batch."""
-        if "strict_feats" in batch:
-            if batch["strict_feats"]:
-                raise OSError(
-                    f"{ftype} feature requested but no appropriate feature provided. "
-                    "Make sure to include the relevant transform in the data config."
-                )
+        if batch.get("strict_feats"):
+            raise OSError(
+                f"{ftype} feature requested but no appropriate feature provided. "
+                "Make sure to include the relevant transform in the data config."
+            )
 
 
 class ZeroFeat(Feature):
@@ -196,15 +195,15 @@ class ZeroFeat(Feature):
 
     def __init__(
         self,
-        dim_feats_out=128,
+        dim_feats_out: int = 128,
         mode: Literal["seq", "pair"] = "seq",
-        name=None,
-        **kwargs,
-    ):
+        name: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(dim=128)
         self.mode = mode
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
         if self.mode == "seq":
@@ -219,10 +218,10 @@ class CroppedFlagSeqFeat(Feature):
     """Computes feature of shape [b, n, 1] indicating if protein is cropped
     (1s if it is, 0s if it isn't)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(dim=1)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
         if "cropped" in batch:
@@ -238,13 +237,13 @@ class FoldEmbeddingSeqFeat(Feature):
 
     def __init__(
         self,
-        fold_emb_dim,
-        cath_code_dir,
-        multilabel_mode="sample",
-        fold_nhead=4,
-        fold_nlayer=2,
-        **kwargs,
-    ):
+        fold_emb_dim: int,
+        cath_code_dir: str,
+        multilabel_mode: str = "sample",
+        fold_nhead: int = 4,
+        fold_nlayer: int = 2,
+        **kwargs: Any,
+    ) -> None:
         """
         multilabel_mode (["sample", "average", "transformer"]): Schemes to handle multiple fold labels
             "sample": randomly sample one label
@@ -271,10 +270,10 @@ class FoldEmbeddingSeqFeat(Feature):
             self.transformer = torch.nn.TransformerEncoder(encoder_layer, fold_nlayer)
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         return next(self.buffers()).device
 
-    def create_mapping(self, cath_code_dir):
+    def create_mapping(self, cath_code_dir: str) -> None:
         """Create cath label vocabulary for C, A, T levels."""
         mapping_file = os.path.join(cath_code_dir, "cath_label_mapping.pt")
         if os.path.exists(mapping_file):
@@ -289,9 +288,9 @@ class FoldEmbeddingSeqFeat(Feature):
                     cath_code_set["A"].add(extract_cath_code_by_level(cath_code, "A"))
                     cath_code_set["T"].add(extract_cath_code_by_level(cath_code, "T"))
             class_mapping = {
-                "C": {k: i for i, k in enumerate(sorted(list(cath_code_set["C"])))},
-                "A": {k: i for i, k in enumerate(sorted(list(cath_code_set["A"])))},
-                "T": {k: i for i, k in enumerate(sorted(list(cath_code_set["T"])))},
+                "C": {k: i for i, k in enumerate(sorted(cath_code_set["C"]))},
+                "A": {k: i for i, k in enumerate(sorted(cath_code_set["A"]))},
+                "T": {k: i for i, k in enumerate(sorted(cath_code_set["T"]))},
             }
             torch.save(class_mapping, mapping_file)
 
@@ -302,11 +301,12 @@ class FoldEmbeddingSeqFeat(Feature):
         self.num_classes_A = len(self.class_mapping_A)
         self.num_classes_T = len(self.class_mapping_T)
 
-    def parse_label(self, cath_code_list):
+    def parse_label(self, cath_code_list: list) -> list:
         """Parse cath_code into corresponding indices at C, A, T levels
 
         Args:
-            cath_code_list (List[List[str]]): List of cath codes for each protein. Each protein can have no, one or multiple labels.
+            cath_code_list (List[List[str]]): List of cath codes for each protein.
+                Each protein can have no, one or multiple labels.
 
         Return:
             results: for each label of each protein, return its C, A, T label indices
@@ -338,7 +338,7 @@ class FoldEmbeddingSeqFeat(Feature):
             results.append(result)
         return results  # [b, num_label, 3]
 
-    def sample(self, cath_code_list):
+    def sample(self, cath_code_list: list) -> list:
         """Randomly sample one cath code"""
         results = []
         for cath_codes in cath_code_list:
@@ -346,7 +346,7 @@ class FoldEmbeddingSeqFeat(Feature):
             results.append(cath_codes[idx])
         return results
 
-    def flatten(self, cath_code_list):
+    def flatten(self, cath_code_list: list) -> tuple[torch.Tensor, torch.Tensor]:
         """Flatten variable lengths of cath codes into a long cath code tensor"""
         results = []
         batch_id = []
@@ -357,7 +357,7 @@ class FoldEmbeddingSeqFeat(Feature):
         batch_id = torch.as_tensor(batch_id, device=self.device)
         return results, batch_id
 
-    def pad(self, cath_code_list):
+    def pad(self, cath_code_list: list) -> tuple[torch.Tensor, torch.Tensor]:
         """Pad variable lengths of cath codes into a batched cath code tensor"""
         results = []
         max_num_label = 0
@@ -377,7 +377,7 @@ class FoldEmbeddingSeqFeat(Feature):
         mask = torch.as_tensor(mask, device=self.device)
         return results, mask
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         bs, n = self.extract_bs_and_n(batch)
         if "cath_code" not in batch:
             cath_code = [["x.x.x.x"]] * bs  # If no cath code provided, return null embeddings
@@ -428,11 +428,11 @@ class FoldEmbeddingSeqFeat(Feature):
 class TimeEmbeddingSeqFeat(Feature):
     """Computes time embedding and returns as sequence feature of shape [b, n, t_emb_dim]."""
 
-    def __init__(self, data_mode_use, t_emb_dim, **kwargs):
+    def __init__(self, data_mode_use: str, t_emb_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=t_emb_dim)
         self.data_mode_use = data_mode_use
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         t = batch["t"][self.data_mode_use]  # [b]
         _, n = self.extract_bs_and_n(batch)
         t_emb = get_time_embedding(t, edim=self.dim)  # [b, t_emb_dim]
@@ -443,11 +443,11 @@ class TimeEmbeddingSeqFeat(Feature):
 class TimeEmbeddingPairFeat(Feature):
     """Computes time embedding and returns as pair feature of shape [b, n, n, t_emb_dim]."""
 
-    def __init__(self, data_mode_use, t_emb_dim, **kwargs):
+    def __init__(self, data_mode_use: str, t_emb_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=t_emb_dim)
         self.data_mode_use = data_mode_use
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         t = batch["t"][self.data_mode_use]  # [b]
         _, n = self.extract_bs_and_n(batch)
         t_emb = get_time_embedding(t, edim=self.dim)  # [b, t_emb_dim]
@@ -458,10 +458,10 @@ class TimeEmbeddingPairFeat(Feature):
 class IdxEmbeddingSeqFeat(Feature):
     """Computes index embedding and returns sequence feature of shape [b, n, idx_emb]."""
 
-    def __init__(self, idx_emb_dim, **kwargs):
+    def __init__(self, idx_emb_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=idx_emb_dim)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "residue_pdb_idx" in batch:
             inds = batch["residue_pdb_idx"]  # [b, n]
             inds = indices_force_start_w_one(inds, batch["padding_mask"])
@@ -476,10 +476,10 @@ class IdxEmbeddingSeqFeat(Feature):
 class ChainBreakPerResidueSeqFeat(Feature):
     """Computes a 1D sequence feature indicating if a residue is followed by a chain break, shape [b, n, 1]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=1)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "chain_breaks_per_residue" in batch:
             chain_breaks = batch["chain_breaks_per_residue"] * 1.0  # [b, n]
         else:
@@ -493,14 +493,14 @@ class ChainBreakPerResidueSeqFeat(Feature):
 class XscBBCASeqFeat(Feature):
     """Computes feature from backbone CA self conditining coordinates, seq feature of shape [b, n, 3]."""
 
-    def __init__(self, mode_key="x_sc", **kwargs):
+    def __init__(self, mode_key: str = "x_sc", **kwargs: Any) -> None:
         super().__init__(dim=3)
         self.mode_key = mode_key
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if self.mode_key in batch:
-            data_modes_avail = [k for k in batch[self.mode_key]]
+            data_modes_avail = list(batch[self.mode_key])
             assert (
                 "bb_ca" in data_modes_avail
             ), f"`bb_ca` sc/recycle seq feature requested but key not available in data modes {data_modes_avail}"
@@ -517,17 +517,18 @@ class XscBBCASeqFeat(Feature):
 class XscLocalLatentsSeqFeat(Feature):
     """Computes feature from local latents self conditining, seq feature of shape [b, n, dim]."""
 
-    def __init__(self, latent_dim, mode_key="x_sc", **kwargs):
+    def __init__(self, latent_dim: int, mode_key: str = "x_sc", **kwargs: Any) -> None:
         super().__init__(dim=latent_dim)
         self.mode_key = mode_key
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if self.mode_key in batch:
-            data_modes_avail = [k for k in batch[self.mode_key]]
-            assert (
-                "local_latents" in data_modes_avail
-            ), f"`local_latents` sc/recycle seq feature requested but key not available in data modes {data_modes_avail}"
+            data_modes_avail = list(batch[self.mode_key])
+            assert "local_latents" in data_modes_avail, (
+                "`local_latents` sc/recycle seq feature requested but key not available "
+                f"in data modes {data_modes_avail}"
+            )
             return batch[self.mode_key]["local_latents"]  # [b, n, latent_dim]
         else:
             b, n = self.extract_bs_and_n(batch)
@@ -541,11 +542,11 @@ class XscLocalLatentsSeqFeat(Feature):
 class XtBBCASeqFeat(Feature):
     """Computes feature from backbone CA x_t coordinates, seq feature of shape [b, n, 3]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=3)
 
-    def forward(self, batch):
-        data_modes_avail = [k for k in batch["x_t"]]
+    def forward(self, batch: dict) -> torch.Tensor:
+        data_modes_avail = list(batch["x_t"])
         assert (
             "bb_ca" in data_modes_avail
         ), f"`bb_ca` seq feat feature requested but key not available in data modes {data_modes_avail}"
@@ -555,11 +556,11 @@ class XtBBCASeqFeat(Feature):
 class XtLocalLatentsSeqFeat(Feature):
     """Computes feature from backbone CA x_t coordinates, seq feature of shape [b, n, 3]."""
 
-    def __init__(self, latent_dim, **kwargs):
+    def __init__(self, latent_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=latent_dim)
 
-    def forward(self, batch):
-        data_modes_avail = [k for k in batch["x_t"]]
+    def forward(self, batch: dict) -> torch.Tensor:
+        data_modes_avail = list(batch["x_t"])
         assert (
             "local_latents" in data_modes_avail
         ), f"`local_latents` seq feat feature requested but key not available in data modes {data_modes_avail}"
@@ -569,10 +570,10 @@ class XtLocalLatentsSeqFeat(Feature):
 class CaCoorsNanometersSeqFeat(Feature):
     """Computes feature from ca coordinates, seq feature of shape [b, n, 3]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=3)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert (
             "ca_coors_nm" in batch or "coords_nm" in batch
         ), "`ca_coors_nm` nor `coords_nm` in batch, cannot compute CaCoorsNanometersSeqFeat"
@@ -589,11 +590,11 @@ class TryCaCoorsNanometersSeqFeat(CaCoorsNanometersSeqFeat):
     If `ca_coors_nm` not in batch return zero feature.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "ca_coors_nm" in batch or "coords_nm" in batch:
             return super().forward(batch)
         else:
@@ -607,16 +608,17 @@ class TryCaCoorsNanometersSeqFeat(CaCoorsNanometersSeqFeat):
 
 class OptionalCaCoorsNanometersSeqFeat(CaCoorsNanometersSeqFeat):
     """
-    If `use_ca_coors_nm_feature` in batch and true, returns sequence feature with CA coordinates (in nm) of shape [b, n, 3].
+    If ``use_ca_coors_nm_feature`` in batch and true, returns sequence feature
+    with CA coordinates (in nm) of shape [b, n, 3].
 
-    If `use_ca_coors_nm_feature` not in batch, defaults to False.
+    If ``use_ca_coors_nm_feature`` not in batch, defaults to False.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if batch.get("use_ca_coors_nm_feature", False):  # defaults to False
             return super().forward(batch)
         else:
@@ -624,7 +626,8 @@ class OptionalCaCoorsNanometersSeqFeat(CaCoorsNanometersSeqFeat):
             device = self.extract_device(batch)
             if not self._has_logged:
                 logger.warning(
-                    "use_ca_coors_nm_feature disabled or not in batch, returning zeros for OptionalCaCoorsNanometersSeqFeat"
+                    "use_ca_coors_nm_feature disabled or not in batch, "
+                    "returning zeros for OptionalCaCoorsNanometersSeqFeat"
                 )
                 self._has_logged = True
             return torch.zeros(b, n, self.dim, device=device)
@@ -643,20 +646,20 @@ class ResidueTypeSeqFeat(Feature):
     Supports both legacy (20 AA) and unified (33 types) encodings.
     """
 
-    def __init__(self, n_residue_types: int = 20, **kwargs):
+    def __init__(self, n_residue_types: int = 20, **kwargs: Any) -> None:
         super().__init__(dim=n_residue_types)
         self.n_residue_types = n_residue_types
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert "residue_type" in batch, "`residue_type` not in batch, cannot compute ResidueTypeSeqFeat"
         rtype = batch["residue_type"]  # [b, n]
-        
+
         # Use can_be_encoded mask if available (for autoencoder), otherwise fall back to mask
         if "can_be_encoded" in batch:
             rpadmask = batch["can_be_encoded"].long()  # [b, n] - only protein tokens
         else:
             rpadmask = batch["padding_mask"]  # [b, n] binary
-        
+
         # Clamp residue types to valid range for non-encodable tokens
         rtype = torch.clamp(rtype, min=0, max=self.n_residue_types - 1)
         rtype = rtype * rpadmask  # [b, n], masked positions become 0
@@ -673,11 +676,11 @@ class OptionalResidueTypeSeqFeat(ResidueTypeSeqFeat):
     Shape: [b, n, n_residue_types] (20 for legacy, 33 for unified).
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if batch.get("use_residue_type_feature", False):
             return super().forward(batch)
         else:
@@ -703,12 +706,12 @@ class Atom37NanometersCoorsSeqFeat(Feature):
     multiplies with the mask.
     """
 
-    def __init__(self, rel=False, **kwargs):
+    def __init__(self, rel: bool = False, **kwargs: Any) -> None:
         super().__init__(dim=int(37 * 4))
         # 37 * 4, 37 * 3 for the coordinates, + 37 for the mask
         self.rel = rel  # whether to get features relative to CA or absolute
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert "coords_nm" in batch, "`coords_nm` not in batch, cannot compute Atom37NanometersCoorsSeqFeat"
         coors = batch["coords_nm"]  # [b, n, 37, 3]
 
@@ -740,10 +743,10 @@ class BackboneTorsionAnglesSeqFeat(Feature):
     TODO: Add mask?
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=int(3 * 21))
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         bb_torsion = self._get_bb_torsion_angles(batch)  # [b, n, 3]
         bb_torsion_feats = bin_and_one_hot(
             bb_torsion,
@@ -752,11 +755,11 @@ class BackboneTorsionAnglesSeqFeat(Feature):
         bb_torsion_feats = einops.rearrange(bb_torsion_feats, "b n t d -> b n (t d)")  # [b, n, 3 * nbins]
         return bb_torsion_feats
 
-    def _get_bb_torsion_angles(self, batch):
+    def _get_bb_torsion_angles(self, batch: dict) -> torch.Tensor:
         a37 = batch["coords"]  # [b, n, 37, 3]
         b, n = a37.shape[0], a37.shape[1]
         device = a37.device
-        
+
         # Get mask for encodable tokens (proteins only, not small molecules)
         if "can_be_encoded" in batch:
             can_be_encoded = batch["can_be_encoded"].bool()  # [b, n]
@@ -764,13 +767,13 @@ class BackboneTorsionAnglesSeqFeat(Feature):
             can_be_encoded = batch["padding_mask"].bool()  # [b, n]
         else:
             can_be_encoded = torch.ones(b, n, dtype=torch.bool, device=device)
-        
+
         if "residue_pdb_idx" in batch and batch["residue_pdb_idx"] is not None:
             idx = batch["residue_pdb_idx"]  # [b, n]
         else:
             self.assert_defaults_allowed(batch, "Relative sequence separation pair")
             idx = torch.arange(1, n + 1, device=device).unsqueeze(0).expand(b, -1).float()  # [b, n]
-        
+
         # Extract backbone atoms
         N = a37[:, :, 0, :]  # [b, n, 3]
         CA = a37[:, :, 1, :]  # [b, n, 3]
@@ -783,9 +786,9 @@ class BackboneTorsionAnglesSeqFeat(Feature):
         bb_angles = torch.stack([psi, omega, phi], dim=-1)  # [b, n-1, 3]
 
         # Mask: both residues in pair must be encodable and sequential
-        good_pair = (idx[:, 1:] - idx[:, :-1] == 1)  # boolean [b, n-1]
+        good_pair = idx[:, 1:] - idx[:, :-1] == 1  # boolean [b, n-1]
         valid_pair = can_be_encoded[:, :-1] & can_be_encoded[:, 1:] & good_pair  # [b, n-1]
-        
+
         # Zero out invalid pairs (this handles NaN from small molecules)
         bb_angles = torch.where(valid_pair[..., None], bb_angles, torch.zeros_like(bb_angles))
 
@@ -801,10 +804,10 @@ class BackboneBondAnglesSeqFeat(Feature):
     TODO: Add mask?
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=int(3 * 21))
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         bb_bond_angle = self._get_bb_bond_angles(batch)  # [b, n, 3]
         bb_bond_angle_feats = bin_and_one_hot(
             bb_bond_angle,
@@ -813,11 +816,11 @@ class BackboneBondAnglesSeqFeat(Feature):
         bb_bond_angle_feats = einops.rearrange(bb_bond_angle_feats, "b n t d -> b n (t d)")  # [b, n, 3 * nbins]
         return bb_bond_angle_feats
 
-    def _get_bb_bond_angles(self, batch):
+    def _get_bb_bond_angles(self, batch: dict) -> torch.Tensor:
         a37 = batch["coords"]  # [b, n, 37, 3]
         b, n = a37.shape[0], a37.shape[1]
         device = a37.device
-        
+
         # Get mask for encodable tokens (proteins only, not small molecules)
         if "can_be_encoded" in batch:
             can_be_encoded = batch["can_be_encoded"].bool()  # [b, n]
@@ -835,17 +838,17 @@ class BackboneBondAnglesSeqFeat(Feature):
         N = a37[:, :, 0, :]  # [b, n, 3]
         CA = a37[:, :, 1, :]  # [b, n, 3]
         C = a37[:, :, 2, :]  # [b, n, 3]
-        
+
         # Compute bond angles
         theta_1 = bond_angles(N[:, :, :], CA[:, :, :], C[:, :, :])  # [b, n]
         theta_2 = bond_angles(CA[:, :-1, :], C[:, :-1, :], N[:, 1:, :])  # [b, n-1]
         theta_3 = bond_angles(C[:, :-1, :], N[:, 1:, :], CA[:, 1:, :])  # [b, n-1]
-        
+
         # Mask theta_1: single residue must be encodable
         theta_1 = torch.where(can_be_encoded, theta_1, torch.zeros_like(theta_1))
-        
+
         # Mask theta_2, theta_3: both residues in pair must be encodable and sequential
-        good_pair = (idx[:, 1:] - idx[:, :-1] == 1)  # boolean [b, n-1]
+        good_pair = idx[:, 1:] - idx[:, :-1] == 1  # boolean [b, n-1]
         valid_pair = can_be_encoded[:, :-1] & can_be_encoded[:, 1:] & good_pair  # [b, n-1]
         theta_2 = torch.where(valid_pair, theta_2, torch.zeros_like(theta_2))
         theta_3 = torch.where(valid_pair, theta_3, torch.zeros_like(theta_3))
@@ -867,10 +870,10 @@ class BackboneBondAnglesSeqFeat(Feature):
 class OpenfoldSideChainAnglesSeqFeat(Feature):
     """Computes sequence features from side chain angles."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=int(4 * 21 + 4))  # 88
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         _, angles, torsion_angles_mask = self._get_sidechain_angles(batch)
         # _, [b, n, 4] and [b, n, 4]
         angles_feat = bin_and_one_hot(
@@ -881,7 +884,7 @@ class OpenfoldSideChainAnglesSeqFeat(Feature):
         feat = torch.cat([angles_feat, torsion_angles_mask], dim=-1)  # [b, n, 4 * nbins + 4]
         return feat
 
-    def _get_sidechain_angles(self, batch):
+    def _get_sidechain_angles(self, batch: dict) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         orig_dtype = batch["coords"].dtype
         aatype = batch["residue_type"]  # [b, n]
 
@@ -958,10 +961,10 @@ class OpenfoldSideChainAnglesSeqFeat(Feature):
 class LatentVariableSeqFeat(Feature):
     """Returns sequence feature from latent variable."""
 
-    def __init__(self, latent_z_dim, **kwargs):
+    def __init__(self, latent_z_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=latent_z_dim)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert "z_latent" in batch, "`z_latent` not in batch, cannot compute LatentVariableSeqFeat"
         return batch["z_latent"]  # [b, n, latent_dim]
 
@@ -982,12 +985,12 @@ class TokenTypeSeqFeat(Feature):
         token_type_emb_dim: Embedding dimension for token types. Defaults to 32.
     """
 
-    def __init__(self, token_type_emb_dim: int = 32, **kwargs):
+    def __init__(self, token_type_emb_dim: int = 32, **kwargs: Any) -> None:
         super().__init__(dim=token_type_emb_dim)
         self.token_type_emb_dim = token_type_emb_dim
         self.embedding = torch.nn.Embedding(5, token_type_emb_dim)  # 5 token types
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert "token_type" in batch, "`token_type` not in batch, must be provided by collate"
         token_type = batch["token_type"]  # [b, n] integers 0-4
         return self.embedding(token_type)  # [b, n, token_type_emb_dim]
@@ -996,10 +999,10 @@ class TokenTypeSeqFeat(Feature):
 class ChainIdxSeqFeat(Feature):
     """Gets chain idx feature (-1 for padding) and returns feature of shape [b, n, 1]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=1)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "chain_iid" in batch:
             mask = batch["chain_iid"].unsqueeze(-1).float()  # [b, n, 1]
         elif "chains" in batch:
@@ -1012,10 +1015,10 @@ class ChainIdxSeqFeat(Feature):
 class SequenceSeparationPairFeat(Feature):
     """Computes sequence separation and returns feature of shape [b, n, n, seq_sep_dim]."""
 
-    def __init__(self, seq_sep_dim, **kwargs):
+    def __init__(self, seq_sep_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=seq_sep_dim)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "residue_pdb_idx" in batch:
             # no need to force 1 since taking difference
             inds = batch["residue_pdb_idx"]  # [b, n]
@@ -1043,13 +1046,13 @@ class SequenceSeparationPairFeat(Feature):
 class XtBBCAPairwiseDistancesPairFeat(Feature):
     """Computes pairwise distances for CA backbone atoms and returns feature of shape [b, n, n, dim_pair_dist]."""
 
-    def __init__(self, xt_pair_dist_dim, xt_pair_dist_min, xt_pair_dist_max, **kwargs):
+    def __init__(self, xt_pair_dist_dim: int, xt_pair_dist_min: float, xt_pair_dist_max: float, **kwargs: Any) -> None:
         super().__init__(dim=xt_pair_dist_dim)
         self.min_dist = xt_pair_dist_min
         self.max_dist = xt_pair_dist_max
 
-    def forward(self, batch):
-        data_modes_avail = [k for k in batch["x_t"]]
+    def forward(self, batch: dict) -> torch.Tensor:
+        data_modes_avail = list(batch["x_t"])
         assert (
             "bb_ca" in data_modes_avail
         ), f"`bb_ca` pair dist feature requested but key not available in data modes {data_modes_avail}"
@@ -1064,12 +1067,12 @@ class XtBBCAPairwiseDistancesPairFeat(Feature):
 class CaCoorsNanometersPairwiseDistancesPairFeat(Feature):
     """Computes pairwise distances for CA backbone atoms and returns feature of shape [b, n, n, dim_pair_dist]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=30)
         self.min_dist = 0.1
         self.max_dist = 3.0
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert (
             "ca_coors_nm" in batch or "coords_nm" in batch
         ), "`ca_coors_nm` pair dist feature requested but key `ca_coors_nm` nor `coords_nm` not available"
@@ -1087,16 +1090,17 @@ class CaCoorsNanometersPairwiseDistancesPairFeat(Feature):
 
 class OptionalCaCoorsNanometersPairwiseDistancesPairFeat(CaCoorsNanometersPairwiseDistancesPairFeat):
     """
-    If `use_ca_coors_nm_feature` in batch and true, returns pair feature with CA pairwise distances binned, shape [b, n, n, nbins].
+    If ``use_ca_coors_nm_feature`` in batch and true, returns pair feature with CA
+    pairwise distances binned, shape [b, n, n, nbins].
 
-    If `use_ca_coors_nm_feature` not in batch, defaults to False.
+    If ``use_ca_coors_nm_feature`` not in batch, defaults to False.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if batch.get("use_ca_coors_nm_feature", False):  # defaults to False
             return super().forward(batch)
         else:
@@ -1104,7 +1108,8 @@ class OptionalCaCoorsNanometersPairwiseDistancesPairFeat(CaCoorsNanometersPairwi
             device = self.extract_device(batch)
             if not self._has_logged:
                 logger.warning(
-                    "use_ca_coors_nm_feature disabled or not in batch, returning zeros for OptionalCaCoorsNanometersPairwiseDistancesPairFeat"
+                    "use_ca_coors_nm_feature disabled or not in batch, returning zeros "
+                    "for OptionalCaCoorsNanometersPairwiseDistancesPairFeat"
                 )
                 self._has_logged = True
             return torch.zeros(b, n, n, self.dim, device=device)
@@ -1115,21 +1120,21 @@ class XscBBCAPairwiseDistancesPairFeat(Feature):
 
     def __init__(
         self,
-        x_sc_pair_dist_dim,
-        x_sc_pair_dist_min,
-        x_sc_pair_dist_max,
-        mode_key="x_sc",
-        **kwargs,
-    ):
+        x_sc_pair_dist_dim: int,
+        x_sc_pair_dist_min: float,
+        x_sc_pair_dist_max: float,
+        mode_key: str = "x_sc",
+        **kwargs: Any,
+    ) -> None:
         super().__init__(dim=x_sc_pair_dist_dim)
         self.min_dist = x_sc_pair_dist_min
         self.max_dist = x_sc_pair_dist_max
         self.mode_key = mode_key
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if self.mode_key in batch:
-            data_modes_avail = [k for k in batch[self.mode_key]]
+            data_modes_avail = list(batch[self.mode_key])
             assert (
                 "bb_ca" in data_modes_avail
             ), f"`bb_ca` sc/recycle pair dist feature requested but key not available in data modes {data_modes_avail}"
@@ -1159,11 +1164,11 @@ class RelativeResidueOrientationPairFeat(Feature):
     TODO: 20 as argument
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=int(5 * 21))  # 105
 
-    def forward(self, batch):
-        aatype = batch["residue_type"]  # [b, n]
+    def forward(self, batch: dict) -> torch.Tensor:
+        _aatype = batch["residue_type"]  # [b, n]
         coords = batch["coords"]  # [b, n, 37, 3]
 
         # Handle both old and new mask key names
@@ -1184,8 +1189,8 @@ class RelativeResidueOrientationPairFeat(Feature):
         CA = coords[:, :, 1, :]  # [b, n, 3]
         CB = coords[:, :, 3, :]  # [b, n, 3]
 
-        N_p1, CA_p1, CB_p1 = map(lambda v: v[:, :, None, :], (N, CA, CB))  # Each [b, n, 1, 3]
-        N_p2, CA_p2, CB_p2 = map(lambda v: v[:, None, :, :], (N, CA, CB))  # Each [b, 1, n, 3]
+        N_p1, CA_p1, CB_p1 = (v[:, :, None, :] for v in (N, CA, CB))  # Each [b, n, 1, 3]
+        N_p2, CA_p2, CB_p2 = (v[:, None, :, :] for v in (N, CA, CB))  # Each [b, 1, n, 3]
 
         theta_12 = signed_dihedral_angle(N_p1, CA_p1, CB_p1, CB_p2)  # [b, n, n]
         theta_21 = signed_dihedral_angle(N_p2, CA_p2, CB_p2, CB_p1)  # [b, n, n]
@@ -1210,10 +1215,10 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
     {N_j, CA_j, C_j, CB_j}.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=int(4 * 21))  # 84
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         assert "coords_nm" in batch, "`coords_nm` not in batch, cannot comptue BackbonePairDistancesNanometerPairFeat"
         coords = batch["coords_nm"]
 
@@ -1235,11 +1240,10 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
         CB = coords[:, :, 3, :]  # [b, n, 3]
 
         CA_i = CA[:, :, None, :]  # [b, n, 1, 3]
-        N_j, CA_j, C_j, CB_j = map(lambda v: v[:, None, :, :], (N, CA, C, CB))  # Each [b, 1, n, 3]
+        N_j, CA_j, C_j, CB_j = (v[:, None, :, :] for v in (N, CA, C, CB))  # Each [b, 1, n, 3]
 
-        CA_N, CA_CA, CA_C, CA_CB = map(
-            lambda v: torch.linalg.norm(v[0] - v[1], dim=-1),
-            ((CA_i, N_j), (CA_i, CA_j), (CA_i, C_j), (CA_i, CB_j)),
+        CA_N, CA_CA, CA_C, CA_CB = (
+            torch.linalg.norm(v[0] - v[1], dim=-1) for v in ((CA_i, N_j), (CA_i, CA_j), (CA_i, C_j), (CA_i, CB_j))
         )  # Each shape [b, n, n]
         # CA_X[..., i, j] has distance (nm) between CA[..., i] and X[..., j]
 
@@ -1247,15 +1251,11 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
         CA_CB = CA_CB * has_cb[:, None, :]  # [b, n, n]
 
         # Fix for mask
-        CA_N, CA_CA, CA_C, CA_CB = map(
-            lambda v: v * pair_mask,
-            (CA_N, CA_CA, CA_C, CA_CB),
-        )  # Each shape [b, n, n]
+        CA_N, CA_CA, CA_C, CA_CB = (v * pair_mask for v in (CA_N, CA_CA, CA_C, CA_CB))  # Each shape [b, n, n]
 
         bin_limits = torch.linspace(0.1, 2, 20, device=coords.device)
-        CA_N_feat, CA_CA_feat, CA_C_feat, CA_CB_feat = map(
-            lambda v: bin_and_one_hot(v, bin_limits=bin_limits),
-            (CA_N, CA_CA, CA_C, CA_CB),
+        CA_N_feat, CA_CA_feat, CA_C_feat, CA_CB_feat = (
+            bin_and_one_hot(v, bin_limits=bin_limits) for v in (CA_N, CA_CA, CA_C, CA_CB)
         )  # Each [b, n, n, 21]
 
         feat = torch.cat([CA_N_feat, CA_CA_feat, CA_C_feat, CA_CB_feat], dim=-1)  # [b, n, n, 4 * 21]
@@ -1266,10 +1266,10 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
 class ChainIdxPairFeat(Feature):
     """Gets chain idx feature (-1 for padding) and returns feature of shape [b, n, n, 1]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=1)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "chain_iid" in batch:
             seq_mask = batch["chain_iid"].float()  # [b, n]
             mask = torch.einsum("bi,bj->bij", seq_mask, seq_mask).unsqueeze(-1)  # [b, n, n, 1]
@@ -1284,11 +1284,11 @@ class ChainIdxPairFeat(Feature):
 class StochasticTranslationSeqFeat(Feature):
     """Gets stochastic translation from centering transform and returns feature of shape [b, n, 3]."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(dim=3)
         self._has_logged = False
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         if "stochastic_translation" in batch:
             b, n = self.extract_bs_and_n(batch)
             translation = batch["stochastic_translation"]  # [b, 3]
@@ -1316,8 +1316,8 @@ class FeatureFactory(torch.nn.Module):
         dim_feats_out: int,
         use_ln_out: bool,
         mode: Literal["seq", "pair"],
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Feature factory for creating sequence and pair features.
 
@@ -1372,7 +1372,7 @@ class FeatureFactory(torch.nn.Module):
         """
         super().__init__()
         self.mode = mode
-        self.ret_zero = True if (feats is None or len(feats) == 0) else False
+        self.ret_zero = bool(feats is None or len(feats) == 0)
         if self.ret_zero:
             logger.info("No features requested")
             self.zero_creator = ZeroFeat(dim_feats_out=dim_feats_out, mode=mode)
@@ -1382,7 +1382,7 @@ class FeatureFactory(torch.nn.Module):
         self.ln_out = torch.nn.LayerNorm(dim_feats_out) if use_ln_out else torch.nn.Identity()
         self.linear_out = torch.nn.Linear(sum([c.get_dim() for c in self.feat_creators]), dim_feats_out, bias=False)
 
-    def get_creator(self, f, **kwargs):
+    def get_creator(self, f: str, **kwargs: Any) -> Feature:
         """Returns the right class for the requested feature f (a string)."""
 
         if self.mode == "seq":
@@ -1501,12 +1501,13 @@ class FeatureFactory(torch.nn.Module):
         else:
             raise OSError(f"Wrong feature mode (creator): {self.mode}. Should be 'seq' or 'pair'.")
 
-    def apply_padding_mask(self, feature_tensor, mask):
+    def apply_padding_mask(self, feature_tensor: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Applies mask to features.
 
         Args:
-            feature_tensor: tensor with requested features, shape [b, n, d] of [b, n, n, d] depending on self.mode ('seq' or 'pair')
+            feature_tensor: tensor with requested features, shape [b, n, d] or
+                [b, n, n, d] depending on self.mode ('seq' or 'pair')
             mask: Binary mask, shape [b, n]
 
         Returns:
@@ -1520,7 +1521,7 @@ class FeatureFactory(torch.nn.Module):
         else:
             raise OSError(f"Wrong feature mode (pad mask): {self.mode}. Should be 'seq' or 'pair'.")
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
         """Returns masked features, shape depends on mode, either 'seq' or 'pair'."""
         # If no features requested just return the zero tensor of appropriate dimensions
         if self.ret_zero:

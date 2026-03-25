@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 from beartype.typing import Any
+
 from foundry.metrics.metric import Metric
 
 

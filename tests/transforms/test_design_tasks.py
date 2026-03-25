@@ -82,9 +82,9 @@ The framework makes it easy to write two types of tests:
 
 import numpy as np
 import pytest
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
-from atomworks.io.utils.annotator import ensure_annotations
 
 from proteinfoundation.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
 from proteinfoundation.transforms.design_task import (

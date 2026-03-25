@@ -12,22 +12,24 @@ import biotite.structure as struc
 import numpy as np
 from atomworks import parse
 from atomworks.constants import STANDARD_DNA
+from atomworks.io.config import ParseConfig
 from atomworks.io.parser import (
     STANDARD_PARSER_ARGS,
 )
+from atomworks.io.utils.io_utils import infer_pdb_file_type
+from atomworks.ml.conditions import CONDITIONS
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
 from atomworks.ml.preprocessing.utils.structure_utils import (
     get_atom_mask_from_cell_list,
 )
-from atomworks.ml.conditions import CONDITIONS
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
 )
 from biotite.structure import AtomArray
+
 from foundry.common import exists
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.standard_annotations import SA_SRC
-
 from proteinfoundation.conditions import C_HOT, C_INTCRD
 from proteinfoundation.inference_utils.components import (
     fetch_mask_from_component,
@@ -40,7 +42,6 @@ ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 
 sequence_encoding = AF3SequenceEncoding()
 _aa_like_res_names = sequence_encoding.all_res_names[sequence_encoding.is_aa_like]
-
 
 
 #########################################
@@ -76,12 +77,10 @@ BACKBONE_ATOM_NAMES_RNA = [
 ]
 """RNA backbone atom names"""
 
-BACKBONE_ATOM_ELEMENTS_RNA = np.array(
-    ["P", "O", "O", "O", "C", "C", "O", "C", "O", "C", "O", "C"]
-)
+BACKBONE_ATOM_ELEMENTS_RNA = np.array(["P", "O", "O", "O", "C", "C", "O", "C", "O", "C", "O", "C"])
 """RNA backbone atom elements"""
 
-NA_BACKBONE_ATOM_NAME_TO_ELEMENT = dict(zip(BACKBONE_ATOM_NAMES_RNA, BACKBONE_ATOM_ELEMENTS_RNA))
+NA_BACKBONE_ATOM_NAME_TO_ELEMENT = dict(zip(BACKBONE_ATOM_NAMES_RNA, BACKBONE_ATOM_ELEMENTS_RNA, strict=False))
 """Atom name to element mapping for NA backbone atoms"""
 
 #########################################
@@ -98,7 +97,7 @@ REQUIRED_CONDITIONING_ANNOTATION_VALUES = {
     "is_motif_atom_unindexed_motif_breakpoint": False,
 }
 REQUIRED_CONDITIONING_ANNOTATIONS = list(REQUIRED_CONDITIONING_ANNOTATION_VALUES.keys())
-REQUIRED_INFERENCE_ANNOTATIONS = REQUIRED_CONDITIONING_ANNOTATIONS + [SA_SRC.full_name]
+REQUIRED_INFERENCE_ANNOTATIONS = [*REQUIRED_CONDITIONING_ANNOTATIONS, SA_SRC.full_name]
 """Annotations assigned to every valid atom array"""
 
 OPTIONAL_CONDITIONING_VALUES = {
@@ -151,7 +150,7 @@ def convert_existing_annotations_to_bool(
             continue
         tmp = atom_array.get_annotation(annotation).copy()
         atom_array.get_annotation(annotation).dtype = bool
-        if isinstance(tmp[0], (str, np.str_, np.dtypes.StrDType)):
+        if isinstance(tmp[0], str | np.str_ | np.dtypes.StrDType):
             tmp = np.array([ast.literal_eval(x) for x in tmp], dtype=bool)
         else:
             tmp = np.asarray(tmp, dtype=bool)
@@ -178,7 +177,7 @@ def set_default_conditioning_annotations(
     """
 
     # All annotations set to true for motif
-    fill = True if motif else False
+    fill = bool(motif)
     if mask is not None:
         # TODO: support defaulting to nulls
         check_has_required_conditioning_annotations(atom_array)
@@ -292,7 +291,8 @@ def extract_ligand_array(
             if lig in fixed_atoms or name in fixed_atoms:
                 if (lig in fixed_atoms and name in fixed_atoms) and name != lig:
                     raise ValueError(
-                        f"Got both ligand name and its pdb indices in fixed_atoms dictionary: {lig} and {name}. Please only provide one."
+                        f"Got both ligand name and its pdb indices in fixed_atoms dictionary: {lig} and {name}. "
+                        "Please only provide one."
                     )
                 fixed = fixed_atoms.get(lig, fixed_atoms.get(name))
                 if fixed:
@@ -340,7 +340,8 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
     if cif_parser_args is None:
         cif_parser_args = {}
 
-    # Convenience utilities to default to loading from and saving to cache if a cache_dir is provided, unless explicitly overridden
+    # Convenience utilities to default to loading from and saving to cache if a cache_dir is provided,
+    # unless explicitly overridden
     if cif_parser_args.get("cache_dir"):
         cif_parser_args.setdefault("load_from_cache", True)
         cif_parser_args.setdefault("save_to_cache", True)
@@ -352,6 +353,7 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
             "add_missing_atoms": False,
             "fix_formal_charges": False,
             "remove_ccds": [],
+            "long_bond_policy": "keep",
         },
         **cif_parser_args,
     }
@@ -362,14 +364,22 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
         set(merged_cif_parser_args.get("extra_fields", []) + REQUIRED_CONDITIONING_ANNOTATIONS)
     )
 
+    # Set the assembly_id if applicable
+    if infer_pdb_file_type(file) in ["cif", "bcif"]:
+        merged_cif_parser_args["build_assembly"] = (assembly_id,)
+
     # Use the parse function with the merged CIF parser arguments
+    parse_config = ParseConfig(**merged_cif_parser_args)
     result_dict = parse(
-        filename=file,
-        build_assembly=(assembly_id,),  # Convert list to tuple (make hashable)
-        **merged_cif_parser_args,
+        source=file,
+        config=parse_config,
     )
 
-    atom_array = result_dict["assemblies"][assembly_id][0]
+    if "assemblies" in result_dict and assembly_id in result_dict["assemblies"]:
+        atom_array = result_dict["assemblies"][assembly_id][0]
+    else:
+        atom_array = result_dict["asym_unit"][0]
+
     atom_array = convert_existing_annotations_to_bool(atom_array)
 
     data = {
@@ -392,7 +402,8 @@ def ensure_input_is_abspath(args: dict, path: PathLike | None) -> dict:
     """
     if isinstance(args, str):
         raise ValueError(
-            f"Expected args to be a dictionary, got a string: {args}. If you are using an input JSON ensure it contains dictionaries of arguments"
+            f"Expected args to be a dictionary, got a string: {args}. "
+            "If you are using an input JSON ensure it contains dictionaries of arguments"
         )
     if "input" not in args or not exists(args["input"]):
         return args
@@ -416,7 +427,8 @@ def infer_ori_from_hotspots(atom_array: AtomArray) -> np.ndarray:
         hotspot_atom_array = atom_array[C_HOT.mask(atom_array, default="raise")]
     else:
         raise ValueError(
-            f"Atom array must contain 'is_atom_level_hotspot' or '{C_HOT.full_name}' annotation to infer ori from hotspots."
+            f"Atom array must contain 'is_atom_level_hotspot' or '{C_HOT.full_name}'"
+            " annotation to infer ori from hotspots."
         )
 
     hotspot_com = hotspot_atom_array.coord.mean(axis=0)
@@ -472,7 +484,7 @@ def set_com(
     atom_array: AtomArray,
     ori_token: list[float] | None = None,
     infer_ori_strategy: str | None = None,
-    allow_non_motif_centered=False,
+    allow_non_motif_centered: bool = False,
 ) -> AtomArray:
     """General function for handling centering of input structures prior to running inference
 
@@ -483,8 +495,9 @@ def set_com(
     Args:
         atom_array (AtomArray): Input atom array to have its centroid adjusted.
         ori_token (list[float] | None): Optional explicit origin to center the structure on.
-        infer_ori_strategy (str | None): Optional strategy to infer the origin for centering. Options include 'com',
-            which centers on the centroid of all atoms, and 'hotspots', which places the origin radially out from the hotspots.
+        infer_ori_strategy (str | None): Optional strategy to infer the origin for centering. Options include
+            'com', which centers on the centroid of all atoms, and 'hotspots', which places the origin
+            radially out from the hotspots.
         allow_non_motif_centered (bool): Whether to allow centering on non-motif regions. Should only be enabled
             for evaluating external models, never for running the proteinfoundation model.
     """
@@ -535,7 +548,8 @@ def generate_idealized_cb_position(N: np.array, Ca: np.array, C: np.array) -> np
 
     Returns:
         Cb (torch.Tensor): coordinates of (pseudo) Cb atoms [..., L, 3]
-            These will be placed at the idealized Cb distance (based on ALA) from Ca, assuming a frame of the following form:
+            These will be placed at the idealized Cb distance (based on ALA) from Ca, assuming a frame
+            of the following form:
                 - x-axis: along the Ca-C bond
                 - z-axis: perpendicular to the Ca-N-C plane, right-handed wrt to (Ca-C) & (Ca-N) vectors.
                 - y-axis: in the plane of the Ca-N-C bonds, such that the overall frame is right-handed.

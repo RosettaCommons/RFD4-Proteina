@@ -27,41 +27,40 @@ To enable line-level timing, uncomment the ``lp.add_function(...)`` calls in
 ``main()`` for the functions you want to profile, then re-run the script.
 Output is printed in milliseconds.
 """
+
 import sys
+import time
 from pathlib import Path
+from typing import Any
 
 import line_profiler
 import rootutils
-import time
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-from foundry.utils.env import load_dotenv
+from foundry.utils.env import load_dotenv  # noqa: E402
 
 load_dotenv()
 
 from hydra import compose, initialize_config_dir  # noqa: E402
 from omegaconf import OmegaConf  # noqa: E402
 
-from atomworks.ml.datasets.base import MolecularDataset  # noqa: E402
 from foundry.utils.datasets import recursively_instantiate_datasets_and_samplers  # noqa: E402
 from foundry.utils.logging import print_config_tree  # noqa: E402
-
-from proteinfoundation.transforms.graph_laplacian import compute_graph_laplacian_eigenvectors, featurize_bonds_as_laplacian_positional_encoding
 
 CONFIGS_DIR = Path(__file__).parent.parent / "configs"
 
 SLOW_INDICES = [117, 425, 265, 473, 266, 316, 4, 307, 309, 308, 310, 49, 376, 201, 64, 486, 490, 382]
 
 
-def run(dataset, indices):
+def run(dataset: Any, indices: list[int]) -> None:
     for i in indices:
         start_time = time.time()
-        result = dataset[i]
+        _result = dataset[i]
         print(f"  example {i} done in {time.time() - start_time:.3f} seconds")
 
 
-def main():
+def main() -> None:
     config_name = sys.argv[1] if len(sys.argv) > 1 else "datasets/train/plinder/plinder_with_missing_atoms"
 
     with initialize_config_dir(config_dir=str(CONFIGS_DIR.resolve()), version_base=None):
@@ -70,26 +69,20 @@ def main():
     # The dataset configs reference ${datasets.global_design_task_kwargs} which is normally
     # provided by the experiment config. Inject an empty default so interpolation resolves.
     OmegaConf.update(
-      cfg,
-      "datasets.global_design_task_kwargs",
-      {
-        "rasa_kwargs": {
-          "p_add_rasa_condition": 0.0
+        cfg,
+        "datasets.global_design_task_kwargs",
+        {
+            "rasa_kwargs": {"p_add_rasa_condition": 0.0},
+            "hbond_kwargs": {"p_add_hbond_condition": 0.0},
+            "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
+            "cath_kwargs": {
+                "p_add_cath_c_condition": 0.0,
+                "p_add_cath_ca_condition": 0.0,
+                "p_add_cath_cat_condition": 0.0,
+            },
         },
-        "hbond_kwargs": {
-          "p_add_hbond_condition": 0.0
-        },
-        "secondary_structure_kwargs": {
-          "p_add_secondary_structure_condition": 0.0
-        },
-        "cath_kwargs": {
-          "p_add_cath_c_condition": 0.0,
-          "p_add_cath_ca_condition": 0.0,
-          "p_add_cath_cat_condition": 0.0
-        }
-      },
-      merge=True,
-      force_add=True
+        merge=True,
+        force_add=True,
     )
     print_config_tree(cfg, resolve=True)
 

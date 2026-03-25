@@ -1,8 +1,9 @@
 """Callback to re-seed RNGs with rank offset after DDP initialization."""
 
 import random
-import numpy as np
+
 import lightning as L
+import numpy as np
 import torch
 import torch.distributed as dist
 
@@ -43,7 +44,7 @@ class RankSeedCallback(L.Callback):
             f"[Rank {rank}] Re-seeded RNGs ({context}): seed={seed} "
             f"(base={self.base_seed}, rank={rank}, epoch={epoch}, step={global_step}) | "
             f"samples: py={sample_python:.6f}, np={sample_numpy:.6f}, torch={sample_torch:.6f}",
-            flush=True
+            flush=True,
         )
 
     def on_fit_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:

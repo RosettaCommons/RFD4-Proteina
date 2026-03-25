@@ -1,8 +1,8 @@
-from typing import Literal
+from typing import Any, Literal
 
 
-def extract_cath_code_from_batch(batch):
-    cath_code = batch.get("cath_code", None)
+def extract_cath_code_from_batch(batch: dict) -> Any:
+    cath_code = batch.get("cath_code")
     if cath_code:
         # Remove the additional tuple layer introduced during collate
         _cath_code = []
@@ -45,7 +45,7 @@ def mask_cath_code_by_level(cath_code: list[str], level: Literal["C", "A", "T", 
     return _cath_code
 
 
-def transform_global_percentage_to_mask_dropout(fold_label_sample_ratio):
+def transform_global_percentage_to_mask_dropout(fold_label_sample_ratio: list[float]) -> tuple[float, float, float]:
     assert len(fold_label_sample_ratio) == 4, "Length of fold_label_sample_ratio should be 4"
     assert sum(fold_label_sample_ratio) == 1.0, "Sum of fold_label_sample_ratio should be 1.0"
     mask_T_prob = sum(fold_label_sample_ratio[:3]) / sum(

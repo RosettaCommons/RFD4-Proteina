@@ -5,9 +5,11 @@ and EMA weights in various scenarios, including edge cases like checkpoint
 saving during validation.
 """
 
+from unittest.mock import Mock
+
 import pytest
 import torch
-from unittest.mock import Mock
+
 from proteinfoundation.utils.simple_ema import SimpleEMA
 
 

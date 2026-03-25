@@ -1,9 +1,13 @@
 """Utilities for detecting and analyzing protein-protein interfaces."""
 
+import functools
+import operator
+
 import numpy as np
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 from scipy.spatial import cKDTree
+
+from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -38,7 +42,7 @@ def get_interface_residues(
         during ProteinMPNN redesign to preserve binding interactions.
     """
     # Get all chains in the structure
-    all_chains = np.unique(structure.chain_id).tolist()
+    _all_chains = np.unique(structure.chain_id).tolist()
 
     # Filter to CA atoms only for distance calculation
     struct_ca = structure[structure.atom_name == "CA"]
@@ -62,7 +66,7 @@ def get_interface_residues(
     pairs = target_tree.query_ball_tree(binder_tree, cutoff)
 
     # Get unique binder atoms that are at the interface
-    binder_interface_atoms = np.array(sorted(list(set(sum(pairs, [])))))
+    binder_interface_atoms = np.array(sorted(set(functools.reduce(operator.iadd, pairs, []))))
 
     if len(binder_interface_atoms) == 0:
         logger.warning(f"No interface residues found with cutoff {cutoff}Å")
@@ -123,7 +127,7 @@ def get_interface_residues_all_atom(
 
     # Find interface atoms
     pairs = target_tree.query_ball_tree(binder_tree, cutoff)
-    binder_interface_atoms = np.array(sorted(list(set(sum(pairs, [])))))
+    binder_interface_atoms = np.array(sorted(set(functools.reduce(operator.iadd, pairs, []))))
 
     if len(binder_interface_atoms) == 0:
         logger.warning(f"No interface atoms found with cutoff {cutoff}Å")

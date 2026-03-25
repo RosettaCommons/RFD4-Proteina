@@ -1,20 +1,24 @@
 import time
+from typing import Any
 
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
+
 from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def log_metrics(pl_module, metrics):
+def log_metrics(pl_module: L.LightningModule, metrics: dict[str, torch.Tensor]) -> None:
     for m in metrics:
         pl_module.log(m, metrics[m], on_step=True, on_epoch=True, prog_bar=False, logger=True)
 
 
 class UnusedParametersCallback(Callback):
-    def on_before_optimizer_step(self, trainer, pl_module, optimizer):
+    def on_before_optimizer_step(
+        self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
+    ) -> None:
         for name, param in pl_module.named_parameters():
             if param.grad is None:
                 print(f"Unused parameter: {name}")
@@ -23,10 +27,10 @@ class UnusedParametersCallback(Callback):
 class LogEpochTimeCallback(Callback):
     """Simple callback that logs how long each epoch takes, in seconds, to a pytorch lightning log"""
 
-    def on_train_epoch_start(self, trainer, pl_module):
+    def on_train_epoch_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         self.epoch_start = time.time()
 
-    def on_train_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         curr_time = time.time()
         duration = curr_time - self.epoch_start
         pl_module.log(
@@ -45,10 +49,19 @@ class LogEpochTimeCallback(Callback):
 class LogStepTimeCallback(Callback):
     """Simple callback that logs how long each training step takes, in seconds, to a pytorch lightning log"""
 
-    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+    def on_train_batch_start(
+        self, trainer: L.Trainer, pl_module: L.LightningModule, batch: dict, batch_idx: int
+    ) -> None:
         self.step_start = time.time()
 
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+    def on_train_batch_end(
+        self,
+        trainer: L.Trainer,
+        pl_module: L.LightningModule,
+        outputs: dict,
+        batch: dict,
+        batch_idx: int,
+    ) -> None:
         curr_time = time.time()
         duration = curr_time - self.step_start
         pl_module.log(
@@ -65,20 +78,20 @@ class LogStepTimeCallback(Callback):
 class GradAndWeightAnalysisCallback(Callback):
     """Some functionality to observe how are weights and gradientsbehaving during trainnig."""
 
-    def __init__(self, debug=True, moving_avg_size=100):
-        super(GradAndWeightAnalysisCallback, self).__init__()
+    def __init__(self, debug: bool = True, moving_avg_size: int = 100) -> None:
+        super().__init__()
         self.debug = debug
         self.moving_avg_size = moving_avg_size
         self.avg_grad_history = []
         self.max_grad_history = []
 
-    def _get_avg_and_max_w(self, pl_module):
+    def _get_avg_and_max_w(self, pl_module: L.LightningModule) -> tuple[torch.Tensor, torch.Tensor]:
         """Computes average and max weight in module."""
         with torch.no_grad():
             params = torch.nn.utils.parameters_to_vector(pl_module.parameters()).abs()
             return params.sum() / params.numel(), params.max()
 
-    def on_before_optimizer_step(self, trainer, pl_module, optimizer):
+    def on_before_optimizer_step(self, trainer: Any, pl_module: Any, optimizer: Any) -> None:
         """Before updating log max and average weight."""
         avg_w, max_w = self._get_avg_and_max_w(pl_module)
         avg_g, max_g = self._get_avg_and_max_grad(pl_module)
@@ -109,15 +122,17 @@ class GradAndWeightAnalysisCallback(Callback):
             self.avg_grad_history.append(avg_g.item())
 
         if self.debug and (avg_w.isnan().any() or max_w.isnan().any()):
-            params = torch.nn.utils.parameters_to_vector(pl_module.parameters()).abs()
+            _params = torch.nn.utils.parameters_to_vector(pl_module.parameters()).abs()
 
         log_metrics(pl_module, metrics)
 
-    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+    def on_train_batch_start(
+        self, trainer: L.Trainer, pl_module: L.LightningModule, batch: dict, batch_idx: int
+    ) -> None:
         """First thing on training step."""
         avg_w, max_w = self._get_avg_and_max_w(pl_module)
 
-    def _get_avg_and_max_grad(self, pl_module):
+    def _get_avg_and_max_grad(self, pl_module: L.LightningModule) -> tuple[torch.Tensor, torch.Tensor]:
         """Computes average and max grad in module, if no grad computed zero."""
         grad_sum = torch.tensor(0.0, device=pl_module.device)
         max_grad = torch.tensor(0.0, device=pl_module.device)
@@ -132,7 +147,7 @@ class GradAndWeightAnalysisCallback(Callback):
             return torch.tensor(0.0, device=pl_module.device), torch.tensor(0.0, device=pl_module.device)
         return grad_sum / count, max_grad
 
-    def _count_nan_grad(self, pl_module):
+    def _count_nan_grad(self, pl_module: L.LightningModule) -> tuple[int, int]:
         numels, num_nans = 0, 0
         for p in pl_module.parameters():
             if p.grad is not None:
@@ -140,7 +155,9 @@ class GradAndWeightAnalysisCallback(Callback):
                 num_nans += p.grad.isnan().sum().item()
         return numels, num_nans
 
-    def on_before_zero_grad(self, trainer, pl_module, optimizer):
+    def on_before_zero_grad(
+        self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
+    ) -> None:
         """Before zero-ing grad log max and average grad
         (should be shifted one back from next)."""
         avg_g, max_g = self._get_avg_and_max_grad(pl_module)
@@ -151,7 +168,7 @@ class GradAndWeightAnalysisCallback(Callback):
         }
         log_metrics(pl_module, metrics)
 
-    def on_after_backward(self, trainer, pl_module):
+    def on_after_backward(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         """After computing gradient log max and average grad.
         This same value should be returned by <on_before_zxero_grad>
         in the next iteration."""
@@ -168,7 +185,7 @@ class GradAndWeightAnalysisCallback(Callback):
 class SkipNanGradCallback(Callback):
     """Callback to skip gradient updates with NaN in them."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.count = 0
         self.iter = 0
@@ -182,14 +199,16 @@ class SkipNanGradCallback(Callback):
         if nan_flag:
             self.count += 1
             logger.warning(
-                f"NaN gradient detected at iteration {self.iter}, skipping optimizer step. Total NaN skips: {self.count}"
+                f"NaN gradient detected at iteration {self.iter}, "
+                f"skipping optimizer step. Total NaN skips: {self.count}"
             )
             pl_module.zero_grad()
 
 
 class SkipLargeGradients(Callback):
     """
-    This callback tracks the average max gradient for the last `moving_avg_size` steps and checks if the current max gradient
+    This callback tracks the average max gradient for the last `moving_avg_size` steps
+    and checks if the current max gradient exceeds the threshold.
     """
 
     def __init__(
@@ -197,13 +216,13 @@ class SkipLargeGradients(Callback):
         moving_avg_size: int = 100,
         factor_threshold: int = 5,
         min_opt_steps: int = 2000,
-    ):
+    ) -> None:
         self.max_g_history = []
         self.moving_avg_size = moving_avg_size
         self.factor_threshold = factor_threshold
         self.min_opt_steps = min_opt_steps
 
-    def on_before_optimizer_step(self, trainer, pl_module, optimizer):
+    def on_before_optimizer_step(self, trainer: Any, pl_module: Any, optimizer: Any) -> None:
         # calculate the maximum gradient
         max_g = max(param.grad.data.abs().max() for param in pl_module.parameters() if param.grad is not None)
 
@@ -213,13 +232,12 @@ class SkipLargeGradients(Callback):
         if not (max_g.isnan().any() or max_g.isinf().any()):
             self.max_g_history.append(max_g.item())
 
-        if trainer.global_step > self.min_opt_steps:
-            if len(self.max_g_history) > 1:
-                moving_average = sum(self.max_g_history) / len(self.max_g_history)
+        if trainer.global_step > self.min_opt_steps and len(self.max_g_history) > 1:
+            moving_average = sum(self.max_g_history) / len(self.max_g_history)
 
-                # Check if the current max gradient exceeds factor_threshold * moving average
-                if max_g > self.factor_threshold * moving_average:
-                    # Zero out gradients
-                    for param in pl_module.parameters():
-                        if param.grad is not None:
-                            param.grad.data.zero_()  # Set gradients to zero
+            # Check if the current max gradient exceeds factor_threshold * moving average
+            if max_g > self.factor_threshold * moving_average:
+                # Zero out gradients
+                for param in pl_module.parameters():
+                    if param.grad is not None:
+                        param.grad.data.zero_()  # Set gradients to zero

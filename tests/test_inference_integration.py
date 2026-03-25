@@ -17,10 +17,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-import torch
+from atomworks.enums import ChainType
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
-from atomworks.enums import ChainType
 from biotite.structure import get_residue_starts
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
@@ -31,16 +30,15 @@ load_dotenv(override=True)
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
+from pydantic_core._pydantic_core import ValidationError
 
 from foundry.testing import gpu  # noqa: F401
-from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
-
+from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.generate import (
     get_contig_or_design_problem_dataset,
     run_generation,
 )
-from pydantic_core._pydantic_core import ValidationError
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset
 
 # ---------------------------------------------------------------------------
@@ -107,6 +105,7 @@ def minimal_monomer_json(tmp_output_dir):
         json.dump(data, f)
     return path
 
+
 @pytest.fixture
 def diffused_na_json(tmp_output_dir):
     """Write a single-example JSON with a mix of RNA, DNA, and protein residues."""
@@ -122,6 +121,7 @@ def diffused_na_json(tmp_output_dir):
         json.dump(data, f)
     return path
 
+
 @pytest.fixture
 def bad_diffused_na_json(tmp_output_dir):
     """Write a single-example JSON with an invalid polymer type setup (varies within chain)."""
@@ -136,6 +136,7 @@ def bad_diffused_na_json(tmp_output_dir):
     with open(path, "w") as f:
         json.dump(data, f)
     return path
+
 
 @pytest.fixture
 def two_example_json(tmp_output_dir):
@@ -261,7 +262,7 @@ class TestDatasetConstruction:
         assert "atom_array" in example
         assert "example_id" in example
         assert "feats" in example
-    
+
     def test_diffused_na_contigs(self, diffused_na_json, bad_diffused_na_json, inference_pipeline):
         """Verify ContigJsonDataset loads a single example and applies transforms."""
         dataset = get_contig_or_design_problem_dataset(
@@ -283,18 +284,17 @@ class TestDatasetConstruction:
 
         aa_and_expectations = [
             (atom_array[:rna_start], ChainType.DNA, False, False, True, False),  # DNA residues
-            (atom_array[rna_start:protein_start], ChainType.RNA, False, True, False, False), # RNA residues
+            (atom_array[rna_start:protein_start], ChainType.RNA, False, True, False, False),  # RNA residues
             (atom_array[protein_start:], ChainType.POLYPEPTIDE_L, True, False, False, False),  # Protein residues
         ]
 
         for chain_group in aa_and_expectations:
             aa = chain_group[0]
-            for annot, expectation in zip(annots, chain_group[1:]):
+            for annot, expectation in zip(annots, chain_group[1:], strict=False):
                 values = aa.get_annotation(annot)
-                assert np.all(values == expectation), (
-                    f"Expected annotation '{annot}' to be {expectation} but got values {values}."
-                )
-
+                assert np.all(
+                    values == expectation
+                ), f"Expected annotation '{annot}' to be {expectation} but got values {values}."
 
         with pytest.raises(ValidationError, match="Chain types must be consistent"):
             _ = get_contig_or_design_problem_dataset(
@@ -302,7 +302,6 @@ class TestDatasetConstruction:
                 num_replicates=1,
                 transform=inference_pipeline,
             )
-
 
     def test_num_replicates(self, minimal_monomer_json, inference_pipeline):
         """Verify num_replicates correctly multiplies dataset size."""
@@ -372,9 +371,9 @@ _CKPT_PATH = os.environ.get(
 )
 _CKPT_NAME = os.environ.get("CKPT_NAME", "last.ckpt")
 _AE_CKPT_PATH = os.environ.get(
-    "AE_CKPT_PATH",
-    "/path/to/data"
+    "AE_CKPT_PATH", "/path/to/data"
 )
+
 
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures.
@@ -386,7 +385,7 @@ class TestEndToEndInference:
         export AE_CKPT_PATH=/path/to/ae_checkpoint.ckpt
     """
 
-    def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):
+    def test_generation_with_replicates_and_prefix_and_refolding(self, tmp_output_dir):
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
         prefix = "testprefix"
         num_replicates = 2
@@ -406,7 +405,7 @@ class TestEndToEndInference:
                 "diffusion_batch_size=1",
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
-                "metrics_tags=unconditional_refolding"
+                "metrics_tags=unconditional_refolding",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_replicates_prefix")
@@ -430,7 +429,7 @@ class TestEndToEndInference:
         for eid in df["example_id"]:
             assert prefix in eid
 
-    def test_generation_with_subsetting(self, gpu, tmp_output_dir):
+    def test_generation_with_subsetting(self, tmp_output_dir):
         """Verify subset_to_examples and json_keys_subset (RFD3 alias)."""
         input_data = {
             "example_a": {"length": _TEST_LENGTH, "dialect": 2},
@@ -481,7 +480,7 @@ class TestEndToEndInference:
         assert len(df_b) == 1
         assert "example_b" in df_b["example_id"].iloc[0]
 
-    def test_skip_existing_prevents_regeneration(self, gpu, tmp_output_dir):
+    def test_skip_existing_prevents_regeneration(self, tmp_output_dir):
         """Verify skip_existing=True skips examples whose outputs already exist."""
         input_path = _write_input_json(
             tmp_output_dir,
@@ -521,7 +520,7 @@ class TestEndToEndInference:
         for name in mtimes_before:
             assert mtimes_before[name] == mtimes_after[name], f"File {name} was regenerated despite skip_existing=True"
 
-    def test_seeded_generation_is_deterministic(self, gpu, tmp_output_dir):
+    def test_seeded_generation_is_deterministic(self, tmp_output_dir):
         """Verify that two runs with the same seed produce identical outputs."""
         input_path = _write_input_json(
             tmp_output_dir,
@@ -564,14 +563,14 @@ class TestEndToEndInference:
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
 
-    def test_output_cif_annotations(self, gpu, tmp_output_dir):
+    def test_output_cif_annotations(self, tmp_output_dir):
         """Verify that generated CIF files contain expected annotations."""
         input_data = {
             "example_a": {
                 "contig": "5-5,A16-20",
                 "dialect": 2,
                 "input": str(BENCHMARKS_DIR / "motif_data_aa/1prw_aa.pdb"),
-                "select_fixed_atoms": True
+                "select_fixed_atoms": True,
             },
         }
 
@@ -608,12 +607,12 @@ class TestEndToEndInference:
         # Non-mask string annotations (stored under their full_name)
         assert SA_CRDSRC.has_annotation(generated_aa), f"Expected '{SA_CRDSRC.full_name}' in generated CIF"
         assert SA_SRC.has_annotation(generated_aa), f"Expected '{SA_SRC.full_name}' in generated CIF"
-        assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5, (
-            f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
-        )
-        assert np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5, (
-            f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
-        )
+        assert (
+            np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5
+        ), f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
+        assert (
+            np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5
+        ), f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
 
         # coords_with_insertion is now a StandardAnnotation and is loaded automatically
         assert SA_CWI.has_annotation(generated_aa), f"Expected '{SA_CWI.full_name}' in generated CIF"
@@ -622,7 +621,7 @@ class TestEndToEndInference:
         assert len(df) == 1
         assert "example_a" in df["example_id"].iloc[0]
 
-    def test_partial_diffusion(self, gpu, tmp_output_dir):
+    def test_partial_diffusion(self, tmp_output_dir):
         """Partial diffusion: fixed atoms are preserved, non-fixed atoms change.
 
         Runs partial diffusion on a stretch of 1PRW chain A, fixing a subset of
@@ -631,8 +630,8 @@ class TestEndToEndInference:
         zero while the diffused region should show meaningful coordinate change.
         """
         import biotite.structure as struc
+        from atomworks.io.parser import STANDARD_PARSER_ARGS
         from atomworks.io.utils.io_utils import load_any
-        from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
 
         input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.pdb")
 
@@ -670,7 +669,7 @@ class TestEndToEndInference:
         output_ca = output_aa[output_aa.atom_name == "CA"]
 
         # Superimpose output onto input using only the fixed region (first 5 CA atoms)
-        fixed_mask =  (input_ca.res_id >= 19) & (input_ca.res_id <= 22)
+        fixed_mask = (input_ca.res_id >= 19) & (input_ca.res_id <= 22)
         _, transform = struc.superimpose(input_ca[fixed_mask], output_ca[fixed_mask])
 
         # Apply the same rigid-body transform to the full output
@@ -682,9 +681,9 @@ class TestEndToEndInference:
             f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å"
             " — fixed atoms should retain input coordinates"
         )
-        assert np.array_equal(input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]), (
-            "Fixed-region residue types should be unchanged in output"
-        )
+        assert np.array_equal(
+            input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]
+        ), "Fixed-region residue types should be unchanged in output"
 
         # Non-fixed region: CA RMSD should be meaningfully > 0, sequences should be non-identical
         nonfixed_rmsd = struc.rmsd(input_ca[~fixed_mask], output_ca_aligned[~fixed_mask])
@@ -692,9 +691,9 @@ class TestEndToEndInference:
             f"Non-fixed-region CA RMSD {nonfixed_rmsd:.3f} Å should be > 1 Å"
             " — diffused atoms should differ from input coordinates"
         )
-        assert not np.array_equal(input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]), (
-            "Non-fixed-region residue types should be different in output"
-        )
+        assert not np.array_equal(
+            input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]
+        ), "Non-fixed-region residue types should be different in output"
 
 
 if __name__ == "__main__":

@@ -9,14 +9,14 @@ This avoids the slow first epoch during training.
 Usage:
     # With defaults
     python scripts/populate_pdb_cache.py
-    
+
     # With custom settings
     python scripts/populate_pdb_cache.py \
         --parquet /path/to/interfaces_df_train.parquet \
         --cache-dir /path/to/.cache \
         --num-workers 64 \
         --batch-size 100
-        
+
     # With SLURM (recommended for large datasets)
     sbatch scripts/populate_pdb_cache.sbatch
 """
@@ -36,7 +36,7 @@ from tqdm import tqdm
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from atomworks.io import parse
+from atomworks.io import parse  # noqa: E402
 
 
 def parse_single_structure(args: tuple) -> dict[str, Any]:
@@ -86,7 +86,7 @@ def parse_single_structure(args: tuple) -> dict[str, Any]:
                 }
 
         # Parse with caching enabled
-        result = parse(
+        _result = parse(
             path,
             build_assembly="first",
             load_from_cache=True,
@@ -114,14 +114,14 @@ def populate_cache(
     parquet_path: str,
     cache_dir: str,
     ccd_mirror_path: str,
-    num_workers: int = None,
+    num_workers: int | None = None,
     batch_size: int = 100,
-    max_structures: int = None,
-    filters: list = None,
-    array_task_id: int = None,
-    array_total_tasks: int = None,
+    max_structures: int | None = None,
+    filters: list | None = None,
+    array_task_id: int | None = None,
+    array_total_tasks: int | None = None,
     skip_if_cached: bool = True,
-):
+) -> None:
     """Populate cache by parsing all structures in parallel.
 
     Args:
@@ -264,7 +264,7 @@ def populate_cache(
         if result.returncode == 0:
             cache_size = result.stdout.split()[0]
             print(f"Cache size:       {cache_size}")
-    except:
+    except Exception:
         pass
 
     # Save failed examples if any
@@ -290,7 +290,7 @@ def populate_cache(
     print("=" * 80)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Pre-populate PDB cache by parsing structures in parallel",
         formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -14,23 +14,24 @@ import torch
 import yaml
 from atomworks.common import exists
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.transforms.base import Transform, Identity
-
-from foundry.utils.env import load_dotenv
+from atomworks.ml.transforms.base import Identity, Transform
 from hydra.core.hydra_config import HydraConfig
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.logging import print_config_tree
-from omegaconf import OmegaConf, DictConfig, ListConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 
+from foundry.utils.ddp import RankedLogger
+from foundry.utils.env import load_dotenv
+from foundry.utils.logging import print_config_tree
 from proteinfoundation.datapipes.collate import atom37_collate_fn
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.input_parsing import InputSpecification
 from proteinfoundation.proteina import Proteina
+from proteinfoundation.search.base_strategy import SearchStrategy
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
-# NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project (where `.project-root` is located)
+# NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project
+# (where `.project-root` is located)
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -39,7 +40,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
 
 
-def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value=None):
+def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value: object = None) -> object:
     """Get exactly one of two mutually exclusive config keys.
 
     Primarily used for supporting RFD3 launch syntax, to ease the transition for designers.
@@ -74,7 +75,7 @@ def _assemble_dataset_inputs_from_dict(
     input_file_path: Path,
     subset_to_examples: list[str] | str | None,
     specification_overrides: dict = {},
-):
+) -> dict:
     # ... Apply any global args for this input file
     if "global_args" in data:
         global_args = data.pop("global_args")
@@ -118,13 +119,14 @@ def _assemble_dataset_inputs_from_dict(
     return all_example_specifications
 
 
-def _extract_input_data(inputs: PathLike | list[PathLike]):
+def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple:
     if isinstance(inputs, list):
         inputs = [str(p) for p in inputs]
-        if not all([(".cif" in p or ".bcif" in p) for p in inputs]):
+        if not all((".cif" in p or ".bcif" in p) for p in inputs):
             raise ValueError(
-                "If passing a list of structure files, they must all be in CIF format. For json/yaml inputs, please pass "
-                "only a single file containing entries for each of your design problems."
+                "If passing a list of structure files, they must all be in CIF format. "
+                "For json/yaml inputs, please pass only a single file containing entries "
+                "for each of your design problems."
             )
         use_design_problem_dataset = True
     else:
@@ -137,10 +139,12 @@ def _extract_input_data(inputs: PathLike | list[PathLike]):
             inputs = [inputs]
             use_design_problem_dataset = True
         elif inputs.endswith(".json"):
-            data = json.load(open(inputs))
+            with open(inputs) as f:
+                data = json.load(f)
             use_design_problem_dataset = exists(data.get("cif_creation_strategy", None))
         elif inputs.endswith(".yaml"):
-            data = yaml.safe_load(open(inputs))
+            with open(inputs) as f:
+                data = yaml.safe_load(f)
             use_design_problem_dataset = exists(data.get("cif_creation_strategy", None))
         else:
             raise ValueError(f"Input must be a path to a directory or a .cif/.bcif/.json/.yaml file, got {inputs}.")
@@ -287,7 +291,7 @@ def infer_root_path(create_root: bool = True, config_name: str = ".") -> str:
         os.makedirs(root_path, exist_ok=True)
     else:
         if not os.path.exists(root_path):
-            raise ValueError("Results path %s does not exist" % root_path)
+            raise ValueError(f"Results path {root_path} does not exist")
 
     return root_path
 
@@ -299,7 +303,8 @@ def check_cfg_validity(cfg_sample_args: dict) -> None:
     # Logging CFG
     if cfg_sample_args.guidance_w != 1.0:
         logger.info(
-            f"Guidance is turned on with guidance weight {cfg_sample_args.guidance_w} and autoguidance ratio {cfg_sample_args.ag_ratio}."
+            f"Guidance is turned on with guidance weight {cfg_sample_args.guidance_w} "
+            f"and autoguidance ratio {cfg_sample_args.ag_ratio}."
         )
         assert (
             cfg_sample_args.ag_ratio >= 0.0 and cfg_sample_args.ag_ratio <= 1.0
@@ -321,7 +326,8 @@ def load_ag_ckpt(cfg: dict) -> None | torch.nn.Module:
     nn_ag = None
     if cfg.ag_ratio > 0 and cfg.guidance_w != 1.0:
         logger.info(
-            f"Using autoguidance with guidance weight {cfg.guidance_w} and autoguidance ratio {cfg.ag_ratio} based on the checkpoint {cfg.ag_ckpt_path}"
+            f"Using autoguidance with guidance weight {cfg.guidance_w} and autoguidance ratio {cfg.ag_ratio} "
+            f"based on the checkpoint {cfg.ag_ckpt_path}"
         )
         ckpt_ag_file = cfg.ag_ckpt_path
         assert os.path.exists(ckpt_ag_file), f"Not a valid checkpoint {ckpt_ag_file}"
@@ -337,7 +343,7 @@ def load_ag_ckpt(cfg: dict) -> None | torch.nn.Module:
     return nn_ag
 
 
-def configure_search_strategy_from_cfg(search_cfg: DictConfig):
+def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy:
     """Configure search strategy from config.
 
     Args:
@@ -388,7 +394,8 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     )
     if exists(metrics) != exists(metrics_tags):
         logger.warning(
-            f"Metrics is {"not" if exists(metrics) else ""} None but metrics_tags is {"not" if exists(metrics_tags) else ""} None. "
+            f"Metrics is {'not' if exists(metrics) else ''} None "
+            f"but metrics_tags is {'not' if exists(metrics_tags) else ''} None. "
             "No metrics will be computed."
         )
 
@@ -412,7 +419,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         search_reward_model = None
         if hasattr(cfg.search, "rewards") and cfg.search.rewards is not None:
             from foundry.metrics.metric import MetricManager
-
             from proteinfoundation.rewards import RewardModel
 
             metric_manager = MetricManager.instantiate_from_hydra(cfg.search.rewards.metrics)
@@ -431,7 +437,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     # Configure refinement if specified
     if hasattr(cfg, "refinement") and cfg.refinement is not None:
         from foundry.metrics.metric import MetricManager
-
         from proteinfoundation.rewards import RewardModel
 
         # Require nested refinement.rewards config (MUST be differentiable)
@@ -462,8 +467,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         model.configure_refinement(refinement_strategy, refinement_reward_model)
 
     return model
-
-
 
 
 def save_predictions(

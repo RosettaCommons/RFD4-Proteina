@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/8_all_data_all_tasks_from_scratch
+
+run_name_: 15_all_data_all_tasks_more_islands
+
+# Include more residues and tip atoms atomic motif scaffolding DesignTasks
+datasets:
+  train:
+    afdb_monomer:
+      dataset:
+        transform:
+          design_tasks:
+            tip_atom_partial_ligand:
+              n_max_residues: 16
+            tip_atom:
+              max_residues: 16
+            tip_atom_pocket:
+              max_tip_atoms: 30
+    mgnify_monomer_contiguous:
+      dataset:
+        transform:
+          design_tasks:
+            tip_atom_partial_ligand:
+              n_max_residues: 16
+            tip_atom:
+              max_residues: 16
+            tip_atom_pocket:
+              max_tip_atoms: 30
+    plinder_with_missing_atoms:
+      dataset:
+        transform:
+          design_tasks:
+            tip_atom_partial_ligand:
+              n_max_residues: 16
+            tip_atom_pocket:
+              max_tip_atoms: 30
+

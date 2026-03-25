@@ -1,6 +1,7 @@
 """Callback to handle sampler epoch setting in distributed training."""
 
 import lightning as L
+
 from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)

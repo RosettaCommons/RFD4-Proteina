@@ -2,13 +2,13 @@ import biotite.structure as struc
 import numpy as np
 import torch
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
 )
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.inference_utils.components import fetch_mask_from_component
 from proteinfoundation.inference_utils.inference_utils import get_motif_features
 from proteinfoundation.inference_utils.symmetry.atom_array import (
@@ -129,7 +129,8 @@ def make_symmetric_atom_array(
         symmetrized_atom_array = reannotate_2d_conditions(symmetrized_atom_array)
 
     # set all motifs to not have any symmetrization applied to them
-    # TODO: this needs to be adapted to work with 2D cond (in 2D cond, we WANT to apply symmetry to the motifs since they move in space)
+    # TODO: this needs to be adapted to work with 2D cond (in 2D cond, we WANT to apply symmetry
+    # to the motifs since they move in space)
     symmetrized_atom_array = fix_3D_sym_motif_annotations(symmetrized_atom_array)
 
     # This is needed to output correct motif residue mappings in the output json

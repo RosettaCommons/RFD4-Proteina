@@ -9,9 +9,9 @@ import os
 import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
-from foundry.utils.env import load_dotenv
-from foundry.utils.ddp import RankedLogger
 
+from foundry.utils.ddp import RankedLogger
+from foundry.utils.env import load_dotenv
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.partial_autoencoder.inference import load_dataloader, parse_args_and_cfg, setup
 from proteinfoundation.partial_autoencoder.latent_viz_utils import (
@@ -138,7 +138,7 @@ def plot_latent_projection(
         logger.info(f"Filtered to {len(projection)} tokens from residue types {filter_residues}")
 
     # Create plot using shared utility (with cluster labels!)
-    fig = plot_latent_projection_with_labels(
+    _fig = plot_latent_projection_with_labels(
         projection=projection,
         labels=labels,
         n_residue_types=n_residue_types,
@@ -224,7 +224,7 @@ def main() -> None:
     args, cfg, config_name = parse_args_and_cfg()
 
     # Setup
-    root_path = setup(cfg, create_root=True, config_name=config_name)
+    _root_path = setup(cfg, create_root=True, config_name=config_name)
 
     # Get dataloader
     dataloader = load_dataloader(cfg)

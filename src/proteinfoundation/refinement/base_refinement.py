@@ -1,8 +1,15 @@
 """Base class for refinement strategies."""
 
-from abc import ABC, abstractmethod
+from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+import torch.nn as nn
 from biotite.structure import AtomArray
+
+if TYPE_CHECKING:
+    from proteinfoundation.rewards.reward_model import RewardModel
 
 
 class RefinementStrategy(ABC):
@@ -21,7 +28,7 @@ class RefinementStrategy(ABC):
         - refine_atom_arrays(): Main refinement method (standalone)
     """
 
-    def _check_differentiable(self, reward_model) -> None:
+    def _check_differentiable(self, reward_model: RewardModel) -> None:
         """Validate that reward model is differentiable.
 
         Args:
@@ -40,8 +47,8 @@ class RefinementStrategy(ABC):
     def refine_atom_arrays(
         self,
         atom_arrays: list[AtomArray],
-        reward_model,
-        autoencoder=None,
+        reward_model: RewardModel,
+        autoencoder: nn.Module | None = None,
     ) -> list[AtomArray]:
         """Refine structures using gradient-based optimization.
 

@@ -4,15 +4,15 @@ import torch
 
 from proteinfoundation.nn.feature_factory_atom37 import FeatureFactory
 from proteinfoundation.nn.modules.attn_n_transition import MultiheadAttnAndTransition
+from proteinfoundation.nn.modules.msa_module import MSAModule
 from proteinfoundation.nn.modules.pair_rep_initial import PairReprBuilder
 from proteinfoundation.nn.modules.pair_update import PairReprUpdate
 from proteinfoundation.nn.modules.seq_transition_af3 import Transition
-from proteinfoundation.nn.modules.msa_module import MSAModule
 
 logger = logging.getLogger(__name__)
 
 
-def _configure_flash_attention_backends():
+def _configure_flash_attention_backends() -> None:
     """Configure PyTorch backends for optimal Flash Attention performance."""
     torch.backends.cuda.enable_flash_sdp(True)
     torch.backends.cuda.enable_mem_efficient_sdp(True)
@@ -30,7 +30,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         """
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
-        super(LocalLatentsTransformer, self).__init__()
+        super().__init__()
         self.nlayers = kwargs["nlayers"]
         self.token_dim = kwargs["token_dim"]
         self.pair_repr_dim = kwargs["pair_repr_dim"]
@@ -78,9 +78,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         # MSA module is optional
         self.use_msa_module = kwargs.get("use_msa_module", False)
         if self.use_msa_module:
-            self.msa_module = MSAModule(
-                **kwargs["msa_module"]
-            )
+            self.msa_module = MSAModule(**kwargs["msa_module"])
         else:
             self.msa_module = None
 
@@ -159,7 +157,8 @@ class LocalLatentsTransformer(torch.nn.Module):
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
                 "seq_logits": logits for the residue types, shape [b, n, 20]
                 "residue_mask": boolean [b, n]
-                "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+                "aatype_max": residue type by taking the most likely logit, shape [b, n],
+                    with integer values {0, ..., 19}
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
@@ -168,7 +167,7 @@ class LocalLatentsTransformer(torch.nn.Module):
     def _forward_impl(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Core forward logic. May be wrapped by torch.compile."""
         seq_mask = input["padding_mask"]  # [b, n] boolean, True = valid token
-        msa_mask = input.get("msa_row_mask", None)  # [b, m] boolean or None, True = valid row
+        msa_mask = input.get("msa_row_mask")  # [b, m] boolean or None, True = valid row
 
         # Conditioning variables
         c = self.cond_factory(input)  # [b, n, dim_cond]
@@ -187,10 +186,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         for i in range(self.nlayers):
             seqs = self.transformer_layers[i](seqs, pair_rep, c, seq_mask)  # [b, n, token_dim]
 
-            if self.update_pair_repr:
-                if i < self.nlayers - 1:
-                    if self.pair_update_layers[i] is not None:
-                        pair_rep = self.pair_update_layers[i](seqs, pair_rep, seq_mask)  # [b, n, n, pair_dim]
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, seq_mask)  # [b, n, n, pair_dim]
 
         # Get outputs
         local_latents_out = self.local_latents_linear(seqs) * seq_mask[..., None]  # [b, n, latent_dim]

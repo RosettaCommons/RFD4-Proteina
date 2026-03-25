@@ -1,13 +1,21 @@
 import loralib as lora
-from foundry.utils.ddp import RankedLogger
 from torch import nn
+
+from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def replace_lora_layers(module, r, lora_alpha, lora_dropout, exclude_keys=()):
+def replace_lora_layers(
+    module: nn.Module,
+    r: int,
+    lora_alpha: float,
+    lora_dropout: float,
+    exclude_keys: tuple = (),
+) -> None:
     """
-    Recursively replace all nn.Linear and nn.Embedding layers in the module with the lora.Linear and lora.Embedding layers.
+    Recursively replace all nn.Linear and nn.Embedding layers in the module with
+    the lora.Linear and lora.Embedding layers.
 
     Args:
         module (nn.Module): The module containing nn.Linear layers to be replaced.

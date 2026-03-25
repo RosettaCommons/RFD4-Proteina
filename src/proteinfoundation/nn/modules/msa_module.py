@@ -1,40 +1,41 @@
+from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from models.rf3.src.rf3.model.layers.layer_utils import Transition
 
-from proteinfoundation.nn.modules.outer_product_mean   import (
+from foundry.model.layers.blocks import Dropout
+from proteinfoundation.nn.modules.outer_product_mean import (
     OuterProductMean_AF3,
 )
 from proteinfoundation.nn.modules.triangle import (
     TriangleAttention,
     TriangleMultiplication,
 )
-from models.rf3.src.rf3.model.layers.layer_utils import Transition
-from foundry.model.layers.blocks import Dropout
 
-
-#from foundry.training.checkpoint import activation_checkpointing
+# from foundry.training.checkpoint import activation_checkpointing
 
 
 class MSAModule(nn.Module):
     def __init__(
         self,
-        n_block,
-        c_m,
-        p_drop_msa,
-        p_drop_pair,
-        msa_subsample_embedder,
-        outer_product,
-        msa_pair_weighted_averaging,
-        msa_transition,
-        triangle_multiplication_outgoing,
-        triangle_multiplication_incoming,
-        triangle_attention_starting,
-        triangle_attention_ending,
-        pair_transition,
-        use_cuequivariance=True,
-        use_triangle_attention=True,
-    ):
+        n_block: int,
+        c_m: int,
+        p_drop_msa: float,
+        p_drop_pair: float,
+        msa_subsample_embedder: dict,
+        outer_product: dict,
+        msa_pair_weighted_averaging: dict,
+        msa_transition: dict,
+        triangle_multiplication_outgoing: dict,
+        triangle_multiplication_incoming: dict,
+        triangle_attention_starting: dict,
+        triangle_attention_ending: dict,
+        pair_transition: dict,
+        use_cuequivariance: bool = True,
+        use_triangle_attention: bool = True,
+    ) -> None:
         super().__init__()
         self.n_block = n_block
         self.msa_embedder = MSAEmbedder(**msa_subsample_embedder)
@@ -76,12 +77,12 @@ class MSAModule(nn.Module):
 
     def forward(
         self,
-        f,
-        Z_II,
-        S_inputs_I,
-        mask_I,
-        mask_S,
-    ):
+        f: dict,
+        Z_II: torch.Tensor,
+        S_inputs_I: torch.Tensor,
+        mask_I: torch.Tensor,
+        mask_S: torch.Tensor,
+    ) -> torch.Tensor:
         """Forward pass of MSA module.
 
         Args:
@@ -113,25 +114,23 @@ class MSAModule(nn.Module):
 class MSAModuleBlock(nn.Module):
     def __init__(
         self,
-        outer_product,
-        msa_pair_weighted_averaging,
-        msa_transition,
-        triangle_multiplication_outgoing,
-        triangle_multiplication_incoming,
-        triangle_attention_starting,
-        triangle_attention_ending,
-        pair_transition,
-        p_drop_msa,
-        p_drop_pair,
-        use_cuequivariance=True,
-        use_triangle_attention=True,
-    ):
+        outer_product: dict,
+        msa_pair_weighted_averaging: dict,
+        msa_transition: dict,
+        triangle_multiplication_outgoing: dict,
+        triangle_multiplication_incoming: dict,
+        triangle_attention_starting: dict,
+        triangle_attention_ending: dict,
+        pair_transition: dict,
+        p_drop_msa: float,
+        p_drop_pair: float,
+        use_cuequivariance: bool = True,
+        use_triangle_attention: bool = True,
+    ) -> None:
         super().__init__()
         self.use_triangle_attention = use_triangle_attention
         self.outer_product = OuterProductMean_AF3(**outer_product)
-        self.msa_pair_weighted_averaging = MSAPairWeightedAverage(
-            **msa_pair_weighted_averaging
-        )
+        self.msa_pair_weighted_averaging = MSAPairWeightedAverage(**msa_pair_weighted_averaging)
         self.msa_transition = Transition(**msa_transition)
 
         self.drop_row_msa = Dropout(broadcast_dim=-2, p_drop=p_drop_msa)
@@ -163,16 +162,14 @@ class MSAModuleBlock(nn.Module):
 
     def forward(
         self,
-        msa_SI,
-        Z_II,
-        mask_I,
-        mask_S,
-    ):
+        msa_SI: torch.Tensor,
+        Z_II: torch.Tensor,
+        mask_I: torch.Tensor,
+        mask_S: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # update MSA features
         Z_II = Z_II + self.outer_product(msa_SI, mask_S)
-        msa_SI = msa_SI + self.drop_row_msa(
-            self.msa_pair_weighted_averaging(msa_SI, Z_II, mask_I, mask_S)
-        )
+        msa_SI = msa_SI + self.drop_row_msa(self.msa_pair_weighted_averaging(msa_SI, Z_II, mask_I, mask_S))
 
         msa_SI = msa_SI + self.msa_transition(msa_SI)
         # update pair features
@@ -192,7 +189,7 @@ class MSAModuleFinalBlock(MSAModuleBlock):
     Final block of MSA module that does not update MSA features
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.msa_pair_weighted_averaging = None
         self.msa_transition = None
@@ -200,11 +197,11 @@ class MSAModuleFinalBlock(MSAModuleBlock):
 
     def forward(
         self,
-        msa_SI,
-        Z_II,
-        mask_I,
-        mask_S,
-    ):
+        msa_SI: torch.Tensor,
+        Z_II: torch.Tensor,
+        mask_I: torch.Tensor,
+        mask_S: torch.Tensor,
+    ) -> torch.Tensor:
         # update pair features only
         Z_II = Z_II + self.drop_row_pair(self.outer_product(msa_SI, mask_S))
         Z_II = Z_II + self.drop_row_pair(self.tri_mult_outgoing(Z_II, mask_I))
@@ -217,17 +214,17 @@ class MSAModuleFinalBlock(MSAModuleBlock):
 
 
 class MSAEmbedder(nn.Module):
-    def __init__(self, num_sequences, dim_raw_msa, c_msa_embed, c_s_inputs):
-        super(MSAEmbedder, self).__init__()
+    def __init__(self, num_sequences: int, dim_raw_msa: int, c_msa_embed: int, c_s_inputs: int) -> None:
+        super().__init__()
         self.num_sequences = num_sequences
         self.emb_msa = nn.Linear(dim_raw_msa, c_msa_embed, bias=False)
         self.emb_S_inputs = nn.Linear(c_s_inputs, c_msa_embed, bias=False)
 
     def forward(
         self,
-        msa_SI,  # (S, I, 34) (32 tokens + has_deletion + deletion value)
-        S_inputs,  # (L, S_dim)
-    ):
+        msa_SI: torch.Tensor,  # (S, I, 34) (32 tokens + has_deletion + deletion value)
+        S_inputs: torch.Tensor,  # (L, S_dim)
+    ) -> torch.Tensor:
         # Embed the subsampled MSA
         # (NOTE: We subsample in the data loader to avoid memory issues)
         msa_SI = self.emb_msa(msa_SI)
@@ -240,20 +237,18 @@ class MSAPairWeightedAverage(nn.Module):
 
     def __init__(
         self,
-        c_weighted_average,
-        n_heads,
-        c_msa_embed,
-        c_z,
-    ):
-        super(MSAPairWeightedAverage, self).__init__()
+        c_weighted_average: int,
+        n_heads: int,
+        c_msa_embed: int,
+        c_z: int,
+    ) -> None:
+        super().__init__()
         self.weighted_average_channels = c_weighted_average
         self.n_heads = n_heads
         self.msa_channels = c_msa_embed
         self.pair_channels = c_z
         self.norm_msa = nn.LayerNorm(self.msa_channels, eps=1e-3)
-        self.to_v = nn.Linear(
-            self.msa_channels, self.n_heads * self.weighted_average_channels, bias=False
-        )
+        self.to_v = nn.Linear(self.msa_channels, self.n_heads * self.weighted_average_channels, bias=False)
         self.norm_pair = nn.LayerNorm(self.pair_channels)
         self.to_bias = nn.Linear(self.pair_channels, self.n_heads, bias=False)
 
@@ -263,11 +258,15 @@ class MSAPairWeightedAverage(nn.Module):
             bias=False,
         )
 
-        self.to_out = nn.Linear(
-            self.weighted_average_channels * self.n_heads, self.msa_channels, bias=False
-        )
+        self.to_out = nn.Linear(self.weighted_average_channels * self.n_heads, self.msa_channels, bias=False)
 
-    def forward(self, msa_SI, pair_II, mask_I, mask_S):
+    def forward(
+        self,
+        msa_SI: torch.Tensor,
+        pair_II: torch.Tensor,
+        mask_I: torch.Tensor,
+        mask_S: torch.Tensor,
+    ) -> torch.Tensor:
         """MSA pair-weighted averaging (Algorithm 10 from AF3 paper).
 
         Masks use True = valid convention throughout:
@@ -286,9 +285,7 @@ class MSAPairWeightedAverage(nn.Module):
         msa_norm_SI = self.norm_msa(msa_SI)
 
         # construct values, bias and weights
-        v_SIH = self.to_v(msa_norm_SI).reshape(
-            B, S, I, self.n_heads, self.weighted_average_channels
-        )
+        v_SIH = self.to_v(msa_norm_SI).reshape(B, S, I, self.n_heads, self.weighted_average_channels)
 
         # zero out contribution from padding tokens on length dimension and sequence dimension
         mask_SI = mask_S.unsqueeze(-1) & mask_I.unsqueeze(-2)  # (B, S, I) True = valid

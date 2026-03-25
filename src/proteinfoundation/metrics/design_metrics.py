@@ -2,20 +2,20 @@ from collections import defaultdict
 
 import numpy as np
 import torch
-from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import (
     get_token_starts,
 )
 from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack
+
 from foundry.common import exists
 from foundry.metrics.metric import Metric
-
+from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.metrics.metrics_utils import (
     get_ss_metrics_and_rg,
 )
-from proteinfoundation.conditions import C_INTCRD
 
 STANDARD_CACA_DIST = 3.8
 
@@ -87,7 +87,9 @@ def get_ligand_clash_metrics(atom_array: AtomArray, ligand_clash_threshold: floa
         diff_backbone = xyz_diffused_backbone[:, None, :] - xyz_ligand[None, :, :]  # (n_diffused, n_ligand, 3)
         all_dists_backbone_ligand = np.linalg.norm(diff_backbone, axis=-1)  # (n_diffused, n_ligand)
         min_dists_backbone_ligand = np.min(all_dists_backbone_ligand, axis=0)
-        output_dict["n_clashing.backbone_ligand_clashes"] = int(np.sum(min_dists_backbone_ligand < ligand_clash_threshold))
+        output_dict["n_clashing.backbone_ligand_clashes"] = int(
+            np.sum(min_dists_backbone_ligand < ligand_clash_threshold)
+        )
         output_dict["n_clashing.backbone_ligand_min_distance"] = float(np.min(min_dists_backbone_ligand))
 
     diff_allatom = xyz_diffused_allatom[:, None, :] - xyz_ligand[None, :, :]  # (n_diffused, n_ligand, 3)
@@ -97,7 +99,6 @@ def get_ligand_clash_metrics(atom_array: AtomArray, ligand_clash_threshold: floa
     output_dict |= {
         "n_clashing.allatom_ligand_clashes": int(np.sum(min_dists_allatom_ligand < ligand_clash_threshold)),
         "n_clashing.allatom_ligand_min_distance": float(np.min(min_dists_allatom_ligand)),
-
     }
 
     return output_dict
@@ -105,7 +106,7 @@ def get_ligand_clash_metrics(atom_array: AtomArray, ligand_clash_threshold: floa
 
 def get_clash_metrics(
     atom_array: AtomArray,
-    clash_threshold=1.5,
+    clash_threshold: float = 1.5,
     ligand_clash_threshold: float = 1.5,
     chainbreak_threshold: float = 0.75,
 ) -> dict[str, float | int]:
@@ -127,11 +128,11 @@ def convert_to_float_or_str(o: dict[str, Any]) -> dict[str, float | str | list |
     Converts elements of a dictionary to ensure all components are saveable with JSONs
     """
     for k, v in o.items():
-        if not isinstance(v, (int, float, str, list)):
+        if not isinstance(v, int | float | str | list):
             try:
                 o[k] = float(v)
             except Exception as e:
-                raise ValueError(f"Unsupported type for key {k}: {type(v)}. Error: {e}")
+                raise ValueError(f"Unsupported type for key {k}: {type(v)}. Error: {e}") from e
     return o
 
 
@@ -289,7 +290,7 @@ class BackboneMetrics(Metric):
 
 
 class LigandClashMetric(Metric):
-    def __init__(self, ligand_clash_threshold: float = 1.5, input_kwarg_names: dict[str,str] | None = None, **kwargs):
+    def __init__(self, ligand_clash_threshold: float = 1.5, input_kwarg_names: dict[str, str] | None = None, **kwargs):
         self._input_kwarg_names = input_kwarg_names or {
             "predicted_atom_array_stack": "predicted_atom_array_stack",
         }

@@ -9,19 +9,20 @@ import lightning as L
 import rootutils
 import torch
 import wandb
-from foundry.utils.env import load_dotenv
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
 from lightning.pytorch.utilities import rank_zero_only
+from omegaconf import DictConfig, OmegaConf
+
 from foundry.utils.ddp import RankedLogger
+from foundry.utils.env import load_dotenv
 from foundry.utils.logging import print_config_tree, silence_warnings
 from foundry.utils.weights import (
     WeightLoadingConfig,
     freeze_parameters_with_config,
     load_weights_with_policies,
 )
-from omegaconf import DictConfig, OmegaConf
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project (where `.project-root` is located)  # noqa: E501
@@ -33,7 +34,6 @@ from foundry.utils.datasets import (  # noqa: E402
     recursively_instantiate_datasets_and_samplers,
 )
 from foundry.utils.instantiators import instantiate_callbacks  # noqa: E402
-
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
@@ -50,12 +50,12 @@ load_dotenv()
 class DelayedValidationCallback(Callback):
     """Delay validation until a given epoch by temporarily disabling val batches."""
 
-    def __init__(self, start_epoch: int, limit_val_batches):
+    def __init__(self, start_epoch: int, limit_val_batches: int | float):
         super().__init__()
         self.start_epoch = start_epoch
         self.limit_val_batches = limit_val_batches
 
-    def on_train_epoch_start(self, trainer, pl_module) -> None:
+    def on_train_epoch_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         if trainer.current_epoch < self.start_epoch:
             trainer.limit_val_batches = 0
         else:
@@ -170,9 +170,11 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         if weight_loading_cfg is not None:
             # Policy-based loading: instantiate WeightLoadingConfig via Hydra and apply
             wl_config: WeightLoadingConfig = hydra.utils.instantiate(weight_loading_cfg)
-            logger.info(f"Using policy-based weight loading: default={wl_config.default_policy}, "
-                        f"fallback={wl_config.fallback_policy}, "
-                        f"per-param overrides={len(wl_config.param_policies)}")
+            logger.info(
+                f"Using policy-based weight loading: default={wl_config.default_policy}, "
+                f"fallback={wl_config.fallback_policy}, "
+                f"per-param overrides={len(wl_config.param_policies)}"
+            )
             updated_state = load_weights_with_policies(model, ckpt["state_dict"], wl_config)
             model.load_state_dict(updated_state, strict=True)
         else:
@@ -183,8 +185,10 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         param_freezing_cfg = cfg_exp.get("parameter_freezing", None)
         if param_freezing_cfg is not None:
             pf_config = hydra.utils.instantiate(param_freezing_cfg)
-            logger.info(f"Applying parameter freezing (freeze_by_default={pf_config.freeze_by_default}, "
-                        f"overrides={len(pf_config.param_policies)})")
+            logger.info(
+                f"Applying parameter freezing (freeze_by_default={pf_config.freeze_by_default}, "
+                f"overrides={len(pf_config.param_policies)})"
+            )
             freeze_parameters_with_config(model, pf_config)
 
     # If not resuming from `last` ckpt training set seed

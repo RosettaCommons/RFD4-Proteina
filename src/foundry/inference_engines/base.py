@@ -176,9 +176,7 @@ class BaseInferenceEngine:
             self._assign_override("trainer.strategy", "auto")
 
         # Load checkpoint and config
-        ranked_logger.info(
-            f"Loading checkpoint from {Path(self.ckpt_path).resolve()}..."
-        )
+        ranked_logger.info(f"Loading checkpoint from {Path(self.ckpt_path).resolve()}...")
         checkpoint = torch.load(self.ckpt_path, "cpu", weights_only=False)
         cfg = self._override_checkpoint_config(checkpoint["train_cfg"])
 
@@ -192,15 +190,11 @@ class BaseInferenceEngine:
 
     def run(
         self,
-        inputs: (
-            Dict[str, dict] | AtomArray | list[AtomArray] | PathLike | list[PathLike]
-        ),
+        inputs: (Dict[str, dict] | AtomArray | list[AtomArray] | PathLike | list[PathLike]),
         *_,
     ) -> dict[str, dict] | None:
         self.initialize()
-        raise NotImplementedError(
-            "Subclasses must implement inference logic in `run` method."
-        )
+        raise NotImplementedError("Subclasses must implement inference logic in `run` method.")
 
     ###################################################################################
     # Weight management
@@ -223,9 +217,7 @@ class BaseInferenceEngine:
 
         # Load weights into existing model structure (after init with
         # load_weights=False, or after a previous unload_weights() call)
-        self._load_model_weights(
-            getattr(self, "_stored_checkpoint", None) or self.ckpt_path
-        )
+        self._load_model_weights(getattr(self, "_stored_checkpoint", None) or self.ckpt_path)
 
     def unload_weights(self):
         """Unload model weights from GPU to free memory.
@@ -274,9 +266,7 @@ class BaseInferenceEngine:
 
         ranked_logger.info("Instantiating trainer...")
         if self.verbose:
-            print_config_tree(
-                cfg.trainer, resolve=True, title="INFERENCE TRAINER CONFIGURATION"
-            )
+            print_config_tree(cfg.trainer, resolve=True, title="INFERENCE TRAINER CONFIGURATION")
         trainer = hydra.utils.instantiate(
             cfg.trainer,
             _convert_="partial",
@@ -341,9 +331,7 @@ class BaseInferenceEngine:
         # Construct pipeline
         ranked_logger.info("Building Transform pipeline...")
         first_val_dataset_key, first_val_dataset = next(iter(cfg.datasets.val.items()))
-        ranked_logger.info(
-            f"Using settings from validation dataset: {first_val_dataset_key}."
-        )
+        ranked_logger.info(f"Using settings from validation dataset: {first_val_dataset_key}.")
         transform = first_val_dataset.dataset.transform
         transform = merge(transform, self.transform_overrides)
 

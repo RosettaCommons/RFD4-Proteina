@@ -9,10 +9,10 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.timer import timeout
 from beartype.typing import Sequence
 from biotite.structure import AtomArray, AtomArrayStack
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
 from posebusters import PoseBusters
 
+from foundry.metrics.metric import Metric
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)

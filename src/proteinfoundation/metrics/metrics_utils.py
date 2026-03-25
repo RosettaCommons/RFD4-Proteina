@@ -7,11 +7,10 @@ from atomworks.ml.conditions import C_CRD, C_DIS
 from atomworks.ml.preprocessing.utils.structure_utils import (
     get_atom_mask_from_cell_list,
 )
-from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack, CellList, annotate_sse, gyration_radius
 from biotite.structure.residues import spread_residue_wise
-from foundry.metrics.metric import MetricManager
 
+from foundry.metrics.metric import MetricManager
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
 
@@ -29,7 +28,8 @@ def run_metrics_for_result(
     chain_of_interest) and calls the metric manager with ground truth and prediction.
 
     Args:
-        result: Single result dict from :py:meth:`~proteinfoundation.proteina.Proteina.format_sample_prots_to_atom_arrays`,
+        result: Single result dict from
+            :py:meth:`~proteinfoundation.proteina.Proteina.format_sample_prots_to_atom_arrays`,
             with keys 'generated_atom_array', 'input_atom_array', and optionally
             'prediction_metadata' and 'example_id'.
         batch: Original input batch dict, used to extract metrics_tags.

@@ -33,7 +33,7 @@ model:
       clamp_val: null
     simulation_step_params:
       sampling_mode: sc  # Options are: vf (plain fow matching) or sc (using score, where parameters below matter)
-      sc_scale_noise: 0.1  # scale used to multiply noise if mode == sc
+      sc_scale_noise: 0.3  # scale used to multiply noise if mode == sc
       sc_scale_score: 1.0  # scale used to multiply score if mode == sc
       t_lim_ode: 0.98  # At what point between 0 and 1 we switch to ODE with score scaling (for sc mode)
       t_lim_ode_below: 0.02  # Before what point between 0 and 1 we use sc mode (for vf_ss mode)

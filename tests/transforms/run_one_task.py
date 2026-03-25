@@ -67,26 +67,24 @@ def simple_rna():
     return data
 
 
-def simple_ligand(protein_with_ligand=protein_with_ligand()):
+_PROTEIN_WITH_LIGAND_DATA = protein_with_ligand()
+
+
+def simple_ligand() -> dict:
     """Simple single-chain ligand structure (HEME)."""
-    data = protein_with_ligand.copy()
+    data = _PROTEIN_WITH_LIGAND_DATA.copy()
     data["atom_array"] = data["atom_array"][data["atom_array"].chain_id == "C"]
     # data = data[data.occupancy > 0]  # remove unoccupied atoms for testing
     return data
 
 
-def complex_protein(
-    protein_with_non_canonical_aa=protein_with_non_canonical_aa(),
-    simple_dna=simple_dna(),
-    simple_rna=simple_rna(),
-    simple_ligand=simple_ligand(),
-):
+def complex_protein() -> dict:
     """Complex protein structure with non-canonical amino acids, DNA, RNA, and ligand."""
 
-    protein_with_non_canonical_aa_copy = copy.deepcopy(protein_with_non_canonical_aa)
-    simple_dna_copy = copy.deepcopy(simple_dna)
-    simple_rna_copy = copy.deepcopy(simple_rna)
-    simple_ligand_copy = copy.deepcopy(simple_ligand)
+    protein_with_non_canonical_aa_copy = copy.deepcopy(protein_with_non_canonical_aa())
+    simple_dna_copy = copy.deepcopy(simple_dna())
+    simple_rna_copy = copy.deepcopy(simple_rna())
+    simple_ligand_copy = copy.deepcopy(simple_ligand())
 
     atom_array = protein_with_non_canonical_aa_copy["atom_array"]
     atom_array = add_chain_nearby_without_clash(
@@ -104,9 +102,12 @@ def complex_protein(
     }
 
 
-def complex_protein_crop_info(complex_protein=complex_protein()):
+_COMPLEX_PROTEIN_DATA = complex_protein()
+
+
+def complex_protein_crop_info() -> dict:
     """Crop info for complex protein."""
-    data = complex_protein.copy()
+    data = _COMPLEX_PROTEIN_DATA.copy()
     data["crop_info"] = {
         "atom_array": data["atom_array"].copy(),
     }
@@ -114,9 +115,9 @@ def complex_protein_crop_info(complex_protein=complex_protein()):
     return data
 
 
-def complex_protein_ab(complex_protein=complex_protein()):
+def complex_protein_ab() -> dict:
     """Same as complex_protein but with proper extra_info"""
-    data = complex_protein.copy()
+    data = _COMPLEX_PROTEIN_DATA.copy()
     data["extra_info"] = {
         "all_ig_chains": str(
             {

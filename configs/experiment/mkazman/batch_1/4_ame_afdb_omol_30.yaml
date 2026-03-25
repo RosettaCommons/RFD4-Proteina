@@ -58,15 +58,15 @@ datasets:
 log:
   tags: ["motif-scaffolding", "pretrain", "afdb-monomer", "omol", "ame"]
 
-# GB200
+# Coreweave
 hardware:
   accelerator: gpu
-  ngpus_per_node_: 4
-  nnodes_: 4
+  ngpus_per_node_: 8
+  nnodes_: 3
   ncpus_per_task_train_: 16
 
 dataloaders:
-  batch_size: 32
+  batch_size: 16
 
 # Pre-training checkpoint to start from (optional)
 pretrain_ckpt_path: null

@@ -16,16 +16,16 @@ from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffold2DDistTask,
     MotifScaffoldTask,
-    PPIHotspotWithInternalCoordTargetMotifTask,
     PPIHotspotWith3DTarget,
+    PPIHotspotWithInternalCoordTargetMotifTask,
     RandomAtomDistanceTask,
     StructurePredictionTask,
+    TipAtomActiveSiteTask,
     TipAtomDistanceTask,
     TipAtomPartialLigandDistanceTask,
     TipAtomPartialLigandTask,
     TipAtomTask,
     UnconditionalTask,
-    TipAtomActiveSiteTask,
 )
 
 DEFAULT_REQUIRED_ARGUMENTS = {

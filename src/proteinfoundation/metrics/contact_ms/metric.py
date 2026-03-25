@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from biotite.structure import AtomArray
 from jaxtyping import Bool
+
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
 
@@ -27,7 +28,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 
 def _get_binder_target_mask(
     atom_array: AtomArray,
-) -> tuple[Bool[np.ndarray, "N"], Bool[np.ndarray, "N"]]:
+) -> tuple[Bool[np.ndarray, N], Bool[np.ndarray, N]]:
     """Identify binder vs target atoms.
 
     Uses ``chain_iid`` annotation if available (chain 0 = binder),
@@ -51,7 +52,7 @@ class ContactMolecularSurfaceMetric(Metric):
 
     CMS is a distance-weighted interfacial surface area (units: Å²).
     Unlike SASA, it measures how tightly two surfaces pack:
-    ``CMS = Σ area × exp(−0.5 × distance²)``.
+    ``CMS = Σ area x exp(-0.5 x distance^2)``.
 
     Always uses the PyTorch backend (``TorchCMS``), which is faster than
     the legacy NumPy implementation on both GPU and CPU.
@@ -98,7 +99,7 @@ class ContactMolecularSurfaceMetric(Metric):
                 - ``contact_ms``: Target-side CMS (Å²)
                 - ``contact_ms_binder``: Binder-side CMS (Å², if enabled)
                 - ``max_contact_ms_target``: Max possible target CMS (Å², if enabled)
-                - ``contact_ms_fraction``: CMS / max CMS (0–1, if enabled)
+                - ``contact_ms_fraction``: CMS / max CMS (0-1, if enabled)
         """
         binder_mask, target_mask = _get_binder_target_mask(predicted_atom_array)
         binder_xyz, binder_radii = extract_cms_inputs(predicted_atom_array, binder_mask)
@@ -116,7 +117,10 @@ class ContactMolecularSurfaceMetric(Metric):
 
         if self.compute_binder_side:
             (cms_t, _), (binder_cms_t, _) = calc.compute_both_sides(
-                b_xyz, b_rad, t_xyz, t_rad,
+                b_xyz,
+                b_rad,
+                t_xyz,
+                t_rad,
             )
             cms = float(cms_t)
             results: dict[str, float] = {
@@ -130,7 +134,9 @@ class ContactMolecularSurfaceMetric(Metric):
 
         if self.compute_max_target_cms:
             max_cms, _, _ = calculate_maximum_possible_contact_ms(
-                target_xyz, target_radii, device=dev,
+                target_xyz,
+                target_radii,
+                device=dev,
             )
             results["max_contact_ms_target"] = max_cms
             results["contact_ms_fraction"] = cms / max_cms if max_cms > 0 else 0.0

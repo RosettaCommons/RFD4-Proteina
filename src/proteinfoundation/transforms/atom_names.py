@@ -3,8 +3,8 @@
 from typing import ClassVar
 
 import numpy as np
-from atomworks.ml.conditions import C_SEQ
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.ml.conditions import C_SEQ
 from atomworks.ml.transforms._checks import check_atom_array_annotation
 from atomworks.ml.transforms.af3_reference_molecule import _encode_atom_names_like_af3
 from atomworks.ml.transforms.base import Transform

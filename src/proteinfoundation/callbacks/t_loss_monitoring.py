@@ -2,15 +2,16 @@
 
 from collections import defaultdict
 
-import lightning as L  # noqa: N812
+import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.distributed as dist
 import wandb
 from beartype.typing import Any
-from foundry.utils.ddp import RankedLogger
 from scipy.signal import savgol_filter
+
+from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -327,13 +328,13 @@ class TLossMonitoringCallback(L.Callback):
         # Bucket and accumulate
         bucket_indices = np.digitize(t, self.bucket_edges) - 1
 
-        for bi, l, task in zip(bucket_indices, loss, task_names):
+        for bi, l, task in zip(bucket_indices, loss, task_names, strict=False):
             self._accumulate(task, bi, float(l))
             self._accumulate("all_tasks", bi, float(l))
 
         # Capture baseline during early training
         if trainer.global_step < self.baseline_capture_steps:
-            for bi, l, task in zip(bucket_indices, loss, task_names):
+            for bi, l, task in zip(bucket_indices, loss, task_names, strict=False):
                 self._accumulate_baseline(task, bi, float(l))
                 self._accumulate_baseline("all_tasks", bi, float(l))
         elif not self.baseline_captured:

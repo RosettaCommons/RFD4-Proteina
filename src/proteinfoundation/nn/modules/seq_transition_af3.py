@@ -12,7 +12,7 @@ from proteinfoundation.nn.modules.swiglu import SwiGLU
 class Transition(torch.nn.Module):
     """Transition layer."""
 
-    def __init__(self, dim, expansion_factor=4, layer_norm=False):
+    def __init__(self, dim: int, expansion_factor: int = 4, layer_norm: bool = False) -> None:
         super().__init__()
 
         dim_inner = int(dim * expansion_factor)
@@ -27,7 +27,7 @@ class Transition(torch.nn.Module):
         )
         self.linear_out = torch.nn.Linear(dim_inner, dim, bias=False)
 
-    def forward(self, x, mask):
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim]
@@ -46,13 +46,13 @@ class TransitionADALN(torch.nn.Module):
     """Transition layer with adaptive layer norm applied to input and adaptive
     scaling aplied to output."""
 
-    def __init__(self, *, dim, dim_cond, expansion_factor=4):
+    def __init__(self, *, dim: int, dim_cond: int, expansion_factor: int = 4) -> None:
         super().__init__()
         self.adaln = AdaptiveLayerNorm(dim=dim, dim_cond=dim_cond)
         self.transition = Transition(dim=dim, expansion_factor=expansion_factor, layer_norm=False)
         self.scale_output = AdaptiveOutputScale(dim=dim, dim_cond=dim_cond)
 
-    def forward(self, x, cond, mask):
+    def forward(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: Input sequence representation, shape [b, n, dim]

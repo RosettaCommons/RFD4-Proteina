@@ -8,7 +8,7 @@ from proteinfoundation.nn.modules.seq_transition_af3 import Transition
 from proteinfoundation.utils.constants import RESTYPE_ATOM37_MASK, UNIFIED_RESTYPE_ATOM37_MASK
 
 
-def get_atom_mask(device: torch.device = None, n_residue_types: int = 20):
+def get_atom_mask(device: torch.device | None = None, n_residue_types: int = 20) -> torch.Tensor:
     """Get atom37 mask for residue types.
 
     Args:
@@ -37,7 +37,7 @@ class DecoderTransformer(torch.nn.Module):
         """
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
-        super(DecoderTransformer, self).__init__()
+        super().__init__()
         self.nlayers = kwargs["decoder"]["nlayers"]
         self.token_dim = kwargs["decoder"]["token_dim"]
         self.pair_repr_dim = kwargs["decoder"]["pair_repr_dim"]
@@ -145,7 +145,8 @@ class DecoderTransformer(torch.nn.Module):
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
                 "seq_logits": logits for the residue types, shape [b, n, 20]
                 "residue_mask": boolean [b, n]
-                "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+                "aatype_max": residue type by taking the most likely logit, shape [b, n],
+                    with integer values {0, ..., 19}
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
@@ -166,10 +167,8 @@ class DecoderTransformer(torch.nn.Module):
         for i in range(self.nlayers):
             seqs = self.transformer_layers[i](seqs, pair_rep, c, mask)  # [b, n, token_dim]
 
-            if self.update_pair_repr:
-                if i < self.nlayers - 1:
-                    if self.pair_update_layers[i] is not None:
-                        pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
 
         # Get logits
         logits_out = self.logit_linear(seqs) * mask[..., None]  # [b, n, 20]

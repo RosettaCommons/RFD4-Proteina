@@ -127,11 +127,11 @@ def _subdivide_angle(
 
     valid_raw = np.isfinite(raw) & (raw > 0)
     if not valid_raw.any():
-        return np.zeros(base_shape), np.full(base_shape + (0, 3), np.nan)
+        return np.zeros(base_shape), np.full((*base_shape, 0, 3), np.nan)
 
     max_count = int(min(MAX_SUBDIV, math.ceil(float(raw[valid_raw].max()))))
     if max_count == 0:
-        return np.zeros(base_shape), np.full(base_shape + (0, 3), np.nan)
+        return np.zeros(base_shape), np.full((*base_shape, 0, 3), np.nan)
 
     i = np.arange(max_count)
     a = delta[..., None] * (i + 0.5)
@@ -182,7 +182,7 @@ def check_point_collisions(
     neighbor_xyz: Float[np.ndarray, "D K 3"],
     neighbor_radii: Float[np.ndarray, "D K"],
     probe_radius: float,
-) -> Bool[np.ndarray, "D"]:
+) -> Bool[np.ndarray, D]:
     """Check whether projected surface points collide with neighbor atoms.
 
     Skips the first neighbor (matching the C++ convention where
@@ -198,9 +198,7 @@ def check_point_collisions(
         Boolean array of shape ``(D,)``. ``True`` = collision.
     """
     dists2 = np.square(neighbor_xyz - points).sum(axis=-1)
-    collision = (dists2 <= (neighbor_radii + probe_radius) ** 2) & ~np.isnan(
-        neighbor_radii
-    )
+    collision = (dists2 <= (neighbor_radii + probe_radius) ** 2) & ~np.isnan(neighbor_radii)
     return collision[..., 1:].any(axis=-1)
 
 
@@ -209,7 +207,7 @@ def check_probe_collisions(
     near_points: Float[np.ndarray, "L 3"],
     near_mask: Bool[np.ndarray, "D L"],
     r_squared: float,
-) -> Bool[np.ndarray, "D"]:
+) -> Bool[np.ndarray, D]:
     """Check whether surface points collide with nearby low probes.
 
     Args:

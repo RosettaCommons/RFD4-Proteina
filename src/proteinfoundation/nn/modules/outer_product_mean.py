@@ -1,18 +1,18 @@
 import torch
 import torch.nn as nn
 
-#from foundry.training.checkpoint import activation_checkpointing
+# from foundry.training.checkpoint import activation_checkpointing
 
 
 class OuterProductMean_AF3(nn.Module):
-    def __init__(self, c_msa_embed, c_outer_product, c_out):
-        super(OuterProductMean_AF3, self).__init__()
+    def __init__(self, c_msa_embed: int, c_outer_product: int, c_out: int) -> None:
+        super().__init__()
         self.norm = nn.LayerNorm(c_msa_embed)
         self.proj_left = nn.Linear(c_msa_embed, c_outer_product, bias=False)
         self.proj_right = nn.Linear(c_msa_embed, c_outer_product, bias=False)
         self.proj_out = nn.Linear(c_outer_product * c_outer_product, c_out, bias=False)
 
-    def forward(self, msa, mask_S):
+    def forward(self, msa: torch.Tensor, mask_S: torch.Tensor) -> torch.Tensor:
         """Compute outer product mean of MSA representation.
 
         Args:

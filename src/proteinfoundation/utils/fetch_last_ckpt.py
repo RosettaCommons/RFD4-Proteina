@@ -23,8 +23,8 @@ def get_version_number(fname: str) -> int | None:
 
 def fetch_last_ckpt(ckpt_dir: str) -> str | None:
     """
-    Returns the name of the latest last-v<X>.ckpt where X is an integer. Defaults to last.ckpt if just that's the only one.
-    If no last ckpt then returns None.
+    Returns the name of the latest last-v<X>.ckpt where X is an integer.
+    Defaults to last.ckpt if that's the only one. If no last ckpt then returns None.
 
     Args:
         ckpt_dir: directory where checkpoints are stored.

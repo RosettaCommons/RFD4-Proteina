@@ -146,7 +146,14 @@ ignore = [
     "E741",  # enable us to use variables like "L"
     "N806",  # enable us to use capital letters in variable names, also like "L"
     "N812",  # allow standard conventions like `import lightning as L` and `import torch.nn.functional as F`
+    "N801",  # enable us to use non-CapWords class names
+    "N802",  # enable us to use capital letters in function names
+    "N803",  # enable us to use capital letters in argument names
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["foundry", "foundry_cli", "rf3", "rfd3", "mpnn", "proteinfoundation", "modelhub"]
+known-third-party = ["wandb"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

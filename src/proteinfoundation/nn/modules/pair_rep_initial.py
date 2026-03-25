@@ -20,7 +20,15 @@ class PairReprBuilder(torch.nn.Module):
         **kwargs: Additional arguments passed to feature factory
     """
 
-    def __init__(self, feats_repr, feats_cond, dim_feats_out, dim_cond_pair, use_atom37_factory=False, **kwargs):
+    def __init__(
+        self,
+        feats_repr: list,
+        feats_cond: list | None,
+        dim_feats_out: int,
+        dim_cond_pair: int,
+        use_atom37_factory: bool = False,
+        **kwargs: object,
+    ) -> None:
         super().__init__()
 
         # Choose which feature factory to use
@@ -40,18 +48,17 @@ class PairReprBuilder(torch.nn.Module):
         )
 
         self.cond_factory = None  # Build a pair feature for conditioning and use it for adaln the pair representation
-        if feats_cond is not None:
-            if len(feats_cond) > 0:
-                self.cond_factory = factory_class(
-                    feats=feats_cond,
-                    dim_feats_out=dim_cond_pair,
-                    use_ln_out=True,
-                    mode="pair",
-                    **kwargs,
-                )
-                self.adaln = AdaptiveLayerNorm(dim=dim_feats_out, dim_cond=dim_cond_pair)
+        if feats_cond is not None and len(feats_cond) > 0:
+            self.cond_factory = factory_class(
+                feats=feats_cond,
+                dim_feats_out=dim_cond_pair,
+                use_ln_out=True,
+                mode="pair",
+                **kwargs,
+            )
+            self.adaln = AdaptiveLayerNorm(dim=dim_feats_out, dim_cond=dim_cond_pair)
 
-    def forward(self, batch_nn):
+    def forward(self, batch_nn: dict) -> torch.Tensor:
         mask = batch_nn["padding_mask"]  # [b, n]
         pair_mask = mask[:, :, None] * mask[:, None, :]  # [b, n, n]
         repr = self.init_repr_factory(batch_nn)  # [b, n, n, dim_feats_out]

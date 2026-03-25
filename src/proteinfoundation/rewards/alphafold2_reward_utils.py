@@ -2,10 +2,12 @@
 
 import os
 import warnings
+from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
 from biotite.structure import AtomArray
+
 from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -21,7 +23,7 @@ def get_af2_model_runner(
     use_templates: bool = False,
     data_dir: str | None = None,
     protocol: str = "hallucination",
-):
+) -> Any:
     """Initialize AF2 model runner using ColabDesign.
 
     Args:
@@ -37,7 +39,7 @@ def get_af2_model_runner(
     try:
         from colabdesign import mk_afdesign_model
     except ImportError:
-        raise ImportError("ColabDesign not installed. Please install it to use AF2 reward model.")
+        raise ImportError("ColabDesign not installed. Please install it to use AF2 reward model.") from None
 
     # Get AF2 parameters directory
     if data_dir is None:
@@ -134,10 +136,10 @@ def get_atom37_coords_from_atom_array(atom_array: AtomArray) -> np.ndarray:
 
 
 def setup_af2_model_for_sequence(
-    af_model,
+    af_model: Any,
     sequence: str,
     chain_breaks: list[int] | None = None,
-):
+) -> None:
     """Set up AF2 model with a specific sequence.
 
     Args:
@@ -227,7 +229,7 @@ def compute_interface_pae(pae: jnp.ndarray, chain_indices: list[int]) -> float:
 
 
 def run_af2_with_gradients(
-    af_model,
+    af_model: Any,
     pdb_path: str,
     target_chain: str,
     binder_chain: str,

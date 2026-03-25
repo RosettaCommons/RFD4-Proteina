@@ -4,9 +4,9 @@ import re
 import numpy as np
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
 from biotite.structure import AtomArray
+
 from foundry.common import exists
 from foundry.utils.ddp import RankedLogger
-
 from proteinfoundation.utils.constants import (
     TIP_BY_RESTYPE,
 )
@@ -41,8 +41,8 @@ class ComponentValidationError(ValueError):
 class ComponentStr(str):
     """Component identifier, e.g. "A1" for residues, "B12", etc. Previously named `contig_string`"""
 
-    def split_component(v):
-        return split_contig(v)
+    def split_component(self) -> list[str | int]:
+        return split_contig(self)
 
 
 def split_contig(x: str) -> list[str | int]:
@@ -84,7 +84,8 @@ def get_design_pattern_with_constraints(
 ) -> list[str | int]:
     """
     Convert the contig string to separate modules.
-    e.g. '1-5,A20-21,1-5,A25-25,1-5,A30-30,/0,1-5' with length = 10-10 may be converted to [2, A20, A21, 2, A25, 3, A30, /0, 3]
+    e.g. '1-5,A20-21,1-5,A25-25,1-5,A30-30,/0,1-5' with length = 10-10 may be converted to
+    [2, A20, A21, 2, A25, 3, A30, /0, 3]
     Integers represent number of free residues to put there.
 
     """
@@ -98,7 +99,7 @@ def get_design_pattern_with_constraints(
 
     for part in contig_parts:
         # Detect non-fixed contig parts with specified chain types
-        if part[-1] in ["R", "D", "P"]:  
+        if part[-1] in ["R", "D", "P"]:
             suff.append(part[-1])
             part = part[:-1]
             if "-" in part:
@@ -335,7 +336,8 @@ def get_name_mask(
         global_logger.warning(
             "Not all atoms found in atom array. Are you expecting multiple residues/ligands with the same names? "
             + "If not, check your input pdb file. "
-            + f"Atom array requested to contain names {query_names}. Got: {np.asarray(source_names).tolist()}. Requested {np.asarray(names).tolist()}"
+            + f"Atom array requested to contain names {query_names}. Got: {np.asarray(source_names).tolist()}. "
+            + f"Requested {np.asarray(names).tolist()}"
         )
     if mask.sum() % len(names) != 0:
         # for the case where source_names are originated from multiple residues with the same names
@@ -403,7 +405,7 @@ def fetch_mask_from_component(component: str, *, atom_array: AtomArray) -> np.nd
                 raise ComponentValidationError(
                     f"Ligand or Chain ID '{component}' not found in atom array.",
                     component=component,
-                )
+                ) from None
             return mask
 
         mask = fetch_mask_from_idx(component, atom_array=atom_array)

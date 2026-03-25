@@ -3,6 +3,7 @@
 from typing import Any
 
 import torch
+
 from foundry.metrics.metric import Metric, MetricManager
 
 
@@ -26,7 +27,9 @@ class RewardModel:
         ...         "hbonds.avg_hbond_energy": -0.5,
         ...     },
         ... )
-        >>> reward = reward_model.aggregate_metrics_output(reward_model.metric_manager(predicted_atom_array=structure))
+        >>> reward = reward_model.aggregate_metrics_output(
+        ...     reward_model.metric_manager(predicted_atom_array=structure)
+        ... )
     """
 
     def __init__(
@@ -140,7 +143,7 @@ class RewardModel:
         # Aggregate sequence gradients
         if all_grads:
             # Start with zeros
-            first_metric_grad = list(all_grads.values())[0]
+            first_metric_grad = next(iter(all_grads.values()))
             if "sequence" in first_metric_grad:
                 aggregated_seq_grad = torch.zeros_like(first_metric_grad["sequence"])
 

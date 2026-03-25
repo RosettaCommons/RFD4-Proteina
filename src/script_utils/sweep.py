@@ -36,16 +36,15 @@ import itertools
 import json
 import os
 import shutil
-import sys
 from pathlib import Path
 
 import hydra
-from hydra import initialize_config_dir
 import yaml
-from loguru import logger
-from omegaconf import DictConfig, OmegaConf
-
 from atomworks.ml.utils.nested_dict import unflatten
+from hydra import initialize_config_dir
+from loguru import logger
+from omegaconf import OmegaConf
+
 
 def _get_override_label(override_str: str) -> str:
     """Extract a short human-readable label from a Hydra override string."""
@@ -125,7 +124,7 @@ def generate_sweep_configs(
     # Generate Cartesian product of dot-notation sweep values
     keys = list(sweeper.keys())
     values = list(sweeper.values())
-    dot_combos = [dict(zip(keys, combo)) for combo in (itertools.product(*values) if values else [()])]
+    dot_combos = [dict(zip(keys, combo, strict=False)) for combo in (itertools.product(*values) if values else [()])]
     if not dot_combos:
         dot_combos = [{}]
 
@@ -246,7 +245,7 @@ def parse_sweep_arg(sweep_str: str) -> tuple[str, list]:
     return key, converted
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate inference configs by sweeping over parameter combinations.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -353,7 +352,7 @@ Examples:
         override_options = sweep_overrides if sweep_overrides else [""]
         keys = list(sweeper.keys())
         values = list(sweeper.values())
-        dot_combos = [dict(zip(keys, c)) for c in (itertools.product(*values) if values else [()])]
+        dot_combos = [dict(zip(keys, c, strict=False)) for c in (itertools.product(*values) if values else [()])]
         i = 0
         for override_option in override_options:
             for combo in dot_combos:

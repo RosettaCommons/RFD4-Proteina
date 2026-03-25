@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 from biotite.structure import AtomArray
 
 from proteinfoundation.transforms.design_task import TipAtomActiveSiteTask

@@ -1,12 +1,13 @@
 import logging
+from typing import Any, Literal
 
 import biotite.structure as struc
 import numpy as np
 import torch
-from typing import Any
+from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.io.utils.visualize import get_pymol_session, view_pymol
 from atomworks.ml.conditions import C_DIS, Condition
-from atomworks.io.utils.standard_annotations.base import Level
+
 from proteinfoundation.proteina import Proteina
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,8 @@ def get_atom_array_style_cmd(
         atom_array: The biotite AtomArray or AtomArrayStack to be styled
         obj: PyMOL object name to apply the styling to
         label: Whether to label all atoms with their 0-indexed atom_id
-        max_num_dist_lines: Maximum number of distance lines to show (pymol hangs when there's too many distance objects)
+        max_num_dist_lines: Maximum number of distance lines to show (pymol hangs when there's too many
+            distance objects)
 
     Returns:
         str: A PyMOL command string that styles the atom array
@@ -159,6 +161,7 @@ def viz(
     max_distances: int = 100,
     view_ori_token: bool = False,
     stylize: bool = False,
+    connect_mode: Literal[0, 1, 2, 3, 4] = 4,
 ) -> None:
     """Quickly visualize a molecular structure in PyMOL with predefined styling.
 
@@ -173,6 +176,12 @@ def viz(
         label: Whether to label all atoms with their 0-indexed atom_id (default: True)
         view_ori_token: Whether to view the ori token (default: False)
         stylize: Whether to apply styling as defined in `get_atom_array_style_cmd` (default: False)
+        connect_mode: How to determine bond rendering. See https://pymolwiki.org/Connect_mode
+            0 = distance-based (excluding HETATM to HETATM) and CONECT records (default)
+            1 = CONECT records
+            2 = distance-based, ignores CONECT records
+            3 = distance-based (including HETATM to HETATM) and CONECT records
+            4 = for loading mmCIF: use the chemical components dictionary to look up bonds
 
     Example:
         >>> from biotite.structure import AtomArray
@@ -182,23 +191,22 @@ def viz(
         >>> viz(structure)
     """
     atom_array = atom_array.copy()
-    # pymol only considers chain_id annotation, which can make weird looking artifacts if we have two different chains with the same chain_id
-    # We always disambiguate by using the chain_iid annotation, so we need to have pymol use that to do the same
+    # pymol only considers chain_id annotation, which can make weird looking artifacts if we have two different
+    # chains with the same chain_id. We always disambiguate by using the chain_iid annotation, so we need to
+    # have pymol use that to do the same
     if "chain_iid" in atom_array.get_annotation_categories():
         atom_array.chain_id = atom_array.get_annotation("chain_iid")
         atom_array.chain_id = atom_array.chain_id.astype(str)
 
     pymol = get_pymol_session()
-    pymol.do("set valence, 1; set connect_mode, 2;")
+    pymol.do(f"set valence, 1; set connect_mode, {connect_mode};")
     if clear:
         pymol.do("delete d*")
         pymol.delete("all")
     slot = np.random.randint(0, 10_000)
     obj_name = view_pymol(atom_array, id=id, grid_slot=slot)
     if stylize:
-        cmd = get_atom_array_style_cmd(
-            atom_array, obj_name, label=label, grid_slot=slot, max_distances=max_distances
-        )
+        cmd = get_atom_array_style_cmd(atom_array, obj_name, label=label, grid_slot=slot, max_distances=max_distances)
         pymol.do(cmd)
 
     if view_ori_token:
@@ -213,19 +221,20 @@ def viz(
             ]
         )
 
-def viz_x_decoded(batch: dict[str, Any], x: dict[str, torch.Tensor], model: Proteina, **kwargs):
+
+def viz_x_decoded(batch: dict[str, Any], x: dict[str, torch.Tensor], model: Proteina, **kwargs) -> None:
     """Decode a partially-latent sample and visualize it using pymol-remote.
-    
+
     Args:
         batch: input batch containing the sample to visualize, input AtomArray, padding mask, and encoding mask
         x: the latent sample to decode and visualize
         model: A Proteina instance to be used for decoding/formatting
         **kwargs: additional keyword arguments to pass to the viz function
-    
+
     Returns:
         None, visualizes the decoded sample in PyMOL
     """
-    
+
     # Decode from latent space
     sample_prots = model.sample_formatting(
         x=x,

@@ -1,19 +1,18 @@
 """Collate function for batching variable-length proteins."""
 
-import torch
 import numpy as np
+import torch
 from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 
 from proteinfoundation.conditions import (
+    C_CATH,
+    C_CRDGRP,
     C_HB,
     C_HOT,
     C_IDXGRP,
-    C_CRDGRP,
     C_INTCRD,
     C_RAS,
     C_SEC,
-    C_CATH,
     HBondEnum,
     RasaEnum,
     SSEnum,
@@ -92,7 +91,7 @@ PAIR_LEVEL_SPECS = {
 # MSA features are 2D per sample: [n_rows, n_tokens]
 # NOTE: Only `msa` is strictly needed for MSA Pairformer - all masks are derived internally
 MSA_LEVEL_SPECS = {
-    "msa_final": (torch.float32, 0, 71), # pad with 0s, these values will be masked in the transformer
+    "msa_final": (torch.float32, 0, 71),  # pad with 0s, these values will be masked in the transformer
 }
 
 
@@ -192,7 +191,12 @@ def atom37_collate_fn(batch: list[dict], fixed_max_length: int | None = None) ->
     if "msa_final" in batch[0]["feats"]:
         max_msa_rows = max(ex["feats"]["msa_final"].shape[0] for ex in batch)
         for feat_name, (dtype, pad_value, num_features) in MSA_LEVEL_SPECS.items():
-            shape = (batch_size, max_msa_rows, max_tokens, num_features,)
+            shape = (
+                batch_size,
+                max_msa_rows,
+                max_tokens,
+                num_features,
+            )
             padded = torch.full(shape, pad_value, dtype=dtype)
             for i, ex in enumerate(batch):
                 feat = ex["feats"][feat_name]
@@ -206,7 +210,7 @@ def atom37_collate_fn(batch: list[dict], fixed_max_length: int | None = None) ->
             num_rows = ex["feats"]["msa_final"].shape[0]
             msa_row_mask[i, :num_rows] = True
         collated["msa_row_mask"] = msa_row_mask
-    
+
     # 6. Padding mask (computed, not from feats)
     padding_mask = torch.zeros((batch_size, max_tokens), dtype=torch.bool)
     for i, ex in enumerate(batch):
@@ -228,4 +232,3 @@ def atom37_collate_fn(batch: list[dict], fixed_max_length: int | None = None) ->
         collated["extra_info_batch"] = [ex["extra_info"] for ex in batch]
 
     return collated
-

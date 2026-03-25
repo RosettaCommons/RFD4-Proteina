@@ -1,8 +1,8 @@
 import numpy as np
 from biotite.structure import AtomArray
+
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.standard_annotations import SA_SRC
-
 from proteinfoundation.inference_utils.symmetry.frames import (
     decompose_symmetry_frame,
     get_symmetry_frames_from_symmetry_id,

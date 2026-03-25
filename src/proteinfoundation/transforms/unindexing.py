@@ -1,6 +1,7 @@
 import copy
+import itertools
 from collections import defaultdict
-from scipy.optimize import linear_sum_assignment
+from typing import ClassVar
 
 import biotite.structure as struc
 import numpy as np
@@ -17,22 +18,20 @@ from atomworks.ml.transforms._checks import (
     check_is_instance,
 )
 from atomworks.ml.transforms.atom_array import (
-    add_global_token_id_annotation,
     add_global_atom_id_annotation,
+    add_global_token_id_annotation,
 )
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
-    apply_token_wise,
     get_token_count,
-    get_token_starts,
-    spread_token_wise,
 )
 from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_CWI, SA_CRDSRC, SA_SRC
+from scipy.optimize import linear_sum_assignment
 
+from foundry.utils.ddp import RankedLogger
+from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from proteinfoundation.conditions import C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.utils.conditioning_utils import (
     set_specified_conditions_to_default,
@@ -44,11 +43,11 @@ global_logger = RankedLogger(__name__, rank_zero_only=False)
 class UnindexFlaggedTokens(Transform):
     """Create in-context conditioning for tokens with unknown indices."""
 
-    requires_previous_transforms = [
+    requires_previous_transforms: ClassVar[list] = [
         "EnsureRepresentativeAndCenterAtomAnnotations",
     ]
 
-    def check_input(self, data: dict):
+    def check_input(self, data: dict) -> None:
         check_contains_keys(data, ["atom_array"])
         check_is_instance(data, "atom_array", AtomArray)
 
@@ -122,7 +121,7 @@ class UnindexFlaggedTokens(Transform):
         idxs = np.arange(atom_array.array_length())
         unindexed_tokens = []
         old_to_new_atom_idx_map = {}
-        for i, (start, end) in enumerate(zip(starts[:-1], starts[1:], strict=False)):
+        for _i, (start, end) in enumerate(itertools.pairwise(starts)):
             if not token_to_unindex[start]:
                 continue
 
@@ -175,12 +174,7 @@ class UnindexFlaggedTokens(Transform):
             }
 
             # update old_to_new_atom_idx_map to reflect moving indexed atoms
-            old_to_new_atom_idx_map.update(
-                {
-                    old_idx: new_idx
-                    for old_idx, new_idx in zip(original_indexed_positions, new_indexed_positions, strict=False)
-                }
-            )
+            old_to_new_atom_idx_map.update(dict(zip(original_indexed_positions, new_indexed_positions, strict=False)))
 
             # Actually delete the unindexed tokens
             atom_array = atom_array[~token_to_unindex]
@@ -215,14 +209,14 @@ class UnindexFlaggedTokens(Transform):
                     default_annotation = cond.annotation(atom_array, default="raise")
                     current_annotation[token_to_unindex] = default_annotation[token_to_unindex]
                     cond.set_annotation(atom_array, current_annotation)
-            
-            # Index groups present an edge case -- resetting to defaults only in the regions to be 
+
+            # Index groups present an edge case -- resetting to defaults only in the regions to be
             # unindexed may cause the (now-indexed) source residues to have different index groups from
             # their same-chain indexed neighbors. To avoid this, we reset the full indexed region
             C_IDXGRP.set_annotation(atom_array, C_IDXGRP.default_annotation(atom_array))
 
         # Concatenate unindexed parts to the end
-        atom_array_full = concatenate_any([atom_array] + unindexed_tokens)
+        atom_array_full = concatenate_any([atom_array, *unindexed_tokens])
 
         # Ensure that the newly-created index groups in the indexed region do not overlap with
         # those in the tokens that were copied for unindexing
@@ -243,7 +237,8 @@ class UnindexFlaggedTokens(Transform):
             if is_indexed[0]:
                 continue
 
-            # HACK: In legacy inference code, user-requested index gaps are only preserved as res_id gaps within the unindexed region
+            # HACK: In legacy inference code, user-requested index gaps are only preserved as
+            # res_id gaps within the unindexed region
             # This should be cleaned up after the inference refactor
             if is_inference:
                 group_res_ids = atom_array_full.res_id[group_mask]
@@ -282,7 +277,7 @@ class UnindexFlaggedTokens(Transform):
 
         return atom_array_full
 
-    def forward(self, data: dict):
+    def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         if "feats" not in data:
             data["feats"] = {}
@@ -317,13 +312,13 @@ class UnindexFlaggedTokens(Transform):
 
 def _get_target_indices_corresponding_to_inserted(
     atom_array: AtomArray,
-    chain_mask,
-    insertion_res_id,
-    target_res_id,
-    has_index,
-    res_id_annotation="res_id",
-    allow_element_fallback=False,
-):
+    chain_mask: np.ndarray,
+    insertion_res_id: int,
+    target_res_id: int,
+    has_index: np.ndarray,
+    res_id_annotation: str = "res_id",
+    allow_element_fallback: bool = False,
+) -> np.ndarray:
     """Finds the indices to the target residue that will give the same atom names/ordering as the inserted residue.
     If allow_element_fallback is True, then any atom names not found in the target residue will be matched by element,
     with ties broken by minimizing the total distance.
@@ -378,7 +373,7 @@ def _get_target_indices_corresponding_to_inserted(
             row_indices, col_indices = linear_sum_assignment(dists)
 
             # Fill in element-based matches
-            for r, c in zip(row_indices, col_indices):
+            for r, c in zip(row_indices, col_indices, strict=False):
                 if not np.isfinite(dists[r, c]):
                     raise ValueError("Could not find matching target atom for inserted atom based on element type.")
                 assert np.isnan(
@@ -403,17 +398,19 @@ def _get_target_indices_corresponding_to_inserted(
 
 def find_optimal_insertion_points_for_unindexed_regions(
     atom_array: AtomArray,
-    inputs_in_same_frame=True,
-):
-    """This function maps the given unindexed regions (in-context conditioning) to the corresponding regions diffused by the model.
+    inputs_in_same_frame: bool = True,
+) -> dict:
+    """Map unindexed regions (in-context conditioning) to the corresponding regions diffused by the model.
 
-    Currently, it only supports matching by atom name (if sequence-conditioned) and absolute coordinate conditioning (but not both). It is
-    possible to provide many other forms of unindexed conditioning, but to find their optimal insertion points, some method
-    of determining relative importance is necessary. For simplicity, this is left out for now.
+    Currently, it only supports matching by atom name (if sequence-conditioned) and absolute coordinate
+    conditioning (but not both). It is possible to provide many other forms of unindexed conditioning,
+    but to find their optimal insertion points, some method of determining relative importance is
+    necessary. For simplicity, this is left out for now.
 
     Args:
         atom_array (AtomArray): AtomArray including the unindexed regions (in-context conditioning).
-        inputs_in_same_frame (bool): Whether the inputs can be relied on to be in the same global frame. If False, will
+        inputs_in_same_frame (bool): Whether the inputs can be relied on to be in the same global
+            frame. If False, will attempt to map each group to a single generated region.
     """
 
     # Enforce uniqueness of res_ids within each chain
@@ -447,13 +444,15 @@ def find_optimal_insertion_points_for_unindexed_regions(
     has_internal_coordinate_conditioning = C_INTCRD.mask(in_context_conditioning, default="generate")
     if has_internal_coordinate_conditioning.any():
         raise NotImplementedError(
-            "We currently do not support finding optimal insertion points for unindexed regions with internal coordinate conditioning. "
+            "We currently do not support finding optimal insertion points for unindexed regions "
+            "with internal coordinate conditioning. "
         )
 
     has_distance_conditioning = C_DIS.mask(in_context_conditioning, default="generate").as_dense_array().any(axis=0)
     if has_distance_conditioning.any():
         raise NotImplementedError(
-            "We currently do not support finding optimal insertion points for unindexed regions with 2D distance conditioning. "
+            "We currently do not support finding optimal insertion points for unindexed regions "
+            "with 2D distance conditioning. "
         )
     elif has_absolute_coordinate_conditioning.any():
         unindexed_residue_has_3d_conditioning = apply_residue_wise(
@@ -461,7 +460,8 @@ def find_optimal_insertion_points_for_unindexed_regions(
         )
         if not unindexed_residue_has_3d_conditioning.all():
             raise ValueError(
-                "If using 3d conditioning for unindexed regions, all unindexed residues must have at least some 3d conditioning. "
+                "If using 3d conditioning for unindexed regions, all unindexed residues must have "
+                "at least some 3d conditioning. "
                 "Otherwise, there is ambiguity as to where they should be inserted."
             )
     else:
@@ -484,10 +484,12 @@ def find_optimal_insertion_points_for_unindexed_regions(
             raise ValueError("A single unindexed group must not span multiple chains.")
         chain_ids_by_group[group_id] = unindexed_group.chain_id[0]
 
-        # This may be supported eventually as a method of chain-agnostic unindexing, but adds complexity so is left out for now
+        # This may be supported eventually as a method of chain-agnostic unindexing, but adds
+        # complexity so is left out for now
         if chain_ids_by_group[group_id] not in generated_residue_starts_atoms.chain_id:
             raise NotImplementedError(
-                "Unindexed group chain ID not found in generated atom array. Chain-agnostic unindexing is not currently supported."
+                "Unindexed group chain ID not found in generated atom array. "
+                "Chain-agnostic unindexing is not currently supported."
             )
 
         chain_id_mask = generated_residue_starts_atoms.chain_id == chain_ids_by_group[group_id]
@@ -553,8 +555,8 @@ def find_optimal_insertion_points_for_unindexed_regions(
                     unique_elements_v, counts_v = np.unique(
                         current_chain[current_chain.global_res_id == v].element, return_counts=True
                     )
-                    elements_to_counts_k = dict(zip(unique_elements_k, counts_k))
-                    elements_to_counts_v = dict(zip(unique_elements_v, counts_v))
+                    elements_to_counts_k = dict(zip(unique_elements_k, counts_k, strict=False))
+                    elements_to_counts_v = dict(zip(unique_elements_v, counts_v, strict=False))
 
                     if not all(
                         elements_to_counts_k[element] <= elements_to_counts_v.get(element, 0)
@@ -568,7 +570,8 @@ def find_optimal_insertion_points_for_unindexed_regions(
 
         if len(filtered_valid_starts) == 0:
             raise ValueError(
-                f"No valid insertion points found for unindexed group {group_id} after applying sequence conditioning atom name matching."
+                f"No valid insertion points found for unindexed group {group_id} after applying "
+                "sequence conditioning atom name matching."
             )
         valid_first_residue_starts_by_group[group_id] = np.array(filtered_valid_starts)
 
@@ -663,21 +666,25 @@ def find_optimal_insertion_points_for_unindexed_regions(
 
 
 def process_unindexed_outputs(
-    atom_array,
-    insert_unindexed_regions=False,
-    verbose=False,
-    inputs_in_same_frame=True,
-):
-    """
-    Process design outputs containing unindexed tokens. Returns metadata such as the assigned positional indices from
-    the input indices and the RMSD of the unindexed tokens.
+    atom_array: AtomArray,
+    insert_unindexed_regions: bool = False,
+    verbose: bool = False,
+    inputs_in_same_frame: bool = True,
+) -> tuple:
+    """Process design outputs containing unindexed tokens.
+
+    Returns metadata such as the assigned positional indices from the input indices and the RMSD of
+    the unindexed tokens.
 
     Args:
         atom_array (AtomArray): AtomArray including the unindexed regions (in-context conditioning).
-        insert_unindexed_regions (bool): Whether to insert the coordinates of the unindexed regions, overwriting the regions they mapped to.
-        verbose (bool): Whether to save verbose insertion quality statistics, including breakdowns by residue type and individual residue.
-        inputs_in_same_frame (bool): Whether the inputs can be relied on to be in the same global frame. If False, will
-            attempt to map each unindexed group to a single generated region, and fails to find a mapping if this is ambiguous.
+        insert_unindexed_regions (bool): Whether to insert the coordinates of the unindexed regions,
+            overwriting the regions they mapped to.
+        verbose (bool): Whether to save verbose insertion quality statistics, including breakdowns
+            by residue type and individual residue.
+        inputs_in_same_frame (bool): Whether the inputs can be relied on to be in the same global
+            frame. If False, will attempt to map each unindexed group to a single generated region,
+            and fails to find a mapping if this is ambiguous.
 
     Returns:
         - Diffused atom array (without additional unindexed tokens)
@@ -702,7 +709,8 @@ def process_unindexed_outputs(
 
     if has_distance_conditioning.any():
         raise NotImplementedError(
-            "We currently do not support finding optimal insertion points for 2d distance-conditioned unindexed regions."
+            "We currently do not support finding optimal insertion points for "
+            "2d distance-conditioned unindexed regions."
         )
 
     metadata = {
@@ -757,7 +765,8 @@ def process_unindexed_outputs(
                 token_src_id = f"{chain_id}{unindexed_res_id}"
             metadata["diffused_index_map"][token_src_id] = f"{chain_id}{target_res_id}"
 
-            # Get local permutation/subset of indices within the target residue that corresponds to the atom ordering/subset in the unindexed token
+            # Get local permutation/subset of indices within the target residue that corresponds to
+            # the atom ordering/subset in the unindexed token
             target_indices_corresponding_to_inserted = _get_target_indices_corresponding_to_inserted(
                 atom_array,
                 chain_mask,
@@ -767,7 +776,8 @@ def process_unindexed_outputs(
                 allow_element_fallback=True,
             )
 
-            # Get global indices that can be applied to the full atom array, combining model-generated components and in-context conditioning
+            # Get global indices that can be applied to the full atom array, combining
+            # model-generated components and in-context conditioning
             target_mask_global = chain_mask & (atom_array.res_id == target_res_id) & has_index
             permuted_target_indices_global = global_indices[target_mask_global][
                 target_indices_corresponding_to_inserted
@@ -807,7 +817,8 @@ def process_unindexed_outputs(
             metadata["insertion_rmsd_by_restype"][res_name].append(token_rmsd)
 
             if not np.any(np.isin(unindexed_token.atom_name, ["N", "CA", "C", "O"])):
-                # Infer join point as the unindexed atom closest to the backbone with ties broken (arbitrarily) by the encoding order
+                # Infer join point as the unindexed atom closest to the backbone with ties broken
+                # (arbitrarily) by the encoding order
                 atom_name_encoding_indices = np.array(
                     [
                         UNIFIED_ATOM37_ENCODING.atom_to_idx[(res_name, atom_name)]
@@ -823,8 +834,10 @@ def process_unindexed_outputs(
                 metadata["join_point_rmsd_by_token"][token_src_id] = float(dist)
 
             if has_3d_conditioning.any():
-                # NOTE: If we eventually support other kinds of unindexed conditioning (rasa etc) we may want to copy those over as well
-                # Sequence conditioning is not copied over to avoid potential sequence/structure mismatches for tip-atom cases
+                # NOTE: If we eventually support other kinds of unindexed conditioning (rasa etc)
+                # we may want to copy those over as well
+                # Sequence conditioning is not copied over to avoid potential
+                # sequence/structure mismatches for tip-atom cases
                 if insert_unindexed_regions:
                     model_generated_atom_array.coord[permuted_target_indices_generated] = unindexed_token.coord
                     coord_mask = C_CRD.mask(model_generated_atom_array, default="generate")

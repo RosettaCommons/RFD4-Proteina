@@ -10,7 +10,7 @@ class AdaptiveLayerNorm(torch.nn.Module):
     """Adaptive layer norm layer, where scales and biases are learned from some
     conditioning variables."""
 
-    def __init__(self, *, dim, dim_cond):
+    def __init__(self, *, dim: int, dim_cond: int) -> None:
         super().__init__()
         self.norm = torch.nn.LayerNorm(dim, elementwise_affine=False)
         self.norm_cond = torch.nn.LayerNorm(dim_cond)
@@ -19,7 +19,7 @@ class AdaptiveLayerNorm(torch.nn.Module):
 
         self.to_beta = torch.nn.Linear(dim_cond, dim, bias=False)
 
-    def forward(self, x, cond, mask):
+    def forward(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: input representation, shape [*, dim]
@@ -41,7 +41,7 @@ class AdaptiveLayerNorm(torch.nn.Module):
 class AdaptiveOutputScale(torch.nn.Module):
     """Adaptive scaling of a representation given conditioning variables."""
 
-    def __init__(self, *, dim, dim_cond, adaln_zero_bias_init_value=-2.0):
+    def __init__(self, *, dim: int, dim_cond: int, adaln_zero_bias_init_value: float = -2.0) -> None:
         super().__init__()
 
         adaln_zero_gamma_linear = torch.nn.Linear(dim_cond, dim)
@@ -50,7 +50,7 @@ class AdaptiveOutputScale(torch.nn.Module):
 
         self.to_adaln_zero_gamma = torch.nn.Sequential(adaln_zero_gamma_linear, torch.nn.Sigmoid())
 
-    def forward(self, x, cond, mask):
+    def forward(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: input sequence, shape [*, dim]
@@ -81,7 +81,7 @@ class AdaptiveLayerNormIdentical(torch.nn.Module):
         dim_cond: int,
         mode: Literal["seq", "pair"],
         use_ln_cond: bool = False,
-    ):
+    ) -> None:
         """
         Args:
             dim: dimension of the input representation
@@ -105,7 +105,7 @@ class AdaptiveLayerNormIdentical(torch.nn.Module):
 
         self.to_beta = torch.nn.Linear(dim_cond, dim, bias=False)
 
-    def forward(self, x, cond, mask):
+    def forward(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: input representation, shape [b, n, dim] if single, [b, n, n, d] if pair

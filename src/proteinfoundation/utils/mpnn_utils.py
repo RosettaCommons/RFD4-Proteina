@@ -27,10 +27,9 @@ from pathlib import Path
 from typing import Literal
 
 import numpy as np
-from biotite.structure import AtomArray
-
 from atomworks.io.parser import parse
 from atomworks.ml.utils.token import apply_and_spread_token_wise
+from biotite.structure import AtomArray
 
 from foundry.utils.standard_annotations import SA_CRDSRC
 
@@ -73,9 +72,7 @@ def get_fixed_residues_from_structure(
         token_level_mask = apply_and_spread_token_wise(atom_array, SA_CRDSRC.mask(atom_array), np.any)
         fixed_mask |= token_level_mask.astype(bool)
     else:
-        raise ValueError(
-            f"Structure {structure_path} is missing '{SA_CRDSRC.mask_name}' annotation."
-        )
+        raise ValueError(f"Structure {structure_path} is missing '{SA_CRDSRC.mask_name}' annotation.")
 
     # Convert atom-level mask to residue-level fixed residue list
     # Get unique (chain_id, res_id) pairs for fixed atoms
@@ -85,7 +82,7 @@ def get_fixed_residues_from_structure(
         res_id = atom_array.res_id[i]
         fixed_residues_set.add(f"{chain_id}{res_id}")
 
-    return atom_array, sorted(list(fixed_residues_set))
+    return atom_array, sorted(fixed_residues_set)
 
 
 def collect_structures_from_path(
@@ -297,11 +294,13 @@ def generate_slurm_script(
     if array_range is not None:
         lines.append(f"#SBATCH --array={array_range}")
 
-    lines.extend([
-        "",
-        "set -e",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "set -e",
+            "",
+        ]
+    )
 
     if array_range is not None and len(commands) > 1:
         # Array job: select command based on SLURM_ARRAY_TASK_ID

@@ -21,10 +21,14 @@ estimation if they meet success criteria, significantly improving total successe
 
 import copy
 from functools import partial
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
+
 from foundry.utils.ddp import RankedLogger
+
+if TYPE_CHECKING:
+    pass
 
 from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
 from proteinfoundation.search.base_strategy import SearchStrategy
@@ -72,7 +76,12 @@ class BeamSearchStrategy(SearchStrategy):
         self.beam_width = beam_width
         self.keep_intermediate_samples = keep_intermediate_samples
 
-    def generate(self, model, batch: dict, reward_model=None) -> list[dict[str, Any]]:
+    def generate(
+        self,
+        model: "Proteina",
+        batch: dict,
+        reward_model: "RewardModel | None" = None,
+    ) -> list[dict[str, Any]]:
         """Generate structures using beam search.
 
         Implements beam search with reward-guided pruning.
@@ -138,7 +147,8 @@ class BeamSearchStrategy(SearchStrategy):
         # Initialize beam: nsamples * beam_width samples
         # Interleaved format: [sample0, sample1, sample2, sample0, sample1, sample2, ...]
         logger.info(
-            f"Initializing beam: {nsamples} samples × {self.beam_width} width = {nsamples * self.beam_width} total states"
+            f"Initializing beam: {nsamples} samples x {self.beam_width} width = "
+            f"{nsamples * self.beam_width} total states"
         )
         mask = init_mask.repeat(self.beam_width, 1)
         xt = model.fm.sample_noise(
@@ -181,7 +191,7 @@ class BeamSearchStrategy(SearchStrategy):
                         x_1_pred=replica_x_1_pred,
                         mask=init_mask,
                         predict_for_sampling=fn_predict_for_sampling,
-                        nsteps= end_step - start_step,
+                        nsteps=end_step - start_step,
                         ts=ts_segment,
                         gt=gt_segment,
                         self_cond=self_cond,
@@ -308,7 +318,13 @@ class BeamSearchStrategy(SearchStrategy):
         return results
 
     def _simulate_and_compute_reward(
-        self, model, batch: dict, xt: dict[str, torch.Tensor], current_step: int, mask: torch.Tensor, reward_model
+        self,
+        model: "Proteina",
+        batch: dict,
+        xt: dict[str, torch.Tensor],
+        current_step: int,
+        mask: torch.Tensor,
+        reward_model: "RewardModel",
     ) -> tuple[dict, torch.Tensor]:
         """Roll out samples to completion and compute rewards.
 
@@ -360,7 +376,7 @@ class BeamSearchStrategy(SearchStrategy):
                 x_1_pred=None,
                 mask=mask,
                 predict_for_sampling=partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0)),
-                nsteps = final_step - current_step,
+                nsteps=final_step - current_step,
                 ts=ts_sim_segment,
                 gt=gt_sim_segment,
                 self_cond=model.inf_cfg.args.self_cond,
@@ -412,7 +428,12 @@ class BeamSearchStrategy(SearchStrategy):
 
         return final_sample_prots, rewards
 
-    def _compute_rewards_from_sample_prots(self, model, sample_prots: dict, reward_model) -> torch.Tensor:
+    def _compute_rewards_from_sample_prots(
+        self,
+        model: "Proteina",
+        sample_prots: dict,
+        reward_model: "RewardModel",
+    ) -> torch.Tensor:
         """Compute rewards for formatted sample proteins.
 
         Uses the model's format_sample_prots_to_atom_arrays helper to properly
@@ -426,7 +447,7 @@ class BeamSearchStrategy(SearchStrategy):
         Returns:
             Tensor of reward values for each sample
         """
-        batch_size = sample_prots["coors"].shape[0]
+        _batch_size = sample_prots["coors"].shape[0]
         device = sample_prots["coors"].device
 
         # set up all metrics
@@ -443,7 +464,9 @@ class BeamSearchStrategy(SearchStrategy):
         rewards = []
         for i, result in enumerate(atom_array_results):
             orig_batch_idx = i % max(len(batch.get("atom_array_batch", [batch.get("atom_array")])), 1)
-            metrics_output = run_metrics_for_result(result, batch, orig_batch_idx, reward_model.metric_manager, output_base_dir=None)
+            metrics_output = run_metrics_for_result(
+                result, batch, orig_batch_idx, reward_model.metric_manager, output_base_dir=None
+            )
             reward = reward_model.aggregate_metrics_output(metrics_output)
             rewards.append(reward)
 

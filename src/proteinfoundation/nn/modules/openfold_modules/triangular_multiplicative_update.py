@@ -26,7 +26,7 @@ class TriangleMultiplicativeUpdate(nn.Module):
     Implements Algorithms 11 and 12.
     """
 
-    def __init__(self, c_z, c_hidden, _outgoing=True):
+    def __init__(self, c_z: int, c_hidden: int, _outgoing: bool = True):
         """
         Args:
             c_z:
@@ -34,7 +34,7 @@ class TriangleMultiplicativeUpdate(nn.Module):
             c:
                 Hidden channel dimension
         """
-        super(TriangleMultiplicativeUpdate, self).__init__()
+        super().__init__()
         self.c_z = c_z
         self.c_hidden = c_hidden
         self._outgoing = _outgoing
@@ -94,7 +94,7 @@ class TriangleMultiplicationOutgoing(TriangleMultiplicativeUpdate):
         self,
         a: torch.Tensor,  # [*, N_i, N_k, C]
         b: torch.Tensor,  # [*, N_j, N_k, C]
-    ):
+    ) -> torch.Tensor:
         # [*, C, N_i, N_j]
         p = torch.matmul(
             permute_final_dims(a, (2, 0, 1)),
@@ -112,7 +112,7 @@ class TriangleMultiplicationIncoming(TriangleMultiplicativeUpdate):
         self,
         a: torch.Tensor,  # [*, N_k, N_i, C]
         b: torch.Tensor,  # [*, N_k, N_j, C]
-    ):
+    ) -> torch.Tensor:
         # [*, C, N_i, N_j]
         p = torch.matmul(
             permute_final_dims(a, (2, 1, 0)),

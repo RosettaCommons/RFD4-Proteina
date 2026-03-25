@@ -9,6 +9,7 @@ dataset:
     fix_formal_charges: False
     fix_bond_types: False
     fix_ligands_at_symmetry_centers: False
+    long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
 
   transform:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline

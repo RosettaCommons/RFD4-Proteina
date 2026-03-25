@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 import numpy as np
 from jaxtyping import Float, Int
 
-
 # ── Attention / burial flag constants ─────────────────────────────────────────
 
 ATTEN_BLOCKER = 1
@@ -111,8 +110,8 @@ class SurfaceAtomArray:
     def extend_from_arrays(
         self,
         xyz: Float[np.ndarray, "N 3"],
-        radii: Float[np.ndarray, "N"],
-        density: float | Float[np.ndarray, "N"],
+        radii: Float[np.ndarray, N],
+        density: float | Float[np.ndarray, N],
         molecule: int,
     ) -> None:
         """Bulk-append *N* atoms from numpy arrays.
@@ -226,10 +225,10 @@ class DotArray:
         self,
         coor_xyz: Float[np.ndarray, "D 3"],
         outnml_xyz: Float[np.ndarray, "D 3"],
-        area: Float[np.ndarray, "D"],
-        buried: Int[np.ndarray, "D"],
-        type_: Int[np.ndarray, "D"],
-        atom_idx: Int[np.ndarray, "D"],
+        area: Float[np.ndarray, D],
+        buried: Int[np.ndarray, D],
+        type_: Int[np.ndarray, D],
+        atom_idx: Int[np.ndarray, D],
     ) -> None:
         """Batch-append *D* dots."""
         n = len(coor_xyz)
@@ -302,10 +301,10 @@ class ProbeArray:
 
     def extend_from_arrays(
         self,
-        atom_idx_0: Int[np.ndarray, "P"],
-        atom_idx_1: Int[np.ndarray, "P"],
-        atom_idx_2: Int[np.ndarray, "P"],
-        height: Float[np.ndarray, "P"],
+        atom_idx_0: Int[np.ndarray, P],
+        atom_idx_1: Int[np.ndarray, P],
+        atom_idx_2: Int[np.ndarray, P],
+        height: Float[np.ndarray, P],
         point_xyz: Float[np.ndarray, "P 3"],
         alt_xyz: Float[np.ndarray, "P 3"],
     ) -> None:

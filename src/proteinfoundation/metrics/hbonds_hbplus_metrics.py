@@ -3,10 +3,10 @@ import logging
 import numpy as np
 from atomworks.ml.conditions import C_CRD, C_DIS, C_SEQ
 from biotite.structure import AtomArrayStack
+
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
-
-from proteinfoundation.conditions import C_HB, HBondEnum, C_INTCRD
+from proteinfoundation.conditions import C_HB, C_INTCRD, HBondEnum
 from proteinfoundation.transforms.design_task_modifiers import (
     calculate_hbonds,
 )
@@ -94,7 +94,7 @@ class HbondMetrics(Metric):
         self.cutoff_DA_distance = cutoff_DA_distance
 
     @property
-    def kwargs_to_compute_args(self):
+    def kwargs_to_compute_args(self) -> dict:
         return {
             "predicted_atom_array_stack": ("predicted_atom_array",),
         }

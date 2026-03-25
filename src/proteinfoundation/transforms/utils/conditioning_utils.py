@@ -1,30 +1,30 @@
 import numpy as np
 import torch
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
 from atomworks.ml.conditions import C_CRD, C_DIS
-from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.utils.geometry import random_rigid_augmentation
 from biotite.structure import superimpose
 from biotite.structure.atoms import AtomArray
 from biotite.structure.residues import get_residue_starts, spread_residue_wise
+
 from foundry.common import true_with_prob
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.standard_annotations import SA_CWI
-
-from proteinfoundation.conditions import C_IDX, C_IDXGRP, C_INTCRD, C_CRDGRP
+from proteinfoundation.conditions import C_CRDGRP, C_IDX, C_IDXGRP, C_INTCRD
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
 
 
 def sample_island_tokens(
-    array_length,
-    island_len_min=5,
-    island_len_max=30,
-    n_islands_min=1,
-    n_islands_max=30,
-    max_length=None,
-):
+    array_length: int,
+    island_len_min: int = 5,
+    island_len_max: int = 30,
+    n_islands_min: int = 1,
+    n_islands_max: int = 30,
+    max_length: int | None = None,
+) -> np.ndarray:
     """
     Generate a boolean mask of length `array_length` with random contiguous islands (True segments)
     while optionally constraining the total number of True values.
@@ -94,9 +94,13 @@ def sample_island_tokens(
 #################################################################################
 
 
-def replace_2d_distance_conditioning_with_3d_coordinate_conditioning(atom_array, mask):
+def replace_2d_distance_conditioning_with_3d_coordinate_conditioning(
+    atom_array: AtomArray,
+    mask: np.ndarray,
+) -> AtomArray:
     """
-    Removes 2D distance conditioning from masked atoms in the atom array and instead adds absolute coordinate conditioning
+    Removes 2D distance conditioning from masked atoms in the atom array and instead adds
+    absolute coordinate conditioning
 
     Args:
         atom_array: AtomArrayPlus
@@ -152,11 +156,10 @@ def sample_unindexed_groups(
     chain_annot_name = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
     chain_annot_residue_level = unindexed_atom_array.get_annotation(chain_annot_name)[unindexed_residue_starts]
 
-    unindexed_chain_breaks = (chain_annot_residue_level[1:] != chain_annot_residue_level[:-1])
+    unindexed_chain_breaks = chain_annot_residue_level[1:] != chain_annot_residue_level[:-1]
 
     # Convert these to group ids, starting at 1 for the unindexed groups.
     unindexed_group_ids = np.cumsum(np.concatenate([[True], unindexed_contiguity_breaks | unindexed_chain_breaks]))
-
 
     # Merging groups allows for the use-case of two unindexed components with a fixed residue gap between them
     if true_with_prob(p_merge_groups) and unindexed_group_ids.max() > 1:
@@ -179,8 +182,9 @@ def sample_unindexed_groups(
             chain_by_group_id[group_id] = chain_annot_residue_level[unindexed_group_ids == group_id][0]
 
         valid_smaller_group_ids = [
-            gid for gid in valid_smaller_group_ids if 
-            chain_by_group_id[gid] == chain_by_group_id[gid + sampled_group_id_gap]
+            gid
+            for gid in valid_smaller_group_ids
+            if chain_by_group_id[gid] == chain_by_group_id[gid + sampled_group_id_gap]
         ]
 
         if len(valid_smaller_group_ids) > 0:
@@ -245,10 +249,11 @@ def set_specified_conditions_to_default(
 
     Args:
         atom_array (AtomArray): The AtomArray to modify.
-        conditions (list[ConditionBase] | dict[ConditionBase, dict[str, bool]]): The Conditions to reset. If a list, all
-            specified Conditions will have their existing masks/annotations reset to default. If a dict, the keys are the
-            Conditions to reset, and the values are dicts with keys "mask" and "annotation" indicating whether to add the
-            corresponding defaults, whether present or not.
+        conditions (list[ConditionBase] | dict[ConditionBase, dict[str, bool]]): The Conditions to
+            reset. If a list, all specified Conditions will have their existing masks/annotations
+            reset to default. If a dict, the keys are the Conditions to reset, and the values are
+            dicts with keys "mask" and "annotation" indicating whether to add the corresponding
+            defaults, whether present or not.
     """
 
     condition_dict = {}

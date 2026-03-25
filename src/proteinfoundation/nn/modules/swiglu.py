@@ -7,7 +7,7 @@ from torch.nn import functional as F
 class SwiGLU(torch.nn.Module):
     """SwiGLU layer."""
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: input tensor, shape [..., d]

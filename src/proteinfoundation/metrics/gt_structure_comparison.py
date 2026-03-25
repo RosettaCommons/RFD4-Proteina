@@ -1,6 +1,6 @@
 import ast
-from collections.abc import Callable
 from collections import defaultdict
+from collections.abc import Callable
 
 import numpy as np
 from atomworks.enums import ChainType
@@ -10,6 +10,7 @@ from atomworks.ml.conditions import C_DIS
 from atomworks.ml.conditions.annotator import ANNOTATOR_REGISTRY, ensure_annotations
 from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
+
 from foundry.metrics.metric import Metric
 from foundry.utils.logging import RankedLogger
 from proteinfoundation.conditions import C_CRDGRP, C_INTCRD
@@ -35,7 +36,8 @@ def align_structures_with_masks(
 ) -> tuple[AtomArrayStack, AtomArrayStack]:
     """
     Align predicted structure to ground truth using specified masks (boolean arrays).
-    If pred_masks is None, gt_masks are only applied to the groud truth structure and used blindly on the predicted structure
+    If pred_masks is None, gt_masks are only applied to the groud truth structure and used blindly on the
+    predicted structure
 
     Args:
         gt_array: Ground truth atom array
@@ -92,7 +94,8 @@ def align_structures_by_annotations(
         align_to: Query string using AtomWorks syntax (e.g., "is_protein_backbone | is_nucleic_acid").
             If empty or None, no alignment is performed.
         apply_query_to_pred: If True, the `align_to` query will be independently applied to the predicted structure.
-            Otherwise, the query is only applied to the ground truth structure and used blindly on the predicted structure.
+            Otherwise, the query is only applied to the ground truth structure and used blindly on the
+            predicted structure.
 
     Returns:
         Tuple of (aligned_gt, aligned_pred)
@@ -166,12 +169,14 @@ def compute_distance_mae(
     Args:
         gt_array_stack: Ground truth atom array stack
         pred_array_stack: Predicted atom array stack
-        extra_distance_types: List of extra distance types to compute. Can be "tip_atom", "inter_chain", "intra_chain", or "intra_chain_protein".
+        extra_distance_types: List of extra distance types to compute. Can be "tip_atom", "inter_chain",
+            "intra_chain", or "intra_chain_protein".
             "tip_atom" will compute the MAE of conditioned distances between protein atoms and non-protein atoms.
         aggregation_fn: Function to aggregate the MAE values for each pair in an atom array.
 
     Returns:
-        dict with keys "mae_all_pairs", "mae_pairs_with_2d_condition", "mae_pairs_no_2d_condition" and values as numpy arrays
+        dict with keys "mae_all_pairs", "mae_pairs_with_2d_condition", "mae_pairs_no_2d_condition" and values as
+        numpy arrays
     """
     assert len(gt_array_stack) == len(
         pred_array_stack
@@ -188,7 +193,8 @@ def compute_distance_mae(
         for distance_type in extra_distance_types
     ):
         raise ValueError(
-            f"One or more distance types are invalid: {extra_distance_types}. Must be one of: tip_atom, inter_chain, intra_chain, intra_chain_protein"
+            f"One or more distance types are invalid: {extra_distance_types}. "
+            "Must be one of: tip_atom, inter_chain, intra_chain, intra_chain_protein"
         )
 
     if aggregation_fn == "max":
@@ -337,17 +343,21 @@ def structure_comparison_metric(
 ) -> dict[str, float]:
     """
     Compute structure comparison metrics between ground truth and predicted structures.
-    Note that we always ignore nan coords when comparing structures. You do not need to include that in your subset mask.
+    Note that we always ignore nan coords when comparing structures. You do not need to include that in your
+    subset mask.
 
     Args:
         ground_truth_atom_array_stack: Ground truth atom array or stack
         predicted_atom_array_stack: Predicted atom array or stack (optional if predicted_coords provided)
         subset_mask: Query string to subset the atom arrays (e.g., "is_backbone & is_polymer")
         align_mask: Query string to use for alignment (e.g., "is_protein_backbone | is_nucleic_acid")
-        metric_type: Callable that computes the metric between two atom arrays. These methods assume everything is subset and aligned properly.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure independently, or simply use
-            the masks obtained from querying the ground-truth AtomArray. Must be True if the AtomArrays are different lengths.
-        verbose_naming: Whether to use verbose naming  for the metric keys (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd)
+        metric_type: Callable that computes the metric between two atom arrays. These methods assume everything
+            is subset and aligned properly.
+        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
+            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
+            True if the AtomArrays are different lengths.
+        verbose_naming: Whether to use verbose naming for the metric keys
+            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd)
         keep_aligned_predicted_structure: Whether to include the aligned predicted structure in the output dict.
         metric_kwargs: Additional keyword arguments to pass to the metric function.
 
@@ -401,8 +411,8 @@ def structure_comparison_metric(
 
     if final_gt_subset_mask.sum() == 0 or final_pred_subset_mask.sum() == 0:
         ranked_logger.warning(
-            f"The subset mask {subset_mask} resulted in an empty selection after filtering out atoms with NaN coordinates."
-            "This Metric will return NaN values."
+            f"The subset mask {subset_mask} resulted in an empty selection after filtering out atoms with NaN "
+            "coordinates. This Metric will return NaN values."
         )
 
     # No metrics are returned if lengths differ after subsetting
@@ -423,7 +433,7 @@ def structure_comparison_metric(
         (f"{metric}_align=<{align_str}>_subset=<{subset_str}>" if verbose_naming else metric): np.mean(result)
         for metric, result in metric_result.items()
     }
-    
+
     if keep_aligned_predicted_structure:
         metric_result["aligned_predicted_structure"] = aligned_pred_stack
 
@@ -453,9 +463,11 @@ class StructureComparisonMetric(Metric):
         input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
             Defaults to {"ground_truth_atom_array_stack": "ground_truth_atom_array",
             "predicted_atom_array_stack": "predicted_atom_array"}.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure independently, or simply use
-            the masks obtained from querying the ground-truth AtomArray. Must be True if the AtomArrays are different lengths.
-        verbose_naming: Whether to name metric keys verbosely (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
+        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
+            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
+            True if the AtomArrays are different lengths.
+        verbose_naming: Whether to name metric keys verbosely
+            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
         keep_aligned_predicted_structure: Whether to include the aligned predicted structure in the output dict.
 
     Example:
@@ -569,9 +581,11 @@ class InternalCoordAdherenceMetric(Metric):
             "predicted_atom_array_stack": "predicted_atom_array"}.
         additional_align_mask: Additional query string to AND with the internal coordinate group mask for alignment.
         additional_subset_mask: Additional query string to AND with the internal coordinate group mask for subsetting.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure independently, or simply use
-            the masks obtained from querying the ground-truth AtomArray. Must be True if the AtomArrays are different lengths.
-        verbose_naming: Whether to name metric keys verbosely (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
+        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
+            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
+            True if the AtomArrays are different lengths.
+        verbose_naming: Whether to name metric keys verbosely
+            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
         save_per_group_metrics: Whether to save metrics for each internal coordinate group separately.
     """
 
@@ -651,16 +665,8 @@ class InternalCoordAdherenceMetric(Metric):
         groups_dict = {}
         for group in unique_internal_coord_groups:
             mask_str = f"{C_CRDGRP.full_name} == {group}"
-            subset_mask = (
-                f"({mask_str}) & ({self.additional_subset_mask})"
-                if self.additional_subset_mask
-                else mask_str
-            )
-            align_mask = (
-                f"({mask_str}) & ({self.additional_align_mask})"
-                if self.additional_align_mask
-                else mask_str
-            )
+            subset_mask = f"({mask_str}) & ({self.additional_subset_mask})" if self.additional_subset_mask else mask_str
+            align_mask = f"({mask_str}) & ({self.additional_align_mask})" if self.additional_align_mask else mask_str
             group_output = structure_comparison_metric(
                 ground_truth_atom_array_stack=updated_gt_stack,
                 predicted_atom_array_stack=predicted_atom_array_stack,

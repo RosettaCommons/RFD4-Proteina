@@ -1,17 +1,23 @@
 """BindCraft refinement protocol for sequence optimization."""
 
+from __future__ import annotations
+
 import os
 import shutil
 import tempfile
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
+import torch.nn as nn
 from biotite.structure import AtomArray
-from foundry.utils.ddp import RankedLogger
 
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.refinement.base_refinement import RefinementStrategy
 from proteinfoundation.utils.pdb_utils import get_chain_ids_from_pdb, write_prot_to_pdb
+
+if TYPE_CHECKING:
+    from proteinfoundation.rewards.reward_model import RewardModel
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -71,8 +77,8 @@ class BindCraftRefinement(RefinementStrategy):
     def refine_atom_arrays(
         self,
         atom_arrays: list[AtomArray],
-        reward_model,
-        autoencoder=None,
+        reward_model: RewardModel,
+        autoencoder: nn.Module | None = None,
     ) -> list[AtomArray]:
         """Refine AtomArrays using BindCraft protocol (STANDALONE interface).
 
@@ -117,7 +123,7 @@ class BindCraftRefinement(RefinementStrategy):
     def _refine_single_structure(
         self,
         atom_array: AtomArray,
-        reward_model,
+        reward_model: RewardModel,
         temp_dir: str,
         structure_idx: int,
     ) -> AtomArray:
@@ -251,7 +257,7 @@ class BindCraftRefinement(RefinementStrategy):
 
         return refined_atom_array
 
-    def _write_atom_array_to_pdb(self, atom_array: AtomArray, pdb_path: str):
+    def _write_atom_array_to_pdb(self, atom_array: AtomArray, pdb_path: str) -> None:
         """Write AtomArray to PDB file using atomworks encoding.
 
         Args:

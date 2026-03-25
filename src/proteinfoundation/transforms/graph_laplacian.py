@@ -184,7 +184,7 @@ def featurize_bonds_as_laplacian_positional_encoding(
         Token-level positional encoding tensor of shape (n_tokens, encoding_dim).
     """
     token_starts = get_token_starts(atom_array, add_exclusive_stop=False)
-    n_tokens = len(token_starts)  
+    n_tokens = len(token_starts)
 
     # Initialize zero encodings for all tokens
     graph_laplacian_pe = torch.zeros(n_tokens, encoding_dim, dtype=torch.float32)

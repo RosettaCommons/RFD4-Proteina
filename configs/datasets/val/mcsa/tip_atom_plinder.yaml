@@ -7,6 +7,7 @@ dataset:
     fix_formal_charges: False
     fix_bond_types: False
     fix_ligands_at_symmetry_centers: False
+    long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
 
   num_replicates: 50  # note we don't sample different lengths for each entry
 

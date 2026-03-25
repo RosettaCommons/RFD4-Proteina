@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import AtomArray
+
 from foundry.metrics.metric import Metric
 
 logger = logging.getLogger(__name__)

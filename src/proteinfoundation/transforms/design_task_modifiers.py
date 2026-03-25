@@ -1,14 +1,15 @@
-import os
 import ast
+import os
 import shutil
 import string
 import subprocess
 import tempfile
-import pandas as pd
 from contextlib import contextmanager
 from typing import Any
 
 import numpy as np
+import pandas as pd
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.io_utils import to_pdb_string
 from atomworks.ml.conditions import (
@@ -16,7 +17,6 @@ from atomworks.ml.conditions import (
     C_DIS,
     C_SEQ,
 )
-from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from atomworks.ml.utils.token import (
     get_token_starts,
@@ -25,11 +25,11 @@ from atomworks.ml.utils.token import (
 from biotite.structure import AtomArray
 
 from proteinfoundation.conditions import (
+    C_CATH,
     C_HB,
+    C_INTCRD,
     C_RAS,
     C_SEC,
-    C_CATH,
-    C_INTCRD,
     HBondEnum,
     RasaEnum,
 )
@@ -38,19 +38,23 @@ from proteinfoundation.transforms.utils.conditioning_utils import sample_island_
 
 
 def add_rasa_condition(
-    data,
+    data: dict,
     probe_radius: float = 1.4,
     atom_radii: str | np.ndarray = "ProtOr",
     point_number: int = 100,
     p_include_non_ligand: bool = 0.1,
     rasa_max: float = 0.2,
-):
+) -> dict:
     """
-    probe_radius (float, optional): Van-der-Waals radius of the probe in Angstrom. Defaults to 1.4 (for water).
-    atom_radii (str | np.ndarray, optional): Atom radii set to use for calculation. Defaults to "ProtOr".
-        "ProtOr" will not get sasa's for hydrogen atoms and some other atoms, like ions or certain atoms with charges
-    point_number (int, optional): Number of points in the Shrake-Rupley algorithm to sample for calculating SASA. Defaults to 100.
-    p_include_non_ligand (float, optional): Probability of providing RASA conditioning for non-ligand atoms. Defaults to 0.1.
+    probe_radius (float, optional): Van-der-Waals radius of the probe in Angstrom. Defaults to
+        1.4 (for water).
+    atom_radii (str | np.ndarray, optional): Atom radii set to use for calculation. Defaults to
+        "ProtOr". "ProtOr" will not get sasa's for hydrogen atoms and some other atoms, like ions
+        or certain atoms with charges
+    point_number (int, optional): Number of points in the Shrake-Rupley algorithm to sample for
+        calculating SASA. Defaults to 100.
+    p_include_non_ligand (float, optional): Probability of providing RASA conditioning for
+        non-ligand atoms. Defaults to 0.1.
     rasa_max (float, optional): Maximum RASA value for binning. Defaults to 0.2.
     """
     atom_array = as_atom_array_plus(data["atom_array"])
@@ -99,7 +103,7 @@ def temporary_pdb_directory(atom_array: AtomArray, raise_on_failure: bool = True
                or (None, None, None, None, None, True) on failure
     """
 
-    def _handle_nan_coords(atom_array, noise_level=1e-3):
+    def _handle_nan_coords(atom_array: AtomArray, noise_level: float = 1e-3) -> tuple:
         coords = atom_array.coord
         nan_mask = np.isnan(coords)
         coords[nan_mask] = np.random.uniform(-noise_level, noise_level, size=nan_mask.sum())
@@ -149,7 +153,7 @@ def temporary_pdb_directory(atom_array: AtomArray, raise_on_failure: bool = True
             shutil.rmtree(temp_dir)
 
 
-def check_atom_array_has_hydrogen(data: dict[str, Any]):
+def check_atom_array_has_hydrogen(data: dict[str, Any]) -> None:
     if not np.any(data["atom_array"].element == "H"):
         raise ValueError("Key `atom_array` in data has no hydrogens.")
 
@@ -247,7 +251,7 @@ def calculate_hbonds(
             return None, None, None, True
 
         temp_dir, pdb_filename, atom_array, _nan_mask, inverted_chain_map, _failed = result
-        pdb_path = os.path.join(temp_dir, pdb_filename)
+        _pdb_path = os.path.join(temp_dir, pdb_filename)
 
         # HBplus writes output to the current working directory
         # We need to run it from the temp directory
@@ -259,7 +263,8 @@ def calculate_hbonds(
             if not hbplus_exe:
                 if raise_on_failure:
                     raise OSError(
-                        "Environment variable HBPLUS_PATH is not set! Please update your `.env` file. On the DIGS, this should be: `/path/to/data`"
+                        "Environment variable HBPLUS_PATH is not set! Please update your `.env` "
+                        "file. On the DIGS, this should be: `/path/to/data`"
                     )
                 return None, None, None, True
 

@@ -1,12 +1,12 @@
 import torch
 
 
-def normalize_last_dim(v):
+def normalize_last_dim(v: torch.Tensor) -> torch.Tensor:
     norm = torch.linalg.norm(v, dim=-1, keepdim=True)
     return v / torch.clamp(norm, min=1e-8, max=None)
 
 
-def bond_angles(a, b, c):
+def bond_angles(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
     """
     Computes bond angles for the 3 points a, b, c.
     Since torch.linalg.cross and torch.linalg.cross  support
@@ -27,7 +27,12 @@ def bond_angles(a, b, c):
     return torch.atan2(sin_angle, cos_angle)  # [*]
 
 
-def signed_dihedral_angle(a, b, c, d):
+def signed_dihedral_angle(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    d: torch.Tensor,
+) -> torch.Tensor:
     """
     Compputes the signed angle for the 4 points a, b, c, d.
     Since torch.linalg.cross and torch.linalg.cross  support

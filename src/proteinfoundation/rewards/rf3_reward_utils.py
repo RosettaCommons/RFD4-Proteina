@@ -57,7 +57,9 @@ def parse_rf3_score_file(score_file_path: str) -> dict[str, float]:
         }
 
         logger.info(
-            f"Selected best sample from batch_idx {common_metrics['batch_idx']} with min_ipAE={common_metrics['min_ipAE']:.3f}, ipAE={common_metrics['ipAE']:.3f}, pLDDT={common_metrics['pLDDT']:.3f}"
+            f"Selected best sample from batch_idx {common_metrics['batch_idx']} with "
+            f"min_ipAE={common_metrics['min_ipAE']:.3f}, ipAE={common_metrics['ipAE']:.3f}, "
+            f"pLDDT={common_metrics['pLDDT']:.3f}"
         )
 
         return common_metrics

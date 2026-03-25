@@ -6,10 +6,11 @@ dimensionality reduction techniques, used by both training and inference.
 
 import matplotlib.pyplot as plt
 import numpy as np
-from foundry.utils.ddp import RankedLogger
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.manifold import TSNE
+
+from foundry.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -99,9 +100,9 @@ def get_residue_type_labels(n_residue_types: int) -> list[str]:
     ]
 
     if n_residue_types == 20:
-        return aa_labels + ["UNK"]
+        return [*aa_labels, "UNK"]
     elif n_residue_types == 33:
-        return ["MSK"] + aa_labels + ["UNK"] + ["rA", "rC", "rG", "rU", "rN"] + ["dA", "dC", "dG", "dT", "dN"] + ["ATM"]
+        return ["MSK", *aa_labels, "UNK", "rA", "rC", "rG", "rU", "rN", "dA", "dC", "dG", "dT", "dN", "ATM"]
     else:
         # Fallback for unknown encodings
         return [f"RT{i}" for i in range(n_residue_types + 1)]
@@ -128,7 +129,7 @@ def get_extended_color_palette(n_colors: int) -> list[str]:
         logger.warning(f"Requested {n_colors} colors, only {len(COLORS_UNIFIED_33)} predefined.")
         cmap = plt.cm.get_cmap("tab20c")
         extra_colors = [cmap(i / (n_colors - len(COLORS_UNIFIED_33))) for i in range(n_colors - len(COLORS_UNIFIED_33))]
-        extra_hex = ["#%02x%02x%02x" % (int(r * 255), int(g * 255), int(b * 255)) for r, g, b, _ in extra_colors]
+        extra_hex = [f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}" for r, g, b, _ in extra_colors]
         return list(COLORS_UNIFIED_33) + extra_hex
 
 
@@ -247,7 +248,13 @@ def plot_latent_projection_with_labels(
                     fontweight="bold",
                     ha="center",
                     va="center",
-                    bbox=dict(boxstyle="round,pad=0.4", facecolor="white", edgecolor="black", linewidth=1.5, alpha=0.9),
+                    bbox={
+                        "boxstyle": "round,pad=0.4",
+                        "facecolor": "white",
+                        "edgecolor": "black",
+                        "linewidth": 1.5,
+                        "alpha": 0.9,
+                    },
                     zorder=1000,
                 )
 

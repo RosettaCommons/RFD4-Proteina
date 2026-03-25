@@ -4,8 +4,8 @@ from typing import Any
 import numpy as np
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from biotite.structure import AtomArray, AtomArrayStack
-from foundry.metrics.metric import Metric
 
+from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import C_RAS, RasaEnum
 
 
@@ -98,7 +98,8 @@ class RasaAdherenceMetric(Metric):
             atom_array_list = atom_array_or_stack
         else:
             raise ValueError(
-                f"RasaAdherenceMetric expects AtomArray, AtomArrayStack, or list of AtomArrays, but got {type(atom_array)}"
+                f"RasaAdherenceMetric expects AtomArray, AtomArrayStack, or list of "
+                f"AtomArrays, but got {type(atom_array)}"
             )
 
         for atom_array in atom_array_list:
