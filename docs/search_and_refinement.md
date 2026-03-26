@@ -491,7 +491,6 @@ End-to-end: generate configs and submit SLURM jobs for each:
 ./slurm_utils/launch_sweep.sh ord \
     --sweep-config configs/sweeps/ppi_benchmark.yaml \
     --gpus-per-job 4 \
-    --no-copy \
     ckpt_path=/path/to/checkpoints
 
 # Offline validation sweep
@@ -524,7 +523,7 @@ Pre-built sweep configs in `configs/sweeps/`:
 | `launch_sweep.sh` | Parameter sweep → multiple jobs | Generates configs from sweep YAML, submits each |
 | `launch_search.sh` | Search-based generation | Beam search / Best-of-N on SLURM |
 
-All scripts support: `--no-copy`, `--gpus-per-job`, `--follow`, and Hydra overrides as extra args.
+All scripts support: `--copy`, `--gpus-per-job`, `--follow`, and Hydra overrides as extra args.
 
 ```bash
 # Check what a script expects

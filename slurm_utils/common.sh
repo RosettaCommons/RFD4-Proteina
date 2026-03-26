@@ -130,16 +130,7 @@ build_sbatch_header() {
     local gres="${GRES:-}"
     local cpus_per_task="${CPUS_PER_TASK:-}"
     
-    # Scale memory based on number of GPUs if not explicitly set
-    # Default: ~60GB per GPU to stay within cluster limits (max ~235GB per GPU on OCI)
-    local mem
-    if [ -n "$MEM" ]; then
-        mem="$MEM"
-    else
-        local mem_per_gpu_gb=60
-        local total_mem_gb=$((gpus_per_node * mem_per_gpu_gb))
-        mem="${total_mem_gb}g"
-    fi
+    local mem="${MEM:-}"
 
     # Calculate ntasks_per_node based on GPU specification
     local ntasks_per_node
@@ -179,7 +170,9 @@ build_sbatch_header() {
     if [ -n "$cpus_per_task" ] && [ "${SKIP_CPUS_PER_TASK:-false}" != "true" ]; then
         echo "#SBATCH --cpus-per-task $cpus_per_task"
     fi
-    echo "#SBATCH --mem $mem"
+    if [ -n "$mem" ]; then
+        echo "#SBATCH --mem $mem"
+    fi
     echo "#SBATCH --open-mode append"
     echo "#SBATCH --requeue"
 

@@ -8,7 +8,7 @@
 #   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
 #
 # Usage:
-#   ./slurm_utils/launch_infer.sh coreweave --no-copy gen_njobs=2 \
+#   ./slurm_utils/launch_infer.sh coreweave gen_njobs=2 \
 #       --config-name inference_experiment/inference_beam_example \
 #       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
 

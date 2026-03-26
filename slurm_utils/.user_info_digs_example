@@ -52,16 +52,16 @@ USER="${USER:-your_username}"
 # Root directory on remote for runs
 ROOT_REMOTE="/path/to/shared/storage"
 
-# Weights & Biases API key (get from https://wandb.ai/authorize)
+# Weights & Biases API key (optional, get from https://wandb.ai/authorize)
 WANDBKEY=""
 
 # Slurm configuration
-PARTITION="gpu-train"
-RUNTIME="04:00:00"
+PARTITION="gpu"
+RUNTIME="12:00:00"
 CPUS_PER_TASK=4
 SIGNAL_TIME=600
 
-# GPU type on this cluster
+# GPU type on this cluster (used for training only)
 GPU_TYPE="L40"
 
 # Nodes to exclude (optional)
