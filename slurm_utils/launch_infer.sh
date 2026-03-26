@@ -19,9 +19,17 @@
 #   --config-name NAME      Hydra config name (default: inference). May be a
 #                           path relative to configs/, e.g.
 #                           sweep_configs/my_sweep/inf_000
+#   --gres <spec>           SLURM --gres override (e.g. gpu:l40:1); takes
+#                           precedence over .user_info setting
+#   --time <HH:MM:SS>       SLURM --time override; takes precedence over
+#                           .user_info RUNTIME
+#   --partition <name>      SLURM --partition override; takes precedence over
+#                           .user_info PARTITION
+#   --mem <size>            SLURM --mem override (e.g. 64g); takes precedence
+#                           over .user_info MEM
 #   --no-concatenate        Skip the automatic post-generation concatenation job
-#   --foldseek              Enable Foldseek clustering during concatenation
-#   --no-copy               Use the current repo in-place (skip rsync)
+#   --no-foldseek           Disable Foldseek clustering during concatenation (on by default)
+#   --copy                  Copy the repo to the run directory before submitting
 #   --code-dir <path>       Use a pre-existing code directory (skip copy entirely)
 #   --overwrite-rundir      Allow overwriting an existing code directory
 #   --follow, -f            Follow logs after submission (Ctrl+C to exit)
@@ -39,7 +47,7 @@
 #   By default a dependent SLURM job is submitted that runs
 #   concatenate_external_eval_results.py after all generation tasks finish.
 #   Results land in <run_dir>/inference_metrics/.
-#   Use --no-concatenate to skip, --foldseek to add structural clustering.
+#   Use --no-concatenate to skip, --no-foldseek to disable structural clustering.
 #
 # Offline validation:
 #   Pass inference_experiment=inference_on_val_set plus the dataset override
@@ -51,8 +59,8 @@
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inputs=benchmarks/monomer.json run_name_=my_run
 #
-#   # Offline validation with Foldseek clustering
-#   ./launch_infer.sh digs --njobs 8 --foldseek \
+#   # Offline validation (Foldseek on by default)
+#   ./launch_infer.sh digs --njobs 8 \
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inference_experiment=inference_on_val_set \
 #       +datasets/val@generation=mcsa_subset run_name_=mcsa_val
@@ -72,12 +80,16 @@ NJOBS=""               # empty = read from config's gen_njobs
 GPUS_PER_JOB=1
 CONFIG_NAME="inference"
 DO_CONCATENATE="true"  # concatenate by default
-CONCATENATE_FOLDSEEK="false"
-COPY_CODE="true"
+CONCATENATE_FOLDSEEK="true"  # foldseek on by default
+COPY_CODE="false"  # use repo in-place by default
 CODE_DIR_OVERRIDE=""   # pre-existing code dir (set via --code-dir)
 FOLLOW_LOGS="false"
 OVERWRITE_RUNDIR="false"
 EXTRA_ARGS=""
+CLI_GRES=""
+CLI_TIME=""
+CLI_PARTITION=""
+CLI_MEM=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -105,12 +117,12 @@ while [[ $# -gt 0 ]]; do
             DO_CONCATENATE="false"
             shift
             ;;
-        --foldseek)
-            CONCATENATE_FOLDSEEK="true"
+        --no-foldseek)
+            CONCATENATE_FOLDSEEK="false"
             shift
             ;;
-        --no-copy)
-            COPY_CODE="false"
+        --copy)
+            COPY_CODE="true"
             shift
             ;;
         --code-dir)
@@ -121,6 +133,22 @@ while [[ $# -gt 0 ]]; do
         --overwrite-rundir)
             OVERWRITE_RUNDIR="true"
             shift
+            ;;
+        --gres)
+            CLI_GRES="$2"
+            shift 2
+            ;;
+        --time)
+            CLI_TIME="$2"
+            shift 2
+            ;;
+        --partition)
+            CLI_PARTITION="$2"
+            shift 2
+            ;;
+        --mem)
+            CLI_MEM="$2"
+            shift 2
             ;;
         --follow|-f)
             FOLLOW_LOGS="true"
@@ -151,6 +179,13 @@ fi
 # Load cluster configuration
 # ============================================================
 load_user_info "$CLUSTER" || exit 1
+
+# Apply CLI overrides (take precedence over .user_info)
+[ -n "$CLI_GRES" ]      && GRES="$CLI_GRES"
+[ -n "$CLI_TIME" ]      && RUNTIME="$CLI_TIME"
+[ -n "$CLI_PARTITION" ] && PARTITION="$CLI_PARTITION"
+[ -n "$CLI_MEM" ]       && MEM="$CLI_MEM"
+
 print_cluster_config
 
 # Find repository root
@@ -253,7 +288,7 @@ elif [ "$COPY_CODE" == "true" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $CODE_DIR"
             echo "  To overwrite, use --overwrite-rundir"
-            echo "  To use existing code, use --no-copy"
+            echo "  To use existing code, omit --copy or use --code-dir"
             exit 1
         fi
         echo "Warning: Overwriting existing code directory at $CODE_DIR"

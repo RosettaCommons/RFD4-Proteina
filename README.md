@@ -9,141 +9,210 @@ A flow-matching based generative model for protein design, supporting proteins, 
 > [!NOTE]
 > Looking for information about input configuration options? See the full [input specification](docs/input.md).
 
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Running Inference from the Command Line](#running-inference-from-the-command-line)
+- [Parameter Reference](#parameter-reference)
+- [Cluster Launching (SLURM)](#cluster-launching-slurm)
+- [Design Use Cases](#design-use-cases)
+- [Supported Conditioning](#supported-conditioning)
+- [Partial Diffusion](#partial-diffusion)
+- [Inference Noise Parameters](#inference-noise-parameters)
+- [Evaluating Results](#evaluating-results)
+- [Search and Refinement](#search-and-refinement)
+- [Output Files](#output-files)
+- [For Developers](#for-developers)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## Getting Started
 
-1. Install the package:
+A `setup.sh` script automates most of the setup below. Run it from the repo root on a new Linux machine:
+
 ```bash
-cd projects/proteinfoundation
-pip install -e .
+bash projects/proteinfoundation/setup.sh
 ```
 
-2. Configure environment variables:
+It installs `uv`, initialises the atomworks submodule, creates the virtualenv, installs all dependencies, appends `CLUSTER`/`CONTAINER_TYPE` exports to your shell rc file, and auto-creates a `.user_info_<cluster>` SLURM config. The steps below explain each stage if you prefer to run them manually.
+
+### 1. Install uv
+
+[uv](https://github.com/astral-sh/uv) manages the Python environment.
+
 ```bash
-cp env.template .env
-    # Edit .env to set DATA_PATH, CACHE_DIR, CCD_MIRROR_PATH
-    ```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source "$HOME/.local/bin/env"   # add uv to PATH for this session
+```
 
-3. Download or point to the model checkpoint and autoencoder checkpoint. Set `autoencoder_ckpt_path` in your config or `.env`.
+### 2. Initialise the atomworks submodule
 
-## Running Inference
+The model requires [atomworks](https://github.com/RosettaCommons/atomworks), which lives as a git submodule under `lib/atomworks`. If it was not cloned automatically:
+
+```bash
+git submodule update --init lib/atomworks
+```
+
+### 3. Create the virtual environment
+
+From the repo root (`foundry-dev/`):
+
+```bash
+uv python install 3.12
+uv venv --python 3.12
+source .venv/bin/activate
+```
+
+### 4. Install dependencies
+
+```bash
+uv pip install -e ".[rf3,rfd3,all,dev]" \
+    -e projects/proteinfoundation \
+    -e "lib/atomworks[dev,ml,openbabel,docs]"
+```
+
+### 5. Configure your shell
+
+Add the following to `~/.bashrc` or `~/.zshrc`, setting `CLUSTER` to whichever cluster you submit jobs on (`digs`, `ord`, `gb200`, `coreweave`):
+
+```bash
+# Cluster identity for proteinfoundation SLURM launch scripts.
+# CLUSTER selects which slurm_utils/.user_info_<cluster> config is loaded.
+# CONTAINER_TYPE is 'apptainer' (DIGS/CoreWeave) or 'docker' (OCI/ORD/GB200).
+export CLUSTER=digs
+export CONTAINER_TYPE=apptainer
+```
+
+Then reload: `source ~/.bashrc`
+
+### 6. SLURM cluster config
+
+A `.user_info_<cluster>` file (in `slurm_utils/`) holds your SLURM settings (partition, runtime, WandB key, etc.). `setup.sh` creates one automatically from the example template. For most inference workflows no changes are needed; edit it if you need to customise partitions, runtimes, or other SLURM options.
+
+### 7. Checkpoints
+
+Pass checkpoint paths at runtime:
 
 ```bash
 python proteinfoundation/generate.py \
-    inputs=design.json \
-    ckpt_path=./checkpoints \
-    ckpt_name=model.ckpt \
-    num_replicates=10
+    ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt ...
+```
+
+Set `autoencoder_ckpt_path` in your config or `.env` only if using gradient-ascent refinement.
+
+---
+
+## Running Inference from the Command Line
+
+A `batch_size` of 8 is a reasonable starting point. Larger batches process faster, but first test your longest sequence at `batch_size=1` to confirm it fits in GPU memory before scaling up.
+
+```bash
+python proteinfoundation/generate.py \
+    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
+    num_replicates=100 batch_size=8
 ```
 
 Inputs can be JSON, YAML, CIF, or PDB files. See the [input specification](docs/input.md) for the full schema.
 
 > **Syntax note**: All arguments use `key=value` (Hydra style), not `--key value`.
 
-### Parameter Reference
+For easy cluster submission via SLURM launch scripts, see [Cluster Launching (SLURM)](#cluster-launching-slurm) below.
+
+---
+
+## Parameter Reference
 
 | Parameter | Description | Default |
-|-----------|-------------|---------|
+| --- | --- | --- |
 | `inputs` | Input file (JSON/YAML/CIF/PDB) or directory | Required |
 | `ckpt_path` | Directory containing checkpoint | Required |
 | `ckpt_name` | Checkpoint filename | Required |
 | `num_replicates` | Designs generated per input example | 1 |
-| `batch_size` | Designs processed in parallel on GPU (increase if memory allows) | 1 |
+| `batch_size` | Designs processed in parallel on GPU | 1 |
 | `seed` | Random seed (`null` = different seed each run) | null |
 | `skip_existing` | Skip examples whose output files already exist on disk | false |
 | `subset_to_examples` | Run only specific examples from a JSON, as comma-separated keys | null |
 | `global_prefix` | String prefix prepended to all output file paths | null |
 | `out_dir` | Output directory (auto-inferred from checkpoint path if not set) | null |
+| `inference_experiment` | Config group controlling generation parameters (nsteps, noise, metrics) | `inference` |
 | `generation.args.nsteps` | Diffusion steps — higher is slower but often better quality | 400 |
 | `generation.args.guidance_w` | Guidance weight (1.0 = unconditional; increase for stronger conditioning) | 1.0 |
 | `generation.args.self_cond` | Self-conditioning — leave enabled for best quality | true |
-| `metrics_tags` | Tags that activate specific evaluation metrics (see [Metrics Tags](#metrics-tags)) | `[]` |
+| `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
+| `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
+| `metrics_tags` | Tags that activate specific evaluation metrics; comma-separated string or list — see [Evaluating Results](#evaluating-results) | `[]` |
 
-> **RFD3 users**: `diffusion_batch_size` is accepted as an alias for `batch_size`, and `json_keys_subset` for `subset_to_examples`.
+**RFD3 aliases**: `diffusion_batch_size` → `batch_size`, `json_keys_subset` → `subset_to_examples`.
 
 > [!WARNING]
 > **RFD3 users — no ORI token.** This model does not use an ORI residue in the input structure. The model has been trained to select a reasonable COM, and its position relative to other chains can be guided using hotspots (proteins) or RASA (ligands).
 
-### Common Patterns
-
-```bash
-# Generate many designs per input (use batch_size to fill GPU memory)
-python proteinfoundation/generate.py \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=100 batch_size=4
-
-# Resume a run — skip examples that already have output files
-python proteinfoundation/generate.py \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=100 skip_existing=true
-
-# Run only selected examples from a multi-example JSON
-python proteinfoundation/generate.py \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    subset_to_examples="binder_A,binder_B"
-
-# Reproducible run with a fixed random seed
-python proteinfoundation/generate.py \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=10 seed=42
-```
-
-### Metrics Tags
-
-`metrics_tags` activates post-generation evaluation metrics (e.g. RF3 refolding and scoring). Pass one or more tags as a Hydra list (or comma-separated string):
-
-```bash
-python proteinfoundation/generate.py \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=50 metrics_tags=[unconditional_refolding]
-```
-
-Multiple tags: `metrics_tags=[ppi_refolding,hotspot_conditioning]`
-
-| Tag | Activates |
-|-----|-----------|
-| `unconditional_refolding` | RF3 refolding + pLDDT/scRMSD for unconditional generation |
-| `ppi_refolding` | RF3 refolding + target templating + interface metrics for protein binder design |
-| `motif_scaffold_refolding` | RF3 refolding + motif RMSD for motif scaffolding / enzyme design |
-| `sm_binder_refolding` | RF3 refolding + binding metrics for small molecule binder design |
-| `ame_refolding` | RF3 refolding for enzyme (MCSA) active-site benchmarks |
-| `hotspot_conditioning` | Hotspot obedience metrics (requires hotspot input) |
-| `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
-| `hbond_conditioning` | H-bond satisfaction metrics |
-| `rasa_conditioning` | RASA adherence metrics |
-
-Metrics that require a tag will be silently skipped if the tag is not present. Tags have no effect unless a metrics config that references them is loaded (controlled by the `inference_experiment` config group).
-
 ---
 
-### Partial Diffusion
+## Cluster Launching (SLURM)
 
-Partial diffusion starts the denoising from a noisy (but non-random) initial state, allowing you to refine an existing structure without re-generating it from scratch.
+The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All standard command-line options can be passed as usual. After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file.
 
-Enable it by setting `partial_t_backbone` and/or `partial_t_latent` in the input spec. This is corruption level of the input, interpolating linearly between the input structure and Gaussian noise. It is **NOT** a noise level in Angstroms.
+Default SLURM settings (partition, runtime, etc.) are read from `slurm_utils/.user_info_<cluster>`, which `setup.sh` creates automatically. Any setting can be overridden per-invocation with CLI flags — if not specified, the `.user_info_<cluster>` default is used.
 
-> **Note:** 1 corresponds to the input structure, so setting `partial_t_backbone=0.8` means the backbone starts closer to the input than to random noise.
+### SLURM option overrides
 
-An example might look like:
+| Flag | Description | DIGS default |
+| --- | --- | --- |
+| `--njobs N` | Parallel generation jobs (split input across N array tasks) | 1 |
+| `--gpus-per-job N` | GPUs per array task | 1 |
+| `--partition <name>` | SLURM partition | `gpu` |
+| `--time <HH:MM:SS>` | Wall-clock time limit | `12:00:00` |
+| `--gres <spec>` | SLURM `--gres` (e.g. `gpu:a4000:1`); overrides `--gpus-per-job` | — |
+| `--mem <size>` | Memory per node (e.g. `64g`); omitted by default, letting SLURM use its cluster default | — |
+| `--copy` | Copy the repo to the run directory before submitting | — |
+| `--no-concatenate` | Skip the automatic post-generation metrics merge job | — |
+| `--no-foldseek` | Disable structural diversity clustering during concatenation | — |
+| `--follow` / `-f` | Tail logs after submission | — |
 
-```yaml
-# design.yaml
-input: my_structure.pdb
-contig: A1-100
-partial_t_backbone: 0.8   # noise level: 1 = no change, 0 = fully random
+### Inference
+
+```bash
+# 4 replicates over a subset of an input file, split across 2 jobs
+./slurm_utils/launch_infer.sh digs --njobs 2 \
+    inference_experiment=inference_like_rfd3 \
+    inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=8
 ```
 
-**Backbone, sequence/rotamer, and step count are completely decoupled.**
+Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. Rather than passing them on the command line, create a new config in `configs/inference_experiment/` that inherits from `inference_like_rfd3` and defines your overrides.
 
-This model uses two independent diffusion flows — one for backbone Cα coordinates and one for sidechain latent variables — and these can be noised to completely different levels:
+### Parameter Sweeps
 
-| Input spec field | Controls | Default if omitted |
-|-----------------|----------|-------------------|
-| `partial_t_backbone` | Backbone Cα noise (Å) only | `0.0` (fully diffused backbone) |
-| `partial_t_latent` | Sidechain/sequence latent noise only | `0.0` (fully diffused sequence/rotamer) |
+Run the same pipeline across many parameter combinations, with one SLURM job per combination:
 
-The number of denoising steps (`nsteps`) is **independent of both noise levels**. Setting `partial_t=0.5` does not halve the number of steps — the sampler schedules exactly `generation.args.nsteps` denoising steps over the range `[partial_t, 1.0]`.
+```bash
+# Sweep nsteps × noise scale on a val set (Foldseek clustering on by default)
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml \
+    --base-out-dir /path/to/out_dir --njobs 2 \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
 
-> **Note**: `partial_t` values must be set in the input spec, not on the command line. It is a per-example property, so different examples in the same JSON can use different noise levels.
+# Preview configs without submitting
+./slurm_utils/launch_sweep.sh digs \
+    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
+```
+
+See `configs/sweeps/` for pre-built sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for the sweep config format.
+
+### Search (Beam / Best-of-N)
+
+Search strategies are selected via `inference_experiment` configs:
+
+```bash
+# Beam search with RF3 reward (parameters set in the experiment config)
+./slurm_utils/launch_infer.sh digs --njobs 2 \
+    inference_experiment=inference_beam_example \
+    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
+    out_dir=/path/to/outputs
+```
 
 ---
 
@@ -156,6 +225,7 @@ The model supports a wide range of biomolecular design tasks. Each link below pr
     <td align="center">
       <h3><a href="docs/protein_binder_design.md">Protein binder design</a></h3>
       Design proteins that bind a target protein at specified hotspot residues.
+      <br><em>⚠️ Not fully supported in the current checkpoint — planned.</em>
     </td>
     <td align="center">
       <h3><a href="docs/small_molecule_binder_design.md">Small molecule binder design</a></h3>
@@ -164,6 +234,7 @@ The model supports a wide range of biomolecular design tasks. Each link below pr
     <td align="center">
       <h3><a href="docs/dna_binder_design.md">DNA binder design</a></h3>
       Design transcription-factor-like proteins that bind DNA.
+      <br><em>⚠️ Not fully supported in the current checkpoint — planned.</em>
     </td>
   </tr>
   <tr>
@@ -186,18 +257,18 @@ The model supports a wide range of biomolecular design tasks. Each link below pr
 
 ## Supported Conditioning
 
-The table below lists all conditioning modalities and their current status. Each conditioning type is specified per-residue or per-atom in the input spec — see [Input Specification](docs/input.md) for syntax.
+The table below lists all conditioning modalities and their current status. Each is specified per-residue or per-atom in the input spec — see [Input Specification](docs/input.md) for syntax.
 
 | Conditioning | Input field | Status |
-|---|---|---|
+| --- | --- | --- |
 | **Coordinate (indexed motif)** | `contig` + `select_fixed_atoms` | ✅ Supported |
 | **Coordinate (unindexed motif)** | `unindex` | ✅ Supported |
-| **Internal coordinate** | `contig` + relative geometry | ✅ Supported |
 | **Sequence constraint** | `select_unfixed_sequence` | ✅ Supported |
 | **Hotspot residues** | `select_hotspots` | ✅ Supported |
 | **Partial diffusion** | `partial_t` / `partial_t_backbone` / `partial_t_latent` | ✅ Supported |
-| **Symmetry** | `symmetry` | ✅ Supported |
 | **Small molecules / ligands** | `ligand` | ✅ Supported |
+| **Internal coordinate** | `contig` + relative geometry | 🔜 Planned |
+| **Symmetry** | `symmetry` | 🔜 Planned |
 | **H-bond donors/acceptors** | `select_hbond_donor` / `select_hbond_acceptor` | 🔜 Planned |
 | **RASA (buried/exposed)** | `select_buried` / `select_exposed` | 🔜 Planned |
 | **Secondary structure** | `select_helix_conditioning` / `select_sheet_conditioning` | 🔜 Planned |
@@ -207,33 +278,55 @@ The table below lists all conditioning modalities and their current status. Each
 
 ---
 
+## Partial Diffusion
+
+Partial diffusion starts the denoising from a noisy (but non-random) initial state, allowing you to refine an existing structure without re-generating it from scratch.
+
+Enable it by setting `partial_t_backbone` and/or `partial_t_latent` in the input spec. The value is a corruption level, **not** a noise level in Angstroms: 1 = input structure unchanged, 0 = fully random noise.
+
+```yaml
+# design.yaml
+input: my_structure.pdb
+contig: A1-100
+partial_t_backbone: 0.8   # 1 = no change, 0 = fully random
+```
+
+**Backbone, sequence/rotamer, and step count are completely decoupled.**
+
+| Input spec field | Controls | Default if omitted |
+| --- | --- | --- |
+| `partial_t_backbone` | Backbone Cα noise only | `0.0` (fully diffused) |
+| `partial_t_latent` | Sidechain/sequence latent noise only | `0.0` (fully diffused) |
+
+The number of denoising steps (`nsteps`) is independent of noise level. Setting `partial_t=0.5` does not halve the number of steps — the sampler schedules exactly `nsteps` denoising steps over the range `[partial_t, 1.0]`.
+
+> **Note**: `partial_t` values must be set in the input spec, not on the command line. Different examples in the same JSON can use different noise levels.
+
+---
+
 ## Inference Noise Parameters
 
-The model uses **product-space flow matching** with two separate flows: one for **backbone Cα coordinates** and one for **sidechain latent variables**. During inference, the key parameters controlling generation diversity and quality are the noise scales for each modality:
+The model uses **product-space flow matching** with two separate flows: backbone Cα coordinates and sidechain latent variables. The stochasticity temperatures control generation diversity:
 
 | Parameter | Config Key | Controls | Default |
-|-----------|-----------|----------|---------|
-| **Backbone noise** (η_x) | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Structural diversity of generated backbones | 0.1 |
-| **Latent noise** (η_z) | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence diversity | 0.1 |
+| --- | --- | --- | --- |
+| **Backbone temperature** (η_x) | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Structural diversity | 0.1 |
+| **Latent temperature** (η_z) | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence diversity | 0.1 |
 
-These noise parameters directly control the **stochasticity of the SDE sampler** during generation. Higher values increase diversity but may reduce designability; lower values produce more deterministic, higher-confidence outputs.
-
-The figure below shows how different noise settings (η_x, η_z) affect the **amino acid distribution** of generated proteins compared to a standard MPNN baseline and the UniProt reference distribution:
+Higher values increase diversity but may reduce designability; lower values produce more deterministic, higher-confidence outputs.
 
 <p align="center">
   <img src="assets/aa_distribution_latent_model.png" alt="Impact of noise parameters on amino acid distribution" width="800">
 </p>
 
-- **(η_x, η_z) = (0.1, 0.1)**: Low noise — sequences are closest to the MPNN baseline, high designability, narrow distribution.
-- **(η_x, η_z) = (0.5, 0.5)**: Moderate noise — sequences shift toward the natural UniProt distribution, balancing diversity and designability.
-- **(η_x, η_z) = (0.9, 0.9)**: High noise — sequences most closely match the natural UniProt amino acid frequencies, maximum diversity but potentially lower designability.
+- **(0.1, 0.1)**: Low noise — sequences close to MPNN baseline, high designability.
+- **(0.5, 0.5)**: Moderate noise — sequences shift toward the natural UniProt distribution.
+- **(0.9, 0.9)**: High noise — sequences most closely match natural amino acid frequencies, maximum diversity.
 
 ```bash
-# Example: generate with moderate noise for more natural-like sequences
+# Moderate noise for more natural-like sequences
 python proteinfoundation/generate.py \
-    inputs=design.json \
-    ckpt_path=./checkpoints \
-    ckpt_name=model.ckpt \
+    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
 ```
@@ -242,14 +335,69 @@ For the full inference configuration and training-time flow matching parameters,
 
 ---
 
+## Evaluating Results
+
+### Running Metrics Inline
+
+Pass `metrics_tags` during inference to compute metrics immediately after each design. Results are written to `per_example_metrics.csv` alongside the CIF files. Multiple tags can be passed as a comma-separated string.
+
+```bash
+# Single tag
+python proteinfoundation/generate.py \
+    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
+    num_replicates=50 metrics_tags=unconditional_refolding
+
+# Multiple tags
+python proteinfoundation/generate.py \
+    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
+    num_replicates=50 metrics_tags=ppi_refolding,hotspot_conditioning
+```
+
+| Tag | Activates |
+| --- | --- |
+| `unconditional_refolding` | RF3 refolding + pLDDT/scRMSD for unconditional generation |
+| `ppi_refolding` | RF3 refolding + target templating + interface metrics for protein binder design |
+| `motif_scaffold_refolding` | RF3 refolding + motif RMSD for motif scaffolding / enzyme design |
+| `sm_binder_refolding` | RF3 refolding + binding metrics for small molecule binder design |
+| `ame_refolding` | RF3 refolding for enzyme (MCSA) active-site benchmarks |
+| `hotspot_conditioning` | Hotspot obedience metrics (requires hotspot input) |
+| `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
+| `hbond_conditioning` | H-bond satisfaction metrics |
+| `rasa_conditioning` | RASA adherence metrics |
+
+Metrics that require a tag will be silently skipped if the tag is not present. Tags have no effect unless a metrics config that references them is loaded (controlled by the `inference_experiment` config group).
+
+### Concatenating Multi-Job Runs
+
+When running large evaluations in parallel across multiple SLURM jobs, each job writes its own `per_example_metrics_job{N}.csv`. After all jobs complete, concatenate them:
+
+```bash
+python -m proteinfoundation.inference_utils.concatenate_external_eval_results \
+    --output_dir ./inference/my_run/metrics/
+```
+
+This script finds all `per_example_metrics_job*.csv` files, concatenates them, aggregates per-task mean metrics into `aggregated_metrics.csv`, and moves individual job files into `job_results/`. When using `launch_infer.sh`, this runs automatically as a dependent SLURM job.
+
+Pass `--cluster_with_foldseek` to also run structural diversity clustering (see below).
+
+### FoldSeek Diversity Clustering
+
+When `--cluster_with_foldseek` is passed, structures are clustered by structural similarity using [FoldSeek](https://github.com/steineggerlab/foldseek), adding a `foldseek_cluster_id` column for counting structurally distinct designs per task.
+
+**Clustering is scoped to the designed chain.** In multimer outputs (e.g. binder + target), only the most freely designed chain is extracted and clustered. This chain is identified automatically from the conditioning annotations and stored as `chain_of_interest` in the metrics CSV.
+
+FoldSeek must be installed and available on `$PATH` (set `FOLDSEEK_EXEC` in `.env`). For monomers, clustering uses TM-score (threshold 0.5); for multimers, it additionally uses interface lDDT.
+
+---
+
 ## Search and Refinement
 
-Beyond standard sampling, the model supports **search strategies** to explore multiple generation paths and **refinement strategies** to optimize structures post-generation. Full details in the [Search and Refinement guide](docs/search_and_refinement.md).
+Beyond standard sampling, the model supports search strategies to explore multiple generation paths and refinement strategies to optimize structures post-generation. Full details in the [Search and Refinement guide](docs/search_and_refinement.md).
 
 ### Search Strategies
 
 | Strategy | Description | Use Case |
-|----------|-------------|----------|
+| --- | --- | --- |
 | **Vanilla** | Standard diffusion sampling | Baseline, fastest |
 | **Best-of-N** | Generate N samples, pick highest reward | Simple, effective, parallelizable |
 | **Beam Search** | Maintain top-k candidates, prune at checkpoints | Best quality, slower |
@@ -266,8 +414,11 @@ python proteinfoundation/generate.py \
 
 ### Refinement Strategies
 
+> [!WARNING]
+> Refinement strategies are not fully supported in the current checkpoint.
+
 | Strategy | What it optimizes | Requires Autoencoder | Speed |
-|----------|-------------------|---------------------|-------|
+| --- | --- | --- | --- |
 | **BindCraft** | Sequence only (structure fixed) | No | Fast |
 | **Gradient Ascent** | Latents (structure + sequence) | Yes | Medium |
 
@@ -286,152 +437,32 @@ python proteinfoundation/refine.py \
 
 ### Available Reward Models
 
-Reward models score generated structures to guide search and refinement. Configure via YAML files in `configs/rewards/`. Metrics are organized into three categories:
-
-**Refolding Metrics** — Refold with an independent model (RF3, AF2) to validate designability. Both are differentiable.
-
-**Force Field Metrics** — Evaluate physical plausibility using the Rosetta scoring function (via TMol) or MACE (ML force field). Includes SoftDDG, charge complementarity, TMol interface energy, and MACE energy.
-
-**Structure Quality Metrics** — Fast geometric/chemical checks (PoseBusters, SSE, RASA, MolProbity, sidechains, H-bonds).
+Reward models score generated structures to guide search and refinement. Configure via YAML files in `configs/rewards/`.
 
 | Config | Category | Key Signals | Differentiable |
-|--------|----------|-------------|----------------|
+| --- | --- | --- | --- |
 | `rf3.yaml` | Refolding | pLDDT, ipTM, ipAE, min_ipAE | Yes |
 | `af2_binder.yaml` | Refolding | pLDDT, pTM, PAE, max_PAE | Yes |
 | `multi_source.yaml` | Refolding + Force Field + Quality | ipAE, H-bonds, RASA, clashes | No |
 | `structure_quality.yaml` | Structure Quality | Sidechains, SSE, RASA, MolProbity | No |
 
-See the [Search and Refinement guide](docs/search_and_refinement.md) for the full metric catalog, custom reward creation, and **parameter sweeps**.
-
-### Inference Sweeps
-
-Run the same pipeline across many parameter combinations (checkpoints, temperatures, strategies) with a single command:
-
-```bash
-# Define sweep in YAML → generate + submit all jobs
-./slurm_utils/launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml
-```
-
-See [Inference Sweeps](docs/search_and_refinement.md#inference-sweeps) for the full guide and pre-built sweep configs.
+See the [Search and Refinement guide](docs/search_and_refinement.md) for the full metric catalog and custom reward creation.
 
 ---
 
 ## Output Files
 
-Each generated design is saved as a CIF file. Alongside standard structural data, the model writes several custom per-atom annotations that record how each residue was produced.
+Each generated design is saved as a CIF file with custom per-atom annotations recording how each residue was produced.
 
 ### CIF Annotations
 
-| Annotation | Level | Type | Description |
-|---|---|---|---|
-| `src_component` | Residue | string | Source component identifier for each residue. Tracks which part of the input specification a residue originated from. `"."` means no specific source detected (unexpected). |
-| `mapped_to_coordinate_conditioned_region` | Atom | bool | `True` for atoms whose final coordinates were mapped from a coordinate-conditioned motif region, whether using absolute coords or internal coords, and whether indexed or unindexed. |
-| `mapped_to_coordinate_conditioned_region_token_lvl` | Residue | bool | Token-level (residue-level) aggregation of the above: `True` if any atom in the residue was mapped from an unindexed motif. Can be used to determine what should be held fixed for downstream sequence redesign (e.g. ProteinMPNN). |
-| `coords_with_insertion` | Atom | float\[3\] | Coordinates after inserting motif atoms into the generated backbone. For atoms with internal coordinate conditioning, holds the superimposed ground-truth coordinates used as the conditioning reference. |
-| `src_coordinate_conditioned_region` | Atom | string | Identifies which input motif region provided the coordinate conditioning for each atom. `"."` means the atom is freely generated; otherwise the value is a string like `"A1"` tracing the source chain/residue. |
-
-These annotations are written by default to all output CIF files and are consumed downstream by the metrics pipeline and sequence redesign steps.
-
----
-
-## Evaluating Results
-
-### Running Metrics Inline
-
-Pass `metrics_tags` during inference to compute metrics immediately after each design (see [Metrics Tags](#metrics-tags)). Results are written to `per_example_metrics.csv` alongside the CIF files.
-
-### Concatenating Multi-Job Runs
-
-When running large evaluations in parallel across multiple SLURM jobs, each job writes its own `per_example_metrics_job{N}.csv`. After all jobs complete, concatenate them into a single file:
-
-```bash
-python -m proteinfoundation.inference_utils.concatenate_external_eval_results \
-    --output_dir ./inference/my_run/metrics/
-```
-
-Or with optional FoldSeek clustering (see below):
-
-```bash
-python -m proteinfoundation.inference_utils.concatenate_external_eval_results \
-    --output_dir ./inference/my_run/metrics/ \
-    --cluster_with_foldseek
-```
-
-This script:
-1. Finds all `per_example_metrics_job*.csv` files in the output directory
-2. Concatenates them into a single `per_example_metrics.csv`
-3. Optionally computes FoldSeek cluster assignments (see below)
-4. Aggregates per-task mean metrics into `aggregated_metrics.csv`
-5. Moves individual job files into a `job_results/` subdirectory
-
-### FoldSeek Diversity Clustering
-
-When `--cluster_with_foldseek` is passed, structures are clustered by structural similarity using [FoldSeek](https://github.com/steineggerlab/foldseek). The resulting `foldseek_cluster_id` column enables computing the number of structurally distinct designs per task.
-
-**Clustering is scoped to the chain of interest.** In multimer outputs (e.g. binder + target), only the designed chain is extracted and clustered — the fixed target is excluded. This chain is identified automatically from the conditioning annotations using a heuristic that selects the protein chain with the fewest coordinate-conditioned atoms (i.e. the most freely designed chain). The resolved chain ID is stored as `chain_of_interest` in the metrics CSV and must be consistent within a task for FoldSeek to run.
-
-If `chain_of_interest` is `None` or inconsistent across examples in a task, FoldSeek clustering is skipped for that task with a warning.
-
-FoldSeek must be installed and available on `$PATH`. For monomer designs, clustering uses TM-score (default threshold 0.5). For multimers, it additionally uses interface lDDT.
-
----
-
-## Cluster Launching (SLURM)
-
-The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All Hydra options (checkpoint, datasets, metrics, etc.) can be passed directly as Hydra overrides.
-
-The `--no-copy` argument can be passed to avoid copying the codebase to the output destination. This copying can be useful for exact reproducibility.
-
-After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file. Pass `--no-concatenate` to skip this, or `--foldseek` to additionally run structural clustering.
-
-For full details on possible non-Hydra arguments to `launch_infer.sh` and `launch_sweep.sh`, please see the comments in their headers.
-
-> **Note:** All scripts must be run with a `.user_info_<cluster>` file present in `slurm_utils`. `<cluster>` is the cluster name (e.g. `digs`, `ord`, `coreweave`).
-
-### Inference
-
-```bash
-# 4 replicates over a subset of an input file, split across 2 jobs
-./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
-    inference_experiment=inference_like_rfd3 \
-    inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
-```
-
-Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. So instead of these command-line overrides, you could also create a new config in `configs/inference_experiment` that inherits from `inference_like_rfd3`, then defines your desired overrides.
-
-### Parameter Sweeps
-
-Sweeps generate one config per parameter combination and submit each as a separate SLURM job:
-
-```bash
-# Sweep nsteps x noise scale on a val set, with FoldSeek clustering (per-combination).
-./slurm_utils/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
-    --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
-
-# Preview configs without submitting
-./slurm_utils/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
-```
-
-The sweep example at `configs/sweeps/sweep_example.yaml` uses a validation dataset by default. To sweep over regular inference instead, swap `inference_experiment=inference_on_val_set` for `inference_like_rfd3` and add your `inputs` config as usual (see comments in that file).
-
-See `configs/sweeps/` for more sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for the sweep config format.
-
-### Search (Beam / Best-of-N)
-
-Search strategies are configured via experiment configs — pass `--config-name` to select one:
-
-```bash
-# Beam search with RF3 reward (parameters set in the experiment config)
-./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
-    inference_experiment=inference_beam_example \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    out_dir=/path/to/outputs
-```
+| Annotation | Level | Description |
+| --- | --- | --- |
+| `src_component` | Residue | Source component identifier. Tracks which part of the input spec a residue originated from. |
+| `mapped_to_coordinate_conditioned_region` | Atom | `True` for atoms whose final coordinates were mapped from a coordinate-conditioned motif region. |
+| `mapped_to_coordinate_conditioned_region_token_lvl` | Residue | Residue-level aggregation of the above. Use this to identify regions to hold fixed in downstream sequence redesign (e.g. ProteinMPNN). |
+| `coords_with_insertion` | Atom | Coordinates after inserting motif atoms into the generated backbone. |
+| `src_coordinate_conditioned_region` | Atom | Identifies which input motif region provided coordinate conditioning for each atom. |
 
 ---
 
@@ -446,11 +477,12 @@ For coding standards and contribution guidelines, see [CLAUDE.md](CLAUDE.md).
 ## Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| `DATA_PATH not set` | Create `.env` from `env.template` and set required paths |
-| `Autoencoder checkpoint not found` | Update `autoencoder_ckpt_path` in config or `.env` |
+| --- | --- |
+| `Import errors` / `hydra not found` in launch scripts | Activate the venv: `source .venv/bin/activate` (works from repo root or `projects/proteinfoundation/`) |
 | `Hydra config errors` | Use `=` not `--` for arguments: `inputs=file.cif` not `--inputs file.cif` |
-| `Import errors` | Ensure parent foundry installed: `cd ../.. && pip install -e .` |
-| `Out of memory` | Reduce batch size or number of GPUs in config |
+| `Out of memory` | Reduce `batch_size`; test your longest sequence at `batch_size=1` first |
+| `atomworks not found` | Run `git submodule update --init lib/atomworks` |
+| `DATA_PATH not set` | Ensure `.ipd/.env.<cluster>` is committed and your cluster's `.user_info_<cluster>` sources it |
+| `Autoencoder checkpoint not found` | Update `autoencoder_ckpt_path` in config |
 
 See the [Developer Guide troubleshooting section](docs/DEVELOPMENT.md#troubleshooting) for the full list.

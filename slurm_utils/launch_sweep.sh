@@ -17,12 +17,20 @@
 #   --gpus-per-job N             GPUs per SLURM job (default: 1)
 #   --njobs N                    Parallel jobs per config (default: reads
 #                                gen_njobs from each per-config Hydra config)
+#   --gres <spec>                SLURM --gres override (e.g. gpu:l40:1); takes
+#                                precedence over .user_info setting
+#   --time <HH:MM:SS>            SLURM --time override; takes precedence over
+#                                .user_info RUNTIME
+#   --partition <name>           SLURM --partition override; takes precedence
+#                                over .user_info PARTITION
+#   --mem <size>                 SLURM --mem override (e.g. 64g); takes
+#                                precedence over .user_info MEM
 #   --no-concatenate             Skip the per-config concatenation job
-#   --foldseek                   Enable Foldseek clustering in concatenation
+#   --no-foldseek                Disable Foldseek clustering in concatenation (on by default)
 #   --base-out-dir <path>        Base directory for all sweep runs; each config
 #                                gets its own subdirectory at <path>/<config_name>
 #   --dry-run                    Generate configs only; do not submit jobs
-#   --no-copy                    Don't copy code (use repo in-place for all jobs)
+#   --copy                       Copy code to the sweep directory (default: use repo in-place)
 #   --overwrite-rundir           Allow overwriting existing run directories
 #   --delay <seconds>            Delay between job submissions (default: 2)
 #   --no-sweep-concatenate       Skip the final sweep-level concatenation job
@@ -39,9 +47,9 @@
 #   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
 #       ckpt_path=/path/to/checkpoints
 #
-#   # Validation sweep with 8 parallel jobs and Foldseek per config
+#   # Validation sweep with 8 parallel jobs (Foldseek on by default)
 #   ./launch_sweep.sh ord --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
-#       --njobs 8 --foldseek \
+#       --njobs 8 \
 #       inference_experiment=inference_on_val_set
 #
 #   # Dry run: show configs without submitting
@@ -61,15 +69,19 @@ SWEEP_CONFIG=""
 GPUS_PER_JOB=1
 NJOBS=""    # empty = each per-config launch_infer.sh reads gen_njobs from the config
 DO_CONCATENATE="true"
-CONCATENATE_FOLDSEEK="false"
+CONCATENATE_FOLDSEEK="true"  # foldseek on by default
 DRY_RUN="false"
-NO_COPY="false"
+NO_COPY="true"  # use repo in-place by default
 OVERWRITE_RUNDIR="false"
 SWEEP_CONFIG_OUTPUT_DIR=""
 BASE_OUT_DIR=""
 DELAY=2
 DO_SWEEP_CONCATENATE="true"
 EXTRA_ARGS=""
+CLI_GRES=""
+CLI_TIME=""
+CLI_PARTITION=""
+CLI_MEM=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -93,16 +105,16 @@ while [[ $# -gt 0 ]]; do
             DO_CONCATENATE="false"
             shift
             ;;
-        --foldseek)
-            CONCATENATE_FOLDSEEK="true"
+        --no-foldseek)
+            CONCATENATE_FOLDSEEK="false"
             shift
             ;;
         --dry-run)
             DRY_RUN="true"
             shift
             ;;
-        --no-copy)
-            NO_COPY="true"
+        --copy)
+            NO_COPY="false"
             shift
             ;;
         --no-sweep-concatenate)
@@ -119,6 +131,22 @@ while [[ $# -gt 0 ]]; do
             ;;
         --delay)
             DELAY="$2"
+            shift 2
+            ;;
+        --gres)
+            CLI_GRES="$2"
+            shift 2
+            ;;
+        --time)
+            CLI_TIME="$2"
+            shift 2
+            ;;
+        --partition)
+            CLI_PARTITION="$2"
+            shift 2
+            ;;
+        --mem)
+            CLI_MEM="$2"
             shift 2
             ;;
         *)
@@ -143,9 +171,9 @@ if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
     echo "  --gpus-per-job N       GPUs per SLURM job (default: 1)"
     echo "  --njobs N              Parallel jobs per config (default: reads gen_njobs from each config)"
     echo "  --no-concatenate       Skip per-config concatenation job"
-    echo "  --foldseek             Enable Foldseek in concatenation"
+    echo "  --no-foldseek          Disable Foldseek in concatenation (on by default)"
     echo "  --dry-run              Generate configs only, don't submit"
-    echo "  --no-copy              Don't copy code (use repo in-place for all jobs)"
+    echo "  --copy                 Copy code to sweep dir (default: use repo in-place)"
   echo "  --no-sweep-concatenate Skip the final sweep-level concatenation step"
     echo "  --base-out-dir <path>  Base dir for all sweep runs"
     echo "  --delay <seconds>      Delay between submissions (default: 2)"
@@ -171,6 +199,12 @@ SWEEP_CONFIG_OUTPUT_DIR="$BASE_OUT_DIR/configs"
 CLUSTER_ARG="$CLUSTER"
 load_user_info "$CLUSTER" || exit 1
 
+# Apply CLI overrides (take precedence over .user_info)
+[ -n "$CLI_GRES" ]      && GRES="$CLI_GRES"
+[ -n "$CLI_TIME" ]      && RUNTIME="$CLI_TIME"
+[ -n "$CLI_PARTITION" ] && PARTITION="$CLI_PARTITION"
+[ -n "$CLI_MEM" ]       && MEM="$CLI_MEM"
+
 # Find repository root
 REPO_ROOT=$(find_repo_root "$SCRIPT_DIR")
 if [ -z "$REPO_ROOT" ]; then
@@ -184,7 +218,7 @@ setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
 # =============================================================================
-# Step 0: Copy code once to sweep directory (unless --no-copy)
+# Step 0: Optionally copy code once to sweep directory
 # =============================================================================
 SWEEP_CODE_DIR=""
 if [ "$NO_COPY" != "true" ] && [ -n "$BASE_OUT_DIR" ]; then
@@ -316,9 +350,7 @@ else:
     if [ -n "$SWEEP_CODE_DIR" ]; then
         # Code was copied once at the sweep level; point each job at that copy
         COMMON_FLAGS="$COMMON_FLAGS --code-dir $SWEEP_CODE_DIR"
-    else
-        # --no-copy: use repo in-place for all jobs
-        COMMON_FLAGS="$COMMON_FLAGS --no-copy"
+    # else: no --copy passed, launch_infer uses repo in-place by default
     fi
     if [ "$OVERWRITE_RUNDIR" == "true" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --overwrite-rundir"
@@ -326,8 +358,20 @@ else:
     if [ "$DO_CONCATENATE" == "false" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --no-concatenate"
     fi
-    if [ "$CONCATENATE_FOLDSEEK" == "true" ]; then
-        COMMON_FLAGS="$COMMON_FLAGS --foldseek"
+    if [ "$CONCATENATE_FOLDSEEK" == "false" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --no-foldseek"
+    fi
+    if [ -n "$CLI_GRES" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --gres $CLI_GRES"
+    fi
+    if [ -n "$CLI_TIME" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --time $CLI_TIME"
+    fi
+    if [ -n "$CLI_PARTITION" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --partition $CLI_PARTITION"
+    fi
+    if [ -n "$CLI_MEM" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --mem $CLI_MEM"
     fi
 
     # Run launch_infer.sh and capture output to extract the concat job ID

@@ -391,10 +391,10 @@ The `slurm_utils/` directory provides a unified system for launching jobs across
 | `--njobs N` | Number of parallel generation jobs (overrides `gen_njobs` from config) |
 | `--gpus-per-job N` | GPUs per SLURM array task (default: 1) |
 | `--config-name NAME` | Hydra config name (default: `inference`); use for sweep sub-configs |
-| `--no-copy` | Skip code rsync — use existing code on cluster |
+| `--copy` | Copy code to run directory via rsync (default: use repo in-place) |
 | `--follow` / `-f` | Tail the log file after submission |
 | `--no-concatenate` | Skip the automatic post-generation CSV concatenation job |
-| `--foldseek` | Enable Foldseek structural clustering in the concatenation job |
+| `--no-foldseek` | Disable Foldseek structural clustering in the concatenation job (on by default) |
 | `--overwrite-rundir` | Allow overwriting an existing code directory |
 
 Any remaining arguments are passed directly to `generate.py` as Hydra overrides.
@@ -438,29 +438,22 @@ Run from `projects/proteinfoundation/` on the cluster:
 
 ```bash
 # 4 replicates over benchmark inputs, split across 2 parallel jobs
-./slurm_utils/launch_infer.sh digs --no-copy gen_njobs=2 \
+./slurm_utils/launch_infer.sh digs --njobs 2 \
     inference_experiment=inference_like_rfd3 \
     inputs=/path/to/benchmarks/monomer.json \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
     out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
 ```
 
-After all generation jobs finish, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file under `<run_dir>/inference_metrics/`. Pass `--foldseek` to additionally cluster outputs structurally.
+After all generation jobs finish, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file under `<run_dir>/inference_metrics/`. Foldseek structural clustering runs by default; pass `--no-foldseek` to disable it.
 
 ### Offline Validation
 
 Offline validation uses the same `launch_infer.sh` script with `inference_experiment=inference_on_val_set` and a `+datasets/val@generation=<dataset>` override that selects the validation dataset:
 
 ```bash
-# Validate on the MCSA subset
+# Validate on the MCSA subset (Foldseek clustering on by default)
 ./slurm_utils/launch_infer.sh digs --njobs 8 \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    inference_experiment=inference_on_val_set \
-    +datasets/val@generation=mcsa_subset \
-    run_name_=my_run_mcsa_val out_dir=/path/to/outputs
-
-# With Foldseek structural clustering on results
-./slurm_utils/launch_infer.sh digs --njobs 8 --foldseek \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
     inference_experiment=inference_on_val_set \
     +datasets/val@generation=mcsa_subset \
@@ -477,10 +470,10 @@ To sweep for offline validation, use a sweep config as detailed in the main READ
 `launch_sweep.sh` generates one Hydra config per parameter combination and submits each via `launch_infer.sh`:
 
 ```bash
-# Sweep nsteps x noise scale
+# Sweep nsteps x noise scale (Foldseek clustering on by default)
 ./slurm_utils/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
-    --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+    --sweep-config configs/sweeps/sweep_example.yaml \
+    --base-out-dir /path/to/out_dir --njobs 2 \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
 
 # Preview configs without submitting
@@ -502,7 +495,7 @@ bash slurm_utils/launch_train_latents.sh digs --no-copy
 
 ### What the Launch Scripts Do
 
-1. **Copy code** (default, skip with `--no-copy`): `rsync` selective directories to `$ROOT_REMOTE/<run_name>/`
+1. **Copy code** (opt-in with `--copy`): `rsync` selective directories to `$ROOT_REMOTE/<run_name>/`
 2. **Resolve Hydra config**: Reads `run_name_`, `nnodes_`, `ngpus_per_node_` from config
 3. **Build and submit sbatch script**: Generates appropriate container commands
 4. **Concatenation job** (inference/val only): Dependent job merges per-task CSVs into `inference_metrics/`

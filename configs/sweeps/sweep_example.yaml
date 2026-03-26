@@ -7,7 +7,7 @@
 # Usage:
 #   ./slurm_utils/launch_sweep.sh coreweave \
 #       --sweep-config configs/sweeps/sweep_example.yaml --foldseek \
-#       --base-out-dir /path/to/out_dir --njobs 2 --no-copy \
+#       --base-out-dir /path/to/out_dir --njobs 2 \
 #       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
 #
 # To sweep over regular inference instead of a val set, swap:
