@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -39,6 +40,7 @@ def diversity_foldseek(
     alignment_type: int = 1,
     min_seq_id: float = 0.0,
     timeout: float | None = None,
+    threads: int | None = None,
 ) -> list[int] | None:
     """
     Evaluates diversity by clustering designable samples using foldseek. Diversity is measured as
@@ -54,6 +56,8 @@ def diversity_foldseek(
         interface_lddt_threshold: Interface lDDT threshold for multimer clustering
         alignment_type: 1 (structure) or 2 (structure+sequence), passed to Foldseek
         min_seq_id: Minimum sequence identity for clustering (monomer mode, alignment_type=2)
+        threads: Number of CPU threads to pass to Foldseek via ``--threads``. If ``None``, Foldseek
+            uses its own default (typically 1).
 
     Returns:
         Optional[List[int]], containing the cluster assignment for each input pdb file.
@@ -146,6 +150,8 @@ def diversity_foldseek(
             "--tmscore-threshold",
             f"{tm_threshold}",
         ]
+    if threads is not None:
+        command += ["--threads", str(threads)]
 
     try:
         subprocess.run(command, check=True, text=True, capture_output=True, timeout=timeout)
@@ -190,15 +196,20 @@ def add_foldseek_diversity_to_per_example_df(
     """Add Foldseek clustering information to per-example DataFrame output by validation or external eval.
 
     Clustering is computed only on unique designed_structure_path values within each group,
-    then broadcast back to all rows with matching paths.
+    then broadcast back to all rows with matching paths. Groups are processed in parallel
+    using threads — safe on GPU/DDP nodes because no Python processes are forked; each thread
+    simply spawns an external Foldseek subprocess. Available CPUs are divided evenly across
+    parallel processes via ``--threads``.
 
     Args:
         per_example_df: DataFrame with columns including 'designed_structure_path'.
         group_by: Columns to group by when clustering. Defaults to ``["task"]``.
-        timeout: Total wall-clock budget in seconds for all Foldseek calls combined. Groups that
-            cannot be started within the budget are skipped with ``foldseek_cluster_id=None``.
-            If ``None``, no timeout is applied.
-        **kwargs: Additional arguments to pass to `diversity_foldseek`.
+        timeout: Wall-clock budget in seconds for the entire call. The remaining budget at
+            submission time is passed to each per-group Foldseek subprocess. If ``None``,
+            no timeout is applied.
+        **kwargs: Additional arguments forwarded to :py:func:`diversity_foldseek`.
+            ``tmp_path`` is intercepted and used as a base directory; each group gets its
+            own subdirectory so parallel runs do not conflict.
 
     Returns:
         DataFrame with additional column: foldseek_cluster_id.
@@ -216,23 +227,45 @@ def add_foldseek_diversity_to_per_example_df(
         raise ValueError("chain_of_interest column not found in per_example_df")
 
     chains_override = kwargs.pop("chains", None)
-    start_time = time.monotonic()
-    output_group_dfs = []
-    for group_key, group_df in per_example_df.groupby(group_by):
-        group_vals = group_key if isinstance(group_key, tuple) else (group_key,)
-        group_label = "/".join(str(v) for v in group_vals)
+    base_tmp_path = kwargs.pop("tmp_path", "./tmp/metrics/")
+    groups = list(per_example_df.groupby(group_by))
+    n_groups = len(groups)
 
-        # Get chain_of_interest (should be unique per group)
+    slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+    if slurm_cpus is not None:
+        available_cpus = int(slurm_cpus)
+    else:
+        try:
+            available_cpus = len(os.sched_getaffinity(0))
+        except AttributeError:
+            available_cpus = os.cpu_count() or 1
+
+    # Run all groups in parallel; divide CPUs evenly so each foldseek subprocess
+    # gets threads_per_worker threads rather than competing for all CPUs.
+    n_parallel = min(n_groups, available_cpus)
+    threads_per_worker = max(1, available_cpus // n_parallel)
+    logger.info(
+        f"Foldseek: {n_groups} groups, {n_parallel} parallel workers, "
+        f"{threads_per_worker} threads/worker ({available_cpus} CPUs total)"
+    )
+
+    start_time = time.monotonic()
+
+    def _run_group(key: object, group_df: pd.DataFrame) -> pd.DataFrame:
+        group_vals = key if isinstance(key, tuple) else (key,)
+        group_label = "/".join(str(v) for v in group_vals)
+        safe_label = group_label.replace("/", "_").replace(" ", "_")
+
         chains_of_interest = group_df["chain_of_interest"].unique()
         if len(chains_of_interest) > 1:
             logger.warning(
                 f"Expected only one chain_of_interest for group {group_label}, found {chains_of_interest}. "
                 "This group will not get cluster ids."
             )
-            group_df = group_df.copy()
-            group_df["foldseek_cluster_id"] = None
-            output_group_dfs.append(group_df)
-            continue
+            out = group_df.copy()
+            out["foldseek_cluster_id"] = None
+            return out
+
         chain_of_interest = chains_of_interest[0]
         if chains_override is not None and chains_override != [chain_of_interest]:
             logger.warning(
@@ -243,45 +276,52 @@ def add_foldseek_diversity_to_per_example_df(
             chain_of_interest = chains_override[0]
         if pd.isna(chain_of_interest):
             logger.warning(f"chain_of_interest is missing for group {group_label}. This group will not get cluster ids")
-            group_df = group_df.copy()
-            group_df["foldseek_cluster_id"] = None
-            output_group_dfs.append(group_df)
-            continue
+            out = group_df.copy()
+            out["foldseek_cluster_id"] = None
+            return out
 
-        # Get unique paths and cluster only those
+        # Compute remaining budget at submission time; all groups start near-simultaneously
+        # so this is a fair approximation of the per-group wall-clock limit.
+        remaining = (timeout - (time.monotonic() - start_time)) if timeout is not None else None
+
         unique_paths = group_df["designed_structure_path"].unique().tolist()
-        if timeout is not None:
-            remaining = timeout - (time.monotonic() - start_time)
-            if remaining <= 0:
-                logger.warning(
-                    f"Foldseek timeout budget exhausted before group {group_label}; " "skipping remaining groups"
-                )
-                group_df = group_df.copy()
-                group_df["foldseek_cluster_id"] = None
-                output_group_dfs.append(group_df)
-                continue
-        else:
-            remaining = None
         cluster_assignments = diversity_foldseek(
             list_of_pdb_paths=unique_paths,
             chains=[chain_of_interest],
+            tmp_path=os.path.join(base_tmp_path, safe_label),
             timeout=remaining,
+            threads=threads_per_worker,
             **kwargs,
         )
+        out = group_df.copy()
         if cluster_assignments is None:
             logger.warning(f"Foldseek clustering failed for group {group_label}. This group will not get cluster IDs")
-            group_df = group_df.copy()
-            group_df["foldseek_cluster_id"] = None
-            output_group_dfs.append(group_df)
-            continue
+            out["foldseek_cluster_id"] = None
+        else:
+            path_to_cluster = dict(zip(unique_paths, cluster_assignments, strict=False))
+            out["foldseek_cluster_id"] = out["designed_structure_path"].map(path_to_cluster)
+        return out
 
-        # Create mapping from path to cluster ID and broadcast to full dataframe
-        path_to_cluster = dict(zip(unique_paths, cluster_assignments, strict=False))
-        group_df = group_df.copy()
-        group_df["foldseek_cluster_id"] = group_df["designed_structure_path"].map(path_to_cluster)
-        output_group_dfs.append(group_df)
+    # ThreadPoolExecutor is safe inside DDP rank-0: threads do not fork the Python
+    # process, so no CUDA context is duplicated. Each thread spawns an independent
+    # Foldseek subprocess that has no knowledge of CUDA.
+    processed: list[pd.DataFrame] = [None] * n_groups  # type: ignore[list-item]
+    with ThreadPoolExecutor(max_workers=n_parallel) as executor:
+        future_to_idx = {executor.submit(_run_group, key, gdf): i for i, (key, gdf) in enumerate(groups)}
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                processed[idx] = future.result()
+            except Exception as e:
+                key, gdf = groups[idx]
+                group_vals = key if isinstance(key, tuple) else (key,)
+                group_label = "/".join(str(v) for v in group_vals)
+                logger.warning(f"Foldseek group {group_label} raised an exception: {e}; skipping cluster ids")
+                out = gdf.copy()
+                out["foldseek_cluster_id"] = None
+                processed[idx] = out
 
-    return pd.concat(output_group_dfs, ignore_index=True)
+    return pd.concat(processed, ignore_index=True)
 
 
 def _base_pass_rate_cols(df: pd.DataFrame) -> list[str]:
