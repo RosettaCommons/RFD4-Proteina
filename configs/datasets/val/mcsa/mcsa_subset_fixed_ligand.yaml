@@ -1,3 +1,5 @@
+run_every_n_val_epochs: 3
+
 defaults:
   # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
   - /datasets/val/mcsa@_here_: mcsa_full_fixed_ligand

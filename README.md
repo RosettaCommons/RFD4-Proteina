@@ -20,6 +20,7 @@ A flow-matching based generative model for protein design, supporting proteins, 
 - [Partial Diffusion](#partial-diffusion)
 - [Inference Noise Parameters](#inference-noise-parameters)
 - [Evaluating Results](#evaluating-results)
+  - [Adding Custom Metrics](#adding-custom-metrics)
 - [Search and Refinement](#search-and-refinement)
 - [Output Files](#output-files)
 - [For Developers](#for-developers)
@@ -365,7 +366,7 @@ python proteinfoundation/generate.py \
 | `hbond_conditioning` | H-bond satisfaction metrics |
 | `rasa_conditioning` | RASA adherence metrics |
 
-Metrics that require a tag will be silently skipped if the tag is not present. Tags have no effect unless a metrics config that references them is loaded (controlled by the `inference_experiment` config group).
+Metrics that require a tag will be silently skipped if the tag is not present.
 
 ### Concatenating Multi-Job Runs
 
@@ -379,6 +380,51 @@ python -m proteinfoundation.inference_utils.concatenate_external_eval_results \
 This script finds all `per_example_metrics_job*.csv` files, concatenates them, aggregates per-task mean metrics into `aggregated_metrics.csv`, and moves individual job files into `job_results/`. When using `launch_infer.sh`, this runs automatically as a dependent SLURM job.
 
 Pass `--cluster_with_foldseek` to also run structural diversity clustering (see below).
+
+### Adding Custom Metrics
+
+You can add your own evaluation metrics without modifying any tracked files. You can add custom metrics by creating these files, which are automatically git-ignored:
+
+- `proteinfoundation/metrics/custom_metrics.py` — Python metric classes
+- `configs/metrics/custom_metrics.yaml` — Hydra config registering those classes
+
+**Quick example** — count residues in each design:
+
+```python
+# proteinfoundation/metrics/custom_metrics.py
+from biotite.structure import AtomArray
+from foundry.metrics.metric import Metric
+
+class ResidueCountMetric(Metric):
+    def __init__(self, min_length: int | None = None, **kwargs):
+        super().__init__(**kwargs)          # passes tag-filter args from YAML
+        self.min_length = min_length
+
+    @property
+    def kwargs_to_compute_args(self) -> dict:
+        return {"atom_array": ("predicted_atom_array",)}
+
+    def compute(self, atom_array: AtomArray) -> dict[str, float]:
+        n_residues = len(set(zip(atom_array.chain_id, atom_array.res_id)))
+        result = {"n_residues": float(n_residues)}
+        if self.min_length is not None:
+            result["meets_min_length"] = float(n_residues >= self.min_length)
+        return result
+```
+
+```yaml
+# configs/metrics/custom_metrics.yaml
+residue_count:
+  _target_: proteinfoundation.metrics.custom_metrics.ResidueCountMetric
+  min_length: 50                                # constructor argument
+  required_tags_any: ["unconditional_refolding"] # omit to always run
+```
+
+Results appear in `per_example_metrics.csv` as `residue_count.n_residues`, `residue_count.meets_min_length`.
+
+For a full explanation of `kwargs_to_compute_args`, how to write metrics that operate on RF3-refolded structures (nested inside `RF3Metric`), and how to contribute a metric back, see **[docs/custom_metrics.md](docs/custom_metrics.md)**.
+
+> **Broadly useful?** If your metric isn't specific to your design problem, consider contributing it. Both files are git-ignored so your local experiments stay private, but the full contribution workflow (branch → tracked file → PR) is described in the doc above.
 
 ### FoldSeek Diversity Clustering
 

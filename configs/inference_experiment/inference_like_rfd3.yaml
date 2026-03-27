@@ -15,6 +15,5 @@ generation:
       metrics_tags: ${metrics_tags} # If specified, determines which metrics are computed during inference
 
 diffusion_batch_size: null # Mutually exclusive with `batch_size`; supported solely for backwards compatibility with RFD3 syntax
-batch_size: null # If neither this nor diffusion_batch_size is specified, defaults to 1
 json_keys_subset: null # Mutually exclusive with `subset_to_examples`; supported solely for backwards compatibility with RFD3 syntax
 global_prefix: null # If specified, paths to output structures and metrics dataframes will be prefixed with this string

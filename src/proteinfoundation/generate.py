@@ -381,8 +381,10 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     )
 
     # Remove val sets used in training, and do not compute loss on inference examples, since they start with NaN coords
+    # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.
+    resolved_dataset = OmegaConf.to_container(cfg.generation.dataset, resolve=True, throw_on_missing=False)
     model.cfg_exp.datasets.val = OmegaConf.create(
-        {"inference_dataset": {"dataset": cfg.generation.dataset, "compute_loss": False}}
+        {"inference_dataset": {"dataset": resolved_dataset, "compute_loss": False}}
     )
 
     # Set inference variables and potentially load autoguidance

@@ -21,6 +21,7 @@ def run_metrics_for_result(
     metric_manager: MetricManager,
     output_base_dir: Path | None,
     example_id: str | None = None,
+    save_input_structure: bool = True,
 ) -> dict:
     """Run metrics for a single generation result, matching the logic in validation_step.
 
@@ -38,6 +39,8 @@ def run_metrics_for_result(
         output_base_dir: Directory for saving metric outputs (e.g. folded structures).
         example_id: Override for the example ID. If None, uses result['example_id'].
             Pass this when a rank/job suffix is needed (as in validation_step).
+        save_input_structure: Whether to save the input structure alongside the refolded
+            output for RF3Metrics. Omitted during inference to avoid excess filesystem load.
 
     Returns:
         Metrics output dictionary from MetricManager.
@@ -59,10 +62,11 @@ def run_metrics_for_result(
             "metrics_tags": metrics_tags,
             "output_base_dir": output_base_dir,
             "chain_of_interest": coi if coi_unambiguous else None,
+            "save_input_structure": save_input_structure,
         },
-        ground_truth_atom_array=[result["input_atom_array"]],
-        predicted_atom_array=[result["generated_atom_array"]],
-        prediction_metadata=[result.get("prediction_metadata")],
+        ground_truth_atom_array=result["input_atom_array"],
+        predicted_atom_array=result["generated_atom_array"],
+        prediction_metadata=result.get("prediction_metadata"),
     )
     # Ensure chain_of_interest is always in the output regardless of which metrics are configured.
     # Only rf3_metric echoes it back; other metrics (af2, design) do not.
@@ -80,6 +84,21 @@ def normalize_to_atom_array_list(
     if isinstance(x, AtomArrayStack):
         return list(x)
     return [x]
+
+
+def unwrap_atom_array(x: "AtomArray | AtomArrayStack") -> AtomArray:
+    """Unwrap a single-structure input to a bare AtomArray.
+
+    Accepts a bare AtomArray or a single-element AtomArrayStack (as produced by
+    the inner RF3 MetricManager). Raises if given a stack with more than one
+    structure.
+    """
+    if isinstance(x, AtomArrayStack):
+        assert len(x) == 1, (
+            f"Expected a single-element AtomArrayStack, got depth {len(x)}. " "Metrics expect one structure at a time."
+        )
+        return x[0]
+    return x
 
 
 def get_ss_metrics_and_rg(

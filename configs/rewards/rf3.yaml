@@ -7,7 +7,6 @@ metrics:
     ckpt_path: /path/to/shared/storage
     num_steps: 50
     n_recycles: 5
-    diffusion_batch_size: 1
     rng_seed: 1
 
 weights:
