@@ -48,7 +48,6 @@ class RF3Metric(Metric):
         ckpt_path: Path to RF3 checkpoint file.
         num_steps: RF3 diffusion steps. Defaults to ``50``.
         n_recycles: RF3 recycles. Defaults to ``5``.
-        diffusion_batch_size: Batch size. Defaults to ``1``.
         template_annotations: Annotation name(s) to use for templating. Multiple
             annotations are OR'd together. Defaults to ``None``.
         out_dir: Directory to save input/refolded structures as CIF files.
@@ -84,7 +83,6 @@ class RF3Metric(Metric):
         ckpt_path: str | Path,
         num_steps: int = 50,
         n_recycles: int = 5,
-        diffusion_batch_size: int = 1,
         metric_manager: MetricManager | None = None,
         template_annotations: str | list[str] | None = None,
         extra_annots_to_symm_resolve: list[str] | None = None,
@@ -99,7 +97,6 @@ class RF3Metric(Metric):
             ckpt_path: Path to RF3 checkpoint
             num_steps: RF3 diffusion steps
             n_recycles: RF3 recycles
-            diffusion_batch_size: Batch size
             metric_manager: MetricManager for RF3 inference metrics.
             template_annotations: Annotation name(s) to use for templating. Annotations must be
                 boolean arrays. Multiple annotations are OR'd together.
@@ -121,7 +118,6 @@ class RF3Metric(Metric):
         self.ckpt_path = Path(ckpt_path)
         self.num_steps = num_steps
         self.n_recycles = n_recycles
-        self.diffusion_batch_size = diffusion_batch_size
         self.metric_manager = metric_manager
         self.template_annotations = (
             [template_annotations] if isinstance(template_annotations, str) else template_annotations
@@ -132,9 +128,6 @@ class RF3Metric(Metric):
 
         if self.out_dir:
             self.out_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"RF3Metric will save structures to {self.out_dir}")
-
-        logger.info(f"RF3Metric initialized with checkpoint: {self.ckpt_path}")
 
     @property
     def engine(self) -> RF3InferenceEngine:
@@ -145,7 +138,7 @@ class RF3Metric(Metric):
             RF3Metric._engine_cache[self.ckpt_path] = RF3InferenceEngine(
                 ckpt_path=self.ckpt_path,
                 n_recycles=self.n_recycles,
-                diffusion_batch_size=self.diffusion_batch_size,
+                diffusion_batch_size=1,
                 num_steps=self.num_steps,
                 seed=None,  # NOTE: We don't fix the seed here, as it may lead to RNG issues when resuming training
                 load_weights=False,  # NOTE: We will load weights in setup()
@@ -168,7 +161,12 @@ class RF3Metric(Metric):
             "rf3_extra_info": ("extra_info",),
             "out_dir": ("extra_info", "output_base_dir"),
             "chain_of_interest": ("extra_info", "chain_of_interest"),
+            "save_input_structure": ("extra_info", "save_input_structure"),
         }
+
+    @property
+    def optional_kwargs(self) -> frozenset[str]:
+        return frozenset(["save_input_structure"])
 
     def _cleanup_rf3(self) -> None:
         """Clean up RF3 engine and free GPU memory."""
@@ -212,6 +210,7 @@ class RF3Metric(Metric):
         predicted_atom_array: AtomArray,
         save_path: Path,
         example_id: str,
+        save_input: bool = True,
     ) -> None:
         """Save input and predicted structures to CIF files.
 
@@ -219,14 +218,17 @@ class RF3Metric(Metric):
             input_atom_array: Original input structure
             predicted_atom_array: RF3-refolded structure
             save_path: Directory path to save structures
+            example_id: Identifier used as filename prefix.
+            save_input: Whether to save the input structure. Defaults to ``True``.
         """
         save_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            to_cif_file(
-                input_atom_array,
-                save_path / f"{example_id}_rf3_input.cif",
-            )
+            if save_input:
+                to_cif_file(
+                    input_atom_array,
+                    save_path / f"{example_id}_rf3_input.cif",
+                )
             to_cif_file(
                 predicted_atom_array,
                 save_path / f"{example_id}_rf3_predicted.cif",
@@ -292,6 +294,7 @@ class RF3Metric(Metric):
         out_dir: Path | None = None,
         rf3_extra_info: dict | None = None,
         chain_of_interest: str | None = None,
+        save_input_structure: bool = True,
     ) -> dict[str, float]:
         """Refold input structures with RF3 and return confidence metrics.
 
@@ -303,6 +306,8 @@ class RF3Metric(Metric):
             chain_of_interest: Pre-computed chain of interest. If provided, skip the
                 heuristic computation. If ``None``, the chain of interest is inferred
                 from the input structure annotations.
+            save_input_structure: Whether to save the input structure alongside the
+                refolded output.
 
         Returns:
             Averaged RF3 confidence metrics across all input structures.
@@ -318,8 +323,7 @@ class RF3Metric(Metric):
         self.engine._metrics_cfg = self.metric_manager
 
         # Set dataset overrides for this RF3Metric instance, then rebuild the Transform pipeline
-        for override in ["diffusion_batch_size", "n_recycles"]:
-            self.engine.transform_overrides[override] = getattr(self, override)
+        self.engine.transform_overrides["n_recycles"] = self.n_recycles
 
         self.engine.verbose = False  # Do not re-print pipeline config for each call to compute()
         try:
@@ -346,6 +350,7 @@ class RF3Metric(Metric):
                         out_dir=out_dir,
                         structure_idx=i,
                         chain_of_interest=chain_of_interest,
+                        save_input_structure=save_input_structure,
                     )
                 )
                 current_metrics = {".".join(k): v for k, v in current_metrics.items()}
@@ -394,6 +399,7 @@ class RF3Metric(Metric):
         out_dir: Path | None = None,
         structure_idx: int = 0,
         chain_of_interest: str | None = None,
+        save_input_structure: bool = True,
     ) -> dict[str, float]:
         """Refold structure with RF3 and return confidence metrics.
 
@@ -405,6 +411,8 @@ class RF3Metric(Metric):
             structure_idx: Index of structure (fallback for saving if no example_id)
             chain_of_interest: Pre-computed chain of interest. If ``None``, the
                 chain of interest is inferred from the structure annotations.
+            save_input_structure: Whether to save the input structure alongside the
+                refolded output.
 
         Returns:
             Dictionary with RF3 confidence metrics:
@@ -514,7 +522,13 @@ class RF3Metric(Metric):
 
                 if predicted_structure:
                     save_path = out_dir / "rf3_refolding"
-                    self._save_structures(input_atom_array, predicted_structure, save_path, rf3_example_id)
+                    self._save_structures(
+                        input_atom_array,
+                        predicted_structure,
+                        save_path,
+                        rf3_example_id,
+                        save_input=save_input_structure,
+                    )
 
             return metrics
 

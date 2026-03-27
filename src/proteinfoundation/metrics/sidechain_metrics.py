@@ -7,6 +7,10 @@ from biotite.structure.info import residue
 from scipy.spatial.distance import cdist
 
 from foundry.metrics.metric import Metric
+from foundry.utils.logging import RankedLogger
+from proteinfoundation.metrics.metrics_utils import unwrap_atom_array
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 
 def construct_graph(coords: np.ndarray, cutoff_min: float, cutoff_max: float) -> nx.Graph:
@@ -41,14 +45,6 @@ def construct_graph(coords: np.ndarray, cutoff_min: float, cutoff_max: float) ->
     return G
 
 
-def are_graphs_isomorphic(g1: nx.Graph, g2: nx.Graph) -> bool:
-    """
-    Check if two graphs are topologically isomorphic (ignoring atom/bond types).
-    TODO: I do not think this should be a separate helper function
-    """
-    return nx.is_isomorphic(g1, g2)
-
-
 def check_sidechain_quality(
     atom_array: AtomArray, dist_threshold_min: float = 1, dist_threshold_max: float = 2
 ) -> tuple[dict[str, Any], float, float, float]:
@@ -81,7 +77,7 @@ def check_sidechain_quality(
             g = construct_graph(aa.coord, cutoff_min=dist_threshold_min, cutoff_max=dist_threshold_max)
             standard_aa_graphs.append(g)
         except Exception as e:
-            print(f"Failed to convert {aa} to graph: {e}")
+            logger.warning(f"Failed to convert {aa} to graph: {e}")
             standard_aa_graphs.append(None)
 
     # We need to select residues by the combination of chain_iid and res_id.
@@ -103,13 +99,13 @@ def check_sidechain_quality(
                 cutoff_max=dist_threshold_max,
             )
         except Exception as e:
-            print(f"[WARN] Could not build graph for chain_iid|res_id {res_identifier}: {e}")
+            logger.warning(f"Could not build graph for chain_iid|res_id {res_identifier}: {e}")
             continue
 
         for aa_idx, aa_graph in enumerate(standard_aa_graphs):
             if aa_graph is None:
                 continue
-            if are_graphs_isomorphic(cur_graph, aa_graph):
+            if nx.is_isomorphic(cur_graph, aa_graph):
                 matches[res_identifier].append(STANDARD_AA[aa_idx])
 
     # Step 2: Check if the inter and intra-residue quality is good.
@@ -175,27 +171,6 @@ def check_sidechain_quality(
     return matches, valid_sidechain_percent, unintended_bonds_percent, clash_percent
 
 
-def compute_batched_sidechain_quality(
-    predicted_atom_array_stack: AtomArrayStack,
-    dist_threshold_min: float = 1.0,
-    dist_threshold_max: float = 2.0,
-) -> list[dict[str, Any]]:
-    """
-    Compute sidechain metrics for each structure in a batch.
-    """
-    batch_metrics = []
-
-    for atom_array in predicted_atom_array_stack:
-        metrics = {}
-        matches, valid, unintended, clash = check_sidechain_quality(atom_array, dist_threshold_min, dist_threshold_max)
-        metrics["mapped_restype"] = matches
-        metrics["valid_sidechain_percent"] = valid
-        metrics["unintended_bonds_percent"] = unintended
-        metrics["clash_percent"] = clash
-        batch_metrics.append(metrics)
-    return batch_metrics
-
-
 class SidechainMetrics(Metric):
     def __init__(
         self,
@@ -210,20 +185,18 @@ class SidechainMetrics(Metric):
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return {
-            "predicted_atom_array_stack": ("predicted_atom_array",),
+            "atom_array": ("predicted_atom_array",),
         }
 
-    def compute(self, predicted_atom_array_stack: AtomArrayStack) -> dict[str, float]:
-        batch_metrics = compute_batched_sidechain_quality(
-            predicted_atom_array_stack=predicted_atom_array_stack,
+    def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, float]:
+        atom_array = unwrap_atom_array(atom_array)
+        _, valid, unintended, clash = check_sidechain_quality(
+            atom_array,
             dist_threshold_min=self.dist_threshold_min,
             dist_threshold_max=self.dist_threshold_max,
         )
-
-        # Aggregate output for batch-level metrics
-        o = {
-            "mean_valid_sidechain_percent": float(np.mean([m["valid_sidechain_percent"] for m in batch_metrics])),
-            "mean_unintended_bonds_percent": float(np.mean([m["unintended_bonds_percent"] for m in batch_metrics])),
-            "mean_clash_percent": float(np.mean([m["clash_percent"] for m in batch_metrics])),
+        return {
+            "mean_valid_sidechain_percent": float(valid),
+            "mean_unintended_bonds_percent": float(unintended),
+            "mean_clash_percent": float(clash),
         }
-        return o

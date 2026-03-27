@@ -5,14 +5,14 @@ import os
 import re
 import subprocess
 import tempfile
-from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 from atomworks.io.utils.io_utils import to_cif_file
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, AtomArrayStack
 
 from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metrics_utils import unwrap_atom_array
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class MolProbityMetrics(Metric):
     Examples:
       >>> # Using environment variable
       >>> metrics = MolProbityMetrics()
-      >>> results = metrics.compute(atom_array_stack)
+      >>> results = metrics.compute(atom_array)
       >>> # Or providing path explicitly
       >>> metrics = MolProbityMetrics(molprobity_script_path="/path/to/script.py")
     """
@@ -171,17 +171,17 @@ class MolProbityMetrics(Metric):
     @property
     def kwargs_to_compute_args(self) -> dict:
         return {
-            "atom_array_stack": ("predicted_atom_array",),
+            "atom_array": ("predicted_atom_array",),
         }
 
-    def compute(self, atom_array_stack: list[AtomArray]) -> dict[str, float]:
-        """Compute MolProbity metrics for batch of structures.
+    def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, float]:
+        """Compute MolProbity metrics for a structure.
 
         Args:
-          atom_array_stack: List of AtomArrays to validate.
+          atom_array: Structure to validate.
 
         Returns:
-          Dictionary with mean metrics across the batch:
+          Dictionary with metrics:
             - ``mean_rama_percent_favored``: Ramachandran favored percentage
             - ``mean_rama_percent_outliers``: Ramachandran outlier percentage
             - ``mean_rota_percent_outliers``: Rotamer outlier percentage
@@ -192,19 +192,15 @@ class MolProbityMetrics(Metric):
             - ``mean_rms_angles``: RMS deviation for bond angles
             - ``mean_angle_outliers``: Number of bond angle outliers
         """
-        batch_metrics = defaultdict(list)
-
-        for atom_array in atom_array_stack:
-            try:
-                metrics = compute_molprobity_metrics(atom_array, self.molprobity_script_path)
-                for key, value in metrics.items():
-                    batch_metrics[key].append(value)
-
-            except Exception as e:
-                logger.warning(f"MolProbity validation failed for structure: {e}")
-                if not self.skip_on_error:
-                    raise
-                # Append NaN for failed structures
+        atom_array = unwrap_atom_array(atom_array)
+        try:
+            metrics = compute_molprobity_metrics(atom_array, self.molprobity_script_path)
+        except Exception as e:
+            logger.warning(f"MolProbity validation failed for structure: {e}")
+            if not self.skip_on_error:
+                raise
+            metrics = {
+                key: np.nan
                 for key in [
                     "rama_percent_favored",
                     "rama_percent_outliers",
@@ -215,13 +211,7 @@ class MolProbityMetrics(Metric):
                     "bond_outliers",
                     "rms_angles",
                     "angle_outliers",
-                ]:
-                    batch_metrics[key].append(np.nan)
+                ]
+            }
 
-        # Compute means, ignoring NaN values
-        output = {}
-        for key, values in batch_metrics.items():
-            mean_key = f"mean_{key}"
-            output[mean_key] = float(np.nanmean(values))
-
-        return output
+        return {f"mean_{key}": float(value) for key, value in metrics.items()}

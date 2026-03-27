@@ -89,9 +89,7 @@ class MetricManager:
             self.metrics[name] = metric
 
     @classmethod
-    def instantiate_from_hydra(
-        cls, metrics_cfg: dict[str, Any] | DictConfig
-    ) -> "MetricManager":
+    def instantiate_from_hydra(cls, metrics_cfg: dict[str, Any] | DictConfig) -> "MetricManager":
         """Instantiate a MetricManager from a dictionary of metrics.
 
         Args:
@@ -119,9 +117,7 @@ class MetricManager:
         # Validate all are Metric instances
         for name, metric in metrics.items():
             if not isinstance(metric, Metric):
-                raise TypeError(
-                    f"Metric '{name}' must be a Metric instance, got {type(metric)}"
-                )
+                raise TypeError(f"Metric '{name}' must be a Metric instance, got {type(metric)}")
 
         return cls(metrics, raise_errors=raise_errors)
 
@@ -129,23 +125,39 @@ class MetricManager:
         """Return a string representation of the MetricManager."""
         return f"MetricManager({', '.join(self.metrics.keys())})"
 
-    def on_validation_epoch_start(self) -> None:
-        """Setup all metrics for validation. Call at start of validation epoch."""
-        for metric in self.metrics.values():
+    def on_validation_epoch_start(
+        self, val_dataset_tags: list[set[str] | None] | None = None
+    ) -> None:
+        """Setup metrics for validation.
+
+        Args:
+            val_dataset_tags: Per-dataset tag sets for all validation datasets.
+                Each element is the ``metrics_tags`` for one dataset, or ``None``
+                if that dataset defines no tag filtering (meaning all metrics run
+                for it).  When the outer list itself is ``None``, all metrics are
+                set up unconditionally (backward-compatible default).
+        """
+        self._skipped_metrics: set[str] = set()
+        for name, metric in self.metrics.items():
+            if val_dataset_tags is not None:
+                will_run = any(metric.applies_to_tags(tags) for tags in val_dataset_tags)
+                if not will_run:
+                    self._skipped_metrics.add(name)
+                    continue
             metric.setup()
 
     def on_validation_epoch_end(self) -> None:
-        """Teardown all metrics after validation. Call at end of validation epoch."""
-        for metric in self.metrics.values():
-            metric.teardown()
+        """Teardown all metrics after validation."""
+        skipped = getattr(self, "_skipped_metrics", set())
+        for name, metric in self.metrics.items():
+            if name not in skipped:
+                metric.teardown()
 
     def __call__(self, **kwargs: Any) -> dict[str, Any]:
         """Compute all metrics and return their results as a dictionary mapping metric names to their computed values."""
 
         # Extract example_id if it exists
-        example_id = nested_dict.get(
-            kwargs, key=("extra_info", "example_id"), default=None
-        )
+        example_id = nested_dict.get(kwargs, key=("extra_info", "example_id"), default=None)
 
         # Initialize results dictionary
         results = {"example_id": example_id}
@@ -154,25 +166,12 @@ class MetricManager:
             assert name not in results, f"Duplicate metric name: {name}"
 
             # Add some nice error handling context in case metrics fail
-            example_msg = (
-                f" for example '{example_id}'" if example_id is not None else ""
-            )
+            example_msg = f" for example '{example_id}'" if example_id is not None else ""
 
             # Decide whether the Metric applies to this batch
             if "extra_info" in kwargs and "metrics_tags" in kwargs["extra_info"]:
-                metrics_tags = kwargs["extra_info"]["metrics_tags"]
-                metrics_tags = set(metrics_tags)
-                if metric.required_tags_all and not metrics_tags.issuperset(
-                    metric.required_tags_all
-                ):
-                    continue
-                if metric.required_tags_any and not metrics_tags.intersection(
-                    metric.required_tags_any
-                ):
-                    continue
-                if metric.prohibited_tags and metrics_tags.intersection(
-                    metric.prohibited_tags
-                ):
+                metrics_tags = set(kwargs["extra_info"]["metrics_tags"])
+                if not metric.applies_to_tags(metrics_tags):
                     continue
 
             with error.context(
@@ -224,15 +223,9 @@ class Metric(ABC):
         **kwargs: Any,
     ) -> None:
         # Set required and prohibited tags
-        self.required_tags_all = (
-            set(required_tags_all) if exists(required_tags_all) else set()
-        )
-        self.required_tags_any = (
-            set(required_tags_any) if exists(required_tags_any) else set()
-        )
-        self.prohibited_tags = (
-            set(prohibited_tags) if exists(prohibited_tags) else set()
-        )
+        self.required_tags_all = set(required_tags_all) if exists(required_tags_all) else set()
+        self.required_tags_any = set(required_tags_any) if exists(required_tags_any) else set()
+        self.prohibited_tags = set(prohibited_tags) if exists(prohibited_tags) else set()
         required_tags = self.required_tags_all.union(self.required_tags_any)
         if required_tags.intersection(self.prohibited_tags):
             raise ValueError(
@@ -280,16 +273,12 @@ class Metric(ABC):
                 if compute_arg in self.optional_kwargs:
                     # Optional parameter - only add if present
                     try:
-                        compute_inputs[compute_arg] = nested_dict.getitem(
-                            kwargs, key=kwargs_key
-                        )
+                        compute_inputs[compute_arg] = nested_dict.getitem(kwargs, key=kwargs_key)
                     except KeyError:
                         pass  # Don't pass this parameter to compute()
                 else:
                     # Required parameter - use getitem (will raise if missing)
-                    compute_inputs[compute_arg] = nested_dict.getitem(
-                        kwargs, key=kwargs_key
-                    )
+                    compute_inputs[compute_arg] = nested_dict.getitem(kwargs, key=kwargs_key)
         else:
             # If kwargs_to_compute_args is not defined, use kwargs directly
             compute_inputs = kwargs
@@ -342,6 +331,25 @@ class Metric(ABC):
         ```
         """
         raise NotImplementedError
+
+    def applies_to_tags(self, tags: set[str] | None) -> bool:
+        """Return True if this metric would run for a batch with the given tag set.
+
+        Mirrors the tag-filtering logic in :py:meth:`MetricManager.__call__`.
+
+        Args:
+            tags: Tags for a single dataset.  ``None`` means the dataset defines
+                no tag filtering, so this metric always runs for it.
+        """
+        if tags is None:
+            return True
+        if self.required_tags_all and not tags.issuperset(self.required_tags_all):
+            return False
+        if self.required_tags_any and not tags.intersection(self.required_tags_any):
+            return False
+        if self.prohibited_tags and tags.intersection(self.prohibited_tags):
+            return False
+        return True
 
     def setup(self) -> None:
         """Called at validation epoch start. Override to load expensive resources."""

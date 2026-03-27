@@ -87,6 +87,49 @@ def _load_transformer_engine() -> bool:
 _last_log_time: dict[str, float] = {}  # Track last log time per stage
 
 
+def _collect_val_metrics_tags(cfg_datasets_val: DictConfig) -> list[set[str] | None]:
+    """Collect per-dataset metrics_tags from all val dataset configs.
+
+    For each top-level dataset entry in ``cfg_datasets_val``, finds the first
+    ``metrics_tags`` list by recursive search and returns it as a set.
+    Datasets with no ``metrics_tags`` in their config contribute ``None``,
+    which means "no tag filtering — all metrics run for this dataset."
+
+    Args:
+        cfg_datasets_val: The ``cfg_exp.datasets.val`` DictConfig node.
+
+    Returns:
+        One element per val dataset. ``None`` means the dataset defines no
+        tag filtering; a ``set[str]`` holds that dataset's exact tags.
+    """
+
+    def _find_first_tags(obj: Any) -> list[str] | None:
+        """Recursively return the first ``metrics_tags`` list found, or None."""
+        if OmegaConf.is_dict(obj):
+            if "metrics_tags" in obj:
+                tags = obj["metrics_tags"]
+                if OmegaConf.is_list(tags) or isinstance(tags, list):
+                    return list(tags)
+            for v in obj.values():
+                result = _find_first_tags(v)
+                if result is not None:
+                    return result
+        elif OmegaConf.is_list(obj):
+            for item in obj:
+                result = _find_first_tags(item)
+                if result is not None:
+                    return result
+        return None
+
+    dataset_tags: list[set[str] | None] = []
+    if OmegaConf.is_dict(cfg_datasets_val):
+        for dataset_cfg in cfg_datasets_val.values():
+            tags = _find_first_tags(dataset_cfg)
+            dataset_tags.append(set(tags) if tags is not None else None)
+
+    return dataset_tags
+
+
 def _log_batch_example_ids(
     example_ids: list[str],
     epoch: int,
@@ -622,7 +665,10 @@ class Proteina(L.LightningModule):
         # TODO We should refactor to just be a dictionary indexed by example_id with "metrics" and "structures"
         self.validation_output_generation = []
         if self.metrics is not None:
-            self.metrics.on_validation_epoch_start()
+            val_dataset_tags = None
+            if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
+                val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
+            self.metrics.on_validation_epoch_start(val_dataset_tags=val_dataset_tags)
 
     def validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
         """
@@ -674,6 +720,19 @@ class Proteina(L.LightningModule):
         # We will remove it in the training_step function.
         # NOTE: Use actual_dataset_name (without prefix) to look up config
         dataset_cfg = self.cfg_exp.datasets.val.get(actual_dataset_name, {})
+
+        # Run some validation sets only every N validation epochs
+        run_every_n_val_epochs = dataset_cfg.get("run_every_n_val_epochs", 1)
+        if run_every_n_val_epochs > 1:
+            val_every_n_epochs = self.cfg_exp.opt.get("val_every_n_epochs", 1)
+            val_epoch_idx = self.current_epoch // val_every_n_epochs
+            if val_epoch_idx % run_every_n_val_epochs != 0:
+                logger.info(
+                    f"Skipping val dataset '{dataset_name}' this epoch "
+                    f"(runs every {run_every_n_val_epochs} val epochs, val_epoch={val_epoch_idx})"
+                )
+                return {}
+
         if dataset_cfg.get("compute_loss", False):
             batch["validation_dataset_name"] = dataset_name
             self.validation_step_data(batch, -1)
@@ -726,6 +785,7 @@ class Proteina(L.LightningModule):
                     metric_manager=self.metrics,
                     output_base_dir=output_base,
                     example_id=example_id,
+                    save_input_structure=not self.is_inference,
                 )
 
                 # Optionally save an aligned version of the predicted structure

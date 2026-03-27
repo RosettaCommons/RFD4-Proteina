@@ -2,3 +2,4 @@ defaults:
   - design_metrics
   - refolding_metrics
   - structure_prediction_metrics
+  - optional custom_metrics@_here_: custom_metrics  # User-defined metrics; see "Adding Custom Metrics" in README.md

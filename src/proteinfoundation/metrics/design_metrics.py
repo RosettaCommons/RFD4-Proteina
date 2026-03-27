@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 import torch
 from atomworks.io.utils.annotator import ensure_annotations
@@ -15,6 +13,7 @@ from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.metrics.metrics_utils import (
     get_ss_metrics_and_rg,
+    unwrap_atom_array,
 )
 
 STANDARD_CACA_DIST = 3.8
@@ -153,45 +152,33 @@ class AtomArrayMetrics(Metric):
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return {
-            "atom_array_stack": ("predicted_atom_array",),
+            "atom_array": ("predicted_atom_array",),
         }
 
-    def compute(self, atom_array_stack: AtomArrayStack) -> dict[str, Any]:
-        out_dict = defaultdict(list)
+    def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, Any]:
+        atom_array = unwrap_atom_array(atom_array)
 
-        for atom_array in atom_array_stack:
-            is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")  # TODO: Does this work?
+        is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")  # TODO: Does this work?
+        is_motif_atom_with_fixed_coord = C_CRD.mask(atom_array, default="generate")
+        has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
+        is_motif_atom = is_motif_atom_with_fixed_coord | has_dist | C_INTCRD.mask(atom_array, default="generate")
 
-            is_motif_atom_with_fixed_coord = C_CRD.mask(atom_array, default="generate")
+        # Subset to indexed tokens, and optionally consider only the diffused region
+        valid_mask = ~(is_motif_atom_unindexed)
+        if self.compute_for_diffused_region_only:
+            valid_mask = valid_mask & ~(is_motif_atom)
+        valid_atom_array = atom_array[valid_mask]
 
-            has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-            is_motif_atom = is_motif_atom_with_fixed_coord | has_dist | C_INTCRD.mask(atom_array, default="generate")
+        out = get_ss_metrics_and_rg(valid_atom_array, ss_conditioning=None)
 
-            current_array_metrics = {}
+        # Subset to token level array for consistency
+        token_array = valid_atom_array[get_token_starts(valid_atom_array)]
 
-            # Subset to indexed tokens, and optionally consider only the diffused region
-            valid_mask = ~(is_motif_atom_unindexed)
-            if self.compute_for_diffused_region_only:
-                valid_mask = valid_mask & ~(is_motif_atom)
-            valid_atom_array = atom_array[valid_mask]
+        # Basic compositional statistics
+        out["alanine_content"] = float(np.mean(token_array.res_name == "ALA"))
+        out["glycine_content"] = float(np.mean(token_array.res_name == "GLY"))
 
-            current_array_metrics |= get_ss_metrics_and_rg(valid_atom_array, ss_conditioning=None)
-
-            # Subset to token level array for consistency
-            token_array = valid_atom_array[get_token_starts(valid_atom_array)]
-
-            # Basic compositional statistics
-            current_array_metrics["alanine_content"] = np.mean(token_array.res_name == "ALA")
-            current_array_metrics["glycine_content"] = np.mean(token_array.res_name == "GLY")
-
-            # Write to o
-            for k, v in current_array_metrics.items():
-                out_dict[k].append(v)
-
-        # Summarize stats
-        for k, v in out_dict.items():
-            out_dict[k] = float(np.mean(v))
-        return out_dict
+        return out
 
 
 class BackboneMetrics(Metric):
@@ -205,88 +192,75 @@ class BackboneMetrics(Metric):
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return {
-            "cleaned_predicted_atom_array_list": ("predicted_atom_array",),
+            "atom_array": ("predicted_atom_array",),
         }
 
-    def compute(self, cleaned_predicted_atom_array_list: list[AtomArray]) -> dict[str, float]:
-        out_dict = defaultdict(list)
+    def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, float]:
+        atom_array = unwrap_atom_array(atom_array)
+        ensure_annotations(atom_array, "is_protein", "is_protein_backbone", "token_id")
 
-        for atom_array in cleaned_predicted_atom_array_list:
-            ensure_annotations(atom_array, "is_protein", "is_protein_backbone", "token_id")
+        xyz = atom_array.coord
+        dists = np.linalg.norm(xyz[:, None, :] - xyz[None, :, :], axis=-1)  # N_atoms x N_atoms
 
-            xyz = atom_array.coord
-            dists = np.linalg.norm(xyz[:, None, :] - xyz[None, :, :], axis=-1)  # N_atoms x N_atoms
+        is_protein = atom_array.is_protein
+        is_backbone = atom_array.is_protein_backbone
+        token_id = atom_array.token_id
 
-            is_protein = atom_array.is_protein
-            is_backbone = atom_array.is_protein_backbone
-            token_id = atom_array.token_id
+        is_unindexed = ~C_IDX.mask(atom_array, default="generate")
+        is_motif_atom_with_fixed_coord = C_CRD.mask(atom_array, default="generate")
+        has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
+        has_coord_or_dist_conditioning = (
+            is_motif_atom_with_fixed_coord | has_dist | C_INTCRD.mask(atom_array, default="generate")
+        )
 
-            is_unindexed = ~C_IDX.mask(atom_array, default="generate")
-            is_motif_atom_with_fixed_coord = C_CRD.mask(atom_array, default="generate")
-            has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-            has_coord_or_dist_conditioning = (
-                is_motif_atom_with_fixed_coord | has_dist | C_INTCRD.mask(atom_array, default="generate")
-            )
+        mask = np.zeros_like(dists, dtype=bool)
+        mask = mask | (np.eye(dists.shape[-1], dtype=bool))
+        mask = mask | (token_id[:, None] == token_id[None, :])
+        mask = mask | ~(is_protein[:, None] & is_protein[None, :])
+        mask = mask | (is_unindexed[:, None] | is_unindexed[None, :])
+        dists[mask] = 999
 
-            mask = np.zeros_like(dists, dtype=bool)
-            mask = mask | (np.eye(dists.shape[-1], dtype=bool))
-            mask = mask | (token_id[:, None] == token_id[None, :])
-            mask = mask | ~(is_protein[:, None] & is_protein[None, :])
-            mask = mask | (is_unindexed[:, None] | is_unindexed[None, :])
-            dists[mask] = 999
+        num_clashes_L = (dists.min(axis=-1) < self.clash_threshold).astype(float)
+        out = {
+            "frac_clashing": float(num_clashes_L.mean()),
+            "n_clashing": float(num_clashes_L.sum()),
+        }
 
-            num_clashes_L = (dists.min(axis=-1) < self.clash_threshold).astype(float)  # B, L
-            out_dict["frac_clashing"].append(float(num_clashes_L.mean(-1).mean()))
-            out_dict["n_clashing"].append(float(num_clashes_L.sum(-1).mean()))
+        is_backbone_pair = is_backbone[:, None] & is_backbone[None, :]
+        dists[~is_backbone_pair] = 999
+        out["frac_backbone_clashing"] = float((dists.min(axis=-1) < self.clash_threshold).astype(float).mean())
+        out["n_backbone_clashing"] = float((dists.min(axis=-1) < self.clash_threshold).astype(float).sum())
 
-            mask = np.zeros_like(dists, dtype=bool)
-            mask = mask | (token_id[:, None] == token_id[None, :])
-            mask = mask | ~(is_backbone[:, None] & is_backbone[None, :])
-            dists[mask] = 999
-            out_dict["frac_backbone_clashing"].append(
-                float((dists.min(axis=-1) < self.clash_threshold).astype(float).mean(-1).mean())
-            )
-            out_dict["n_backbone_clashing"].append(
-                float((dists.min(axis=-1) < self.clash_threshold).astype(float).sum(-1).mean())
-            )
+        # We do this after clash detection, since that should consider both chains
+        if self.compute_for_diffused_region_only:
+            diffused_region = ~has_coord_or_dist_conditioning
+            xyz = xyz[diffused_region]
 
-            # We do this after clash detection, since that should consider both chains
-            if self.compute_for_diffused_region_only:
-                diffused_region = ~has_coord_or_dist_conditioning
-                xyz = xyz[diffused_region]
+        # Num floating
+        dists = np.linalg.norm(xyz[:, None, :] - xyz[None, :, :], axis=-1)  # N_atoms x N_atoms
+        dists[np.eye(dists.shape[-1], dtype=bool)] = 999
 
-            # Num floating
-            dists = np.linalg.norm(xyz[:, None, :] - xyz[None, :, :], axis=-1)  # N_atoms x N_atoms
-            mask = np.zeros_like(dists, dtype=bool)
-            mask = mask & np.eye(dists.shape[-1], dtype=bool)
-            dists[mask] = 999
+        is_floating = dists.min(axis=-1) > self.float_threshold
+        out["frac_floating"] = float(is_floating.mean())
 
-            is_floating = dists.min(axis=-1) > self.float_threshold
-            out_dict["frac_floating"].append(float(is_floating.mean(-1).mean()))
+        # Calculate CA
+        is_ca = atom_array.atom_name == "CA"
+        if self.compute_for_diffused_region_only:
+            is_ca = is_ca[diffused_region]
+            is_protein = is_protein[diffused_region]
+        idx_mask = is_ca & is_protein
+        xyz = xyz[idx_mask]
 
-            # Calculate CA
-            is_ca = atom_array.atom_name == "CA"
-            if self.compute_for_diffused_region_only:
-                is_ca = is_ca[diffused_region]
-                is_protein = is_protein[diffused_region]
-            idx_mask = is_ca & is_protein
-            if self.compute_for_diffused_region_only:
-                idx_mask = idx_mask[diffused_region]
-            xyz = xyz[idx_mask]
+        ca_dists = np.linalg.norm(xyz[1:] - xyz[:-1], axis=-1)
+        deviation = np.abs(ca_dists - self.standard_ca_dist)
+        is_chainbreak = deviation > 0.75
 
-            ca_dists = np.linalg.norm(xyz[1:] - xyz[:-1], axis=-1)
-            deviation = np.abs(ca_dists - self.standard_ca_dist)  # B, (I-1)
-            is_chainbreak = deviation > 0.75
+        if len(ca_dists) > 0:
+            out["max_ca_deviation"] = float(deviation.max())
+            out["fraction_chainbreaks"] = float(is_chainbreak.mean())
+            out["n_chainbreaks"] = float(is_chainbreak.sum())
 
-            if len(ca_dists) > 0:
-                out_dict["max_ca_deviation"].append(float(deviation.max(-1).mean()))
-                out_dict["fraction_chainbreaks"].append(float(is_chainbreak.mean(-1).mean()))
-                out_dict["n_chainbreaks"].append(float(is_chainbreak.sum(-1).mean()))
-
-        # Reduce via mean
-        out_dict = {k: float(np.mean(v)) for k, v in out_dict.items()}
-
-        return out_dict
+        return out
 
 
 class LigandClashMetric(Metric):
@@ -301,19 +275,6 @@ class LigandClashMetric(Metric):
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return self._input_kwarg_names
 
-    def compute(self, predicted_atom_array_stack: AtomArrayStack) -> dict[str, float]:
-        out_dict = defaultdict(list)
-
-        for atom_array in predicted_atom_array_stack:
-            ligand_clash_metrics = get_ligand_clash_metrics(
-                atom_array,
-                ligand_clash_threshold=self.ligand_clash_threshold,
-            )
-            for k, v in ligand_clash_metrics.items():
-                out_dict[k].append(v)
-
-        # Summarize stats
-        for k, v in out_dict.items():
-            out_dict[k] = float(np.mean(v))
-
-        return out_dict
+    def compute(self, predicted_atom_array_stack: AtomArray | AtomArrayStack) -> dict[str, float]:
+        atom_array = unwrap_atom_array(predicted_atom_array_stack)
+        return get_ligand_clash_metrics(atom_array, ligand_clash_threshold=self.ligand_clash_threshold)
