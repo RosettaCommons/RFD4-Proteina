@@ -1,0 +1,25 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/16_teddymer_only_ft
+  - /datasets/train/distill/mgnify_dimer_contiguous@datasets.train.mgnify_dimer_contiguous
+  - _self_
+
+
+run_name_: 17_teddymer_and_teddymore_ft
+
+log:
+  tags: ["ppi", "fine-tune", "teddymer", "teddymore"]
+
+datasets:
+  train:
+    afdb_dimer:
+      probability: 0.22
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+    mgnify_dimer_contiguous:
+      probability: 0.78
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}

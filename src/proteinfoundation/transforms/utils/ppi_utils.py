@@ -1,4 +1,5 @@
 import math
+from typing import Literal
 
 import numpy as np
 from assertpy import assert_that
@@ -77,32 +78,52 @@ def get_hotspot_atoms(
 def sample_hotspots(
     atom_array: AtomArray,
     binder_chain_ids: list[str] | str,
-    max_hotspots_frac_to_provide: float,
     hotspot_max_distance: float,
+    max_hotspots_frac_to_provide: float = 0.1,
+    hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
+    hotspot_geometric_p: float | None = None,
 ) -> np.ndarray:
     """
-    Sample hotspots from the atom array. Uses mask generation for sampling.
+    Sample hotspots from the atom array.
 
     Args:
         atom_array: The atom array to sample hotspots from.
-        binder_chain_id: The chain IDs of all the binder chains. Can be list or single string
-        max_hotspots_frac_to_provide: The maximum fraction of possible hotspots to sample.
+        binder_chain_ids: The chain IDs of all the binder chains. Can be list or single string.
         hotspot_max_distance: The maximum distance to the binder for an atom to be considered a hotspot.
+        max_hotspots_frac_to_provide: Hard cap on the fraction of available hotspot atoms to
+            provide. The sampled count is capped at this fraction of the total hotspot pool.
+        hotspot_count_distribution: Distribution for sampling the number of hotspots. Must be
+            ``"geometric"`` or ``"uniform"``.
+        hotspot_geometric_p: Success probability for the geometric distribution. Required when
+            ``hotspot_count_distribution`` is ``"geometric"``; must be ``None`` otherwise.
 
     Returns:
         A boolean mask of the same shape as the atom array, where True indicates a hotspot.
     """
+    if hotspot_count_distribution not in ("geometric", "uniform"):
+        raise ValueError(
+            f"hotspot_count_distribution must be 'geometric' or 'uniform', got '{hotspot_count_distribution}'"
+        )
+    if hotspot_count_distribution == "geometric" and hotspot_geometric_p is None:
+        raise ValueError("hotspot_geometric_p must not be None when hotspot_count_distribution is 'geometric'")
+    if hotspot_count_distribution == "uniform" and hotspot_geometric_p is not None:
+        raise ValueError("hotspot_geometric_p must be None when hotspot_count_distribution is 'uniform'")
+
     if isinstance(binder_chain_ids, str):
         binder_chain_ids = [binder_chain_ids]
 
     full_hotspot_atom_mask = get_hotspot_atoms(atom_array, binder_chain_ids, hotspot_max_distance)
     atom_array.set_annotation("is_hotspot_candidate", full_hotspot_atom_mask)
 
-    hotspot_frac_to_provide = np.random.uniform(0, max_hotspots_frac_to_provide)
-    if full_hotspot_atom_mask.sum() == 0:
-        num_hotspots_to_sample = 0
-    else:
-        num_hotspots_to_sample = max(1, math.ceil(hotspot_frac_to_provide * full_hotspot_atom_mask.sum()))
+    n_available = int(full_hotspot_atom_mask.sum())
+    if n_available == 0:
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    n_max = max(1, math.floor(max_hotspots_frac_to_provide * n_available))
+    if hotspot_count_distribution == "geometric":
+        num_hotspots_to_sample = min(int(np.random.geometric(hotspot_geometric_p)), n_max)
+    else:  # uniform
+        num_hotspots_to_sample = int(np.random.randint(1, n_max + 1))
 
     fn_sample_seed = mg.SampleUniformly(is_eligible="is_hotspot_candidate")
     # Grow to just a single atom
@@ -116,6 +137,7 @@ def sample_hotspots(
         fn_sample_seed=fn_sample_seed,
         fn_grow_seed=fn_grow_seed,
         fn_check_budget=fn_check_budget,
+        max_iterations=num_hotspots_to_sample,
     )
     return total_mask
 

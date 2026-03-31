@@ -2027,8 +2027,11 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         crop_size: int,
         crop_center_cutoff_distance: float = 15.0,
         max_atoms_in_crop: int | None = None,
-        max_hotspots_frac_to_provide: float = 0.2,
+        hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
+        hotspot_geometric_p: float | None = None,
+        max_hotspots_frac_to_provide: float = 0.1,
         hotspot_max_distance: float = 7.0,
+        p_no_hotspots: float = 0.05,
         p_sample_ppi_crop: float = 0.75,
         ppi_crop_max_binder_length: int = 256,  # TODO: Tune in configs!
         bb_only_coord_conditioning: bool = False,
@@ -2047,8 +2050,16 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         3. Sample a set of hotspots from the possible hotspots.
 
         Args:
-            max_hotspots_frac_to_provide: maximum fraction of the protein to sample as hotspots
-            hotspot_max_distance: maximum distance between a hotspot and a protein atom to be considered a hotspot
+            hotspot_count_distribution: Distribution for sampling the number of hotspots. Must be
+                ``"geometric"`` or ``"uniform"``.
+            hotspot_geometric_p: Success probability for the geometric distribution; mean hotspots
+                = 1 / hotspot_geometric_p. Required when ``hotspot_count_distribution`` is
+                ``"geometric"``; must be ``None`` when it is ``"uniform"``.
+            max_hotspots_frac_to_provide: Hard cap on the fraction of available hotspot atoms to
+                provide. The sampled count is capped at this fraction of the total hotspot pool.
+            hotspot_max_distance: Maximum distance between a binder atom and a target atom for
+                the binder atom to be considered a hotspot candidate.
+            p_no_hotspots: Probability of providing no hotspot conditioning at all.
             p_sample_ppi_crop: probability of using the PPI crop, which keeps the entirety of the
                 chain designated as the binder if it's less than ppi_crop_max_binder_length
                 residues.
@@ -2059,8 +2070,11 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
                 their precise coordinates are not given.
         """
         super().__init__(**kwargs)
+        self.hotspot_count_distribution = hotspot_count_distribution
+        self.hotspot_geometric_p = hotspot_geometric_p
         self.max_hotspots_frac_to_provide = max_hotspots_frac_to_provide
         self.hotspot_max_distance = hotspot_max_distance
+        self.p_no_hotspots = p_no_hotspots
         self.p_sample_ppi_crop = p_sample_ppi_crop
         self.ppi_crop_max_binder_length = ppi_crop_max_binder_length
         self.crop_size = crop_size
@@ -2153,16 +2167,21 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         atom_array = data["atom_array"]
 
         # sample_hotspot
-        hotspot_atom_mask = sample_hotspots(
-            atom_array,
-            binder_pn_unit_iid,
-            self.max_hotspots_frac_to_provide,
-            self.hotspot_max_distance,
-        )
-        if hotspot_atom_mask.sum() == 0:
-            ranked_logger.warning(
-                f"No hotspots found for binder chain {binder_pn_unit_iid} on example_id {data['example_id']}"
+        if true_with_prob(self.p_no_hotspots):
+            hotspot_atom_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        else:
+            hotspot_atom_mask = sample_hotspots(
+                atom_array,
+                binder_pn_unit_iid,
+                hotspot_max_distance=self.hotspot_max_distance,
+                max_hotspots_frac_to_provide=self.max_hotspots_frac_to_provide,
+                hotspot_count_distribution=self.hotspot_count_distribution,
+                hotspot_geometric_p=self.hotspot_geometric_p,
             )
+            if hotspot_atom_mask.sum() == 0:
+                ranked_logger.warning(
+                    f"No hotspots found for binder chain {binder_pn_unit_iid} on example_id {data['example_id']}"
+                )
 
         # ... set the conditions for the task
         n_atoms = atom_array.array_length()
@@ -2234,9 +2253,12 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
     5. Specifies hotspots on the target chain
 
     Args:
-        max_hotspots_frac_to_provide: maximum fraction of the protein to sample as hotspots
-        hotspot_max_distance: maximum distance between a hotspot and a protein atom to be
-            considered a hotspot
+        hotspot_geometric_p: geometric distribution parameter controlling the number of hotspot
+            residues sampled (lower values → more residues on average)
+        max_hotspots_frac_to_provide: maximum fraction of interface residues to sample as hotspots
+        hotspot_max_distance: maximum distance (Å) between an antibody atom and a target atom for
+            a residue to be eligible as a hotspot
+        p_no_hotspots: probability of providing no hotspots at all (empty hotspot mask)
         p_flexible_target: probability of providing the target chain as a 2D distance motif
         motif_distance_knockout_p: probability of doing dropout of 2D distance condition at all
             (otherwise it is a fully connected graph of participating atoms)
@@ -2248,8 +2270,11 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
 
     def __init__(
         self,
-        max_hotspots_frac_to_provide: float = 0.2,
+        hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
+        hotspot_geometric_p: float | None = None,
+        max_hotspots_frac_to_provide: float = 0.1,
         hotspot_max_distance: float = 7.0,
+        p_no_hotspots: float = 0.05,
         p_flexible_target: float = 0.1,
         motif_distance_knockout_p: float = 0.8,
         min_dropout_2d_dist: float = 0.1,
@@ -2257,8 +2282,11 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.hotspot_count_distribution = hotspot_count_distribution
+        self.hotspot_geometric_p = hotspot_geometric_p
         self.max_hotspots_frac_to_provide = max_hotspots_frac_to_provide
         self.hotspot_max_distance = hotspot_max_distance
+        self.p_no_hotspots = p_no_hotspots
         self.motif_distance_knockout_p = motif_distance_knockout_p
         self.min_dropout_2d_dist = min_dropout_2d_dist
         self.max_dropout_2d_dist = max_dropout_2d_dist
@@ -2450,12 +2478,17 @@ class AntibodyFrameworkConditioningTask3DTarget(RFD3DesignTask):
         framework_mask = ~cdr_mask & np.isin(atom_array.chain_iid, ab_chains)
 
         # ... sample hotspots
-        hotspot_mask = sample_hotspots(
-            atom_array,
-            ab_chains,
-            self.max_hotspots_frac_to_provide,
-            self.hotspot_max_distance,
-        )
+        if true_with_prob(self.p_no_hotspots):
+            hotspot_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        else:
+            hotspot_mask = sample_hotspots(
+                atom_array,
+                ab_chains,
+                hotspot_max_distance=self.hotspot_max_distance,
+                max_hotspots_frac_to_provide=self.max_hotspots_frac_to_provide,
+                hotspot_count_distribution=self.hotspot_count_distribution,
+                hotspot_geometric_p=self.hotspot_geometric_p,
+            )
         C_HOT.set_annotation(atom_array=atom_array, array=hotspot_mask)
         C_HOT.set_mask(atom_array, target_chain_mask)
 

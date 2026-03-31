@@ -38,7 +38,10 @@ ppi_hotspot_with_3d_target:
   frequency: 70.0
   transform:
     _target_: proteinfoundation.transforms.design_task.PPIHotspotWith3DTarget
-    max_hotspots_frac_to_provide: 0.5
+    hotspot_count_distribution: geometric
+    hotspot_geometric_p: 0.2
+    max_hotspots_frac_to_provide: 0.1
+    p_no_hotspots: 0.05
     hotspot_max_distance: 4.5
     motif_distance_knockout_p: 0.95
     min_dropout_2d_dist: 0.5

@@ -3,6 +3,7 @@
         "dialect": 2,
         "input": "motif_data_aa/1prw_aa.pdb",
         "contig": "5-20,A16-35,10-25,A52-71,5-20",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A16-35",
@@ -13,6 +14,7 @@
         "dialect": 2,
         "input": "motif_data_aa/1bcf_aa.pdb",
         "contig": "8-15,A92-99,16-30,A123-130,16-30,A47-54,16-30,A18-25,8-15",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A92-99",
@@ -25,6 +27,7 @@
         "dialect": 2,
         "input": "motif_data_aa/5ius_aa.pdb",
         "contig": "0-30,A119-140,15-40,A63-82,0-30",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A119-140",
@@ -35,6 +38,7 @@
         "dialect": 2,
         "input": "motif_data_aa/5yui_aa.pdb",
         "contig": "5-30,A93-97,5-20,A118-120,10-35,A198-200,10-30",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A93-97",
@@ -46,6 +50,7 @@
         "dialect": 2,
         "input": "motif_data_aa/4jhw_aa.pdb",
         "contig": "10-25,F196-212,15-30,F63-69,10-25",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "F196-212",
@@ -56,6 +61,7 @@
         "dialect": 2,
         "input": "motif_data_aa/6vw1_aa.pdb",
         "contig": "5-15,A24-42,3-10,A64-82,5-15",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A24-42",
@@ -66,6 +72,7 @@
         "dialect": 2,
         "input": "motif_data_aa/1qjg_aa.pdb",
         "contig": "10-20,A38,15-30,A14,15-30,A99,10-20",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A38",
@@ -77,6 +84,7 @@
         "dialect": 2,
         "input": "motif_data_aa/1qjg_aa.pdb",
         "contig": "10-30,A14,20-40,A38,20-40,A99,10-30",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A14",
@@ -88,6 +96,7 @@
         "dialect": 2,
         "input": "motif_data_aa/2kl8_aa.pdb",
         "contig": "A1-7,20,A28-79",
+        "select_fixed_atoms": false,
         "internal_coord_groups":
             [
                 "A1-7",
