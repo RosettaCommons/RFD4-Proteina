@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/8_all_data_all_tasks_from_scratch
+
+  # internal coordinate conditioning validation
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_internal_coords@datasets.val.indexed_motif_scaffold_internal_coords
+
+  - _self_
+
+
+run_name_: 18_all_data_all_tasks_plus_intcrds
+
+log:
+  tags: ["internal-coordinate-conditioning", "motif-scaffolding", "ppi", "pretrain", "afdb-monomer", "omol", "ame", "pdb", "plinder", "sm-binder"]
+
+
+_tip_atom_design_tasks:
+    motif_scaffold:
+      transform:
+        p_internal_coords: 0.33
+
+_ppi_motif_scaffold_design_tasks:
+    motif_scaffold:
+      transform:
+        p_internal_coords: 0.33
