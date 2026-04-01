@@ -22,7 +22,7 @@ defaults:
 
   - _self_
 
-run_name_: 4_ame_afdb_omol_30
+run_name_: 4_ame_afdb_omol_30_fresh_start
 
 # Dataset mixing probabilities
 datasets:
