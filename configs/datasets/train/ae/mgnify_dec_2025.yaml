@@ -22,7 +22,7 @@ dataset:
     base_path: /squash/mgnify_dec_2025
     parser_args:
       add_missing_atoms: False
-      fix_formal_charges: False
+      sanitize_bonds_and_charges: False
 
   # We use filters of ptm > 0.75 for new-RF3 distillation
   filters:

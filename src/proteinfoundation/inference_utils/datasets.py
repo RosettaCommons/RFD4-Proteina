@@ -223,7 +223,7 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
         remove_ccds=[],
         fix_arginines=False,
         add_missing_atoms=False,
-        fix_formal_charges=False,
+        sanitize_bonds_and_charges=False,
         convert_mse_to_met=False,
         hydrogen_policy="remove",
         long_bond_policy="keep",

@@ -76,7 +76,7 @@ def get_cache_file_path(cif_path: Path, assembly_id: str, cif_parser_args: dict)
         "remove_waters": merged_args.get("remove_waters"),
         "fix_ligands_at_symmetry_centers": merged_args.get("fix_ligands_at_symmetry_centers"),
         "fix_arginines": merged_args.get("fix_arginines"),
-        "fix_formal_charges": merged_args.get("fix_formal_charges"),
+        "sanitize_bonds_and_charges": merged_args.get("sanitize_bonds_and_charges"),
         "fix_bond_types": merged_args.get("fix_bond_types"),
         "long_bond_policy": merged_args.get("long_bond_policy"),
         "convert_mse_to_met": merged_args.get("convert_mse_to_met"),

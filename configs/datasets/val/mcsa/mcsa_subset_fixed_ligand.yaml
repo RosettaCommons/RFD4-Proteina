@@ -1,4 +1,5 @@
 run_every_n_val_epochs: 3
+compute_loss: true
 
 defaults:
   # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`

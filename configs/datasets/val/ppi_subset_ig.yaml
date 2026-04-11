@@ -1,3 +1,5 @@
+compute_loss: true
+
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 

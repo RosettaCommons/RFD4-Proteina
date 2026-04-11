@@ -20,6 +20,8 @@ args:
   ag_ckpt_path: null  # path to bad model checkpoint
 
   save_trajectory_every: 0 # at which step interval to save trajectory snapshots of generation, 0 for no saving
+  bb_ca_only_trajectories: true # if true, save CA-only trajectory as XTC; if false, save all-atom trajectory as multi-model CIF (XTC requires fixed atom count per frame)
+  dump_noisy_trajectories: false # if true, also save the noisy x_t at each trajectory step alongside x_1
 
 # Model-specific sampling arguments
 model:

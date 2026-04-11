@@ -22,7 +22,7 @@ dataset:
     base_path: ${oc.env:DATA_PATH}/afdb_256_extracted
     parser_args:
       add_missing_atoms: False
-      fix_formal_charges: False
+      sanitize_bonds_and_charges: False
 
   transform:
     crop_size: 256

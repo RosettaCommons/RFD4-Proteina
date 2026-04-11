@@ -140,6 +140,10 @@ For easy cluster submission via SLURM launch scripts, see [Cluster Launching (SL
 | `generation.args.nsteps` | Diffusion steps — higher is slower but often better quality | 400 |
 | `generation.args.guidance_w` | Guidance weight (1.0 = unconditional; increase for stronger conditioning) | 1.0 |
 | `generation.args.self_cond` | Self-conditioning — leave enabled for best quality | true |
+| `generation.args.save_trajectory_every` | Save a trajectory snapshot every N diffusion steps (0 = disabled); output as multi-model CIF in `trajectories/` subfolder | 0 |
+| `generation.args.bb_ca_only_trajectories` | Trajectory steps contain only CA atoms, skipping the autoencoder decoder (faster; use with `save_trajectory_every`) | false |
+| `generation.args.dump_noisy_trajectories` | Also save the noisy x_t intermediate alongside the clean x_1 prediction at each trajectory step | false |
+| `generation.args.save_trajectories_to_cif` | Save trajectories as multi-model CIF instead of XTC; **required** when `bb_ca_only_trajectories=false` since all-atom trajectories have variable atom counts incompatible with XTC | false |
 | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
 | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
 | `metrics_tags` | Tags that activate specific evaluation metrics; comma-separated string or list — see [Evaluating Results](#evaluating-results) | `[]` |
