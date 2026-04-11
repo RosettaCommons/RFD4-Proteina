@@ -83,7 +83,7 @@ def parse_cif_with_args(cif_path: Path, cif_parser_args: dict) -> None:
         "remove_waters": cif_parser_args.get("remove_waters"),
         "fix_ligands_at_symmetry_centers": cif_parser_args.get("fix_ligands_at_symmetry_centers"),
         "fix_arginines": cif_parser_args.get("fix_arginines"),
-        "fix_formal_charges": cif_parser_args.get("fix_formal_charges"),
+        "sanitize_bonds_and_charges": cif_parser_args.get("sanitize_bonds_and_charges"),
         "fix_bond_types": cif_parser_args.get("fix_bond_types"),
         "long_bond_policy": cif_parser_args.get("long_bond_policy"),
         "convert_mse_to_met": cif_parser_args.get("convert_mse_to_met"),

@@ -11,6 +11,6 @@ dataset:
   loader:
     parser_args:
       add_missing_atoms: False
-      fix_formal_charges: False
+      sanitize_bonds_and_charges: False
   transform:
     b_factor_occupancy_min: null  # 0.7  # Any token with atom plddt < 70 will not be lossed

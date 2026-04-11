@@ -25,7 +25,7 @@ dataset:
     assembly_id_colname: None
     parser_args:
       add_missing_atoms: True   # Add missing atoms for ligands
-      fix_formal_charges: True  # Fix charges for ligands
+      sanitize_bonds_and_charges: True  # Fix charges for ligands
       cache_dir: ${oc.env:CACHE_DIR}
       save_to_cache: True
       load_from_cache: True

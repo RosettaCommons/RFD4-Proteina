@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from proteinfoundation.rewards.reward_model import RewardModel
     from proteinfoundation.search.base_strategy import SearchStrategy
 
+import biotite.structure.io.xtc as xtc
 import lightning as L
 import numpy as np
 import pandas as pd
@@ -659,9 +660,6 @@ class Proteina(L.LightningModule):
 
     def on_validation_epoch_start(self) -> None:
         """Re-initialize validation outputs at the start of each validation epoch."""
-        # TODO: Rename to validation_output_step or something to make it clear it's from the training procedure
-        # (I am not even sure we need to track it?)
-        self.validation_output_data = []
         # TODO We should refactor to just be a dictionary indexed by example_id with "metrics" and "structures"
         self.validation_output_generation = []
         if self.metrics is not None:
@@ -733,9 +731,13 @@ class Proteina(L.LightningModule):
                 )
                 return {}
 
+        # Loss-based validation: run forward pass and collect per-example losses for metrics
+        per_example_losses: dict[str, torch.Tensor] | None = None
         if dataset_cfg.get("compute_loss", False):
             batch["validation_dataset_name"] = dataset_name
-            self.validation_step_data(batch, -1)
+            with torch.no_grad():
+                step_outputs = self.training_step(batch, batch_idx=-1)
+            per_example_losses = step_outputs["losses_per_sample"]
 
         # Generation-based validation (inference task)
         if self.inf_cfg is not None:
@@ -788,6 +790,14 @@ class Proteina(L.LightningModule):
                     save_input_structure=not self.is_inference,
                 )
 
+                if per_example_losses is not None:
+                    for k, v in per_example_losses.items():
+                        if "_justlog" not in k:
+                            metrics_output[f"loss_{k}"] = v[orig_batch_idx].item()
+                    metrics_output["loss"] = sum(
+                        v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
+                    )
+
                 # Optionally save an aligned version of the predicted structure
                 aligned_aa = []
                 for metric_name in metrics_output:
@@ -819,6 +829,39 @@ class Proteina(L.LightningModule):
                     predicted_structure_to_save,
                     generated_output_path,
                 )
+
+                # Save trajectories if present.
+                # bb_ca_only=True  → XTC (fixed CA-per-residue atom count required by XTC format)
+                # bb_ca_only=False → CIF (all-atom trajectories have variable atom counts per step)
+                bb_ca_only = self.inf_cfg is not None and self.inf_cfg.args.get("bb_ca_only_trajectories", False)
+                for traj_key in ["trajectory_x1", "trajectory_xt"]:
+                    if traj_key not in generation_list[i]:
+                        continue
+                    traj_dir = output_base / "trajectories"
+                    traj_dir.mkdir(parents=True, exist_ok=True)
+                    traj = generation_list[i][traj_key]
+
+                    if bb_ca_only:
+                        # Fixed atom count (one CA per residue) → XTC.
+                        # Save a CA-only CIF as the topology reference for the XTC file.
+                        predicted_bb_ca = predicted_structure_to_save[predicted_structure_to_save.atom_name == "CA"]
+                        to_cif_file(
+                            predicted_bb_ca,
+                            traj_dir / f"{example_id}_{traj_key}_bb_ca.cif",
+                        )
+
+                        save_trajectory_every = self.inf_cfg is not None and self.inf_cfg.args.get(
+                            "save_trajectory_every", 0
+                        )
+                        step_labels = np.arange(traj.stack_depth()) * save_trajectory_every
+                        step_labels[-1] = self.inf_cfg.args.nsteps
+
+                        xtc_file = xtc.XTCFile()
+                        xtc_file.set_structure(traj, time=step_labels)
+                        xtc_file.write(traj_dir / f"{example_id}_{traj_key}.xtc")
+                    else:
+                        # All-atom: variable sidechain atom counts across steps → multi-model CIF.
+                        to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
 
                 if metrics_output is not None:
                     # Add dataset_name and task as metadata
@@ -871,29 +914,15 @@ class Proteina(L.LightningModule):
 
         return metrics_output
 
-    def validation_step_data(self, batch: dict, batch_idx: int) -> None:
-        """Evaluates the training loss on validation data."""
-        with torch.no_grad():
-            outputs = self.training_step(batch, batch_idx=-1)
-            self.validation_output_data.append(outputs["loss"].item())
-
     def on_validation_epoch_end(self) -> None:
         """Aggregate and log validation metrics at the end of the validation epoch.
 
         Processes both training loss metrics and generation-based metrics.
         Note: validation outputs are cleared at epoch start, not end.
         """
-        self.on_validation_epoch_end_data()
         self.on_validation_epoch_end_generation()
         if self.metrics is not None:
             self.metrics.on_validation_epoch_end()
-
-    def on_validation_epoch_end_data(self) -> None:
-        """Process data validation metrics (training loss on val set).
-
-        Note: Clearing happens in on_validation_epoch_start().
-        """
-        pass
 
     def on_validation_epoch_end_generation(self) -> None:
         """Aggregate and log generation validation metrics from all ranks."""
@@ -1222,12 +1251,9 @@ class Proteina(L.LightningModule):
         input_atom_array: Any,
         sample_idx: int = 0,
         batch_idx: int = 0,
+        bb_ca_only: bool = False,
     ) -> dict:
         """Process a single sample from sample_prots format to atom array result.
-
-        This method contains all the detailed post-processing logic for converting
-        generated coordinates to final atom arrays. It is shared between vanilla
-        generation and search strategies.
 
         Args:
             coords: Generated coordinates [n_max_tokens, 37, 3]
@@ -1236,11 +1262,18 @@ class Proteina(L.LightningModule):
             input_atom_array: Original input atom array
             sample_idx: Sample index for naming
             batch_idx: Batch index for naming
+            bb_ca_only: If True, subset input_atom_array to CA atoms only.
 
         Returns:
             Dictionary with 'generated_atom_array', 'input_atom_array',
             'prediction_metadata', 'example_id'
         """
+
+        # Optionally subset the input to only backbone CA atoms
+        if bb_ca_only:
+            input_atom_array = input_atom_array[input_atom_array.atom_name == "CA"]
+            input_atom_array.atomize = np.full_like(input_atom_array.atomize, True)
+
         # + ------- Remove padding and in-context conditioning tokens from the generated
         # coordinates and residue types ------- +
         # (Sanity check - either all or none of the atoms should be indexed per token)
@@ -1393,21 +1426,16 @@ class Proteina(L.LightningModule):
             "prediction_metadata": metadata,  # Contains unindexed residue mapping and insertion statistics
         }
 
-    def format_sample_prots_to_atom_arrays(self, sample_prots: dict, batch: dict, batch_idx: int = 0) -> list[dict]:
+    def format_sample_prots_to_atom_arrays(
+        self, sample_prots: dict, batch: dict, batch_idx: int = 0, bb_ca_only: bool = False
+    ) -> list[dict]:
         """Convert sample_prots dict to list of atom array results.
-
-        This helper is used by search strategies to convert their internal format
-        (sample_prots dict with coors, residue_type, padding_mask) to the standard
-        output format expected by generate.py.
-
-        Uses the comprehensive _process_single_sample_to_atom_array() method to ensure
-        all search strategies have the same detailed post-processing as vanilla generation.
 
         Args:
             sample_prots: Dictionary with keys 'coors', 'residue_type', 'padding_mask'
             batch: Original batch dict with input atom_arrays
             batch_idx: Batch index for naming
-
+            bb_ca_only: If True, subset input_atom_array to CA atoms only.
         Returns:
             List of dictionaries with 'generated_atom_array', 'input_atom_array', etc.
         """
@@ -1428,6 +1456,7 @@ class Proteina(L.LightningModule):
                 input_atom_array=input_atom_array,
                 sample_idx=i,
                 batch_idx=batch_idx,
+                bb_ca_only=bb_ca_only,
             )
             # Record for output file saving
             result["example_id"] = batch["example_id_batch"][orig_batch_idx]

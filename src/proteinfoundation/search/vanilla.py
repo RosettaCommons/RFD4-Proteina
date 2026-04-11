@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus_stack
 
 from proteinfoundation.search.base_strategy import SearchStrategy
 
@@ -72,6 +73,9 @@ class VanillaStrategy(SearchStrategy):
         fn_predict_for_sampling = partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0))
         nsteps = model.inf_cfg.args.nsteps
         device = model.device
+        save_trajectory_every = model.inf_cfg.args.get("save_trajectory_every", 0)
+        dump_noisy_trajectories = model.inf_cfg.args.get("dump_noisy_trajectories", False)
+        bb_ca_only_trajectories = model.inf_cfg.args.get("bb_ca_only_trajectories", False)
         if len(partial_t_dict) > 0:
             # Default to no noise if not specified
             if "bb_ca" not in partial_t_dict:
@@ -134,6 +138,8 @@ class VanillaStrategy(SearchStrategy):
                 self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params=simulation_step_params,
                 device=device,
+                save_trajectory_every=save_trajectory_every,
+                dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
             )
@@ -148,7 +154,8 @@ class VanillaStrategy(SearchStrategy):
                 self_cond=model.inf_cfg.args.self_cond,
                 sampling_model_args=model.inf_cfg.model,
                 device=device,
-                save_trajectory_every=0,
+                save_trajectory_every=save_trajectory_every,
+                dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
             )
@@ -163,4 +170,106 @@ class VanillaStrategy(SearchStrategy):
         # Use the shared processing method to convert to atom arrays
         generation_list = model.format_sample_prots_to_atom_arrays(sample_prots, batch, batch_idx=0)
 
+        # Decode and attach trajectory snapshots if any were collected
+        trajectory_steps = extra_info.get("trajectory_steps", [])
+        if trajectory_steps:
+            _attach_trajectories(
+                trajectory_steps=trajectory_steps,
+                generation_list=generation_list,
+                model=model,
+                batch=batch,
+                extra_info=extra_info,
+                nsamples=nsamples,
+                bb_ca_only=bb_ca_only_trajectories,
+                dump_noisy_trajectories=dump_noisy_trajectories,
+            )
+
         return generation_list
+
+
+def _attach_trajectories(
+    trajectory_steps: list[dict],
+    generation_list: list[dict],
+    model: Any,
+    batch: dict,
+    extra_info: dict,
+    nsamples: int,
+    bb_ca_only: bool,
+    dump_noisy_trajectories: bool,
+) -> None:
+    """Decode trajectory snapshots and attach per-step structures to generation results.
+
+    For each trajectory step, decodes the x_1 clean prediction (and optionally x_t noisy state)
+    into AtomArrays and stores them on the corresponding generation_list entry.
+
+    When ``bb_ca_only=True``, all steps share a fixed atom count (one CA per residue), so they
+    are stacked into an :class:`~atomworks.io.utils.atom_array_plus.AtomArrayPlusStack` under
+    ``'trajectory_x1'`` (and ``'trajectory_xt'``).
+
+    When ``bb_ca_only=False``, atom counts may vary across steps (different predicted sequences
+    → different sidechain heavy atoms), so a plain :class:`list` of
+    :class:`~atomworks.io.utils.atom_array_plus.AtomArrayPlus` is stored instead.  In this case
+    saving to XTC is not possible; use ``save_trajectories_to_cif=True`` to persist the
+    trajectory as a multi-block CIF.
+
+    Args:
+        trajectory_steps: List of snapshot dicts from full_simulation, each with 'step',
+            'x_1' (and optionally 'x_t') keys containing CPU-side tensor dicts.
+        generation_list: List of generation result dicts to attach trajectory steps to.
+        model: Proteina model instance used for decoding.
+        batch: Original batch dict.
+        extra_info: Additional info from full_simulation containing 'padding_mask' and 'can_be_encoded'.
+        nsamples: Number of samples in the batch.
+        bb_ca_only: If True, skip the full decoder and store only CA atoms, enabling XTC saving.
+            If False, decode full sidechains; result is a list (variable atom counts).
+        dump_noisy_trajectories: If True, also decode x_t steps and attach as 'trajectory_xt'.
+    """
+    keys_to_decode = ["x_1"] + (["x_t"] if dump_noisy_trajectories else [])
+    arrays_per_key: dict[str, list[list]] = {key: [[] for _ in range(nsamples)] for key in keys_to_decode}
+
+    for step_snapshot in trajectory_steps:
+        for key in keys_to_decode:
+            if key not in step_snapshot:
+                continue
+            x_step = {dm: step_snapshot[key][dm].to(model.device) for dm in step_snapshot[key]}
+
+            if bb_ca_only:
+                sample_prots_step = model._format_sample_bb_ca(
+                    x=x_step,
+                    ret_mode="coors37_n_aatype",
+                    padding_mask=extra_info["padding_mask"],
+                )
+            else:
+                sample_prots_step = model.sample_formatting(
+                    x=x_step,
+                    extra_info=extra_info,
+                    ret_mode="coors37_n_aatype",
+                )
+
+            step_gen_list = model.format_sample_prots_to_atom_arrays(
+                sample_prots_step, batch, batch_idx=0, bb_ca_only=bb_ca_only
+            )
+            for i, result in enumerate(step_gen_list):
+                arr = result["generated_atom_array"]
+                if bb_ca_only:
+                    arr = arr[arr.atom_name == "CA"]
+                arrays_per_key[key][i].append(arr)
+
+    for i, gen_item in enumerate(generation_list):
+        for key, traj_key in [("x_1", "trajectory_x1"), ("x_t", "trajectory_xt")]:
+            steps = arrays_per_key.get(key, [[]] * nsamples)[i]
+            if not steps:
+                continue
+
+            if bb_ca_only:
+                # Fixed atom count — normalise time-varying annotations to the final step's values
+                for annot in steps[-1].get_annotation_categories():
+                    all_values = [step.get_annotation(annot) for step in steps]
+                    final_value = all_values[-1]
+                    if not all(np.array_equal(val, final_value) for val in all_values):
+                        for step_arr in steps:
+                            step_arr.set_annotation(annot, final_value)
+                gen_item[traj_key] = as_atom_array_plus_stack(steps)
+            else:
+                # Variable atom counts — store as plain list; saving requires multi-block CIF.
+                gen_item[traj_key] = steps

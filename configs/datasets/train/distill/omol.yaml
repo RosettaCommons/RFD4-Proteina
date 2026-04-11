@@ -28,7 +28,7 @@ dataset:
     base_path: /squash/omol_30m_labeled
     parser_args:
       add_missing_atoms: False
-      fix_formal_charges: False
+      sanitize_bonds_and_charges: False
       fix_bond_types: False
       fix_ligands_at_symmetry_centers: False
       extra_fields: ["nhyd"]  # Load number of hydrogens annotation from CIF

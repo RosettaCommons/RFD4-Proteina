@@ -22,7 +22,7 @@ dataset:
     assembly_id_colname: None
     parser_args:
       add_missing_atoms: True
-      fix_formal_charges: True
+      sanitize_bonds_and_charges: True
       cache_dir: ${oc.env:CACHE_DIR}
       save_to_cache: True
       load_from_cache: True

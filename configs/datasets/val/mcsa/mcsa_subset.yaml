@@ -1,3 +1,5 @@
+compute_loss: true
+
 defaults:
   # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
   - /datasets/val/mcsa@_here_: mcsa_full

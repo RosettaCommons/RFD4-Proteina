@@ -2,6 +2,7 @@
 
 val:
   toy_ala_benchmark_no_atomization:
+    compute_loss: true
     dataset:
       _target_: proteinfoundation.inference.datasets.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
@@ -11,6 +12,7 @@ val:
           - 2d_distance_conditioning
 
   toy_ala_benchmark_atomization:
+    compute_loss: true
     dataset:
       _target_: projects.aa_design.inference.dataset.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
@@ -20,6 +22,7 @@ val:
           - 2d_distance_conditioning
 
   toy_eoh_benchmark:
+    compute_loss: true
     dataset:
       _target_: projects.aa_design.inference.dataset.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/eoh_toys
@@ -29,6 +32,7 @@ val:
           - 2d_distance_conditioning
       
   toy_ala_all_atoms_benchmark:
+    compute_loss: true
     dataset:
       _target_: projects.aa_design.inference.dataset.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints

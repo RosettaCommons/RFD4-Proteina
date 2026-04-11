@@ -502,6 +502,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         sampling_model_args: dict[str, dict],
         device: torch.device,
         save_trajectory_every: int = 0,
+        dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         ag_ratio: float = 0.0,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
@@ -539,13 +540,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             sampling_model_args: Model-specific sampling arguments
             device: Device to run simulation on
             save_trajectory_every: How often to save full generation trajectory, default 0 (no saving)
+            dump_noisy_trajectories: If True, also collect the noisy x_t at each trajectory step in
+                addition to the clean x_1 prediction. Defaults to False.
             guidance_w: Guidance weight
             ag_ratio: Autoguidance ratio
 
         Returns:
             Tuple of (x, additional_info) where:
                 - x: Generated samples, dict with keys for each data mode
-                - additional_info: Dict with 'padding_mask' and 'can_be_encoded'
+                - additional_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
+                  'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
         """
 
         # Use mask from batch if present, otherwise generate it
@@ -555,9 +559,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             mask = torch.ones(nsamples, n).long().bool().to(device)
         assert mask.shape == (nsamples, n)
 
-        if save_trajectory_every > 0:
-            # Create a list of trajectory dictionaries, one for each sample in batch
-            [{} for _ in range(nsamples)]
+        trajectory_steps: list[dict] = []
 
         # Get diffusion schedule using extracted method
         ts, gt = self.sample_schedule(nsteps=nsteps, sampling_model_args=sampling_model_args)
@@ -630,9 +632,20 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
                 x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
 
+                # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
+                if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):
+                    step_snapshot: dict = {
+                        "step": step,
+                        "x_1": {dm: x_1_pred[dm].detach().cpu() for dm in x_1_pred},
+                    }
+                    if dump_noisy_trajectories:
+                        step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
+                    trajectory_steps.append(step_snapshot)
+
             additional_info = {
                 "padding_mask": mask,
                 "can_be_encoded": is_encoded_mask,
+                "trajectory_steps": trajectory_steps,
             }
             return x, additional_info
 
@@ -693,6 +706,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         self_cond: bool,
         simulation_step_params: dict[str, dict],
         device: torch.device,
+        save_trajectory_every: int = 0,
+        dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         ag_ratio: float = 0.0,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
@@ -712,6 +727,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             self_cond: Whether to use self-conditioning
             simulation_step_params: Simulation parameters per modality
             device: Device to run on
+            save_trajectory_every: How often to save trajectory snapshots, 0 to disable.
+            dump_noisy_trajectories: If True, also collect the noisy x_t alongside x_1.
             guidance_w: Guidance weight (1.0 = no guidance)
             ag_ratio: Autoguidance ratio (0.0 = CFG only, 1.0 = AG only)
 
@@ -719,10 +736,12 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             Tuple of (x, x_1_pred, extra_info) where:
                 - x: Final state after partial simulation, dict of tensors
                 - x_1_pred: Final clean prediction for self-conditioning, dict of tensors
-                - extra_info: Dict with 'padding_mask' and 'can_be_encoded'
+                - extra_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
+                  'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
         """
         nsamples = x[self.data_modes[0]].shape[0]
         is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
+        trajectory_steps: list[dict] = []
 
         with torch.no_grad():
             for step in range(nsteps):
@@ -771,10 +790,20 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
                 x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
 
-        # Return extra_info in same format as full_simulation
+                # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
+                if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):
+                    step_snapshot: dict = {
+                        "step": step,
+                        "x_1": {dm: x_1_pred[dm].detach().cpu() for dm in x_1_pred},
+                    }
+                    if dump_noisy_trajectories:
+                        step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
+                    trajectory_steps.append(step_snapshot)
+
         extra_info = {
             "padding_mask": mask,
             "can_be_encoded": is_encoded_mask,
+            "trajectory_steps": trajectory_steps,
         }
         return x, x_1_pred, extra_info
 

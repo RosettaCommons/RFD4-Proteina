@@ -1,8 +1,10 @@
+compute_loss: true
+
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/all_ppi.yaml  
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/all_ppi.yaml
   name: ppi_subset
   subset_to_keys:
     # easy
