@@ -3,6 +3,7 @@
 import gc
 import logging
 import os
+import warnings
 from functools import cached_property
 from typing import Any, Literal
 
@@ -10,7 +11,6 @@ import numpy as np
 import torch
 from atomworks.constants import BIOTITE_DEFAULT_ANNOTATIONS, METAL_ELEMENTS
 from biotite.structure import AtomArray, AtomArrayStack
-from mace.calculators import MACECalculator
 
 from foundry.metrics.metric import Metric
 from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
@@ -174,7 +174,11 @@ class MACEEnergyMetric(Metric):
 
     def setup(self) -> None:
         """Load MACE calculator for validation."""
-        import warnings
+        if self.device == "cuda" and not torch.cuda.is_available():
+            logger.warning("MACE metric requires CUDA but none available — skipping setup")
+            return
+
+        from mace.calculators import MACECalculator
 
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -225,7 +229,8 @@ class MACEEnergyMetric(Metric):
 
         # Use cached calculator (loaded in setup())
         if self._calculator is None:
-            raise RuntimeError("MACE calculator not loaded. Ensure setup() is called before compute().")
+            logger.warning("MACE calculator unavailable — skipping metric computation")
+            return {}
 
         results: dict[str, Any] = {}
         energy_diffs: list[float] = []
