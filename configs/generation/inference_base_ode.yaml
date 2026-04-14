@@ -1,0 +1,40 @@
+# ODE inference with TSR (time-scale-ratio) sampling
+#
+# Uses vf_tsr sampling mode which applies a time-dependent score scaling
+# for improved sample quality. The k parameter controls how low the
+# temperature goes (higher k = lower temp), and sigma controls how fast
+# you reach the low temp set by k (higher sigma = faster).
+#
+# Format: {bbca_k}_{bbca_sigma}_{latent_k}_{latent_sigma}
+#
+# --- Best configs for binder design using ODE (100 steps) ---
+# 16_3_4_8  (best, better than SDE on all 5 targets)
+# 32_3_8_4
+# 16_3_8_4
+#
+# --- Best configs for Complexa binder design (400 steps) ---
+# 80_3.0_4_4.5
+# 80_3.0_4_4.0
+# 80_3.0_3_4.0
+# 80_3.0_3_4.5
+#
+# Default below: 16_3_4_8 (best 100-step setting)
+
+defaults:
+  - inference_base
+  - _self_
+
+args:
+  nsteps: 100
+
+model:
+  bb_ca:
+    simulation_step_params:
+      sampling_mode: vf_tsr
+      tsr_k: 16.0
+      tsr_sigma: 3.0
+  local_latents:
+    simulation_step_params:
+      sampling_mode: vf_tsr
+      tsr_k: 4.0
+      tsr_sigma: 8.0

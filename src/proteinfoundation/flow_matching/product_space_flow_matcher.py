@@ -672,14 +672,17 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 - gt: Noise injection schedule per modality, dict of tensors [nsteps]
                       Determines amount of stochasticity at each step
         """
-        ts = {
-            data_mode: get_schedule(
+        ts = {}
+        for data_mode in self.data_modes:
+            if sampling_model_args[data_mode]["simulation_step_params"]["sampling_mode"] == "vf_tsr":
+                schedule_func = get_schedule_tsr_safe
+            else:
+                schedule_func = get_schedule
+            ts[data_mode] = schedule_func(
                 mode=sampling_model_args[data_mode]["schedule"]["mode"],
                 nsteps=int(nsteps),
                 p1=sampling_model_args[data_mode]["schedule"]["p"],
             )
-            for data_mode in self.data_modes
-        }  # each [nsteps + 1], first element is 0, last is 1
 
         gt = {
             data_mode: get_gt(
@@ -893,6 +896,29 @@ def get_schedule(
         return t
     else:
         raise OSError(f"Schedule mode not recognized {mode}")
+
+
+def get_schedule_tsr_safe(
+    mode: str, nsteps: int, *, p1: float | None = None, eps: float = 1e-3
+) -> Float[Tensor, "nsteps_p_one"]:
+    """Schedule safe for t=0 when TSR is used. Starts at eps instead of 0."""
+    if mode == "uniform":
+        t = torch.linspace(eps, 1, nsteps + 1)
+        return t
+    elif mode == "power":
+        assert p1 is not None, "p1 cannot be none for the power schedule"
+        t = torch.linspace(eps ** (1 / p1), 1, nsteps + 1)
+        t = t**p1
+        return t
+    elif mode == "log":
+        assert p1 is not None, "p1 cannot be none for the log schedule"
+        assert p1 > 0, f"p1 must be >0 for the log schedule, got {p1}"
+        t = 1.0 - torch.logspace(-p1, eps, nsteps + 1).flip(0)
+        t = t - (torch.min(t) - eps)
+        t = t / torch.max(t)
+        return t
+    else:
+        raise OSError(f"Schedule mode not recognized {mode}. TSR only supports uniform, power, and log schedules.")
 
 
 def _sample_t(cfg_t_dist: dict, shape: tuple, device: torch.device = torch.device) -> Float[Tensor, "*shape"]:

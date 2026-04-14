@@ -366,14 +366,16 @@ class RDNFlowMatcher(BaseFlowMatcher):
         t_lim_ode = simulation_step_params["t_lim_ode"]
         t_lim_ode_below = simulation_step_params["t_lim_ode_below"]
         center_every_step = simulation_step_params["center_every_step"]
-        # In case we want a default value for this parameter or other
+        tsr_k = simulation_step_params.get("tsr_k", 1.0)
+        tsr_sigma = simulation_step_params.get("tsr_sigma", 1.0)
 
         assert sampling_mode in [
             "vf",
             "sc",
             "vf_ss",
             "vf_ss_sc_sn",
-        ], f"Invalid sampling mode {sampling_mode}, should be `vf`, `sc`, `vf_ss`, or `vf_ss_sc_sn`"
+            "vf_tsr",
+        ], f"Invalid sampling mode {sampling_mode}, should be `vf`, `sc`, `vf_ss`, `vf_ss_sc_sn`, or `vf_tsr`"
         assert sc_scale_noise >= 0, f"Scale noise for sampling should be >= 0, got {sc_scale_noise}"
         assert sc_scale_score >= 0, f"Scale score for sampling should be >= 0, got {sc_scale_score}"
         assert gt >= 0, f"gt for sampling should be >= 0, got {gt}"
@@ -433,6 +435,17 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
                 std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
                 delta_x = (v_scaled + gt * score) * dt + std_eps * eps
+
+        elif sampling_mode == "vf_tsr":  # ODE with time-scale-ratio scaling
+            snr = t_element**2 / (1 - t_element) ** 2
+            tsr_ratio = (snr * tsr_sigma**2 + 1) / (snr * tsr_sigma**2 / tsr_k + 1)
+            if t_element == 0.0:
+                v_scaled = torch.zeros_like(v).to(v.device)
+            else:
+                score = vf_to_score(x_t, v, t)
+                scaled_score = score * tsr_ratio
+                v_scaled = score_to_vf(x_t, scaled_score, t)
+            delta_x = v_scaled * dt
 
         else:
             raise ValueError(f"Invalid sampling mode {sampling_mode}")
