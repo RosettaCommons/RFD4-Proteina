@@ -340,6 +340,44 @@ For the full inference configuration and training-time flow matching parameters,
 
 ---
 
+## ODE Sampling with TSR
+
+`inference_base_ode` is an alternative generation config that uses **`vf_tsr`** (velocity field with time-scale-ratio) sampling instead of the default SDE. It applies time-dependent score scaling that drives samples toward lower temperature near the end of the trajectory, rather than by rescaling the added noise of an SDE.
+
+The `tsr_k` parameter controls how low the temperature drops (higher → lower); `tsr_sigma` controls how quickly. The default config is pre-tuned from Complexa results for binder design (`bb_ca: k=16, σ=3`; `local_latents: k=4, σ=8`).
+
+To use it, swap the generation config in the `defaults` list of your experiment config:
+
+```yaml
+# configs/inference_experiment/my_ode_run.yaml
+# @package _global_
+
+defaults:
+  - /generation: inference_base_ode   # ← swap inference_base for inference_base_ode
+  - /metrics: all_metrics
+  - _self_
+
+inputs: ???
+generation:
+  val_set_name_override: ${inputs}
+  dataset:
+    num_replicates: ${num_replicates}
+    transform:
+      metrics_tags: ${metrics_tags}
+```
+
+Then run with `inference_experiment=my_ode_run`.
+
+Or override the generation config directly from the command line without creating a new experiment config:
+
+```bash
+python proteinfoundation/generate.py \
+    inference_experiment=inference_like_rfd3 generation=inference_base_ode \
+    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt
+```
+
+---
+
 ## Evaluating Results
 
 ### Running Metrics Inline
