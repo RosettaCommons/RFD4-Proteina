@@ -10,7 +10,9 @@ defaults:
 
 run_name_: inference
 
-out_dir: null  # Inferred if not specified at command line
+out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to an external
+               # path (e.g. /path/to/shared/storage). SLURM scripts set this
+               # automatically. All outputs (samples, metrics) go under this directory.
 
 ckpt_name: ???
 ckpt_path: ???

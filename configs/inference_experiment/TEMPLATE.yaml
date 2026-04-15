@@ -1,0 +1,83 @@
+# @package _global_
+#
+# ============================================================================
+# TEMPLATE: Inference experiment config
+# ============================================================================
+#
+# Copy this file and fill in the values for your experiment.
+# All inference configs compose inference_like_rfd3 as the base.
+#
+# Two ways to run inference:
+#
+#   Pattern A -- Self-contained config (reproducible, recommended for experiments):
+#     python proteinfoundation/generate.py \
+#         inference_experiment=my_experiment
+#
+#   Pattern B -- CLI overrides (quick one-offs, easy to share in chat):
+#     python proteinfoundation/generate.py \
+#         ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt \
+#         inputs=/path/to/my_design.json out_dir=outputs/quick_test
+#
+# For SLURM:
+#   ./slurm_utils/launch_infer.sh digs \
+#       --config-name inference_experiment/my_experiment \
+#       gen_njobs=4
+#
+# ============================================================================
+
+defaults:
+  - inference_like_rfd3
+  - _self_
+
+# --- Checkpoint ---
+ckpt_path: ???                        # Directory containing checkpoint
+ckpt_name: ???                        # Checkpoint filename (e.g. last-EMA.ckpt)
+# DIGS symlink: /path/to/data
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+# --- Input ---
+inputs: ???                           # Path to .json/.yaml/.cif design problem(s)
+# subset_to_examples: null            # Optional: filter to specific examples by name
+
+# --- Output ---
+out_dir: ???
+run_name: my_experiment
+
+# --- Replication ---
+num_replicates: 10                    # Number of samples per input example
+batch_size: 10                        # Batch size for generation
+
+# --- Search strategy (optional, remove for vanilla single-pass) ---
+# search:
+#   strategy:
+#     _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
+#     step_checkpoints: [0, 100, 200, 300, 400]
+#     n_branch: 2
+#     beam_width: 3
+#     keep_intermediate_samples: false
+#
+#   rewards:
+#     metrics:
+#       rf3:
+#         _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+#         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+#         num_steps: 50
+#         n_recycles: 5
+#     weights:
+#       rf3.plddt: 1.0
+#     differentiable: false
+
+# --- Generation settings ---
+generation:
+  args:
+    nsteps: 400
+  model:
+    bb_ca:
+      simulation_step_params:
+        sc_scale_noise: 0.3
+    local_latents:
+      simulation_step_params:
+        sc_scale_noise: 0.1
+
+# --- Dataloader ---
+num_workers: 4

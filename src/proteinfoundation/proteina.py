@@ -223,7 +223,7 @@ class Proteina(L.LightningModule):
         self.ckpt_name: str | None = None  # Set via configure_inference
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
-        self.store_dir = store_dir if store_dir is not None else os.path.join(".", "store", cfg_exp.run_name_)
+        self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
         self.metrics = MetricManager.instantiate_from_hydra(metrics_cfg=cfg_exp.metrics) if cfg_exp.metrics else None
 
         if autoencoder_ckpt_path is not None:

@@ -149,7 +149,7 @@ defaults:
   - /datasets/train/distill/my_dataset@datasets.train
   - _self_
 
-run_name_: my_experiment_run
+run_name: my_experiment_run
 ```
 
 **Step 3:** Train
@@ -305,8 +305,8 @@ python proteinfoundation/partial_autoencoder/train.py --config-name training_ae
 ```yaml
 hardware:
   accelerator: gpu
-  ngpus_per_node_: 8
-  nnodes_: 4
+  gpus_per_node: 8
+  num_nodes: 4
 ```
 
 **Experiment configs** (`configs/experiment/`):
@@ -319,7 +319,7 @@ defaults:
   - /datasets/train/distill/mgnify@datasets.train
   - _self_
 
-run_name_: mgnify_training_run
+run_name: mgnify_training_run
 ```
 
 **Available experiments:**
@@ -442,7 +442,7 @@ Run from `projects/proteinfoundation/` on the cluster:
     inference_experiment=inference_like_rfd3 \
     inputs=/path/to/benchmarks/monomer.json \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=2
+    out_dir=/path/to/outputs run_name=my_run num_replicates=4 batch_size=2
 ```
 
 After all generation jobs finish, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file under `<run_dir>/inference_metrics/`. Foldseek structural clustering runs by default; pass `--no-foldseek` to disable it.
@@ -457,7 +457,7 @@ Offline validation uses the same `launch_infer.sh` script with `inference_experi
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
     inference_experiment=inference_on_val_set \
     +datasets/val@generation=mcsa_subset \
-    run_name_=my_run_mcsa_val out_dir=/path/to/outputs
+    run_name=my_run_mcsa_val out_dir=/path/to/outputs
 ```
 
 Available val dataset configs live in `configs/datasets/val/`. The `inference_on_val_set` experiment config drives the generation from the val dataset (rather than an `inputs` file) and loads all metrics.
@@ -496,7 +496,7 @@ bash slurm_utils/launch_train_latents.sh digs --no-copy
 ### What the Launch Scripts Do
 
 1. **Copy code** (opt-in with `--copy`): `rsync` selective directories to `$ROOT_REMOTE/<run_name>/`
-2. **Resolve Hydra config**: Reads `run_name_`, `nnodes_`, `ngpus_per_node_` from config
+2. **Resolve Hydra config**: Reads `run_name`, `num_nodes`, `gpus_per_node` from config
 3. **Build and submit sbatch script**: Generates appropriate container commands
 4. **Concatenation job** (inference/val only): Dependent job merges per-task CSVs into `inference_metrics/`
 

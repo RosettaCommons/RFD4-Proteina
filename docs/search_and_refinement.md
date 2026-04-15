@@ -117,7 +117,7 @@ Maintain a beam of top-N trajectories, branching and pruning at intermediate dif
 
 ```bash
 python proteinfoundation/generate.py \
-    inference_experiment=inference_test_beam \
+    inference_experiment=inference_beam_example \
     inputs=design.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
@@ -125,7 +125,7 @@ python proteinfoundation/generate.py \
     search.strategy.n_branch=4
 ```
 
-**Config** (`configs/inference_experiment/inference_test_beam.yaml`):
+**Config** (`configs/inference_experiment/inference_beam_example.yaml`):
 
 ```yaml
 search:
@@ -373,7 +373,7 @@ Then use with any search strategy:
 
 ```bash
 python proteinfoundation/generate.py \
-    inference_experiment=inference_test_beam \
+    inference_experiment=inference_beam_example \
     inputs=design.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \

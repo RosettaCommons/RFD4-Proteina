@@ -76,7 +76,7 @@ setup_env_vars() {
         
         # NCCL settings
         export NCCL_P2P_DISABLE=1
-        export NCCL_DEBUG=${NCCL_DEBUG:-INFO}
+        export NCCL_DEBUG=${NCCL_DEBUG:-WARN}
         
     fi
     
@@ -94,7 +94,11 @@ resolve_hydra_config() {
 
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Run the Python resolver script
+    # Activate project venv if available (needed for hydra/omegaconf)
+    if [ -f "$repo_root/.venv/bin/activate" ]; then
+        source "$repo_root/.venv/bin/activate"
+    fi
+
     cd "$repo_root" && python "$script_dir/resolve_config.py" --config-name "$config_name" $overrides
 }
 

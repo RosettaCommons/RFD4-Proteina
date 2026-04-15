@@ -181,7 +181,7 @@ if [ "$CLUSTER_TYPE" == "digs" ]; then
 # DIGS-specific environment settings
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NCCL_P2P_DISABLE=1
-export NCCL_DEBUG=INFO
+export NCCL_DEBUG=WARN
 
 # Distributed training coordination (unique port per job, master = first node)
 export MASTER_PORT=$((1024 + RANDOM % 64512))
