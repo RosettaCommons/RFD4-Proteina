@@ -4,7 +4,7 @@ val:
   toy_ala_benchmark_no_atomization:
     compute_loss: true
     dataset:
-      _target_: proteinfoundation.inference.datasets.DesignProblemDataset
+      _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
@@ -14,7 +14,7 @@ val:
   toy_ala_benchmark_atomization:
     compute_loss: true
     dataset:
-      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
@@ -24,7 +24,7 @@ val:
   toy_eoh_benchmark:
     compute_loss: true
     dataset:
-      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/eoh_toys
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
@@ -34,7 +34,7 @@ val:
   toy_ala_all_atoms_benchmark:
     compute_loss: true
     dataset:
-      _target_: projects.aa_design.inference.dataset.DesignProblemDataset
+      _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
       dir_path_or_file_paths: ${paths.data.design_benchmark_data_dir}/2d/ala_toys/indexed_all_atom_constraints
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline

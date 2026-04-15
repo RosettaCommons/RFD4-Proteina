@@ -184,7 +184,7 @@ Default SLURM settings (partition, runtime, etc.) are read from `slurm_utils/.us
     inference_experiment=inference_like_rfd3 \
     inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    out_dir=/path/to/outputs run_name_=my_run num_replicates=4 batch_size=8
+    out_dir=/path/to/outputs run_name=my_run num_replicates=4 batch_size=8
 ```
 
 Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. Rather than passing them on the command line, create a new config in `configs/inference_experiment/` that inherits from `inference_like_rfd3` and defines your overrides.

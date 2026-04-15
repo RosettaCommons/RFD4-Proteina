@@ -114,7 +114,7 @@ For higher success rates, use **beam search** with reward-guided generation:
 
 ```bash
 python proteinfoundation/generate.py \
-    --config-name inference_test_beam \
+    --config-name inference_beam_example \
     inputs=my_binder.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \

@@ -29,58 +29,40 @@ class CachedDataFilter(logging.Filter):
 
 def silence_warnings():
     """Silence common warnings that appear during foundry execution."""
+    # Suppress atomworks cached data warnings (logging filter)
+    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+
     warnings.filterwarnings(
         "ignore", message="All-NaN slice encountered", category=RuntimeWarning
     )
-
-    # Suppress atomworks cached data warnings
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-
     warnings.filterwarnings(
         "ignore",
         message="Category 'chem_comp_bond' not found. No bonds will be parsed",
         category=UserWarning,
         module="biotite.structure.io.pdbx.convert",
     )
-
     warnings.filterwarnings(
         "ignore",
         message="torch.get_autocast_gpu_dtype\\(\\) is deprecated.*",
         category=DeprecationWarning,
         module="cuequivariance_ops_torch.triangle_attention",
     )
-
-    # Suppress atomworks cached data warnings
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-
     warnings.filterwarnings(
         "ignore",
         message=".*multi-threaded.*fork.*may lead to deadlocks.*",
         category=DeprecationWarning,
     )
-
-    # Suppress atomworks cached data warnings
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-
     warnings.filterwarnings(
         "ignore",
         message=".*is_pyramidine.*deprecated.*Use.*is_pyrimidine.*",
         category=DeprecationWarning,
     )
-
-    # Suppress atomworks cached data warnings
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-
     warnings.filterwarnings(
         "ignore",
         message=".*index_reduce.*is in beta.*API may change.*",
         category=UserWarning,
     )
-
     # Lightning sync_dist warnings - we handle distributed aggregation manually
-    # Suppress atomworks cached data warnings
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-
     warnings.filterwarnings(
         "ignore",
         message=".*recommended.*sync_dist=True.*",

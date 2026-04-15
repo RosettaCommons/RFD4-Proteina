@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+from functools import partial
 from os import PathLike
 from pathlib import Path
 
@@ -19,10 +20,10 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 
+from foundry.data.collate import collate_batch
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.env import load_dotenv
 from foundry.utils.logging import print_config_tree
-from proteinfoundation.datapipes.collate import atom37_collate_fn
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.input_parsing import InputSpecification
@@ -279,14 +280,13 @@ def get_contig_or_design_problem_dataset(
 
 def infer_root_path(create_root: bool = True, config_name: str = ".") -> str:
     """
-    Sets the right seed and creates the root directory where the run will store things.
+    Creates the root directory where inference outputs will be stored.
 
     Returns:
         Path of the root directory (string)
     """
     logger.info(" ".join(sys.argv))
-    # Set root path for this inference run
-    root_path = f"./inference/{config_name}"
+    root_path = f"./runs/{config_name}"
     if create_root:
         os.makedirs(root_path, exist_ok=True)
     else:
@@ -640,7 +640,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         dataset,
         batch_size=batch_size,
         shuffle=False,
-        collate_fn=atom37_collate_fn,
+        collate_fn=partial(collate_batch, schema="proteinfoundation.datapipes.schema.proteina.ProteinaDataSample"),
         num_workers=num_workers,
         pin_memory=True,
     )
@@ -691,6 +691,11 @@ def main_hydra(cfg: DictConfig) -> None:
         cfg: Hydra DictConfig automatically loaded from config files with CLI overrides applied
     """
     load_dotenv()
+
+    from foundry.utils.logging import silence_warnings
+
+    silence_warnings()
+
     job_id = cfg.get("job_id", 0)
     if not exists(job_id):
         job_id = 0

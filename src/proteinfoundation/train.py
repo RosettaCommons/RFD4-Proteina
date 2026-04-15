@@ -72,6 +72,8 @@ def create_dir(ckpt_path_store: str, parents: bool = True, exist_ok: bool = True
 def get_run_dirs(cfg_exp: OmegaConf) -> tuple[str, str, str]:
     """Get root directory for run and directory to store checkpoints.
 
+    Uses ``out_dir`` from config if set, otherwise defaults to ``./runs/<run_name>``.
+
     Returns:
         run_name: Name of the run.
         root_run: Root directory for the run.
@@ -79,7 +81,12 @@ def get_run_dirs(cfg_exp: OmegaConf) -> tuple[str, str, str]:
     """
     run_name = cfg_exp.run_name_
     logger.info(f"Job name: {run_name}")
-    root_run = os.path.join(".", "store", run_name)  # Everything stored in ./store/<run_id>
+
+    out_dir = cfg_exp.get("out_dir", None)
+    if out_dir:
+        root_run = out_dir
+    else:
+        root_run = os.path.join(".", "runs", run_name)
     logger.info(f"Root run: {root_run}")
 
     ckpt_path_store = os.path.join(root_run, "checkpoints")

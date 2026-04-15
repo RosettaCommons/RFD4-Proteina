@@ -3,6 +3,10 @@
 
 run_name_: test_no_val_datasets
 
+# Output directory for all run artifacts (checkpoints, samples, metrics).
+# If null, defaults to ./runs/<run_name_>/. For production, set to an external path.
+out_dir: null
+
 # Co-generation mode: whether to co-generate coordinate-conditioned targets (ligands, ions, protein targets)
 # True: targets are noised and lossed during training, co-generated during inference
 # False: targets are kept fixed (sequence + coordinate conditioned) during training/inference
