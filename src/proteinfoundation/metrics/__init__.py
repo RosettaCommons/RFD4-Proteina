@@ -18,6 +18,12 @@ field trained on quantum-mechanical calculations.
 - ``SoftDDGWithSaltMetric``: Combined soft ddG + charge complementarity. Differentiable.
 - ``MACEEnergyMetric``: Potential energy evaluation using MACE (ML force field). Differentiable.
 
+**FEP Metrics** — Alchemical free energy perturbation for binding affinity prediction.
+Require TMD (https://github.com/tmd-industries/tmd) with CUDA custom ops.
+
+- ``FEPMetric``: Single-edge RBFE between two ligands in a protein pocket.
+- ``FEPBatchMetric``: Batch RBFE with MPS parallelism for higher throughput.
+
 **Structure Quality Metrics** — Fast geometric and chemical validation of the generated
 structure, no refolding or energy computation required.
 
@@ -67,6 +73,14 @@ try:
     from proteinfoundation.metrics.mace_energy_metric import MACEEnergyMetric, compute_mace_energy
 
     __all__.extend(["MACEEnergyMetric", "compute_mace_energy"])
+except ImportError:
+    pass
+
+# --- FEP Metrics ---
+try:
+    from proteinfoundation.metrics.fep_metric import FEPBatchMetric, FEPMetric
+
+    __all__.extend(["FEPBatchMetric", "FEPMetric"])
 except ImportError:
     pass
 
