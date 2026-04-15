@@ -33,7 +33,6 @@ from projects.proteinfoundation.tests.pipeline.invariant_checks import (
     check_coordinates_centered_on_conditioned_atoms,
     check_coordinates_not_nan,
     check_elements,
-    check_nhyd,
     check_sequence_conditioning_with_res_types,
     check_token_level_features_consistent_within_tokens,
     check_unresolved_tokens_not_lossed,
@@ -111,8 +110,6 @@ ALL_CHECKS = [
     check_token_level_features_consistent_within_tokens,
     # Conditioning Consistency
     check_conditioning_consistency,
-    # Hybridization (atomized tokens only)
-    check_nhyd,
 ]
 
 # =============================================================================

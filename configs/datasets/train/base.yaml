@@ -12,10 +12,8 @@ loader:
   assembly_id_colname: None
   parser_args:
     add_missing_atoms: False  # Default for distillation
-    sanitize_bonds_and_charges: False  # Default for distillation
-    cache_dir: ${oc.env:CACHE_DIR}
-    save_to_cache: False  # Default for distillation
-    load_from_cache: False  # Default for distillation
+    sanitize_bonds_and_charges: False  # Default for distillation (cannot sanitize without adding missing atoms)
+    add_bond_types_from_struct_conn: ["covale", "metalc"]
     long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
     hydrogen_policy: "remove"
 

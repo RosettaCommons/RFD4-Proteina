@@ -45,13 +45,12 @@ SPECS: dict[str, tuple] = {
     "chain_breaks_per_residue": (torch.float32, 0.0, "I"),
     "missing_atom_count": (torch.float32, 0.0, "I"),
     # Token-level with extra dims [I, ...]
-    "graph_laplacian_pe_token_level": (torch.float32, 0.0, "I 32"),
     C_CATH.full_name: (torch.int32, -1, "I 3"),
+    "chirality": (torch.float32, 0.0, "I 18"),
     # Atom37-level [I, 37, ...]
     "coords": (torch.float32, 0.0, "I 37 3"),
     "element": (torch.int16, -1, "I 37"),
     "charge": (torch.int16, 0, "I 37"),
-    "nhyd": (torch.int16, -1, "I 37"),
     "is_resolved_mask": (torch.bool, False, "I 37"),
     "is_center_atom_mask": (torch.bool, False, "I 37"),
     "atom37_mask": (torch.bool, False, "I 37"),
@@ -67,6 +66,7 @@ SPECS: dict[str, tuple] = {
     # Pair-level [I, I]
     "bond_mask": (torch.bool, False, "I I"),
     "bond_order": (torch.int16, 0, "I I"),
+    "is_aromatic": (torch.bool, False, "I I"),
     # MSA-level [S, I, ...]
     "msa_final": (torch.float32, 0.0, "S I 71"),
 }

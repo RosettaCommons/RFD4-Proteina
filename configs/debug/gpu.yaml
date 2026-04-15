@@ -1,6 +1,7 @@
 # @package _global_
 #
-# Debug configuration for GPU development
+# Single-threaded GPU debug configuration — no workers, no prefetch.
+# Best for isolating model/training bugs without dataloader noise.
 # Usage: ./train.py experiment=example_experiment debug=gpu
 
 # Override hardware settings for single GPU
@@ -23,10 +24,13 @@ dataloaders:
 opt:
   max_epochs: 5  # Run 5 epochs only
   # limit_train_batches: 50  # Only n batches per epoch for fast testing
-  limit_val_batches: 1  # Only n batches
+  limit_val_batches: 10  # Only n batches
   steps_per_epoch: 1000     # Short epochs for quick debugging
   val_every_n_epochs: 1   # Validate at end of each epoch
   val_start_epoch: 2
+
+# Enable tqdm progress bar
+show_prog_bar: true
 
 # Disable wandb logging
 nolog: true

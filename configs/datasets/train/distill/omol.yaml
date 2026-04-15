@@ -1,49 +1,36 @@
-# OMol Training - Small molecules from OMol25 (~10M of 100M total)
-# Uses dataset of pre-processed CIF files with bonds inferred
-
+# OMol-1 (55M) Training - Small molecules in LMDB format
 defaults:
   - ../base@dataset
-  - /design_tasks/presets/none@dataset.transform.design_tasks
+  - /design_tasks/presets/folding_only@dataset.transform.design_tasks
   - _self_
 
-probability: 1.0  # Need this default for mixed samples
+probability: 1.0
 
 dataset:
-  name: omol_train
+  _target_: atomworks.ml.datasets.lmdb_dataset.LmdbDataset
+  name: omol
+  lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol/data
   memory_map: True
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/omol_30m_labeled.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/omol/omol.parquet
+  id_column: example_id
+  lmdb_idx_column: lmdb_idx
+
   columns_to_load:
     - example_id
-    - path
+    - lmdb_idx
     - data_id
-    - passes_stereochemical_validation
+    - num_atoms
 
-  # Filter to only examples that pass validation checks
-  # Exclude trans1x, reactivity, rgd (reactive)
   filters:
-    - "passes_stereochemical_validation == True"
-    - "data_id not in ['trans1x', 'reactivity', 'rgd']"
+    - "data_id not in ['community/trans1x', 'reactivity/rgd', 'reactivity/RGD_radical', 'reactivity/pmechdb', 'reactivity/rmechdb', 'metal_complexes/reactivity', 'elytes/reactivity']"
+    - "num_atoms <= 256"
 
-  loader:
-    base_path: /squash/omol_30m_labeled
-    parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
-      fix_bond_types: False
-      fix_ligands_at_symmetry_centers: False
-      extra_fields: ["nhyd"]  # Load number of hydrogens annotation from CIF
-
-  # Design tasks: 80% structure prediction, 20% unconditional
-  transform:
-    design_tasks:
-      unconditional:
-        frequency: 20.0
-        transform:
-          _target_: proteinfoundation.transforms.design_task.UnconditionalTask
-          global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-      folding:
-        frequency: 80.0
-        transform:
-          _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
-          global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+  # LmdbDataset accepts ``parser_args`` directly and builds its own cif_bytes_loader.
+  # TODO: Drop this ``loader: null`` workaround once datasets/train/base.yaml
+  # is split — the file-loader block there (_target_: create_base_loader, with
+  # ``example_id_colname``/``path_colname`` kwargs) is specific to PandasDataset and
+  # shouldn't be inherited by LMDB datasets. Move those defaults into a separate
+  # ``_loader_file.yaml`` partial so file-based datasets inherit both and LMDB
+  # datasets inherit only the shared base (dataset + transform).
+  loader: null
+  parser_args: ${resolve_import:proteinfoundation.utils.parse_presets,DISTILLATION_ARGS}

@@ -18,7 +18,6 @@ from atomworks.constants import (
     UNKNOWN_DNA,
     UNKNOWN_RNA,
 )
-from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import (
     ensure_annotations,
 )
@@ -79,6 +78,7 @@ from atomworks.ml.transforms.filters import (
     RemoveUnresolvedLigandAtomsIfTooMany,
     RemoveUnresolvedPNUnits,
 )
+from atomworks.ml.transforms.mirror_transform import RandomlyMirrorInputs
 from atomworks.ml.transforms.msa.msa import (
     EncodeMSA,
     FeaturizeMSALikeAF3,
@@ -111,14 +111,18 @@ from proteinfoundation.conditions import (
     HBondEnum,
     RasaEnum,
 )
+from proteinfoundation.datapipes.bonds import (
+    get_bond_distance_matrix,
+    get_bond_order_matrix,
+    get_is_aromatic_matrix,
+)
 from proteinfoundation.transforms.atom_names import (
     AnnotateAtomNameVisibility,
     FeaturizeAtomNamesLikeAF3,
 )
+from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
-from proteinfoundation.transforms.graph_laplacian import (
-    FeaturizeBondsAsLaplacianPositionalEncoding,
-)
+from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
 from proteinfoundation.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
 )
@@ -259,26 +263,6 @@ class InferQueryPNUnitIIDsForDimers(Transform):
         return data
 
 
-class AnnotateAF3TokenCenterAtoms(Transform):
-    """Annotate which atoms are AF3 token center atoms.
-
-    Namely:
-        - CA for standard amino acids
-        - C1' for standard nucleotides
-        - For other cases (including atomized residues), take the first and only atom as they are tokenized per-atom.
-    """
-
-    requires_previous_transforms: ClassVar[bool] = ["AtomizeByCCDName"]
-
-    def forward(self, data: dict) -> dict:
-        """Annotate AF3 token center atoms."""
-        atom_array = data["atom_array"]
-        is_af3_token_center = get_af3_token_center_masks(atom_array)
-        atom_array.set_annotation("is_af3_token_center", is_af3_token_center)
-        data["atom_array"] = atom_array
-        return data
-
-
 class ConvertToAtomLevelProteinaFeatures(Transform):
     """Convert inputs to Proteina features and conditioning annotations.
 
@@ -374,13 +358,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
             aa.set_annotation("charge", np.zeros(aa.array_length(), dtype=np.int16))
         feats["charge"] = aa.charge.astype(np.int16)  # [L]
 
-        # Number of hydrogens for atomized tokens (from RDKit/OpenBabel)
-        # Values: 0-4 for actual hydrogen count, -1 for unspecified
-        # If nhyd annotation doesn't exist, initialize with -1 (unspecified)
-        if "nhyd" not in aa.get_annotation_categories():
-            aa.set_annotation("nhyd", np.full(aa.array_length(), -1, dtype=np.int16))
-        feats["nhyd"] = aa.nhyd.astype(np.int16)  # [L]
-
         # +------ CAT domain annotations from CATH ------+
         cath_codes = C_CATH.annotation(aa, default="generate")
         unique_cath_codes = np.unique(cath_codes)  # [num_codes]
@@ -461,7 +438,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         return data
 
 
-EXISTING_TOKEN_LEVEL_FEATURES = ["graph_laplacian_pe_token_level", "centroid_of_atoms_without_coordinate_conditioning"]
+EXISTING_TOKEN_LEVEL_FEATURES = ["centroid_of_atoms_without_coordinate_conditioning"]
 """Features already at the token level that simply pass through."""
 
 ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
@@ -482,6 +459,7 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_CATH.full_name,
     "chain_breaks_per_residue",
     "missing_atom_count",
+    "chirality",
 ]
 """Features to convert from atom-level to token-level by taking the first atom in each token."""
 
@@ -489,7 +467,6 @@ ATOM37_FEATURES = [
     ("coords", (3,), 0.0),
     ("element", (), -1),
     ("charge", (), 0),  # Atomic charge
-    ("nhyd", (), -1),  # Number of hydrogens (0-4 for count, -1 for unspecified)
     ("is_resolved_mask", (), False),
     ("is_center_atom_mask", (), False),
     (C_CRD.mask_name, (), False),
@@ -613,68 +590,13 @@ class ConvertToAtom37Format(Transform):
         return data
 
 
-def get_bond_order_matrix(atom_array: AtomArray) -> np.ndarray:
-    """
-    Get the bond order matrix for an atom array where values are as follows:
-    - 0 = no bond
-    - 1 = single bond
-    - 2 = double bond
-    - 3 = triple bond
-    - 4 = aromatic bond
-
-    All other bond types are mapped to 1 (single bond)
-    """
-    atom1_idxs, atom2_idxs, bond_orders = atom_array.bonds.as_array().T
-
-    # ============= Map to our bond order encoding ==============
-    bond_orders = bond_orders.astype(np.int16)
-
-    # Quadruple bonds and "coordination" bonds are mapped to 1
-    bond_orders[bond_orders == 4] = 1
-    bond_orders[bond_orders == 8] = 1
-
-    # Various kinds of aromatic bonds are all mapped to 4
-    bond_orders[bond_orders == 5] = 4
-    bond_orders[bond_orders == 6] = 4
-    bond_orders[bond_orders == 7] = 4
-    bond_orders[bond_orders == 9] = 4
-
-    # there shouldn't be any other types left
-    assert np.all(bond_orders >= 0) and np.all(bond_orders <= 4), "Invalid bond order detected"
-
-    # ============= Build bond order matrix ==============
-    bond_order_matrix = np.zeros((atom_array.array_length(), atom_array.array_length()), dtype=np.int16)
-    bond_order_matrix[atom1_idxs, atom2_idxs] = bond_orders
-    bond_order_matrix[atom2_idxs, atom1_idxs] = bond_orders
-
-    return bond_order_matrix
-
-
-def get_bond_distances(atom_array: AtomArray) -> np.ndarray:
-    """Returns the bond distance (adjacency) list as a 1D array."""
-    coords = atom_array.coord
-    atom1_idxs, atom2_idxs, _ = atom_array.bonds.as_array().T
-    return np.linalg.norm(coords[atom1_idxs] - coords[atom2_idxs], axis=1)
-
-
-def get_bond_distance_matrix(atom_array: AtomArray) -> np.ndarray:
-    """Returns the bond adjacency matrix with bond distances as values."""
-    atom1_idxs, atom2_idxs, _ = atom_array.bonds.as_array().T
-    bond_distances = get_bond_distances(atom_array)
-    bond_distance_matrix = np.full((atom_array.array_length(), atom_array.array_length()), np.inf)
-    bond_distance_matrix[atom1_idxs, atom2_idxs] = bond_distances
-    bond_distance_matrix[atom2_idxs, atom1_idxs] = bond_distances
-    return bond_distance_matrix
-
-
 class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
-    """
-    Compute token-level bond features like AF3. Much of the functionality is the same as
-    atomworks.ml.transforms.bonds.AddAF3TokenBondFeatures, but we want to get the bond order as well.
+    """Compute token-level bond features like AF3.
 
     Computes the following token-level bond features:
-    - token_bond_mask: [n_tokens, n_tokens] - True if there is a bond between any atom in token i and token j
-    - token_bond_order: [n_tokens, n_tokens] - Bond order between token i and token j
+    - bond_mask: [n_tokens, n_tokens] - True if there is a bond between any atom in token i and token j
+    - bond_order: [n_tokens, n_tokens] - Kekulé bond order (0=none, 1=single, 2=double, 3=triple, 4=coordination)
+    - is_aromatic: [n_tokens, n_tokens] - True if the bond is aromatic
     """
 
     def __init__(self, distance_cutoff: float = np.inf):
@@ -698,20 +620,45 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
         token_starts = token_start_end_idxs[:-1]
         token_bond_order = apply_segment_wise_2d(get_bond_order_matrix(atom_array), token_start_end_idxs, np.min)
 
+        # Aromatic: True if ANY atom pair in the token-token block is aromatic (use max on int8)
+        token_is_aromatic = apply_segment_wise_2d(
+            get_is_aromatic_matrix(atom_array).astype(np.int8), token_start_end_idxs, np.max
+        ).astype(bool)
+
         token_bond_distances = apply_segment_wise_2d(get_bond_distance_matrix(atom_array), token_start_end_idxs, np.min)
         token_bond_mask = token_bond_distances < self.distance_cutoff
 
         # remove token self-bonds
         np.fill_diagonal(token_bond_mask, False)
         np.fill_diagonal(token_bond_order, 0)
+        np.fill_diagonal(token_is_aromatic, False)
 
         # remove poly-poly bonds
         is_poly_poly_bond = np.outer(~atom_array.atomize[token_starts], ~atom_array.atomize[token_starts])
         token_bond_mask[is_poly_poly_bond] = False
         token_bond_order[is_poly_poly_bond] = 0
+        token_is_aromatic[is_poly_poly_bond] = False
 
         data["feats"]["bond_mask"] = token_bond_mask
         data["feats"]["bond_order"] = token_bond_order
+        data["feats"]["is_aromatic"] = token_is_aromatic
+
+        return data
+
+
+class DropoutAromaticFlag(Transform):
+    """Drop out the ``is_aromatic`` flag per-example with a given probability.
+
+    With probability ``p``, all ``is_aromatic`` entries are zeroed for the example.
+    Only added to pipeline during training.
+    """
+
+    def __init__(self, p: float = 0.1):
+        self.p = p
+
+    def forward(self, data: dict) -> dict:
+        if self.p > 0 and np.random.rand() < self.p:
+            data["feats"]["is_aromatic"][:] = False
 
         return data
 
@@ -1128,20 +1075,6 @@ class FeaturizeCentroidOfAtomsWithoutCoordinateConditioning(Transform):
         return data
 
 
-class DeleteNucleicAcids(Transform):
-    """
-    Delete nucleic acids from the atom array.
-
-    NOTE: This is temporary until we actually want to train with DNA/RNA
-    """
-
-    def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        atom_array = atom_array[~np.isin(atom_array.chain_type, ChainType.get_nucleic_acids())]
-        data["atom_array"] = atom_array
-        return data
-
-
 class EncodeQuerySequenceForMSA(Transform):
     """Encode query sequence for MSA using specified TokenEncoding."""
 
@@ -1252,6 +1185,7 @@ def _build_design_train_pipeline(
     undesired_res_names: list[str] = AF3_EXCLUDED_LIGANDS,
     b_factor_occupancy_min: float | None = None,  # For filtering out unresolved atoms from PDB or distillation sets
     p_random_rotation: float = 1.0,  # Probability of applying random rotation
+    p_mirror: float = 0.0,  # Probability of mirroring inputs (chirality augmentation)
     # MSA parameters
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
@@ -1268,6 +1202,10 @@ def _build_design_train_pipeline(
     # Apply random rotation for data augmentation (only during training)
     if not is_inference and p_random_rotation > 0.0:
         T += RandomRotationTransform(p_apply=p_random_rotation)
+
+    # Apply random mirroring for chirality augmentation (only during training)
+    if not is_inference and p_mirror > 0.0:
+        T += RandomlyMirrorInputs(mirror_prob=p_mirror)
 
     ###########################################################
     ### Step 1: Filter unwanted information                 ###
@@ -1286,6 +1224,8 @@ def _build_design_train_pipeline(
 
     # Validate structure has atoms after filtering
     T += ValidateNonEmptyStructure()
+
+    T += IsolateMetalsToOwnChain()
 
     # ... add basic annotations
     ###########################################################
@@ -1399,19 +1339,21 @@ def _build_design_train_pipeline(
 def _build_design_featurize_pipeline(
     residue_names_to_encode: list | set,
     metrics_tags: list[str] | set[str] | None = None,
-    graph_laplacian_use_bond_order: bool = True,
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
+    is_inference: bool = False,
+    # Bond feature dropout (training-only regularization)
+    coordination_bond_dropout_p_all: float = 0.5,
+    coordination_bond_dropout_p_individual: float = 0.5,
+    aromatic_dropout_p: float = 0.4,
 ) -> list[Transform]:
     """Build shared featurization pipeline across both training and validation.
 
     Args:
         residue_names_to_encode: Residue names to encode.
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
-        graph_laplacian_use_bond_order: If True, weight graph edges by bond order for Laplacian PE.
-            If False, use binary adjacency (all bonds weighted equally).
 
     Returns:
         List of transforms for featurization pipeline.
@@ -1478,21 +1420,21 @@ def _build_design_featurize_pipeline(
     T += AnnotateAtomNameVisibility()
     T += FeaturizeAtomNamesLikeAF3()
 
-    # Graph Laplacian positional encodings for atomized molecules (ligands, etc.)
-    T += FeaturizeBondsAsLaplacianPositionalEncoding(
-        encoding_dim=32,
-        use_bond_order=graph_laplacian_use_bond_order,
-    )
-
     # Add annotation for which atoms should be encoded / lossed in the model
     T += AddShouldBeLossedAnnotation()
 
     # Encode standard amino acids, RNA, and DNA nucleotides (atomised things are filtered out already)
     T += AddCanBeEncodedAnnotation(residue_names_to_encode=residue_names_to_encode)
 
+    T += AddChiralityFeature()
     T += ConvertToAtomLevelProteinaFeatures()
     T += ConvertToAtom37Format()  # Convert atom-level to token-level atom37 representation
     T += ComputeTokenLevelBondFeaturesLikeAF3()  # Compute bond graphs (mask and order)
+    if not is_inference:
+        T += DropoutCoordinationBonds(
+            p_all=coordination_bond_dropout_p_all, p_individual=coordination_bond_dropout_p_individual
+        )
+        T += DropoutAromaticFlag(p=aromatic_dropout_p)
     # ConvertToTorch - only include MSA keys when MSA is enabled and configured
     convert_keys = ["feats"]
     if protein_msa_dirs or rna_msa_dirs:
@@ -1573,11 +1515,11 @@ def build_design_train_pipeline(
     b_factor_occupancy_min: float | None = None,
     p_atomize_residues: float = 0.0,
     p_random_rotation: float = 1.0,
+    p_mirror: float = 0.0,
     design_tasks: dict[str, dict] | None = None,
     is_inference: bool = False,
     metrics_tags: list[str] | set[str] | None = None,
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
-    graph_laplacian_use_bond_order: bool = True,
     # MSA parameters
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
@@ -1600,6 +1542,8 @@ def build_design_train_pipeline(
         crop_center_cutoff_distance: Distance cutoff (Å) for spatial crop
         p_atomize_residues: Probability of atomizing standard residues
         p_random_rotation: Probability of random rotation augmentation
+        p_mirror: Probability of mirroring inputs (chirality augmentation).
+            Defaults to ``0.0`` (disabled).
         design_tasks: Dictionary of design tasks where each task is a dict with
                      'frequency' and 'transform' keys. The 'transform' key holds
                      the instantiated DesignTask object.
@@ -1613,8 +1557,6 @@ def build_design_train_pipeline(
                          }
         is_inference: If True, skips augmentation
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
-        graph_laplacian_use_bond_order: If True, weight graph edges by bond order for Laplacian PE.
-            If False, use binary adjacency (all bonds weighted equally).
         max_msa_sequences: Maximum number of MSA sequences to load per chain.
 
     Returns:
@@ -1632,17 +1574,18 @@ def build_design_train_pipeline(
         is_inference=is_inference,
         p_atomize_residues=p_atomize_residues,
         p_random_rotation=p_random_rotation,
+        p_mirror=p_mirror,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,
     )
     transforms += _build_design_featurize_pipeline(
         metrics_tags=metrics_tags,
         residue_names_to_encode=residue_names_to_encode,
-        graph_laplacian_use_bond_order=graph_laplacian_use_bond_order,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
+        is_inference=is_inference,
     )
 
     return Compose(transforms)
@@ -1651,7 +1594,6 @@ def build_design_train_pipeline(
 def build_design_validation_pipeline(
     metrics_tags: list[str] | set[str] | None = None,
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
-    graph_laplacian_use_bond_order: bool = True,
     # MSA parameters
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
@@ -1667,8 +1609,6 @@ def build_design_validation_pipeline(
     Args:
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
         residue_names_to_encode: Residue names to encode.
-        graph_laplacian_use_bond_order: If True, weight graph edges by bond order for Laplacian PE.
-            If False, use binary adjacency (all bonds weighted equally).
         max_msa_sequences: Maximum number of MSA sequences to load per chain.
 
     Returns:
@@ -1681,10 +1621,10 @@ def build_design_validation_pipeline(
     transforms += _build_design_featurize_pipeline(
         metrics_tags=metrics_tags,
         residue_names_to_encode=residue_names_to_encode,
-        graph_laplacian_use_bond_order=graph_laplacian_use_bond_order,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
+        is_inference=True,
     )
     return Compose(transforms)

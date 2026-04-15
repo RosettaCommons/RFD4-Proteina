@@ -137,8 +137,9 @@ def _log_batch_example_ids(
     batch_idx: int,
     stage: str,
     log_frequency: int = 100,
+    total_batches: int | None = None,
 ) -> None:
-    """Log example IDs and timing for debugging batch ordering.
+    """Log example IDs, timing, and epoch progress for debugging batch ordering.
 
     Logs every log_frequency batches to verify shuffling behavior across epochs.
     Also logs time elapsed since last log and steps per second.
@@ -152,8 +153,15 @@ def _log_batch_example_ids(
     _last_log_time[stage] = current_time
 
     ids_preview = f"{example_ids[:3]}, ... ({len(example_ids) - 3} more)" if len(example_ids) > 3 else example_ids
+
+    # Show epoch progress if total batches is known
+    progress_str = ""
+    if total_batches is not None and total_batches > 0:
+        pct = batch_idx / total_batches * 100
+        progress_str = f", progress={pct:.1f}%"
+
     logger.info(
-        f"[{stage}] epoch={epoch}, batch={batch_idx}, "
+        f"[{stage}] epoch={epoch}, batch={batch_idx}{progress_str}, "
         f"steps={log_frequency}, elapsed={elapsed:.1f}s, steps/s={steps_per_sec:.2f}, "
         f"n_examples={len(example_ids)}, ids={ids_preview}"
     )
@@ -410,6 +418,7 @@ class Proteina(L.LightningModule):
             epoch=self.current_epoch,
             batch_idx=batch_idx,
             stage="train",
+            total_batches=self.trainer.num_training_batches,
         )
 
         # Preprocess batch from atom37 collate format
@@ -427,8 +436,16 @@ class Proteina(L.LightningModule):
             # Add clean samples for all data modes / spaces we are working on
             batch = self.add_clean_samples(batch)
 
-            # Corrupt the batch
-            batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
+            # Corrupt the batch. On validation, override t with uniform draws so the
+            # val loss is an unbiased estimator of E_{t~U[0,1]}[loss] instead of the
+            # Beta-weighted training distribution.
+            if val_step:
+                batch_shape = batch["padding_mask"].shape[:1]
+                device = batch["padding_mask"].device
+                t_uniform = {dm: torch.rand(batch_shape, device=device) for dm in self.fm.data_modes}
+                batch = self.fm.corrupt_batch(batch, t=t_uniform)
+            else:
+                batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
             bs, n = batch["padding_mask"].shape
 
             # Handle conditioning variables
@@ -488,7 +505,7 @@ class Proteina(L.LightningModule):
         Returns:
             Batch with clean sample added.
         """
-        batch["x_1"] = {dm: self._get_clean_sample(batch, dm) for dm in self.cfg_exp.product_flowmatcher}
+        batch["x_1"] = {dm: self._get_clean_sample(batch, dm) for dm in self.fm.data_modes}
         return batch
 
     def _get_clean_sample(self, batch: dict, dm: str) -> torch.Tensor:
@@ -595,6 +612,40 @@ class Proteina(L.LightningModule):
                 sync_dist=True,
                 add_dataloader_idx=False,
             )
+
+        if val_step:
+            self._log_binned_val_losses(losses=losses, log_prefix=log_prefix, t=batch["t"], n_bins=5)
+
+    def _log_binned_val_losses(
+        self,
+        losses: dict[str, Float[torch.Tensor, "b"]],
+        log_prefix: str,
+        t: dict[str, Float[torch.Tensor, "b"]],
+        n_bins: int = 5,
+    ) -> None:
+        """Log per-t-bin mean loss, matching each loss key to a data_mode by substring."""
+        width = 1.0 / n_bins
+        for k, loss in losses.items():
+            name = k.removesuffix("_justlog")
+            dm = next((d for d in t if d in name), None)
+            if dm is None:
+                continue
+            bins = (t[dm] * n_bins).floor().long().clamp(max=n_bins - 1)
+            # Log every bin on every rank (even empty) so ranks agree on keys and sync doesn't deadlock.
+            for b in range(n_bins):
+                mask = bins == b
+                n = int(mask.sum())
+                value = loss[mask].mean() if n > 0 else loss.new_zeros(())
+                self.log(
+                    f"{log_prefix}/loss_{name}_t_{b * width:.1f}-{(b + 1) * width:.1f}",
+                    value,
+                    on_step=False,
+                    on_epoch=True,
+                    logger=True,
+                    batch_size=max(n, 1),
+                    sync_dist=True,
+                    add_dataloader_idx=False,
+                )
 
     def log_train_loss_n_prog_bar(self, b: int, train_loss: torch.Tensor) -> None:
         self.log(
@@ -1207,6 +1258,7 @@ class Proteina(L.LightningModule):
         batch["coords_nm"] = batch["coords"] / 10.0  # Convert Angstroms to nm
         batch["coord_mask"] = batch["atom37_mask"]
         batch["co_generate_targets"] = self.inf_cfg.get("co_generate_targets", False)
+
         return batch
 
     def predict_step(self, batch: dict, batch_idx: int) -> list[dict]:
