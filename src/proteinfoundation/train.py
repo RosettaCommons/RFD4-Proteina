@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from pathlib import Path
 
 import hydra
@@ -10,7 +11,7 @@ import rootutils
 import torch
 import wandb
 from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.loggers import CSVLogger, WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
@@ -251,25 +252,25 @@ def store_n_log_configs(
     cfg_data: DictConfig,
     run_name: str,
     ckpt_path_store: str,
-    wandb_logger: WandbLogger | None,
+    train_logger: WandbLogger | CSVLogger | None,
 ) -> None:
     """Store config files locally and log them to wandb run."""
 
-    def store_n_log_config(cfg: DictConfig, cfg_path: str, wlogger: WandbLogger | None) -> None:
+    def store_n_log_config(cfg: DictConfig, cfg_path: str, logger: WandbLogger | CSVLogger | None) -> None:
         with open(cfg_path, "w") as f:
             cfg_aux = OmegaConf.to_container(cfg, resolve=True)
             json.dump(cfg_aux, f, indent=4, sort_keys=True)
 
-        if wlogger is not None:
+        if isinstance(logger, WandbLogger):
             artifact = wandb.Artifact(f"config_files_{run_name}", type="config")
             artifact.add_file(cfg_path)
-            wlogger.experiment.log_artifact(artifact)
+            logger.experiment.log_artifact(artifact)
 
     cfg_exp_file = os.path.join(ckpt_path_store, f"exp_config_{run_name}.json")
     cfg_data_file = os.path.join(ckpt_path_store, f"data_config_{run_name}.json")
 
-    store_n_log_config(cfg_exp, cfg_exp_file, wandb_logger)
-    store_n_log_config(cfg_data, cfg_data_file, wandb_logger)
+    store_n_log_config(cfg_exp, cfg_exp_file, train_logger)
+    store_n_log_config(cfg_data, cfg_data_file, train_logger)
 
 
 @hydra.main(
@@ -303,24 +304,32 @@ def main(cfg_exp: DictConfig) -> None:
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
 
     # logger
-    wandb_logger = None
+    train_logger = None
     if cfg_exp.log.log_wandb and not nolog:
         wandb_run_id = cfg_exp.log.get("wandb_run_id", run_name)
-        wandb_logger = WandbLogger(
+        wandb_resume = cfg_exp.log.get("wandb_resume", True)
+        if not wandb_resume:
+            wandb_run_id = f"{wandb_run_id}_{int(time.time())}"
+        train_logger = WandbLogger(
             project=cfg_exp.log.wandb_project,
+            name=run_name,
             id=wandb_run_id,
             entity=cfg_exp.log.wandb_entity,
             tags=cfg_exp.log.tags,
         )
+    elif nolog:
+        # CSV logger for local-only runs (no wandb)
+        train_logger = CSVLogger(save_dir=root_run, name="csv_logs")
 
+    if train_logger is not None:
         cfg_dict = OmegaConf.to_container(cfg_exp, resolve=True)
-        wandb_logger.log_hyperparams(cfg_dict)
+        train_logger.log_hyperparams(cfg_dict)
 
     # checkpoints
     if cfg_exp.log.checkpoint and not nolog:
         ckpt_callbacks = setup_ckpt(cfg_exp, ckpt_path_store)
         callbacks += ckpt_callbacks
-        store_n_log_configs(cfg_exp, cfg_exp.datasets, run_name, ckpt_path_store, wandb_logger)
+        store_n_log_configs(cfg_exp, cfg_exp.datasets, run_name, ckpt_path_store, train_logger)
 
     # Add per-rank seeding callback to ensure RNG diversity across GPUs
     callbacks.append(RankSeedCallback(base_seed=cfg_exp.seed))
@@ -356,13 +365,18 @@ def main(cfg_exp: DictConfig) -> None:
     if hasattr(dist_strategy, "_target_"):
         dist_strategy = hydra.utils.instantiate(dist_strategy)
 
+    # Derive limit_train_batches from steps_per_epoch so that epoch length is predictable
+    # regardless of dataset size. Each optimizer step consumes accumulate_grad_batches batches.
+    steps_per_epoch = cfg_exp.opt.steps_per_epoch
+    limit_train_batches = steps_per_epoch * cfg_exp.opt.accumulate_grad_batches
+
     trainer = L.Trainer(
         max_epochs=cfg_exp.opt.max_epochs,
         accelerator=cfg_exp.hardware.accelerator,
         devices=cfg_exp.hardware.ngpus_per_node_,  # Number of gpus per node, not total
         num_nodes=cfg_exp.hardware.nnodes_,
         callbacks=callbacks,
-        logger=wandb_logger,
+        logger=train_logger,
         log_every_n_steps=cfg_exp.log.log_every_n_steps,
         default_root_dir=root_run,
         check_val_every_n_epoch=cfg_exp.opt.val_every_n_epochs,
@@ -370,7 +384,7 @@ def main(cfg_exp: DictConfig) -> None:
         strategy=dist_strategy,
         enable_progress_bar=show_prog_bar,
         plugins=plugins,
-        limit_train_batches=cfg_exp.opt.get("limit_train_batches", 1.0),
+        limit_train_batches=limit_train_batches,
         limit_val_batches=cfg_exp.opt.get("limit_val_batches", 1.0),
         accumulate_grad_batches=cfg_exp.opt.accumulate_grad_batches,
         num_sanity_val_steps=cfg_exp.opt.get("num_sanity_val_steps", 1),
@@ -385,12 +399,14 @@ def main(cfg_exp: DictConfig) -> None:
     # Dataloader creation
     # ==============================================================================
 
-    # Define epoch as a fixed number of steps (not full dataset traversal)
-    # This ensures predictable epoch timing and clean checkpoint boundaries
-    steps_per_epoch = cfg_exp.opt.steps_per_epoch
+    # n_examples_per_epoch is used by DistributedMixedSampler (multi-dataset case) to limit
+    # epoch length at the sampler level. For single-dataset configs, limit_train_batches
+    # (set above from steps_per_epoch) handles epoch limiting instead.
     batch_size = cfg_exp.dataloaders.train.dataloader_params.batch_size
     n_examples_per_epoch = steps_per_epoch * batch_size * trainer.world_size * cfg_exp.opt.accumulate_grad_batches
-    logger.info(f"Epoch = {steps_per_epoch} steps = {n_examples_per_epoch} examples")
+    logger.info(
+        f"Epoch = {steps_per_epoch} steps = {n_examples_per_epoch} examples (limit_train_batches={limit_train_batches})"
+    )
 
     logger.info(f"Creating train dataloader (rank={trainer.global_rank}, world_size={trainer.world_size})...")
     train_loader = assemble_distributed_loader(

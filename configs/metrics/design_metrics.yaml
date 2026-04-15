@@ -45,14 +45,8 @@ posebusters_metrics:
   atom_array_input_key: predicted_atom_array
   required_tags_any: ["small_molecule_only"]  # Only run for small molecule validation
 
-mace_energy:
-  _target_: proteinfoundation.metrics.mace_energy_metric.MACEEnergyMetric
-  model_path: null  # Uses MACE_MODEL_PATH env var
-  max_chain_atoms: 300
-  hydrogen_policy: infer  # "infer" to add H with hydride
-  device: cuda
-  split_by_metals: true
-  required_tags_any: ["small_molecule_only"]  # Only run for small molecule validation
+chiral_accuracy:
+  _target_: rf3.metrics.chiral.ChiralAccuracy
 
 internal_coord_adherence:
   _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric

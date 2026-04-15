@@ -64,7 +64,7 @@ def wrap_dataset_and_sampler_with_fallbacks(
     # Instantiate a new fallback sampler to avoid scaling issues
     fallback_sampler = LazyWeightedRandomSampler(
         weights=sampler_to_fallback_to.weights
-        if "weights" in sampler_to_fallback_to
+        if hasattr(sampler_to_fallback_to, "weights")
         else torch.ones(len(dataset_to_fallback_to)),
         num_samples=int(1e9),
         replacement=True,  # replacement for fallback dataloading, so we can draw a huge number of samples
@@ -167,9 +167,7 @@ def recursively_instantiate_datasets_and_samplers(
         concatenated_dataset = ConcatDatasetWithID(
             datasets=[info["dataset"] for info in datasets_info]
         )
-        concatenated_weights = torch.cat(
-            [info["sampler"].weights for info in datasets_info]
-        )
+        concatenated_weights = torch.cat([info["sampler"].weights for info in datasets_info])
         sampler = WeightedRandomSampler(
             weights=concatenated_weights,
             num_samples=len(concatenated_dataset),
@@ -201,8 +199,7 @@ def recursively_instantiate_datasets_and_samplers(
 
         # ... check that the sum of probabilities of all datasets is 1
         assert (
-            abs(1 - sum(dataset_info["probability"] for dataset_info in datasets_info))
-            < 1e-5
+            abs(1 - sum(dataset_info["probability"] for dataset_info in datasets_info)) < 1e-5
         ), "Sum of probabilities must be 1.0"
 
         # ... compose the list of datasets into a single dataset
@@ -260,9 +257,7 @@ def assemble_distributed_loader(
     if isinstance(sampler, MixedSampler):
         # (If given a MixedSampler, we must convert to a DistributedMixedSampler)
         assert (
-            rank is not None
-            and world_size is not None
-            and n_examples_per_epoch is not None
+            rank is not None and world_size is not None and n_examples_per_epoch is not None
         ), "Rank, world_size, and n_examples_per_epoch must be provided for MixedSampler"
         sampler = DistributedMixedSampler(
             datasets_info=sampler.datasets_info,
@@ -372,9 +367,7 @@ def assemble_val_loader_dict(
         assert (
             "dataset" in val_dataset
         ), f"Expected 'dataset' key in validation dataset config for {val_dataset_name}"
-        dataset = hydra.utils.instantiate(
-            val_dataset.dataset
-        )  # directly instantiate the dataset
+        dataset = hydra.utils.instantiate(val_dataset.dataset)  # directly instantiate the dataset
 
         if "key_to_balance" in val_dataset and val_dataset.key_to_balance:
             # (If a key is provided to balance the dataset, we will use a LoadBalancedDistributedSampler)

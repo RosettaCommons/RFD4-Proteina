@@ -8,7 +8,7 @@ output_parameterization:
 nlayers: 14  # number of transformer layers
 token_dim: 768  # dimension of the tokens in the sequence
 nheads: 12  # number of attn heads  12
-parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transofrmers)
+parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
 
 token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
 cath_emb_dim: 32 # Embedding dimension for CATH code (subsetted to CAT)
@@ -33,10 +33,10 @@ feats_seq: [
   "secondary_structure",        # Secondary structure [b, n, embed_dim]
   "hbond",                      # Hydrogen bonds [b, n, 37]
   "hotspot",                    # Hotspot annotation [b, n, 37]
-  "graph_laplacian_pe",         # Graph Laplacian PE for ligands/atomized molecules [b, n, 32]
-  "atom_charge",                # Atomic charge for atomized tokens (ligands, ions) [b, n, 1]
-  "atomic_element",             # Atomic element one-hot for atomized tokens [b, n, 128]
+  "atom_charge",                # Atomic charge embedding for atomized tokens [b, n, 16]
+  "atomic_element",             # Atomic element embedding for atomized tokens [b, n, 16]
   coord_group_seq,              # Raw coordinate group in atom37 representation [b, n, 37]
+  "chirality",                  # Block-diagonal chirality vector [b, n, 18]
 ]
 
 # Sequence features to include in conditioning variables
@@ -44,7 +44,7 @@ feats_cond_seq: [
   "time_emb_bb_ca",
   "time_emb_local_latents",
   "cath_code",                 # CATH code, subsetted to CAT [b, n, embed_dim*3]
-  ]  
+  ]
 
 # Parameters for the features we extract
 dim_cond: 256  # dimension of conditioning vector
@@ -57,7 +57,8 @@ feats_pair_repr: [
   "xt_bb_ca_pair_dists",        # Pairwise distances from noised CA [b, n, n, xt_pair_dist_dim]
   "x_sc_bb_ca_pair_dists",      # Pairwise distances from self-conditioning CA [b, n, n, x_sc_pair_dist_dim]
   "bond_mask",                  # Bond existence mask for atomized molecules [b, n, n, 1]
-  "bond_order",                 # Bond order for atomized molecules [b, n, n, 5]
+  "bond_order",                 # Kekulé bond order + coordination for atomized molecules [b, n, n, 5]
+  "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
   "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
   "chain_idx_pair",             # Binary feature indicating same chain [b, n, n, 1]
 ]

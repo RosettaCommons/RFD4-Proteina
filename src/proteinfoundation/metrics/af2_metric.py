@@ -9,8 +9,6 @@ import warnings
 from functools import cached_property
 from typing import Any
 
-import jax
-import jax.numpy as jnp
 from biotite.structure import AtomArray
 
 from foundry.metrics.metric import Metric
@@ -108,6 +106,9 @@ class AF2Metric(Metric):
                 - max_pae: Max predicted aligned error (Angstroms)
                 - ipae: Interface PAE (if multi-chain)
         """
+        import jax
+        import jax.numpy as jnp
+
         from proteinfoundation.rewards.alphafold2_reward_utils import (
             atom_array_to_sequence,
             compute_interface_pae,
@@ -195,7 +196,7 @@ class AF2Metric(Metric):
         pdb_path: str,
         target_chain: str,
         binder_chain: str,
-        binder_sequence_logits: jnp.ndarray | None = None,
+        binder_sequence_logits: "jnp.ndarray | None" = None,
         soft: float = 1.0,
         hard: float = 0.0,
         temp: float = 1.0,
@@ -224,6 +225,8 @@ class AF2Metric(Metric):
                 - 'metrics': Dict of AF2 metrics (plddt, ptm, pae, ipae, etc.)
                 - 'grad': Dict with per-metric gradients (all w.r.t. sequence logits)
         """
+        import jax.numpy as jnp
+
         from proteinfoundation.rewards.alphafold2_reward_utils import run_af2_with_gradients
 
         try:

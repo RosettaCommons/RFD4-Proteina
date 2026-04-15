@@ -1,4 +1,5 @@
 import math
+from functools import lru_cache
 from typing import Any, Literal
 
 import einops
@@ -9,9 +10,17 @@ from torch.nn import functional as F
 
 from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_CATH, RasaEnum
+from proteinfoundation.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 from proteinfoundation.utils.angle_utils import bond_angles, signed_dihedral_angle
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+@lru_cache(maxsize=128)
+def _warn_once(msg: str) -> None:
+    """Log ``msg`` at WARNING level, once per unique string per process (bounded cache)."""
+    logger.warning(msg)
+
 
 ################################
 # # Some auxiliary functions # #
@@ -738,6 +747,25 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
             return torch.zeros(b, n, self.dim, device=device)
 
 
+class ChiralitySeqFeat(Feature):
+    """Raw chirality block-diagonal feature.
+
+    Output: ``[b, n, MAX_OVERLAPPING_CENTERS * 3]``.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=MAX_OVERLAPPING_CENTERS * 3)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        if "chirality" in batch:
+            return batch["chirality"].float()
+
+        b, n = self.extract_bs_and_n(batch)
+        device = self.extract_device(batch)
+        _warn_once("No chirality in batch, returning zeros")
+        return torch.zeros(b, n, self.dim, device=device)
+
+
 class CoordGroupSeqFeat(Feature):
     """Binary feature for whether two atoms are in the same coordinate group."""
 
@@ -961,7 +989,9 @@ class SecondaryStructureSeqFeat(Feature):
         if C_SEC.full_name not in batch:
             b, n = self.extract_bs_and_n(batch)
             device = self.extract_device(batch)
-            return torch.zeros(b, n, self.dim, device=device)
+            # Dummy forward so embedding participates in DDP backward pass
+            zeros = torch.zeros(b, n, self.dim, device=device)
+            return zeros + 0.0 * self.ss_embedding.weight.sum()
 
         ss_type = batch[C_SEC.full_name].long()  # [b, n] - already token-level
 
@@ -1081,199 +1111,104 @@ class IndexGroupPairFeat(Feature):
         return idx_group_pair_feat.unsqueeze(-1).float()  # [b, n, n, 1]
 
 
-class GraphLaplacianPESeqFeat(Feature):
-    """Graph Laplacian positional encoding for atomized molecular components.
-
-    Retrieves pre-computed Laplacian eigenvector encodings from the batch.
-    These capture topological graph structure of small molecules/ligands.
-    Non-atomized tokens (e.g., polymer residues) have zero vectors.
-
-    Args:
-        graph_laplacian_pe_dim: Dimensionality of the positional encoding.
-    """
-
-    def __init__(self, graph_laplacian_pe_dim: int = 32, **kwargs):
-        super().__init__(dim=graph_laplacian_pe_dim)
-        self._has_logged = False
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        b, n = self.extract_bs_and_n(batch)
-        device = self.extract_device(batch)
-
-        # Check if pre-computed graph Laplacian PE is available (collate puts it at top level)
-        if "graph_laplacian_pe_token_level" in batch:
-            graph_lap_pe = batch["graph_laplacian_pe_token_level"]  # [b, n, pe_dim]
-
-            # Handle dimension mismatch (pad or truncate)
-            pe_dim = graph_lap_pe.shape[-1]
-            if pe_dim < self.dim:
-                padding = torch.zeros(b, n, self.dim - pe_dim, device=device, dtype=graph_lap_pe.dtype)
-                graph_lap_pe = torch.cat([graph_lap_pe, padding], dim=-1)
-            elif pe_dim > self.dim:
-                graph_lap_pe = graph_lap_pe[..., : self.dim]
-
-            return graph_lap_pe.to(device)  # [b, n, graph_laplacian_pe_dim]
-        else:
-            if not self._has_logged:
-                logger.warning(
-                    "No graph_laplacian_pe_token_level in batch, "
-                    "returning zeros for GraphLaplacianPESeqFeat. "
-                    "Ensure FeaturizeBondsAsLaplacianPositionalEncoding transform is in the pipeline."
-                )
-                self._has_logged = True
-            return torch.zeros(b, n, self.dim, device=device)
-
-
 class AtomChargeSeqFeat(Feature):
-    """Atomic charge for atomized tokens (ligands, ions) ONLY.
+    """Learned embedding for formal charge on atomized tokens.
 
-    For atomized tokens: Returns charge from first atom slot (no aggregation needed).
-    For non-atomized tokens (proteins): Returns zero.
-    Shape: [b, n, 1]
+    Formal charges are mapped to classes: -4→0, -3→1, ..., 0→4, ..., +6→10.
+    Out-of-range values are clamped. Non-atomized tokens get zeros.
 
-    Note: Atomized tokens have only ONE atom per token, so we just take slot 0.
+    The embedding table is initialized from sin/cos of actual charge values so
+    that nearby charges start with similar representations, but the weights are
+    learnable and can specialize during training.
+
+    .. note::
+       For atomized residues each atom occupies one token, and the per-atom
+       scalars (charge, element, atom-name, ...) are written into ``slot 1`` of
+       the atom37 channel by ``ConvertToAtom37Format``. Slot 0 is reserved for
+       the residue-level CA position (zero / unused for atomized tokens), so
+       reading ``batch["charge"][:, :, 1]`` is the atom37 convention for
+       fetching the per-atom value of an atomized token.
+
+    Shape: [b, n, embed_dim].
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(dim=1)
+    _CHARGE_OFFSET = 4  # maps charge -4..+6 to index 0..10
+    _NUM_CLASSES = 11
+
+    def __init__(self, charge_emb_dim: int = 16, **kwargs):
+        super().__init__(dim=charge_emb_dim)
         self._has_logged = False
+        self.embedding = torch.nn.Embedding(self._NUM_CLASSES, charge_emb_dim)
+        self._init_embedding_from_charge_values(charge_emb_dim)
+
+    def _init_embedding_from_charge_values(self, dim: int) -> None:
+        """Initialize embedding rows from sin/cos of actual charge values.
+
+        Args:
+          dim: Embedding dimension (must be even).
+        """
+        charges = torch.arange(
+            -self._CHARGE_OFFSET,
+            self._NUM_CLASSES - self._CHARGE_OFFSET,
+            dtype=torch.float32,
+        )
+        with torch.no_grad():
+            half = dim // 2
+            i = torch.arange(half, dtype=torch.float32)
+            freqs = 1.0 / (10.0 ** (2 * i / dim))
+            for idx, c in enumerate(charges):
+                self.embedding.weight[idx, 0::2] = torch.sin(c * freqs)
+                self.embedding.weight[idx, 1::2] = torch.cos(c * freqs)
 
     def forward(self, batch: dict) -> torch.Tensor:
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
 
-        # Initialize with zeros
-        charge = torch.zeros(b, n, 1, device=device, dtype=torch.float32)
-
-        # Only populate for atomized tokens (ligands, ions)
         if "charge" in batch and "is_atomized" in batch:
-            # For atomized tokens, take charge from first atom slot (slot 0)
-            # [b, n, 37] -> [b, n] (take slot 0)
-            charge_atom37 = batch["charge"].float()  # [b, n, 37]
-            is_atomized = batch["is_atomized"]  # [b, n]
-
-            # Take first slot for atomized tokens
-            charge_slot0 = charge_atom37[:, :, 0:1]  # [b, n, 1]
-
-            # Mask: only keep for atomized tokens
-            charge = torch.where(
-                is_atomized.unsqueeze(-1),  # [b, n, 1]
-                charge_slot0,
-                torch.zeros_like(charge_slot0),
-            )
-        elif "charge" not in batch and not self._has_logged:
+            charge_slot1 = batch["charge"][:, :, 1].long()  # [b, n]
+            cls_idx = (charge_slot1 + self._CHARGE_OFFSET).clamp(0, self._NUM_CLASSES - 1)
+            emb = self.embedding(cls_idx)  # [b, n, charge_emb_dim]
+            return emb * batch["is_atomized"].unsqueeze(-1)
+        if not self._has_logged:
             logger.warning("No charge in batch, returning zeros for AtomChargeSeqFeat")
             self._has_logged = True
-
-        return charge
+        # Dummy forward so embedding participates in DDP backward pass
+        zeros = torch.zeros(b, n, self.dim, device=device)
+        return zeros + 0.0 * self.embedding.weight.sum()
 
 
 class AtomicElementSeqFeat(Feature):
-    """Atomic element one-hot encoding for atomized tokens ONLY.
+    """Learned embedding for atomic element on atomized tokens.
 
-    For atomized tokens: Returns element from first atom slot (no aggregation needed).
+    For atomized tokens: Embeds element from atom37 slot 1 (atomized atoms
+    are placed in slot 1 by ConvertToAtom37Format).
     For non-atomized tokens (proteins): Returns zero vector.
-    Shape: [b, n, 128] (one-hot up to atomic number 128)
-
-    Note: Atomized tokens have only ONE atom per token, so we just take slot 0.
+    Shape: [b, n, embed_dim].
     """
 
-    def __init__(self, max_atomic_num: int = 128, **kwargs):
-        super().__init__(dim=max_atomic_num)
+    def __init__(self, max_atomic_num: int = 128, element_emb_dim: int = 16, **kwargs):
+        super().__init__(dim=element_emb_dim)
         self._has_logged = False
         self.max_atomic_num = max_atomic_num
+        self.embedding = torch.nn.Embedding(max_atomic_num, element_emb_dim)
 
     def forward(self, batch: dict) -> torch.Tensor:
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
 
-        # Initialize with zeros
-        element_one_hot = torch.zeros(b, n, self.max_atomic_num, device=device, dtype=torch.float32)
-
-        # Only populate for atomized tokens (ligands, ions)
         if "element" in batch and "is_atomized" in batch:
-            # For atomized tokens, take element from first atom slot (slot 0)
-            element_atom37 = batch["element"].long()  # [b, n, 37]
-            is_atomized = batch["is_atomized"]  # [b, n]
-
-            # Take first slot for atomized tokens
-            element_slot0 = element_atom37[:, :, 0]  # [b, n]
-
-            # Clamp to valid range and one-hot encode
-            element_slot0 = element_slot0.clamp(0, self.max_atomic_num - 1)
-            element_one_hot_all = F.one_hot(element_slot0, num_classes=self.max_atomic_num).float()  # [b, n, 128]
-
-            # Mask: only keep for atomized tokens
-            element_one_hot = element_one_hot_all * is_atomized.unsqueeze(-1)  # [b, n, 128]
-        elif "element" not in batch and not self._has_logged:
+            # Atomized tokens place their atom in slot 1
+            element_slot1 = batch["element"][:, :, 1].long()  # [b, n]
+            element_slot1 = element_slot1.clamp(0, self.max_atomic_num - 1)
+            emb = self.embedding(element_slot1)  # [b, n, embed_dim]
+            return emb * batch["is_atomized"].unsqueeze(-1)
+        if not self._has_logged:
             logger.warning("No element in batch, returning zeros for AtomicElementSeqFeat")
             self._has_logged = True
 
-        return element_one_hot
-
-
-class NhydSeqFeat(Feature):
-    """Number of hydrogens embedding for atomized tokens.
-
-    Values: 0-4 for actual hydrogen count, -1 for unspecified.
-    Unspecified (-1) is mapped to class 5.
-
-    For non-atomized tokens (proteins): Returns zero vector.
-    Note: Uses slot 1 (CA slot) for consistency with coordinate handling.
-    """
-
-    def __init__(self, embed_dim: int = 16, num_nhyd_classes: int = 6, **kwargs):
-        super().__init__(dim=embed_dim)
-        self._has_logged = False
-        self.num_nhyd_classes = num_nhyd_classes  # 0,1,2,3,4 + unknown
-        self.embedding = torch.nn.Embedding(num_nhyd_classes, embed_dim)
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        b, n = self.extract_bs_and_n(batch)
-        device = self.extract_device(batch)
-
-        # Initialize with zeros
-        nhyd_emb = torch.zeros(b, n, self.dim, device=device, dtype=torch.float32)
-
-        # Only populate for atomized tokens (ligands, ions)
-        if "nhyd" in batch and "token_type" in batch:
-            nhyd_atom37 = batch["nhyd"].long()  # [b, n, 37]
-            token_type = batch["token_type"]  # [b, n]
-            is_atomized = token_type == 3  # TokenType.ATOMIZED
-
-            # Take slot 1 (CA slot) for atomized tokens, consistent with coordinates
-            nhyd_slot1 = nhyd_atom37[:, :, 1]  # [b, n]
-
-            # Map -1 (unspecified) to class 5, others stay 0-4
-            nhyd_slot1 = torch.where(
-                nhyd_slot1 == -1,
-                torch.tensor(5, device=device, dtype=nhyd_slot1.dtype),
-                nhyd_slot1,
-            )
-
-            # Validate indices before embedding lookup
-            invalid_mask = (nhyd_slot1 < 0) | (nhyd_slot1 >= self.num_nhyd_classes)
-            if invalid_mask.any():
-                invalid_indices = torch.where(invalid_mask)
-                invalid_values = nhyd_slot1[invalid_mask]
-                example_ids = batch.get("example_id_batch", ["unknown"] * nhyd_slot1.shape[0])
-                batch_indices = invalid_indices[0].tolist()
-                raise ValueError(
-                    f"NhydSeqFeat: Invalid nhyd indices for embedding "
-                    f"(expected 0-{self.num_nhyd_classes - 1}, got values: {invalid_values.tolist()[:20]}). "
-                    f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
-                )
-
-            # Embed
-            nhyd_emb_all = self.embedding(nhyd_slot1)  # [b, n, embed_dim]
-
-            # Mask: only keep for atomized tokens
-            nhyd_emb = nhyd_emb_all * is_atomized.unsqueeze(-1)  # [b, n, embed_dim]
-        elif "nhyd" not in batch and not self._has_logged:
-            logger.warning("No nhyd in batch, returning zeros for NhydSeqFeat")
-            self._has_logged = True
-
-        return nhyd_emb
+        # Dummy forward so embedding participates in DDP backward pass
+        zeros = torch.zeros(b, n, self.dim, device=device)
+        return zeros + 0.0 * self.embedding.weight.sum()
 
 
 class ChainIdxSeqFeat(Feature):
@@ -1543,9 +1478,10 @@ class BondMaskPairFeat(Feature):
 
 
 class BondOrderPairFeat(Feature):
-    """Bond order one-hot encoding for atomized molecules.
+    """Bond order one-hot encoding for atomized molecules (Kekulé assignments).
 
-    Bond types: 0=none, 1=single, 2=double, 3=triple, 4=aromatic
+    Bond types: 0=none, 1=single, 2=double, 3=triple, 4=coordination.
+    Aromatic bonds receive their Kekulé bond order (single/double/triple).
     Non-atomized token pairs get zeros.
     Shape: [b, n, n, 5]
     """
@@ -1568,6 +1504,30 @@ class BondOrderPairFeat(Feature):
                 logger.warning("No bond_order in batch, returning zeros for BondOrderPairFeat")
                 self._has_logged = True
             return torch.zeros(b, n, n, self.num_bond_orders, device=device)
+
+
+class IsAromaticPairFeat(Feature):
+    """Binary aromaticity flag for atomized molecule bonds.
+
+    Dropout is handled upstream by :class:`DropoutAromaticFlag` transform.
+    Shape: [b, n, n, 1]
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=1)
+        self._has_logged = False
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        b, n = self.extract_bs_and_n(batch)
+        device = self.extract_device(batch)
+
+        if "is_aromatic" in batch:
+            return batch["is_aromatic"][..., None].float()  # [b, n, n, 1]
+        else:
+            if not self._has_logged:
+                logger.warning("No is_aromatic in batch, returning zeros for IsAromaticPairFeat")
+                self._has_logged = True
+            return torch.zeros(b, n, n, 1, device=device)
 
 
 class StochasticTranslationSeqFeat(Feature):
@@ -1640,9 +1600,6 @@ class FeatureFactory(torch.nn.Module):
                 - "x1_a37coors_nm": Atom37 coordinates in nanometers
                 - "x1_a37coors_nm_rel": Relative atom37 coordinates in nanometers
                 - "z_latent_seq": Latent variable sequence
-
-            Graph structure (atomized molecules):
-                - "graph_laplacian_pe": Graph Laplacian positional encoding for atomized molecules
 
         Pair features include:
             Distance features:
@@ -1756,8 +1713,6 @@ class FeatureFactory(torch.nn.Module):
                 return IndexGroupSeqFeat(**kwargs)
             elif f == "coord_group_seq":
                 return CoordGroupSeqFeat(**kwargs)
-            elif f == "graph_laplacian_pe":
-                return GraphLaplacianPESeqFeat(**kwargs)
             elif f == "cath_code":
                 return FoldEmbeddingSeqFeat(**kwargs)
 
@@ -1766,9 +1721,6 @@ class FeatureFactory(torch.nn.Module):
                 return AtomChargeSeqFeat(**kwargs)
             elif f == "atomic_element":
                 return AtomicElementSeqFeat(**kwargs)
-            elif f == "nhyd":
-                return NhydSeqFeat(**kwargs)
-
             # Conditional features (prevent leakage)
             elif f == "cond_residue_type":
                 return ConditionalResidueTypeSeqFeat(**kwargs)
@@ -1778,6 +1730,10 @@ class FeatureFactory(torch.nn.Module):
                 return ConditionalAtom37NanometersCoorsSeqFeat(rel=True, **kwargs)
             elif f == "cond_a37coors_internal_nm":
                 return ConditionalAtom37NanometersInternalCoorsSeqFeat(**kwargs)
+
+            # Chirality
+            elif f == "chirality":
+                return ChiralitySeqFeat(**kwargs)
 
             # Special/utility features
             elif f == "zero_feat_seq":
@@ -1823,6 +1779,8 @@ class FeatureFactory(torch.nn.Module):
                 return BondMaskPairFeat(**kwargs)
             elif f == "bond_order":
                 return BondOrderPairFeat(**kwargs)
+            elif f == "is_aromatic":
+                return IsAromaticPairFeat(**kwargs)
 
             else:
                 raise OSError(f"Pair feature {f} not implemented.")

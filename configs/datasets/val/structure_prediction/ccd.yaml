@@ -6,7 +6,6 @@ dataset:
   parser_args:
     add_missing_atoms: False
     sanitize_bonds_and_charges: False
-    fix_bond_types: False
     fix_ligands_at_symmetry_centers: False
 
   transform:

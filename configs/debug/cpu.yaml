@@ -28,6 +28,10 @@ opt:
   val_every_n_epochs: 1   # Validate at end of each epoch
   val_start_epoch: 0
 
+# Use math-based attention (flash/mem-efficient SDP require CUDA)
+nn:
+  attention_type: torch
+
 # Disable wandb logging
 nolog: true
 
