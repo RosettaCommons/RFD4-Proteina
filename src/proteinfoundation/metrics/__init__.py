@@ -17,6 +17,8 @@ field trained on quantum-mechanical calculations.
 - ``ChargeComplementarityMetric``: Salt bridge scoring across interfaces. Differentiable.
 - ``SoftDDGWithSaltMetric``: Combined soft ddG + charge complementarity. Differentiable.
 - ``MACEEnergyMetric``: Potential energy evaluation using MACE (ML force field). Differentiable.
+- ``QMInteractionEnergyIPA``: Pairwise ligand-residue interaction energies
+  via GFN2-xTB (In-Pocket Analysis). Requires ``IPA_PATH``.
 
 **FEP Metrics** — Alchemical free energy perturbation for binding affinity prediction.
 Require TMD (https://github.com/tmd-industries/tmd) with CUDA custom ops.
@@ -73,6 +75,16 @@ try:
     from proteinfoundation.metrics.mace_energy_metric import MACEEnergyMetric, compute_mace_energy
 
     __all__.extend(["MACEEnergyMetric", "compute_mace_energy"])
+except ImportError:
+    pass
+
+try:
+    from proteinfoundation.metrics.ipa_interaction_energy_metric import (
+        QMInteractionEnergyIPA,
+        compute_ipa_interaction_energy,
+    )
+
+    __all__.extend(["QMInteractionEnergyIPA", "compute_ipa_interaction_energy"])
 except ImportError:
     pass
 
