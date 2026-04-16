@@ -1,0 +1,55 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/8_all_data_all_tasks_from_scratch
+  - /datasets/train/pdb/pdb_pn_units@datasets.train.pdb_pn_units
+  - _self_
+
+run_name_: 26_all_data_all_tasks_new_pdb
+
+log:
+  tags: ["motif-scaffolding", "ppi", "pretrain", "afdb-monomer", "omol", "ame", "pdb", "plinder", "sm-binder"]
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.47
+    teddimore_monomers_contiguous:
+      probability: 0.0
+    omol:
+      probability: 0.13
+    afdb_dimer:
+      probability: 0.3
+    teddimore_dimers_contiguous:
+      probability: 0.0
+    pdb_interfaces:
+      probability: 0.035
+    pdb_pn_units:
+      probability: 0.03  # new
+    plinder_with_missing_atoms:
+      probability: 0.035
+
+nn:
+  feats_pair_repr:
+    - "rel_seq_sep"
+    - "xt_bb_ca_pair_dists"
+    - "x_sc_bb_ca_pair_dists"
+    - "bond_mask"
+    - "bond_order"
+    - "is_aromatic"
+    - "index_group_pair"
+    - "molecule_idx_pair"  # swapped instead of chain_idx_pair
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 6
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 8  # normally 16 but this will be faster
+
+opt:
+  num_sanity_val_steps: 0
+
+pretrain_ckpt_path: null
