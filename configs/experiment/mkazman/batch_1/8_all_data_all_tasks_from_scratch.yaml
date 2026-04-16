@@ -4,10 +4,10 @@ defaults:
   # Train datasets
   # ... distillation
   - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
-  - /datasets/train/distill/mgnify_monomer_contiguous@datasets.train.mgnify_monomer_contiguous
+  - /datasets/train/distill/teddimore_monomers_contiguous@datasets.train.teddimore_monomers_contiguous
   - /datasets/train/distill/omol@datasets.train.omol
   - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer
-  - /datasets/train/distill/mgnify_dimer_contiguous@datasets.train.mgnify_dimer_contiguous
+  - /datasets/train/distill/teddimore_dimers_contiguous@datasets.train.teddimore_dimers_contiguous
   # ... pdb
   - /datasets/train/pdb/pdb_interfaces@datasets.train.pdb_interfaces
   - /datasets/train/plinder/plinder_with_missing_atoms@datasets.train.plinder_with_missing_atoms
@@ -90,7 +90,7 @@ datasets:
       dataset:
         transform:
           design_tasks: ${_tip_atom_design_tasks}
-    mgnify_monomer_contiguous:
+    teddimore_monomers_contiguous:
       probability: 0.25
       dataset:
         transform:
@@ -122,7 +122,7 @@ datasets:
       dataset:
         transform:
           design_tasks: ${_ppi_motif_scaffold_design_tasks}
-    mgnify_dimer_contiguous:
+    teddimore_dimers_contiguous:
       probability: 0.15
       dataset:
         transform:
@@ -159,7 +159,6 @@ hardware:
 
 dataloaders:
   batch_size: 16
-
 
 # Pre-training checkpoint to start from (optional)
 pretrain_ckpt_path: null

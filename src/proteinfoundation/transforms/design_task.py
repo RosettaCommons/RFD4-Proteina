@@ -68,7 +68,7 @@ RFD3_DESIGN_TASK_DEFAULTS = {
     "rasa_kwargs": {
         "p_add_rasa_condition": 0.0,  # 0.6 in RFD3
         "probe_radius": 1.4,
-        "atom_radii": "ProtOr",
+        "atom_radii": "element",
         "point_number": 100,
         "p_include_non_ligand": 0.1,
         "rasa_max": 0.2,

@@ -7,7 +7,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: na_complex_distillation
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/transcriptionFactor_distillation_rf3.newDL.csv
+  data: ${oc.env:DATA_PATH}/train_datasets/na_complex/na_complex.csv
   columns_to_load:
     - example_id
     - path

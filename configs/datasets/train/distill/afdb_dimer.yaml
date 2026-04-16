@@ -10,8 +10,9 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: afdb_dimer_train
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/ted_dimers.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers.parquet
   loader:
+    base_path: /squash/ted_dimers
     parser_args:
       add_missing_atoms: False
       sanitize_bonds_and_charges: False

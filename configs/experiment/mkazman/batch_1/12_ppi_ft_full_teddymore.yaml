@@ -3,7 +3,7 @@
 defaults:
   # Train dataset
   - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer
-  - /datasets/train/distill/mgnify_dimer_contiguous@datasets.train.mgnify_dimer_contiguous
+  - /datasets/train/distill/teddimore_dimers_contiguous@datasets.train.teddimore_dimers_contiguous
   - /datasets/train/pdb/complexa_filtered_pdb@datasets.train.complexa_filtered_pdb
 
   # Design task presets
@@ -33,7 +33,7 @@ datasets:
       dataset:
         transform:
           design_tasks: ${_ppi_motif_scaffold_design_tasks}
-    mgnify_dimer_contiguous:
+    teddimore_dimers_contiguous:
       probability: 0.62
       dataset:
         transform:

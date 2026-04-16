@@ -4,12 +4,10 @@ dataset:
   _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/tip_atom_no_ligand_training_examples
 
-  parser_args:
+  cif_parser_args:
     add_missing_atoms: False
     sanitize_bonds_and_charges: False
-    fix_bond_types: False
     fix_ligands_at_symmetry_centers: False
-    long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
 
   num_replicates: 50  # note we don't sample different lengths for each entry
 

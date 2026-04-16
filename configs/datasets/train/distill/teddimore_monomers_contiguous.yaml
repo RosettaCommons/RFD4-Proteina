@@ -1,15 +1,15 @@
-
 defaults:
   - ../base@dataset
-  - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
   - _self_
 
 probability: 1.0  # Need this default for mixed samples
 
 dataset:
-  name: mgnify_dimer_contiguous
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/contiguous_teddimore_dimers_cluster_reps.parquet
+  name: teddimore_monomers_contiguous
+  data: ${oc.env:DATA_PATH}/train_datasets/teddimore_monomers/contiguous_teddimore_monomers.parquet
   loader:
+    base_path: /squash/teddimore_monomers
     parser_args:
       add_missing_atoms: False
       sanitize_bonds_and_charges: False

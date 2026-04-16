@@ -1,0 +1,20 @@
+# FLOWR OMol25 Dataset
+# Protein-Ligand complexes from the FLOWR.root project
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: flowr_omol25
+  data: ${oc.env:DATA_PATH}/train_datasets/flowr_omol25/flowr_omol25.parquet
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_base_loader
+    base_path: /squash/flowr_omol25
+    example_id_colname: example_id
+    assembly_id_colname: None
+
+  transform: {}

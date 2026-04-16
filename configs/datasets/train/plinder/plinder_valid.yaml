@@ -13,7 +13,7 @@ dataset:
   name: plinder_valid_train
   
   # CSV file with paths to CIF files
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/plinder_valid_dataset.csv
+  data: ${oc.env:DATA_PATH}/train_datasets/plinder_valid/plinder_valid.csv
   
   # Use PandasDataset (can read CSV files)
   # Note: CSVDataset doesn't exist in atomworks
@@ -26,7 +26,6 @@ dataset:
     parser_args:
       add_missing_atoms: True   # Add missing atoms for ligands
       sanitize_bonds_and_charges: True  # Fix charges for ligands
-      cache_dir: ${oc.env:CACHE_DIR}
       save_to_cache: True
       load_from_cache: True
   

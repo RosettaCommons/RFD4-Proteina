@@ -157,7 +157,7 @@ class RBFEPreset:
     n_windows: int
     min_overlap: float
 
-    def build_md_params(self, seed: int = 2025) -> MDParams:
+    def build_md_params(self, seed: int = 2025) -> "MDParams":
         """Construct a :class:`MDParams` instance with these preset values."""
         local_md = LocalMDParams(local_steps=390, min_radius=1.2, max_radius=3.0)
         water_sampling = WaterSamplingParams(interval=400, n_proposals=1000)
@@ -314,9 +314,9 @@ def _run_single_leg(
     mol_b: Chem.Mol,
     core: NDArray,
     leg_name: str,
-    ff: Forcefield,
+    ff: "Forcefield",
     protein_pdb: str | None,
-    md_params: MDParams,
+    md_params: "MDParams",
     n_windows: int,
     min_overlap: float,
 ) -> dict:

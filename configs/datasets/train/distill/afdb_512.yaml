@@ -10,7 +10,7 @@ probability: 1.0
 
 dataset:
   name: afdb_512
-  data: ${oc.env:DATA_PATH}/afdb_512_extracted/metadata.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/afdb_512_extracted/metadata.parquet
   memory_map: True
   columns_to_load:
     - example_id
@@ -19,7 +19,7 @@ dataset:
     - plddt
 
   loader:
-    base_path: ${oc.env:DATA_PATH}/afdb_512_extracted
+    base_path: ${oc.env:DATA_PATH}/train_datasets/afdb_512_extracted
     parser_args:
       add_missing_atoms: False
       sanitize_bonds_and_charges: False

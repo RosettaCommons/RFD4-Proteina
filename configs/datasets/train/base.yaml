@@ -16,6 +16,7 @@ loader:
     add_bond_types_from_struct_conn: ["covale", "metalc"]
     long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
     hydrogen_policy: "remove"
+    cache_dir: ${oc.env:CACHE_DIR}  # Used with either save_to_cache and load_from_cache
 
 transform:  # Some default transform args
   _target_: proteinfoundation.datapipes.pipeline.build_design_train_pipeline

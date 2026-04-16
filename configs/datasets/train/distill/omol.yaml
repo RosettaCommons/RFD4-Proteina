@@ -20,10 +20,12 @@ dataset:
     - lmdb_idx
     - data_id
     - num_atoms
+    # - passes_stereo_chemical_validation
 
   filters:
     - "data_id not in ['community/trans1x', 'reactivity/rgd', 'reactivity/RGD_radical', 'reactivity/pmechdb', 'reactivity/rmechdb', 'metal_complexes/reactivity', 'elytes/reactivity']"
     - "num_atoms <= 256"
+    # - "passes_stereo_chemical_validation == True"
 
   # LmdbDataset accepts ``parser_args`` directly and builds its own cif_bytes_loader.
   # TODO: Drop this ``loader: null`` workaround once datasets/train/base.yaml

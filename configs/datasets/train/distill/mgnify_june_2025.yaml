@@ -7,7 +7,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: mgnify_june_2025
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_distillation_big.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/latent_train_parquet_files/mgnify_distillation_big.parquet
   columns_to_load:
     - example_id
     - path
@@ -19,6 +19,3 @@ dataset:
 
   filters:
     - "ptm > 0.75"
-
-  transform:
-    b_factor_occupancy_min: 0.7  # Any token with atom plddt < 70 will not be lossed
