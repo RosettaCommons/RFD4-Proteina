@@ -1,0 +1,15 @@
+ipa_interaction_energy:
+  _target_: proteinfoundation.metrics.ipa_interaction_energy_metric.QMInteractionEnergyIPA
+  ipa_path: null  # Uses IPA_PATH env var
+  protonation: rdkit
+  distance: 5.0
+  alpha: 1.0
+  kappa: 0.025
+  use_ip_structure: true
+  use_ip_residues: true
+  tautomerise: false
+  eval_only: false
+  skip_if_no_ligand: true
+  no_solvation: false
+  required_tags_any:
+    - small_molecule_only
