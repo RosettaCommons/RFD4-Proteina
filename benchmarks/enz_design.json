@@ -1,0 +1,65 @@
+{
+    "lenacap_partial_sc": {
+        "input": "enz_design_cifs/lenacap_partial_sc.cif",
+        "ligand": "lpr",
+        "unindex": "A514,A531,A574,A579-581",
+        "length": "100-200",
+        "select_fixed_atoms": {
+            "A514": "NE2,CE1,ND1,CD2,CG,CB",
+            "A531": "OD1,CG,OD2,CB",
+            "A574": "NE2,CD,OE1,CG",
+            "A579": "C,O,CA,N",
+            "A580": "SG,CB,CA,N,C,O",
+            "A581": "C,O,CA,N",
+            "lpr": "ALL"
+        },
+        "redesign_motif_sidechains": false
+    },
+    "rubisco_ts_tip_atoms": {
+        "input": "enz_design_cifs/rubisco_ts_tip_atoms.cif",
+        "ligand": "T:S,MG,H:H,K:X",
+        "unindex": "A175,A177,A201,A203,A204,A294,A334",
+        "length": "150-350",
+        "select_fixed_atoms": {
+            "A175": "TIP",
+            "A177": "TIP",
+            "A201": "TIP",
+            "A203": "TIP",
+            "A204": "TIP",
+            "A294": "TIP",
+            "A334": "TIP"
+        },
+        "select_unfixed_sequence": "A203,A204",
+        "select_buried": {
+            "T:S": "C,C1,C2,C3,C4,C5,O1,O2,O3,O4,O5,O6,O7,O1P,O2P,O3P,O4P,O5P,O6P,P1,P2",
+            "MG": "MG",
+            "H:H": "O"
+        },
+        "select_hbond_acceptor": {
+            "T:S": "O1P,O2P,O3P,O4P,O5P,O6P,O5,O4"
+        },
+        "select_hbond_donor": {
+            "T:S": "O4"
+        },
+        "redesign_motif_sidechains": false
+    },
+    "rubisco_crystal_full_sc": {
+        "input": "enz_design_cifs/rubisco_crystal_full_sc.cif",
+        "ligand": "CAP,MG,HOH",
+        "unindex": "A175,A177,A201,A203,A204,A294,A334",
+        "length": "150-350",
+        "select_fixed_atoms": {
+            "A175": "ALL",
+            "A177": "ALL",
+            "A201": "ALL",
+            "A203": "ALL",
+            "A204": "ALL",
+            "A294": "ALL",
+            "A334": "ALL",
+            "CAP": "ALL",
+            "MG": "ALL",
+            "HOH": "ALL"
+        },
+        "redesign_motif_sidechains": false
+    }
+}
