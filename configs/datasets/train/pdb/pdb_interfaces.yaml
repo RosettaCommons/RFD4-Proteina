@@ -27,7 +27,7 @@ dataset:
 
   # Filters for PDB interfaces dataset
   filters:
-    - "deposition_date < '2021-09-30'"
+    - "deposition_date < '2024-01-01'"
     - "resolution < 9.0"
     - "num_polymer_pn_units <= 30"
     - "cluster.notnull()"

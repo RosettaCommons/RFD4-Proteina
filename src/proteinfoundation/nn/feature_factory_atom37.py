@@ -1452,6 +1452,18 @@ class ChainIdxPairFeat(Feature):
         return mask
 
 
+class MoleculeIdxPairFeat(Feature):
+    """Binary feature for whether two tokens belong to the same molecule instance."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=1)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        molecule_iid = batch["molecule_iid"].long()  # [b, n]
+        same_molecule = molecule_iid[:, :, None] == molecule_iid[:, None, :]  # [b, n, n] boolean
+        return same_molecule.unsqueeze(-1).float()  # [b, n, n, 1]
+
+
 class BondMaskPairFeat(Feature):
     """Binary bond existence mask for atomized molecules.
 
@@ -1771,6 +1783,8 @@ class FeatureFactory(torch.nn.Module):
             # Chain and indexing features
             elif f == "chain_idx_pair":
                 return ChainIdxPairFeat(**kwargs)
+            elif f == "molecule_idx_pair":
+                return MoleculeIdxPairFeat(**kwargs)
             elif f == "index_group_pair":
                 return IndexGroupPairFeat(**kwargs)
 

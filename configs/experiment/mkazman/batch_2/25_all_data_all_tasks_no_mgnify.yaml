@@ -1,0 +1,35 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_1/8_all_data_all_tasks_from_scratch
+  - _self_
+
+run_name_: 25_all_data_all_tasks_no_mgnify
+
+log:
+  tags: ["motif-scaffolding", "ppi", "pretrain", "afdb-monomer", "omol", "ame", "pdb", "plinder", "sm-binder"]
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.5  # was 0.25
+    teddimore_monomers_contiguous:
+      probability: 0.0  # was 0.25
+    omol:
+      probability: 0.13  # same
+    afdb_dimer:
+      probability: 0.3  # increased from 0.15
+    teddimore_dimer_contiguous:
+      probability: 0.0  # was 0.15
+    pdb_interfaces:
+      probability: 0.035  # same
+    plinder_with_missing_atoms:
+      probability: 0.035  # same
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+pretrain_ckpt_path: null
