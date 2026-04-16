@@ -1,0 +1,24 @@
+# =============================================================================
+# CoreWeave - Personal Settings
+# =============================================================================
+# User-specific settings only. All shared cluster config (data paths, container
+# images, squashfs mounts, etc.) lives in .ipd/.env.coreweave instead.
+#
+# Copy this file:
+#   cp .user_info_coreweave.example .user_info_coreweave
+# Then edit with your personal settings.
+# =============================================================================
+
+CLUSTER_TYPE="coreweave"
+SKIP_ACCOUNT="true"
+USER="${USER:-your_username}"
+ACCOUNT=""
+ROOT_REMOTE="/path/to/home"
+
+# Slurm
+PARTITION="hpc-high,hpc-mid"
+RUNTIME="0"
+SIGNAL_TIME=600
+
+# WandB (get your key from https://wandb.ai/authorize)
+WANDBKEY="your_wandb_api_key_here"

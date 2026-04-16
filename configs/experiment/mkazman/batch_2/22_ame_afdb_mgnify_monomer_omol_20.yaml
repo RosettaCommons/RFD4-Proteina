@@ -13,7 +13,7 @@ datasets:
       probability: 0.4
     omol:
       probability: 0.2
-    mgnify_monomer_contiguous:
+    teddimore_monomers_contiguous:
       probability: 0.4
 
 # Coreweave

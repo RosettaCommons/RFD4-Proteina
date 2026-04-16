@@ -1,0 +1,188 @@
+# @package _global_
+# All data + all tasks including FLOWR protein-ligand datasets
+# Based on 8_all_data_all_tasks_from_scratch but adds FLOWR datasets
+# with plinder-style ligand design tasks
+
+defaults:
+  # Train datasets -- distillation (monomers + small molecules)
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/teddimore_monomers_contiguous@datasets.train.teddimore_monomers
+  - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
+  - /datasets/train/distill/omol@datasets.train.omol_small_molecules
+  # Train datasets -- distillation (dimers/PPI)
+  - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
+  - /datasets/train/distill/teddimore_dimers_contiguous@datasets.train.teddimore_dimers
+  # Train datasets -- PDB
+  - /datasets/train/pdb/pdb_interfaces@datasets.train.pdb_interfaces
+  # Train datasets -- FLOWR protein-ligand
+  - /datasets/train/flowr/flowr_spindr@datasets.train.flowr_spindr
+  # - /datasets/train/flowr/flowr_sair@datasets.train.flowr_sair
+  - /datasets/train/flowr/flowr_plinder@datasets.train.flowr_plinder
+  - /datasets/train/flowr/flowr_crossdocked2020@datasets.train.flowr_crossdocked2020
+  # - /datasets/train/flowr/flowr_bindingmoad@datasets.train.flowr_bindingmoad
+  - /datasets/train/flowr/flowr_bindingnet_high@datasets.train.flowr_bindingnet_high
+  - /datasets/train/flowr/flowr_bindingnet_mid@datasets.train.flowr_bindingnet_mid
+  - /datasets/train/flowr/flowr_bindingnet_low@datasets.train.flowr_bindingnet_low
+
+  # Validation datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_subset@datasets.val.indexed_motif_scaffold_subset
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_subset@datasets.val.unindexed_motif_scaffold_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
+  - /datasets/val/rasa_IAI@datasets.val.rasa_IAI
+  - /datasets/val/ppi_subset@datasets.val.ppi_subset
+
+  # Design task presets
+  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
+  - /design_tasks/presets/plinder_tasks@_plinder_ligand_design_tasks
+  - /design_tasks/presets/ppi_motif_scaffold@_ppi_motif_scaffold_design_tasks
+
+  - _self_
+
+run_name_: all_data_all_tasks_with_flowr
+
+# Add rasa and hbond conditioning to the plinder/flowr ligand design tasks
+_plinder_ligand_design_tasks:
+  unconditional:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  folding:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  inverse_folding:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  tip_atom_pocket:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  tip_atom_partial_ligand:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+  partial_ligand:
+    transform:
+      global_design_task_kwargs:
+        rasa_kwargs:
+          p_add_rasa_condition: 0.15
+        hbond_kwargs:
+          p_add_hbond_condition: 0.15
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    # --- Protein monomer datasets (40% total) ---
+    afdb_monomer:
+      probability: 0.24
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    teddimore_monomers:
+      probability: 0.10
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    mgnify_dec_2025:
+      probability: 0.15
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    omol_small_molecules:
+      probability: 0.05
+
+    # --- PPI / dimer datasets (25% total) ---
+    ted_dimers:
+      probability: 0.08
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+    teddimore_dimers:
+      probability: 0.08
+      dataset:
+        transform:
+          design_tasks: ${_ppi_motif_scaffold_design_tasks}
+
+    # --- PDB ---
+    pdb_interfaces:
+      probability: 0.11
+    
+    # --- FLOWR protein-ligand datasets (30% total) ---
+    # Experimental co-crystal (higher fidelity)
+    flowr_spindr:
+      probability: 0.02
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+    # flowr_bindingmoad:  # TODO: Missing b_factor annotation causing issues with atom_array_plus indexing in UnindexFlaggedTokens
+    #   probability: 0.03
+    #   dataset:
+    #     transform:
+    #       design_tasks: ${_plinder_ligand_design_tasks}
+    flowr_plinder:
+      probability: 0.04
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+    # Computational (lower fidelity, larger scale)
+    # flowr_sair:  # TODO: Broken - there are a lot of missing cif files
+    #   probability: 0.06
+    #   dataset:
+    #     transform:
+    #       design_tasks: ${_plinder_ligand_design_tasks}
+    flowr_crossdocked2020:
+      probability: 0.03
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+    flowr_bindingnet_high:
+      probability: 0.04
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+    flowr_bindingnet_mid:
+      probability: 0.03
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+    flowr_bindingnet_low:
+      probability: 0.03
+      dataset:
+        transform:
+          design_tasks: ${_plinder_ligand_design_tasks}
+
+log:
+  tags: ["motif-scaffolding", "ppi", "pretrain", "afdb-monomer", "omol", "ame", "pdb", "plinder", "sm-binder", "flowr", "protein-ligand"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 4
+  ncpus_per_task_train_: 16
+
+dataloaders:
+  batch_size: 16
+
+opt:
+  num_sanity_val_steps: 0
+
+pretrain_ckpt_path: null

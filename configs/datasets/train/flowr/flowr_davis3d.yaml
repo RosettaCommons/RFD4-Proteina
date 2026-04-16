@@ -1,0 +1,21 @@
+# FLOWR DAVIS-3D Dataset
+# Protein-Ligand complexes from the FLOWR.root project
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: flowr_davis3d
+  data: ${oc.env:DATA_PATH}/train_datasets/flowr_davis3d/flowr_davis3d.parquet
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_base_loader
+    base_path: /squash/flowr_davis3d
+    example_id_colname: example_id
+    assembly_id_colname: None
+    path_colname: file_path
+
+  transform: {}

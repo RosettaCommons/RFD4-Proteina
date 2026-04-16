@@ -4,7 +4,7 @@ defaults:
   - /experiment/mkazman/batch_1/4_ame_afdb_omol_30
 
   # Add teddimonomer
-  - /datasets/train/distill/mgnify_monomer_contiguous@datasets.train.mgnify_monomer_contiguous
+  - /datasets/train/distill/teddimore_monomers_contiguous@datasets.train.teddimore_monomers_contiguous
 
   - _self_
 
@@ -16,7 +16,7 @@ datasets:
       probability: 0.45
     omol:
       probability: 0.1
-    mgnify_monomer_contiguous:
+    teddimore_monomers_contiguous:
       probability: 0.45
       dataset:
         transform:

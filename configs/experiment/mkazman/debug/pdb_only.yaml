@@ -1,0 +1,49 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... protein distillation
+  - /datasets/train/pdb/pdb_interfaces@datasets.train.pdb_interfaces
+  - /datasets/train/pdb/pdb_pn_units@datasets.train.pdb_pn_units
+
+  # Validation datasets
+  # ... unconditional
+  # - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/unconditional@datasets.val.unconditional
+
+
+  - _self_
+
+run_name_: motif_scaffold_tiny_debug
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    pdb_interfaces:
+      probability: 0.5
+    pdb_pn_units:
+      probability: 0.5
+  val:
+    unconditional:
+      dataset:
+        num_replicates: 1  # so it goes fast
+    
+log:
+  tags: ["motif-scaffolding", "pretrain", "baseline", "debug"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+dataloaders:
+  batch_size: 4
+
+opt:
+  num_sanity_val_steps: 0
+
+# nolog: true
+# single: true
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path: null

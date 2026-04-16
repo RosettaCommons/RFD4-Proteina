@@ -18,7 +18,7 @@ datasets:
               max_residues: 16
             tip_atom_pocket:
               max_tip_atoms: 30
-    mgnify_monomer_contiguous:
+    teddimore_monomers_contiguous:
       dataset:
         transform:
           design_tasks:

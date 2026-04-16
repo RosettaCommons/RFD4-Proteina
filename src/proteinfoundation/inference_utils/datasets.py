@@ -226,7 +226,6 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
         sanitize_bonds_and_charges=False,
         convert_mse_to_met=False,
         hydrogen_policy="remove",
-        long_bond_policy="keep",
     )
 
     result_dict = parse_atom_array(atom_array_orig, config=prepare_config)

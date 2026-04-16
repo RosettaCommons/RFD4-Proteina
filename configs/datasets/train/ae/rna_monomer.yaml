@@ -10,7 +10,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: rna_monomer_ae
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/rna_distillation_filtered_df.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
   columns_to_load:
     - example_id
     - path

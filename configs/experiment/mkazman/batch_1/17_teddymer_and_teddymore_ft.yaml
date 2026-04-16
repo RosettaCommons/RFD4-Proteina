@@ -2,7 +2,7 @@
 
 defaults:
   - /experiment/mkazman/batch_1/16_teddymer_only_ft
-  - /datasets/train/distill/mgnify_dimer_contiguous@datasets.train.mgnify_dimer_contiguous
+  - /datasets/train/distill/teddimore_dimers_contiguous@datasets.train.teddimore_dimers_contiguous
   - _self_
 
 
@@ -18,7 +18,7 @@ datasets:
       dataset:
         transform:
           design_tasks: ${_ppi_motif_scaffold_design_tasks}
-    mgnify_dimer_contiguous:
+    teddimore_dimers_contiguous:
       probability: 0.78
       dataset:
         transform:

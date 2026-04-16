@@ -10,18 +10,20 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: pdb_interfaces_train
+  data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_interfaces.parquet
   memory_map: True
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/interfaces_df_train_with_cath.parquet
   loader:
     _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units
+    base_path: /squash/pdb
     pn_unit_iid_colnames: ["pn_unit_1_iid", "pn_unit_2_iid"]
     example_id_colname: example_id
     assembly_id_colname: assembly_id
+    altloc_seed_colname: null  # normally we would want this but this version already has altlocs in separate files so we don't need to load them now
     parser_args:
       add_missing_atoms: True
       save_to_cache: True
       load_from_cache: True
-      fix_formal_charges: True
+      sanitize_bonds_and_charges: True
 
   # Filters for PDB interfaces dataset
   filters:
@@ -38,6 +40,7 @@ dataset:
     - example_id
     - pdb_id
     - assembly_id
+    - altloc_seed
     - path
     - deposition_date
     - resolution
@@ -63,3 +66,15 @@ dataset:
 
   # Transform pipeline
   transform: {}  # Force merge behavior from base and design_tasks
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
+  cluster_column: cluster
+  altloc_seed_column: altloc_seed
+  pdb_id_column: pdb_id
+  beta: 1.0  # 0.5 for pn_units
+  alphas:
+    a_prot: 3.0 # 3 for AF-3
+    a_nuc: 3.0 # 3 for AF-3
+    a_ligand: 1.0 # 1 for AF-3
+    a_loi: 5.0 # 5 for AF-3

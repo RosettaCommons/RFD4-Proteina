@@ -8,7 +8,7 @@ defaults:
 dataset:
   _target_: proteinfoundation.datapipes.mock_datamodule.MockAtomworksDataset
   name: mock_atomworks
-  data: ${oc.env:DATA_PATH}/dummy_batches/proteina_mgnify_batch.pkl
+  data: ${oc.env:DATA_PATH}/train_datasets/dummy_batches/proteina_mgnify_batch.pkl
   num_samples: 1600
 
   # Transform pipeline (simple for debugging)

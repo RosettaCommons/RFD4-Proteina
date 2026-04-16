@@ -11,8 +11,9 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: afdb_monomer_256
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/afdb_256_proteina.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_monomer_256.parquet
   loader:
+    base_path: /squash/afdb_monomer
     parser_args:
       add_missing_atoms: False
       sanitize_bonds_and_charges: False
