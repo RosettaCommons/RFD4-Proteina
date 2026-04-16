@@ -13,10 +13,16 @@ dependencies = [
     "scikit-learn",
     # Validation metrics
     "posebusters",
-    "mace-torch==0.3.14",
+    "mace-torch>=0.3.15",
 ]
 
 [project.optional-dependencies]
+metrics = [
+    "hydride>=1.2",
+    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
+    "cuequivariance-torch",
+    "cuequivariance-ops-torch-cu12",
+]
 dev = [
     # Linters & formatters
     "ruff==0.8.3",
