@@ -85,6 +85,10 @@ class RankedLogger(logging.LoggerAdapter):
             args: Additional args to pass to the underlying logging function.
             kwargs: Any additional keyword args to pass to the underlying logging function.
         """
+        # No-op under torch.compile: stateful logging (and the handler I/O it
+        # triggers) causes graph breaks and recompiles.
+        if torch.compiler.is_compiling():
+            return
         if self.isEnabledFor(level):
             msg, kwargs = self.process(msg, kwargs)
             current_rank = getattr(rank_zero_only, "rank", None)

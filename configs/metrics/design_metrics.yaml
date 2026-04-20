@@ -47,6 +47,7 @@ posebusters_metrics:
 
 chiral_accuracy:
   _target_: rf3.metrics.chiral.ChiralAccuracy
+  required_tags_any: ["small_molecule_only"]
 
 internal_coord_adherence:
   _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric

@@ -173,11 +173,13 @@ def batch_dataclass_recursive(instances: list) -> Any:
 
     # Base case 4: Dicts - merge and batch each key
     elif isinstance(first, dict):
-        # Get all keys across all instances
+        # Sort keys so batched dict has deterministic insertion order; set
+        # iteration would make torch.compile recompile on order shifts.
         all_keys = set()
         for instance in instances:
             all_keys.update(instance.keys())
-        
+        all_keys = sorted(all_keys)
+
         batched_dict = {}
         for key in all_keys:
             # Collect values for this key from all instances

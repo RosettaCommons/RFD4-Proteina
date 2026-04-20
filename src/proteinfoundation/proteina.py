@@ -346,6 +346,10 @@ class Proteina(L.LightningModule):
         Also, if we want to recycle clean sample predictions... Then we'd need this here,
         as the nn does not know about relations between v, x1, ...
         """
+        # Always populate x_recycle for torch compile stability
+        if "x_recycle" not in batch:
+            batch["x_recycle"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
+
         # First call
         nn_out = self.nn(batch)
 
