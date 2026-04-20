@@ -141,6 +141,18 @@ class ProteinaDataSample(DataSample):
 
             padded[name] = F.pad(t, pad, value=pv) if any(p > 0 for p in pad) else t
 
+        # Zero-fill missing SPECS keys so every batch has the same dict schema
+        # (one torch.compile graph instead of N).
+        for name in sorted(SPECS.keys()):
+            if name in padded:
+                continue
+            dtype, default_val, dim_str = SPECS[name]
+            shape = tuple(
+                int(d) if d.isdigit() else max_lengths.get(d, 0)
+                for d in dim_str.split()
+            )
+            padded[name] = torch.full(shape, default_val, dtype=dtype)
+
         return ProteinaDataSample(
             example_id=self.example_id,
             tensors=padded,

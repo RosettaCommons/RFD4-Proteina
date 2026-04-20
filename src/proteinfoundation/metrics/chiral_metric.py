@@ -68,6 +68,12 @@ def compute_chiral_metrics(
     pred_coords = np.asarray(predicted_atom_array_stack.coord)
     gt_coords = np.asarray(gt.coord)
 
+    if pred_coords.shape[1] != len(gt):
+        raise ValueError(
+            f"ChiralAccuracy: predicted atom array has {pred_coords.shape[1]} atoms but "
+            f"ground-truth atom array has {len(gt)} atoms. Cannot match atoms to compute chirality."
+        )
+
     splits = {
         "tetrahedral": [cc for cc in chiral_centers if cc["geometry"] == "tetrahedral"],
         "non_tetrahedral": [cc for cc in chiral_centers if cc["geometry"] != "tetrahedral"],

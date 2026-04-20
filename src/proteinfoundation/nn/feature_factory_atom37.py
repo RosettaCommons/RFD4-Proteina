@@ -543,20 +543,21 @@ class ConditionalResidueTypeSeqFeat(Feature):
             rtype = rtype * seq_cond_mask  # [b, n]
 
             # Validate indices before embedding lookup
-            invalid_mask = (rtype < 0) | (rtype >= self.num_classes)
-            if invalid_mask.any():
-                invalid_indices = torch.where(invalid_mask)
-                invalid_values = rtype[invalid_mask]
-                example_ids = batch.get("example_id_batch", ["unknown"] * rtype.shape[0])
-                batch_indices = invalid_indices[0].tolist()
-                token_indices = invalid_indices[1].tolist()
-                raise ValueError(
-                    f"ConditionalResidueTypeSeqFeat: Invalid residue type indices for embedding "
-                    f"(expected 0-{self.num_classes - 1}, got values: {invalid_values.tolist()}). "
-                    f"Batch indices: {batch_indices[:10]}{'...' if len(batch_indices) > 10 else ''}, "
-                    f"Token indices: {token_indices[:10]}{'...' if len(token_indices) > 10 else ''}, "
-                    f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
-                )
+            if not torch.compiler.is_compiling():
+                invalid_mask = (rtype < 0) | (rtype >= self.num_classes)
+                if invalid_mask.any():
+                    invalid_indices = torch.where(invalid_mask)
+                    invalid_values = rtype[invalid_mask]
+                    example_ids = batch.get("example_id_batch", ["unknown"] * rtype.shape[0])
+                    batch_indices = invalid_indices[0].tolist()
+                    token_indices = invalid_indices[1].tolist()
+                    raise ValueError(
+                        f"ConditionalResidueTypeSeqFeat: Invalid residue type indices for embedding "
+                        f"(expected 0-{self.num_classes - 1}, got values: {invalid_values.tolist()}). "
+                        f"Batch indices: {batch_indices[:10]}{'...' if len(batch_indices) > 10 else ''}, "
+                        f"Token indices: {token_indices[:10]}{'...' if len(token_indices) > 10 else ''}, "
+                        f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
+                    )
 
             # Use embedding layer (acts like one-hot if initialized as identity)
             rtype_embedded = self.embedding(rtype)  # [b, n, num_classes]
@@ -600,17 +601,18 @@ class TokenTypeSeqFeat(Feature):
         token_type = batch["token_type"]  # [b, n] integers 0-4
 
         # Validate indices before embedding lookup
-        invalid_mask = (token_type < 0) | (token_type >= 5)
-        if invalid_mask.any():
-            invalid_indices = torch.where(invalid_mask)
-            invalid_values = token_type[invalid_mask]
-            example_ids = batch.get("example_id_batch", ["unknown"] * token_type.shape[0])
-            batch_indices = invalid_indices[0].tolist()
-            raise ValueError(
-                f"TokenTypeSeqFeat: Invalid token_type indices for embedding "
-                f"(expected 0-4, got values: {invalid_values.tolist()[:20]}). "
-                f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
-            )
+        if not torch.compiler.is_compiling():
+            invalid_mask = (token_type < 0) | (token_type >= 5)
+            if invalid_mask.any():
+                invalid_indices = torch.where(invalid_mask)
+                invalid_values = token_type[invalid_mask]
+                example_ids = batch.get("example_id_batch", ["unknown"] * token_type.shape[0])
+                batch_indices = invalid_indices[0].tolist()
+                raise ValueError(
+                    f"TokenTypeSeqFeat: Invalid token_type indices for embedding "
+                    f"(expected 0-4, got values: {invalid_values.tolist()[:20]}). "
+                    f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
+                )
 
         return self.embedding(token_type)  # [b, n, token_type_emb_dim]
 
@@ -996,17 +998,18 @@ class SecondaryStructureSeqFeat(Feature):
         ss_type = batch[C_SEC.full_name].long()  # [b, n] - already token-level
 
         # Validate indices before embedding lookup
-        invalid_mask = (ss_type < 0) | (ss_type >= 4)
-        if invalid_mask.any():
-            invalid_indices = torch.where(invalid_mask)
-            invalid_values = ss_type[invalid_mask]
-            example_ids = batch.get("example_id_batch", ["unknown"] * ss_type.shape[0])
-            batch_indices = invalid_indices[0].tolist()
-            raise ValueError(
-                f"SecondaryStructureSeqFeat: Invalid ss_type indices for embedding "
-                f"(expected 0-3, got values: {invalid_values.tolist()[:20]}). "
-                f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
-            )
+        if not torch.compiler.is_compiling():
+            invalid_mask = (ss_type < 0) | (ss_type >= 4)
+            if invalid_mask.any():
+                invalid_indices = torch.where(invalid_mask)
+                invalid_values = ss_type[invalid_mask]
+                example_ids = batch.get("example_id_batch", ["unknown"] * ss_type.shape[0])
+                batch_indices = invalid_indices[0].tolist()
+                raise ValueError(
+                    f"SecondaryStructureSeqFeat: Invalid ss_type indices for embedding "
+                    f"(expected 0-3, got values: {invalid_values.tolist()[:20]}). "
+                    f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
+                )
 
         return self.ss_embedding(ss_type)  # [b, n, embed_dim]
 
@@ -1079,13 +1082,14 @@ class IndexGroupSeqFeat(Feature):
 
         idx_group = batch[C_IDXGRP.full_name].long().clone()  # [b, n] - already token-level
         idx_group = idx_group + 1  # Shift by 1, since padding positions are -1
-        if idx_group.max() >= self.max_groups:
-            raise ValueError(
-                f"IndexGroupSeqFeat: C_IDXGRP has value {idx_group.max().item()}, "
-                f"maximum is {self.max_groups - 1}. "
-                f"If {self.max_groups - 1} index groups is limiting, "
-                f"the max_groups parameter will need to be increased."
-            )
+        if not torch.compiler.is_compiling():
+            if idx_group.max() >= self.max_groups:
+                raise ValueError(
+                    f"IndexGroupSeqFeat: C_IDXGRP has value {idx_group.max().item()}, "
+                    f"maximum is {self.max_groups - 1}. "
+                    f"If {self.max_groups - 1} index groups is limiting, "
+                    f"the max_groups parameter will need to be increased."
+                )
 
         # Assign a random value to the non-padding index groups, to avoid the model learning spurious correlations
         permuted_index_groups = torch.randperm(self.max_groups, device=idx_group.device)
