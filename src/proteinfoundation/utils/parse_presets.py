@@ -49,9 +49,16 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
     fix_arginines=False,
     sanitize_bonds_and_charges=False,
     convert_mse_to_met=False,
+    altloc="first",  # AFDB / TED distillation files are PDB format; PDB doesn't support 'random_clash_aware'
 )
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 
-# Dict forms for use in Hydra YAML configs via ``${resolve_import:...}``
-RCSB_WITH_METALS_ARGS: dict = RCSB_WITH_METALS.to_dict()
-DISTILLATION_ARGS: dict = DISTILLATION.to_dict()
+
+def rcsb_with_metals(**overrides) -> dict:
+    """``RCSB_WITH_METALS`` as a parser_args dict, with optional kwarg overrides."""
+    return RCSB_WITH_METALS.replace(**overrides).to_dict()
+
+
+def distillation(**overrides) -> dict:
+    """``DISTILLATION`` as a parser_args dict, with optional kwarg overrides."""
+    return DISTILLATION.replace(**overrides).to_dict()

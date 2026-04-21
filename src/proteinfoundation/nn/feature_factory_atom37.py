@@ -1082,14 +1082,13 @@ class IndexGroupSeqFeat(Feature):
 
         idx_group = batch[C_IDXGRP.full_name].long().clone()  # [b, n] - already token-level
         idx_group = idx_group + 1  # Shift by 1, since padding positions are -1
-        if not torch.compiler.is_compiling():
-            if idx_group.max() >= self.max_groups:
-                raise ValueError(
-                    f"IndexGroupSeqFeat: C_IDXGRP has value {idx_group.max().item()}, "
-                    f"maximum is {self.max_groups - 1}. "
-                    f"If {self.max_groups - 1} index groups is limiting, "
-                    f"the max_groups parameter will need to be increased."
-                )
+        if not torch.compiler.is_compiling() and idx_group.max() >= self.max_groups:
+            raise ValueError(
+                f"IndexGroupSeqFeat: C_IDXGRP has value {idx_group.max().item()}, "
+                f"maximum is {self.max_groups - 1}. "
+                f"If {self.max_groups - 1} index groups is limiting, "
+                f"the max_groups parameter will need to be increased."
+            )
 
         # Assign a random value to the non-padding index groups, to avoid the model learning spurious correlations
         permuted_index_groups = torch.randperm(self.max_groups, device=idx_group.device)

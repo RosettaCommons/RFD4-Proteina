@@ -3,7 +3,7 @@
 # Uses system.cif files mounted from squashfs at /squash/plinder_missing_atoms
 
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
   - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
   - _self_
 
@@ -16,16 +16,16 @@ dataset:
   data: ${oc.env:DATA_PATH}/train_datasets/plinder_missing_atoms/plinder_missing_atoms.csv
   
   loader:
-    base_path: /squash/plinder_missing_atoms
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/plinder_missing_atoms
     _target_: atomworks.ml.datasets.loaders.create_base_loader
     example_id_colname: example_id
     path_colname: path
     assembly_id_colname: None
     parser_args:
-      add_missing_atoms: True
-      sanitize_bonds_and_charges: True
+      _target_: proteinfoundation.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
+      cache_dir: ${oc.env:CACHE_DIR}/plinder_with_missing_atoms
   
   columns_to_load:
     - example_id

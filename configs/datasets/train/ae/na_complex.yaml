@@ -1,12 +1,9 @@
-# NA Complex Dataset - Protein-DNA/RNA complexes for autoencoder training
-# Uses transcription factor structures
+# NA Complex Dataset - Protein-DNA/RNA complexes (transcription factors)
+# for autoencoder training.
 
 defaults:
-  - ../base@dataset
-  - /design_tasks/default@dataset.transform.design_tasks
+  - base
   - _self_
-
-probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: na_complex_ae
@@ -14,39 +11,3 @@ dataset:
   columns_to_load:
     - example_id
     - path
-  loader:
-    parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
-
-  # Transform pipeline
-  transform:
-    crop_size: 384
-    # Override task frequencies for NA complex (unconditional only for autoencoder)
-    design_tasks:
-      unconditional:
-        frequency: 1
-      folding:
-        frequency: 0.0
-      inverse_folding:
-        frequency: 0.0
-      motif_scaffold:
-        frequency: 0.0
-      # Disable all other tasks by setting frequency to 0
-      random_atom_distance:
-        frequency: 0.0
-      tip_atom:
-        frequency: 0.0
-      tip_atom_distance:
-        frequency: 0.0
-      tip_atom_partial_ligand:
-        frequency: 0.0
-      tip_atom_partial_ligand_distance:
-        frequency: 0.0
-      motif_scaffold_2d:
-        frequency: 0.0
-      ppi_hotspot_with_internal_coord_target_motif:
-        frequency: 0.0
-      ppi_hotspot_with_3d_target:
-        frequency: 0.0
-

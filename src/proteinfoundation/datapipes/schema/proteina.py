@@ -147,10 +147,7 @@ class ProteinaDataSample(DataSample):
             if name in padded:
                 continue
             dtype, default_val, dim_str = SPECS[name]
-            shape = tuple(
-                int(d) if d.isdigit() else max_lengths.get(d, 0)
-                for d in dim_str.split()
-            )
+            shape = tuple(int(d) if d.isdigit() else max_lengths.get(d, 0) for d in dim_str.split())
             padded[name] = torch.full(shape, default_val, dtype=dtype)
 
         return ProteinaDataSample(

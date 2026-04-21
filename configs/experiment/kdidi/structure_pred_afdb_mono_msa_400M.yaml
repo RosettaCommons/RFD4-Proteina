@@ -48,5 +48,5 @@ nn:
 hydra:
   job:
     env_set:
-      PROTEIN_MSA_DIRS: "/squash/msa_mgnify"
+      PROTEIN_MSA_DIRS: "${oc.env:SQUASH_MOUNT_PATH,/squash}/msa_mgnify"
       RNA_MSA_DIRS: ""

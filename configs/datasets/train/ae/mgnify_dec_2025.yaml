@@ -1,12 +1,8 @@
-# MGnify Dec 2025 Dataset - Autoencoder training (unconditional only)
-# Uses newer MGnify structures for diverse protein structures
+# MGnify Dec 2025 Dataset - Autoencoder training on MGnify structures.
 
 defaults:
-  - ../base@dataset
-  - /design_tasks/default@dataset.transform.design_tasks
+  - base
   - _self_
-
-probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: mgnify_dec_2025_ae
@@ -17,44 +13,9 @@ dataset:
     - ptm
 
   loader:
-    # Parquet has relative paths; base_path is prepended to resolve them
-    # Full dataset is in .sqfs mounted at /squash/mgnify_dec_2025 inside container
-    base_path: /squash/mgnify_dec_2025
-    parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
+    # Parquet has relative paths; base_path is prepended to resolve them.
+    # Full dataset is in .sqfs mounted at /squash/mgnify_dec_2025 inside container.
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/mgnify_dec_2025
 
-  # We use filters of ptm > 0.75 for new-RF3 distillation
   filters:
     - "ptm > 0.75"
-
-  # Transform pipeline
-  transform:
-    crop_size: 384
-    # Override task frequencies for autoencoder (unconditional only)
-    design_tasks:
-      unconditional:
-        frequency: 1
-      folding:
-        frequency: 0.0
-      inverse_folding:
-        frequency: 0.0
-      motif_scaffold:
-        frequency: 0.0
-      # Disable all other tasks by setting frequency to 0
-      random_atom_distance:
-        frequency: 0.0
-      tip_atom:
-        frequency: 0.0
-      tip_atom_distance:
-        frequency: 0.0
-      tip_atom_partial_ligand:
-        frequency: 0.0
-      tip_atom_partial_ligand_distance:
-        frequency: 0.0
-      motif_scaffold_2d:
-        frequency: 0.0
-      ppi_hotspot_with_internal_coord_target_motif:
-        frequency: 0.0
-      ppi_hotspot_with_3d_target:
-        frequency: 0.0

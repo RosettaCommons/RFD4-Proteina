@@ -1,5 +1,6 @@
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
+  - af3_weighted_sampling
   - /design_tasks/presets/tip_atom_pocket_tasks@dataset.transform.design_tasks
   - _self_
 
@@ -12,28 +13,29 @@ dataset:
 
   loader:
     _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units
-    base_path: /squash/pdb
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/pdb
     pn_unit_iid_colnames: ["q_pn_unit_iid"]
     example_id_colname: example_id
     assembly_id_colname: assembly_id
     altloc_seed_colname: null  # normally we would want this but this version already has altlocs in separate files so we don't need to load them now
     parser_args:
-      add_missing_atoms: True
+      _target_: proteinfoundation.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
-      sanitize_bonds_and_charges: True
+      cache_dir: ${oc.env:CACHE_DIR}/pdb
 
   filters:
     # filters common across all PDB datasets
     - "deposition_date < '2024-01-01'"
     - "resolution < 9.0"
-    - "num_polymer_pn_units <= 300"
+    - "num_polymer_pn_units <= 30"
     - "cluster.notnull()"
     - "pdb_id not in ${resolve_import:atomworks.ml.preprocessing.constants,PDB_IDS_WITH_UNPHYSICAL_BONDS}"
     # pn_unit specific filters
     - "~(q_pn_unit_non_polymer_res_names.notnull() and q_pn_unit_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
-    # closest chains filter (use within_20_closest_chains or within_50_closest_chains)
-    # - "within_20_closest_chains"  # TODO: Where did this go?
+    - "n_nuc == 0"  # exclude pn_units in assemblies containing nucleic acids
+    # Re-enable once we have the within_{20,50}_closest_chains column in the PDB parquet.
+    # - "within_20_closest_chains"
 
   columns_to_load:
     # columns common across all PDB datasets
@@ -65,13 +67,4 @@ dataset:
   transform: {}  # Force merge behavior from base and design_tasks
 
 weights:
-  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
-  cluster_column: cluster
-  altloc_seed_column: altloc_seed
-  pdb_id_column: pdb_id
-  beta: 0.5
-  alphas:
-    a_prot: 3.0 # 3 for AF-3
-    a_nuc: 3.0 # 3 for AF-3
-    a_ligand: 1.0 # 1 for AF-3
-    a_loi: 5.0 # 5 for AF-3
+  beta: 0.5  # AF-3 pn_units beta (interfaces uses 1.0)

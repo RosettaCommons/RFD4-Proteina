@@ -2,7 +2,7 @@
 # Uses pickled batch for quick iteration and debugging
 
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
   - _self_
 
 dataset:

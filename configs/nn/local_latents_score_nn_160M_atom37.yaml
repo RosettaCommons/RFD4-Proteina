@@ -60,7 +60,7 @@ feats_pair_repr: [
   "bond_order",                 # Kekulé bond order + coordination for atomized molecules [b, n, n, 5]
   "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
   "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
-  "chain_idx_pair",             # Binary feature indicating same chain [b, n, n, 1]
+  "molecule_idx_pair",          # Binary feature indicating same molecule instance [b, n, n, 1]
 ]
 feats_pair_cond: ["time_emb_bb_ca", "time_emb_local_latents"]  # Features to include in the pair representation conditioning
 

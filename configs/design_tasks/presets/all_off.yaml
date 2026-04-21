@@ -1,6 +1,11 @@
-# All design tasks defined but with frequency: 0
-# Use this to selectively enable tasks by overriding frequencies
-
+# Canonical catalogue of every design task at frequency: 0.0.
+# Other presets inherit from this (via ``defaults: [all_off, _self_]``) and
+# override only the tasks they enable — their file bodies become small
+# "diff" lists of non-zero frequencies rather than exhaustive re-declarations.
+#
+# Adding a new design task: add it here (with full default kwargs), then
+# any preset can opt in with just ``<task_name>: {frequency: <n>}``.
+#
 # NOTE: All distance tasks are disabled for now as we cannot provide distance information to the model yet.
 
 unconditional:
@@ -66,7 +71,7 @@ tip_atom_partial_ligand:
     n_max_ligands: 3
     n_hops_expected_ligand: 5
     n_max_residues: 8
-    n_hops_expected_tip_atom: 3
+    n_hops_expected_tip_atom: 1
     p_seq_conditioned: 1.0
     p_knockout_seq: 0.0
     p_merge_unindexed_groups: 0.1
@@ -139,10 +144,7 @@ ppi_hotspot_with_internal_coord_target_motif:
     motif_distance_knockout_p: 0.95
     min_dropout_2d_dist: 0.5
     max_dropout_2d_dist: 0.9
-    crop_size: ${....crop_size}  # grab crop_size from current dataset config
-    crop_center_cutoff_distance: 15.0
-    max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
-    ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+    ppi_crop_binder_fraction: 0.667
     p_sample_ppi_crop: 0.75
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
@@ -159,9 +161,44 @@ ppi_hotspot_with_3d_target:
     min_dropout_2d_dist: 0.5
     max_dropout_2d_dist: 0.9
     jitter_sigma: 5.0
-    crop_size: ${....crop_size}  # grab crop_size from current dataset config
-    max_atoms_in_crop: ${eval:"${.crop_size} * 10"}
-    crop_center_cutoff_distance: 15.0
-    ppi_crop_max_binder_length: ${eval:"int(${.crop_size} * 0.667)"}
+    ppi_crop_binder_fraction: 0.667
     p_sample_ppi_crop: 0.75
+    bb_only_coord_conditioning: False
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+tip_atom_pocket:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.TipAtomActiveSiteTask
+    tip_atom_rasa_threshold: 0.2
+    min_tip_atoms: 2
+    max_tip_atoms: 15
+    p_seq_conditioned: 1.0
+    p_knockout_seq: 0.0
+    p_unindex_all: 0.5
+    p_unindex_any: 0.05
+    p_merge_unindexed_groups: 0.1
+    p_split_unindexed_groups: 0.01
+    p_increase_group_id_gap: 0.1
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+motif_scaffold_proteina_ame:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.MotifScaffoldProteinaTask
+    atom_selection_mode: ame
+    residue_selection_mode: absolute_number
+    motif_min_n_res: 2
+    motif_max_n_res: 8
+    unindex_mode: simple
+    p_unindex_motif: 1.0
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+partial_ligand:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+    min_coverage_fraction: 0.0
+    max_coverage_fraction: 1.0
+    p_fix_ligand_surroundings: 0.0
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
