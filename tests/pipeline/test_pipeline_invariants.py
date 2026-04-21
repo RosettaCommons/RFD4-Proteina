@@ -71,6 +71,11 @@ GLOBAL_DESIGN_TASK_KWARGS = {
     "rasa_kwargs": {"p_add_rasa_condition": 0.0},
     "hbond_kwargs": {"p_add_hbond_condition": 0.0},
     "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
+    "cath_kwargs": {
+        "p_add_cath_c_condition": 0.0,
+        "p_add_cath_ca_condition": 0.0,
+        "p_add_cath_cat_condition": 0.0,
+    },
 }
 
 
@@ -85,8 +90,8 @@ DESIGN_TASKS = {
     },
     "motif_scaffold": {
         "transform": MotifScaffoldTask(
-            min_motif_size=5,
-            max_motif_size=20,
+            min_tokens_per_motif=5,
+            max_tokens_per_motif=20,
             global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
         ),
         "frequency": 1.0,
@@ -136,8 +141,7 @@ def parse_and_run_pipeline(
             design_tasks=design_tasks,
             is_inference=False,
             p_random_rotation=0.0,  # Disable rotation for deterministic testing
-            # TODO: Re-enable small chance of atomization once invariants support it
-            p_atomize_residues=0.0,  # Small chance to atomize for testing
+            p_atomize_residues=0.1,  # Small chance to atomize for testing
         )
 
         # Run pipeline

@@ -34,12 +34,14 @@ from proteinfoundation.nn.modules.adaptive_ln_scale import (
 # Large negative value for masking (not -inf to avoid gradient issues)
 NEG_INF = -1e4
 
-# Try to import cuequivariance for fused attention
+# Try to import cuequivariance for fused attention; import the ops module explicitly since the
+# torch wrapper can import even when the compiled extension (e.g., libnvrtc.so) fails to load.
 try:
+    import cuequivariance_ops_torch  # noqa: F401
     from cuequivariance_torch import attention_pair_bias as cuet_attention_pair_bias
 
     CUET_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     CUET_AVAILABLE = False
     cuet_attention_pair_bias = None
 

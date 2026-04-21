@@ -23,9 +23,17 @@ import pytest
 IPA_PATH = os.environ.get("IPA_PATH")
 MCL1_DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "benchmarks", "mcl1_rbfe")
 
+
+def _ipa_binary_available() -> bool:
+    if IPA_PATH is None:
+        return False
+    exe = os.path.join(IPA_PATH, "gfn2xtb_in_pocket_opt.exe")
+    return os.path.isfile(exe) and os.access(exe, os.X_OK)
+
+
 pytestmark = pytest.mark.skipif(
-    IPA_PATH is None,
-    reason="IPA_PATH environment variable not set",
+    not _ipa_binary_available(),
+    reason="IPA not installed: set IPA_PATH and compile gfn2xtb_in_pocket_opt.exe",
 )
 
 # Golden values from IPA's tests/axitinib_analysis/ (neutral tautomer).
@@ -55,13 +63,6 @@ AXITINIB_PER_RESIDUE_GOLDEN = {
 }
 
 
-def _has_compiled_binaries() -> bool:
-    if IPA_PATH is None:
-        return False
-    exe = os.path.join(IPA_PATH, "gfn2xtb_in_pocket_opt.exe")
-    return os.path.isfile(exe) and os.access(exe, os.X_OK)
-
-
 def _has_test_structure() -> bool:
     if IPA_PATH is None:
         return False
@@ -84,8 +85,6 @@ def axitinib_complex():
     Only chain B is kept (4WA9 is a dimer; the golden reference uses
     ``--chain B``).
     """
-    if not _has_compiled_binaries():
-        pytest.skip("IPA binaries not compiled (run `python install.py` in IPA_PATH)")
     if not _has_test_structure():
         pytest.skip("4WA9.cif not found in IPA_PATH/tests/")
 

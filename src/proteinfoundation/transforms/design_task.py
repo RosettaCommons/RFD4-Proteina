@@ -1976,9 +1976,9 @@ class MotifScaffold2DDistTask(MotifScaffoldTask):
 
         # Sample the regions to be unindexed using an island mask
         if true_with_prob(self.p_unindex_any):
-            unindexed_mask, _ = self.sample_unindexed_mask(
-                atom_array, is_eligible_annotation_name=C_DIS.get_mask_name(n_body=1)
-            )
+            unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
+            if "atomize" in atom_array.get_annotation_categories():
+                unindexed_mask &= ~atom_array.atomize
             C_IDX.set_mask(atom_array, ~unindexed_mask)
         else:
             C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))

@@ -375,6 +375,10 @@ _AE_CKPT_PATH = os.environ.get(
 )
 
 
+@pytest.mark.skipif(
+    not os.path.exists(os.path.join(_CKPT_PATH, _CKPT_NAME)),
+    reason=f"Checkpoint not available: {os.path.join(_CKPT_PATH, _CKPT_NAME)} (set CKPT_PATH/CKPT_NAME to override)",
+)
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures.
 
