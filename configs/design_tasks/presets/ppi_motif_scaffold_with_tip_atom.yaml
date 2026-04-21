@@ -1,0 +1,15 @@
+# PPI + motif scaffold + tip-atom mix for datasets with ligands at interfaces
+# (e.g. pdb_interfaces). tip_atom_partial_ligand-dominant.
+
+defaults:
+  - all_off
+  - _self_
+
+unconditional:              {frequency: 10.0}
+folding:                    {frequency: 5.0}
+inverse_folding:            {frequency: 5.0}
+motif_scaffold:             {frequency: 10.0}
+tip_atom_partial_ligand:    {frequency: 120.0}
+tip_atom:                   {frequency: 20.0}
+tip_atom_pocket:            {frequency: 30.0}
+ppi_hotspot_with_3d_target: {frequency: 50.0}

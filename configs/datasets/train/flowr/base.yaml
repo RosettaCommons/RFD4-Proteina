@@ -1,0 +1,14 @@
+# Shared base for FLOWR.root protein-ligand training datasets.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  loader:
+    parser_args:
+      _target_: proteinfoundation.utils.parse_presets.rcsb_with_metals
+  transform: {}

@@ -1,33 +1,10 @@
-# AFDB Monomer training with MotifScaffoldProteinaTask
-# 80% motif (AME with 90% unindexed), 10% unconditional, 5% folding, 5% inverse folding
+# Proteina-style motif pretraining: motif_scaffold_proteina_ame-dominant mix.
 
-unconditional:
-  frequency: 10.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+defaults:
+  - all_off
+  - _self_
 
-folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-inverse_folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-# AME motif scaffolding (active site motif elements) - 80% of training
-motif_scaffold_proteina_ame:
-  frequency: 80.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.MotifScaffoldProteinaTask
-    atom_selection_mode: ame
-    residue_selection_mode: absolute_number
-    motif_min_n_res: 2
-    motif_max_n_res: 8
-    unindex_mode: simple
-    p_unindex_motif: 1.0
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+unconditional:              {frequency: 10.0}
+folding:                    {frequency: 5.0}
+inverse_folding:            {frequency: 5.0}
+motif_scaffold_proteina_ame: {frequency: 80.0}

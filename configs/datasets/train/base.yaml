@@ -1,29 +1,15 @@
-# Default transform arguments for training datasets
+# Transform pipeline defaults shared by every training dataset, regardless of backend.
 
-_target_: atomworks.ml.datasets.PandasDataset
-name: ???
-data: ???
 id_column: example_id
 
-loader:
-  _target_: atomworks.ml.datasets.loaders.create_base_loader
-  example_id_colname: example_id
-  path_colname: path
-  assembly_id_colname: None
-  parser_args:
-    add_missing_atoms: False  # Default for distillation
-    sanitize_bonds_and_charges: False  # Default for distillation (cannot sanitize without adding missing atoms)
-    add_bond_types_from_struct_conn: ["covale", "metalc"]
-    long_bond_policy: "keep"  # "keep," "raise," "warn," or "filter"
-    hydrogen_policy: "remove"
-    cache_dir: ${oc.env:CACHE_DIR}  # Used with either save_to_cache and load_from_cache
-
-transform:  # Some default transform args
+transform:
+  # Default transform args applied to all training datasets
   _target_: proteinfoundation.datapipes.pipeline.build_design_train_pipeline
   crop_size: 256
   crop_contiguous_probability: 0.0
   crop_spatial_probability: 1.0
   crop_center_cutoff_distance: 15.0
+  max_atoms_in_crop: 10000
   b_factor_occupancy_min: null  # Change for distillation sets where you want to not loss low confidence residues
   p_random_rotation: 1.0
   load_msa: False

@@ -1,20 +1,9 @@
-# Unconditional pretraining: 90% unconditional, 5% folding, 5% inverse folding
+# Unconditional pretraining: 90% unconditional, 5% folding, 5% inverse folding.
 
-unconditional:
-  frequency: 90.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+defaults:
+  - all_off
+  - _self_
 
-folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-inverse_folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
+unconditional:    {frequency: 90.0}
+folding:          {frequency: 5.0}
+inverse_folding:  {frequency: 5.0}

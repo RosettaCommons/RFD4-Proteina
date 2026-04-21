@@ -1,5 +1,5 @@
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
   - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
   - _self_
 
@@ -9,9 +9,8 @@ dataset:
   name: teddimore_monomers_contiguous
   data: ${oc.env:DATA_PATH}/train_datasets/teddimore_monomers/contiguous_teddimore_monomers.parquet
   loader:
-    base_path: /squash/teddimore_monomers
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/teddimore_monomers
     parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
+      _target_: proteinfoundation.utils.parse_presets.distillation
   transform:
     b_factor_occupancy_min: null  # 0.7  # Any token with atom plddt < 70 will not be lossed

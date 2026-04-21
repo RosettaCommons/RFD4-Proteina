@@ -1,6 +1,6 @@
 
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
   - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
   - _self_
 
@@ -10,9 +10,8 @@ dataset:
   name: teddimore_dimers_contiguous
   data: ${oc.env:DATA_PATH}/train_datasets/teddimore_dimers/contiguous_teddimore_dimers.parquet
   loader:
-    base_path: /squash/teddimore_dimers
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/teddimore_dimers
     parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
+      _target_: proteinfoundation.utils.parse_presets.distillation
   transform:
     b_factor_occupancy_min: null  # 0.7  # Any token with atom plddt < 70 will not be lossed

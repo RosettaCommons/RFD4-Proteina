@@ -1,21 +1,11 @@
-# FLOWR BindingNet-Mid Dataset
-# Protein-Ligand complexes from the FLOWR.root project
+# FLOWR BindingNet-Mid Dataset - Protein-Ligand complexes from the FLOWR.root project.
 
 defaults:
-  - ../base@dataset
-  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - base
   - _self_
-
-probability: 1.0
 
 dataset:
   name: flowr_bindingnet_mid
   data: ${oc.env:DATA_PATH}/train_datasets/flowr_bindingnet_mid/flowr_bindingnet_mid.parquet
   loader:
-    _target_: atomworks.ml.datasets.loaders.create_base_loader
-    base_path: /squash/flowr_bindingnet_mid
-    example_id_colname: example_id
-    assembly_id_colname: None
-    path_colname: file_path
-
-  transform: {}
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_bindingnet_mid

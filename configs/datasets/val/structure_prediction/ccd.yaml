@@ -3,10 +3,8 @@ compute_loss: true
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/ccd
-  cif_parser_args:
-    add_missing_atoms: False
-    sanitize_bonds_and_charges: False
-    fix_ligands_at_symmetry_centers: False
+  parser_args:
+    _target_: proteinfoundation.utils.parse_presets.distillation
 
   transform:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline

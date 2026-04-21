@@ -1,0 +1,13 @@
+# Shared base for autoencoder training datasets.
+# Leaf AE configs should inherit this and only set dataset-specific fields.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/unconditional@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  transform:
+    crop_size: 384

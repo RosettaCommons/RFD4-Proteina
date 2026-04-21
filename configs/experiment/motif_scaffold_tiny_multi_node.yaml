@@ -3,8 +3,7 @@
 defaults:
   # Train datasets
   # ... protein distillation
-  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
-  - /datasets/train/distill/mgnify_june_2025@datasets.train.mgnify_june_2025  # TODO: Kieran only has june 2025 on lustre for now
+  - /datasets/train/distill/afdb_monomer_512@datasets.train.afdb_monomer
 
   # Validation datasets
   # ... unconditional
@@ -20,9 +19,7 @@ run_name_: motif_scaffold_tiny_debug_multi_node
 datasets:
   train:
     afdb_monomer:
-      probability: 0.5
-    mgnify_june_2025:
-      probability: 0.5
+      probability: 1.0
   val:
     unconditional:
       dataset:

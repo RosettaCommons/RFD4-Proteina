@@ -2,7 +2,8 @@
 # Uses PDB interfaces with atomworks processing for PPI training
 
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
+  - af3_weighted_sampling
   - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
   - _self_
 
@@ -14,16 +15,16 @@ dataset:
   memory_map: True
   loader:
     _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units
-    base_path: /squash/pdb
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/pdb
     pn_unit_iid_colnames: ["pn_unit_1_iid", "pn_unit_2_iid"]
     example_id_colname: example_id
     assembly_id_colname: assembly_id
     altloc_seed_colname: null  # normally we would want this but this version already has altlocs in separate files so we don't need to load them now
     parser_args:
-      add_missing_atoms: True
+      _target_: proteinfoundation.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
-      sanitize_bonds_and_charges: True
+      cache_dir: ${oc.env:CACHE_DIR}/pdb
 
   # Filters for PDB interfaces dataset
   filters:
@@ -34,6 +35,7 @@ dataset:
     - "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
     - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
     - "is_inter_molecule"
+    - "n_nuc == 0"  # exclude interfaces in assemblies containing nucleic acids
 
   # Columns to load from parquet
   columns_to_load:
@@ -68,13 +70,4 @@ dataset:
   transform: {}  # Force merge behavior from base and design_tasks
 
 weights:
-  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
-  cluster_column: cluster
-  altloc_seed_column: altloc_seed
-  pdb_id_column: pdb_id
-  beta: 1.0  # 0.5 for pn_units
-  alphas:
-    a_prot: 3.0 # 3 for AF-3
-    a_nuc: 3.0 # 3 for AF-3
-    a_ligand: 1.0 # 1 for AF-3
-    a_loi: 5.0 # 5 for AF-3
+  beta: 1.0  # AF-3 interfaces beta (pn_units uses 0.5)

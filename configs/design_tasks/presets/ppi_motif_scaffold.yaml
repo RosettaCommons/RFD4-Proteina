@@ -1,56 +1,11 @@
-# AFDB Monomer training with MotifScaffoldProteinaTask
-# 80% motif (AME with 90% unindexed), 10% unconditional, 5% folding, 5% inverse folding
+# PPI + motif scaffold: ppi_hotspot_with_3d_target-dominant mix.
 
-unconditional:
-  frequency: 10.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+defaults:
+  - all_off
+  - _self_
 
-folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-inverse_folding:
-  frequency: 5.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-motif_scaffold:
-  frequency: 10.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
-    min_tokens_per_motif: 1
-    max_tokens_per_motif: 50
-    min_coverage_fraction: 0.05
-    max_coverage_fraction: 1.0
-    max_unindexed_tokens: 50
-    p_unindex_any: 0.5
-    p_merge_unindexed_groups: 0.1
-    p_split_unindexed_groups: 0.01
-    p_increase_group_id_gap: 0.1
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-ppi_hotspot_with_3d_target:
-  frequency: 70.0
-  transform:
-    _target_: proteinfoundation.transforms.design_task.PPIHotspotWith3DTarget
-    hotspot_count_distribution: geometric
-    hotspot_geometric_p: 0.2
-    max_hotspots_frac_to_provide: 0.1
-    p_no_hotspots: 0.05
-    hotspot_max_distance: 4.5
-    motif_distance_knockout_p: 0.95
-    min_dropout_2d_dist: 0.5
-    max_dropout_2d_dist: 0.9
-    jitter_sigma: 5.0
-    crop_size: 256
-    max_atoms_in_crop: 2560
-    crop_center_cutoff_distance: 15.0
-    ppi_crop_max_binder_length: 171
-    p_sample_ppi_crop: 0.75
-    bb_only_coord_conditioning: False
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+unconditional:              {frequency: 10.0}
+folding:                    {frequency: 5.0}
+inverse_folding:            {frequency: 5.0}
+motif_scaffold:             {frequency: 10.0}
+ppi_hotspot_with_3d_target: {frequency: 70.0}

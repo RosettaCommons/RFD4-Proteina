@@ -1,7 +1,7 @@
 # Trains on floating alanines to debug the model's adherence to 2d conditioning
 
 defaults:
-  - ../base@dataset
+  - ../base_pandas@dataset
   - _self_
   
 # Datasets:

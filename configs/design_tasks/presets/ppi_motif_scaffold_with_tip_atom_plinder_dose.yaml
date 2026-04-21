@@ -1,0 +1,41 @@
+# ppi_motif_scaffold_with_tip_atom task mix with plinder-style rasa/hbond
+# conditioning dose (0.15 / 0.15) applied to every task.
+
+defaults:
+  - all_off
+  - _self_
+
+unconditional:
+  frequency: 10.0
+  transform:
+    global_design_task_kwargs: &dose
+      rasa_kwargs:  {p_add_rasa_condition: 0.15}
+      hbond_kwargs: {p_add_hbond_condition: 0.15}
+
+folding:
+  frequency: 5.0
+  transform: {global_design_task_kwargs: *dose}
+
+inverse_folding:
+  frequency: 5.0
+  transform: {global_design_task_kwargs: *dose}
+
+motif_scaffold:
+  frequency: 10.0
+  transform: {global_design_task_kwargs: *dose}
+
+tip_atom_partial_ligand:
+  frequency: 120.0
+  transform: {global_design_task_kwargs: *dose}
+
+tip_atom:
+  frequency: 20.0
+  transform: {global_design_task_kwargs: *dose}
+
+tip_atom_pocket:
+  frequency: 30.0
+  transform: {global_design_task_kwargs: *dose}
+
+ppi_hotspot_with_3d_target:
+  frequency: 50.0
+  transform: {global_design_task_kwargs: *dose}

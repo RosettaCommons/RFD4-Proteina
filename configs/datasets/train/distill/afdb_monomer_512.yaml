@@ -1,15 +1,15 @@
-# AFDB 512 Distillation Dataset
-# Uses extracted AFDB structures with relative paths from metadata parquet.
+# AFDB Monomer 512 Distillation Dataset
+# AFDB single-chain structures pre-filtered to <= 512 residues.
 
 defaults:
-  - ../base@dataset
-  - /design_tasks/presets/unconditional_heavy@dataset.transform.design_tasks
+  - ../base_pandas@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
   - _self_
 
 probability: 1.0
 
 dataset:
-  name: afdb_512
+  name: afdb_monomer_512
   data: ${oc.env:DATA_PATH}/train_datasets/afdb_512_extracted/metadata.parquet
   memory_map: True
   columns_to_load:
@@ -17,12 +17,7 @@ dataset:
     - path
     - length
     - plddt
-
   loader:
     base_path: ${oc.env:DATA_PATH}/train_datasets/afdb_512_extracted
-    parser_args:
-      add_missing_atoms: False
-      sanitize_bonds_and_charges: False
-
   transform:
     crop_size: 512
