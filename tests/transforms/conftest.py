@@ -15,7 +15,7 @@ cif_parser_args = STANDARD_PARSER_ARGS | {
 # ============================== Meta-fixtures ==============================
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def atom_array_fixture(request):
     """Meta-fixture that returns the requested fixture by name.
 
@@ -33,7 +33,7 @@ def atom_array_fixture(request):
 # ============================== Fixtures ==============================
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def simple_protein():
     """Simple single-chain protein structure.
 
@@ -44,7 +44,7 @@ def simple_protein():
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def protein_with_non_canonical_aa():
     """Protein structure with non-canonical amino acids.
 
@@ -56,7 +56,7 @@ def protein_with_non_canonical_aa():
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def protein_with_ligand():
     """Protein structure with bound ligand."""
     data = cached_parse("1mbo", **cif_parser_args)
@@ -64,7 +64,7 @@ def protein_with_ligand():
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def protein_protein_interface():
     """Two-chain protein interface for PPI tasks.
 
@@ -76,14 +76,14 @@ def protein_protein_interface():
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def simple_dna():
     """Simple single-chain DNA structure."""
     data = cached_parse("1bna", **cif_parser_args)
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def simple_rna():
     """Simple single-chain RNA structure."""
     data = cached_parse("1ehz", **cif_parser_args)
@@ -91,7 +91,7 @@ def simple_rna():
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def simple_ligand(protein_with_ligand):
     """Simple single-chain ligand structure (HEME)."""
     data = protein_with_ligand.copy()
@@ -100,7 +100,7 @@ def simple_ligand(protein_with_ligand):
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def complex_protein(protein_with_non_canonical_aa, simple_dna, simple_rna, simple_ligand):
     """Complex protein structure with non-canonical amino acids, DNA, RNA, and ligand."""
 
@@ -128,7 +128,7 @@ def complex_protein(protein_with_non_canonical_aa, simple_dna, simple_rna, simpl
 # ============================== Antibody Framework Fixtures ==============================
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def simple_protein_ab(protein_protein_interface):
     """Same as simple_protein but with proper extra_info"""
     data = protein_protein_interface.copy()
@@ -152,7 +152,7 @@ def simple_protein_ab(protein_protein_interface):
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def complex_protein_ab(complex_protein):
     """Same as complex_protein but with proper extra_info"""
     data = complex_protein.copy()
@@ -179,7 +179,7 @@ def complex_protein_ab(complex_protein):
 # ============================== PPI Fixtures ==============================
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def protein_protein_interface_crop_info(protein_protein_interface):
     """Crop info for protein-protein interface."""
     data = protein_protein_interface.copy()
@@ -190,7 +190,7 @@ def protein_protein_interface_crop_info(protein_protein_interface):
     return data
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def complex_protein_crop_info(complex_protein):
     """Crop info for complex protein."""
     data = complex_protein.copy()

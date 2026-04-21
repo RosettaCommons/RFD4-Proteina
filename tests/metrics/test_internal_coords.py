@@ -47,6 +47,13 @@ def setup_two_internal_coord_groups(atom_array, apply_rotations=True):
     intcrd_mask[group1_mask | group2_mask] = True
     C_INTCRD.set_mask(atom_array, intcrd_mask)
 
+    # Populate the internal coordinate annotation with centered per-group coords (the metric substitutes ground-truth coords with this, so the default NaNs would contaminate the RMSD).
+    internal_coord_annotation = np.full((n_atoms, 3), np.nan)
+    for group_mask in (group1_mask, group2_mask):
+        group_coords = atom_array.coord[group_mask]
+        internal_coord_annotation[group_mask] = group_coords - group_coords.mean(axis=0, keepdims=True)
+    C_INTCRD.set_annotation(atom_array, internal_coord_annotation)
+
     if apply_rotations:
         # Apply different random rotations to each group (but keep them centered)
         for group_mask, _group_id in [(group1_mask, 1), (group2_mask, 2)]:
@@ -91,8 +98,8 @@ def test_internal_coord_adherence_metric(deterministic_rng, pdb_id, deviation_ty
         predicted.coord = predicted.coord + noise
     # else: no deviation, predicted is identical to ground truth
 
-    # Compute metric
-    metric = InternalCoordAdherenceMetric(metric_type="rmsd", gt_coord_annotation_name="coord")
+    # Compute metric. ``save_per_group_metrics=True`` emits the ``rmsd_coord_group_<id>`` keys.
+    metric = InternalCoordAdherenceMetric(metric_type="rmsd", save_per_group_metrics=True)
     result = metric.compute(ground_truth_atom_array_stack=atom_array, predicted_atom_array_stack=predicted)
 
     # Verify output structure

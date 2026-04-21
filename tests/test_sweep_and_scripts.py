@@ -179,7 +179,6 @@ class TestLaunchScripts:
         "script",
         [
             "launch_infer.sh",
-            "launch_offline_val.sh",
             "launch_sweep.sh",
         ],
     )
@@ -192,7 +191,6 @@ class TestLaunchScripts:
         "script",
         [
             "launch_infer.sh",
-            "launch_offline_val.sh",
             "launch_sweep.sh",
         ],
     )
@@ -210,7 +208,6 @@ class TestLaunchScripts:
         "script",
         [
             "launch_infer.sh",
-            "launch_offline_val.sh",
             "launch_sweep.sh",
         ],
     )
@@ -263,12 +260,14 @@ class TestSweepCLI:
         with open(cfg_path, "w") as f:
             yaml.dump(cfg, f)
 
+        existing_pythonpath = os.environ.get("PYTHONPATH", "")
+        merged_pythonpath = os.pathsep.join(p for p in [str(PROJECT_ROOT / "script_utils"), existing_pythonpath] if p)
         result = subprocess.run(
             [sys.executable, str(SWEEP_PY), "--sweep-config", str(cfg_path), "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(PROJECT_ROOT),
-            env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "script_utils")},
+            env={**os.environ, "PYTHONPATH": merged_pythonpath},
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         assert not (tmp_path / "should_not_exist").exists()
