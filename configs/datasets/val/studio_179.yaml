@@ -1,0 +1,13 @@
+compute_loss: true
+
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/studio_179.json
+  name: studio_179
+
+  num_replicates: 200
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - sm_binder_refolding
