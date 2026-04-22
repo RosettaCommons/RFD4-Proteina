@@ -1,0 +1,142 @@
+"""Post-crop token-budget enforcement.
+
+- ``EnforceCropBudget``: drops spatially-peripheral non-reserved tokens so
+  ``T + extra_tokens <= crop_size`` after a downstream expander runs.
+- ``plan_expansion`` callable supplies ``(extra_tokens, must_keep_atom_mask)``.
+- ``plan_unindex_expansion``: default plan for the ``UnindexFlaggedTokens`` flow.
+"""
+
+from collections.abc import Callable
+
+import biotite.structure as struc
+import numpy as np
+from atomworks.ml.conditions import C_IDX
+from atomworks.ml.transforms.base import Transform
+from atomworks.ml.transforms.crop import compute_local_hash
+from atomworks.ml.utils.token import (
+    apply_token_wise,
+    get_af3_token_center_coords,
+    get_token_count,
+    spread_token_wise,
+)
+from biotite.structure import AtomArray
+
+# (extra_tokens, must_keep_atom_mask[n_atoms])
+ExpansionPlan = tuple[int, np.ndarray]
+PlanFn = Callable[[AtomArray], ExpansionPlan]
+
+
+def plan_unindex_expansion(atom_array: AtomArray) -> ExpansionPlan:
+    """Reserve space for :py:class:`UnindexFlaggedTokens`.
+
+    - ``extra_tokens`` = residues with any ``C_IDX == False`` atom (each becomes one appended token).
+    - ``must_keep`` = the unindexed atoms themselves.
+    """
+    is_unindexed = ~C_IDX.mask(atom_array, default="generate")
+    extra_tokens = int(struc.apply_residue_wise(atom_array, is_unindexed, np.any).sum())
+    return extra_tokens, is_unindexed
+
+
+class EnforceCropBudget(Transform):
+    """Drop spatially-peripheral non-reserved tokens so ``T + extra_tokens <= crop_size``.
+
+    - ``plan_expansion(atom_array) -> (extra_tokens, must_keep_atom_mask)``.
+    - Ranks non-reserved tokens by distance to the upstream crop center (``data["crop_info"]``)
+      if present, else whole-array COM. Must-keep tokens always survive.
+    - Trims ``data["crop_info"]["crop_atom_idxs"] / ["crop_token_idxs"]`` so downstream
+      consumers see a consistent view.
+    """
+
+    def __init__(self, crop_size: int, plan_expansion: PlanFn):
+        self.crop_size = crop_size
+        self.plan_expansion = plan_expansion
+
+    def forward(self, data: dict) -> dict:
+        atom_array: AtomArray = data["atom_array"]
+        extra_tokens, must_keep_atom_mask = self.plan_expansion(atom_array)
+
+        T = get_token_count(atom_array)
+        if T + extra_tokens <= self.crop_size:
+            return data
+
+        center = _resolve_ranking_center(data, atom_array)
+
+        atom_array, atom_keep_mask, keep_token_mask = _drop_periphery_tokens_to_fit(
+            atom_array,
+            max_tokens=self.crop_size - extra_tokens,
+            must_keep_atom_mask=must_keep_atom_mask,
+            center=center,
+        )
+        data["atom_array"] = atom_array
+
+        # Keep crop_info's index arrays aligned with the (now smaller) atom_array.
+        crop_info = data.get("crop_info")
+        if crop_info is not None:
+            if "crop_atom_idxs" in crop_info:
+                crop_info["crop_atom_idxs"] = crop_info["crop_atom_idxs"][atom_keep_mask]
+            if "crop_token_idxs" in crop_info:
+                crop_info["crop_token_idxs"] = crop_info["crop_token_idxs"][keep_token_mask]
+
+        return data
+
+
+def _resolve_ranking_center(data: dict, atom_array: AtomArray) -> np.ndarray:
+    """Pick the center used to rank non-reserved tokens by distance.
+
+    - Upstream crop's ``crop_center_atom_idx`` (resolved against the uncropped
+      ``crop_info["atom_array"]``) if available.
+    - Else: whole-array COM of valid token centers in the current ``atom_array``.
+    """
+    crop_info = data.get("crop_info")
+    if crop_info is not None and "crop_center_atom_idx" in crop_info and "atom_array" in crop_info:
+        return crop_info["atom_array"].coord[crop_info["crop_center_atom_idx"]]
+
+    coords = get_af3_token_center_coords(atom_array)
+    valid = np.isfinite(coords).all(axis=1)
+    return coords[valid].mean(axis=0)
+
+
+def _drop_periphery_tokens_to_fit(
+    atom_array: AtomArray,
+    *,
+    max_tokens: int,
+    must_keep_atom_mask: np.ndarray,
+    center: np.ndarray,
+) -> tuple[AtomArray, np.ndarray, np.ndarray]:
+    """Drop non-reserved tokens farthest from ``center`` until ``T <= max_tokens``.
+
+    - Returns (new_atom_array, atom_keep_mask, token_keep_mask) for caller bookkeeping.
+    - Preserves/extends ``at_crop_boundary`` if present.
+    """
+    keep_token_mask = apply_token_wise(atom_array, must_keep_atom_mask, np.any)
+
+    n_reserved_tokens = int(keep_token_mask.sum())
+    assert n_reserved_tokens <= max_tokens, (
+        f"Reserved token count ({n_reserved_tokens}) exceeds budget ({max_tokens}); "
+        f"tighten the upstream reservation."
+    )
+
+    coords = get_af3_token_center_coords(atom_array)
+    valid = np.isfinite(coords).all(axis=1)
+
+    target_idxs = np.where(~keep_token_mask & valid)[0]
+    n_keep = max_tokens - n_reserved_tokens
+    dists = np.linalg.norm(coords[target_idxs] - center, axis=1)
+    keep_token_mask[target_idxs[np.argsort(dists)[:n_keep]]] = True
+
+    atom_keep_mask = spread_token_wise(atom_array, keep_token_mask)
+
+    # Extend at_crop_boundary (if present) so atoms whose local neighborhood lost
+    # members from this recrop are flagged. OR into existing — never clear.
+    extend_boundary = "at_crop_boundary" in atom_array.get_annotation_categories()
+    if extend_boundary:
+        precrop_hash = compute_local_hash(atom_array)
+
+    atom_array = atom_array[atom_keep_mask]
+
+    if extend_boundary:
+        postcrop_hash = compute_local_hash(atom_array)
+        newly_at_boundary = precrop_hash[atom_keep_mask] != postcrop_hash
+        atom_array.set_annotation("at_crop_boundary", atom_array.at_crop_boundary | newly_at_boundary)
+
+    return atom_array, atom_keep_mask, keep_token_mask

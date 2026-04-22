@@ -28,10 +28,7 @@ from proteinfoundation.transforms.design_task import (
     UnconditionalTask,
 )
 
-DEFAULT_REQUIRED_ARGUMENTS = {
-    PPIHotspotWithInternalCoordTargetMotifTask: {"crop_size": 256},
-    PPIHotspotWith3DTarget: {"crop_size": 256},
-}
+DEFAULT_REQUIRED_ARGUMENTS: dict[type, dict] = {}
 
 
 def apply_design_task(
