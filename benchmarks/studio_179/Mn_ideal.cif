@@ -1,0 +1,42 @@
+data_Mn_ideal.cif
+#
+_entry.id       Mn_ideal.cif
+_entry.author   rib7
+_entry.date     2026-04-21
+_entry.time     14:51:03
+#
+_entity.id                 1
+_entity.type               non-polymer
+_entity.pdbx_description   .
+#
+_chem_comp.id                        UNL
+_chem_comp.name                      UNL
+_chem_comp.type                      NON-POLYMER
+_chem_comp.formula                   ?
+_chem_comp.mon_nstd_parent_comp_id   ?
+_chem_comp.pdbx_synonyms             ?
+_chem_comp.formula_weight            ?
+#
+_atom_site.group_PDB            HETATM
+_atom_site.type_symbol          Mn
+_atom_site.label_atom_id        MN0
+_atom_site.label_alt_id         .
+_atom_site.label_comp_id        UNL
+_atom_site.label_asym_id        A
+_atom_site.label_entity_id      1
+_atom_site.label_seq_id         0
+_atom_site.pdbx_PDB_ins_code    .
+_atom_site.auth_seq_id          0
+_atom_site.auth_comp_id         UNL
+_atom_site.auth_asym_id         A
+_atom_site.auth_atom_id         MN0
+_atom_site.B_iso_or_equiv       nan
+_atom_site.occupancy            1.0
+_atom_site.pdbx_formal_charge   +2
+_atom_site.atom_array_index     0
+_atom_site.Cartn_x              0.0
+_atom_site.Cartn_y              0.0
+_atom_site.Cartn_z              0.01
+_atom_site.pdbx_PDB_model_num   1
+_atom_site.id                   1
+#

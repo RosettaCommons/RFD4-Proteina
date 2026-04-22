@@ -1,0 +1,79 @@
+data_vitamin_K3_final_0.cif
+#
+_entry.id       vitamin_K3_final_0.cif
+_entry.author   rib7
+_entry.date     2026-04-21
+_entry.time     14:51:03
+#
+_entity.id                 1
+_entity.type               non-polymer
+_entity.pdbx_description   .
+#
+_chem_comp.id                        UNL
+_chem_comp.name                      UNL
+_chem_comp.type                      NON-POLYMER
+_chem_comp.formula                   ?
+_chem_comp.mon_nstd_parent_comp_id   ?
+_chem_comp.pdbx_synonyms             ?
+_chem_comp.formula_weight            ?
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  UNL C0  C1  SING N ?
+2  UNL C1  C2  DOUB N ?
+3  UNL C2  C3  SING N ?
+4  UNL C3  O0  DOUB N ?
+5  UNL C3  C4  SING N ?
+6  UNL C4  C5  DOUB Y ?
+7  UNL C5  C6  SING Y ?
+8  UNL C6  C7  DOUB Y ?
+9  UNL C7  C8  SING Y ?
+10 UNL C8  C9  DOUB Y ?
+11 UNL C9  C10 SING N ?
+12 UNL C10 O1  DOUB N ?
+13 UNL C1  C10 SING N ?
+14 UNL C4  C9  SING Y ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM C C0  . UNL A 1 0 . 0 UNL A C0  nan 1.0 ? 0  1.119  2.13   3.382  1 1
+HETATM C C1  . UNL A 1 0 . 0 UNL A C1  nan 1.0 ? 1  0.987  1.015  2.403  1 2
+HETATM C C2  . UNL A 1 0 . 0 UNL A C2  nan 1.0 ? 2  1.356  -0.246 2.67   1 3
+HETATM C C3  . UNL A 1 0 . 0 UNL A C3  nan 1.0 ? 3  1.235  -1.359 1.722  1 4
+HETATM O O0  . UNL A 1 0 . 0 UNL A O0  nan 1.0 ? 4  1.584  -2.489 2.01   1 5
+HETATM C C4  . UNL A 1 0 . 0 UNL A C4  nan 1.0 ? 5  0.663  -1.019 0.398  1 6
+HETATM C C5  . UNL A 1 0 . 0 UNL A C5  nan 1.0 ? 6  0.514  -2.017 -0.559 1 7
+HETATM C C6  . UNL A 1 0 . 0 UNL A C6  nan 1.0 ? 7  -0.018 -1.723 -1.804 1 8
+HETATM C C7  . UNL A 1 0 . 0 UNL A C7  nan 1.0 ? 8  -0.406 -0.426 -2.102 1 9
+HETATM C C8  . UNL A 1 0 . 0 UNL A C8  nan 1.0 ? 9  -0.262 0.575  -1.157 1 10
+HETATM C C9  . UNL A 1 0 . 0 UNL A C9  nan 1.0 ? 10 0.271  0.291  0.098  1 11
+HETATM C C10 . UNL A 1 0 . 0 UNL A C10 nan 1.0 ? 11 0.41   1.385  1.083  1 12
+HETATM O O1  . UNL A 1 0 . 0 UNL A O1  nan 1.0 ? 12 0.074  2.527  0.835  1 13
+#

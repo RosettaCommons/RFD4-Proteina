@@ -1,0 +1,1022 @@
+{
+    "4CzIPN": {
+        "input": "studio_179/4CzIPN_final_0.cif",
+        "contig": "100-155",
+        "ligand":"UNL",
+        "select_fixed_atoms": false
+    },
+    "6PPD-q": {
+        "input": "studio_179/6PPD-q_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "abscisic_acid": {
+        "input": "studio_179/abscisic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "acenaphtanone": {
+        "input": "studio_179/acenaphtanone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "acetyl_coenzyme_a": {
+        "input": "studio_179/acetyl_coenzyme_a_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "aconitine": {
+        "input": "studio_179/aconitine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "actinonin": {
+        "input": "studio_179/actinonin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "adenosine": {
+        "input": "studio_179/adenosine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ADP": {
+        "input": "studio_179/ADP_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "aflatoxin_B1": {
+        "input": "studio_179/aflatoxin_B1_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "aldosterone": {
+        "input": "studio_179/aldosterone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "apixaban": {
+        "input": "studio_179/apixaban_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ascorbic_acid": {
+        "input": "studio_179/ascorbic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "azaxanthine": {
+        "input": "studio_179/azaxanthine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "bacteriopheophytin_a": {
+        "input": "studio_179/bacteriopheophytin_a_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "benzo_a_pyrene": {
+        "input": "studio_179/benzo_a_pyrene_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "beta-carotene": {
+        "input": "studio_179/beta-carotene_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "beta-d-mannopyranose": {
+        "input": "studio_179/beta-d-mannopyranose_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "bilirubin": {
+        "input": "studio_179/bilirubin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "biotin": {
+        "input": "studio_179/biotin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "BODIPY": {
+        "input": "studio_179/BODIPY_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "brodifacoum": {
+        "input": "studio_179/brodifacoum_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "caffeine": {
+        "input": "studio_179/caffeine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "carbamazepine": {
+        "input": "studio_179/carbamazepine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "carbene_v1_ethyl_diazoacetate_3-TS1_heme_guess_nohist": {
+        "input": "studio_179/carbene_v1_ethyl_diazoacetate_3-TS1_heme_guess_nohist.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "carfentanil": {
+        "input": "studio_179/carfentanil_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "chapso": {
+        "input": "studio_179/chapso_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "chloramphenicol": {
+        "input": "studio_179/chloramphenicol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "chlorophyll_a": {
+        "input": "studio_179/chlorophyll_a_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "chlorophyll_b": {
+        "input": "studio_179/chlorophyll_b_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cholesterol": {
+        "input": "studio_179/cholesterol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cholic_acid": {
+        "input": "studio_179/cholic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ciguatoxin_1": {
+        "input": "studio_179/ciguatoxin_1_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ciprofloxacin": {
+        "input": "studio_179/ciprofloxacin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cisplatin_definition": {
+        "input": "studio_179/cisplatin_definition.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "coelenterazine": {
+        "input": "studio_179/coelenterazine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "coenzyme_A": {
+        "input": "studio_179/coenzyme_A_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "coenzyme_f420": {
+        "input": "studio_179/coenzyme_f420_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Co_ideal": {
+        "input": "studio_179/Co_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "colchicine": {
+        "input": "studio_179/colchicine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cortisol": {
+        "input": "studio_179/cortisol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "coumarin_343": {
+        "input": "studio_179/coumarin_343_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "coumarin": {
+        "input": "studio_179/coumarin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Cu_Cu_ideal": {
+        "input": "studio_179/Cu_Cu_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Cu_ideal": {
+        "input": "studio_179/Cu_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cyclic_guanosine_monophosphate": {
+        "input": "studio_179/cyclic_guanosine_monophosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cyclothiazide": {
+        "input": "studio_179/cyclothiazide_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "cytidine-triphosphate": {
+        "input": "studio_179/cytidine-triphosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "darunavir": {
+        "input": "studio_179/darunavir_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "DDT": {
+        "input": "studio_179/DDT_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "DEHP": {
+        "input": "studio_179/DEHP_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "DFHBI": {
+        "input": "studio_179/DFHBI_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "dichlorodiphenylsulfone": {
+        "input": "studio_179/dichlorodiphenylsulfone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "digoxigenin": {
+        "input": "studio_179/digoxigenin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "dihydroxypropyl_octadecenoate": {
+        "input": "studio_179/dihydroxypropyl_octadecenoate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "DIID": {
+        "input": "studio_179/DIID_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "dimethoxythioxanthone": {
+        "input": "studio_179/dimethoxythioxanthone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "d-myo-inositol-triphosphate": {
+        "input": "studio_179/d-myo-inositol-triphosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "domoic_acid": {
+        "input": "studio_179/domoic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "dopamine": {
+        "input": "studio_179/dopamine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "DPA": {
+        "input": "studio_179/DPA_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "D-Phe-Pro-Arg-CH2Cl": {
+        "input": "studio_179/D-Phe-Pro-Arg-CH2Cl_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "eosin_Y": {
+        "input": "studio_179/eosin_Y_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "erythromycin_a": {
+        "input": "studio_179/erythromycin_a_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "estradiol": {
+        "input": "studio_179/estradiol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Fe2-S2_ideal": {
+        "input": "studio_179/Fe2-S2_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Fe3-S4_ideal": {
+        "input": "studio_179/Fe3-S4_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Fe4-S4_ideal": {
+        "input": "studio_179/Fe4-S4_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "fe-akg_ideal": {
+        "input": "studio_179/fe-akg_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Fe_ideal": {
+        "input": "studio_179/Fe_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "fentanyl": {
+        "input": "studio_179/fentanyl_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ferrocene_2COOH": {
+        "input": "studio_179/ferrocene_2COOH_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "flavin_adenine_dinucleotide": {
+        "input": "studio_179/flavin_adenine_dinucleotide_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "flavin_mononucleotide": {
+        "input": "studio_179/flavin_mononucleotide_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "fullerene": {
+        "input": "studio_179/fullerene_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "gaba": {
+        "input": "studio_179/gaba_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "geosmin": {
+        "input": "studio_179/geosmin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "guanosine-diphosphate": {
+        "input": "studio_179/guanosine-diphosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "heme_b": {
+        "input": "studio_179/heme_b_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "hexabromodiphenyl_ether": {
+        "input": "studio_179/hexabromodiphenyl_ether_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "hexachlorobiphenyl": {
+        "input": "studio_179/hexachlorobiphenyl_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Hg_ideal": {
+        "input": "studio_179/Hg_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "histamine": {
+        "input": "studio_179/histamine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "hydroxycinnamic_acid": {
+        "input": "studio_179/hydroxycinnamic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "IAI": {
+        "input": "studio_179/IAI_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "indigo": {
+        "input": "studio_179/indigo_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "iohexol": {
+        "input": "studio_179/iohexol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "iridium-biotin": {
+        "input": "studio_179/iridium-biotin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "iridium-piano": {
+        "input": "studio_179/iridium-piano_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "isoindigo": {
+        "input": "studio_179/isoindigo_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "isotonitazene": {
+        "input": "studio_179/isotonitazene_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ketocholesterol": {
+        "input": "studio_179/ketocholesterol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "lactic_acid": {
+        "input": "studio_179/lactic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "luciferin": {
+        "input": "studio_179/luciferin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "mabiq": {
+        "input": "studio_179/mabiq_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "mesityl-methylacridinium": {
+        "input": "studio_179/mesityl-methylacridinium_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "methotrexate": {
+        "input": "studio_179/methotrexate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "mirex": {
+        "input": "studio_179/mirex_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Mn_ideal": {
+        "input": "studio_179/Mn_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "molybdopterin": {
+        "input": "studio_179/molybdopterin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "musk_xylene": {
+        "input": "studio_179/musk_xylene_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "N-acetyl-alpha-neuraminic_acid": {
+        "input": "studio_179/N-acetyl-alpha-neuraminic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NAD": {
+        "input": "studio_179/NAD_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NAP": {
+        "input": "studio_179/NAP_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NDI": {
+        "input": "studio_179/NDI_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NHC_imidazolium": {
+        "input": "studio_179/NHC_imidazolium_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NHC_thiazolium": {
+        "input": "studio_179/NHC_thiazolium_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "NHC_triazolium": {
+        "input": "studio_179/NHC_triazolium_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "nicotinamide": {
+        "input": "studio_179/nicotinamide_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Ni_ideal": {
+        "input": "studio_179/Ni_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "octamethylcyclotetrasiloxane": {
+        "input": "studio_179/octamethylcyclotetrasiloxane_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "OQO": {
+        "input": "studio_179/OQO_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "paromomycin": {
+        "input": "studio_179/paromomycin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Pb_ideal": {
+        "input": "studio_179/Pb_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PDI": {
+        "input": "studio_179/PDI_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "pentahydroxyflavone": {
+        "input": "studio_179/pentahydroxyflavone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "perfluorooctanoic_acid": {
+        "input": "studio_179/perfluorooctanoic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PF07321332": {
+        "input": "studio_179/PF07321332_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PFOA": {
+        "input": "studio_179/PFOA_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PFOS": {
+        "input": "studio_179/PFOS_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "phenol": {
+        "input": "studio_179/phenol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "phylloquinone": {
+        "input": "studio_179/phylloquinone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PLP": {
+        "input": "studio_179/PLP_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "propargyldideazafolic_acid": {
+        "input": "studio_179/propargyldideazafolic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "PTM_radical": {
+        "input": "studio_179/PTM_radical_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "pyrroloquinoline_quinone": {
+        "input": "studio_179/pyrroloquinoline_quinone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "quinacridone": {
+        "input": "studio_179/quinacridone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "resazurin": {
+        "input": "studio_179/resazurin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "resveratrol": {
+        "input": "studio_179/resveratrol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "retinal": {
+        "input": "studio_179/retinal_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "riboflavin": {
+        "input": "studio_179/riboflavin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "rocuronium": {
+        "input": "studio_179/rocuronium_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Rose_Bengal": {
+        "input": "studio_179/Rose_Bengal_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Ru(bpy)": {
+        "input": "studio_179/Ru(bpy)_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Ru(tap)2(dppz)": {
+        "input": "studio_179/Ru(tap)2(dppz)_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "s-adenosylmethionine": {
+        "input": "studio_179/s-adenosylmethionine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "salicylic_acid": {
+        "input": "studio_179/salicylic_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "saxitoxin": {
+        "input": "studio_179/saxitoxin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "serotonin": {
+        "input": "studio_179/serotonin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "sinefunguin": {
+        "input": "studio_179/sinefunguin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "siroheme": {
+        "input": "studio_179/siroheme_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "staurosporine": {
+        "input": "studio_179/staurosporine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "strychnine": {
+        "input": "studio_179/strychnine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "sulfo(sulfoamino)glucopyranose": {
+        "input": "studio_179/sulfo(sulfoamino)glucopyranose_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "taxol": {
+        "input": "studio_179/taxol_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "testosterone": {
+        "input": "studio_179/testosterone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "tetrachlorodibenzodioxin": {
+        "input": "studio_179/tetrachlorodibenzodioxin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "tetrahydrobiopterin": {
+        "input": "studio_179/tetrahydrobiopterin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "tetrahydrofolate": {
+        "input": "studio_179/tetrahydrofolate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "tetrodotoxin": {
+        "input": "studio_179/tetrodotoxin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "thiamine_diphosphate": {
+        "input": "studio_179/thiamine_diphosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "thiamine": {
+        "input": "studio_179/thiamine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "thioxanthone": {
+        "input": "studio_179/thioxanthone_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "thymidine-diphosphate": {
+        "input": "studio_179/thymidine-diphosphate_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "thyroxine": {
+        "input": "studio_179/thyroxine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "tributyltin_oxide": {
+        "input": "studio_179/tributyltin_oxide_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "trichloroanisole": {
+        "input": "studio_179/trichloroanisole_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "trihydroxycyclohexene_COOH": {
+        "input": "studio_179/trihydroxycyclohexene_COOH_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ubiquinone-10": {
+        "input": "studio_179/ubiquinone-10_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "ubiquinone-1": {
+        "input": "studio_179/ubiquinone-1_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "urea": {
+        "input": "studio_179/urea_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "uric_acid": {
+        "input": "studio_179/uric_acid_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "UV-328": {
+        "input": "studio_179/UV-328_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "vitamin_b12": {
+        "input": "studio_179/vitamin_b12_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "vitamin_B9": {
+        "input": "studio_179/vitamin_B9_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "vitamin_K1": {
+        "input": "studio_179/vitamin_K1_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "vitamin_K3": {
+        "input": "studio_179/vitamin_K3_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "warfarin": {
+        "input": "studio_179/warfarin_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "xylazine": {
+        "input": "studio_179/xylazine_final_0.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    },
+    "Zn_ideal": {
+        "input": "studio_179/Zn_ideal.cif",
+        "contig": "100-155",
+        "ligand": "UNL",
+        "select_fixed_atoms": false
+    }
+}
