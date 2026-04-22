@@ -2024,16 +2024,13 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
 
     def __init__(
         self,
-        crop_size: int,
-        crop_center_cutoff_distance: float = 15.0,
-        max_atoms_in_crop: int | None = None,
         hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
         hotspot_geometric_p: float | None = None,
         max_hotspots_frac_to_provide: float = 0.1,
         hotspot_max_distance: float = 7.0,
         p_no_hotspots: float = 0.05,
         p_sample_ppi_crop: float = 0.75,
-        ppi_crop_max_binder_length: int = 256,  # TODO: Tune in configs!
+        ppi_crop_binder_fraction: float = 0.667,
         bb_only_coord_conditioning: bool = False,
         **kwargs,
     ):
@@ -2061,13 +2058,21 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
                 the binder atom to be considered a hotspot candidate.
             p_no_hotspots: Probability of providing no hotspot conditioning at all.
             p_sample_ppi_crop: probability of using the PPI crop, which keeps the entirety of the
-                chain designated as the binder if it's less than ppi_crop_max_binder_length
-                residues.
-            ppi_crop_max_binder_length: max binder length to keep in its entirety when using the
-                PPI crop.
+                chain designated as the binder if it's smaller than
+                ``int(crop_size * ppi_crop_binder_fraction)`` residues. Only consulted when an
+                upstream crop has run; otherwise the PPI re-crop is skipped entirely.
+            ppi_crop_binder_fraction: Max fraction of the upstream crop budget that can be spent
+                on the binder; the rest is reserved for target context. Defaults to ``0.667``.
             bb_only_coord_conditioning: If True, only the backbone atoms of the target chain
                 receive coordinate conditioning. NOTE: Sidechain atoms can still be hotspots, but
                 their precise coordinates are not given.
+
+        Note:
+            Crop parameters (``crop_size``, ``crop_center_cutoff_distance``, ``max_atoms_in_crop``)
+            are read from ``data["crop_info"]`` at forward() time — populated by the upstream
+            crop transform (:py:class:`CropSpatialLikeAF3` / :py:class:`CropContiguousLikeAF3`).
+            If no upstream crop ran, the PPI re-crop is skipped and the task operates on
+            ``data["atom_array"]`` as-is.
         """
         super().__init__(**kwargs)
         self.hotspot_count_distribution = hotspot_count_distribution
@@ -2076,30 +2081,18 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         self.hotspot_max_distance = hotspot_max_distance
         self.p_no_hotspots = p_no_hotspots
         self.p_sample_ppi_crop = p_sample_ppi_crop
-        self.ppi_crop_max_binder_length = ppi_crop_max_binder_length
-        self.crop_size = crop_size
-        self.crop_center_cutoff_distance = crop_center_cutoff_distance
-        self.max_atoms_in_crop = max_atoms_in_crop
+        self.ppi_crop_binder_fraction = ppi_crop_binder_fraction
         self.bb_only_coord_conditioning = bb_only_coord_conditioning
 
     def annotate_for_task_selection(self, data: dict) -> dict:
-        # NOTE: In principle this could be supported and it's not hard, but adds a lot of extra code for functional
-        # implementations of the spatial and contiguous crop Transforms. Left out for now to avoid clutter.
-        if "crop_info" not in data:
-            raise ValueError("Expected cropping to have been applied before design task sampling.")
+        if "crop_info" in data:
+            if "atom_array" not in data["crop_info"]:
+                raise ValueError("Must preserve uncropped AtomArray in crop_info before applying this design task.")
+            atom_array = data["crop_info"]["atom_array"]
+        else:
+            atom_array = data["atom_array"]
 
-        # This is strictly necessary though -- if we've cropped previously, must preserve the uncropped AtomArray
-        elif "atom_array" not in data["crop_info"]:
-            raise ValueError("Must preserve uncropped AtomArray in crop_info before applying this design task.")
-
-        atom_array = data["crop_info"]["atom_array"]
-
-        ensure_annotations(
-            atom_array,
-            "is_protein",
-        )
-
-        data["crop_info"]["atom_array"] = atom_array
+        ensure_annotations(atom_array, "is_protein")
         return data
 
     def can_apply(self, data: dict) -> bool:
@@ -2108,7 +2101,10 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         Based on Rafi's code in PPICondition.is_valid_for_example() here: https://github.dev/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
         """
         query_pn_unit_iids = data.get("query_pn_unit_iids")
-        atom_array = data["crop_info"]["atom_array"]
+        if "crop_info" in data and "atom_array" in data["crop_info"]:
+            atom_array = data["crop_info"]["atom_array"]
+        else:
+            atom_array = data["atom_array"]
         if query_pn_unit_iids is None or len(query_pn_unit_iids) != 2 or len(np.unique(query_pn_unit_iids)) != 2:
             return False
 
@@ -2128,9 +2124,15 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         binder_pn_unit_iid, target_pn_unit_iid = np.random.permutation(query_pn_unit_iids)
 
         # Possibly apply the PPI crop instead of the previously-sampled crop
-        perform_ppi_crop = true_with_prob(self.p_sample_ppi_crop)
+        pre_crop_info = data.get("crop_info")
+        perform_ppi_crop = pre_crop_info is not None and true_with_prob(self.p_sample_ppi_crop)
         if perform_ppi_crop:
-            pre_crop_atom_array = data["crop_info"]["atom_array"]
+            crop_size = pre_crop_info["crop_size"]
+            max_atoms_in_crop = pre_crop_info["max_atoms_in_crop"]
+            crop_center_cutoff_distance = pre_crop_info.get("crop_center_cutoff_distance", 15.0)
+            ppi_crop_max_binder_length = int(crop_size * self.ppi_crop_binder_fraction)
+
+            pre_crop_atom_array = pre_crop_info["atom_array"]
             pre_crop_atom_array.set_annotation(
                 "is_binder_pn_unit",
                 pre_crop_atom_array.pn_unit_iid == binder_pn_unit_iid,
@@ -2138,15 +2140,15 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
 
             if (
                 get_token_count(pre_crop_atom_array[pre_crop_atom_array.is_binder_pn_unit])
-                <= self.ppi_crop_max_binder_length
+                <= ppi_crop_max_binder_length
             ):
                 # Apply the PPI crop
                 crop_info = crop_spatial_keep_full_binder(
                     atom_array=pre_crop_atom_array,
                     query_pn_unit_iids=query_pn_unit_iids,
                     binder_pn_unit_iid=binder_pn_unit_iid,
-                    crop_size=self.crop_size,
-                    crop_center_cutoff_distance=self.crop_center_cutoff_distance,
+                    crop_size=crop_size,
+                    crop_center_cutoff_distance=crop_center_cutoff_distance,
                     force_crop=False,
                 )
 
@@ -2154,7 +2156,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
                 crop_info = resize_crop_info_if_too_many_atoms(
                     crop_info=crop_info,
                     atom_array=pre_crop_atom_array,
-                    max_atoms=self.max_atoms_in_crop,
+                    max_atoms=max_atoms_in_crop,
                 )
 
                 # Overwrite the old crop info with the info for the newly-applied PPI crop

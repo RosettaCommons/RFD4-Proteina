@@ -148,6 +148,16 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
     # get last ckpt if needs to resume training from there
     last_ckpt_name = fetch_last_ckpt(ckpt_path_store)
     last_ckpt_path = os.path.join(ckpt_path_store, last_ckpt_name) if last_ckpt_name is not None else None
+
+    # Explicit resume-from override for full-state resume at a specific prior step.
+    explicit_resume = cfg_exp.get("resume_ckpt_path", None)
+    if explicit_resume is not None:
+        if last_ckpt_path is not None:
+            logger.warning(
+                f"Both resume_ckpt_path={explicit_resume} and last.ckpt={last_ckpt_path} present; using explicit."
+            )
+        last_ckpt_path = explicit_resume
+
     logger.info(f"Last checkpoint: {last_ckpt_path}")
 
     # If LoRA is turned on, replace Linear with LoRA layers
@@ -280,6 +290,10 @@ def store_n_log_configs(
 )
 def main(cfg_exp: DictConfig) -> None:
     silence_warnings()
+
+    # Torch compile settings
+    torch._dynamo.config.inline_inbuilt_nn_modules = True
+    torch._inductor.config.coordinate_descent_tuning = True
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)

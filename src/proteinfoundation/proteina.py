@@ -316,8 +316,10 @@ class Proteina(L.LightningModule):
         return autoencoder, autoencoder.latent_dim
 
     def configure_optimizers(self) -> torch.optim.Adam:
-        optimizer = torch.optim.Adam([p for p in self.parameters() if p.requires_grad], lr=self.cfg_exp.opt.lr)
-        return optimizer
+        return torch.optim.Adam(
+            [p for p in self.parameters() if p.requires_grad],
+            lr=self.cfg_exp.opt.lr,
+        )
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
@@ -411,6 +413,12 @@ class Proteina(L.LightningModule):
         Returns:
             Training loss averaged over batch dimension.
         """
+        # Mark step boundary for torch.compile CUDA graphs (no-op when graphs
+        # are off). Without this, EMA / checkpoint callbacks that take
+        # references to graph outputs can raise once those buffers get
+        # overwritten by the next compiled invocation.
+        torch.compiler.cudagraph_mark_step_begin()
+
         val_step = batch_idx == -1
         log_prefix = (
             f"validation_loss_{batch.pop('validation_dataset_name', 'unknown_dataset')}" if val_step else "train"
@@ -452,8 +460,8 @@ class Proteina(L.LightningModule):
                 batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
             bs, n = batch["padding_mask"].shape
 
-            # Handle conditioning variables
-            batch = self.handle_self_cond(batch)  # self conditioning, adds ["x_sc"] to batch prob 0.5
+            # Handle conditioning variables (synced across ranks via per-epoch schedule)
+            batch = self.handle_self_cond(batch, batch_idx=batch_idx, val_step=val_step)
 
             # Number of recycling steps
             n_recycle = self.handle_recycling()
@@ -579,12 +587,23 @@ class Proteina(L.LightningModule):
         else:
             raise ValueError(f"Loading clean samples from data mode {dm} not supported.")
 
-    def handle_self_cond(self, batch: dict) -> dict:
+    def handle_self_cond(self, batch: dict, batch_idx: int, val_step: bool) -> dict:
+        # Canonical x_sc zeros so _extra_fields cardinality is stable for
+        # torch.compile (removes a Python-side conditional that would otherwise
+        # break fullgraph). Numerically identical to "no self-cond" because the
+        # x_sc feature modules multiply by their output.
+        batch["x_sc"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
+
+        if val_step or not self.cfg_exp.training.get("self_cond", False):
+            return batch
+        if random.random() >= 0.5:
+            return batch
+
         n_recycle = self.cfg_exp.training.get("n_recycle", 0)
-        if random.random() > 0.5 and self.cfg_exp.training.self_cond:
+        with torch.no_grad():
             nn_out = self.call_nn(batch, n_recycle=n_recycle)
-            x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
-            batch["x_sc"] = {k: x_1_pred[k].detach() for k in x_1_pred}
+        x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
+        batch["x_sc"] = {k: x_1_pred[k].detach() for k in x_1_pred}
 
         return batch
 

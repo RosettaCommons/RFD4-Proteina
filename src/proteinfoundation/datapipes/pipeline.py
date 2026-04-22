@@ -120,6 +120,7 @@ from proteinfoundation.transforms.atom_names import (
     AnnotateAtomNameVisibility,
     FeaturizeAtomNamesLikeAF3,
 )
+from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_expansion
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
 from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
@@ -1339,6 +1340,11 @@ def _build_design_train_pipeline(
         # ... (optionally) modify the design task post-hoc
         # TODO: Template this
 
+        # We may have introduced (or will later introduce) extra tokens;
+        # we must make space for them here
+        if crop_size:
+            T += EnforceCropBudget(crop_size=crop_size, plan_expansion=plan_unindex_expansion)
+
     return T.tolist()
 
 
@@ -1518,6 +1524,7 @@ def build_design_train_pipeline(
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     crop_center_cutoff_distance: float = 15,
+    max_atoms_in_crop: int | None = None,
     b_factor_occupancy_min: float | None = None,
     p_atomize_residues: float = 0.0,
     p_random_rotation: float = 1.0,
@@ -1575,6 +1582,7 @@ def build_design_train_pipeline(
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
         crop_center_cutoff_distance=crop_center_cutoff_distance,
+        max_atoms_in_crop=max_atoms_in_crop,
         b_factor_occupancy_min=b_factor_occupancy_min,
         design_tasks=design_tasks,
         is_inference=is_inference,

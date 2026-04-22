@@ -127,11 +127,16 @@ class LocalLatentsTransformer(torch.nn.Module):
             torch.nn.Linear(self.token_dim, 3, bias=False),
         )
 
-        # Optionally wrap the forward implementation with torch.compile
+        # Wrap the training forward with torch.compile(fullgraph=True). Val/inference
+        # runs under no_grad; keeping a separate eager impl for those paths avoids
+        # grad_mode-triggered dynamo recompiles of the shared compiled graph.
         self.use_torch_compile = kwargs.get("use_torch_compile", False)
+        self._forward_eager = self._forward_impl
         if self.use_torch_compile:
-            logger.info("Enabling torch.compile for LocalLatentsTransformer forward pass.")
-            self._forward_impl = torch.compile(self._forward_impl)
+            logger.info("Enabling torch.compile(fullgraph=True) for LocalLatentsTransformer training forward.")
+            self._forward_compiled = torch.compile(self._forward_impl, fullgraph=True)
+        else:
+            self._forward_compiled = self._forward_impl
 
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """
@@ -162,7 +167,8 @@ class LocalLatentsTransformer(torch.nn.Module):
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
-        return self._forward_impl(input)
+        impl = self._forward_compiled if self.training else self._forward_eager
+        return impl(input)
 
     def _forward_impl(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Core forward logic. May be wrapped by torch.compile."""

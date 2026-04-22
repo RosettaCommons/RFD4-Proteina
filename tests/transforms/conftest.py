@@ -181,10 +181,16 @@ def complex_protein_ab(complex_protein):
 
 @pytest.fixture
 def protein_protein_interface_crop_info(protein_protein_interface):
-    """Crop info for protein-protein interface."""
+    """Crop info for protein-protein interface.
+
+    Mimics the ``crop_info`` dict produced by :py:class:`CropSpatialLikeAF3` —
+    PPI tasks read ``crop_size`` / ``max_atoms_in_crop`` from here at forward() time.
+    """
     data = protein_protein_interface.copy()
     data["crop_info"] = {
         "atom_array": data["atom_array"].copy(),
+        "crop_size": 256,
+        "max_atoms_in_crop": 10000,
     }
     data["query_pn_unit_iids"] = np.unique(data["atom_array"].pn_unit_iid)[:2]
     return data
@@ -192,10 +198,16 @@ def protein_protein_interface_crop_info(protein_protein_interface):
 
 @pytest.fixture
 def complex_protein_crop_info(complex_protein):
-    """Crop info for complex protein."""
+    """Crop info for complex protein.
+
+    Mimics the ``crop_info`` dict produced by :py:class:`CropSpatialLikeAF3` —
+    PPI tasks read ``crop_size`` / ``max_atoms_in_crop`` from here at forward() time.
+    """
     data = complex_protein.copy()
     data["crop_info"] = {
         "atom_array": data["atom_array"].copy(),
+        "crop_size": 256,
+        "max_atoms_in_crop": 10000,
     }
     data["query_pn_unit_iids"] = np.unique(data["atom_array"].pn_unit_iid)[:2]
     return data

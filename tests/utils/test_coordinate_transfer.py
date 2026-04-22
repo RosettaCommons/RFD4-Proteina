@@ -110,7 +110,6 @@ DESIGN_TASK_CONFIGS = {
     },
     "ppi_hotspot_with_3d_target": {
         "transform": PPIHotspotWith3DTarget(
-            crop_size=256,
             global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
         ),
         "frequency": 1.0,
