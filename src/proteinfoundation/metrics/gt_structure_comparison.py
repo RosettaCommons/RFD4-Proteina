@@ -385,12 +385,13 @@ def structure_comparison_metric(
     gt_stack, pred_stack = align_structures_by_annotations(
         gt_stack, pred_stack, align_mask, apply_query_to_pred=apply_mask_queries_to_pred
     )
-    if keep_aligned_predicted_structure:
-        aligned_pred_stack = pred_stack.copy()
 
     # No metrics are returned if alignment failed
     if gt_stack is None or pred_stack is None:
         return {}
+
+    if keep_aligned_predicted_structure:
+        aligned_pred_stack = pred_stack.copy()
 
     # subset
     if subset_mask:

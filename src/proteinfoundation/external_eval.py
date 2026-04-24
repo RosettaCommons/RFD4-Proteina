@@ -20,7 +20,6 @@ from atomworks.io.transforms.atom_array import (
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import load_any, to_cif_file
-from atomworks.io.utils.non_rcsb import initialize_chain_info_from_atom_array
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack, infer_elements
@@ -195,7 +194,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
 
 def _add_basic_annots(atom_array: AtomArray | AtomArrayStack) -> AtomArray:
     atom_array = _ensure_not_atom_array_stack(atom_array)
-    chain_info = initialize_chain_info_from_atom_array(atom_array)
+    chain_info = build_chain_info(atom_array)
     atom_array = add_chain_type_annotation(atom_array, chain_info)
     atom_array = add_polymer_annotation(atom_array, chain_info)
     atom_array = as_atom_array_plus(atom_array)
@@ -316,6 +315,14 @@ def correct_index_groups_for_length_variability(atom_array: AtomArray, spec: dic
             increment_index_group = increment_index_group[1:]
         if contig_parts[-1].startswith("0-") and indexed_motif_mask[-1]:
             increment_index_group = increment_index_group[:-1]
+
+        # Ligands do not show up in the contig, but still result in change_indices
+        # These do not have the dynamic-length issue, so no index group adjustments are needed.
+        extra_changes_count = len(change_indices) - len(increment_index_group) - 1
+        if extra_changes_count > 0 and "ligand" in spec:
+            ligands = spec["ligand"].split(",")
+            if {atom_array.res_name[idx] for idx in change_indices[-(extra_changes_count + 1) : -1]} == set(ligands):
+                increment_index_group += [False] * extra_changes_count
 
         # If the lengths still don't match, we raise an error
         if len(change_indices) != len(increment_index_group) + 1:
@@ -480,7 +487,7 @@ def convert_to_pfm_format(
     # Spoof a uniform index group for the generated atoms
     # (unused but allows the annotation to be preserved through concatenation)
     coord_cond_index_groups = C_IDXGRP.annotation(coord_conditioning_atom_array, default="generate")
-    max_conditioning_idxgrp = coord_cond_index_groups.max()
+    max_conditioning_idxgrp = coord_cond_index_groups.max() if coord_cond_index_groups.size > 0 else -1
     C_IDXGRP.set_annotation(
         generated_atom_array, np.full(generated_atom_array.array_length(), max_conditioning_idxgrp + 1, dtype=int)
     )

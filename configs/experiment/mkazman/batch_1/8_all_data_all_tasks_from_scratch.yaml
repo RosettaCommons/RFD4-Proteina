@@ -24,7 +24,8 @@ defaults:
   - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
   # ... SM binder validation sets
   - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
-  - /datasets/val/sm_binder_hbonds_fixed@datasets.val.sm_binder_hbonds_fixed
+  - /datasets/val/sm_binder@datasets.val.sm_binder_unfixed_ligand
+  - /datasets/val/sm_binder_fixed_ligand@datasets.val.sm_binder_fixed_ligand
   # ... PPI validation sets
   - /datasets/val/ppi_subset@datasets.val.ppi_subset
 

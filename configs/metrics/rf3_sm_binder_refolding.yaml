@@ -1,0 +1,35 @@
+rf3_metric_sm_binder:
+  _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any: ["sm_binder_refolding"]
+  metric_manager:
+    _target_: foundry.metrics.metric.MetricManager
+    metrics:
+      backbone_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_protein_backbone
+        metric_type: rmsd
+      backbone_aligned_ligand_rmsd:
+        _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+        input_kwarg_names:
+          ground_truth_atom_array_stack: ground_truth_atom_array_stack
+          predicted_atom_array_stack: predicted_atom_array_stack
+        align_mask: is_protein_backbone
+        subset_mask: is_ligand
+        metric_type: rmsd
+        keep_aligned_predicted_structure: true
+  pass_criteria:
+    min_ipae_coi:
+      max: 1.5
+    iptm_coi:
+      min: 80
+    backbone_rmsd.rmsd:
+      max: 1.5
+    backbone_aligned_ligand_rmsd.rmsd:
+      max: 5

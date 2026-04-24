@@ -1,0 +1,242 @@
+data_M0315_1ey3.cif
+#
+_entry.id       M0315_1ey3.cif
+_entry.author   rib7
+_entry.date     2026-04-18
+_entry.time     15:17:36
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 polymer     .
+1 non-polymer .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       AGEE
+_entity_poly.pdbx_seq_one_letter_code_can   AGEE
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n ALA 98
+0 n GLY 141
+0 n GLU 144
+0 n GLU 164
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  ALA N     CA    SING N ?
+2  ALA CA    C     SING N ?
+3  ALA CA    CB    SING N ?
+4  ALA C     O     DOUB N ?
+5  GLY N     CA    SING N ?
+6  GLY CA    C     SING N ?
+7  GLY C     O     DOUB N ?
+8  GLU N     CA    SING N ?
+9  GLU CA    C     SING N ?
+10 GLU CA    CB    SING N ?
+11 GLU C     O     DOUB N ?
+12 GLU CB    CG    SING N ?
+13 GLU CG    CD    SING N ?
+14 GLU CD    OE1   DOUB N ?
+15 GLU CD    OE2   SING N ?
+16 DAK N1    C2    SING Y ?
+17 DAK N1    C6    DOUB Y ?
+18 DAK C2    N3    DOUB Y ?
+19 DAK N3    C4    SING Y ?
+20 DAK C4    C5    DOUB Y ?
+21 DAK C4    N9    SING Y ?
+22 DAK C5    C6    SING Y ?
+23 DAK C5    N7    SING Y ?
+24 DAK C6    N6    SING N ?
+25 DAK N7    C8    DOUB Y ?
+26 DAK C8    N9    SING Y ?
+27 DAK N9    "C1'" SING N ?
+28 DAK "C1'" "C2'" SING N ?
+29 DAK "C1'" "O4'" SING N ?
+30 DAK "C2'" "O2'" SING N ?
+31 DAK "C2'" "C3'" SING N ?
+32 DAK "C3'" "O3'" SING N ?
+33 DAK "C3'" "C4'" SING N ?
+34 DAK "O3'" P3    SING N ?
+35 DAK P3    O31   DOUB N ?
+36 DAK P3    O32   SING N ?
+37 DAK P3    O33   SING N ?
+38 DAK "C4'" "O4'" SING N ?
+39 DAK "C4'" "C5'" SING N ?
+40 DAK "C5'" "O5'" SING N ?
+41 DAK "O5'" P1    SING N ?
+42 DAK P1    O11   DOUB N ?
+43 DAK P1    O12   SING N ?
+44 DAK P1    O6    SING N ?
+45 DAK O6    P2    SING N ?
+46 DAK P2    O21   DOUB N ?
+47 DAK P2    O22   SING N ?
+48 DAK P2    O7    SING N ?
+49 DAK O7    CP9   SING N ?
+50 DAK CP8   CP9   SING N ?
+51 DAK CP8   CPA   SING N ?
+52 DAK CP8   CPB   SING N ?
+53 DAK CP8   CP7   SING N ?
+54 DAK CP7   OP3   SING N ?
+55 DAK CP7   CP6   SING N ?
+56 DAK CP6   OP2   DOUB N ?
+57 DAK CP6   NP2   SING N ?
+58 DAK NP2   CP5   SING N ?
+59 DAK CP5   CP4   SING N ?
+60 DAK CP4   CP3   SING N ?
+61 DAK CP3   OP1   DOUB N ?
+62 DAK CP3   NP1   SING N ?
+63 DAK NP1   CP2   SING N ?
+64 DAK CP2   CP1   SING N ?
+65 DAK CP1   S     SING N ?
+66 DAK S     CD1   SING N ?
+67 DAK CD7   CD6   DOUB Y ?
+68 DAK CD7   CD8   SING Y ?
+69 DAK CD7   ND1   SING N ?
+70 DAK CD6   CD5   SING Y ?
+71 DAK CD5   CD4   DOUB Y ?
+72 DAK CD4   CD9   SING Y ?
+73 DAK CD4   CD3   SING N ?
+74 DAK CD9   CD8   DOUB Y ?
+75 DAK ND1   CDA   SING N ?
+76 DAK ND1   CDB   SING N ?
+77 DAK CD3   CD2   DOUB N ?
+78 DAK CD2   CD1   SING N ?
+79 DAK CD1   OD1   DOUB N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.rcsb_res_id 
+_atom_site.rcsb_chain_id 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N N     . ALA A 0 98  . 98  ALA A N     486   39.26 1.0 ? 66  A 0  -0.237 3.695   -1.965 1
+ATOM   C CA    . ALA A 0 98  . 98  ALA A CA    487   37.47 1.0 ? 66  A 1  0.806  4.694   -2.152 1
+ATOM   C C     . ALA A 0 98  . 98  ALA A C     488   38.13 1.0 ? 66  A 2  2.058  4.049   -1.565 1
+ATOM   O O     . ALA A 0 98  . 98  ALA A O     489   32.43 1.0 ? 66  A 3  1.974  3.021   -0.884 1
+ATOM   C CB    . ALA A 0 98  . 98  ALA A CB    490   34.0  1.0 ? 66  A 4  0.461  5.967   -1.398 1
+ATOM   N N     . GLY A 0 141 . 141 GLY A N     832   25.12 1.0 ? 109 A 5  -4.438 3.372   -1.668 1
+ATOM   C CA    . GLY A 0 141 . 141 GLY A CA    833   25.08 1.0 ? 109 A 6  -4.401 4.326   -2.762 1
+ATOM   C C     . GLY A 0 141 . 141 GLY A C     834   26.32 1.0 ? 109 A 7  -4.74  3.689   -4.097 1
+ATOM   O O     . GLY A 0 141 . 141 GLY A O     835   28.87 1.0 ? 109 A 8  -5.2   4.366   -5.021 1
+ATOM   N N     . GLU A 0 144 . 144 GLU A N     846   27.36 1.0 ? 112 A 9  -8.489 3.453   -4.19  1
+ATOM   C CA    . GLU A 0 144 . 144 GLU A CA    847   26.95 1.0 ? 112 A 10 -8.962 4.822   -4.335 1
+ATOM   C C     . GLU A 0 144 . 144 GLU A C     848   24.69 1.0 ? 112 A 11 -8.744 5.364   -5.744 1
+ATOM   O O     . GLU A 0 144 . 144 GLU A O     849   26.3  1.0 ? 112 A 12 -9.551 6.151   -6.248 1
+ATOM   C CB    . GLU A 0 144 . 144 GLU A CB    850   22.23 1.0 ? 112 A 13 -8.282 5.716   -3.288 1
+ATOM   C CG    . GLU A 0 144 . 144 GLU A CG    851   26.83 1.0 ? 112 A 14 -8.775 5.42    -1.882 1
+ATOM   C CD    . GLU A 0 144 . 144 GLU A CD    852   32.23 1.0 ? 112 A 15 -7.956 6.098   -0.811 1
+ATOM   O OE1   . GLU A 0 144 . 144 GLU A OE1   853   31.1  1.0 ? 112 A 16 -6.727 5.878   -0.787 1
+ATOM   O OE2   . GLU A 0 144 . 144 GLU A OE2   854   31.95 1.0 ? 112 A 17 -8.536 6.84    0.014  1
+ATOM   N N     . GLU A 0 164 . 164 GLU A N     998   26.9  1.0 ? 132 A 18 -5.542 0.903   5.297  1
+ATOM   C CA    . GLU A 0 164 . 164 GLU A CA    999   26.58 1.0 ? 132 A 19 -4.913 2.029   5.987  1
+ATOM   C C     . GLU A 0 164 . 164 GLU A C     1000  25.1  1.0 ? 132 A 20 -4.975 1.867   7.503  1
+ATOM   O O     . GLU A 0 164 . 164 GLU A O     1001  23.01 1.0 ? 132 A 21 -4.003 2.121   8.202  1
+ATOM   C CB    . GLU A 0 164 . 164 GLU A CB    1002  24.58 1.0 ? 132 A 22 -5.575 3.363   5.595  1
+ATOM   C CG    . GLU A 0 164 . 164 GLU A CG    1003  23.44 1.0 ? 132 A 23 -5.216 3.906   4.196  1
+ATOM   C CD    . GLU A 0 164 . 164 GLU A CD    1004  27.42 1.0 ? 132 A 24 -6.017 3.262   3.058  1
+ATOM   O OE1   . GLU A 0 164 . 164 GLU A OE1   1005  27.16 1.0 ? 132 A 25 -6.705 2.241   3.292  1
+ATOM   O OE2   . GLU A 0 164 . 164 GLU A OE2   1006  20.81 1.0 ? 132 A 26 -5.953 3.785   1.924  1
+HETATM N N1    . DAK B 1 500 . 500 DAK B N1    11791 45.98 1.0 ? 500 G 27 4.254  0.658   -0.378 1
+HETATM C C2    . DAK B 1 500 . 500 DAK B C2    11792 48.21 1.0 ? 500 G 28 5.559  0.319   -0.524 1
+HETATM N N3    . DAK B 1 500 . 500 DAK B N3    11793 46.04 1.0 ? 500 G 29 6.067  -0.912  -0.758 1
+HETATM C C4    . DAK B 1 500 . 500 DAK B C4    11794 47.74 1.0 ? 500 G 30 5.081  -1.859  -0.862 1
+HETATM C C5    . DAK B 1 500 . 500 DAK B C5    11795 45.54 1.0 ? 500 G 31 3.708  -1.659  -0.725 1
+HETATM C C6    . DAK B 1 500 . 500 DAK B C6    11796 43.27 1.0 ? 500 G 32 3.289  -0.317  -0.487 1
+HETATM N N6    . DAK B 1 500 . 500 DAK B N6    11797 45.04 1.0 ? 500 G 33 2.009  0.03    -0.34  1
+HETATM N N7    . DAK B 1 500 . 500 DAK B N7    11798 51.03 1.0 ? 500 G 34 3.021  -2.844  -0.888 1
+HETATM C C8    . DAK B 1 500 . 500 DAK B C8    11799 48.24 1.0 ? 500 G 35 3.968  -3.733  -1.093 1
+HETATM N N9    . DAK B 1 500 . 500 DAK B N9    11800 50.31 1.0 ? 500 G 36 5.236  -3.208  -1.088 1
+HETATM C "C1'" . DAK B 1 500 . 500 DAK B "C1'" 11801 51.26 1.0 ? 500 G 37 6.536  -3.904  -1.285 1
+HETATM C "C2'" . DAK B 1 500 . 500 DAK B "C2'" 11802 51.77 1.0 ? 500 G 38 6.978  -4.753  -0.093 1
+HETATM O "O2'" . DAK B 1 500 . 500 DAK B "O2'" 11803 47.44 1.0 ? 500 G 39 7.508  -4.0    0.977  1
+HETATM C "C3'" . DAK B 1 500 . 500 DAK B "C3'" 11804 55.6  1.0 ? 500 G 40 7.936  -5.718  -0.786 1
+HETATM O "O3'" . DAK B 1 500 . 500 DAK B "O3'" 11805 62.95 1.0 ? 500 G 41 9.24   -5.11   -0.933 1
+HETATM P P3    . DAK B 1 500 . 500 DAK B P3    11806 71.23 1.0 ? 500 G 42 10.494 -5.605  -0.024 1
+HETATM O O31   . DAK B 1 500 . 500 DAK B O31   11807 66.89 1.0 ? 500 G 43 10.069 -5.433  1.428  1
+HETATM O O32   . DAK B 1 500 . 500 DAK B O32   11808 67.69 1.0 ? 500 G 44 10.732 -7.062  -0.403 1
+HETATM O O33   . DAK B 1 500 . 500 DAK B O33   11809 71.47 1.0 ? 500 G 45 11.647 -4.69   -0.406 1
+HETATM C "C4'" . DAK B 1 500 . 500 DAK B "C4'" 11810 52.61 1.0 ? 500 G 46 7.283  -5.967  -2.137 1
+HETATM O "O4'" . DAK B 1 500 . 500 DAK B "O4'" 11811 51.78 1.0 ? 500 G 47 6.412  -4.818  -2.373 1
+HETATM C "C5'" . DAK B 1 500 . 500 DAK B "C5'" 11812 47.83 1.0 ? 500 G 48 6.441  -7.229  -2.21  1
+HETATM O "O5'" . DAK B 1 500 . 500 DAK B "O5'" 11813 54.01 1.0 ? 500 G 49 5.456  -7.279  -1.162 1
+HETATM P P1    . DAK B 1 500 . 500 DAK B P1    11814 51.9  1.0 ? 500 G 50 5.402  -8.475  -0.124 1
+HETATM O O11   . DAK B 1 500 . 500 DAK B O11   11815 62.59 1.0 ? 500 G 51 6.778  -8.987  0.112  1
+HETATM O O12   . DAK B 1 500 . 500 DAK B O12   11816 52.36 1.0 ? 500 G 52 4.622  -8.061  1.057  1
+HETATM O O6    . DAK B 1 500 . 500 DAK B O6    11817 49.35 1.0 ? 500 G 53 4.552  -9.586  -0.953 1
+HETATM P P2    . DAK B 1 500 . 500 DAK B P2    11818 51.86 1.0 ? 500 G 54 3.027  -10.111 -0.77  1
+HETATM O O21   . DAK B 1 500 . 500 DAK B O21   11819 44.31 1.0 ? 500 G 55 2.66   -10.896 -1.97  1
+HETATM O O22   . DAK B 1 500 . 500 DAK B O22   11820 39.62 1.0 ? 500 G 56 2.913  -10.768 0.55   1
+HETATM O O7    . DAK B 1 500 . 500 DAK B O7    11821 52.08 1.0 ? 500 G 57 2.228  -8.737  -0.765 1
+HETATM C CP8   . DAK B 1 500 . 500 DAK B CP8   11822 44.49 1.0 ? 500 G 58 0.25   -7.386  -0.237 1
+HETATM C CP9   . DAK B 1 500 . 500 DAK B CP9   11823 46.47 1.0 ? 500 G 59 0.79   -8.679  -0.831 1
+HETATM C CPA   . DAK B 1 500 . 500 DAK B CPA   11824 43.23 1.0 ? 500 G 60 -1.145 -7.699  0.35   1
+HETATM C CPB   . DAK B 1 500 . 500 DAK B CPB   11825 42.52 1.0 ? 500 G 61 0.09   -6.333  -1.367 1
+HETATM C CP7   . DAK B 1 500 . 500 DAK B CP7   11826 42.24 1.0 ? 500 G 62 1.235  -6.848  0.901  1
+HETATM O OP3   . DAK B 1 500 . 500 DAK B OP3   11827 38.7  1.0 ? 500 G 63 2.453  -6.322  0.298  1
+HETATM C CP6   . DAK B 1 500 . 500 DAK B CP6   11828 38.04 1.0 ? 500 G 64 0.64   -5.716  1.742  1
+HETATM O OP2   . DAK B 1 500 . 500 DAK B OP2   11829 35.07 1.0 ? 500 G 65 0.003  -5.965  2.766  1
+HETATM N NP2   . DAK B 1 500 . 500 DAK B NP2   11830 39.16 1.0 ? 500 G 66 0.895  -4.478  1.297  1
+HETATM C CP5   . DAK B 1 500 . 500 DAK B CP5   11831 36.24 1.0 ? 500 G 67 0.485  -3.272  1.996  1
+HETATM C CP4   . DAK B 1 500 . 500 DAK B CP4   11832 33.27 1.0 ? 500 G 68 -0.784 -2.688  1.393  1
+HETATM C CP3   . DAK B 1 500 . 500 DAK B CP3   11833 36.15 1.0 ? 500 G 69 -1.241 -1.404  2.075  1
+HETATM O OP1   . DAK B 1 500 . 500 DAK B OP1   11834 32.24 1.0 ? 500 G 70 -1.227 -1.289  3.305  1
+HETATM N NP1   . DAK B 1 500 . 500 DAK B NP1   11835 28.77 1.0 ? 500 G 71 -1.649 -0.435  1.256  1
+HETATM C CP2   . DAK B 1 500 . 500 DAK B CP2   11836 33.21 1.0 ? 500 G 72 -2.124 0.839   1.747  1
+HETATM C CP1   . DAK B 1 500 . 500 DAK B CP1   11837 33.64 1.0 ? 500 G 73 -0.974 1.786   2.004  1
+HETATM S S     . DAK B 1 500 . 500 DAK B S     11838 31.46 1.0 ? 500 G 74 -1.411 3.403   2.646  1
+HETATM C CD7   . DAK B 1 500 . 500 DAK B CD7   11839 28.26 1.0 ? 500 G 75 -3.332 10.647  -0.123 1
+HETATM C CD6   . DAK B 1 500 . 500 DAK B CD6   11840 23.85 1.0 ? 500 G 76 -3.291 10.007  1.156  1
+HETATM C CD5   . DAK B 1 500 . 500 DAK B CD5   11841 27.89 1.0 ? 500 G 77 -3.079 8.613   1.26   1
+HETATM C CD4   . DAK B 1 500 . 500 DAK B CD4   11842 31.75 1.0 ? 500 G 78 -2.902 7.821   0.083  1
+HETATM C CD9   . DAK B 1 500 . 500 DAK B CD9   11843 29.13 1.0 ? 500 G 79 -2.945 8.454   -1.184 1
+HETATM C CD8   . DAK B 1 500 . 500 DAK B CD8   11844 23.98 1.0 ? 500 G 80 -3.157 9.844   -1.288 1
+HETATM N ND1   . DAK B 1 500 . 500 DAK B ND1   11845 28.01 1.0 ? 500 G 81 -3.538 12.025  -0.234 1
+HETATM C CDA   . DAK B 1 500 . 500 DAK B CDA   11846 31.82 1.0 ? 500 G 82 -3.61  12.877  0.965  1
+HETATM C CDB   . DAK B 1 500 . 500 DAK B CDB   11847 27.2  1.0 ? 500 G 83 -3.855 12.636  -1.532 1
+HETATM C CD3   . DAK B 1 500 . 500 DAK B CD3   11848 28.44 1.0 ? 500 G 84 -2.671 6.366   0.147  1
+HETATM C CD2   . DAK B 1 500 . 500 DAK B CD2   11849 32.66 1.0 ? 500 G 85 -2.196 5.694   1.227  1
+HETATM C CD1   . DAK B 1 500 . 500 DAK B CD1   11850 31.81 1.0 ? 500 G 86 -1.976 4.217   1.188  1
+HETATM O OD1   . DAK B 1 500 . 500 DAK B OD1   11851 32.78 1.0 ? 500 G 87 -2.197 3.598   0.137  1
+#
+_cell.length_a      141.748
+_cell.length_b      145.286
+_cell.length_c      78.562
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

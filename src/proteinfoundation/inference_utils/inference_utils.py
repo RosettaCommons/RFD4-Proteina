@@ -16,6 +16,7 @@ from atomworks.io.config import ParseConfig
 from atomworks.io.parser import (
     STANDARD_PARSER_ARGS,
 )
+from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import infer_pdb_file_type
 from atomworks.ml.conditions import CONDITIONS
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
@@ -302,7 +303,7 @@ def extract_ligand_array(
                     ligand_array.is_motif_atom_with_fixed_coord = np.zeros(ligand_array.shape[0], dtype=int)
             ligand_arrays.append(ligand_array)
 
-    ligand_arrays = struc.concatenate(ligand_arrays)
+    ligand_arrays = concatenate_atom_array_plus(ligand_arrays)
     return ligand_arrays
 
 

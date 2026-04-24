@@ -1,6 +1,6 @@
-import biotite.structure as struc
 import numpy as np
 import torch
+from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
 from biotite.structure import AtomArray
 from pydantic import (
     BaseModel,
@@ -108,7 +108,7 @@ def make_symmetric_atom_array(
     if sm:
         unsym_atom_arrays.append(asu_atom_array[asu_atom_array._is_sm])
         asu_atom_array = asu_atom_array[~asu_atom_array._is_sm]
-    unsym_atom_array = struc.concatenate(unsym_atom_arrays) if len(unsym_atom_arrays) > 0 else None
+    unsym_atom_array = concatenate_atom_array_plus(unsym_atom_arrays) if len(unsym_atom_arrays) > 0 else None
 
     # Annotate symmetric subunits
     symmetry_unit_list = []
@@ -122,7 +122,7 @@ def make_symmetric_atom_array(
             unsym_atom_array
         )  # add the motifs to the end of the asu atom array list (motifs at end of atom array)
     # build the full symmetrized atom array
-    symmetrized_atom_array = struc.concatenate(symmetry_unit_list)
+    symmetrized_atom_array = concatenate_atom_array_plus(symmetry_unit_list)
 
     # add 2D conditioning annotations
     if has_2d:

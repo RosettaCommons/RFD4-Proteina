@@ -1,0 +1,247 @@
+data_M0555_1f8r.cif
+#
+_entry.id       M0555_1f8r.cif
+_entry.author   rib7
+_entry.date     2026-04-18
+_entry.time     15:19:10
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 polymer     .
+3 non-polymer .
+4 non-polymer .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       HK
+_entity_poly.pdbx_seq_one_letter_code_can   HK
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n HIS 223
+0 n LYS 326
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  HIS N     CA    SING N ?
+2  HIS CA    C     SING N ?
+3  HIS CA    CB    SING N ?
+4  HIS C     O     DOUB N ?
+5  HIS CB    CG    SING N ?
+6  HIS CG    ND1   SING Y ?
+7  HIS CG    CD2   DOUB Y ?
+8  HIS ND1   CE1   DOUB Y ?
+9  HIS CD2   NE2   SING Y ?
+10 HIS CE1   NE2   SING Y ?
+11 LYS N     CA    SING N ?
+12 LYS CA    C     SING N ?
+13 LYS CA    CB    SING N ?
+14 LYS C     O     DOUB N ?
+15 LYS CB    CG    SING N ?
+16 LYS CG    CD    SING N ?
+17 LYS CD    CE    SING N ?
+18 LYS CE    NZ    SING N ?
+19 CIT C1    O1    DOUB N ?
+20 CIT C1    O2    SING N ?
+21 CIT C1    C2    SING N ?
+22 CIT C2    C3    SING N ?
+23 CIT C3    O7    SING N ?
+24 CIT C3    C4    SING N ?
+25 CIT C3    C6    SING N ?
+26 CIT C4    C5    SING N ?
+27 CIT C5    O3    DOUB N ?
+28 CIT C5    O4    SING N ?
+29 CIT C6    O5    DOUB N ?
+30 CIT C6    O6    SING N ?
+31 FAD PA    O1A   DOUB N ?
+32 FAD PA    O2A   SING N ?
+33 FAD PA    O5B   SING N ?
+34 FAD PA    O3P   SING N ?
+35 FAD O5B   C5B   SING N ?
+36 FAD C5B   C4B   SING N ?
+37 FAD C4B   O4B   SING N ?
+38 FAD C4B   C3B   SING N ?
+39 FAD O4B   C1B   SING N ?
+40 FAD C3B   O3B   SING N ?
+41 FAD C3B   C2B   SING N ?
+42 FAD C2B   O2B   SING N ?
+43 FAD C2B   C1B   SING N ?
+44 FAD C1B   N9A   SING N ?
+45 FAD N9A   C8A   SING Y ?
+46 FAD N9A   C4A   SING Y ?
+47 FAD C8A   N7A   DOUB Y ?
+48 FAD N7A   C5A   SING Y ?
+49 FAD C5A   C6A   SING Y ?
+50 FAD C5A   C4A   DOUB Y ?
+51 FAD C6A   N6A   SING N ?
+52 FAD C6A   N1A   DOUB Y ?
+53 FAD N1A   C2A   SING Y ?
+54 FAD C2A   N3A   DOUB Y ?
+55 FAD N3A   C4A   SING Y ?
+56 FAD N1    C2    SING N ?
+57 FAD N1    C10   DOUB N ?
+58 FAD C2    O2    DOUB N ?
+59 FAD C2    N3    SING N ?
+60 FAD N3    C4    SING N ?
+61 FAD C4    O4    DOUB N ?
+62 FAD C4    C4X   SING N ?
+63 FAD C4X   N5    DOUB N ?
+64 FAD C4X   C10   SING N ?
+65 FAD N5    C5X   SING N ?
+66 FAD C5X   C6    DOUB Y ?
+67 FAD C5X   C9A   SING Y ?
+68 FAD C6    C7    SING Y ?
+69 FAD C7    C7M   SING N ?
+70 FAD C7    C8    DOUB Y ?
+71 FAD C8    C8M   SING N ?
+72 FAD C8    C9    SING Y ?
+73 FAD C9    C9A   DOUB Y ?
+74 FAD C9A   N10   SING N ?
+75 FAD N10   C10   SING N ?
+76 FAD N10   "C1'" SING N ?
+77 FAD "C1'" "C2'" SING N ?
+78 FAD "C2'" "O2'" SING N ?
+79 FAD "C2'" "C3'" SING N ?
+80 FAD "C3'" "O3'" SING N ?
+81 FAD "C3'" "C4'" SING N ?
+82 FAD "C4'" "O4'" SING N ?
+83 FAD "C4'" "C5'" SING N ?
+84 FAD "C5'" "O5'" SING N ?
+85 FAD "O5'" P     SING N ?
+86 FAD P     O1P   DOUB N ?
+87 FAD P     O2P   SING N ?
+88 FAD P     O3P   SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.rcsb_res_id 
+_atom_site.rcsb_chain_id 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N N     . HIS A 0 223 . 223 HIS A N     1766  19.44 1.0 ?  223 A 0  6.787   -8.681  8.757  1
+ATOM   C CA    . HIS A 0 223 . 223 HIS A CA    1767  19.5  1.0 ?  223 A 1  7.471   -8.59   7.471  1
+ATOM   C C     . HIS A 0 223 . 223 HIS A C     1768  20.78 1.0 ?  223 A 2  8.37    -9.819  7.31   1
+ATOM   O O     . HIS A 0 223 . 223 HIS A O     1769  21.99 1.0 ?  223 A 3  8.465   -10.401 6.231  1
+ATOM   C CB    . HIS A 0 223 . 223 HIS A CB    1770  20.58 1.0 ?  223 A 4  8.305   -7.305  7.42   1
+ATOM   C CG    . HIS A 0 223 . 223 HIS A CG    1771  21.89 1.0 ?  223 A 5  9.024   -7.091  6.12   1
+ATOM   N ND1   . HIS A 0 223 . 223 HIS A ND1   1772  21.74 1.0 +1 223 A 6  10.216  -7.712  5.818  1
+ATOM   C CD2   . HIS A 0 223 . 223 HIS A CD2   1773  21.53 1.0 ?  223 A 7  8.723   -6.313  5.056  1
+ATOM   C CE1   . HIS A 0 223 . 223 HIS A CE1   1774  22.49 1.0 ?  223 A 8  10.621  -7.323  4.621  1
+ATOM   N NE2   . HIS A 0 223 . 223 HIS A NE2   1775  21.3  1.0 ?  223 A 9  9.733   -6.473  4.137  1
+ATOM   N N     . LYS A 0 326 . 326 LYS A N     2601  12.41 1.0 ?  326 A 10 8.129   5.802   -5.387 1
+ATOM   C CA    . LYS A 0 326 . 326 LYS A CA    2602  13.32 1.0 ?  326 A 11 8.69    5.052   -6.504 1
+ATOM   C C     . LYS A 0 326 . 326 LYS A C     2603  13.78 1.0 ?  326 A 12 8.952   5.99    -7.673 1
+ATOM   O O     . LYS A 0 326 . 326 LYS A O     2604  13.1  1.0 ?  326 A 13 8.076   6.756   -8.082 1
+ATOM   C CB    . LYS A 0 326 . 326 LYS A CB    2605  12.09 1.0 ?  326 A 14 7.737   3.929   -6.937 1
+ATOM   C CG    . LYS A 0 326 . 326 LYS A CG    2606  13.4  1.0 ?  326 A 15 7.652   2.787   -5.925 1
+ATOM   C CD    . LYS A 0 326 . 326 LYS A CD    2607  13.59 1.0 ?  326 A 16 6.783   1.631   -6.407 1
+ATOM   C CE    . LYS A 0 326 . 326 LYS A CE    2608  15.25 1.0 ?  326 A 17 6.811   0.481   -5.402 1
+ATOM   N NZ    . LYS A 0 326 . 326 LYS A NZ    2609  16.67 1.0 +1 326 A 18 5.991   -0.7    -5.839 1
+HETATM C C1    . CIT B 3 526 . 526 CIT B C1    16051 67.85 1.0 ?  526 J 19 9.767   -2.774  4.905  1
+HETATM O O1    . CIT B 3 526 . 526 CIT B O1    16052 68.03 1.0 ?  526 J 20 10.325  -2.893  5.879  1
+HETATM O O2    . CIT B 3 526 . 526 CIT B O2    16053 69.11 1.0 ?  526 J 21 8.723   -2.216  4.776  1
+HETATM C C2    . CIT B 3 526 . 526 CIT B C2    16054 66.88 1.0 ?  526 J 22 10.272  -3.342  3.352  1
+HETATM C C3    . CIT B 3 526 . 526 CIT B C3    16055 66.4  1.0 ?  526 J 23 9.306   -3.802  2.108  1
+HETATM O O7    . CIT B 3 526 . 526 CIT B O7    16056 66.35 1.0 ?  526 J 24 8.431   -4.862  2.488  1
+HETATM C C4    . CIT B 3 526 . 526 CIT B C4    16057 65.61 1.0 ?  526 J 25 8.29    -2.591  1.665  1
+HETATM C C5    . CIT B 3 526 . 526 CIT B C5    16058 65.22 1.0 ?  526 J 26 7.219   -3.042  0.637  1
+HETATM O O3    . CIT B 3 526 . 526 CIT B O3    16059 65.76 1.0 ?  526 J 27 6.248   -2.162  0.262  1
+HETATM O O4    . CIT B 3 526 . 526 CIT B O4    16060 63.74 1.0 ?  526 J 28 7.11    -4.174  0.208  1
+HETATM C C6    . CIT B 3 526 . 526 CIT B C6    16061 66.74 1.0 ?  526 J 29 10.051  -4.264  0.754  1
+HETATM O O5    . CIT B 3 526 . 526 CIT B O5    16062 66.37 1.0 ?  526 J 30 10.448  -3.366  -0.152 1
+HETATM O O6    . CIT B 3 526 . 526 CIT B O6    16063 67.76 1.0 ?  526 J 31 10.135  -5.497  0.615  1
+HETATM P PA    . FAD C 4 527 . 527 FAD C PA    16064 16.57 1.0 ?  527 K 32 -7.057  2.625   -0.074 1
+HETATM O O1A   . FAD C 4 527 . 527 FAD C O1A   16065 15.25 1.0 ?  527 K 33 -6.669  1.835   -1.269 1
+HETATM O O2A   . FAD C 4 527 . 527 FAD C O2A   16066 16.73 1.0 ?  527 K 34 -6.333  3.723   0.285  1
+HETATM O O5B   . FAD C 4 527 . 527 FAD C O5B   16067 14.23 1.0 ?  527 K 35 -8.424  3.137   -0.568 1
+HETATM C C5B   . FAD C 4 527 . 527 FAD C C5B   16068 13.7  1.0 ?  527 K 36 -9.249  4.109   0.181  1
+HETATM C C4B   . FAD C 4 527 . 527 FAD C C4B   16069 14.3  1.0 ?  527 K 37 -10.267 4.663   -0.855 1
+HETATM O O4B   . FAD C 4 527 . 527 FAD C O4B   16070 13.96 1.0 ?  527 K 38 -11.142 5.656   -0.188 1
+HETATM C C3B   . FAD C 4 527 . 527 FAD C C3B   16071 13.98 1.0 ?  527 K 39 -9.721  5.38    -2.107 1
+HETATM O O3B   . FAD C 4 527 . 527 FAD C O3B   16072 13.92 1.0 ?  527 K 40 -10.159 4.895   -3.338 1
+HETATM C C2B   . FAD C 4 527 . 527 FAD C C2B   16073 13.9  1.0 ?  527 K 41 -9.98   6.854   -1.806 1
+HETATM O O2B   . FAD C 4 527 . 527 FAD C O2B   16074 13.74 1.0 ?  527 K 42 -10.06  7.601   -2.993 1
+HETATM C C1B   . FAD C 4 527 . 527 FAD C C1B   16075 13.55 1.0 ?  527 K 43 -11.337 6.735   -1.168 1
+HETATM N N9A   . FAD C 4 527 . 527 FAD C N9A   16076 14.33 1.0 ?  527 K 44 -11.78  7.85    -0.316 1
+HETATM C C8A   . FAD C 4 527 . 527 FAD C C8A   16077 13.05 1.0 ?  527 K 45 -10.994 8.666   0.466  1
+HETATM N N7A   . FAD C 4 527 . 527 FAD C N7A   16078 15.14 1.0 ?  527 K 46 -11.709 9.537   1.173  1
+HETATM C C5A   . FAD C 4 527 . 527 FAD C C5A   16079 14.03 1.0 ?  527 K 47 -12.974 9.446   0.658  1
+HETATM C C6A   . FAD C 4 527 . 527 FAD C C6A   16080 14.33 1.0 ?  527 K 48 -14.223 10.132  1.013  1
+HETATM N N6A   . FAD C 4 527 . 527 FAD C N6A   16081 16.15 1.0 ?  527 K 49 -14.309 11.091  1.9    1
+HETATM N N1A   . FAD C 4 527 . 527 FAD C N1A   16082 14.54 1.0 ?  527 K 50 -15.322 9.75    0.269  1
+HETATM C C2A   . FAD C 4 527 . 527 FAD C C2A   16083 14.19 1.0 ?  527 K 51 -15.279 8.749   -0.661 1
+HETATM N N3A   . FAD C 4 527 . 527 FAD C N3A   16084 14.87 1.0 ?  527 K 52 -14.201 7.998   -0.968 1
+HETATM C C4A   . FAD C 4 527 . 527 FAD C C4A   16085 14.26 1.0 ?  527 K 53 -13.078 8.354   -0.246 1
+HETATM N N1    . FAD C 4 527 . 527 FAD C N1    16086 14.97 1.0 ?  527 K 54 0.018   -4.719  -1.118 1
+HETATM C C2    . FAD C 4 527 . 527 FAD C C2    16087 15.88 1.0 ?  527 K 55 0.288   -5.888  -1.725 1
+HETATM O O2    . FAD C 4 527 . 527 FAD C O2    16088 16.54 1.0 ?  527 K 56 -0.352  -6.867  -1.5   1
+HETATM N N3    . FAD C 4 527 . 527 FAD C N3    16089 14.55 1.0 ?  527 K 57 1.525   -6.112  -2.397 1
+HETATM C C4    . FAD C 4 527 . 527 FAD C C4    16090 15.93 1.0 ?  527 K 58 2.503   -5.142  -2.471 1
+HETATM O O4    . FAD C 4 527 . 527 FAD C O4    16091 15.02 1.0 ?  527 K 59 3.389   -5.271  -3.289 1
+HETATM C C4X   . FAD C 4 527 . 527 FAD C C4X   16092 14.53 1.0 ?  527 K 60 2.278   -3.903  -1.714 1
+HETATM N N5    . FAD C 4 527 . 527 FAD C N5    16093 14.27 1.0 ?  527 K 61 3.169   -2.881  -1.827 1
+HETATM C C5X   . FAD C 4 527 . 527 FAD C C5X   16094 14.12 1.0 ?  527 K 62 2.738   -1.597  -1.524 1
+HETATM C C6    . FAD C 4 527 . 527 FAD C C6    16095 14.12 1.0 ?  527 K 63 3.569   -0.51   -1.928 1
+HETATM C C7    . FAD C 4 527 . 527 FAD C C7    16096 15.2  1.0 ?  527 K 64 3.193   0.806   -1.709 1
+HETATM C C7M   . FAD C 4 527 . 527 FAD C C7M   16097 17.8  1.0 ?  527 K 65 4.192   1.926   -1.934 1
+HETATM C C8    . FAD C 4 527 . 527 FAD C C8    16098 16.03 1.0 ?  527 K 66 1.853   1.105   -1.19  1
+HETATM C C8M   . FAD C 4 527 . 527 FAD C C8M   16099 15.07 1.0 ?  527 K 67 1.319   2.521   -1.08  1
+HETATM C C9    . FAD C 4 527 . 527 FAD C C9    16100 15.74 1.0 ?  527 K 68 1.019   0.04    -0.791 1
+HETATM C C9A   . FAD C 4 527 . 527 FAD C C9A   16101 15.12 1.0 ?  527 K 69 1.434   -1.302  -0.976 1
+HETATM N N10   . FAD C 4 527 . 527 FAD C N10   16102 14.87 1.0 ?  527 K 70 0.584   -2.442  -0.689 1
+HETATM C C10   . FAD C 4 527 . 527 FAD C C10   16103 15.38 1.0 ?  527 K 71 0.947   -3.703  -1.102 1
+HETATM C "C1'" . FAD C 4 527 . 527 FAD C "C1'" 16104 14.11 1.0 ?  527 K 72 -0.531  -2.261  0.294  1
+HETATM C "C2'" . FAD C 4 527 . 527 FAD C "C2'" 16105 14.26 1.0 ?  527 K 73 -1.938  -2.124  -0.397 1
+HETATM O "O2'" . FAD C 4 527 . 527 FAD C "O2'" 16106 14.7  1.0 ?  527 K 74 -1.805  -1.144  -1.428 1
+HETATM C "C3'" . FAD C 4 527 . 527 FAD C "C3'" 16107 13.64 1.0 ?  527 K 75 -2.925  -1.601  0.653  1
+HETATM O "O3'" . FAD C 4 527 . 527 FAD C "O3'" 16108 14.64 1.0 ?  527 K 76 -2.923  -2.464  1.782  1
+HETATM C "C4'" . FAD C 4 527 . 527 FAD C "C4'" 16109 14.02 1.0 ?  527 K 77 -4.364  -1.59   0.117  1
+HETATM O "O4'" . FAD C 4 527 . 527 FAD C "O4'" 16110 13.08 1.0 ?  527 K 78 -4.428  -1.175  -1.275 1
+HETATM C "C5'" . FAD C 4 527 . 527 FAD C "C5'" 16111 14.5  1.0 ?  527 K 79 -5.132  -0.608  0.996  1
+HETATM O "O5'" . FAD C 4 527 . 527 FAD C "O5'" 16112 15.63 1.0 ?  527 K 80 -6.663  -0.621  0.571  1
+HETATM P P     . FAD C 4 527 . 527 FAD C P     16113 16.25 1.0 ?  527 K 81 -7.655  0.208   1.358  1
+HETATM O O1P   . FAD C 4 527 . 527 FAD C O1P   16114 16.41 1.0 ?  527 K 82 -9.009  -0.213  0.721  1
+HETATM O O2P   . FAD C 4 527 . 527 FAD C O2P   16115 15.33 1.0 ?  527 K 83 -7.56   0.032   2.74   1
+HETATM O O3P   . FAD C 4 527 . 527 FAD C O3P   16116 15.57 1.0 ?  527 K 84 -7.353  1.653   1.155  1
+#
+_cell.length_a      79.496
+_cell.length_b      154.962
+_cell.length_c      102.947
+_cell.angle_alpha   90.0
+_cell.angle_beta    109.49
+_cell.angle_gamma   90.0
+#

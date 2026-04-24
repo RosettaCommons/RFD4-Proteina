@@ -17,6 +17,7 @@ defaults:
   - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
   - /datasets/val/mcsa/tip_atom_plinder@datasets.val.tip_atom_plinder
   - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
+  - /datasets/val/sm_binder@datasets.val.sm_binder_unfixed_ligand
 
   - _self_
 

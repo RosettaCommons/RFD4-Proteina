@@ -6,9 +6,10 @@ base_config: inference
 
 base_config_overrides:
   - inference_experiment=inference_on_val_set
-  - batch_size=6
+  - batch_size=2
   - num_replicates=1
-  - ckpt_path=${oc.env:CKPT_PATH} # Set CKPT_PATH env var before running
+  - ckpt_path=/path/to/data
+  - ckpt_name=latest.ckpt
 
 run_name_prefix: debug_all_val_sets
 
@@ -21,8 +22,6 @@ sweep_overrides:
   - "+datasets/val@generation=mcsa/mcsa_full_fixed_ligand"
   - "+datasets/val@generation=mcsa/mcsa_subset_no_ligand"
   - "+datasets/val@generation=mcsa/mcsa_full"
-  - "+datasets/val@generation=mcsa/tip_atom_no_ligand_afdb"
-  - "+datasets/val@generation=mcsa/tip_atom_plinder"
   - "+datasets/val@generation=sm_binder"
   - "+datasets/val@generation=sm_binder_fixed_ligand"
   - "+datasets/val@generation=sm_binder_hbonds"

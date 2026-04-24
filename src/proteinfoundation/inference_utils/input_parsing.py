@@ -11,7 +11,7 @@ import numpy as np
 from atomworks.constants import STANDARD_AA
 from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import ensure_annotations
-from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.utils.token import (
     get_token_starts,
@@ -520,7 +520,7 @@ def accumulate_components(
         current_accum_idx += len(token)
 
     # ... Concatenate all components
-    atom_array_accum = struc.concatenate(atom_array_accum)
+    atom_array_accum = concatenate_atom_array_plus(atom_array_accum)
     atom_array_accum.set_annotation("pn_unit_iid", atom_array_accum.chain_id)
 
     should_restore_bonds = (

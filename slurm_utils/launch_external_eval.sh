@@ -258,19 +258,8 @@ else
     CODE_DIR="$REPO_ROOT"
 fi
 
-# Create .env file
-cat > "$RUN_DIR/.env" << EOF
-# Proteina Environment Variables
-DATA_PATH=$DATA_PATH
-CACHE_DIR=$CACHE_DIR
-PDB_MIRROR_PATH=$PDB_MIRROR_PATH
-CCD_MIRROR_PATH=$CCD_MIRROR_PATH
-FOLDSEEK_EXEC=$FOLDSEEK_REMOTE
-HBPLUS_PATH=$HBPLUS_PATH
-MOLPROBITY_PATH=$MOLPROBITY_PATH
-MACE_MODEL_PATH=$MACE_MODEL_PATH
-LOGURU_LEVEL='INFO'
-EOF
+# Create .env file from ENV_VARS array (defined in .user_info)
+write_env_file "$RUN_DIR/.env"
 
 print_header "Job Configuration"
 echo "  Run name: $RUN_NAME"
@@ -314,6 +303,7 @@ if [ -n "$CUSTOM_CPUS_PER_TASK" ]; then
 elif [ -n "$CPUS_PER_TASK" ] && [ "$CPUS_PER_TASK" != "8" ]; then
     echo "  CPUs per task: $CPUS_PER_TASK (from profile)"
 fi
+print_mount_summary
 echo ""
 
 # Build SBATCH script
@@ -362,7 +352,7 @@ fi
 # Add environment setup
 cat >> "$SBATCH_FILE" << EOF
 
-# Environment setup
+# Environment setup (all clusters)
 export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
@@ -370,9 +360,9 @@ export OPENBLAS_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 EOF
 
-# Add DIGS-specific environment variables
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+# Apptainer clusters: pass cluster identity to exec_core.sh (via shebang)
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    cat >> "$SBATCH_FILE" << EOF
 
 # DIGS-specific environment settings
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -382,6 +372,10 @@ export NCCL_DEBUG=WARN
 # Distributed coordination (unique port per job, master = first node)
 export MASTER_PORT=$((1024 + RANDOM % 64512))
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+
+# Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
 EOF
 fi
 
@@ -389,6 +383,18 @@ fi
 if [ -n "$DATASET_SQUASH_MOUNTS" ]; then
     echo "export DATASET_SQUASH_MOUNTS=\"$DATASET_SQUASH_MOUNTS\"" >> "$SBATCH_FILE"
 fi
+
+# Add cuEquivariance control
+if [ -n "$USE_CUEQUIVARIANCE" ]; then
+    echo "export SHOULD_USE_CUEQUIVARIANCE=$USE_CUEQUIVARIANCE" >> "$SBATCH_FILE"
+fi
+
+# DDP coordination (unique port per job, master = first node)
+cat >> "$SBATCH_FILE" << 'EOF'
+
+export MASTER_PORT=$((1024 + RANDOM % 64512))
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+EOF
 
 # Build the command
 SCRIPT_EVAL="$CODE_DIR/projects/proteinfoundation/proteinfoundation/external_eval.py"
@@ -419,22 +425,47 @@ if [ -n "$CHUNK_SIZE" ] && [ "$NJOBS" -gt 1 ]; then
 fi
 
 # Add container execution command
-if [ "$CLUSTER_TYPE" == "digs" ]; then
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    # Apptainer: shebang in external_eval.py handles container execution via exec_core.sh
     cat >> "$SBATCH_FILE" << EOF
 
 # Run external evaluation (shebang handles apptainer container)
-$PYTHON $SCRIPT_EVAL $CMD_ARGS
+srun --cpu-bind=none --kill-on-bad-exit $SCRIPT_EVAL $CMD_ARGS
 EOF
 else
+    # OCI/GB200: Docker/Pyxis container via srun --container-image
     CONTAINER_CMD=$(get_srun_cmd)
-    cat >> "$SBATCH_FILE" << EOF
+    CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
+    SQFS_MOUNT_CMDS=$(build_squashfs_mount_cmds)
+    CONTAINER_ENV_CMDS=$(build_container_env_cmds)
 
-# Run external evaluation with Docker container
-srun --kill-on-bad-exit $CONTAINER_CMD \\
-    --container-mounts="/lustre:/lustre" \\
+    if [ "${USE_SQUASHFS_MOUNTS:-false}" == "true" ] && [ -n "$SQFS_MOUNT_CMDS" ]; then
+        cat >> "$SBATCH_FILE" << EOFSCRIPT
+# Container mounts (auto-generated from CONTAINER_MOUNTS and SQUASHFS_MOUNTS arrays)
+CONTAINER_MOUNTS="$CONTAINER_MOUNTS_STR"
+
+# Run external evaluation with container (squashfs mounting enabled)
+srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
+    --container-mounts="\${CONTAINER_MOUNTS}" \\
     --container-workdir=$RUN_DIR \\
-    $PYTHON $SCRIPT_EVAL $CMD_ARGS
-EOF
+    bash -c "\\
+        $CONTAINER_ENV_CMDS && \\
+        $SQFS_MOUNT_CMDS && \\
+        exec $PYTHON $SCRIPT_EVAL $CMD_ARGS\\
+    "
+EOFSCRIPT
+    else
+        cat >> "$SBATCH_FILE" << EOFSCRIPT
+# Container mounts (auto-generated from CONTAINER_MOUNTS array)
+CONTAINER_MOUNTS="$CONTAINER_MOUNTS_STR"
+
+# Run external evaluation with container
+srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
+    --container-mounts="\${CONTAINER_MOUNTS}" \\
+    --container-workdir=$RUN_DIR \\
+    bash -c "$CONTAINER_ENV_CMDS && exec $PYTHON $SCRIPT_EVAL $CMD_ARGS"
+EOFSCRIPT
+    fi
 fi
 
 print_header "Submitting Job"
@@ -497,14 +528,16 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     # Run the concatenation script
     CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/concatenate_external_eval_results.py"
 
-    if [ "$CLUSTER_TYPE" == "digs" ]; then
-        $PYTHON "$CONCAT_SCRIPT" --output-dir "$OUTPUT_DIR" --cluster-with-foldseek
+    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+        "$CONCAT_SCRIPT" --output-dir "$OUTPUT_DIR" --cluster-with-foldseek
     else
         CONTAINER_CMD=$(get_srun_cmd)
-        srun --kill-on-bad-exit $CONTAINER_CMD \
-            --container-mounts="/lustre:/lustre" \
+        CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
+        CONTAINER_ENV_CMDS=$(build_container_env_cmds)
+        srun --ntasks=1 --kill-on-bad-exit $CONTAINER_CMD \
+            --container-mounts="$CONTAINER_MOUNTS_STR" \
             --container-workdir=$RUN_DIR \
-            $PYTHON "$CONCAT_SCRIPT" --output-dir "$OUTPUT_DIR"
+            bash -c "$CONTAINER_ENV_CMDS && $PYTHON \"$CONCAT_SCRIPT\" --output-dir \"$OUTPUT_DIR\""
     fi
 
     echo ""

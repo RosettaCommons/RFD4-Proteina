@@ -11,7 +11,8 @@ defaults:
 
   # Add sm binder val sets
   - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
-  - /datasets/val/sm_binder_hbonds_fixed@datasets.val.sm_binder_hbonds_fixed
+  - /datasets/val/sm_binder@datasets.val.sm_binder_unfixed_ligand
+  - /datasets/val/sm_binder_fixed_ligand@datasets.val.sm_binder_fixed_ligand
 
   - _self_
 

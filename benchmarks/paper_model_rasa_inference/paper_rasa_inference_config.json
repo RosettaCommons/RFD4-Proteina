@@ -1,6 +1,6 @@
 {
     "exposed": {
-        "input": "/path/to/home",
+        "input": "rfbench/sm_binder/IAI_aa_ep10_run_binder_5sdv_cond0_0-atomized-bb-False.cif",
         "ligand": "IAI",
         "length": "180-180",
         "fixed-atoms": {
@@ -13,7 +13,7 @@
         }
     },
     "burried": {
-        "input": "/path/to/home",
+        "input": "rfbench/sm_binder/IAI_aa_ep10_run_binder_5sdv_cond0_0-atomized-bb-False.cif",
         "length": "180-180",
         "ligand": "IAI",
         "fixed-atoms": {
@@ -26,7 +26,7 @@
         }
     },
     "partial": {
-        "input": "/path/to/home",
+        "input": "rfbench/sm_binder/IAI_aa_ep10_run_binder_5sdv_cond0_0-atomized-bb-False.cif",
         "ligand": "IAI",
         "length": "180-180",
         "fixed-atoms": {
