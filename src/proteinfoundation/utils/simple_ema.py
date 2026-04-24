@@ -288,6 +288,10 @@ class EMAModelCheckpoint(ModelCheckpoint):
             trainer: The Trainer instance.
             filepath: Path where checkpoint should be saved.
         """
+
+        # '=' in filenames adds complications for Hydra
+        filepath = filepath.replace("=", "_")
+
         ema_callback = self._find_ema_callback(trainer)
 
         if ema_callback is None:

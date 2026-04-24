@@ -13,4 +13,3 @@ dataset:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - rasa_conditioning
-      - sm_binder_refolding

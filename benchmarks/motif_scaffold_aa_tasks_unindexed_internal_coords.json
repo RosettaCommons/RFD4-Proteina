@@ -1,7 +1,7 @@
 {
     "1PRW_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/1prw_aa.pdb",
+        "input": "motif_data_aa/1prw_aa.cif",
         "unindex": "A16-35,A52-71",
         "internal_coord_groups":
             [
@@ -12,7 +12,7 @@
     },
     "1BCF_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/1bcf_aa.pdb",
+        "input": "motif_data_aa/1bcf_aa.cif",
         "unindex": "A92-99,A123-130,A47-54,A18-25",
         "internal_coord_groups":
             [
@@ -25,7 +25,7 @@
     },
     "5IUS_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/5ius_aa.pdb",
+        "input": "motif_data_aa/5ius_aa.cif",
         "unindex": "A119-140,A63-82",
         "internal_coord_groups":
             [
@@ -36,7 +36,7 @@
     },
     "5YUI_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/5yui_aa.pdb",
+        "input": "motif_data_aa/5yui_aa.cif",
         "unindex": "A93-97,A118-120,A198-200",
         "internal_coord_groups":
             [
@@ -48,7 +48,7 @@
     },
     "4JHW_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/4jhw_aa.pdb",
+        "input": "motif_data_aa/4jhw_aa.cif",
         "unindex": "F196-212,F63-69",
         "internal_coord_groups":
             [
@@ -59,7 +59,7 @@
     },
     "6VW1_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/6vw1_aa.pdb",
+        "input": "motif_data_aa/6vw1_aa.cif",
         "unindex": "A24-42,A64-82",
         "internal_coord_groups":
             [
@@ -70,7 +70,7 @@
     },
     "1QJG_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/1qjg_aa.pdb",
+        "input": "motif_data_aa/1qjg_aa.cif",
         "unindex": "A38,A14,A99",
         "internal_coord_groups":
             [
@@ -82,7 +82,7 @@
     },
     "1QJG_AA_NATIVE": {
         "dialect": 2,
-        "input": "motif_data_aa/1qjg_aa.pdb",
+        "input": "motif_data_aa/1qjg_aa.cif",
         "unindex": "A14,A38,A99",
         "internal_coord_groups":
             [
@@ -94,7 +94,7 @@
     },
     "2KL8_AA": {
         "dialect": 2,
-        "input": "motif_data_aa/2kl8_aa.pdb",
+        "input": "motif_data_aa/2kl8_aa.cif",
         "unindex": "A1-7,A28-79",
         "internal_coord_groups":
             [

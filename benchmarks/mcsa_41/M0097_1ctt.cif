@@ -1,0 +1,164 @@
+data_M0097_1ctt.cif
+#
+_entry.id       M0097_1ctt.cif
+_entry.author   rib7
+_entry.date     2026-04-18
+_entry.time     15:14:36
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 polymer     .
+1 non-polymer .
+2 non-polymer .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       HECC
+_entity_poly.pdbx_seq_one_letter_code_can   HECC
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n HIS 102
+0 n GLU 104
+0 n CYS 129
+0 n CYS 132
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  HIS N     CA    SING N ?
+2  HIS CA    C     SING N ?
+3  HIS CA    CB    SING N ?
+4  HIS C     O     DOUB N ?
+5  HIS CB    CG    SING N ?
+6  HIS CG    ND1   SING Y ?
+7  HIS CG    CD2   DOUB Y ?
+8  HIS ND1   CE1   DOUB Y ?
+9  HIS CD2   NE2   SING Y ?
+10 HIS CE1   NE2   SING Y ?
+11 GLU N     CA    SING N ?
+12 GLU CA    C     SING N ?
+13 GLU CA    CB    SING N ?
+14 GLU C     O     DOUB N ?
+15 GLU CB    CG    SING N ?
+16 GLU CG    CD    SING N ?
+17 GLU CD    OE1   DOUB N ?
+18 GLU CD    OE2   SING N ?
+19 CYS N     CA    SING N ?
+20 CYS CA    C     SING N ?
+21 CYS CA    CB    SING N ?
+22 CYS C     O     DOUB N ?
+23 CYS CB    SG    SING N ?
+24 DHZ N1    C2    SING N ?
+25 DHZ N1    C6    SING N ?
+26 DHZ N1    "C1'" SING N ?
+27 DHZ C2    O2    DOUB N ?
+28 DHZ C2    N3    SING N ?
+29 DHZ N3    C4    SING N ?
+30 DHZ C4    C5    SING N ?
+31 DHZ C5    C6    DOUB N ?
+32 DHZ "C1'" "C2'" SING N ?
+33 DHZ "C1'" "O4'" SING N ?
+34 DHZ "C2'" "O2'" SING N ?
+35 DHZ "C2'" "C3'" SING N ?
+36 DHZ "C3'" "O3'" SING N ?
+37 DHZ "C3'" "C4'" SING N ?
+38 DHZ "C4'" "O4'" SING N ?
+39 DHZ "C4'" "C5'" SING N ?
+40 DHZ "C5'" "O5'" SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.rcsb_res_id 
+_atom_site.rcsb_chain_id 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N     . HIS A 0 102 . 102 HIS A N     755  17.81 1.0 ?  102 A 0  3.623  2.712  -0.883 1
+ATOM   C  CA    . HIS A 0 102 . 102 HIS A CA    756  21.9  1.0 ?  102 A 1  3.118  1.526  -0.241 1
+ATOM   C  C     . HIS A 0 102 . 102 HIS A C     757  21.41 1.0 ?  102 A 2  4.181  0.428  -0.231 1
+ATOM   O  O     . HIS A 0 102 . 102 HIS A O     758  21.08 1.0 ?  102 A 3  5.017  0.331  -1.153 1
+ATOM   C  CB    . HIS A 0 102 . 102 HIS A CB    759  23.44 1.0 ?  102 A 4  1.852  1.03   -0.971 1
+ATOM   C  CG    . HIS A 0 102 . 102 HIS A CG    760  25.48 1.0 ?  102 A 5  0.721  1.964  -0.697 1
+ATOM   N  ND1   . HIS A 0 102 . 102 HIS A ND1   761  26.25 1.0 +1 102 A 6  -0.461 1.555  -0.094 1
+ATOM   C  CD2   . HIS A 0 102 . 102 HIS A CD2   762  26.4  1.0 ?  102 A 7  0.624  3.296  -0.924 1
+ATOM   C  CE1   . HIS A 0 102 . 102 HIS A CE1   763  24.67 1.0 ?  102 A 8  -1.238 2.633  -0.027 1
+ATOM   N  NE2   . HIS A 0 102 . 102 HIS A NE2   764  22.5  1.0 ?  102 A 9  -0.612 3.69   -0.499 1
+ATOM   N  N     . GLU A 0 104 . 104 GLU A N     770  20.53 1.0 ?  104 A 10 3.909  -2.454 -1.049 1
+ATOM   C  CA    . GLU A 0 104 . 104 GLU A CA    771  20.93 1.0 ?  104 A 11 3.869  -3.106 -2.337 1
+ATOM   C  C     . GLU A 0 104 . 104 GLU A C     772  23.41 1.0 ?  104 A 12 4.592  -2.363 -3.417 1
+ATOM   O  O     . GLU A 0 104 . 104 GLU A O     773  26.76 1.0 ?  104 A 13 5.267  -2.987 -4.251 1
+ATOM   C  CB    . GLU A 0 104 . 104 GLU A CB    774  23.31 1.0 ?  104 A 14 2.442  -3.452 -2.817 1
+ATOM   C  CG    . GLU A 0 104 . 104 GLU A CG    775  24.78 1.0 ?  104 A 15 1.568  -4.16  -1.751 1
+ATOM   C  CD    . GLU A 0 104 . 104 GLU A CD    776  27.28 1.0 ?  104 A 16 0.845  -3.303 -0.745 1
+ATOM   O  OE1   . GLU A 0 104 . 104 GLU A OE1   777  25.98 1.0 ?  104 A 17 1.669  -2.727 0.105  1
+ATOM   O  OE2   . GLU A 0 104 . 104 GLU A OE2   778  30.51 1.0 ?  104 A 18 -0.368 -3.366 -0.577 1
+ATOM   N  N     . CYS A 0 129 . 129 CYS A N     957  22.35 1.0 ?  129 A 19 -4.21  -2.506 -0.389 1
+ATOM   C  CA    . CYS A 0 129 . 129 CYS A CA    958  20.17 1.0 ?  129 A 20 -5.171 -1.5   -0.706 1
+ATOM   C  C     . CYS A 0 129 . 129 CYS A C     959  19.12 1.0 ?  129 A 21 -5.4   -1.539 -2.201 1
+ATOM   O  O     . CYS A 0 129 . 129 CYS A O     960  22.73 1.0 ?  129 A 22 -4.647 -2.126 -3.009 1
+ATOM   C  CB    . CYS A 0 129 . 129 CYS A CB    961  20.26 1.0 ?  129 A 23 -4.739 -0.098 -0.202 1
+ATOM   S  SG    . CYS A 0 129 . 129 CYS A SG    962  23.56 1.0 ?  129 A 24 -3.618 0.608  -1.418 1
+ATOM   N  N     . CYS A 0 132 . 132 CYS A N     977  17.57 1.0 ?  132 A 25 -2.738 -0.243 -4.606 1
+ATOM   C  CA    . CYS A 0 132 . 132 CYS A CA    978  18.43 1.0 ?  132 A 26 -1.718 -1.276 -4.875 1
+ATOM   C  C     . CYS A 0 132 . 132 CYS A C     979  18.43 1.0 ?  132 A 27 -2.25  -2.361 -5.771 1
+ATOM   O  O     . CYS A 0 132 . 132 CYS A O     980  19.03 1.0 ?  132 A 28 -1.586 -2.716 -6.74  1
+ATOM   C  CB    . CYS A 0 132 . 132 CYS A CB    981  20.25 1.0 ?  132 A 29 -1.422 -1.948 -3.524 1
+ATOM   S  SG    . CYS A 0 132 . 132 CYS A SG    982  19.31 1.0 ?  132 A 30 -0.28  -0.641 -2.729 1
+HETATM ZN ZN    . ZN  C 1 296 . 296 ZN  C ZN    2221 22.4  1.0 +2 296 B 31 -1.321 -0.034 -0.993 1
+HETATM N  N1    . DHZ B 2 295 . 295 DHZ B N1    2222 34.52 1.0 ?  295 C 32 -0.222 0.574  3.118  1
+HETATM C  C2    . DHZ B 2 295 . 295 DHZ B C2    2223 38.63 1.0 ?  295 C 33 0.69   -0.311 2.549  1
+HETATM O  O2    . DHZ B 2 295 . 295 DHZ B O2    2224 37.72 1.0 ?  295 C 34 1.852  0.007  2.295  1
+HETATM N  N3    . DHZ B 2 295 . 295 DHZ B N3    2225 42.14 1.0 ?  295 C 35 0.201  -1.571 2.216  1
+HETATM C  C4    . DHZ B 2 295 . 295 DHZ B C4    2226 42.4  1.0 ?  295 C 36 -1.173 -2.108 2.693  1
+HETATM C  C5    . DHZ B 2 295 . 295 DHZ B C5    2227 39.0  1.0 ?  295 C 37 -2.052 -0.938 3.141  1
+HETATM C  C6    . DHZ B 2 295 . 295 DHZ B C6    2228 34.33 1.0 ?  295 C 38 -1.531 0.29   3.365  1
+HETATM C  "C1'" . DHZ B 2 295 . 295 DHZ B "C1'" 2229 29.82 1.0 ?  295 C 39 0.361  1.955  3.741  1
+HETATM C  "C2'" . DHZ B 2 295 . 295 DHZ B "C2'" 2230 28.77 1.0 ?  295 C 40 0.304  3.375  3.339  1
+HETATM O  "O2'" . DHZ B 2 295 . 295 DHZ B "O2'" 2231 32.26 1.0 ?  295 C 41 1.169  3.598  2.194  1
+HETATM C  "C3'" . DHZ B 2 295 . 295 DHZ B "C3'" 2232 26.99 1.0 ?  295 C 42 0.527  4.179  4.577  1
+HETATM O  "O3'" . DHZ B 2 295 . 295 DHZ B "O3'" 2233 23.36 1.0 ?  295 C 43 1.926  4.3    4.662  1
+HETATM C  "C4'" . DHZ B 2 295 . 295 DHZ B "C4'" 2234 27.16 1.0 ?  295 C 44 -0.046 3.168  5.714  1
+HETATM O  "O4'" . DHZ B 2 295 . 295 DHZ B "O4'" 2235 27.45 1.0 ?  295 C 45 0.09   1.815  5.134  1
+HETATM C  "C5'" . DHZ B 2 295 . 295 DHZ B "C5'" 2236 26.88 1.0 ?  295 C 46 -1.456 3.238  6.097  1
+HETATM O  "O5'" . DHZ B 2 295 . 295 DHZ B "O5'" 2237 27.98 1.0 ?  295 C 47 -2.168 3.585  4.874  1
+#
+_cell.length_a      120.3
+_cell.length_b      120.3
+_cell.length_c      78.4
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   120.0
+#

@@ -5,7 +5,7 @@ global_args:
       A: ALL # Everything in chain A
 
 rfd3_insulinr:
-  input: rfd3_ppi_paper_benchmark/4zxb_cropped.pdb
+  input: rfd3_ppi_paper_benchmark/4zxb_cropped.cif
   contig: 90-110,/0,E6-155
   select_hotspots:
     E64: CD2,CZ
@@ -13,7 +13,7 @@ rfd3_insulinr:
     E96: CD1,CZ
 
 rfd3_pdl1:
-  input: rfd3_ppi_paper_benchmark/5o45_cropped.pdb
+  input: rfd3_ppi_paper_benchmark/5o45_cropped.cif
   contig: 90-110,/0,A17-131
   select_hotspots:
     A56: CG,OH
@@ -21,7 +21,7 @@ rfd3_pdl1:
     A123: CD2,OH
 
 rfd3_il7ra:
-  input: rfd3_ppi_paper_benchmark/3di3_cropped.pdb
+  input: rfd3_ppi_paper_benchmark/3di3_cropped.cif
   contig: 90-110,/0,B21-213
   select_hotspots:
     B62: CG1,CG2
@@ -29,7 +29,7 @@ rfd3_il7ra:
     B143: CD2,OH
 
 rfd3_il2ra:
-  input: rfd3_ppi_paper_benchmark/1z92_cropped.pdb
+  input: rfd3_ppi_paper_benchmark/1z92_cropped.cif
   contig: 90-110,/0,B0-47,B53-64,B104-165
   select_hotspots:
     B2: CB,CD1
@@ -39,7 +39,7 @@ rfd3_il2ra:
     B120: CD2,CE1
 
 rfd3_tie2:
-  input: rfd3_ppi_paper_benchmark/2gy5_cropped.pdb
+  input: rfd3_ppi_paper_benchmark/2gy5_cropped.cif
   contig: 90-110,/0,A23-210
   select_hotspots:
     A154: CG1,CG2
@@ -53,7 +53,7 @@ rfd3_tie2:
     A194: CD1,CG2
 
 01_PD1:
-  input: complexa_targets/bindcraft_targets/PD1.pdb
+  input: complexa_targets/bindcraft_targets/PD1.cif
   contig: 90-110,/0,A1-115
   select_hotspots:
     A33: TIP
@@ -62,7 +62,7 @@ rfd3_tie2:
     A102: TIP
 
 02_PDL1:
-  input: complexa_targets/bindcraft_targets/PD-L1.pdb
+  input: complexa_targets/bindcraft_targets/PD-L1.cif
   contig: 90-110,/0,A1-115
   select_hotspots:
     A37: TIP
@@ -71,7 +71,7 @@ rfd3_tie2:
     A98: TIP
 
 03_PDL1_AAV:
-  input: complexa_targets/bindcraft_targets/PD-L1.pdb
+  input: complexa_targets/bindcraft_targets/PD-L1.cif
   contig: 90-110,/0,A1-115
   select_hotspots:
     A37: TIP
@@ -83,7 +83,7 @@ rfd3_tie2:
     A98: TIP
 
 04_IFNAR2:
-  input: complexa_targets/bindcraft_targets/IFNAR2.pdb
+  input: complexa_targets/bindcraft_targets/IFNAR2_2lag.cif
   contig: 90-110,/0,A1-103
   select_hotspots:
     A45: TIP
@@ -94,52 +94,52 @@ rfd3_tie2:
     A91: TIP
 
 05_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A1: ALL
 
 06_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A2: ALL
 
 07_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A3: TIP
 
 08_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A4: TIP
 
 09_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A1: ALL
     A2: ALL
 
 10_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A2: ALL
     A3: TIP
 
 11_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 90-110,/0,A1-88
   select_hotspots:
     A3: TIP
     A4: TIP
 
 12_Claudin1:
-  input: complexa_targets/bindcraft_targets/CLDN1.pdb
+  input: complexa_targets/bindcraft_targets/CLDN1.cif
   contig: 90-110,/0,A1-188
   select_hotspots:
     A31: TIP
@@ -148,100 +148,100 @@ rfd3_tie2:
     A152: TIP
 
 13_BBF14:
-  input: complexa_targets/bindcraft_targets/BBF-14.pdb
+  input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
   contig: 90-110,/0,A1-112
 
 14_CrSAS6:
-  input: complexa_targets/bindcraft_targets/Sas6.pdb
+  input: complexa_targets/bindcraft_targets/Sas6.cif
   contig: 90-110,/0,A1-145
 
 15_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.pdb
+  input: complexa_targets/bindcraft_targets/DerF7.cif
   contig: 90-110,/0,A1-196
   select_hotspots:
     A115: TIP
 
 16_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.pdb
+  input: complexa_targets/bindcraft_targets/DerF7.cif
   contig: 90-110,/0,A1-196
   select_hotspots:
     A161: TIP
 
 17_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.pdb
+  input: complexa_targets/bindcraft_targets/DerF7.cif
   contig: 90-110,/0,A1-196
   select_hotspots:
     A184: TIP
 
 18_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 90-110,/0,A1-118
   select_hotspots:
     A10: TIP
 
 19_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 90-110,/0,A1-118
   select_hotspots:
     A28: TIP
 
 20_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 90-110,/0,A1-118
   select_hotspots:
     A63: ALL
 
 21_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 90-110,/0,A1-118
   select_hotspots:
     A81: TIP
 
 22_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 90-110,/0,A1-118
   select_hotspots:
     A92: TIP
 
 23_BetV1:
-  input: complexa_targets/bindcraft_targets/BetV1.pdb
+  input: complexa_targets/bindcraft_targets/BetV1.cif
   contig: 90-110,/0,A1-159
   select_hotspots:
     A24: TIP
 
 24_SpCas9:
-  input: complexa_targets/bindcraft_targets/sCas9_cropped.pdb
+  input: complexa_targets/bindcraft_targets/sCas9_cropped.cif
   contig: 90-110,/0,A96-174,A306-446
   select_hotspots:
     A360: TIP
 
 25_CbAgo:
-  input: complexa_targets/bindcraft_targets/CbAgo_cropped_NPIWI.pdb
+  input: complexa_targets/bindcraft_targets/CbAgo_cropped_NPIWI.cif
   contig: 90-110,/0,A1-175,A298-343,A635-689
   select_hotspots:
     A39: TIP
 
 26_CbAgo:
-  input: complexa_targets/bindcraft_targets/CbAgo_cropped_PAZ.pdb
+  input: complexa_targets/bindcraft_targets/CbAgo_cropped_PAZ.cif
   contig: 90-110,/0,A180-276
   select_hotspots:
     A268: TIP
 
 27_HER2_AAV:
-  input: complexa_targets/bindcraft_targets/HER2_cropped.pdb
+  input: complexa_targets/bindcraft_targets/HER2_cropped_1n8z.cif
   contig: 90-110,/0,C23-101,C111-268
   select_hotspots:
     C170: TIP
 
 28_HER2_AAV:
-  input: complexa_targets/bindcraft_targets/HER2_cropped.pdb
+  input: complexa_targets/bindcraft_targets/HER2_cropped_1n8z.cif
   contig: 90-110,/0,C23-101,C111-268
   select_hotspots:
     C165: TIP
     C170: TIP
 
 29_BHRF1:
-  input: complexa_targets/alpha_proteo_targets/2wh6_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/2wh6_cropped.cif
   contig: 90-110,/0,A2-158
   select_hotspots:
     A65: TIP
@@ -252,7 +252,7 @@ rfd3_tie2:
     A93: TIP
 
 30_SC2RBD:
-  input: complexa_targets/alpha_proteo_targets/6m0j_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/6m0j_cropped.cif
   contig: 90-110,/0,E333-526
   select_hotspots:
     E485: ALL
@@ -262,7 +262,7 @@ rfd3_tie2:
     E505: TIP
 
 31_IL7RA:
-  input: complexa_targets/alpha_proteo_targets/3di3_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/3di3_cropped.cif
   contig: 90-110,/0,B17-209
   select_hotspots:
     B58: TIP
@@ -270,7 +270,7 @@ rfd3_tie2:
     B139: TIP
 
 32_PDL1_ALPHA:
-  input: complexa_targets/alpha_proteo_targets/5o45_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/5o45_cropped.cif
   contig: 90-110,/0,A17-132
   select_hotspots:
     A56: TIP
@@ -278,7 +278,7 @@ rfd3_tie2:
     A123: TIP
 
 33_TrkA:
-  input: complexa_targets/alpha_proteo_targets/1www_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/1www_cropped.cif
   contig: 90-110,/0,X282-382
   select_hotspots:
     X294: TIP
@@ -286,7 +286,7 @@ rfd3_tie2:
     X333: TIP
 
 34_Insulin:
-  input: complexa_targets/alpha_proteo_targets/4zxb_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/4zxb_cropped.cif
   contig: 90-110,/0,E6-155
   select_hotspots:
     E64: TIP
@@ -294,7 +294,7 @@ rfd3_tie2:
     E96: TIP
 
 35_H1:
-  input: complexa_targets/alpha_proteo_targets/5vli_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/5vli_cropped.cif
   contig: 90-110,/0,A5-325,B501-670
   select_hotspots:
     B521: TIP
@@ -302,7 +302,7 @@ rfd3_tie2:
     B552: TIP
 
 36_VEGFA:
-  input: complexa_targets/alpha_proteo_targets/1bj1_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/1bj1_cropped.cif
   contig: 90-110,/0,V14-107,W14-107
   select_hotspots:
     W81: TIP
@@ -310,7 +310,7 @@ rfd3_tie2:
     W91: TIP
 
 37_IL17A:
-  input: complexa_targets/alpha_proteo_targets/4hsa_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/4hsa_cropped.cif
   contig: 90-110,/0,A17-29,A41-131,B19-127
   select_hotspots:
     A94: TIP
@@ -318,7 +318,7 @@ rfd3_tie2:
     B67: TIP
 
 38_TNFalpha:
-  input: complexa_targets/alpha_proteo_targets/1tnf_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/1tnf_cropped.cif
   contig: 90-110,/0,A12-157,B12-157,C12-157
   select_hotspots:
     A113: ALL

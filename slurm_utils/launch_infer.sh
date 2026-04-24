@@ -529,8 +529,12 @@ if [ -n "$EXISTING_RUNNING" ]; then
     echo "Warning: Job '$RUN_NAME' is already RUNNING (ID: $EXISTING_ID)"
     echo "  Cancel: scancel $EXISTING_ID"
     echo "  Monitor: tail -f $RUN_DIR/slurm_run_outputs/slurm.err"
-    read -p "Continue with submission? [y/N] " -n 1 -r; echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    if [ -t 1 ]; then
+        read -p "Continue with submission? [y/N] " -n 1 -r; echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    else
+        echo "  (Non-interactive mode: proceeding with submission)"
+    fi
 fi
 
 if [ -n "$WANDBKEY" ]; then

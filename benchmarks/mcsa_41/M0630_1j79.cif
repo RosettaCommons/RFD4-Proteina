@@ -1,0 +1,109 @@
+data_M0630_1j79.cif
+#
+_entry.id       M0630_1j79.cif
+_entry.author   rib7
+_entry.date     2026-04-18
+_entry.time     15:19:58
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 polymer     .
+1 non-polymer .
+2 non-polymer .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       D
+_entity_poly.pdbx_seq_one_letter_code_can   D
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   0
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      ASP
+_entity_poly_seq.num         250
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  ASP N  CA  SING N ?
+2  ASP CA C   SING N ?
+3  ASP CA CB  SING N ?
+4  ASP C  O   DOUB N ?
+5  ASP CB CG  SING N ?
+6  ASP CG OD1 DOUB N ?
+7  ASP CG OD2 SING N ?
+8  ORO N1 C2  SING Y ?
+9  ORO N1 C6  SING Y ?
+10 ORO C2 O2  DOUB N ?
+11 ORO C2 N3  SING Y ?
+12 ORO N3 C4  SING Y ?
+13 ORO C4 O4  DOUB N ?
+14 ORO C4 C5  SING Y ?
+15 ORO C5 C6  DOUB Y ?
+16 ORO C6 C7  SING N ?
+17 ORO C7 O71 DOUB N ?
+18 ORO C7 O72 SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.rcsb_res_id 
+_atom_site.rcsb_chain_id 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM   N  N   . ASP A 0 250 . 250 ASP A N   1972 12.98 1.0 ?  250 A 0  0.573  -0.403 6.021  1
+ATOM   C  CA  . ASP A 0 250 . 250 ASP A CA  1973 11.47 1.0 ?  250 A 1  0.354  -0.31  4.601  1
+ATOM   C  C   . ASP A 0 250 . 250 ASP A C   1974 17.3  1.0 ?  250 A 2  -1.098 0.091  4.332  1
+ATOM   O  O   . ASP A 0 250 . 250 ASP A O   1975 16.98 1.0 ?  250 A 3  -1.677 -0.282 3.309  1
+ATOM   C  CB  . ASP A 0 250 . 250 ASP A CB  1976 13.47 1.0 ?  250 A 4  0.816  -1.45  3.667  1
+ATOM   C  CG  . ASP A 0 250 . 250 ASP A CG  1977 17.39 1.0 ?  250 A 5  1.024  -0.933 2.262  1
+ATOM   O  OD1 . ASP A 0 250 . 250 ASP A OD1 1978 18.72 1.0 ?  250 A 6  1.094  0.265  1.99   1
+ATOM   O  OD2 . ASP A 0 250 . 250 ASP A OD2 1979 21.21 1.0 ?  250 A 7  1.139  -1.876 1.345  1
+HETATM ZN ZN  . ZN  B 1 400 . 400 ZN  B ZN  5455 22.02 1.0 +2 400 C 8  2.77   1.17   0.703  1
+HETATM N  N1  . ORO C 2 410 . 410 ORO C N1  5457 18.66 1.0 ?  410 E 9  -1.58  -0.046 -2.422 1
+HETATM C  C2  . ORO C 2 410 . 410 ORO C C2  5458 23.79 1.0 ?  410 E 10 -1.0   -1.39  -2.234 1
+HETATM O  O2  . ORO C 2 410 . 410 ORO C O2  5459 19.98 1.0 ?  410 E 11 -1.667 -2.418 -2.143 1
+HETATM N  N3  . ORO C 2 410 . 410 ORO C N3  5460 26.76 1.0 ?  410 E 12 0.375  -1.41  -2.222 1
+HETATM C  C4  . ORO C 2 410 . 410 ORO C C4  5461 100.0 1.0 ?  410 E 13 1.149  -0.394 -2.801 1
+HETATM O  O4  . ORO C 2 410 . 410 ORO C O4  5462 39.79 1.0 ?  410 E 14 2.323  -0.628 -3.041 1
+HETATM C  C5  . ORO C 2 410 . 410 ORO C C5  5463 30.44 1.0 ?  410 E 15 0.601  0.819  -2.906 1
+HETATM C  C6  . ORO C 2 410 . 410 ORO C C6  5464 29.02 1.0 ?  410 E 16 -0.63  1.109  -2.184 1
+HETATM C  C7  . ORO C 2 410 . 410 ORO C C7  5465 21.02 1.0 ?  410 E 17 -1.33  2.384  -2.657 1
+HETATM O  O71 . ORO C 2 410 . 410 ORO C O71 5466 17.46 1.0 ?  410 E 18 -0.736 3.479  -2.531 1
+HETATM O  O72 . ORO C 2 410 . 410 ORO C O72 5467 18.24 1.0 ?  410 E 19 -2.501 2.231  -3.086 1
+#
+_cell.length_a      51.6
+_cell.length_b      78.8
+_cell.length_c      180.3
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#

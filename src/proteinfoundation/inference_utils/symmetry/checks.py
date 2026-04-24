@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
 from biotite.structure import AtomArray
 
 from foundry.utils.ddp import RankedLogger
@@ -63,8 +64,6 @@ def check_atom_array_is_symmetric(atom_array: AtomArray) -> bool:
     # TODO: Implement something like this https://github.com/private-organization/ipd/blob/main/ipd/sym/sym_detect.py#L303
     #       and maybe this https://github.com/private-organization/ipd/blob/main/ipd/sym/sym_detect.py#L231
 
-    import biotite.structure as struc
-
     from proteinfoundation.inference_utils.symmetry.atom_array import (
         apply_symmetry_to_atomarray_coord,
     )
@@ -109,7 +108,7 @@ def check_atom_array_is_symmetric(atom_array: AtomArray) -> bool:
     for frame in standard_frames:
         symmed_atoms = apply_symmetry_to_atomarray_coord(asu_atoms, frame)
         standard_atom_array.append(symmed_atoms)
-    standard_atom_array = struc.concatenate(standard_atom_array)
+    standard_atom_array = concatenate_atom_array_plus(standard_atom_array)
 
     R_standard_obtained = find_optimal_rotation(standard_atom_array.coord, atom_array.coord)
 

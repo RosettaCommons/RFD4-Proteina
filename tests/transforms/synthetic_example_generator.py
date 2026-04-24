@@ -1,5 +1,5 @@
-import biotite.structure as struc
 import numpy as np
+from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
 from biotite.structure import AtomArray
 
 _DEFAULT_DIRECTION: np.ndarray = np.array([0.0, 0.0, 1.0])
@@ -44,7 +44,7 @@ def concat_atom_arrays_without_conflict(atom_array: AtomArray, atom_array_to_add
     atom_array_to_add.molecule_id += np.max(atom_array.molecule_id) + 1
     atom_array_to_add.molecule_iid += np.max(atom_array.molecule_iid) + 1
 
-    atom_array = struc.concatenate([atom_array, atom_array_to_add])
+    atom_array = concatenate_atom_array_plus([atom_array, atom_array_to_add])
     return atom_array
 
 

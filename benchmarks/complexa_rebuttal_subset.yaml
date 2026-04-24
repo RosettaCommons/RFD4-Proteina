@@ -2,7 +2,7 @@ global_args:
   dialect: 2
 
 01_PD1:
-  input: complexa_targets/bindcraft_targets/PD1.pdb
+  input: complexa_targets/bindcraft_targets/PD1.cif
   contig: 80-150,/0,A1-115
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -12,7 +12,7 @@ global_args:
     A102: TIP
 
 04_IFNAR2:
-  input: complexa_targets/bindcraft_targets/IFNAR2.pdb
+  input: complexa_targets/bindcraft_targets/IFNAR2_2lag.cif
   contig: 60-175,/0,A1-103
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -24,14 +24,14 @@ global_args:
     A91: TIP
 
 05_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.pdb
+  input: complexa_targets/bindcraft_targets/CD45.cif
   contig: 80-200,/0,A1-88
   infer_ori_strategy: hotspots
   select_hotspots:
     A1: ALL
 
 12_Claudin1:
-  input: complexa_targets/bindcraft_targets/CLDN1.pdb
+  input: complexa_targets/bindcraft_targets/CLDN1.cif
   contig: 80-175,/0,A1-188
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -41,50 +41,50 @@ global_args:
     A152: TIP
 
 13_BBF14:
-  input: complexa_targets/bindcraft_targets/BBF-14.pdb
+  input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
   contig: 70-250,/0,A1-112
 
 14_CrSAS6:
-  input: complexa_targets/bindcraft_targets/Sas6.pdb
+  input: complexa_targets/bindcraft_targets/Sas6.cif
   contig: 90-200,/0,A1-145
 
 15_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.pdb
+  input: complexa_targets/bindcraft_targets/DerF7.cif
   contig: 70-185,/0,A1-196
   infer_ori_strategy: hotspots
   select_hotspots:
     A115: TIP
 
 18_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.pdb
+  input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 70-185,/0,A1-118
   infer_ori_strategy: hotspots
   select_hotspots:
     A10: TIP
 
 23_BetV1:
-  input: complexa_targets/bindcraft_targets/BetV1.pdb
+  input: complexa_targets/bindcraft_targets/BetV1.cif
   contig: 70-185,/0,A1-159
   infer_ori_strategy: hotspots
   select_hotspots:
     A24: TIP
 
 24_SpCas9:
-  input: complexa_targets/bindcraft_targets/sCas9_cropped.pdb
+  input: complexa_targets/bindcraft_targets/sCas9_cropped.cif
   contig: 70-150,/0,A96-174,A306-446
   infer_ori_strategy: hotspots
   select_hotspots:
     A360: TIP
 
 26_CbAgo:
-  input: complexa_targets/bindcraft_targets/CbAgo_cropped_PAZ.pdb
+  input: complexa_targets/bindcraft_targets/CbAgo_cropped_PAZ.cif
   contig: 70-160,/0,A180-276
   infer_ori_strategy: hotspots
   select_hotspots:
     A268: TIP
 
 28_HER2_AAV:
-  input: complexa_targets/bindcraft_targets/HER2_cropped.pdb
+  input: complexa_targets/bindcraft_targets/HER2_cropped_1n8z.cif
   contig: 60-100,/0,C23-101,C111-268
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -92,7 +92,7 @@ global_args:
     C170: TIP
 
 29_BHRF1:
-  input: complexa_targets/alpha_proteo_targets/2wh6_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/2wh6_cropped.cif
   contig: 80-120,/0,A2-158
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -104,7 +104,7 @@ global_args:
     A93: TIP
 
 30_SC2RBD:
-  input: complexa_targets/alpha_proteo_targets/6m0j_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/6m0j_cropped.cif
   contig: 80-120,/0,E333-526
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -115,7 +115,7 @@ global_args:
     E505: TIP
 
 31_IL7RA:
-  input: complexa_targets/alpha_proteo_targets/3di3_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/3di3_cropped.cif
   contig: 50-120,/0,B17-209
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -124,7 +124,7 @@ global_args:
     B139: TIP
 
 32_PDL1_ALPHA:
-  input: complexa_targets/alpha_proteo_targets/5o45_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/5o45_cropped.cif
   contig: 50-120,/0,A17-132
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -133,7 +133,7 @@ global_args:
     A123: TIP
 
 33_TrkA:
-  input: complexa_targets/alpha_proteo_targets/1www_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/1www_cropped.cif
   contig: 50-120,/0,X282-382
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -142,7 +142,7 @@ global_args:
     X333: TIP
 
 34_Insulin:
-  input: complexa_targets/alpha_proteo_targets/4zxb_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/4zxb_cropped.cif
   contig: 40-120,/0,E6-155
   infer_ori_strategy: hotspots
   select_hotspots:
@@ -151,7 +151,7 @@ global_args:
     E96: TIP
 
 36_VEGFA:
-  input: complexa_targets/alpha_proteo_targets/1bj1_cropped.pdb
+  input: complexa_targets/alpha_proteo_targets/1bj1_cropped.cif
   contig: 50-140,/0,V14-107,W14-107
   infer_ori_strategy: hotspots
   select_hotspots:

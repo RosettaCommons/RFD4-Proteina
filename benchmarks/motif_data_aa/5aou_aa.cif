@@ -1,0 +1,127 @@
+data_5aou_aa.cif
+#
+_entry.id       5aou_aa.cif
+_entry.author   rib7
+_entry.date     2026-04-18
+_entry.time     15:27:52
+#
+_entity.id                 0
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       YKN
+_entity_poly.pdbx_seq_one_letter_code_can   YKN
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n TYR 1051
+0 n LYS 2083
+0 n ASN 2110
+#
+loop_
+_chem_comp_bond.pdbx_ordinal 
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+1  TYR N   CA  SING N ?
+2  TYR CA  C   SING N ?
+3  TYR CA  CB  SING N ?
+4  TYR C   O   DOUB N ?
+5  TYR CB  CG  SING N ?
+6  TYR CG  CD1 DOUB Y ?
+7  TYR CG  CD2 SING Y ?
+8  TYR CD1 CE1 SING Y ?
+9  TYR CD2 CE2 DOUB Y ?
+10 TYR CE1 CZ  DOUB Y ?
+11 TYR CE2 CZ  SING Y ?
+12 TYR CZ  OH  SING N ?
+13 LYS N   CA  SING N ?
+14 LYS CA  C   SING N ?
+15 LYS CA  CB  SING N ?
+16 LYS C   O   DOUB N ?
+17 LYS CB  CG  SING N ?
+18 LYS CG  CD  SING N ?
+19 LYS CD  CE  SING N ?
+20 LYS CE  NZ  SING N ?
+21 ASN N   CA  SING N ?
+22 ASN CA  C   SING N ?
+23 ASN CA  CB  SING N ?
+24 ASN C   O   DOUB N ?
+25 ASN CB  CG  SING N ?
+26 ASN CG  OD1 DOUB N ?
+27 ASN CG  ND2 SING N ?
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.rcsb_res_id 
+_atom_site.rcsb_chain_id 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+ATOM N N   . TYR A 0 1051 . 1051 TYR A N   416 11.3  1.0 ?  51  A 0  1.06   6.62   1.957  1
+ATOM C CA  . TYR A 0 1051 . 1051 TYR A CA  417 12.07 1.0 ?  51  A 1  0.666  5.226  1.858  1
+ATOM C C   . TYR A 0 1051 . 1051 TYR A C   418 13.72 1.0 ?  51  A 2  -0.79  5.066  2.178  1
+ATOM O O   . TYR A 0 1051 . 1051 TYR A O   419 15.33 1.0 ?  51  A 3  -1.155 5.173  3.367  1
+ATOM C CB  . TYR A 0 1051 . 1051 TYR A CB  420 12.61 1.0 ?  51  A 4  1.533  4.427  2.822  1
+ATOM C CG  . TYR A 0 1051 . 1051 TYR A CG  421 14.11 1.0 ?  51  A 5  1.449  2.918  2.847  1
+ATOM C CD1 . TYR A 0 1051 . 1051 TYR A CD1 422 18.96 1.0 ?  51  A 6  0.442  2.319  3.547  1
+ATOM C CD2 . TYR A 0 1051 . 1051 TYR A CD2 423 13.4  1.0 ?  51  A 7  2.352  2.096  2.3    1
+ATOM C CE1 . TYR A 0 1051 . 1051 TYR A CE1 424 23.12 1.0 ?  51  A 8  0.351  0.947  3.625  1
+ATOM C CE2 . TYR A 0 1051 . 1051 TYR A CE2 425 18.14 1.0 ?  51  A 9  2.259  0.708  2.342  1
+ATOM C CZ  . TYR A 0 1051 . 1051 TYR A CZ  426 22.59 1.0 ?  51  A 10 1.256  0.116  3.012  1
+ATOM O OH  . TYR A 0 1051 . 1051 TYR A OH  427 38.05 1.0 ?  51  A 11 1.031  -1.241 3.135  1
+ATOM N N   . LYS A 0 2083 . 2083 LYS A N   678 11.97 1.0 ?  83  A 12 -2.613 0.351  -2.667 1
+ATOM C CA  . LYS A 0 2083 . 2083 LYS A CA  679 13.93 1.0 ?  83  A 13 -2.739 -1.088 -2.43  1
+ATOM C C   . LYS A 0 2083 . 2083 LYS A C   680 16.05 1.0 ?  83  A 14 -3.803 -1.603 -3.398 1
+ATOM O O   . LYS A 0 2083 . 2083 LYS A O   681 23.47 1.0 ?  83  A 15 -4.913 -1.088 -3.506 1
+ATOM C CB  . LYS A 0 2083 . 2083 LYS A CB  682 21.61 1.0 ?  83  A 16 -2.939 -1.343 -0.906 1
+ATOM C CG  . LYS A 0 2083 . 2083 LYS A CG  683 27.35 1.0 ?  83  A 17 -2.584 -2.804 -0.488 1
+ATOM C CD  . LYS A 0 2083 . 2083 LYS A CD  684 42.38 1.0 ?  83  A 18 -1.411 -2.76  0.498  1
+ATOM C CE  . LYS A 0 2083 . 2083 LYS A CE  685 40.54 1.0 ?  83  A 19 -0.67  -4.082 0.322  1
+ATOM N NZ  . LYS A 0 2083 . 2083 LYS A NZ  686 50.13 1.0 +1 83  A 20 0.486  -4.231 1.245  1
+ATOM N N   . ASN A 0 2110 . 2110 ASN A N   896 8.37  1.0 ?  110 A 21 1.108  -1.22  -4.958 1
+ATOM C CA  . ASN A 0 2110 . 2110 ASN A CA  897 8.9   1.0 ?  110 A 22 1.497  -1.95  -3.788 1
+ATOM C C   . ASN A 0 2110 . 2110 ASN A C   898 9.72  1.0 ?  110 A 23 0.622  -3.209 -3.711 1
+ATOM O O   . ASN A 0 2110 . 2110 ASN A O   899 11.4  1.0 ?  110 A 24 -0.591 -3.128 -3.501 1
+ATOM C CB  . ASN A 0 2110 . 2110 ASN A CB  900 10.2  1.0 ?  110 A 25 1.367  -1.04  -2.581 1
+ATOM C CG  . ASN A 0 2110 . 2110 ASN A CG  901 13.64 1.0 ?  110 A 26 2.053  -1.598 -1.363 1
+ATOM O OD1 . ASN A 0 2110 . 2110 ASN A OD1 902 18.23 1.0 ?  110 A 27 1.847  -2.803 -1.113 1
+ATOM N ND2 . ASN A 0 2110 . 2110 ASN A ND2 903 20.54 1.0 ?  110 A 28 2.825  -0.772 -0.64  1
+#
+_cell.length_a      75.086
+_cell.length_b      84.762
+_cell.length_c      37.657
+_cell.angle_alpha   90.0
+_cell.angle_beta    90.0
+_cell.angle_gamma   90.0
+#
