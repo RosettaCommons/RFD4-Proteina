@@ -14,6 +14,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import biotite.structure as struc
 import numpy as np
 import pandas as pd
 import pytest
@@ -204,6 +205,31 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
     return cfg
 
 
+def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
+    """Assert two CIF files contain identical all-atom coordinates after alignment.
+
+    Superimposes structure B onto structure A, then verifies all-atom coordinates
+    match within 1e-3 Å.
+
+    Args:
+        cif_path_a: Path to the reference CIF file.
+        cif_path_b: Path to the CIF file to compare against the reference.
+    """
+    aa_a = load_any(cif_path_a)
+    aa_b = load_any(cif_path_b)
+    assert (
+        aa_a.coord.shape == aa_b.coord.shape
+    ), f"Structures have different shapes: {aa_a.coord.shape} vs {aa_b.coord.shape}"
+    _, transform = struc.superimpose(aa_a, aa_b)
+    aa_b_aligned = transform.apply(aa_b)
+    np.testing.assert_allclose(
+        aa_a.coord,
+        aa_b_aligned.coord,
+        atol=1e-3,
+        err_msg="Structures produced different coordinates after alignment",
+    )
+
+
 def _load_output_dataframe(
     out_dir: str,
     global_prefix: str | None = None,
@@ -366,9 +392,16 @@ class TestDatasetConstruction:
 
 _CKPT_PATH = os.environ.get(
     "CKPT_PATH",
-    "/path/to/data",  # Symlink to current sota checkpoint
+    "/path/to/data",
 )
+
+# Symlink to current sota checkpoint
 _CKPT_NAME = os.environ.get("CKPT_NAME", "latest.ckpt")
+
+# Pair of checkpoints, one ema-only, one with both
+_EMA_CONTROL_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000.ckpt")
+_EMA_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000-ema.ckpt")
+
 _AE_CKPT_PATH = os.environ.get(
     "AE_CKPT_PATH", "/path/to/data"
 )
@@ -551,20 +584,49 @@ class TestEndToEndInference:
         assert len(cifs_0) == len(cifs_1) >= 1
 
         for f0, f1 in zip(cifs_0, cifs_1, strict=True):
-            aa0 = load_any(str(f0))
-            aa1 = load_any(str(f1))
-            np.testing.assert_allclose(
-                aa0.coord,
-                aa1.coord,
-                atol=1e-3,
-                err_msg="Seeded runs produced different coordinates",
-            )
+            _assert_coords_identical(str(f0), str(f1))
 
         # Verify both runs produced valid dataframes with matching seeds
         df_0 = _load_output_dataframe(out_dirs[0], check_spec_columns=True)
         df_1 = _load_output_dataframe(out_dirs[1], check_spec_columns=True)
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
+
+    def test_ema_vs_regular_checkpoint(self, gpu, tmp_output_dir):  # noqa: F811
+        """Verify that regular and EMA checkpoints produce identical outputs for the same seed.
+
+        Runs inference with both checkpoints using a fixed seed and asserts that
+        the resulting structures are identical after alignment. A near-zero RMSD
+        confirms the EMA weights have not diverged from the training weights.
+        """
+        input_path = _write_input_json(
+            tmp_output_dir,
+            {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
+        )
+
+        ckpt_names = {"regular": _EMA_CONTROL_CKPT_NAME, "ema": _EMA_CKPT_NAME}
+        out_dirs = {}
+        for label, ckpt_name in ckpt_names.items():
+            out_dir = os.path.join(tmp_output_dir, label)
+            os.makedirs(out_dir)
+            out_dirs[label] = out_dir
+            cfg = _build_test_cfg(
+                [
+                    f"inputs={input_path}",
+                    f"out_dir={out_dir}",
+                    f"ckpt_name={ckpt_name}",
+                    "num_replicates=1",
+                    "seed=12345",
+                ]
+            )
+            run_generation(cfg, job_id=0, config_name=f"test_ema_vs_regular_{label}")
+
+        cifs_regular = sorted(Path(out_dirs["regular"]).glob("inference_samples/*.cif"))
+        cifs_ema = sorted(Path(out_dirs["ema"]).glob("inference_samples/*.cif"))
+        assert len(cifs_regular) == len(cifs_ema) == 1
+
+        for f_regular, f_ema in zip(cifs_regular, cifs_ema, strict=True):
+            _assert_coords_identical(str(f_regular), str(f_ema))
 
     def test_output_cif_annotations(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify that generated CIF files contain expected annotations."""
