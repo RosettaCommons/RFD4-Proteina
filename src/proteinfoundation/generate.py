@@ -29,6 +29,7 @@ from proteinfoundation.inference_utils.datasets import ContigJsonDataset, Design
 from proteinfoundation.inference_utils.input_parsing import InputSpecification
 from proteinfoundation.proteina import Proteina
 from proteinfoundation.search.base_strategy import SearchStrategy
+from proteinfoundation.utils.simple_ema import SimpleEMA
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project
@@ -363,7 +364,33 @@ def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy
     return search_strategy
 
 
-def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
+def _load_ema_from_checkpoint(ckpt_file: str) -> SimpleEMA | None:
+    """Load SimpleEMA callback state from a checkpoint if present.
+
+    Args:
+        ckpt_file: Path to the checkpoint file.
+
+    Returns:
+        Configured SimpleEMA ready for inference (EMA weights will be swapped in on
+        validation_start / loaded directly before predict), or None if no EMA state found.
+    """
+    raw_ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
+    callbacks_state = raw_ckpt.get("callbacks", {})
+
+    ema_state = next((v for k, v in callbacks_state.items() if "SimpleEMA" in k), None)
+    if ema_state is None or not ema_state.get("ema_state_dict"):
+        logger.info("No EMA state found in checkpoint; inference will use training weights.")
+        return None
+
+    decay = ema_state.get("decay", 0.999)
+    update_every_n = ema_state.get("update_every_n", 1)
+    ema_callback = SimpleEMA(decay=decay, update_every_n=update_every_n)
+    ema_callback.load_state_dict(ema_state)
+    logger.info(f"Found EMA state in checkpoint (decay={decay}). Inference will use EMA weights.")
+    return ema_callback
+
+
+def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | None]:
     """Load model checkpoint for inference."""
     ckpt_path = cfg.ckpt_path
     ckpt_file = os.path.join(ckpt_path, cfg.ckpt_name)
@@ -379,6 +406,10 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         weights_only=False,
         map_location="cpu",
     )
+
+    # Load EMA callback state separately. The checkpoint is typically warm in OS page
+    # cache at this point, so the second torch.load is fast.
+    ema_callback = _load_ema_from_checkpoint(ckpt_file)
 
     # Remove val sets used in training, and do not compute loss on inference examples, since they start with NaN coords
     # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.
@@ -468,7 +499,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         refinement_strategy = hydra.utils.instantiate(cfg.refinement.strategy)
         model.configure_refinement(refinement_strategy, refinement_reward_model)
 
-    return model
+    return model, ema_callback
 
 
 def save_predictions(
@@ -616,8 +647,8 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         logger.info(f"Results already exist at {csv_path}. Exiting generate.py.")
         sys.exit(0)
 
-    # Load model
-    model = load_ckpt_n_configure_inference(cfg)
+    # Load model and EMA callback
+    model, ema_callback = load_ckpt_n_configure_inference(cfg)
     model.inference_seed = cfg.seed
 
     dataset = get_dataset_from_cfg(cfg, job_id)
@@ -649,25 +680,20 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     # Sample model
     logger.info(f"Running inference on {len(dataloader)} batches...")
-    trainer = L.Trainer(
-        accelerator="gpu",
-        devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
-        num_nodes=cfg.hardware.nnodes_,
-        default_root_dir=root_path,
-        logger=False,
-    )
 
     if model.metrics is not None:
+        # trainer.validate fires on_validation_start/end, so SimpleEMA swaps weights automatically.
+        trainer = L.Trainer(
+            accelerator="gpu",
+            devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
+            num_nodes=cfg.hardware.nnodes_,
+            default_root_dir=root_path,
+            logger=False,
+            callbacks=[ema_callback] if ema_callback is not None else [],
+        )
         trainer.validate(model, dataloader)  # validation_step automatically saves outputs
     else:
-        predictions = trainer.predict(model, dataloader)  # list of lists of dicts,
-        # first list is for each batch, second list is for each sample in the batch
-        # Save predictions to cif files
-        save_predictions(
-            root_path,
-            predictions,
-            job_id=job_id,
-        )
+        raise NotImplementedError("Predictions without Metrics is being refactored and a patch will be merged soon.")
 
     logger.info(f"✓ Generation complete! Results saved to {root_path}")
 
