@@ -2,7 +2,7 @@ import logging
 
 import torch
 
-from proteinfoundation.nn.feature_factory_atom37 import FeatureFactory
+from proteinfoundation.nn.feature_factory import FeatureFactory
 from proteinfoundation.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from proteinfoundation.nn.modules.msa_module import MSAModule
 from proteinfoundation.nn.modules.pair_rep_initial import PairReprBuilder

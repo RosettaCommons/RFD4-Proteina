@@ -89,7 +89,9 @@ def _resolve_ranking_center(data: dict, atom_array: AtomArray) -> np.ndarray:
     """
     crop_info = data.get("crop_info")
     if crop_info is not None and "crop_center_atom_idx" in crop_info and "atom_array" in crop_info:
-        return crop_info["atom_array"].coord[crop_info["crop_center_atom_idx"]]
+        idx = crop_info["crop_center_atom_idx"]
+        if not np.isnan(idx):
+            return crop_info["atom_array"].coord[int(idx)]
 
     coords = get_af3_token_center_coords(atom_array)
     valid = np.isfinite(coords).all(axis=1)

@@ -11,18 +11,11 @@ from biotite.structure import AtomArray
 from proteinfoundation.conditions import C_HB, C_RAS, C_SEC
 from proteinfoundation.datapipes.pipeline import _build_design_validation_pipeline
 from proteinfoundation.transforms.design_task import (
-    AntibodyFrameworkConditioningTask,
-    AntibodyFrameworkConditioningTask3DTarget,
     InverseFoldingTask,
-    MotifScaffold2DDistTask,
     MotifScaffoldTask,
     PPIHotspotWith3DTarget,
-    PPIHotspotWithInternalCoordTargetMotifTask,
-    RandomAtomDistanceTask,
     StructurePredictionTask,
     TipAtomActiveSiteTask,
-    TipAtomDistanceTask,
-    TipAtomPartialLigandDistanceTask,
     TipAtomPartialLigandTask,
     TipAtomTask,
     UnconditionalTask,
@@ -153,16 +146,9 @@ MINIMAL_ELIGIBLE_EXAMPLE_MAP = {
     StructurePredictionTask: "simple_protein",
     InverseFoldingTask: "simple_protein",
     TipAtomPartialLigandTask: "protein_with_ligand",
-    TipAtomPartialLigandDistanceTask: "protein_with_ligand",
     TipAtomTask: "simple_protein",
-    TipAtomDistanceTask: "simple_protein",
     MotifScaffoldTask: "simple_protein",
-    MotifScaffold2DDistTask: "simple_protein",
-    PPIHotspotWithInternalCoordTargetMotifTask: "protein_protein_interface_crop_info",
     PPIHotspotWith3DTarget: "protein_protein_interface_crop_info",
-    AntibodyFrameworkConditioningTask: "simple_protein_ab",
-    AntibodyFrameworkConditioningTask3DTarget: "simple_protein_ab",
-    RandomAtomDistanceTask: "simple_protein",
     TipAtomActiveSiteTask: "simple_protein",
 }
 
@@ -171,16 +157,9 @@ COMPLEX_ELIGIBLE_EXAMPLE_MAP = {
     StructurePredictionTask: "complex_protein",
     InverseFoldingTask: "complex_protein",
     TipAtomPartialLigandTask: "complex_protein",
-    TipAtomPartialLigandDistanceTask: "complex_protein",
     TipAtomTask: "complex_protein",
-    TipAtomDistanceTask: "complex_protein",
     MotifScaffoldTask: "complex_protein",
-    MotifScaffold2DDistTask: "complex_protein",
-    PPIHotspotWithInternalCoordTargetMotifTask: "complex_protein_crop_info",
     PPIHotspotWith3DTarget: "complex_protein_crop_info",
-    AntibodyFrameworkConditioningTask: "complex_protein_ab",
-    AntibodyFrameworkConditioningTask3DTarget: "complex_protein_ab",
-    RandomAtomDistanceTask: "complex_protein",
     TipAtomActiveSiteTask: "complex_protein",
 }
 
