@@ -5,19 +5,14 @@ from proteinfoundation.nn.modules.adaptive_ln_scale import AdaptiveLayerNorm
 
 
 class PairReprBuilder(torch.nn.Module):
-    """
-    Builds initial pair representation. Essentially the pair feature factory, but potentially with
-    an adaptive layer norm layer as well.
+    """Builds initial pair representation with optional adaptive layer norm conditioning.
 
     Args:
-        feats_repr: List of feature names for pair representation
-        feats_cond: List of feature names for conditioning (adaptive layernorm)
-        dim_feats_out: Output dimension for pair representation
-        dim_cond_pair: Output dimension for conditioning features
-        use_atom37_factory: If True, use FeatureFactoryAtom37 (supports bond features).
-                           If False, use old FeatureFactory (for autoencoder compatibility).
-                           Defaults to False for backward compatibility.
-        **kwargs: Additional arguments passed to feature factory
+        feats_repr: List of feature names for pair representation.
+        feats_cond: List of feature names for conditioning (adaptive layernorm).
+        dim_feats_out: Output dimension for pair representation.
+        dim_cond_pair: Output dimension for conditioning features.
+        **kwargs: Additional arguments passed to feature factory.
     """
 
     def __init__(
@@ -26,20 +21,11 @@ class PairReprBuilder(torch.nn.Module):
         feats_cond: list | None,
         dim_feats_out: int,
         dim_cond_pair: int,
-        use_atom37_factory: bool = False,
         **kwargs: object,
     ) -> None:
         super().__init__()
 
-        # Choose which feature factory to use
-        if use_atom37_factory:
-            from proteinfoundation.nn.feature_factory_atom37 import FeatureFactory as FeatureFactoryAtom37
-
-            factory_class = FeatureFactoryAtom37
-        else:
-            factory_class = FeatureFactory
-
-        self.init_repr_factory = factory_class(
+        self.init_repr_factory = FeatureFactory(
             feats=feats_repr,
             dim_feats_out=dim_feats_out,
             use_ln_out=True,
@@ -47,9 +33,9 @@ class PairReprBuilder(torch.nn.Module):
             **kwargs,
         )
 
-        self.cond_factory = None  # Build a pair feature for conditioning and use it for adaln the pair representation
+        self.cond_factory = None
         if feats_cond is not None and len(feats_cond) > 0:
-            self.cond_factory = factory_class(
+            self.cond_factory = FeatureFactory(
                 feats=feats_cond,
                 dim_feats_out=dim_cond_pair,
                 use_ln_out=True,

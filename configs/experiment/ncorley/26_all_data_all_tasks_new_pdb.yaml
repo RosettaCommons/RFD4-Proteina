@@ -39,8 +39,8 @@ defaults:
   # - /datasets/val/enz_design/enz_design@datasets.val.enz_design
 
   # --- Small-molecule binders ---
-  - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
-  - /datasets/val/sm_binder_hbonds_fixed@datasets.val.sm_binder_hbonds_fixed
+  - /datasets/val/sm_binder@datasets.val.sm_binder
+  - /datasets/val/sm_binder_fixed_ligand@datasets.val.sm_binder_fixed_ligand
 
   # --- Structure prediction (CCD small molecules) ---
   - /datasets/val/structure_prediction/ccd@datasets.val.ccd

@@ -31,7 +31,7 @@ dataset:
     - "deposition_date < '2024-01-01'"
     - "resolution < 9.0"
     - "num_polymer_pn_units <= 30"
-    - "cluster.notnull()"
+    - "interface_cluster.notnull()"
     - "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
     - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
     - "is_inter_molecule"
@@ -48,7 +48,7 @@ dataset:
     - resolution
     - num_polymer_pn_units
     - method
-    - cluster
+    - interface_cluster
     - n_prot
     - n_nuc
     - n_ligand
@@ -63,11 +63,10 @@ dataset:
     - involves_loi
     - pn_unit_1_type
     - pn_unit_2_type
-    - strictest_matching_cath_tier
-    - interface_sequence_identity
 
   # Transform pipeline
   transform: {}  # Force merge behavior from base and design_tasks
 
 weights:
   beta: 1.0  # AF-3 interfaces beta (pn_units uses 0.5)
+  cluster_column: interface_cluster  # pdb_interfaces.parquet uses interface_cluster, not cluster
