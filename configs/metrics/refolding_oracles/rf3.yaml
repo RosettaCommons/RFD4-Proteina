@@ -1,0 +1,27 @@
+# RF3 refolding oracle configurations.
+# Tags (via metrics_tags) control which oracle actually runs for each example.
+
+oracle:
+  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  oracle_name: rf3
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  required_tags_any:
+    - unconditional_refolding
+    - motif_scaffold_refolding
+    - internal_coordinate_motif_scaffold_refolding
+    - sm_binder_refolding
+    - ame_refolding
+    - ame_no_ligand_refolding
+    - ame_original_benchmark_refolding
+
+oracle_ppi:
+  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  oracle_name: rf3_ppi
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  template_annotations: [mask_coordinate_1_atom]
+  required_tags_any:
+    - ppi_refolding

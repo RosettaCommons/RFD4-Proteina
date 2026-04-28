@@ -461,7 +461,7 @@ class TestEndToEndInference:
         assert all(df["bb_ca_noise_scale"] == bb_ca_noise_scale)
         assert all(df["latents_noise_scale"] == latents_noise_scale)
         assert all(df["chain_of_interest"].notna())
-        assert any("rf3_metric_unconditional" in col for col in df.columns), "RF3Metric did not run."
+        assert any("oracle." in col for col in df.columns), "RF3Oracle did not run."
         for eid in df["example_id"]:
             assert prefix in eid
 
@@ -634,7 +634,7 @@ class TestEndToEndInference:
             "example_a": {
                 "contig": "5-5,A16-20",
                 "dialect": 2,
-                "input": str(BENCHMARKS_DIR / "motif_data_aa/1prw_aa.pdb"),
+                "input": str(BENCHMARKS_DIR / "motif_data_aa/1prw_aa.cif"),
                 "select_fixed_atoms": True,
             },
         }
@@ -698,7 +698,7 @@ class TestEndToEndInference:
         from atomworks.io.parser import STANDARD_PARSER_ARGS
         from atomworks.io.utils.io_utils import load_any
 
-        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.pdb")
+        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.cif")
 
         input_data = {
             "partial_diffusion_test_0": {

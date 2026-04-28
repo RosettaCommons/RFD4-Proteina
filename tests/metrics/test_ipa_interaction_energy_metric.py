@@ -20,6 +20,8 @@ import os
 import numpy as np
 import pytest
 
+pytest.importorskip("gemmi", reason="IPA requires gemmi: pip install gemmi")
+
 IPA_PATH = os.environ.get("IPA_PATH")
 MCL1_DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "benchmarks", "mcl1_rbfe")
 
@@ -93,7 +95,7 @@ def axitinib_complex():
 
     cif_path = os.path.join(IPA_PATH, "tests", "4WA9.cif")
     config = ParseConfig(
-        model=0,
+        model=1,
         build_assembly=None,
         add_missing_atoms=False,
         sanitize_bonds_and_charges=False,
@@ -170,7 +172,7 @@ def mcl1_complex():
 
 def test_ipa_executable_initialization():
     """IPAExecutable resolves from IPA_PATH."""
-    if not _has_compiled_binaries():
+    if not _ipa_binary_available():
         pytest.skip("IPA binaries not compiled")
 
     from proteinfoundation.metrics.ipa_qm import IPAExecutable

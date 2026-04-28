@@ -3,6 +3,7 @@ import torch
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import (
+    get_token_count,
     get_token_starts,
 )
 from beartype.typing import Any
@@ -157,6 +158,7 @@ class AtomArrayMetrics(Metric):
 
     def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, Any]:
         atom_array = unwrap_atom_array(atom_array)
+        n_tokens = get_token_count(atom_array)
 
         is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")  # TODO: Does this work?
         is_motif_atom_with_fixed_coord = C_CRD.mask(atom_array, default="generate")
@@ -170,6 +172,7 @@ class AtomArrayMetrics(Metric):
         valid_atom_array = atom_array[valid_mask]
 
         out = get_ss_metrics_and_rg(valid_atom_array, ss_conditioning=None)
+        out["n_tokens"] = n_tokens
 
         # Subset to token level array for consistency
         token_array = valid_atom_array[get_token_starts(valid_atom_array)]
@@ -264,17 +267,14 @@ class BackboneMetrics(Metric):
 
 
 class LigandClashMetric(Metric):
-    def __init__(self, ligand_clash_threshold: float = 1.5, input_kwarg_names: dict[str, str] | None = None, **kwargs):
-        self._input_kwarg_names = input_kwarg_names or {
-            "predicted_atom_array_stack": "predicted_atom_array_stack",
-        }
+    def __init__(self, ligand_clash_threshold: float = 1.5, **kwargs):
         self.ligand_clash_threshold = ligand_clash_threshold
         super().__init__(**kwargs)
 
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
-        return self._input_kwarg_names
+        return {"predicted_atom_array": "predicted_atom_array"}
 
-    def compute(self, predicted_atom_array_stack: AtomArray | AtomArrayStack) -> dict[str, float]:
-        atom_array = unwrap_atom_array(predicted_atom_array_stack)
+    def compute(self, predicted_atom_array: AtomArray | AtomArrayStack) -> dict[str, float]:
+        atom_array = unwrap_atom_array(predicted_atom_array)
         return get_ligand_clash_metrics(atom_array, ligand_clash_threshold=self.ligand_clash_threshold)

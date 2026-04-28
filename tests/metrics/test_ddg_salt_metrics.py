@@ -41,7 +41,7 @@ class TestDDGSaltMetrics:
 
         # Load structure using atomworks parser
         parsed = parse(BINDER_STRUCTURE_PATH)
-        atom_array = parsed["atom_array"]
+        atom_array = parsed["asym_unit"][0]
 
         # Verify multi-chain structure
         unique_chains = np.unique(atom_array.chain_id)

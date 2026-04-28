@@ -17,6 +17,9 @@ import pandas as pd
 import torch
 import torch.distributed as dist
 import wandb
+from atomworks.common import exists
+from atomworks.io.parser import parse as parse_structure
+from atomworks.io.transforms.atom_array import add_charge_from_ccd_codes
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_IDX
@@ -39,17 +42,18 @@ from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
-from proteinfoundation.inference_utils.concatenate_external_eval_results import (
+from proteinfoundation.inference_utils.aggregate_metrics import (
     add_diversity_summary_metrics,
     add_foldseek_diversity_to_per_example_df,
 )
-from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
+from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -167,6 +171,21 @@ def _log_batch_example_ids(
     )
 
 
+def _combined_val_tags(
+    val_dataset_tags: "list[set[str] | None] | None",
+    reward_metrics_tags: list[str],
+) -> "list[set[str] | None] | None":
+    """Merge val_dataset_tags with reward_metrics_tags for MetricManager setup.
+
+    Ensures metrics needed by the reward model are set up even when no validation
+    dataset uses their tags.
+    """
+    base = list(val_dataset_tags or [])
+    if reward_metrics_tags:
+        base.append(set(reward_metrics_tags))
+    return base if base else None
+
+
 def _clean_metrics_dict(metrics: dict) -> dict | None:
     """Convert a metrics dict to clean floats for gathering across ranks."""
     if metrics is None:
@@ -177,8 +196,24 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     chain_of_interest_values = []
     non_metadata_metrics_detected = False
     for key, value in metrics.items():
-        if key in ("dataset_name", "example_id", "task", "designed_structure_path", "ckpt_path", "ckpt_name"):
+        if key in (
+            "dataset_name",
+            "example_id",
+            "task",
+            "designed_structure_path",
+            "ckpt_path",
+            "ckpt_name",
+            "output_base_dir",
+        ) or key.endswith(
+            (
+                "refolded_structure_path",
+                "confidence_json_path",
+            )
+        ):
             cleaned[key] = str(value)
+            continue
+        elif key == "metrics_tags":
+            cleaned[key] = value if isinstance(value, str) else (",".join(value) if value else "")
             continue
         elif key == "input_cif_path" or key.startswith("input_spec."):
             cleaned[key] = str(value) if value is not None else None
@@ -232,7 +267,8 @@ class Proteina(L.LightningModule):
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
-        self.metrics = MetricManager.instantiate_from_hydra(metrics_cfg=cfg_exp.metrics) if cfg_exp.metrics else None
+
+        self.configure_metrics(cfg_exp.metrics)
 
         if autoencoder_ckpt_path is not None:
             # Allow adding new keys
@@ -734,13 +770,27 @@ class Proteina(L.LightningModule):
 
     def on_validation_epoch_start(self) -> None:
         """Re-initialize validation outputs at the start of each validation epoch."""
-        # TODO We should refactor to just be a dictionary indexed by example_id with "metrics" and "structures"
         self.validation_output_generation = []
-        if self.metrics is not None:
-            val_dataset_tags = None
-            if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
-                val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
-            self.metrics.on_validation_epoch_start(val_dataset_tags=val_dataset_tags)
+
+        reward_metrics_tags = (
+            self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
+        )
+        combined_tags = _combined_val_tags(self.val_dataset_tags, reward_metrics_tags)
+
+        if self.design_metric_manager is not None:
+            self.design_metric_manager.on_validation_epoch_start(val_dataset_tags=combined_tags)
+
+        # Set up oracle/refolding/pass managers early only when a search strategy will
+        # need them during validation_step (beam/bestofn scoring).  For vanilla runs,
+        # defer to on_validation_epoch_end Phase B to save memory.
+        if reward_metrics_tags:
+            for mm in [
+                self.oracle_metric_manager,
+                self.refolding_metric_manager,
+                self.pass_criteria_metric_manager,
+            ]:
+                if mm is not None:
+                    mm.on_validation_epoch_start(val_dataset_tags=combined_tags)
 
     def validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
         """
@@ -813,224 +863,315 @@ class Proteina(L.LightningModule):
                 step_outputs = self.training_step(batch, batch_idx=-1)
             per_example_losses = step_outputs["losses_per_sample"]
 
-        # Generation-based validation (inference task)
-        if self.inf_cfg is not None:
-            generation_list = self.predict_step(batch, batch_idx)
-
         metrics_output = {}
-        if self.metrics is not None:
-            # Compute prefixes and suffixes for file naming to avoid overwriting results
-            # Note than any global_prefix will have also been passed to the Dataset, so will be part of the example_id
-            if self.is_inference:
-                output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
-            else:
-                output_suffix = f"_rank{self.global_rank}"
+        if self.inf_cfg is None:
+            return metrics_output
 
-            # Log where we are saving validation structures
-            # Flatten structure: step_X/generated/ instead of step_X/rank_Y/generated/
-            output_base = Path(self.store_dir) / ("val_samples" if not self.is_inference else "inference_samples")
-            if not self.is_inference:
-                output_base = output_base / dataset_name / f"step_{self.global_step}"
+        if self.is_inference:
+            output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
+        else:
+            output_suffix = f"_rank{self.global_rank}"
 
-            output_base.mkdir(parents=True, exist_ok=True)
+        # Log where we are saving validation structures
+        # Flatten structure: step_X/generated/ instead of step_X/rank_Y/generated/
+        output_base = Path(self.store_dir) / ("val_samples" if not self.is_inference else "inference_samples")
+        if not self.is_inference:
+            output_base = output_base / dataset_name / f"step_{self.global_step}"
 
-            example_id_batch = batch.get("example_id_batch", [])
-            n_batch = len(example_id_batch)
-            for i in range(len(generation_list)):  # metrics were not written for batches
-                orig_batch_idx = i % n_batch if n_batch > 0 else 0
-                example_id_base = example_id_batch[orig_batch_idx]
-                # When a search strategy produces more samples than batch items (e.g. beam
-                # search with beam_width > 1), append the sample index to keep IDs unique.
-                if len(generation_list) > n_batch:
-                    example_id_base = f"{example_id_base}_s{i}"
-                # Include rank/job suffix for unique identification across parallel workers
-                example_id = f"{example_id_base}{output_suffix}"
-                prediction_metadata = generation_list[i]["prediction_metadata"]
+        output_base.mkdir(parents=True, exist_ok=True)
 
-                # Log unindexed insertion RMSD to console (this is the motif RMSD)
-                if prediction_metadata and "insertion_rmsd" in prediction_metadata:
-                    logger.info(
-                        f"[{dataset_name}] {example_id}: insertion_rmsd={prediction_metadata['insertion_rmsd']:.3f}Å, "
-                        f"insertion_mae={prediction_metadata.get('insertion_mae', 0.0):.3f}Å"
-                    )
+        # Expose to search strategies so they can save oracle results during generation
+        # (enables on_validation_epoch_end to skip re-folding already-computed results).
+        self._current_output_base_dir = output_base
+        self._current_output_suffix = output_suffix
 
+        # Generate designs for this inference batch
+        generation_list = self.predict_step(batch, batch_idx)
+
+        example_id_batch = batch.get("example_id_batch", [])
+        n_batch = len(example_id_batch)
+        for i in range(len(generation_list)):  # metrics were not written for batches
+            orig_batch_idx = i % n_batch if n_batch > 0 else 0
+            raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
+
+            # Use example_id pre-assigned by the search strategy if available
+            base_id = generation_list[i].get("example_id", raw_batch_id)
+            if base_id == raw_batch_id and len(generation_list) > n_batch:
+                base_id = f"{base_id}_s{i}"
+
+            # Include rank/job suffix for unique identification across parallel workers
+            example_id = f"{base_id}{output_suffix}"
+            metrics_output["example_id"] = example_id
+            prediction_metadata = generation_list[i]["prediction_metadata"]
+
+            # Log unindexed insertion RMSD to console (this is the motif RMSD)
+            if prediction_metadata and "insertion_rmsd" in prediction_metadata:
+                logger.info(
+                    f"[{dataset_name}] {example_id}: insertion_rmsd={prediction_metadata['insertion_rmsd']:.3f}Å, "
+                    f"insertion_mae={prediction_metadata.get('insertion_mae', 0.0):.3f}Å"
+                )
+
+            if self.design_metric_manager is not None:
                 metrics_output = run_metrics_for_result(
                     result=generation_list[i],
                     batch=batch,
                     batch_item_idx=orig_batch_idx,
-                    metric_manager=self.metrics,
+                    metric_manager=self.design_metric_manager,
                     output_base_dir=output_base,
                     example_id=example_id,
                     save_input_structure=not self.is_inference,
                 )
 
-                if per_example_losses is not None:
-                    for k, v in per_example_losses.items():
-                        if "_justlog" not in k:
-                            metrics_output[f"loss_{k}"] = v[orig_batch_idx].item()
-                    metrics_output["loss"] = sum(
-                        v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
-                    )
-
-                # Optionally save an aligned version of the predicted structure
-                aligned_aa = []
-                for metric_name in metrics_output:
-                    if metric_name.endswith("aligned_predicted_structure"):
-                        aligned_aa.append(metrics_output[metric_name])
-                metrics_output = {
-                    k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")
-                }
-
-                # If the model failed to reproduce the motif, the aligned coords would be all NaNs
-                if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
-                    predicted_structure_to_save = aligned_aa[0]
-                else:
-                    predicted_structure_to_save = generation_list[i]["generated_atom_array"]
-
-                # Save CIF files incrementally with rank suffix in filename
-
-                # Skip input saving during inference to lighten the filesystem load
-                if not self.is_inference:
-                    to_cif_file(
-                        generation_list[i]["input_atom_array"],
-                        output_base / "input" / f"{example_id}_input.cif",
-                    )
-                    generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
-                else:
-                    generated_output_path = output_base / f"{example_id}_generated.cif"
-
-                to_cif_file(
-                    predicted_structure_to_save,
-                    generated_output_path,
+            if per_example_losses is not None:
+                for k, v in per_example_losses.items():
+                    if "_justlog" not in k:
+                        metrics_output[f"loss_{k}"] = v[orig_batch_idx].item()
+                metrics_output["loss"] = sum(
+                    v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
                 )
 
-                # Save trajectories if present.
-                # bb_ca_only=True  → XTC (fixed CA-per-residue atom count required by XTC format)
-                # bb_ca_only=False → CIF (all-atom trajectories have variable atom counts per step)
-                bb_ca_only = self.inf_cfg is not None and self.inf_cfg.args.get("bb_ca_only_trajectories", False)
-                for traj_key in ["trajectory_x1", "trajectory_xt"]:
-                    if traj_key not in generation_list[i]:
-                        continue
-                    traj_dir = output_base / "trajectories"
-                    traj_dir.mkdir(parents=True, exist_ok=True)
-                    traj = generation_list[i][traj_key]
+            # Optionally save an aligned version of the predicted structure
+            aligned_aa = []
+            for metric_name in metrics_output:
+                if metric_name.endswith("aligned_predicted_structure"):
+                    aligned_aa.append(metrics_output[metric_name])
+            metrics_output = {k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")}
 
-                    if bb_ca_only:
-                        # Fixed atom count (one CA per residue) → XTC.
-                        # Save a CA-only CIF as the topology reference for the XTC file.
-                        predicted_bb_ca = predicted_structure_to_save[predicted_structure_to_save.atom_name == "CA"]
-                        to_cif_file(
-                            predicted_bb_ca,
-                            traj_dir / f"{example_id}_{traj_key}_bb_ca.cif",
-                        )
+            # If the model failed to reproduce the motif, the aligned coords would be all NaNs
+            if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
+                predicted_structure_to_save = aligned_aa[0]
+            else:
+                predicted_structure_to_save = generation_list[i]["generated_atom_array"]
 
-                        save_trajectory_every = self.inf_cfg is not None and self.inf_cfg.args.get(
-                            "save_trajectory_every", 0
-                        )
-                        step_labels = np.arange(traj.stack_depth()) * save_trajectory_every
-                        step_labels[-1] = self.inf_cfg.args.nsteps
+            # Save CIF files incrementally with rank suffix in filename
+            if not self.is_inference:
+                # Skip input saving during inference to lighten the filesystem load
+                to_cif_file(
+                    generation_list[i]["input_atom_array"],
+                    output_base / "input" / f"{example_id}_input.cif",
+                )
+                generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
+            else:
+                generated_output_path = output_base / f"{example_id}_generated.cif"
 
-                        xtc_file = xtc.XTCFile()
-                        xtc_file.set_structure(traj, time=step_labels)
-                        xtc_file.write(traj_dir / f"{example_id}_{traj_key}.xtc")
-                    else:
-                        # All-atom: variable sidechain atom counts across steps → multi-model CIF.
-                        to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
+            to_cif_file(
+                predicted_structure_to_save,
+                generated_output_path,
+            )
 
-                if metrics_output is not None:
-                    # Add dataset_name and task as metadata
-                    metrics_output["dataset_name"] = dataset_name
-                    metrics_output["task"] = "_".join(example_id_base.split("_")[:-1])
+            # Save trajectories if present.
+            # bb_ca_only=True  → XTC (fixed CA-per-residue atom count required by XTC format)
+            # bb_ca_only=False → CIF (all-atom trajectories have variable atom counts per step)
+            bb_ca_only = self.inf_cfg is not None and self.inf_cfg.args.get("bb_ca_only_trajectories", False)
+            for traj_key in ["trajectory_x1", "trajectory_xt"]:
+                if traj_key not in generation_list[i]:
+                    continue
+                traj_dir = output_base / "trajectories"
+                traj_dir.mkdir(parents=True, exist_ok=True)
+                traj = generation_list[i][traj_key]
 
-                    # Add seed used for generation
-                    if self.inference_seed is not None:
-                        metrics_output["seed"] = self.inference_seed
+                if bb_ca_only:
+                    # Fixed atom count (one CA per residue) → XTC.
+                    # Save a CA-only CIF as the topology reference for the XTC file.
+                    predicted_bb_ca = predicted_structure_to_save[predicted_structure_to_save.atom_name == "CA"]
+                    to_cif_file(
+                        predicted_bb_ca,
+                        traj_dir / f"{example_id}_{traj_key}_bb_ca.cif",
+                    )
 
-                    # Add temperature and number of timesteps used for generation
-                    if self.inf_cfg is not None:
-                        metrics_output["bb_ca_noise_scale"] = (
-                            self.inf_cfg.model.bb_ca.simulation_step_params.sc_scale_noise
-                        )
-                        metrics_output["latents_noise_scale"] = (
-                            self.inf_cfg.model.local_latents.simulation_step_params.sc_scale_noise
-                        )
-                        metrics_output["nsteps"] = self.inf_cfg.args.nsteps
+                    save_trajectory_every = self.inf_cfg is not None and self.inf_cfg.args.get(
+                        "save_trajectory_every", 0
+                    )
+                    step_labels = np.arange(traj.stack_depth()) * save_trajectory_every
+                    step_labels[-1] = self.inf_cfg.args.nsteps
 
-                    # Add checkpoint identity
-                    if self.ckpt_path is not None:
-                        metrics_output["ckpt_path"] = self.ckpt_path
-                    if self.ckpt_name is not None:
-                        metrics_output["ckpt_name"] = self.ckpt_name
+                    xtc_file = xtc.XTCFile()
+                    xtc_file.set_structure(traj, time=step_labels)
+                    xtc_file.write(traj_dir / f"{example_id}_{traj_key}.xtc")
+                else:
+                    # All-atom: variable sidechain atom counts across steps → multi-model CIF.
+                    to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
 
-                    # Add input specification or CIF path
-                    spec_batch = batch.get("specification_batch")
-                    if spec_batch is not None:
-                        spec = spec_batch[orig_batch_idx]
-                        if "input_cif" in spec:
-                            metrics_output["input_cif_path"] = str(spec["input_cif"])
-                        else:
-                            flat_spec = flatten_nested_dict(spec, fuse_keys=".")
-                            for key, value in flat_spec.items():
-                                metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
+            # Add dataset_name and task as metadata
+            metrics_output["dataset_name"] = dataset_name
+            task_base = generation_list[i].get("raw_batch_id", raw_batch_id)
+            metrics_output["task"] = "_".join(task_base.split("_")[:-1])
 
-                    # Add insertion RMSD metrics to output for epoch-end aggregation
-                    if prediction_metadata and "insertion_rmsd" in prediction_metadata:
-                        metrics_output["insertion_rmsd"] = prediction_metadata["insertion_rmsd"]
-                        metrics_output["insertion_mae"] = prediction_metadata.get("insertion_mae", 0.0)
-                        metrics_output["insertion_rmcd"] = prediction_metadata.get("insertion_rmcd", 0.0)
-                        if "join_point_rmsd" in prediction_metadata:
-                            metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
+            # Add seed used for generation
+            if self.inference_seed is not None:
+                metrics_output["seed"] = self.inference_seed
 
-                    metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
-                    metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
-                    # Store for epoch-end aggregation
-                    self.validation_output_generation.append(metrics_output)
+            # Add full generation config as dot-separated columns
+            if self.inf_cfg is not None:
+                flat_cfg = flatten_nested_dict(OmegaConf.to_container(self.inf_cfg, resolve=True), fuse_keys=".")
+                for key, value in flat_cfg.items():
+                    metrics_output[f"generation.{key}"] = value
+
+            # Add checkpoint identity
+            if self.ckpt_path is not None:
+                metrics_output["ckpt_path"] = self.ckpt_path
+            if self.ckpt_name is not None:
+                metrics_output["ckpt_name"] = self.ckpt_name
+
+            # Add input specification or CIF path
+            spec_batch = batch.get("specification_batch")
+            if spec_batch is not None:
+                spec = spec_batch[orig_batch_idx]
+                if "input_cif" in spec:
+                    metrics_output["input_cif_path"] = str(spec["input_cif"])
+                else:
+                    flat_spec = flatten_nested_dict(spec, fuse_keys=".")
+                    for key, value in flat_spec.items():
+                        metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
+
+            # Add insertion RMSD metrics to output for epoch-end aggregation
+            if prediction_metadata and "insertion_rmsd" in prediction_metadata:
+                metrics_output["insertion_rmsd"] = prediction_metadata["insertion_rmsd"]
+                metrics_output["insertion_mae"] = prediction_metadata.get("insertion_mae", 0.0)
+                metrics_output["insertion_rmcd"] = prediction_metadata.get("insertion_rmcd", 0.0)
+                if "join_point_rmsd" in prediction_metadata:
+                    metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
+
+            metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
+            metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
+            metrics_output["output_base_dir"] = str(output_base)
+            # Store metrics_tags for the oracle loop in on_validation_epoch_end
+            metrics_tags_batch = batch.get("metrics_tags_batch", [])
+            _tags = metrics_tags_batch[orig_batch_idx] if orig_batch_idx < len(metrics_tags_batch) else []
+            metrics_output["metrics_tags"] = ",".join(_tags) if _tags else ""
+            # Store for epoch-end aggregation
+            self.validation_output_generation.append(metrics_output)
 
         return metrics_output
 
-    def on_validation_epoch_end(self) -> None:
-        """Aggregate and log validation metrics at the end of the validation epoch.
+    def _gather_metrics(self, local_metrics: list[dict]) -> list[dict] | None:
+        """Gather per-example metric dicts from all ranks to rank 0.
 
-        Processes both training loss metrics and generation-based metrics.
-        Note: validation outputs are cleared at epoch start, not end.
+        Returns the merged list on rank 0, or None on rank > 0 (all ranks must call this).
         """
-        self.on_validation_epoch_end_generation()
-        if self.metrics is not None:
-            self.metrics.on_validation_epoch_end()
+        if self.trainer.world_size > 1 and dist.is_initialized():
+            gathered = [None] * self.trainer.world_size if self.global_rank == 0 else None
+            torch.cuda.set_device(self.device)
+            dist.gather_object(local_metrics, gathered, dst=0)
+            if self.global_rank == 0:
+                merged: list[dict] = []
+                for rank_list in gathered:
+                    merged.extend(rank_list)
+                return merged
+            return None  # rank > 0
+        return local_metrics
 
-    def on_validation_epoch_end_generation(self) -> None:
-        """Aggregate and log generation validation metrics from all ranks."""
-        # 1. Collect and clean local per-example metrics
-        local_example_metrics = [
-            cleaned for m in self.validation_output_generation if (cleaned := _clean_metrics_dict(m)) is not None
+    def on_validation_epoch_end(self) -> None:
+        """Aggregate and log generation validation metrics from all ranks.
+
+        Four-phase flow:
+          Phase A — DDP gather design metrics; rank 0 saves crash-safe design CSV.
+          Phase B — All ranks run oracle + refolding + pass_criteria.
+          Phase C — DDP gather refolding metrics; rank > 0 exits.
+          Phase D — Rank 0 merges design + refolding, applies foldseek, saves one CSV, logs.
+        """
+
+        if self.design_metric_manager is not None:
+            self.design_metric_manager.on_validation_epoch_end()
+
+        # ------------------------------------------------------------------
+        # Phase A: gather design metrics from all ranks
+        # ------------------------------------------------------------------
+        local_design_metrics = [
+            c for m in self.validation_output_generation if (c := _clean_metrics_dict(m)) is not None
         ]
 
-        # 2. Gather from all ranks to rank 0
-        if self.trainer.world_size > 1 and dist.is_initialized():
-            gathered_metrics = [None] * self.trainer.world_size if self.global_rank == 0 else None
-            # Set CUDA device context for gather_object's internal tensor operations
-            torch.cuda.set_device(self.device)
-            dist.gather_object(local_example_metrics, gathered_metrics, dst=0)
-            if self.global_rank == 0:
-                all_example_metrics = []
-                for rank_metrics in gathered_metrics:
-                    all_example_metrics.extend(rank_metrics)
-            else:
-                return  # Non-rank-0 exits early after gather
-        else:
-            all_example_metrics = local_example_metrics
+        all_design_metrics = self._gather_metrics(local_design_metrics)
 
-        if not all_example_metrics:
+        metrics_dir = Path(self.store_dir) / ("val_metrics" if not self.is_inference else "inference_metrics")
+
+        # ------------------------------------------------------------------
+        # Phase B: oracle + refolding + pass_criteria (all ranks, per-rank)
+        # ------------------------------------------------------------------
+        oracle_mm = self.oracle_metric_manager
+        refold_mm = self.refolding_metric_manager
+        pass_mm = self.pass_criteria_metric_manager
+
+        # For vanilla (non-search) runs the oracle managers were not set up in
+        # on_validation_epoch_start to avoid holding their weights in memory during
+        # diffusion.  Set them up now before the oracle loop.
+        reward_metrics_tags = (
+            self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
+        )
+        if not reward_metrics_tags:
+            for mm in [oracle_mm, refold_mm, pass_mm]:
+                if mm is not None:
+                    mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
+
+        local_refolding_metrics: list[dict] = []
+
+        example_id_to_design_metrics = {m["example_id"]: m for m in (local_design_metrics or []) if m}
+
+        # Sort by n_tokens ascending to avoid unnecessary recompilation of oracles
+        items = sorted(
+            self.validation_output_generation,
+            key=lambda it: example_id_to_design_metrics.get(it.get("example_id", ""), {}).get(
+                "general_metrics.n_tokens", 0
+            ),
+        )
+
+        for item in items:
+            result = self._run_oracle_loop_item(item, oracle_mm, refold_mm, pass_mm, example_id_to_design_metrics)
+            if exists(result):
+                local_refolding_metrics.append(result)
+
+        for mm in [oracle_mm, refold_mm, pass_mm]:
+            if exists(mm):
+                mm.on_validation_epoch_end()
+
+        # ------------------------------------------------------------------
+        # Phase C: gather refolding metrics from all ranks
+        # ------------------------------------------------------------------
+        all_refolding_metrics = self._gather_metrics(local_refolding_metrics)
+
+        if self.global_rank != 0:
+            return  # rank > 0 exits after Phase C gather
+
+        # ------------------------------------------------------------------
+        # Phase D: rank 0 merges design + refolding, applies foldseek, saves one CSV, logs
+        # ------------------------------------------------------------------
+        if not all_design_metrics and not all_refolding_metrics:
             logger.warning("on_validation_epoch_end_generation: no metrics to log")
             return
 
-        # 3. Save per-example CSV (one row per example)
-        metrics_dir = Path(self.store_dir) / ("val_metrics" if not self.is_inference else "inference_metrics")
+        # Merge design and refolding metrics per example_id.
+        example_id_to_design_metrics = {m["example_id"]: m for m in (all_design_metrics or []) if m}
+        refold_by_id = {m["example_id"]: m for m in (all_refolding_metrics or []) if m}
+        all_ids = list(example_id_to_design_metrics) + [
+            eid for eid in refold_by_id if eid not in example_id_to_design_metrics
+        ]
+        combined_metrics = [
+            {**example_id_to_design_metrics.get(eid, {}), **refold_by_id.get(eid, {})} for eid in all_ids
+        ]
+
+        if not combined_metrics:
+            return
+
+        self._save_and_log_csv(combined_metrics, metrics_dir, csv_stem="per_example_metrics")
+
+    def _output_prefix_suffix(self) -> tuple[str, str]:
+        """Return (prefix, suffix) strings for output filenames."""
+        if self.is_inference:
+            prefix = "" if self.global_prefix is None else self.global_prefix + "_"
+            suffix = f"_job{self.job_id}" if self.job_id is not None else ""
+        else:
+            prefix = ""
+            suffix = f"_step{self.global_step}"
+        return prefix, suffix
+
+    def _save_and_log_csv(self, all_metrics: list[dict], metrics_dir: Path, csv_stem: str) -> None:
+        """Save per-example CSV, aggregate, and log to WandB (rank 0 only)."""
         metrics_dir.mkdir(parents=True, exist_ok=True)
+        output_prefix, output_suffix = self._output_prefix_suffix()
 
-        per_example_df = pd.DataFrame(all_example_metrics)
+        per_example_df = pd.DataFrame(all_metrics).round(4)
 
-        # Reorder columns: example_id first, then metadata, then metrics
+        # Reorder columns: metadata first, then metrics.
         cols = per_example_df.columns.tolist()
         priority = [
             "example_id",
@@ -1042,16 +1183,11 @@ class Proteina(L.LightningModule):
             "ckpt_name",
             "seed",
             "input_cif_path",
-            "bb_ca_noise_scale",
-            "latents_noise_scale",
-            "nsteps",
         ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
 
-        # Add Foldseek clustering if the executable is available
-        # We skip during inference since inference runs may not be using DDP,
-        # so an auxiliary script is used after all jobs complete.
+        # Foldseek clustering (skipped during inference; separate script handles that).
         if (
             not self.is_inference
             and os.getenv("FOLDSEEK_EXEC") is not None
@@ -1077,73 +1213,137 @@ class Proteina(L.LightningModule):
                 except Exception as e:
                     logger.warning(f"Foldseek diversity summary metrics failed, skipping cluster metrics: {e}")
 
-        per_example_df = per_example_df.round(4)
-
-        # Add prefixes or suffixes to avoid file conflicts across jobs
-        if self.is_inference:
-            output_prefix = "" if self.global_prefix is None else self.global_prefix + "_"
-            output_suffix = f"_job{self.job_id}" if self.job_id is not None else ""
-        else:
-            output_prefix = ""
-            output_suffix = f"_step{self.global_step}"
-
-        per_example_path = metrics_dir / f"{output_prefix}per_example_metrics{output_suffix}.csv"
+        per_example_path = metrics_dir / f"{output_prefix}{csv_stem}{output_suffix}.csv"
         per_example_df.to_csv(per_example_path, index=False)
-        logger.info(f"Saved per-example metrics to {per_example_path}")
+        logger.info(f"Saved {csv_stem} to {per_example_path}")
 
-        # 4. Compute aggregate metrics (nanmean by dataset)
         agg_rows = []
-        for dataset_name in per_example_df["dataset_name"].unique():
-            dataset_df = per_example_df[per_example_df["dataset_name"] == dataset_name]
-            _non_metric_cols = {
-                "example_id",
-                "dataset_name",
-                "task",
-                "designed_structure_path",
-                "chain_of_interest",
-                "foldseek_cluster_id",
-                "ckpt_path",
-                "ckpt_name",
-                "seed",
-                "input_cif_path",
-                "bb_ca_noise_scale",
-                "latents_noise_scale",
-                "nsteps",
-            }
-            metric_cols = [
-                c for c in dataset_df.columns if c not in _non_metric_cols and not c.startswith("input_spec.")
-            ]
-            for metric_name in metric_cols:
-                values = dataset_df[metric_name].dropna()
-                if len(values) > 0:
-                    agg_rows.append(
-                        {
-                            "dataset": dataset_name,
-                            "metric": metric_name,
-                            "value": float(np.nanmean(values)),
-                            "n": len(values),
-                        }
-                    )
+        _non_metric_cols = {
+            "example_id",
+            "dataset_name",
+            "task",
+            "designed_structure_path",
+            "chain_of_interest",
+            "foldseek_cluster_id",
+            "ckpt_path",
+            "ckpt_name",
+            "seed",
+            "input_cif_path",
+            "metrics_tags",
+            "output_base_dir",
+        }
+        dataset_col = (
+            per_example_df["dataset_name"]
+            if "dataset_name" in per_example_df.columns
+            else pd.Series(["unknown"] * len(per_example_df))
+        )
+        for ds in dataset_col.unique():
+            ds_df = per_example_df[dataset_col == ds]
+            for col in ds_df.columns:
+                if col in _non_metric_cols or col.startswith("input_spec.") or col.startswith("generation."):
+                    continue
+                vals = pd.to_numeric(ds_df[col], errors="coerce").dropna()
+                if len(vals) > 0:
+                    agg_rows.append({"dataset": ds, "metric": col, "value": float(np.nanmean(vals)), "n": len(vals)})
 
         if not agg_rows:
-            logger.warning("on_validation_epoch_end_generation: no metrics after aggregation")
             return
 
-        agg_df = pd.DataFrame(agg_rows)
-        agg_df = agg_df.round(4)
-        print_df_as_table(agg_df, title="Validation Metrics")
-
-        # Add prefixes or suffixes to avoid file conflicts across jobs
-        agg_path = metrics_dir / f"{output_prefix}aggregated_metrics{output_suffix}.csv"
+        agg_df = pd.DataFrame(agg_rows).round(4)
+        print_df_as_table(agg_df, title=csv_stem)
+        agg_path = metrics_dir / f"{output_prefix}{csv_stem}_aggregated{output_suffix}.csv"
         agg_df.to_csv(agg_path, index=False)
-        logger.info(f"Saved aggregate metrics to {agg_path}")
-
-        # 5. Log to WandB: val_generation_{dataset}/{metric}
         if wandb.run is not None:
             wandb.log(
                 {f"val_generation_{row['dataset']}/{row['metric']}": row["value"] for _, row in agg_df.iterrows()},
                 step=self.global_step,
             )
+
+    def _run_oracle_loop_item(
+        self,
+        item: dict,
+        oracle_mm: MetricManager | None,
+        refold_mm: MetricManager | None,
+        pass_mm: MetricManager | None,
+        example_id_to_design_metrics: dict[str, dict],
+    ) -> dict | None:
+        """Run oracle + refolding + pass_criteria for one item from validation_output_generation."""
+        example_id = item.get("example_id", "unknown")
+        designed_path = item.get("designed_structure_path")
+        output_base_dir = item.get("output_base_dir")
+        metrics_tags_str = item.get("metrics_tags", "")
+        metrics_tags = [t for t in metrics_tags_str.split(",") if t] if metrics_tags_str else []
+
+        if not designed_path or not Path(designed_path).exists():
+            logger.warning(f"Oracle loop: designed structure not found for {example_id}, skipping.")
+            return None
+
+        atom_array = parse_structure(Path(designed_path), config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
+        atom_array = add_charge_from_ccd_codes(atom_array)
+
+        output_dir = Path(output_base_dir) if output_base_dir else None
+        result = run_oracle_refolding_and_pass_criteria(
+            atom_array=atom_array,
+            example_id=example_id,
+            output_dir=output_dir,
+            oracle_mm=oracle_mm,
+            refold_mm=refold_mm,
+            pass_mm=pass_mm,
+            metrics_tags=metrics_tags,
+            prior_metrics=example_id_to_design_metrics.get(example_id),
+        )
+        if result is None:
+            return None
+
+        result["designed_structure_path"] = designed_path
+        result["dataset_name"] = item.get("dataset_name")
+        return result
+
+    def configure_metrics(
+        self,
+        metrics_cfg: DictConfig | None = None,
+    ) -> None:
+        """Instantiate design, oracle, refolding, and pass-criteria MetricManagers from config."""
+
+        if metrics_cfg is None:
+            self.design_metric_manager = None
+            self.oracle_metric_manager = None
+            self.refolding_metric_manager = None
+            self.pass_criteria_metric_manager = None
+            return
+
+        cfg_key_to_attr = {
+            "inline_metrics": "design_metric_manager",
+            "refolding_oracles": "oracle_metric_manager",
+            "refolding_metrics": "refolding_metric_manager",
+            "pass_criteria": "pass_criteria_metric_manager",
+        }
+        for cfg_key, attr_name in cfg_key_to_attr.items():
+            metric_manager_cfg = metrics_cfg.get(cfg_key)
+            if exists(metric_manager_cfg):
+                metric_manager = MetricManager.instantiate_from_hydra(metrics_cfg=metric_manager_cfg)
+            else:
+                metric_manager = None
+            setattr(self, attr_name, metric_manager)
+
+        if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
+            self.val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
+        else:
+            self.val_dataset_tags = None
+
+        # Enforce that only one Oracle will run per dataset
+        if self.val_dataset_tags is not None and self.oracle_metric_manager is not None:
+            for dataset_tags in self.val_dataset_tags:
+                dataset_oracle_name = None
+                for oracle_name, oracle_metric in self.oracle_metric_manager.metrics.items():
+                    if oracle_metric.applies_to_tags(dataset_tags):
+                        if dataset_oracle_name is None:
+                            dataset_oracle_name = oracle_name
+                        else:
+                            raise ValueError(
+                                f"Multiple oracle metrics ({dataset_oracle_name}, {oracle_name}) apply "
+                                f"to dataset with tags {dataset_tags}."
+                            )
 
     def configure_inference(
         self,
@@ -1173,9 +1373,10 @@ class Proteina(L.LightningModule):
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
-        self.metrics = MetricManager.instantiate_from_hydra(metrics_cfg=metrics_cfg) if metrics_cfg else None
         if store_dir is not None:
             self.store_dir = store_dir
+
+        self.configure_metrics(metrics_cfg)
 
         self.is_inference = is_inference
         self.job_id = job_id
@@ -1200,7 +1401,8 @@ class Proteina(L.LightningModule):
         if search_reward_model:
             logger.info(
                 f"Configured search reward model: "
-                f"{len(search_reward_model.metric_manager.metrics)} metrics, "
+                f"reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
+                f"weights={list(search_reward_model.weights.keys())}, "
                 f"differentiable={search_reward_model.differentiable}"
             )
 
@@ -1230,7 +1432,7 @@ class Proteina(L.LightningModule):
         logger.info(f"Configured refinement strategy: {type(refinement_strategy).__name__}")
         logger.info(
             f"Configured refinement reward model: "
-            f"{len(refinement_reward_model.metric_manager.metrics)} metrics, "
+            f"weights={list(refinement_reward_model.weights.keys())}, "
             f"differentiable={refinement_reward_model.differentiable}"
         )
 
@@ -1502,7 +1704,12 @@ class Proteina(L.LightningModule):
         }
 
     def format_sample_prots_to_atom_arrays(
-        self, sample_prots: dict, batch: dict, batch_idx: int = 0, bb_ca_only: bool = False
+        self,
+        sample_prots: dict,
+        batch: dict,
+        batch_idx: int = 0,
+        bb_ca_only: bool = False,
+        example_ids: list[str] | None = None,
     ) -> list[dict]:
         """Convert sample_prots dict to list of atom array results.
 
@@ -1511,6 +1718,9 @@ class Proteina(L.LightningModule):
             batch: Original batch dict with input atom_arrays
             batch_idx: Batch index for naming
             bb_ca_only: If True, subset input_atom_array to CA atoms only.
+            example_ids: Pre-assigned example IDs, one per sample. When provided (e.g.
+                by beam search to include checkpoint-aware suffixes), these override
+                the default ``batch["example_id_batch"][orig_batch_idx]`` lookup.
         Returns:
             List of dictionaries with 'generated_atom_array', 'input_atom_array', etc.
         """
@@ -1533,8 +1743,9 @@ class Proteina(L.LightningModule):
                 batch_idx=batch_idx,
                 bb_ca_only=bb_ca_only,
             )
-            # Record for output file saving
-            result["example_id"] = batch["example_id_batch"][orig_batch_idx]
+            # Record for output file saving; use caller-provided id if available
+            result["raw_batch_id"] = batch["example_id_batch"][orig_batch_idx]
+            result["example_id"] = example_ids[i] if example_ids is not None else result["raw_batch_id"]
             generation_list.append(result)
 
         return generation_list

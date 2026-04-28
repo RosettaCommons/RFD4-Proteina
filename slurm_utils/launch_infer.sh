@@ -45,7 +45,7 @@
 #
 # Concatenation:
 #   By default a dependent SLURM job is submitted that runs
-#   concatenate_external_eval_results.py after all generation tasks finish.
+#   aggregate_metrics.py after all generation tasks finish.
 #   Results land in <run_dir>/inference_metrics/.
 #   Use --no-concatenate to skip, --no-foldseek to disable structural clustering.
 #
@@ -451,12 +451,12 @@ fi
 # ============================================================
 # Build concatenation SBATCH script (if enabled)
 # ============================================================
-# The concat job runs concatenate_external_eval_results.py after all generation
+# The concat job runs aggregate_metrics.py after all generation
 # jobs finish. It is submitted with --dependency=afterany:<gen_job_id> so the
 # launch script never has to wait.
 if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
-    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/concatenate_external_eval_results.py"
+    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     # Metrics CSVs are written by generate.py under <out_dir>/inference_metrics/
     CONCAT_DIR="$GENERATION_OUTPUT_DIR/inference_metrics"
@@ -474,9 +474,10 @@ if [ "$DO_CONCATENATE" == "true" ]; then
             echo "#SBATCH --account $ACCOUNT"
         fi
         echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
-        echo "#SBATCH --time 01:00:00"
+        echo "#SBATCH --time 04:00:00"
         echo "#SBATCH --nodes 1"
         echo "#SBATCH --ntasks-per-node 1"
+        echo "#SBATCH --cpus-per-task 4"
         echo "#SBATCH --mem 16g"
         echo "#SBATCH --output ./slurm_run_outputs/slurm_concat.out"
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
@@ -490,13 +491,13 @@ if [ "$DO_CONCATENATE" == "true" ]; then
     } > "$CONCAT_SBATCH_FILE"
 
     if [ "$CONTAINER_TYPE" == "apptainer" ]; then
-        # Apptainer: shebang in concatenate_external_eval_results.py handles container
+        # Apptainer: shebang in aggregate_metrics.py handles container
         cat >> "$CONCAT_SBATCH_FILE" << EOF
 # Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
 export CLUSTER=$CLUSTER
 export CONTAINER_TYPE=$CONTAINER_TYPE
 
-"$CONCAT_SCRIPT" --output-dir "$CONCAT_DIR" $FOLDSEEK_FLAG
+"$CONCAT_SCRIPT" --input "$CONCAT_DIR" $FOLDSEEK_FLAG
 EOF
     else
         CONTAINER_CMD_CONCAT=$(get_srun_cmd)
@@ -506,7 +507,7 @@ EOF
 srun --ntasks=1 $CONTAINER_CMD_CONCAT \\
     --container-mounts="$CONTAINER_MOUNTS_STR_CONCAT" \\
     --container-workdir=$RUN_DIR \\
-    bash -c "$CONTAINER_ENV_CMDS_CONCAT && $PYTHON \"$CONCAT_SCRIPT\" --output-dir \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
+    bash -c "$CONTAINER_ENV_CMDS_CONCAT && $PYTHON \"$CONCAT_SCRIPT\" --input \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
 EOF
     fi
 

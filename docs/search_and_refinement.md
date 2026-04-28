@@ -76,9 +76,7 @@ python proteinfoundation/generate.py \
     inference_experiment=inference_test_search \
     inputs=design.json \
     ckpt_path=./checkpoints \
-    ckpt_name=model.ckpt \
-    num_replicates=50 \
-    search.strategy.n_samples=50
+    ckpt_name=model.ckpt
 ```
 
 **Config** (`configs/inference_experiment/inference_test_search.yaml`):
@@ -87,18 +85,20 @@ python proteinfoundation/generate.py \
 search:
   strategy:
     _target_: proteinfoundation.search.best_of_n.BestOfNStrategy
-    n_samples: 50
+    n_samples: 5
     keep_all: false  # Only return the best sample per input
 
   rewards:
     metrics:
       rf3:
-        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+        _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
         ckpt_path: /path/to/rf3_latest.pt
         num_steps: 50
+        n_recycles: 5
     weights:
       rf3.plddt: 1.0
       rf3.iptm: 2.0
+      rf3.ipae: -1.0
     differentiable: false
 ```
 
@@ -135,31 +135,19 @@ search:
     n_branch: 4      # Candidates per beam state
     beam_width: 4    # Top candidates to keep after pruning
     keep_intermediate_samples: true
+    intermediate_sample_reward_threshold: 80.0  # Save intermediate samples scoring above this value
 
   rewards:
     metrics:
       rf3:
-        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+        _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
         ckpt_path: /path/to/rf3_latest.pt
         num_steps: 50
         n_recycles: 5
-        metric_manager:
-          _target_: foundry.metrics.metric.MetricManager
-          metrics:
-            backbone_rmsd:
-              _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
-              align_mask: is_protein
-              subset_mask: is_protein_backbone
-              metric_type: rmsd
-            motif_rmsd:
-              _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
-              align_mask: is_protein & mapped_to_coordinate_conditioned_region
-              subset_mask: is_protein & mapped_to_coordinate_conditioned_region
-              metric_type: rmsd
 
     weights:
-      rf3.backbone_rmsd...: -1.0    # Lower RMSD is better
-      rf3.motif_rmsd...: -2.0       # Weight motif RMSD heavily
+      rf3.plddt: 1.0
+
     differentiable: false
 ```
 
@@ -168,7 +156,8 @@ search:
 | `step_checkpoints` | `[0, 100, 200, 300, 400]` | Diffusion steps at which to evaluate and prune |
 | `n_branch` | 4 | Candidates to generate at each branch point (L) |
 | `beam_width` | 4 | Candidates to keep after each prune (N) |
-| `keep_intermediate_samples` | `false` | Save intermediate structures for analysis |
+| `keep_intermediate_samples` | `false` | Save intermediate structures (those above `intermediate_sample_reward_threshold`) for analysis |
+| `intermediate_sample_reward_threshold` | `-inf` | When `keep_intermediate_samples: true`, only save intermediate structures scoring above this threshold. Useful for collecting high-quality outputs throughout the search, not just the final beam. |
 
 **Algorithm:**
 
@@ -303,7 +292,7 @@ Positive weights → higher is better. Negative weights → lower is better.
 
 | Metric Class | Config Key | Key Outputs | Differentiable | Description |
 |-------------|------------|-------------|----------------|-------------|
-| `RF3Metric` | `rf3` | `plddt`, `iptm`, `ipae`, `min_ipae`, `ptm` | **Yes** | RF3 refolding confidence (PyTorch diffusion model) |
+| `RF3Oracle` | `rf3` | `plddt`, `iptm`, `ipae`, `min_ipae`, `ptm` | No | RF3 refolding confidence (PyTorch diffusion model) |
 | `AF2Metric` | `af2` | `plddt`, `ptm`, `pae`, `max_pae`, `iptm` | **Yes** | AlphaFold2 refolding confidence (JAX, via ColabDesign) |
 
 **Force Field Metrics** — Evaluate physical plausibility using energy functions. These use either the **Rosetta scoring function** (via TMol, a GPU-accelerated PyTorch reimplementation of Rosetta) or **MACE**, a machine-learning force field trained on quantum-mechanical calculations.
@@ -343,7 +332,7 @@ Create a new reward in `configs/rewards/my_reward.yaml`:
 metrics:
   # Refolding metric: RF3 for PPI confidence
   rf3:
-    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
     ckpt_path: /path/to/rf3_latest.pt
     num_steps: 50
 
@@ -384,14 +373,14 @@ python proteinfoundation/generate.py \
 
 ```python
 from proteinfoundation.rewards import RewardModel
-from proteinfoundation.metrics.rf3_metric import RF3Metric
+from proteinfoundation.metrics.rf3_oracle import RF3Oracle
 from proteinfoundation.metrics.rasa_metrics import RASAMetrics
 from proteinfoundation.metrics.tmol_metric import TMOLMetric
 
 # Build reward model from individual metrics
 reward_model = RewardModel(
     metrics={
-        "rf3": RF3Metric(ckpt_path="/path/to/rf3.pt", num_steps=50),
+        "rf3": RF3Oracle(ckpt_path="/path/to/rf3.pt", num_steps=50),
         "rasa": RASAMetrics(),
         "tmol": TMOLMetric(enable_hbond=True),
     },

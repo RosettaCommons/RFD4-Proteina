@@ -35,7 +35,7 @@ search:
   rewards:
     metrics:
       rf3:
-        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+        _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
         num_steps: 50
         n_recycles: 5

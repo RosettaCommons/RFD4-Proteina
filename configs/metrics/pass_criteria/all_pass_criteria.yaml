@@ -1,0 +1,75 @@
+# Pass/fail criteria evaluated against the merged design + oracle + refolding metrics dict.
+# Output key for each entry is {config_key}.pass (e.g. unconditional.pass).
+# Tags control which criteria are evaluated for each example.
+# Oracle-metric keys use the oracle config-entry name as prefix (e.g. "oracle", "oracle_ppi"),
+# so these criteria work regardless of which oracle (RF3 or AF3) is configured.
+
+unconditional:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    backbone_rmsd.rmsd:
+      max: 1.5
+  required_tags_any: [unconditional_refolding]
+
+ppi:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    oracle_ppi.ptm_coi:
+      min: 80.0
+    oracle_ppi.min_ipae_coi:
+      max: 1.5
+    target_aligned_binder_rmsd.rmsd:
+      max: 2.5
+  required_tags_any: [ppi_refolding]
+
+motif_scaffold:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_allatom_rmsd.rmsd:
+      max: 2.0
+    motif_ca_rmsd.rmsd:
+      max: 1.0
+  required_tags_any: [motif_scaffold_refolding]
+
+# Renamed so they are logged separately
+internal_coords:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds: ${metrics.pass_criteria.motif_scaffold.metric_thresholds}
+  required_tags_any: [internal_coordinate_motif_scaffold_refolding]
+
+sm_binder:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    oracle.min_ipae_coi:
+      max: 1.5
+    oracle.iptm_coi:
+      min: 80.0
+    backbone_rmsd.rmsd:
+      max: 1.5
+    backbone_aligned_ligand_rmsd.rmsd:
+      max: 5.0
+  required_tags_any: [sm_binder_refolding]
+
+ame:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_allatom_rmsd.rmsd:
+      max: 1.5
+    ligand_clash_metric.n_clashing.allatom_ligand_clashes:
+      max: 0
+  required_tags_any: [ame_refolding]
+  prohibited_tags: [no_ligand]
+
+ame_no_ligand:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    backbone_rmsd.rmsd:
+      max: 2.0
+    motif_allatom_rmsd.rmsd:
+      max: 1.5
+  required_tags_any: [ame_refolding]
+  required_tags_all: [no_ligand]

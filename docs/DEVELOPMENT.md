@@ -549,7 +549,7 @@ Metrics inherit from `foundry.metrics.metric.Metric` and compute scores on gener
 
 ### Metrics in Training
 
-Configured in `configs/metrics/design_metrics.yaml`:
+Configured in subconfigs under `configs/metrics`:
 
 ```yaml
 metrics:

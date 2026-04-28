@@ -54,6 +54,17 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 
 
+STANDARD_ANNOTATIONS_ONLY: ParseConfig = DISTILLATION.replace(
+    load_standard_annotations=True,
+    remove_waters=False,
+    remove_ccds=(),
+)
+"""Minimal config that loads StandardAnnotations with minimal intervention.
+
+Used for parsing oracle-predicted structures (RF3, AF3 outputs).
+"""
+
+
 def rcsb_with_metals(**overrides) -> dict:
     """``RCSB_WITH_METALS`` as a parser_args dict, with optional kwarg overrides."""
     return RCSB_WITH_METALS.replace(**overrides).to_dict()

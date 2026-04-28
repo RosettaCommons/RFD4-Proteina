@@ -2,10 +2,11 @@
 
 Metrics are organized into three categories:
 
-**Refolding Metrics** — Refold the generated structure with an independent structure
+**Refolding Oracles** — Refold the generated structure with an independent structure
 prediction model and compare. Slower but provides strong validation of designability.
 
-- ``RF3Metric``: RF3 refolding confidence (pLDDT, ipTM, ipAE, min_ipAE). Differentiable.
+- ``RF3Oracle``: RF3 folding oracle (confidence scores + refolded CIF).
+- ``AF3Oracle``: AlphaFold 3 folding oracle (one-shot subprocess, not differentiable).
 - ``AF2Metric``: AlphaFold2 refolding confidence (pLDDT, pTM, pAE). Differentiable.
 
 **Force Field Metrics** — Evaluate physical plausibility using energy functions. These
@@ -39,10 +40,12 @@ structure, no refolding or energy computation required.
 - ``HbondMetrics``: Hydrogen bond counts and energies.
 """
 
-from proteinfoundation.metrics.rf3_metric import RF3Metric
+from proteinfoundation.metrics.af3_oracle import AF3Oracle
+from proteinfoundation.metrics.oracle_metric import OracleMetric
+from proteinfoundation.metrics.rf3_oracle import RF3Oracle
 
 # Optional imports that require additional dependencies
-__all__ = ["RF3Metric"]
+__all__ = ["AF3Oracle", "OracleMetric", "RF3Oracle"]
 
 # --- Refolding Metrics ---
 try:

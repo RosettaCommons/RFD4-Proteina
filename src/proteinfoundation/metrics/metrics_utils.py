@@ -1,7 +1,19 @@
+"""Utilities for running post-design oracle, refolding, and pass-criteria metrics.
+
+The three MetricManager roles used here are:
+- oracle  → runs a structure-prediction oracle (RF3, AF3); logs confidence scores to
+             the metrics dict but has no access to the refolded structure itself.
+- refolded → operates on (designed, refolded) structure pairs to compute comparison metrics (RMSD, etc)
+- pass    → derived metrics that require outputs from prior metric managers; typically
+             boolean pass/fail criteria.
+"""
+
 import itertools
 from pathlib import Path
 
 import numpy as np
+from atomworks.common import exists
+from atomworks.io.parser import parse as _parse_structure
 from atomworks.io.utils.atom_array_plus import as_atom_array
 from atomworks.ml.conditions import C_CRD, C_DIS
 from atomworks.ml.preprocessing.utils.structure_utils import (
@@ -11,7 +23,11 @@ from biotite.structure import AtomArray, AtomArrayStack, CellList, annotate_sse,
 from biotite.structure.residues import spread_residue_wise
 
 from foundry.metrics.metric import MetricManager
+from foundry.utils.ddp import RankedLogger
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 
 def run_metrics_for_result(
@@ -22,6 +38,7 @@ def run_metrics_for_result(
     output_base_dir: Path | None,
     example_id: str | None = None,
     save_input_structure: bool = True,
+    metrics_tags_override: list[str] | None = None,
 ) -> dict:
     """Run metrics for a single generation result, matching the logic in validation_step.
 
@@ -41,6 +58,9 @@ def run_metrics_for_result(
             Pass this when a rank/job suffix is needed (as in validation_step).
         save_input_structure: Whether to save the input structure alongside the refolded
             output for RF3Metrics. Omitted during inference to avoid excess filesystem load.
+        metrics_tags_override: If provided, use these tags instead of the batch-derived
+            ones. Used by reward scoring to apply :py:attr:`~RewardModel.reward_metrics_tags`
+            independently of the dataset's own tags.
 
     Returns:
         Metrics output dictionary from MetricManager.
@@ -51,8 +71,11 @@ def run_metrics_for_result(
 
     coi, coi_unambiguous = get_chain_of_interest(result["generated_atom_array"])
 
-    metrics_tags_batch = batch.get("metrics_tags_batch", [])
-    metrics_tags = metrics_tags_batch[batch_item_idx] if batch_item_idx < len(metrics_tags_batch) else []
+    if metrics_tags_override is not None:
+        metrics_tags = metrics_tags_override
+    else:
+        metrics_tags_batch = batch.get("metrics_tags_batch", [])
+        metrics_tags = metrics_tags_batch[batch_item_idx] if batch_item_idx < len(metrics_tags_batch) else []
 
     metrics_result = metric_manager(
         network_input=None,
@@ -189,3 +212,140 @@ def get_hotspot_contacts(atom_array: AtomArray, hotspot_mask: np.ndarray, distan
     contacted_hotspots_mask = np.any(diffused_interchain_contacts_mask, axis=1)  # (n_hotspots,)
 
     return float(contacted_hotspots_mask.mean())
+
+
+def run_oracle_refolding_and_pass_criteria(
+    atom_array: AtomArray,
+    example_id: str,
+    output_dir: Path | None,
+    oracle_mm: MetricManager | None,
+    refold_mm: MetricManager | None,
+    pass_mm: MetricManager | None,
+    metrics_tags: list[str] | None = None,
+    prior_metrics: dict | None = None,
+) -> dict:
+    """Run oracle + refolding + pass criteria for one designed structure.
+
+    Wraps :py:func:`run_oracle_and_refolding_metrics` and optionally applies pass criteria,
+    merging prior design metrics so pass criteria can reference them.
+
+    Args:
+        atom_array: Designed structure, already parsed and charge-annotated.
+        example_id: Identifier used for file naming and resumability.
+        output_dir: Base output directory for oracle CIFs and confidence JSONs.
+        oracle_mm: Oracle MetricManager (RF3Oracle or AF3Oracle). May be ``None``.
+        refold_mm: Refolding MetricManager (structure comparison metrics). May be ``None``.
+        pass_mm: Pass-criteria MetricManager. May be ``None``.
+        metrics_tags: Tags controlling which metrics activate.
+        prior_metrics: Design-phase metrics for this example, merged into the
+            pass-criteria ``metrics`` context so pass criteria can reference them.
+
+    Returns:
+        Merged dict with oracle + refolding + pass-criteria outputs, or an empty dict
+        if an unrecoverable error occurs.
+    """
+    result = run_oracle_and_refolding_metrics(
+        atom_array=atom_array,
+        example_id=example_id,
+        output_dir=output_dir,
+        oracle_mm=oracle_mm,
+        refold_mm=refold_mm,
+        metrics_tags=metrics_tags,
+    )
+
+    if exists(pass_mm):
+        result.update(
+            pass_mm(
+                network_input=None,
+                network_output=None,
+                extra_info={
+                    "example_id": example_id,
+                    "metrics_tags": metrics_tags or [],
+                    "metrics": {**(prior_metrics or {}), **result},
+                },
+            )
+        )
+
+    return result
+
+
+def run_oracle_and_refolding_metrics(
+    atom_array: AtomArray,
+    example_id: str,
+    output_dir: Path | None,
+    oracle_mm: MetricManager | None,
+    refold_mm: MetricManager | None,
+    metrics_tags: list[str] | None = None,
+) -> dict:
+    """Run oracle → refolding metrics for one designed structure.
+
+    Pass criteria are intentionally excluded — the caller is responsible for
+    running pass_mm and merging its output so that pass criteria can reference
+    design-phase metrics alongside oracle/refolding results.
+
+    Args:
+        atom_array: Designed structure, already parsed and annotated.
+        example_id: Identifier used for file naming and resumability.
+        output_dir: Base output directory for oracle CIFs and confidence JSONs.
+        oracle_mm: Oracle MetricManager (RF3Oracle or AF3Oracle). May be ``None``.
+        refold_mm: Refolding MetricManager (structure comparison metrics). May be ``None``.
+        metrics_tags: Tags controlling which metrics activate.
+
+    Returns:
+        Merged dict with oracle + refolding outputs keyed by ``example_id``,
+        or an empty dict if an unrecoverable error occurs.
+    """
+
+    try:
+        coi, coi_unambiguous = get_chain_of_interest(atom_array)
+
+        extra_info: dict = {
+            "example_id": example_id,
+            "output_base_dir": output_dir,
+            "chain_of_interest": coi if coi_unambiguous else None,
+            "metrics_tags": metrics_tags or [],
+        }
+
+        oracle_output: dict = {}
+        if oracle_mm is not None:
+            oracle_output = oracle_mm(
+                network_input=None,
+                network_output=None,
+                extra_info=extra_info,
+                predicted_atom_array=atom_array,
+            )
+
+        refolding_output: dict = {}
+        if refold_mm is not None:
+            refolded_aa = None
+            if oracle_mm is not None and output_dir is not None:
+                active_tags = set(metrics_tags or [])
+                for oracle_metric in oracle_mm.metrics.values():
+                    if not oracle_metric.applies_to_tags(active_tags):
+                        continue
+                    cif_path = oracle_metric.refolded_cif_path(output_dir, example_id)
+                    if cif_path.exists():
+                        try:
+                            refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"][
+                                "1"
+                            ][0]
+                        except Exception as e:
+                            logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
+                    break  # Stop after the first tag-matching oracle
+            if refolded_aa is None:
+                logger.warning(f"{example_id}: no refolded structure found — skipping refolding metrics")
+                return {"example_id": example_id, **oracle_output}
+
+            refolding_output = refold_mm(
+                network_input=None,
+                network_output=None,
+                extra_info={"example_id": example_id, "metrics_tags": metrics_tags or []},
+                ground_truth_atom_array=atom_array,
+                predicted_atom_array=refolded_aa,
+            )
+
+        return {"example_id": example_id, **oracle_output, **refolding_output}
+
+    except Exception as e:
+        logger.error(f"Refolding pipeline/metrics failed for {example_id}: {e}")
+        return {}

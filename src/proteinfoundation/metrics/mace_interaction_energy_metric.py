@@ -27,12 +27,12 @@ import torch
 from ase import Atoms
 from ase.optimize import BFGS, FIRE, LBFGS
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.io.utils.protonation import ensure_hydrogens
 from atomworks.ml.conditions.annotator import ensure_annotations
 from biotite.structure import AtomArray, AtomArrayStack
 from scipy.spatial import cKDTree
 
 from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
 
 if TYPE_CHECKING:
     from mace.calculators import MACECalculator
@@ -43,17 +43,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def normalize_to_atom_array_list(
-    x: AtomArrayStack | AtomArray | list[AtomArray],
-) -> list[AtomArray]:
-    """Normalize input to a list of AtomArrays."""
-    if isinstance(x, list):
-        return x
-    if isinstance(x, AtomArrayStack):
-        return list(x)
-    return [x]
 
 
 def _atom_array_to_ase(array: AtomArray) -> Atoms:
@@ -341,6 +330,8 @@ def compute_interaction_energy(
     # Step 1: Add hydrogens
     prepared = atom_array.copy()
     if hydrogen_policy == "infer":
+        from atomworks.io.utils.protonation import ensure_hydrogens
+
         prepared = ensure_hydrogens(prepared, ph=pH)
 
     ensure_annotations(prepared, "is_ligand", "is_protein")

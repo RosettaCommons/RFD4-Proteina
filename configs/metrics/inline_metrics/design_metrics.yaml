@@ -62,8 +62,8 @@ indexed_motif_allatom_rmsd:
   subset_mask: (mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein
   metric_type: rmsd
   input_kwarg_names:
-    ground_truth_atom_array_stack: predicted_atom_array
-    predicted_atom_array_stack: predicted_atom_array
+    ground_truth_atom_array: predicted_atom_array
+    predicted_atom_array: predicted_atom_array
   keep_aligned_predicted_structure: true
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   required_tags_any: ["3d_coordinate_conditioning"]
@@ -76,7 +76,18 @@ unindexed_motif_allatom_rmsd:
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   input_kwarg_names:
-    ground_truth_atom_array_stack: predicted_atom_array
-    predicted_atom_array_stack: predicted_atom_array
+    ground_truth_atom_array: predicted_atom_array
+    predicted_atom_array: predicted_atom_array
   keep_aligned_predicted_structure: true
   required_tags_any: ["unindexed"]
+
+contact_molecular_surface:
+  _target_: proteinfoundation.metrics.contact_ms.metric.ContactMolecularSurfaceMetric
+  required_tags_any: ["cms"]
+
+ligand_clash_metric:
+  _target_: proteinfoundation.metrics.design_metrics.LigandClashMetric
+  ligand_clash_threshold: 1.5
+  required_tags_any:
+    - ame_refolding
+    - ame_original_benchmark_refolding
