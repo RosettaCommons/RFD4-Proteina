@@ -45,6 +45,7 @@ from biotite.structure import AtomArray, AtomArrayStack
 from biotite.structure.io import pdbx
 
 from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
 
 logger = logging.getLogger(__name__)
 
@@ -52,17 +53,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def normalize_to_atom_array_list(
-    x: AtomArrayStack | AtomArray | list[AtomArray],
-) -> list[AtomArray]:
-    """Normalize input to a list of AtomArrays."""
-    if isinstance(x, list):
-        return x
-    if isinstance(x, AtomArrayStack):
-        return list(x)
-    return [x]
 
 
 def _extract_all_ligand_residues(atom_array: AtomArray) -> list[dict[str, Any]]:

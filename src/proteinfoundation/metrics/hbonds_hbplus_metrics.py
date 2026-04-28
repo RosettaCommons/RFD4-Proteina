@@ -20,19 +20,17 @@ def calculate_hbond_stats(
     output_atom_array: AtomArray,
     cutoff_HA_dist: float = 2.2,
     cutoff_DA_distance: float = 3.2,
-) -> tuple[float, float, float] | None:
+) -> tuple[float | None, float | None, float | None, int] | None:
     """Compute hbond adherence stats for a single structure.
 
-    Returns ``None`` if there are no hbond-conditioned atoms or if hbond
-    calculation fails.
+    Returns ``None`` if hbond calculation fails. When no C_HB conditioning is
+    present, only the interchain hbond count is returned (first three elements
+    are ``None``). When conditioning is present, all four elements are populated.
     """
     hbond_condition = C_HB.annotation(output_atom_array, default="generate")
     active_donor_mask = hbond_condition == HBondEnum.DONOR.value
     active_acceptor_mask = hbond_condition == HBondEnum.ACCEPTOR.value
-
-    # Skip samples with no donors or acceptors
-    if np.sum(active_donor_mask) == 0 and np.sum(active_acceptor_mask) == 0:
-        return None
+    has_conditioning = np.sum(active_donor_mask) > 0 or np.sum(active_acceptor_mask) > 0
 
     seq_mask = C_SEQ.mask(output_atom_array, default="generate")
     crd_mask = C_CRD.mask(output_atom_array, default="generate")
@@ -40,21 +38,25 @@ def calculate_hbond_stats(
     dis_mask = C_DIS.mask(output_atom_array, default="generate").as_dense_array(False).any(axis=0)
     motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
 
-    (
-        output_atom_array,
-        _hbonds,
-        motif_diffused_hbond_count,
-        hbond_calculation_failed,
-    ) = calculate_hbonds(
+    result = calculate_hbonds(
         output_atom_array,
         cutoff_HA_dist=cutoff_HA_dist,
         cutoff_DA_distance=cutoff_DA_distance,
         raise_on_failure=False,
         motif_mask=motif_mask,
     )
+    output_atom_array = result.atom_array
+    all_hbonds = result.all_hbonds
+    motif_diffused_hbond_count = result.num_motif_hbonds
+    hbond_calculation_failed = result.failed
 
     if hbond_calculation_failed:
         return None
+
+    interchain_hbond_count = sum(1 for hb in all_hbonds if hb["d_chain"] != hb["a_chain"])
+
+    if not has_conditioning:
+        return None, None, None, interchain_hbond_count
 
     gt_hbond_condition = output_atom_array.hbond_gt
     gt_donor_mask = gt_hbond_condition == HBondEnum.DONOR.value
@@ -67,7 +69,7 @@ def calculate_hbond_stats(
         np.sum(active_acceptor_mask & gt_acceptor_mask) / given_acceptors if given_acceptors > 0 else 1.0
     )
 
-    return correct_donor_pct, correct_acceptor_pct, float(motif_diffused_hbond_count)
+    return correct_donor_pct, correct_acceptor_pct, float(motif_diffused_hbond_count), interchain_hbond_count
 
 
 class HbondMetrics(Metric):
@@ -97,13 +99,18 @@ class HbondMetrics(Metric):
             )
             if result is None:
                 return {}
-            d_pct, a_pct, n_hbonds = result
+            d_pct, a_pct, n_hbonds, n_interchain = result
         except Exception as e:
             global_logger.error(f"Error calculating hydrogen bond metrics: {e} | Skipping")
             return {}
 
-        return {
-            "mean_correct_donors_percent": float(d_pct),
-            "mean_correct_acceptors_percent": float(a_pct),
-            "mean_num_hbonds": float(n_hbonds),
-        }
+        metrics = {"interchain_hbond_count": float(n_interchain)}
+        if d_pct is not None:
+            metrics.update(
+                {
+                    "mean_correct_donors_percent": float(d_pct),
+                    "mean_correct_acceptors_percent": float(a_pct),
+                    "mean_num_hbonds": float(n_hbonds),
+                }
+            )
+        return metrics

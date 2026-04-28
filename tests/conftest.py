@@ -6,6 +6,8 @@ from foundry.utils.env import load_dotenv
 load_dotenv(override=True)
 
 import os
+import shutil
+from pathlib import Path
 
 import pytest
 from atomworks.ml.executables import _EXECUTABLES
@@ -39,6 +41,25 @@ def _has_dssp() -> bool:
 
 has_dssp = _has_dssp()
 skip_if_no_dssp = pytest.mark.skipif(not has_dssp, reason="DSSP is not installed or unavailable")
+
+AF3_APPTAINER_PATH = os.environ.get("AF3_APPTAINER_PATH", "/path/to/shared/storage")
+AF3_SCRIPTS_DIR = os.environ.get("AF3_SCRIPTS_DIR", "")
+
+
+def _has_af3() -> bool:
+    """Check if AF3 is available: apptainer image, apptainer binary, and run-scripts all present."""
+    if not os.path.isfile(AF3_APPTAINER_PATH):
+        return False
+    if shutil.which("apptainer") is None:
+        return False
+    if not AF3_SCRIPTS_DIR:
+        return False
+    scripts = Path(AF3_SCRIPTS_DIR)
+    return (scripts / "run_alphafold_server.py").is_file() and (scripts / "run_alphafold_from_cif.py").is_file()
+
+
+has_af3 = _has_af3()
+skip_if_no_af3 = pytest.mark.skipif(not has_af3, reason="AF3 apptainer image not available")
 
 
 @pytest.fixture

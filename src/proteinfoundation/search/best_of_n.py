@@ -3,7 +3,7 @@
 from collections import defaultdict
 from typing import Any
 
-from proteinfoundation.metrics.metrics_utils import run_metrics_for_result
+from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.search.vanilla import VanillaStrategy
 
@@ -60,20 +60,50 @@ class BestOfNStrategy(SearchStrategy):
         # Determine batch size (number of inputs)
         batch_size = batch["coords"].shape[0]
 
+        output_base_dir = getattr(model, "_current_output_base_dir", None)
+        output_suffix: str = getattr(model, "_current_output_suffix", "")
+
         # Group samples by original input index
         samples_by_input = defaultdict(list)
 
         # Generate N samples for each input
-        for _ in range(self.n_samples):
+        for n_iter in range(self.n_samples):
             samples = vanilla_strategy.generate(model, batch, reward_model=None)
             # samples is a list of length batch_size, one per input
 
             # Compute rewards and group by input index
             for idx, sample in enumerate(samples):
-                metrics_output = run_metrics_for_result(
-                    sample, batch, idx, reward_model.metric_manager, output_base_dir=None
+                base_example_id = f"{sample.get('example_id', f'sample_{idx}')}_{n_iter}"
+                example_id = f"{base_example_id}{output_suffix}"
+
+                # Phase 1: design metrics
+                metrics_output = {}
+                if model.design_metric_manager is not None:
+                    metrics_output = run_metrics_for_result(
+                        sample,
+                        batch,
+                        idx,
+                        model.design_metric_manager,
+                        output_base_dir=output_base_dir,
+                        example_id=example_id,
+                        metrics_tags_override=reward_model.reward_metrics_tags,
+                    )
+
+                # Phase 2: oracle + refolding + pass_criteria
+                oracle_output = run_oracle_refolding_and_pass_criteria(
+                    atom_array=sample["generated_atom_array"],
+                    example_id=example_id,
+                    output_dir=output_base_dir,
+                    oracle_mm=model.oracle_metric_manager,
+                    refold_mm=model.refolding_metric_manager,
+                    pass_mm=model.pass_criteria_metric_manager,
+                    metrics_tags=reward_model.reward_metrics_tags,
+                    prior_metrics=metrics_output,
                 )
-                reward = reward_model.aggregate_metrics_output(metrics_output)
+
+                merged = {**metrics_output, **oracle_output}
+                reward = reward_model.aggregate_metrics_output(merged)
+                sample["example_id"] = base_example_id
                 sample["reward"] = reward
                 samples_by_input[idx].append(sample)
 

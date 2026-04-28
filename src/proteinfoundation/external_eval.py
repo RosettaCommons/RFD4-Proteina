@@ -5,6 +5,7 @@ import itertools
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -29,12 +30,12 @@ from foundry.utils.logging import RankedLogger
 from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from proteinfoundation.conditions import C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.generate import get_contig_or_design_problem_dataset
-from proteinfoundation.inference_utils.concatenate_external_eval_results import (
+from proteinfoundation.inference_utils.aggregate_metrics import (
     aggregate_metrics_from_per_example_df,
 )
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
-from proteinfoundation.metrics.rf3_metric import RF3Metric
+from proteinfoundation.metrics.oracle_metric import OracleMetric
 from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
@@ -343,11 +344,11 @@ def correct_index_groups_for_length_variability(atom_array: AtomArray, spec: dic
 
 
 def apply_centering_method(
-    row: object,
+    row: Any,
     centering_method: str,
     coord_conditioning_atom_array: AtomArray,
     loaded_atom_array: AtomArray,
-    dataset: object,
+    dataset: Any,
     pfm_dataset_input: str,
 ) -> AtomArray:
     allow_non_motif_centered = True
@@ -684,7 +685,7 @@ def run_external_eval(
             metric_manager_config_data = yaml.safe_load(f)
         metric_manager = MetricManager.instantiate_from_hydra(metrics_cfg=metric_manager_config_data)
         for metric in metric_manager.metrics.values():
-            if isinstance(metric, RF3Metric):
+            if isinstance(metric, OracleMetric) and hasattr(metric, "setup"):
                 metric.setup()
     else:
         logger.warning("metric_manager_config is None -- no metrics will be computed.")

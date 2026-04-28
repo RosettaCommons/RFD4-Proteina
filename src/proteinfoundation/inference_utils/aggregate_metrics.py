@@ -11,6 +11,7 @@ import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -232,7 +233,9 @@ def add_foldseek_diversity_to_per_example_df(
     n_groups = len(groups)
 
     slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
-    if slurm_cpus is not None:
+    if "threads" in kwargs and kwargs["threads"] is not None:
+        available_cpus = kwargs.pop("threads")
+    elif slurm_cpus is not None:
         available_cpus = int(slurm_cpus)
     else:
         try:
@@ -251,12 +254,31 @@ def add_foldseek_diversity_to_per_example_df(
 
     start_time = time.monotonic()
 
-    def _run_group(key: object, group_df: pd.DataFrame) -> pd.DataFrame:
+    def _run_group(key: Any, group_df: pd.DataFrame) -> pd.DataFrame:
         group_vals = key if isinstance(key, tuple) else (key,)
         group_label = "/".join(str(v) for v in group_vals)
         safe_label = group_label.replace("/", "_").replace(" ", "_")
 
-        chains_of_interest = group_df["chain_of_interest"].unique()
+        # NaN chain_of_interest indicates an upstream failure; exclude those rows from
+        # foldseek but don't let them block the rest of the group.
+        nan_mask = group_df["chain_of_interest"].isna()
+        if nan_mask.any():
+            logger.warning(
+                f"Group {group_label} has {nan_mask.sum()} row(s) with missing chain_of_interest "
+                "(upstream failure); these will be treated as failed designs."
+            )
+        valid_df = group_df[~nan_mask]
+
+        if valid_df.empty:
+            logger.warning(
+                f"chain_of_interest is missing for all rows in group {group_label}."
+                " This group will not get cluster ids."
+            )
+            out = group_df.copy()
+            out["foldseek_cluster_id"] = None
+            return out
+
+        chains_of_interest = valid_df["chain_of_interest"].unique()
         if len(chains_of_interest) > 1:
             logger.warning(
                 f"Expected only one chain_of_interest for group {group_label}, found {chains_of_interest}. "
@@ -274,17 +296,12 @@ def add_foldseek_diversity_to_per_example_df(
                 "chains argument will take precedence."
             )
             chain_of_interest = chains_override[0]
-        if pd.isna(chain_of_interest):
-            logger.warning(f"chain_of_interest is missing for group {group_label}. This group will not get cluster ids")
-            out = group_df.copy()
-            out["foldseek_cluster_id"] = None
-            return out
 
         # Compute remaining budget at submission time; all groups start near-simultaneously
         # so this is a fair approximation of the per-group wall-clock limit.
         remaining = (timeout - (time.monotonic() - start_time)) if timeout is not None else None
 
-        unique_paths = group_df["designed_structure_path"].unique().tolist()
+        unique_paths = valid_df["designed_structure_path"].unique().tolist()
         cluster_assignments = diversity_foldseek(
             list_of_pdb_paths=unique_paths,
             chains=[chain_of_interest],
@@ -294,12 +311,14 @@ def add_foldseek_diversity_to_per_example_df(
             **kwargs,
         )
         out = group_df.copy()
+        out["foldseek_cluster_id"] = None  # NaN-chain rows stay None (failed designs)
         if cluster_assignments is None:
             logger.warning(f"Foldseek clustering failed for group {group_label}. This group will not get cluster IDs")
-            out["foldseek_cluster_id"] = None
         else:
             path_to_cluster = dict(zip(unique_paths, cluster_assignments, strict=False))
-            out["foldseek_cluster_id"] = out["designed_structure_path"].map(path_to_cluster)
+            out.loc[~nan_mask, "foldseek_cluster_id"] = out.loc[~nan_mask, "designed_structure_path"].map(
+                path_to_cluster
+            )
         return out
 
     # ThreadPoolExecutor is safe inside DDP rank-0: threads do not fork the Python
@@ -325,11 +344,21 @@ def add_foldseek_diversity_to_per_example_df(
 
 
 def _base_pass_rate_cols(df: pd.DataFrame) -> list[str]:
-    """Return pass_rate columns, excluding derived clustered/unclustered variants."""
+    """Return pass-rate columns, supporting both legacy ``*_pass_rate`` and modern ``*.pass`` suffixes.
+
+    Excludes derived ``clustered_pass_rate`` / ``unclustered_pass_rate`` variants.
+    """
     return [
         c
         for c in df.columns
-        if c.endswith("pass_rate") and not c.endswith("clustered_pass_rate") and not c.endswith("unclustered_pass_rate")
+        if (
+            c.endswith(".pass")
+            or (
+                c.endswith("pass_rate")
+                and not c.endswith("clustered_pass_rate")
+                and not c.endswith("unclustered_pass_rate")
+            )
+        )
     ]
 
 
@@ -388,7 +417,8 @@ def add_diversity_summary_metrics(
         }
         cpr_values: dict = {}
         for pr_col in pass_rate_cols:
-            prefix = pr_col[: -len("pass_rate")]
+            suffix = "pass" if pr_col.endswith(".pass") else "pass_rate"
+            prefix = pr_col[: -len(suffix)]
             cpr_col = f"{prefix}clustered_pass_rate"
             if all_clusters_missing or group_df[pr_col].isna().all():
                 cpr_val: float = float("nan")
@@ -476,43 +506,56 @@ def aggregate_metrics_from_per_example_df(
     return agg_df
 
 
-def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cleanup: bool = True) -> None:
+def concatenate_results(
+    input: str,
+    cluster_with_foldseek: bool = False,
+    cleanup: bool = True,
+    output_dir: str | None = None,
+) -> None:
     """Concatenate per-example and aggregated metrics from multiple jobs.
 
     Args:
-        output_dir: Directory containing the individual job result files.
+        input: Path to either the directory containing the individual job result files,
+            or the already-concatenated per_example_metrics.csv file.
         cluster_with_foldseek: Whether to cluster results using Foldseek.
         cleanup: If True, move individual job files to a subdirectory after concatenation.
+        output_dir: Directory where results should be saved. Defaults to the input directory
+            (or parent directory when input is a file).
     """
-    output_path = Path(output_dir)
+    input = Path(input)
 
-    # Find all per-example metric files
-    per_example_files = sorted(output_path.glob("*per_example_metrics*.csv"))
-    per_example_files = [f for f in per_example_files if f.name != "per_example_metrics.csv"]
+    if input.is_file():
+        concatenated_per_example = pd.read_csv(input)
+    else:
+        # Find all per-example metric files
+        per_example_files = sorted(input.glob("*per_example_metrics*.csv"))
+        per_example_files = [f for f in per_example_files if f.name != "per_example_metrics.csv"]
 
-    if not per_example_files:
-        print(f"No per-example metric files found in {output_dir}")
-        print("Nothing to concatenate - this may be a single-job run.")
-        return
+        if not per_example_files:
+            print(f"No per-example metric files found in {input}")
+            print("Nothing to concatenate - this may be a single-job run.")
+            return
 
-    print(f"Found {len(per_example_files)} per-example metric files to concatenate")
+        print(f"Found {len(per_example_files)} per-example metric files to concatenate")
 
-    # 1. Concatenate per-example metrics
-    all_per_example_dfs = []
-    for file in per_example_files:
-        df = pd.read_csv(file)
-        all_per_example_dfs.append(df)
-        print(f"  Loaded {file.name}: {len(df)} examples")
+        # 1. Concatenate per-example metrics
+        all_per_example_dfs = []
+        for file in per_example_files:
+            df = pd.read_csv(file)
+            all_per_example_dfs.append(df)
+            print(f"  Loaded {file.name}: {len(df)} examples")
 
-    concatenated_per_example = pd.concat(all_per_example_dfs, ignore_index=True)
+        concatenated_per_example = pd.concat(all_per_example_dfs, ignore_index=True)
 
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
         concatenated_per_example = add_foldseek_diversity_to_per_example_df(concatenated_per_example)
         concatenated_per_example = add_diversity_summary_metrics(concatenated_per_example)
 
-    # Save concatenated per-example metrics
+    # Save per-example metrics
     concatenated_per_example = concatenated_per_example.round(4)
+    output_path = Path(output_dir) if output_dir is not None else (input.parent if input.is_file() else input)
+    output_path.mkdir(parents=True, exist_ok=True)
     per_example_output = output_path / "per_example_metrics.csv"
     concatenated_per_example.to_csv(per_example_output, index=False)
     print(f"\nSaved concatenated per-example metrics to {per_example_output}")
@@ -537,8 +580,8 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
     per_task_df.to_csv(per_task_output, index=False)
     print(f"\nSaved per-task metrics to {per_task_output}")
 
-    # 4. Clean up individual job files
-    if cleanup:
+    # 4. Optionally clean up individual job files
+    if not input.is_file() and cleanup:
         job_files_dir = output_path / "individual_job_results"
         job_files_dir.mkdir(exist_ok=True)
 
@@ -561,10 +604,13 @@ def concatenate_results(output_dir: str, cluster_with_foldseek: bool = False, cl
 def main() -> None:
     parser = argparse.ArgumentParser(description="Concatenate results from multi-job external evaluation runs.")
     parser.add_argument(
-        "--output-dir",
+        "--input",
         type=str,
         required=True,
-        help="Directory containing the individual job result files",
+        help=(
+            "Path to either the directory containing the individual job result files "
+            "or the already-concatenated per_example_metrics.csv file"
+        ),
     )
     parser.add_argument(
         "--cleanup",
@@ -577,13 +623,23 @@ def main() -> None:
         action="store_true",
         help="Whether to cluster results using Foldseek",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help=(
+            "Directory where results should be saved. "
+            "Defaults to the input directory (or its parent when --input is a file)."
+        ),
+    )
 
     args = parser.parse_args()
 
     concatenate_results(
-        output_dir=args.output_dir,
+        input=args.input,
         cleanup=args.cleanup,
         cluster_with_foldseek=args.cluster_with_foldseek,
+        output_dir=args.output_dir,
     )
 
 

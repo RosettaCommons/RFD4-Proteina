@@ -92,23 +92,12 @@ def _resolve_metric(
 # ---------------------------------------------------------------------------
 
 
-# Maps known sweep config key paths → df column names as written by proteina.py.
-# Needed because proteina.py saves some config values under shorter aliases rather
-# than the raw last path segment (e.g. sc_scale_noise → bb_ca_noise_scale).
-_SWEEP_KEY_ALIASES: dict[str, str] = {
-    "generation.model.bb_ca.simulation_step_params.sc_scale_noise": "bb_ca_noise_scale",
-    "generation.model.local_latents.simulation_step_params.sc_scale_noise": "latents_noise_scale",
-    "generation.args.nsteps": "nsteps",
-}
-
-
 def _resolve_sweep_key(key: str, df_cols: set[str]) -> tuple[str | None, str]:
     """Resolve a sweep config key to a DataFrame column name.
 
     Resolution order:
-      1. Explicit alias in :py:data:`_SWEEP_KEY_ALIASES`
-      2. Exact match in ``df_cols``
-      3. Last dot-segment match
+      1. Exact match in ``df_cols``
+      2. Last dot-segment match
 
     Args:
       key: Dot-separated sweep config key (e.g. ``"generation.args.nsteps"``).
@@ -117,11 +106,6 @@ def _resolve_sweep_key(key: str, df_cols: set[str]) -> tuple[str | None, str]:
     Returns:
       ``(col_name, status)`` where ``col_name`` is ``None`` if unresolved.
     """
-    if key in _SWEEP_KEY_ALIASES:
-        alias = _SWEEP_KEY_ALIASES[key]
-        if alias in df_cols:
-            return alias, "✓ alias"
-        return None, f"✗ alias→'{alias}' not in df"
     if key in df_cols:
         return key, "✓ exact"
     tail = key.split(".")[-1]

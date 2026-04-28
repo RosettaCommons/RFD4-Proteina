@@ -7,6 +7,7 @@ import time
 from functools import partial
 from os import PathLike
 from pathlib import Path
+from typing import Any
 
 import hydra
 import lightning as L
@@ -14,7 +15,6 @@ import rootutils
 import torch
 import yaml
 from atomworks.common import exists
-from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.transforms.base import Identity, Transform
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, ListConfig, OmegaConf
@@ -42,7 +42,7 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
 
 
-def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value: object = None) -> object:
+def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value: Any = None) -> Any:
     """Get exactly one of two mutually exclusive config keys.
 
     Primarily used for supporting RFD3 launch syntax, to ease the transition for designers.
@@ -186,11 +186,9 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     num_replicates = split_replicates_by_job(num_replicates, job_id, njobs)
 
     # If a design Dataset was passed, use it directly
-    cfg_gen.dataset.num_replicates = 1  # Temporarily set to 1 to get the number of examples
+    cfg_gen.dataset.num_replicates = num_replicates
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
     if isinstance(instantiated_dset, (DesignProblemDataset | ContigJsonDataset)):
-        cfg_gen.dataset.num_replicates = num_replicates
-        instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)  # Re-instantiate with correct num_replicates
         if cfg_gen.val_set_name_override is None:
             if "data" in cfg_gen.dataset:
                 cfg_gen.val_set_name_override = cfg_gen.dataset.data
@@ -422,15 +420,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
     nn_ag = load_ag_ckpt(cfg.generation.args)
 
     metrics = cfg.get("metrics")
-    metrics_tags = (
-        cfg.generation.dataset.transform.get("metrics_tags") if "transform" in cfg.generation.dataset else None
-    )
-    if exists(metrics) != exists(metrics_tags):
-        logger.warning(
-            f"Metrics is {'not' if exists(metrics) else ''} None "
-            f"but metrics_tags is {'not' if exists(metrics_tags) else ''} None. "
-            "No metrics will be computed."
-        )
 
     model.configure_inference(
         cfg.generation,
@@ -448,20 +437,21 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
     if hasattr(cfg, "search") and cfg.search is not None:
         search_strategy = configure_search_strategy_from_cfg(cfg.search)
 
-        # Initialize search reward model from nested search.rewards (can be non-differentiable)
+        # Build search reward model from search.rewards config.
+        # Metrics come from the model's configured managers (design, oracle, refolding,
+        # pass_criteria); reward_metrics_tags controls which fire during scoring.
         search_reward_model = None
         if hasattr(cfg.search, "rewards") and cfg.search.rewards is not None:
-            from foundry.metrics.metric import MetricManager
             from proteinfoundation.rewards import RewardModel
 
-            metric_manager = MetricManager.instantiate_from_hydra(cfg.search.rewards.metrics)
+            rewards_cfg = cfg.search.rewards
             search_reward_model = RewardModel(
-                metrics=metric_manager,
-                weights=dict(cfg.search.rewards.weights),
-                differentiable=cfg.search.rewards.get("differentiable", False),
+                weights=dict(rewards_cfg.weights),
+                differentiable=rewards_cfg.get("differentiable", False),
+                reward_metrics_tags=list(rewards_cfg.get("reward_metrics_tags", [])),
             )
             logger.info(
-                f"Search reward model: {len(metric_manager.metrics)} metrics, "
+                f"Search reward model: reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
                 f"differentiable={search_reward_model.differentiable}"
             )
 
@@ -469,7 +459,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
 
     # Configure refinement if specified
     if hasattr(cfg, "refinement") and cfg.refinement is not None:
-        from foundry.metrics.metric import MetricManager
         from proteinfoundation.rewards import RewardModel
 
         # Require nested refinement.rewards config (MUST be differentiable)
@@ -479,19 +468,18 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
                 "Add rewards under refinement with differentiable=true."
             )
 
-        # Create refinement reward model
-        metric_manager = MetricManager.instantiate_from_hydra(cfg.refinement.rewards.metrics)
+        refinement_rewards_cfg = cfg.refinement.rewards
         refinement_reward_model = RewardModel(
-            metrics=metric_manager,
-            weights=dict(cfg.refinement.rewards.weights),
-            differentiable=cfg.refinement.rewards.get("differentiable", False),
+            weights=dict(refinement_rewards_cfg.weights),
+            differentiable=refinement_rewards_cfg.get("differentiable", False),
+            reward_metrics_tags=list(refinement_rewards_cfg.get("reward_metrics_tags", [])),
         )
 
         if not refinement_reward_model.differentiable:
             raise ValueError("Refinement requires differentiable=true in refinement.rewards config")
 
         logger.info(
-            f"Refinement reward model: {len(metric_manager.metrics)} metrics, "
+            f"Refinement reward model: weights={list(refinement_reward_model.weights.keys())}, "
             f"differentiable={refinement_reward_model.differentiable}"
         )
 
@@ -500,32 +488,6 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         model.configure_refinement(refinement_strategy, refinement_reward_model)
 
     return model, ema_callback
-
-
-def save_predictions(
-    root_path: str,
-    predictions: list[list],
-    job_id: int = 0,
-) -> None:
-    """
-    Saves generated samples.
-
-    Args:
-        root_path: root directory where samples will be stored (within subdirectories)/
-        predictions: List of lists where each element is either:
-            - tuple (coors [n, 37, 3], aatype [n]) - legacy format
-            - dict with keys 'coors', 'residue_type', 'mask', 'atom_array' - new format
-        job_id: job number, used to store files.
-    """
-    predictions = [sample for sublist in predictions for sample in sublist]
-
-    for pred in predictions:
-        atom_array = pred["generated_atom_array"]
-        out_name = f"{pred["example_id"]}_job_{job_id}.cif"
-
-        # Save generated structure (will be saved as CIF format)
-        file_path = os.path.join(root_path, out_name)
-        to_cif_file(atom_array, file_path)
 
 
 def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:
@@ -573,15 +535,11 @@ def _filter_existing_outputs(
         or the original dataset if no outputs exist yet.
     """
     store_dir = model.store_dir
-    if model.metrics is not None:
-        output_dir = Path(store_dir) / "inference_samples"
-        # proteina.py builds filenames from model.job_id (set via cfg), not the run_generation job_id.
-        # Use model.job_id here so the glob/strip matches the actual saved filenames.
-        model_job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
-        suffix = f"{model_job_suffix}_generated.cif"
-    else:
-        output_dir = Path(root_path)
-        suffix = f"_job_{job_id}.cif"
+    output_dir = Path(store_dir) / "inference_samples"
+    # proteina.py builds filenames from model.job_id (set via cfg), not the run_generation job_id.
+    # Use model.job_id here so the glob/strip matches the actual saved filenames.
+    model_job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
+    suffix = f"{model_job_suffix}_generated.cif"
 
     # Collect example IDs that already have outputs
     existing_ids: set[str] = set()
@@ -681,19 +639,15 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
     # Sample model
     logger.info(f"Running inference on {len(dataloader)} batches...")
 
-    if model.metrics is not None:
-        # trainer.validate fires on_validation_start/end, so SimpleEMA swaps weights automatically.
-        trainer = L.Trainer(
-            accelerator="gpu",
-            devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
-            num_nodes=cfg.hardware.nnodes_,
-            default_root_dir=root_path,
-            logger=False,
-            callbacks=[ema_callback] if ema_callback is not None else [],
-        )
-        trainer.validate(model, dataloader)  # validation_step automatically saves outputs
-    else:
-        raise NotImplementedError("Predictions without Metrics is being refactored and a patch will be merged soon.")
+    trainer = L.Trainer(
+        accelerator="gpu",
+        devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
+        num_nodes=cfg.hardware.nnodes_,
+        default_root_dir=root_path,
+        logger=False,
+        callbacks=[ema_callback] if ema_callback is not None else [],
+    )
+    trainer.validate(model, dataloader)  # validation_step automatically saves outputs
 
     logger.info(f"✓ Generation complete! Results saved to {root_path}")
 

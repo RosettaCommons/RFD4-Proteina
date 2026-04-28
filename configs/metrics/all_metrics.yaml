@@ -1,5 +1,9 @@
+# We include all non-oracle Metrics since they can be easily
+# controlled via tags. For simplicity, only one oracle is allowed at a time
+
 defaults:
-  - design_metrics
-  - refolding_metrics
-  - structure_prediction_metrics
-  - optional custom_metrics@_here_: custom_metrics  # User-defined metrics; see "Adding Custom Metrics" in README.md
+  - inline_metrics: all_inline_metrics
+  - refolding_oracles: rf3
+  - refolding_metrics: all_refolding_metrics
+  - pass_criteria: all_pass_criteria
+  - optional custom_metrics: custom_metrics  # git-ignored user extensions

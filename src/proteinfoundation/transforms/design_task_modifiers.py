@@ -5,6 +5,7 @@ import string
 import subprocess
 import tempfile
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -223,13 +224,22 @@ def _identify_atom(atom_array: AtomArray, chain_iid: str, res_id: str, atom_name
     )
 
 
+@dataclass
+class HBondResult:
+    atom_array: AtomArray | None
+    motif_hbonds: list | None
+    all_hbonds: list | None
+    num_motif_hbonds: int | None
+    failed: bool
+
+
 def calculate_hbonds(
     atom_array: AtomArray,
     motif_mask: np.ndarray,
     cutoff_HA_dist: float = 2.2,
     cutoff_DA_distance: float = 3.2,
     raise_on_failure: bool = True,
-) -> tuple[AtomArray | None, list | None, int | None, bool]:
+) -> HBondResult:
     """Calculate hydrogen bonds using the hbplus external tool.
 
     Args:
@@ -240,15 +250,12 @@ def calculate_hbonds(
         raise_on_failure: Whether to raise exceptions on failure
 
     Returns:
-        tuple: (atom_array, motif_hbonds, num_motif_hbonds, failed)
-            - atom_array: Modified atom array with hbond annotations (or None if failed)
-            - motif_hbonds: List of hydrogen bond dicts (or None if failed)
-            - num_motif_hbonds: Number of motif hbonds (or None if failed)
-            - failed: Boolean indicating if calculation failed
+        HBondResult with atom_array, motif_hbonds, all_hbonds, num_motif_hbonds, and
+        failed flag. If failed is True, all other fields are None.
     """
     with temporary_pdb_directory(atom_array, raise_on_failure=raise_on_failure) as result:
         if result[0] is None:
-            return None, None, None, True
+            return HBondResult(None, None, None, None, True)
 
         temp_dir, pdb_filename, atom_array, _nan_mask, inverted_chain_map, _failed = result
         _pdb_path = os.path.join(temp_dir, pdb_filename)
@@ -266,7 +273,7 @@ def calculate_hbonds(
                         "Environment variable HBPLUS_PATH is not set! Please update your `.env` "
                         "file. On the DIGS, this should be: `/path/to/data`"
                     )
-                return None, None, None, True
+                return HBondResult(None, None, None, None, True)
 
             # Run hbplus (output will be created in temp_dir)
             subprocess.run(
@@ -294,7 +301,7 @@ def calculate_hbonds(
             except FileNotFoundError:
                 if raise_on_failure:
                     raise
-                return None, None, None, True
+                return HBondResult(None, None, None, None, True)
 
         finally:
             # Restore original working directory
@@ -317,14 +324,14 @@ def calculate_hbonds(
                     f"Unable to uniquely identify a donor atom with chain_iid={hbond['d_chain']}, "
                     f"res_id={hbond['d_resi']}, atom_name={hbond['d_atom']}."
                 )
-            return None, None, None, True
+            return HBondResult(None, None, None, None, True)
         if current_acceptor_mask.sum() != 1:
             if raise_on_failure:
                 raise ValueError(
                     f"Unable to uniquely identify an acceptor atom with chain_iid={hbond['a_chain']}, "
                     f"res_id={hbond['a_resi']}, atom_name={hbond['a_atom']}."
                 )
-            return None, None, None, True
+            return HBondResult(None, None, None, None, True)
 
         current_donor_is_motif = motif_mask[current_donor_mask][0]
         current_acceptor_is_motif = motif_mask[current_acceptor_mask][0]
@@ -366,7 +373,7 @@ def calculate_hbonds(
     atom_array.set_annotation("hbond_gt_between_motif_and_diffused", hbond_between_motif_and_diffused)
     atom_array.set_annotation("hbond_gt", hbond_all)
 
-    return atom_array, motif_hbonds, len(motif_hbonds), False
+    return HBondResult(atom_array, motif_hbonds, hbonds, len(motif_hbonds), False)
 
 
 def add_hbond_condition(
@@ -384,7 +391,7 @@ def add_hbond_condition(
     dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
     motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
 
-    atom_array, hbonds, _, hbond_calculation_failed = calculate_hbonds(
+    hbond_result = calculate_hbonds(
         atom_array,
         motif_mask=motif_mask,
         cutoff_HA_dist=cutoff_HA_dist,
@@ -397,11 +404,12 @@ def add_hbond_condition(
 
     # NOTE: If the calculation failed, log it but then behave as if we had skipped this modifier.
     # AddIsXFeats will add the default feature (zeros).
-    if hbond_calculation_failed:
+    if hbond_result.failed:
         log_dict["hbond_calculation_failed"] = True
         return data
 
     log_dict["hbond_calculation_failed"] = False
+    atom_array = hbond_result.atom_array
 
     # Get hydrogen bond annotations from calculate_hbonds
     hbond_gt = atom_array.hbond_gt_between_motif_and_diffused.copy()

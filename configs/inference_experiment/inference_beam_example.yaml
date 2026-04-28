@@ -31,7 +31,11 @@ global_prefix: beam_example
 out_dir: outputs/beam_example
 run_name_: beam_example
 
-metrics_tags: unconditional_refolding
+# Outer metrics_tags: controls which metrics run in the epoch-end oracle loop.
+# With unconditional_refolding, the epoch-end loop calls the oracle on final outputs but
+# finds cached results from beam scoring — so it is fast and populates columns
+# in per_example_metrics.csv.
+metrics_tags: [unconditional_refolding]
 
 search:
   strategy:
@@ -39,18 +43,17 @@ search:
     step_checkpoints: [0, 100, 200, 300, 400]
     n_branch: 2
     beam_width: 3
-    keep_intermediate_samples: false
+    keep_intermediate_samples: true
+    intermediate_sample_reward_threshold: 80.0
 
   rewards:
-    metrics:
-      rf3:
-        _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
-        ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
-        num_steps: 50
-        n_recycles: 5
+    # Inner tags: controls which metrics fire during beam scoring.
+    # [unconditional_refolding] → RF3 oracle runs on every rolled-out candidate,
+    # caching results to disk for reuse by the epoch-end loop.
+    reward_metrics_tags: [unconditional_refolding]
 
     weights:
-      rf3.plddt: 1.0
+      rf3.plddt_coi: 1.0
 
     differentiable: false
 

@@ -3,11 +3,10 @@
 
 metrics:
   rf3:
-    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
-    ckpt_path: /path/to/shared/storage
+    _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+    ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
     num_steps: 50
     n_recycles: 5
-    rng_seed: 1
 
 weights:
   rf3.plddt: 1.0        # Higher pLDDT is better

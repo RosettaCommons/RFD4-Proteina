@@ -209,7 +209,7 @@ See `configs/sweeps/` for pre-built sweep configs and the [Search and Refinement
 
 ### Search (Beam / Best-of-N)
 
-Search strategies are selected via `inference_experiment` configs:
+Search strategies are selected via `inference_experiment` configs. Beam search is the most capable option: it maintains a beam of top candidates and prunes at diffusion checkpoints. Setting `intermediate_sample_reward_threshold` saves any intermediate structure that scores above the threshold — useful for collecting high-quality candidates throughout the search, not just at the end.
 
 ```bash
 # Beam search with RF3 reward (parameters set in the experiment config)
@@ -415,7 +415,7 @@ Metrics that require a tag will be silently skipped if the tag is not present.
 When running large evaluations in parallel across multiple SLURM jobs, each job writes its own `per_example_metrics_job{N}.csv`. After all jobs complete, concatenate them:
 
 ```bash
-python -m proteinfoundation.inference_utils.concatenate_external_eval_results \
+python -m proteinfoundation.inference_utils.aggregate_metrics \
     --output_dir ./inference/my_run/metrics/
 ```
 
@@ -428,7 +428,7 @@ Pass `--cluster_with_foldseek` to also run structural diversity clustering (see 
 You can add your own evaluation metrics without modifying any tracked files. You can add custom metrics by creating these files, which are automatically git-ignored:
 
 - `proteinfoundation/metrics/custom_metrics.py` — Python metric classes
-- `configs/metrics/custom_metrics.yaml` — Hydra config registering those classes
+- `configs/metrics/custom_metrics/custom_metrics.yaml` — Hydra config registering those classes
 
 **Quick example** — count residues in each design:
 
@@ -455,7 +455,7 @@ class ResidueCountMetric(Metric):
 ```
 
 ```yaml
-# configs/metrics/custom_metrics.yaml
+# configs/metrics/custom_metrics/custom_metrics.yaml
 residue_count:
   _target_: proteinfoundation.metrics.custom_metrics.ResidueCountMetric
   min_length: 50                                # constructor argument
@@ -464,7 +464,7 @@ residue_count:
 
 Results appear in `per_example_metrics.csv` as `residue_count.n_residues`, `residue_count.meets_min_length`.
 
-For a full explanation of `kwargs_to_compute_args`, how to write metrics that operate on RF3-refolded structures (nested inside `RF3Metric`), and how to contribute a metric back, see **[docs/custom_metrics.md](docs/custom_metrics.md)**.
+For a full explanation of `kwargs_to_compute_args`, how to write metrics that operate on RF3-refolded structures (nested inside `RF3Oracle`), and how to contribute a metric back, see **[docs/custom_metrics.md](docs/custom_metrics.md)**.
 
 > **Broadly useful?** If your metric isn't specific to your design problem, consider contributing it. Both files are git-ignored so your local experiments stay private, but the full contribution workflow (branch → tracked file → PR) is described in the doc above.
 
@@ -491,13 +491,17 @@ Beyond standard sampling, the model supports search strategies to explore multip
 | **Beam Search** | Maintain top-k candidates, prune at checkpoints | Best quality, slower |
 
 ```bash
-# Best-of-N with RF3 reward
+# Beam search with RF3 reward (uses inference_beam_example.yaml)
 python proteinfoundation/generate.py \
-    --config-name inference_test_search \
+    inference_experiment=inference_beam_example \
     inputs=design.json \
-    ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    search.strategy=best_of_n search.strategy.n_samples=50 \
-    reward=rf3
+    ckpt_path=./checkpoints ckpt_name=model.ckpt
+
+# Best-of-N with RF3 reward (uses inference_test_search.yaml)
+python proteinfoundation/generate.py \
+    inference_experiment=inference_test_search \
+    inputs=design.json \
+    ckpt_path=./checkpoints ckpt_name=model.ckpt
 ```
 
 ### Refinement Strategies
@@ -529,7 +533,7 @@ Reward models score generated structures to guide search and refinement. Configu
 
 | Config | Category | Key Signals | Differentiable |
 | --- | --- | --- | --- |
-| `rf3.yaml` | Refolding | pLDDT, ipTM, ipAE, min_ipAE | Yes |
+| `rf3.yaml` | Refolding | pLDDT, ipTM, ipAE, min_ipAE | No |
 | `af2_binder.yaml` | Refolding | pLDDT, pTM, PAE, max_PAE | Yes |
 | `multi_source.yaml` | Refolding + Force Field + Quality | ipAE, H-bonds, RASA, clashes | No |
 | `structure_quality.yaml` | Structure Quality | Sidechains, SSE, RASA, MolProbity | No |

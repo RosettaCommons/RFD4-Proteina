@@ -526,10 +526,10 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     print_header "Concatenating Results"
 
     # Run the concatenation script
-    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/concatenate_external_eval_results.py"
+    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
 
-    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
-        "$CONCAT_SCRIPT" --output-dir "$OUTPUT_DIR" --cluster-with-foldseek
+    if [ "$CLUSTER_TYPE" == "digs" ]; then
+        $PYTHON "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek
     else
         CONTAINER_CMD=$(get_srun_cmd)
         CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
@@ -537,7 +537,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
         srun --ntasks=1 --kill-on-bad-exit $CONTAINER_CMD \
             --container-mounts="$CONTAINER_MOUNTS_STR" \
             --container-workdir=$RUN_DIR \
-            bash -c "$CONTAINER_ENV_CMDS && $PYTHON \"$CONCAT_SCRIPT\" --output-dir \"$OUTPUT_DIR\""
+            $PYTHON "$CONCAT_SCRIPT" --input "$OUTPUT_DIR"
     fi
 
     echo ""

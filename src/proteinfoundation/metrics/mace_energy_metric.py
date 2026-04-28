@@ -52,13 +52,14 @@ def compute_mace_energy(
       >>> # Raise error if charge/spin missing
       >>> energy = compute_mace_energy(atom_array, calc, infer_charge="raise")
     """
-    from atomworks.io.transforms.atom_array import add_hydrogen_atom_positions
     from atomworks.io.utils.ase_conversions import atom_array_to_ase
 
     if hydrogen_policy not in ("infer", "keep"):
         raise ValueError(f"hydrogen_policy must be 'infer' or 'keep', got {hydrogen_policy}")
 
     if hydrogen_policy == "infer":
+        from atomworks.io.transforms.atom_array import add_hydrogen_atom_positions
+
         # add_hydrogen_atom_positions removes existing H first, then adds new
         # NOTE: hydride requires only specific annotations and can fail on irregular ones
         # ... remove non-essential annotations before processing

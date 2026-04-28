@@ -28,12 +28,27 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 
 def _get_binder_target_mask(
     atom_array: AtomArray,
+    chain_of_interest: str | None = None,
 ) -> tuple[Bool[np.ndarray, N], Bool[np.ndarray, N]]:
     """Identify binder vs target atoms.
 
-    Uses ``chain_iid`` annotation if available (chain 0 = binder),
-    otherwise falls back to ``chain_id`` (first chain = binder).
+    Uses ``chain_of_interest`` (chain label string) as the binder when provided.
+    Falls back to ``chain_iid`` (chain 0 = binder) if available, then to the
+    first alphabetical ``chain_id`` as a last resort.
+
+    Args:
+        atom_array: Multi-chain structure.
+        chain_of_interest: Chain label for the binder, or ``None``.
     """
+    if chain_of_interest is not None:
+        binder_mask = atom_array.chain_id == chain_of_interest
+        if binder_mask.any():
+            return binder_mask, ~binder_mask
+        else:
+            binder_mask = atom_array.chain_iid == chain_of_interest
+            if binder_mask.any():
+                return binder_mask, ~binder_mask
+
     if hasattr(atom_array, "chain_iid"):
         binder_mask = atom_array.chain_iid == 0
         target_mask = atom_array.chain_iid != 0
@@ -86,13 +101,26 @@ class ContactMolecularSurfaceMetric(Metric):
 
     @cached_property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
-        return {"predicted_atom_array": "predicted_atom_array"}
+        return {
+            "predicted_atom_array": "predicted_atom_array",
+            "chain_of_interest": ("extra_info", "chain_of_interest"),
+        }
 
-    def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
+    @property
+    def optional_kwargs(self) -> frozenset[str]:
+        return frozenset(["chain_of_interest"])
+
+    def compute(
+        self,
+        predicted_atom_array: AtomArray,
+        chain_of_interest: str | None = None,
+    ) -> dict[str, float]:
         """Compute CMS for the predicted structure.
 
         Args:
             predicted_atom_array: Multi-chain structure with binder + target.
+            chain_of_interest: Chain label for the binder chain. When provided,
+                that chain is treated as binder and all other chains as target.
 
         Returns:
             Dictionary with CMS metrics:
@@ -101,7 +129,7 @@ class ContactMolecularSurfaceMetric(Metric):
                 - ``max_contact_ms_target``: Max possible target CMS (Å², if enabled)
                 - ``contact_ms_fraction``: CMS / max CMS (0-1, if enabled)
         """
-        binder_mask, target_mask = _get_binder_target_mask(predicted_atom_array)
+        binder_mask, target_mask = _get_binder_target_mask(predicted_atom_array, chain_of_interest)
         binder_xyz, binder_radii = extract_cms_inputs(predicted_atom_array, binder_mask)
         target_xyz, target_radii = extract_cms_inputs(predicted_atom_array, target_mask)
 

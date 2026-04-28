@@ -1,0 +1,11 @@
+defaults:
+  - /metrics: all_metrics
+  - _self_
+
+inputs: ???        # Directory of CIF files for designed structures
+metrics_tags: ???  # Required: tags controlling which metrics activate (e.g. [unconditional_refolding])
+
+out_dir: ???   # Output directory for metrics results 
+job_id: null       # Chunk index for parallel evaluation
+gen_njobs: 1       # Total number of parallel jobs (used when chunk_size is null)
+ncpus_: 4

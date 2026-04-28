@@ -98,9 +98,9 @@ def test_internal_coord_adherence_metric(deterministic_rng, pdb_id, deviation_ty
         predicted.coord = predicted.coord + noise
     # else: no deviation, predicted is identical to ground truth
 
-    # Compute metric. ``save_per_group_metrics=True`` emits the ``rmsd_coord_group_<id>`` keys.
+    # Compute metric
     metric = InternalCoordAdherenceMetric(metric_type="rmsd", save_per_group_metrics=True)
-    result = metric.compute(ground_truth_atom_array_stack=atom_array, predicted_atom_array_stack=predicted)
+    result = metric.compute(ground_truth_atom_array=atom_array, predicted_atom_array=predicted)
 
     # Verify output structure
     assert isinstance(result, dict)

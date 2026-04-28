@@ -82,7 +82,7 @@ def align_structures_by_annotations(
     gt_array_stack: AtomArrayStack,
     pred_array_stack: AtomArrayStack,
     align_to: str | None = None,
-    apply_query_to_pred: bool = False,
+    apply_query_to_pred: bool = True,
 ) -> tuple[AtomArrayStack, AtomArrayStack]:
     """
     Align predicted structure to ground truth using query string.
@@ -335,7 +335,7 @@ def structure_comparison_metric(
     | list[AtomArray | AtomArrayPlus],
     subset_mask: str | None = None,
     align_mask: str | None = None,
-    apply_mask_queries_to_pred: bool = False,
+    apply_mask_queries_to_pred: bool = True,
     metric_fn: Callable[[AtomArray, AtomArray], float] = compute_rmsd,
     verbose_naming: bool = False,
     keep_aligned_predicted_structure: bool = False,
@@ -380,6 +380,8 @@ def structure_comparison_metric(
         annotations_to_ensure.extend(_extract_annotation_names(align_mask))
     if annotations_to_ensure:
         ensure_annotations(gt_stack, *annotations_to_ensure)
+        if apply_mask_queries_to_pred:
+            ensure_annotations(pred_stack, *annotations_to_ensure)
 
     # align
     gt_stack, pred_stack = align_structures_by_annotations(
@@ -462,8 +464,8 @@ class StructureComparisonMetric(Metric):
                 }
             }
         input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
-            Defaults to {"ground_truth_atom_array_stack": "ground_truth_atom_array",
-            "predicted_atom_array_stack": "predicted_atom_array"}.
+            Defaults to {"ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array"}.
         apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
             independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
             True if the AtomArrays are different lengths.
@@ -477,9 +479,7 @@ class StructureComparisonMetric(Metric):
         ...     align_mask="is_backbone",
         ...     metric_type="rmsd",
         ... )
-        >>> result = metric.compute(
-        ...     ground_truth_atom_array_stack=gt, predicted_atom_array_stack=pred
-        ... )
+        >>> result = metric.compute(ground_truth_atom_array=gt, predicted_atom_array=pred)
         >>> print(result)
         {'rmsd_align=<is_backbone>_subset=<is_backbone&is_polymer>': 1.23}
     """
@@ -492,14 +492,14 @@ class StructureComparisonMetric(Metric):
         metric_type: Literal["rmsd", "dist_mae"] = "rmsd",
         metric_kwargs: dict[str, Any] = {},
         input_kwarg_names: dict[str, str] | None = None,
-        apply_mask_queries_to_pred: bool = False,
+        apply_mask_queries_to_pred: bool = True,
         verbose_naming: bool = False,
         keep_aligned_predicted_structure: bool = False,
         **kwargs,
     ):
         self._input_kwarg_names = input_kwarg_names or {
-            "ground_truth_atom_array_stack": "ground_truth_atom_array",
-            "predicted_atom_array_stack": "predicted_atom_array",
+            "ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array",
         }
 
         super().__init__(**kwargs)
@@ -519,12 +519,12 @@ class StructureComparisonMetric(Metric):
 
     def compute(
         self,
-        ground_truth_atom_array_stack: AtomArray
+        ground_truth_atom_array: AtomArray
         | AtomArrayStack
         | AtomArrayPlus
         | AtomArrayPlusStack
         | list[AtomArray | AtomArrayPlus],
-        predicted_atom_array_stack: AtomArray
+        predicted_atom_array: AtomArray
         | AtomArrayStack
         | AtomArrayPlus
         | AtomArrayPlusStack
@@ -534,8 +534,8 @@ class StructureComparisonMetric(Metric):
         Compute structure comparison metrics.
 
         Args:
-            ground_truth_atom_array_stack: Ground truth atom array or stack
-            predicted_atom_array_stack: Predicted atom array or stack
+            ground_truth_atom_array: Ground truth atom array or stack.
+            predicted_atom_array: Predicted atom array or stack.
 
         Returns:
             Dictionary with comparison results
@@ -543,7 +543,7 @@ class StructureComparisonMetric(Metric):
         metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
 
         # Optionally substitute ground truth coordinates
-        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array_stack).copy()
+        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
         if self.gt_coord_annotation_name != "coord":
             if self.gt_coord_annotation_name in updated_gt_stack.get_per_stack_annotation_categories():
                 updated_gt_coords = updated_gt_stack.get_per_stack_annotation(self.gt_coord_annotation_name)
@@ -553,7 +553,7 @@ class StructureComparisonMetric(Metric):
 
         return structure_comparison_metric(
             ground_truth_atom_array_stack=updated_gt_stack,
-            predicted_atom_array_stack=predicted_atom_array_stack,
+            predicted_atom_array_stack=predicted_atom_array,
             subset_mask=self.subset_mask,
             align_mask=self.align_mask,
             metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
@@ -578,8 +578,8 @@ class InternalCoordAdherenceMetric(Metric):
                 }
             }
         input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
-            Defaults to {"ground_truth_atom_array_stack": "ground_truth_atom_array",
-            "predicted_atom_array_stack": "predicted_atom_array"}.
+            Defaults to {"ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array"}.
         additional_align_mask: Additional query string to AND with the internal coordinate group mask for alignment.
         additional_subset_mask: Additional query string to AND with the internal coordinate group mask for subsetting.
         apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
@@ -597,14 +597,14 @@ class InternalCoordAdherenceMetric(Metric):
         input_kwarg_names: dict[str, str] | None = None,
         additional_align_mask: str | None = None,
         additional_subset_mask: str | None = None,
-        apply_mask_queries_to_pred: bool = False,
+        apply_mask_queries_to_pred: bool = True,
         verbose_naming: bool = False,
         save_per_group_metrics: bool = False,
         **kwargs,
     ):
         self._input_kwarg_names = input_kwarg_names or {
-            "ground_truth_atom_array_stack": "ground_truth_atom_array",
-            "predicted_atom_array_stack": "predicted_atom_array",
+            "ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array",
         }
 
         super().__init__(**kwargs)
@@ -623,12 +623,12 @@ class InternalCoordAdherenceMetric(Metric):
 
     def compute(
         self,
-        ground_truth_atom_array_stack: AtomArray
+        ground_truth_atom_array: AtomArray
         | AtomArrayStack
         | AtomArrayPlus
         | AtomArrayPlusStack
         | list[AtomArray | AtomArrayPlus],
-        predicted_atom_array_stack: AtomArray
+        predicted_atom_array: AtomArray
         | AtomArrayStack
         | AtomArrayPlus
         | AtomArrayPlusStack
@@ -638,8 +638,8 @@ class InternalCoordAdherenceMetric(Metric):
         Compute structure comparison metrics for each internal coordinate group.
 
         Args:
-            ground_truth_atom_array_stack: Ground truth atom array or stack
-            predicted_atom_array_stack: Predicted atom array or stack
+            ground_truth_atom_array: Ground truth atom array or stack.
+            predicted_atom_array: Predicted atom array or stack.
 
         Returns:
             Dictionary with comparison results, both per-group and overall.
@@ -647,7 +647,7 @@ class InternalCoordAdherenceMetric(Metric):
         metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
 
         # Substitute in internal coord group conditioning for the ground-truth coordinates
-        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array_stack).copy()
+        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
         internal_coords_mask = C_INTCRD.mask(updated_gt_stack, default="generate")
         internal_coord_conditioning = C_INTCRD.annotation(updated_gt_stack, default="generate")
         updated_gt_stack.coord[:, internal_coords_mask, :] = internal_coord_conditioning[internal_coords_mask, :]
@@ -670,7 +670,7 @@ class InternalCoordAdherenceMetric(Metric):
             align_mask = f"({mask_str}) & ({self.additional_align_mask})" if self.additional_align_mask else mask_str
             group_output = structure_comparison_metric(
                 ground_truth_atom_array_stack=updated_gt_stack,
-                predicted_atom_array_stack=predicted_atom_array_stack,
+                predicted_atom_array_stack=predicted_atom_array,
                 subset_mask=subset_mask,
                 align_mask=align_mask,
                 metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
