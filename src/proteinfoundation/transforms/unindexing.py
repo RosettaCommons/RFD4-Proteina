@@ -7,9 +7,6 @@ import numpy as np
 from atomworks.io.utils.atom_array_plus import concatenate_any
 from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.ml.conditions import C_CRD, C_CTR, C_DIS, C_IDX, C_NTR, C_SEQ
-from atomworks.ml.conditions.annotator import (
-    ensure_annotations,
-)
 from atomworks.ml.conditions.base import CONDITIONS
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms._checks import (
@@ -19,8 +16,12 @@ from atomworks.ml.transforms._checks import (
 from atomworks.ml.transforms.atom_array import (
     add_global_atom_id_annotation,
     add_global_token_id_annotation,
+    get_within_group_source_res_idx,
 )
 from atomworks.ml.transforms.base import Transform
+from atomworks.ml.utils.annotator import (
+    ensure_annotations,
+)
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
     get_token_count,
@@ -56,11 +57,11 @@ class UnindexFlaggedTokens(Transform):
 
         # Assemble necessary annotations
         is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")
-        ensure_annotations(atom_array, "is_protein", "within_chain_res_idx")
+        ensure_annotations(atom_array, "is_protein", "within_chain_source_res_idx")
 
         # This will be modified if any unindexed tokens are present to give the correct ground-truth index gaps (within
         # unindexed groups). This enables specification of defined index gaps greater than 1 between unindexed tokens.
-        atom_array.set_annotation("within_index_group_res_idx", atom_array.within_chain_res_idx.copy())
+        atom_array.set_annotation("within_index_group_res_idx", atom_array.within_chain_source_res_idx.copy())
 
         if not np.any(is_motif_atom_unindexed):
             return atom_array
@@ -159,8 +160,27 @@ class UnindexFlaggedTokens(Transform):
             # update old_to_new_atom_idx_map to reflect moving indexed atoms
             old_to_new_atom_idx_map.update(dict(zip(original_indexed_positions, new_indexed_positions, strict=False)))
 
-            # Actually delete the unindexed tokens
+            # Shift res_ids of surviving atoms down by the number of unique unindexed
+            # res_ids preceding them in the same chain. This collapses the holes left
+            # by deletion while preserving user-specified gaps in the indexed region,
+            # so the recomputed within_chain_source_res_idx reflects only the latter.
+            shifted_res_ids = atom_array.res_id.copy()
+            for chain_iid in np.unique(atom_array.chain_iid):
+                chain_mask = atom_array.chain_iid == chain_iid
+                removed_res_ids = np.unique(atom_array.res_id[chain_mask & token_to_unindex])
+                if len(removed_res_ids) == 0:
+                    continue
+                chain_res_ids = shifted_res_ids[chain_mask]
+                shift = np.searchsorted(removed_res_ids, chain_res_ids, side="right")
+                shifted_res_ids[chain_mask] = chain_res_ids - shift
+            atom_array.res_id = shifted_res_ids
+
             atom_array = atom_array[~token_to_unindex]
+            new_within_chain_source_res_idx = get_within_group_source_res_idx(atom_array, group_by="chain_iid")
+            atom_array.set_annotation("within_chain_source_res_idx", new_within_chain_source_res_idx)
+            atom_array.set_annotation(
+                "within_index_group_res_idx", new_within_chain_source_res_idx.copy()
+            )  # will be redefined properly later in this method
 
         else:
             # Temporarily set all previously-existing conditions to their default values
@@ -220,16 +240,9 @@ class UnindexFlaggedTokens(Transform):
             if is_indexed[0]:
                 continue
 
-            # HACK: In legacy inference code, user-requested index gaps are only preserved as
-            # res_id gaps within the unindexed region
-            # This should be cleaned up after the inference refactor
-            if is_inference:
-                group_res_ids = atom_array_full.res_id[group_mask]
-                atom_array_full.within_index_group_res_idx[group_mask] = group_res_ids - group_res_ids.min()
-            else:
-                atom_array_full.within_index_group_res_idx[group_mask] -= atom_array_full.within_index_group_res_idx[
-                    group_mask
-                ].min()
+            atom_array_full.within_index_group_res_idx[group_mask] -= atom_array_full.within_index_group_res_idx[
+                group_mask
+            ].min()
 
         # update pairs in place using the old_to_new_atom_idx_map
         # vectorize for efficiency and one-shot update

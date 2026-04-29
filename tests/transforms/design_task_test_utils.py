@@ -9,7 +9,7 @@ from atomworks.ml.transforms.design_task import DesignTaskABC
 from biotite.structure import AtomArray
 
 from proteinfoundation.conditions import C_HB, C_RAS, C_SEC
-from proteinfoundation.datapipes.pipeline import _build_design_validation_pipeline
+from proteinfoundation.datapipes.pipeline import _build_design_clean_and_sample_pipeline
 from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffoldTask,
@@ -20,6 +20,7 @@ from proteinfoundation.transforms.design_task import (
     TipAtomTask,
     UnconditionalTask,
 )
+from proteinfoundation.transforms.random_atomize_residues import RandomAtomizeResidues
 
 DEFAULT_REQUIRED_ARGUMENTS: dict[type, dict] = {}
 
@@ -29,6 +30,7 @@ def apply_design_task(
     design_task: DesignTaskABC | type[DesignTaskABC],
     task_kwargs: dict[str, Any] | None = None,
     extra_data: dict[str, Any] | None = None,
+    extra_atomize_p: float = 0.0,
 ) -> dict:
     """Apply a design task to an atom array with standard setup.
 
@@ -101,7 +103,13 @@ def apply_design_task(
         data.update(extra_data)
 
     # Add required features to the atom array using the validation pipeline (does everything up to DesignTask)
-    data = Compose(_build_design_validation_pipeline())(data)
+    data = Compose(_build_design_clean_and_sample_pipeline(is_inference=True))(data)
+
+    # Optionally force-atomize a fraction of standard residues. Used to stress-test design tasks
+    # against atom arrays where most tokens are atomized (rare in real data, but important for
+    # invariants like "atomized tokens must remain indexed").
+    if extra_atomize_p > 0.0:
+        data = RandomAtomizeResidues(p_atomize=extra_atomize_p)(data)
 
     # edge case where we need to apply same transformation to atom array in crop info (always a copy)
     if "crop_info" in data:

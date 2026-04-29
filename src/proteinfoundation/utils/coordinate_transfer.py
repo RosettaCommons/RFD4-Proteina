@@ -12,7 +12,6 @@ from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions.base import CONDITIONS
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
-from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
 from foundry.utils.logging import RankedLogger
@@ -180,7 +179,7 @@ def copy_generated_coordinates_to_input(
         # + ---------------------------------------------------------------------------------- +
         # CASE 1: Single-atom token (e.g., small molecule, atomized) -> copy directly
         # + ---------------------------------------------------------------------------------- +
-        if np.sum(input_token_mask) == 1:
+        if np.sum(input_token_mask) == 1 and input_atom_array.atomize[input_token_mask][0]:
             assert np.sum(generated_token_mask) == 1, "Generated token should also be single-atom"
             input_atom_array.coord[input_token_mask] = generated_atom_array.coord[generated_token_mask]
             continue
@@ -262,9 +261,13 @@ def copy_generated_coordinates_to_input(
 
     # ... and add the missing atoms
     if len(missing_atoms_and_indices) > 0:
-        # Shift by one so we insert at the END of each token
-        token_starts_shifted = get_token_starts(input_atom_array, add_exclusive_stop=True)[1:]
-        insertion_indices = [int(token_starts_shifted[token_id]) for token_id, _ in missing_atoms_and_indices]
+        # Insert at the end of each token. Use searchsorted on the post-deletion
+        # token_id array so this still works when a token had all its atoms removed.
+        post_deletion_token_ids = input_atom_array.token_id
+        insertion_indices = [
+            int(np.searchsorted(post_deletion_token_ids, token_id, side="right"))
+            for token_id, _ in missing_atoms_and_indices
+        ]
         atoms_to_add = [atom_template for _, atom_template in missing_atoms_and_indices]
 
         # NOTE: We insert BEFORE the specified index

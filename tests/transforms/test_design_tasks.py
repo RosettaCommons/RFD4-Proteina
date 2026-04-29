@@ -85,6 +85,7 @@ import pytest
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
+from atomworks.ml.utils.token import apply_and_spread_token_wise
 
 from proteinfoundation.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
 from proteinfoundation.transforms.design_task import (
@@ -213,6 +214,39 @@ def test_no_design_tasks_leave_atomized_things_without_sequence_conditioning(tas
     should_be_sequence_conditioned = atom_array.is_ligand | atom_array.atomize
 
     assert C_SEQ.mask(atom_array)[should_be_sequence_conditioned].all()
+
+
+@pytest.mark.parametrize("extra_atomize_p", [0.0, 0.9])
+@parametrize_complex_sweep()
+def test_unindexed_tokens_are_whole_and_atomized_atoms_stay_indexed(task_class, atom_array_fixture, extra_atomize_p):
+    """Test that C_IDX is consistent token-wise and atomized atoms are never unindexed.
+
+    Two invariants are checked across all design tasks:
+
+    1. Every token has C_IDX uniformly set across all of its atoms. If any atom in a
+       token is unindexed, all atoms in that token are unindexed.
+    2. No atomized atom is unindexed. Atomized things (ligands, non-canonical residues,
+       etc.) must always remain indexed because tasks rely on their identity.
+
+    The ``extra_atomize_p=0.9`` variant force-atomizes most standard residues to
+    stress-test invariant (2) on arrays where atomized tokens dominate.
+    """
+    data = apply_design_task(atom_array_fixture, task_class, extra_atomize_p=extra_atomize_p)
+    atom_array = data["atom_array"]
+
+    is_indexed = C_IDX.mask(atom_array)
+
+    # Invariant 1: token-wise consistency of C_IDX (all atoms in a token agree).
+    spread_all = apply_and_spread_token_wise(atom_array, is_indexed, np.all)
+    spread_any = apply_and_spread_token_wise(atom_array, is_indexed, np.any)
+    assert np.array_equal(
+        spread_all, spread_any
+    ), "Found a token with mixed C_IDX values; unindexing must apply to whole tokens."
+
+    # Invariant 2: atomized atoms must remain indexed.
+    if "atomize" in atom_array.get_annotation_categories():
+        atomized = atom_array.atomize
+        assert is_indexed[atomized].all(), "Atomized atoms must never be unindexed."
 
 
 @parametrize_complex_sweep()

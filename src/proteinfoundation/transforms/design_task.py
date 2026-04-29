@@ -12,6 +12,7 @@ from atomworks.io.utils.scatter import (
     apply_segment_wise,
     spread_segment_wise,
 )
+from atomworks.io.utils.standard_annotations import S_ATM
 from atomworks.ml.conditions import (
     C_CRD,
     C_IDX,
@@ -581,6 +582,8 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         show_idx = _true
         if true_with_prob(self.p_unindex_all):
             show_idx[total_mask & atom_array.is_protein & ~atom_array.atomize] = False
+            show_idx = apply_and_spread_token_wise(atom_array, show_idx, np.any)
+        show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
         C_IDX.set_mask(atom_array, show_idx)
 
         # Sample the unindexed groups
@@ -847,10 +850,17 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
 
         # ... unindex atoms appropriately
         show_idx = np.ones(atom_array.array_length(), dtype=bool)
+        unindexed_any = False
         if true_with_prob(self.p_unindex_all):
             show_idx[total_mask] = False
+            unindexed_any = True
         elif true_with_prob(self.p_unindex_any):
             show_idx[total_mask] = np.random.rand(total_mask.sum()) > self.p_unindex_any
+            unindexed_any = True
+        if unindexed_any:
+            # no partially unindexed tokens!
+            show_idx = apply_and_spread_token_wise(atom_array, show_idx, np.any)
+        show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
         C_IDX.set_mask(atom_array, show_idx)
 
         # ... sample unindexed groups
@@ -1014,6 +1024,8 @@ class TipAtomTask(RFD3DesignTask):
         show_idx = _true
         if true_with_prob(self.p_unindex_all):
             show_idx[total_mask & atom_array.is_protein & ~atom_array.atomize] = False
+            show_idx = apply_and_spread_token_wise(atom_array, show_idx, np.any)
+        show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
         C_IDX.set_mask(atom_array, show_idx)
 
         # Sample the unindexed groups
