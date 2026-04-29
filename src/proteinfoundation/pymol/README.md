@@ -1,0 +1,1 @@
+../../../../lib/atomworks/src/atomworks/pymol_plugin/README.md
