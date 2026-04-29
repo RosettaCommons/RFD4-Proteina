@@ -53,6 +53,9 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
 )
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 
+ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(load_standard_annotations=True, remove_waters=False, remove_ccds=())
+"""Config for loading annotated cifs that makes minimal changes to structure while loading standard annotations"""
+
 
 STANDARD_ANNOTATIONS_ONLY: ParseConfig = DISTILLATION.replace(
     load_standard_annotations=True,
@@ -73,3 +76,8 @@ def rcsb_with_metals(**overrides) -> dict:
 def distillation(**overrides) -> dict:
     """``DISTILLATION`` as a parser_args dict, with optional kwarg overrides."""
     return DISTILLATION.replace(**overrides).to_dict()
+
+
+def annotated_cif(**overrides) -> dict:
+    """``ANNOTATED_CIF`` as a parser_args dict, with optional kwarg overrides."""
+    return ANNOTATED_CIF.replace(**overrides).to_dict()

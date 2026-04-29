@@ -3,7 +3,6 @@
 import json
 import os
 import pathlib
-import subprocess
 import time
 from collections.abc import Callable
 from os import PathLike
@@ -11,13 +10,13 @@ from typing import Any
 
 import biotite.structure as struc
 import numpy as np
-import rootutils
 import yaml
 from atomworks.common import exists
-from atomworks.io.config import ParseConfig, PrepareConfig
+from atomworks.io.config import PrepareConfig
 from atomworks.io.parser import parse, parse_atom_array
 from atomworks.ml.datasets import FileDataset, MolecularDataset
 from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
+from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 from biotite.structure import AtomArray
 from omegaconf import DictConfig, OmegaConf
 
@@ -32,6 +31,8 @@ from proteinfoundation.inference_utils.input_parsing import (
     adapt_legacy_atom_array_for_condition_pipeline,
     create_atom_array_from_design_specification,
 )
+from proteinfoundation.transforms.inference_annotations import AddSrcComponentAnnotation
+from proteinfoundation.utils.parse_presets import ANNOTATED_CIF
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 all_ranks_logger = RankedLogger(__name__, rank_zero_only=False)
@@ -250,19 +251,10 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
     return data
 
 
-CIF_CREATION_STRATEGY_TO_SCRIPT_NAME = {
-    "antibody": "create_antibody_input_cif.py",
-}
-"""
-Mapping from cif_creation_strategy to the corresponding script, which converts a json/yaml input
-to an annotated CIF file that can be used as a DesignProblemDataset input. These should accept
---input-path and --output-path arguments.
-"""
-
-
 def _default_design_file_filter(x: PathLike) -> bool:
     """Default filter for design problem files (CIF, JSON, YAML)."""
-    return pathlib.Path(x).suffix in [".cif", ".json", ".yaml"]
+    p = pathlib.Path(x)
+    return p.suffix == ".cif" or (len(p.suffixes) >= 2 and p.suffixes[-2:] == [".cif", ".gz"])
 
 
 class DesignProblemDataset(FileDataset):
@@ -279,7 +271,6 @@ class DesignProblemDataset(FileDataset):
         transform: Transform | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
-        parser_args: dict | None = None,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
 
@@ -299,7 +290,7 @@ class DesignProblemDataset(FileDataset):
         # Assemble list of file paths
         if len(dir_path_or_file_paths) == 1 and pathlib.Path(dir_path_or_file_paths[0]).is_dir():
             dir_path = pathlib.Path(dir_path_or_file_paths[0])
-            suffixes = ["*.cif", "*.json", "*.yaml"]
+            suffixes = ["*.cif", "*.cif.gz"]
             file_paths = [p for suffix in suffixes for p in dir_path.rglob(suffix)]
         else:
             dir_path = None
@@ -312,8 +303,12 @@ class DesignProblemDataset(FileDataset):
             name=dataset_name,
             filter_fn=filter_fn,
         )
-        self.transform = transform
-        self.parser_args = parser_args or {}
+
+        # Annotate SA_SRC before expansion so original res_ids are preserved,
+        # then realize expandable segments and continue with transform pipeline.
+        pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
+        self.transform = pre_transform + transform if transform is not None else pre_transform
+
         self.global_prefix = global_prefix
 
         # Generate unique base_ids by taking section after last dash, or more if ambiguous
@@ -349,26 +344,11 @@ class DesignProblemDataset(FileDataset):
         """
         Loads a design problem specification from a .ipd file
         """
-        # TODO: Hash out the precise definition of a .ipd file
-        #  (suggestion: .msgpack.gz serialized dicts)
-        parse_config = ParseConfig(**self.parser_args)
-        if path.suffix == ".cif":
-            result_dict = parse(path, config=parse_config)
-        elif path.suffix in [".json", ".yaml"]:
-            # NOTE: This will run the conversion script each time we load an example for inference. This is to ensure
-            # that any random length sampling steps are distinct across different batches. However, it is not maximally
-            # efficient -- a long-term solution might involve a single CIF that contains information about variable
-            # lengths.
-            output_path = _convert_json_or_yaml_to_cif(path)
-            result_dict = parse(output_path, config=parse_config)
-        else:
-            raise NotImplementedError(f"Unsupported file extension: {path.suffix}")
+
+        result_dict = parse(path, config=ANNOTATED_CIF)
 
         # Ensure that we have charge information in the output
         atom_array = result_dict["assemblies"]["1"][0]
-
-        if "charge" not in atom_array.get_annotation_categories():
-            atom_array.set_annotation("charge", np.zeros(atom_array.array_length(), dtype=int))
 
         result_dict["atom_array"] = atom_array
         _ = result_dict.pop("asym_unit")
@@ -399,65 +379,10 @@ class DesignProblemDataset(FileDataset):
                 "processing_time": _stop_parse_time - _start_parse_time,
             }
         )
-        if self.transform is not None:
-            data = self.transform(data)
+
+        data = self.transform(data)
 
         data["specification"] = {
             "input_cif": path,
         }
         return data
-
-
-def _convert_json_or_yaml_to_cif(path: PathLike) -> PathLike:
-    """Convert JSON/YAML design specification to annotated CIF file.
-
-    Args:
-        path: Path to JSON or YAML specification file.
-
-    Returns:
-        Path to generated CIF file.
-
-    Raises:
-        ValueError: If file is not JSON/YAML or missing ``'cif_creation_strategy'``.
-    """
-
-    if path.suffix not in [".json", ".yaml"]:
-        raise ValueError(f"File {path} must be a JSON or YAML file.")
-
-    # Load the input file
-    with open(path) as f:
-        data = json.load(f) if path.suffix == ".json" else yaml.safe_load(f)
-
-    # Get the appropriate conversion script
-    if "cif_creation_strategy" not in data:
-        raise ValueError(
-            f"File {path} does not contain 'cif_creation_strategy' key, "
-            "which is required for non-CIF files used in DesignProblemDatasets."
-        )
-    elif data["cif_creation_strategy"] not in CIF_CREATION_STRATEGY_TO_SCRIPT_NAME:
-        raise ValueError(
-            f"File {path} has unrecognized 'cif_creation_strategy': {data['cif_creation_strategy']}. "
-            f"Supported strategies are: {list(CIF_CREATION_STRATEGY_TO_SCRIPT_NAME.keys())}"
-        )
-    script_name = CIF_CREATION_STRATEGY_TO_SCRIPT_NAME[data["cif_creation_strategy"]]
-    script_path = (
-        pathlib.Path(rootutils.find_root(indicator=".project-root", search_from=__file__)) / "scripts" / script_name
-    )
-
-    # Create the output path
-    output_path = pathlib.Path(path).with_suffix(".cif")
-
-    # Convert the file to CIF, overwriting any existing version
-    subprocess.run(
-        [
-            "python",
-            str(script_path),
-            "--input-path",
-            str(path),
-            "--output-path",
-            str(output_path),
-        ],
-        check=True,
-    )
-
-    return output_path
