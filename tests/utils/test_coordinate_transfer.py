@@ -173,8 +173,6 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
         "b_factor",
         "atom_id",
         "at_crop_boundary",
-        "is_token_representative_atom",
-        "is_token_center_atom",
     }
     unexpected_losses = lost_annotations - allowed_losses
     assert len(unexpected_losses) == 0, f"Lost unexpected annotations: {unexpected_losses}"

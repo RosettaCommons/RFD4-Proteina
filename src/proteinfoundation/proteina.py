@@ -474,9 +474,6 @@ class Proteina(L.LightningModule):
         batch["coord_mask"] = batch["atom37_mask"]
         # residue_type already provided by atom37 collate
 
-        # Add co_generate_targets flag from config
-        batch["co_generate_targets"] = self.cfg_exp.get("co_generate_targets", True)
-
         # FP8 autocast context for Transformer Engine
         fp8_ctx = te_autocast(enabled=True, recipe=self.fp8_recipe) if self.use_fp8 else nullcontext()
 
@@ -1482,7 +1479,6 @@ class Proteina(L.LightningModule):
         """
         batch["coords_nm"] = batch["coords"] / 10.0  # Convert Angstroms to nm
         batch["coord_mask"] = batch["atom37_mask"]
-        batch["co_generate_targets"] = self.inf_cfg.get("co_generate_targets", False)
 
         return batch
 

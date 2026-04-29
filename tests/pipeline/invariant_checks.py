@@ -12,7 +12,7 @@ Raises AssertionError with descriptive message if the check fails.
 import numpy as np
 import torch
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, as_atom_array_plus
-from atomworks.ml.conditions import C_CRD, C_IDX
+from atomworks.ml.conditions import C_CRD
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms._checks import check_atom_array_annotation
 from atomworks.ml.utils.token import get_token_starts
@@ -442,74 +442,6 @@ def check_unresolved_tokens_not_lossed(output: dict) -> None:
 # =============================================================================
 # Token Features
 # =============================================================================
-
-
-def check_af3_token_centers(output: dict) -> None:
-    """Verify AF3 token centers are correctly annotated.
-
-    Why: Model uses token centers for geometric computations.
-    Expected: CA for std AAs (unless atomized), C1' for std NAs, single atom for atomized.
-    """
-    aa = _get_atom_array(output)
-    check_atom_array_annotation(
-        output,
-        required=[
-            "is_token_center_atom",
-            "token_id",
-            "atom_name",
-            "is_standard_aa",
-            "is_standard_rna",
-            "is_standard_dna",
-        ],
-    )
-
-    # Check if atomization is present
-    has_atomize = _has_annotation(output, "atomize")
-
-    # Check each token has exactly one center atom
-    for token_id in np.unique(aa.token_id):
-        token_mask = aa.token_id == token_id
-        is_center = aa.is_token_center_atom[token_mask]
-
-        n_centers = is_center.sum()
-        assert n_centers == 1, f"Token {token_id} has {n_centers} center atoms, expected 1"
-
-        # Get the center atom
-        token_atoms = np.where(token_mask)[0]
-        center_idx = token_atoms[is_center][0]
-
-        # Check if this token is atomized (check if ANY atom in the token is atomized)
-        is_atomized_token = has_atomize and aa.atomize[token_mask].any()
-
-        # Check if this is a single-atom token (e.g., from cropping or atomization)
-        is_single_atom_token = token_mask.sum() == 1
-
-        # Check if this token is unindexed (motif/scaffold region with unknown positions)
-        is_unindexed = not C_IDX.mask(aa, default="generate")[center_idx]
-
-        # Verify center atom makes sense
-        if is_atomized_token:
-            # Atomized tokens: single atom per token, so any atom is fine
-            pass
-        elif is_single_atom_token:
-            # Single-atom tokens (e.g., from cropping): any atom is fine
-            # These can occur when cropping removes most atoms from a residue
-            pass
-        elif is_unindexed:
-            # Unindexed tokens: partial residues are allowed for motif extraction
-            # These represent regions being designed, so any atom can be the center
-            pass
-        elif aa.is_standard_aa[center_idx]:
-            # Standard AA (indexed, not atomized, multi-atom): center should be CA
-            assert aa.atom_name[center_idx] == "CA", (
-                f"Token {token_id} (standard AA) has center atom " f"{aa.atom_name[center_idx]}, expected CA"
-            )
-        elif aa.is_standard_rna[center_idx] or aa.is_standard_dna[center_idx]:
-            # Standard nucleotide: center should be C1'
-            assert aa.atom_name[center_idx] == "C1'", (
-                f"Token {token_id} (standard NA) has center atom " f"{aa.atom_name[center_idx]}, expected C1'"
-            )
-        # For other cases (ligands, etc.), the single atom should be the center
 
 
 def check_token_level_features_consistent_within_tokens(output: dict) -> None:

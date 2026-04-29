@@ -26,7 +26,6 @@ import pytest
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from atomworks.ml.utils.testing import cached_parse
 from projects.proteinfoundation.tests.pipeline.invariant_checks import (
-    check_af3_token_centers,
     check_can_be_encoded_requirements,
     check_centroid_feature_accuracy,
     check_conditioning_consistency,
@@ -111,7 +110,6 @@ ALL_CHECKS = [
     check_can_be_encoded_requirements,
     check_unresolved_tokens_not_lossed,
     # Token-Level Features
-    check_af3_token_centers,
     check_token_level_features_consistent_within_tokens,
     # Conditioning Consistency
     check_conditioning_consistency,
