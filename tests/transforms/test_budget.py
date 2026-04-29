@@ -8,7 +8,7 @@ from atomworks.ml.conditions import C_IDX
 from atomworks.ml.transforms.base import Compose
 from atomworks.ml.utils.token import get_token_count
 
-from proteinfoundation.datapipes.pipeline import _build_design_train_pipeline
+from proteinfoundation.datapipes.pipeline import _build_design_clean_and_sample_pipeline
 from proteinfoundation.transforms.budget import plan_unindex_expansion
 from proteinfoundation.transforms.design_task import MotifScaffoldTask
 
@@ -28,11 +28,12 @@ def test_enforce_crop_budget(protein_protein_interface, crop_size):
         },
     }
     pipeline = Compose(
-        _build_design_train_pipeline(
+        _build_design_clean_and_sample_pipeline(
             crop_size=crop_size,
             max_atoms_in_crop=10000,
             design_tasks=design_tasks,
             p_random_rotation=0.0,
+            is_inference=False,
         )
     )
     data = pipeline(data)

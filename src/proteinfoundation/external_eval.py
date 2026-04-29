@@ -530,8 +530,8 @@ def convert_to_pfm_format(
     concatenated_array = concatenate_atom_array_plus([generated_atom_array, modified_coord_conditioning_atom_array])
 
     # Add a within index group res idx. This is used to determine desired index gaps within the region to be inserted
-    ensure_annotations(concatenated_array, "within_chain_res_idx")
-    within_index_group_res_idx = concatenated_array.within_chain_res_idx.copy()
+    ensure_annotations(concatenated_array, "within_chain_source_res_idx")
+    within_index_group_res_idx = concatenated_array.within_chain_source_res_idx.copy()
     index_groups = C_IDXGRP.annotation(concatenated_array, default="raise")
     for index_group in np.unique(index_groups):
         group_mask = index_groups == index_group
@@ -540,7 +540,7 @@ def convert_to_pfm_format(
 
     index_groups = C_IDXGRP.annotation(concatenated_array, default="raise")
     for index_group in np.unique(index_groups):
-        # We can just use within_chain_res_idx for the generated structure
+        # We can just use within_chain_source_res_idx for the generated structure
         if index_group > max_conditioning_idxgrp:
             continue
 

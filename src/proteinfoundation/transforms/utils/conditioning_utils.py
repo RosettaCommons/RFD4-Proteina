@@ -139,7 +139,7 @@ def sample_unindexed_groups(
 ) -> None:
     """Sample the unindexed groups in an AtomArray."""
 
-    ensure_annotations(atom_array, "within_chain_res_idx")
+    ensure_annotations(atom_array, "within_chain_source_res_idx")
 
     # NOTE: At this stage, we have not yet called UnindexFlaggedTokens, so the source residue for a tip-atom unindexing
     # case would contains both indexed and unindexed atoms. We therefore first subset to the unindexed atoms before
@@ -150,7 +150,9 @@ def sample_unindexed_groups(
         return C_IDXGRP.default_annotation(atom_array)
 
     # Get ground-truth of which residues are adjacent and on the same chain
-    unindexed_contiguity_breaks = np.diff(unindexed_atom_array.within_chain_res_idx[unindexed_residue_starts]) != 1
+    unindexed_contiguity_breaks = (
+        np.diff(unindexed_atom_array.within_chain_source_res_idx[unindexed_residue_starts]) != 1
+    )
 
     # Get chain annotation
     chain_annot_name = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"

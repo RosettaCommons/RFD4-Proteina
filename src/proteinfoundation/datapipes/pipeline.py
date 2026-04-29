@@ -4,25 +4,28 @@ import functools
 import logging
 import os
 import pickle
-from typing import ClassVar
 
 import numpy as np
 import rootutils
 import torch
 from atomworks.constants import (
     AF3_EXCLUDED_LIGANDS,
+    MASKED,
     STANDARD_AA,
     STANDARD_DNA,
     STANDARD_RNA,
     UNKNOWN_AA,
+    UNKNOWN_ATOM_NAME,
     UNKNOWN_DNA,
     UNKNOWN_RNA,
 )
+from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import (
     ensure_annotations,
 )
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.selection import get_residue_starts
+from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.ml.conditions import (
     C_CRD,
     C_CTR,
@@ -42,8 +45,6 @@ from atomworks.ml.transforms._checks import (
 from atomworks.ml.transforms.atom_array import (
     AddGlobalAtomIdAnnotation,
     AddGlobalTokenIdAnnotation,
-    AddWithinChainInstanceResIdx,
-    AddWithinPolyResIdxAnnotation,
     CopyAnnotation,
 )
 from atomworks.ml.transforms.atomize import (
@@ -201,6 +202,9 @@ def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndar
             if atom_name.strip():  # Skip empty slots
                 aa_atom_to_slot[atom_name.strip()] = slot
 
+    # Add masked token lookup
+    aa_atom_to_slot[UNKNOWN_ATOM_NAME] = 1
+
     # Convert to sorted arrays for searchsorted
     aa_names_sorted = sorted(aa_atom_to_slot.keys())
     aa_atom_names = np.array(aa_names_sorted)
@@ -214,6 +218,9 @@ def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndar
         for slot, atom_name in enumerate(atoms):
             if atom_name.strip():
                 na_atom_to_slot[atom_name.strip()] = slot
+
+    # Add masked token lookup
+    na_atom_to_slot[UNKNOWN_ATOM_NAME] = 1
 
     # Convert to sorted arrays for searchsorted
     na_names_sorted = sorted(na_atom_to_slot.keys())
@@ -284,7 +291,11 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats = data.get("feats", {})
         aa = as_atom_array_plus(data["atom_array"])
         ensure_annotations(
-            aa, "is_standard_or_unknown_aa", "is_standard_or_unknown_dna", "is_standard_or_unknown_rna", "atomize"
+            aa,
+            "is_standard_unknown_or_masked_aa",
+            "is_standard_unknown_or_masked_dna",
+            "is_standard_unknown_or_masked_rna",
+            "atomize",
         )
 
         # ... index features
@@ -304,7 +315,8 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats["molecule_iid"] = random_molecule_indices[mol_inverse_indices]  # [L]
 
         # Encode ground-truth residue types using atom_array_to_encoded_resnames (handles proteins, DNA, RNA, atomized)
-        # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns)
+        # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns).
+        # Maps all masked tokens to singular mask token.
         feats["residue_type"] = atom_array_to_encoded_resnames(aa, UNIFIED_ATOM37_ENCODING, atomize_token="<A>")  # [L]
 
         # ground truth coordinates
@@ -313,9 +325,9 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # Derive token_type from existing boolean annotations
         # 0: protein, 1: RNA, 2: DNA, 3: atomized, 4: unknown/other
         token_type = np.full(aa.array_length(), 4, dtype=np.int16)  # Default to unknown
-        token_type[aa.get_annotation("is_standard_or_unknown_dna")] = 2  # DNA
-        token_type[aa.get_annotation("is_standard_or_unknown_rna")] = 1  # RNA
-        token_type[aa.get_annotation("is_standard_or_unknown_aa")] = 0  # Protein
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_dna")] = 2  # DNA
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_rna")] = 1  # RNA
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_aa")] = 0  # Protein
         token_type[aa.get_annotation("atomize")] = 3
         aa.set_annotation("token_type", token_type)
         feats["token_type"] = token_type  # [L]
@@ -402,8 +414,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # ... basic
         feats[C_SEQ.mask_name] = C_SEQ.mask(aa, default="generate")  # [L] (which atoms are sequence conditioned)
         feats[C_IDX.mask_name] = C_IDX.mask(aa, default="generate")  # [L] (True = indexed, False = unindexed)
-        feats[C_CTR.full_name] = C_CTR.annotation(aa, default="generate")  # [L] (True = C-terminus)
-        feats[C_NTR.full_name] = C_NTR.annotation(aa, default="generate")  # [L] (True = N-terminus)
 
         # ... fancy
         feats[C_HOT.full_name] = C_HOT.annotation(aa, default="generate")
@@ -700,6 +710,7 @@ RESIDUE_NAMES_TO_ENCODE = [
     UNKNOWN_AA,
     # UNKNOWN_RNA,
     # UNKNOWN_DNA,
+    MASKED,
 ]
 """Default residue names that can be encoded by the autoencoder."""
 
@@ -765,8 +776,6 @@ class RemoveTokensWithAnyNaNAtom(Transform):
     As we fix those, this Transform will remove fewer and fewer tokens.
     """
 
-    requires_previous_transforms: ClassVar[list] = [AddWithinPolyResIdxAnnotation, AddWithinChainInstanceResIdx]
-
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         starts = get_token_starts(atom_array, add_exclusive_stop=True)
@@ -810,7 +819,7 @@ class AddChainBreaksPerResidue(Transform):
         starts = get_token_starts(atom_array, add_exclusive_stop=False)
         n_tokens = len(starts)
         chain_breaks = np.zeros(n_tokens, dtype=np.float32)
-        res_idx = atom_array.within_chain_res_idx[starts]
+        res_idx = atom_array.within_chain_source_res_idx[starts]
         chain_iids = atom_array.chain_iid[starts]
         is_polymer = atom_array.is_polymer[starts]
         is_indexed = C_IDX.mask(atom_array)[starts]
@@ -879,6 +888,29 @@ class EnsureAtomizedResiduesAreSequenceConditioned(Transform):
         if "atomize" in atom_array.get_annotation_categories():
             seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
             C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
+        data["atom_array"] = atom_array
+        return data
+
+
+class FeaturizeExpandedSegments(Transform):
+    """
+    Currently only polypeptide expandable segments are supported by the model. Here we ensure that only
+    polypeptide expandable segments make it through the transform pipeline.
+
+    The model featurizes coordinates by multiplying the coords from the AtomArray by a mask. Thus, nan
+    coords from expandable segments need to be replaced with 0s.
+
+    """
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        expanded_segment_mask = S_SEGMIN.mask(atom_array, default="generate")
+        if expanded_segment_mask.any():
+            # Check for only MASKED_AA gap residues! (TODO: Remove when we support DNA and RNA)
+            if not np.all(atom_array.chain_type[expanded_segment_mask] == ChainType.POLYPEPTIDE_L):
+                raise ValueError("Only polypeptide expandable segments are currently supported.")
+
+            atom_array.coord[expanded_segment_mask] = 0.0
         data["atom_array"] = atom_array
         return data
 
@@ -1026,7 +1058,7 @@ def _get_design_task_name(data: dict) -> str | None:
     return (data.get("task") or {}).get("name")
 
 
-def _build_design_train_pipeline(
+def _build_design_clean_and_sample_pipeline(
     crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
@@ -1063,33 +1095,35 @@ def _build_design_train_pipeline(
     ###########################################################
     ### Step 1: Filter unwanted information                 ###
     ###########################################################
-    # ... cleanup
+    # ... shared cleanup (safe for both train and inference)
     T += RemoveKeys(["atom_array_stack"], require_keys_exist=False)
     T += RemoveHydrogens()
-    T += FilterToSpecifiedPNUnits(extra_info_key_with_pn_unit_iids_to_keep="all_pn_unit_iids_after_processing")
     T += RemoveTerminalOxygen()
     T += RemoveNucleicAcidTerminalOxygen()
-    T += RemoveUnresolvedPNUnits()
-    T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)  # e.g., non-standard residues
-    T += RemovePolymersWithTooFewResolvedResidues(min_residues=1)
-    T += SetOccToZeroOnBfactor(bmin=b_factor_occupancy_min)
-    T += RemoveUnresolvedLigandAtomsIfTooMany(unresolved_ligand_atom_limit=5)
-
-    # Validate structure has atoms after filtering
-    T += ValidateNonEmptyStructure()
-
     T += IsolateMetalsToOwnChain()
+
+    # ... training-only heavy cleanup (drops things an inference user may want preserved,
+    # or relies on extra_info that inference inputs don't carry)
+    if not is_inference:
+        T += FilterToSpecifiedPNUnits(extra_info_key_with_pn_unit_iids_to_keep="all_pn_unit_iids_after_processing")
+        T += RemoveUnresolvedPNUnits()
+        T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)  # e.g., non-standard residues
+        T += RemovePolymersWithTooFewResolvedResidues(min_residues=1)
+        T += SetOccToZeroOnBfactor(bmin=b_factor_occupancy_min)
+        T += RemoveUnresolvedLigandAtomsIfTooMany(unresolved_ligand_atom_limit=5)
+
+    # Validate structure has atoms after filtering (defensive; useful for both)
+    T += ValidateNonEmptyStructure()
 
     # ... add basic annotations
     ###########################################################
     ### 2. Add basic annotations                            ###
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    T += AddWithinChainInstanceResIdx()
-    T += AddWithinPolyResIdxAnnotation()
     T += FlagAndReassignCovalentModifications()
     T += FlagNonPolymersForAtomization()
-    T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
+    if not is_inference:
+        T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
     T += AtomizeByCCDName(
         atomize_by_default=True,
         res_names_to_ignore=RESIDUE_NAMES_TO_ENCODE,
@@ -1102,9 +1136,10 @@ def _build_design_train_pipeline(
     ### Step 3: Crop And Remove Unusable tokens             ###
     ###########################################################
     # Remove tokens with any NaN coordinates (e.g., from unresolved atoms). We cannot generate noisy versions of these.
-    T += RemoveTokensWithAnyNaNAtom()
+    if not is_inference:
+        T += RemoveTokensWithAnyNaNAtom()
 
-    if crop_size and (crop_contiguous_probability > 0 or crop_spatial_probability > 0):
+    if not is_inference and crop_size and (crop_contiguous_probability > 0 or crop_spatial_probability > 0):
         assert crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
 
@@ -1138,7 +1173,8 @@ def _build_design_train_pipeline(
     ###########################################################
     # For simple datasets (TED dimers, AFDB dimers) that don't have query_pn_unit_iids
     # from the parquet loader, automatically detect and set them for PPI tasks
-    T += InferQueryPNUnitIIDsForDimers()
+    if not is_inference:
+        T += InferQueryPNUnitIIDsForDimers()
 
     ###########################################################
     ### Step 3.6: Load MSAs                                 ###
@@ -1174,7 +1210,7 @@ def _build_design_train_pipeline(
     #    existing task.
     #
     # If no design tasks are provided (or empty dict), skip design task routing entirely.
-    if design_tasks:
+    if not is_inference and design_tasks:
         T += SampleDesignTask(design_tasks=design_tasks)
 
         # ... create the design task
@@ -1230,6 +1266,8 @@ def _build_design_featurize_pipeline(
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)
+
+    T += FeaturizeExpandedSegments()
 
     # Create in-context conditioning corresponding to unindexed regions
     T += UnindexFlaggedTokens()
@@ -1324,46 +1362,6 @@ def _build_design_featurize_pipeline(
     return T.tolist()
 
 
-def _build_design_validation_pipeline(
-    # MSA parameters
-    load_msa: bool = False,
-    max_msa_sequences: int = 10_000,
-    **kwargs,  # to dump remaining args for now
-) -> list[Transform]:
-    # T = transform shorthand for readability
-    # ... initialize
-    T = ListBuilder()
-    T += AddData({"is_inference": True})
-
-    # ... cleanup
-    T += RemoveTerminalOxygen()
-    T += RemoveNucleicAcidTerminalOxygen()
-    T += RemoveHydrogens()
-
-    # ... add basic annotations
-    T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    T += AddWithinChainInstanceResIdx()
-    T += AddWithinPolyResIdxAnnotation()
-    T += AtomizeByCCDName(
-        atomize_by_default=True,
-        res_names_to_ignore=RESIDUE_NAMES_TO_ENCODE,
-    )
-
-    # ... load MSAs (encoding/filling moved to featurization pipeline)
-    protein_msa_dirs, rna_msa_dirs = _resolve_msa_dirs(load_msa)
-
-    if protein_msa_dirs or rna_msa_dirs:
-        T += LoadPolymerMSAs(
-            protein_msa_dirs=protein_msa_dirs,
-            rna_msa_dirs=rna_msa_dirs,
-            max_msa_sequences=max_msa_sequences,
-            use_paths_in_chain_info=True,
-        )
-        T += PairAndMergePolymerMSAs(dense=True)
-
-    return T.tolist()
-
-
 def build_design_train_pipeline(
     crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
@@ -1422,7 +1420,7 @@ def build_design_train_pipeline(
     """
 
     transforms = []
-    transforms += _build_design_train_pipeline(
+    transforms += _build_design_clean_and_sample_pipeline(
         crop_size=crop_size,
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
@@ -1459,7 +1457,12 @@ def build_design_validation_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
 ) -> Transform:
-    """Build the RFD3 validation pipeline.
+    """Build the validation/inference pipeline.
+
+    Delegates to :py:func:`build_design_train_pipeline` with ``is_inference=True``,
+    which gates out training-only transforms (augmentation, heavy filtering,
+    random atomization, NaN-token removal, cropping, dimer query-pn-unit
+    inference, and design-task sampling) and feature-dropout regularization.
 
     MSA directories are loaded from environment variables:
         - ``PROTEIN_MSA_DIRS``: Comma-separated paths for protein MSAs
@@ -1469,21 +1472,13 @@ def build_design_validation_pipeline(
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
         residue_names_to_encode: Residue names to encode.
         max_msa_sequences: Maximum number of MSA sequences to load per chain.
-
-    Returns:
     """
-    transforms = []
-    transforms += _build_design_validation_pipeline(
-        load_msa=load_msa,
-        max_msa_sequences=max_msa_sequences,
-    )
-    transforms += _build_design_featurize_pipeline(
+    return build_design_train_pipeline(
+        is_inference=True,
         metrics_tags=metrics_tags,
         residue_names_to_encode=residue_names_to_encode,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
-        is_inference=True,
     )
-    return Compose(transforms)

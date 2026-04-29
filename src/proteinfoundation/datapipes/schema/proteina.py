@@ -5,7 +5,7 @@ from functools import cached_property
 from typing import Any
 
 import torch
-from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
+from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from biotite.structure import AtomArray
 from torch.nn import functional as F
 
@@ -39,8 +39,6 @@ SPECS: dict[str, tuple] = {
     "should_be_lossed": (torch.bool, False, "I"),
     "coord_cond_mask": (torch.bool, False, "I"),
     C_SEQ.mask_name: (torch.bool, False, "I"),
-    C_CTR.full_name: (torch.bool, False, "I"),
-    C_NTR.full_name: (torch.bool, False, "I"),
     C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
     "chain_breaks_per_residue": (torch.float32, 0.0, "I"),
