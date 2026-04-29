@@ -1,75 +1,69 @@
-"""Custom PyMOL visualizer for proteinfoundation conditions.
+"""Custom PyMOL view functions for proteinfoundation conditions.
 
-Wraps the default atomworks visualizer and adds coloring for
-:py:data:`~proteinfoundation.conditions.C_CRDGRP`.
+Provides color-by-group views for :py:data:`~proteinfoundation.conditions.C_CRDGRP`
+and :py:data:`~proteinfoundation.conditions.C_IDXGRP`, registered as
+entries in :py:mod:`atomworks.pymol_plugin.views`.
 
 Only imported inside a running PyMOL process.
 """
 
+import numpy as np
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus
-from atomworks.ml.utils.visualize import get_atom_array_style_cmd
 from pymol import cmd
 
-from proteinfoundation.conditions import C_CRDGRP
+from proteinfoundation.conditions import C_CRDGRP, C_IDXGRP
 
 # Colours for named CoordinateGroup constants and cycling relative groups
 _CRDGRP_NAMED_COLORS = {
     -1: "gray60",  # UNKNOWN_COORDS
     0: "lightblue",  # KNOWN_ABSOLUTE_COORDS
 }
-_CRDGRP_CYCLE = ["red", "green", "orange", "purple", "cyan", "yellow", "magenta", "salmon"]
+_PALETTE = ["red", "green", "orange", "purple", "cyan", "yellow", "magenta", "salmon"]
 
 
-def visualize(arr: AtomArrayPlus, obj_name: str) -> None:
-    """Run the full visualization pipeline for a loaded structure.
+def color_by_coord_group(arr: AtomArrayPlus, obj_name: str) -> None:
+    """Color *obj_name* by :py:data:`~proteinfoundation.conditions.C_CRDGRP`.
 
-    Executes the default atomworks style command then overlays
-    coordinate-group coloring if :py:data:`~proteinfoundation.conditions.C_CRDGRP`
-    is annotated on the array.
-
-    Args:
-        arr: The active AtomArrayPlus.
-        obj_name: The PyMOL object name.
+    No-op if the annotation is not present on *arr*.
     """
-    cmd.do(get_atom_array_style_cmd(arr, obj_name))
-    _apply_crdgrp_coloring(arr, obj_name)
-
-
-def _apply_crdgrp_coloring(arr: AtomArrayPlus, obj_name: str) -> None:
-    """Overlay per-group coloring for the CoordinateGroup annotation.
-
-    Uses ``cmd.alter`` to write group IDs into b-factors, then colors
-    each unique group value distinctly.  No-ops if the annotation is
-    not present on the array.
-
-    Args:
-        arr: The active AtomArrayPlus.
-        obj_name: The PyMOL object name.
-    """
-
-    if C_CRDGRP.full_name not in arr.get_annotation_categories():
-        return
-
     groups = C_CRDGRP.annotation(arr, default="generate")
+    _color_by_group(arr, obj_name, groups, named_colors=_CRDGRP_NAMED_COLORS)
 
-    # Build (chain, res_id_str, atom_name) -> group lookup for cmd.alter
+
+def color_by_index_group(arr: AtomArrayPlus, obj_name: str) -> None:
+    """Color *obj_name* by :py:data:`~proteinfoundation.conditions.C_IDXGRP`.
+
+    Always generates a default if not explicitly annotated, since
+    :py:class:`~proteinfoundation.conditions.IndexGroup` is derived from
+    chain structure and is always well-defined.
+    """
+    groups = C_IDXGRP.annotation(arr, default="generate")
+    _color_by_group(arr, obj_name, groups, named_colors={})
+
+
+def _color_by_group(
+    arr: AtomArrayPlus,
+    obj_name: str,
+    groups: np.ndarray,
+    named_colors: dict[int, str],
+) -> None:
+    """Shared implementation: write group ids into b-factor, then color per group."""
     lookup: dict[tuple[str, str, str], int] = {}
     for i in range(len(arr)):
-        key = (arr.chain_id[i], str(arr.res_id[i]), arr.atom_name[i])
+        key = (arr.chain_iid[i], str(arr.res_id[i]), arr.atom_name[i])
         lookup[key] = int(groups[i])
 
     def _get_group(chain: str, resi: str, name: str) -> int:
-        # resi may include insertion-code suffix; strip non-digit tail
         resi_clean = resi.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") or "0"
         return lookup.get((chain, resi_clean, name), -999)
 
     cmd.alter(obj_name, "b = _g(chain, resi, name)", space={"_g": _get_group})
 
-    unique_groups = sorted(set(groups))
+    unique_groups = sorted({int(g) for g in groups})
     cycle_idx = 0
     for group_val in unique_groups:
-        color = _CRDGRP_NAMED_COLORS.get(group_val)
+        color = named_colors.get(group_val)
         if color is None:
-            color = _CRDGRP_CYCLE[cycle_idx % len(_CRDGRP_CYCLE)]
+            color = _PALETTE[cycle_idx % len(_PALETTE)]
             cycle_idx += 1
         cmd.color(color, f"{obj_name} and b={group_val}")
