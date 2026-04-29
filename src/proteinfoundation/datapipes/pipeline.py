@@ -89,9 +89,6 @@ from atomworks.ml.transforms.msa.msa import (
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
     apply_segment_wise_2d,
-    apply_token_wise,
-    get_af3_token_center_masks,
-    get_af3_token_representative_masks,
     get_token_starts,
     spread_token_wise,
 )
@@ -280,9 +277,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
     """
 
     def check_input(self, data: dict) -> None:
-        check_atom_array_annotation(
-            data, ["can_be_encoded", "should_be_lossed", "coord_to_be_noised", "is_token_center_atom"]
-        )
+        check_atom_array_annotation(data, ["can_be_encoded", "should_be_lossed", "coord_to_be_noised"])
 
     def forward(self, data: dict) -> dict:
         """Convert encoded data into atom-level Proteina features."""
@@ -324,9 +319,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         token_type[aa.get_annotation("atomize")] = 3
         aa.set_annotation("token_type", token_type)
         feats["token_type"] = token_type  # [L]
-
-        # ... center atoms
-        feats["is_center_atom_mask"] = aa.is_token_center_atom  # [L]
 
         # ... occupancy
         feats["is_resolved_mask"] = aa.occupancy > 0.0  # [L]
@@ -475,7 +467,6 @@ ATOM37_FEATURES = [
     ("element", (), -1),
     ("charge", (), 0),  # Atomic charge
     ("is_resolved_mask", (), False),
-    ("is_center_atom_mask", (), False),
     (C_CRD.mask_name, (), False),
     (C_INTCRD.mask_name, (), False),
     (C_IDX.mask_name, (), True),
@@ -717,12 +708,6 @@ class AddCanBeEncodedAnnotation(Transform):
     """
     Annotate which atoms can be encoded by the autoencoder using the `can_be_encoded` annotation.
     For now we can only encode standard amino acids, but in the future we can also encode standard RNA/DNA.
-
-    Chain-level logic for coordinate conditioning (when co_generate_targets=False):
-    - **Full chain coordinate-conditioned**: Excluded from encoding (fixed targets)
-    - **Partial chain coordinate-conditioned**: Still encoded (motifs within designed chains)
-
-    This matches the loss supervision logic - we encode what we supervise.
     """
 
     def __init__(
@@ -735,32 +720,6 @@ class AddCanBeEncodedAnnotation(Transform):
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         add_can_be_encoded_annotation(atom_array, self.residue_names_to_encode, "can_be_encoded")
-
-        # Respect co_generate_targets flag: exclude fully coordinate-conditioned chains when False
-        co_generate = data.get("co_generate_targets", True)  # default True for backward compat
-        if not co_generate:
-            # Use chain-level logic to distinguish full-chain targets vs partial-chain motifs
-            can_be_encoded = atom_array.get_annotation("can_be_encoded")
-            coord_conditioned = C_CRD.mask(atom_array)
-
-            # For each chain, check if ALL atoms have absolute coordinate conditioning
-            unique_chains = np.unique(atom_array.chain_iid)
-            fully_conditioned_chains_mask = np.zeros(atom_array.array_length(), dtype=bool)
-
-            for chain_id in unique_chains:
-                chain_mask = atom_array.chain_iid == chain_id
-                chain_atoms_conditioned = coord_conditioned[chain_mask]
-
-                # If ALL atoms in this chain have absolute coordinate conditioning → full chain target
-                if np.all(chain_atoms_conditioned):
-                    fully_conditioned_chains_mask[chain_mask] = True
-                # If only SOME atoms are conditioned → motif within chain (still encode)
-
-            # Exclude only fully conditioned chains from encoding
-            can_be_encoded = can_be_encoded & ~fully_conditioned_chains_mask
-            atom_array.set_annotation("can_be_encoded", can_be_encoded)
-
-        data["atom_array"] = atom_array
         return data
 
 
@@ -770,66 +729,23 @@ class AddShouldBeLossedAnnotation(Transform):
     We apply loss to atoms that have:
     1. Non-zero occupancy (resolved atoms)
     2. Known index (C_IDX mask = True, i.e., not unindexed)
-    3. NOT fully coordinate-conditioned chains (if co_generate_targets=False)
 
     Unindexed atoms should NOT contribute to the loss.
-
-    Chain-level logic for coordinate conditioning:
-    - **Full chain coordinate-conditioned** (all atoms in chain have C_CRD):
-      Excluded from loss (e.g., fixed ligands, target proteins)
-    - **Partial chain coordinate-conditioned** (only some atoms have C_CRD):
-      Included in loss (e.g., motifs within designed protein)
-
-    This allows motif scaffolding to supervise the motif atoms while keeping
-    full target chains fixed during generation.
-
-    Examples:
-      Case 1 - Ligand binder design:
-        Chain A: protein (C_CRD=False) → supervise ✓
-        Chain B: ligand (C_CRD=True for all atoms) → don't supervise (fixed)
-
-      Case 2 - Motif scaffolding:
-        Chain A: residues 1-50 (C_CRD=False) → supervise ✓
-        Chain A: residues 51-60 (C_CRD=True) → supervise ✓ (motif)
-        Chain A: residues 61-150 (C_CRD=False) → supervise ✓
     """
 
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
 
         occupancy_mask = atom_array.occupancy > 0.0
+
         # Unindexed atoms should NOT be included in loss
-        # C_IDX mask: True = indexed (has known position), False = unindexed (position unknown)
         has_known_index = C_IDX.mask(atom_array, default="generate")
 
         should_be_lossed = occupancy_mask & has_known_index
 
-        # Respect co_generate_targets flag for coordinate-conditioned tokens
-        co_generate = data.get("co_generate_targets", True)  # default True for backward compat
-        if not co_generate:
-            # Use chain-level logic to distinguish full-chain targets vs partial-chain motifs
-            coord_conditioned = C_CRD.mask(atom_array)
-
-            # For each chain, check if all atoms have absolute coordinate conditioning
-            unique_chains = np.unique(atom_array.chain_iid)
-            fully_conditioned_chains_mask = np.zeros(atom_array.array_length(), dtype=bool)
-
-            for chain_id in unique_chains:
-                chain_mask = atom_array.chain_iid == chain_id
-                chain_atoms_conditioned = coord_conditioned[chain_mask]
-
-                # If all atoms in this chain have absolute coordinate conditioning → full chain target
-                if np.all(chain_atoms_conditioned):
-                    fully_conditioned_chains_mask[chain_mask] = True
-                # If only some atoms are conditioned → motif within chain (still supervise)
-
-            # Exclude only fully conditioned chains from loss
-            should_be_lossed = should_be_lossed & ~fully_conditioned_chains_mask
-
         # NOTE: We apply loss token a token if ALL atoms in the token should be lossed
         atom_array.set_annotation("should_be_lossed", apply_and_spread_token_wise(atom_array, should_be_lossed, np.all))
 
-        data["atom_array"] = atom_array
         return data
 
 
@@ -964,76 +880,6 @@ class EnsureAtomizedResiduesAreSequenceConditioned(Transform):
             seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
             C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
         data["atom_array"] = atom_array
-        return data
-
-
-class EnsureRepresentativeAndCenterAtomAnnotations(Transform):
-    """
-    Ensure that the 'is_token_representative_atom' and 'is_token_center_atom' annotations are present in the AtomArray.
-
-    If not present, it computes and adds these annotations using the aa_design version of
-    get_af3_token_representative_masks and the AtomWorks version of get_af3_token_center_masks.
-    """
-
-    incompatible_previous_transforms: ClassVar[list[str]] = ["UnindexFlaggedTokens"]
-
-    def check_input(self, data: dict) -> None:
-        check_contains_keys(data, ["is_inference"])
-
-    def forward(self, data: dict) -> None:
-        atom_array = data["atom_array"]
-        is_inference = data["is_inference"]
-        token_starts = get_token_starts(atom_array)
-        has_index = C_IDX.mask(atom_array, default="generate")
-
-        # At train time, these might not be identical because the DesignTask is allowed to mark only part of a
-        # ground-truth residue for unindexing (e.g. tip-atom cases). At inference time, they should be identical, since
-        # when tip-atom(s) are added they get a unique res_id and that residue should be fully unindexed
-        fully_indexed_token_mask = apply_token_wise(atom_array, has_index, np.all)
-        partially_indexed_token_mask = apply_token_wise(atom_array, has_index, np.any)
-        if is_inference and not np.array_equal(fully_indexed_token_mask, partially_indexed_token_mask):
-            raise ValueError("At inference time, all residues should be either fully indexed or fully unindexed. ")
-
-        if "is_token_representative_atom" not in atom_array.get_annotation_categories():
-            rep_mask = get_af3_token_representative_masks(atom_array, enforce_one_per_token=False)
-            rep_counts_per_token = apply_token_wise(atom_array, rep_mask, np.sum)
-            rep_counts_zero_mask = rep_counts_per_token == 0
-
-            # At inference time, we may have unindexed residues without representative atoms (e.g. tip-atoms)
-            # This occurs because when constructing the original AtomArray at inference we also add the in-context
-            # conditioning (typically from an external file).
-            if not is_inference and np.any(rep_counts_zero_mask):
-                raise ValueError("All tokens should have a representative atom during training.")
-            elif is_inference and np.any(rep_counts_zero_mask & fully_indexed_token_mask):
-                raise ValueError("All fully indexed tokens should have a representative atom.")
-
-            # Set the token start atom as the representative atom for tokens without one
-            token_starts_without_rep_atoms = token_starts[rep_counts_zero_mask]
-            rep_mask[token_starts_without_rep_atoms] = True
-
-            if np.any(rep_counts_per_token > 1):
-                raise ValueError("One token should never have multiple representative atoms.")
-
-            atom_array.set_annotation("is_token_representative_atom", rep_mask)
-
-        if "is_token_center_atom" not in atom_array.get_annotation_categories():
-            center_mask = get_af3_token_center_masks(atom_array, enforce_one_per_token=False)
-            center_counts_per_token = apply_token_wise(atom_array, center_mask, np.sum)
-            center_counts_zero_mask = center_counts_per_token == 0
-
-            if not is_inference and np.any(center_counts_zero_mask):
-                raise ValueError("All tokens should have a center atom during training.")
-            elif is_inference and np.any(center_counts_zero_mask & fully_indexed_token_mask):
-                raise ValueError("All fully indexed tokens should have a center atom.")
-
-            # Set the token start atom as the central atom for tokens without one
-            token_starts_without_center_atoms = token_starts[center_counts_zero_mask]
-            center_mask[token_starts_without_center_atoms] = True
-
-            if np.any(center_counts_per_token > 1):
-                raise ValueError("One token should never have multiple center atoms.")
-
-            atom_array.set_annotation("is_token_center_atom", center_mask)
         return data
 
 
@@ -1386,7 +1232,6 @@ def _build_design_featurize_pipeline(
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)
 
     # Create in-context conditioning corresponding to unindexed regions
-    T += EnsureRepresentativeAndCenterAtomAnnotations()
     T += UnindexFlaggedTokens()
     T += AddChainBreaksPerResidue()
     T += AddMissingAtomCount()

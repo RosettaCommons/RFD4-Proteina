@@ -1,7 +1,6 @@
 import copy
 import itertools
 from collections import defaultdict
-from typing import ClassVar
 
 import biotite.structure as struc
 import numpy as np
@@ -42,10 +41,6 @@ global_logger = RankedLogger(__name__, rank_zero_only=False)
 
 class UnindexFlaggedTokens(Transform):
     """Create in-context conditioning for tokens with unknown indices."""
-
-    requires_previous_transforms: ClassVar[list] = [
-        "EnsureRepresentativeAndCenterAtomAnnotations",
-    ]
 
     def check_input(self, data: dict) -> None:
         check_contains_keys(data, ["atom_array"])
@@ -144,18 +139,6 @@ class UnindexFlaggedTokens(Transform):
             assert token.is_protein.all(), f"Cannot unindex non-protein token: {token}"
 
             unindexed_tokens.append(token)
-
-            # Label the first atom of a token fragment as the representative atom and the central atom
-            is_token_rep = token.is_token_representative_atom
-            if is_token_rep.sum() > 1:
-                raise ValueError(f"Token {token} has multiple representative atoms.")
-            elif is_token_rep.sum() == 0:
-                is_token_rep[0] = True
-            is_token_center = token.is_token_center_atom
-            if is_token_center.sum() > 1:
-                raise ValueError(f"Token {token} has multiple center atoms.")
-            elif is_token_center.sum() == 0:
-                is_token_center[0] = True
 
             # update index map for future 2d conditioning updates
             old_to_new_atom_idx_map.update({old_idx: (max_atom_idx := max_atom_idx + 1) for old_idx in used_idxs})

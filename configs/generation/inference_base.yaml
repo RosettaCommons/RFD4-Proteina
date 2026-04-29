@@ -2,11 +2,6 @@ n_recycle: 0  # Leave as 0
 
 insert_unindexed_regions: False  # Whether to insert unindexed regions back into the output, overwriting the residues they mapped to
 
-# Co-generation mode: whether to co-generate coordinate-conditioned targets (ligands, ions, protein targets)
-# True: targets are co-generated during inference
-# False: targets are copied from input at every diffusion timestep (like la proteina public repo)
-co_generate_targets: false
-
 val_set_name_override: null  # val_dataset # Used for labeling output metrics if computed
 
 # General sampling params

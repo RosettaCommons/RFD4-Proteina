@@ -53,7 +53,6 @@ SPECS: dict[str, tuple] = {
     "element": (torch.int16, -1, "I 37"),
     "charge": (torch.int16, 0, "I 37"),
     "is_resolved_mask": (torch.bool, False, "I 37"),
-    "is_center_atom_mask": (torch.bool, False, "I 37"),
     "atom37_mask": (torch.bool, False, "I 37"),
     C_CRD.mask_name: (torch.bool, False, "I 37"),
     C_INTCRD.mask_name: (torch.bool, False, "I 37"),
