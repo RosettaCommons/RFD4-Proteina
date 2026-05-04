@@ -70,7 +70,9 @@ def test_secondary_structure_accuracy_metric(deterministic_rng, conditioning_typ
         # Run P-SEA on atom array to get ground truth SSE
         from proteinfoundation.metrics.sse_metrics import annotate_secondary_structure
 
-        annotate_secondary_structure(atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid")
+        atom_array = annotate_secondary_structure(
+            atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid"
+        )
 
         # Use P-SEA values directly for conditioning (already SSEnum values)
         c_sec_values = atom_array.sse.copy()
