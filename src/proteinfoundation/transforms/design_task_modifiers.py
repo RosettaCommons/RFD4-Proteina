@@ -500,7 +500,9 @@ def add_secondary_structure_condition(
     atom_array = as_atom_array_plus(data["atom_array"])
 
     # Step 1: Annotate with DSSP (adds sse and sse_is_valid)
-    annotate_secondary_structure(atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid")
+    atom_array = annotate_secondary_structure(
+        atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid"
+    )
 
     # Step 2: Sample islands from eligible tokens
     token_level_array = atom_array[get_token_starts(atom_array)]
@@ -532,6 +534,7 @@ def add_secondary_structure_condition(
     ss_annotation[ss_mask] = atom_array.sse[ss_mask]
     C_SEC.set_annotation(atom_array, ss_annotation)
 
+    data["atom_array"] = atom_array
     return data
 
 

@@ -10,8 +10,7 @@ from atomworks.ml.transforms.crop import (
     get_token_count,
 )
 from atomworks.ml.utils.token import (
-    get_af3_token_center_coords,
-    get_af3_token_center_masks,
+    get_token_starts,
     spread_token_wise,
 )
 from biotite.structure import AtomArray
@@ -192,7 +191,7 @@ def crop_spatial_keep_full_binder(
     requires_crop = n_tokens > crop_size
 
     # ... get binder information
-    binder_token_mask = atom_array[get_af3_token_center_masks(atom_array)].pn_unit_iid == binder_pn_unit_iid
+    binder_token_mask = atom_array[get_token_starts(atom_array)].pn_unit_iid == binder_pn_unit_iid
     binder_atom_mask = atom_array.pn_unit_iid == binder_pn_unit_iid
     n_binder_tokens = get_token_count(atom_array[binder_atom_mask])
 
@@ -205,7 +204,8 @@ def crop_spatial_keep_full_binder(
         crop_center_atom_idx = atom_id_to_atom_idx(atom_array, crop_center_atom_id)
 
         # ... sample crop, excluding the binder polymer/non-polymer unit
-        token_coords = get_af3_token_center_coords(atom_array)
+        # Use first-atom-per-token coords
+        token_coords = atom_array.coord[get_token_starts(atom_array)]
         crop_center_token_idx = atom_id_to_token_idx(atom_array, crop_center_atom_id)
         is_token_in_crop = get_spatial_crop_excluding_mask(
             token_coords,

@@ -18,6 +18,7 @@ def annotate_secondary_structure(
     atom_array: AtomArray,
     annotation_name: str = "sse",
     is_valid_annotation_name: str = "sse_is_valid",
+    inplace: bool = False,
 ) -> AtomArray:
     """Annotate secondary structure using P-SEA algorithm.
 
@@ -28,11 +29,15 @@ def annotate_secondary_structure(
       atom_array: AtomArray to annotate.
       annotation_name: Name for the SSE annotation. Defaults to ``"sse"``.
       is_valid_annotation_name: Name for validity annotation. Defaults to ``"sse_is_valid"``.
+      inplace: If True, annotate ``atom_array`` directly. Defaults to False.
 
     Returns:
-      AtomArray with secondary structure annotations added.
+      AtomArray with secondary structure annotations added. When ``inplace=True``
+      this is the same object that was passed in.
     """
     atom_array = as_atom_array_plus(atom_array)
+    if not inplace:
+        atom_array = atom_array.copy()
 
     # Get token-level information
     token_starts = get_token_starts(atom_array)
@@ -94,7 +99,9 @@ def compute_sse_distribution(atom_array: AtomArray) -> dict[str, float]:
 
     # Run P-SEA annotation
     try:
-        annotate_secondary_structure(atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid")
+        atom_array = annotate_secondary_structure(
+            atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid"
+        )
     except Exception:
         # Annotation failed - return NaN
         return {
@@ -197,7 +204,7 @@ def compute_sse_accuracy(atom_array: AtomArray) -> dict[str, float]:
 
     # Run P-SEA on the structure
     try:
-        annotate_secondary_structure(
+        atom_array = annotate_secondary_structure(
             atom_array,
             annotation_name="sse",
             is_valid_annotation_name="sse_is_valid",

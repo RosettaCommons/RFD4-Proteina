@@ -18,8 +18,6 @@ import torch
 import torch.distributed as dist
 import wandb
 from atomworks.common import exists
-from atomworks.io.parser import parse as parse_structure
-from atomworks.io.transforms.atom_array import add_charge_from_ccd_codes
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_IDX
@@ -53,7 +51,6 @@ from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
-from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -384,10 +381,6 @@ class Proteina(L.LightningModule):
         Also, if we want to recycle clean sample predictions... Then we'd need this here,
         as the nn does not know about relations between v, x1, ...
         """
-        # Always populate x_recycle for torch compile stability
-        if "x_recycle" not in batch:
-            batch["x_recycle"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
-
         # First call
         nn_out = self.nn(batch)
 
@@ -621,12 +614,6 @@ class Proteina(L.LightningModule):
             raise ValueError(f"Loading clean samples from data mode {dm} not supported.")
 
     def handle_self_cond(self, batch: dict, batch_idx: int, val_step: bool) -> dict:
-        # Canonical x_sc zeros so _extra_fields cardinality is stable for
-        # torch.compile (removes a Python-side conditional that would otherwise
-        # break fullgraph). Numerically identical to "no self-cond" because the
-        # x_sc feature modules multiply by their output.
-        batch["x_sc"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
-
         if val_step or not self.cfg_exp.training.get("self_cond", False):
             return batch
         if random.random() >= 0.5:
@@ -888,6 +875,8 @@ class Proteina(L.LightningModule):
         example_id_batch = batch.get("example_id_batch", [])
         n_batch = len(example_id_batch)
         for i in range(len(generation_list)):  # metrics were not written for batches
+            # Fresh per-iteration dict (ensure we don't reuse and mutate across iterations)
+            metrics_output: dict = {}
             orig_batch_idx = i % n_batch if n_batch > 0 else 0
             raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
 
@@ -896,9 +885,9 @@ class Proteina(L.LightningModule):
             if base_id == raw_batch_id and len(generation_list) > n_batch:
                 base_id = f"{base_id}_s{i}"
 
-            # Include rank/job suffix for unique identification across parallel workers
-            example_id = f"{base_id}{output_suffix}"
-            metrics_output["example_id"] = example_id
+            # Prefix with dataset_name so two val datasets that share task keys
+            # don't produce colliding ids in the cross-rank merge.
+            example_id = f"{dataset_name}{base_id}{output_suffix}"
             prediction_metadata = generation_list[i]["prediction_metadata"]
 
             # Log unindexed insertion RMSD to console (this is the motif RMSD)
@@ -918,6 +907,9 @@ class Proteina(L.LightningModule):
                     example_id=example_id,
                     save_input_structure=not self.is_inference,
                 )
+            # Set example_id AFTER run_metrics_for_result reassigns metrics_output,
+            # otherwise mutating the prior iteration's already-appended dict.
+            metrics_output["example_id"] = example_id
 
             if per_example_losses is not None:
                 for k, v in per_example_losses.items():
@@ -1032,6 +1024,8 @@ class Proteina(L.LightningModule):
             metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
             metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
             metrics_output["output_base_dir"] = str(output_base)
+            # _clean_metrics_dict drops non-numeric/string fields, so this is local-only.
+            metrics_output["generated_atom_array"] = generation_list[i]["generated_atom_array"]
             # Store metrics_tags for the oracle loop in on_validation_epoch_end
             metrics_tags_batch = batch.get("metrics_tags_batch", [])
             _tags = metrics_tags_batch[orig_batch_idx] if orig_batch_idx < len(metrics_tags_batch) else []
@@ -1271,12 +1265,7 @@ class Proteina(L.LightningModule):
         metrics_tags_str = item.get("metrics_tags", "")
         metrics_tags = [t for t in metrics_tags_str.split(",") if t] if metrics_tags_str else []
 
-        if not designed_path or not Path(designed_path).exists():
-            logger.warning(f"Oracle loop: designed structure not found for {example_id}, skipping.")
-            return None
-
-        atom_array = parse_structure(Path(designed_path), config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
-        atom_array = add_charge_from_ccd_codes(atom_array)
+        atom_array = item["generated_atom_array"]
 
         output_dir = Path(output_base_dir) if output_base_dir else None
         result = run_oracle_refolding_and_pass_criteria(
@@ -1414,7 +1403,7 @@ class Proteina(L.LightningModule):
             refinement_reward_model: RewardModel for refinement (REQUIRED, must be differentiable)
         """
         if refinement_reward_model is None:
-            raise ValueError("Refinement requires a reward model. " "Add 'refinement_rewards:' section to your config.")
+            raise ValueError("Refinement requires a reward model. Add 'refinement_rewards:' section to your config.")
 
         # Validate differentiable
         if not refinement_reward_model.differentiable:

@@ -297,6 +297,7 @@ def main(cfg_exp: DictConfig) -> None:
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
+    prevalidate_only = cfg_exp.get("prevalidate_only", False)
     plugins = [SLURMEnvironment(auto_requeue=True)] if not single else []
     if not single:
         logger.info("Running on cluster")
@@ -360,15 +361,19 @@ def main(cfg_exp: DictConfig) -> None:
     # Dataset instantiation (rf3-style)
     # ==============================================================================
 
-    # ... build the train dataset
-    assert "train" in cfg_exp.datasets and cfg_exp.datasets.train, "No 'train' dataset configuration provided!"
+    # ... build the train dataset (skipped in prevalidate_only mode)
+    train_dataset = None
+    train_sampler = None
 
-    logger.info("Instantiating train datasets and samplers...")
-    dataset_and_sampler = recursively_instantiate_datasets_and_samplers(cfg_exp.datasets.train)
-    train_dataset, train_sampler = (
-        dataset_and_sampler["dataset"],
-        dataset_and_sampler["sampler"],
-    )
+    if not prevalidate_only:
+        assert "train" in cfg_exp.datasets and cfg_exp.datasets.train, "No 'train' dataset configuration provided!"
+
+        logger.info("Instantiating train datasets and samplers...")
+        dataset_and_sampler = recursively_instantiate_datasets_and_samplers(cfg_exp.datasets.train)
+        train_dataset, train_sampler = (
+            dataset_and_sampler["dataset"],
+            dataset_and_sampler["sampler"],
+        )
 
     # ==============================================================================
     # Trainer instantiation
@@ -413,24 +418,27 @@ def main(cfg_exp: DictConfig) -> None:
     # Dataloader creation
     # ==============================================================================
 
-    # n_examples_per_epoch is used by DistributedMixedSampler (multi-dataset case) to limit
-    # epoch length at the sampler level. For single-dataset configs, limit_train_batches
-    # (set above from steps_per_epoch) handles epoch limiting instead.
-    batch_size = cfg_exp.dataloaders.train.dataloader_params.batch_size
-    n_examples_per_epoch = steps_per_epoch * batch_size * trainer.world_size * cfg_exp.opt.accumulate_grad_batches
-    logger.info(
-        f"Epoch = {steps_per_epoch} steps = {n_examples_per_epoch} examples (limit_train_batches={limit_train_batches})"
-    )
+    train_loader = None
+    if not prevalidate_only:
+        # n_examples_per_epoch is used by DistributedMixedSampler (multi-dataset case) to limit
+        # epoch length at the sampler level. For single-dataset configs, limit_train_batches
+        # (set above from steps_per_epoch) handles epoch limiting instead.
+        batch_size = cfg_exp.dataloaders.train.dataloader_params.batch_size
+        n_examples_per_epoch = steps_per_epoch * batch_size * trainer.world_size * cfg_exp.opt.accumulate_grad_batches
+        logger.info(
+            f"Epoch = {steps_per_epoch} steps = {n_examples_per_epoch} examples "
+            f"(limit_train_batches={limit_train_batches})"
+        )
 
-    logger.info(f"Creating train dataloader (rank={trainer.global_rank}, world_size={trainer.world_size})...")
-    train_loader = assemble_distributed_loader(
-        dataset=train_dataset,
-        sampler=train_sampler,
-        rank=trainer.global_rank,
-        world_size=trainer.world_size,
-        n_examples_per_epoch=n_examples_per_epoch,
-        loader_cfg=hydra.utils.instantiate(cfg_exp.dataloaders.train),
-    )
+        logger.info(f"Creating train dataloader (rank={trainer.global_rank}, world_size={trainer.world_size})...")
+        train_loader = assemble_distributed_loader(
+            dataset=train_dataset,
+            sampler=train_sampler,
+            rank=trainer.global_rank,
+            world_size=trainer.world_size,
+            n_examples_per_epoch=n_examples_per_epoch,
+            loader_cfg=hydra.utils.instantiate(cfg_exp.dataloaders.train),
+        )
 
     # ... compose the validation loader(s) with correct distributed settings
     val_loaders = None
@@ -448,6 +456,20 @@ def main(cfg_exp: DictConfig) -> None:
         val_loaders = list(val_loaders.values()) if isinstance(val_loaders, dict) else val_loaders
     else:
         logger.warning("No validation datasets provided! Skipping validation...")
+
+    if prevalidate_only:
+        # Choose the ckpt that Lightning should fully restore from
+        val_ckpt_path = resume_ckpt_path or cfg_exp.get("pretrain_ckpt_path", None)
+        if val_ckpt_path is None:
+            raise ValueError(
+                "prevalidate_only=true requires resume_ckpt_path or pretrain_ckpt_path; "
+                "without one the SimpleEMA callback can't restore EMA weights and the "
+                "validation will score training weights (which are usually garbage on "
+                "EMA-trained checkpoints)."
+            )
+        logger.info(f"PREVALIDATE_ONLY: trainer.validate from {val_ckpt_path}")
+        trainer.validate(model, dataloaders=val_loaders, ckpt_path=val_ckpt_path)
+        return
 
     # Train the model with dataloaders
     logger.info("Starting training...")
