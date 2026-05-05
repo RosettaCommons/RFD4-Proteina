@@ -129,6 +129,9 @@ lora:
 # Optimization
 opt:
   lr: 0.0001
+  gradient_clip_val: 1.0       # Max gradient norm; used for both automatic and manual optimization
+  muon_param_patterns: []      # Parameter name prefixes routed to Muon; rest go to Adam
+  muon_adjust_lr_fn: "match_rms_adamw" # Either "original" or "match_rms_adamw"
   max_epochs: 10000000
   accumulate_grad_batches: 1
   dist_strategy: ddp

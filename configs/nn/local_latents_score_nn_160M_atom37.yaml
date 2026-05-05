@@ -94,7 +94,7 @@ attention_type: flash
 # torch.compile:
 #   - false (default): No compilation, eager mode
 #   - true: Wraps the forward pass with torch.compile for potential speedups
-use_torch_compile: false
+use_torch_compile: true
 
 # Whether to use the MSA module
 use_msa_module: false
