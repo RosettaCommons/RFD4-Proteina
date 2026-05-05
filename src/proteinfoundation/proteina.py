@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import time
 from contextlib import nullcontext
 from pathlib import Path
@@ -126,6 +127,8 @@ def _collect_val_metrics_tags(cfg_datasets_val: DictConfig) -> list[set[str] | N
     dataset_tags: list[set[str] | None] = []
     if OmegaConf.is_dict(cfg_datasets_val):
         for dataset_cfg in cfg_datasets_val.values():
+            if not dataset_cfg:
+                continue
             tags = _find_first_tags(dataset_cfg)
             dataset_tags.append(set(tags) if tags is not None else None)
 
@@ -306,6 +309,11 @@ class Proteina(L.LightningModule):
 
         self.nn_ag = None
 
+        # Optimizers
+        muon_patterns = list(self.cfg_exp.opt.get("muon_param_patterns") or [])
+        if muon_patterns:
+            self.automatic_optimization = False
+
         # Search integration
         self.search_strategy = None
         self.search_reward_model = None
@@ -348,11 +356,29 @@ class Proteina(L.LightningModule):
                 param.requires_grad = False
         return autoencoder, autoencoder.latent_dim
 
-    def configure_optimizers(self) -> torch.optim.Adam:
-        return torch.optim.Adam(
-            [p for p in self.parameters() if p.requires_grad],
-            lr=self.cfg_exp.opt.lr,
-        )
+    def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
+        muon_patterns = [re.compile(p) for p in (self.cfg_exp.opt.get("muon_param_patterns") or [])]
+        if muon_patterns:
+            muon_params, adam_params = [], []
+            for name, param in self.named_parameters():
+                if not param.requires_grad:
+                    continue
+                if any(pat.search(name) for pat in muon_patterns):
+                    muon_params.append(param)
+                else:
+                    adam_params.append(param)
+
+            return [
+                torch.optim.Muon(
+                    muon_params, lr=self.cfg_exp.opt.lr, adjust_lr_fn=self.cfg_exp.opt.get("muon_adjust_lr_fn")
+                ),
+                torch.optim.Adam(adam_params, lr=self.cfg_exp.opt.lr),
+            ]
+        else:
+            return torch.optim.Adam(
+                [p for p in self.parameters() if p.requires_grad],
+                lr=self.cfg_exp.opt.lr,
+            )
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
@@ -513,11 +539,33 @@ class Proteina(L.LightningModule):
                 add_dataloader_idx=False,
             )
 
-            if not val_step:  # Don't log these for val step
+            if not val_step:
                 self.log_train_loss_n_prog_bar(bs, train_loss)
                 self.update_n_log_flops(bs, n)
                 self.update_n_log_nsamples_processed(bs)
                 self.log_nparams()
+
+                if not self.automatic_optimization:
+                    should_step = (batch_idx + 1) % self.cfg_exp.opt.get("accumulate_grad_batches", 1) == 0
+
+                    # If we are not stepping, we wrap backward in no_sync to stay local
+                    if not should_step:
+                        with self.trainer.strategy.no_sync(self):
+                            self.manual_backward(train_loss)
+                    else:
+                        self.manual_backward(train_loss)
+
+                        muon_opt, adam_opt = self.optimizers()
+
+                        clip_val = self.cfg_exp.opt.gradient_clip_val
+                        self.clip_gradients(muon_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+                        self.clip_gradients(adam_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+
+                        muon_opt.step()
+                        adam_opt.step()
+
+                        muon_opt.zero_grad()
+                        adam_opt.zero_grad()
 
             # Return dict with loss and extra data for callbacks.
             # Lightning uses the reserved "loss" key for backpropagation - other keys are
@@ -790,7 +838,9 @@ class Proteina(L.LightningModule):
         """
         # Get the name of the current dataset
         # Always use the actual dataset key to ensure unique names for multiple dataloaders
-        val_dataset_names = list(self.cfg_exp.datasets.val.keys())
+        # Mirror the filtering in assemble_val_loader_dict: skip None-config entries so that
+        # dataloader_idx aligns with the actual dataloaders passed to Lightning.
+        val_dataset_names = [k for k, v in self.cfg_exp.datasets.val.items() if v]
         n_val_datasets = len(val_dataset_names)
         actual_dataset_name = val_dataset_names[dataloader_idx]
         if self.inf_cfg is not None and self.inf_cfg.get("val_set_name_override") is not None:
@@ -825,7 +875,7 @@ class Proteina(L.LightningModule):
         # error about duplicated metrics. To avoid adding a kwarg to training_step, we add this data to the batch.
         # We will remove it in the training_step function.
         # NOTE: Use actual_dataset_name (without prefix) to look up config
-        dataset_cfg = self.cfg_exp.datasets.val.get(actual_dataset_name, {})
+        dataset_cfg = self.cfg_exp.datasets.val.get(actual_dataset_name) or {}
 
         # Run some validation sets only every N validation epochs
         run_every_n_val_epochs = dataset_cfg.get("run_every_n_val_epochs", 1)

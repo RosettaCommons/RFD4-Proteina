@@ -40,12 +40,18 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
         return unique_chain_identifiers[0], True
 
     # Only consider protein chains
+    # NOTE: This heuristic will have to be revisited if refolding designed small
+    # molecules against a protein target
     ensure_annotations(atom_array, "is_protein")
     protein_chain_identifiers = [
         cid for cid in unique_chain_identifiers if atom_array[chain_identifiers == cid].is_protein.all()
     ]
     if len(protein_chain_identifiers) == 1:
         return protein_chain_identifiers[0], True
+
+    if len(protein_chain_identifiers) == 0:
+        logger.warning("No pure-protein chains found; defaulting to first chain in sorted order.")
+        return sorted(unique_chain_identifiers)[0], False
 
     # Subset by all coordinate conditioning (absolute or internal)
     coord_conditioned_fraction_by_chain = {

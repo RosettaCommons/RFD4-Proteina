@@ -1,0 +1,25 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/motif_scaffold_ame_afdb_omol_partial
+  # - override /metrics/refolding_oracles: af3
+  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+  - _self_
+
+
+run_name_: muon_pretrain
+
+opt:
+  muon_param_patterns:
+    - '^nn\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
+    - '^nn\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
+
+datasets:
+  val:
+    mcsa_subset: null
+    mcsa_subset_fixed_ligand: null
+    indexed_motif_scaffold_full: null
+
+hardware:
+  nnodes_: 1
+  ngpus_per_node_: 8

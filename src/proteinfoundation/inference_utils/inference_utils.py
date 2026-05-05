@@ -526,7 +526,8 @@ def set_com(
                 )
             )
             atom_array.coord -= center
-            ranked_logger.info(f"No infer_ori_strategy or ori_token provided. Centering on motif COM at {center}.")
+            if allow_non_motif_centered:
+                ranked_logger.info(f"No infer_ori_strategy or ori_token provided. Centering on motif COM at {center}.")
         else:
             atom_array.coord = np.zeros_like(atom_array.coord, dtype=atom_array.coord.dtype)
     return atom_array

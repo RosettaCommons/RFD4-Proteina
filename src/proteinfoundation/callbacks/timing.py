@@ -69,7 +69,8 @@ class LightningTimingCallback(L.Callback):
     def on_before_optimizer_step(
         self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
     ) -> None:
-        self.timers.start("optimizer_step")
+        if not self.timers("optimizer_step").started_:
+            self.timers.start("optimizer_step")
 
     def on_after_optimizer_step(
         self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
