@@ -13,14 +13,14 @@ import torch
 import yaml
 from atomworks.common import exists
 from atomworks.constants import ELEMENT_NAME_TO_ATOMIC_NUMBER
+from atomworks.io.parser import parse
 from atomworks.io.transforms.atom_array import (
     add_chain_type_annotation,
-    add_charge_from_ccd_codes,
     add_polymer_annotation,
 )
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.io.utils.io_utils import load_any, to_cif_file
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack, infer_elements
@@ -36,8 +36,17 @@ from proteinfoundation.inference_utils.aggregate_metrics import (
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
 from proteinfoundation.metrics.oracle_metric import OracleMetric
-from proteinfoundation.transforms.unindexing import process_unindexed_outputs
+from proteinfoundation.metrics.unindexing_metrics import UnindexedInsertionMetric
+from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
+
+
+def _parse_and_extract_first_assembly(path: str) -> AtomArray:
+    """Parse a CIF/PDB file and return the first model of the first assembly."""
+
+    return parse(path, config=RCSB_WITH_METALS)["assemblies"]["1"][0]
+
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -371,8 +380,7 @@ def apply_centering_method(
             if not os.path.isabs(input_file):
                 input_file = os.path.abspath(os.path.join(os.path.dirname(pfm_dataset_input), input_file))
 
-            full_input_atom_array = load_any(input_file)
-            full_input_atom_array = _ensure_not_atom_array_stack(full_input_atom_array)
+            full_input_atom_array = _parse_and_extract_first_assembly(input_file)
         else:
             full_input_atom_array = loaded_atom_array
 
@@ -550,11 +558,12 @@ def convert_to_pfm_format(
         concatenated_array.within_index_group_res_idx[group_mask] = group_res_ids - group_res_ids.min()
 
     # Map the coordinate conditioning to the corresponding regions in the generated structure
-    annotated_model_generated_array, insertion_metadata = process_unindexed_outputs(
+    annotated_model_generated_array = annotate_unindexed_insertion(
         concatenated_array,
         insert_unindexed_regions=False,
         inputs_in_same_frame=inputs_in_same_frame,
     )
+    insertion_metadata = UnindexedInsertionMetric().compute(annotated_model_generated_array)
     coord_cond_mask = C_CRD.mask(annotated_model_generated_array, default="raise")
     coord_cond_mask[SA_CRDSRC.mask(annotated_model_generated_array)] = True
     C_CRD.set_mask(annotated_model_generated_array, coord_cond_mask)
@@ -695,7 +704,7 @@ def run_external_eval(
     for row in df.itertuples():
         # Load the generated structure
         generated_structure_path = row.generated_structure
-        generated_atom_array = load_any(generated_structure_path, load_standard_annotations=True)
+        generated_atom_array = _parse_and_extract_first_assembly(generated_structure_path)
 
         # Load the annotated input structure and validate
         if isinstance(dataset, DesignProblemDataset):
@@ -758,7 +767,7 @@ def run_external_eval(
 
         # If using a sequence-redesigned structure, we will first transfer annotations in the mapped region.
         if use_sequence_redesign:
-            sequence_redesigned_atom_array = load_any(row.sequence_redesigned_structure)
+            sequence_redesigned_atom_array = _parse_and_extract_first_assembly(row.sequence_redesigned_structure)
             sequence_redesigned_atom_array = _add_basic_annots(sequence_redesigned_atom_array)
             try:
                 sequence_redesigned_atom_array = transfer_annotations_to_redesigned_structure(
@@ -780,9 +789,6 @@ def run_external_eval(
                 continue
         else:
             rf3_input_atom_array = formatted_generated_atom_array
-
-        # RF3 requires charges in the outputs
-        rf3_input_atom_array = add_charge_from_ccd_codes(rf3_input_atom_array)
 
         # Optionally run the MetricManager and collect the outputs
         if not exists(metric_manager):

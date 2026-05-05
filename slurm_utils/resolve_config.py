@@ -23,10 +23,31 @@ Shell usage:
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import hydra
 from hydra import initialize_config_dir
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
+
+_AF3_ORACLE_TARGET = "proteinfoundation.metrics.af3_oracle.AF3Oracle"
+
+
+def _has_af3_oracle_target(cfg: DictConfig) -> bool:
+    """Recursively search the resolved config for a node whose ``_target_``
+    equals ``proteinfoundation.metrics.af3_oracle.AF3Oracle``.
+    """
+    container = OmegaConf.to_container(cfg, resolve=False, throw_on_missing=False)
+
+    def walk(node: Any) -> bool:
+        if isinstance(node, dict):
+            if node.get("_target_") == _AF3_ORACLE_TARGET:
+                return True
+            return any(walk(v) for v in node.values())
+        if isinstance(node, list):
+            return any(walk(v) for v in node)
+        return False
+
+    return walk(container)
 
 
 def main() -> int:
@@ -95,6 +116,13 @@ def main() -> int:
             exclude_nodes = OmegaConf.select(
                 cfg, "hardware.exclude_nodes_", throw_on_resolution_failure=False, default=None
             )
+
+            # Detect whether any AF3Oracle is configured anywhere in the resolved config.
+            # Used by launchers to gate the AF3-daemon pre-spawn block.
+            try:
+                af3_needed = _has_af3_oracle_target(cfg)
+            except Exception:
+                af3_needed = False
     except Exception as e:
         print(f"Error resolving config: {e}", file=sys.stderr)
         return 1
@@ -108,6 +136,7 @@ def main() -> int:
     print(f"NNODES={nnodes}")
     print(f"CPUS_PER_TASK={cpus_per_task}")
     print(f"GEN_NJOBS={gen_njobs}")
+    print(f"AF3_NEEDED={'true' if af3_needed else 'false'}")
 
     # Optional overrides (only output if explicitly set in config)
     if gpu_type is not None:

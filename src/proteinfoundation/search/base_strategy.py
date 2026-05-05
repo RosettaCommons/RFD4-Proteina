@@ -30,7 +30,6 @@ class SearchStrategy(ABC):
             reward_model: Optional reward model for guided generation
 
         Returns:
-            List of dictionaries containing generated structures and metadata.
-            Each dict should have keys like 'generated_atom_array', 'reward', etc.
+            List of generated-structure dicts (formatted).
         """
         raise NotImplementedError

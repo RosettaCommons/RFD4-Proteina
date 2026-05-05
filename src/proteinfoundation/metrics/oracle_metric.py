@@ -1,23 +1,33 @@
 """Base class for oracle refolding metrics (RF3Oracle, AF3Oracle).
 
-An oracle metric folds a designed structure and returns confidence scores plus the
-path to the saved refolded CIF. It is intentionally decoupled from post-refolding
-comparison metrics (StructureComparisonMetric) — those run separately in the
-refolding MetricManager.
+An oracle metric folds designed structures and returns confidence scores plus
+the path to the saved refolded CIF. It is intentionally decoupled from
+post-refolding comparison metrics (StructureComparisonMetric) — those run
+separately in the refolding MetricManager.
 
-Resumability: after each fold, the oracle writes a JSON file containing confidence
-scores and the refolded CIF path. On restart, the presence of this file signals that
-folding is already complete; the JSON is loaded and returned directly.
+Each subclass implements two abstract methods that share an output contract:
+
+- :py:meth:`OracleMetric.fold_one`   — fold a single design.
+- :py:meth:`OracleMetric.fold_batch` — fold many designs (subclasses that can
+  amortise setup, like AF3 dispatching one subprocess for the whole batch,
+  override this; otherwise it's just a loop over ``fold_one``).
+
+Both write the refolded CIF and a confidence JSON to canonical paths on disk.
+
+The framework-facing :py:meth:`compute` then routes between them: cache hit
+→ load JSON; cache miss → call ``fold_one``.
 """
 
 import hashlib
 import json
+import tempfile
 from abc import abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from atomworks.common import exists
 from biotite.structure import AtomArray
 
 from foundry.metrics.metric import Metric
@@ -26,17 +36,128 @@ from foundry.utils.ddp import RankedLogger
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-class OracleMetric(Metric):
-    """Base class for structure prediction oracles (RF3Oracle, AF3Oracle).
+@dataclass(slots=True)
+class OracleJobInput:
+    """One design queued for :py:meth:`OracleMetric.fold_one` /
+    :py:meth:`OracleMetric.fold_batch`."""
 
-    Subclasses implement :py:meth:`fold_single_atom_array` and inherit the
-    resumability / JSON-save logic from this class.
+    atom_array: AtomArray
+    example_id: str
+    out_dir: Path
+    chain_of_interest: str | None = None
+
+
+def _coi_interface_vals(matrix: list, coi_idx: int, n_chains: int) -> list:
+    """Bidirectional interface values between the COI and every other chain.
+
+    Used by :py:func:`extract_confidence_metrics` to average forward / reverse
+    AF3-style chain-pair matrices.
+    """
+    vals = []
+    for j in range(n_chains):
+        if j == coi_idx:
+            continue
+        v_forward = matrix[coi_idx][j]
+        v_reverse = matrix[j][coi_idx]
+        if v_forward is not None and v_reverse is not None:
+            vals.append((v_forward + v_reverse) / 2.0)
+        elif v_forward is not None:
+            vals.append(v_forward)
+        elif v_reverse is not None:
+            vals.append(v_reverse)
+    return vals
+
+
+# AF3 → flat-metrics translation tables, in the order the val pipeline reads them.
+# Format: (af3_key, output_key, scale). Scale 100.0 lifts AF3's 0..1 plddt/ptm to 0..100.
+_GLOBAL_METRICS: list[tuple[str, str, float]] = [
+    ("overall_plddt", "overall_plddt", 100.0),
+    ("overall_pae", "overall_pae", 1.0),
+    ("ptm", "overall_ptm", 100.0),
+    ("iptm", "overall_iptm", 100.0),
+    ("ranking_score", "ranking_score", 1.0),
+    ("fraction_disordered", "fraction_disordered", 1.0),
+    ("has_clash", "has_clash", 1.0),
+]
+
+# Per-chain values pulled at chain_X[coi_idx].
+_COI_CHAIN_METRICS: list[tuple[str, str, float]] = [
+    ("chain_plddt", "plddt_coi", 100.0),
+    ("chain_ptm", "ptm_coi", 100.0),
+    ("chain_pae", "pae_coi", 1.0),
+]
+
+# Interface values reduced over chain_pair_X[coi_idx][j != coi_idx].
+# Format: (af3_key, output_key, reduction, scale).
+_COI_INTERFACE_METRICS: list[tuple[str, str, Callable, float]] = [
+    ("chain_pair_pae", "ipae_coi", np.mean, 1.0),
+    ("chain_pair_pae_min", "min_ipae_coi", np.min, 1.0),
+    ("chain_pair_iptm", "iptm_coi", np.mean, 100.0),
+]
+
+
+def extract_confidence_metrics(
+    summary_confidences: dict,
+    chain_of_interest: Any | None,
+    chains_in_order: list,
+) -> dict[str, float]:
+    """Translate an AF3-shaped summary-confidences dict into the flat metric keys
+    the val pipeline expects (``overall_plddt``, ``plddt_coi``, ``ptm_coi``, …).
+
+    Both :class:`AF3Oracle` and :class:`RF3Oracle` produce summary-confidences
+    in the same shape and call this helper before persisting the result.
 
     Args:
-        oracle_name: Short label used to name the output subdirectory and JSON files
-            (e.g. ``"rf3"`` → ``{out_dir}/rf3_refolding/``).
-        template_annotations: Annotation name(s) on the input AtomArray to use for
-            templating. Multiple names are OR'd together. Defaults to ``None``.
+        summary_confidences: AF3-shaped dict with keys like ``overall_plddt``,
+            ``ptm``, ``iptm``, ``chain_plddt``, ``chain_pair_pae``, etc. Values
+            in 0..1 are scaled to 0..100 here for the ``plddt`` / ``ptm`` keys.
+        chain_of_interest: Chain label for the COI metrics, or ``None``.
+        chains_in_order: Ordered chain labels matching the indexing of any
+            ``chain_*`` lists / ``chain_pair_*`` matrices in ``summary_confidences``.
+    """
+    metrics: dict[str, float] = {}
+
+    for src, dst, scale in _GLOBAL_METRICS:
+        v = summary_confidences.get(src)
+        if v is not None:
+            metrics[dst] = float(v) * scale
+
+    if chain_of_interest is None or chain_of_interest not in chains_in_order:
+        return metrics
+
+    coi_idx = list(chains_in_order).index(chain_of_interest)
+    n_chains = len(chains_in_order)
+
+    for src, dst, scale in _COI_CHAIN_METRICS:
+        v = summary_confidences.get(src)
+        if v is not None:
+            metrics[dst] = float(v[coi_idx]) * scale
+
+    for src, dst, reduce_fn, scale in _COI_INTERFACE_METRICS:
+        matrix = summary_confidences.get(src)
+        if matrix is None:
+            continue
+        vals = _coi_interface_vals(matrix, coi_idx, n_chains)
+        if vals:
+            metrics[dst] = float(reduce_fn(vals)) * scale
+
+    return metrics
+
+
+class OracleMetric(Metric):
+    """Base class for structure-prediction oracles (RF3Oracle, AF3Oracle).
+
+    Subclasses implement :py:meth:`fold_one` (single design) and
+    :py:meth:`fold_batch` (many designs at once); both write the refolded CIF
+    and confidence JSON to canonical paths on disk. :py:meth:`compute` is the
+    framework-facing entry point and routes between cache hit (load JSON) and
+    cache miss (call ``fold_one`` then load JSON).
+
+    Args:
+        oracle_name: Short label used to name the output subdirectory and JSON
+            files (e.g. ``"rf3"`` → ``{out_dir}/rf3_refolding/``).
+        template_annotations: Annotation name(s) on the input AtomArray to use
+            for templating. Multiple names are OR'd together. Defaults to ``None``.
     """
 
     def __init__(
@@ -89,29 +210,20 @@ class OracleMetric(Metric):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def fold_single_atom_array(
-        self,
-        atom_array: AtomArray,
-        example_id: str,
-        out_dir: Path,
-        chain_of_interest: str | None,
-    ) -> dict:
-        """Fold one structure and return confidence metrics.
+    def fold_one(self, job: OracleJobInput) -> dict:
+        """Fold one design and persist its results to disk.
 
-        Subclasses must save the refolded CIF at
-        ``self.refolded_cif_path(out_dir, example_id)`` before returning, so that
-        the caller can parse it for subsequent refolding metrics.
+        Implementations must write:
 
-        Args:
-            atom_array: The design structure to refold.
-            example_id: Identifier used for file naming.
-            out_dir: Base output directory (oracle CIFs go under
-                ``{out_dir}/{oracle_name}_refolding/{shard}/``).
-            chain_of_interest: Pre-computed chain of interest, or ``None``.
+        - the refolded CIF to :py:meth:`refolded_cif_path` ``(out_dir, example_id)``
+        - the confidence JSON to :py:meth:`confidence_path` ``(out_dir, example_id)``
 
-        Returns:
-            Flat dict with all confidence values.
+        Returns the metrics dict (the same one that was just persisted).
         """
+
+    @abstractmethod
+    def fold_batch(self, jobs: list[OracleJobInput]) -> int:
+        """Fold every design in ``jobs`` and persist the results to disk."""
 
     # ------------------------------------------------------------------
     # Metric interface
@@ -137,45 +249,49 @@ class OracleMetric(Metric):
         out_dir: Path | None,
         chain_of_interest: str | None = None,
     ) -> dict:
-        """Refold the structure, returning confidence metrics and the refolded CIF path.
+        """Refold the structure (or load from cache) and return its metrics.
 
-        If a confidence JSON for ``example_id`` already exists in
-        ``{out_dir}/{oracle_name}_refolding/``, loads it and returns immediately
-        (skips folding — enables resumability across interrupted runs).
+        Returns ``{...confidence keys..., "refolded_structure_path", "confidence_json_path"}``.
 
-        Args:
-            input_atom_array: Design structure to refold.
-            example_id: Identifier for file naming and resumability check.
-            out_dir: Base output directory. If ``None``, folding runs but nothing is
-                saved (not recommended for production use).
-            chain_of_interest: Pre-computed chain of interest label, or ``None``.
-
-        Returns:
-            Flat dict with confidence values (e.g. ``plddt``, ``iptm``, ``pae``).
+        ``out_dir=None`` allocates a tempdir scoped to this call; cache files
+        are removed before return, so the returned ``refolded_structure_path``
+        will not exist on disk afterwards. Pass an explicit ``out_dir`` to
+        keep the artifacts.
         """
-        if exists(out_dir):
-            out_dir = Path(out_dir)
-            if self.already_refolded(out_dir, example_id):
-                result = self._load_confidence_json(self.confidence_path(out_dir, example_id))
-                result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id))
-                result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id))
-                return result
-        else:
-            logger.warning(
-                f"OracleMetric.compute called without out_dir for {example_id}; "
-                "refolded structure will not be saved and resumability is disabled."
+        if out_dir is None:
+            with tempfile.TemporaryDirectory() as tmp:
+                # No caching: fold into a tempdir and read back
+                return self._fold_then_load(input_atom_array, example_id, Path(tmp), chain_of_interest)
+
+        out_dir = Path(out_dir)
+        if self.already_refolded(out_dir, example_id):
+            # Fast path: confidence JSON already exists, so just load and return it
+            return self._load_compute_result(out_dir, example_id)
+
+        # Slow path: refold then load
+        return self._fold_then_load(input_atom_array, example_id, out_dir, chain_of_interest)
+
+    def _fold_then_load(
+        self,
+        atom_array: AtomArray,
+        example_id: str,
+        out_dir: Path,
+        chain_of_interest: str | None,
+    ) -> dict:
+        """Slow path of :py:meth:`compute`: run :py:meth:`fold_one` then read back."""
+        self.fold_one(
+            OracleJobInput(
+                atom_array=atom_array,
+                example_id=example_id,
+                out_dir=out_dir,
+                chain_of_interest=chain_of_interest,
             )
-
-        result = self.fold_single_atom_array(
-            atom_array=input_atom_array,
-            example_id=example_id,
-            out_dir=out_dir,
-            chain_of_interest=chain_of_interest,
         )
+        return self._load_compute_result(out_dir, example_id)
 
-        if out_dir is not None:
-            self._save_confidence_json(result, self.confidence_path(out_dir, example_id))
-            result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id))
-            result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id))
-
+    def _load_compute_result(self, out_dir: Path, example_id: str) -> dict:
+        """Load the confidence JSON from disk and stamp on the canonical paths."""
+        result = self._load_confidence_json(self.confidence_path(out_dir, example_id))
+        result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id))
+        result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id))
         return result

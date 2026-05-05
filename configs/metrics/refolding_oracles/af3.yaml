@@ -4,7 +4,6 @@
 oracle:
   _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
   oracle_name: af3
-  num_recycles: 5
   required_tags_any:
     - af3_refolding
     - unconditional_refolding
@@ -18,7 +17,6 @@ oracle:
 oracle_ppi:
   _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
-  num_recycles: 5
   template_annotations: [mask_coordinate_1_atom]
   required_tags_any:
     - ppi_refolding

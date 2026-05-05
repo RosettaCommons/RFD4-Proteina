@@ -396,6 +396,17 @@ export MASTER_PORT=$((1024 + RANDOM % 64512))
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 EOF
 
+# Pre-spawn AF3 daemon block when the metric-manager-config YAML references AF3Oracle.
+AF3_NEEDED="false"
+if [ -n "$METRIC_MANAGER_CONFIG" ] && [ -f "$METRIC_MANAGER_CONFIG" ] && \
+   grep -qE '^[[:space:]]*_target_:[[:space:]]*proteinfoundation\.metrics\.af3_oracle\.AF3Oracle' "$METRIC_MANAGER_CONFIG"; then
+    AF3_NEEDED="true"
+fi
+if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
+    echo "  AF3Oracle detected in metric-manager-config — emitting AF3 daemon pre-spawn block"
+    emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+fi
+
 # Build the command
 SCRIPT_EVAL="$CODE_DIR/projects/proteinfoundation/proteinfoundation/external_eval.py"
 

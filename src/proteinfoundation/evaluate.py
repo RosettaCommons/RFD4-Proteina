@@ -15,7 +15,6 @@ import pandas as pd
 import rootutils
 from atomworks.common import exists
 from atomworks.io.parser import parse
-from atomworks.io.transforms.atom_array import add_charge_from_ccd_codes
 from atomworks.io.utils.io_utils import CIF_LIKE_EXTENSIONS
 from omegaconf import DictConfig
 
@@ -138,7 +137,7 @@ def run_evaluate(cfg: DictConfig) -> None:
     )
     for example_id, (structure_file, atom_array) in sorted_arrays:
         result = run_oracle_refolding_and_pass_criteria(
-            atom_array=add_charge_from_ccd_codes(atom_array),
+            atom_array=atom_array,
             example_id=example_id,
             output_dir=out_dir,
             oracle_mm=oracle_mm,

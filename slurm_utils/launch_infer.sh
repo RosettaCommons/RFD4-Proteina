@@ -386,6 +386,12 @@ export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 scontrol show job $SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works - auto-requeue enabled' || echo '[slurm] WARNING: scontrol not working - auto-requeue disabled'
 EOF
 
+# Pre-spawn AF3 daemon block when the resolved config requests AF3
+if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
+    echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
+    emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+fi
+
 # Platform-specific generation command
 SCRIPT_GENERATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/generate.py"
 

@@ -35,7 +35,7 @@ class VanillaStrategy(SearchStrategy):
             reward_model: Ignored for vanilla generation
 
         Returns:
-            List of generated structures
+            List of generated-structure dicts.
         """
         # Preprocess batch
         batch = model.preprocess_batch_for_generation(batch)

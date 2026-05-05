@@ -114,6 +114,26 @@ resolve_hydra_config() {
     cd "$repo_root" && python "$script_dir/resolve_config.py" --config-name "$config_name" $overrides
 }
 
+# Emit the AF3-daemon pre-spawn block to stdout (caller appends to the SBATCH file)
+# Usage: emit_af3_daemon_block <code_dir> <gpus_per_node>
+emit_af3_daemon_block() {
+    local code_dir="$1"
+    local gpus_per_node="$2"
+    cat <<EOF
+
+# Pre-launch AF3 daemons (one supervisor per node, sockets in each node's /tmp).
+# Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
+AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
+srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
+  /usr/bin/python3 $code_dir/projects/proteinfoundation/scripts/af3_daemon.py launch \\
+  --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
+  --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
+AF3_DAEMON_SRUN_PID=\$!
+trap 'kill -TERM \$AF3_DAEMON_SRUN_PID 2>/dev/null; wait \$AF3_DAEMON_SRUN_PID 2>/dev/null' EXIT
+export AF3_LAUNCHER_SOCKET_TEMPLATE="/tmp/af3_daemon_rank{rank}.sock"
+EOF
+}
+
 # Get the srun command with appropriate container settings
 # Usage: SRUN_CMD=$(get_srun_cmd)
 get_srun_cmd() {
@@ -593,6 +613,7 @@ copy_code_to_dir() {
     rsync -a --no-compress "$repo_root/projects/proteinfoundation/benchmarks/" "$code_dir/projects/proteinfoundation/benchmarks/"
     rsync -a --no-compress "$repo_root/projects/proteinfoundation/data/" "$code_dir/projects/proteinfoundation/data/"
     rsync -a --no-compress "$repo_root/projects/proteinfoundation/script_utils/" "$code_dir/projects/proteinfoundation/script_utils/"
+    rsync -a --no-compress "$repo_root/projects/proteinfoundation/scripts/" "$code_dir/projects/proteinfoundation/scripts/"
 
     cp "$repo_root/.project-root" "$code_dir/"
     mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"

@@ -268,6 +268,12 @@ fi
 
 [ -n "$DATASET_SQUASH_MOUNTS" ] && echo "export DATASET_SQUASH_MOUNTS=\"$DATASET_SQUASH_MOUNTS\"" >> "$SBATCH_FILE"
 
+# Pre-spawn AF3 daemon block when the resolved config requests AF3 
+if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
+    echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
+    emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+fi
+
 SCRIPT_EVALUATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/evaluate.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then

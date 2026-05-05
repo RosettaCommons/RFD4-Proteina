@@ -21,12 +21,25 @@ from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import AtomArray
 
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.oracle_metric import OracleMetric
+from proteinfoundation.metrics.oracle_metric import (
+    OracleJobInput,
+    OracleMetric,
+    extract_confidence_metrics,
+)
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from rf3.inference_engines.rf3 import RF3InferenceEngine
 from rf3.utils.inference import InferenceInput, InputOptions
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+_EARLY_STOP_METRICS: dict[str, float] = {
+    "plddt": 0.0,
+    "ptm": 0.0,
+    "iptm": 0.0,
+    "pae": 100.0,
+    "ipae": 100.0,
+    "min_ipae": 100.0,
+}
 
 
 class RF3Oracle(OracleMetric):
@@ -164,35 +177,23 @@ class RF3Oracle(OracleMetric):
         atom_array = add_molecule_iid_annotation(atom_array)
         return atom_array
 
-    def _coi_interface_vals(self, matrix: list, coi_idx: int, n_chains: int) -> list:
-        return [matrix[i][coi_idx] for i in range(coi_idx) if matrix[i][coi_idx] is not None] + [
-            matrix[coi_idx][j] for j in range(coi_idx + 1, n_chains) if matrix[coi_idx][j] is not None
-        ]
-
     # ------------------------------------------------------------------
     # OracleMetric implementation
     # ------------------------------------------------------------------
 
-    def fold_single_atom_array(
-        self,
-        atom_array: AtomArray,
-        example_id: str,
-        out_dir: Path | None,
-        chain_of_interest: str | None,
-    ) -> dict:
-        """Fold one structure with RF3 and save the refolded CIF.
+    def fold_one(self, job: OracleJobInput) -> dict:
+        """Fold one design with RF3 in-process.
 
-        Args:
-            atom_array: Design structure to fold.
-            example_id: Identifier used for file naming.
-            out_dir: Base output directory. CIF saved to canonical path via
-                :py:meth:`refolded_cif_path`. If ``None``, no CIF is written.
-            chain_of_interest: Pre-computed chain of interest, or ``None`` to
-                infer from the structure.
-
-        Returns:
-            Flat dict with all RF3 confidence values.
+        Writes the refolded CIF and the confidence JSON to canonical paths and
+        returns the metrics dict. RF3 early-stop is a legitimate signal and
+        persists :py:data:`_EARLY_STOP_METRICS`; any other inference failure
+        raises so the caller sees the real error.
         """
+        atom_array = job.atom_array
+        example_id = job.example_id
+        out_dir = job.out_dir
+        chain_of_interest = job.chain_of_interest
+
         original_device = torch.cuda.current_device()
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
@@ -227,77 +228,54 @@ class RF3Oracle(OracleMetric):
             )
 
             if results.get("early_stopped"):
-                logger.warning(f"RF3 early stopped for {example_id} — returning default poor metrics")
-                return {"plddt": 0.0, "ptm": 0.0, "iptm": 0.0, "pae": 100.0, "ipae": 100.0, "min_ipae": 100.0}
-
-            result = results[example_id][0]
-            metrics = result.metrics
-            summary_confidences = result.summary_confidences
-            chains_in_order = np.unique(result.atom_array.chain_iid)
-
-            # Resolve chain of interest
-            if chain_of_interest is not None:
-                coi_unambiguous = True
+                logger.warning(f"RF3 early-stopped for {example_id} — persisting early-stop sentinel metrics")
+                metrics = _EARLY_STOP_METRICS.copy()
             else:
-                chain_of_interest, coi_unambiguous = get_chain_of_interest(prepared_array)
-            metrics["chain_of_interest"] = chain_of_interest if coi_unambiguous else None
+                result = results[example_id][0]
+                metrics = dict(result.metrics)
+                summary_confidences = result.summary_confidences or {}
+                chains_in_order = list(np.unique(result.atom_array.chain_iid))
 
-            if summary_confidences:
-                if "overall_plddt" in summary_confidences:
-                    metrics["overall_plddt"] = summary_confidences["overall_plddt"] * 100
-                if summary_confidences.get("ptm") is not None:
-                    metrics["overall_ptm"] = summary_confidences["ptm"] * 100.0
-                if "overall_pae" in summary_confidences:
-                    metrics["overall_pae"] = summary_confidences["overall_pae"]
-                if summary_confidences.get("ranking_score") is not None:
-                    metrics["ranking_score"] = float(summary_confidences["ranking_score"])
+                # Resolve chain of interest
+                if chain_of_interest is not None:
+                    coi_unambiguous = True
+                else:
+                    chain_of_interest, coi_unambiguous = get_chain_of_interest(prepared_array)
+                metrics["chain_of_interest"] = chain_of_interest if coi_unambiguous else None
 
-                # Chain-level and interface metrics for the chain of interest.
-                # chains_in_order contains chain_iid integers in sorted order, matching
-                # the indexing used in summary_confidences chain lists and chain_pair_* matrices.
-                if chain_of_interest is not None and chain_of_interest in chains_in_order:
-                    coi_idx = list(chains_in_order).index(chain_of_interest)
-                    n_chains = len(chains_in_order)
+                metrics.update(
+                    extract_confidence_metrics(
+                        summary_confidences=summary_confidences,
+                        chain_of_interest=chain_of_interest,
+                        chains_in_order=chains_in_order,
+                    )
+                )
 
-                    if "chain_plddt" in summary_confidences:
-                        metrics["plddt_coi"] = summary_confidences["chain_plddt"][coi_idx] * 100
-                    if "chain_ptm" in summary_confidences:
-                        metrics["ptm_coi"] = summary_confidences["chain_ptm"][coi_idx] * 100.0
-                    if "chain_pae" in summary_confidences:
-                        metrics["pae_coi"] = summary_confidences["chain_pae"][coi_idx]
-                    if "chain_pair_pae" in summary_confidences:
-                        vals = self._coi_interface_vals(summary_confidences["chain_pair_pae"], coi_idx, n_chains)
-                        if vals:
-                            metrics["ipae_coi"] = float(np.mean(vals))
-                    if "chain_pair_pae_min" in summary_confidences:
-                        vals = self._coi_interface_vals(summary_confidences["chain_pair_pae_min"], coi_idx, n_chains)
-                        if vals:
-                            metrics["min_ipae_coi"] = float(np.min(vals))
-                    if "chain_pair_iptm" in summary_confidences:
-                        vals = self._coi_interface_vals(summary_confidences["chain_pair_iptm"], coi_idx, n_chains)
-                        if vals:
-                            metrics["iptm_coi"] = float(np.mean(vals)) * 100.0
+                # Strip AtomArray values (not JSON-serialisable) and pick the structure to save
+                aligned_aa = [v for k, v in metrics.items() if k.endswith("aligned_predicted_structure")]
+                metrics = {k: v for k, v in metrics.items() if not k.endswith("aligned_predicted_structure")}
 
-            # Strip AtomArray values (not JSON-serialisable) and pick the structure to save
-            aligned_aa = [v for k, v in metrics.items() if k.endswith("aligned_predicted_structure")]
-            metrics = {k: v for k, v in metrics.items() if not k.endswith("aligned_predicted_structure")}
+                refolded_structure = (
+                    aligned_aa[0]
+                    if len(aligned_aa) == 1 and not np.isnan(aligned_aa[0].coord).all()
+                    else result.atom_array
+                )
 
-            refolded_structure = (
-                aligned_aa[0] if len(aligned_aa) == 1 and not np.isnan(aligned_aa[0].coord).all() else result.atom_array
-            )
-
-            if out_dir is not None and refolded_structure is not None:
-                cif_path = self.refolded_cif_path(out_dir, example_id)
-                cif_path.parent.mkdir(parents=True, exist_ok=True)
-                try:
+                if out_dir is not None and refolded_structure is not None:
+                    cif_path = self.refolded_cif_path(out_dir, example_id)
+                    cif_path.parent.mkdir(parents=True, exist_ok=True)
                     to_cif_file(refolded_structure, cif_path)
-                except Exception as e:
-                    logger.warning(f"Failed to save refolded CIF for {example_id}: {e}")
-
-            return metrics
-
-        except Exception as e:
-            logger.error(f"RF3 inference failed for {example_id}: {e}")
-            return {"plddt": 0.0, "ptm": 0.0, "iptm": 0.0, "pae": 100.0, "ipae": 100.0, "min_ipae": 100.0}
         finally:
             torch.cuda.set_device(original_device)
+
+        self._save_confidence_json(metrics, self.confidence_path(out_dir, example_id))
+        return metrics
+
+    def fold_batch(self, jobs: list[OracleJobInput]) -> int:
+        n_ok = 0
+        for job in jobs:
+            if self.already_refolded(job.out_dir, job.example_id):
+                continue
+            self.fold_one(job)
+            n_ok += 1
+        return n_ok
