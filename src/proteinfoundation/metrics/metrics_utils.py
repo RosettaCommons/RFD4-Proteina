@@ -9,25 +9,50 @@ The three MetricManager roles used here are:
 """
 
 import itertools
+import multiprocessing as mp
+import os
+import time
+from collections.abc import Callable, Iterator
+from concurrent.futures import Future, ProcessPoolExecutor
 from pathlib import Path
+from typing import Any, TypedDict
 
 import numpy as np
 from atomworks.common import exists
 from atomworks.io.parser import parse as _parse_structure
 from atomworks.io.utils.atom_array_plus import as_atom_array
+from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_DIS
 from atomworks.ml.preprocessing.utils.structure_utils import (
     get_atom_mask_from_cell_list,
 )
 from biotite.structure import AtomArray, AtomArrayStack, CellList, annotate_sse, gyration_radius
+from biotite.structure.io.pdb import PDBFile
+from biotite.structure.io.xtc import XTCFile
 from biotite.structure.residues import spread_residue_wise
+from omegaconf import OmegaConf
 
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.oracle_metric import OracleJobInput, OracleMetric
+from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+class ValOutput(TypedDict, total=False):
+    """One entry on :py:attr:`Proteina.validation_output_generation`."""
+
+    example_id: str
+    designed_structure_path: str
+    output_base_dir: str
+    metrics_tags: str  # comma-joined, e.g. "unindexed,3d_coordinate_conditioning,ame_refolding"
+    dataset_name: str | None
+    # In-memory copy of the just-generated structure, set by Proteina before
+    # writing the CIF. When present, some oracles may skip re-parsing the CIF
+    designed_atom_array: AtomArray
 
 
 def run_metrics_for_result(
@@ -40,30 +65,12 @@ def run_metrics_for_result(
     save_input_structure: bool = True,
     metrics_tags_override: list[str] | None = None,
 ) -> dict:
-    """Run metrics for a single generation result, matching the logic in validation_step.
+    """Run a metric manager against one (input, generated) pair.
 
-    Builds the proper extra_info (example_id, metrics_tags, output_base_dir,
-    chain_of_interest) and calls the metric manager with ground truth and prediction.
-
-    Args:
-        result: Single result dict from
-            :py:meth:`~proteinfoundation.proteina.Proteina.format_sample_prots_to_atom_arrays`,
-            with keys 'generated_atom_array', 'input_atom_array', and optionally
-            'prediction_metadata' and 'example_id'.
-        batch: Original input batch dict, used to extract metrics_tags.
-        batch_item_idx: Index into the batch for this result (for metrics_tags lookup).
-        metric_manager: MetricManager to call.
-        output_base_dir: Directory for saving metric outputs (e.g. folded structures).
-        example_id: Override for the example ID. If None, uses result['example_id'].
-            Pass this when a rank/job suffix is needed (as in validation_step).
-        save_input_structure: Whether to save the input structure alongside the refolded
-            output for RF3Metrics. Omitted during inference to avoid excess filesystem load.
-        metrics_tags_override: If provided, use these tags instead of the batch-derived
-            ones. Used by reward scoring to apply :py:attr:`~RewardModel.reward_metrics_tags`
-            independently of the dataset's own tags.
-
-    Returns:
-        Metrics output dictionary from MetricManager.
+    Builds ``extra_info`` (example_id, metrics_tags, chain_of_interest,
+    save_input_structure) and dispatches to ``metric_manager``.
+    ``metrics_tags_override`` overrides the per-batch tags (used by reward
+    scoring). ``chain_of_interest`` is always echoed back in the result.
     """
     if output_base_dir is not None:
         output_base_dir = Path(output_base_dir)
@@ -89,12 +96,13 @@ def run_metrics_for_result(
         },
         ground_truth_atom_array=result["input_atom_array"],
         predicted_atom_array=result["generated_atom_array"],
-        prediction_metadata=result.get("prediction_metadata"),
     )
+
     # Ensure chain_of_interest is always in the output regardless of which metrics are configured.
     # Only rf3_metric echoes it back; other metrics (af2, design) do not.
     if not any(k.endswith("chain_of_interest") for k in metrics_result):
         metrics_result["chain_of_interest"] = coi if coi_unambiguous else None
+
     return metrics_result
 
 
@@ -110,12 +118,7 @@ def normalize_to_atom_array_list(
 
 
 def unwrap_atom_array(x: "AtomArray | AtomArrayStack") -> AtomArray:
-    """Unwrap a single-structure input to a bare AtomArray.
-
-    Accepts a bare AtomArray or a single-element AtomArrayStack (as produced by
-    the inner RF3 MetricManager). Raises if given a stack with more than one
-    structure.
-    """
+    """Unwrap a single-structure input to a bare AtomArray."""
     if isinstance(x, AtomArrayStack):
         assert len(x) == 1, (
             f"Expected a single-element AtomArrayStack, got depth {len(x)}. " "Metrics expect one structure at a time."
@@ -254,17 +257,16 @@ def run_oracle_refolding_and_pass_criteria(
     )
 
     if exists(pass_mm):
-        result.update(
-            pass_mm(
-                network_input=None,
-                network_output=None,
-                extra_info={
-                    "example_id": example_id,
-                    "metrics_tags": metrics_tags or [],
-                    "metrics": {**(prior_metrics or {}), **result},
-                },
-            )
+        pass_output = pass_mm(
+            network_input=None,
+            network_output=None,
+            extra_info={
+                "example_id": example_id,
+                "metrics_tags": metrics_tags or [],
+                "metrics": {**(prior_metrics or {}), **result},
+            },
         )
+        result.update(pass_output)
 
     return result
 
@@ -349,3 +351,374 @@ def run_oracle_and_refolding_metrics(
     except Exception as e:
         logger.error(f"Refolding pipeline/metrics failed for {example_id}: {e}")
         return {}
+
+
+def _build_applicable_oracle_jobs(
+    val_outputs: list[ValOutput],
+    oracle_metric: OracleMetric,
+) -> list[OracleJobInput]:
+    """Filter ``val_outputs`` to those this oracle should refold and parse their CIFs.
+
+    Returns the list of :class:`OracleJobInput` that
+    :py:meth:`OracleMetric.fold_batch` accepts.
+    """
+    jobs: list[OracleJobInput] = []
+    for v in val_outputs:
+        tags = {t for t in v.get("metrics_tags", "").split(",") if t}
+        if not oracle_metric.applies_to_tags(tags):
+            continue
+        output_base_dir = v.get("output_base_dir")
+        if not output_base_dir:
+            continue
+        atom_array = v.get("designed_atom_array")
+        if atom_array is None:
+            logger.warning(f"fold_batch: no designed_atom_array for {v.get('example_id', 'sample')}, skipping.")
+            continue
+        atom_array = unwrap_atom_array(atom_array)
+        jobs.append(
+            OracleJobInput(
+                atom_array=atom_array,
+                example_id=v.get("example_id", "sample"),
+                out_dir=Path(output_base_dir),
+            )
+        )
+    return jobs
+
+
+def fold_designs_for_oracles(val_outputs: list[ValOutput], oracle_mm: MetricManager) -> None:
+    """Dispatch this rank's designs to each oracle's :py:meth:`OracleMetric.fold_batch`."""
+    for _, oracle_metric in oracle_mm.metrics.items():
+        jobs = _build_applicable_oracle_jobs(val_outputs, oracle_metric)
+        if jobs:
+            oracle_metric.fold_batch(jobs)
+
+
+def compute_oracle_metrics_for_val_output(
+    val_output: ValOutput,
+    oracle_mm: MetricManager | None,
+    refold_mm: MetricManager | None,
+    pass_mm: MetricManager | None,
+    prior_design_metrics_by_id: dict[str, dict],
+) -> dict | None:
+    """Run oracle + refolding + pass_criteria for one design.
+
+    Reads the designed structure, calls :py:func:`run_oracle_refolding_and_pass_criteria`
+    to merge the oracle cache hit, refolding metrics, and pass criteria, and
+    annotates the result with the designed-structure path and dataset name.
+
+    Returns ``None`` if the designed structure is missing on disk.
+    """
+    example_id = val_output.get("example_id", "unknown")
+    designed_path = val_output.get("designed_structure_path")
+    output_base_dir = val_output.get("output_base_dir")
+    metrics_tags_str = val_output.get("metrics_tags", "")
+    metrics_tags = [t for t in metrics_tags_str.split(",") if t] if metrics_tags_str else []
+
+    atom_array = val_output.get("designed_atom_array")
+    if atom_array is None:
+        logger.warning(f"Oracle loop: no designed_atom_array for {example_id}, skipping.")
+        return None
+    atom_array = unwrap_atom_array(atom_array)
+
+    output_dir = Path(output_base_dir) if output_base_dir else None
+    result = run_oracle_refolding_and_pass_criteria(
+        atom_array=atom_array,
+        example_id=example_id,
+        output_dir=output_dir,
+        oracle_mm=oracle_mm,
+        refold_mm=refold_mm,
+        pass_mm=pass_mm,
+        metrics_tags=metrics_tags,
+        prior_metrics=prior_design_metrics_by_id.get(example_id),
+    )
+    if result is None:
+        return None
+
+    result["designed_structure_path"] = designed_path
+    result["dataset_name"] = val_output.get("dataset_name")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Process-pool worker plumbing. The pool runs `_stage_generated_structure`
+# (per-structure metrics + CIF writes) during validation and `_stage_post_fold`
+# (refold + pass criteria) at epoch end. Workers are spawn-context.
+# ---------------------------------------------------------------------------
+
+_WORKER_MMS: dict[str, MetricManager | None] = {}
+
+
+def _metrics_worker_init(mm_cfgs: dict[str, Any], val_dataset_tags: Any) -> None:
+    """Worker initializer: rebuild the four MMs from configs.
+    Skips ``setup()`` for the oracle MM (would load GPU weights)."""
+    for name, cfg in mm_cfgs.items():
+        if cfg is None:
+            _WORKER_MMS[name] = None
+            continue
+        mm = MetricManager.instantiate_from_hydra(cfg)
+        if name != "oracle":
+            mm.on_validation_epoch_start(val_dataset_tags=val_dataset_tags)
+        _WORKER_MMS[name] = mm
+
+
+def _write_chain_only_pdb_if_unambiguous(atom_array: AtomArray, generated_output_path: Path) -> Path | None:
+    """Write a chain-of-interest-only PDB beside the design's CIF for foldseek."""
+    coi, coi_unambiguous = get_chain_of_interest(atom_array)
+    if not coi_unambiguous:
+        return None
+    chain_attr = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
+    coi_array = atom_array[atom_array.get_annotation(chain_attr) == coi]
+    foldseek_input_path = generated_output_path.with_name(generated_output_path.stem + "_chain_only.pdb")
+    pdb_file = PDBFile()
+    pdb_file.set_structure(coi_array)
+    pdb_file.write(foldseek_input_path)
+    return foldseek_input_path
+
+
+def _stage_generated_structure(payload: dict, generated_structure_mm: MetricManager | None = None) -> dict:
+    """Worker: per-structure metrics + final disk writes for one example.
+
+    - Annotate unindexed-region insertion (folds C_CRD into ``SA_CRDSRC``).
+    - Run the per-structure MetricManager via ``run_metrics_for_result``.
+    - Write the final CIF (post-unindex, or aligned variant from the MM)
+      and a chain-only PDB for foldseek.
+    - Optionally write input CIF + trajectory snapshots (offloaded here so
+      validation_step doesn't block on disk I/O).
+    """
+    if generated_structure_mm is None:
+        generated_structure_mm = _WORKER_MMS.get("generated_structure")
+    example_id = payload.get("example_id", "sample")
+    if generated_structure_mm is None:
+        return {"example_id": example_id}
+
+    array_to_annotate = payload.get("full_array_with_unindexed") or payload["generated_atom_array"]
+    generated_array = annotate_unindexed_insertion(
+        array_to_annotate,
+        insert_unindexed_regions=payload.get("insert_unindexed_regions", False),
+        inputs_in_same_frame=True,
+    )
+
+    result = {
+        "generated_atom_array": generated_array,
+        "input_atom_array": payload.get("input_atom_array"),
+        "example_id": example_id,
+    }
+    output_base_dir = Path(payload["output_base_dir"]) if payload.get("output_base_dir") else None
+    save_input = bool(payload.get("save_input", True))
+    metrics_result = run_metrics_for_result(
+        result=result,
+        batch={},
+        batch_item_idx=0,
+        metric_manager=generated_structure_mm,
+        output_base_dir=output_base_dir,
+        example_id=example_id,
+        save_input_structure=save_input,
+        metrics_tags_override=payload.get("metrics_tags") or [],
+    )
+
+    aligned = [v for k, v in metrics_result.items() if k.endswith("aligned_predicted_structure")]
+    metrics_result = {k: v for k, v in metrics_result.items() if not k.endswith("aligned_predicted_structure")}
+
+    gen_path = payload.get("generated_output_path")
+    foldseek_input_path: Path | None = None
+    if gen_path is not None:
+        gen_path = Path(gen_path)
+        try:
+            if len(aligned) == 1 and not np.isnan(aligned[0].coord).all():
+                to_cif_file(aligned[0], gen_path)
+            else:
+                to_cif_file(generated_array, gen_path)
+        except Exception as e:
+            logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
+        try:
+            foldseek_input_path = _write_chain_only_pdb_if_unambiguous(generated_array, gen_path)
+        except Exception as e:
+            logger.warning(f"generated-structure worker: failed to pre-extract chain-only PDB for {example_id}: {e}")
+            foldseek_input_path = None
+
+    if save_input:
+        _write_input_cif(payload, example_id)
+    _write_trajectories_if_present(payload, example_id)
+
+    metrics_result["designed_atom_array"] = generated_array
+    if foldseek_input_path is not None:
+        metrics_result["designed_chain_path"] = str(foldseek_input_path.resolve())
+    return metrics_result
+
+
+def _write_input_cif(payload: dict, example_id: str) -> None:
+    """Save the input AtomArray to ``output_base/input/{example_id}_input.cif``."""
+    input_atom_array = payload.get("input_atom_array")
+    output_base_dir = payload.get("output_base_dir")
+    if input_atom_array is None or output_base_dir is None:
+        return
+    save_path = Path(output_base_dir) / "input" / f"{example_id}_input.cif"
+    try:
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        to_cif_file(input_atom_array, save_path)
+    except Exception as e:
+        logger.warning(f"generated-structure worker: failed to save input CIF to {save_path}: {e}")
+
+
+def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
+    """Write trajectory snapshots. ``payload['trajectories']`` maps key → (array, step_labels).
+
+    step_labels is an int array → XTC (fixed CA-per-residue atom count); ``None`` → multi-model CIF.
+    """
+    trajectories = payload.get("trajectories") or {}
+    output_base_dir = payload.get("output_base_dir")
+    if not trajectories or output_base_dir is None:
+        return
+    traj_dir = Path(output_base_dir) / "trajectories"
+    traj_dir.mkdir(parents=True, exist_ok=True)
+
+    for traj_key, (traj, step_labels) in trajectories.items():
+        if traj is None:
+            continue
+        try:
+            if step_labels is not None:
+                # XTC; write a CA-only CIF as the topology reference.
+                generated_array = payload["generated_atom_array"]
+                predicted_bb_ca = generated_array[generated_array.atom_name == "CA"]
+                to_cif_file(predicted_bb_ca, traj_dir / f"{example_id}_{traj_key}_bb_ca.cif")
+                xtc_file = XTCFile()
+                xtc_file.set_structure(traj, time=step_labels)
+                xtc_file.write(str(traj_dir / f"{example_id}_{traj_key}.xtc"))
+            else:
+                to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
+        except Exception as e:
+            logger.warning(f"generated-structure worker: failed to save {traj_key} for {example_id}: {e}")
+
+
+def _stage_post_fold(payload: dict) -> dict | None:
+    """Worker: oracle-cache read + refolding metrics + pass criteria for one design."""
+    val_output = payload["val_output"]
+    design_metrics = payload.get("design_metrics") or {}
+    return compute_oracle_metrics_for_val_output(
+        val_output,
+        oracle_mm=_WORKER_MMS.get("oracle"),
+        refold_mm=_WORKER_MMS.get("refold"),
+        pass_mm=_WORKER_MMS.get("pass"),
+        prior_design_metrics_by_id={val_output.get("example_id", ""): design_metrics},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Metrics pool: per-rank ProcessPoolExecutor wrapping the staged workers.
+# ---------------------------------------------------------------------------
+
+
+def auto_pick_metrics_workers(cfg_exp: Any) -> int:
+    """Pick metrics-pool worker count from cfg.
+    -1 → ``min(8, available - 1 - val_dl_workers)``; ≥0 honoured as explicit cap."""
+    configured = int(OmegaConf.select(cfg_exp, "dataloaders.metrics.num_workers", default=-1))
+    if configured >= 0:
+        return configured
+    try:
+        available = len(os.sched_getaffinity(0))
+    except AttributeError:
+        available = os.cpu_count() or 1
+    val_dl_workers = int(OmegaConf.select(cfg_exp, "dataloaders.val.dataloader_params.num_workers", default=0) or 0)
+    n = max(0, min(8, available - 1 - val_dl_workers))
+    logger.info(f"Metrics pool: auto-picked {n} workers (available={available}, val_dl={val_dl_workers}).")
+    return n
+
+
+def resolve_metric_manager_cfgs(cfg_exp: Any) -> dict[str, Any]:
+    """Resolve the four MetricManager subtrees the workers re-instantiate."""
+    metrics_cfg = cfg_exp.get("metrics") if cfg_exp is not None else None
+
+    def _resolve(key: str) -> Any:
+        if metrics_cfg is None:
+            return None
+        sub = metrics_cfg.get(key)
+        return OmegaConf.to_container(sub, resolve=True) if sub is not None else None
+
+    return {
+        "generated_structure": _resolve("inline_metrics"),
+        "oracle": _resolve("refolding_oracles"),
+        "refold": _resolve("refolding_metrics"),
+        "pass": _resolve("pass_criteria"),
+    }
+
+
+def _completed(value: Any) -> Future:
+    """Pre-completed Future wrapping ``value`` (uniform handling for inline results)."""
+    fut: Future = Future()
+    fut.set_result(value)
+    return fut
+
+
+class MetricsPool:
+    """Per-rank worker pool for per-structure + post-fold metrics.
+
+    ``num_workers <= 0`` disables the pool and runs every stage inline.
+    """
+
+    def __init__(self, num_workers: int, mm_cfgs: dict[str, Any]) -> None:
+        self.num_workers = num_workers
+        self._mm_cfgs = mm_cfgs
+        self._executor: ProcessPoolExecutor | None = None
+        self._futures: list[tuple[str, Future]] = []
+
+    def start(self, val_dataset_tags: Any) -> None:
+        """Lazily create the executor (idempotent)."""
+        if self.num_workers <= 0 or self._executor is not None:
+            return
+        self._executor = ProcessPoolExecutor(
+            max_workers=self.num_workers,
+            mp_context=mp.get_context("spawn"),
+            initializer=_metrics_worker_init,
+            initargs=(self._mm_cfgs, val_dataset_tags),
+        )
+        logger.info(f"Metrics pool: started with {self.num_workers} spawn workers")
+
+    def shutdown(self) -> None:
+        if self._executor is None:
+            return
+        self._executor.shutdown(wait=True, cancel_futures=False)
+        self._executor = None
+
+    def submit_generated_structure(self, example_id: str, payload: dict, fallback_mm: MetricManager | None) -> None:
+        """Dispatch one generated structure; runs inline when the pool is disabled."""
+        if self._executor is not None:
+            fut = self._executor.submit(_stage_generated_structure, payload)
+        else:
+            fut = _completed(_stage_generated_structure(payload, fallback_mm))
+        self._futures.append((example_id, fut))
+
+    def drain_generated_structure(self) -> dict[str, dict]:
+        """Drain submitted futures into one ``{example_id: metrics}`` map.
+
+        Re-raises the first worker exception. ``_futures`` is cleared first
+        so the pool is left in a clean state for re-use even on failure.
+        """
+        if not self._futures:
+            return {}
+        t0 = time.perf_counter()
+        futures = self._futures
+        self._futures = []
+        out: dict[str, dict] = {}
+        try:
+            for example_id, fut in futures:
+                out[example_id] = fut.result()
+        finally:
+            dt = time.perf_counter() - t0
+            logger.info(f"[metrics-pool] drain: n={len(futures)} workers={self.num_workers} wall={dt:.2f}s")
+        return out
+
+    def map_post_fold(self, payloads: list[dict], inline_fn: Callable[[dict], dict | None]) -> Iterator[dict | None]:
+        """Run ``_stage_post_fold`` on each payload — pool when available, else inline."""
+        n = len(payloads)
+        t0 = time.perf_counter()
+        mode = "pool" if self._executor is not None and payloads else "inline"
+        if self._executor is not None and payloads:
+            yield from self._executor.map(_stage_post_fold, payloads, chunksize=1)
+        else:
+            for p in payloads:
+                yield inline_fn(p)
+        dt = time.perf_counter() - t0
+        logger.info(
+            f"[metrics-pool] post-fold {mode}: n={n} workers={self.num_workers} "
+            f"wall={dt:.2f}s avg={dt / max(n, 1) * 1000:.0f}ms/ex"
+        )

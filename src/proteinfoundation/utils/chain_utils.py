@@ -16,7 +16,8 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
 
     The chain of interest corresponds to the primary designed chain, and is determined by the following heuristic:
     1. If there is only one unique chain, return that chain.
-    2. Subset to only consider protein chains.
+    2. Subset to only consider protein chains. If none remain, return the first
+       chain in sorted order with a warning.
     3. Subset to chains with FEWEST coordinate conditioned atoms (absolute or internal).
     4. Subset to chains with FEWEST absolute coordinate conditioned atoms.
     5. Subset to chains with FEWEST distance conditioned atoms.

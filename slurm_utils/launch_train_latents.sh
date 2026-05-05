@@ -201,10 +201,17 @@ SCRIPT_TRAIN="$CODE_DIR/projects/proteinfoundation/proteinfoundation/train.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: shebang in train.py handles container execution via exec_core.sh
+    if [ "$AF3_NEEDED" == "true" ]; then
+        echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
+        emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+    else
+        echo "  No AF3Oracle in resolved config — skipping AF3 daemon pre-spawn (saves ~10 GB/node)"
+    fi
+
     cat >> "$SBATCH_FILE" << EOF
 
-# Run training (shebang handles apptainer container)
-srun --cpu-bind=none --kill-on-bad-exit $SCRIPT_TRAIN $EXTRA_ARGS
+# Training. --overlap so it can coexist with the AF3 daemon step on the same nodes.
+srun --cpu-bind=none --kill-on-bad-exit --export=ALL --overlap $SCRIPT_TRAIN $EXTRA_ARGS
 EOF
 else
     CONTAINER_CMD=$(get_srun_cmd)

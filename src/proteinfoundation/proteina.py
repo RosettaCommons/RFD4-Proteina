@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from proteinfoundation.rewards.reward_model import RewardModel
     from proteinfoundation.search.base_strategy import SearchStrategy
 
-import biotite.structure.io.xtc as xtc
 import lightning as L
 import numpy as np
 import pandas as pd
@@ -20,13 +19,12 @@ import torch.distributed as dist
 import wandb
 from atomworks.common import exists
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
 from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
-from atomworks.ml.utils.token import apply_and_spread_token_wise, apply_token_wise, get_token_count, get_token_starts
+from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_token_starts
 from jaxtyping import Bool, Float
 from lightning_utilities import apply_to_collection
 from omegaconf import DictConfig, OmegaConf
@@ -36,19 +34,25 @@ from torch import Tensor
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.logging import print_df_as_table, safe_print
-from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
+from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
-from proteinfoundation.inference_utils.aggregate_metrics import (
+from proteinfoundation.inference_utils.foldseek import (
     add_diversity_summary_metrics,
-    add_foldseek_diversity_to_per_example_df,
+    apply_cluster_map_to_metrics,
+    run_foldseek_distributed,
 )
-from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
+from proteinfoundation.metrics.metrics_utils import (
+    MetricsPool,
+    auto_pick_metrics_workers,
+    compute_oracle_metrics_for_val_output,
+    fold_designs_for_oracles,
+    resolve_metric_manager_cfgs,
+)
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
-from proteinfoundation.transforms.unindexing import process_unindexed_outputs
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
@@ -201,6 +205,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
             "example_id",
             "task",
             "designed_structure_path",
+            "designed_chain_path",
             "ckpt_path",
             "ckpt_name",
             "output_base_dir",
@@ -269,6 +274,12 @@ class Proteina(L.LightningModule):
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
 
         self.configure_metrics(cfg_exp.metrics)
+
+        # Per-rank worker pool for design + post-fold metrics. See `MetricsPool`.
+        self._metrics_pool = MetricsPool(
+            num_workers=auto_pick_metrics_workers(cfg_exp),
+            mm_cfgs=resolve_metric_manager_cfgs(cfg_exp),
+        )
 
         if autoencoder_ckpt_path is not None:
             # Allow adding new keys
@@ -800,9 +811,20 @@ class Proteina(L.LightningModule):
                 sync_dist=True,
             )
 
+    def on_validation_start(self) -> None:
+        """Bring up the per-rank metrics pool."""
+        self._metrics_pool.start(self.val_dataset_tags)
+
+    def on_validation_end(self) -> None:
+        self._metrics_pool.shutdown()
+
     def on_validation_epoch_start(self) -> None:
         """Re-initialize validation outputs at the start of each validation epoch."""
         self.validation_output_generation = []
+
+        # Tracks whether oracle/refold/pass MMs were set up in this epoch
+        # to avoid double-setup
+        self._oracle_mms_setup_this_epoch = False
 
         reward_metrics_tags = (
             self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
@@ -812,9 +834,6 @@ class Proteina(L.LightningModule):
         if self.design_metric_manager is not None:
             self.design_metric_manager.on_validation_epoch_start(val_dataset_tags=combined_tags)
 
-        # Set up oracle/refolding/pass managers early only when a search strategy will
-        # need them during validation_step (beam/bestofn scoring).  For vanilla runs,
-        # defer to on_validation_epoch_end Phase B to save memory.
         if reward_metrics_tags:
             for mm in [
                 self.oracle_metric_manager,
@@ -823,6 +842,9 @@ class Proteina(L.LightningModule):
             ]:
                 if mm is not None:
                     mm.on_validation_epoch_start(val_dataset_tags=combined_tags)
+
+            # We just set up the metric managers - ensure we don't set them up again later
+            self._oracle_mms_setup_this_epoch = True
 
     def validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
         """
@@ -924,9 +946,7 @@ class Proteina(L.LightningModule):
 
         example_id_batch = batch.get("example_id_batch", [])
         n_batch = len(example_id_batch)
-        for i in range(len(generation_list)):  # metrics were not written for batches
-            # Fresh per-iteration dict (ensure we don't reuse and mutate across iterations)
-            metrics_output: dict = {}
+        for i in range(len(generation_list)):
             orig_batch_idx = i % n_batch if n_batch > 0 else 0
             raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
 
@@ -935,31 +955,10 @@ class Proteina(L.LightningModule):
             if base_id == raw_batch_id and len(generation_list) > n_batch:
                 base_id = f"{base_id}_s{i}"
 
-            # Prefix with dataset_name so two val datasets that share task keys
-            # don't produce colliding ids in the cross-rank merge.
-            example_id = f"{dataset_name}{base_id}{output_suffix}"
-            prediction_metadata = generation_list[i]["prediction_metadata"]
+            # `/` → `_` because dataset_name may be a path; otherwise example_id-as-filename escapes output_base.
+            example_id = f"{dataset_name.replace('/', '_')}__{base_id}{output_suffix}"
 
-            # Log unindexed insertion RMSD to console (this is the motif RMSD)
-            if prediction_metadata and "insertion_rmsd" in prediction_metadata:
-                logger.info(
-                    f"[{dataset_name}] {example_id}: insertion_rmsd={prediction_metadata['insertion_rmsd']:.3f}Å, "
-                    f"insertion_mae={prediction_metadata.get('insertion_mae', 0.0):.3f}Å"
-                )
-
-            if self.design_metric_manager is not None:
-                metrics_output = run_metrics_for_result(
-                    result=generation_list[i],
-                    batch=batch,
-                    batch_item_idx=orig_batch_idx,
-                    metric_manager=self.design_metric_manager,
-                    output_base_dir=output_base,
-                    example_id=example_id,
-                    save_input_structure=not self.is_inference,
-                )
-            # Set example_id AFTER run_metrics_for_result reassigns metrics_output,
-            # otherwise mutating the prior iteration's already-appended dict.
-            metrics_output["example_id"] = example_id
+            metrics_output: dict = {"example_id": example_id}
 
             if per_example_losses is not None:
                 for k, v in per_example_losses.items():
@@ -969,67 +968,11 @@ class Proteina(L.LightningModule):
                     v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
                 )
 
-            # Optionally save an aligned version of the predicted structure
-            aligned_aa = []
-            for metric_name in metrics_output:
-                if metric_name.endswith("aligned_predicted_structure"):
-                    aligned_aa.append(metrics_output[metric_name])
-            metrics_output = {k: v for k, v in metrics_output.items() if not k.endswith("aligned_predicted_structure")}
-
-            # If the model failed to reproduce the motif, the aligned coords would be all NaNs
-            if (len(aligned_aa) == 1) and not np.isnan(aligned_aa[0].coord).all():
-                predicted_structure_to_save = aligned_aa[0]
-            else:
-                predicted_structure_to_save = generation_list[i]["generated_atom_array"]
-
-            # Save CIF files incrementally with rank suffix in filename
+            # Generated CIF path the worker writes to
             if not self.is_inference:
-                # Skip input saving during inference to lighten the filesystem load
-                to_cif_file(
-                    generation_list[i]["input_atom_array"],
-                    output_base / "input" / f"{example_id}_input.cif",
-                )
                 generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
             else:
                 generated_output_path = output_base / f"{example_id}_generated.cif"
-
-            to_cif_file(
-                predicted_structure_to_save,
-                generated_output_path,
-            )
-
-            # Save trajectories if present.
-            # bb_ca_only=True  → XTC (fixed CA-per-residue atom count required by XTC format)
-            # bb_ca_only=False → CIF (all-atom trajectories have variable atom counts per step)
-            bb_ca_only = self.inf_cfg is not None and self.inf_cfg.args.get("bb_ca_only_trajectories", False)
-            for traj_key in ["trajectory_x1", "trajectory_xt"]:
-                if traj_key not in generation_list[i]:
-                    continue
-                traj_dir = output_base / "trajectories"
-                traj_dir.mkdir(parents=True, exist_ok=True)
-                traj = generation_list[i][traj_key]
-
-                if bb_ca_only:
-                    # Fixed atom count (one CA per residue) → XTC.
-                    # Save a CA-only CIF as the topology reference for the XTC file.
-                    predicted_bb_ca = predicted_structure_to_save[predicted_structure_to_save.atom_name == "CA"]
-                    to_cif_file(
-                        predicted_bb_ca,
-                        traj_dir / f"{example_id}_{traj_key}_bb_ca.cif",
-                    )
-
-                    save_trajectory_every = self.inf_cfg is not None and self.inf_cfg.args.get(
-                        "save_trajectory_every", 0
-                    )
-                    step_labels = np.arange(traj.stack_depth()) * save_trajectory_every
-                    step_labels[-1] = self.inf_cfg.args.nsteps
-
-                    xtc_file = xtc.XTCFile()
-                    xtc_file.set_structure(traj, time=step_labels)
-                    xtc_file.write(traj_dir / f"{example_id}_{traj_key}.xtc")
-                else:
-                    # All-atom: variable sidechain atom counts across steps → multi-model CIF.
-                    to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
 
             # Add dataset_name and task as metadata
             metrics_output["dataset_name"] = dataset_name
@@ -1063,25 +1006,25 @@ class Proteina(L.LightningModule):
                     for key, value in flat_spec.items():
                         metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
 
-            # Add insertion RMSD metrics to output for epoch-end aggregation
-            if prediction_metadata and "insertion_rmsd" in prediction_metadata:
-                metrics_output["insertion_rmsd"] = prediction_metadata["insertion_rmsd"]
-                metrics_output["insertion_mae"] = prediction_metadata.get("insertion_mae", 0.0)
-                metrics_output["insertion_rmcd"] = prediction_metadata.get("insertion_rmcd", 0.0)
-                if "join_point_rmsd" in prediction_metadata:
-                    metrics_output["join_point_rmsd"] = prediction_metadata["join_point_rmsd"]
-
             metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
             metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
             metrics_output["output_base_dir"] = str(output_base)
-            # _clean_metrics_dict drops non-numeric/string fields, so this is local-only.
-            metrics_output["generated_atom_array"] = generation_list[i]["generated_atom_array"]
+
             # Store metrics_tags for the oracle loop in on_validation_epoch_end
             metrics_tags_batch = batch.get("metrics_tags_batch", [])
             _tags = metrics_tags_batch[orig_batch_idx] if orig_batch_idx < len(metrics_tags_batch) else []
             metrics_output["metrics_tags"] = ",".join(_tags) if _tags else ""
+
+            staged_payload = None
+            if self.design_metric_manager is not None:
+                staged_payload = self._build_staged_payload(
+                    generation_list[i], example_id, list(_tags), output_base, generated_output_path
+                )
+
             # Store for epoch-end aggregation
             self.validation_output_generation.append(metrics_output)
+            if staged_payload is not None:
+                self._metrics_pool.submit_generated_structure(example_id, staged_payload, self.design_metric_manager)
 
         return metrics_output
 
@@ -1105,50 +1048,55 @@ class Proteina(L.LightningModule):
     def on_validation_epoch_end(self) -> None:
         """Aggregate and log generation validation metrics from all ranks.
 
-        Four-phase flow:
-          Phase A — DDP gather design metrics; rank 0 saves crash-safe design CSV.
-          Phase B — All ranks run oracle + refolding + pass_criteria.
-          Phase C — DDP gather refolding metrics; rank > 0 exits.
-          Phase D — Rank 0 merges design + refolding, applies foldseek, saves one CSV, logs.
+        Steps (in order):
+          1. Drain per-structure metric futures into ``validation_output_generation`` (all ranks).
+          2. Gather per-design metrics to rank 0 (DDP).
+          3. Run oracle fold + refolding + pass_criteria (all ranks).
+          4. Gather refolding metrics to rank 0 (DDP).
+          5. Distributed foldseek clustering across ranks (DDP scatter+gather;
+             no-op for ``world_size == 1`` or ``FOLDSEEK_EXEC`` unset).
+          6. Rank 0 merges design+refold metrics, applies cluster IDs, runs the
+             in-process foldseek fallback for any groups not covered by step 5,
+             and writes the CSV.
         """
 
+        # 1. Drain per-structure metric futures + merge into validation_output_generation.
+        staged_results_by_id = self._metrics_pool.drain_generated_structure()
+        if staged_results_by_id:
+            for entry in self.validation_output_generation:
+                eid = entry.get("example_id")
+                if eid in staged_results_by_id:
+                    for k, v in staged_results_by_id[eid].items():
+                        entry.setdefault(k, v)
         if self.design_metric_manager is not None:
             self.design_metric_manager.on_validation_epoch_end()
 
-        # ------------------------------------------------------------------
-        # Phase A: gather design metrics from all ranks
-        # ------------------------------------------------------------------
+        # 2. Gather per-design metrics to rank 0 (DDP collective).
         local_design_metrics = [
             c for m in self.validation_output_generation if (c := _clean_metrics_dict(m)) is not None
         ]
-
         all_design_metrics = self._gather_metrics(local_design_metrics)
 
         metrics_dir = Path(self.store_dir) / ("val_metrics" if not self.is_inference else "inference_metrics")
 
-        # ------------------------------------------------------------------
-        # Phase B: oracle + refolding + pass_criteria (all ranks, per-rank)
-        # ------------------------------------------------------------------
+        # 3. Oracle (fold) + refolding + pass_criteria, per rank.
         oracle_mm = self.oracle_metric_manager
         refold_mm = self.refolding_metric_manager
         pass_mm = self.pass_criteria_metric_manager
 
-        # For vanilla (non-search) runs the oracle managers were not set up in
-        # on_validation_epoch_start to avoid holding their weights in memory during
-        # diffusion.  Set them up now before the oracle loop.
-        reward_metrics_tags = (
-            self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
-        )
-        if not reward_metrics_tags:
+        # Non-search runs deferred MM setup until now so weight-loading oracles
+        # (e.g. RF3) don't sit on GPU during diffusion; daemon oracles (AF3) don't
+        # care. Search runs already set up these managers in on_validation_epoch_start.
+        if not self._oracle_mms_setup_this_epoch:
+            # Set up the oracle metric managers, if not already set up by the search
+            # strategy in on_validation_epoch_start.
             for mm in [oracle_mm, refold_mm, pass_mm]:
                 if mm is not None:
                     mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
+            self._oracle_mms_setup_this_epoch = True
 
         local_refolding_metrics: list[dict] = []
-
         example_id_to_design_metrics = {m["example_id"]: m for m in (local_design_metrics or []) if m}
-
-        # Sort by n_tokens ascending to avoid unnecessary recompilation of oracles
         items = sorted(
             self.validation_output_generation,
             key=lambda it: example_id_to_design_metrics.get(it.get("example_id", ""), {}).get(
@@ -1156,26 +1104,52 @@ class Proteina(L.LightningModule):
             ),
         )
 
-        for item in items:
-            result = self._run_oracle_loop_item(item, oracle_mm, refold_mm, pass_mm, example_id_to_design_metrics)
+        # 3b. Oracle fold_batch — the actual structure prediction (AF3 or RF3).
+        if oracle_mm is not None:
+            fold_designs_for_oracles(items, oracle_mm)
+
+        post_fold_payloads = [
+            {
+                "val_output": item,
+                "design_metrics": example_id_to_design_metrics.get(item.get("example_id", ""), {}),
+            }
+            for item in items
+        ]
+
+        def _post_fold_inline(payload: dict) -> dict | None:
+            return compute_oracle_metrics_for_val_output(
+                payload["val_output"],
+                oracle_mm,
+                refold_mm,
+                pass_mm,
+                prior_design_metrics_by_id={
+                    payload["val_output"].get("example_id", ""): payload.get("design_metrics") or {}
+                },
+            )
+
+        # 3c. Post-fold metrics (refolding RMSDs, pass criteria) on workers.
+        for result in self._metrics_pool.map_post_fold(post_fold_payloads, _post_fold_inline):
             if exists(result):
                 local_refolding_metrics.append(result)
-
         for mm in [oracle_mm, refold_mm, pass_mm]:
             if exists(mm):
                 mm.on_validation_epoch_end()
 
-        # ------------------------------------------------------------------
-        # Phase C: gather refolding metrics from all ranks
-        # ------------------------------------------------------------------
+        # 4. Gather refolding metrics to rank 0.
         all_refolding_metrics = self._gather_metrics(local_refolding_metrics)
 
-        if self.global_rank != 0:
-            return  # rank > 0 exits after Phase C gather
+        # 5. Distributed foldseek (no-op for world_size==1 / FOLDSEEK_EXEC unset).
+        foldseek_cluster_map = run_foldseek_distributed(
+            all_design_metrics,
+            world_size=self.trainer.world_size,
+            global_rank=self.global_rank,
+            is_inference=self.is_inference,
+        )
 
-        # ------------------------------------------------------------------
-        # Phase D: rank 0 merges design + refolding, applies foldseek, saves one CSV, logs
-        # ------------------------------------------------------------------
+        if self.global_rank != 0:
+            return  # non-zero ranks exit after the foldseek-step collectives
+
+        # 6. Rank 0 writes the per-example CSV + summary logs.
         if not all_design_metrics and not all_refolding_metrics:
             logger.warning("on_validation_epoch_end_generation: no metrics to log")
             return
@@ -1192,6 +1166,9 @@ class Proteina(L.LightningModule):
 
         if not combined_metrics:
             return
+
+        # Merge distributed-foldseek cluster IDs into combined_metrics.
+        apply_cluster_map_to_metrics(combined_metrics, foldseek_cluster_map)
 
         self._save_and_log_csv(combined_metrics, metrics_dir, csv_stem="per_example_metrics")
 
@@ -1228,31 +1205,16 @@ class Proteina(L.LightningModule):
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
 
-        # Foldseek clustering (skipped during inference; separate script handles that).
-        if (
-            not self.is_inference
-            and os.getenv("FOLDSEEK_EXEC") is not None
-            and "designed_structure_path" in per_example_df.columns
-            and "chain_of_interest" in per_example_df.columns
-        ):
-            foldseek_tmp = str(metrics_dir / "foldseek_tmp")
+        # Foldseek cluster IDs were already populated by :py:func:`run_foldseek_distributed`
+        # in :py:meth:`on_validation_epoch_end` (covers both single-process and DDP).
+        if "foldseek_cluster_id" in per_example_df.columns and per_example_df["foldseek_cluster_id"].notna().any():
             try:
-                per_example_df = add_foldseek_diversity_to_per_example_df(
+                per_example_df = add_diversity_summary_metrics(
                     per_example_df,
                     group_by=["dataset_name", "task"],
-                    tmp_path=foldseek_tmp,
-                    timeout=self.cfg_exp.opt.get("foldseek_timeout_minutes", 25) * 60,
                 )
             except Exception as e:
-                logger.warning(f"Foldseek clustering failed, skipping cluster metrics: {e}")
-            else:
-                try:
-                    per_example_df = add_diversity_summary_metrics(
-                        per_example_df,
-                        group_by=["dataset_name", "task"],
-                    )
-                except Exception as e:
-                    logger.warning(f"Foldseek diversity summary metrics failed, skipping cluster metrics: {e}")
+                logger.warning(f"Foldseek diversity summary metrics failed, skipping cluster metrics: {e}")
 
         per_example_path = metrics_dir / f"{output_prefix}{csv_stem}{output_suffix}.csv"
         per_example_df.to_csv(per_example_path, index=False)
@@ -1299,41 +1261,6 @@ class Proteina(L.LightningModule):
                 {f"val_generation_{row['dataset']}/{row['metric']}": row["value"] for _, row in agg_df.iterrows()},
                 step=self.global_step,
             )
-
-    def _run_oracle_loop_item(
-        self,
-        item: dict,
-        oracle_mm: MetricManager | None,
-        refold_mm: MetricManager | None,
-        pass_mm: MetricManager | None,
-        example_id_to_design_metrics: dict[str, dict],
-    ) -> dict | None:
-        """Run oracle + refolding + pass_criteria for one item from validation_output_generation."""
-        example_id = item.get("example_id", "unknown")
-        designed_path = item.get("designed_structure_path")
-        output_base_dir = item.get("output_base_dir")
-        metrics_tags_str = item.get("metrics_tags", "")
-        metrics_tags = [t for t in metrics_tags_str.split(",") if t] if metrics_tags_str else []
-
-        atom_array = item["generated_atom_array"]
-
-        output_dir = Path(output_base_dir) if output_base_dir else None
-        result = run_oracle_refolding_and_pass_criteria(
-            atom_array=atom_array,
-            example_id=example_id,
-            output_dir=output_dir,
-            oracle_mm=oracle_mm,
-            refold_mm=refold_mm,
-            pass_mm=pass_mm,
-            metrics_tags=metrics_tags,
-            prior_metrics=example_id_to_design_metrics.get(example_id),
-        )
-        if result is None:
-            return None
-
-        result["designed_structure_path"] = designed_path
-        result["dataset_name"] = item.get("dataset_name")
-        return result
 
     def configure_metrics(
         self,
@@ -1565,69 +1492,66 @@ class Proteina(L.LightningModule):
         batch_idx: int = 0,
         bb_ca_only: bool = False,
     ) -> dict:
-        """Process a single sample from sample_prots format to atom array result.
+        """Convert one sample's tensor outputs into output AtomArrays.
+
+        Cheap "format" step: tensor → AtomArray, indexed coord-conditioning
+        copy, internal-coord groups, ``SA_CWI`` from the indexed input. The
+        unindexed input slice is concatenated onto ``full_array_with_unindexed``
+        if any unindexed tokens existed; the design-metrics worker
+        (``_stage_generated_structure``) finalises unindexed-region annotation
+        and insertion-RMSD from there.
 
         Args:
-            coords: Generated coordinates [n_max_tokens, 37, 3]
-            residue_type: Residue types [n_max_tokens]
-            padding_mask: Padding mask [n_max_tokens]
-            input_atom_array: Original input atom array
-            sample_idx: Sample index for naming
-            batch_idx: Batch index for naming
-            bb_ca_only: If True, subset input_atom_array to CA atoms only.
+            coords: Generated coordinates [n_max_tokens, 37, 3].
+            residue_type: Residue types [n_max_tokens].
+            padding_mask: Padding mask [n_max_tokens].
+            input_atom_array: Original input atom array.
+            bb_ca_only: If True, subset ``input_atom_array`` to CA atoms only.
 
         Returns:
-            Dictionary with 'generated_atom_array', 'input_atom_array',
-            'prediction_metadata', 'example_id'
+            Dict with ``generated_atom_array``, ``input_atom_array``, and
+            ``full_array_with_unindexed`` (or ``None``).
         """
-
-        # Optionally subset the input to only backbone CA atoms
+        # Optionally subset the input to only backbone CA atoms.
         if bb_ca_only:
             input_atom_array = input_atom_array[input_atom_array.atom_name == "CA"]
             input_atom_array.atomize = np.full_like(input_atom_array.atomize, True)
 
         # + ------- Remove padding and in-context conditioning tokens from the generated
         # coordinates and residue types ------- +
-        # (Sanity check - either all or none of the atoms should be indexed per token)
+        # Sanity check: either all or none of the atoms should be indexed per token.
         has_idx_atom_lvl = C_IDX.mask(input_atom_array)  # [n_atoms_in_input]
         has_idx_any_token_level = apply_token_wise(input_atom_array, has_idx_atom_lvl, np.any)
         has_idx_all_token_level = apply_token_wise(input_atom_array, has_idx_atom_lvl, np.all)
         if not np.all(has_idx_any_token_level == has_idx_all_token_level):
             raise ValueError("Input AtomArray should have either all or none of the atoms indexed per token")
 
-        # Get indices of non-padding tokens within this sample
+        # Mask out tokens that are non-padding but have no indexed atoms (in-context conditioning).
         non_padding_indices = np.where(padding_mask.cpu().numpy())[0]
-
-        # Set as padding any tokens that do not have all atoms indexed
         padding_mask[non_padding_indices[~has_idx_all_token_level]] = False  # [n_max_tokens_in_batch]
 
-        # Subset coordinates and residue types to tokens that are (a) not padding and
-        # (b) not in-context conditioning (e.g., unindexed)
+        # Subset coords + residue_types to (a) non-padding (b) non-in-context-conditioning tokens.
         coords = coords[padding_mask]  # [n_tokens_in_this_sample, 37, 3]
         residue_type = residue_type[padding_mask]  # [n_tokens_in_this_sample]
         assert ~torch.any(
             residue_type == UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
         ), "There should be no mask tokens in the autoencoder output!"
 
-        # Subset input AtomArray to indexed residues, but preserve unindexed region to compute the mapping later
+        # Subset input AtomArray to indexed residues; preserve unindexed slice for the worker.
         unindexed_input_atom_array = input_atom_array[~has_idx_atom_lvl].copy()
         input_atom_array = input_atom_array[has_idx_atom_lvl]
-        indexed_coord_conditioned_count = C_CRD.mask(input_atom_array).sum() + C_INTCRD.mask(input_atom_array).sum()
-        unindexeded_coord_conditioned_count = (
-            C_CRD.mask(unindexed_input_atom_array).sum() + C_INTCRD.mask(unindexed_input_atom_array).sum()
-        )
 
         assert (
             get_token_count(input_atom_array) == coords.shape[0]
         ), "Token counts in input AtomArray and generated coords do not match after filtering!"
 
         # + ------- Pre-process to make format compatible with the encoding ------- +
-        # Convert all-zero coordinates to NaN's and build encoded mask
+        # Convert all-zero coordinates to NaN's and build encoded mask.
         all_zeros = (coords == 0.0).all(dim=-1, keepdim=True)
         coords = coords.masked_fill(all_zeros, float("nan"))
         encoded_mask = ~torch.isnan(coords[..., 0])  # [n_tokens_in_this_sample, 37]
 
-        # Atomized tokens should be set to -1 and have only the CA atom slot (1) occupied
+        # Atomized tokens should be set to -1 and have only the CA atom slot (index 1) occupied.
         token_starts = get_token_starts(input_atom_array)
         atomized_token_mask = torch.from_numpy(input_atom_array.atomize[token_starts]).to(residue_type.device)
         assert torch.all(residue_type[atomized_token_mask] == -1), "Atomized tokens should have -1 residue type"
@@ -1636,7 +1560,7 @@ class Proteina(L.LightningModule):
             coords[atomized_token_mask][:, torch.arange(coords.shape[1], device=coords.device) != 1, :].isnan()
         ), "Non-CA atoms should be NaN for atomized tokens"
 
-        # Set to atomized token from the encoding definition
+        # Set the atomized-token slot to the encoding's <A> id.
         residue_type[atomized_token_mask] = UNIFIED_ATOM37_ENCODING.token_to_idx["<A>"]
 
         # + ------- Encode and standardize ------- +
@@ -1649,7 +1573,7 @@ class Proteina(L.LightningModule):
             chain_type=input_atom_array.chain_type[token_starts],
             token_is_atom=input_atom_array.atomize[token_starts],
         )
-        # (Remove terminal oxygens from both AtomArrays to ensure matching)
+        # Strip terminal oxygens from both arrays so token counts match.
         generated_array = remove_protein_terminal_oxygen(generated_array)
         input_atom_array = remove_protein_terminal_oxygen(input_atom_array)
         assert get_token_count(generated_array) == get_token_count(
@@ -1661,81 +1585,74 @@ class Proteina(L.LightningModule):
             generated_atom_array=generated_array, input_atom_array=input_atom_array
         )
 
-        # Preserve the original indexed coordinates reshaped to match the output AtomArray
+        # Preserve original indexed coordinates for the SA_CWI annotation (coords-with-insertion).
         coords_with_insertion = updated_array.coord.copy()
         coords_with_insertion[C_CRD.mask(updated_array)] = updated_array.original_input_coord[C_CRD.mask(updated_array)]
         SA_CWI.set_annotation(updated_array, coords_with_insertion)
 
-        # Insert internal coordinate conditioned groups into the `coords_with_insertion` annotation
+        # Insert internal-coord conditioned groups.
         C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
         C_INTCRD.set_mask(updated_array, C_INTCRD.mask(updated_array))
         updated_array = insert_internal_coord_conditioned_groups(
             updated_array, original_input_coords=updated_array.original_input_coord
         )
 
-        valid_mapping_found = True
-        if C_CRD.mask(updated_array).sum() + C_INTCRD.mask(updated_array).sum() != indexed_coord_conditioned_count:
-            logger.warning(
-                f"Original coord conditioning count ({indexed_coord_conditioned_count}) does not match "
-                f"recovered count ({C_CRD.mask(updated_array).sum() + C_INTCRD.mask(updated_array).sum()}). "
-                "The model has failed to reproduce the input indexed motif."
-            )
-            valid_mapping_found = False
-
-        # + ------- Compute unindexed mapping and optionally insert unindexed regions ------- +
-        # Compute the correct mapping from indexed to unindexed tokens
-        # NOTE: This must be done after the output AtomArray has been constructed and the coordinates have been added
+        # + ------- Concatenate the unindexed slice for the design-metrics worker ------- +
+        # The worker calls `annotate_unindexed_insertion` on this concatenated array
+        # to compute insertion-RMSD-family metrics. None when there were no unindexed tokens.
         if not has_idx_all_token_level.all():
-            # Preserve this annotation through concatentation
             SA_CWI.set_annotation(unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array))
-            # NOTE: We use coord_to_be_noised as the unindexed coordinates to match what the model sees
+            # Use coord_to_be_noised so the unindexed coords match what the model saw.
             unindexed_input_atom_array.coord = unindexed_input_atom_array.coord_to_be_noised.copy()
-            full_array_with_unindexed = concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
-            updated_array, metadata = process_unindexed_outputs(
-                full_array_with_unindexed,
-                insert_unindexed_regions=self.cfg_exp.inf_cfg.insert_unindexed_regions,
-                inputs_in_same_frame=True,
+            full_array_with_unindexed = as_atom_array_plus(
+                concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
             )
         else:
-            SA_CRDSRC.set_mask(updated_array, SA_CRDSRC.default_mask(updated_array))
-            SA_CRDSRC.set_annotation(updated_array, SA_CRDSRC.default_annotation(updated_array))
-            metadata = {}
-
-        # Include indexed coord conditioning in mapping mask/annotation
-        # TODO: Should this mapping annotation be added as a Condition? It is semantically
-        # different but practically similar
-        indexed_coord_conditioned_mask = C_CRD.mask(updated_array) | C_INTCRD.mask(updated_array)
-        mapped_mask = SA_CRDSRC.mask(updated_array)
-        mapped_mask |= indexed_coord_conditioned_mask
-        SA_CRDSRC.set_mask(updated_array, mapped_mask)
-        src_crd = SA_CRDSRC.annotation(updated_array)
-        src_crd[indexed_coord_conditioned_mask] = SA_SRC.annotation(updated_array)[indexed_coord_conditioned_mask]
-        SA_CRDSRC.set_annotation(updated_array, src_crd)
-
-        # Check unindexed coord conditioning count
-        total_coord_conditioned_count = indexed_coord_conditioned_count + unindexeded_coord_conditioned_count
-        if SA_CRDSRC.mask(updated_array).sum() != total_coord_conditioned_count:
-            logger.warning(
-                f"Unindexed coord conditioning count ({unindexeded_coord_conditioned_count}) does not match "
-                f"remapped count ({SA_CRDSRC.mask(updated_array).sum() - indexed_coord_conditioned_count}). "
-                "The model has failed to reproduce the input unindexed motif."
-            )
-            valid_mapping_found = False
-
-        # If the model has failed to create valid reproductions of the motif, give NaN values for coords_with_insertion
-        if not valid_mapping_found:
-            SA_CWI.set_annotation(updated_array, SA_CWI.default_annotation(updated_array))
-
-        # Compute token-level mapped-to-coordinate-conditioned-region annotation from atom-level mask
-        updated_array.set_annotation(
-            "mapped_to_coordinate_conditioned_region_token_lvl",
-            apply_and_spread_token_wise(updated_array, SA_CRDSRC.mask(updated_array), np.any),
-        )
+            full_array_with_unindexed = None
 
         return {
             "generated_atom_array": as_atom_array_plus(updated_array),
             "input_atom_array": as_atom_array_plus(input_atom_array),
-            "prediction_metadata": metadata,  # Contains unindexed residue mapping and insertion statistics
+            "full_array_with_unindexed": full_array_with_unindexed,
+        }
+
+    def _build_staged_payload(
+        self,
+        sample: dict,
+        example_id: str,
+        metrics_tags: list[str],
+        output_base: Path,
+        generated_output_path: Path,
+    ) -> dict:
+        """Assemble the input dict for ``_stage_generated_structure``."""
+        inf_args = self.inf_cfg.args if self.inf_cfg is not None else None
+        bb_ca_only = bool(inf_args and inf_args.get("bb_ca_only_trajectories", False))
+        save_traj_every = int(inf_args.get("save_trajectory_every", 0)) if inf_args else 0
+        nsteps = inf_args.nsteps if inf_args is not None else None
+
+        trajectories: dict[str, tuple] = {}
+        for key in ("trajectory_x1", "trajectory_xt"):
+            if key not in sample:
+                continue
+            traj = sample[key]
+            if bb_ca_only:
+                step_labels = np.arange(traj.stack_depth()) * save_traj_every
+                if nsteps is not None:
+                    step_labels[-1] = nsteps
+                trajectories[key] = (traj, step_labels)
+            else:
+                trajectories[key] = (traj, None)  # CIF path; no step labels
+
+        return {
+            "example_id": example_id,
+            "generated_atom_array": sample["generated_atom_array"],
+            "input_atom_array": sample.get("input_atom_array"),
+            "full_array_with_unindexed": sample.get("full_array_with_unindexed"),
+            "metrics_tags": metrics_tags,
+            "output_base_dir": str(output_base),
+            "generated_output_path": str(generated_output_path),
+            "save_input": not self.is_inference,
+            "trajectories": trajectories,
         }
 
     def format_sample_prots_to_atom_arrays(
@@ -1746,39 +1663,22 @@ class Proteina(L.LightningModule):
         bb_ca_only: bool = False,
         example_ids: list[str] | None = None,
     ) -> list[dict]:
-        """Convert sample_prots dict to list of atom array results.
-
-        Args:
-            sample_prots: Dictionary with keys 'coors', 'residue_type', 'padding_mask'
-            batch: Original batch dict with input atom_arrays
-            batch_idx: Batch index for naming
-            bb_ca_only: If True, subset input_atom_array to CA atoms only.
-            example_ids: Pre-assigned example IDs, one per sample. When provided (e.g.
-                by beam search to include checkpoint-aware suffixes), these override
-                the default ``batch["example_id_batch"][orig_batch_idx]`` lookup.
-        Returns:
-            List of dictionaries with 'generated_atom_array', 'input_atom_array', etc.
-        """
-        generation_list = []
-
-        for i in range(sample_prots["coors"].shape[0]):
-            # Get batch index for this sample (handle replicas from search strategies)
+        """Convert per-sample tensors back to AtomArrays for an entire batch."""
+        generation_list: list[dict] = []
+        n = sample_prots["coors"].shape[0]
+        for i in range(n):
             orig_batch_idx = i % len(batch.get("atom_array_batch", [batch.get("atom_array")]))
             input_atom_array = (
                 batch["atom_array_batch"][orig_batch_idx] if "atom_array_batch" in batch else batch["atom_array"]
             )
 
-            # Use the comprehensive processing method
             result = self._process_single_sample_to_atom_array(
                 coords=sample_prots["coors"][i],
                 residue_type=sample_prots["residue_type"][i],
                 padding_mask=sample_prots["padding_mask"][i],
                 input_atom_array=input_atom_array,
-                sample_idx=i,
-                batch_idx=batch_idx,
                 bb_ca_only=bb_ca_only,
             )
-            # Record for output file saving; use caller-provided id if available
             result["raw_batch_id"] = batch["example_id_batch"][orig_batch_idx]
             result["example_id"] = example_ids[i] if example_ids is not None else result["raw_batch_id"]
             generation_list.append(result)

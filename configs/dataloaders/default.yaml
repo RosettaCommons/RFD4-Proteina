@@ -4,6 +4,11 @@ prefetch_factor: 1
 pin_memory: False
 multiprocessing_context: 'spawn'
 
+metrics:
+  # Per-rank ProcessPoolExecutor for parallel val metrics (design + post-fold)
+  # -1 -> all but one available CPU core
+  num_workers: -1
+
 train:
   dataloader_params:
     batch_size: ${dataloaders.batch_size}
@@ -23,7 +28,8 @@ train:
 val:
   dataloader_params:
     batch_size: ${dataloaders.batch_size}
-    num_workers: 4
+    # Keep some workers free to parallelize design metrics
+    num_workers: 2
     prefetch_factor: 1
     pin_memory: ${dataloaders.pin_memory}
     persistent_workers: False
