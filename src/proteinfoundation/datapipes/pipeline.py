@@ -121,6 +121,7 @@ from proteinfoundation.transforms.atom_names import (
 from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_expansion
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
+from proteinfoundation.transforms.invariants import ValidateBatchInvariants
 from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
 from proteinfoundation.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
@@ -232,6 +233,43 @@ def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndar
 
 # Module-level cached lookups
 _AA_ATOM_NAMES, _AA_ATOM_SLOTS, _NA_ATOM_NAMES, _NA_ATOM_SLOTS = _build_atom37_lookups()
+
+
+def build_atom37_slots(atom_array: AtomArray) -> np.ndarray:
+    """Map each atom to its atom37 slot index.
+
+    Args:
+      atom_array: Source structure. Accepts both
+        :py:class:`~biotite.structure.AtomArray` and
+        :py:class:`~atomworks.io.utils.atom_array_plus.AtomArrayPlus`.
+
+    Returns:
+      Integer slot indices of shape [n_atoms]. Unknown atoms get -1.
+    """
+    aap = as_atom_array_plus(atom_array)
+    atom_names = np.char.strip(aap.atom_name.astype(str))
+    slots = np.full(len(atom_names), -1, dtype=np.int32)
+    categories = set(aap.get_annotation_categories())
+
+    if "token_type" in categories:
+        token_type = aap.token_type
+        is_protein = token_type == TokenType.PROTEIN
+        is_na = (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
+        is_atomized = token_type == TokenType.ATOMIZED
+    else:
+        ensure_annotations(aap, "is_protein", "is_rna", "is_dna")
+        is_protein = aap.is_protein
+        is_na = aap.is_rna | aap.is_dna
+        is_atomized = aap.atomize if "atomize" in categories else np.zeros_like(is_protein, dtype=bool)
+
+    if is_protein.any():
+        slots[is_protein] = _AA_ATOM_SLOTS[np.searchsorted(_AA_ATOM_NAMES, atom_names[is_protein])]
+    if is_na.any():
+        slots[is_na] = _NA_ATOM_SLOTS[np.searchsorted(_NA_ATOM_NAMES, atom_names[is_na])]
+    if is_atomized.any():
+        slots[is_atomized] = 1
+
+    return slots
 
 
 class InferQueryPNUnitIIDsForDimers(Transform):
@@ -524,7 +562,6 @@ class ConvertToAtom37Format(Transform):
 
         token_starts = get_token_starts(atom_array, add_exclusive_stop=False)
         num_tokens = len(token_starts)
-        atom_names = np.char.strip(atom_array.atom_name.astype(str))  # [L]
 
         # +--------- Pass through existing token-level features ---------+
         for feat_name in EXISTING_TOKEN_LEVEL_FEATURES:
@@ -547,28 +584,9 @@ class ConvertToAtom37Format(Transform):
                 atom37_arrays[feat_name] = np.full(shape, pad_value, dtype=feats[feat_name].dtype)  # [L, 37, ...]
 
         atom37_mask = np.zeros((num_tokens, 37), dtype=bool)  # [L, 37]
-        n_atoms = atom_array.array_length()
 
-        # Initialize slot assignments (-1 = invalid)
-        atom_slots = np.full(n_atoms, -1, dtype=np.int32)  # [n_atoms]
-
-        # Vectorized slot lookup using np.searchsorted
-        token_type = feats["token_type"]  # [n_atoms] with values from TokenType enum
-
-        is_protein = token_type == TokenType.PROTEIN
-        if is_protein.any():
-            protein_atoms = atom_names[is_protein]
-            sorted_positions = np.searchsorted(_AA_ATOM_NAMES, protein_atoms)
-            atom_slots[is_protein] = _AA_ATOM_SLOTS[sorted_positions]
-
-        is_na = (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
-        if is_na.any():
-            na_atoms = atom_names[is_na]
-            sorted_positions = np.searchsorted(_NA_ATOM_NAMES, na_atoms)
-            atom_slots[is_na] = _NA_ATOM_SLOTS[sorted_positions]
-
-        # Atomized atoms → slot 1
-        atom_slots[(token_type == TokenType.ATOMIZED)] = 1
+        # Map each atom to its atom37 slot
+        atom_slots = build_atom37_slots(atom_array)
 
         # Scatter atoms into atom37 arrays (vectorized)
         atom37_mask[atom_array.token_id, atom_slots] = True
@@ -877,18 +895,33 @@ class AddMissingAtomCount(Transform):
         return data
 
 
-class EnsureAtomizedResiduesAreSequenceConditioned(Transform):
+class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
     """
-    Ensure that all atomized residues are sequence conditioned.
+    Ensure that all atomized or coordinate-conditioned residues are sequence conditioned.
     Temporary annotation that be removed for e.g. unfixed ligands.
     """
 
     def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        if "atomize" in atom_array.get_annotation_categories():
-            seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
-            C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
-        data["atom_array"] = atom_array
+        aap = as_atom_array_plus(data["atom_array"])
+        seq_cond_mask = C_SEQ.mask(aap, default="generate")
+
+        # Atomized tokens always require sequence conditioning
+        if "atomize" in aap.get_annotation_categories():
+            seq_cond_mask |= aap.atomize
+
+        # Only non-backbone coordinate conditioning requires sequence conditioning.
+        # Backbone-only conditioning (e.g. inverse folding context) does not.
+        crd_mask = C_CRD.mask(aap, default="generate") | C_INTCRD.mask(aap, default="generate")
+        if crd_mask.any():
+            ensure_annotations(aap, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
+            is_backbone = aap.is_protein_backbone | aap.is_rna_backbone | aap.is_dna_backbone
+            seq_cond_mask |= crd_mask & ~is_backbone
+
+        # Any token with sequence conditioning should be fully sequence-conditioned
+        seq_cond_mask = apply_and_spread_token_wise(aap, seq_cond_mask, np.any)
+
+        C_SEQ.set_mask(aap, seq_cond_mask)
+        data["atom_array"] = aap
         return data
 
 
@@ -1262,7 +1295,7 @@ def _build_design_featurize_pipeline(
     ### Step 1: Annotation fixes                            ###  # TODO: Should these be in validate / train portions?
     ###########################################################
     # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
-    T += EnsureAtomizedResiduesAreSequenceConditioned()
+    T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)
@@ -1357,6 +1390,7 @@ def _build_design_featurize_pipeline(
         "specification",
     ]
 
+    T += ValidateBatchInvariants()
     T += SubsetToKeys(keys_to_keep)
 
     return T.tolist()

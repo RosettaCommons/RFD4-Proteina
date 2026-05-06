@@ -19,23 +19,13 @@ load_dotenv(override=True)
 import atexit
 import logging
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+from atomworks.io import parse
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
-from atomworks.ml.utils.testing import cached_parse
-from projects.proteinfoundation.tests.pipeline.invariant_checks import (
-    check_can_be_encoded_requirements,
-    check_centroid_feature_accuracy,
-    check_conditioning_consistency,
-    check_coordinates_centered_on_conditioned_atoms,
-    check_coordinates_not_nan,
-    check_elements,
-    check_sequence_conditioning_with_res_types,
-    check_token_level_features_consistent_within_tokens,
-    check_unresolved_tokens_not_lossed,
-)
 
 from foundry.utils.logging import print_df_as_table
 from proteinfoundation.datapipes.pipeline import build_design_train_pipeline
@@ -44,6 +34,19 @@ from proteinfoundation.transforms.design_task import (
     MotifScaffoldTask,
     UnconditionalTask,
 )
+from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
+
+_TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"
+
+
+def _parse_test_structure(pdb_id: str) -> dict:
+    """Parse a test structure from the bundled test CIF files."""
+    path = _TEST_DATA_DIR / f"{pdb_id}.cif"
+    data = parse(path, config=RCSB_WITH_METALS)
+    data["atom_array"] = data["assemblies"]["1"][0]
+    data["pdb_id"] = pdb_id
+    return data
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,23 +101,6 @@ DESIGN_TASKS = {
 }
 
 
-ALL_CHECKS = [
-    # Coordinate Conditioning & Centering
-    check_coordinates_centered_on_conditioned_atoms,
-    check_coordinates_not_nan,
-    check_centroid_feature_accuracy,
-    # Sequence Conditioning & Element / Atom Name Leakage
-    check_sequence_conditioning_with_res_types,
-    check_elements,
-    # Encoding & Loss Annotations
-    check_can_be_encoded_requirements,
-    check_unresolved_tokens_not_lossed,
-    # Token-Level Features
-    check_token_level_features_consistent_within_tokens,
-    # Conditioning Consistency
-    check_conditioning_consistency,
-]
-
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -128,8 +114,7 @@ def parse_and_run_pipeline(
 ) -> dict:
     """Parse structure and run through design train pipeline."""
 
-    # Parse structure
-    input_data = cached_parse(pdb_id)
+    input_data = _parse_test_structure(pdb_id)
     input_data["example_id"] = pdb_id
 
     # Build pipeline with specified design tasks
@@ -170,28 +155,18 @@ def parse_and_run_pipeline(
     ids=lambda x: x,
 )
 def test_pipeline_invariants(pdb_id: str, design_task_name: str) -> None:
-    """Test all pipeline invariants for a structure and design task."""
-    # Select only the specified design task
-    selected_design_tasks = {design_task_name: DESIGN_TASKS[design_task_name]}
+    """Test all pipeline invariants for a structure and design task.
 
-    # Run pipeline (with cropping enabled since some tasks require it)
-    output = parse_and_run_pipeline(
+    The pipeline includes :py:class:`~proteinfoundation.transforms.invariants.ValidateBatchInvariants`
+    which raises :py:exc:`ValueError` on any violation, so running the pipeline is sufficient.
+    """
+    selected_design_tasks = {design_task_name: DESIGN_TASKS[design_task_name]}
+    parse_and_run_pipeline(
         pdb_id=pdb_id,
         design_tasks=selected_design_tasks,
         seed=42,
-        crop_size=256,  # Enable cropping for all tests
+        crop_size=256,
     )
-
-    # Run all invariant checks
-    for check_func in ALL_CHECKS:
-        try:
-            check_func(output)
-        except AssertionError as e:
-            raise AssertionError(
-                f"Invariant check failed for {pdb_id} with {design_task_name} task\n"
-                f"Check: {check_func.__name__}\n"
-                f"Error: {e!s}"
-            ) from e
 
 
 def log_timing_statistics():
@@ -263,5 +238,4 @@ def log_timing_statistics():
 
 if __name__ == "__main__":
     atexit.register(log_timing_statistics)
-    # pytest.main(["-v", __file__, "-m", "not slow"])
-    test_pipeline_invariants("3wbm", "motif_scaffold")
+    pytest.main(["-v", __file__, "-m", "not slow"])
