@@ -624,9 +624,15 @@ def auto_pick_metrics_workers(cfg_exp: Any) -> int:
     return n
 
 
-def resolve_metric_manager_cfgs(cfg_exp: Any) -> dict[str, Any]:
-    """Resolve the four MetricManager subtrees the workers re-instantiate."""
-    metrics_cfg = cfg_exp.get("metrics") if cfg_exp is not None else None
+def resolve_mm_cfgs_from_metrics(metrics_cfg: Any) -> dict[str, Any]:
+    """Resolve the four MetricManager subtrees from a metrics sub-config.
+
+    Args:
+        metrics_cfg: The ``cfg_exp.metrics`` sub-config (or None).
+
+    Returns:
+        Dict with keys ``generated_structure``, ``oracle``, ``refold``, ``pass``.
+    """
 
     def _resolve(key: str) -> Any:
         if metrics_cfg is None:
@@ -640,6 +646,12 @@ def resolve_metric_manager_cfgs(cfg_exp: Any) -> dict[str, Any]:
         "refold": _resolve("refolding_metrics"),
         "pass": _resolve("pass_criteria"),
     }
+
+
+def resolve_metric_manager_cfgs(cfg_exp: Any) -> dict[str, Any]:
+    """Resolve the four MetricManager subtrees the workers re-instantiate."""
+    metrics_cfg = cfg_exp.get("metrics") if cfg_exp is not None else None
+    return resolve_mm_cfgs_from_metrics(metrics_cfg)
 
 
 def _completed(value: Any) -> Future:

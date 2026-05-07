@@ -50,6 +50,7 @@ from proteinfoundation.metrics.metrics_utils import (
     compute_oracle_metrics_for_val_output,
     fold_designs_for_oracles,
     resolve_metric_manager_cfgs,
+    resolve_mm_cfgs_from_metrics,
 )
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
@@ -1307,6 +1308,12 @@ class Proteina(L.LightningModule):
                                 f"Multiple oracle metrics ({dataset_oracle_name}, {oracle_name}) apply "
                                 f"to dataset with tags {dataset_tags}."
                             )
+
+        # Propagate to the worker pool so spawned workers rebuild MetricManagers
+        # from the current (e.g. inference) config rather than the flat training
+        # config stored in the checkpoint, which lacks the inline_metrics key.
+        if hasattr(self, "_metrics_pool"):
+            self._metrics_pool._mm_cfgs = resolve_mm_cfgs_from_metrics(metrics_cfg)
 
     def configure_inference(
         self,
