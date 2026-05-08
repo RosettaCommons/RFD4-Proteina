@@ -30,11 +30,12 @@ class InvariantViolation:
     count: int = 1
 
 
-def detect_batch_invariant_violations(data: dict) -> list[InvariantViolation]:
+def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[InvariantViolation]:
     """Detect invariant violations in a pipeline output batch.
 
     Args:
         data: Pipeline output dict containing at least ``"atom_array"`` and ``"feats"``.
+        is_inference: Whether the pipeline is in inference mode.
 
     Returns:
         List of :py:class:`InvariantViolation` instances; empty if all checks pass.
@@ -54,10 +55,10 @@ def detect_batch_invariant_violations(data: dict) -> list[InvariantViolation]:
     violations += check_coordinates_not_nan(feats)
     violations += check_element_encoding_violations(feats)
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
+    violations += check_sequence_conditioning_violations(feats, is_inference)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
-    violations += check_sequence_conditioning_violations(aa, feats)
     violations += check_can_be_encoded_violations(aa, feats)
     violations += check_token_features_consistent_violations(aa)
 
@@ -405,7 +406,7 @@ def check_coordinate_centering_violations(aa: AtomArray, feats: dict) -> list[In
     return violations
 
 
-def check_sequence_conditioning_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
+def check_sequence_conditioning_violations(feats: dict, is_inference: bool) -> list[InvariantViolation]:
     """Return violations where residue_type encoding is inconsistent with conditioning masks."""
     required = {"mask_sequence_1_residue", "residue_type", "atom37_mask"}
     if not required.issubset(feats):
@@ -433,7 +434,9 @@ def check_sequence_conditioning_violations(aa: AtomArray, feats: dict) -> list[I
             )
         )
 
-    if (res_type_gt == mask_token_idx).any():
+    # This check only applies in training, since residue_type will be passed through the encoder
+    can_be_encoded = feats["can_be_encoded"]
+    if not is_inference and (can_be_encoded & (res_type_gt == mask_token_idx)).any():
         violations.append(
             InvariantViolation(
                 check="residue_type_contains_mask_token",
@@ -572,14 +575,15 @@ class ValidateBatchInvariants(Transform):
             ``"ignore"`` - silently continue (useful when used as a probe).
     """
 
-    def __init__(self, on_violation: str = "raise"):
+    def __init__(self, is_inference: bool, on_violation: str = "raise"):
         super().__init__()
         if on_violation not in ("raise", "warn", "ignore"):
             raise ValueError(f"on_violation must be 'raise', 'warn', or 'ignore', got {on_violation!r}")
         self.on_violation = on_violation
+        self.is_inference = is_inference
 
     def forward(self, data: dict) -> dict:
-        violations = detect_batch_invariant_violations(data)
+        violations = detect_batch_invariant_violations(data, is_inference=self.is_inference)
         if not violations or self.on_violation == "ignore":
             return data
 
