@@ -1390,7 +1390,7 @@ def _build_design_featurize_pipeline(
         "specification",
     ]
 
-    T += ValidateBatchInvariants()
+    T += ValidateBatchInvariants(is_inference=is_inference)
     T += SubsetToKeys(keys_to_keep)
 
     return T.tolist()
