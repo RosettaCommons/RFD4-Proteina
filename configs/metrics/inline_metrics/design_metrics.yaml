@@ -56,30 +56,17 @@ internal_coord_adherence:
 
 # NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
 # equivalent to aligning directly to the ground-truth input motif
-indexed_motif_allatom_rmsd:
+motif_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: (mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein
-  subset_mask: (mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein
-  metric_type: rmsd
-  input_kwarg_names:
-    ground_truth_atom_array: predicted_atom_array
-    predicted_atom_array: predicted_atom_array
-  keep_aligned_predicted_structure: true
-  gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
-  required_tags_any: ["3d_coordinate_conditioning"]
-  prohibited_tags: ["unindexed"]
-
-unindexed_motif_allatom_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: mapped_to_coordinate_conditioned_region & is_protein
-  subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+  align_mask: mapped_to_coordinate_conditioned_region
+  subset_mask: mapped_to_coordinate_conditioned_region
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   input_kwarg_names:
     ground_truth_atom_array: predicted_atom_array
     predicted_atom_array: predicted_atom_array
   keep_aligned_predicted_structure: true
-  required_tags_any: ["unindexed"]
+  required_tags_any: ["3d_coordinate_conditioning", "internal_coordinate_conditioning", "unindexed"]
 
 contact_molecular_surface:
   _target_: proteinfoundation.metrics.contact_ms.metric.ContactMolecularSurfaceMetric
@@ -91,3 +78,5 @@ ligand_clash_metric:
   required_tags_any:
     - ame_refolding
     - ame_original_benchmark_refolding
+    - ligand_clash_filter
+    - ligand_clash_metric

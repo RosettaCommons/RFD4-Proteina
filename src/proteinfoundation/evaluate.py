@@ -7,6 +7,7 @@ Usage::
     python proteinfoundation/evaluate.py inputs=/path/to/structures metrics_tags=[unconditional_refolding]
 """
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -22,7 +23,12 @@ from foundry.metrics import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.env import load_dotenv
 from foundry.utils.logging import print_config_tree, silence_warnings
-from proteinfoundation.metrics.metrics_utils import run_oracle_refolding_and_pass_criteria
+from proteinfoundation.metrics.metrics_utils import (
+    _write_chain_only_cif_if_unambiguous,
+    apply_pre_oracle_filters,
+    run_oracle_refolding_and_pass_criteria,
+)
+from proteinfoundation.metrics.oracle_metric import example_chain_dir, example_output_dir
 from proteinfoundation.proteina import _clean_metrics_dict
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
@@ -55,7 +61,8 @@ def run_evaluate(cfg: DictConfig) -> None:
     else:
         metrics_tags = None
 
-    structure_files = _iter_structure_files(Path(cfg.inputs))
+    inputs_dir = Path(cfg.inputs)
+    structure_files = _iter_structure_files(inputs_dir)
     if not structure_files:
         raise ValueError(f"No structure files found in {cfg.inputs}")
 
@@ -70,6 +77,8 @@ def run_evaluate(cfg: DictConfig) -> None:
         raise ValueError("No structure files remain after chunking.")
 
     out_dir = Path(cfg.out_dir)
+    samples_dir = out_dir / "evaluation_samples"
+    metrics_dir = out_dir / "evaluation_metrics"
     job_suffix = f"_job{job_id}" if exists(job_id) else ""
 
     def _mm(key: str) -> MetricManager | None:
@@ -80,6 +89,7 @@ def run_evaluate(cfg: DictConfig) -> None:
     oracle_mm = _mm("refolding_oracles")
     refold_mm = _mm("refolding_metrics")
     pass_mm = _mm("pass_criteria")
+    pre_oracle_filter_mm = _mm("pre_oracle_filters")
 
     design_results: list[dict] = []
     parsed_arrays: dict[str, tuple[Path, object]] = {}
@@ -88,14 +98,42 @@ def run_evaluate(cfg: DictConfig) -> None:
         design_mm.on_validation_epoch_start()
 
     for structure_file in structure_files:
-        example_id = structure_file.name.split(".")[0]
+        rel = structure_file.relative_to(inputs_dir)
+        rel_hash = hashlib.md5(str(rel).encode()).hexdigest()[:8]
+        example_id = f"{rel_hash}__{rel.name.split('.')[0]}"
         try:
             atom_array = parse(structure_file, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
         except Exception as e:
             logger.warning(f"Failed to parse {structure_file}: {e}")
             continue
         parsed_arrays[example_id] = (structure_file, atom_array)
-        result = {"example_id": example_id, "designed_structure_path": str(structure_file)}
+        result: dict = {
+            "example_id": example_id,
+            "designed_structure_path": str(structure_file),
+            "output_base_dir": str(samples_dir),
+            "metrics_tags": ",".join(metrics_tags or []),
+        }
+        # Symlink the input structure into evaluation_samples/ so the output directory mirrors
+        # inference_samples/ and is self-contained.  Using the original filename avoids a
+        # double _generated suffix when processing inference outputs.
+        try:
+            example_dir = example_output_dir(samples_dir, example_id)
+            example_dir.mkdir(parents=True, exist_ok=True)
+            link = example_dir / structure_file.name
+            if not link.exists() and not link.is_symlink():
+                link.symlink_to(structure_file.absolute())
+        except Exception as e:
+            logger.warning(f"evaluate: failed to symlink structure for {example_id}: {e}")
+        # Write chain-of-interest CIF under foldseek_input_chains/ so aggregate_metrics.py can
+        # run foldseek easy-cluster on evaluation_samples/foldseek_input_chains/ recursively.
+        try:
+            chains_dir = example_chain_dir(samples_dir, example_id)
+            chains_dir.mkdir(parents=True, exist_ok=True)
+            chain_cif = _write_chain_only_cif_if_unambiguous(atom_array, example_id, chains_dir)
+            if chain_cif is not None:
+                result["designed_chain_path"] = str(chain_cif)
+        except Exception as e:
+            logger.warning(f"evaluate: failed to write chain CIF for {example_id}: {e}")
         if design_mm is not None:
             try:
                 input_path = _find_input_structure(structure_file)
@@ -110,7 +148,7 @@ def run_evaluate(cfg: DictConfig) -> None:
                     network_output=None,
                     extra_info={
                         "example_id": example_id,
-                        "output_base_dir": out_dir,
+                        "output_base_dir": samples_dir,
                         "chain_of_interest": coi if coi_unambiguous else None,
                         "metrics_tags": metrics_tags or [],
                     },
@@ -125,7 +163,19 @@ def run_evaluate(cfg: DictConfig) -> None:
     if design_mm is not None:
         design_mm.on_validation_epoch_end()
 
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if pre_oracle_filter_mm is not None:
+        pre_oracle_filter_mm.on_validation_epoch_start()
+        design_results = apply_pre_oracle_filters(
+            design_results,
+            pre_oracle_filter_mm,
+            delete_failing=cfg.get("delete_failing_pre_oracle", False),
+        )
+        pre_oracle_filter_mm.on_validation_epoch_end()
+        surviving_ids = {m["example_id"] for m in design_results if m.get("example_id")}
+        parsed_arrays = {eid: v for eid, v in parsed_arrays.items() if eid in surviving_ids}
+
+    samples_dir.mkdir(parents=True, exist_ok=True)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
     refolding_results: list[dict] = []
     design_by_id = {m.get("example_id"): m for m in design_results if m.get("example_id")}
     for mm in filter(None, [oracle_mm, refold_mm, pass_mm]):
@@ -139,7 +189,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         result = run_oracle_refolding_and_pass_criteria(
             atom_array=atom_array,
             example_id=example_id,
-            output_dir=out_dir,
+            output_dir=samples_dir,
             oracle_mm=oracle_mm,
             refold_mm=refold_mm,
             pass_mm=pass_mm,
@@ -161,7 +211,7 @@ def run_evaluate(cfg: DictConfig) -> None:
             if eid := m.get("example_id"):
                 by_id.setdefault(eid, {}).update(m)
         combined = pd.DataFrame(list(by_id.values())).round(4)
-        combined.to_csv(out_dir / f"per_example_metrics{job_suffix}.csv", index=False)
+        combined.to_csv(metrics_dir / f"per_example_metrics{job_suffix}.csv", index=False)
 
 
 @hydra.main(version_base="1.3", config_path=_config_path, config_name="evaluate")

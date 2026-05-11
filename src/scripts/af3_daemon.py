@@ -110,10 +110,20 @@ def _handle_fold(req: dict, worker: subprocess.Popen) -> dict:
         return {"status": "error", "message": f"non-JSON from worker: {line!r}"}
 
 
+def _safe_unlink(path: str) -> None:
+    """Remove a socket file, raising a clear error if it belongs to another user."""
+    try:
+        os.unlink(path)
+    except PermissionError:
+        raise PermissionError(
+            f"Stale AF3 daemon socket from another job: {path}\n" f"Remove it manually: rm {path}"
+        ) from None
+
+
 def _serve(args: argparse.Namespace) -> int:
     sock_path = args.socket_path
     if os.path.exists(sock_path):
-        os.unlink(sock_path)
+        _safe_unlink(sock_path)
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.bind(sock_path)
     sock.listen(1)
@@ -186,13 +196,24 @@ def _serve(args: argparse.Namespace) -> int:
 # `launch` subcommand: spawn N daemons, signal-handle cleanup.
 # ----------------------------------------------------------------------------
 
-_SOCKET_TEMPLATE = "/tmp/af3_daemon_rank{rank}.sock"
+_SOCKET_TEMPLATE = "/tmp/af3_{job_id}/af3_daemon_rank{rank}.sock"
 _PING_RETRIES = 30
 _PING_INTERVAL_S = 0.5
 
 
+def _socket_template() -> str:
+    """Return the socket template, scoped to the current SLURM job (or PID as fallback)."""
+    job_id = os.environ.get("SLURM_JOB_ID") or str(os.getpid())
+    return _SOCKET_TEMPLATE.replace("{job_id}", job_id)
+
+
 def _socket_path(rank: int) -> str:
-    return _SOCKET_TEMPLATE.format(rank=rank)
+    return _socket_template().format(rank=rank)
+
+
+def _socket_dir() -> str:
+    job_id = os.environ.get("SLURM_JOB_ID") or str(os.getpid())
+    return f"/tmp/af3_{job_id}"
 
 
 def _ping_until_ready(sock_path: str) -> bool:
@@ -224,9 +245,10 @@ def _send_shutdown(sock_path: str, timeout_s: float = 5.0) -> None:
 
 def _spawn_one(rank: int, log_dir: Path) -> subprocess.Popen:
     """Start one daemon (this script in `serve` mode) on rank's socket."""
+    os.makedirs(_socket_dir(), exist_ok=True)
     sock = _socket_path(rank)
     if os.path.exists(sock):
-        os.unlink(sock)
+        _safe_unlink(sock)
     # Suffix with hostname so each node's daemons get their own log file
     host = os.environ.get("SLURMD_NODENAME") or os.uname().nodename
     log_file = log_dir / f"af3_daemon_{host}_rank{rank}.log"
@@ -272,7 +294,7 @@ def _launch(args: argparse.Namespace) -> int:
         # becomes the supervisor that signal-pauses + cleans up.
         pid = os.fork()
         if pid > 0:
-            print(f"export AF3_LAUNCHER_SOCKET_TEMPLATE={_SOCKET_TEMPLATE}", flush=True)
+            print(f"export AF3_LAUNCHER_SOCKET_TEMPLATE={_socket_template()}", flush=True)
             print(f"export AF3_DAEMONS_PID={pid}", flush=True)
             return 0
         # In the child: detach from tty + close stdout so the parent's
@@ -280,7 +302,7 @@ def _launch(args: argparse.Namespace) -> int:
         os.setsid()
         os.close(1)
     else:
-        print(f"AF3_LAUNCHER_SOCKET_TEMPLATE={_SOCKET_TEMPLATE}", flush=True)
+        print(f"AF3_LAUNCHER_SOCKET_TEMPLATE={_socket_template()}", flush=True)
 
     # Block until signalled. SIGTERM (slurm) / SIGINT (Ctrl-C) / SIGHUP all
     # trigger graceful shutdown of every daemon.

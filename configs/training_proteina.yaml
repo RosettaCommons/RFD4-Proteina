@@ -34,6 +34,10 @@ datasets:
 # Pre-training checkpoint to start from (optional)
 pretrain_ckpt_path:
 
+# Only applies if the metrics_tags for a pre-oracle design filter are given.
+# Determines whether to delete structure files for designs that fail this filter
+delete_failing_pre_oracle: True
+
 # Weight loading policies (only used when loading pretrain_ckpt_path)
 # When null, falls back to strict=False (legacy behaviour).
 # Set to a WeightLoadingConfig to control per-parameter handling:
@@ -152,3 +156,7 @@ log:
   last_ckpt_every_n_epochs: 1    # Save last.ckpt every N epochs (for resume)
 
 seed: 42
+
+hydra:
+  run:
+    dir: ./hydra_outputs

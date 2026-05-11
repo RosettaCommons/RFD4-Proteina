@@ -34,9 +34,11 @@ class PassCriterionMetric(Metric):
         ...     }
         ... )
         >>> crit.compute({"standard.plddt_coi": 85.0, "backbone_rmsd.rmsd": 1.5})
-        {"pass": 1.0}
+        {"pass": 1.0, "all_metrics_present": 1.0}
         >>> crit.compute({"standard.plddt_coi": 85.0, "backbone_rmsd.rmsd": 3.0})
-        {"pass": 0.0}
+        {"pass": 0.0, "all_metrics_present": 1.0}
+        >>> crit.compute({"standard.plddt_coi": 85.0})  # missing backbone_rmsd.rmsd
+        {"pass": 0.0, "all_metrics_present": 0.0}
     """
 
     def __init__(
@@ -59,19 +61,29 @@ class PassCriterionMetric(Metric):
                 ``{manager_name}.{metric_name}`` dot notation.
 
         Returns:
-            ``{"pass": 1.0}`` if the criteria are met, ``{"pass": 0.0}`` if not.
+            Dict with two keys:
+
+            - ``"pass"``: ``1.0`` if all thresholds are met, ``0.0`` otherwise.
+            - ``"all_metrics_present"``: ``1.0`` if every required metric key was
+              found in *metrics*, ``0.0`` if at least one was absent. When
+              ``"all_metrics_present"`` is ``0.0`` the ``"pass"`` value is always
+              ``0.0`` but callers should treat the result as indeterminate rather
+              than a hard failure.
         """
-        passed = False
+        all_present = True
+        passed = True
         for key, thresholds in self.metric_thresholds.items():
             val = metrics.get(key)
             if val is None:
-                logger.warning(f"Metric key '{key}' is absent from metrics. " "This design will be marked as failing.")
+                logger.warning(
+                    f"Metric key '{key}' is absent from metrics. Treating as indeterminate (not a hard fail)."
+                )
+                all_present = False
                 passed = False
             else:
                 min_val = thresholds.get("min")
                 max_val = thresholds.get("max")
-                passed = (min_val is None or val >= min_val) and (max_val is None or val <= max_val)
-            if not passed:
-                break
+                if not ((min_val is None or val >= min_val) and (max_val is None or val <= max_val)):
+                    passed = False
 
-        return {"pass": float(passed)}
+        return {"pass": float(passed), "all_metrics_present": float(all_present)}

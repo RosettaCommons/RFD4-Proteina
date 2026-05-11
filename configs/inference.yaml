@@ -17,6 +17,10 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
 ckpt_name: ???
 ckpt_path: ???
 
+# Only applies if the metrics_tags for a pre-oracle design filter are given.
+# Determines whether to delete structure files for designs that fail this filter
+delete_failing_pre_oracle: True
+
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
 num_replicates: 1 # Number of times to replicate each example
@@ -42,3 +46,7 @@ ncpus_: 24  # Number of CPUs per task
 gen_njobs: 1  # Number of parallel generation jobs per config
 eval_njobs: 1  # Number of parallel evaluation jobs per config
 job_id: null  # Set by launch_infer.sh; used to disambiguate per-job output files
+
+hydra:
+  run:
+    dir: ./hydra_outputs

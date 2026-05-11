@@ -62,6 +62,23 @@ load_user_info() {
     return 0
 }
 
+# Source the project virtual environment
+# Usage: source_venv <repo_root>
+source_venv() {
+    local repo_root="$1"
+    local venv_activate="$repo_root/.venv/bin/activate"
+
+    if [ ! -f "$venv_activate" ]; then
+        echo "Error: Virtual environment not found at $repo_root/.venv"
+        echo "Run setup.sh first:"
+        echo "  bash $repo_root/projects/proteinfoundation/setup.sh"
+        exit 1
+    fi
+
+    source "$venv_activate"
+    echo "Activated venv: $repo_root/.venv"
+}
+
 # Setup PYTHONPATH for all modules
 # Usage: setup_pythonpath <repo_root>
 setup_pythonpath() {
@@ -130,7 +147,7 @@ srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-e
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
 trap 'kill -TERM \$AF3_DAEMON_SRUN_PID 2>/dev/null; wait \$AF3_DAEMON_SRUN_PID 2>/dev/null' EXIT
-export AF3_LAUNCHER_SOCKET_TEMPLATE="/tmp/af3_daemon_rank{rank}.sock"
+export AF3_LAUNCHER_SOCKET_TEMPLATE="/tmp/af3_\${SLURM_JOB_ID}/af3_daemon_rank{rank}.sock"
 EOF
 }
 

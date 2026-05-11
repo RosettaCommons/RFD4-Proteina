@@ -276,11 +276,20 @@ def copy_generated_coordinates_to_input(
         # Standardize atom order
         input_atom_array = input_atom_array[struc.info.standardize_order(input_atom_array)]
 
-        # Add any missing canonical bonds after atom insertion
+        # Add any missing canonical bonds after atom insertion.
+        # connect_via_residue_names returns indices relative to the subset it receives,
+        # so we must remap them back to positions in the full array.
+        non_atomize_mask = ~input_atom_array.atomize
+        non_atomize_indices = np.where(non_atomize_mask)[0]
         canonical_intra_residue_bonds = struc.bonds.connect_via_residue_names(
-            input_atom_array[~input_atom_array.atomize], inter_residue=True
+            input_atom_array[non_atomize_mask], inter_residue=True
         )
-        input_atom_array.bonds = input_atom_array.bonds.merge(canonical_intra_residue_bonds)
+        bonds_as_array = canonical_intra_residue_bonds.as_array()
+        if len(bonds_as_array) > 0:
+            bonds_as_array[:, 0] = non_atomize_indices[bonds_as_array[:, 0]]
+            bonds_as_array[:, 1] = non_atomize_indices[bonds_as_array[:, 1]]
+        remapped_bonds = struc.BondList(input_atom_array.array_length(), bonds_as_array)
+        input_atom_array.bonds = input_atom_array.bonds.merge(remapped_bonds)
 
     # Add an annotation for the original coords, with NaNs for added atoms
     derived_from_original_input = np.where(input_atom_array.original_global_index != -1)[0]

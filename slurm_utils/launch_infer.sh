@@ -198,6 +198,7 @@ cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
 # Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -400,6 +401,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run generation - each GPU gets its own job_id slice of the dataset
+GEN_PIDS=()
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
     if [ $JOB_ID -lt $NJOBS ]; then
@@ -417,9 +419,10 @@ EOF
             gen_njobs=\$NJOBS &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
+        GEN_PIDS+=($!)
     fi
 done
-wait
+wait "${GEN_PIDS[@]}"
 EOF
 else
     # OCI/GB200: Docker/Pyxis container via srun --container-image
@@ -429,6 +432,7 @@ else
     cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run generation - each GPU gets its own job_id slice of the dataset
+GEN_PIDS=()
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
     if [ $JOB_ID -lt $NJOBS ]; then
@@ -438,7 +442,7 @@ EOF
         srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
             --container-mounts="$CONTAINER_MOUNTS_STR" \\
             --container-workdir=$RUN_DIR \\
-            bash -c "$CONTAINER_ENV_CMDS && $PYTHON $SCRIPT_GENERATE \\
+            bash -c "$CONTAINER_ENV_CMDS && python $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
             $EXTRA_ARGS \\
             out_dir=$RUN_DIR \\
@@ -448,9 +452,10 @@ EOF
             gen_njobs=\\\$NJOBS" &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
+        GEN_PIDS+=($!)
     fi
 done
-wait
+wait "${GEN_PIDS[@]}"
 EOF
 fi
 
@@ -513,7 +518,7 @@ EOF
 srun --ntasks=1 $CONTAINER_CMD_CONCAT \\
     --container-mounts="$CONTAINER_MOUNTS_STR_CONCAT" \\
     --container-workdir=$RUN_DIR \\
-    bash -c "$CONTAINER_ENV_CMDS_CONCAT && $PYTHON \"$CONCAT_SCRIPT\" --input \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
+    bash -c "$CONTAINER_ENV_CMDS_CONCAT && python \"$CONCAT_SCRIPT\" --input \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
 EOF
     fi
 

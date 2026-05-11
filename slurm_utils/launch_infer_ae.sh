@@ -97,6 +97,7 @@ cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
 # Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -197,7 +198,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD $PYTHON $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
+        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
     fi
@@ -214,7 +215,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD $PYTHON $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
+        srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
     fi

@@ -81,6 +81,7 @@ cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
 # Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -236,8 +237,8 @@ srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
         $CONTAINER_ENV_CMDS && \\
         $SQFS_MOUNT_CMDS && \\
         scontrol show job \\\$SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works inside container' || echo '[slurm] WARNING: scontrol not working - auto-requeue disabled' && \\
-        $PYTHON -c \"import torch; print('torch=' + torch.__version__); print('torch_cuda=' + str(torch.version.cuda)); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
-        exec $PYTHON $SCRIPT_TRAIN $EXTRA_ARGS\\
+        python -c \"import torch; print('torch=' + torch.__version__); print('torch_cuda=' + str(torch.version.cuda)); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
+        exec python $SCRIPT_TRAIN $EXTRA_ARGS\\
     "
 EOFSCRIPT
     else
@@ -253,8 +254,8 @@ srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
     bash -c "\\
         $CONTAINER_ENV_CMDS && \\
         scontrol show job \\\$SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works inside container' || echo '[slurm] WARNING: scontrol not working - auto-requeue disabled' && \\
-        $PYTHON -c \"import torch; print('torch=' + torch.__version__); print('torch_cuda=' + str(torch.version.cuda)); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
-        exec $PYTHON $SCRIPT_TRAIN $EXTRA_ARGS\\
+        python -c \"import torch; print('torch=' + torch.__version__); print('torch_cuda=' + str(torch.version.cuda)); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
+        exec python $SCRIPT_TRAIN $EXTRA_ARGS\\
     "
 EOFSCRIPT
     fi

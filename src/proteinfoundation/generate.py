@@ -541,12 +541,11 @@ def _filter_existing_outputs(
     model_job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
     suffix = f"{model_job_suffix}_generated.cif"
 
-    # Collect example IDs that already have outputs
+    # Collect example IDs that already have outputs.
+    # Files live under {hex2}/{hex8}/ subdirectories, so glob recursively.
     existing_ids: set[str] = set()
     if output_dir.exists():
-        for p in output_dir.glob(f"*{suffix}"):
-            # Strip the suffix from the stem to recover the example ID
-            # e.g. "my_example_generated" -> "my_example" (for "_generated.cif")
+        for p in output_dir.glob(f"**/*{suffix}"):
             example_id = p.name.removesuffix(suffix)
             existing_ids.add(example_id)
 

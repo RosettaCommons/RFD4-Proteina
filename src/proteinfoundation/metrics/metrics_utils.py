@@ -27,14 +27,18 @@ from atomworks.ml.preprocessing.utils.structure_utils import (
     get_atom_mask_from_cell_list,
 )
 from biotite.structure import AtomArray, AtomArrayStack, CellList, annotate_sse, gyration_radius
-from biotite.structure.io.pdb import PDBFile
 from biotite.structure.io.xtc import XTCFile
 from biotite.structure.residues import spread_residue_wise
 from omegaconf import OmegaConf
 
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.oracle_metric import OracleJobInput, OracleMetric
+from proteinfoundation.metrics.oracle_metric import (
+    OracleJobInput,
+    OracleMetric,
+    example_chain_dir,
+    example_output_dir,
+)
 from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
@@ -385,6 +389,113 @@ def _build_applicable_oracle_jobs(
     return jobs
 
 
+def apply_pre_oracle_filters(
+    val_outputs: list[ValOutput],
+    pre_oracle_filter_mm: MetricManager,
+    delete_failing: bool = True,
+) -> list[ValOutput]:
+    """Filter designs using pre-oracle PassCriterionMetric criteria.
+
+    Runs each design's merged design-phase metrics through ``pre_oracle_filter_mm``.
+    Designs where any applicable filter returns ``pass: 0.0`` are excised from
+    the list. When ``delete_failing`` is ``True``, their CIF files are also
+    deleted from disk for definitive failures (all metrics present). Designs for
+    which no filter is applicable (tag mismatch) are always kept.
+
+    This is called after :py:func:`drain_generated_structure` merges design
+    metrics into each :class:`ValOutput` entry, so the full design-metric dict
+    is available on each entry.
+
+    Args:
+        val_outputs: Per-design entries from ``validation_output_generation``
+            with design-phase metrics already merged in.
+        pre_oracle_filter_mm: MetricManager whose entries are
+            :py:class:`~proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric`
+            instances. Tag-based gating controls which filters apply per design.
+        delete_failing: If ``True``, delete structure files on disk for designs
+            that fail with all metrics present (definitive failures). Defaults to
+            ``True``. Set to ``False`` when evaluating pre-existing structures
+            where deletion would be destructive.
+
+    Returns:
+        Filtered list containing only designs that pass all applicable criteria.
+    """
+
+    def _filter_result(filter_output: dict) -> tuple[bool, bool]:
+        """Return (should_filter, should_delete) for a design's filter output.
+
+        A design is filtered (excluded from the oracle) if any applicable filter
+        returned ``pass: 0.0``.  Files are only deleted when the failure was
+        definitive — i.e. all required metrics were present.  Missing-metric
+        failures are filtered but files are kept (indeterminate, not a hard fail).
+        """
+        prefixes = {k.rsplit(".", 1)[0] for k in filter_output if k.endswith(".pass")}
+        should_filter = False
+        should_delete = False
+        for prefix in prefixes:
+            if filter_output[f"{prefix}.pass"] == 0.0:
+                should_filter = True
+                if filter_output.get(f"{prefix}.all_metrics_present") == 1.0:
+                    should_delete = True
+        return should_filter, should_delete
+
+    passing: list[ValOutput] = []
+    n_filtered = 0
+    dirs_to_clean: set[Path] = set()
+    for entry in val_outputs:
+        example_id = entry.get("example_id", "unknown")
+        metrics_tags_str = entry.get("metrics_tags", "")
+        metrics_tags = [t for t in metrics_tags_str.split(",") if t] if metrics_tags_str else []
+
+        filter_output = pre_oracle_filter_mm(
+            network_input=None,
+            network_output=None,
+            extra_info={
+                "example_id": example_id,
+                "metrics_tags": metrics_tags,
+                "metrics": {k: v for k, v in entry.items() if not isinstance(v, AtomArray)},
+            },
+        )
+
+        should_filter, should_delete = _filter_result(filter_output)
+        if should_filter:
+            if delete_failing and should_delete:
+                designed_path = entry.get("designed_structure_path")
+                if designed_path:
+                    p = Path(designed_path)
+                    try:
+                        p.unlink(missing_ok=True)
+                        dirs_to_clean.add(p.parent)
+                    except Exception as e:
+                        logger.warning(f"pre-oracle filter: could not delete {designed_path}: {e}")
+                chain_path = entry.get("designed_chain_path")
+                if chain_path:
+                    p = Path(chain_path)
+                    try:
+                        p.unlink(missing_ok=True)
+                        dirs_to_clean.add(p.parent)
+                    except Exception as e:
+                        logger.warning(f"pre-oracle filter: could not delete chain CIF {chain_path}: {e}")
+            n_filtered += 1
+        else:
+            passing.append(entry)
+
+    for shard_dir in dirs_to_clean:
+        try:
+            if shard_dir.is_dir() and not any(shard_dir.iterdir()):
+                shard_dir.rmdir()
+                parent = shard_dir.parent
+                if parent.is_dir() and not any(parent.iterdir()):
+                    parent.rmdir()
+        except Exception as e:
+            logger.warning(f"pre-oracle filter: could not remove empty shard dir {shard_dir}: {e}")
+
+    if n_filtered:
+        logger.info(f"pre-oracle filter: removed {n_filtered}/{len(val_outputs)} designs before oracle.")
+
+    return passing
+
+
 def fold_designs_for_oracles(val_outputs: list[ValOutput], oracle_mm: MetricManager) -> None:
     """Dispatch this rank's designs to each oracle's :py:meth:`OracleMetric.fold_batch`."""
     for _, oracle_metric in oracle_mm.metrics.items():
@@ -461,17 +572,20 @@ def _metrics_worker_init(mm_cfgs: dict[str, Any], val_dataset_tags: Any) -> None
         _WORKER_MMS[name] = mm
 
 
-def _write_chain_only_pdb_if_unambiguous(atom_array: AtomArray, generated_output_path: Path) -> Path | None:
-    """Write a chain-of-interest-only PDB beside the design's CIF for foldseek."""
+def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str, output_dir: Path) -> Path | None:
+    """Write a chain-of-interest-only CIF into ``output_dir`` for foldseek.
+
+    The file is named ``{example_id}_chain.cif``.  Callers should pass
+    :py:func:`~proteinfoundation.metrics.oracle_metric.example_chain_dir` as
+    ``output_dir`` so chain CIFs land under the dedicated ``chains/`` tree.
+    """
     coi, coi_unambiguous = get_chain_of_interest(atom_array)
     if not coi_unambiguous:
         return None
     chain_attr = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
     coi_array = atom_array[atom_array.get_annotation(chain_attr) == coi]
-    foldseek_input_path = generated_output_path.with_name(generated_output_path.stem + "_chain_only.pdb")
-    pdb_file = PDBFile()
-    pdb_file.set_structure(coi_array)
-    pdb_file.write(foldseek_input_path)
+    foldseek_input_path = output_dir / f"{example_id}_chain.cif"
+    to_cif_file(coi_array, foldseek_input_path)
     return foldseek_input_path
 
 
@@ -531,9 +645,17 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
         except Exception as e:
             logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
         try:
-            foldseek_input_path = _write_chain_only_pdb_if_unambiguous(generated_array, gen_path)
+            ds = payload.get("dataset_name")
+            task = payload.get("task")
+            chains_dir = (
+                example_chain_dir(output_base_dir, example_id, dataset_name=ds, task=task)
+                if output_base_dir
+                else gen_path.parent
+            )
+            chains_dir.mkdir(parents=True, exist_ok=True)
+            foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
         except Exception as e:
-            logger.warning(f"generated-structure worker: failed to pre-extract chain-only PDB for {example_id}: {e}")
+            logger.warning(f"generated-structure worker: failed to pre-extract chain-only CIF for {example_id}: {e}")
             foldseek_input_path = None
 
     if save_input:
@@ -542,17 +664,17 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
 
     metrics_result["designed_atom_array"] = generated_array
     if foldseek_input_path is not None:
-        metrics_result["designed_chain_path"] = str(foldseek_input_path.resolve())
+        metrics_result["designed_chain_path"] = str(foldseek_input_path.absolute())
     return metrics_result
 
 
 def _write_input_cif(payload: dict, example_id: str) -> None:
-    """Save the input AtomArray to ``output_base/input/{example_id}_input.cif``."""
+    """Save the input AtomArray into the per-example shard directory."""
     input_atom_array = payload.get("input_atom_array")
     output_base_dir = payload.get("output_base_dir")
     if input_atom_array is None or output_base_dir is None:
         return
-    save_path = Path(output_base_dir) / "input" / f"{example_id}_input.cif"
+    save_path = example_output_dir(Path(output_base_dir), example_id) / f"{example_id}_input.cif"
     try:
         save_path.parent.mkdir(parents=True, exist_ok=True)
         to_cif_file(input_atom_array, save_path)
@@ -569,7 +691,7 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
     output_base_dir = payload.get("output_base_dir")
     if not trajectories or output_base_dir is None:
         return
-    traj_dir = Path(output_base_dir) / "trajectories"
+    traj_dir = example_output_dir(Path(output_base_dir), example_id) / "trajectories"
     traj_dir.mkdir(parents=True, exist_ok=True)
 
     for traj_key, (traj, step_labels) in trajectories.items():
@@ -625,7 +747,10 @@ def auto_pick_metrics_workers(cfg_exp: Any) -> int:
 
 
 def resolve_mm_cfgs_from_metrics(metrics_cfg: Any) -> dict[str, Any]:
-    """Resolve the four MetricManager subtrees from a metrics sub-config.
+    """Resolve MetricManager subtrees from a metrics sub-config.
+
+    Returns four subtrees intentionally: ``pre_oracle_filters`` is excluded
+    because it runs inline and does not need worker re-instantiation.
 
     Args:
         metrics_cfg: The ``cfg_exp.metrics`` sub-config (or None).

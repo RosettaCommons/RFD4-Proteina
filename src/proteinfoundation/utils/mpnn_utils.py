@@ -108,7 +108,7 @@ def collect_structures_from_path(
 
     if input_path.is_file():
         if str(input_path.name).endswith((".cif", ".cif.gz")):
-            return [input_path.resolve()]
+            return [input_path.absolute()]
         return []
 
     if input_path.is_dir():
@@ -116,7 +116,7 @@ def collect_structures_from_path(
         files = list(input_path.glob(pattern))
         # Filter to only .cif and .cif.gz files
         files = [f for f in files if f.name.endswith(".cif") or f.name.endswith(".cif.gz")]
-        return sorted([f.resolve() for f in files])
+        return sorted([f.absolute() for f in files])
 
     return []
 

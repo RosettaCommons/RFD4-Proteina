@@ -18,6 +18,7 @@ from atomworks.io.transforms.atom_array import (
     add_pn_unit_iid_annotation,
 )
 from atomworks.io.utils.io_utils import to_cif_file
+from atomworks.ml.utils.annotator import ANNOTATOR_REGISTRY, ensure_annotations
 from biotite.structure import AtomArray
 
 from foundry.utils.ddp import RankedLogger
@@ -193,6 +194,12 @@ class RF3Oracle(OracleMetric):
         example_id = job.example_id
         out_dir = job.out_dir
         chain_of_interest = job.chain_of_interest
+
+        # Add template annotations with annotators if necessary
+        if self.template_annotations is not None:
+            annotations_to_ensure = [annot for annot in self.template_annotations if annot in ANNOTATOR_REGISTRY]
+            if annotations_to_ensure:
+                ensure_annotations(atom_array, *annotations_to_ensure)
 
         original_device = torch.cuda.current_device()
         torch.cuda.empty_cache()

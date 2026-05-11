@@ -3,7 +3,6 @@ from typing import Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.rf3.src.rf3.model.layers.layer_utils import Transition
 
 from foundry.model.layers.blocks import Dropout
 from proteinfoundation.nn.modules.outer_product_mean import (
@@ -13,6 +12,7 @@ from proteinfoundation.nn.modules.triangle import (
     TriangleAttention,
     TriangleMultiplication,
 )
+from rf3.model.layers.layer_utils import Transition
 
 # from foundry.training.checkpoint import activation_checkpointing
 

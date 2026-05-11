@@ -129,11 +129,11 @@ class RefoldingResidueCountDelta(Metric):
 
 ## Step 2 — Register in the config file
 
-Create `configs/custom_metrics/custom_metrics.yaml` (also git-ignored). Use `# @package _global_` so Hydra merges your entries directly into the root config under the right MetricManager keys.
+Create `configs/custom_metrics/custom_metrics.yaml` (also git-ignored). Use `# @package metrics` so Hydra merges your entries directly into the overall metrics config under the right MetricManager keys.
 
 ```yaml
 # configs/custom_metrics/custom_metrics.yaml
-# @package _global_
+# @package metrics
 
 # ── Design metrics ───────────────────────────────────────────────────────────
 # Omit this section if you have no custom design metrics.

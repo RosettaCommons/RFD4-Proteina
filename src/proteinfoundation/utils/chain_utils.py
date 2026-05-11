@@ -11,7 +11,7 @@ from proteinfoundation.conditions import C_INTCRD
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
+def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
     """Get the chain ID or IID of the chain of interest in the AtomArray.
 
     The chain of interest corresponds to the primary designed chain, and is determined by the following heuristic:
@@ -29,7 +29,8 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str, bool]:
         atom_array: Input AtomArray.
 
     Returns:
-        Tuple of (chain_id_or_iid, is_unambiguous).
+        Tuple of (chain_id_or_iid, is_unambiguous). ``chain_id_or_iid`` is
+        ``None`` when the input contains no protein chains.
     """
     if "chain_iid" in atom_array.get_annotation_categories():
         chain_identifiers = atom_array.get_annotation("chain_iid")

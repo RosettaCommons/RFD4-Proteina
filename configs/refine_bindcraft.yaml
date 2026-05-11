@@ -38,3 +38,6 @@ rewards:
   
   differentiable: true  # CRITICAL: Must be true for refinement
 
+hydra:
+  run:
+    dir: ./hydra_outputs

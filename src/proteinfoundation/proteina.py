@@ -1,3 +1,4 @@
+import hashlib
 import os
 import random
 import re
@@ -45,13 +46,12 @@ from proteinfoundation.inference_utils.foldseek import (
     run_foldseek_distributed,
 )
 from proteinfoundation.metrics.metrics_utils import (
-    MetricsPool,
-    auto_pick_metrics_workers,
+    apply_pre_oracle_filters,
     compute_oracle_metrics_for_val_output,
     fold_designs_for_oracles,
-    resolve_metric_manager_cfgs,
     resolve_mm_cfgs_from_metrics,
 )
+from proteinfoundation.metrics.oracle_metric import example_output_dir
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
@@ -275,12 +275,6 @@ class Proteina(L.LightningModule):
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
 
         self.configure_metrics(cfg_exp.metrics)
-
-        # Per-rank worker pool for design + post-fold metrics. See `MetricsPool`.
-        self._metrics_pool = MetricsPool(
-            num_workers=auto_pick_metrics_workers(cfg_exp),
-            mm_cfgs=resolve_metric_manager_cfgs(cfg_exp),
-        )
 
         if autoencoder_ckpt_path is not None:
             # Allow adding new keys
@@ -840,6 +834,7 @@ class Proteina(L.LightningModule):
                 self.oracle_metric_manager,
                 self.refolding_metric_manager,
                 self.pass_criteria_metric_manager,
+                self.pre_oracle_filter_metric_manager,
             ]:
                 if mm is not None:
                     mm.on_validation_epoch_start(val_dataset_tags=combined_tags)
@@ -956,8 +951,9 @@ class Proteina(L.LightningModule):
             if base_id == raw_batch_id and len(generation_list) > n_batch:
                 base_id = f"{base_id}_s{i}"
 
-            # `/` → `_` because dataset_name may be a path; otherwise example_id-as-filename escapes output_base.
-            example_id = f"{dataset_name.replace('/', '_')}__{base_id}{output_suffix}"
+            # Hash dataset_name to keep example_id short; full name is preserved in metrics_output["dataset_name"].
+            dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
+            example_id = f"{dataset_name_hash}__{base_id}{output_suffix}"
 
             metrics_output: dict = {"example_id": example_id}
 
@@ -969,11 +965,10 @@ class Proteina(L.LightningModule):
                     v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
                 )
 
-            # Generated CIF path the worker writes to
-            if not self.is_inference:
-                generated_output_path = output_base / "generated" / f"{example_id}_generated.cif"
-            else:
-                generated_output_path = output_base / f"{example_id}_generated.cif"
+            # Generated CIF path: shard_{N}/{digest[:8]}/{example_id}_generated.cif
+            # All files for this design (chain PDB, oracle outputs, trajectories) share
+            # the same per-example subdirectory so related artifacts stay together.
+            generated_output_path = example_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
 
             # Add dataset_name and task as metadata
             metrics_output["dataset_name"] = dataset_name
@@ -1008,7 +1003,7 @@ class Proteina(L.LightningModule):
                         metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
 
             metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
-            metrics_output["designed_structure_path"] = str(generated_output_path.resolve())
+            metrics_output["designed_structure_path"] = str(generated_output_path.absolute())
             metrics_output["output_base_dir"] = str(output_base)
 
             # Store metrics_tags for the oracle loop in on_validation_epoch_end
@@ -1019,7 +1014,13 @@ class Proteina(L.LightningModule):
             staged_payload = None
             if self.design_metric_manager is not None:
                 staged_payload = self._build_staged_payload(
-                    generation_list[i], example_id, list(_tags), output_base, generated_output_path
+                    generation_list[i],
+                    example_id,
+                    list(_tags),
+                    output_base,
+                    generated_output_path,
+                    dataset_name=dataset_name,
+                    task=metrics_output["task"],
                 )
 
             # Store for epoch-end aggregation
@@ -1051,6 +1052,8 @@ class Proteina(L.LightningModule):
 
         Steps (in order):
           1. Drain per-structure metric futures into ``validation_output_generation`` (all ranks).
+          1b. Pre-oracle filter: excise designs that fail design-phase criteria before oracle
+              folding (all ranks).
           2. Gather per-design metrics to rank 0 (DDP).
           3. Run oracle fold + refolding + pass_criteria (all ranks).
           4. Gather refolding metrics to rank 0 (DDP).
@@ -1071,6 +1074,22 @@ class Proteina(L.LightningModule):
                         entry.setdefault(k, v)
         if self.design_metric_manager is not None:
             self.design_metric_manager.on_validation_epoch_end()
+
+        # 1b. Pre-oracle filter: excise designs that fail design-phase criteria before
+        # oracle folding. Runs inline (no workers) since it is pure dict look-ups.
+        pre_oracle_filter_mm = self.pre_oracle_filter_metric_manager
+        if pre_oracle_filter_mm is not None:
+            _reward_tags_for_filter = (
+                self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
+            )
+            if not _reward_tags_for_filter:
+                pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
+            self.validation_output_generation = apply_pre_oracle_filters(
+                self.validation_output_generation,
+                pre_oracle_filter_mm,
+                delete_failing=self.cfg_exp.get("delete_failing_pre_oracle", True),
+            )
+            pre_oracle_filter_mm.on_validation_epoch_end()
 
         # 2. Gather per-design metrics to rank 0 (DDP collective).
         local_design_metrics = [
@@ -1131,7 +1150,9 @@ class Proteina(L.LightningModule):
         # 3c. Post-fold metrics (refolding RMSDs, pass criteria) on workers.
         for result in self._metrics_pool.map_post_fold(post_fold_payloads, _post_fold_inline):
             if exists(result):
-                local_refolding_metrics.append(result)
+                cleaned = _clean_metrics_dict(result)
+                if cleaned:
+                    local_refolding_metrics.append(cleaned)
         for mm in [oracle_mm, refold_mm, pass_mm]:
             if exists(mm):
                 mm.on_validation_epoch_end()
@@ -1255,7 +1276,7 @@ class Proteina(L.LightningModule):
 
         agg_df = pd.DataFrame(agg_rows).round(4)
         print_df_as_table(agg_df, title=csv_stem)
-        agg_path = metrics_dir / f"{output_prefix}{csv_stem}_aggregated{output_suffix}.csv"
+        agg_path = metrics_dir / f"{output_prefix}aggregated_metrics{output_suffix}.csv"
         agg_df.to_csv(agg_path, index=False)
         if wandb.run is not None:
             wandb.log(
@@ -1267,13 +1288,18 @@ class Proteina(L.LightningModule):
         self,
         metrics_cfg: DictConfig | None = None,
     ) -> None:
-        """Instantiate design, oracle, refolding, and pass-criteria MetricManagers from config."""
+        """Instantiate design, oracle, refolding, and pass-criteria MetricManagers from config.
+
+        Note that we allow a metrics_cfg other than self.cfg_exp.metrics to be passed via (e.g.) generate.py
+        This is necessary since by default the cfg_exp used to train a checkpoint is loaded with it.
+        """
 
         if metrics_cfg is None:
             self.design_metric_manager = None
             self.oracle_metric_manager = None
             self.refolding_metric_manager = None
             self.pass_criteria_metric_manager = None
+            self.pre_oracle_filter_metric_manager = None
             return
 
         cfg_key_to_attr = {
@@ -1281,6 +1307,7 @@ class Proteina(L.LightningModule):
             "refolding_oracles": "oracle_metric_manager",
             "refolding_metrics": "refolding_metric_manager",
             "pass_criteria": "pass_criteria_metric_manager",
+            "pre_oracle_filters": "pre_oracle_filter_metric_manager",
         }
         for cfg_key, attr_name in cfg_key_to_attr.items():
             metric_manager_cfg = metrics_cfg.get(cfg_key)
@@ -1289,6 +1316,15 @@ class Proteina(L.LightningModule):
             else:
                 metric_manager = None
             setattr(self, attr_name, metric_manager)
+
+        if self.pre_oracle_filter_metric_manager is not None:
+            for name, metric in self.pre_oracle_filter_metric_manager.metrics.items():
+                if not metric.required_tags_any and not metric.required_tags_all:
+                    raise ValueError(
+                        f"pre_oracle_filters metric '{name}' has no required_tags_any or "
+                        f"required_tags_all. Every pre-oracle filter must be tag-gated so it "
+                        f"cannot fire unconditionally and block designs unexpectedly."
+                    )
 
         if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
             self.val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
@@ -1630,6 +1666,8 @@ class Proteina(L.LightningModule):
         metrics_tags: list[str],
         output_base: Path,
         generated_output_path: Path,
+        dataset_name: str | None = None,
+        task: str | None = None,
     ) -> dict:
         """Assemble the input dict for ``_stage_generated_structure``."""
         inf_args = self.inf_cfg.args if self.inf_cfg is not None else None
@@ -1660,6 +1698,8 @@ class Proteina(L.LightningModule):
             "generated_output_path": str(generated_output_path),
             "save_input": not self.is_inference,
             "trajectories": trajectories,
+            "dataset_name": dataset_name,
+            "task": task,
         }
 
     def format_sample_prots_to_atom_arrays(
