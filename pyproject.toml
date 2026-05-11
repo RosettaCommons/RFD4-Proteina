@@ -8,6 +8,7 @@ dependencies = [
     "ase>=3.22.0",
     "lmdb",  # Python LMDB bindings for ASE's LMDB backend
     # Additional utilities
+    "fire",
     "loguru",
     "matplotlib",
     "scikit-learn",

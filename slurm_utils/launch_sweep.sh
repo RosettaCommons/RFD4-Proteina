@@ -214,6 +214,7 @@ fi
 cd "$REPO_ROOT"
 
 # Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 

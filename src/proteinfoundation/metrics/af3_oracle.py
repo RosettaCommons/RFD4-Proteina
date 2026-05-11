@@ -21,6 +21,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.chain import create_chain_id_generator
 from atomworks.io.utils.io_utils import CIFWriteConfig, _to_cif_or_bcif, to_cif_file, to_cif_string
+from atomworks.ml.utils.annotator import ANNOTATOR_REGISTRY
 from biotite.structure import AtomArray
 from biotite.structure.io.pdbx import CIFFile
 from biotite.structure.residues import apply_residue_wise, residue_iter, spread_residue_wise
@@ -225,8 +226,11 @@ class AF3Oracle(OracleMetric):
 
         if sock_template:
             daemon_sock = sock_template.format(rank=rank)
+            # Extremely conservative limit of 2 min per design
+            timeout_s = max(3600.0, n_designs * 120.0)
             logger.info(
-                f"AF3 fold_batch: routing {n_designs} designs via daemon at {daemon_sock} " f"(gpu_device={gpu_device})"
+                f"AF3 fold_batch: routing {n_designs} designs via daemon at {daemon_sock} "
+                f"(gpu_device={gpu_device}, timeout={timeout_s/3600:.1f}h)"
             )
             response = _send_to_daemon(
                 daemon_sock,
@@ -236,6 +240,7 @@ class AF3Oracle(OracleMetric):
                     "gpu_device": gpu_device,
                     "save_full_outputs": False,
                 },
+                timeout_s=timeout_s,
             )
             if response.get("status") != "ok":
                 raise RuntimeError(f"AF3 daemon error: {response.get('message')}")
@@ -278,6 +283,10 @@ class AF3Oracle(OracleMetric):
 
         for job in pending:
             input_atom_array = job.atom_array
+            if self.template_annotations is not None:
+                annotations_to_ensure = [annot for annot in self.template_annotations if annot in ANNOTATOR_REGISTRY]
+                if annotations_to_ensure:
+                    ensure_annotations(input_atom_array, *annotations_to_ensure)
             example_id = job.example_id
             job_name = example_id.replace(" ", "_")
 

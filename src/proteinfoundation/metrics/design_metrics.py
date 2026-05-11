@@ -63,43 +63,37 @@ def get_interresidue_clashes(atom_array: AtomArray, clash_threshold: float = 1.5
 
 def get_ligand_clash_metrics(atom_array: AtomArray, ligand_clash_threshold: float = 1.5) -> dict[str, float | int]:
     ensure_annotations(atom_array, "is_ligand", "is_protein_backbone")
-    output_dict = {}
 
     if not atom_array.is_ligand.any():
         return {}
 
-    # Clashes are any non-motif atom against any ligand atom
-    xyz_ligand = atom_array[atom_array.is_ligand].coord
+    is_crd_conditioned = C_CRD.mask(atom_array, default="generate")
     backbone_mask = atom_array.is_protein_backbone
     protein_mask = atom_array.is_protein
-    xyz_diffused_backbone = atom_array[
-        backbone_mask & C_IDX.mask(atom_array, default="generate") & ~C_CRD.mask(atom_array, default="generate")
-    ].coord
-    xyz_diffused_allatom = atom_array[
-        protein_mask & C_IDX.mask(atom_array, default="generate") & ~C_CRD.mask(atom_array, default="generate")
-    ].coord
+    ligand_mask = atom_array.is_ligand
 
-    # If we have no diffused atoms, return empty
-    if xyz_diffused_allatom.shape[0] == 0:
-        return {}
+    xyz_ligand = atom_array[ligand_mask].coord
+    ligand_is_crd = is_crd_conditioned[ligand_mask]
 
-    if xyz_diffused_backbone.shape[0] != 0:
-        diff_backbone = xyz_diffused_backbone[:, None, :] - xyz_ligand[None, :, :]  # (n_diffused, n_ligand, 3)
-        all_dists_backbone_ligand = np.linalg.norm(diff_backbone, axis=-1)  # (n_diffused, n_ligand)
-        min_dists_backbone_ligand = np.min(all_dists_backbone_ligand, axis=0)
-        output_dict["n_clashing.backbone_ligand_clashes"] = int(
-            np.sum(min_dists_backbone_ligand < ligand_clash_threshold)
-        )
-        output_dict["n_clashing.backbone_ligand_min_distance"] = float(np.min(min_dists_backbone_ligand))
+    output_dict = {}
 
-    diff_allatom = xyz_diffused_allatom[:, None, :] - xyz_ligand[None, :, :]  # (n_diffused, n_ligand, 3)
-    all_dists_allatom_ligand = np.linalg.norm(diff_allatom, axis=-1)  # (n_diffused, n_ligand)
-    min_dists_allatom_ligand = np.min(all_dists_allatom_ligand, axis=0)
+    xyz_backbone = atom_array[backbone_mask].coord
+    if xyz_backbone.shape[0] != 0:
+        backbone_is_crd = is_crd_conditioned[backbone_mask]
+        both_crd = backbone_is_crd[:, None] & ligand_is_crd[None, :]  # (n_backbone, n_ligand)
+        dists = np.linalg.norm(xyz_backbone[:, None] - xyz_ligand[None], axis=-1)
+        dists[both_crd] = 999
+        output_dict["n_clashing.backbone_ligand_clashes"] = int(np.sum(dists < ligand_clash_threshold))
+        output_dict["n_clashing.backbone_ligand_min_distance"] = float(dists.min())
 
-    output_dict |= {
-        "n_clashing.allatom_ligand_clashes": int(np.sum(min_dists_allatom_ligand < ligand_clash_threshold)),
-        "n_clashing.allatom_ligand_min_distance": float(np.min(min_dists_allatom_ligand)),
-    }
+    xyz_allatom = atom_array[protein_mask].coord
+    if xyz_allatom.shape[0] != 0:
+        allatom_is_crd = is_crd_conditioned[protein_mask]
+        both_crd = allatom_is_crd[:, None] & ligand_is_crd[None, :]  # (n_protein, n_ligand)
+        dists = np.linalg.norm(xyz_allatom[:, None] - xyz_ligand[None], axis=-1)
+        dists[both_crd] = 999
+        output_dict["n_clashing.allatom_ligand_clashes"] = int(np.sum(dists < ligand_clash_threshold))
+        output_dict["n_clashing.allatom_ligand_min_distance"] = float(dists.min())
 
     return output_dict
 

@@ -119,6 +119,7 @@ echo "  Repo root:     $REPO_ROOT"
 echo "  Squashfs:      ${USE_SQUASHFS_MOUNTS:-false}"
 
 # Setup PYTHONPATH and env vars (same as training script)
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 

@@ -216,7 +216,7 @@ def _import_ipa(
             "IPA_PATH not set.  Set the IPA_PATH environment variable to "
             "the In-Pocket-Analysis repository root (with compiled binaries)."
         )
-    resolved = str(Path(ipa_path).resolve())
+    resolved = str(Path(ipa_path).absolute())
     if resolved not in sys.path:
         sys.path.insert(0, resolved)
 

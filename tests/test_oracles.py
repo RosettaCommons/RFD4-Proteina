@@ -269,9 +269,11 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     assert "backbone_rmsd.rmsd" in result
     assert "chain_a_rmsd.rmsd" in result
     assert "unconditional.pass" in result
+    assert "unconditional.all_metrics_present" in result
     assert np.isfinite(result["oracle.overall_plddt"])
     assert np.isfinite(result["backbone_rmsd.rmsd"])
     assert result["unconditional.pass"] in (0.0, 1.0)
+    assert result["unconditional.all_metrics_present"] in (0.0, 1.0)
 
     # Chain A RMSD should be low since chain A was templated
     assert (

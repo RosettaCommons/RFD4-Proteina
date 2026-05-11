@@ -85,7 +85,7 @@ fi
 cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
-# Setup PYTHONPATH and env vars
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -178,7 +178,7 @@ if [ "$CLUSTER_TYPE" == "digs" ]; then
 
 # Run RF3 inference
 srun --cpu-bind=none --kill-on-bad-exit \\
-    $PYTHON $INFERENCE_SCRIPT \\
+    python $INFERENCE_SCRIPT \\
     inputs='$INPUT_FILE' \\
     out_dir='$RUN_DIR/outputs' \\
     ckpt_path='$RF3_CKPT_PATH' \\
@@ -199,8 +199,8 @@ srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
     --container-workdir=$RUN_DIR \\
     bash -c "\\
         $CONTAINER_ENV_CMDS && \\
-        $PYTHON -c \"import torch; print('torch=' + torch.__version__); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
-        exec $PYTHON $INFERENCE_SCRIPT \\
+        python -c \"import torch; print('torch=' + torch.__version__); print('cuda_available=' + str(torch.cuda.is_available()))\" || true && \\
+        exec python $INFERENCE_SCRIPT \\
             inputs='$INPUT_FILE' \\
             out_dir='$RUN_DIR/outputs' \\
             $EXTRA_ARGS\\

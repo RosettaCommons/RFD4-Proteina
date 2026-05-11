@@ -199,6 +199,7 @@ cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
 # Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -462,7 +463,7 @@ srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
     bash -c "\\
         $CONTAINER_ENV_CMDS && \\
         $SQFS_MOUNT_CMDS && \\
-        exec $PYTHON $SCRIPT_EVAL $CMD_ARGS\\
+        exec python $SCRIPT_EVAL $CMD_ARGS\\
     "
 EOFSCRIPT
     else
@@ -474,7 +475,7 @@ CONTAINER_MOUNTS="$CONTAINER_MOUNTS_STR"
 srun --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
     --container-mounts="\${CONTAINER_MOUNTS}" \\
     --container-workdir=$RUN_DIR \\
-    bash -c "$CONTAINER_ENV_CMDS && exec $PYTHON $SCRIPT_EVAL $CMD_ARGS"
+    bash -c "$CONTAINER_ENV_CMDS && exec python $SCRIPT_EVAL $CMD_ARGS"
 EOFSCRIPT
     fi
 fi
@@ -540,7 +541,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     if [ "$CLUSTER_TYPE" == "digs" ]; then
-        $PYTHON "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek
+        python "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek
     else
         CONTAINER_CMD=$(get_srun_cmd)
         CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
@@ -548,7 +549,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
         srun --ntasks=1 --kill-on-bad-exit $CONTAINER_CMD \
             --container-mounts="$CONTAINER_MOUNTS_STR" \
             --container-workdir=$RUN_DIR \
-            $PYTHON "$CONCAT_SCRIPT" --input "$OUTPUT_DIR"
+            python "$CONCAT_SCRIPT" --input "$OUTPUT_DIR"
     fi
 
     echo ""

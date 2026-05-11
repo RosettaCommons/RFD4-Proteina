@@ -4,10 +4,11 @@
 Also provides shared aggregation logic used by external_eval.py.
 """
 
-import argparse
 import os
+import shutil
 from pathlib import Path
 
+import fire
 import numpy as np
 import pandas as pd
 import rootutils
@@ -100,6 +101,7 @@ def concatenate_results(
     input: str,
     cluster_with_foldseek: bool = False,
     cleanup: bool = True,
+    cleanup_chains: bool = True,
     output_dir: str | None = None,
 ) -> None:
     """Concatenate per-example and aggregated metrics from multiple jobs.
@@ -109,6 +111,9 @@ def concatenate_results(
             or the already-concatenated per_example_metrics.csv file.
         cluster_with_foldseek: Whether to cluster results using Foldseek.
         cleanup: If True, move individual job files to a subdirectory after concatenation.
+        cleanup_chains: If True (default), delete the ``foldseek_input_chains/`` directory
+            after clustering completes.  The chain CIF files are derived from the designed
+            structures and can be regenerated, so removal is safe.
         output_dir: Directory where results should be saved. Defaults to the input directory
             (or parent directory when input is a file).
     """
@@ -122,25 +127,32 @@ def concatenate_results(
         per_example_files = [f for f in per_example_files if f.name != "per_example_metrics.csv"]
 
         if not per_example_files:
-            print(f"No per-example metric files found in {input}")
-            print("Nothing to concatenate - this may be a single-job run.")
+            logger.info(f"No per-example metric files found in {input}")
+            logger.info("Nothing to concatenate - this may be a single-job run.")
             return
 
-        print(f"Found {len(per_example_files)} per-example metric files to concatenate")
+        logger.info(f"Found {len(per_example_files)} per-example metric files to concatenate")
 
         # 1. Concatenate per-example metrics
         all_per_example_dfs = []
         for file in per_example_files:
             df = pd.read_csv(file)
             all_per_example_dfs.append(df)
-            print(f"  Loaded {file.name}: {len(df)} examples")
+            logger.debug(f"  Loaded {file.name}: {len(df)} examples")
 
         concatenated_per_example = pd.concat(all_per_example_dfs, ignore_index=True)
 
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
+        # Chains dirs are discovered from output_base_dir in the DataFrame (no hardcoded path).
         concatenated_per_example = add_foldseek_diversity_to_per_example_df(concatenated_per_example)
         concatenated_per_example = add_diversity_summary_metrics(concatenated_per_example)
+        if cleanup_chains and "output_base_dir" in concatenated_per_example.columns:
+            for base_dir in concatenated_per_example["output_base_dir"].dropna().unique():
+                chains_dir = Path(base_dir) / "foldseek_input_chains"
+                if chains_dir.is_dir():
+                    shutil.rmtree(chains_dir)
+                    logger.info(f"Removed foldseek input chains directory: {chains_dir}")
 
     # Save per-example metrics
     concatenated_per_example = concatenated_per_example.round(4)
@@ -148,8 +160,8 @@ def concatenate_results(
     output_path.mkdir(parents=True, exist_ok=True)
     per_example_output = output_path / "per_example_metrics.csv"
     concatenated_per_example.to_csv(per_example_output, index=False)
-    print(f"\nSaved concatenated per-example metrics to {per_example_output}")
-    print(f"  Total examples: {len(concatenated_per_example)}")
+    logger.info(f"Saved concatenated per-example metrics to {per_example_output}")
+    logger.info(f"  Total examples: {len(concatenated_per_example)}")
 
     # 2. Re-aggregate metrics using shared function
     agg_df = aggregate_metrics_from_per_example_df(concatenated_per_example, title="Final Aggregated Metrics")
@@ -158,7 +170,7 @@ def concatenate_results(
     agg_df = agg_df.round(4)
     agg_output = output_path / "aggregated_metrics.csv"
     agg_df.to_csv(agg_output, index=False)
-    print(f"\nSaved aggregated metrics to {agg_output}")
+    logger.info(f"Saved aggregated metrics to {agg_output}")
 
     # 3. Aggregate per-task metrics
     per_task_df = aggregate_metrics_from_per_example_df(
@@ -168,19 +180,19 @@ def concatenate_results(
     per_task_df = per_task_df.round(4)
     per_task_output = output_path / "per_task_metrics.csv"
     per_task_df.to_csv(per_task_output, index=False)
-    print(f"\nSaved per-task metrics to {per_task_output}")
+    logger.info(f"Saved per-task metrics to {per_task_output}")
 
     # 4. Optionally clean up individual job files
     if not input.is_file() and cleanup:
         job_files_dir = output_path / "individual_job_results"
         job_files_dir.mkdir(exist_ok=True)
 
-        print(f"\nMoving individual job files to {job_files_dir}")
+        logger.info(f"Moving individual job files to {job_files_dir}")
 
         # Move per-example files
         for file in per_example_files:
             file.rename(job_files_dir / file.name)
-            print(f"  Moved {file.name}")
+            logger.debug(f"  Moved {file.name}")
 
         # Move aggregated files
         agg_files = sorted(output_path.glob("*aggregated_metrics*.csv"))
@@ -188,49 +200,11 @@ def concatenate_results(
             if file == agg_output:
                 continue
             file.rename(job_files_dir / file.name)
-            print(f"  Moved {file.name}")
+            logger.debug(f"  Moved {file.name}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Concatenate results from multi-job external evaluation runs.")
-    parser.add_argument(
-        "--input",
-        type=str,
-        required=True,
-        help=(
-            "Path to either the directory containing the individual job result files "
-            "or the already-concatenated per_example_metrics.csv file"
-        ),
-    )
-    parser.add_argument(
-        "--cleanup",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Move individual job files into a subdirectory after concatenation",
-    )
-    parser.add_argument(
-        "--cluster-with-foldseek",
-        action="store_true",
-        help="Whether to cluster results using Foldseek",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default=None,
-        help=(
-            "Directory where results should be saved. "
-            "Defaults to the input directory (or its parent when --input is a file)."
-        ),
-    )
-
-    args = parser.parse_args()
-
-    concatenate_results(
-        input=args.input,
-        cleanup=args.cleanup,
-        cluster_with_foldseek=args.cluster_with_foldseek,
-        output_dir=args.output_dir,
-    )
+    fire.Fire(concatenate_results)
 
 
 if __name__ == "__main__":

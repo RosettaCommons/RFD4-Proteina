@@ -18,7 +18,6 @@ The framework-facing :py:meth:`compute` then routes between them: cache hit
 → load JSON; cache miss → call ``fold_one``.
 """
 
-import hashlib
 import json
 import tempfile
 from abc import abstractmethod
@@ -28,6 +27,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from atomworks.io.utils.io_utils import apply_sharding_pattern
+from atomworks.ml.utils.misc import hash_sequence
 from biotite.structure import AtomArray
 
 from foundry.metrics.metric import Metric
@@ -144,6 +145,43 @@ def extract_confidence_metrics(
     return metrics
 
 
+def _example_shard_path(out_dir: Path, example_id: str) -> Path:
+    """Return a sharded subdirectory under ``out_dir`` for the given example."""
+    return out_dir / apply_sharding_pattern(hash_sequence(example_id), "/0:2/0:8/")
+
+
+def example_output_dir(out_dir: Path, example_id: str) -> Path:
+    """Return a sharded per-example output directory under ``out_dir``.
+
+    Args:
+        out_dir: Top-level output base directory.
+        example_id: Unique example identifier.
+    """
+    return _example_shard_path(out_dir, example_id)
+
+
+def example_chain_dir(
+    out_dir: Path,
+    example_id: str,
+    dataset_name: str | None = None,
+    task: str | None = None,
+) -> Path:
+    """Return the foldseek chain CIF directory for the given example.
+
+    Args:
+        out_dir: Top-level output base directory.
+        example_id: Unique example identifier.
+        dataset_name: Dataset name (groups foldseek clustering jobs by dataset).
+        task: Task label (e.g. ``"unconditional"``).
+    """
+    subdir = out_dir / "foldseek_input_chains"
+    if dataset_name is not None or task is not None:
+        ds_seg = hash_sequence(dataset_name)[:8] if dataset_name is not None else "unknown_dataset"
+        task_seg = task if task is not None else "unknown_task"
+        subdir = subdir / ds_seg / task_seg
+    return _example_shard_path(subdir, example_id)
+
+
 class OracleMetric(Metric):
     """Base class for structure-prediction oracles (RF3Oracle, AF3Oracle).
 
@@ -154,8 +192,8 @@ class OracleMetric(Metric):
     cache miss (call ``fold_one`` then load JSON).
 
     Args:
-        oracle_name: Short label used to name the output subdirectory and JSON
-            files (e.g. ``"rf3"`` → ``{out_dir}/rf3_refolding/``).
+        oracle_name: Short label included in output filenames
+            (e.g. ``"rf3"`` → ``…/{digest8}/{example_id}_rf3_refolded.cif``).
         template_annotations: Annotation name(s) on the input AtomArray to use
             for templating. Multiple names are OR'd together. Defaults to ``None``.
     """
@@ -176,19 +214,13 @@ class OracleMetric(Metric):
     # Path helpers
     # ------------------------------------------------------------------
 
-    def _oracle_dir(self, out_dir: Path) -> Path:
-        return out_dir / f"{self.oracle_name}_refolding"
-
-    def _shard_subdir(self, example_id: str) -> str:
-        return hashlib.md5(example_id.encode()).hexdigest()[:3]
-
     def confidence_path(self, out_dir: Path, example_id: str) -> Path:
         """Return the path to the on-the-fly confidence JSON for this example."""
-        return self._oracle_dir(out_dir) / self._shard_subdir(example_id) / f"{example_id}_confidences.json"
+        return example_output_dir(out_dir, example_id) / f"{example_id}_{self.oracle_name}_confidences.json"
 
     def refolded_cif_path(self, out_dir: Path, example_id: str) -> Path:
         """Return the canonical path at which the refolded CIF will be saved."""
-        return self._oracle_dir(out_dir) / self._shard_subdir(example_id) / f"{example_id}_refolded.cif"
+        return example_output_dir(out_dir, example_id) / f"{example_id}_{self.oracle_name}_refolded.cif"
 
     def already_refolded(self, out_dir: Path, example_id: str) -> bool:
         """Return True if a confidence JSON for this example already exists."""

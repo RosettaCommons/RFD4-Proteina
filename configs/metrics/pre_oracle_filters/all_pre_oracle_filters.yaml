@@ -1,0 +1,27 @@
+# Pre-oracle filters: only forward passing designs to the oracle.
+# NOTE: All of these filters must have required metrics_tags so that by default none are applied
+
+# NOTE: This is `insertion_rmsd` in the sense of rfd3, which only includes unindexed regions
+insertion_rmsd_filter:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    unindexed_metrics.insertion_rmsd:
+      max: 1.0
+  required_tags_all:
+    - unindexed
+    - insertion_rmsd_filter
+
+motif_rmsd_filter:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  required_tags_all: [motif_rmsd_filter]
+  metric_thresholds:
+    motif_rmsd.rmsd:
+      max: 1.0
+
+ligand_clash_filter:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    ligand_clash_metric.n_clashing.allatom_ligand_clashes:
+      max: 0
+  required_tags_all: [ligand_clash_filter]
+  prohibited_tags: [no_ligand]

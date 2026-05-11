@@ -131,6 +131,7 @@ fi
 cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
@@ -279,6 +280,7 @@ SCRIPT_EVALUATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/evaluate
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     cat >> "$SBATCH_FILE" << 'EOF'
 
+GEN_PIDS=()
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
     if [ $JOB_ID -lt $NJOBS ]; then
@@ -294,14 +296,16 @@ EOF
             gen_njobs=\$NJOBS &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
+        GEN_PIDS+=($!)
     fi
 done
-wait
+wait "${GEN_PIDS[@]}"
 EOF
 else
     CONTAINER_CMD=$(get_srun_cmd)
     cat >> "$SBATCH_FILE" << 'EOF'
 
+GEN_PIDS=()
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
     if [ $JOB_ID -lt $NJOBS ]; then
@@ -319,9 +323,10 @@ EOF
             gen_njobs=\$NJOBS &
 EOF
     cat >> "$SBATCH_FILE" << 'EOF'
+        GEN_PIDS+=($!)
     fi
 done
-wait
+wait "${GEN_PIDS[@]}"
 EOF
 fi
 
@@ -335,64 +340,108 @@ cd "$RUN_DIR"
 EXISTING_RUNNING=$(squeue -u "$USER" --name="$RUN_NAME" -h -o "%i %T" 2>/dev/null | grep "RUNNING" | head -1)
 if [ -n "$EXISTING_RUNNING" ]; then
     EXISTING_ID=$(echo "$EXISTING_RUNNING" | awk '{print $1}')
-    echo "Warning: Job '$RUN_NAME' already RUNNING (ID: $EXISTING_ID)"
-    read -p "Continue with submission? [y/N] " -n 1 -r; echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    echo "Warning: Job '$RUN_NAME' is already RUNNING (ID: $EXISTING_ID)"
+    echo "  Cancel: scancel $EXISTING_ID"
+    echo "  Monitor: tail -f $RUN_DIR/slurm_run_outputs/slurm.err"
+    if [ -t 1 ]; then
+        read -p "Continue with submission? [y/N] " -n 1 -r; echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    else
+        echo "  (Non-interactive mode: proceeding with submission)"
+    fi
 fi
 
-SBATCH_OUTPUT=$(sbatch slurm_batch_script.sh)
-SUBMITTED_JOB_ID=$(echo "$SBATCH_OUTPUT" | grep -oP '\d+')
-echo "$SBATCH_OUTPUT"
-echo ""
-echo "Monitor: squeue -u $USER --name=$RUN_NAME"
-echo "Logs:    tail -f $RUN_DIR/slurm_run_outputs/slurm.err"
-
 # ============================================================
-# Optionally wait and concatenate per-job CSVs
+# Build concatenation SBATCH script (if enabled)
 # ============================================================
-if [ "$DO_CONCATENATE" == "true" ] && [ "$NJOBS" -gt 1 ]; then
-    print_header "Waiting for Jobs to Complete"
-    echo "Will concatenate results once all jobs finish..."
-
-    WAIT_COUNT=0
-    while true; do
-        INCOMPLETE_JOBS=$(squeue -u "$USER" --name="$RUN_NAME" -h 2>/dev/null | wc -l)
-        [ "$INCOMPLETE_JOBS" -eq 0 ] && { echo "All jobs finished!"; break; }
-
-        if [ $((WAIT_COUNT % 10)) -eq 0 ]; then
-            STATES=$(squeue -u "$USER" --name="$RUN_NAME" -h -o "%T" 2>/dev/null | sort | uniq -c)
-            echo "$(date '+%H:%M:%S') - Jobs still active: $INCOMPLETE_JOBS"
-            echo "$STATES" | sed 's/^/  /'
-        fi
-
-        sleep 60
-        WAIT_COUNT=$((WAIT_COUNT + 1))
-    done
-
-    print_header "Concatenating Results"
+if [ "$DO_CONCATENATE" == "true" ]; then
+    CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
     CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_DIR="$RUN_DIR/evaluation_metrics"
 
     FOLDSEEK_FLAG=""
     [ "$CONCATENATE_FOLDSEEK" == "true" ] && FOLDSEEK_FLAG="--cluster-with-foldseek"
 
+    {
+        echo "#!/bin/bash"
+        echo "#SBATCH --job-name concat-${RUN_NAME}"
+        if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
+            echo "#SBATCH --account $ACCOUNT"
+        fi
+        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
+        echo "#SBATCH --time 04:00:00"
+        echo "#SBATCH --nodes 1"
+        echo "#SBATCH --ntasks-per-node 1"
+        echo "#SBATCH --cpus-per-task 4"
+        echo "#SBATCH --mem 16g"
+        echo "#SBATCH --output ./slurm_run_outputs/slurm_concat.out"
+        echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
+        echo "#SBATCH --open-mode append"
+        echo ""
+        echo "export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
+        echo "export PYTHONFAULTHANDLER=1"
+        echo ""
+        echo "echo \"Running result concatenation for: $RUN_NAME\""
+        echo "echo \"Concat dir: $CONCAT_DIR\""
+    } > "$CONCAT_SBATCH_FILE"
+
     if [ "$CONTAINER_TYPE" == "apptainer" ]; then
-        $PYTHON "$CONCAT_SCRIPT" --output-dir "$RUN_DIR" $FOLDSEEK_FLAG
+        cat >> "$CONCAT_SBATCH_FILE" << EOF
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
+
+"$CONCAT_SCRIPT" --input "$CONCAT_DIR" $FOLDSEEK_FLAG
+EOF
     else
-        CONTAINER_CMD=$(get_srun_cmd)
-        srun --kill-on-bad-exit $CONTAINER_CMD \
-            --container-mounts="/lustre:/lustre" \
-            --container-workdir="$RUN_DIR" \
-            $PYTHON "$CONCAT_SCRIPT" --output-dir "$RUN_DIR" $FOLDSEEK_FLAG
+        CONTAINER_CMD_CONCAT=$(get_srun_cmd)
+        CONTAINER_MOUNTS_STR_CONCAT=$(build_container_mounts_string)
+        CONTAINER_ENV_CMDS_CONCAT=$(build_container_env_cmds)
+        cat >> "$CONCAT_SBATCH_FILE" << EOF
+srun --ntasks=1 $CONTAINER_CMD_CONCAT \\
+    --container-mounts="$CONTAINER_MOUNTS_STR_CONCAT" \\
+    --container-workdir=$RUN_DIR \\
+    bash -c "$CONTAINER_ENV_CMDS_CONCAT && python \"$CONCAT_SCRIPT\" --input \"$CONCAT_DIR\" $FOLDSEEK_FLAG"
+EOF
     fi
 
-    echo ""
-    echo "Results concatenated."
-    echo "  Per-example metrics: $RUN_DIR/per_example_metrics.csv"
-    echo "  Aggregated metrics:  $RUN_DIR/aggregated_metrics.csv"
+    cat >> "$CONCAT_SBATCH_FILE" << 'EOF'
+echo "Concatenation complete!"
+EOF
 fi
 
+# ============================================================
+# Submit jobs
+# ============================================================
+SBATCH_OUTPUT=$(sbatch slurm_batch_script.sh)
+SUBMITTED_JOB_ID=$(echo "$SBATCH_OUTPUT" | grep -oP '\d+')
+echo "$SBATCH_OUTPUT"
+
+# Submit concatenation job with dependency (non-blocking)
+CONCAT_JOB_ID=""
+if [ "$DO_CONCATENATE" == "true" ] && [ -n "$SUBMITTED_JOB_ID" ]; then
+    echo ""
+    echo "Submitting concatenation job (waits for job $SUBMITTED_JOB_ID to finish)..."
+    CONCAT_SBATCH_OUTPUT=$(sbatch --dependency=afterany:$SUBMITTED_JOB_ID slurm_concat_script.sh)
+    CONCAT_JOB_ID=$(echo "$CONCAT_SBATCH_OUTPUT" | grep -oP '\d+')
+    echo "$CONCAT_SBATCH_OUTPUT"
+    echo "LAUNCH_EVALUATE_CONCAT_JOB_ID=$CONCAT_JOB_ID"
+fi
+
+echo ""
+echo "=============================================="
+echo "Jobs submitted"
+echo "=============================================="
+echo "  Monitor:     squeue -u $USER --name=$RUN_NAME"
+echo "  Eval logs:   tail -f $RUN_DIR/slurm_run_outputs/slurm.err"
+if [ -n "$CONCAT_JOB_ID" ]; then
+    echo "  Concat job:  squeue -j $CONCAT_JOB_ID"
+    echo "  Concat logs: tail -f $RUN_DIR/slurm_run_outputs/slurm_concat.out"
+    echo "  Results:     $RUN_DIR/evaluation_metrics/"
+fi
+echo ""
+
 if [ "$FOLLOW_LOGS" == "true" ]; then
-    echo -e "\nFollowing logs (Ctrl+C to exit)...\n"
+    echo -e "Following logs (Ctrl+C to exit)...\n"
     while [ ! -f "$RUN_DIR/slurm_run_outputs/slurm.err" ]; do
         squeue -u "$USER" --name="$RUN_NAME" -h 2>/dev/null | grep -q . || { echo "Job not in queue"; break; }
         sleep 2

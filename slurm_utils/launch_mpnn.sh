@@ -145,7 +145,7 @@ if [ -z "$REPO_ROOT" ]; then
 fi
 cd "$REPO_ROOT"
 
-# Setup PYTHONPATH
+source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 
 # Convert to absolute paths
