@@ -46,9 +46,12 @@ from proteinfoundation.inference_utils.foldseek import (
     run_foldseek_distributed,
 )
 from proteinfoundation.metrics.metrics_utils import (
+    MetricsPool,
     apply_pre_oracle_filters,
+    auto_pick_metrics_workers,
     compute_oracle_metrics_for_val_output,
     fold_designs_for_oracles,
+    resolve_metric_manager_cfgs,
     resolve_mm_cfgs_from_metrics,
 )
 from proteinfoundation.metrics.oracle_metric import example_output_dir
@@ -1345,11 +1348,16 @@ class Proteina(L.LightningModule):
                                 f"to dataset with tags {dataset_tags}."
                             )
 
+        # Per-rank worker pool for design + post-fold metrics. See `MetricsPool`.
+        self._metrics_pool = MetricsPool(
+            num_workers=auto_pick_metrics_workers(self.cfg_exp),
+            mm_cfgs=resolve_metric_manager_cfgs(metrics_cfg),
+        )
+
         # Propagate to the worker pool so spawned workers rebuild MetricManagers
         # from the current (e.g. inference) config rather than the flat training
         # config stored in the checkpoint, which lacks the inline_metrics key.
-        if hasattr(self, "_metrics_pool"):
-            self._metrics_pool._mm_cfgs = resolve_mm_cfgs_from_metrics(metrics_cfg)
+        self._metrics_pool._mm_cfgs = resolve_mm_cfgs_from_metrics(metrics_cfg)
 
     def configure_inference(
         self,
