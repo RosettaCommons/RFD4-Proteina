@@ -41,6 +41,7 @@ class IsolateMetalsToOwnChain(Transform):
             new_chain = next(chain_gen)
             atom_array.chain_id[idx] = new_chain
             atom_array.res_name[idx] = atom_array.element[idx].upper()
+            atom_array.atom_name[idx] = atom_array.element[idx].upper()
             atom_array.res_id[idx] = 1
 
             if "is_polymer" in atom_array.get_annotation_categories():
