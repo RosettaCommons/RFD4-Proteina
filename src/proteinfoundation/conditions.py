@@ -157,7 +157,7 @@ class IndexGroup(ConditionBase):
 
     name = "index-group"
     n_body = 1
-    level = Level.ATOM
+    level = Level.TOKEN
     dtype = int
 
     @classmethod

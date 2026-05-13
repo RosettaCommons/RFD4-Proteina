@@ -6,11 +6,11 @@ Handles coordinate transfer for workflows where residue types may change but we 
 import biotite.structure as struc
 import numpy as np
 from atomworks.io.template import get_empty_ccd_template
-from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.annotator import ANNOTATOR_REGISTRY, ensure_annotations
 from atomworks.io.utils.atom_array_plus import insert_atoms
 from atomworks.io.utils.selection import get_annotation_categories
+from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
-from atomworks.ml.conditions.base import CONDITIONS
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from biotite.structure import AtomArray
 
@@ -31,8 +31,8 @@ DEFAULT_ATOM_LEVEL_ANNOTATIONS = (
         "occupancy",
         "charge",
     }
-    | {cond.mask_name for cond in CONDITIONS if (cond.n_body == 1 and cond.level == Level.ATOM)}
-    | {cond.full_name for cond in CONDITIONS if (cond.n_body == 1 and cond.level == Level.ATOM)}
+    | {sa.mask_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
+    | {sa.full_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
 )
 
 
@@ -223,7 +223,10 @@ def copy_generated_coordinates_to_input(
 
         # Prepare to add missing atoms later
         if len(missing_atoms) > 0:
-            residue_annots = get_residue_level_annotations(input_atom_array, input_token_mask)
+            residue_level_annotations_to_exclude = DEFAULT_ATOM_LEVEL_ANNOTATIONS | set(ANNOTATOR_REGISTRY.keys())
+            residue_annots = get_residue_level_annotations(
+                input_atom_array, input_token_mask, annotations_to_exclude=residue_level_annotations_to_exclude
+            )
 
             # Use the values in the template, matching what the model generated
             residue_annots.pop("res_name", None)
