@@ -1,0 +1,87 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/plinder/plinder@datasets.train.plinder
+
+  # Diagnostic val set for PTMs
+  - /datasets/val/cropped_plinder_ptms@datasets.val.cropped_plinder_ptms
+
+  # Validation datasets
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/sm_binder@datasets.val.sm_binder
+  - /datasets/val/sm_binder_fixed_ligand@datasets.val.sm_binder_fixed_ligand
+
+  # Design task presets
+  - /design_tasks/presets/motif_pretraining@_motif_scaffold_design_tasks
+  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
+
+  # AF3 refolding oracle
+  - override /metrics/refolding_oracles: af3
+
+  - _self_
+
+
+run_name_: 27_plinder_ptm_upweight_fixed_2
+
+datasets:
+  global_design_task_kwargs:
+    rasa_kwargs:
+      p_add_rasa_condition: 0.2
+    secondary_structure_kwargs:
+      p_add_secondary_structure_condition: 0.1
+    hbond_kwargs:
+      p_add_hbond_condition: 0.1
+
+  train:
+    afdb_monomer:
+      probability: 0.5
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+    plinder:
+      probability: 0.5
+      dataset:
+        columns_to_load:
+          - example_id
+          - path
+          - pli_unique_qcov__50__community
+          - af3_folded
+          - chain_ids_orig
+          - chain_ptm
+          - chain_pair_pae_min
+          - has_covalent_modification  # only added this one
+        filters:
+          - "has_covalent_modification"  # upweight to PTM samples
+        
+        transform:
+          design_tasks:
+            tip_atom:
+              frequency: 5.0
+            tip_atom_partial_ligand:
+              frequency: 20.0
+            unconditional:
+              frequency: 20.0  # make sure we see unconditional PTMs
+
+log:
+  tags: ["motif-scaffolding", "ame", "omol", "plinder", "pretrain", "muon", "af3-oracle", "ptm"]
+
+dataloaders:
+  batch_size: 24
+  val:
+    dataloader_params:
+      num_workers: 4
+
+opt:
+  val_start_epoch: 1   # skip prevalidate (no val before first training epoch)
+  num_sanity_val_steps: 2
+
+hardware:
+  accelerator: gpu
+  nnodes_: 2
+  ngpus_per_node_: 8
+  ncpus_per_task_train_: 16

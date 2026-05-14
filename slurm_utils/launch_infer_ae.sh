@@ -26,6 +26,7 @@ set -e
 # Get script directory and source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
+strip_inherited_slurm_env
 
 # Parse arguments
 CLUSTER=""

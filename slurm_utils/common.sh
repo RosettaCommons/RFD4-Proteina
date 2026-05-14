@@ -9,6 +9,15 @@
 #   source ./slurm_utils/common.sh
 # =============================================================================
 
+# Strip any inherited SLURM_*/SBATCH_* env vars from a surrounding allocation
+# (e.g. when a launcher is invoked from inside an `salloc`/interactive job).
+# Otherwise those vars leak into the sbatch submission and cause inner srun
+# steps to fail with "Memory required by task is not available". Only affects
+# the calling script's process — the parent shell's env is untouched.
+strip_inherited_slurm_env() {
+    while IFS= read -r _v; do unset "$_v"; done < <(compgen -e | grep -E '^(SLURM|SBATCH)_')
+}
+
 # Find repository root by looking for .project-root file
 find_repo_root() {
     local current_dir="$1"

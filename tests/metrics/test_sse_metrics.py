@@ -4,12 +4,14 @@ import numpy as np
 import pytest
 from atomworks.io.transforms.atom_array import ensure_atom_array_stack
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.utils.testing import cached_parse
 
 from proteinfoundation.conditions import C_SEC, SSEnum
 from proteinfoundation.metrics.sse_metrics import (
     SecondaryStructureAccuracy,
     SecondaryStructureDistribution,
+    annotate_secondary_structure,
 )
 
 
@@ -47,6 +49,28 @@ def test_secondary_structure_distribution_metric(deterministic_rng, pdb_id, use_
     assert result["num_ss_elements"] > 0, "Real proteins should have SSE elements"
 
 
+@pytest.mark.parametrize("pdb_id", ["6lyz", "1fu2"])
+def test_annotate_secondary_structure_is_residue_uniform(pdb_id):
+    """``sse`` and ``sse_is_valid`` must be uniform within every residue.
+
+    This is the invariant that breaks for partially-atomized PTM residues if
+    the annotation is computed/spread at token level instead of residue level.
+    """
+    atom_array = cached_parse(pdb_id)["atom_array"]
+    atom_array = annotate_secondary_structure(atom_array)
+
+    residue_start_stops = get_residue_starts(atom_array, add_exclusive_stop=True)
+    sse = atom_array.sse
+    is_valid = atom_array.sse_is_valid
+    for start, stop in zip(residue_start_stops[:-1], residue_start_stops[1:], strict=False):
+        assert (
+            np.unique(sse[start:stop]).size == 1
+        ), f"sse not uniform within residue at atoms [{start}, {stop}): {np.unique(sse[start:stop])}"
+        assert (
+            np.unique(is_valid[start:stop]).size == 1
+        ), f"sse_is_valid not uniform within residue at atoms [{start}, {stop})"
+
+
 @pytest.mark.parametrize(
     "conditioning_type,expected_accuracy_range",
     [
@@ -68,8 +92,6 @@ def test_secondary_structure_accuracy_metric(deterministic_rng, conditioning_typ
     # Add C_SEC conditioning based on type
     if conditioning_type == "perfect":
         # Run P-SEA on atom array to get ground truth SSE
-        from proteinfoundation.metrics.sse_metrics import annotate_secondary_structure
-
         atom_array = annotate_secondary_structure(
             atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid"
         )

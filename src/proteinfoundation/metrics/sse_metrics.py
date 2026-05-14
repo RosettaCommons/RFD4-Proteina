@@ -6,9 +6,10 @@ from typing import Any
 import numpy as np
 from atomworks.io.transforms.atom_array import ensure_atom_array_stack
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, stack_atom_array_plus
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.transforms.dssp import SSEnum
-from atomworks.ml.utils.token import get_token_starts, spread_token_wise
-from biotite.structure import AtomArray, AtomArrayStack, annotate_sse
+from atomworks.ml.utils.token import get_token_starts
+from biotite.structure import AtomArray, AtomArrayStack, annotate_sse, spread_residue_wise
 
 from foundry.metrics import Metric
 from proteinfoundation.conditions import C_SEC
@@ -21,6 +22,12 @@ def annotate_secondary_structure(
     inplace: bool = False,
 ) -> AtomArray:
     """Annotate secondary structure using P-SEA algorithm.
+
+    P-SEA is residue-keyed (one code per residue, with ``''`` for non-AA /
+    no-CA residues), so the annotation is computed per residue and spread to
+    every atom of the residue. This keeps values uniform within a residue
+    even when the residue is split across multiple tokens (e.g., partially
+    atomized PTM residues whose sidechain atoms become atom-level tokens).
 
     Only protein residues are assigned secondary structure; all others are
     set to SSEnum.NONE.
@@ -39,39 +46,30 @@ def annotate_secondary_structure(
     if not inplace:
         atom_array = atom_array.copy()
 
-    # Get token-level information
-    token_starts = get_token_starts(atom_array)
-    n_tokens = len(token_starts)
+    # Residue-level table
+    residue_starts = get_residue_starts(atom_array)
+    n_residues = len(residue_starts)
 
-    # Default all tokens to NONE
-    sse = np.full(n_tokens, SSEnum.NONE, dtype=np.int8)
-    is_valid = np.zeros(n_tokens, dtype=bool)
+    # Default all residues to NONE
+    sse = np.full(n_residues, SSEnum.NONE, dtype=np.int8)
+    is_valid = np.zeros(n_residues, dtype=bool)
 
     try:
-        # Run P-SEA on the entire structure
-        # annotate_sse returns array of 'a', 'b', 'c', or '' for each residue
+        # P-SEA returns one code per residue in residue order, with ``''`` for
+        # non-AA / no-CA residues.
         psea_codes = annotate_sse(atom_array)
-
-        # Map P-SEA codes to SSEnum values
-        for i, code in enumerate(psea_codes):
-            if code == "a":  # alpha helix
-                sse[i] = SSEnum.HELIX
-                is_valid[i] = True
-            elif code == "b":  # beta sheet
-                sse[i] = SSEnum.SHEET
-                is_valid[i] = True
-            elif code == "c":  # coil/loop
-                sse[i] = SSEnum.LOOP
-                is_valid[i] = True
-            # Empty string '' means non-amino acid or missing CA -> leave as NONE
-
+        if len(psea_codes) == n_residues:
+            sse[psea_codes == "a"] = SSEnum.HELIX
+            sse[psea_codes == "b"] = SSEnum.SHEET
+            sse[psea_codes == "c"] = SSEnum.LOOP
+            is_valid = psea_codes != ""
     except Exception:
         # P-SEA failed - return with all NONE values
         pass
 
-    # Spread token-wise to all atoms
-    sse_spread = spread_token_wise(atom_array, sse)
-    is_valid_spread = spread_token_wise(atom_array, is_valid)
+    # Spread residue-wise to all atoms
+    sse_spread = spread_residue_wise(atom_array, sse)
+    is_valid_spread = spread_residue_wise(atom_array, is_valid)
 
     # Set annotations
     atom_array.set_annotation(annotation_name, sse_spread)
