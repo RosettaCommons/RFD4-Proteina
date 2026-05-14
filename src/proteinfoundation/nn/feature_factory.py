@@ -581,7 +581,8 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
         if C_CRD.full_name in batch and C_CRD.mask_name in batch:
             # C_CRD.full_name coordinates are in Angstroms from collate, convert to nm
             # Already pre-masked by pipeline, but we apply mask explicitly for clarity
-            coors = batch[C_CRD.full_name] / 10.0  # [b, n, 37, 3] - convert Angstroms to nm
+            # turn nans into 0s in coors
+            coors = torch.nan_to_num(batch[C_CRD.full_name], nan=0.0) / 10.0  # [b, n, 37, 3] - convert Angstroms to nm
             coors_mask = batch[C_CRD.mask_name]  # [b, n, 37] - CONDITIONING mask (not atom validity)
             coors = coors * coors_mask[..., None]  # Zero-out unconditioned atoms
 

@@ -1,0 +1,45 @@
+# @package _global_
+#
+# PTM diagnostic: two-example overfit.
+#
+# Trains on two CIFs (one with the TYR51.OH <-> A5O.P PTM bond, one without
+# and with the A5O ligand translated +100 A along x). Validates on ~100
+# cropped plinder PTM samples (PTM bond preserved through cropping).
+#
+# Launch:
+#
+#   python projects/proteinfoundation/proteinfoundation/train.py \
+#     experiment=mkazman/debug/ptm_overfit \
+#     +single=True +nolog=True \
+#     nn.use_torch_compile=False \
+#     dataloaders.num_workers=2
+
+defaults:
+  # Global design-task kwargs available under datasets.global_design_task_kwargs.
+  - /design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs
+  # Train + val datasets.
+  - /datasets/train/debug/ptm_overfit@datasets.train
+  - _self_
+
+run_name_: ptm_overfit_v2
+
+log:
+  tags: ["plinder", "ptm", "overfit", "debug"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 8
+  nnodes_: 1
+
+# Both examples per batch -> single optimization step touches both.
+dataloaders:
+  batch_size: 16
+
+opt:
+  num_sanity_val_steps: 0
+  steps_per_epoch: 100000
+  val_every_n_epochs: 100  # effectively disable val until the user wants it
+  val_start_epoch: 100
+
+# No pretraining; overfit from scratch unless overridden on the CLI.
+pretrain_ckpt_path: null
