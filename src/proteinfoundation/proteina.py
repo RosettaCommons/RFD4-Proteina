@@ -20,6 +20,7 @@ import torch.distributed as dist
 import wandb
 from atomworks.common import exists
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
+from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
 from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
@@ -1639,6 +1640,12 @@ class Proteina(L.LightningModule):
         updated_array = insert_internal_coord_conditioned_groups(
             updated_array, original_input_coords=updated_array.original_input_coord
         )
+
+        # Reset expandable segment annotations since they are all generated now (will help for downstream visualization)
+        S_SEGMIN.set_mask(updated_array, np.zeros_like(S_SEGMIN.mask(updated_array)))
+        S_SEGMAX.set_mask(updated_array, np.zeros_like(S_SEGMAX.mask(updated_array)))
+        S_SEGMIN.set_annotation(updated_array, S_SEGMIN.default_annotation(updated_array))
+        S_SEGMAX.set_annotation(updated_array, S_SEGMAX.default_annotation(updated_array))
 
         # + ------- Concatenate the unindexed slice for the design-metrics worker ------- +
         # The worker calls `annotate_unindexed_insertion` on this concatenated array

@@ -1,0 +1,41 @@
+# PLINDER training dataset.
+# Source: ${DATA_PATH}/train_datasets/plinder/data/2026_05_06_plinder_valid_systems.parquet
+# (293873 rows, May 2026).
+# Squashfs (CIFs): /squash/plinder (mounted from
+# 2026_05_06_plinder_systems.sqfs).
+# Weighted sampling: inverse cluster size on `pli_unique_qcov__50__community`.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0  # default for mixed samples; experiment configs override
+
+dataset:
+  name: plinder_train
+  data: ${oc.env:DATA_PATH}/train_datasets/plinder/2026_05_06_plinder_valid_systems.parquet
+
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_base_loader
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/plinder
+    example_id_colname: example_id
+    path_colname: path
+    assembly_id_colname: None
+    parser_args:
+      _target_: proteinfoundation.utils.parse_presets.distillation
+
+  columns_to_load:
+    - example_id
+    - path
+    - pli_unique_qcov__50__community
+    - af3_folded
+    - chain_ids_orig
+    - chain_ptm
+    - chain_pair_pae_min
+
+  transform: {}
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_by_inverse_cluster_size
+  cluster_column: pli_unique_qcov__50__community

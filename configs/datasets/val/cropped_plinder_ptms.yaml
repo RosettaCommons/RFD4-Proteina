@@ -1,0 +1,21 @@
+# Cropped plinder PTM validation set.
+#
+# 100 plinder samples filtered to ``has_covalent_modification`` and excluding
+# NAG-only modifications, spatially cropped to <=256 tokens with the crop seed
+# placed on the PTM endpoints so the covalent bond survives the crop. Built by
+# ``ptm_diagnostic/scripts/build_val_set.py``.
+#
+# Intended primary metric: PTM bond length (lives on a separate branch — not
+# wired here).
+
+compute_loss: true
+
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/cropped_plinder_ptms
+  num_replicates: 1
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - ptm_bond
