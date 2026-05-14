@@ -32,7 +32,7 @@ from biotite.structure import AtomArray
 
 from foundry.metrics import MetricManager
 from proteinfoundation.metrics.af3_oracle import AF3Oracle
-from proteinfoundation.metrics.design_metrics import AtomArrayMetrics
+from proteinfoundation.metrics.design_metrics import ClashMetric
 from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
 from proteinfoundation.metrics.metrics_utils import run_oracle_refolding_and_pass_criteria
 from proteinfoundation.metrics.pass_criterion_metric import PassCriterionMetric
@@ -191,7 +191,7 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     C_CRD.set_mask(aa_templated, (aa_templated.chain_id != "B"))
 
     # --- design_mm ---
-    design_mm = MetricManager({"general_metrics": AtomArrayMetrics()})
+    design_mm = MetricManager({"general_metrics": ClashMetric()})
     design_mm.on_validation_epoch_start()
     design_result = design_mm(
         network_input=None,

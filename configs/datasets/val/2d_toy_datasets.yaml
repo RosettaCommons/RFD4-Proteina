@@ -9,6 +9,7 @@ val:
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
         metrics_tags:
+          - design
           - 2d_distance_conditioning
 
   toy_ala_benchmark_atomization:
@@ -19,6 +20,7 @@ val:
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
         metrics_tags:
+          - design
           - 2d_distance_conditioning
 
   toy_eoh_benchmark:
@@ -29,8 +31,9 @@ val:
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
         metrics_tags:
+          - design
           - 2d_distance_conditioning
-      
+
   toy_ala_all_atoms_benchmark:
     compute_loss: true
     dataset:
@@ -39,4 +42,5 @@ val:
       transform:
         _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
         metrics_tags:
+          - design
           - 2d_distance_conditioning

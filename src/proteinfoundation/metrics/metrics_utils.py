@@ -773,12 +773,6 @@ def resolve_mm_cfgs_from_metrics(metrics_cfg: Any) -> dict[str, Any]:
     }
 
 
-def resolve_metric_manager_cfgs(cfg_exp: Any) -> dict[str, Any]:
-    """Resolve the four MetricManager subtrees the workers re-instantiate."""
-    metrics_cfg = cfg_exp.get("metrics") if cfg_exp is not None else None
-    return resolve_mm_cfgs_from_metrics(metrics_cfg)
-
-
 def _completed(value: Any) -> Future:
     """Pre-completed Future wrapping ``value`` (uniform handling for inline results)."""
     fut: Future = Future()

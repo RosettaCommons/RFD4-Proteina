@@ -31,9 +31,9 @@ Require TMD (https://github.com/tmd-industries/tmd) with CUDA custom ops.
 structure, no refolding or energy computation required.
 
 - ``PoseBustersMetric``: Stereochemical validation of ligand molecules.
-- ``AtomArrayMetrics``: Secondary structure, radius of gyration, composition.
-- ``BackboneMetrics``: Chain breaks, clashes, floating atoms.
-- ``SidechainMetrics``: Sidechain validity.
+- ``BondLengthMetric``: Unreasonable bond length detection.
+- ``ClashMetric``: Steric clash fraction at configurable distance thresholds.
+- ``LigandClashMetric``: Ligand-protein clash counts excluding CRD-conditioned pairs.
 - ``SSEMetrics``: Secondary structure element fractions.
 - ``RASAMetrics``: Relative accessible surface area.
 - ``MolprobityMetrics``: Clashscore, Ramachandran, rotamer outliers.

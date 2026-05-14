@@ -3,38 +3,37 @@
 # No refolding required - very fast!
 
 metrics:
-  sidechain:
-    _target_: proteinfoundation.metrics.sidechain_metrics.SidechainMetrics
-  
+  clash:
+    _target_: proteinfoundation.metrics.design_metrics.ClashMetric
+
   sse:
     _target_: proteinfoundation.metrics.sse_metrics.SSEMetrics
-  
+
   rasa:
     _target_: proteinfoundation.metrics.rasa_metrics.RASAMetrics
-  
+
   molprobity:
     _target_: proteinfoundation.metrics.molprobity_metrics.MolprobityMetrics
-  
+
   hbonds:
     _target_: proteinfoundation.metrics.hbonds_metrics.HbondMetrics
 
 weights:
-  # Sidechain quality
-  sidechain.valid_sidechain_fraction: 5.0
-  sidechain.chain_breaks: -10.0
-  
+  # Steric clashes
+  clash.clashes.frac_clashing_1,5: -5.0
+
   # Secondary structure
   sse.helix_fraction: 1.0
   sse.strand_fraction: 1.0
-  
+
   # Surface accessibility
   rasa.mean_rasa: 2.0
-  
+
   # Molprobity
   molprobity.clashscore: -3.0
   molprobity.rama_favored: 2.0
   molprobity.rotamer_outliers: -2.0
-  
+
   # H-bonds
   hbonds.num_hbonds: 1.0
 
