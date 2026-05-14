@@ -13,17 +13,14 @@ import pandas as pd
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.io_utils import to_pdb_string
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import (
     C_CRD,
     C_DIS,
     C_SEQ,
 )
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
-from atomworks.ml.utils.token import (
-    get_token_starts,
-    spread_token_wise,
-)
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, spread_residue_wise
 
 from proteinfoundation.conditions import (
     C_CATH,
@@ -483,15 +480,18 @@ def add_secondary_structure_condition(
 ) -> dict[str, Any]:
     """Add secondary structure conditioning.
 
-    Uses DSSP to annotate secondary structure, samples islands from tokens
-    with valid DSSP annotations, and sets C_SEC condition.
+    Uses P-SEA to annotate secondary structure, samples islands from residues
+    with valid SSE annotations, and sets C_SEC condition. Sampling is done at
+    residue granularity (not token granularity) so that residues spanning
+    multiple tokens — e.g., atomized PTM residues — receive a uniform value, satisfying the
+    ``Level.RESIDUE`` invariant on the secondary-structure condition.
 
     Args:
       data: Data dict containing atom_array.
-      max_secondary_structure_frac_to_provide: Max fraction of valid SS tokens
+      max_secondary_structure_frac_to_provide: Max fraction of valid SS residues
         to condition. Defaults to 0.4.
-      min_ss_island_len: Minimum island length. Defaults to 1.
-      max_ss_island_len: Maximum island length. Defaults to 10.
+      min_ss_island_len: Minimum island length (in residues). Defaults to 1.
+      max_ss_island_len: Maximum island length (in residues). Defaults to 10.
       n_islands_max: Maximum number of islands. Defaults to 3.
 
     Returns:
@@ -499,24 +499,23 @@ def add_secondary_structure_condition(
     """
     atom_array = as_atom_array_plus(data["atom_array"])
 
-    # Step 1: Annotate with DSSP (adds sse and sse_is_valid)
+    # Step 1: Annotate with P-SEA (residue-uniform sse / sse_is_valid)
     atom_array = annotate_secondary_structure(
         atom_array, annotation_name="sse", is_valid_annotation_name="sse_is_valid"
     )
 
-    # Step 2: Sample islands from eligible tokens
-    token_level_array = atom_array[get_token_starts(atom_array)]
+    # Step 2: Sample islands from eligible residues
+    residue_starts = get_residue_starts(atom_array)
+    residue_level_array = atom_array[residue_starts]
 
-    # Eligible: tokens with valid DSSP annotations
-    eligible_for_ss_info_mask = token_level_array.sse_is_valid
+    # Eligible: residues with valid SSE annotations
+    eligible_for_ss_info_mask = residue_level_array.sse_is_valid
 
-    # Calculate max tokens to condition
-    n_tokens_with_valid_ss = eligible_for_ss_info_mask.sum()
-    max_residues_with_ss_conditioning = int(np.ceil(n_tokens_with_valid_ss * max_secondary_structure_frac_to_provide))
+    n_residues_with_valid_ss = eligible_for_ss_info_mask.sum()
+    max_residues_with_ss_conditioning = int(np.ceil(n_residues_with_valid_ss * max_secondary_structure_frac_to_provide))
 
-    # Sample islands
     where_to_show_ss = sample_island_tokens(
-        n_tokens_with_valid_ss,
+        n_residues_with_valid_ss,
         island_len_min=min_ss_island_len,
         island_len_max=max_ss_island_len,
         n_islands_min=1,
@@ -524,10 +523,10 @@ def add_secondary_structure_condition(
         max_length=max_residues_with_ss_conditioning,
     )
 
-    # Convert to full token-level mask and spread to atoms
-    token_level_ss_mask = np.zeros(token_level_array.array_length(), dtype=bool)
-    token_level_ss_mask[eligible_for_ss_info_mask] = where_to_show_ss
-    ss_mask = spread_token_wise(atom_array, token_level_ss_mask)
+    # Convert to residue-level mask and spread to atoms
+    residue_level_ss_mask = np.zeros(len(residue_starts), dtype=bool)
+    residue_level_ss_mask[eligible_for_ss_info_mask] = where_to_show_ss
+    ss_mask = spread_residue_wise(atom_array, residue_level_ss_mask)
 
     # Step 3: Set C_SEC annotation (SSEnum.NONE for unspecified, sse values where sampled)
     ss_annotation = np.full(atom_array.array_length(), 0, dtype=int)  # 0 is SSEnum.NONE
