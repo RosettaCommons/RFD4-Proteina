@@ -15,5 +15,6 @@ dataset:
   transform:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
+      - design
       - dna_binder_design
       - 3d_coordinate_conditioning # NOTE: This holds for the key subset we've chosen above, not globally in this json

@@ -1,16 +1,13 @@
-general_metrics:
-  _target_: proteinfoundation.metrics.design_metrics.AtomArrayMetrics
-  compute_for_diffused_region_only: False
+bond_length_metrics:
+  _target_: proteinfoundation.metrics.design_metrics.BondLengthMetric
+  verbose: True
+  required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
-backbone_metrics:
-  _target_: proteinfoundation.metrics.design_metrics.BackboneMetrics
-  prohibited_tags: ["small_molecule_only", "structure_prediction"]
-
-sidechain_metrics:
-  _target_: proteinfoundation.metrics.sidechain_metrics.SidechainMetrics
-  dist_threshold_min: 1.0 # min distance for identifying a bond
-  dist_threshold_max: 2.0 # max distance for identifying a bond
+clash_metrics:
+  _target_: proteinfoundation.metrics.design_metrics.ClashMetric
+  verbose: True
+  required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 hbond_metrics:
@@ -34,10 +31,12 @@ rasa_adherence:
 
 sse_distribution:
   _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureDistribution
+  required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 sse_accuracy:
   _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureAccuracy
+  required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 posebusters_metrics:

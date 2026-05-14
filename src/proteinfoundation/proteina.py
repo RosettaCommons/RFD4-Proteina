@@ -51,7 +51,6 @@ from proteinfoundation.metrics.metrics_utils import (
     auto_pick_metrics_workers,
     compute_oracle_metrics_for_val_output,
     fold_designs_for_oracles,
-    resolve_metric_manager_cfgs,
     resolve_mm_cfgs_from_metrics,
 )
 from proteinfoundation.metrics.oracle_metric import example_output_dir
@@ -1122,9 +1121,7 @@ class Proteina(L.LightningModule):
         example_id_to_design_metrics = {m["example_id"]: m for m in (local_design_metrics or []) if m}
         items = sorted(
             self.validation_output_generation,
-            key=lambda it: example_id_to_design_metrics.get(it.get("example_id", ""), {}).get(
-                "general_metrics.n_tokens", 0
-            ),
+            key=lambda it: example_id_to_design_metrics.get(it.get("example_id", ""), {}).get("token_count", 0),
         )
 
         # 3b. Oracle fold_batch — the actual structure prediction (AF3 or RF3).
@@ -1351,13 +1348,8 @@ class Proteina(L.LightningModule):
         # Per-rank worker pool for design + post-fold metrics. See `MetricsPool`.
         self._metrics_pool = MetricsPool(
             num_workers=auto_pick_metrics_workers(self.cfg_exp),
-            mm_cfgs=resolve_metric_manager_cfgs(metrics_cfg),
+            mm_cfgs=resolve_mm_cfgs_from_metrics(metrics_cfg),
         )
-
-        # Propagate to the worker pool so spawned workers rebuild MetricManagers
-        # from the current (e.g. inference) config rather than the flat training
-        # config stored in the checkpoint, which lacks the inline_metrics key.
-        self._metrics_pool._mm_cfgs = resolve_mm_cfgs_from_metrics(metrics_cfg)
 
     def configure_inference(
         self,
@@ -1699,6 +1691,7 @@ class Proteina(L.LightningModule):
         return {
             "example_id": example_id,
             "generated_atom_array": sample["generated_atom_array"],
+            "token_count": get_token_count(sample["generated_atom_array"]),
             "input_atom_array": sample.get("input_atom_array"),
             "full_array_with_unindexed": sample.get("full_array_with_unindexed"),
             "metrics_tags": metrics_tags,

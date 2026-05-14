@@ -180,10 +180,10 @@ def run_evaluate(cfg: DictConfig) -> None:
     design_by_id = {m.get("example_id"): m for m in design_results if m.get("example_id")}
     for mm in filter(None, [oracle_mm, refold_mm, pass_mm]):
         mm.on_validation_epoch_start()
-    # Sort by n_tokens ascending to avoid unnecessary oracle recompilation.
+    # Sort by token_count ascending to avoid unnecessary oracle recompilation.
     sorted_arrays = sorted(
         parsed_arrays.items(),
-        key=lambda kv: design_by_id.get(kv[0], {}).get("general_metrics.n_tokens", 0),
+        key=lambda kv: design_by_id.get(kv[0], {}).get("token_count", 0),
     )
     for example_id, (structure_file, atom_array) in sorted_arrays:
         result = run_oracle_refolding_and_pass_criteria(
