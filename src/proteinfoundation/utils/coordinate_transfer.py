@@ -35,6 +35,21 @@ DEFAULT_ATOM_LEVEL_ANNOTATIONS = (
     | {sa.full_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
 )
 
+# These are copied over from the input if present as residue-level annotations
+# Recomputing them might lead to an input-output mismatch
+ANNOTS_TO_KEEP = {
+    "chain_type",
+    "is_protein",
+    "is_nucleic_acid",
+    "is_dna",
+    "is_rna",
+    "is_polymer",
+    "is_ligand",
+    "within_chain_res_idx",
+    "within_chain_source_res_idx",
+    "token_id",
+}
+
 
 def _copy_coords_by_atom_name(
     source_array: AtomArray,
@@ -223,7 +238,9 @@ def copy_generated_coordinates_to_input(
 
         # Prepare to add missing atoms later
         if len(missing_atoms) > 0:
-            residue_level_annotations_to_exclude = DEFAULT_ATOM_LEVEL_ANNOTATIONS | set(ANNOTATOR_REGISTRY.keys())
+            residue_level_annotations_to_exclude = (
+                DEFAULT_ATOM_LEVEL_ANNOTATIONS | set(ANNOTATOR_REGISTRY.keys())
+            ) - ANNOTS_TO_KEEP
             residue_annots = get_residue_level_annotations(
                 input_atom_array, input_token_mask, annotations_to_exclude=residue_level_annotations_to_exclude
             )
