@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from atomworks.io import parse
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 
 from foundry.utils.logging import print_df_as_table
@@ -32,6 +33,10 @@ from proteinfoundation.datapipes.pipeline import build_design_train_pipeline
 from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffoldTask,
+    PPIHotspotWith3DTarget,
+    StructurePredictionTask,
+    TipAtomActiveSiteTask,
+    TipAtomPartialLigandTask,
     UnconditionalTask,
 )
 from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
@@ -98,6 +103,35 @@ DESIGN_TASKS = {
         ),
         "frequency": 1.0,
     },
+    "structure_prediction": {
+        "transform": StructurePredictionTask(global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS),
+        "frequency": 1.0,
+    },
+    "tip_atom_partial_ligand": {
+        "transform": TipAtomPartialLigandTask(
+            n_max_residues=8,
+            global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
+        ),
+        "frequency": 1.0,
+    },
+    "tip_atom_pocket": {
+        "transform": TipAtomActiveSiteTask(global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS),
+        "frequency": 1.0,
+    },
+    "ppi_hotspot": {
+        "transform": PPIHotspotWith3DTarget(
+            hotspot_count_distribution="geometric",
+            hotspot_geometric_p=0.2,
+            max_hotspots_frac_to_provide=0.1,
+            p_no_hotspots=0.05,
+            hotspot_max_distance=4.5,
+            ppi_crop_binder_fraction=0.667,
+            p_sample_ppi_crop=0.75,
+            bb_only_coord_conditioning=False,
+            global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
+        ),
+        "frequency": 1.0,
+    },
 }
 
 
@@ -116,6 +150,11 @@ def parse_and_run_pipeline(
 
     input_data = _parse_test_structure(pdb_id)
     input_data["example_id"] = pdb_id
+
+    # Inject query_pn_unit_iids so ppi_hotspot tasks can run
+    ensure_annotations(input_data["atom_array"], "is_protein")
+    protein_iids = list(np.unique(input_data["atom_array"].pn_unit_iid[input_data["atom_array"].is_protein]))[:2]
+    input_data["query_pn_unit_iids"] = protein_iids
 
     # Build pipeline with specified design tasks
     with rng_state(create_rng_state_from_seeds(np_seed=seed, torch_seed=seed, py_seed=seed)):
@@ -161,12 +200,17 @@ def test_pipeline_invariants(pdb_id: str, design_task_name: str) -> None:
     which raises :py:exc:`ValueError` on any violation, so running the pipeline is sufficient.
     """
     selected_design_tasks = {design_task_name: DESIGN_TASKS[design_task_name]}
-    parse_and_run_pipeline(
-        pdb_id=pdb_id,
-        design_tasks=selected_design_tasks,
-        seed=42,
-        crop_size=256,
-    )
+    try:
+        parse_and_run_pipeline(
+            pdb_id=pdb_id,
+            design_tasks=selected_design_tasks,
+            seed=42,
+            crop_size=256,
+        )
+    except AssertionError as e:
+        if "No eligible tasks found" in str(e):
+            pytest.skip(f"{design_task_name} not applicable to {pdb_id}")
+        raise
 
 
 def log_timing_statistics():

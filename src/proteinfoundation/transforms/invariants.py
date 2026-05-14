@@ -9,7 +9,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.scatter import apply_segment_wise
 from atomworks.io.utils.selection import get_residue_starts, get_segments
-from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
+from atomworks.io.utils.standard_annotations import S_ATM, STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
@@ -17,6 +17,8 @@ from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
+
+from proteinfoundation.conditions import C_IDXGRP
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_element_encoding_violations(feats)
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
+    violations += check_idxgrp_violations(aa, feats)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
@@ -387,6 +390,63 @@ def check_unresolved_tokens_not_lossed_violations(aa: AtomArray, feats: dict) ->
             )
         ]
     return []
+
+
+def check_idxgrp_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
+    """
+    Return violations where C_IDXGRP groups have duplicate or non-monotonically increasing within_index_group_res_idx.
+
+    This test is mainly to ensure all index groups were split correctly. If what should be two separate groups are
+    incorrectly classified as the same group, you would see either non-monotonically increasing res_ids or possible
+    duplicates (see example below).
+
+    Good grouping:
+    idxgrp:                     0 0 0 0 0 0 0 0 1 1 1 1 1
+    within_index_group_res_idx: 0 1 2 3 4 5 6 7 0 1 2 3 4
+
+    Bad grouping:
+    Error:                                      * * * * *
+    idx_group:                  0 0 0 0 0 0 0 0 0 0 0 0 0
+    within_index_group_res_idx: 0 1 2 3 4 5 6 7 0 1 2 3 4
+    """
+    categories = set(aa.get_annotation_categories())
+    if C_IDXGRP.full_name not in feats or "within_index_group_res_idx" not in categories:
+        return []
+
+    token_starts = get_token_starts(aa)
+    non_atomized_token_starts = token_starts[~S_ATM.mask(aa, default="generate")[token_starts]]
+    idxgrp = C_IDXGRP.annotation(aa, default="generate")[non_atomized_token_starts]  # [n_tokens]
+    within_res_idx = aa.within_index_group_res_idx[non_atomized_token_starts]  # [n_tokens]
+
+    violations = []
+    for gid in np.unique(idxgrp):
+        group_mask = idxgrp == gid
+        group_res_idxs = within_res_idx[group_mask]
+
+        n_tokens = int(group_mask.sum())
+        n_unique = int(np.unique(group_res_idxs).size)
+        if n_unique != n_tokens:
+            violations.append(
+                InvariantViolation(
+                    check="idxgrp_res_idx_duplicates",
+                    message=f"Group {int(gid)} within_index_group_res_idx has {n_tokens - n_unique} \
+                        duplicate(s) among {n_tokens} token(s)",
+                    count=n_tokens - n_unique,
+                )
+            )
+
+        if n_tokens > 1 and not np.all(np.diff(group_res_idxs) > 0):
+            n_bad = int((np.diff(group_res_idxs) <= 0).sum())
+            violations.append(
+                InvariantViolation(
+                    check="idxgrp_res_idx_not_monotonic",
+                    message=f"Group {int(gid)} within_index_group_res_idx is not strictly \
+                        increasing ({n_bad} violation(s))",
+                    count=n_bad,
+                )
+            )
+
+    return violations
 
 
 # ---------------------------------------------------------------------------
