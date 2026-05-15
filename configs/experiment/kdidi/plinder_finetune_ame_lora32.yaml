@@ -59,6 +59,8 @@ _ame_motif_scaffold_design_tasks:
       p_merge_unindexed_groups: 0.1
       p_split_unindexed_groups: 0.01
       p_increase_group_id_gap: 0.1
+      p_backbone_only: 0.0
+      p_bb_only_seq_conditioned: 0.3
       global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 # Validation disabled for faster training

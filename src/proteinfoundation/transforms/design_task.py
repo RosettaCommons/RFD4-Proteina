@@ -1,3 +1,4 @@
+import itertools
 from collections import defaultdict
 from functools import partial
 from typing import ClassVar, Literal
@@ -1083,6 +1084,8 @@ class MotifScaffoldTask(RFD3DesignTask):
         p_split_unindexed_groups: float = 0.01,
         p_increase_group_id_gap: float = 0.1,
         p_internal_coords: float = 0.0,
+        p_backbone_only: float = 0.0,
+        p_bb_only_seq_conditioned: float = 0.3,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1096,6 +1099,8 @@ class MotifScaffoldTask(RFD3DesignTask):
         self.p_split_unindexed_groups = p_split_unindexed_groups
         self.p_increase_group_id_gap = p_increase_group_id_gap
         self.p_internal_coords = p_internal_coords
+        self.p_backbone_only = p_backbone_only
+        self.p_bb_only_seq_conditioned = p_bb_only_seq_conditioned
 
     def annotate_for_task_selection(self, data: dict) -> dict:
         atom_array = data["atom_array"]
@@ -1189,6 +1194,21 @@ class MotifScaffoldTask(RFD3DesignTask):
         res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
         is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
         C_SEQ.set_mask(atom_array, is_seq_conditioned)
+
+        # Per-residue probability of reducing coord conditioning to backbone atoms only.
+        # We do not give sequence conditioning in such cases
+        if self.p_backbone_only > 0.0:
+            ensure_annotations(atom_array, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
+            is_backbone = atom_array.is_protein_backbone | atom_array.is_rna_backbone | atom_array.is_dna_backbone
+            for start, stop in itertools.pairwise(res_segments):
+                if coord_condition_mask[start:stop].any() and true_with_prob(self.p_backbone_only):
+                    coord_condition_mask[start:stop] &= is_backbone[start:stop]
+                    if true_with_prob(self.p_bb_only_seq_conditioned):
+                        is_seq_conditioned[start:stop] = True
+                    else:
+                        is_seq_conditioned[start:stop] = False
+            C_CRD.set_mask(atom_array, coord_condition_mask)
+            C_SEQ.set_mask(atom_array, is_seq_conditioned)
 
         # Sample the regions to be unindexed using an island mask
         # NOTE: Since absolute coords aren't converted to internal coords until later, this may
