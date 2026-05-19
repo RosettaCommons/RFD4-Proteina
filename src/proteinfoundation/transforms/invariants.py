@@ -257,57 +257,49 @@ def check_coordinates_not_nan(feats: dict, is_inference: bool = False) -> list[I
     At training time, every valid atom slot (per ``atom37_mask``) must have finite coordinates.
     At inference time, the binder chain has not been generated yet so its ``coords`` may be NaN
     legitimately. Instead, only the atoms that are explicitly coordinate-conditioned —
-    ``condition_coordinate_1_atom`` masked by ``mask_coordinate_1_atom`` — are checked, since
+    ``condition_coordinate_1_atom`` masked by ``mask_coordinate_1_atom`` — OR atomized (because
+    chirality features need to be calculated from coordinate information) are checked, since
     those are the only coordinates that actually reach the model.
     The padding non-zero check is applied in both modes.
     """
+    # lazy import to avoid circular dependency with pipeline.py
+    from proteinfoundation.datapipes.pipeline import TokenType
+
     if "coords" not in feats or "atom37_mask" not in feats:
         return []
 
     coords: torch.Tensor = feats["coords"]  # [n_tokens, 37, 3]
     atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
+
+    atomized_mask = feats["token_type"] == TokenType.ATOMIZED  # [n_tokens,]
+    atomized_mask_atom37 = torch.zeros_like(atom37_mask, dtype=torch.bool)
+    ATOMIZED_SLOT_IDX = next(i for i, a in enumerate(UNIFIED_ATOM37_ENCODING.token_atoms["<A>"]) if a.strip())
+    atomized_mask_atom37[:, ATOMIZED_SLOT_IDX] = atomized_mask
+
     violations = []
 
     if is_inference:
-        crd_coords = feats.get("condition_coordinate_1_atom")  # [n_tokens, 37, 3]
-        crd_mask = feats.get("mask_coordinate_1_atom")  # [n_tokens, 37]
-        if crd_coords is not None and crd_mask is not None and crd_mask.any():
-            crd_coords_conditioned = crd_coords[crd_mask]
-            if torch.isnan(crd_coords_conditioned).any():
-                violations.append(
-                    InvariantViolation(
-                        check="nan_in_valid_coords",
-                        message="NaN found in coordinate-conditioned atom coordinates",
-                        count=1,
-                    )
-                )
-            if torch.isinf(crd_coords_conditioned).any():
-                violations.append(
-                    InvariantViolation(
-                        check="inf_in_valid_coords",
-                        message="Inf found in coordinate-conditioned atom coordinates",
-                        count=1,
-                    )
-                )
+        mask_to_check = (feats.get("mask_coordinate_1_atom") | atomized_mask_atom37) & atom37_mask
     else:
-        if atom37_mask.any():
-            coords_valid = coords[atom37_mask]
-            if torch.isnan(coords_valid).any():
-                violations.append(
-                    InvariantViolation(
-                        check="nan_in_valid_coords",
-                        message="NaN found in valid atom coordinates",
-                        count=1,
-                    )
-                )
-            if torch.isinf(coords_valid).any():
-                violations.append(
-                    InvariantViolation(
-                        check="inf_in_valid_coords",
-                        message="Inf found in valid atom coordinates",
-                        count=1,
-                    )
-                )
+        mask_to_check = atom37_mask
+
+    coords_to_check = coords[mask_to_check]  # [n_valid_atoms, 3]
+    if torch.isnan(coords_to_check).any():
+        violations.append(
+            InvariantViolation(
+                check="nan_in_valid_coords",
+                message="NaN found in atom coordinates",
+                count=1,
+            )
+        )
+    if torch.isinf(coords_to_check).any():
+        violations.append(
+            InvariantViolation(
+                check="inf_in_valid_coords",
+                message="Inf found in atom coordinates",
+                count=1,
+            )
+        )
 
     invalid_mask = ~atom37_mask
     if invalid_mask.any():
