@@ -303,6 +303,10 @@ class AF3Oracle(OracleMetric):
             disambiguated_valid.set_annotation("occupancy", np.ones(disambiguated_valid.array_length()))
             disambiguated_valid.set_annotation("b_factor", np.zeros(disambiguated_valid.array_length()))
 
+            # AF3 reads `_struct_conn` partner seq_ids as 1-based chain
+            # indices (folding_input.py:1420); renumber so bonds survive.
+            disambiguated_valid = self._renumber_res_ids_per_chain(disambiguated_valid)
+
             # Inline CIF in the manifest (avoid file I/O)
             cif_string = to_cif_string(disambiguated_valid.copy(), config=CIFWriteConfig(id=job_name))
             af3_output_dir = af3_outputs_root / job_name
@@ -390,6 +394,9 @@ class AF3Oracle(OracleMetric):
                     # Only strip if it reconciles the totals; otherwise let the mismatch error fire.
                     if disambiguated_partial.array_length() == predicted_atom_array[~extra_oxt_mask].array_length():
                         predicted_atom_array = predicted_atom_array[~extra_oxt_mask]
+
+                # Fail loud if AF3 dropped or rerouted an inter-residue bond
+                self._validate_inter_residue_bonds(disambiguated_partial, predicted_atom_array)
 
                 # Map every input atom to its AF3 counterpart and copy coords
                 # only into residues that aren't all-NaN; dropped residues
@@ -634,6 +641,73 @@ class AF3Oracle(OracleMetric):
         return renamed, af3_chain_id_to_original_iid
 
     @staticmethod
+    def _renumber_res_ids_per_chain(atom_array: AtomArray) -> AtomArray:
+        """Renumber ``res_id`` to ``1..N`` within each chain.
+
+        NOTE: Chains are identified by ``chain_id`` alone, so callers must
+        ensure chains are distinguishable by ``chain_id`` for the renumbering
+        to be meaningful.
+        """
+        # Avoid modifying input AtomArray
+        out = atom_array.copy()
+        new_res_id = out.res_id.copy()
+
+        # Loop through chains in their first-occurrence order
+        _, first_occ = np.unique(out.chain_id, return_index=True)
+        for chain_id in out.chain_id[np.sort(first_occ)]:
+            in_chain = np.where(out.chain_id == chain_id)[0]
+            bounds = struc.get_residue_starts(out[in_chain], add_exclusive_stop=True)
+            for new_idx in range(len(bounds) - 1):
+                start, stop = int(bounds[new_idx]), int(bounds[new_idx + 1])
+                new_res_id[in_chain[start:stop]] = new_idx + 1
+
+        # Update the residue ids in-place
+        out.res_id = new_res_id
+
+        return out
+
+    @staticmethod
+    def _validate_inter_residue_bonds(input_array: AtomArray, af3_array: AtomArray) -> None:
+        """Assert input and AF3 inter-residue bond graphs are identical.
+
+        Raises:
+          ValueError: If the input and AF3 inter-residue bond sets
+            differ in either direction (drop or addition).
+        """
+
+        def _keys(arr: AtomArray) -> set[tuple]:
+            """Convert an AtomArray into a set of inter-residue bond endpoint pairs."""
+            if arr.bonds is None:
+                return set()
+
+            # Renumber for safety (in the event AF3 may have renumbered differently from us)
+            renumbered = AF3Oracle._renumber_res_ids_per_chain(arr)
+            chain_id = renumbered.chain_id
+            res_id = renumbered.res_id
+            atom_name = renumbered.atom_name
+
+            # Build up sorted tuples of ((chain_id, res_id, atom_name), (chain_id, res_id, atom_name)) for each bond
+            out: set[tuple] = set()
+            for i, j, _btype in renumbered.bonds.as_array():
+                if chain_id[i] == chain_id[j] and res_id[i] == res_id[j]:
+                    continue
+                ep1 = (str(chain_id[i]), int(res_id[i]), str(atom_name[i]))
+                ep2 = (str(chain_id[j]), int(res_id[j]), str(atom_name[j]))
+                out.add(tuple(sorted([ep1, ep2])))
+
+            return out
+
+        # Ensure the sets of inter-residue bonds match exactly
+        inp = _keys(input_array)
+        af3 = _keys(af3_array)
+        if inp != af3:
+            missing = sorted(inp - af3)
+            extra = sorted(af3 - inp)
+            raise ValueError(
+                "AF3 inter-residue bond graph differs from input " f"(missing in AF3: {missing}; extra in AF3: {extra})"
+            )
+
+    @staticmethod
     def _build_atom_index_mapping(input_array: AtomArray, af3_array: AtomArray) -> np.ndarray:
         """Build a per-atom index mapping from input to AF3 output.
 
@@ -708,4 +782,5 @@ class AF3Oracle(OracleMetric):
                     if name not in af3_name_to_local:
                         raise ValueError(f"Chain '{chain_id}', residue {res_i}: atom '{name}' not found in AF3 output")
                     input_to_af3[inp_global[i0 + local_i]] = af3_global[a0 + af3_name_to_local[name]]
+
         return input_to_af3
