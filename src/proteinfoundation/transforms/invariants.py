@@ -64,6 +64,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_coordinate_centering_violations(aa, feats)
     violations += check_can_be_encoded_violations(aa, feats)
     violations += check_token_features_consistent_violations(aa)
+    violations += check_no_oxt_on_encodable_tokens(aa, feats)
 
     return violations
 
@@ -608,6 +609,35 @@ def check_can_be_encoded_violations(aa: AtomArray, feats: dict) -> list[Invarian
         )
 
     return violations
+
+
+def check_no_oxt_on_encodable_tokens(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
+    """Return violations where OXT atoms appear on ``can_be_encoded`` non-atomized tokens.
+
+    The autoencoder's restype mask excludes OXT, so any OXT atom on an encodable
+    token creates an asymmetry between the reconstruction-loss target and the
+    decoder's advertised output mask. Such atoms must be stripped upstream.
+    """
+
+    categories = set(aa.get_annotation_categories())
+
+    can_be_encoded = feats["can_be_encoded"].cpu().numpy()  # [n_tokens]
+    token_id_per_atom = aa.token_id  # [n_atoms]
+    is_atomized = aa.atomize if "atomize" in categories else np.zeros(len(aa), dtype=bool)
+    is_oxt = aa.atom_name == "OXT"  # [n_atoms]
+
+    encodable_per_atom = can_be_encoded[token_id_per_atom]  # [n_atoms]
+    bad = is_oxt & encodable_per_atom & ~is_atomized
+    n_bad = int(bad.sum())
+    if n_bad:
+        return [
+            InvariantViolation(
+                check="oxt_on_encodable_token",
+                message=f"{n_bad} OXT atom(s) found on can_be_encoded non-atomized token(s)",
+                count=n_bad,
+            )
+        ]
+    return []
 
 
 def check_token_features_consistent_violations(aa: AtomArray) -> list[InvariantViolation]:
