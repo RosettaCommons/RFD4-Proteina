@@ -527,7 +527,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         )
         fn_check_budget = mg.CheckResidueBudget(
             n_min_residues=n_ligands_to_sample + n_res_to_sample,
-            n_max_residues=n_ligands_to_sample + n_res_to_sample,
+            n_max_residues=n_ligands_to_sample + n_res_to_sample + 1,
             reduce=np.any,
         )
         total_mask, all_masks = mg.sample_mask_via_seed_grow_merge(
