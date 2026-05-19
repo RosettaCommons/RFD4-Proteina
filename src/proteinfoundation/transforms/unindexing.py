@@ -226,7 +226,8 @@ class UnindexFlaggedTokens(Transform):
         index_groups = C_IDXGRP.annotation(atom_array_full, default="raise")
         is_indexed = C_IDX.mask(atom_array_full, default="raise")
         max_index_group_in_indexed_region = index_groups[is_indexed].max()
-        index_groups[~is_indexed] += max_index_group_in_indexed_region + 1
+        min_index_group_in_unindexed_region = index_groups[~is_indexed].min()
+        index_groups[~is_indexed] += max_index_group_in_indexed_region - min_index_group_in_unindexed_region + 1
         C_IDXGRP.set_annotation(atom_array_full, index_groups)
 
         # Reset indices to zero to avoid any bias.
