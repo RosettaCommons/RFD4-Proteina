@@ -227,7 +227,7 @@ def annotated_atom_array():
     NOTE: The secondary structure outputs were fully verified by hand.
     Rasa and hbonds were spot-checked and seemed reasonable.
     """
-    test_data_path = Path(__file__).parent / ".." / "test_data" / "1a1e_subsetted_with_modifier_gt.pkl"
+    test_data_path = Path(__file__).parent / ".." / "data" / "1a1e_subsetted_with_modifier_gt.pkl"
 
     with open(test_data_path, "rb") as f:
         atom_array = pickle.load(f)

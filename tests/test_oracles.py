@@ -10,9 +10,11 @@ Run with:
     pytest tests/test_oracles.py -v                  # all tests (needs GPU)
 """
 
+import io
 import os
 import time
 
+import biotite.structure as struc
 import numpy as np
 import pytest
 import rootutils
@@ -27,8 +29,11 @@ from atomworks.io.transforms.atom_array import (
 )
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.io_utils import CIFWriteConfig, to_cif_string
 from atomworks.ml.conditions import C_CRD
 from biotite.structure import AtomArray
+from biotite.structure.io import pdbx
+from biotite.structure.io.pdbx import get_structure
 
 from foundry.metrics import MetricManager
 from proteinfoundation.metrics.af3_oracle import AF3Oracle
@@ -41,7 +46,7 @@ from proteinfoundation.metrics.rf3_oracle import RF3Oracle
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 os.environ["NCCL_DEBUG"] = "WARNING"
 
-from tests.conftest import has_af3  # noqa: E402
+from tests.conftest import TEST_DATA_DIR, has_af3  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -56,7 +61,7 @@ def modified_1a1e():
     PTR (phosphotyrosine) is split into TYR and a separate non-CCD ligand,
     which is featurized as a covalent modification.
     """
-    path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/tests/test_data/1a1e.cif")
+    path = TEST_DATA_DIR / "1a1e.cif"
 
     config = ParseConfig.from_preset("rcsb", hydrogen_policy="remove", add_missing_atoms=True)
     aa_1a1e = parse(path, config=config)["asym_unit"][0]
@@ -144,6 +149,60 @@ def oracle_info(request, modified_1a1e):
 # ---------------------------------------------------------------------------
 # Unit tests (no GPU required)
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def lencapavir_design_with_covale() -> AtomArray:
+    """Real design that exhibits known failure modes"""
+    path = TEST_DATA_DIR / "lencapavir_design_with_covale.cif"
+    return get_structure(pdbx.CIFFile.read(path), model=1, include_bonds=True)
+
+
+def test_renumber_emits_1_based_struct_conn_seq_ids(lencapavir_design_with_covale):
+    """Renumber + ``to_cif_string`` produces ``_struct_conn`` partner seq_ids in ``[1..len(chain)]``."""
+    aa = lencapavir_design_with_covale
+    renumbered = AF3Oracle._renumber_res_ids_per_chain(aa)
+    cif_text = to_cif_string(renumbered.copy(), config=CIFWriteConfig(id="test"))
+
+    cif = pdbx.CIFFile.read(io.StringIO(cif_text))
+    sc = cif.block["struct_conn"]
+    chains = np.concatenate([sc["ptnr1_label_asym_id"].as_array(str), sc["ptnr2_label_asym_id"].as_array(str)])
+    seqs = np.concatenate([sc["ptnr1_label_seq_id"].as_array(int), sc["ptnr2_label_seq_id"].as_array(int)])
+    chain_len = {c: int(renumbered.res_id[renumbered.chain_id == c].max()) for c in np.unique(renumbered.chain_id)}
+    for chain, seq in zip(chains, seqs, strict=False):
+        assert (
+            1 <= seq <= chain_len[chain]
+        ), f"_struct_conn seq_id {seq} out of [1..{chain_len[chain]}] for chain {chain}"
+
+
+def test_validate_inter_residue_bonds_match_passes(lencapavir_design_with_covale):
+    """Identical input and AF3 arrays satisfy the validator."""
+    aa = lencapavir_design_with_covale
+    AF3Oracle._validate_inter_residue_bonds(aa, aa.copy())
+
+
+def test_validate_inter_residue_bonds_missing_raises(lencapavir_design_with_covale):
+    """Dropping the cross-chain covale bond raises ``ValueError`` (original silent-drop failure mode)."""
+    aa = lencapavir_design_with_covale
+    af3 = aa.copy()
+    bonds = af3.bonds.as_array()
+    same_chain = af3.chain_id[bonds[:, 0]] == af3.chain_id[bonds[:, 1]]
+    af3.bonds = struc.BondList(af3.array_length(), bonds[same_chain])
+    with pytest.raises(ValueError, match="inter-residue bond graph"):
+        AF3Oracle._validate_inter_residue_bonds(aa, af3)
+
+
+def test_validate_inter_residue_bonds_extra_raises(lencapavir_design_with_covale):
+    """Adding an inter-residue bond on the AF3 side that wasn't in the input raises."""
+    aa = lencapavir_design_with_covale
+    af3 = aa.copy()
+    n_atoms_idx = np.where(af3.atom_name == "N")[0]
+    new_bonds = af3.bonds.as_array().tolist() + [
+        [int(n_atoms_idx[0]), int(n_atoms_idx[-1]), int(struc.BondType.SINGLE)]
+    ]
+    af3.bonds = struc.BondList(af3.array_length(), np.asarray(new_bonds))
+    with pytest.raises(ValueError, match="inter-residue bond graph"):
+        AF3Oracle._validate_inter_residue_bonds(aa, af3)
 
 
 def test_disambiguate_chain_ids():
