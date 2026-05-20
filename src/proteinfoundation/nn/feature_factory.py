@@ -1057,16 +1057,21 @@ class SequenceSeparationPairFeat(Feature):
         super().__init__(dim=seq_sep_dim)
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if "within_index_group_res_idx" in batch:
+        if "within_index_group_res_idx" in batch and C_IDXGRP.full_name in batch:
             # no need to force 1 since taking difference
             inds = batch["within_index_group_res_idx"]  # [b, n]
+            index_groups = batch[C_IDXGRP.full_name]  # [b, n]
         else:
-            self.assert_defaults_allowed(batch, "Relative sequence separation pair")
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            inds = torch.Tensor([[i + 1 for i in range(n)] for _ in range(b)]).to(device)  # [b, n]
+            raise ValueError(
+                "Either 'within_index_group_res_idx' or 'condition_index-group_1_token' not found in batch, \
+                cannot compute SequenceSeparationPairFeat"
+            )
 
         seq_sep = inds[:, :, None] - inds[:, None, :]  # [b, n, n]
+        same_idx_group = index_groups[:, :, None] == index_groups[:, None, :]  # [b, n, n]
+
+        # zero out relative sequence information from different groups
+        seq_sep *= same_idx_group
 
         # Dimension should be odd, bins limits [-(dim/2-1), ..., -1.5, -0.5, 0.5, 1.5, ..., dim/2-1]
         # gives dim-2 bins, and the first and last for values beyond the bin limits
