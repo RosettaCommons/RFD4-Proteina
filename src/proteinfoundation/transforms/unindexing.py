@@ -24,7 +24,9 @@ from atomworks.ml.utils.annotator import (
 )
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
+    apply_token_wise,
     get_token_count,
+    get_token_starts,
 )
 from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise
@@ -265,13 +267,6 @@ class UnindexFlaggedTokens(Transform):
                     pairs = vectorized_map(pairs)
                     cond.set_annotation(atom_array_full, pairs=pairs, values=values)
 
-        # Ensure tokens are recognised as separate
-        n_unindexed_tokens = len(unindexed_tokens)
-        assert get_token_count(atom_array_full) == get_token_count(atom_array) + n_unindexed_tokens, (
-            f"Failed to create uniquely recognised tokens after concatenation.\n"
-            f"Concatenated tokens: {get_token_count(atom_array_full)}, unindexed: {n_unindexed_tokens}"
-        )
-
         return atom_array_full
 
     def forward(self, data: dict) -> dict:
@@ -286,6 +281,7 @@ class UnindexFlaggedTokens(Transform):
             is_unindexed_atom.copy(),
             function=lambda x: np.any(x),
         )
+        has_any_unindexed = bool(np.any(is_token_with_unindexed_atoms))
 
         # Expand unindexed motifs if necessary
         atom_array_expanded = self.expand_unindexed_motifs(
@@ -294,17 +290,102 @@ class UnindexFlaggedTokens(Transform):
         )
 
         # Record the identity of the ground-truth tokens copied for unindexing
-        n_expanded_atoms = atom_array_expanded.array_length() - atom_array.array_length()
+        n_original_atoms = atom_array.array_length()
+        n_expanded_atoms = atom_array_expanded.array_length() - n_original_atoms
         mask = np.concatenate([is_token_with_unindexed_atoms, np.zeros(n_expanded_atoms)])
         if "ground_truth" not in data:
             data["ground_truth"] = {}
         data["ground_truth"]["is_ground_truth_token_corresponding_to_unindexed"] = mask.astype(bool)
 
-        # Reset global token IDs and atom IDs after possible padding
+        # Compute per-atom source index for training before resetting global_token_id
+        if has_any_unindexed and not data["is_inference"]:
+            insertion_source_idx = _compute_insertion_source_indices(
+                atom_array_expanded=atom_array_expanded,
+                n_original_atoms=n_original_atoms,
+            )
+        else:
+            insertion_source_idx = np.full(atom_array_expanded.array_length(), -1, dtype=np.int32)
+        atom_array_expanded.set_annotation("insertion_source_idx", insertion_source_idx)
+
+        # Reset global token IDs and atom IDs after possible expansion
         atom_array_expanded = add_global_token_id_annotation(atom_array_expanded)
         atom_array_expanded = add_global_atom_id_annotation(atom_array_expanded)
+
+        # Ensure newly-added tokens are recognised as separate
+        if has_any_unindexed and not data["is_inference"]:
+            n_unindexed_tokens = apply_token_wise(atom_array, is_unindexed_atom, np.any).sum()
+            assert get_token_count(atom_array_expanded) == get_token_count(atom_array) + n_unindexed_tokens, (
+                f"Failed to create uniquely recognised tokens after concatenation.\n"
+                f"Concatenated tokens: {get_token_count(atom_array_expanded)}, unindexed: {n_unindexed_tokens}"
+            )
+
         data["atom_array"] = atom_array_expanded
         return data
+
+
+def _compute_insertion_source_indices(
+    atom_array_expanded: AtomArray,
+    n_original_atoms: int,
+) -> np.ndarray:
+    """Return per-atom insertion source indices for the expanded atom array.
+
+    Each unindexed (appended) token inherits its source token's ``token_id``
+    via deepcopy in :py:meth:`UnindexFlaggedTokens.expand_unindexed_motifs`.
+    That inherited ID is the 0-indexed position of the source token within
+    the original (pre-expansion) sequence, which is exactly what the CE loss
+    needs as its target.
+
+    Args:
+        atom_array_expanded: Full atom array (indexed tokens then unindexed copies appended).
+            Must have ``token_id`` annotation set (by :py:class:`AddGlobalTokenIdAnnotation`
+            earlier in the pipeline) — the copies inherit it from the source tokens.
+        n_original_atoms: Number of atoms in the original (pre-expansion) array.
+
+    Returns:
+        Int32 array of length ``atom_array_expanded.array_length()``.  Indexed-token
+        positions are ``-1``; each atom of an unindexed token holds the 0-indexed
+        token position of its source in the original sequence.
+
+    Raises:
+        ValueError: If the inherited token IDs on unindexed copies are out of range
+            or the number of unindexed tokens does not match the number of distinct
+            source tokens recorded in the inherited IDs.
+    """
+    result = np.full(atom_array_expanded.array_length(), -1, dtype=np.int32)
+
+    unindexed_atoms = atom_array_expanded[n_original_atoms:]
+    if unindexed_atoms.array_length() == 0:
+        return result
+
+    original_atoms = atom_array_expanded[:n_original_atoms]
+    n_original_tok = len(get_token_starts(original_atoms))
+
+    unindexed_tok_starts = get_token_starts(unindexed_atoms)
+    unindexed_tok_ends = np.append(unindexed_tok_starts[1:], unindexed_atoms.array_length())
+    n_unindexed_tok = len(unindexed_tok_starts)
+
+    # Each unindexed token's first atom carries the inherited token_id of its source.
+    inherited_ids = atom_array_expanded.token_id[n_original_atoms + unindexed_tok_starts]  # [n_unindexed_tok]
+
+    if inherited_ids.max() >= n_original_tok:
+        raise ValueError(
+            f"Inherited token_id {inherited_ids.max()} >= n_original_tok {n_original_tok}. "
+            "token_id must be set by AddGlobalTokenIdAnnotation before UnindexFlaggedTokens."
+        )
+
+    n_unique_sources = len(np.unique(inherited_ids))
+    if n_unique_sources != n_unindexed_tok:
+        raise ValueError(
+            f"Number of unindexed tokens ({n_unindexed_tok}) does not match number of "
+            f"unique source token IDs ({n_unique_sources}). Each source should produce exactly one copy."
+        )
+
+    for i in range(n_unindexed_tok):
+        start = n_original_atoms + unindexed_tok_starts[i]
+        end = n_original_atoms + unindexed_tok_ends[i]
+        result[start:end] = int(inherited_ids[i])
+
+    return result
 
 
 def _get_target_indices_corresponding_to_inserted(
@@ -317,7 +398,6 @@ def _get_target_indices_corresponding_to_inserted(
     allow_element_fallback: bool = False,
 ) -> np.ndarray:
     """Finds the indices to the target residue that will give the same atom names/ordering as the inserted residue.
-
     If allow_element_fallback is True, then any atom names not found in the target residue will be matched by element,
     with ties broken by minimizing the total distance.
 

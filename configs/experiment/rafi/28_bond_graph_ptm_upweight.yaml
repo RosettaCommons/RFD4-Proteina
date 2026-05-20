@@ -1,0 +1,30 @@
+# @package _global_
+  
+defaults:
+  - mkazman/batch_3/27_plinder_ptm_upweight
+  - _self_
+
+run_name_: 28_bond_graph_ptm_upweight
+
+log:
+  tags: ["graph-distance", "motif-scaffolding", "ame", "omol", "plinder", "pretrain", "muon", "af3-oracle", "ptm"]
+
+# =====================================================================
+# nn (replaces seq_sep feature with path distance between tokens)
+# =====================================================================
+nn:
+  feats_pair_repr: [
+    "token_bond_path_length",     # Pairwise path lengths in the token bond graph
+    "xt_bb_ca_pair_dists",        # Pairwise distances from noised CA [b, n, n, xt_pair_dist_dim]
+    "x_sc_bb_ca_pair_dists",      # Pairwise distances from self-conditioning CA [b, n, n, x_sc_pair_dist_dim]
+    "bond_mask",                  # Bond existence mask for atomized molecules [b, n, n, 1]
+    "bond_order",                 # Kekulé bond order + coordination for atomized molecules [b, n, n, 5]
+    "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
+    "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
+    "molecule_idx_pair",          # Binary feature indicating same molecule instance [b, n, n, 1]
+    "canonical_polymer_ordering", # ±1 ordering of bonded canonical polymer residue pairs [b, n, n, 1]
+  ]
+  seq_sep_dim: 64 # Half of the baseline value since we no longer distinguish positive/negative
+
+hardware:
+  nnodes_: 2

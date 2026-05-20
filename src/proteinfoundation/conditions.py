@@ -1,6 +1,11 @@
 from enum import IntEnum
 
 import numpy as np
+from atomworks.io.transforms.atom_array import (
+    add_id_and_entity_annotations,
+    add_molecule_iid_annotation,
+)
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.scatter import spread_segment_wise
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
@@ -166,14 +171,20 @@ class IndexGroup(ConditionBase):
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        # By default, subdivide by chain_iid (fallback to chain_id) and C_IDX.mask
-        chain_annot_name = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
-        chain_annot = atom_array.get_annotation(chain_annot_name)
+        # Add molecule annotations if not already present
+        if "molecule_iid" not in atom_array.get_annotation_categories():
+            ensure_annotations(atom_array, "is_polymer")
+            atom_array = add_id_and_entity_annotations(atom_array)
+            if "transformation_id" not in atom_array.get_annotation_categories():
+                atom_array.set_annotation("transformation_id", np.full(atom_array.array_length(), "1", dtype=str))
+            atom_array = add_molecule_iid_annotation(atom_array)
+
+        molecule_annot = atom_array.molecule_iid
         is_globally_indexed = C_IDX.mask(atom_array, default="generate")
 
-        chain_annot_changes = chain_annot[1:] != chain_annot[:-1]
+        molecule_annot_changes = molecule_annot[1:] != molecule_annot[:-1]
         globally_indexed_changes = is_globally_indexed[1:] != is_globally_indexed[:-1]
-        index_group_changes = chain_annot_changes | globally_indexed_changes
+        index_group_changes = molecule_annot_changes | globally_indexed_changes
 
         # Convert mask to indices
         # Add 1, to shift the indices from the end of a residue to the start of a new residue

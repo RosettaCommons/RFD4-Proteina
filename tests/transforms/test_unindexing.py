@@ -163,12 +163,26 @@ def test_indexed_region_identical_across_modes(pdb_id: str, p_split_group: float
 
     # In train mode the original atoms are kept in place; take first n_orig and select indexed
     train_indexed = out_train[:n_orig][idx_mask]
-    assert_same_atom_array_with_group_equivalence(orig_indexed, train_indexed, check_ids=True)
+    assert_same_atom_array_with_group_equivalence(
+        orig_indexed,
+        train_indexed,
+        check_ids=True,
+        exclude_annots={
+            "insertion_source_idx"
+        },  # unindexing code adds this annotation so it shouldn't be in the original
+    )
 
     # In infer mode unindexed atoms are removed; indexed atoms occupy the front of the array
     n_indexed = int(idx_mask.sum())
     infer_indexed = out_infer[:n_indexed]
-    assert_same_atom_array_with_group_equivalence(orig_indexed, infer_indexed, check_ids=False)
+    assert_same_atom_array_with_group_equivalence(
+        orig_indexed,
+        infer_indexed,
+        check_ids=False,
+        exclude_annots={
+            "insertion_source_idx"
+        },  # unindexing code adds this annotation so it shouldn't be in the original
+    )
 
 
 @pytest.mark.parametrize("p_split_group", [0.0, 1.0])
@@ -188,7 +202,7 @@ def test_appended_tokens_match_original_unindexed_atoms(pdb_id: str, p_split_gro
         # Appended copies are the last n_unindexed atoms
         appended = out[-n_unindexed:]
         assert_same_atom_array_with_group_equivalence(
-            orig_unindexed, appended, exclude_annots={"res_id", "atom_id", "token_id"}
+            orig_unindexed, appended, exclude_annots={"res_id", "atom_id", "token_id", "insertion_source_idx"}
         )
 
 

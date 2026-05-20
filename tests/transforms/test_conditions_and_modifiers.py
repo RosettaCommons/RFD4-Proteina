@@ -17,7 +17,7 @@ import pytest
 from atomworks.ml.conditions import C_IDX, C_SEQ
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, BondList
 
 from proteinfoundation.conditions import (
     C_ABH,
@@ -470,6 +470,8 @@ class TestSampleUnindexedGroups:
         # Create atom array with residue gap and mixed indexing
         atom_array = AtomArray(30)
         atom_array.chain_id = np.array(["A"] * 30)
+        atom_array.res_name = np.array(["ALA"] * 30)
+        atom_array.bonds = BondList(30, np.asarray([]))
         # Residues: 1, 2 (gap) 10, 11
         atom_array.res_id = np.array([1] * 5 + [2] * 5 + [10] * 10 + [11] * 10)
         atom_array.atom_name = np.array(["CA"] * 30)

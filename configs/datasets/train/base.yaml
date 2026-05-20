@@ -16,3 +16,7 @@ transform:
   max_msa_sequences: 10000
   msa_featurize_n_recycles: 1
   msa_featurize_n_msa: 1024
+  # BFS depth for token bond-graph path lengths. Should be >= (nn.seq_sep_dim - 2)
+  # so the model's exact-distance bins can be fully populated; smaller is fine but
+  # high-distance bins will always be empty. Bounding BFS keeps featurization fast.
+  path_length_search_cutoff: 64
