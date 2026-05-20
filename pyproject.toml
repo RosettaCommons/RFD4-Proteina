@@ -11,6 +11,7 @@ dependencies = [
     "fire",
     "loguru",
     "matplotlib",
+    "networkx",
     "scikit-learn",
     # Validation metrics
     "posebusters",

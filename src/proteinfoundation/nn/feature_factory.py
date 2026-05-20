@@ -1081,6 +1081,34 @@ class SequenceSeparationPairFeat(Feature):
         return bin_and_one_hot(seq_sep, bin_limits)  # [b, n, n, seq_sep_dim]
 
 
+class TokenBondPathLengthPairFeat(Feature):
+    """One-hot encode token bond-graph path lengths.
+
+    The data pipeline stores true (or pipeline-cutoff-bounded) hop counts in
+    ``token_bond_path_length``:
+      - 0: same token, cross-IndexGroup, or disconnected pair
+      - k > 0: bond-graph hop count (clamped to ``pipeline_cutoff + 1`` if a cutoff was set)
+
+    This feature collapses values into ``seq_sep_dim`` bins at tensor time:
+      - bin 0: disconnected / cross-group / self
+      - bins 1 .. seq_sep_dim - 2: exact path lengths
+      - bin seq_sep_dim - 1: overflow (any hop count >= seq_sep_dim - 1)
+
+    Because the clamp happens here, ``seq_sep_dim`` is independent of the data pipeline
+    and can be changed without regenerating features. For the overflow bin to receive
+    any data, the pipeline's BFS cutoff (``path_length_search_cutoff``) should be set
+    to at least ``seq_sep_dim - 2``.
+    """
+
+    def __init__(self, seq_sep_dim: int, **kwargs: Any) -> None:
+        super().__init__(dim=seq_sep_dim)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        path_lengths = batch["token_bond_path_length"].long()  # [b, n, n]
+        clipped = path_lengths.clamp(max=self.dim - 1)  # collapse high distances into overflow bin
+        return F.one_hot(clipped, num_classes=self.dim).float()  # [b, n, n, dim]
+
+
 class XtBBCAPairwiseDistancesPairFeat(Feature):
     """Computes pairwise distances for CA backbone atoms and returns feature of shape [b, n, n, dim_pair_dist]."""
 
@@ -1291,6 +1319,38 @@ class MoleculeIdxPairFeat(Feature):
         molecule_iid = batch["molecule_iid"].long()  # [b, n]
         same_molecule = molecule_iid[:, :, None] == molecule_iid[:, None, :]  # [b, n, n] boolean
         return same_molecule.unsqueeze(-1).float()  # [b, n, n, 1]
+
+
+class CanonicalPolymerOrderingPairFeat(Feature):
+    """Directional ordering of canonical polymer residue bonds.
+
+    For bonded pairs of canonical polymer residues (protein/RNA/DNA) of the same polymer type,
+    encodes:
+
+    - ``+1`` if the source token has a higher ``within_index_group_res_idx`` than the target.
+    - ``-1`` if the source token has a lower ``within_index_group_res_idx`` than the target.
+
+    All other pairs (non-bonded, cross-type, or non-canonical tokens) get ``0``.
+    Shape: ``[b, n, n, 1]``.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=1)
+        self._has_logged = False
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        b, n = self.extract_bs_and_n(batch)
+        device = self.extract_device(batch)
+
+        if "canonical_polymer_ordering" in batch:
+            return batch["canonical_polymer_ordering"][..., None].float()  # [b, n, n, 1]
+        else:
+            if not self._has_logged:
+                logger.warning(
+                    "No canonical_polymer_ordering in batch, returning zeros for CanonicalPolymerOrderingPairFeat"
+                )
+                self._has_logged = True
+            return torch.zeros(b, n, n, 1, device=device)
 
 
 class BondMaskPairFeat(Feature):
@@ -1544,6 +1604,8 @@ class FeatureFactory(torch.nn.Module):
             # Sequence separation
             elif f == "rel_seq_sep":
                 return SequenceSeparationPairFeat(**kwargs)
+            elif f == "token_bond_path_length":
+                return TokenBondPathLengthPairFeat(**kwargs)
 
             # Distance features
             elif f == "xt_bb_ca_pair_dists":
@@ -1574,6 +1636,10 @@ class FeatureFactory(torch.nn.Module):
                 return BondOrderPairFeat(**kwargs)
             elif f == "is_aromatic":
                 return IsAromaticPairFeat(**kwargs)
+
+            # Canonical polymer ordering (default off; add to feats_pair_repr to enable)
+            elif f == "canonical_polymer_ordering":
+                return CanonicalPolymerOrderingPairFeat(**kwargs)
 
             else:
                 raise OSError(f"Pair feature {f} not implemented.")

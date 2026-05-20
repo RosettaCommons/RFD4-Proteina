@@ -65,6 +65,8 @@ SPECS: dict[str, tuple] = {
     "bond_mask": (torch.bool, False, "I I"),
     "bond_order": (torch.int16, 0, "I I"),
     "is_aromatic": (torch.bool, False, "I I"),
+    "token_bond_path_length": (torch.int16, 0, "I I"),
+    "canonical_polymer_ordering": (torch.int8, 0, "I I"),
     # MSA-level [S, I, ...]
     "msa_final": (torch.float32, 0.0, "S I 71"),
 }

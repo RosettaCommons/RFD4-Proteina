@@ -89,7 +89,6 @@ from atomworks.ml.transforms.msa.msa import (
 )
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
-    apply_segment_wise_2d,
     get_token_starts,
     spread_token_wise,
 )
@@ -109,11 +108,7 @@ from proteinfoundation.conditions import (
     HBondEnum,
     RasaEnum,
 )
-from proteinfoundation.datapipes.bonds import (
-    get_bond_distance_matrix,
-    get_bond_order_matrix,
-    get_is_aromatic_matrix,
-)
+from proteinfoundation.datapipes.bonds import compute_token_bond_features
 from proteinfoundation.transforms.atom_names import (
     AnnotateAtomNameVisibility,
     FeaturizeAtomNamesLikeAF3,
@@ -623,52 +618,45 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
     - bond_mask: [n_tokens, n_tokens] - True if there is a bond between any atom in token i and token j
     - bond_order: [n_tokens, n_tokens] - Kekulé bond order (0=none, 1=single, 2=double, 3=triple, 4=coordination)
     - is_aromatic: [n_tokens, n_tokens] - True if the bond is aromatic
+    - token_bond_path_length: [n_tokens, n_tokens] - shortest bond-graph path length between tokens
+
+
+    NOTE: This is computed after DesignTask application so that C_IDXGRP is known
     """
 
-    def __init__(self, distance_cutoff: float = np.inf):
+    def __init__(self, distance_cutoff: float = np.inf, path_length_search_cutoff: int | None = None):
         # NOTE: Atomworks parsing already handles filtering bonds by cutoff (actually does something fancier).
         # Thus we default distance cutoff to np.inf.
         self.distance_cutoff = distance_cutoff
+        # BFS depth limit for token bond-graph path lengths. Same-molecule pairs beyond this
+        # depth are stored as ``path_length_search_cutoff + 1`` (overflow sentinel).
+        # ``None`` means no cutoff (all paths resolved). The model's :py:class:`TokenBondPathLengthPairFeat`
+        # clamps stored values into ``seq_sep_dim`` bins at tensor time, so the data layer no
+        # longer needs to know ``seq_sep_dim``.
+        self.path_length_cutoff = path_length_search_cutoff
 
     def check_input(self, data: dict) -> None:
-        check_contains_keys(data, ["atom_array"])
+        check_contains_keys(data, ["atom_array", "feats"])
         check_is_instance(data, "atom_array", AtomArray)
         check_nonzero_length(data, "atom_array")
         check_atom_array_has_bonds(data)
-        check_atom_array_annotation(data, ["is_polymer", "atomize"])
+        check_atom_array_annotation(data, ["is_polymer", "atomize", "insertion_source_idx"])
 
     def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        if "feats" not in data:
-            data["feats"] = {}
+        crop_info = data.get("crop_info", {})
+        pre_crop_atom_array = crop_info.get("atom_array", None)
+        crop_token_idxs = crop_info.get("crop_token_idxs", None)
+        if pre_crop_atom_array is not None:
+            assert crop_token_idxs is not None, "crop_info has pre-crop atom_array but crop_token_idxs is missing"
 
-        token_start_end_idxs = get_token_starts(atom_array, add_exclusive_stop=True)
-        token_starts = token_start_end_idxs[:-1]
-        token_bond_order = apply_segment_wise_2d(get_bond_order_matrix(atom_array), token_start_end_idxs, np.min)
-
-        # Aromatic: True if ANY atom pair in the token-token block is aromatic (use max on int8)
-        token_is_aromatic = apply_segment_wise_2d(
-            get_is_aromatic_matrix(atom_array).astype(np.int8), token_start_end_idxs, np.max
-        ).astype(bool)
-
-        token_bond_distances = apply_segment_wise_2d(get_bond_distance_matrix(atom_array), token_start_end_idxs, np.min)
-        token_bond_mask = token_bond_distances < self.distance_cutoff
-
-        # remove token self-bonds
-        np.fill_diagonal(token_bond_mask, False)
-        np.fill_diagonal(token_bond_order, 0)
-        np.fill_diagonal(token_is_aromatic, False)
-
-        # remove poly-poly bonds
-        is_poly_poly_bond = np.outer(~atom_array.atomize[token_starts], ~atom_array.atomize[token_starts])
-        token_bond_mask[is_poly_poly_bond] = False
-        token_bond_order[is_poly_poly_bond] = 0
-        token_is_aromatic[is_poly_poly_bond] = False
-
-        data["feats"]["bond_mask"] = token_bond_mask
-        data["feats"]["bond_order"] = token_bond_order
-        data["feats"]["is_aromatic"] = token_is_aromatic
-
+        bond_feats = compute_token_bond_features(
+            data["atom_array"],
+            distance_cutoff=self.distance_cutoff,
+            path_length_cutoff=self.path_length_cutoff,
+            pre_crop_atom_array=pre_crop_atom_array,
+            crop_token_idxs=crop_token_idxs,
+        )
+        data["feats"].update(bond_feats)
         return data
 
 
@@ -1275,6 +1263,7 @@ def _build_design_featurize_pipeline(
     coordination_bond_dropout_p_all: float = 0.5,
     coordination_bond_dropout_p_individual: float = 0.5,
     aromatic_dropout_p: float = 0.4,
+    path_length_search_cutoff: int | None = None,
 ) -> list[Transform]:
     """Build shared featurization pipeline across both training and validation.
 
@@ -1357,7 +1346,7 @@ def _build_design_featurize_pipeline(
     T += AddChiralityFeature()
     T += ConvertToAtomLevelProteinaFeatures()
     T += ConvertToAtom37Format()  # Convert atom-level to token-level atom37 representation
-    T += ComputeTokenLevelBondFeaturesLikeAF3()  # Compute bond graphs (mask and order)
+    T += ComputeTokenLevelBondFeaturesLikeAF3(path_length_search_cutoff=path_length_search_cutoff)
     if not is_inference:
         T += DropoutCoordinationBonds(
             p_all=coordination_bond_dropout_p_all, p_individual=coordination_bond_dropout_p_individual
@@ -1415,6 +1404,7 @@ def build_design_train_pipeline(
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
+    path_length_search_cutoff: int | None = None,
 ) -> Transform:
     """Build training pipeline for protein design tasks.
 
@@ -1477,6 +1467,7 @@ def build_design_train_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         is_inference=is_inference,
+        path_length_search_cutoff=path_length_search_cutoff,
     )
 
     return Compose(transforms)
@@ -1490,6 +1481,7 @@ def build_design_validation_pipeline(
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
+    path_length_search_cutoff: int | None = None,
 ) -> Transform:
     """Build the validation/inference pipeline.
 
@@ -1506,6 +1498,9 @@ def build_design_validation_pipeline(
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
         residue_names_to_encode: Residue names to encode.
         max_msa_sequences: Maximum number of MSA sequences to load per chain.
+        path_length_search_cutoff: BFS depth limit for token bond-graph path lengths.
+            ``None`` resolves all paths (acceptable for validation where examples are
+            small). For training, set this in the dataset transform config.
     """
     return build_design_train_pipeline(
         is_inference=True,
@@ -1515,4 +1510,5 @@ def build_design_validation_pipeline(
         max_msa_sequences=max_msa_sequences,
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
+        path_length_search_cutoff=path_length_search_cutoff,
     )
