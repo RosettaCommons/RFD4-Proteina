@@ -347,6 +347,11 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         random_molecule_indices = np.random.permutation(len(unique_molecules))
         feats["molecule_iid"] = random_molecule_indices[mol_inverse_indices]  # [L]
 
+        # Same for pn_unit_iid (atom-array annotation is a string; integerize to int per-token).
+        unique_pn_units, pn_inverse_indices = np.unique(aa.pn_unit_iid, return_inverse=True)
+        random_pn_unit_indices = np.random.permutation(len(unique_pn_units))
+        feats["pn_unit_iid"] = random_pn_unit_indices[pn_inverse_indices]  # [L]
+
         # Encode ground-truth residue types using atom_array_to_encoded_resnames (handles proteins, DNA, RNA, atomized)
         # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns).
         # Maps all masked tokens to singular mask token.
@@ -489,6 +494,7 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "tok_idx",
     "chain_iid",
     "molecule_iid",
+    "pn_unit_iid",
     "within_index_group_res_idx",
     "can_be_encoded",
     "should_be_lossed",

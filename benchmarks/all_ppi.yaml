@@ -161,10 +161,10 @@ rfd3_tie2:
     A55: TIP
     A152: TIP
 
-13_BBF14:
-  input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
-  contig: 70-250,/0,A1-112
-  select_fixed_atoms: True
+# 13_BBF14:  # Has nan coords
+#   input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
+#   contig: 70-250,/0,A1-112
+#   select_fixed_atoms: True
 
 14_CrSAS6:
   input: complexa_targets/bindcraft_targets/Sas6.cif

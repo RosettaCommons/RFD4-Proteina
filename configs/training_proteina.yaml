@@ -78,12 +78,14 @@ product_flowmatcher:
     dim: 3
     stochastic_centering_mode: "x_0"
     stochastic_centering_scale: 0.2
+    stochastic_centering_scope: "without_absolute_coords"  # Options: "all", "without_absolute_coords", "per_group" (requires stochastic_centering_group_keys, a subset of {chain_iid, pn_unit_iid, molecule_iid, coord_group})
   local_latents:
     zero_com_noise: False
     guidance_enabled: True
     dim: null  # Overwritten by autoencoder
     stochastic_centering_mode: "none"
     stochastic_centering_scale: null
+    stochastic_centering_scope: "without_absolute_coords"
 
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
