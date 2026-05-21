@@ -1,11 +1,16 @@
+import logging
 from typing import Literal
 
 import torch
-from jaxtyping import Bool, Float
+from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from proteinfoundation.flow_matching.base_flow_matcher import BaseFlowMatcher
 from proteinfoundation.utils.align_utils import mean_w_mask
+
+_logger = logging.getLogger(__name__)
+
+VALID_GROUP_KEYS = ("chain_iid", "pn_unit_iid", "molecule_iid", "coord_group")
 
 
 class RDNFlowMatcher(BaseFlowMatcher):
@@ -24,6 +29,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         dim: int = 3,
         stochastic_centering_mode: Literal["none", "x_0", "x_1", "x_t"] = "none",
         stochastic_centering_scale: float | None = None,
+        stochastic_centering_scope: Literal["all", "without_absolute_coords", "per_group"] = "without_absolute_coords",
+        stochastic_centering_group_keys: list[str] | None = None,
         **kwargs,
     ):  # TODO: DR: kwargs added to avoid init error
         super().__init__(
@@ -33,6 +40,21 @@ class RDNFlowMatcher(BaseFlowMatcher):
         self.zero_com_noise = zero_com_noise
         self.stochastic_centering_mode = stochastic_centering_mode
         self.stochastic_centering_scale = stochastic_centering_scale
+        self.stochastic_centering_scope = stochastic_centering_scope
+        self.stochastic_centering_group_keys = (
+            list(stochastic_centering_group_keys) if stochastic_centering_group_keys else []
+        )
+
+        if self.stochastic_centering_scope == "per_group":
+            if not self.stochastic_centering_group_keys:
+                raise ValueError(
+                    "stochastic_centering_scope='per_group' requires stochastic_centering_group_keys to be a non-empty."
+                )
+            invalid = [k for k in self.stochastic_centering_group_keys if k not in VALID_GROUP_KEYS]
+            if invalid:
+                raise ValueError(
+                    f"Invalid stochastic_centering_group_keys: {invalid}. Must be a subset of {VALID_GROUP_KEYS}."
+                )
 
     def _force_zero_com(
         self, x: Float[Tensor, "* n d"], mask: Bool[Tensor, "* n"] | None = None
@@ -68,37 +90,115 @@ class RDNFlowMatcher(BaseFlowMatcher):
             return x
         return x * mask[..., None]  # [*, n, d]
 
+    def _apply_stochastic_offset(
+        self,
+        x: Float[Tensor, "* n d"],
+        mask: Bool[Tensor, "* n"] | None,
+        gen_mask: Bool[Tensor, "* n"] | None,
+        group_ids: Int[Tensor, "* n"] | None = None,
+    ) -> Float[Tensor, "* n d"]:
+        """Apply per-group random offsets to gen tokens.
+
+        Each unique value in ``group_ids`` within ``gen_mask`` receives its own
+        independent per-batch-element random translation. Tokens outside ``gen_mask``
+        are never moved.
+
+        Args:
+            x: Coordinates, shape [*, n, d].
+            mask: Padding mask, shape [*, n].
+            gen_mask: Tokens eligible for offsetting, shape [*, n]. If ``None``,
+                returns ``x`` unchanged (no padding mask provided).
+            group_ids: Integer group label per token, shape [*, n]. If ``None``, all
+                gen tokens are treated as a single group.
+
+        Returns:
+            x with stochastic offsets applied to gen tokens, shape [*, n, d].
+        """
+        if gen_mask is None:
+            return x
+        if group_ids is None:
+            noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
+            x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * gen_mask[..., None].float()
+        else:
+            for g in group_ids[gen_mask].unique():
+                group_mask_f = (gen_mask & (group_ids == g))[..., None].float()  # [*, n, 1]
+                noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
+                x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * group_mask_f
+
+        if mask is not None:
+            x = x * mask[..., None]
+        return x
+
+    def _compose_group_ids(
+        self,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None,
+    ) -> Int[Tensor, "* n"]:
+        """Combine the requested group-key tensors into a single integer id per token.
+
+        Each unique combination of values across ``self.stochastic_centering_group_keys``
+        gets mapped to a unique integer (computed globally across the batch via
+        ``torch.unique`` on the stacked keys). Errors if any requested key is missing.
+        """
+        if groups is None:
+            groups = {}
+        keys = self.stochastic_centering_group_keys
+        tensors = []
+        for k in keys:
+            t = groups.get(k)
+            if t is None:
+                raise ValueError(f"stochastic_centering_group_keys requested {k!r} but it is not present in the batch.")
+            tensors.append(t.long())
+        stacked = torch.stack(tensors, dim=-1)  # [*, n, k]
+        flat = stacked.reshape(-1, stacked.shape[-1])  # [*n, k]
+        _, inverse = torch.unique(flat, dim=0, return_inverse=True)
+        return inverse.reshape(stacked.shape[:-1])  # [*, n]
+
     def add_stochastic_noise(
         self,
         x: Float[Tensor, "* n d"],
         mask: Bool[Tensor, "* n"] | None = None,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> Float[Tensor, "* n d"]:
-        """
-        Adds stochastic noise to x as a global translation (same offset for all positions).
+        """Add stochastic centering noise to x according to :attr:`stochastic_centering_scope`.
+
+        Available scopes:
+
+        * ``"all"`` - apply one shared offset to all non-padding tokens.
+        * ``"without_absolute_coords"`` - offset all non-absolute-coordinate-conditioned
+          tokens as a single group.
+        * ``"per_group"`` - apply an independent offset per unique combination of the
+          group keys listed in :attr:`stochastic_centering_group_keys` (a subset of
+          ``{"chain_iid", "pn_unit_iid", "molecule_iid", "coord_group"}``).
+
+        In all modes except ``"all"``, absolute-coordinate-conditioned tokens
+        (``coord_cond_mask == True``) are left at the origin.
 
         Args:
-            x: Tensor of shape [*, n, d]
-            mask (optional): Binary mask of shape [*, n]
+            x: Coordinates, shape [*, n, d].
+            mask: Padding mask, shape [*, n].
+            coord_cond_mask: True for absolute-coordinate-conditioned tokens that should
+                not be offset. Shape [*, n].
+            groups: Dict of token-level group tensors keyed by name (``chain_iid``,
+                ``pn_unit_iid``, ``molecule_iid``, ``coord_group``). Required for
+                the ``"per_group"`` scope; ignored otherwise. Each value has shape [*, n].
 
         Returns:
-            x with stochastic noise added, shape [*, n, d]
+            x with stochastic noise added, shape [*, n, d].
         """
-        # First center the coordinates
-        x = self._force_zero_com(x, mask)
+        gen_mask = (mask & ~coord_cond_mask) if coord_cond_mask is not None else mask
 
-        # Generate random global translation: [*, d]
-        noise = torch.randn(
-            *x.shape[:-2],
-            x.shape[-1],
-            device=x.device,
-        )
+        scope = self.stochastic_centering_scope
 
-        # Add scaled noise to all positions (broadcast over n dimension)
-        x = x + self.stochastic_centering_scale * noise.unsqueeze(-2)
-
-        # Apply mask if provided
-        if mask is not None:
-            x = x * mask[..., None]
+        if scope == "all":
+            x = self._apply_stochastic_offset(x, mask, gen_mask=mask)
+        elif scope == "without_absolute_coords":
+            x = self._apply_stochastic_offset(x, mask, gen_mask=gen_mask)
+        elif scope == "per_group":
+            group_ids = self._compose_group_ids(groups)
+            x = self._apply_stochastic_offset(x, mask, gen_mask=gen_mask, group_ids=group_ids)
+        else:
+            raise ValueError(f"Unknown stochastic_centering_scope: {scope!r}")
 
         return x
 
@@ -109,6 +209,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         shape: tuple = (),
         mask: Bool[Tensor, "* n"] | None = None,
         training: bool = True,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> Float[Tensor, "* n d"]:
         """
         Samples reference distribution std Gaussian (possibly centered).
@@ -119,6 +221,11 @@ class RDNFlowMatcher(BaseFlowMatcher):
             shape: tuple (if empty then single sample)
             mask (optional): Binary mask of shape [*, n]
             training (optional): whether in training mode
+            coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
+                coordinate-conditioned tokens whose noise should not be offset.
+            groups (optional): Dict of token-level group tensors keyed by name
+                (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
+                Used by the ``"per_group"`` stochastic centering scope.
 
         Returns:
             Samples from refenrece [N(0, I_d)]^n shape [*shape, n, d]
@@ -133,7 +240,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         # Apply stochastic centering at inference time if mode is x_0
         if self.stochastic_centering_mode == "x_0" and not training:
-            noise = self.add_stochastic_noise(noise, mask)
+            noise = self.add_stochastic_noise(noise, mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         return noise
 
@@ -143,6 +250,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         x_1: Float[Tensor, "* n d"],
         t: Float[Tensor, "*"],
         mask: Bool[Tensor, "* n"] | None = None,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> Float[Tensor, "* n d"]:
         """
         Interpolates between rigids x_0 (base) and x_1 (data) using t.
@@ -152,6 +261,11 @@ class RDNFlowMatcher(BaseFlowMatcher):
             x_1: Tensor sampled from target, shape [*, n, d]
             t: Interpolation times, shape [*]
             mask (optional): Binary mask, shape [*, n]
+            coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
+                coordinate-conditioned tokens whose noise should not be offset.
+            groups (optional): Dict of token-level group tensors keyed by name
+                (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
+                Used by the ``"per_group"`` stochastic centering scope.
 
         Returns:
             x_t: Interpolated tensor, shape [*, n, d]
@@ -162,9 +276,9 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         # Apply stochastic centering based on mode (during training)
         if self.stochastic_centering_mode == "x_0":
-            x_0 = self.add_stochastic_noise(x_0, mask)
+            x_0 = self.add_stochastic_noise(x_0, mask, coord_cond_mask=coord_cond_mask, groups=groups)
         elif self.stochastic_centering_mode == "x_1":
-            x_1 = self.add_stochastic_noise(x_1, mask)
+            x_1 = self.add_stochastic_noise(x_1, mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         t = t[..., None, None]
         # No mask since x_0 and x_1 are masked
@@ -172,7 +286,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         # Apply stochastic centering to interpolated result if mode is x_t
         if self.stochastic_centering_mode == "x_t":
-            x_t = self.add_stochastic_noise(x_t, mask)
+            x_t = self.add_stochastic_noise(x_t, mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         return x_t
 

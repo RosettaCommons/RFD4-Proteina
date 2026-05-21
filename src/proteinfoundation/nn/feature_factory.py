@@ -1062,10 +1062,11 @@ class SequenceSeparationPairFeat(Feature):
             inds = batch["within_index_group_res_idx"]  # [b, n]
             index_groups = batch[C_IDXGRP.full_name]  # [b, n]
         else:
-            raise ValueError(
-                "Either 'within_index_group_res_idx' or 'condition_index-group_1_token' not found in batch, \
-                cannot compute SequenceSeparationPairFeat"
-            )
+            self.assert_defaults_allowed(batch, "Relative sequence separation pair")
+            b, n = self.extract_bs_and_n(batch)
+            device = self.extract_device(batch)
+            inds = torch.Tensor([[i + 1 for i in range(n)] for _ in range(b)]).to(device)  # [b, n]
+            index_groups = torch.zeros((b, n), dtype=torch.long, device=device)  # [b, n]
 
         seq_sep = inds[:, :, None] - inds[:, None, :]  # [b, n, n]
         same_idx_group = index_groups[:, :, None] == index_groups[:, None, :]  # [b, n, n]

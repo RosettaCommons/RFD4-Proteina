@@ -2,9 +2,10 @@ from collections.abc import Callable
 
 import lightning as L
 import torch
-from jaxtyping import Bool, Float
+from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from proteinfoundation.conditions import C_CRDGRP
 from proteinfoundation.flow_matching.base_flow_matcher import BaseFlowMatcher
 from proteinfoundation.flow_matching.rdn_flow_matcher import RDNFlowMatcher
 
@@ -12,6 +13,42 @@ FLOW_MATCHER_FACTORY = {
     "bb_ca": RDNFlowMatcher,
     "local_latents": RDNFlowMatcher,
 }  # maps data modality to correspodning class
+
+
+def extract_groups(batch: dict) -> dict[str, torch.Tensor | None]:
+    """Extract token-level group tensors from a collated batch.
+
+    Pulls all group keys that can be used by the ``"per_group"`` stochastic
+    centering scope:
+
+    * ``chain_iid``, ``pn_unit_iid``, ``molecule_iid``: already token-level
+      ``[b, n_tokens]`` integer tensors in the batch (cast to ``long``).
+    * ``coord_group``: derived from ``C_CRDGRP.full_name`` which is stored at
+      atom37 level ``[b, n_tokens, 37]``; reduced to token level
+      ``[b, n_tokens]`` by taking the per-token max across the 37 atom slots
+      (empty slots carry ``UNKNOWN_COORDS = -1``, the minimum value, so the max
+      selects the most-specific annotation for each token).
+
+    Args:
+        batch: Collated batch dictionary.
+
+    Returns:
+        Dict mapping each group name to its ``[b, n_tokens]`` tensor, or
+        ``None`` if the key is not present in the batch.
+    """
+    crdgrp_atom37 = batch.get(C_CRDGRP.full_name)  # [b, n_tokens, 37] or None
+    coord_group = crdgrp_atom37.long().max(dim=-1).values if crdgrp_atom37 is not None else None
+
+    def _to_long(key: str) -> torch.Tensor | None:
+        v = batch.get(key)
+        return v.long() if v is not None else None
+
+    return {
+        "chain_iid": _to_long("chain_iid"),
+        "pn_unit_iid": _to_long("pn_unit_iid"),
+        "molecule_iid": _to_long("molecule_iid"),
+        "coord_group": coord_group,
+    }
 
 
 class ProductSpaceFlowMatcher(L.LightningModule):
@@ -57,6 +94,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         device: torch.device | None = None,
         mask: Bool[Tensor, "* n"] | None = None,
         training: bool = True,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> dict[str, Tensor]:
         """
         Samples reference distribution (possibly centered).
@@ -67,6 +106,10 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             device (optional): torch device used
             mask (optional): Binary mask of shape [*, n]
             training (optional): whether in training mode
+            coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
+                coordinate-conditioned tokens whose noise should not be offset.
+            groups (optional): Dict of token-level group tensors keyed by name
+                (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
 
         Returns:
             Samples from refenrece with shape [*shaqpe, n, ...]
@@ -78,6 +121,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 device=device,
                 mask=mask,
                 training=training,
+                coord_cond_mask=coord_cond_mask,
+                groups=groups,
             )
             for data_mode in self.data_modes
         }
@@ -89,6 +134,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         x_1: dict[str, torch.Tensor],
         t: dict[str, Float[Tensor, "*"]],
         mask: Bool[Tensor, "* n"] | None = None,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> dict[str, torch.Tensor]:
         """
         Interpolates between x_0 (base) and x_1 (data) using t.
@@ -98,6 +145,10 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x_1: Samples from target with batch shape *
             t: Interpolation times
             mask (optional): Binary mask, shape [*, n]
+            coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
+                coordinate-conditioned tokens whose noise should not be offset.
+            groups (optional): Dict of token-level group tensors keyed by name
+                (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
 
         Returns:
             x_t: Interpolated samples, same shape as x_0 and x_1
@@ -108,6 +159,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 x_1=x_1[data_mode],
                 t=t[data_mode],
                 mask=mask,
+                coord_cond_mask=coord_cond_mask,
+                groups=groups,
             )
             for data_mode in self.data_modes
         }
@@ -164,10 +217,27 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         """
 
         x_1, padding_mask, batch_shape, n, dtype, device = self.process_batch(batch)
+        coord_cond_mask = batch.get("coord_cond_mask")  # [b, n_tokens] or None
+        groups = extract_groups(batch)
         if t is None:
             t = self.sample_t(shape=batch_shape, device=device)
-        x_0 = self.sample_noise(n=n, shape=batch_shape, mask=padding_mask, device=device, training=True)
-        x_t = self.interpolate(x_0=x_0, x_1=x_1, t=t, mask=padding_mask)
+        x_0 = self.sample_noise(
+            n=n,
+            shape=batch_shape,
+            mask=padding_mask,
+            device=device,
+            training=True,
+            coord_cond_mask=coord_cond_mask,
+            groups=groups,
+        )
+        x_t = self.interpolate(
+            x_0=x_0,
+            x_1=x_1,
+            t=t,
+            mask=padding_mask,
+            coord_cond_mask=coord_cond_mask,
+            groups=groups,
+        )
         batch["x_0"] = x_0
         batch["x_1"] = x_1
         batch["x_t"] = x_t
@@ -565,12 +635,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         ts, gt = self.sample_schedule(nsteps=nsteps, sampling_model_args=sampling_model_args)
 
         with torch.no_grad():
+            coord_cond_mask = batch.get("coord_cond_mask")  # [nsamples, n_tokens] or None
+            groups = extract_groups(batch)
             x = self.sample_noise(
                 n,
                 shape=(nsamples,),
                 device=device,
                 mask=mask,
                 training=False,
+                coord_cond_mask=coord_cond_mask,
+                groups=groups,
             )
 
             # After sampling noise, mask to generated tokens only
