@@ -37,6 +37,7 @@ SPECS: dict[str, tuple] = {
     "within_index_group_res_idx": (torch.int16, -1, "I"),
     "can_be_encoded": (torch.bool, False, "I"),
     "should_be_lossed": (torch.bool, False, "I"),
+    "loss_weight": (torch.float32, 1.0, "I"),
     "coord_cond_mask": (torch.bool, False, "I"),
     C_SEQ.mask_name: (torch.bool, False, "I"),
     C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),

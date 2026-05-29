@@ -360,6 +360,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         mask: Bool[Tensor, "* n"],
         t: Float[Tensor, "*"],
         nn_out: dict[str, Float[Tensor, "* n d"]],
+        weight: Float[Tensor, "* n"] | None = None,
     ) -> Float[Tensor, "*"]:
         """
         Computes flow matching loss per element in the batch.
@@ -371,6 +372,10 @@ class RDNFlowMatcher(BaseFlowMatcher):
             mask: Binary mask for generated tokens with non-zero occupancy, shape [*, n]
             t: time sampled, shape [*]
             nn_out: neural network output, shape [*, n, d]
+            weight: optional per-token loss weight, shape [*, n]. ``None`` (default)
+                or all-ones is bitwise-identical to today's behavior. Multiplied into
+                the per-token MSE before reduction; normalization stays atom-count
+                based (``/ nres``), matching RF3's ``DiffusionLoss``.
 
         Returns:
             Loss per element in the batch, shape [*]
@@ -383,7 +388,12 @@ class RDNFlowMatcher(BaseFlowMatcher):
         )
         nres = torch.sum(mask, dim=-1).clamp(min=1)  # [*] - avoid division by zero
         err = (x_1 - nn_out["x_1"]) * mask[..., None]  # [*, n, d]
-        loss = torch.sum(err**2, dim=(-1, -2)) / nres  # [*]
+        if weight is None:
+            weighted_sq = err**2  # [*, n, d]
+        else:
+            w = weight.to(dtype=x_1.dtype) * mask  # [*, n], gated weights
+            weighted_sq = (err**2) * w[..., None]  # [*, n, d]
+        loss = torch.sum(weighted_sq, dim=(-1, -2)) / nres  # [*]
         total_loss_w = 1.0 / ((1.0 - t) ** 2 + 1e-5)
         loss = loss * total_loss_w  # [*]
         return loss

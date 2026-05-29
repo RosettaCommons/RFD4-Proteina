@@ -98,7 +98,7 @@ tip_atom_pocket:
     max_tip_atoms: 15
     p_seq_conditioned: 1.0
     p_knockout_seq: 0.0
-    p_unindex_all: 0.5
+    p_unindex_all: 0.8
     p_unindex_any: 0.05
     p_merge_unindexed_groups: 0.1
     p_split_unindexed_groups: 0.01

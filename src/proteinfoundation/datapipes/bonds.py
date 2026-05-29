@@ -156,7 +156,7 @@ def compute_token_bond_features(
 
         - ``"bond_mask"`` (bool): True where a direct bond exists within ``distance_cutoff``.
         - ``"bond_order"`` (int16): Kekulé order (0=none, 1-3, 4=coord).
-          Poly-poly pairs are set to 1; self-diagonal is 0.
+          Poly-poly pairs and self-diagonal are set to 0
         - ``"is_aromatic"`` (bool): True if any inter-token bond is aromatic.
           Poly-poly pairs are False.
         - ``"token_bond_path_length"`` (int16): Shortest bond-graph hop count within
@@ -228,14 +228,16 @@ def compute_token_bond_features(
     idx_is_aromatic = _arom_work.astype(bool)
     np.fill_diagonal(idx_is_aromatic, False)
 
-    # Poly-poly pairs: bond order → 1, aromaticity → False
+    # Polymer-polymer pair mask. Used both by canonical_polymer_ordering (which
+    # wants the unmasked bond graph including peptide bonds) and by the
+    # subsequent suppression of poly-poly bond features.
     idx_tok_starts = token_starts[is_indexed_tok]
     is_poly = ~atom_array.atomize[idx_tok_starts]
     is_poly_poly = np.outer(is_poly, is_poly)
-    idx_bond_order = np.where(is_poly_poly, np.int16(1), idx_bond_order)
-    idx_is_aromatic[is_poly_poly] = False
 
     # ── Canonical polymer ordering [n_indexed x n_indexed] ───────────────────
+    # Computed BEFORE the bond-feature suppression below so this feature can
+    # use the unmasked bond graph (peptide bonds visible). Same logic as #205.
     token_type = _token_type_at(atom_array, idx_tok_starts)
     is_canonical = token_type < 3  # protein(0), RNA(1), DNA(2)
     same_type = token_type[:, None] == token_type[None, :]
@@ -243,6 +245,17 @@ def compute_token_bond_features(
     idx_pos = np.arange(n_indexed, dtype=np.int32)
     pos_diff = idx_pos[:, None] - idx_pos[None, :]
     idx_canonical_ordering = np.where(relevant_canonical, np.sign(pos_diff), 0).astype(np.int8)
+
+    # ── Suppress poly-poly bond-feature signal ───────────────────────────────
+    # Polymer-chain connectivity is encoded by rel_seq_sep and (when enabled)
+    # token_bond_path_length / canonical_polymer_ordering above. Bond features
+    # (bond_mask/bond_order/is_aromatic) are reserved for bonds OUTSIDE the
+    # polymer chain. This also resolves the internal inconsistency in the
+    # prior `np.where(is_poly_poly, 1, idx_bond_order)` override, which set
+    # bond_order=1 on unbonded pairs and the diagonal while bond_mask=False.
+    idx_bond_mask[is_poly_poly] = False
+    idx_bond_order[is_poly_poly] = 0
+    idx_is_aromatic[is_poly_poly] = False
 
     # ── Path lengths [n_indexed x n_indexed] ─────────────────────────────────
     if pre_crop_atom_array is not None:

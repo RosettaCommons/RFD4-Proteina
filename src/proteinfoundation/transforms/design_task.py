@@ -549,6 +549,9 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         n_atoms = atom_array.array_length()
         _true = np.ones(n_atoms, dtype=bool)
 
+        # Mark the protein-side conditioning region (tip-atom seed + bond-hop growth).
+        atom_array.set_annotation("is_sampled_tip_atom", total_mask & atom_array.is_protein)
+
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask
         C_CRD.set_mask(atom_array, coord_condition_mask)
@@ -809,6 +812,9 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
 
         total_mask, all_masks = self.sample_mask(atom_array)
 
+        # Mark the conditioning region
+        atom_array.set_annotation("is_sampled_tip_atom", total_mask & atom_array.is_protein)
+
         # set coordinate conditions for sampled atoms
         C_CRD.set_mask(atom_array, total_mask)
 
@@ -1001,6 +1007,9 @@ class TipAtomTask(RFD3DesignTask):
 
         n_atoms = atom_array.array_length()
         _true = np.ones(n_atoms, dtype=bool)
+
+        # Mark the conditioning region
+        atom_array.set_annotation("is_sampled_tip_atom", total_mask & atom_array.is_protein)
 
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask

@@ -145,6 +145,7 @@ def parse_and_run_pipeline(
     design_tasks: dict,
     seed: int = 42,
     crop_size: int | None = None,
+    loss_weight_cfg: dict[str, float] | None = None,
 ) -> dict:
     """Parse structure and run through design train pipeline."""
 
@@ -164,6 +165,7 @@ def parse_and_run_pipeline(
             is_inference=False,
             p_random_rotation=0.0,  # Disable rotation for deterministic testing
             p_atomize_residues=0.1,  # Small chance to atomize for testing
+            loss_weight_cfg=loss_weight_cfg,
         )
 
         # Run pipeline

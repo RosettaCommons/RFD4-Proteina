@@ -112,7 +112,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
 
         Returns:
-            Samples from refenrece with shape [*shaqpe, n, ...]
+            Samples from refenrece with shape [*shape, n, ...]
         """
         x = {
             data_mode: self.base_flow_matchers[data_mode].sample_noise(
@@ -315,6 +315,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             "bb_ca": batch["should_be_lossed"],
             "local_latents": batch["should_be_lossed"] & batch["can_be_encoded"],
         }
+        # Optional per-token loss weight. None / absent → default-safe (no-op) inside compute_fm_loss.
+        loss_weight = batch.get("loss_weight")
         loss = {
             data_mode: self.base_flow_matchers[data_mode].compute_fm_loss(
                 x_0=batch["x_0"][data_mode],
@@ -323,6 +325,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 mask=should_be_lossed_masks[data_mode],
                 t=batch["t"][data_mode],
                 nn_out=nn_out[data_mode],
+                weight=loss_weight,
             )
             for data_mode in self.data_modes
         }
@@ -655,6 +658,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]  # zero out padded bb_ca tokens
 
             x_1_pred = None
+            # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
+            batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
+            batch["x_sc_is_active"] = torch.zeros((), device=device)
             for step in range(nsteps):
                 t = {
                     data_mode: ts[data_mode][step] * torch.ones(nsamples, device=device)
@@ -671,6 +677,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 # self conditioning
                 if step > 0 and self_cond:
                     batch["x_sc"] = x_1_pred
+                    batch["x_sc_is_active"] = torch.ones((), device=device)
 
                 # get clean prediction and guided vector
                 nn_out = self.get_clean_pred_n_guided_vector(
@@ -821,6 +828,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         trajectory_steps: list[dict] = []
 
         with torch.no_grad():
+            # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
+            batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
+            batch["x_sc_is_active"] = torch.zeros((), device=device)
             for step in range(nsteps):
                 t = {
                     data_mode: ts[data_mode][step] * torch.ones(nsamples, device=device)
@@ -837,6 +847,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 # Add self-conditioning if enabled
                 if self_cond and x_1_pred is not None:
                     batch["x_sc"] = x_1_pred
+                    batch["x_sc_is_active"] = torch.ones((), device=device)
 
                 # Get model prediction with guidance
                 # This calls predict_for_sampling internally with proper mode handling

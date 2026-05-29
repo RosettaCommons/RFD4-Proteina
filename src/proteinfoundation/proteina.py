@@ -277,7 +277,14 @@ class Proteina(L.LightningModule):
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
 
-        self.configure_metrics(cfg_exp.metrics)
+        try:
+            self.configure_metrics(cfg_exp.metrics)
+        except Exception as e:
+            logger.warning(
+                f"Failed to instantiate metric managers: {e}. "
+                f"This can occur if the model was trained with Metrics that no longer exist. "
+                f"Skipping — inference-time metrics will be configured via configure_inference()."
+            )
 
         if autoencoder_ckpt_path is not None:
             # Allow adding new keys
@@ -404,6 +411,20 @@ class Proteina(L.LightningModule):
             self.nflops = 0
             self.nsamples_processed = 0
 
+    def _inactive_self_cond_placeholder(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Zero-filled ``x_sc`` / ``x_recycle`` dict for steps where the feature is inactive.
+
+        Paired with a ``*_is_active`` 0/1 scalar so the batch shape is invariant
+        to the Bernoulli / recycle outcome and torch.compile traces a single graph.
+        """
+        coords = batch["coords_nm"]
+        b, n = coords.shape[:2]
+        device, dtype = coords.device, coords.dtype
+        return {
+            "bb_ca": torch.zeros(b, n, 3, device=device, dtype=dtype),
+            "local_latents": torch.zeros(b, n, self.latent_dim, device=device, dtype=dtype),
+        }
+
     def call_nn(
         self,
         batch: dict[str, torch.Tensor],
@@ -416,6 +437,17 @@ class Proteina(L.LightningModule):
         Also, if we want to recycle clean sample predictions... Then we'd need this here,
         as the nn does not know about relations between v, x1, ...
         """
+        device = batch["coords_nm"].device
+
+        # Pre-seed x_recycle inactive on the first call; the recycle loop overwrites.
+        batch["x_recycle"] = self._inactive_self_cond_placeholder(batch)
+        batch["x_recycle_is_active"] = torch.zeros((), device=device)
+
+        # Pre-seed x_sc inactive only when not already populated
+        if "x_sc" not in batch:
+            batch["x_sc"] = self._inactive_self_cond_placeholder(batch)
+            batch["x_sc_is_active"] = torch.zeros((), device=device)
+
         # First call
         nn_out = self.nn(batch)
 
@@ -425,6 +457,7 @@ class Proteina(L.LightningModule):
         for _ in range(n_recycle):
             x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
             batch["x_recycle"] = {dm: x_1_pred[dm].detach() for dm in x_1_pred}
+            batch["x_recycle_is_active"] = torch.ones((), device=device)
             nn_out = self.nn(batch)
 
         # Final prediction
@@ -671,16 +704,22 @@ class Proteina(L.LightningModule):
             raise ValueError(f"Loading clean samples from data mode {dm} not supported.")
 
     def handle_self_cond(self, batch: dict, batch_idx: int, val_step: bool) -> dict:
-        if val_step or not self.cfg_exp.training.get("self_cond", False):
-            return batch
-        if random.random() >= 0.5:
-            return batch
+        enabled = self.cfg_exp.training.get("self_cond", False)
+        use_sc = (not val_step) and enabled and (random.random() < 0.5)
+        device = batch["coords_nm"].device
 
-        n_recycle = self.cfg_exp.training.get("n_recycle", 0)
-        with torch.no_grad():
-            nn_out = self.call_nn(batch, n_recycle=n_recycle)
-        x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
-        batch["x_sc"] = {k: x_1_pred[k].detach() for k in x_1_pred}
+        if use_sc:
+            n_recycle = self.cfg_exp.training.get("n_recycle", 0)
+            with torch.no_grad():
+                nn_out = self.call_nn(batch, n_recycle=n_recycle)
+            x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
+            batch["x_sc"] = {k: x_1_pred[k].detach() for k in x_1_pred}
+            # Mark as active so we use these self-cond predictions in the next step
+            batch["x_sc_is_active"] = torch.ones((), device=device)
+        else:
+            batch["x_sc"] = self._inactive_self_cond_placeholder(batch)
+            # Mark as inactive so we can skip later
+            batch["x_sc_is_active"] = torch.zeros((), device=device)
 
         return batch
 

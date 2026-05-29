@@ -263,52 +263,27 @@ class ChainBreakPerResidueSeqFeat(Feature):
 
 
 class XscBBCASeqFeat(Feature):
-    """Computes feature from backbone CA self conditining coordinates, seq feature of shape [b, n, 3]."""
+    """Backbone CA self-conditioning feature, shape [b, n, 3]."""
 
     def __init__(self, mode_key: str = "x_sc", **kwargs: Any) -> None:
         super().__init__(dim=3)
         self.mode_key = mode_key
-        self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if self.mode_key in batch:
-            data_modes_avail = list(batch[self.mode_key])
-            assert (
-                "bb_ca" in data_modes_avail
-            ), f"`bb_ca` sc/recycle seq feature requested but key not available in data modes {data_modes_avail}"
-            return batch[self.mode_key]["bb_ca"]  # [b, n, 3]
-        else:
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            if not self._has_logged:
-                logger.warning(f"No {self.mode_key} in batch, returning zeros for XscBBCASeqFeat")
-                self._has_logged = True
-            return torch.zeros(b, n, 3, device=device)
+        feature_is_active = batch[f"{self.mode_key}_is_active"]
+        return batch[self.mode_key]["bb_ca"] * feature_is_active
 
 
 class XscLocalLatentsSeqFeat(Feature):
-    """Computes feature from local latents self conditining, seq feature of shape [b, n, dim]."""
+    """Local-latents self-conditioning feature, shape [b, n, latent_dim]."""
 
     def __init__(self, latent_dim: int, mode_key: str = "x_sc", **kwargs: Any) -> None:
         super().__init__(dim=latent_dim)
         self.mode_key = mode_key
-        self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if self.mode_key in batch:
-            data_modes_avail = list(batch[self.mode_key])
-            assert "local_latents" in data_modes_avail, (
-                f"`local_latents` sc/recycle seq feature requested but key not available "
-                f"in data modes {data_modes_avail}"
-            )
-            return batch[self.mode_key]["local_latents"]  # [b, n, latent_dim]
-        else:
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            if not self._has_logged:
-                logger.warning(f"No {self.mode_key} in batch, returning zeros for XscLocalLatentsSeqFeat")
-                self._has_logged = True
-            return torch.zeros(b, n, self.dim, device=device)
+        feature_is_active = batch[f"{self.mode_key}_is_active"]
+        return batch[self.mode_key]["local_latents"] * feature_is_active
 
 
 class XtBBCASeqFeat(Feature):
@@ -1051,10 +1026,20 @@ class ChainIdxSeqFeat(Feature):
 
 
 class SequenceSeparationPairFeat(Feature):
-    """Computes sequence separation and returns feature of shape [b, n, n, seq_sep_dim]."""
+    """Computes sequence separation and returns feature of shape [b, n, n, seq_sep_dim].
 
-    def __init__(self, seq_sep_dim: int, **kwargs: Any) -> None:
+    Args:
+        seq_sep_dim: Output one-hot dimension (must be odd, >= 5).
+        zero_cross_group_seq_sep: If True (default; current latent-main behavior, PR #210),
+            zero out ``seq_sep`` for cross-IndexGroup token pairs. If False, the raw
+            ``inds[i] - inds[j]`` differences are passed through unchanged — required for
+            back-compat with checkpoints trained before PR #210 (e.g. the
+            muon_v9_lossweights_25 240k checkpoint).
+    """
+
+    def __init__(self, seq_sep_dim: int, zero_cross_group_seq_sep: bool = True, **kwargs: Any) -> None:
         super().__init__(dim=seq_sep_dim)
+        self.zero_cross_group_seq_sep = zero_cross_group_seq_sep
 
     def forward(self, batch: dict) -> torch.Tensor:
         if "within_index_group_res_idx" in batch and C_IDXGRP.full_name in batch:
@@ -1069,10 +1054,11 @@ class SequenceSeparationPairFeat(Feature):
             index_groups = torch.zeros((b, n), dtype=torch.long, device=device)  # [b, n]
 
         seq_sep = inds[:, :, None] - inds[:, None, :]  # [b, n, n]
-        same_idx_group = index_groups[:, :, None] == index_groups[:, None, :]  # [b, n, n]
 
-        # zero out relative sequence information from different groups
-        seq_sep *= same_idx_group
+        if self.zero_cross_group_seq_sep:
+            # zero out relative sequence information from different groups (PR #210)
+            same_idx_group = index_groups[:, :, None] == index_groups[:, None, :]  # [b, n, n]
+            seq_sep *= same_idx_group
 
         # Dimension should be odd, bins limits [-(dim/2-1), ..., -1.5, -0.5, 0.5, 1.5, ..., dim/2-1]
         # gives dim-2 bins, and the first and last for values beyond the bin limits
@@ -1175,28 +1161,16 @@ class XscBBCAPairwiseDistancesPairFeat(Feature):
         self.min_dist = x_sc_pair_dist_min
         self.max_dist = x_sc_pair_dist_max
         self.mode_key = mode_key
-        self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if self.mode_key in batch:
-            data_modes_avail = list(batch[self.mode_key])
-            assert (
-                "bb_ca" in data_modes_avail
-            ), f"`bb_ca` sc/recycle pair dist feature requested but key not available in data modes {data_modes_avail}"
-            return bin_pairwise_distances(
-                x=batch[self.mode_key]["bb_ca"],
-                min_dist=self.min_dist,
-                max_dist=self.max_dist,
-                dim=self.dim,
-            )  # [b, n, n, pair_dist_dim]
-        else:
-            # If we do not provide self-conditioning as input to the nn
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            if not self._has_logged:
-                logger.warning(f"No {self.mode_key} in batch, returning zeros for XscBBCAPairwiseDistancesPairFeat")
-                self._has_logged = True
-            return torch.zeros(b, n, n, self.dim, device=device)
+        feature_is_active = batch[f"{self.mode_key}_is_active"]
+        feat = bin_pairwise_distances(
+            x=batch[self.mode_key]["bb_ca"],
+            min_dist=self.min_dist,
+            max_dist=self.max_dist,
+            dim=self.dim,
+        )
+        return feat * feature_is_active
 
 
 # TODO: Remove once AE is retrained without this

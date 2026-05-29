@@ -20,3 +20,10 @@ transform:
   # so the model's exact-distance bins can be fully populated; smaller is fine but
   # high-distance bins will always be empty. Bounding BFS keeps featurization fast.
   path_length_search_cutoff: 64
+
+  # Per-token MSE loss weights (AF3-style additive: w = 1 + Σ αₖ · is_k).
+  # Each key names a predicate registered in proteinfoundation.transforms.loss_weight_predicates.PREDICATES.
+  loss_weight_cfg:
+    non_standard: 0.0
+    unindexed: 0.0
+    sampled_tip_atom: 0.0
