@@ -1,0 +1,192 @@
+# @package _global_
+#
+# Self-contained reproducer for the muon_v9_lossweights_25 SOTA training run.
+# Flattens what used to be a muon_pretrain_af3_cond → v3 → v4 → v9 → sota_repro
+# inheritance chain so every knob the trained 240k/440k checkpoint expects sits
+# in one file. Inherits only the project's main `training_proteina.yaml` config.
+#
+# Restores a non-EMA checkpoint via Lightning's full ckpt-restore path so
+# SimpleEMA swaps in the EMA weights for trainer.validate(), then runs the
+# model's standard validation_step. Restricted to the single `mcsa_subset`
+# variant — that's the only one with stored
+# per_example_metrics_aggregated_step{240000,440000}.csv to compare against.
+#
+# Required CLI overrides:
+#   pretrain_ckpt_path=<absolute path to chk_..._step_NNNN.ckpt> (non-EMA)
+#   run_name_=<unique name, e.g. sota_repro_v5_240k>
+
+defaults:
+  # Train datasets — kept so the dataloader can wire up cleanly even though
+  # prevalidate_only=true skips them. Removing causes Hydra defaults errors.
+  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/omol@datasets.train.omol
+  - /datasets/train/plinder/plinder@datasets.train.plinder
+
+  # Validation datasets — only mcsa_subset is active; the rest are nulled below.
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/motif_scaffolding/unindexed_motif_scaffold_full@datasets.val.unindexed_motif_scaffold_full
+  - /datasets/val/motif_scaffolding/indexed_motif_scaffold_full@datasets.val.indexed_motif_scaffold_full
+  - /datasets/val/mcsa/mcsa_subset@datasets.val.mcsa_subset
+  - /datasets/val/mcsa/mcsa_subset_fixed_ligand@datasets.val.mcsa_subset_fixed_ligand
+  - /datasets/val/mcsa/mcsa_subset_no_ligand@datasets.val.mcsa_subset_no_ligand
+  - /datasets/val/structure_prediction/ccd@datasets.val.ccd
+  - /datasets/val/sm_binder@datasets.val.sm_binder
+  - /datasets/val/sm_binder_fixed_ligand@datasets.val.sm_binder_fixed_ligand
+  - /datasets/val/sm_binder_hbonds@datasets.val.sm_binder_hbonds
+  - /datasets/val/rasa_IAI@datasets.val.rasa_IAI
+
+  # Design task presets (referenced by train transforms).
+  - /design_tasks/presets/motif_pretraining@_motif_scaffold_design_tasks
+  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
+
+  # AF3 refolding oracle (mcsa_subset has the `ame_refolding` metrics tag).
+  - override /metrics/refolding_oracles: af3
+
+  - _self_
+
+# Prevalidate-only entry: skip train loop, restore ckpt, run trainer.validate().
+prevalidate_only: true
+pretrain_ckpt_path: ???
+run_name_: ???
+
+# === train-side knobs (baked into the trained 240k/440k checkpoint) ===
+# We don't run training here, but the model is instantiated with these and
+# the per-dataset transforms refer to them via interpolation.
+
+# muon_v9_lossweights_25: per-token loss-weight upweights.
+loss_weights:
+  non_standard: 2.5
+  unindexed: 2.5
+  sampled_tip_atom: 0.0
+
+# muon_pretrain_af3_cond: bump p_unindex_all=0.8 on the three tip-atom tasks.
+_tip_atom_design_tasks:
+  tip_atom_pocket:
+    transform:
+      p_unindex_all: 0.8
+  tip_atom:
+    transform:
+      p_unindex_all: 0.8
+  tip_atom_partial_ligand:
+    transform:
+      p_unindex_all: 0.8
+
+datasets:
+  global_design_task_kwargs:
+    rasa_kwargs:
+      p_add_rasa_condition: 0.2
+    secondary_structure_kwargs:
+      p_add_secondary_structure_condition: 0.1
+    hbond_kwargs:
+      p_add_hbond_condition: 0.1
+
+  train:
+    afdb_monomer:
+      probability: 0.7
+      dataset:
+        transform:
+          design_tasks: ${_tip_atom_design_tasks}
+          loss_weight_cfg: ${loss_weights}
+    omol:
+      probability: 0.2
+      dataset:
+        transform:
+          loss_weight_cfg: ${loss_weights}
+          design_tasks:
+            folding:
+              frequency: 1.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                global_design_task_kwargs:
+                  rasa_kwargs:
+                    p_add_rasa_condition: 0.0
+                  hbond_kwargs:
+                    p_add_hbond_condition: 0.0
+                  secondary_structure_kwargs:
+                    p_add_secondary_structure_condition: 0.0
+            partial_ligand:
+              frequency: 3.0
+              transform:
+                _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+                min_coverage_fraction: 0.0
+                max_coverage_fraction: 1.0
+    plinder:
+      probability: 0.1
+      dataset:
+        transform:
+          loss_weight_cfg: ${loss_weights}
+          design_tasks:
+            tip_atom:
+              frequency: 5.0
+              transform:
+                p_unindex_all: 0.8
+            tip_atom_partial_ligand:
+              frequency: 80.0
+              transform:
+                p_unindex_all: 0.8
+
+  # Drop all inherited val datasets except mcsa_subset.
+  # assemble_val_loader_dict and _collect_val_metrics_tags skip null entries.
+  val:
+    unconditional: null
+    unindexed_motif_scaffold_full: null
+    indexed_motif_scaffold_full: null
+    mcsa_subset_fixed_ligand: null
+    mcsa_subset_no_ligand: null
+    ccd: null
+    sm_binder: null
+    sm_binder_fixed_ligand: null
+    sm_binder_hbonds: null
+    rasa_IAI: null
+
+dataloaders:
+  batch_size: 24
+  num_workers: 16
+  train:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 256}
+  val:
+    dataloader_params:
+      num_workers: 4
+      collate_fn:
+        fixed_dimensions: null
+
+nn:
+  use_torch_compile: true
+  # PR #210 added `seq_sep *= same_idx_group` to SequenceSeparationPairFeat,
+  # zeroing relative-PE values across IndexGroups. The trained checkpoints (e.g.
+  # muon_v9_lossweights_25 240k, training started 2026-05-07; PR #210 landed
+  # 2026-05-06) learned to use the unmasked values, so re-applying the fix at
+  # inference drops sse helix-fraction by ~18%. Opt out for back-compat.
+  zero_cross_group_seq_sep: false
+
+# muon_v4_centering_02: per-molecule stochastic centering on bb_ca at scale 0.2.
+product_flowmatcher:
+  bb_ca:
+    stochastic_centering_mode: x_0
+    stochastic_centering_scope: per_group
+    stochastic_centering_group_keys: [molecule_iid]
+    stochastic_centering_scale: 0.2
+
+opt:
+  accumulate_grad_batches: 1
+  # prevalidate_only bypasses the train loop, so val_start_epoch is moot.
+  val_start_epoch: 0
+  val_every_n_epochs: 10
+  num_sanity_val_steps: 0
+  muon_param_patterns:
+    - '^nn\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
+    - '^nn\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
+
+hardware:
+  accelerator: gpu
+  nnodes_: 2
+  ngpus_per_node_: 8
+  ncpus_per_task_train_: 16
+
+# Separate WandB project so we don't pollute the original training run's history.
+log:
+  wandb_project: latent-prevalidate-sota-repro
+  tags: ["sota-repro", "prevalidate", "mcsa-subset", "muon-v9-lossweights-25",
+         "af3-oracle", "compile_on", "fixpad", "centering-0p2", "lossweights-2p5"]

@@ -98,17 +98,20 @@ def instantiate_single_dataset_and_sampler(cfg: DictConfig | dict) -> dict[str, 
     dataset = hydra.utils.instantiate(cfg.dataset)
 
     # Users may provide only weights, in which case we will use a WeightedRandomSampler,
-    # or they may provide a sampler directly
+    # or they may provide a sampler directly. Either key set to None falls through
+    # to the uniform fallback (lets experiment configs disable inherited weighting).
+    weights_cfg = cfg.get("weights")
+    sampler_cfg = cfg.get("sampler")
 
-    if "weights" in cfg and "sampler" not in cfg:
-        weights = hydra.utils.instantiate(cfg.weights, dataset_df=dataset.data)
+    if weights_cfg is not None and sampler_cfg is None:
+        weights = hydra.utils.instantiate(weights_cfg, dataset_df=dataset.data)
         sampler = LazyWeightedRandomSampler(
             weights=weights,
             num_samples=len(dataset),
             replacement=True,
         )
-    elif "sampler" in cfg and "weights" not in cfg:
-        sampler = hydra.utils.instantiate(cfg.sampler)
+    elif sampler_cfg is not None and weights_cfg is None:
+        sampler = hydra.utils.instantiate(sampler_cfg)
     else:
         dataset_name = getattr(getattr(cfg.dataset, "dataset", None), "name", None)
         ranked_logger.warning(

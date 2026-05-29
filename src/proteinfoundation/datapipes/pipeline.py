@@ -92,7 +92,7 @@ from atomworks.ml.utils.token import (
     get_token_starts,
     spread_token_wise,
 )
-from beartype.typing import Any
+from beartype.typing import Any, Callable
 from biotite.structure import AtomArray
 from einops import rearrange
 
@@ -117,6 +117,7 @@ from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
 from proteinfoundation.transforms.invariants import ValidateBatchInvariants
+from proteinfoundation.transforms.loss_weight_predicates import build_loss_weight_upweights
 from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
 from proteinfoundation.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
@@ -377,6 +378,13 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # (Will be pooled to the token-level later)
         feats["can_be_encoded"] = aa.can_be_encoded  # [L]
         feats["should_be_lossed"] = aa.should_be_lossed  # [L]
+
+        # Per-token MSE weight: defaults to 1.0 if no UpweightLossWeightOnSubset ran.
+        if "loss_weight" in aa.get_annotation_categories():
+            feats["loss_weight"] = aa.loss_weight  # [L] float32
+        else:
+            feats["loss_weight"] = np.ones(aa.array_length(), dtype=np.float32)  # [L]
+
         feats["coord_cond_mask"] = C_CRD.mask(aa, default="generate")  # [L] for diagnostics
 
         ###########################################################
@@ -498,6 +506,7 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "within_index_group_res_idx",
     "can_be_encoded",
     "should_be_lossed",
+    "loss_weight",
     "coord_cond_mask",  # Coordinate conditioning mask (for diagnostics)
     C_SEQ.mask_name,
     C_CTR.full_name,
@@ -743,6 +752,52 @@ class AddCanBeEncodedAnnotation(Transform):
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         add_can_be_encoded_annotation(atom_array, self.residue_names_to_encode, "can_be_encoded")
+        return data
+
+
+class UpweightLossWeightOnSubset(Transform):
+    """Add ``factor`` to per-atom ``loss_weight`` on atoms matching ``predicate``.
+
+    Implements AF3-style additive composition: ``w = 1 + Σ αₖ · is_k(atom_array)``.
+
+    NOTE: The predicate's atom-level mask is spread token-wise (``np.max``), so a predicate
+    that flags even a single atom in a token (e.g. the side-chain tip atom)
+    upweights the whole token.
+
+    Args:
+      predicate: ``AtomArray -> np.ndarray[bool]`` of shape ``[n_atoms]``.
+      factor: scalar alpha. ``factor=0.0`` is a no-op fast-path.
+    """
+
+    def __init__(
+        self,
+        predicate: Callable[[AtomArray], np.ndarray],
+        factor: float,
+    ):
+        self.predicate = predicate
+        self.factor = float(factor)
+
+    def forward(self, data: dict) -> dict:
+        if self.factor == 0.0:
+            return data
+
+        # Get or initialize loss_weight annotation
+        atom_array = data["atom_array"]
+        if "loss_weight" not in atom_array.get_annotation_categories():
+            weight = np.ones(atom_array.array_length(), dtype=np.float32)
+        else:
+            weight = np.asarray(atom_array.loss_weight, dtype=np.float32)
+
+        # Apply predicate to get atom-level mask
+
+        is_subset = self.predicate(atom_array).astype(bool)
+        # Spread token-wise: any matching atom upweights the whole token.
+        is_subset_token_uniform = apply_and_spread_token_wise(atom_array, is_subset, np.max)
+        weight = weight + (self.factor * is_subset_token_uniform.astype(np.float32))
+
+        # Update annotation
+        atom_array.set_annotation("loss_weight", weight.astype(np.float32))
+
         return data
 
 
@@ -1270,6 +1325,8 @@ def _build_design_featurize_pipeline(
     coordination_bond_dropout_p_individual: float = 0.5,
     aromatic_dropout_p: float = 0.4,
     path_length_search_cutoff: int | None = None,
+    # Loss weighting
+    loss_weight_cfg: dict[str, float] | None = None,
 ) -> list[Transform]:
     """Build shared featurization pipeline across both training and validation.
 
@@ -1346,6 +1403,11 @@ def _build_design_featurize_pipeline(
     # Add annotation for which atoms should be encoded / lossed in the model
     T += AddShouldBeLossedAnnotation()
 
+    # Per-token loss weighting
+    # Each Upweight transform adds factor·is_k(atom_array) to ``loss_weight``
+    for predicate, factor in build_loss_weight_upweights(loss_weight_cfg):
+        T += UpweightLossWeightOnSubset(predicate, factor=factor)
+
     # Encode standard amino acids, RNA, and DNA nucleotides (atomised things are filtered out already)
     T += AddCanBeEncodedAnnotation(residue_names_to_encode=residue_names_to_encode)
 
@@ -1411,6 +1473,8 @@ def build_design_train_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
+    # Loss weighting
+    loss_weight_cfg: dict[str, float] | None = None,
 ) -> Transform:
     """Build training pipeline for protein design tasks.
 
@@ -1474,6 +1538,7 @@ def build_design_train_pipeline(
         msa_featurize_n_msa=msa_featurize_n_msa,
         is_inference=is_inference,
         path_length_search_cutoff=path_length_search_cutoff,
+        loss_weight_cfg=loss_weight_cfg,
     )
 
     return Compose(transforms)
@@ -1488,6 +1553,8 @@ def build_design_validation_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
+    # Loss weighting
+    loss_weight_cfg: dict[str, float] | None = None,
 ) -> Transform:
     """Build the validation/inference pipeline.
 
@@ -1517,4 +1584,5 @@ def build_design_validation_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         path_length_search_cutoff=path_length_search_cutoff,
+        loss_weight_cfg=loss_weight_cfg,
     )

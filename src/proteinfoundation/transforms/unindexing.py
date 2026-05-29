@@ -307,7 +307,16 @@ class UnindexFlaggedTokens(Transform):
             insertion_source_idx = np.full(atom_array_expanded.array_length(), -1, dtype=np.int32)
         atom_array_expanded.set_annotation("insertion_source_idx", insertion_source_idx)
 
+        # Expose the unindexed-source mask as an atom_array annotation for
+        # downstream consumers (e.g. loss-weight predicates).
+        if data.get("is_inference", False):
+            is_unindexed_source = np.zeros(atom_array_expanded.array_length(), dtype=bool)
+        else:
+            is_unindexed_source = mask.astype(bool)
+        atom_array_expanded.set_annotation("is_unindexed_source", is_unindexed_source)
+
         # Reset global token IDs and atom IDs after possible expansion
+
         atom_array_expanded = add_global_token_id_annotation(atom_array_expanded)
         atom_array_expanded = add_global_atom_id_annotation(atom_array_expanded)
 
