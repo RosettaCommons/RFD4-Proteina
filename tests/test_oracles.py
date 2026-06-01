@@ -269,13 +269,11 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
                 align_mask="is_protein_backbone",
                 subset_mask="is_protein_backbone",
                 metric_type="rmsd",
-                keep_aligned_predicted_structure=False,
             ),
             "chain_a_rmsd": StructureComparisonMetric(
                 align_mask="is_protein_backbone & (chain_id == 'A')",
                 subset_mask="is_protein_backbone & (chain_id == 'A')",
                 metric_type="rmsd",
-                keep_aligned_predicted_structure=False,
             ),
         }
     )

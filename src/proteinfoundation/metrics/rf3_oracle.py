@@ -27,6 +27,7 @@ from proteinfoundation.metrics.oracle_metric import (
     OracleMetric,
     extract_confidence_metrics,
 )
+from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from rf3.inference_engines.rf3 import RF3InferenceEngine
 from rf3.utils.inference import InferenceInput, InputOptions
@@ -258,20 +259,10 @@ class RF3Oracle(OracleMetric):
                     )
                 )
 
-                # Strip AtomArray values (not JSON-serialisable) and pick the structure to save
-                aligned_aa = [v for k, v in metrics.items() if k.endswith("aligned_predicted_structure")]
-                metrics = {k: v for k, v in metrics.items() if not k.endswith("aligned_predicted_structure")}
-
-                refolded_structure = (
-                    aligned_aa[0]
-                    if len(aligned_aa) == 1 and not np.isnan(aligned_aa[0].coord).all()
-                    else result.atom_array
-                )
-
-                if out_dir is not None and refolded_structure is not None:
+                if out_dir is not None and result.atom_array is not None:
                     cif_path = self.refolded_cif_path(out_dir, example_id)
                     cif_path.parent.mkdir(parents=True, exist_ok=True)
-                    to_cif_file(refolded_structure, cif_path)
+                    to_cif_file(align_atom_array_to_input_frame(result.atom_array), cif_path)
         finally:
             torch.cuda.set_device(original_device)
 

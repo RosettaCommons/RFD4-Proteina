@@ -378,3 +378,64 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_inp
         SA_CWI.set_annotation(atom_array, cwi)
 
     return atom_array
+
+
+def align_atom_array_to_input_frame(atom_array: AtomArray, crdgrp_id: int | None = None) -> AtomArray:
+    """Apply a rigid transform so the chosen coord group's atoms sit at their input coords.
+
+    Kabsch-aligns ``atom_array.coord[anchor]`` onto ``SA_CWI.annotation[anchor]``,
+    and applies that transform to every atom in the array. This is purely cosmetic:
+    it makes saved CIFs open consistently across designs (motif at its input position,
+    scaffold rotated to match).
+
+    Anchor selection:
+      - ``crdgrp_id`` if explicitly provided
+      - Else the ``KNOWN_ABSOLUTE_COORDS`` bucket (C_CRD atoms; all share one frame)
+      - Else the largest single C_INTCRD group (deterministic fallback)
+      - Else no-op if no anchor found or fewer than 3 atoms
+
+    Args:
+        atom_array: AtomArray with ``SA_CWI`` populated for conditioned atoms.
+        crdgrp_id: Optional ``C_CRDGRP`` value to use as the anchor.
+
+    Returns:
+        The same AtomArray with ``coord`` updated in place (and returned for chaining).
+    """
+    if not SA_CWI.has_annotation(atom_array):
+        return atom_array
+
+    coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
+    cwi = SA_CWI.annotation(atom_array)
+    if cwi.ndim == 3:
+        cwi = cwi[0]
+    cwi_valid = ~np.isnan(cwi).any(axis=-1)
+
+    if crdgrp_id is None:
+        absolute_mask = (coord_groups == C_CRDGRP.KNOWN_ABSOLUTE_COORDS) & cwi_valid
+        if absolute_mask.any():
+            anchor_mask = absolute_mask
+        else:
+            intcrd_groups = np.unique(
+                coord_groups[
+                    cwi_valid
+                    & (coord_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
+                    & (coord_groups != C_CRDGRP.UNKNOWN_COORDS)
+                ]
+            )
+            if intcrd_groups.size == 0:
+                return atom_array
+            sizes = {int(g): int(((coord_groups == g) & cwi_valid).sum()) for g in intcrd_groups}
+            anchor_group = max(sizes, key=sizes.get)
+            anchor_mask = (coord_groups == anchor_group) & cwi_valid
+    else:
+        anchor_mask = (coord_groups == crdgrp_id) & cwi_valid
+        if not anchor_mask.any():
+            return atom_array
+
+    if anchor_mask.sum() < 3:
+        return atom_array
+
+    mobile = atom_array.coord[anchor_mask]
+    _, transform = superimpose(fixed=cwi[anchor_mask], mobile=mobile)
+    atom_array.coord = transform.apply(atom_array.coord)
+    return atom_array

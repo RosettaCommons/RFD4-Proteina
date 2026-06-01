@@ -8,7 +8,6 @@ from atomworks.io.utils.atom_array_plus import concatenate_any
 from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.ml.conditions import C_CRD, C_CTR, C_DIS, C_IDX, C_NTR, C_SEQ
 from atomworks.ml.conditions.base import CONDITIONS
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms._checks import (
     check_contains_keys,
     check_is_instance,
@@ -33,8 +32,8 @@ from biotite.structure.residues import apply_residue_wise, get_residue_starts, s
 from scipy.optimize import linear_sum_assignment
 
 from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
-from proteinfoundation.conditions import C_IDXGRP, C_INTCRD
+from foundry.utils.standard_annotations import SA_CRDGRPSRC, SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
+from proteinfoundation.conditions import C_CRDGRP, C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.utils.conditioning_utils import (
     set_specified_conditions_to_default,
 )
@@ -752,10 +751,6 @@ def find_optimal_insertion_points_for_unindexed_regions(
     return final_residue_mapping_by_chain
 
 
-JOIN_ATOM_ANNOT_NAME = "is_join_atom"
-UNINDEXED_INSERTION_ANNOT_NAME = "is_unindexed_insertion"
-
-
 def annotate_unindexed_insertion(
     atom_array: AtomArray,
     insert_unindexed_regions: bool = False,
@@ -766,8 +761,6 @@ def annotate_unindexed_insertion(
     Adds the following annotations
     - ``SA_CRDSRC`` - which generated atoms each unindexed token mapped to
     - ``SA_CWI`` - the target-frame unindexed coordinates at those atom positions
-    - ``is_join_atom`` - a per-atom bool flagging the single "closest to backbone"
-      atom of each remapped sidechain-only token
 
     Args:
         atom_array: AtomArray including the unindexed regions in-context
@@ -794,6 +787,18 @@ def annotate_unindexed_insertion(
     model_generated_atom_array = atom_array[has_index].copy()
     in_context_conditioning = atom_array[~has_index].copy()
 
+    # Short-circuit: no unindexed tokens at all — set default annotations and populate indexed ones.
+    if in_context_conditioning.array_length() == 0:
+        n = model_generated_atom_array.array_length()
+        SA_CRDSRC.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+        SA_CRDSRC.set_annotation(model_generated_atom_array, SA_CRDSRC.default_annotation(model_generated_atom_array))
+        SA_CRDGRPSRC.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+        SA_CRDGRPSRC.set_annotation(
+            model_generated_atom_array, SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
+        )
+        SA_UII.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+        return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
+
     # Validate inputs and determine matching strategy
     has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate")
     has_distance_conditioning = C_DIS.mask(in_context_conditioning, default="generate").as_dense_array().any(axis=0)
@@ -806,9 +811,12 @@ def annotate_unindexed_insertion(
     # Track which generated atoms have been mapped to unindexed regions and stage their remapped coordinates
     n_atoms = model_generated_atom_array.array_length()
     mapped_to_coordinate_conditioned_region = np.zeros(n_atoms, dtype=bool)
-    is_join_atom = np.zeros(n_atoms, dtype=bool)
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
     src_coordinate_conditioned_region = SA_CRDSRC.default_annotation(model_generated_atom_array)
+    src_coord_group = SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
+
+    coord_groups_all = C_CRDGRP.annotation(atom_array, default="generate")
+    unindexed_coord_groups = coord_groups_all[~has_index]
 
     # If we cannot find a valid insertion mapping, fall back to simply removing the unindexed region
     try:
@@ -823,10 +831,9 @@ def annotate_unindexed_insertion(
         )
         SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
         SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-        model_generated_atom_array.set_annotation(JOIN_ATOM_ANNOT_NAME, is_join_atom)
-        model_generated_atom_array.set_annotation(
-            UNINDEXED_INSERTION_ANNOT_NAME, mapped_to_coordinate_conditioned_region
-        )
+        SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
+        SA_UII.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
         return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
 
     generated_indices = np.arange(n_atoms)
@@ -868,22 +875,8 @@ def annotate_unindexed_insertion(
             # Record that these indices have been mapped to unindexed regions
             mapped_to_coordinate_conditioned_region[permuted_target_indices_generated] = True
             src_coordinate_conditioned_region[permuted_target_indices_generated] = token_src_id
-
-            # Mark the join atom for sidechain-only / tip-atom tokens
-            # Tokens that include any backbone atom have no defined join atom, so the bool stays False there.
-            if not np.any(np.isin(unindexed_token.atom_name, ["N", "CA", "C", "O"])):
-                res_name = unindexed_token.res_name[0]
-
-                # Infer join point as the unindexed atom closest to the backbone with ties broken
-                # (arbitrarily) by the encoding order
-                atom_name_encoding_indices = np.array(
-                    [
-                        UNIFIED_ATOM37_ENCODING.atom_to_idx[(res_name, atom_name)]
-                        for atom_name in unindexed_token.atom_name
-                    ]
-                )
-                join_atom = int(np.argmin(atom_name_encoding_indices))
-                is_join_atom[permuted_target_indices_generated[join_atom]] = True
+            # Record the source CoordinateGroup (all atoms in a token share the same group)
+            src_coord_group[permuted_target_indices_generated] = unindexed_coord_groups[unindexed_token_mask][0]
 
             if has_3d_conditioning.any():
                 # NOTE: If we eventually support other kinds of unindexed conditioning (rasa etc)
@@ -894,10 +887,11 @@ def annotate_unindexed_insertion(
     # Add an annotation to indicate which residues mapped to unindexed regions, whether inserting or not
     SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
     SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-    model_generated_atom_array.set_annotation(JOIN_ATOM_ANNOT_NAME, is_join_atom)
-    model_generated_atom_array.set_annotation(UNINDEXED_INSERTION_ANNOT_NAME, mapped_to_coordinate_conditioned_region)
+    SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+    SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
+    SA_UII.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
 
-    # Validate remapped coordinates, then add as an SA_CWI annotation (consumed by UnindexedInsertionMetric)
+    # Validate remapped coordinates, then add as an SA_CWI annotation
     if has_3d_conditioning.any() and mapped_to_coordinate_conditioned_region.any():
         if np.isnan(remapped_coord[mapped_to_coordinate_conditioned_region]).any():
             raise ValueError("NaN values found in remapped coordinates")
@@ -950,6 +944,16 @@ def _merge_indexed_coord_conditioning_into_src(generated_atom_array: AtomArray) 
     src_crd = SA_CRDSRC.annotation(generated_atom_array)
     src_crd[indexed_coord_conditioned_mask] = SA_SRC.annotation(generated_atom_array)[indexed_coord_conditioned_mask]
     SA_CRDSRC.set_annotation(generated_atom_array, src_crd)
+
+    # Propagate nontrivial CoordGroup values for indexed
+    # C_INTCRD atoms into SA_CRDGRPSRC so downstream metrics can group by coordinate group
+    intcrd_mask = C_INTCRD.mask(generated_atom_array)
+    if intcrd_mask.any():
+        coord_groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
+        src_crd_grp = SA_CRDGRPSRC.annotation(generated_atom_array)
+        nontrivial = intcrd_mask & (coord_groups != C_CRDGRP.UNKNOWN_COORDS)
+        src_crd_grp[nontrivial] = coord_groups[nontrivial]
+        SA_CRDGRPSRC.set_annotation(generated_atom_array, src_crd_grp)
 
     # Token-level mask: True for every token whose atoms include at least one
     # SA_CRDSRC-flagged atom. Consumed by motif-RMSD / internal-coord metrics.

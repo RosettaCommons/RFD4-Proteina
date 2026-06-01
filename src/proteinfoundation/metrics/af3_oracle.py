@@ -28,6 +28,7 @@ from biotite.structure.residues import apply_residue_wise, residue_iter, spread_
 
 from foundry.utils.ddp import RankedLogger
 from proteinfoundation.metrics.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
+from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from scripts.af3_apptainer import build_apptainer_fold_command
 
@@ -413,7 +414,7 @@ class AF3Oracle(OracleMetric):
             cif_path = self.refolded_cif_path(state.out_dir, state.example_id)
             cif_path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                to_cif_file(predicted_atom_array, cif_path)
+                to_cif_file(align_atom_array_to_input_frame(predicted_atom_array), cif_path)
             except Exception as e:
                 logger.warning(f"Failed to save AF3 refolded CIF for {state.example_id}: {e}")
 

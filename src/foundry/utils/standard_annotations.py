@@ -87,7 +87,53 @@ class CoordsWithInsertion(StandardAnnotationBase):
         return np.full((atom_array.array_length(), 3), np.nan, dtype=np.float32)
 
 
+class SrcCoordGroup(StandardAnnotationBase):
+    """Per-atom source coordinate group identifier.
+
+    Integer identifying which input ``CoordinateGroup`` this atom belongs to.
+    ``-1`` means the atom had no coordinate conditioning (``UNKNOWN_COORDS``).
+    """
+
+    name = "src-coord-group"
+    n_body = 1
+    level = Level.ATOM
+    dtype = np.int32
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        """Infer mask from annotation if present, otherwise all-False."""
+        if cls.has_annotation(atom_array):
+            return cls.annotation(atom_array) != -1
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        """Default: ``-1`` (not mapped) for all atoms."""
+        return np.full(atom_array.array_length(), -1, dtype=np.int32)
+
+
+class IsUnindexedInsertion(StandardAnnotationBase):
+    """Per-atom mask flagging atoms that map to unindexed in-context conditioning regions.
+
+    Set by :py:func:`~proteinfoundation.transforms.unindexing.annotate_unindexed_insertion`.
+    ``True`` means the atom was identified as the insertion target for an unindexed token.
+    """
+
+    name = "is-unindexed-insertion"
+    n_body = 1
+    level = Level.ATOM
+    dtype = bool
+    alias = "is_unindexed_insertion"
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        """Default: all-False (no unindexed insertion)."""
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+
 # --- Convenience aliases ---
 SA_CRDSRC = SrcCoordinateConditionedRegion
 SA_SRC = SrcComponent
 SA_CWI = CoordsWithInsertion
+SA_CRDGRPSRC = SrcCoordGroup
+SA_UII = IsUnindexedInsertion
