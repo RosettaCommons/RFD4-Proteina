@@ -13,7 +13,6 @@ from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
 from foundry.metrics.metric import Metric
 from foundry.utils.logging import RankedLogger
-from proteinfoundation.conditions import C_CRDGRP, C_INTCRD
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
 
@@ -62,7 +61,8 @@ def align_structures_with_masks(
         pred_atoms_to_align
     ), "Alignment subsets of ground truth and predicted atom array stacks must be the same length"
 
-    assert len(gt_atoms_to_align) > 0, "No atoms found to align"
+    if len(gt_atoms_to_align) == 0:
+        return None, None
     assert gt_atoms_to_align.mask("(~has_nan_coord())").all(), "Ground truth atoms to align have nan coords"
     assert pred_atoms_to_align.mask("(~has_nan_coord())").all(), "Predicted atoms to align have nan coords"
     if not all(len(gt_atoms_to_align[i]) == len(pred_atoms_to_align[i]) for i in range(len(gt_atoms_to_align))):
@@ -335,34 +335,27 @@ def structure_comparison_metric(
     | list[AtomArray | AtomArrayPlus],
     subset_mask: str | None = None,
     align_mask: str | None = None,
-    apply_mask_queries_to_pred: bool = True,
     metric_fn: Callable[[AtomArray, AtomArray], float] = compute_rmsd,
     verbose_naming: bool = False,
-    keep_aligned_predicted_structure: bool = False,
+    _return_n_atoms: bool = False,
     **metric_kwargs: Any,
 ) -> dict[str, float]:
-    """
-    Compute structure comparison metrics between ground truth and predicted structures.
-    Note that we always ignore nan coords when comparing structures. You do not need to include that in your
-    subset mask.
+    """Compute structure comparison metrics between ground truth and predicted structures.
 
     Args:
-        ground_truth_atom_array_stack: Ground truth atom array or stack
-        predicted_atom_array_stack: Predicted atom array or stack (optional if predicted_coords provided)
-        subset_mask: Query string to subset the atom arrays (e.g., "is_backbone & is_polymer")
-        align_mask: Query string to use for alignment (e.g., "is_protein_backbone | is_nucleic_acid")
-        metric_type: Callable that computes the metric between two atom arrays. These methods assume everything
-            is subset and aligned properly.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
-            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
-            True if the AtomArrays are different lengths.
-        verbose_naming: Whether to use verbose naming for the metric keys
-            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd)
-        keep_aligned_predicted_structure: Whether to include the aligned predicted structure in the output dict.
-        metric_kwargs: Additional keyword arguments to pass to the metric function.
+        ground_truth_atom_array_stack: Ground truth atom array or stack.
+        predicted_atom_array_stack: Predicted atom array or stack.
+        subset_mask: Query string to subset atom arrays (e.g., ``"is_backbone & is_polymer"``).
+        align_mask: Query string for alignment (e.g., ``"is_protein_backbone | is_nucleic_acid"``).
+        metric_fn: Callable computing the metric between two aligned atom arrays.
+        verbose_naming: Emit verbose metric keys
+            (e.g. ``rmsd_align=<is_backbone>_subset=<is_backbone>`` instead of ``rmsd``).
+        _return_n_atoms: Internal flag. When ``True``, include ``"n_atoms"`` in the returned dict
+            (used by :py:meth:`StructureComparisonMetric._compute_per_group` for weighted averaging).
+        metric_kwargs: Additional keyword arguments forwarded to ``metric_fn``.
 
     Returns:
-        Dictionary with comparison results
+        Dictionary with comparison results. Contains ``"n_atoms"`` only when ``_return_n_atoms=True``.
     """
     # Convert inputs to stacks for uniform handling
     gt_stack = as_atom_array_plus_stack(ground_truth_atom_array_stack)
@@ -380,39 +373,27 @@ def structure_comparison_metric(
         annotations_to_ensure.extend(_extract_annotation_names(align_mask))
     if annotations_to_ensure:
         ensure_annotations(gt_stack, *annotations_to_ensure)
-        if apply_mask_queries_to_pred:
-            ensure_annotations(pred_stack, *annotations_to_ensure)
+        ensure_annotations(pred_stack, *annotations_to_ensure)
 
     # align
-    gt_stack, pred_stack = align_structures_by_annotations(
-        gt_stack, pred_stack, align_mask, apply_query_to_pred=apply_mask_queries_to_pred
-    )
+    gt_stack, pred_stack = align_structures_by_annotations(gt_stack, pred_stack, align_mask, apply_query_to_pred=True)
 
     # No metrics are returned if alignment failed
     if gt_stack is None or pred_stack is None:
         return {}
 
-    if keep_aligned_predicted_structure:
-        aligned_pred_stack = pred_stack.copy()
-
     # subset
     if subset_mask:
         final_gt_subset_mask = gt_stack.mask(subset_mask) & gt_stack.mask("~has_nan_coord()")
-        if apply_mask_queries_to_pred:
-            final_pred_subset_mask = pred_stack.mask(subset_mask) & pred_stack.mask("~has_nan_coord()")
-        else:
-            final_pred_subset_mask = final_gt_subset_mask
+        final_pred_subset_mask = pred_stack.mask(subset_mask) & pred_stack.mask("~has_nan_coord()")
     else:
         final_gt_subset_mask = gt_stack.mask("~has_nan_coord()")
-        if apply_mask_queries_to_pred:
-            final_pred_subset_mask = pred_stack.mask("~has_nan_coord()")
-        else:
-            final_pred_subset_mask = final_gt_subset_mask
+        final_pred_subset_mask = pred_stack.mask("~has_nan_coord()")
 
     gt_stack = gt_stack[:, final_gt_subset_mask]
     pred_stack = pred_stack[:, final_pred_subset_mask]
 
-    if final_gt_subset_mask.sum() == 0 or final_pred_subset_mask.sum() == 0:
+    if (final_gt_subset_mask.sum() == 0 or final_pred_subset_mask.sum() == 0) and not _return_n_atoms:
         ranked_logger.warning(
             f"The subset mask {subset_mask} resulted in an empty selection after filtering out atoms with NaN "
             "coordinates. This Metric will return NaN values."
@@ -437,43 +418,37 @@ def structure_comparison_metric(
         for metric, result in metric_result.items()
     }
 
-    if keep_aligned_predicted_structure:
-        metric_result["aligned_predicted_structure"] = aligned_pred_stack
+    if _return_n_atoms:
+        metric_result["n_atoms"] = gt_stack.array_length()
 
     return metric_result
 
 
 class StructureComparisonMetric(Metric):
-    """
-    Computes structure comparison metrics between ground truth and predicted structures.
+    """Computes structure comparison metrics between ground truth and predicted structures.
 
-    Supports various comparison types including RMSD and distance MAE, with optional
-    subsetting and alignment capabilities.
+    Supports RMSD and distance MAE, with optional subsetting, alignment, and
+    per-annotation-group alignment.
 
     Args:
-        subset_mask: Query string to subset the atom arrays (e.g., "is_backbone & is_polymer")
-        align_mask: Query string to use for alignment (e.g., "is_backbone")
-        gt_coord_annotation_name: Name of the coordinate annotation to use for the ground truth.
-            NOTE: These new coordinates will not be symmetry-resolved after RF3 unless passed to it
-            in `extra_annots_to_symm_resolve`.
-        metric_type: Type of comparison metric ("rmsd" or "dist_mae")
-        metric_kwargs: Additional keyword arguments to pass to the metric function. Must be in the format:
-            {
-                "dist_mae": {  # key must be the name of the metric type ("dist_mae" or "rmsd")
-                    "extra_distance_types": ["tip_atom", "inter_chain", "intra_chain"]
-                }
-            }
-        input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
-            Defaults to {"ground_truth_atom_array": "ground_truth_atom_array",
-            "predicted_atom_array": "predicted_atom_array"}.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
-            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
-            True if the AtomArrays are different lengths.
-        verbose_naming: Whether to name metric keys verbosely
-            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
-        keep_aligned_predicted_structure: Whether to include the aligned predicted structure in the output dict.
+        subset_mask: Query string to subset the atom arrays (e.g., ``"is_backbone & is_polymer"``).
+        align_mask: Query string for alignment (e.g., ``"is_backbone"``).
+        subdivide_by_annotation: Name of an annotation whose distinct values
+            define independent align + score groups.
+            ``subset_mask`` / ``align_mask`` are applied within each slice.
+            Off by default (``None``).
+        gt_coord_annotation_name: Per-atom annotation to use as ground-truth coordinates
+            instead of ``coord``. Useful when the true target is stored in a separate annotation.
+        metric_type: Comparison metric: ``"rmsd"`` or ``"dist_mae"``.
+        metric_kwargs: Extra kwargs forwarded to the metric function, keyed by metric
+            type (e.g. ``{"dist_mae": {"extra_distance_types": ["tip_atom"]}}``).
+        input_kwarg_names: Maps ``compute()`` parameter names to pipeline kwarg names.
+            Defaults to ``{"ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array"}``.
+        verbose_naming: Emit verbose metric keys
+            (e.g. ``rmsd_align=<is_backbone>_subset=<is_backbone>`` instead of ``rmsd``).
 
-    Example:
+    Examples:
         >>> metric = StructureComparisonMetric(
         ...     subset_mask="is_backbone & is_polymer",
         ...     align_mask="is_backbone",
@@ -481,20 +456,19 @@ class StructureComparisonMetric(Metric):
         ... )
         >>> result = metric.compute(ground_truth_atom_array=gt, predicted_atom_array=pred)
         >>> print(result)
-        {'rmsd_align=<is_backbone>_subset=<is_backbone&is_polymer>': 1.23}
+        {'rmsd': 1.23}
     """
 
     def __init__(
         self,
         subset_mask: str | None = None,
         align_mask: str | None = None,
+        subdivide_by_annotation: str | None = None,
         gt_coord_annotation_name: str = "coord",
         metric_type: Literal["rmsd", "dist_mae"] = "rmsd",
-        metric_kwargs: dict[str, Any] = {},
+        metric_kwargs: dict[str, Any] | None = None,
         input_kwarg_names: dict[str, str] | None = None,
-        apply_mask_queries_to_pred: bool = True,
         verbose_naming: bool = False,
-        keep_aligned_predicted_structure: bool = False,
         **kwargs,
     ):
         self._input_kwarg_names = input_kwarg_names or {
@@ -506,16 +480,97 @@ class StructureComparisonMetric(Metric):
 
         self.subset_mask = subset_mask
         self.align_mask = align_mask
+        self.subdivide_by_annotation = subdivide_by_annotation
         self.gt_coord_annotation_name = gt_coord_annotation_name
         self.metric_type = metric_type
-        self.metric_kwargs = metric_kwargs
-        self.apply_mask_queries_to_pred = apply_mask_queries_to_pred
+        self.metric_kwargs = metric_kwargs or {}
         self.verbose_naming = verbose_naming
-        self.keep_aligned_predicted_structure = keep_aligned_predicted_structure
 
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return self._input_kwarg_names
+
+    def _prepare_gt_stack(
+        self,
+        ground_truth_atom_array: AtomArray
+        | AtomArrayStack
+        | AtomArrayPlus
+        | AtomArrayPlusStack
+        | list[AtomArray | AtomArrayPlus],
+    ) -> AtomArrayPlusStack:
+        """Convert GT to stack and substitute coordinates from annotation if configured."""
+        gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
+
+        if self.gt_coord_annotation_name != "coord":
+            if self.gt_coord_annotation_name in gt_stack.get_per_stack_annotation_categories():
+                updated_gt_coords = gt_stack.get_per_stack_annotation(self.gt_coord_annotation_name)
+            else:
+                updated_gt_coords = gt_stack.get_annotation(self.gt_coord_annotation_name)
+            gt_stack.coord = updated_gt_coords if updated_gt_coords.ndim == 3 else updated_gt_coords[None]
+
+        return gt_stack
+
+    def _compute_per_group(
+        self,
+        gt_stack: AtomArrayPlusStack,
+        pred_stack: AtomArrayPlusStack,
+        metric_kwargs: dict[str, Any],
+    ) -> dict[str, float]:
+        """Slice by annotation value, score each group, return aggregated result."""
+        annot = gt_stack.get_annotation(self.subdivide_by_annotation)
+        unique_vals = np.unique(annot)
+
+        weighted: dict[str, float] = defaultdict(float)
+        total_atoms = 0
+        any_result = False
+
+        # We need to know how to aggregate the per-group metrics
+        if self.metric_type not in ["rmsd", "dist_mae"]:
+            raise ValueError(f"Unsupported metric type for per-group computation: {self.metric_type}")
+
+        for val in unique_vals:
+            mask = annot == val
+            gt_sub = gt_stack[:, mask]
+            pred_sub = pred_stack[:, mask]
+
+            result = structure_comparison_metric(
+                gt_sub,
+                pred_sub,
+                subset_mask=self.subset_mask,
+                align_mask=self.align_mask,
+                metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
+                verbose_naming=self.verbose_naming,
+                _return_n_atoms=True,
+                **metric_kwargs,
+            )
+
+            if not result:
+                continue
+
+            n = result.pop("n_atoms")
+
+            if n == 0:
+                continue
+
+            total_atoms += n
+            for k, v in result.items():
+                if self.metric_type == "rmsd":
+                    weighted[k] += v**2 * n
+                else:
+                    weighted[k] += v * n
+            any_result = True
+
+        if not any_result:
+            ranked_logger.warning(
+                f"No groups produced a valid result for annotation '{self.subdivide_by_annotation}'. "
+                "Returning empty dict."
+            )
+            return {}
+
+        if self.metric_type == "rmsd":
+            return {k: float(np.sqrt(v / total_atoms)) for k, v in weighted.items()}
+        else:
+            return {k: float(v / total_atoms) for k, v in weighted.items()}
 
     def compute(
         self,
@@ -530,172 +585,31 @@ class StructureComparisonMetric(Metric):
         | AtomArrayPlusStack
         | list[AtomArray | AtomArrayPlus],
     ) -> dict[str, float]:
-        """
-        Compute structure comparison metrics.
+        """Compute structure comparison metrics.
 
         Args:
             ground_truth_atom_array: Ground truth atom array or stack.
             predicted_atom_array: Predicted atom array or stack.
 
         Returns:
-            Dictionary with comparison results
+            Dictionary with comparison results.
         """
         metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
+        gt_stack = self._prepare_gt_stack(ground_truth_atom_array)
 
-        # Optionally substitute ground truth coordinates
-        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
-        if self.gt_coord_annotation_name != "coord":
-            if self.gt_coord_annotation_name in updated_gt_stack.get_per_stack_annotation_categories():
-                updated_gt_coords = updated_gt_stack.get_per_stack_annotation(self.gt_coord_annotation_name)
-            else:
-                updated_gt_coords = updated_gt_stack.get_annotation(self.gt_coord_annotation_name)
-            updated_gt_stack.coord = updated_gt_coords if updated_gt_coords.ndim == 3 else updated_gt_coords[None]
+        if self.subdivide_by_annotation:
+            pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
+            return self._compute_per_group(gt_stack, pred_stack, metric_kwargs)
 
         return structure_comparison_metric(
-            ground_truth_atom_array_stack=updated_gt_stack,
+            ground_truth_atom_array_stack=gt_stack,
             predicted_atom_array_stack=predicted_atom_array,
             subset_mask=self.subset_mask,
             align_mask=self.align_mask,
             metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
-            apply_mask_queries_to_pred=self.apply_mask_queries_to_pred,
             verbose_naming=self.verbose_naming,
-            keep_aligned_predicted_structure=self.keep_aligned_predicted_structure,
             **metric_kwargs,
         )
-
-
-class InternalCoordAdherenceMetric(Metric):
-    """Computes mean adherence across all given internal coordinate groups.
-
-    Detects these groups, then computes the rmsd analogously to the StructureComparisonMetric.
-
-    Args:
-        metric_type: Type of comparison metric ("rmsd" or "dist_mae")
-        metric_kwargs: Additional keyword arguments to pass to the metric function. Must be in the format:
-            {
-                "dist_mae": {  # key must be the name of the metric type ("dist_mae" or "rmsd")
-                    "extra_distance_types": ["tip_atom", "inter_chain", "intra_chain"]
-                }
-            }
-        input_kwarg_names: Mapping from compute() parameter names to input kwarg names.
-            Defaults to {"ground_truth_atom_array": "ground_truth_atom_array",
-            "predicted_atom_array": "predicted_atom_array"}.
-        additional_align_mask: Additional query string to AND with the internal coordinate group mask for alignment.
-        additional_subset_mask: Additional query string to AND with the internal coordinate group mask for subsetting.
-        apply_mask_queries_to_pred: Whether to apply the subset and align queries to the predicted structure
-            independently, or simply use the masks obtained from querying the ground-truth AtomArray. Must be
-            True if the AtomArrays are different lengths.
-        verbose_naming: Whether to name metric keys verbosely
-            (e.g. rmsd_align=<is_protein>_subset=<is_protein> vs rmsd).
-        save_per_group_metrics: Whether to save metrics for each internal coordinate group separately.
-    """
-
-    def __init__(
-        self,
-        metric_type: Literal["rmsd", "dist_mae"] = "rmsd",
-        metric_kwargs: dict[str, Any] = {},
-        input_kwarg_names: dict[str, str] | None = None,
-        additional_align_mask: str | None = None,
-        additional_subset_mask: str | None = None,
-        apply_mask_queries_to_pred: bool = True,
-        verbose_naming: bool = False,
-        save_per_group_metrics: bool = False,
-        **kwargs,
-    ):
-        self._input_kwarg_names = input_kwarg_names or {
-            "ground_truth_atom_array": "ground_truth_atom_array",
-            "predicted_atom_array": "predicted_atom_array",
-        }
-
-        super().__init__(**kwargs)
-
-        self.metric_type = metric_type
-        self.metric_kwargs = metric_kwargs
-        self.apply_mask_queries_to_pred = apply_mask_queries_to_pred
-        self.verbose_naming = verbose_naming
-        self.additional_align_mask = additional_align_mask
-        self.additional_subset_mask = additional_subset_mask
-        self.save_per_group_metrics = save_per_group_metrics
-
-    @property
-    def kwargs_to_compute_args(self) -> dict[str, Any]:
-        return self._input_kwarg_names
-
-    def compute(
-        self,
-        ground_truth_atom_array: AtomArray
-        | AtomArrayStack
-        | AtomArrayPlus
-        | AtomArrayPlusStack
-        | list[AtomArray | AtomArrayPlus],
-        predicted_atom_array: AtomArray
-        | AtomArrayStack
-        | AtomArrayPlus
-        | AtomArrayPlusStack
-        | list[AtomArray | AtomArrayPlus],
-    ) -> dict[str, float]:
-        """
-        Compute structure comparison metrics for each internal coordinate group.
-
-        Args:
-            ground_truth_atom_array: Ground truth atom array or stack.
-            predicted_atom_array: Predicted atom array or stack.
-
-        Returns:
-            Dictionary with comparison results, both per-group and overall.
-        """
-        metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
-
-        # Substitute in internal coord group conditioning for the ground-truth coordinates
-        updated_gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
-        internal_coords_mask = C_INTCRD.mask(updated_gt_stack, default="generate")
-        internal_coord_conditioning = C_INTCRD.annotation(updated_gt_stack, default="generate")
-        updated_gt_stack.coord[:, internal_coords_mask, :] = internal_coord_conditioning[internal_coords_mask, :]
-
-        coord_groups = C_CRDGRP.annotation(updated_gt_stack, default="generate")
-        unique_coord_groups = set(np.unique(coord_groups))
-        unique_internal_coord_groups = unique_coord_groups - {C_CRDGRP.UNKNOWN_COORDS, C_CRDGRP.KNOWN_ABSOLUTE_COORDS}
-
-        if len(unique_internal_coord_groups) == 0:
-            ranked_logger.warning(
-                "No internal coordinate groups found in the ground truth data. This Metric will return an empty dict."
-            )
-            return {}
-
-        metrics_dict = {}
-        groups_dict = {}
-        for group in unique_internal_coord_groups:
-            mask_str = f"{C_CRDGRP.full_name} == {group}"
-            subset_mask = f"({mask_str}) & ({self.additional_subset_mask})" if self.additional_subset_mask else mask_str
-            align_mask = f"({mask_str}) & ({self.additional_align_mask})" if self.additional_align_mask else mask_str
-            group_output = structure_comparison_metric(
-                ground_truth_atom_array_stack=updated_gt_stack,
-                predicted_atom_array_stack=predicted_atom_array,
-                subset_mask=subset_mask,
-                align_mask=align_mask,
-                metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
-                apply_mask_queries_to_pred=self.apply_mask_queries_to_pred,
-                verbose_naming=self.verbose_naming,
-                **metric_kwargs,
-            )
-            for k, v in group_output.items():
-                new_key = k if self.verbose_naming else f"{k}_coord_group_{group}"
-                metrics_dict[new_key] = v
-                groups_dict[new_key] = group
-
-        # Compute overall mean adherence, weighted by group size
-        means_dict = defaultdict(float)
-        total_length = np.isin(C_CRDGRP.annotation(updated_gt_stack), list(unique_internal_coord_groups)).sum()
-        for k, v in metrics_dict.items():
-            metric_name = k.split("_align=")[0] if self.verbose_naming else k.split("_coord_group_")[0]
-            group_length = (C_CRDGRP.annotation(updated_gt_stack) == groups_dict[k]).sum()
-            means_dict[metric_name] += v * group_length / total_length
-
-        output_dict = means_dict
-        if self.save_per_group_metrics:
-            output_dict |= metrics_dict
-
-        return output_dict
 
 
 STRUCTURE_COMPARISON_METRICS = {

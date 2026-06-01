@@ -36,7 +36,6 @@ from proteinfoundation.inference_utils.aggregate_metrics import (
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
 from proteinfoundation.metrics.oracle_metric import OracleMetric
-from proteinfoundation.metrics.unindexing_metrics import UnindexedInsertionMetric
 from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
@@ -563,7 +562,6 @@ def convert_to_pfm_format(
         insert_unindexed_regions=False,
         inputs_in_same_frame=inputs_in_same_frame,
     )
-    insertion_metadata = UnindexedInsertionMetric().compute(annotated_model_generated_array)
     coord_cond_mask = C_CRD.mask(annotated_model_generated_array, default="raise")
     coord_cond_mask[SA_CRDSRC.mask(annotated_model_generated_array)] = True
     C_CRD.set_mask(annotated_model_generated_array, coord_cond_mask)
@@ -592,7 +590,7 @@ def convert_to_pfm_format(
             annotated_model_generated_array, SA_CWI.default_annotation(annotated_model_generated_array)
         )
 
-    return annotated_model_generated_array, insertion_metadata
+    return annotated_model_generated_array
 
 
 def run_external_eval(
@@ -753,7 +751,7 @@ def run_external_eval(
 
         # Add annotations expected by the MetricManager
         inputs_in_same_frame = centering_method != "unknown"
-        formatted_generated_atom_array, insertion_metadata = convert_to_pfm_format(
+        formatted_generated_atom_array = convert_to_pfm_format(
             generated_atom_array,
             coord_conditioning_atom_array,
             inputs_in_same_frame=inputs_in_same_frame,
@@ -812,7 +810,6 @@ def run_external_eval(
         metric_output["designed_structure_path"] = generated_structure_path
         if use_sequence_redesign:
             metric_output["sequence_redesigned_structure_path"] = row.sequence_redesigned_structure
-        metric_output["insertion_rmsd"] = insertion_metadata.get("insertion_rmsd", np.nan)
         all_metric_outputs.append(metric_output)
 
     # Clean/organize results and save to disk

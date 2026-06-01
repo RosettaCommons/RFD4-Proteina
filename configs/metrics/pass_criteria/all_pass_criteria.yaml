@@ -7,7 +7,7 @@
 unconditional:
   _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
-    backbone_rmsd.rmsd:
+    refolded_backbone_rmsd.rmsd:
       max: 1.5
   required_tags_any: [unconditional_refolding]
 
@@ -18,18 +18,18 @@ ppi:
       min: 80.0
     oracle_ppi.min_ipae_coi:
       max: 1.5
-    target_aligned_binder_rmsd.rmsd:
+    refolded_target_aligned_binder_rmsd.rmsd:
       max: 2.5
   required_tags_any: [ppi_refolding]
 
 motif_scaffold:
   _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
-    backbone_rmsd.rmsd:
+    refolded_backbone_rmsd.rmsd:
       max: 2.0
-    motif_allatom_rmsd.rmsd:
+    refolded_motif_allatom_rmsd.rmsd:
       max: 2.0
-    motif_ca_rmsd.rmsd:
+    refolded_motif_ca_rmsd.rmsd:
       max: 1.0
   required_tags_any: [motif_scaffold_refolding]
 
@@ -46,18 +46,18 @@ sm_binder:
       max: 1.5
     oracle.iptm_coi:
       min: 80.0
-    backbone_rmsd.rmsd:
+    refolded_backbone_rmsd.rmsd:
       max: 1.5
-    backbone_aligned_ligand_rmsd.rmsd:
+    refolded_backbone_aligned_ligand_rmsd.rmsd:
       max: 5.0
   required_tags_any: [sm_binder_refolding]
 
 ame:
   _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
-    backbone_rmsd.rmsd:
+    refolded_backbone_rmsd.rmsd:
       max: 2.0
-    motif_allatom_rmsd.rmsd:
+    refolded_motif_allatom_rmsd.rmsd:
       max: 1.5
     ligand_clash_metric.n_clashing.allatom_ligand_clashes:
       max: 0
@@ -67,9 +67,9 @@ ame:
 ame_no_ligand:
   _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
-    backbone_rmsd.rmsd:
+    refolded_backbone_rmsd.rmsd:
       max: 2.0
-    motif_allatom_rmsd.rmsd:
+    refolded_motif_allatom_rmsd.rmsd:
       max: 1.5
   required_tags_any: [ame_refolding]
   required_tags_all: [no_ligand]

@@ -40,6 +40,7 @@ from proteinfoundation.metrics.oracle_metric import (
     example_output_dir,
 )
 from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
+from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
@@ -592,7 +593,7 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
 def _stage_generated_structure(payload: dict, generated_structure_mm: MetricManager | None = None) -> dict:
     """Worker: per-structure metrics + final disk writes for one example.
 
-    - Annotate unindexed-region insertion (folds C_CRD into ``SA_CRDSRC``).
+    - Annotate unindexed-region insertion, SA_CRDSRC, and SA_CWI
     - Run the per-structure MetricManager via ``run_metrics_for_result``.
     - Write the final CIF (post-unindex, or aligned variant from the MM)
       and a chain-only PDB for foldseek.
@@ -630,18 +631,12 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
         metrics_tags_override=payload.get("metrics_tags") or [],
     )
 
-    aligned = [v for k, v in metrics_result.items() if k.endswith("aligned_predicted_structure")]
-    metrics_result = {k: v for k, v in metrics_result.items() if not k.endswith("aligned_predicted_structure")}
-
     gen_path = payload.get("generated_output_path")
     foldseek_input_path: Path | None = None
     if gen_path is not None:
         gen_path = Path(gen_path)
         try:
-            if len(aligned) == 1 and not np.isnan(aligned[0].coord).all():
-                to_cif_file(aligned[0], gen_path)
-            else:
-                to_cif_file(generated_array, gen_path)
+            to_cif_file(align_atom_array_to_input_frame(generated_array), gen_path)
         except Exception as e:
             logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
         try:

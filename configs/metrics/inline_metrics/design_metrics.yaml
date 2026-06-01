@@ -16,10 +16,6 @@ hbond_metrics:
   cutoff_DA_distance: 3.2
   required_tags_any: ["hbond_conditioning"]
 
-unindexed_metrics:
-  _target_: proteinfoundation.metrics.unindexing_metrics.UnindexedInsertionMetric
-  required_tags_any: ["unindexed"]
-
 hotspot_obedience:
   _target_: proteinfoundation.metrics.hotspots.HotspotObedience
   max_hotspot_distance: 4.5
@@ -48,24 +44,31 @@ chiral_accuracy:
   _target_: rf3.metrics.chiral.ChiralAccuracy
   required_tags_any: ["small_molecule_only"]
 
-internal_coord_adherence:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.InternalCoordAdherenceMetric
-  apply_mask_queries_to_pred: true
-  required_tags_any: ["internal_coordinate_conditioning"]
-
 # NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
 # equivalent to aligning directly to the ground-truth input motif
-motif_rmsd:
+design_motif_allatom_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region
   subset_mask: mapped_to_coordinate_conditioned_region
+  subdivide_by_annotation: annotation_src-coord-group_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   input_kwarg_names:
     ground_truth_atom_array: predicted_atom_array
     predicted_atom_array: predicted_atom_array
-  keep_aligned_predicted_structure: true
-  required_tags_any: ["3d_coordinate_conditioning", "internal_coordinate_conditioning", "unindexed"]
+  required_tags_any: ["3d_coordinate_conditioning", "unindexed", "internal_coordinate_conditioning"]
+
+design_unindexed_motif_allatom_rmsd:
+  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
+  subset_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
+  subdivide_by_annotation: annotation_src-coord-group_1_atom
+  gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
+  metric_type: rmsd
+  input_kwarg_names:
+    ground_truth_atom_array: predicted_atom_array
+    predicted_atom_array: predicted_atom_array
+  required_tags_all: ["unindexed"]
 
 contact_molecular_surface:
   _target_: proteinfoundation.metrics.contact_ms.metric.ContactMolecularSurfaceMetric

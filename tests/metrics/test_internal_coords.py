@@ -7,11 +7,11 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD
 from atomworks.ml.utils.geometry import random_rigid_augmentation
 from atomworks.ml.utils.testing import cached_parse
-from biotite.structure import superimpose
+from biotite.structure import AtomArray, superimpose
 
 from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_CRDGRP, C_INTCRD
-from proteinfoundation.metrics.gt_structure_comparison import InternalCoordAdherenceMetric
+from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
 from proteinfoundation.transforms.utils.conditioning_utils import (
     convert_to_internal_coords,
     insert_internal_coord_conditioned_groups,
@@ -67,54 +67,86 @@ def setup_two_internal_coord_groups(atom_array, apply_rotations=True):
 
 @pytest.mark.parametrize("pdb_id", ["6lyz"])
 @pytest.mark.parametrize(
-    "deviation_type,expected_rmsd_range",
+    "noise_sigma,expected_rmsd_range",
     [
-        ("none", (0.0, 0.1)),  # Perfect alignment, RMSD should be near zero
-        ("small_noise", (0.3, 1.5)),  # Small perturbation, RMSD should be small but non-zero
+        (0.0, (0.0, 1e-6)),  # Identical arrays → RMSD = 0 exactly
+        (0.5, (0.1, 2.0)),  # Small noise → small RMSD
     ],
 )
-def test_internal_coord_adherence_metric(deterministic_rng, pdb_id, deviation_type, expected_rmsd_range):
-    """Test InternalCoordAdherenceMetric with independent alignment per group.
-
-    Tests that each group is aligned independently by applying different rotations
-    to each group and verifying the metric handles them correctly.
-    """
-    # Load and prepare structure
+def test_subdivide_by_annotation_metric(deterministic_rng, pdb_id, noise_sigma, expected_rmsd_range):
+    """StructureComparisonMetric with subdivide_by_annotation scores each annotation group."""
     atom_array = cached_parse(pdb_id)["atom_array"]
     atom_array = as_atom_array_plus(atom_array)
-
-    # NaNs cause problems, so we zero them out -- unphysical but sufficient for testing
     atom_array.coord = np.nan_to_num(atom_array.coord)
 
-    # Set up two groups with different rotations
-    atom_array = setup_two_internal_coord_groups(atom_array, apply_rotations=True)
+    # Assign all atoms to two groups (no rotations — just verify the subdivide path works)
+    atom_array = setup_two_internal_coord_groups(atom_array, apply_rotations=False)
 
-    # Create predicted structure
-    predicted = atom_array.copy()
+    gt = atom_array
+    pred = atom_array.copy()
+    if noise_sigma > 0:
+        pred.coord = pred.coord + np.random.randn(*pred.coord.shape) * noise_sigma
 
-    if deviation_type == "small_noise":
-        # Add small random noise
-        noise = np.random.randn(*predicted.coord.shape) * 0.5
-        predicted.coord = predicted.coord + noise
-    # else: no deviation, predicted is identical to ground truth
+    metric = StructureComparisonMetric(
+        subdivide_by_annotation=C_CRDGRP.full_name,
+        metric_type="rmsd",
+    )
+    result = metric.compute(ground_truth_atom_array=gt, predicted_atom_array=pred)
 
-    # Compute metric
-    metric = InternalCoordAdherenceMetric(metric_type="rmsd", save_per_group_metrics=True)
-    result = metric.compute(ground_truth_atom_array=atom_array, predicted_atom_array=predicted)
-
-    # Verify output structure
     assert isinstance(result, dict)
-    assert "rmsd" in result  # Overall mean across groups
-    assert "rmsd_coord_group_1" in result
-    assert "rmsd_coord_group_2" in result
+    assert set(result.keys()) == {"rmsd"}
 
-    # Verify RMSD is in expected range
     min_rmsd, max_rmsd = expected_rmsd_range
     assert (
         min_rmsd <= result["rmsd"] <= max_rmsd
-    ), f"Overall RMSD {result['rmsd']:.3f} not in expected range [{min_rmsd}, {max_rmsd}]"
-    assert min_rmsd <= result["rmsd_coord_group_1"] <= max_rmsd
-    assert min_rmsd <= result["rmsd_coord_group_2"] <= max_rmsd
+    ), f"RMSD {result['rmsd']:.6f} not in expected range [{min_rmsd}, {max_rmsd}]"
+
+
+def test_subdivide_by_annotation_atom_weighted():
+    """Aggregation is RMS-weighted by atom count, not a simple average of per-group RMSDs.
+
+    Group 1: 3 atoms, uniform shift = 1.0 Å  → RMSD₁ = 1.0
+    Group 2: 7 atoms, uniform shift = 2.0 Å  → RMSD₂ = 2.0
+
+    Correct (RMS atom-weighted):  sqrt((3*1² + 7*2²) / 10) = sqrt(31/10) ≈ 1.7607
+    Simple mean of per-group RMSDs:  (1.0 + 2.0) / 2 = 1.5            ← wrong
+    Linear atom-weighted mean:        (3*1.0 + 7*2.0) / 10 = 1.7      ← also wrong
+    """
+    n1, n2 = 3, 7
+    n_total = n1 + n2
+    d1, d2 = 1.0, 2.0
+
+    # Build a minimal AtomArray: all coords at origin
+    atoms = AtomArray(n_total)
+    atoms.coord = np.zeros((n_total, 3), dtype=float)
+    atoms.chain_id = np.array(["A"] * n_total)
+    atoms.res_id = np.arange(1, n_total + 1)
+    atoms.res_name = np.array(["ALA"] * n_total)
+    atoms.atom_name = np.array(["CA"] * n_total)
+    atoms.element = np.array(["C"] * n_total)
+    gt = as_atom_array_plus(atoms)
+    gt.set_annotation("test_group", np.array([1] * n1 + [2] * n2, dtype=int))
+
+    # Pred: group 1 shifted by d1 along x, group 2 by d2 along x
+    pred_coord = np.zeros((n_total, 3), dtype=float)
+    pred_coord[:n1, 0] = d1
+    pred_coord[n1:, 0] = d2
+    pred = gt.copy()
+    pred.coord = pred_coord
+
+    metric = StructureComparisonMetric(
+        subdivide_by_annotation="test_group",
+        metric_type="rmsd",
+    )
+    result = metric.compute(ground_truth_atom_array=gt, predicted_atom_array=pred)
+
+    rmsd1, rmsd2 = d1, d2
+    expected = np.sqrt((n1 * rmsd1**2 + n2 * rmsd2**2) / n_total)  # sqrt(31/10) ≈ 1.7607
+
+    assert set(result.keys()) == {"rmsd"}
+    assert (
+        abs(result["rmsd"] - expected) < 1e-6
+    ), f"Expected RMS atom-weighted RMSD {expected:.6f}, got {result['rmsd']:.6f}."
 
 
 @pytest.mark.parametrize("pdb_id", ["6lyz"])
