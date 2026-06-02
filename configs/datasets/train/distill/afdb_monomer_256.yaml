@@ -15,7 +15,6 @@ dataset:
   columns_to_load:
     - example_id
     - path
-    - cath_code
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/afdb_monomer
   transform:
