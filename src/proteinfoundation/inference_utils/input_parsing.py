@@ -990,10 +990,10 @@ class InputSpecification(BaseModel):
                     continue
                 mask = np.isin(aa.atom_name[start:end], atom_names_sele)
                 if annotation_name in aa.get_annotation_categories():
-                    # ... Set only mask overridden features if exists in atom array
-                    aa.get_annotation(annotation_name)[start:end] = np.where(mask, set_value, default_value).astype(
-                        np.int_
-                    )
+                    # ... Set only mask overridden features if exists in atom array.
+                    # Use existing values for non-selected atoms
+                    current = aa.get_annotation(annotation_name)
+                    current[start:end] = np.where(mask, set_value, current[start:end]).astype(np.int_)
                 else:
                     # ... Otherwise, set the entire annotation and use defaults for unselected
                     mask_aa = np.zeros(aa.array_length(), dtype=bool)

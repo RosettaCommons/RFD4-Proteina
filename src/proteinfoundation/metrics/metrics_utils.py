@@ -585,8 +585,14 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
         return None
     chain_attr = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
     coi_array = atom_array[atom_array.get_annotation(chain_attr) == coi]
+
+    # Foldseek's mmCIF parser requires _atom_site.occupancy + _atom_site.B_iso_or_equiv
+    coi_array = coi_array.copy()
+    coi_array.set_annotation("occupancy", np.ones(coi_array.array_length(), dtype=np.float32))
+    coi_array.set_annotation("b_factor", np.zeros(coi_array.array_length(), dtype=np.float32))
+
     foldseek_input_path = output_dir / f"{example_id}_chain.cif"
-    to_cif_file(coi_array, foldseek_input_path)
+    to_cif_file(coi_array, foldseek_input_path, save_standard_annotations=False, extra_fields=[])
     return foldseek_input_path
 
 

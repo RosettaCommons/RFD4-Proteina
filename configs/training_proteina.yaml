@@ -31,16 +31,18 @@ datasets:
   # Must be overidden for training; validation is not strictly necessary
   train: ???
 
-# Pre-training checkpoint to start from (optional)
+# Checkpoint loading (mutually exclusive):
+# - pretrain_ckpt_path: Start new run from saved weights (resets optimizer/scheduler/step/epoch/RNG)
+# - resume_ckpt_path: Resume interrupted run (restores full Lightning state)
 pretrain_ckpt_path:
+resume_ckpt_path:
 
 # Only applies if the metrics_tags for a pre-oracle design filter are given.
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: True
 
-# Weight loading policies (only used when loading pretrain_ckpt_path)
-# When null, falls back to strict=False (legacy behaviour).
-# Set to a WeightLoadingConfig to control per-parameter handling:
+# Weight loading policies (ONLY honored on the pretrain_ckpt_path path).
+# When null, falls back to strict=False (silently drop missing/extra keys).
 weight_loading: null
 # Example:
 #   _target_: foundry.utils.weights.WeightLoadingConfig
@@ -50,7 +52,7 @@ weight_loading: null
 #     "score_network.seq_emb.new_feature_emb.*": zero_init
 #     "score_network.pair_emb.resized_layer.*": copy_and_zero_pad
 
-# Parameter freezing (applied after weight loading from pretrain_ckpt_path)
+# Parameter freezing (ONLY honored on the pretrain_ckpt_path path).
 # When null, no parameters are frozen.
 parameter_freezing: null
 # Example:

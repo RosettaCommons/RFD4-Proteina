@@ -206,10 +206,13 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     )
     specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
 
-    metrics_tags = cfg_gen.dataset.transform.get("metrics_tags") if "transform" in cfg_gen.dataset else None
+    transform_overrides = (
+        OmegaConf.to_container(cfg_gen.dataset.transform, resolve=True) if "transform" in cfg_gen.dataset else {}
+    )
+    metrics_tags = transform_overrides.pop("metrics_tags", None)
     if isinstance(metrics_tags, str):
         metrics_tags = metrics_tags.split(",")
-    inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags)
+    inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags, **transform_overrides)
 
     dataset = get_contig_or_design_problem_dataset(
         cfg.inputs,

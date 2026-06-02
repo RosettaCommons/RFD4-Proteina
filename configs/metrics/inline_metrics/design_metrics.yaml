@@ -6,9 +6,9 @@ bond_length_metrics:
 
 clash_metrics:
   _target_: proteinfoundation.metrics.design_metrics.ClashMetric
-  verbose: True
-  required_tags_any: ["design"]
-  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+  threshold: 1.5
+  required_tags_any: ["design", "structure_prediction"]
+  prohibited_tags: ["small_molecule_only"]
 
 hbond_metrics:
   _target_: proteinfoundation.metrics.hbonds_hbplus_metrics.HbondMetrics
@@ -73,12 +73,3 @@ design_unindexed_motif_allatom_rmsd:
 contact_molecular_surface:
   _target_: proteinfoundation.metrics.contact_ms.metric.ContactMolecularSurfaceMetric
   required_tags_any: ["cms"]
-
-ligand_clash_metric:
-  _target_: proteinfoundation.metrics.design_metrics.LigandClashMetric
-  ligand_clash_threshold: 1.5
-  required_tags_any:
-    - ame_refolding
-    - ame_original_benchmark_refolding
-    - ligand_clash_filter
-    - ligand_clash_metric

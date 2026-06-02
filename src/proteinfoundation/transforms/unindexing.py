@@ -875,8 +875,9 @@ def annotate_unindexed_insertion(
             # Record that these indices have been mapped to unindexed regions
             mapped_to_coordinate_conditioned_region[permuted_target_indices_generated] = True
             src_coordinate_conditioned_region[permuted_target_indices_generated] = token_src_id
-            # Record the source CoordinateGroup (all atoms in a token share the same group)
-            src_coord_group[permuted_target_indices_generated] = unindexed_coord_groups[unindexed_token_mask][0]
+
+            # Record the source CoordinateGroup values
+            src_coord_group[permuted_target_indices_generated] = unindexed_coord_groups[unindexed_token_mask]
 
             if has_3d_conditioning.any():
                 # NOTE: If we eventually support other kinds of unindexed conditioning (rasa etc)
@@ -945,15 +946,12 @@ def _merge_indexed_coord_conditioning_into_src(generated_atom_array: AtomArray) 
     src_crd[indexed_coord_conditioned_mask] = SA_SRC.annotation(generated_atom_array)[indexed_coord_conditioned_mask]
     SA_CRDSRC.set_annotation(generated_atom_array, src_crd)
 
-    # Propagate nontrivial CoordGroup values for indexed
-    # C_INTCRD atoms into SA_CRDGRPSRC so downstream metrics can group by coordinate group
-    intcrd_mask = C_INTCRD.mask(generated_atom_array)
-    if intcrd_mask.any():
-        coord_groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
-        src_crd_grp = SA_CRDGRPSRC.annotation(generated_atom_array)
-        nontrivial = intcrd_mask & (coord_groups != C_CRDGRP.UNKNOWN_COORDS)
-        src_crd_grp[nontrivial] = coord_groups[nontrivial]
-        SA_CRDGRPSRC.set_annotation(generated_atom_array, src_crd_grp)
+    # Propagate nontrivial CoordGroup values so downstream metrics can group by coordinate group.
+    coord_groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
+    src_crd_grp = SA_CRDGRPSRC.annotation(generated_atom_array)
+    nontrivial = coord_groups != C_CRDGRP.UNKNOWN_COORDS
+    src_crd_grp[nontrivial] = coord_groups[nontrivial]
+    SA_CRDGRPSRC.set_annotation(generated_atom_array, src_crd_grp)
 
     # Token-level mask: True for every token whose atoms include at least one
     # SA_CRDSRC-flagged atom. Consumed by motif-RMSD / internal-coord metrics.

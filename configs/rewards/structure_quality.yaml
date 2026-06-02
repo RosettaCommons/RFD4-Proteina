@@ -20,7 +20,7 @@ metrics:
 
 weights:
   # Steric clashes
-  clash.clashes.frac_clashing_1,5: -5.0
+  clash.frac_atoms_clashing_1p5A: -5.0
 
   # Secondary structure
   sse.helix_fraction: 1.0
