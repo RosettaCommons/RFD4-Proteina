@@ -168,7 +168,8 @@ class RF3Oracle(OracleMetric):
                 template_mask |= annot
             atom_array.set_annotation("is_input_file_templated", template_mask)
 
-        for annotation in ["token_id", "atom_id"]:
+        # Strip annotations the RF3 pipeline regenerates internally (and raises if they exist)
+        for annotation in ["token_id", "atom_id", "coord_to_be_noised"]:
             if annotation in atom_array.get_annotation_categories():
                 atom_array.del_annotation(annotation)
 

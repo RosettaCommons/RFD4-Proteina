@@ -5,10 +5,9 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.bonds import filter_bonds_by_distance
 from atomworks.ml.conditions import C_CRD
 from beartype.typing import Any
-from biotite.structure import AtomArray, AtomArrayStack, CellList
+from biotite.structure import AtomArray, CellList
 
 from foundry.metrics.metric import Metric
-from proteinfoundation.metrics.metrics_utils import unwrap_atom_array
 
 
 def _bond_spatial_masks(
@@ -104,29 +103,16 @@ def compute_bond_length_stats(atom_array: AtomArray, verbose: bool = False) -> d
     return out
 
 
-def compute_clash_stats(
-    atom_array: AtomArray,
-    thresholds: tuple[float, ...] = (1.0, 1.5, 2.0),
-    verbose: bool = False,
-) -> dict[str, Any]:
-    """Compute steric clash statistics at multiple distance thresholds.
+def compute_clash_stats(atom_array: AtomArray, threshold: float = 1.5) -> dict[str, Any]:
+    """Fraction of atoms in a steric clash, by clash type.
 
-    Counts atoms that have at least one non-bonded neighbor closer than each threshold.
-    Directly bonded atom pairs are excluded from the clash check.
-    Uses a cell-list neighbor search for O(n·k) memory where k is the max local neighbor count.
-
-    Args:
-        atom_array: Structure with coordinates.
-        thresholds: Distance thresholds in Angstroms to check. Defaults to ``(1.0, 1.5, 2.0)``.
-        verbose: If True, report breakdown by spatial category (within/between residue,
-            within/between chain, polymer/non-polymer).
-
-    Returns:
-        Dict with clash statistics.
+    A clash is a non-bonded pair of atoms closer than ``threshold`` A; pairs
+    where *both* atoms are CRD-conditioned (fixed input) are excluded.
+    See :py:func:`_clash_category_masks` for the 5-category breakdown.
     """
     n_atoms = atom_array.array_length()
     coords = atom_array.coord
-    max_thresh = max(thresholds)
+    key = _threshold_key(threshold)
 
     # Encode bonded pairs as i * n_atoms + j (i < j) for vectorised isin lookup
     bonded_keys = np.empty(0, dtype=np.intp)
@@ -138,8 +124,8 @@ def compute_clash_stats(
             bonded_keys = b1 * n_atoms + b2
 
     # Cell-list neighbor search: O(n * k) memory where k = max local neighbor count
-    cell_list = CellList(atom_array, cell_size=max_thresh)
-    neighbor_matrix = cell_list.get_atoms(coords, radius=max_thresh)  # (n, max_k), -1 padded
+    cell_list = CellList(atom_array, cell_size=threshold)
+    neighbor_matrix = cell_list.get_atoms(coords, radius=threshold)  # (n, max_k), -1 padded
 
     # Flatten to (i, j) pairs with i < j — avoids duplicates and self-pairs
     n, max_k = neighbor_matrix.shape
@@ -149,58 +135,84 @@ def compute_clash_stats(
     i_idx = i_rep[valid]
     j_idx = j_flat[valid]
 
-    # Remove bonded pairs
+    # Drop bonded pairs and pairs where both atoms are CRD-conditioned (not generated)
+    is_crd = C_CRD.mask(atom_array, default="generate")
     pair_keys = i_idx * n_atoms + j_idx
-    keep = ~np.isin(pair_keys, bonded_keys)
+    keep = ~np.isin(pair_keys, bonded_keys) & ~(is_crd[i_idx] & is_crd[j_idx])
     i_idx, j_idx = i_idx[keep], j_idx[keep]
 
-    # Per-pair distances, then scatter-min to get per-atom minimum
     pair_dists = np.linalg.norm(coords[i_idx] - coords[j_idx], axis=-1) if len(i_idx) > 0 else np.empty(0)
-    min_dists = np.full(n_atoms, np.inf)
-    if len(i_idx) > 0:
-        np.minimum.at(min_dists, i_idx, pair_dists)
-        np.minimum.at(min_dists, j_idx, pair_dists)
 
-    out: dict[str, Any] = {}
-    for thresh in thresholds:
-        key = _threshold_key(thresh)
-        out[f"clashes.frac_clashing_{key}"] = float((min_dists < thresh).sum()) / n_atoms
-
-    if not verbose:
-        return out
-
-    # Verbose: per-category breakdown
-    ensure_annotations(atom_array, "is_polymer")
-    category_masks = (
-        _bond_spatial_masks(atom_array, i_idx, j_idx)
-        if len(i_idx) > 0
-        else {
-            cat: np.zeros(0, dtype=bool)
-            for cat in (
-                "within_residue",
-                "between_residue.within_chain",
-                "between_chain.polymer_polymer",
-                "between_chain.nonpolymer_to_polymer",
-            )
-        }
-    )
-
-    for category_name, pair_mask in category_masks.items():
-        cat_min_dists = np.full(n_atoms, np.inf)
+    def _frac_atoms_clashing(pair_mask: np.ndarray) -> float:
+        """Fraction of all atoms that have a clashing pair within ``pair_mask``."""
+        min_dists = np.full(n_atoms, np.inf)
         if pair_mask.any():
-            cat_i, cat_j, cat_d = i_idx[pair_mask], j_idx[pair_mask], pair_dists[pair_mask]
-            np.minimum.at(cat_min_dists, cat_i, cat_d)
-            np.minimum.at(cat_min_dists, cat_j, cat_d)
-        for thresh in thresholds:
-            key = _threshold_key(thresh)
-            out[f"clashes.frac_clashing_{key}.{category_name}"] = float((cat_min_dists < thresh).sum()) / n_atoms
+            np.minimum.at(min_dists, i_idx[pair_mask], pair_dists[pair_mask])
+            np.minimum.at(min_dists, j_idx[pair_mask], pair_dists[pair_mask])
+        return float((min_dists < threshold).sum()) / n_atoms
+
+    out: dict[str, Any] = {f"frac_atoms_clashing_{key}": _frac_atoms_clashing(np.ones(len(i_idx), dtype=bool))}
+
+    ensure_annotations(atom_array, "is_polymer")
+    categories = (
+        "intra_residue_polymer",
+        "intra_residue_ligand",
+        "inter_residue_polymer_polymer",
+        "inter_residue_polymer_ligand",
+        "inter_residue_ligand_ligand",
+    )
+    category_masks = (
+        _clash_category_masks(atom_array, i_idx, j_idx)
+        if len(i_idx) > 0
+        else {cat: np.zeros(0, dtype=bool) for cat in categories}
+    )
+    for category_name in categories:
+        out[f"frac_atoms_clashing_{category_name}_{key}"] = _frac_atoms_clashing(category_masks[category_name])
 
     return out
 
 
 def _threshold_key(thresh: float) -> str:
-    """Format threshold as a metric key component and preserve dot-dict format, e.g. 1.0 -> '1,0'."""
-    return f"{thresh:.1f}".replace(".", ",")
+    """Format a distance threshold for a metric key, e.g. ``1.5`` -> ``'1p5A'``.
+
+    Avoids ``.`` (the metric-system namespace separator) and ``,`` (a CSV delimiter).
+    """
+    return f"{thresh:.1f}".replace(".", "p") + "A"
+
+
+def _clash_category_masks(
+    atom_array: AtomArray,
+    a1: np.ndarray,
+    a2: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Classify clashing atom pairs into 5 mutually exclusive clash-type categories.
+
+    Two-axis taxonomy: same vs. different residue x the molecule types of the
+    two atoms.
+
+    - ``intra_residue_polymer``: same residue, both polymer.
+    - ``intra_residue_ligand``: same residue, both non-polymer.
+    - ``inter_residue_polymer_polymer``: different residue, both polymer.
+    - ``inter_residue_polymer_ligand``: different residue, one polymer + one non-polymer.
+    - ``inter_residue_ligand_ligand``: different residue, both non-polymer.
+    """
+    chain_identifier = (
+        atom_array.chain_iid if "chain_iid" in atom_array.get_annotation_categories() else atom_array.chain_id
+    )
+    is_poly_a1 = atom_array.is_polymer[a1]
+    is_poly_a2 = atom_array.is_polymer[a2]
+    both_polymer = is_poly_a1 & is_poly_a2
+    both_ligand = ~is_poly_a1 & ~is_poly_a2
+    polymer_ligand = is_poly_a1 ^ is_poly_a2
+    same_res = (chain_identifier[a1] == chain_identifier[a2]) & (atom_array.res_id[a1] == atom_array.res_id[a2])
+
+    return {
+        "intra_residue_polymer": same_res & both_polymer,
+        "intra_residue_ligand": same_res & both_ligand,
+        "inter_residue_polymer_polymer": ~same_res & both_polymer,
+        "inter_residue_polymer_ligand": ~same_res & polymer_ligand,
+        "inter_residue_ligand_ligand": ~same_res & both_ligand,
+    }
 
 
 class BondLengthMetric(Metric):
@@ -229,27 +241,20 @@ class BondLengthMetric(Metric):
 
 
 class ClashMetric(Metric):
-    """Report steric clashes at configurable distance thresholds (default 1.0, 1.5, 2.0 Å).
+    """Fraction of atoms in a steric clash, by clash type, at a configurable threshold.
 
-    Bonded atom pairs are excluded. In verbose mode, counts are broken down by
-    spatial category: within-residue, between-residue within-chain, and
-    between-chain (polymer-polymer or non-polymer-to-polymer).
+    Emits ``frac_atoms_clashing`` plus a 5-category breakdown (see
+    :py:func:`compute_clash_stats`). The threshold is encoded in the metric name
+    (e.g. ``..._1p5A``); pairs where *both* atoms are CRD-conditioned are excluded.
     """
 
-    def __init__(
-        self,
-        thresholds: tuple[float, ...] = (1.0, 1.5, 2.0),
-        verbose: bool = False,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, threshold: float = 1.5, **kwargs: Any) -> None:
         """Initialize metric.
 
         Args:
-            thresholds: Distance thresholds in Angstroms. Defaults to ``(1.0, 1.5, 2.0)``.
-            verbose: If True, emit per-category breakdown in addition to overall stats.
+            threshold: Clash distance threshold in Angstroms. Defaults to ``1.5``.
         """
-        self.thresholds = thresholds
-        self.verbose = verbose
+        self.threshold = threshold
         super().__init__(**kwargs)
 
     @property
@@ -257,72 +262,4 @@ class ClashMetric(Metric):
         return {"atom_array": ("predicted_atom_array",)}
 
     def compute(self, atom_array: AtomArray) -> dict[str, Any]:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
-        return compute_clash_stats(atom_array, thresholds=self.thresholds, verbose=self.verbose)
-
-
-def get_ligand_clash_metrics(atom_array: AtomArray, ligand_clash_threshold: float = 1.5) -> dict[str, float | int]:
-    """Compute steric clash counts between ligand and protein atoms.
-
-    Pairs where both atoms are CRD-conditioned (fixed input coordinates) are excluded,
-    since those coordinates were not generated and should not be penalised.
-
-    Args:
-        atom_array: Structure with ``is_ligand``, ``is_protein_backbone``, and
-            ``is_protein`` annotations, plus CRD conditioning state.
-        ligand_clash_threshold: Distance threshold in Angstroms. Defaults to ``1.5``.
-
-    Returns:
-        Dict with backbone_ligand and allatom_ligand clash counts and minimum distances.
-        Empty if no ligand atoms are present.
-    """
-    ensure_annotations(atom_array, "is_ligand", "is_protein_backbone", "is_protein")
-
-    if not atom_array.is_ligand.any():
-        return {}
-
-    is_crd = C_CRD.mask(atom_array, default="generate")
-    ligand_mask = atom_array.is_ligand
-    xyz_ligand = atom_array[ligand_mask].coord  # (n_lig, 3)
-    ligand_crd = is_crd[ligand_mask]  # (n_lig,)
-
-    out: dict[str, float | int] = {}
-    for mask, prefix in [
-        (atom_array.is_protein_backbone, "backbone"),
-        (atom_array.is_protein, "allatom"),
-    ]:
-        if mask.sum() == 0:
-            continue
-        xyz = atom_array[mask].coord  # (n_prot, 3)
-        both_crd = is_crd[mask][:, None] & ligand_crd[None, :]  # (n_prot, n_lig)
-        dists = np.linalg.norm(xyz[:, None] - xyz_ligand[None], axis=-1)  # (n_prot, n_lig)
-        dists[both_crd] = np.inf
-        out[f"n_clashing.{prefix}_ligand_clashes"] = int(np.sum(dists < ligand_clash_threshold))
-        out[f"n_clashing.{prefix}_ligand_min_distance"] = float(dists.min())
-
-    return out
-
-
-class LigandClashMetric(Metric):
-    """Measure steric clashes between ligand atoms and protein backbone/sidechain atoms.
-
-    Reports both backbone-ligand and all-atom-ligand clash counts and minimum distances.
-    Atom pairs where both atoms are CRD-conditioned (fixed input coordinates) are excluded.
-    """
-
-    def __init__(self, ligand_clash_threshold: float = 1.5, **kwargs: Any) -> None:
-        """Initialize metric.
-
-        Args:
-            ligand_clash_threshold: Distance threshold in Angstroms. Defaults to ``1.5``.
-        """
-        self.ligand_clash_threshold = ligand_clash_threshold
-        super().__init__(**kwargs)
-
-    @property
-    def kwargs_to_compute_args(self) -> dict[str, Any]:
-        return {"atom_array": ("predicted_atom_array",)}
-
-    def compute(self, atom_array: AtomArray | AtomArrayStack) -> dict[str, Any]:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
-        return get_ligand_clash_metrics(
-            unwrap_atom_array(atom_array), ligand_clash_threshold=self.ligand_clash_threshold
-        )
+        return compute_clash_stats(atom_array, threshold=self.threshold)

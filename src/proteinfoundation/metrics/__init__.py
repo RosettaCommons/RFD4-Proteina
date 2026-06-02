@@ -32,8 +32,7 @@ structure, no refolding or energy computation required.
 
 - ``PoseBustersMetric``: Stereochemical validation of ligand molecules.
 - ``BondLengthMetric``: Unreasonable bond length detection.
-- ``ClashMetric``: Steric clash fraction at configurable distance thresholds.
-- ``LigandClashMetric``: Ligand-protein clash counts excluding CRD-conditioned pairs.
+- ``ClashMetric``: Fraction of atoms in a steric clash, by clash type, at a configurable threshold.
 - ``SSEMetrics``: Secondary structure element fractions.
 - ``RASAMetrics``: Relative accessible surface area.
 - ``MolprobityMetrics``: Clashscore, Ramachandran, rotamer outliers.

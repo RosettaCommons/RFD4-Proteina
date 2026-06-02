@@ -59,7 +59,7 @@ ame:
       max: 2.0
     refolded_motif_allatom_rmsd.rmsd:
       max: 1.5
-    ligand_clash_metric.n_clashing.allatom_ligand_clashes:
+    clash_metrics.frac_atoms_clashing_inter_residue_polymer_ligand_1p5A:
       max: 0
   required_tags_any: [ame_refolding]
   prohibited_tags: [no_ligand]
