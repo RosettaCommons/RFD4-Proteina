@@ -11,7 +11,8 @@ run_name_: 2026_05_07_muon_v4_centering_02_noprev_v5
 
 product_flowmatcher:
   bb_ca:
-    stochastic_centering_scope: per_molecule
+    stochastic_centering_scope: per_group
+    stochastic_centering_group_keys: [molecule_iid]
     stochastic_centering_scale: 0.2
 
 log:
