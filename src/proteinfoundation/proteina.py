@@ -277,6 +277,7 @@ class Proteina(L.LightningModule):
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
 
+        self._metrics_pool = MetricsPool(num_workers=0, mm_cfgs={})
         try:
             self.configure_metrics(cfg_exp.metrics)
         except Exception as e:
