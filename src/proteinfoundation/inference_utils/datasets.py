@@ -54,6 +54,7 @@ class ContigJsonDataset(MolecularDataset):
         subset_to_keys: list[str] | None = None,
         num_replicates: int = 1,
         global_prefix: str | None = None,
+        source_path: PathLike | str | None = None,
     ):
         """
         Args:
@@ -65,16 +66,17 @@ class ContigJsonDataset(MolecularDataset):
             - cif_parser_overrides: overrides to the default CIF parsing arguments
             - num_replicates: number of times to repeat each example in the dataset
             - global_prefix: optional global prefix for output example ids
+            - source_path: original JSON/YAML path when ``data`` is an in-memory dict
         """
 
         if isinstance(data, PathLike | str):
             self.json_path = data
             original_data = self._load_from_path(data)
         elif isinstance(data, DictConfig):
-            self.json_path = None
+            self.json_path = str(source_path) if source_path is not None else None
             original_data = OmegaConf.to_object(data)
         else:
-            self.json_path = None
+            self.json_path = str(source_path) if source_path is not None else None
             original_data = data
 
         # These will have already been added at inference time, but this block is useful for validation.
@@ -190,6 +192,8 @@ class ContigJsonDataset(MolecularDataset):
         if "extra" not in spec_dict:
             spec_dict["extra"] = {}
         spec_dict["extra"]["example_id"] = example_id
+        if self.json_path is not None:
+            spec_dict["input_json_path"] = str(pathlib.Path(self.json_path).resolve())
         data["specification"] = spec_dict
 
         # ... Send through pipeline

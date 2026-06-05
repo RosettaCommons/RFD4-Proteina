@@ -3,7 +3,7 @@
 defaults:
   # Train datasets
   # ... protein distillation
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
   - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
 
   # Validation datasets

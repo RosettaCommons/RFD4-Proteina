@@ -10,7 +10,7 @@ import rootutils
 import torch
 import wandb
 from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.loggers import CSVLogger, WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
@@ -71,6 +71,8 @@ def create_dir(ckpt_path_store: str, parents: bool = True, exist_ok: bool = True
 def get_run_dirs(cfg_exp: DictConfig) -> tuple[str, str, str]:
     """Get root directory for run and directory to store checkpoints.
 
+    Uses ``out_dir`` from config if set, otherwise defaults to ``./store/<run_name>``.
+
     Returns:
         run_name: Name of the run.
         root_run: Root directory for the run.
@@ -78,7 +80,12 @@ def get_run_dirs(cfg_exp: DictConfig) -> tuple[str, str, str]:
     """
     run_name = cfg_exp.run_name_
     logger.info(f"Job name: {run_name}")
-    root_run = os.path.join(".", "store", run_name)  # Everything stored in ./store/<run_id>
+
+    out_dir = cfg_exp.get("out_dir", None)
+    if out_dir:
+        root_run = out_dir
+    else:
+        root_run = os.path.join(".", "store", run_name)
     logger.info(f"Root run: {root_run}")
 
     ckpt_path_store = os.path.join(root_run, "checkpoints")
@@ -239,11 +246,11 @@ def store_n_log_configs(
     cfg_data: DictConfig,
     run_name: str,
     ckpt_path_store: str,
-    wandb_logger: WandbLogger | None,
+    wandb_logger: WandbLogger | CSVLogger | None,
 ) -> None:
     """Store config files locally and log them to wandb run."""
 
-    def store_n_log_config(cfg: DictConfig, cfg_path: str, wlogger: WandbLogger | None) -> None:
+    def store_n_log_config(cfg: DictConfig, cfg_path: str, wlogger: WandbLogger | CSVLogger | None) -> None:
         with open(cfg_path, "w") as f:
             cfg_aux = OmegaConf.to_container(cfg, resolve=True)
             json.dump(cfg_aux, f, indent=4, sort_keys=True)
@@ -268,6 +275,9 @@ def store_n_log_configs(
 def main(cfg_exp: DictConfig) -> None:
     silence_warnings()
 
+    torch._dynamo.config.inline_inbuilt_nn_modules = True
+    torch._inductor.config.coordinate_descent_tuning = True
+
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
     plugins = [SLURMEnvironment(auto_requeue=True)] if not single else []
@@ -291,20 +301,26 @@ def main(cfg_exp: DictConfig) -> None:
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
 
     # logger
-    wandb_logger = None
+    train_logger: WandbLogger | CSVLogger | None = None
     if cfg_exp.log.log_wandb and not nolog:
-        wandb_logger = WandbLogger(
+        train_logger = WandbLogger(
             project=cfg_exp.log.wandb_project,
             id=run_name,
             entity=cfg_exp.log.wandb_entity,
             tags=cfg_exp.log.tags,
         )
+    elif nolog:
+        train_logger = CSVLogger(save_dir=root_run, name="csv_logs")
+
+    if train_logger is not None:
+        cfg_dict = OmegaConf.to_container(cfg_exp, resolve=True)
+        train_logger.log_hyperparams(cfg_dict)
 
     # checkpoints
     if cfg_exp.log.checkpoint and not nolog:
         ckpt_callbacks = setup_ckpt(cfg_exp, ckpt_path_store)
         callbacks += ckpt_callbacks
-        store_n_log_configs(cfg_exp, cfg_exp.datasets, run_name, ckpt_path_store, wandb_logger)
+        store_n_log_configs(cfg_exp, cfg_exp.datasets, run_name, ckpt_path_store, train_logger)
 
     # Add per-rank seeding callback to ensure RNG diversity across GPUs
     callbacks.append(RankSeedCallback(base_seed=cfg_exp.seed))
@@ -340,13 +356,22 @@ def main(cfg_exp: DictConfig) -> None:
     if hasattr(dist_strategy, "_target_"):
         dist_strategy = hydra.utils.instantiate(dist_strategy)
 
+    # Gradient clipping must be handled manually when Muon is enabled (manual optimization).
+    muon_patterns = list(cfg_exp.opt.get("muon_param_patterns") or [])
+    gradient_kwargs = {}
+    if not muon_patterns:
+        gradient_kwargs = {
+            "gradient_clip_algorithm": "norm",
+            "gradient_clip_val": cfg_exp.opt.get("gradient_clip_val", 1.0),
+        }
+
     trainer = L.Trainer(
         max_epochs=cfg_exp.opt.max_epochs,
         accelerator=cfg_exp.hardware.accelerator,
         devices=cfg_exp.hardware.ngpus_per_node_,  # Number of gpus per node, not total
         num_nodes=cfg_exp.hardware.nnodes_,
         callbacks=callbacks,
-        logger=wandb_logger,
+        logger=train_logger,
         log_every_n_steps=cfg_exp.log.log_every_n_steps,
         default_root_dir=root_run,
         check_val_every_n_epoch=cfg_exp.opt.val_every_n_epochs,
@@ -359,10 +384,9 @@ def main(cfg_exp: DictConfig) -> None:
         accumulate_grad_batches=cfg_exp.opt.accumulate_grad_batches,
         num_sanity_val_steps=cfg_exp.opt.get("num_sanity_val_steps", 1),
         precision=get_training_precision(cfg_exp),
-        gradient_clip_algorithm="norm",
-        gradient_clip_val=1.0,
         use_distributed_sampler=False,
         profiler=cfg_exp.log.get("profiler", None),
+        **gradient_kwargs,
     )
 
     # ==============================================================================
@@ -389,9 +413,7 @@ def main(cfg_exp: DictConfig) -> None:
     # ... compose the validation loader(s) with correct distributed settings
     val_loaders = None
     if "val" in cfg_exp.datasets and cfg_exp.datasets.val:
-        logger.info(
-            f"Creating validation dataloaders (rank={trainer.global_rank}, " f"world_size={trainer.world_size})..."
-        )
+        logger.info(f"Creating validation dataloaders (rank={trainer.global_rank}, world_size={trainer.world_size})...")
         val_loaders = assemble_val_loader_dict(
             cfg=cfg_exp.datasets.val,
             rank=trainer.global_rank,

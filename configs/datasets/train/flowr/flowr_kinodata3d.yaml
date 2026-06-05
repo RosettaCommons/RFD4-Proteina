@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_kinodata3d
-  data: ${oc.env:DATA_PATH}/train_datasets/flowr_kinodata3d/flowr_kinodata3d.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_kinodata3d/flowr_kinodata3d.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_kinodata3d

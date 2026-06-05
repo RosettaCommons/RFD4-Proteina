@@ -1,8 +1,7 @@
 # Shared base for autoencoder training datasets.
-# Leaf AE configs should inherit this and only set dataset-specific fields.
+# Leaf AE configs inherit distill dataset configs and only override AE-specific fields here.
 
 defaults:
-  - ../base_pandas@dataset
   - /design_tasks/unconditional@dataset.transform.design_tasks
   - _self_
 

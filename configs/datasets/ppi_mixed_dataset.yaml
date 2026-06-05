@@ -5,7 +5,7 @@
 # Reference individual dataset configs
 defaults:
   - train/distill/ted_dimers@train.ted_dimers
-  - train/distill/afdb_monomer@train.afdb_monomer
+  - train/distill/afdb_monomer_genie3@train.afdb_monomer
   - _self_
 
 # Mixed dataset with probabilities (80% ted, 20% afdb)

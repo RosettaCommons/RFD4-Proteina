@@ -23,13 +23,15 @@ Special Keys (accessed via ``batch[key]``):
     - ``"msa_row_mask"``: MSA row validity mask from ``padding_masks["S"]``.
       Shape ``[batch, S]``. True = valid MSA row.
 """
-from dataclasses import dataclass, fields, is_dataclass
-from abc import ABC, abstractmethod
-from torch.nn import functional as F
-from typing import Any, Dict, get_type_hints, get_origin, get_args, Union
-from functools import cached_property
-import torch
+
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, fields, is_dataclass
+from functools import cached_property
+from typing import Any, Dict, Union, get_args, get_origin, get_type_hints
+
+import torch
+from torch.nn import functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -262,9 +264,7 @@ class Features(ABC):
         """
         return {}
 
-    def pad_to_max_lengths(
-        self, max_lengths: Dict[str, int], exclude=None
-    ) -> "Features":
+    def pad_to_max_lengths(self, max_lengths: Dict[str, int], exclude=None) -> "Features":
         # use the jaxtyping annotations to determine which dimensions to pad
         # for each field, check if its a tensor, get its jaxtyping shape, and pad accordingly
         padded_fields = {}
@@ -358,8 +358,8 @@ class BatchedDataSample(ABC):
         assert set(type(s) for s in data_samples) == {
             type(data_samples[0])
         }, "All padded samples must be of the same type"
-        
-        #  Optional: specify default padding dimensions for torch.compile 
+
+        #  Optional: specify default padding dimensions for torch.compile
         self.default_padding_dimensions = default_padding_dimensions or {}
 
     def get_max_lengths(self) -> Dict[str, int]:
@@ -419,15 +419,12 @@ class BatchedDataSample(ABC):
         max_lengths = self.get_max_lengths()
         padding_masks = self.get_padding_masks(max_lengths)
         padded_samples = [
-            sample.pad_to_max_lengths(max_lengths)
-            for sample in getattr(self, "data_samples")
+            sample.pad_to_max_lengths(max_lengths) for sample in getattr(self, "data_samples")
         ]
 
         # take all fields with same name and stack them
         stacked_fields = batch_dataclass_recursive(padded_samples)
-        return PaddedBatchedDataSample(
-            data_samples=stacked_fields, padding_masks=padding_masks
-        )
+        return PaddedBatchedDataSample(data_samples=stacked_fields, padding_masks=padding_masks)
 
 
 @dataclass
@@ -457,6 +454,7 @@ class PaddedBatchedDataSample(BatchedDataSample):
             "atom_array_batch": "atom_array",
             "task_batch": "task",
             "metrics_tags_batch": "metrics_tags",
+            "specification_batch": "specification",
         }
         # Note: Most keys are looked up directly in data_samples.tensors
 

@@ -1,0 +1,16 @@
+# Shared NA complex metadata parquet. Paths are relative to the squash mount.
+
+defaults:
+  - ../base_pandas@dataset
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: na_complex_unified
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/na_complex/na_complex.csv
+  columns_to_load:
+    - example_id
+    - path
+  loader:
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/na_complex

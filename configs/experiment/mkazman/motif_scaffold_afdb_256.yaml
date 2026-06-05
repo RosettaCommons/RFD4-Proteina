@@ -3,7 +3,7 @@
 defaults:
   # Train datasets
   # ... protein distillation (256 length)
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer_256
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer_256
 
   # Validation datasets
   # ... unconditional

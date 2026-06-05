@@ -3,12 +3,12 @@ import copy
 import numpy as np
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 from atomworks.ml.utils.testing import cached_parse
-from synthetic_example_generator import add_chain_nearby_without_clash
 
-from proteinfoundation.tests.transforms.design_task_test_utils import apply_design_task
 from proteinfoundation.transforms.design_task import (
     UnconditionalTask,
 )
+from tests.transforms.design_task_test_utils import apply_design_task
+from tests.transforms.synthetic_example_generator import add_chain_nearby_without_clash
 
 cif_parser_args = STANDARD_PARSER_ARGS | {
     "hydrogen_policy": "remove",

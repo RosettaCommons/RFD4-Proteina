@@ -1,5 +1,6 @@
 import contextlib
 import os
+import re
 from typing import Literal
 
 import lightning as L
@@ -21,7 +22,12 @@ from proteinfoundation.partial_autoencoder.latent_viz_utils import (
     project_latents_2d,
 )
 from proteinfoundation.utils.coors_utils import nm_to_ang
-from proteinfoundation.utils.pdb_utils import write_prot_to_pdb
+from proteinfoundation.utils.structure_export import (
+    process_single_sample_to_atom_array,
+    write_generated_structure_cif,
+    write_input_structure_cif,
+)
+from proteinfoundation.utils.torch_compile_utils import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -92,6 +98,10 @@ class AutoEncoder(L.LightningModule):
 
         self.latent_dim = self.cfg_ae.nn_ae["latent_z_dim"]
 
+        muon_patterns = list(self.cfg_ae.opt.get("muon_param_patterns") or [])
+        if muon_patterns:
+            self.automatic_optimization = False
+
     def log_histogram(self, id_log: str, v: Float[torch.Tensor, "r"]) -> None:
         """
         Logs histogram, v must be a flat tensor.
@@ -100,14 +110,31 @@ class AutoEncoder(L.LightningModule):
         with contextlib.suppress(Exception):
             self.logger.experiment.log({id_log: wandb.Histogram(v.cpu().detach().numpy())})
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.AdamW(
+    def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
+        muon_patterns = [re.compile(p) for p in (self.cfg_ae.opt.get("muon_param_patterns") or [])]
+        if muon_patterns:
+            muon_params, adam_params = [], []
+            for name, param in self.named_parameters():
+                if not param.requires_grad:
+                    continue
+                if any(pat.search(name) for pat in muon_patterns):
+                    muon_params.append(param)
+                else:
+                    adam_params.append(param)
+
+            return [
+                torch.optim.Muon(
+                    muon_params, lr=self.cfg_ae.opt.lr, adjust_lr_fn=self.cfg_ae.opt.get("muon_adjust_lr_fn")
+                ),
+                torch.optim.Adam(adam_params, lr=self.cfg_ae.opt.lr),
+            ]
+
+        return torch.optim.AdamW(
             [p for p in self.parameters() if p.requires_grad],
             lr=self.cfg_ae.opt.lr,
             amsgrad=True,
             weight_decay=1e-2,
         )
-        return optimizer
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
@@ -163,6 +190,9 @@ class AutoEncoder(L.LightningModule):
         Returns:
             Training loss averaged over batch dimension.
         """
+        if self.use_torch_compile:
+            maybe_mark_cudagraph_step_begin()
+
         val_step = batch_idx == -1  # validation step is indicated with batch_idx -1
         log_prefix = "validation_loss" if val_step else "train"
         histogram_every_n = 5000
@@ -347,6 +377,27 @@ class AutoEncoder(L.LightningModule):
             self.log_train_loss_n_prog_bar(bs, train_loss)
             self.update_n_log_nsamples_processed(bs)
             self.log_nparams()
+
+            if not self.automatic_optimization:
+                should_step = (batch_idx + 1) % self.cfg_ae.opt.get("accumulate_grad_batches", 1) == 0
+
+                if not should_step:
+                    with self.trainer.strategy.no_sync(self):
+                        self.manual_backward(train_loss)
+                else:
+                    self.manual_backward(train_loss)
+
+                    muon_opt, adam_opt = self.optimizers()
+
+                    clip_val = self.cfg_ae.opt.get("gradient_clip_val", 1.0)
+                    self.clip_gradients(muon_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+                    self.clip_gradients(adam_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+
+                    muon_opt.step()
+                    adam_opt.step()
+
+                    muon_opt.zero_grad()
+                    adam_opt.zero_grad()
 
         if val_step:
             return train_loss, output_dec
@@ -802,6 +853,7 @@ class AutoEncoder(L.LightningModule):
             loss, rec_sample = self.training_step(batch, batch_idx=-1)
             self.validation_output.append(loss.item())
             coords_nm = batch["coords"] / 10.0  # Convert Angstroms to nanometers
+            atom_array_batch = batch.get("atom_array_batch")
             for i in range(bs):
                 self.validation_data_samples.append(
                     {
@@ -809,6 +861,7 @@ class AutoEncoder(L.LightningModule):
                         "aatype": batch["residue_type"][i, ...],  # [n]
                         "atom_mask": batch["atom37_mask"][i, ...],  # [n, 37]
                         "padding_mask": batch["padding_mask"][i, :],  # [n]
+                        "atom_array": atom_array_batch[i] if atom_array_batch is not None else None,
                     }
                 )
                 self.validation_rec_samples.append(
@@ -822,63 +875,62 @@ class AutoEncoder(L.LightningModule):
                 )
 
     def on_validation_epoch_end(self) -> None:
-        """
-        Stores samples as PDBs and cleans validation results.
-        """
+        """Write validation structures as CIFs using the flow-model export path."""
         for count, (sample_data, sample_rec) in enumerate(
             zip(self.validation_data_samples, self.validation_rec_samples, strict=False), start=1
         ):
             if count > 10:
                 break
-            coors_data = nm_to_ang(sample_data["coors_nm"]).float().detach().cpu().numpy()  # [n, 37, 3]
-            aatype_data = sample_data["aatype"].detach().cpu().numpy()  # [n]
-            mask_data = sample_data["padding_mask"].detach().cpu().numpy()  # [n]
-            atom_mask_data = sample_data["atom_mask"].detach().cpu().numpy()  # [n, 37]
 
-            coors_rec = nm_to_ang(sample_rec["coors_nm"]).float().detach().cpu().numpy()
-            aatype_rec = sample_rec["aatype"].detach().cpu().numpy()
-            mask_rec = sample_rec["padding_mask"].detach().cpu().numpy()
-            atom_mask_rec = sample_rec["atom_mask"].detach().cpu().numpy()
+            input_atom_array = sample_data.get("atom_array")
+            if input_atom_array is None:
+                logger.warning(f"Skipping validation CIF export for sample {count}: missing atom_array in batch")
+                continue
+
+            padding_mask = sample_data["padding_mask"].detach().cpu().bool()
+            coords_rec_ang = nm_to_ang(sample_rec["coors_nm"]).float().detach().cpu()
+            aatype_data = sample_data["aatype"].detach().cpu()
+            aatype_rec = sample_rec["aatype"].detach().cpu()
+            atom_mask_data = sample_data["atom_mask"].detach().cpu()
+            atom_mask_rec = sample_rec["atom_mask"].detach().cpu()
 
             f_base = f"epoch_{self.current_epoch}_id_{count}_rank_{self.global_rank}"
 
-            # Save original sample (saved as CIF format)
-            fname = f_base + "_data_sample.cif"
-            fpath = os.path.join(self.val_path_tmp, fname)
-            write_prot_to_pdb(  # Note: despite name, writes CIF files
-                prot_pos=coors_data * mask_data[..., None, None] * atom_mask_data[..., None],
-                file_path=fpath,
-                aatype=aatype_data * mask_data,
-                overwrite=True,
-                no_indexing=True,
-            )
+            try:
+                write_input_structure_cif(
+                    input_atom_array,
+                    os.path.join(self.val_path_tmp, f_base + "_data_sample.cif"),
+                )
 
-            # Save recovered sample (saved as CIF format)
-            fname = f_base + "_rec_sample.cif"
-            fpath = os.path.join(self.val_path_tmp, fname)
-            write_prot_to_pdb(  # Note: despite name, writes CIF files
-                prot_pos=coors_rec * mask_rec[..., None, None] * atom_mask_rec[..., None],
-                file_path=fpath,
-                aatype=aatype_rec * mask_rec,
-                overwrite=True,
-                no_indexing=True,
-            )
+                rec_result = process_single_sample_to_atom_array(
+                    coords=coords_rec_ang,
+                    residue_type=aatype_rec,
+                    padding_mask=padding_mask,
+                    input_atom_array=input_atom_array.copy(),
+                    atom_mask=atom_mask_rec,
+                )
+                write_generated_structure_cif(
+                    rec_result["generated_atom_array"],
+                    os.path.join(self.val_path_tmp, f_base + "_rec_sample.cif"),
+                )
 
-            # Save recovered sample with true sequence (saved as CIF format)
-            fname = f_base + "_rec_sample_w_true_seq.cif"
-            fpath = os.path.join(self.val_path_tmp, fname)
-            write_prot_to_pdb(  # Note: despite name, writes CIF files
-                prot_pos=coors_rec * mask_data[..., None, None] * atom_mask_data[..., None],
-                file_path=fpath,
-                aatype=aatype_data * mask_data,
-                overwrite=True,
-                no_indexing=True,
-            )
+                rec_true_seq_result = process_single_sample_to_atom_array(
+                    coords=coords_rec_ang,
+                    residue_type=aatype_data,
+                    padding_mask=padding_mask,
+                    input_atom_array=input_atom_array.copy(),
+                    atom_mask=atom_mask_data,
+                )
+                write_generated_structure_cif(
+                    rec_true_seq_result["generated_atom_array"],
+                    os.path.join(self.val_path_tmp, f_base + "_rec_sample_w_true_seq.cif"),
+                )
+            except Exception as e:
+                logger.warning(f"Failed to write validation CIFs for sample {count}: {e}")
 
         self.validation_data_samples = []
         self.validation_rec_samples = []
         self.validation_output_data = []
-        # Should log here?
 
     def predict_step(self, batch: dict, batch_idx: int) -> dict:
         """

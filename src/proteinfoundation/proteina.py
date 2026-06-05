@@ -19,14 +19,9 @@ import torch
 import torch.distributed as dist
 import wandb
 from atomworks.common import exists
-from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
-from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
-from atomworks.ml.conditions import C_CRD, C_IDX
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
-from atomworks.ml.transforms.encoding import atom_array_from_encoding
-from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
-from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_token_starts
+from atomworks.ml.utils.token import get_token_count
+from hydra.errors import InstantiationException
 from jaxtyping import Bool, Float
 from lightning_utilities import apply_to_collection
 from omegaconf import DictConfig, OmegaConf
@@ -36,8 +31,6 @@ from torch import Tensor
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.logging import print_df_as_table, safe_print
-from foundry.utils.standard_annotations import SA_CWI
-from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
@@ -57,9 +50,9 @@ from proteinfoundation.metrics.metrics_utils import (
 from proteinfoundation.metrics.oracle_metric import example_output_dir
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
-from proteinfoundation.transforms.utils.conditioning_utils import insert_internal_coord_conditioned_groups
-from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
+from proteinfoundation.utils.structure_export import process_single_sample_to_atom_array
+from proteinfoundation.utils.torch_compile_utils import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -98,6 +91,33 @@ def _load_transformer_engine() -> bool:
 _last_log_time: dict[str, float] = {}  # Track last log time per stage
 
 
+def _input_path_for_batch_index(batch: dict, batch_idx: int) -> dict[str, str] | None:
+    """Extract input traceability paths from a collated inference batch."""
+    spec_batch = batch.get("specification_batch")
+    if spec_batch is None:
+        return None
+    if isinstance(spec_batch, list):
+        spec = spec_batch[batch_idx] if batch_idx < len(spec_batch) else None
+    elif isinstance(spec_batch, dict):
+        spec = {}
+        for key, val in spec_batch.items():
+            if isinstance(val, list) and batch_idx < len(val):
+                spec[key] = val[batch_idx]
+            elif not isinstance(val, list):
+                spec[key] = val
+        spec = spec or None
+    else:
+        spec = None
+    if not spec:
+        return None
+    out: dict[str, str] = {}
+    if "input_cif" in spec:
+        out["input_cif_path"] = str(spec["input_cif"])
+    if "input_json_path" in spec:
+        out["input_json_path"] = str(spec["input_json_path"])
+    return out or None
+
+
 def _collect_val_metrics_tags(cfg_datasets_val: DictConfig) -> list[set[str] | None]:
     """Collect per-dataset metrics_tags from all val dataset configs.
 
@@ -114,13 +134,23 @@ def _collect_val_metrics_tags(cfg_datasets_val: DictConfig) -> list[set[str] | N
         tag filtering; a ``set[str]`` holds that dataset's exact tags.
     """
 
+    def _normalize_metrics_tags(tags: Any) -> list[str] | None:
+        if OmegaConf.is_list(tags) or isinstance(tags, list):
+            return [str(t) for t in tags]
+        if isinstance(tags, str):
+            stripped = tags.strip()
+            if not stripped:
+                return []
+            return [t.strip() for t in stripped.split(",") if t.strip()]
+        return None
+
     def _find_first_tags(obj: Any) -> list[str] | None:
         """Recursively return the first ``metrics_tags`` list found, or None."""
         if OmegaConf.is_dict(obj):
             if "metrics_tags" in obj:
-                tags = obj["metrics_tags"]
-                if OmegaConf.is_list(tags) or isinstance(tags, list):
-                    return list(tags)
+                tags = _normalize_metrics_tags(obj["metrics_tags"])
+                if tags is not None:
+                    return tags
             for v in obj.values():
                 result = _find_first_tags(v)
                 if result is not None:
@@ -224,7 +254,7 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
         elif key == "metrics_tags":
             cleaned[key] = value if isinstance(value, str) else (",".join(value) if value else "")
             continue
-        elif key == "input_cif_path" or key.startswith("input_spec."):
+        elif key in ("input_cif_path", "input_json_path"):
             cleaned[key] = str(value) if value is not None else None
             continue
         elif key.endswith("chain_of_interest"):
@@ -280,7 +310,7 @@ class Proteina(L.LightningModule):
         self._metrics_pool = MetricsPool(num_workers=0, mm_cfgs={})
         try:
             self.configure_metrics(cfg_exp.metrics)
-        except Exception as e:
+        except InstantiationException as e:
             logger.warning(
                 f"Failed to instantiate metric managers: {e}. "
                 f"This can occur if the model was trained with Metrics that no longer exist. "
@@ -515,7 +545,7 @@ class Proteina(L.LightningModule):
         # are off). Without this, EMA / checkpoint callbacks that take
         # references to graph outputs can raise once those buffers get
         # overwritten by the next compiled invocation.
-        torch.compiler.cudagraph_mark_step_begin()
+        maybe_mark_cudagraph_step_begin()
 
         val_step = batch_idx == -1
         log_prefix = (
@@ -1035,15 +1065,9 @@ class Proteina(L.LightningModule):
                 metrics_output["ckpt_name"] = self.ckpt_name
 
             # Add input specification or CIF path
-            spec_batch = batch.get("specification_batch")
-            if spec_batch is not None:
-                spec = spec_batch[orig_batch_idx]
-                if "input_cif" in spec:
-                    metrics_output["input_cif_path"] = str(spec["input_cif"])
-                else:
-                    flat_spec = flatten_nested_dict(spec, fuse_keys=".")
-                    for key, value in flat_spec.items():
-                        metrics_output[f"input_spec.{key}"] = str(value) if value is not None else None
+            input_paths = _input_path_for_batch_index(batch, orig_batch_idx)
+            if input_paths:
+                metrics_output.update(input_paths)
 
             metrics_output = apply_to_collection(metrics_output, torch.Tensor, lambda x: x.detach())
             metrics_output["designed_structure_path"] = str(generated_output_path.absolute())
@@ -1264,6 +1288,7 @@ class Proteina(L.LightningModule):
             "ckpt_name",
             "seed",
             "input_cif_path",
+            "input_json_path",
         ]
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
@@ -1295,6 +1320,7 @@ class Proteina(L.LightningModule):
             "ckpt_name",
             "seed",
             "input_cif_path",
+            "input_json_path",
             "metrics_tags",
             "output_base_dir",
         }
@@ -1306,7 +1332,7 @@ class Proteina(L.LightningModule):
         for ds in dataset_col.unique():
             ds_df = per_example_df[dataset_col == ds]
             for col in ds_df.columns:
-                if col in _non_metric_cols or col.startswith("input_spec.") or col.startswith("generation."):
+                if col in _non_metric_cols or col.startswith("generation."):
                     continue
                 vals = pd.to_numeric(ds_df[col], errors="coerce").dropna()
                 if len(vals) > 0:
@@ -1375,6 +1401,9 @@ class Proteina(L.LightningModule):
         # Enforce that only one Oracle will run per dataset
         if self.val_dataset_tags is not None and self.oracle_metric_manager is not None:
             for dataset_tags in self.val_dataset_tags:
+                # None means "no tags in dataset config"; runtime metrics_tags apply at inference.
+                if dataset_tags is None:
+                    continue
                 dataset_oracle_name = None
                 for oracle_name, oracle_metric in self.oracle_metric_manager.metrics.items():
                     if oracle_metric.applies_to_tags(dataset_tags):
@@ -1575,6 +1604,7 @@ class Proteina(L.LightningModule):
         sample_idx: int = 0,
         batch_idx: int = 0,
         bb_ca_only: bool = False,
+        atom_mask: torch.Tensor | None = None,
     ) -> dict:
         """Convert one sample's tensor outputs into output AtomArrays.
 
@@ -1596,115 +1626,14 @@ class Proteina(L.LightningModule):
             Dict with ``generated_atom_array``, ``input_atom_array``, and
             ``full_array_with_unindexed`` (or ``None``).
         """
-        # Optionally subset the input to only backbone CA atoms.
-        if bb_ca_only:
-            input_atom_array = input_atom_array[input_atom_array.atom_name == "CA"]
-            input_atom_array.atomize = np.full_like(input_atom_array.atomize, True)
-
-        # + ------- Remove padding and in-context conditioning tokens from the generated
-        # coordinates and residue types ------- +
-        # Sanity check: either all or none of the atoms should be indexed per token.
-        has_idx_atom_lvl = C_IDX.mask(input_atom_array)  # [n_atoms_in_input]
-        has_idx_any_token_level = apply_token_wise(input_atom_array, has_idx_atom_lvl, np.any)
-        has_idx_all_token_level = apply_token_wise(input_atom_array, has_idx_atom_lvl, np.all)
-        if not np.all(has_idx_any_token_level == has_idx_all_token_level):
-            raise ValueError("Input AtomArray should have either all or none of the atoms indexed per token")
-
-        # Mask out tokens that are non-padding but have no indexed atoms (in-context conditioning).
-        non_padding_indices = np.where(padding_mask.cpu().numpy())[0]
-        padding_mask[non_padding_indices[~has_idx_all_token_level]] = False  # [n_max_tokens_in_batch]
-
-        # Subset coords + residue_types to (a) non-padding (b) non-in-context-conditioning tokens.
-        coords = coords[padding_mask]  # [n_tokens_in_this_sample, 37, 3]
-        residue_type = residue_type[padding_mask]  # [n_tokens_in_this_sample]
-        assert ~torch.any(
-            residue_type == UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
-        ), "There should be no mask tokens in the autoencoder output!"
-
-        # Subset input AtomArray to indexed residues; preserve unindexed slice for the worker.
-        unindexed_input_atom_array = input_atom_array[~has_idx_atom_lvl].copy()
-        input_atom_array = input_atom_array[has_idx_atom_lvl]
-
-        assert (
-            get_token_count(input_atom_array) == coords.shape[0]
-        ), "Token counts in input AtomArray and generated coords do not match after filtering!"
-
-        # + ------- Pre-process to make format compatible with the encoding ------- +
-        # Convert all-zero coordinates to NaN's and build encoded mask.
-        all_zeros = (coords == 0.0).all(dim=-1, keepdim=True)
-        coords = coords.masked_fill(all_zeros, float("nan"))
-        encoded_mask = ~torch.isnan(coords[..., 0])  # [n_tokens_in_this_sample, 37]
-
-        # Atomized tokens should be set to -1 and have only the CA atom slot (index 1) occupied.
-        token_starts = get_token_starts(input_atom_array)
-        atomized_token_mask = torch.from_numpy(input_atom_array.atomize[token_starts]).to(residue_type.device)
-        assert torch.all(residue_type[atomized_token_mask] == -1), "Atomized tokens should have -1 residue type"
-        assert torch.all(coords[atomized_token_mask, 1, :].isfinite()), "Atomized tokens should have CA atom occupied"
-        assert torch.all(
-            coords[atomized_token_mask][:, torch.arange(coords.shape[1], device=coords.device) != 1, :].isnan()
-        ), "Non-CA atoms should be NaN for atomized tokens"
-
-        # Set the atomized-token slot to the encoding's <A> id.
-        residue_type[atomized_token_mask] = UNIFIED_ATOM37_ENCODING.token_to_idx["<A>"]
-
-        # + ------- Encode and standardize ------- +
-        generated_array = atom_array_from_encoding(
-            encoded_coord=coords,
-            encoded_mask=encoded_mask,
-            encoded_seq=residue_type,
-            encoding=UNIFIED_ATOM37_ENCODING,
-            token_id=input_atom_array.token_id[token_starts],
-            chain_type=input_atom_array.chain_type[token_starts],
-            token_is_atom=input_atom_array.atomize[token_starts],
+        return process_single_sample_to_atom_array(
+            coords=coords,
+            residue_type=residue_type,
+            padding_mask=padding_mask,
+            input_atom_array=input_atom_array,
+            bb_ca_only=bb_ca_only,
+            atom_mask=atom_mask,
         )
-        # Strip terminal oxygens from both arrays so token counts match.
-        generated_array = remove_protein_terminal_oxygen(generated_array)
-        input_atom_array = remove_protein_terminal_oxygen(input_atom_array)
-        assert get_token_count(generated_array) == get_token_count(
-            input_atom_array
-        ), "Token counts in input and generated AtomArrays do not match after removing terminal oxygens!"
-
-        # + ------- Copy over model-generated coordinates ------- +
-        updated_array = copy_generated_coordinates_to_input(
-            generated_atom_array=generated_array, input_atom_array=input_atom_array
-        )
-
-        # Preserve original indexed coordinates for the SA_CWI annotation (coords-with-insertion).
-        coords_with_insertion = updated_array.coord.copy()
-        coords_with_insertion[C_CRD.mask(updated_array)] = updated_array.original_input_coord[C_CRD.mask(updated_array)]
-        SA_CWI.set_annotation(updated_array, coords_with_insertion)
-
-        # Insert internal-coord conditioned groups.
-        C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
-        C_INTCRD.set_mask(updated_array, C_INTCRD.mask(updated_array))
-        updated_array = insert_internal_coord_conditioned_groups(
-            updated_array, original_input_coords=updated_array.original_input_coord
-        )
-
-        # Reset expandable segment annotations since they are all generated now (will help for downstream visualization)
-        S_SEGMIN.set_mask(updated_array, np.zeros_like(S_SEGMIN.mask(updated_array)))
-        S_SEGMAX.set_mask(updated_array, np.zeros_like(S_SEGMAX.mask(updated_array)))
-        S_SEGMIN.set_annotation(updated_array, S_SEGMIN.default_annotation(updated_array))
-        S_SEGMAX.set_annotation(updated_array, S_SEGMAX.default_annotation(updated_array))
-
-        # + ------- Concatenate the unindexed slice for the design-metrics worker ------- +
-        # The worker calls `annotate_unindexed_insertion` on this concatenated array
-        # to compute insertion-RMSD-family metrics. None when there were no unindexed tokens.
-        if not has_idx_all_token_level.all():
-            SA_CWI.set_annotation(unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array))
-            # Use coord_to_be_noised so the unindexed coords match what the model saw.
-            unindexed_input_atom_array.coord = unindexed_input_atom_array.coord_to_be_noised.copy()
-            full_array_with_unindexed = as_atom_array_plus(
-                concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
-            )
-        else:
-            full_array_with_unindexed = None
-
-        return {
-            "generated_atom_array": as_atom_array_plus(updated_array),
-            "input_atom_array": as_atom_array_plus(input_atom_array),
-            "full_array_with_unindexed": full_array_with_unindexed,
-        }
 
     def _build_staged_payload(
         self,

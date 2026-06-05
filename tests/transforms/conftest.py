@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 from atomworks.ml.utils.testing import cached_parse
-from synthetic_example_generator import add_chain_nearby_without_clash
+
+from tests.transforms.synthetic_example_generator import add_chain_nearby_without_clash
 
 cif_parser_args = STANDARD_PARSER_ARGS | {
     "hydrogen_policy": "remove",

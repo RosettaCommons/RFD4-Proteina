@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_davis3d
-  data: ${oc.env:DATA_PATH}/train_datasets/flowr_davis3d/flowr_davis3d.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_davis3d/flowr_davis3d.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_davis3d

@@ -2,7 +2,7 @@
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_monomer
 
   # internal coordinate conditioning validation
   - /datasets/val/motif_scaffolding/indexed_motif_scaffold_internal_coords@datasets.val.indexed_motif_scaffold_internal_coords

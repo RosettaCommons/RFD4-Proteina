@@ -6,6 +6,12 @@ from foundry.utils.env import load_dotenv
 load_dotenv(override=True)
 
 import os
+
+# Container/CI runners may lack passwd entries for the job UID; torch inductor
+# cache setup calls getpass.getuser() and fails without these.
+os.environ.setdefault("USER", "pytest")
+os.environ.setdefault("LOGNAME", "pytest")
+os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", "/tmp/torchinductor-pytest")
 import shutil
 from pathlib import Path
 

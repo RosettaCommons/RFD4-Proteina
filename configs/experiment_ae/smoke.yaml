@@ -1,0 +1,59 @@
+# @package _global_
+#
+# Default AE smoke — aligned with flow smoke (motif_scaffold_tiny):
+#   same AFDB genie3 dataset, crop_size 512, dynamic collate (fixed_dimensions: null).
+# AE uses unconditional design tasks instead of motif pretraining.
+#
+# Run: python proteinfoundation/partial_autoencoder/train.py --config-name training_ae \
+#        +single=true +nolog=true +show_prog_bar=true
+
+defaults:
+  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_monomer
+  - /design_tasks/unconditional@_unconditional_design_tasks
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - _self_
+
+run_name_: ae_smoke
+
+hardware:
+  ngpus_per_node_: 1
+  nnodes_: 1
+  ncpus_per_task_train_: 8
+
+dataloaders:
+  num_workers: 2
+  train:
+    dataloader_params:
+      batch_size: 2
+      collate_fn:
+        fixed_dimensions: null
+
+log:
+  tags: ["ae", "smoke"]
+  projection_every_n: 100000
+  log_every_n_steps: 1
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+      dataset:
+        transform:
+          crop_size: 512
+          design_tasks: ${_unconditional_design_tasks}
+    na_complex:
+      probability: 0.0
+    rna_monomer:
+      probability: 0.0
+  val:
+    unconditional:
+      dataset:
+        num_replicates: 1
+
+opt:
+  val_every_n_epochs: 1
+  muon_param_patterns:
+    - '^encoder\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
+    - '^encoder\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
+    - '^decoder\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
+    - '^decoder\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'

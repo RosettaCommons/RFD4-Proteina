@@ -83,6 +83,9 @@ class ProteinaDataSample(DataSample):
     task: str = ""
     metrics_tags: set = field(default_factory=set)
     extra_info: dict[str, Any] = field(default_factory=dict)
+    # Input design job metadata (JSON spec from ContigJsonDataset / CIF datasets),
+    # distinct from tensor ``SPECS`` above; collated as ``specification_batch``.
+    specification: dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ProteinaDataSample":
@@ -106,6 +109,7 @@ class ProteinaDataSample(DataSample):
             task=data.get("task", ""),
             metrics_tags=data.get("metrics_tags", set()),
             extra_info=data.get("extra_info", {}),
+            specification=data.get("specification"),
         )
 
     @cached_property
@@ -157,4 +161,5 @@ class ProteinaDataSample(DataSample):
             task=self.task,
             metrics_tags=self.metrics_tags,
             extra_info=self.extra_info,
+            specification=self.specification,
         )

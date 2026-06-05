@@ -1,13 +1,15 @@
-# NA Complex Dataset - Protein-DNA/RNA complexes (transcription factors)
-# for autoencoder training.
+# NA Complex Dataset - Protein-DNA/RNA complexes for autoencoder training.
 
 defaults:
+  - /datasets/train/base_pandas@dataset
   - base
   - _self_
 
 dataset:
   name: na_complex_ae
-  data: ${oc.env:DATA_PATH}/train_datasets/na_complex/na_complex.csv
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/na_complex/na_complex.csv
   columns_to_load:
     - example_id
     - path
+  loader:
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/na_complex

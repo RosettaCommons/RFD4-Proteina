@@ -12,7 +12,8 @@
 # =============================================================================
 
 defaults:
-  - train/ae/afdb_monomer@train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_genie3@train.afdb_monomer
+  - /datasets/train/ae/base@train.afdb_monomer
   - train/ae/na_complex@train.na_complex
   - train/ae/rna_monomer@train.rna_monomer
   - _self_

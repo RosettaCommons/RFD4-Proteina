@@ -1,10 +1,10 @@
 # @package _global_
-# Autoencoder training with 5-way dataset mix, KL annealing, decoder knows token type
-# Data: 20% mgnify, 20% afdb, 20% teddymer, 20% rna distill, 20% na protein distill
+# Autoencoder training on AFDB + TED dimers, KL annealing, decoder knows token type
+# Data: 50% afdb, 50% teddymer (RNA/NA excluded until structure squashes exist)
 
 defaults:
   - /nn_ae/nn_60m_unified@nn_ae
-  - /datasets/ae_5way_datasets@datasets
+  - override /datasets: ae_5way_datasets
   - _self_
 
 run_name_: ae_5way_kl_anneal
@@ -35,4 +35,4 @@ nn_ae:
     attention_type: flash
 
 log:
-  tags: ["ae", "60m", "unified", "5way", "kl_anneal", "token_type", "protein", "rna", "dna", "teddymer", "mgnify", "flash", "compile"]
+  tags: ["ae", "60m", "unified", "afdb", "teddymer", "kl_anneal", "token_type", "flash", "compile"]

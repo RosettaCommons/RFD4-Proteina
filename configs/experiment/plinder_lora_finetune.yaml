@@ -3,7 +3,7 @@
 defaults:
   # Train datasets
   - /datasets/train/plinder/plinder_valid@datasets.train.plinder_valid
-  - /datasets/train/distill/afdb_monomer_512@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
 
   # design_tasks that we want to replace
   - /design_tasks/presets/tip_atom_tasks@tip_atom_tasks

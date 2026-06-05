@@ -1,0 +1,34 @@
+# AFDB Monomer — Genie3 manifest (afdbreps_l-512_plddt-70/info.csv, ~1,186,995 rows).
+# All entries from the Genie3 AFDB monomer manifest present in the squash.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: afdb_monomer_genie3
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/afdb_monomer/afdb_monomer.parquet
+  memory_map: True
+  columns_to_load:
+    - example_id
+    - path
+    - length
+    - plddt_avg
+    - plddt_std
+    - prop_alpha
+    - prop_beta
+    - prop_coil
+    - max_consec_coil
+    - in_genie3_manifest
+    - passes_genie3_filters
+    - on_disk
+  loader:
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/afdb_monomer
+  filters:
+    - "in_genie3_manifest == True"
+    - "on_disk == True"
+  transform:
+    crop_size: 512

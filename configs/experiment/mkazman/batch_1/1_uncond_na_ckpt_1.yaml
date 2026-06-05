@@ -2,7 +2,7 @@
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
 
   # Validation datasets - only unconditional
   - /datasets/val/unconditional@datasets.val.unconditional

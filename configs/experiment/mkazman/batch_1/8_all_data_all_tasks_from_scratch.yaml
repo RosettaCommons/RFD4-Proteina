@@ -3,7 +3,7 @@
 defaults:
   # Train datasets
   # ... distillation
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
   - /datasets/train/distill/teddimore_monomers_contiguous@datasets.train.teddimore_monomers_contiguous
   - /datasets/train/distill/omol@datasets.train.omol
   - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer

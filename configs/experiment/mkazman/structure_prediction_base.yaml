@@ -4,7 +4,7 @@
 defaults:
   # Train datasets
   # ... monomer distillation
-  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_monomer
   # - /datasets/train/distill/mgnify_june_2025@datasets.train.mgnify_june_2025  # TODO: Kieran only has june 2025 on lustre for now
 
   # ... dimer distillation

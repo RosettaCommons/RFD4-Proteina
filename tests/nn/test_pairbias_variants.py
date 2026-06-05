@@ -125,9 +125,10 @@ def test_cuequivariance_vs_torch_attention_similar(batch_size: int, seq_len: int
     # Check similarity (cuequivariance may have larger numerical differences)
     assert out_torch.shape == out_cuet.shape
     max_diff = (out_torch - out_cuet).abs().max().item()
-    assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 0.1)"
+    assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 1e-4)"
 
 
+@pytest.mark.gpu
 @pytest.mark.skipif(not TE_AVAILABLE, reason="transformer_engine not installed")
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for TE attention")
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])

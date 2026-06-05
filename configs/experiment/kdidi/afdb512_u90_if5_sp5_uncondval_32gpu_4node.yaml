@@ -3,7 +3,7 @@
 # Validation dataset is unconditional-only.
 
 defaults:
-  - /datasets/train/distill/afdb_512@datasets.train.afdb_512
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_512
   - /datasets/val/unconditional@datasets.val.unconditional
   - _self_
 

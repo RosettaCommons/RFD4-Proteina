@@ -7,6 +7,7 @@ dependencies = [
     # ASE for molecular datasets
     "ase>=3.22.0",
     "lmdb",  # Python LMDB bindings for ASE's LMDB backend
+    "esm @ git+https://github.com/Biohub/esm.git@c94ed8d",
     # Additional utilities
     "fire",
     "loguru",
@@ -19,11 +20,34 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# TMol wheel must match NGC PyTorch (torch 2.10 + CUDA 13.1 + cp312); see latent-dev.def.
+# Runtime deps are listed here so Docker `uv pip compile --extra tmol` installs them in the main
+# layer (torch excluded). The tmol wheel is installed --no-deps at image build end.
+# attrs>=21,<26 — apptainer/Docker also use .ipd/apptainer/tmol_compat_constraints.txt.
+tmol = [
+    "attrs>=21.0,<26",
+    "attrs-strict>=1.0,<2",
+    "astor>=0.8,<1",
+    "cattrs>=22.0,<25",
+    "frozendict>=2.4,<3",
+    "hypothesis>=5.35,<7",
+    "ipython>=8.0",
+    "llvmlite>=0.39,<1",
+    "numba>=0.56,<1",
+    "pint>=0.23,<1",
+    "psutil>=5.9,<8",
+    "pyarrow>=12,<23",
+    "rdkit>=2024.3",
+    "sparse>=0.13,<1",
+    "typing-inspect>=0.9,<1",
+    "tmol @ https://github.com/uw-ipd/tmol/releases/download/v0.1.29/tmol-0.1.29+cu131torch2.10-cp312-cp312-linux_x86_64.whl ; sys_platform == 'linux'",
+]
 metrics = [
     "hydride>=1.2",
     "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
-    "cuequivariance-torch",
-    "cuequivariance-ops-torch-cu12",
+    "cuequivariance-torch>=0.8.1; sys_platform == 'linux'",
+    "cuequivariance-ops-cu13>=0.8.1; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu13>=0.8.1; sys_platform == 'linux'",
 ]
 dev = [
     # Linters & formatters

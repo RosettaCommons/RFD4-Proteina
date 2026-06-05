@@ -175,20 +175,35 @@ if [ "$USE_SQUASHFS_MOUNTS" == "true" ] && [ ${#SQUASHFS_MOUNTS[@]} -gt 0 ]; the
     echo '# Mount squashfs datasets' >> "$ENTRYPOINT"
     echo 'echo "Mounting squashfs datasets..."' >> "$ENTRYPOINT"
 
-    # Collect all mount points for a single mkdir -p
+    # Collect mount points and /tmp staging dirs for a single mkdir -p
     MKDIR_ARGS=""
     for sqfs_mount in "${SQUASHFS_MOUNTS[@]}"; do
         mount_point="${sqfs_mount#*:}"
-        MKDIR_ARGS="$MKDIR_ARGS $mount_point"
+        mount_name="$(basename "$mount_point")"
+        MKDIR_ARGS="$MKDIR_ARGS $mount_point /tmp/sqfs_stage_${mount_name}"
     done
     echo "mkdir -p$MKDIR_ARGS" >> "$ENTRYPOINT"
 
-    # Add squashfuse commands
+    # Mount each sqfs to a staging dir, then bind squashfs-root/ to the final mount
+    # point so PDB paths match batch jobs (enroot image-src=/ flattens squashfs-root).
     for sqfs_mount in "${SQUASHFS_MOUNTS[@]}"; do
         sqfs_file="${sqfs_mount%%:*}"
         mount_point="${sqfs_mount#*:}"
         mount_name="$(basename "$mount_point")"
-        echo "squashfuse -o ro $sqfs_file $mount_point && echo '[squash] Mounted $mount_name'" >> "$ENTRYPOINT"
+        stage="/tmp/sqfs_stage_${mount_name}"
+        cat >> "$ENTRYPOINT" << EOF
+if [ -f "$sqfs_file" ]; then
+  squashfuse -o ro $sqfs_file $stage
+  if [ -d "$stage/squashfs-root" ]; then
+    mount --bind $stage/squashfs-root $mount_point
+  else
+    mount --bind $stage $mount_point
+  fi
+  echo '[squash] Mounted $mount_name'
+else
+  echo '[squash] SKIP $mount_name — missing: $sqfs_file' >&2
+fi
+EOF
     done
     echo 'echo "All squashfs datasets mounted."' >> "$ENTRYPOINT"
     echo "" >> "$ENTRYPOINT"
