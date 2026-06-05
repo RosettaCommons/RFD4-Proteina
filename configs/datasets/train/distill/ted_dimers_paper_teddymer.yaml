@@ -1,0 +1,14 @@
+# Teddymer training set — paper cluster-rep quality filters (~510k rows).
+# interface length > 10, interface-pAE < 10, interface-pLDDT > 70 (Lau et al. Teddymer §dataset).
+
+defaults:
+  - ted_dimers_unified
+  - /design_tasks/presets/ppi_motif_scaffold@dataset.transform.design_tasks
+  - _self_
+
+dataset:
+  name: ted_dimers_paper_teddymer
+  filters:
+    - "InterfaceLength > 10"
+    - "AvgIntPAE < 10"
+    - "AvgIntPlddt > 70"

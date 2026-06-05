@@ -21,7 +21,7 @@ defaults:
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
-  - experiment: unconditional_afdb_256
+  - experiment: mkazman/debug/motif_scaffold_tiny
 
 
   # debug configs to add onto any experiment for quickly testing or debugging code
@@ -41,8 +41,9 @@ resume_ckpt_path:
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: True
 
-# Weight loading policies (ONLY honored on the pretrain_ckpt_path path).
-# When null, falls back to strict=False (silently drop missing/extra keys).
+# Weight loading policies (only used when loading pretrain_ckpt_path)
+# When null, falls back to strict=False (legacy behaviour).
+# Set to a WeightLoadingConfig to control per-parameter handling:
 weight_loading: null
 # Example:
 #   _target_: foundry.utils.weights.WeightLoadingConfig
@@ -52,7 +53,7 @@ weight_loading: null
 #     "score_network.seq_emb.new_feature_emb.*": zero_init
 #     "score_network.pair_emb.resized_layer.*": copy_and_zero_pad
 
-# Parameter freezing (ONLY honored on the pretrain_ckpt_path path).
+# Parameter freezing (applied after weight loading from pretrain_ckpt_path)
 # When null, no parameters are frozen.
 parameter_freezing: null
 # Example:

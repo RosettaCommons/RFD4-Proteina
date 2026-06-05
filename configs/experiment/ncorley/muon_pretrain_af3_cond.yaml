@@ -11,7 +11,7 @@
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
   - /datasets/train/distill/omol@datasets.train.omol
   - /datasets/train/plinder/plinder@datasets.train.plinder
 

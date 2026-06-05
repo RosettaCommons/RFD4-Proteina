@@ -1,13 +1,13 @@
 # RNA Monomer Dataset - RNA structures for autoencoder training.
-# Uses filtered RNA distillation data.
 
 defaults:
+  - /datasets/train/base_pandas@dataset
   - base
   - _self_
 
 dataset:
   name: rna_monomer_ae
-  data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/rna_monomer/rna_monomer.parquet
   columns_to_load:
     - example_id
     - path
@@ -16,3 +16,5 @@ dataset:
     - overall_plddt
     - overall_pde
     - overall_pae
+  loader:
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/rna_monomer

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from atomworks.enums import ChainType
+from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
 from biotite.structure import get_residue_starts
@@ -50,6 +51,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARKS_DIR = PROJECT_ROOT / "benchmarks"
 _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
+
+def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
+    """Return generated structure CIFs (sharded under ``inference_samples/``)."""
+    return list(Path(out_dir).glob("inference_samples/**/*_generated.cif"))
+
+
 _TEST_LENGTH = "10-10"
 
 # Columns that should always be present in the per-example output dataframe.
@@ -59,9 +66,7 @@ _EXPECTED_DF_COLUMNS = {
     "task",
     "dataset_name",
     "seed",
-    "bb_ca_noise_scale",
-    "latents_noise_scale",
-    "nsteps",
+    "input_json_path",
     "chain_of_interest",
     "ckpt_path",
     "ckpt_name",
@@ -188,6 +193,7 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
 
     base_overrides = [
         "inference_experiment=inference_like_rfd3",
+        "metrics/refolding_oracles=rf3",
         f"ckpt_path={_CKPT_PATH}",
         f"ckpt_name={_CKPT_NAME}",
         f"autoencoder_ckpt_path={_AE_CKPT_PATH or 'null'}",
@@ -233,14 +239,14 @@ def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
 def _load_output_dataframe(
     out_dir: str,
     global_prefix: str | None = None,
-    check_spec_columns: bool = False,
+    check_input_json_path: bool = False,
 ) -> pd.DataFrame:
     """Load the per-example metrics CSV and validate expected columns.
 
     Args:
         out_dir: Root output directory for the inference run.
         global_prefix: Prefix used during generation (affects CSV filename).
-        check_spec_columns: If True, also verify ``input_spec.*`` columns exist.
+        check_input_json_path: If True, verify ``input_json_path`` is set and exists.
 
     Returns:
         Loaded dataframe with validated columns.
@@ -252,12 +258,17 @@ def _load_output_dataframe(
     assert csv_path.exists(), f"Expected metrics CSV at {csv_path}"
     df = pd.read_csv(csv_path)
 
-    missing = _EXPECTED_DF_COLUMNS - set(df.columns)
-    assert not missing, f"Missing expected columns in output dataframe: {missing}"
+    present = set(df.columns)
+    missing = _EXPECTED_DF_COLUMNS - present
+    assert not missing, (
+        f"Missing expected columns in {csv_path}: {sorted(missing)}. "
+        f"Present columns ({len(present)}): {sorted(present)}"
+    )
 
-    if check_spec_columns:
-        spec_cols = [c for c in df.columns if c.startswith("input_spec.")]
-        assert len(spec_cols) > 0, f"Expected input_spec.* columns for JSON inputs, got columns: {list(df.columns)}"
+    if check_input_json_path:
+        assert df["input_json_path"].notna().all(), "Expected input_json_path for JSON inputs"
+        for json_path in df["input_json_path"].dropna().unique():
+            assert Path(json_path).is_file(), f"input_json_path does not exist: {json_path}"
 
     return df
 
@@ -288,6 +299,7 @@ class TestDatasetConstruction:
         assert "atom_array" in example
         assert "example_id" in example
         assert "feats" in example
+        assert example["specification"]["input_json_path"] == str(Path(minimal_monomer_json).resolve())
 
     def test_diffused_na_contigs(self, diffused_na_json, bad_diffused_na_json, inference_pipeline):
         """Verify ContigJsonDataset loads a single example and applies transforms."""
@@ -402,14 +414,21 @@ _CKPT_NAME = os.environ.get("CKPT_NAME", "latest.ckpt")
 _EMA_CONTROL_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000.ckpt")
 _EMA_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000-ema.ckpt")
 
-_AE_CKPT_PATH = os.environ.get(
-    "AE_CKPT_PATH", "/path/to/data"
+# AE checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints`` (per-cluster),
+# matching the ``autoencoder_ckpt_path`` convention used across the configs.
+_DATA_PATH = os.environ.get("DATA_PATH", "").strip()
+_AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH") or (
+    os.path.join(_DATA_PATH, "latent_checkpoints", "ae_checkpoints", "AE_ucond_512.ckpt") if _DATA_PATH else None
 )
 
 
 @pytest.mark.skipif(
     not os.path.exists(os.path.join(_CKPT_PATH, _CKPT_NAME)),
     reason=f"Checkpoint not available: {os.path.join(_CKPT_PATH, _CKPT_NAME)} (set CKPT_PATH/CKPT_NAME to override)",
+)
+@pytest.mark.skipif(
+    _AE_CKPT_PATH is None or not os.path.isfile(_AE_CKPT_PATH),
+    reason=f"Autoencoder checkpoint not available: {_AE_CKPT_PATH} (set DATA_PATH or AE_CKPT_PATH)",
 )
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures.
@@ -438,30 +457,32 @@ class TestEndToEndInference:
                 f"out_dir={tmp_output_dir}",
                 f"num_replicates={num_replicates}",
                 f"global_prefix={prefix}",
+                "batch_size=null",
                 "diffusion_batch_size=1",
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
-                "metrics_tags=unconditional_refolding",
+                "metrics_tags=[unconditional_refolding]",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_replicates_prefix")
 
         # Verify correct number of CIF files with prefix in names
-        cif_files = list(Path(tmp_output_dir).glob("inference_samples/*.cif"))
+        cif_files = _inference_generated_cifs(tmp_output_dir)
         assert (
             len(cif_files) == num_replicates
         ), f"Expected {num_replicates} CIF files, got {len(cif_files)}: {cif_files}"
         for cif_file in cif_files:
             assert prefix in cif_file.name, f"Expected prefix '{prefix}' in filename '{cif_file.name}'"
 
-        # Verify output dataframe has expected fields (including input_spec.* for JSON inputs)
-        df = _load_output_dataframe(tmp_output_dir, global_prefix=prefix, check_spec_columns=True)
+        # Verify output dataframe has expected fields (including input_json_path for JSON inputs)
+        df = _load_output_dataframe(tmp_output_dir, global_prefix=prefix, check_input_json_path=True)
         assert len(df) == num_replicates
         assert all(df["seed"] == 42)
-        assert all(df["bb_ca_noise_scale"] == bb_ca_noise_scale)
-        assert all(df["latents_noise_scale"] == latents_noise_scale)
+        assert all(df["generation.model.bb_ca.simulation_step_params.sc_scale_noise"] == bb_ca_noise_scale)
+        assert all(df["generation.model.local_latents.simulation_step_params.sc_scale_noise"] == latents_noise_scale)
+        assert all(df["generation.args.nsteps"] == 10)
         assert all(df["chain_of_interest"].notna())
-        assert any("oracle." in col for col in df.columns), "RF3Oracle did not run."
+        assert any("oracle." in col for col in df.columns), "Refolding oracle did not run."
         for eid in df["example_id"]:
             assert prefix in eid
 
@@ -486,11 +507,11 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
 
-        cif_files_a = list(Path(out_a).glob("inference_samples/*.cif"))
+        cif_files_a = _inference_generated_cifs(out_a)
         assert len(cif_files_a) == 1
         assert "example_a" in cif_files_a[0].name
 
-        df_a = _load_output_dataframe(out_a, check_spec_columns=True)
+        df_a = _load_output_dataframe(out_a, check_input_json_path=True)
         assert len(df_a) == 1
         assert "example_a" in df_a["example_id"].iloc[0]
 
@@ -508,11 +529,11 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_json_keys")
 
-        cif_files_b = list(Path(out_b).glob("inference_samples/*.cif"))
+        cif_files_b = _inference_generated_cifs(out_b)
         assert len(cif_files_b) == 1
         assert "example_b" in cif_files_b[0].name
 
-        df_b = _load_output_dataframe(out_b, check_spec_columns=True)
+        df_b = _load_output_dataframe(out_b, check_input_json_path=True)
         assert len(df_b) == 1
         assert "example_b" in df_b["example_id"].iloc[0]
 
@@ -532,12 +553,12 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
 
-        cif_files_before = sorted(Path(tmp_output_dir).glob("inference_samples/*.cif"))
+        cif_files_before = sorted(_inference_generated_cifs(tmp_output_dir))
         assert len(cif_files_before) >= 1
         mtimes_before = {f.name: f.stat().st_mtime for f in cif_files_before}
 
         # Verify first run produced a valid dataframe
-        _load_output_dataframe(tmp_output_dir, check_spec_columns=True)
+        _load_output_dataframe(tmp_output_dir, check_input_json_path=True)
 
         # Second run: skip_existing should prevent regeneration
         cfg = _build_test_cfg(
@@ -549,7 +570,7 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
 
-        cif_files_after = sorted(Path(tmp_output_dir).glob("inference_samples/*.cif"))
+        cif_files_after = sorted(_inference_generated_cifs(tmp_output_dir))
         mtimes_after = {f.name: f.stat().st_mtime for f in cif_files_after}
 
         assert set(mtimes_before.keys()) == set(mtimes_after.keys())
@@ -578,8 +599,8 @@ class TestEndToEndInference:
             )
             run_generation(cfg, job_id=0, config_name="test_seed")
 
-        cifs_0 = sorted(Path(out_dirs[0]).glob("inference_samples/*.cif"))
-        cifs_1 = sorted(Path(out_dirs[1]).glob("inference_samples/*.cif"))
+        cifs_0 = sorted(_inference_generated_cifs(out_dirs[0]))
+        cifs_1 = sorted(_inference_generated_cifs(out_dirs[1]))
 
         assert len(cifs_0) == len(cifs_1) >= 1
 
@@ -587,8 +608,8 @@ class TestEndToEndInference:
             _assert_coords_identical(str(f0), str(f1))
 
         # Verify both runs produced valid dataframes with matching seeds
-        df_0 = _load_output_dataframe(out_dirs[0], check_spec_columns=True)
-        df_1 = _load_output_dataframe(out_dirs[1], check_spec_columns=True)
+        df_0 = _load_output_dataframe(out_dirs[0], check_input_json_path=True)
+        df_1 = _load_output_dataframe(out_dirs[1], check_input_json_path=True)
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
 
@@ -621,8 +642,8 @@ class TestEndToEndInference:
             )
             run_generation(cfg, job_id=0, config_name=f"test_ema_vs_regular_{label}")
 
-        cifs_regular = sorted(Path(out_dirs["regular"]).glob("inference_samples/*.cif"))
-        cifs_ema = sorted(Path(out_dirs["ema"]).glob("inference_samples/*.cif"))
+        cifs_regular = sorted(_inference_generated_cifs(out_dirs["regular"]))
+        cifs_ema = sorted(_inference_generated_cifs(out_dirs["ema"]))
         assert len(cifs_regular) == len(cifs_ema) == 1
 
         for f_regular, f_ema in zip(cifs_regular, cifs_ema, strict=True):
@@ -653,13 +674,21 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
 
-        cif_files = list(Path(out).glob("inference_samples/*.cif"))
+        cif_files = _inference_generated_cifs(out)
         assert len(cif_files) == 1
         assert "example_a" in cif_files[0].name
 
         generated_path = str(cif_files[0])
         # StandardAnnotations require load_standard_annotations=True; add_missing_atoms=False for compatibility.
-        generated_aa = load_any(generated_path, load_standard_annotations=True)[0]
+        generated_aa = parse(
+            generated_path,
+            config=ParseConfig.from_preset(
+                "rcsb",
+                load_standard_annotations=True,
+                add_missing_atoms=False,
+                convert_mse_to_met=False,
+            ),
+        )["asym_unit"][0]
 
         residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
 
@@ -682,7 +711,7 @@ class TestEndToEndInference:
         # coords_with_insertion is now a StandardAnnotation and is loaded automatically
         assert SA_CWI.has_annotation(generated_aa), f"Expected '{SA_CWI.full_name}' in generated CIF"
 
-        df = _load_output_dataframe(out, check_spec_columns=True)
+        df = _load_output_dataframe(out, check_input_json_path=True)
         assert len(df) == 1
         assert "example_a" in df["example_id"].iloc[0]
 
@@ -722,7 +751,7 @@ class TestEndToEndInference:
         )
         run_generation(cfg, job_id=0, config_name="test_partial_diffusion")
 
-        cif_files = list(Path(tmp_output_dir).glob("inference_samples/*.cif"))
+        cif_files = _inference_generated_cifs(tmp_output_dir)
         assert len(cif_files) == 1, f"Expected 1 output CIF, got {len(cif_files)}"
 
         # Load input and subset to CA atoms

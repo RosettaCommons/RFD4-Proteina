@@ -29,6 +29,11 @@ _PAIR_MASK_CONDITIONS = [C_IDXGRP]
 # between training and inference). Checked relative to their minimum when check_ids=True.
 _ID_ANNOTATIONS = ["res_id", "atom_id", "token_id"]
 
+# Annotations that UnindexFlaggedTokens *adds* to its output (see unindexing.py). They are
+# absent from the pre-transform snapshot by construction, so they are never part of a
+# snapshot-vs-output comparison.
+_UNINDEXING_ADDED_ANNOTATIONS = {"insertion_source_idx", "is_unindexed_source"}
+
 
 def assert_same_atom_array_with_group_equivalence(
     aa1: AtomArray, aa2: AtomArray, check_ids: bool = False, exclude_annots: set[str] = None
@@ -45,7 +50,9 @@ def assert_same_atom_array_with_group_equivalence(
     """
     all_cats = set(aa1.get_annotation_categories()) | set(aa2.get_annotation_categories())
 
-    excluded = exclude_annots or set()
+    excluded = set(exclude_annots or set())
+    # Annotations added by the transform are never in the pre-transform snapshot.
+    excluded.update(_UNINDEXING_ADDED_ANNOTATIONS)
     if not check_ids:
         excluded.update(_ID_ANNOTATIONS)
         excluded.update(["within_chain_source_res_idx", "within_index_group_res_idx"])
@@ -163,26 +170,12 @@ def test_indexed_region_identical_across_modes(pdb_id: str, p_split_group: float
 
     # In train mode the original atoms are kept in place; take first n_orig and select indexed
     train_indexed = out_train[:n_orig][idx_mask]
-    assert_same_atom_array_with_group_equivalence(
-        orig_indexed,
-        train_indexed,
-        check_ids=True,
-        exclude_annots={
-            "insertion_source_idx"
-        },  # unindexing code adds this annotation so it shouldn't be in the original
-    )
+    assert_same_atom_array_with_group_equivalence(orig_indexed, train_indexed, check_ids=True)
 
     # In infer mode unindexed atoms are removed; indexed atoms occupy the front of the array
     n_indexed = int(idx_mask.sum())
     infer_indexed = out_infer[:n_indexed]
-    assert_same_atom_array_with_group_equivalence(
-        orig_indexed,
-        infer_indexed,
-        check_ids=False,
-        exclude_annots={
-            "insertion_source_idx"
-        },  # unindexing code adds this annotation so it shouldn't be in the original
-    )
+    assert_same_atom_array_with_group_equivalence(orig_indexed, infer_indexed, check_ids=False)
 
 
 @pytest.mark.parametrize("p_split_group", [0.0, 1.0])
@@ -201,9 +194,7 @@ def test_appended_tokens_match_original_unindexed_atoms(pdb_id: str, p_split_gro
     for out in [out_train, out_infer]:
         # Appended copies are the last n_unindexed atoms
         appended = out[-n_unindexed:]
-        assert_same_atom_array_with_group_equivalence(
-            orig_unindexed, appended, exclude_annots={"res_id", "atom_id", "token_id", "insertion_source_idx"}
-        )
+        assert_same_atom_array_with_group_equivalence(orig_unindexed, appended)
 
 
 @pytest.mark.parametrize("p_split_group", [0.0, 1.0])

@@ -8,7 +8,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset: 
   name: pdb_pn_units_train
-  data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_pn_units.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/pdb/pdb_pn_units.parquet
   memory_map: True
 
   loader:

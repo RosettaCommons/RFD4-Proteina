@@ -1,18 +1,11 @@
 defaults:
-  - ../base_pandas@dataset
+  - na_complex_unified
   - /design_tasks/presets/all_off@dataset.transform.design_tasks
   - _self_
 
-probability: 1.0  # Need this default for mixed samples
-
 dataset:
   name: na_complex_distillation
-  data: ${oc.env:DATA_PATH}/train_datasets/na_complex/na_complex.csv
-  columns_to_load:
-    - example_id
-    - path
 
-  # PPI-focused mix; all non-listed tasks inherit frequency 0 from all_off.
   transform:
     design_tasks:
       unconditional:              {frequency: 0.2}

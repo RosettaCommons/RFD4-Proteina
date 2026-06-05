@@ -9,9 +9,9 @@ probability: 1.0
 
 dataset:
   name: omol
-  lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol/data
+  lmdb_path: ${oc.env:DATA_PATH}/latent_data/train_datasets/omol/data
   memory_map: True
-  data: ${oc.env:DATA_PATH}/train_datasets/omol/omol.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/omol/omol.parquet
   lmdb_idx_column: lmdb_idx
 
   columns_to_load:

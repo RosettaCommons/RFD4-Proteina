@@ -15,6 +15,7 @@ Two tests:
    must yield identical tensors at every token (no expanded-region carve-out).
 """
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -29,7 +30,8 @@ load_dotenv(override=True)
 import numpy as np
 import pytest
 import torch
-from atomworks.constants import AF3_EXCLUDED_LIGANDS, STANDARD_AA
+from atomworks.constants import AF3_EXCLUDED_LIGANDS, PDB_MIRROR_PATH, STANDARD_AA
+from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
@@ -46,7 +48,6 @@ from atomworks.ml.utils.expandable_segment import (
     realize_expandable_segments,
 )
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
-from atomworks.ml.utils.testing import cached_parse
 from omegaconf import OmegaConf
 
 from foundry.data.collate import collate_batch
@@ -90,7 +91,63 @@ PDB_IDS = [
 N_REMOVE = 5
 SEED = 42
 
-AUTOENCODER_CKPT_PATH = "/path/to/data"
+# Bundled mmCIFs for pipeline tests (see also tests/pipeline/test_pipeline_invariants.py).
+_TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"
+
+
+def _preprocessed_mirror_cif(mirror: Path, pdb_id: str) -> Path | None:
+    """Resolve a structure under ``2026_01_06_pdb_preprocessed`` (ord ``/squash/pdb``).
+
+    The archive uses two conventions per entry directory ``{shard}/{id}/``:
+    - single assembly: ``{id}.cif`` (e.g. ``w4/5w40/5w40.cif``)
+    - multiple bioassemblies: ``{id}_{n}.cif`` (e.g. ``08/108m/108m_0.cif``)
+    Training reads exact paths from parquet; this helper picks a default by PDB ID.
+    """
+    pdb_id = pdb_id.lower()
+    entry = mirror / pdb_id[1:3] / pdb_id
+    canonical = entry / f"{pdb_id}.cif"
+    if canonical.is_file():
+        return canonical
+    bio0 = entry / f"{pdb_id}_0.cif"
+    if bio0.is_file():
+        return bio0
+    variants = sorted(entry.glob(f"{pdb_id}_*.cif"))
+    return variants[0] if variants else None
+
+
+def _load_pdb_for_test(pdb_id: str, **parse_kwargs) -> dict:
+    """Load a test structure (bundled CIF or preprocessed squash; not ``cached_parse``)."""
+    pdb_id = pdb_id.lower()
+    local = _TEST_DATA_DIR / f"{pdb_id}.cif"
+    if local.is_file():
+        path = local
+    else:
+        mirror = Path(PDB_MIRROR_PATH) if PDB_MIRROR_PATH else None
+        if mirror is None or not mirror.is_dir():
+            pytest.skip(f"No bundled CIF for {pdb_id} and PDB_MIRROR_PATH is unset")
+        path = _preprocessed_mirror_cif(mirror, pdb_id)
+        if path is None:
+            pytest.skip(
+                f"No structure for {pdb_id}: add {_TEST_DATA_DIR / f'{pdb_id}.cif'} "
+                f"or ensure preprocessed mirror has {mirror / pdb_id[1:3] / pdb_id}/"
+            )
+    config = ParseConfig(**parse_kwargs) if parse_kwargs else None
+    data = parse(path, config=config)
+    if "atom_array" not in data:
+        assembly_ids = list(data["assemblies"].keys())
+        data["atom_array"] = data["assemblies"][assembly_ids[0]][0]
+    data["pdb_id"] = pdb_id
+    return data
+
+
+# Autoencoder checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints``
+# (per-cluster, e.g. /path/to/data on digs). Resolve it from
+# DATA_PATH rather than hardcoding a single cluster's mount, matching the
+# ``autoencoder_ckpt_path`` convention used across the configs.
+_DATA_PATH = os.environ.get("DATA_PATH", "").strip()
+AUTOENCODER_CKPT_PATH = (
+    Path(_DATA_PATH) / "latent_checkpoints" / "ae_checkpoints" / "AE_ucond_512.ckpt" if _DATA_PATH else None
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 NN_CONFIG_PATH = PROJECT_ROOT / "configs" / "nn" / "local_latents_score_nn_160M_atom37.yaml"
@@ -289,7 +346,7 @@ def _assert_feats_match(feats_a: dict, feats_b: dict, label: str) -> None:
 def test_train_val_pipeline_feats_match(pdb_id: str) -> None:
     """The unconditional train pipeline and val pipeline must produce
     identical ``feats`` dicts for the same precleaned input."""
-    base = cached_parse(pdb_id, add_missing_atoms=True)
+    base = _load_pdb_for_test(pdb_id, add_missing_atoms=True)
     base["example_id"] = pdb_id
     base["atom_array"] = _preclean_input(base["atom_array"])
 
@@ -429,7 +486,7 @@ def test_train_save_load_val_pipeline_feats_match(
     With ``remove_atomize=True`` the ``atomize`` annotation is dropped right
     after reload to verify the val pipeline regenerates it correctly.
     """
-    base = cached_parse(pdb_id, add_missing_atoms=True)
+    base = _load_pdb_for_test(pdb_id, add_missing_atoms=True)
     base["example_id"] = pdb_id
     base["atom_array"] = _preclean_input(base["atom_array"])
 
@@ -579,6 +636,7 @@ def _prepare_inference_batch(
     batch["t"] = {dm: torch.ones(batch_shape, device=device) for dm in fm.data_modes}
     batch["x_sc"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
     batch["x_recycle"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
+    batch["x_sc_is_active"] = torch.zeros((), device=device)
     return batch
 
 
@@ -641,13 +699,15 @@ def autoencoder_and_fm():
     per module. CUDA-only."""
     if not torch.cuda.is_available():
         pytest.skip(reason="Test 2 requires CUDA")
+    if AUTOENCODER_CKPT_PATH is None or not AUTOENCODER_CKPT_PATH.is_file():
+        pytest.skip(f"Autoencoder checkpoint not found: {AUTOENCODER_CKPT_PATH} (set DATA_PATH)")
 
     device = torch.device("cuda")
 
     cfg_train = OmegaConf.load(TRAIN_CONFIG_PATH)
     cfg_nn = OmegaConf.load(NN_CONFIG_PATH)
 
-    autoencoder = AutoEncoder.load_from_checkpoint(AUTOENCODER_CKPT_PATH, strict=False, weights_only=False)
+    autoencoder = AutoEncoder.load_from_checkpoint(str(AUTOENCODER_CKPT_PATH), strict=False, weights_only=False)
     autoencoder = autoencoder.to(device).eval()
     for p in autoencoder.parameters():
         p.requires_grad = False
@@ -669,9 +729,12 @@ def test_expandable_segment_features_match_unconditional(
     """Plain val-pipeline run vs. val-pipeline run with the first ``N_REMOVE``
     residues replaced by a realized expandable segment must produce identical
     per-feature tensors at every token."""
+    if pdb_id == "4ndz":
+        pytest.skip("4ndz is too large for the GPU CI memory budget")
+
     autoencoder, fm, cfg_nn, latent_dim, device = autoencoder_and_fm
 
-    base = cached_parse(pdb_id, add_missing_atoms=True)
+    base = _load_pdb_for_test(pdb_id, add_missing_atoms=True)
     base["example_id"] = pdb_id
     base["atom_array"] = _preclean_input(base["atom_array"])
 

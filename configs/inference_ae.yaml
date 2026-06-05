@@ -1,11 +1,11 @@
-# Checkpoint path
-# For old 20-AA autoencoder: use legacy checkpoint
-# For new 33-type unified autoencoder: use unified checkpoint
-ckpt_file: /path/to/shared/storage  # UPDATE THIS PATH
+# Checkpoint path. Resolved per-cluster from DATA_PATH (matches the
+# ``autoencoder_ckpt_path`` convention used across the other configs); override
+# ``ckpt_file=...`` on the CLI for a different autoencoder checkpoint.
+ckpt_file: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
 # Load dataset config using Hydra defaults (matches training)
 defaults:
-  - datasets: ae_mixed_datasets  # Can also use train/ae/afdb_monomer, train/ae/na_complex, etc.
+  - datasets: ae_mixed_datasets  # Can also use distill/afdb_monomer_genie3, train/ae/na_complex, etc.
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs
   - dataloaders: default  # Use same dataloader config as training
   - _self_

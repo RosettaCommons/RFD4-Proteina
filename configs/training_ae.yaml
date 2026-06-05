@@ -15,7 +15,7 @@ defaults:
   - _self_
   
   # Experiment configs override specific hyperparameters
-  - experiment_ae: kdidi/ae_unified_no_token_type
+  - experiment_ae: smoke
   
   # Debug configs for quick testing
   - optional debug: null
@@ -49,14 +49,18 @@ loss:
 # Precision
 force_precision_f32: False  # If false will use bf16-mixed precision
 
-# Optimization
+# Optimization (aligned with training_proteina where applicable)
 opt:
   lr: 0.0001
+  gradient_clip_val: 1.0
+  muon_param_patterns: []
+  muon_adjust_lr_fn: "match_rms_adamw"
   max_epochs: 10000000
   accumulate_grad_batches: 1
-  dist_strategy: ddp  # For multi GPU training, do not change
-  steps_per_epoch: 2000       # Defines epoch length in steps (not full dataset)
-  val_every_n_epochs: 10      # Validate at end of every N epochs
+  dist_strategy: ddp
+  steps_per_epoch: 2000
+  val_every_n_epochs: 10
+  val_start_epoch: 0
 
 # wandb logging and checkpoints
 log:

@@ -6,7 +6,7 @@ defaults:
   # =====================================================================
 
   # --- Protein-only (distillation) ---
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer  # AFDB monomers
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer  # AFDB monomers
   - /datasets/train/distill/afdb_dimer@datasets.train.afdb_dimer          # TED / AFDB protein dimers
 
   # --- PDB (using AF3-style sub-datasets) ---

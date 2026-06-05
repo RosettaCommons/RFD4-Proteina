@@ -33,10 +33,13 @@ def _ipa_binary_available() -> bool:
     return os.path.isfile(exe) and os.access(exe, os.X_OK)
 
 
-pytestmark = pytest.mark.skipif(
-    not _ipa_binary_available(),
-    reason="IPA not installed: set IPA_PATH and compile gfn2xtb_in_pocket_opt.exe",
-)
+pytestmark = [
+    pytest.mark.gpu,
+    pytest.mark.skipif(
+        not _ipa_binary_available(),
+        reason="IPA not installed: set IPA_PATH and compile gfn2xtb_in_pocket_opt.exe",
+    ),
+]
 
 # Golden values from IPA's tests/axitinib_analysis/ (neutral tautomer).
 # Produced by: python in_pocket.py --pdb tests/4WA9.cif --active-residue 9000

@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_spindr
-  data: ${oc.env:DATA_PATH}/train_datasets/flowr_spindr/flowr_spindr.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_spindr/flowr_spindr.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_spindr

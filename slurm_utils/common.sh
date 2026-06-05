@@ -51,15 +51,13 @@ load_user_info() {
         return 1
     fi
     
-    echo "Loading cluster config: $user_info_file"
-    source "$user_info_file"
-
-    # Source shared cluster env file (.ipd/.env.{cluster}) as single source of truth
-    # for data paths, container settings, squashfs mounts, etc.
     local repo_root
     repo_root=$(find_repo_root "$script_dir")
+
+    # Shared defaults (.ipd/.env.{cluster}), then per-user .user_info_{cluster}.
+    # CONTAINER_IMAGE is set only in .user_info_{cluster}, not in .ipd/.env.*.
     if [ -n "$repo_root" ]; then
-        local env_file="$repo_root/.ipd/.env.${CLUSTER_TYPE:-$cluster}"
+        local env_file="$repo_root/.ipd/.env.${cluster}"
         if [ -f "$env_file" ]; then
             echo "Loading shared env: $env_file"
             set -a
@@ -68,7 +66,91 @@ load_user_info() {
         fi
     fi
 
+    echo "Loading cluster config: $user_info_file"
+    source "$user_info_file"
+
+    case "$cluster" in
+        ord|gb200)
+            if [ -z "${CONTAINER_IMAGE:-}" ]; then
+                echo "Error: CONTAINER_IMAGE not set in $user_info_file" >&2
+                echo "Set CONTAINER_IMAGE to a .sqsh path or GitLab registry URL." >&2
+                return 1
+            fi
+            local _pyxis_image
+            _pyxis_image=$(resolve_pyxis_container_image "$CONTAINER_IMAGE")
+            if [ "$_pyxis_image" != "$CONTAINER_IMAGE" ]; then
+                echo "Container image (Pyxis/Enroot): $_pyxis_image"
+                CONTAINER_IMAGE="$_pyxis_image"
+            fi
+            populate_docker_container_env
+            ;;
+    esac
+
     return 0
+}
+
+# Convert Docker pull reference to Enroot/Pyxis form (registry#repository:tag).
+# Pyxis passes the value to enroot as docker://<this_string>.
+#   registry.example.com:5005/genair/.../latent-dev-v26_01:latest
+#     -> registry.example.com:5005#genair/.../latent-dev-v26_01:latest
+resolve_pyxis_container_image() {
+    local image="${1:-}"
+    [ -z "$image" ] && return 0
+
+    if [[ "$image" == docker://* ]]; then
+        image="${image#docker://}"
+    fi
+    if [[ "$image" == /* ]]; then
+        printf '%s' "$image"
+        return 0
+    fi
+    if [[ "$image" == *"#"* ]]; then
+        printf '%s' "$image"
+        return 0
+    fi
+    if [[ "$image" == */* ]]; then
+        local registry="${image%%/*}"
+        local path_and_tag="${image#*/}"
+        printf '%s#%s' "$registry" "$path_and_tag"
+        return 0
+    fi
+    printf '%s' "$image"
+}
+
+# Build CONTAINER_ENV for docker/pyxis clusters from .ipd/.env.* + user WANDBKEY.
+# Users should not duplicate data-path exports in .user_info_*.
+populate_docker_container_env() {
+    if [ ${#CONTAINER_ENV[@]} -gt 0 ]; then
+        return 0
+    fi
+
+    local slurm_conf="${SLURM_CONF:-/etc/slurm/slurm.conf}"
+    local cluster_name="${CLUSTER:-ord}"
+
+    CONTAINER_ENV=(
+        'unset DEBUG 2>/dev/null || true'
+        'export DEBUG=false'
+        'export PATH=/usr/bin:/usr/local/bin:/cm/shared/apps/slurm/current/bin:$PATH'
+        'export LD_LIBRARY_PATH=/cm/shared/apps/slurm/current/lib64/slurm:/cm/shared/apps/slurm/current/lib64:$LD_LIBRARY_PATH'
+        "export SLURM_CONF=$slurm_conf"
+        "export CLUSTER=$cluster_name"
+        "export DATA_PATH=$DATA_PATH"
+        "export CACHE_DIR=$CACHE_DIR"
+        "export LOCAL_DRIVE_MOUNT=$LOCAL_DRIVE_MOUNT"
+        "export SQUASH_MOUNT_PATH=$SQUASH_MOUNT_PATH"
+        "export PDB_MIRROR_PATH=$PDB_MIRROR_PATH"
+        "export CCD_MIRROR_PATH=$CCD_MIRROR_PATH"
+        "export PROTEIN_MSA_DIRS=$PROTEIN_MSA_DIRS"
+        "export RNA_MSA_DIRS=$RNA_MSA_DIRS"
+        "export HBPLUS_PATH=$HBPLUS_PATH"
+        "export FOLDSEEK_EXEC=$FOLDSEEK_EXEC"
+        "export MACE_MODEL_PATH=$MACE_MODEL_PATH"
+        "export LOGURU_LEVEL=$LOGURU_LEVEL"
+        "export DISABLE_CUEQUIVARIANCE=${DISABLE_CUEQUIVARIANCE:-false}"
+    )
+    if [ -n "${WANDBKEY:-}" ]; then
+        CONTAINER_ENV+=("export WANDB_API_KEY=$WANDBKEY")
+    fi
 }
 
 # Source the project virtual environment

@@ -49,7 +49,7 @@ from typing import Any
 import atomworks.io.transforms.atom_array as ta
 import numpy as np
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.encoding_definitions import AF2_ATOM37_ENCODING
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
 from biotite.structure import AtomArray
 
@@ -61,6 +61,23 @@ CHAIN_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 MAX_CHAINS = len(CHAIN_IDS)  # := 62.
 
 
+def _prepare_bondless_atom_array_for_cif(atom_array: AtomArray) -> AtomArray:
+    """Set label_entity_id so atomworks skips bond-based entity annotation.
+
+    atom37 dumps from training have no BondList; atomworks to_cif_file always
+    calls _ensure_label_entity_id, which otherwise invokes annotate_entities.
+    """
+    if "label_entity_id" in atom_array.get_annotation_categories():
+        return atom_array
+    unique_chains = np.unique(atom_array.chain_id)
+    entity_by_chain = {chain_id: i + 1 for i, chain_id in enumerate(unique_chains)}
+    atom_array.set_annotation(
+        "label_entity_id",
+        np.array([entity_by_chain[chain_id] for chain_id in atom_array.chain_id], dtype=np.int8),
+    )
+    return atom_array
+
+
 def atom37_to_atom_array(
     coords_atom37: np.ndarray,
     residue_type: np.ndarray,
@@ -70,7 +87,7 @@ def atom37_to_atom_array(
 
     Args:
         coords_atom37: Atom37 coordinates, shape [n_residues, 37, 3]
-        residue_type: Residue type indices (0-19 for standard AAs), shape [n_residues]
+        residue_type: Residue type indices from UNIFIED_ATOM37_ENCODING, shape [n_residues]
         chain_index: Chain indices for each residue (optional)
 
     Returns:
@@ -99,7 +116,7 @@ def atom37_to_atom_array(
                     encoded_coord=chain_coords,
                     encoded_mask=chain_mask_valid,
                     encoded_seq=chain_seq,
-                    encoding=AF2_ATOM37_ENCODING,
+                    encoding=UNIFIED_ATOM37_ENCODING,
                     chain_id=chain_id,
                 )
                 atom_arrays.append(aa)
@@ -128,7 +145,7 @@ def atom37_to_atom_array(
         encoded_coord=coords_atom37,
         encoded_mask=encoded_mask,
         encoded_seq=residue_type,
-        encoding=AF2_ATOM37_ENCODING,
+        encoding=UNIFIED_ATOM37_ENCODING,
         chain_id=chain_id,
     )
 
@@ -162,7 +179,7 @@ def write_prot_to_pdb(
     Args:
         prot_pos: Atom37 coordinates, shape [n_res, 37, 3] or [n_models, n_res, 37, 3]
         file_path: Path to output file (will be converted to .cif extension)
-        aatype: Residue type indices (0-19 for standard AAs)
+        aatype: Residue type indices from UNIFIED_ATOM37_ENCODING
         chain_index: Chain indices for each residue
         overwrite: If False, adds index to filename to avoid overwriting
         no_indexing: If True, use exact file_path without adding index
@@ -202,7 +219,8 @@ def write_prot_to_pdb(
             residue_type=aatype,
             chain_index=chain_index,
         )
-        to_cif_file(atom_array, save_path, include_entity_poly=False)
+        atom_array = _prepare_bondless_atom_array_for_cif(atom_array)
+        to_cif_file(atom_array, save_path, include_entity_categories=False)
     else:
         raise ValueError(f"Invalid positions shape {prot_pos.shape}")
 

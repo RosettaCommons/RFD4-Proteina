@@ -10,7 +10,7 @@
 
 defaults:
   # Train datasets (distillation)
-  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_monomer
   - /datasets/train/distill/rna_monomer@datasets.train.rna_monomer
   - /datasets/train/distill/na_complex@datasets.train.na_complex
 

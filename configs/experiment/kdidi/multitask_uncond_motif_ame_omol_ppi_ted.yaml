@@ -2,9 +2,9 @@
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer@datasets.train.afdb_uncond
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_motif
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_ame_ligand
+  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_uncond
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_motif
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_ame_ligand
   - /datasets/train/distill/omol@datasets.train.omol
   - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
 

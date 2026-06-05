@@ -1,121 +1,48 @@
 # =============================================================================
-# ORD (OCI) Cluster Configuration - EXAMPLE
+# ORD — per-user settings only (EXAMPLE)
 # =============================================================================
-# Copy this file to .user_info_ord and fill in your values:
 #   cp .user_info_ord_example .user_info_ord
 #
-# OCI clusters use Docker squash images via srun --container-image
-# Requires ACCOUNT for SLURM submissions
+# Do NOT duplicate settings from .ipd/.env.ord here:
+#   DATA_PATH, SQUASHFS_MOUNTS, CONTAINER_MOUNTS, CLUSTER, REMOTE, tool paths, …
+#
+# .ipd/.env.ord  → shared cluster topology (committed / team branch)
+# .user_info_ord → your account, secrets, container choice, SLURM preferences
 # =============================================================================
 
-# Cluster identity
-CLUSTER=ord
+USER="${USER:-your_username}"
+ACCOUNT="your_account"
 SKIP_ACCOUNT="false"
 
-# Remote cluster login node
-REMOTE="<login-host>"
-
-# Your username on the cluster
-USER="${USER:-your_username}"
-
-# Slurm account for billing
-ACCOUNT="your_account"
-
-# Root directory on remote for runs
 ROOT_REMOTE="/path/to/shared/storage"
-
-# Local code directory path (for from_local scripts)
 LOCAL_CODE_DIR="/path/to/shared/storage"
 
-# Data paths
-DATA_PATH="/path/to/shared/storage"
-CACHE_DIR="/path/to/shared/storage"
-PDB_MIRROR_PATH="/path/to/shared/storage"
-CCD_MIRROR_PATH="/path/to/shared/storage"
-
-# Container image path (Docker .sqsh file for OCI clusters)
+# Container image — only defined here
+# Local squash:  .../PFM_data/squash_images/latent-dev-amd64.sqsh
+# Registry:       registry.example.com:5005/genair/protein-foundation-models/latent-dev-v26_01:latest
 CONTAINER_IMAGE="/path/to/shared/storage"
 
-# Executables (used inside container)
-PYTHON="python"
-FOLDSEEK_REMOTE="/usr/local/bin/foldseek"
-
-# Tool paths (for metrics and design tasks)
-HBPLUS_PATH=""
-MOLPROBITY_PATH=""
-MACE_MODEL_PATH=""
-
-# MSA directories (optional, comma-separated paths for multiple directories)
-# If set, MSA features will be loaded and used for training
-PROTEIN_MSA_DIRS=""
-RNA_MSA_DIRS=""
-
-# Weights & Biases API key (get from https://wandb.ai/authorize)
 WANDBKEY=""
 
-# Slurm configuration
 PARTITION="grizzly,polar3,polar4"
-GPUS_PER_NODE_CLUSTER=8
+CPU_PARTITION="cpu_short"
 RUNTIME="04:00:00"
 SIGNAL_TIME=600
-
-# GPU type on this cluster
-GPU_TYPE="A100"
-
-# Nodes to exclude (optional)
+MEM=""
+GPU_TYPE="H100"
 EXCLUDE_NODES=""
-
-# Extra SLURM options (optional)
 SLURM_EXTRA_OPTIONS=""
-
-# Extra container mounts (comma-separated paths for Docker --container-mounts)
-# Format: "/host/path:/container/path:rw,/host/path2:/container/path2:ro"
 EXTRA_CONTAINER_MOUNTS=""
 
-# Dataset squashfs mounts (semicolon-separated squash:mountpoint pairs)
-# Used by container-based launch scripts (launch_train_latents.sh)
-# These are mounted using squashfuse on each task before the job runs
-# Format: "/path/to/dataset1.sqsh:/mount/point1;/path/to/dataset2.sqsh:/mount/point2"
-# Example: DATASET_SQUASH_MOUNTS="/data/pdb.sqsh:/mnt/pdb;/data/afdb.sqsh:/mnt/afdb"
-DATASET_SQUASH_MOUNTS=""
+ENV_VARS=(
+    "TORCHINDUCTOR_CACHE_DIR=/path/to/shared/storage"
+)
 
-# =============================================================================
-# Squashfs Dataset Mounting for Direct (no-container) runs
-# =============================================================================
-# Used by launch_train_latents_direct.sh
-# Set USE_SQUASH_MOUNT="true" to enable per-task squashfs mounting via squashfuse
-# This requires FUSE to be available on the cluster nodes
-# If FUSE is not available, training will continue but may fail if data isn't pre-mounted
-#
-# USE_SQUASH_MOUNT="false"
-# SQUASH_FILE="/path/to/shared/storage"
-# MOUNT_POINT="/path/to/shared/storage"
-
-# cuEquivariance (leave empty for default behavior)
-USE_CUEQUIVARIANCE=""
-
-# =============================================================================
-# MPNN Settings (for launch_mpnn.sh)
-# =============================================================================
-# These settings are used by launch_mpnn.sh for running ProteinMPNN/LigandMPNN
-# MPNN runs quickly on CPU nodes, no GPU required.
-#
-# REQUIRED settings (launch_mpnn.sh will error if not set):
-#   MPNN_SCRIPT_PATH      - Path to the fused_mpnn run.py script
-#   MPNN_CONTAINER_IMAGE  - Container image for running MPNN
-
-# SLURM settings for MPNN jobs
+# MPNN (optional — see launch_mpnn.sh)
 MPNN_PARTITION="cpu"
 MPNN_TIME="1:00:00"
 MPNN_CPUS=1
 MPNN_MEM="16G"
-
-# REQUIRED: Path to the fused_mpnn run script (inside container)
-MPNN_SCRIPT_PATH="/path/to/fused_mpnn/run.py"
-
-# REQUIRED: Container image for MPNN
+MPNN_SCRIPT_PATH=""
 MPNN_CONTAINER_IMAGE=""
-
-# Optional: Container mounts
 MPNN_CONTAINER_MOUNTS=""
-

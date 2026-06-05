@@ -27,6 +27,22 @@ def _require(name: str) -> str:
     return value
 
 
+def _deduped_bind_specs(*specs: str) -> list[str]:
+    """Return unique ``host:container`` bind specs, preserving order."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for spec in specs:
+        spec = spec.strip()
+        if spec and spec not in seen:
+            seen.add(spec)
+            out.append(spec)
+    return out
+
+
+def _bind_args_for_specs(specs: list[str]) -> list[str]:
+    return [arg for spec in specs for arg in ("--bind", spec)]
+
+
 def _data_bind_args() -> list[str]:
     """Return ``--bind ...`` argv for cluster-specific data mounts.
 
@@ -35,15 +51,27 @@ def _data_bind_args() -> list[str]:
     separated host:container specs, e.g. ``/mnt/data:/mnt/data;/scratch:/scratch``.
     ``/tmp`` is always bound (daemon socket lives there).
     """
-    bind_args: list[str] = []
+    specs: list[str] = []
     raw = os.environ.get("APPTAINER_BIND_PATHS", "").strip()
     if raw:
-        for spec in raw.split(";"):
-            spec = spec.strip()
-            if spec:
-                bind_args += ["--bind", spec]
-    bind_args += ["--bind", "/tmp"]
-    return bind_args
+        specs.extend(spec.strip() for spec in raw.split(";") if spec.strip())
+    specs.append("/tmp:/tmp")
+    return _bind_args_for_specs(_deduped_bind_specs(*specs))
+
+
+def _af3_resource_bind_args() -> list[str]:
+    """Bind AF3 script/weight/cache paths into ``af3.sif``.
+
+    Without these binds, nested ``apptainer run af3.sif`` (e.g. from inside
+    latent-dev during GPU e2e) cannot see host paths like
+    ``/path/to/shared/storage``.
+    """
+    specs: list[str] = []
+    for env_name in ("AF3_SCRIPTS_DIR", "AF3_MODEL_DIR", "AF3_JAX_CACHE_DIR"):
+        path = os.environ.get(env_name, "").strip().rstrip("/")
+        if path:
+            specs.append(f"{path}:{path}")
+    return _bind_args_for_specs(_deduped_bind_specs(*specs))
 
 
 def build_apptainer_fold_command(
@@ -80,6 +108,7 @@ def build_apptainer_fold_command(
     weights = _require("AF3_MODEL_DIR")
     if batch_script is None:
         batch_script = _DEFAULT_BATCH_SCRIPT
+    batch_path = Path(batch_script).resolve()
 
     cmd = [
         "apptainer",
@@ -96,6 +125,9 @@ def build_apptainer_fold_command(
         "--env",
         f"AF3_MODEL_DIR={weights}",
         *_data_bind_args(),
+        *_af3_resource_bind_args(),
+        "--bind",
+        f"{batch_path.parent}:{batch_path.parent}",
         sif,
         "python",
         str(batch_script),

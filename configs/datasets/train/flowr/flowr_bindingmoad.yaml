@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_bindingmoad
-  data: ${oc.env:DATA_PATH}/train_datasets/flowr_bindingmoad/flowr_bindingmoad.parquet
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_bindingmoad/flowr_bindingmoad.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_bindingmoad

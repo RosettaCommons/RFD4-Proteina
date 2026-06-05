@@ -100,9 +100,10 @@ def modified_1a1e():
     return mod_aa
 
 
-@pytest.fixture(params=["rf3", "af3"], scope="module")
+# GPU CI runs RF3 only; AF3 apptainer folding is not part of the GPU lane.
+@pytest.fixture(params=["rf3"], scope="module")
 def oracle_info(request, modified_1a1e):
-    """Instantiated RF3Oracle and AF3Oracle, as well as various other test inputs."""
+    """Instantiated RF3Oracle (and optionally AF3Oracle locally)."""
     confidence_keys = [
         "chain_of_interest",
         "overall_plddt",
@@ -120,13 +121,13 @@ def oracle_info(request, modified_1a1e):
         pytest.skip("AF3 apptainer image not available")
 
     if request.param == "rf3":
+        from tests.e2e.helpers.gpu_e2e import resolve_rf3_ckpt
+
+        rf3_ckpt = resolve_rf3_ckpt()
         oracle = RF3Oracle(
             num_steps=50,
             n_recycles=5,
-            ckpt_path=os.path.join(
-                os.environ["DATA_PATH"],
-                "rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt",
-            ),
+            ckpt_path=str(rf3_ckpt),
             template_annotations="is_templated",
         )
     elif request.param == "af3":

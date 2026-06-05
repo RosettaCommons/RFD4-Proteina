@@ -31,20 +31,13 @@ search:
     n_samples: 5
     keep_all: false
   
-  # Reward model for scoring (nested under search)
+  # Reward model for scoring (uses oracle manager from metrics/refolding_oracles=rf3)
   rewards:
-    metrics:
-      rf3:
-        _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
-        ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
-        num_steps: 50
-        n_recycles: 5
-    
+    reward_metrics_tags: [unconditional_refolding]
     weights:
       rf3.plddt: 1.0
       rf3.iptm: 2.0
       rf3.ipae: -1.0
-    
     differentiable: false
 
 # Generation settings

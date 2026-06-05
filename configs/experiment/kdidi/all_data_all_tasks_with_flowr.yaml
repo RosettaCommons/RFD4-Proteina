@@ -5,7 +5,7 @@
 
 defaults:
   # Train datasets -- distillation (monomers + small molecules)
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
   - /datasets/train/distill/teddimore_monomers_contiguous@datasets.train.teddimore_monomers
   - /datasets/train/distill/mgnify_dec_2025@datasets.train.mgnify_dec_2025
   - /datasets/train/distill/omol@datasets.train.omol_small_molecules

@@ -1,5 +1,6 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
 
+import hashlib
 import json
 import os
 import sys
@@ -223,6 +224,9 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
         global_prefix=cfg.get("global_prefix"),
     )
 
+    if cfg_gen.val_set_name_override is None:
+        cfg_gen.val_set_name_override = str(cfg.inputs)
+
     return dataset
 
 
@@ -264,12 +268,15 @@ def get_contig_or_design_problem_dataset(
             global_prefix=global_prefix,
         )
 
+    input_path = Path(json_or_design_problem_inputs)
     data = _assemble_dataset_inputs_from_dict(
         data,
-        input_file_path=Path(json_or_design_problem_inputs),
+        input_file_path=input_path,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
     )
+
+    source_path = str(input_path.resolve()) if input_path.suffix.lower() in (".json", ".yaml", ".yml") else None
 
     return ContigJsonDataset(
         data=data,
@@ -277,6 +284,7 @@ def get_contig_or_design_problem_dataset(
         name="inference-dataset",
         num_replicates=num_replicates,
         global_prefix=global_prefix,
+        source_path=source_path,
     )
 
 
@@ -519,6 +527,13 @@ def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str
         raise ValueError(f"Unexpected Dataset type: {type(dataset).__name__}")
 
 
+def _stored_example_id(base_id: str, dataset_name: str, job_id: int | None) -> str:
+    """Match ``proteina.validation_step`` output filenames (hashed dataset prefix)."""
+    dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
+    output_suffix = f"_job{job_id}" if job_id is not None else ""
+    return f"{dataset_name_hash}__{base_id}{output_suffix}"
+
+
 def _filter_existing_outputs(
     dataset: torch.utils.data.Dataset,
     model: Proteina,
@@ -555,9 +570,16 @@ def _filter_existing_outputs(
     if not existing_ids:
         return dataset
 
-    # Determine which indices to keep
+    # Determine which indices to keep (compare hashed on-disk ids from validation_step).
     all_ids = _get_example_ids_from_dataset(dataset)
-    keep_indices = [i for i, eid in enumerate(all_ids) if eid not in existing_ids]
+    dataset_name = None
+    if model.inf_cfg is not None:
+        dataset_name = model.inf_cfg.get("val_set_name_override")
+    if not dataset_name:
+        dataset_name = str(root_path)
+    keep_indices = [
+        i for i, eid in enumerate(all_ids) if _stored_example_id(eid, dataset_name, model.job_id) not in existing_ids
+    ]
     n_skipped = len(all_ids) - len(keep_indices)
 
     if n_skipped > 0:

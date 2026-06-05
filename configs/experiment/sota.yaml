@@ -1,0 +1,18 @@
+# @package _global_
+#
+# Canonical "SOTA" training recipe. Thin alias of the current hero run
+# (ncorley/muon_v9_lossweights_25): AFDB/OMOL/PLINDER mix, AF3 refolding oracle,
+# Muon optimizer, torch.compile on, per-token loss-weight upweights.
+#
+# Kept as a stable, recipe-namespace-independent entry point so tooling and CI
+# (e.g. tests/e2e training smokes via `experiment=sota`) do not need to track
+# the ncorley/ experiment iteration. To advance the SOTA recipe, repoint the
+# single default below.
+defaults:
+  - /experiment/ncorley/muon_v9_lossweights_25
+  - _self_
+
+run_name_: sota
+
+log:
+  tags: ["sota"]

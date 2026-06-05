@@ -9,7 +9,7 @@ defaults:
   - /nn/local_latents_score_nn_160M_atom37@nn
   
   # Train dataset
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
+  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
   
   # Validation dataset (optional - for monitoring)
   - /datasets/val/unconditional@datasets.val.unconditional

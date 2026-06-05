@@ -253,14 +253,22 @@ class FlashPairBiasAttention(nn.Module):
                 )
                 attn_bias = torch.masked_fill(attn_bias, ~mask_expanded, NEG_INF)
 
-        # Flash attention via scaled_dot_product_attention
-        # Note: attn_mask is added to attention scores before softmax
-        o = F.scaled_dot_product_attention(
-            q.contiguous().to(target_dtype),
-            k.contiguous().to(target_dtype),
-            v.contiguous().to(target_dtype),
-            attn_mask=attn_bias.contiguous() if attn_bias is not None else None,
-        )
+        # Flash attention via scaled_dot_product_attention; CPU CI / local dev only
+        # when CUDA is unavailable (not intended for production CPU inference).
+        if not torch.cuda.is_available():
+            scale = self.dim_head**-0.5
+            sim = einsum("b h i d, b h j d -> b h i j", q, k) * scale
+            if attn_bias is not None:
+                sim = sim + attn_bias
+            attn = torch.softmax(sim, dim=-1)
+            o = einsum("b h i j, b h j d -> b h i d", attn, v)
+        else:
+            o = F.scaled_dot_product_attention(
+                q.contiguous().to(target_dtype),
+                k.contiguous().to(target_dtype),
+                v.contiguous().to(target_dtype),
+                attn_mask=attn_bias.contiguous() if attn_bias is not None else None,
+            )
 
         # Apply gating (matches PairBiasAttention)
         o_gated = torch.sigmoid(g) * o

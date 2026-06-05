@@ -1,0 +1,21 @@
+# Shared RNA monomer metadata parquet. Paths are relative to the squash mount.
+
+defaults:
+  - ../base_pandas@dataset
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: rna_monomer_unified
+  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/rna_monomer/rna_monomer.parquet
+  columns_to_load:
+    - example_id
+    - path
+    - cluster_id
+    - seq_hash
+    - overall_plddt
+    - overall_pde
+    - overall_pae
+  loader:
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/rna_monomer
