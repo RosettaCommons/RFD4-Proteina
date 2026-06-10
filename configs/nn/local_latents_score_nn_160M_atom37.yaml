@@ -32,6 +32,7 @@ feats_seq: [
   "rasa_binned",                # RASA surface accessibility [b, n, 37]
   "secondary_structure",        # Secondary structure [b, n, embed_dim]
   "hbond",                      # Hydrogen bonds [b, n, 37]
+  "na_ss_state",                # Nucleic-acid state feature (unspecified/paired/loop) [b, n, 2]
   "hotspot",                    # Hotspot annotation [b, n, 37]
   "atom_charge",                # Atomic charge embedding for atomized tokens [b, n, 16]
   "atomic_element",             # Atomic element embedding for atomized tokens [b, n, 16]
@@ -61,6 +62,8 @@ feats_pair_repr: [
   "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
   "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
   "molecule_idx_pair",          # Binary feature indicating same molecule instance [b, n, n, 1]
+  "chain_idx_pair",             # Binary feature indicating same chain [b, n, n, 1]
+  "na_ss_pair",                 # Nucleic acid secondary structure pair feature [b, n, n, 3]
   # "canonical_polymer_ordering", # ±1 ordering of bonded canonical polymer residue pairs [b, n, n, 1] (opt-in)
 ]
 feats_pair_cond: ["time_emb_bb_ca", "time_emb_local_latents"]  # Features to include in the pair representation conditioning

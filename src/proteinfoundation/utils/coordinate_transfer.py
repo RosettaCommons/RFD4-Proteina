@@ -11,6 +11,7 @@ from atomworks.io.utils.atom_array_plus import insert_atoms
 from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
+from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen, remove_protein_terminal_oxygen
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from biotite.structure import AtomArray
 
@@ -49,6 +50,17 @@ ANNOTS_TO_KEEP = {
     "within_chain_source_res_idx",
     "token_id",
 }
+
+
+def remove_terminal_oxygen_atoms(atom_array: AtomArray) -> AtomArray:
+    """Remove terminal oxygens that are not emitted by the atom37 decoder.
+
+    This normalizes structures before coordinate transfer or refolding comparisons,
+    since generated atom37 outputs omit protein ``OXT`` and nucleic-acid ``OP3``.
+    """
+    atom_array = remove_protein_terminal_oxygen(atom_array)
+    atom_array = remove_nucleic_acid_terminal_oxygen(atom_array)
+    return atom_array
 
 
 def _copy_coords_by_atom_name(

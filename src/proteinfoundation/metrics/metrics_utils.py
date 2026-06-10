@@ -42,6 +42,7 @@ from proteinfoundation.metrics.oracle_metric import (
 from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -304,6 +305,7 @@ def run_oracle_and_refolding_metrics(
     """
 
     try:
+        atom_array = remove_terminal_oxygen_atoms(atom_array.copy())
         coi, coi_unambiguous = get_chain_of_interest(atom_array)
 
         extra_info: dict = {
@@ -336,6 +338,7 @@ def run_oracle_and_refolding_metrics(
                             refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"][
                                 "1"
                             ][0]
+                            refolded_aa = remove_terminal_oxygen_atoms(refolded_aa)
                         except Exception as e:
                             logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
                     break  # Stop after the first tag-matching oracle

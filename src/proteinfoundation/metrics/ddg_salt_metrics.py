@@ -308,7 +308,7 @@ class SoftDDGMetric(Metric):
         # Set CUDA arch for TMol kernel compilation
         os.environ["TORCH_CUDA_ARCH_LIST"] = "8.0"
 
-        logger.info(f"SoftDDGMetric initialized (soft_rep={use_soft_rep}, " f"soft_rep_weight={soft_rep_weight})")
+        logger.info(f"SoftDDGMetric initialized (soft_rep={use_soft_rep}, soft_rep_weight={soft_rep_weight})")
 
     @cached_property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
@@ -492,8 +492,7 @@ class ChargeComplementarityMetric(Metric):
             raise ValueError(f"charge_func must be 'linear', 'flat', or 'quadratic', got '{charge_func}'")
 
         logger.info(
-            f"ChargeComplementarityMetric initialized "
-            f"(min_dist={min_dist}, max_dist={max_dist}, func={charge_func})"
+            f"ChargeComplementarityMetric initialized (min_dist={min_dist}, max_dist={max_dist}, func={charge_func})"
         )
 
     @cached_property

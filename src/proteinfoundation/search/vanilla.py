@@ -161,9 +161,13 @@ class VanillaStrategy(SearchStrategy):
             )
 
         # Format samples (only coors37_n_aatype mode)
+        formatting_extra_info = {
+            **extra_info,
+            "token_type": batch.get("token_type"),
+        }
         sample_prots = model.sample_formatting(
             x=gen_samples,
-            extra_info=extra_info,
+            extra_info=formatting_extra_info,
             ret_mode="coors37_n_aatype",
         )
 

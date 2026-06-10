@@ -6,6 +6,7 @@ from atomworks.io.transforms.atom_array import (
     add_molecule_iid_annotation,
 )
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.atom_array_plus import AnnotationList2D
 from atomworks.io.utils.scatter import spread_segment_wise
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
@@ -276,6 +277,62 @@ class CoordinateGroup(ConditionBase):
         return all_coordinate_groups
 
 
+class BasePairEnum(IntEnum):
+    """
+    the Enum to hold int info corresponding to BasePair annotations
+    """
+
+    UNSPECIFIED = 0  # mask
+    PAIR = 1  # base paired positions
+    LOOP = 2  # explicitl-unpaired
+
+
+class BasePair(ConditionBase):
+    """NA secondary-structure pair condition (residue semantics, 2-body sparse storage)."""
+
+    name = "basepair"
+    n_body = 2
+    level = Level.RESIDUE
+    is_symmetric = True
+    dtype = int
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> AnnotationList2D:
+        # Sparse default: empty/unspecified
+        return AnnotationList2D(
+            n_atoms=atom_array.array_length(),
+            pairs=np.array([], dtype=int),
+            values=np.empty((0,), dtype=cls.dtype),
+        )
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> AnnotationList2D:
+        annotation = cls.annotation(atom_array, default="generate")
+        return AnnotationList2D(
+            n_atoms=annotation.n_atoms,
+            pairs=annotation.pairs,
+            values=np.ones(len(annotation.values), dtype=bool),
+        )
+
+
+class NucleicSSState(ConditionBase):
+    """Per-residue NA secondary-structure state encoded with ``BasePairEnum``."""
+
+    name = "na-ss-state"
+    n_body = 1
+    level = Level.RESIDUE
+    dtype = int
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        annotation = cls.annotation(atom_array, default="generate")
+        return annotation.astype(int) != BasePairEnum.UNSPECIFIED.value
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.full(atom_array.array_length(), BasePairEnum.UNSPECIFIED.value, dtype=cls.dtype)
+
+
 # Aliases for convenience
 C_HOT = CONDITIONS.hotspot
 C_CDR = CONDITIONS.cdr
@@ -288,3 +345,5 @@ C_IDXGRP = CONDITIONS.index_group
 C_CATH = CONDITIONS.cath_label
 C_INTCRD = CONDITIONS.InternalCoordinate
 C_CRDGRP = CONDITIONS.CoordinateGroup
+C_BP = CONDITIONS.basepair
+C_NA_SS_STATE = CONDITIONS.na_ss_state

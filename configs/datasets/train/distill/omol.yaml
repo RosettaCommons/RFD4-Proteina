@@ -38,3 +38,4 @@ dataset:
         frequency: 1.0
         transform:
           p_fix_ligand_surroundings: 0.5
+          p_fix_ligand_surroundings: 0.5

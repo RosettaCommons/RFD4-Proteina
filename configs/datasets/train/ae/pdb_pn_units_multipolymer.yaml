@@ -1,0 +1,71 @@
+# PDB PN-units dataset for unified autoencoder training.
+# Keeps nucleic-acid-containing assemblies so the AE sees mixed polymer contexts.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/unconditional@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
+  beta: 0.5
+  cluster_column: cluster
+  altloc_seed_column: altloc_seed
+  pdb_id_column: pdb_id
+  alphas:
+    a_prot: 3.0
+    a_nuc: 6.0
+    a_ligand: 1.0
+    a_loi: 5.0
+
+dataset:
+  name: pdb_pn_units_ae_multipolymer
+  data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_pn_units.parquet
+  memory_map: True
+
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/data}/pdb
+    pn_unit_iid_colnames: ["q_pn_unit_iid"]
+    example_id_colname: example_id
+    assembly_id_colname: assembly_id
+    altloc_seed_colname: null
+    parser_args:
+      _target_: proteinfoundation.utils.parse_presets.distillation
+      save_to_cache: True
+      load_from_cache: True
+      cache_dir: ${oc.env:CACHE_DIR}/pdb
+
+  filters:
+    - "deposition_date < '2024-01-01'"
+    - "resolution < 9.0"
+    - "num_polymer_pn_units <= 30"
+    - "cluster.notnull()"
+    - "pdb_id not in ${resolve_import:atomworks.ml.preprocessing.constants,PDB_IDS_WITH_UNPHYSICAL_BONDS}"
+    - "~(q_pn_unit_non_polymer_res_names.notnull() and q_pn_unit_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+
+  columns_to_load:
+    - example_id
+    - pdb_id
+    - assembly_id
+    - altloc_seed
+    - path
+    - deposition_date
+    - resolution
+    - num_polymer_pn_units
+    - method
+    - cluster
+    - n_prot
+    - n_nuc
+    - n_ligand
+    - n_peptide
+    - total_num_atoms_in_unprocessed_assembly
+    - q_pn_unit_iid
+    - q_pn_unit_non_polymer_res_names
+    - all_pn_unit_iids_after_processing
+    - q_pn_unit_is_loi
+
+  transform:
+    crop_size: 384

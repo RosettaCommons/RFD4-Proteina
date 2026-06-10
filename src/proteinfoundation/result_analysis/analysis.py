@@ -88,7 +88,7 @@ def filter_successes(df: pd.DataFrame, pass_column: str = "pass_rate") -> pd.Dat
                 break
         else:
             available_cols = [c for c in df.columns if "pass" in c.lower() or "success" in c.lower()]
-            raise ValueError(f"Column '{pass_column}' not found. " f"Available pass/success columns: {available_cols}")
+            raise ValueError(f"Column '{pass_column}' not found. Available pass/success columns: {available_cols}")
 
     # Handle different types of pass values
     if df[pass_column].dtype == bool:
@@ -99,7 +99,7 @@ def filter_successes(df: pd.DataFrame, pass_column: str = "pass_rate") -> pd.Dat
         # String comparison
         successes = df[df[pass_column].astype(str).str.lower().isin(["true", "1", "yes", "pass"])]
 
-    logger.info(f"Found {len(successes)} successes out of {len(df)} total ({100*len(successes)/len(df):.1f}%)")
+    logger.info(f"Found {len(successes)} successes out of {len(df)} total ({100 * len(successes) / len(df):.1f}%)")
 
     return successes
 
@@ -312,7 +312,7 @@ def main() -> None:
     print("=" * 60)
     print(f"Total samples:     {len(df)}")
     print(f"Successful:        {len(successes)}")
-    print(f"Success rate:      {100*len(successes)/len(df):.1f}%")
+    print(f"Success rate:      {100 * len(successes) / len(df):.1f}%")
     if n_clusters is not None:
         print(f"Unique clusters:   {n_clusters}")
     print("=" * 60 + "\n")

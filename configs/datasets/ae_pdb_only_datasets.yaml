@@ -1,0 +1,19 @@
+# =============================================================================
+# Autoencoder Dataset Mix: PDB-only Multipolymer
+# =============================================================================
+# Unified AE mix for longer runs focused on balanced RNA/DNA exposure from
+# PDB-derived assemblies only. Intentionally excludes the RNA monomer
+# distillation dataset to avoid overwhelming DNA with RNA-only examples.
+# =============================================================================
+
+defaults:
+  - train/ae/pdb_interfaces_multipolymer@train.pdb_interfaces
+  - train/ae/pdb_pn_units_multipolymer@train.pdb_pn_units
+  - _self_
+
+train:
+  pdb_interfaces:
+    probability: 0.625
+
+  pdb_pn_units:
+    probability: 0.375

@@ -451,9 +451,7 @@ def main(cfg_exp: DictConfig) -> None:
     # ... compose the validation loader(s) with correct distributed settings
     val_loaders = None
     if "val" in cfg_exp.datasets and cfg_exp.datasets.val:
-        logger.info(
-            f"Creating validation dataloaders (rank={trainer.global_rank}, " f"world_size={trainer.world_size})..."
-        )
+        logger.info(f"Creating validation dataloaders (rank={trainer.global_rank}, world_size={trainer.world_size})...")
         val_loaders = assemble_val_loader_dict(
             cfg=cfg_exp.datasets.val,
             rank=trainer.global_rank,

@@ -1,0 +1,9 @@
+{
+  "rna_quadruplex_8x3_unindexed_scaffold_8x9": {
+    "dialect": 2,
+    "input": "dna_pdbs/mini_9WHV.cif",
+    "select_fixed_atoms": true,
+    "contig": "9-9R,/0,9-9R,/0,9-9R,/0,9-9R,/0,9-9R,/0,9-9R,/0,9-9R,/0,9-9R,/0",
+    "unindex": "A1-3,/0,B1-3,/0,C1-3,/0,D1-3,/0,E1-3,/0,F1-3,/0,G1-3,/0,H1-3"
+  }
+}

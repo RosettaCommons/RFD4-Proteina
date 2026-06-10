@@ -37,6 +37,7 @@ from proteinfoundation.transforms.design_task_modifiers import (
     add_rasa_condition,
     add_secondary_structure_condition,
 )
+from proteinfoundation.transforms.na_geom import apply_training_na_ss_condition
 from proteinfoundation.transforms.utils.conditioning_utils import (
     convert_to_internal_coords,
     sample_unindexed_groups,
@@ -110,7 +111,7 @@ class RFD3DesignTask(DesignTaskABC):
         super().__init_subclass__()
         if not hasattr(cls, "RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES"):
             raise TypeError(
-                f"{cls.__name__} must define class variable " "`RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES` (even if empty)."
+                f"{cls.__name__} must define class variable `RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES` (even if empty)."
             )
 
     @staticmethod
@@ -1898,4 +1899,240 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
 
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
 
+        return data
+
+
+class NucleicSecondaryStructureTask(RFD3DesignTask):
+    """Apply NA secondary-structure conditioning, with optional small motif scaffolds.
+
+    When this task is selected, it computes ``bp_partners`` from the current
+    structure and either reveals the full annotation or a partial island mask.
+    It can also optionally add a motif-scaffold overlay with coordinate/sequence
+    conditioning on a small fraction of polymer tokens.
+    """
+
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
+        "rasa_kwargs": {"p_add_rasa_condition": 0.0},
+        "hbond_kwargs": {"p_add_hbond_condition": 0.0},
+        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
+        "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
+        "na_ss_kwargs": {"p_add_na_ss_condition": 1.0},
+    }
+
+    def __init__(
+        self,
+        min_nucleic_tokens: int = 2,
+        p_show_partial_feats: float = 0.7,
+        p_add_motif_scaffold_condition: float = 0.0,
+        min_tokens_per_motif: int = 1,
+        max_tokens_per_motif: int = 12,
+        min_motif_coverage_fraction: float = 0.02,
+        max_motif_coverage_fraction: float = 0.10,
+        max_unindexed_tokens: int = 0,
+        p_unindex_any: float = 0.0,
+        p_merge_unindexed_groups: float = 0.0,
+        p_split_unindexed_groups: float = 0.0,
+        p_increase_group_id_gap: float = 0.0,
+        p_internal_coords: float = 0.0,
+        nucleic_ss_min_shown: float = 0.2,
+        nucleic_ss_max_shown: float = 1.0,
+        n_islands_min: int = 1,
+        n_islands_max: int = 6,
+        p_canonical_bp_filter: float = 0.0,
+        na_only: bool = False,
+        planar_only: bool = True,
+        **kwargs,
+    ):
+        """Initialize NA-SS reveal, optional motif overlay, and annotation filters.
+
+        Control knobs for conditioning control are:
+        - ``p_show_partial_feats`` controls full vs. partial ``bp_partners`` reveal.
+        - ``nucleic_ss_min_shown`` / ``nucleic_ss_max_shown`` and
+          ``n_islands_min`` / ``n_islands_max`` shape the partial reveal.
+        - ``p_add_motif_scaffold_condition`` controls whether a motif scaffold is
+          additionally sampled.
+        - motif sizing/unindexing is controlled by the motif-specific arguments.
+        - ``p_canonical_bp_filter``, ``na_only``, and ``planar_only`` control
+          which interactions are eligible for annotation.
+
+        Control knobs for motif scaffold sampling are:
+         - ``p_add_motif_scaffold_condition`` controls whether a motif scaffold
+           is sampled in addition to the NA-SS conditioning.
+         - ``min_tokens_per_motif`` and ``max_tokens_per_motif`` control motif size.
+         - ``min_motif_coverage_fraction`` and ``max_motif_coverage_fraction``
+           control motif scaffold coverage as a fraction of eligible tokens.
+
+        Control knobs for unindexing behavior are:
+        - ``max_unindexed_tokens``  maximum number of tokens that can be unindexed in total.
+        - ``p_unindex_any`` probability of unindexing any motif at all.
+        - ``p_merge_unindexed_groups`` probability of merging two unindexed motif groups.
+        - ``p_split_unindexed_groups`` probability of splitting any unindexed motif group.
+        - ``p_increase_group_id_gap`` prob of increasing the gap in group IDs between indexed and unindexed groups
+
+        """
+        super().__init__(**kwargs)
+        self.min_nucleic_tokens = min_nucleic_tokens
+        self.p_show_partial_feats = p_show_partial_feats
+        self.p_add_motif_scaffold_condition = p_add_motif_scaffold_condition
+        self.min_tokens_per_motif = min_tokens_per_motif
+        self.max_tokens_per_motif = max_tokens_per_motif
+        self.min_motif_coverage_fraction = min_motif_coverage_fraction
+        self.max_motif_coverage_fraction = max_motif_coverage_fraction
+        self.max_unindexed_tokens = max_unindexed_tokens
+        self.p_unindex_any = p_unindex_any
+        self.p_merge_unindexed_groups = p_merge_unindexed_groups
+        self.p_split_unindexed_groups = p_split_unindexed_groups
+        self.p_increase_group_id_gap = p_increase_group_id_gap
+        self.p_internal_coords = p_internal_coords
+        self.nucleic_ss_min_shown = nucleic_ss_min_shown
+        self.nucleic_ss_max_shown = nucleic_ss_max_shown
+        self.n_islands_min = n_islands_min
+        self.n_islands_max = n_islands_max
+        self.p_canonical_bp_filter = p_canonical_bp_filter
+        self.na_only = na_only
+        self.planar_only = planar_only
+
+    def can_apply(self, data: dict) -> bool:
+        atom_array = data["atom_array"]
+        ensure_annotations(atom_array, "is_nucleic_acid", "is_polymer")
+        token_starts = get_token_starts(atom_array)
+        if len(token_starts) == 0:
+            return False
+        if self.na_only:
+            n_nucleic_tokens = int(atom_array.is_nucleic_acid[token_starts].sum())
+            return n_nucleic_tokens >= self.min_nucleic_tokens
+        n_polymer_tokens = int(atom_array.is_polymer[token_starts].sum())
+        return n_polymer_tokens >= 2
+
+    def sample_motif_mask(self, atom_array: AtomArray) -> tuple[np.ndarray, list[np.ndarray]]:
+        """Sample small polymer token islands to retain as motif scaffolds."""
+        coverage_fraction_goal = np.random.uniform(
+            self.min_motif_coverage_fraction,
+            self.max_motif_coverage_fraction,
+        )
+
+        fn_sample_seed = mg.SampleUniformly(is_eligible="is_polymer & (token_min_occupancy > 0) & ~has_nan_coord()")
+        fn_grow_seed = mg.GrowToTokenIsland(
+            island_min_size=self.min_tokens_per_motif,
+            island_max_size=self.max_tokens_per_motif,
+        )
+
+        total_eligible_tokens = atom_array.mask("is_polymer & is_token_start").sum()
+        min_total_tokens = int(max(1, (coverage_fraction_goal - 0.02) * total_eligible_tokens))
+        max_total_tokens = int(max(1, (coverage_fraction_goal + 0.02) * total_eligible_tokens))
+        fn_check_budget = mg.CheckTokenBudget(
+            n_min_tokens=min_total_tokens,
+            n_max_tokens=max_total_tokens,
+        )
+        total_mask, all_masks = mg.sample_mask_via_seed_grow_merge(
+            atom_array,
+            fn_sample_seed=fn_sample_seed,
+            fn_grow_seed=fn_grow_seed,
+            fn_check_budget=fn_check_budget,
+        )
+        self.motif_coverage_fraction_goal = coverage_fraction_goal
+        return total_mask, all_masks
+
+    def sample_unindexed_mask(
+        self,
+        all_masks: list[np.ndarray],
+        token_starts: np.ndarray,
+    ) -> np.ndarray:
+        """Sample motif islands to unindex while preserving whole conditioned islands."""
+        unindexed_mask = np.zeros_like(all_masks[0], dtype=bool)
+        unindexed_mask_indices = []
+        target_num_islands_to_unindex = np.random.randint(1, len(all_masks) + 1)
+
+        for _ in range(target_num_islands_to_unindex):
+            valid_mask_indices = [
+                i
+                for i, mask in enumerate(all_masks)
+                if i not in unindexed_mask_indices
+                and (mask | unindexed_mask)[token_starts].sum() <= self.max_unindexed_tokens
+            ]
+            if len(valid_mask_indices) == 0:
+                break
+            mask_index_to_add = np.random.choice(valid_mask_indices)
+            unindexed_mask_indices.append(mask_index_to_add)
+            unindexed_mask |= all_masks[mask_index_to_add]
+
+        return unindexed_mask
+
+    def forward(self, data: dict) -> dict:
+        atom_array = as_atom_array_plus(data["atom_array"])
+        ensure_annotations(atom_array, "is_nucleic_acid", "is_polymer", "is_token_start", "token_min_occupancy")
+
+        nucleic_mask = atom_array.is_nucleic_acid.astype(bool)
+        if "task" not in data:
+            data["task"] = {"name": self.__class__.__name__}
+        data["task"] |= {
+            "class": self.__class__.__name__,
+            "mask": nucleic_mask,
+        }
+
+        atom_array = apply_training_na_ss_condition(
+            atom_array,
+            p_show_partial_feats=self.p_show_partial_feats,
+            nucleic_ss_min_shown=self.nucleic_ss_min_shown,
+            nucleic_ss_max_shown=self.nucleic_ss_max_shown,
+            n_islands_min=self.n_islands_min,
+            n_islands_max=self.n_islands_max,
+            p_canonical_bp_filter=self.p_canonical_bp_filter,
+            NA_only=self.na_only,
+            planar_only=self.planar_only,
+        )
+
+        if true_with_prob(self.p_add_motif_scaffold_condition):
+            total_mask, all_masks = self.sample_motif_mask(atom_array)
+
+            nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
+            coord_condition_mask = total_mask & ~nan_coord_mask
+            C_CRD.set_mask(atom_array, coord_condition_mask)
+
+            res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
+            is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
+            C_SEQ.set_mask(atom_array, is_seq_conditioned)
+
+            if true_with_prob(self.p_unindex_any):
+                unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
+                if "atomize" in atom_array.get_annotation_categories():
+                    unindexed_mask &= ~atom_array.atomize
+                C_IDX.set_mask(atom_array, ~unindexed_mask)
+            else:
+                C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
+
+            all_index_group_ids = sample_unindexed_groups(
+                atom_array,
+                p_merge_groups=self.p_merge_unindexed_groups,
+                p_split_group=self.p_split_unindexed_groups,
+                p_increase_group_id_gap=self.p_increase_group_id_gap,
+            )
+            C_IDXGRP.set_annotation(atom_array, all_index_group_ids)
+            C_CRDGRP.set_annotation(atom_array, C_CRDGRP.default_annotation(atom_array))
+            C_INTCRD.set_mask(atom_array, C_INTCRD.default_mask(atom_array))
+            C_INTCRD.set_annotation(atom_array, C_INTCRD.default_annotation(atom_array))
+
+            if true_with_prob(self.p_internal_coords) and len(all_masks) > 0:
+                mask_indices = np.random.permutation(len(all_masks))
+                atom_array = convert_to_internal_coords(atom_array, all_masks[mask_indices[0]])
+
+                current_prob_geom = self.p_internal_coords
+                masks_added = 1
+                while True:
+                    current_prob_geom *= self.p_internal_coords
+                    if true_with_prob(current_prob_geom) and masks_added < len(all_masks):
+                        atom_array = convert_to_internal_coords(atom_array, all_masks[mask_indices[masks_added]])
+                        masks_added += 1
+                    else:
+                        break
+
+            data["task"] |= {
+                "motif_mask": total_mask,
+                "motif_all_masks": all_masks,
+                "motif_coverage_fraction_goal": getattr(self, "motif_coverage_fraction_goal", None),
+            }
+
+        data["atom_array"] = atom_array
+        data = self.apply_design_task_modifiers(data)
+        data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
         return data

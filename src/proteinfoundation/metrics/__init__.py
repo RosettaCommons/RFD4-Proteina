@@ -37,6 +37,7 @@ structure, no refolding or energy computation required.
 - ``RASAMetrics``: Relative accessible surface area.
 - ``MolprobityMetrics``: Clashscore, Ramachandran, rotamer outliers.
 - ``HbondMetrics``: Hydrogen bond counts and energies.
+- ``NucleicSSSimilarityMetrics``: nucleic acid base pair conditioning adherence.
 """
 
 from proteinfoundation.metrics.af3_oracle import AF3Oracle
@@ -103,5 +104,13 @@ try:
     from proteinfoundation.metrics.posebusters_metrics import PoseBustersMetric
 
     __all__.append("PoseBustersMetric")
+except ImportError:
+    pass
+
+# --- Conditioning Metrics ---
+try:
+    from proteinfoundation.metrics.nucleic_ss_metrics import NucleicSSSimilarityMetrics
+
+    __all__.append("NucleicSSSimilarityMetrics")
 except ImportError:
     pass

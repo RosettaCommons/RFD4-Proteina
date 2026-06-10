@@ -42,6 +42,8 @@ SPECS: dict[str, tuple] = {
     C_SEQ.mask_name: (torch.bool, False, "I"),
     C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
+    "na_ss_state": (torch.int16, 0, "I"),
+    "na_ss_state_mask": (torch.bool, False, "I"),
     "chain_breaks_per_residue": (torch.float32, 0.0, "I"),
     "missing_atom_count": (torch.float32, 0.0, "I"),
     # Token-level with extra dims [I, ...]
@@ -66,6 +68,8 @@ SPECS: dict[str, tuple] = {
     "bond_mask": (torch.bool, False, "I I"),
     "bond_order": (torch.int16, 0, "I I"),
     "is_aromatic": (torch.bool, False, "I I"),
+    "na_ss_pair": (torch.int16, 0, "I I"),
+    "na_ss_pair_mask": (torch.bool, False, "I I"),
     "token_bond_path_length": (torch.int16, 0, "I I"),
     "canonical_polymer_ordering": (torch.int8, 0, "I I"),
     # MSA-level [S, I, ...]

@@ -8,6 +8,28 @@ from proteinfoundation.nn.modules.seq_transition_af3 import Transition
 from proteinfoundation.utils.constants import RESTYPE_ATOM37_MASK, UNIFIED_RESTYPE_ATOM37_MASK
 
 
+def get_allowed_residue_type_mask(device: torch.device | None = None, n_residue_types: int = 20) -> torch.Tensor | None:
+    """Get per-token-type allowed residue classes for AE decoding.
+
+    Token type convention:
+    - 0: protein
+    - 1: RNA
+    - 2: DNA
+    - 3: atomized
+    - 4: unknown
+    """
+    if n_residue_types != 33:
+        return None
+
+    allowed = torch.zeros((5, n_residue_types), dtype=torch.bool, device=device)
+    allowed[0, 1:22] = True  # 20 AA + UNK
+    allowed[1, 22:27] = True  # RNA + unknown RNA
+    allowed[2, 27:32] = True  # DNA + unknown DNA
+    allowed[3, 32] = True  # atomized token only
+    allowed[4, 1:33] = True  # unknown token-type: allow any non-mask class
+    return allowed
+
+
 def get_atom_mask(device: torch.device | None = None, n_residue_types: int = 20) -> torch.Tensor:
     """Get atom37 mask for residue types.
 
@@ -172,6 +194,24 @@ class DecoderTransformer(torch.nn.Module):
 
         # Get logits
         logits_out = self.logit_linear(seqs) * mask[..., None]  # [b, n, 20]
+
+        if "token_type" in input:
+            allowed_res_types = get_allowed_residue_type_mask(
+                device=logits_out.device,
+                n_residue_types=self.n_residue_types,
+            )
+            if allowed_res_types is not None:
+                token_type = input["token_type"].long()
+                max_token_type = allowed_res_types.shape[0] - 1
+                invalid_token_type = (token_type < 0) | (token_type > max_token_type)
+                if torch.any(invalid_token_type):
+                    bad_values = torch.unique(token_type[invalid_token_type]).detach().cpu().tolist()
+                    raise ValueError(
+                        f"token_type must be in [0, {max_token_type}] for unified AE decoding; "
+                        f"got invalid values {bad_values}"
+                    )
+                allowed_per_token = allowed_res_types[token_type] | ~mask[..., None]
+                logits_out = logits_out.masked_fill(~allowed_per_token, torch.finfo(logits_out.dtype).min)
 
         # Get coordinates
         coors_flat_nm = self.struct_linear(seqs) * mask[..., None]  # [b, n, 37 * 3]

@@ -379,8 +379,10 @@ def atom37_to_torsion_angles(
         )[((None,) * len(torsion_angles_sin_cos.shape[:-2])) + (slice(None), None)]
     )
 
+    chi_pi_periodic = list(rc.chi_pi_periodic)
+    chi_pi_periodic.append([0.0, 0.0, 0.0, 0.0])  # entry for aatype=20 (UNK / non-AA residues)
     chi_is_ambiguous = torsion_angles_sin_cos.new_tensor(
-        rc.chi_pi_periodic,
+        chi_pi_periodic,
     )[aatype, ...]
 
     mirror_torsion_angles = torch.cat(

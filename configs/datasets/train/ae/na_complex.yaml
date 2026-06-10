@@ -7,7 +7,7 @@ defaults:
 
 dataset:
   name: na_complex_ae
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/na_complex/na_complex.csv
+  data: ${oc.env:DATA_PATH}/train_datasets/na_complex/na_complex.parquet
   columns_to_load:
     - example_id
     - path
