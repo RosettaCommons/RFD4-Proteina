@@ -93,6 +93,9 @@ product_flowmatcher:
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
+# Set to true when using an AE trained on the unified pipeline (same encoding, no -1 offset)
+use_unified_ae_encoding: false
+
 # MSA module: override to true in experiment configs that set load_msa per-dataset
 nn:
   use_msa_module: false

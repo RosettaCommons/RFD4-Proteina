@@ -7,7 +7,7 @@ defaults:
 
 dataset:
   name: rna_monomer_ae
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/rna_monomer/rna_monomer.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
   columns_to_load:
     - example_id
     - path

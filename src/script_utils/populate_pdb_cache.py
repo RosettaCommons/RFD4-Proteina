@@ -137,7 +137,7 @@ def populate_cache(
     """
     print("=" * 80)
     if array_task_id is not None:
-        print(f"PDB Cache Population (Array Task {array_task_id}/{array_total_tasks-1})")
+        print(f"PDB Cache Population (Array Task {array_task_id}/{array_total_tasks - 1})")
     else:
         print("PDB Cache Population")
     print("=" * 80)
@@ -176,7 +176,7 @@ def populate_cache(
     print(f"Rows before deduplication: {len(df):,}")
     unique_paths_df = df.drop_duplicates(subset=["path"], keep="first")
     print(f"Unique PDB structures: {len(unique_paths_df):,}")
-    print(f"Reduction: {100 * (1 - len(unique_paths_df)/len(df)):.1f}%")
+    print(f"Reduction: {100 * (1 - len(unique_paths_df) / len(df)):.1f}%")
     df = unique_paths_df
 
     # Select subset for this array task
@@ -244,11 +244,11 @@ def populate_cache(
     print("SUMMARY")
     print("=" * 80)
     print(f"Total structures: {len(results):,}")
-    print(f"Newly parsed:     {successful:,} ({100*successful/len(results):.1f}%)")
-    print(f"Already cached:   {cached:,} ({100*cached/len(results):.1f}%)")
-    print(f"Failed:           {failed:,} ({100*failed/len(results) if results else 0:.1f}%)")
-    print(f"Elapsed time:     {elapsed:.1f}s ({elapsed/60:.1f} min)")
-    print(f"Rate:             {len(results)/elapsed:.1f} structures/sec")
+    print(f"Newly parsed:     {successful:,} ({100 * successful / len(results):.1f}%)")
+    print(f"Already cached:   {cached:,} ({100 * cached / len(results):.1f}%)")
+    print(f"Failed:           {failed:,} ({100 * failed / len(results) if results else 0:.1f}%)")
+    print(f"Elapsed time:     {elapsed:.1f}s ({elapsed / 60:.1f} min)")
+    print(f"Rate:             {len(results) / elapsed:.1f} structures/sec")
     print(f"Cache directory:  {cache_dir}")
     print()
 
@@ -281,9 +281,9 @@ def populate_cache(
         print()
         print("Sample errors:")
         for i, r in enumerate(failed_examples[:5]):
-            print(f"  {i+1}. {r['example_id']}: {r['error'][:100]}")
+            print(f"  {i + 1}. {r['example_id']}: {r['error'][:100]}")
         if failed > 5:
-            print(f"  ... and {failed-5} more")
+            print(f"  ... and {failed - 5} more")
 
     print()
     print("✅ Cache population complete!")

@@ -1,0 +1,19 @@
+run_every_n_val_epochs: 3
+compute_loss: true
+
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+
+  # Required parameters for each inheriting dataset
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/rna_sm_aptamer.json
+  name: rna_sm_aptamer_fixed-design
+  subset_to_keys:
+    - RNA_cortisol_aptamer
+
+  num_replicates: 50
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - hbond_conditioning
+      - sm_binder_refolding

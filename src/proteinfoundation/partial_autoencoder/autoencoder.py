@@ -159,6 +159,7 @@ class AutoEncoder(L.LightningModule):
         z_latent: Float[torch.Tensor, "b n d"],
         ca_coors_nm: Float[torch.Tensor, "b n 3"],
         mask: Bool[torch.Tensor, "b n"],
+        token_type: Int[torch.Tensor, "b n"] | None = None,
     ) -> dict:
         """
         Runs the decoder and returns a dictionary with all necessary decoding information.
@@ -169,6 +170,8 @@ class AutoEncoder(L.LightningModule):
             "residue_mask": mask,
             "padding_mask": mask,
         }
+        if token_type is not None:
+            input_decoder["token_type"] = token_type
         output_dec = self.decoder(input_decoder)
         mask = output_dec["residue_mask"]  # [b, n]
         atom_mask = output_dec["atom_mask"]  # [b, n, 37]

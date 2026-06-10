@@ -1411,6 +1411,62 @@ class IsAromaticPairFeat(Feature):
             return torch.zeros(b, n, n, 1, device=device)
 
 
+class NucleicSecondaryStructurePairFeat(Feature):
+    """Nucleic-acid secondary-structure pair feature with explicit mask channels.
+
+    Expects:
+      - ``na_ss_pair``: binary [b, n, n] for positive base-pair edges
+      - ``na_ss_pair_mask``: binary [b, n, n] for specified entries
+
+    Returns:
+      - concatenated [value, mask] channels with shape [b, n, n, 2]
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=2)
+        self._has_logged = False
+
+    def forward(self, batch: dict[str, Any]) -> torch.Tensor:
+        b, n = self.extract_bs_and_n(batch)
+        device = self.extract_device(batch)
+        if "na_ss_pair" in batch and "na_ss_pair_mask" in batch:
+            na_ss_pair = batch["na_ss_pair"].to(device=device, dtype=torch.float32)[..., None]
+            na_ss_pair_mask = batch["na_ss_pair_mask"].to(device=device, dtype=torch.float32)[..., None]
+            return torch.cat([na_ss_pair, na_ss_pair_mask], dim=-1)
+        if not self._has_logged:
+            logger.warning("No na_ss_pair in batch, returning zeros for NucleicSecondaryStructurePairFeat")
+            self._has_logged = True
+        return torch.zeros(b, n, n, self.dim, device=device)
+
+
+class NucleicSecondaryStructureStateSeqFeat(Feature):
+    """Nucleic-acid 1-body secondary-structure state with explicit mask channel.
+
+    Expects:
+      - ``na_ss_state``: int [b, n] with BasePairEnum values
+      - ``na_ss_state_mask``: binary [b, n] for specified tokens
+
+    Returns:
+      - concatenated [value, mask] channels with shape [b, n, 2]
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=2)
+        self._has_logged = False
+
+    def forward(self, batch: dict[str, Any]) -> torch.Tensor:
+        b, n = self.extract_bs_and_n(batch)
+        device = self.extract_device(batch)
+        if "na_ss_state" in batch and "na_ss_state_mask" in batch:
+            na_ss_state = batch["na_ss_state"].to(device=device, dtype=torch.float32)[..., None]
+            na_ss_state_mask = batch["na_ss_state_mask"].to(device=device, dtype=torch.float32)[..., None]
+            return torch.cat([na_ss_state, na_ss_state_mask], dim=-1)
+        if not self._has_logged:
+            logger.warning("No na_ss_state in batch, returning zeros for NucleicSecondaryStructureStateSeqFeat")
+            self._has_logged = True
+        return torch.zeros(b, n, self.dim, device=device)
+
+
 ####################################
 # # Class that produces features # #
 ####################################
@@ -1543,6 +1599,8 @@ class FeatureFactory(torch.nn.Module):
                 return HydrogenBondSeqFeat(**kwargs)
             elif f == "hotspot":
                 return HotspotSeqFeat(**kwargs)
+            elif f == "na_ss_state":
+                return NucleicSecondaryStructureStateSeqFeat(**kwargs)
             elif f == "coord_group_seq":
                 return CoordGroupSeqFeat(**kwargs)
             elif f == "cath_code":
@@ -1616,6 +1674,8 @@ class FeatureFactory(torch.nn.Module):
                 return BondOrderPairFeat(**kwargs)
             elif f == "is_aromatic":
                 return IsAromaticPairFeat(**kwargs)
+            elif f == "na_ss_pair":
+                return NucleicSecondaryStructurePairFeat(**kwargs)
 
             # Canonical polymer ordering (default off; add to feats_pair_repr to enable)
             elif f == "canonical_polymer_ordering":

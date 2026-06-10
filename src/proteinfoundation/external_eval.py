@@ -678,7 +678,7 @@ def run_external_eval(
         start_idx = job_id * chunk_size_abs
         end_idx = min(start_idx + chunk_size_abs, total_size)
 
-        print(f"Processing chunk {job_id}: indices {start_idx} to {end_idx-1} (total size: {total_size})")
+        print(f"Processing chunk {job_id}: indices {start_idx} to {end_idx - 1} (total size: {total_size})")
         df = df.iloc[start_idx:end_idx]
 
     if df.empty:

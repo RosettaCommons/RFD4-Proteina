@@ -85,7 +85,7 @@ def get_interface_residues(
         residue_idx = int(res) - offset
         interface_residues.append(residue_idx)
 
-    logger.info(f"Found {len(interface_residues)} interface residues " f"(cutoff={cutoff}Å) on chain {binder_chain}")
+    logger.info(f"Found {len(interface_residues)} interface residues (cutoff={cutoff}Å) on chain {binder_chain}")
 
     return sorted(interface_residues)
 
@@ -144,7 +144,7 @@ def get_interface_residues_all_atom(
     interface_residues = [int(res) - offset for res in binder_interface]
 
     logger.info(
-        f"Found {len(interface_residues)} interface residues (all-atom, cutoff={cutoff}Å) " f"on chain {binder_chain}"
+        f"Found {len(interface_residues)} interface residues (all-atom, cutoff={cutoff}Å) on chain {binder_chain}"
     )
 
     return sorted(interface_residues)

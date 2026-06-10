@@ -394,6 +394,7 @@ class Proteina(L.LightningModule):
             raise ValueError("No autoencoder checkpoint path provided")
 
         if ae_ckp_path is None:
+            self._use_unified_ae_encoding = False
             return None, None
 
         logger.info(f"Loading autoencoder from {ae_ckp_path}")
@@ -401,6 +402,14 @@ class Proteina(L.LightningModule):
         if freeze_params:
             for param in autoencoder.parameters():
                 param.requires_grad = False
+
+        n_ae_residue_types = autoencoder.decoder.logit_linear[-1].out_features
+        self._use_unified_ae_encoding = n_ae_residue_types == 33
+        logger.info(
+            f"Autoencoder uses {'unified' if self._use_unified_ae_encoding else 'legacy'} "
+            f"encoding (n_residue_types={n_ae_residue_types})"
+        )
+
         return autoencoder, autoencoder.latent_dim
 
     def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
@@ -708,19 +717,26 @@ class Proteina(L.LightningModule):
                 device = batch["coords_nm"].device
                 return torch.zeros(b, n_tokens, latent_dim, device=device)
 
-            # Change this once we retrain AE with correct token encoding
-            residue_type_for_ae = batch["residue_type"] - 1  # [b, n_tokens]
-            # Clamp for non-encodable tokens to avoid -1 index (invalid for embeddings)
+            # Legacy AEs were trained with 0-indexed protein-only residue types (ALA=0).
+            # Unified AEs use the full pipeline encoding (<M>=0, ALA=1, ..., RNA/DNA=21+)
+            # and can also encode nucleotides.
+            if self._use_unified_ae_encoding:
+                residue_type_for_ae = batch["residue_type"]
+            else:
+                residue_type_for_ae = batch["residue_type"] - 1
+                # Legacy AE can only encode proteins -- mask out nucleotides
+                token_type = batch["token_type"]  # 0=protein, 1=RNA, 2=DNA, 3=atomized, 4=unknown
+                encodable_mask = encodable_mask & (token_type == 0)
+
+            # Clamp for non-encodable tokens to avoid invalid indices for embeddings
             residue_type_for_ae = torch.where(
                 encodable_mask, residue_type_for_ae, torch.zeros_like(residue_type_for_ae)
             )
             ae_batch = {
-                "coords": batch["coords"],  # [b, n_tokens, 37, 3]
-                "coords_nm": batch["coords_nm"],  # [b, n_tokens, 37, 3]
-                "coord_mask": batch.get("coord_mask", torch.ones_like(batch["coords"][..., 0])),  # [b, n_tokens, 37]
-                "residue_type": residue_type_for_ae,  # [b, n_tokens]
-                "padding_mask": encodable_mask,  # [b, n_tokens] - only encode these
-                "can_be_encoded": encodable_mask,  # Pass to feature factory for proper masking
+                **batch,
+                "residue_type": residue_type_for_ae,
+                "padding_mask": encodable_mask,
+                "can_be_encoded": encodable_mask,
             }
 
             # Encode
@@ -1703,6 +1719,8 @@ class Proteina(L.LightningModule):
                 input_atom_array=input_atom_array,
                 bb_ca_only=bb_ca_only,
             )
+            if result is None:
+                continue
             result["raw_batch_id"] = batch["example_id_batch"][orig_batch_idx]
             result["example_id"] = example_ids[i] if example_ids is not None else result["raw_batch_id"]
             generation_list.append(result)
@@ -1839,9 +1857,13 @@ class Proteina(L.LightningModule):
                     # (We use -1 residue mask to indicate these tokens were not encoded/decoded)
                     residue_type_full[i, no_latent_tokens] = -1
 
-            # TEMPORARY HACK: Shift all non-negative residue types by 1 to adjust for differences
-            # in AF2 vs. unified Atom37 encoding
-            residue_type_full = torch.where(residue_type_full >= 0, residue_type_full + 1, residue_type_full)
+            # Legacy AEs (n_residue_types=20) were trained with a -1 offset applied to
+            # Legacy AEs (n_residue_types=20) were trained with a -1 offset applied to
+            # the pipeline's UNIFIED_ATOM37_ENCODING indices (ALA=1 -> 0, etc.), so the
+            # decoder outputs in that shifted space and we must undo it here. Unified AEs
+            # (n_residue_types=33) use the encoding indices directly -- no shift needed.
+            if not self._use_unified_ae_encoding:
+                residue_type_full = torch.where(residue_type_full >= 0, residue_type_full + 1, residue_type_full)
 
             return {
                 "coors": nm_to_ang(coors_nm_full),  # [b, n, 37, 3] - padded, use mask to slice

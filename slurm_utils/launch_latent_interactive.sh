@@ -110,12 +110,18 @@ if [ "$NO_SQUASH" == "true" ]; then
     USE_SQUASHFS_MOUNTS="false"
 fi
 
+if [ "${CONTAINER_TYPE:-}" == "apptainer" ]; then
+    CONTAINER_RUNTIME_IMAGE="${LATENT_APPTAINER_SIF:-}"
+else
+    CONTAINER_RUNTIME_IMAGE="${CONTAINER_IMAGE:-}"
+fi
+
 print_header "Interactive Session Configuration"
 echo "  Cluster:       $CLUSTER"
 echo "  Partition:     $PARTITION"
 echo "  GPUs:          $NGPUS"
 echo "  Time:          $TIME"
-echo "  Container:     $(basename $CONTAINER_IMAGE)"
+echo "  Container:     $(basename "${CONTAINER_RUNTIME_IMAGE:-unknown}")"
 echo "  Repo root:     $REPO_ROOT"
 echo "  Squashfs:      ${USE_SQUASHFS_MOUNTS:-false}"
 
@@ -213,6 +219,13 @@ fi
 # Use a non-expanding heredoc ('INNER_EOF') so $PYTHONPATH etc. are NOT expanded now
 # — they'll be expanded when the script runs inside the container.
 cat >> "$ENTRYPOINT" << INNER_EOF
+# Source cluster env file (DATA_PATH, CCD_MIRROR_PATH, etc.)
+if [ -f "$REPO_ROOT/.ipd/.env.${CLUSTER}" ]; then
+    set -a
+    source "$REPO_ROOT/.ipd/.env.${CLUSTER}" 2>/dev/null || true
+    set +a
+fi
+
 # Environment
 export PYTHONPATH=$CONTAINER_PYTHONPATH:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
@@ -252,27 +265,36 @@ if [ "$USE_SQUASHFS_MOUNTS" != "true" ]; then
 fi
 echo ""
 
-# Construct srun command based on cluster type
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    # DIGS uses Apptainer
+# Construct srun command based on container type
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    # Apptainer clusters (DIGS, CoreWeave)
+    if [ -z "${LATENT_APPTAINER_SIF:-}" ]; then
+        echo "Error: LATENT_APPTAINER_SIF is not set for Apptainer cluster."
+        exit 1
+    fi
+    # Build --bind args matching exec_core.sh:
+    # 1. Repo root
+    # 2. APPTAINER_BIND_PATHS (semicolon-separated, from .env.<cluster>)
+    # 3. DATASET_SQUASH_MOUNTS squashfs binds (if squashfs enabled)
+    BIND_ARGS="--bind $REPO_ROOT:$REPO_ROOT"
+    if [ -n "${APPTAINER_BIND_PATHS:-}" ]; then
+        IFS=';' read -ra BIND_ENTRIES <<< "$APPTAINER_BIND_PATHS"
+        for entry in "${BIND_ENTRIES[@]}"; do
+            [ -n "$entry" ] && BIND_ARGS="$BIND_ARGS --bind $entry"
+        done
+    fi
+    if [ "${USE_SQUASHFS_MOUNTS:-false}" == "true" ] && [ -n "${DATASET_SQUASH_MOUNTS:-}" ]; then
+        IFS=';' read -ra SQFS_ENTRIES <<< "$DATASET_SQUASH_MOUNTS"
+        for entry in "${SQFS_ENTRIES[@]}"; do
+            [ -n "$entry" ] && BIND_ARGS="$BIND_ARGS --bind ${entry}:image-src=/"
+        done
+    fi
     srun --cpu-bind=none --kill-on-bad-exit -p "$PARTITION" -t "$TIME" -J latent-dev \
         -N 1 --ntasks=1 --gres=gpu:$NGPUS \
-        --pty apptainer exec --nv "$CONTAINER_IMAGE" "$ENTRYPOINT"
+        --export=ALL \
+        --pty apptainer exec --nv $BIND_ARGS "$LATENT_APPTAINER_SIF" "$ENTRYPOINT"
 else
     # OCI/GB200 use Docker squash images via pyxis
-    #
-    # Key difference from the old script:
-    #   OLD: srun --pty --container-image=... bash -c "setup_cmds && exec bash"
-    #   NEW: srun --pty --container-image=... /path/to/entrypoint.sh
-    #
-    # The old approach used bash -c with nested quoting, which interacts badly
-    # with --pty and pyxis — commands could end up running on the host (where
-    # mkdir, squashfuse etc. don't exist) instead of inside the container.
-    #
-    # The new approach passes a script file as the command. The script lives on
-    # /lustre (mounted into the container via /lustre:/lustre:rw), so it's
-    # accessible inside the container. This is the same pattern as
-    # launch_train_latents.sh which runs bash -c "..." inside an SBATCH script.
     srun --cpu-bind=none --kill-on-bad-exit -p "$PARTITION" -A "$ACCOUNT" -t "$TIME" -J latent-dev \
         -N 1 --ntasks=1 --gres=gpu:$NGPUS \
         $CONTAINER_CMD \

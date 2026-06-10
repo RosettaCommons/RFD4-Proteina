@@ -1,0 +1,20 @@
+# NA secondary-structure conditioning with occasional small motif scaffolds,
+# without unindexing.
+
+nucleic_ss_conditioning:
+  frequency: 1.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.NucleicSecondaryStructureTask
+    min_nucleic_tokens: 2
+    p_show_partial_feats: 0.7
+    p_add_motif_scaffold_condition: 0.2
+    min_tokens_per_motif: 1
+    max_tokens_per_motif: 12
+    min_motif_coverage_fraction: 0.02
+    max_motif_coverage_fraction: 0.10
+    max_unindexed_tokens: 0
+    p_unindex_any: 0.0
+    p_merge_unindexed_groups: 0.0
+    p_split_unindexed_groups: 0.0
+    p_increase_group_id_gap: 0.0
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

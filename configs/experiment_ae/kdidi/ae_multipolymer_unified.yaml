@@ -1,0 +1,37 @@
+# @package _global_
+# Autoencoder training for multipolymer unified model
+# Adds na_complex (protein-DNA/RNA complexes) on top of afavor's base mix
+# 2 nodes x 8 GPUs = 16 GPUs total
+
+defaults:
+  - /experiment_ae/afavor/ae_unified_pdb_multipolymer
+  - /datasets/train/ae/na_complex@datasets.train.na_complex
+  - _self_
+
+run_name_: kdidi_ae_multipolymer_unified_v3
+
+pretrain_ckpt_path: null
+
+hardware:
+  ngpus_per_node_: 8
+  nnodes_: 2
+
+datasets:
+  train:
+    rna_monomer:
+      probability: 0.10
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
+    pdb_interfaces:
+      probability: 0.45
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_interfaces.parquet
+    pdb_pn_units:
+      probability: 0.35
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_pn_units.parquet
+    na_complex:
+      probability: 0.10
+
+log:
+  tags: ["ae", "60m", "unified", "pdb", "multipolymer", "rna", "dna", "na-complex", "kdidi", "2node"]

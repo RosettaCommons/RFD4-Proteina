@@ -15,7 +15,6 @@ from atomworks.constants import (
     STANDARD_DNA,
     STANDARD_RNA,
     UNKNOWN_AA,
-    UNKNOWN_ATOM_NAME,
     UNKNOWN_DNA,
     UNKNOWN_RNA,
 )
@@ -97,14 +96,17 @@ from biotite.structure import AtomArray
 from einops import rearrange
 
 from proteinfoundation.conditions import (
+    C_BP,
     C_CATH,
     C_CRDGRP,
     C_HB,
     C_HOT,
     C_IDXGRP,
     C_INTCRD,
+    C_NA_SS_STATE,
     C_RAS,
     C_SEC,
+    BasePairEnum,
     HBondEnum,
     RasaEnum,
 )
@@ -116,9 +118,11 @@ from proteinfoundation.transforms.atom_names import (
 from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_expansion
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
-from proteinfoundation.transforms.invariants import ValidateBatchInvariants
 from proteinfoundation.transforms.loss_weight_predicates import build_loss_weight_upweights
 from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
+from proteinfoundation.transforms.na_geom import (
+    FeaturizeNucleicAcidSecondaryStructure,
+)
 from proteinfoundation.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
 )
@@ -173,99 +177,46 @@ class TokenType:
 
 
 @functools.lru_cache(maxsize=1)
-def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build sorted atom name arrays for vectorized slot lookups.
+def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray]:
+    """Build sorted residue-specific atom keys for vectorized atom37 slot lookup.
 
-    Builds comprehensive lookup arrays by iterating through all standard and
-    unknown amino acid and nucleic acid residues. Uses @lru_cache to ensure
-    we only build the lookups once per Python session.
-
-    Returns:
-        Tuple of (aa_atom_names, aa_atom_slots, na_atom_names, na_atom_slots)
-        where names are sorted arrays of atom names and slots are corresponding
-        slot indices for the atom37 encoding.
-
-    Note:
-        Atom names are stored with trailing spaces stripped to match the format
-        used in the UNIFIED_ATOM37_ENCODING. At runtime, we strip atom names from
-        AtomArray before lookup.
+    Uses ``<res_name>|<atom_name>`` keys rather than atom names alone. This is
+    required for nucleic acids, where purines and pyrimidines reuse names like
+    ``N1`` / ``C2`` / ``N3`` but place them in different atom37 slots.
     """
-    # Build AA lookup (all standard + UNK)
-    aa_atom_to_slot = {}
-    aa_residues = [*STANDARD_AA, UNKNOWN_AA]
-    for res_name in aa_residues:
+    atom_key_to_slot: dict[str, int] = {}
+    residues = [
+        *STANDARD_AA,
+        UNKNOWN_AA,
+        *STANDARD_RNA,
+        *STANDARD_DNA,
+        UNKNOWN_RNA,
+        UNKNOWN_DNA,
+    ]
+    for res_name in residues:
         atoms = UNIFIED_ATOM37_ENCODING.token_atoms[res_name]
         for slot, atom_name in enumerate(atoms):
-            if atom_name.strip():  # Skip empty slots
-                aa_atom_to_slot[atom_name.strip()] = slot
-
-    # Add masked token lookup
-    aa_atom_to_slot[UNKNOWN_ATOM_NAME] = 1
-
-    # Convert to sorted arrays for searchsorted
-    aa_names_sorted = sorted(aa_atom_to_slot.keys())
-    aa_atom_names = np.array(aa_names_sorted)
-    aa_atom_slots = np.array([aa_atom_to_slot[name] for name in aa_names_sorted], dtype=np.int32)
-
-    # Build NA lookup (all standard RNA + DNA + unknowns)
-    na_atom_to_slot = {}
-    na_residues = [*STANDARD_RNA, *STANDARD_DNA, UNKNOWN_RNA, UNKNOWN_DNA]
-    for res_name in na_residues:
-        atoms = UNIFIED_ATOM37_ENCODING.token_atoms[res_name]
-        for slot, atom_name in enumerate(atoms):
-            if atom_name.strip():
-                na_atom_to_slot[atom_name.strip()] = slot
-
-    # Add masked token lookup
-    na_atom_to_slot[UNKNOWN_ATOM_NAME] = 1
-
-    # Convert to sorted arrays for searchsorted
-    na_names_sorted = sorted(na_atom_to_slot.keys())
-    na_atom_names = np.array(na_names_sorted)
-    na_atom_slots = np.array([na_atom_to_slot[name] for name in na_names_sorted], dtype=np.int32)
-
-    return aa_atom_names, aa_atom_slots, na_atom_names, na_atom_slots
+            atom_name = atom_name.strip()
+            if atom_name:
+                atom_key_to_slot[f"{res_name}|{atom_name}"] = slot
+    keys_sorted = sorted(atom_key_to_slot.keys())
+    atom_keys = np.array(keys_sorted)
+    atom_slots = np.array([atom_key_to_slot[key] for key in keys_sorted], dtype=np.int32)
+    return atom_keys, atom_slots
 
 
-# Module-level cached lookups
-_AA_ATOM_NAMES, _AA_ATOM_SLOTS, _NA_ATOM_NAMES, _NA_ATOM_SLOTS = _build_atom37_lookups()
+def _lookup_atom37_slots(keys: np.ndarray, sorted_keys: np.ndarray, sorted_slots: np.ndarray) -> np.ndarray:
+    """Lookup atom37 slots from sorted residue-specific keys."""
+    positions = np.searchsorted(sorted_keys, keys)
+    valid = positions < len(sorted_keys)
+    matched = valid & (sorted_keys[np.clip(positions, 0, len(sorted_keys) - 1)] == keys)
+    out = np.full(len(keys), -1, dtype=np.int32)
+    out[matched] = sorted_slots[positions[matched]]
+    return out
 
 
-def build_atom37_slots(atom_array: AtomArray) -> np.ndarray:
-    """Map each atom to its atom37 slot index.
-
-    Args:
-      atom_array: Source structure. Accepts both
-        :py:class:`~biotite.structure.AtomArray` and
-        :py:class:`~atomworks.io.utils.atom_array_plus.AtomArrayPlus`.
-
-    Returns:
-      Integer slot indices of shape [n_atoms]. Unknown atoms get -1.
-    """
-    aap = as_atom_array_plus(atom_array)
-    atom_names = np.char.strip(aap.atom_name.astype(str))
-    slots = np.full(len(atom_names), -1, dtype=np.int32)
-    categories = set(aap.get_annotation_categories())
-
-    if "token_type" in categories:
-        token_type = aap.token_type
-        is_protein = token_type == TokenType.PROTEIN
-        is_na = (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
-        is_atomized = token_type == TokenType.ATOMIZED
-    else:
-        ensure_annotations(aap, "is_protein", "is_rna", "is_dna")
-        is_protein = aap.is_protein
-        is_na = aap.is_rna | aap.is_dna
-        is_atomized = aap.atomize if "atomize" in categories else np.zeros_like(is_protein, dtype=bool)
-
-    if is_protein.any():
-        slots[is_protein] = _AA_ATOM_SLOTS[np.searchsorted(_AA_ATOM_NAMES, atom_names[is_protein])]
-    if is_na.any():
-        slots[is_na] = _NA_ATOM_SLOTS[np.searchsorted(_NA_ATOM_NAMES, atom_names[is_na])]
-    if is_atomized.any():
-        slots[is_atomized] = 1
-
-    return slots
+# Module-level cached residue-specific lookups
+_ATOM37_KEYS, _ATOM37_SLOTS = _build_atom37_lookups()
 
 
 class InferQueryPNUnitIIDsForDimers(Transform):
@@ -469,9 +420,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats[C_IDXGRP.full_name] = C_IDXGRP.annotation(aa, default="generate")
         feats[C_CRDGRP.full_name] = C_CRDGRP.annotation(aa, default="generate")
 
-        # +------ Two-body conditions ------+
-        # TODO: Not yet supported
-
         # +------ Gap / missing-atom features ------+
         if "chain_breaks_per_residue" in aa.get_annotation_categories():
             feats["chain_breaks_per_residue"] = aa.chain_breaks_per_residue  # [L]
@@ -572,6 +520,7 @@ class ConvertToAtom37Format(Transform):
 
         token_starts = get_token_starts(atom_array, add_exclusive_stop=False)
         num_tokens = len(token_starts)
+        atom_names = np.char.strip(atom_array.atom_name.astype(str))  # [L]
 
         # +--------- Pass through existing token-level features ---------+
         for feat_name in EXISTING_TOKEN_LEVEL_FEATURES:
@@ -594,9 +543,24 @@ class ConvertToAtom37Format(Transform):
                 atom37_arrays[feat_name] = np.full(shape, pad_value, dtype=feats[feat_name].dtype)  # [L, 37, ...]
 
         atom37_mask = np.zeros((num_tokens, 37), dtype=bool)  # [L, 37]
+        n_atoms = atom_array.array_length()
 
-        # Map each atom to its atom37 slot
-        atom_slots = build_atom37_slots(atom_array)
+        # Initialize slot assignments (-1 = invalid)
+        atom_slots = np.full(n_atoms, -1, dtype=np.int32)  # [n_atoms]
+
+        # Residue-specific slot lookup is required for NA, since purines and
+        # pyrimidines reuse atom names but assign them to different slots.
+        token_type = feats["token_type"]  # [n_atoms] with values from TokenType enum
+
+        is_polymer = (token_type == TokenType.PROTEIN) | (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
+        if is_polymer.any():
+            residue_names = atom_array.res_name[is_polymer].astype(str)
+            polymer_atom_names = atom_names[is_polymer]
+            polymer_keys = np.char.add(np.char.add(residue_names, "|"), polymer_atom_names)
+            atom_slots[is_polymer] = _lookup_atom37_slots(polymer_keys, _ATOM37_KEYS, _ATOM37_SLOTS)
+
+        # Atomized atoms → slot 1
+        atom_slots[(token_type == TokenType.ATOMIZED)] = 1
 
         # Scatter atoms into atom37 arrays (vectorized)
         atom37_mask[atom_array.token_id, atom_slots] = True
@@ -619,6 +583,41 @@ class ConvertToAtom37Format(Transform):
         if C_INTCRD.mask_name in result and C_INTCRD.full_name in result:
             internal_coord_cond_mask_expanded = result[C_INTCRD.mask_name][..., np.newaxis]
             result[C_INTCRD.full_name] = result[C_INTCRD.full_name] * internal_coord_cond_mask_expanded
+
+        # Residue-level NA secondary structure is assembled at tokenization time:
+        # - sparse 2D base-pair edges live on representative token atoms
+        # - loop/specification state lives as 1D atom annotations
+        n_tokens = len(token_starts)
+        na_ss_pair = np.zeros((n_tokens, n_tokens), dtype=np.int16)
+        na_ss_pair_mask = np.zeros((n_tokens, n_tokens), dtype=bool)
+
+        if C_BP.full_name in atom_array.get_annotation_2d_categories():
+            pair_annotation = C_BP.annotation(atom_array, default="raise")
+            atom_to_token = np.full(atom_array.array_length(), -1, dtype=np.int32)
+            atom_to_token[token_starts] = np.arange(n_tokens, dtype=np.int32)
+            token_pairs = atom_to_token[pair_annotation.pairs]
+            valid_pairs = np.all(token_pairs >= 0, axis=1)
+            token_pairs = token_pairs[valid_pairs]
+            if len(token_pairs) > 0:
+                na_ss_pair[token_pairs[:, 0], token_pairs[:, 1]] = 1
+                na_ss_pair_mask[token_pairs[:, 0], token_pairs[:, 1]] = True
+
+        na_ss_state = np.full((n_tokens,), BasePairEnum.UNSPECIFIED.value, dtype=np.int16)
+        na_ss_state_mask = np.zeros((n_tokens,), dtype=bool)
+        if C_NA_SS_STATE.full_name in atom_array.get_annotation_categories():
+            na_ss_state = C_NA_SS_STATE.annotation(atom_array, default="generate")[token_starts].astype(np.int16)
+            na_ss_state_mask = C_NA_SS_STATE.mask(atom_array, default="generate")[token_starts].astype(bool)
+
+        # Preserve the old "explicit negative row/column" semantics for loop tokens via the pair mask.
+        loop_inds = np.where(na_ss_state == BasePairEnum.LOOP.value)[0]
+        if len(loop_inds) > 0:
+            na_ss_pair_mask[loop_inds, :] = True
+            na_ss_pair_mask[:, loop_inds] = True
+
+        result["na_ss_pair"] = na_ss_pair
+        result["na_ss_pair_mask"] = na_ss_pair_mask
+        result["na_ss_state"] = na_ss_state
+        result["na_ss_state_mask"] = na_ss_state_mask
 
         # Override existing atom-level features with atom37 versions
         data["feats"] = result
@@ -726,11 +725,11 @@ def add_can_be_encoded_annotation(
 
 RESIDUE_NAMES_TO_ENCODE = [
     *STANDARD_AA,
-    # *STANDARD_RNA,
-    # *STANDARD_DNA,
+    *STANDARD_RNA,
+    *STANDARD_DNA,
     UNKNOWN_AA,
-    # UNKNOWN_RNA,
-    # UNKNOWN_DNA,
+    UNKNOWN_RNA,
+    UNKNOWN_DNA,
     MASKED,
 ]
 """Default residue names that can be encoded by the autoencoder."""
@@ -739,7 +738,7 @@ RESIDUE_NAMES_TO_ENCODE = [
 class AddCanBeEncodedAnnotation(Transform):
     """
     Annotate which atoms can be encoded by the autoencoder using the `can_be_encoded` annotation.
-    For now we can only encode standard amino acids, but in the future we can also encode standard RNA/DNA.
+    Updated to encode standard amino acids, as well as standard RNA/DNA.
     """
 
     def __init__(
@@ -868,7 +867,7 @@ class ValidateNonEmptyStructure(Transform):
         if aa.array_length() == 0:
             example_id = data.get("example_id", "unknown")
             raise ValueError(
-                f"Structure has no atoms after filtering (example_id: {example_id}). " "This structure will be skipped."
+                f"Structure has no atoms after filtering (example_id: {example_id}). This structure will be skipped."
             )
         return data
 
@@ -944,33 +943,18 @@ class AddMissingAtomCount(Transform):
         return data
 
 
-class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
+class EnsureAtomizedResiduesAreSequenceConditioned(Transform):
     """
-    Ensure that all atomized or coordinate-conditioned residues are sequence conditioned.
+    Ensure that all atomized residues are sequence conditioned.
     Temporary annotation that be removed for e.g. unfixed ligands.
     """
 
     def forward(self, data: dict) -> dict:
-        aap = as_atom_array_plus(data["atom_array"])
-        seq_cond_mask = C_SEQ.mask(aap, default="generate")
-
-        # Atomized tokens always require sequence conditioning
-        if "atomize" in aap.get_annotation_categories():
-            seq_cond_mask |= aap.atomize
-
-        # Only non-backbone coordinate conditioning requires sequence conditioning.
-        # Backbone-only conditioning (e.g. inverse folding context) does not.
-        crd_mask = C_CRD.mask(aap, default="generate") | C_INTCRD.mask(aap, default="generate")
-        if crd_mask.any():
-            ensure_annotations(aap, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
-            is_backbone = aap.is_protein_backbone | aap.is_rna_backbone | aap.is_dna_backbone
-            seq_cond_mask |= crd_mask & ~is_backbone
-
-        # Any token with sequence conditioning should be fully sequence-conditioned
-        seq_cond_mask = apply_and_spread_token_wise(aap, seq_cond_mask, np.any)
-
-        C_SEQ.set_mask(aap, seq_cond_mask)
-        data["atom_array"] = aap
+        atom_array = data["atom_array"]
+        if "atomize" in atom_array.get_annotation_categories():
+            seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
+            C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
+        data["atom_array"] = atom_array
         return data
 
 
@@ -1315,6 +1299,7 @@ def _build_design_clean_and_sample_pipeline(
 def _build_design_featurize_pipeline(
     residue_names_to_encode: list | set,
     metrics_tags: list[str] | set[str] | None = None,
+    apply_na_ss: bool = True,
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
     msa_featurize_n_recycles: int = 1,
@@ -1347,12 +1332,17 @@ def _build_design_featurize_pipeline(
     ### Step 1: Annotation fixes                            ###  # TODO: Should these be in validate / train portions?
     ###########################################################
     # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
-    T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
+    T += EnsureAtomizedResiduesAreSequenceConditioned()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)
 
     T += FeaturizeExpandedSegments()
+
+    # NA-SS annotation follows the same high-level pattern as other conditioning:
+    # task-driven in train, specification-driven in inference.
+    if apply_na_ss:
+        T += FeaturizeNucleicAcidSecondaryStructure()
 
     # Create in-context conditioning corresponding to unindexed regions
     T += UnindexFlaggedTokens()
@@ -1381,9 +1371,6 @@ def _build_design_featurize_pipeline(
         )
         T += PairAndMergePolymerMSAs(dense=True)  # Re-merge after encoding/filling
 
-    ###########################################################
-    ### Step 2: Featurize all conditions                    ###
-    ###########################################################
     # Prepare coordinates for noising (without modifying the ground truth)
     # ... add placeholder coordinates for noising
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
@@ -1447,7 +1434,6 @@ def _build_design_featurize_pipeline(
         "specification",
     ]
 
-    T += ValidateBatchInvariants(is_inference=is_inference)
     T += SubsetToKeys(keys_to_keep)
 
     return T.tolist()
@@ -1467,6 +1453,8 @@ def build_design_train_pipeline(
     is_inference: bool = False,
     metrics_tags: list[str] | set[str] | None = None,
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
+    # Nucleic acid secondary structure featurization
+    apply_na_ss: bool = True,
     # MSA parameters
     load_msa: bool = False,
     max_msa_sequences: int = 10_000,
@@ -1531,6 +1519,7 @@ def build_design_train_pipeline(
     )
     transforms += _build_design_featurize_pipeline(
         metrics_tags=metrics_tags,
+        apply_na_ss=apply_na_ss,
         residue_names_to_encode=residue_names_to_encode,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,
@@ -1578,6 +1567,7 @@ def build_design_validation_pipeline(
     return build_design_train_pipeline(
         is_inference=True,
         metrics_tags=metrics_tags,
+        apply_na_ss=bool(metrics_tags is not None and "na_ss_conditioning" in set(metrics_tags)),
         residue_names_to_encode=residue_names_to_encode,
         load_msa=load_msa,
         max_msa_sequences=max_msa_sequences,

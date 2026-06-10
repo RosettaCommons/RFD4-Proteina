@@ -109,6 +109,13 @@ fi
 # Rename for consistency with rest of script
 GPUS_PER_NODE="$NGPUS_PER_NODE"
 
+# DIGS/apptainer runs are more reliable as one SLURM task that sees all local GPUs.
+# Lightning still expects the local task count to match devices, so we spoof the
+# SLURM task-count env vars at job runtime below.
+if [ "${CONTAINER_TYPE:-}" = "apptainer" ]; then
+    NTASKS_PER_NODE=1
+fi
+
 # Create run directory structure
 RUN_DIR="$ROOT_REMOTE/train_latents/$RUN_NAME"
 mkdir -p "$RUN_DIR/slurm_run_outputs"
@@ -189,6 +196,11 @@ export CONTAINER_TYPE=$CONTAINER_TYPE
 # Distributed training coordination (unique port per job, master = first node)
 export MASTER_PORT=\$((1024 + RANDOM % 64512))
 export MASTER_ADDR=\$(scontrol show hostnames "\$SLURM_JOB_NODELIST" | head -n 1)
+
+# Present a local task count matching visible GPUs even though SLURM only starts
+# one task on DIGS. This matches the manual interactive/sbatch pattern that works.
+export SLURM_NTASKS_PER_NODE=$GPUS_PER_NODE
+export SLURM_TASKS_PER_NODE=$GPUS_PER_NODE
 EOF
 fi
 

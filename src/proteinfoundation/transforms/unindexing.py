@@ -58,7 +58,7 @@ class UnindexFlaggedTokens(Transform):
 
         # Assemble necessary annotations
         is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")
-        ensure_annotations(atom_array, "is_protein", "within_chain_source_res_idx")
+        ensure_annotations(atom_array, "is_polymer", "within_chain_source_res_idx")
 
         # This will be modified if any unindexed tokens are present to give the correct ground-truth index gaps (within
         # unindexed groups). This enables specification of defined index gaps greater than 1 between unindexed tokens.
@@ -138,7 +138,7 @@ class UnindexFlaggedTokens(Transform):
             C_CTR.set_mask(token, np.full(token.array_length(), False, dtype=bool))
 
             # TODO: When we introduce the is_canonical annotation, we should enforce that here instead
-            assert token.is_protein.all(), f"Cannot unindex non-protein token: {token}"
+            assert token.is_polymer.all(), f"Cannot unindex non-polymer token: {token}"
 
             unindexed_tokens.append(token)
 

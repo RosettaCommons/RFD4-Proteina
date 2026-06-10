@@ -249,8 +249,7 @@ class MACEEnergyMetric(Metric):
                 # Skip if too large
                 if len(pred_chain) > self.max_chain_atoms:
                     logger.warning(
-                        f"Skipping model {model_idx} chain {chain_id}: "
-                        f"{len(pred_chain)} atoms > {self.max_chain_atoms}"
+                        f"Skipping model {model_idx} chain {chain_id}: {len(pred_chain)} atoms > {self.max_chain_atoms}"
                     )
                     continue
 

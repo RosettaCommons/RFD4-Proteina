@@ -1,0 +1,94 @@
+# @package _global_
+
+# Latent model training on AFDB monomers + RNA + NA (protein-DNA/RNA) complexes
+# with the same setup as `na_ss_conditioning.yaml`, plus NA unindexing.
+#
+# Design task strategy:
+# - AFDB proteins: motif_pretraining (80% motif, 10% unconditional, 5% folding, 5% inverse folding)
+# - RNA monomers: motif scaffolding + NA secondary-structure conditioning + moderate unindexing
+# - NA complexes: motif scaffolding + NA secondary-structure conditioning + moderate unindexing
+defaults:
+  # Train datasets (distillation)
+  # - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer_256
+  - /datasets/train/ae/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/distill/rna_monomer@datasets.train.rna_monomer
+  - /datasets/train/distill/na_complex@datasets.train.na_complex
+  - /datasets/train/pdb/complexa_filtered_pdb@datasets.train.complexa_filtered_pdb
+
+  # Validation datasets
+  - /datasets/val/pseudoknot@datasets.val.pseudoknot
+  - /datasets/val/quadruplex@datasets.val.quadruplex
+  - /datasets/val/unconditional_rna@datasets.val.unconditional_rna
+  - /datasets/val/unconditional@datasets.val.unconditional
+  - /datasets/val/dna_binder_specificity_7n5u@datasets.val.dna_binder_specificity_7n5u
+
+  # Design task presets
+  - /design_tasks/presets/na_motif_scaffold_no_unindex@_na_motif_ss_design_tasks
+  - /design_tasks/presets/unconditional_only@_unconditional_design_tasks
+  
+  - _self_
+
+run_name_: na_ss_cond_run08_unindex_with_quadruplex
+
+_na_motif_ss_design_tasks:
+  nucleic_ss_conditioning:
+    transform:
+      p_add_motif_scaffold_condition: 0.2
+      # Turn on unindexing for a subset of motif-scaffold examples so the model
+      # learns to rely less on absolute/global residue indices.
+      p_unindex_any: 0.5
+      max_unindexed_tokens: 12
+      # Keep groups simple at first: do not merge/split/inject index gaps.
+      p_merge_unindexed_groups: 0.0
+      p_split_unindexed_groups: 0.0
+      p_increase_group_id_gap: 0.0
+
+datasets:
+  train:
+    # Proteins: full motif pretraining tasks
+    afdb_monomer:
+      probability: 0.25
+      dataset:
+        transform:
+          crop_size: 512
+          design_tasks: ${_unconditional_design_tasks}
+    # RNA: motif scaffolding + NA secondary-structure conditioning
+    rna_monomer:
+      probability: 0.5
+      dataset:
+        transform:
+          p_atomize_residues: 0.0
+          design_tasks: ${_na_motif_ss_design_tasks}
+    # NA complexes: motif scaffolding + NA secondary-structure conditioning + unindexing
+    na_complex:
+      probability: 0.25
+      dataset:
+        transform:
+          p_atomize_residues: 0.0
+          design_tasks: ${_na_motif_ss_design_tasks}
+    # Complexa filtered PDB: motif scaffolding + NA secondary-structure conditioning + unindexing
+    complexa_filtered_pdb:
+      probability: 0.0
+      dataset:
+        transform:
+          p_atomize_residues: 0.0
+          design_tasks: ${_na_motif_ss_design_tasks}
+
+# Unified autoencoder checkpoint (protein + RNA + DNA)
+autoencoder_ckpt_path: /path/to/data
+pretrain_ckpt_path: /path/to/shared/storage
+
+training:
+  self_cond: true
+  self_cond_p: 0.5
+
+opt:
+  accumulate_grad_batches: 1
+  steps_per_epoch: 2000
+  val_every_n_epochs: 5
+  num_sanity_val_steps: 0
+
+log:
+  tags: ["latent-training", "afdb-monomer", "rna", "na-complex", "unified-ae", "dna-binder-val", "unindexing"]
+  checkpoint_every_n_epochs: 5
+  last_ckpt_every_n_epochs: 1

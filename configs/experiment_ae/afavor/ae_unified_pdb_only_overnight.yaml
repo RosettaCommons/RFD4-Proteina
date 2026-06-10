@@ -1,0 +1,37 @@
+# @package _global_
+
+defaults:
+  - override /nn_ae@nn_ae: nn_60m_unified
+  - override /datasets@datasets: ae_pdb_only_datasets
+  - _self_
+
+run_name_: ae_unified_pdb_only_overnight
+
+hardware:
+  ncpus_per_task_train_: 16
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 12
+
+opt:
+  steps_per_epoch: 1000
+  val_every_n_epochs: 1
+
+log:
+  tags: ["ae", "60m", "unified", "pdb-only", "overnight", "rna", "dna"]
+  atom37_debug: true
+  atom37_debug_every_n_steps: 100
+  atom37_debug_max_examples: 6
+  checkpoint_every_n_epochs: 1
+  last_ckpt_every_n_epochs: 1
+
+loss:
+  seq:
+    class_weights:
+      aa: 1.0
+      rna: 1.0
+      dna: 1.0

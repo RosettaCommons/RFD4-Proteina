@@ -413,7 +413,7 @@ class Attention(nn.Module):
         if biases is None:
             biases = []
         if use_lma and (q_chunk_size is None or kv_chunk_size is None):
-            raise ValueError("If use_lma is specified, q_chunk_size and kv_chunk_size must " "be provided")
+            raise ValueError("If use_lma is specified, q_chunk_size and kv_chunk_size must be provided")
 
         q, k, v = self._prep_qkv(q_x, kv_x)
 

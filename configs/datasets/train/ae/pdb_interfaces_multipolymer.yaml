@@ -1,0 +1,76 @@
+# PDB interfaces dataset for unified autoencoder training.
+# Keeps nucleic-acid-containing assemblies so the AE sees protein/RNA/DNA complexes.
+
+defaults:
+  - ../base_pandas@dataset
+  - /design_tasks/unconditional@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
+  beta: 1.0
+  cluster_column: interface_cluster
+  altloc_seed_column: altloc_seed
+  pdb_id_column: pdb_id
+  alphas:
+    a_prot: 3.0
+    a_nuc: 6.0
+    a_ligand: 1.0
+    a_loi: 5.0
+
+dataset:
+  name: pdb_interfaces_ae_multipolymer
+  data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_interfaces.parquet
+  memory_map: True
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_loader_with_query_pn_units
+    base_path: ${oc.env:SQUASH_MOUNT_PATH,/data}/pdb
+    pn_unit_iid_colnames: ["pn_unit_1_iid", "pn_unit_2_iid"]
+    example_id_colname: example_id
+    assembly_id_colname: assembly_id
+    altloc_seed_colname: null
+    parser_args:
+      _target_: proteinfoundation.utils.parse_presets.distillation
+      save_to_cache: True
+      load_from_cache: True
+      cache_dir: ${oc.env:CACHE_DIR}/pdb
+
+  filters:
+    - "deposition_date < '2024-01-01'"
+    - "resolution < 9.0"
+    - "num_polymer_pn_units <= 30"
+    - "interface_cluster.notnull()"
+    - "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    - "is_inter_molecule"
+
+  columns_to_load:
+    - example_id
+    - pdb_id
+    - assembly_id
+    - altloc_seed
+    - path
+    - deposition_date
+    - resolution
+    - num_polymer_pn_units
+    - method
+    - interface_cluster
+    - n_prot
+    - n_nuc
+    - n_ligand
+    - n_peptide
+    - total_num_atoms_in_unprocessed_assembly
+    - pn_unit_1_iid
+    - pn_unit_2_iid
+    - pn_unit_1_non_polymer_res_names
+    - pn_unit_2_non_polymer_res_names
+    - is_inter_molecule
+    - all_pn_unit_iids_after_processing
+    - involves_loi
+    - pn_unit_1_type
+    - pn_unit_2_type
+
+  transform:
+    crop_size: 384

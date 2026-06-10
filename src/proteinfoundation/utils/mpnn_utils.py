@@ -441,7 +441,7 @@ def prepare_mpnn_jobs(
         commands.append(cmd)
 
     # Generate SLURM script
-    array_range = f"0-{len(commands)-1}" if len(commands) > 1 else None
+    array_range = f"0-{len(commands) - 1}" if len(commands) > 1 else None
     slurm_content = generate_slurm_script(
         job_name="mpnn",
         commands=commands,

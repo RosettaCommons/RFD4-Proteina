@@ -109,6 +109,13 @@ fi
 # Rename for consistency with rest of script
 GPUS_PER_NODE="$NGPUS_PER_NODE"
 
+# DIGS/apptainer runs are more reliable as one SLURM task that sees all local GPUs.
+# Lightning still expects the local task count to match devices, so we spoof the
+# SLURM task-count env vars at job runtime below.
+if [ "${CONTAINER_TYPE:-}" = "apptainer" ]; then
+    NTASKS_PER_NODE=1
+fi
+
 # Create run directory structure
 RUN_DIR="$ROOT_REMOTE/train_ae/$RUN_NAME"
 mkdir -p "$RUN_DIR/slurm_run_outputs"
@@ -176,18 +183,24 @@ export MKL_NUM_THREADS=1
 scontrol show job \$SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works - auto-requeue enabled' || echo '[slurm] WARNING: scontrol not working - auto-requeue disabled'
 EOF
 
-# Add DIGS-specific environment variables
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+# Apptainer clusters: pass cluster identity to exec_core.sh (via shebang) and
+# compute distributed training endpoints dynamically at job time.
+# Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    cat >> "$SBATCH_FILE" << EOF
 
-# DIGS-specific environment settings
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export NCCL_P2P_DISABLE=1
-export NCCL_DEBUG=WARN
+# Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
+export CLUSTER=$CLUSTER
+export CONTAINER_TYPE=$CONTAINER_TYPE
 
 # Distributed training coordination (unique port per job, master = first node)
-export MASTER_PORT=$((1024 + RANDOM % 64512))
-export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=\$((1024 + RANDOM % 64512))
+export MASTER_ADDR=\$(scontrol show hostnames "\$SLURM_JOB_NODELIST" | head -n 1)
+
+# Present a local task count matching visible GPUs even though SLURM only starts
+# one task on DIGS. This matches the manual interactive/sbatch pattern that works.
+export SLURM_NTASKS_PER_NODE=$GPUS_PER_NODE
+export SLURM_TASKS_PER_NODE=$GPUS_PER_NODE
 EOF
 fi
 
@@ -205,8 +218,8 @@ fi
 # Add container execution command
 SCRIPT_TRAIN="$CODE_DIR/projects/proteinfoundation/proteinfoundation/partial_autoencoder/train.py"
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    # DIGS: Use shebang in train.py to handle container execution
+if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    # Apptainer: Use shebang in train.py to handle container execution
     cat >> "$SBATCH_FILE" << EOF
 
 # Run training (shebang handles apptainer container)

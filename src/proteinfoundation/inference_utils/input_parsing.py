@@ -61,6 +61,10 @@ from proteinfoundation.inference_utils.inference_utils import (
     set_default_conditioning_annotations,
     set_indices,
 )
+from proteinfoundation.inference_utils.nucleic_ss_input import (
+    NucleicSSInputSpec,
+    resolve_nucleic_ss_to_token_payload,
+)
 from proteinfoundation.inference_utils.parsing import InputSelection
 from proteinfoundation.inference_utils.symmetry.symmetry_utils import (
     SymmetryConfig,
@@ -87,9 +91,7 @@ def validator_context(validator_name: str, data: dict | None = None) -> Iterator
         yield
         logger.debug(f"✓ Completed validator: {validator_name}")
     except Exception as e:
-        logger.error(
-            f"✗ Failed in validator: {validator_name}\n" f"  Error: {e!s}\n" f"  Error type: {type(e).__name__}"
-        )
+        logger.error(f"✗ Failed in validator: {validator_name}\n  Error: {e!s}\n  Error type: {type(e).__name__}")
         raise e
 
 
@@ -99,6 +101,14 @@ def create_diffused_residues(n: int, additional_annotations: dict | None = None,
         BACKBONE_ATOM_NAMES_RNA,
         NA_BACKBONE_ATOM_NAME_TO_ELEMENT,
     )
+
+    def add_na_representative_atom(backbone_atom_names: list[str]) -> tuple[list[str], list[str]]:
+        atom_names = list(backbone_atom_names)
+        elements = [NA_BACKBONE_ATOM_NAME_TO_ELEMENT[item] for item in atom_names]
+        # Use a purine placeholder residue so the AF3 representative atom is explicit.
+        atom_names.append("C4")
+        elements.append("C")
+        return atom_names, elements
 
     if n <= 0:
         raise ValueError(f"Negative/null residue count ({n}) not allowed.")
@@ -111,16 +121,14 @@ def create_diffused_residues(n: int, additional_annotations: dict | None = None,
         chain_type = ChainType.POLYPEPTIDE_L
     elif polymer_type == "R":
         res_name = "A"
-        bb_len = len(BACKBONE_ATOM_NAMES_RNA)
-        bb_atom_names = BACKBONE_ATOM_NAMES_RNA
+        bb_atom_names, bb_elements = add_na_representative_atom(BACKBONE_ATOM_NAMES_RNA)
         chain_type = ChainType.RNA
-        bb_elements = [NA_BACKBONE_ATOM_NAME_TO_ELEMENT[item] for item in bb_atom_names]
+        bb_len = len(bb_atom_names)
     elif polymer_type == "D":
         res_name = "DA"
-        bb_len = len(BACKBONE_ATOM_NAMES_DNA)
-        bb_atom_names = BACKBONE_ATOM_NAMES_DNA
+        bb_atom_names, bb_elements = add_na_representative_atom(BACKBONE_ATOM_NAMES_DNA)
         chain_type = ChainType.DNA
-        bb_elements = [NA_BACKBONE_ATOM_NAME_TO_ELEMENT[item] for item in bb_atom_names]
+        bb_len = len(bb_atom_names)
     else:
         raise ValueError(f"invalid polymer type detected: {polymer_type}, check contig!")
 
@@ -551,11 +559,6 @@ def accumulate_components(
     return atom_array_accum
 
 
-# ========================================================================
-# Input specification
-# ========================================================================
-
-
 class InputSpecification(BaseModel):
     """Validated and parsed input specification before resolution."""
 
@@ -637,6 +640,11 @@ class InputSpecification(BaseModel):
             "Perform fixed-backbone sequence design on when 'contig' is provided. "
             "Changes the default behaviour when not using `select_fixed_atoms`."
         ),
+    )
+    # NA secondary-structure conditioning (optional)
+    nucleic_ss: NucleicSSInputSpec | None = Field(
+        None,
+        description="NA secondary-structure specification resolved during input parsing.",
     )
 
     # ========================================================================
@@ -1038,6 +1046,43 @@ class InputSpecification(BaseModel):
 
         return self
 
+    def _resolve_post_build_spec_fields(self, atom_array: AtomArray) -> dict[str, Any]:
+        """Resolve spec fields that depend on the assembled model layout.
+
+        Currently the only post-build field is parsed NA-SS,
+            but this can be extended in the future as needed.
+            The key is that these fields are resolved after the
+            full AtomArray layout is known, since they may depend
+            on the final set of residues / tokens present in the model.
+
+        Args:
+            atom_array: Fully assembled AtomArray prior to pipeline transforms.
+
+        Returns:
+            Mapping of resolved, syntax-agnostic payloads to persist in metadata.
+        """
+        resolved: dict[str, Any] = {}
+
+        parsed_nucleic_ss = resolve_nucleic_ss_to_token_payload(atom_array, self.nucleic_ss)
+
+        if parsed_nucleic_ss is not None:
+            resolved["parsed_nucleic_ss"] = parsed_nucleic_ss
+
+        return resolved
+
+    def _build_output_metadata(self, atom_array: AtomArray) -> dict[str, Any]:
+        """Build metadata emitted alongside a constructed inference AtomArray."""
+        metadata = self.get_dict_to_save()
+        metadata["extra"] = metadata.get("extra", {}) | {
+            "num_tokens_in": len(get_token_starts(atom_array)),
+            "num_residues_in": len(get_residue_starts(atom_array)),
+            "num_chains": len(np.unique(atom_array.chain_id)),
+            "num_atoms": len(atom_array),
+            "num_residues": len(np.unique(list(zip(atom_array.chain_id, atom_array.res_id, strict=False)))),
+        }
+        metadata["extra"].update(self._resolve_post_build_spec_fields(atom_array))
+        return metadata
+
     # ========================================================================
     # Building
     # ========================================================================
@@ -1064,14 +1109,7 @@ class InputSpecification(BaseModel):
         if not return_metadata:
             return copy.deepcopy(atom_array)
         else:
-            metadata = self.get_dict_to_save()
-            metadata["extra"] = metadata.get("extra", {}) | {
-                "num_tokens_in": len(get_token_starts(atom_array)),
-                "num_residues_in": len(get_residue_starts(atom_array)),
-                "num_chains": len(np.unique(atom_array.chain_id)),
-                "num_atoms": len(atom_array),
-                "num_residues": len(np.unique(list(zip(atom_array.chain_id, atom_array.res_id, strict=False)))),
-            }
+            metadata = self._build_output_metadata(atom_array)
             return copy.deepcopy(atom_array), metadata
 
     # ============================================================================

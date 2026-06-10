@@ -771,10 +771,9 @@ class TestEndToEndInference:
 
         # Fixed region (B19-22): CA RMSD should be near zero, sequence should be identical
         fixed_rmsd = struc.rmsd(input_ca[fixed_mask], output_ca_aligned[fixed_mask])
-        assert fixed_rmsd < 0.5, (
-            f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å"
-            " — fixed atoms should retain input coordinates"
-        )
+        assert (
+            fixed_rmsd < 0.5
+        ), f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å — fixed atoms should retain input coordinates"
         assert np.array_equal(
             input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]
         ), "Fixed-region residue types should be unchanged in output"

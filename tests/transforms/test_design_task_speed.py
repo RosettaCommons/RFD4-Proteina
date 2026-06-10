@@ -45,7 +45,7 @@ def print_timing_results():
     print("-" * 80)
 
     for result in results:
-        print(f"{result['task']:<40} " f"{result['avg']:>12.4f} " f"{result['max']:>12.4f} " f"{result['min']:>12.4f}")
+        print(f"{result['task']:<40} {result['avg']:>12.4f} {result['max']:>12.4f} {result['min']:>12.4f}")
 
     print("=" * 80)
     print(f"Total tasks tested: {len(results)}")

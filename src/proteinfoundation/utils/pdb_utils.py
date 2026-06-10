@@ -205,7 +205,7 @@ def write_prot_to_pdb(
             max_existing_idx = 0
 
     if not no_indexing:
-        save_path = file_path.replace(".cif", "") + f"_{max_existing_idx+1}.cif"
+        save_path = file_path.replace(".cif", "") + f"_{max_existing_idx + 1}.cif"
     else:
         save_path = file_path
 

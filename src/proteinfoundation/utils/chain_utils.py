@@ -41,9 +41,8 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
     if len(unique_chain_identifiers) < 2:
         return unique_chain_identifiers[0], True
 
-    # Only consider protein chains
-    # NOTE: This heuristic will have to be revisited if refolding designed small
-    # molecules against a protein target
+    # Prefer protein chains when present, but fall back to all chains for
+    # all-RNA/all-DNA/all-nucleic multichain cases.
     ensure_annotations(atom_array, "is_protein")
     protein_chain_identifiers = [
         cid for cid in unique_chain_identifiers if atom_array[chain_identifiers == cid].is_protein.all()

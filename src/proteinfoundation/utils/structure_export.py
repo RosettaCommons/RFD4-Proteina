@@ -13,7 +13,7 @@ from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
 from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
-from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
+from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen, remove_protein_terminal_oxygen
 from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
 
@@ -112,7 +112,9 @@ def process_single_sample_to_atom_array(
             "decoder atom_mask so occupancy matches the sequence template."
         ) from exc
     generated_array = remove_protein_terminal_oxygen(generated_array)
+    generated_array = remove_nucleic_acid_terminal_oxygen(generated_array)
     input_atom_array = remove_protein_terminal_oxygen(input_atom_array)
+    input_atom_array = remove_nucleic_acid_terminal_oxygen(input_atom_array)
     if get_token_count(generated_array) != get_token_count(input_atom_array):
         raise ValueError("Token counts in input and generated AtomArrays do not match after removing terminal oxygens")
 

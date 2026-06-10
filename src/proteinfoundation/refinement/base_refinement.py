@@ -39,8 +39,7 @@ class RefinementStrategy(ABC):
         """
         if not reward_model.differentiable:
             raise ValueError(
-                f"Refinement requires differentiable reward model, "
-                f"but got differentiable={reward_model.differentiable}"
+                f"Refinement requires differentiable reward model, but got differentiable={reward_model.differentiable}"
             )
 
     @abstractmethod
