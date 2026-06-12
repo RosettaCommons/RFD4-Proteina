@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_bindingnet_high
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_bindingnet_high/flowr_bindingnet_high.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/flowr_bindingnet_high/flowr_bindingnet_high.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_bindingnet_high

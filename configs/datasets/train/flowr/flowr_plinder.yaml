@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_plinder
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_plinder/flowr_plinder.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/flowr_plinder/flowr_plinder.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_plinder

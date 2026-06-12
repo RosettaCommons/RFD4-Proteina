@@ -10,7 +10,7 @@ probability: 1.0
 
 dataset:
   name: mgnify_dec_2025
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/mgnify_dec_2025/mgnify_dec_2025.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/mgnify_dec_2025/mgnify_dec_2025.parquet
   columns_to_load:
     - example_id
     - path
