@@ -434,8 +434,7 @@ def _match_mol_to_rcsb_mol(
 
         if len(m_idx) == 0:
             raise ValueError(
-                f"No match for residue at index {bench_res_starts[i]} ({bench_res.res_name[0]}) "
-                f"within RCSB molecule"
+                f"No match for residue at index {bench_res_starts[i]} ({bench_res.res_name[0]}) within RCSB molecule"
             )
         elif len(m_idx) == 1:
             confirmed[i] = (m_idx[0], m_perm[0], m_masks[0])
@@ -1088,7 +1087,7 @@ def write_failure_report(
         "",
         f"**Failures:** {len(failures)}  |  **Skipped:** {len(skipped)}",
         "",
-        "Files marked ⚠️ are referenced in at least one benchmark config (JSON/YAML) " "and may need manual attention.",
+        "Files marked ⚠️ are referenced in at least one benchmark config (JSON/YAML) and may need manual attention.",
         "",
         "---",
         "",

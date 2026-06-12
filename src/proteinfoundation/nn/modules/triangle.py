@@ -118,9 +118,9 @@ class TriangleAttention(nn.Module):
             pair = pair.to(dtype=dtype)
             bias = bias.to(dtype=dtype)
 
-        assert (
-            pair.dtype == torch.bfloat16 and bias.dtype == torch.bfloat16
-        ), f"cuEquivariance requires bfloat16 inputs (got pair={pair.dtype}, bias={bias.dtype})"
+        assert pair.dtype == torch.bfloat16 and bias.dtype == torch.bfloat16, (
+            f"cuEquivariance requires bfloat16 inputs (got pair={pair.dtype}, bias={bias.dtype})"
+        )
 
         # Gate computation
         gate = torch.sigmoid(self.to_g(pair))  # (B, L, L, h*dim)

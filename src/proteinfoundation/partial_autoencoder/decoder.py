@@ -147,7 +147,7 @@ class DecoderTransformer(torch.nn.Module):
         )
         self.struct_linear = torch.nn.Sequential(
             torch.nn.LayerNorm(self.token_dim),
-            torch.nn.Linear(self.token_dim, int(37 * 3), bias=False),
+            torch.nn.Linear(self.token_dim, (37 * 3), bias=False),
         )
 
     def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:

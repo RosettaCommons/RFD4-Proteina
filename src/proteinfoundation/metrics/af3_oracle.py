@@ -231,7 +231,7 @@ class AF3Oracle(OracleMetric):
             timeout_s = max(3600.0, n_designs * 120.0)
             logger.info(
                 f"AF3 fold_batch: routing {n_designs} designs via daemon at {daemon_sock} "
-                f"(gpu_device={gpu_device}, timeout={timeout_s/3600:.1f}h)"
+                f"(gpu_device={gpu_device}, timeout={timeout_s / 3600:.1f}h)"
             )
             response = _send_to_daemon(
                 daemon_sock,
@@ -247,9 +247,7 @@ class AF3Oracle(OracleMetric):
                 raise RuntimeError(f"AF3 daemon error: {response.get('message')}")
             return
 
-        logger.info(
-            f"AF3 fold_batch: routing {n_designs} designs via direct apptainer call " f"(gpu_device={gpu_device})"
-        )
+        logger.info(f"AF3 fold_batch: routing {n_designs} designs via direct apptainer call (gpu_device={gpu_device})")
         cmd = build_apptainer_fold_command(
             manifest_path=manifest_path,
             gpu_device=gpu_device,
@@ -461,9 +459,9 @@ class AF3Oracle(OracleMetric):
 
         template_mask = np.zeros(atom_array.array_length(), dtype=bool)
         for annot_name in self.template_annotations:
-            assert (
-                annot_name in atom_array.get_annotation_categories()
-            ), f"Annotation '{annot_name}' not found in AtomArray"
+            assert annot_name in atom_array.get_annotation_categories(), (
+                f"Annotation '{annot_name}' not found in AtomArray"
+            )
             annot = atom_array.get_annotation(annot_name)
             assert annot.dtype == bool, f"Annotation '{annot_name}' must be boolean, got {annot.dtype}"
             template_mask |= annot
@@ -705,7 +703,7 @@ class AF3Oracle(OracleMetric):
             missing = sorted(inp - af3)
             extra = sorted(af3 - inp)
             raise ValueError(
-                "AF3 inter-residue bond graph differs from input " f"(missing in AF3: {missing}; extra in AF3: {extra})"
+                f"AF3 inter-residue bond graph differs from input (missing in AF3: {missing}; extra in AF3: {extra})"
             )
 
     @staticmethod

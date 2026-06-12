@@ -165,12 +165,12 @@ def compute_token_bond_features(
         - ``"canonical_polymer_ordering"`` (int8): ``sign(i - j)`` for bonded same-type
           canonical polymer pairs (protein/RNA/DNA), else 0.
     """
-    assert (pre_crop_atom_array is None) == (
-        crop_token_idxs is None
-    ), "pre_crop_atom_array and crop_token_idxs must be provided together"
-    assert (
-        "insertion_source_idx" in atom_array.get_annotation_categories()
-    ), "atom_array must have insertion_source_idx annotation (set by UnindexFlaggedTokens)"
+    assert (pre_crop_atom_array is None) == (crop_token_idxs is None), (
+        "pre_crop_atom_array and crop_token_idxs must be provided together"
+    )
+    assert "insertion_source_idx" in atom_array.get_annotation_categories(), (
+        "atom_array must have insertion_source_idx annotation (set by UnindexFlaggedTokens)"
+    )
 
     token_starts = get_token_starts(atom_array)
     n_total = len(token_starts)

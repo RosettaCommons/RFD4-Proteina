@@ -598,7 +598,7 @@ def get_token_level_metadata(
         "resn_list": res_name_list,
         "token_id_list": token_id_list,
         "resi2index": resi2index,
-        "len_s": int(len(token_level_array)),
+        "len_s": len(token_level_array),
         "seq_neighbors": seq_neighbors,
         "na_inds": na_inds,
         "na_tensor_inds": na_tensor_inds,

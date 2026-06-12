@@ -294,9 +294,9 @@ class XtBBCASeqFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert (
-            "bb_ca" in data_modes_avail
-        ), f"`bb_ca` seq feat feature requested but key not available in data modes {data_modes_avail}"
+        assert "bb_ca" in data_modes_avail, (
+            f"`bb_ca` seq feat feature requested but key not available in data modes {data_modes_avail}"
+        )
         return batch["x_t"]["bb_ca"]  # [b, n, 3]
 
 
@@ -308,9 +308,9 @@ class XtLocalLatentsSeqFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert (
-            "local_latents" in data_modes_avail
-        ), f"`local_latents` seq feat feature requested but key not available in data modes {data_modes_avail}"
+        assert "local_latents" in data_modes_avail, (
+            f"`local_latents` seq feat feature requested but key not available in data modes {data_modes_avail}"
+        )
         return batch["x_t"]["local_latents"]  # [b, n, latent_dim]
 
 
@@ -321,9 +321,9 @@ class CaCoorsNanometersSeqFeat(Feature):
         super().__init__(dim=3)
 
     def forward(self, batch: dict) -> torch.Tensor:
-        assert (
-            "ca_coors_nm" in batch or "coords_nm" in batch
-        ), "`ca_coors_nm` nor `coords_nm` in batch, cannot compute CaCoorsNanometersSeqFeat"
+        assert "ca_coors_nm" in batch or "coords_nm" in batch, (
+            "`ca_coors_nm` nor `coords_nm` in batch, cannot compute CaCoorsNanometersSeqFeat"
+        )
         if "ca_coors_nm" in batch:
             return batch["ca_coors_nm"]  # [b, n, 3]
         else:
@@ -507,7 +507,7 @@ class Atom37NanometersCoorsSeqFeat(Feature):
     """
 
     def __init__(self, rel: bool = False, **kwargs: Any) -> None:
-        super().__init__(dim=int(37 * 4))
+        super().__init__(dim=(37 * 4))
         # 37 * 4, 37 * 3 for the coordinates, + 37 for the mask
         self.rel = rel  # whether to get features relative to CA or absolute
 
@@ -548,7 +548,7 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
     """
 
     def __init__(self, rel: bool = False, **kwargs: Any) -> None:
-        super().__init__(dim=int(37 * 4))
+        super().__init__(dim=(37 * 4))
         self.rel = rel  # whether to get features relative to CA or absolute
         self._has_logged = False
 
@@ -587,7 +587,7 @@ class OpenfoldSideChainAnglesSeqFeat(Feature):
     """Computes sequence features from side chain angles."""
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=int(4 * 21 + 4))  # 88
+        super().__init__(dim=(4 * 21 + 4))  # 88
 
     def forward(self, batch: dict) -> torch.Tensor:
         _, angles, torsion_angles_mask = self._get_sidechain_angles(batch)
@@ -648,7 +648,7 @@ class BackboneTorsionAnglesSeqFeat(Feature):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=int(3 * 21))
+        super().__init__(dim=(3 * 21))
 
     def forward(self, batch: dict) -> torch.Tensor:
         bb_torsion = self._get_bb_torsion_angles(batch)  # [b, n, 3]
@@ -715,7 +715,7 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=int(37 * 4))
+        super().__init__(dim=(37 * 4))
         self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
@@ -1111,9 +1111,9 @@ class XtBBCAPairwiseDistancesPairFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert (
-            "bb_ca" in data_modes_avail
-        ), f"`bb_ca` pair dist feature requested but key not available in data modes {data_modes_avail}"
+        assert "bb_ca" in data_modes_avail, (
+            f"`bb_ca` pair dist feature requested but key not available in data modes {data_modes_avail}"
+        )
         return bin_pairwise_distances(
             x=batch["x_t"]["bb_ca"],
             min_dist=self.min_dist,
@@ -1131,9 +1131,9 @@ class CaCoorsNanometersPairwiseDistancesPairFeat(Feature):
         self.max_dist = 3.0
 
     def forward(self, batch: dict) -> torch.Tensor:
-        assert (
-            "ca_coors_nm" in batch or "coords_nm" in batch
-        ), "`ca_coors_nm` pair dist feature requested but key `ca_coors_nm` nor `coords_nm` not available"
+        assert "ca_coors_nm" in batch or "coords_nm" in batch, (
+            "`ca_coors_nm` pair dist feature requested but key `ca_coors_nm` nor `coords_nm` not available"
+        )
         if "ca_coors_nm" in batch:
             ca_coors = batch["ca_coors_nm"]
         else:
@@ -1185,7 +1185,7 @@ class RelativeResidueOrientationPairFeat(Feature):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=int(5 * 21))  # 105
+        super().__init__(dim=(5 * 21))  # 105
 
     def forward(self, batch: dict) -> torch.Tensor:
         _aatype = batch["residue_type"]  # [b, n]
@@ -1228,7 +1228,7 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=int(4 * 21))  # 84
+        super().__init__(dim=(4 * 21))  # 84
 
     def forward(self, batch: dict) -> torch.Tensor:
         assert "coords_nm" in batch, "`coords_nm` not in batch, cannot comptue BackbonePairDistancesNanometerPairFeat"

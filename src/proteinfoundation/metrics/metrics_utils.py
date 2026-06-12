@@ -127,7 +127,7 @@ def unwrap_atom_array(x: "AtomArray | AtomArrayStack") -> AtomArray:
     """Unwrap a single-structure input to a bare AtomArray."""
     if isinstance(x, AtomArrayStack):
         assert len(x) == 1, (
-            f"Expected a single-element AtomArrayStack, got depth {len(x)}. " "Metrics expect one structure at a time."
+            f"Expected a single-element AtomArrayStack, got depth {len(x)}. Metrics expect one structure at a time."
         )
         return x[0]
     return x

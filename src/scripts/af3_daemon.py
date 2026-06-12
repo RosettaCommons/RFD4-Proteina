@@ -116,7 +116,7 @@ def _safe_unlink(path: str) -> None:
         os.unlink(path)
     except PermissionError:
         raise PermissionError(
-            f"Stale AF3 daemon socket from another job: {path}\n" f"Remove it manually: rm {path}"
+            f"Stale AF3 daemon socket from another job: {path}\nRemove it manually: rm {path}"
         ) from None
 
 

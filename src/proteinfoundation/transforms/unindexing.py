@@ -462,9 +462,9 @@ def _get_target_indices_corresponding_to_inserted(
             for r, c in zip(row_indices, col_indices, strict=False):
                 if not np.isfinite(dists[r, c]):
                     raise ValueError("Could not find matching target atom for inserted atom based on element type.")
-                assert np.isnan(
-                    target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]]
-                ), "Duplicate target element assignemnt"
+                assert np.isnan(target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]]), (
+                    "Duplicate target element assignemnt"
+                )
                 target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]] = target_sorted_indices[
                     unmatched_target_indices[c]
                 ]
@@ -621,9 +621,9 @@ def find_optimal_insertion_points_for_unindexed_regions(
             for k, v in unindexed_to_generated_global_res_id_map.items():
                 k_is_seq_conditioned = (current_chain_has_seq[current_chain.global_res_id == k]).any()
                 if k_is_seq_conditioned:
-                    assert (
-                        current_chain_has_seq[current_chain.global_res_id == k]
-                    ).all(), "Residues should not be partially sequence-conditioned."
+                    assert (current_chain_has_seq[current_chain.global_res_id == k]).all(), (
+                        "Residues should not be partially sequence-conditioned."
+                    )
 
                 if k_is_seq_conditioned:
                     # Check if unindexed atom names are a subset of indexed ones

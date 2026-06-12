@@ -53,8 +53,8 @@ class TestComputeMaceEnergy:
         tiny_energy_diff = abs(tiny_noise_energy - reference_energy)
 
         # Large noise should produce larger energy difference than tiny noise; also check thresholds
-        assert (
-            large_energy_diff > tiny_energy_diff
-        ), f"Expected large noise ({large_energy_diff:.4f} eV) > tiny noise ({tiny_energy_diff:.4f} eV)"
+        assert large_energy_diff > tiny_energy_diff, (
+            f"Expected large noise ({large_energy_diff:.4f} eV) > tiny noise ({tiny_energy_diff:.4f} eV)"
+        )
         assert large_energy_diff > 1.0, f"Expected large energy diff > 1 eV, got {large_energy_diff:.4f} eV"
         assert tiny_energy_diff < 1.0, f"Expected tiny energy diff < 1 eV, got {tiny_energy_diff:.4f} eV"

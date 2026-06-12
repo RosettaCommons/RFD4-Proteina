@@ -33,16 +33,16 @@ def test_add_secondary_structure_condition_basic(cleanup_dssp, deterministic_rng
 
     # Check valid values: should be 0 (unspecified) or SSEnum values (1-4)
     valid_values = {0, 1, 2, 3, 4}
-    assert set(np.unique(ss_annotation)).issubset(
-        valid_values
-    ), f"Found invalid SS annotation values: {set(np.unique(ss_annotation)) - valid_values}"
+    assert set(np.unique(ss_annotation)).issubset(valid_values), (
+        f"Found invalid SS annotation values: {set(np.unique(ss_annotation)) - valid_values}"
+    )
 
     # Where sampled (not 0/NONE), should match sse
     sampled_mask = ss_annotation != 0
     if np.any(sampled_mask):
-        assert np.all(
-            ss_annotation[sampled_mask] == atom_array.sse[sampled_mask]
-        ), "SS conditioning values don't match sse where sampled"
+        assert np.all(ss_annotation[sampled_mask] == atom_array.sse[sampled_mask]), (
+            "SS conditioning values don't match sse where sampled"
+        )
 
 
 @skip_if_no_dssp

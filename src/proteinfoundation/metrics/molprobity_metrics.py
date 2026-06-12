@@ -199,9 +199,8 @@ class MolProbityMetrics(Metric):
             logger.warning(f"MolProbity validation failed for structure: {e}")
             if not self.skip_on_error:
                 raise
-            metrics = {
-                key: np.nan
-                for key in [
+            metrics = dict.fromkeys(
+                [
                     "rama_percent_favored",
                     "rama_percent_outliers",
                     "rota_percent_outliers",
@@ -211,7 +210,8 @@ class MolProbityMetrics(Metric):
                     "bond_outliers",
                     "rms_angles",
                     "angle_outliers",
-                ]
-            }
+                ],
+                np.nan,
+            )
 
         return {f"mean_{key}": float(value) for key, value in metrics.items()}

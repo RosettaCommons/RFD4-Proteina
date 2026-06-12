@@ -426,7 +426,7 @@ def compute_interaction_energy(
 
     if post_opt_clashes["has_clashes"]:
         warnings.warn(
-            f"Post-optimisation clashes: {post_opt_clashes['n_clashes']} pairs " f"< {clash_threshold} Å.",
+            f"Post-optimisation clashes: {post_opt_clashes['n_clashes']} pairs < {clash_threshold} Å.",
             UserWarning,
             stacklevel=2,
         )

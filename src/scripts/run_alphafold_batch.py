@@ -149,7 +149,7 @@ def _run(
         if msg[0] == "err":
             _, i, payload, exc = msg
             print(
-                f"Batch wrapper: ({i+1}/{len(designs)}) {payload['name']} FAILED in featurise: {exc}", file=sys.stderr
+                f"Batch wrapper: ({i + 1}/{len(designs)}) {payload['name']} FAILED in featurise: {exc}", file=sys.stderr
             )
             continue
         _, i, payload, fold_input, feats = msg
@@ -164,14 +164,15 @@ def _run(
                 save_full_outputs=save_full,
             )
             print(
-                f"Batch wrapper: ({i+1}/{len(designs)}) {payload['name']} OK",
+                f"Batch wrapper: ({i + 1}/{len(designs)}) {payload['name']} OK",
                 file=sys.stderr,
                 flush=True,
             )
             n_ok += 1
         except Exception as exc:
             print(
-                f"Batch wrapper: ({i+1}/{len(designs)}) {payload['name']} FAILED in infer/write: {exc}", file=sys.stderr
+                f"Batch wrapper: ({i + 1}/{len(designs)}) {payload['name']} FAILED in infer/write: {exc}",
+                file=sys.stderr,
             )
     t.join()
     return n_ok
