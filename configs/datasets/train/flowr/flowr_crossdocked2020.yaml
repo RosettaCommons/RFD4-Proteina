@@ -6,6 +6,6 @@ defaults:
 
 dataset:
   name: flowr_crossdocked2020
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/flowr_crossdocked2020/flowr_crossdocked2020.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/flowr_crossdocked2020/flowr_crossdocked2020.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/flowr_crossdocked2020

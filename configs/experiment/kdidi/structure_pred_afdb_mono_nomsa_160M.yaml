@@ -28,6 +28,7 @@ datasets:
     afdb_monomer:
       dataset:
         transform:
+          crop_size: ${dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I}
           load_msa: false
   val:
     de_novo:

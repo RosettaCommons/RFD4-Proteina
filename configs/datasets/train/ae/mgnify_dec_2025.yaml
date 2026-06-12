@@ -8,7 +8,7 @@ defaults:
 
 dataset:
   name: mgnify_dec_2025_ae
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/mgnify_dec_2025/mgnify_dec_2025.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/mgnify_dec_2025/mgnify_dec_2025.parquet
   columns_to_load:
     - example_id
     - path

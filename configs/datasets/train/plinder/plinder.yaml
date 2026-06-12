@@ -14,7 +14,7 @@ probability: 1.0  # default for mixed samples; experiment configs override
 
 dataset:
   name: plinder_train
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/plinder/2026_05_20_plinder_systems.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/plinder/2026_05_20_plinder_systems.parquet
   memory_map: True
 
   loader:

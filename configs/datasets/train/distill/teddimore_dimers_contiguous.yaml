@@ -8,7 +8,7 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: teddimore_dimers_contiguous
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/teddimore_dimers/contiguous_teddimore_dimers.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/teddimore_dimers/contiguous_teddimore_dimers.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/teddimore_dimers
     parser_args:

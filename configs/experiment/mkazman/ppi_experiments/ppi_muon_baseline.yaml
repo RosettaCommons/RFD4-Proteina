@@ -31,6 +31,9 @@ datasets:
   train:
     afdb_monomer:
       probability: 0.2
+      dataset:
+        transform:
+          crop_size: ${dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I}
     ted_dimers:
       probability: 0.8
       dataset:

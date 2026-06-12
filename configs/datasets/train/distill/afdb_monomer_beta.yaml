@@ -10,7 +10,7 @@ probability: 1.0
 
 dataset:
   name: afdb_monomer_beta
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/afdb_monomer/afdb_monomer.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_monomer.parquet
   memory_map: True
   columns_to_load:
     - example_id

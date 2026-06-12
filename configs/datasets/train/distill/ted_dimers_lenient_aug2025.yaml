@@ -9,7 +9,7 @@ probability: 1.0
 
 dataset:
   name: ted_dimers_lenient_aug2025
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/ted_dimers/subsets/ted_dimers_lenient_aug2025.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/subsets/ted_dimers_lenient_aug2025.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers_lenient_aug2025
     parser_args:

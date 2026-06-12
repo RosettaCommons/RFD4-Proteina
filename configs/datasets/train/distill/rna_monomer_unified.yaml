@@ -8,7 +8,7 @@ probability: 1.0
 
 dataset:
   name: rna_monomer_unified
-  data: ${oc.env:DATA_PATH}/latent_data/train_datasets/rna_monomer/rna_monomer.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
   columns_to_load:
     - example_id
     - path
