@@ -135,7 +135,6 @@ PROTEIN_MSA_DIRS_ENV_VAR = "PROTEIN_MSA_DIRS"
 RNA_MSA_DIRS_ENV_VAR = "RNA_MSA_DIRS"
 """Environment variable for RNA MSA directories (comma-separated paths)."""
 
-# ruff: noqa: N806
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -1056,9 +1055,9 @@ class ConcatenateMSAFeatures(Transform):
                 "feats",
             ],
         )
-        assert (
-            len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1
-        ), "Expected only one recycle for MSA feature concatenation."
+        assert len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1, (
+            "Expected only one recycle for MSA feature concatenation."
+        )
 
     def forward(self, data: dict) -> dict:
         # Aggregate and stack MSA features

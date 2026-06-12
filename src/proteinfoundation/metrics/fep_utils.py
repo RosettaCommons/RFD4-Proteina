@@ -441,7 +441,7 @@ def compute_rbfe_batch(
             leg_results[edge_key][leg] = result
             logger.info(
                 f"Completed {leg} leg for {mol_a_name}->{mol_b_name}: "
-                f"dG={result['dg_kj_mol']*KJ_TO_KCAL:.2f} kcal/mol"
+                f"dG={result['dg_kj_mol'] * KJ_TO_KCAL:.2f} kcal/mol"
             )
         except Exception as e:
             logger.error(f"Failed {leg} leg for {mol_a_name}->{mol_b_name}: {e}")
@@ -491,7 +491,7 @@ def compute_rbfe_batch(
         )
 
     elapsed = time.time() - t0
-    logger.info(f"Batch RBFE complete: {len(results)} edges in {elapsed:.1f}s " f"({elapsed/len(results):.1f}s/edge)")
+    logger.info(f"Batch RBFE complete: {len(results)} edges in {elapsed:.1f}s ({elapsed / len(results):.1f}s/edge)")
 
     return results
 

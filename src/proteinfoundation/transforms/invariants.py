@@ -137,7 +137,7 @@ def check_standard_annotation_level_violations(aa: AtomArray) -> list[InvariantV
                 InvariantViolation(
                     check="standard_annotation_level_violated",
                     message=(
-                        f"'{sa.full_name}' (level={sa.level.value}) has inconsistent values " f"in {n_bad} segment(s)"
+                        f"'{sa.full_name}' (level={sa.level.value}) has inconsistent values in {n_bad} segment(s)"
                     ),
                     count=n_bad,
                 )

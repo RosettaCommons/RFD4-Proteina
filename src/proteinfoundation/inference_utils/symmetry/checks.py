@@ -176,9 +176,9 @@ def check_input_frames_match_symmetry_frames(
         computed_frames: list of computed frames
         original_frames: list of original frames
     """
-    assert len(computed_frames) == len(
-        original_frames
-    ), "Number of computed frames does not match number of original frames"
+    assert len(computed_frames) == len(original_frames), (
+        "Number of computed frames does not match number of original frames"
+    )
 
 
 def check_valid_multiplicity(nids_by_entity: dict) -> None:

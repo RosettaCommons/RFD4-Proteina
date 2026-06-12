@@ -47,9 +47,9 @@ def build_ema_state_dict_from_params(ema_params: list, state_dict: dict) -> dict
 
     ema_state_dict = copy.deepcopy(state_dict)
     for key, param in zip(non_autoencoder_state_dict_keys, ema_params, strict=False):
-        assert (
-            param.shape == state_dict[key].shape
-        ), f"Mismatch: {param.shape} != {state_dict[key].shape} on parameter {key}"
+        assert param.shape == state_dict[key].shape, (
+            f"Mismatch: {param.shape} != {state_dict[key].shape} on parameter {key}"
+        )
         ema_state_dict[key] = param.clone()
 
     return ema_state_dict

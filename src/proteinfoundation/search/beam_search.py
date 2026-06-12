@@ -178,7 +178,7 @@ class BeamSearchStrategy(SearchStrategy):
         for i in range(len(self.step_checkpoints) - 1):
             start_step = self.step_checkpoints[i]
             end_step = self.step_checkpoints[i + 1]
-            logger.info(f"Checkpoint {i+1}/{len(self.step_checkpoints)-1}: steps {start_step} → {end_step}")
+            logger.info(f"Checkpoint {i + 1}/{len(self.step_checkpoints) - 1}: steps {start_step} → {end_step}")
 
             all_xt_branches = []
             all_x_1_pred_branches = []
@@ -343,9 +343,9 @@ class BeamSearchStrategy(SearchStrategy):
         if not self.keep_intermediate_samples:
             expected_sample_count = nsamples * self.beam_width
             actual_count = all_sample_prots_concat["coors"].shape[0]
-            assert (
-                actual_count == expected_sample_count
-            ), f"Expected {expected_sample_count} samples, got {actual_count}"
+            assert actual_count == expected_sample_count, (
+                f"Expected {expected_sample_count} samples, got {actual_count}"
+            )
 
         logger.info(f"Beam search complete. Generated {all_sample_prots_concat['coors'].shape[0]} samples")
         logger.info(

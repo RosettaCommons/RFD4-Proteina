@@ -432,9 +432,9 @@ class TestIndexGroupCondition:
         mask = C_IDXGRP.default_mask(simple_protein)
         assert mask.shape == (len(simple_protein),)
         assert mask.dtype == bool
-        assert mask.sum() == len(
-            simple_protein
-        ), f"Expected all {len(simple_protein)} atoms to be masked, got {mask.sum()}"
+        assert mask.sum() == len(simple_protein), (
+            f"Expected all {len(simple_protein)} atoms to be masked, got {mask.sum()}"
+        )
         assert np.all(mask), "All atoms should be included in default mask"
 
         # Test annotation without C_IDX: all atoms get group 0 for single chain
@@ -442,9 +442,9 @@ class TestIndexGroupCondition:
         assert annotation.shape == (len(simple_protein),)
         assert np.issubdtype(annotation.dtype, np.integer)
         expected_group = 0
-        assert np.all(
-            annotation == expected_group
-        ), f"Expected all annotations to be {expected_group}, got unique values: {np.unique(annotation)}"
+        assert np.all(annotation == expected_group), (
+            f"Expected all annotations to be {expected_group}, got unique values: {np.unique(annotation)}"
+        )
         assert annotation.sum() == len(simple_protein) * expected_group
 
         # Test annotation with C_IDX: indexed atoms get group 0, unindexed get group 1
@@ -456,9 +456,9 @@ class TestIndexGroupCondition:
         assert np.all(annotation[:20] == 0), f"Indexed atoms should have group 0, got {np.unique(annotation[:20])}"
 
         # Check unindexed region (last 20 atoms) - should all be in group 1
-        assert np.all(
-            annotation[20:] == 1
-        ), f"Unindexed atoms should be in group 1, got unique values: {np.unique(annotation[20:])}"
+        assert np.all(annotation[20:] == 1), (
+            f"Unindexed atoms should be in group 1, got unique values: {np.unique(annotation[20:])}"
+        )
 
 
 @pytest.mark.fast
@@ -497,29 +497,29 @@ class TestSampleUnindexedGroups:
         second_unindexed = groups[20:]
 
         # Each contiguous region should have a single group ID
-        assert (
-            len(np.unique(first_unindexed)) == 1
-        ), f"First region should be contiguous (1 group), got {len(np.unique(first_unindexed))} groups: {np.unique(first_unindexed)}"
-        assert (
-            len(np.unique(indexed_groups)) == 1
-        ), f"Indexed region should be contiguous (1 group), got {len(np.unique(indexed_groups))} groups: {np.unique(indexed_groups)}"
-        assert (
-            len(np.unique(second_unindexed)) == 1
-        ), f"Second region should be contiguous (1 group), got {len(np.unique(second_unindexed))} groups: {np.unique(second_unindexed)}"
+        assert len(np.unique(first_unindexed)) == 1, (
+            f"First region should be contiguous (1 group), got {len(np.unique(first_unindexed))} groups: {np.unique(first_unindexed)}"
+        )
+        assert len(np.unique(indexed_groups)) == 1, (
+            f"Indexed region should be contiguous (1 group), got {len(np.unique(indexed_groups))} groups: {np.unique(indexed_groups)}"
+        )
+        assert len(np.unique(second_unindexed)) == 1, (
+            f"Second region should be contiguous (1 group), got {len(np.unique(second_unindexed))} groups: {np.unique(second_unindexed)}"
+        )
 
         # All three regions should have different group IDs
         first_unindexed_group_id = first_unindexed[0]
         indexed_group_id = indexed_groups[0]
         second_unindexed_group_id = second_unindexed[0]
-        assert (
-            first_unindexed_group_id != indexed_group_id
-        ), f"First unindexed and indexed should have different IDs, both got {first_unindexed_group_id}"
-        assert (
-            first_unindexed_group_id != second_unindexed_group_id
-        ), f"First and second unindexed regions should have different IDs, both got {first_unindexed_group_id}"
-        assert (
-            indexed_group_id != second_unindexed_group_id
-        ), f"Indexed and second unindexed should have different IDs, both got {indexed_group_id}"
+        assert first_unindexed_group_id != indexed_group_id, (
+            f"First unindexed and indexed should have different IDs, both got {first_unindexed_group_id}"
+        )
+        assert first_unindexed_group_id != second_unindexed_group_id, (
+            f"First and second unindexed regions should have different IDs, both got {first_unindexed_group_id}"
+        )
+        assert indexed_group_id != second_unindexed_group_id, (
+            f"Indexed and second unindexed should have different IDs, both got {indexed_group_id}"
+        )
 
 
 if __name__ == "__main__":

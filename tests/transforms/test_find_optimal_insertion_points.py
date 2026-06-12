@@ -202,22 +202,22 @@ def _verify_mapping(result_mapping, ground_truth_mapping):
     assert result_mapping is not None, "Function should return a mapping"
 
     # Verify all chains are present
-    assert set(result_mapping.keys()) == set(
-        ground_truth_mapping.keys()
-    ), f"Chain mismatch: got {set(result_mapping.keys())}, expected {set(ground_truth_mapping.keys())}"
+    assert set(result_mapping.keys()) == set(ground_truth_mapping.keys()), (
+        f"Chain mismatch: got {set(result_mapping.keys())}, expected {set(ground_truth_mapping.keys())}"
+    )
 
     for chain_id in ground_truth_mapping:
         result_chain = result_mapping[chain_id]
         expected_chain = ground_truth_mapping[chain_id]
 
-        assert len(result_chain) == len(
-            expected_chain
-        ), f"Chain {chain_id}: expected {len(expected_chain)} mappings, got {len(result_chain)}"
+        assert len(result_chain) == len(expected_chain), (
+            f"Chain {chain_id}: expected {len(expected_chain)} mappings, got {len(result_chain)}"
+        )
 
         for unindexed_res_id, expected_indexed_res_id in expected_chain.items():
-            assert (
-                unindexed_res_id in result_chain
-            ), f"Chain {chain_id}: missing mapping for unindexed residue {unindexed_res_id}"
+            assert unindexed_res_id in result_chain, (
+                f"Chain {chain_id}: missing mapping for unindexed residue {unindexed_res_id}"
+            )
             assert result_chain[unindexed_res_id] == expected_indexed_res_id, (
                 f"Chain {chain_id}: incorrect mapping for residue {unindexed_res_id}: "
                 f"expected {expected_indexed_res_id}, got {result_chain[unindexed_res_id]}"

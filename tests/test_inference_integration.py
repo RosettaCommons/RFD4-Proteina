@@ -223,9 +223,9 @@ def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
     """
     aa_a = load_any(cif_path_a)
     aa_b = load_any(cif_path_b)
-    assert (
-        aa_a.coord.shape == aa_b.coord.shape
-    ), f"Structures have different shapes: {aa_a.coord.shape} vs {aa_b.coord.shape}"
+    assert aa_a.coord.shape == aa_b.coord.shape, (
+        f"Structures have different shapes: {aa_a.coord.shape} vs {aa_b.coord.shape}"
+    )
     _, transform = struc.superimpose(aa_a, aa_b)
     aa_b_aligned = transform.apply(aa_b)
     np.testing.assert_allclose(
@@ -330,9 +330,9 @@ class TestDatasetConstruction:
             aa = chain_group[0]
             for annot, expectation in zip(annots, chain_group[1:], strict=False):
                 values = aa.get_annotation(annot)
-                assert np.all(
-                    values == expectation
-                ), f"Expected annotation '{annot}' to be {expectation} but got values {values}."
+                assert np.all(values == expectation), (
+                    f"Expected annotation '{annot}' to be {expectation} but got values {values}."
+                )
 
         with pytest.raises(ValidationError, match="Chain types must be consistent"):
             _ = get_contig_or_design_problem_dataset(
@@ -468,9 +468,9 @@ class TestEndToEndInference:
 
         # Verify correct number of CIF files with prefix in names
         cif_files = _inference_generated_cifs(tmp_output_dir)
-        assert (
-            len(cif_files) == num_replicates
-        ), f"Expected {num_replicates} CIF files, got {len(cif_files)}: {cif_files}"
+        assert len(cif_files) == num_replicates, (
+            f"Expected {num_replicates} CIF files, got {len(cif_files)}: {cif_files}"
+        )
         for cif_file in cif_files:
             assert prefix in cif_file.name, f"Expected prefix '{prefix}' in filename '{cif_file.name}'"
 
@@ -701,12 +701,12 @@ class TestEndToEndInference:
         # Non-mask string annotations (stored under their full_name)
         assert SA_CRDSRC.has_annotation(generated_aa), f"Expected '{SA_CRDSRC.full_name}' in generated CIF"
         assert SA_SRC.has_annotation(generated_aa), f"Expected '{SA_SRC.full_name}' in generated CIF"
-        assert (
-            np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5
-        ), f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
-        assert (
-            np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5
-        ), f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
+        assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5, (
+            f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
+        )
+        assert np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5, (
+            f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
+        )
 
         # coords_with_insertion is now a StandardAnnotation and is loaded automatically
         assert SA_CWI.has_annotation(generated_aa), f"Expected '{SA_CWI.full_name}' in generated CIF"
@@ -771,12 +771,12 @@ class TestEndToEndInference:
 
         # Fixed region (B19-22): CA RMSD should be near zero, sequence should be identical
         fixed_rmsd = struc.rmsd(input_ca[fixed_mask], output_ca_aligned[fixed_mask])
-        assert (
-            fixed_rmsd < 0.5
-        ), f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å — fixed atoms should retain input coordinates"
-        assert np.array_equal(
-            input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]
-        ), "Fixed-region residue types should be unchanged in output"
+        assert fixed_rmsd < 0.5, (
+            f"Fixed-region CA RMSD {fixed_rmsd:.3f} Å should be < 0.5 Å — fixed atoms should retain input coordinates"
+        )
+        assert np.array_equal(input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]), (
+            "Fixed-region residue types should be unchanged in output"
+        )
 
         # Non-fixed region: CA RMSD should be meaningfully > 0, sequences should be non-identical
         nonfixed_rmsd = struc.rmsd(input_ca[~fixed_mask], output_ca_aligned[~fixed_mask])
@@ -784,9 +784,9 @@ class TestEndToEndInference:
             f"Non-fixed-region CA RMSD {nonfixed_rmsd:.3f} Å should be > 1 Å"
             " — diffused atoms should differ from input coordinates"
         )
-        assert not np.array_equal(
-            input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]
-        ), "Non-fixed-region residue types should be different in output"
+        assert not np.array_equal(input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]), (
+            "Non-fixed-region residue types should be different in output"
+        )
 
 
 if __name__ == "__main__":

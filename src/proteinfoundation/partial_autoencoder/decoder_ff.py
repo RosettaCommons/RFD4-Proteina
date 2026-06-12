@@ -58,7 +58,7 @@ class DecoderFFLocal(torch.nn.Module):
         )
         self.struct_linear = torch.nn.Sequential(
             torch.nn.LayerNorm(token_dim),
-            torch.nn.Linear(token_dim, int(37 * 3), bias=False),
+            torch.nn.Linear(token_dim, (37 * 3), bias=False),
         )
 
     def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:

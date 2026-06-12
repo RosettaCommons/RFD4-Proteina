@@ -325,9 +325,9 @@ def assert_loss_not_exploding(
     baseline = statistics.median(losses)
     if baseline > 0:
         for i, loss in enumerate(losses):
-            assert (
-                loss <= baseline * spike_factor
-            ), f"Train loss spike at step {i}: {loss} > {spike_factor}x median {baseline}"
+            assert loss <= baseline * spike_factor, (
+                f"Train loss spike at step {i}: {loss} > {spike_factor}x median {baseline}"
+            )
 
 
 def assert_loss_decreased(losses: list[float], *, min_points: int = 5, rtol: float = 0.0) -> None:
@@ -336,6 +336,6 @@ def assert_loss_decreased(losses: list[float], *, min_points: int = 5, rtol: flo
     window = max(1, len(losses) // 10)
     start = sum(losses[:window]) / window
     end = sum(losses[-window:]) / window
-    assert (
-        end <= start * (1.0 - rtol) + 1e-6
-    ), f"Expected loss to decrease: start≈{start:.4f}, end≈{end:.4f}, samples={losses[:3]}...{losses[-3:]}"
+    assert end <= start * (1.0 - rtol) + 1e-6, (
+        f"Expected loss to decrease: start≈{start:.4f}, end≈{end:.4f}, samples={losses[:3]}...{losses[-3:]}"
+    )

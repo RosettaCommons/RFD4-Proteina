@@ -114,8 +114,7 @@ def _drop_periphery_tokens_to_fit(
 
     n_reserved_tokens = int(keep_token_mask.sum())
     assert n_reserved_tokens <= max_tokens, (
-        f"Reserved token count ({n_reserved_tokens}) exceeds budget ({max_tokens}); "
-        f"tighten the upstream reservation."
+        f"Reserved token count ({n_reserved_tokens}) exceeds budget ({max_tokens}); tighten the upstream reservation."
     )
 
     coords = get_af3_token_center_coords(atom_array)

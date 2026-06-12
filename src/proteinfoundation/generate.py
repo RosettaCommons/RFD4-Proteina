@@ -316,12 +316,12 @@ def check_cfg_validity(cfg_sample_args: dict) -> None:
             f"Guidance is turned on with guidance weight {cfg_sample_args.guidance_w} "
             f"and autoguidance ratio {cfg_sample_args.ag_ratio}."
         )
-        assert (
-            cfg_sample_args.ag_ratio >= 0.0 and cfg_sample_args.ag_ratio <= 1.0
-        ), f"Autoguidance ratio should be between 0 and 1, but now is {cfg_sample_args.ag_ratio}."
-        assert (cfg_sample_args.ag_ratio == 0.0) or (
-            cfg_sample_args.ag_ckpt_path is not None
-        ), "Autoguidance checkpoint path should be provided"
+        assert cfg_sample_args.ag_ratio >= 0.0 and cfg_sample_args.ag_ratio <= 1.0, (
+            f"Autoguidance ratio should be between 0 and 1, but now is {cfg_sample_args.ag_ratio}."
+        )
+        assert (cfg_sample_args.ag_ratio == 0.0) or (cfg_sample_args.ag_ckpt_path is not None), (
+            "Autoguidance checkpoint path should be provided"
+        )
     else:
         logger.info("Guidance is turned off.")
 
