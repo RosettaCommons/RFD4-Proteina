@@ -182,9 +182,9 @@ def copy_generated_coordinates_to_input(
     # Deep copy to avoid modifying the original input
     input_atom_array = input_atom_array.copy()
 
-    assert set(input_atom_array.token_id) == set(generated_atom_array.token_id), (
-        "Input and generated atom arrays must have the same tokens"
-    )
+    assert set(input_atom_array.token_id) == set(
+        generated_atom_array.token_id
+    ), "Input and generated atom arrays must have the same tokens"
 
     input_atom_array.set_annotation("original_global_index", np.arange(input_atom_array.array_length()))
     original_input_coords = input_atom_array.coord.copy()

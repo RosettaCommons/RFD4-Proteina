@@ -56,6 +56,6 @@ def test_msa_module_padding_does_not_leak():
     # Valid-position outputs must match regardless of padding content
     valid_out1 = out1[:, :5, :5, :]
     valid_out2 = out2[:, :5, :5, :]
-    assert torch.allclose(valid_out1, valid_out2, atol=1e-5), (
-        f"Padding leaked into valid positions! Max diff: {(valid_out1 - valid_out2).abs().max():.2e}"
-    )
+    assert torch.allclose(
+        valid_out1, valid_out2, atol=1e-5
+    ), f"Padding leaked into valid positions! Max diff: {(valid_out1 - valid_out2).abs().max():.2e}"

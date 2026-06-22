@@ -402,6 +402,12 @@ class Proteina(L.LightningModule):
         if freeze_params:
             for param in autoencoder.parameters():
                 param.requires_grad = False
+        # Optionally compile the frozen encoder's forward. It runs every training step to
+        # produce the latent targets but otherwise executes eager; compiling it is
+        # output-preserving and gives ~+10% training steps/s (encoder is ~1/4 of step compute).
+        if cfg_exp.get("compile_autoencoder", False):
+            logger.info("Compiling autoencoder encoder forward (compile_autoencoder=True).")
+            autoencoder.encoder.forward = torch.compile(autoencoder.encoder.forward)
 
         n_ae_residue_types = autoencoder.decoder.logit_linear[-1].out_features
         self._use_unified_ae_encoding = n_ae_residue_types == 33
@@ -1620,16 +1626,15 @@ class Proteina(L.LightningModule):
         sample_idx: int = 0,
         batch_idx: int = 0,
         bb_ca_only: bool = False,
+        insertion_logits: torch.Tensor | None = None,
         atom_mask: torch.Tensor | None = None,
     ) -> dict:
         """Convert one sample's tensor outputs into output AtomArrays.
 
-        Cheap "format" step: tensor → AtomArray, indexed coord-conditioning
-        copy, internal-coord groups, ``SA_CWI`` from the indexed input. The
-        unindexed input slice is concatenated onto ``full_array_with_unindexed``
-        if any unindexed tokens existed; the design-metrics worker
-        (``_stage_generated_structure``) finalises unindexed-region annotation
-        and insertion-RMSD from there.
+        Steps:
+        - Converts model output coordinate and residue tensors into an AtomArray
+        - Removes padding and in-context conditioning tokens
+        - Annotates unindexed insertion tokens based on insertion prediction head
 
         Args:
             coords: Generated coordinates [n_max_tokens, 37, 3].
@@ -1637,10 +1642,10 @@ class Proteina(L.LightningModule):
             padding_mask: Padding mask [n_max_tokens].
             input_atom_array: Original input atom array.
             bb_ca_only: If True, subset ``input_atom_array`` to CA atoms only.
+            insertion_logits: Optional [n_max_tokens, n_max_tokens] logits from the prediction head
 
         Returns:
-            Dict with ``generated_atom_array``, ``input_atom_array``, and
-            ``full_array_with_unindexed`` (or ``None``).
+            Dict with an annotated ``generated_atom_array`` and ``input_atom_array``.
         """
         return process_single_sample_to_atom_array(
             coords=coords,
@@ -1649,6 +1654,7 @@ class Proteina(L.LightningModule):
             input_atom_array=input_atom_array,
             bb_ca_only=bb_ca_only,
             atom_mask=atom_mask,
+            insertion_logits=insertion_logits,
         )
 
     def _build_staged_payload(
@@ -1686,6 +1692,7 @@ class Proteina(L.LightningModule):
             "token_count": get_token_count(sample["generated_atom_array"]),
             "input_atom_array": sample.get("input_atom_array"),
             "full_array_with_unindexed": sample.get("full_array_with_unindexed"),
+            "predicted_insertion_mapping": sample.get("predicted_insertion_mapping") or {},
             "metrics_tags": metrics_tags,
             "output_base_dir": str(output_base),
             "generated_output_path": str(generated_output_path),
@@ -1702,8 +1709,13 @@ class Proteina(L.LightningModule):
         batch_idx: int = 0,
         bb_ca_only: bool = False,
         example_ids: list[str] | None = None,
+        insertion_logits: torch.Tensor | None = None,
     ) -> list[dict]:
-        """Convert per-sample tensors back to AtomArrays for an entire batch."""
+        """Convert per-sample tensors back to AtomArrays for an entire batch.
+
+        Args:
+            insertion_logits: Optional [nsamples, n, n] logits from the insertion prediction head.
+        """
         generation_list: list[dict] = []
         n = sample_prots["coors"].shape[0]
         for i in range(n):
@@ -1712,12 +1724,15 @@ class Proteina(L.LightningModule):
                 batch["atom_array_batch"][orig_batch_idx] if "atom_array_batch" in batch else batch["atom_array"]
             )
 
+            sample_insertion_logits = insertion_logits[i] if insertion_logits is not None else None
+
             result = self._process_single_sample_to_atom_array(
                 coords=sample_prots["coors"][i],
                 residue_type=sample_prots["residue_type"][i],
                 padding_mask=sample_prots["padding_mask"][i],
                 input_atom_array=input_atom_array,
                 bb_ca_only=bb_ca_only,
+                insertion_logits=sample_insertion_logits,
             )
             if result is None:
                 continue

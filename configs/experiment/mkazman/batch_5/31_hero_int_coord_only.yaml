@@ -1,0 +1,33 @@
+# @package _global_
+
+defaults:
+  - /experiment/mkazman/batch_5/30_hero_baseline_centroid_rasa_abs_coord
+
+  - _self_
+
+run_name_: 31_hero_int_coord_only
+
+product_flowmatcher:
+  bb_ca:
+    stochastic_centering_scope: per_group
+    stochastic_centering_group_keys: [molecule_iid]
+
+datasets:
+  train:
+    afdb_monomer: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    omol: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    ted_dimers: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    plinder: {dataset: {transform: {convert_absolute_to_internal: True}}}
+  val:
+    unconditional: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    unindexed_motif_scaffold_subset: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    indexed_motif_scaffold_subset: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    mcsa_subset: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    mcsa_subset_fixed_ligand: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    mcsa_subset_no_ligand: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    sm_binder: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    sm_binder_fixed_ligand: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    sm_binder_hbonds: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    rasa_IAI: {dataset: {transform: {convert_absolute_to_internal: True}}}
+    rasa_atomized_residues: {dataset: {transform: {convert_absolute_to_internal: True}}}
+  

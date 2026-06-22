@@ -239,9 +239,9 @@ def test_unindexed_tokens_are_whole_and_atomized_atoms_stay_indexed(task_class, 
     # Invariant 1: token-wise consistency of C_IDX (all atoms in a token agree).
     spread_all = apply_and_spread_token_wise(atom_array, is_indexed, np.all)
     spread_any = apply_and_spread_token_wise(atom_array, is_indexed, np.any)
-    assert np.array_equal(spread_all, spread_any), (
-        "Found a token with mixed C_IDX values; unindexing must apply to whole tokens."
-    )
+    assert np.array_equal(
+        spread_all, spread_any
+    ), "Found a token with mixed C_IDX values; unindexing must apply to whole tokens."
 
     # Invariant 2: atomized atoms must remain indexed.
     if "atomize" in atom_array.get_annotation_categories():

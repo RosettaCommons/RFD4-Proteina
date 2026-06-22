@@ -9,16 +9,9 @@ probability: 1.0
 
 dataset:
   name: ted_dimers_unified
-  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers_metadata.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
   columns_to_load:
     - example_id
     - path
-    - InterfaceLength
-    - AvgIntPAE
-    - AvgIntPlddt
-    - MemberCount
-    - passes_paper_teddymer
-    - on_disk
-    - tm_score

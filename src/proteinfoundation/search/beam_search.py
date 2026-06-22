@@ -343,9 +343,9 @@ class BeamSearchStrategy(SearchStrategy):
         if not self.keep_intermediate_samples:
             expected_sample_count = nsamples * self.beam_width
             actual_count = all_sample_prots_concat["coors"].shape[0]
-            assert actual_count == expected_sample_count, (
-                f"Expected {expected_sample_count} samples, got {actual_count}"
-            )
+            assert (
+                actual_count == expected_sample_count
+            ), f"Expected {expected_sample_count} samples, got {actual_count}"
 
         logger.info(f"Beam search complete. Generated {all_sample_prots_concat['coors'].shape[0]} samples")
         logger.info(

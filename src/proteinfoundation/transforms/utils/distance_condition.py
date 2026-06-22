@@ -52,9 +52,9 @@ def stochastic_pair_knockout(
     """
 
     # make sure eligible_pair_indices is upper triangle indices
-    assert (eligible_pair_indices[0] < eligible_pair_indices[1]).all(), (
-        "eligible_pair_indices must be upper triangle indices"
-    )
+    assert (
+        eligible_pair_indices[0] < eligible_pair_indices[1]
+    ).all(), "eligible_pair_indices must be upper triangle indices"
 
     if len(eligible_pair_indices[0]) > min_valid_elements:
         percent_to_remove = np.random.uniform(low, high)
@@ -79,9 +79,9 @@ def compute_distances(atom_array: AtomArray, mask: np.ndarray) -> tuple[np.ndarr
     # idxs = np.where(mask)[0]
     # m = len(idxs)
     if mask.ndim == 1:
-        assert mask.shape == (atom_array.array_length(),), (
-            f"mask.shape: {mask.shape} != (atom_array.array_length(),): {atom_array.array_length()}"
-        )
+        assert mask.shape == (
+            atom_array.array_length(),
+        ), f"mask.shape: {mask.shape} != (atom_array.array_length(),): {atom_array.array_length()}"
 
         # # Upper triangle (i < j)
         # row_u, col_u = np.triu_indices(m, k=1)
@@ -89,9 +89,9 @@ def compute_distances(atom_array: AtomArray, mask: np.ndarray) -> tuple[np.ndarr
         mask_2d = np.outer(mask, mask)  # (L, L)
     else:
         assert mask.ndim == 2, f"mask.ndim: {mask.ndim} != 1 or 2"
-        assert mask.shape[0] == mask.shape[1] == atom_array.array_length(), (
-            f"mask.shape: {mask.shape} != (L, L). (L={atom_array.array_length()})"
-        )
+        assert (
+            mask.shape[0] == mask.shape[1] == atom_array.array_length()
+        ), f"mask.shape: {mask.shape} != (L, L). (L={atom_array.array_length()})"
         mask_2d = mask
 
     mask_2d[np.diag_indices(mask_2d.shape[0])] = False  # always do this just in case
@@ -275,9 +275,9 @@ def featurize_distances_conditioning_via_fourier(atom_array: AtomArrayPlus, nbin
     # ... ensure no nans
     assert not torch.isnan(dists_tensor).any(), "dists has NaNs"
     # ... ensure dists is symmetric
-    assert torch.allclose(dists_tensor.T, dists_tensor), (
-        f"dists must be symmetric. Got {distance_annotation.as_array()}"
-    )
+    assert torch.allclose(
+        dists_tensor.T, dists_tensor
+    ), f"dists must be symmetric. Got {distance_annotation.as_array()}"
 
     ## 2. Mask
     has_dist_condition_2d = dists_tensor > 0.0

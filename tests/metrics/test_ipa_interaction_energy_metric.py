@@ -229,16 +229,16 @@ def test_ipa_axitinib_golden_values(axitinib_complex):
         )
 
         # Binding energy (1 kcal/mol tolerance)
-        assert abs(e_bind - AXITINIB_GOLDEN["ipa_binding_energy_kcal"]) < 1.0, (
-            f"Binding energy {e_bind:.2f} too far from golden {AXITINIB_GOLDEN['ipa_binding_energy_kcal']:.2f} kcal/mol"
-        )
+        assert (
+            abs(e_bind - AXITINIB_GOLDEN["ipa_binding_energy_kcal"]) < 1.0
+        ), f"Binding energy {e_bind:.2f} too far from golden {AXITINIB_GOLDEN['ipa_binding_energy_kcal']:.2f} kcal/mol"
 
         # Deformation energy (exact match expected -- ligand-only, no capping)
         if result["deformation_energies"]:
             e_def = result["deformation_energies"][0]
-            assert abs(e_def - AXITINIB_GOLDEN["deformation_energy_kcal"]) < 0.1, (
-                f"Deformation energy {e_def:.2f} != golden {AXITINIB_GOLDEN['deformation_energy_kcal']:.2f}"
-            )
+            assert (
+                abs(e_def - AXITINIB_GOLDEN["deformation_energy_kcal"]) < 0.1
+            ), f"Deformation energy {e_def:.2f} != golden {AXITINIB_GOLDEN['deformation_energy_kcal']:.2f}"
 
         # Per-residue interaction energies (0.5 kcal/mol tolerance per residue)
         per_res = result["per_residue_interactions"]
@@ -252,9 +252,9 @@ def test_ipa_axitinib_golden_values(axitinib_complex):
                 for r in residue_list
                 if r["res"] == res_name and r["resn"] == resn and r["charge"] == charge and not r["flip"]
             ]
-            assert len(matches) == 1, (
-                f"Expected exactly 1 match for {res_name} {resn} charge={charge}, got {len(matches)}"
-            )
+            assert (
+                len(matches) == 1
+            ), f"Expected exactly 1 match for {res_name} {resn} charge={charge}, got {len(matches)}"
             actual = matches[0]["eint_kcal"]
             assert abs(actual - golden_eint) < 0.5, (
                 f"{res_name} {resn} (charge={charge}): {actual:.2f} vs golden "

@@ -288,9 +288,9 @@ class TestSimpleEMASwapping:
 
         # Verify original is still correct
         first_tensor = next(iter(ema_callback._original_state_dict.values()))
-        assert torch.allclose(first_tensor, torch.tensor(1.0)), (
-            "_original_state_dict corrupted after use_training_weights"
-        )
+        assert torch.allclose(
+            first_tensor, torch.tensor(1.0)
+        ), "_original_state_dict corrupted after use_training_weights"
 
         # End validation
         ema_callback.on_validation_end(trainer, module)

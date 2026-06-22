@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 import lightning as L
 import torch
+import torch.nn.functional as F
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
@@ -19,15 +20,7 @@ def extract_groups(batch: dict) -> dict[str, torch.Tensor | None]:
     """Extract token-level group tensors from a collated batch.
 
     Pulls all group keys that can be used by the ``"per_group"`` stochastic
-    centering scope:
-
-    * ``chain_iid``, ``pn_unit_iid``, ``molecule_iid``: already token-level
-      ``[b, n_tokens]`` integer tensors in the batch (cast to ``long``).
-    * ``coord_group``: derived from ``C_CRDGRP.full_name`` which is stored at
-      atom37 level ``[b, n_tokens, 37]``; reduced to token level
-      ``[b, n_tokens]`` by taking the per-token max across the 37 atom slots
-      (empty slots carry ``UNKNOWN_COORDS = -1``, the minimum value, so the max
-      selects the most-specific annotation for each token).
+    centering scope.
 
     Args:
         batch: Collated batch dictionary.
@@ -348,13 +341,63 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             Losses for each data modality, per element in the batch.
         """
         losses = {}
-
-        # NOTE: We don't have auxiliary losses yet but if we do make sure to use the should_be_lossed_masks like below!
-        # should_be_lossed_masks = {
-        #     "bb_ca": batch["should_be_lossed"],
-        #     "local_latents": batch["should_be_lossed"] & batch["can_be_encoded"],
-        # }
+        losses.update(self._compute_insertion_prediction_loss(batch, nn_out))
         return losses
+
+    def _compute_insertion_prediction_loss(
+        self,
+        batch: dict,
+        nn_out: dict[str, dict[str, Tensor]],
+    ) -> dict[str, Float[Tensor, "b"]]:
+        """Per-unindexed-token CE loss for the insertion-prediction head.
+
+        Returns ``'insertion_prediction'`` (optimised) and two ``_justlog`` entries
+        ``'insertion_ce_justlog'`` / ``'insertion_accuracy_justlog'`` (logged only).
+        """
+        logits: Float[Tensor, "b n n"] | None = nn_out.get("insertion", {}).get("logits")
+        target: Int[Tensor, "b n"] | None = batch.get("insertion_source_idx")
+        if logits is None or target is None:
+            return {}
+
+        b, n, _ = logits.shape
+
+        # Tensor multiply (not Python branch) so the graph shape stays fixed under DDP + compile
+        sample_has_unindexed_tokens = (target >= 0).any(dim=-1).float()  # [b]
+
+        # True for tokens that are valid candidates to MAP TO (i.e. real, indexed)
+        indexed_key_mask: Bool[Tensor, "b n"] = batch["padding_mask"] & (target < 0)
+        logits_masked: Float[Tensor, "b n n"] = logits.masked_fill(~indexed_key_mask.unsqueeze(1), -1e9)
+
+        # Flatten the (b, n) query axes into a single N=b*n, then unflatten the per-token CE back to (b, n)
+        ce_per_token: Float[Tensor, "b n"] = F.cross_entropy(
+            logits_masked.reshape(b * n, n),  # [b*n, n]
+            target.long().reshape(b * n),  # [b*n]
+            reduction="none",
+            ignore_index=-1,
+        ).reshape(b, n)
+
+        is_unindexed: Bool[Tensor, "b n"] = target >= 0
+        n_valid = is_unindexed.float().sum(dim=-1)  # [b]
+        safe_n_valid = torch.where(n_valid > 0, n_valid, torch.ones_like(n_valid))
+        loss = (ce_per_token.sum(dim=-1) / safe_n_valid) * sample_has_unindexed_tokens  # [b]
+
+        # _justlog scalars broadcast to [b] so log_losses' mean reduction recovers them.
+        n_samples = sample_has_unindexed_tokens.sum()
+        ce_justlog = (loss.sum() / torch.where(n_samples > 0, n_samples, torch.ones_like(n_samples))) * torch.ones_like(
+            loss
+        )
+        pred = logits_masked.argmax(dim=-1)  # [b, n]
+        n_unindexed_total = is_unindexed.float().sum()
+        accuracy = ((pred == target.long()) & is_unindexed).float().sum() / torch.where(
+            n_unindexed_total > 0, n_unindexed_total, torch.ones_like(n_unindexed_total)
+        )
+        accuracy_justlog = accuracy * torch.ones_like(loss)
+
+        return {
+            "insertion_prediction": loss,
+            "insertion_ce_justlog": ce_justlog,
+            "insertion_accuracy_justlog": accuracy_justlog,
+        }
 
     def simulation_step(
         self,
@@ -657,10 +700,12 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
             x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]  # zero out padded bb_ca tokens
 
-            x_1_pred = None
             # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
             batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
             batch["x_sc_is_active"] = torch.zeros((), device=device)
+
+            x_1_pred = None
+            nn_out = None
             for step in range(nsteps):
                 t = {
                     data_mode: ts[data_mode][step] * torch.ones(nsamples, device=device)
@@ -723,10 +768,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                         step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
                     trajectory_steps.append(step_snapshot)
 
+            # Capture insertion logits from the final step for inference-time mapping
+            final_insertion_logits = None
+            if nn_out is not None and "insertion" in nn_out and "logits" in nn_out["insertion"]:
+                final_insertion_logits = nn_out["insertion"]["logits"].detach()
+
             additional_info = {
                 "padding_mask": mask,
                 "can_be_encoded": is_encoded_mask,
                 "trajectory_steps": trajectory_steps,
+                "insertion_logits": final_insertion_logits,
             }
             return x, additional_info
 
@@ -827,6 +878,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
         trajectory_steps: list[dict] = []
 
+        nn_out = None
         with torch.no_grad():
             # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
             batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
@@ -888,10 +940,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                         step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
                     trajectory_steps.append(step_snapshot)
 
+        # Capture insertion logits from the final step for inference-time mapping
+        final_insertion_logits = None
+        if nn_out is not None and "insertion" in nn_out and "logits" in nn_out["insertion"]:
+            final_insertion_logits = nn_out["insertion"]["logits"].detach()
+
         extra_info = {
             "padding_mask": mask,
             "can_be_encoded": is_encoded_mask,
             "trajectory_steps": trajectory_steps,
+            "insertion_logits": final_insertion_logits,
         }
         return x, x_1_pred, extra_info
 

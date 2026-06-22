@@ -172,7 +172,10 @@ class VanillaStrategy(SearchStrategy):
         )
 
         # Use the shared processing method to convert to atom arrays
-        generation_list = model.format_sample_prots_to_atom_arrays(sample_prots, batch, batch_idx=0)
+        insertion_logits = extra_info.get("insertion_logits")  # [nsamples, n, n] or None
+        generation_list = model.format_sample_prots_to_atom_arrays(
+            sample_prots, batch, batch_idx=0, insertion_logits=insertion_logits
+        )
 
         # Decode and attach trajectory snapshots if any were collected
         trajectory_steps = extra_info.get("trajectory_steps", [])

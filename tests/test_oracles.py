@@ -171,9 +171,9 @@ def test_renumber_emits_1_based_struct_conn_seq_ids(lencapavir_design_with_coval
     seqs = np.concatenate([sc["ptnr1_label_seq_id"].as_array(int), sc["ptnr2_label_seq_id"].as_array(int)])
     chain_len = {c: int(renumbered.res_id[renumbered.chain_id == c].max()) for c in np.unique(renumbered.chain_id)}
     for chain, seq in zip(chains, seqs, strict=False):
-        assert 1 <= seq <= chain_len[chain], (
-            f"_struct_conn seq_id {seq} out of [1..{chain_len[chain]}] for chain {chain}"
-        )
+        assert (
+            1 <= seq <= chain_len[chain]
+        ), f"_struct_conn seq_id {seq} out of [1..{chain_len[chain]}] for chain {chain}"
 
 
 def test_validate_inter_residue_bonds_match_passes(lencapavir_design_with_covale):
@@ -334,9 +334,9 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     assert result["unconditional.all_metrics_present"] in (0.0, 1.0)
 
     # Chain A RMSD should be low since chain A was templated
-    assert result["chain_a_rmsd.rmsd"] < 2.0, (
-        f"Chain A RMSD {result['chain_a_rmsd.rmsd']:.2f} Å exceeds 2.0 Å despite being templated."
-    )
+    assert (
+        result["chain_a_rmsd.rmsd"] < 2.0
+    ), f"Chain A RMSD {result['chain_a_rmsd.rmsd']:.2f} Å exceeds 2.0 Å despite being templated."
 
 
 if __name__ == "__main__":

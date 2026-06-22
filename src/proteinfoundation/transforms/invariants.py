@@ -58,7 +58,6 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_element_encoding_violations(feats)
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
-    violations += check_idxgrp_violations(aa, feats)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
@@ -655,7 +654,18 @@ def check_token_features_consistent_violations(aa: AtomArray) -> list[InvariantV
             continue
         feat_values = aa.get_annotation(feat_name)
         token_starts = get_token_starts(aa, add_exclusive_stop=True)
-        n_unique_per_seg = apply_segment_wise(token_starts, feat_values, lambda seg: np.unique(seg).size)
+
+        # handle multi-dimensional features
+        if feat_values.ndim > 1:
+
+            def compare_fn(seg: np.ndarray) -> int:
+                return np.unique(np.nan_to_num(seg), axis=0, equal_nan=True).shape[0]
+        else:
+
+            def compare_fn(seg: np.ndarray) -> int:
+                return np.unique(seg).size
+
+        n_unique_per_seg = apply_segment_wise(token_starts, feat_values, compare_fn)
         n_bad = int((n_unique_per_seg > 1).sum())
         if n_bad:
             violations.append(

@@ -7,7 +7,7 @@
 
 defaults:
   - ../base_pandas@dataset
-  - /design_tasks/presets/tip_atom_tasks@dataset.transform.design_tasks
+  - /design_tasks/presets/plinder_tasks@dataset.transform.design_tasks
   - _self_
 
 probability: 1.0  # default for mixed samples; experiment configs override

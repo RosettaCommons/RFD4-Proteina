@@ -95,9 +95,11 @@ from beartype.typing import Any, Callable
 from biotite.structure import AtomArray
 from einops import rearrange
 
+from foundry.common import true_with_prob
 from proteinfoundation.conditions import (
     C_BP,
     C_CATH,
+    C_CENTROID,
     C_CRDGRP,
     C_HB,
     C_HOT,
@@ -118,6 +120,8 @@ from proteinfoundation.transforms.atom_names import (
 from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_expansion
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
+from proteinfoundation.transforms.internal_coords import ConvertAbsoluteToInternalCoords
+from proteinfoundation.transforms.invariants import ValidateBatchInvariants
 from proteinfoundation.transforms.loss_weight_predicates import build_loss_weight_upweights
 from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
 from proteinfoundation.transforms.na_geom import (
@@ -214,6 +218,39 @@ def _lookup_atom37_slots(keys: np.ndarray, sorted_keys: np.ndarray, sorted_slots
     return out
 
 
+def build_atom37_slots(atom_array: AtomArray) -> np.ndarray:
+    """Map each atom to its atom37 slot index.
+
+    Returns:
+        Integer slot indices of shape ``[n_atoms]``. Unknown atoms get -1.
+    """
+    aap = as_atom_array_plus(atom_array)
+    n_atoms = aap.array_length()
+    atom_names = np.char.strip(aap.atom_name.astype(str))
+    slots = np.full(n_atoms, -1, dtype=np.int32)
+    categories = set(aap.get_annotation_categories())
+
+    if "token_type" in categories:
+        token_type = aap.token_type
+        is_polymer = (token_type == TokenType.PROTEIN) | (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
+        is_atomized = token_type == TokenType.ATOMIZED
+    else:
+        ensure_annotations(aap, "is_protein", "is_rna", "is_dna")
+        is_polymer = aap.is_protein | aap.is_rna | aap.is_dna
+        is_atomized = aap.atomize if "atomize" in categories else np.zeros(n_atoms, dtype=bool)
+
+    if is_polymer.any():
+        residue_names = aap.res_name[is_polymer].astype(str)
+        polymer_atom_names = atom_names[is_polymer]
+        polymer_keys = np.char.add(np.char.add(residue_names, "|"), polymer_atom_names)
+        slots[is_polymer] = _lookup_atom37_slots(polymer_keys, _ATOM37_KEYS, _ATOM37_SLOTS)
+
+    if is_atomized.any():
+        slots[is_atomized] = 1
+
+    return slots
+
+
 # Module-level cached residue-specific lookups
 _ATOM37_KEYS, _ATOM37_SLOTS = _build_atom37_lookups()
 
@@ -298,11 +335,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         random_molecule_indices = np.random.permutation(len(unique_molecules))
         feats["molecule_iid"] = random_molecule_indices[mol_inverse_indices]  # [L]
 
-        # Same for pn_unit_iid (atom-array annotation is a string; integerize to int per-token).
-        unique_pn_units, pn_inverse_indices = np.unique(aa.pn_unit_iid, return_inverse=True)
-        random_pn_unit_indices = np.random.permutation(len(unique_pn_units))
-        feats["pn_unit_iid"] = random_pn_unit_indices[pn_inverse_indices]  # [L]
-
         # Encode ground-truth residue types using atom_array_to_encoded_resnames (handles proteins, DNA, RNA, atomized)
         # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns).
         # Maps all masked tokens to singular mask token.
@@ -336,6 +368,11 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
             feats["loss_weight"] = np.ones(aa.array_length(), dtype=np.float32)  # [L]
 
         feats["coord_cond_mask"] = C_CRD.mask(aa, default="generate")  # [L] for diagnostics
+
+        # Insertion source index for insertion-prediction training task:
+        # -1 for indexed (generated) tokens; j>=0 for unindexed tokens (source token index)
+        if "insertion_source_idx" in aa.get_annotation_categories():
+            feats["insertion_source_idx"] = aa.insertion_source_idx  # [L]
 
         ###########################################################
         # Conditioning information
@@ -418,6 +455,9 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
         feats[C_IDXGRP.full_name] = C_IDXGRP.annotation(aa, default="generate")
         feats[C_CRDGRP.full_name] = C_CRDGRP.annotation(aa, default="generate")
+        feats[C_CENTROID.full_name] = C_CENTROID.annotation(
+            aa, default="generate"
+        )  # (n_atoms, 3) Å, NaN where unincluded
 
         # +------ Gap / missing-atom features ------+
         if "chain_breaks_per_residue" in aa.get_annotation_categories():
@@ -449,10 +489,10 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "tok_idx",
     "chain_iid",
     "molecule_iid",
-    "pn_unit_iid",
     "within_index_group_res_idx",
     "can_be_encoded",
     "should_be_lossed",
+    "insertion_source_idx",
     "loss_weight",
     "coord_cond_mask",  # Coordinate conditioning mask (for diagnostics)
     C_SEQ.mask_name,
@@ -461,6 +501,7 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_SEC.full_name,
     C_IDXGRP.full_name,
     C_CATH.full_name,
+    C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
     "chain_breaks_per_residue",
     "missing_atom_count",
     "chirality",
@@ -942,18 +983,33 @@ class AddMissingAtomCount(Transform):
         return data
 
 
-class EnsureAtomizedResiduesAreSequenceConditioned(Transform):
+class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
     """
-    Ensure that all atomized residues are sequence conditioned.
+    Ensure that all atomized or coordinate-conditioned residues are sequence conditioned.
     Temporary annotation that be removed for e.g. unfixed ligands.
     """
 
     def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        if "atomize" in atom_array.get_annotation_categories():
-            seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
-            C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
-        data["atom_array"] = atom_array
+        aap = as_atom_array_plus(data["atom_array"])
+        seq_cond_mask = C_SEQ.mask(aap, default="generate")
+
+        # Atomized tokens always require sequence conditioning
+        if "atomize" in aap.get_annotation_categories():
+            seq_cond_mask |= aap.atomize
+
+        # Only non-backbone coordinate conditioning requires sequence conditioning.
+        # Backbone-only conditioning (e.g. inverse folding context) does not.
+        crd_mask = C_CRD.mask(aap, default="generate") | C_INTCRD.mask(aap, default="generate")
+        if crd_mask.any():
+            ensure_annotations(aap, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
+            is_backbone = aap.is_protein_backbone | aap.is_rna_backbone | aap.is_dna_backbone
+            seq_cond_mask |= crd_mask & ~is_backbone
+
+        # Any token with sequence conditioning should be fully sequence-conditioned
+        seq_cond_mask = apply_and_spread_token_wise(aap, seq_cond_mask, np.any)
+
+        C_SEQ.set_mask(aap, seq_cond_mask)
+        data["atom_array"] = aap
         return data
 
 
@@ -1025,6 +1081,59 @@ class FeaturizeCentroidOfAtomsWithoutCoordinateConditioning(Transform):
         return data
 
 
+class FeaturizeChainCentroid(Transform):
+    """Write per-chain centroid (from ``coord_annotation``, plus Gaussian noise) to ``C_CENTROID``.
+
+    Args:
+        p_add_centroid_condition: Outer per-example gate.
+        p_include_per_chain: Inner per-chain dropout (independent per chain).
+        noise_std_angstrom: Isotropic Gaussian noise std (Å) per included chain.
+        coord_annotation: Source coord annotation; must be post-centering for centroids to live in the loss frame.
+    """
+
+    def __init__(
+        self,
+        p_add_centroid_condition: float = 0.2,
+        p_include_per_chain: float = 0.5,
+        noise_std_angstrom: float = 5.0,
+        coord_annotation: str = "coord_to_be_noised",
+    ):
+        super().__init__()
+        self.p_add_centroid_condition = float(p_add_centroid_condition)
+        self.p_include_per_chain = float(p_include_per_chain)
+        self.noise_std_angstrom = float(noise_std_angstrom)
+        self.coord_annotation = coord_annotation
+
+    def forward(self, data: dict) -> dict:
+        aa = as_atom_array_plus(data["atom_array"])
+        n_atoms = aa.array_length()
+
+        # Default: NaN centroid (mask is implicit via isfinite).
+        centroid_arr = np.full((n_atoms, 3), fill_value=np.nan, dtype=np.float32)
+
+        if true_with_prob(self.p_add_centroid_condition):
+            coords = aa.get_annotation(self.coord_annotation)  # (n_atoms, 3) Å, post-centering
+            chain_iid = aa.chain_iid
+            for chain_id in np.unique(chain_iid):
+                chain_mask = chain_iid == chain_id
+                # Skip single-atom "chains" (ions, lone atoms): a 1-atom centroid is just
+                # the atom position and is uninformative as a layout signal.
+                if chain_mask.sum() < 2:
+                    continue
+                if not true_with_prob(self.p_include_per_chain):
+                    continue
+                chain_coords = coords[chain_mask]
+                if np.isnan(chain_coords).all():
+                    continue
+                chain_centroid = np.nanmean(chain_coords, axis=0).astype(np.float32)  # (3,)
+                noise = (np.random.randn(3) * self.noise_std_angstrom).astype(np.float32)  # (3,)
+                centroid_arr[chain_mask] = chain_centroid + noise
+
+        C_CENTROID.set_annotation(aa, centroid_arr)
+        data["atom_array"] = aa
+        return data
+
+
 class EncodeQuerySequenceForMSA(Transform):
     """Encode query sequence for MSA using specified TokenEncoding."""
 
@@ -1055,9 +1164,9 @@ class ConcatenateMSAFeatures(Transform):
                 "feats",
             ],
         )
-        assert len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1, (
-            "Expected only one recycle for MSA feature concatenation."
-        )
+        assert (
+            len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1
+        ), "Expected only one recycle for MSA feature concatenation."
 
     def forward(self, data: dict) -> dict:
         # Aggregate and stack MSA features
@@ -1309,6 +1418,10 @@ def _build_design_featurize_pipeline(
     coordination_bond_dropout_p_individual: float = 0.5,
     aromatic_dropout_p: float = 0.4,
     path_length_search_cutoff: int | None = None,
+    # Per-chain centroid conditioning (training-only; None disables)
+    centroid_kwargs: dict | None = None,
+    # Internal-coordinate-only conditioning ablation
+    convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
 ) -> list[Transform]:
@@ -1331,12 +1444,15 @@ def _build_design_featurize_pipeline(
     ### Step 1: Annotation fixes                            ###  # TODO: Should these be in validate / train portions?
     ###########################################################
     # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
-    T += EnsureAtomizedResiduesAreSequenceConditioned()
+    T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)
 
     T += FeaturizeExpandedSegments()
+
+    if convert_absolute_to_internal:
+        T += ConvertAbsoluteToInternalCoords()
 
     # NA-SS annotation follows the same high-level pattern as other conditioning:
     # task-driven in train, specification-driven in inference.
@@ -1381,6 +1497,10 @@ def _build_design_featurize_pipeline(
         coord_annotation="coord_to_be_noised",
         feature_name="centroid_of_atoms_without_coordinate_conditioning",
     )
+
+    # Per-chain centroid conditioning channel (training-only opt-in)
+    if not is_inference and centroid_kwargs is not None:
+        T += FeaturizeChainCentroid(**centroid_kwargs)
 
     # Annotate and encode atom names using AF3 encoding
     T += AnnotateAtomNameVisibility()
@@ -1433,6 +1553,7 @@ def _build_design_featurize_pipeline(
         "specification",
     ]
 
+    T += ValidateBatchInvariants(is_inference=is_inference)
     T += SubsetToKeys(keys_to_keep)
 
     return T.tolist()
@@ -1460,6 +1581,10 @@ def build_design_train_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
+    # Per-chain centroid conditioning (training-only; None disables)
+    centroid_kwargs: dict | None = None,
+    # Internal-coordinate-only conditioning ablation
+    convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
 ) -> Transform:
@@ -1526,6 +1651,8 @@ def build_design_train_pipeline(
         msa_featurize_n_msa=msa_featurize_n_msa,
         is_inference=is_inference,
         path_length_search_cutoff=path_length_search_cutoff,
+        centroid_kwargs=centroid_kwargs,
+        convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
     )
 
@@ -1541,6 +1668,8 @@ def build_design_validation_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
+    # Internal-coordinate-only conditioning ablation
+    convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
 ) -> Transform:
@@ -1573,5 +1702,6 @@ def build_design_validation_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         path_length_search_cutoff=path_length_search_cutoff,
+        convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
     )

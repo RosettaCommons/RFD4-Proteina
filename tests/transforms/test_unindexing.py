@@ -216,9 +216,9 @@ def test_within_index_group_res_idx_per_unindexed_group(pdb_id: str, p_split_gro
             continue  # indexed groups are not required to start at 0
 
         group_res_idxs = within_res_idx[group_mask]
-        assert group_res_idxs.min() == 0, (
-            f"Group {gid} within_index_group_res_idx min={group_res_idxs.min()}, expected 0"
-        )
-        assert len(np.unique(group_res_idxs)) == len(group_res_idxs), (
-            f"Group {gid} within_index_group_res_idx has duplicates: {group_res_idxs}"
-        )
+        assert (
+            group_res_idxs.min() == 0
+        ), f"Group {gid} within_index_group_res_idx min={group_res_idxs.min()}, expected 0"
+        assert len(np.unique(group_res_idxs)) == len(
+            group_res_idxs
+        ), f"Group {gid} within_index_group_res_idx has duplicates: {group_res_idxs}"

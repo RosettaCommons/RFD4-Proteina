@@ -25,7 +25,6 @@ feats_seq: [
   "x_sc_bb_ca",                 # Self-conditioning backbone CA [b, n, 3]
   "x_sc_local_latents",         # Self-conditioning local latents [b, n, latent_dim]
   "token_type",                 # Token type embedding (protein/rna/dna/atomized/unknown) [b, n, token_type_emb_dim]
-  # "res_seq_pdb_idx",            # Residue position encoding [b, n, idx_emb_dim]
   "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 20]
   "cond_a37coors_nm",           # Conditional atom37 coordinates (prevents leakage) [b, n, 37*4]
   "cond_a37coors_internal_nm",  # Conditional atom37 internal coordinates [b, n, 37*4]
@@ -38,6 +37,7 @@ feats_seq: [
   "atomic_element",             # Atomic element embedding for atomized tokens [b, n, 16]
   coord_group_seq,              # Raw coordinate group in atom37 representation [b, n, 37]
   "chirality",                  # Block-diagonal chirality vector [b, n, 18]
+  "chain_centroid_xyz",         # per-chain centroid xyz (nm) [b, n, 3]
 ]
 
 # Sequence features to include in conditioning variables
@@ -54,7 +54,6 @@ t_emb_dim: 256  # dimension of the time embedding
 
 # Pair features - updated for atom37 collate
 feats_pair_repr: [
-  "rel_seq_sep",                # Relative sequence separation [b, n, n, seq_sep_dim]
   "xt_bb_ca_pair_dists",        # Pairwise distances from noised CA [b, n, n, xt_pair_dist_dim]
   "x_sc_bb_ca_pair_dists",      # Pairwise distances from self-conditioning CA [b, n, n, x_sc_pair_dist_dim]
   "bond_mask",                  # Bond existence mask for atomized molecules [b, n, n, 1]
@@ -62,9 +61,9 @@ feats_pair_repr: [
   "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
   "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
   "molecule_idx_pair",          # Binary feature indicating same molecule instance [b, n, n, 1]
-  "chain_idx_pair",             # Binary feature indicating same chain [b, n, n, 1]
+  "token_bond_path_length",     # Pairwise path lengths in the token bond graph
+  "canonical_polymer_ordering", # ±1 ordering of bonded canonical polymer residue pairs [b, n, n, 1]
   "na_ss_pair",                 # Nucleic acid secondary structure pair feature [b, n, n, 3]
-  # "canonical_polymer_ordering", # ±1 ordering of bonded canonical polymer residue pairs [b, n, n, 1] (opt-in)
 ]
 feats_pair_cond: ["time_emb_bb_ca", "time_emb_local_latents"]  # Features to include in the pair representation conditioning
 
@@ -80,7 +79,7 @@ x_sc_pair_dist_max: 3  # in nm (not Å)
 # Relative sequence separation (also used as bin count for TokenBondPathLengthPairFeat).
 # For the bond-path-length feature to populate its high-distance bins, this should be
 # <= (path_length_search_cutoff + 1) in configs/datasets/train/base.yaml (default 65).
-seq_sep_dim: 127  # should be odd >= 5
+seq_sep_dim: 64  # halved vs the rel_seq_sep baseline -- path length is unsigned
 # Dimension of final pair representation
 pair_repr_dim: 256
 

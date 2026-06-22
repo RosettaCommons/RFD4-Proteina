@@ -57,9 +57,9 @@ def align_structures_with_masks(
     gt_atoms_to_align = gt_array_stack[:, gt_align_mask]
     pred_atoms_to_align = pred_array_stack[:, pred_align_mask]
 
-    assert len(gt_atoms_to_align) == len(pred_atoms_to_align), (
-        "Alignment subsets of ground truth and predicted atom array stacks must be the same length"
-    )
+    assert len(gt_atoms_to_align) == len(
+        pred_atoms_to_align
+    ), "Alignment subsets of ground truth and predicted atom array stacks must be the same length"
 
     if len(gt_atoms_to_align) == 0:
         return None, None
@@ -137,15 +137,15 @@ def compute_rmsd(gt_array_stack: AtomArrayStack, pred_array_stack: AtomArrayStac
         dict with key "rmsd" and value RMSD values for each atom array in the stack
     """
 
-    assert len(gt_array_stack) == len(pred_array_stack), (
-        "Ground truth and predicted atom array stacks must be the same length"
-    )
+    assert len(gt_array_stack) == len(
+        pred_array_stack
+    ), "Ground truth and predicted atom array stacks must be the same length"
     if len(gt_array_stack) == 0 or len(pred_array_stack) == 0:
         return np.nan
 
-    assert all(len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))), (
-        "Ground truth and predicted atom arrays must be the same length"
-    )
+    assert all(
+        len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))
+    ), "Ground truth and predicted atom arrays must be the same length"
 
     rmsds = []
     for i in range(len(gt_array_stack)):
@@ -178,15 +178,15 @@ def compute_distance_mae(
         dict with keys "mae_all_pairs", "mae_pairs_with_2d_condition", "mae_pairs_no_2d_condition" and values as
         numpy arrays
     """
-    assert len(gt_array_stack) == len(pred_array_stack), (
-        "Ground truth and predicted atom array stacks must be the same length"
-    )
+    assert len(gt_array_stack) == len(
+        pred_array_stack
+    ), "Ground truth and predicted atom array stacks must be the same length"
 
     assert len(gt_array_stack) > 0, "Ground truth atom array stack is empty"
 
-    assert all(len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))), (
-        "Ground truth and predicted atom arrays must be the same length"
-    )
+    assert all(
+        len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))
+    ), "Ground truth and predicted atom arrays must be the same length"
 
     if not all(
         distance_type in ["tip_atom", "inter_chain", "intra_chain", "intra_chain_protein"]

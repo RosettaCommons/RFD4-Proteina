@@ -248,6 +248,26 @@ class InternalCoordinate(ConditionBase):
         return np.full((atom_array.array_length(), 3), fill_value=np.nan)
 
 
+class ChainCentroid(ConditionBase):
+    """Per-chain centroid xyz (Å, ``(n_atoms, 3)``), broadcast per atom; NaN where unincluded."""
+
+    # NOTE: CamelCase is used since underscores are forbidden and dashes break the query syntax
+    name = "ChainCentroid"
+    n_body = 1
+    level = Level.ATOM
+    dtype = float
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        if cls.full_name in atom_array.get_annotation_categories():
+            return np.isfinite(cls.annotation(atom_array, default="raise")).any(axis=1)
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.full((atom_array.array_length(), 3), fill_value=np.nan, dtype=np.float32)
+
+
 class CoordinateGroup(ConditionBase):
     """Indicates atoms within the same equivalence class of known relative coordinates."""
 
@@ -345,5 +365,6 @@ C_IDXGRP = CONDITIONS.index_group
 C_CATH = CONDITIONS.cath_label
 C_INTCRD = CONDITIONS.InternalCoordinate
 C_CRDGRP = CONDITIONS.CoordinateGroup
+C_CENTROID = CONDITIONS.ChainCentroid
 C_BP = CONDITIONS.basepair
 C_NA_SS_STATE = CONDITIONS.na_ss_state

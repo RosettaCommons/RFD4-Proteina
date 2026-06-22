@@ -9,7 +9,18 @@ from jaxtyping import Float
 from torch.nn import functional as F
 
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.conditions import C_CATH, C_CRDGRP, C_HB, C_HOT, C_IDXGRP, C_INTCRD, C_RAS, C_SEC, RasaEnum
+from proteinfoundation.conditions import (
+    C_CATH,
+    C_CENTROID,
+    C_CRDGRP,
+    C_HB,
+    C_HOT,
+    C_IDXGRP,
+    C_INTCRD,
+    C_RAS,
+    C_SEC,
+    RasaEnum,
+)
 from proteinfoundation.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 from proteinfoundation.utils.angle_utils import bond_angles, signed_dihedral_angle
 
@@ -294,9 +305,9 @@ class XtBBCASeqFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert "bb_ca" in data_modes_avail, (
-            f"`bb_ca` seq feat feature requested but key not available in data modes {data_modes_avail}"
-        )
+        assert (
+            "bb_ca" in data_modes_avail
+        ), f"`bb_ca` seq feat feature requested but key not available in data modes {data_modes_avail}"
         return batch["x_t"]["bb_ca"]  # [b, n, 3]
 
 
@@ -308,9 +319,9 @@ class XtLocalLatentsSeqFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert "local_latents" in data_modes_avail, (
-            f"`local_latents` seq feat feature requested but key not available in data modes {data_modes_avail}"
-        )
+        assert (
+            "local_latents" in data_modes_avail
+        ), f"`local_latents` seq feat feature requested but key not available in data modes {data_modes_avail}"
         return batch["x_t"]["local_latents"]  # [b, n, latent_dim]
 
 
@@ -321,9 +332,9 @@ class CaCoorsNanometersSeqFeat(Feature):
         super().__init__(dim=3)
 
     def forward(self, batch: dict) -> torch.Tensor:
-        assert "ca_coors_nm" in batch or "coords_nm" in batch, (
-            "`ca_coors_nm` nor `coords_nm` in batch, cannot compute CaCoorsNanometersSeqFeat"
-        )
+        assert (
+            "ca_coors_nm" in batch or "coords_nm" in batch
+        ), "`ca_coors_nm` nor `coords_nm` in batch, cannot compute CaCoorsNanometersSeqFeat"
         if "ca_coors_nm" in batch:
             return batch["ca_coors_nm"]  # [b, n, 3]
         else:
@@ -817,6 +828,29 @@ class RasaBinnedSeqFeat(Feature):
         return rasa_atom37
 
 
+class ChainCentroidXyzSeqFeat(Feature):
+    """Per-token chain centroid xyz in nm, ``[b, n, 3]``; zero where unincluded."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=3)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        if C_CENTROID.full_name not in batch:
+            b, n = self.extract_bs_and_n(batch)
+            device = self.extract_device(batch)
+            _warn_once("No C_CENTROID in batch, returning zeros for ChainCentroidXyzSeqFeat")
+            return torch.zeros(b, n, self.dim, device=device)
+
+        centroid_angstrom = batch[C_CENTROID.full_name].float()  # [b, n, 3]
+        included = torch.isfinite(centroid_angstrom).all(dim=-1)  # [b, n]
+        centroid_nm = torch.where(
+            included.unsqueeze(-1),
+            centroid_angstrom / 10.0,
+            torch.zeros_like(centroid_angstrom),
+        )
+        return centroid_nm  # [b, n, 3]
+
+
 class SecondaryStructureSeqFeat(Feature):
     """Secondary structure: 0=NONE, 1=HELIX, 2=SHEET, 3=LOOP."""
 
@@ -1050,8 +1084,8 @@ class SequenceSeparationPairFeat(Feature):
             self.assert_defaults_allowed(batch, "Relative sequence separation pair")
             b, n = self.extract_bs_and_n(batch)
             device = self.extract_device(batch)
-            inds = torch.Tensor([[i + 1 for i in range(n)] for _ in range(b)]).to(device)  # [b, n]
-            index_groups = torch.zeros((b, n), dtype=torch.long, device=device)  # [b, n]
+            inds = torch.arange(1, n + 1, device=device, dtype=torch.long).unsqueeze(0).expand(b, -1)
+            index_groups = torch.zeros(b, n, device=device, dtype=torch.long)
 
         seq_sep = inds[:, :, None] - inds[:, None, :]  # [b, n, n]
 
@@ -1111,9 +1145,9 @@ class XtBBCAPairwiseDistancesPairFeat(Feature):
 
     def forward(self, batch: dict) -> torch.Tensor:
         data_modes_avail = list(batch["x_t"])
-        assert "bb_ca" in data_modes_avail, (
-            f"`bb_ca` pair dist feature requested but key not available in data modes {data_modes_avail}"
-        )
+        assert (
+            "bb_ca" in data_modes_avail
+        ), f"`bb_ca` pair dist feature requested but key not available in data modes {data_modes_avail}"
         return bin_pairwise_distances(
             x=batch["x_t"]["bb_ca"],
             min_dist=self.min_dist,
@@ -1131,9 +1165,9 @@ class CaCoorsNanometersPairwiseDistancesPairFeat(Feature):
         self.max_dist = 3.0
 
     def forward(self, batch: dict) -> torch.Tensor:
-        assert "ca_coors_nm" in batch or "coords_nm" in batch, (
-            "`ca_coors_nm` pair dist feature requested but key `ca_coors_nm` nor `coords_nm` not available"
-        )
+        assert (
+            "ca_coors_nm" in batch or "coords_nm" in batch
+        ), "`ca_coors_nm` pair dist feature requested but key `ca_coors_nm` nor `coords_nm` not available"
         if "ca_coors_nm" in batch:
             ca_coors = batch["ca_coors_nm"]
         else:
@@ -1593,6 +1627,8 @@ class FeatureFactory(torch.nn.Module):
             # 1D Condition annotations
             elif f == "rasa_binned":
                 return RasaBinnedSeqFeat(**kwargs)
+            elif f == "chain_centroid_xyz":
+                return ChainCentroidXyzSeqFeat(**kwargs)
             elif f == "secondary_structure":
                 return SecondaryStructureSeqFeat(**kwargs)
             elif f == "hbond":

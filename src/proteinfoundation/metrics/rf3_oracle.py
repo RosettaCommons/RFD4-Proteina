@@ -160,9 +160,9 @@ class RF3Oracle(OracleMetric):
         if self.template_annotations:
             template_mask = np.zeros(atom_array.array_length(), dtype=bool)
             for annot_name in self.template_annotations:
-                assert annot_name in atom_array.get_annotation_categories(), (
-                    f"Annotation '{annot_name}' not found in AtomArray"
-                )
+                assert (
+                    annot_name in atom_array.get_annotation_categories()
+                ), f"Annotation '{annot_name}' not found in AtomArray"
                 annot = atom_array.get_annotation(annot_name)
                 assert annot.dtype == bool, f"Annotation '{annot_name}' must be boolean, got {annot.dtype}"
                 template_mask |= annot
