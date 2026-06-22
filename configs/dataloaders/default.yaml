@@ -22,7 +22,7 @@ train:
       _target_: foundry.data.collate.collate_batch
       _partial_: True
       schema: proteinfoundation.datapipes.schema.proteina.ProteinaDataSample  # Just a string now!
-      fixed_dimensions: null # {I: 450, S: 1024}  # Or use: {I: 512, S: 128}
+      fixed_dimensions: {I: 256}  # Need to change if adjusting crop size from default 256
   n_fallback_retries: 4
 
 val:

@@ -1,0 +1,224 @@
+data_TRP_L80_2res_exposed.cif
+#
+_entry.id       TRP_L80_2res_exposed.cif
+_entry.author   unknown_user
+_entry.date     2026-05-21
+_entry.time     05:26:27
+#
+_entity.id                 1
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       XWXWX
+_entity_poly.pdbx_seq_one_letter_code_can   XWXWX
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+1 n 27-27 0
+1 n TRP   1
+1 n 27-27 2
+1 n TRP   3
+1 n 26-26 4
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+26-26 26-26 NON-POLYMER         ? ? ? ?
+27-27 27-27 NON-POLYMER         ? ? ? ?
+TRP   TRP   'L-PEPTIDE LINKING' ? ? ? ?
+#
+loop_
+_struct_conn.id 
+_struct_conn.conn_type_id 
+_struct_conn.pdbx_value_order 
+_struct_conn.ptnr1_label_asym_id 
+_struct_conn.ptnr2_label_asym_id 
+_struct_conn.ptnr1_label_comp_id 
+_struct_conn.ptnr2_label_comp_id 
+_struct_conn.ptnr1_label_seq_id 
+_struct_conn.ptnr2_label_seq_id 
+_struct_conn.ptnr1_label_atom_id 
+_struct_conn.ptnr2_label_atom_id 
+_struct_conn.pdbx_ptnr1_PDB_ins_code 
+_struct_conn.pdbx_ptnr2_PDB_ins_code 
+1 covale sing A A TRP   26-26 3 4 C   UNK . .
+2 covale sing A A TRP   27-27 1 2 C   UNK . .
+3 covale sing A A 27-27 TRP   2 3 UNK N   . .
+4 covale sing A A 27-27 TRP   0 1 UNK N   . .
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+TRP N   CA  SING N
+TRP N   H   SING N
+TRP N   H2  SING N
+TRP CA  C   SING N
+TRP CA  CB  SING N
+TRP CA  HA  SING N
+TRP C   O   DOUB N
+TRP C   OXT SING N
+TRP CB  CG  SING N
+TRP CB  HB2 SING N
+TRP CB  HB3 SING N
+TRP CG  CD1 DOUB Y
+TRP CG  CD2 SING Y
+TRP CD1 NE1 SING Y
+TRP CD1 HD1 SING N
+TRP CD2 CE2 DOUB Y
+TRP CD2 CE3 SING Y
+TRP NE1 CE2 SING Y
+TRP NE1 HE1 SING N
+TRP CE2 CZ2 SING Y
+TRP CE3 CZ3 DOUB Y
+TRP CE3 HE3 SING N
+TRP CZ2 CH2 DOUB Y
+TRP CZ2 HZ2 SING N
+TRP CZ3 CH2 SING Y
+TRP CZ3 HZ3 SING N
+TRP CH2 HH2 SING N
+TRP OXT HXT SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.pdbx_formal_charge 
+_atom_site.condition_rasa-binned_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_rasa-binned_1_atom 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.atomize 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X UNK . 27-27 A 1 0 . 0 27-27 A UNK ? 0 True  27 False False 27 False True  0  nan    nan    nan    1 1
+ATOM   N N   . TRP   A 1 1 . 1 TRP   A N   ? 3 False -1 True  True  -1 True  False 1  1.278  1.121  2.059  1 2
+ATOM   C CA  . TRP   A 1 1 . 1 TRP   A CA  ? 3 False -1 True  True  -1 True  False 2  -0.008 0.417  1.97   1 3
+ATOM   C C   . TRP   A 1 1 . 1 TRP   A C   ? 3 False -1 True  True  -1 True  False 3  -0.49  0.076  3.357  1 4
+ATOM   O O   . TRP   A 1 1 . 1 TRP   A O   ? 3 False -1 True  True  -1 True  False 4  0.308  -0.13  4.24   1 5
+ATOM   C CB  . TRP   A 1 1 . 1 TRP   A CB  ? 3 False -1 True  True  -1 True  False 5  0.168  -0.868 1.161  1 6
+ATOM   C CG  . TRP   A 1 1 . 1 TRP   A CG  ? 3 False -1 True  True  -1 True  False 6  0.65   -0.526 -0.225 1 7
+ATOM   C CD1 . TRP   A 1 1 . 1 TRP   A CD1 ? 3 False -1 True  True  -1 True  False 7  1.928  -0.418 -0.622 1 8
+ATOM   C CD2 . TRP   A 1 1 . 1 TRP   A CD2 ? 3 False -1 True  True  -1 True  False 8  -0.186 -0.256 -1.396 1 9
+ATOM   N NE1 . TRP   A 1 1 . 1 TRP   A NE1 ? 3 False -1 True  True  -1 True  False 9  1.978  -0.095 -1.951 1 10
+ATOM   C CE2 . TRP   A 1 1 . 1 TRP   A CE2 ? 3 False -1 True  True  -1 True  False 10 0.701  0.014  -2.454 1 11
+ATOM   C CE3 . TRP   A 1 1 . 1 TRP   A CE3 ? 3 False -1 True  True  -1 True  False 11 -1.564 -0.21  -1.615 1 12
+ATOM   C CZ2 . TRP   A 1 1 . 1 TRP   A CZ2 ? 3 False -1 True  True  -1 True  False 12 0.19   0.314  -3.712 1 13
+ATOM   C CZ3 . TRP   A 1 1 . 1 TRP   A CZ3 ? 3 False -1 True  True  -1 True  False 13 -2.044 0.086  -2.859 1 14
+ATOM   C CH2 . TRP   A 1 1 . 1 TRP   A CH2 ? 3 False -1 True  True  -1 True  False 14 -1.173 0.348  -3.907 1 15
+ATOM   O OXT . TRP   A 1 1 . 1 TRP   A OXT ? 3 False -1 True  True  -1 True  False 15 -1.806 0.001  3.61   1 16
+ATOM   H H   . TRP   A 1 1 . 1 TRP   A H   ? 0 False -1 False True  -1 True  False 16 nan    nan    nan    1 17
+ATOM   H H2  . TRP   A 1 1 . 1 TRP   A H2  ? 0 False -1 False True  -1 True  False 17 nan    nan    nan    1 18
+ATOM   H HA  . TRP   A 1 1 . 1 TRP   A HA  ? 0 False -1 False True  -1 True  False 18 nan    nan    nan    1 19
+ATOM   H HB2 . TRP   A 1 1 . 1 TRP   A HB2 ? 0 False -1 False True  -1 True  False 19 nan    nan    nan    1 20
+ATOM   H HB3 . TRP   A 1 1 . 1 TRP   A HB3 ? 0 False -1 False True  -1 True  False 20 nan    nan    nan    1 21
+ATOM   H HD1 . TRP   A 1 1 . 1 TRP   A HD1 ? 0 False -1 False True  -1 True  False 21 nan    nan    nan    1 22
+ATOM   H HE1 . TRP   A 1 1 . 1 TRP   A HE1 ? 0 False -1 False True  -1 True  False 22 nan    nan    nan    1 23
+ATOM   H HE3 . TRP   A 1 1 . 1 TRP   A HE3 ? 0 False -1 False True  -1 True  False 23 nan    nan    nan    1 24
+ATOM   H HZ2 . TRP   A 1 1 . 1 TRP   A HZ2 ? 0 False -1 False True  -1 True  False 24 nan    nan    nan    1 25
+ATOM   H HZ3 . TRP   A 1 1 . 1 TRP   A HZ3 ? 0 False -1 False True  -1 True  False 25 nan    nan    nan    1 26
+ATOM   H HH2 . TRP   A 1 1 . 1 TRP   A HH2 ? 0 False -1 False True  -1 True  False 26 nan    nan    nan    1 27
+ATOM   H HXT . TRP   A 1 1 . 1 TRP   A HXT ? 0 False -1 False True  -1 True  False 27 nan    nan    nan    1 28
+HETATM X UNK . 27-27 A 1 2 . 2 27-27 A UNK ? 0 True  27 False False 27 False True  28 nan    nan    nan    1 29
+ATOM   N N   . TRP   A 1 3 . 3 TRP   A N   ? 3 False -1 True  True  -1 True  False 29 1.278  1.121  2.059  1 30
+ATOM   C CA  . TRP   A 1 3 . 3 TRP   A CA  ? 3 False -1 True  True  -1 True  False 30 -0.008 0.417  1.97   1 31
+ATOM   C C   . TRP   A 1 3 . 3 TRP   A C   ? 3 False -1 True  True  -1 True  False 31 -0.49  0.076  3.357  1 32
+ATOM   O O   . TRP   A 1 3 . 3 TRP   A O   ? 3 False -1 True  True  -1 True  False 32 0.308  -0.13  4.24   1 33
+ATOM   C CB  . TRP   A 1 3 . 3 TRP   A CB  ? 3 False -1 True  True  -1 True  False 33 0.168  -0.868 1.161  1 34
+ATOM   C CG  . TRP   A 1 3 . 3 TRP   A CG  ? 3 False -1 True  True  -1 True  False 34 0.65   -0.526 -0.225 1 35
+ATOM   C CD1 . TRP   A 1 3 . 3 TRP   A CD1 ? 3 False -1 True  True  -1 True  False 35 1.928  -0.418 -0.622 1 36
+ATOM   C CD2 . TRP   A 1 3 . 3 TRP   A CD2 ? 3 False -1 True  True  -1 True  False 36 -0.186 -0.256 -1.396 1 37
+ATOM   N NE1 . TRP   A 1 3 . 3 TRP   A NE1 ? 3 False -1 True  True  -1 True  False 37 1.978  -0.095 -1.951 1 38
+ATOM   C CE2 . TRP   A 1 3 . 3 TRP   A CE2 ? 3 False -1 True  True  -1 True  False 38 0.701  0.014  -2.454 1 39
+ATOM   C CE3 . TRP   A 1 3 . 3 TRP   A CE3 ? 3 False -1 True  True  -1 True  False 39 -1.564 -0.21  -1.615 1 40
+ATOM   C CZ2 . TRP   A 1 3 . 3 TRP   A CZ2 ? 3 False -1 True  True  -1 True  False 40 0.19   0.314  -3.712 1 41
+ATOM   C CZ3 . TRP   A 1 3 . 3 TRP   A CZ3 ? 3 False -1 True  True  -1 True  False 41 -2.044 0.086  -2.859 1 42
+ATOM   C CH2 . TRP   A 1 3 . 3 TRP   A CH2 ? 3 False -1 True  True  -1 True  False 42 -1.173 0.348  -3.907 1 43
+ATOM   O OXT . TRP   A 1 3 . 3 TRP   A OXT ? 3 False -1 True  True  -1 True  False 43 -1.806 0.001  3.61   1 44
+ATOM   H H   . TRP   A 1 3 . 3 TRP   A H   ? 0 False -1 False True  -1 True  False 44 nan    nan    nan    1 45
+ATOM   H H2  . TRP   A 1 3 . 3 TRP   A H2  ? 0 False -1 False True  -1 True  False 45 nan    nan    nan    1 46
+ATOM   H HA  . TRP   A 1 3 . 3 TRP   A HA  ? 0 False -1 False True  -1 True  False 46 nan    nan    nan    1 47
+ATOM   H HB2 . TRP   A 1 3 . 3 TRP   A HB2 ? 0 False -1 False True  -1 True  False 47 nan    nan    nan    1 48
+ATOM   H HB3 . TRP   A 1 3 . 3 TRP   A HB3 ? 0 False -1 False True  -1 True  False 48 nan    nan    nan    1 49
+ATOM   H HD1 . TRP   A 1 3 . 3 TRP   A HD1 ? 0 False -1 False True  -1 True  False 49 nan    nan    nan    1 50
+ATOM   H HE1 . TRP   A 1 3 . 3 TRP   A HE1 ? 0 False -1 False True  -1 True  False 50 nan    nan    nan    1 51
+ATOM   H HE3 . TRP   A 1 3 . 3 TRP   A HE3 ? 0 False -1 False True  -1 True  False 51 nan    nan    nan    1 52
+ATOM   H HZ2 . TRP   A 1 3 . 3 TRP   A HZ2 ? 0 False -1 False True  -1 True  False 52 nan    nan    nan    1 53
+ATOM   H HZ3 . TRP   A 1 3 . 3 TRP   A HZ3 ? 0 False -1 False True  -1 True  False 53 nan    nan    nan    1 54
+ATOM   H HH2 . TRP   A 1 3 . 3 TRP   A HH2 ? 0 False -1 False True  -1 True  False 54 nan    nan    nan    1 55
+ATOM   H HXT . TRP   A 1 3 . 3 TRP   A HXT ? 0 False -1 False True  -1 True  False 55 nan    nan    nan    1 56
+HETATM X UNK . 26-26 A 1 4 . 4 26-26 A UNK ? 0 True  26 False False 26 False True  56 nan    nan    nan    1 57
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+TRP   N   N 0 N N 1.277999997138977    1.121000051498413     2.059000015258789
+TRP   CA  C 0 N N -0.00800000037997961 0.4169999957084656    1.9700000286102295
+TRP   C   C 0 N N -0.49000000953674316 0.07599999755620956   3.3570001125335693
+TRP   O   O 0 N N 0.30799999833106995  -0.12999999523162842  4.239999771118164
+TRP   CB  C 0 N N 0.1679999977350235   -0.8679999709129333   1.1610000133514404
+TRP   CG  C 0 Y N 0.6499999761581421   -0.5260000228881836   -0.22499999403953552
+TRP   CD1 C 0 Y N 1.9279999732971191   -0.4180000126361847   -0.621999979019165
+TRP   CD2 C 0 Y N -0.1860000044107437  -0.25600001215934753  -1.3960000276565552
+TRP   NE1 N 0 Y N 1.9780000448226929   -0.0949999988079071   -1.9509999752044678
+TRP   CE2 C 0 Y N 0.7009999752044678   0.014000000432133675  -2.4539999961853027
+TRP   CE3 C 0 Y N -1.5640000104904175  -0.20999999344348907  -1.6150000095367432
+TRP   CZ2 C 0 Y N 0.1899999976158142   0.3140000104904175    -3.7119998931884766
+TRP   CZ3 C 0 Y N -2.0439999103546143  0.0860000029206276    -2.8589999675750732
+TRP   CH2 C 0 Y N -1.1729999780654907  0.3479999899864197    -3.9070000648498535
+TRP   OXT O 0 N Y -1.805999994277954   0.0010000000474974513 3.609999895095825
+TRP   H   H 0 N N 1.9210000038146973   0.49300000071525574   2.5179998874664307
+TRP   H2  H 0 N Y 1.6109999418258667   1.2369999885559082    1.1130000352859497
+TRP   HA  H 0 N N -0.7400000095367432  1.0579999685287476    1.4789999723434448
+TRP   HB2 H 0 N N 0.8999999761581421   -1.5089999437332153   1.6519999504089355
+TRP   HB3 H 0 N N -0.7860000133514404  -1.3899999856948853   1.0950000286102295
+TRP   HD1 H 0 N N 2.7890000343322754   -0.5640000104904175   0.012000000104308128
+TRP   HE1 H 0 N N 2.7909998893737793   0.035999998450279236  -2.4619998931884766
+TRP   HE3 H 0 N N -2.247999906539917   -0.4129999876022339   -0.8040000200271606
+TRP   HZ2 H 0 N N 0.8600000143051147   0.5210000276565552    -4.533999919891357
+TRP   HZ3 H 0 N N -3.109999895095825   0.11599999666213989   -3.0290000438690186
+TRP   HH2 H 0 N N -1.5670000314712524  0.5820000171661377    -4.885000228881836
+TRP   HXT H 0 N Y -2.115000009536743   -0.21699999272823334  4.5
+26-26 UNK X 0 N Y nan                  nan                   nan
+27-27 UNK X 0 N N nan                  nan                   nan
+#

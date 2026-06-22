@@ -193,14 +193,14 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
         generated_mask = generated_array.token_id == token_id
 
         # Sequence must be unchanged
-        assert np.array_equal(input_array.res_name[input_mask], updated_array.res_name[updated_mask]), (
-            f"[{task_name}] Seq-conditioned token {token_id} sequence changed"
-        )
+        assert np.array_equal(
+            input_array.res_name[input_mask], updated_array.res_name[updated_mask]
+        ), f"[{task_name}] Seq-conditioned token {token_id} sequence changed"
 
         # Atom names must match
-        assert set(input_array.atom_name[input_mask]) == set(updated_array.atom_name[updated_mask]), (
-            f"[{task_name}] Seq-conditioned token {token_id} atom names changed"
-        )
+        assert set(input_array.atom_name[input_mask]) == set(
+            updated_array.atom_name[updated_mask]
+        ), f"[{task_name}] Seq-conditioned token {token_id} atom names changed"
 
         # Coordinates must differ from original (shifted by +10)
         for atom_name in input_array.atom_name[input_mask]:
@@ -208,18 +208,18 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
             original_atom_coords = original_coords[atom_indices]
             updated_coords = updated_array.coord[updated_mask & (updated_array.atom_name == atom_name)]
 
-            assert not np.allclose(original_atom_coords, updated_coords), (
-                f"[{task_name}] Seq-conditioned token {token_id} atom {atom_name} coords unchanged"
-            )
+            assert not np.allclose(
+                original_atom_coords, updated_coords
+            ), f"[{task_name}] Seq-conditioned token {token_id} atom {atom_name} coords unchanged"
 
         # Coordinates must match generated
         for atom_name in updated_array.atom_name[updated_mask]:
             updated_coords = updated_array.coord[updated_mask & (updated_array.atom_name == atom_name)]
             generated_coords = generated_array.coord[generated_mask & (generated_array.atom_name == atom_name)]
 
-            assert np.allclose(updated_coords, generated_coords, equal_nan=True), (
-                f"[{task_name}] Seq-conditioned token {token_id} coords don't match generated"
-            )
+            assert np.allclose(
+                updated_coords, generated_coords, equal_nan=True
+            ), f"[{task_name}] Seq-conditioned token {token_id} coords don't match generated"
 
     # VERIFICATION 4: All non-single-atom tokens have correct coordinates
     for token_id in np.unique(updated_array.token_id):
@@ -231,19 +231,19 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
             continue
 
         # Coordinate shapes must match
-        assert updated_array.coord[updated_mask].shape == generated_array.coord[generated_mask].shape, (
-            f"[{task_name}] Token {token_id} coordinate shape mismatch"
-        )
+        assert (
+            updated_array.coord[updated_mask].shape == generated_array.coord[generated_mask].shape
+        ), f"[{task_name}] Token {token_id} coordinate shape mismatch"
 
         # All atoms in updated must be in generated with matching coordinates
         for atom_name in updated_array.atom_name[updated_mask]:
-            assert atom_name in generated_array.atom_name[generated_mask], (
-                f"[{task_name}] Token {token_id} missing atom {atom_name} in generated"
-            )
+            assert (
+                atom_name in generated_array.atom_name[generated_mask]
+            ), f"[{task_name}] Token {token_id} missing atom {atom_name} in generated"
 
             updated_coords = updated_array.coord[updated_mask & (updated_array.atom_name == atom_name)]
             generated_coords = generated_array.coord[generated_mask & (generated_array.atom_name == atom_name)]
 
-            assert np.allclose(updated_coords, generated_coords, equal_nan=True), (
-                f"[{task_name}] Token {token_id} atom {atom_name} coordinate mismatch"
-            )
+            assert np.allclose(
+                updated_coords, generated_coords, equal_nan=True
+            ), f"[{task_name}] Token {token_id} atom {atom_name} coordinate mismatch"

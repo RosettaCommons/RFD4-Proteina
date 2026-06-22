@@ -126,9 +126,9 @@ def normalize_to_atom_array_list(
 def unwrap_atom_array(x: "AtomArray | AtomArrayStack") -> AtomArray:
     """Unwrap a single-structure input to a bare AtomArray."""
     if isinstance(x, AtomArrayStack):
-        assert len(x) == 1, (
-            f"Expected a single-element AtomArrayStack, got depth {len(x)}. Metrics expect one structure at a time."
-        )
+        assert (
+            len(x) == 1
+        ), f"Expected a single-element AtomArrayStack, got depth {len(x)}. Metrics expect one structure at a time."
         return x[0]
     return x
 
@@ -616,11 +616,8 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
         return {"example_id": example_id}
 
     array_to_annotate = payload.get("full_array_with_unindexed") or payload["generated_atom_array"]
-    generated_array = annotate_unindexed_insertion(
-        array_to_annotate,
-        insert_unindexed_regions=payload.get("insert_unindexed_regions", False),
-        inputs_in_same_frame=True,
-    )
+    token_mapping = payload.get("predicted_insertion_mapping") or {}
+    generated_array = annotate_unindexed_insertion(array_to_annotate, token_mapping)
 
     result = {
         "generated_atom_array": generated_array,

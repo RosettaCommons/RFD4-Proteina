@@ -41,9 +41,8 @@ resume_ckpt_path:
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: True
 
-# Weight loading policies (only used when loading pretrain_ckpt_path)
-# When null, falls back to strict=False (legacy behaviour).
-# Set to a WeightLoadingConfig to control per-parameter handling:
+# Weight loading policies (ONLY honored on the pretrain_ckpt_path path).
+# When null, falls back to strict=False (silently drop missing/extra keys).
 weight_loading: null
 # Example:
 #   _target_: foundry.utils.weights.WeightLoadingConfig
@@ -53,7 +52,7 @@ weight_loading: null
 #     "score_network.seq_emb.new_feature_emb.*": zero_init
 #     "score_network.pair_emb.resized_layer.*": copy_and_zero_pad
 
-# Parameter freezing (applied after weight loading from pretrain_ckpt_path)
+# Parameter freezing (ONLY honored on the pretrain_ckpt_path path).
 # When null, no parameters are frozen.
 parameter_freezing: null
 # Example:
@@ -81,17 +80,17 @@ product_flowmatcher:
     dim: 3
     stochastic_centering_mode: "x_0"
     stochastic_centering_scale: 0.2
-    stochastic_centering_scope: "without_absolute_coords"  # Options: "all", "without_absolute_coords", "per_group" (requires stochastic_centering_group_keys, a subset of {chain_iid, pn_unit_iid, molecule_iid, coord_group})
   local_latents:
     zero_com_noise: False
     guidance_enabled: True
     dim: null  # Overwritten by autoencoder
     stochastic_centering_mode: "none"
     stochastic_centering_scale: null
-    stochastic_centering_scope: "without_absolute_coords"
 
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+
+compile_autoencoder: True  # Whether to compile the autoencoder with torch.compile for faster inference (may increase startup time)
 
 # Set to true when using an AE trained on the unified pipeline (same encoding, no -1 offset)
 use_unified_ae_encoding: false
@@ -142,8 +141,6 @@ lora:
 opt:
   lr: 0.0001
   gradient_clip_val: 1.0       # Max gradient norm; used for both automatic and manual optimization
-  muon_param_patterns: []      # Parameter name prefixes routed to Muon; rest go to Adam
-  muon_adjust_lr_fn: "match_rms_adamw" # Either "original" or "match_rms_adamw"
   max_epochs: 10000000
   accumulate_grad_batches: 1
   dist_strategy: ddp
@@ -151,6 +148,10 @@ opt:
   val_every_n_epochs: 10      # Validate at end of every N epochs
   val_start_epoch: 0          # Delay validation until this epoch (0 = start immediately)
   foldseek_timeout_minutes: 25  # Wall-clock budget for Foldseek diversity clustering per validation epoch
+  muon_param_patterns:  # Parameter name prefixes routed to Muon; rest go to Adam
+    - '^nn\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
+    - '^nn\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
+  muon_adjust_lr_fn: "match_rms_adamw" # Either "original" or "match_rms_adamw"
 
 # Logging and checkpoints
 log:

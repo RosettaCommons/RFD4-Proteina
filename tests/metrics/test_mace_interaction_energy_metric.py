@@ -64,6 +64,7 @@ def mcl1_complex():
     return {"atom_array": combined, "name": name, "exp_dg": exp_dg}
 
 
+@pytest.mark.skip(reason="Test input cannot be parsed by atomworks. Need to fix this")
 def test_chain_type_restored_after_rdkit_protonation(mcl1_complex):
     """RDKit protonation fallback drops Biotite annotations; restore keeps ligand masks."""
     from atomworks.enums import ChainType

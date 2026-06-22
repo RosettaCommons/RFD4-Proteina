@@ -16,10 +16,12 @@ from atomworks.ml.transforms.encoding import atom_array_from_encoding
 from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen, remove_protein_terminal_oxygen
 from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
+from torch._tensor import Tensor
 
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_INTCRD
+from proteinfoundation.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from proteinfoundation.transforms.utils.conditioning_utils import (
     align_atom_array_to_input_frame,
     insert_internal_coord_conditioned_groups,
@@ -37,6 +39,7 @@ def process_single_sample_to_atom_array(
     input_atom_array: AtomArray,
     bb_ca_only: bool = False,
     atom_mask: torch.Tensor | None = None,
+    insertion_logits: torch.Tensor | None = None,
 ) -> dict[str, Any]:
     """Convert one sample's atom37 tensors into annotated AtomArrays.
 
@@ -52,14 +55,21 @@ def process_single_sample_to_atom_array(
     if not np.all(has_idx_any_token_level == has_idx_all_token_level):
         raise ValueError("Input AtomArray should have either all or none of the atoms indexed per token")
 
-    padding_mask = padding_mask.clone()
-    non_padding_indices = np.where(padding_mask.cpu().numpy())[0]
-    padding_mask[non_padding_indices[~has_idx_all_token_level]] = False
+    indexed_mask: Tensor = padding_mask.clone()
+    non_padding_indices = np.where(indexed_mask.cpu().numpy())[0]
+    indexed_mask[non_padding_indices[~has_idx_all_token_level]] = False
 
-    coords = coords[padding_mask]
-    residue_type = residue_type[padding_mask]
+    coords = coords[indexed_mask]
+    residue_type = residue_type[indexed_mask]
+
+    # Select [n_valid, n_valid] sub-matrix (indexed + unindexed, no padding)
+    if insertion_logits is not None:
+        insertion_logits_for_generated = insertion_logits[padding_mask][:, padding_mask]
+    else:
+        insertion_logits_for_generated = None
+
     if atom_mask is not None:
-        atom_mask = atom_mask[padding_mask]
+        atom_mask = atom_mask[indexed_mask]
     if torch.any(residue_type == UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]):
         raise ValueError("There should be no mask tokens in generated output")
 
@@ -145,13 +155,25 @@ def process_single_sample_to_atom_array(
         full_array_with_unindexed = as_atom_array_plus(
             concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
         )
+        try:
+            predicted_insertion_mapping = build_predicted_insertion_mapping(
+                insertion_logits_for_generated, full_array_with_unindexed
+            )
+        except (AttributeError, AssertionError, ValueError, RuntimeError) as e:
+            logger.warning(
+                f"Predicted insertion mapping failed for sample: {e} "
+                "Emitting sample without unindexed-region annotations."
+            )
+            predicted_insertion_mapping = {}
     else:
         full_array_with_unindexed = None
+        predicted_insertion_mapping = {}
 
     return {
         "generated_atom_array": as_atom_array_plus(updated_array),
         "input_atom_array": as_atom_array_plus(input_atom_array),
         "full_array_with_unindexed": full_array_with_unindexed,
+        "predicted_insertion_mapping": predicted_insertion_mapping,
     }
 
 

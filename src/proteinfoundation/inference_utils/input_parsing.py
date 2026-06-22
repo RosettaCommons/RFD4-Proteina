@@ -441,9 +441,9 @@ def accumulate_components(
     current_accum_idx = sum(len(arr) for arr in atom_array_accum)
 
     # ... Insert contig information one- by one-
-    assert len(components_to_accumulate) == len(unindexed_breaks), (
-        "Mismatch in number of components to accumulate and breaks"
-    )
+    assert len(components_to_accumulate) == len(
+        unindexed_breaks
+    ), "Mismatch in number of components to accumulate and breaks"
     for component, is_break in zip(components_to_accumulate, unindexed_breaks, strict=False):
         src_indices = None
         if exists(is_break) and is_break and not unindexed_components_started:
@@ -509,9 +509,9 @@ def accumulate_components(
             component=component,
         )
 
-        assert len(get_token_starts(token)) == n, (
-            f"Mismatch in number of residues: expected {n}, got {len(get_token_starts(token))} in \n{token}"
-        )
+        assert (
+            len(get_token_starts(token)) == n
+        ), f"Mismatch in number of residues: expected {n}, got {len(get_token_starts(token))} in \n{token}"
 
         if (
             src_atom_array is not None

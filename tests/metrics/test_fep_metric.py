@@ -134,9 +134,9 @@ def test_fep_metric_fast_mode(mcl1_edge):
 
     assert not np.isnan(ddg), "ddG should not be NaN"
     assert "error" not in result
-    assert abs(ddg - ref) < 2.0, (
-        f"ddG={ddg:.3f} deviates from reference {ref:.3f} by {abs(ddg - ref):.3f} kcal/mol (tolerance: 2.0)"
-    )
+    assert (
+        abs(ddg - ref) < 2.0
+    ), f"ddG={ddg:.3f} deviates from reference {ref:.3f} by {abs(ddg - ref):.3f} kcal/mol (tolerance: 2.0)"
 
 
 # ---------------------------------------------------------------------------

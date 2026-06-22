@@ -12,6 +12,7 @@ from torch.nn import functional as F
 from foundry.data.schema.base import DataSample
 from proteinfoundation.conditions import (
     C_CATH,
+    C_CENTROID,
     C_CRDGRP,
     C_HB,
     C_HOT,
@@ -37,6 +38,7 @@ SPECS: dict[str, tuple] = {
     "within_index_group_res_idx": (torch.int16, -1, "I"),
     "can_be_encoded": (torch.bool, False, "I"),
     "should_be_lossed": (torch.bool, False, "I"),
+    "insertion_source_idx": (torch.int32, -1, "I"),
     "loss_weight": (torch.float32, 1.0, "I"),
     "coord_cond_mask": (torch.bool, False, "I"),
     C_SEQ.mask_name: (torch.bool, False, "I"),
@@ -48,6 +50,7 @@ SPECS: dict[str, tuple] = {
     "missing_atom_count": (torch.float32, 0.0, "I"),
     # Token-level with extra dims [I, ...]
     C_CATH.full_name: (torch.int32, -1, "I 3"),
+    C_CENTROID.full_name: (torch.float32, 0.0, "I 3"),
     "chirality": (torch.float32, 0.0, "I 18"),
     # Atom37-level [I, 37, ...]
     "coords": (torch.float32, 0.0, "I 37 3"),

@@ -25,7 +25,6 @@ from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
     apply_token_wise,
     get_token_count,
-    get_token_starts,
 )
 from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise
@@ -65,12 +64,16 @@ class UnindexFlaggedTokens(Transform):
         atom_array.set_annotation("within_index_group_res_idx", atom_array.within_chain_source_res_idx.copy())
 
         if not np.any(is_motif_atom_unindexed):
+            atom_array.set_annotation("insertion_source_idx", np.full(atom_array.array_length(), -1, dtype=np.int32))
             return atom_array
 
         unique_chain_iids = np.unique(atom_array.chain_iid)
         max_resid_by_chain_iid = {
             chain_iid: np.max(atom_array.res_id[atom_array.chain_iid == chain_iid]) for chain_iid in unique_chain_iids
         }
+
+        # Each unindexed copy gets a fresh token_id (the source id is recorded in insertion_source_idx)
+        next_copy_token_id = int(np.max(atom_array.token_id)) + 1
         max_atom_idx = (
             atom_array.array_length() - 1  # start one less because of the way we increment it
         )
@@ -132,6 +135,12 @@ class UnindexFlaggedTokens(Transform):
 
             # Break in contiguity between indexed and unindexed regions is fine since they never get relative indices
             token.res_id = token.res_id + max_resid_by_chain_iid[chain_iid]
+
+            # At inference there is no indexed source to point back to, so leave insertion_source_idx at -1.
+            source_token_id = -1 if is_inference else int(token.token_id[0])
+            token.set_annotation("insertion_source_idx", np.full(token.array_length(), source_token_id, dtype=np.int32))
+            token.token_id = np.full(token.array_length(), next_copy_token_id, dtype=token.token_id.dtype)
+            next_copy_token_id += 1
 
             # Do not leak index through termini features
             C_NTR.set_mask(token, np.full(token.array_length(), False, dtype=bool))
@@ -219,6 +228,15 @@ class UnindexFlaggedTokens(Transform):
             # their same-chain indexed neighbors. To avoid this, we reset the full indexed region
             C_IDXGRP.set_annotation(atom_array, C_IDXGRP.default_annotation(atom_array))
 
+        # Indexed (source) tokens are never insertion queries; set insertion_source_idx=-1 there.
+        if is_inference:
+            atom_array.set_annotation("insertion_source_idx", np.full(atom_array.array_length(), -1, dtype=np.int32))
+        else:
+            atom_array.set_annotation(
+                "insertion_source_idx",
+                np.where(C_IDX.mask(atom_array, default="raise"), -1, atom_array.token_id).astype(np.int32),
+            )
+
         # Concatenate unindexed parts to the end
         atom_array_full = concatenate_any([atom_array, *unindexed_tokens])
 
@@ -288,26 +306,14 @@ class UnindexFlaggedTokens(Transform):
             is_inference=data["is_inference"],
         )
 
-        # Record the identity of the ground-truth tokens copied for unindexing
+        # Per-atom mask over the expanded array: True for atoms of the original
+        # ground-truth tokens whose atoms were copied into the unindexed conditioning slice.
         n_original_atoms = atom_array.array_length()
         n_expanded_atoms = atom_array_expanded.array_length() - n_original_atoms
         mask = np.concatenate([is_token_with_unindexed_atoms, np.zeros(n_expanded_atoms)])
-        if "ground_truth" not in data:
-            data["ground_truth"] = {}
-        data["ground_truth"]["is_ground_truth_token_corresponding_to_unindexed"] = mask.astype(bool)
 
-        # Compute per-atom source index for training before resetting global_token_id
-        if has_any_unindexed and not data["is_inference"]:
-            insertion_source_idx = _compute_insertion_source_indices(
-                atom_array_expanded=atom_array_expanded,
-                n_original_atoms=n_original_atoms,
-            )
-        else:
-            insertion_source_idx = np.full(atom_array_expanded.array_length(), -1, dtype=np.int32)
-        atom_array_expanded.set_annotation("insertion_source_idx", insertion_source_idx)
-
-        # Expose the unindexed-source mask as an atom_array annotation for
-        # downstream consumers (e.g. loss-weight predicates).
+        # Expose the same mask as an atom_array annotation for downstream bookkeeping
+        # (These are the ORIGINAl ground-truth tokens, not e.g., the appended in-context copies)
         if data.get("is_inference", False):
             is_unindexed_source = np.zeros(atom_array_expanded.array_length(), dtype=bool)
         else:
@@ -321,102 +327,35 @@ class UnindexFlaggedTokens(Transform):
 
         # Ensure newly-added tokens are recognised as separate
         if has_any_unindexed and not data["is_inference"]:
-            n_unindexed_tokens = apply_token_wise(atom_array, is_unindexed_atom, np.any).sum()
-            assert get_token_count(atom_array_expanded) == get_token_count(atom_array) + n_unindexed_tokens, (
-                f"Failed to create uniquely recognised tokens after concatenation.\n"
-                f"Concatenated tokens: {get_token_count(atom_array_expanded)}, unindexed: {n_unindexed_tokens}"
+            n_unindexed_tokens = int(apply_token_wise(atom_array, is_unindexed_atom, np.any).sum())
+            tc_orig = get_token_count(atom_array)
+            tc_exp = get_token_count(atom_array_expanded)
+            assert tc_exp == tc_orig + n_unindexed_tokens, (
+                "UnindexFlaggedTokens failed to create uniquely recognised tokens after "
+                f"concatenation: expanded tokens={tc_exp}, original={tc_orig}, "
+                f"unindexed={n_unindexed_tokens} (expected expanded == original + unindexed)."
             )
 
         data["atom_array"] = atom_array_expanded
         return data
 
 
-def _compute_insertion_source_indices(
-    atom_array_expanded: AtomArray,
-    n_original_atoms: int,
-) -> np.ndarray:
-    """Return per-atom insertion source indices for the expanded atom array.
-
-    Each unindexed (appended) token inherits its source token's ``token_id``
-    via deepcopy in :py:meth:`UnindexFlaggedTokens.expand_unindexed_motifs`.
-    That inherited ID is the 0-indexed position of the source token within
-    the original (pre-expansion) sequence, which is exactly what the CE loss
-    needs as its target.
-
-    Args:
-        atom_array_expanded: Full atom array (indexed tokens then unindexed copies appended).
-            Must have ``token_id`` annotation set (by :py:class:`AddGlobalTokenIdAnnotation`
-            earlier in the pipeline) — the copies inherit it from the source tokens.
-        n_original_atoms: Number of atoms in the original (pre-expansion) array.
-
-    Returns:
-        Int32 array of length ``atom_array_expanded.array_length()``.  Indexed-token
-        positions are ``-1``; each atom of an unindexed token holds the 0-indexed
-        token position of its source in the original sequence.
-
-    Raises:
-        ValueError: If the inherited token IDs on unindexed copies are out of range
-            or the number of unindexed tokens does not match the number of distinct
-            source tokens recorded in the inherited IDs.
-    """
-    result = np.full(atom_array_expanded.array_length(), -1, dtype=np.int32)
-
-    unindexed_atoms = atom_array_expanded[n_original_atoms:]
-    if unindexed_atoms.array_length() == 0:
-        return result
-
-    original_atoms = atom_array_expanded[:n_original_atoms]
-    n_original_tok = len(get_token_starts(original_atoms))
-
-    unindexed_tok_starts = get_token_starts(unindexed_atoms)
-    unindexed_tok_ends = np.append(unindexed_tok_starts[1:], unindexed_atoms.array_length())
-    n_unindexed_tok = len(unindexed_tok_starts)
-
-    # Each unindexed token's first atom carries the inherited token_id of its source.
-    inherited_ids = atom_array_expanded.token_id[n_original_atoms + unindexed_tok_starts]  # [n_unindexed_tok]
-
-    if inherited_ids.max() >= n_original_tok:
-        raise ValueError(
-            f"Inherited token_id {inherited_ids.max()} >= n_original_tok {n_original_tok}. "
-            "token_id must be set by AddGlobalTokenIdAnnotation before UnindexFlaggedTokens."
-        )
-
-    n_unique_sources = len(np.unique(inherited_ids))
-    if n_unique_sources != n_unindexed_tok:
-        raise ValueError(
-            f"Number of unindexed tokens ({n_unindexed_tok}) does not match number of "
-            f"unique source token IDs ({n_unique_sources}). Each source should produce exactly one copy."
-        )
-
-    for i in range(n_unindexed_tok):
-        start = n_original_atoms + unindexed_tok_starts[i]
-        end = n_original_atoms + unindexed_tok_ends[i]
-        result[start:end] = int(inherited_ids[i])
-
-    return result
-
-
 def _get_target_indices_corresponding_to_inserted(
     atom_array: AtomArray,
-    chain_mask: np.ndarray,
-    insertion_res_id: int,
-    target_res_id: int,
-    has_index: np.ndarray,
-    res_id_annotation: str = "res_id",
+    insertion_mask: np.ndarray,
+    target_mask: np.ndarray,
     allow_element_fallback: bool = False,
 ) -> np.ndarray:
-    """Finds the indices to the target residue that will give the same atom names/ordering as the inserted residue.
-    If allow_element_fallback is True, then any atom names not found in the target residue will be matched by element,
-    with ties broken by minimizing the total distance.
+    """Find indices into the target token giving the same atom names/ordering as the inserted token.
 
+    ``insertion_mask`` and ``target_mask`` select the inserted and target atoms from
+    ``atom_array``. If ``allow_element_fallback`` is True, atom names not found in the
+    target token are matched by element, with ties broken by minimizing total distance.
     """
-    # Get insertion indices and atom names
-    res_ids = atom_array.get_annotation(res_id_annotation)
-    insertion_mask = chain_mask & (res_ids == insertion_res_id) & ~has_index
+    # Get insertion atom names
     insertion_atom_names = atom_array.atom_name[insertion_mask]
 
-    # Get target residue data
-    target_mask = chain_mask & (res_ids == target_res_id) & has_index
+    # Get target token data
     target_atoms = atom_array[target_mask]
     target_sorted_indices = np.argsort(target_atoms.atom_name)
     target_sorted_atom_names = target_atoms.atom_name[target_sorted_indices]
@@ -462,9 +401,9 @@ def _get_target_indices_corresponding_to_inserted(
             for r, c in zip(row_indices, col_indices, strict=False):
                 if not np.isfinite(dists[r, c]):
                     raise ValueError("Could not find matching target atom for inserted atom based on element type.")
-                assert np.isnan(target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]]), (
-                    "Duplicate target element assignemnt"
-                )
+                assert np.isnan(
+                    target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]]
+                ), "Duplicate target element assignemnt"
                 target_indices_corresponding_to_inserted[unmatched_insertion_indices[r]] = target_sorted_indices[
                     unmatched_target_indices[c]
                 ]
@@ -485,18 +424,21 @@ def _get_target_indices_corresponding_to_inserted(
 def find_optimal_insertion_points_for_unindexed_regions(
     atom_array: AtomArray,
     inputs_in_same_frame: bool = True,
-) -> dict:
-    """Map unindexed regions (in-context conditioning) to the corresponding regions diffused by the model.
+) -> dict[int, int]:
+    """Geometric method to map unindexed regions to their corresponding regions diffused by the model.
 
-    Currently, it only supports matching by atom name (if sequence-conditioned) and absolute coordinate
-    conditioning (but not both). It is possible to provide many other forms of unindexed conditioning,
-    but to find their optimal insertion points, some method of determining relative importance is
-    necessary. For simplicity, this is left out for now.
+    Supports matching by atom name (if sequence-conditioned) and absolute coordinate conditioning
+    (but not both).
+
+    Does NOT handle internal-coordinate unindexed regions.
 
     Args:
         atom_array (AtomArray): AtomArray including the unindexed regions (in-context conditioning).
         inputs_in_same_frame (bool): Whether the inputs can be relied on to be in the same global
             frame. If False, will attempt to map each group to a single generated region.
+
+    Returns:
+        ``{unindexed_token_id: target_token_id}`` (``token_id`` is globally unique).
     """
 
     # Enforce uniqueness of res_ids within each chain
@@ -621,9 +563,9 @@ def find_optimal_insertion_points_for_unindexed_regions(
             for k, v in unindexed_to_generated_global_res_id_map.items():
                 k_is_seq_conditioned = (current_chain_has_seq[current_chain.global_res_id == k]).any()
                 if k_is_seq_conditioned:
-                    assert (current_chain_has_seq[current_chain.global_res_id == k]).all(), (
-                        "Residues should not be partially sequence-conditioned."
-                    )
+                    assert (
+                        current_chain_has_seq[current_chain.global_res_id == k]
+                    ).all(), "Residues should not be partially sequence-conditioned."
 
                 if k_is_seq_conditioned:
                     # Check if unindexed atom names are a subset of indexed ones
@@ -704,16 +646,15 @@ def find_optimal_insertion_points_for_unindexed_regions(
                 inserted_res_id,
                 target_res_id,
             ) in unindexed_to_generated_global_res_id_map.items():
-                inserted_array = atom_array[chain_mask & (atom_array.global_res_id == inserted_res_id)]
-                target_array = atom_array[chain_mask & (atom_array.global_res_id == target_res_id)]
+                insertion_mask = chain_mask & (atom_array.global_res_id == inserted_res_id) & ~has_index
+                target_mask = chain_mask & (atom_array.global_res_id == target_res_id) & has_index
+                inserted_array = atom_array[insertion_mask]
+                target_array = atom_array[target_mask]
 
                 target_indices_corresponding_to_inserted = _get_target_indices_corresponding_to_inserted(
                     atom_array,
-                    chain_mask,
-                    inserted_res_id,
-                    target_res_id,
-                    has_index,
-                    res_id_annotation="global_res_id",
+                    insertion_mask,
+                    target_mask,
                     allow_element_fallback=True,
                 )
 
@@ -733,175 +674,170 @@ def find_optimal_insertion_points_for_unindexed_regions(
         optimal_first_residue_starts_by_group[group_id] = minimum_cost_group_start
         occupied_res_ids_by_chain[chain_id].update(minimum_cost_target_res_ids)
 
-    # Convert the optimal first residue starts to the full residue mapping
-    # Here we will use the actual res_id annotation for a more interpretable output mapping
-    final_residue_mapping_by_chain = defaultdict(dict)
+    # Convert the optimal first residue starts to a token mapping. Unindexed regions are
+    # residue-level here (one token per residue), so each residue maps to a single token.
+    final_token_mapping: dict[int, int] = {}
     for group_id, group_start in optimal_first_residue_starts_by_group.items():
-        chain_id = chain_ids_by_group[group_id]
         unindexed_group = in_context_conditioning[unindexed_group_ids == group_id]
         group_start_global_res_id = model_generated_atom_array[group_start].global_res_id
-        for res_id in np.unique(unindexed_group.res_id):
-            within_group_res_id = unindexed_group[unindexed_group.res_id == res_id].within_index_group_res_idx[0]
+        for unindexed_global_res_id in np.unique(unindexed_group.global_res_id):
+            residue_atoms = unindexed_group[unindexed_group.global_res_id == unindexed_global_res_id]
+            within_group_res_id = residue_atoms.within_index_group_res_idx[0]
             target_global_res_id = group_start_global_res_id + (
                 within_group_res_id - unindexed_group.within_index_group_res_idx.min()
             )
-            target_res_id = atom_array[atom_array.global_res_id == target_global_res_id].res_id[0]
-            final_residue_mapping_by_chain[chain_id][res_id] = target_res_id
+            unindexed_token_id = int(residue_atoms.token_id[0])
+            target_token_id = int(atom_array[atom_array.global_res_id == target_global_res_id].token_id[0])
+            final_token_mapping[unindexed_token_id] = target_token_id
 
-    return final_residue_mapping_by_chain
+    return final_token_mapping
 
 
 def annotate_unindexed_insertion(
     atom_array: AtomArray,
-    insert_unindexed_regions: bool = False,
-    inputs_in_same_frame: bool = True,
+    token_mapping: dict[int, int],
 ) -> AtomArray:
-    """Map unindexed in-context tokens onto generated tokens and annotate the result.
+    """Annotate generated tokens provided a token mapping.
 
-    Adds the following annotations
-    - ``SA_CRDSRC`` - which generated atoms each unindexed token mapped to
-    - ``SA_CWI`` - the target-frame unindexed coordinates at those atom positions
+    For each ``{unindexed_token_id: target_token_id}`` entry the unindexed in-context
+    token is transferred onto its mapped generated token, recording:
+
+    - ``SA_CRDSRC`` -- generated atoms that carry coordinate conditioning (atom-level; under
+      partial conditioning such as tip-only internal coords, only the conditioned atoms);
+    - ``SA_CWI`` -- the unindexed coordinates at those coord-conditioned atom positions;
+    - ``SA_CRDGRPSRC`` -- the source CoordinateGroup for each coord-conditioned atom;
+    - ``SA_UII`` -- per-atom bool flagging *all* atoms that map to unindexed insertion targets
+      (whole token, regardless of whether they are coordinate-conditioned).
+
+    Failed mappings (e.g., that conflict in sequence) leave the unindexed region unmapped.
 
     Args:
-        atom_array: AtomArray including the unindexed regions in-context
-            conditioning appended to the generated tokens.
-        insert_unindexed_regions: Deprecated. Must be False; passing True
-            raises ``ValueError``. Kept temporarily for signature stability.
-        inputs_in_same_frame: Whether the inputs can be relied on to be in the
-            same global frame. If False attempts to map each unindexed group to
-            a single generated region and fails when ambiguous.
+        atom_array: AtomArray with the unindexed in-context conditioning appended to the
+            generated tokens.
+        token_mapping: ``{unindexed_token_id: target_token_id}`` (``token_id`` is globally
+            unique)
 
     Returns:
-        Annotated generated AtomArray with the unindexed conditioning slice
-        removed. On a mapping failure ``SA_CRDSRC`` is empty and the array is
-        returned otherwise unmodified.
+        Annotated generated AtomArray with the unindexed conditioning slice removed.
     """
-    if insert_unindexed_regions:
-        raise ValueError(
-            "insert_unindexed_regions=True is deprecated. Unindexed coordinate "
-            "substitution is no longer supported; downstream metrics consume the "
-            "SA_CWI annotation instead."
-        )
     has_index = C_IDX.mask(atom_array, default="generate")
-
     model_generated_atom_array = atom_array[has_index].copy()
     in_context_conditioning = atom_array[~has_index].copy()
 
-    # Short-circuit: no unindexed tokens at all — set default annotations and populate indexed ones.
-    if in_context_conditioning.array_length() == 0:
-        n = model_generated_atom_array.array_length()
-        SA_CRDSRC.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+    n_atoms = model_generated_atom_array.array_length()
+
+    def _set_empty_unindexed_annotations() -> AtomArray:
+        """Set all unindexed SAs to empty defaults and merge indexed conditioning into SA_CRDSRC.
+
+        Used both when there are no unindexed tokens and when the token mapping fails.
+        """
+        empty_bool = np.zeros(n_atoms, dtype=bool)
+        SA_CRDSRC.set_mask(model_generated_atom_array, empty_bool)
         SA_CRDSRC.set_annotation(model_generated_atom_array, SA_CRDSRC.default_annotation(model_generated_atom_array))
-        SA_CRDGRPSRC.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+        SA_CRDGRPSRC.set_mask(model_generated_atom_array, empty_bool)
         SA_CRDGRPSRC.set_annotation(
             model_generated_atom_array, SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
         )
-        SA_UII.set_mask(model_generated_atom_array, np.zeros(n, dtype=bool))
+        SA_UII.set_mask(model_generated_atom_array, empty_bool)
         return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
 
-    # Validate inputs and determine matching strategy
-    has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate")
+    # Short-circuit: no unindexed tokens at all — populate indexed conditioning and return.
+    if in_context_conditioning.array_length() == 0:
+        return _set_empty_unindexed_annotations()
+
+    # Union of absolute and internal coord conditioning
+    has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate") | C_INTCRD.mask(
+        in_context_conditioning, default="generate"
+    )
     has_distance_conditioning = C_DIS.mask(in_context_conditioning, default="generate").as_dense_array().any(axis=0)
     if has_distance_conditioning.any():
         raise NotImplementedError(
-            "We currently do not support finding optimal insertion points for "
-            "2d distance-conditioned unindexed regions."
+            "Insertion annotation for 2d distance-conditioned unindexed regions is not supported."
         )
 
-    # Track which generated atoms have been mapped to unindexed regions and stage their remapped coordinates
-    n_atoms = model_generated_atom_array.array_length()
+    # Track (a) every generated atom mapped from an unindexed token (whole token, drives SA_UII) and
+    # (b) the subset of those atoms that actually carry coord conditioning
+    mapped_to_unindexed_insertion = np.zeros(n_atoms, dtype=bool)
     mapped_to_coordinate_conditioned_region = np.zeros(n_atoms, dtype=bool)
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
     src_coordinate_conditioned_region = SA_CRDSRC.default_annotation(model_generated_atom_array)
     src_coord_group = SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
+    generated_indices = np.arange(n_atoms)
+
+    reference_coord = C_INTCRD.annotation(model_generated_atom_array, default="generate").copy()
+    unindexed_internal_coords = C_INTCRD.annotation(in_context_conditioning, default="generate")
 
     coord_groups_all = C_CRDGRP.annotation(atom_array, default="generate")
     unindexed_coord_groups = coord_groups_all[~has_index]
 
-    # If we cannot find a valid insertion mapping, fall back to simply removing the unindexed region
+    # Apply the token mapping
     try:
-        optimal_residue_mapping_by_chain = find_optimal_insertion_points_for_unindexed_regions(
-            atom_array,
-            inputs_in_same_frame=inputs_in_same_frame,
-        )
-    except ValueError as e:
-        global_logger.warning(
-            f"Could not find a valid insertion mapping for unindexed regions: {e} "
-            f"No mapping will be reported and the unindexed region will not be reinserted."
-        )
-        SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-        SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-        SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-        SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
-        SA_UII.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-        return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
-
-    generated_indices = np.arange(n_atoms)
-
-    for chain_id in optimal_residue_mapping_by_chain:
-        for unindexed_res_id, target_res_id in optimal_residue_mapping_by_chain[chain_id].items():
-            # Create some useful masks
-            chain_mask = atom_array.chain_id == chain_id
-            unindexed_token_mask = (in_context_conditioning.chain_id == chain_id) & (
-                in_context_conditioning.res_id == unindexed_res_id
-            )
+        for unindexed_token_id, target_token_id in token_mapping.items():
+            unindexed_token_mask = in_context_conditioning.token_id == unindexed_token_id
             unindexed_token = in_context_conditioning[unindexed_token_mask]
 
-            # Annotate the identified mapping
             if SA_SRC.has_annotation(unindexed_token):
                 token_src_id = SA_SRC.annotation(unindexed_token)[0]
             else:
-                token_src_id = f"{chain_id}{unindexed_res_id}"
+                token_src_id = str(unindexed_token_id)
 
-            # Get local permutation/subset of indices within the target residue that corresponds to
-            # the atom ordering/subset in the unindexed token
+            # Local permutation of atoms within the target token matching the unindexed token's atom ordering/subset
+            insertion_mask = (atom_array.token_id == unindexed_token_id) & ~has_index
+            target_mask = (atom_array.token_id == target_token_id) & has_index
             target_indices_corresponding_to_inserted = _get_target_indices_corresponding_to_inserted(
                 atom_array,
-                chain_mask,
-                unindexed_res_id,
-                target_res_id,
-                has_index,
+                insertion_mask,
+                target_mask,
                 allow_element_fallback=True,
             )
-
-            # Subset to an index array that can be used on the model-generated atom array
-            target_mask_generated = (model_generated_atom_array.chain_id == chain_id) & (
-                model_generated_atom_array.res_id == target_res_id
-            )
+            target_mask_generated = model_generated_atom_array.token_id == target_token_id
             permuted_target_indices_generated = generated_indices[target_mask_generated][
                 target_indices_corresponding_to_inserted
             ]
 
-            # Record that these indices have been mapped to unindexed regions
-            mapped_to_coordinate_conditioned_region[permuted_target_indices_generated] = True
-            src_coordinate_conditioned_region[permuted_target_indices_generated] = token_src_id
+            mapped_to_unindexed_insertion[permuted_target_indices_generated] = True
 
-            # Record the source CoordinateGroup values
-            src_coord_group[permuted_target_indices_generated] = unindexed_coord_groups[unindexed_token_mask]
+            # Per-atom coord-conditioning mask for this token (aligned with the inserted-atom order,
+            # hence with permuted_target_indices_generated). Only these atoms are coordinate-conditioned.
+            token_coord_mask = has_3d_conditioning[unindexed_token_mask]
+            cond_target_indices = permuted_target_indices_generated[token_coord_mask]
+            mapped_to_coordinate_conditioned_region[cond_target_indices] = True
+            src_coordinate_conditioned_region[cond_target_indices] = token_src_id
+            src_coord_group[cond_target_indices] = unindexed_coord_groups[unindexed_token_mask][token_coord_mask]
+            remapped_coord[cond_target_indices] = unindexed_token.coord[token_coord_mask]
+            reference_coord[cond_target_indices] = unindexed_internal_coords[unindexed_token_mask][token_coord_mask]
 
-            if has_3d_conditioning.any():
-                # NOTE: If we eventually support other kinds of unindexed conditioning (rasa etc)
-                # we may want to copy those over as well. Sequence conditioning is not copied over
-                # to avoid potential sequence/structure mismatches for tip-atom cases.
-                remapped_coord[permuted_target_indices_generated] = unindexed_token.coord
+        SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
+        SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
+        SA_UII.set_mask(model_generated_atom_array, mapped_to_unindexed_insertion)
 
-    # Add an annotation to indicate which residues mapped to unindexed regions, whether inserting or not
-    SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-    SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-    SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-    SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
-    SA_UII.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        # Stage the unindexed coordinates as SA_CWI (consumed by downstream metrics)
+        if mapped_to_coordinate_conditioned_region.any():
+            if np.isnan(remapped_coord[mapped_to_coordinate_conditioned_region]).any():
+                raise ValueError("NaN values found in remapped coordinates")
+            cwi = SA_CWI.annotation(model_generated_atom_array)
+            cwi[mapped_to_coordinate_conditioned_region] = remapped_coord[mapped_to_coordinate_conditioned_region]
+            SA_CWI.set_annotation(model_generated_atom_array, cwi)
 
-    # Validate remapped coordinates, then add as an SA_CWI annotation
-    if has_3d_conditioning.any() and mapped_to_coordinate_conditioned_region.any():
-        if np.isnan(remapped_coord[mapped_to_coordinate_conditioned_region]).any():
-            raise ValueError("NaN values found in remapped coordinates")
-        cwi = SA_CWI.annotation(model_generated_atom_array)
-        cwi[mapped_to_coordinate_conditioned_region] = remapped_coord[mapped_to_coordinate_conditioned_region]
-        SA_CWI.set_annotation(model_generated_atom_array, cwi)
+    except ValueError as e:
+        global_logger.warning(
+            f"Could not apply the insertion mapping ({e}); the unindexed region will not be annotated."
+        )
+        return _set_empty_unindexed_annotations()
 
-    # Sanity check: number of remapped atoms should equal the number of unindexed atoms that had 3D conditioning
+    # Fold directly-indexed coord conditioning into SA_CRDSRC so the per-group re-staging below
+    # sees indexed and unindexed atoms of the same coordinate group together.
+    model_generated_atom_array = _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
+
+    # Re-stage SA_CWI for internal-coord groups with a single per-group superposition
+    model_generated_atom_array = _restage_internal_coord_cwi_per_group(model_generated_atom_array, reference_coord)
+
     if has_3d_conditioning.any():
+        # Both counts are atom-level over coord-conditioned atoms, so partial conditioning
+        # (e.g. tip-only) no longer trips this; a genuine mismatch means some conditioned atoms
+        # were not mapped (the model failed to reproduce part of the motif).
         expected_unindexed_count = int(has_3d_conditioning.sum())
         actual_unindexed_count = int(mapped_to_coordinate_conditioned_region.sum())
         if actual_unindexed_count != expected_unindexed_count:
@@ -910,17 +846,57 @@ def annotate_unindexed_insertion(
                 f"remapped count ({actual_unindexed_count}). "
                 "The model has failed to reproduce the input unindexed motif."
             )
-            # Reset SA_CWI to NaN so downstream insertion metrics propagate NaN rather than reporting an
-            # optimistic value computed on the partial mapping.
-            SA_CWI.set_annotation(model_generated_atom_array, SA_CWI.default_annotation(model_generated_atom_array))
+            # Invalidate only the unindexed motif coords; leave any directly-indexed groups intact.
+            cwi = SA_CWI.annotation(model_generated_atom_array)
+            cwi[mapped_to_coordinate_conditioned_region] = np.nan
+            SA_CWI.set_annotation(model_generated_atom_array, cwi)
 
-    if not SA_CRDSRC.mask(model_generated_atom_array).any():
-        global_logger.warning(
-            "Did not map any indexed regions to unindexed regions. "
-            "No mapping will be reported and the unindexed region will not be reinserted."
-        )
+    if not mapped_to_unindexed_insertion.any():
+        global_logger.warning("Did not map any unindexed regions to generated tokens.")
 
-    return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
+    return model_generated_atom_array
+
+
+def _restage_internal_coord_cwi_per_group(generated_atom_array: AtomArray, reference_coord: np.ndarray) -> AtomArray:
+    """Re-stage ``SA_CWI`` for each internal-coord group with a single rigid superposition.
+
+    Indexed and unindexed atoms of the same internal coordinate group are otherwise staged into
+    ``SA_CWI`` in different frames — indexed atoms are fit to the generated structure by
+    :py:func:`~proteinfoundation.transforms.utils.conditioning_utils.insert_internal_coord_conditioned_groups`,
+    while unindexed atoms are staged in the raw input frame by
+    :py:func:`annotate_unindexed_insertion`. Fitting the whole group's ``reference_coord``
+    (the ``C_INTCRD`` internal coords, which share one frame per group and so carry correct
+    relative geometry across indexed and unindexed atoms) onto the model-generated coords in one
+    superposition puts the group in a common frame, which the per-coordinate-group RMSD metrics
+    (e.g. ``design_motif_allatom_rmsd``) assume. Absolute (``KNOWN_ABSOLUTE_COORDS``) and
+    unconditioned groups are left untouched.
+
+    Args:
+      generated_atom_array: Generated AtomArray with ``SA_CRDSRC`` / ``SA_CRDGRPSRC`` populated.
+      reference_coord: Per-atom internal-coord (``C_INTCRD``) reference of shape ``(n_atoms, 3)``;
+        NaN for atoms without internal-coord conditioning.
+    """
+    crd_src = SA_CRDSRC.mask(generated_atom_array)
+    groups = SA_CRDGRPSRC.annotation(generated_atom_array)
+    is_internal = crd_src & (groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS) & (groups != C_CRDGRP.UNKNOWN_COORDS)
+    if not is_internal.any():
+        return generated_atom_array
+
+    cwi = SA_CWI.annotation(generated_atom_array)
+    generated_coord = generated_atom_array.coord
+    for group_id in np.unique(groups[is_internal]):
+        group_mask = is_internal & (groups == group_id)
+        reference = reference_coord[group_mask]
+        generated = generated_coord[group_mask]
+        if np.isnan(reference).any() or np.isnan(generated).any():
+            global_logger.warning(
+                f"Skipping SA_CWI re-staging for internal coord group {group_id}: NaN coords present."
+            )
+            continue
+        aligned, _ = struc.superimpose(generated, reference)
+        cwi[group_mask] = aligned
+    SA_CWI.set_annotation(generated_atom_array, cwi)
+    return generated_atom_array
 
 
 def _merge_indexed_coord_conditioning_into_src(generated_atom_array: AtomArray) -> AtomArray:

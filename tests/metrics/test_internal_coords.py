@@ -97,9 +97,9 @@ def test_subdivide_by_annotation_metric(deterministic_rng, pdb_id, noise_sigma, 
     assert set(result.keys()) == {"rmsd"}
 
     min_rmsd, max_rmsd = expected_rmsd_range
-    assert min_rmsd <= result["rmsd"] <= max_rmsd, (
-        f"RMSD {result['rmsd']:.6f} not in expected range [{min_rmsd}, {max_rmsd}]"
-    )
+    assert (
+        min_rmsd <= result["rmsd"] <= max_rmsd
+    ), f"RMSD {result['rmsd']:.6f} not in expected range [{min_rmsd}, {max_rmsd}]"
 
 
 def test_subdivide_by_annotation_atom_weighted():
@@ -144,9 +144,9 @@ def test_subdivide_by_annotation_atom_weighted():
     expected = np.sqrt((n1 * rmsd1**2 + n2 * rmsd2**2) / n_total)  # sqrt(31/10) ≈ 1.7607
 
     assert set(result.keys()) == {"rmsd"}
-    assert abs(result["rmsd"] - expected) < 1e-6, (
-        f"Expected RMS atom-weighted RMSD {expected:.6f}, got {result['rmsd']:.6f}."
-    )
+    assert (
+        abs(result["rmsd"] - expected) < 1e-6
+    ), f"Expected RMS atom-weighted RMSD {expected:.6f}, got {result['rmsd']:.6f}."
 
 
 @pytest.mark.parametrize("pdb_id", ["6lyz"])

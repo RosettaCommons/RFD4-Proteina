@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 import pytest
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from biotite.structure import AtomArray
@@ -76,6 +77,8 @@ def _create_indexed_atom_array(n_residues_per_chain, residue_types=None):
     atom_array.set_annotation("is_ligand", np.full(n_atoms, False))
     atom_array.set_annotation("within_index_group_res_idx", np.arange(n_atoms))
 
+    ensure_annotations(atom_array, "token_id")
+
     atom_array = as_atom_array_plus(atom_array)
     C_IDX.set_mask(atom_array, np.ones(n_atoms, dtype=bool))
     C_IDXGRP.set_annotation(atom_array, np.zeros(n_atoms, dtype=int))
@@ -135,6 +138,8 @@ def _add_unindexed_residues(atom_array, residue_atoms, unindexed_specs):
     new_atom_array.set_annotation("element", np.array(existing_elements))
     new_atom_array.set_annotation("is_ligand", np.full(n_atoms, False))
     new_atom_array.set_annotation("within_index_group_res_idx", np.array(existing_within_index_group_res_idx))
+
+    ensure_annotations(new_atom_array, "token_id")
 
     new_atom_array = as_atom_array_plus(new_atom_array)
     C_IDX.set_mask(new_atom_array, np.array(existing_has_index, dtype=bool))
@@ -196,32 +201,13 @@ def _verify_mapping(result_mapping, ground_truth_mapping):
     Verify that result mapping matches ground truth.
 
     Args:
-        result_mapping: Dict {chain_id: {unindexed_res_id: indexed_res_id}}
-        ground_truth_mapping: Dict {chain_id: {unindexed_res_id: indexed_res_id}}
+        result_mapping: Dict {unindexed_token_id: target_token_id}
+        ground_truth_mapping: Dict {unindexed_token_id: target_token_id}
     """
     assert result_mapping is not None, "Function should return a mapping"
-
-    # Verify all chains are present
-    assert set(result_mapping.keys()) == set(ground_truth_mapping.keys()), (
-        f"Chain mismatch: got {set(result_mapping.keys())}, expected {set(ground_truth_mapping.keys())}"
-    )
-
-    for chain_id in ground_truth_mapping:
-        result_chain = result_mapping[chain_id]
-        expected_chain = ground_truth_mapping[chain_id]
-
-        assert len(result_chain) == len(expected_chain), (
-            f"Chain {chain_id}: expected {len(expected_chain)} mappings, got {len(result_chain)}"
-        )
-
-        for unindexed_res_id, expected_indexed_res_id in expected_chain.items():
-            assert unindexed_res_id in result_chain, (
-                f"Chain {chain_id}: missing mapping for unindexed residue {unindexed_res_id}"
-            )
-            assert result_chain[unindexed_res_id] == expected_indexed_res_id, (
-                f"Chain {chain_id}: incorrect mapping for residue {unindexed_res_id}: "
-                f"expected {expected_indexed_res_id}, got {result_chain[unindexed_res_id]}"
-            )
+    assert (
+        result_mapping == ground_truth_mapping
+    ), f"Mapping mismatch: got {result_mapping}, expected {ground_truth_mapping}"
 
 
 # ============================================================================
@@ -268,16 +254,26 @@ def test_find_optimal_insertion_points_3d_conditioning():
 
     atom_array = _add_unindexed_residues(atom_array, residue_atoms, unindexed_specs)
 
-    # Ground truth mapping (chain-aware)
+    # Coordinate setup uses the chain-aware view: {chain_id: {unindexed_res_id: indexed_res_id}}
     # Chain A: (100, 101, 103) -> (1, 2, 4) which are ALA, GLY, LEU
     # Chain B: (100, 101) -> (1, 2) which are ALA, GLY
-    ground_truth_mapping = {
+    coordinate_mapping = {
         "A": {100: 1, 101: 2, 103: 4},
         "B": {100: 1, 101: 2},
     }
 
+    # Ground truth mapping returned by the function: {unindexed_token_id: target_token_id}.
+    # Indexed residues are tokens 0-13 (chain A res 1-8 -> tokens 0-7, chain B res 1-6 -> tokens 8-13).
+    # Unindexed residues are appended as tokens 14-18 in spec order.
+    #   token 14 (A/100) -> A res 1  -> token 0
+    #   token 15 (A/101) -> A res 2  -> token 1
+    #   token 16 (A/103) -> A res 4  -> token 3
+    #   token 17 (B/100) -> B res 1  -> token 8
+    #   token 18 (B/101) -> B res 2  -> token 9
+    ground_truth_mapping = {14: 0, 15: 1, 16: 3, 17: 8, 18: 9}
+
     # Setup coordinates
-    atom_array = _setup_coordinates_for_mapping(atom_array, ground_truth_mapping, jitter_scale=0.2)
+    atom_array = _setup_coordinates_for_mapping(atom_array, coordinate_mapping, jitter_scale=0.2)
 
     # Add 3D coordinate conditioning
     has_index = C_IDX.mask(atom_array, default="raise")

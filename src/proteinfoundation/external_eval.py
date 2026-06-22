@@ -36,7 +36,10 @@ from proteinfoundation.inference_utils.aggregate_metrics import (
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
 from proteinfoundation.metrics.oracle_metric import OracleMetric
-from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
+from proteinfoundation.transforms.unindexing import (
+    annotate_unindexed_insertion,
+    find_optimal_insertion_points_for_unindexed_regions,
+)
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
 
@@ -557,11 +560,11 @@ def convert_to_pfm_format(
         concatenated_array.within_index_group_res_idx[group_mask] = group_res_ids - group_res_ids.min()
 
     # Map the coordinate conditioning to the corresponding regions in the generated structure
-    annotated_model_generated_array = annotate_unindexed_insertion(
+    token_mapping = find_optimal_insertion_points_for_unindexed_regions(
         concatenated_array,
-        insert_unindexed_regions=False,
         inputs_in_same_frame=inputs_in_same_frame,
     )
+    annotated_model_generated_array = annotate_unindexed_insertion(concatenated_array, token_mapping)
     coord_cond_mask = C_CRD.mask(annotated_model_generated_array, default="raise")
     coord_cond_mask[SA_CRDSRC.mask(annotated_model_generated_array)] = True
     C_CRD.set_mask(annotated_model_generated_array, coord_cond_mask)

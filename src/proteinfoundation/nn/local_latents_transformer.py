@@ -127,6 +127,12 @@ class LocalLatentsTransformer(torch.nn.Module):
             torch.nn.Linear(self.token_dim, 3, bias=False),
         )
 
+        # Insertion prediction head: bilinear [b, n, n] outer product over all token
+        # pairs.  Only unindexed-query x indexed-key pairs contribute to the CE loss.
+        self.insertion_q_proj = torch.nn.Linear(self.token_dim, self.token_dim, bias=False)
+        self.insertion_k_proj = torch.nn.Linear(self.token_dim, self.token_dim, bias=False)
+        self._insertion_head_scale = self.token_dim**-0.5
+
         # Wrap the training forward with torch.compile(fullgraph=True). Val/inference
         # runs under no_grad; keeping a separate eager impl for those paths avoids
         # grad_mode-triggered dynamo recompiles of the shared compiled graph.
@@ -167,6 +173,14 @@ class LocalLatentsTransformer(torch.nn.Module):
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
+        if self.use_torch_compile and self.training:
+            # torch.compile miscompiles the layer-norm backward into a misaligned CUDA access
+            # unless the token dim is 16-aligned. Fail fast instead of crashing deep in a kernel.
+            n_tokens = input["padding_mask"].shape[1]
+            assert n_tokens % 16 == 0, (
+                f"nn.use_torch_compile requires a 16-aligned token dim (got n={n_tokens}); set the train "
+                "collate_fn's fixed_dimensions to an aligned value, e.g. {I: 256}."
+            )
         impl = self._forward_compiled if self.training else self._forward_eager
         return impl(input)
 
@@ -201,4 +215,11 @@ class LocalLatentsTransformer(torch.nn.Module):
         nn_out = {}
         nn_out["bb_ca"] = {self.output_param["bb_ca"]: ca_nm_out}
         nn_out["local_latents"] = {self.output_param["local_latents"]: local_latents_out}
+
+        # Detached probe for insertion head
+        insertion_seqs = seqs.detach()
+        q = self.insertion_q_proj(insertion_seqs)  # [b, n, d]
+        k = self.insertion_k_proj(insertion_seqs)  # [b, n, d]
+        nn_out["insertion"] = {"logits": torch.bmm(q, k.transpose(1, 2)) * self._insertion_head_scale}
+
         return nn_out

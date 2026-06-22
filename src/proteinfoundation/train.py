@@ -38,8 +38,9 @@ from foundry.utils.datasets import (  # noqa: E402
 from foundry.utils.instantiators import instantiate_callbacks  # noqa: E402
 from proteinfoundation.proteina import Proteina  # noqa: E402
 from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
+from proteinfoundation.utils.logging import save_config_html  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
-from proteinfoundation.utils.simple_ema import EMAModelCheckpoint  # noqa: E402
+from proteinfoundation.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -138,10 +139,17 @@ def get_training_precision(cfg_exp: DictConfig) -> str:
 
 
 def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[Proteina, str | None]:
-    """Load the model and the checkpoint to start training from.
+    """Load the model and decide whether/how to resume a prior trainer state.
 
-    This could be just a set of parameters (pretrain_ckpt_path) or resuming
-    training (last). It also handles LoRA layers if requested.
+    Two mutually-exclusive checkpoint paths:
+    * ``pretrain_ckpt_path``: start a NEW run from saved weights (new optimizer, scheduler, etc.)
+    * ``resume_ckpt_path``: continue an interrupted run (full restore of model, optimizer, scheduler, trainer state)
+
+    Also handles LoRA layer insertion if ``cfg_exp.lora.r`` is set.
+
+    Returns:
+      ``(model, resume_ckpt_path)``. ``resume_ckpt_path`` is the explicit resume target
+      (or the discovered ``last.ckpt``) when one exists; ``None`` for fine-tune runs.
     """
     model = Proteina(cfg_exp)
 
@@ -203,6 +211,15 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         else:
             # Legacy behaviour: silently drop missing/extra keys
             model.load_state_dict(ckpt["state_dict"], strict=False)
+
+        # Stash any SimpleEMA state from the pretrain ckpt so we can load it later
+        ema_callback_state = ckpt.get("callbacks", {}).get("SimpleEMA") or {}
+        if ema_callback_state.get("ema_state_dict"):
+            model._pretrain_ema_state_dict = ema_callback_state["ema_state_dict"]
+            logger.info(
+                f"Stashed SimpleEMA state from pretrain ckpt "
+                f"({len(ema_callback_state['ema_state_dict'])} entries) for val-time load"
+            )
 
         # Optional parameter freezing (applied after weight loading)
         param_freezing_cfg = cfg_exp.get("parameter_freezing", None)
@@ -283,6 +300,30 @@ def store_n_log_configs(
     store_n_log_config(cfg_data, cfg_data_file, train_logger)
 
 
+@rank_zero_only
+def log_config_dashboard(
+    cfg_exp: DictConfig,
+    root_run: str,
+    run_name: str,
+    train_logger: WandbLogger | CSVLogger | None,
+) -> None:
+    """Render the interactive config dashboard and log it to the wandb run.
+
+    Writes ``config_dashboard.html`` under *root_run* (so local ``nolog`` runs
+    still get the file) and, when a :py:class:`~lightning.pytorch.loggers.WandbLogger`
+    is active, logs it both as an interactive ``wandb.Html`` media panel and as a
+    downloadable artifact.
+    """
+    html_path = os.path.join(root_run, "config_dashboard.html")
+    html = save_config_html(cfg_exp, html_path, title="Config Dashboard")
+
+    if isinstance(train_logger, WandbLogger):
+        train_logger.experiment.log({"config": wandb.Html(html, inject=False)})
+        artifact = wandb.Artifact(f"config_dashboard_{run_name}", type="config")
+        artifact.add_file(html_path)
+        train_logger.experiment.log_artifact(artifact)
+
+
 @hydra.main(
     version_base=None,
     config_path="../configs",
@@ -318,6 +359,23 @@ def main(cfg_exp: DictConfig) -> None:
     # Create model, warm-up or last ckpt
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
 
+    # If pretrain_ckpt_path stashed a SimpleEMA state, feed it to the SimpleEMA callback
+    pretrain_ema_state = getattr(model, "_pretrain_ema_state_dict", None)
+    if pretrain_ema_state is not None:
+        for cb in callbacks:
+            if isinstance(cb, SimpleEMA):
+                cb.load_state_dict({"ema_state_dict": pretrain_ema_state})
+                logger.info("Wired pretrain-ckpt SimpleEMA state into callback")
+                break
+        else:
+            logger.warning(
+                "Stashed pretrain SimpleEMA state present but no SimpleEMA callback "
+                "configured; discarding without loading."
+            )
+
+        # Remove the stashed state to free memory
+        delattr(model, "_pretrain_ema_state_dict")
+
     # logger
     train_logger = None
     if cfg_exp.log.log_wandb and not nolog:
@@ -339,6 +397,9 @@ def main(cfg_exp: DictConfig) -> None:
     if train_logger is not None:
         cfg_dict = OmegaConf.to_container(cfg_exp, resolve=True)
         train_logger.log_hyperparams(cfg_dict)
+
+    # Render the interactive config dashboard (HTML) and log it to wandb.
+    log_config_dashboard(cfg_exp, root_run, run_name, train_logger)
 
     # checkpoints
     if cfg_exp.log.checkpoint and not nolog:
@@ -464,17 +525,19 @@ def main(cfg_exp: DictConfig) -> None:
         logger.warning("No validation datasets provided! Skipping validation...")
 
     if prevalidate_only:
-        # Choose the ckpt that Lightning should fully restore from
-        val_ckpt_path = resume_ckpt_path or cfg_exp.get("pretrain_ckpt_path", None)
-        if val_ckpt_path is None:
-            raise ValueError(
-                "prevalidate_only=true requires resume_ckpt_path or pretrain_ckpt_path; "
-                "without one the SimpleEMA callback can't restore EMA weights and the "
-                "validation will score training weights (which are usually garbage on "
-                "EMA-trained checkpoints)."
-            )
-        logger.info(f"PREVALIDATE_ONLY: trainer.validate from {val_ckpt_path}")
-        trainer.validate(model, dataloaders=val_loaders, ckpt_path=val_ckpt_path)
+        pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
+        if resume_ckpt_path is None and pretrain_ckpt_path is None:
+            raise ValueError("prevalidate_only=true requires resume_ckpt_path or pretrain_ckpt_path")
+
+        if resume_ckpt_path is not None:
+            logger.info(f"PREVALIDATE_ONLY: trainer.validate with Lightning restore from {resume_ckpt_path}")
+            # NOTE: Requires strict checkpoint architecture equivalence if resuming from prior checkpoint
+            trainer.validate(model, dataloaders=val_loaders, ckpt_path=resume_ckpt_path)
+        else:
+            # NOTE: Allows for architectural changes since we loaded with strict=False in get_model_n_ckpt_resume
+            logger.info(f"PREVALIDATE_ONLY: trainer.validate on weights pre-loaded from {pretrain_ckpt_path}")
+            trainer.validate(model, dataloaders=val_loaders)
+
         return
 
     # Train the model with dataloaders

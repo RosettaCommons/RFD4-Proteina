@@ -45,7 +45,9 @@ chiral_accuracy:
   required_tags_any: ["small_molecule_only"]
 
 # NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
-# equivalent to aligning directly to the ground-truth input motif
+# equivalent to aligning directly to the ground-truth input motif.
+# subdivide_by_annotation groups the RMSD computation per CoordinateGroup so per-group RMSDs are
+# atom-weighted and reported together.
 design_motif_allatom_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region

@@ -63,12 +63,12 @@ def test_annotate_secondary_structure_is_residue_uniform(pdb_id):
     sse = atom_array.sse
     is_valid = atom_array.sse_is_valid
     for start, stop in zip(residue_start_stops[:-1], residue_start_stops[1:], strict=False):
-        assert np.unique(sse[start:stop]).size == 1, (
-            f"sse not uniform within residue at atoms [{start}, {stop}): {np.unique(sse[start:stop])}"
-        )
-        assert np.unique(is_valid[start:stop]).size == 1, (
-            f"sse_is_valid not uniform within residue at atoms [{start}, {stop})"
-        )
+        assert (
+            np.unique(sse[start:stop]).size == 1
+        ), f"sse not uniform within residue at atoms [{start}, {stop}): {np.unique(sse[start:stop])}"
+        assert (
+            np.unique(is_valid[start:stop]).size == 1
+        ), f"sse_is_valid not uniform within residue at atoms [{start}, {stop})"
 
 
 @pytest.mark.parametrize(
@@ -150,9 +150,9 @@ def test_secondary_structure_accuracy_metric(deterministic_rng, conditioning_typ
         # Check accuracy is in expected range
         if expected_accuracy_range:
             min_acc, max_acc = expected_accuracy_range
-            assert min_acc <= result["overall_accuracy"] <= max_acc, (
-                f"Accuracy {result['overall_accuracy']} not in range [{min_acc}, {max_acc}]"
-            )
+            assert (
+                min_acc <= result["overall_accuracy"] <= max_acc
+            ), f"Accuracy {result['overall_accuracy']} not in range [{min_acc}, {max_acc}]"
 
         # Verify per-class recalls are valid (0-1 or NaN)
         for key in ["helix_recall", "sheet_recall", "loop_recall"]:

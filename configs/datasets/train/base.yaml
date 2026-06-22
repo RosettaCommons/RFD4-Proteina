@@ -24,6 +24,11 @@ transform:
   # Per-token MSE loss weights (AF3-style additive: w = 1 + Σ αₖ · is_k).
   # Each key names a predicate registered in proteinfoundation.transforms.loss_weight_predicates.PREDICATES.
   loss_weight_cfg:
-    non_standard: 0.0
-    unindexed: 0.0
+    non_standard: 2.5
+    unindexed: 2.5
     sampled_tip_atom: 0.0
+
+  centroid_kwargs:
+    p_add_centroid_condition: 0.2
+    p_include_per_chain: 0.5
+    noise_std_angstrom: 5.0

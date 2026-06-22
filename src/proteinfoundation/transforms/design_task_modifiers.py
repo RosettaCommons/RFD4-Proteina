@@ -57,7 +57,7 @@ def add_rasa_condition(
     """
     atom_array = as_atom_array_plus(data["atom_array"])
 
-    ensure_annotations(atom_array, "is_ligand")
+    ensure_annotations(atom_array, "is_ligand", "atomize")
 
     # Determine valid residues for rasa conditioning
     if np.random.rand() < p_include_non_ligand:
@@ -66,7 +66,7 @@ def add_rasa_condition(
         dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
         inclusion_mask = seq_mask | crd_mask | dis_mask
     else:
-        inclusion_mask = atom_array.is_ligand
+        inclusion_mask = atom_array.is_ligand | atom_array.atomize
 
     rasa = calculate_atomwise_rasa(atom_array, probe_radius, atom_radii, point_number, atom_filter=inclusion_mask)
 

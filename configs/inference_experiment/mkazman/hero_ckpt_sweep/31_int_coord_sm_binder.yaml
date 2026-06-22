@@ -1,0 +1,22 @@
+# @package _global_
+#
+# Offline validation of the hero INTERNAL-COORD-ONLY model (experiment
+# 31_hero_int_coord_only) on the sm_binder val set. Mirrors
+# 31_int_coord_mcsa_full but swaps the dataset.
+#
+# Like the baseline, the architecture and product flow matcher (including the
+# per-group stochastic centering) are restored from the checkpoint hparams.
+# The `convert_absolute_to_internal` transform flag is NOT in the checkpoint:
+# experiment 31 trained and validated with absolute->internal coordinate
+# conversion on, so we replicate it here for the conditioning to match.
+
+defaults:
+  - /inference_experiment/inference_on_val_set
+  - /datasets/val@generation: sm_binder
+  - override /metrics/refolding_oracles: af3
+  - _self_
+
+generation:
+  dataset:
+    transform:
+      convert_absolute_to_internal: True
