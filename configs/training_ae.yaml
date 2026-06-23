@@ -8,14 +8,14 @@ hardware:
 
 defaults:
   - nn_ae: nn_60m_unified  # NEW: 33 residue types (20 AA + RNA + DNA + unknowns)
-  - datasets: ae_mixed_datasets  # Autoencoder-specific dataset (no design tasks)
+  - datasets: ae_na_complex_datasets  # Autoencoder-specific dataset (no design tasks)
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
   - dataloaders: default  
   - callbacks: autoencoder
   - _self_
   
   # Experiment configs override specific hyperparameters
-  - experiment_ae: smoke
+  - experiment_ae: muon_afdb_monomer_only
   
   # Debug configs for quick testing
   - optional debug: null
@@ -81,3 +81,4 @@ log:
   local_projection_dir: ./latent_projections  # Directory for saved plots
 
 seed: 42
+deterministic_training: false  # Enable for regression tests; significantly reduces training throughput

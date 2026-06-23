@@ -9,6 +9,7 @@ and inference subprocesses run from (``store/``, ``inference/`` live there).
 from __future__ import annotations
 
 import csv
+import io
 import math
 import os
 import re
@@ -18,6 +19,7 @@ import stat
 import statistics
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Literal
@@ -245,6 +247,107 @@ def run_cmd(cmd: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = No
     return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
+def run_cmd_with_loss_watcher(
+    cmd: list[str],
+    *,
+    out_dir: Path,
+    expected_losses: list[float],
+    atol: float,
+    mean_atol: float,
+    cwd: Path = ROOT,
+    env: dict[str, str] | None = None,
+    poll_interval: float = 1.0,
+) -> None:
+    """Run a training command with two-tier loss checking.
+
+    While the subprocess runs, polls ``out_dir/csv_logs/version_*/metrics.csv``
+    every ``poll_interval`` seconds and kills the process as soon as any single
+    step's loss deviates from ``expected_losses`` by more than ``atol``.
+
+    After a clean exit, also asserts that the mean absolute deviation across the
+    full trajectory is within ``mean_atol``, catching systematic drift that stays
+    below the per-step limit on every individual step.
+
+    Args:
+        cmd: Command list passed to Popen.
+        out_dir: Training output directory (contains csv_logs/).
+        expected_losses: Per-step baseline losses to compare against.
+        atol: Per-step absolute tolerance; process is killed on first exceedance.
+        mean_atol: Mean absolute deviation tolerance applied after all steps complete.
+        cwd: Working directory for the subprocess.
+        env: Additional env vars (merged over os.environ).
+        poll_interval: Seconds between CSV polls.
+    """
+    merged = os.environ.copy()
+    if env:
+        merged.update(env)
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=merged,
+        start_new_session=True,
+    )
+
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+
+    def _drain(pipe, buf):
+        for line in pipe:
+            buf.write(line)
+
+    t_out = threading.Thread(target=_drain, args=(proc.stdout, stdout_buf), daemon=True)
+    t_err = threading.Thread(target=_drain, args=(proc.stderr, stderr_buf), daemon=True)
+    t_out.start()
+    t_err.start()
+
+    fail_error: str | None = None
+    checked_steps = 0
+
+    while proc.poll() is None:
+        losses = parse_train_losses_from_csv_logger(out_dir)
+        for i in range(checked_steps, len(losses)):
+            if i < len(expected_losses):
+                exp, obs = expected_losses[i], losses[i]
+                if abs(exp - obs) > atol:
+                    fail_error = (
+                        f"step {i}: expected {exp:.6f}, got {obs:.6f} " f"(diff={abs(exp - obs):.2e}, atol={atol:.0e})"
+                    )
+                    proc.terminate()
+                    break
+        checked_steps = len(losses)
+        if fail_error:
+            break
+        time.sleep(poll_interval)
+
+    t_out.join()
+    t_err.join()
+    _terminate_process_tree(proc.pid)
+
+    if fail_error:
+        raise AssertionError(
+            f"Training loss mismatch — {fail_error}\n"
+            f"Subprocess stderr (last 2000 chars):\n{stderr_buf.getvalue()[-2000:]}"
+        )
+
+    stderr_text = stderr_buf.getvalue()
+    assert proc.returncode == 0, (
+        f"Training subprocess failed (exit {proc.returncode}):\n" f"{stderr_text or stdout_buf.getvalue()}"
+    )
+
+    # Confirm the expected number of steps were produced, then check mean deviation.
+    losses = parse_train_losses_from_csv_logger(out_dir)
+    assert len(losses) == len(expected_losses), f"Expected {len(expected_losses)} training steps, got {len(losses)}"
+    mean_diff = sum(abs(obs - exp) for obs, exp in zip(losses, expected_losses, strict=False)) / len(losses)
+    assert mean_diff <= mean_atol, (
+        f"Mean training loss deviation {mean_diff:.4f} exceeds {mean_atol} "
+        f"(per-step atol {atol} was not exceeded on any individual step)"
+    )
+
+
 def parse_train_losses(stdout: str) -> list[float]:
     values: list[float] = []
     for match in TRAIN_LOSS_RE.finditer(stdout):
@@ -267,7 +370,14 @@ def parse_train_losses_from_csv_logger(out_dir: Path) -> list[float]:
     losses: list[float] = []
     with open(csv_files[-1], newline="") as fh:
         reader = csv.DictReader(fh)
-        col = next((c for c in (reader.fieldnames or []) if c == "train_loss" or c.endswith("/train_loss")), None)
+        col = next(
+            (
+                c
+                for c in (reader.fieldnames or [])
+                if c in ("train_loss", "train/loss_step", "train_loss_step") or c.endswith("/train_loss")
+            ),
+            None,
+        )
         if col is None:
             return []
         for row in reader:

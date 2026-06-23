@@ -38,6 +38,7 @@ from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder  # noq
 from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
 from proteinfoundation.utils.simple_ema import EMAModelCheckpoint  # noqa: E402
+from proteinfoundation.utils.torch_utils import apply_deterministic_training  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -138,12 +139,19 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
     This could be just a set of parameters (pretrain_ckpt_path) or resuming
     training (last). It also handles LoRA layers if requested.
     """
-    model = AutoEncoder(cfg_exp)
-
-    # get last ckpt if needs to resume training from there
+    # Detect checkpoint BEFORE model init so we can seed first when starting fresh.
+    # This ensures reproducible random weight initialization across runs.
     last_ckpt_name = fetch_last_ckpt(ckpt_path_store)
     last_ckpt_path = os.path.join(ckpt_path_store, last_ckpt_name) if last_ckpt_name is not None else None
     logger.info(f"Last checkpoint: {last_ckpt_path}")
+
+    # Seed before model init for fresh runs so random weight initialization is reproducible.
+    # (Resuming from a checkpoint loads deterministic weights, so no seed is needed here.)
+    if last_ckpt_path is None:
+        logger.info(f"Not starting from existing checkpoint; seeding with seed: {cfg_exp.seed}")
+        L.seed_everything(cfg_exp.seed, workers=False, verbose=True)
+
+    model = AutoEncoder(cfg_exp)
 
     # If LoRA is turned on, replace Linear with LoRA layers
     if cfg_exp.get("lora") and cfg_exp.lora.get("r"):
@@ -197,11 +205,6 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
                 f"overrides={len(pf_config.param_policies)})"
             )
             freeze_parameters_with_config(model, pf_config)
-
-    # If not resuming from `last` ckpt training set seed
-    if last_ckpt_path is None:
-        logger.info(f"Not starting from existing checkpoint; seeding with seed: {cfg_exp.seed}")
-        L.seed_everything(cfg_exp.seed, workers=False, verbose=True)
 
     return model, last_ckpt_path
 
@@ -299,6 +302,11 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Create model, warm-up or last ckpt
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
+
+    # Fully deterministic mode — MUST come after model init, because model.__init__
+    # may call _configure_flash_attention_backends() which re-enables Flash SDP.
+    if cfg_exp.deterministic_training:
+        apply_deterministic_training(logger)
 
     # logger
     train_logger: WandbLogger | CSVLogger | None = None

@@ -68,4 +68,4 @@ dataset:
     - q_pn_unit_is_loi
 
   transform:
-    crop_size: 384
+    crop_size: ${dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I}

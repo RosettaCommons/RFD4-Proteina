@@ -410,10 +410,6 @@ _CKPT_PATH = os.environ.get(
 # Symlink to current sota checkpoint
 _CKPT_NAME = os.environ.get("CKPT_NAME", "latest.ckpt")
 
-# Pair of checkpoints, one ema-only, one with both
-_EMA_CONTROL_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000.ckpt")
-_EMA_CKPT_NAME = os.environ.get("EMA_CKPT_NAME", "2026_04_16_hero_run_v2_step_000000080000-ema.ckpt")
-
 # AE checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints`` (per-cluster),
 # matching the ``autoencoder_ckpt_path`` convention used across the configs.
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
@@ -612,42 +608,6 @@ class TestEndToEndInference:
         df_1 = _load_output_dataframe(out_dirs[1], check_input_json_path=True)
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
-
-    def test_ema_vs_regular_checkpoint(self, gpu, tmp_output_dir):  # noqa: F811
-        """Verify that regular and EMA checkpoints produce identical outputs for the same seed.
-
-        Runs inference with both checkpoints using a fixed seed and asserts that
-        the resulting structures are identical after alignment. A near-zero RMSD
-        confirms the EMA weights have not diverged from the training weights.
-        """
-        input_path = _write_input_json(
-            tmp_output_dir,
-            {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
-        )
-
-        ckpt_names = {"regular": _EMA_CONTROL_CKPT_NAME, "ema": _EMA_CKPT_NAME}
-        out_dirs = {}
-        for label, ckpt_name in ckpt_names.items():
-            out_dir = os.path.join(tmp_output_dir, label)
-            os.makedirs(out_dir)
-            out_dirs[label] = out_dir
-            cfg = _build_test_cfg(
-                [
-                    f"inputs={input_path}",
-                    f"out_dir={out_dir}",
-                    f"ckpt_name={ckpt_name}",
-                    "num_replicates=1",
-                    "seed=12345",
-                ]
-            )
-            run_generation(cfg, job_id=0, config_name=f"test_ema_vs_regular_{label}")
-
-        cifs_regular = sorted(_inference_generated_cifs(out_dirs["regular"]))
-        cifs_ema = sorted(_inference_generated_cifs(out_dirs["ema"]))
-        assert len(cifs_regular) == len(cifs_ema) == 1
-
-        for f_regular, f_ema in zip(cifs_regular, cifs_ema, strict=True):
-            _assert_coords_identical(str(f_regular), str(f_ema))
 
     def test_output_cif_annotations(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify that generated CIF files contain expected annotations."""

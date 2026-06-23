@@ -3,7 +3,7 @@
 
 defaults:
   - /nn_ae/nn_60m_unified_no_token_type@nn_ae
-  - /datasets/ae_mixed_datasets@datasets
+  - /datasets/ae_na_complex_datasets@datasets
   - _self_
 
 run_name_: ae_unified_no_token_type_v1
@@ -17,6 +17,8 @@ dataloaders:
   train:
     dataloader_params:
       batch_size: 12
+      collate_fn:
+        fixed_dimensions: {I: 384}
 
 log:
   tags: ["ae", "60m", "unified", "protein", "rna", "dna", "no_token_type", "ablation"]

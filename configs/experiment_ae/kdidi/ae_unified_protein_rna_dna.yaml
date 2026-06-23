@@ -16,6 +16,8 @@ dataloaders:
   train:
     dataloader_params:
       batch_size: 12
+      collate_fn:
+        fixed_dimensions: {I: 384}
 
 log:
   tags: ["ae", "60m", "unified", "protein", "rna", "dna", "token_type"]

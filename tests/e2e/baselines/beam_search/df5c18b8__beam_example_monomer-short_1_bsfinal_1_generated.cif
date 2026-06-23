@@ -1,0 +1,1957 @@
+data_df5c18b8__beam_example_monomer-short_1_bsfinal_1_generated.cif
+#
+_entry.id       df5c18b8__beam_example_monomer-short_1_bsfinal_1_generated.cif
+_entry.author   unknown_user
+_entry.date     2026-06-22
+_entry.time     17:24:58
+#
+_entity.id                 0
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       
+;MMMMMMMEMMEMMMMEMEMMEMECMMEMEMMMCMMMMMMMMMMMMMMMMECMEMEMMEMMMMMMMAMEMMMMMEMMMEMM
+MMMEMEMMMMMMMMMMMMEE
+;
+_entity_poly.pdbx_seq_one_letter_code_can   
+;MMMMMMMEMMEMMMMEMEMMEMECMMEMEMMMCMMMMMMMMMMMMMMMMECMEMEMMEMMMMMMMAMEMMMMMEMMMEMM
+MMMEMEMMMMMMMMMMMMEE
+;
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n MET 1
+0 n MET 2
+0 n MET 3
+0 n MET 4
+0 n MET 5
+0 n MET 6
+0 n MET 7
+0 n GLU 8
+0 n MET 9
+0 n MET 10
+0 n GLU 11
+0 n MET 12
+0 n MET 13
+0 n MET 14
+0 n MET 15
+0 n GLU 16
+0 n MET 17
+0 n GLU 18
+0 n MET 19
+0 n MET 20
+0 n GLU 21
+0 n MET 22
+0 n GLU 23
+0 n CYS 24
+0 n MET 25
+0 n MET 26
+0 n GLU 27
+0 n MET 28
+0 n GLU 29
+0 n MET 30
+0 n MET 31
+0 n MET 32
+0 n CYS 33
+0 n MET 34
+0 n MET 35
+0 n MET 36
+0 n MET 37
+0 n MET 38
+0 n MET 39
+0 n MET 40
+0 n MET 41
+0 n MET 42
+0 n MET 43
+0 n MET 44
+0 n MET 45
+0 n MET 46
+0 n MET 47
+0 n MET 48
+0 n MET 49
+0 n GLU 50
+0 n CYS 51
+0 n MET 52
+0 n GLU 53
+0 n MET 54
+0 n GLU 55
+0 n MET 56
+0 n MET 57
+0 n GLU 58
+0 n MET 59
+0 n MET 60
+0 n MET 61
+0 n MET 62
+0 n MET 63
+0 n MET 64
+0 n MET 65
+0 n ALA 66
+0 n MET 67
+0 n GLU 68
+0 n MET 69
+0 n MET 70
+0 n MET 71
+0 n MET 72
+0 n MET 73
+0 n GLU 74
+0 n MET 75
+0 n MET 76
+0 n MET 77
+0 n GLU 78
+0 n MET 79
+0 n MET 80
+0 n MET 81
+0 n MET 82
+0 n MET 83
+0 n GLU 84
+0 n MET 85
+0 n GLU 86
+0 n MET 87
+0 n MET 88
+0 n MET 89
+0 n MET 90
+0 n MET 91
+0 n MET 92
+0 n MET 93
+0 n MET 94
+0 n MET 95
+0 n MET 96
+0 n MET 97
+0 n MET 98
+0 n GLU 99
+0 n GLU 100
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+ALA ALA 'L-PEPTIDE LINKING' ? ? ? ?
+CYS CYS 'L-PEPTIDE LINKING' ? ? ? ?
+GLU GLU 'L-PEPTIDE LINKING' ? ? ? ?
+MET MET 'L-PEPTIDE LINKING' ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+ALA N   CA  SING N
+ALA N   H   SING N
+ALA N   H2  SING N
+ALA CA  C   SING N
+ALA CA  CB  SING N
+ALA CA  HA  SING N
+ALA C   O   DOUB N
+ALA C   OXT SING N
+ALA CB  HB1 SING N
+ALA CB  HB2 SING N
+ALA CB  HB3 SING N
+ALA OXT HXT SING N
+CYS N   CA  SING N
+CYS N   H   SING N
+CYS N   H2  SING N
+CYS CA  C   SING N
+CYS CA  CB  SING N
+CYS CA  HA  SING N
+CYS C   O   DOUB N
+CYS C   OXT SING N
+CYS CB  SG  SING N
+CYS CB  HB2 SING N
+CYS CB  HB3 SING N
+CYS SG  HG  SING N
+CYS OXT HXT SING N
+GLU N   CA  SING N
+GLU N   H   SING N
+GLU N   H2  SING N
+GLU CA  C   SING N
+GLU CA  CB  SING N
+GLU CA  HA  SING N
+GLU C   O   DOUB N
+GLU C   OXT SING N
+GLU CB  CG  SING N
+GLU CB  HB2 SING N
+GLU CB  HB3 SING N
+GLU CG  CD  SING N
+GLU CG  HG2 SING N
+GLU CG  HG3 SING N
+GLU CD  OE1 DOUB N
+GLU CD  OE2 SING N
+GLU OE2 HE2 SING N
+GLU OXT HXT SING N
+MET N   CA  SING N
+MET N   H   SING N
+MET N   H2  SING N
+MET CA  C   SING N
+MET CA  CB  SING N
+MET CA  HA  SING N
+MET C   O   DOUB N
+MET C   OXT SING N
+MET CB  CG  SING N
+MET CB  HB2 SING N
+MET CB  HB3 SING N
+MET CG  SD  SING N
+MET CG  HG2 SING N
+MET CG  HG3 SING N
+MET SD  CE  SING N
+MET CE  HE1 SING N
+MET CE  HE2 SING N
+MET CE  HE3 SING N
+MET OXT HXT SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_sequence_1_residue 
+_atom_site.mask_index_1_residue 
+_atom_site.annotation_src-coordinate-conditioned-region_1_atom 
+_atom_site.condition_index-group_1_token 
+_atom_site.mapped_to_coordinate_conditioned_region 
+_atom_site.mask_src-coord-group_1_atom 
+_atom_site.atomize 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.condition_cath-label_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.is_unindexed_insertion 
+_atom_site.mask_InternalCoordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_src-coord-group_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+ATOM N N   . MET A 0 1   . 1   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 0   7.3     -34.985 8.586   1 1
+ATOM C CA  . MET A 0 1   . 1   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 1   7.161   -33.411 7.662   1 2
+ATOM C C   . MET A 0 1   . 1   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 2   7.919   -28.774 5.68    1 3
+ATOM O O   . MET A 0 1   . 1   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 3   8.216   -29.495 6.27    1 4
+ATOM C CB  . MET A 0 1   . 1   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 4   6.754   -34.533 8.728   1 5
+ATOM C CG  . MET A 0 1   . 1   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 5   6.328   -35.797 8.678   1 6
+ATOM S SD  . MET A 0 1   . 1   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 6   5.64    -35.769 9.283   1 7
+ATOM C CE  . MET A 0 1   . 1   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 7   6.06    -35.92  9.225   1 8
+ATOM N N   . MET A 0 2   . 2   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 8   15.709  -0.144  -9.173  1 9
+ATOM C CA  . MET A 0 2   . 2   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 9   15.149  0.366   -9.072  1 10
+ATOM C C   . MET A 0 2   . 2   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 10  13.997  -1.509  -7.491  1 11
+ATOM O O   . MET A 0 2   . 2   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 11  14.184  -0.425  -8.312  1 12
+ATOM C CB  . MET A 0 2   . 2   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 12  15.103  1.351   -10.329 1 13
+ATOM C CG  . MET A 0 2   . 2   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 13  14.941  2.245   -11.055 1 14
+ATOM S SD  . MET A 0 2   . 2   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 14  14.648  2.211   -10.438 1 15
+ATOM C CE  . MET A 0 2   . 2   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 15  14.771  2.47    -10.585 1 16
+ATOM N N   . MET A 0 3   . 3   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 16  8.213   -14.783 4.399   1 17
+ATOM C CA  . MET A 0 3   . 3   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 17  7.379   -15.861 5.208   1 18
+ATOM C C   . MET A 0 3   . 3   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 18  4.678   -16.672 5.033   1 19
+ATOM O O   . MET A 0 3   . 3   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 19  5.159   -16.65  5.201   1 20
+ATOM C CB  . MET A 0 3   . 3   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 20  7.965   -15.367 6.633   1 21
+ATOM C CG  . MET A 0 3   . 3   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 21  8.455   -15.405 6.884   1 22
+ATOM S SD  . MET A 0 3   . 3   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 22  8.274   -15.381 7.289   1 23
+ATOM C CE  . MET A 0 3   . 3   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 23  8.644   -15.279 7.648   1 24
+ATOM N N   . MET A 0 4   . 4   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 24  -8.589  -20.899 3.295   1 25
+ATOM C CA  . MET A 0 4   . 4   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 25  -7.677  -20.367 3.208   1 26
+ATOM C C   . MET A 0 4   . 4   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 26  -2.176  -19.17  3.198   1 27
+ATOM O O   . MET A 0 4   . 4   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 27  -3.466  -19.255 3.293   1 28
+ATOM C CB  . MET A 0 4   . 4   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 28  -9.701  -20.634 3.547   1 29
+ATOM C CG  . MET A 0 4   . 4   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 29  -11.054 -21.161 3.228   1 30
+ATOM S SD  . MET A 0 4   . 4   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 30  -11.63  -21.616 3.767   1 31
+ATOM C CE  . MET A 0 4   . 4   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 31  -11.585 -21.386 3.812   1 32
+ATOM N N   . MET A 0 5   . 5   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 32  41.555  -12.029 4.586   1 33
+ATOM C CA  . MET A 0 5   . 5   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 33  39.914  -11.773 3.978   1 34
+ATOM C C   . MET A 0 5   . 5   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 34  33.281  -11.864 2.58    1 35
+ATOM O O   . MET A 0 5   . 5   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 35  35.997  -11.764 2.188   1 36
+ATOM C CB  . MET A 0 5   . 5   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 36  41.977  -11.77  4.318   1 37
+ATOM C CG  . MET A 0 5   . 5   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 37  43.095  -11.985 4.102   1 38
+ATOM S SD  . MET A 0 5   . 5   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 38  42.658  -11.76  4.961   1 39
+ATOM C CE  . MET A 0 5   . 5   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 39  43.347  -11.761 4.636   1 40
+ATOM N N   . MET A 0 6   . 6   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 40  -19.117 -19.01  -6.431  1 41
+ATOM C CA  . MET A 0 6   . 6   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 41  -18.529 -17.411 -6.583  1 42
+ATOM C C   . MET A 0 6   . 6   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 42  -12.91  -14.335 -5.477  1 43
+ATOM O O   . MET A 0 6   . 6   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 43  -14.385 -15.132 -5.946  1 44
+ATOM C CB  . MET A 0 6   . 6   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 44  -21.073 -17.961 -5.91   1 45
+ATOM C CG  . MET A 0 6   . 6   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 45  -22.043 -18.578 -6.774  1 46
+ATOM S SD  . MET A 0 6   . 6   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 46  -22.247 -18.787 -6.326  1 47
+ATOM C CE  . MET A 0 6   . 6   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 47  -22.301 -18.583 -6.198  1 48
+ATOM N N   . MET A 0 7   . 7   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 48  24.479  7.831   1.681   1 49
+ATOM C CA  . MET A 0 7   . 7   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 49  24.376  7.067   1.409   1 50
+ATOM C C   . MET A 0 7   . 7   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 50  22.337  3.521   1.025   1 51
+ATOM O O   . MET A 0 7   . 7   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 51  23.404  4.89    0.854   1 52
+ATOM C CB  . MET A 0 7   . 7   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 52  25.362  8.246   1.82    1 53
+ATOM C CG  . MET A 0 7   . 7   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 53  25.645  9.381   1.681   1 54
+ATOM S SD  . MET A 0 7   . 7   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 54  25.315  9.6     2.249   1 55
+ATOM C CE  . MET A 0 7   . 7   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 55  25.852  9.888   2.489   1 56
+ATOM N N   . GLU A 0 8   . 8   GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 56  6.587   -28.343 -2.121  1 57
+ATOM C CA  . GLU A 0 8   . 8   GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 57  4.769   -29.076 -2.372  1 58
+ATOM C C   . GLU A 0 8   . 8   GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 58  2.011   -26.617 -2.509  1 59
+ATOM O O   . GLU A 0 8   . 8   GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 59  2.633   -27.545 -2.371  1 60
+ATOM C CB  . GLU A 0 8   . 8   GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 60  4.982   -30.717 -0.877  1 61
+ATOM C CG  . GLU A 0 8   . 8   GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 61  5.305   -31.693 -1.308  1 62
+ATOM C CD  . GLU A 0 8   . 8   GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 62  5.491   -31.919 -0.677  1 63
+ATOM O OE1 . GLU A 0 8   . 8   GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 63  4.983   -31.698 -0.53   1 64
+ATOM O OE2 . GLU A 0 8   . 8   GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 64  5.392   -31.443 -0.117  1 65
+ATOM N N   . MET A 0 9   . 9   MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 65  -19.464 -9.13   -3.5    1 66
+ATOM C CA  . MET A 0 9   . 9   MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 66  -18.466 -8.005  -3.713  1 67
+ATOM C C   . MET A 0 9   . 9   MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 67  -12.624 -7.994  -3.388  1 68
+ATOM O O   . MET A 0 9   . 9   MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 68  -14.148 -7.671  -3.097  1 69
+ATOM C CB  . MET A 0 9   . 9   MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 69  -20.65  -7.361  -2.868  1 70
+ATOM C CG  . MET A 0 9   . 9   MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 70  -22.029 -7.52   -3.502  1 71
+ATOM S SD  . MET A 0 9   . 9   MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 71  -22.501 -8.045  -3.296  1 72
+ATOM C CE  . MET A 0 9   . 9   MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 72  -22.481 -7.457  -3.128  1 73
+ATOM N N   . MET A 0 10  . 10  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 73  31.704  -10.545 -3.735  1 74
+ATOM C CA  . MET A 0 10  . 10  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 74  30.663  -10.728 -3.845  1 75
+ATOM C C   . MET A 0 10  . 10  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 75  26.16   -11.395 -2.945  1 76
+ATOM O O   . MET A 0 10  . 10  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 76  28.228  -11.451 -4.256  1 77
+ATOM C CB  . MET A 0 10  . 10  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 77  32.276  -10.773 -4.106  1 78
+ATOM C CG  . MET A 0 10  . 10  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 78  33.145  -10.748 -4.809  1 79
+ATOM S SD  . MET A 0 10  . 10  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 79  32.867  -10.475 -4.014  1 80
+ATOM C CE  . MET A 0 10  . 10  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 80  33.374  -10.582 -4.147  1 81
+ATOM N N   . GLU A 0 11  . 11  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 81  -11.142 -22.072 8.259   1 82
+ATOM C CA  . GLU A 0 11  . 11  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 82  -12.884 -20.939 7.976   1 83
+ATOM C C   . GLU A 0 11  . 11  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 83  -12.927 -16.176 6.264   1 84
+ATOM O O   . GLU A 0 11  . 11  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 84  -12.473 -17.08  6.646   1 85
+ATOM C CB  . GLU A 0 11  . 11  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 85  -13.468 -21.929 10.366  1 86
+ATOM C CG  . GLU A 0 11  . 11  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 86  -13.874 -23.172 10.13   1 87
+ATOM C CD  . GLU A 0 11  . 11  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 87  -13.923 -23.33  10.716  1 88
+ATOM O OE1 . GLU A 0 11  . 11  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 88  -14.471 -23.124 10.865  1 89
+ATOM O OE2 . GLU A 0 11  . 11  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 89  -13.319 -22.377 11.1    1 90
+ATOM N N   . MET A 0 12  . 12  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 90  -13.119 19.269  -5.799  1 91
+ATOM C CA  . MET A 0 12  . 12  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 91  -12.382 18.626  -6.588  1 92
+ATOM C C   . MET A 0 12  . 12  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 92  -9.88   13.561  -6.081  1 93
+ATOM O O   . MET A 0 12  . 12  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 93  -9.848  15.377  -6.451  1 94
+ATOM C CB  . MET A 0 12  . 12  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 94  -12.701 20.8    -6.735  1 95
+ATOM C CG  . MET A 0 12  . 12  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 95  -13.897 21.712  -7.255  1 96
+ATOM S SD  . MET A 0 12  . 12  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 96  -14.388 21.257  -6.818  1 97
+ATOM C CE  . MET A 0 12  . 12  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 97  -14.195 21.918  -6.866  1 98
+ATOM N N   . MET A 0 13  . 13  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 98  7.938   -33.465 -5.465  1 99
+ATOM C CA  . MET A 0 13  . 13  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 99  8.366   -32.812 -4.47   1 100
+ATOM C C   . MET A 0 13  . 13  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 100 8.554   -27.028 -1.664  1 101
+ATOM O O   . MET A 0 13  . 13  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 101 9.648   -29.726 -2.9    1 102
+ATOM C CB  . MET A 0 13  . 13  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 102 8.976   -34.882 -5.387  1 103
+ATOM C CG  . MET A 0 13  . 13  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 103 8.673   -36.121 -6.298  1 104
+ATOM S SD  . MET A 0 13  . 13  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 104 8.197   -35.649 -5.37   1 105
+ATOM C CE  . MET A 0 13  . 13  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 105 8.362   -36.124 -5.581  1 106
+ATOM N N   . MET A 0 14  . 14  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 106 10.326  28.37   26.347  1 107
+ATOM C CA  . MET A 0 14  . 14  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 107 9.703   27.279  25.738  1 108
+ATOM C C   . MET A 0 14  . 14  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 108 8.293   21.589  22.667  1 109
+ATOM O O   . MET A 0 14  . 14  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 109 9.403   23.509  23.145  1 110
+ATOM C CB  . MET A 0 14  . 14  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 110 9.808   29.393  26.789  1 111
+ATOM C CG  . MET A 0 14  . 14  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 111 9.854   30.436  27.207  1 112
+ATOM S SD  . MET A 0 14  . 14  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 112 9.858   30.202  27.731  1 113
+ATOM C CE  . MET A 0 14  . 14  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 113 10.384  30.535  27.897  1 114
+ATOM N N   . MET A 0 15  . 15  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 114 -8.023  -35.353 -11.981 1 115
+ATOM C CA  . MET A 0 15  . 15  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 115 -8.074  -34.94  -11.669 1 116
+ATOM C C   . MET A 0 15  . 15  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 116 -6.889  -30.978 -8.88   1 117
+ATOM O O   . MET A 0 15  . 15  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 117 -6.283  -32.867 -10.071 1 118
+ATOM C CB  . MET A 0 15  . 15  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 118 -8.679  -36.714 -12.597 1 119
+ATOM C CG  . MET A 0 15  . 15  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 119 -9.091  -37.724 -13.65  1 120
+ATOM S SD  . MET A 0 15  . 15  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 120 -9.24   -37.495 -12.868 1 121
+ATOM C CE  . MET A 0 15  . 15  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 121 -9.196  -37.959 -12.98  1 122
+ATOM N N   . GLU A 0 16  . 16  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 122 -1.013  0.744   17.535  1 123
+ATOM C CA  . GLU A 0 16  . 16  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 123 -0.187  2.807   18.076  1 124
+ATOM C C   . GLU A 0 16  . 16  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 124 3.048   5.666   16.201  1 125
+ATOM O O   . GLU A 0 16  . 16  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 125 3.226   5.09    16.821  1 126
+ATOM C CB  . GLU A 0 16  . 16  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 126 -0.097  1.855   20.238  1 127
+ATOM C CG  . GLU A 0 16  . 16  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 127 -1.394  1.293   20.374  1 128
+ATOM C CD  . GLU A 0 16  . 16  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 128 -1.679  1.321   21.02   1 129
+ATOM O OE1 . GLU A 0 16  . 16  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 129 -2.31   1.567   21.055  1 130
+ATOM O OE2 . GLU A 0 16  . 16  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 130 -0.476  1.949   21.097  1 131
+ATOM N N   . MET A 0 17  . 17  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 131 22.85   27.111  3.391   1 132
+ATOM C CA  . MET A 0 17  . 17  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 132 23.049  26.042  2.503   1 133
+ATOM C C   . MET A 0 17  . 17  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 133 21.65   20.601  2.513   1 134
+ATOM O O   . MET A 0 17  . 17  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 134 22.868  22.778  1.519   1 135
+ATOM C CB  . MET A 0 17  . 17  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 135 24.404  27.733  2.56    1 136
+ATOM C CG  . MET A 0 17  . 17  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 136 24.331  29.033  2.053   1 137
+ATOM S SD  . MET A 0 17  . 17  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 137 23.954  29.115  2.582   1 138
+ATOM C CE  . MET A 0 17  . 17  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 138 24.654  29.454  2.726   1 139
+ATOM N N   . GLU A 0 18  . 18  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 139 5.583   -36.587 9.018   1 140
+ATOM C CA  . GLU A 0 18  . 18  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 140 4.362   -36.569 8.102   1 141
+ATOM C C   . GLU A 0 18  . 18  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 141 2.885   -31.998 5.948   1 142
+ATOM O O   . GLU A 0 18  . 18  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 142 3.77    -33.236 6.151   1 143
+ATOM C CB  . GLU A 0 18  . 18  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 143 3.908   -38.427 9.729   1 144
+ATOM C CG  . GLU A 0 18  . 18  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 144 4.152   -39.603 9.596   1 145
+ATOM C CD  . GLU A 0 18  . 18  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 145 4.169   -39.739 10.109  1 146
+ATOM O OE1 . GLU A 0 18  . 18  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 146 3.79    -39.479 10.34   1 147
+ATOM O OE2 . GLU A 0 18  . 18  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 147 4.475   -38.634 10.572  1 148
+ATOM N N   . MET A 0 19  . 19  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 148 -5.995  2.476   -7.746  1 149
+ATOM C CA  . MET A 0 19  . 19  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 149 -5.743  2.654   -7.944  1 150
+ATOM C C   . MET A 0 19  . 19  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 150 -4.53   1.063   -6.869  1 151
+ATOM O O   . MET A 0 19  . 19  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 151 -4.397  1.688   -7.243  1 152
+ATOM C CB  . MET A 0 19  . 19  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 152 -6.32   3.677   -8.452  1 153
+ATOM C CG  . MET A 0 19  . 19  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 153 -7.437  4.356   -8.848  1 154
+ATOM S SD  . MET A 0 19  . 19  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 154 -8.103  4.259   -8.353  1 155
+ATOM C CE  . MET A 0 19  . 19  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 155 -8.299  4.778   -8.471  1 156
+ATOM N N   . MET A 0 20  . 20  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 156 -2.095  -7.416  -4.487  1 157
+ATOM C CA  . MET A 0 20  . 20  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 157 -0.675  -7.846  -3.261  1 158
+ATOM C C   . MET A 0 20  . 20  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 158 3.906   -6.451  -0.08   1 159
+ATOM O O   . MET A 0 20  . 20  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 159 2.592   -7.104  -1.711  1 160
+ATOM C CB  . MET A 0 20  . 20  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 160 -1.426  -8.988  -4.662  1 161
+ATOM C CG  . MET A 0 20  . 20  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 161 -2.675  -9.286  -5.377  1 162
+ATOM S SD  . MET A 0 20  . 20  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 162 -3.546  -9.228  -4.516  1 163
+ATOM C CE  . MET A 0 20  . 20  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 163 -3.376  -9.342  -4.39   1 164
+ATOM N N   . GLU A 0 21  . 21  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 164 40.383  9.976   31.14   1 165
+ATOM C CA  . GLU A 0 21  . 21  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 165 39.669  8.822   30.283  1 166
+ATOM C C   . GLU A 0 21  . 21  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 166 36.063  5.62    26.276  1 167
+ATOM O O   . GLU A 0 21  . 21  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 167 37.875  6.991   27.405  1 168
+ATOM C CB  . GLU A 0 21  . 21  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 168 40.558  9.754   32.03   1 169
+ATOM C CG  . GLU A 0 21  . 21  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 169 41.225  10.335  32.67   1 170
+ATOM C CD  . GLU A 0 21  . 21  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 170 41.487  10.378  33.278  1 171
+ATOM O OE1 . GLU A 0 21  . 21  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 171 40.879  10.323  32.949  1 172
+ATOM O OE2 . GLU A 0 21  . 21  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 172 41.642  10.433  33.344  1 173
+ATOM N N   . MET A 0 22  . 22  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 173 1.858   -28.642 -20.339 1 174
+ATOM C CA  . MET A 0 22  . 22  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 174 0.856   -28.158 -20.003 1 175
+ATOM C C   . MET A 0 22  . 22  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 175 0.946   -25.219 -16.096 1 176
+ATOM O O   . MET A 0 22  . 22  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 176 1.406   -26.247 -18.383 1 177
+ATOM C CB  . MET A 0 22  . 22  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 177 0.068   -29.986 -21.068 1 178
+ATOM C CG  . MET A 0 22  . 22  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 178 -0.003  -30.551 -22.504 1 179
+ATOM S SD  . MET A 0 22  . 22  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 179 0.24    -30.119 -21.801 1 180
+ATOM C CE  . MET A 0 22  . 22  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 180 0.152   -30.555 -21.85  1 181
+ATOM N N   . GLU A 0 23  . 23  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 181 3.422   -2.754  28.263  1 182
+ATOM C CA  . GLU A 0 23  . 23  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 182 3.043   -0.843  28.335  1 183
+ATOM C C   . GLU A 0 23  . 23  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 183 3.323   3.047   24.928  1 184
+ATOM O O   . GLU A 0 23  . 23  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 184 3.859   2.162   25.753  1 185
+ATOM C CB  . GLU A 0 23  . 23  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 185 4.082   -1.51   30.407  1 186
+ATOM C CG  . GLU A 0 23  . 23  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 186 3.371   -2.55   31.0    1 187
+ATOM C CD  . GLU A 0 23  . 23  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 187 3.143   -2.584  31.452  1 188
+ATOM O OE1 . GLU A 0 23  . 23  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 188 2.184   -2.436  31.754  1 189
+ATOM O OE2 . GLU A 0 23  . 23  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 189 3.782   -1.608  31.587  1 190
+ATOM N N   . CYS A 0 24  . 24  CYS A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 190 4.549   33.197  -2.935  1 191
+ATOM C CA  . CYS A 0 24  . 24  CYS A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 191 4.729   32.287  -4.149  1 192
+ATOM C C   . CYS A 0 24  . 24  CYS A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 192 5.715   26.715  -3.763  1 193
+ATOM O O   . CYS A 0 24  . 24  CYS A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 193 5.891   28.62   -4.845  1 194
+ATOM C CB  . CYS A 0 24  . 24  CYS A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 194 5.277   34.426  -4.812  1 195
+ATOM S SG  . CYS A 0 24  . 24  CYS A SG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 195 5.168   34.774  -4.847  1 196
+ATOM N N   . MET A 0 25  . 25  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 196 18.034  -33.102 5.007   1 197
+ATOM C CA  . MET A 0 25  . 25  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 197 16.265  -33.366 4.942   1 198
+ATOM C C   . MET A 0 25  . 25  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 198 11.566  -29.155 4.424   1 199
+ATOM O O   . MET A 0 25  . 25  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 199 13.56   -30.87  4.477   1 200
+ATOM C CB  . MET A 0 25  . 25  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 200 17.407  -35.277 6.391   1 201
+ATOM C CG  . MET A 0 25  . 25  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 201 18.045  -36.387 5.796   1 202
+ATOM S SD  . MET A 0 25  . 25  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 202 17.519  -35.864 6.089   1 203
+ATOM C CE  . MET A 0 25  . 25  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 203 18.076  -36.19  6.022   1 204
+ATOM N N   . MET A 0 26  . 26  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 204 -30.85  4.659   -0.552  1 205
+ATOM C CA  . MET A 0 26  . 26  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 205 -29.856 5.705   -0.574  1 206
+ATOM C C   . MET A 0 26  . 26  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 206 -23.568 5.337   0.578   1 207
+ATOM O O   . MET A 0 26  . 26  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 207 -25.418 6.058   0.144   1 208
+ATOM C CB  . MET A 0 26  . 26  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 208 -32.35  6.393   -0.005  1 209
+ATOM C CG  . MET A 0 26  . 26  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 209 -33.669 6.252   -0.836  1 210
+ATOM S SD  . MET A 0 26  . 26  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 210 -33.99  5.603   -0.59   1 211
+ATOM C CE  . MET A 0 26  . 26  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 211 -33.973 6.102   -0.412  1 212
+ATOM N N   . GLU A 0 27  . 27  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 212 21.522  -1.76   9.784   1 213
+ATOM C CA  . GLU A 0 27  . 27  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 213 23.332  -1.718  9.631   1 214
+ATOM C C   . GLU A 0 27  . 27  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 214 24.41   -2.067  7.266   1 215
+ATOM O O   . GLU A 0 27  . 27  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 215 24.708  -2.171  7.592   1 216
+ATOM C CB  . GLU A 0 27  . 27  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 216 23.95   -2.947  10.849  1 217
+ATOM C CG  . GLU A 0 27  . 27  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 217 23.532  -2.739  12.079  1 218
+ATOM C CD  . GLU A 0 27  . 27  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 218 23.407  -2.436  12.957  1 219
+ATOM O OE1 . GLU A 0 27  . 27  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 219 22.964  -2.055  13.49   1 220
+ATOM O OE2 . GLU A 0 27  . 27  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 220 23.977  -2.118  12.747  1 221
+ATOM N N   . MET A 0 28  . 28  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 221 29.424  -4.747  -5.288  1 222
+ATOM C CA  . MET A 0 28  . 28  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 222 28.707  -4.744  -6.258  1 223
+ATOM C C   . MET A 0 28  . 28  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 223 26.07   -4.576  -5.682  1 224
+ATOM O O   . MET A 0 28  . 28  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 224 26.795  -4.893  -6.332  1 225
+ATOM C CB  . MET A 0 28  . 28  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 225 29.625  -5.72   -7.087  1 226
+ATOM C CG  . MET A 0 28  . 28  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 226 30.205  -5.69   -7.729  1 227
+ATOM S SD  . MET A 0 28  . 28  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 227 30.054  -5.223  -6.553  1 228
+ATOM C CE  . MET A 0 28  . 28  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 228 30.288  -5.332  -6.944  1 229
+ATOM N N   . GLU A 0 29  . 29  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 229 -16.26  12.842  14.994  1 230
+ATOM C CA  . GLU A 0 29  . 29  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 230 -15.56  12.258  14.197  1 231
+ATOM C C   . GLU A 0 29  . 29  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 231 -10.958 9.709   11.649  1 232
+ATOM O O   . GLU A 0 29  . 29  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 232 -12.218 10.308  12.466  1 233
+ATOM C CB  . GLU A 0 29  . 29  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 233 -17.251 13.248  14.91   1 234
+ATOM C CG  . GLU A 0 29  . 29  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 234 -18.577 13.454  15.204  1 235
+ATOM C CD  . GLU A 0 29  . 29  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 235 -18.677 13.677  15.665  1 236
+ATOM O OE1 . GLU A 0 29  . 29  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 236 -18.792 13.425  15.561  1 237
+ATOM O OE2 . GLU A 0 29  . 29  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 237 -16.886 13.216  16.128  1 238
+ATOM N N   . MET A 0 30  . 30  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 238 25.133  -7.556  -6.19   1 239
+ATOM C CA  . MET A 0 30  . 30  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 239 24.049  -7.911  -6.864  1 240
+ATOM C C   . MET A 0 30  . 30  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 240 19.687  -7.562  -6.52   1 241
+ATOM O O   . MET A 0 30  . 30  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 241 21.208  -8.163  -7.184  1 242
+ATOM C CB  . MET A 0 30  . 30  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 242 25.52   -8.922  -6.923  1 243
+ATOM C CG  . MET A 0 30  . 30  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 243 26.319  -9.069  -7.559  1 244
+ATOM S SD  . MET A 0 30  . 30  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 244 25.927  -8.57   -6.608  1 245
+ATOM C CE  . MET A 0 30  . 30  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 245 26.46   -8.689  -6.867  1 246
+ATOM N N   . MET A 0 31  . 31  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 246 -16.885 -4.418  -4.218  1 247
+ATOM C CA  . MET A 0 31  . 31  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 247 -16.173 -4.037  -3.627  1 248
+ATOM C C   . MET A 0 31  . 31  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 248 -10.482 -4.293  -1.894  1 249
+ATOM O O   . MET A 0 31  . 31  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 249 -12.245 -3.742  -2.351  1 250
+ATOM C CB  . MET A 0 31  . 31  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 250 -18.481 -4.188  -3.683  1 251
+ATOM C CG  . MET A 0 31  . 31  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 251 -19.778 -4.238  -4.42   1 252
+ATOM S SD  . MET A 0 31  . 31  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 252 -20.13  -4.649  -3.931  1 253
+ATOM C CE  . MET A 0 31  . 31  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 253 -20.099 -4.33   -3.752  1 254
+ATOM N N   . MET A 0 32  . 32  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 254 33.48   -12.579 11.674  1 255
+ATOM C CA  . MET A 0 32  . 32  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 255 33.389  -11.024 11.636  1 256
+ATOM C C   . MET A 0 32  . 32  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 256 30.773  -6.217  9.977   1 257
+ATOM O O   . MET A 0 32  . 32  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 257 32.369  -7.871  9.936   1 258
+ATOM C CB  . MET A 0 32  . 32  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 258 35.022  -12.388 11.892  1 259
+ATOM C CG  . MET A 0 32  . 32  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 259 35.36   -13.622 11.973  1 260
+ATOM S SD  . MET A 0 32  . 32  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 260 34.4    -13.402 12.911  1 261
+ATOM C CE  . MET A 0 32  . 32  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 261 35.109  -13.67  12.708  1 262
+ATOM N N   . CYS A 0 33  . 33  CYS A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 262 10.741  32.055  -0.959  1 263
+ATOM C CA  . CYS A 0 33  . 33  CYS A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 263 9.839   31.433  -1.569  1 264
+ATOM C C   . CYS A 0 33  . 33  CYS A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 264 9.665   26.504  -1.749  1 265
+ATOM O O   . CYS A 0 33  . 33  CYS A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 265 9.909   28.155  -2.47   1 266
+ATOM C CB  . CYS A 0 33  . 33  CYS A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 266 9.807   33.307  -2.45   1 267
+ATOM S SG  . CYS A 0 33  . 33  CYS A SG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 267 10.087  33.815  -2.308  1 268
+ATOM N N   . MET A 0 34  . 34  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 268 8.778   -27.681 0.245   1 269
+ATOM C CA  . MET A 0 34  . 34  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 269 8.523   -26.961 -0.197  1 270
+ATOM C C   . MET A 0 34  . 34  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 270 8.406   -21.379 -0.908  1 271
+ATOM O O   . MET A 0 34  . 34  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 271 9.384   -23.127 -1.307  1 272
+ATOM C CB  . MET A 0 34  . 34  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 272 8.272   -29.093 0.387   1 273
+ATOM C CG  . MET A 0 34  . 34  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 273 8.113   -30.292 -0.041  1 274
+ATOM S SD  . MET A 0 34  . 34  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 274 7.689   -29.824 0.73    1 275
+ATOM C CE  . MET A 0 34  . 34  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 275 8.033   -30.225 0.474   1 276
+ATOM N N   . MET A 0 35  . 35  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 276 5.748   26.834  -4.455  1 277
+ATOM C CA  . MET A 0 35  . 35  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 277 5.917   25.988  -4.782  1 278
+ATOM C C   . MET A 0 35  . 35  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 278 7.053   21.18   -4.314  1 279
+ATOM O O   . MET A 0 35  . 35  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 279 7.201   22.77   -5.078  1 280
+ATOM C CB  . MET A 0 35  . 35  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 280 5.637   27.757  -5.086  1 281
+ATOM C CG  . MET A 0 35  . 35  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 281 4.834   28.897  -5.469  1 282
+ATOM S SD  . MET A 0 35  . 35  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 282 4.486   28.64   -4.937  1 283
+ATOM C CE  . MET A 0 35  . 35  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 283 4.732   29.197  -4.891  1 284
+ATOM N N   . MET A 0 36  . 36  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 284 15.064  -22.2   3.285   1 285
+ATOM C CA  . MET A 0 36  . 36  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 285 14.945  -21.806 2.56    1 286
+ATOM C C   . MET A 0 36  . 36  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 286 14.325  -17.179 0.555   1 287
+ATOM O O   . MET A 0 36  . 36  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 287 15.181  -18.307 0.85    1 288
+ATOM C CB  . MET A 0 36  . 36  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 288 14.953  -23.807 3.391   1 289
+ATOM C CG  . MET A 0 36  . 36  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 289 14.74   -24.874 3.371   1 290
+ATOM S SD  . MET A 0 36  . 36  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 290 13.919  -24.203 4.006   1 291
+ATOM C CE  . MET A 0 36  . 36  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 291 14.488  -24.597 3.782   1 292
+ATOM N N   . MET A 0 37  . 37  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 292 10.905  18.711  -16.532 1 293
+ATOM C CA  . MET A 0 37  . 37  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 293 10.744  18.581  -16.468 1 294
+ATOM C C   . MET A 0 37  . 37  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 294 11.021  15.596  -14.368 1 295
+ATOM O O   . MET A 0 37  . 37  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 295 11.436  17.158  -15.435 1 296
+ATOM C CB  . MET A 0 37  . 37  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 296 10.425  19.78   -17.563 1 297
+ATOM C CG  . MET A 0 37  . 37  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 297 9.915   20.645  -18.449 1 298
+ATOM S SD  . MET A 0 37  . 37  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 298 9.624   20.388  -17.981 1 299
+ATOM C CE  . MET A 0 37  . 37  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 299 9.713   20.664  -17.96  1 300
+ATOM N N   . MET A 0 38  . 38  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 300 10.106  -17.454 7.143   1 301
+ATOM C CA  . MET A 0 38  . 38  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 301 10.547  -16.523 7.484   1 302
+ATOM C C   . MET A 0 38  . 38  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 302 11.872  -11.256 6.508   1 303
+ATOM O O   . MET A 0 38  . 38  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 303 12.185  -12.441 6.687   1 304
+ATOM C CB  . MET A 0 38  . 38  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 304 10.729  -18.585 8.284   1 305
+ATOM C CG  . MET A 0 38  . 38  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 305 10.269  -19.825 8.094   1 306
+ATOM S SD  . MET A 0 38  . 38  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 306 9.6     -19.445 8.527   1 307
+ATOM C CE  . MET A 0 38  . 38  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 307 10.155  -19.867 8.477   1 308
+ATOM N N   . MET A 0 39  . 39  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 308 24.813  32.279  0.889   1 309
+ATOM C CA  . MET A 0 39  . 39  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 309 23.972  32.041  0.329   1 310
+ATOM C C   . MET A 0 39  . 39  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 310 21.945  28.245  -0.299  1 311
+ATOM O O   . MET A 0 39  . 39  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 311 23.148  29.659  -0.231  1 312
+ATOM C CB  . MET A 0 39  . 39  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 312 24.76   33.556  -0.039  1 313
+ATOM C CG  . MET A 0 39  . 39  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 313 24.835  34.73   -0.132  1 314
+ATOM S SD  . MET A 0 39  . 39  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 314 24.673  34.678  0.705   1 315
+ATOM C CE  . MET A 0 39  . 39  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 315 25.085  35.04   0.78    1 316
+ATOM N N   . MET A 0 40  . 40  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 316 0.333   -7.907  -9.289  1 317
+ATOM C CA  . MET A 0 40  . 40  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 317 1.239   -7.742  -8.435  1 318
+ATOM C C   . MET A 0 40  . 40  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 318 6.091   -5.12   -5.265  1 319
+ATOM O O   . MET A 0 40  . 40  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 319 4.512   -6.082  -6.381  1 320
+ATOM C CB  . MET A 0 40  . 40  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 320 -0.235  -9.139  -9.497  1 321
+ATOM C CG  . MET A 0 40  . 40  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 321 -1.196  -9.738  -10.421 1 322
+ATOM S SD  . MET A 0 40  . 40  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 322 -1.652  -9.691  -9.62   1 323
+ATOM C CE  . MET A 0 40  . 40  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 323 -1.598  -9.89   -9.619  1 324
+ATOM N N   . MET A 0 41  . 41  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 324 46.587  17.948  21.09   1 325
+ATOM C CA  . MET A 0 41  . 41  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 325 45.294  17.69   20.808  1 326
+ATOM C C   . MET A 0 41  . 41  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 326 40.566  16.141  18.998  1 327
+ATOM O O   . MET A 0 41  . 41  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 327 42.314  17.094  19.431  1 328
+ATOM C CB  . MET A 0 41  . 41  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 328 46.71   18.511  21.606  1 329
+ATOM C CG  . MET A 0 41  . 41  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 329 47.673  18.765  21.776  1 330
+ATOM S SD  . MET A 0 41  . 41  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 330 47.412  18.902  22.433  1 331
+ATOM C CE  . MET A 0 41  . 41  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 331 48.05   19.06   22.448  1 332
+ATOM N N   . MET A 0 42  . 42  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 332 6.259   0.163   1.949   1 333
+ATOM C CA  . MET A 0 42  . 42  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 333 4.426   0.431   1.731   1 334
+ATOM C C   . MET A 0 42  . 42  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 334 3.75    2.535   3.21    1 335
+ATOM O O   . MET A 0 42  . 42  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 335 3.681   1.699   3.26    1 336
+ATOM C CB  . MET A 0 42  . 42  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 336 3.463   -1.345  2.051   1 337
+ATOM C CG  . MET A 0 42  . 42  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 337 2.98    -2.017  1.301   1 338
+ATOM S SD  . MET A 0 42  . 42  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 338 2.773   -2.042  1.618   1 339
+ATOM C CE  . MET A 0 42  . 42  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 339 2.766   -2.347  1.251   1 340
+ATOM N N   . MET A 0 43  . 43  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 340 0.721   11.12   8.395   1 341
+ATOM C CA  . MET A 0 43  . 43  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 341 1.736   11.85   8.719   1 342
+ATOM C C   . MET A 0 43  . 43  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 342 5.997   10.999  8.596   1 343
+ATOM O O   . MET A 0 43  . 43  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 343 5.044   11.473  9.2     1 344
+ATOM C CB  . MET A 0 43  . 43  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 344 0.248   12.202  9.812   1 345
+ATOM C CG  . MET A 0 43  . 43  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 345 -1.205  12.381  9.498   1 346
+ATOM S SD  . MET A 0 43  . 43  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 346 -1.89   12.061  9.657   1 347
+ATOM C CE  . MET A 0 43  . 43  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 347 -1.806  12.568  9.987   1 348
+ATOM N N   . MET A 0 44  . 44  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 348 43.254  -0.426  6.074   1 349
+ATOM C CA  . MET A 0 44  . 44  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 349 41.581  -0.024  5.723   1 350
+ATOM C C   . MET A 0 44  . 44  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 350 35.239  1.95    5.225   1 351
+ATOM O O   . MET A 0 44  . 44  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 351 37.684  0.457   5.061   1 352
+ATOM C CB  . MET A 0 44  . 44  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 352 43.418  -0.93   6.016   1 353
+ATOM C CG  . MET A 0 44  . 44  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 353 44.474  -1.52   5.589   1 354
+ATOM S SD  . MET A 0 44  . 44  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 354 43.933  -1.191  6.531   1 355
+ATOM C CE  . MET A 0 44  . 44  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 355 44.54   -1.353  6.211   1 356
+ATOM N N   . MET A 0 45  . 45  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 356 -13.93  20.474  2.373   1 357
+ATOM C CA  . MET A 0 45  . 45  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 357 -13.705 19.43   1.97    1 358
+ATOM C C   . MET A 0 45  . 45  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 358 -9.916  15.868  1.953   1 359
+ATOM O O   . MET A 0 45  . 45  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 359 -10.813 17.064  2.022   1 360
+ATOM C CB  . MET A 0 45  . 45  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 360 -15.216 20.654  1.415   1 361
+ATOM C CG  . MET A 0 45  . 45  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 361 -16.555 21.241  1.256   1 362
+ATOM S SD  . MET A 0 45  . 45  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 362 -16.874 20.993  2.109   1 363
+ATOM C CE  . MET A 0 45  . 45  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 363 -16.886 21.486  2.182   1 364
+ATOM N N   . MET A 0 46  . 46  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 364 22.684  -13.878 0.849   1 365
+ATOM C CA  . MET A 0 46  . 46  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 365 21.863  -13.181 0.99    1 366
+ATOM C C   . MET A 0 46  . 46  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 366 18.828  -8.736  1.781   1 367
+ATOM O O   . MET A 0 46  . 46  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 367 20.076  -10.555 1.494   1 368
+ATOM C CB  . MET A 0 46  . 46  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 368 22.859  -14.862 0.944   1 369
+ATOM C CG  . MET A 0 46  . 46  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 369 23.081  -15.988 0.303   1 370
+ATOM S SD  . MET A 0 46  . 46  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 370 22.552  -15.697 1.104   1 371
+ATOM C CE  . MET A 0 46  . 46  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 371 22.89   -15.98  0.749   1 372
+ATOM N N   . MET A 0 47  . 47  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 372 -2.52   29.692  6.894   1 373
+ATOM C CA  . MET A 0 47  . 47  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 373 -2.785  28.821  6.957   1 374
+ATOM C C   . MET A 0 47  . 47  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 374 -1.498  24.497  7.61    1 375
+ATOM O O   . MET A 0 47  . 47  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 375 -1.668  25.885  7.062   1 376
+ATOM C CB  . MET A 0 47  . 47  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 376 -3.633  30.23   6.371   1 377
+ATOM C CG  . MET A 0 47  . 47  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 377 -4.376  31.343  6.051   1 378
+ATOM S SD  . MET A 0 47  . 47  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 378 -4.555  31.256  6.699   1 379
+ATOM C CE  . MET A 0 47  . 47  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 379 -4.398  31.759  6.794   1 380
+ATOM N N   . MET A 0 48  . 48  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 380 9.369   -11.529 16.799  1 381
+ATOM C CA  . MET A 0 48  . 48  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 381 9.361   -11.435 15.717  1 382
+ATOM C C   . MET A 0 48  . 48  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 382 8.828   -7.897  12.415  1 383
+ATOM O O   . MET A 0 48  . 48  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 383 9.544   -8.9    12.915  1 384
+ATOM C CB  . MET A 0 48  . 48  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 384 9.178   -13.266 16.833  1 385
+ATOM C CG  . MET A 0 48  . 48  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 385 9.172   -14.127 17.299  1 386
+ATOM S SD  . MET A 0 48  . 48  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 386 8.283   -13.351 17.989  1 387
+ATOM C CE  . MET A 0 48  . 48  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 387 9.017   -13.755 17.988  1 388
+ATOM N N   . MET A 0 49  . 49  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 388 2.421   26.162  -14.727 1 389
+ATOM C CA  . MET A 0 49  . 49  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 389 2.691   25.412  -15.353 1 390
+ATOM C C   . MET A 0 49  . 49  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 390 4.073   21.404  -13.527 1 391
+ATOM O O   . MET A 0 49  . 49  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 391 4.403   23.01   -14.936 1 392
+ATOM C CB  . MET A 0 49  . 49  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 392 2.737   27.023  -16.463 1 393
+ATOM C CG  . MET A 0 49  . 49  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 393 1.804   27.88   -17.288 1 394
+ATOM S SD  . MET A 0 49  . 49  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 394 1.251   27.493  -16.632 1 395
+ATOM C CE  . MET A 0 49  . 49  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 395 1.412   27.942  -16.728 1 396
+ATOM N N   . GLU A 0 50  . 50  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 396 17.08   -16.433 11.503  1 397
+ATOM C CA  . GLU A 0 50  . 50  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 397 16.122  -16.415 10.659  1 398
+ATOM C C   . GLU A 0 50  . 50  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 398 13.713  -13.266 7.146   1 399
+ATOM O O   . GLU A 0 50  . 50  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 399 15.38   -14.232 7.885   1 400
+ATOM C CB  . GLU A 0 50  . 50  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 400 16.474  -17.715 12.382  1 401
+ATOM C CG  . GLU A 0 50  . 50  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 401 16.893  -18.736 12.781  1 402
+ATOM C CD  . GLU A 0 50  . 50  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 402 16.854  -18.678 13.201  1 403
+ATOM O OE1 . GLU A 0 50  . 50  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 403 16.272  -18.585 13.521  1 404
+ATOM O OE2 . GLU A 0 50  . 50  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 404 16.916  -17.75  13.495  1 405
+ATOM N N   . CYS A 0 51  . 51  CYS A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 405 -5.906  7.18    -22.075 1 406
+ATOM C CA  . CYS A 0 51  . 51  CYS A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 406 -5.412  9.174   -22.313 1 407
+ATOM C C   . CYS A 0 51  . 51  CYS A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 407 -1.348  11.756  -18.532 1 408
+ATOM O O   . CYS A 0 51  . 51  CYS A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 408 -2.713  11.232  -20.64  1 409
+ATOM C CB  . CYS A 0 51  . 51  CYS A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 409 -8.172  9.301   -23.023 1 410
+ATOM S SG  . CYS A 0 51  . 51  CYS A SG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 410 -7.88   9.001   -24.194 1 411
+ATOM N N   . MET A 0 52  . 52  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 411 33.85   35.621  17.023  1 412
+ATOM C CA  . MET A 0 52  . 52  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 412 33.41   34.409  16.838  1 413
+ATOM C C   . MET A 0 52  . 52  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 413 30.587  29.789  15.172  1 414
+ATOM O O   . MET A 0 52  . 52  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 414 32.52   31.562  15.451  1 415
+ATOM C CB  . MET A 0 52  . 52  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 415 34.135  35.939  17.969  1 416
+ATOM C CG  . MET A 0 52  . 52  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 416 34.538  37.04   18.149  1 417
+ATOM S SD  . MET A 0 52  . 52  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 417 34.424  37.187  18.548  1 418
+ATOM C CE  . MET A 0 52  . 52  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 418 35.076  37.418  18.842  1 419
+ATOM N N   . GLU A 0 53  . 53  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 419 1.57    -12.025 -1.715  1 420
+ATOM C CA  . GLU A 0 53  . 53  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 420 1.073   -13.139 -2.841  1 421
+ATOM C C   . GLU A 0 53  . 53  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 421 2.019   -12.773 -4.651  1 422
+ATOM O O   . GLU A 0 53  . 53  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 422 1.876   -13.107 -4.979  1 423
+ATOM C CB  . GLU A 0 53  . 53  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 423 -0.669  -13.196 -2.835  1 424
+ATOM C CG  . GLU A 0 53  . 53  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 424 -1.188  -13.916 -1.901  1 425
+ATOM C CD  . GLU A 0 53  . 53  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 425 -1.958  -14.008 -1.284  1 426
+ATOM O OE1 . GLU A 0 53  . 53  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 426 -1.937  -14.198 -0.563  1 427
+ATOM O OE2 . GLU A 0 53  . 53  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 427 -1.571  -13.669 -1.39   1 428
+ATOM N N   . MET A 0 54  . 54  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 428 6.488   -12.597 -9.933  1 429
+ATOM C CA  . MET A 0 54  . 54  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 429 6.797   -10.98  -10.79  1 430
+ATOM C C   . MET A 0 54  . 54  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 430 5.728   -5.389  -9.467  1 431
+ATOM O O   . MET A 0 54  . 54  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 431 6.943   -7.497  -10.456 1 432
+ATOM C CB  . MET A 0 54  . 54  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 432 6.36    -12.626 -12.253 1 433
+ATOM C CG  . MET A 0 54  . 54  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 433 6.485   -13.859 -12.871 1 434
+ATOM S SD  . MET A 0 54  . 54  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 434 6.428   -13.612 -11.215 1 435
+ATOM C CE  . MET A 0 54  . 54  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 435 6.582   -13.905 -11.722 1 436
+ATOM N N   . GLU A 0 55  . 55  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 436 -6.484  50.599  9.003   1 437
+ATOM C CA  . GLU A 0 55  . 55  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 437 -6.285  49.65   8.335   1 438
+ATOM C C   . GLU A 0 55  . 55  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 438 -4.555  44.323  6.692   1 439
+ATOM O O   . GLU A 0 55  . 55  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 439 -4.907  45.962  6.858   1 440
+ATOM C CB  . GLU A 0 55  . 55  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 440 -6.866  51.549  8.839   1 441
+ATOM C CG  . GLU A 0 55  . 55  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 441 -7.671  52.657  8.961   1 442
+ATOM C CD  . GLU A 0 55  . 55  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 442 -7.54   52.74   9.542   1 443
+ATOM O OE1 . GLU A 0 55  . 55  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 443 -7.654  52.382  9.173   1 444
+ATOM O OE2 . GLU A 0 55  . 55  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 444 -6.246  52.06   10.082  1 445
+ATOM N N   . MET A 0 56  . 56  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 445 14.661  -6.085  -10.134 1 446
+ATOM C CA  . MET A 0 56  . 56  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 446 13.622  -6.391  -10.864 1 447
+ATOM C C   . MET A 0 56  . 56  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 447 10.509  -3.625  -11.379 1 448
+ATOM O O   . MET A 0 56  . 56  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 448 11.446  -4.704  -11.289 1 449
+ATOM C CB  . MET A 0 56  . 56  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 449 14.169  -8.21   -10.219 1 450
+ATOM C CG  . MET A 0 56  . 56  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 450 14.786  -9.117  -10.616 1 451
+ATOM S SD  . MET A 0 56  . 56  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 451 14.525  -8.764  -10.053 1 452
+ATOM C CE  . MET A 0 56  . 56  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 452 15.043  -9.044  -10.202 1 453
+ATOM N N   . MET A 0 57  . 57  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 453 -4.531  9.789   -16.837 1 454
+ATOM C CA  . MET A 0 57  . 57  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 454 -5.426  11.158  -16.017 1 455
+ATOM C C   . MET A 0 57  . 57  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 455 -4.452  11.836  -11.8   1 456
+ATOM O O   . MET A 0 57  . 57  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 456 -4.552  11.592  -14.317 1 457
+ATOM C CB  . MET A 0 57  . 57  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 457 -7.446  10.601  -17.125 1 458
+ATOM C CG  . MET A 0 57  . 57  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 458 -7.611  10.637  -18.653 1 459
+ATOM S SD  . MET A 0 57  . 57  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 459 -7.249  10.617  -18.19  1 460
+ATOM C CE  . MET A 0 57  . 57  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 460 -7.413  10.596  -17.994 1 461
+ATOM N N   . GLU A 0 58  . 58  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 461 5.941   20.971  32.473  1 462
+ATOM C CA  . GLU A 0 58  . 58  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 462 5.675   19.548  32.242  1 463
+ATOM C C   . GLU A 0 58  . 58  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 463 4.741   15.5    28.682  1 464
+ATOM O O   . GLU A 0 58  . 58  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 464 5.36    16.668  29.368  1 465
+ATOM C CB  . GLU A 0 58  . 58  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 465 5.154   20.725  33.988  1 466
+ATOM C CG  . GLU A 0 58  . 58  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 466 5.261   21.564  34.786  1 467
+ATOM C CD  . GLU A 0 58  . 58  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 467 5.363   21.701  35.455  1 468
+ATOM O OE1 . GLU A 0 58  . 58  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 468 5.126   21.487  35.052  1 469
+ATOM O OE2 . GLU A 0 58  . 58  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 469 6.183   21.33   35.487  1 470
+ATOM N N   . MET A 0 59  . 59  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 470 -3.134  -20.282 -3.658  1 471
+ATOM C CA  . MET A 0 59  . 59  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 471 -3.411  -19.561 -5.133  1 472
+ATOM C C   . MET A 0 59  . 59  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 472 -3.337  -13.838 -5.744  1 473
+ATOM O O   . MET A 0 59  . 59  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 473 -2.497  -15.597 -6.347  1 474
+ATOM C CB  . MET A 0 59  . 59  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 474 -4.713  -21.651 -5.061  1 475
+ATOM C CG  . MET A 0 59  . 59  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 475 -4.642  -22.799 -5.629  1 476
+ATOM S SD  . MET A 0 59  . 59  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 476 -4.692  -22.25  -4.629  1 477
+ATOM C CE  . MET A 0 59  . 59  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 477 -4.441  -22.731 -5.202  1 478
+ATOM N N   . MET A 0 60  . 60  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 478 -2.656  30.123  -7.093  1 479
+ATOM C CA  . MET A 0 60  . 60  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 479 -2.48   29.544  -7.058  1 480
+ATOM C C   . MET A 0 60  . 60  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 480 -1.62   25.625  -5.656  1 481
+ATOM O O   . MET A 0 60  . 60  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 481 -1.387  27.112  -6.603  1 482
+ATOM C CB  . MET A 0 60  . 60  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 482 -2.822  31.038  -7.617  1 483
+ATOM C CG  . MET A 0 60  . 60  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 483 -3.484  32.068  -8.322  1 484
+ATOM S SD  . MET A 0 60  . 60  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 484 -3.838  31.762  -7.873  1 485
+ATOM C CE  . MET A 0 60  . 60  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 485 -3.617  32.228  -7.762  1 486
+ATOM N N   . MET A 0 61  . 61  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 486 5.192   -21.302 10.003  1 487
+ATOM C CA  . MET A 0 61  . 61  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 487 4.794   -20.351 9.807   1 488
+ATOM C C   . MET A 0 61  . 61  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 488 3.915   -14.49  8.307   1 489
+ATOM O O   . MET A 0 61  . 61  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 489 5.001   -16.287 8.272   1 490
+ATOM C CB  . MET A 0 61  . 61  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 490 5.191   -22.406 10.846  1 491
+ATOM C CG  . MET A 0 61  . 61  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 491 5.153   -23.748 10.599  1 492
+ATOM S SD  . MET A 0 61  . 61  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 492 4.485   -23.282 11.147  1 493
+ATOM C CE  . MET A 0 61  . 61  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 493 5.038   -23.672 10.948  1 494
+ATOM N N   . MET A 0 62  . 62  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 494 -1.228  33.574  -1.458  1 495
+ATOM C CA  . MET A 0 62  . 62  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 495 -1.889  33.339  -1.964  1 496
+ATOM C C   . MET A 0 62  . 62  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 496 -2.204  30.122  -2.102  1 497
+ATOM O O   . MET A 0 62  . 62  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 497 -1.896  31.041  -2.525  1 498
+ATOM C CB  . MET A 0 62  . 62  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 498 -1.773  34.741  -2.667  1 499
+ATOM C CG  . MET A 0 62  . 62  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 499 -2.371  35.955  -2.734  1 500
+ATOM S SD  . MET A 0 62  . 62  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 500 -2.809  36.069  -1.959  1 501
+ATOM C CE  . MET A 0 62  . 62  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 501 -2.667  36.638  -2.017  1 502
+ATOM N N   . MET A 0 63  . 63  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 502 -9.984  2.424   -1.947  1 503
+ATOM C CA  . MET A 0 63  . 63  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 503 -9.073  1.266   -2.169  1 504
+ATOM C C   . MET A 0 63  . 63  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 504 -4.9    1.189   -3.126  1 505
+ATOM O O   . MET A 0 63  . 63  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 505 -5.556  0.91    -2.807  1 506
+ATOM C CB  . MET A 0 63  . 63  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 506 -10.707 0.681   -2.828  1 507
+ATOM C CG  . MET A 0 63  . 63  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 507 -12.055 0.484   -2.524  1 508
+ATOM S SD  . MET A 0 63  . 63  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 508 -12.703 0.389   -1.586  1 509
+ATOM C CE  . MET A 0 63  . 63  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 509 -12.511 0.478   -1.644  1 510
+ATOM N N   . MET A 0 64  . 64  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 510 27.308  3.507   -10.818 1 511
+ATOM C CA  . MET A 0 64  . 64  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 511 26.476  3.359   -10.923 1 512
+ATOM C C   . MET A 0 64  . 64  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 512 22.939  3.075   -9.596  1 513
+ATOM O O   . MET A 0 64  . 64  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 513 24.635  3.001   -10.533 1 514
+ATOM C CB  . MET A 0 64  . 64  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 514 27.825  3.081   -11.476 1 515
+ATOM C CG  . MET A 0 64  . 64  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 515 28.517  3.083   -12.295 1 516
+ATOM S SD  . MET A 0 64  . 64  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 516 28.264  3.368   -11.523 1 517
+ATOM C CE  . MET A 0 64  . 64  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 517 28.69   3.259   -11.696 1 518
+ATOM N N   . MET A 0 65  . 65  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 518 -13.14  -3.296  4.003   1 519
+ATOM C CA  . MET A 0 65  . 65  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 519 -12.823 -1.708  4.134   1 520
+ATOM C C   . MET A 0 65  . 65  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 520 -8.696  2.62    3.756   1 521
+ATOM O O   . MET A 0 65  . 65  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 521 -9.0    1.788   4.121   1 522
+ATOM C CB  . MET A 0 65  . 65  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 522 -14.27  -3.016  5.627   1 523
+ATOM C CG  . MET A 0 65  . 65  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 523 -15.254 -3.938  5.1     1 524
+ATOM S SD  . MET A 0 65  . 65  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 524 -15.75  -3.818  5.265   1 525
+ATOM C CE  . MET A 0 65  . 65  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 525 -15.733 -3.984  5.327   1 526
+ATOM N N   . ALA A 0 66  . 66  ALA A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 526 21.57   34.395  1.337   1 527
+ATOM C CA  . ALA A 0 66  . 66  ALA A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 527 20.76   33.753  0.797   1 528
+ATOM C C   . ALA A 0 66  . 66  ALA A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 528 17.398  29.683  0.309   1 529
+ATOM O O   . ALA A 0 66  . 66  ALA A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 529 19.225  31.502  0.375   1 530
+ATOM C CB  . ALA A 0 66  . 66  ALA A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 530 22.085  35.075  0.804   1 531
+ATOM N N   . MET A 0 67  . 67  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 531 -15.924 -8.134  -6.923  1 532
+ATOM C CA  . MET A 0 67  . 67  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 532 -15.688 -7.619  -6.104  1 533
+ATOM C C   . MET A 0 67  . 67  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 533 -12.64  -4.222  -3.386  1 534
+ATOM O O   . MET A 0 67  . 67  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 534 -13.142 -5.474  -4.406  1 535
+ATOM C CB  . MET A 0 67  . 67  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 535 -16.788 -9.319  -6.639  1 536
+ATOM C CG  . MET A 0 67  . 67  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 536 -17.521 -10.13  -7.525  1 537
+ATOM S SD  . MET A 0 67  . 67  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 537 -17.753 -10.021 -6.861  1 538
+ATOM C CE  . MET A 0 67  . 67  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 538 -17.756 -10.313 -6.759  1 539
+ATOM N N   . GLU A 0 68  . 68  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 539 7.329   22.134  20.312  1 540
+ATOM C CA  . GLU A 0 68  . 68  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 540 7.255   21.757  19.281  1 541
+ATOM C C   . GLU A 0 68  . 68  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 541 6.589   19.445  15.5    1 542
+ATOM O O   . GLU A 0 68  . 68  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 542 6.919   19.723  16.682  1 543
+ATOM C CB  . GLU A 0 68  . 68  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 543 7.664   22.541  20.6    1 544
+ATOM C CG  . GLU A 0 68  . 68  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 544 7.625   23.203  21.598  1 545
+ATOM C CD  . GLU A 0 68  . 68  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 545 7.579   23.423  22.299  1 546
+ATOM O OE1 . GLU A 0 68  . 68  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 546 7.107   23.444  22.154  1 547
+ATOM O OE2 . GLU A 0 68  . 68  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 547 8.246   23.265  22.25   1 548
+ATOM N N   . MET A 0 69  . 69  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 548 2.152   5.377   -17.408 1 549
+ATOM C CA  . MET A 0 69  . 69  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 549 1.613   4.123   -18.333 1 550
+ATOM C C   . MET A 0 69  . 69  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 550 0.817   1.843   -16.72  1 551
+ATOM O O   . MET A 0 69  . 69  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 551 1.101   2.682   -17.825 1 552
+ATOM C CB  . MET A 0 69  . 69  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 552 2.886   3.981   -19.68  1 553
+ATOM C CG  . MET A 0 69  . 69  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 553 2.724   4.773   -20.718 1 554
+ATOM S SD  . MET A 0 69  . 69  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 554 2.218   5.275   -19.803 1 555
+ATOM C CE  . MET A 0 69  . 69  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 555 2.638   5.253   -19.933 1 556
+ATOM N N   . MET A 0 70  . 70  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 556 -5.479  -18.499 -1.077  1 557
+ATOM C CA  . MET A 0 70  . 70  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 557 -6.813  -17.876 -0.234  1 558
+ATOM C C   . MET A 0 70  . 70  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 558 -8.49   -12.084 0.215   1 559
+ATOM O O   . MET A 0 70  . 70  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 559 -6.9    -14.253 -0.288  1 560
+ATOM C CB  . MET A 0 70  . 70  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 560 -6.016  -19.931 1.087   1 561
+ATOM C CG  . MET A 0 70  . 70  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 561 -6.176  -21.353 0.336   1 562
+ATOM S SD  . MET A 0 70  . 70  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 562 -6.737  -21.117 0.58    1 563
+ATOM C CE  . MET A 0 70  . 70  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 563 -6.436  -21.574 0.553   1 564
+ATOM N N   . MET A 0 71  . 71  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 564 -27.829 38.925  4.793   1 565
+ATOM C CA  . MET A 0 71  . 71  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 565 -26.436 39.039  4.47    1 566
+ATOM C C   . MET A 0 71  . 71  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 566 -20.91  35.708  4.479   1 567
+ATOM O O   . MET A 0 71  . 71  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 567 -22.206 37.069  4.642   1 568
+ATOM C CB  . MET A 0 71  . 71  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 568 -28.155 40.619  5.23    1 569
+ATOM C CG  . MET A 0 71  . 71  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 569 -29.62  41.089  4.736   1 570
+ATOM S SD  . MET A 0 71  . 71  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 570 -30.038 40.61   5.015   1 571
+ATOM C CE  . MET A 0 71  . 71  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 571 -29.972 41.292  5.227   1 572
+ATOM N N   . MET A 0 72  . 72  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 572 27.598  5.622   5.358   1 573
+ATOM C CA  . MET A 0 72  . 72  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 573 26.469  5.0     4.367   1 574
+ATOM C C   . MET A 0 72  . 72  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 574 21.108  5.336   1.87    1 575
+ATOM O O   . MET A 0 72  . 72  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 575 23.119  4.482   2.609   1 576
+ATOM C CB  . MET A 0 72  . 72  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 576 27.968  4.214   5.588   1 577
+ATOM C CG  . MET A 0 72  . 72  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 577 29.125  3.981   5.665   1 578
+ATOM S SD  . MET A 0 72  . 72  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 578 28.535  4.504   6.433   1 579
+ATOM C CE  . MET A 0 72  . 72  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 579 29.297  4.393   6.353   1 580
+ATOM N N   . MET A 0 73  . 73  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 580 -20.63  10.396  -22.307 1 581
+ATOM C CA  . MET A 0 73  . 73  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 581 -21.247 10.481  -21.727 1 582
+ATOM C C   . MET A 0 73  . 73  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 582 -19.453 9.76    -18.319 1 583
+ATOM O O   . MET A 0 73  . 73  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 583 -20.152 10.194  -19.915 1 584
+ATOM C CB  . MET A 0 73  . 73  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 584 -22.588 10.033  -23.053 1 585
+ATOM C CG  . MET A 0 73  . 73  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 585 -23.186 10.328  -24.259 1 586
+ATOM S SD  . MET A 0 73  . 73  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 586 -23.22  10.386  -23.694 1 587
+ATOM C CE  . MET A 0 73  . 73  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 587 -23.286 10.401  -23.504 1 588
+ATOM N N   . GLU A 0 74  . 74  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 588 0.454   -1.286  26.042  1 589
+ATOM C CA  . GLU A 0 74  . 74  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 589 -0.256  -0.779  25.05   1 590
+ATOM C C   . GLU A 0 74  . 74  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 590 -1.699  1.028   20.419  1 591
+ATOM O O   . GLU A 0 74  . 74  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 591 -0.834  0.223   21.744  1 592
+ATOM C CB  . GLU A 0 74  . 74  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 592 0.31    -1.172  26.741  1 593
+ATOM C CG  . GLU A 0 74  . 74  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 593 0.481   -1.746  27.665  1 594
+ATOM C CD  . GLU A 0 74  . 74  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 594 0.302   -1.571  28.075  1 595
+ATOM O OE1 . GLU A 0 74  . 74  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 595 -0.385  -1.548  28.419  1 596
+ATOM O OE2 . GLU A 0 74  . 74  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 596 0.602   -0.793  28.132  1 597
+ATOM N N   . MET A 0 75  . 75  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 597 -14.474 18.268  -19.817 1 598
+ATOM C CA  . MET A 0 75  . 75  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 598 -13.959 17.43   -20.627 1 599
+ATOM C C   . MET A 0 75  . 75  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 599 -11.633 14.35   -18.493 1 600
+ATOM O O   . MET A 0 75  . 75  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 600 -11.665 15.747  -19.611 1 601
+ATOM C CB  . MET A 0 75  . 75  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 601 -14.09  18.856  -22.054 1 602
+ATOM C CG  . MET A 0 75  . 75  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 602 -15.208 19.441  -22.913 1 603
+ATOM S SD  . MET A 0 75  . 75  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 603 -15.793 19.025  -22.008 1 604
+ATOM C CE  . MET A 0 75  . 75  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 604 -15.763 19.488  -22.143 1 605
+ATOM N N   . MET A 0 76  . 76  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 605 6.059   -16.955 1.738   1 606
+ATOM C CA  . MET A 0 76  . 76  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 606 5.911   -15.947 1.732   1 607
+ATOM C C   . MET A 0 76  . 76  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 607 4.912   -10.72  0.463   1 608
+ATOM O O   . MET A 0 76  . 76  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 608 6.076   -12.2   0.6     1 609
+ATOM C CB  . MET A 0 76  . 76  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 609 6.667   -17.761 2.464   1 610
+ATOM C CG  . MET A 0 76  . 76  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 610 6.608   -19.119 2.252   1 611
+ATOM S SD  . MET A 0 76  . 76  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 611 5.858   -18.831 2.814   1 612
+ATOM C CE  . MET A 0 76  . 76  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 612 6.448   -19.148 2.672   1 613
+ATOM N N   . MET A 0 77  . 77  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 613 -1.752  26.7    -9.245  1 614
+ATOM C CA  . MET A 0 77  . 77  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 614 -2.908  28.214  -9.052  1 615
+ATOM C C   . MET A 0 77  . 77  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 615 -5.269  27.638  -7.092  1 616
+ATOM O O   . MET A 0 77  . 77  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 616 -4.123  27.491  -7.9    1 617
+ATOM C CB  . MET A 0 77  . 77  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 617 -3.201  28.801  -10.997 1 618
+ATOM C CG  . MET A 0 77  . 77  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 618 -2.792  29.264  -11.733 1 619
+ATOM S SD  . MET A 0 77  . 77  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 619 -2.641  29.31   -10.756 1 620
+ATOM C CE  . MET A 0 77  . 77  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 620 -2.596  29.542  -11.091 1 621
+ATOM N N   . GLU A 0 78  . 78  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 621 -16.23  27.023  3.818   1 622
+ATOM C CA  . GLU A 0 78  . 78  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 622 -17.21  25.477  4.128   1 623
+ATOM C C   . GLU A 0 78  . 78  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 623 -16.907 19.967  2.403   1 624
+ATOM O O   . GLU A 0 78  . 78  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 624 -16.987 21.46   2.664   1 625
+ATOM C CB  . GLU A 0 78  . 78  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 625 -18.739 27.262  4.369   1 626
+ATOM C CG  . GLU A 0 78  . 78  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 626 -19.034 28.353  4.762   1 627
+ATOM C CD  . GLU A 0 78  . 78  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 627 -18.84  28.415  5.311   1 628
+ATOM O OE1 . GLU A 0 78  . 78  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 628 -18.706 27.971  5.136   1 629
+ATOM O OE2 . GLU A 0 78  . 78  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 629 -17.662 27.638  5.794   1 630
+ATOM N N   . MET A 0 79  . 79  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 630 -15.698 -28.154 -15.226 1 631
+ATOM C CA  . MET A 0 79  . 79  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 631 -15.358 -27.042 -15.163 1 632
+ATOM C C   . MET A 0 79  . 79  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 632 -14.164 -20.174 -13.434 1 633
+ATOM O O   . MET A 0 79  . 79  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 633 -13.216 -23.03  -14.66  1 634
+ATOM C CB  . MET A 0 79  . 79  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 634 -15.945 -29.449 -15.715 1 635
+ATOM C CG  . MET A 0 79  . 79  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 635 -16.11  -30.701 -16.563 1 636
+ATOM S SD  . MET A 0 79  . 79  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 636 -16.29  -30.202 -15.525 1 637
+ATOM C CE  . MET A 0 79  . 79  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 637 -16.145 -30.658 -15.854 1 638
+ATOM N N   . MET A 0 80  . 80  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 638 -7.261  44.042  7.275   1 639
+ATOM C CA  . MET A 0 80  . 80  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 639 -7.104  43.069  6.629   1 640
+ATOM C C   . MET A 0 80  . 80  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 640 -6.691  37.732  4.651   1 641
+ATOM O O   . MET A 0 80  . 80  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 641 -6.607  39.306  4.923   1 642
+ATOM C CB  . MET A 0 80  . 80  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 642 -7.164  44.881  7.44    1 643
+ATOM C CG  . MET A 0 80  . 80  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 643 -7.67   46.189  7.716   1 644
+ATOM S SD  . MET A 0 80  . 80  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 644 -8.022  46.163  8.23    1 645
+ATOM C CE  . MET A 0 80  . 80  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 645 -7.589  46.668  8.534   1 646
+ATOM N N   . MET A 0 81  . 81  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 646 -2.76   -5.906  -17.159 1 647
+ATOM C CA  . MET A 0 81  . 81  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 647 -3.399  -7.323  -17.025 1 648
+ATOM C C   . MET A 0 81  . 81  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 648 -4.853  -7.352  -14.782 1 649
+ATOM O O   . MET A 0 81  . 81  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 649 -3.882  -7.776  -15.179 1 650
+ATOM C CB  . MET A 0 81  . 81  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 650 -1.986  -8.47   -17.415 1 651
+ATOM C CG  . MET A 0 81  . 81  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 651 -1.913  -8.8    -18.57  1 652
+ATOM S SD  . MET A 0 81  . 81  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 652 -2.313  -8.471  -18.085 1 653
+ATOM C CE  . MET A 0 81  . 81  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 653 -1.873  -8.793  -18.243 1 654
+ATOM N N   . MET A 0 82  . 82  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 654 -26.357 -7.028  10.493  1 655
+ATOM C CA  . MET A 0 82  . 82  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 655 -25.47  -6.277  10.275  1 656
+ATOM C C   . MET A 0 82  . 82  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 656 -21.596 -4.571  7.724   1 657
+ATOM O O   . MET A 0 82  . 82  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 657 -22.083 -4.725  8.577   1 658
+ATOM C CB  . MET A 0 82  . 82  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 658 -26.425 -7.002  11.72   1 659
+ATOM C CG  . MET A 0 82  . 82  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 659 -27.597 -7.623  12.018  1 660
+ATOM S SD  . MET A 0 82  . 82  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 660 -28.431 -7.486  12.316  1 661
+ATOM C CE  . MET A 0 82  . 82  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 661 -28.129 -7.468  12.583  1 662
+ATOM N N   . MET A 0 83  . 83  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 662 2.855   2.745   -9.818  1 663
+ATOM C CA  . MET A 0 83  . 83  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 663 2.492   4.001   -10.308 1 664
+ATOM C C   . MET A 0 83  . 83  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 664 -0.759  5.968   -9.731  1 665
+ATOM O O   . MET A 0 83  . 83  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 665 0.11    5.49    -10.079 1 666
+ATOM C CB  . MET A 0 83  . 83  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 666 3.495   3.302   -11.625 1 667
+ATOM C CG  . MET A 0 83  . 83  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 667 3.982   2.751   -12.04  1 668
+ATOM S SD  . MET A 0 83  . 83  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 668 3.678   2.857   -10.376 1 669
+ATOM C CE  . MET A 0 83  . 83  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 669 3.784   2.849   -11.011 1 670
+ATOM N N   . GLU A 0 84  . 84  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 670 -28.208 23.582  -2.72   1 671
+ATOM C CA  . GLU A 0 84  . 84  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 671 -27.815 22.182  -3.216  1 672
+ATOM C C   . GLU A 0 84  . 84  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 672 -24.113 16.624  -3.93   1 673
+ATOM O O   . GLU A 0 84  . 84  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 673 -24.887 18.498  -3.554  1 674
+ATOM C CB  . GLU A 0 84  . 84  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 674 -29.202 23.972  -3.321  1 675
+ATOM C CG  . GLU A 0 84  . 84  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 675 -30.372 24.876  -3.436  1 676
+ATOM C CD  . GLU A 0 84  . 84  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 676 -30.223 24.98   -2.942  1 677
+ATOM O OE1 . GLU A 0 84  . 84  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 677 -30.309 24.524  -3.085  1 678
+ATOM O OE2 . GLU A 0 84  . 84  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 678 -28.487 24.332  -2.024  1 679
+ATOM N N   . MET A 0 85  . 85  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 679 6.801   -27.473 -15.894 1 680
+ATOM C CA  . MET A 0 85  . 85  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 680 5.953   -27.272 -15.051 1 681
+ATOM C C   . MET A 0 85  . 85  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 681 2.872   -23.478 -11.954 1 682
+ATOM O O   . MET A 0 85  . 85  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 682 4.181   -24.928 -13.047 1 683
+ATOM C CB  . MET A 0 85  . 85  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 683 7.221   -28.848 -15.66  1 684
+ATOM C CG  . MET A 0 85  . 85  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 684 7.416   -29.749 -16.708 1 685
+ATOM S SD  . MET A 0 85  . 85  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 685 7.035   -29.391 -15.818 1 686
+ATOM C CE  . MET A 0 85  . 85  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 686 7.213   -29.798 -16.065 1 687
+ATOM N N   . GLU A 0 86  . 86  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 687 -24.148 9.697   18.265  1 688
+ATOM C CA  . GLU A 0 86  . 86  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 688 -23.726 9.633   17.111  1 689
+ATOM C C   . GLU A 0 86  . 86  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 689 -20.963 8.038   12.938  1 690
+ATOM O O   . GLU A 0 86  . 86  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 690 -21.157 8.511   14.079  1 691
+ATOM C CB  . GLU A 0 86  . 86  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 691 -24.557 10.389  18.591  1 692
+ATOM C CG  . GLU A 0 86  . 86  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 692 -25.566 10.529  19.379  1 693
+ATOM C CD  . GLU A 0 86  . 86  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 693 -25.787 10.924  19.806  1 694
+ATOM O OE1 . GLU A 0 86  . 86  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 694 -26.118 10.86   19.713  1 695
+ATOM O OE2 . GLU A 0 86  . 86  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 695 -24.327 10.975  19.839  1 696
+ATOM N N   . MET A 0 87  . 87  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 696 -5.515  -8.465  -19.562 1 697
+ATOM C CA  . MET A 0 87  . 87  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 697 -4.204  -7.563  -19.846 1 698
+ATOM C C   . MET A 0 87  . 87  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 698 -2.624  -3.612  -16.952 1 699
+ATOM O O   . MET A 0 87  . 87  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 699 -1.941  -5.423  -18.391 1 700
+ATOM C CB  . MET A 0 87  . 87  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 700 -4.865  -8.217  -21.87  1 701
+ATOM C CG  . MET A 0 87  . 87  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 701 -5.299  -9.362  -22.747 1 702
+ATOM S SD  . MET A 0 87  . 87  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 702 -5.564  -9.496  -21.359 1 703
+ATOM C CE  . MET A 0 87  . 87  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 703 -5.558  -9.792  -21.685 1 704
+ATOM N N   . MET A 0 88  . 88  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 704 7.204   29.166  7.904   1 705
+ATOM C CA  . MET A 0 88  . 88  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 705 6.597   28.234  7.691   1 706
+ATOM C C   . MET A 0 88  . 88  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 706 4.196   23.531  6.209   1 707
+ATOM O O   . MET A 0 88  . 88  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 707 5.886   25.174  6.593   1 708
+ATOM C CB  . MET A 0 88  . 88  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 708 7.165   29.965  8.402   1 709
+ATOM C CG  . MET A 0 88  . 88  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 709 7.362   31.098  8.464   1 710
+ATOM S SD  . MET A 0 88  . 88  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 710 7.279   31.106  8.936   1 711
+ATOM C CE  . MET A 0 88  . 88  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 711 7.833   31.421  9.128   1 712
+ATOM N N   . MET A 0 89  . 89  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 712 -24.822 -19.267 -10.83  1 713
+ATOM C CA  . MET A 0 89  . 89  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 713 -23.342 -18.862 -10.354 1 714
+ATOM C C   . MET A 0 89  . 89  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 714 -17.313 -15.297 -8.134  1 715
+ATOM O O   . MET A 0 89  . 89  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 715 -19.088 -16.444 -9.097  1 716
+ATOM C CB  . MET A 0 89  . 89  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 716 -25.181 -20.303 -11.193 1 717
+ATOM C CG  . MET A 0 89  . 89  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 717 -26.242 -21.078 -11.954 1 718
+ATOM S SD  . MET A 0 89  . 89  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 718 -26.752 -21.039 -11.099 1 719
+ATOM C CE  . MET A 0 89  . 89  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 719 -26.69  -21.236 -11.106 1 720
+ATOM N N   . MET A 0 90  . 90  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 720 26.886  12.521  9.892   1 721
+ATOM C CA  . MET A 0 90  . 90  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 721 25.263  12.275  9.076   1 722
+ATOM C C   . MET A 0 90  . 90  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 722 19.085  10.595  5.908   1 723
+ATOM O O   . MET A 0 90  . 90  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 723 21.768  11.675  6.667   1 724
+ATOM C CB  . MET A 0 90  . 90  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 724 27.07   13.062  10.089  1 725
+ATOM C CG  . MET A 0 90  . 90  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 725 28.042  13.178  10.345  1 726
+ATOM S SD  . MET A 0 90  . 90  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 726 27.605  13.303  11.202  1 727
+ATOM C CE  . MET A 0 90  . 90  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 727 28.323  13.381  11.073  1 728
+ATOM N N   . MET A 0 91  . 91  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 728 -37.128 -7.315  -24.508 1 729
+ATOM C CA  . MET A 0 91  . 91  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 729 -36.345 -6.73   -24.194 1 730
+ATOM C C   . MET A 0 91  . 91  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 730 -31.222 -5.355  -21.478 1 731
+ATOM O O   . MET A 0 91  . 91  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 731 -32.944 -5.99   -22.73  1 732
+ATOM C CB  . MET A 0 91  . 91  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 732 -38.488 -7.15   -24.938 1 733
+ATOM C CG  . MET A 0 91  . 91  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 733 -39.529 -7.461  -25.954 1 734
+ATOM S SD  . MET A 0 91  . 91  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 734 -39.904 -7.659  -25.301 1 735
+ATOM C CE  . MET A 0 91  . 91  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 735 -39.835 -7.54   -25.196 1 736
+ATOM N N   . MET A 0 92  . 92  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 736 4.008   7.624   -1.09   1 737
+ATOM C CA  . MET A 0 92  . 92  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 737 5.139   6.728   -0.723  1 738
+ATOM C C   . MET A 0 92  . 92  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 738 5.061   3.224   -0.636  1 739
+ATOM O O   . MET A 0 92  . 92  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 739 5.404   4.092   -0.563  1 740
+ATOM C CB  . MET A 0 92  . 92  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 740 5.382   7.87    0.44    1 741
+ATOM C CG  . MET A 0 92  . 92  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 741 5.254   9.137   0.32    1 742
+ATOM S SD  . MET A 0 92  . 92  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 742 4.974   9.509   0.622   1 743
+ATOM C CE  . MET A 0 92  . 92  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 743 5.436   10.058  1.198   1 744
+ATOM N N   . MET A 0 93  . 93  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 744 5.485   -17.097 -0.586  1 745
+ATOM C CA  . MET A 0 93  . 93  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 745 3.876   -17.525 -1.131  1 746
+ATOM C C   . MET A 0 93  . 93  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 746 0.01    -14.045 -2.8    1 747
+ATOM O O   . MET A 0 93  . 93  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 747 1.584   -15.451 -2.573  1 748
+ATOM C CB  . MET A 0 93  . 93  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 748 4.424   -19.237 0.581   1 749
+ATOM C CG  . MET A 0 93  . 93  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 749 5.134   -20.318 0.329   1 750
+ATOM S SD  . MET A 0 93  . 93  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 750 4.705   -20.021 0.689   1 751
+ATOM C CE  . MET A 0 93  . 93  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 751 5.285   -20.397 0.673   1 752
+ATOM N N   . MET A 0 94  . 94  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 752 -34.304 18.069  -15.166 1 753
+ATOM C CA  . MET A 0 94  . 94  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 753 -33.45  17.376  -15.728 1 754
+ATOM C C   . MET A 0 94  . 94  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 754 -28.375 13.612  -15.091 1 755
+ATOM O O   . MET A 0 94  . 94  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 755 -29.576 15.153  -15.407 1 756
+ATOM C CB  . MET A 0 94  . 94  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 756 -35.071 19.012  -16.145 1 757
+ATOM C CG  . MET A 0 94  . 94  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 757 -36.488 19.431  -16.601 1 758
+ATOM S SD  . MET A 0 94  . 94  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 758 -36.761 18.84   -15.834 1 759
+ATOM C CE  . MET A 0 94  . 94  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 759 -36.754 19.397  -15.866 1 760
+ATOM N N   . MET A 0 95  . 95  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 760 16.157  -19.838 -9.603  1 761
+ATOM C CA  . MET A 0 95  . 95  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 761 14.843  -19.534 -9.962  1 762
+ATOM C C   . MET A 0 95  . 95  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 762 10.008  -16.346 -11.246 1 763
+ATOM O O   . MET A 0 95  . 95  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 763 12.084  -17.618 -10.812 1 764
+ATOM C CB  . MET A 0 95  . 95  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 764 16.295  -20.856 -9.089  1 765
+ATOM C CG  . MET A 0 95  . 95  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 765 17.104  -21.762 -9.339  1 766
+ATOM S SD  . MET A 0 95  . 95  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 766 16.429  -21.382 -8.675  1 767
+ATOM C CE  . MET A 0 95  . 95  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 767 17.021  -21.581 -8.899  1 768
+ATOM N N   . MET A 0 96  . 96  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 768 -24.583 3.061   -23.565 1 769
+ATOM C CA  . MET A 0 96  . 96  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 769 -26.086 4.485   -23.3   1 770
+ATOM C C   . MET A 0 96  . 96  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 770 -26.278 5.847   -20.257 1 771
+ATOM O O   . MET A 0 96  . 96  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 771 -26.126 5.663   -21.876 1 772
+ATOM C CB  . MET A 0 96  . 96  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 772 -27.873 3.409   -24.204 1 773
+ATOM C CG  . MET A 0 96  . 96  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 773 -28.044 3.418   -25.48  1 774
+ATOM S SD  . MET A 0 96  . 96  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 774 -27.812 3.644   -25.078 1 775
+ATOM C CE  . MET A 0 96  . 96  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 775 -28.017 3.606   -25.082 1 776
+ATOM N N   . MET A 0 97  . 97  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 776 -28.463 16.779  8.065   1 777
+ATOM C CA  . MET A 0 97  . 97  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 777 -27.651 16.004  7.52    1 778
+ATOM C C   . MET A 0 97  . 97  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 778 -24.604 12.654  4.367   1 779
+ATOM O O   . MET A 0 97  . 97  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 779 -25.172 13.41   5.41    1 780
+ATOM C CB  . MET A 0 97  . 97  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 780 -28.801 16.811  8.836   1 781
+ATOM C CG  . MET A 0 97  . 97  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 781 -29.878 17.416  9.386   1 782
+ATOM S SD  . MET A 0 97  . 97  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 782 -30.405 17.525  9.744   1 783
+ATOM C CE  . MET A 0 97  . 97  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 783 -30.156 17.931  10.106  1 784
+ATOM N N   . MET A 0 98  . 98  MET A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 784 0.34    -14.597 -25.457 1 785
+ATOM C CA  . MET A 0 98  . 98  MET A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 785 -0.73   -13.961 -25.208 1 786
+ATOM C C   . MET A 0 98  . 98  MET A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 786 -4.132  -10.708 -22.247 1 787
+ATOM O O   . MET A 0 98  . 98  MET A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 787 -2.75   -11.769 -23.321 1 788
+ATOM C CB  . MET A 0 98  . 98  MET A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 788 0.009   -15.437 -26.248 1 789
+ATOM C CG  . MET A 0 98  . 98  MET A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 789 0.424   -16.145 -27.345 1 790
+ATOM S SD  . MET A 0 98  . 98  MET A SD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 790 0.315   -15.82  -26.222 1 791
+ATOM C CE  . MET A 0 98  . 98  MET A CE  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 791 0.488   -16.194 -26.597 1 792
+ATOM N N   . GLU A 0 99  . 99  GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 792 -35.341 18.631  8.648   1 793
+ATOM C CA  . GLU A 0 99  . 99  GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 793 -34.835 18.181  8.04    1 794
+ATOM C C   . GLU A 0 99  . 99  GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 794 -32.123 15.741  5.659   1 795
+ATOM O O   . GLU A 0 99  . 99  GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 795 -32.701 16.292  6.56    1 796
+ATOM C CB  . GLU A 0 99  . 99  GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 796 -35.858 19.041  8.945   1 797
+ATOM C CG  . GLU A 0 99  . 99  GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 797 -37.006 19.575  9.475   1 798
+ATOM C CD  . GLU A 0 99  . 99  GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 798 -37.18  19.892  10.065  1 799
+ATOM O OE1 . GLU A 0 99  . 99  GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 799 -37.446 19.843  9.984   1 800
+ATOM O OE2 . GLU A 0 99  . 99  GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 800 -35.921 19.432  10.314  1 801
+ATOM N N   . GLU A 0 100 . 100 GLU A N   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 801 -14.5   -1.715  -14.24  1 802
+ATOM C CA  . GLU A 0 100 . 100 GLU A CA  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 802 -13.445 -2.26   -14.884 1 803
+ATOM C C   . GLU A 0 100 . 100 GLU A C   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 803 -13.275 -3.056  -15.709 1 804
+ATOM O O   . GLU A 0 100 . 100 GLU A O   ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 804 -12.986 -2.903  -15.872 1 805
+ATOM C CB  . GLU A 0 100 . 100 GLU A CB  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 805 -12.565 -2.594  -14.368 1 806
+ATOM C CG  . GLU A 0 100 . 100 GLU A CG  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 806 -12.717 -2.205  -13.034 1 807
+ATOM C CD  . GLU A 0 100 . 100 GLU A CD  ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 807 -13.6   -1.796  -11.896 1 808
+ATOM O OE1 . GLU A 0 100 . 100 GLU A OE1 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 808 -13.766 -1.376  -10.641 1 809
+ATOM O OE2 . GLU A 0 100 . 100 GLU A OE2 ? False True . 0 False False False -1 x.x.x.x False -1 False False False -1 False 0 100P 809 -14.081 -1.679  -12.145 1 810
+#
+loop_
+_annotation_coords-with-insertion_1_atom.idx0 
+_annotation_coords-with-insertion_1_atom.val0 
+_annotation_coords-with-insertion_1_atom.val1 
+_annotation_coords-with-insertion_1_atom.val2 
+0   7.3000937     -34.985325   8.585872
+1   7.1611357     -33.411163   7.6616898
+2   7.9186525     -28.774462   5.680419
+3   8.215601      -29.494938   6.2704945
+4   6.754045      -34.533165   8.727804
+5   6.3275247     -35.797146   8.678404
+6   5.640007      -35.768875   9.283302
+7   6.0603914     -35.92048    9.224515
+8   15.708511     -0.14383253  -9.172765
+9   15.149375     0.36640492   -9.072007
+10  13.996609     -1.5093675   -7.4912987
+11  14.183756     -0.4246941   -8.312169
+12  15.103384     1.351289     -10.32934
+13  14.941086     2.2454457    -11.055437
+14  14.648094     2.2114978    -10.438431
+15  14.771282     2.4697053    -10.584557
+16  8.213455      -14.782514   4.3986874
+17  7.3791366     -15.860645   5.207753
+18  4.67847       -16.671526   5.032855
+19  5.1587477     -16.650488   5.200554
+20  7.964946      -15.367155   6.6327977
+21  8.4549465     -15.404888   6.8844986
+22  8.274214      -15.380511   7.288611
+23  8.644283      -15.278566   7.647817
+24  -8.589107     -20.899313   3.2949126
+25  -7.6766114    -20.367264   3.2075047
+26  -2.1763725    -19.169558   3.1975074
+27  -3.466341     -19.254742   3.2926602
+28  -9.701036     -20.63441    3.54709
+29  -11.054002    -21.161215   3.2278042
+30  -11.630316    -21.616192   3.7667453
+31  -11.584586    -21.386131   3.8124058
+32  41.55478      -12.029313   4.585662
+33  39.914436     -11.773188   3.9779127
+34  33.28054      -11.864462   2.580171
+35  35.99653      -11.763601   2.1884599
+36  41.976906     -11.770151   4.3178806
+37  43.09501      -11.984613   4.1017776
+38  42.658253     -11.760456   4.9610114
+39  43.346996     -11.76067    4.6363873
+40  -19.117239    -19.009644   -6.431429
+41  -18.52906     -17.4114     -6.5825896
+42  -12.910094    -14.33517    -5.4770274
+43  -14.384503    -15.132419   -5.94644
+44  -21.072836    -17.961273   -5.9097996
+45  -22.043415    -18.57753    -6.7736225
+46  -22.246515    -18.787426   -6.3259954
+47  -22.301392    -18.582531   -6.1979017
+48  24.478924     7.8306637    1.6806018
+49  24.376247     7.067052     1.4093392
+50  22.33683      3.5211797    1.0253186
+51  23.404427     4.8902397    0.85356104
+52  25.362158     8.245822     1.8197209
+53  25.644762     9.380871     1.6805183
+54  25.314663     9.600374     2.2493517
+55  25.852001     9.887655     2.4889927
+56  6.587261      -28.342758   -2.1208196
+57  4.7685747     -29.07565    -2.372193
+58  2.0105667     -26.616983   -2.5094452
+59  2.6332645     -27.54525    -2.370739
+60  4.9816804     -30.71746    -0.8765776
+61  5.304862      -31.69319    -1.3076174
+62  5.491152      -31.918945   -0.6772388
+63  4.982935      -31.698341   -0.5300516
+64  5.391575      -31.442797   -0.11712447
+65  -19.463638    -9.130314    -3.500442
+66  -18.465841    -8.004648    -3.7129455
+67  -12.623572    -7.9939957   -3.3882413
+68  -14.14751     -7.6707544   -3.0973532
+69  -20.650473    -7.360642    -2.868269
+70  -22.029469    -7.5198655   -3.5017016
+71  -22.501402    -8.045229    -3.296032
+72  -22.480854    -7.4566574   -3.1278439
+73  31.704329     -10.545048   -3.7354527
+74  30.66311      -10.727526   -3.8452272
+75  26.160442     -11.394667   -2.945097
+76  28.22809      -11.451188   -4.256132
+77  32.275726     -10.77272    -4.1056724
+78  33.144566     -10.747826   -4.808656
+79  32.866966     -10.475185   -4.0137796
+80  33.374264     -10.581679   -4.146682
+81  -11.141703    -22.072107   8.259161
+82  -12.88356     -20.938694   7.9757786
+83  -12.927227    -16.175808   6.264131
+84  -12.473364    -17.079937   6.646455
+85  -13.468032    -21.928501   10.36606
+86  -13.874235    -23.17188    10.129695
+87  -13.923494    -23.330097   10.715766
+88  -14.47053     -23.123617   10.865076
+89  -13.318558    -22.377441   11.099645
+90  -13.119426    19.269217    -5.7986736
+91  -12.3821125   18.626057    -6.58766
+92  -9.880467     13.560732    -6.0811224
+93  -9.847838     15.376735    -6.4509625
+94  -12.7014885   20.800455    -6.7352276
+95  -13.896555    21.711731    -7.254759
+96  -14.387539    21.256596    -6.8180466
+97  -14.195169    21.917568    -6.86584
+98  7.9376516     -33.464523   -5.4650517
+99  8.365767      -32.812027   -4.4696736
+100 8.554373      -27.028069   -1.6641021
+101 9.648158      -29.725742   -2.899908
+102 8.976012      -34.88216    -5.387496
+103 8.673357      -36.12142    -6.2981405
+104 8.197157      -35.648815   -5.3699055
+105 8.36238       -36.12386    -5.5807724
+106 10.326059     28.369968    26.347387
+107 9.703404      27.278996    25.737524
+108 8.29306       21.58913     22.666546
+109 9.402523      23.508503    23.14473
+110 9.807837      29.393463    26.789358
+111 9.853877      30.435963    27.206945
+112 9.858061      30.202282    27.731476
+113 10.383755     30.53499     27.896683
+114 -8.022731     -35.35256    -11.980854
+115 -8.07408      -34.94028    -11.669336
+116 -6.888938     -30.977743   -8.880379
+117 -6.283189     -32.866615   -10.070868
+118 -8.678604     -36.714333   -12.597098
+119 -9.090719     -37.724487   -13.649502
+120 -9.240376     -37.49489    -12.868043
+121 -9.196183     -37.958534   -12.979765
+122 -1.0125703    0.7438144    17.535437
+123 -0.18719964   2.8069673    18.075657
+124 3.0476742     5.6655836    16.200802
+125 3.2262242     5.089513     16.821234
+126 -0.09748638   1.8546638    20.237938
+127 -1.3936591    1.2934091    20.37413
+128 -1.6787169    1.320771     21.01982
+129 -2.310069     1.5668385    21.054995
+130 -0.47604418   1.9490098    21.09739
+131 22.85021      27.111393    3.3910723
+132 23.049181     26.04229     2.503034
+133 21.65015      20.601072    2.5133028
+134 22.867605     22.778265    1.5185974
+135 24.403784     27.733116    2.559768
+136 24.331293     29.03294     2.0527432
+137 23.954098     29.114885    2.5818753
+138 24.653736     29.453506    2.7256851
+139 5.583452      -36.587414   9.017558
+140 4.361927      -36.56882    8.10179
+141 2.8846045     -31.997545   5.9479856
+142 3.769899      -33.23603    6.1510587
+143 3.9078429     -38.42656    9.728935
+144 4.1516876     -39.603424   9.596375
+145 4.1690736     -39.73884    10.108842
+146 3.7901473     -39.478733   10.34005
+147 4.474577      -38.633675   10.571611
+148 -5.9945965    2.4760532    -7.7464795
+149 -5.742941     2.6539981    -7.9437027
+150 -4.5303726    1.0631793    -6.8685555
+151 -4.396999     1.6883522    -7.2428756
+152 -6.320188     3.6771739    -8.452302
+153 -7.436614     4.355865     -8.847853
+154 -8.103018     4.259447     -8.352759
+155 -8.299347     4.7778587    -8.471074
+156 -2.0946004    -7.4162397   -4.487069
+157 -0.67476547   -7.845727    -3.2614636
+158 3.905891      -6.4506464   -0.07997781
+159 2.5917954     -7.103817    -1.7106729
+160 -1.4257178    -8.988427    -4.6622534
+161 -2.6754684    -9.28591     -5.377186
+162 -3.5458934    -9.227608    -4.5156794
+163 -3.3760376    -9.3415365   -4.3895574
+164 40.382698     9.976493     31.14006
+165 39.66874      8.821934     30.2831
+166 36.06311      5.6203723    26.276476
+167 37.87532      6.9907355    27.40536
+168 40.557995     9.754382     32.030033
+169 41.225304     10.335402    32.669594
+170 41.486977     10.378108    33.277664
+171 40.878937     10.323193    32.949444
+172 41.642395     10.432856    33.344315
+173 1.8579936     -28.641996   -20.339073
+174 0.85647297    -28.158052   -20.00288
+175 0.9462271     -25.21931    -16.096415
+176 1.4064395     -26.247389   -18.382977
+177 0.0678695     -29.98598    -21.0684
+178 -0.0032886118 -30.550879   -22.50357
+179 0.23953132    -30.11944    -21.80127
+180 0.15188687    -30.554901   -21.85014
+181 3.4223928     -2.7543008   28.262604
+182 3.042915      -0.8428526   28.335495
+183 3.322983      3.0474253    24.927576
+184 3.858616      2.1624036    25.752922
+185 4.081785      -1.5098059   30.406643
+186 3.3706734     -2.5502486   31.000477
+187 3.143084      -2.583655    31.451698
+188 2.183777      -2.4360578   31.753626
+189 3.7823453     -1.6083109   31.586586
+190 4.5493603     33.196667    -2.9354186
+191 4.729248      32.286964    -4.148968
+192 5.7147665     26.715096    -3.763389
+193 5.89062       28.619986    -4.8451242
+194 5.276721      34.4264      -4.811817
+195 5.1677175     34.773834    -4.847455
+196 18.034155     -33.101868   5.0069513
+197 16.264729     -33.365597   4.941658
+198 11.565947     -29.15524    4.4238095
+199 13.559788     -30.869663   4.476943
+200 17.407438     -35.27657    6.3914227
+201 18.04546      -36.38684    5.79562
+202 17.51907      -35.864048   6.0890493
+203 18.075775     -36.18982    6.0217147
+204 -30.850403    4.6591763    -0.5519631
+205 -29.855667    5.7045083    -0.57431084
+206 -23.56846     5.336945     0.5776221
+207 -25.417969    6.057963     0.14380354
+208 -32.35018     6.3933234    -0.0047866628
+209 -33.669334    6.2522264    -0.83603394
+210 -33.990055    5.6031523    -0.5897497
+211 -33.973232    6.102374     -0.41155303
+212 21.52236      -1.7602016   9.783648
+213 23.331701     -1.7176206   9.630953
+214 24.410324     -2.0670407   7.2662163
+215 24.707708     -2.1714838   7.5922227
+216 23.949772     -2.9468493   10.848943
+217 23.532082     -2.7388048   12.079113
+218 23.407232     -2.4356308   12.956705
+219 22.963926     -2.0546494   13.489946
+220 23.976868     -2.1176863   12.746997
+221 29.423885     -4.7465825   -5.2883
+222 28.707294     -4.743577    -6.2581673
+223 26.070206     -4.5759034   -5.681633
+224 26.794546     -4.8928423   -6.332364
+225 29.624943     -5.720158    -7.086607
+226 30.205032     -5.690257    -7.728687
+227 30.054249     -5.223036    -6.5527544
+228 30.287773     -5.332222    -6.9440627
+229 -16.259956    12.842463    14.994259
+230 -15.560495    12.257543    14.196559
+231 -10.958299    9.708878     11.649471
+232 -12.218362    10.307798    12.465708
+233 -17.250944    13.247819    14.909758
+234 -18.576864    13.454205    15.203982
+235 -18.67741     13.67662     15.665415
+236 -18.792374    13.425145    15.560751
+237 -16.886337    13.216362    16.128143
+238 25.133366     -7.5561566   -6.190167
+239 24.048824     -7.910694    -6.8638935
+240 19.68723      -7.5617733   -6.519655
+241 21.208132     -8.163147    -7.1839895
+242 25.519705     -8.922268    -6.922896
+243 26.318527     -9.068779    -7.559445
+244 25.926502     -8.5704155   -6.6084905
+245 26.460224     -8.68922     -6.8674126
+246 -16.884865    -4.4176106   -4.21795
+247 -16.172907    -4.0372286   -3.6267319
+248 -10.482187    -4.292801    -1.8940431
+249 -12.245392    -3.7423387   -2.350907
+250 -18.481142    -4.187719    -3.6827624
+251 -19.77843     -4.237529    -4.4204326
+252 -20.129984    -4.6487756   -3.9307892
+253 -20.0989      -4.329924    -3.7515821
+254 33.47981      -12.578577   11.674098
+255 33.389458     -11.023502   11.635561
+256 30.77303      -6.217099    9.976697
+257 32.369217     -7.871085    9.935609
+258 35.022156     -12.387849   11.8924465
+259 35.360054     -13.622035   11.972614
+260 34.39988      -13.40155    12.910889
+261 35.109276     -13.670011   12.7082815
+262 10.741394     32.05535     -0.9594131
+263 9.839386      31.43301     -1.568812
+264 9.665182      26.504398    -1.7491994
+265 9.909092      28.154625    -2.4697099
+266 9.806831      33.30684     -2.4496875
+267 10.087112     33.81534     -2.308407
+268 8.778299      -27.68116    0.24490906
+269 8.522719      -26.961042   -0.19729494
+270 8.406136      -21.378786   -0.90826803
+271 9.383803      -23.127422   -1.306814
+272 8.2725        -29.093227   0.38714945
+273 8.113187      -30.291956   -0.041253187
+274 7.6885605     -29.824247   0.730363
+275 8.032623      -30.224913   0.47449386
+276 5.7477374     26.833513    -4.4550247
+277 5.9168663     25.987991    -4.7815747
+278 7.052748      21.180004    -4.313898
+279 7.2011614     22.769749    -5.07759
+280 5.637083      27.757217    -5.0863433
+281 4.8340397     28.897034    -5.4691095
+282 4.4863577     28.64001     -4.9368105
+283 4.732266      29.197464    -4.8914914
+284 15.063997     -22.200214   3.285336
+285 14.945025     -21.80565    2.5604062
+286 14.324775     -17.179277   0.5547616
+287 15.181114     -18.307457   0.8497572
+288 14.952883     -23.807295   3.3911262
+289 14.740322     -24.873833   3.370929
+290 13.9186945    -24.203108   4.005947
+291 14.488115     -24.596949   3.7817538
+292 10.904635     18.71066     -16.531796
+293 10.744459     18.580803    -16.468452
+294 11.020754     15.596098    -14.3684635
+295 11.436238     17.157566    -15.435278
+296 10.424577     19.779938    -17.56289
+297 9.915232      20.644512    -18.448997
+298 9.623698      20.387852    -17.981117
+299 9.712911      20.664156    -17.959816
+300 10.106123     -17.454315   7.1427193
+301 10.547208     -16.523125   7.484044
+302 11.871645     -11.255876   6.508009
+303 12.184942     -12.44091    6.6870713
+304 10.728711     -18.585323   8.28424
+305 10.269478     -19.82541    8.094456
+306 9.600352      -19.44469    8.526613
+307 10.15494      -19.866999   8.477203
+308 24.812614     32.27924     0.8887113
+309 23.971977     32.040676    0.32945484
+310 21.945118     28.245426    -0.29871666
+311 23.147865     29.658596    -0.23090161
+312 24.760075     33.55628     -0.039197877
+313 24.83529      34.73036     -0.13246444
+314 24.672678     34.677578    0.7053335
+315 25.084808     35.039543    0.779958
+316 0.33324265    -7.9074135   -9.288755
+317 1.2388663     -7.7420444   -8.435347
+318 6.09091       -5.1200986   -5.265173
+319 4.512199      -6.0817814   -6.38136
+320 -0.23474373   -9.139081    -9.496725
+321 -1.1957846    -9.737812    -10.4211
+322 -1.6519582    -9.690634    -9.620283
+323 -1.5976226    -9.890138    -9.618846
+324 46.587044     17.948446    21.089699
+325 45.29419      17.690104    20.807848
+326 40.565613     16.140968    18.99771
+327 42.314003     17.094296    19.431383
+328 46.71035      18.511312    21.605587
+329 47.67266      18.764675    21.775864
+330 47.41181      18.901985    22.432602
+331 48.05008      19.060146    22.448105
+332 6.2589035     0.16324785   1.9488256
+333 4.4261236     0.43099546   1.7311523
+334 3.7499795     2.5354242    3.2095904
+335 3.6811233     1.699079     3.2599955
+336 3.4632201     -1.3454356   2.0505955
+337 2.98027       -2.016676    1.3011044
+338 2.7726343     -2.0419655   1.6182369
+339 2.765543      -2.346606    1.2513971
+340 0.7205862     11.120438    8.395244
+341 1.735909      11.850123    8.719379
+342 5.996996      10.999032    8.595582
+343 5.0442843     11.473321    9.200204
+344 0.24778187    12.202021    9.811998
+345 -1.2053925    12.381329    9.49785
+346 -1.8896085    12.061245    9.656979
+347 -1.8063432    12.567905    9.986881
+348 43.253586     -0.42644683  6.073828
+349 41.580933     -0.024396665 5.7229395
+350 35.23913      1.9495071    5.225292
+351 37.684334     0.45727417   5.0614147
+352 43.418434     -0.9302604   6.0164285
+353 44.473816     -1.5198627   5.589138
+354 43.93273      -1.1914299   6.530818
+355 44.540123     -1.3532196   6.2105474
+356 -13.929845    20.474495    2.3729103
+357 -13.705138    19.430105    1.9695102
+358 -9.915537     15.868339    1.9531422
+359 -10.813286    17.064192    2.0215614
+360 -15.216264    20.653849    1.4145355
+361 -16.554623    21.241268    1.256084
+362 -16.874336    20.993382    2.1089485
+363 -16.886244    21.485771    2.1819932
+364 22.683622     -13.87804    0.8490193
+365 21.862707     -13.18055    0.9897845
+366 18.827751     -8.736304    1.7808344
+367 20.076096     -10.554827   1.4942032
+368 22.858656     -14.861994   0.9437737
+369 23.08081      -15.987639   0.30317515
+370 22.552137     -15.697341   1.1042415
+371 22.890038     -15.980158   0.7494661
+372 -2.519734     29.691545    6.894222
+373 -2.7853942    28.82119     6.956985
+374 -1.497839     24.497128    7.60998
+375 -1.6684165    25.884632    7.0623355
+376 -3.6334574    30.230246    6.370936
+377 -4.375641     31.342762    6.0507393
+378 -4.555407     31.255882    6.698692
+379 -4.3984275    31.758636    6.794382
+380 9.369145      -11.529194   16.798714
+381 9.360869      -11.435479   15.716589
+382 8.828382      -7.8965206   12.415458
+383 9.543944      -8.900306    12.914913
+384 9.177571      -13.265545   16.833237
+385 9.172367      -14.127001   17.299318
+386 8.282956      -13.350806   17.989279
+387 9.01726       -13.755453   17.987785
+388 2.4213836     26.162003    -14.726751
+389 2.6908133     25.411634    -15.35348
+390 4.073249      21.40442     -13.526648
+391 4.4026423     23.010353    -14.935924
+392 2.7365923     27.023281    -16.463259
+393 1.8044612     27.88004     -17.288158
+394 1.2513301     27.492805    -16.632399
+395 1.4120876     27.94194     -16.72846
+396 17.079933     -16.432726   11.502924
+397 16.12177      -16.415314   10.658802
+398 13.712727     -13.266163   7.145814
+399 15.380467     -14.232197   7.8845954
+400 16.474453     -17.715242   12.382341
+401 16.892801     -18.735502   12.780747
+402 16.853693     -18.677786   13.200628
+403 16.272322     -18.585007   13.520936
+404 16.91643      -17.74965    13.494833
+405 -5.9064445    7.179861     -22.07548
+406 -5.411689     9.174047     -22.313139
+407 -1.3481166    11.755859    -18.531502
+408 -2.7133064    11.231566    -20.639727
+409 -8.172112     9.301208     -23.022955
+410 -7.880372     9.0006695    -24.193708
+411 33.85042      35.620647    17.02325
+412 33.41041      34.40916     16.837833
+413 30.586647     29.788809    15.172226
+414 32.520306     31.562351    15.450651
+415 34.135124     35.939213    17.968517
+416 34.537594     37.039665    18.148558
+417 34.423824     37.187073    18.547684
+418 35.076283     37.41825     18.841948
+419 1.5696967     -12.02484    -1.7146813
+420 1.0733246     -13.138667   -2.841073
+421 2.0189614     -12.773141   -4.6510725
+422 1.8761963     -13.106581   -4.979375
+423 -0.66933525   -13.196365   -2.8347313
+424 -1.1884141    -13.915973   -1.9014038
+425 -1.9583004    -14.007671   -1.2842484
+426 -1.9368626    -14.197744   -0.5633694
+427 -1.5709149    -13.668819   -1.3895756
+428 6.4883213     -12.5968895  -9.933085
+429 6.79698       -10.979534   -10.790348
+430 5.727702      -5.3894143   -9.466537
+431 6.942801      -7.497332    -10.456272
+432 6.360382      -12.626421   -12.253162
+433 6.485333      -13.858939   -12.8712225
+434 6.427658      -13.611681   -11.214806
+435 6.5816917     -13.905409   -11.721617
+436 -6.483618     50.59877     9.003244
+437 -6.2851243    49.64979     8.3346615
+438 -4.554578     44.32263     6.692334
+439 -4.9069996    45.962414    6.8580537
+440 -6.865917     51.548916    8.839115
+441 -7.6707096    52.657322    8.960636
+442 -7.5395036    52.7405      9.542362
+443 -7.654488     52.382378    9.173354
+444 -6.245612     52.059654    10.081713
+445 14.6608305    -6.08529     -10.134107
+446 13.622362     -6.3906994   -10.863821
+447 10.509137     -3.6245832   -11.379307
+448 11.44647      -4.7038345   -11.288575
+449 14.169289     -8.209676    -10.218832
+450 14.786465     -9.11717     -10.615879
+451 14.524799     -8.763932    -10.053484
+452 15.042734     -9.044493    -10.201799
+453 -4.5307107    9.7886095    -16.83667
+454 -5.425893     11.158182    -16.017267
+455 -4.451792     11.835915    -11.799545
+456 -4.55151      11.591778    -14.317151
+457 -7.4459324    10.600772    -17.125275
+458 -7.6111817    10.636877    -18.653418
+459 -7.249498     10.617318    -18.190441
+460 -7.4130306    10.595504    -17.994038
+461 5.940881      20.971012    32.472813
+462 5.6751337     19.548243    32.2418
+463 4.7413783     15.500019    28.682367
+464 5.360071      16.668081    29.368498
+465 5.1538186     20.724857    33.98784
+466 5.261345      21.563599    34.785706
+467 5.3633213     21.700687    35.45513
+468 5.125601      21.48717     35.05194
+469 6.183296      21.330442    35.48748
+470 -3.1339767    -20.282297   -3.657506
+471 -3.4109151    -19.560806   -5.1325803
+472 -3.3374407    -13.837919   -5.743603
+473 -2.4966388    -15.597495   -6.347396
+474 -4.7134724    -21.650585   -5.0610185
+475 -4.6421723    -22.798931   -5.628723
+476 -4.6924467    -22.24982    -4.628661
+477 -4.4406977    -22.730915   -5.202298
+478 -2.6556573    30.122644    -7.093063
+479 -2.4805       29.544498    -7.0583477
+480 -1.6204774    25.625303    -5.6555176
+481 -1.3872259    27.111609    -6.6028385
+482 -2.8216977    31.038227    -7.6172204
+483 -3.484268     32.067646    -8.322354
+484 -3.8378441    31.762283    -7.873329
+485 -3.6165814    32.227512    -7.762205
+486 5.191748      -21.301579   10.002688
+487 4.793581      -20.351429   9.807368
+488 3.9149857     -14.490284   8.307318
+489 5.00138       -16.28717    8.27193
+490 5.1911306     -22.406326   10.846384
+491 5.152767      -23.748154   10.599233
+492 4.484587      -23.281834   11.147261
+493 5.038464      -23.671532   10.948294
+494 -1.2275506    33.573765    -1.4583063
+495 -1.8892481    33.339455    -1.9635959
+496 -2.2037592    30.121853    -2.1018472
+497 -1.8962445    31.040825    -2.5254874
+498 -1.773047     34.74131     -2.667135
+499 -2.3710365    35.95517     -2.7339678
+500 -2.8090353    36.06918     -1.9591802
+501 -2.6666818    36.63767     -2.0171733
+502 -9.984475     2.4239705    -1.9472271
+503 -9.072584     1.265503     -2.1692386
+504 -4.9004283    1.1888366    -3.1259556
+505 -5.5564013    0.9095049    -2.8074765
+506 -10.707463    0.6808106    -2.8283093
+507 -12.055148    0.48432314   -2.5240552
+508 -12.703308    0.3894548    -1.5863299
+509 -12.51149     0.47825724   -1.64427
+510 27.307713     3.5072927    -10.818335
+511 26.476269     3.3588195    -10.9229965
+512 22.938503     3.0751345    -9.59613
+513 24.635        3.0012155    -10.532747
+514 27.824512     3.0810168    -11.475822
+515 28.517433     3.083162     -12.295366
+516 28.264416     3.3681288    -11.523308
+517 28.690018     3.259492     -11.695975
+518 -13.14014     -3.2964694   4.002787
+519 -12.823072    -1.7079782   4.133881
+520 -8.696071     2.6196778    3.756443
+521 -9.0002575    1.7878625    4.120934
+522 -14.270311    -3.0155706   5.626541
+523 -15.254482    -3.9376845   5.09979
+524 -15.750269    -3.8182747   5.2647758
+525 -15.733499    -3.9844751   5.327353
+526 21.570423     34.394833    1.3366104
+527 20.760157     33.75318     0.7974544
+528 17.398388     29.682674    0.30875987
+529 19.225016     31.50156     0.37477615
+530 22.084864     35.074986    0.8042669
+531 -15.924201    -8.133911    -6.9225097
+532 -15.688049    -7.618503    -6.104083
+533 -12.640443    -4.221864    -3.3855927
+534 -13.142374    -5.473664    -4.406118
+535 -16.787565    -9.319288    -6.6385307
+536 -17.521095    -10.130473   -7.524879
+537 -17.75349     -10.020579   -6.860955
+538 -17.756325    -10.313198   -6.759047
+539 7.329409      22.133944    20.312326
+540 7.2554207     21.756737    19.28119
+541 6.5890217     19.445377    15.499914
+542 6.91921       19.723091    16.68224
+543 7.663794      22.540699    20.600359
+544 7.6251802     23.203335    21.598274
+545 7.5787706     23.423042    22.298676
+546 7.107209      23.44372     22.154068
+547 8.245844      23.264935    22.25027
+548 2.1518538     5.376895     -17.408138
+549 1.6125333     4.1234875    -18.333246
+550 0.8168245     1.8427913    -16.719849
+551 1.100936      2.6817446    -17.82483
+552 2.8859859     3.9811864    -19.679737
+553 2.7237444     4.7730694    -20.71838
+554 2.2183213     5.275239     -19.802773
+555 2.6375842     5.2531343    -19.932545
+556 -5.4787674    -18.499224   -1.077162
+557 -6.8128605    -17.87628    -0.23365948
+558 -8.489822     -12.083809   0.21487117
+559 -6.9004345    -14.252859   -0.28772983
+560 -6.0158677    -19.93095    1.086898
+561 -6.175842     -21.352854   0.33550617
+562 -6.736999     -21.117327   0.58032763
+563 -6.4361806    -21.574404   0.5534082
+564 -27.828747    38.925232    4.793277
+565 -26.43551     39.03869     4.470435
+566 -20.910357    35.70804     4.4792867
+567 -22.205572    37.069454    4.641577
+568 -28.155003    40.61886     5.229637
+569 -29.619785    41.0889      4.736139
+570 -30.03786     40.609688    5.015005
+571 -29.971905    41.29221     5.227336
+572 27.59798      5.6219177    5.357856
+573 26.469498     4.9996758    4.3674307
+574 21.107922     5.336063     1.8699877
+575 23.119307     4.481662     2.6085553
+576 27.967512     4.214141     5.587812
+577 29.125326     3.9809294    5.6651163
+578 28.53465      4.5035033    6.4329576
+579 29.29702      4.3926973    6.352912
+580 -20.63009     10.396112    -22.30685
+581 -21.247429    10.481318    -21.727482
+582 -19.452501    9.7603655    -18.31861
+583 -20.152306    10.194252    -19.914814
+584 -22.58794     10.032991    -23.053337
+585 -23.18565     10.327883    -24.25888
+586 -23.219795    10.385548    -23.693874
+587 -23.285772    10.400614    -23.50373
+588 0.4535616     -1.2864584   26.041653
+589 -0.25592303   -0.77903175  25.049913
+590 -1.6994534    1.0283638    20.418661
+591 -0.8340461    0.2232831    21.743872
+592 0.30956334    -1.1721843   26.740541
+593 0.48146278    -1.7459083   27.66474
+594 0.30248913    -1.5714405   28.074865
+595 -0.38455084   -1.5477794   28.419275
+596 0.601986      -0.7932925   28.131788
+597 -14.473669    18.267973    -19.816744
+598 -13.958688    17.4301      -20.627464
+599 -11.632559    14.350072    -18.492651
+600 -11.665258    15.746623    -19.611221
+601 -14.090269    18.855627    -22.053988
+602 -15.208334    19.440556    -22.913273
+603 -15.793348    19.024628    -22.008148
+604 -15.76261     19.487658    -22.142885
+605 6.059399      -16.954592   1.7377328
+606 5.911049      -15.946798   1.7320472
+607 4.911764      -10.719738   0.4625322
+608 6.076206      -12.199816   0.60019827
+609 6.667012      -17.760864   2.4635434
+610 6.6081753     -19.118502   2.2515051
+611 5.858245      -18.831154   2.8135693
+612 6.4484067     -19.147526   2.6716676
+613 -1.7524419    26.699837    -9.244739
+614 -2.9075732    28.213875    -9.051775
+615 -5.269226     27.638056    -7.092346
+616 -4.123034     27.490913    -7.9001575
+617 -3.200611     28.80091     -10.996721
+618 -2.792406     29.263594    -11.733414
+619 -2.641162     29.310097    -10.75593
+620 -2.596278     29.541521    -11.090526
+621 -16.23019     27.022785    3.8179028
+622 -17.210093    25.476658    4.1280146
+623 -16.90655     19.966808    2.403362
+624 -16.986912    21.460155    2.6639926
+625 -18.738585    27.26183     4.3687882
+626 -19.033722    28.353006    4.762061
+627 -18.839638    28.414965    5.3114486
+628 -18.706228    27.971325    5.1355004
+629 -17.662365    27.637674    5.7943416
+630 -15.697523    -28.154308   -15.225901
+631 -15.35825     -27.041885   -15.162548
+632 -14.163717    -20.174145   -13.433932
+633 -13.216362    -23.02952    -14.659901
+634 -15.944782    -29.449404   -15.715446
+635 -16.11038     -30.70126    -16.563457
+636 -16.289919    -30.201996   -15.52508
+637 -16.145031    -30.658228   -15.853829
+638 -7.2613482    44.041897    7.275331
+639 -7.1041017    43.069054    6.629295
+640 -6.6911244    37.73229     4.650911
+641 -6.6071215    39.306293    4.922507
+642 -7.16426      44.880653    7.439519
+643 -7.6698837    46.189007    7.715978
+644 -8.021685     46.162865    8.229975
+645 -7.589344     46.668415    8.533582
+646 -2.7604885    -5.905709    -17.159283
+647 -3.3991516    -7.32328     -17.024529
+648 -4.8531265    -7.3518014   -14.782095
+649 -3.8822887    -7.775735    -15.178833
+650 -1.9862862    -8.469805    -17.414711
+651 -1.9126654    -8.799517    -18.5704
+652 -2.3132815    -8.47088     -18.08482
+653 -1.8731966    -8.792732    -18.242964
+654 -26.35704     -7.028227    10.4925585
+655 -25.469738    -6.276511    10.274787
+656 -21.595564    -4.5713      7.7240515
+657 -22.082771    -4.7252364   8.577214
+658 -26.42518     -7.002315    11.7199745
+659 -27.59705     -7.6229677   12.01836
+660 -28.431417    -7.4855623   12.315947
+661 -28.128698    -7.468072    12.583485
+662 2.8548563     2.7453148    -9.81769
+663 2.4916222     4.000778     -10.308409
+664 -0.7589561    5.96762      -9.731413
+665 0.10989219    5.490134     -10.078773
+666 3.494628      3.3022442    -11.624526
+667 3.981617      2.7513437    -12.039513
+668 3.6779022     2.8568697    -10.376347
+669 3.784247      2.8486333    -11.010511
+670 -28.207714    23.58241     -2.7204905
+671 -27.814665    22.18168     -3.2161736
+672 -24.11254     16.624277    -3.9295
+673 -24.887024    18.498163    -3.5544302
+674 -29.202196    23.971598    -3.3208966
+675 -30.372448    24.875814    -3.436134
+676 -30.222557    24.980452    -2.9422727
+677 -30.308678    24.524204    -3.085352
+678 -28.486893    24.331905    -2.0244951
+679 6.800809      -27.47297    -15.894264
+680 5.952914      -27.27172    -15.05139
+681 2.8722086     -23.478415   -11.953823
+682 4.1805716     -24.92842    -13.046766
+683 7.2211676     -28.847885   -15.659809
+684 7.415967      -29.749346   -16.707998
+685 7.034655      -29.390865   -15.817752
+686 7.212534      -29.798237   -16.06534
+687 -24.147825    9.697329     18.264572
+688 -23.726015    9.6327305    17.110737
+689 -20.962986    8.037501     12.937538
+690 -21.157026    8.511446     14.07902
+691 -24.556892    10.389496    18.590727
+692 -25.566366    10.52902     19.378983
+693 -25.787268    10.9236965   19.806448
+694 -26.11757     10.860029    19.71287
+695 -24.327408    10.974644    19.838562
+696 -5.514846     -8.464611    -19.562082
+697 -4.20448      -7.5633173   -19.846495
+698 -2.624113     -3.611639    -16.951843
+699 -1.9411391    -5.4229536   -18.391207
+700 -4.8647423    -8.216823    -21.870274
+701 -5.299416     -9.361539    -22.746578
+702 -5.5643177    -9.495856    -21.35905
+703 -5.5583363    -9.791868    -21.684858
+704 7.204489      29.165722    7.9038086
+705 6.5965557     28.234339    7.690958
+706 4.196252      23.531315    6.2093234
+707 5.8859005     25.173952    6.5925083
+708 7.1649923     29.965448    8.401787
+709 7.36229       31.09809     8.464106
+710 7.27901       31.106468    8.935664
+711 7.833211      31.42118     9.127693
+712 -24.821957    -19.266907   -10.830057
+713 -23.342035    -18.861502   -10.354476
+714 -17.312735    -15.296761   -8.134317
+715 -19.087908    -16.443604   -9.097333
+716 -25.180737    -20.303104   -11.193477
+717 -26.24186     -21.07764    -11.9537735
+718 -26.752024    -21.039375   -11.099255
+719 -26.68985     -21.236263   -11.106032
+720 26.886066     12.521468    9.892286
+721 25.26297      12.2747755   9.076299
+722 19.085253     10.595336    5.9077845
+723 21.767931     11.675252    6.667395
+724 27.070215     13.061579    10.08851
+725 28.042206     13.178211    10.3446665
+726 27.605352     13.303485    11.201933
+727 28.323181     13.380697    11.0725765
+728 -37.128227    -7.3148065   -24.5075
+729 -36.34512     -6.7295527   -24.19439
+730 -31.222345    -5.3549757   -21.478045
+731 -32.94409     -5.9897814   -22.72997
+732 -38.48839     -7.149801    -24.93761
+733 -39.529312    -7.4606075   -25.95425
+734 -39.90354     -7.6589556   -25.30074
+735 -39.834717    -7.5404015   -25.195564
+736 4.008172      7.623667     -1.0900024
+737 5.1385217     6.7278347    -0.723498
+738 5.061178      3.223933     -0.63577557
+739 5.404334      4.091689     -0.5625062
+740 5.3823047     7.8701744    0.43987408
+741 5.253987      9.137014     0.32005042
+742 4.9743004     9.509076     0.6215182
+743 5.43611       10.05768     1.198362
+744 5.484766      -17.096714   -0.5861031
+745 3.876488      -17.525064   -1.1306171
+746 0.010310411   -14.0448475  -2.7999716
+747 1.5843382     -15.451306   -2.5734158
+748 4.423736      -19.23712    0.5809574
+749 5.134211      -20.317822   0.3294447
+750 4.704732      -20.02118    0.68879557
+751 5.2849264     -20.396957   0.6730808
+752 -34.304024    18.069103    -15.165621
+753 -33.44985     17.375824    -15.728249
+754 -28.375492    13.611891    -15.090562
+755 -29.575844    15.15274     -15.406609
+756 -35.071377    19.011768    -16.145018
+757 -36.487602    19.430525    -16.600513
+758 -36.76126     18.839643    -15.834227
+759 -36.75362     19.396553    -15.866472
+760 16.157177     -19.838129   -9.60343
+761 14.842643     -19.534035   -9.961848
+762 10.008358     -16.346077   -11.246184
+763 12.083688     -17.618032   -10.811919
+764 16.295204     -20.855808   -9.089406
+765 17.10382      -21.761738   -9.338534
+766 16.42911      -21.382309   -8.675141
+767 17.020866     -21.581413   -8.898944
+768 -24.583488    3.0612454    -23.564568
+769 -26.085918    4.4849167    -23.299908
+770 -26.278378    5.8466763    -20.257301
+771 -26.126114    5.6634483    -21.875887
+772 -27.872732    3.4091568    -24.203806
+773 -28.043911    3.417742     -25.48034
+774 -27.812403    3.6442356    -25.078003
+775 -28.016584    3.605711     -25.082043
+776 -28.463118    16.779018    8.065183
+777 -27.650507    16.00384     7.520349
+778 -24.604227    12.654224    4.366835
+779 -25.172108    13.410245    5.409766
+780 -28.800705    16.811464    8.836191
+781 -29.878004    17.416313    9.386287
+782 -30.405365    17.525038    9.743854
+783 -30.156078    17.930906    10.105895
+784 0.34030432    -14.597205   -25.457115
+785 -0.7298261    -13.960862   -25.207672
+786 -4.1317396    -10.707984   -22.246733
+787 -2.7501369    -11.7691145  -23.32077
+788 0.008560717   -15.436603   -26.248045
+789 0.4237479     -16.145088   -27.344791
+790 0.31482542    -15.8199835  -26.222403
+791 0.48793167    -16.193932   -26.597319
+792 -35.34137     18.630676    8.647968
+793 -34.834698    18.180622    8.039845
+794 -32.122787    15.740743    5.658784
+795 -32.70107     16.291668    6.55958
+796 -35.858368    19.04097     8.944687
+797 -37.005833    19.5746      9.474611
+798 -37.17951     19.892199    10.065236
+799 -37.445694    19.842636    9.983922
+800 -35.920944    19.431988    10.314491
+801 -14.499567    -1.7146934   -14.240498
+802 -13.444892    -2.2595541   -14.883504
+803 -13.274551    -3.0562954   -15.709269
+804 -12.986038    -2.9033794   -15.872053
+805 -12.565235    -2.5938      -14.367589
+806 -12.716911    -2.2050648   -13.034115
+807 -13.5997715   -1.7963958   -11.895943
+808 -13.765994    -1.376209    -10.641367
+809 -14.081334    -1.6788162   -12.144799
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+ALA N   N 0 N N -0.9660000205039978  0.49300000071525574   1.5
+ALA CA  C 0 N N 0.25699999928474426  0.4180000126361847    0.6919999718666077
+ALA C   C 0 N N -0.09399999678134918 0.017000000923871994  -0.7160000205039978
+ALA O   O 0 N N -1.055999994277954   -0.6819999814033508   -0.9229999780654907
+ALA CB  C 0 N N 1.2039999961853027   -0.6200000047683716   1.2960000038146973
+ALA OXT O 0 N Y 0.6610000133514404   0.4390000104904175    -1.7419999837875366
+ALA H   H 0 N N -1.3830000162124634  -0.42500001192092896  1.4819999933242798
+ALA H2  H 0 N Y -0.6759999990463257  0.6610000133514404    2.4519999027252197
+ALA HA  H 0 N N 0.7459999918937683   1.3919999599456787    0.6819999814033508
+ALA HB1 H 0 N N 1.4589999914169312   -0.33000001311302185  2.315999984741211
+ALA HB2 H 0 N N 0.7149999737739563   -1.593999981880188    1.3070000410079956
+ALA HB3 H 0 N N 2.11299991607666     -0.6759999990463257   0.6970000267028809
+ALA HXT H 0 N Y 0.4350000023841858   0.18199999630451202   -2.6470000743865967
+CYS N   N 0 N N 1.5850000381469727   0.4830000102519989    -0.08100000023841858
+CYS CA  C 0 N N 0.14100000262260437  0.44999998807907104   0.1860000044107437
+CYS C   C 0 N N -0.0949999988079071  0.006000000052154064  1.6059999465942383
+CYS O   O 0 N N 0.6850000023841858   -0.7419999837875366   2.1429998874664307
+CYS CB  C 0 N N -0.5329999923706055  -0.5299999713897705   -0.7739999890327454
+CYS SG  S 0 N N -0.24699999392032623 0.004000000189989805  -2.4839999675750732
+CYS OXT O 0 N Y -1.1740000247955322  0.4429999887943268    2.2750000953674316
+CYS H   H 0 N N 1.9279999732971191   -0.45399999618530273  0.06300000101327896
+CYS H2  H 0 N Y 1.6929999589920044   0.6819999814033508    -1.065000057220459
+CYS HA  H 0 N N -0.2770000100135803  1.4459999799728394    0.041999999433755875
+CYS HB2 H 0 N N -0.11400000005960464 -1.5260000228881836   -0.6299999952316284
+CYS HB3 H 0 N N -1.6039999723434448  -0.5540000200271606   -0.574999988079071
+CYS HG  H 0 N N -0.9039999842643738  -0.9649999737739563   -3.1449999809265137
+CYS HXT H 0 N Y -1.3259999752044678  0.15800000727176666   3.186000108718872
+GLU N   N 0 N N 1.1990000009536743   1.8669999837875366    -0.11699999868869781
+GLU CA  C 0 N N 1.1380000114440918   0.5149999856948853    0.453000009059906
+GLU C   C 0 N N 2.364000082015991    -0.25999999046325684  0.04100000113248825
+GLU O   O 0 N N 3.009999990463257    0.09600000083446503   -0.9160000085830688
+GLU CB  C 0 N N -0.11299999803304672 -0.20000000298023224  -0.06199999898672104
+GLU CG  C 0 N N -1.3600000143051147  0.5170000195503235    0.460999995470047
+GLU CD  C 0 N N -2.5929999351501465  -0.18700000643730164  -0.04600000008940697
+GLU OE1 O 0 N N -2.484999895095825   -1.1610000133514404   -0.753000020980835
+GLU OE2 O 0 N N -3.811000108718872   0.26899999380111694   0.28700000047683716
+GLU OXT O 0 N Y 2.736999988555908    -1.3450000286102295   0.7369999885559082
+GLU H   H 0 N N 1.2369999885559082   1.8339999914169312    -1.125
+GLU H2  H 0 N Y 0.42100000381469727  2.427000045776367     0.19699999690055847
+GLU HA  H 0 N N 1.0980000495910645   0.5799999833106995    1.5399999618530273
+GLU HB2 H 0 N N -0.11699999868869781 -0.18700000643730164  -1.1519999504089355
+GLU HB3 H 0 N N -0.11299999803304672 -1.2309999465942383   0.289000004529953
+GLU HG2 H 0 N N -1.3569999933242798  0.5040000081062317    1.5509999990463257
+GLU HG3 H 0 N N -1.3600000143051147  1.5479999780654907    0.10899999737739563
+GLU HE2 H 0 N N -4.571000099182129   -0.2150000035762787   -0.06199999898672104
+GLU HXT H 0 N Y 3.5299999713897705   -1.809000015258789    0.4350000023841858
+MET N   N 0 N N -1.815999984741211   0.1420000046491623    -1.1660000085830688
+MET CA  C 0 N N -0.3919999897480011  0.49900001287460327   -1.2139999866485596
+MET C   C 0 N N 0.20600000023841858  0.0020000000949949026 -2.503999948501587
+MET O   O 0 N N -0.23600000143051147 -0.9890000224113464   -3.0329999923706055
+MET CB  C 0 N N 0.33399999141693115  -0.14499999582767487  -0.03200000151991844
+MET CG  C 0 N N -0.27300000190734863 0.35899999737739563   1.2769999504089355
+MET SD  S 0 N N 0.5889999866485596   -0.4050000011920929   2.677999973297119
+MET CE  C 0 N N -0.3140000104904175  0.3529999852180481    4.056000232696533
+MET OXT O 0 N Y 1.2319999933242798   0.6610000133514404    -3.065999984741211
+MET H   H 0 N N -1.8650000095367432  -0.8640000224113464   -1.2200000286102295
+MET H2  H 0 N Y -2.1489999294281006  0.39899998903274536   -0.24799999594688416
+MET HA  H 0 N N -0.28700000047683716 1.5820000171661377    -1.1579999923706055
+MET HB2 H 0 N N 1.3910000324249268   0.11900000274181366   -0.06800000369548798
+MET HB3 H 0 N N 0.2290000021457672   -1.2289999723434448   -0.08799999952316284
+MET HG2 H 0 N N -1.3300000429153442  0.09399999678134918   1.312999963760376
+MET HG3 H 0 N N -0.1679999977350235  1.4420000314712524    1.3329999446868896
+MET HE1 H 0 N N 0.09000000357627869  -0.009999999776482582 5.0
+MET HE2 H 0 N N -0.2070000022649765  1.4359999895095825    4.007999897003174
+MET HE3 H 0 N N -1.36899995803833    0.08799999952316284   3.98799991607666
+MET HXT H 0 N Y 1.6160000562667847   0.34200000762939453   -3.8940000534057617
+#

@@ -601,7 +601,6 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         job_id: Job ID for parallel job splitting
         config_name: Name of the config (used for output directory naming)
     """
-
     # Determine config name for output paths
     if config_name is None:
         config_name = cfg.get("run_name_", "inference")
@@ -672,7 +671,6 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         callbacks=[ema_callback] if ema_callback is not None else [],
     )
     trainer.validate(model, dataloader)  # validation_step automatically saves outputs
-
     logger.info(f"✓ Generation complete! Results saved to {root_path}")
 
 

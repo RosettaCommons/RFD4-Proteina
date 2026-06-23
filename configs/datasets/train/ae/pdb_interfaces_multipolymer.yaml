@@ -73,4 +73,4 @@ dataset:
     - pn_unit_2_type
 
   transform:
-    crop_size: 384
+    crop_size: ${dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I}
