@@ -41,6 +41,7 @@ from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E40
 from proteinfoundation.utils.logging import save_config_html  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
 from proteinfoundation.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
+from proteinfoundation.utils.torch_utils import apply_deterministic_training  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -151,9 +152,8 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
       ``(model, resume_ckpt_path)``. ``resume_ckpt_path`` is the explicit resume target
       (or the discovered ``last.ckpt``) when one exists; ``None`` for fine-tune runs.
     """
-    model = Proteina(cfg_exp)
-
-    # get last ckpt if needs to resume training from there
+    # Detect checkpoint BEFORE model init so we can seed first when starting fresh.
+    # This ensures reproducible random weight initialization across runs.
     last_ckpt_name = fetch_last_ckpt(ckpt_path_store)
     last_ckpt_path = os.path.join(ckpt_path_store, last_ckpt_name) if last_ckpt_name is not None else None
 
@@ -167,6 +167,14 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         last_ckpt_path = explicit_resume
 
     logger.info(f"Last checkpoint: {last_ckpt_path}")
+
+    # Seed before model init for fresh runs so random weight initialization is reproducible.
+    # (Resuming from a checkpoint loads deterministic weights, so no seed is needed here.)
+    if last_ckpt_path is None:
+        logger.info(f"Not starting from existing checkpoint; seeding with seed: {cfg_exp.seed}")
+        L.seed_everything(cfg_exp.seed, workers=False, verbose=True)
+
+    model = Proteina(cfg_exp)
 
     # If LoRA is turned on, replace Linear with LoRA layers
     # Note: We do not use LoRA in the La-Proteina paper.
@@ -230,11 +238,6 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
                 f"overrides={len(pf_config.param_policies)})"
             )
             freeze_parameters_with_config(model, pf_config)
-
-    # If not resuming from `last` ckpt training set seed
-    if last_ckpt_path is None:
-        logger.info(f"Not starting from existing checkpoint; seeding with seed: {cfg_exp.seed}")
-        L.seed_everything(cfg_exp.seed, workers=False, verbose=True)
 
     return model, last_ckpt_path
 
@@ -375,6 +378,11 @@ def main(cfg_exp: DictConfig) -> None:
 
         # Remove the stashed state to free memory
         delattr(model, "_pretrain_ema_state_dict")
+
+    # Fully deterministic mode — MUST come after model init, because model.__init__
+    # may call _configure_flash_attention_backends() which re-enables Flash SDP.
+    if cfg_exp.deterministic_training:
+        apply_deterministic_training(logger)
 
     # logger
     train_logger = None

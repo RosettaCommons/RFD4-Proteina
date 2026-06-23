@@ -165,6 +165,7 @@ log:
   last_ckpt_every_n_epochs: 1    # Save last.ckpt every N epochs (for resume)
 
 seed: 42
+deterministic_training: false  # Enable for regression tests; significantly reduces training throughput
 
 hydra:
   run:

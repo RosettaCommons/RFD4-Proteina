@@ -1,0 +1,15 @@
+# @package _global_
+#
+# Canonical AE training recipe — stable entry point for tooling and CI,
+# mirroring the pattern of experiment/sota.yaml for SOTA training.
+# Used by the GPU regression test (test_ae_training_regression).
+# To advance the AE SOTA recipe, repoint the single default below.
+
+defaults:
+  - /experiment_ae/kdidi/ae_multipolymer_unified
+  - _self_
+
+run_name_: ae_sota
+
+log:
+  tags: ["ae", "sota"]

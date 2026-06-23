@@ -1,8 +1,7 @@
 # @package _global_
 #
-# Default AE smoke — aligned with flow smoke (motif_scaffold_tiny):
-#   same AFDB genie3 dataset, crop_size 512, dynamic collate (fixed_dimensions: null).
-# AE uses unconditional design tasks instead of motif pretraining.
+# Minimal AE training config: Muon optimizer, AFDB monomer only, single GPU.
+# Used as the default training_ae experiment
 #
 # Run: python proteinfoundation/partial_autoencoder/train.py --config-name training_ae \
 #        +single=true +nolog=true +show_prog_bar=true
@@ -13,7 +12,7 @@ defaults:
   - /datasets/val/unconditional@datasets.val.unconditional
   - _self_
 
-run_name_: ae_smoke
+run_name_: ae_muon_afdb_monomer_only
 
 hardware:
   ngpus_per_node_: 1
@@ -29,7 +28,7 @@ dataloaders:
         fixed_dimensions: null
 
 log:
-  tags: ["ae", "smoke"]
+  tags: ["ae", "muon", "afdb-monomer-only"]
   projection_every_n: 100000
   log_every_n_steps: 1
 

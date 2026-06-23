@@ -5,7 +5,7 @@ ckpt_file: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ck
 
 # Load dataset config using Hydra defaults (matches training)
 defaults:
-  - datasets: ae_mixed_datasets  # Can also use distill/afdb_monomer_genie3, train/ae/na_complex, etc.
+  - datasets: ae_na_complex_datasets  # Can also use distill/afdb_monomer_genie3, train/ae/na_complex, etc.
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs
   - dataloaders: default  # Use same dataloader config as training
   - _self_
