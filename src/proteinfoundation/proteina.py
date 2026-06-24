@@ -39,6 +39,7 @@ from proteinfoundation.inference_utils.foldseek import (
     apply_cluster_map_to_metrics,
     run_foldseek_distributed,
 )
+from proteinfoundation.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
 from proteinfoundation.metrics.metrics_utils import (
     MetricsPool,
     apply_pre_oracle_filters,
@@ -1359,6 +1360,14 @@ class Proteina(L.LightningModule):
                 vals = pd.to_numeric(ds_df[col], errors="coerce").dropna()
                 if len(vals) > 0:
                     agg_rows.append({"dataset": ds, "metric": col, "value": float(np.nanmean(vals)), "n": len(vals)})
+
+            # Dataset-level solve-rate statistics (e.g., percentage of targets with at least n% passing designs)
+            # n per row is that oracle's valid-target denominator (solve_rate_n_targets)
+            solve = compute_solve_rate_metrics(ds_df)
+            for metric_name, value in solve.items():
+                prefix = metric_name[: metric_name.rindex("solve_rate_")]  # "af3." (or "" for a bare pass col)
+                n_used = int(solve.get(f"{prefix}solve_rate_n_targets", 0))
+                agg_rows.append({"dataset": ds, "metric": metric_name, "value": value, "n": n_used})
 
         if not agg_rows:
             return

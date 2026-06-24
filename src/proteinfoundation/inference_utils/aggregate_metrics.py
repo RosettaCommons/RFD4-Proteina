@@ -25,6 +25,9 @@ from proteinfoundation.inference_utils.foldseek import (  # noqa: E402  (load_do
     add_diversity_summary_metrics,
     add_foldseek_diversity_to_per_example_df,
 )
+from proteinfoundation.inference_utils.solve_rate_metrics import (  # noqa: E402  (load_dotenv must run first)
+    compute_solve_rate_metrics,
+)
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -85,6 +88,10 @@ def aggregate_metrics_from_per_example_df(
             values = group_df[metric_name].dropna()
             if len(values) > 0:
                 row[metric_name] = float(np.nanmean(values))
+
+        # Dataset-level solve-rate statistics (e.g., percentage of targets with at least n% passing designs)
+        if isinstance(group_by, str) and group_by == "dataset_name":
+            row.update(compute_solve_rate_metrics(group_df))
 
         agg_rows.append(row)
 
