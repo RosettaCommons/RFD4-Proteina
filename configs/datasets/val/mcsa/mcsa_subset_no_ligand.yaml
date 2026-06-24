@@ -5,7 +5,7 @@ dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/mcsa_41_no_ligand.json  
+  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/mcsa_40_no_ligand.json
   name: mcsa_subset
   subset_to_keys:
     # easy
