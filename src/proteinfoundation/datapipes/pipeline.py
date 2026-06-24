@@ -44,6 +44,7 @@ from atomworks.ml.transforms._checks import (
 from atomworks.ml.transforms.atom_array import (
     AddGlobalAtomIdAnnotation,
     AddGlobalTokenIdAnnotation,
+    AddWithinPolyResIdxAnnotation,
     CopyAnnotation,
 )
 from atomworks.ml.transforms.atomize import (
@@ -119,6 +120,7 @@ from proteinfoundation.transforms.atom_names import (
 )
 from proteinfoundation.transforms.budget import EnforceCropBudget, plan_unindex_expansion
 from proteinfoundation.transforms.chirality_feature import AddChiralityFeature
+from proteinfoundation.transforms.dna_crop import ProteinDNAContactContiguousCrop
 from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
 from proteinfoundation.transforms.internal_coords import ConvertAbsoluteToInternalCoords
 from proteinfoundation.transforms.invariants import ValidateBatchInvariants
@@ -1236,6 +1238,7 @@ def _build_design_clean_and_sample_pipeline(
     crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
+    dna_contact_crop_probability: float = 0.0,
     crop_center_cutoff_distance: float = 15.0,
     max_atoms_in_crop: int | None = None,
     is_inference: bool = False,
@@ -1313,34 +1316,58 @@ def _build_design_clean_and_sample_pipeline(
     if not is_inference:
         T += RemoveTokensWithAnyNaNAtom()
 
-    if not is_inference and crop_size and (crop_contiguous_probability > 0 or crop_spatial_probability > 0):
+    if (
+        not is_inference
+        and crop_size
+        and (crop_contiguous_probability > 0 or crop_spatial_probability > 0 or dna_contact_crop_probability > 0)
+    ):
         assert crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
 
-        T += RandomRoute.from_list(
-            [
-                (
-                    crop_contiguous_probability,  # DISCUSS: Does this even make sense for design??
-                    CropContiguousLikeAF3(
-                        crop_size=crop_size,
-                        keep_uncropped_atom_array=True,
-                        max_atoms_in_crop=max_atoms_in_crop,
-                        annotate_crop_boundary=True,
-                    ),
+        crop_routes = [
+            (
+                crop_contiguous_probability,  # DISCUSS: Does this even make sense for design??
+                CropContiguousLikeAF3(
+                    crop_size=crop_size,
+                    keep_uncropped_atom_array=True,
+                    max_atoms_in_crop=max_atoms_in_crop,
+                    annotate_crop_boundary=True,
                 ),
+            ),
+            (
+                crop_spatial_probability,
+                CropSpatialLikeAF3(
+                    crop_size=crop_size,
+                    crop_center_cutoff_distance=crop_center_cutoff_distance,
+                    keep_uncropped_atom_array=True,
+                    max_atoms_in_crop=max_atoms_in_crop,
+                    raise_if_missing_query=False,
+                    annotate_crop_boundary=True,
+                ),
+            ),
+        ]
+
+        # Protein-DNA contact-centered contiguous crop (ported from RFD3). Keeps
+        # a contiguous protein region + contiguous DNA duplex around a sampled
+        # binding contact; falls back to a spatial crop when no contact exists.
+        # Needs the within_poly_res_idx annotation to walk contiguous windows.
+        if dna_contact_crop_probability > 0:
+            T += AddWithinPolyResIdxAnnotation()
+            crop_routes.append(
                 (
-                    crop_spatial_probability,
-                    CropSpatialLikeAF3(
+                    dna_contact_crop_probability,
+                    ProteinDNAContactContiguousCrop(
                         crop_size=crop_size,
                         crop_center_cutoff_distance=crop_center_cutoff_distance,
+                        protein_contact_type="all",
+                        dna_contact_type="base",
                         keep_uncropped_atom_array=True,
                         max_atoms_in_crop=max_atoms_in_crop,
-                        raise_if_missing_query=False,
-                        annotate_crop_boundary=True,
                     ),
-                ),
-            ]
-        )
+                )
+            )
+
+        T += RandomRoute.from_list(crop_routes)
 
     ###########################################################
     ### Step 3.5: Infer query_pn_unit_iids for dimers      ###
@@ -1563,6 +1590,7 @@ def build_design_train_pipeline(
     crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
+    dna_contact_crop_probability: float = 0.0,
     crop_center_cutoff_distance: float = 15,
     max_atoms_in_crop: int | None = None,
     b_factor_occupancy_min: float | None = None,
@@ -1601,6 +1629,10 @@ def build_design_train_pipeline(
         crop_size: Max residues after cropping
         crop_contiguous_probability: Probability of contiguous cropping
         crop_spatial_probability: Probability of spatial cropping
+        dna_contact_crop_probability: Probability of protein-DNA contact-centered
+            contiguous cropping (see
+            :py:class:`~proteinfoundation.transforms.dna_crop.ProteinDNAContactContiguousCrop`).
+            The three crop probabilities should sum to 1.0. Defaults to ``0.0``.
         crop_center_cutoff_distance: Distance cutoff (Å) for spatial crop
         p_atomize_residues: Probability of atomizing standard residues
         p_random_rotation: Probability of random rotation augmentation
@@ -1630,6 +1662,7 @@ def build_design_train_pipeline(
         crop_size=crop_size,
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
+        dna_contact_crop_probability=dna_contact_crop_probability,
         crop_center_cutoff_distance=crop_center_cutoff_distance,
         max_atoms_in_crop=max_atoms_in_crop,
         b_factor_occupancy_min=b_factor_occupancy_min,

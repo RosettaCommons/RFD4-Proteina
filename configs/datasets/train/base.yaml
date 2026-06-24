@@ -8,6 +8,7 @@ transform:
   crop_size: 256
   crop_contiguous_probability: 0.0
   crop_spatial_probability: 1.0
+  dna_contact_crop_probability: 0.0  # protein-DNA contact crop; enable per-dataset (e.g. na_complex)
   crop_center_cutoff_distance: 15.0
   max_atoms_in_crop: 10000
   b_factor_occupancy_min: null  # Change for distillation sets where you want to not loss low confidence residues
