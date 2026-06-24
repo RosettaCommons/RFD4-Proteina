@@ -80,7 +80,7 @@ is missing.
 | Asset | How to provide |
 |-------|----------------|
 | SOTA checkpoint | `SOTA_CKPT_PATH=/abs/file.ckpt` (or `CKPT_PATH` + `SOTA_CKPT_NAME`) |
-| MCSA benchmark | `benchmarks/mcsa_41.json` (in repo; used by `mcsa_subset` val config) |
+| MCSA benchmark | `benchmarks/mcsa_40.json` (in repo; used by `mcsa_subset` val config) |
 | Search benchmark | `benchmarks/monomer.json` (in repo; used by `inference_test_search`) |
 
 In CI, set `SOTA_CKPT_PATH` via the repository/organization Actions variable when

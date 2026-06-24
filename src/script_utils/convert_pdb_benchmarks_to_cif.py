@@ -66,7 +66,7 @@ BENCHMARKS_ROOT = REPO_ROOT / "projects/proteinfoundation/benchmarks"
 
 # Canonical benchmark directories to process.
 BENCHMARK_DIRS = [
-    BENCHMARKS_ROOT / "mcsa_41",  # canonical; mcsa_41_cifs/ and rfbench/mcsa_41/ are duplicates
+    BENCHMARKS_ROOT / "mcsa_40",  # canonical (renamed from mcsa_41/); mcsa_41_cifs/ and rfbench/mcsa_41/ are duplicates
     BENCHMARKS_ROOT / "dna_pdbs",  # canonical; dna_cifs/ is the duplicate
     BENCHMARKS_ROOT / "motif_data_aa",
     BENCHMARKS_ROOT / "complexa_targets",
@@ -93,13 +93,14 @@ MODEL_PREDICTED_DIRS: set[Path] = {
 # Stale duplicate directories deleted before processing.
 DUPLICATE_DIRS = [
     BENCHMARKS_ROOT / "mcsa_41_cifs",
-    BENCHMARKS_ROOT / "rfbench" / "mcsa_41",
+    BENCHMARKS_ROOT / "rfbench" / "mcsa_41",  # legacy names
     BENCHMARKS_ROOT / "dna_cifs",
 ]
 
 # Path prefix substitutions for benchmark configs that reference deleted duplicate dirs.
 CROSS_DIR_RENAMES = [
-    ("mcsa_41_cifs/", "mcsa_41/"),
+    ("mcsa_41/", "mcsa_40/"),
+    ("mcsa_41_cifs/", "mcsa_40/"),
     ("dna_cifs/", "dna_pdbs/"),
 ]
 

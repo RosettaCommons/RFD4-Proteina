@@ -142,28 +142,28 @@ Fix only backbone atoms (redesign sidechains):
 }
 ```
 
-## Benchmark: MCSA 41
+## Benchmark: MCSA 40
 
-The repository includes the MCSA-41 benchmark — 41 diverse enzyme active sites:
+The repository includes the MCSA-40 benchmark — 40 diverse enzyme active sites:
 
 ```bash
 # Standard MCSA benchmark (with ligands)
 python proteinfoundation/generate.py \
-    inputs=benchmarks/mcsa_41.json \
+    inputs=benchmarks/mcsa_40.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
     num_replicates=100
 
 # Without ligands
 python proteinfoundation/generate.py \
-    inputs=benchmarks/mcsa_41_no_ligand.json \
+    inputs=benchmarks/mcsa_40_no_ligand.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
     num_replicates=100
 
 # With fixed ligand coordinates
 python proteinfoundation/generate.py \
-    inputs=benchmarks/mcsa_41_fixed_ligand.json \
+    inputs=benchmarks/mcsa_40_fixed_ligand.json \
     ckpt_path=./checkpoints \
     ckpt_name=model.ckpt \
     num_replicates=100

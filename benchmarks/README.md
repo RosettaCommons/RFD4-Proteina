@@ -77,7 +77,7 @@ The report is regenerated each run and written to `benchmarks/conversion_failure
 
 | Directory | Contents | Converted? |
 |-----------|----------|------------|
-| `mcsa_41/` | Catalytic site atlas structures (41 cases) | ✅ Yes |
+| `mcsa_40/` | Catalytic site atlas structures (40 cases) | ✅ Yes |
 | `dna_pdbs/` | DNA/RNA structures | ⚠️ Partial |
 | `motif_data_aa/` | Motif scaffolding templates | ✅ Yes |
 | `complexa_targets/alpha_proteo_targets/` | Target structures for ComplexA binder design | ⚠️ Partial |
@@ -116,9 +116,9 @@ The source of ground truth for all converted structures is the **RCSB PDB asymme
 
 - **`complexa_targets/bindcraft_targets/`** — Many of these are de novo designed proteins with no RCSB counterpart. Structures without a detectable PDB ID are parsed directly and written as CIF without any RCSB lookup or alignment. **Two exceptions** (`9hag` → `BBF-14_9hag.cif`, `2lag` → `IFNAR2_2lag.cif`) were manually subsetted from their RCSB PDB entries to match the target region used in binder design.
 - **`rfbench/sm_binder/`** — These are only used for their small molecules in any benchmarks, and the proteins do not match the associated RCSB PDB entry. Protein atoms are excluded; only the ligand is retained.
-- **mcsa_41/M0731_1mt5.pdb** - This PDB ID failed tmol-based sanitization, so it was subsetted directly from the RCSB reference.
-- **mcsa_41/M0255_1mg5.pdb** & **mcsa_41/M0375_3ts9.pdb** - These PDB IDs contained crystallization aids (ACT and PO4) which had been removed from the reparsed PDB, so they were subsetted directly from the RCSB reference.
-- **mcsa_41/M0907_1rbl.pdb** - This benchmark example had two issues: 1) It contained the crystallization aid FMT so could not be subsetted from the reparsed PDB. This was handled by falling back to the RCSB reference. 2) The mapping algorithm failed to find a low-rmsd state. This is because the closest matching conformers actually came from two different regions of the extremely symmetric `asym_unit`, leading to a high overall RMSD. This was handled manually, leading to a near-zero rmsd.
+- **mcsa_40/M0731_1mt5.pdb** - This PDB ID failed tmol-based sanitization, so it was subsetted directly from the RCSB reference.
+- **mcsa_40/M0255_1mg5.pdb** & **mcsa_40/M0375_3ts9.pdb** - These PDB IDs contained crystallization aids (ACT and PO4) which had been removed from the reparsed PDB, so they were subsetted directly from the RCSB reference.
+- **mcsa_40/M0907_1rbl.pdb** - This benchmark example had two issues: 1) It contained the crystallization aid FMT so could not be subsetted from the reparsed PDB. This was handled by falling back to the RCSB reference. 2) The mapping algorithm failed to find a low-rmsd state. This is because the closest matching conformers actually came from two different regions of the extremely symmetric `asym_unit`, leading to a high overall RMSD. This was handled manually, leading to a near-zero rmsd.
 ---
 
 ## What Was Not Converted
