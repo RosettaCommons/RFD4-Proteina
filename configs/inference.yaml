@@ -27,6 +27,7 @@ num_replicates: 1 # Number of times to replicate each example
 batch_size: 1
 subset_to_examples: null # If specified, only run inference on these example indices
 seed: null # Will set a random seed if null
+torch_deterministic: false  # Locks cuDNN/cuBLAS to deterministic algorithms; significantly reduces throughput
 skip_existing: false # If true, skip examples whose output structure files already exist in the output directory
 metrics_tags: [] # If specified, determines which metrics are computed during inference
 

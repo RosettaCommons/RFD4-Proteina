@@ -1,5 +1,5 @@
 {
   "seed": 42,
   "n_gpus": 1,
-  "n_cifs": 4
+  "n_cifs": 2
 }

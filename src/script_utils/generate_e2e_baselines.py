@@ -160,7 +160,7 @@ def generate_training_baseline(
         "log.log_wandb=false",
         "log.log_every_n_steps=1",
         "seed=42",
-        "deterministic_training=true",
+        "torch_deterministic=true",
         "opt.val_start_epoch=999",
         # num_workers=0: parallel workers deliver batches in OS-scheduler-dependent
         # order; two runs with the same seed see different data.  Single-threaded
@@ -219,6 +219,7 @@ def generate_inference_baseline(sota_ckpt: Path) -> None:
         "~metrics/refolding_oracles",
         "generation.dataset.num_replicates=1",
         "seed=42",
+        "torch_deterministic=true",
         "+single=true",
     ]
 
@@ -252,7 +253,7 @@ def generate_beam_search_baseline(sota_ckpt: Path) -> None:
     base_cmd = [
         PYTHON,
         "proteinfoundation/generate.py",
-        "inference_experiment=inference_beam_example",
+        "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
         f"ckpt_path={ckpt_dir}",
         f"ckpt_name={ckpt_name}",
@@ -265,6 +266,7 @@ def generate_beam_search_baseline(sota_ckpt: Path) -> None:
         # stable across machines and mount points.
         "generation.val_set_name_override=beam_example",
         "seed=42",
+        "torch_deterministic=true",
         "+single=true",
     ]
 

@@ -38,7 +38,7 @@ from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder  # noq
 from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
 from proteinfoundation.utils.simple_ema import EMAModelCheckpoint  # noqa: E402
-from proteinfoundation.utils.torch_utils import apply_deterministic_training  # noqa: E402
+from proteinfoundation.utils.torch_utils import apply_torch_deterministic  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -305,8 +305,8 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Fully deterministic mode — MUST come after model init, because model.__init__
     # may call _configure_flash_attention_backends() which re-enables Flash SDP.
-    if cfg_exp.deterministic_training:
-        apply_deterministic_training(logger)
+    if cfg_exp.torch_deterministic:
+        apply_torch_deterministic(logger)
 
     # logger
     train_logger: WandbLogger | CSVLogger | None = None

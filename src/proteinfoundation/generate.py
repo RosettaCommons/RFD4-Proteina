@@ -31,6 +31,7 @@ from proteinfoundation.inference_utils.input_parsing import InputSpecification
 from proteinfoundation.proteina import Proteina
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.utils.simple_ema import SimpleEMA
+from proteinfoundation.utils.torch_utils import apply_torch_deterministic
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project
@@ -631,6 +632,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
     # Load model and EMA callback
     model, ema_callback = load_ckpt_n_configure_inference(cfg)
     model.inference_seed = cfg.seed
+
+    # Fully deterministic mode — MUST come after model init, because model.__init__
+    # may call _configure_flash_attention_backends() which re-enables Flash SDP.
+    if cfg.get("torch_deterministic", False):
+        apply_torch_deterministic(logger)
 
     dataset = get_dataset_from_cfg(cfg, job_id)
 
