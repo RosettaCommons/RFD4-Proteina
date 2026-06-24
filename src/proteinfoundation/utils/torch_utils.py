@@ -5,15 +5,15 @@ import logging
 import torch
 
 
-def apply_deterministic_training(logger: logging.Logger) -> None:
-    """Enable fully deterministic CUDA operations for reproducible training.
+def apply_torch_deterministic(logger: logging.Logger) -> None:
+    """Enable fully deterministic CUDA operations for reproducible runs.
 
     Must be called after model init — model.__init__ may call
     _configure_flash_attention_backends() which re-enables Flash SDP.
     """
     logger.warning(
-        "deterministic_training=true: disabling Flash/mem-efficient SDP and locking cuDNN "
-        "algorithm selection. This can significantly reduce training throughput."
+        "torch_deterministic=true: disabling Flash/mem-efficient SDP and locking cuDNN "
+        "algorithm selection. This can significantly reduce throughput."
     )
     torch.use_deterministic_algorithms(True, warn_only=True)
     torch.backends.cudnn.deterministic = True

@@ -58,6 +58,7 @@ def deterministic_env() -> dict[str, str]:
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{project_root}:{existing}" if existing else project_root
     env["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    env["CUBLAS_DETERMINISTIC"] = "1"
     env["PYTHONHASHSEED"] = "0"
     env["WANDB_MODE"] = "disabled"
     return env

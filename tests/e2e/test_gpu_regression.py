@@ -75,7 +75,7 @@ def _run_training(
             "log.log_wandb=false",
             "log.log_every_n_steps=1",
             "seed=42",
-            "deterministic_training=true",
+            "torch_deterministic=true",
             "dataloaders.num_workers=0",
             "dataloaders.prefetch_factor=null",
             "dataloaders.multiprocessing_context=null",
@@ -117,6 +117,7 @@ def _run_inference(run_name: str) -> Path:
         f"run_name_={run_name}",
         f"out_dir={out_dir}",
         "seed=42",
+        "torch_deterministic=true",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())
@@ -134,7 +135,7 @@ def _run_beam_search(run_name: str) -> Path:
     cmd = [
         PYTHON,
         "proteinfoundation/generate.py",
-        "inference_experiment=inference_beam_example",
+        "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
         f"ckpt_path={ckpt_dir}",
         f"ckpt_name={ckpt_name}",
@@ -147,6 +148,7 @@ def _run_beam_search(run_name: str) -> Path:
         f"run_name_={run_name}",
         f"out_dir={out_dir}",
         "seed=42",
+        "torch_deterministic=true",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())

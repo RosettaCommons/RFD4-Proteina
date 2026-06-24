@@ -81,4 +81,4 @@ log:
   local_projection_dir: ./latent_projections  # Directory for saved plots
 
 seed: 42
-deterministic_training: false  # Enable for regression tests; significantly reduces training throughput
+torch_deterministic: false  # Locks cuDNN/cuBLAS to deterministic algorithms; significantly reduces throughput

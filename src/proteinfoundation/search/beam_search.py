@@ -274,8 +274,11 @@ class BeamSearchStrategy(SearchStrategy):
             rewards_reshaped = rewards.view(self.n_branch, self.beam_width, nsamples)
             rewards_for_selection = rewards_reshaped.permute(2, 0, 1).reshape(nsamples, self.n_branch * self.beam_width)
 
-            # Top-k selection for beam search
-            top_k_indices = torch.topk(rewards_for_selection, k=self.beam_width, dim=1)[1]
+            # Top-k selection for beam search.
+            # stable=True guarantees deterministic tie-breaking (lower index wins)
+            top_k_indices = torch.argsort(rewards_for_selection, dim=1, descending=True, stable=True)[
+                :, : self.beam_width
+            ]
 
             # Convert flat indices to replica and branch indices
             replica_indices = top_k_indices % self.beam_width  # [nsamples, beam_width]
