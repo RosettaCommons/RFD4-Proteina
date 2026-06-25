@@ -1,7 +1,7 @@
 batch_size: 16
 num_workers: 16
-prefetch_factor: 1
-pin_memory: False
+prefetch_factor: 2
+pin_memory: True
 multiprocessing_context: 'spawn'
 
 metrics:

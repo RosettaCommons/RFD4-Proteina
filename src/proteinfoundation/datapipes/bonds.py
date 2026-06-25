@@ -4,13 +4,14 @@ Extracted from :py:mod:`~proteinfoundation.datapipes.pipeline` to keep that
 module focused on transform composition.
 """
 
-import networkx as nx
 import numpy as np
 from atomworks.constants import BIOTITE_BOND_TYPE_TO_BOND_ORDER
 from atomworks.ml.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import get_token_starts, spread_token_wise
 from biotite.structure import AtomArray
 from biotite.structure.bonds import BondType
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import shortest_path
 
 from proteinfoundation.conditions import C_IDXGRP
 
@@ -100,21 +101,24 @@ def _compute_token_path_lengths(
         int16 array, shape ``[len(source_indices), len(source_indices)]``.
         0 = unreached (disconnected or beyond cutoff).
     """
-    g = nx.Graph()
-    g.add_edges_from(zip(tok1.tolist(), tok2.tolist(), strict=False))
-
     n_sources = len(source_indices)
-    node_to_col = {int(node): col for col, node in enumerate(source_indices)}
-
     dist = np.zeros((n_sources, n_sources), dtype=np.int16)
-    for i, src in enumerate(source_indices):
-        src = int(src)
-        if src not in g:
-            continue  # isolated token — distances stay 0
-        for target_node, d in nx.single_source_shortest_path_length(g, src, cutoff=path_length_cutoff).items():
-            col = node_to_col.get(target_node)
-            if d > 0 and col is not None:
-                dist[i, col] = d
+    if n_sources == 0 or len(tok1) == 0:
+        return dist
+
+    # Multi-source BFS via scipy csgraph (same hop counts as the old networkx loop, much faster).
+    n_nodes = max(int(tok1.max()), int(tok2.max()), int(source_indices.max())) + 1
+    rows = np.concatenate([tok1, tok2])
+    cols = np.concatenate([tok2, tok1])
+    adj = coo_matrix((np.ones(rows.shape[0], dtype=np.int8), (rows, cols)), shape=(n_nodes, n_nodes)).tocsr()
+    d = shortest_path(adj, method="D", unweighted=True, directed=False, indices=source_indices)  # [n_sources, n_nodes]
+    sub = d[:, source_indices]  # [n_sources, n_sources]
+
+    # Keep hop counts 1..cutoff; self/unreachable/beyond-cutoff stay 0.
+    valid = np.isfinite(sub) & (sub > 0)
+    if path_length_cutoff is not None:
+        valid &= sub <= path_length_cutoff
+    dist[valid] = sub[valid].astype(np.int16)
     return dist
 
 
