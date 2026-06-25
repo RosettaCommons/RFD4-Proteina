@@ -614,13 +614,15 @@ class InputSpecification(BaseModel):
           and all atoms for residues 3-10 in chain A.
     '''.replace('\t\t', '\t')
     )
-    select_unfixed_sequence: InputSelection | None = Field(None, description='''Components to unfix sequence for.
-        - True (default when inputs provided): All atoms from the input have fixed sequences by default.
-        - False: All atoms pulled from the input have diffused sequences by default.
-        - ContigStr: Components to unfix sequence for, e.g. "A5-10,B1-3" unfixes sequence for residues
-          5-10 in chain A and residues 1-3 in chain B.
+    select_unfixed_sequence: InputSelection | None = Field(None, description='''Components to *unfix*
+        (diffuse / redesign) sequence for. Contig-selected input (motif/context) tokens are
+        sequence-conditioned ("fixed") by default; this selection opts specific components out.
+        Freshly generated (non-motif) residues are always diffused.
+        - False (default): unfix nothing -> all contig-selected input tokens keep fixed sequence.
+        - True: unfix everything -> all contig-selected input tokens have diffused sequence.
+        - ContigStr: e.g. "A5-10,B1-3" diffuses sequence for residues 5-10 in chain A and 1-3 in
+          chain B; all other input tokens stay fixed.
         - Dictionary: Allowed but not recommended.
-        NOTE: Excludes ligands (ligands / DNA always has fixed sequence).
     '''.replace('\t\t', '\t')
     )
     # Assignments of conditioning annotations
