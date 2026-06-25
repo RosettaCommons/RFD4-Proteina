@@ -21,3 +21,12 @@ oracle_ppi:
   required_tags_any:
     - ppi_refolding
 
+# Protein-DNA binder refolding (DNA held fixed as template). Same config as
+# oracle_ppi but gated by dna_refolding so it produces oracle_dna.* COI metrics.
+oracle_dna:
+  _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
+  oracle_name: af3_dna
+  template_annotations: [mask_coordinate_1_atom]
+  required_tags_any:
+    - dna_refolding
+

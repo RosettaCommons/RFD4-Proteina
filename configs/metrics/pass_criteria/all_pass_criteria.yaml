@@ -22,6 +22,16 @@ ppi:
       max: 2.5
   required_tags_any: [ppi_refolding]
 
+dna:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  # This comes from discussion with Enisha about what designs the DNA binder design team would take to the next round for af3 recycling.
+  metric_thresholds:
+    oracle_dna.min_ipae_coi:
+      max: 1.5
+    refolded_target_aligned_binder_rmsd.rmsd:
+      max: 8.0
+  required_tags_any: [dna_refolding]
+
 motif_scaffold:
   _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
