@@ -381,18 +381,21 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         ###########################################################
 
         # +------ Sequence conditioning (residue type conditioned) ------+
-        # C_SEQ.annotation returns actual residue names where conditioned, atomworks.constants.MASKED where not
-        aa_conditioned = aa.copy()
-        aa_conditioned.res_name = C_SEQ.annotation(aa, default="generate")
-
-        feats[C_SEQ.full_name] = atom_array_to_encoded_resnames(
-            aa_conditioned, UNIFIED_ATOM37_ENCODING, atomize_token="<A>"
-        )  # [L]
+        # Derive C_SEQ from residue_type to skip a redundant encode pass + AtomArray copy.
+        seq_cond_mask = C_SEQ.mask(aa, default="raise")  # [L] True where seq-conditioned
+        _mask_token_name = (
+            MASKED
+            if MASKED in UNIFIED_ATOM37_ENCODING.token_to_idx
+            else UNIFIED_ATOM37_ENCODING.resolve_unknown_token_name(MASKED, False)
+        )
+        c_seq_encoded = feats["residue_type"].copy()  # [L]
+        c_seq_encoded[(~seq_cond_mask) & (~aa.atomize)] = UNIFIED_ATOM37_ENCODING.token_to_idx[_mask_token_name]
+        feats[C_SEQ.full_name] = c_seq_encoded  # [L]
 
         # Elements are provided if they are part of a sequence conditioned token (which should already include
         # ligands and DNA/RNA). If the token is not sequence conditioned, we pass through the auto-encoder without
         # element information, but we'll remove it here to be thorough
-        element_mask = C_SEQ.mask(aa, default="raise")
+        element_mask = seq_cond_mask
         feats["element"] = np.full(aa.array_length(), -1, dtype=np.int32)
         if any(element_mask):
             feats["element"][element_mask] = aa.atomic_number[element_mask]  # [L]

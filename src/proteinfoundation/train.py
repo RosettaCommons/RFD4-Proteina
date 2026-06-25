@@ -41,6 +41,7 @@ from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E40
 from proteinfoundation.utils.logging import save_config_html  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
 from proteinfoundation.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
+from proteinfoundation.utils.torch_compile_utils import SaveCompileCacheCallback, load_compile_cache  # noqa: E402
 from proteinfoundation.utils.torch_utils import apply_torch_deterministic  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -338,6 +339,7 @@ def main(cfg_exp: DictConfig) -> None:
     # Torch compile settings
     torch._dynamo.config.inline_inbuilt_nn_modules = True
     torch._inductor.config.coordinate_descent_tuning = True
+    load_compile_cache()  # reuse compiled kernels across runs if a Mega-Cache blob exists
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
@@ -417,6 +419,7 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Add per-rank seeding callback to ensure RNG diversity across GPUs
     callbacks.append(RankSeedCallback(base_seed=cfg_exp.seed))
+    callbacks.append(SaveCompileCacheCallback())
     val_start_epoch = cfg_exp.opt.get("val_start_epoch", 0)
     if val_start_epoch and val_start_epoch > 0:
         callbacks.append(

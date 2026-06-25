@@ -25,6 +25,10 @@ dataset:
     assembly_id_colname: None
     parser_args:
       _target_: proteinfoundation.utils.parse_presets.distillation
+      # Cache parsed structures to node-local NVMe
+      save_to_cache: true
+      load_from_cache: true
+      cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/atomworks_parse_cache
 
   columns_to_load:
     - example_id
