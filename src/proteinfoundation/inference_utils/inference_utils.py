@@ -92,7 +92,11 @@ NA_BACKBONE_ATOM_NAME_TO_ELEMENT = dict(zip(BACKBONE_ATOM_NAMES_RNA, BACKBONE_AT
 # way to quickly get signal.
 
 REQUIRED_CONDITIONING_ANNOTATION_VALUES = {
-    "is_motif_atom_with_fixed_seq": False,
+    # Input (contig-selected motif/context) tokens keep their sequence by default; redesign opts out
+    # via `redesign_motif_sidechains` / `select_unfixed_sequence`. Must be True so that, with the
+    # keep-current `apply_selections` semantics, an unspecified/False `select_unfixed_sequence` leaves
+    # motif tokens sequence-conditioned (and, via pipeline element_mask=C_SEQ.mask, element-conditioned).
+    "is_motif_atom_with_fixed_seq": True,
     "is_motif_atom_with_fixed_coord": False,
     "is_motif_atom_unindexed": False,
     "is_motif_atom_unindexed_motif_breakpoint": False,
