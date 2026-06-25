@@ -25,3 +25,15 @@ oracle_ppi:
   template_annotations: [mask_coordinate_1_atom]
   required_tags_any:
     - ppi_refolding
+
+# Protein-DNA binder refolding (DNA held fixed as template). Same config as
+# oracle_ppi but gated by dna_refolding so it produces oracle_dna.* COI metrics.
+oracle_dna:
+  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  oracle_name: rf3_dna
+  ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
+  num_steps: 50
+  n_recycles: 5
+  template_annotations: [mask_coordinate_1_atom]
+  required_tags_any:
+    - dna_refolding

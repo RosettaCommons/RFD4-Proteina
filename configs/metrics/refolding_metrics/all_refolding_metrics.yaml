@@ -10,6 +10,7 @@ refolded_backbone_rmsd:
   required_tags_any:
     - unconditional_refolding
     - ppi_refolding
+    - dna_refolding
     - motif_scaffold_refolding
     - internal_coordinate_motif_scaffold_refolding
     - sm_binder_refolding
@@ -22,7 +23,7 @@ refolded_target_aligned_binder_rmsd:
   align_mask: mask_coordinate_1_atom
   subset_mask: ~mask_coordinate_1_atom
   metric_type: rmsd
-  required_tags_any: [ppi_refolding]
+  required_tags_any: [ppi_refolding, dna_refolding]
 
 refolded_motif_allatom_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
