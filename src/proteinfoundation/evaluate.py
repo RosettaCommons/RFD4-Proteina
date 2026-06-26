@@ -66,6 +66,17 @@ def run_evaluate(cfg: DictConfig) -> None:
     if not structure_files:
         raise ValueError(f"No structure files found in {cfg.inputs}")
 
+    task_csv_path = cfg.get("task_csv")
+    filename_to_task: dict[str, str] = {}
+    if task_csv_path is not None:
+        task_df = pd.read_csv(task_csv_path)
+        if "designed_structure_path" not in task_df.columns or "task" not in task_df.columns:
+            raise ValueError(f"task_csv {task_csv_path} must have 'designed_structure_path' and 'task' columns")
+        filename_to_task = dict(zip(task_df["designed_structure_path"], task_df["task"], strict=False))
+        logger.info(f"Loaded task assignments for {len(filename_to_task)} files from {task_csv_path}")
+    else:
+        logger.warning("No task_csv provided; all structures will be assigned task='all'")
+
     job_id = cfg.get("job_id")
     if exists(job_id):
         total = len(structure_files)
@@ -91,6 +102,7 @@ def run_evaluate(cfg: DictConfig) -> None:
     pass_mm = _mm("pass_criteria")
     pre_oracle_filter_mm = _mm("pre_oracle_filters")
 
+    dataset_name = inputs_dir.name
     design_results: list[dict] = []
     parsed_arrays: dict[str, tuple[Path, object]] = {}
 
@@ -101,6 +113,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         rel = structure_file.relative_to(inputs_dir)
         rel_hash = hashlib.md5(str(rel).encode()).hexdigest()[:8]
         example_id = f"{rel_hash}__{rel.name.split('.')[0]}"
+        task = filename_to_task.get(str(structure_file), "all")
         try:
             atom_array = parse(structure_file, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
         except Exception as e:
@@ -109,6 +122,8 @@ def run_evaluate(cfg: DictConfig) -> None:
         parsed_arrays[example_id] = (structure_file, atom_array)
         result: dict = {
             "example_id": example_id,
+            "dataset_name": dataset_name,
+            "task": task,
             "designed_structure_path": str(structure_file),
             "output_base_dir": str(samples_dir),
             "metrics_tags": ",".join(metrics_tags or []),
@@ -124,10 +139,10 @@ def run_evaluate(cfg: DictConfig) -> None:
                 link.symlink_to(structure_file.absolute())
         except Exception as e:
             logger.warning(f"evaluate: failed to symlink structure for {example_id}: {e}")
-        # Write chain-of-interest CIF under foldseek_input_chains/ so aggregate_metrics.py can
-        # run foldseek easy-cluster on evaluation_samples/foldseek_input_chains/ recursively.
+        # Write chain-of-interest CIF under foldseek_input_chains/{ds_hash}/{task}/ so that
+        # _partition_groups can discover and route the correct files to each foldseek job.
         try:
-            chains_dir = example_chain_dir(samples_dir, example_id)
+            chains_dir = example_chain_dir(samples_dir, example_id, dataset_name=dataset_name, task=task)
             chains_dir.mkdir(parents=True, exist_ok=True)
             chain_cif = _write_chain_only_cif_if_unambiguous(atom_array, example_id, chains_dir)
             if chain_cif is not None:

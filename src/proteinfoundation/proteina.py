@@ -1068,8 +1068,12 @@ class Proteina(L.LightningModule):
 
             # Add dataset_name and task as metadata
             metrics_output["dataset_name"] = dataset_name
-            task_base = generation_list[i].get("raw_batch_id", raw_batch_id)
-            metrics_output["task"] = "_".join(task_base.split("_")[:-1])
+            task_batch = batch.get("task_batch") or []
+            if orig_batch_idx < len(task_batch) and task_batch[orig_batch_idx]:
+                metrics_output["task"] = task_batch[orig_batch_idx]
+            else:
+                task_base = generation_list[i].get("raw_batch_id", raw_batch_id)
+                metrics_output["task"] = "_".join(task_base.split("_")[:-1])
 
             # Add seed used for generation
             if self.inference_seed is not None:

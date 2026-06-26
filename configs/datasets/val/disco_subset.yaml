@@ -1,0 +1,33 @@
+compute_loss: true
+
+dataset:
+  _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths:
+    # Mirrors of sm_binder benchmark examples (variable-length contig 100-155)
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/flavin_adenine_dinucleotide_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/IAI_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/OQO_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/s-adenosylmethionine_final_0.cif
+    # Metallo-organic examples (Fe, Mg, Co)
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/heme_b_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/chlorophyll_a_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/vitamin_b12_final_0.cif
+    # Requested CCD codes available in studio_179
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/biotin_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/estradiol_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/cholesterol_final_0.cif
+    # Diverse organic ligands
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/NAD_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/PLP_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/retinal_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/staurosporine_final_0.cif
+    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/colchicine_final_0.cif
+
+  num_replicates: 100
+
+  transform:
+    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - sm_binder_refolding # Stricter, includes confidences
+      - disco_refolding # Looser, rmsd only

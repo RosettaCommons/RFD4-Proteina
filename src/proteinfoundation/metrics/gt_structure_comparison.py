@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 from atomworks.enums import ChainType
+from atomworks.io.transforms.atom_array import add_id_and_entity_annotations, add_iid_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, AtomArrayPlusStack, as_atom_array_plus_stack
 from atomworks.io.utils.query import QueryExpression
 from atomworks.ml.conditions import C_DIS
@@ -616,3 +617,183 @@ STRUCTURE_COMPARISON_METRICS = {
     "rmsd": compute_rmsd,
     "dist_mae": compute_distance_mae,
 }
+
+
+def _get_ligand_molecules(
+    arr: AtomArray,
+) -> tuple[list[np.ndarray], list[frozenset]]:
+    """Get centroids and residue-name fingerprints for each unique ligand molecule.
+
+    Molecules are grouped by ``molecule_id`` recomputed from connectivity that
+    **includes** coordination bonds.
+
+    Args:
+        arr: Atom array with ``is_ligand`` annotation already present.
+
+    Returns:
+        Pair of parallel lists ``(centroids, fingerprints)``, one entry per ligand
+        molecule sorted by molecule identifier.  Both lists are empty if no ligand
+        atoms are present.
+    """
+    lig = arr[arr.is_ligand.astype(bool)]
+    if len(lig) == 0:
+        return [], []
+
+    # Recompute pn_unit_id + molecule_id including coordination bonds on a copy
+    # so that metals and their coordinating ligand atoms are grouped into one molecule
+    if lig.bonds is not None:
+        lig = lig.copy()
+        lig = add_id_and_entity_annotations(lig, overwrite=True, exclude_bond_types=None)
+        if "transformation_id" in lig.get_annotation_categories():
+            lig = add_iid_annotations(lig, overwrite=True)
+            mol_id = lig.molecule_iid
+        else:
+            mol_id = lig.molecule_id
+    else:
+        mol_id = lig.molecule_iid if "molecule_iid" in lig.get_annotation_categories() else lig.molecule_id
+
+    centroids, fingerprints = [], []
+    for mid in sorted(np.unique(mol_id)):
+        mol_atoms = lig[mol_id == mid]
+        centroids.append(np.mean(mol_atoms.coord, axis=0))
+        fingerprints.append(frozenset(mol_atoms.res_name.tolist()))
+    return centroids, fingerprints
+
+
+class LigandCentroidDistanceMetric(Metric):
+    """Compute the distance between GT and refolded ligand centroids after backbone alignment.
+
+    For each ligand molecule in the structure, the Euclidean distance between the
+    ground-truth centroid and the refolded centroid is computed after aligning the
+    two structures on a chosen backbone selection. Multiple ligands are reduced to a
+    single scalar via the specified aggregation function.
+
+    Args:
+        align_mask: Query string used to align structures before computing centroids.
+            Defaults to ``"is_protein_backbone"``.
+        aggregation: How to reduce distances across multiple ligands.
+            One of ``"mean"``, ``"min"``, or ``"max"``.
+        input_kwarg_names: Mapping from :py:meth:`compute` parameter names to input
+            kwarg names. Defaults to the standard GT/pred pair.
+    """
+
+    def __init__(
+        self,
+        align_mask: str = "is_protein_backbone",
+        aggregation: Literal["mean", "min", "max"] = "mean",
+        input_kwarg_names: dict[str, str] | None = None,
+        **kwargs,
+    ):
+        self._input_kwarg_names = input_kwarg_names or {
+            "ground_truth_atom_array": "ground_truth_atom_array",
+            "predicted_atom_array": "predicted_atom_array",
+        }
+        super().__init__(**kwargs)
+        self.align_mask = align_mask
+        self.aggregation = aggregation
+        if aggregation == "mean":
+            self._agg_fn = np.mean
+        elif aggregation == "min":
+            self._agg_fn = np.min
+        elif aggregation == "max":
+            self._agg_fn = np.max
+        else:
+            raise ValueError(f"Invalid aggregation '{aggregation}'. Must be one of: mean, min, max")
+
+    @property
+    def kwargs_to_compute_args(self) -> dict[str, Any]:
+        return self._input_kwarg_names
+
+    def compute(
+        self,
+        ground_truth_atom_array: AtomArray
+        | AtomArrayStack
+        | AtomArrayPlus
+        | AtomArrayPlusStack
+        | list[AtomArray | AtomArrayPlus],
+        predicted_atom_array: AtomArray
+        | AtomArrayStack
+        | AtomArrayPlus
+        | AtomArrayPlusStack
+        | list[AtomArray | AtomArrayPlus],
+    ) -> dict[str, float]:
+        """Compute centroid distances between GT and refolded ligand molecules.
+
+        Args:
+            ground_truth_atom_array: Ground truth atom array or stack.
+            predicted_atom_array: Predicted atom array or stack.
+
+        Returns:
+            Dict with key ``"ligand_centroid_distance"`` mapping to the aggregated
+            distance (in Ångströms) averaged over the stack.  Returns an empty dict
+            if alignment fails.
+        """
+        gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
+        pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
+
+        annotations_to_ensure = [*_extract_annotation_names(self.align_mask), "is_ligand"]
+        ensure_annotations(gt_stack, *annotations_to_ensure)
+        ensure_annotations(pred_stack, *annotations_to_ensure)
+
+        gt_stack, pred_stack = align_structures_by_annotations(gt_stack, pred_stack, self.align_mask)
+        if gt_stack is None or pred_stack is None:
+            return {}
+
+        per_sample_distances = []
+        for i in range(len(gt_stack)):
+            gt_centroids, gt_fps = _get_ligand_molecules(gt_stack[i])
+            pred_centroids, pred_fps = _get_ligand_molecules(pred_stack[i])
+
+            if len(gt_centroids) == 0 or len(pred_centroids) == 0:
+                per_sample_distances.append(np.nan)
+                continue
+
+            if len(gt_centroids) != len(pred_centroids):
+                ranked_logger.warning(
+                    f"GT has {len(gt_centroids)} ligand molecule(s) but predicted has "
+                    f"{len(pred_centroids)}. Returning NaN for this sample."
+                )
+                per_sample_distances.append(np.nan)
+                continue
+
+            # Ambiguity guard: two molecules with the same res-name fingerprint in the
+            # same structure would require symmetry resolution before we can match them.
+            if len(gt_fps) != len(set(gt_fps)):
+                dups = sorted({fp for fp in gt_fps if gt_fps.count(fp) > 1})
+                ranked_logger.warning(
+                    f"GT structure has duplicate ligand res-name sets {dups}. "
+                    "Matching is ambiguous; returning NaN for this sample."
+                )
+                per_sample_distances.append(np.nan)
+                continue
+            if len(pred_fps) != len(set(pred_fps)):
+                dups = sorted({fp for fp in pred_fps if pred_fps.count(fp) > 1})
+                ranked_logger.warning(
+                    f"Predicted structure has duplicate ligand res-name sets {dups}. "
+                    "Matching is ambiguous; returning NaN for this sample."
+                )
+                per_sample_distances.append(np.nan)
+                continue
+
+            # Sanity check: molecules paired by sorted molecule-ID order must share the
+            # same res-name fingerprint.  A mismatch means molecule IDs were renumbered
+            # in a way that changed the correspondence between structures.
+            fp_mismatches = [
+                (j, gt_fp, pred_fp)
+                for j, (gt_fp, pred_fp) in enumerate(zip(gt_fps, pred_fps, strict=False))
+                if gt_fp != pred_fp
+            ]
+            if fp_mismatches:
+                j, gt_fp, pred_fp = fp_mismatches[0]
+                ranked_logger.warning(
+                    f"Ligand molecule pair {j}: GT residue names {gt_fp} != "
+                    f"predicted {pred_fp}. Molecule IDs may have been mutated; "
+                    "returning NaN for this sample."
+                )
+                per_sample_distances.append(np.nan)
+                continue
+
+            dists = [float(np.linalg.norm(gc - pc)) for gc, pc in zip(gt_centroids, pred_centroids, strict=False)]
+            per_sample_distances.append(float(self._agg_fn(dists)))
+
+        return {"ligand_centroid_distance": float(np.nanmean(per_sample_distances))}

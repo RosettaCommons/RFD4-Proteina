@@ -18,7 +18,7 @@ from atomworks.ml.datasets import FileDataset, MolecularDataset
 from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
 from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 from biotite.structure import AtomArray
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from foundry.utils.ddp import RankedLogger
 from proteinfoundation.inference_utils.inference_utils import (
@@ -189,6 +189,7 @@ class ContigJsonDataset(MolecularDataset):
 
         # ... Wrap up with additional features
         data["example_id"] = example_id
+        data["task"] = "_".join(example_id.split("_")[:-1])
         if "extra" not in spec_dict:
             spec_dict["extra"] = {}
         spec_dict["extra"]["example_id"] = example_id
@@ -287,7 +288,7 @@ class DesignProblemDataset(FileDataset):
             num_replicates: Optional number of times to repeat each file in the dataset
         """
         # Ensure input is a list
-        if not isinstance(dir_path_or_file_paths, list):
+        if not isinstance(dir_path_or_file_paths, list | ListConfig):
             dir_path_or_file_paths = [dir_path_or_file_paths]
 
         # Assemble list of file paths
@@ -323,9 +324,10 @@ class DesignProblemDataset(FileDataset):
         # Build a list of base_id candidates
         all_parts = [get_base_id_parts(p) for p in self.file_paths]
         n_parts = [len(parts) for parts in all_parts]
-        min_parts = min(n_parts)
-        # Try with just the last part, then last two, etc, until unique
-        for k in range(1, min_parts + 1):
+        max_parts = max(n_parts)
+        # Try with just the last part, then last two, etc, until unique.
+        # Files with fewer parts than k naturally use their full stem via Python slice semantics.
+        for k in range(1, max_parts + 1):
             candidate_ids = ["-".join(parts[-k:]) for parts in all_parts]
             if len(set(candidate_ids)) == len(candidate_ids):
                 break
@@ -370,6 +372,7 @@ class DesignProblemDataset(FileDataset):
         # --- Use unique base_id logic ---
         base_id = self.base_ids[idx]
         data["example_id"] = f"{base_id}_rep{previous_occurrences}" if self.num_replicates > 1 else base_id
+        data["task"] = base_id
         _stop_parse_time = time.time()
 
         data = TransformedDict(data)

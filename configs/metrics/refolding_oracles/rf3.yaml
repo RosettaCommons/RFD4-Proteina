@@ -15,6 +15,7 @@ oracle:
     - ame_refolding
     - ame_no_ligand_refolding
     - ame_original_benchmark_refolding
+    - disco_refolding
 
 oracle_ppi:
   _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle

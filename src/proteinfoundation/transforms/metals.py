@@ -64,6 +64,14 @@ class IsolateMetalsToOwnChain(Transform):
         if "transformation_id" in atom_array.get_annotation_categories():
             atom_array = add_iid_annotations(atom_array, overwrite=True)
 
+        # Move metal atoms to the end so they don't interrupt chain/residue contiguity
+        metal_mask_final = np.isin(
+            np.char.upper(atom_array.element.astype(str)),
+            list(METAL_ELEMENTS),
+        )
+        reorder = np.concatenate([np.where(~metal_mask_final)[0], np.where(metal_mask_final)[0]])
+        atom_array = atom_array[reorder]
+
         data["atom_array"] = atom_array
         return data
 

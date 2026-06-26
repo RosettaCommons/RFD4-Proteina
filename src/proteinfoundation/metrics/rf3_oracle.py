@@ -275,6 +275,9 @@ class RF3Oracle(OracleMetric):
         for job in jobs:
             if self.already_refolded(job.out_dir, job.example_id):
                 continue
-            self.fold_one(job)
-            n_ok += 1
+            try:
+                self.fold_one(job)
+                n_ok += 1
+            except Exception as e:
+                logger.warning(f"RF3Oracle: fold_one failed for {job.example_id!r}, skipping: {e}")
         return n_ok
