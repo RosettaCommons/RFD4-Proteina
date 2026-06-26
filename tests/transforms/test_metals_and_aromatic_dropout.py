@@ -59,17 +59,23 @@ def test_isolate_metals_moves_zn_to_own_chain_and_rebonds_as_coordination():
     data = IsolateMetalsToOwnChain().forward({"atom_array": atom_array})
     out = data["atom_array"]
 
+    # Metals are moved to the end; find Zn by element rather than by position
+    zn_indices = np.where(np.char.upper(out.element.astype(str)) == "ZN")[0]
+    assert len(zn_indices) == 1
+    zn_idx = zn_indices[0]
+    non_zn_indices = np.where(np.char.upper(out.element.astype(str)) != "ZN")[0]
+
     # Zn is now on a chain distinct from the ligand atoms
-    assert out.chain_id[0] != "A"
-    assert all(out.chain_id[i] == "A" for i in range(1, 5))
+    assert out.chain_id[zn_idx] != "A"
+    assert all(out.chain_id[i] == "A" for i in non_zn_indices)
 
     # res_name is the element symbol
-    assert out.res_name[0] == "ZN"
+    assert out.res_name[zn_idx] == "ZN"
 
     # Every bond touching Zn is now COORDINATION
     bond_arr = out.bonds.as_array()
     for i, j, btype in bond_arr:
-        if 0 in (i, j):
+        if zn_idx in (i, j):
             assert btype == int(struc.BondType.COORDINATION), f"bond {(i, j)} should be COORDINATION, got {btype}"
 
 

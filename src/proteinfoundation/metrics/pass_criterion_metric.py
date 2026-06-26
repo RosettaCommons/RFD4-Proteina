@@ -30,14 +30,14 @@ class PassCriterionMetric(Metric):
         >>> crit = PassCriterionMetric(
         ...     metric_thresholds={
         ...         "standard.plddt_coi": {"min": 70.0},
-        ...         "backbone_rmsd.rmsd": {"max": 2.0},
+        ...         "refolded_backbone_rmsd.rmsd": {"max": 2.0},
         ...     }
         ... )
-        >>> crit.compute({"standard.plddt_coi": 85.0, "backbone_rmsd.rmsd": 1.5})
+        >>> crit.compute({"standard.plddt_coi": 85.0, "refolded_backbone_rmsd.rmsd": 1.5})
         {"pass": 1.0, "all_metrics_present": 1.0}
-        >>> crit.compute({"standard.plddt_coi": 85.0, "backbone_rmsd.rmsd": 3.0})
+        >>> crit.compute({"standard.plddt_coi": 85.0, "refolded_backbone_rmsd.rmsd": 3.0})
         {"pass": 0.0, "all_metrics_present": 1.0}
-        >>> crit.compute({"standard.plddt_coi": 85.0})  # missing backbone_rmsd.rmsd
+        >>> crit.compute({"standard.plddt_coi": 85.0})  # missing refolded_backbone_rmsd.rmsd
         {"pass": 0.0, "all_metrics_present": 0.0}
     """
 

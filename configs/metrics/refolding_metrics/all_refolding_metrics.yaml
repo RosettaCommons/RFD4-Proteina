@@ -17,6 +17,7 @@ refolded_backbone_rmsd:
     - ame_refolding
     - ame_no_ligand_refolding
     - ame_original_benchmark_refolding
+    - disco_refolding
 
 refolded_target_aligned_binder_rmsd:
   _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -56,3 +57,9 @@ refolded_backbone_aligned_ligand_rmsd:
   subset_mask: is_ligand
   metric_type: rmsd
   required_tags_any: [sm_binder_refolding]
+
+max_ligand_centroid_distance:
+  _target_: proteinfoundation.metrics.gt_structure_comparison.LigandCentroidDistanceMetric
+  align_mask: is_protein_backbone
+  aggregation: max
+  required_tags_any: [disco_refolding]

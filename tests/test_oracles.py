@@ -266,7 +266,7 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     oracle_mm = MetricManager({"oracle": oracle})
     refold_mm = MetricManager(
         {
-            "backbone_rmsd": StructureComparisonMetric(
+            "refolded_backbone_rmsd": StructureComparisonMetric(
                 align_mask="is_protein_backbone",
                 subset_mask="is_protein_backbone",
                 metric_type="rmsd",
@@ -279,7 +279,7 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
         }
     )
     pass_mm = MetricManager(
-        {"unconditional": PassCriterionMetric(metric_thresholds={"backbone_rmsd.rmsd": {"max": 2.0}})}
+        {"unconditional": PassCriterionMetric(metric_thresholds={"refolded_backbone_rmsd.rmsd": {"max": 2.0}})}
     )
     for mm in [oracle_mm, refold_mm, pass_mm]:
         mm.on_validation_epoch_start()
@@ -324,12 +324,12 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     assert cif_path.exists(), "Oracle did not save refolded CIF"
 
     # Structure quality metrics
-    assert "backbone_rmsd.rmsd" in result
+    assert "refolded_backbone_rmsd.rmsd" in result
     assert "chain_a_rmsd.rmsd" in result
     assert "unconditional.pass" in result
     assert "unconditional.all_metrics_present" in result
     assert np.isfinite(result["oracle.overall_plddt"])
-    assert np.isfinite(result["backbone_rmsd.rmsd"])
+    assert np.isfinite(result["refolded_backbone_rmsd.rmsd"])
     assert result["unconditional.pass"] in (0.0, 1.0)
     assert result["unconditional.all_metrics_present"] in (0.0, 1.0)
 

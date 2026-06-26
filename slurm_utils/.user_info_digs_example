@@ -18,6 +18,9 @@ PARTITION="gpu"
 RUNTIME="12:00:00"
 CPUS_PER_TASK=4
 SIGNAL_TIME=600
+MEM=30G
+
+# GPU type on this cluster (used for training only)
 GPU_TYPE="L40"
 EXCLUDE_NODES=""
 SLURM_EXTRA_OPTIONS=""

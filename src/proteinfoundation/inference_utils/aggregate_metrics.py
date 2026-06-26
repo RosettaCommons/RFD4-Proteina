@@ -110,8 +110,11 @@ def concatenate_results(
     cleanup: bool = True,
     cleanup_chains: bool = True,
     output_dir: str | None = None,
+    foldseek_threads: int | None = None,
 ) -> None:
     """Concatenate per-example and aggregated metrics from multiple jobs.
+
+    Can also be used to run foldseek post-hoc by calling on the output dataframe.
 
     Args:
         input: Path to either the directory containing the individual job result files,
@@ -123,6 +126,9 @@ def concatenate_results(
             structures and can be regenerated, so removal is safe.
         output_dir: Directory where results should be saved. Defaults to the input directory
             (or parent directory when input is a file).
+        foldseek_threads: Number of CPU threads to pass to foldseek. Defaults to all
+            available CPUs. Set explicitly when running multiple clustering jobs in parallel
+            on the same node to avoid resource contention.
     """
     input = Path(input)
 
@@ -151,8 +157,15 @@ def concatenate_results(
 
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
+        # Drop any pre-existing foldseek columns so re-runs don't produce _x/_y duplicates.
+        _stale_tokens = ("foldseek_cluster_id", "unclustered_pass_rate", "clustered_pass_rate", "cluster_diversity")
+        stale_cols = [c for c in concatenated_per_example.columns if any(tok in c for tok in _stale_tokens)]
+        if stale_cols:
+            concatenated_per_example = concatenated_per_example.drop(columns=stale_cols)
         # Chains dirs are discovered from output_base_dir in the DataFrame (no hardcoded path).
-        concatenated_per_example = add_foldseek_diversity_to_per_example_df(concatenated_per_example)
+        concatenated_per_example = add_foldseek_diversity_to_per_example_df(
+            concatenated_per_example, threads=foldseek_threads
+        )
         concatenated_per_example = add_diversity_summary_metrics(concatenated_per_example)
         if cleanup_chains and "output_base_dir" in concatenated_per_example.columns:
             for base_dir in concatenated_per_example["output_base_dir"].dropna().unique():

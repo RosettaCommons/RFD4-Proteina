@@ -24,6 +24,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -130,21 +131,32 @@ def _serve(args: argparse.Namespace) -> int:
     os.chmod(sock_path, 0o600)
     print(f"[af3-daemon] listening on {sock_path} (pid={os.getpid()})", file=sys.stderr, flush=True)
 
-    # Spawn the warm worker before accepting connections; clients ping
-    # until ready while the socket listens.
     print(
         f"[af3-daemon] starting warm AF3 worker (gpu={args.gpu_device}, num_recycles={AF3_NUM_RECYCLES})",
         file=sys.stderr,
         flush=True,
     )
     worker = _spawn_warm_worker(args.batch_script, args.gpu_device)
-    try:
-        _wait_for_worker_ready(worker)
-        print(f"[af3-daemon] warm AF3 worker ready (pid={worker.pid})", file=sys.stderr, flush=True)
-    except Exception as exc:
-        print(f"[af3-daemon] warm worker failed: {exc}", file=sys.stderr, flush=True)
-        worker.terminate()
-        return 1
+
+    # Run warmup in a background thread so the socket can accept ping
+    # requests immediately. Without this, the launcher's _ping_until_ready
+    # (which only polls for ~15-75s) declares the daemon "failed to come up"
+    # while AF3 JIT compilation is still running (which can take several minutes
+    # on slower GPUs). Fold requests block on _worker_ready until warmup finishes.
+    _worker_ready = threading.Event()
+    _worker_errors: list[Exception] = []
+
+    def _warmup() -> None:
+        try:
+            _wait_for_worker_ready(worker)
+            print(f"[af3-daemon] warm AF3 worker ready (pid={worker.pid})", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"[af3-daemon] warm worker failed: {exc}", file=sys.stderr, flush=True)
+            _worker_errors.append(exc)
+        finally:
+            _worker_ready.set()
+
+    threading.Thread(target=_warmup, daemon=True, name="af3-warmup").start()
 
     try:
         while True:
@@ -159,13 +171,22 @@ def _serve(args: argparse.Namespace) -> int:
                 req = json.loads(data.decode())
                 cmd = req.get("cmd")
                 if cmd == "ping":
+                    # Respond immediately — even before warmup completes.
+                    # The launcher's _ping_until_ready only checks that a
+                    # response arrives, not its content.
                     resp = {"status": "ok"}
                 elif cmd == "shutdown":
                     conn.sendall((json.dumps({"status": "ok"}) + "\n").encode())
                     conn.close()
                     break
                 elif cmd == "fold":
-                    resp = _handle_fold(req, worker)
+                    # Block until the warm worker is ready (or failed).
+                    if not _worker_ready.wait(timeout=1200.0):
+                        resp = {"status": "error", "message": "AF3 worker warmup timed out after 1200s"}
+                    elif _worker_errors:
+                        resp = {"status": "error", "message": f"AF3 worker failed during warmup: {_worker_errors[0]}"}
+                    else:
+                        resp = _handle_fold(req, worker)
                 else:
                     resp = {"status": "error", "message": f"unknown cmd: {cmd}"}
                 conn.sendall((json.dumps(resp) + "\n").encode())
@@ -197,8 +218,11 @@ def _serve(args: argparse.Namespace) -> int:
 # ----------------------------------------------------------------------------
 
 _SOCKET_TEMPLATE = "/tmp/af3_{job_id}/af3_daemon_rank{rank}.sock"
-_PING_RETRIES = 30
-_PING_INTERVAL_S = 0.5
+# AF3 JIT compilation + model loading can take several minutes on slower GPUs.
+# Keep retries generous so the launcher doesn't declare failure during warmup.
+# Each retry: 2s socket timeout + _PING_INTERVAL_S sleep = ~7s -> 120 x 7 ~= 14 min.
+_PING_RETRIES = 120
+_PING_INTERVAL_S = 5.0
 
 
 def _socket_template() -> str:

@@ -16,7 +16,7 @@ base_config_overrides:
   - num_replicates=200
   - metrics/refolding_oracles=af3
 
-run_name_prefix: val_debug_af3
+run_name_prefix: offline_val_af3
 
 sweep_overrides:
   # Bulk motif scaffolding
@@ -30,6 +30,7 @@ sweep_overrides:
 
   # Small molecule and metal binding
   - "+datasets/val@generation=sm_binder"
+  - "+datasets/val@generation=studio_179"
 
   # Protein binder design
   - "+datasets/val@generation=ppi_subset"

@@ -1,12 +1,15 @@
 """AF3 structure prediction oracle."""
 
+import errno
 import io
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -15,6 +18,7 @@ from typing import Any
 import biotite.structure as struc
 import numpy as np
 import torch.distributed as dist
+from atomworks.constants import PROTEIN_BACKBONE_ATOM_NAMES
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.annotator import ensure_annotations
@@ -33,6 +37,34 @@ from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from scripts.af3_apptainer import build_apptainer_fold_command
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+# AF3 CCD validator requires _chem_comp_bond.* keys to be present even when a
+# residue has no intra-residue bonds (e.g. sulfide ions in Fe-S clusters).
+# An empty loop_ with just column headers satisfies the check; AF3's C++ CIF
+# parser registers the keys with empty value lists, and parse_bond_data()
+# handles empty lists gracefully.
+_CHEM_COMP_BOND_EMPTY_LOOP = (
+    "loop_\n"
+    "_chem_comp_bond.atom_id_1\n"
+    "_chem_comp_bond.atom_id_2\n"
+    "_chem_comp_bond.value_order\n"
+    "_chem_comp_bond.pdbx_aromatic_flag\n"
+)
+
+
+def _inject_empty_chem_comp_bond(cif_str: str) -> str:
+    """Inject an empty _chem_comp_bond loop into any CIF block that lacks one."""
+
+    def _process_block(block: str) -> str:
+        if "_chem_comp_bond.atom_id_1" in block:
+            return block
+        stripped = block.rstrip()
+        if stripped.endswith("#"):
+            return stripped[:-1] + _CHEM_COMP_BOND_EMPTY_LOOP + "#\n"
+        return stripped + "\n" + _CHEM_COMP_BOND_EMPTY_LOOP
+
+    parts = re.split(r"(?=^data_)", cif_str, flags=re.MULTILINE)
+    return "".join(_process_block(p) if p.startswith("data_") else p for p in parts)
 
 
 def _resolve_local_rank() -> int:
@@ -67,22 +99,42 @@ def _resolve_gpu_device(local_rank: int) -> int:
     return int(visible[local_rank])
 
 
-def _send_to_daemon(daemon_sock: str, request: dict, *, timeout_s: float = 3600.0) -> dict:
-    """Send one JSON request to the launcher daemon over a Unix socket."""
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.settimeout(timeout_s)
-    try:
-        sock.connect(daemon_sock)
-        sock.sendall((json.dumps(request) + "\n").encode())
-        buf = b""
-        while not buf.endswith(b"\n"):
-            chunk = sock.recv(65536)
-            if not chunk:
-                break
-            buf += chunk
-    finally:
-        sock.close()
-    return json.loads(buf.decode().strip())
+def _send_to_daemon(
+    daemon_sock: str,
+    request: dict,
+    *,
+    timeout_s: float = 3600.0,
+    connect_retry_s: float = 600.0,
+    connect_retry_interval_s: float = 10.0,
+) -> dict:
+    """Send one JSON request to the launcher daemon over a Unix socket.
+
+    Retries on ECONNREFUSED for up to ``connect_retry_s`` seconds so callers
+    that start before the daemon has finished warming up (e.g. evaluate.py,
+    which has no model-load delay) do not fail immediately.
+    """
+    deadline = time.monotonic() + connect_retry_s
+    while True:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(timeout_s)
+        try:
+            sock.connect(daemon_sock)
+            sock.sendall((json.dumps(request) + "\n").encode())
+            buf = b""
+            while not buf.endswith(b"\n"):
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+            return json.loads(buf.decode().strip())
+        except OSError as exc:
+            if exc.errno == errno.ECONNREFUSED and time.monotonic() < deadline:
+                sock.close()
+                time.sleep(connect_retry_interval_s)
+                continue
+            raise
+        finally:
+            sock.close()
 
 
 @dataclass(slots=True)
@@ -282,6 +334,12 @@ class AF3Oracle(OracleMetric):
 
         for job in pending:
             input_atom_array = job.atom_array
+            if np.any(input_atom_array.res_name == "UNL"):
+                raise ValueError(
+                    f"Input structure for {job.example_id!r} contains residues named 'UNL'. "
+                    "AF3 treats 'UNL' as a reserved token and silently drops most ligand atoms. "
+                    "Rename UNL residues to a different code (e.g. 'L;G') before evaluating with AF3Oracle."
+                )
             if self.template_annotations is not None:
                 annotations_to_ensure = [annot for annot in self.template_annotations if annot in ANNOTATOR_REGISTRY]
                 if annotations_to_ensure:
@@ -365,34 +423,9 @@ class AF3Oracle(OracleMetric):
                 missing_residue_mask = spread_residue_wise(state.disambiguated_atom_array, missing_residue_mask)
                 disambiguated_partial = state.disambiguated_atom_array[~missing_residue_mask]
 
-                # Strip AF3 OXTs at residues where the input has no OXT
-                # (E.g., preserve ligand OXTs)
-                af3_oxt_mask = predicted_atom_array.atom_name == "OXT"
-                if af3_oxt_mask.any():
-                    extra_oxt_mask = np.zeros_like(af3_oxt_mask)
-                    # NOTE: We can loop at chain-id level since we disambiguated above
-                    for chain in np.unique(predicted_atom_array.chain_id):
-                        af3_in = predicted_atom_array.chain_id == chain
-                        inp_in = disambiguated_partial.chain_id == chain
-                        if not inp_in.any():
-                            continue
-
-                        # Per-residue: does this residue have an OXT? (input vs AF3, by within-chain position)
-                        af3_res_oxt = apply_residue_wise(predicted_atom_array[af3_in], af3_oxt_mask[af3_in], np.any)
-                        inp_res_oxt = apply_residue_wise(
-                            disambiguated_partial[inp_in], disambiguated_partial.atom_name[inp_in] == "OXT", np.any
-                        )
-
-                        # AF3 has OXT at residue r but input doesn't (residues without an input counterpart count too).
-                        n = min(len(af3_res_oxt), len(inp_res_oxt))
-                        extra_per_res = np.concatenate([af3_res_oxt[:n] & ~inp_res_oxt[:n], af3_res_oxt[n:]])
-                        extra_oxt_mask[af3_in] = (
-                            spread_residue_wise(predicted_atom_array[af3_in], extra_per_res) & af3_oxt_mask[af3_in]
-                        )
-
-                    # Only strip if it reconciles the totals; otherwise let the mismatch error fire.
-                    if disambiguated_partial.array_length() == predicted_atom_array[~extra_oxt_mask].array_length():
-                        predicted_atom_array = predicted_atom_array[~extra_oxt_mask]
+                # Normalize the AF3 output to match the input's atom set (strip extra OXTs,
+                # strip sidechains for backbone/CA-only inputs) before mapping.
+                predicted_atom_array = self._normalize_af3_output(disambiguated_partial, predicted_atom_array)
 
                 # Fail loud if AF3 dropped or rerouted an inter-residue bond
                 self._validate_inter_residue_bonds(disambiguated_partial, predicted_atom_array)
@@ -529,8 +562,6 @@ class AF3Oracle(OracleMetric):
 
         user_ccd_arrays: dict[str, AtomArray] = {}
         for res_array in residue_iter(atom_array[nonstandard_mask]):
-            if res_array.array_length() == 1:
-                continue  # single-atom residues don't get a custom CCD code
             res_name = res_array.res_name[0]
             user_ccd_arrays.setdefault(res_name, res_array)
 
@@ -545,7 +576,7 @@ class AF3Oracle(OracleMetric):
 
         buffer = io.StringIO()
         CIFFile(blocks=user_ccd_cif_blocks).write(buffer)
-        return buffer.getvalue()
+        return _inject_empty_chem_comp_bond(buffer.getvalue())
 
     # ------------------------------------------------------------------
     # AF3 output parse helpers
@@ -705,6 +736,54 @@ class AF3Oracle(OracleMetric):
             raise ValueError(
                 f"AF3 inter-residue bond graph differs from input (missing in AF3: {missing}; extra in AF3: {extra})"
             )
+
+    @staticmethod
+    def _normalize_af3_output(input_array: AtomArray, af3_array: AtomArray) -> AtomArray:
+        """Strip AF3 output atoms that have no counterpart in the input.
+
+        Two passes, applied in order so that both interact correctly:
+
+        1. **OXT stripping** — AF3 adds OXT to chain C-termini; remove it for
+           any residue where the input does not have an OXT
+        2. **Backbone/CA-only stripping** — when the input contains only backbone
+           atoms for every protein residue (e.g. N/CA/C/O, or CA-only), AF3's
+           protein output is subsetted to the protein atom names present in the input
+
+        Args:
+            input_array: Normalised input structure (after NaN-residue removal).
+            af3_array: Parsed AF3 full-atom output.
+
+        Returns:
+            ``af3_array`` with extra atoms removed, ready for
+            :py:meth:`_build_atom_index_mapping`.
+        """
+        # Pass 1: strip OXT atoms AF3 added but the input doesn't have.
+        # We loop per chain since chains were disambiguated upstream.
+        af3_oxt_mask = af3_array.atom_name == "OXT"
+        if af3_oxt_mask.any():
+            extra_oxt_mask = np.zeros_like(af3_oxt_mask)
+            for chain in np.unique(af3_array.chain_id):
+                af3_in = af3_array.chain_id == chain
+                inp_in = input_array.chain_id == chain
+                if not inp_in.any():
+                    continue
+                af3_res_oxt = apply_residue_wise(af3_array[af3_in], af3_oxt_mask[af3_in], np.any)
+                inp_res_oxt = apply_residue_wise(input_array[inp_in], input_array.atom_name[inp_in] == "OXT", np.any)
+                extra_per_res = af3_res_oxt & ~inp_res_oxt
+                extra_oxt_mask[af3_in] = spread_residue_wise(af3_array[af3_in], extra_per_res) & af3_oxt_mask[af3_in]
+            af3_array = af3_array[~extra_oxt_mask]
+
+        # Pass 2: if input has only backbone atoms for every protein residue
+        # (e.g. N/CA/C/O, or CA-only), strip AF3 sidechains to match.
+        if input_array.array_length() != af3_array.array_length():
+            ensure_annotations(input_array, "is_protein")
+            ensure_annotations(af3_array, "is_protein")
+            if (~input_array.is_protein | np.isin(input_array.atom_name, PROTEIN_BACKBONE_ATOM_NAMES)).all():
+                input_protein_atom_names = set(input_array.atom_name[input_array.is_protein].tolist())
+                af3_keep = ~af3_array.is_protein | np.isin(af3_array.atom_name, list(input_protein_atom_names))
+                af3_array = af3_array[af3_keep]
+
+        return af3_array
 
     @staticmethod
     def _build_atom_index_mapping(input_array: AtomArray, af3_array: AtomArray) -> np.ndarray:

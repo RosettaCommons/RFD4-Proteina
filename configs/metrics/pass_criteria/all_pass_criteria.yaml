@@ -83,3 +83,12 @@ ame_no_ligand:
       max: 1.5
   required_tags_any: [ame_refolding]
   required_tags_all: [no_ligand]
+
+disco:
+  _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    refolded_backbone_rmsd.rmsd:
+      max: 2.0
+    max_ligand_centroid_distance.ligand_centroid_distance:
+      max: 2.0
+  required_tags_any: [disco_refolding]

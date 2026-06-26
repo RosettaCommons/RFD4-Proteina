@@ -3,7 +3,7 @@
 
 defaults:
   - inline_metrics: all_inline_metrics
-  - refolding_oracles: rf3
+  - refolding_oracles: af3
   - refolding_metrics: all_refolding_metrics
   - pass_criteria: all_pass_criteria
   - pre_oracle_filters: all_pre_oracle_filters # NOTE: Inactive by default (require tags)
