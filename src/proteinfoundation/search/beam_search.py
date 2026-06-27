@@ -20,6 +20,7 @@ estimation if they meet success criteria, significantly improving total successe
 """
 
 import copy
+import shutil
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,7 +33,9 @@ if TYPE_CHECKING:
     pass
 
 from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
+from proteinfoundation.metrics.oracle_metric import example_output_dir
 from proteinfoundation.search.base_strategy import SearchStrategy
+from proteinfoundation.search.vanilla import build_partial_schedule, resolve_partial_t
 from proteinfoundation.utils.tensor_utils import concat_dict_tensors
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -82,6 +85,23 @@ class BeamSearchStrategy(SearchStrategy):
         self.beam_width = beam_width
         self.keep_intermediate_samples = keep_intermediate_samples
         self.intermediate_sample_reward_threshold = intermediate_sample_reward_threshold
+
+        if len(self.step_checkpoints) < 2:
+            raise ValueError(
+                f"step_checkpoints must have at least 2 entries (start and end), " f"got {step_checkpoints}."
+            )
+        if self.step_checkpoints[0] != 0:
+            raise ValueError(
+                f"step_checkpoints must begin at 0 (beam is initialized at the start of the "
+                f"schedule), got {self.step_checkpoints[0]}."
+            )
+        diffs = [b - a for a, b in zip(self.step_checkpoints, self.step_checkpoints[1:], strict=False)]
+        if any(d <= 0 for d in diffs):
+            raise ValueError(
+                f"step_checkpoints must be strictly increasing "
+                f"(duplicate or decreasing values produce zero- or negative-length intervals); "
+                f"got {step_checkpoints}."
+            )
 
     def generate(
         self,
@@ -142,14 +162,38 @@ class BeamSearchStrategy(SearchStrategy):
             init_mask = torch.ones(nsamples, n).long().bool().to(device)
         assert init_mask.shape == (nsamples, n), f"Expected mask shape {(nsamples, n)}, got {init_mask.shape}"
 
-        # Get simulation schedule
-        ts, gt = model.fm.sample_schedule(
-            nsteps=nsteps,
-            sampling_model_args=model.inf_cfg.model,
-        )
         simulation_step_params = {
             data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"] for data_mode in model.fm.data_modes
         }
+
+        partial_t_dict = resolve_partial_t(model.inf_cfg.args, model.fm, model.inf_cfg.model)
+
+        # partial_trajectory_fraction_steps affects the number of steps to actually run
+        frac = model.inf_cfg.args.get("partial_trajectory_fraction_steps", None)
+        actual_nsteps = round(frac * nsteps) if frac is not None else nsteps
+
+        if self.step_checkpoints[-1] != actual_nsteps:
+            frac_hint = f" (nsteps={nsteps} x fraction={frac} = {actual_nsteps})" if frac is not None else ""
+            raise ValueError(
+                f"step_checkpoints[-1]={self.step_checkpoints[-1]} must equal"
+                f" actual_nsteps={actual_nsteps}{frac_hint}. "
+                f"The last checkpoint must coincide with the end of the schedule so the surviving "
+                f"beam states are fully denoised (t=1) before final formatting."
+            )
+
+        # Build schedule: partial (covering [partial_t, 1]) or full (covering [0, 1])
+        if partial_t_dict:
+            ts, gt = build_partial_schedule(
+                partial_t_dict=partial_t_dict,
+                nsteps=actual_nsteps,
+                fm=model.fm,
+                sampling_model_args=model.inf_cfg.model,
+            )
+        else:
+            ts, gt = model.fm.sample_schedule(
+                nsteps=actual_nsteps,
+                sampling_model_args=model.inf_cfg.model,
+            )
 
         # Initialize beam: nsamples * beam_width samples
         # Interleaved format: [sample0, sample1, sample2, sample0, sample1, sample2, ...]
@@ -158,19 +202,40 @@ class BeamSearchStrategy(SearchStrategy):
             f"{nsamples * self.beam_width} total states"
         )
         mask = init_mask.repeat(self.beam_width, 1)
-        xt = model.fm.sample_noise(
+
+        x_0 = model.fm.sample_noise(
             n,
             shape=(nsamples * self.beam_width,),
             device=device,
             mask=mask,
             training=False,
         )
+
+        if partial_t_dict:
+            batch = model.add_clean_samples(batch)
+            x_1 = batch["x_1"]  # {dm: [nsamples, n_tokens, ...]}
+            x_1_tiled = {dm: torch.cat([x_1[dm]] * self.beam_width, dim=0) for dm in partial_t_dict}
+            xt = {dm: (1.0 - pt_val) * x_0[dm] + pt_val * x_1_tiled[dm] for dm, pt_val in partial_t_dict.items()}
+            logger.info(
+                f"Partial diffusion: bb_ca t={partial_t_dict.get('bb_ca', 0):.4f}, "
+                f"local_latents t={partial_t_dict.get('local_latents', 0):.4f}"
+            )
+        else:
+            xt = x_0
+
         x_1_pred = None
 
-        all_sample_prots: list[dict] = []
+        all_intermediate_results: list[dict] = []
         all_example_ids: list[str] = []
 
-        batch_ids: list[str] = batch.get("example_id_batch", [f"sample{k}" for k in range(nsamples)])
+        # Use the canonical dataset_name_hash prefix so oracle outputs land in the
+        # same content-addressed directory that proteina.py will assign the design CIF to.
+        _raw_batch_ids: list[str] = batch.get("example_id_batch", [f"sample{k}" for k in range(nsamples)])
+        _dataset_name_hash: str = getattr(model, "_current_dataset_name_hash", "")
+        batch_ids: list[str] = (
+            [f"{_dataset_name_hash}__{rid}" for rid in _raw_batch_ids] if _dataset_name_hash else _raw_batch_ids
+        )
+
         output_base_dir = getattr(model, "_current_output_base_dir", None)
         output_suffix: str = getattr(model, "_current_output_suffix", "")
 
@@ -234,13 +299,16 @@ class BeamSearchStrategy(SearchStrategy):
             ]
 
             # Compute rewards by rolling out to completion.
-            final_sample_prots, rewards = self._simulate_and_compute_reward(
+            # atom_array_results is in interleaved format (i % nsamples maps to batch item i).
+            _, rewards, atom_array_results = self._simulate_and_compute_reward(
                 model,
                 batch,
                 xt,
                 end_step,
                 init_mask,
                 reward_model,
+                ts=ts,
+                gt=gt,
                 example_ids=checkpoint_example_ids if self.keep_intermediate_samples else None,
                 output_base_dir=output_base_dir if self.keep_intermediate_samples else None,
                 output_suffix=output_suffix if self.keep_intermediate_samples else "",
@@ -252,10 +320,10 @@ class BeamSearchStrategy(SearchStrategy):
                 reward_mask = rewards > reward_threshold
                 if reward_mask.any():
                     kept_indices = reward_mask.nonzero(as_tuple=False).squeeze(1).tolist()
-                    returned_sample_prots = {k: v[reward_mask] for k, v in final_sample_prots.items()}
-                    returned_sample_prots["rewards"] = rewards[reward_mask]
-                    all_sample_prots.append(returned_sample_prots)
                     for k_idx in kept_indices:
+                        result = dict(atom_array_results[k_idx])
+                        result["reward"] = rewards[k_idx].item()
+                        all_intermediate_results.append(result)
                         all_example_ids.append(checkpoint_example_ids[k_idx])
                     logger.info(
                         f"Checkpoint {i}: saved {reward_mask.sum().item()} intermediate samples "
@@ -266,6 +334,24 @@ class BeamSearchStrategy(SearchStrategy):
                         f"Checkpoint {i}: no intermediate samples above threshold {reward_threshold} "
                         f"(max reward={rewards.max().item():.3f})"
                     )
+
+                # Clean up oracle output dirs for samples that didn't pass the threshold.
+                # These were written during reward computation but won't be kept as outputs.
+                if output_base_dir is not None:
+                    failing_indices = (~reward_mask).nonzero(as_tuple=False).squeeze(1).tolist()
+                    for k_idx in failing_indices:
+                        eid = checkpoint_example_ids[k_idx]
+                        full_eid = f"{eid}{output_suffix}" if output_suffix else eid
+                        target = example_output_dir(output_base_dir, full_eid)
+                        if target.exists():
+                            shutil.rmtree(target, ignore_errors=True)
+                        # Remove empty shard parent dirs up to (but not including) output_base_dir.
+                        shard_parent = target.parent
+                        while shard_parent != output_base_dir and shard_parent.exists():
+                            if next(shard_parent.iterdir(), None) is not None:
+                                break
+                            shard_parent.rmdir()
+                            shard_parent = shard_parent.parent
 
             # Reshape and select top beam_width candidates
             # Current shape: [n_branch * beam_width * nsamples] in interleaved format
@@ -327,47 +413,38 @@ class BeamSearchStrategy(SearchStrategy):
         ]
         all_example_ids.extend(final_example_ids)
 
-        # Compute final rewards
-        final_rewards = self._compute_rewards_from_sample_prots(
+        # Format and score the final beam in one pass
+        final_results = model.format_sample_prots_to_atom_arrays(
+            sample_prots, batch, batch_idx=0, example_ids=final_example_ids
+        )
+        final_rewards = self._compute_rewards(
             model,
-            sample_prots,
+            final_results,
             reward_model,
             example_ids=final_example_ids,
             output_base_dir=output_base_dir,
             output_suffix=output_suffix,
         )
-        sample_prots["rewards"] = final_rewards
-        all_sample_prots.append(sample_prots)
 
-        # Concatenate all samples (intermediate + final)
-        all_sample_prots_concat = concat_dict_tensors(all_sample_prots, dim=0)
+        expected_sample_count = nsamples * self.beam_width
+        actual_count = sample_prots["coors"].shape[0]
+        assert (
+            actual_count == expected_sample_count
+        ), f"Expected {expected_sample_count} final beam samples, got {actual_count}"
 
-        # Verify output shape
-        if not self.keep_intermediate_samples:
-            expected_sample_count = nsamples * self.beam_width
-            actual_count = all_sample_prots_concat["coors"].shape[0]
-            assert (
-                actual_count == expected_sample_count
-            ), f"Expected {expected_sample_count} samples, got {actual_count}"
-
-        logger.info(f"Beam search complete. Generated {all_sample_prots_concat['coors'].shape[0]} samples")
+        total_count = len(all_intermediate_results) + actual_count
         logger.info(
-            f"Reward stats: mean={all_sample_prots_concat['rewards'].mean().item():.4f}, "
-            f"std={all_sample_prots_concat['rewards'].std().item():.4f}"
+            f"Beam search complete. Generated {total_count} samples "
+            f"({len(all_intermediate_results)} intermediate + {actual_count} final)"
+        )
+        logger.info(
+            f"Final beam reward stats: mean={final_rewards.mean().item():.4f}, " f"std={final_rewards.std().item():.4f}"
         )
 
-        # Convert to list format expected by generate.py using Proteina's helper method.
-        # Pass pre-computed example_ids so validation_step uses the checkpoint-aware names.
-        results = model.format_sample_prots_to_atom_arrays(
-            all_sample_prots_concat, batch, batch_idx=0, example_ids=all_example_ids
-        )
+        for i, result in enumerate(final_results):
+            result["reward"] = final_rewards[i].item()
 
-        # Add rewards to results if available
-        if "rewards" in all_sample_prots_concat:
-            for i, result in enumerate(results):
-                result["reward"] = all_sample_prots_concat["rewards"][i].item()
-
-        return results
+        return all_intermediate_results + final_results
 
     def _simulate_and_compute_reward(
         self,
@@ -377,10 +454,12 @@ class BeamSearchStrategy(SearchStrategy):
         current_step: int,
         mask: torch.Tensor,
         reward_model: "RewardModel",
+        ts: dict[str, torch.Tensor],
+        gt: dict[str, torch.Tensor],
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         output_suffix: str = "",
-    ) -> tuple[dict, torch.Tensor]:
+    ) -> tuple[dict, torch.Tensor, list[dict]]:
         """Roll out samples to completion and compute rewards.
 
         This implements the "roll out to get clean sample" step.
@@ -399,17 +478,23 @@ class BeamSearchStrategy(SearchStrategy):
             output_suffix: Rank/job suffix appended to each id before saving.
 
         Returns:
-            Tuple of (sample_prots dict, rewards tensor)
+            Tuple of (sample_prots dict, rewards tensor, atom_array_results list).
+            atom_array_results contains one formatted result dict per sample, in
+            interleaved batch-item order — safe to index directly by position.
         """
-        # Get final step from checkpoints
-        final_step = self.step_checkpoints[-1]
+        # Derive actual schedule length from the passed schedule (partial or full).
+        actual_nsteps = next(iter(ts.values())).shape[0] - 1
 
         # Get batch parameters
         batch_size = next(iter(xt.values())).shape[0]
         segment_size = mask.shape[0]
 
-        # Roll out from current_step to final_step to get clean samples
-        logger.debug(f"Rolling out {batch_size} samples: step {current_step} → {final_step}")
+        # Roll out from current_step to end of schedule to get clean samples.
+        logger.debug(f"Rolling out {batch_size} samples: step {current_step} → {actual_nsteps}")
+
+        # Slice schedule once — same segment used for every batch chunk.
+        ts_segment = {k: v[current_step:] for k, v in ts.items()}
+        gt_segment = {k: v[current_step:] for k, v in gt.items()}
 
         final_xt_batches = []
 
@@ -418,25 +503,15 @@ class BeamSearchStrategy(SearchStrategy):
             end_idx = min(i + segment_size, batch_size)
             batch_xt = {key: value[i:end_idx] for key, value in xt.items()}
 
-            # Get simulation schedule
-            ts_sim, gt_sim = model.fm.sample_schedule(
-                nsteps=model.inf_cfg.args.nsteps,
-                sampling_model_args=model.inf_cfg.model,
-            )
-
-            # Slice ts/gt to start from current_step so the model sees correct timestep values.
-            ts_sim_segment = {k: v[current_step:] for k, v in ts_sim.items()}
-            gt_sim_segment = {k: v[current_step:] for k, v in gt_sim.items()}
-
             batch_final_xt, _, _ = model.fm.partial_simulation(
                 batch=copy.deepcopy(batch),
                 x=batch_xt,
                 x_1_pred=None,
                 mask=mask,
                 predict_for_sampling=partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0)),
-                nsteps=final_step - current_step,
-                ts=ts_sim_segment,
-                gt=gt_sim_segment,
+                nsteps=actual_nsteps - current_step,
+                ts=ts_segment,
+                gt=gt_segment,
                 self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params={
                     data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"]
@@ -476,10 +551,13 @@ class BeamSearchStrategy(SearchStrategy):
             ret_mode="coors37_n_aatype",
         )
 
-        # Compute rewards R(x, s)
-        rewards = self._compute_rewards_from_sample_prots(
+        # Format to atom arrays, then compute rewards R(x, s)
+        atom_array_results = model.format_sample_prots_to_atom_arrays(
+            final_sample_prots, batch, batch_idx=0, example_ids=example_ids
+        )
+        rewards = self._compute_rewards(
             model,
-            final_sample_prots,
+            atom_array_results,
             reward_model,
             example_ids=example_ids,
             output_base_dir=output_base_dir,
@@ -491,18 +569,18 @@ class BeamSearchStrategy(SearchStrategy):
             f"min={rewards.min().item():.4f}, max={rewards.max().item():.4f}"
         )
 
-        return final_sample_prots, rewards
+        return final_sample_prots, rewards, atom_array_results
 
-    def _compute_rewards_from_sample_prots(
+    def _compute_rewards(
         self,
         model: "Proteina",
-        sample_prots: dict,
+        atom_array_results: list[dict],
         reward_model: "RewardModel",
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         output_suffix: str = "",
     ) -> torch.Tensor:
-        """Compute rewards for formatted sample proteins.
+        """Compute rewards for pre-formatted atom array results.
 
         Uses the model's configured metric managers (design, oracle, refolding,
         pass_criteria) with :py:attr:`~RewardModel.reward_metrics_tags` to control
@@ -510,7 +588,8 @@ class BeamSearchStrategy(SearchStrategy):
 
         Args:
             model: Proteina model instance
-            sample_prots: Dictionary with keys 'coors', 'residue_type', 'padding_mask'
+            atom_array_results: Pre-formatted list of result dicts from
+                :py:meth:`~Proteina.format_sample_prots_to_atom_arrays`.
             reward_model: Reward model for scoring
             example_ids: Per-sample IDs (without output_suffix). When provided, oracle
                 metrics save results keyed by ``f"{example_ids[i]}{output_suffix}"``,
@@ -520,14 +599,9 @@ class BeamSearchStrategy(SearchStrategy):
             output_suffix: Rank/job suffix appended to each example_id before saving.
 
         Returns:
-            Tensor of reward values for each sample
+            Rewards tensor in the same order as atom_array_results.
         """
-        device = sample_prots["coors"].device
-
-        # Convert sample_prots to proper AtomArrays using Proteina's helper
-        # NOTE: Expects interleaved format [1,2,3,1,2,3]!!!
-        atom_array_results = model.format_sample_prots_to_atom_arrays(sample_prots, model._current_batch, batch_idx=0)
-
+        device = model.device
         batch = model._current_batch
 
         # Compute rewards using Proteina's configured metric managers.

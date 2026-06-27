@@ -695,8 +695,6 @@ class TestEndToEndInference:
                 "contig": "B19-22",
                 "select_fixed_atoms": "B19-22",
                 "select_unfixed_sequence": "B23-26",
-                "partial_t_backbone": 0.4,
-                "partial_t_latent": 0.4,
                 "dialect": 2,
             }
         }
@@ -707,6 +705,8 @@ class TestEndToEndInference:
                 f"inputs={input_path}",
                 f"out_dir={tmp_output_dir}",
                 "generation.args.nsteps=400",
+                "generation.args.partial_t_backbone=0.4",
+                "generation.args.partial_t_latent=0.4",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_partial_diffusion")
