@@ -1,8 +1,9 @@
-"""Bond length and steric clash metrics for generated protein structures."""
+"""Bond length, steric clash, and sequence-similarity metrics for generated protein structures."""
 
 import numpy as np
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.bonds import filter_bonds_by_distance
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import C_CRD
 from beartype.typing import Any
 from biotite.structure import AtomArray, CellList
@@ -263,3 +264,55 @@ class ClashMetric(Metric):
 
     def compute(self, atom_array: AtomArray) -> dict[str, Any]:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
         return compute_clash_stats(atom_array, threshold=self.threshold)
+
+
+def _protein_sequence(atom_array: AtomArray) -> np.ndarray | None:
+    """Extract three-letter residue name sequence from an AtomArray using first atom per residue.
+
+    Returns None if no amino acid residues are present.
+    """
+    ensure_annotations(atom_array, "is_protein")
+    protein = atom_array[atom_array.is_protein]
+    if protein.array_length() == 0:
+        return None
+    residue_names = protein.res_name[get_residue_starts(protein)]
+    return residue_names
+
+
+class SequenceSimilarityToInput(Metric):
+    """Fraction of residues with identical amino acid type between output and input structure.
+
+    Returns ``nan`` when the predicted and input protein sequences differ in length.
+    Intended for use in partial diffusion.
+    """
+
+    @property
+    def kwargs_to_compute_args(self) -> dict[str, Any]:
+        return {
+            "predicted_atom_array": ("predicted_atom_array",),
+            "ground_truth_atom_array": ("ground_truth_atom_array",),
+        }
+
+    def compute(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        predicted_atom_array: AtomArray,
+        ground_truth_atom_array: AtomArray,
+    ) -> dict[str, Any]:
+        """Compute sequence identity between generated and input structures.
+
+        Args:
+            predicted_atom_array: Generated protein structure.
+            ground_truth_atom_array: Input structure used to seed partial diffusion.
+
+        Returns:
+            Dict with ``sequence_identity_to_input`` in [0, 1], or ``nan`` if
+            sequence lengths differ.
+        """
+        pred_seq = _protein_sequence(predicted_atom_array)
+        input_seq = _protein_sequence(ground_truth_atom_array)
+
+        if pred_seq is None or input_seq is None or len(pred_seq) != len(input_seq):
+            return {"sequence_identity_to_input": float("nan")}
+
+        identity = (pred_seq == input_seq).mean()
+        return {"sequence_identity_to_input": float(identity)}

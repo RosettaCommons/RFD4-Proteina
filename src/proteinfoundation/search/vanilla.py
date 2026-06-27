@@ -10,6 +10,118 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus_stack
 from proteinfoundation.search.base_strategy import SearchStrategy
 
 
+def resolve_partial_t(
+    cfg_args: Any,
+    fm: Any,
+    sampling_model_args: dict,
+    ref_nsteps: int = 10000,
+) -> dict[str, float]:
+    """Extract and validate partial diffusion config, returning per-modality t values.
+
+    Args:
+        cfg_args: ``model.inf_cfg.args`` (OmegaConf DictConfig or plain dict).
+        fm: ProductSpaceFlowMatcher instance.
+        sampling_model_args: Per-modality sampling config (``model.inf_cfg.model``).
+        ref_nsteps: Dense schedule resolution for step-index lookup.
+
+    Returns:
+        Per-modality partial_t dict keyed by data-mode name, or ``{}`` for full generation.
+
+    Raises:
+        ValueError: On invalid / conflicting config combinations.
+    """
+    pt_backbone = cfg_args.get("partial_t_backbone", None)
+    pt_latent = cfg_args.get("partial_t_latent", None)
+    do_couple = cfg_args.get("couple_partial_t", False)
+    frac = cfg_args.get("partial_trajectory_fraction_steps", None)
+
+    if frac is not None:
+        if pt_backbone is not None or pt_latent is not None or do_couple:
+            raise ValueError(
+                "partial_trajectory_fraction_steps is mutually exclusive with "
+                "partial_t_backbone, partial_t_latent, and couple_partial_t."
+            )
+        if not (0.0 < frac <= 1.0):
+            raise ValueError(f"partial_trajectory_fraction_steps must be in (0, 1], got {frac}.")
+        ref_ts, _ = fm.sample_schedule(nsteps=ref_nsteps, sampling_model_args=sampling_model_args)
+        k = round((1.0 - frac) * ref_nsteps)
+        k = max(0, min(ref_nsteps, k))
+        return {dm: ref_ts[dm][k].item() for dm in fm.data_modes}
+
+    n_set = (pt_backbone is not None) + (pt_latent is not None)
+
+    if n_set == 0:
+        return {}
+
+    if n_set == 2:
+        if do_couple:
+            raise ValueError(
+                "couple_partial_t=true requires exactly one of partial_t_backbone or "
+                "partial_t_latent; got both. Remove the one to be derived."
+            )
+        return {"bb_ca": pt_backbone, "local_latents": pt_latent}
+
+    # n_set == 1
+    if not do_couple:
+        which = "partial_t_backbone" if pt_backbone is not None else "partial_t_latent"
+        raise ValueError(
+            f"Only {which} is set. Either provide both partial_t_backbone and "
+            "partial_t_latent, or set couple_partial_t=true to derive the missing value."
+        )
+
+    # Step-index coupling: find k in the specified modality's schedule, read all others at k.
+    ref_ts, _ = fm.sample_schedule(nsteps=ref_nsteps, sampling_model_args=sampling_model_args)
+    if pt_backbone is not None:
+        ref_sched, ref_val = ref_ts["bb_ca"], pt_backbone
+    else:
+        ref_sched, ref_val = ref_ts["local_latents"], pt_latent
+    above = ref_sched >= ref_val - 1e-6
+    k = above.nonzero(as_tuple=True)[0][0].item() if above.any() else ref_nsteps
+    return {dm: ref_ts[dm][k].item() for dm in fm.data_modes}
+
+
+def build_partial_schedule(
+    partial_t_dict: dict[str, float],
+    nsteps: int,
+    fm: Any,
+    sampling_model_args: dict,
+) -> tuple[dict, dict]:
+    """Build per-modality time schedules covering [partial_t, 1.0] with exactly nsteps steps.
+
+    Uses a dense reference schedule to locate each modality's partial_t in index space,
+    then expands nsteps so the tail of a full schedule covers exactly [partial_t, 1.0].
+
+    Args:
+        partial_t_dict: Per-modality starting t values.
+        nsteps: Number of denoising steps to take.
+        fm: ProductSpaceFlowMatcher instance.
+        sampling_model_args: Per-modality sampling config.
+
+    Returns:
+        Tuple of (ts, gt) partial schedules, each a dict of tensors with
+        ts[dm] shape [nsteps+1] and gt[dm] shape [nsteps].
+    """
+    nsteps_dense = max(nsteps * 100, 1000)
+    dense_ts, _ = fm.sample_schedule(nsteps=nsteps_dense, sampling_model_args=sampling_model_args)
+
+    partial_ts: dict = {}
+    partial_gt: dict = {}
+    for data_mode in fm.data_modes:
+        pt = float(partial_t_dict.get(data_mode, 0.0))
+        pt = min(pt, 1.0 - 1.0 / nsteps)
+
+        above = dense_ts[data_mode] >= pt - 1e-6
+        i_start = above.nonzero(as_tuple=True)[0][0].item() if above.any() else nsteps_dense
+        n_above = max(nsteps_dense - i_start, 1)
+
+        nsteps_expanded = round(nsteps * nsteps_dense / n_above)
+        full_ts, full_gt = fm.sample_schedule(nsteps=nsteps_expanded, sampling_model_args=sampling_model_args)
+        partial_ts[data_mode] = full_ts[data_mode][-(nsteps + 1) :]
+        partial_gt[data_mode] = full_gt[data_mode][-nsteps:]
+
+    return partial_ts, partial_gt
+
+
 class VanillaStrategy(SearchStrategy):
     """Vanilla generation without search.
 
@@ -48,40 +160,25 @@ class VanillaStrategy(SearchStrategy):
         nsamples = batch["coords"].shape[0]
         n = batch["padding_mask"].shape[1]
 
-        # Check for partial_t values in batch
-        user_prefix_to_dm = {"backbone": "bb_ca", "latent": "local_latents"}
-        partial_t_dict = {}
-        for aa in batch["atom_array_batch"]:
-            for user_prefix, dm in user_prefix_to_dm.items():
-                annot_name = f"partial_t_{user_prefix}"
-                if annot_name in aa.get_annotation_categories() and not np.isnan(aa.get_annotation(annot_name)).all():
-                    partial_t_annot = aa.get_annotation(annot_name)
-                    non_nan_mask = ~np.isnan(partial_t_annot)
-                    if not (partial_t_annot[non_nan_mask] == partial_t_annot[non_nan_mask][0]).all():
-                        # Once we train on this, it will be easy to provide at inference
-                        # using the contig/AtomArray format
-                        raise ValueError("Multiple partial_t values within an AtomArray are not currently supported.")
-                    elif dm not in partial_t_dict:
-                        partial_t_dict[dm] = partial_t_annot[non_nan_mask][0]
-                    elif partial_t_annot[non_nan_mask][0] != partial_t_dict[dm]:
-                        # This is mostly a sanity check since we provide no way of specifying this at inference.
-                        # There's nothing wrong with having multiple values across a batch
-                        # if we find a use-case for this
-                        raise ValueError("Multiple partial_t values across batch elements are not currently supported.")
+        partial_t_dict = resolve_partial_t(model.inf_cfg.args, model.fm, model.inf_cfg.model)
 
         # Call simulation (batch already has atom37 format from pipeline)
         fn_predict_for_sampling = partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0))
         nsteps = model.inf_cfg.args.nsteps
+        frac = model.inf_cfg.args.get("partial_trajectory_fraction_steps", None)
         device = model.device
         save_trajectory_every = model.inf_cfg.args.get("save_trajectory_every", 0)
         dump_noisy_trajectories = model.inf_cfg.args.get("dump_noisy_trajectories", False)
         bb_ca_only_trajectories = model.inf_cfg.args.get("bb_ca_only_trajectories", False)
         if len(partial_t_dict) > 0:
-            # Default to no noise if not specified
+            # Default to full trajectory if not specified
             if "bb_ca" not in partial_t_dict:
                 partial_t_dict["bb_ca"] = 0.0
             if "local_latents" not in partial_t_dict:
                 partial_t_dict["local_latents"] = 0.0
+
+            # partial_trajectory_fraction_steps affects the number of steps to actually run
+            actual_nsteps = round(frac * nsteps) if frac is not None else nsteps
 
             # Corrupt the input batch to the given noise level(s)
             batched_partial_t = {
@@ -94,36 +191,12 @@ class VanillaStrategy(SearchStrategy):
                 data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"] for data_mode in model.fm.data_modes
             }
 
-            # Build per-modality time schedule that correctly handles any schedule
-            # shape (uniform, power, log, ...) and any per-modality partial_t.
-            #
-            # Strategy: generate a dense reference schedule to locate each partial_t
-            # in index space, then use that fraction to expand nsteps so the tail of
-            # a full schedule covers exactly [partial_t, 1] with nsteps steps.
-            nsteps_dense = max(nsteps * 100, 1000)
-            dense_ts, _ = model.fm.sample_schedule(nsteps=nsteps_dense, sampling_model_args=model.inf_cfg.model)
-
-            partial_ts = {}
-            partial_gt = {}
-            for data_mode in model.fm.data_modes:
-                pt = float(partial_t_dict[data_mode])
-                # Clamp to guarantee at least 1 denoising step (handles partial_t=1.0)
-                pt = min(pt, 1.0 - 1.0 / nsteps)
-
-                # Find first dense index where t >= pt; this locates pt in the
-                # schedule's index space regardless of the schedule's nonlinearity.
-                above = dense_ts[data_mode] >= pt - 1e-6
-                i_start = above.nonzero(as_tuple=True)[0][0].item() if above.any() else nsteps_dense
-                n_above = max(nsteps_dense - i_start, 1)  # dense steps from pt → 1
-
-                # Scale nsteps so the tail of the full schedule has exactly nsteps steps
-                nsteps_expanded = round(nsteps * nsteps_dense / n_above)
-
-                full_ts, full_gt = model.fm.sample_schedule(
-                    nsteps=nsteps_expanded, sampling_model_args=model.inf_cfg.model
-                )
-                partial_ts[data_mode] = full_ts[data_mode][-(nsteps + 1) :]
-                partial_gt[data_mode] = full_gt[data_mode][-nsteps:]
+            partial_ts, partial_gt = build_partial_schedule(
+                partial_t_dict=partial_t_dict,
+                nsteps=actual_nsteps,
+                fm=model.fm,
+                sampling_model_args=model.inf_cfg.model,
+            )
 
             # Start from the corrupted input (not pure noise)
             gen_samples, _, extra_info = model.fm.partial_simulation(
@@ -132,7 +205,7 @@ class VanillaStrategy(SearchStrategy):
                 x_1_pred=None,
                 mask=batch["padding_mask"],
                 predict_for_sampling=fn_predict_for_sampling,
-                nsteps=nsteps,
+                nsteps=actual_nsteps,
                 ts=partial_ts,
                 gt=partial_gt,
                 self_cond=model.inf_cfg.args.self_cond,

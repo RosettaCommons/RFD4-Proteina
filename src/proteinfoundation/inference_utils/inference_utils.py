@@ -115,8 +115,6 @@ OPTIONAL_CONDITIONING_VALUES = {
     "rasa_bin": 3,  # NOTE: We are completely insulated against this choice in the adapter
     "ref_plddt": 0,
     "is_non_loopy": 0,
-    "partial_t_backbone": np.nan,
-    "partial_t_latent": np.nan,
     "has_2d_condition": 0,
 }
 """Optional conditioning annotations and their default values if not provided."""

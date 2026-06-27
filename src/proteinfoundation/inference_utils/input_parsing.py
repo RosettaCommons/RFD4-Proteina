@@ -663,13 +663,13 @@ class InputSpecification(BaseModel):
     plddt_enhanced: bool | None = Field(True, description="Enable pLDDT enhancement")
     is_non_loopy: bool | None = Field(True, description="Non-loopy conditioning")
     # Partial diffusion
-    partial_t_backbone: float | None = Field(
-        None, ge=0.0, le=1.0,
-        description="Backbone time step for partial diffusion. 0 is noise, 1 is data.",
-    )
-    partial_t_latent: float | None = Field(
-        None, ge=0.0, le=1.0,
-        description="Sequence/rotamer time step for partial diffusion. 0 is noise, 1 is data.",
+    is_partial_diffusion: bool = Field(
+        False,
+        description=(
+            "Set to true when providing a complete structure for partial diffusion. "
+            "Controls coordinate handling: coordinates are preserved rather than zeroed for diffused regions. "
+            "Partial diffusion t values are specified via Hydra args (partial_t_backbone / partial_t_latent)."
+        ),
     )
     add_cath_code: dict[str, bool | str | dict[str, str | list[str]]] | None = Field(
         None, description="CATH-style fold type conditioning. Dict of the form {'1.2.x': 'A1-100'}"
@@ -679,11 +679,6 @@ class InputSpecification(BaseModel):
     # ========================================================================
     # Properties
     # ========================================================================
-
-    @property
-    def is_partial_diffusion(self) -> bool:
-        """Whether partial diffusion is enabled."""
-        return exists(self.partial_t_backbone) or exists(self.partial_t_latent)
 
     # ========================================================================
     # Loading / saving
@@ -727,26 +722,23 @@ class InputSpecification(BaseModel):
             raise ValueError("Either 'input' or 'contig' or 'length' must be provided.")
 
         # unused input check
-        is_partial_diffusion = exists(data.get("partial_t_backbone")) or exists(data.get("partial_t_latent"))
         if exists(data.get("input")) and not (
             exists(data.get("contig"))
             or exists(data.get("unindex"))
-            or is_partial_diffusion
             or exists(data.get("ligand"))
             or exists(data.get("internal_coord_groups"))
+            or bool(data.get("is_partial_diffusion", False))
         ):
             raise ValueError("Input provided but unused in composition specification.")
 
-        if not is_partial_diffusion:
-            # non-partial diffusion checks
-            if exists(data.get("unindex")) and not (exists(data.get("contig")) or exists(data.get("length"))):
-                raise ValueError("Unindex provided but neither a length nor contig was specified.")
-        else:
-            # partial diffusion checks
+        if bool(data.get("is_partial_diffusion", False)):
             if exists(data.get("length")):
                 raise ValueError("Length argument must not be provided during partial diffusion.")
             if not (exists(data.get("input")) or exists(data.get("atom_array_input"))):
                 raise ValueError("Partial diffusion requires input file or input atom array.")
+        else:
+            if exists(data.get("unindex")) and not (exists(data.get("contig")) or exists(data.get("length"))):
+                raise ValueError("Unindex provided but neither a length nor contig was specified.")
 
         return data
 
@@ -1339,15 +1331,6 @@ class InputSpecification(BaseModel):
         if self.plddt_enhanced:
             atom_array.set_annotation("ref_plddt", np.full((atom_array.array_length(),), True, dtype=int))
 
-        # Partial diffusion time annotation
-        if exists(self.partial_t_backbone):
-            atom_array.set_annotation(
-                "partial_t_backbone", np.full(atom_array.shape[0], self.partial_t_backbone, dtype=float)
-            )
-        if exists(self.partial_t_latent):
-            atom_array.set_annotation(
-                "partial_t_latent", np.full(atom_array.shape[0], self.partial_t_latent, dtype=float)
-            )
         return atom_array
 
     @classmethod

@@ -58,6 +58,8 @@ class RewardModel:
         """
         reward = 0.0
         for reward_key, weight in self.weights.items():
+            if not weight:
+                continue
             if reward_key in metrics_output:
                 reward += weight * metrics_output[reward_key]
             else:

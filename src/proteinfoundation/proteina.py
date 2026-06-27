@@ -1033,6 +1033,12 @@ class Proteina(L.LightningModule):
         self._current_output_base_dir = output_base
         self._current_output_suffix = output_suffix
 
+        # Hash dataset_name to keep example_id short; full name is preserved in metrics_output["dataset_name"].
+        # Computed before predict_step so beam search can build canonical IDs that match what
+        # proteina will use here, avoiding a content-addressed directory mismatch.
+        dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
+        self._current_dataset_name_hash = dataset_name_hash
+
         # Generate designs for this inference batch
         generation_list = self.predict_step(batch, batch_idx)
 
@@ -1042,14 +1048,18 @@ class Proteina(L.LightningModule):
             orig_batch_idx = i % n_batch if n_batch > 0 else 0
             raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
 
-            # Use example_id pre-assigned by the search strategy if available
+            # Use example_id pre-assigned by the search strategy if available.
+            # Beam search pre-assigns canonical IDs that already include the dataset_name_hash
+            # prefix so oracle outputs land in the same directory as the design CIF.
             base_id = generation_list[i].get("example_id", raw_batch_id)
-            if base_id == raw_batch_id and len(generation_list) > n_batch:
-                base_id = f"{base_id}_s{i}"
-
-            # Hash dataset_name to keep example_id short; full name is preserved in metrics_output["dataset_name"].
-            dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
-            example_id = f"{dataset_name_hash}__{base_id}{output_suffix}"
+            if base_id == raw_batch_id:
+                # Not pre-assigned — apply the standard naming logic.
+                if len(generation_list) > n_batch:
+                    base_id = f"{base_id}_s{i}"
+                example_id = f"{dataset_name_hash}__{base_id}{output_suffix}"
+            else:
+                # Pre-assigned by beam search with canonical prefix already included.
+                example_id = f"{base_id}{output_suffix}"
 
             metrics_output: dict = {"example_id": example_id}
 
@@ -1433,10 +1443,9 @@ class Proteina(L.LightningModule):
         else:
             self.val_dataset_tags = None
 
-        # Enforce that only one Oracle will run per dataset
+        # Warn if multiple oracles apply to the same dataset
         if self.val_dataset_tags is not None and self.oracle_metric_manager is not None:
             for dataset_tags in self.val_dataset_tags:
-                # None means "no tags in dataset config"; runtime metrics_tags apply at inference.
                 if dataset_tags is None:
                     continue
                 dataset_oracle_name = None
@@ -1445,9 +1454,10 @@ class Proteina(L.LightningModule):
                         if dataset_oracle_name is None:
                             dataset_oracle_name = oracle_name
                         else:
-                            raise ValueError(
-                                f"Multiple oracle metrics ({dataset_oracle_name}, {oracle_name}) apply "
-                                f"to dataset with tags {dataset_tags}."
+                            logger.warning(
+                                f"Multiple oracle metrics ({dataset_oracle_name}, {oracle_name}) apply to dataset"
+                                f" with tags {dataset_tags}. "
+                                "This is intentional for some inference configs but may indicate a mistake."
                             )
 
         # Per-rank worker pool for design + post-fold metrics. See `MetricsPool`.

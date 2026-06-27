@@ -325,34 +325,44 @@ def run_oracle_and_refolding_metrics(
             )
 
         refolding_output: dict = {}
-        if refold_mm is not None:
-            refolded_aa = None
-            if oracle_mm is not None and output_dir is not None:
-                active_tags = set(metrics_tags or [])
-                for oracle_metric in oracle_mm.metrics.values():
-                    if not oracle_metric.applies_to_tags(active_tags):
-                        continue
-                    cif_path = oracle_metric.refolded_cif_path(output_dir, example_id)
-                    if cif_path.exists():
-                        try:
-                            refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"][
-                                "1"
-                            ][0]
-                            refolded_aa = remove_terminal_oxygen_atoms(refolded_aa)
-                        except Exception as e:
-                            logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
-                    break  # Stop after the first tag-matching oracle
-            if refolded_aa is None:
-                logger.warning(f"{example_id}: no refolded structure found — skipping refolding metrics")
-                return {"example_id": example_id, **oracle_output}
-
-            refolding_output = refold_mm(
-                network_input=None,
-                network_output=None,
-                extra_info={"example_id": example_id, "metrics_tags": metrics_tags or []},
-                ground_truth_atom_array=atom_array,
-                predicted_atom_array=refolded_aa,
-            )
+        if refold_mm is not None and oracle_mm is not None and output_dir is not None:
+            active_tags = set(metrics_tags or [])
+            ran_refolding = False
+            for oracle_metric in oracle_mm.metrics.values():
+                if not oracle_metric.applies_to_tags(active_tags):
+                    continue
+                # Inject oracle:{name} so refolding metrics can scope themselves to a
+                # specific oracle when multiple oracles are active simultaneously.
+                oracle_scoped_tags = active_tags | {f"oracle:{oracle_metric.oracle_name}"}
+                if not any(m.applies_to_tags(oracle_scoped_tags) for m in refold_mm.metrics.values()):
+                    continue
+                cif_path = oracle_metric.refolded_cif_path(output_dir, example_id)
+                if not cif_path.exists():
+                    logger.warning(f"{example_id}: refolded CIF missing for {oracle_metric.oracle_name}: {cif_path}")
+                    continue
+                try:
+                    refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
+                    refolded_aa = remove_terminal_oxygen_atoms(refolded_aa)
+                except Exception as e:
+                    logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
+                    continue
+                refolding_output.update(
+                    refold_mm(
+                        network_input=None,
+                        network_output=None,
+                        extra_info={"example_id": example_id, "metrics_tags": list(oracle_scoped_tags)},
+                        ground_truth_atom_array=atom_array,
+                        predicted_atom_array=refolded_aa,
+                    )
+                )
+                ran_refolding = True
+            if not ran_refolding:
+                logger.warning(
+                    f"{example_id}: refolding metrics skipped -- either none applied or no refolded structures were"
+                    " found"
+                )
+        elif refold_mm is not None:
+            logger.warning(f"{example_id}: refolding metrics configured but no oracle output dir — skipping")
 
         return {"example_id": example_id, **oracle_output, **refolding_output}
 

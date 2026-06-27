@@ -208,12 +208,26 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     )
     specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
 
+    # Infer is_partial_diffusion from generation args so ContigJsonDataset specs don't need it explicitly.
+    if "is_partial_diffusion" not in specification_overrides:
+        cfg_args = OmegaConf.to_container(cfg_gen.args, resolve=True) if hasattr(cfg_gen, "args") else {}
+        if any(
+            cfg_args.get(k) is not None
+            for k in ("partial_t_backbone", "partial_t_latent", "partial_trajectory_fraction_steps")
+        ):
+            specification_overrides["is_partial_diffusion"] = True
+
     transform_overrides = (
         OmegaConf.to_container(cfg_gen.dataset.transform, resolve=True) if "transform" in cfg_gen.dataset else {}
     )
     metrics_tags = transform_overrides.pop("metrics_tags", None)
     if isinstance(metrics_tags, str):
         metrics_tags = metrics_tags.split(",")
+    if specification_overrides.get("is_partial_diffusion"):
+        if metrics_tags is None:
+            metrics_tags = []
+        if "partial_diffusion" not in metrics_tags:
+            metrics_tags.append("partial_diffusion")
     inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags, **transform_overrides)
 
     dataset = get_contig_or_design_problem_dataset(
