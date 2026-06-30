@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_inference_exec.sh" "$0" "$@"'
 
 import hashlib
 import json
@@ -17,7 +17,6 @@ import torch
 import yaml
 from atomworks.common import exists
 from atomworks.ml.transforms.base import Identity, Transform
-from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 
@@ -457,6 +456,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         job_id=cfg.get("job_id"),
         ckpt_path=ckpt_path,
         ckpt_name=cfg.ckpt_name,
+        save_chain_of_interest=cfg.get("save_chain_of_interest", False),
     )
 
     # Configure search if specified
@@ -620,9 +620,8 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
     if config_name is None:
         config_name = cfg.get("run_name_", "inference")
 
-    root_path = cfg.get("out_dir", None)
-    if not exists(root_path):
-        root_path = infer_root_path(create_root=True, config_name=config_name)
+    if not exists(cfg.get("out_dir", None)):
+        cfg.out_dir = infer_root_path(create_root=True, config_name=config_name)
 
     # Set seed
     if exists(cfg.seed):
@@ -638,7 +637,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     # Exit if results from analysis already exist
     csv_filename = f"results_{config_name}_{job_id}.csv"
-    csv_path = os.path.join(root_path, "..", csv_filename)
+    csv_path = os.path.join(cfg.out_dir, "..", csv_filename)
     if os.path.exists(csv_path):
         logger.info(f"Results already exist at {csv_path}. Exiting generate.py.")
         sys.exit(0)
@@ -659,7 +658,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         dataset = _filter_existing_outputs(
             dataset,
             model=model,
-            root_path=root_path,
+            root_path=cfg.out_dir,
             job_id=job_id,
         )
 
@@ -686,12 +685,12 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         accelerator="gpu",
         devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
         num_nodes=cfg.hardware.nnodes_,
-        default_root_dir=root_path,
+        default_root_dir=cfg.out_dir,
         logger=False,
         callbacks=[ema_callback] if ema_callback is not None else [],
     )
     trainer.validate(model, dataloader)  # validation_step automatically saves outputs
-    logger.info(f"✓ Generation complete! Results saved to {root_path}")
+    logger.info(f"✓ Generation complete! Results saved to {cfg.out_dir}")
 
 
 @hydra.main(version_base="1.3", config_path=_config_path, config_name="inference")
@@ -725,13 +724,10 @@ def main_hydra(cfg: DictConfig) -> None:
     if exists(cfg.get("data_path", None)):
         os.environ["DATA_PATH"] = cfg.data_path
 
-    # Get config name from hydra runtime
-    config_name = HydraConfig.get().job.config_name
-
-    logger.info(f"Starting generation with config: {config_name}")
+    logger.info("Starting inference with config:")
     print_config_tree(cfg, resolve=True)
 
-    run_generation(cfg, job_id=job_id, config_name=config_name)
+    run_generation(cfg, job_id=job_id)
 
 
 if __name__ == "__main__":

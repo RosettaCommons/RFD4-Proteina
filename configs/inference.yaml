@@ -28,7 +28,8 @@ batch_size: 1
 subset_to_examples: null # If specified, only run inference on these example indices
 seed: null # Will set a random seed if null
 torch_deterministic: false  # Locks cuDNN/cuBLAS to deterministic algorithms; significantly reduces throughput
-skip_existing: false # If true, skip examples whose output structure files already exist in the output directory
+skip_existing: true # If true, skip examples whose output structure files already exist in the output directory
+save_chain_of_interest: false # If true, write per-design chain-of-interest CIFs (only needed for foldseek clustering).
 metrics_tags: [] # If specified, determines which metrics are computed during inference
 
 # MSA module: override to true in experiment configs that set load_msa per-dataset

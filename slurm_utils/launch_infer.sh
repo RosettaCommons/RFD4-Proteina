@@ -16,9 +16,15 @@
 #   --njobs N               Parallel generation jobs (default: reads gen_njobs
 #                           from Hydra config, fallback 1)
 #   --gpus-per-job N        GPUs per SLURM array task (default: 1)
-#   --config-name NAME      Hydra config name (default: inference). May be a
-#                           path relative to configs/, e.g.
-#                           sweep_configs/my_sweep/inf_000
+#   --config-name NAME      Hydra config name (default: inference). Same meaning
+#                           as generate.py's --config-name.
+#   --config-path DIR       Hydra search-path root (same as generate.py's
+#                           --config-path). Defaults to the repo configs/ tree;
+#                           set it to load a config that lives elsewhere on the
+#                           filesystem. Such a config must inherit the base
+#                           inference config and add a hydra.searchpath entry —
+#                           see configs/inference_experiment/TEMPLATE.yaml
+#                           Pattern C.
 #   --gres <spec>           SLURM --gres override (e.g. gpu:l40:1); takes
 #                           precedence over .user_info setting
 #   --time <HH:MM:SS>       SLURM --time override; takes precedence over
@@ -64,6 +70,10 @@
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inference_experiment=inference_on_val_set \
 #       +datasets/val@generation=mcsa_subset run_name_=mcsa_val
+#
+#   # Config that lives outside the repo configs/ tree
+#   ./launch_infer.sh coreweave --njobs 1 \
+#       --config-path /path/to/my/configs --config-name my_experiment
 # =============================================================================
 
 set -e
@@ -80,6 +90,7 @@ CLUSTER=""
 NJOBS=""               # empty = read from config's gen_njobs
 GPUS_PER_JOB=1
 CONFIG_NAME="inference"
+CONFIG_PATH=""         # optional dir for configs outside the repo configs/ tree
 DO_CONCATENATE="true"  # concatenate by default
 CONCATENATE_FOLDSEEK="true"  # foldseek on by default
 COPY_CODE="false"  # use repo in-place by default
@@ -113,6 +124,14 @@ while [[ $# -gt 0 ]]; do
         --config-name)
             CONFIG_NAME="$2"
             shift 2
+            ;;
+        --config-path)
+            CONFIG_PATH="$2"
+            shift 2
+            ;;
+        --config-path=*)
+            CONFIG_PATH="${1#*=}"
+            shift
             ;;
         --no-concatenate)
             DO_CONCATENATE="false"
@@ -206,29 +225,22 @@ setup_env_vars
 # ============================================================
 # Resolve Hydra config
 # ============================================================
-# When CONFIG_NAME contains path separators, split into --config-path + --config-name
-# so Hydra sees only the bare filename and places the config at the root level.
-CONFIGS_ROOT="$REPO_ROOT/projects/proteinfoundation/configs"
-if [[ "$CONFIG_NAME" == */* ]]; then
-    CONFIG_SUBDIR="${CONFIG_NAME%/*}"
-    CONFIG_BASE="${CONFIG_NAME##*/}"
-    # If CONFIG_SUBDIR is absolute, use it directly,
-    # otherwise treat it as relative to the repo's configs root.
-    if [[ "$CONFIG_SUBDIR" == /* ]]; then
-        CONFIG_HYDRA_ARGS="--config-path $CONFIG_SUBDIR --config-name $CONFIG_BASE"
-    else
-        CONFIG_HYDRA_ARGS="--config-path $CONFIGS_ROOT/$CONFIG_SUBDIR --config-name $CONFIG_BASE"
-    fi
-else
-    CONFIG_BASE="$CONFIG_NAME"
-    CONFIG_HYDRA_ARGS="--config-name $CONFIG_NAME"
+# Mirror Hydra exactly: --config-name is the config name (default: inference),
+# and --config-path optionally overrides the search-path root for configs that
+# live outside the repo configs/ tree. Both are passed straight through, just
+# as generate.py / Hydra expect them — no path rewriting.
+RESOLVE_PATH_ARG=""
+if [ -n "$CONFIG_PATH" ]; then
+    RESOLVE_PATH_ARG="--config-path $CONFIG_PATH"
 fi
+CONFIG_HYDRA_ARGS="$RESOLVE_PATH_ARG --config-name $CONFIG_NAME"
 
 print_header "Resolving Hydra Config"
 echo "  Config name: $CONFIG_NAME"
+[ -n "$CONFIG_PATH" ] && echo "  Config path: $CONFIG_PATH"
 echo "  Extra args:  $EXTRA_ARGS"
 
-eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $EXTRA_ARGS)
+eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $RESOLVE_PATH_ARG $EXTRA_ARGS)
 
 # Validate that run_name_ was resolved
 if [ -z "$RUN_NAME" ]; then
@@ -248,6 +260,19 @@ fi
 
 # Calculate SLURM array task count
 NUM_ARRAY_TASKS=$(( (NJOBS + GPUS_PER_JOB - 1) / GPUS_PER_JOB ))
+
+# ============================================================
+# Per-design chain of interest CIFs (foldseek input)
+# ============================================================
+# generate.py defaults save_chain_of_interest=false (the per-design
+# chain-of-interest CIFs are only consumed by foldseek). Enable them when the
+# dependent concat job will cluster with foldseek, unless the user set the flag.
+if [ "$DO_CONCATENATE" == "true" ] && [ "$CONCATENATE_FOLDSEEK" == "true" ]; then
+    if [[ "$EXTRA_ARGS" != *"save_chain_of_interest"* ]]; then
+        EXTRA_ARGS="$EXTRA_ARGS save_chain_of_interest=true"
+        echo "Foldseek enabled — adding save_chain_of_interest=true to generation args."
+    fi
+fi
 
 # ============================================================
 # Set up run directory

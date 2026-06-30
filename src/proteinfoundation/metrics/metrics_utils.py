@@ -655,19 +655,23 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
             to_cif_file(align_atom_array_to_input_frame(generated_array), gen_path)
         except Exception as e:
             logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
-        try:
-            ds = payload.get("dataset_name")
-            task = payload.get("task")
-            chains_dir = (
-                example_chain_dir(output_base_dir, example_id, dataset_name=ds, task=task)
-                if output_base_dir
-                else gen_path.parent
-            )
-            chains_dir.mkdir(parents=True, exist_ok=True)
-            foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
-        except Exception as e:
-            logger.warning(f"generated-structure worker: failed to pre-extract chain-only CIF for {example_id}: {e}")
-            foldseek_input_path = None
+        # Per-design chain-only CIF is only consumed by foldseek clustering
+        if payload.get("save_chain_of_interest", True):
+            try:
+                ds = payload.get("dataset_name")
+                task = payload.get("task")
+                chains_dir = (
+                    example_chain_dir(output_base_dir, example_id, dataset_name=ds, task=task)
+                    if output_base_dir
+                    else gen_path.parent
+                )
+                chains_dir.mkdir(parents=True, exist_ok=True)
+                foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
+            except Exception as e:
+                logger.warning(
+                    f"generated-structure worker: failed to pre-extract chain-only CIF for {example_id}: {e}"
+                )
+                foldseek_input_path = None
 
     if save_input:
         _write_input_cif(payload, example_id)

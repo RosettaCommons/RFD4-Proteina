@@ -206,6 +206,8 @@ setup_env_vars() {
 # Resolve Hydra config and output values as shell variable assignments
 # Usage: eval $(resolve_hydra_config <repo_root> <config_name> [overrides...])
 # Example: eval $(resolve_hydra_config "$REPO_ROOT" "training_proteina" $EXTRA_ARGS)
+# To load a config outside the repo configs/ tree, include "--config-path <dir>"
+# among the overrides; resolve_config.py parses it like Hydra's --config-path.
 resolve_hydra_config() {
     local repo_root="$1"
     local config_name="$2"

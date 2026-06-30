@@ -304,6 +304,9 @@ class Proteina(L.LightningModule):
         self.inference_seed: int | None = None  # Set via generate.py, not during training
         self.ckpt_path: str | None = None  # Set via configure_inference
         self.ckpt_name: str | None = None  # Set via configure_inference
+        # Whether to write per-design chain-of-interest CIFs (only used by foldseek clustering).
+        # Overridden for inference via configure_inference; training validation always writes.
+        self.save_chain_of_interest = True
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
@@ -1477,6 +1480,7 @@ class Proteina(L.LightningModule):
         global_prefix: str | None = None,
         ckpt_path: str | None = None,
         ckpt_name: str | None = None,
+        save_chain_of_interest: bool = False,
     ) -> None:
         """Sets inference config with all sampling parameters required by the method (dt, etc)
         and autoguidance network (or None if not provided).
@@ -1491,6 +1495,9 @@ class Proteina(L.LightningModule):
             global_prefix: Global prefix for inference output filenames.
             ckpt_path: Directory containing the checkpoint (recorded in output metrics).
             ckpt_name: Checkpoint filename (recorded in output metrics).
+            save_chain_of_interest: Whether to write per-design chain-of-interest CIFs.
+                These are only consumed by foldseek clustering, so they default to ``False``
+                for inference; the launch script enables them when foldseek will run.
         """
         self.inf_cfg = inf_cfg
         self.nn_ag = nn_ag
@@ -1504,6 +1511,7 @@ class Proteina(L.LightningModule):
         self.global_prefix = global_prefix
         self.ckpt_path = ckpt_path
         self.ckpt_name = ckpt_name
+        self.save_chain_of_interest = save_chain_of_interest
 
     def configure_search(
         self,
@@ -1720,6 +1728,7 @@ class Proteina(L.LightningModule):
             "output_base_dir": str(output_base),
             "generated_output_path": str(generated_output_path),
             "save_input": not self.is_inference,
+            "save_chain_of_interest": self.save_chain_of_interest,
             "trajectories": trajectories,
             "dataset_name": dataset_name,
             "task": task,

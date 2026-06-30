@@ -189,6 +189,15 @@ Default SLURM settings (partition, runtime, etc.) are read from `slurm_utils/.us
 
 Generation parameters (nsteps, noise scales, etc.) live in the `inference_experiment` config. Rather than passing them on the command line, create a new config in `configs/inference_experiment/` that inherits from `inference_like_rfd3` and defines your overrides.
 
+To keep a config outside the repo, store it anywhere and load it with the same two Hydra flags `generate.py` uses — `--config-path <dir>` and `--config-name <stem>`:
+
+```bash
+./slurm_utils/launch_infer.sh digs --njobs 2 \
+    --config-path /abs/path/to/config/dir --config-name my_experiment
+```
+
+The config must inherit the base `inference` config and add a `hydra.searchpath` entry; see `configs/inference_experiment/TEMPLATE.yaml` (Pattern C) for the exact lines.
+
 ### Parameter Sweeps
 
 Run the same pipeline across many parameter combinations, with one SLURM job per combination:

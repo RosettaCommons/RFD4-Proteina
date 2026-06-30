@@ -319,19 +319,11 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     config_name=$(basename "$config_file" .yaml)
     echo "--- Submitting: $config_name ---"
 
-    # Compute the Hydra config name: relative from configs/ root when inside it,
-    # or an absolute dir/basename path when outside.
-    config_hydra_name=$(python3 -c "
-import os
-cf = os.path.realpath('$config_file')
-hd = os.path.realpath('$REPO_ROOT/projects/proteinfoundation/configs')
-rel = os.path.relpath(cf, hd)
-if rel.startswith('..'):
-    # Config is outside the repo configs dir; use absolute dir + basename
-    print(os.path.dirname(cf) + '/' + os.path.splitext(os.path.basename(cf))[0])
-else:
-    print(os.path.splitext(rel)[0])
-")
+    # Generated sweep configs are fully composed and self-contained, so we load
+    # each one with the plain Hydra two-flag form: --config-path <dir> plus
+    # --config-name <stem>. This works whether the config lives inside or outside
+    # the repo configs/ tree, with no path rewriting.
+    config_dir=$(cd "$(dirname "$config_file")" && pwd)
 
     # Build per-config out_dir Hydra override if a base directory was specified.
     # This is passed as a Hydra override so launch_infer.sh's resolve_config.py
@@ -379,7 +371,7 @@ else:
     # Run launch_infer.sh and capture output to extract the concat job ID
     infer_output=$("$SCRIPT_DIR/launch_infer.sh" "$CLUSTER_ARG" \
         $COMMON_FLAGS \
-        --config-name "$config_hydra_name" \
+        --config-path "$config_dir" --config-name "$config_name" \
         run_name_="$config_name" \
         $OUT_DIR_OVERRIDE \
         $EXTRA_ARGS 2>&1) && SUBMITTED=$((SUBMITTED + 1)) || FAILED=$((FAILED + 1))

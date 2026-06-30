@@ -7,20 +7,52 @@
 # Copy this file and fill in the values for your experiment.
 # All inference configs compose inference_like_rfd3 as the base.
 #
-# Two ways to run inference:
+# Three ways to run inference:
 #
-#   Pattern A -- Self-contained config (reproducible, recommended for experiments):
-#     python proteinfoundation/generate.py \
+#   Pattern A -- Self-contained config in inference_experiment/ :
+#     proteinfoundation/generate.py \
 #         inference_experiment=my_experiment
 #
-#   Pattern B -- CLI overrides (quick one-offs, easy to share in chat):
-#     python proteinfoundation/generate.py \
+#   Pattern B -- CLI overrides:
+#     proteinfoundation/generate.py \
 #         ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt \
 #         inputs=/path/to/my_design.json out_dir=outputs/quick_test
 #
+#   Pattern C -- Config file anywhere on the filesystem:
+#     Place your .yaml anywhere, but note TWO differences from a config that
+#     lives in inference_experiment/ :
+#
+#       1. Add a hydra.searchpath entry so Hydra can find the base configs:
+#
+#            hydra:
+#              searchpath:
+#                - file://${oc.env:PROJECT_ROOT}/projects/proteinfoundation/configs
+#
+#       2. Inherit from the base inference config in defaults:
+#
+#            defaults:
+#              - inference
+#              - _self_
+#
+#     Then run:
+#       proteinfoundation/generate.py \
+#           --config-path /absolute/path/to/your/config/dir \
+#           --config-name your_config_name (no .yaml suffix)
+#
+#     The searchpath entry roots at configs/, so inference.yaml and all its
+#     nested refs (inference_experiment, /generation, /metrics, ...) resolve.
+#     PROJECT_ROOT is always set when generate.py runs.
+#
 # For SLURM:
+#   # In-tree config (Pattern A): selected as a config group on the default
+#   # inference config, just like generate.py.
 #   ./slurm_utils/launch_infer.sh digs \
-#       --config-name inference_experiment/my_experiment \
+#       inference_experiment=my_experiment \
+#       gen_njobs=4
+#
+#   # External config (Pattern C): same two Hydra flags as generate.py.
+#   ./slurm_utils/launch_infer.sh digs \
+#       --config-path /abs/path/to/config/dir --config-name my_experiment \
 #       gen_njobs=4
 #
 # ============================================================================

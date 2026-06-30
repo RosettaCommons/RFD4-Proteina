@@ -390,7 +390,8 @@ The `slurm_utils/` directory provides a unified system for launching jobs across
 |--------|-------------|
 | `--njobs N` | Number of parallel generation jobs (overrides `gen_njobs` from config) |
 | `--gpus-per-job N` | GPUs per SLURM array task (default: 1) |
-| `--config-name NAME` | Hydra config name (default: `inference`); use for sweep sub-configs |
+| `--config-name NAME` | Hydra config name (default: `inference`); same meaning as `generate.py`'s `--config-name` |
+| `--config-path DIR` | Hydra search-path root (same as `generate.py`'s `--config-path`); set it to load a config that lives outside the repo `configs/` tree (see [Configs outside the repo tree](#configs-outside-the-repo-tree)) |
 | `--copy` | Copy code to run directory via rsync (default: use repo in-place) |
 | `--follow` / `-f` | Tail the log file after submission |
 | `--no-concatenate` | Skip the automatic post-generation CSV concatenation job |
@@ -398,6 +399,21 @@ The `slurm_utils/` directory provides a unified system for launching jobs across
 | `--overwrite-rundir` | Allow overwriting an existing code directory |
 
 Any remaining arguments are passed directly to `generate.py` as Hydra overrides.
+
+#### Configs outside the repo tree
+
+To run a config stored anywhere on the filesystem, pass both Hydra flags, exactly
+as you would to `generate.py`:
+
+```bash
+./slurm_utils/launch_infer.sh digs \
+    --config-path /abs/path/to/config/dir --config-name my_experiment \
+    gen_njobs=4
+```
+
+The config must inherit the base `inference` config and add a `hydra.searchpath`
+entry so Hydra can find the in-tree base configs. See
+`configs/inference_experiment/TEMPLATE.yaml` (Pattern C) for the two lines to add.
 
 ### Cluster Configuration
 
