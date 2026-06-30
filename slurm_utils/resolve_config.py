@@ -21,6 +21,7 @@ Shell usage:
     eval $(python resolve_config.py --config-name training_proteina)
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -53,14 +54,18 @@ def _has_af3_oracle_target(cfg: DictConfig) -> bool:
 def main() -> int:
     args = sys.argv[1:]
 
-    # Extract config name and overrides
+    # Extract config name, optional config path, and overrides
     config_name = "training_proteina"
+    config_path = None
     overrides = []
 
     i = 0
     while i < len(args):
         if args[i] == "--config-name" and i + 1 < len(args):
             config_name = args[i + 1]
+            i += 2
+        elif args[i] == "--config-path" and i + 1 < len(args):
+            config_path = args[i + 1]
             i += 2
         else:
             overrides.append(args[i])
@@ -70,16 +75,17 @@ def main() -> int:
     script_dir = Path(__file__).parent
     configs_root = (script_dir / "../configs").resolve()
 
-    if "/" in config_name:
-        config_subdir, config_base = config_name.rsplit("/", 1)
-        # If config_subdir is absolute, use it directly.
-        if config_subdir.startswith("/"):
-            config_dir = config_subdir
-        else:
-            config_dir = str(configs_root / config_subdir)
-    else:
-        config_base = config_name
-        config_dir = str(configs_root)
+    # Ensure PROJECT_ROOT is set for configs that interpolate it (e.g. external
+    # configs using ``hydra.searchpath: file://${oc.env:PROJECT_ROOT}/...``).
+    # generate.py sets this via rootutils at import; here we set it explicitly so
+    # config composition doesn't fail on the interpolation. ``configs_root`` is
+    # ``<repo>/projects/proteinfoundation/configs``, so the repo root is 3 levels up.
+    os.environ.setdefault("PROJECT_ROOT", str(configs_root.parents[2]))
+
+    # Mirror Hydra exactly: --config-path is the search-path root (defaults to the
+    # repo configs/ tree), --config-name is the config name within it
+    config_dir = str(Path(config_path).resolve()) if config_path is not None else str(configs_root)
+    config_base = config_name
 
     try:
         with initialize_config_dir(config_dir=config_dir, version_base=None):

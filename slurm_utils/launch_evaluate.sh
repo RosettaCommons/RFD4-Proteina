@@ -15,7 +15,14 @@
 #   --njobs N               Parallel evaluation jobs (default: reads gen_njobs
 #                           from Hydra config, fallback 1)
 #   --gpus-per-job N        GPUs per SLURM array task (default: 1)
-#   --config-name NAME      Hydra config name (default: evaluate)
+#   --config-name NAME      Hydra config name (default: evaluate). Same meaning
+#                           as evaluate.py's --config-name.
+#   --config-path DIR       Hydra search-path root (same as evaluate.py's
+#                           --config-path). Defaults to the repo configs/ tree;
+#                           set it to load a config that lives elsewhere on the
+#                           filesystem. Such a config must inherit a base config
+#                           and add a hydra.searchpath entry — see
+#                           configs/inference_experiment/TEMPLATE.yaml Pattern C.
 #   --gres <spec>           SLURM --gres override (e.g. gpu:l40:1)
 #   --time <HH:MM:SS>       SLURM --time override (default: 6:00:00)
 #   --partition <name>      SLURM --partition override
@@ -47,6 +54,10 @@
 #       out_dir=/path/to/output \
 #       run_name_=my_eval \
 #       gen_njobs=8
+#
+#   # Config that lives outside the repo configs/ tree
+#   ./launch_evaluate.sh coreweave \
+#       --config-path /path/to/my/configs --config-name my_eval
 # =============================================================================
 
 set -e
@@ -62,6 +73,7 @@ CLUSTER=""
 NJOBS=""
 GPUS_PER_JOB=1
 CONFIG_NAME="evaluate"
+CONFIG_PATH=""         # optional dir for configs outside the repo configs/ tree
 DO_CONCATENATE="true"
 CONCATENATE_FOLDSEEK="true"  # foldseek on by default
 COPY_CODE="false"
@@ -81,6 +93,8 @@ while [[ $# -gt 0 ]]; do
         --gpus-per-job=*)   GPUS_PER_JOB="${1#*=}"; shift ;;
         --gpus-per-job)     GPUS_PER_JOB="$2"; shift 2 ;;
         --config-name)      CONFIG_NAME="$2"; shift 2 ;;
+        --config-path)      CONFIG_PATH="$2"; shift 2 ;;
+        --config-path=*)    CONFIG_PATH="${1#*=}"; shift ;;
         --no-concatenate)   DO_CONCATENATE="false"; shift ;;
         --no-foldseek)      CONCATENATE_FOLDSEEK="false"; shift ;;
         --copy)             COPY_CODE="true"; shift ;;
@@ -139,24 +153,22 @@ setup_env_vars
 # ============================================================
 # Resolve Hydra config
 # ============================================================
-CONFIGS_ROOT="$REPO_ROOT/projects/proteinfoundation/configs"
-if [[ "$CONFIG_NAME" == */* ]]; then
-    CONFIG_SUBDIR="${CONFIG_NAME%/*}"
-    CONFIG_BASE="${CONFIG_NAME##*/}"
-    if [[ "$CONFIG_SUBDIR" == /* ]]; then
-        CONFIG_HYDRA_ARGS="--config-path $CONFIG_SUBDIR --config-name $CONFIG_BASE"
-    else
-        CONFIG_HYDRA_ARGS="--config-path $CONFIGS_ROOT/$CONFIG_SUBDIR --config-name $CONFIG_BASE"
-    fi
-else
-    CONFIG_HYDRA_ARGS="--config-name $CONFIG_NAME"
+# Mirror Hydra exactly: --config-name is the config name (default: evaluate),
+# and --config-path optionally overrides the search-path root for configs that
+# live outside the repo configs/ tree. Both are passed straight through, just
+# as evaluate.py / Hydra expect them — no path rewriting.
+RESOLVE_PATH_ARG=""
+if [ -n "$CONFIG_PATH" ]; then
+    RESOLVE_PATH_ARG="--config-path $CONFIG_PATH"
 fi
+CONFIG_HYDRA_ARGS="$RESOLVE_PATH_ARG --config-name $CONFIG_NAME"
 
 print_header "Resolving Hydra Config"
 echo "  Config name: $CONFIG_NAME"
+[ -n "$CONFIG_PATH" ] && echo "  Config path: $CONFIG_PATH"
 echo "  Extra args:  $EXTRA_ARGS"
 
-eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $EXTRA_ARGS)
+eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $RESOLVE_PATH_ARG $EXTRA_ARGS)
 
 if [ -z "$RUN_NAME" ]; then
     echo ""
