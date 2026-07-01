@@ -315,22 +315,22 @@ class DesignProblemDataset(FileDataset):
 
         self.global_prefix = global_prefix
 
-        # Generate unique base_ids by taking section after last dash, or more if ambiguous
-        def get_base_id_parts(path: PathLike) -> list[str]:
-            # Remove extension and get the stem
-            stem = pathlib.Path(path).with_suffix("").name
-            return str(stem).replace("/", "-").split("-")
+        # Split each path into its components (parent directories plus the file stem).
+        def get_base_id_parts(path: PathLike) -> tuple[str, ...]:
+            return pathlib.Path(path).with_suffix("").parts
 
-        # Build a list of base_id candidates
         all_parts = [get_base_id_parts(p) for p in self.file_paths]
-        n_parts = [len(parts) for parts in all_parts]
-        max_parts = max(n_parts)
-        # Try with just the last part, then last two, etc, until unique.
-        # Files with fewer parts than k naturally use their full stem via Python slice semantics.
+        max_parts = max(len(parts) for parts in all_parts)
+        # Grow from the stem, prepending one parent dir at a time, until every id is unique.
         for k in range(1, max_parts + 1):
             candidate_ids = ["-".join(parts[-k:]) for parts in all_parts]
             if len(set(candidate_ids)) == len(candidate_ids):
                 break
+        else:
+            raise ValueError(
+                f"Could not build unique base_ids for {len(self.file_paths)} files even "
+                "using their full paths; remove duplicate input paths."
+            )
         if exists(self.global_prefix):
             candidate_ids = [f"{self.global_prefix}_{cid}" for cid in candidate_ids]
         self.base_ids = candidate_ids
