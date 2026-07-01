@@ -14,6 +14,8 @@ from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffoldTask,
     PPIHotspotWith3DTarget,
+    ProteinFromDNASequenceContextTask,
+    ProteinFromDNAStructureContextTask,
     StructurePredictionTask,
     TipAtomActiveSiteTask,
     TipAtomPartialLigandTask,
@@ -169,6 +171,11 @@ COMPLEX_ELIGIBLE_EXAMPLE_MAP = {
     MotifScaffoldTask: "complex_protein",
     PPIHotspotWith3DTarget: "complex_protein_crop_info",
     TipAtomActiveSiteTask: "complex_protein",
+    # DNA-binder tasks require a protein + DNA example; ``complex_protein`` carries
+    # both (plus RNA/ligand). They are complex-only — no minimal protein+DNA fixture
+    # exists, and ``simple_protein`` has no DNA so ``can_apply`` would reject it.
+    ProteinFromDNAStructureContextTask: "complex_protein",
+    ProteinFromDNASequenceContextTask: "complex_protein",
 }
 
 

@@ -1,0 +1,16 @@
+# DNA-binder design: generate the whole protein from noise with the DNA chain
+# as context. Half the time the DNA structure+sequence is provided, half the
+# time only its sequence (the DNA structure is co-generated); a small fraction
+# of folding / inverse folding is mixed in for general structure learning.
+#
+# Relative weights normalize to ~45.5% structure-context, ~45.5% sequence-context,
+# ~4.5% folding, ~4.5% inverse folding.
+
+defaults:
+  - all_off
+  - _self_
+
+protein_from_dna_structure_context: {frequency: 10.0}
+protein_from_dna_sequence_context:  {frequency: 10.0}
+folding:                            {frequency: 1.0}
+inverse_folding:                    {frequency: 1.0}

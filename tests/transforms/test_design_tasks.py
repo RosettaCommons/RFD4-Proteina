@@ -90,6 +90,8 @@ from atomworks.ml.utils.token import apply_and_spread_token_wise
 from proteinfoundation.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
 from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
+    ProteinFromDNASequenceContextTask,
+    ProteinFromDNAStructureContextTask,
     StructurePredictionTask,
     UnconditionalTask,
 )
@@ -197,6 +199,51 @@ def test_structure_prediction_conditions(atom_array_fixture):
 
     # Shouldn't have RASA, HBOND, or SS conditions
     check_no_design_task_modifiers(data)
+
+
+@pytest.mark.parametrize("atom_array_fixture", ["complex_protein"], indirect=True)
+def test_dna_structure_context_conditions(atom_array_fixture):
+    """ProteinFromDNAStructureContextTask provides the DNA structure + sequence as
+    context while the protein is generated from noise.
+    """
+    data = apply_design_task(atom_array_fixture, ProteinFromDNAStructureContextTask())
+    atom_array = as_atom_array_plus(data["atom_array"])
+    ensure_annotations(atom_array, "is_dna", "is_standard_aa")
+
+    is_dna = atom_array.is_dna
+    assert is_dna.any(), "fixture must contain DNA"
+
+    # DNA sequence and (finite-coord) DNA structure are both provided as context.
+    assert C_SEQ.mask(atom_array)[is_dna].all()
+    finite_coord = ~np.isnan(atom_array.coord).any(axis=1)
+    assert C_CRD.mask(atom_array)[is_dna & finite_coord].all()
+
+    # The protein is generated: standard AAs get neither sequence nor coord context.
+    is_std_aa = atom_array.is_standard_aa
+    assert not C_SEQ.mask(atom_array)[is_std_aa].any()
+    assert not C_CRD.mask(atom_array)[is_std_aa].any()
+
+
+@pytest.mark.parametrize("atom_array_fixture", ["complex_protein"], indirect=True)
+def test_dna_sequence_context_conditions(atom_array_fixture):
+    """ProteinFromDNASequenceContextTask provides only the DNA sequence as context;
+    the DNA structure is co-generated and the protein is generated from noise.
+    """
+    data = apply_design_task(atom_array_fixture, ProteinFromDNASequenceContextTask())
+    atom_array = as_atom_array_plus(data["atom_array"])
+    ensure_annotations(atom_array, "is_dna", "is_standard_aa")
+
+    is_dna = atom_array.is_dna
+    assert is_dna.any(), "fixture must contain DNA"
+
+    # DNA sequence is provided, but no DNA coordinates (structure is co-generated).
+    assert C_SEQ.mask(atom_array)[is_dna].all()
+    assert not C_CRD.mask(atom_array)[is_dna].any()
+
+    # The protein is generated: standard AAs get neither sequence nor coord context.
+    is_std_aa = atom_array.is_standard_aa
+    assert not C_SEQ.mask(atom_array)[is_std_aa].any()
+    assert not C_CRD.mask(atom_array)[is_std_aa].any()
 
 
 # ============================== Comprehensive Tests ==============================
