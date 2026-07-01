@@ -67,7 +67,7 @@
   },
   "7m5w_short_site_fixed_dna": {
     "input": "dna_pdbs/7m5w.cif",
-    "contig": "B139-148,/0,C149-158,/0,50-80",
+    "contig": "B140-148,/0,C149-158,/0,50-80",
     "length": "70-100",
     "select_unfixed_sequence": false,
     "select_fixed_atoms": true,

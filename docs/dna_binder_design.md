@@ -93,7 +93,7 @@ Fix both structure and sequence of the DNA, generate protein around it:
     "structure_conditioned": {
         "dialect": 2,
         "input": "dna_cifs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_unfixed_sequence": false
     }
