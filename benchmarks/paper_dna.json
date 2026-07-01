@@ -18,7 +18,7 @@
     },
     "7m5w_dimer_ori": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80,/0,50-80",
         "length": "120-180",
         "select_unfixed_sequence": false,
         "ori_token": [-2.613, 5.874, 15.491],
@@ -40,7 +40,7 @@
     },
     "7m5w_sequence_only": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_unfixed_sequence": true,
         "dialect": 2
@@ -55,7 +55,7 @@
     },
     "7m5w_with_structure_and_ori": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_unfixed_sequence": false,
         "ori_token": [-2.613, 5.874, 15.491],
@@ -85,7 +85,7 @@
     },
     "7m5w_dimer": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-110,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-110,/0,50-80",
         "length": "120-180",
         "select_unfixed_sequence": true,
         "dialect": 2

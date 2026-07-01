@@ -9,7 +9,7 @@
     },
     "7m5w_structure_context": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_fixed_atoms": true,
         "select_unfixed_sequence": false,
@@ -33,7 +33,7 @@
     },
     "7m5w_sequence_context": {
         "input": "dna_pdbs/7m5w.cif",
-        "contig": "B139-148,/0,C149-158,/0,50-80",
+        "contig": "B140-148,/0,C149-158,/0,50-80",
         "length": "70-100",
         "select_fixed_atoms": false,
         "select_unfixed_sequence": false,
