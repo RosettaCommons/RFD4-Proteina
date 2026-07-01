@@ -306,6 +306,91 @@ class InverseFoldingTask(NoMotifABC):
         return data
 
 
+class ProteinFromDNAContextABC(RFD3DesignTask):
+    """Base for DNA-binder design tasks: the whole protein is generated from
+    noise while a DNA chain is provided as context.
+
+    The DNA is supplied through the ``C_CRD`` / ``C_SEQ`` condition annotations
+    rather than as a protein motif, so there is no motif region — hence the
+    all-zeros motif mask stamped by :py:meth:`set_task_info`. This mirrors the
+    no-motif tasks, but subclassing :py:class:`RFD3DesignTask` directly keeps
+    this a distinct setting. Subclasses decide whether the DNA *structure* is
+    given as context or co-generated.
+
+    Design-task modifiers (RASA / H-bond / SSE / CATH conditioning) are left at
+    the experiment's global rates (``datasets.global_design_task_kwargs``); the
+    DNA tasks intentionally participate in the same conditioning as the protein
+    tasks.
+    """
+
+    # Empty: take the base defaults so the experiment's global conditioning rates
+    # flow through unchanged. (A per-class 0.0 override could not force
+    # conditioning off anyway — global kwargs win in the RFD3DesignTask merge.)
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {}
+
+    def can_apply(self, data: dict) -> bool:
+        atom_array = data["atom_array"]
+        ensure_annotations(atom_array, "is_dna")
+        return bool(atom_array.is_dna.any())
+
+    def set_task_info(self, data: dict) -> dict:
+        """Stamp task bookkeeping with an all-zeros motif mask (no protein motif)."""
+        atom_array = as_atom_array_plus(data["atom_array"])
+        n_atoms = atom_array.array_length()
+        data["atom_array"] = atom_array
+        if "task" not in data:
+            data["task"] = {"name": self.__class__.__name__}
+        data["task"] |= {
+            "class": self.__class__.__name__,
+            "mask": np.zeros(n_atoms, dtype=bool),
+        }
+        return data
+
+
+class ProteinFromDNAStructureContextTask(ProteinFromDNAContextABC):
+    """Generate the entire protein from noise; DNA structure and sequence are
+    both provided as context.
+    """
+
+    def forward(self, data: dict) -> dict:
+        data = super().set_task_info(data)
+
+        atom_array = data["atom_array"]
+        ensure_annotations(atom_array, "is_dna")
+        is_dna = atom_array.is_dna.astype(bool)
+
+        # Provide DNA coordinates (skipping NaN coords) and DNA sequence.
+        nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
+        C_CRD.set_mask(atom_array, is_dna & ~nan_coord_mask)
+        C_SEQ.set_mask(atom_array, is_dna)
+        data["atom_array"] = atom_array
+
+        data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
+        data = self.apply_design_task_modifiers(data)
+        return data
+
+
+class ProteinFromDNASequenceContextTask(ProteinFromDNAContextABC):
+    """Generate the entire protein from noise; only the DNA *sequence* is
+    provided as context — the DNA structure is co-generated.
+    """
+
+    def forward(self, data: dict) -> dict:
+        data = super().set_task_info(data)
+
+        atom_array = data["atom_array"]
+        ensure_annotations(atom_array, "is_dna")
+        is_dna = atom_array.is_dna.astype(bool)
+
+        # Provide DNA sequence only; no coordinate conditioning.
+        C_SEQ.set_mask(atom_array, is_dna)
+        data["atom_array"] = atom_array
+
+        data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
+        data = self.apply_design_task_modifiers(data)
+        return data
+
+
 class PartialLigandTask(RFD3DesignTask):
     """
     Intended only for OMOL examples where we have ligands and maybe some tip atoms.

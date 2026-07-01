@@ -125,3 +125,15 @@ partial_ligand:
     max_coverage_fraction: 1.0
     p_fix_ligand_surroundings: 0.0
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+protein_from_dna_structure_context:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.ProteinFromDNAStructureContextTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+protein_from_dna_sequence_context:
+  frequency: 0.0
+  transform:
+    _target_: proteinfoundation.transforms.design_task.ProteinFromDNASequenceContextTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
