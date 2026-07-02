@@ -10,12 +10,6 @@ clash_metrics:
   required_tags_any: ["design", "structure_prediction"]
   prohibited_tags: ["small_molecule_only"]
 
-hbond_metrics:
-  _target_: proteinfoundation.metrics.hbonds_hbplus_metrics.HbondMetrics
-  cutoff_HA_dist: 2.2
-  cutoff_DA_distance: 3.2
-  required_tags_any: ["hbond_conditioning"]
-
 hotspot_obedience:
   _target_: proteinfoundation.metrics.hotspots.HotspotObedience
   max_hotspot_distance: 4.5
@@ -24,6 +18,11 @@ hotspot_obedience:
 rasa_adherence:
   _target_: proteinfoundation.metrics.rasa_metrics.RasaAdherenceMetric
   required_tags_any: ["rasa_conditioning"]
+
+interchain_interactions:
+  _target_: proteinfoundation.metrics.interaction_metrics.InterchainInteractionMetric
+  required_tags_any: ["interchain_interactions"]
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 sse_distribution:
   _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureDistribution

@@ -35,7 +35,7 @@ run_name_: beam_example
 # With unconditional_refolding, the epoch-end loop calls the oracle on final outputs but
 # finds cached results from beam scoring — so it is fast and populates columns
 # in per_example_metrics.csv.
-metrics_tags: [unconditional_refolding]
+metrics_tags: [design, unconditional_refolding]
 
 search:
   strategy:
@@ -53,7 +53,7 @@ search:
     reward_metrics_tags: [unconditional_refolding]
 
     weights:
-      rf3.plddt_coi: 1.0
+      oracle.plddt_coi: 1.0
 
     differentiable: false
 

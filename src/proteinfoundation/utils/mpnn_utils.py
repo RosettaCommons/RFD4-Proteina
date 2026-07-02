@@ -61,6 +61,7 @@ def get_fixed_residues_from_structure(
         structure_path,
         load_standard_annotations=True,
         add_missing_atoms=False,
+        long_bond_policy="keep",
     )["asym_unit"][0]
 
     # Determine fixed residues at the atom level

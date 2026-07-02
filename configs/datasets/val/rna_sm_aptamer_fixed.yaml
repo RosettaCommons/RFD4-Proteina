@@ -15,5 +15,5 @@ dataset:
   transform:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
-      - hbond_conditioning
+      - interchain_interactions
       - sm_binder_refolding

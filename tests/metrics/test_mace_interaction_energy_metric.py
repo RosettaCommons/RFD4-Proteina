@@ -70,7 +70,7 @@ def test_chain_type_restored_after_rdkit_protonation(mcl1_complex):
     from atomworks.enums import ChainType
     from atomworks.ml.conditions.annotator import ensure_annotations
 
-    from proteinfoundation.metrics.mace_interaction_energy_metric import _infer_hydrogens
+    import proteinfoundation.metrics.mace_interaction_energy_metric as mace_metric
 
     prepared = mcl1_complex["atom_array"]
     chain_type_by_id: dict[str, int] = {}
@@ -84,11 +84,12 @@ def test_chain_type_restored_after_rdkit_protonation(mcl1_complex):
         mol = atom_array_to_rdkit(atom_array, hydrogen_policy="infer", set_coord=True)
         return atom_array_from_rdkit(mol, remove_hydrogens=False, remove_inferred_atoms=False)
 
-    with patch(
-        "proteinfoundation.metrics.mace_interaction_energy_metric._infer_hydrogens",
+    with patch.object(
+        mace_metric,
+        "_infer_hydrogens",
         side_effect=_rdkit_protonation_only,
     ):
-        protonated = _infer_hydrogens(prepared, ph=7.0)
+        protonated = mace_metric._infer_hydrogens(prepared, ph=7.0)
 
     assert "chain_type" not in protonated.get_annotation_categories()
 

@@ -16,4 +16,3 @@ dataset:
       - 3d_coordinate_conditioning
       - ame_refolding
       - rasa_conditioning
-      - hbond_conditioning

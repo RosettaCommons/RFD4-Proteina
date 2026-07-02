@@ -13,4 +13,4 @@ dataset:
       - dna_binder_refolding
       - dna_binder_specificity
       - hotspot_conditioning
-      - hbond_conditioning
+      - interchain_interactions

@@ -1,7 +1,7 @@
 # DNA-binder validation (120-150 AA) on 6 fixed DNA targets: a small, cheap
 # percent-helicity check meant to be run frequently. No refolding oracle — only
-# inline design metrics on the generated backbones (helix fraction + H-bond
-# conditioning), so it is fast enough to run every val epoch. Same input JSON as
+# inline design metrics on the generated backbones (helix fraction + interchain
+# interaction metrics), so it is fast enough to run every val epoch. Same input JSON as
 # dna_binder_120_150_campaign (identical targets, contigs, and central-6bp H-bond
 # conditioning labels); differs only in num_replicates and metrics_tags. Set its
 # val cadence via run_every_n_val_epochs at the experiment level.
@@ -23,4 +23,4 @@ dataset:
     _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
-      - hbond_conditioning
+      - interchain_interactions
