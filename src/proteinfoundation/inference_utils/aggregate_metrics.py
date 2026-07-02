@@ -158,7 +158,7 @@ def concatenate_results(
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
         # Drop any pre-existing foldseek columns so re-runs don't produce _x/_y duplicates.
-        _stale_tokens = ("foldseek_cluster_id", "unclustered_pass_rate", "clustered_pass_rate", "cluster_diversity")
+        _stale_tokens = ("foldseek_cluster_id", "clustered_pass_rate", "cluster_diversity")
         stale_cols = [c for c in concatenated_per_example.columns if any(tok in c for tok in _stale_tokens)]
         if stale_cols:
             concatenated_per_example = concatenated_per_example.drop(columns=stale_cols)

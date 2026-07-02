@@ -175,23 +175,11 @@ def cluster_structures(
     return dict(zip(example_ids, cluster_ids, strict=True))
 
 
-def _base_pass_rate_cols(df: pd.DataFrame) -> list[str]:
-    """Return pass-rate columns, supporting both legacy ``*_pass_rate`` and modern ``*.pass`` suffixes.
-
-    Excludes derived ``clustered_pass_rate`` / ``unclustered_pass_rate`` variants.
-    """
-    return [
-        c
-        for c in df.columns
-        if (
-            c.endswith(".pass")
-            or (
-                c.endswith("pass_rate")
-                and not c.endswith("clustered_pass_rate")
-                and not c.endswith("unclustered_pass_rate")
-            )
-        )
-    ]
+def _base_pass_cols(df: pd.DataFrame, pass_cols: list[str] | None = None) -> list[str]:
+    """Return the solve-rate pass columns in ``df`` (explicit ``pass_cols``, else ``.pass`` fallback)."""
+    if pass_cols is not None:
+        return [c for c in pass_cols if c in df.columns]
+    return [c for c in df.columns if c.endswith(".pass")]
 
 
 def add_foldseek_diversity_to_per_example_df(
@@ -342,9 +330,12 @@ def add_foldseek_diversity_to_per_example_df(
 def add_diversity_summary_metrics(
     per_example_df: pd.DataFrame,
     group_by: list[str] | None = None,
+    pass_cols: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Broadcast cluster metrics (cluster_diversity, clustered_pass_rate, unclustered_pass_rate)
-    onto per-example rows.
+    """Broadcast per-target diversity metrics onto per-example rows.
+
+    Adds ``cluster_diversity`` and, for each pass criterion, ``{crit}.clustered_pass_rate``
+    (distinct passing foldseek clusters / n).
 
     Args:
         per_example_df: DataFrame with a ``foldseek_cluster_id`` column (added by
@@ -352,10 +343,7 @@ def add_diversity_summary_metrics(
         group_by: Columns that define the clustering groups. Must match the ``group_by``
             used in :py:func:`add_foldseek_diversity_to_per_example_df`. Defaults to
             ``["task"]``.
-
-    Returns:
-        DataFrame with additional columns: unclustered_pass_rate, cluster_diversity,
-        clustered_pass_rate (and per-prefix variants).
+        pass_cols: Explicit solve-rate pass columns (see :py:func:`_base_pass_cols`).
     """
     if group_by is None:
         group_by = ["task"]
@@ -377,18 +365,8 @@ def add_diversity_summary_metrics(
             "Run add_foldseek_diversity_to_per_example_df first."
         )
 
-    pass_rate_cols = _base_pass_rate_cols(per_example_df)
-
-    # Add unclustered_pass_rate as a per-row coalesced value: the single non-NaN base pass_rate
-    # value for that row, or NaN if zero or multiple base pass_rate columns are non-NaN.
+    pass_cols = _base_pass_cols(per_example_df, pass_cols)
     per_example_df = per_example_df.copy()
-    if pass_rate_cols:
-        pr_df = per_example_df[pass_rate_cols]
-        non_nan_counts = pr_df.notna().sum(axis=1)
-        coalesced = pr_df.bfill(axis=1).iloc[:, 0]
-        per_example_df["unclustered_pass_rate"] = coalesced.where(non_nan_counts == 1)
-    else:
-        per_example_df["unclustered_pass_rate"] = float("nan")
 
     cluster_rows = []
     for group_key, group_df in per_example_df.groupby(group_by):
@@ -403,21 +381,15 @@ def add_diversity_summary_metrics(
             if all_clusters_missing
             else float(group_df["foldseek_cluster_id"].nunique()) / n,
         }
-        cpr_values: dict = {}
-        for pr_col in pass_rate_cols:
-            suffix = "pass" if pr_col.endswith(".pass") else "pass_rate"
-            prefix = pr_col[: -len(suffix)]
+        for pass_col in pass_cols:
+            prefix = pass_col[: -len("pass")]  # "{crit}." from "{crit}.pass"
             cpr_col = f"{prefix}clustered_pass_rate"
-            if all_clusters_missing or group_df[pr_col].isna().all():
+            if all_clusters_missing or group_df[pass_col].isna().all():
                 cpr_val: float = float("nan")
             else:
-                passing_clusters = group_df.loc[group_df[pr_col] == 1.0, "foldseek_cluster_id"].dropna().nunique()
+                passing_clusters = group_df.loc[group_df[pass_col] == 1.0, "foldseek_cluster_id"].dropna().nunique()
                 cpr_val = float(passing_clusters) / n
             row[cpr_col] = cpr_val
-            cpr_values[cpr_col] = cpr_val
-        if pass_rate_cols:
-            non_nan_cprs = [v for v in cpr_values.values() if pd.notna(v)]
-            row["clustered_pass_rate"] = non_nan_cprs[0] if len(non_nan_cprs) == 1 else float("nan")
         cluster_rows.append(row)
 
     cluster_metrics_df = pd.DataFrame(cluster_rows)

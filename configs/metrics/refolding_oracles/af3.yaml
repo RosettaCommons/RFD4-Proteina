@@ -4,6 +4,9 @@
 oracle:
   _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
   oracle_name: af3
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - af3_refolding
     - unconditional_refolding
@@ -19,6 +22,9 @@ oracle_ppi:
   _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
   template_annotations: [mask_coordinate_1_atom]
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
 
@@ -28,6 +34,9 @@ oracle_dna:
   _target_: proteinfoundation.metrics.af3_oracle.AF3Oracle
   oracle_name: af3_dna
   template_annotations: [mask_coordinate_1_atom]
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - dna_refolding
 

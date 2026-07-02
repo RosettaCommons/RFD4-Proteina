@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from atomworks.io.utils.io_utils import apply_sharding_pattern
 from atomworks.ml.utils.misc import hash_sequence
 from biotite.structure import AtomArray
@@ -196,12 +197,17 @@ class OracleMetric(Metric):
             (e.g. ``"rf3"`` → ``…/{digest8}/{example_id}_rf3_refolded.cif``).
         template_annotations: Annotation name(s) on the input AtomArray to use
             for templating. Multiple names are OR'd together. Defaults to ``None``.
+        frac_under_thresholds: Per-output-key thresholds for which to emit
+            ``frac_under_<T>`` rows in :py:meth:`aggregate`. Keys are bare output
+            names (e.g. ``"min_ipae_coi"``), values are threshold lists. Uses
+            strict ``<``. Defaults to ``None`` (no threshold rows).
     """
 
     def __init__(
         self,
         oracle_name: str,
         template_annotations: str | list[str] | None = None,
+        frac_under_thresholds: dict[str, list[float]] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -209,6 +215,14 @@ class OracleMetric(Metric):
         self.template_annotations = (
             [template_annotations] if isinstance(template_annotations, str) else template_annotations
         )
+        self.frac_under_thresholds = frac_under_thresholds or {}
+
+    def aggregate(self, column: str, values: pd.Series) -> dict[str, float]:
+        """Default reductions plus per-column ``frac_under_<T>`` rows."""
+        result = super().aggregate(column, values)
+        for thresh in self.frac_under_thresholds.get(column, []):
+            result[f"frac_under_{thresh}"] = float((values < thresh).mean())
+        return result
 
     # ------------------------------------------------------------------
     # Path helpers

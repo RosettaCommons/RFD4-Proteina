@@ -7,6 +7,7 @@ refolded_backbone_rmsd:
   align_mask: is_protein_backbone
   subset_mask: is_protein_backbone
   metric_type: rmsd
+  aggregation: [median]
   required_tags_any:
     - unconditional_refolding
     - ppi_refolding
@@ -24,6 +25,7 @@ refolded_target_aligned_binder_rmsd:
   align_mask: mask_coordinate_1_atom
   subset_mask: ~mask_coordinate_1_atom
   metric_type: rmsd
+  aggregation: [median]
   required_tags_any: [ppi_refolding, dna_refolding]
 
 refolded_motif_allatom_rmsd:
@@ -33,6 +35,7 @@ refolded_motif_allatom_rmsd:
   subdivide_by_annotation: annotation_src-coord-group_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
+  aggregation: [median]
   required_tags_any:
     - motif_scaffold_refolding
     - internal_coordinate_motif_scaffold_refolding
@@ -47,6 +50,7 @@ refolded_motif_ca_rmsd:
   subdivide_by_annotation: annotation_src-coord-group_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
+  aggregation: [median]
   required_tags_any:
     - motif_scaffold_refolding
     - internal_coordinate_motif_scaffold_refolding
@@ -56,6 +60,7 @@ refolded_backbone_aligned_ligand_rmsd:
   align_mask: is_protein_backbone
   subset_mask: is_ligand
   metric_type: rmsd
+  aggregation: [median]
   required_tags_any: [sm_binder_refolding]
 
 max_ligand_centroid_distance:
