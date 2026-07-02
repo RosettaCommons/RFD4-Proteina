@@ -414,8 +414,8 @@ python proteinfoundation/generate.py \
 | `ame_refolding` | RF3 refolding for enzyme (MCSA) active-site benchmarks |
 | `hotspot_conditioning` | Hotspot obedience metrics (requires hotspot input) |
 | `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
-| `hbond_conditioning` | H-bond satisfaction metrics |
 | `rasa_conditioning` | RASA adherence metrics |
+| `interchain_interactions` | Interchain interaction (H-bond/π-stack/π-cation/salt-bridge/hydrophobic/metal-coordination) adherence and counts |
 
 Metrics that require a tag will be silently skipped if the tag is not present.
 

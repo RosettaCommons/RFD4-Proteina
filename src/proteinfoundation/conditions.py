@@ -111,6 +111,7 @@ class HBondEnum(IntEnum):
     NONE = 0
     DONOR = 1
     ACCEPTOR = 2
+    BOTH = 3  # DONOR | ACCEPTOR -- for atoms that donate in one H-bond and accept in another
 
 
 class HydrogenBond(ConditionBase):
@@ -131,6 +132,110 @@ class HydrogenBond(ConditionBase):
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
         return np.full(atom_array.array_length(), HBondEnum.NONE, dtype=int)
+
+
+class PiStacking(ConditionBase):
+    """Conditioning for pi-stacking interactions."""
+
+    name = "pistack"
+    n_body = 1
+    level = Level.ATOM
+    is_mask = True
+    dtype = bool
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+
+class PiCationEnum(IntEnum):
+    NONE = 0
+    AROMATIC = 1
+    CATION = 2
+    BOTH = 3
+
+
+class PiCation(ConditionBase):
+    """Conditioning for pi-cation interactions (aromatic ring / cation role)."""
+
+    name = "pication"
+    n_body = 1
+    level = Level.ATOM
+    dtype = int
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        if cls.full_name in atom_array.get_annotation_categories():
+            return cls.annotation(atom_array, default="raise") != PiCationEnum.NONE
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.full(atom_array.array_length(), PiCationEnum.NONE, dtype=int)
+
+
+class SaltBridgeEnum(IntEnum):
+    NONE = 0
+    POSITIVE = 1
+    NEGATIVE = 2
+
+
+class SaltBridge(ConditionBase):
+    """Conditioning for salt bridge interactions."""
+
+    name = "saltbridge"
+    n_body = 1
+    level = Level.ATOM
+    dtype = int
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        if cls.full_name in atom_array.get_annotation_categories():
+            return cls.annotation(atom_array, default="raise") != SaltBridgeEnum.NONE
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.full(atom_array.array_length(), SaltBridgeEnum.NONE, dtype=int)
+
+
+class Hydrophobic(ConditionBase):
+    """Conditioning for hydrophobic contacts."""
+
+    name = "hydrophobic"
+    n_body = 1
+    level = Level.ATOM
+    is_mask = True
+    dtype = bool
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+
+class MetalCoordEnum(IntEnum):
+    NONE = 0
+    METAL = 1
+    COORDINATING = 2
+
+
+class MetalCoordination(ConditionBase):
+    """Conditioning for metal coordination interactions."""
+
+    name = "metal-coord"
+    n_body = 1
+    level = Level.ATOM
+    dtype = int
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        if cls.full_name in atom_array.get_annotation_categories():
+            return cls.annotation(atom_array, default="raise") != MetalCoordEnum.NONE
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.full(atom_array.array_length(), MetalCoordEnum.NONE, dtype=int)
 
 
 class SecondaryStructure(ConditionBase):
@@ -361,6 +466,11 @@ C_ABL = CONDITIONS.ab_light
 C_RAS = CONDITIONS.rasa_binned
 C_SEC = CONDITIONS.secondary_structure
 C_HB = CONDITIONS.hbond
+C_PISTACK = CONDITIONS.pistack
+C_PICATION = CONDITIONS.pication
+C_SALT = CONDITIONS.saltbridge
+C_HPHOB = CONDITIONS.hydrophobic
+C_MCOORD = CONDITIONS.metal_coord
 C_IDXGRP = CONDITIONS.index_group
 C_CATH = CONDITIONS.cath_label
 C_INTCRD = CONDITIONS.InternalCoordinate

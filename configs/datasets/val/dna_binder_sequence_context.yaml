@@ -1,7 +1,7 @@
 # DNA-binder validation (50-80 AA): de novo protein design with only the DNA
 # sequence provided as context (DNA structure is co-generated). 3 targets x 25
 # replicates. Tags: design (inline geometry + % helicity), dna_refolding (oracle
-# refold + backbone RMSD). No hbond_conditioning since the DNA structure is
+# refold + backbone RMSD). No interchain_interactions since the DNA structure is
 # co-generated (no fixed motif).
 
 dataset:

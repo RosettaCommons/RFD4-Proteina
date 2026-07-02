@@ -50,7 +50,7 @@ def _infer_hydrogens(atom_array: AtomArray, *, ph: float) -> AtomArray:
     try:
         from atomworks.io.utils.protonation import ensure_hydrogens
 
-        return ensure_hydrogens(atom_array, ph=ph)
+        return ensure_hydrogens(atom_array, ph=ph, silence_rdkit_warnings=True)
     except ModuleNotFoundError:
         from atomworks.io.tools.rdkit import atom_array_from_rdkit, atom_array_to_rdkit
 

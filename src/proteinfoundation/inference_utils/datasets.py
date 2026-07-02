@@ -110,9 +110,7 @@ class ContigJsonDataset(MolecularDataset):
 
         self.cif_parser_overrides = cif_parser_overrides
 
-        if len(self) > 1_000:
-            logger.warning("ContigJsonDataset contains more than 1,000 entries. This may lead to performance issues.")
-        elif len(self) == 0:
+        if len(self) == 0:
             raise ValueError(f"ContigJsonDataset is empty, data: {data}. Names: {self.names}")
 
         # Condense output: show first 3 and last 3 names if more than 8 examples

@@ -1,7 +1,7 @@
 # DNA-binder validation (50-80 AA): de novo protein design with the DNA chain
 # provided as full context (structure + sequence). 3 targets x 25 replicates.
 # Tags: design (inline geometry + % helicity), dna_refolding (oracle refold +
-# binder/backbone RMSDs), hbond_conditioning (H-bond metrics on the design).
+# binder/backbone RMSDs), interchain_interactions (interaction metrics on the design).
 
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
@@ -18,4 +18,4 @@ dataset:
     metrics_tags:
       - design
       - dna_refolding
-      - hbond_conditioning
+      - interchain_interactions

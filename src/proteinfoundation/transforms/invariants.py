@@ -18,7 +18,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from proteinfoundation.conditions import C_IDXGRP
+from proteinfoundation.conditions import C_HB, C_IDXGRP, HBondEnum
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_element_encoding_violations(feats)
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
+    violations += check_hbond_no_both_violations(feats)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
@@ -379,6 +380,34 @@ def check_unresolved_tokens_not_lossed_violations(aa: AtomArray, feats: dict) ->
                 check="unresolved_token_lossed",
                 message=f"{n_violated} token(s) with unresolved atoms have should_be_lossed=True",
                 count=n_violated,
+            )
+        ]
+    return []
+
+
+def check_hbond_no_both_violations(feats: dict) -> list[InvariantViolation]:
+    """Return violations where a valid atom's hydrogen-bond annotation is ``HBondEnum.BOTH``.
+
+    TEMPORARY: the model does not yet support the ``BOTH`` class.
+
+    TODO: Remove this check once the training workflow is patched.
+    """
+    if C_HB.full_name not in feats or "atom37_mask" not in feats:
+        return []
+
+    hb: torch.Tensor = feats[C_HB.full_name]  # [n_tokens, 37]
+    atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
+
+    n_bad = int(((hb == HBondEnum.BOTH) & atom37_mask).sum())
+    if n_bad:
+        return [
+            InvariantViolation(
+                check="hbond_both_not_supported",
+                message=(
+                    f"{n_bad} valid atom(s) have HBondEnum.BOTH, which the model does not yet "
+                    "support (TEMPORARY check -- will be removed once the training workflow is patched)"
+                ),
+                count=n_bad,
             )
         ]
     return []
