@@ -54,6 +54,7 @@ design_motif_allatom_rmsd:
   subdivide_by_annotation: annotation_src-coord-group_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
+  aggregation: [median]
   input_kwarg_names:
     ground_truth_atom_array: predicted_atom_array
     predicted_atom_array: predicted_atom_array
@@ -66,6 +67,7 @@ design_unindexed_motif_allatom_rmsd:
   subdivide_by_annotation: annotation_src-coord-group_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
+  aggregation: [median]
   input_kwarg_names:
     ground_truth_atom_array: predicted_atom_array
     predicted_atom_array: predicted_atom_array

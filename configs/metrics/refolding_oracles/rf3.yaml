@@ -7,6 +7,9 @@ oracle:
   ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
   num_steps: 50
   n_recycles: 5
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - unconditional_refolding
     - motif_scaffold_refolding
@@ -24,6 +27,9 @@ oracle_ppi:
   num_steps: 50
   n_recycles: 5
   template_annotations: [mask_coordinate_1_atom]
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
 
@@ -36,5 +42,8 @@ oracle_dna:
   num_steps: 50
   n_recycles: 5
   template_annotations: [mask_coordinate_1_atom]
+  aggregation: [median]
+  frac_under_thresholds:
+    min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - dna_refolding

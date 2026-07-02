@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from functools import cached_property
 
 import hydra
+import numpy as np
 import pandas as pd
 from atomworks.common import exists
 from atomworks.ml.utils import error, nested_dict
@@ -210,18 +211,42 @@ class Metric(ABC):
         required_tags_all: A set of tags that must all be present in the input batch for this metric to be computed.
         required_tags_any: A set of tags where at least one must be present in the input batch for this metric to be computed.
         prohibited_tags: A set of tags that must not be present in the input batch for this metric to be computed.
+        aggregation: Reduction(s) applied to this metric's per-example outputs when summarizing across
+            samples. One of, or a list of, ``SUPPORTED_REDUCTIONS``. Defaults to ``["mean"]``.
 
     To implement a new metric, subclass this class and implement the `compute` method, at a minimum.
     """
+
+    SUPPORTED_REDUCTIONS = ("mean", "median")
+    _REDUCTION_FNS = {
+        "mean": np.nanmean,
+        "median": np.nanmedian,
+    }
 
     def __init__(
         self,
         required_tags_all: list[str] | set[str] | None = None,
         required_tags_any: list[str] | set[str] | None = None,
         prohibited_tags: list[str] | set[str] | None = None,
+        aggregation: str | list[str] | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        # Reductions used when aggregating this metric's outputs across samples
+        if aggregation is None:
+            reductions = ["mean"]
+        elif isinstance(aggregation, str):
+            reductions = [aggregation]
+        else:
+            reductions = list(aggregation)
+        for r in reductions:
+            if r not in self.SUPPORTED_REDUCTIONS:
+                raise ValueError(
+                    f"Unsupported aggregation '{r}' for {type(self).__name__}; "
+                    f"must be one of {self.SUPPORTED_REDUCTIONS}."
+                )
+        self.aggregation = reductions
+
         # Set required and prohibited tags
         self.required_tags_all = set(required_tags_all) if exists(required_tags_all) else set()
         self.required_tags_any = set(required_tags_any) if exists(required_tags_any) else set()
@@ -245,6 +270,18 @@ class Metric(ABC):
                 f"All optional_kwargs must be defined in kwargs_to_compute_args. "
                 f"{self.optional_kwargs} is not a subset of {set(self.kwargs_to_compute_args.keys())}"
             )
+
+    def aggregate(self, column: str, values: pd.Series) -> dict[str, float]:
+        """Aggregate per-example values for one of this metric's output columns.
+
+        Args:
+          column: Bare output-key name (the metric-name prefix already stripped).
+          values: Per-example values for that column (NaNs already dropped).
+
+        Returns:
+          Mapping of reduction name to value, one entry per configured reduction.
+        """
+        return {red: float(self._REDUCTION_FNS[red](values)) for red in self.aggregation}
 
     @cached_property
     def required_compute_args(self) -> frozenset[str]:

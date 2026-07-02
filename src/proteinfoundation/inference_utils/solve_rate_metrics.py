@@ -1,9 +1,8 @@
 """Per-target solve-rate metrics (e.g., percentage of targets with at least n passing design)."""
 
-import numpy as np
 import pandas as pd
 
-from proteinfoundation.inference_utils.foldseek import _base_pass_rate_cols
+from proteinfoundation.inference_utils.foldseek import _base_pass_cols
 
 # Percentage of targets with at least this pass rate is reported as solve_rate_{name} (e.g. solve_rate_5pct).
 SOLVE_RATE_THRESHOLDS: dict[str, float] = {
@@ -15,28 +14,29 @@ SOLVE_RATE_THRESHOLDS: dict[str, float] = {
 
 
 def _metric_prefix(pass_col: str) -> str:
-    """Namespace prefix for a pass-rate column: ``af3.pass`` -> ``af3.``, ``af3_pass_rate`` -> ``af3_``."""
-    return pass_col[: -len("pass")] if pass_col.endswith(".pass") else pass_col[: -len("pass_rate")]
+    """Namespace prefix for a pass column: ``af3.pass`` -> ``af3.``."""
+    return pass_col[: -len("pass")]
 
 
-def compute_solve_rate_metrics(group_df: pd.DataFrame) -> dict[str, float]:
+def compute_solve_rate_metrics(group_df: pd.DataFrame, pass_cols: list[str] | None = None) -> dict[str, float]:
     """Compute the per-target solve-rate curve for one dataset.
 
     NOTE: Assumes ``group_df`` holds a *single* dataset
 
     Args:
         group_df: Per-design rows for a single dataset, with a ``task`` column (the target
-            identifier) and one or more pass-rate columns (``*.pass`` or legacy ``*_pass_rate``)
+            identifier) and one or more ``{crit}.pass`` columns.
+        pass_cols: Explicit solve-rate pass columns (see :py:func:`_base_pass_cols`).
 
     Returns:
-        Mapping of solve-rate column name to value, one block per pass-rate column
+        Mapping of solve-rate column name to value, one block per pass column
     """
     if "task" not in group_df.columns:
         # No tasks (targets)
         return {}
 
     out: dict[str, float] = {}
-    for pass_col in _base_pass_rate_cols(group_df):
+    for pass_col in _base_pass_cols(group_df, pass_cols):
         p_t = pd.to_numeric(group_df[pass_col], errors="coerce").groupby(group_df["task"]).mean().dropna()
         if len(p_t) == 0:
             continue
@@ -50,9 +50,9 @@ def compute_solve_rate_metrics(group_df: pd.DataFrame) -> dict[str, float]:
         for name, thr in SOLVE_RATE_THRESHOLDS.items():
             out[f"{prefix}solve_rate_{name}"] = float((p_t >= thr).mean())
 
-        # Mean across pass-rate thresholds
-        out[f"{prefix}solve_rate_threshold_mean"] = float(
-            np.mean([out[f"{prefix}solve_rate_{name}"] for name in SOLVE_RATE_THRESHOLDS])
-        )
+        # Smooth, threshold-insensitive summary: normalized area under the solve-rate curve over
+        # [0, max threshold], which equals the mean per-target pass fraction capped at that max.
+        tmax = max(SOLVE_RATE_THRESHOLDS.values())
+        out[f"{prefix}solve_rate_auc"] = float(p_t.clip(upper=tmax).mean() / tmax)
 
     return out

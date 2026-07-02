@@ -690,7 +690,6 @@ class LigandCentroidDistanceMetric(Metric):
         }
         super().__init__(**kwargs)
         self.align_mask = align_mask
-        self.aggregation = aggregation
         if aggregation == "mean":
             self._agg_fn = np.mean
         elif aggregation == "min":

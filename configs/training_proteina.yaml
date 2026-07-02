@@ -147,6 +147,7 @@ opt:
   steps_per_epoch: 2000       # Defines epoch length in steps (not full dataset)
   val_every_n_epochs: 10      # Validate at end of every N epochs
   val_start_epoch: 0          # Delay validation until this epoch (0 = start immediately)
+  compute_val_loss: false     # Global off-switch for per-dataset compute_loss (validation_loss_* logging)
   foldseek_timeout_minutes: 25  # Wall-clock budget for Foldseek diversity clustering per validation epoch
   muon_param_patterns:  # Parameter name prefixes routed to Muon; rest go to Adam
     - '^nn\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'

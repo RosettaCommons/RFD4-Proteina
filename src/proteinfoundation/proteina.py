@@ -1008,7 +1008,7 @@ class Proteina(L.LightningModule):
 
         # Loss-based validation: run forward pass and collect per-example losses for metrics
         per_example_losses: dict[str, torch.Tensor] | None = None
-        if dataset_cfg.get("compute_loss", False):
+        if dataset_cfg.get("compute_loss", False) and self.cfg_exp.opt.get("compute_val_loss", True):
             batch["validation_dataset_name"] = dataset_name
             with torch.no_grad():
                 step_outputs = self.training_step(batch, batch_idx=-1)
@@ -1333,6 +1333,14 @@ class Proteina(L.LightningModule):
         ordered_cols = [c for c in priority if c in cols] + [c for c in cols if c not in priority]
         per_example_df = per_example_df[ordered_cols]
 
+        # Solve-rate pass columns are exactly the PassCriterionMetric outputs (identified by metric
+        # type, not column name), passed explicitly so nothing else can be mistaken for a criterion.
+        pass_cols = (
+            [f"{name}.pass" for name in self.pass_criteria_metric_manager.metrics]
+            if self.pass_criteria_metric_manager is not None
+            else None
+        )
+
         # Foldseek cluster IDs were already populated by :py:func:`run_foldseek_distributed`
         # in :py:meth:`on_validation_epoch_end` (covers both single-process and DDP).
         if "foldseek_cluster_id" in per_example_df.columns and per_example_df["foldseek_cluster_id"].notna().any():
@@ -1340,6 +1348,7 @@ class Proteina(L.LightningModule):
                 per_example_df = add_diversity_summary_metrics(
                     per_example_df,
                     group_by=["dataset_name", "task"],
+                    pass_cols=pass_cols,
                 )
             except Exception as e:
                 logger.warning(f"Foldseek diversity summary metrics failed, skipping cluster metrics: {e}")
@@ -1364,6 +1373,19 @@ class Proteina(L.LightningModule):
             "metrics_tags",
             "output_base_dir",
         }
+        # MetricManager names every column "{metric_name}.{output_key}", so a column's owning
+        # metric is whatever registered under the part before the first dot.
+        metrics_by_name = {
+            name: m
+            for mgr in (
+                self.design_metric_manager,
+                self.oracle_metric_manager,
+                self.refolding_metric_manager,
+                self.pass_criteria_metric_manager,
+            )
+            if mgr is not None
+            for name, m in mgr.metrics.items()
+        }
         dataset_col = (
             per_example_df["dataset_name"]
             if "dataset_name" in per_example_df.columns
@@ -1375,16 +1397,29 @@ class Proteina(L.LightningModule):
                 if col in _non_metric_cols or col.startswith("generation."):
                     continue
                 vals = pd.to_numeric(ds_df[col], errors="coerce").dropna()
-                if len(vals) > 0:
-                    agg_rows.append({"dataset": ds, "metric": col, "value": float(np.nanmean(vals)), "n": len(vals)})
+                if len(vals) == 0:
+                    continue
+                name, _, suffix = col.partition(".")
+                metric = metrics_by_name.get(name)
+                if metric is not None:
+                    reductions = metric.aggregate(suffix, vals)
+                else:
+                    # No owning metric (e.g. foldseek-derived column): fall back to mean.
+                    reductions = {"mean": float(np.nanmean(vals))}
+                for red_name, value in reductions.items():
+                    agg_rows.append(
+                        {"dataset": ds, "metric": col, "reduction": red_name, "value": value, "n": len(vals)}
+                    )
 
             # Dataset-level solve-rate statistics (e.g., percentage of targets with at least n% passing designs)
             # n per row is that oracle's valid-target denominator (solve_rate_n_targets)
-            solve = compute_solve_rate_metrics(ds_df)
+            solve = compute_solve_rate_metrics(ds_df, pass_cols=pass_cols)
             for metric_name, value in solve.items():
                 prefix = metric_name[: metric_name.rindex("solve_rate_")]  # "af3." (or "" for a bare pass col)
                 n_used = int(solve.get(f"{prefix}solve_rate_n_targets", 0))
-                agg_rows.append({"dataset": ds, "metric": metric_name, "value": value, "n": n_used})
+                # Solve-rate rows are not per-example reductions; leave reduction empty so
+                # their wandb keys stay unsuffixed (val_generation.{ds}/{metric}).
+                agg_rows.append({"dataset": ds, "metric": metric_name, "reduction": "", "value": value, "n": n_used})
 
         if not agg_rows:
             return
@@ -1395,7 +1430,14 @@ class Proteina(L.LightningModule):
         agg_df.to_csv(agg_path, index=False)
         if wandb.run is not None:
             wandb.log(
-                {f"val_generation_{row['dataset']}/{row['metric']}": row["value"] for _, row in agg_df.iterrows()},
+                {
+                    (
+                        f"val_generation.{row['dataset']}/{row['metric']}.{row['reduction']}"
+                        if row["reduction"]
+                        else f"val_generation.{row['dataset']}/{row['metric']}"
+                    ): row["value"]
+                    for _, row in agg_df.iterrows()
+                },
                 step=self.global_step,
             )
 
