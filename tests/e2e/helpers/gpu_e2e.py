@@ -30,7 +30,6 @@ from tests.conftest import has_af3
 
 # helpers/ -> e2e/ -> tests/ -> proteinfoundation (project root for train/infer)
 ROOT = Path(__file__).resolve().parents[3]
-CHECKPOINT_DIR = Path(os.environ.get("CKPT_PATH", ROOT / "ckpts"))
 RUN_E2E = os.getenv("RUN_GPU_E2E_TESTS", "0") == "1"
 
 
@@ -97,28 +96,6 @@ def require_data_file(relative: str) -> Path:
     if not path.exists():
         pytest.skip(f"Missing data file: {path}")
     return path
-
-
-def require_sota_ckpt() -> tuple[Path, str]:
-    """Resolve the SOTA checkpoint for inference/search tests.
-
-    Returns ``(ckpt_dir, ckpt_name)``. Honors ``SOTA_CKPT_PATH`` (full file path)
-    or falls back to ``$CKPT_PATH/$SOTA_CKPT_NAME``. Skips if not present.
-    """
-    require_gpu_e2e()
-    full = os.environ.get("SOTA_CKPT_PATH")
-    if full:
-        ckpt = Path(full)
-        if not ckpt.is_file():
-            pytest.skip(f"SOTA_CKPT_PATH not found: {ckpt}")
-        return ckpt.parent, ckpt.name
-    name = os.environ.get("SOTA_CKPT_NAME")
-    if not name:
-        pytest.skip("Set SOTA_CKPT_PATH=/abs/file.ckpt (or CKPT_PATH + SOTA_CKPT_NAME) for inference/search e2e")
-    ckpt = CHECKPOINT_DIR / name
-    if not ckpt.is_file():
-        pytest.skip(f"Missing SOTA checkpoint: {ckpt}")
-    return CHECKPOINT_DIR, name
 
 
 def resolve_rf3_ckpt() -> Path:
