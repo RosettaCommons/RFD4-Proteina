@@ -1,21 +1,19 @@
-"""Test that PairBiasAttention variants (Flash, CuEq) produce similar outputs to standard PyTorch."""
+"""Check the SDPA PairBiasAttention (and the cuEq variant) against a manual-einsum reference."""
 
 import pytest
 import torch
+from einops import rearrange
 
 from proteinfoundation.nn.modules.pair_bias_attn import (
     CUET_AVAILABLE,
-    FlashPairBiasAttention,
+    NEG_INF,
     PairBiasAttention,
-    is_transformer_engine_available,
 )
-
-TE_AVAILABLE = is_transformer_engine_available()
 
 
 @pytest.fixture(autouse=True)
-def enable_flash_backends():
-    """Enable Flash Attention backends for all tests."""
+def enable_sdpa_backends():
+    """Enable the efficient SDPA backends on GPU (pair bias precludes flash-2)."""
     if torch.cuda.is_available():
         torch.backends.cuda.enable_flash_sdp(True)
         torch.backends.cuda.enable_mem_efficient_sdp(True)
@@ -24,159 +22,85 @@ def enable_flash_backends():
         torch.backends.cudnn.allow_tf32 = True
 
 
+def _reference_forward(
+    attn: PairBiasAttention,
+    node_feats: torch.Tensor,
+    pair_feats: torch.Tensor,
+    mask: torch.Tensor,
+) -> torch.Tensor:
+    """Manual einsum-softmax ground truth mirroring ``PairBiasAttention.forward``.
+
+    Uses ``attn``'s own submodules so the only difference vs. the module is the
+    attention kernel (SDPA on GPU / einsum fallback on CPU) — catches SDPA,
+    bias, masking, and gating mistakes.
+    """
+    h = attn.heads
+    x = attn.node_norm(node_feats)
+    q, k, v = attn.to_qkv(x).chunk(3, dim=-1)
+    q, k = attn.q_layer_norm(q), attn.k_layer_norm(k)
+    g = attn.to_g(x)
+    q, k, v, g = (rearrange(t, "b n (h d) -> b h n d", h=h) for t in (q, k, v, g))
+
+    b, n = node_feats.shape[0], node_feats.shape[1]
+    if pair_feats is not None and attn.to_bias is not None:
+        bias = rearrange(attn.to_bias(attn.pair_norm(pair_feats)), "b i j h -> b h i j")
+    else:
+        bias = torch.zeros(b, h, n, n, device=node_feats.device, dtype=node_feats.dtype)
+    if mask is not None:
+        bias = bias.masked_fill(~rearrange(mask, "b i j -> b () i j"), NEG_INF)
+
+    scale = attn.dim_head**-0.5
+    sim = torch.einsum("b h i d, b h j d -> b h i j", q, k) * scale + bias
+    o = torch.einsum("b h i j, b h j d -> b h i d", torch.softmax(sim, dim=-1), v)
+    o = torch.sigmoid(g) * o
+    return attn.to_out_node(rearrange(o, "b h n d -> b n (h d)", h=h))
+
+
+def _make_attn(cls, device):
+    return cls(node_dim=64, dim_head=16, heads=4, bias=True, dim_out=64, qkln=True, pair_dim=32).to(device)
+
+
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
-def test_flash_vs_torch_attention_similar(batch_size: int, seq_len: int):
-    """Verify Flash and Torch attention produce similar outputs."""
+def test_sdpa_matches_einsum_reference(batch_size: int, seq_len: int):
+    """The SDPA PairBiasAttention matches the manual-einsum reference."""
     torch.manual_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    attn = _make_attn(PairBiasAttention, device)
 
-    # Config
-    node_dim, pair_dim, heads, dim_head = 64, 32, 4, 16
-
-    # Create both attention modules with same weights
-    torch_attn = PairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    flash_attn = FlashPairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    # Copy weights from torch to flash
-    flash_attn.load_state_dict(torch_attn.state_dict(), strict=False)
-
-    # Input tensors
-    node_feats = torch.randn(batch_size, seq_len, node_dim, device=device)
-    pair_feats = torch.randn(batch_size, seq_len, seq_len, pair_dim, device=device)
+    node = torch.randn(batch_size, seq_len, 64, device=device)
+    pair = torch.randn(batch_size, seq_len, seq_len, 32, device=device)
     mask = torch.ones(batch_size, seq_len, seq_len, dtype=torch.bool, device=device)
 
-    # Forward pass
     with torch.no_grad():
-        out_torch = torch_attn(node_feats, pair_feats, mask)
-        out_flash = flash_attn(node_feats, pair_feats, mask)
+        out = attn(node, pair, mask)
+        ref = _reference_forward(attn, node, pair, mask)
 
-    # Check similarity
-    assert out_torch.shape == out_flash.shape
-    max_diff = (out_torch - out_flash).abs().max().item()
+    assert out.shape == ref.shape
+    max_diff = (out - ref).abs().max().item()
     assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 1e-4)"
 
 
 @pytest.mark.skipif(not CUET_AVAILABLE, reason="cuequivariance_torch not installed")
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
-def test_cuequivariance_vs_torch_attention_similar(batch_size: int, seq_len: int):
-    """Verify cuEquivariance and Torch attention produce similar outputs."""
+def test_cuequivariance_matches_reference(batch_size: int, seq_len: int):
+    """The cuEquivariance fused kernel matches the manual-einsum reference."""
     from proteinfoundation.nn.modules.pair_bias_attn import CuEqPairBiasAttention
 
     torch.manual_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    ref_attn = _make_attn(PairBiasAttention, device)
+    cuet_attn = _make_attn(CuEqPairBiasAttention, device)
+    cuet_attn.load_state_dict(ref_attn.state_dict(), strict=False)
 
-    # Config
-    node_dim, pair_dim, heads, dim_head = 64, 32, 4, 16
+    node = torch.randn(batch_size, seq_len, 64, device=device)
+    pair = torch.randn(batch_size, seq_len, seq_len, 32, device=device)
+    token_mask = torch.ones(batch_size, seq_len, dtype=torch.bool, device=device)  # cuEq: [b, n]
+    pair_mask = token_mask[:, :, None] * token_mask[:, None, :]  # reference: [b, n, n]
 
-    # Create both attention modules with same weights
-    torch_attn = PairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    cuet_attn = CuEqPairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    # Copy weights from torch to cuequivariance
-    cuet_attn.load_state_dict(torch_attn.state_dict(), strict=False)
-
-    # Input tensors
-    node_feats = torch.randn(batch_size, seq_len, node_dim, device=device)
-    pair_feats = torch.randn(batch_size, seq_len, seq_len, pair_dim, device=device)
-    # 1D token mask [b, n] - cuequivariance computes pair mask internally
-    token_mask = torch.ones(batch_size, seq_len, dtype=torch.bool, device=device)
-    # 2D pair mask [b, n, n] - for PairBiasAttention
-    pair_mask = token_mask[:, :, None] * token_mask[:, None, :]
-
-    # Forward pass
     with torch.no_grad():
-        out_torch = torch_attn(node_feats, pair_feats, pair_mask)  # Uses [b, n, n] mask
-        out_cuet = cuet_attn(node_feats, pair_feats, token_mask)  # Uses [b, n] mask
+        ref = _reference_forward(ref_attn, node, pair, pair_mask)
+        out_cuet = cuet_attn(node, pair, token_mask)
 
-    # Check similarity (cuequivariance may have larger numerical differences)
-    assert out_torch.shape == out_cuet.shape
-    max_diff = (out_torch - out_cuet).abs().max().item()
+    assert out_cuet.shape == ref.shape
+    max_diff = (out_cuet - ref).abs().max().item()
     assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 1e-4)"
-
-
-@pytest.mark.gpu
-@pytest.mark.skipif(not TE_AVAILABLE, reason="transformer_engine not installed")
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for TE attention")
-@pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
-def test_te_vs_torch_attention_similar(batch_size: int, seq_len: int):
-    """Verify Transformer Engine and Torch attention produce similar outputs."""
-    from proteinfoundation.nn.modules.pair_bias_attn import TEPairBiasAttention
-
-    torch.manual_seed(42)
-    device = "cuda"
-
-    # Config
-    node_dim, pair_dim, heads, dim_head = 64, 32, 4, 16
-
-    # Create both attention modules with same weights
-    torch_attn = PairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    te_attn = TEPairBiasAttention(
-        node_dim=node_dim,
-        dim_head=dim_head,
-        heads=heads,
-        bias=True,
-        dim_out=node_dim,
-        qkln=True,
-        pair_dim=pair_dim,
-    ).to(device)
-
-    # Copy weights from torch to TE
-    te_attn.load_state_dict(torch_attn.state_dict(), strict=False)
-
-    # Input tensors
-    node_feats = torch.randn(batch_size, seq_len, node_dim, device=device)
-    pair_feats = torch.randn(batch_size, seq_len, seq_len, pair_dim, device=device)
-    mask = torch.ones(batch_size, seq_len, seq_len, dtype=torch.bool, device=device)
-
-    # Forward pass
-    with torch.no_grad():
-        out_torch = torch_attn(node_feats, pair_feats, mask)
-        out_te = te_attn(node_feats, pair_feats, mask)
-
-    # Check similarity (TE may have slightly different numerical behavior)
-    assert out_torch.shape == out_te.shape
-    max_diff = (out_torch - out_te).abs().max().item()
-    assert max_diff < 1e-3, f"Max diff: {max_diff:.6f} (expected < 1e-3)"

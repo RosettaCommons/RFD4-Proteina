@@ -2,6 +2,8 @@ from typing import Literal
 
 import torch
 
+from proteinfoundation.nn.modules.norm import make_norm
+
 # Code adapted from Lucidrain's implementation of AF3
 # https://github.com/lucidrains/alphafold3-pytorch
 
@@ -12,8 +14,8 @@ class AdaptiveLayerNorm(torch.nn.Module):
 
     def __init__(self, *, dim: int, dim_cond: int) -> None:
         super().__init__()
-        self.norm = torch.nn.LayerNorm(dim, elementwise_affine=False)
-        self.norm_cond = torch.nn.LayerNorm(dim_cond)
+        self.norm = make_norm(dim, elementwise_affine=False)
+        self.norm_cond = make_norm(dim_cond)
 
         self.to_gamma = torch.nn.Sequential(torch.nn.Linear(dim_cond, dim), torch.nn.Sigmoid())
 
