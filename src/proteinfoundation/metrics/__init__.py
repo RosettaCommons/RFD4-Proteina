@@ -31,6 +31,7 @@ Require TMD (https://github.com/tmd-industries/tmd) with CUDA custom ops.
 structure, no refolding or energy computation required.
 
 - ``PoseBustersMetric``: Stereochemical validation of ligand molecules.
+- ``AtomPairDistanceMetric``: Atom-pair distance constraints with soft reward scores.
 - ``BondLengthMetric``: Unreasonable bond length detection.
 - ``ClashMetric``: Fraction of atoms in a steric clash, by clash type, at a configurable threshold.
 - ``SSEMetrics``: Secondary structure element fractions.
@@ -60,6 +61,13 @@ try:
     from proteinfoundation.metrics.tmol_metric import TMOLMetric
 
     __all__.append("TMOLMetric")
+except ImportError:
+    pass
+
+try:
+    from proteinfoundation.metrics.atom_pair_distance_metric import AtomPairDistanceMetric
+
+    __all__.append("AtomPairDistanceMetric")
 except ImportError:
     pass
 
