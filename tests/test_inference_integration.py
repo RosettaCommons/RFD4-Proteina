@@ -42,6 +42,7 @@ from proteinfoundation.generate import (
     run_generation,
 )
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset
+from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -194,8 +195,6 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
     base_overrides = [
         "inference_experiment=inference_like_rfd3",
         "metrics/refolding_oracles=rf3",
-        f"ckpt_path={_CKPT_PATH}",
-        f"ckpt_name={_CKPT_NAME}",
         f"autoencoder_ckpt_path={_AE_CKPT_PATH or 'null'}",
         "seed=42",
         "num_workers=0",
@@ -402,14 +401,6 @@ class TestDatasetConstruction:
 # GPU integration tests (require checkpoint + GPU)
 # ---------------------------------------------------------------------------
 
-_CKPT_PATH = os.environ.get(
-    "CKPT_PATH",
-    "/path/to/data",
-)
-
-# Symlink to current sota checkpoint
-_CKPT_NAME = os.environ.get("CKPT_NAME", "latest.ckpt")
-
 # AE checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints`` (per-cluster),
 # matching the ``autoencoder_ckpt_path`` convention used across the configs.
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
@@ -419,22 +410,15 @@ _AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH") or (
 
 
 @pytest.mark.skipif(
-    not os.path.exists(os.path.join(_CKPT_PATH, _CKPT_NAME)),
-    reason=f"Checkpoint not available: {os.path.join(_CKPT_PATH, _CKPT_NAME)} (set CKPT_PATH/CKPT_NAME to override)",
+    SOTA_CKPT_PATH is None or not SOTA_CKPT_PATH.is_file(),
+    reason=f"SOTA checkpoint not available: {SOTA_CKPT_PATH} (set DATA_PATH)",
 )
 @pytest.mark.skipif(
     _AE_CKPT_PATH is None or not os.path.isfile(_AE_CKPT_PATH),
     reason=f"Autoencoder checkpoint not available: {_AE_CKPT_PATH} (set DATA_PATH or AE_CKPT_PATH)",
 )
 class TestEndToEndInference:
-    """End-to-end inference tests that load the model and generate structures.
-
-    Set environment variables before running::
-
-        export CKPT_PATH=/path/to/checkpoint/dir
-        export CKPT_NAME=model.ckpt
-        export AE_CKPT_PATH=/path/to/ae_checkpoint.ckpt
-    """
+    """End-to-end inference tests that load the model and generate structures."""
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""

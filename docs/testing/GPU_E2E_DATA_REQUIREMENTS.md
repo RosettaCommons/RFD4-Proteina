@@ -79,14 +79,15 @@ is missing.
 
 | Asset | How to provide |
 |-------|----------------|
-| SOTA checkpoint | `SOTA_CKPT_PATH=/abs/file.ckpt` (or `CKPT_PATH` + `SOTA_CKPT_NAME`) |
+| SOTA checkpoint | `$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt` |
 | MCSA benchmark | `benchmarks/mcsa_40.json` (in repo; used by `mcsa_subset` val config) |
 | Search benchmark | `benchmarks/monomer.json` (in repo; used by `inference_test_search`) |
 
-In CI, set `SOTA_CKPT_PATH` via the repository/organization Actions variable when
-the digs hero checkpoint is available (e.g.
-`/path/to/data`). If unset, the MCSA
-validation and search tests skip (training smokes still run).
+The SOTA checkpoint is resolved relative to `DATA_PATH`, not a separate env var.
+If the `latest.ckpt` symlink is missing on a cluster's `DATA_PATH` mount,
+`require_sota_ckpt()` fails the MCSA validation and search tests outright
+(training smokes still run; this is a hard failure, not a skip — once GPU e2e is
+enabled on real hardware, a missing checkpoint means the cluster is misconfigured).
 
 ## Enabling
 
@@ -94,5 +95,4 @@ validation and search tests skip (training smokes still run).
 export RUN_GPU_E2E_TESTS=1
 export GPU_COUNT=2
 export DATA_PATH=/path/to/data
-export SOTA_CKPT_PATH=/abs/path/to/sota.ckpt   # optional, for inference/search
 ```

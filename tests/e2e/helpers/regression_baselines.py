@@ -23,8 +23,11 @@ from proteinfoundation.utils.parse_presets import DISTILLATION
 # Absolute path to the baselines directory regardless of cwd.
 BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
 
-# Hard-coded checkpoint paths on DIGS.
-SOTA_CKPT_PATH = Path("/path/to/data")
+# SOTA checkpoint: the moving "latest.ckpt" symlink, same relative layout as the
+# autoencoder checkpoints (see e.g. configs/inference.yaml). Baselines are
+# regenerated against whatever this points to (see script_utils/generate_e2e_baselines.py).
+_DATA_PATH = os.environ.get("DATA_PATH", "").strip()
+SOTA_CKPT_PATH = Path(_DATA_PATH) / "latent_checkpoints" / "ldm_checkpoints" / "latest.ckpt" if _DATA_PATH else None
 RF3_CKPT_PATH = Path("/path/to/data" "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt")
 
 # Single MCSA example used for all inference regression tests.
@@ -81,6 +84,8 @@ def require_l40s() -> None:
 
 
 def require_sota_ckpt() -> None:
+    if SOTA_CKPT_PATH is None:
+        pytest.fail("DATA_PATH is not set; cannot resolve $DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt")
     if not SOTA_CKPT_PATH.is_file():
         pytest.fail(f"SOTA checkpoint not found: {SOTA_CKPT_PATH}")
 

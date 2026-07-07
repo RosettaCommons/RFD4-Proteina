@@ -26,9 +26,6 @@ All GPU e2e tests skip unless explicitly enabled:
 export RUN_GPU_E2E_TESTS=1          # required; helpers skip otherwise
 export GPU_COUNT=2                  # or detected via nvidia-smi
 export DATA_PATH=/path/to/data
-# Inference/search only (else those two tests skip).
-# CI: set SOTA_CKPT_PATH via workflow/repository variable when the hero ckpt is available.
-export SOTA_CKPT_PATH=/abs/path/to/sota.ckpt
 export RF3_CKPT_PATH=/abs/path/to/rf3.ckpt   # optional; default under $DATA_PATH/rf3_checkpoints/
 ```
 
@@ -108,9 +105,14 @@ compile/no-compile. Compile-on variants assert subprocess output contains
 Flow smokes inherit fixed train padding (I=256) from `experiment=sota`; AE smokes use
 `fixed_dimensions: {I: 256}` in `experiment_ae/smoke`.
 
-**Known skips (GPU job can still pass green):** missing `SOTA_CKPT_PATH` (MCSA/beam search),
-missing AF3 env/daemons (`muon_compile_af3`), optional metric deps. Override fail-fast
-with `GPU_PYTEST_EXTRA_ARGS=""` when debugging multiple failures.
+**Known skips (GPU job can still pass green):** missing AF3 env/daemons
+(`muon_compile_af3`), optional metric deps. Override fail-fast with
+`GPU_PYTEST_EXTRA_ARGS=""` when debugging multiple failures.
+
+**Hard failure (not a skip):** a missing `$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt`
+fails `require_sota_ckpt()` outright (MCSA/beam search) — once the GPU e2e suite
+is enabled on real L40S hardware, a missing checkpoint is a misconfiguration, not
+an optional asset.
 
 These run in the `gpu` job of `.github/workflows/lint_and_test.yaml`
 (ordering: lint -> cpu test -> gpu). The workflow wraps the whole script in
@@ -136,9 +138,10 @@ matrix → single 2-GPU job. Tests split by markers: CPU runs everything except
 | `muon_nocompile_rf3` | Muon | off | RF3 |
 | `muon_compile_af3` | Muon | on | AF3 (host-side daemons in CI) |
 
-**Known skips:** missing `SOTA_CKPT_PATH` (inference/beam search), AF3 unavailable
-(`muon_compile_af3`), missing data files. Set `SOTA_CKPT_PATH` via GitHub Actions
-variable on digs when the hero checkpoint is available.
+**Known skips:** AF3 unavailable (`muon_compile_af3`), missing data files. A missing
+`$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt` fails (not skips) the
+inference/beam search tests — the checkpoint is a symlink on each cluster's
+`DATA_PATH` mount; update it there when a new hero checkpoint is available.
 
 **RF3 regression baselines** refreshed after `remove_ccds` parsing fix and checkpoint
 pinning (`RF3_REGRESSION_CKPT_PATH`); `RMSD_TOLERANCE` raised to 0.45Å for 8vkf

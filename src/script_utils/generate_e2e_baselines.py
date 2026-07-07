@@ -23,7 +23,7 @@ After running, commit the updated baselines:
 Options:
     --tests NAMES   Comma-separated subset to regenerate (default: all).
                     Choices: sota_training,ae_training,inference,beam_search
-    --sota-ckpt     Override SOTA checkpoint path (default: latest.ckpt on DIGS)
+    --sota-ckpt     Override SOTA checkpoint path (default: $DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt)
     --ae-ckpt       Override AE checkpoint path
 """
 
@@ -325,6 +325,8 @@ def main() -> None:
 
     # Validate checkpoint existence.
     needs_sota = "inference" in tests or "beam_search" in tests
+    if needs_sota and args.sota_ckpt is None:
+        sys.exit("DATA_PATH is not set; pass --sota-ckpt or export DATA_PATH")
     if needs_sota and not args.sota_ckpt.is_file():
         sys.exit(f"SOTA checkpoint not found: {args.sota_ckpt}")
 

@@ -37,7 +37,6 @@ from tests.e2e.helpers.regression_baselines import (
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
-    SOTA_CKPT_PATH,
     all_atom_rmsd,
     deterministic_env,
     find_beam_search_cifs,
@@ -99,8 +98,6 @@ def _run_training(
 
 def _run_inference(run_name: str) -> Path:
     """Run generate.py for one MCSA example; return the out_dir."""
-    ckpt_dir = str(SOTA_CKPT_PATH.parent)
-    ckpt_name = SOTA_CKPT_PATH.name
     out_dir = ROOT / "inference" / run_name
     shutil.rmtree(out_dir, ignore_errors=True)
 
@@ -110,8 +107,6 @@ def _run_inference(run_name: str) -> Path:
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
-        f"ckpt_path={ckpt_dir}",
-        f"ckpt_name={ckpt_name}",
         "~metrics/refolding_oracles",
         "generation.dataset.num_replicates=1",
         f"run_name_={run_name}",
@@ -127,8 +122,6 @@ def _run_inference(run_name: str) -> Path:
 
 def _run_beam_search(run_name: str) -> Path:
     """Run beam search inference; return the out_dir."""
-    ckpt_dir = str(SOTA_CKPT_PATH.parent)
-    ckpt_name = SOTA_CKPT_PATH.name
     out_dir = ROOT / "inference" / run_name
     shutil.rmtree(out_dir, ignore_errors=True)
 
@@ -137,8 +130,6 @@ def _run_beam_search(run_name: str) -> Path:
         "proteinfoundation/generate.py",
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
-        f"ckpt_path={ckpt_dir}",
-        f"ckpt_name={ckpt_name}",
         "generation.args.nsteps=20",
         "search.strategy.step_checkpoints=[0,10,20]",
         "search.strategy.n_branch=2",
