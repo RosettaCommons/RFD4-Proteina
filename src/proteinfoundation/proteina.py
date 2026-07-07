@@ -654,6 +654,10 @@ class Proteina(L.LightningModule):
                         self.clip_gradients(adam_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
 
                         muon_opt.step()
+                        # undo Muon's bump here so both hooks see the same global_step
+                        manual_opt = self.trainer.fit_loop.epoch_loop.manual_optimization
+                        manual_opt.optim_step_progress.total.completed -= 1
+                        manual_opt.optim_step_progress.current.completed -= 1
                         adam_opt.step()
 
                         muon_opt.zero_grad()
