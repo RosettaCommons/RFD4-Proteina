@@ -1,4 +1,3 @@
-import ast
 from collections import defaultdict
 from collections.abc import Callable
 
@@ -6,26 +5,16 @@ import numpy as np
 from atomworks.enums import ChainType
 from atomworks.io.transforms.atom_array import add_id_and_entity_annotations, add_iid_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, AtomArrayPlusStack, as_atom_array_plus_stack
-from atomworks.io.utils.query import QueryExpression
 from atomworks.ml.conditions import C_DIS
-from atomworks.ml.conditions.annotator import ANNOTATOR_REGISTRY, ensure_annotations
+from atomworks.ml.conditions.annotator import ensure_annotations
 from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
 from foundry.metrics.metric import Metric
 from foundry.utils.logging import RankedLogger
+from proteinfoundation.metrics.atom_selection import extract_annotation_names
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
-
-
-def _extract_annotation_names(query: str) -> list[str]:
-    """Extract annotation names from query string by walking QueryExpression AST."""
-    qe = QueryExpression(query)
-    names = []
-    for node in ast.walk(qe.tree):
-        if isinstance(node, ast.Name) and node.id in ANNOTATOR_REGISTRY:
-            names.append(node.id)
-    return names
 
 
 def align_structures_with_masks(
@@ -106,7 +95,7 @@ def align_structures_by_annotations(
         return gt_array_stack, pred_array_stack
 
     # Extract and ensure annotations from query
-    annotations_to_ensure = _extract_annotation_names(align_to)
+    annotations_to_ensure = extract_annotation_names(align_to)
     ensure_annotations(gt_array_stack, *annotations_to_ensure)
 
     # Get alignment mask and nan mask
@@ -369,9 +358,9 @@ def structure_comparison_metric(
     # Extract and ensure annotations from queries
     annotations_to_ensure = []
     if subset_mask:
-        annotations_to_ensure.extend(_extract_annotation_names(subset_mask))
+        annotations_to_ensure.extend(extract_annotation_names(subset_mask))
     if align_mask:
-        annotations_to_ensure.extend(_extract_annotation_names(align_mask))
+        annotations_to_ensure.extend(extract_annotation_names(align_mask))
     if annotations_to_ensure:
         ensure_annotations(gt_stack, *annotations_to_ensure)
         ensure_annotations(pred_stack, *annotations_to_ensure)
@@ -730,7 +719,7 @@ class LigandCentroidDistanceMetric(Metric):
         gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
         pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
 
-        annotations_to_ensure = [*_extract_annotation_names(self.align_mask), "is_ligand"]
+        annotations_to_ensure = [*extract_annotation_names(self.align_mask), "is_ligand"]
         ensure_annotations(gt_stack, *annotations_to_ensure)
         ensure_annotations(pred_stack, *annotations_to_ensure)
 
