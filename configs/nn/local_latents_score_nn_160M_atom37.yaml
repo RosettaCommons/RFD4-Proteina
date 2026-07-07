@@ -90,16 +90,19 @@ use_tri_mult: False  # whether to use triangular multiplication layers in pair u
 use_qkln: True
 
 # Attention implementation:
-#   - "torch" (default): Standard PyTorch einsum-based attention
-#   - "flash": Uses F.scaled_dot_product_attention for Flash Attention kernel
-#   - "cuequivariance": Uses cuequivariance_torch fused kernel (requires cuequivariance_torch)
-#   - "te": uses transformer engine for attention
-attention_type: flash
+#   - "torch" (default): F.scaled_dot_product_attention (memory-efficient SDPA; the
+#     pair bias precludes the FlashAttention-2 kernel), with an einsum CPU fallback.
+#   - "cuequivariance": cuequivariance_torch fused kernel (requires cuequivariance_torch).
+attention_type: torch
 
 # torch.compile:
 #   - false (default): No compilation, eager mode
 #   - true: Wraps the forward pass with torch.compile for potential speedups
 use_torch_compile: true
+
+# Trunk norm kernel: layer_norm (default), rmsnorm_torch (~+2.5%), or rmsnorm_apex (~+8%).
+# Honored across the attention paths (both attention_type variants) + AdaptiveLayerNorm.
+norm_type: layer_norm
 
 # Whether to use the MSA module
 use_msa_module: false

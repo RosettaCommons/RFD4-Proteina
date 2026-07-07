@@ -2,10 +2,7 @@ import torch
 
 from proteinfoundation.nn.modules.pair_bias_attn import (
     CuEqMultiHeadBiasedAttentionADALN_MM,
-    FlashMultiHeadBiasedAttentionADALN_MM,
     MultiHeadBiasedAttentionADALN_MM,
-    TEMultiHeadBiasedAttentionADALN_MM,
-    is_transformer_engine_available,
 )
 from proteinfoundation.nn.modules.seq_transition_af3 import TransitionADALN
 
@@ -25,7 +22,7 @@ class MultiheadAttnAndTransition(torch.nn.Module):
         use_attn_pair_bias: Whether to use a pair represnetation to bias attention.
         use_qkln: Whether to use layer norm on keyus and queries for attention.
         dropout: droput use in the self-attention layer.
-        attention_type: Type of attention ("torch", "flash", "cuequivariance", or "te"). Defaults to "torch".
+        attention_type: "torch" (SDPA, default) or "cuequivariance" (fused kernel).
     """
 
     def __init__(
@@ -54,30 +51,9 @@ class MultiheadAttnAndTransition(torch.nn.Module):
         self.residual_mha = residual_mha
         self.residual_transition = residual_transition
 
-        # Choose attention implementation based on attention_type
-        if attention_type == "flash":
-            self.mhba = FlashMultiHeadBiasedAttentionADALN_MM(
-                dim_token=dim_token,
-                dim_pair=dim_pair,
-                nheads=nheads,
-                dim_cond=dim_cond,
-                use_qkln=use_qkln,
-            )
-        elif attention_type == "cuequivariance":
+        # Choose attention implementation: cuequivariance fused kernel, else SDPA.
+        if attention_type == "cuequivariance":
             self.mhba = CuEqMultiHeadBiasedAttentionADALN_MM(
-                dim_token=dim_token,
-                dim_pair=dim_pair,
-                nheads=nheads,
-                dim_cond=dim_cond,
-                use_qkln=use_qkln,
-            )
-        elif attention_type == "te":
-            if not is_transformer_engine_available():
-                raise ImportError(
-                    "transformer_engine is required for attention_type='te'. "
-                    "Install it via: pip install transformer_engine[pytorch]"
-                )
-            self.mhba = TEMultiHeadBiasedAttentionADALN_MM(
                 dim_token=dim_token,
                 dim_pair=dim_pair,
                 nheads=nheads,

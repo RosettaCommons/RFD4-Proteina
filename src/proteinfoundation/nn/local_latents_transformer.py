@@ -5,6 +5,7 @@ import torch
 from proteinfoundation.nn.feature_factory import FeatureFactory
 from proteinfoundation.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from proteinfoundation.nn.modules.msa_module import MSAModule
+from proteinfoundation.nn.modules.norm import make_norm, set_norm_type
 from proteinfoundation.nn.modules.pair_rep_initial import PairReprBuilder
 from proteinfoundation.nn.modules.pair_update import PairReprUpdate
 from proteinfoundation.nn.modules.seq_transition_af3 import Transition
@@ -31,6 +32,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
         super().__init__()
+        # Set the process-global norm type before building submodules (make_norm reads it).
+        set_norm_type(kwargs.get("norm_type"))
         self.nlayers = kwargs["nlayers"]
         self.token_dim = kwargs["token_dim"]
         self.pair_repr_dim = kwargs["pair_repr_dim"]
@@ -41,8 +44,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         self.output_param = kwargs["output_parameterization"]
         self.attention_type = kwargs.get("attention_type", "torch")
 
-        # Configure backends for Flash Attention if enabled
-        if self.attention_type == "flash":
+        # Enable the efficient SDPA backends for the SDPA ("torch") attention path.
+        if self.attention_type != "cuequivariance":
             _configure_flash_attention_backends()
 
         # To form initial representation
@@ -119,11 +122,11 @@ class LocalLatentsTransformer(torch.nn.Module):
             )
 
         self.local_latents_linear = torch.nn.Sequential(
-            torch.nn.LayerNorm(self.token_dim),
+            make_norm(self.token_dim),
             torch.nn.Linear(self.token_dim, kwargs["latent_dim"], bias=False),
         )
         self.ca_linear = torch.nn.Sequential(
-            torch.nn.LayerNorm(self.token_dim),
+            make_norm(self.token_dim),
             torch.nn.Linear(self.token_dim, 3, bias=False),
         )
 
