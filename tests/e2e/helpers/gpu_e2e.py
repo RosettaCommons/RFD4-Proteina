@@ -315,6 +315,8 @@ def run_cmd_with_loss_watcher(
         f"Training subprocess failed (exit {proc.returncode}):\n" f"{stderr_text or stdout_buf.getvalue()}"
     )
 
+    assert_no_dataset_fallbacks(stdout_buf.getvalue() + stderr_text)
+
     # Confirm the expected number of steps were produced, then check mean deviation.
     losses = parse_train_losses_from_csv_logger(out_dir)
     assert len(losses) == len(expected_losses), f"Expected {len(expected_losses)} training steps, got {len(losses)}"
@@ -394,6 +396,28 @@ def collect_train_losses(stdout: str, *, out_dir: Path) -> list[float]:
     if losses:
         return losses
     return parse_train_losses_from_csv_logger(out_dir)
+
+
+DATASET_FALLBACK_LINE = "Trying fallback index"
+
+
+def assert_no_dataset_fallbacks(output: str) -> None:
+    """Assert the dataset never substituted an example for one that failed to load.
+
+    ``concat_dataset`` swallows any parse error and returns a different example, so a run can
+    silently train on data nobody configured. Workers inherit the subprocess stderr, so counting
+    the log line is enough.
+
+    Args:
+      output: Combined subprocess stdout+stderr.
+    """
+    n_fallbacks = output.count(DATASET_FALLBACK_LINE)
+    if n_fallbacks:
+        causes = [line.strip() for line in output.splitlines() if "Error (" in line][:3]
+        raise AssertionError(
+            f"Dataset fell back {n_fallbacks} times; this run did not train on the configured "
+            "data. First causes:\n" + "\n".join(causes)
+        )
 
 
 def assert_loss_not_exploding(
