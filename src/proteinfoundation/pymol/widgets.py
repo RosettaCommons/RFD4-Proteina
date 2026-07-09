@@ -95,20 +95,28 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         if not obj_name or obj_name not in self._state.arrays:
             return
         arr = self._state.arrays[obj_name]
-        indices = self._get_selection_indices()
-        if not indices:
+        indices = self._require_selection_indices()
+        if indices is None:
             return
 
+        # Read both before modifying either (atomic snapshot prevents stale reads
+        # when the same PyMOL selection covers a previously annotated region).
         annot = self._annotation_cls.annotation(arr, default="generate").copy()
-        annot[indices] = value
-        self._annotation_cls.set_annotation(arr, annot)
+        mask = self._annotation_cls.mask(arr, default="generate").copy() if self._null_value is not None else None
 
-        if self._null_value is not None:
-            mask = self._annotation_cls.mask(arr, default="generate").copy()
+        annot[indices] = value
+        if mask is not None:
             mask[indices] = value != self._null_value
+
+        self._annotation_cls.set_annotation(arr, annot)
+        if mask is not None:
             self._annotation_cls.set_mask(arr, mask)
 
         self._reload_or_recolor()
+        # Force the user to make a fresh selection before the next apply,
+        # preventing silent overlap with the previous region. deselect() also
+        # clears the on-screen indicators so nothing looks selected afterwards.
+        self._clear_selection()
 
     def _reset(self) -> None:
         obj_name = self._state.active
