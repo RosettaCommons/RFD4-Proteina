@@ -36,6 +36,7 @@ from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_
 from proteinfoundation.metrics.oracle_metric import example_output_dir
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.search.vanilla import build_partial_schedule, resolve_partial_t
+from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.utils.tensor_utils import concat_dict_tensors
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -224,6 +225,7 @@ class BeamSearchStrategy(SearchStrategy):
             xt = x_0
 
         x_1_pred = None
+        insertion_logits = None
 
         all_intermediate_results: list[dict] = []
         all_example_ids: list[str] = []
@@ -247,6 +249,7 @@ class BeamSearchStrategy(SearchStrategy):
 
             all_xt_branches = []
             all_x_1_pred_branches = []
+            all_insertion_logits_branches = []
 
             # Process each replica separately due to batch size constraints
             for replica_idx in range(self.beam_width):
@@ -262,7 +265,7 @@ class BeamSearchStrategy(SearchStrategy):
 
                 # Generate n_branch branches from this replica
                 for _ in range(self.n_branch):
-                    branch_xt, branch_x_1_pred, _ = model.fm.partial_simulation(
+                    branch_xt, branch_x_1_pred, branch_extra_info = model.fm.partial_simulation(
                         batch=copy.deepcopy(batch),
                         x=replica_xt,
                         x_1_pred=replica_x_1_pred,
@@ -280,7 +283,7 @@ class BeamSearchStrategy(SearchStrategy):
 
                     all_xt_branches.append(branch_xt)
                     all_x_1_pred_branches.append(branch_x_1_pred)
-                    # Note: We discard extra_info here since we'll recreate it when formatting
+                    all_insertion_logits_branches.append(branch_extra_info.get("insertion_logits"))
 
             # Concatenate all replicas and branches
             xt = concat_dict_tensors(all_xt_branches, dim=0)
@@ -288,6 +291,10 @@ class BeamSearchStrategy(SearchStrategy):
             x_1_pred = None
             if all_x_1_pred_branches[0] is not None:
                 x_1_pred = concat_dict_tensors(all_x_1_pred_branches, dim=0)
+
+            insertion_logits = None
+            if all(logits is not None for logits in all_insertion_logits_branches):
+                insertion_logits = torch.cat(all_insertion_logits_branches, dim=0)
 
             # After each checkpoint transition, evaluate rewards and select top samples.
             # Example ids for each of the n_branch * beam_width * nsamples evaluated
@@ -385,6 +392,8 @@ class BeamSearchStrategy(SearchStrategy):
             xt = {key: value[select_indices] for key, value in xt.items()}
             if x_1_pred is not None:
                 x_1_pred = {key: value[select_indices] for key, value in x_1_pred.items()}
+            if insertion_logits is not None:
+                insertion_logits = insertion_logits[select_indices]
 
         # Format final beam samples
         # mask here is already the expanded beam mask [nsamples * beam_width, n] in interleaved format
@@ -415,7 +424,7 @@ class BeamSearchStrategy(SearchStrategy):
 
         # Format and score the final beam in one pass
         final_results = model.format_sample_prots_to_atom_arrays(
-            sample_prots, batch, batch_idx=0, example_ids=final_example_ids
+            sample_prots, batch, batch_idx=0, example_ids=final_example_ids, insertion_logits=insertion_logits
         )
         final_rewards = self._compute_rewards(
             model,
@@ -497,13 +506,14 @@ class BeamSearchStrategy(SearchStrategy):
         gt_segment = {k: v[current_step:] for k, v in gt.items()}
 
         final_xt_batches = []
+        insertion_logits_batches = []
 
         # Process in segments to respect batch size constraints
         for i in range(0, batch_size, segment_size):
             end_idx = min(i + segment_size, batch_size)
             batch_xt = {key: value[i:end_idx] for key, value in xt.items()}
 
-            batch_final_xt, _, _ = model.fm.partial_simulation(
+            batch_final_xt, _, batch_extra_info = model.fm.partial_simulation(
                 batch=copy.deepcopy(batch),
                 x=batch_xt,
                 x_1_pred=None,
@@ -522,9 +532,14 @@ class BeamSearchStrategy(SearchStrategy):
                 ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
             )
             final_xt_batches.append(batch_final_xt)
+            insertion_logits_batches.append(batch_extra_info.get("insertion_logits"))
 
         # Concatenate batches
         final_xt = concat_dict_tensors(final_xt_batches, dim=0)
+
+        insertion_logits = None
+        if all(logits is not None for logits in insertion_logits_batches):
+            insertion_logits = torch.cat(insertion_logits_batches, dim=0)
 
         # Construct extra_info with properly sized masks
         # Both mask and can_be_encoded need to expand from [nsamples, n] to [batch_size, n]
@@ -553,7 +568,7 @@ class BeamSearchStrategy(SearchStrategy):
 
         # Format to atom arrays, then compute rewards R(x, s)
         atom_array_results = model.format_sample_prots_to_atom_arrays(
-            final_sample_prots, batch, batch_idx=0, example_ids=example_ids
+            final_sample_prots, batch, batch_idx=0, example_ids=example_ids, insertion_logits=insertion_logits
         )
         rewards = self._compute_rewards(
             model,
@@ -612,6 +627,12 @@ class BeamSearchStrategy(SearchStrategy):
             example_id: str | None = None
             if example_ids is not None:
                 example_id = f"{example_ids[i]}{output_suffix}" if output_suffix else example_ids[i]
+
+            # Annotate unindexed insertion before scoring, mirroring _stage_generated_structure.
+            array_to_annotate = result.get("full_array_with_unindexed") or result["generated_atom_array"]
+            result["generated_atom_array"] = annotate_unindexed_insertion(
+                array_to_annotate, result.get("predicted_insertion_mapping") or {}
+            )
 
             # Phase 1: design metrics (fast; tag-unconditional metrics always run)
             metrics_output = {}
