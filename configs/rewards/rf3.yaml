@@ -14,5 +14,4 @@ weights:
   rf3.ipae: -1.0        # Lower ipAE is better (negative weight)
   rf3.min_ipae: -0.5    # Lower min_ipAE is better
 
-differentiable: false   # RF3 is not differentiable
 

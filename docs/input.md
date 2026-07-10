@@ -12,16 +12,11 @@
 
 - [What changed (high level)](#what-changed-high-level)
 - [Quick start](#quick-start)
-- [The `InputSelection` mini-language](#the-inputselection-mini-language)
 - [Full schema: `InputSpecification`](#full-schema-inputspecification)
-- [Common recipes (cookbook)](#common-recipes-cookbook)
-- [Partial diffusion](#partial-diffusion)
-- [Symmetry](#symmetry)
-- [Validation & error messages](#validation--error-messages)
-- [Metadata & logging](#metadata--logging)
-- [Legacy configs (dialect=1) & migration guide](#legacy-configs-dialect1--migration-guide)
-- [Multi-example files](#multi-example-files)
+- [The `InputSelection` mini-language](#the-inputselection-mini-language)
+- [Unindexing specifics](#unindexing-specifics)
 - [FAQ / gotchas](#faq--gotchas)
+- [Shorthand atoms](#shorthand-atoms)
 
 ---
 
@@ -42,13 +37,13 @@
 
 ---
 
-## InputSpecification
+## Full schema: `InputSpecification`
 
 | Field                                                          | Type              | Description                                                           |
 | -------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
 | `input`                                                        | `str`             | Path to input **PDB/CIF**. Required if you provide contig+length.    |
 | `atom_array_input`                                             | internal          | Pre-loaded `AtomArray` (not recommended).                             |
-| `contig`                                                       | `InputSelection` | Indexed motif specification, e.g., `"A1-80,10,\0,B5-12"`.             |
+| `contig`                                                       | `InputSelection` | Indexed motif specification, e.g., `"A1-80,10,/0,B5-12"`.             |
 | `unindex`                                                      | `InputSelection` | Unindexed motif components (unknown sequence placement).              |
 | `length`                                                       | `str`            | Total design length constraint (optional); `"min-max"` or int.                   |
 | `ligand`                                                       | `str`            | Ligand(s) by resname or index.                                        |
@@ -65,7 +60,8 @@
 | `infer_ori_strategy`                                           | `str`            | `"com"` or `"hotspots"`.                                              |
 | `plddt_enhanced`                                               | `bool`            | Default `true`.                                                       |
 | `is_non_loopy`                                                 | `bool`            | Default `true`.                                                       |
-| `partial_t`                                                    | `float`          | Noise (Å) for partial diffusion, enables partial diffusion            |
+| `partial_t_backbone`                                           | `float`          | Backbone corruption level for partial diffusion (0 = fully noised, 1 = unchanged). |
+| `partial_t_latent`                                             | `float`          | Sidechain/sequence corruption level for partial diffusion (0 = fully noised, 1 = unchanged). |
 
 
 ## Quick start
@@ -85,7 +81,7 @@
     }   
 }
 ```
-### Mininmal YAML example
+### Minimal YAML example
 ```
 input: path/to/template.pdb
 contig: A1-80
@@ -99,7 +95,7 @@ dialect: 2
 
 ### Python API
 ```
-from projects.aa_design.inference.input_parsing import create_atom_array_from_design_specification
+from proteinfoundation.inference_utils.input_parsing import create_atom_array_from_design_specification
 
 atom_array, metadata = create_atom_array_from_design_specification(
     input="path/to/template.pdb",
@@ -111,21 +107,10 @@ atom_array, metadata = create_atom_array_from_design_specification(
 )
 ```
 
-## Demo examples
-### Enzyme
-TODO
-### Symmetry
-TODO.
-See `symmetry.md` for more details
-### Partial diffusion
-TODO
-### Binder design
-TODO
-
 ## The InputSelection mini-language
 
 Fields which are specified as `InputSelection` are fields which can take either: `Bool, List, Dict`.
-Dictionaries are the most expressive and can also take special :
+Dictionaries are the most expressive and can take special atom-set keywords:
 ```yaml
 select_fixed_atoms:
   A1-2: BKBN
@@ -134,8 +119,6 @@ select_fixed_atoms:
   B10: TIP  # selects common tipatom for residue (constants.py)
   LIG: ''  # selects no atoms (i.e. unfixes the atoms for ligands named `LIG`)
 ```
-
-[Diagram]
 
 ## Unindexing specifics
 
@@ -164,10 +147,12 @@ Q: How to fix backbone but redesign sidechains?
 A: redesign_motif_sidechains: true.
 
 Q: Why “Input provided but unused”?
-A: You gave input but no contig, unindex, or partial_t.
+A: You gave input but no contig, unindex, partial_t_backbone, or partial_t_latent.
 
 ## Shorthand atoms
-Keyword	Expands to
-BKBN	N, CA, C, O
-TIP	Residue-specific “tip” atoms
-ALL	All atoms of each residue
+
+| Keyword | Expands to |
+|---------|-----------|
+| `BKBN` | N, CA, C, O |
+| `TIP` | Residue-specific “tip” atoms |
+| `ALL` | All atoms of each residue |

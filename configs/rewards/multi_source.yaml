@@ -32,5 +32,4 @@ weights:
   rasa.mean_rasa: 2.0   # Higher RASA is better
   molprobity.clashes: -2.0  # Fewer clashes is better
 
-differentiable: false   # Set to true only if all metrics are differentiable
 

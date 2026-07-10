@@ -97,7 +97,6 @@ batch_size: 10                        # Batch size for generation
 #         n_recycles: 5
 #     weights:
 #       rf3.plddt: 1.0
-#     differentiable: false
 
 # --- Generation settings ---
 generation:

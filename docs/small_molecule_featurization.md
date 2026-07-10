@@ -163,6 +163,5 @@ near-tied templates — that handles geometries with near-degenerate templates
 ## Configs
 
 * Training experiment: `configs/experiment/ncorley/omol_baseline.yaml`
-* Validation metrics: `configs/metrics/omol_metrics.yaml`
 * Network feature list: `configs/nn/local_latents_score_nn_160M_atom37.yaml`
   (`feats_seq` / `feats_pair_repr`)

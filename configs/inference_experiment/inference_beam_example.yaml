@@ -55,7 +55,6 @@ search:
     weights:
       oracle.plddt_coi: 1.0
 
-    differentiable: false
 
 generation:
   args:

@@ -25,21 +25,23 @@ For user-facing inference and design documentation, see the [main README](../REA
 
 ### Installation
 
-```bash
-cd projects/proteinfoundation
-pip install -e .
-```
-
-### Environment Configuration
-
-Create `.env` file from template:
+Run `setup.sh` from the repo root on a new machine:
 
 ```bash
-cp env.template .env
-# Edit .env to set required paths
+bash projects/proteinfoundation/setup.sh
 ```
 
-**Required Environment Variables:**
+This installs `uv`, initialises the atomworks submodule, creates the virtualenv, installs all dependencies, and appends `CLUSTER`/`CONTAINER_TYPE` exports to your shell rc file.
+
+Then activate the environment:
+
+```bash
+source .venv/bin/activate
+```
+
+**Environment Variables**
+
+Shared cluster paths (`DATA_PATH`, `CACHE_DIR`, `CCD_MIRROR_PATH`, etc.) live in `.ipd/.env.<cluster>` (committed to git) and are auto-sourced via `slurm_utils/.user_info_<cluster>`. No per-user `.env` file is needed.
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -113,7 +115,7 @@ dataset:
     - "ptm > 0.75"
 ```
 
-All datasets use `${oc.env:DATA_PATH}` and `${oc.env:CACHE_DIR}` from your `.env` file -- no hardcoded paths.
+All datasets use `${oc.env:DATA_PATH}` and `${oc.env:CACHE_DIR}` sourced from `.ipd/.env.<cluster>` -- no hardcoded paths.
 
 ### Adding a New Dataset
 
@@ -597,7 +599,7 @@ Automatically runs after generation when using `launch_infer.sh`.
 
 ## Adding New Rewards and Metrics
 
-Metrics can be used for **evaluation, search, AND refinement** (if differentiable).
+Metrics can be used for **evaluation and search**.
 
 ### Adding a New Metric
 
@@ -629,8 +631,6 @@ class MyCustomMetric(Metric):
         return atom_array.b_factor.mean()
 ```
 
-For differentiable metrics (needed for refinement), implement `compute_with_gradients`. See `AF2Metric` for reference.
-
 ### Adding a Reward Config
 
 Create a reward config in `configs/rewards/my_reward.yaml`:
@@ -649,8 +649,6 @@ weights:
   my_metric.quality_score: 2.0
   rf3.plddt: 1.0
   rf3.iptm: 3.0
-
-differentiable: false
 ```
 
 ### Using Custom Rewards
@@ -660,12 +658,6 @@ differentiable: false
 python proteinfoundation/generate.py \
     --config-name inference_test_search \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    reward=my_reward
-
-# With refinement (must have differentiable=true)
-python proteinfoundation/refine.py \
-    --config-name refine_gradient_ascent \
-    inputs=structure.pdb \
     reward=my_reward
 ```
 
@@ -686,7 +678,6 @@ reward_model = RewardModel(
         "rf3.plddt": 1.0,
         "rf3.iptm": 3.0,
     },
-    differentiable=False
 )
 
 from proteinfoundation.search import BestOfNStrategy
@@ -767,7 +758,6 @@ proteinfoundation/
 │   ├── train.py                         # Diffusion model training
 │   ├── generate.py                      # Generation/inference
 │   ├── evaluate.py                      # Metric evaluation
-│   ├── refine.py                        # Standalone refinement
 │   ├── partial_autoencoder/
 │   │   ├── train.py                     # Autoencoder training
 │   │   └── inference.py                 # Autoencoder inference
@@ -778,9 +768,6 @@ proteinfoundation/
 │   │   ├── best_of_n.py
 │   │   ├── beam_search.py
 │   │   └── vanilla.py
-│   ├── refinement/                      # Refinement strategies
-│   │   ├── bindcraft.py
-│   │   └── gradient_ascent.py
 │   ├── rewards/                         # Reward model wrapper
 │   └── transforms/                      # Design tasks
 │
@@ -797,19 +784,11 @@ proteinfoundation/
 ├── docs/                                # Documentation
 │   ├── DEVELOPMENT.md                   # This file
 │   ├── input.md                         # Input specification
-│   ├── symmetry.md                      # Symmetry documentation
-│   ├── protein_binder_design.md         # PPI binder examples
-│   ├── enzyme_design.md                 # Enzyme design examples
-│   ├── small_molecule_binder_design.md  # SM binder examples
-│   ├── dna_binder_design.md             # DNA binder examples
-│   ├── motif_scaffolding.md             # Motif scaffolding examples
-│   ├── unconditional_generation.md      # Unconditional generation
-│   └── search_and_refinement.md         # Search and refinement guide
+│   └── input.md                         # Input specification
 │
 ├── benchmarks/                          # Benchmark inputs and targets
 ├── script_utils/                        # Helper scripts
-├── env.template                         # Environment variable template
-└── .env                                 # Your environment config
+└── setup.sh                             # First-time setup script
 ```
 
 ---
@@ -818,7 +797,7 @@ proteinfoundation/
 
 | Issue | Solution |
 |-------|----------|
-| `DATA_PATH not set` | Create `.env` from `env.template` and set required paths |
+| `DATA_PATH not set` | Ensure `.ipd/.env.<cluster>` is present and your `slurm_utils/.user_info_<cluster>` sources it |
 | `Autoencoder checkpoint not found` | Update `autoencoder_ckpt_path` in `training_proteina.yaml` |
 | `Parquet file not found` | Verify `DATA_PATH` points to correct directory with parquet files |
 | `Training not resuming` | Check `./store/<run_name>/checkpoints/last.ckpt` exists |
@@ -827,8 +806,7 @@ proteinfoundation/
 | `Import errors` | Ensure parent foundry installed: `cd ../.. && pip install -e .` |
 | `Hydra config errors` | Use `=` not `--` for arguments: `inputs=file.cif` not `--inputs file.cif` |
 | `Squashfs mount fails` | Set `USE_SQUASH_MOUNT="false"` in cluster config |
-| `Search/refinement needs reward model` | Create reward config in `configs/rewards/` and specify with `reward=<name>` |
-| `Refinement fails with "not differentiable"` | Use AF2-based reward with `differentiable=true` |
+| `Search needs reward model` | Create reward config in `configs/rewards/` and specify with `reward=<name>` |
 | `CLUSTER_TYPE not set` | Missing or invalid `.user_info_<cluster>` file |
 | `Code sync failed` | Check `rsync` permissions and network |
 
