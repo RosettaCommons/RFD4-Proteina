@@ -1,6 +1,6 @@
 """GPU regression tests: exact-match assertions against committed baselines.
 
-Four tests, all gated on L40s GPU (DIGS only):
+Four tests, all gated on H200 GPUs (cw-west only):
   1. SOTA training      — 100 muon steps from random init; losses match baseline
   2. AE training        — 100 muon steps from AE_ucond_512.ckpt; losses match baseline
   3. Inference          — generate one MCSA example; designed CIF matches baseline
@@ -42,7 +42,7 @@ from tests.e2e.helpers.regression_baselines import (
     find_beam_search_cifs,
     find_inference_cif,
     load_baseline_losses,
-    require_l40s,
+    require_h200,
     require_sota_ckpt,
 )
 
@@ -156,7 +156,7 @@ def _run_beam_search(run_name: str) -> Path:
 def test_sota_training_regression() -> None:
     """100 muon steps from random init (seed=42); per-step losses match committed baselines."""
     require_gpu_e2e(min_gpus=1)
-    require_l40s()
+    require_h200()
 
     expected = load_baseline_losses("sota_training")
     _run_training(
@@ -178,7 +178,7 @@ def test_sota_training_regression() -> None:
 def test_ae_training_regression() -> None:
     """100 muon steps from AE_ucond_512.ckpt; per-step losses match baselines."""
     require_gpu_e2e(min_gpus=1)
-    require_l40s()
+    require_h200()
 
     expected = load_baseline_losses("ae_training")
     _run_training(
@@ -199,7 +199,7 @@ def test_ae_training_regression() -> None:
 def inference_out() -> Path:
     """Run generate.py for inference regression; return out_dir."""
     require_gpu_e2e(min_gpus=1)
-    require_l40s()
+    require_h200()
     require_sota_ckpt()
     if not (BASELINES_DIR / "inference" / "designed.cif").is_file():
         pytest.skip("Inference baselines not generated yet.")
@@ -228,7 +228,7 @@ def test_inference_regression(inference_out: Path) -> None:
 def test_beam_search_regression() -> None:
     """Minimal beam search on monomer-short; designed structure matches baseline."""
     require_gpu_e2e(min_gpus=1)
-    require_l40s()
+    require_h200()
     require_sota_ckpt()
 
     baseline_dir = BASELINES_DIR / "beam_search"

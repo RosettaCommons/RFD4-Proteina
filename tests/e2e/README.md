@@ -30,7 +30,7 @@ export RF3_CKPT_PATH=/abs/path/to/rf3.ckpt   # optional; default under $DATA_PAT
 ```
 
 For the `muon_compile_af3` training smoke, AF3 prevalidation also needs the cluster
-AF3 env vars (defaults in `.ipd/.env.digs` on digs):
+AF3 env vars (defaults in `.ipd/.env.coreweave`):
 
 ```bash
 export AF3_APPTAINER_PATH=/path/to/shared/storage
@@ -41,13 +41,13 @@ export AF3_MODEL_DIR=/path/to/shared/storage
 export AF3_LAUNCHER_SOCKET_TEMPLATE=/tmp/af3_${SLURM_JOB_ID:-$$}/af3_daemon_rank{rank}.sock
 ```
 
-On digs CI, `run_gpu_tests.sh` sources `.ipd/.env.digs`, launches AF3 daemons on the
+In CI, `run_gpu_tests.sh` sources `.ipd/.env.${CI_CLUSTER}` (default `coreweave`), launches AF3 daemons on the
 compute node with host `/usr/bin/python3`, and passes `AF3_LAUNCHER_SOCKET_TEMPLATE`
 plus the `AF3_*` paths into the latent-dev apptainer. Locally, source the same env
 file and start daemons before pytest:
 
 ```bash
-source .ipd/.env.digs   # from repo root
+source .ipd/.env.coreweave   # from repo root
 eval "$(/usr/bin/python3 projects/proteinfoundation/scripts/af3_daemon.py launch \
   --num-gpus 2 --log-dir /tmp/af3_e2e --background)"
 # then run pytest inside latent-dev with AF3_LAUNCHER_SOCKET_TEMPLATE exported
@@ -55,8 +55,7 @@ eval "$(/usr/bin/python3 projects/proteinfoundation/scripts/af3_daemon.py launch
 
 If AF3 is unavailable, `muon_compile_af3` skips; `muon_nocompile_rf3` still runs.
 
-Single-GPU boxes can force the 2-GPU tests to run with
-`ALLOW_SINGLE_GPU_E2E=1` (DDP world size still follows `hardware.ngpus_per_node_`).
+Boxes with no GPU can force the tests to run with `ALLOW_SINGLE_GPU_E2E=1`.
 
 ## Running locally (inside the latent-dev apptainer)
 
@@ -81,10 +80,10 @@ pytest -v "tests/e2e/test_gpu_training_ae.py::test_ae_training_smoke_2gpu[ae_muo
 ## CI
 
 Pipeline (`.github/workflows/lint_and_test.yaml`): **lint** (ruff on changed files) → **CPU**
-(proteinfoundation / rf3 / foundry matrix, xdist) → **GPU** (2-GPU srun training smokes +
+(proteinfoundation / rf3 / foundry matrix, xdist) → **GPU** (1-GPU srun training smokes +
 inference/regression).
 
-Both CPU and GPU lanes source [`.ipd/.env.digs`](../../../.ipd/.env.digs) inside their
+The CPU lane sources `.ipd/.env.digs`; the GPU lane sources `.ipd/.env.coreweave`, inside their
 run scripts and use the same **`LATENT_APPTAINER_SIF`** plus **`PDB_MIRROR_PATH`** /
 **`CCD_MIRROR_PATH`**. GPU additionally passes **`DATA_PATH`** explicitly into apptainer.
 
@@ -111,14 +110,14 @@ Flow smokes inherit fixed train padding (I=256) from `experiment=sota`; AE smoke
 
 **Hard failure (not a skip):** a missing `$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt`
 fails `require_sota_ckpt()` outright (MCSA/beam search) — once the GPU e2e suite
-is enabled on real L40S hardware, a missing checkpoint is a misconfiguration, not
+is enabled on real H200 hardware, a missing checkpoint is a misconfiguration, not
 an optional asset.
 
 These run in the `gpu` job of `.github/workflows/lint_and_test.yaml`
-(ordering: lint -> cpu test -> gpu). The workflow wraps the whole script in
-`srun --gres=gpu:2 -p gpu-train ... bash .github/ci/run_gpu_tests.sh`, so
+(gated on lint; runs in parallel with the cpu lane). The workflow wraps the whole script in
+`srun --gres=gpu:1 -p interactive ... bash .github/ci/run_gpu_tests.sh`, so
 apptainer (and the overlay squash stub it creates) run on the allocated compute
-node -- mirroring the cpu lane and digs' `exec_core.sh`. The CPU lane excludes
+node -- mirroring the cpu lane and `exec_core.sh`. The CPU lane excludes
 `gpu/e2e/training_smoke` markers; the cheap `cluster` launcher syntax checks
 (no GPU) run in the CPU lane.
 
@@ -127,8 +126,8 @@ for data/checkpoint requirements.
 
 ## PR summary (gpu-ci vs latent-main)
 
-This branch adds a **3-stage CI pipeline** on digs: lint (changed files) → CPU pytest
-matrix → single 2-GPU job. Tests split by markers: CPU runs everything except
+A **CI pipeline**: lint (changed files) → CPU pytest on digs and GPU pytest on cw-west, in parallel
+matrix → single 1-GPU job. Tests split by markers: CPU runs everything except
 `gpu` / `e2e` / `training_smoke` / `very_slow`; GPU runs `gpu or e2e or training_smoke`.
 
 **Training oracle matrix** (prevalidation coverage split across two smokes):
@@ -161,8 +160,8 @@ run-to-run variance. Refresh command documented in
 | `GPU_E2E_STREAM_OUTPUT` | 0 | set to `1` to tee train/infer subprocess logs to the terminal (debugging) |
 | `RF3_CKPT_PATH` | — | abs RF3 oracle `.ckpt`; else `$DATA_PATH/rf3_checkpoints/$RF3_CKPT_NAME` |
 | `RF3_CKPT_NAME` | `rf3-with-confidence-xaira-epoch-0711-fixed.ckpt` | basename under `rf3_checkpoints/` |
-| `AF3_APPTAINER_PATH` | digs: `/path/to/shared/storage` | AF3 apptainer image (`muon_compile_af3` only) |
-| `AF3_SCRIPTS_DIR` | digs: `/path/to/shared/storage` | must contain `run_alphafold_from_cif.py` |
-| `AF3_JAX_CACHE_DIR` | digs: `/path/to/data` | JAX compilation cache for AF3 daemon |
-| `AF3_MODEL_DIR` | digs: `/path/to/shared/storage` | AF3 model weights |
+| `AF3_APPTAINER_PATH` | `/path/to/data` | AF3 apptainer image (`muon_compile_af3` only) |
+| `AF3_SCRIPTS_DIR` | `/path/to/data` | must contain `run_alphafold_from_cif.py` |
+| `AF3_JAX_CACHE_DIR` | `/path/to/data` | JAX compilation cache for AF3 daemon |
+| `AF3_MODEL_DIR` | `/path/to/data` | AF3 model weights |
 | `AF3_LAUNCHER_SOCKET_TEMPLATE` | set by `af3_daemon.py launch` | Unix socket template for daemon route (required at train time) |

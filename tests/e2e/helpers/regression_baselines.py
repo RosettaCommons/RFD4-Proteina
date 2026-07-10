@@ -28,7 +28,9 @@ BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
 # regenerated against whatever this points to (see script_utils/generate_e2e_baselines.py).
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
 SOTA_CKPT_PATH = Path(_DATA_PATH) / "latent_checkpoints" / "ldm_checkpoints" / "latest.ckpt" if _DATA_PATH else None
-RF3_CKPT_PATH = Path("/path/to/data" "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt")
+RF3_CKPT_PATH = (
+    Path(_DATA_PATH) / "rf3_checkpoints" / "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt" if _DATA_PATH else None
+)
 
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
@@ -54,7 +56,7 @@ def _load_atom_array(path: Path):
 def deterministic_env() -> dict[str, str]:
     """Env vars that make CUDA operations reproducible on the same hardware."""
     env = os.environ.copy()
-    # Fix MASTER_PORT: .env.digs sets it to a bash expression that Python can't evaluate.
+    # Fix MASTER_PORT: the cluster env file sets it to a bash expression Python can't evaluate.
     env.setdefault("MASTER_PORT", "29500")
     # Fix PYTHONPATH: the venv has a 'scripts' package that shadows the project's scripts/.
     project_root = str(Path(__file__).resolve().parents[3])
@@ -67,20 +69,14 @@ def deterministic_env() -> dict[str, str]:
     return env
 
 
-def require_l40s() -> None:
-    """Skip unless running on an NVIDIA L40S GPU (DIGS regression gate).
-
-    Baselines are generated on L40S nodes.  Tests will produce different
-    floating-point results on any other GPU architecture.
-    """
+def require_h200() -> None:
+    """Skip unless running on an H200; baselines are generated on cw-west and are GPU-specific."""
     try:
         out = subprocess.check_output(["nvidia-smi", "-L"], text=True, timeout=10)
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        pytest.fail("nvidia-smi not available — skipping L40S-gated regression test")
-    # nvidia-smi -L shows e.g. "GPU 0: NVIDIA L40S (UUID: ...)"
-    if not any("L40" in line for line in out.splitlines()):
-        gpu_summary = out.strip().replace("\n", "; ")
-        pytest.fail(f"Regression baselines require L40S GPU; detected: {gpu_summary!r}")
+        pytest.skip("nvidia-smi unavailable; cannot verify H200")
+    if "H200" not in out:
+        pytest.skip(f"Baselines are H200-specific; detected: {out.strip()!r}")
 
 
 def require_sota_ckpt() -> None:
@@ -91,6 +87,8 @@ def require_sota_ckpt() -> None:
 
 
 def require_rf3_ckpt() -> None:
+    if RF3_CKPT_PATH is None:
+        pytest.fail("DATA_PATH is not set; cannot resolve $DATA_PATH/rf3_checkpoints/")
     if not RF3_CKPT_PATH.is_file():
         pytest.fail(f"RF3 checkpoint not found: {RF3_CKPT_PATH}")
 

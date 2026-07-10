@@ -63,13 +63,16 @@ def stochastic_pair_knockout(
             len(eligible_pair_indices[0]) - min_valid_elements,  # max amount we can remove
         )
 
-        rng = np.random.default_rng()
-        knockout_indices = rng.choice(len(eligible_pair_indices[0]), size=n_knockout, replace=False)
+        # Global (seeded) stream, as np.random.uniform above; an unseeded default_rng() ignores it.
+        knockout_indices = np.random.choice(len(eligible_pair_indices[0]), size=n_knockout, replace=False)
 
+        # Return the survivors, not the pairs selected for removal.
+        keep = np.ones(len(eligible_pair_indices[0]), dtype=bool)
+        keep[knockout_indices] = False
         eligible_pair_indices = (
-            eligible_pair_indices[0][knockout_indices],
-            eligible_pair_indices[1][knockout_indices],
-        )  # (n_knockout, 2)
+            eligible_pair_indices[0][keep],
+            eligible_pair_indices[1][keep],
+        )  # (n_valid - n_knockout, 2)
 
     return eligible_pair_indices
 
