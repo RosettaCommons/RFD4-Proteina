@@ -1,8 +1,0 @@
-# @package _global_
-
-defaults:
-  - /datasets/train/distill/mgnify_dec_2025@datasets.train
-  - _self_
-
-log:
-  tags: ["pretrain"]
