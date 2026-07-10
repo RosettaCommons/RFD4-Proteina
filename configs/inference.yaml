@@ -26,6 +26,10 @@ delete_failing_pre_oracle: True
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
 num_replicates: 1 # Number of times to replicate each example
+
+# Token counts to pad batches to for torch.compile. Multiples of 16; null disables.
+compile_lengths: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
+
 batch_size: 1
 subset_to_examples: null # If specified, only run inference on these example indices
 seed: null # Will set a random seed if null

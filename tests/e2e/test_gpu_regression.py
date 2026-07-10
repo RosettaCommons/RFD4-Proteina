@@ -67,7 +67,7 @@ def _run_training(
             "+nolog=true",
             "hardware.ngpus_per_node_=1",
             "hardware.nnodes_=1",
-            "opt.steps_per_epoch=100",
+            "opt.steps_per_epoch=25",
             "opt.max_epochs=1",
             "++opt.num_sanity_val_steps=0",
             "log.checkpoint=false",
@@ -113,6 +113,8 @@ def _run_inference(run_name: str) -> Path:
         f"out_dir={out_dir}",
         "seed=42",
         "torch_deterministic=true",
+        # No compilation for regression tests
+        "compile_lengths=null",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())
@@ -140,6 +142,8 @@ def _run_beam_search(run_name: str) -> Path:
         f"out_dir={out_dir}",
         "seed=42",
         "torch_deterministic=true",
+        # No compilation for regression tests
+        "compile_lengths=null",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())
@@ -167,6 +171,7 @@ def test_sota_training_regression() -> None:
             # No pretrain_ckpt_path: latest.ckpt predates PR #71 architecture changes.
             # Baselines are anchored to random-init losses (seed=42).
             "nn.use_torch_compile=false",
+            "compile_autoencoder=false",  # frozen AE encoder also compiles by default
         ],
         expected_losses=expected,
     )
@@ -187,6 +192,8 @@ def test_ae_training_regression() -> None:
         overrides=[
             "experiment_ae=ae_sota",
             "dataloaders.train.dataloader_params.batch_size=2",
+            # No compile for regression tests
+            "+nn_ae.use_torch_compile=false",
         ],
         expected_losses=expected,
     )

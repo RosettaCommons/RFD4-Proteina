@@ -1,13 +1,16 @@
 """
 Simple collate function to pad and batch data samples from a pipeline.
 """
+
 from typing import Dict, Optional, Union
-from foundry.data.schema.base import DataSample, BatchedDataSample
+
+from foundry.data.schema.base import BatchedDataSample, DataSample
+
 
 def collate_batch(
     batch: list[dict],
     schema: Union[str, type[DataSample]],
-    fixed_dimensions: Optional[Dict[str, int]] = None
+    fixed_dimensions: Optional[Dict[str, Union[int, list[int]]]] = None,
 ):
     """Collate a batch of data samples into a single batch with padding.
 
@@ -18,6 +21,8 @@ def collate_batch(
         fixed_dimensions: Optional dict of dimension names to fixed sizes.
             E.g. {"I": 512, "S": 128} for fixed token and MSA row counts.
             Useful for torch.compile which needs static shapes.
+            A value may also be a list of sizes (buckets), e.g. {"I": [256, 512]},
+            in which case each batch is padded to the smallest bucket that fits it.
             If None, pads dynamically to max in batch.
 
     Returns:
@@ -26,12 +31,10 @@ def collate_batch(
     # Resolve string schema path to class
     if isinstance(schema, str):
         import importlib
+
         module_path, class_name = schema.rsplit(".", 1)
         schema = getattr(importlib.import_module(module_path), class_name)
 
     samples = [schema.from_dict(item) for item in batch]
-    batched_samples = BatchedDataSample(
-        samples, default_padding_dimensions=fixed_dimensions
-    )
+    batched_samples = BatchedDataSample(samples, default_padding_dimensions=fixed_dimensions)
     return batched_samples.pad_and_stack()
-

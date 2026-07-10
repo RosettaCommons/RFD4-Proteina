@@ -3,7 +3,7 @@ data_df5c18b8__monomer-short_0_bsfinal_1_generated.cif
 _entry.id       df5c18b8__monomer-short_0_bsfinal_1_generated.cif
 _entry.author   unknown_user
 _entry.date     2026-07-10
-_entry.time     02:16:01
+_entry.time     20:58:42
 #
 _entity.id                 0
 _entity.type               polymer
