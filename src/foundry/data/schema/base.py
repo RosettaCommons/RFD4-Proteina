@@ -378,12 +378,24 @@ class BatchedDataSample(ABC):
                 else:
                     max_lengths[dim_name] = size
 
-        # Apply fixed padding dimensions (override with fixed sizes)
+        # Apply fixed padding dimensions (override with fixed sizes). A value is either
+        # an int (one static size) or a sequence of ints (buckets: pad up to the
+        # smallest bucket that fits this batch, so torch.compile sees a finite set of
+        # shapes instead of one shape per length).
         for dim_name, fixed_size in self.default_padding_dimensions.items():
-            if dim_name in max_lengths and max_lengths[dim_name] > fixed_size:
+            observed = max_lengths.get(dim_name, 0)
+            if not isinstance(fixed_size, int):
+                buckets = sorted(int(b) for b in fixed_size)
+                fixed_size = next((b for b in buckets if b >= observed), None)
+                if fixed_size is None:
+                    raise ValueError(
+                        f"Sample dimension {dim_name}={observed} exceeds the largest bucket "
+                        f"{buckets[-1]}. Add a bucket >= {observed} (at inference, a longer "
+                        "value in `compile_lengths`) to run an input this long."
+                    )
+            elif observed > fixed_size:
                 raise ValueError(
-                    f"Sample dimension {dim_name}={max_lengths[dim_name]} "
-                    f"exceeds fixed size {fixed_size}"
+                    f"Sample dimension {dim_name}={observed} exceeds fixed size {fixed_size}"
                 )
             max_lengths[dim_name] = fixed_size
 

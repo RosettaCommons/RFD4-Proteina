@@ -18,7 +18,7 @@ import yaml
 from atomworks.common import exists
 from atomworks.ml.transforms.base import Identity, Transform
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 from foundry.data.collate import collate_batch
 from foundry.utils.ddp import RankedLogger
@@ -30,6 +30,7 @@ from proteinfoundation.inference_utils.input_parsing import InputSpecification
 from proteinfoundation.proteina import Proteina
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.utils.simple_ema import SimpleEMA
+from proteinfoundation.utils.torch_compile_utils import load_compile_cache, save_compile_cache
 from proteinfoundation.utils.torch_utils import apply_torch_deterministic
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
@@ -576,6 +577,27 @@ def _filter_existing_outputs(
     return dataset
 
 
+def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.data.Dataset:
+    """Group similar-length examples so each batch pads up to a smaller bucket.
+
+    Lengths come from each spec's ``length`` field (upper bound of a range), so they are
+    a hint: a no-op for datasets without specs, and never load-bearing for correctness.
+    """
+    base = dataset.dataset if isinstance(dataset, Subset) else dataset
+    indices = list(dataset.indices) if isinstance(dataset, Subset) else list(range(len(dataset)))
+
+    specs = getattr(base, "data", None)
+    if not isinstance(specs, dict) or not hasattr(base, "idx_to_id"):
+        logger.info("Dataset exposes no length specs; skipping length sorting.")
+        return dataset
+
+    def approx_length(idx: int) -> int:
+        bounds = str(specs[base.idx_to_id(idx)].get("length", "")).split("-")
+        return max((int(b) for b in bounds if b.isdigit()), default=0)
+
+    return Subset(base, sorted(indices, key=approx_length))
+
+
 def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = None) -> None:
     """
     Core generation function that runs inference given a Hydra config.
@@ -634,13 +656,38 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
     # Support either batch_size argument for backwards compatibility with rfd3 syntax
     batch_size = _get_mutually_exclusive_config(cfg, "batch_size", "diffusion_batch_size", default_value=1)
 
+    # Pad every batch up to one of a few token counts so the network sees a handful of
+    # static shapes and can be compiled (variable lengths otherwise recompile forever).
+    compile_lengths = cfg.get("compile_lengths", None)
+    fixed_dimensions = None
+    if compile_lengths:
+        compile_lengths = sorted(int(n) for n in compile_lengths)
+        assert all(
+            n % 16 == 0 for n in compile_lengths
+        ), f"compile_lengths must be 16-aligned for torch.compile, got {compile_lengths}"
+        fixed_dimensions = {"I": compile_lengths}
+        dataset = _sort_dataset_by_length(dataset)
+        # Inference compiles different graphs than training (no backward, different
+        # shapes), so keep them in a sibling blob: saving here must never overwrite
+        # the training cache that $TORCH_COMPILE_CACHE_BLOB points at.
+        blob = os.environ.get("TORCH_COMPILE_CACHE_BLOB")
+        if blob:
+            os.environ["TORCH_COMPILE_CACHE_BLOB"] = f"{blob}.inference"
+        load_compile_cache()
+        model.nn.enable_inference_compile(compile_lengths)
+        logger.info(f"Inference torch.compile enabled with length buckets {compile_lengths}")
+
     # Create dataloader
     num_workers = cfg.num_workers
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=False,
-        collate_fn=partial(collate_batch, schema="proteinfoundation.datapipes.schema.proteina.ProteinaDataSample"),
+        collate_fn=partial(
+            collate_batch,
+            schema="proteinfoundation.datapipes.schema.proteina.ProteinaDataSample",
+            fixed_dimensions=fixed_dimensions,
+        ),
         num_workers=num_workers,
         pin_memory=True,
     )
@@ -659,6 +706,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         callbacks=[ema_callback] if ema_callback is not None else [],
     )
     trainer.validate(model, dataloader)  # validation_step automatically saves outputs
+
+    # Persist the graphs compiled for each bucket so the next run starts warm
+    if compile_lengths and trainer.is_global_zero:
+        save_compile_cache()
+
     logger.info(f"✓ Generation complete! Results saved to {cfg.out_dir}")
 
 

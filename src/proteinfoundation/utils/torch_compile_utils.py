@@ -54,11 +54,18 @@ def save_compile_cache() -> None:
     out = torch.compiler.save_cache_artifacts()
     if out is None:
         return
-    os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = f"{path}.tmp.{os.getpid()}"
-    with open(tmp, "wb") as f:
-        f.write(out[0])
-    os.replace(tmp, path)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(tmp, "wb") as f:
+            f.write(out[0])
+        os.chmod(tmp, 0o644)  # independent of the writer's umask
+        os.replace(tmp, path)
+    except OSError as e:  # never fail a finished run over a cache write
+        logger.warning(f"Could not save torch.compile cache to {path}: {e}")
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        return
     logger.info(f"Saved torch.compile cache to {path}")
 
 

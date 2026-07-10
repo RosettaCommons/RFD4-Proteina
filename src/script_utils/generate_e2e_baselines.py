@@ -153,7 +153,7 @@ def generate_training_baseline(
         "+nolog=true",
         "hardware.ngpus_per_node_=1",
         "hardware.nnodes_=1",
-        "opt.steps_per_epoch=100",
+        "opt.steps_per_epoch=25",
         "opt.max_epochs=1",
         "++opt.num_sanity_val_steps=0",
         "log.checkpoint=false",
@@ -161,7 +161,7 @@ def generate_training_baseline(
         "log.log_every_n_steps=1",
         "seed=42",
         "torch_deterministic=true",
-        "opt.val_start_epoch=999",
+        "++opt.limit_val_batches=0",  # skip val dataloader (matches the test)
         # num_workers=0: parallel workers deliver batches in OS-scheduler-dependent
         # order; two runs with the same seed see different data.  Single-threaded
         # loading is the only way to guarantee identical batches across runs.
@@ -218,6 +218,7 @@ def generate_inference_baseline(sota_ckpt: Path) -> None:
         f"ckpt_name={ckpt_name}",
         "~metrics/refolding_oracles",
         "generation.dataset.num_replicates=1",
+        "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
         "seed=42",
         "torch_deterministic=true",
         "+single=true",
@@ -258,6 +259,7 @@ def generate_beam_search_baseline(sota_ckpt: Path) -> None:
         f"ckpt_path={ckpt_dir}",
         f"ckpt_name={ckpt_name}",
         "generation.args.nsteps=20",
+        "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
         "search.strategy.step_checkpoints=[0,10,20]",
         "search.strategy.n_branch=2",
         "search.strategy.beam_width=2",
@@ -347,6 +349,7 @@ def main() -> None:
                 # torch.compile selects CUDA kernels at trace time; disable so the
                 # forward pass uses the same eager kernels across runs.
                 "nn.use_torch_compile=false",
+                "compile_autoencoder=false",  # frozen AE encoder also compiles by default
             ],
             out_dir=store_base,
         )
@@ -359,6 +362,7 @@ def main() -> None:
             extra_overrides=[
                 "experiment_ae=ae_sota",
                 "dataloaders.train.dataloader_params.batch_size=2",
+                "+nn_ae.use_torch_compile=false",  # no compile in regression
             ],
             out_dir=store_base,
         )

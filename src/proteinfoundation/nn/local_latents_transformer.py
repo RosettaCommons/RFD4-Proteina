@@ -140,16 +140,32 @@ class LocalLatentsTransformer(torch.nn.Module):
         # runs under no_grad; keeping a separate eager impl for those paths avoids
         # grad_mode-triggered dynamo recompiles of the shared compiled graph.
         self.use_torch_compile = kwargs.get("use_torch_compile", False)
-        self._forward_eager = self._forward_impl
+        self._forward_eval = self._forward_impl  # eager unless enable_inference_compile() is called
         if self.use_torch_compile:
             logger.info("Enabling torch.compile(fullgraph=True) for LocalLatentsTransformer training forward.")
             self._forward_compiled = torch.compile(self._forward_impl, fullgraph=True)
         else:
             self._forward_compiled = self._forward_impl
 
+    def enable_inference_compile(self, lengths: list[int]) -> None:
+        """Compile the eval forward with one static graph per padded token count.
+
+        Args:
+          lengths: Padded token counts to compile for, i.e. the length buckets.
+        """
+        n_shapes = 2 * len(lengths) + 2  # one graph per bucket, plus the short final batch
+        logger.info(
+            f"Enabling torch.compile(dynamic=False) for LocalLatentsTransformer "
+            f"inference forward (recompile budget: {n_shapes} shapes)."
+        )
+        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, n_shapes)
+        self._forward_eval = torch.compile(self._forward_impl, dynamic=False)
+
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """
-        Runs the network. Delegates to _forward_impl which may be torch.compiled.
+        Runs the network. Delegates to _forward_impl, which may be torch.compiled: the
+        training path when ``use_torch_compile`` is set, the eval path only after
+        :py:meth:`enable_inference_compile` (both are eager otherwise).
 
         Args:
             input: {
@@ -184,7 +200,7 @@ class LocalLatentsTransformer(torch.nn.Module):
                 f"nn.use_torch_compile requires a 16-aligned token dim (got n={n_tokens}); set the train "
                 "collate_fn's fixed_dimensions to an aligned value, e.g. {I: 256}."
             )
-        impl = self._forward_compiled if self.training else self._forward_eager
+        impl = self._forward_compiled if self.training else self._forward_eval
         return impl(input)
 
     def _forward_impl(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
