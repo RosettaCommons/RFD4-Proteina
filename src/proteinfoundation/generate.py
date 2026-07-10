@@ -473,45 +473,14 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
             rewards_cfg = cfg.search.rewards
             search_reward_model = RewardModel(
                 weights=dict(rewards_cfg.weights),
-                differentiable=rewards_cfg.get("differentiable", False),
                 reward_metrics_tags=list(rewards_cfg.get("reward_metrics_tags", [])),
             )
             logger.info(
                 f"Search reward model: reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"differentiable={search_reward_model.differentiable}"
+                f"weights={dict(search_reward_model.weights)}"
             )
 
         model.configure_search(search_strategy, search_reward_model)
-
-    # Configure refinement if specified
-    if hasattr(cfg, "refinement") and cfg.refinement is not None:
-        from proteinfoundation.rewards import RewardModel
-
-        # Require nested refinement.rewards config (MUST be differentiable)
-        if not hasattr(cfg.refinement, "rewards") or cfg.refinement.rewards is None:
-            raise ValueError(
-                "Refinement requires 'refinement.rewards:' config section. "
-                "Add rewards under refinement with differentiable=true."
-            )
-
-        refinement_rewards_cfg = cfg.refinement.rewards
-        refinement_reward_model = RewardModel(
-            weights=dict(refinement_rewards_cfg.weights),
-            differentiable=refinement_rewards_cfg.get("differentiable", False),
-            reward_metrics_tags=list(refinement_rewards_cfg.get("reward_metrics_tags", [])),
-        )
-
-        if not refinement_reward_model.differentiable:
-            raise ValueError("Refinement requires differentiable=true in refinement.rewards config")
-
-        logger.info(
-            f"Refinement reward model: weights={list(refinement_reward_model.weights.keys())}, "
-            f"differentiable={refinement_reward_model.differentiable}"
-        )
-
-        # Configure refinement
-        refinement_strategy = hydra.utils.instantiate(cfg.refinement.strategy)
-        model.configure_refinement(refinement_strategy, refinement_reward_model)
 
     return model, ema_callback
 

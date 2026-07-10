@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from proteinfoundation.refinement.base_refinement import RefinementStrategy  # noqa: F401 - used in type annotations
     from proteinfoundation.rewards.reward_model import RewardModel
     from proteinfoundation.search.base_strategy import SearchStrategy
 
@@ -368,10 +367,6 @@ class Proteina(L.LightningModule):
         # Search integration
         self.search_strategy = None
         self.search_reward_model = None
-
-        # Refinement integration (may share reward model or use separate one)
-        self.refinement_strategy = None
-        self.refinement_reward_model = None
 
         # FP8 training support via Transformer Engine
         self.use_fp8 = cfg_exp.get("precision") == "fp8"
@@ -1568,7 +1563,7 @@ class Proteina(L.LightningModule):
 
         Args:
             search_strategy: SearchStrategy instance (BeamSearch, BestOfN, etc.)
-            search_reward_model: RewardModel instance for scoring candidates (can be non-differentiable)
+            search_reward_model: RewardModel instance for scoring candidates.
         """
         self.search_strategy = search_strategy
         self.search_reward_model = search_reward_model
@@ -1577,72 +1572,8 @@ class Proteina(L.LightningModule):
             logger.info(
                 f"Configured search reward model: "
                 f"reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"weights={list(search_reward_model.weights.keys())}, "
-                f"differentiable={search_reward_model.differentiable}"
+                f"weights={list(search_reward_model.weights.keys())}"
             )
-
-    def configure_refinement(self, refinement_strategy: Any, refinement_reward_model: Any) -> None:
-        """Configure refinement strategy for post-generation optimization.
-
-        Refinement uses a separate reward model from search.
-        Refinement reward model must have differentiable=true.
-
-        Args:
-            refinement_strategy: RefinementStrategy instance (BindCraft, GradientAscent, etc.)
-            refinement_reward_model: RewardModel for refinement (REQUIRED, must be differentiable)
-        """
-        if refinement_reward_model is None:
-            raise ValueError("Refinement requires a reward model. Add 'refinement_rewards:' section to your config.")
-
-        # Validate differentiable
-        if not refinement_reward_model.differentiable:
-            raise ValueError(
-                f"Refinement requires differentiable=true in refinement_rewards config, "
-                f"but got differentiable={refinement_reward_model.differentiable}"
-            )
-
-        self.refinement_strategy = refinement_strategy
-        self.refinement_reward_model = refinement_reward_model
-
-        logger.info(f"Configured refinement strategy: {type(refinement_strategy).__name__}")
-        logger.info(
-            f"Configured refinement reward model: "
-            f"weights={list(refinement_reward_model.weights.keys())}, "
-            f"differentiable={refinement_reward_model.differentiable}"
-        )
-
-    def _apply_refinement_to_results(
-        self,
-        results: list[dict],
-        batch: dict,
-    ) -> list[dict]:
-        """Apply refinement to generation results using standalone interface.
-
-        Extracts AtomArrays → refine → update results.
-
-        Args:
-            results: List of generation results (from strategy.generate())
-            batch: Original batch dict
-
-        Returns:
-            Refined results in same format
-        """
-        # Extract AtomArrays from results
-        atom_arrays = [result["generated_atom_array"] for result in results]
-
-        # Apply refinement using standalone interface
-        refined_atom_arrays = self.refinement_strategy.refine_atom_arrays(
-            atom_arrays=atom_arrays,
-            reward_model=self.refinement_reward_model,
-            autoencoder=self.autoencoder,
-        )
-
-        # Update results with refined AtomArrays
-        for i, result in enumerate(results):
-            result["generated_atom_array"] = refined_atom_arrays[i]
-            # TODO: Update coors, residue_type from refined AtomArray
-
-        return results
 
     def preprocess_batch_for_generation(self, batch: dict) -> dict:
         """Preprocess batch from atom37 collate format for generation.
@@ -1685,12 +1616,6 @@ class Proteina(L.LightningModule):
             strategy = self.search_strategy
 
         results = strategy.generate(self, batch, self.search_reward_model)
-
-        # Optional: Apply refinement after generation
-        if self.refinement_strategy is not None:
-            logger.info("Applying post-generation refinement...")
-            results = self._apply_refinement_to_results(results, batch)
-            logger.info("Refinement complete")
 
         return results
 

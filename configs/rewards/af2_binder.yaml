@@ -1,5 +1,4 @@
 # AlphaFold2 binder reward configuration
-# Differentiable - can be used for gradient-based refinement
 
 metrics:
   af2:
@@ -14,6 +13,4 @@ weights:
   af2.ptm: 2.0          # Complex confidence
   af2.pae: -1.0         # Lower PAE is better
   af2.max_pae: -0.5     # Control worst case
-
-differentiable: true    # AF2 supports gradients for refinement
 

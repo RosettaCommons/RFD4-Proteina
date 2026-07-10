@@ -21,7 +21,7 @@ A flow-matching based generative model for protein design, supporting proteins, 
 - [Inference Noise Parameters](#inference-noise-parameters)
 - [Evaluating Results](#evaluating-results)
   - [Adding Custom Metrics](#adding-custom-metrics)
-- [Search and Refinement](#search-and-refinement)
+- [Search Strategies](#search-strategies)
 - [Output Files](#output-files)
 - [For Developers](#for-developers)
 - [Troubleshooting](#troubleshooting)
@@ -100,7 +100,6 @@ python proteinfoundation/generate.py \
     ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt ...
 ```
 
-Set `autoencoder_ckpt_path` in your config or `.env` only if using gradient-ascent refinement.
 
 ---
 
@@ -146,7 +145,7 @@ For easy cluster submission via SLURM launch scripts, see [Cluster Launching (SL
 | `generation.args.save_trajectories_to_cif` | Save trajectories as multi-model CIF instead of XTC; **required** when `bb_ca_only_trajectories=false` since all-atom trajectories have variable atom counts incompatible with XTC | false |
 | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
 | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
-| `metrics_tags` | Tags that activate specific evaluation metrics; comma-separated string or list — see [Evaluating Results](#evaluating-results) | `[]` |
+| `metrics_tags` | Tags that activate specific evaluation metrics; Hydra list, e.g. `'[ppi_refolding,hotspot_conditioning]'` — see [Evaluating Results](#evaluating-results) | `[]` |
 
 **RFD3 aliases**: `diffusion_batch_size` → `batch_size`, `json_keys_subset` → `subset_to_examples`.
 
@@ -214,7 +213,7 @@ Run the same pipeline across many parameter combinations, with one SLURM job per
     --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 ```
 
-See `configs/sweeps/` for pre-built sweep configs and the [Search and Refinement guide](docs/search_and_refinement.md#inference-sweeps) for the sweep config format.
+See `configs/sweeps/` for pre-built sweep configs.
 
 ### Search (Beam / Best-of-N)
 
@@ -391,18 +390,20 @@ python proteinfoundation/generate.py \
 
 ### Running Metrics Inline
 
-Pass `metrics_tags` during inference to compute metrics immediately after each design. Results are written to `per_example_metrics.csv` alongside the CIF files. Multiple tags can be passed as a comma-separated string.
+Pass `metrics_tags` during inference to compute metrics immediately after each design. Results are written to `per_example_metrics.csv` alongside the CIF files.
+
+`metrics_tags` takes a Hydra-style list — pass it as a bracket-quoted list:
 
 ```bash
 # Single tag
 python proteinfoundation/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=50 metrics_tags=unconditional_refolding
+    num_replicates=50 metrics_tags='[unconditional_refolding]'
 
 # Multiple tags
 python proteinfoundation/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    num_replicates=50 metrics_tags=ppi_refolding,hotspot_conditioning
+    num_replicates=50 metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
 
 | Tag | Activates |
@@ -487,11 +488,9 @@ FoldSeek must be installed and available on `$PATH` (set `FOLDSEEK_EXEC` in `.en
 
 ---
 
-## Search and Refinement
+## Search Strategies
 
-Beyond standard sampling, the model supports search strategies to explore multiple generation paths and refinement strategies to optimize structures post-generation. Full details in the [Search and Refinement guide](docs/search_and_refinement.md).
-
-### Search Strategies
+Beyond standard sampling, the model supports reward-guided search to explore multiple generation paths.
 
 | Strategy | Description | Use Case |
 | --- | --- | --- |
@@ -513,41 +512,16 @@ python proteinfoundation/generate.py \
     ckpt_path=./checkpoints ckpt_name=model.ckpt
 ```
 
-### Refinement Strategies
-
-> [!WARNING]
-> Refinement strategies are not fully supported in the current checkpoint.
-
-| Strategy | What it optimizes | Requires Autoencoder | Speed |
-| --- | --- | --- | --- |
-| **BindCraft** | Sequence only (structure fixed) | No | Fast |
-| **Gradient Ascent** | Latents (structure + sequence) | Yes | Medium |
-
-```bash
-# BindCraft: optimize sequence with AF2 reward
-python proteinfoundation/refine.py \
-    --config-name refine_bindcraft \
-    inputs=my_binder.pdb
-
-# Gradient ascent: optimize in latent space
-python proteinfoundation/refine.py \
-    --config-name refine_gradient_ascent \
-    inputs=my_binder.pdb \
-    autoencoder_ckpt_path=/path/to/autoencoder.ckpt
-```
-
 ### Available Reward Models
 
-Reward models score generated structures to guide search and refinement. Configure via YAML files in `configs/rewards/`.
+Reward models score generated structures to guide search. Configure via YAML files in `configs/rewards/`.
 
-| Config | Category | Key Signals | Differentiable |
-| --- | --- | --- | --- |
-| `rf3.yaml` | Refolding | pLDDT, ipTM, ipAE, min_ipAE | No |
-| `af2_binder.yaml` | Refolding | pLDDT, pTM, PAE, max_PAE | Yes |
-| `multi_source.yaml` | Refolding + Force Field + Quality | ipAE, H-bonds, RASA, clashes | No |
-| `structure_quality.yaml` | Structure Quality | Sidechains, SSE, RASA, MolProbity | No |
-
-See the [Search and Refinement guide](docs/search_and_refinement.md) for the full metric catalog and custom reward creation.
+| Config | Category | Key Signals |
+| --- | --- | --- |
+| `rf3.yaml` | Refolding | pLDDT, ipTM, ipAE, min_ipAE |
+| `af2_binder.yaml` | Refolding | pLDDT, pTM, PAE, max_PAE |
+| `multi_source.yaml` | Refolding + Force Field + Quality | ipAE, H-bonds, RASA, clashes |
+| `structure_quality.yaml` | Structure Quality | Sidechains, SSE, RASA, MolProbity |
 
 ---
 

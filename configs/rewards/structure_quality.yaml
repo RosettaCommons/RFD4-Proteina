@@ -37,5 +37,4 @@ weights:
   # H-bonds
   hbonds.num_hbonds: 1.0
 
-differentiable: false
 

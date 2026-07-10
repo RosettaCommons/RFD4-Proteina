@@ -1,4 +1,4 @@
-"""Reward model that aggregates metrics into scalar rewards for search/refinement."""
+"""Reward model that aggregates metrics into scalar rewards for search."""
 
 from typing import Any
 
@@ -8,14 +8,13 @@ ranked_logger = RankedLogger(__name__, rank_zero_only=False)
 
 
 class RewardModel:
-    """Aggregates metric outputs into a scalar reward for search/refinement.
+    """Aggregates metric outputs into a scalar reward for search.
 
     :py:attr:`reward_metrics_tags` controls which metrics fire during reward
     scoring, independently of the dataset-level ``metrics_tags``.
 
     Args:
         weights: Maps ``"metric_name.output_key"`` to a float weight.
-        differentiable: If ``True``, can be used for gradient-based refinement.
         reward_metrics_tags: Tags passed to metric managers during reward scoring.
             Metrics with ``required_tags_any`` only fire if at least one of these
             tags is present. An empty list means only tag-unconditional metrics run
@@ -31,19 +30,16 @@ class RewardModel:
     def __init__(
         self,
         weights: dict[str, float],
-        differentiable: bool = False,
         reward_metrics_tags: list[str] | None = None,
     ):
         """Initialize reward model.
 
         Args:
             weights: Weight for each metric output key.
-            differentiable: If True, can be used for gradient-based refinement.
             reward_metrics_tags: Tags controlling which configured metrics fire
                 during reward scoring. Defaults to ``[]`` (tag-unconditional only).
         """
         self.weights = weights
-        self.differentiable = differentiable
         self.reward_metrics_tags = list(reward_metrics_tags) if reward_metrics_tags else []
 
     def aggregate_metrics_output(self, metrics_output: dict[str, Any]) -> float:
