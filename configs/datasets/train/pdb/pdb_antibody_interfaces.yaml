@@ -1,0 +1,71 @@
+defaults:
+  - pdb_interfaces
+  - /design_tasks/presets/ig_design@dataset.transform.design_tasks
+  - _self_
+
+dataset:
+  name: pdb_antibody_interfaces
+  data: ${oc.env:DATA_PATH}/train_datasets/pdb/ig_interfaces_df.parquet
+
+  # Filters for PDB interfaces dataset
+  filters:
+    - "deposition_date < '2024-01-01'"
+    - "resolution < 9.0"
+    - "num_polymer_pn_units <= 30"
+    - "interface_cluster.notnull()"
+    - "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    - "is_inter_molecule"
+    - "n_nuc == 0"  # exclude interfaces in assemblies containing nucleic acids
+    # ig specific filters
+    - "cdr_annotations.notnull()"
+    - "involves_ig"
+    - "ig_type == 'antibody'"  # as opposed to tcr
+
+  # Columns to load from parquet
+  columns_to_load:
+    - example_id
+    - pdb_id
+    - assembly_id
+    - altloc_seed
+    - path
+    - deposition_date
+    - resolution
+    - num_polymer_pn_units
+    - method
+    - interface_cluster  # different from pdb_interfaces
+    - n_prot
+    - n_nuc
+    - n_ligand
+    - n_peptide
+    - total_num_atoms_in_unprocessed_assembly
+    - pn_unit_1_iid
+    - pn_unit_2_iid
+    - pn_unit_1_non_polymer_res_names
+    - pn_unit_2_non_polymer_res_names
+    - is_inter_molecule
+    - all_pn_unit_iids_after_processing
+    - involves_loi
+    - pn_unit_1_type
+    - pn_unit_2_type
+    # ig specific columns
+    - cdr_annotations
+    - antigen_cluster  # alternatively can be used for clustering
+    - cdr_cluster  # Same here ^
+    - ig_pn_unit_iid
+    - antigen_pn_unit_iid
+    - ig_type
+    - involves_ig
+
+  # Transform pipeline
+  transform: {}  # Force merge behavior from base and design_tasks
+
+weights:
+  beta: 1.0  # beta doesn't matter if not in a subdataset
+  cluster_column: interface_cluster  # can consider antigen_cluster or even cdr_cluster on their own
+  alphas:  # Sample mostly protein-protein and protein-ligand
+    a_prot: 3.0   # 3 for AF-3
+    a_peptide: 3.0 # 0 for AF-3
+    a_nuc: 1.0    # 3 for AF-3
+    a_ligand: 1.0 # 1 for AF-3
+    a_loi: 1.0    # 5 for RF-3 (not specified in AF3)
