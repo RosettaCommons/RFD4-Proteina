@@ -1,4 +1,6 @@
+import json
 import time
+from pathlib import Path
 from typing import Any
 
 import lightning as L
@@ -15,13 +17,59 @@ def log_metrics(pl_module: L.LightningModule, metrics: dict[str, torch.Tensor]) 
         pl_module.log(m, metrics[m], on_step=True, on_epoch=True, prog_bar=False, logger=True)
 
 
-class UnusedParametersCallback(Callback):
+class GradientCoverageCallback(Callback):
+    """Record, per parameter, how many dim-0 rows ever receive a non-zero gradient.
+
+    Tests ``grad != 0``, not ``grad is None``: a feature behind an all-false mask stays in the
+    autograd graph with an exactly-zero grad, so DDP's unused-parameter check never fires.
+
+    Args:
+      output_path: JSON destination for the ``{param_name: {alive_rows, n_rows}}`` map.
+    """
+
+    def __init__(self, output_path: str) -> None:
+        super().__init__()
+        self.output_path = Path(output_path)
+        self._alive: dict[str, torch.Tensor] = {}
+
     def on_before_optimizer_step(
         self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
     ) -> None:
+        """Accumulate live rows. Fires after any DDP allreduce, so grads agree on every rank."""
         for name, param in pl_module.named_parameters():
+            if not param.requires_grad:
+                continue  # frozen by design (e.g. the autoencoder)
+            n_rows = param.shape[0] if param.ndim else 1
             if param.grad is None:
-                print(f"Unused parameter: {name}")
+                alive = torch.zeros(n_rows, dtype=torch.bool, device=param.device)
+            else:
+                alive = (param.grad.reshape(n_rows, -1) != 0).any(dim=1)  # [n_rows]
+            key = name.replace("_orig_mod.", "")  # torch.compile wrapper prefix
+            if key in self._alive:
+                self._alive[key] |= alive
+            else:
+                self._alive[key] = alive
+
+    def on_train_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """Write the accumulated per-parameter row coverage to ``output_path`` on rank 0."""
+        if trainer.global_rank != 0:
+            return
+        coverage = {
+            name: {
+                "alive_rows": int(alive.sum()),
+                "n_rows": int(alive.numel()),
+                # Small tables: name the live rows, so a mismatch says *which* row went dark.
+                **({"alive_idx": alive.nonzero().flatten().tolist()} if alive.numel() <= 8 else {}),
+            }
+            for name, alive in sorted(self._alive.items())
+        }
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        self.output_path.write_text(json.dumps(coverage, indent=2))
+        n_partial = sum(1 for v in coverage.values() if v["alive_rows"] < v["n_rows"])
+        logger.info(
+            f"Wrote gradient coverage for {len(coverage)} parameters "
+            f"({n_partial} with unreached rows) to {self.output_path}"
+        )
 
 
 class LogEpochTimeCallback(Callback):

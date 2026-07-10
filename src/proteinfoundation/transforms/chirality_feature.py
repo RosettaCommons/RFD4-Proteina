@@ -79,7 +79,8 @@ def build_chirality_block_diagonal(
     """
     assert embed_dim % 3 == 0, f"embed_dim must be multiple of 3, got {embed_dim}"
     if rng is None:
-        rng = np.random.default_rng()
+        # Seed from the global (seed_everything) stream; an unseeded default_rng() ignores the seed.
+        rng = np.random.default_rng(np.random.randint(0, 2**32))
     n = atom_array.array_length()
     output = np.zeros((n, embed_dim), dtype=np.float32)
     n_blocks = embed_dim // 3
