@@ -80,3 +80,7 @@ contact_molecular_surface:
 sequence_similarity_to_input:
   _target_: proteinfoundation.metrics.design_metrics.SequenceSimilarityToInput
   required_tags_any: ["partial_diffusion"]
+
+cath_metric:
+  _target_: proteinfoundation.metrics.cath_metric.CathMetric
+  required_tags_any: ["cath"]
