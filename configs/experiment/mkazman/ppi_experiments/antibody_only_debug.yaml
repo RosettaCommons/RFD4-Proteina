@@ -1,0 +1,59 @@
+# @package _global_
+
+defaults:
+  # Train datasets
+  # ... pdb
+  - /datasets/train/pdb/pdb_antibody_interfaces@datasets.train.pdb_antibody_interfaces
+  - /datasets/train/pdb/pdb_tcr_interfaces@datasets.train.pdb_tcr_interfaces
+
+  # ... distillation
+  - /datasets/train/distill/antibody_interface@datasets.train.antibody_interface_distill
+  - /datasets/train/distill/tcr_interface@datasets.train.tcr_interface_distill
+
+  # Validation datasets
+  # ... unconditional
+  - /datasets/val/unconditional@datasets.val.unconditional
+
+
+  - _self_
+
+run_name_: motif_scaffold_tiny_debug
+
+# Dataset mixing probabilities
+datasets:
+  train:
+    pdb_antibody_interfaces:
+      probability: 0.97
+    pdb_tcr_interfaces:
+      probability: 0.01
+    antibody_interface_distill:
+      probability: 0.01
+    tcr_interface_distill:
+      probability: 0.01
+    
+  val:
+    unconditional:
+      dataset:
+        num_replicates: 1  # so it goes fast
+    
+log:
+  tags: ["ppi", "pretrain", "baseline", "ig", "debug"]
+
+hardware:
+  accelerator: gpu
+  ngpus_per_node_: 1
+  nnodes_: 1
+
+dataloaders:
+  batch_size: 4
+  train:
+    n_fallback_retries: 4
+
+opt:
+  num_sanity_val_steps: 0
+
+# nolog: true
+# single: true
+
+# Pre-training checkpoint to start from (optional)
+pretrain_ckpt_path: null

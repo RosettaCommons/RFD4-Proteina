@@ -1,0 +1,10 @@
+# Ig design: mostly the IgFrameworkConditioningTask
+
+defaults:
+  - all_off
+  - _self_
+
+unconditional:    {frequency: 10.0}
+folding:          {frequency: 5.0}
+inverse_folding:  {frequency: 5.0}
+ig_framework_conditioning:   {frequency: 80.0}

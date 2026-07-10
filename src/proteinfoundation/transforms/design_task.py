@@ -1,4 +1,5 @@
 import itertools
+import json
 from collections import defaultdict
 from functools import partial
 from typing import ClassVar, Literal
@@ -23,6 +24,7 @@ from atomworks.ml.transforms import mask_generator as mg
 from atomworks.ml.transforms.crop import resize_crop_info_if_too_many_atoms
 from atomworks.ml.transforms.design_task import DesignTaskABC
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
+from atomworks.ml.utils.antibody import IgAnnotation
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
 from scipy.spatial import ConvexHull
@@ -2218,6 +2220,439 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
             }
 
         data["atom_array"] = atom_array
+        data = self.apply_design_task_modifiers(data)
+        data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
+        return data
+
+
+# ---------------------------------------------------------------------------
+# Helpers for IgFrameworkConditioningTask
+# ---------------------------------------------------------------------------
+
+
+def _expand_cdr_mask(
+    atom_array: AtomArray,
+    cdr_mask: np.ndarray,
+    boundary_mask: np.ndarray,
+    expand_n_term: int,
+    expand_c_term: int,
+) -> np.ndarray:
+    """Expand (>0) or contract (<0) a CDR atom mask independently at each terminus.
+
+    Each terminus is grown/shrunk on its own, so e.g. ``expand_n_term=+1`` with
+    ``expand_c_term=-1`` shifts the CDR mask by one residue toward the C-terminus
+    rather than resizing it. Expansion is clamped to boundary_mask (the Ig chain);
+    contraction erodes boundary residues from the chosen terminus.
+
+    Args:
+        atom_array: The full atom array.
+        cdr_mask: Bool atom mask of the CDR region to expand/contract.
+        boundary_mask: Bool atom mask bounding the expansion (Ig chain).
+        expand_n_term: Residues to add (>0) or remove (<0) at the N-terminus
+            (lower residue indices).
+        expand_c_term: Residues to add (>0) or remove (<0) at the C-terminus
+            (higher residue indices).
+
+    Returns:
+        New bool atom mask after expansion/contraction.
+    """
+    if expand_n_term == 0 and expand_c_term == 0:
+        return cdr_mask
+
+    res_starts = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
+    n_res = len(res_starts) - 1
+    n_atoms = atom_array.array_length()
+
+    # Build residue-level masks
+    res_is_cdr = np.array([cdr_mask[res_starts[i] : res_starts[i + 1]].any() for i in range(n_res)])
+    res_in_boundary = np.array([boundary_mask[res_starts[i] : res_starts[i + 1]].any() for i in range(n_res)])
+
+    new_res = res_is_cdr.copy()
+    # N-terminus = lower residue indices ("left"), C-terminus = higher ("right").
+    for amount, toward_n_term in ((expand_n_term, True), (expand_c_term, False)):
+        for _ in range(amount):  # grow toward this terminus
+            grown = np.zeros(n_res, dtype=bool)
+            if toward_n_term:
+                grown[:-1] = new_res[1:]
+            else:
+                grown[1:] = new_res[:-1]
+            new_res = (new_res | grown) & res_in_boundary
+        for _ in range(-amount):  # shrink from this terminus
+            neighbor = np.zeros(n_res, dtype=bool)
+            if toward_n_term:
+                neighbor[1:] = new_res[:-1]  # keep only residues with an N-side neighbor
+            else:
+                neighbor[:-1] = new_res[1:]  # keep only residues with a C-side neighbor
+            new_res = new_res & neighbor
+
+    new_atom_mask = np.zeros(n_atoms, dtype=bool)
+    for i in range(n_res):
+        if new_res[i]:
+            new_atom_mask[res_starts[i] : res_starts[i + 1]] = True
+    return new_atom_mask
+
+
+class IgFrameworkConditioningTask(RFD3DesignTask):
+    """Framework-conditioning task for antibodies and TCRs.
+
+    Conditions on the Ig framework and (optionally) the target/antigen while
+    leaving CDR loops free for design.  Replaces the old
+    ``AntibodyFrameworkConditioningTask`` family with a cleaner interface that:
+
+    - uses :class:`~atomworks.ml.utils.antibody.IgAnnotation` for CDR parsing,
+    - replaces 2D distance conditioning with internal-coordinate conditioning,
+    - supports variable CDR boundary expansion/contraction,
+    - supports per-CDR fixation (internal coords + sequence conditioning), and
+    - supports separate rigid-body coordinate groups for multi-chain Ig molecules
+      (e.g. scFv heavy + light).
+
+    Works for both antibodies and TCRs.
+
+    Args:
+        cdr_expand_min: Minimum residue expansion per CDR side (negative = shrink).
+        cdr_expand_max: Maximum residue expansion per CDR side.
+        p_fix_all_but_cdr3: Probability of fixing every CDR **except** CDR3,
+            forcing CDR3 to be designed. When False the per-CDR probability
+            ``p_cdr_fixed`` is used instead. CDR4 is excluded from this logic;
+            see ``p_design_cdr4``.
+        p_cdr_fixed: Per-CDR probability of fixing (internal coords + seq
+            conditioning). Applied independently to each CDR (except CDR4)
+            when ``p_fix_all_but_cdr3`` is not triggered.
+        p_design_cdr4: Probability of including CDR4 in the designed (free)
+            region. Sampled once per example and applied to CDR4 on every Ig
+            chain; otherwise CDR4 is fixed (internal coords + seq
+            conditioning), independent of how CDR1-3 were resolved above.
+        p_framework_seq_cond: Probability of providing sequence conditioning
+            on the framework in addition to internal-coord conditioning.
+        p_framework_bb_only: Probability of restricting framework internal-coord
+            conditioning to backbone atoms only (CA/N/C/O) rather than all atoms.
+        p_flexible_target: Probability of giving the target chain **no**
+            coordinate conditioning at all (free antigen).
+        p_target_intcoord: Probability of using internal-coord conditioning for
+            the target (given it is conditioned). Otherwise absolute coords.
+        p_target_bb_only: Probability of restricting target conditioning to
+            backbone atoms only.
+        p_separate_ig_coord_groups: When multiple Ig chains are present
+            (e.g. heavy + light), probability of assigning each its own rigid-body
+            coordinate group. Otherwise all Ig chains are in one group.
+        p_no_hotspots: Probability of providing no hotspot conditioning.
+        hotspot_max_distance: Å threshold for hotspot eligibility.
+        max_hotspots_frac_to_provide: Hard cap on the fraction of interface
+            atoms to label as hotspots.
+        hotspot_count_distribution: ``"uniform"`` or ``"geometric"``.
+        hotspot_geometric_p: Geometric distribution parameter (required when
+            ``hotspot_count_distribution="geometric"``).
+    """
+
+    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
+        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
+        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
+        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
+        "cath_kwargs": {
+            "p_add_cath_c_condition": 0.1,
+            "p_add_cath_ca_condition": 0.15,
+            "p_add_cath_cat_condition": 0.25,
+        },
+    }
+
+    def __init__(
+        self,
+        cdr_expand_min: int = -2,
+        cdr_expand_max: int = 5,
+        p_fix_all_but_cdr3: float = 0.3,
+        p_cdr_fixed: float = 0.2,
+        p_design_cdr4: float = 0.1,
+        p_framework_seq_cond: float = 0.8,
+        p_framework_bb_only: float = 0.3,
+        p_flexible_target: float = 0.1,
+        p_target_intcoord: float = 0.5,
+        p_target_bb_only: float = 0.3,
+        p_separate_ig_coord_groups: float = 0.5,
+        p_no_hotspots: float = 0.05,
+        hotspot_max_distance: float = 7.0,
+        max_hotspots_frac_to_provide: float = 0.1,
+        hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
+        hotspot_geometric_p: float | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.cdr_expand_min = cdr_expand_min
+        self.cdr_expand_max = cdr_expand_max
+        self.p_fix_all_but_cdr3 = p_fix_all_but_cdr3
+        self.p_cdr_fixed = p_cdr_fixed
+        self.p_design_cdr4 = p_design_cdr4
+        self.p_framework_seq_cond = p_framework_seq_cond
+        self.p_framework_bb_only = p_framework_bb_only
+        self.p_flexible_target = p_flexible_target
+        self.p_target_intcoord = p_target_intcoord
+        self.p_target_bb_only = p_target_bb_only
+        self.p_separate_ig_coord_groups = p_separate_ig_coord_groups
+        self.p_no_hotspots = p_no_hotspots
+        self.hotspot_max_distance = hotspot_max_distance
+        self.max_hotspots_frac_to_provide = max_hotspots_frac_to_provide
+        self.hotspot_count_distribution = hotspot_count_distribution
+        self.hotspot_geometric_p = hotspot_geometric_p
+
+    # ------------------------------------------------------------------
+    # Pipeline hooks
+    # ------------------------------------------------------------------
+
+    def annotate_for_task_selection(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        ensure_annotations(atom_array, "is_protein")
+
+        cdr_annotations_json = data.get("extra_info", {}).get("cdr_annotations")
+        if not cdr_annotations_json:
+            data["_ig_masks"] = None
+            return data
+
+        all_ig_annotations: dict = json.loads(cdr_annotations_json)
+
+        per_chain_cdr_masks: dict[str, dict[str, np.ndarray]] = {}
+        per_chain_ig_masks: dict[str, np.ndarray] = {}
+
+        for pn_unit_iid, ann_dict in all_ig_annotations.items():
+            try:
+                annotation = IgAnnotation.from_dict(ann_dict)
+                cdr_masks, ig_chain_mask = annotation.get_masks(atom_array, pn_unit_iid)
+                per_chain_cdr_masks[pn_unit_iid] = cdr_masks
+                per_chain_ig_masks[pn_unit_iid] = ig_chain_mask
+            except (ValueError, KeyError):
+                # pn_unit not in cropped array or annotation is malformed
+                continue
+
+        antigen_pn_unit_iid = data.get("extra_info", {}).get("antigen_pn_unit_iid")
+        data["_ig_masks"] = {
+            "per_chain_cdr_masks": per_chain_cdr_masks,
+            "per_chain_ig_masks": per_chain_ig_masks,
+            "antigen_pn_unit_iid": antigen_pn_unit_iid,
+        }
+        return data
+
+    def can_apply(self, data: dict) -> bool:
+        ig_masks = data.get("_ig_masks")
+        if not ig_masks:
+            return False
+
+        per_chain_cdr_masks = ig_masks["per_chain_cdr_masks"]
+        per_chain_ig_masks = ig_masks["per_chain_ig_masks"]
+
+        if not per_chain_ig_masks:
+            return False
+
+        # Need at least one valid CDR on at least one Ig chain
+        any_cdr = any(any(m.any() for m in chain_cdrs.values()) for chain_cdrs in per_chain_cdr_masks.values())
+        if not any_cdr:
+            return False
+
+        # All Ig chains must have at least one CDR
+        for pn_unit_iid in per_chain_ig_masks:
+            chain_cdrs = per_chain_cdr_masks.get(pn_unit_iid, {})
+            if not any(m.any() for m in chain_cdrs.values()):
+                return False
+
+        # There must be target atoms (not Ig chain)
+        atom_array = data["atom_array"]
+        combined_ig_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        for ig_mask in per_chain_ig_masks.values():
+            combined_ig_mask |= ig_mask
+
+        target_mask = atom_array.is_protein & ~combined_ig_mask
+        return target_mask.any()
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        ig_masks = data["_ig_masks"]
+
+        per_chain_cdr_masks = ig_masks["per_chain_cdr_masks"]
+        per_chain_ig_masks = ig_masks["per_chain_ig_masks"]
+
+        # Combined Ig mask across all Ig chains
+        combined_ig_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        for ig_mask in per_chain_ig_masks.values():
+            combined_ig_mask |= ig_mask
+
+        # Target mask: everything that isn't an ig chain
+        target_mask = ~np.isin(atom_array.pn_unit_iid, np.unique(atom_array.pn_unit_iid[combined_ig_mask]))
+
+        # ------------------------------------------------------------------
+        # Step 1: CDR expansion — sample each terminus independently, apply to all CDRs.
+        # Sampling the two ends separately lets the mask shift (e.g. +1 / -1) rather
+        # than only grow or shrink symmetrically about the CDR center.
+        # ------------------------------------------------------------------
+        expand_n_term = int(np.random.randint(self.cdr_expand_min, self.cdr_expand_max + 1))
+        expand_c_term = int(np.random.randint(self.cdr_expand_min, self.cdr_expand_max + 1))
+
+        expanded_cdr_masks: dict[str, dict[str, np.ndarray]] = {}
+        for pn_unit_iid, chain_cdrs in per_chain_cdr_masks.items():
+            ig_mask = per_chain_ig_masks[pn_unit_iid]
+            expanded_cdr_masks[pn_unit_iid] = {}
+            for cdr_name, cdr_mask in chain_cdrs.items():
+                expanded_cdr_masks[pn_unit_iid][cdr_name] = _expand_cdr_mask(
+                    atom_array, cdr_mask, ig_mask, expand_n_term, expand_c_term
+                )
+
+        # ------------------------------------------------------------------
+        # Step 2: Decide which CDRs are fixed (internal coord + seq cond)
+        # ------------------------------------------------------------------
+        fixed_cdr_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        free_cdr_mask = np.zeros(atom_array.array_length(), dtype=bool)
+
+        if true_with_prob(self.p_fix_all_but_cdr3):
+            # Fix all CDRs except CDR3; leave CDR3 free for design. CDR4 is
+            # excluded here and resolved separately below via p_design_cdr4.
+            for chain_cdrs in expanded_cdr_masks.values():
+                for cdr_name, cdr_mask in chain_cdrs.items():
+                    if cdr_name.lower() == "cdr4":
+                        continue
+                    if "cdr3" in cdr_name.lower():
+                        free_cdr_mask |= cdr_mask
+                    else:
+                        fixed_cdr_mask |= cdr_mask
+        else:
+            # Per-CDR independent fixation probability (CDR4 excluded, see below).
+            for chain_cdrs in expanded_cdr_masks.values():
+                for cdr_name, cdr_mask in chain_cdrs.items():
+                    if cdr_name.lower() == "cdr4":
+                        continue
+                    if true_with_prob(self.p_cdr_fixed):
+                        fixed_cdr_mask |= cdr_mask
+                    else:
+                        free_cdr_mask |= cdr_mask
+
+        # CDR4 defaults to fixed; only designed with probability p_design_cdr4,
+        # sampled once and applied uniformly across all Ig chains.
+        design_cdr4 = true_with_prob(self.p_design_cdr4)
+        for chain_cdrs in expanded_cdr_masks.values():
+            cdr4_mask = chain_cdrs.get("cdr4")
+            if cdr4_mask is None:
+                continue
+            if design_cdr4:  # otherwise treated like a framework region
+                free_cdr_mask |= cdr4_mask
+
+        # Framework = Ig chain minus ALL CDRs (both fixed and free)
+        all_cdr_mask = fixed_cdr_mask | free_cdr_mask
+        framework_mask = combined_ig_mask & ~all_cdr_mask
+
+        # ------------------------------------------------------------------
+        # Step 3: Framework internal-coord conditioning (mark to be conditioned)
+        # ------------------------------------------------------------------
+        ensure_annotations(atom_array, "is_protein_backbone")
+        fw_conditioning_mask = (
+            framework_mask & atom_array.is_protein_backbone
+            if true_with_prob(self.p_framework_bb_only)
+            else framework_mask
+        )
+        nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
+        fw_coordinate_conditioning_mask = fw_conditioning_mask & ~nan_coord_mask
+
+        # ------------------------------------------------------------------
+        # Step 4: Fixed CDR internal-coord conditioning + seq conditioning
+        # ------------------------------------------------------------------
+        fixed_cdr_conditioning_mask = fixed_cdr_mask & ~nan_coord_mask
+        if fixed_cdr_mask.any():
+            C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | fixed_cdr_mask)
+
+        # ------------------------------------------------------------------
+        # Step 5: Framework sequence conditioning (optional)
+        # ------------------------------------------------------------------
+        if true_with_prob(self.p_framework_seq_cond):
+            C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | framework_mask)
+        else:  # need to remove any type of coordinate conditioning from framework sidechains (keep backbone coords)
+            fw_coordinate_conditioning_mask = fw_coordinate_conditioning_mask & atom_array.is_protein_backbone
+
+        # ------------------------------------------------------------------
+        # Step 5.5 Apply internal coord conditioning for Ig chains
+        # ------------------------------------------------------------------
+        atom_array = convert_to_internal_coords(
+            atom_array, fw_coordinate_conditioning_mask | fixed_cdr_conditioning_mask
+        )
+
+        # ------------------------------------------------------------------
+        # Step 6: Multiple Ig chains — coord groups
+        # ------------------------------------------------------------------
+        ig_chain_ids = list(per_chain_ig_masks.keys())
+        if len(ig_chain_ids) > 1 and true_with_prob(self.p_separate_ig_coord_groups):
+            # Each Ig chain gets its own coord group (can translate/rotate independently)
+            for pn_unit_iid in ig_chain_ids:
+                ig_mask = per_chain_ig_masks[pn_unit_iid]
+                # Only re-group atoms that already received internal coord conditioning
+                intcrd_mask = C_INTCRD.mask(atom_array, default="generate")
+                chain_intcrd = ig_mask & intcrd_mask
+                if chain_intcrd.any():
+                    # Reassign to a fresh coord group by calling convert again
+                    # (it always picks max+1, so each call creates a new group)
+                    # We only update the CRDGRP annotation, not re-run the full conditioning
+                    coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
+                    coord_groups[chain_intcrd] = coord_groups.max() + 1
+                    C_CRDGRP.set_annotation(atom_array, coord_groups)
+        # (else: all Ig chains are already in the same group from convert_to_internal_coords calls)
+
+        # ------------------------------------------------------------------
+        # Step 7: Target conditioning
+        # ------------------------------------------------------------------
+        target_nan_mask = np.any(np.isnan(atom_array.coord), axis=1)
+
+        if true_with_prob(self.p_flexible_target):
+            # No coordinate conditioning for target
+            coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
+            coord_groups[target_mask] = C_CRDGRP.UNKNOWN_COORDS
+            C_CRDGRP.set_annotation(atom_array, coord_groups)
+        elif true_with_prob(self.p_target_intcoord):
+            # Internal-coord conditioning for target
+            target_cond_mask = (
+                target_mask & atom_array.is_protein_backbone if true_with_prob(self.p_target_bb_only) else target_mask
+            )
+            atom_array = convert_to_internal_coords(atom_array, target_cond_mask & ~target_nan_mask)
+        else:
+            # Absolute-coord conditioning for target
+            target_cond_mask = (
+                target_mask & atom_array.is_protein_backbone if true_with_prob(self.p_target_bb_only) else target_mask
+            )
+            C_CRD.set_mask(
+                atom_array, C_CRD.mask(atom_array, default="generate") | (target_cond_mask & ~target_nan_mask)
+            )
+
+        # Target always gets sequence conditioning
+        C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | target_mask)
+
+        # ------------------------------------------------------------------
+        # Step 8: Hotspots
+        # ------------------------------------------------------------------
+        if true_with_prob(self.p_no_hotspots):
+            hotspot_mask = np.zeros(atom_array.array_length(), dtype=bool)
+        else:
+            hotspot_mask = sample_hotspots(
+                atom_array,
+                ig_chain_ids,
+                hotspot_max_distance=self.hotspot_max_distance,
+                max_hotspots_frac_to_provide=self.max_hotspots_frac_to_provide,
+                hotspot_count_distribution=self.hotspot_count_distribution,
+                hotspot_geometric_p=self.hotspot_geometric_p,
+            )
+
+        C_HOT.set_annotation(atom_array=atom_array, array=hotspot_mask)
+        C_HOT.set_mask(atom_array, hotspot_mask)
+
+        # ------------------------------------------------------------------
+        # Step 9: Index everything
+        # ------------------------------------------------------------------
+        C_IDX.set_mask(atom_array, np.ones(atom_array.array_length(), dtype=bool))
+
+        data["atom_array"] = atom_array
+        if "task" not in data:
+            data["task"] = {"name": self.__class__.__name__}
+        data["task"] |= {
+            "class": self.__class__.__name__,
+            "mask": hotspot_mask,
+            "ig_chain_ids": ig_chain_ids,
+            "target_mask": target_mask,
+            "num_hotspots": hotspot_mask.sum(),
+            "cdr_expand_n_term": expand_n_term,
+            "cdr_expand_c_term": expand_c_term,
+            "design_cdr4": design_cdr4,
+        }
+
         data = self.apply_design_task_modifiers(data)
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
         return data
