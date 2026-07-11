@@ -42,7 +42,7 @@ run_name_: 34_repro_hero_genie_lw_scratch
 # pretrain_ckpt_path: /path/to/user-data/mkazman/PFM_runs/train_latents/34_hero_baseline_genie3_lw_fixed/runs/34_hero_baseline_genie3_lw_fixed/checkpoints/chk_epoch_00000169_step_000000680000.ckpt
 
 # NOTE: Loss weights used to be by default off when this was originally trained. Here we turn them off to match what was trained
-_loss_weights: &lw_params
+_loss_weights:
   non_standard: 0.0
   unindexed: 0.0
   sampled_tip_atom: 0.0
@@ -64,12 +64,12 @@ datasets:
       dataset:
         transform:
           design_tasks: ${_tip_atom_design_tasks}   # RASA 0.6 via all_off (good amount)
-          loss_weight_cfg: *lw_params
+          loss_weight_cfg: ${_loss_weights}
     omol:
       probability: 0.1
       dataset:
         transform:
-          loss_weight_cfg: *lw_params
+          loss_weight_cfg: ${_loss_weights}
           # NO RASA on omol: p_add_rasa_condition 0.0 on every active task.
           design_tasks:
             folding:
@@ -92,12 +92,12 @@ datasets:
       probability: 0.05    # low-% PPI dimers; RASA 0.6 via all_off (good amount)
       dataset:
         transform:
-          loss_weight_cfg: *lw_params
+          loss_weight_cfg: ${_loss_weights}
     plinder:
       probability: 0.1
       dataset:
         transform:
-          loss_weight_cfg: *lw_params
+          loss_weight_cfg: ${_loss_weights}
 
   # mcsa validation subsets expanded to 15 examples (same keys for all three variants).
   val:

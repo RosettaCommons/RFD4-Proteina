@@ -104,6 +104,7 @@ def _run_inference(run_name: str) -> Path:
     cmd = [
         PYTHON,
         "proteinfoundation/generate.py",
+        # ckpt is inference.yaml's default (the SOTA), the same file the baselines pin to.
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
@@ -130,6 +131,7 @@ def _run_beam_search(run_name: str) -> Path:
     cmd = [
         PYTHON,
         "proteinfoundation/generate.py",
+        # ckpt is inference.yaml's default (the SOTA), the same file the baselines pin to.
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
         "generation.args.nsteps=20",
@@ -168,8 +170,8 @@ def test_sota_training_regression() -> None:
         script="proteinfoundation/train.py",
         overrides=[
             "experiment=sota",
-            # No pretrain_ckpt_path: latest.ckpt predates PR #71 architecture changes.
-            # Baselines are anchored to random-init losses (seed=42).
+            # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
+            # baselines are anchored to random-init losses (seed=42).
             "nn.use_torch_compile=false",
             "compile_autoencoder=false",  # frozen AE encoder also compiles by default
         ],

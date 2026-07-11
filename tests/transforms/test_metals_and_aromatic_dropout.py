@@ -1,96 +1,10 @@
 """Tests for metal-isolation and bond-dropout transforms."""
 
-import biotite.structure as struc
 import numpy as np
 import pytest
 
 from proteinfoundation.datapipes.pipeline import DropoutAromaticFlag
-from proteinfoundation.transforms.metals import (
-    DropoutCoordinationBonds,
-    IsolateMetalsToOwnChain,
-)
-
-# ------------------------------------------------------------------------- #
-# IsolateMetalsToOwnChain                                                   #
-# ------------------------------------------------------------------------- #
-
-
-def _make_zn_coordinated_array() -> struc.AtomArray:
-    """Tiny synthetic structure: chain A with 4 N atoms + a Zn metal sharing the chain."""
-    n = 5
-    atoms = struc.AtomArray(n)
-    atoms.coord = np.array(
-        [
-            [0.0, 0.0, 0.0],  # 0: Zn (shares chain A with neighbors -- pre-isolation)
-            [2.0, 0.0, 0.0],  # 1: N
-            [-2.0, 0.0, 0.0],  # 2: N
-            [0.0, 2.0, 0.0],  # 3: N
-            [0.0, -2.0, 0.0],  # 4: N
-        ],
-        dtype=np.float32,
-    )
-    atoms.element = np.array(["ZN", "N", "N", "N", "N"])
-    atoms.atom_name = np.array(["ZN", "N1", "N2", "N3", "N4"])
-    atoms.res_name = np.array(["LIG", "LIG", "LIG", "LIG", "LIG"])
-    atoms.chain_id = np.array(["A", "A", "A", "A", "A"])
-    atoms.res_id = np.array([1, 1, 1, 1, 1], dtype=np.int32)
-    atoms.hetero = np.array([True, True, True, True, True])
-    atoms.set_annotation("is_polymer", np.array([False, False, False, False, False]))
-
-    # Pre-isolation: every Zn–N bond is SINGLE (CCD-style)
-    bonds = struc.BondList(
-        n,
-        np.array(
-            [
-                [0, 1, struc.BondType.SINGLE],
-                [0, 2, struc.BondType.SINGLE],
-                [0, 3, struc.BondType.SINGLE],
-                [0, 4, struc.BondType.SINGLE],
-            ],
-            dtype=np.uint32,
-        ),
-    )
-    atoms.bonds = bonds
-    return atoms
-
-
-def test_isolate_metals_moves_zn_to_own_chain_and_rebonds_as_coordination():
-    atom_array = _make_zn_coordinated_array()
-    data = IsolateMetalsToOwnChain().forward({"atom_array": atom_array})
-    out = data["atom_array"]
-
-    # Metals are moved to the end; find Zn by element rather than by position
-    zn_indices = np.where(np.char.upper(out.element.astype(str)) == "ZN")[0]
-    assert len(zn_indices) == 1
-    zn_idx = zn_indices[0]
-    non_zn_indices = np.where(np.char.upper(out.element.astype(str)) != "ZN")[0]
-
-    # Zn is now on a chain distinct from the ligand atoms
-    assert out.chain_id[zn_idx] != "A"
-    assert all(out.chain_id[i] == "A" for i in non_zn_indices)
-
-    # res_name is the element symbol
-    assert out.res_name[zn_idx] == "ZN"
-
-    # Every bond touching Zn is now COORDINATION
-    bond_arr = out.bonds.as_array()
-    for i, j, btype in bond_arr:
-        if zn_idx in (i, j):
-            assert btype == int(struc.BondType.COORDINATION), f"bond {(i, j)} should be COORDINATION, got {btype}"
-
-
-def test_isolate_metals_is_noop_without_metals():
-    atom_array = _make_zn_coordinated_array()
-    # Strip the Zn so no metal remains
-    atom_array = atom_array[1:]
-    pre_chain = atom_array.chain_id.copy()
-    pre_bonds = atom_array.bonds.as_array().copy()
-
-    out = IsolateMetalsToOwnChain().forward({"atom_array": atom_array})["atom_array"]
-
-    assert np.array_equal(out.chain_id, pre_chain)
-    assert np.array_equal(out.bonds.as_array(), pre_bonds)
-
+from proteinfoundation.transforms.metals import DropoutCoordinationBonds
 
 # ------------------------------------------------------------------------- #
 # DropoutCoordinationBonds                                                  #

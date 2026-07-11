@@ -108,10 +108,11 @@ Flow smokes inherit fixed train padding (I=256) from `experiment=sota`; AE smoke
 (`muon_compile_af3`), optional metric deps. Override fail-fast with
 `GPU_PYTEST_EXTRA_ARGS=""` when debugging multiple failures.
 
-**Hard failure (not a skip):** a missing `$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt`
-fails `require_sota_ckpt()` outright (MCSA/beam search) — once the GPU e2e suite
-is enabled on real H200 hardware, a missing checkpoint is a misconfiguration, not
-an optional asset.
+**Hard failure (not a skip):** a missing SOTA checkpoint fails `require_sota_ckpt()` outright
+(MCSA/beam search). The checkpoint is the one named by `ckpt_name` in `configs/inference.yaml`
+(the single source of truth, shared with `generate.py`); the tests resolve `$DATA_PATH/.../<ckpt_name>`
+from that file. Once the GPU e2e suite is enabled on real H200 hardware, a missing checkpoint is a
+misconfiguration, not an optional asset.
 
 These run in the `gpu` job of `.github/workflows/lint_and_test.yaml`
 (gated on lint; runs in parallel with the cpu lane). The workflow wraps the whole script in
@@ -137,10 +138,10 @@ matrix → single 1-GPU job. Tests split by markers: CPU runs everything except
 | `muon_nocompile_rf3` | Muon | off | RF3 |
 | `muon_compile_af3` | Muon | on | AF3 (host-side daemons in CI) |
 
-**Known skips:** AF3 unavailable (`muon_compile_af3`), missing data files. A missing
-`$DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt` fails (not skips) the
-inference/beam search tests — the checkpoint is a symlink on each cluster's
-`DATA_PATH` mount; update it there when a new hero checkpoint is available.
+**Known skips:** AF3 unavailable (`muon_compile_af3`), missing data files. A missing SOTA
+checkpoint fails (not skips) the inference/beam search tests — it's the `ckpt_name` from
+`configs/inference.yaml` under each cluster's `$DATA_PATH/latent_checkpoints/ldm_checkpoints`;
+to advance SOTA, edit `ckpt_name` there and regenerate the baselines.
 
 **RF3 regression baselines** refreshed after `remove_ccds` parsing fix and checkpoint
 pinning (`RF3_REGRESSION_CKPT_PATH`); `RMSD_TOLERANCE` raised to 0.45Å for 8vkf

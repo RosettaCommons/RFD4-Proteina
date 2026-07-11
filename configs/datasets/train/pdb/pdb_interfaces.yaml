@@ -24,7 +24,7 @@ dataset:
       _target_: proteinfoundation.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
-      cache_dir: ${oc.env:CACHE_DIR}/pdb
+      cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache
 
   # Filters for PDB interfaces dataset
   filters:
@@ -36,6 +36,7 @@ dataset:
     - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
     - "is_inter_molecule"
     - "n_nuc == 0"  # exclude interfaces in assemblies containing nucleic acids
+    - "validated == True"  # charge-validation flag (~96.2% of rows)
 
   # Columns to load from parquet
   columns_to_load:
@@ -63,6 +64,7 @@ dataset:
     - involves_loi
     - pn_unit_1_type
     - pn_unit_2_type
+    - validated
 
   # Transform pipeline
   transform: {}  # Force merge behavior from base and design_tasks

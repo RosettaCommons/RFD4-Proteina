@@ -36,6 +36,7 @@ from proteinfoundation.conditions import C_CRDGRP, C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.design_task_modifiers import (
     add_cath_condition,
     add_hbond_condition,
+    add_not_cysteine_condition,
     add_rasa_condition,
     add_secondary_structure_condition,
 )
@@ -92,6 +93,10 @@ RFD3_DESIGN_TASK_DEFAULTS = {
         "p_add_cath_ca_condition": 0.0,
         "p_add_cath_cat_condition": 0.0,
         "query_pn_unit_iid": None,
+    },
+    "not_cysteine_kwargs": {
+        "p_add_not_cysteine_condition": 0.0,
+        "max_subsample_frac": 0.25,
     },
 }
 
@@ -162,6 +167,7 @@ class RFD3DesignTask(DesignTaskABC):
             "secondary_structure_kwargs", {}
         )
         cath_kwargs = self.cath_kwargs.copy() | overrides.get("cath_kwargs", {})
+        not_cysteine_kwargs = self.not_cysteine_kwargs.copy() | overrides.get("not_cysteine_kwargs", {})
 
         # Set defaults for task dictionary
         data["task"] |= {
@@ -171,6 +177,7 @@ class RFD3DesignTask(DesignTaskABC):
             "added_cath_c_condition": False,
             "added_cath_ca_condition": False,
             "added_cath_cat_condition": False,
+            "added_not_cysteine_condition": False,
         }
 
         # Possibly add Conditions corresponding to design task modifiers
@@ -183,6 +190,9 @@ class RFD3DesignTask(DesignTaskABC):
         if true_with_prob(secondary_structure_kwargs.pop("p_add_secondary_structure_condition")):
             data = add_secondary_structure_condition(data, **secondary_structure_kwargs)
             data["task"]["added_secondary_structure_condition"] = True
+        if true_with_prob(not_cysteine_kwargs.pop("p_add_not_cysteine_condition")):
+            data = add_not_cysteine_condition(data, **not_cysteine_kwargs)
+            data["task"]["added_not_cysteine_condition"] = True
 
         # Stochasticity and task annotations handled internally for CATH conditioning
         data = add_cath_condition(data, **cath_kwargs)
@@ -208,6 +218,7 @@ class NoMotifABC(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def can_apply(self, data: dict) -> bool:
@@ -244,6 +255,7 @@ class UnconditionalTask(NoMotifABC):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def forward(self, data: dict) -> dict:
@@ -261,6 +273,7 @@ class StructurePredictionTask(NoMotifABC):
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
         "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.0},
     }
 
     def forward(self, data: dict) -> dict:
@@ -287,6 +300,7 @@ class InverseFoldingTask(NoMotifABC):
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
         "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def forward(self, data: dict) -> dict:
@@ -405,6 +419,7 @@ class PartialLigandTask(RFD3DesignTask):
         "hbond_kwargs": {"p_add_hbond_condition": 0.0},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
         "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.0},
     }
 
     def __init__(
@@ -507,6 +522,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -732,6 +748,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -998,6 +1015,7 @@ class TipAtomTask(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -1167,6 +1185,7 @@ class MotifScaffoldTask(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -1389,6 +1408,7 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -1778,6 +1798,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
             "p_add_cath_ca_condition": 0.15,
             "p_add_cath_cat_condition": 0.25,
         },
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
     def __init__(
@@ -2004,6 +2025,7 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
         "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
         "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
         "na_ss_kwargs": {"p_add_na_ss_condition": 1.0},
+        "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.0},
     }
 
     def __init__(

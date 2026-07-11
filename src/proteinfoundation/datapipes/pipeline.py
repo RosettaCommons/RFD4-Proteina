@@ -93,7 +93,7 @@ from atomworks.ml.utils.token import (
     spread_token_wise,
 )
 from beartype.typing import Any, Callable
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, spread_residue_wise
 from einops import rearrange
 
 from foundry.common import true_with_prob
@@ -107,6 +107,7 @@ from proteinfoundation.conditions import (
     C_IDXGRP,
     C_INTCRD,
     C_NA_SS_STATE,
+    C_NCYS,
     C_RAS,
     C_SEC,
     BasePairEnum,
@@ -125,7 +126,7 @@ from proteinfoundation.transforms.geometry import CenterOnCoordinateConditionedA
 from proteinfoundation.transforms.internal_coords import ConvertAbsoluteToInternalCoords
 from proteinfoundation.transforms.invariants import ValidateBatchInvariants
 from proteinfoundation.transforms.loss_weight_predicates import build_loss_weight_upweights
-from proteinfoundation.transforms.metals import DropoutCoordinationBonds, IsolateMetalsToOwnChain
+from proteinfoundation.transforms.metals import DropoutCoordinationBonds
 from proteinfoundation.transforms.na_geom import (
     FeaturizeNucleicAcidSecondaryStructure,
 )
@@ -455,6 +456,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         # ... fancy
         feats[C_HOT.full_name] = C_HOT.annotation(aa, default="generate")
+        feats[C_NCYS.full_name] = C_NCYS.annotation(aa, default="generate")  # [L] bool, not-cysteine conditioning
         feats[C_RAS.full_name] = C_RAS.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_SEC.full_name] = C_SEC.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
@@ -504,6 +506,7 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_CTR.full_name,
     C_NTR.full_name,
     C_SEC.full_name,
+    C_NCYS.full_name,
     C_IDXGRP.full_name,
     C_CATH.full_name,
     C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
@@ -1018,6 +1021,22 @@ class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
         return data
 
 
+class EnsureNCYSResiduesAreNotSequenceConditioned(Transform):
+    """Clear not-cysteine conditioning on any sequence-conditioned residue to keep the feature in-distribution."""
+
+    def forward(self, data: dict) -> dict:
+        aap = as_atom_array_plus(data["atom_array"])
+        ncys = C_NCYS.annotation(aap, default="generate")
+        if ncys.any():
+            # Clear residue-wise: a non-uniform Level.RESIDUE annotation trips ValidateBatchInvariants.
+            seq_mask = C_SEQ.mask(aap, default="generate")
+            starts = get_residue_starts(aap)
+            residue_seq = np.maximum.reduceat(seq_mask, starts).astype(bool)  # [n_residues]
+            C_NCYS.set_annotation(aap, spread_residue_wise(aap, ncys[starts] & ~residue_seq))
+        data["atom_array"] = aap
+        return data
+
+
 class FeaturizeExpandedSegments(Transform):
     """
     Currently only polypeptide expandable segments are supported by the model. Here we ensure that only
@@ -1280,7 +1299,6 @@ def _build_design_clean_and_sample_pipeline(
     T += RemoveHydrogens()
     T += RemoveTerminalOxygen()
     T += RemoveNucleicAcidTerminalOxygen()
-    T += IsolateMetalsToOwnChain()
 
     # ... training-only heavy cleanup (drops things an inference user may want preserved,
     # or relies on extra_info that inference inputs don't carry)
@@ -1475,6 +1493,7 @@ def _build_design_featurize_pipeline(
     ###########################################################
     # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
     T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
+    T += EnsureNCYSResiduesAreNotSequenceConditioned()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)

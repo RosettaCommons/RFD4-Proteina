@@ -1,15 +1,15 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
 """Generate regression-test baselines for the four GPU regression tests.
 
-Run this script on DIGS via the SLURM launcher (recommended) or directly on
-an L40s node with squashfs mounted:
+Run this script on DIGS, on a GPU node with the squashfs datasets mounted
+(inside apptainer, or with `.ipd/.env.digs` sourced):
 
-    # Via SLURM:
-    ./slurm_utils/launch_generate_baselines.sh digs
-
-    # Direct (inside apptainer or with env sourced):
     cd projects/proteinfoundation
     python script_utils/generate_e2e_baselines.py
+
+By default the inference/beam baselines use the SOTA checkpoint from configs/inference.yaml
+(the single source of truth, shared with generate.py). Pass ``--sota-ckpt`` to regenerate them
+against a candidate checkpoint before promoting it in inference.yaml.
 
 For each test this script:
   1. Runs the subprocess twice (same seed, same command).
@@ -18,13 +18,12 @@ For each test this script:
 
 After running, commit the updated baselines:
     git add tests/e2e/baselines/
-    git commit -m "test: update regression baselines for new latest.ckpt"
+    git commit -m "test: update regression baselines for new SOTA checkpoint"
 
 Options:
     --tests NAMES   Comma-separated subset to regenerate (default: all).
                     Choices: sota_training,ae_training,inference,beam_search
-    --sota-ckpt     Override SOTA checkpoint path (default: $DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt)
-    --ae-ckpt       Override AE checkpoint path
+    --sota-ckpt     Optional candidate checkpoint; default = inference.yaml's SOTA ckpt.
 """
 
 from __future__ import annotations
@@ -202,11 +201,16 @@ def generate_training_baseline(
     shutil.rmtree(run2_out, ignore_errors=True)
 
 
-def generate_inference_baseline(sota_ckpt: Path) -> None:
+def _ckpt_overrides(sota_ckpt: Path | None) -> list[str]:
+    """generate.py ckpt overrides for a --sota-ckpt override, or [] to use inference.yaml's default."""
+    if sota_ckpt is None:
+        return []
+    return [f"ckpt_path={sota_ckpt.parent}", f"ckpt_name={sota_ckpt.name}"]
+
+
+def generate_inference_baseline(sota_ckpt: Path | None) -> None:
     """Generate inference baseline: run generate.py twice, verify reproducibility, save designed.cif."""
     name = "inference"
-    ckpt_dir = str(sota_ckpt.parent)
-    ckpt_name = sota_ckpt.name
 
     gen_cmd = [
         PYTHON,
@@ -214,8 +218,7 @@ def generate_inference_baseline(sota_ckpt: Path) -> None:
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
-        f"ckpt_path={ckpt_dir}",
-        f"ckpt_name={ckpt_name}",
+        *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
         "~metrics/refolding_oracles",
         "generation.dataset.num_replicates=1",
         "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
@@ -246,9 +249,7 @@ def generate_inference_baseline(sota_ckpt: Path) -> None:
     shutil.rmtree(run2_dir, ignore_errors=True)
 
 
-def generate_beam_search_baseline(sota_ckpt: Path) -> None:
-    ckpt_dir = str(sota_ckpt.parent)
-    ckpt_name = sota_ckpt.name
+def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
     name = "beam_search"
 
     base_cmd = [
@@ -256,8 +257,7 @@ def generate_beam_search_baseline(sota_ckpt: Path) -> None:
         "proteinfoundation/generate.py",
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
-        f"ckpt_path={ckpt_dir}",
-        f"ckpt_name={ckpt_name}",
+        *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
         "generation.args.nsteps=20",
         "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
         "search.strategy.step_checkpoints=[0,10,20]",
@@ -317,7 +317,13 @@ def main() -> None:
         default=",".join(ALL_TESTS),
         help="Comma-separated list of tests to generate baselines for.",
     )
-    parser.add_argument("--sota-ckpt", type=Path, default=SOTA_CKPT_PATH)
+    parser.add_argument(
+        "--sota-ckpt",
+        type=Path,
+        default=None,
+        help="Optional: regenerate inference/beam baselines against this checkpoint instead of "
+        "inference.yaml's default SOTA (for validating a candidate before promoting it).",
+    )
     args = parser.parse_args()
 
     tests = [t.strip() for t in args.tests.split(",")]
@@ -325,15 +331,19 @@ def main() -> None:
     if unknown:
         parser.error(f"Unknown test(s): {unknown}. Valid: {ALL_TESTS}")
 
-    # Validate checkpoint existence.
+    # Effective ckpt: the --sota-ckpt override, else inference.yaml's default (SOTA_CKPT_PATH).
+    # generate.py inherits inference.yaml's default when no override is passed; we still validate
+    # existence up front so a missing file fails fast instead of mid-run.
     needs_sota = "inference" in tests or "beam_search" in tests
-    if needs_sota and args.sota_ckpt is None:
+    effective_ckpt = args.sota_ckpt or SOTA_CKPT_PATH
+    if needs_sota and effective_ckpt is None:
         sys.exit("DATA_PATH is not set; pass --sota-ckpt or export DATA_PATH")
-    if needs_sota and not args.sota_ckpt.is_file():
-        sys.exit(f"SOTA checkpoint not found: {args.sota_ckpt}")
+    if needs_sota and not effective_ckpt.is_file():
+        sys.exit(f"SOTA checkpoint not found: {effective_ckpt}")
 
+    ckpt_source = "inference.yaml default" if args.sota_ckpt is None else "--sota-ckpt override"
     print(f"\nGenerating baselines for: {tests}")
-    print(f"  SOTA ckpt : {args.sota_ckpt}")
+    print(f"  SOTA ckpt : {effective_ckpt}  ({ckpt_source})")
     print(f"  Output    : {BASELINES_DIR}\n")
 
     if "sota_training" in tests:
@@ -343,9 +353,9 @@ def main() -> None:
             script="proteinfoundation/train.py",
             extra_overrides=[
                 "experiment=sota",
-                # latest.ckpt predates the nucleic-acid SS conditioning changes
-                # (PR #71); train from random init so the test is not blocked on
-                # a checkpoint that no longer matches the current architecture.
+                # This smoke trains 100 steps from random init -- it exercises the
+                # sota *recipe*, not the sota checkpoint (those are covered by the
+                # inference/beam baselines).
                 # torch.compile selects CUDA kernels at trace time; disable so the
                 # forward pass uses the same eager kernels across runs.
                 "nn.use_torch_compile=false",
@@ -375,7 +385,7 @@ def main() -> None:
 
     print("\n✓ Done. Commit the updated baselines:")
     print(f"  git add {BASELINES_DIR}")
-    print("  git commit -m 'test: update regression baselines for new latest.ckpt'")
+    print("  git commit -m 'test: update regression baselines for new SOTA checkpoint'")
 
 
 if __name__ == "__main__":
