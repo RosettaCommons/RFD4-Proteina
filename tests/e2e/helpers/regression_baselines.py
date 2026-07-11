@@ -17,17 +17,37 @@ import pandas as pd
 import pytest
 from atomworks.io.parser import parse
 from biotite.structure import rmsd
+from omegaconf import OmegaConf
 
 from proteinfoundation.utils.parse_presets import DISTILLATION
 
 # Absolute path to the baselines directory regardless of cwd.
 BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
 
-# SOTA checkpoint: the moving "latest.ckpt" symlink, same relative layout as the
-# autoencoder checkpoints (see e.g. configs/inference.yaml). Baselines are
-# regenerated against whatever this points to (see script_utils/generate_e2e_baselines.py).
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
-SOTA_CKPT_PATH = Path(_DATA_PATH) / "latent_checkpoints" / "ldm_checkpoints" / "latest.ckpt" if _DATA_PATH else None
+
+
+def _resolve_sota_ckpt_path() -> Path | None:
+    """Resolve the SOTA checkpoint from configs/inference.yaml, the single source of truth.
+
+    Reads ckpt_path/ckpt_name from that config (built-in ``oc.env`` resolves ``$DATA_PATH``;
+    no custom resolvers needed) so inference and the regression suite always pin the same file.
+    Returns ``None`` if ``$DATA_PATH`` is unset, so ``require_sota_ckpt`` can fail with a clear message.
+    """
+    if not _DATA_PATH:
+        return None
+    inference_yaml = Path(__file__).resolve().parents[3] / "configs" / "inference.yaml"
+    cfg = OmegaConf.load(inference_yaml)
+    ckpt_path = OmegaConf.select(cfg, "ckpt_path")  # resolves ${oc.env:DATA_PATH}
+    ckpt_name = OmegaConf.select(cfg, "ckpt_name")
+    return Path(ckpt_path) / ckpt_name
+
+
+# SOTA checkpoint: read from configs/inference.yaml so generate.py and these baselines pin the
+# same immutable, named file (not the moving "latest.ckpt" symlink). Synced to every cluster from
+# s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/. Baselines are regenerated against this
+# exact file (see script_utils/generate_e2e_baselines.py); to advance SOTA, edit inference.yaml.
+SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
 RF3_CKPT_PATH = (
     Path(_DATA_PATH) / "rf3_checkpoints" / "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt" if _DATA_PATH else None
 )
@@ -81,9 +101,11 @@ def require_h200() -> None:
 
 def require_sota_ckpt() -> None:
     if SOTA_CKPT_PATH is None:
-        pytest.fail("DATA_PATH is not set; cannot resolve $DATA_PATH/latent_checkpoints/ldm_checkpoints/latest.ckpt")
+        pytest.fail("DATA_PATH is not set; cannot resolve the SOTA checkpoint from configs/inference.yaml")
     if not SOTA_CKPT_PATH.is_file():
-        pytest.fail(f"SOTA checkpoint not found: {SOTA_CKPT_PATH}")
+        pytest.fail(
+            f"SOTA checkpoint not found: {SOTA_CKPT_PATH}. Sync it from s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/"
+        )
 
 
 def require_rf3_ckpt() -> None:

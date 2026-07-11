@@ -679,6 +679,7 @@ class LigandCentroidDistanceMetric(Metric):
         }
         super().__init__(**kwargs)
         self.align_mask = align_mask
+        # over-ligand reduction via _agg_fn (not self.aggregation, which is BaseMetric's cross-sample list)
         if aggregation == "mean":
             self._agg_fn = np.mean
         elif aggregation == "min":

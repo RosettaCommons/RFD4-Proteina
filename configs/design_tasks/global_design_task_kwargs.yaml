@@ -10,3 +10,5 @@ cath_kwargs:
   p_add_cath_cat_condition: 0.0
 na_ss_kwargs:
   p_add_na_ss_condition: 0.0
+not_cysteine_kwargs:
+  p_add_not_cysteine_condition: 0.0

@@ -11,14 +11,14 @@ from atomworks.io.utils.scatter import apply_segment_wise
 from atomworks.io.utils.selection import get_residue_starts, get_segments
 from atomworks.io.utils.standard_annotations import S_ATM, STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
-from atomworks.ml.conditions import C_CRD, C_IDX
+from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from proteinfoundation.conditions import C_HB, C_IDXGRP, HBondEnum
+from proteinfoundation.conditions import C_HB, C_IDXGRP, C_NCYS, HBondEnum
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
     violations += check_hbond_no_both_violations(feats)
+    violations += check_not_cysteine_sequence_conditioning_violations(aa)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
@@ -407,6 +408,26 @@ def check_hbond_no_both_violations(feats: dict) -> list[InvariantViolation]:
                     f"{n_bad} valid atom(s) have HBondEnum.BOTH, which the model does not yet "
                     "support (TEMPORARY check -- will be removed once the training workflow is patched)"
                 ),
+                count=n_bad,
+            )
+        ]
+    return []
+
+
+def check_not_cysteine_sequence_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
+    """Return violations where not-cysteine and sequence conditioning co-occur on a residue."""
+    aap = as_atom_array_plus(aa)
+    ncys = C_NCYS.annotation(aap, default="generate")  # [n_atoms] bool
+    if not ncys.any():
+        return []
+
+    both = ncys & C_SEQ.mask(aap, default="generate")  # [n_atoms] bool
+    n_bad = int(both[get_residue_starts(aap)].sum())  # residues with both conditions
+    if n_bad:
+        return [
+            InvariantViolation(
+                check="not_cysteine_and_sequence_conditioned",
+                message=f"{n_bad} residue(s) have both not-cysteine and sequence conditioning",
                 count=n_bad,
             )
         ]

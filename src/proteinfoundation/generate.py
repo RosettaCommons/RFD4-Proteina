@@ -431,9 +431,14 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         map_location="cpu",
     )
 
-    # Load EMA callback state separately. The checkpoint is typically warm in OS page
-    # cache at this point, so the second torch.load is fast.
-    ema_callback = _load_ema_from_checkpoint(ckpt_file)
+    # An "-ema" checkpoint's weights are already EMA (loaded above), so re-applying the EMA
+    # callback is redundant and can mismatch under torch.compile. Skip it; non-ema still gets EMA.
+    if cfg.ckpt_name.endswith("-ema.ckpt"):
+        logger.info(f"'{cfg.ckpt_name}' is an EMA checkpoint; weights are already EMA, skipping EMA re-application.")
+        ema_callback = None
+    else:
+        # The checkpoint is typically warm in OS page cache here, so this second torch.load is fast.
+        ema_callback = _load_ema_from_checkpoint(ckpt_file)
 
     # Remove val sets used in training, and do not compute loss on inference examples, since they start with NaN coords
     # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.

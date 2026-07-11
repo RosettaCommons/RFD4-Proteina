@@ -26,6 +26,7 @@ from proteinfoundation.conditions import (
     C_CATH,
     C_HB,
     C_INTCRD,
+    C_NCYS,
     C_RAS,
     C_SEC,
     HBondEnum,
@@ -532,6 +533,40 @@ def add_secondary_structure_condition(
     ss_annotation = np.full(atom_array.array_length(), 0, dtype=int)  # 0 is SSEnum.NONE
     ss_annotation[ss_mask] = atom_array.sse[ss_mask]
     C_SEC.set_annotation(atom_array, ss_annotation)
+
+    data["atom_array"] = atom_array
+    return data
+
+
+def add_not_cysteine_condition(
+    data: dict[str, Any],
+    max_subsample_frac: float = 0.25,
+) -> dict[str, Any]:
+    """Mark a random subset of eligible (standard, non-CYS, non-sequence-conditioned) residues as "not cysteine".
+
+    Always subsamples: marking every eligible residue would leave cysteines as the only
+    unmarked ones, leaking their positions.
+
+    Args:
+      max_subsample_frac: Upper bound on the per-residue keep-fraction, drawn from
+        Uniform(0, max_subsample_frac).
+    """
+    atom_array = as_atom_array_plus(data["atom_array"])
+    ensure_annotations(atom_array, "is_standard_aa")
+
+    # Exclude sequence-conditioned residues (identity already leaked); sidechain-conditioned ones stay.
+    seq_mask = C_SEQ.mask(atom_array, default="generate")
+    eligible_atoms = atom_array.is_standard_aa & (atom_array.res_name != "CYS") & ~seq_mask
+
+    residue_starts = get_residue_starts(atom_array)
+    residue_eligible = eligible_atoms[residue_starts]
+    if not residue_eligible.any():
+        return data
+
+    keep_frac = np.random.uniform(0, max_subsample_frac)
+    residue_mask = residue_eligible & (np.random.rand(len(residue_starts)) < keep_frac)
+
+    C_NCYS.set_annotation(atom_array, spread_residue_wise(atom_array, residue_mask))
 
     data["atom_array"] = atom_array
     return data

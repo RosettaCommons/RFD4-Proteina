@@ -458,6 +458,20 @@ class NucleicSSState(ConditionBase):
         return np.full(atom_array.array_length(), BasePairEnum.UNSPECIFIED.value, dtype=cls.dtype)
 
 
+class NotCysteine(ConditionBase):
+    """Conditioning that marks residues which should not be a Cysteine."""
+
+    name = "not-cysteine"
+    n_body = 1
+    level = Level.RESIDUE
+    is_mask = True
+    dtype = bool
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+
 # Aliases for convenience
 C_HOT = CONDITIONS.hotspot
 C_CDR = CONDITIONS.cdr
@@ -478,3 +492,4 @@ C_CRDGRP = CONDITIONS.CoordinateGroup
 C_CENTROID = CONDITIONS.ChainCentroid
 C_BP = CONDITIONS.basepair
 C_NA_SS_STATE = CONDITIONS.na_ss_state
+C_NCYS = CONDITIONS.not_cysteine

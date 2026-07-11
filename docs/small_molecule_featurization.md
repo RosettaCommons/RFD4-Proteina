@@ -10,13 +10,13 @@ Small molecules are **atomized**: every atom of a non-polymer becomes its own to
 
 Per-atom scalars (element, formal charge, chirality) and pair-wise bond features
 (bond mask, Kekulé bond order, aromaticity) are added as token-level features in the
-atom37 representation. Metals are split off onto their own chain and re-bonded as
-COORDINATION bonds.
+atom37 representation. Metals are separated into their own molecule and their bonds
+typed as COORDINATION at parse time (inside atomworks).
 
 ## Where data flows
 
 ```
-parse → IsolateMetalsToOwnChain
+parse   (atomworks types metal bonds as COORDINATION; metals become their own molecule)
       → AtomizeByCCDName / FlagNonPolymersForAtomization
       → AddChiralityFeature
       → ConvertToAtom37Format
@@ -74,14 +74,14 @@ The bond-graph helpers (`get_bond_order_matrix`, `get_is_aromatic_matrix`,
 ## Metals
 
 CCD-style structures often place metal ions on the same chain as the coordinating
-ligand and use SINGLE bonds for the coordination. OMOL convention puts metals on
-their own chain with COORDINATION bonds. Two transforms reconcile this:
+ligand and use SINGLE bonds for the coordination. OMOL convention puts metals in
+their own molecule with COORDINATION bonds. This is reconciled at parse time:
 
-* **`IsolateMetalsToOwnChain`** (`transforms/metals.py`): for every metal atom,
-  reassign it to a fresh `chain_id`, set `res_name` to the element symbol, mark
-  `is_polymer=False` / `chain_type=NON_POLYMER`, and convert any bond touching
-  the metal to `BondType.COORDINATION`. Re-derives `pn_unit_id`/`molecule_id`
-  annotations afterward so downstream code sees the canonical OMOL layout.
+* **atomworks parse** (`_add_bonds`): retypes every bond touching a metal atom to
+  `BondType.COORDINATION` regardless of source (struct_conn metalc, CCD component
+  bonds, or inferred), and `add_id_and_entity_annotations` excludes COORDINATION
+  bonds by default so a coordinated metal is its own molecule/entity. (This
+  replaced the old in-pipeline `IsolateMetalsToOwnChain` transform.)
 
 * **`DropoutCoordinationBonds`** (`transforms/metals.py`, training only):
   two-level stochastic regularizer.

@@ -17,10 +17,12 @@ from proteinfoundation.conditions import (
     C_HOT,
     C_IDXGRP,
     C_INTCRD,
+    C_NCYS,
     C_RAS,
     C_SEC,
     RasaEnum,
 )
+from proteinfoundation.datapipes.pipeline import TokenType
 from proteinfoundation.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 from proteinfoundation.utils.angle_utils import bond_angles, signed_dihedral_angle
 
@@ -931,6 +933,20 @@ class HotspotSeqFeat(Feature):
         return hotspot_feat
 
 
+class NotCysteineSeqFeat(Feature):
+    """Per-token binary feature [b, n, 1]: 1 where a residue is marked "should not be CYS", else 0."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=1)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        if C_NCYS.full_name not in batch:
+            b, n = self.extract_bs_and_n(batch)
+            return torch.zeros(b, n, 1, device=self.extract_device(batch))
+        # C_NCYS is a residue-level (token-level) bool [b, n]; no atom37 reduction needed.
+        return batch[C_NCYS.full_name].unsqueeze(-1).float()  # [b, n, 1]
+
+
 class IndexGroupPairFeat(Feature):
     """Binary feature for whether two tokens are in the same index group."""
 
@@ -996,13 +1012,14 @@ class AtomChargeSeqFeat(Feature):
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
 
-        if "charge" in batch and "is_atomized" in batch:
+        if "charge" in batch and "token_type" in batch:
             charge_slot1 = batch["charge"][:, :, 1].long()  # [b, n]
             cls_idx = (charge_slot1 + self._CHARGE_OFFSET).clamp(0, self._NUM_CLASSES - 1)
             emb = self.embedding(cls_idx)  # [b, n, charge_emb_dim]
-            return emb * batch["is_atomized"].unsqueeze(-1)
+            is_atomized = (batch["token_type"] == TokenType.ATOMIZED).unsqueeze(-1)  # [b, n, 1]
+            return emb * is_atomized
         if not self._has_logged:
-            logger.warning("No charge in batch, returning zeros for AtomChargeSeqFeat")
+            logger.warning("No charge/token_type in batch, returning zeros for AtomChargeSeqFeat")
             self._has_logged = True
         # Dummy forward so embedding participates in DDP backward pass
         zeros = torch.zeros(b, n, self.dim, device=device)
@@ -1028,14 +1045,15 @@ class AtomicElementSeqFeat(Feature):
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
 
-        if "element" in batch and "is_atomized" in batch:
+        if "element" in batch and "token_type" in batch:
             # Atomized tokens place their atom in slot 1
             element_slot1 = batch["element"][:, :, 1].long()  # [b, n]
             element_slot1 = element_slot1.clamp(0, self.max_atomic_num - 1)
             emb = self.embedding(element_slot1)  # [b, n, embed_dim]
-            return emb * batch["is_atomized"].unsqueeze(-1)
+            is_atomized = (batch["token_type"] == TokenType.ATOMIZED).unsqueeze(-1)  # [b, n, 1]
+            return emb * is_atomized
         if not self._has_logged:
-            logger.warning("No element in batch, returning zeros for AtomicElementSeqFeat")
+            logger.warning("No element/token_type in batch, returning zeros for AtomicElementSeqFeat")
             self._has_logged = True
 
         # Dummy forward so embedding participates in DDP backward pass
@@ -1635,6 +1653,8 @@ class FeatureFactory(torch.nn.Module):
                 return HydrogenBondSeqFeat(**kwargs)
             elif f == "hotspot":
                 return HotspotSeqFeat(**kwargs)
+            elif f == "not_cysteine":
+                return NotCysteineSeqFeat(**kwargs)
             elif f == "na_ss_state":
                 return NucleicSecondaryStructureStateSeqFeat(**kwargs)
             elif f == "coord_group_seq":
