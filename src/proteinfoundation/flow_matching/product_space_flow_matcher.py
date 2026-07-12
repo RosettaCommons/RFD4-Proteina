@@ -44,6 +44,45 @@ def extract_groups(batch: dict) -> dict[str, torch.Tensor | None]:
     }
 
 
+def sample_noised_target_backbone(
+    fm: "ProductSpaceFlowMatcher",
+    batch: dict,
+    target_backbone: Float[Tensor, "n_samples n 3"],
+    t_bb: Float[Tensor, "n_samples"],
+) -> Float[Tensor, "n_samples n 3"]:
+    """Draw the target backbone from its forward marginal at ``t_bb``.
+
+    Only the backbone matcher is evaluated. Sampling uses the same centering
+    inputs and one-time centering behavior as training-time corruption.
+    """
+    padding_mask = batch["padding_mask"]
+    coord_cond_mask = batch.get("coord_cond_mask")
+    groups = extract_groups(batch)
+    batch_shape = target_backbone.shape[:-2]
+    n = target_backbone.shape[-2]
+    backbone_matcher = fm.base_flow_matchers["bb_ca"]
+
+    # ``interpolate`` applies x_0 stochastic centering. Using training=True here
+    # prevents ``sample_noise`` from applying the same offset a second time.
+    x_0 = backbone_matcher.sample_noise(
+        n=n,
+        shape=batch_shape,
+        mask=padding_mask,
+        device=target_backbone.device,
+        training=True,
+        coord_cond_mask=coord_cond_mask,
+        groups=groups,
+    )
+    return backbone_matcher.interpolate(
+        x_0=x_0,
+        x_1=target_backbone,
+        t=t_bb,
+        mask=padding_mask,
+        coord_cond_mask=coord_cond_mask,
+        groups=groups,
+    )
+
+
 class ProductSpaceFlowMatcher(L.LightningModule):
     """
     Base class for flow matcher. Most of the methods in this class are abstract methods
@@ -845,6 +884,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         ag_ratio: float = 0.0,
+        resample_target_backbone: bool = False,
+        target_backbone: Float[Tensor, "nsamples n 3"] | None = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
         """Run partial diffusion simulation for nsteps.
 
@@ -866,6 +907,11 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             dump_noisy_trajectories: If True, also collect the noisy x_t alongside x_1.
             guidance_w: Guidance weight (1.0 = no guidance)
             ag_ratio: Autoguidance ratio (0.0 = CFG only, 1.0 = AG only)
+            resample_target_backbone: If True, independently resample the target
+                backbone from its forward marginal at every step while allowing
+                the model to update only the sequence latents.
+            target_backbone: Clean target backbone used for inverse folding.
+                Defaults to ``batch['x_1']['bb_ca']`` when resampling is enabled.
 
         Returns:
             Tuple of (x, x_1_pred, extra_info) where:
@@ -878,11 +924,23 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
         trajectory_steps: list[dict] = []
 
+        if resample_target_backbone:
+            if target_backbone is None:
+                target_backbone = batch["x_1"]["bb_ca"]
+            target_backbone = target_backbone.clone()
+
         nn_out = None
         with torch.no_grad():
             # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
             batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
             batch["x_sc_is_active"] = torch.zeros((), device=device)
+            if resample_target_backbone:
+                x["bb_ca"] = sample_noised_target_backbone(
+                    self,
+                    batch,
+                    target_backbone,
+                    ts["bb_ca"][0] * torch.ones(nsamples, device=device),
+                )
             for step in range(nsteps):
                 t = {
                     data_mode: ts[data_mode][step] * torch.ones(nsamples, device=device)
@@ -898,7 +956,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
 
                 # Add self-conditioning if enabled
                 if self_cond and x_1_pred is not None:
-                    batch["x_sc"] = x_1_pred
+                    batch["x_sc"] = {**x_1_pred, "bb_ca": target_backbone} if resample_target_backbone else x_1_pred
                     batch["x_sc_is_active"] = torch.ones((), device=device)
 
                 # Get model prediction with guidance
@@ -929,6 +987,17 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     x["local_latents"] = x["local_latents"] * is_encoded_mask[..., None]
                 x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
                 x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
+
+                if resample_target_backbone:
+                    if step == nsteps - 1:
+                        x["bb_ca"] = target_backbone.clone()
+                    else:
+                        x["bb_ca"] = sample_noised_target_backbone(
+                            self,
+                            batch,
+                            target_backbone,
+                            ts["bb_ca"][step + 1] * torch.ones(nsamples, device=device),
+                        )
 
                 # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
                 if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):

@@ -30,6 +30,12 @@ args:
   partial_t_latent: null
   couple_partial_t: false
 
+  # Inverse folding keeps the input backbone on independently resampled forward
+  # marginals while generating sequence latents. Prefer the `generation=inverse_folding`
+  # preset; these fields remain available for programmatic configuration.
+  inverse_folding: false
+  inverse_folding_method: resampled_forward_marginal
+
   save_trajectory_every: 0 # at which step interval to save trajectory snapshots of generation, 0 for no saving
   bb_ca_only_trajectories: true # if true, save CA-only trajectory as XTC; if false, save all-atom trajectory as multi-model CIF (XTC requires fixed atom count per frame)
   dump_noisy_trajectories: false # if true, also save the noisy x_t at each trajectory step alongside x_1
