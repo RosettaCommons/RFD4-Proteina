@@ -9,6 +9,19 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus_stack
 
 from proteinfoundation.search.base_strategy import SearchStrategy
 
+RESAMPLED_FORWARD_MARGINAL = "resampled_forward_marginal"
+INVERSE_FOLDING_METHODS = {RESAMPLED_FORWARD_MARGINAL}
+
+
+def resolve_inverse_folding_method(cfg_args: Any) -> str | None:
+    """Validate and return the configured inverse-folding method."""
+    if not cfg_args.get("inverse_folding", False):
+        return None
+    method = cfg_args.get("inverse_folding_method", RESAMPLED_FORWARD_MARGINAL)
+    if method not in INVERSE_FOLDING_METHODS:
+        raise ValueError(f"inverse_folding_method must be one of {sorted(INVERSE_FOLDING_METHODS)}, got {method!r}.")
+    return method
+
 
 def resolve_partial_t(
     cfg_args: Any,
@@ -34,6 +47,15 @@ def resolve_partial_t(
     pt_latent = cfg_args.get("partial_t_latent", None)
     do_couple = cfg_args.get("couple_partial_t", False)
     frac = cfg_args.get("partial_trajectory_fraction_steps", None)
+    inverse_folding_method = resolve_inverse_folding_method(cfg_args)
+
+    if inverse_folding_method is not None:
+        if pt_backbone is not None or pt_latent is not None or do_couple or frac is not None:
+            raise ValueError(
+                "inverse_folding is mutually exclusive with partial_t_backbone, "
+                "partial_t_latent, couple_partial_t, and partial_trajectory_fraction_steps."
+            )
+        return {"bb_ca": 0.0, "local_latents": 0.0}
 
     if frac is not None:
         if pt_backbone is not None or pt_latent is not None or do_couple:
@@ -151,6 +173,7 @@ class VanillaStrategy(SearchStrategy):
         """
         # Preprocess batch
         batch = model.preprocess_batch_for_generation(batch)
+        inverse_folding_method = resolve_inverse_folding_method(model.inf_cfg.args)
 
         # Extract clean samples (same as training)
         batch = model.add_clean_samples(batch)
@@ -186,6 +209,9 @@ class VanillaStrategy(SearchStrategy):
                 for dm, partial_t in partial_t_dict.items()
             }
             batch = model.fm.corrupt_batch(batch, t=batched_partial_t)
+            target_backbone = (
+                batch["x_1"]["bb_ca"].clone() if inverse_folding_method == RESAMPLED_FORWARD_MARGINAL else None
+            )
 
             simulation_step_params = {
                 data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"] for data_mode in model.fm.data_modes
@@ -215,6 +241,8 @@ class VanillaStrategy(SearchStrategy):
                 dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
+                resample_target_backbone=inverse_folding_method == RESAMPLED_FORWARD_MARGINAL,
+                target_backbone=target_backbone,
             )
 
         else:

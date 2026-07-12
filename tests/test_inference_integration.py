@@ -13,6 +13,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import biotite.structure as struc
 import numpy as np
@@ -31,7 +32,7 @@ load_dotenv(override=True)
 
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pydantic_core._pydantic_core import ValidationError
 
 from foundry.testing import gpu  # noqa: F401
@@ -731,6 +732,60 @@ class TestEndToEndInference:
         assert not np.array_equal(
             input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]
         ), "Non-fixed-region residue types should be different in output"
+
+    def test_inverse_folding(self, gpu, tmp_output_dir):  # noqa: F811
+        """Resampled-forward-marginal inverse folding preserves the backbone and redesigns sequence.
+
+        Feeding an existing structure via ``inputs=<cif>`` with
+        ``generation=inverse_folding`` runs partial diffusion where every token's
+        backbone is independently resampled from its forward marginal at each step
+        (clean at t=1) while the sequence channel (``local_latents``) is regenerated. The
+        generated backbone should match the input (CA RMSD near zero) and the sequence should
+        differ from the input.
+        """
+        from atomworks.io.parser import STANDARD_PARSER_ARGS
+        from atomworks.io.utils.io_utils import load_any
+
+        from proteinfoundation.flow_matching import product_space_flow_matcher
+
+        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.cif")
+
+        cfg = _build_test_cfg(
+            [
+                "generation=inverse_folding",
+                f"inputs={input_pdb}",
+                f"out_dir={tmp_output_dir}",
+                "generation.args.nsteps=400",
+            ]
+        )
+        args_before = OmegaConf.to_container(cfg.generation.args, resolve=True)
+        with patch.object(
+            product_space_flow_matcher,
+            "sample_noised_target_backbone",
+            wraps=product_space_flow_matcher.sample_noised_target_backbone,
+        ) as sample_backbone:
+            run_generation(cfg, job_id=0, config_name="test_inverse_folding")
+
+        assert sample_backbone.call_count == cfg.generation.args.nsteps
+        assert OmegaConf.to_container(cfg.generation.args, resolve=True) == args_before
+
+        cif_files = _inference_generated_cifs(tmp_output_dir)
+        assert len(cif_files) == 1, f"Expected 1 output CIF, got {len(cif_files)}"
+
+        input_aa = parse(input_pdb, **STANDARD_PARSER_ARGS)["asym_unit"][0]
+        input_ca = input_aa[input_aa.atom_name == "CA"]
+        output_aa = load_any(str(cif_files[0]))[0]
+        output_ca = output_aa[output_aa.atom_name == "CA"]
+        assert len(output_ca) == len(input_ca), f"Output has {len(output_ca)} CA atoms, expected {len(input_ca)}"
+
+        # Backbone is pinned to the input coordinates (same frame): CA RMSD should be near zero.
+        bb_rmsd = float(np.sqrt(((output_ca.coord - input_ca.coord) ** 2).sum(axis=-1).mean()))
+        assert bb_rmsd < 0.01, f"Inverse-folding CA RMSD {bb_rmsd:.4f} Å should be < 0.01 Å"
+
+        # Sequence is redesigned: residue types should differ from the input.
+        assert not np.array_equal(
+            input_ca.res_name, output_ca.res_name
+        ), "Inverse folding should redesign the sequence (output residues should differ from input)"
 
 
 if __name__ == "__main__":

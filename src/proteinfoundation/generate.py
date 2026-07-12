@@ -211,7 +211,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     # Infer is_partial_diffusion from generation args so ContigJsonDataset specs don't need it explicitly.
     if "is_partial_diffusion" not in specification_overrides:
         cfg_args = OmegaConf.to_container(cfg_gen.args, resolve=True) if hasattr(cfg_gen, "args") else {}
-        if any(
+        if cfg_args.get("inverse_folding", False) or any(
             cfg_args.get(k) is not None
             for k in ("partial_t_backbone", "partial_t_latent", "partial_trajectory_fraction_steps")
         ):

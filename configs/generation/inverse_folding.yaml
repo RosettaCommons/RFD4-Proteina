@@ -1,0 +1,7 @@
+defaults:
+  - inference_base
+  - _self_
+
+args:
+  inverse_folding: true
+  inverse_folding_method: resampled_forward_marginal
