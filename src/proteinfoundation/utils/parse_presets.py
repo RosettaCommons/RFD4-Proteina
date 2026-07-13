@@ -19,7 +19,6 @@ RCSB_WITH_METALS: ParseConfig = ParseConfig(
     remove_waters=True,
     fix_ligands_at_symmetry_centers=True,
     fix_arginines=True,
-    sanitize_bonds_and_charges=True,
     long_bond_policy="keep",
     struct_conn_distance_policy="keep",  # TODO: Will be updated in the future
     add_id_and_entity_annotations=True,
@@ -47,7 +46,6 @@ RCSB_WITH_METALS: ParseConfig = ParseConfig(
 DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
     add_missing_atoms=False,
     fix_arginines=False,
-    sanitize_bonds_and_charges=False,
     convert_mse_to_met=False,
     altloc="first",  # AFDB / TED distillation files are PDB format; PDB doesn't support 'random_clash_aware'
 )

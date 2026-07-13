@@ -67,7 +67,6 @@ def parse_single_structure(args: tuple) -> dict[str, Any]:
                 "remove_waters": True,
                 "fix_ligands_at_symmetry_centers": True,
                 "fix_arginines": True,
-                "sanitize_bonds_and_charges": True,
                 "fix_bond_types": True,
                 "convert_mse_to_met": False,
                 "hydrogen_policy": "keep",
