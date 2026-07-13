@@ -21,10 +21,12 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 
 from foundry.data.collate import collate_batch
+from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.env import load_dotenv
 from foundry.utils.logging import print_config_tree
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
+from proteinfoundation.guidance.guidance_model import GuidanceModel, build_guidance_terms
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.input_parsing import InputSpecification
 from proteinfoundation.proteina import Proteina
@@ -487,6 +489,18 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
             )
 
         model.configure_search(search_strategy, search_reward_model)
+
+    # Configure differentiable-metric gradient guidance if specified
+    if hasattr(cfg, "guidance") and cfg.guidance is not None:
+        guidance_metric_manager = MetricManager.instantiate_from_hydra(cfg.guidance.metrics)
+        guidance_terms = build_guidance_terms(cfg.guidance.terms)
+        guidance_model = GuidanceModel(
+            guidance_metric_manager,
+            guidance_terms,
+            decode_fn=model.decode_for_guidance,
+            insertion_fn=model.insertion_mapping_for_guidance,
+        )
+        model.configure_guidance(guidance_model)
 
     return model, ema_callback
 

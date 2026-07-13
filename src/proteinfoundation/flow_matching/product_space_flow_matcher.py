@@ -660,6 +660,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         ag_ratio: float = 0.0,
+        guidance_model: Callable | None = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
         r"""
         Generates samples by simulating the
@@ -699,6 +700,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 addition to the clean x_1 prediction. Defaults to False.
             guidance_w: Guidance weight
             ag_ratio: Autoguidance ratio
+            guidance_model: Optional differentiable-metric gradient guidance. Called each
+                step with the clean prediction ``x_1_pred``; returns a per-modality ``delta``
+                added to the integrated state.
 
         Returns:
             Tuple of (x, additional_info) where:
@@ -796,6 +800,24 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     x["local_latents"] = x["local_latents"] * is_encoded_mask[..., None]
                 x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
                 x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
+
+                # Differentiable-metric gradient guidance: nudge the integrated state along
+                # the gradient of a weighted objective on the clean prediction x_1_pred.
+                if guidance_model is not None:
+                    delta = guidance_model(
+                        x_1_pred=x_1_pred,
+                        extra_info={
+                            "t": t,
+                            "padding_mask": mask,
+                            "can_be_encoded": is_encoded_mask,
+                            # Cheap reference; Hungarian assignment runs in the provider only
+                            # when a metric reads the predicted_insertion_mapping namespace.
+                            "insertion_logits": nn_out.get("insertion", {}).get("logits"),
+                            "atom_array_batch": batch.get("atom_array"),
+                        },
+                    )
+                    for data_mode, d in delta.items():
+                        x[data_mode] = x[data_mode] + d.to(x[data_mode].dtype)
 
                 # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
                 if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):
