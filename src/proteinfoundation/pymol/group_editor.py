@@ -119,7 +119,7 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         obj_name = self._state.active
         if not obj_name or obj_name not in self._state.arrays:
             return None
-        return obj_name, self._state.arrays[obj_name]
+        return obj_name, self._state.get_synced_array(obj_name)
 
     def _read_groups(self, arr: AtomArrayPlus) -> np.ndarray:
         return np.asarray(self._annotation_cls.annotation(arr, default="generate")).astype(int)

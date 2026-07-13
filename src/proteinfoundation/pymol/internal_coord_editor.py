@@ -75,24 +75,35 @@ class InternalCoordEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             QtWidgets.QMessageBox.warning(self, "No selection", "Make a selection in PyMOL first.")
             return
 
-        arr = self._state.arrays[obj_name]
+        arr = self._state.get_synced_array(obj_name)
 
-        crd_mask = C_CRD.mask(arr, default="generate").copy()
-        crd_mask[indices] = True
-        C_CRD.set_mask(arr, crd_mask)
-
-        mask = np.zeros(len(arr), dtype=bool)
-        mask[indices] = True
+        indices = np.asarray(indices)
+        resolved = indices[np.isfinite(arr.coord[indices]).all(axis=1)]
+        if len(resolved) == 0:
+            QtWidgets.QMessageBox.warning(
+                self, "No resolved atoms", "None of the selected atoms have resolved coordinates."
+            )
+            return
 
         self._state.push_snapshot(obj_name)
         try:
+            crd_mask = C_CRD.mask(arr, default="generate").copy()
+            crd_mask[resolved] = True
+            C_CRD.set_mask(arr, crd_mask)
+
+            mask = np.zeros(len(arr), dtype=bool)
+            mask[resolved] = True
             convert_to_internal_coords(arr, mask)
         except Exception as e:
             self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "Conversion failed", str(e))
             return
 
-        self._status.setText(f"Converted {len(indices)} atoms to internal coords.")
+        status = f"Converted {len(resolved)} atoms to internal coords."
+        n_skipped = len(indices) - len(resolved)
+        if n_skipped:
+            status += f" ({n_skipped} unresolved atom(s) in the selection were skipped.)"
+        self._status.setText(status)
         self._reload_or_recolor()
 
     def apply_to_selection(self) -> None:
