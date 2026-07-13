@@ -10,7 +10,7 @@ from atomworks.pymol_plugin.editors.widgets import BaseAnnotationEditor
 from atomworks.pymol_plugin.state import PluginState
 from pymol.Qt import QtWidgets
 
-from proteinfoundation.conditions import CoordinateGroup, HBondEnum, RasaEnum, SSEnum
+from proteinfoundation.conditions import CoordinateGroup
 
 # ---------------------------------------------------------------------------
 # ValueButtonEditor — one button per named value
@@ -94,7 +94,7 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         obj_name = self._state.active
         if not obj_name or obj_name not in self._state.arrays:
             return
-        arr = self._state.arrays[obj_name]
+        arr = self._state.get_synced_array(obj_name)
         indices = self._require_selection_indices()
         if indices is None:
             return
@@ -122,7 +122,7 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         obj_name = self._state.active
         if not obj_name or obj_name not in self._state.arrays:
             return
-        arr = self._state.arrays[obj_name]
+        arr = self._state.get_synced_array(obj_name)
         self._annotation_cls.set_annotation(arr, self._annotation_cls.default_annotation(arr))
         if self._null_value is not None:
             self._annotation_cls.set_mask(arr, self._annotation_cls.default_mask(arr))
@@ -132,60 +132,6 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
 # ---------------------------------------------------------------------------
 # Concrete editors
 # ---------------------------------------------------------------------------
-
-
-class RasaEditor(ValueButtonEditor):
-    """Button editor for binned RASA values."""
-
-    def __init__(
-        self,
-        annotation_cls: StandardAnnotationBase,
-        state: PluginState,
-        parent: QtWidgets.QWidget | None = None,
-    ) -> None:
-        super().__init__(
-            annotation_cls,
-            state,
-            named_values=[(m.name, m.value) for m in RasaEnum],
-            null_value=RasaEnum.UNSPECIFIED.value,
-            parent=parent,
-        )
-
-
-class SecondaryStructureEditor(ValueButtonEditor):
-    """Button editor for secondary structure conditions."""
-
-    def __init__(
-        self,
-        annotation_cls: StandardAnnotationBase,
-        state: PluginState,
-        parent: QtWidgets.QWidget | None = None,
-    ) -> None:
-        super().__init__(
-            annotation_cls,
-            state,
-            named_values=[(m.name, m.value) for m in SSEnum],
-            null_value=SSEnum.NONE.value,
-            parent=parent,
-        )
-
-
-class HBondEditor(ValueButtonEditor):
-    """Button editor for hydrogen bond donor/acceptor conditions."""
-
-    def __init__(
-        self,
-        annotation_cls: StandardAnnotationBase,
-        state: PluginState,
-        parent: QtWidgets.QWidget | None = None,
-    ) -> None:
-        super().__init__(
-            annotation_cls,
-            state,
-            named_values=[(m.name, m.value) for m in HBondEnum],
-            null_value=HBondEnum.NONE.value,
-            parent=parent,
-        )
 
 
 class CoordinateGroupEditor(ValueButtonEditor):

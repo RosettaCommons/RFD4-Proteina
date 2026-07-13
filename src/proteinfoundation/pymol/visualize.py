@@ -120,3 +120,18 @@ def _warn_too_many_groups(n_groups: int, n_colors: int) -> None:
         QtWidgets.QMessageBox.warning(None, "Too many groups to color", msg)
     except Exception:
         pass
+
+
+def _warn_too_many_chains_for_distinct_colors(n_chains: int, n_colors: int) -> None:
+    """Warn (console + popup) that some chains will share a marker color."""
+    msg = (
+        f"{n_chains} chains need distinct colors but only {n_colors} are available. "
+        "Some chains' centroid markers will share a color (labels still disambiguate them)."
+    )
+    print(f"AtomWorks: {msg}")
+    try:
+        from pymol.Qt import QtWidgets
+
+        QtWidgets.QMessageBox.warning(None, "Too many chains to color distinctly", msg)
+    except Exception:
+        pass

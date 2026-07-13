@@ -299,7 +299,11 @@ def set_specified_conditions_to_default(
 
 
 def convert_to_internal_coords(atom_array: AtomArray, mask: np.ndarray) -> AtomArray:
-    """Convert the given masked region of the atom array from global to internal coordinate conditioning."""
+    """Convert the given masked region of the atom array from global to internal coordinate conditioning.
+
+    Atoms in ``mask`` with NaN coordinates are dropped from the mask.
+    """
+    mask = mask & np.isfinite(atom_array.coord).all(axis=1)
 
     # Absolute coord conditioning mask is False for the new internal coord region
     coord_condition_mask = C_CRD.mask(atom_array, default="generate")
