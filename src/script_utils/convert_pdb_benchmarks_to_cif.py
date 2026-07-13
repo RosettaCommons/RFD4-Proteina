@@ -120,7 +120,6 @@ PARSE_CONFIG = ParseConfig(
 # Used for the re-parsed PDB mirror; retains hydrogens, skips missing-atom inference.
 REPARSED_PARSE_CONFIG = ParseConfig(
     add_missing_atoms=False,
-    sanitize_bonds_and_charges=False,  # requires add_missing_atoms=True; suppress the warning
     remove_ccds=(),
     remove_waters=True,
     build_assembly=None,

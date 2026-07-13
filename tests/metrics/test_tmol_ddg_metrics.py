@@ -24,7 +24,7 @@ _EXPECTED_RELAXED_HBONDS = 3.0
 def sam_binder_atom_array():
     if not SAM_BINDER_CIF.is_file():
         pytest.skip(f"Missing fixture: {SAM_BINDER_CIF}")
-    config = ParseConfig(model=1, build_assembly=None, add_missing_atoms=False, sanitize_bonds_and_charges=False)
+    config = ParseConfig(model=1, build_assembly=None, add_missing_atoms=False)
     return parse(str(SAM_BINDER_CIF), config=config)["asym_unit"][0]
 
 

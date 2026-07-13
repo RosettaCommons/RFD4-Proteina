@@ -354,7 +354,6 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
         **{
             "fix_arginines": False,
             "add_missing_atoms": False,
-            "sanitize_bonds_and_charges": False,
             "long_bond_policy": "keep",
             "remove_waters": False,
             "convert_mse_to_met": False,
