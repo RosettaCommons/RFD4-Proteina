@@ -435,15 +435,17 @@ Pass `--cluster_with_foldseek` to also run structural diversity clustering (see 
 
 ### Adding Custom Metrics
 
-You can add your own evaluation metrics without modifying any tracked files. You can add custom metrics by creating these files, which are automatically git-ignored:
+You can add your own evaluation metrics without modifying any tracked files. Both of these are directories that are **entirely git-ignored**, so you can split many metrics across as many files as you like and nothing ever gets tracked:
 
-- `proteinfoundation/metrics/custom_metrics.py` — Python metric classes
-- `configs/metrics/custom_metrics/custom_metrics.yaml` — Hydra config registering those classes
+- `proteinfoundation/metrics/custom_metrics/` — Python metric classes, organized into as many modules as desired.
+- `configs/metrics/custom_metrics/` — Hydra config registering those classes; `all_custom_metrics.yaml` is the entry point, and it can `defaults:`-include sibling YAML files in the same directory
+
+`setup.sh` scaffolds an empty `all_custom_metrics.yaml` for you on first run.
 
 **Quick example** — count residues in each design:
 
 ```python
-# proteinfoundation/metrics/custom_metrics.py
+# proteinfoundation/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
 from foundry.metrics.metric import Metric
 
@@ -465,18 +467,20 @@ class ResidueCountMetric(Metric):
 ```
 
 ```yaml
-# configs/metrics/custom_metrics/custom_metrics.yaml
-residue_count:
-  _target_: proteinfoundation.metrics.custom_metrics.ResidueCountMetric
-  min_length: 50                                # constructor argument
-  required_tags_any: ["unconditional_refolding"] # omit to always run
+# configs/metrics/custom_metrics/all_custom_metrics.yaml
+# @package metrics
+inline_metrics:
+  residue_count:
+    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+    min_length: 50                                # constructor argument
+    required_tags_any: ["unconditional_refolding"] # omit to always run
 ```
 
 Results appear in `per_example_metrics.csv` as `residue_count.n_residues`, `residue_count.meets_min_length`.
 
-For a full explanation of `kwargs_to_compute_args`, how to write metrics that operate on RF3-refolded structures (nested inside `RF3Oracle`), and how to contribute a metric back, see **[docs/custom_metrics.md](docs/custom_metrics.md)**.
+For a full explanation of `kwargs_to_compute_args`, how to write metrics that operate on RF3-refolded structures (nested inside `RF3Oracle`), how to split across multiple files, and how to contribute a metric back, see **[docs/custom_metrics.md](docs/custom_metrics.md)**.
 
-> **Broadly useful?** If your metric isn't specific to your design problem, consider contributing it. Both files are git-ignored so your local experiments stay private, but the full contribution workflow (branch → tracked file → PR) is described in the doc above.
+> **Broadly useful?** If your metric isn't specific to your design problem, consider contributing it. These directories are git-ignored so your local experiments stay private, but the full contribution workflow (branch → tracked file → PR) is described in the doc above.
 
 ### FoldSeek Diversity Clustering
 
