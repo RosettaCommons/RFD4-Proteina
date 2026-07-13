@@ -29,9 +29,8 @@ machine-learning force field trained on quantum-mechanical calculations.
 
 | Metric | Outputs | Differentiable | Backend | Description |
 |--------|---------|---------------|---------|-------------|
-| **SoftDDGMetric** | ddg, complex_energy, monomer energies | Yes | TMol (Rosetta) | Binding ddG with soft repulsion |
+| **TMolBlockPairMetric** | interface_ddg | Yes | TMol (Rosetta) | Region-pair binding ddG with soft repulsion (`soft_ddg` preset in `inline_metrics/tmol_block_pair_metrics.yaml`) |
 | **ChargeComplementarityMetric** | charge_score, n_salt_bridges | Yes | NumPy | Salt bridge scoring across interfaces |
-| **SoftDDGWithSaltMetric** | ddg_with_salt (combined) | Yes | TMol (Rosetta) | Soft ddG + charge complementarity |
 | **TMOLMetric** | interface H-bond/elec energies | Yes | TMol (Rosetta) | Interface energy decomposition |
 | **MACEEnergyMetric** | median_energy_diff | Yes | MACE (ML force field) | Predicted vs ground-truth energy |
 

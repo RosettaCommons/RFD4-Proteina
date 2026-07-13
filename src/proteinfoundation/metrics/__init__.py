@@ -13,10 +13,11 @@ prediction model and compare. Slower but provides strong validation of designabi
 use either the Rosetta scoring function (via TMol) or MACE, a machine-learning force
 field trained on quantum-mechanical calculations.
 
-- ``TMOLMetric``: Interface H-bond and electrostatic energies via TMol (Rosetta scoring function). Differentiable.
-- ``SoftDDGMetric``: Binding ddG with soft repulsion via TMol (Rosetta scoring function). Differentiable.
+- ``TMolBlockPairMetric``: General region-pair TMol interface metric (ddG, or per-term
+  energy/count). Binder/target ddG, ligand ddG, PPI H-bonds, electrostatics, … are
+  expressed as Hydra configs over this one class; see
+  ``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``.
 - ``ChargeComplementarityMetric``: Salt bridge scoring across interfaces. Differentiable.
-- ``SoftDDGWithSaltMetric``: Combined soft ddG + charge complementarity. Differentiable.
 - ``MACEEnergyMetric``: Potential energy evaluation using MACE (ML force field). Differentiable.
 - ``QMInteractionEnergyIPA``: Pairwise ligand-residue interaction energies
   via GFN2-xTB (In-Pocket Analysis). Requires ``IPA_PATH``.
@@ -58,27 +59,19 @@ except ImportError:
 
 # --- Force Field Metrics ---
 try:
-    from proteinfoundation.metrics.tmol_metric import TMOLMetric
-
-    __all__.append("TMOLMetric")
-except ImportError:
-    pass
-
-try:
     from proteinfoundation.metrics.atom_pair_distance_metric import AtomPairDistanceMetric
 
     __all__.append("AtomPairDistanceMetric")
+    from proteinfoundation.metrics.tmol_block_pair_metric import TMolBlockPairMetric
+
+    __all__.append("TMolBlockPairMetric")
 except ImportError:
     pass
 
 try:
-    from proteinfoundation.metrics.ddg_salt_metrics import (
-        ChargeComplementarityMetric,
-        SoftDDGMetric,
-        SoftDDGWithSaltMetric,
-    )
+    from proteinfoundation.metrics.ddg_salt_metrics import ChargeComplementarityMetric
 
-    __all__.extend(["ChargeComplementarityMetric", "SoftDDGMetric", "SoftDDGWithSaltMetric"])
+    __all__.append("ChargeComplementarityMetric")
 except ImportError:
     pass
 

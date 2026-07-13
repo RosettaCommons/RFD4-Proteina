@@ -1,37 +1,25 @@
-"""DDG and Charge Complementarity metrics using TMol.
+"""Charge complementarity metric for protein interfaces.
 
-This module provides two TMol-based metrics for evaluating protein interfaces:
+**ChargeComplementarityMetric** computes a salt bridge bonus score for opposite
+charges (D/E with R/K) across the binder-target interface, with distance-weighted
+scoring. Binder vs. target chains are identified from AtomArray annotations.
 
-1. **SoftDDGMetric**: Computes binding ddG = E(complex) - E(binder) - E(target) using
-   TMol's beta2016 score function with configurable soft repulsion (fa_ljrep=0.55).
-
-2. **ChargeComplementarityMetric**: Computes salt bridge bonus score for opposite
-   charges (D/E with R/K) across the interface with distance-weighted scoring.
-
-Both metrics use AtomArray annotations to identify binder vs target chains.
+For TMol-based binding ddG, use
+:class:`~proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric`
+(the general region-pair metric; a soft-rep binder/target preset is provided in
+``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``).
 
 Example:
-    >>> # DDG scoring with soft repulsion
-    >>> ddg_metric = SoftDDGMetric(use_soft_rep=True)
-    >>> results = ddg_metric.compute(predicted_atom_array=structure)
-    >>> # Returns: {"ddg": -15.0, "complex_energy": -100.0, "monomer_energy_sum": -85.0}
-
-    >>> # Charge complementarity scoring
     >>> charge_metric = ChargeComplementarityMetric(min_dist=7.0, max_dist=9.0)
     >>> results = charge_metric.compute(predicted_atom_array=structure)
     >>> # Returns: {"charge_score": -4.5, "n_salt_bridges": 3}
 """
 
-import gc
-import os
-import tempfile
 from functools import cached_property
 from typing import Any
 
 import numpy as np
-import torch
 from biotite.structure import AtomArray
-from biotite.structure.io.pdb import PDBFile
 
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
@@ -39,105 +27,10 @@ from proteinfoundation.conditions import C_CRD
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
-# TMol path configuration
-TMOL_PATH = "/path/to/shared/storage"
-if not os.path.exists(TMOL_PATH):
-    TMOL_PATH = "/path/to/shared/storage"
-
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
-
-
-def _get_tmol_imports() -> tuple:
-    """Lazy import of TMol to avoid dependency issues."""
-    import sys
-
-    if TMOL_PATH not in sys.path:
-        sys.path.insert(0, TMOL_PATH)
-
-    import tmol
-    from tmol.io.chain_deduction import chain_inds_for_pose_stack
-    from tmol.score.score_function import ScoreFunction
-    from tmol.score.score_types import ScoreType
-
-    return tmol, ScoreFunction, ScoreType, chain_inds_for_pose_stack
-
-
-def atom_array_to_pdb_string(atom_array: AtomArray) -> str:
-    """Convert AtomArray to PDB format string.
-
-    Args:
-        atom_array: Input structure.
-
-    Returns:
-        PDB format string.
-    """
-    pdb_file = PDBFile()
-    pdb_file.set_structure(atom_array)
-
-    # Write to string via temporary file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".pdb", delete=False) as f:
-        temp_path = f.name
-
-    try:
-        pdb_file.write(temp_path)
-        with open(temp_path) as f:
-            pdb_string = f.read()
-    finally:
-        os.unlink(temp_path)
-
-    return pdb_string
-
-
-def atom_array_to_tmol_pose_stack(atom_array: AtomArray, device: torch.device) -> Any:
-    """Convert biotite AtomArray to TMol pose_stack for scoring.
-
-    Args:
-        atom_array: Input structure.
-        device: Device for TMol computations.
-
-    Returns:
-        TMol PoseStack object.
-    """
-    tmol, _, _, _ = _get_tmol_imports()
-
-    # Write to temporary PDB file for TMol loading
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".pdb", delete=False) as f:
-        temp_path = f.name
-
-    try:
-        pdb_file = PDBFile()
-        pdb_file.set_structure(atom_array)
-        pdb_file.write(temp_path)
-
-        pose_stack = tmol.pose_stack_from_pdb(temp_path, device=device)
-    finally:
-        os.unlink(temp_path)
-
-    return pose_stack
-
-
-def split_atom_array_by_chain(atom_array: AtomArray) -> dict[str, AtomArray]:
-    """Split multi-chain structure into individual chain AtomArrays.
-
-    Args:
-        atom_array: Input multi-chain structure.
-
-    Returns:
-        Dictionary mapping chain_id to AtomArray for each chain.
-    """
-    chain_arrays = {}
-
-    # Get unique chains
-    unique_chains = np.unique(atom_array.chain_id)
-
-    for chain_id in unique_chains:
-        chain_mask = atom_array.chain_id == chain_id
-        chain_arrays[chain_id] = atom_array[chain_mask].copy()
-
-    return chain_arrays
 
 
 def get_binder_target_mask(atom_array: AtomArray) -> tuple[np.ndarray, np.ndarray]:
@@ -267,181 +160,6 @@ def get_charged_residue_positions(atom_array: AtomArray) -> tuple[np.ndarray, np
         np.array(res_ids, dtype=np.int32),
         np.array(chain_ids),
     )
-
-
-# ============================================================================
-# SoftDDGMetric
-# ============================================================================
-
-
-class SoftDDGMetric(Metric):
-    """TMol-based binding ddG metric with configurable soft repulsion.
-
-    Computes binding energy as ddG = E(complex) - E(binder) - E(target) using
-    TMol's beta2016 score function. Supports soft repulsion (fa_ljrep=0.55)
-    for more lenient clash handling, which is recommended for AI-generated
-    structures.
-
-    Args:
-        use_soft_rep: Use soft repulsion (fa_ljrep=0.55) vs full (1.0). Defaults to ``True``.
-        soft_rep_weight: Weight for fa_ljrep when use_soft_rep=True. Defaults to ``0.55``.
-        device: Device for TMol computations. Defaults to CUDA if available.
-
-    Example:
-        >>> metric = SoftDDGMetric(use_soft_rep=True)
-        >>> results = metric.compute(predicted_atom_array=structure)
-        >>> print(f"ddG: {results['ddg']:.2f}")
-    """
-
-    def __init__(
-        self,
-        use_soft_rep: bool = True,
-        soft_rep_weight: float = 0.55,
-        device: str = "cuda",
-        **kwargs: Any,
-    ):
-        super().__init__(**kwargs)
-        self.use_soft_rep = use_soft_rep
-        self.soft_rep_weight = soft_rep_weight
-        self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-
-        # Set CUDA arch for TMol kernel compilation
-        os.environ["TORCH_CUDA_ARCH_LIST"] = "8.0"
-
-        logger.info(f"SoftDDGMetric initialized (soft_rep={use_soft_rep}, soft_rep_weight={soft_rep_weight})")
-
-    @cached_property
-    def kwargs_to_compute_args(self) -> dict[str, Any]:
-        """Map kwargs to compute arguments."""
-        return {
-            "predicted_atom_array": "predicted_atom_array",
-        }
-
-    def _create_score_function(self, device: torch.device) -> Any:
-        """Create TMol score function with appropriate settings.
-
-        Args:
-            device: Device for computations.
-
-        Returns:
-            TMol ScoreFunction object.
-        """
-        tmol, ScoreFunction, ScoreType, _ = _get_tmol_imports()
-
-        if self.use_soft_rep:
-            # Create custom score function with soft repulsion
-            param_db = tmol.ParameterDatabase.get_default()
-            sfxn = ScoreFunction(param_db, device)
-
-            # Set beta2016 weights with soft fa_ljrep
-            sfxn.set_weight(ScoreType.fa_ljatr, 1.0)
-            sfxn.set_weight(ScoreType.fa_ljrep, self.soft_rep_weight)
-            sfxn.set_weight(ScoreType.fa_lk, 1.0)
-            sfxn.set_weight(ScoreType.fa_elec, 1.0)
-            sfxn.set_weight(ScoreType.hbond, 1.0)
-            sfxn.set_weight(ScoreType.lk_ball_iso, -0.38)
-            sfxn.set_weight(ScoreType.lk_ball, 0.92)
-            sfxn.set_weight(ScoreType.lk_bridge, -0.33)
-            sfxn.set_weight(ScoreType.lk_bridge_uncpl, -0.33)
-            sfxn.set_weight(ScoreType.omega, 0.48)
-            sfxn.set_weight(ScoreType.rama, 0.50)
-            sfxn.set_weight(ScoreType.disulfide, 1.25)
-            sfxn.set_weight(ScoreType.cart_lengths, 0.5)
-            sfxn.set_weight(ScoreType.cart_angles, 0.5)
-            sfxn.set_weight(ScoreType.cart_torsions, 0.5)
-            sfxn.set_weight(ScoreType.cart_impropers, 0.5)
-            sfxn.set_weight(ScoreType.cart_hxltorsions, 0.5)
-            sfxn.set_weight(ScoreType.dunbrack_rot, 0.76)
-            sfxn.set_weight(ScoreType.dunbrack_rotdev, 0.69)
-            sfxn.set_weight(ScoreType.dunbrack_semirot, 0.78)
-            sfxn.set_weight(ScoreType.ref, 1.0)
-        else:
-            # Use standard beta2016 score function
-            sfxn = tmol.beta2016_score_function(device)
-
-        return sfxn
-
-    def _score_structure(self, atom_array: AtomArray) -> float:
-        """Score a structure using TMol.
-
-        Args:
-            atom_array: Structure to score.
-
-        Returns:
-            Total weighted energy.
-        """
-        try:
-            pose_stack = atom_array_to_tmol_pose_stack(atom_array, self.device)
-            sfxn = self._create_score_function(self.device)
-            scorer = sfxn.render_whole_pose_scoring_module(pose_stack)
-            energy = scorer(pose_stack.coords)
-            return float(energy.sum().cpu().item())
-        except Exception as e:
-            logger.warning(f"TMol scoring failed: {e}")
-            return float("nan")
-
-    def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
-        """Compute binding ddG for the structure.
-
-        Args:
-            predicted_atom_array: Structure to evaluate.
-
-        Returns:
-            Dictionary with ddG metrics:
-                - ddg: Binding energy (E_complex - E_binder - E_target)
-                - complex_energy: Total complex energy
-                - binder_energy: Binder monomer energy
-                - target_energy: Target monomer energy
-                - monomer_energy_sum: Sum of monomer energies
-        """
-        try:
-            # Get binder/target masks
-            binder_mask, target_mask = get_binder_target_mask(predicted_atom_array)
-
-            # Score complex
-            complex_energy = self._score_structure(predicted_atom_array)
-
-            # Extract and score binder
-            binder_array = predicted_atom_array[binder_mask].copy()
-            binder_energy = self._score_structure(binder_array) if len(binder_array) > 0 else 0.0
-
-            # Extract and score target
-            target_array = predicted_atom_array[target_mask].copy()
-            target_energy = self._score_structure(target_array) if len(target_array) > 0 else 0.0
-
-            # Compute ddG
-            monomer_energy_sum = binder_energy + target_energy
-            ddg = complex_energy - monomer_energy_sum
-
-            # Cleanup
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            return {
-                "ddg": ddg,
-                "complex_energy": complex_energy,
-                "binder_energy": binder_energy,
-                "target_energy": target_energy,
-                "monomer_energy_sum": monomer_energy_sum,
-            }
-
-        except Exception as e:
-            logger.error(f"SoftDDGMetric computation failed: {e}")
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            return self._get_default_metrics()
-
-    def _get_default_metrics(self) -> dict[str, float]:
-        """Return default metrics when computation fails."""
-        return {
-            "ddg": float("nan"),
-            "complex_energy": float("nan"),
-            "binder_energy": float("nan"),
-            "target_energy": float("nan"),
-            "monomer_energy_sum": float("nan"),
-        }
 
 
 # ============================================================================
@@ -624,98 +342,3 @@ class ChargeComplementarityMetric(Metric):
             "n_charged_residues_binder": 0,
             "n_charged_residues_target": 0,
         }
-
-
-# ============================================================================
-# Combined DDG + Salt Metric
-# ============================================================================
-
-
-class SoftDDGWithSaltMetric(Metric):
-    """Combined soft ddG + charge complementarity metric.
-
-    Computes Brian Coventry's recommended "soft ddG with salt" score:
-    - Soft ddG using beta2016 with fa_ljrep=0.55
-    - Plus charge complementarity bonus for salt bridges
-
-    This is the recommended way to calculate Rosetta-style ddG for AI-generated
-    protein designs.
-
-    Args:
-        use_soft_rep: Use soft repulsion for ddG. Defaults to ``True``.
-        soft_rep_weight: Weight for fa_ljrep. Defaults to ``0.55``.
-        salt_min_dist: Min distance for salt bridge bonus. Defaults to ``7.0``.
-        salt_max_dist: Max distance for salt bridge bonus. Defaults to ``9.0``.
-        salt_bonus: Max bonus per salt bridge. Defaults to ``2.0``.
-        charge_func: Distance decay ("linear", "flat", "quadratic"). Defaults to ``"linear"``.
-        device: Device for TMol. Defaults to ``"cuda"``.
-
-    Example:
-        >>> metric = SoftDDGWithSaltMetric()
-        >>> results = metric.compute(predicted_atom_array=structure)
-        >>> print(f"DDG with salt: {results['ddg_with_salt']:.2f}")
-    """
-
-    def __init__(
-        self,
-        use_soft_rep: bool = True,
-        soft_rep_weight: float = 0.55,
-        salt_min_dist: float = 7.0,
-        salt_max_dist: float = 9.0,
-        salt_bonus: float = 2.0,
-        charge_func: str = "linear",
-        device: str = "cuda",
-        **kwargs: Any,
-    ):
-        super().__init__(**kwargs)
-
-        self.ddg_metric = SoftDDGMetric(
-            use_soft_rep=use_soft_rep,
-            soft_rep_weight=soft_rep_weight,
-            device=device,
-        )
-
-        self.charge_metric = ChargeComplementarityMetric(
-            min_dist=salt_min_dist,
-            max_dist=salt_max_dist,
-            max_bonus=salt_bonus,
-            charge_func=charge_func,
-        )
-
-        logger.info("SoftDDGWithSaltMetric initialized")
-
-    @cached_property
-    def kwargs_to_compute_args(self) -> dict[str, Any]:
-        """Map kwargs to compute arguments."""
-        return {
-            "predicted_atom_array": "predicted_atom_array",
-        }
-
-    def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
-        """Compute combined ddG with salt score.
-
-        Args:
-            predicted_atom_array: Structure to evaluate.
-
-        Returns:
-            Dictionary with all metrics from both sub-metrics plus:
-                - ddg_with_salt: Combined score (ddg + charge_score)
-        """
-        ddg_results = self.ddg_metric.compute(predicted_atom_array)
-        charge_results = self.charge_metric.compute(predicted_atom_array)
-
-        # Combine results
-        results = {}
-        results.update(ddg_results)
-        results.update(charge_results)
-
-        # Compute combined score
-        ddg = ddg_results.get("ddg", float("nan"))
-        charge_score = charge_results.get("charge_score", 0.0)
-
-        if np.isnan(ddg):
-            results["ddg_with_salt"] = float("nan")
-        else:
-            results["ddg_with_salt"] = ddg + charge_score
-
-        return results
