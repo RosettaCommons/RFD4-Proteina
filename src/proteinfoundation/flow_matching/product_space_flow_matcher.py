@@ -8,7 +8,7 @@ from torch import Tensor
 
 from proteinfoundation.conditions import C_CRDGRP
 from proteinfoundation.flow_matching.base_flow_matcher import BaseFlowMatcher
-from proteinfoundation.flow_matching.rdn_flow_matcher import RDNFlowMatcher
+from proteinfoundation.flow_matching.rdn_flow_matcher import RDNFlowMatcher, compute_tsr_ratio
 
 FLOW_MATCHER_FACTORY = {
     "bb_ca": RDNFlowMatcher,
@@ -855,15 +855,21 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 p1=sampling_model_args[data_mode]["schedule"]["p"],
             )
 
-        gt = {
-            data_mode: get_gt(
+        gt = {}
+        for data_mode in self.data_modes:
+            gt_args = sampling_model_args[data_mode]["gt"]
+            ssp = sampling_model_args[data_mode]["simulation_step_params"]
+            g = get_gt(
                 t=ts[data_mode][:-1],  # [nsteps], ts[-1]=1 not used to eval
-                mode=sampling_model_args[data_mode]["gt"]["mode"],
-                param=sampling_model_args[data_mode]["gt"]["p"],
-                clamp_val=sampling_model_args[data_mode]["gt"]["clamp_val"],
+                mode=gt_args["mode"],
+                param=gt_args["p"],
+                clamp_val=gt_args["clamp_val"],
             )
-            for data_mode in self.data_modes
-        }
+            # TSR sharpens the drift by tsr_ratio, so divide the noise schedule by it to keep the
+            # injected noise consistent with that lower temperature. No-op under ODE (g is 0).
+            if ssp["sampling_mode"] == "vf_tsr":
+                g = g / compute_tsr_ratio(ts[data_mode][:-1], ssp.get("tsr_k", 1.0), ssp.get("tsr_sigma", 1.0))
+            gt[data_mode] = g
 
         return ts, gt
 
@@ -1037,7 +1043,7 @@ def get_gt(
 
     Args:
         t: times where we'll evaluate, covers [0, 1), shape [nsteps]
-        mode: "1-t/t", "tan", "1/t", ...
+        mode: "1-t/t", "tan", "1/t", "ode", ...
         param: parameterized transformation
         clamp_val: value to clamp gt, no clamping if None
         eps: small value leave as it is
@@ -1045,6 +1051,11 @@ def get_gt(
     Returns:
         Noise injection schedule, shape [nsteps]
     """
+    if mode == "ode":
+        # Identically zero for all t, independent of param/clamp_val. Zeroes both the
+        # Langevin drift (gt * score) and noise (sqrt(2 * gt * ...)) terms in any
+        # sampling mode that uses gt, recovering plain ODE integration.
+        return torch.zeros_like(t)
 
     def transform_gt(gt: Float[Tensor, "nsteps"], f_pow: float = 1.0) -> Float[Tensor, "nsteps"]:
         """Applies a transformation to the gt. f_pow=1.0 means no transformation."""

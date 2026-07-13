@@ -7,15 +7,22 @@ defaults:
 
 dataset:
   name: mcsa_subset
+  # 15-target MCSA subset
   subset_to_keys:
-    # easy
-    - M0664_2dhn
-    - M0711_2esd
-    # medium
+    - M0040_13pk
+    - M0058_1cju
+    - M0092_1dli
     - M0097_1ctt
-    - M0500_1e3i
-    # hard
-    - M0732_1xs1
+    - M0151_1q0n
+    - M0209_1lij
+    - M0349_1e3v
     - M0375_4ts9
+    - M0500_1e3i
+    - M0552_1fgh
+    - M0664_2dhn
+    - M0674_1uf7
+    - M0711_2esd
+    - M0732_1xs1
+    - M0870_1oh9
 
   num_replicates: 200

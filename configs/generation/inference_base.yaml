@@ -6,7 +6,7 @@ val_set_name_override: null  # val_dataset # Used for labeling output metrics if
 
 # General sampling params
 args:
-  nsteps: 400
+  nsteps: 100  # 100 is sufficient with the default vf_tsr sampler
   self_cond: True
 
   # Guidance
@@ -47,16 +47,23 @@ model:
       mode: log
       p: 2.0
     gt:
+      # Non-zero gt => stochastic (TSR-SDE). For a deterministic sampler use `mode: ode`;
+      # sc_scale_noise=0 is NOT equivalent (drops the noise, keeps the drift) and collapses.
       mode: "1/t"
       p: 1.0
       clamp_val: null
     simulation_step_params:
-      sampling_mode: sc  # Options are: vf (plain fow matching) or sc (using score, where parameters below matter)
-      sc_scale_noise: 0.3  # scale used to multiply noise if mode == sc
-      sc_scale_score: 1.0  # scale used to multiply score if mode == sc
+      sampling_mode: vf_tsr  # Options are: vf (plain flow matching), sc (using score), or vf_tsr (temporal score rescaling)
+      sc_scale_noise: 0.3  # scale used to multiply injected noise (sc and vf_tsr modes)
+      sc_scale_score: 1.0  # scale used to multiply score (sc and vf_tsr modes)
       t_lim_ode: 0.98  # At what point between 0 and 1 we switch to ODE with score scaling (for sc mode)
       t_lim_ode_below: 0.02  # Before what point between 0 and 1 we use sc mode (for vf_ss mode)
       center_every_step: False  # Whether to center the sample every step
+      # tsr_k/tsr_sigma: only used when sampling_mode == vf_tsr. tsr_k controls how low the
+      # temperature goes (higher k = lower temp); tsr_sigma controls how fast you reach it
+      # (higher sigma = faster)
+      tsr_k: 16.0
+      tsr_sigma: 3.0
   local_latents:
     schedule:
       mode: power
@@ -66,9 +73,11 @@ model:
       p: 1.0
       clamp_val: null
     simulation_step_params:
-      sampling_mode: sc
+      sampling_mode: vf_tsr
       sc_scale_noise: 0.1
       sc_scale_score: 1.0
       t_lim_ode: 0.98
       t_lim_ode_below: 0.02
       center_every_step: False
+      tsr_k: 4.0
+      tsr_sigma: 8.0

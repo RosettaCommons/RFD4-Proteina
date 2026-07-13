@@ -136,14 +136,14 @@ For easy cluster submission via SLURM launch scripts, see [Cluster Launching (SL
 | `global_prefix` | String prefix prepended to all output file paths | null |
 | `out_dir` | Output directory (auto-inferred from checkpoint path if not set) | null |
 | `inference_experiment` | Config group controlling generation parameters (nsteps, noise, metrics) | `inference` |
-| `generation.args.nsteps` | Diffusion steps — higher is slower but often better quality | 400 |
+| `generation.args.nsteps` | Diffusion steps — 100 is sufficient with the default `vf_tsr` sampler | 100 |
 | `generation.args.guidance_w` | Guidance weight (1.0 = unconditional; increase for stronger conditioning) | 1.0 |
 | `generation.args.self_cond` | Self-conditioning — leave enabled for best quality | true |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N diffusion steps (0 = disabled); output as multi-model CIF in `trajectories/` subfolder | 0 |
 | `generation.args.bb_ca_only_trajectories` | Trajectory steps contain only CA atoms, skipping the autoencoder decoder (faster; use with `save_trajectory_every`) | false |
 | `generation.args.dump_noisy_trajectories` | Also save the noisy x_t intermediate alongside the clean x_1 prediction at each trajectory step | false |
 | `generation.args.save_trajectories_to_cif` | Save trajectories as multi-model CIF instead of XTC; **required** when `bb_ca_only_trajectories=false` since all-atom trajectories have variable atom counts incompatible with XTC | false |
-| `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
+| `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.3 |
 | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain/sequence stochasticity temperature — see [Inference Noise Parameters](#inference-noise-parameters) | 0.1 |
 | `metrics_tags` | Tags that activate specific evaluation metrics; Hydra list, e.g. `'[ppi_refolding,hotspot_conditioning]'` — see [Evaluating Results](#evaluating-results) | `[]` |
 
@@ -348,40 +348,18 @@ For the full inference configuration and training-time flow matching parameters,
 
 ---
 
-## ODE Sampling with TSR
+## Sampling with TSR
 
-`inference_base_ode` is an alternative generation config that uses **`vf_tsr`** (velocity field with time-scale-ratio) sampling instead of the default SDE. It applies time-dependent score scaling that drives samples toward lower temperature near the end of the trajectory, rather than by rescaling the added noise of an SDE.
+**`vf_tsr`** (velocity field with temporal score rescaling) is the **default sampling mode**, at `nsteps=100`. It applies time-dependent score scaling that drives samples toward lower temperature near the end of the trajectory, rather than by rescaling the added noise of an SDE. 
 
-The `tsr_k` parameter controls how low the temperature drops (higher → lower); `tsr_sigma` controls how quickly. The default config is pre-tuned from Complexa results for binder design (`bb_ca: k=16, σ=3`; `local_latents: k=4, σ=8`).
 
-To use it, swap the generation config in the `defaults` list of your experiment config:
+The `tsr_k` parameter controls how low the temperature drops (higher → lower); `tsr_sigma` controls how quickly. `inference_base` ships pre-tuned defaults.
 
-```yaml
-# configs/inference_experiment/my_ode_run.yaml
-# @package _global_
+`vf_tsr` uses `sc_scale_noise` and `gt` for stochasticity exactly like `sc` mode does: both add a `gt * score` drift term and inject noise scaled by `sc_scale_noise`. By default, `gt` is divided by the tsr_ratio at each timestep, an empirical remedy which enables stochastic tsr sampling. Since `inference_base`'s `sc_scale_noise`/`gt` defaults are nonzero, **the default `vf_tsr` sampling is stochastic**. For deterministic TSR sampling (no noise injected mid-trajectory), set `gt.mode=ode` for both modalities.
 
-defaults:
-  - /generation: inference_base_ode   # ← swap inference_base for inference_base_ode
-  - /metrics: all_metrics
-  - _self_
-
-inputs: ???
-generation:
-  val_set_name_override: ${inputs}
-  dataset:
-    num_replicates: ${num_replicates}
-    transform:
-      metrics_tags: ${metrics_tags}
-```
-
-Then run with `inference_experiment=my_ode_run`.
-
-Or override the generation config directly from the command line without creating a new experiment config:
 
 ```bash
-python proteinfoundation/generate.py \
-    inference_experiment=inference_like_rfd3 generation=inference_base_ode \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt
+generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode
 ```
 
 ---

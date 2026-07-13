@@ -560,16 +560,21 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
                 delta_x = (v_scaled + gt * score) * dt + std_eps * eps
 
-        elif sampling_mode == "vf_tsr":  # ODE with time-scale-ratio scaling
-            snr = t_element**2 / (1 - t_element) ** 2
-            tsr_ratio = (snr * tsr_sigma**2 + 1) / (snr * tsr_sigma**2 / tsr_k + 1)
+        elif sampling_mode == "vf_tsr":  # ODE with time-scale-ratio scaling, optionally made stochastic
+            tsr_ratio = compute_tsr_ratio(t_element, tsr_k, tsr_sigma)
             if t_element == 0.0:
                 v_scaled = torch.zeros_like(v).to(v.device)
+                delta_x = v_scaled * dt
             else:
                 score = vf_to_score(x_t, v, t)
                 scaled_score = score * tsr_ratio
                 v_scaled = score_to_vf(x_t, scaled_score, t)
-            delta_x = v_scaled * dt
+                if t_element > t_lim_ode or t_element < t_lim_ode_below:
+                    delta_x = v_scaled * dt
+                else:
+                    eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
+                    std_eps = torch.sqrt(torch.as_tensor(2 * gt * sc_scale_noise * dt))
+                    delta_x = (v_scaled + gt * score * sc_scale_score) * dt + std_eps * eps
 
         else:
             raise ValueError(f"Invalid sampling mode {sampling_mode}")
@@ -581,6 +586,25 @@ class RDNFlowMatcher(BaseFlowMatcher):
         if center_every_step:
             x_next = self._force_zero_com(x_next, mask)
         return x_next
+
+
+def compute_tsr_ratio(
+    t: Float[Tensor, "*"],
+    tsr_k: float,
+    tsr_sigma: float,
+) -> Float[Tensor, "*"]:
+    """Compute the time-scale-ratio (TSR) low-temperature scaling factor.
+
+    Args:
+      t: Time value(s) in [0, 1). Shape: [*].
+      tsr_k: Controls how low the temperature goes (higher ``k`` = lower temperature).
+      tsr_sigma: Controls how fast the low temperature is reached (higher ``sigma`` = faster).
+
+    Returns:
+      TSR scaling ratio, same shape as ``t``.
+    """
+    snr = t**2 / (1 - t) ** 2
+    return (snr * tsr_sigma**2 + 1) / (snr * tsr_sigma**2 / tsr_k + 1)
 
 
 def vf_to_score(

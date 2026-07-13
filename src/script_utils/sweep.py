@@ -56,7 +56,7 @@ def _get_override_label(override_str: str) -> str:
             labels.append(val)
         else:
             labels.append(token.lstrip("+"))
-    return ",".join(labels) if labels else "default"
+    return "-".join(labels) if labels else "default"
 
 
 def load_sweep_config(sweep_config_path: str | Path) -> dict:
