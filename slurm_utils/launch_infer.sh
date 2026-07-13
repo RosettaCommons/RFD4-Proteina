@@ -360,15 +360,19 @@ GPUS_PER_NODE="$GPUS_PER_JOB"
 NTASKS_PER_NODE=1
 build_sbatch_header > "$SBATCH_FILE"
 
-# Array directive if multiple tasks are needed
+# Array directive if multiple tasks are needed. Array tasks must log to distinct
+# files (%a) or they concurrently clobber a single slurm.out/.err, destroying the
+# only record of per-task failures.
+LOG_SUFFIX=""
 if [ "$NUM_ARRAY_TASKS" -gt 1 ]; then
     echo "#SBATCH --array=0-$((NUM_ARRAY_TASKS - 1))" >> "$SBATCH_FILE"
+    LOG_SUFFIX="_%a"
 fi
 
 # Output/error paths and common environment
 cat >> "$SBATCH_FILE" << EOF
-#SBATCH --output ./slurm_run_outputs/slurm.out
-#SBATCH --error ./slurm_run_outputs/slurm.err
+#SBATCH --output ./slurm_run_outputs/slurm${LOG_SUFFIX}.out
+#SBATCH --error ./slurm_run_outputs/slurm${LOG_SUFFIX}.err
 
 # Environment setup (all clusters)
 export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
