@@ -343,29 +343,6 @@ class CaCoorsNanometersSeqFeat(Feature):
             return batch["coords_nm"][:, :, 1, :]  # [b, n, 3]
 
 
-class TryCaCoorsNanometersSeqFeat(CaCoorsNanometersSeqFeat):
-    """
-    If `ca_coors_nm` in batch, returns sequence feature with CA coordinates (in nm) of shape [b, n, 3].
-
-    If `ca_coors_nm` not in batch return zero feature.
-    """
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._has_logged = False
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        if "ca_coors_nm" in batch or "coords_nm" in batch:
-            return super().forward(batch)
-        else:
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            if not self._has_logged:
-                logger.warning("No ca_coors_nm or coords_nm in batch, returning zeros for TryCaCoorsNanometersSeqFeat")
-                self._has_logged = True
-            return torch.zeros(b, n, self.dim, device=device)
-
-
 class ResidueTypeSeqFeat(Feature):
     """Computes one-hot residue type feature of shape [b, n, n_residue_types].
 
