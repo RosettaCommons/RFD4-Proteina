@@ -2,6 +2,8 @@
 
 This guide explains how to write and register your own evaluation metrics without modifying any tracked files. Your code stays local unless you decide to contribute it back.
 
+Both `configs/metrics/custom_metrics/` and `proteinfoundation/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
+
 > **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `proteinfoundation/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
 
 ---
@@ -62,12 +64,13 @@ def kwargs_to_compute_args(self) -> dict:
 
 ## Step 1 — Write the Python class
 
-Create `proteinfoundation/metrics/custom_metrics.py` (this path is git-ignored).
+Add a module under `proteinfoundation/metrics/custom_metrics/` (the whole directory
+is git-ignored). 
 
 ### Design metric example
 
 ```python
-# proteinfoundation/metrics/custom_metrics.py
+# proteinfoundation/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
 from foundry.metrics.metric import Metric
 
@@ -104,6 +107,7 @@ Key points:
 Receives bare `AtomArray` inputs — no unwrapping needed.
 
 ```python
+# proteinfoundation/metrics/custom_metrics/refolding_residue_count_delta.py
 from biotite.structure import AtomArray
 from biotite.structure.residues import get_residues
 from foundry.metrics.metric import Metric
@@ -129,53 +133,82 @@ class RefoldingResidueCountDelta(Metric):
 
 ## Step 2 — Register in the config file
 
-Create `configs/custom_metrics/custom_metrics.yaml` (also git-ignored). Use `# @package metrics` so Hydra merges your entries directly into the overall metrics config under the right MetricManager keys.
+Create `configs/metrics/custom_metrics/all_custom_metrics.yaml` (git-ignored;
+`setup.sh` scaffolds it for you on first run). Use `# @package metrics` so Hydra
+merges your entries directly into the overall metrics config under the right keys.
 
 ```yaml
-# configs/custom_metrics/custom_metrics.yaml
+# configs/metrics/custom_metrics/all_custom_metrics.yaml
 # @package metrics
 
 # ── Design metrics ───────────────────────────────────────────────────────────
 # Omit this section if you have no custom design metrics.
-design_metric_manager:
-  metrics:
-    residue_count:
-      _target_: proteinfoundation.metrics.custom_metrics.ResidueCountMetric
-      min_length: 50
+inline_metrics:
+  residue_count:
+    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+    min_length: 50
 
 # ── Refolding metrics ─────────────────────────────────────────────────────────
 # Omit this section if you have no custom refolding metrics.
-refolding_metric_manager:
-  metrics:
-    refolding_residue_delta:
-      _target_: proteinfoundation.metrics.custom_metrics.RefoldingResidueCountDelta
-      required_tags_any: [unconditional_refolding]
+refolding_metrics:
+  refolding_residue_delta:
+    _target_: proteinfoundation.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
+    required_tags_any: [unconditional_refolding]
 
 # ── Pass criteria ─────────────────────────────────────────────────────────────
 # Omit this section if you have no custom pass criteria.
-pass_criteria_metric_manager:
-  metrics:
-    my_custom_plddt:
-      _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
-      metric_key: rf3_standard.plddt
-      min: 75.0
-      required_tags_any: [unconditional_refolding]
+pass_criteria:
+  my_custom_plddt:
+    _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+    metric_thresholds:
+      rf3_standard.plddt:
+        min: 75.0
+    required_tags_any: [unconditional_refolding]
 ```
 
-Hydra dict-merges populated sections into the existing MetricManager configs — new entries are added; existing built-in entries are preserved.
+Hydra dict-merges each section (`inline_metrics`, `refolding_metrics`, `pass_criteria`, `refolding_oracles`, `pre_oracle_filters`) into the built-in config — new entries are added; existing built-in entries are preserved.
+
+### Splitting across multiple files
+
+If `all_custom_metrics.yaml` grows unwieldy, add sibling YAML files in the same
+`configs/metrics/custom_metrics/` directory (each starting with `# @package metrics`)
+and pull them in via a normal Hydra `defaults:` list:
+
+```yaml
+# configs/metrics/custom_metrics/all_custom_metrics.yaml
+# @package metrics
+defaults:
+  - my_extra_metrics   # loads configs/metrics/custom_metrics/my_extra_metrics.yaml
+
+inline_metrics:
+  residue_count:
+    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+```
+
+```yaml
+# configs/metrics/custom_metrics/my_extra_metrics.yaml
+# @package metrics
+refolding_metrics:
+  refolding_residue_delta:
+    _target_: proteinfoundation.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
+```
+
+Both files dict-merge into the same `metrics` package. Only `all_custom_metrics.yaml` needs to be referenced from `configs/metrics/all_metrics.yaml`; everything else it pulls in is resolved transitively.
+
+The same applies on the Python side — `proteinfoundation/metrics/custom_metrics/` is a package, so add as many modules as you like (`residue_count.py`, `refolding_residue_count_delta.py`, ...) and reference each via `proteinfoundation.metrics.custom_metrics.<module_name>.<ClassName>`.
 
 ### Pass criteria config
 
-`PassCriterionMetric` evaluates one value from the merged oracle+refolding metrics dict. The output key is `{config_name}.pass` (e.g. `my_custom_plddt.pass`). No Python class needed:
+`PassCriterionMetric` evaluates one or more values from the merged oracle+refolding metrics dict via `metric_thresholds` (a dict of `metric_key: {min: ..., max: ...}`). The output key is `{config_name}.pass`. No custom Python class needed:
 
 ```yaml
-pass_criteria_metric_manager:
-  metrics:
-    backbone_rmsd_tight:
-      _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
-      metric_key: backbone_rmsd_unconditional.rmsd   # dot-notation into merged metrics
-      max: 1.0
-      required_tags_any: [unconditional_refolding]
+pass_criteria:
+  backbone_rmsd_tight:
+    _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+    metric_thresholds:
+      backbone_rmsd_unconditional.rmsd:   # dot-notation into merged metrics
+        max: 1.0
+    required_tags_any: [unconditional_refolding]
 ```
 
 ---
@@ -206,7 +239,7 @@ Results appear in `design_metrics.csv` and `refolding_metrics.csv`. Column names
 
 | | Design metric | Refolding metric | Pass criterion |
 |---|---|---|---|
-| **Config section** | `design_metric_manager.metrics` | `refolding_metric_manager.metrics` | `pass_criteria_metric_manager.metrics` |
+| **Config section** | `inline_metrics` | `refolding_metrics` | `pass_criteria` |
 | **Key inputs** | `predicted_atom_array` (bare `AtomArray`) | `ground_truth_atom_array` + `predicted_atom_array` (both bare `AtomArray`) | `extra_info["metrics"]` (merged oracle+refolding dict) |
 | **When** | Before refolding | After oracle folds the structure | After refolding metrics |
 | **Slow?** | No | No (oracle already ran) | No |

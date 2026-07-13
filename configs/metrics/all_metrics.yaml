@@ -7,4 +7,4 @@ defaults:
   - refolding_metrics: all_refolding_metrics
   - pass_criteria: all_pass_criteria
   - pre_oracle_filters: all_pre_oracle_filters # NOTE: Inactive by default (require tags)
-  - optional custom_metrics: custom_metrics  # git-ignored user extensions
+  - optional custom_metrics: all_custom_metrics  # git-ignored user extensions

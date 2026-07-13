@@ -49,6 +49,33 @@ else
     echo ">>> $PFOUNDATION_VENV already exists — skipping."
 fi
 
+# ── 5. Custom metrics scaffolding ──────────────────────────────────────────
+CUSTOM_METRICS_CONFIG="projects/proteinfoundation/configs/metrics/custom_metrics/all_custom_metrics.yaml"
+if [ ! -f "$CUSTOM_METRICS_CONFIG" ]; then
+    mkdir -p "$(dirname "$CUSTOM_METRICS_CONFIG")"
+    cat > "$CUSTOM_METRICS_CONFIG" << 'EOF'
+# @package metrics
+#
+# Git-ignored: register your own custom metrics here without touching tracked
+# files. See docs/custom_metrics.md for the full guide.
+#
+# inline_metrics:
+#   my_metric:
+#     _target_: proteinfoundation.metrics.custom_metrics.my_module.MyMetric
+#
+# refolding_metrics:
+#   my_refolding_metric:
+#     _target_: proteinfoundation.metrics.custom_metrics.my_module.MyRefoldingMetric
+EOF
+    echo ">>> Created custom metrics config at $CUSTOM_METRICS_CONFIG."
+else
+    echo ">>> $CUSTOM_METRICS_CONFIG already exists — skipping."
+fi
+
+# Create the (git-ignored) Python package dir so it's ready for custom metric modules.
+CUSTOM_METRICS_PKG="projects/proteinfoundation/proteinfoundation/metrics/custom_metrics"
+mkdir -p "$CUSTOM_METRICS_PKG"
+
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
 uv pip install -e ".[rf3,rfd3,all,dev]" \
