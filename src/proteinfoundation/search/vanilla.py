@@ -259,6 +259,7 @@ class VanillaStrategy(SearchStrategy):
                 dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
+                guidance_model=model.guidance_model,
             )
 
         # Format samples (only coors37_n_aatype mode)

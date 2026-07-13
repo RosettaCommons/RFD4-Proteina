@@ -38,6 +38,7 @@ from proteinfoundation.inference_utils.foldseek import (
     apply_cluster_map_to_metrics,
     run_foldseek_distributed,
 )
+from proteinfoundation.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from proteinfoundation.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
 from proteinfoundation.metrics.metrics_utils import (
     MetricsPool,
@@ -367,6 +368,9 @@ class Proteina(L.LightningModule):
         # Search integration
         self.search_strategy = None
         self.search_reward_model = None
+
+        # Differentiable-metric gradient guidance applied during sampling
+        self.guidance_model = None
 
         # FP8 training support via Transformer Engine
         self.use_fp8 = cfg_exp.get("precision") == "fp8"
@@ -1574,6 +1578,92 @@ class Proteina(L.LightningModule):
                 f"reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
                 f"weights={list(search_reward_model.weights.keys())}"
             )
+
+    def configure_guidance(self, guidance_model: Any) -> None:
+        """Configure differentiable-metric gradient guidance applied during sampling.
+
+        Args:
+            guidance_model: :py:class:`~proteinfoundation.guidance.guidance_model.GuidanceModel`
+                instance whose terms nudge the trajectory each sampling step.
+        """
+        self.guidance_model = guidance_model
+        logger.info(f"Configured guidance with terms: {list(guidance_model.terms.keys())}")
+
+    def decode_for_guidance(
+        self,
+        state: dict[str, torch.Tensor],
+        extra_info: dict[str, Any],
+    ) -> dict[str, torch.Tensor]:
+        """Decode grad-enabled state leaves to an atom37 namespace for guidance metrics.
+
+        Mirrors the generation decode (:py:meth:`_format_sample_local_latents`) so guidance
+        metrics see the same coordinates the sampler emits, but on the grad tape: gradients
+        flow from the returned coordinates back to ``state['local_latents']`` and
+        ``state['bb_ca']``. Invoked by
+        :py:class:`~proteinfoundation.guidance.guidance_model.GuidanceModel` only when an
+        active term reads the ``decoded`` namespace.
+
+        Args:
+            state: Grad-enabled clean prediction with ``bb_ca`` and ``local_latents``.
+            extra_info: Must contain ``padding_mask`` and ``can_be_encoded``.
+
+        Returns:
+            Dict with ``atom37_coords`` ([b, n, 37, 3], Angstrom, grad), ``residue_type``
+            ([b, n], discrete), and ``padding_mask`` ([b, n]).
+        """
+        formatted = self._format_sample_local_latents(
+            x=state,
+            ret_mode="coors37_n_aatype",
+            padding_mask=extra_info["padding_mask"],
+            extra_info={"can_be_encoded": extra_info["can_be_encoded"]},
+        )
+        return {
+            "atom37_coords": formatted["coors"],
+            "residue_type": formatted["residue_type"],
+            "padding_mask": formatted["padding_mask"],
+        }
+
+    def insertion_mapping_for_guidance(
+        self,
+        _state: dict[str, torch.Tensor],
+        extra_info: dict[str, Any],
+    ) -> list[dict[int, int]]:
+        """Resolve the insertion head's predicted token mapping for guidance metrics.
+
+        Mirrors the inference resolution (:py:func:`build_predicted_insertion_mapping`): per
+        sample, slice the current step's insertion logits to valid tokens and run per-chain
+        Hungarian assignment of unindexed → generated tokens. The mapping is discrete (token
+        ids), so it carries no gradient -- it is contextual metadata, like ``residue_type``.
+        Invoked by :py:class:`~proteinfoundation.guidance.guidance_model.GuidanceModel` only
+        when an active term reads the ``predicted_insertion_mapping`` namespace.
+
+        Args:
+            _state: Grad-enabled clean prediction. Unused here (the mapping depends only on
+                logits + static token metadata); present for a uniform provider signature
+                shared with :py:meth:`decode_for_guidance`.
+            extra_info: Must contain ``insertion_logits`` ([b, n, n] from the insertion head),
+                ``padding_mask`` ([b, n]), and ``atom_array_batch`` (per-sample AtomArrays).
+
+        Returns:
+            One ``{unindexed_token_id: generated_token_id}`` dict per batch sample (empty when
+            logits/atom arrays are unavailable or a sample has no unindexed tokens).
+        """
+        padding_mask = extra_info["padding_mask"]
+        insertion_logits = extra_info.get("insertion_logits")
+        atom_array_batch = extra_info.get("atom_array_batch")
+        if insertion_logits is None or atom_array_batch is None:
+            return [{} for _ in range(padding_mask.shape[0])]
+
+        mappings: list[dict[int, int]] = []
+        for i in range(insertion_logits.shape[0]):
+            pad_i = padding_mask[i]  # [n]
+            logits_i = insertion_logits[i][pad_i][:, pad_i]  # [n_valid, n_valid]
+            try:
+                mappings.append(build_predicted_insertion_mapping(logits_i, atom_array_batch[i]))
+            except (AttributeError, AssertionError, ValueError, RuntimeError) as e:
+                logger.warning(f"Guidance insertion mapping failed for sample {i}: {e}")
+                mappings.append({})
+        return mappings
 
     def preprocess_batch_for_generation(self, batch: dict) -> dict:
         """Preprocess batch from atom37 collate format for generation.

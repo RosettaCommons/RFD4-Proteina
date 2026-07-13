@@ -223,6 +223,8 @@ class Metric(ABC):
         "median": np.nanmedian,
     }
 
+    differentiable = False
+
     def __init__(
         self,
         required_tags_all: list[str] | set[str] | None = None,
