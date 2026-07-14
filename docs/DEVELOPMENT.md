@@ -606,7 +606,7 @@ Metrics can be used for **evaluation and search**.
 Create a metric class in `proteinfoundation/metrics/my_metric.py`:
 
 ```python
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 from biotite.structure import AtomArray
 
 class MyCustomMetric(Metric):

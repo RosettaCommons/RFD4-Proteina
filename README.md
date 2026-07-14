@@ -425,7 +425,7 @@ You can add your own evaluation metrics without modifying any tracked files. Bot
 ```python
 # proteinfoundation/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 class ResidueCountMetric(Metric):
     def __init__(self, min_length: int | None = None, **kwargs):
