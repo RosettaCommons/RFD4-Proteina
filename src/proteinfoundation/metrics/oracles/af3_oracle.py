@@ -31,10 +31,10 @@ from biotite.structure.io.pdbx import CIFFile
 from biotite.structure.residues import apply_residue_wise, residue_iter, spread_residue_wise
 
 from foundry.utils.ddp import RankedLogger
+from proteinfoundation.af3.af3_apptainer import build_apptainer_fold_command
 from proteinfoundation.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
 from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
-from proteinfoundation.af3.af3_apptainer import build_apptainer_fold_command
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
