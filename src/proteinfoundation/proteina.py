@@ -40,7 +40,8 @@ from proteinfoundation.inference_utils.foldseek import (
 )
 from proteinfoundation.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from proteinfoundation.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
-from proteinfoundation.metrics.metrics_utils import (
+from proteinfoundation.metrics.oracles.oracle_metric import example_output_dir
+from proteinfoundation.metrics.utils.metrics_utils import (
     MetricsPool,
     apply_pre_oracle_filters,
     auto_pick_metrics_workers,
@@ -48,7 +49,6 @@ from proteinfoundation.metrics.metrics_utils import (
     fold_designs_for_oracles,
     resolve_mm_cfgs_from_metrics,
 )
-from proteinfoundation.metrics.oracle_metric import example_output_dir
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37

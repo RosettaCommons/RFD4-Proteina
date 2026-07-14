@@ -175,7 +175,7 @@ def run_mace_benchmark(
     """Run ``MACEInteractionEnergyMetric`` on each complex."""
     _ensure_on_path(Path(__file__).resolve().parents[2])
 
-    from proteinfoundation.metrics.mace_interaction_energy_metric import MACEInteractionEnergyMetric
+    from proteinfoundation.metrics.physics.mace_interaction_energy_metric import MACEInteractionEnergyMetric
 
     metric = MACEInteractionEnergyMetric(
         model_path=model_path,

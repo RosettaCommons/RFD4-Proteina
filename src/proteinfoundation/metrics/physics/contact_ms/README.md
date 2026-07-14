@@ -111,7 +111,7 @@ Both the NumPy and PyTorch backends implement the same 7-stage pipeline:
 ### Using the public API
 
 ```python
-from proteinfoundation.metrics.contact_ms import (
+from proteinfoundation.metrics.physics.contact_ms import (
     calculate_contact_ms,
     calculate_maximum_possible_contact_ms,
     extract_cms_inputs,
@@ -141,7 +141,7 @@ max_cms, per_atom_max, _ = calculate_maximum_possible_contact_ms(
 
 ```python
 import torch
-from proteinfoundation.metrics.contact_ms import TorchCMS
+from proteinfoundation.metrics.physics.contact_ms import TorchCMS
 
 calc = TorchCMS(device="cuda")
 t = lambda x: torch.as_tensor(x, dtype=torch.float32, device="cuda")
@@ -163,7 +163,7 @@ max_cms, per_atom_max = calc.compute_max_cms(t(target_xyz), t(target_radii))
 ### Using raw radii (without biotite)
 
 ```python
-from proteinfoundation.metrics.contact_ms import (
+from proteinfoundation.metrics.physics.contact_ms import (
     calculate_contact_ms,
     get_radii_from_names,
 )
@@ -184,7 +184,7 @@ binder_cms, binder_per_atom = calc.compute_contact_ms(target_side=False)
 ### As a proteinfoundation metric
 
 ```python
-from proteinfoundation.metrics.contact_ms import ContactMolecularSurfaceMetric
+from proteinfoundation.metrics.physics.contact_ms import ContactMolecularSurfaceMetric
 
 metric = ContactMolecularSurfaceMetric(
     compute_binder_side=True,

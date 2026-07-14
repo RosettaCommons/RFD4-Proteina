@@ -12,7 +12,7 @@ from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
 from foundry.metrics.metric import Metric
 from foundry.utils.logging import RankedLogger
-from proteinfoundation.metrics.atom_selection import extract_annotation_names
+from proteinfoundation.metrics.utils.atom_selection import extract_annotation_names
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
 

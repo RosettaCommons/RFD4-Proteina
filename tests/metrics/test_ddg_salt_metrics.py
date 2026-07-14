@@ -21,7 +21,7 @@ class TestDDGSaltMetrics:
         Uses the 5vht structure (2-chain complex with chains A and B). The structure
         must have multiple chains for interface metrics to work.
         """
-        from proteinfoundation.metrics.ddg_salt_metrics import (
+        from proteinfoundation.metrics.physics.ddg_salt_metrics import (
             ChargeComplementarityMetric,
             get_binder_target_mask,
             get_charged_residue_positions,

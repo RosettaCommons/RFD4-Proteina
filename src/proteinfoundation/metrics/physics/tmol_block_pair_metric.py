@@ -8,7 +8,7 @@ with the regions (and, optionally, ``term_names`` / ``term_cutoffs``) you care a
 Each region is an ``atom_selection_from_spec`` spec (query string or field filters),
 e.g. ``{"query": "res_name == 'lpr'"}`` or ``{"chain_id": "A"}``. When both regions are
 omitted, the binder is the chain of interest and the target is every other atom (see
-:func:`~proteinfoundation.metrics.tmol_ddg_core.build_pose_and_masks`).
+:func:`~proteinfoundation.metrics.physics.tmol_ddg_core.build_pose_and_masks`).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from biotite.structure import AtomArray
 
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.tmol_ddg_core import (
+from proteinfoundation.metrics.physics.tmol_ddg_core import (
     build_pose_and_masks,
     create_score_function,
     relax_pose_stack,

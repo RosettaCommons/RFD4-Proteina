@@ -7,7 +7,7 @@ golden-value regression tests.
 
 Quick start::
 
-    from proteinfoundation.metrics.contact_ms import (
+    from proteinfoundation.metrics.physics.contact_ms import (
         calculate_contact_ms,
         extract_cms_inputs,
     )

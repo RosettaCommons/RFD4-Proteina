@@ -32,7 +32,7 @@ from biotite.structure import AtomArray, AtomArrayStack
 from scipy.spatial import cKDTree
 
 from foundry.metrics.metric import Metric
-from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
+from proteinfoundation.metrics.utils.metrics_utils import normalize_to_atom_array_list
 
 if TYPE_CHECKING:
     from mace.calculators import MACECalculator

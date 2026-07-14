@@ -1,5 +1,5 @@
 """AF3 apptainer command builder shared by ``af3_daemon`` (warm-worker spawner)
-and :py:class:`~proteinfoundation.metrics.af3_oracle.AF3Oracle` (direct fallback
+and :py:class:`~proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle` (direct fallback
 route).
 
 Lives under ``scripts/`` (not under the ``proteinfoundation`` package) on

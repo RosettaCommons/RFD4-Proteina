@@ -30,12 +30,12 @@ import hydra
 from hydra import initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
-_AF3_ORACLE_TARGET = "proteinfoundation.metrics.af3_oracle.AF3Oracle"
+_AF3_ORACLE_TARGET = "proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle"
 
 
 def _has_af3_oracle_target(cfg: DictConfig) -> bool:
     """Recursively search the resolved config for a node whose ``_target_``
-    equals ``proteinfoundation.metrics.af3_oracle.AF3Oracle``.
+    equals ``proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle``.
     """
     container = OmegaConf.to_container(cfg, resolve=False, throw_on_missing=False)
 

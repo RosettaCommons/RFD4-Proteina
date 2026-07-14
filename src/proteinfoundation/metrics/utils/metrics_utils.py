@@ -33,7 +33,7 @@ from omegaconf import OmegaConf
 
 from foundry.metrics.metric import MetricManager
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.oracle_metric import (
+from proteinfoundation.metrics.oracles.oracle_metric import (
     OracleJobInput,
     OracleMetric,
     example_chain_dir,
@@ -424,7 +424,7 @@ def apply_pre_oracle_filters(
         val_outputs: Per-design entries from ``validation_output_generation``
             with design-phase metrics already merged in.
         pre_oracle_filter_mm: MetricManager whose entries are
-            :py:class:`~proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric`
+            :py:class:`~proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric`
             instances. Tag-based gating controls which filters apply per design.
         delete_failing: If ``True``, delete structure files on disk for designs
             that fail with all metrics present (definitive failures). Defaults to
@@ -590,7 +590,7 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
     """Write a chain-of-interest-only CIF into ``output_dir`` for foldseek.
 
     The file is named ``{example_id}_chain.cif``.  Callers should pass
-    :py:func:`~proteinfoundation.metrics.oracle_metric.example_chain_dir` as
+    :py:func:`~proteinfoundation.metrics.oracles.oracle_metric.example_chain_dir` as
     ``output_dir`` so chain CIFs land under the dedicated ``chains/`` tree.
     """
     coi, coi_unambiguous = get_chain_of_interest(atom_array)

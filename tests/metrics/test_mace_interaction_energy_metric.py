@@ -70,7 +70,7 @@ def test_chain_type_restored_after_rdkit_protonation(mcl1_complex):
     from atomworks.enums import ChainType
     from atomworks.ml.conditions.annotator import ensure_annotations
 
-    import proteinfoundation.metrics.mace_interaction_energy_metric as mace_metric
+    import proteinfoundation.metrics.physics.mace_interaction_energy_metric as mace_metric
 
     prepared = mcl1_complex["atom_array"]
     chain_type_by_id: dict[str, int] = {}
@@ -117,7 +117,7 @@ def test_mace_interaction(mcl1_complex):
     Uses the MACEInteractionEnergyMetric.compute() API with default
     parameters (50 opt steps, LBFGS, hydride H addition).
     """
-    from proteinfoundation.metrics.mace_interaction_energy_metric import (
+    from proteinfoundation.metrics.physics.mace_interaction_energy_metric import (
         MACEInteractionEnergyMetric,
     )
 

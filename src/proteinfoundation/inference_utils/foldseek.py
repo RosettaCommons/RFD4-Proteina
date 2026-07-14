@@ -3,7 +3,7 @@
 Bulk clustering
 ---------------
 :py:func:`cluster_structures` accepts the ``foldseek_input_chains/`` subdirectory produced by
-:py:func:`~proteinfoundation.metrics.oracle_metric.example_chain_dir` and
+:py:func:`~proteinfoundation.metrics.oracles.oracle_metric.example_chain_dir` and
 returns ``{example_id: cluster_id}``.
 """
 
@@ -140,7 +140,7 @@ def cluster_structures(
     """Cluster all chain-of-interest CIF files and return ``{example_id: cluster_id}``.
 
     Pass the ``foldseek_input_chains/`` subdirectory of the output tree (produced by
-    :py:func:`~proteinfoundation.metrics.oracle_metric.example_chain_dir`).
+    :py:func:`~proteinfoundation.metrics.oracles.oracle_metric.example_chain_dir`).
     ``easy-cluster`` recurses into subdirectories automatically; the
     ``_chain`` suffix is stripped from each file stem to recover the example ID.
 

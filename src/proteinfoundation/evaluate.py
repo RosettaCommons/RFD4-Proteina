@@ -23,12 +23,12 @@ from foundry.metrics import MetricManager
 from foundry.utils.ddp import RankedLogger
 from foundry.utils.env import load_dotenv
 from foundry.utils.logging import print_config_tree, silence_warnings
-from proteinfoundation.metrics.metrics_utils import (
+from proteinfoundation.metrics.oracles.oracle_metric import example_chain_dir, example_output_dir
+from proteinfoundation.metrics.utils.metrics_utils import (
     _write_chain_only_cif_if_unambiguous,
     apply_pre_oracle_filters,
     run_oracle_refolding_and_pass_criteria,
 )
-from proteinfoundation.metrics.oracle_metric import example_chain_dir, example_output_dir
 from proteinfoundation.proteina import _clean_metrics_dict
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY

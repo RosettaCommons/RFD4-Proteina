@@ -10,7 +10,7 @@ from biotite.structure import AtomArray, AtomArrayStack, get_residue_starts
 
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
+from proteinfoundation.metrics.utils.metrics_utils import normalize_to_atom_array_list
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 

@@ -2,7 +2,7 @@
 #
 # These are examples showing how to express interface energy metrics as Hydra
 # instantiations of the one general class in
-# `proteinfoundation.metrics.tmol_block_pair_metric` — there are no
+# `proteinfoundation.metrics.physics.tmol_block_pair_metric` — there are no
 # project-specific Python subclasses to maintain. Copy an entry into your metric
 # set and edit the `region_a` / `region_b` specs (any `atom_selection_from_spec`
 # query string or field filter) for your system.
@@ -13,13 +13,13 @@
 
 # --- Ligand-partner presets (was LigandInterface*Metric) ---
 ligand_interface_ddg:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   region_a: { query: is_ligand }
   region_b: { query: is_protein }
   required_tags_any: ["small_molecule_only"]
 
 ligand_interface_hbonds:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   region_a: { query: is_ligand }
   region_b: { query: is_protein }
   term_names: ["hbond"]
@@ -28,7 +28,7 @@ ligand_interface_hbonds:
   required_tags_any: ["small_molecule_only"]
 
 ligand_interface_electrostatics:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   region_a: { query: is_ligand }
   region_b: { query: is_protein }
   term_names: ["fa_elec"]
@@ -38,19 +38,19 @@ ligand_interface_electrostatics:
 
 # --- Binder/target soft-repulsion ddG (was SoftDDGMetric) ---
 soft_ddg:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   use_soft_rep: true
 
 # --- Protein-protein presets (was PPIInterface*Metric) ---
 # Omitting region_a/region_b makes the binder the chain of interest and the target
 # every other atom; set explicit regions when that is insufficient.
 ppi_interface_ddg:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   region_a: { chain_id: A }
   region_b: { chain_id: B }
 
 ppi_interface_coulomb:
-  _target_: proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric
+  _target_: proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
   region_a: { chain_id: A }
   region_b: { chain_id: B }
   term_names: ["fa_elec"]
