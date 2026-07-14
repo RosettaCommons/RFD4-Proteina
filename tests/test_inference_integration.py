@@ -195,7 +195,7 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
 
     base_overrides = [
         "inference_experiment=inference_like_rfd3",
-        "metrics/refolding_oracles=rf3",
+        "metrics/refolding_oracles=af3",
         f"autoencoder_ckpt_path={_AE_CKPT_PATH or 'null'}",
         "seed=42",
         "num_workers=0",
