@@ -14,7 +14,7 @@ loader:
   path_colname: path
   assembly_id_colname: None
   parser_args:
-    _target_: proteinfoundation.utils.parse_presets.distillation
+    _target_: rfproteina.utils.parse_presets.distillation
     # Cache parsed structures to node-local NVMe
     save_to_cache: true
     load_from_cache: true

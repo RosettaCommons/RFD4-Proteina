@@ -31,7 +31,7 @@ from atomworks.io import parse
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 
 # setup dotenv
-from proteinfoundation.utils.env import load_dotenv
+from rfproteina.utils.env import load_dotenv
 
 load_dotenv()
 

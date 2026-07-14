@@ -8,7 +8,7 @@ from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.io.utils.visualize import get_pymol_session, view_pymol
 from atomworks.ml.conditions import C_DIS, Condition
 
-from proteinfoundation.proteina import Proteina
+from rfproteina.proteina import Proteina
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)

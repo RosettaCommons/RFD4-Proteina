@@ -3,7 +3,7 @@
 # Minimal AE training config: Muon optimizer, AFDB monomer only, single GPU.
 # Used as the default training_ae experiment
 #
-# Run: python proteinfoundation/partial_autoencoder/train.py --config-name training_ae \
+# Run: python rfproteina/partial_autoencoder/train.py --config-name training_ae \
 #        +single=true +nolog=true +show_prog_bar=true
 
 defaults:

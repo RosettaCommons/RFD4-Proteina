@@ -225,7 +225,7 @@ setup_env_vars
 SWEEP_CODE_DIR=""
 if [ "$NO_COPY" != "true" ] && [ -n "$BASE_OUT_DIR" ]; then
     SWEEP_CODE_DIR="$BASE_OUT_DIR/code"
-    if [ -d "$SWEEP_CODE_DIR/src" ] || [ -d "$SWEEP_CODE_DIR/proteinfoundation" ]; then
+    if [ -d "$SWEEP_CODE_DIR/src" ] || [ -d "$SWEEP_CODE_DIR/rfproteina" ]; then
         if [ "$OVERWRITE_RUNDIR" == "true" ]; then
             echo "Warning: Overwriting existing sweep code directory at $SWEEP_CODE_DIR"
         else
@@ -270,7 +270,7 @@ if [ "$DRY_RUN" == "true" ]; then
     exit 0
 fi
 
-# Run the sweep generator from proteinfoundation/ so output_dir resolves correctly
+# Run the sweep generator from rfproteina/ so output_dir resolves correctly
 (cd "$REPO_ROOT" && eval $SWEEP_CMD)
 
 # Find generated configs

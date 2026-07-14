@@ -1,13 +1,13 @@
 compute_loss: true
 
 dataset:
-  _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_L200
 
   num_replicates: 50
 
   transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
       - disco_refolding

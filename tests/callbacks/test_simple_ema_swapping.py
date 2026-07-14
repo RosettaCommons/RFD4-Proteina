@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import pytest
 import torch
 
-from proteinfoundation.utils.simple_ema import SimpleEMA
+from rfproteina.utils.simple_ema import SimpleEMA
 
 
 class DummyModule:

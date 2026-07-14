@@ -33,7 +33,7 @@ A flow-matching based generative model for protein design, supporting proteins, 
 A `setup.sh` script automates most of the setup below. Run it from the repo root on a new Linux machine:
 
 ```bash
-bash projects/proteinfoundation/setup.sh
+bash projects/rfproteina/setup.sh
 ```
 
 It installs `uv`, initialises the atomworks submodule, creates the virtualenv, installs all dependencies, appends `CLUSTER`/`CONTAINER_TYPE` exports to your shell rc file, and auto-creates a `.user_info_<cluster>` SLURM config. The steps below explain each stage if you prefer to run them manually.
@@ -69,7 +69,7 @@ source .venv/bin/activate
 
 ```bash
 uv pip install -e ".[rf3,rfd3,all,dev]" \
-    -e projects/proteinfoundation \
+    -e projects/rfproteina \
     -e "lib/atomworks[dev,ml,openbabel,docs]"
 ```
 
@@ -78,7 +78,7 @@ uv pip install -e ".[rf3,rfd3,all,dev]" \
 Add the following to `~/.bashrc` or `~/.zshrc`, setting `CLUSTER` to whichever cluster you submit jobs on (`digs`, `ord`, `gb200`, `coreweave`):
 
 ```bash
-# Cluster identity for proteinfoundation SLURM launch scripts.
+# Cluster identity for rfproteina SLURM launch scripts.
 # CLUSTER selects which scripts/.user_info_<cluster> config is loaded.
 # CONTAINER_TYPE is 'apptainer' (DIGS/CoreWeave) or 'docker' (OCI/ORD/GB200).
 export CLUSTER=digs
@@ -96,7 +96,7 @@ A `.user_info_<cluster>` file (in `scripts/`) holds your SLURM settings (partiti
 Pass checkpoint paths at runtime:
 
 ```bash
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt ...
 ```
 
@@ -108,7 +108,7 @@ python proteinfoundation/generate.py \
 A `batch_size` of 8 is a reasonable starting point. Larger batches process faster, but first test your longest sequence at `batch_size=1` to confirm it fits in GPU memory before scaling up.
 
 ```bash
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     num_replicates=100 batch_size=8
 ```
@@ -338,7 +338,7 @@ Higher values increase diversity but may reduce designability; lower values prod
 
 ```bash
 # Moderate noise for more natural-like sequences
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
@@ -374,12 +374,12 @@ Pass `metrics_tags` during inference to compute metrics immediately after each d
 
 ```bash
 # Single tag
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     num_replicates=50 metrics_tags='[unconditional_refolding]'
 
 # Multiple tags
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     num_replicates=50 metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
@@ -403,7 +403,7 @@ Metrics that require a tag will be silently skipped if the tag is not present.
 When running large evaluations in parallel across multiple SLURM jobs, each job writes its own `per_example_metrics_job{N}.csv`. After all jobs complete, concatenate them:
 
 ```bash
-python -m proteinfoundation.inference_utils.aggregate_metrics \
+python -m rfproteina.inference_utils.aggregate_metrics \
     --output_dir ./inference/my_run/metrics/
 ```
 
@@ -415,7 +415,7 @@ Pass `--cluster_with_foldseek` to also run structural diversity clustering (see 
 
 You can add your own evaluation metrics without modifying any tracked files. Both of these are directories that are **entirely git-ignored**, so you can split many metrics across as many files as you like and nothing ever gets tracked:
 
-- `proteinfoundation/metrics/custom_metrics/` — Python metric classes, organized into as many modules as desired.
+- `rfproteina/metrics/custom_metrics/` — Python metric classes, organized into as many modules as desired.
 - `configs/metrics/custom_metrics/` — Hydra config registering those classes; `all_custom_metrics.yaml` is the entry point, and it can `defaults:`-include sibling YAML files in the same directory
 
 `setup.sh` scaffolds an empty `all_custom_metrics.yaml` for you on first run.
@@ -423,9 +423,9 @@ You can add your own evaluation metrics without modifying any tracked files. Bot
 **Quick example** — count residues in each design:
 
 ```python
-# proteinfoundation/metrics/custom_metrics/residue_count.py
+# rfproteina/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
-from proteinfoundation.metrics.metric import Metric
+from rfproteina.metrics.metric import Metric
 
 class ResidueCountMetric(Metric):
     def __init__(self, min_length: int | None = None, **kwargs):
@@ -449,7 +449,7 @@ class ResidueCountMetric(Metric):
 # @package metrics
 inline_metrics:
   residue_count:
-    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+    _target_: rfproteina.metrics.custom_metrics.residue_count.ResidueCountMetric
     min_length: 50                                # constructor argument
     required_tags_any: ["unconditional_refolding"] # omit to always run
 ```
@@ -482,13 +482,13 @@ Beyond standard sampling, the model supports reward-guided search to explore mul
 
 ```bash
 # Beam search with RF3 reward (uses inference_beam_example.yaml)
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inference_experiment=inference_beam_example \
     inputs=design.json \
     ckpt_path=./checkpoints ckpt_name=model.ckpt
 
 # Best-of-N with RF3 reward (uses inference_test_search.yaml)
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     inference_experiment=inference_test_search \
     inputs=design.json \
     ckpt_path=./checkpoints ckpt_name=model.ckpt
@@ -535,7 +535,7 @@ For coding standards and contribution guidelines, see [CLAUDE.md](CLAUDE.md).
 
 | Issue | Solution |
 | --- | --- |
-| `Import errors` / `hydra not found` in launch scripts | Activate the venv: `source .venv/bin/activate` (works from repo root or `projects/proteinfoundation/`) |
+| `Import errors` / `hydra not found` in launch scripts | Activate the venv: `source .venv/bin/activate` (works from repo root or `projects/rfproteina/`) |
 | `Hydra config errors` | Use `=` not `--` for arguments: `inputs=file.cif` not `--inputs file.cif` |
 | `Out of memory` | Reduce `batch_size`; test your longest sequence at `batch_size=1` first |
 | `atomworks not found` | Run `git submodule update --init lib/atomworks` |

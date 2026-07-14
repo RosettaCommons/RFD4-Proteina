@@ -10,7 +10,7 @@ from atomworks.io.config import ParseConfig
 # the container image; skip rather than fail collection for the whole suite when absent.
 pytest.importorskip("tmol")
 
-from proteinfoundation.metrics.physics.tmol_block_pair_metric import TMolBlockPairMetric  # noqa: E402
+from rfproteina.metrics.physics.tmol_block_pair_metric import TMolBlockPairMetric  # noqa: E402
 
 SAM_BINDER_CIF = Path(__file__).resolve().parents[1] / "data" / "sam_binder_generated_minimized.cif"
 

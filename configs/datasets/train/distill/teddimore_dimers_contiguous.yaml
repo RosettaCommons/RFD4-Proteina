@@ -12,6 +12,6 @@ dataset:
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/teddimore_dimers
     parser_args:
-      _target_: proteinfoundation.utils.parse_presets.distillation
+      _target_: rfproteina.utils.parse_presets.distillation
   transform:
     b_factor_occupancy_min: null  # 0.7  # Any token with atom plddt < 70 will not be lossed

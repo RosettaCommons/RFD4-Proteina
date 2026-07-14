@@ -78,7 +78,7 @@ datasets:
             folding:
               frequency: 1.0
               transform:
-                _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+                _target_: rfproteina.transforms.design_task.StructurePredictionTask
                 global_design_task_kwargs:
                   rasa_kwargs:
                     p_add_rasa_condition: 0.0
@@ -89,7 +89,7 @@ datasets:
             partial_ligand:
               frequency: 3.0
               transform:
-                _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+                _target_: rfproteina.transforms.design_task.PartialLigandTask
                 min_coverage_fraction: 0.0
                 max_coverage_fraction: 1.0
     plinder:

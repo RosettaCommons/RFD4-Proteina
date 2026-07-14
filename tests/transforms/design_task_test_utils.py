@@ -8,9 +8,9 @@ from atomworks.ml.transforms.base import Compose
 from atomworks.ml.transforms.design_task import DesignTaskABC
 from biotite.structure import AtomArray
 
-from proteinfoundation.conditions import C_HB, C_RAS, C_SEC
-from proteinfoundation.datapipes.pipeline import _build_design_clean_and_sample_pipeline
-from proteinfoundation.transforms.design_task import (
+from rfproteina.conditions import C_HB, C_RAS, C_SEC
+from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
+from rfproteina.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffoldTask,
     PPIHotspotWith3DTarget,
@@ -22,7 +22,7 @@ from proteinfoundation.transforms.design_task import (
     TipAtomTask,
     UnconditionalTask,
 )
-from proteinfoundation.transforms.random_atomize_residues import RandomAtomizeResidues
+from rfproteina.transforms.random_atomize_residues import RandomAtomizeResidues
 
 DEFAULT_REQUIRED_ARGUMENTS: dict[type, dict] = {}
 

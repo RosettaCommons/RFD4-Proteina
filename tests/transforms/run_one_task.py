@@ -4,7 +4,7 @@ import numpy as np
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 from atomworks.ml.utils.testing import cached_parse
 
-from proteinfoundation.transforms.design_task import (
+from rfproteina.transforms.design_task import (
     UnconditionalTask,
 )
 from tests.transforms.design_task_test_utils import apply_design_task

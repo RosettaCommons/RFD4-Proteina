@@ -64,11 +64,11 @@ The conversion script can be run on an individual file or on the full benchmark 
 
 ```bash
 # Re-run on a single file (full traceback on failure)
-python projects/proteinfoundation/convert_pdb_benchmarks_to_cif.py \
-    --file projects/proteinfoundation/benchmarks/path/to/file.pdb
+python projects/rfproteina/convert_pdb_benchmarks_to_cif.py \
+    --file projects/rfproteina/benchmarks/path/to/file.pdb
 
 # Full batch run (updates all configs and writes conversion_failures.md)
-python projects/proteinfoundation/convert_pdb_benchmarks_to_cif.py
+python projects/rfproteina/convert_pdb_benchmarks_to_cif.py
 ```
 
 The report is regenerated each run and written to `benchmarks/conversion_failures.md`.

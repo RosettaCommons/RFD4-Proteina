@@ -28,7 +28,7 @@ For user-facing inference and design documentation, see the [main README](../REA
 Run `setup.sh` from the repo root on a new machine:
 
 ```bash
-bash projects/proteinfoundation/setup.sh
+bash projects/rfproteina/setup.sh
 ```
 
 This installs `uv`, initialises the atomworks submodule, creates the virtualenv, installs all dependencies, and appends `CLUSTER`/`CONTAINER_TYPE` exports to your shell rc file.
@@ -89,9 +89,9 @@ pytest tests/metrics/test_sse_metrics.py   # Specific test module
 **Usage:**
 
 ```bash
-python proteinfoundation/train.py experiment=mgnify_training
-python proteinfoundation/train.py experiment=omol_training
-python proteinfoundation/train.py experiment=afdb_dimer_training
+python rfproteina/train.py experiment=mgnify_training
+python rfproteina/train.py experiment=omol_training
+python rfproteina/train.py experiment=afdb_dimer_training
 ```
 
 ### Dataset Configuration
@@ -157,7 +157,7 @@ run_name: my_experiment_run
 **Step 3:** Train
 
 ```bash
-python proteinfoundation/train.py experiment=my_experiment
+python rfproteina/train.py experiment=my_experiment
 ```
 
 ---
@@ -186,19 +186,19 @@ Tasks are configured in dataset configs via relative-weight frequencies:
 unconditional:
   frequency: 90.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    _target_: rfproteina.transforms.design_task.UnconditionalTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 folding:
   frequency: 5.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    _target_: rfproteina.transforms.design_task.StructurePredictionTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 inverse_folding:
   frequency: 5.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+    _target_: rfproteina.transforms.design_task.InverseFoldingTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 ```
 
@@ -222,13 +222,13 @@ Pre-configured task combinations in `configs/design_tasks/presets/`:
 unconditional:
   frequency: 50.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    _target_: rfproteina.transforms.design_task.UnconditionalTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 folding:
   frequency: 50.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    _target_: rfproteina.transforms.design_task.StructurePredictionTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 ```
 
@@ -252,7 +252,7 @@ vim configs/design_tasks/presets/mgnify_unconditional.yaml
 **Option 2: Hydra override** (temporary)
 
 ```bash
-python proteinfoundation/train.py \
+python rfproteina/train.py \
     experiment=mgnify_training \
     datasets.train.dataset.transform.design_tasks.unconditional.frequency=80.0 \
     datasets.train.dataset.transform.design_tasks.folding.frequency=10.0
@@ -282,13 +282,13 @@ The codebase includes **two separate models**:
 
 ```bash
 # Single GPU, no logging (quick test)
-python proteinfoundation/train.py experiment=mgnify_training +single=true +nolog=true
+python rfproteina/train.py experiment=mgnify_training +single=true +nolog=true
 
 # Multi-GPU on local machine
-python proteinfoundation/train.py experiment=mgnify_training
+python rfproteina/train.py experiment=mgnify_training
 
 # Override parameters
-python proteinfoundation/train.py \
+python rfproteina/train.py \
     experiment=mgnify_training \
     opt.lr=0.0002 \
     training.self_cond=False
@@ -297,7 +297,7 @@ python proteinfoundation/train.py \
 **Autoencoder:**
 
 ```bash
-python proteinfoundation/partial_autoencoder/train.py --config-name training_ae
+python rfproteina/partial_autoencoder/train.py --config-name training_ae
 ```
 
 ### Training Configuration
@@ -452,7 +452,7 @@ EXTRA_CONTAINER_MOUNTS="/data:/data:ro"
 
 ### Inference
 
-Run from `projects/proteinfoundation/` on the cluster:
+Run from `projects/rfproteina/` on the cluster:
 
 ```bash
 # 4 replicates over benchmark inputs, split across 2 parallel jobs
@@ -554,9 +554,9 @@ $ROOT_REMOTE/<run_name>/
 
 ### How Metrics Work
 
-Metrics inherit from `proteinfoundation.metrics.metric.Metric` and compute scores on generated structures.
+Metrics inherit from `rfproteina.metrics.metric.Metric` and compute scores on generated structures.
 
-**Location:** `proteinfoundation/metrics/`
+**Location:** `rfproteina/metrics/`
 
 | Category | Metrics | Description |
 |----------|---------|-------------|
@@ -572,11 +572,11 @@ Configured in subconfigs under `configs/metrics`:
 ```yaml
 metrics:
   sidechain:
-    _target_: proteinfoundation.metrics.sidechain_metrics.SidechainMetrics
+    _target_: rfproteina.metrics.sidechain_metrics.SidechainMetrics
   sse:
-    _target_: proteinfoundation.metrics.sse_metrics.SSEMetrics
+    _target_: rfproteina.metrics.sse_metrics.SSEMetrics
   rf3:
-    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    _target_: rfproteina.metrics.rf3_metric.RF3Metric
     ckpt_path: /path/to/rf3_latest.pt
     num_steps: 50
     metrics_tags: [ppi, binder]
@@ -587,7 +587,7 @@ Metrics run during validation and log to WandB.
 ### Metrics in Inference
 
 ```bash
-python proteinfoundation/evaluate.py \
+python rfproteina/evaluate.py \
     --samples_dir ./outputs/generated_structures/ \
     --metrics designability,novelty \
     --output_csv results.csv
@@ -603,10 +603,10 @@ Metrics can be used for **evaluation and search**.
 
 ### Adding a New Metric
 
-Create a metric class in `proteinfoundation/metrics/my_metric.py`:
+Create a metric class in `rfproteina/metrics/my_metric.py`:
 
 ```python
-from proteinfoundation.metrics.metric import Metric
+from rfproteina.metrics.metric import Metric
 from biotite.structure import AtomArray
 
 class MyCustomMetric(Metric):
@@ -638,10 +638,10 @@ Create a reward config in `configs/rewards/my_reward.yaml`:
 ```yaml
 metrics:
   my_metric:
-    _target_: proteinfoundation.metrics.my_metric.MyCustomMetric
+    _target_: rfproteina.metrics.my_metric.MyCustomMetric
     threshold: 15.0
   rf3:
-    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    _target_: rfproteina.metrics.rf3_metric.RF3Metric
     ckpt_path: /path/to/rf3_latest.pt
     num_steps: 50
 
@@ -655,7 +655,7 @@ weights:
 
 ```bash
 # With search
-python proteinfoundation/generate.py \
+python rfproteina/generate.py \
     --config-name inference_test_search \
     inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
     reward=my_reward
@@ -664,9 +664,9 @@ python proteinfoundation/generate.py \
 ### Programmatic Usage
 
 ```python
-from proteinfoundation.rewards import RewardModel
-from proteinfoundation.metrics.my_metric import MyCustomMetric
-from proteinfoundation.metrics.rf3_metric import RF3Metric
+from rfproteina.rewards import RewardModel
+from rfproteina.metrics.my_metric import MyCustomMetric
+from rfproteina.metrics.rf3_metric import RF3Metric
 
 reward_model = RewardModel(
     metrics={
@@ -680,7 +680,7 @@ reward_model = RewardModel(
     },
 )
 
-from proteinfoundation.search import BestOfNStrategy
+from rfproteina.search import BestOfNStrategy
 strategy = BestOfNStrategy(n_samples=50)
 results = strategy.generate(model, batch, reward_model)
 ```
@@ -730,7 +730,7 @@ Exponential moving average improves generation:
 ```yaml
 callbacks:
   ema:
-    _target_: proteinfoundation.utils.ema_callback.EMACallback
+    _target_: rfproteina.utils.ema_callback.EMACallback
     decay: 0.999
 
 log:
@@ -742,7 +742,7 @@ log:
 ## File Structure Reference
 
 ```
-proteinfoundation/
+rfproteina/
 ├── configs/
 │   ├── training_proteina.yaml           # Main training config
 │   ├── training_ae.yaml                 # Autoencoder training config
@@ -754,7 +754,7 @@ proteinfoundation/
 │   ├── rewards/                         # Reward model configs
 │   └── nn/                              # Model architecture configs
 │
-├── proteinfoundation/
+├── rfproteina/
 │   ├── train.py                         # Diffusion model training
 │   ├── generate.py                      # Generation/inference
 │   ├── evaluate.py                      # Metric evaluation

@@ -4,19 +4,19 @@
 
 metrics:
   clash:
-    _target_: proteinfoundation.metrics.design_metrics.ClashMetric
+    _target_: rfproteina.metrics.design_metrics.ClashMetric
 
   sse:
-    _target_: proteinfoundation.metrics.sse_metrics.SSEMetrics
+    _target_: rfproteina.metrics.sse_metrics.SSEMetrics
 
   rasa:
-    _target_: proteinfoundation.metrics.rasa_metrics.RASAMetrics
+    _target_: rfproteina.metrics.rasa_metrics.RASAMetrics
 
   molprobity:
-    _target_: proteinfoundation.metrics.molprobity_metrics.MolprobityMetrics
+    _target_: rfproteina.metrics.molprobity_metrics.MolprobityMetrics
 
   hbonds:
-    _target_: proteinfoundation.metrics.hbonds_metrics.HbondMetrics
+    _target_: rfproteina.metrics.hbonds_metrics.HbondMetrics
 
 weights:
   # Steric clashes

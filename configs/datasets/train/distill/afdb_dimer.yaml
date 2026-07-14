@@ -14,4 +14,4 @@ dataset:
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
     parser_args:
-      _target_: proteinfoundation.utils.parse_presets.distillation
+      _target_: rfproteina.utils.parse_presets.distillation

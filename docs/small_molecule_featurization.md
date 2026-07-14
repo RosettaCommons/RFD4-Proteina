@@ -26,12 +26,12 @@ parse   (atomworks types metal bonds as COORDINATION; metals become their own mo
       → ConvertToTorch
 ```
 
-* Pipeline assembly: `proteinfoundation/datapipes/pipeline.py` (`get_pipeline`).
+* Pipeline assembly: `rfproteina/datapipes/pipeline.py` (`get_pipeline`).
 * Bond-matrix helpers (used by `ComputeTokenLevelBondFeaturesLikeAF3`) live in
-  `proteinfoundation/datapipes/bonds.py`.
+  `rfproteina/datapipes/bonds.py`.
 * Feature extraction (`Feature` subclasses that read these batch fields and build
   the model-input tensors) lives in
-  `proteinfoundation/nn/feature_factory_atom37.py`.
+  `rfproteina/nn/feature_factory_atom37.py`.
 
 ## Atom37 slot convention
 
@@ -104,7 +104,7 @@ is sometimes ambiguous in input data.
 
 The chirality feature (`AddChiralityFeature` →
 `build_chirality_block_diagonal` in
-`proteinfoundation/transforms/chirality_feature.py`) encodes the **stereochemistry
+`rfproteina/transforms/chirality_feature.py`) encodes the **stereochemistry
 of each chiral center** — and *only* the stereochemistry, not the actual neighbor
 positions. The construction is:
 

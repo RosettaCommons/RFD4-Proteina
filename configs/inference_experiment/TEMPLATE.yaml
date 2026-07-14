@@ -10,11 +10,11 @@
 # Three ways to run inference:
 #
 #   Pattern A -- Self-contained config in inference_experiment/ :
-#     proteinfoundation/generate.py \
+#     rfproteina/generate.py \
 #         inference_experiment=my_experiment
 #
 #   Pattern B -- CLI overrides:
-#     proteinfoundation/generate.py \
+#     rfproteina/generate.py \
 #         ckpt_path=/path/to/checkpoints ckpt_name=model.ckpt \
 #         inputs=/path/to/my_design.json out_dir=outputs/quick_test
 #
@@ -35,7 +35,7 @@
 #              - _self_
 #
 #     Then run:
-#       proteinfoundation/generate.py \
+#       rfproteina/generate.py \
 #           --config-path /absolute/path/to/your/config/dir \
 #           --config-name your_config_name (no .yaml suffix)
 #
@@ -82,7 +82,7 @@ batch_size: 10                        # Batch size for generation
 # --- Search strategy (optional, remove for vanilla single-pass) ---
 # search:
 #   strategy:
-#     _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
+#     _target_: rfproteina.search.beam_search.BeamSearchStrategy
 #     step_checkpoints: [0, 100, 200, 300, 400]
 #     n_branch: 2
 #     beam_width: 3
@@ -91,7 +91,7 @@ batch_size: 10                        # Batch size for generation
 #   rewards:
 #     metrics:
 #       rf3:
-#         _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+#         _target_: rfproteina.metrics.rf3_metric.RF3Metric
 #         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
 #         num_steps: 50
 #         n_recycles: 5
