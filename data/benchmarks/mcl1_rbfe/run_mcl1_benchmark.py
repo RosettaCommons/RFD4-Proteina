@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""MCL1 benchmark: MACE vs IPA vs FEP (OpenFE) vs Experiment.
+"""MCL1 benchmark: MACE vs FEP (OpenFE) vs Experiment.
 
-Runs all 42 MCL1 ligands through MACE and IPA interaction energy metrics,
+Runs all 42 MCL1 ligands through the MACE interaction energy metric,
 downloads OpenFE FEP reference predictions, and computes pairwise
 correlations (Pearson, Spearman, R², RMSE, MAE).
 
 Usage::
 
     python run_mcl1_benchmark.py --mace          # MACE only (GPU)
-    python run_mcl1_benchmark.py --ipa           # IPA only
     python run_mcl1_benchmark.py                 # both
     python run_mcl1_benchmark.py --resume        # resume partial run
     python run_mcl1_benchmark.py --correlations-only  # recompute from CSV
 
 Environment variables:
     MACE_POLAR_MODEL_PATH  Path to MACE-POLAR model (or ``--mace-model``)
-    IPA_PATH               Path to compiled In-Pocket-Analysis repo
 """
 
 from __future__ import annotations
@@ -66,9 +64,6 @@ CSV_COLUMNS = [
     "mmgbsa_kcal",
     "mace_interaction_eV",
     "mace_interaction_kcal",
-    "ipa_interaction_kcal",
-    "ipa_binding_kcal",
-    "ipa_deformation_kcal",
 ]
 
 
@@ -210,66 +205,10 @@ def run_mace_benchmark(
     return results
 
 
-# ---------------------------------------------------------------------------
-# IPA benchmark
-# ---------------------------------------------------------------------------
-
-
-def run_ipa_benchmark(
-    complexes: list[tuple[str, AtomArray]],
-    ipa_path: str,
-) -> dict[str, dict[str, float]]:
-    """Run ``QMInteractionEnergyIPA`` on each complex."""
-    _ensure_on_path(Path("/path/to/home"))
-
-    from rfproteina.metrics.ipa_interaction_energy_metric import QMInteractionEnergyIPA
-
-    metric = QMInteractionEnergyIPA(
-        ipa_path=ipa_path,
-        distance=5.0,
-        use_ip_structure=True,
-        protonation="rdkit",
-        eval_only=False,
-        debug=True,
-        debug_dir=str(SCRIPT_DIR / "ipa-debug"),
-    )
-    metric.setup()
-
-    results: dict[str, dict[str, float]] = {}
-    try:
-        for name, atom_array in complexes:
-            logger.info("IPA: processing ligand %s", name)
-            t0 = time.time()
-            try:
-                result = metric.compute(atom_array)
-                if result["n_structures"] == 0:
-                    logger.warning("IPA: no result for %s", name)
-                    continue
-                results[name] = {
-                    "interaction_kcal": result["total_interaction_energies"][0],
-                    "binding_kcal": result["ipa_binding_energies"][0],
-                    "deformation_kcal": (
-                        result["deformation_energies"][0] if result["deformation_energies"] else float("nan")
-                    ),
-                }
-                logger.info("  %s: %.2f kcal/mol [%.1fs]", name, results[name]["interaction_kcal"], time.time() - t0)
-            except Exception as exc:
-                logger.error("IPA failed for %s: %s", name, exc)
-    finally:
-        metric.teardown()
-    return results
-
-
-# ---------------------------------------------------------------------------
-# CSV I/O
-# ---------------------------------------------------------------------------
-
-
 def write_results_csv(
     ligand_info: list[tuple[str, float]],
     fep_data: dict[str, dict[str, float]],
     mace_results: dict[str, dict[str, float]],
-    ipa_results: dict[str, dict[str, float]],
     path: Path,
 ) -> list[dict[str, Any]]:
     """Write combined results CSV and return the rows."""
@@ -277,7 +216,6 @@ def write_results_csv(
     for name, exp_dg in ligand_info:
         fep = fep_data.get(name, {})
         mace = mace_results.get(name, {})
-        ipa = ipa_results.get(name, {})
         rows.append(
             {
                 "ligand_name": name,
@@ -288,9 +226,6 @@ def write_results_csv(
                 "mmgbsa_kcal": fep.get("mmgbsa", ""),
                 "mace_interaction_eV": mace.get("interaction_eV", ""),
                 "mace_interaction_kcal": mace.get("interaction_kcal", ""),
-                "ipa_interaction_kcal": ipa.get("interaction_kcal", ""),
-                "ipa_binding_kcal": ipa.get("binding_kcal", ""),
-                "ipa_deformation_kcal": ipa.get("deformation_kcal", ""),
             }
         )
 
@@ -302,12 +237,11 @@ def write_results_csv(
     return rows
 
 
-def load_existing_results(path: Path) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+def load_existing_results(path: Path) -> dict[str, dict[str, float]]:
     """Load existing CSV for ``--resume``."""
     mace: dict[str, dict[str, float]] = {}
-    ipa: dict[str, dict[str, float]] = {}
     if not path.exists():
-        return mace, ipa
+        return mace
 
     with open(path) as f:
         for row in csv.DictReader(f):
@@ -317,15 +251,9 @@ def load_existing_results(path: Path) -> tuple[dict[str, dict[str, float]], dict
                     "interaction_eV": float(row["mace_interaction_eV"]),
                     "interaction_kcal": float(row["mace_interaction_kcal"]),
                 }
-            if row.get("ipa_interaction_kcal"):
-                ipa[name] = {
-                    "interaction_kcal": float(row["ipa_interaction_kcal"]),
-                    "binding_kcal": float(row["ipa_binding_kcal"]),
-                    "deformation_kcal": float(row.get("ipa_deformation_kcal") or "nan"),
-                }
 
-    logger.info("Loaded %d MACE, %d IPA results from %s", len(mace), len(ipa), path)
-    return mace, ipa
+    logger.info("Loaded %d MACE results from %s", len(mace), path)
+    return mace
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +296,6 @@ def run_correlation_analysis(rows: list[dict[str, Any]], label: str = "all") -> 
     methods = {
         "FEP (OpenFE)": _col("fep_dg_kcal"),
         "MACE": _col("mace_interaction_kcal"),
-        "IPA": _col("ipa_interaction_kcal"),
         "MM/GBSA": _col("mmgbsa_kcal"),
     }
 
@@ -409,27 +336,19 @@ def _write_correlation_csv(summary_rows: list[dict[str, Any]]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="MCL1 benchmark: MACE vs IPA vs FEP")
+    parser = argparse.ArgumentParser(description="MCL1 benchmark: MACE vs FEP")
     parser.add_argument("--mace", action="store_true", help="Run MACE only")
-    parser.add_argument("--ipa", action="store_true", help="Run IPA only")
     parser.add_argument("--mace-model", default=None, help="Path to MACE-POLAR model")
-    parser.add_argument("--ipa-path", default=None, help="Path to IPA repo")
     parser.add_argument("--resume", action="store_true", help="Resume from existing CSV")
     parser.add_argument("--correlations-only", action="store_true", help="Recompute correlations only")
     args = parser.parse_args()
 
-    run_mace = not args.ipa
-    run_ipa = not args.mace
-    if not args.mace and not args.ipa:
-        run_mace = run_ipa = True
+    run_mace = True
 
     mace_model = args.mace_model or os.environ.get("MACE_POLAR_MODEL_PATH") or os.environ.get("MACE_MODEL_PATH")
-    ipa_path = args.ipa_path or os.environ.get("IPA_PATH")
 
     if run_mace and not mace_model:
         parser.error("MACE model path required (--mace-model or MACE_POLAR_MODEL_PATH)")
-    if run_ipa and not ipa_path:
-        parser.error("IPA path required (--ipa-path or IPA_PATH)")
 
     fep_data = download_fep_data()
 
@@ -466,22 +385,16 @@ def main() -> None:
     logger.info("Prepared %d complexes", len(complexes))
 
     mace_results: dict[str, dict[str, float]] = {}
-    ipa_results: dict[str, dict[str, float]] = {}
     if args.resume:
-        mace_results, ipa_results = load_existing_results(RESULTS_CSV)
+        mace_results = load_existing_results(RESULTS_CSV)
 
     if run_mace:
         remaining = [(n, a) for n, a in complexes if n not in mace_results]
         if remaining:
             mace_results.update(run_mace_benchmark(remaining, mace_model))
-        write_results_csv(ligand_info, fep_data, mace_results, ipa_results, RESULTS_CSV)
+        write_results_csv(ligand_info, fep_data, mace_results, RESULTS_CSV)
 
-    if run_ipa:
-        remaining = [(n, a) for n, a in complexes if n not in ipa_results]
-        if remaining:
-            ipa_results.update(run_ipa_benchmark(remaining, ipa_path))
-
-    rows = write_results_csv(ligand_info, fep_data, mace_results, ipa_results, RESULTS_CSV)
+    rows = write_results_csv(ligand_info, fep_data, mace_results, RESULTS_CSV)
     corr = run_correlation_analysis(rows, "all")
     corr += run_correlation_analysis([r for r in rows if not r["is_flip"]], "no_flip")
     _write_correlation_csv(corr)
