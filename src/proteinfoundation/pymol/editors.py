@@ -23,15 +23,15 @@ from atomworks.io.utils.atom_array_plus import AtomArrayPlus
 from atomworks.io.utils.standard_annotations import S_ATM  # noqa: F401
 from atomworks.pymol_plugin.views import register_view
 
-from foundry.utils.standard_annotations import (  # noqa: F401
+from proteinfoundation.pymol import condition_registry
+from proteinfoundation.pymol.visualize import color_by_coord_group, color_by_index_group
+from proteinfoundation.utils.standard_annotations import (  # noqa: F401
     SA_CRDGRPSRC,
     SA_CRDSRC,
     SA_CWI,
     SA_SRC,
     SA_UII,
 )
-from proteinfoundation.pymol import condition_registry
-from proteinfoundation.pymol.visualize import color_by_coord_group, color_by_index_group
 
 # ---------------------------------------------------------------------------
 # Pre-save pipeline validation hook

@@ -30,8 +30,6 @@ from biotite.structure import AtomArray
 from scipy.spatial import ConvexHull
 from scipy.special import softmax
 
-from foundry.common import true_with_prob
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_CRDGRP, C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.design_task_modifiers import (
     add_cath_condition,
@@ -49,6 +47,8 @@ from proteinfoundation.transforms.utils.ppi_utils import (
     crop_spatial_keep_full_binder,
     sample_hotspots,
 )
+from proteinfoundation.utils.common import true_with_prob
+from proteinfoundation.utils.ddp import RankedLogger
 
 
 # Default potential functions for TipAtomPartialLigandTask (module-level for picklability)

@@ -20,17 +20,17 @@ from atomworks.ml.transforms.base import Identity, Transform
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 
-from foundry.data.collate import collate_batch
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.env import load_dotenv
-from foundry.utils.logging import print_config_tree
+from proteinfoundation.datapipes.collate import collate_batch
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.guidance.guidance_model import GuidanceModel, build_guidance_terms
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.input_parsing import InputSpecification
+from proteinfoundation.metrics.metric import MetricManager
 from proteinfoundation.proteina import Proteina
 from proteinfoundation.search.base_strategy import SearchStrategy
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.env import load_dotenv
+from proteinfoundation.utils.logging import print_config_tree
 from proteinfoundation.utils.simple_ema import SimpleEMA
 from proteinfoundation.utils.torch_compile_utils import load_compile_cache, save_compile_cache
 from proteinfoundation.utils.torch_utils import apply_torch_deterministic
@@ -753,7 +753,7 @@ def main_hydra(cfg: DictConfig) -> None:
     """
     load_dotenv()
 
-    from foundry.utils.logging import silence_warnings
+    from proteinfoundation.utils.logging import silence_warnings
 
     silence_warnings()
 

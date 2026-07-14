@@ -36,6 +36,6 @@ def test_entrypoint_resolves_its_config_dir(entrypoint: str):
         timeout=300,
     )
     combined = proc.stdout + proc.stderr
-    assert "Primary config directory not found" not in combined, (
-        f"{entrypoint} cannot find configs/:\n{combined[-500:]}"
-    )
+    assert (
+        "Primary config directory not found" not in combined
+    ), f"{entrypoint} cannot find configs/:\n{combined[-500:]}"

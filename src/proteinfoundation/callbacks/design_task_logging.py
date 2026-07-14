@@ -6,7 +6,7 @@ import lightning as L
 import wandb
 from beartype.typing import Any
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

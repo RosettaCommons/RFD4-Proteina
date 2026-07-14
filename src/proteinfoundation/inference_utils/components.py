@@ -5,11 +5,11 @@ import numpy as np
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
 from biotite.structure import AtomArray
 
-from foundry.common import exists
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.common import exists
 from proteinfoundation.utils.constants import (
     TIP_BY_RESTYPE,
 )
+from proteinfoundation.utils.ddp import RankedLogger
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
 sequence_encoding = AF3SequenceEncoding()

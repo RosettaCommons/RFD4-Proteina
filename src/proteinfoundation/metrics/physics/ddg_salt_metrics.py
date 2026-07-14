@@ -21,9 +21,9 @@ from typing import Any
 import numpy as np
 from biotite.structure import AtomArray
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_CRD
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

@@ -15,9 +15,9 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import torch  # noqa: E402
 
-from foundry.utils.ddp import RankedLogger  # noqa: E402
-from foundry.utils.env import load_dotenv  # noqa: E402
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
+from proteinfoundation.utils.ddp import RankedLogger  # noqa: E402
+from proteinfoundation.utils.env import load_dotenv  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -132,7 +132,7 @@ def load_dataloader(cfg: object) -> object:
     Load dataloader from dataset config using new atomworks pipeline.
     Matches training's approach EXACTLY - uses assemble_distributed_loader.
     """
-    from foundry.utils.datasets import (
+    from proteinfoundation.utils.datasets import (
         assemble_distributed_loader,
         recursively_instantiate_datasets_and_samplers,
     )

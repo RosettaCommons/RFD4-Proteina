@@ -3,8 +3,8 @@ import pandas as pd
 import torch
 from beartype.typing import Any
 
-from foundry.utils.logging import print_df_as_table
-from foundry.utils.torch import Timers
+from proteinfoundation.utils.logging import print_df_as_table
+from proteinfoundation.utils.torch import Timers
 
 
 class LightningTimingCallback(L.Callback):

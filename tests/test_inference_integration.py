@@ -35,15 +35,15 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 from pydantic_core._pydantic_core import ValidationError
 
-from foundry.testing import gpu  # noqa: F401
-from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
 from proteinfoundation.generate import (
     get_contig_or_design_problem_dataset,
     run_generation,
 )
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset
+from proteinfoundation.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
+from tests.helpers import gpu  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Constants
