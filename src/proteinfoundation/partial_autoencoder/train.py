@@ -28,6 +28,9 @@ from foundry.utils.weights import (
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project (where `.project-root` is located)  # noqa: E501
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+# Absolute, so the entrypoint works regardless of where it sits under src/.
+_config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
+
 from foundry.utils.datasets import (  # noqa: E402
     assemble_distributed_loader,
     assemble_val_loader_dict,
@@ -272,7 +275,7 @@ def store_n_log_configs(
 
 @hydra.main(
     version_base=None,
-    config_path="../../configs",
+    config_path=_config_path,
     config_name="training_ae",
 )
 def main(cfg_exp: DictConfig) -> None:

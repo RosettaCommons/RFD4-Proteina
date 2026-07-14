@@ -78,7 +78,7 @@ def test_gradient_coverage(tmp_path: Path) -> None:
 
     cmd = [
         PYTHON,
-        "proteinfoundation/train.py",
+        "src/proteinfoundation/train.py",
         "experiment=sota",
         f"run_name_={RUN_NAME}",
         "+single=true",  # forces 1 GPU, 1 node
