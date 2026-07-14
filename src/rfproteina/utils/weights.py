@@ -204,7 +204,8 @@ def load_weights_with_policies(
                 raise WeightLoadingError(f"Parameter '{name}' not found in checkpoint")
             if len(current_param.shape) != len(checkpoint_param.shape):
                 raise WeightLoadingError(
-                    f"Different dimensions for '{name}': model {len(current_param.shape)}D vs checkpoint {len(checkpoint_param.shape)}D"
+                    f"Different dimensions for '{name}': model {len(current_param.shape)}D vs "
+                    f"checkpoint {len(checkpoint_param.shape)}D"
                 )
 
             # Copy where shapes match, zero-init the rest
@@ -231,7 +232,8 @@ def load_weights_with_policies(
         except WeightLoadingError as e:
             # Primary policy failed, try fallback
             ranked_logger.warning(
-                f"Failed to apply policy: '{policy}' to '{name}': {e!s}. Falling back to policy: '{config.fallback_policy}'."
+                f"Failed to apply policy: '{policy}' to '{name}': {e!s}. "
+                f"Falling back to policy: '{config.fallback_policy}'."
             )
             result = _apply_policy(name, current_param, checkpoint_param, config.fallback_policy)
             updated_state[name] = result

@@ -19,7 +19,7 @@ def is_rank_zero() -> bool:
     return get_current_rank() == 0
 
 
-def set_accelerator_based_on_availability(cfg: dict | DictConfig):
+def set_accelerator_based_on_availability(cfg: dict | DictConfig) -> dict | DictConfig:
     """Set training accelerator to CPU if no GPUs are available.
 
     Args:

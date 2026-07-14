@@ -27,7 +27,6 @@ ENTRYPOINTS = [
     "src/rfproteina/evaluate.py",
     "src/rfproteina/external_eval.py",
     "src/rfproteina/partial_autoencoder/train.py",
-    "src/rfproteina/prepare_mpnn.py",
 ]
 
 

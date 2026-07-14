@@ -13,7 +13,7 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-from beartype.typing import Any, Sequence
+from beartype.typing import Any, Iterator, Sequence
 from toolz import valmap
 from torch import Tensor
 from torch._prims_common import DeviceLikeType
@@ -68,18 +68,16 @@ def map_to(
             lambda v: map_to(v, device=device, dtype=dtype, non_blocking=non_blocking, **to_kwargs),
             x,
         )
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, list | tuple):
         return type(x)(
-            map(
-                lambda v: map_to(
-                    v,
-                    device=device,
-                    dtype=dtype,
-                    non_blocking=non_blocking,
-                    **to_kwargs,
-                ),
-                x,
+            map_to(
+                v,
+                device=device,
+                dtype=dtype,
+                non_blocking=non_blocking,
+                **to_kwargs,
             )
+            for v in x
         )
     elif isinstance(x, Tensor):
         return x.to(device=device, dtype=dtype, non_blocking=non_blocking, **to_kwargs)
@@ -117,7 +115,7 @@ def _assert_no_nans(x: Any, *, msg: str = "", fail_if_not_tensor: bool = False) 
                 msg=".".join(filter(bool, [msg, k])),
                 fail_if_not_tensor=fail_if_not_tensor,
             )
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, list | tuple):
         for idx, v in enumerate(x):
             _assert_no_nans(
                 v,
@@ -132,7 +130,7 @@ assert_no_nans = _assert_no_nans if should_check_nans else do_nothing
 
 
 @contextmanager
-def _suppress_tracer_warnings():
+def _suppress_tracer_warnings() -> Iterator[None]:
     """
     Context manager to temporarily suppress known warnings in torch.jit.trace().
     Note: Cannot use catch_warnings because of https://bugs.python.org/issue29672
@@ -146,7 +144,7 @@ def _suppress_tracer_warnings():
     warnings.filters.remove(tracer_warning_filter)
 
 
-def assert_shape(tensor: Tensor, ref_shape: Sequence[int | None]):
+def assert_shape(tensor: Tensor, ref_shape: Sequence[int | None]) -> None:
     """
     Assert that the shape of a tensor matches the given list of integers.
     None indicates that the size of a dimension is allowed to vary.
@@ -221,7 +219,7 @@ class Timer:
         use_barrier (bool, optional): Whether to use synchronization barriers. Defaults to True.
     """
 
-    def __init__(self, name, use_barrier: bool = True):
+    def __init__(self, name: str, use_barrier: bool = True):
         self.name_ = name
         self.elapsed_ = 0.0
         self.started_ = False
@@ -284,7 +282,7 @@ class Timers:
     def __init__(self):
         self.timers = {}
 
-    def __call__(self, name, use_barrier: bool = True) -> Timer:
+    def __call__(self, name: str, use_barrier: bool = True) -> Timer:
         """Get or create a Timer object."""
         if name not in self.timers:
             self.timers[name] = Timer(name, use_barrier=use_barrier)

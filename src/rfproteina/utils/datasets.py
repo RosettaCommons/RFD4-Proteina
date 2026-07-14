@@ -54,8 +54,10 @@ def wrap_dataset_and_sampler_with_fallbacks(
     Args:
         dataset_to_be_wrapped (Dataset): The main dataset to be wrapped.
         sampler_to_be_wrapped (Sampler): The main sampler to be wrapped.
-        dataset_to_fallback_to (Dataset): The fallback dataset. We will sample from this dataset if the main dataset fails.
-        sampler_to_fallback_to (Sampler): The fallback sampler. We will sample from this sampler if the main sampler fails.
+        dataset_to_fallback_to (Dataset): The fallback dataset. We will sample from this dataset if the
+            main dataset fails.
+        sampler_to_fallback_to (Sampler): The fallback sampler. We will sample from this sampler if the
+            main sampler fails.
         n_fallback_retries (int): Number of retries for the fallback mechanism before raising an exception.
 
     Returns:
@@ -129,9 +131,10 @@ def recursively_instantiate_datasets_and_samplers(cfg: DictConfig | dict, name: 
 
     We must handle three cases:
         (1) A single "leaf" dataset (e.g., "distillation"), specified with the "dataset" key
-        (2) Multiple sub-datasets that should be concatenated together with their weights (e.g., "interfaces" and "pn_units"),
-            specified with the "sub_datasets" key
-        (3) Multiple "leaf" datasets that should be sampled from with a certain probability (e.g., "distillation" and "pdb"),
+        (2) Multiple sub-datasets that should be concatenated together with their weights (e.g.,
+            "interfaces" and "pn_units"), specified with the "sub_datasets" key
+        (3) Multiple "leaf" datasets that should be sampled from with a certain probability (e.g.,
+            "distillation" and "pdb"),
 
     Args:
         cfg (DictConfig): Configuration dictionary defining datasets and their parameters.
@@ -252,8 +255,9 @@ def assemble_distributed_loader(
             shuffle=shuffle,
             drop_last=drop_last,
         )
-    elif isinstance(sampler, (RandomSampler, WeightedRandomSampler, SequentialSampler)):
-        # (If given a RandomSampler, WeightedRandomSampler, or SequentialSampler, we must convert to a DistributedSampler)
+    elif isinstance(sampler, RandomSampler | WeightedRandomSampler | SequentialSampler):
+        # (If given a RandomSampler, WeightedRandomSampler, or SequentialSampler, we must convert to a
+        # DistributedSampler)
         assert (
             rank is not None and world_size is not None
         ), "Rank and world_size must be provided for RandomSampler, WeightedRandomSampler, or SequentialSampler"
@@ -273,7 +277,7 @@ def assemble_distributed_loader(
             rank is None and world_size is None
         ), "Rank and world_size will have no effect on the provided sampler and should be None"
         assert isinstance(
-            sampler, (DistributedSampler, DistributedMixedSampler)
+            sampler, DistributedSampler | DistributedMixedSampler
         ), "Invalid sampler type for distributed training."
 
     # ... wrap the composed dataset and sampler with a fallback mechanism, if needed
@@ -327,10 +331,13 @@ def assemble_val_loader_dict(
     (i.e., avoid a situation where one GPU is allocated all small examples and another all large examples).
 
     Args:
-        cfg (DictConfig): Configuration dictionary defining the validation datasets. Each key should correspond to a dataset name.
+        cfg (DictConfig): Configuration dictionary defining the validation datasets. Each key should
+            correspond to a dataset name.
         rank (int, optional): The rank of the current process in distributed training. Defaults to 0.
-        world_size (int, optional): The total number of processes participating in the distributed training. Defaults to 1.
-        loader_cfg (DictConfig, optional): Additional configuration parameters for the DataLoader, such as `batch_size` and `num_workers`. Defaults to None.
+        world_size (int, optional): The total number of processes participating in the distributed
+            training. Defaults to 1.
+        loader_cfg (DictConfig, optional): Additional configuration parameters for the DataLoader, such
+            as `batch_size` and `num_workers`. Defaults to None.
     """
     # ... loop through the validation datasets and create a DataLoader for each, preserving the dataset name
     val_loaders = {}
