@@ -21,7 +21,7 @@ ckpt_name: ???
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
-inputs: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/monomer.json
+inputs: ${oc.env:PROJECT_ROOT}/benchmarks/monomer.json
 subset_to_examples: monomer-short
 
 num_replicates: 2

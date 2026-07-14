@@ -175,7 +175,7 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}/src:${repo_root}/models/rf3/src:${repo_root}/projects/proteinfoundation:${repo_root}/lib/atomworks/src:$PYTHONPATH"
+    export PYTHONPATH="${repo_root}/projects/proteinfoundation:${repo_root}/projects/proteinfoundation/lib/atomworks/src:$PYTHONPATH"
     echo "PYTHONPATH set to include foundry, rf3, proteinfoundation, atomworks"
 }
 
@@ -703,19 +703,18 @@ build_container_env_cmds() {
 
 # Copy codebase to a target directory (used by launch_infer.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
-# Copies src, models/rf3, lib/atomworks, projects/proteinfoundation, configs, and .ipd.
+# Copies projects/proteinfoundation (incl. the vendored foundry pkg and lib/atomworks) and .ipd.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
 copy_code_to_dir() {
     local repo_root="$1"
     local code_dir="$2"
     local cluster="${3:-}"
 
-    mkdir -p "$code_dir"
-    rsync -a --no-compress "$repo_root/src/" "$code_dir/src/"
-    mkdir -p "$code_dir/models/rf3" && rsync -a --no-compress "$repo_root/models/rf3/src/" "$code_dir/models/rf3/src/"
-    mkdir -p "$code_dir/lib/atomworks" && rsync -a --no-compress "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
-
-    mkdir -p "$code_dir/projects/proteinfoundation"
+    mkdir -p "$code_dir/projects/proteinfoundation/lib/atomworks"
+    rsync -a --no-compress \
+        "$repo_root/projects/proteinfoundation/lib/atomworks/src/" "$code_dir/projects/proteinfoundation/lib/atomworks/src/"
+    rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
+        "$repo_root/projects/proteinfoundation/foundry/" "$code_dir/projects/proteinfoundation/foundry/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/projects/proteinfoundation/proteinfoundation/" "$code_dir/projects/proteinfoundation/proteinfoundation/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \

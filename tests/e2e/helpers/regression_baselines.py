@@ -48,10 +48,6 @@ def _resolve_sota_ckpt_path() -> Path | None:
 # s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/. Baselines are regenerated against this
 # exact file (see script_utils/generate_e2e_baselines.py); to advance SOTA, edit inference.yaml.
 SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
-RF3_CKPT_PATH = (
-    Path(_DATA_PATH) / "rf3_checkpoints" / "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt" if _DATA_PATH else None
-)
-
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
@@ -108,12 +104,6 @@ def require_sota_ckpt() -> None:
         )
 
 
-def require_rf3_ckpt() -> None:
-    if RF3_CKPT_PATH is None:
-        pytest.fail("DATA_PATH is not set; cannot resolve $DATA_PATH/rf3_checkpoints/")
-    if not RF3_CKPT_PATH.is_file():
-        pytest.fail(f"RF3 checkpoint not found: {RF3_CKPT_PATH}")
-
 
 def load_baseline_losses(name: str) -> list[float]:
     """Load reference step losses from baselines/<name>/losses.json.
@@ -145,7 +135,7 @@ def find_inference_cif(out_dir: Path, example_id: str, kind: str) -> Path:
     """Glob for a designed or refolded CIF under out_dir.
 
     Args:
-        kind: ``"generated"``, ``"rf3_refolded"``, or ``"af3_refolded"``.
+        kind: ``"generated"`` or ``"af3_refolded"``.
     """
     pattern = f"**/*{example_id}*_{kind}.cif"
     matches = list(out_dir.rglob(f"*{example_id}*_{kind}.cif"))
@@ -171,7 +161,7 @@ def find_oracle_refolded_cif(out_dir: Path, oracle_name: str) -> Path:
 
     Args:
         out_dir: The ``out_dir`` passed to evaluate.py.
-        oracle_name: Oracle label, e.g. ``"rf3"`` or ``"af3"``.
+        oracle_name: Oracle label, e.g. ``"af3"``.
     """
     matches = sorted((out_dir / "evaluation_samples").rglob(f"*_{oracle_name}_refolded.cif"))
     if not matches:

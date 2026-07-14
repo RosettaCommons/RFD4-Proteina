@@ -146,7 +146,7 @@ RNA_MSA_DIRS_ENV_VAR = "RNA_MSA_DIRS"
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 # Config path
-CATH_MAPPING_PATH = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/data/cath_label_mapping.pkl")
+CATH_MAPPING_PATH = os.path.join(os.environ["PROJECT_ROOT"], "data/cath_label_mapping.pkl")
 
 logger = logging.getLogger(__name__)
 

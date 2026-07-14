@@ -61,8 +61,8 @@ from biotite.structure import AtomArray, get_residue_starts, superimpose
 # Constants and configuration
 # ---------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-BENCHMARKS_ROOT = REPO_ROOT / "projects/proteinfoundation/benchmarks"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]  # projects/proteinfoundation
+BENCHMARKS_ROOT = PROJECT_ROOT / "benchmarks"
 
 # Canonical benchmark directories to process.
 BENCHMARK_DIRS = [
@@ -986,7 +986,7 @@ def update_configs(replacements: dict[str, str]) -> int:
         if new_text != text:
             cfg_path.write_text(new_text)
             n_updated += 1
-            print(f"  Updated config: {cfg_path.relative_to(REPO_ROOT)}")
+            print(f"  Updated config: {cfg_path.relative_to(PROJECT_ROOT)}")
     return n_updated
 
 
@@ -1146,15 +1146,15 @@ def write_failure_report(
             lines.append("")
 
     FAILURE_REPORT_PATH.write_text("\n".join(lines) + "\n")
-    print(f"\nWrote report to {FAILURE_REPORT_PATH.relative_to(REPO_ROOT)}")
+    print(f"\nWrote report to {FAILURE_REPORT_PATH.relative_to(PROJECT_ROOT)}")
 
 
 def debug_one(benchmark_path: Path, rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
     """Convert a single file, letting all exceptions propagate for full tracebacks."""
-    rel = benchmark_path.relative_to(REPO_ROOT)
+    rel = benchmark_path.relative_to(PROJECT_ROOT)
     print(f"Debug converting: {rel}")
     output_path = convert_one(benchmark_path, rcsb_pdb_dir, reparsed_pdb_dir)
-    print(f"  OK → {output_path.relative_to(REPO_ROOT)}")
+    print(f"  OK → {output_path.relative_to(PROJECT_ROOT)}")
 
 
 def main(rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
@@ -1176,11 +1176,11 @@ def main(rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
         if duplicate_dir.exists():
             shutil.rmtree(duplicate_dir)
             deleted_dirs.append(duplicate_dir)
-            print(f"  Deleted {duplicate_dir.relative_to(REPO_ROOT)}/")
+            print(f"  Deleted {duplicate_dir.relative_to(PROJECT_ROOT)}/")
 
     missing_dirs = [d for d in BENCHMARK_DIRS if not d.exists()]
     for d in missing_dirs:
-        print(f"  WARNING: benchmark dir not found: {d.relative_to(REPO_ROOT)}/")
+        print(f"  WARNING: benchmark dir not found: {d.relative_to(PROJECT_ROOT)}/")
 
     # Remove any .cif that has a co-located .pdb with the same stem; the PDB is the original
     # After this workflow, only the converted CIFs should remain
@@ -1192,7 +1192,7 @@ def main(rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
             cif_file = pdb_file.with_suffix(".cif")
             if cif_file.exists():
                 cif_file.unlink()
-                print(f"  Deleted {cif_file.relative_to(REPO_ROOT)}")
+                print(f"  Deleted {cif_file.relative_to(PROJECT_ROOT)}")
 
     all_files, skipped = collect_files(BENCHMARK_DIRS)
     print(f"\nFound {len(all_files)} files to process ({len(skipped)} skipped before processing)")
@@ -1201,7 +1201,7 @@ def main(rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
     pdb_to_cif: dict[Path, Path] = {}
 
     for benchmark_path in all_files:
-        rel = benchmark_path.relative_to(REPO_ROOT)
+        rel = benchmark_path.relative_to(PROJECT_ROOT)
         try:
             output_path = convert_one(benchmark_path, rcsb_pdb_dir, reparsed_pdb_dir)
             print(f"  OK   {rel}")
@@ -1240,7 +1240,7 @@ def main(rcsb_pdb_dir: str, reparsed_pdb_dir: str | None) -> None:
 
     n_success = len(all_files) - len(failures)
     print(f"\n{n_success}/{len(all_files)} succeeded, {len(failures)} failed, {len(skipped)} skipped.")
-    print(f"Report: {FAILURE_REPORT_PATH.relative_to(REPO_ROOT)}")
+    print(f"Report: {FAILURE_REPORT_PATH.relative_to(PROJECT_ROOT)}")
     print("Done.")
 
 

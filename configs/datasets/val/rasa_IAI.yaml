@@ -3,7 +3,7 @@ compute_loss: true
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
 
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/paper_model_rasa_inference/annotated_cifs
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/benchmarks/paper_model_rasa_inference/annotated_cifs
 
   num_replicates: 200
 

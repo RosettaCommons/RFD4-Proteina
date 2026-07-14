@@ -3,7 +3,7 @@ compute_loss: true
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 
-  data: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/rfd3_paper_benchmark_on_rcsb_crops.yaml  
+  data: ${oc.env:PROJECT_ROOT}/benchmarks/rfd3_paper_benchmark_on_rcsb_crops.yaml  
   name: paper_PPI
   subset_to_keys: null
 

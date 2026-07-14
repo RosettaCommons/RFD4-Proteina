@@ -9,10 +9,23 @@ from einops import rearrange
 from jaxtyping import Float
 from opt_einsum import contract as einsum
 
-from rf3.util_module import init_lecun_normal
 
 # from foundry import SHOULD_USE_CUEQUIVARIANCE
 # from foundry.training.checkpoint import activation_checkpointing
+
+def init_lecun_normal(module: nn.Module, scale: float = 1.0) -> nn.Module:
+    """Re-initialize ``module.weight`` from a truncated (|z| < 2) LeCun normal."""
+    stddev = math.sqrt(scale / module.weight.shape[-1]) / 0.87962566103423978
+
+    normal = torch.distributions.normal.Normal(0, 1)
+    lo, hi = normal.cdf(torch.tensor(-2.0)), normal.cdf(torch.tensor(2.0))
+    p = lo + (hi - lo) * torch.rand(module.weight.shape)
+    v = torch.clamp(2 * p - 1, -1 + 1e-8, 1 - 1e-8)
+    x = torch.clamp(math.sqrt(2) * torch.erfinv(v), -2, 2)
+
+    module.weight = nn.Parameter(stddev * x)
+    return module
+
 
 # Check DISABLE_CUEQUIVARIANCE env var (set to 'true' to disable fused kernels)
 _disable_env = os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower()

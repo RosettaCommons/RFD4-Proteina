@@ -10,10 +10,10 @@ from atomworks.ml.transforms.encoding import atom_array_from_encoding, atom_arra
 from atomworks.ml.transforms.filters import remove_protein_terminal_oxygen
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
-from projects.proteinfoundation.proteinfoundation.utils.coordinate_transfer import (
+from proteinfoundation.utils.coordinate_transfer import (
     copy_generated_coordinates_to_input,
 )
-from projects.proteinfoundation.tests.pipeline.test_pipeline_invariants import (
+from tests.pipeline.test_pipeline_invariants import (
     GLOBAL_DESIGN_TASK_KWARGS,
     parse_and_run_pipeline,
 )
