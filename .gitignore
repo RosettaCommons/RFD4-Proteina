@@ -248,8 +248,8 @@ tests/data/pdb/*
 
 # Benchmarks (except proteinfoundation benchmarks which are source-controlled)
 **/benchmarks/
-!benchmarks
-!benchmarks/**
+!data/benchmarks
+!data/benchmarks/**
 !.ipd/benchmarks
 !.ipd/benchmarks/**
 
@@ -268,7 +268,7 @@ tests/data/pdb/*
 # Exceptions
 !.ipd/apptainer/latent-dev.sif
 # CCD benchmark files (extracted from ccd.tar.gz)
-benchmarks/ccd/*.cif
+data/benchmarks/ccd/*.cif
 
 #backup
 .merge_backup_*

@@ -11,7 +11,7 @@ import yaml
 # ── Paths ──────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # repo root
 SWEEP_PY = PROJECT_ROOT / "src" / "script_utils" / "sweep.py"
-SLURM_DIR = PROJECT_ROOT / "slurm_utils"
+SLURM_DIR = PROJECT_ROOT / "scripts"
 CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 # Add script_utils to path so we can import sweep

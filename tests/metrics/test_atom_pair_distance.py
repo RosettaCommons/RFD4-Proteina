@@ -8,7 +8,7 @@ from proteinfoundation.metrics.atom_pair_distance_metric import AtomPairDistance
 
 
 def test_lenacap_reference_satisfies_catalytic_distance_constraints():
-    cif_path = Path(__file__).resolve().parents[2] / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -48,7 +48,7 @@ def test_lenacap_reference_satisfies_catalytic_distance_constraints():
 
 
 def test_atom_a_and_b_options_use_minimum_pair_distance():
-    cif_path = Path(__file__).resolve().parents[2] / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -74,7 +74,7 @@ def test_atom_a_and_b_options_use_minimum_pair_distance():
 
 def test_missing_atoms_yield_inf_distance_not_crash():
     """When a constrained atom is missing, the constraint is violated (inf distance, zero soft score)."""
-    cif_path = Path(__file__).resolve().parents[2] / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
     atom_array.res_name[atom_array.res_name == "ASP"] = "ALA"
 
@@ -99,7 +99,7 @@ def test_missing_atoms_yield_inf_distance_not_crash():
 
 
 def test_soft_min_score_decays_linearly_past_threshold():
-    cif_path = Path(__file__).resolve().parents[2] / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(

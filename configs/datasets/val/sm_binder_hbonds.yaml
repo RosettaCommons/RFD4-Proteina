@@ -4,7 +4,7 @@ dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/benchmarks/sm_binder_hbonds.json
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/sm_binder_hbonds.json
   name: sm_binder_hbonds-design
   subset_to_keys:
     - FAD

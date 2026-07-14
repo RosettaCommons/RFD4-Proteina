@@ -16,7 +16,7 @@ import pytest
 
 from tests.e2e.helpers.gpu_e2e import ROOT
 
-SLURM_UTILS = ROOT / "slurm_utils"
+SLURM_UTILS = ROOT / "scripts"
 
 LAUNCHERS = [
     "launch_train_latents.sh",

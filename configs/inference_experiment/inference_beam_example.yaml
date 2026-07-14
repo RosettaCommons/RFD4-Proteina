@@ -8,7 +8,7 @@
 #   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
 #
 # Usage:
-#   ./slurm_utils/launch_infer.sh coreweave gen_njobs=2 \
+#   ./scripts/launch_infer.sh coreweave gen_njobs=2 \
 #       --config-name inference_experiment/inference_beam_example \
 #       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
 
@@ -21,7 +21,7 @@ ckpt_name: ???
 
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
-inputs: ${oc.env:PROJECT_ROOT}/benchmarks/monomer.json
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer.json
 subset_to_examples: monomer-short
 
 num_replicates: 2

@@ -8,7 +8,7 @@
 
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
-  data: ${oc.env:PROJECT_ROOT}/benchmarks/dna_binder_120_150_campaign.json
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/dna_binder_120_150_campaign.json
   name: dna_binder_120_150_helicity
   subset_to_keys:
     - TATA_120_150

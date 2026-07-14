@@ -2,8 +2,8 @@
 # ROOT_REMOTE="/path/to/shared/storage"
 
 # User specific variables in the user_info file. Create file and fill in with your info following 
-# the ./slurm_utils/.user_info_example file
-source ./slurm_utils/.user_info
+# the ./scripts/.user_info_example file
+source ./scripts/.user_info
 
 
 # This script takes in two or three arguemtns (in order) with the second one being optional

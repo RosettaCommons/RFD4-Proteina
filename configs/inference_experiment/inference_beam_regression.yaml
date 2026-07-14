@@ -9,7 +9,7 @@ defaults:
   - inference_like_rfd3
   - _self_
 
-inputs: ${oc.env:PROJECT_ROOT}/benchmarks/monomer.json
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer.json
 subset_to_examples: monomer-short
 
 metrics_tags: [design]

@@ -79,7 +79,7 @@ Add the following to `~/.bashrc` or `~/.zshrc`, setting `CLUSTER` to whichever c
 
 ```bash
 # Cluster identity for proteinfoundation SLURM launch scripts.
-# CLUSTER selects which slurm_utils/.user_info_<cluster> config is loaded.
+# CLUSTER selects which scripts/.user_info_<cluster> config is loaded.
 # CONTAINER_TYPE is 'apptainer' (DIGS/CoreWeave) or 'docker' (OCI/ORD/GB200).
 export CLUSTER=digs
 export CONTAINER_TYPE=apptainer
@@ -89,7 +89,7 @@ Then reload: `source ~/.bashrc`
 
 ### 6. SLURM cluster config
 
-A `.user_info_<cluster>` file (in `slurm_utils/`) holds your SLURM settings (partition, runtime, WandB key, etc.). `setup.sh` creates one automatically from the example template. For most inference workflows no changes are needed; edit it if you need to customise partitions, runtimes, or other SLURM options.
+A `.user_info_<cluster>` file (in `scripts/`) holds your SLURM settings (partition, runtime, WandB key, etc.). `setup.sh` creates one automatically from the example template. For most inference workflows no changes are needed; edit it if you need to customise partitions, runtimes, or other SLURM options.
 
 ### 7. Checkpoints
 
@@ -156,9 +156,9 @@ For easy cluster submission via SLURM launch scripts, see [Cluster Launching (SL
 
 ## Cluster Launching (SLURM)
 
-The `slurm_utils/` scripts handle submitting `generate.py` as SLURM jobs. All standard command-line options can be passed as usual. After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file.
+The `scripts/` scripts handle submitting `generate.py` as SLURM jobs. All standard command-line options can be passed as usual. After generation, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file.
 
-Default SLURM settings (partition, runtime, etc.) are read from `slurm_utils/.user_info_<cluster>`, which `setup.sh` creates automatically. Any setting can be overridden per-invocation with CLI flags — if not specified, the `.user_info_<cluster>` default is used.
+Default SLURM settings (partition, runtime, etc.) are read from `scripts/.user_info_<cluster>`, which `setup.sh` creates automatically. Any setting can be overridden per-invocation with CLI flags — if not specified, the `.user_info_<cluster>` default is used.
 
 ### SLURM option overrides
 
@@ -179,7 +179,7 @@ Default SLURM settings (partition, runtime, etc.) are read from `slurm_utils/.us
 
 ```bash
 # 4 replicates over a subset of an input file, split across 2 jobs
-./slurm_utils/launch_infer.sh digs --njobs 2 \
+./scripts/launch_infer.sh digs --njobs 2 \
     inference_experiment=inference_like_rfd3 \
     inputs=/path/to/benchmarks/monomer.json subset_to_examples=monomer-short \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
@@ -191,7 +191,7 @@ Generation parameters (nsteps, noise scales, etc.) live in the `inference_experi
 To keep a config outside the repo, store it anywhere and load it with the same two Hydra flags `generate.py` uses — `--config-path <dir>` and `--config-name <stem>`:
 
 ```bash
-./slurm_utils/launch_infer.sh digs --njobs 2 \
+./scripts/launch_infer.sh digs --njobs 2 \
     --config-path /abs/path/to/config/dir --config-name my_experiment
 ```
 
@@ -203,13 +203,13 @@ Run the same pipeline across many parameter combinations, with one SLURM job per
 
 ```bash
 # Sweep nsteps × noise scale on a val set (Foldseek clustering on by default)
-./slurm_utils/launch_sweep.sh digs \
+./scripts/launch_sweep.sh digs \
     --sweep-config configs/sweeps/sweep_example.yaml \
     --base-out-dir /path/to/out_dir --njobs 2 \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
 
 # Preview configs without submitting
-./slurm_utils/launch_sweep.sh digs \
+./scripts/launch_sweep.sh digs \
     --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 ```
 
@@ -221,7 +221,7 @@ Search strategies are selected via `inference_experiment` configs. Beam search i
 
 ```bash
 # Beam search with RF3 reward (parameters set in the experiment config)
-./slurm_utils/launch_infer.sh digs --njobs 2 \
+./scripts/launch_infer.sh digs --njobs 2 \
     inference_experiment=inference_beam_example \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
     out_dir=/path/to/outputs

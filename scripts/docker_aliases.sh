@@ -3,7 +3,7 @@
 # docker_aliases.sh - Interactive container launch functions
 # =============================================================================
 # Source this file in your ~/.bashrc to get convenient docker launch commands:
-#   source /path/to/slurm_utils/docker_aliases.sh
+#   source /path/to/scripts/docker_aliases.sh
 #
 # Available commands:
 #   complexadocker [code_dir]  - Launch Complexa container for protein-foundation-models

@@ -2,7 +2,7 @@ compute_loss: true
 
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/benchmarks/ss_conditioned_proteina
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/ss_conditioned_proteina
 
   num_replicates: 200
 

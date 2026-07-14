@@ -16,7 +16,7 @@ import pytest
 
 EV_TO_KCAL = 23.0609
 
-MCL1_DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "benchmarks", "mcl1_rbfe")
+MCL1_DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "benchmarks", "mcl1_rbfe")
 
 
 @pytest.fixture(scope="module")

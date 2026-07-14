@@ -4,7 +4,7 @@ dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/benchmarks/motif_scaffold_aa_tasks_unindexed.json  
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffold_aa_tasks_unindexed.json  
   name: unindexed_motif_scaffold_full
   
   num_replicates: 100

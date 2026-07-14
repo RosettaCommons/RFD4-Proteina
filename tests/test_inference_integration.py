@@ -50,7 +50,7 @@ from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BENCHMARKS_DIR = PROJECT_ROOT / "benchmarks"
+BENCHMARKS_DIR = PROJECT_ROOT / "data" / "benchmarks"
 _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
 
