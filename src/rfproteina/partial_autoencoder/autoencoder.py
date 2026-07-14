@@ -20,14 +20,14 @@ from rfproteina.partial_autoencoder.latent_viz_utils import (
     plot_latent_projection_with_labels,
     project_latents_2d,
 )
-from rfproteina.utils.coors_utils import nm_to_ang
+from rfproteina.utils.coors import nm_to_ang
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.structure_export import (
     process_single_sample_to_atom_array,
     write_generated_structure_cif,
     write_input_structure_cif,
 )
-from rfproteina.utils.torch_compile_utils import maybe_mark_cudagraph_step_begin
+from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

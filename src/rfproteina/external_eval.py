@@ -38,7 +38,7 @@ from rfproteina.transforms.unindexing import (
     annotate_unindexed_insertion,
     find_optimal_insertion_points_for_unindexed_regions,
 )
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.logging import RankedLogger
 from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC

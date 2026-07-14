@@ -40,7 +40,7 @@ from rfproteina.metrics.oracles.oracle_metric import (
 )
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY

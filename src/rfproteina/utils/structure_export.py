@@ -26,7 +26,7 @@ from rfproteina.transforms.utils.conditioning_utils import (
 )
 from rfproteina.utils.coordinate_transfer import copy_generated_coordinates_to_input
 from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.pdb_utils import _prepare_bondless_atom_array_for_cif
+from rfproteina.utils.pdb import _prepare_bondless_atom_array_for_cif
 from rfproteina.utils.standard_annotations import SA_CWI
 
 logger = RankedLogger(__name__, rank_zero_only=True)

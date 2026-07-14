@@ -161,7 +161,7 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         try:
             import loralib as lora
 
-            from rfproteina.utils.lora_utils import replace_lora_layers
+            from rfproteina.utils.lora import replace_lora_layers
 
             lora_r = cfg_exp.lora.r
             lora_alpha = cfg_exp.lora.lora_alpha
