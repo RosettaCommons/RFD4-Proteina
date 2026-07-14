@@ -1,5 +1,5 @@
 set_sampler_epoch_callback:
-    _target_: rfproteina.utils.sampler_callback.SetSamplerEpochCallback
+    _target_: rfproteina.callbacks.sampler_epoch.SetSamplerEpochCallback
 
 skip_nan_grad_callback:
     _target_: rfproteina.utils.training_analysis_utils.SkipNanGradCallback

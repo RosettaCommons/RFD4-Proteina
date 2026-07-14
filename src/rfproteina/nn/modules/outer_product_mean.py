@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-# from rfproteina.utils.checkpoint import activation_checkpointing
+# from rfproteina.utils.activation_checkpointing import activation_checkpointing
 
 
 class OuterProductMean_AF3(nn.Module):

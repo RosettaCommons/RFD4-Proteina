@@ -31,17 +31,17 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # Absolute, so the entrypoint works regardless of where it sits under src/.
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
+from rfproteina.callbacks.rank_seed import RankSeedCallback  # noqa: E402
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 from rfproteina.utils.datasets import (  # noqa: E402
     assemble_distributed_loader,
     assemble_val_loader_dict,
     recursively_instantiate_datasets_and_samplers,
 )
-from rfproteina.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
-from rfproteina.utils.instantiators import instantiate_callbacks  # noqa: E402
-from rfproteina.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
+from rfproteina.utils.hydra import instantiate_callbacks  # noqa: E402
 from rfproteina.utils.simple_ema import EMAModelCheckpoint  # noqa: E402
-from rfproteina.utils.torch_utils import apply_torch_deterministic  # noqa: E402
+from rfproteina.utils.torch import apply_torch_deterministic  # noqa: E402
+from rfproteina.utils.weights import fetch_last_ckpt  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
