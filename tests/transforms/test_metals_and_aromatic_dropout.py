@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from proteinfoundation.datapipes.pipeline import DropoutAromaticFlag
-from proteinfoundation.transforms.metals import DropoutCoordinationBonds
+from rfproteina.datapipes.pipeline import DropoutAromaticFlag
+from rfproteina.transforms.metals import DropoutCoordinationBonds
 
 # ------------------------------------------------------------------------- #
 # DropoutCoordinationBonds                                                  #

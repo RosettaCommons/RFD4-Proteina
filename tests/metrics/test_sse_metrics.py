@@ -7,8 +7,8 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.utils.testing import cached_parse
 
-from proteinfoundation.conditions import C_SEC, SSEnum
-from proteinfoundation.metrics.sse_metrics import (
+from rfproteina.conditions import C_SEC, SSEnum
+from rfproteina.metrics.sse_metrics import (
     SecondaryStructureAccuracy,
     SecondaryStructureDistribution,
     annotate_secondary_structure,

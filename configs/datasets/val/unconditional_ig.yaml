@@ -1,7 +1,7 @@
 compute_loss: true
 
 dataset:
-  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
 
   data: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer_ig.json
   name: unindexed_new_pipeline
@@ -10,7 +10,7 @@ dataset:
   num_replicates: 50
 
   transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
       - unconditional_refolding

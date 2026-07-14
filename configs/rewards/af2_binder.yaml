@@ -2,7 +2,7 @@
 
 metrics:
   af2:
-    _target_: proteinfoundation.metrics.af2_metric.AF2Metric
+    _target_: rfproteina.metrics.af2_metric.AF2Metric
     model_name: model_1_ptm
     num_recycles: 3
     use_templates: false

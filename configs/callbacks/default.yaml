@@ -1,14 +1,14 @@
 set_sampler_epoch_callback:
-    _target_: proteinfoundation.utils.sampler_callback.SetSamplerEpochCallback
+    _target_: rfproteina.utils.sampler_callback.SetSamplerEpochCallback
 
 skip_nan_grad_callback:
-    _target_: proteinfoundation.utils.training_analysis_utils.SkipNanGradCallback
+    _target_: rfproteina.utils.training_analysis_utils.SkipNanGradCallback
 
 lightning_timing_callback:
-    _target_: proteinfoundation.callbacks.timing.LightningTimingCallback
+    _target_: rfproteina.callbacks.timing.LightningTimingCallback
     log_every_n: 500
 
 ema_callback:
-    _target_: proteinfoundation.utils.simple_ema.SimpleEMA
+    _target_: rfproteina.utils.simple_ema.SimpleEMA
     decay: 0.999  # EMA decay rate (higher = more weight to historical params)
     update_every_n: 1  # Update EMA every N steps (1 = every step)

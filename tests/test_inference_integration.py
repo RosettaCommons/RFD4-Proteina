@@ -1,11 +1,11 @@
-"""Integration tests for proteinfoundation inference pipeline.
+"""Integration tests for rfproteina inference pipeline.
 
 These tests exercise the full inference path end-to-end on a GPU,
 from input parsing through dataset construction, collation,
 model forward pass, and output saving.
 
 Run with:
-    pytest projects/proteinfoundation/tests/test_inference_integration.py -v
+    pytest projects/rfproteina/tests/test_inference_integration.py -v
 """
 
 import json
@@ -35,13 +35,13 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 from pydantic_core._pydantic_core import ValidationError
 
-from proteinfoundation.datapipes.pipeline import build_design_validation_pipeline
-from proteinfoundation.generate import (
+from rfproteina.datapipes.pipeline import build_design_validation_pipeline
+from rfproteina.generate import (
     get_contig_or_design_problem_dataset,
     run_generation,
 )
-from proteinfoundation.inference_utils.datasets import ContigJsonDataset
-from proteinfoundation.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
+from rfproteina.inference_utils.datasets import ContigJsonDataset
+from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
 from tests.helpers import gpu  # noqa: F401
 
@@ -746,7 +746,7 @@ class TestEndToEndInference:
         from atomworks.io.parser import STANDARD_PARSER_ARGS
         from atomworks.io.utils.io_utils import load_any
 
-        from proteinfoundation.flow_matching import product_space_flow_matcher
+        from rfproteina.flow_matching import product_space_flow_matcher
 
         input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.cif")
 

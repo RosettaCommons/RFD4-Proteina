@@ -9,7 +9,7 @@ from pathlib import Path
 
 from atomworks.io import parse
 
-from proteinfoundation.metrics.gt_structure_comparison import LigandCentroidDistanceMetric
+from rfproteina.metrics.gt_structure_comparison import LigandCentroidDistanceMetric
 
 
 def test_ligand_centroid_distance_on_self_is_zero():

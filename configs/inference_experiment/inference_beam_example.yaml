@@ -39,7 +39,7 @@ metrics_tags: [design, unconditional_refolding]
 
 search:
   strategy:
-    _target_: proteinfoundation.search.beam_search.BeamSearchStrategy
+    _target_: rfproteina.search.beam_search.BeamSearchStrategy
     step_checkpoints: [0, 100, 200, 300, 400]
     n_branch: 2
     beam_width: 3

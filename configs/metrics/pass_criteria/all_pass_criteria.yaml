@@ -5,14 +5,14 @@
 # so these criteria work regardless of which oracle (RF3 or AF3) is configured.
 
 unconditional:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     refolded_backbone_rmsd.rmsd:
       max: 1.5
   required_tags_any: [unconditional_refolding]
 
 ppi:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     oracle_ppi.ptm_coi:
       min: 80.0
@@ -23,7 +23,7 @@ ppi:
   required_tags_any: [ppi_refolding]
 
 dna:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   # This comes from discussion with Enisha about what designs the DNA binder design team would take to the next round for af3 recycling.
   metric_thresholds:
     oracle_dna.min_ipae_coi:
@@ -33,7 +33,7 @@ dna:
   required_tags_any: [dna_refolding]
 
 motif_scaffold:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     refolded_backbone_rmsd.rmsd:
       max: 2.0
@@ -45,12 +45,12 @@ motif_scaffold:
 
 # Renamed so they are logged separately
 internal_coords:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds: ${metrics.pass_criteria.motif_scaffold.metric_thresholds}
   required_tags_any: [internal_coordinate_motif_scaffold_refolding]
 
 sm_binder:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     oracle.min_ipae_coi:
       max: 1.5
@@ -63,7 +63,7 @@ sm_binder:
   required_tags_any: [sm_binder_refolding]
 
 ame:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     refolded_backbone_rmsd.rmsd:
       max: 2.0
@@ -75,7 +75,7 @@ ame:
   prohibited_tags: [no_ligand]
 
 ame_no_ligand:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     refolded_backbone_rmsd.rmsd:
       max: 2.0
@@ -85,7 +85,7 @@ ame_no_ligand:
   required_tags_all: [no_ligand]
 
 disco:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     refolded_backbone_rmsd.rmsd:
       max: 2.0

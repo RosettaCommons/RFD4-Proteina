@@ -6,7 +6,7 @@ produces line-level timing breakdowns via line_profiler.
 
 Usage
 -----
-Run from the ``projects/proteinfoundation/`` directory:
+Run from the ``projects/rfproteina/`` directory:
 
 .. code-block:: bash
 
@@ -18,7 +18,7 @@ Run from the ``projects/proteinfoundation/`` directory:
 
     # Debug with debugpy (connect a DAP client to localhost:2345 before the script proceeds)
     python -m debugpy --listen 2345 --wait-for-client \\
-        projects/proteinfoundation/script_utils/profile_dataset.py \\
+        projects/rfproteina/script_utils/profile_dataset.py \\
         datasets/train/plinder/plinder_with_missing_atoms
 
 Line-profiling
@@ -38,15 +38,15 @@ import rootutils
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-from proteinfoundation.utils.env import load_dotenv  # noqa: E402
+from rfproteina.utils.env import load_dotenv  # noqa: E402
 
 load_dotenv()
 
 from hydra import compose, initialize_config_dir  # noqa: E402
 from omegaconf import OmegaConf  # noqa: E402
 
-from proteinfoundation.utils.datasets import recursively_instantiate_datasets_and_samplers  # noqa: E402
-from proteinfoundation.utils.logging import print_config_tree  # noqa: E402
+from rfproteina.utils.datasets import recursively_instantiate_datasets_and_samplers  # noqa: E402
+from rfproteina.utils.logging import print_config_tree  # noqa: E402
 
 CONFIGS_DIR = Path(__file__).parent.parent / "configs"
 

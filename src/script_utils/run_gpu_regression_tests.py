@@ -15,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-# CWD must be projects/proteinfoundation/ for pytest paths to resolve.
+# CWD must be projects/rfproteina/ for pytest paths to resolve.
 PROJECT = Path(__file__).resolve().parent.parent
 os.chdir(PROJECT)
 

@@ -180,7 +180,7 @@ echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB"
 EOF
 
 # Build inference command
-SCRIPT_AE_INFER="src/proteinfoundation/partial_autoencoder/inference.py"
+SCRIPT_AE_INFER="src/rfproteina/partial_autoencoder/inference.py"
 CONTAINER_CMD=$(get_srun_cmd)
 
 # Build Python arguments

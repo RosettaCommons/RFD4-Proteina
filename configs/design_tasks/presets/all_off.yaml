@@ -11,25 +11,25 @@
 unconditional:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+    _target_: rfproteina.transforms.design_task.UnconditionalTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 folding:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.StructurePredictionTask
+    _target_: rfproteina.transforms.design_task.StructurePredictionTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 inverse_folding:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.InverseFoldingTask
+    _target_: rfproteina.transforms.design_task.InverseFoldingTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 tip_atom:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.TipAtomTask
+    _target_: rfproteina.transforms.design_task.TipAtomTask
     min_residues: 2
     max_residues: 8
     p_tip_atom: 0.5
@@ -41,7 +41,7 @@ tip_atom:
 tip_atom_partial_ligand:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.TipAtomPartialLigandTask
+    _target_: rfproteina.transforms.design_task.TipAtomPartialLigandTask
     n_max_ligands: 3
     n_hops_expected_ligand: 5
     n_max_residues: 8
@@ -56,7 +56,7 @@ tip_atom_partial_ligand:
 motif_scaffold:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.MotifScaffoldTask
+    _target_: rfproteina.transforms.design_task.MotifScaffoldTask
     min_tokens_per_motif: 1
     max_tokens_per_motif: 50
     min_coverage_fraction: 0.05
@@ -74,7 +74,7 @@ motif_scaffold:
 ppi_hotspot_with_3d_target:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.PPIHotspotWith3DTarget
+    _target_: rfproteina.transforms.design_task.PPIHotspotWith3DTarget
     hotspot_count_distribution: geometric
     hotspot_geometric_p: 0.2
     max_hotspots_frac_to_provide: 0.1
@@ -92,7 +92,7 @@ ppi_hotspot_with_3d_target:
 tip_atom_pocket:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.TipAtomActiveSiteTask
+    _target_: rfproteina.transforms.design_task.TipAtomActiveSiteTask
     tip_atom_rasa_threshold: 0.2
     min_tip_atoms: 2
     max_tip_atoms: 15
@@ -108,7 +108,7 @@ tip_atom_pocket:
 motif_scaffold_proteina_ame:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.MotifScaffoldProteinaTask
+    _target_: rfproteina.transforms.design_task.MotifScaffoldProteinaTask
     atom_selection_mode: ame
     residue_selection_mode: absolute_number
     motif_min_n_res: 2
@@ -120,7 +120,7 @@ motif_scaffold_proteina_ame:
 partial_ligand:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.PartialLigandTask
+    _target_: rfproteina.transforms.design_task.PartialLigandTask
     min_coverage_fraction: 0.0
     max_coverage_fraction: 1.0
     p_fix_ligand_surroundings: 0.0
@@ -129,19 +129,19 @@ partial_ligand:
 protein_from_dna_structure_context:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.ProteinFromDNAStructureContextTask
+    _target_: rfproteina.transforms.design_task.ProteinFromDNAStructureContextTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 protein_from_dna_sequence_context:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.ProteinFromDNASequenceContextTask
+    _target_: rfproteina.transforms.design_task.ProteinFromDNASequenceContextTask
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 ig_framework_conditioning:
   frequency: 0.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.IgFrameworkConditioningTask
+    _target_: rfproteina.transforms.design_task.IgFrameworkConditioningTask
     cdr_expand_min: -3
     cdr_expand_max: 4
     p_fix_all_but_cdr3: 0.2

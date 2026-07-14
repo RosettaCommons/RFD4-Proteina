@@ -4,7 +4,7 @@ import pytest
 import rootutils
 import torch
 
-from proteinfoundation.utils.env import load_dotenv
+from rfproteina.utils.env import load_dotenv
 
 
 class _GpuMarkerPlugin:

@@ -13,4 +13,4 @@ dataset:
   loader:
     base_path: ${oc.env:DATA_PATH}/train_datasets/tcr_distill/data
     parser_args:
-      _target_: proteinfoundation.utils.parse_presets.distillation
+      _target_: rfproteina.utils.parse_presets.distillation

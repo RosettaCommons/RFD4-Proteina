@@ -13,10 +13,10 @@ from atomworks.ml.utils.testing import cached_parse
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from proteinfoundation.conditions import C_IDXGRP
-from proteinfoundation.datapipes.pipeline import _build_design_clean_and_sample_pipeline
-from proteinfoundation.transforms.unindexing import UnindexFlaggedTokens
-from proteinfoundation.transforms.utils.conditioning_utils import sample_unindexed_groups
+from rfproteina.conditions import C_IDXGRP
+from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
+from rfproteina.transforms.unindexing import UnindexFlaggedTokens
+from rfproteina.transforms.utils.conditioning_utils import sample_unindexed_groups
 
 _N_UNINDEXED_TOKENS = 6
 

@@ -9,14 +9,14 @@
 
 metrics:
   contract_ca:
-    _target_: proteinfoundation.metrics.contract_ca_metric.ContractCAMetric
+    _target_: rfproteina.metrics.contract_ca_metric.ContractCAMetric
 
 terms:
   contract_ca.sq_norm: # keyed by "metric_name.output_key"
     bb_ca: # per-modality schedule; omitted modalities contribute 0
       # Constant weight over the first 10% of the trajectory (t in [0, 0.1]; t=0 is noise,
       # t=1 is the clean end), zero afterwards.
-      _target_: proteinfoundation.guidance.schedules.window
+      _target_: rfproteina.guidance.schedules.window
       _partial_: true
       w: -0.1 # negative -> contract
       t_start: 0.0

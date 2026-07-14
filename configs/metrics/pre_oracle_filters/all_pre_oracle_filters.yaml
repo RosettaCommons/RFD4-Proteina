@@ -3,7 +3,7 @@
 
 # NOTE: This is `insertion_rmsd` in the sense of rfd3, which only includes unindexed regions
 insertion_rmsd_filter:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     unindexed_metrics.insertion_rmsd:
       max: 1.0
@@ -12,14 +12,14 @@ insertion_rmsd_filter:
     - insertion_rmsd_filter
 
 motif_rmsd_filter:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   required_tags_all: [motif_rmsd_filter]
   metric_thresholds:
     motif_rmsd.rmsd:
       max: 1.0
 
 ligand_clash_filter:
-  _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
     clash_metrics.frac_atoms_clashing_inter_residue_polymer_ligand_1p5A:
       max: 0

@@ -9,7 +9,7 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-## Format and lint proteinfoundation source, tests, and script_utils using ruff
+## Format and lint rfproteina source, tests, and script_utils using ruff
 format:
 	ruff format .
 	ruff check --fix .

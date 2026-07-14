@@ -34,12 +34,12 @@ from biotite.structure import AtomArray
 from biotite.structure.io import pdbx
 from biotite.structure.io.pdbx import get_structure
 
-from proteinfoundation.metrics import MetricManager
-from proteinfoundation.metrics.design_metrics import ClashMetric
-from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
-from proteinfoundation.metrics.oracles.af3_oracle import AF3Oracle
-from proteinfoundation.metrics.oracles.pass_criterion_metric import PassCriterionMetric
-from proteinfoundation.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
+from rfproteina.metrics import MetricManager
+from rfproteina.metrics.design_metrics import ClashMetric
+from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
+from rfproteina.metrics.oracles.af3_oracle import AF3Oracle
+from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
+from rfproteina.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 os.environ["NCCL_DEBUG"] = "WARNING"

@@ -4,7 +4,7 @@ id_column: example_id
 
 transform:
   # Default transform args applied to all training datasets
-  _target_: proteinfoundation.datapipes.pipeline.build_design_train_pipeline
+  _target_: rfproteina.datapipes.pipeline.build_design_train_pipeline
   crop_size: 256
   crop_contiguous_probability: 0.0
   crop_spatial_probability: 1.0
@@ -23,7 +23,7 @@ transform:
   path_length_search_cutoff: 64
 
   # Per-token MSE loss weights (AF3-style additive: w = 1 + Σ αₖ · is_k).
-  # Each key names a predicate registered in proteinfoundation.transforms.loss_weight_predicates.PREDICATES.
+  # Each key names a predicate registered in rfproteina.transforms.loss_weight_predicates.PREDICATES.
   loss_weight_cfg:
     non_standard: 2.5
     unindexed: 2.5

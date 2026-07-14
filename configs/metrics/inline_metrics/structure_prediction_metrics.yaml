@@ -1,5 +1,5 @@
 structure_prediction_lddt:
-  _target_: proteinfoundation.metrics.lddt_metric.AllAtomLDDT
+  _target_: rfproteina.metrics.lddt_metric.AllAtomLDDT
   predicted_atom_array_key: predicted_atom_array
   ground_truth_atom_array_key: ground_truth_atom_array
   required_tags_any: ["structure_prediction"]

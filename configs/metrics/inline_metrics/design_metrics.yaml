@@ -1,46 +1,46 @@
 bond_length_metrics:
-  _target_: proteinfoundation.metrics.design_metrics.BondLengthMetric
+  _target_: rfproteina.metrics.design_metrics.BondLengthMetric
   verbose: True
   required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 clash_metrics:
-  _target_: proteinfoundation.metrics.design_metrics.ClashMetric
+  _target_: rfproteina.metrics.design_metrics.ClashMetric
   threshold: 1.5
   required_tags_any: ["design", "structure_prediction"]
   prohibited_tags: ["small_molecule_only"]
 
 hotspot_obedience:
-  _target_: proteinfoundation.metrics.hotspots.HotspotObedience
+  _target_: rfproteina.metrics.hotspots.HotspotObedience
   max_hotspot_distance: 4.5
   required_tags_any: ["hotspot_conditioning"]
 
 rasa_adherence:
-  _target_: proteinfoundation.metrics.rasa_metrics.RasaAdherenceMetric
+  _target_: rfproteina.metrics.rasa_metrics.RasaAdherenceMetric
   required_tags_any: ["rasa_conditioning"]
 
 interchain_interactions:
-  _target_: proteinfoundation.metrics.interaction_metrics.InterchainInteractionMetric
+  _target_: rfproteina.metrics.interaction_metrics.InterchainInteractionMetric
   required_tags_any: ["interchain_interactions"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 sse_distribution:
-  _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureDistribution
+  _target_: rfproteina.metrics.sse_metrics.SecondaryStructureDistribution
   required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 sse_accuracy:
-  _target_: proteinfoundation.metrics.sse_metrics.SecondaryStructureAccuracy
+  _target_: rfproteina.metrics.sse_metrics.SecondaryStructureAccuracy
   required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
 posebusters_metrics:
-  _target_: proteinfoundation.metrics.posebusters_metrics.PoseBustersMetric
+  _target_: rfproteina.metrics.posebusters_metrics.PoseBustersMetric
   atom_array_input_key: predicted_atom_array
   required_tags_any: ["small_molecule_only"]  # Only run for small molecule validation
 
 chiral_accuracy:
-  _target_: proteinfoundation.metrics.chiral_metric.ChiralAccuracy
+  _target_: rfproteina.metrics.chiral_metric.ChiralAccuracy
   required_tags_any: ["small_molecule_only"]
 
 # NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
@@ -48,7 +48,7 @@ chiral_accuracy:
 # subdivide_by_annotation groups the RMSD computation per CoordinateGroup so per-group RMSDs are
 # atom-weighted and reported together.
 design_motif_allatom_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region
   subset_mask: mapped_to_coordinate_conditioned_region
   subdivide_by_annotation: annotation_src-coord-group_1_atom
@@ -61,7 +61,7 @@ design_motif_allatom_rmsd:
   required_tags_any: ["3d_coordinate_conditioning", "unindexed", "internal_coordinate_conditioning"]
 
 design_unindexed_motif_allatom_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
   subset_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
   subdivide_by_annotation: annotation_src-coord-group_1_atom
@@ -74,13 +74,13 @@ design_unindexed_motif_allatom_rmsd:
   required_tags_all: ["unindexed"]
 
 contact_molecular_surface:
-  _target_: proteinfoundation.metrics.physics.contact_ms.metric.ContactMolecularSurfaceMetric
+  _target_: rfproteina.metrics.physics.contact_ms.metric.ContactMolecularSurfaceMetric
   required_tags_any: ["cms"]
 
 sequence_similarity_to_input:
-  _target_: proteinfoundation.metrics.design_metrics.SequenceSimilarityToInput
+  _target_: rfproteina.metrics.design_metrics.SequenceSimilarityToInput
   required_tags_any: ["partial_diffusion"]
 
 cath_metric:
-  _target_: proteinfoundation.metrics.cath_metric.CathMetric
+  _target_: rfproteina.metrics.cath_metric.CathMetric
   required_tags_any: ["cath"]

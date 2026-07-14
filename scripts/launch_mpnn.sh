@@ -176,7 +176,7 @@ echo ""
 # Run the Python preparation script (generates commands without container wrapping)
 print_header "Preparing MPNN Jobs"
 
-python "$REPO_ROOT/src/proteinfoundation/prepare_mpnn.py" \
+python "$REPO_ROOT/src/rfproteina/prepare_mpnn.py" \
     --input-dir "$INPUT_DIR" \
     --output-dir "$OUTPUT_DIR" \
     --num-chunks "$NUM_JOBS" \

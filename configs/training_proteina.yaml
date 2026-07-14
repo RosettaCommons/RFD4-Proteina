@@ -45,7 +45,7 @@ delete_failing_pre_oracle: True
 # When null, falls back to strict=False (silently drop missing/extra keys).
 weight_loading: null
 # Example:
-#   _target_: proteinfoundation.utils.weights.WeightLoadingConfig
+#   _target_: rfproteina.utils.weights.WeightLoadingConfig
 #   default_policy: copy          # copy checkpoint weights by default
 #   fallback_policy: reinit       # reinit if copy fails (missing/shape mismatch)
 #   param_policies:
@@ -56,7 +56,7 @@ weight_loading: null
 # When null, no parameters are frozen.
 parameter_freezing: null
 # Example:
-#   _target_: proteinfoundation.utils.weights.ParameterFreezingConfig
+#   _target_: rfproteina.utils.weights.ParameterFreezingConfig
 #   freeze_by_default: false
 #   param_policies:
 #     "score_network.trunk.*": true   # freeze backbone
