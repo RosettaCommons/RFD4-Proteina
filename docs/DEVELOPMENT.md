@@ -554,7 +554,7 @@ $ROOT_REMOTE/<run_name>/
 
 ### How Metrics Work
 
-Metrics inherit from `foundry.metrics.metric.Metric` and compute scores on generated structures.
+Metrics inherit from `proteinfoundation.metrics.metric.Metric` and compute scores on generated structures.
 
 **Location:** `proteinfoundation/metrics/`
 
