@@ -10,7 +10,7 @@ from jaxtyping import Float
 from opt_einsum import contract as einsum
 
 # from rfproteina import SHOULD_USE_CUEQUIVARIANCE
-# from rfproteina.utils.checkpoint import activation_checkpointing
+# from rfproteina.utils.activation_checkpointing import activation_checkpointing
 
 
 def init_lecun_normal(module: nn.Module, scale: float = 1.0) -> nn.Module:

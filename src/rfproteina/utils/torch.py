@@ -1,5 +1,11 @@
 """General convenience utilities for PyTorch."""
 
+from __future__ import annotations
+
+import logging
+
+import torch
+
 __all__ = ["assert_no_nans", "assert_same_shape", "assert_shape", "map_to"]
 
 import time
@@ -7,7 +13,6 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-import torch
 from beartype.typing import Any, Sequence
 from toolz import valmap
 from torch import Tensor
@@ -303,3 +308,57 @@ class Timers:
     def elapsed(self, *names, reset: bool = True) -> dict[str, float]:
         """Get the elapsed time for the specified timers."""
         return {name: self.timers[name].elapsed(reset=reset) for name in names}
+
+
+def apply_torch_deterministic(logger: logging.Logger) -> None:
+    """Enable fully deterministic CUDA operations for reproducible runs.
+
+    Must be called after model init — model.__init__ may call
+    _configure_flash_attention_backends() which re-enables Flash SDP.
+    """
+    logger.warning(
+        "torch_deterministic=true: disabling Flash/mem-efficient SDP and locking cuDNN "
+        "algorithm selection. This can significantly reduce throughput."
+    )
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_math_sdp(True)
+
+
+def concat_dict_tensors(dict_list: list[dict[str, torch.Tensor]], dim: int = 0) -> dict[str, torch.Tensor]:
+    """Concatenate a list of dictionaries of tensors along specified dimension.
+
+    Args:
+        dict_list: List of dictionaries with the same keys and tensor values
+        dim: Dimension along which to concatenate (default: 0)
+
+    Returns:
+        Dictionary with concatenated tensors for each key
+
+    Example:
+        >>> dict1 = {"a": torch.tensor([1, 2]), "b": torch.tensor([3, 4])}
+        >>> dict2 = {"a": torch.tensor([5, 6]), "b": torch.tensor([7, 8])}
+        >>> result = concat_dict_tensors([dict1, dict2], dim=0)
+        >>> result["a"]
+        tensor([1, 2, 5, 6])
+    """
+    if not dict_list:
+        return {}
+
+    if len(dict_list) == 1:
+        return dict_list[0]
+
+    # Get keys from first dict
+    keys = dict_list[0].keys()
+
+    # Concatenate tensors for each key
+    result = {}
+    for key in keys:
+        tensors = [d[key] for d in dict_list if key in d]
+        if tensors:
+            result[key] = torch.cat(tensors, dim=dim)
+
+    return result

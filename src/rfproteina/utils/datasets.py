@@ -21,7 +21,7 @@ from torch.utils.data import (
 from torch.utils.data.distributed import DistributedSampler
 
 from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.hydra_resolvers import register_resolvers
+from rfproteina.utils.hydra import register_resolvers
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 try:
