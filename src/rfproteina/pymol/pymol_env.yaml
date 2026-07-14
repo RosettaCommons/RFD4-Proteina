@@ -1,4 +1,4 @@
-name: foundry
+name: rfproteina
 channels:
   - conda-forge
   - defaults
