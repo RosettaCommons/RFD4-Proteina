@@ -80,12 +80,12 @@ pytest -v "tests/e2e/test_gpu_training_ae.py::test_ae_training_smoke_2gpu[ae_muo
 ## CI
 
 Pipeline (`.github/workflows/lint_and_test.yaml`): **lint** (ruff on changed files) → **CPU**
-(proteinfoundation / rf3 / foundry matrix, xdist) → **GPU** (1-GPU srun training smokes +
-inference/regression).
+(xdist) → **GPU** (4-GPU srun training smokes + inference/regression, one xdist worker per GPU;
+`conftest` pins `CUDA_VISIBLE_DEVICES` per worker, so each test still sees a single GPU).
 
-The CPU lane sources `.ipd/.env.digs`; the GPU lane sources `.ipd/.env.coreweave`, inside their
-run scripts and use the same **`LATENT_APPTAINER_SIF`** plus **`PDB_MIRROR_PATH`** /
-**`CCD_MIRROR_PATH`**. GPU additionally passes **`DATA_PATH`** explicitly into apptainer.
+Both lanes source `.ipd/.env.${CI_CLUSTER}` (default `coreweave`) inside their run scripts and use
+the same **`LATENT_APPTAINER_SIF`** plus **`PDB_MIRROR_PATH`** / **`CCD_MIRROR_PATH`**. GPU
+additionally passes **`DATA_PATH`** explicitly into apptainer.
 
 | Lane | Script | Pytest marker filter |
 |------|--------|---------------------|
@@ -116,7 +116,7 @@ misconfiguration, not an optional asset.
 
 These run in the `gpu` job of `.github/workflows/lint_and_test.yaml`
 (gated on lint; runs in parallel with the cpu lane). The workflow wraps the whole script in
-`srun --gres=gpu:1 -p interactive ... bash .github/ci/run_gpu_tests.sh`, so
+`srun --gres=gpu:4 -p interactive ... bash .github/ci/run_gpu_tests.sh`, so
 apptainer (and the overlay squash stub it creates) run on the allocated compute
 node -- mirroring the cpu lane and `exec_core.sh`. The CPU lane excludes
 `gpu/e2e/training_smoke` markers; the cheap `cluster` launcher syntax checks
@@ -127,8 +127,9 @@ for data/checkpoint requirements.
 
 ## PR summary (gpu-ci vs latent-main)
 
-A **CI pipeline**: lint (changed files) → CPU pytest on digs and GPU pytest on cw-west, in parallel
-matrix → single 1-GPU job. Tests split by markers: CPU runs everything except
+A **CI pipeline**: lint (changed files) → CPU and GPU pytest in parallel, both on self-hosted
+coreweave runners (`coreweave-cpu` / `coreweave-gpu` labels) → a 4-GPU job running one xdist
+worker per GPU. Tests split by markers: CPU runs everything except
 `gpu` / `e2e` / `training_smoke` / `very_slow`; GPU runs `gpu or e2e or training_smoke`.
 
 **Training oracle matrix** (prevalidation coverage split across two smokes):
