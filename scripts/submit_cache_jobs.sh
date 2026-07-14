@@ -69,7 +69,7 @@ echo ""
 # Change to project directory
 cd "${PROJECT_DIR}"
 
-# Activate virtual environment (from proteinfoundation, go up 2 levels to reach latent/.venv)
+# Activate virtual environment (from rfproteina, go up 2 levels to reach latent/.venv)
 # source ../../.venv/bin/activate
 
 # Run the cache generation script

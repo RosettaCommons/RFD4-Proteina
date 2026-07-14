@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from biotite.structure import AtomArray
 
-from proteinfoundation.transforms.unindexing import _get_target_indices_corresponding_to_inserted
+from rfproteina.transforms.unindexing import _get_target_indices_corresponding_to_inserted
 
 
 def test_atom_matching_with_name_priority_and_element_fallback():

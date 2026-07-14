@@ -4,7 +4,7 @@ import pytest
 import torch
 from einops import rearrange
 
-from proteinfoundation.nn.modules.pair_bias_attn import (
+from rfproteina.nn.modules.pair_bias_attn import (
     CUET_AVAILABLE,
     NEG_INF,
     PairBiasAttention,
@@ -84,7 +84,7 @@ def test_sdpa_matches_einsum_reference(batch_size: int, seq_len: int):
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
 def test_cuequivariance_matches_reference(batch_size: int, seq_len: int):
     """The cuEquivariance fused kernel matches the manual-einsum reference."""
-    from proteinfoundation.nn.modules.pair_bias_attn import CuEqPairBiasAttention
+    from rfproteina.nn.modules.pair_bias_attn import CuEqPairBiasAttention
 
     torch.manual_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"

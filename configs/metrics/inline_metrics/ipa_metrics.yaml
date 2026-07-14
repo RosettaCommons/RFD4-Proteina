@@ -1,5 +1,5 @@
 ipa_interaction_energy:
-  _target_: proteinfoundation.metrics.ipa_interaction_energy_metric.QMInteractionEnergyIPA
+  _target_: rfproteina.metrics.ipa_interaction_energy_metric.QMInteractionEnergyIPA
   ipa_path: null  # Uses IPA_PATH env var
   protonation: rdkit
   distance: 5.0

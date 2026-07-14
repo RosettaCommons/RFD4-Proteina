@@ -107,7 +107,7 @@ def _run_inference(run_name: str) -> Path:
 
     cmd = [
         PYTHON,
-        "src/proteinfoundation/generate.py",
+        "src/rfproteina/generate.py",
         # ckpt is inference.yaml's default (the SOTA), the same file the baselines pin to.
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
@@ -134,7 +134,7 @@ def _run_beam_search(run_name: str) -> Path:
 
     cmd = [
         PYTHON,
-        "src/proteinfoundation/generate.py",
+        "src/rfproteina/generate.py",
         # ckpt is inference.yaml's default (the SOTA), the same file the baselines pin to.
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
@@ -176,7 +176,7 @@ def test_sota_training_regression() -> None:
     expected = load_baseline_losses("sota_training")
     _run_training(
         run_name="regression_sota_training",
-        script="src/proteinfoundation/train.py",
+        script="src/rfproteina/train.py",
         overrides=[
             "experiment=sota",
             # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
@@ -199,7 +199,7 @@ def test_ae_training_regression() -> None:
     expected = load_baseline_losses("ae_training")
     _run_training(
         run_name="regression_ae_training",
-        script="src/proteinfoundation/partial_autoencoder/train.py",
+        script="src/rfproteina/partial_autoencoder/train.py",
         overrides=[
             "experiment_ae=ae_sota",
             "dataloaders.train.dataloader_params.batch_size=2",

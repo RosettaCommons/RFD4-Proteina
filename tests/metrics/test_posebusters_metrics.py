@@ -5,7 +5,7 @@ import pytest
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.testing import cached_parse
 
-from proteinfoundation.metrics.posebusters_metrics import validate_single_ligand
+from rfproteina.metrics.posebusters_metrics import validate_single_ligand
 
 
 def _has_posebusters() -> bool:

@@ -5,13 +5,13 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from proteinfoundation.flow_matching import product_space_flow_matcher
-from proteinfoundation.flow_matching.product_space_flow_matcher import (
+from rfproteina.flow_matching import product_space_flow_matcher
+from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
     sample_noised_target_backbone,
 )
-from proteinfoundation.flow_matching.rdn_flow_matcher import RDNFlowMatcher
-from proteinfoundation.search.vanilla import (
+from rfproteina.flow_matching.rdn_flow_matcher import RDNFlowMatcher
+from rfproteina.search.vanilla import (
     RESAMPLED_FORWARD_MARGINAL,
     resolve_inverse_folding_method,
     resolve_partial_t,

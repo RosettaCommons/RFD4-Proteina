@@ -10,5 +10,5 @@ probability: 1.0
 dataset:
   loader:
     parser_args:
-      _target_: proteinfoundation.utils.parse_presets.rcsb_with_metals
+      _target_: rfproteina.utils.parse_presets.rcsb_with_metals
   transform: {}

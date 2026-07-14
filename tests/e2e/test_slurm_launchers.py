@@ -46,7 +46,7 @@ def test_common_sh_pythonpath_resolves_to_real_dirs():
     """``setup_pythonpath`` must emit directories that exist.
 
     ``bash -n`` only parses; it cannot catch a path that is syntactically fine but
-    points nowhere (e.g. a stale ``projects/proteinfoundation/`` prefix left over
+    points nowhere (e.g. a stale ``projects/rfproteina/`` prefix left over
     after the project became its own root). Source the real function and check
     every entry it puts on PYTHONPATH.
     """
@@ -67,7 +67,7 @@ def test_common_sh_pythonpath_resolves_to_real_dirs():
 def test_entrypoint_scripts_referenced_by_e2e_and_launchers_exist():
     """Every ``*.py`` entrypoint spawned as a subprocess must actually exist.
 
-    The GPU e2e tests invoke ``src/proteinfoundation/{train,generate}.py`` via
+    The GPU e2e tests invoke ``src/rfproteina/{train,generate}.py`` via
     subprocess, but they are GPU-gated and skipped on CPU -- so a stale path (e.g.
     one left behind by the move under ``src/``) surfaces only on a GPU runner,
     minutes in. Assert the paths resolve, cheaply, on CPU.
@@ -79,12 +79,12 @@ def test_entrypoint_scripts_referenced_by_e2e_and_launchers_exist():
     sources += list((ROOT / "src" / "script_utils").glob("*.py"))
     # .github/ci/*.sh invoke entrypoints too -- a stale path there breaks CI only, and
     # only on a GPU runner (this is how `scripts/af3_daemon.py` survived the move to
-    # src/proteinfoundation/af3/ and silently disabled the AF3 daemon).
+    # src/rfproteina/af3/ and silently disabled the AF3 daemon).
     sources += list((ROOT / ".github" / "ci").glob("*.sh"))
 
     # A quoted path that looks like one of our python entrypoints.
-    quoted = re.compile(r"[\"']((?:src/)?(?:proteinfoundation|script_utils|scripts)/[\w/]+\.py)[\"']")
-    bare = re.compile(r"(?:^|\s)((?:src/)?(?:proteinfoundation|script_utils|scripts)/[\w/]+\.py)")
+    quoted = re.compile(r"[\"']((?:src/)?(?:rfproteina|script_utils|scripts)/[\w/]+\.py)[\"']")
+    bare = re.compile(r"(?:^|\s)((?:src/)?(?:rfproteina|script_utils|scripts)/[\w/]+\.py)")
     referenced = set()
     for f in sources:
         text = f.read_text()

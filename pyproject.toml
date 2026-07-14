@@ -1,5 +1,5 @@
 [project]
-name = "proteinfoundation"
+name = "rfproteina"
 version = "0.0.1"
 description = "protein foundation models"
 requires-python = ">=3.12,<=3.12.10"
@@ -108,7 +108,7 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "src/proteinfoundation",
+    "src/rfproteina",
     "src/script_utils",
 ]
 
@@ -213,7 +213,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["proteinfoundation"]
+known-first-party = ["rfproteina"]
 known-third-party = ["wandb"]
 
 [tool.ruff.lint.pydocstyle]
@@ -229,22 +229,22 @@ convention = "google"
 # satisfy this project's stricter rules (chiefly ANN*, missing type annotations).
 # Exempting it keeps the move a pure relocation -- annotating ~200 signatures would be a
 # large, risky diff with no behaviour change. Drop these as the files get touched.
-"src/proteinfoundation/callbacks/callback.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/datapipes/collate.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/datapipes/schema/base.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/metrics/chiral_metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/metrics/metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/nn/modules/blocks.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/checkpoint.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/common.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/datasets.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/ddp.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/hydra_resolvers.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/instantiators.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/logging.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/standard_annotations.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/torch.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/proteinfoundation/utils/weights.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/callbacks/callback.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/datapipes/collate.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/datapipes/schema/base.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/metrics/chiral_metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/metrics/metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/nn/modules/blocks.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/checkpoint.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/common.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/datasets.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/ddp.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/hydra_resolvers.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/instantiators.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/logging.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/standard_annotations.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/torch.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"src/rfproteina/utils/weights.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
 "tests/helpers/pytest_hooks.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
 
 [tool.pyright]

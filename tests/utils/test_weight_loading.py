@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 # Import your code here
-from proteinfoundation.utils.weights import (
+from rfproteina.utils.weights import (
     ParameterFreezingConfig,
     WeightLoadingConfig,
     WeightLoadingPolicy,

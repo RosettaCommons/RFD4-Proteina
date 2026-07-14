@@ -9,13 +9,13 @@ from atomworks.ml.utils.geometry import random_rigid_augmentation
 from atomworks.ml.utils.testing import cached_parse
 from biotite.structure import AtomArray, superimpose
 
-from proteinfoundation.conditions import C_CRDGRP, C_INTCRD
-from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
-from proteinfoundation.transforms.utils.conditioning_utils import (
+from rfproteina.conditions import C_CRDGRP, C_INTCRD
+from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
+from rfproteina.transforms.utils.conditioning_utils import (
     convert_to_internal_coords,
     insert_internal_coord_conditioned_groups,
 )
-from proteinfoundation.utils.standard_annotations import SA_CWI
+from rfproteina.utils.standard_annotations import SA_CWI
 
 
 def setup_two_internal_coord_groups(atom_array, apply_rotations=True):

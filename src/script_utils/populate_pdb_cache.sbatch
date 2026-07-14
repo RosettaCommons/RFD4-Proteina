@@ -100,7 +100,7 @@ echo "  RMSD threshold: $ATOMWORKS_CONFORMER_RMSD_THRESHOLD Å"
 echo ""
 
 # Run cache population for this worker's subset
-cd /lustre/fsw/portfolios/nvr/users/kdidi/test_repos/modelhub/projects/proteinfoundation
+cd /lustre/fsw/portfolios/nvr/users/kdidi/test_repos/modelhub/projects/rfproteina
 
 /lustre/fs11/portfolios/healthcareeng/projects/healthcareeng_bionemo/kdidi/micromamba/envs/rf3/bin/python scripts/populate_pdb_cache.py \
     --parquet "$PARQUET_PATH" \

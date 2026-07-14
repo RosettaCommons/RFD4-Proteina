@@ -2,7 +2,7 @@
 
 import pytest
 
-from proteinfoundation.metrics.utils.soft_threshold import apply_soft_bounds_to_outputs, soft_score_upper_bound
+from rfproteina.metrics.utils.soft_threshold import apply_soft_bounds_to_outputs, soft_score_upper_bound
 
 
 @pytest.mark.parametrize(

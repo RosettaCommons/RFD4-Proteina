@@ -2,7 +2,7 @@
 # Tags (via metrics_tags) control which oracle actually runs for each example.
 
 oracle:
-  _target_: proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle
+  _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3
   aggregation: [median]
   frac_under_thresholds:
@@ -19,7 +19,7 @@ oracle:
     - disco_refolding
 
 oracle_ppi:
-  _target_: proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle
+  _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
   template_annotations: [mask_coordinate_1_atom]
   aggregation: [median]
@@ -31,7 +31,7 @@ oracle_ppi:
 # Protein-DNA binder refolding (DNA held fixed as template). Same config as
 # oracle_ppi but gated by dna_refolding so it produces oracle_dna.* COI metrics.
 oracle_dna:
-  _target_: proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle
+  _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_dna
   template_annotations: [mask_coordinate_1_atom]
   aggregation: [median]

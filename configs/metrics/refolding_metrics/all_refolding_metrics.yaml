@@ -3,7 +3,7 @@
 # Tags control which metrics run for each example.
 
 refolded_backbone_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: is_protein_backbone
   subset_mask: is_protein_backbone
   metric_type: rmsd
@@ -21,7 +21,7 @@ refolded_backbone_rmsd:
     - disco_refolding
 
 refolded_target_aligned_binder_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mask_coordinate_1_atom
   subset_mask: ~mask_coordinate_1_atom
   metric_type: rmsd
@@ -29,7 +29,7 @@ refolded_target_aligned_binder_rmsd:
   required_tags_any: [ppi_refolding, dna_refolding]
 
 refolded_motif_allatom_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_protein
   subset_mask: mapped_to_coordinate_conditioned_region & is_protein
   subdivide_by_annotation: annotation_src-coord-group_1_atom
@@ -44,7 +44,7 @@ refolded_motif_allatom_rmsd:
     - ame_original_benchmark_refolding
 
 refolded_motif_ca_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
   subset_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
   subdivide_by_annotation: annotation_src-coord-group_1_atom
@@ -56,7 +56,7 @@ refolded_motif_ca_rmsd:
     - internal_coordinate_motif_scaffold_refolding
 
 refolded_backbone_aligned_ligand_rmsd:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.StructureComparisonMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: is_protein_backbone
   subset_mask: is_ligand
   metric_type: rmsd
@@ -64,7 +64,7 @@ refolded_backbone_aligned_ligand_rmsd:
   required_tags_any: [sm_binder_refolding]
 
 max_ligand_centroid_distance:
-  _target_: proteinfoundation.metrics.gt_structure_comparison.LigandCentroidDistanceMetric
+  _target_: rfproteina.metrics.gt_structure_comparison.LigandCentroidDistanceMetric
   align_mask: is_protein_backbone
   aggregation: max
   required_tags_any: [disco_refolding]

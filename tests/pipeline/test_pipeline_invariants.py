@@ -8,7 +8,7 @@ These invariants are properties that must hold for ALL pipeline outputs across:
 
 import rootutils
 
-from proteinfoundation.utils.env import load_dotenv
+from rfproteina.utils.env import load_dotenv
 
 # Setup the project root
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -28,8 +28,8 @@ from atomworks.io import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 
-from proteinfoundation.datapipes.pipeline import build_design_train_pipeline
-from proteinfoundation.transforms.design_task import (
+from rfproteina.datapipes.pipeline import build_design_train_pipeline
+from rfproteina.transforms.design_task import (
     InverseFoldingTask,
     MotifScaffoldTask,
     PPIHotspotWith3DTarget,
@@ -38,8 +38,8 @@ from proteinfoundation.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
-from proteinfoundation.utils.logging import print_df_as_table
-from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
+from rfproteina.utils.logging import print_df_as_table
+from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 
 _TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"
 
@@ -198,7 +198,7 @@ def parse_and_run_pipeline(
 def test_pipeline_invariants(pdb_id: str, design_task_name: str) -> None:
     """Test all pipeline invariants for a structure and design task.
 
-    The pipeline includes :py:class:`~proteinfoundation.transforms.invariants.ValidateBatchInvariants`
+    The pipeline includes :py:class:`~rfproteina.transforms.invariants.ValidateBatchInvariants`
     which raises :py:exc:`ValueError` on any violation, so running the pipeline is sufficient.
     """
     selected_design_tasks = {design_task_name: DESIGN_TASKS[design_task_name]}

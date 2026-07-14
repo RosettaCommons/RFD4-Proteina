@@ -7,8 +7,8 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from biotite.structure import AtomArray
 
-from proteinfoundation.conditions import C_IDXGRP
-from proteinfoundation.transforms.unindexing import (
+from rfproteina.conditions import C_IDXGRP
+from rfproteina.transforms.unindexing import (
     find_optimal_insertion_points_for_unindexed_regions,
 )
 

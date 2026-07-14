@@ -176,7 +176,7 @@ setup_pythonpath() {
     local repo_root="$1"
     
     export PYTHONPATH="${repo_root}/src:${repo_root}/lib/atomworks/src:$PYTHONPATH"
-    echo "PYTHONPATH set to include proteinfoundation, foundry, atomworks"
+    echo "PYTHONPATH set to include rfproteina, foundry, atomworks"
 }
 
 # Setup common environment variables for training/inference
@@ -235,7 +235,7 @@ emit_af3_daemon_block() {
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
-  /usr/bin/python3 $code_dir/src/proteinfoundation/af3/af3_daemon.py launch \\
+  /usr/bin/python3 $code_dir/src/rfproteina/af3/af3_daemon.py launch \\
   --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
@@ -268,7 +268,7 @@ get_srun_cmd() {
 # Usage: build_sbatch_header
 # Outputs SBATCH directives to stdout
 build_sbatch_header() {
-    local job_name="${JOB_NAME:-proteinfoundation_job}"
+    local job_name="${JOB_NAME:-rfproteina_job}"
     local partition="${PARTITION:-batch}"
     local runtime="${RUNTIME:-04:00:00}"
     local nodes="${NODES:-1}"
@@ -716,7 +716,7 @@ copy_code_to_dir() {
     rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/src/foundry/" "$code_dir/src/foundry/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/src/proteinfoundation/" "$code_dir/src/proteinfoundation/"
+        "$repo_root/src/rfproteina/" "$code_dir/src/rfproteina/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
         "$repo_root/configs/" "$code_dir/configs/"
     rsync -a --no-compress "$repo_root/data/benchmarks/" "$code_dir/data/benchmarks/"

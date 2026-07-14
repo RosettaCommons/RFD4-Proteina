@@ -1,8 +1,8 @@
 """GPU e2e guards, subprocess runners, and training-loss parsing.
 
 Adapted from protein-foundation-models ``tests/e2e/helpers/gpu_e2e.py`` for the
-foundry ``proteinfoundation`` project. ``ROOT`` is the project dir
-(``projects/proteinfoundation``) since that is the working directory training
+foundry ``rfproteina`` project. ``ROOT`` is the project dir
+(``projects/rfproteina``) since that is the working directory training
 and inference subprocesses run from (``store/``, ``inference/`` live there).
 """
 
@@ -28,7 +28,7 @@ import pytest
 
 from tests.conftest import has_af3
 
-# helpers/ -> e2e/ -> tests/ -> proteinfoundation (project root for train/infer)
+# helpers/ -> e2e/ -> tests/ -> rfproteina (project root for train/infer)
 ROOT = Path(__file__).resolve().parents[3]
 RUN_E2E = os.getenv("RUN_GPU_E2E_TESTS", "0") == "1"
 

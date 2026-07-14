@@ -11,11 +11,11 @@
 compute_loss: true
 
 dataset:
-  _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/cropped_plinder_ptms
   num_replicates: 8
 
   transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
     - design

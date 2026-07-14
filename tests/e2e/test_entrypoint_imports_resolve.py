@@ -4,7 +4,7 @@ The entrypoints (``train.py``, ``generate.py``, ...) are only ever executed as
 subprocesses by the GPU lane, so nothing in the CPU suite imports them -- a stale import
 inside one is invisible until a GPU allocation runs it, minutes in.
 
-This resolves each entrypoint's ``from proteinfoundation.* import ...`` statements
+This resolves each entrypoint's ``from rfproteina.* import ...`` statements
 against the real modules, on CPU, in about a second.
 
 It exists because dissolving ``foundry`` moved the old ``utils/logging.py`` aside to
@@ -22,12 +22,12 @@ import pytest
 from tests.e2e.helpers.gpu_e2e import ROOT
 
 ENTRYPOINTS = [
-    "src/proteinfoundation/train.py",
-    "src/proteinfoundation/generate.py",
-    "src/proteinfoundation/evaluate.py",
-    "src/proteinfoundation/external_eval.py",
-    "src/proteinfoundation/partial_autoencoder/train.py",
-    "src/proteinfoundation/prepare_mpnn.py",
+    "src/rfproteina/train.py",
+    "src/rfproteina/generate.py",
+    "src/rfproteina/evaluate.py",
+    "src/rfproteina/external_eval.py",
+    "src/rfproteina/partial_autoencoder/train.py",
+    "src/rfproteina/prepare_mpnn.py",
 ]
 
 
@@ -40,7 +40,7 @@ def test_entrypoint_imports_resolve(entrypoint: str):
     for node in ast.walk(ast.parse(path.read_text())):
         if not isinstance(node, ast.ImportFrom):
             continue
-        if not node.module or not node.module.startswith("proteinfoundation"):
+        if not node.module or not node.module.startswith("rfproteina"):
             continue
         module = importlib.import_module(node.module)
         for alias in node.names:

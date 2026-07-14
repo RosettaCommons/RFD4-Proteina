@@ -1,10 +1,10 @@
 compute_loss: true
 
 dataset:
-  _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/de_novo_proteins
 
   transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - structure_prediction
