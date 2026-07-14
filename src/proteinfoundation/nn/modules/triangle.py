@@ -27,12 +27,17 @@ def init_lecun_normal(module: nn.Module, scale: float = 1.0) -> nn.Module:
     return module
 
 
-# Check DISABLE_CUEQUIVARIANCE env var (set to 'true' to disable fused kernels)
+# Fused kernels are optional: disable via DISABLE_CUEQUIVARIANCE, or simply don't install
+# cuequivariance-torch. Either way we fall back to the vanilla torch path below.
 _disable_env = os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower()
 SHOULD_USE_CUEQUIVARIANCE = _disable_env not in ("true", "1", "yes")
 
 if SHOULD_USE_CUEQUIVARIANCE:
-    import cuequivariance_torch as cuet
+    try:
+        import cuequivariance_torch as cuet
+    except ImportError:
+        SHOULD_USE_CUEQUIVARIANCE = False
+        logging.getLogger(__name__).info("cuequivariance-torch not installed — using vanilla triangle ops")
 else:
     logging.getLogger(__name__).info("cuEquivariance disabled via DISABLE_CUEQUIVARIANCE env var")
 

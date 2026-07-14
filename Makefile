@@ -14,6 +14,20 @@ format:
 	ruff format .
 	ruff check --fix .
 
+# The rdkit wheel bundles a libboost_stacktrace that interposes the global
+# __cxa_allocate_exception, so every C++ exception triggers a stack unwind. RDKit throws
+# one as normal control flow (numpy probes Point3D via the sequence protocol), and on the
+# BOLT-optimized python-build-standalone interpreter uv installs, the unwind info is
+# hot/cold-split and that walk SEGFAULTs -- e.g. in posebusters' flatness check.
+# Preloading the real libstdc++ makes its __cxa_allocate_exception win symbol resolution.
+# CI is unaffected: its container runs a stock, non-BOLT python.
+LIBSTDCXX := $(firstword $(wildcard /lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6))
+PYTHON := $(firstword $(wildcard .venv/bin/python) python)
+
+## Run the test suite
+test:
+	LD_PRELOAD=$(LIBSTDCXX) $(PYTHON) -m pytest tests/ $(PYTEST_ARGS)
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################
