@@ -8,6 +8,8 @@ dependencies = [
     # [tool.uv.sources]. `uv pip install` does NOT honour tool.uv.sources, so setup.sh
     # installs `-e lib/atomworks` explicitly; otherwise it resolves from PyPI instead.
     "atomworks[ml]",
+    # atomworks hard-asserts this exact version at import; posebusters/mace pull newer.
+    "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
     "hydra-core>=1.3.0,<1.4",
