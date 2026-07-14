@@ -21,9 +21,7 @@ should_check_nans = _env.bool("NAN_CHECK", default=True)
 logger = logging.getLogger("proteinfoundation")
 logger.setLevel(logging.DEBUG if should_debug else logging.INFO)
 
-# cuEquivariance tuning. The fused-kernel switch itself lives in nn/modules/triangle.py;
-# these env vars are read by cuEquivariance at import time, so they must be set before
-# the first `import cuequivariance_torch` anywhere in the process.
+# cuEquivariance tuning. The fused-kernel switch itself lives in nn/modules/triangle.py.
 try:
     if torch.cuda.is_available() and not _env.bool("DISABLE_CUEQUIVARIANCE", default=False):
         import cuequivariance_torch
