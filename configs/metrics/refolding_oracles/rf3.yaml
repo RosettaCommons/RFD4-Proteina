@@ -2,7 +2,7 @@
 # Tags (via metrics_tags) control which oracle actually runs for each example.
 
 oracle:
-  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  _target_: proteinfoundation.metrics.oracles.rf3_oracle.RF3Oracle
   oracle_name: rf3
   ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
   num_steps: 50
@@ -21,7 +21,7 @@ oracle:
     - disco_refolding
 
 oracle_ppi:
-  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  _target_: proteinfoundation.metrics.oracles.rf3_oracle.RF3Oracle
   oracle_name: rf3_ppi
   ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
   num_steps: 50
@@ -36,7 +36,7 @@ oracle_ppi:
 # Protein-DNA binder refolding (DNA held fixed as template). Same config as
 # oracle_ppi but gated by dna_refolding so it produces oracle_dna.* COI metrics.
 oracle_dna:
-  _target_: proteinfoundation.metrics.rf3_oracle.RF3Oracle
+  _target_: proteinfoundation.metrics.oracles.rf3_oracle.RF3Oracle
   oracle_name: rf3_dna
   ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
   num_steps: 50

@@ -9,7 +9,7 @@ instead of the NumPy reference implementation for faster computation.
 
 Example::
 
-    from proteinfoundation.metrics.contact_ms import (
+    from proteinfoundation.metrics.physics.contact_ms import (
         calculate_contact_ms,
         extract_cms_inputs,
         get_radii_from_names,

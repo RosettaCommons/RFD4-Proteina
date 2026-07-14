@@ -12,7 +12,7 @@ from atomworks.io.utils.ccd import atom_array_from_ccd_code
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from mace.calculators import MACECalculator
 
-from proteinfoundation.metrics.mace_energy_metric import compute_mace_energy
+from proteinfoundation.metrics.physics.mace_energy_metric import compute_mace_energy
 
 # Get MACE model path from environment variable
 MACE_MODEL_PATH = os.environ.get("MACE_MODEL_PATH")

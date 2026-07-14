@@ -31,7 +31,7 @@ from biotite.structure.io.pdbx import CIFFile
 from biotite.structure.residues import apply_residue_wise, residue_iter, spread_residue_wise
 
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
+from proteinfoundation.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
 from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from scripts.af3_apptainer import build_apptainer_fold_command

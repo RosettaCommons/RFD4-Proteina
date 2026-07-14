@@ -74,7 +74,7 @@ design_unindexed_motif_allatom_rmsd:
   required_tags_all: ["unindexed"]
 
 contact_molecular_surface:
-  _target_: proteinfoundation.metrics.contact_ms.metric.ContactMolecularSurfaceMetric
+  _target_: proteinfoundation.metrics.physics.contact_ms.metric.ContactMolecularSurfaceMetric
   required_tags_any: ["cms"]
 
 sequence_similarity_to_input:

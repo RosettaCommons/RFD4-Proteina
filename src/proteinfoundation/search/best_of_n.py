@@ -3,7 +3,7 @@
 from collections import defaultdict
 from typing import Any
 
-from proteinfoundation.metrics.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
+from proteinfoundation.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
 from proteinfoundation.search.base_strategy import SearchStrategy
 from proteinfoundation.search.vanilla import VanillaStrategy
 

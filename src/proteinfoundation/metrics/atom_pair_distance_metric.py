@@ -10,8 +10,8 @@ from biotite.structure import AtomArray
 
 from foundry.metrics.metric import Metric
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.atom_selection import atom_selection_from_spec
-from proteinfoundation.metrics.soft_threshold import apply_soft_bounds_to_outputs
+from proteinfoundation.metrics.utils.atom_selection import atom_selection_from_spec
+from proteinfoundation.metrics.utils.soft_threshold import apply_soft_bounds_to_outputs
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

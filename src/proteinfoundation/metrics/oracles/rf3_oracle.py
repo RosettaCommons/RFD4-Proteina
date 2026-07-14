@@ -22,7 +22,7 @@ from atomworks.ml.utils.annotator import ANNOTATOR_REGISTRY, ensure_annotations
 from biotite.structure import AtomArray
 
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.oracle_metric import (
+from proteinfoundation.metrics.oracles.oracle_metric import (
     OracleJobInput,
     OracleMetric,
     extract_confidence_metrics,

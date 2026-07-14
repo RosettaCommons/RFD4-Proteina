@@ -21,7 +21,7 @@ from tmol.score import beta2016_score_function
 from tmol.score.score_function import ScoreFunction
 
 from foundry.utils.ddp import RankedLogger
-from proteinfoundation.metrics.atom_selection import atom_selection_from_spec
+from proteinfoundation.metrics.utils.atom_selection import atom_selection_from_spec
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
 logger = RankedLogger(__name__, rank_zero_only=True)

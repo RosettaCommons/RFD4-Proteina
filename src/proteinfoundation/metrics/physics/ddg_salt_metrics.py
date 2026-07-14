@@ -5,7 +5,7 @@ charges (D/E with R/K) across the binder-target interface, with distance-weighte
 scoring. Binder vs. target chains are identified from AtomArray annotations.
 
 For TMol-based binding ddG, use
-:class:`~proteinfoundation.metrics.tmol_block_pair_metric.TMolBlockPairMetric`
+:class:`~proteinfoundation.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric`
 (the general region-pair metric; a soft-rep binder/target preset is provided in
 ``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``).
 

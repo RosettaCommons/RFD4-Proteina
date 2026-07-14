@@ -6,7 +6,7 @@ import pytest
 from atomworks.io import parse
 from atomworks.io.config import ParseConfig
 
-from proteinfoundation.metrics.tmol_block_pair_metric import TMolBlockPairMetric
+from proteinfoundation.metrics.physics.tmol_block_pair_metric import TMolBlockPairMetric
 
 SAM_BINDER_CIF = Path(__file__).resolve().parents[1] / "data" / "sam_binder_generated_minimized.cif"
 

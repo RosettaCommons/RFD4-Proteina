@@ -159,7 +159,7 @@ refolding_metrics:
 # Omit this section if you have no custom pass criteria.
 pass_criteria:
   my_custom_plddt:
-    _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+    _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
     metric_thresholds:
       rf3_standard.plddt:
         min: 75.0
@@ -204,7 +204,7 @@ The same applies on the Python side — `proteinfoundation/metrics/custom_metric
 ```yaml
 pass_criteria:
   backbone_rmsd_tight:
-    _target_: proteinfoundation.metrics.pass_criterion_metric.PassCriterionMetric
+    _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
     metric_thresholds:
       backbone_rmsd_unconditional.rmsd:   # dot-notation into merged metrics
         max: 1.0

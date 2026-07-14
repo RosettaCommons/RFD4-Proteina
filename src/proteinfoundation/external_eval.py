@@ -35,7 +35,7 @@ from proteinfoundation.inference_utils.aggregate_metrics import (
 )
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
-from proteinfoundation.metrics.oracle_metric import OracleMetric
+from proteinfoundation.metrics.oracles.oracle_metric import OracleMetric
 from proteinfoundation.transforms.unindexing import (
     annotate_unindexed_insertion,
     find_optimal_insertion_points_for_unindexed_regions,

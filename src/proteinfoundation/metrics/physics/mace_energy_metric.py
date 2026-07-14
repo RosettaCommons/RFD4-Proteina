@@ -13,7 +13,7 @@ from atomworks.constants import BIOTITE_DEFAULT_ANNOTATIONS, METAL_ELEMENTS
 from biotite.structure import AtomArray, AtomArrayStack
 
 from foundry.metrics.metric import Metric
-from proteinfoundation.metrics.metrics_utils import normalize_to_atom_array_list
+from proteinfoundation.metrics.utils.metrics_utils import normalize_to_atom_array_list
 
 logger = logging.getLogger(__name__)
 
