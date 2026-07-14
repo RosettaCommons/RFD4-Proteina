@@ -311,7 +311,7 @@ if [ -n "$CODE_DIR_OVERRIDE" ]; then
     CODE_DIR="$CODE_DIR_OVERRIDE"
 elif [ "$COPY_CODE" == "true" ]; then
     CODE_DIR="$RUN_DIR/code"
-    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/projects/proteinfoundation/proteinfoundation" ]; then
+    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/proteinfoundation" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $CODE_DIR"
             echo "  To overwrite, use --overwrite-rundir"
@@ -375,7 +375,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm${LOG_SUFFIX}.err
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -424,7 +424,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
 fi
 
 # Platform-specific generation command
-SCRIPT_GENERATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/generate.py"
+SCRIPT_GENERATE="$CODE_DIR/proteinfoundation/generate.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: shebang in generate.py handles container execution via exec_core.sh
@@ -497,7 +497,7 @@ fi
 # launch script never has to wait.
 if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
-    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     # Metrics CSVs are written by generate.py under <out_dir>/inference_metrics/
     CONCAT_DIR="$GENERATION_OUTPUT_DIR/inference_metrics"
@@ -524,7 +524,7 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
         echo "#SBATCH --open-mode append"
         echo ""
-        echo "export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH"
+        echo "export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
         echo "export PYTHONFAULTHANDLER=1"
         echo ""
         echo "echo \"Running result concatenation for: $RUN_NAME\""

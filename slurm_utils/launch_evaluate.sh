@@ -214,7 +214,7 @@ if [ -n "$CODE_DIR_OVERRIDE" ]; then
     CODE_DIR="$CODE_DIR_OVERRIDE"
 elif [ "$COPY_CODE" == "true" ]; then
     CODE_DIR="$RUN_DIR/code"
-    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/projects/proteinfoundation/proteinfoundation" ]; then
+    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/proteinfoundation" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $CODE_DIR. Use --overwrite-rundir."
             exit 1
@@ -261,7 +261,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --output ./slurm_run_outputs/slurm.out
 #SBATCH --error ./slurm_run_outputs/slurm.err
 
-export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -288,7 +288,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
 
-SCRIPT_EVALUATE="$CODE_DIR/projects/proteinfoundation/proteinfoundation/evaluate.py"
+SCRIPT_EVALUATE="$CODE_DIR/proteinfoundation/evaluate.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     cat >> "$SBATCH_FILE" << 'EOF'
@@ -369,7 +369,7 @@ fi
 # ============================================================
 if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
-    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/proteinfoundation/inference_utils/aggregate_metrics.py"
     CONCAT_DIR="$RUN_DIR/evaluation_metrics"
 
     FOLDSEEK_FLAG=""
@@ -391,7 +391,7 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
         echo "#SBATCH --open-mode append"
         echo ""
-        echo "export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH"
+        echo "export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
         echo "export PYTHONFAULTHANDLER=1"
         echo ""
         echo "echo \"Running result concatenation for: $RUN_NAME\""

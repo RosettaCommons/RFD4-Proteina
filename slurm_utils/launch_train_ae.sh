@@ -171,7 +171,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm.err
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -216,7 +216,7 @@ if [ -n "$DISABLE_CUEQUIVARIANCE" ] && [ "$DISABLE_CUEQUIVARIANCE" == "true" ]; 
 fi
 
 # Add container execution command
-SCRIPT_TRAIN="$CODE_DIR/projects/proteinfoundation/proteinfoundation/partial_autoencoder/train.py"
+SCRIPT_TRAIN="$CODE_DIR/proteinfoundation/partial_autoencoder/train.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: Use shebang in train.py to handle container execution

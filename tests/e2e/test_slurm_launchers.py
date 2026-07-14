@@ -8,6 +8,7 @@ syntax regressions in the launchers without touching the scheduler.
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 import subprocess
 
 import pytest
@@ -38,3 +39,25 @@ def test_launcher_script_parses(script: str) -> None:
         pytest.skip(f"Launcher not found: {path}")
     proc = subprocess.run([bash, "-n", str(path)], capture_output=True, text=True, check=False)
     assert proc.returncode == 0, f"Syntax error in {script}:\n{proc.stderr}"
+
+
+def test_common_sh_pythonpath_resolves_to_real_dirs():
+    """``setup_pythonpath`` must emit directories that exist.
+
+    ``bash -n`` only parses; it cannot catch a path that is syntactically fine but
+    points nowhere (e.g. a stale ``projects/proteinfoundation/`` prefix left over
+    after the project became its own root). Source the real function and check
+    every entry it puts on PYTHONPATH.
+    """
+    script = f"""
+        source {SLURM_UTILS / "common.sh"}
+        repo_root=$(find_repo_root "{SLURM_UTILS}")
+        setup_pythonpath "$repo_root" >/dev/null
+        printf '%s' "$PYTHONPATH"
+    """
+    proc = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True)
+
+    entries = [p for p in proc.stdout.split(":") if p]
+    assert entries, "setup_pythonpath produced an empty PYTHONPATH"
+    for path in entries:
+        assert Path(path).is_dir(), f"PYTHONPATH entry does not exist: {path}"

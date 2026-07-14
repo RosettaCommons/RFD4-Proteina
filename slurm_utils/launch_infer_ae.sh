@@ -103,7 +103,7 @@ setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
 # Read configuration
-AE_CONFIG_FILE="./projects/proteinfoundation/configs/inference_ae.yaml"
+AE_CONFIG_FILE="./configs/inference_ae.yaml"
 
 # Use provided checkpoint or default from config
 if [ -z "$CKPT_PATH" ]; then
@@ -166,7 +166,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT/projects/proteinfoundation:$REPO_ROOT/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
@@ -180,7 +180,7 @@ echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB"
 EOF
 
 # Build inference command
-SCRIPT_AE_INFER="projects/proteinfoundation/proteinfoundation/partial_autoencoder/inference.py"
+SCRIPT_AE_INFER="proteinfoundation/partial_autoencoder/inference.py"
 CONTAINER_CMD=$(get_srun_cmd)
 
 # Build Python arguments

@@ -80,7 +80,7 @@ setup_pythonpath "$REPO_ROOT"
 setup_env_vars
 
 # Read configuration from search yaml
-SEARCH_CONFIG_FILE="./projects/proteinfoundation/configs/search.yaml"
+SEARCH_CONFIG_FILE="./configs/search.yaml"
 if [ ! -f "$SEARCH_CONFIG_FILE" ]; then
     echo "Error: Config file not found: $SEARCH_CONFIG_FILE"
     exit 1
@@ -164,7 +164,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT/projects/proteinfoundation:$REPO_ROOT/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NCCL_P2P_DISABLE=1
 export PYTHONFAULTHANDLER=1
@@ -183,8 +183,8 @@ echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB"
 EOF
 
 # Add container execution command
-SCRIPT_SEARCH="projects/proteinfoundation/proteinfoundation/generate.py"
-SCRIPT_EVALUATION="projects/proteinfoundation/proteinfoundation/evaluate.py"
+SCRIPT_SEARCH="proteinfoundation/generate.py"
+SCRIPT_EVALUATION="proteinfoundation/evaluate.py"
 CONTAINER_CMD=$(get_srun_cmd)
 
 if [ "$CLUSTER_TYPE" == "digs" ]; then
