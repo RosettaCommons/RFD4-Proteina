@@ -9,7 +9,7 @@ from einops import rearrange
 from jaxtyping import Float
 from opt_einsum import contract as einsum
 
-# from foundry import SHOULD_USE_CUEQUIVARIANCE
+# from proteinfoundation import SHOULD_USE_CUEQUIVARIANCE
 # from proteinfoundation.utils.checkpoint import activation_checkpointing
 
 
