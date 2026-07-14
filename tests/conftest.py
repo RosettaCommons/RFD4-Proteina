@@ -12,6 +12,56 @@ import os
 os.environ.setdefault("USER", "pytest")
 os.environ.setdefault("LOGNAME", "pytest")
 os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", "/tmp/torchinductor-pytest")
+import subprocess
+
+# Base for the per-worker DDP rendezvous port (see _pin_gpu_for_xdist_worker).
+_MASTER_PORT_BASE = 29500
+
+
+def _pin_gpu_for_xdist_worker() -> None:
+    """Give each pytest-xdist worker its own GPU and rendezvous port.
+
+    Without the pin every worker defaults to device 0, so the parallel GPU lane OOMs
+    instead of running faster. Must happen before torch creates a CUDA context, hence
+    its position above the imports below. Training subprocesses inherit the env.
+
+    A no-op outside the GPU lane: the cpu lane also runs under xdist, but its container
+    is built without ``--nv`` and has no GPUs (or nvidia-smi) at all.
+    """
+    if os.environ.get("RUN_GPU_E2E_TESTS") != "1":
+        return
+
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "")  # "gw0", "gw1", ...; empty when serial
+    if not worker.startswith("gw"):
+        return
+    index = int(worker[2:])
+
+    # Distinct port per worker: a single shared MASTER_PORT would let two workers'
+    # training subprocesses rendezvous on the same store.
+    os.environ["MASTER_PORT"] = str(_MASTER_PORT_BASE + index)
+
+    devices = [d for d in os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",") if d.strip()]
+    if not devices:
+        try:
+            listed = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, check=False)
+        except (FileNotFoundError, OSError):  # no driver / no nvidia-smi in this container
+            return
+        devices = [str(i) for i, ln in enumerate(listed.stdout.splitlines()) if ln.startswith("GPU ")]
+    if not devices:
+        return
+
+    # Wrapping would silently co-locate two trainings on one GPU and OOM mid-run; fail loudly.
+    if index >= len(devices):
+        raise RuntimeError(
+            f"pytest-xdist worker {worker} has no GPU: {len(devices)} visible ({devices}). "
+            f"Allocate one GPU per worker (--gres=gpu:N with -n N), or lower GPU_PYTEST_WORKERS."
+        )
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = devices[index]
+
+
+_pin_gpu_for_xdist_worker()
+
 import shutil
 from pathlib import Path
 
