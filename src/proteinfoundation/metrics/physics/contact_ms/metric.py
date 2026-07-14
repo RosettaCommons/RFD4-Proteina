@@ -17,8 +17,8 @@ import torch
 from biotite.structure import AtomArray
 from jaxtyping import Bool
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.ddp import RankedLogger
 
 from .api import calculate_maximum_possible_contact_ms, extract_cms_inputs
 from .gpu_cms import TorchCMS

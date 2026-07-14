@@ -11,8 +11,8 @@ from atomworks.ml.transforms.dssp import SSEnum
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray, AtomArrayStack, annotate_sse, spread_residue_wise
 
-from foundry.metrics import Metric
 from proteinfoundation.conditions import C_SEC
+from proteinfoundation.metrics import Metric
 
 
 def annotate_secondary_structure(

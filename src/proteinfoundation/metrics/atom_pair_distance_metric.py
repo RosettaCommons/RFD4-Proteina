@@ -8,10 +8,10 @@ from typing import Any
 import numpy as np
 from biotite.structure import AtomArray
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.metrics.utils.atom_selection import atom_selection_from_spec
 from proteinfoundation.metrics.utils.soft_threshold import apply_soft_bounds_to_outputs
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

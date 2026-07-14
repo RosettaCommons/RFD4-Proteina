@@ -10,7 +10,7 @@ from functools import cached_property
 from jaxtyping import Float
 from torch import Tensor
 
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 
 class ContractCAMetric(Metric):

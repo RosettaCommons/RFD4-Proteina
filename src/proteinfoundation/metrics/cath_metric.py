@@ -17,7 +17,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import AtomArray, AtomArrayStack
 
-from foundry.metrics import Metric
+from proteinfoundation.metrics import Metric
 
 # Classification thresholds
 _H_EVALUE = 0.061144

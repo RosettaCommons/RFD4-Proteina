@@ -7,7 +7,7 @@ import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

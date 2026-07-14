@@ -30,12 +30,12 @@ from biotite.structure import AtomArray
 from biotite.structure.residues import apply_residue_wise, get_residue_starts, spread_residue_wise
 from scipy.optimize import linear_sum_assignment
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_CRDGRPSRC, SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
 from proteinfoundation.conditions import C_CRDGRP, C_IDXGRP, C_INTCRD
 from proteinfoundation.transforms.utils.conditioning_utils import (
     set_specified_conditions_to_default,
 )
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_CRDGRPSRC, SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
 

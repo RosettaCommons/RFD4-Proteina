@@ -62,7 +62,7 @@ Create a new file in `proteinfoundation/metrics/` (or anywhere importable):
 
 ```python
 from biotite.structure import AtomArray
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 
 class MyCustomMetric(Metric):
@@ -172,7 +172,7 @@ components = reward_model.compute_components(predicted_atom_array=structure)
 import hydra
 from omegaconf import DictConfig
 from proteinfoundation.rewards import RewardModel
-from foundry.metrics.metric import MetricManager
+from proteinfoundation.metrics.metric import MetricManager
 
 @hydra.main(config_path="configs/rewards", config_name="multi_source")
 def main(cfg: DictConfig):

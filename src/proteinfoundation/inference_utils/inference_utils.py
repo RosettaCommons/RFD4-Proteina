@@ -28,15 +28,15 @@ from atomworks.ml.utils.token import (
 )
 from biotite.structure import AtomArray
 
-from foundry.common import exists
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.conditions import C_HOT, C_INTCRD
 from proteinfoundation.inference_utils.components import (
     fetch_mask_from_component,
     get_name_mask,
     unravel_components,
 )
+from proteinfoundation.utils.common import exists
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 logging.basicConfig(level=logging.INFO)
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)

@@ -72,7 +72,7 @@ is git-ignored).
 ```python
 # proteinfoundation/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 
 class ResidueCountMetric(Metric):
@@ -110,7 +110,7 @@ Receives bare `AtomArray` inputs — no unwrapping needed.
 # proteinfoundation/metrics/custom_metrics/refolding_residue_count_delta.py
 from biotite.structure import AtomArray
 from biotite.structure.residues import get_residues
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 
 class RefoldingResidueCountDelta(Metric):

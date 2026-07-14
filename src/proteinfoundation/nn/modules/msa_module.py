@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from foundry.model.layers.blocks import Dropout
+from proteinfoundation.nn.modules.blocks import Dropout
 from proteinfoundation.nn.modules.outer_product_mean import (
     OuterProductMean_AF3,
 )
@@ -12,7 +12,8 @@ from proteinfoundation.nn.modules.triangle import (
     TriangleAttention,
     TriangleMultiplication,
 )
-# from foundry.training.checkpoint import activation_checkpointing
+
+# from proteinfoundation.utils.checkpoint import activation_checkpointing
 
 
 class Transition(nn.Module):

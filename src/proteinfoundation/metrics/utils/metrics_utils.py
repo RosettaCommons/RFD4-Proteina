@@ -31,8 +31,7 @@ from biotite.structure.io.xtc import XTCFile
 from biotite.structure.residues import spread_residue_wise
 from omegaconf import OmegaConf
 
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import MetricManager
 from proteinfoundation.metrics.oracles.oracle_metric import (
     OracleJobInput,
     OracleMetric,
@@ -43,6 +42,7 @@ from proteinfoundation.transforms.unindexing import annotate_unindexed_insertion
 from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 from proteinfoundation.utils.coordinate_transfer import remove_terminal_oxygen_atoms
+from proteinfoundation.utils.ddp import RankedLogger
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)

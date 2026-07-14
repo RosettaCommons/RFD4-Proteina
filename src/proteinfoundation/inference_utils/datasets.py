@@ -20,7 +20,6 @@ from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandabl
 from biotite.structure import AtomArray
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.inference_utils.inference_utils import (
     REQUIRED_INFERENCE_ANNOTATIONS,
     check_has_required_conditioning_annotations,
@@ -32,6 +31,7 @@ from proteinfoundation.inference_utils.input_parsing import (
     create_atom_array_from_design_specification,
 )
 from proteinfoundation.transforms.inference_annotations import AddSrcComponentAnnotation
+from proteinfoundation.utils.ddp import RankedLogger
 from proteinfoundation.utils.parse_presets import ANNOTATED_CIF
 
 logger = RankedLogger(__name__, rank_zero_only=True)

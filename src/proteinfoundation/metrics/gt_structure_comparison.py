@@ -10,9 +10,9 @@ from atomworks.ml.conditions.annotator import ensure_annotations
 from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
-from foundry.metrics.metric import Metric
-from foundry.utils.logging import RankedLogger
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.metrics.utils.atom_selection import extract_annotation_names
+from proteinfoundation.utils.logging import RankedLogger
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
 

@@ -1,12 +1,12 @@
 import numpy as np
 from biotite.structure import AtomArray
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.inference_utils.symmetry.frames import (
     decompose_symmetry_frame,
     get_symmetry_frames_from_symmetry_id,
 )
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 FIXED_TRANSFORM_ID = -1
 FIXED_ENTITY_ID = -1

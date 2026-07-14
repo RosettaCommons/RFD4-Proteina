@@ -9,9 +9,9 @@ from einops import rearrange
 from jaxtyping import Float
 from opt_einsum import contract as einsum
 
+# from proteinfoundation import SHOULD_USE_CUEQUIVARIANCE
+# from proteinfoundation.utils.checkpoint import activation_checkpointing
 
-# from foundry import SHOULD_USE_CUEQUIVARIANCE
-# from foundry.training.checkpoint import activation_checkpointing
 
 def init_lecun_normal(module: nn.Module, scale: float = 1.0) -> nn.Module:
     """Re-initialize ``module.weight`` from a truncated (|z| < 2) LeCun normal."""
