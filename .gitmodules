@@ -1,0 +1,4 @@
+[submodule "lib/atomworks"]
+	path = lib/atomworks
+	url = https://github.com/RosettaCommons/atomworks.git
+	branch = dev

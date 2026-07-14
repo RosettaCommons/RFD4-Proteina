@@ -254,7 +254,7 @@ fi
 print_header "Generating Sweep Configs"
 echo "  Sweep config: $SWEEP_CONFIG"
 
-SWEEP_SCRIPT="$REPO_ROOT/script_utils/sweep.py"
+SWEEP_SCRIPT="$REPO_ROOT/src/script_utils/sweep.py"
 
 SWEEP_CMD="python $SWEEP_SCRIPT --sweep-config $SWEEP_CONFIG"
 if [ -n "$SWEEP_CONFIG_OUTPUT_DIR" ]; then
@@ -402,8 +402,8 @@ if [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -n "$BASE_OUT_DIR" ] && [ -n "$ALL
     echo "  Depends on concat jobs: $ALL_CONCAT_JOB_IDS"
 
     SWEEP_CONCAT_SCRIPT="$BASE_OUT_DIR/slurm_sweep_concat_script.sh"
-    SWEEP_CONCAT_PY="$REPO_ROOT/script_utils/concatenate_sweep_results.py"
-    SWEEP_CODE_PY="${SWEEP_CODE_DIR:+$SWEEP_CODE_DIR/script_utils/concatenate_sweep_results.py}"
+    SWEEP_CONCAT_PY="$REPO_ROOT/src/script_utils/concatenate_sweep_results.py"
+    SWEEP_CODE_PY="${SWEEP_CODE_DIR:+$SWEEP_CODE_DIR/src/script_utils/concatenate_sweep_results.py}"
     # Use copied script if available, else fall back to repo
     [ -n "$SWEEP_CODE_DIR" ] && [ -f "$SWEEP_CODE_PY" ] && SWEEP_CONCAT_PY="$SWEEP_CODE_PY"
 

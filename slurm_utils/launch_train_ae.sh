@@ -216,7 +216,7 @@ if [ -n "$DISABLE_CUEQUIVARIANCE" ] && [ "$DISABLE_CUEQUIVARIANCE" == "true" ]; 
 fi
 
 # Add container execution command
-SCRIPT_TRAIN="$CODE_DIR/proteinfoundation/partial_autoencoder/train.py"
+SCRIPT_TRAIN="$CODE_DIR/src/proteinfoundation/partial_autoencoder/train.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: Use shebang in train.py to handle container execution
