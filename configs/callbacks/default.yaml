@@ -2,7 +2,7 @@ set_sampler_epoch_callback:
     _target_: rfproteina.callbacks.sampler_epoch.SetSamplerEpochCallback
 
 skip_nan_grad_callback:
-    _target_: rfproteina.utils.training_analysis_utils.SkipNanGradCallback
+    _target_: rfproteina.utils.training_analysis.SkipNanGradCallback
 
 lightning_timing_callback:
     _target_: rfproteina.callbacks.timing.LightningTimingCallback

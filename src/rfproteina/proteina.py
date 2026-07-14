@@ -49,11 +49,11 @@ from rfproteina.metrics.utils.metrics_utils import (
 )
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
-from rfproteina.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
+from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
-from rfproteina.utils.torch_compile_utils import maybe_mark_cudagraph_step_begin
+from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

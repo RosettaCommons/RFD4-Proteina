@@ -44,7 +44,7 @@ from rfproteina.utils.datasets import (  # noqa: E402
 from rfproteina.utils.hydra import instantiate_callbacks  # noqa: E402
 from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
 from rfproteina.utils.torch import apply_torch_deterministic  # noqa: E402
-from rfproteina.utils.torch_compile_utils import SaveCompileCacheCallback, load_compile_cache  # noqa: E402
+from rfproteina.utils.torch_compile import SaveCompileCacheCallback, load_compile_cache  # noqa: E402
 from rfproteina.utils.weights import fetch_last_ckpt  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -186,7 +186,7 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         try:
             import loralib as lora
 
-            from rfproteina.utils.lora_utils import replace_lora_layers
+            from rfproteina.utils.lora import replace_lora_layers
 
             lora_r = cfg_exp.lora.r
             lora_alpha = cfg_exp.lora.lora_alpha

@@ -134,7 +134,7 @@ from rfproteina.transforms.random_atomize_residues import (
 )
 from rfproteina.transforms.unindexing import UnindexFlaggedTokens
 from rfproteina.utils.common import true_with_prob
-from rfproteina.utils.fold_utils import extract_cath_code_by_level
+from rfproteina.utils.fold import extract_cath_code_by_level
 
 PROTEIN_MSA_DIRS_ENV_VAR = "PROTEIN_MSA_DIRS"
 """Environment variable for protein MSA directories (comma-separated paths)."""
