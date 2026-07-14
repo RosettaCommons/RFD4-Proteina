@@ -4,8 +4,8 @@ import numpy as np
 from atomworks.io.utils.selection import get_residue_starts
 from biotite.structure import AtomArray
 
-from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import C_NCYS
+from proteinfoundation.metrics.metric import Metric
 
 
 class NoCysteineAdherenceMetric(Metric):

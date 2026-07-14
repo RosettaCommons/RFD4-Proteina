@@ -554,7 +554,7 @@ $ROOT_REMOTE/<run_name>/
 
 ### How Metrics Work
 
-Metrics inherit from `foundry.metrics.metric.Metric` and compute scores on generated structures.
+Metrics inherit from `proteinfoundation.metrics.metric.Metric` and compute scores on generated structures.
 
 **Location:** `proteinfoundation/metrics/`
 
@@ -606,7 +606,7 @@ Metrics can be used for **evaluation and search**.
 Create a metric class in `proteinfoundation/metrics/my_metric.py`:
 
 ```python
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 from biotite.structure import AtomArray
 
 class MyCustomMetric(Metric):

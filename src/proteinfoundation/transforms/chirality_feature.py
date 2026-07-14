@@ -9,7 +9,7 @@ from atomworks.ml.utils.geometry import get_random_rots
 from biotite.structure import AtomArray
 from scipy.spatial.transform import Rotation
 
-from foundry.utils.chirals import (
+from proteinfoundation.utils.chirals import (
     STEREOISOMER_TEMPLATES,
     classify_stereoisomer,
     identify_stereogenic_centers,
@@ -19,7 +19,7 @@ MAX_OVERLAPPING_CENTERS: int = 6
 """Max disambiguable overlapping chiral centers per atom.
 
 Sized to match the largest supported coordination number (octahedral, 6
-neighbors); see :py:data:`foundry.utils.chirals.IDEAL_POLYHEDRA`.
+neighbors); see :py:data:`proteinfoundation.utils.chirals.IDEAL_POLYHEDRA`.
 """
 
 

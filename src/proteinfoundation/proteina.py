@@ -27,9 +27,6 @@ from omegaconf import DictConfig, OmegaConf
 from rich.panel import Panel
 from torch import Tensor
 
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.logging import print_df_as_table, safe_print
 from proteinfoundation.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
@@ -40,6 +37,7 @@ from proteinfoundation.inference_utils.foldseek import (
 )
 from proteinfoundation.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from proteinfoundation.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
+from proteinfoundation.metrics.metric import MetricManager
 from proteinfoundation.metrics.oracles.oracle_metric import example_output_dir
 from proteinfoundation.metrics.utils.metrics_utils import (
     MetricsPool,
@@ -52,6 +50,8 @@ from proteinfoundation.metrics.utils.metrics_utils import (
 from proteinfoundation.nn.local_latents_transformer import LocalLatentsTransformer
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.utils.coors_utils import nm_to_ang, trans_nm_to_atom37
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.logging import print_df_as_table, safe_print
 from proteinfoundation.utils.structure_export import process_single_sample_to_atom_array
 from proteinfoundation.utils.torch_compile_utils import maybe_mark_cudagraph_step_begin
 

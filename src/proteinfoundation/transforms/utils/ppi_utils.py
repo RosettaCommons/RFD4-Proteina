@@ -16,7 +16,7 @@ from atomworks.ml.utils.token import (
 from biotite.structure import AtomArray
 from scipy.spatial import KDTree, cKDTree
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 

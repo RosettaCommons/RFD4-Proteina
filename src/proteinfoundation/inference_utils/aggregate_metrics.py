@@ -13,8 +13,8 @@ import numpy as np
 import pandas as pd
 import rootutils
 
-from foundry.utils.env import load_dotenv
-from foundry.utils.logging import RankedLogger, print_df_as_table
+from proteinfoundation.utils.env import load_dotenv
+from proteinfoundation.utils.logging import RankedLogger, print_df_as_table
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 

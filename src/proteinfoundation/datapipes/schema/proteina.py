@@ -9,7 +9,6 @@ from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from biotite.structure import AtomArray
 from torch.nn import functional as F
 
-from foundry.data.schema.base import DataSample
 from proteinfoundation.conditions import (
     C_CATH,
     C_CENTROID,
@@ -25,6 +24,7 @@ from proteinfoundation.conditions import (
     RasaEnum,
     SSEnum,
 )
+from proteinfoundation.datapipes.schema.base import DataSample
 
 # Specs: name -> (dtype, default_value, dim_string)
 # dim_string uses: I=tokens, S=MSA rows, numbers=fixed dims

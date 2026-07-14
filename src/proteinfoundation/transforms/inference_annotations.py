@@ -13,12 +13,12 @@ from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
 from atomworks.ml.transforms.base import Transform
 from biotite.structure import AtomArray
 
-from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.conditions import C_IDXGRP
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 
 def build_src_component_annotation(atom_array: AtomArray) -> np.ndarray:
-    """Compute per-atom :py:data:`~foundry.utils.standard_annotations.SA_SRC` contigs.
+    """Compute per-atom :py:data:`~proteinfoundation.utils.standard_annotations.SA_SRC` contigs.
 
     Non-sentinel residues that share :py:data:`~proteinfoundation.conditions.C_IDXGRP`
     and have contiguous ``res_id`` on the same chain are merged into a single
@@ -71,7 +71,7 @@ def build_src_component_annotation(atom_array: AtomArray) -> np.ndarray:
 
 
 class AddSrcComponentAnnotation(Transform):
-    """Annotate :py:data:`~foundry.utils.standard_annotations.SA_SRC` contig strings.
+    """Annotate :py:data:`~proteinfoundation.utils.standard_annotations.SA_SRC` contig strings.
 
     Must run **before** :py:class:`~atomworks.ml.transforms.realize_expandable_segments.RealizeExpandableSegments`
     so that original ``res_id`` values are preserved on non-sentinel residues.

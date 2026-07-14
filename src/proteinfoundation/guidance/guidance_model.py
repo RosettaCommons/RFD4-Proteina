@@ -2,7 +2,7 @@
 
 :py:class:`GuidanceModel` is the differentiable twin of
 :py:class:`~proteinfoundation.rewards.reward_model.RewardModel`. Each step it runs a
-:py:class:`~foundry.metrics.metric.MetricManager` of differentiable metrics on the clean
+:py:class:`~proteinfoundation.metrics.metric.MetricManager` of differentiable metrics on the clean
 prediction ``x_1_pred``, builds a weighted scalar objective, and backpropagates it to the
 per-modality sampler state to produce an additive ``delta``.
 
@@ -19,8 +19,8 @@ from jaxtyping import Float
 from omegaconf import DictConfig
 from torch import Tensor
 
-from foundry.metrics.metric import MetricManager
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import MetricManager
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

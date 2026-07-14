@@ -32,8 +32,8 @@ from atomworks.io.utils.io_utils import apply_sharding_pattern
 from atomworks.ml.utils.misc import hash_sequence
 from biotite.structure import AtomArray
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

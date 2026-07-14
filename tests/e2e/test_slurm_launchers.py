@@ -77,10 +77,20 @@ def test_entrypoint_scripts_referenced_by_e2e_and_launchers_exist():
     """
     sources = list((ROOT / "tests" / "e2e").rglob("*.py"))
     sources += list((ROOT / "src" / "script_utils").glob("*.py"))
+    # .github/ci/*.sh invoke entrypoints too -- a stale path there breaks CI only, and
+    # only on a GPU runner (this is how `scripts/af3_daemon.py` survived the move to
+    # src/proteinfoundation/af3/ and silently disabled the AF3 daemon).
+    sources += list((ROOT / ".github" / "ci").glob("*.sh"))
 
     # A quoted path that looks like one of our python entrypoints.
-    pattern = re.compile(r"[\"']((?:src/)?(?:proteinfoundation|script_utils)/[\w/]+\.py)[\"']")
-    referenced = {m for f in sources for m in pattern.findall(f.read_text())}
+    quoted = re.compile(r"[\"']((?:src/)?(?:proteinfoundation|script_utils|scripts)/[\w/]+\.py)[\"']")
+    bare = re.compile(r"(?:^|\s)((?:src/)?(?:proteinfoundation|script_utils|scripts)/[\w/]+\.py)")
+    referenced = set()
+    for f in sources:
+        text = f.read_text()
+        referenced |= set(quoted.findall(text))
+        if f.suffix == ".sh":
+            referenced |= set(bare.findall(text))
     assert referenced, "found no entrypoint references to check"
 
     missing = [p for p in sorted(referenced) if not (ROOT / p).is_file()]

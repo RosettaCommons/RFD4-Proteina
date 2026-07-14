@@ -18,8 +18,6 @@ from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_toke
 from biotite.structure import AtomArray
 from torch._tensor import Tensor
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_INTCRD
 from proteinfoundation.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from proteinfoundation.transforms.utils.conditioning_utils import (
@@ -27,7 +25,9 @@ from proteinfoundation.transforms.utils.conditioning_utils import (
     insert_internal_coord_conditioned_groups,
 )
 from proteinfoundation.utils.coordinate_transfer import copy_generated_coordinates_to_input
+from proteinfoundation.utils.ddp import RankedLogger
 from proteinfoundation.utils.pdb_utils import _prepare_bondless_atom_array_for_cif
+from proteinfoundation.utils.standard_annotations import SA_CWI
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

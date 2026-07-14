@@ -8,7 +8,6 @@ from pydantic import (
     Field,
 )
 
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.inference_utils.components import fetch_mask_from_component
 from proteinfoundation.inference_utils.inference_utils import get_motif_features
 from proteinfoundation.inference_utils.symmetry.atom_array import (
@@ -33,6 +32,7 @@ from proteinfoundation.inference_utils.symmetry.frames import (
     get_symmetry_frames_from_atom_array,
     get_symmetry_frames_from_symmetry_id,
 )
+from proteinfoundation.utils.ddp import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 

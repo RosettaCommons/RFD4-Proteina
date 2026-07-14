@@ -96,7 +96,6 @@ from beartype.typing import Any, Callable
 from biotite.structure import AtomArray, spread_residue_wise
 from einops import rearrange
 
-from foundry.common import true_with_prob
 from proteinfoundation.conditions import (
     C_BP,
     C_CATH,
@@ -134,6 +133,7 @@ from proteinfoundation.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
 )
 from proteinfoundation.transforms.unindexing import UnindexFlaggedTokens
+from proteinfoundation.utils.common import true_with_prob
 from proteinfoundation.utils.fold_utils import extract_cath_code_by_level
 
 PROTEIN_MSA_DIRS_ENV_VAR = "PROTEIN_MSA_DIRS"

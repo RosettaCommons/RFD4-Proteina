@@ -7,8 +7,8 @@ from atomworks.io.transforms.atom_array import ensure_atom_array_stack
 from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack
 
-from foundry.metrics.metric import Metric
-from foundry.utils.chirals import (
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.chirals import (
     classify_stereoisomer,
     identify_stereogenic_centers,
     near_tied_templates,
@@ -83,9 +83,7 @@ def compute_chiral_metrics(
     for prefix, centers in splits.items():
         result = _calc_chiral_metrics(pred_coords, gt_coords, centers)
         if result:
-            metrics[f"{prefix}_percent_correct_chirality"] = float(
-                result["percent_correct_chirality"].mean()
-            )
+            metrics[f"{prefix}_percent_correct_chirality"] = float(result["percent_correct_chirality"].mean())
     return metrics
 
 

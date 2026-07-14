@@ -7,7 +7,7 @@ import numpy as np
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, AtomArrayPlusStack, as_atom_array_plus_stack
 from biotite.structure import AtomArray, AtomArrayStack, lddt
 
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 logger = logging.getLogger(__name__)
 

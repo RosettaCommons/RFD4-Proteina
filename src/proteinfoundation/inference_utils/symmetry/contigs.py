@@ -1,7 +1,7 @@
 import numpy as np
 
-from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.inference_utils.components import fetch_mask_from_idx
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 
 def expand_contig_to_resid_from_string(contig_string: str) -> list[str]:

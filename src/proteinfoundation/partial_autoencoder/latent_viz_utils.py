@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.manifold import TSNE
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

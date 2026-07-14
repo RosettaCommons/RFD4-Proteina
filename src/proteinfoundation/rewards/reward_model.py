@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from foundry.utils.logging import RankedLogger
+from proteinfoundation.utils.logging import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=False)
 

@@ -8,10 +8,10 @@ from beartype.typing import Any
 from biotite.structure import AtomArray, AtomArrayStack
 from jaxtyping import Float
 
-from foundry.common import exists
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_HOT
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.common import exists
+from proteinfoundation.utils.ddp import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 

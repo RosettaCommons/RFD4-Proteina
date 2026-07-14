@@ -19,10 +19,7 @@ from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import CIF_LIKE_EXTENSIONS
 from omegaconf import DictConfig
 
-from foundry.metrics import MetricManager
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.env import load_dotenv
-from foundry.utils.logging import print_config_tree, silence_warnings
+from proteinfoundation.metrics import MetricManager
 from proteinfoundation.metrics.oracles.oracle_metric import example_chain_dir, example_output_dir
 from proteinfoundation.metrics.utils.metrics_utils import (
     _write_chain_only_cif_if_unambiguous,
@@ -31,6 +28,9 @@ from proteinfoundation.metrics.utils.metrics_utils import (
 )
 from proteinfoundation.proteina import _clean_metrics_dict
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.env import load_dotenv
+from proteinfoundation.utils.logging import print_config_tree, silence_warnings
 from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

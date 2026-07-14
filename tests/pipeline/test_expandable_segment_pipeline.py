@@ -21,8 +21,8 @@ from pathlib import Path
 
 import rootutils
 
-from foundry.testing import gpu  # noqa: F401
-from foundry.utils.env import load_dotenv
+from proteinfoundation.utils.env import load_dotenv
+from tests.helpers import gpu  # noqa: F401
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv(override=True)
@@ -50,7 +50,7 @@ from atomworks.ml.utils.expandable_segment import (
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from omegaconf import OmegaConf
 
-from foundry.data.collate import collate_batch
+from proteinfoundation.datapipes.collate import collate_batch
 from proteinfoundation.datapipes.pipeline import (
     build_design_train_pipeline,
     build_design_validation_pipeline,

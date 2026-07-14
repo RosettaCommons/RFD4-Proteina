@@ -8,7 +8,7 @@ These invariants are properties that must hold for ALL pipeline outputs across:
 
 import rootutils
 
-from foundry.utils.env import load_dotenv
+from proteinfoundation.utils.env import load_dotenv
 
 # Setup the project root
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -28,7 +28,6 @@ from atomworks.io import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 
-from foundry.utils.logging import print_df_as_table
 from proteinfoundation.datapipes.pipeline import build_design_train_pipeline
 from proteinfoundation.transforms.design_task import (
     InverseFoldingTask,
@@ -39,6 +38,7 @@ from proteinfoundation.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
+from proteinfoundation.utils.logging import print_df_as_table
 from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
 
 _TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"

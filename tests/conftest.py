@@ -1,7 +1,7 @@
 """Test fixtures and utilities"""
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
-from foundry.utils.env import load_dotenv
+from proteinfoundation.utils.env import load_dotenv
 
 load_dotenv(override=True)
 
@@ -68,7 +68,7 @@ from atomworks.ml.executables import _EXECUTABLES
 from atomworks.ml.executables.dssp import DSSPExecutable
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 
-from foundry.testing import configure_pytest, get_test_data_dir, gpu  # noqa: F401
+from tests.helpers import configure_pytest, get_test_data_dir, gpu  # noqa: F401
 
 TEST_DATA_DIR = get_test_data_dir(__file__)
 

@@ -22,7 +22,7 @@ import pandas as pd
 import torch.distributed as dist
 from atomworks.ml.utils.misc import hash_sequence
 
-from foundry.utils.logging import RankedLogger
+from proteinfoundation.utils.logging import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 

@@ -19,14 +19,14 @@ from typing import Any, Literal
 import torch
 from biotite.structure import AtomArray
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.metrics.physics.tmol_ddg_core import (
     build_pose_and_masks,
     create_score_function,
     relax_pose_stack,
     score_block_pair,
 )
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

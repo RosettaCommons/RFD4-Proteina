@@ -19,7 +19,7 @@ train:
     drop_last: True
     multiprocessing_context: ${dataloaders.multiprocessing_context}  
     collate_fn:
-      _target_: foundry.data.collate.collate_batch
+      _target_: proteinfoundation.datapipes.collate.collate_batch
       _partial_: True
       schema: proteinfoundation.datapipes.schema.proteina.ProteinaDataSample  # Just a string now!
       fixed_dimensions: {I: 256}  # Need to change if adjusting crop size from default 256
@@ -36,7 +36,7 @@ val:
     drop_last: False  # Keep all validation examples
     multiprocessing_context: ${dataloaders.multiprocessing_context}
     collate_fn:
-      _target_: foundry.data.collate.collate_batch
+      _target_: proteinfoundation.datapipes.collate.collate_batch
       _partial_: True
       schema: proteinfoundation.datapipes.schema.proteina.ProteinaDataSample
       fixed_dimensions: null

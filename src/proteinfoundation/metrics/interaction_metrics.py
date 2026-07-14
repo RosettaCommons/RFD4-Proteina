@@ -6,7 +6,6 @@ import numpy as np
 from atomworks.ml.transforms.interactions import AnnotateInteractions
 from biotite.structure import AtomArray, AtomArrayStack
 
-from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import (
     C_HB,
     C_HPHOB,
@@ -17,6 +16,7 @@ from proteinfoundation.conditions import (
     HBondEnum,
     PiCationEnum,
 )
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
 
 logger = logging.getLogger(__name__)

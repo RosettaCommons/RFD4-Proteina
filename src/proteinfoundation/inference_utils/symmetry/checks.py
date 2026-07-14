@@ -4,10 +4,10 @@ import numpy as np
 from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
 from biotite.structure import AtomArray
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_SRC
 from proteinfoundation.inference_utils.inference_utils import get_motif_features
 from proteinfoundation.inference_utils.symmetry.contigs import expand_contig_unsym_motif
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 MIN_ATOMS_ALIGN = 100
 MAX_TRANSFORMS = 10
