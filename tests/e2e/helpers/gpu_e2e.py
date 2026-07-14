@@ -41,13 +41,7 @@ def get_data_path() -> Path | None:
 
 PYTHON = sys.executable
 
-# GPU CI uses RF3 refolding (no AF3 apptainer in the GPU lane).
-RF3_ORACLE_OVERRIDE = "metrics/refolding_oracles=rf3"
-
-PrevalOracle = Literal["rf3", "af3", "none"]
-
-# Default RF3 oracle weights (``configs/metrics/refolding_oracles/rf3.yaml``).
-_DEFAULT_RF3_CKPT_NAME = "rf3-with-confidence-xaira-epoch-0711-fixed.ckpt"
+PrevalOracle = Literal["af3", "none"]
 
 # CI training smokes use a small batch to limit VRAM and speed up steps.
 GPU_E2E_TRAIN_BATCH_SIZE = int(os.getenv("GPU_E2E_TRAIN_BATCH_SIZE", "2"))
@@ -57,7 +51,7 @@ GPU_E2E_NGPUS = int(os.getenv("GPU_E2E_NGPUS", "2"))
 GPU_E2E_TRAIN_STEPS = int(os.getenv("GPU_E2E_TRAIN_STEPS", "100"))
 # Lightning sanity check: validation batches *total* across all val loaders (not per dataset).
 GPU_E2E_SANITY_VAL_STEPS = int(os.getenv("GPU_E2E_SANITY_VAL_STEPS", "0"))
-# Epoch validation: batches *per* val dataset (SOTA has ~11; RF3 refolding makes these expensive).
+# Epoch validation: batches *per* val dataset (SOTA has ~11; refolding makes these expensive).
 GPU_E2E_LIMIT_VAL_BATCHES = int(os.getenv("GPU_E2E_LIMIT_VAL_BATCHES", "2"))
 # Back-compat alias for scripts/docs that still say PREVAL_STEPS.
 GPU_E2E_PREVAL_STEPS = GPU_E2E_LIMIT_VAL_BATCHES
@@ -98,44 +92,9 @@ def require_data_file(relative: str) -> Path:
     return path
 
 
-def resolve_rf3_ckpt() -> Path:
-    """Resolve the RF3 refolding checkpoint path; skip if not present.
-
-    Honors ``RF3_CKPT_PATH`` (absolute ``.ckpt`` file) or
-    ``$DATA_PATH/rf3_checkpoints/$RF3_CKPT_NAME``.
-
-    Returns:
-        Absolute path to the RF3 checkpoint file.
-    """
-    full = os.environ.get("RF3_CKPT_PATH")
-    if full:
-        ckpt = Path(full)
-        if not ckpt.is_file():
-            pytest.skip(f"RF3_CKPT_PATH not found: {ckpt}")
-        return ckpt
-    data_path = get_data_path()
-    if data_path is None:
-        pytest.skip("Set DATA_PATH for RF3 refolding checkpoint")
-    name = os.environ.get("RF3_CKPT_NAME", _DEFAULT_RF3_CKPT_NAME)
-    ckpt = data_path / "rf3_checkpoints" / name
-    if not ckpt.is_file():
-        pytest.skip(
-            f"Missing RF3 checkpoint: {ckpt} "
-            f"(set RF3_CKPT_PATH=/abs/file.ckpt or place under $DATA_PATH/rf3_checkpoints/)"
-        )
-    return ckpt
-
-
-def require_rf3_ckpt() -> Path:
-    """GPU e2e gate plus :func:`resolve_rf3_ckpt`."""
-    require_gpu_e2e()
-    return resolve_rf3_ckpt()
-
 
 def preval_oracle_overrides(oracle: PrevalOracle) -> list[str]:
     """Hydra overrides for prevalidation refolding oracle selection."""
-    if oracle == "rf3":
-        return ["metrics/refolding_oracles=rf3"]
     if oracle == "af3":
         return ["metrics/refolding_oracles=af3"]
     return ["~metrics.refolding_oracles"]
@@ -144,9 +103,7 @@ def preval_oracle_overrides(oracle: PrevalOracle) -> list[str]:
 def require_preval_oracle(oracle: PrevalOracle) -> None:
     """Skip when the variant's prevalidation oracle is unavailable."""
     require_gpu_e2e()
-    if oracle == "rf3":
-        require_rf3_ckpt()
-    elif oracle == "af3":
+    if oracle == "af3":
         if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
             return
         if not has_af3:

@@ -35,7 +35,7 @@ from proteinfoundation.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 logger = RankedLogger(__name__, rank_zero_only=True)
-_config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
+_config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
 
 def _iter_structure_files(directory: Path) -> list[Path]:

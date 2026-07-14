@@ -12,9 +12,22 @@ from proteinfoundation.nn.modules.triangle import (
     TriangleAttention,
     TriangleMultiplication,
 )
-from rf3.model.layers.layer_utils import Transition
-
 # from foundry.training.checkpoint import activation_checkpointing
+
+
+class Transition(nn.Module):
+    """SwiGLU feed-forward transition with expansion factor ``n``."""
+
+    def __init__(self, n: int, c: int):
+        super().__init__()
+        self.layer_norm_1 = nn.LayerNorm(c)
+        self.linear_1 = nn.Linear(c, n * c, bias=False)
+        self.linear_2 = nn.Linear(c, n * c, bias=False)
+        self.linear_3 = nn.Linear(n * c, c, bias=False)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        X = self.layer_norm_1(X)
+        return self.linear_3(F.silu(self.linear_1(X)) * self.linear_2(X))
 
 
 class MSAModule(nn.Module):

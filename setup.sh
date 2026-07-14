@@ -8,8 +8,8 @@
 
 set -e
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$REPO_ROOT"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_ROOT"
 
 # ── 1. Install uv ──────────────────────────────────────────────────────────
 if ! command -v uv &>/dev/null; then
@@ -22,7 +22,7 @@ else
 fi
 
 # ── 2. Atomworks submodule ─────────────────────────────────────────────────
-if [ ! -f "lib/atomworks/pyproject.toml" ] && [ ! -f "lib/atomworks/setup.py" ]; then
+if [ ! -f "lib/atomworks/pyproject.toml" ]; then
     echo ">>> Initialising atomworks submodule..."
     git submodule update --init lib/atomworks
 else
@@ -40,17 +40,8 @@ fi
 
 source .venv/bin/activate
 
-# ── 4. Symlink .venv into projects/proteinfoundation ──────────────────────
-PFOUNDATION_VENV="projects/proteinfoundation/.venv"
-if [ ! -e "$PFOUNDATION_VENV" ]; then
-    ln -s "../../.venv" "$PFOUNDATION_VENV"
-    echo ">>> Created symlink $PFOUNDATION_VENV -> ../../.venv"
-else
-    echo ">>> $PFOUNDATION_VENV already exists — skipping."
-fi
-
 # ── 5. Custom metrics scaffolding ──────────────────────────────────────────
-CUSTOM_METRICS_CONFIG="projects/proteinfoundation/configs/metrics/custom_metrics/all_custom_metrics.yaml"
+CUSTOM_METRICS_CONFIG="configs/metrics/custom_metrics/all_custom_metrics.yaml"
 if [ ! -f "$CUSTOM_METRICS_CONFIG" ]; then
     mkdir -p "$(dirname "$CUSTOM_METRICS_CONFIG")"
     cat > "$CUSTOM_METRICS_CONFIG" << 'EOF'
@@ -73,14 +64,14 @@ else
 fi
 
 # Create the (git-ignored) Python package dir so it's ready for custom metric modules.
-CUSTOM_METRICS_PKG="projects/proteinfoundation/proteinfoundation/metrics/custom_metrics"
+CUSTOM_METRICS_PKG="proteinfoundation/metrics/custom_metrics"
 mkdir -p "$CUSTOM_METRICS_PKG"
 
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
-uv pip install -e ".[rf3,rfd3,all,dev]" \
-    -e projects/proteinfoundation \
-    -e "lib/atomworks[dev,ml,openbabel,docs]"
+# atomworks is installed explicitly from the submodule: `uv pip install` does not honour
+# [tool.uv.sources], so without this it would resolve atomworks from PyPI instead.
+uv pip install -e "lib/atomworks[dev,ml,openbabel,docs]" -e ".[dev]"
 
 # ── 7. Shell rc file ───────────────────────────────────────────────────────
 # Determine which rc file to edit based on the user's login shell.
@@ -132,8 +123,8 @@ fi
 
 # ── 8. User info file ──────────────────────────────────────────────────────
 if [ -n "$CLUSTER_VAL" ]; then
-    USER_INFO_DEST="projects/proteinfoundation/slurm_utils/.user_info_${CLUSTER_VAL}"
-    USER_INFO_EXAMPLE="projects/proteinfoundation/slurm_utils/.user_info_${CLUSTER_VAL}_example"
+    USER_INFO_DEST="slurm_utils/.user_info_${CLUSTER_VAL}"
+    USER_INFO_EXAMPLE="slurm_utils/.user_info_${CLUSTER_VAL}_example"
     if [ ! -f "$USER_INFO_DEST" ] && [ -f "$USER_INFO_EXAMPLE" ]; then
         cp "$USER_INFO_EXAMPLE" "$USER_INFO_DEST"
         echo ">>> Created $USER_INFO_DEST from example template."
@@ -154,6 +145,6 @@ echo "============================================================"
 echo ""
 echo " Next steps:"
 echo "   1. Reload your shell:  source $RC_FILE"
-echo "   2. Activate the venv:  source $REPO_ROOT/.venv/bin/activate"
+echo "   2. Activate the venv:  source $PROJECT_ROOT/.venv/bin/activate"
 echo "   3. Make some designs! See projects/proteinfoundation/README.md for instructions."
 echo ""

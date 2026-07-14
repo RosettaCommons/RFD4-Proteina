@@ -407,7 +407,7 @@ if [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -n "$BASE_OUT_DIR" ] && [ -n "$ALL
     # Use copied script if available, else fall back to repo
     [ -n "$SWEEP_CODE_DIR" ] && [ -f "$SWEEP_CODE_PY" ] && SWEEP_CONCAT_PY="$SWEEP_CODE_PY"
 
-    SWEEP_PYTHONPATH="${SWEEP_CODE_DIR:-$REPO_ROOT}/src:${SWEEP_CODE_DIR:-$REPO_ROOT}/models/rf3/src:${SWEEP_CODE_DIR:-$REPO_ROOT}/projects/proteinfoundation:${SWEEP_CODE_DIR:-$REPO_ROOT}/lib/atomworks/src"
+    SWEEP_PYTHONPATH="${SWEEP_CODE_DIR:-$REPO_ROOT}/projects/proteinfoundation:${SWEEP_CODE_DIR:-$REPO_ROOT}/projects/proteinfoundation/lib/atomworks/src"
 
     {
         echo "#!/bin/bash"

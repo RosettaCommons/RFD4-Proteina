@@ -18,7 +18,7 @@ from foundry.utils.logging import RankedLogger, print_df_as_table
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-dotenv_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/.env")
+dotenv_path = os.path.join(os.environ["PROJECT_ROOT"], ".env")
 load_dotenv(dotenv_path)
 
 from proteinfoundation.inference_utils.foldseek import (  # noqa: E402  (load_dotenv must run first)

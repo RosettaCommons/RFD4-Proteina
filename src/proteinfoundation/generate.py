@@ -43,7 +43,7 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 # If the user has set `PROJECT_PATH`, use it to build the config path; otherwise, fall back to `PROJECT_ROOT`
-_config_path = os.path.join(os.environ["PROJECT_ROOT"], "projects/proteinfoundation/configs")
+_config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
 
 def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value: Any = None) -> Any:

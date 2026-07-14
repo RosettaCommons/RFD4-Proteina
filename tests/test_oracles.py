@@ -1,7 +1,6 @@
-"""Tests for OracleMetric subclasses (RF3Oracle, AF3Oracle) and the full refolding pipeline.
+"""Tests for OracleMetric subclasses (AF3Oracle) and the full refolding pipeline.
 
 Slow/GPU tests require:
-  - RF3 checkpoint at $DATA_PATH/rf3_checkpoints/...
   - AF3 apptainer image at $AF3_APPTAINER_PATH
   - A CUDA device
 
@@ -40,7 +39,6 @@ from proteinfoundation.metrics.design_metrics import ClashMetric
 from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
 from proteinfoundation.metrics.oracles.af3_oracle import AF3Oracle
 from proteinfoundation.metrics.oracles.pass_criterion_metric import PassCriterionMetric
-from proteinfoundation.metrics.oracles.rf3_oracle import RF3Oracle
 from proteinfoundation.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -100,10 +98,9 @@ def modified_1a1e():
     return mod_aa
 
 
-# GPU CI runs RF3 only; AF3 apptainer folding is not part of the GPU lane.
-@pytest.fixture(params=["rf3"], scope="module")
+@pytest.fixture(params=["af3"], scope="module")
 def oracle_info(request, modified_1a1e):
-    """Instantiated RF3Oracle (and optionally AF3Oracle locally)."""
+    """Instantiated AF3Oracle."""
     confidence_keys = [
         "chain_of_interest",
         "overall_plddt",
@@ -117,23 +114,10 @@ def oracle_info(request, modified_1a1e):
         "ranking_score",
     ]
 
-    if request.param == "af3" and not has_af3:
+    if not has_af3:
         pytest.skip("AF3 apptainer image not available")
 
-    if request.param == "rf3":
-        from tests.e2e.helpers.gpu_e2e import resolve_rf3_ckpt
-
-        rf3_ckpt = resolve_rf3_ckpt()
-        oracle = RF3Oracle(
-            num_steps=50,
-            n_recycles=5,
-            ckpt_path=str(rf3_ckpt),
-            template_annotations="is_templated",
-        )
-    elif request.param == "af3":
-        oracle = AF3Oracle(num_recycles=5, template_annotations="is_templated")
-    else:
-        raise ValueError(f"Unknown oracle type: {request.param}")
+    oracle = AF3Oracle(num_recycles=5, template_annotations="is_templated")
 
     oracle.setup()
     yield {

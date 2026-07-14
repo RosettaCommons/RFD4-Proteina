@@ -171,7 +171,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm.err
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1

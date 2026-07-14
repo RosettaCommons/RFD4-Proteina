@@ -355,7 +355,7 @@ fi
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR/src:$CODE_DIR/models/rf3/src:$CODE_DIR/projects/proteinfoundation:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4

@@ -26,7 +26,7 @@
 #
 #            hydra:
 #              searchpath:
-#                - file://${oc.env:PROJECT_ROOT}/projects/proteinfoundation/configs
+#                - file://${oc.env:PROJECT_ROOT}/configs
 #
 #       2. Inherit from the base inference config in defaults:
 #

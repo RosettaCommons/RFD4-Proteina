@@ -7,7 +7,7 @@ compute_loss: true
 
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.DesignProblemDataset
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/projects/proteinfoundation/benchmarks/afdb_ss
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/benchmarks/afdb_ss
   num_replicates: 20
 
   transform:

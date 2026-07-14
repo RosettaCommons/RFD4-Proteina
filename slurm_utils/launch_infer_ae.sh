@@ -166,7 +166,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT/src:$REPO_ROOT/models/rf3/src:$REPO_ROOT/projects/proteinfoundation:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT/projects/proteinfoundation:$REPO_ROOT/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4

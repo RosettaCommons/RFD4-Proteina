@@ -3,7 +3,7 @@
 import numpy as np
 from atomworks.ml.utils.testing import cached_parse
 from atomworks.ml.utils.token import apply_token_wise
-from projects.proteinfoundation.tests.conftest import skip_if_no_dssp
+from tests.conftest import skip_if_no_dssp
 
 from proteinfoundation.conditions import C_SEC
 from proteinfoundation.transforms.design_task_modifiers import add_secondary_structure_condition
