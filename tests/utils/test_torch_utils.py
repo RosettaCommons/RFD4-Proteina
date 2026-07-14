@@ -2,7 +2,7 @@ import pytest
 import torch
 
 # assert_no_nans is bound at package-import time, so NAN_CHECK cannot be set from here.
-from proteinfoundation.utils.torch import assert_no_nans, map_to
+from rfproteina.utils.torch import assert_no_nans, map_to
 
 
 def test_map_to():

@@ -7,7 +7,7 @@
 # val cadence via run_every_n_val_epochs at the experiment level.
 
 dataset:
-  _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
   data: ${oc.env:PROJECT_ROOT}/data/benchmarks/dna_binder_120_150_campaign.json
   name: dna_binder_120_150_helicity
   subset_to_keys:
@@ -20,7 +20,7 @@ dataset:
   num_replicates: 20
 
   transform:
-    _target_: proteinfoundation.datapipes.pipeline.build_design_validation_pipeline
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
       - interchain_interactions

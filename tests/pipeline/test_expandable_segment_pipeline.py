@@ -11,7 +11,7 @@ Two tests:
    segment), feeding both batches through the *same* downstream setup
    ``VanillaStrategy`` uses at inference (autoencoder encode → ``corrupt_batch``
    at ``t=1``), and then through every per-feature creator from
-   :class:`FeatureFactory <proteinfoundation.nn.feature_factory_atom37.FeatureFactory>`,
+   :class:`FeatureFactory <rfproteina.nn.feature_factory_atom37.FeatureFactory>`,
    must yield identical tensors at every token (no expanded-region carve-out).
 """
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import rootutils
 
-from proteinfoundation.utils.env import load_dotenv
+from rfproteina.utils.env import load_dotenv
 from tests.helpers import gpu  # noqa: F401
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -50,17 +50,17 @@ from atomworks.ml.utils.expandable_segment import (
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from omegaconf import OmegaConf
 
-from proteinfoundation.datapipes.collate import collate_batch
-from proteinfoundation.datapipes.pipeline import (
+from rfproteina.datapipes.collate import collate_batch
+from rfproteina.datapipes.pipeline import (
     build_design_train_pipeline,
     build_design_validation_pipeline,
 )
-from proteinfoundation.flow_matching.product_space_flow_matcher import (
+from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
-from proteinfoundation.nn.feature_factory import FeatureFactory
-from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
-from proteinfoundation.transforms.design_task import (
+from rfproteina.nn.feature_factory import FeatureFactory
+from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
+from rfproteina.transforms.design_task import (
     MotifScaffoldTask,
     PPIHotspotWith3DTarget,
     StructurePredictionTask,
@@ -68,7 +68,7 @@ from proteinfoundation.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
-from proteinfoundation.utils.parse_presets import ANNOTATED_CIF
+from rfproteina.utils.parse_presets import ANNOTATED_CIF
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -560,7 +560,7 @@ def _collate(pipeline_out: dict):
     schema collate."""
     return collate_batch(
         [pipeline_out],
-        schema="proteinfoundation.datapipes.schema.proteina.ProteinaDataSample",
+        schema="rfproteina.datapipes.schema.proteina.ProteinaDataSample",
     )
 
 

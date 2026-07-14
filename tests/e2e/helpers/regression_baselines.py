@@ -19,7 +19,7 @@ from atomworks.io.parser import parse
 from biotite.structure import rmsd
 from omegaconf import OmegaConf
 
-from proteinfoundation.utils.parse_presets import DISTILLATION
+from rfproteina.utils.parse_presets import DISTILLATION
 
 # Absolute path to the baselines directory regardless of cwd.
 BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"

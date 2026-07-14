@@ -2,9 +2,9 @@
 
 This guide explains how to write and register your own evaluation metrics without modifying any tracked files. Your code stays local unless you decide to contribute it back.
 
-Both `configs/metrics/custom_metrics/` and `proteinfoundation/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
+Both `configs/metrics/custom_metrics/` and `rfproteina/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
 
-> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `proteinfoundation/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
+> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
 
 ---
 
@@ -64,15 +64,15 @@ def kwargs_to_compute_args(self) -> dict:
 
 ## Step 1 — Write the Python class
 
-Add a module under `proteinfoundation/metrics/custom_metrics/` (the whole directory
+Add a module under `rfproteina/metrics/custom_metrics/` (the whole directory
 is git-ignored). 
 
 ### Design metric example
 
 ```python
-# proteinfoundation/metrics/custom_metrics/residue_count.py
+# rfproteina/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
-from proteinfoundation.metrics.metric import Metric
+from rfproteina.metrics.metric import Metric
 
 
 class ResidueCountMetric(Metric):
@@ -107,10 +107,10 @@ Key points:
 Receives bare `AtomArray` inputs — no unwrapping needed.
 
 ```python
-# proteinfoundation/metrics/custom_metrics/refolding_residue_count_delta.py
+# rfproteina/metrics/custom_metrics/refolding_residue_count_delta.py
 from biotite.structure import AtomArray
 from biotite.structure.residues import get_residues
-from proteinfoundation.metrics.metric import Metric
+from rfproteina.metrics.metric import Metric
 
 
 class RefoldingResidueCountDelta(Metric):
@@ -145,21 +145,21 @@ merges your entries directly into the overall metrics config under the right key
 # Omit this section if you have no custom design metrics.
 inline_metrics:
   residue_count:
-    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+    _target_: rfproteina.metrics.custom_metrics.residue_count.ResidueCountMetric
     min_length: 50
 
 # ── Refolding metrics ─────────────────────────────────────────────────────────
 # Omit this section if you have no custom refolding metrics.
 refolding_metrics:
   refolding_residue_delta:
-    _target_: proteinfoundation.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
+    _target_: rfproteina.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
     required_tags_any: [unconditional_refolding]
 
 # ── Pass criteria ─────────────────────────────────────────────────────────────
 # Omit this section if you have no custom pass criteria.
 pass_criteria:
   my_custom_plddt:
-    _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+    _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
     metric_thresholds:
       rf3_standard.plddt:
         min: 75.0
@@ -182,7 +182,7 @@ defaults:
 
 inline_metrics:
   residue_count:
-    _target_: proteinfoundation.metrics.custom_metrics.residue_count.ResidueCountMetric
+    _target_: rfproteina.metrics.custom_metrics.residue_count.ResidueCountMetric
 ```
 
 ```yaml
@@ -190,12 +190,12 @@ inline_metrics:
 # @package metrics
 refolding_metrics:
   refolding_residue_delta:
-    _target_: proteinfoundation.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
+    _target_: rfproteina.metrics.custom_metrics.refolding_residue_count_delta.RefoldingResidueCountDelta
 ```
 
 Both files dict-merge into the same `metrics` package. Only `all_custom_metrics.yaml` needs to be referenced from `configs/metrics/all_metrics.yaml`; everything else it pulls in is resolved transitively.
 
-The same applies on the Python side — `proteinfoundation/metrics/custom_metrics/` is a package, so add as many modules as you like (`residue_count.py`, `refolding_residue_count_delta.py`, ...) and reference each via `proteinfoundation.metrics.custom_metrics.<module_name>.<ClassName>`.
+The same applies on the Python side — `rfproteina/metrics/custom_metrics/` is a package, so add as many modules as you like (`residue_count.py`, `refolding_residue_count_delta.py`, ...) and reference each via `rfproteina.metrics.custom_metrics.<module_name>.<ClassName>`.
 
 ### Pass criteria config
 
@@ -204,7 +204,7 @@ The same applies on the Python side — `proteinfoundation/metrics/custom_metric
 ```yaml
 pass_criteria:
   backbone_rmsd_tight:
-    _target_: proteinfoundation.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+    _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
     metric_thresholds:
       backbone_rmsd_unconditional.rmsd:   # dot-notation into merged metrics
         max: 1.0
@@ -218,7 +218,7 @@ pass_criteria:
 The custom metrics file is picked up automatically when evaluate.py includes the optional entry in its defaults. No extra flags needed:
 
 ```bash
-python proteinfoundation/evaluate.py \
+python rfproteina/evaluate.py \
     input_dir=/path/to/structures \
     out_dir=/path/to/output \
     +refolding_oracles=rf3_all \
@@ -252,7 +252,7 @@ Results appear in `design_metrics.csv` and `refolding_metrics.csv`. Column names
 # 1. Create a branch before making any changes
 git switch -c feat/my-metric-name
 
-# 2. Add your class to a tracked metrics file under proteinfoundation/metrics/
+# 2. Add your class to a tracked metrics file under rfproteina/metrics/
 
 # 3. Add a YAML entry to an existing tracked config
 

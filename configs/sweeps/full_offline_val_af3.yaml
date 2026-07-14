@@ -4,7 +4,7 @@
 # val datasets used during training.
 #
 # Run command:
-#   cd projects/proteinfoundation
+#   cd projects/rfproteina
 #   ./scripts/launch_sweep.sh <cluster> \
 #       --sweep-config configs/sweeps/full_offline_val_af3.yaml \
 #       ckpt_path=<CKPT_PATH> ckpt_name=<CKPT_NAME>.ckpt

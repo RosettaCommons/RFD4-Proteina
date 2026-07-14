@@ -9,9 +9,9 @@ from atomworks.ml.transforms.base import Compose
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from atomworks.ml.utils.token import get_token_count
 
-from proteinfoundation.datapipes.pipeline import _build_design_clean_and_sample_pipeline
-from proteinfoundation.transforms.budget import plan_unindex_expansion
-from proteinfoundation.transforms.design_task import MotifScaffoldTask
+from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
+from rfproteina.transforms.budget import plan_unindex_expansion
+from rfproteina.transforms.design_task import MotifScaffoldTask
 
 
 @pytest.mark.parametrize("crop_size", [60, 1000], ids=["tight_forces_recrop", "loose_fast_path"])

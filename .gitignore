@@ -2,8 +2,8 @@
 examples/*.cif
 
 # User-defined custom metrics
-projects/proteinfoundation/configs/metrics/custom_metrics/
-projects/proteinfoundation/proteinfoundation/metrics/custom_metrics/
+projects/rfproteina/configs/metrics/custom_metrics/
+projects/rfproteina/rfproteina/metrics/custom_metrics/
 
 # Checkpoints
 **.ckpt
@@ -246,7 +246,7 @@ tests/data/pdb/*
 
 # Model weights and checkpoints (covered by **.ckpt above)
 
-# Benchmarks (except proteinfoundation benchmarks which are source-controlled)
+# Benchmarks (except rfproteina benchmarks which are source-controlled)
 **/benchmarks/
 !data/benchmarks
 !data/benchmarks/**

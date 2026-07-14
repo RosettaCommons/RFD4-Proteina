@@ -16,10 +16,10 @@ import pytest
 from tests.e2e.helpers.gpu_e2e import ROOT
 
 ENTRYPOINTS = [
-    "src/proteinfoundation/train.py",
-    "src/proteinfoundation/partial_autoencoder/train.py",
-    "src/proteinfoundation/generate.py",
-    "src/proteinfoundation/evaluate.py",
+    "src/rfproteina/train.py",
+    "src/rfproteina/partial_autoencoder/train.py",
+    "src/rfproteina/generate.py",
+    "src/rfproteina/evaluate.py",
 ]
 
 

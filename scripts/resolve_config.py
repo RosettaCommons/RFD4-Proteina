@@ -30,12 +30,12 @@ import hydra
 from hydra import initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
-_AF3_ORACLE_TARGET = "proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle"
+_AF3_ORACLE_TARGET = "rfproteina.metrics.oracles.af3_oracle.AF3Oracle"
 
 
 def _has_af3_oracle_target(cfg: DictConfig) -> bool:
     """Recursively search the resolved config for a node whose ``_target_``
-    equals ``proteinfoundation.metrics.oracles.af3_oracle.AF3Oracle``.
+    equals ``rfproteina.metrics.oracles.af3_oracle.AF3Oracle``.
     """
     container = OmegaConf.to_container(cfg, resolve=False, throw_on_missing=False)
 
@@ -79,7 +79,7 @@ def main() -> int:
     # configs using ``hydra.searchpath: file://${oc.env:PROJECT_ROOT}/...``).
     # generate.py sets this via rootutils at import; here we set it explicitly so
     # config composition doesn't fail on the interpolation. ``configs_root`` is
-    # ``<repo>/projects/proteinfoundation/configs``, so the repo root is 3 levels up.
+    # ``<repo>/projects/rfproteina/configs``, so the repo root is 3 levels up.
     os.environ.setdefault("PROJECT_ROOT", str(configs_root.parents[2]))
 
     # Mirror Hydra exactly: --config-path is the search-path root (defaults to the

@@ -1,7 +1,7 @@
 """Test fixtures and utilities"""
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
-from proteinfoundation.utils.env import load_dotenv
+from rfproteina.utils.env import load_dotenv
 
 load_dotenv(override=True)
 

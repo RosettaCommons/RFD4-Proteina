@@ -19,7 +19,7 @@ dataset:
     assembly_id_colname: assembly_id
     altloc_seed_colname: null  # normally we would want this but this version already has altlocs in separate files so we don't need to load them now
     parser_args:
-      _target_: proteinfoundation.utils.parse_presets.distillation
+      _target_: rfproteina.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
       cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache

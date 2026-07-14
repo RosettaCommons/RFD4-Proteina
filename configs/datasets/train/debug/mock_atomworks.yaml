@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 dataset:
-  _target_: proteinfoundation.datapipes.mock_datamodule.MockAtomworksDataset
+  _target_: rfproteina.datapipes.mock_datamodule.MockAtomworksDataset
   name: mock_atomworks
   data: ${oc.env:DATA_PATH}/train_datasets/dummy_batches/proteina_mgnify_batch.pkl
   num_samples: 1600
@@ -21,7 +21,7 @@ dataset:
         frequency: 1.0
         # Disable all conditioning
         transform:
-          _target_: proteinfoundation.transforms.design_task.UnconditionalTask
+          _target_: rfproteina.transforms.design_task.UnconditionalTask
           global_design_task_kwargs:
             rasa_kwargs:
               p_add_rasa_condition: 0.0

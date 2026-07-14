@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup.sh — First-time setup for proteinfoundation on a new Linux machine.
+# setup.sh — First-time setup for rfproteina on a new Linux machine.
 #
 # Can be run from any directory — it auto-detects the repo root:
-#   bash /path/to/projects/proteinfoundation/setup.sh
+#   bash /path/to/projects/rfproteina/setup.sh
 # =============================================================================
 
 set -e
@@ -52,11 +52,11 @@ if [ ! -f "$CUSTOM_METRICS_CONFIG" ]; then
 #
 # inline_metrics:
 #   my_metric:
-#     _target_: proteinfoundation.metrics.custom_metrics.my_module.MyMetric
+#     _target_: rfproteina.metrics.custom_metrics.my_module.MyMetric
 #
 # refolding_metrics:
 #   my_refolding_metric:
-#     _target_: proteinfoundation.metrics.custom_metrics.my_module.MyRefoldingMetric
+#     _target_: rfproteina.metrics.custom_metrics.my_module.MyRefoldingMetric
 EOF
     echo ">>> Created custom metrics config at $CUSTOM_METRICS_CONFIG."
 else
@@ -64,7 +64,7 @@ else
 fi
 
 # Create the (git-ignored) Python package dir so it's ready for custom metric modules.
-CUSTOM_METRICS_PKG="proteinfoundation/metrics/custom_metrics"
+CUSTOM_METRICS_PKG="rfproteina/metrics/custom_metrics"
 mkdir -p "$CUSTOM_METRICS_PKG"
 
 # ── 6. Install dependencies ────────────────────────────────────────────────
@@ -81,7 +81,7 @@ else
     RC_FILE="$HOME/.bashrc"
 fi
 
-MARKER="# >>> proteinfoundation cluster settings >>>"
+MARKER="# >>> rfproteina cluster settings >>>"
 if grep -q "$MARKER" "$RC_FILE" 2>/dev/null; then
     echo ">>> Cluster settings already present in $RC_FILE — skipping."
 else
@@ -107,13 +107,13 @@ else
         cat >> "$RC_FILE" << EOF
 
 $MARKER
-# Cluster identity for proteinfoundation SLURM launch scripts.
+# Cluster identity for rfproteina SLURM launch scripts.
 # CLUSTER selects which scripts/.user_info_<cluster> config is loaded when
 # submitting jobs. Update this if you switch to a different cluster.
 export CLUSTER=$CLUSTER_VAL
 # CONTAINER_TYPE is 'apptainer' (DIGS/CoreWeave) or 'docker' (OCI/ORD/GB200).
 export CONTAINER_TYPE=$CT_VAL
-# <<< proteinfoundation cluster settings <<<
+# <<< rfproteina cluster settings <<<
 EOF
         echo ">>> Added cluster settings to $RC_FILE."
     else
@@ -146,5 +146,5 @@ echo ""
 echo " Next steps:"
 echo "   1. Reload your shell:  source $RC_FILE"
 echo "   2. Activate the venv:  source $PROJECT_ROOT/.venv/bin/activate"
-echo "   3. Make some designs! See projects/proteinfoundation/README.md for instructions."
+echo "   3. Make some designs! See projects/rfproteina/README.md for instructions."
 echo ""

@@ -214,7 +214,7 @@ if [ -n "$CODE_DIR_OVERRIDE" ]; then
     CODE_DIR="$CODE_DIR_OVERRIDE"
 elif [ "$COPY_CODE" == "true" ]; then
     CODE_DIR="$RUN_DIR/code"
-    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/proteinfoundation" ]; then
+    if [ -d "$CODE_DIR/src" ] || [ -d "$CODE_DIR/rfproteina" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $CODE_DIR. Use --overwrite-rundir."
             exit 1
@@ -288,7 +288,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
 
-SCRIPT_EVALUATE="$CODE_DIR/src/proteinfoundation/evaluate.py"
+SCRIPT_EVALUATE="$CODE_DIR/src/rfproteina/evaluate.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     cat >> "$SBATCH_FILE" << 'EOF'
@@ -369,7 +369,7 @@ fi
 # ============================================================
 if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
-    CONCAT_SCRIPT="$CODE_DIR/src/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/src/rfproteina/inference_utils/aggregate_metrics.py"
     CONCAT_DIR="$RUN_DIR/evaluation_metrics"
 
     FOLDSEEK_FLAG=""

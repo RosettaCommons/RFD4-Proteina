@@ -19,7 +19,7 @@ from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from biotite.structure import AtomArray, BondList
 
-from proteinfoundation.conditions import (
+from rfproteina.conditions import (
     C_ABH,
     C_ABL,
     C_CDR,
@@ -32,12 +32,12 @@ from proteinfoundation.conditions import (
     RasaEnum,
     SSEnum,
 )
-from proteinfoundation.transforms.design_task_modifiers import (
+from rfproteina.transforms.design_task_modifiers import (
     add_hbond_condition,
     add_rasa_condition,
     add_secondary_structure_condition,
 )
-from proteinfoundation.transforms.utils.conditioning_utils import (
+from rfproteina.transforms.utils.conditioning_utils import (
     sample_unindexed_groups,
 )
 
@@ -340,7 +340,7 @@ class TestAddRasaCondition:
 
         # Artificially inject negative RASA (this shouldn't happen in practice)
         # We'll patch the calculate_atomwise_rasa function to return negative values
-        import proteinfoundation.transforms.design_task_modifiers as mod
+        import rfproteina.transforms.design_task_modifiers as mod
 
         original_calc = mod.calculate_atomwise_rasa
 

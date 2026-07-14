@@ -2,7 +2,7 @@
 
 import torch
 
-from proteinfoundation.nn.modules.msa_module import MSAModule
+from rfproteina.nn.modules.msa_module import MSAModule
 
 
 def test_msa_module_padding_does_not_leak():

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from biotite.structure import AtomArray
 
-from proteinfoundation.transforms.design_task import TipAtomActiveSiteTask
+from rfproteina.transforms.design_task import TipAtomActiveSiteTask
 
 
 @pytest.mark.fast

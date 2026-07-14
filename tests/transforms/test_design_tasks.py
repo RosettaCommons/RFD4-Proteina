@@ -87,8 +87,8 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 
-from proteinfoundation.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
-from proteinfoundation.transforms.design_task import (
+from rfproteina.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
+from rfproteina.transforms.design_task import (
     InverseFoldingTask,
     ProteinFromDNASequenceContextTask,
     ProteinFromDNAStructureContextTask,

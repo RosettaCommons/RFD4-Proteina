@@ -5,7 +5,7 @@ import os
 import numpy as np
 from atomworks.io import parse
 
-from proteinfoundation.conditions import C_CRD
+from rfproteina.conditions import C_CRD
 
 # Get test data directory
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -21,7 +21,7 @@ class TestDDGSaltMetrics:
         Uses the 5vht structure (2-chain complex with chains A and B). The structure
         must have multiple chains for interface metrics to work.
         """
-        from proteinfoundation.metrics.physics.ddg_salt_metrics import (
+        from rfproteina.metrics.physics.ddg_salt_metrics import (
             ChargeComplementarityMetric,
             get_binder_target_mask,
             get_charged_residue_positions,

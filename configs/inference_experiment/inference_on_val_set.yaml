@@ -1,7 +1,7 @@
 # @package _global_
 
 # Config for running generate.py on an existing val set config, e.g. mcsa_subset
-# Usage: proteinfoundation/generate.py inference_experiment=inference_on_val_set +datasets/val@generation=mcsa_subset ckpt_path=...
+# Usage: rfproteina/generate.py inference_experiment=inference_on_val_set +datasets/val@generation=mcsa_subset ckpt_path=...
 defaults:
   - /generation: inference_base
   - /metrics: all_metrics # Will be subsetted according to metrics_tags

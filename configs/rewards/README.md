@@ -6,8 +6,8 @@ Reward models aggregate metrics into scalar rewards for search-based protein des
 
 The reward system is fully modular:
 
-1. **Metrics** (`proteinfoundation.metrics.*`): Compute individual scores from a generated structure
-2. **RewardModel** (`proteinfoundation.rewards.RewardModel`): Aggregates any metrics with configurable weights
+1. **Metrics** (`rfproteina.metrics.*`): Compute individual scores from a generated structure
+2. **RewardModel** (`rfproteina.rewards.RewardModel`): Aggregates any metrics with configurable weights
 
 ## Available Metrics
 
@@ -58,11 +58,11 @@ Adding a custom reward is simple. Every metric follows the same pattern:
 
 ### Step 1: Write your metric class
 
-Create a new file in `proteinfoundation/metrics/` (or anywhere importable):
+Create a new file in `rfproteina/metrics/` (or anywhere importable):
 
 ```python
 from biotite.structure import AtomArray
-from proteinfoundation.metrics.metric import Metric
+from rfproteina.metrics.metric import Metric
 
 
 class MyCustomMetric(Metric):
@@ -91,11 +91,11 @@ of named float values.
 # configs/rewards/my_reward.yaml
 metrics:
   my_metric:
-    _target_: proteinfoundation.metrics.my_custom_metric.MyCustomMetric
+    _target_: rfproteina.metrics.my_custom_metric.MyCustomMetric
     my_param: 2.5
 
   rf3:
-    _target_: proteinfoundation.metrics.rf3_metric.RF3Metric
+    _target_: rfproteina.metrics.rf3_metric.RF3Metric
     ckpt_path: /path/to/rf3_latest.pt
 
 weights:
@@ -107,8 +107,8 @@ weights:
 ### Step 3 (optional): Use it programmatically
 
 ```python
-from proteinfoundation.rewards import RewardModel
-from proteinfoundation.metrics import RF3Metric
+from rfproteina.rewards import RewardModel
+from rfproteina.metrics import RF3Metric
 from my_module import MyCustomMetric
 
 reward_model = RewardModel(
@@ -135,10 +135,10 @@ reward_model = RewardModel(
 ### Python API
 
 ```python
-from proteinfoundation.rewards import RewardModel
-from proteinfoundation.metrics import RF3Metric, AF2Metric
-from proteinfoundation.metrics.rasa_metrics import RASAMetrics
-from proteinfoundation.metrics.molprobity_metrics import MolprobityMetrics
+from rfproteina.rewards import RewardModel
+from rfproteina.metrics import RF3Metric, AF2Metric
+from rfproteina.metrics.rasa_metrics import RASAMetrics
+from rfproteina.metrics.molprobity_metrics import MolprobityMetrics
 
 # Compose any metrics
 reward_model = RewardModel(
@@ -171,8 +171,8 @@ components = reward_model.compute_components(predicted_atom_array=structure)
 ```python
 import hydra
 from omegaconf import DictConfig
-from proteinfoundation.rewards import RewardModel
-from proteinfoundation.metrics.metric import MetricManager
+from rfproteina.rewards import RewardModel
+from rfproteina.metrics.metric import MetricManager
 
 @hydra.main(config_path="configs/rewards", config_name="multi_source")
 def main(cfg: DictConfig):
@@ -187,7 +187,7 @@ def main(cfg: DictConfig):
     )
 
     # Use for search
-    from proteinfoundation.search import BestOfNStrategy
+    from rfproteina.search import BestOfNStrategy
     strategy = BestOfNStrategy(n_samples=10)
     results = strategy.generate(model, batch, reward_model)
 ```

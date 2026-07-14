@@ -15,7 +15,7 @@ import biotite.structure as struc
 import pytest
 from atomworks.io.parser import parse
 
-from proteinfoundation.utils.parse_presets import DISTILLATION
+from rfproteina.utils.parse_presets import DISTILLATION
 
 CIF_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "5vht_from_file.cif")
 
@@ -32,7 +32,7 @@ def test_cath_label_5vht_chain_a():
 
     Ground truth: CathDomainList.S95.v4.4.0 lists 5vhtA00 as 1.20.59.10.
     """
-    from proteinfoundation.metrics.cath_metric import annotate_cath
+    from rfproteina.metrics.cath_metric import annotate_cath
 
     arr = parse(CIF_PATH, config=DISTILLATION)["asym_unit"][0]
     chain_a = arr[(arr.chain_id == "A") & struc.filter_amino_acids(arr)]

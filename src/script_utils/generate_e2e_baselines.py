@@ -4,7 +4,7 @@
 Run this script on DIGS, on a GPU node with the squashfs datasets mounted
 (inside apptainer, or with `.ipd/.env.digs` sourced):
 
-    cd projects/proteinfoundation
+    cd projects/rfproteina
     python script_utils/generate_e2e_baselines.py
 
 By default the inference/beam baselines use the SOTA checkpoint from configs/inference.yaml
@@ -51,8 +51,8 @@ from tests.e2e.helpers.regression_baselines import (
 
 # ── Repository / path constants ──────────────────────────────────────────────
 
-# This script lives at projects/proteinfoundation/script_utils/; ROOT is the
-# projects/proteinfoundation dir (cwd for all subprocess calls).
+# This script lives at projects/rfproteina/script_utils/; ROOT is the
+# projects/rfproteina dir (cwd for all subprocess calls).
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
 PYTHON = sys.executable
@@ -214,7 +214,7 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
 
     gen_cmd = [
         PYTHON,
-        "src/proteinfoundation/generate.py",
+        "src/rfproteina/generate.py",
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
@@ -254,7 +254,7 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
 
     base_cmd = [
         PYTHON,
-        "src/proteinfoundation/generate.py",
+        "src/rfproteina/generate.py",
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
         *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
@@ -350,7 +350,7 @@ def main() -> None:
         store_base = ROOT / "store" / "regression_sota_baseline"
         generate_training_baseline(
             name="sota_training",
-            script="src/proteinfoundation/train.py",
+            script="src/rfproteina/train.py",
             extra_overrides=[
                 "experiment=sota",
                 # This smoke trains 100 steps from random init -- it exercises the
@@ -368,7 +368,7 @@ def main() -> None:
         store_base = ROOT / "store" / "regression_ae_baseline"
         generate_training_baseline(
             name="ae_training",
-            script="src/proteinfoundation/partial_autoencoder/train.py",
+            script="src/rfproteina/partial_autoencoder/train.py",
             extra_overrides=[
                 "experiment_ae=ae_sota",
                 "dataloaders.train.dataloader_params.batch_size=2",

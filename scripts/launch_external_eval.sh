@@ -238,7 +238,7 @@ echo "  Local symlink: $REPO_ROOT/runs/$RUN_NAME"
 # Copy code to run directory (or use current repo)
 if [ "$COPY_CODE" == "true" ]; then
     # Check if code directory already exists
-    if [ -d "$RUN_DIR/src" ] || [ -d "$RUN_DIR/proteinfoundation" ]; then
+    if [ -d "$RUN_DIR/src" ] || [ -d "$RUN_DIR/rfproteina" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $RUN_DIR"
             echo "  The run directory contains existing code from a previous run."
@@ -401,7 +401,7 @@ EOF
 # Pre-spawn AF3 daemon block when the metric-manager-config YAML references AF3Oracle.
 AF3_NEEDED="false"
 if [ -n "$METRIC_MANAGER_CONFIG" ] && [ -f "$METRIC_MANAGER_CONFIG" ] && \
-   grep -qE '^[[:space:]]*_target_:[[:space:]]*proteinfoundation\.metrics\.af3_oracle\.AF3Oracle' "$METRIC_MANAGER_CONFIG"; then
+   grep -qE '^[[:space:]]*_target_:[[:space:]]*rfproteina\.metrics\.af3_oracle\.AF3Oracle' "$METRIC_MANAGER_CONFIG"; then
     AF3_NEEDED="true"
 fi
 if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
@@ -410,7 +410,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
 fi
 
 # Build the command
-SCRIPT_EVAL="$CODE_DIR/src/proteinfoundation/external_eval.py"
+SCRIPT_EVAL="$CODE_DIR/src/rfproteina/external_eval.py"
 
 # Add job array logic if needed
 if [ "$NJOBS" -gt 1 ]; then
@@ -539,7 +539,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     print_header "Concatenating Results"
 
     # Run the concatenation script
-    CONCAT_SCRIPT="$CODE_DIR/src/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/src/rfproteina/inference_utils/aggregate_metrics.py"
 
     if [ "$CLUSTER_TYPE" == "digs" ]; then
         python "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek

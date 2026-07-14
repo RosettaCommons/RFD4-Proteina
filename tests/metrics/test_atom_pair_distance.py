@@ -4,7 +4,7 @@ from pathlib import Path
 
 from atomworks.io import parse
 
-from proteinfoundation.metrics.atom_pair_distance_metric import AtomPairDistanceMetric
+from rfproteina.metrics.atom_pair_distance_metric import AtomPairDistanceMetric
 
 
 def test_lenacap_reference_satisfies_catalytic_distance_constraints():

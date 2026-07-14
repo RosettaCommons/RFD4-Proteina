@@ -95,7 +95,7 @@ dialect: 2
 
 ### Python API
 ```
-from proteinfoundation.inference_utils.input_parsing import create_atom_array_from_design_specification
+from rfproteina.inference_utils.input_parsing import create_atom_array_from_design_specification
 
 atom_array, metadata = create_atom_array_from_design_specification(
     input="path/to/template.pdb",

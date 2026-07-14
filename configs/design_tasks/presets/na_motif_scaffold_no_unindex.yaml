@@ -4,7 +4,7 @@
 nucleic_ss_conditioning:
   frequency: 1.0
   transform:
-    _target_: proteinfoundation.transforms.design_task.NucleicSecondaryStructureTask
+    _target_: rfproteina.transforms.design_task.NucleicSecondaryStructureTask
     min_nucleic_tokens: 2
     p_show_partial_feats: 0.7
     p_add_motif_scaffold_condition: 0.2

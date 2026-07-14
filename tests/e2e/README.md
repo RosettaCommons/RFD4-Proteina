@@ -1,8 +1,8 @@
 # GPU end-to-end tests
 
 Thin test modules + fat helpers that exercise the real training and inference
-entrypoints (`src/proteinfoundation/train.py`, `src/proteinfoundation/partial_autoencoder/train.py`,
-`src/proteinfoundation/generate.py`) as subprocesses on GPUs. Modeled on
+entrypoints (`src/rfproteina/train.py`, `src/rfproteina/partial_autoencoder/train.py`,
+`src/rfproteina/generate.py`) as subprocesses on GPUs. Modeled on
 `protein-foundation-models/tests/e2e`.
 
 ## What runs
@@ -48,7 +48,7 @@ file and start daemons before pytest:
 
 ```bash
 source .ipd/.env.coreweave   # from repo root
-eval "$(/usr/bin/python3 projects/proteinfoundation/scripts/af3_daemon.py launch \
+eval "$(/usr/bin/python3 projects/rfproteina/scripts/af3_daemon.py launch \
   --num-gpus 2 --log-dir /tmp/af3_e2e --background)"
 # then run pytest inside latent-dev with AF3_LAUNCHER_SOCKET_TEMPLATE exported
 ```
@@ -60,7 +60,7 @@ Boxes with no GPU can force the tests to run with `ALLOW_SINGLE_GPU_E2E=1`.
 ## Running locally (inside the latent-dev apptainer)
 
 ```bash
-cd projects/proteinfoundation
+cd projects/rfproteina
 RUN_GPU_E2E_TESTS=1 GPU_COUNT=2 DATA_PATH=$DATA_PATH \
   pytest -m "gpu or e2e or training_smoke" -v tests/e2e
 
