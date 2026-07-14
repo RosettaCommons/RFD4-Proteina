@@ -265,7 +265,7 @@ def get_version_number(fname: str) -> int | None:
         version number if in the format last-v<X>.ckpt, with X and integer > 0,
         or last.ckpt yields 0. If not the right naming returns None.
     """
-    match = re.search(r"last-v(\d+).ckpt", fname)
+    match = re.fullmatch(r"last-v(\d+)\.ckpt", fname)
     if match:
         return int(match.group(1))
     elif fname == "last.ckpt":

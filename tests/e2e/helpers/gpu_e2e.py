@@ -87,7 +87,7 @@ def _missing_data(reason: str) -> NoReturn:
     A GPU test that skips still reports the lane green while contributing no coverage, so whether
     it ran comes down to which runner the job landed on. In CI that is a failure, not a skip.
     """
-    if os.getenv("CI") == "true":
+    if os.getenv("CI", "").lower() in ("true", "1", "yes"):
         pytest.fail(reason)
     pytest.skip(reason)
 
