@@ -26,7 +26,7 @@ def set_accelerator_based_on_availability(cfg: dict | DictConfig) -> dict | Dict
         cfg: Hydra object with trainer settings "accelerator", "devices_per_node", and "num_nodes".
 
     Returns:
-        None; modifies the input `cfg` object in place.
+        The same ``cfg``, modified in place.
     """
     if not torch.cuda.is_available():
         logger.error(
