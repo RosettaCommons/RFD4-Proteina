@@ -9,14 +9,13 @@ import pytest
 import yaml
 
 # ── Paths ──────────────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parents[1]  # projects/proteinfoundation
-REPO_ROOT = PROJECT_ROOT.parents[1]  # foundry/
-SWEEP_PY = PROJECT_ROOT / "script_utils" / "sweep.py"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]  # repo root
+SWEEP_PY = PROJECT_ROOT / "src" / "script_utils" / "sweep.py"
 SLURM_DIR = PROJECT_ROOT / "slurm_utils"
 CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 # Add script_utils to path so we can import sweep
-sys.path.insert(0, str(PROJECT_ROOT / "script_utils"))
+sys.path.insert(0, str(PROJECT_ROOT / "src" / "script_utils"))
 import sweep  # noqa: E402
 
 # ==========================================================================

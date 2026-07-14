@@ -17,18 +17,7 @@ from atomworks.io.parser import parse
 
 from proteinfoundation.utils.parse_presets import DISTILLATION
 
-CIF_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "..",
-    "..",
-    "models",
-    "rf3",
-    "tests",
-    "data",
-    "5vht_from_file.cif",
-)
+CIF_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "5vht_from_file.cif")
 
 _REQUIRED_ENV = ("FOLDSEEK_EXEC", "CATH_FOLDSEEK_DB", "CATH_DOMAIN_LIST")
 

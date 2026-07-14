@@ -111,7 +111,6 @@ packages = [
     "src/proteinfoundation",
     "src/foundry",
     "src/script_utils",
-    "src/scripts",
 ]
 
 [tool.ruff]
