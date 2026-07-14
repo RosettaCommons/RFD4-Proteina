@@ -34,7 +34,7 @@ from foundry.utils.ddp import RankedLogger
 from proteinfoundation.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
 from proteinfoundation.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
-from proteinfoundation.scripts.af3_apptainer import build_apptainer_fold_command
+from proteinfoundation.af3.af3_apptainer import build_apptainer_fold_command
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

@@ -6,7 +6,7 @@
 # clusters (DIGS with Apptainer, OCI/GB200 with Docker).
 #
 # Usage: source this file in your launch scripts
-#   source ./slurm_utils/common.sh
+#   source ./scripts/common.sh
 # =============================================================================
 
 # Strip any inherited SLURM_*/SBATCH_* env vars from a surrounding allocation
@@ -235,7 +235,7 @@ emit_af3_daemon_block() {
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
-  /usr/bin/python3 $code_dir/src/proteinfoundation/scripts/af3_daemon.py launch \\
+  /usr/bin/python3 $code_dir/src/proteinfoundation/af3/af3_daemon.py launch \\
   --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
@@ -719,7 +719,7 @@ copy_code_to_dir() {
         "$repo_root/src/proteinfoundation/" "$code_dir/src/proteinfoundation/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
         "$repo_root/configs/" "$code_dir/configs/"
-    rsync -a --no-compress "$repo_root/benchmarks/" "$code_dir/benchmarks/"
+    rsync -a --no-compress "$repo_root/data/benchmarks/" "$code_dir/data/benchmarks/"
     rsync -a --no-compress "$repo_root/data/" "$code_dir/data/"
     rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
 

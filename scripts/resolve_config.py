@@ -71,7 +71,7 @@ def main() -> int:
             overrides.append(args[i])
             i += 1
 
-    # Config path is relative to this script's location (slurm_utils/)
+    # Config path is relative to this script's location (scripts/)
     script_dir = Path(__file__).parent
     configs_root = (script_dir / "../configs").resolve()
 

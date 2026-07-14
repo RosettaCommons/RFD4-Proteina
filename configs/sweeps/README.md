@@ -28,5 +28,5 @@ python script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml
 python script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run
 
 # Generate + submit via launch_sweep.sh
-./slurm_utils/launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml
+./scripts/launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml
 ```

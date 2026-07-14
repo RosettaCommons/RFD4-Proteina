@@ -15,7 +15,7 @@ ckpt_name: ???
 autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
 # Use the unconditional benchmark JSON directly
-inputs: ${oc.env:PROJECT_ROOT}/benchmarks/monomer.json
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer.json
 
 num_replicates: 1  # Number of times to replicate each example
 

@@ -62,7 +62,7 @@ from biotite.structure import AtomArray, get_residue_starts, superimpose
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # projects/proteinfoundation
-BENCHMARKS_ROOT = PROJECT_ROOT / "benchmarks"
+BENCHMARKS_ROOT = PROJECT_ROOT / "data" / "benchmarks"
 
 # Canonical benchmark directories to process.
 BENCHMARK_DIRS = [

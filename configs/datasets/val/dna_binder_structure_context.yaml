@@ -5,7 +5,7 @@
 
 dataset:
   _target_: proteinfoundation.inference_utils.datasets.ContigJsonDataset
-  data: ${oc.env:PROJECT_ROOT}/benchmarks/dna_binder_denovo_val.json
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/dna_binder_denovo_val.json
   name: dna_binder_structure_context
   subset_to_keys:
     - 7n5u_structure_context

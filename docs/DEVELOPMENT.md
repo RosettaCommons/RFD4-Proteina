@@ -41,7 +41,7 @@ source .venv/bin/activate
 
 **Environment Variables**
 
-Shared cluster paths (`DATA_PATH`, `CACHE_DIR`, `CCD_MIRROR_PATH`, etc.) live in `.ipd/.env.<cluster>` (committed to git) and are auto-sourced via `slurm_utils/.user_info_<cluster>`. No per-user `.env` file is needed.
+Shared cluster paths (`DATA_PATH`, `CACHE_DIR`, `CCD_MIRROR_PATH`, etc.) live in `.ipd/.env.<cluster>` (committed to git) and are auto-sourced via `scripts/.user_info_<cluster>`. No per-user `.env` file is needed.
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -367,7 +367,7 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_
 
 ## SLURM Job Launching
 
-The `slurm_utils/` directory provides a unified system for launching jobs across multiple clusters with different containerization backends. See the [main README Cluster Launching section](../README.md#cluster-launching-slurm) for user-facing examples.
+The `scripts/` directory provides a unified system for launching jobs across multiple clusters with different containerization backends. See the [main README Cluster Launching section](../README.md#cluster-launching-slurm) for user-facing examples.
 
 ### Multi-Cluster Architecture
 
@@ -408,7 +408,7 @@ To run a config stored anywhere on the filesystem, pass both Hydra flags, exactl
 as you would to `generate.py`:
 
 ```bash
-./slurm_utils/launch_infer.sh digs \
+./scripts/launch_infer.sh digs \
     --config-path /abs/path/to/config/dir --config-name my_experiment \
     gen_njobs=4
 ```
@@ -419,7 +419,7 @@ entry so Hydra can find the in-tree base configs. See
 
 ### Cluster Configuration
 
-Each cluster needs a `.user_info_<cluster>` file in `slurm_utils/`:
+Each cluster needs a `.user_info_<cluster>` file in `scripts/`:
 
 ```bash
 # .user_info_digs (Apptainer-based cluster)
@@ -456,7 +456,7 @@ Run from `projects/proteinfoundation/` on the cluster:
 
 ```bash
 # 4 replicates over benchmark inputs, split across 2 parallel jobs
-./slurm_utils/launch_infer.sh digs --njobs 2 \
+./scripts/launch_infer.sh digs --njobs 2 \
     inference_experiment=inference_like_rfd3 \
     inputs=/path/to/benchmarks/monomer.json \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
@@ -471,7 +471,7 @@ Offline validation uses the same `launch_infer.sh` script with `inference_experi
 
 ```bash
 # Validate on the MCSA subset (Foldseek clustering on by default)
-./slurm_utils/launch_infer.sh digs --njobs 8 \
+./scripts/launch_infer.sh digs --njobs 8 \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
     inference_experiment=inference_on_val_set \
     +datasets/val@generation=mcsa_subset \
@@ -489,13 +489,13 @@ To sweep for offline validation, use a sweep config as detailed in the main READ
 
 ```bash
 # Sweep nsteps x noise scale (Foldseek clustering on by default)
-./slurm_utils/launch_sweep.sh digs \
+./scripts/launch_sweep.sh digs \
     --sweep-config configs/sweeps/sweep_example.yaml \
     --base-out-dir /path/to/out_dir --njobs 2 \
     ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
 
 # Preview configs without submitting
-./slurm_utils/launch_sweep.sh digs \
+./scripts/launch_sweep.sh digs \
     --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 ```
 
@@ -505,10 +505,10 @@ See `configs/sweeps/` for available sweep configs.
 
 ```bash
 # With code sync and auto-requeue
-bash slurm_utils/launch_train_latents.sh digs --submissions 2
+bash scripts/launch_train_latents.sh digs --submissions 2
 
 # Without code sync
-bash slurm_utils/launch_train_latents.sh digs --no-copy
+bash scripts/launch_train_latents.sh digs --no-copy
 ```
 
 ### What the Launch Scripts Do
@@ -540,12 +540,12 @@ $ROOT_REMOTE/<run_name>/
 1. Determine cluster type (Apptainer vs Docker/enroot)
 2. Copy the matching template:
     ```bash
-    cp slurm_utils/.user_info_digs slurm_utils/.user_info_mycloud   # Apptainer
-    cp slurm_utils/.user_info_ord slurm_utils/.user_info_mycloud    # Docker
+    cp scripts/.user_info_digs scripts/.user_info_mycloud   # Apptainer
+    cp scripts/.user_info_ord scripts/.user_info_mycloud    # Docker
     ```
 3. Edit with your cluster settings, then launch:
     ```bash
-    bash slurm_utils/launch_train_latents.sh mycloud
+    bash scripts/launch_train_latents.sh mycloud
     ```
 
 ---
@@ -771,7 +771,7 @@ proteinfoundation/
 │   ├── rewards/                         # Reward model wrapper
 │   └── transforms/                      # Design tasks
 │
-├── slurm_utils/                         # SLURM launch scripts
+├── scripts/                         # SLURM launch scripts
 │   ├── common.sh
 │   ├── .user_info_digs
 │   ├── .user_info_ord
@@ -797,7 +797,7 @@ proteinfoundation/
 
 | Issue | Solution |
 |-------|----------|
-| `DATA_PATH not set` | Ensure `.ipd/.env.<cluster>` is present and your `slurm_utils/.user_info_<cluster>` sources it |
+| `DATA_PATH not set` | Ensure `.ipd/.env.<cluster>` is present and your `scripts/.user_info_<cluster>` sources it |
 | `Autoencoder checkpoint not found` | Update `autoencoder_ckpt_path` in `training_proteina.yaml` |
 | `Parquet file not found` | Verify `DATA_PATH` points to correct directory with parquet files |
 | `Training not resuming` | Check `./store/<run_name>/checkpoints/last.ckpt` exists |

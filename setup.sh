@@ -108,7 +108,7 @@ else
 
 $MARKER
 # Cluster identity for proteinfoundation SLURM launch scripts.
-# CLUSTER selects which slurm_utils/.user_info_<cluster> config is loaded when
+# CLUSTER selects which scripts/.user_info_<cluster> config is loaded when
 # submitting jobs. Update this if you switch to a different cluster.
 export CLUSTER=$CLUSTER_VAL
 # CONTAINER_TYPE is 'apptainer' (DIGS/CoreWeave) or 'docker' (OCI/ORD/GB200).
@@ -123,8 +123,8 @@ fi
 
 # ── 8. User info file ──────────────────────────────────────────────────────
 if [ -n "$CLUSTER_VAL" ]; then
-    USER_INFO_DEST="slurm_utils/.user_info_${CLUSTER_VAL}"
-    USER_INFO_EXAMPLE="slurm_utils/.user_info_${CLUSTER_VAL}_example"
+    USER_INFO_DEST="scripts/.user_info_${CLUSTER_VAL}"
+    USER_INFO_EXAMPLE="scripts/.user_info_${CLUSTER_VAL}_example"
     if [ ! -f "$USER_INFO_DEST" ] && [ -f "$USER_INFO_EXAMPLE" ]; then
         cp "$USER_INFO_EXAMPLE" "$USER_INFO_DEST"
         echo ">>> Created $USER_INFO_DEST from example template."
