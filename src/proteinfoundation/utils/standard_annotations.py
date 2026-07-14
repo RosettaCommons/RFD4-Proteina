@@ -1,4 +1,4 @@
-"""Foundry-specific StandardAnnotations.
+"""Project-specific StandardAnnotations.
 
 Registering these as StandardAnnotations (rather than plain extra_fields) gives:
 - Automatic saving to CIF files (no need to list in ``extra_fields``).

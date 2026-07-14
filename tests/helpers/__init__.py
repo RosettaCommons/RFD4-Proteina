@@ -1,4 +1,4 @@
-"""Shared testing utilities for foundry."""
+"""Shared testing utilities for the tests package."""
 
 from tests.helpers.fixtures import get_test_data_dir, gpu
 from tests.helpers.pytest_hooks import configure_pytest
