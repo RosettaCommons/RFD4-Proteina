@@ -108,17 +108,11 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "proteinfoundation",
-    "foundry",
-    "slurm_utils",
-    "script_utils",
+    "src/proteinfoundation",
+    "src/foundry",
+    "src/script_utils",
+    "src/scripts",
 ]
-
-[tool.hatch.build.targets.wheel.shared-data]
-"proteinfoundation" = "proteinfoundation"
-"foundry" = "foundry"
-"slurm_utils" = "slurm_utils"
-"script_utils" = "script_utils"
 
 [tool.ruff]
 line-length = 120

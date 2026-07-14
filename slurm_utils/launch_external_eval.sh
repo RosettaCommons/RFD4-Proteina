@@ -410,7 +410,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
 fi
 
 # Build the command
-SCRIPT_EVAL="$CODE_DIR/proteinfoundation/external_eval.py"
+SCRIPT_EVAL="$CODE_DIR/src/proteinfoundation/external_eval.py"
 
 # Add job array logic if needed
 if [ "$NJOBS" -gt 1 ]; then
@@ -539,7 +539,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     print_header "Concatenating Results"
 
     # Run the concatenation script
-    CONCAT_SCRIPT="$CODE_DIR/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/src/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     if [ "$CLUSTER_TYPE" == "digs" ]; then
         python "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek

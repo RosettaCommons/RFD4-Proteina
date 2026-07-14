@@ -183,8 +183,8 @@ echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB"
 EOF
 
 # Add container execution command
-SCRIPT_SEARCH="proteinfoundation/generate.py"
-SCRIPT_EVALUATION="proteinfoundation/evaluate.py"
+SCRIPT_SEARCH="src/proteinfoundation/generate.py"
+SCRIPT_EVALUATION="src/proteinfoundation/evaluate.py"
 CONTAINER_CMD=$(get_srun_cmd)
 
 if [ "$CLUSTER_TYPE" == "digs" ]; then

@@ -175,7 +175,7 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}:${repo_root}/lib/atomworks/src:$PYTHONPATH"
+    export PYTHONPATH="${repo_root}/src:${repo_root}/lib/atomworks/src:$PYTHONPATH"
     echo "PYTHONPATH set to include proteinfoundation, foundry, atomworks"
 }
 
@@ -235,7 +235,7 @@ emit_af3_daemon_block() {
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
-  /usr/bin/python3 $code_dir/scripts/af3_daemon.py launch \\
+  /usr/bin/python3 $code_dir/src/scripts/af3_daemon.py launch \\
   --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
@@ -714,15 +714,15 @@ copy_code_to_dir() {
     rsync -a --no-compress \
         "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
     rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/foundry/" "$code_dir/foundry/"
+        "$repo_root/src/foundry/" "$code_dir/src/foundry/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/proteinfoundation/" "$code_dir/proteinfoundation/"
+        "$repo_root/src/proteinfoundation/" "$code_dir/src/proteinfoundation/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
         "$repo_root/configs/" "$code_dir/configs/"
     rsync -a --no-compress "$repo_root/benchmarks/" "$code_dir/benchmarks/"
     rsync -a --no-compress "$repo_root/data/" "$code_dir/data/"
-    rsync -a --no-compress "$repo_root/script_utils/" "$code_dir/script_utils/"
-    rsync -a --no-compress "$repo_root/scripts/" "$code_dir/scripts/"
+    rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
+    rsync -a --no-compress "$repo_root/src/scripts/" "$code_dir/src/scripts/"
 
     cp "$repo_root/.project-root" "$code_dir/"
     mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"

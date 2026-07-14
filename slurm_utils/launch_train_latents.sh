@@ -199,7 +199,7 @@ if [ -n "$DISABLE_CUEQUIVARIANCE" ] && [ "$DISABLE_CUEQUIVARIANCE" == "true" ]; 
 fi
 
 # Add container execution command
-SCRIPT_TRAIN="$CODE_DIR/proteinfoundation/train.py"
+SCRIPT_TRAIN="$CODE_DIR/src/proteinfoundation/train.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: shebang in train.py handles container execution via exec_core.sh

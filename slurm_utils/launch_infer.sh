@@ -424,7 +424,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
 fi
 
 # Platform-specific generation command
-SCRIPT_GENERATE="$CODE_DIR/proteinfoundation/generate.py"
+SCRIPT_GENERATE="$CODE_DIR/src/proteinfoundation/generate.py"
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
     # Apptainer: shebang in generate.py handles container execution via exec_core.sh
@@ -497,7 +497,7 @@ fi
 # launch script never has to wait.
 if [ "$DO_CONCATENATE" == "true" ]; then
     CONCAT_SBATCH_FILE="$RUN_DIR/slurm_concat_script.sh"
-    CONCAT_SCRIPT="$CODE_DIR/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/src/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     # Metrics CSVs are written by generate.py under <out_dir>/inference_metrics/
     CONCAT_DIR="$GENERATION_OUTPUT_DIR/inference_metrics"
