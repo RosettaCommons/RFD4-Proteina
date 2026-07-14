@@ -137,11 +137,11 @@ CONTAINER_CMD=$(get_srun_cmd)
 print_mount_summary
 
 # PYTHONPATH for inside the container
-CONTAINER_PYTHONPATH="$REPO_ROOT/projects/proteinfoundation:$REPO_ROOT/projects/proteinfoundation/lib/atomworks/src"
+CONTAINER_PYTHONPATH="$REPO_ROOT:$REPO_ROOT/lib/atomworks/src"
 
 # Create a temporary directory for the session on the shared filesystem
 # (accessible inside the container via /lustre:/lustre:rw mount)
-SESSION_DIR=$(mktemp -d "$REPO_ROOT/projects/proteinfoundation/.interactive_session_XXXXXX")
+SESSION_DIR=$(mktemp -d "$REPO_ROOT/.interactive_session_XXXXXX")
 trap "rm -rf $SESSION_DIR" EXIT
 
 # Write .env file (same as training script)
@@ -235,7 +235,7 @@ export MKL_NUM_THREADS=1
 
 # Copy .env to working directory
 if [ -f "$SESSION_DIR/.env" ]; then
-    cp "$SESSION_DIR/.env" "$REPO_ROOT/projects/proteinfoundation/.env" 2>/dev/null || true
+    cp "$SESSION_DIR/.env" "$REPO_ROOT/.env" 2>/dev/null || true
 fi
 
 # GPU info
@@ -299,6 +299,6 @@ else
         -N 1 --ntasks=1 --gres=gpu:$NGPUS \
         $CONTAINER_CMD \
         --container-mounts="$CONTAINER_MOUNTS_STR" \
-        --container-workdir="$REPO_ROOT/projects/proteinfoundation" \
+        --container-workdir="$REPO_ROOT" \
         --pty "$ENTRYPOINT"
 fi

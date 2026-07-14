@@ -238,7 +238,7 @@ echo "  Local symlink: $REPO_ROOT/runs/$RUN_NAME"
 # Copy code to run directory (or use current repo)
 if [ "$COPY_CODE" == "true" ]; then
     # Check if code directory already exists
-    if [ -d "$RUN_DIR/src" ] || [ -d "$RUN_DIR/projects/proteinfoundation/proteinfoundation" ]; then
+    if [ -d "$RUN_DIR/src" ] || [ -d "$RUN_DIR/proteinfoundation" ]; then
         if [ "$OVERWRITE_RUNDIR" != "true" ]; then
             echo "Error: Code directory already exists at $RUN_DIR"
             echo "  The run directory contains existing code from a previous run."
@@ -355,7 +355,7 @@ fi
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR/projects/proteinfoundation:$CODE_DIR/projects/proteinfoundation/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -410,7 +410,7 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
 fi
 
 # Build the command
-SCRIPT_EVAL="$CODE_DIR/projects/proteinfoundation/proteinfoundation/external_eval.py"
+SCRIPT_EVAL="$CODE_DIR/proteinfoundation/external_eval.py"
 
 # Add job array logic if needed
 if [ "$NJOBS" -gt 1 ]; then
@@ -539,7 +539,7 @@ if [ "$WAIT_FOR_COMPLETION" == "true" ] && [ "$NJOBS" -gt 1 ]; then
     print_header "Concatenating Results"
 
     # Run the concatenation script
-    CONCAT_SCRIPT="$CODE_DIR/projects/proteinfoundation/proteinfoundation/inference_utils/aggregate_metrics.py"
+    CONCAT_SCRIPT="$CODE_DIR/proteinfoundation/inference_utils/aggregate_metrics.py"
 
     if [ "$CLUSTER_TYPE" == "digs" ]; then
         python "$CONCAT_SCRIPT" --input "$OUTPUT_DIR" --cluster-with-foldseek

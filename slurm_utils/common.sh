@@ -162,7 +162,7 @@ source_venv() {
     if [ ! -f "$venv_activate" ]; then
         echo "Error: Virtual environment not found at $repo_root/.venv"
         echo "Run setup.sh first:"
-        echo "  bash $repo_root/projects/proteinfoundation/setup.sh"
+        echo "  bash $repo_root/setup.sh"
         exit 1
     fi
 
@@ -175,8 +175,8 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}/projects/proteinfoundation:${repo_root}/projects/proteinfoundation/lib/atomworks/src:$PYTHONPATH"
-    echo "PYTHONPATH set to include foundry, rf3, proteinfoundation, atomworks"
+    export PYTHONPATH="${repo_root}:${repo_root}/lib/atomworks/src:$PYTHONPATH"
+    echo "PYTHONPATH set to include proteinfoundation, foundry, atomworks"
 }
 
 # Setup common environment variables for training/inference
@@ -235,7 +235,7 @@ emit_af3_daemon_block() {
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
-  /usr/bin/python3 $code_dir/projects/proteinfoundation/scripts/af3_daemon.py launch \\
+  /usr/bin/python3 $code_dir/scripts/af3_daemon.py launch \\
   --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
@@ -703,26 +703,26 @@ build_container_env_cmds() {
 
 # Copy codebase to a target directory (used by launch_infer.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
-# Copies projects/proteinfoundation (incl. the vendored foundry pkg and lib/atomworks) and .ipd.
+# Copies the project (incl. the vendored foundry pkg and lib/atomworks) and .ipd.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
 copy_code_to_dir() {
     local repo_root="$1"
     local code_dir="$2"
     local cluster="${3:-}"
 
-    mkdir -p "$code_dir/projects/proteinfoundation/lib/atomworks"
+    mkdir -p "$code_dir/lib/atomworks"
     rsync -a --no-compress \
-        "$repo_root/projects/proteinfoundation/lib/atomworks/src/" "$code_dir/projects/proteinfoundation/lib/atomworks/src/"
+        "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
     rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/projects/proteinfoundation/foundry/" "$code_dir/projects/proteinfoundation/foundry/"
+        "$repo_root/foundry/" "$code_dir/foundry/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/projects/proteinfoundation/proteinfoundation/" "$code_dir/projects/proteinfoundation/proteinfoundation/"
+        "$repo_root/proteinfoundation/" "$code_dir/proteinfoundation/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
-        "$repo_root/projects/proteinfoundation/configs/" "$code_dir/projects/proteinfoundation/configs/"
-    rsync -a --no-compress "$repo_root/projects/proteinfoundation/benchmarks/" "$code_dir/projects/proteinfoundation/benchmarks/"
-    rsync -a --no-compress "$repo_root/projects/proteinfoundation/data/" "$code_dir/projects/proteinfoundation/data/"
-    rsync -a --no-compress "$repo_root/projects/proteinfoundation/script_utils/" "$code_dir/projects/proteinfoundation/script_utils/"
-    rsync -a --no-compress "$repo_root/projects/proteinfoundation/scripts/" "$code_dir/projects/proteinfoundation/scripts/"
+        "$repo_root/configs/" "$code_dir/configs/"
+    rsync -a --no-compress "$repo_root/benchmarks/" "$code_dir/benchmarks/"
+    rsync -a --no-compress "$repo_root/data/" "$code_dir/data/"
+    rsync -a --no-compress "$repo_root/script_utils/" "$code_dir/script_utils/"
+    rsync -a --no-compress "$repo_root/scripts/" "$code_dir/scripts/"
 
     cp "$repo_root/.project-root" "$code_dir/"
     mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"
