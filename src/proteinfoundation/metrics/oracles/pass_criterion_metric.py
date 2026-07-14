@@ -7,8 +7,8 @@ MetricManager, which runs last in the validation flow.
 
 from typing import Any
 
-from foundry.metrics.metric import Metric
-from foundry.utils.logging import RankedLogger
+from proteinfoundation.metrics.metric import Metric
+from proteinfoundation.utils.logging import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -16,7 +16,7 @@ logger = RankedLogger(__name__, rank_zero_only=False)
 class PassCriterionMetric(Metric):
     """Evaluate a pass criterion against an already-computed metrics dict.
 
-    Intended as entries in a ``pass_criteria`` :py:class:`~foundry.metrics.metric.MetricManager`
+    Intended as entries in a ``pass_criteria`` :py:class:`~proteinfoundation.metrics.metric.MetricManager`
     that runs after the oracle and refolding MetricManagers. Receives the merged
     oracle + refolding output via ``extra_info["metrics"]`` and returns a binary
     pass/fail flag.

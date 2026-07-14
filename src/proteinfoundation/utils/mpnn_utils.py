@@ -31,7 +31,7 @@ from atomworks.io.parser import parse
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 from biotite.structure import AtomArray
 
-from foundry.utils.standard_annotations import SA_CRDSRC
+from proteinfoundation.utils.standard_annotations import SA_CRDSRC
 
 
 def get_fixed_residues_from_structure(
@@ -42,7 +42,7 @@ def get_fixed_residues_from_structure(
     Fixed residues are determined by checking if any of these annotations are True
     for a given residue:
 
-    - :py:attr:`~foundry.utils.standard_annotations.SrcCoordinateConditionedRegion` mask
+    - :py:attr:`~proteinfoundation.utils.standard_annotations.SrcCoordinateConditionedRegion` mask
       (``mapped_to_coordinate_conditioned_region``), spread to token level:
       residue was mapped to a coordinate-conditioned motif.
       Includes residues where only a subset of atoms were mapped (e.g. tip-atom motifs).

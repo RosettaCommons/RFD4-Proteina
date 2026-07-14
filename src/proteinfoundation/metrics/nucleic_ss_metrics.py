@@ -5,8 +5,8 @@ from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import apply_token_wise, get_token_starts, spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack
 
-from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import C_BP, C_INTCRD, C_NA_SS_STATE, BasePairEnum
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.metrics.utils.metrics_utils import normalize_to_atom_array_list
 from proteinfoundation.transforms.utils.na_geom_utils import annotate_na_ss
 

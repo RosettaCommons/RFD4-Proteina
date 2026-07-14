@@ -104,7 +104,6 @@ def require_sota_ckpt() -> None:
         )
 
 
-
 def load_baseline_losses(name: str) -> list[float]:
     """Load reference step losses from baselines/<name>/losses.json.
 

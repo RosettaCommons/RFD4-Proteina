@@ -9,10 +9,10 @@ from biotite.structure import superimpose
 from biotite.structure.atoms import AtomArray
 from biotite.structure.residues import get_residue_starts, spread_residue_wise
 
-from foundry.common import true_with_prob
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.standard_annotations import SA_CWI
 from proteinfoundation.conditions import C_CRDGRP, C_IDX, C_IDXGRP, C_INTCRD
+from proteinfoundation.utils.common import true_with_prob
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_CWI
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
 

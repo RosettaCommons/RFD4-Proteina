@@ -8,7 +8,6 @@ from atomworks.ml.conditions import C_CRD, C_SEQ
 from jaxtyping import Float
 from torch.nn import functional as F
 
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import (
     C_CATH,
     C_CENTROID,
@@ -25,6 +24,7 @@ from proteinfoundation.conditions import (
 from proteinfoundation.datapipes.pipeline import TokenType
 from proteinfoundation.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 from proteinfoundation.utils.angle_utils import bond_angles, signed_dihedral_angle
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

@@ -16,10 +16,10 @@ from lightning.pytorch.plugins.environments import SLURMEnvironment
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.env import load_dotenv
-from foundry.utils.logging import print_config_tree, silence_warnings
-from foundry.utils.weights import (
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.env import load_dotenv
+from proteinfoundation.utils.logging import print_config_tree, silence_warnings
+from proteinfoundation.utils.weights import (
     WeightLoadingConfig,
     freeze_parameters_with_config,
     load_weights_with_policies,
@@ -33,15 +33,15 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # Absolute, so the entrypoint works regardless of where it sits under src/.
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
-from foundry.utils.datasets import (  # noqa: E402
+from proteinfoundation.proteina import Proteina  # noqa: E402
+from proteinfoundation.utils.config_html import save_config_html  # noqa: E402
+from proteinfoundation.utils.datasets import (  # noqa: E402
     assemble_distributed_loader,
     assemble_val_loader_dict,
     recursively_instantiate_datasets_and_samplers,
 )
-from foundry.utils.instantiators import instantiate_callbacks  # noqa: E402
-from proteinfoundation.proteina import Proteina  # noqa: E402
 from proteinfoundation.utils.fetch_last_ckpt import fetch_last_ckpt  # noqa: E402
-from proteinfoundation.utils.logging import save_config_html  # noqa: E402
+from proteinfoundation.utils.instantiators import instantiate_callbacks  # noqa: E402
 from proteinfoundation.utils.rank_seed_callback import RankSeedCallback  # noqa: E402
 from proteinfoundation.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
 from proteinfoundation.utils.torch_compile_utils import SaveCompileCacheCallback, load_compile_cache  # noqa: E402

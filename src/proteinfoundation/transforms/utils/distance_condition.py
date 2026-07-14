@@ -18,8 +18,8 @@ from einops import einsum
 from jaxtyping import Bool, Float
 from torch import Tensor
 
-from foundry.common import true_with_prob
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.common import true_with_prob
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 

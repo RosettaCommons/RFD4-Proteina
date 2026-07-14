@@ -19,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from foundry.utils.env import load_dotenv
+from proteinfoundation.utils.env import load_dotenv
 
 # Try to import foldseek diversity function
 try:

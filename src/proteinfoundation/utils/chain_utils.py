@@ -5,8 +5,8 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.ml.conditions import C_CRD, C_DIS
 from biotite.structure import AtomArray
 
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import C_INTCRD
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

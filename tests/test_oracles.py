@@ -34,7 +34,7 @@ from biotite.structure import AtomArray
 from biotite.structure.io import pdbx
 from biotite.structure.io.pdbx import get_structure
 
-from foundry.metrics import MetricManager
+from proteinfoundation.metrics import MetricManager
 from proteinfoundation.metrics.design_metrics import ClashMetric
 from proteinfoundation.metrics.gt_structure_comparison import StructureComparisonMetric
 from proteinfoundation.metrics.oracles.af3_oracle import AF3Oracle

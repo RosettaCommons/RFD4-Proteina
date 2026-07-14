@@ -10,7 +10,7 @@ from atomworks.io.utils.query import QueryExpression
 from atomworks.ml.conditions.annotator import ANNOTATOR_REGISTRY, ensure_annotations
 from biotite.structure import AtomArray
 
-from foundry.utils.standard_annotations import SA_SRC
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 
 def _as_array(values: Any, dtype: Any) -> np.ndarray:

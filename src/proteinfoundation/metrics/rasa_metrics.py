@@ -5,8 +5,8 @@ import numpy as np
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from biotite.structure import AtomArray, AtomArrayStack
 
-from foundry.metrics.metric import Metric
 from proteinfoundation.conditions import C_RAS, RasaEnum
+from proteinfoundation.metrics.metric import Metric
 
 
 def get_rasa_metrics(

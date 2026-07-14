@@ -15,8 +15,8 @@ from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen,
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from biotite.structure import AtomArray
 
-from foundry.utils.logging import RankedLogger
-from foundry.utils.standard_annotations import SA_SRC
+from proteinfoundation.utils.logging import RankedLogger
+from proteinfoundation.utils.standard_annotations import SA_SRC
 
 logger = RankedLogger(rank_zero_only=False)
 

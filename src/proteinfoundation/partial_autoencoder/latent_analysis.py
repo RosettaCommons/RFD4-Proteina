@@ -10,8 +10,6 @@ import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
 
-from foundry.utils.ddp import RankedLogger
-from foundry.utils.env import load_dotenv
 from proteinfoundation.partial_autoencoder.autoencoder import AutoEncoder
 from proteinfoundation.partial_autoencoder.inference import load_dataloader, parse_args_and_cfg, setup
 from proteinfoundation.partial_autoencoder.latent_viz_utils import (
@@ -19,6 +17,8 @@ from proteinfoundation.partial_autoencoder.latent_viz_utils import (
     plot_latent_projection_with_labels,
     project_latents_2d,
 )
+from proteinfoundation.utils.ddp import RankedLogger
+from proteinfoundation.utils.env import load_dotenv
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

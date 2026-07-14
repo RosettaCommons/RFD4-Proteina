@@ -25,8 +25,6 @@ from pydantic import (
     model_validator,
 )
 
-from foundry.common import exists
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.conditions import (
     C_CATH,
     C_CRDGRP,
@@ -72,6 +70,8 @@ from proteinfoundation.inference_utils.symmetry.symmetry_utils import (
     make_symmetric_atom_array,
 )
 from proteinfoundation.transforms.utils.conditioning_utils import convert_to_internal_coords
+from proteinfoundation.utils.common import exists
+from proteinfoundation.utils.ddp import RankedLogger
 
 logging.basicConfig(level=logging.DEBUG)
 

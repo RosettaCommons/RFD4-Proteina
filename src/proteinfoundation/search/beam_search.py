@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 if TYPE_CHECKING:
     pass

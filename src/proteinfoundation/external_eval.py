@@ -25,9 +25,6 @@ from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack, infer_elements
 
-from foundry.metrics import MetricManager
-from foundry.utils.logging import RankedLogger
-from foundry.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from proteinfoundation.conditions import C_HOT, C_IDXGRP, C_INTCRD
 from proteinfoundation.generate import get_contig_or_design_problem_dataset
 from proteinfoundation.inference_utils.aggregate_metrics import (
@@ -35,13 +32,16 @@ from proteinfoundation.inference_utils.aggregate_metrics import (
 )
 from proteinfoundation.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
 from proteinfoundation.inference_utils.inference_utils import set_com
+from proteinfoundation.metrics import MetricManager
 from proteinfoundation.metrics.oracles.oracle_metric import OracleMetric
 from proteinfoundation.transforms.unindexing import (
     annotate_unindexed_insertion,
     find_optimal_insertion_points_for_unindexed_regions,
 )
 from proteinfoundation.utils.chain_utils import get_chain_of_interest
+from proteinfoundation.utils.logging import RankedLogger
 from proteinfoundation.utils.parse_presets import RCSB_WITH_METALS
+from proteinfoundation.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 
 
 def _parse_and_extract_first_assembly(path: str) -> AtomArray:

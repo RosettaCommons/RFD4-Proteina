@@ -8,7 +8,7 @@ from atomworks.ml.conditions import C_CRD
 from beartype.typing import Any
 from biotite.structure import AtomArray, CellList
 
-from foundry.metrics.metric import Metric
+from proteinfoundation.metrics.metric import Metric
 
 
 def _bond_spatial_masks(

@@ -8,9 +8,9 @@ from atomworks.constants import METAL_ELEMENTS
 from atomworks.io.utils.ccd import atom_array_from_ccd_code
 from biotite.structure import AtomArray, AtomArrayStack, get_residue_starts
 
-from foundry.metrics.metric import Metric
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.metrics.metric import Metric
 from proteinfoundation.metrics.utils.metrics_utils import normalize_to_atom_array_list
+from proteinfoundation.utils.ddp import RankedLogger
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 

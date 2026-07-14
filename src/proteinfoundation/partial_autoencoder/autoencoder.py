@@ -13,7 +13,6 @@ from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from sklearn.decomposition import PCA
 from torch import Tensor
 
-from foundry.utils.ddp import RankedLogger
 from proteinfoundation.partial_autoencoder.decoder import DecoderTransformer
 from proteinfoundation.partial_autoencoder.decoder_ff import DecoderFFLocal
 from proteinfoundation.partial_autoencoder.encoder import EncoderTransformer
@@ -22,6 +21,7 @@ from proteinfoundation.partial_autoencoder.latent_viz_utils import (
     project_latents_2d,
 )
 from proteinfoundation.utils.coors_utils import nm_to_ang
+from proteinfoundation.utils.ddp import RankedLogger
 from proteinfoundation.utils.structure_export import (
     process_single_sample_to_atom_array,
     write_generated_structure_cif,

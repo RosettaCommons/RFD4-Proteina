@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-# from foundry.training.checkpoint import activation_checkpointing
+# from proteinfoundation.utils.checkpoint import activation_checkpointing
 
 
 class OuterProductMean_AF3(nn.Module):

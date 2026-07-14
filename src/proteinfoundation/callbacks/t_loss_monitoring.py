@@ -11,7 +11,7 @@ import wandb
 from beartype.typing import Any
 from scipy.signal import savgol_filter
 
-from foundry.utils.ddp import RankedLogger
+from proteinfoundation.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
