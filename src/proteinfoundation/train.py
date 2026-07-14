@@ -30,6 +30,9 @@ from foundry.utils.weights import (
 # project (where `.project-root` is located)
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+# Absolute, so the entrypoint works regardless of where it sits under src/.
+_config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
+
 from foundry.utils.datasets import (  # noqa: E402
     assemble_distributed_loader,
     assemble_val_loader_dict,
@@ -330,7 +333,7 @@ def log_config_dashboard(
 
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path=_config_path,
     config_name="training_proteina",
 )
 def main(cfg_exp: DictConfig) -> None:

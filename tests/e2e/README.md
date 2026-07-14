@@ -1,8 +1,8 @@
 # GPU end-to-end tests
 
 Thin test modules + fat helpers that exercise the real training and inference
-entrypoints (`proteinfoundation/train.py`, `proteinfoundation/partial_autoencoder/train.py`,
-`proteinfoundation/generate.py`) as subprocesses on GPUs. Modeled on
+entrypoints (`src/proteinfoundation/train.py`, `src/proteinfoundation/partial_autoencoder/train.py`,
+`src/proteinfoundation/generate.py`) as subprocesses on GPUs. Modeled on
 `protein-foundation-models/tests/e2e`.
 
 ## What runs

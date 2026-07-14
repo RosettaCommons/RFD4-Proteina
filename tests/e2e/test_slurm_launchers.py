@@ -7,6 +7,7 @@ syntax regressions in the launchers without touching the scheduler.
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -61,3 +62,26 @@ def test_common_sh_pythonpath_resolves_to_real_dirs():
     assert entries, "setup_pythonpath produced an empty PYTHONPATH"
     for path in entries:
         assert Path(path).is_dir(), f"PYTHONPATH entry does not exist: {path}"
+
+
+def test_entrypoint_scripts_referenced_by_e2e_and_launchers_exist():
+    """Every ``*.py`` entrypoint spawned as a subprocess must actually exist.
+
+    The GPU e2e tests invoke ``src/proteinfoundation/{train,generate}.py`` via
+    subprocess, but they are GPU-gated and skipped on CPU -- so a stale path (e.g.
+    one left behind by the move under ``src/``) surfaces only on a GPU runner,
+    minutes in. Assert the paths resolve, cheaply, on CPU.
+
+    Only *quoted string literals* are checked, so prose in docstrings and comments
+    does not produce false positives.
+    """
+    sources = list((ROOT / "tests" / "e2e").rglob("*.py"))
+    sources += list((ROOT / "src" / "script_utils").glob("*.py"))
+
+    # A quoted path that looks like one of our python entrypoints.
+    pattern = re.compile(r"[\"']((?:src/)?(?:proteinfoundation|script_utils)/[\w/]+\.py)[\"']")
+    referenced = {m for f in sources for m in pattern.findall(f.read_text())}
+    assert referenced, "found no entrypoint references to check"
+
+    missing = [p for p in sorted(referenced) if not (ROOT / p).is_file()]
+    assert not missing, f"entrypoints referenced but missing: {missing}"

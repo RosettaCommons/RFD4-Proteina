@@ -214,7 +214,7 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
 
     gen_cmd = [
         PYTHON,
-        "proteinfoundation/generate.py",
+        "src/proteinfoundation/generate.py",
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
@@ -254,7 +254,7 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
 
     base_cmd = [
         PYTHON,
-        "proteinfoundation/generate.py",
+        "src/proteinfoundation/generate.py",
         "inference_experiment=inference_beam_regression",
         "~metrics/refolding_oracles",
         *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
@@ -350,7 +350,7 @@ def main() -> None:
         store_base = ROOT / "store" / "regression_sota_baseline"
         generate_training_baseline(
             name="sota_training",
-            script="proteinfoundation/train.py",
+            script="src/proteinfoundation/train.py",
             extra_overrides=[
                 "experiment=sota",
                 # This smoke trains 100 steps from random init -- it exercises the
@@ -368,7 +368,7 @@ def main() -> None:
         store_base = ROOT / "store" / "regression_ae_baseline"
         generate_training_baseline(
             name="ae_training",
-            script="proteinfoundation/partial_autoencoder/train.py",
+            script="src/proteinfoundation/partial_autoencoder/train.py",
             extra_overrides=[
                 "experiment_ae=ae_sota",
                 "dataloaders.train.dataloader_params.batch_size=2",
