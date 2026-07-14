@@ -14,19 +14,16 @@ os.environ.setdefault("LOGNAME", "pytest")
 os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", "/tmp/torchinductor-pytest")
 import subprocess
 
-# Base for the per-worker DDP rendezvous port (see _pin_gpu_for_xdist_worker).
 _MASTER_PORT_BASE = 29500
 
 
 def _pin_gpu_for_xdist_worker() -> None:
     """Give each pytest-xdist worker its own GPU and rendezvous port.
 
-    Without the pin every worker defaults to device 0, so the parallel GPU lane OOMs
-    instead of running faster. Must happen before torch creates a CUDA context, hence
-    its position above the imports below. Training subprocesses inherit the env.
-
-    A no-op outside the GPU lane: the cpu lane also runs under xdist, but its container
-    is built without ``--nv`` and has no GPUs (or nvidia-smi) at all.
+    Unpinned, every worker would default to device 0. Must run before torch creates a CUDA
+    context, hence its position above the imports below; training subprocesses inherit the env.
+    A no-op outside the GPU lane -- the cpu lane also runs under xdist, but its container has
+    no GPUs (or nvidia-smi).
     """
     if os.environ.get("RUN_GPU_E2E_TESTS") != "1":
         return
@@ -36,21 +33,19 @@ def _pin_gpu_for_xdist_worker() -> None:
         return
     index = int(worker[2:])
 
-    # Distinct port per worker: a single shared MASTER_PORT would let two workers'
-    # training subprocesses rendezvous on the same store.
     os.environ["MASTER_PORT"] = str(_MASTER_PORT_BASE + index)
 
     devices = [d for d in os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",") if d.strip()]
     if not devices:
         try:
             listed = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, check=False)
-        except (FileNotFoundError, OSError):  # no driver / no nvidia-smi in this container
+        except (FileNotFoundError, OSError):
             return
         devices = [str(i) for i, ln in enumerate(listed.stdout.splitlines()) if ln.startswith("GPU ")]
     if not devices:
         return
 
-    # Wrapping would silently co-locate two trainings on one GPU and OOM mid-run; fail loudly.
+    # Wrapping would silently co-locate two workers on one GPU and OOM mid-run.
     if index >= len(devices):
         raise RuntimeError(
             f"pytest-xdist worker {worker} has no GPU: {len(devices)} visible ({devices}). "
