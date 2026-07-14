@@ -14,7 +14,7 @@ from rfproteina.utils.common import run_once
 
 #  (Custom resolvers)
 @run_once
-def register_resolvers():
+def register_resolvers() -> None:
     resolvers = {
         "resolve_import": resolve_import,
         "chain_type_info_to_regex": chain_type_info_to_regex,
@@ -25,7 +25,7 @@ def register_resolvers():
         OmegaConf.register_new_resolver(name, resolver)
 
 
-def resolve_import(module_path: str, attribute_path: str = None) -> Any:
+def resolve_import(module_path: str, attribute_path: str | None = None) -> Any:
     """
     Import a module and access a specific attribute from it.
 
@@ -108,7 +108,8 @@ def instantiate_callbacks(callbacks_cfg: DictConfig | None) -> list[BaseCallback
             callbacks.append(hydra.utils.instantiate(cb_conf))
         else:
             raise InstantiationError(
-                f"Skipping callback <{cb_conf}> - Not a DictConfig with `_target_` key! Please provide a valid `_target_` for instantiation."
+                f"Skipping callback <{cb_conf}> - Not a DictConfig with `_target_` key! "
+                f"Please provide a valid `_target_` for instantiation."
             )
 
     return callbacks
@@ -136,7 +137,8 @@ def instantiate_loggers(logger_cfg: DictConfig | None) -> list[Logger]:
             loggers.append(hydra.utils.instantiate(lg_conf))
         else:
             raise InstantiationError(
-                f"Skipping logger <{lg_conf}> - Not a DictConfig with `_target_` key! Please provide a valid `_target_` for instantiation."
+                f"Skipping logger <{lg_conf}> - Not a DictConfig with `_target_` key! "
+                f"Please provide a valid `_target_` for instantiation."
             )
 
     return loggers

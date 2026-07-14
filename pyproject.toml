@@ -117,6 +117,7 @@ line-length = 120
 indent-width = 4
 target-version = "py310"
 exclude = [
+    "lib",  # separate repo, pinned as a submodule
     ".bzr",
     ".direnv",
     ".eggs",
@@ -219,32 +220,9 @@ known-third-party = ["wandb"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-# Add per-file-ignores for specific cases
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
-"tests/*" = ["D", "E", "RUF", "ANN"]         # Ignore docstring rules in tests
-
-# Code relocated from the `foundry` package (and rf3's chiral metric) during the
-# extraction. It was written against the monorepo's laxer ruff config, so it does not
-# satisfy this project's stricter rules (chiefly ANN*, missing type annotations).
-# Exempting it keeps the move a pure relocation -- annotating ~200 signatures would be a
-# large, risky diff with no behaviour change. Drop these as the files get touched.
-"src/rfproteina/callbacks/callback.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/datapipes/collate.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/datapipes/schema/base.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/metrics/chiral_metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/metrics/metric.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/nn/modules/blocks.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/activation_checkpointing.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/common.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/datasets.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/ddp.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/hydra.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/logging.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/standard_annotations.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/torch.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"src/rfproteina/utils/weights.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
-"tests/helpers/pytest_hooks.py" = ["ANN", "B", "C4", "E501", "N", "RUF", "SIM", "UP"]
+"__init__.py" = ["F401"]              # re-exports and import-for-side-effect
+"tests/*" = ["D", "E", "RUF", "ANN"]  # annotating test signatures buys nothing
 
 [tool.pyright]
 typeCheckingMode = "off"

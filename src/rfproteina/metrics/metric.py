@@ -1,6 +1,8 @@
+import contextlib
 import inspect
 from abc import ABC, abstractmethod
 from functools import cached_property
+from typing import ClassVar
 
 import hydra
 import numpy as np
@@ -151,7 +153,9 @@ class MetricManager:
                 metric.teardown()
 
     def __call__(self, **kwargs: Any) -> dict[str, Any]:
-        """Compute all metrics and return their results as a dictionary mapping metric names to their computed values."""
+        """Compute all metrics and return their results as a dictionary mapping metric names to their
+        computed values.
+        """
 
         # Extract example_id if it exists
         example_id = nested_dict.get(kwargs, key=("extra_info", "example_id"), default=None)
@@ -187,7 +191,7 @@ class MetricManager:
 
                 # ... append 'name' to the keys of the metric result to ensure uniqueness
                 if isinstance(metric_result, dict):
-                    metric_result = keymap(lambda k: f"{name}.{k}", metric_result)
+                    metric_result = keymap(lambda k, name=name: f"{name}.{k}", metric_result)
                     results.update(metric_result)
                 elif isinstance(metric_result, list):
                     results[name] = metric_result
@@ -205,7 +209,8 @@ class Metric(ABC):
 
     Args:
         required_tags_all: A set of tags that must all be present in the input batch for this metric to be computed.
-        required_tags_any: A set of tags where at least one must be present in the input batch for this metric to be computed.
+        required_tags_any: A set of tags where at least one must be present in the input batch for this
+            metric to be computed.
         prohibited_tags: A set of tags that must not be present in the input batch for this metric to be computed.
         aggregation: Reduction(s) applied to this metric's per-example outputs when summarizing across
             samples. One of, or a list of, ``SUPPORTED_REDUCTIONS``. Defaults to ``["mean"]``.
@@ -214,7 +219,7 @@ class Metric(ABC):
     """
 
     SUPPORTED_REDUCTIONS = ("mean", "median")
-    _REDUCTION_FNS = {
+    _REDUCTION_FNS: ClassVar[dict[str, Any]] = {
         "mean": np.nanmean,
         "median": np.nanmedian,
     }
@@ -304,11 +309,9 @@ class Metric(ABC):
             compute_inputs = {}
             for compute_arg, kwargs_key in self.kwargs_to_compute_args.items():
                 if compute_arg in self.optional_kwargs:
-                    # Optional parameter - only add if present
-                    try:
+                    # Optional parameter - only add if present; if absent, it is not passed to compute()
+                    with contextlib.suppress(KeyError):
                         compute_inputs[compute_arg] = nested_dict.getitem(kwargs, key=kwargs_key)
-                    except KeyError:
-                        pass  # Don't pass this parameter to compute()
                 else:
                     # Required parameter - use getitem (will raise if missing)
                     compute_inputs[compute_arg] = nested_dict.getitem(kwargs, key=kwargs_key)
@@ -380,14 +383,12 @@ class Metric(ABC):
             return False
         if self.required_tags_any and not tags.intersection(self.required_tags_any):
             return False
-        if self.prohibited_tags and tags.intersection(self.prohibited_tags):
-            return False
-        return True
+        return not (self.prohibited_tags and tags.intersection(self.prohibited_tags))
 
     def setup(self) -> None:
         """Called at validation epoch start. Override to load expensive resources."""
-        pass
+        return None
 
     def teardown(self) -> None:
         """Called at validation epoch end. Override to clean up resources."""
-        pass
+        return None

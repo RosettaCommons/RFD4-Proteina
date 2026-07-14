@@ -105,5 +105,5 @@ class ChiralAccuracy(Metric):
         self,
         predicted_atom_array_stack: AtomArrayStack | AtomArray,
         ground_truth_atom_array_stack: AtomArrayStack | AtomArray,
-    ):
+    ) -> dict[str, float]:
         return compute_chiral_metrics(predicted_atom_array_stack, ground_truth_atom_array_stack)
