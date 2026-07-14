@@ -7,8 +7,7 @@ correlations (Pearson, Spearman, R², RMSE, MAE).
 
 Usage::
 
-    python run_mcl1_benchmark.py --mace          # MACE only (GPU)
-    python run_mcl1_benchmark.py                 # both
+    python run_mcl1_benchmark.py                 # run the benchmark
     python run_mcl1_benchmark.py --resume        # resume partial run
     python run_mcl1_benchmark.py --correlations-only  # recompute from CSV
 
@@ -337,17 +336,14 @@ def _write_correlation_csv(summary_rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MCL1 benchmark: MACE vs FEP")
-    parser.add_argument("--mace", action="store_true", help="Run MACE only")
     parser.add_argument("--mace-model", default=None, help="Path to MACE-POLAR model")
     parser.add_argument("--resume", action="store_true", help="Resume from existing CSV")
     parser.add_argument("--correlations-only", action="store_true", help="Recompute correlations only")
     args = parser.parse_args()
 
-    run_mace = True
-
     mace_model = args.mace_model or os.environ.get("MACE_POLAR_MODEL_PATH") or os.environ.get("MACE_MODEL_PATH")
 
-    if run_mace and not mace_model:
+    if not mace_model:
         parser.error("MACE model path required (--mace-model or MACE_POLAR_MODEL_PATH)")
 
     fep_data = download_fep_data()
@@ -388,11 +384,9 @@ def main() -> None:
     if args.resume:
         mace_results = load_existing_results(RESULTS_CSV)
 
-    if run_mace:
-        remaining = [(n, a) for n, a in complexes if n not in mace_results]
-        if remaining:
-            mace_results.update(run_mace_benchmark(remaining, mace_model))
-        write_results_csv(ligand_info, fep_data, mace_results, RESULTS_CSV)
+    remaining = [(n, a) for n, a in complexes if n not in mace_results]
+    if remaining:
+        mace_results.update(run_mace_benchmark(remaining, mace_model))
 
     rows = write_results_csv(ligand_info, fep_data, mace_results, RESULTS_CSV)
     corr = run_correlation_analysis(rows, "all")
