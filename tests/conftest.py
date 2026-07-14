@@ -14,7 +14,7 @@ os.environ.setdefault("LOGNAME", "pytest")
 os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", "/tmp/torchinductor-pytest")
 import subprocess
 
-_MASTER_PORT_BASE = 29500
+_MASTER_PORT_FALLBACK = 29500
 
 
 def _pin_gpu_for_xdist_worker() -> None:
@@ -33,9 +33,12 @@ def _pin_gpu_for_xdist_worker() -> None:
         return
     index = int(worker[2:])
 
-    os.environ["MASTER_PORT"] = str(_MASTER_PORT_BASE + index)
+    # Offset the per-run random port (run_gpu_tests.sh), not a constant: two 4-GPU jobs fit on an
+    # 8-GPU node, and a fixed base would give both the same rendezvous ports.
+    base = int(os.environ.get("MASTER_PORT") or _MASTER_PORT_FALLBACK)
+    os.environ["MASTER_PORT"] = str(base + index)
 
-    devices = [d for d in os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",") if d.strip()]
+    devices = [d.strip() for d in os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",") if d.strip()]
     if not devices:
         try:
             listed = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, check=False)
