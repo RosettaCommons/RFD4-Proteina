@@ -235,7 +235,7 @@ emit_af3_daemon_block() {
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
-  /usr/bin/python3 $code_dir/src/scripts/af3_daemon.py launch \\
+  /usr/bin/python3 $code_dir/src/proteinfoundation/scripts/af3_daemon.py launch \\
   --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF3_OUT" \\
   --skip-if-no-env 2>>"\$AF3_OUT/af3_daemons.log" >/dev/null &
 AF3_DAEMON_SRUN_PID=\$!
@@ -722,7 +722,6 @@ copy_code_to_dir() {
     rsync -a --no-compress "$repo_root/benchmarks/" "$code_dir/benchmarks/"
     rsync -a --no-compress "$repo_root/data/" "$code_dir/data/"
     rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
-    rsync -a --no-compress "$repo_root/src/scripts/" "$code_dir/src/scripts/"
 
     cp "$repo_root/.project-root" "$code_dir/"
     mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"
