@@ -1,5 +1,11 @@
 """General convenience utilities for PyTorch."""
 
+from __future__ import annotations
+
+import logging
+
+import torch
+
 __all__ = ["assert_no_nans", "assert_same_shape", "assert_shape", "map_to"]
 
 import time
@@ -7,8 +13,7 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-import torch
-from beartype.typing import Any, Sequence
+from beartype.typing import Any, Iterator, Sequence
 from toolz import valmap
 from torch import Tensor
 from torch._prims_common import DeviceLikeType
@@ -63,18 +68,16 @@ def map_to(
             lambda v: map_to(v, device=device, dtype=dtype, non_blocking=non_blocking, **to_kwargs),
             x,
         )
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, list | tuple):
         return type(x)(
-            map(
-                lambda v: map_to(
-                    v,
-                    device=device,
-                    dtype=dtype,
-                    non_blocking=non_blocking,
-                    **to_kwargs,
-                ),
-                x,
+            map_to(
+                v,
+                device=device,
+                dtype=dtype,
+                non_blocking=non_blocking,
+                **to_kwargs,
             )
+            for v in x
         )
     elif isinstance(x, Tensor):
         return x.to(device=device, dtype=dtype, non_blocking=non_blocking, **to_kwargs)
@@ -112,7 +115,7 @@ def _assert_no_nans(x: Any, *, msg: str = "", fail_if_not_tensor: bool = False) 
                 msg=".".join(filter(bool, [msg, k])),
                 fail_if_not_tensor=fail_if_not_tensor,
             )
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, list | tuple):
         for idx, v in enumerate(x):
             _assert_no_nans(
                 v,
@@ -127,7 +130,7 @@ assert_no_nans = _assert_no_nans if should_check_nans else do_nothing
 
 
 @contextmanager
-def _suppress_tracer_warnings():
+def _suppress_tracer_warnings() -> Iterator[None]:
     """
     Context manager to temporarily suppress known warnings in torch.jit.trace().
     Note: Cannot use catch_warnings because of https://bugs.python.org/issue29672
@@ -141,7 +144,7 @@ def _suppress_tracer_warnings():
     warnings.filters.remove(tracer_warning_filter)
 
 
-def assert_shape(tensor: Tensor, ref_shape: Sequence[int | None]):
+def assert_shape(tensor: Tensor, ref_shape: Sequence[int | None]) -> None:
     """
     Assert that the shape of a tensor matches the given list of integers.
     None indicates that the size of a dimension is allowed to vary.
@@ -159,26 +162,22 @@ def assert_shape(tensor: Tensor, ref_shape: Sequence[int | None]):
         raise AssertionError(f"Wrong number of dimensions: got {tensor.ndim}, expected {len(ref_shape)}")
 
     for idx, (size, ref_size) in enumerate(zip(tensor.shape, ref_shape, strict=False)):
-        if tensor.ndim != len(ref_shape):
-            raise AssertionError(f"Wrong number of dimensions: got {tensor.ndim}, expected {len(ref_shape)}")
-
-        for idx, (size, ref_size) in enumerate(zip(tensor.shape, ref_shape, strict=False)):
-            if ref_size is None:
-                pass
-            elif isinstance(ref_size, torch.Tensor):
-                with _suppress_tracer_warnings():  # as_tensor results are registered as constants
-                    torch._assert(
-                        torch.equal(torch.as_tensor(size), ref_size),
-                        f"Wrong size for dimension {idx}",
-                    )
-            elif isinstance(size, torch.Tensor):
-                with _suppress_tracer_warnings():  # as_tensor results are registered as constants
-                    torch._assert(
-                        torch.equal(size, torch.as_tensor(ref_size)),
-                        f"Wrong size for dimension {idx}: expected {ref_size}",
-                    )
-            elif size != ref_size:
-                raise AssertionError(f"Wrong size for dimension {idx}: got {size}, expected {ref_size}")
+        if ref_size is None:
+            pass
+        elif isinstance(ref_size, torch.Tensor):
+            with _suppress_tracer_warnings():  # as_tensor results are registered as constants
+                torch._assert(
+                    torch.equal(torch.as_tensor(size), ref_size),
+                    f"Wrong size for dimension {idx}",
+                )
+        elif isinstance(size, torch.Tensor):
+            with _suppress_tracer_warnings():  # as_tensor results are registered as constants
+                torch._assert(
+                    torch.equal(size, torch.as_tensor(ref_size)),
+                    f"Wrong size for dimension {idx}: expected {ref_size}",
+                )
+        elif size != ref_size:
+            raise AssertionError(f"Wrong size for dimension {idx}: got {size}, expected {ref_size}")
 
 
 def assert_same_shape(tensor: Tensor, ref_tensor: Tensor) -> None:
@@ -216,7 +215,7 @@ class Timer:
         use_barrier (bool, optional): Whether to use synchronization barriers. Defaults to True.
     """
 
-    def __init__(self, name, use_barrier: bool = True):
+    def __init__(self, name: str, use_barrier: bool = True):
         self.name_ = name
         self.elapsed_ = 0.0
         self.started_ = False
@@ -279,7 +278,7 @@ class Timers:
     def __init__(self):
         self.timers = {}
 
-    def __call__(self, name, use_barrier: bool = True) -> Timer:
+    def __call__(self, name: str, use_barrier: bool = True) -> Timer:
         """Get or create a Timer object."""
         if name not in self.timers:
             self.timers[name] = Timer(name, use_barrier=use_barrier)
@@ -303,3 +302,57 @@ class Timers:
     def elapsed(self, *names, reset: bool = True) -> dict[str, float]:
         """Get the elapsed time for the specified timers."""
         return {name: self.timers[name].elapsed(reset=reset) for name in names}
+
+
+def apply_torch_deterministic(logger: logging.Logger) -> None:
+    """Enable fully deterministic CUDA operations for reproducible runs.
+
+    Must be called after model init — model.__init__ may call
+    _configure_flash_attention_backends() which re-enables Flash SDP.
+    """
+    logger.warning(
+        "torch_deterministic=true: disabling Flash/mem-efficient SDP and locking cuDNN "
+        "algorithm selection. This can significantly reduce throughput."
+    )
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_math_sdp(True)
+
+
+def concat_dict_tensors(dict_list: list[dict[str, torch.Tensor]], dim: int = 0) -> dict[str, torch.Tensor]:
+    """Concatenate a list of dictionaries of tensors along specified dimension.
+
+    Args:
+        dict_list: List of dictionaries with the same keys and tensor values
+        dim: Dimension along which to concatenate (default: 0)
+
+    Returns:
+        Dictionary with concatenated tensors for each key
+
+    Example:
+        >>> dict1 = {"a": torch.tensor([1, 2]), "b": torch.tensor([3, 4])}
+        >>> dict2 = {"a": torch.tensor([5, 6]), "b": torch.tensor([7, 8])}
+        >>> result = concat_dict_tensors([dict1, dict2], dim=0)
+        >>> result["a"]
+        tensor([1, 2, 5, 6])
+    """
+    if not dict_list:
+        return {}
+
+    if len(dict_list) == 1:
+        return dict_list[0]
+
+    # Get keys from first dict
+    keys = dict_list[0].keys()
+
+    # Concatenate tensors for each key
+    result = {}
+    for key in keys:
+        tensors = [d[key] for d in dict_list if key in d]
+        if tensors:
+            result[key] = torch.cat(tensors, dim=dim)
+
+    return result

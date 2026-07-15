@@ -2,14 +2,14 @@
 Simple collate function to pad and batch data samples from a pipeline.
 """
 
-from rfproteina.datapipes.schema.base import BatchedDataSample, DataSample
+from rfproteina.datapipes.schema.base import BatchedDataSample, DataSample, PaddedBatchedDataSample
 
 
 def collate_batch(
     batch: list[dict],
     schema: str | type[DataSample],
     fixed_dimensions: dict[str, int | list[int]] | None = None,
-):
+) -> PaddedBatchedDataSample:
     """Collate a batch of data samples into a single batch with padding.
 
     Args:

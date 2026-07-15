@@ -6,7 +6,7 @@ from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
-from rfproteina.utils.align_utils import mean_w_mask
+from rfproteina.utils.align import mean_w_mask
 
 _logger = logging.getLogger(__name__)
 
