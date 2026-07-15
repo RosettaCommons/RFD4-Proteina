@@ -11,7 +11,7 @@ clean:
 
 ## Create conda environment with PyMOL, then install project deps via uv
 setup-pymol:
-	conda env create -f src/proteinfoundation/pymol/pymol_env.yaml
+	conda env create -f src/rfproteina/pymol/pymol_env.yaml
 	@echo ""
 	@echo "Conda env 'rfproteina' created. Now run:"
 	@echo "  conda activate rfproteina"
