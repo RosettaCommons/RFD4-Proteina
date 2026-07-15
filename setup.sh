@@ -3,7 +3,7 @@
 # setup.sh — First-time setup for rfproteina on a new Linux machine.
 #
 # Can be run from any directory — it auto-detects the repo root:
-#   bash /path/to/projects/rfproteina/setup.sh
+#   bash /path/to/rfproteina/setup.sh
 # =============================================================================
 
 set -e
@@ -64,7 +64,7 @@ else
 fi
 
 # Create the (git-ignored) Python package dir so it's ready for custom metric modules.
-CUSTOM_METRICS_PKG="rfproteina/metrics/custom_metrics"
+CUSTOM_METRICS_PKG="src/rfproteina/metrics/custom_metrics"
 mkdir -p "$CUSTOM_METRICS_PKG"
 
 # ── 6. Install dependencies ────────────────────────────────────────────────
@@ -146,5 +146,5 @@ echo ""
 echo " Next steps:"
 echo "   1. Reload your shell:  source $RC_FILE"
 echo "   2. Activate the venv:  source $PROJECT_ROOT/.venv/bin/activate"
-echo "   3. Make some designs! See projects/rfproteina/README.md for instructions."
+echo "   3. Make some designs! See README.md for instructions."
 echo ""
