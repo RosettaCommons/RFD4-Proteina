@@ -270,7 +270,9 @@ The model supports a wide range of biomolecular design tasks. Each link below pr
 
 ## Supported Conditioning
 
-The table below lists all conditioning modalities and their current status. Each is specified per-residue or per-atom in the input spec — see [Input Specification](docs/input.md) for syntax.
+The table below lists all conditioning modalities and their current status. Each is specified per-residue or per-atom in the input spec — see [Input Specification](docs/input.md) for the legacy JSON syntax.
+
+> **Recommended input format: annotated CIFs.** For anything involving non-canonicals, PTMs, small molecules, bonds, or charges, prefer **annotated CIF** files (built in PyMOL or programmatically), which the model reads natively with no lossy JSON round-trip. See [Annotated CIF Inputs](docs/annotated_cif_inputs.md) and the [tutorial notebook](docs/tutorials/annotated_cif_tutorial.ipynb). The status column below reflects the JSON path; the annotated-CIF path additionally exposes H-bond and RASA conditioning.
 
 | Conditioning | Input field | Status |
 | --- | --- | --- |
