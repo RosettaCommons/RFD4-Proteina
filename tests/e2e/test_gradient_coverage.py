@@ -10,7 +10,6 @@ import pytest
 from hydra import compose, initialize_config_dir
 
 from tests.e2e.helpers.gpu_e2e import (
-    PYTHON,
     ROOT,
     assert_loss_not_exploding,
     assert_no_dataset_fallbacks,
@@ -77,7 +76,6 @@ def test_gradient_coverage(tmp_path: Path) -> None:
     cleanup_smoke_training_store(RUN_NAME)
 
     cmd = [
-        PYTHON,
         "src/rfproteina/train.py",
         "experiment=sota",
         f"run_name_={RUN_NAME}",
