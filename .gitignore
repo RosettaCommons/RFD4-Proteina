@@ -2,8 +2,8 @@
 examples/*.cif
 
 # User-defined custom metrics
-projects/rfproteina/configs/metrics/custom_metrics/
-projects/rfproteina/rfproteina/metrics/custom_metrics/
+configs/metrics/custom_metrics/
+src/rfproteina/metrics/custom_metrics/
 
 # Checkpoints
 **.ckpt
@@ -264,6 +264,8 @@ tests/data/pdb/*
 # User info files (contain secrets - use _example files as templates)
 **/slurm_utils/.user_info*
 !**/slurm_utils/.user_info_*_example
+**/scripts/.user_info*
+!**/scripts/.user_info_*_example
 
 # Exceptions
 !.ipd/apptainer/latent-dev.sif
