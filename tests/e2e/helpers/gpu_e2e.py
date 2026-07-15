@@ -18,7 +18,6 @@ import signal
 import stat
 import statistics
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
@@ -38,8 +37,6 @@ def get_data_path() -> Path | None:
     raw = os.environ.get("DATA_PATH", "").strip()
     return Path(raw) if raw else None
 
-
-PYTHON = sys.executable
 
 PrevalOracle = Literal["af3", "none"]
 
