@@ -25,9 +25,8 @@ class _SkipGpuPlugin:
     """Auto-skip tests marked @pytest.mark.gpu when CUDA is unavailable."""
 
     def pytest_runtest_setup(self, item):
-        if item.get_closest_marker("gpu"):
-            if not torch.cuda.is_available():
-                pytest.skip("requires GPU (CUDA not available)")
+        if item.get_closest_marker("gpu") and not torch.cuda.is_available():
+            pytest.skip("requires GPU (CUDA not available)")
 
 
 def configure_pytest(config, conftest_file: str) -> None:

@@ -27,7 +27,7 @@ from rfproteina.metrics.utils.metrics_utils import (
     run_oracle_refolding_and_pass_criteria,
 )
 from rfproteina.proteina import _clean_metrics_dict
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree, silence_warnings

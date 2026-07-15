@@ -26,7 +26,8 @@ Special Keys (accessed via ``batch[key]``):
 
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, fields, is_dataclass
+from collections.abc import Collection
+from dataclasses import Field, dataclass, fields, is_dataclass
 from functools import cached_property
 from typing import Any, Union, get_args, get_origin, get_type_hints
 
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 TOKEN_DIM = "I"
 
 
-def unwrap_optional(field_type):
+def unwrap_optional(field_type: Any) -> Any:
     """Unwrap Optional[T] to get T, handling both Optional and Union[T, None]."""
     origin = get_origin(field_type)
     if origin is Union:
@@ -158,14 +159,14 @@ def batch_dataclass_recursive(instances: list) -> Any:
 
     # Base case 1: Tensor
     if isinstance(first, torch.Tensor):
-        return torch.stack([x for x in instances], dim=0)
+        return torch.stack(list(instances), dim=0)
 
     # Base case 2: Primitives (int, float, str, bool, None)
-    elif isinstance(first, (int, float, str, bool, type(None))):
+    elif isinstance(first, int | float | str | bool | type(None)):
         return instances  # Keep as list or convert to tensor if all same type
 
     # Base case 3: Lists/tuples
-    elif isinstance(first, (list, tuple)):
+    elif isinstance(first, list | tuple):
         # Option A: Keep as nested list
         # Option B: Try to stack if all elements are tensors
         return instances
@@ -211,7 +212,7 @@ def batch_dataclass_recursive(instances: list) -> Any:
         return instances
 
 
-def get_default_value(field, hints, padding_overrides):
+def get_default_value(field: Field, hints: dict[str, Any], padding_overrides: dict[str, Any]) -> Any:
     """Return default padding value based on field type.
 
     Uses jaxtyping annotations to determine appropriate padding values:
@@ -248,7 +249,7 @@ def get_default_value(field, hints, padding_overrides):
 
 
 @dataclass
-class Features(ABC):
+class Features:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Features":
         return cls(**data)
@@ -261,7 +262,9 @@ class Features(ABC):
         """
         return {}
 
-    def pad_to_max_lengths(self, max_lengths: dict[str, int], exclude=None) -> "Features":
+    def pad_to_max_lengths(
+        self, max_lengths: dict[str, int], exclude: str | Collection[str] | None = None
+    ) -> "Features":
         # use the jaxtyping annotations to determine which dimensions to pad
         # for each field, check if its a tensor, get its jaxtyping shape, and pad accordingly
         padded_fields = {}
@@ -347,12 +350,14 @@ class BatchedDataSample(ABC):
 
     data_samples: list[DataSample]
 
-    def __init__(self, data_samples: list[DataSample], default_padding_dimensions=None):
+    def __init__(
+        self,
+        data_samples: list[DataSample],
+        default_padding_dimensions: dict[str, int | list[int]] | None = None,
+    ):
         super().__init__()
         self.data_samples = data_samples
-        assert set(type(s) for s in data_samples) == {
-            type(data_samples[0])
-        }, "All padded samples must be of the same type"
+        assert {type(s) for s in data_samples} == {type(data_samples[0])}, "All padded samples must be of the same type"
 
         #  Optional: specify default padding dimensions for torch.compile
         self.default_padding_dimensions = default_padding_dimensions or {}
@@ -529,9 +534,12 @@ class PaddedBatchedDataSample(BatchedDataSample):
             raise KeyError("No 'S' dimension in padding_masks (no MSA data in batch?)")
 
         # Check tensors dict (simplified schema - keys are passed through as-is)
-        if hasattr(self.data_samples, "tensors") and isinstance(self.data_samples.tensors, dict):
-            if key in self.data_samples.tensors:
-                return self.data_samples.tensors[key]
+        if (
+            hasattr(self.data_samples, "tensors")
+            and isinstance(self.data_samples.tensors, dict)
+            and key in self.data_samples.tensors
+        ):
+            return self.data_samples.tensors[key]
 
         # Build key mappings if not cached
         if self._KEY_MAPPINGS is None:
@@ -550,7 +558,7 @@ class PaddedBatchedDataSample(BatchedDataSample):
 
         raise KeyError(f"Key '{key}' not found. Available: {list(self.keys())[:20]}...")
 
-    def keys(self):
+    def keys(self) -> set[str]:
         """Return all available keys for dict-like access."""
         k = set()
         if hasattr(self, "_extra_fields"):

@@ -17,7 +17,7 @@ from rfproteina.conditions import (
     PiCationEnum,
 )
 from rfproteina.metrics.metric import Metric
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 
 logger = logging.getLogger(__name__)
 

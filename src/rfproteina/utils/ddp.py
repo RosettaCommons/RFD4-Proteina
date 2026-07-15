@@ -19,14 +19,14 @@ def is_rank_zero() -> bool:
     return get_current_rank() == 0
 
 
-def set_accelerator_based_on_availability(cfg: dict | DictConfig):
+def set_accelerator_based_on_availability(cfg: dict | DictConfig) -> dict | DictConfig:
     """Set training accelerator to CPU if no GPUs are available.
 
     Args:
         cfg: Hydra object with trainer settings "accelerator", "devices_per_node", and "num_nodes".
 
     Returns:
-        None; modifies the input `cfg` object in place.
+        The same ``cfg``, modified in place.
     """
     if not torch.cuda.is_available():
         logger.error(

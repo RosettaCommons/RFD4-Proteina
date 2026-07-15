@@ -23,7 +23,7 @@ from rfproteina.conditions import (
 )
 from rfproteina.datapipes.pipeline import TokenType
 from rfproteina.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
-from rfproteina.utils.angle_utils import bond_angles, signed_dihedral_angle
+from rfproteina.utils.angle import bond_angles, signed_dihedral_angle
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -600,7 +600,7 @@ class OpenfoldSideChainAnglesSeqFeat(Feature):
             "all_atom_positions": coords,
             "all_atom_mask": atom_mask,
         }
-        from rfproteina.utils.openfold_utils import atom37_to_torsion_angles
+        from rfproteina.utils.openfold import atom37_to_torsion_angles
 
         p = atom37_to_torsion_angles(p, prefix="")
         torsion_angles_sin_cos = p["torsion_angles_sin_cos"]  # [b, n, 7, 2]

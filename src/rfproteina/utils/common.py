@@ -89,7 +89,8 @@ def listmap_with_idx(fn: Callable[[int, Any], Any], lst: Iterable[Any]) -> list:
     of each element in the input list.
 
     Args:
-        - fn (Callable[[int, Any], Any]): Function that takes two arguments (index, value) and returns a transformed value.
+        - fn (Callable[[int, Any], Any]): Function that takes two arguments (index, value) and returns
+          a transformed value.
         - lst (list): Input list to map over.
 
     Returns:

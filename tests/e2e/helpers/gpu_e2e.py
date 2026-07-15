@@ -22,7 +22,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Literal, NoReturn
 
 import pytest
 
@@ -81,14 +81,25 @@ def require_gpu_e2e(*, min_gpus: int = 0) -> None:
             pytest.skip(f"Need at least {min_gpus} GPUs (detected {gpu_count})")
 
 
+def _missing_data(reason: str) -> NoReturn:
+    """Fail in CI, skip elsewhere.
+
+    A GPU test that skips still reports the lane green while contributing no coverage, so whether
+    it ran comes down to which runner the job landed on. In CI that is a failure, not a skip.
+    """
+    if os.getenv("CI", "").lower() in ("true", "1", "yes"):
+        pytest.fail(reason)
+    pytest.skip(reason)
+
+
 def require_data_file(relative: str) -> Path:
     require_gpu_e2e()
     data_path = get_data_path()
     if data_path is None:
-        pytest.skip("Set DATA_PATH for training/inference data")
+        _missing_data("Set DATA_PATH for training/inference data")
     path = data_path / relative
     if not path.exists():
-        pytest.skip(f"Missing data file: {path}")
+        _missing_data(f"Missing data file: {path}")
     return path
 
 

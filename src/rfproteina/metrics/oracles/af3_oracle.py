@@ -33,7 +33,7 @@ from biotite.structure.residues import apply_residue_wise, residue_iter, spread_
 from rfproteina.af3.af3_apptainer import build_apptainer_fold_command
 from rfproteina.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)

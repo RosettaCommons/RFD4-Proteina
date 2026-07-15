@@ -3,7 +3,8 @@
 Registering these as StandardAnnotations (rather than plain extra_fields) gives:
 - Automatic saving to CIF files (no need to list in ``extra_fields``).
 - Easy loading from CIF files through ``parse``
-- Default generation via :py:meth:`~atomworks.io.utils.standard_annotations.base.StandardAnnotationBase.default_annotation`.
+- Default generation via
+  :py:meth:`~atomworks.io.utils.standard_annotations.base.StandardAnnotationBase.default_annotation`.
 """
 
 import numpy as np
@@ -24,7 +25,7 @@ class SrcCoordinateConditionedRegion(StandardAnnotationBase):
     dtype = np.dtype("<U10")
 
     @classmethod
-    def get_mask_name(cls, n_body=None, level=None) -> str:
+    def get_mask_name(cls, n_body: int | None = None, level: Level | str | None = None) -> str:
         """Return backward-compatible mask key."""
         return "mapped_to_coordinate_conditioned_region"
 

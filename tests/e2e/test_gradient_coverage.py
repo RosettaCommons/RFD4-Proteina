@@ -99,7 +99,7 @@ def test_gradient_coverage(tmp_path: Path) -> None:
         "dataloaders.multiprocessing_context=null",
         "dataloaders.train.dataloader_params.persistent_workers=false",
         "~metrics/refolding_oracles",
-        "+callbacks.grad_coverage._target_=rfproteina.utils.training_analysis_utils.GradientCoverageCallback",
+        "+callbacks.grad_coverage._target_=rfproteina.utils.training_analysis.GradientCoverageCallback",
         f"+callbacks.grad_coverage.output_path={coverage_json}",
         f"++out_dir={out_dir}",
     ]

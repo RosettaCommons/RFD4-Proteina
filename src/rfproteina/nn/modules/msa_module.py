@@ -13,7 +13,7 @@ from rfproteina.nn.modules.triangle import (
     TriangleMultiplication,
 )
 
-# from rfproteina.utils.checkpoint import activation_checkpointing
+# from rfproteina.utils.activation_checkpointing import activation_checkpointing
 
 
 class Transition(nn.Module):

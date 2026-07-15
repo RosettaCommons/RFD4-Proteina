@@ -37,7 +37,7 @@ from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_o
 from rfproteina.search.base_strategy import SearchStrategy
 from rfproteina.search.vanilla import build_partial_schedule, resolve_partial_t
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
-from rfproteina.utils.tensor_utils import concat_dict_tensors
+from rfproteina.utils.torch import concat_dict_tensors
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 

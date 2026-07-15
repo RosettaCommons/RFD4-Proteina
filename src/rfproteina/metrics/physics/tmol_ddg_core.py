@@ -21,7 +21,7 @@ from tmol.score import beta2016_score_function
 from tmol.score.score_function import ScoreFunction
 
 from rfproteina.metrics.utils.atom_selection import atom_selection_from_spec
-from rfproteina.utils.chain_utils import get_chain_of_interest
+from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -150,7 +150,7 @@ def build_pose_and_masks(
     derives ligand chemistry (SMILES -> RDKit/OpenBabel typing) from the AtomArray
     itself and defaults to ``ParameterDatabase.get_default()`` (a cached singleton)
     otherwise. When ``region_a``/``region_b`` are omitted, the binder is the chain of
-    interest (see :func:`~rfproteina.utils.chain_utils.get_chain_of_interest`)
+    interest (see :func:`~rfproteina.utils.chain.get_chain_of_interest`)
     and the target is every other atom. ``raise_on_dropped_residues`` forwards to
     :func:`atom_sel_to_block_mask`.
     """

@@ -1,9 +1,10 @@
+import contextlib
 import logging
 import warnings
 from contextlib import contextmanager
 
 import pandas as pd
-from beartype.typing import Any
+from beartype.typing import Any, Iterator
 from lightning_fabric.utilities import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
 from rich.console import Console
@@ -20,14 +21,12 @@ ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 class CachedDataFilter(logging.Filter):
     """Filter to suppress atomworks cached data logging messages."""
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         # Filter out "Cached data not found" messages
-        if "Cached data not found" in record.getMessage():
-            return False
-        return True
+        return "Cached data not found" not in record.getMessage()
 
 
-def silence_warnings():
+def silence_warnings() -> None:
     """Silence common warnings that appear during foundry execution."""
     # Suppress atomworks cached data warnings (logging filter)
     logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
@@ -69,7 +68,7 @@ def silence_warnings():
 
 
 @contextmanager
-def suppress_warnings(is_inference: bool = False):
+def suppress_warnings(is_inference: bool = False) -> Iterator[None]:
     """Context manager to suppress specific warnings within its scope.
 
     Args:
@@ -173,7 +172,7 @@ def print_model_parameters(model: nn.Module, name: str = "") -> None:
     print_df_as_table(pd.DataFrame(data), title=title)
 
 
-def log_hyperparameters_with_all_loggers(trainer: Any, cfg: dict | DictConfig, model: Any):
+def log_hyperparameters_with_all_loggers(trainer: Any, cfg: dict | DictConfig, model: Any) -> None:
     """Logs hyperparameters using all loggers in the trainer.
 
     Args:
@@ -188,13 +187,12 @@ def log_hyperparameters_with_all_loggers(trainer: Any, cfg: dict | DictConfig, m
     for logger in trainer.fabric.loggers:
         # ...log hyperparameters to each Fabric logger
         # For Abstract Base Class of Fabric `Loggers`, see: https://lightning.ai/docs/fabric/stable/_modules/lightning/fabric/loggers/logger.html#Logger
-        assert hasattr(
-            logger, "log_hyperparams"
-        ), f"Logger {logger} does not have a `log_hyperparams` method. Ensure that the logger is a subclass of Fabric's ABC `Logger`."
-        try:
+        assert hasattr(logger, "log_hyperparams"), (
+            f"Logger {logger} does not have a `log_hyperparams` method. "
+            "Ensure that the logger is a subclass of Fabric's ABC `Logger`."
+        )
+        with contextlib.suppress(NotImplementedError):
             logger.log_hyperparams(cfg)
-        except NotImplementedError:
-            pass
 
 
 def condense_count_columns_of_grouped_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -253,7 +251,7 @@ def table_from_df(df: pd.DataFrame, title: str) -> Table:
     return table
 
 
-def safe_print(obj: Any, console_width=100, logger: Any | None = None) -> None:
+def safe_print(obj: Any, console_width: int = 100, logger: Any | None = None) -> None:
     """Print a Rich object in a console- and logger-safe manner."""
     console = Console(force_terminal=False, color_system=None, width=console_width)
 

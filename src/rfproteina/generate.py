@@ -32,8 +32,8 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree
 from rfproteina.utils.simple_ema import SimpleEMA
-from rfproteina.utils.torch_compile_utils import load_compile_cache, save_compile_cache
-from rfproteina.utils.torch_utils import apply_torch_deterministic
+from rfproteina.utils.torch import apply_torch_deterministic
+from rfproteina.utils.torch_compile import load_compile_cache, save_compile_cache
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project

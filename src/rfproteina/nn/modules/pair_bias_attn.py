@@ -31,6 +31,7 @@ from rfproteina.nn.modules.adaptive_ln_scale import (
     AdaptiveOutputScale,
 )
 from rfproteina.nn.modules.norm import make_norm
+from rfproteina.utils.common import default, exists
 
 # Large negative value for masking (not -inf to avoid gradient issues)
 NEG_INF = -1e4
@@ -45,16 +46,6 @@ try:
 except (ImportError, OSError):
     CUET_AVAILABLE = False
     cuet_attention_pair_bias = None
-
-
-def exists(val: object) -> bool:
-    """returns whether val is not none"""
-    return val is not None
-
-
-def default(x: object, y: object) -> object:
-    """returns x if it exists, otherwise y"""
-    return x if exists(x) else y
 
 
 class PairBiasAttention(nn.Module):
