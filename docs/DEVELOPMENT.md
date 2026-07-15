@@ -1,816 +1,310 @@
 # Developer Guide
 
-This document covers training, SLURM job launching, dataset configuration, design task implementation, metrics, and the full project architecture.
+This guide is for **developers**: setting up a training environment on any cluster, continuing
+training of the released model on your own data, and understanding datasets, design tasks, metrics,
+and the SLURM launchers.
 
-For user-facing inference and design documentation, see the [main README](../README.md).
-
----
+For inference and design usage, see the [main README](../README.md). For coding standards, see
+[CLAUDE.md](../CLAUDE.md).
 
 ## Table of Contents
 
-1. [Setup](#setup)
-2. [Datasets and Dataloaders](#datasets-and-dataloaders)
-3. [Design Tasks (Conditional Training)](#design-tasks-conditional-training)
-4. [Model Training](#model-training)
-5. [SLURM Job Launching](#slurm-job-launching)
-6. [Evaluation and Metrics](#evaluation-and-metrics)
-7. [Adding New Rewards and Metrics](#adding-new-rewards-and-metrics)
+1. [Setup (any cluster, no container)](#setup-any-cluster-no-container)
+2. [Continue-Training Walkthrough](#continue-training-walkthrough)
+3. [Training Essentials](#training-essentials)
+4. [Datasets and Dataloaders](#datasets-and-dataloaders)
+5. [Design Tasks (Conditional Training)](#design-tasks-conditional-training)
+6. [SLURM Job Launching](#slurm-job-launching)
+7. [Evaluation and Metrics](#evaluation-and-metrics)
 8. [Advanced Topics](#advanced-topics)
-9. [File Structure Reference](#file-structure-reference)
-10. [Troubleshooting](#troubleshooting)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Setup
+## Setup (any cluster, no container)
 
-### Installation
-
-Run `setup.sh` from the repo root on a new machine:
-
-```bash
-bash projects/rfproteina/setup.sh
-```
-
-This installs `uv`, initialises the atomworks submodule, creates the virtualenv, installs all dependencies, and appends `CLUSTER`/`CONTAINER_TYPE` exports to your shell rc file.
-
-Then activate the environment:
+Training runs in the same plain `uv` environment as inference — no apptainer, squashfs, or shared
+filesystem required. Install and configure exactly as in the [README Setup](../README.md#setup):
 
 ```bash
+bash setup.sh                      # choose "5) other" at the cluster prompt
 source .venv/bin/activate
+
+export CLUSTER=local
+export DATA_PATH="$PWD/data_path"
+mkdir -p "$DATA_PATH"
+printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local
 ```
 
-**Environment Variables**
+> **Why `CLUSTER=local` + `.ipd/.env.local`?** Both `train.py` and `generate.py` call
+> `load_dotenv()` at startup, which requires an env file for the current `CLUSTER` to exist and
+> otherwise raises. It loads with `override=False`, so any variable you export yourself wins. On the
+> configured clusters (`digs`, `coreweave`, `gb200`, `ord`) the committed `.ipd/.env.<cluster>` files fill
+> in shared paths and the container/squashfs machinery; on a fresh cluster a one-line `local` file
+> plus your own exports is all you need.
 
-Shared cluster paths (`DATA_PATH`, `CACHE_DIR`, `CCD_MIRROR_PATH`, etc.) live in `.ipd/.env.<cluster>` (committed to git) and are auto-sourced via `scripts/.user_info_<cluster>`. No per-user `.env` file is needed.
+---
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATA_PATH` | Base directory for training data (parquet files) | Yes |
-| `CACHE_DIR` | Cache directory for parsed structures | Yes |
-| `CCD_MIRROR_PATH` | CCD mirror for ligand parsing | Yes |
-| `PDB_MIRROR_PATH` | PDB mirror directory | Optional |
+## Continue-Training Walkthrough
 
-**Expected Data Structure:**
+This walkthrough finetunes the released denoiser on a tiny, self-contained dataset — enough to
+prove the training loop runs end-to-end on a fresh cluster. It uses no squashfs and no container.
 
-```
-${DATA_PATH}/
-├── latent_train_parquet_files/
-│   ├── mgnify_distillation_big.parquet
-│   ├── omol_all_7M_parsed_2025_11_26.parquet
-│   ├── ted_dimers.parquet
-│   └── afdb_monomer.parquet
-├── latent_checkpoints/ae_checkpoints/
-│   └── AE_ucond_512.ckpt
-└── ccd_mirror/
-```
+### 1. Download the model and the test dataset
 
-### Test Suite
+`download_example_data.sh` with `--with-test-dataset` pulls both checkpoints (denoiser +
+autoencoder) and the ~50-system `test_dataset` (parquet + a plain directory of CIFs) into
+`$DATA_PATH`:
 
 ```bash
-pytest tests/                              # All tests
-pytest tests/ -v                           # Verbose output
-pytest tests/metrics/test_sse_metrics.py   # Specific test module
+./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset
 ```
+
+This lays out:
+
+```
+$DATA_PATH/
+├── latent_checkpoints/
+│   ├── ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt   # denoiser
+│   └── ae_checkpoints/AE_ucond_512.ckpt                                          # autoencoder
+└── test_dataset/
+    ├── test_systems.parquet
+    └── cifs/systems/<xx>/<id>/<id>.cif
+```
+
+The autoencoder is required for latent-diffusion training and is read from
+`$DATA_PATH/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt` by default.
+
+> **CCD / PDB mirrors (optional).** The tutorial needs neither. For broader work that parses
+> arbitrary ligands or PDB entries, a CCD mirror is published at
+> `https://YOUR_DATASET_STORE/train_datasets/ccd_mirror/2026_01_06_ccd/2026_01_06_ccd.sqfs`
+> (a squashfs — mount it or `unsquashfs` it and point `CCD_MIRROR_PATH` at the directory). The full
+> PDB mirror is too large to host; fetch structures from [RCSB](https://www.rcsb.org/) or point
+> `PDB_MIRROR_PATH` at your own copy.
+
+### 2. Run the finetune
+
+Pass the released denoiser (downloaded to `$DATA_PATH` above) as `pretrain_ckpt_path` — it's the same
+checkpoint inference uses, named in [`configs/inference.yaml`](../configs/inference.yaml):
+
+```bash
+python src/rfproteina/train.py \
+    experiment=tutorial/finetune_test_dataset \
+    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt \
+    +single=true +nolog=true
+```
+
+- **`experiment=tutorial/finetune_test_dataset`** wires the tiny dataset ([`configs/experiment/tutorial/finetune_test_dataset.yaml`](../configs/experiment/tutorial/finetune_test_dataset.yaml)),
+  single GPU, and short epochs. Validation runs the checked-in `val/unconditional` set (unconditional
+  monomer generation) with the AF3 refolding tag dropped, so it steps and validates without a container.
+- **`pretrain_ckpt_path`** starts a new run from the released weights (resets the optimizer/scheduler/
+  step/epoch); use `resume_ckpt_path=<ckpt>` to restore full Lightning state instead. The SOTA
+  checkpoint lives only in `inference.yaml` — advance it there and this command follows.
+- **`+single=true`** drops the SLURM/DDP plugins; **`+nolog=true`** disables WandB and checkpoint
+  writing.
+
+You should see the model build (~169M trainable + a frozen ~256M autoencoder), the pretrained
+checkpoint load, and training steps run over the tiny dataset. That confirms the data pipeline,
+autoencoder, and model all work on your cluster.
+
+> **Architecture must match the checkpoint.** `train.py` builds the model from the `nn` config, not
+> from the checkpoint, so the two must agree. The released denoiser uses a triangle-multiplication
+> pair-update architecture that the default `nn` config does not — so the tutorial experiment
+> selects a matching one ([`configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml`](../configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml),
+> extracted from the checkpoint's own hyper-parameters) via `override /nn`. To finetune a different
+> checkpoint, select (or add) the `nn` config it was trained with; a mismatch surfaces as
+> `size mismatch` / `Missing key(s)` errors on `load_state_dict`.
+
+> **Tip:** the tutorial disables `torch.compile` for a fast first run; re-enable it
+> (`nn.use_torch_compile=True compile_autoencoder=True`) for real training. Add
+> `opt.steps_per_epoch=3 opt.max_epochs=1` to stop after just a few steps.
+
+### How the no-squashfs dataset works
+
+The production `plinder` dataset reads CIFs from a squashfs mount
+(`${SQUASH_MOUNT_PATH,/squash}/plinder`). The tutorial dataset
+([`configs/datasets/train/test_dataset.yaml`](../configs/datasets/train/test_dataset.yaml)) instead
+points `loader.base_path` directly at `${DATA_PATH}/test_dataset/cifs`, a plain directory. Each
+parquet `path` row (`systems/<xx>/<id>/<id>.cif`) resolves against that base — no mounting required.
+To build your own dataset the same way, mirror this config with your parquet + CIF directory.
+
+### With or without the apptainer shebang
+
+`train.py` and `generate.py` have a shebang that, when the file is *executed* (`./train.py ...`),
+re-runs it inside an apptainer container. Invoking them as an argument to Python
+(`python src/rfproteina/train.py ...`, as above) bypasses the shebang entirely and runs in your
+`uv` venv. On an configured cluster with the SIF present, the shebang path also works; on a fresh cluster,
+always use the `python <script>` form.
+
+---
+
+## Training Essentials
+
+### Entry points
+
+| Model | Script | Config name |
+| --- | --- | --- |
+| Latent diffusion (main model) | `src/rfproteina/train.py` | `training_proteina` |
+| Autoencoder | `src/rfproteina/partial_autoencoder/train.py` | `training_ae` |
+
+```bash
+# Diffusion, quick single-GPU test
+python src/rfproteina/train.py experiment=<name> +single=true +nolog=true
+
+# Autoencoder
+python src/rfproteina/partial_autoencoder/train.py --config-name training_ae
+```
+
+### Config composition
+
+`configs/training_proteina.yaml` composes dataloaders, model (`nn/…`), metrics, callbacks, and an
+`experiment`, then an optional `debug` group. Experiments live in `configs/experiment/` (e.g.
+`sota.yaml`, `unconditional_afdb_256.yaml`, `tutorial/finetune_test_dataset.yaml`, plus
+user-namespaced folders). `datasets.train` is mandatory and supplied by the experiment.
+
+### Checkpoint loading (mutually exclusive)
+
+| Key | Behavior |
+| --- | --- |
+| `pretrain_ckpt_path` | Start a **new** run from saved weights (resets optimizer/scheduler/step/epoch/RNG). Use for finetuning on new data. |
+| `resume_ckpt_path` | **Resume** an interrupted run (restores full Lightning state). An existing `last.ckpt` in the run dir is auto-detected. |
+
+Two knobs apply only on the `pretrain_ckpt_path` path (see the commented examples in
+`configs/training_proteina.yaml`):
+
+- **`weight_loading`** (`rfproteina.utils.weights.WeightLoadingConfig`) — per-parameter copy /
+  reinit / zero-init / copy-and-zero-pad policies. Null → `strict=False`.
+- **`parameter_freezing`** (`rfproteina.utils.weights.ParameterFreezingConfig`) — freeze subsets of
+  parameters (e.g. the trunk).
+
+### Minimal / debug flags
+
+- `+single=true` — single GPU, no SLURM/DDP.
+- `+nolog=true` — no WandB, no checkpoint writing.
+- `debug=gpu` or `debug=cpu` — preset short-run configs (small `steps_per_epoch`, `num_workers=0`,
+  progress bar; see `configs/debug/`).
+- Epoch length is `opt.steps_per_epoch` (not the full dataset).
 
 ---
 
 ## Datasets and Dataloaders
 
-### Available Datasets
+Dataset configs live under `configs/datasets/train/` (and `configs/datasets/val/`). Parquet-backed
+sets inherit from `configs/datasets/train/base_pandas.yaml` (`atomworks.ml.datasets.PandasDataset`);
+the production `plinder` set is `configs/datasets/train/plinder/plinder.yaml`. All paths use
+`${oc.env:DATA_PATH}` (and, for squashfs-backed CIFs, `${oc.env:SQUASH_MOUNT_PATH,/squash}`), so
+nothing is hardcoded.
 
-| Dataset | Use Case | Chains | Size | Default Tasks |
-|---------|----------|--------|------|---------------|
-| `mgnify` | General protein generation | Single | ~7.5M | 80% motif, 10% uncond, 5% fold, 5% inv-fold |
-| `omol` | Small molecule generation | N/A | ~7M | Unconditional (no tasks) |
-| `afdb_dimer` | Binder design, PPI | Multi | ~500K | 80% PPI hotspot, 10% uncond, 5% fold, 5% inv-fold |
-| `afdb_monomer` | Single-chain generation | Single | ~5M | Unconditional, motif scaffolding |
-| `pdb_interfaces` | Multi-chain PPI | Multi | ~100K | PPI hotspot, unconditional |
+A dataset config specifies:
 
-**Usage:**
+- `dataset.data` — the parquet index (row metadata + a `path` column for structures).
+- `dataset.loader.base_path` — where the CIFs live (a squashfs mount, or a plain dir as in
+  `test_dataset.yaml`).
+- `dataset.transform.design_tasks` — a design-task preset (see below).
+- `weights` — optional sampling weights (e.g. inverse cluster size).
 
-```bash
-python rfproteina/train.py experiment=mgnify_training
-python rfproteina/train.py experiment=omol_training
-python rfproteina/train.py experiment=afdb_dimer_training
-```
-
-### Dataset Configuration
-
-Datasets are configured via Hydra YAML files in `configs/datasets/train/distill/` using environment variables for portability:
-
-```yaml
-defaults:
-  - ../base@dataset
-  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
-  - _self_
-
-dataset:
-  name: mgnify_distillation
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/mgnify_distillation_big.parquet
-  columns_to_load:
-    - example_id
-    - path
-    - ptm
-  filters:
-    - "ptm > 0.75"
-```
-
-All datasets use `${oc.env:DATA_PATH}` and `${oc.env:CACHE_DIR}` sourced from `.ipd/.env.<cluster>` -- no hardcoded paths.
-
-### Adding a New Dataset
-
-**Step 1:** Create dataset config in `configs/datasets/train/distill/my_dataset.yaml`
-
-```yaml
-defaults:
-  - ../base@dataset
-  - /design_tasks/presets/unconditional_only@dataset.transform.design_tasks
-  - _self_
-
-probability: 1.0
-
-dataset:
-  name: my_dataset
-  data: ${oc.env:DATA_PATH}/latent_train_parquet_files/my_data.parquet
-  columns_to_load:
-    - example_id
-    - path
-  filters:
-    - "quality_score > 0.8"
-  loader:
-    parser_args:
-      add_missing_atoms: True
-```
-
-**Step 2:** Create experiment config in `configs/experiment/my_experiment.yaml`
-
-```yaml
-# @package _global_
-
-defaults:
-  - /datasets/train/distill/my_dataset@datasets.train
-  - _self_
-
-run_name: my_experiment_run
-```
-
-**Step 3:** Train
-
-```bash
-python rfproteina/train.py experiment=my_experiment
-```
+To add a dataset, copy an existing config, point `data`/`base_path` at your files, choose a
+design-task preset, and reference it from an experiment via
+`- /datasets/train/<your_dataset>@datasets.train.<key>`.
 
 ---
 
 ## Design Tasks (Conditional Training)
 
-### What are Design Tasks?
+Design tasks control **what information the model sees** during training, enabling conditional
+generation. They are configured per dataset as relative-weight frequencies via a preset from
+`configs/design_tasks/presets/` (e.g. `plinder_tasks`, `unconditional_only`, `folding_only`,
+`motif_pretraining`, …).
 
-Design tasks control **what information is provided to the model** during training, enabling conditional generation:
+| Task | Sees | Produces | Use case |
+| --- | --- | --- | --- |
+| `unconditional` | Noise | Structure + sequence | General generation |
+| `folding` | Sequence | Structure | Structure prediction |
+| `inverse_folding` | Structure | Sequence | Sequence design |
+| `motif_scaffold` | Partial structure | Complete protein | Scaffolding |
+| `ppi_hotspot_*` | Target + hotspots | Binder | Protein binder design |
+| `tip_atom*` | Ligand contact residues | Protein | Ligand-site design |
 
-| Task | Input | Output | Use Case |
-|------|-------|--------|----------|
-| `unconditional` | Noise | Structure + Sequence | General generation |
-| `folding` | Sequence | Structure | Predict structure from sequence |
-| `inverse_folding` | Structure | Sequence | Design sequence for structure |
-| `motif_scaffold` | Partial structure (motif) | Complete protein | Scaffold around functional motif |
-| `ppi_hotspot_with_3d_target` | Target protein + hotspots | Binder protein | Protein binder design |
-| `tip_atom` | Ligand binding residues | Protein | Ligand binding site design |
-
-### Using Design Tasks
-
-Tasks are configured in dataset configs via relative-weight frequencies:
-
-```yaml
-# configs/design_tasks/presets/mgnify_unconditional.yaml
-unconditional:
-  frequency: 90.0
-  transform:
-    _target_: rfproteina.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-folding:
-  frequency: 5.0
-  transform:
-    _target_: rfproteina.transforms.design_task.StructurePredictionTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-inverse_folding:
-  frequency: 5.0
-  transform:
-    _target_: rfproteina.transforms.design_task.InverseFoldingTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-```
-
-### Design Task Presets
-
-Pre-configured task combinations in `configs/design_tasks/presets/`:
-
-| Preset | Tasks | Use Case |
-|--------|-------|----------|
-| `unconditional_only` | 100% unconditional | Simple generation |
-| `mgnify_unconditional` | 90% uncond, 5% fold, 5% inv-fold | General training |
-| `folding_only` | 100% folding | Structure prediction only |
-| `motif_pretraining` | 80% motif (AME), 10% uncond, 5% fold, 5% inv-fold | Motif scaffolding |
-| `afdb_dimer_with_ppi` | 80% PPI, 10% uncond, 5% fold, 5% inv-fold | Binder design |
-
-### Adding a New Design Task Preset
-
-**Step 1:** Create preset in `configs/design_tasks/presets/my_tasks.yaml`
-
-```yaml
-unconditional:
-  frequency: 50.0
-  transform:
-    _target_: rfproteina.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-folding:
-  frequency: 50.0
-  transform:
-    _target_: rfproteina.transforms.design_task.StructurePredictionTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-```
-
-**Step 2:** Reference in dataset config
-
-```yaml
-defaults:
-  - ../base@dataset
-  - /design_tasks/presets/my_tasks@dataset.transform.design_tasks
-  - _self_
-```
-
-### Adjusting Task Frequencies
-
-**Option 1: Edit preset file directly**
+Override a frequency temporarily on the CLI, e.g.:
 
 ```bash
-vim configs/design_tasks/presets/mgnify_unconditional.yaml
-```
-
-**Option 2: Hydra override** (temporary)
-
-```bash
-python rfproteina/train.py \
-    experiment=mgnify_training \
-    datasets.train.dataset.transform.design_tasks.unconditional.frequency=80.0 \
-    datasets.train.dataset.transform.design_tasks.folding.frequency=10.0
-```
-
----
-
-## Model Training
-
-### Autoencoder vs Diffusion Model
-
-The codebase includes **two separate models**:
-
-| Model | Purpose | Training Script | Checkpoint Used By |
-|-------|---------|----------------|-------------------|
-| **Autoencoder** | Encode sidechains to latents (atom37 -> latent_dim) | `partial_autoencoder/train.py` | Diffusion model |
-| **Diffusion Model** | Generate proteins (main model) | `train.py` | Inference/generation |
-
-**Typical workflow:**
-1. Train autoencoder (or use pretrained)
-2. Train diffusion model using frozen autoencoder checkpoint
-3. Generate with diffusion model (autoencoder used for decoding)
-
-### Local Training (Interactive)
-
-**Diffusion Model:**
-
-```bash
-# Single GPU, no logging (quick test)
-python rfproteina/train.py experiment=mgnify_training +single=true +nolog=true
-
-# Multi-GPU on local machine
-python rfproteina/train.py experiment=mgnify_training
-
-# Override parameters
-python rfproteina/train.py \
-    experiment=mgnify_training \
-    opt.lr=0.0002 \
-    training.self_cond=False
-```
-
-**Autoencoder:**
-
-```bash
-python rfproteina/partial_autoencoder/train.py --config-name training_ae
-```
-
-### Training Configuration
-
-**Hardware** (`configs/training_proteina.yaml`):
-
-```yaml
-hardware:
-  accelerator: gpu
-  gpus_per_node: 8
-  num_nodes: 4
-```
-
-**Experiment configs** (`configs/experiment/`):
-
-```yaml
-# configs/experiment/mgnify_training.yaml
-# @package _global_
-
-defaults:
-  - /datasets/train/distill/mgnify@datasets.train
-  - _self_
-
-run_name: mgnify_training_run
-```
-
-**Available experiments:**
-- `mgnify_training` -- MGnify protein dataset
-- `omol_training` -- Small molecules
-- `afdb_dimer_training` -- Protein dimers for binder design
-- `afdb_monomer_training` -- Single-chain proteins
-- `pdb_training` -- PDB interfaces
-
-### Key Training Parameters
-
-```yaml
-# Optimization
-opt:
-  lr: 0.0001
-  max_epochs: 10000000
-  val_check_interval: 10000
-
-# Checkpointing
-log:
-  checkpoint_every_n_steps: 10000
-  last_ckpt_every_n_steps: 1500
-
-# Flow matching
-loss:
-  t_distribution:
-    bb_ca:
-      name: mix_unif_beta
-      p1: 1.9
-      p2: 1.0
-      p3: 0.02
-    local_latents:
-      name: mix_unif_beta
-      p1: 1.0
-      p2: 1.5
-      p3: 0.2
-
-# Autoencoder checkpoint
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+python src/rfproteina/train.py experiment=<name> \
+    datasets.train.<key>.dataset.transform.design_tasks.unconditional.frequency=80.0
 ```
 
 ---
 
 ## SLURM Job Launching
 
-The `scripts/` directory provides a unified system for launching jobs across multiple clusters with different containerization backends. See the [main README Cluster Launching section](../README.md#cluster-launching-slurm) for user-facing examples.
+> The `scripts/launch_*.sh` launchers target the configured clusters and require their container/SLURM
+> infrastructure (apptainer or docker/enroot, `.ipd/.env.<cluster>`, and a per-user
+> `scripts/.user_info_<cluster>`). On a fresh cluster without that stack, run `train.py`/`generate.py`
+> directly as shown above.
 
-### Multi-Cluster Architecture
+Each cluster needs a `scripts/.user_info_<cluster>` file (copy the matching
+`scripts/.user_info_<cluster>_example` template) holding SLURM settings. `setup.sh` creates one when
+you pick a known cluster. Key launchers:
 
-| Cluster Type | Container Backend | Container Image | Mounts |
-|--------------|-------------------|-----------------|--------|
-| **DIGS** | Apptainer (Singularity) | `.sif` file | Auto-mounted (Lustre) |
-| **Other Clusters** | Docker via enroot | `.sqsh` squashfs file | Explicit `--container-mounts` |
+| Workflow | Script |
+| --- | --- |
+| Train latent diffusion | `scripts/launch_train_latents.sh <cluster> [hydra args]` |
+| Train autoencoder | `scripts/launch_train_ae.sh <cluster>` |
+| Inference / offline validation | `scripts/launch_infer.sh <cluster> [--njobs N] [hydra args]` |
+| Parameter sweeps | `scripts/launch_sweep.sh <cluster> --sweep-config <yaml>` |
+| Reward-guided search | `scripts/launch_search.sh <cluster>` |
 
-### Available Launch Scripts
-
-| Workflow | Script | Description |
-|----------|--------|-------------|
-| Train latent diffusion | `launch_train_latents.sh` | Multi-node distributed training |
-| Train autoencoder | `launch_train_ae.sh` | Autoencoder training |
-| Inference / validation | `launch_infer.sh` | Parallel generation with job arrays; also used for offline validation |
-| Parameter sweeps | `launch_sweep.sh` | Generates one config per parameter combo and submits via `launch_infer.sh` |
-| Autoencoder inference | `launch_infer_ae.sh` | Autoencoder latent extraction |
-
-**`launch_infer.sh` options:**
-
-| Option | Description |
-|--------|-------------|
-| `--njobs N` | Number of parallel generation jobs (overrides `gen_njobs` from config) |
-| `--gpus-per-job N` | GPUs per SLURM array task (default: 1) |
-| `--config-name NAME` | Hydra config name (default: `inference`); same meaning as `generate.py`'s `--config-name` |
-| `--config-path DIR` | Hydra search-path root (same as `generate.py`'s `--config-path`); set it to load a config that lives outside the repo `configs/` tree (see [Configs outside the repo tree](#configs-outside-the-repo-tree)) |
-| `--copy` | Copy code to run directory via rsync (default: use repo in-place) |
-| `--follow` / `-f` | Tail the log file after submission |
-| `--no-concatenate` | Skip the automatic post-generation CSV concatenation job |
-| `--no-foldseek` | Disable Foldseek structural clustering in the concatenation job (on by default) |
-| `--overwrite-rundir` | Allow overwriting an existing code directory |
-
-Any remaining arguments are passed directly to `generate.py` as Hydra overrides.
-
-#### Configs outside the repo tree
-
-To run a config stored anywhere on the filesystem, pass both Hydra flags, exactly
-as you would to `generate.py`:
-
-```bash
-./scripts/launch_infer.sh digs \
-    --config-path /abs/path/to/config/dir --config-name my_experiment \
-    gen_njobs=4
-```
-
-The config must inherit the base `inference` config and add a `hydra.searchpath`
-entry so Hydra can find the in-tree base configs. See
-`configs/inference_experiment/TEMPLATE.yaml` (Pattern C) for the two lines to add.
-
-### Cluster Configuration
-
-Each cluster needs a `.user_info_<cluster>` file in `scripts/`:
-
-```bash
-# .user_info_digs (Apptainer-based cluster)
-CLUSTER_TYPE="digs"
-SKIP_ACCOUNT="true"
-SIF_PATH="/path/to/container.sif"
-PYTHON="/usr/bin/python"
-ROOT_REMOTE="/path/to/shared/storage"
-DATA_PATH="/path/to/shared/storage"
-CACHE_DIR="/path/to/shared/storage"
-PARTITION="batch"
-RUNTIME="04:00:00"
-GPUS_PER_NODE_CLUSTER=8
-```
-
-```bash
-# .user_info_<other_cluster> (Docker-based cluster)
-CLUSTER_TYPE="ord"
-ACCOUNT="your_account"
-SQSH_IMAGE="/path/to/container.sqsh"
-PYTHON="python"
-ROOT_REMOTE="/path/to/shared/storage"
-DATA_PATH="/path/to/shared/storage"
-CACHE_DIR="/path/to/shared/storage"
-PARTITION="batch"
-RUNTIME="04:00:00"
-GPUS_PER_NODE_CLUSTER=8
-EXTRA_CONTAINER_MOUNTS="/data:/data:ro"
-```
-
-### Inference
-
-Run from `projects/rfproteina/` on the cluster:
-
-```bash
-# 4 replicates over benchmark inputs, split across 2 parallel jobs
-./scripts/launch_infer.sh digs --njobs 2 \
-    inference_experiment=inference_like_rfd3 \
-    inputs=/path/to/benchmarks/monomer.json \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    out_dir=/path/to/outputs run_name=my_run num_replicates=4 batch_size=2
-```
-
-After all generation jobs finish, a dependent SLURM job automatically concatenates per-job CSV metrics into a single file under `<run_dir>/inference_metrics/`. Foldseek structural clustering runs by default; pass `--no-foldseek` to disable it.
-
-### Offline Validation
-
-Offline validation uses the same `launch_infer.sh` script with `inference_experiment=inference_on_val_set` and a `+datasets/val@generation=<dataset>` override that selects the validation dataset:
-
-```bash
-# Validate on the MCSA subset (Foldseek clustering on by default)
-./scripts/launch_infer.sh digs --njobs 8 \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt \
-    inference_experiment=inference_on_val_set \
-    +datasets/val@generation=mcsa_subset \
-    run_name=my_run_mcsa_val out_dir=/path/to/outputs
-```
-
-Available val dataset configs live in `configs/datasets/val/`. The `inference_on_val_set` experiment config drives the generation from the val dataset (rather than an `inputs` file) and loads all metrics.
-
-To sweep for offline validation, use a sweep config as detailed in the main README.
-```
-
-### Parameter Sweeps
-
-`launch_sweep.sh` generates one Hydra config per parameter combination and submits each via `launch_infer.sh`:
-
-```bash
-# Sweep nsteps x noise scale (Foldseek clustering on by default)
-./scripts/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/sweep_example.yaml \
-    --base-out-dir /path/to/out_dir --njobs 2 \
-    ckpt_path=/path/to/checkpoints ckpt_name=last.ckpt
-
-# Preview configs without submitting
-./scripts/launch_sweep.sh digs \
-    --sweep-config configs/sweeps/sweep_example.yaml --dry-run
-```
-
-See `configs/sweeps/` for available sweep configs.
-
-### Training
-
-```bash
-# With code sync and auto-requeue
-bash scripts/launch_train_latents.sh digs --submissions 2
-
-# Without code sync
-bash scripts/launch_train_latents.sh digs --no-copy
-```
-
-### What the Launch Scripts Do
-
-1. **Copy code** (opt-in with `--copy`): `rsync` selective directories to `$ROOT_REMOTE/<run_name>/`
-2. **Resolve Hydra config**: Reads `run_name`, `num_nodes`, `gpus_per_node` from config
-3. **Build and submit sbatch script**: Generates appropriate container commands
-4. **Concatenation job** (inference/val only): Dependent job merges per-task CSVs into `inference_metrics/`
-
-### Output Structure
-
-```
-$ROOT_REMOTE/<run_name>/
-├── slurm_run_outputs/
-│   ├── slurm_12345_0.out
-│   ├── slurm_12345_0.err
-│   └── ...
-├── slurm_batch_script.sh
-├── .env
-├── inference/
-│   ├── sample_0_job_0.cif
-│   └── ...
-└── inference_metrics/
-    └── results_concatenated.csv
-```
-
-### Adding a New Cluster
-
-1. Determine cluster type (Apptainer vs Docker/enroot)
-2. Copy the matching template:
-    ```bash
-    cp scripts/.user_info_digs scripts/.user_info_mycloud   # Apptainer
-    cp scripts/.user_info_ord scripts/.user_info_mycloud    # Docker
-    ```
-3. Edit with your cluster settings, then launch:
-    ```bash
-    bash scripts/launch_train_latents.sh mycloud
-    ```
+`launch_infer.sh` splits inputs across job-array tasks (`--njobs`), then a dependent job
+concatenates per-job metric CSVs (Foldseek clustering on by default; `--no-foldseek` to disable).
+Pass any trailing `key=value` args straight through to the underlying script. To load a config from
+outside the repo tree, pass `--config-path <dir> --config-name <stem>` (the config must inherit the
+base config and add a `hydra.searchpath` entry — see `configs/inference_experiment/TEMPLATE.yaml`).
+For offline validation on a val set, run it with `inference_experiment=inference_on_val_set
++datasets/val@generation=<val_dataset>` (val configs live in `configs/datasets/val/`).
 
 ---
 
 ## Evaluation and Metrics
 
-### How Metrics Work
+Metrics subclass `rfproteina.metrics.metric.Metric` and score generated structures. They run inline
+during inference (`metrics_tags=[...]`) and during training validation. Refolding-based metrics use
+the **AF3 oracle**, which needs an apptainer (see the [README](../README.md#refolding--search-requires-af3)).
 
-Metrics inherit from `rfproteina.metrics.metric.Metric` and compute scores on generated structures.
-
-**Location:** `rfproteina/metrics/`
-
-| Category | Metrics | Description |
-|----------|---------|-------------|
-| **Refolding** | `RF3Metric`, `AF2Metric`, `TMOLMetric` | Refold and evaluate (slow, accurate) |
-| **Structure Quality** | `SidechainMetrics`, `SSEMetrics`, `RASAMetrics` | Fast, no refolding required |
-| **Validation** | `MolprobityMetrics`, `HbondMetrics` | Stereochemistry, clashes, H-bonds |
-| **Task-Specific** | `UnindexingMetrics`, `HotspotMetrics` | Motif RMSD, PPI interface quality |
-
-### Metrics in Training
-
-Configured in subconfigs under `configs/metrics`:
-
-```yaml
-metrics:
-  sidechain:
-    _target_: rfproteina.metrics.sidechain_metrics.SidechainMetrics
-  sse:
-    _target_: rfproteina.metrics.sse_metrics.SSEMetrics
-  rf3:
-    _target_: rfproteina.metrics.rf3_metric.RF3Metric
-    ckpt_path: /path/to/rf3_latest.pt
-    num_steps: 50
-    metrics_tags: [ppi, binder]
-```
-
-Metrics run during validation and log to WandB.
-
-### Metrics in Inference
+**Offline evaluation** of already-generated structures (Hydra-based, like `generate.py`):
 
 ```bash
-python rfproteina/evaluate.py \
-    --samples_dir ./outputs/generated_structures/ \
-    --metrics designability,novelty \
-    --output_csv results.csv
+python src/rfproteina/evaluate.py \
+    inputs=/path/to/structures metrics_tags='[unconditional_refolding]'
 ```
 
-Automatically runs after generation when using `launch_infer.sh`.
-
----
-
-## Adding New Rewards and Metrics
-
-Metrics can be used for **evaluation and search**.
-
-### Adding a New Metric
-
-Create a metric class in `rfproteina/metrics/my_metric.py`:
-
-```python
-from rfproteina.metrics.metric import Metric
-from biotite.structure import AtomArray
-
-class MyCustomMetric(Metric):
-    """Custom metric for protein evaluation."""
-
-    def __init__(self, threshold: float = 10.0):
-        super().__init__()
-        self.threshold = threshold
-
-    def __call__(
-        self,
-        predicted_atom_array: AtomArray,
-        extra_info: dict | None = None
-    ) -> dict[str, float]:
-        quality_score = self.compute_quality(predicted_atom_array)
-        return {
-            "quality_score": quality_score,
-            "passes_threshold": float(quality_score > self.threshold),
-        }
-
-    def compute_quality(self, atom_array: AtomArray) -> float:
-        return atom_array.b_factor.mean()
-```
-
-### Adding a Reward Config
-
-Create a reward config in `configs/rewards/my_reward.yaml`:
-
-```yaml
-metrics:
-  my_metric:
-    _target_: rfproteina.metrics.my_metric.MyCustomMetric
-    threshold: 15.0
-  rf3:
-    _target_: rfproteina.metrics.rf3_metric.RF3Metric
-    ckpt_path: /path/to/rf3_latest.pt
-    num_steps: 50
-
-weights:
-  my_metric.quality_score: 2.0
-  rf3.plddt: 1.0
-  rf3.iptm: 3.0
-```
-
-### Using Custom Rewards
-
-```bash
-# With search
-python rfproteina/generate.py \
-    --config-name inference_test_search \
-    inputs=design.json ckpt_path=./checkpoints ckpt_name=model.ckpt \
-    reward=my_reward
-```
-
-### Programmatic Usage
-
-```python
-from rfproteina.rewards import RewardModel
-from rfproteina.metrics.my_metric import MyCustomMetric
-from rfproteina.metrics.rf3_metric import RF3Metric
-
-reward_model = RewardModel(
-    metrics={
-        "my_metric": MyCustomMetric(threshold=15.0),
-        "rf3": RF3Metric(ckpt_path="/path/to/rf3_latest.pt", num_steps=50),
-    },
-    weights={
-        "my_metric.quality_score": 2.0,
-        "rf3.plddt": 1.0,
-        "rf3.iptm": 3.0,
-    },
-)
-
-from rfproteina.search import BestOfNStrategy
-strategy = BestOfNStrategy(n_samples=50)
-results = strategy.generate(model, batch, reward_model)
-```
+**Custom metrics/rewards** — add Python metric classes under `rfproteina/metrics/custom_metrics/`
+and register them in `configs/metrics/custom_metrics/` (both git-ignored; `setup.sh` scaffolds the
+entry config). Reward models for search are configured under `configs/rewards/`. See
+[docs/custom_metrics.md](custom_metrics.md) for the full guide.
 
 ---
 
 ## Advanced Topics
 
-### LoRA Fine-Tuning
+**LoRA finetuning** — set a positive `lora.r` in the config to enable low-rank adaptation
+(`lora_alpha`, `lora_dropout`, `train_bias`, `exclude_keys`); null `r` = full-model training.
 
-Enable low-rank adaptation for efficient fine-tuning:
+**Flow matching** — modality-specific time distributions control the diffusion schedule, with
+separate parameters for `bb_ca` (backbone) and `local_latents` (sidechain); see the `loss.t_distribution`
+block in `configs/training_proteina.yaml`.
 
-```yaml
-lora:
-  r: 8                 # LoRA rank (null to disable)
-  lora_alpha: 32.0
-  lora_dropout: 0.0
-```
-
-Requires: `pip install loralib`
-
-### Flow Matching Parameters
-
-Control diffusion schedule via time distributions:
-
-```yaml
-loss:
-  t_distribution:
-    bb_ca:
-      name: mix_unif_beta
-      p1: 1.9
-      p2: 1.0
-      p3: 0.02
-    local_latents:
-      name: mix_unif_beta
-      p1: 1.0
-      p2: 1.5
-      p3: 0.2
-```
-
-Different parameters for backbone vs sidechains optimize generation quality.
-
-### EMA Checkpointing
-
-Exponential moving average improves generation:
-
-```yaml
-callbacks:
-  ema:
-    _target_: rfproteina.utils.ema_callback.EMACallback
-    decay: 0.999
-
-log:
-  save_ema_separately: false
-```
-
----
-
-## File Structure Reference
-
-```
-rfproteina/
-├── configs/
-│   ├── training_proteina.yaml           # Main training config
-│   ├── training_ae.yaml                 # Autoencoder training config
-│   ├── inference.yaml                   # Inference sweep config
-│   ├── search.yaml                      # Search sweep config
-│   ├── experiment/                      # Experiment presets
-│   ├── datasets/train/distill/          # Dataset configs
-│   ├── design_tasks/presets/            # Design task presets
-│   ├── rewards/                         # Reward model configs
-│   └── nn/                              # Model architecture configs
-│
-├── rfproteina/
-│   ├── train.py                         # Diffusion model training
-│   ├── generate.py                      # Generation/inference
-│   ├── evaluate.py                      # Metric evaluation
-│   ├── partial_autoencoder/
-│   │   ├── train.py                     # Autoencoder training
-│   │   └── inference.py                 # Autoencoder inference
-│   ├── result_analysis/
-│   │   └── analysis.py                  # Result analysis and clustering
-│   ├── metrics/                         # Evaluation metrics
-│   ├── search/                          # Search strategies
-│   │   ├── best_of_n.py
-│   │   ├── beam_search.py
-│   │   └── vanilla.py
-│   ├── rewards/                         # Reward model wrapper
-│   └── transforms/                      # Design tasks
-│
-├── scripts/                         # SLURM launch scripts
-│   ├── common.sh
-│   ├── .user_info_digs
-│   ├── .user_info_ord
-│   ├── launch_train_latents.sh
-│   ├── launch_train_ae.sh
-│   ├── launch_infer.sh
-│   ├── launch_search.sh
-│   └── launch_offline_val.sh
-│
-├── docs/                                # Documentation
-│   ├── DEVELOPMENT.md                   # This file
-│   ├── input.md                         # Input specification
-│   └── input.md                         # Input specification
-│
-├── benchmarks/                          # Benchmark inputs and targets
-├── script_utils/                        # Helper scripts
-└── setup.sh                             # First-time setup script
-```
+**EMA** — an exponential-moving-average callback (`rfproteina.utils.simple_ema.SimpleEMA`)
+maintains averaged weights; the released denoiser is an EMA checkpoint.
 
 ---
 
 ## Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| `DATA_PATH not set` | Ensure `.ipd/.env.<cluster>` is present and your `scripts/.user_info_<cluster>` sources it |
-| `Autoencoder checkpoint not found` | Update `autoencoder_ckpt_path` in `training_proteina.yaml` |
-| `Parquet file not found` | Verify `DATA_PATH` points to correct directory with parquet files |
-| `Training not resuming` | Check `./store/<run_name>/checkpoints/last.ckpt` exists |
-| `Out of memory` | Reduce batch size or decrease number of GPUs in config |
-| `SLURM job fails immediately` | Check `slurm_run_outputs/slurm.err` on remote cluster |
-| `Import errors` | Ensure parent foundry installed: `cd ../.. && pip install -e .` |
-| `Hydra config errors` | Use `=` not `--` for arguments: `inputs=file.cif` not `--inputs file.cif` |
-| `Squashfs mount fails` | Set `USE_SQUASH_MOUNT="false"` in cluster config |
-| `Search needs reward model` | Create reward config in `configs/rewards/` and specify with `reward=<name>` |
-| `CLUSTER_TYPE not set` | Missing or invalid `.user_info_<cluster>` file |
-| `Code sync failed` | Check `rsync` permissions and network |
-
----
-
-**For coding standards and contribution guidelines, see [CLAUDE.md](../CLAUDE.md).**
-
+| --- | --- |
+| `No .env file found for cluster '<x>'` | `export CLUSTER=local` and create `.ipd/.env.local` (see [Setup](#setup-any-cluster-no-container)) |
+| `No autoencoder checkpoint path provided` / AE not found | Download it (`download_example_data.sh`) or set `autoencoder_ckpt_path=` |
+| Parquet / CIF not found | Check `DATA_PATH`; for custom data confirm `loader.base_path` + the parquet `path` column resolve |
+| Training not resuming | Ensure a `last.ckpt` exists in the run's `checkpoints/`, or pass `resume_ckpt_path=` |
+| Out of memory | Lower `dataloaders.batch_size` or `opt.accumulate_grad_batches` |
+| Segfault in rdkit/posebusters | uv's Python needs `LD_PRELOAD` set to the bundled `libstdc++.so.6` (see `Makefile`; `make test` sets it) |
+| SLURM launcher fails on a fresh cluster | The launchers need the container/SLURM stack — run `python src/rfproteina/train.py ...` directly instead |

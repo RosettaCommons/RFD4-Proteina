@@ -1,0 +1,53 @@
+# @package _global_
+# Continue training the released denoiser on the tiny test_dataset, validating by unconditional
+# monomer generation (the checked-in val/unconditional set, with the AF3 refolding tag dropped so
+# no container is needed). Single GPU, short. See docs/DEVELOPMENT.md.
+
+defaults:
+  - /datasets/train/test_dataset@datasets.train.test_dataset
+  - /datasets/val/unconditional@datasets.val.unconditional
+  # override must follow regular includes (Hydra); matches the checkpoint's architecture.
+  - override /nn: local_latents_score_nn_160M_atom37_trimult
+  - _self_
+
+run_name_: finetune_test_dataset
+
+datasets:
+  train:
+    test_dataset:
+      probability: 1.0
+  val:
+    unconditional:
+      compute_loss: false      # length-only specs have no ground truth -> generation-based val
+      dataset:
+        num_replicates: 2      # small for a smoke run
+        transform:
+          metrics_tags: [design]   # drop `unconditional_refolding` -> no AF3 oracle
+
+dataloaders:
+  batch_size: 4
+  num_workers: 0               # no multiprocessing for the tiny set
+  prefetch_factor: null
+  multiprocessing_context: null
+  train:
+    dataloader_params:
+      persistent_workers: false
+  val:
+    dataloader_params:
+      num_workers: 0
+      prefetch_factor: null
+      persistent_workers: false
+
+opt:
+  max_epochs: 3
+  steps_per_epoch: 50
+  val_every_n_epochs: 1
+
+# Compilation is off for a fast first run. Turn it on (nn.use_torch_compile=True,
+# compile_autoencoder=True) to train faster / for a more realistic setup.
+compile_autoencoder: false
+nn:
+  use_torch_compile: false
+
+# Required: pass the released denoiser on the CLI (see docs/DEVELOPMENT.md), e.g.
+#   pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/<denoiser>.ckpt
