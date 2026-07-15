@@ -1,4 +1,4 @@
-# Input Specification (dialect **2**)
+# [⚠️LEGACY⚠️] Input Specification (dialect **2**)
 
 > **Compatibility note**  
 > The input specification is designed to be similar to RFdiffusion3 (RFD3), so that existing RFD3 jobs can be submitted with minimal changes. Beyond RFD3 compatibility, the format extends to support new features like search, refinement, and latent-space generation.
