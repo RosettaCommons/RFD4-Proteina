@@ -354,11 +354,16 @@ class BeamSearchStrategy(SearchStrategy):
                     if target.exists():
                         shutil.rmtree(target, ignore_errors=True)
                     # Remove empty shard parent dirs up to (but not including) output_base_dir.
+                    # Concurrent per-GPU processes share these shard buckets, so a sibling
+                    # process may populate one between our emptiness check and the rmdir.
                     shard_parent = target.parent
                     while shard_parent != output_base_dir and shard_parent.exists():
                         if next(shard_parent.iterdir(), None) is not None:
                             break
-                        shard_parent.rmdir()
+                        try:
+                            shard_parent.rmdir()
+                        except OSError:
+                            break
                         shard_parent = shard_parent.parent
 
             # Reshape and select top beam_width candidates

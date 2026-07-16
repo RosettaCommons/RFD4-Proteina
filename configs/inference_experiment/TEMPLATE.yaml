@@ -61,14 +61,8 @@ defaults:
   - inference_on_user_inputs
   - _self_
 
-# --- Checkpoint ---
-ckpt_path: ???                        # Directory containing checkpoint
-ckpt_name: ???                        # Checkpoint filename (e.g. last-EMA.ckpt)
-# DIGS symlink: /path/to/data
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
-
 # --- Input ---
-inputs: ???                           # Path to .json/.yaml/.cif design problem(s)
+inputs: ???                           # Path to annotated CIF or directory of CIFs (preferred) or JSON input
 # subset_to_examples: null            # Optional: filter to specific examples by name
 
 # --- Output ---
@@ -109,17 +103,3 @@ batch_size: 10                        # Batch size for generation
 #     weights:
 #       rf3.plddt: 1.0
 
-# --- Generation settings ---
-generation:
-  args:
-    nsteps: 400
-  model:
-    bb_ca:
-      simulation_step_params:
-        sc_scale_noise: 0.3
-    local_latents:
-      simulation_step_params:
-        sc_scale_noise: 0.1
-
-# --- Dataloader ---
-num_workers: 4

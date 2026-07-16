@@ -33,10 +33,12 @@ metrics_tags: [design, unconditional_refolding]
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 100, 200, 300, 400]
+    # step_checkpoints: controls intervals of diversification/pruning. Must start at 0 and end at nsteps.
+    # The setup below yields four equally-spaced intervals over which search is performed
+    step_checkpoints: [0, 25, 50, 75, 100]
     n_branch: 2
     beam_width: 3
-    # Keep the rolled-out candidates that lost the beam but still folded well.
+    # Keep any rolled-out candidates that scored sufficiently high
     intermediate_sample_save_criterion:
       _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
       metric_thresholds:
@@ -52,17 +54,9 @@ search:
     weights:
       oracle.plddt_coi: 1.0
 
-
-generation:
-  args:
-    nsteps: 400
-    self_cond: true
-  model:
-    bb_ca:
-      simulation_step_params:
-        sc_scale_noise: 0.3
-    local_latents:
-      simulation_step_params:
-        sc_scale_noise: 0.1
-
-num_workers: 4
+    # Optionally clip the reward metric values for the purpose of score computation.
+    # Here, this means that everything below plddt_coi 50.0 is treated as equally garbage.
+    # It is most commonly useful for multi-objective search
+    clip_values:
+      oracle.plddt_coi:
+        min: 50.0

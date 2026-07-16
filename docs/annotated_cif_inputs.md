@@ -135,7 +135,6 @@ to_cif_file(aa, "annotated.cif", save_standard_annotations=True, chain_disambigu
 ```bash
 ./src/rfproteina/generate.py \
     inputs=annotated.cif \
-    ckpt_path=./checkpoints ckpt_name=model.ckpt \
     num_replicates=10 batch_size=8
 ```
 
