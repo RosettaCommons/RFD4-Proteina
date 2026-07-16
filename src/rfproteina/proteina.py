@@ -1239,8 +1239,13 @@ class Proteina(L.LightningModule):
 
         # 3b. Oracle fold_batch — the actual structure prediction (AF3 or RF3).
         if oracle_mm is not None:
+            # At inference, we don't want to crash the whole run for partially-incomplete outputs
+            # We also don't want to load the value from the checkpoint's training config
+            on_incomplete = "warn" if self.is_inference else self.cfg_exp.get("val_refold_coverage_mode", "raise")
             fold_designs_for_oracles(
-                items, oracle_mm, on_incomplete=self.cfg_exp.get("val_refold_coverage_mode", "raise")
+                items,
+                oracle_mm,
+                on_incomplete=on_incomplete,
             )
 
         post_fold_payloads = [
