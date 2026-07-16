@@ -281,7 +281,6 @@ def store_n_log_configs(
 def main(cfg_exp: DictConfig) -> None:
     silence_warnings()
 
-    torch._dynamo.config.inline_inbuilt_nn_modules = True
     torch._inductor.config.coordinate_descent_tuning = True
 
     nolog = cfg_exp.get("nolog", False)

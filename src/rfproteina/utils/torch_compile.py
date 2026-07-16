@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import getpass
 import logging
-import mmap
 import os
 import re
-import tempfile
 
 import lightning as L
 import torch
@@ -15,20 +13,11 @@ from lightning.pytorch.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
-# Path to a per-user torch.compile "Mega-Cache" blob. A single file avoids the NFS
-# stale-file-handle failures of a shared cache *directory*. Per-user (not shared): the
-# blob's FX-graph entries bake in absolute ``/tmp/torchinductor_<user>`` paths, so a
-# blob shared across users poisons one user's cache with another's paths.
+# Base path for the torch.compile "Mega-Cache" blob. A single file avoids the NFS
+# stale-file-handle failures of a shared cache *directory*. The real path is derived from
+# this by :py:func:`_blob_path`, which scopes the blob to the current user and torch build
+# -- never point this at a literal file shared across either.
 _BLOB_ENV = "TORCH_COMPILE_CACHE_BLOB"
-
-# Subdir of the Inductor cache holding cached FX graphs (``TORCHINDUCTOR_FX_GRAPH_CACHE``).
-_FXGRAPH_SUBDIR = "fxgraph"
-
-# Matches a baked ``/tmp/torchinductor_<user>/`` cache-dir *path* (anchored on the
-# surrounding slashes so it never matches internal torch identifiers like
-# ``torchinductor_worker_logpath``). Group 1 is the full ``<user>`` component (``[^/]+``
-# so unusual usernames are captured whole, never truncated to look foreign).
-_INDUCTOR_DIR_RE = re.compile(rb"/torchinductor_([^/]+)/")
 
 
 def _sanitized_user() -> str:
@@ -57,61 +46,31 @@ def maybe_mark_cudagraph_step_begin() -> None:
         return
 
 
-def _inductor_cache_dir() -> str:
-    """Return the Inductor cache root, matching torch's default resolution.
+def _blob_path() -> str | None:
+    """Return the blob path for this user and torch build, or ``None`` if unconfigured.
 
-    Mirrors :py:func:`torch._inductor.runtime.cache_dir_utils.cache_dir` without the
-    side effects (env mutation / ``makedirs``) of calling that private helper.
+    Cached artifacts bake in absolute paths from the run that compiled them (Inductor
+    cache dirs, autotune ``.best_config`` targets), so a blob is only reusable by the
+    user who wrote it: another user's run would autotune into *their* directories and
+    die with ``PermissionError``. Artifacts are also tied to the exact torch build --
+    a foreign blob either fails to unpickle or silently misses, and would then be
+    overwritten. Both are avoided by giving every (user, torch build) its own file:
+    ``<dir>/<user>/<name>.<torch_version>``.
+
+    Deriving the user here rather than interpolating ``${USER}`` in the cluster env
+    files keeps the scoping intact when ``USER`` is unset (``getpass.getuser`` falls
+    back to ``LOGNAME``/``pwd``), where ``${USER}`` would collapse to a shared path.
     """
-    explicit = os.environ.get("TORCHINDUCTOR_CACHE_DIR")
-    if explicit:
-        return explicit
-    return os.path.join(tempfile.gettempdir(), f"torchinductor_{_sanitized_user()}")
-
-
-def purge_foreign_inductor_cache() -> None:
-    """Delete FX-graph cache entries that bake in another user's cache dir.
-
-    CoreWeave nodes are long-lived, so ``/tmp/torchinductor_<user>`` persists across
-    jobs. A cross-user Mega-Cache blob (now per-user) previously seeded the FX-graph
-    cache with kernels whose autotune paths point at another user's
-    ``/tmp/torchinductor_<other>``. Reusing such a kernel makes coordinate-descent
-    autotuning write ``.best_config`` into that foreign dir → ``PermissionError`` →
-    a crashed rank → an eventual NCCL timeout. Removing the poisoned entries forces a
-    clean recompile against the current user's cache dir. Own entries are kept.
-    """
-    own = _sanitized_user().encode()
-    fxdir = os.path.join(_inductor_cache_dir(), _FXGRAPH_SUBDIR)
-    if not os.path.isdir(fxdir):
-        return
-
-    removed = 0
-    for root, _dirs, files in os.walk(fxdir):
-        for name in files:
-            fp = os.path.join(root, name)
-            try:
-                with open(fp, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    foreign = any(m.group(1) != own for m in _INDUCTOR_DIR_RE.finditer(mm))
-            except (OSError, ValueError):
-                continue  # unreadable or empty file (empty cannot be mmap'd) → leave it
-            if foreign:
-                try:
-                    os.remove(fp)
-                    removed += 1
-                except OSError:
-                    pass  # concurrent rank already removed it, or racing writer
-
-    if removed:
-        logger.info(f"Purged {removed} cross-user Inductor FX-graph cache entries under {fxdir}")
+    base = os.environ.get(_BLOB_ENV)
+    if not base:
+        return None
+    directory, name = os.path.split(base)
+    return os.path.join(directory, _sanitized_user(), f"{name}.{torch.__version__}")
 
 
 def load_compile_cache() -> None:
-    """Load the torch.compile Mega-Cache blob (``$TORCH_COMPILE_CACHE_BLOB``) if present."""
-    try:
-        purge_foreign_inductor_cache()  # drop kernels baked with another user's cache dir
-    except Exception as e:  # cache cleanup (e.g. getpass.getuser) must never break startup
-        logger.warning(f"Skipping foreign Inductor cache purge: {e}")
-    path = os.environ.get(_BLOB_ENV)
+    """Load this run's torch.compile Mega-Cache blob (see :py:func:`_blob_path`) if present."""
+    path = _blob_path()
     if not path or not os.path.exists(path) or not hasattr(torch.compiler, "load_cache_artifacts"):
         return
     try:
@@ -123,8 +82,8 @@ def load_compile_cache() -> None:
 
 
 def save_compile_cache() -> None:
-    """Serialize compiled artifacts to ``$TORCH_COMPILE_CACHE_BLOB`` (single-file atomic write)."""
-    path = os.environ.get(_BLOB_ENV)
+    """Serialize compiled artifacts to this run's blob (single-file atomic write)."""
+    path = _blob_path()
     if not path or not hasattr(torch.compiler, "save_cache_artifacts"):
         return
     out = torch.compiler.save_cache_artifacts()
