@@ -5,7 +5,7 @@
 # parameters to compare generation quality vs. compute trade-offs.
 #
 # Usage:
-#   python script_utils/sweep.py --sweep-config configs/sweeps/search_strategy_sweep.yaml
+#   python src/script_utils/sweep.py --sweep-config configs/sweeps/search_strategy_sweep.yaml
 # =============================================================================
 
 base_config: inference

@@ -8,17 +8,17 @@ This avoids the slow first epoch during training.
 
 Usage:
     # With defaults
-    python scripts/populate_pdb_cache.py
+    python src/script_utils/populate_pdb_cache.py
 
     # With custom settings
-    python scripts/populate_pdb_cache.py \
+    python src/script_utils/populate_pdb_cache.py \
         --parquet /path/to/interfaces_df_train.parquet \
         --cache-dir /path/to/.cache \
         --num-workers 64 \
         --batch-size 100
 
     # With SLURM (recommended for large datasets)
-    sbatch scripts/populate_pdb_cache.sbatch
+    sbatch src/script_utils/populate_pdb_cache.sbatch
 """
 
 import argparse
@@ -32,9 +32,9 @@ from typing import Any
 import pandas as pd
 from tqdm import tqdm
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# Add src/ to path so local packages import when the repo isn't pip-installed.
+src_root = Path(__file__).parent.parent
+sys.path.insert(0, str(src_root))
 
 from atomworks.io import parse  # noqa: E402
 

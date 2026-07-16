@@ -4,8 +4,8 @@
 Run this script on DIGS, on a GPU node with the squashfs datasets mounted
 (inside apptainer, or with `.ipd/.env.digs` sourced):
 
-    cd projects/rfproteina
-    python script_utils/generate_e2e_baselines.py
+    cd /path/to/rfproteina   # repo root
+    python src/script_utils/generate_e2e_baselines.py
 
 By default the inference/beam baselines use the SOTA checkpoint from configs/inference.yaml
 (the single source of truth, shared with generate.py). Pass ``--sota-ckpt`` to regenerate them

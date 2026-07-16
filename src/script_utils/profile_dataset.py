@@ -6,19 +6,19 @@ produces line-level timing breakdowns via line_profiler.
 
 Usage
 -----
-Run from the ``projects/rfproteina/`` directory:
+Run from the repo root directory:
 
 .. code-block:: bash
 
     # Default config (plinder_with_missing_atoms)
-    python script_utils/profile_dataset.py
+    python src/script_utils/profile_dataset.py
 
     # Specify a dataset config by its path relative to configs/
-    python script_utils/profile_dataset.py datasets/train/plinder/plinder_with_missing_atoms
+    python src/script_utils/profile_dataset.py datasets/train/plinder/plinder_with_missing_atoms
 
     # Debug with debugpy (connect a DAP client to localhost:2345 before the script proceeds)
     python -m debugpy --listen 2345 --wait-for-client \\
-        projects/rfproteina/script_utils/profile_dataset.py \\
+        src/script_utils/profile_dataset.py \\
         datasets/train/plinder/plinder_with_missing_atoms
 
 Line-profiling
@@ -48,7 +48,7 @@ from omegaconf import OmegaConf  # noqa: E402
 from rfproteina.utils.datasets import recursively_instantiate_datasets_and_samplers  # noqa: E402
 from rfproteina.utils.logging import print_config_tree  # noqa: E402
 
-CONFIGS_DIR = Path(__file__).parent.parent / "configs"
+CONFIGS_DIR = Path(__file__).resolve().parents[2] / "configs"
 
 SLOW_INDICES = [117, 425, 265, 473, 266, 316, 4, 307, 309, 308, 310, 49, 376, 201, 64, 486, 490, 382]
 

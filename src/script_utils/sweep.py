@@ -12,12 +12,12 @@ Sweep parameters can be defined either:
   2. Programmatically via the Python API
 
 Usage (CLI with YAML sweep config):
-    python script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml
-    python script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run
-    python script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --output-dir ./my_sweep_configs
+    python src/script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml
+    python src/script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run
+    python src/script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --output-dir ./my_sweep_configs
 
 Usage (CLI with inline overrides):
-    python script_utils/sweep.py --base-config inference \
+    python src/script_utils/sweep.py --base-config inference \
         --sweep 'ckpt_name=["ckpt_a.ckpt","ckpt_b.ckpt"]' \
         --sweep 'generation.args.nsteps=[100,400]'
 

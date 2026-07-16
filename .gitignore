@@ -264,8 +264,6 @@ tests/data/pdb/*
 !**/.claude/commands/
 
 # User info files (contain secrets - use _example files as templates)
-**/slurm_utils/.user_info*
-!**/slurm_utils/.user_info_*_example
 **/scripts/.user_info*
 !**/scripts/.user_info_*_example
 

@@ -70,9 +70,9 @@ grep -v '^#' "$COMMANDS_FILE" | grep -v '^[[:space:]]*$' > "$FILTERED_FILE"
 echo "Splitting commands into $N_JOBS batch files..."
 split -n l/$N_JOBS --numeric-suffixes=1 --suffix-length=3 --additional-suffix=.txt "$FILTERED_FILE" "$TEMP_DIR/batch_"
 
-# Get absolute path to project root
+# Get absolute path to project root (script lives at src/script_utils/parser_population/)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../../.." && pwd )"
 
 # Create job script
 JOB_SCRIPT="$TEMP_DIR/parse_job.sh"
@@ -96,7 +96,7 @@ echo "Processing \$NUM_LINES CIF files in one apptainer session..."
 
 # Run parse_single_cif.py with the batch file (apptainer loaded once for all files)
 cd "$PROJECT_ROOT"
-./script_utils/parser_population/parse_single_cif.py --command-file "\$BATCH_FILE"
+./src/script_utils/parser_population/parse_single_cif.py --command-file "\$BATCH_FILE"
 
 if [ \$? -eq 0 ]; then
     echo "Task \$SLURM_ARRAY_TASK_ID: Complete - successfully processed \$NUM_LINES files"
