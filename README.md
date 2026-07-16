@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/wordmark.svg" width="440" alt="RFProteína">
+  <img src="assets/wordmark.svg" width="587" alt="RFD4-Proteína">
 </p>
 
 <p align="center"><em>A flow-matching foundation model for protein design — Baker Lab × NVIDIA GenAI</em></p>
