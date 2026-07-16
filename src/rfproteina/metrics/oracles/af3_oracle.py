@@ -68,9 +68,9 @@ def _inject_empty_chem_comp_bond(cif_str: str) -> str:
 
 
 def _resolve_local_rank() -> int:
-    """Per-node local rank (0..gpus_per_node-1). Used to index per-node
-    ``CUDA_VISIBLE_DEVICES`` and the AF3 daemon socket template — both are
-    per-node, so global rank would be wrong on multi-node runs.
+    """Per-node local rank (0..gpus_per_node-1). Used to index this process's
+    slot in ``CUDA_VISIBLE_DEVICES`` (per-node, so global rank would be wrong
+    on multi-node runs).
 
     Reads ``LOCAL_RANK`` (set by Lightning / torchrun) then ``SLURM_LOCALID``,
     then falls back to 0 (single-process: tests, scripts).
@@ -81,10 +81,18 @@ def _resolve_local_rank() -> int:
     return 0
 
 
+def _resolve_daemon_rank(local_rank: int) -> int:
+    """Daemon socket rank: AF3_DAEMON_RANK (set per-GPU by fan-out launchers, where
+    every worker sees local rank 0), else local_rank (correct under DDP)."""
+    explicit = os.environ.get("AF3_DAEMON_RANK")
+    if explicit is not None:
+        return int(explicit)
+    return local_rank
+
+
 def _resolve_gpu_device(local_rank: int) -> int:
-    """Driver-level GPU index for this rank. Reads the rank's slot from
-    ``CUDA_VISIBLE_DEVICES``; falls back to GPU 0 in single-process settings
-    where the env var isn't set (tests, scripts)."""
+    """Driver GPU index for the direct (no-daemon) fold path only. Reads the rank's
+    slot from CUDA_VISIBLE_DEVICES; falls back to GPU 0 when unset."""
     cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     if not cuda_visible:
         return 0
@@ -247,8 +255,7 @@ class AF3Oracle(OracleMetric):
         if not pending:
             return 0
 
-        rank = _resolve_local_rank()
-        gpu_device = _resolve_gpu_device(rank)
+        daemon_rank = _resolve_daemon_rank(_resolve_local_rank())
 
         batch_dir = Path(tempfile.mkdtemp(prefix="af3_batch_"))
         af3_outputs_root = batch_dir / "af3_outputs"
@@ -259,7 +266,7 @@ class AF3Oracle(OracleMetric):
         manifest_path.write_text(json.dumps(manifest_entries))
 
         try:
-            self._dispatch_fold(manifest_path, rank, gpu_device, len(pending))
+            self._dispatch_fold(manifest_path, daemon_rank, len(pending))
 
             n_ok = 0
             for state in job_states:
@@ -269,28 +276,24 @@ class AF3Oracle(OracleMetric):
         finally:
             shutil.rmtree(batch_dir, ignore_errors=True)
 
-    def _dispatch_fold(self, manifest_path: Path, rank: int, gpu_device: int, n_designs: int) -> None:
-        """Run the AF3 fold via the daemon if configured, else ``apptainer run`` directly.
-
-        Raises on subprocess failure so the caller's ``finalize`` loop can
-        log per-design issues without silently swallowing the batch.
-        """
+    def _dispatch_fold(self, manifest_path: Path, daemon_rank: int, n_designs: int) -> None:
+        """Fold via the daemon (routes by daemon_rank, which pins the GPU) if
+        AF3_LAUNCHER_SOCKET_TEMPLATE is set, else a direct apptainer call. Raises on failure."""
         sock_template = os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE")
 
         if sock_template:
-            daemon_sock = sock_template.format(rank=rank)
+            daemon_sock = sock_template.format(rank=daemon_rank)
             # Extremely conservative limit of 2 min per design
             timeout_s = max(3600.0, n_designs * 120.0)
             logger.info(
                 f"AF3 fold_batch: routing {n_designs} designs via daemon at {daemon_sock} "
-                f"(gpu_device={gpu_device}, timeout={timeout_s / 3600:.1f}h)"
+                f"(timeout={timeout_s / 3600:.1f}h)"
             )
             response = _send_to_daemon(
                 daemon_sock,
                 {
                     "cmd": "fold",
                     "manifest": str(manifest_path),
-                    "gpu_device": gpu_device,
                     "save_full_outputs": False,
                 },
                 timeout_s=timeout_s,
@@ -299,6 +302,8 @@ class AF3Oracle(OracleMetric):
                 raise RuntimeError(f"AF3 daemon error: {response.get('message')}")
             return
 
+        # Direct path: no pinned daemon worker, so resolve our own GPU.
+        gpu_device = _resolve_gpu_device(_resolve_local_rank())
         logger.info(f"AF3 fold_batch: routing {n_designs} designs via direct apptainer call (gpu_device={gpu_device})")
         cmd = build_apptainer_fold_command(
             manifest_path=manifest_path,

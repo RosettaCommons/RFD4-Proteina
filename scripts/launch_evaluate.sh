@@ -300,7 +300,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running evaluate.py with job_id=$JOB_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
+        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_EVALUATE \\
             $CONFIG_HYDRA_ARGS \\
             $EXTRA_ARGS \\

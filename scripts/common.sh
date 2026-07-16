@@ -153,7 +153,8 @@ populate_docker_container_env() {
     fi
 }
 
-# Source the project virtual environment
+# Source the project virtual environment. Host-side orchestration only (config
+# resolution + submission); apptainer jobs still need it and re-exec into the SIF.
 # Usage: source_venv <repo_root>
 source_venv() {
     local repo_root="$1"

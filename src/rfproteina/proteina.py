@@ -1239,7 +1239,9 @@ class Proteina(L.LightningModule):
 
         # 3b. Oracle fold_batch — the actual structure prediction (AF3 or RF3).
         if oracle_mm is not None:
-            fold_designs_for_oracles(items, oracle_mm)
+            fold_designs_for_oracles(
+                items, oracle_mm, on_incomplete=self.cfg_exp.get("val_refold_coverage_mode", "raise")
+            )
 
         post_fold_payloads = [
             {
