@@ -28,7 +28,6 @@ search:
       # Penalise steric clashes; frac_atoms_clashing is in [0, 1] so reward
       # is in [-1, 0], with 0 being clash-free (best).
       clash_metrics.frac_atoms_clashing_1p5A: -1.0
-    differentiable: false
 
 generation:
   args:

@@ -106,21 +106,22 @@ weights:
 
 ### Step 3 (optional): Use it programmatically
 
+`RewardModel` is a pure aggregator: it weights metric outputs that the model's metric
+managers produce. `reward_metrics_tags` selects which (tag-gated) metrics fire during scoring.
+
 ```python
 from rfproteina.rewards import RewardModel
-from rfproteina.metrics import RF3Metric
-from my_module import MyCustomMetric
 
 reward_model = RewardModel(
-    metrics={
-        "rf3": RF3Metric(ckpt_path="/path/to/rf3_latest.pt"),
-        "my_metric": MyCustomMetric(my_param=2.5),
-    },
     weights={
         "rf3.plddt": 1.0,
         "my_metric.my_score": 3.0,
     },
+    reward_metrics_tags=["unconditional_refolding"],
 )
+
+# The search harness runs the tagged metrics per candidate, then aggregates:
+reward = reward_model.aggregate_metrics_output(metrics_output)  # {"rf3.plddt": ..., ...} -> float
 ```
 
 ### Tips for custom metrics
@@ -136,60 +137,41 @@ reward_model = RewardModel(
 
 ```python
 from rfproteina.rewards import RewardModel
-from rfproteina.metrics import RF3Metric, AF2Metric
-from rfproteina.metrics.rasa_metrics import RASAMetrics
-from rfproteina.metrics.molprobity_metrics import MolprobityMetrics
 
-# Compose any metrics
+# Reward = weighted sum of metric outputs, keyed by "metric_name.output_key".
+# The metrics come from the model's configured managers; reward_metrics_tags controls
+# which fire during scoring.
 reward_model = RewardModel(
-    metrics={
-        "af2": AF2Metric(model_name="model_1_ptm", num_recycles=3),
-        "tmol": TMOLMetric(),
-        "rasa": RASAMetrics(),
-        "molprobity": MolprobityMetrics(),
-    },
     weights={
         "af2.ipae": -5.0,
         "af2.iptm": 2.0,
-        "tmol.num_hbonds": 3.0,
         "rasa.mean_rasa": 2.0,
-        "molprobity.clashes": -2.0,
+        "molprobity.clashscore": -2.0,
     },
-    differentiable=False,  # Set to True only if all metrics support gradients
+    reward_metrics_tags=["af2_refolding"],
 )
 
-# Compute reward
-reward = reward_model.compute_reward(predicted_atom_array=structure)
-
-# Get detailed breakdown
-components = reward_model.compute_components(predicted_atom_array=structure)
-# Returns: {"af2.ipae": 8.5, "af2.iptm": 0.9, "tmol.num_hbonds": 15, ...}
+# The search harness runs the tagged metrics per candidate, then aggregates to a scalar:
+reward = reward_model.aggregate_metrics_output(metrics_output)
 ```
 
 ### With Hydra Config
 
-```python
-import hydra
-from omegaconf import DictConfig
-from rfproteina.rewards import RewardModel
-from rfproteina.metrics.metric import MetricManager
+Define the reward under `search.rewards` in an inference_experiment config; `generate.py`
+builds the `RewardModel` from it (`weights` + `reward_metrics_tags`):
 
-@hydra.main(config_path="configs/rewards", config_name="multi_source")
-def main(cfg: DictConfig):
-    # Instantiate metrics from config
-    metric_manager = MetricManager.instantiate_from_hydra(cfg.metrics)
-
-    # Create reward model
-    reward_model = RewardModel(
-        metrics=metric_manager,
-        weights=dict(cfg.weights),
-        differentiable=cfg.get("differentiable", False),
-    )
-
-    # Use for search
-    from rfproteina.search import BestOfNStrategy
-    strategy = BestOfNStrategy(n_samples=10)
-    results = strategy.generate(model, batch, reward_model)
+```yaml
+search:
+  strategy:
+    _target_: rfproteina.search.beam_search.BeamSearchStrategy
+    step_checkpoints: [0, 100, 200, 300, 400]
+    n_branch: 2
+    beam_width: 3
+  rewards:
+    reward_metrics_tags: [unconditional_refolding]
+    weights:
+      rf3.plddt: 1.0
+      rf3.iptm: 2.0
 ```
 
 ## Available Configs
@@ -197,7 +179,7 @@ def main(cfg: DictConfig):
 ### Single-Source Rewards
 
 - **`rf3.yaml`**: RF3 refolding confidence (pLDDT, ipTM, ipAE, min_ipAE)
-- **`af2_binder.yaml`**: AlphaFold2 binder design (differentiable!)
+- **`af2_binder.yaml`**: AlphaFold2 binder design
 - **`structure_quality.yaml`**: Fast structure-only metrics (no refolding)
 
 ### Multi-Source Rewards

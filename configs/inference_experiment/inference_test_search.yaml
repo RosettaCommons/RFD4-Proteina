@@ -38,7 +38,6 @@ search:
       rf3.plddt: 1.0
       rf3.iptm: 2.0
       rf3.ipae: -1.0
-    differentiable: false
 
 # Generation settings
 generation:

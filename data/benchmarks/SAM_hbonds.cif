@@ -1,0 +1,290 @@
+data_SAM_hbonds.cif
+#
+_entry.id       SAM_hbonds.cif
+_entry.author   rafibrent
+_entry.date     2026-07-15
+_entry.time     22:32:12
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 polymer     .
+2 non-polymer .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       X
+_entity_poly.pdbx_seq_one_letter_code_can   X
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   1
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      120-165
+_entity_poly_seq.num         1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+120-165 120-165 NON-POLYMER ? ? ? ?
+S;M     S;M     NON-POLYMER ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+S;M N0  C0  SING N
+S;M C0  C1  SING N
+S;M C0  C2  SING N
+S;M C1  O0  DOUB N
+S;M C1  O1  SING N
+S;M C2  C3  SING N
+S;M C3  S0  SING N
+S;M S0  C4  SING N
+S;M S0  C5  SING N
+S;M C5  C6  SING N
+S;M C6  O2  SING N
+S;M C6  C7  SING N
+S;M O2  C9  SING N
+S;M C7  O3  SING N
+S;M C7  C8  SING N
+S;M C8  O4  SING N
+S;M C8  C9  SING N
+S;M C9  N1  SING N
+S;M N1  C10 SING Y
+S;M N1  C14 SING Y
+S;M C10 N2  DOUB Y
+S;M N2  C11 SING Y
+S;M C11 C12 DOUB Y
+S;M C11 C14 SING Y
+S;M C12 N3  SING N
+S;M C12 N4  SING Y
+S;M N4  C13 DOUB Y
+S;M C13 N5  SING Y
+S;M N5  C14 DOUB Y
+S;M N0  H0  SING N
+S;M N0  H1  SING N
+S;M C0  H2  SING N
+S;M C2  H3  SING N
+S;M C2  H4  SING N
+S;M C3  H5  SING N
+S;M C3  H6  SING N
+S;M S0  H7  SING N
+S;M C4  H8  SING N
+S;M C4  H9  SING N
+S;M C4  H10 SING N
+S;M C5  H11 SING N
+S;M C5  H12 SING N
+S;M C6  H13 SING N
+S;M C7  H14 SING N
+S;M O3  H15 SING N
+S;M C8  H16 SING N
+S;M O4  H17 SING N
+S;M C9  H18 SING N
+S;M C10 H19 SING N
+S;M N3  H20 SING N
+S;M N3  H21 SING N
+S;M C13 H22 SING N
+S;M C15 O5  DOUB N
+S;M C15 C16 SING N
+S;M C16 C17 SING N
+S;M C17 C18 SING N
+S;M C18 C19 SING N
+S;M C16 H23 SING N
+S;M C16 H24 SING N
+S;M C17 H25 SING N
+S;M C17 H26 SING N
+S;M C18 H27 SING N
+S;M C18 H28 SING N
+S;M C19 H29 SING N
+S;M C19 H30 SING N
+S;M C19 H31 SING N
+S;M N0  C15 SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.condition_rasa-binned_1_atom 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.condition_saltbridge_1_atom 
+_atom_site.mask_saltbridge_1_atom 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_hbond_1_atom 
+_atom_site.mask_rasa-binned_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_pistack_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+HETATM N N0  . S;M     B 2 1 . 1 S;M     B N0  0  1.0 +1 False 0 -1  False 0 False -1  True  False 1 False 0  17.294 -13.891 21.866 1
+HETATM C C0  . S;M     B 2 1 . 1 S;M     B C0  1  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 1  18.274 -14.81  21.161 1
+HETATM C C1  . S;M     B 2 1 . 1 S;M     B C1  2  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 2  19.536 -14.875 22.11  1
+HETATM O O0  . S;M     B 2 1 . 1 S;M     B O0  3  1.0 ?  False 0 -1  False 0 False -1  True  False 2 False 3  20.383 -13.914 22.05  1
+HETATM O O1  . S;M     B 2 1 . 1 S;M     B O1  4  1.0 ?  False 0 -1  False 2 True  -1  False False 0 False 4  19.642 -15.874 22.876 1
+HETATM C C2  . S;M     B 2 1 . 1 S;M     B C2  5  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 5  18.593 -14.32  19.751 1
+HETATM C C3  . S;M     B 2 1 . 1 S;M     B C3  6  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 6  19.546 -14.998 18.748 1
+HETATM S S0  . S;M     B 2 1 . 1 S;M     B S0  7  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 7  19.218 -16.792 18.565 1
+HETATM C C4  . S;M     B 2 1 . 1 S;M     B C4  8  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 8  20.785 -17.521 18.105 1
+HETATM C C5  . S;M     B 2 1 . 1 S;M     B C5  9  1.0 ?  False 0 -1  False 0 False -1  False False 0 False 9  18.053 -16.711 17.194 1
+HETATM C C6  . S;M     B 2 1 . 1 S;M     B C6  10 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 10 17.412 -17.996 16.71  1
+HETATM O O2  . S;M     B 2 1 . 1 S;M     B O2  11 1.0 ?  False 0 -1  False 0 False -1  True  False 2 False 11 17.155 -18.039 15.282 1
+HETATM C C7  . S;M     B 2 1 . 1 S;M     B C7  12 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 12 18.121 -19.341 16.925 1
+HETATM O O3  . S;M     B 2 1 . 1 S;M     B O3  13 1.0 ?  False 0 -1  False 0 False -1  True  False 1 False 13 18.156 -19.579 18.313 1
+HETATM C C8  . S;M     B 2 1 . 1 S;M     B C8  14 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 14 17.186 -20.321 16.15  1
+HETATM O O4  . S;M     B 2 1 . 1 S;M     B O4  15 1.0 ?  False 0 -1  False 0 False -1  True  False 1 False 15 16.423 -21.288 16.748 1
+HETATM C C9  . S;M     B 2 1 . 1 S;M     B C9  16 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 16 16.542 -19.368 15.157 1
+HETATM N N1  . S;M     B 2 1 . 1 S;M     B N1  17 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  17 16.661 -19.751 13.747 1
+HETATM C C10 . S;M     B 2 1 . 1 S;M     B C10 18 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  18 17.816 -20.242 13.166 1
+HETATM N N2  . S;M     B 2 1 . 1 S;M     B N2  19 1.0 ?  False 0 -1  False 0 False -1  True  False 2 True  19 17.628 -20.52  11.932 1
+HETATM C C11 . S;M     B 2 1 . 1 S;M     B C11 20 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  20 16.297 -20.207 11.683 1
+HETATM C C12 . S;M     B 2 1 . 1 S;M     B C12 21 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  21 15.502 -20.321 10.46  1
+HETATM N N3  . S;M     B 2 1 . 1 S;M     B N3  22 1.0 ?  False 0 -1  False 0 False -1  True  False 1 False 22 16.021 -20.791 9.344  1
+HETATM N N4  . S;M     B 2 1 . 1 S;M     B N4  23 1.0 ?  False 0 -1  False 0 False -1  True  False 2 True  23 14.231 -19.914 10.601 1
+HETATM C C13 . S;M     B 2 1 . 1 S;M     B C13 24 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  24 13.678 -19.428 11.75  1
+HETATM N N5  . S;M     B 2 1 . 1 S;M     B N5  25 1.0 ?  False 0 -1  False 0 False -1  True  False 2 True  25 14.37  -19.314 12.887 1
+HETATM C C14 . S;M     B 2 1 . 1 S;M     B C14 26 1.0 ?  False 0 -1  False 0 False -1  False False 0 True  26 15.659 -19.716 12.78  1
+HETATM H H0  . S;M     B 2 1 . 1 S;M     B H0  27 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 27 17.483 -12.915 21.596 1
+HETATM H H1  . S;M     B 2 1 . 1 S;M     B H1  28 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 28 16.332 -14.142 21.596 1
+HETATM H H2  . S;M     B 2 1 . 1 S;M     B H2  29 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 29 17.863 -15.817 21.0   1
+HETATM H H3  . S;M     B 2 1 . 1 S;M     B H3  30 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 30 17.622 -14.271 19.237 1
+HETATM H H4  . S;M     B 2 1 . 1 S;M     B H4  31 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 31 19.185 -13.425 19.994 1
+HETATM H H5  . S;M     B 2 1 . 1 S;M     B H5  32 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 32 19.425 -14.516 17.767 1
+HETATM H H6  . S;M     B 2 1 . 1 S;M     B H6  33 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 33 20.57  -14.884 19.133 1
+HETATM H H7  . S;M     B 2 1 . 1 S;M     B H7  34 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 34 18.744 -17.508 19.632 1
+HETATM H H8  . S;M     B 2 1 . 1 S;M     B H8  35 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 35 21.348 -17.783 19.013 1
+HETATM H H9  . S;M     B 2 1 . 1 S;M     B H9  36 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 36 20.606 -18.429 17.51  1
+HETATM H H10 . S;M     B 2 1 . 1 S;M     B H10 37 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 37 21.364 -16.8   17.51  1
+HETATM H H11 . S;M     B 2 1 . 1 S;M     B H11 38 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 38 17.239 -16.038 17.5   1
+HETATM H H12 . S;M     B 2 1 . 1 S;M     B H12 39 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 39 18.664 -16.379 16.342 1
+HETATM H H13 . S;M     B 2 1 . 1 S;M     B H13 40 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 40 16.53  -17.924 17.363 1
+HETATM H H14 . S;M     B 2 1 . 1 S;M     B H14 41 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 41 19.161 -19.42  16.575 1
+HETATM H H15 . S;M     B 2 1 . 1 S;M     B H15 42 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 42 18.03  -18.725 18.798 1
+HETATM H H16 . S;M     B 2 1 . 1 S;M     B H16 43 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 43 17.765 -21.154 15.725 1
+HETATM H H17 . S;M     B 2 1 . 1 S;M     B H17 44 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 44 16.492 -21.201 17.732 1
+HETATM H H18 . S;M     B 2 1 . 1 S;M     B H18 45 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 45 15.473 -19.387 15.416 1
+HETATM H H19 . S;M     B 2 1 . 1 S;M     B H19 46 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 46 18.771 -20.376 13.696 1
+HETATM H H20 . S;M     B 2 1 . 1 S;M     B H20 47 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 47 15.441 -20.862 8.496  1
+HETATM H H21 . S;M     B 2 1 . 1 S;M     B H21 48 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 48 17.007 -21.088 9.32   1
+HETATM H H22 . S;M     B 2 1 . 1 S;M     B H22 49 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 49 12.623 -19.118 11.74  1
+HETATM C C15 . S;M     B 2 1 . 1 S;M     B C15 50 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 50 17.301 -13.814 23.316 1
+HETATM O O5  . S;M     B 2 1 . 1 S;M     B O5  51 1.0 ?  False 0 -1  False 0 False -1  True  False 2 False 51 17.783 -12.769 23.695 1
+HETATM C C16 . S;M     B 2 1 . 1 S;M     B C16 52 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 52 16.668 -14.894 24.157 1
+HETATM C C17 . S;M     B 2 1 . 1 S;M     B C17 53 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 53 17.366 -15.099 25.499 1
+HETATM C C18 . S;M     B 2 1 . 1 S;M     B C18 54 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 54 16.992 -14.033 26.533 1
+HETATM C C19 . S;M     B 2 1 . 1 S;M     B C19 55 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 55 17.593 -14.345 27.897 1
+HETATM H H23 . S;M     B 2 1 . 1 S;M     B H23 56 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 56 15.609 -14.649 24.291 1
+HETATM H H24 . S;M     B 2 1 . 1 S;M     B H24 57 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 57 16.717 -15.83  23.587 1
+HETATM H H25 . S;M     B 2 1 . 1 S;M     B H25 58 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 58 18.455 -15.109 25.361 1
+HETATM H H26 . S;M     B 2 1 . 1 S;M     B H26 59 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 59 17.079 -16.084 25.888 1
+HETATM H H27 . S;M     B 2 1 . 1 S;M     B H27 60 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 60 17.345 -13.048 26.21  1
+HETATM H H28 . S;M     B 2 1 . 1 S;M     B H28 61 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 61 15.902 -13.972 26.629 1
+HETATM H H29 . S;M     B 2 1 . 1 S;M     B H29 62 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 62 17.352 -13.551 28.61  1
+HETATM H H30 . S;M     B 2 1 . 1 S;M     B H30 63 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 63 18.684 -14.433 27.839 1
+HETATM H H31 . S;M     B 2 1 . 1 S;M     B H31 64 1.0 ?  False 0 -1  False 0 False -1  False False 0 False 64 17.207 -15.291 28.292 1
+HETATM X UNK . 120-165 A 1 1 . 1 120-165 A UNK 65 0.0 ?  True  0 165 True  0 False 120 False False 0 False 65 nan    nan     nan    1
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+120-165 UNK X 0 N N nan                nan                 nan
+S;M     N0  N 1 N N 17.29400062561035  -13.890999794006348 21.865999221801758
+S;M     C0  C 0 N N 18.27400016784668  -14.8100004196167   21.160999298095703
+S;M     C1  C 0 N N 19.535999298095703 -14.875             22.110000610351562
+S;M     O0  O 0 N N 20.382999420166016 -13.913999557495117 22.049999237060547
+S;M     O1  O 0 N N 19.642000198364258 -15.87399959564209  22.875999450683594
+S;M     C2  C 0 N N 18.593000411987305 -14.319999694824219 19.750999450683594
+S;M     C3  C 0 N N 19.54599952697754  -14.998000144958496 18.74799919128418
+S;M     S0  S 0 N N 19.218000411987305 -16.79199981689453  18.565000534057617
+S;M     C4  C 0 N N 20.78499984741211  -17.520999908447266 18.104999542236328
+S;M     C5  C 0 N N 18.05299949645996  -16.711000442504883 17.194000244140625
+S;M     C6  C 0 N N 17.41200065612793  -17.996000289916992 16.709999084472656
+S;M     O2  O 0 N N 17.155000686645508 -18.038999557495117 15.281999588012695
+S;M     C7  C 0 N N 18.121000289916992 -19.340999603271484 16.924999237060547
+S;M     O3  O 0 N N 18.1560001373291   -19.57900047302246  18.312999725341797
+S;M     C8  C 0 N N 17.18600082397461  -20.320999145507812 16.149999618530273
+S;M     O4  O 0 N N 16.42300033569336  -21.288000106811523 16.74799919128418
+S;M     C9  C 0 N N 16.54199981689453  -19.368000030517578 15.156999588012695
+S;M     N1  N 0 N N 16.660999298095703 -19.750999450683594 13.746999740600586
+S;M     C10 C 0 N N 17.81599998474121  -20.242000579833984 13.166000366210938
+S;M     N2  N 0 N N 17.628000259399414 -20.520000457763672 11.932000160217285
+S;M     C11 C 0 N N 16.297000885009766 -20.207000732421875 11.682999610900879
+S;M     C12 C 0 N N 15.501999855041504 -20.320999145507812 10.460000038146973
+S;M     N3  N 0 N N 16.020999908447266 -20.791000366210938 9.343999862670898
+S;M     N4  N 0 N N 14.230999946594238 -19.913999557495117 10.60099983215332
+S;M     C13 C 0 N N 13.678000450134277 -19.42799949645996  11.75
+S;M     N5  N 0 N N 14.369999885559082 -19.31399917602539  12.88700008392334
+S;M     C14 C 0 N N 15.659000396728516 -19.715999603271484 12.779999732971191
+S;M     H0  H 0 N N 17.482999801635742 -12.914999961853027 21.59600067138672
+S;M     H1  H 0 N N 16.332000732421875 -14.142000198364258 21.59600067138672
+S;M     H2  H 0 N N 17.863000869750977 -15.817000389099121 21.0
+S;M     H3  H 0 N N 17.621999740600586 -14.270999908447266 19.23699951171875
+S;M     H4  H 0 N N 19.184999465942383 -13.425000190734863 19.993999481201172
+S;M     H5  H 0 N N 19.424999237060547 -14.515999794006348 17.767000198364258
+S;M     H6  H 0 N N 20.56999969482422  -14.883999824523926 19.132999420166016
+S;M     H7  H 0 N N 18.743999481201172 -17.507999420166016 19.631999969482422
+S;M     H8  H 0 N N 21.347999572753906 -17.783000946044922 19.01300048828125
+S;M     H9  H 0 N N 20.606000900268555 -18.429000854492188 17.510000228881836
+S;M     H10 H 0 N N 21.36400032043457  -16.799999237060547 17.510000228881836
+S;M     H11 H 0 N N 17.23900032043457  -16.038000106811523 17.5
+S;M     H12 H 0 N N 18.663999557495117 -16.378999710083008 16.341999053955078
+S;M     H13 H 0 N N 16.530000686645508 -17.923999786376953 17.363000869750977
+S;M     H14 H 0 N N 19.160999298095703 -19.420000076293945 16.575000762939453
+S;M     H15 H 0 N N 18.030000686645508 -18.725000381469727 18.79800033569336
+S;M     H16 H 0 N N 17.764999389648438 -21.15399932861328  15.725000381469727
+S;M     H17 H 0 N N 16.492000579833984 -21.201000213623047 17.73200035095215
+S;M     H18 H 0 N N 15.472999572753906 -19.386999130249023 15.416000366210938
+S;M     H19 H 0 N N 18.770999908447266 -20.375999450683594 13.696000099182129
+S;M     H20 H 0 N N 15.440999984741211 -20.86199951171875  8.496000289916992
+S;M     H21 H 0 N N 17.006999969482422 -21.08799934387207  9.319999694824219
+S;M     H22 H 0 N N 12.623000144958496 -19.118000030517578 11.739999771118164
+S;M     C15 C 0 N N 17.301000595092773 -13.814000129699707 23.31599998474121
+S;M     O5  O 0 N N 17.783000946044922 -12.769000053405762 23.69499969482422
+S;M     C16 C 0 N N 16.667999267578125 -14.894000053405762 24.156999588012695
+S;M     C17 C 0 N N 17.365999221801758 -15.098999977111816 25.499000549316406
+S;M     C18 C 0 N N 16.992000579833984 -14.032999992370605 26.533000946044922
+S;M     C19 C 0 N N 17.593000411987305 -14.345000267028809 27.89699935913086
+S;M     H23 H 0 N N 15.609000205993652 -14.64900016784668  24.291000366210938
+S;M     H24 H 0 N N 16.716999053955078 -15.829999923706055 23.586999893188477
+S;M     H25 H 0 N N 18.454999923706055 -15.109000205993652 25.361000061035156
+S;M     H26 H 0 N N 17.07900047302246  -16.083999633789062 25.88800048828125
+S;M     H27 H 0 N N 17.344999313354492 -13.04800033569336  26.209999084472656
+S;M     H28 H 0 N N 15.902000427246094 -13.972000122070312 26.628999710083008
+S;M     H29 H 0 N N 17.351999282836914 -13.550999641418457 28.610000610351562
+S;M     H30 H 0 N N 18.68400001525879  -14.432999610900879 27.839000701904297
+S;M     H31 H 0 N N 17.207000732421875 -15.291000366210938 28.29199981689453
+#
