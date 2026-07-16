@@ -62,12 +62,10 @@
 # Examples:
 #   # Parallel inference with 8 jobs
 #   ./launch_infer.sh digs --njobs 8 \
-#       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inputs=benchmarks/monomer.json run_name_=my_run
 #
 #   # Offline validation (Foldseek on by default)
 #   ./launch_infer.sh digs --njobs 8 \
-#       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inference_experiment=inference_on_val_set \
 #       +datasets/val@generation=mcsa/mcsa_subset run_name_=mcsa_val
 #

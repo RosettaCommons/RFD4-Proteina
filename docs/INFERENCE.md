@@ -70,32 +70,38 @@ python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir>
 ```
 
 > [!TIP]
-> On a cluster with apptainer/docker configured (e.g. IPD), the **preferred** form is to run the
+> On a cluster with apptainer/docker configured (e.g. IPD), the **preferred** interactive form is to run the
 > script directly — `./src/rfproteina/generate.py inputs=… …` — whose shebang executes it inside the
 > container. `python src/rfproteina/generate.py …` (used throughout these docs) runs in your current
-> environment instead; use it when no container is set up.
+> environment instead; use it when no container is set up. At the IPD, the slurm launch scripts
+> (e.g. `scripts/launch_infer.sh`) handle this automatically.
 
 - **Inputs** — **annotated CIF** is the recommended format ([guide](annotated_cif_inputs.md) · [tutorial](tutorials/annotated_cif_tutorial.ipynb)); JSON/YAML/CIF/PDB via the legacy
   [Input Specification](input.md) also work. See `data/benchmarks/` for ready-made examples.
-- **All arguments are `key=value`** (Hydra style), never `--key value`.
+- **All model arguments are `key=value`** (Hydra style), never `--key value`.
 - **Checkpoints** are read from `$DATA_PATH` by default; override on the CLI only for a one-off
   model with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 - **`batch_size`** of 8 is a good starting point. Larger batches are faster, but first confirm
   your longest input fits at `batch_size=1`.
 
 ```bash
-# 100 designs of each example in a JSON, 8 at a time
+# 80 designs of each example in a JSON, 8 at a time
 python src/rfproteina/generate.py \
     inputs=data/benchmarks/monomer.json \
-    num_replicates=100 batch_size=8 out_dir=./runs/monomers
+    num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
 
-> [!WARNING]
-> **RFD3 users — no ORI token.** This model does not use an ORI residue in the input. It selects a
-> reasonable center of mass; its position relative to other chains can be guided with hotspots
-> (proteins) or RASA (ligands). RFD3 aliases: `diffusion_batch_size` → `batch_size`,
-> `json_keys_subset` → `subset_to_examples`.
+> [!TIP]
+> For a reusable config instead of one-off CLI overrides, start from
+> [`configs/inference_experiment/TEMPLATE.yaml`](../configs/inference_experiment/TEMPLATE.yaml) — it
+> documents all three ways to run inference (in-tree experiment config, CLI overrides, config file
+> anywhere on the filesystem).
 
+> [!WARNING]
+> **RFD3 users — no ORI token.** This model does not use an ORI residue in the input.
+If desired, per-chain centroid conditioning can be provided in the
+annotated CIF input, although this is generally not necessary.
+It's recommended to first try without this.
 ---
 
 ## Partial Diffusion

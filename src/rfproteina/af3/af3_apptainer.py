@@ -9,6 +9,7 @@ available. Importing this module must not trigger any of that.
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 # Hardcoded everywhere — the daemon JAX-compiles against this value at startup
@@ -49,13 +50,18 @@ def _data_bind_args() -> list[str]:
     Reads ``APPTAINER_BIND_PATHS`` — the project-wide cluster bind list set in
     ``.ipd/.env.<cluster>`` and already consumed by ``exec_core.sh``. Semicolon-
     separated host:container specs, e.g. ``/mnt/data:/mnt/data;/scratch:/scratch``.
-    ``/tmp`` is always bound (daemon socket lives there).
+    ``/tmp`` is always bound (daemon socket lives there), as is the resolved
+    ``tempfile.gettempdir()`` root — on clusters where SLURM sets ``TMPDIR`` to
+    a per-job scratch path (e.g. DIGS), that's where ``AF3Oracle`` actually
+    writes ``manifest.json``, and it won't be ``/tmp``.
     """
     specs: list[str] = []
     raw = os.environ.get("APPTAINER_BIND_PATHS", "").strip()
     if raw:
         specs.extend(spec.strip() for spec in raw.split(";") if spec.strip())
     specs.append("/tmp:/tmp")
+    tmp_root = tempfile.gettempdir()
+    specs.append(f"{tmp_root}:{tmp_root}")
     return _bind_args_for_specs(_deduped_bind_specs(*specs))
 
 
