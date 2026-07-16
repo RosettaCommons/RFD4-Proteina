@@ -5,7 +5,7 @@
 # ============================================================================
 #
 # Copy this file and fill in the values for your experiment.
-# All inference configs compose inference_like_rfd3 as the base.
+# All inference configs compose inference_on_user_inputs as the base.
 #
 # Three ways to run inference:
 #
@@ -58,7 +58,7 @@
 # ============================================================================
 
 defaults:
-  - inference_like_rfd3
+  - inference_on_user_inputs
   - _self_
 
 # --- Checkpoint ---

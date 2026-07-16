@@ -39,6 +39,9 @@
 
 ## Full schema: `InputSpecification`
 
+**NOTE**: There are new conditioning types planned that are not supported by the json syntax!
+Please create annotated CIFs in order to use these.
+
 | Field                                                          | Type              | Description                                                           |
 | -------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
 | `input`                                                        | `str`             | Path to input **PDB/CIF**. Required if you provide contig+length.    |
@@ -56,12 +59,12 @@
 | `select_hbond_donor` / `select_hbond_acceptor`                 | `InputSelection` | Atom-wise donor/acceptor flags.                                       |
 | `select_hotspots`                                              | `InputSelection` | Atom-level or token-level hotspots.                                   |
 | `redesign_motif_sidechains`                                    | `bool`            | Fixed backbone, redesigned sidechains for motifs.                     |
-| `symmetry`                                                     | `SymmetryConfig` | See `docs/symmetry.md`.                                               |
+| `symmetry`                                                     | `SymmetryConfig` | Symmetry specification (parsed but not yet applied by the model).    |
 | `infer_ori_strategy`                                           | `str`            | `"com"` or `"hotspots"`.                                              |
 | `plddt_enhanced`                                               | `bool`            | Default `true`.                                                       |
 | `is_non_loopy`                                                 | `bool`            | Default `true`.                                                       |
-| `partial_t_backbone`                                           | `float`          | Backbone corruption level for partial diffusion (0 = fully noised, 1 = unchanged). |
-| `partial_t_latent`                                             | `float`          | Sidechain/sequence corruption level for partial diffusion (0 = fully noised, 1 = unchanged). |
+| `is_partial_diffusion`                                         | `bool`           | Set `true` when passing a complete structure for partial diffusion (preserves coordinates for diffused regions). |
+| `add_cath_code`                                                | `dict`           | CATH-style fold conditioning, e.g. `{"1.2.x": "A1-100"}` (planned; parsed but no effect yet). |
 
 
 ## Quick start
@@ -147,7 +150,7 @@ Q: How to fix backbone but redesign sidechains?
 A: redesign_motif_sidechains: true.
 
 Q: Why “Input provided but unused”?
-A: You gave input but no contig, unindex, partial_t_backbone, or partial_t_latent.
+A: You gave `input` but nothing that consumes it — set one of `contig`, `unindex`, `ligand`, `internal_coord_groups`, or `is_partial_diffusion: true`.
 
 ## Shorthand atoms
 

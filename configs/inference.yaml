@@ -4,7 +4,7 @@
 
 defaults:
   - _self_
-  - inference_experiment: inference_like_rfd3 # Default for design
+  - inference_experiment: inference_on_user_inputs # Default for design
 
 # NOTE: The experiment configs can override values specified in this config
 

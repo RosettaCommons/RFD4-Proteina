@@ -1,25 +1,18 @@
 # @package _global_
 #
 # Beam search inference example.
-# BeamSearchStrategy with RF3 reward on the monomer-short benchmark:
+# BeamSearchStrategy with an AF3 reward on the monomer-short benchmark:
 #   - 400 diffusion steps, checkpointed at [0, 100, 200, 300, 400]
 #   - n_branch=2, beam_width=3
 #   - sc_scale_noise=0.3/0.1 (bb_ca/latents)
-#   - RF3 reward: pLDDT only, num_steps=50, n_recycles=5
+#   - AF3 reward: pLDDT (chain-of-interest) only
 #
-# Usage:
-#   ./scripts/launch_infer.sh coreweave gen_njobs=2 \
-#       --config-name inference_experiment/inference_beam_example \
-#       ckpt_path=<CKPT_DIR> ckpt_name=<CKPT_NAME>.ckpt
+# Usage: python src/rfproteina/generate.py inference_experiment=inference_beam_example
 
 defaults:
-  - inference_like_rfd3
+  - inference_on_user_inputs
   - _self_
 
-ckpt_path: ???
-ckpt_name: ???
-
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
 
 inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer.json
 subset_to_examples: monomer-short
@@ -52,7 +45,7 @@ search:
 
   rewards:
     # Inner tags: controls which metrics fire during beam scoring.
-    # [unconditional_refolding] → RF3 oracle runs on every rolled-out candidate,
+    # [unconditional_refolding] → AF3 oracle runs on every rolled-out candidate,
     # caching results to disk for reuse by the epoch-end loop.
     reward_metrics_tags: [unconditional_refolding]
 
@@ -64,7 +57,6 @@ generation:
   args:
     nsteps: 400
     self_cond: true
-    guidance_w: 1.0
   model:
     bb_ca:
       simulation_step_params:

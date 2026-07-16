@@ -86,8 +86,19 @@ python src/rfproteina/generate.py \
 A CIF appears under `./runs/smoke/`. From here:
 
 - **[Full inference guide](docs/INFERENCE.md)** — design use cases (binders, enzymes, motif
-  scaffolding), conditioning, partial diffusion, reward-guided search, and every parameter.
+  scaffolding), conditioning, partial diffusion, and relevant parameters.
 - **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** — the recommended input format (motifs, hotspots, ligands, bonds, H-bonds, RASA, PTMs, read natively; legacy JSON: [input spec](docs/input.md)).
+
+### Reward-guided search
+
+Generate several candidates with beam search and keep the ones an AF3 reward scores highest. The
+example config runs as-is on the monomer benchmark:
+
+```bash
+python src/rfproteina/generate.py inference_experiment=inference_beam_example
+```
+
+See **[Reward-Guided Search](docs/search.md)** for the strategy and reward parameters and how to build your own search config.
 
 ---
 
@@ -103,4 +114,4 @@ no-container walkthrough that finetunes the released checkpoint on a tiny exampl
 ## Links
 
 - 🌐 **[Benchmarks &amp; gallery](https://private-organization.github.io/RFD4-Proteina/)** — how RFProteína compares (design quality, speed, compute).
-- 🎯 **[Inference guide](docs/INFERENCE.md)** · 🛠️ **[Training guide](docs/DEVELOPMENT.md)** · 📄 **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** · 🤝 **[Contributing](CLAUDE.md)**
+- 🎯 **[Inference guide](docs/INFERENCE.md)** · 🔎 **[Reward-guided search](docs/search.md)** · 🛠️ **[Training guide](docs/DEVELOPMENT.md)** · 📄 **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** · 🤝 **[Contributing](CLAUDE.md)**

@@ -2,9 +2,9 @@
 
 This guide explains how to write and register your own evaluation metrics without modifying any tracked files. Your code stays local unless you decide to contribute it back.
 
-Both `configs/metrics/custom_metrics/` and `rfproteina/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
+Both `configs/metrics/custom_metrics/` and `src/rfproteina/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
 
-> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
+> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `src/rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
 
 ---
 
@@ -64,13 +64,13 @@ def kwargs_to_compute_args(self) -> dict:
 
 ## Step 1 — Write the Python class
 
-Add a module under `rfproteina/metrics/custom_metrics/` (the whole directory
+Add a module under `src/rfproteina/metrics/custom_metrics/` (the whole directory
 is git-ignored). 
 
 ### Design metric example
 
 ```python
-# rfproteina/metrics/custom_metrics/residue_count.py
+# src/rfproteina/metrics/custom_metrics/residue_count.py
 from biotite.structure import AtomArray
 from rfproteina.metrics.metric import Metric
 
@@ -107,7 +107,7 @@ Key points:
 Receives bare `AtomArray` inputs — no unwrapping needed.
 
 ```python
-# rfproteina/metrics/custom_metrics/refolding_residue_count_delta.py
+# src/rfproteina/metrics/custom_metrics/refolding_residue_count_delta.py
 from biotite.structure import AtomArray
 from biotite.structure.residues import get_residues
 from rfproteina.metrics.metric import Metric
@@ -195,7 +195,7 @@ refolding_metrics:
 
 Both files dict-merge into the same `metrics` package. Only `all_custom_metrics.yaml` needs to be referenced from `configs/metrics/all_metrics.yaml`; everything else it pulls in is resolved transitively.
 
-The same applies on the Python side — `rfproteina/metrics/custom_metrics/` is a package, so add as many modules as you like (`residue_count.py`, `refolding_residue_count_delta.py`, ...) and reference each via `rfproteina.metrics.custom_metrics.<module_name>.<ClassName>`.
+The same applies on the Python side — `src/rfproteina/metrics/custom_metrics/` is a package, so add as many modules as you like (`residue_count.py`, `refolding_residue_count_delta.py`, ...) and reference each via `rfproteina.metrics.custom_metrics.<module_name>.<ClassName>`.
 
 ### Pass criteria config
 
@@ -213,25 +213,26 @@ pass_criteria:
 
 ---
 
-## Step 3 — Run evaluation
+## Step 3 — Run
 
-The custom metrics file is picked up automatically when evaluate.py includes the optional entry in its defaults. No extra flags needed:
+Custom metrics are picked up automatically (`all_custom_metrics.yaml` is a default). The most common
+use-case is to compute them **inline during generation** — just pass `metrics_tags`:
 
 ```bash
-python rfproteina/evaluate.py \
-    input_dir=/path/to/structures \
-    out_dir=/path/to/output \
-    +refolding_oracles=rf3_all \
-    +refolding_metrics=standard \
-    +pass_criteria=standard \
-    refolding_oracles.rf3_standard.ckpt_path=/path/to/rf3_latest.pt \
-    refolding_oracles.rf3_ppi.ckpt_path=/path/to/rf3_latest.pt
+python src/rfproteina/generate.py \
+    inputs=/path/to/design.cif \
+    num_replicates=50 \
+    metrics_tags='[unconditional_refolding]'
 ```
 
-Results appear in `design_metrics.csv` and `refolding_metrics.csv`. Column names are prefixed with the config entry key:
+Results land in `per_example_metrics.csv`, with column names prefixed by the config entry key:
 - Design metric: `residue_count.n_residues`, `residue_count.meets_min_length`
 - Refolding metric: `refolding_residue_delta.residue_count_delta`
 - Pass criterion: `my_custom_plddt.pass`
+
+To score **already-generated** structures instead, run the same metrics offline with
+`evaluate.py` (`inputs=<dir> out_dir=<dir> metrics_tags='[...]'`) — see the
+[Developer Guide](DEVELOPMENT.md).
 
 ---
 
@@ -252,7 +253,7 @@ Results appear in `design_metrics.csv` and `refolding_metrics.csv`. Column names
 # 1. Create a branch before making any changes
 git switch -c feat/my-metric-name
 
-# 2. Add your class to a tracked metrics file under rfproteina/metrics/
+# 2. Add your class to a tracked metrics file under src/rfproteina/metrics/
 
 # 3. Add a YAML entry to an existing tracked config
 
