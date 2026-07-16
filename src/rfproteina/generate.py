@@ -688,6 +688,8 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         ), f"compile_lengths must be 16-aligned for torch.compile, got {compile_lengths}"
         fixed_dimensions = {"I": compile_lengths}
         dataset = _sort_dataset_by_length(dataset)
+        # Match training so inference gets the same coordinate-descent-tuned kernels.
+        torch._inductor.config.coordinate_descent_tuning = True
         # Inference compiles different graphs than training (no backward, different
         # shapes), so keep them in a sibling blob: saving here must never overwrite
         # the training cache that $TORCH_COMPILE_CACHE_BLOB points at.
