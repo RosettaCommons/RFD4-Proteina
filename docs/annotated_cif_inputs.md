@@ -70,13 +70,15 @@ Full setup and usage live in the plugin README:
 [`lib/atomworks/src/atomworks/pymol_plugin/README.md`](../lib/atomworks/src/atomworks/pymol_plugin/README.md)
 (also symlinked at [`src/rfproteina/pymol/README.md`](../src/rfproteina/pymol/README.md)).
 
-The short version, from the **atomworks repo root**:
+The short version, from the **rfproteina repo root**:
 
 ```bash
+# 0. Install conda or miniconda on your machine (https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
+
 # 1. Build + activate the dedicated conda env (open-source PyMOL isn't pip-installable)
 make setup-pymol
-micromamba activate atomworks          # or mamba / conda activate atomworks
-make install
+conda activate rfproteina          # or mamba / conda activate atomworks
+uv pip install -e ./lib/atomworks -e ./
 
 # 2. Register the plugin with PyMOL (writes a loader line into ~/.pymolrc)
 atomworks setup pymol
@@ -205,6 +207,14 @@ become pairwise features. This is the concrete reason to prefer annotated CIFs
 for anything with a ligand, metal, covalent modification, or non-canonical: the
 fidelity survives all the way to the model.
 
+1. **Atomized regions must be kekulized**. Do not leave any bond types as `AROMATIC`
+since all of these will be cast to `SINGLE` bonds. Instead, manually edit them to 
+`AROMATIC_SINGLE` or `AROMATIC_DOUBLE` based on a valid kekulization.  This ensures
+both the aromatic information and the bond order information make it to the model correctly.
+Atomized regions include any non-standard residue, ligands, post-translational
+modifications (including the canonical residue with the PTM), or any other residues
+marked with `S_ATM` as `True`.
+
 ## Expandable segments
 
 An expandable segment is the visual/structural equivalent of a variable-length
@@ -235,3 +245,10 @@ reveals identity (see interaction rules). To redesign sequence under a fixed
 fold, condition on backbone atoms only.
 
 **Can I condition expandable segments?** Yes, for residue-based conditions like chain COM or secondary structure conditioning (coming soon), it may make sense to condition entire expanded regions at once. If you condition an expandable segment, the condition is applied to all tokens that result from its expansion.
+
+**I have a ligand bound to a peptide chain via a PTM. Should it have its own `IndexGroup`?** NO!!! The model reasons
+over _molecules_ not _chains_. A PTM is by definition part of the same molecule as the peptide chain, so there is
+a valid bond graph distance between atoms on the PTM and any residue on the main chain. Bond graph distance features
+are shown to the model if the tokens are part of the same molecule and `IndexGroup`. res_id gaps are fine between 
+PTMs and the peptide chain as we use bond-graph distance for relative positional encoding of atomized segments as
+opposed to `res_id` gaps.
