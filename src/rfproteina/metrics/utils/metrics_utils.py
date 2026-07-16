@@ -77,12 +77,12 @@ def run_metrics_for_result(
     save_input_structure) and dispatches to ``metric_manager``.
     ``metrics_tags_override`` overrides the per-batch tags (used by reward
     scoring). ``chain_of_interest`` is always echoed back in the result.
+
+    Returns ``{}`` if the metrics fail, mirroring :py:func:`run_oracle_and_refolding_metrics`.
     """
     if output_base_dir is not None:
         output_base_dir = Path(output_base_dir)
         output_base_dir.mkdir(parents=True, exist_ok=True)
-
-    coi, coi_unambiguous = get_chain_of_interest(result["generated_atom_array"])
 
     if metrics_tags_override is not None:
         metrics_tags = metrics_tags_override
@@ -90,26 +90,33 @@ def run_metrics_for_result(
         metrics_tags_batch = batch.get("metrics_tags_batch", [])
         metrics_tags = metrics_tags_batch[batch_item_idx] if batch_item_idx < len(metrics_tags_batch) else []
 
-    metrics_result = metric_manager(
-        network_input=None,
-        network_output=None,
-        extra_info={
-            "example_id": example_id if example_id is not None else result.get("example_id", "sample"),
-            "metrics_tags": metrics_tags,
-            "output_base_dir": output_base_dir,
-            "chain_of_interest": coi if coi_unambiguous else None,
-            "save_input_structure": save_input_structure,
-        },
-        ground_truth_atom_array=result["input_atom_array"],
-        predicted_atom_array=result["generated_atom_array"],
-    )
+    try:
+        coi, coi_unambiguous = get_chain_of_interest(result["generated_atom_array"])
 
-    # Ensure chain_of_interest is always in the output regardless of which metrics are configured.
-    # Only rf3_metric echoes it back; other metrics (af2, design) do not.
-    if not any(k.endswith("chain_of_interest") for k in metrics_result):
-        metrics_result["chain_of_interest"] = coi if coi_unambiguous else None
+        metrics_result = metric_manager(
+            network_input=None,
+            network_output=None,
+            extra_info={
+                "example_id": example_id if example_id is not None else result.get("example_id", "sample"),
+                "metrics_tags": metrics_tags,
+                "output_base_dir": output_base_dir,
+                "chain_of_interest": coi if coi_unambiguous else None,
+                "save_input_structure": save_input_structure,
+            },
+            ground_truth_atom_array=result["input_atom_array"],
+            predicted_atom_array=result["generated_atom_array"],
+        )
 
-    return metrics_result
+        # Ensure chain_of_interest is always in the output regardless of which metrics are configured.
+        # Only rf3_metric echoes it back; other metrics (af2, design) do not.
+        if not any(k.endswith("chain_of_interest") for k in metrics_result):
+            metrics_result["chain_of_interest"] = coi if coi_unambiguous else None
+
+        return metrics_result
+
+    except Exception as e:
+        logger.error(f"Metrics failed for {example_id}: {e}")
+        return {}
 
 
 def normalize_to_atom_array_list(

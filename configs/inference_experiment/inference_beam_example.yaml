@@ -43,8 +43,12 @@ search:
     step_checkpoints: [0, 100, 200, 300, 400]
     n_branch: 2
     beam_width: 3
-    keep_intermediate_samples: true
-    intermediate_sample_reward_threshold: 80.0
+    # Keep the rolled-out candidates that lost the beam but still folded well.
+    intermediate_sample_save_criterion:
+      _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+      metric_thresholds:
+        search.reward:
+          min: 80.0
 
   rewards:
     # Inner tags: controls which metrics fire during beam scoring.

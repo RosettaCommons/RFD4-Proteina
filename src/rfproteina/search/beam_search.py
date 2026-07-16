@@ -33,7 +33,9 @@ if TYPE_CHECKING:
     pass
 
 from rfproteina.metrics.oracles.oracle_metric import example_output_dir
+from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
+from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.search.base_strategy import SearchStrategy
 from rfproteina.search.vanilla import build_partial_schedule, resolve_partial_t
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
@@ -52,13 +54,17 @@ class BeamSearchStrategy(SearchStrategy):
         step_checkpoints: Diffusion steps at which to evaluate and prune (e.g., [0, 100, 200, 300, 400])
         n_branch: Number of candidates to generate at each branch point (typically 4)
         beam_width: Number of candidates to keep after each prune (typically 4)
-        keep_intermediate_samples: Whether to save intermediate structures that meet criteria
-        intermediate_sample_reward_threshold: When ``keep_intermediate_samples=True``, only
-            save intermediate structures scoring above this value. Defaults to ``-inf`` (save all).
+        intermediate_sample_save_criterion: PassCriterionMetric deciding which of the rolled-out
+            candidates scored at each checkpoint are kept as extra outputs.
 
     Example:
         >>> strategy = BeamSearchStrategy(
-        ...     step_checkpoints=[0, 100, 200, 300, 400], n_branch=4, beam_width=4
+        ...     step_checkpoints=[0, 100, 200, 300, 400],
+        ...     n_branch=4,
+        ...     beam_width=4,
+        ...     intermediate_sample_save_criterion=PassCriterionMetric(
+        ...         metric_thresholds={"search.reward": {"min": 0.0}}
+        ...     ),
         ... )
         >>> results = strategy.generate(model, batch, reward_model)
     """
@@ -68,8 +74,7 @@ class BeamSearchStrategy(SearchStrategy):
         step_checkpoints: list[int],
         n_branch: int = 4,
         beam_width: int = 4,
-        keep_intermediate_samples: bool = False,
-        intermediate_sample_reward_threshold: float = float("-inf"),
+        intermediate_sample_save_criterion: PassCriterionMetric | None = None,
     ):
         """Initialize beam search strategy.
 
@@ -77,15 +82,13 @@ class BeamSearchStrategy(SearchStrategy):
             step_checkpoints: Diffusion steps to evaluate at (K steps between each)
             n_branch: Candidates to generate per beam state
             beam_width: Candidates to keep after pruning
-            keep_intermediate_samples: Save intermediate results
-            intermediate_sample_reward_threshold: Minimum reward for saving intermediate
-                samples. Only used when ``keep_intermediate_samples=True``.
+            intermediate_sample_save_criterion: Criterion for keeping intermediate samples.
+                Defaults to ``None`` (keep none).
         """
         self.step_checkpoints = sorted(step_checkpoints)
         self.n_branch = n_branch
         self.beam_width = beam_width
-        self.keep_intermediate_samples = keep_intermediate_samples
-        self.intermediate_sample_reward_threshold = intermediate_sample_reward_threshold
+        self.intermediate_sample_save_criterion = intermediate_sample_save_criterion
 
         if len(self.step_checkpoints) < 2:
             raise ValueError(
@@ -307,7 +310,7 @@ class BeamSearchStrategy(SearchStrategy):
 
             # Compute rewards by rolling out to completion.
             # atom_array_results is in interleaved format (i % nsamples maps to batch item i).
-            _, rewards, atom_array_results = self._simulate_and_compute_reward(
+            _, rewards, atom_array_results, candidate_metrics = self._simulate_and_compute_reward(
                 model,
                 batch,
                 xt,
@@ -316,49 +319,47 @@ class BeamSearchStrategy(SearchStrategy):
                 reward_model,
                 ts=ts,
                 gt=gt,
-                example_ids=checkpoint_example_ids if self.keep_intermediate_samples else None,
-                output_base_dir=output_base_dir if self.keep_intermediate_samples else None,
-                output_suffix=output_suffix if self.keep_intermediate_samples else "",
+                example_ids=checkpoint_example_ids,
+                output_base_dir=output_base_dir,
+                output_suffix=output_suffix,
             )
 
-            # Save intermediate samples if requested
-            if self.keep_intermediate_samples:
-                reward_threshold = self.intermediate_sample_reward_threshold
-                reward_mask = rewards > reward_threshold
-                if reward_mask.any():
-                    kept_indices = reward_mask.nonzero(as_tuple=False).squeeze(1).tolist()
-                    for k_idx in kept_indices:
-                        result = dict(atom_array_results[k_idx])
-                        result["reward"] = rewards[k_idx].item()
-                        all_intermediate_results.append(result)
-                        all_example_ids.append(checkpoint_example_ids[k_idx])
-                    logger.info(
-                        f"Checkpoint {i}: saved {reward_mask.sum().item()} intermediate samples "
-                        f"above threshold {reward_threshold}"
-                    )
-                else:
-                    logger.info(
-                        f"Checkpoint {i}: no intermediate samples above threshold {reward_threshold} "
-                        f"(max reward={rewards.max().item():.3f})"
-                    )
+            # Keep the intermediate samples that satisfy the configured save criterion.
+            keep_mask = torch.tensor(
+                [self._keep_intermediate_sample(m) for m in candidate_metrics],
+                dtype=torch.bool,
+                device=rewards.device,
+            )
+            if keep_mask.any():
+                for k_idx in keep_mask.nonzero(as_tuple=False).squeeze(1).tolist():
+                    result = dict(atom_array_results[k_idx])
+                    result["reward"] = rewards[k_idx].item()
+                    all_intermediate_results.append(result)
+                    all_example_ids.append(checkpoint_example_ids[k_idx])
+                logger.info(f"Checkpoint {i}: kept {keep_mask.sum().item()}/{keep_mask.numel()} intermediate samples")
+            elif self.intermediate_sample_save_criterion is not None:
+                logger.info(
+                    f"Checkpoint {i}: no intermediate samples met the save criterion "
+                    f"(max reward={rewards.max().item():.3f})"
+                )
 
-                # Clean up oracle output dirs for samples that didn't pass the threshold.
-                # These were written during reward computation but won't be kept as outputs.
-                if output_base_dir is not None:
-                    failing_indices = (~reward_mask).nonzero(as_tuple=False).squeeze(1).tolist()
-                    for k_idx in failing_indices:
-                        eid = checkpoint_example_ids[k_idx]
-                        full_eid = f"{eid}{output_suffix}" if output_suffix else eid
-                        target = example_output_dir(output_base_dir, full_eid)
-                        if target.exists():
-                            shutil.rmtree(target, ignore_errors=True)
-                        # Remove empty shard parent dirs up to (but not including) output_base_dir.
-                        shard_parent = target.parent
-                        while shard_parent != output_base_dir and shard_parent.exists():
-                            if next(shard_parent.iterdir(), None) is not None:
-                                break
-                            shard_parent.rmdir()
-                            shard_parent = shard_parent.parent
+            # Clean up oracle output dirs for scored candidates we are not keeping as outputs.
+            # These were written during reward computation.
+            if output_base_dir is not None:
+                failing_indices = (~keep_mask).nonzero(as_tuple=False).squeeze(1).tolist()
+                for k_idx in failing_indices:
+                    eid = checkpoint_example_ids[k_idx]
+                    full_eid = f"{eid}{output_suffix}" if output_suffix else eid
+                    target = example_output_dir(output_base_dir, full_eid)
+                    if target.exists():
+                        shutil.rmtree(target, ignore_errors=True)
+                    # Remove empty shard parent dirs up to (but not including) output_base_dir.
+                    shard_parent = target.parent
+                    while shard_parent != output_base_dir and shard_parent.exists():
+                        if next(shard_parent.iterdir(), None) is not None:
+                            break
+                        shard_parent.rmdir()
+                        shard_parent = shard_parent.parent
 
             # Reshape and select top beam_width candidates
             # Current shape: [n_branch * beam_width * nsamples] in interleaved format
@@ -426,7 +427,7 @@ class BeamSearchStrategy(SearchStrategy):
         final_results = model.format_sample_prots_to_atom_arrays(
             sample_prots, batch, batch_idx=0, example_ids=final_example_ids, insertion_logits=insertion_logits
         )
-        final_rewards = self._compute_rewards(
+        final_rewards, _ = self._compute_rewards(
             model,
             final_results,
             reward_model,
@@ -455,6 +456,17 @@ class BeamSearchStrategy(SearchStrategy):
 
         return all_intermediate_results + final_results
 
+    def _keep_intermediate_sample(self, metrics: dict[str, Any]) -> bool:
+        """Decide whether a scored intermediate candidate is kept as an output.
+
+        Args:
+            metrics: The candidate's merged metrics dict, including its aggregated
+                reward under :py:data:`~rfproteina.rewards.reward_model.SEARCH_REWARD_KEY`.
+        """
+        if self.intermediate_sample_save_criterion is None:
+            return False
+        return bool(self.intermediate_sample_save_criterion.compute(metrics)["pass"])
+
     def _simulate_and_compute_reward(
         self,
         model: "Proteina",
@@ -468,7 +480,7 @@ class BeamSearchStrategy(SearchStrategy):
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         output_suffix: str = "",
-    ) -> tuple[dict, torch.Tensor, list[dict]]:
+    ) -> tuple[dict, torch.Tensor, list[dict], list[dict]]:
         """Roll out samples to completion and compute rewards.
 
         This implements the "roll out to get clean sample" step.
@@ -487,8 +499,8 @@ class BeamSearchStrategy(SearchStrategy):
             output_suffix: Rank/job suffix appended to each id before saving.
 
         Returns:
-            Tuple of (sample_prots dict, rewards tensor, atom_array_results list).
-            atom_array_results contains one formatted result dict per sample, in
+            Tuple of (sample_prots dict, rewards tensor, atom_array_results list,
+            per-sample metrics list). The two lists contain one entry per sample, in
             interleaved batch-item order — safe to index directly by position.
         """
         # Derive actual schedule length from the passed schedule (partial or full).
@@ -570,7 +582,7 @@ class BeamSearchStrategy(SearchStrategy):
         atom_array_results = model.format_sample_prots_to_atom_arrays(
             final_sample_prots, batch, batch_idx=0, example_ids=example_ids, insertion_logits=insertion_logits
         )
-        rewards = self._compute_rewards(
+        rewards, candidate_metrics = self._compute_rewards(
             model,
             atom_array_results,
             reward_model,
@@ -584,7 +596,7 @@ class BeamSearchStrategy(SearchStrategy):
             f"min={rewards.min().item():.4f}, max={rewards.max().item():.4f}"
         )
 
-        return final_sample_prots, rewards, atom_array_results
+        return final_sample_prots, rewards, atom_array_results, candidate_metrics
 
     def _compute_rewards(
         self,
@@ -594,7 +606,7 @@ class BeamSearchStrategy(SearchStrategy):
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         output_suffix: str = "",
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, list[dict]]:
         """Compute rewards for pre-formatted atom array results.
 
         Uses the model's configured metric managers (design, oracle, refolding,
@@ -614,7 +626,10 @@ class BeamSearchStrategy(SearchStrategy):
             output_suffix: Rank/job suffix appended to each example_id before saving.
 
         Returns:
-            Rewards tensor in the same order as atom_array_results.
+            Tuple of (rewards tensor, per-sample metrics dicts), both in the same order as
+            *atom_array_results*. Each metrics dict carries the sample's own reward under
+            :py:data:`~rfproteina.rewards.reward_model.SEARCH_REWARD_KEY` alongside
+            its raw (unclipped) metric values, so pass criteria can threshold on either.
         """
         device = model.device
         batch = model._current_batch
@@ -622,6 +637,7 @@ class BeamSearchStrategy(SearchStrategy):
         # Compute rewards using Proteina's configured metric managers.
         # reward_metrics_tags controls which metrics fire
         rewards = []
+        all_metrics: list[dict] = []
         for i, result in enumerate(atom_array_results):
             orig_batch_idx = i % max(len(batch.get("atom_array_batch", [batch.get("atom_array")])), 1)
             example_id: str | None = None
@@ -662,6 +678,8 @@ class BeamSearchStrategy(SearchStrategy):
 
             merged = {**metrics_output, **oracle_output}
             reward = reward_model.aggregate_metrics_output(merged)
+            merged[SEARCH_REWARD_KEY] = reward
             rewards.append(reward)
+            all_metrics.append(merged)
 
-        return torch.tensor(rewards, device=device, dtype=torch.float32)
+        return torch.tensor(rewards, device=device, dtype=torch.float32), all_metrics

@@ -20,7 +20,7 @@ search:
     step_checkpoints: [0, 100, 200, 300, 400]
     n_branch: 2
     beam_width: 3
-    keep_intermediate_samples: false
+    # No intermediate_sample_save_criterion => only the final beam is returned.
 
   rewards:
     reward_metrics_tags: [design]
