@@ -1,0 +1,27 @@
+# @package _global_
+# Beam search maximizing interface protein<->ligand H-bonds. Target is SAM.
+#   ./src/rfproteina/generate.py inference_experiment=sm_binder_hbond_search
+
+defaults:
+  - inference_like_rfd3
+  - _self_
+
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/SAM_hbonds.cif
+num_replicates: 1
+
+out_dir: ./runs/sm_binder_hbond_search
+run_name_: sm_binder_hbond_search
+
+# Persist the winning design's interface-interaction metrics to per_example_metrics.csv.
+metrics_tags: [interchain_interactions]
+
+search:
+  strategy:
+    _target_: rfproteina.search.beam_search.BeamSearchStrategy
+    step_checkpoints: [0, 50, 100]  # start at 0, increasing, end at nsteps
+    n_branch: 2
+    beam_width: 2
+  rewards:
+    reward_metrics_tags: [interchain_interactions]
+    weights:
+      "interchain_interactions.hbond_atom_pair_count_coi": 1.0
