@@ -269,7 +269,13 @@ class OracleMetric(Metric):
 
     @abstractmethod
     def fold_batch(self, jobs: list[OracleJobInput]) -> int:
-        """Fold every design in ``jobs`` and persist the results to disk."""
+        """Fold every design in ``jobs`` and persist the results to disk.
+
+        Returns:
+          Number of jobs that have a refold on disk once this call returns.
+          Implementations that skip already-cached designs must still count
+          them: callers compare this against ``len(jobs)`` to assert coverage.
+        """
 
     # ------------------------------------------------------------------
     # Metric interface

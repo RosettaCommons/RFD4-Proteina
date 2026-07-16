@@ -250,10 +250,15 @@ class AF3Oracle(OracleMetric):
         daemon (Lightning DDP) or a direct ``apptainer run`` (ad-hoc), and
         post-processed back into the canonical ``confidence_path`` /
         ``refolded_cif_path`` locations.
+
+        Returns:
+          Number of jobs that have a refold on disk once this call returns,
+          counting both cached hits and freshly folded designs.
         """
         pending = [j for j in jobs if not self.already_refolded(j.out_dir, j.example_id)]
+        n_cached = len(jobs) - len(pending)
         if not pending:
-            return 0
+            return n_cached
 
         daemon_rank = _resolve_daemon_rank(_resolve_local_rank())
 
@@ -272,7 +277,7 @@ class AF3Oracle(OracleMetric):
             for state in job_states:
                 if self._finalize_af3_result(state) is not None:
                     n_ok += 1
-            return n_ok
+            return n_cached + n_ok
         finally:
             shutil.rmtree(batch_dir, ignore_errors=True)
 
