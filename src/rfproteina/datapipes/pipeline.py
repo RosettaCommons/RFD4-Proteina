@@ -4,6 +4,7 @@ import functools
 import logging
 import os
 import pickle
+from collections.abc import Sequence
 
 import numpy as np
 import rootutils
@@ -1108,9 +1109,11 @@ class FeaturizeCentroidOfAtomsWithoutCoordinateConditioning(Transform):
 class FeaturizeChainCentroid(Transform):
     """Write per-chain centroid (from ``coord_annotation``, plus Gaussian noise) to ``C_CENTROID``.
 
+    Centroid conditioning is all-or-nothing per example: when the per-example gate fires, every
+    chain with resolved coordinates receives a centroid; otherwise none do.
+
     Args:
-        p_add_centroid_condition: Outer per-example gate.
-        p_include_per_chain: Inner per-chain dropout (independent per chain).
+        p_add_centroid_condition: Per-example gate probability.
         noise_std_angstrom: Isotropic Gaussian noise std (Å) per included chain.
         coord_annotation: Source coord annotation; must be post-centering for centroids to live in the loss frame.
     """
@@ -1118,13 +1121,11 @@ class FeaturizeChainCentroid(Transform):
     def __init__(
         self,
         p_add_centroid_condition: float = 0.2,
-        p_include_per_chain: float = 0.5,
         noise_std_angstrom: float = 5.0,
         coord_annotation: str = "coord_to_be_noised",
     ):
         super().__init__()
         self.p_add_centroid_condition = float(p_add_centroid_condition)
-        self.p_include_per_chain = float(p_include_per_chain)
         self.noise_std_angstrom = float(noise_std_angstrom)
         self.coord_annotation = coord_annotation
 
@@ -1140,12 +1141,6 @@ class FeaturizeChainCentroid(Transform):
             chain_iid = aa.chain_iid
             for chain_id in np.unique(chain_iid):
                 chain_mask = chain_iid == chain_id
-                # Skip single-atom "chains" (ions, lone atoms): a 1-atom centroid is just
-                # the atom position and is uninformative as a layout signal.
-                if chain_mask.sum() < 2:
-                    continue
-                if not true_with_prob(self.p_include_per_chain):
-                    continue
                 chain_coords = coords[chain_mask]
                 if np.isnan(chain_coords).all():
                     continue
@@ -1468,6 +1463,8 @@ def _build_design_featurize_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
+    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
+    center_conditioning_annotations: Sequence[str] = (),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1540,7 +1537,10 @@ def _build_design_featurize_pipeline(
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
 
     # Center coordinates and add centroid of the atoms without coordinate conditioning as a feature
-    T += CenterOnCoordinateConditionedAtoms(coord_annotation="coord_to_be_noised")
+    T += CenterOnCoordinateConditionedAtoms(
+        coord_annotation="coord_to_be_noised",
+        conditioning_annotations=center_conditioning_annotations,
+    )
     # NOTE: Previously, we called this feature the "ori_token", which is a misnomer since it's no longer the origin
     T += FeaturizeCentroidOfAtomsWithoutCoordinateConditioning(
         coord_annotation="coord_to_be_noised",
@@ -1633,6 +1633,8 @@ def build_design_train_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
+    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
+    center_conditioning_annotations: Sequence[str] = (),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1707,6 +1709,7 @@ def build_design_train_pipeline(
         is_inference=is_inference,
         path_length_search_cutoff=path_length_search_cutoff,
         centroid_kwargs=centroid_kwargs,
+        center_conditioning_annotations=center_conditioning_annotations,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
     )
@@ -1723,6 +1726,8 @@ def build_design_validation_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
+    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
+    center_conditioning_annotations: Sequence[str] = (),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1757,6 +1762,7 @@ def build_design_validation_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         path_length_search_cutoff=path_length_search_cutoff,
+        center_conditioning_annotations=center_conditioning_annotations,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
     )
