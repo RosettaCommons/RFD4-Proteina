@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 import numpy as np
+import torch
+import torch.distributed as dist
 from atomworks.common import exists
 from atomworks.io.parser import parse as _parse_structure
 from atomworks.io.utils.atom_array_plus import as_atom_array
@@ -517,12 +519,35 @@ def apply_pre_oracle_filters(
     return passing
 
 
-def fold_designs_for_oracles(val_outputs: list[ValOutput], oracle_mm: MetricManager) -> None:
-    """Dispatch this rank's designs to each oracle's :py:meth:`OracleMetric.fold_batch`."""
+def fold_designs_for_oracles(
+    val_outputs: list[ValOutput], oracle_mm: MetricManager, on_incomplete: str = "raise"
+) -> None:
+    """Fold this rank's designs with each oracle, then assert (across ranks) that every
+    dispatched design produced a refold. ``on_incomplete``: 'raise' (default) | 'warn'.
+    """
+    n_dispatched = n_refolded = 0
     for _, oracle_metric in oracle_mm.metrics.items():
         jobs = _build_applicable_oracle_jobs(val_outputs, oracle_metric)
         if jobs:
-            oracle_metric.fold_batch(jobs)
+            n_dispatched += len(jobs)
+            n_refolded += oracle_metric.fold_batch(jobs)
+
+    if dist.is_initialized() and dist.get_world_size() > 1:
+        device = torch.device("cuda", torch.cuda.current_device()) if torch.cuda.is_available() else None
+        counts = torch.tensor([n_dispatched, n_refolded], device=device)
+        dist.all_reduce(counts)
+        n_dispatched, n_refolded = int(counts[0]), int(counts[1])
+
+    if n_refolded >= n_dispatched:
+        return
+    msg = (
+        f"Validation refold coverage {n_refolded}/{n_dispatched}: {n_dispatched - n_refolded} designs "
+        f"dispatched to refolding produced no structure (dropped or failed folds)."
+    )
+    if on_incomplete == "warn":
+        logger.warning(msg)
+    else:
+        raise RuntimeError(msg)
 
 
 def compute_oracle_metrics_for_val_output(

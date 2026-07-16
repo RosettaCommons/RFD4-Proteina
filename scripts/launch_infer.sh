@@ -47,7 +47,7 @@
 #     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=10
 #     inference_experiment=inference_on_val_set
-#     +datasets/val@generation=mcsa_subset
+#     +datasets/val@generation=mcsa/mcsa_subset
 #
 # Concatenation:
 #   By default a dependent SLURM job is submitted that runs
@@ -69,7 +69,7 @@
 #   ./launch_infer.sh digs --njobs 8 \
 #       ckpt_path=/path/to/ckpts ckpt_name=model.ckpt \
 #       inference_experiment=inference_on_val_set \
-#       +datasets/val@generation=mcsa_subset run_name_=mcsa_val
+#       +datasets/val@generation=mcsa/mcsa_subset run_name_=mcsa_val
 #
 #   # Config that lives outside the repo configs/ tree
 #   ./launch_infer.sh coreweave --njobs 1 \
@@ -217,7 +217,8 @@ fi
 cd "$REPO_ROOT"
 echo "Repository root: $REPO_ROOT"
 
-# Setup PYTHONPATH
+# Setup PYTHONPATH. The venv is host-side only (config resolution + submission);
+# apptainer clusters still need it — compute re-execs into the SIF via generate.py's shebang.
 source_venv "$REPO_ROOT"
 setup_pythonpath "$REPO_ROOT"
 setup_env_vars
@@ -438,7 +439,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running generation with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
+        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
             $EXTRA_ARGS \\
