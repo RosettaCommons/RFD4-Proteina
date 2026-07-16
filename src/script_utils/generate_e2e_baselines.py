@@ -35,6 +35,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import rootutils
+
 from tests.e2e.helpers.gpu_e2e import parse_train_losses_from_csv_logger
 from tests.e2e.helpers.regression_baselines import (
     BASELINES_DIR,
@@ -51,10 +53,8 @@ from tests.e2e.helpers.regression_baselines import (
 
 # ── Repository / path constants ──────────────────────────────────────────────
 
-# This script lives at projects/rfproteina/script_utils/; ROOT is the
-# projects/rfproteina dir (cwd for all subprocess calls).
-_HERE = Path(__file__).resolve().parent
-ROOT = _HERE.parent
+# ROOT is the repo root (cwd for all subprocess calls).
+ROOT = Path(rootutils.find_root(indicator=".project-root", search_from=__file__))
 PYTHON = sys.executable
 
 # ── Subprocess helpers ────────────────────────────────────────────────────────

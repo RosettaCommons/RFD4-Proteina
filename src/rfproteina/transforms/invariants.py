@@ -18,7 +18,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_HB, C_IDXGRP, C_NCYS, HBondEnum
+from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_NCYS, HBondEnum
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_molecules_on_separate_chains(aa)
     violations += check_standard_annotation_level_violations(aa)
     violations += check_global_token_id_consistent(aa)
+    violations += check_centroid_conditioning_all_or_nothing_violations(aa, is_inference=is_inference)
 
     # --- Feats / token-level checks ---
     violations += check_conditioning_violations(aa, feats)
@@ -98,6 +99,52 @@ def check_molecules_on_separate_chains(aa: AtomArray) -> list[InvariantViolation
                 )
             )
     return violations
+
+
+def check_centroid_conditioning_all_or_nothing_violations(
+    aa: AtomArray, is_inference: bool
+) -> list[InvariantViolation]:
+    """Return violations where centroid conditioning is applied to some but not all chains.
+
+    Centroid conditioning (``C_CENTROID``) must be all-or-nothing per example: either every chain
+    has a finite centroid, or none do, matching
+    :py:class:`~rfproteina.datapipes.pipeline.FeaturizeChainCentroid`.
+
+    At train time, a chain with no resolved coordinates (fully unresolved) is exempt from this,
+    as its ground-truth centroid would be undefined.
+    """
+    categories = set(aa.get_annotation_categories())
+    if C_CENTROID.full_name not in categories:
+        return []
+
+    chain_identifier = aa.chain_iid if "chain_iid" in categories else aa.chain_id
+    centroid_mask = C_CENTROID.mask(aa, default="generate")
+
+    aap = as_atom_array_plus(aa)
+    coords = aap.coord_to_be_noised if "coord_to_be_noised" in aap.get_annotation_categories() else None
+
+    n_chains = 0
+    n_conditioned = 0
+    for chain_id in np.unique(chain_identifier):
+        chain_mask = chain_identifier == chain_id
+        if not is_inference and coords is not None and np.isnan(coords[chain_mask]).all():
+            continue
+        n_chains += 1
+        if centroid_mask[chain_mask].any():
+            n_conditioned += 1
+
+    if n_chains and 0 < n_conditioned < n_chains:
+        return [
+            InvariantViolation(
+                check="centroid_conditioning_not_all_or_nothing",
+                message=(
+                    f"{n_conditioned}/{n_chains} chain(s) have centroid conditioning; "
+                    "must be applied to all chains or none"
+                ),
+                count=n_chains,
+            )
+        ]
+    return []
 
 
 def check_standard_annotation_level_violations(aa: AtomArray) -> list[InvariantViolation]:

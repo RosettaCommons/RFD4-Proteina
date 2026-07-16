@@ -28,12 +28,13 @@ from atomworks.ml.utils.token import (
 )
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_HOT, C_INTCRD
+from rfproteina.conditions import C_CENTROID, C_HOT, C_INTCRD
 from rfproteina.inference_utils.components import (
     fetch_mask_from_component,
     get_name_mask,
     unravel_components,
 )
+from rfproteina.transforms.geometry import shift_conditioning_annotations
 from rfproteina.utils.common import exists
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.standard_annotations import SA_SRC
@@ -512,11 +513,13 @@ def set_com(
             raise ValueError("If providing ori_token, cannot provide infer_ori_strategy.")
         center = np.array([float(x) for x in ori_token], dtype=atom_array.coord.dtype)
         atom_array.coord = atom_array.coord - center
+        shift_conditioning_annotations(atom_array, center, (C_CENTROID.full_name,))
         ranked_logger.info(f"Received ori_token argument. Setting origin as {center}.")
     elif exists(infer_ori_strategy):
         if infer_ori_strategy in INFER_ORI_STRATEGIES_TO_FUNCTIONS:
             center = INFER_ORI_STRATEGIES_TO_FUNCTIONS[infer_ori_strategy](atom_array)
             atom_array.coord = atom_array.coord - center
+            shift_conditioning_annotations(atom_array, center, (C_CENTROID.full_name,))
             ranked_logger.info(f"Inferred origin using strategy '{infer_ori_strategy}'. Setting origin as {center}.")
         else:
             raise ValueError(f"Unrecognized infer_ori_strategy: {infer_ori_strategy}")
@@ -530,6 +533,7 @@ def set_com(
                 )
             )
             atom_array.coord -= center
+            shift_conditioning_annotations(atom_array, center, (C_CENTROID.full_name,))
             if allow_non_motif_centered:
                 ranked_logger.info(f"No infer_ori_strategy or ori_token provided. Centering on motif COM at {center}.")
         else:
