@@ -86,7 +86,14 @@ batch_size: 10                        # Batch size for generation
 #     step_checkpoints: [0, 100, 200, 300, 400]
 #     n_branch: 2
 #     beam_width: 3
-#     keep_intermediate_samples: false
+#     # Optional: also keep the rolled-out candidates that lost the beam but pass a bar.
+#     # The criterion sees each candidate's metrics plus its reward under `search.reward`.
+#     # Omit to return only the final beam.
+#     intermediate_sample_save_criterion:
+#       _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+#       metric_thresholds:
+#         search.reward:
+#           min: 80.0
 #
 #   rewards:
 #     metrics:
@@ -95,6 +102,10 @@ batch_size: 10                        # Batch size for generation
 #         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
 #         num_steps: 50
 #         n_recycles: 5
+#     # Optional: clip a metric before its weight is applied (raw value still reported).
+#     clip_values:
+#       rf3.plddt:
+#         min: 60.0
 #     weights:
 #       rf3.plddt: 1.0
 

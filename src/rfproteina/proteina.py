@@ -49,6 +49,7 @@ from rfproteina.metrics.utils.metrics_utils import (
 )
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
+from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
@@ -1068,6 +1069,10 @@ class Proteina(L.LightningModule):
                 example_id = f"{base_id}{output_suffix}"
 
             metrics_output: dict = {"example_id": example_id}
+
+            # Search strategies score every sample they emit; record the reward they selected on.
+            if "reward" in generation_list[i]:
+                metrics_output[SEARCH_REWARD_KEY] = generation_list[i]["reward"]
 
             if per_example_losses is not None:
                 for k, v in per_example_losses.items():

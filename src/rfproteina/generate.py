@@ -126,7 +126,7 @@ def _assemble_dataset_inputs_from_dict(
 
 
 def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple:
-    if isinstance(inputs, list):
+    if isinstance(inputs, list | ListConfig):
         inputs = [str(p) for p in inputs]
         if not all((".cif" in p or ".bcif" in p) for p in inputs):
             raise ValueError(
@@ -479,13 +479,15 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
             from rfproteina.rewards import RewardModel
 
             rewards_cfg = cfg.search.rewards
+            clip_values_cfg = rewards_cfg.get("clip_values")
             search_reward_model = RewardModel(
                 weights=dict(rewards_cfg.weights),
                 reward_metrics_tags=list(rewards_cfg.get("reward_metrics_tags", [])),
+                clip_values=OmegaConf.to_container(clip_values_cfg, resolve=True) if clip_values_cfg else None,
             )
             logger.info(
                 f"Search reward model: reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"weights={dict(search_reward_model.weights)}"
+                f"weights={dict(search_reward_model.weights)}, clip_values={search_reward_model.clip_values}"
             )
 
         model.configure_search(search_strategy, search_reward_model)
