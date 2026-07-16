@@ -10,7 +10,7 @@
 
 RFProteína generates proteins — and RNA, DNA, and small-molecule complexes — under rich conditioning.
 
-Check out the **[RFProteína website](https://private-organization.github.io/RFD4-Proteina/)** for complete benchmarks and documentation.
+Check out the **[RFProteína website](https://rosettacommons.github.io/RFD4-Proteina/)** for complete benchmarks and documentation.
 
 Two ways in:
 
@@ -113,5 +113,5 @@ no-container walkthrough that finetunes the released checkpoint on a tiny exampl
 
 ## Links
 
-- 🌐 **[Benchmarks &amp; gallery](https://private-organization.github.io/RFD4-Proteina/)** — how RFProteína compares (design quality, speed, compute).
+- 🌐 **[Benchmarks &amp; gallery](https://rosettacommons.github.io/RFD4-Proteina/)** — how RFProteína compares (design quality, speed, compute).
 - 🎯 **[Inference guide](docs/INFERENCE.md)** · 🔎 **[Reward-guided search](docs/search.md)** · 🛠️ **[Training guide](docs/DEVELOPMENT.md)** · 📄 **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** · 🤝 **[Contributing](CLAUDE.md)**
