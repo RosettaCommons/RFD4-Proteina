@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 92" width="540" height="92" role="img" aria-label="RFProteína">
-  <title>RFProteína</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 92" width="720" height="92" role="img" aria-label="RFD4-Proteína">
+  <title>RFD4-Proteína</title>
   <text x="50%" y="66" text-anchor="middle"
         font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"
         font-size="66" font-weight="800" letter-spacing="-2.5">
-    <tspan fill="#a80c84">RF</tspan><tspan fill="#4f9633">Proteína</tspan>
+    <tspan fill="#a80c84">RFD4-</tspan><tspan fill="#4f9633">Proteína</tspan>
   </text>
 </svg>
