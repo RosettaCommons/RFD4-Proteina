@@ -15,8 +15,9 @@ import os
 import sys
 from pathlib import Path
 
-# CWD must be projects/rfproteina/ for pytest paths to resolve.
-PROJECT = Path(__file__).resolve().parent.parent
+# CWD must be the repo root for pytest paths (tests/e2e/...) to resolve.
+# This script lives at src/script_utils/, so the repo root is two levels up from its dir.
+PROJECT = Path(__file__).resolve().parents[2]
 os.chdir(PROJECT)
 
 # Must be set before CUDA is initialized (cannot be passed as a Hydra override).

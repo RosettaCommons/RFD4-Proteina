@@ -30,7 +30,7 @@ Usage:
     source ~/protocols/atomworks/.venv/bin/activate
 
     # Full batch:
-    python projects/rfproteina/script_utils/convert_pdb_benchmarks_to_cif.py
+    python src/script_utils/convert_pdb_benchmarks_to_cif.py
 
     # With re-parsed PDB coordinates:
     python ... --reparsed_pdb_dir /pdb_no_missing_atoms
@@ -61,7 +61,7 @@ from biotite.structure import AtomArray, get_residue_starts, superimpose
 # Constants and configuration
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]  # projects/rfproteina
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # repo root (script is at src/script_utils/)
 BENCHMARKS_ROOT = PROJECT_ROOT / "data" / "benchmarks"
 
 # Canonical benchmark directories to process.

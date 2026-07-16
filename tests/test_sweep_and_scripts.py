@@ -260,7 +260,7 @@ class TestSweepCLI:
             yaml.dump(cfg, f)
 
         existing_pythonpath = os.environ.get("PYTHONPATH", "")
-        merged_pythonpath = os.pathsep.join(p for p in [str(PROJECT_ROOT / "script_utils"), existing_pythonpath] if p)
+        merged_pythonpath = os.pathsep.join(p for p in [str(PROJECT_ROOT / "src"), existing_pythonpath] if p)
         result = subprocess.run(
             [sys.executable, str(SWEEP_PY), "--sweep-config", str(cfg_path), "--dry-run"],
             capture_output=True,
