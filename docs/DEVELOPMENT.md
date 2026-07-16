@@ -276,9 +276,10 @@ python src/rfproteina/evaluate.py \
     inputs=/path/to/structures metrics_tags='[unconditional_refolding]'
 ```
 
-**Custom metrics/rewards** — add Python metric classes under `rfproteina/metrics/custom_metrics/`
+**Custom metrics/rewards** — add Python metric classes under `src/rfproteina/metrics/custom_metrics/`
 and register them in `configs/metrics/custom_metrics/` (both git-ignored; `setup.sh` scaffolds the
-entry config). Reward models for search are configured under `configs/rewards/`. See
+entry config). Search rewards are configured inline in the search experiment config (see
+`configs/inference_experiment/inference_beam_example.yaml`). See
 [docs/custom_metrics.md](custom_metrics.md) for the full guide.
 
 ---

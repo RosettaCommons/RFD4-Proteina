@@ -179,7 +179,7 @@ def _write_input_json(out_dir: str, data: dict, filename: str = "input.json") ->
 
 
 def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
-    """Load the inference_like_rfd3 config with test-specific overrides.
+    """Load the inference_on_user_inputs config with test-specific overrides.
 
     Composes the real Hydra config from disk and applies base overrides
     (checkpoint paths, reduced diffusion steps, etc.) plus any
@@ -194,7 +194,7 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
     GlobalHydra.instance().clear()
 
     base_overrides = [
-        "inference_experiment=inference_like_rfd3",
+        "inference_experiment=inference_on_user_inputs",
         "metrics/refolding_oracles=af3",
         f"autoencoder_ckpt_path={_AE_CKPT_PATH or 'null'}",
         "seed=42",

@@ -1573,7 +1573,7 @@ class Proteina(L.LightningModule):
         """Configure search strategy and reward model for reward-guided generation.
 
         Args:
-            search_strategy: SearchStrategy instance (BeamSearch, BestOfN, etc.)
+            search_strategy: SearchStrategy instance (BeamSearch, Vanilla, etc.)
             search_reward_model: RewardModel instance for scoring candidates.
         """
         self.search_strategy = search_strategy

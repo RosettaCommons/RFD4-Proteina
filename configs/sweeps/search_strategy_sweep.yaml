@@ -1,7 +1,7 @@
 # =============================================================================
 # Search Strategy Comparison Sweep
 # =============================================================================
-# Sweeps over search strategies (vanilla, best-of-N, beam search) and their
+# Sweeps over search strategies (vanilla, beam search) and their
 # parameters to compare generation quality vs. compute trade-offs.
 #
 # Usage:
@@ -11,7 +11,7 @@
 base_config: inference
 
 base_config_overrides:
-  - inference_experiment=inference_like_rfd3
+  - inference_experiment=inference_on_user_inputs
   - num_replicates=50
 
 output_dir: ./configs/sweep_configs/search_strategy_sweep
@@ -20,9 +20,8 @@ run_name_prefix: search_cmp
 sweep:
   # Search strategy to use
   inference_experiment:
-    - inference_like_rfd3           # Vanilla
-    - inference_test_search          # Best-of-N
-    - inference_beam_example          # Beam search
+    - inference_on_user_inputs           # Vanilla
+    - inference_beam_example        # Beam search
 
   # Diffusion steps
   generation.args.nsteps:

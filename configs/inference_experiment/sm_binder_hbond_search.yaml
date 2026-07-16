@@ -3,7 +3,7 @@
 #   ./src/rfproteina/generate.py inference_experiment=sm_binder_hbond_search
 
 defaults:
-  - inference_like_rfd3
+  - inference_on_user_inputs
   - _self_
 
 inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/SAM_hbonds.cif
