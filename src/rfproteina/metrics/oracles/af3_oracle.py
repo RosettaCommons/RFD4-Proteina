@@ -1,5 +1,7 @@
 """AF3 structure prediction oracle."""
 
+import atexit
+import contextlib
 import errno
 import io
 import json
@@ -8,6 +10,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 from dataclasses import dataclass
@@ -65,6 +68,18 @@ def _inject_empty_chem_comp_bond(cif_str: str) -> str:
 
     parts = re.split(r"(?=^data_)", cif_str, flags=re.MULTILINE)
     return "".join(_process_block(p) if p.startswith("data_") else p for p in parts)
+
+
+_AF3_DAEMON_SCRIPT = Path(__file__).resolve().parents[2] / "af3" / "af3_daemon.py"
+
+
+def _shutdown_daemon(proc: subprocess.Popen, sock_dir: Path) -> None:
+    """Stop a daemon we started. Killing it closes the warm worker's stdin, so AF3
+    sees EOF, exits, and frees its GPU memory."""
+    proc.terminate()
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.wait(timeout=10)
+    shutil.rmtree(sock_dir, ignore_errors=True)
 
 
 def _resolve_local_rank() -> int:
@@ -188,14 +203,15 @@ class AF3Oracle(OracleMetric):
 
     Two dispatch routes (selected automatically by ``fold_batch``):
 
-    - **Daemon route** (Lightning DDP). When
-      ``AF3_LAUNCHER_SOCKET_TEMPLATE`` is set, the rank's fold request is
-      sent over the Unix socket served by ``af3_launcher_daemon``. The
-      slurm launcher pre-spawns these daemons via
-      ``scripts/af3_daemons.py``.
-    - **Direct route** (ad-hoc). When the env var is unset,
-      ``fold_batch`` runs the same apptainer command directly via
-      ``subprocess.run``. The caller must be on a host where
+    - **Daemon route** (fast). When ``AF3_LAUNCHER_SOCKET_TEMPLATE`` is set,
+      the rank's fold request is sent over the Unix socket served by
+      ``src/rfproteina/af3/af3_daemon.py``, whose warm worker keeps AF3
+      loaded across folds. The slurm launchers pre-spawn these daemons
+      (``emit_af3_daemon_block`` in ``scripts/common.sh``); without a launcher,
+      :py:meth:`setup` starts one for this rank.
+    - **Direct route** (fallback). When the env var is unset, ``fold_batch``
+      runs the same apptainer command directly via ``subprocess.run``,
+      reloading AF3 on every call. The caller must be on a host where
       ``apptainer`` is on ``PATH``.
 
     Args:
@@ -219,11 +235,54 @@ class AF3Oracle(OracleMetric):
     # ------------------------------------------------------------------
 
     def setup(self) -> None:
-        """No-op. The AF3 worker is owned by the sibling launcher daemon."""
-        return
+        """Start this rank's warm AF3 daemon unless one is already available.
+
+        Called only when this oracle's tags matched a validation set, so a run that
+        never refolds never pays the worker's ~10 GB.
+        """
+        # A slurm launcher already pre-spawned the daemons.
+        if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
+            return
+
+        local_rank = _resolve_local_rank()
+        rank = _resolve_daemon_rank(local_rank)
+        # Node-local: the socket must be, and the log is only useful while we're on it.
+        sock_dir = Path(tempfile.mkdtemp(prefix="af3_daemon_"))
+        sock = sock_dir / f"af3_daemon_rank{rank}.sock"
+        log = sock_dir / f"af3_daemon_rank{rank}.log"
+        with open(log, "wb") as log_fh:
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(_AF3_DAEMON_SCRIPT),
+                    "serve",
+                    "--skip-if-no-env",
+                    "--socket-path",
+                    str(sock),
+                    "--gpu-device",
+                    str(_resolve_gpu_device(local_rank)),
+                ],
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+            )
+
+        # `serve` binds before it loads AF3, so this waits about a second and the
+        # minutes-long warmup then overlaps whatever the caller does next.
+        while not sock.exists():
+            if proc.poll() is not None:
+                # Leave the env var unset so fold_batch falls back to the direct route.
+                shutil.rmtree(sock_dir, ignore_errors=True)
+                logger.info(f"No AF3 daemon started; folds will use the direct route. See {log}.")
+                return
+            time.sleep(0.1)
+
+        atexit.register(_shutdown_daemon, proc, sock_dir)
+        # Inherited by DDP ranks forked later; sibling oracles reuse this daemon.
+        os.environ["AF3_LAUNCHER_SOCKET_TEMPLATE"] = f"{sock_dir}/af3_daemon_rank{{rank}}.sock"
+        logger.info(f"AF3 daemon started for rank {rank} (log: {log})")
 
     def teardown(self) -> None:
-        """No-op. The daemon is shut down by the slurm script's EXIT trap."""
+        """No-op. A launcher's daemon dies with its slurm step; ours dies at exit."""
         if dist.is_initialized():
             dist.barrier()
 

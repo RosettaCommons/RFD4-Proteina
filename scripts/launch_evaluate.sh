@@ -235,6 +235,13 @@ write_env_file "$RUN_DIR/.env"
 # ============================================================
 # Print configuration summary
 # ============================================================
+# Rule of thumb: never fewer than 2 CPUs per GPU. The whole job (1 task,
+# CPUS_PER_TASK cpus) is split across GPUS_PER_JOB srun steps below, so it must
+# request >= 2*GPUS_PER_JOB up front or the per-GPU steps starve.
+if [ "${CPUS_PER_TASK:-0}" -lt "$(( 2 * GPUS_PER_JOB ))" ]; then
+    CPUS_PER_TASK=$(( 2 * GPUS_PER_JOB ))
+fi
+
 print_header "Job Configuration"
 echo "  Run name:      $RUN_NAME"
 echo "  Run directory: $RUN_DIR"
@@ -270,7 +277,12 @@ export MKL_NUM_THREADS=4
 ARRAY_TASK_ID=\${SLURM_ARRAY_TASK_ID:-0}
 GPUS_PER_JOB=$GPUS_PER_JOB
 NJOBS=$NJOBS
-echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB, total jobs: \$NJOBS"
+
+# --exclusive below gives each step its own GPU, but caps it at one CPU unless asked.
+CPUS_PER_STEP=\$(( \${SLURM_CPUS_ON_NODE:-8} / GPUS_PER_JOB ))
+CPUS_PER_STEP=\$(( CPUS_PER_STEP >= 2 ? CPUS_PER_STEP : 2 ))  # rule of thumb: never < 2 CPUs/GPU
+
+echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB, total jobs: \$NJOBS, CPUs per step: \$CPUS_PER_STEP"
 EOF
 
 if [ "$CONTAINER_TYPE" == "apptainer" ]; then
@@ -300,7 +312,8 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running evaluate.py with job_id=$JOB_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none \\
+        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 \\
+            --cpus-per-task=\$CPUS_PER_STEP --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_EVALUATE \\
             $CONFIG_HYDRA_ARGS \\
             $EXTRA_ARGS \\

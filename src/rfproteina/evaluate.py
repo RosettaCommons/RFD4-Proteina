@@ -193,8 +193,10 @@ def run_evaluate(cfg: DictConfig) -> None:
     metrics_dir.mkdir(parents=True, exist_ok=True)
     refolding_results: list[dict] = []
     design_by_id = {m.get("example_id"): m for m in design_results if m.get("example_id")}
+    # Pass the tags so metrics that cannot fire are never set up -- an unused AF3
+    # oracle would otherwise start its warm worker and hold ~10 GB.
     for mm in filter(None, [oracle_mm, refold_mm, pass_mm]):
-        mm.on_validation_epoch_start()
+        mm.on_validation_epoch_start(val_dataset_tags=[set(metrics_tags or [])])
     # Sort by token_count ascending to avoid unnecessary oracle recompilation.
     sorted_arrays = sorted(
         parsed_arrays.items(),
