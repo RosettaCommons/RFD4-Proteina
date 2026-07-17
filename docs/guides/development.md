@@ -4,8 +4,8 @@ This guide is for **developers**: setting up a training environment on any clust
 training of the released model on your own data, and understanding datasets, design tasks, metrics,
 and the SLURM launchers.
 
-For inference and design usage, see the [main README](../README.md). For coding standards, see
-[CLAUDE.md](../CLAUDE.md).
+For inference and design usage, see the [main README](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md). For coding standards, see
+[CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md).
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ For inference and design usage, see the [main README](../README.md). For coding 
 ## Setup (any cluster, no container)
 
 Training runs in the same plain `uv` environment as inference — no apptainer, squashfs, or shared
-filesystem required. Install and configure exactly as in the [README Setup](../README.md#setup):
+filesystem required. Install and configure exactly as in the [README Setup](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#setup):
 
 ```bash
 bash setup.sh                      # choose "5) other" at the cluster prompt
@@ -85,7 +85,7 @@ The autoencoder is required for latent-diffusion training and is read from
 ### 2. Run the finetune
 
 Pass the released denoiser (downloaded to `$DATA_PATH` above) as `pretrain_ckpt_path` — it's the same
-checkpoint inference uses, named in [`configs/inference.yaml`](../configs/inference.yaml):
+checkpoint inference uses, named in [`configs/inference.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/inference.yaml):
 
 ```bash
 python src/rfproteina/train.py \
@@ -94,7 +94,7 @@ python src/rfproteina/train.py \
     +single=true +nolog=true
 ```
 
-- **`experiment=tutorial/finetune_test_dataset`** wires the tiny dataset ([`configs/experiment/tutorial/finetune_test_dataset.yaml`](../configs/experiment/tutorial/finetune_test_dataset.yaml)),
+- **`experiment=tutorial/finetune_test_dataset`** wires the tiny dataset ([`configs/experiment/tutorial/finetune_test_dataset.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/experiment/tutorial/finetune_test_dataset.yaml)),
   single GPU, and short epochs. Validation runs the checked-in `val/unconditional` set (unconditional
   monomer generation) with the AF3 refolding tag dropped, so it steps and validates without a container.
 - **`pretrain_ckpt_path`** starts a new run from the released weights (resets the optimizer/scheduler/
@@ -110,7 +110,7 @@ autoencoder, and model all work on your cluster.
 > **Architecture must match the checkpoint.** `train.py` builds the model from the `nn` config, not
 > from the checkpoint, so the two must agree. The released denoiser uses a triangle-multiplication
 > pair-update architecture that the default `nn` config does not — so the tutorial experiment
-> selects a matching one ([`configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml`](../configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml),
+> selects a matching one ([`configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml),
 > extracted from the checkpoint's own hyper-parameters) via `override /nn`. To finetune a different
 > checkpoint, select (or add) the `nn` config it was trained with; a mismatch surfaces as
 > `size mismatch` / `Missing key(s)` errors on `load_state_dict`.
@@ -123,7 +123,7 @@ autoencoder, and model all work on your cluster.
 
 The production `plinder` dataset reads CIFs from a squashfs mount
 (`${SQUASH_MOUNT_PATH,/squash}/plinder`). The tutorial dataset
-([`configs/datasets/train/test_dataset.yaml`](../configs/datasets/train/test_dataset.yaml)) instead
+([`configs/datasets/train/test_dataset.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/datasets/train/test_dataset.yaml)) instead
 points `loader.base_path` directly at `${DATA_PATH}/test_dataset/cifs`, a plain directory. Each
 parquet `path` row (`systems/<xx>/<id>/<id>.cif`) resolves against that base — no mounting required.
 To build your own dataset the same way, mirror this config with your parquet + CIF directory.
@@ -267,7 +267,7 @@ For offline validation on a val set, run it with `inference_experiment=inference
 
 Metrics subclass `rfproteina.metrics.metric.Metric` and score generated structures. They run inline
 during inference (`metrics_tags=[...]`) and during training validation. Refolding-based metrics use
-the **AF3 oracle**, which needs an apptainer (see the [README](../README.md#refolding--search-requires-af3)).
+the **AF3 oracle**, which needs an apptainer (see the [README](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#refolding--search-requires-af3)).
 
 **Offline evaluation** of already-generated structures (Hydra-based, like `generate.py`):
 
@@ -280,7 +280,7 @@ python src/rfproteina/evaluate.py \
 and register them in `configs/metrics/custom_metrics/` (both git-ignored; `setup.sh` scaffolds the
 entry config). Search rewards are configured inline in the search experiment config (see
 `configs/inference_experiment/inference_beam_example.yaml`). See
-[docs/custom_metrics.md](custom_metrics.md) for the full guide.
+the [custom metrics guide](custom_metrics.md) for the full walkthrough.
 
 ---
 

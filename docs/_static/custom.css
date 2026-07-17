@@ -1,0 +1,18 @@
+:root {
+  --rfproteina-rf: #a80c84;
+  --rfproteina-proteina: #4f9633;
+}
+
+.navbar-brand img {
+  max-height: 2.25rem;
+}
+
+a {
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+}
+
+.bd-header .navbar-nav > li > a.nav-link:hover,
+.bd-header .navbar-nav > li > a.nav-link:focus {
+  color: var(--rfproteina-rf);
+}

@@ -1,8 +1,8 @@
 # Inference Guide
 
 Full reference for running inference — examples, conditioning, partial diffusion, search, and every
-parameter. **New here? Start with the [main README](../README.md)** for setup (uv install, download
-the model, environment); this guide assumes that's done.
+parameter. **New here? Start with the [quickstart tutorial](../tutorial/quickstart.rst)** for installation,
+checkpoint download, and a first design; this guide assumes that's done.
 
 > Configuring inputs? **[Annotated CIF inputs](annotated_cif_inputs.md)** is the recommended format (with a [tutorial notebook](tutorials/annotated_cif_tutorial.ipynb)); the JSON [Input Specification](input.md) is legacy.
 
@@ -93,7 +93,7 @@ python src/rfproteina/generate.py \
 
 > [!TIP]
 > For a reusable config instead of one-off CLI overrides, start from
-> [`configs/inference_experiment/TEMPLATE.yaml`](../configs/inference_experiment/TEMPLATE.yaml) — it
+> [`configs/inference_experiment/TEMPLATE.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/inference_experiment/TEMPLATE.yaml) — it
 > documents all three ways to run inference (in-tree experiment config, CLI overrides, config file
 > anywhere on the filesystem).
 
@@ -134,7 +134,7 @@ python src/rfproteina/generate.py \
 > [!NOTE]
 > Refolding metrics and reward-guided search both use the **AF3 oracle**, which runs only inside an
 > apptainer container (or a native install), configured via the cluster env files (see the
-> [Developer Guide](DEVELOPMENT.md)). Plain generation needs none of it.
+> [Developer Guide](development.md)). Plain generation needs none of it.
 
 ### Running Metrics Inline
 
@@ -187,7 +187,7 @@ Add your own metrics without touching any tracked files. Two **git-ignored** dir
 
 The config is picked up automatically — no extra flags — and results land in `per_example_metrics.csv`, prefixed by the config name (e.g. `residue_count.n_residues`).
 
-**See [docs/custom_metrics.md](custom_metrics.md)** for the full walkthrough: writing a metric class, refolding metrics, splitting across files, and contributing one back.
+**See the [custom metrics guide](custom_metrics.md)** for the full walkthrough: writing a metric class, refolding metrics, splitting across files, and contributing one back.
 
 ### FoldSeek Diversity Clustering
 
@@ -318,7 +318,7 @@ Each design is a CIF with per-atom annotations recording how each residue was pr
 
 | Issue | Solution |
 | --- | --- |
-| `No .env file found for cluster 'digs'` | Set `export CLUSTER=local` and create `.ipd/.env.local` (see [Setup](../README.md#setup)) |
+| `No .env file found for cluster 'digs'` | Set `export CLUSTER=local` and create `.ipd/.env.local` (see [Setup](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#setup)) |
 | `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` and run `./scripts/download_example_data.sh "$DATA_PATH"` |
 | `atomworks not found` | `git submodule update --init lib/atomworks` |
 | `hydra not found` / import errors | Activate the venv: `source .venv/bin/activate` |

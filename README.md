@@ -14,8 +14,8 @@ Check out the **[RFProteína website](https://rosettacommons.github.io/RFD4-Prot
 
 Two ways in:
 
-- 🎯 **Run designs** → [inference quickstart](#inference-quickstart) below, then the full **[Inference guide](docs/INFERENCE.md)**.
-- 🛠️ **Train or develop** → the **[Training & Development guide](docs/DEVELOPMENT.md)**.
+- 🎯 **Run designs** → [inference quickstart](#inference-quickstart) below, then the full **[Inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html)**.
+- 🛠️ **Train or develop** → the **[Training & Development guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/development.html)**.
 
 ---
 
@@ -85,9 +85,9 @@ python src/rfproteina/generate.py \
 
 A CIF appears under `./runs/smoke/`. From here:
 
-- **[Full inference guide](docs/INFERENCE.md)** — design use cases (binders, enzymes, motif
+- **[Full inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html)** — design use cases (binders, enzymes, motif
   scaffolding), conditioning, partial diffusion, and relevant parameters.
-- **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** — the recommended input format (motifs, hotspots, ligands, bonds, H-bonds, RASA, PTMs, read natively; legacy JSON: [input spec](docs/input.md)).
+- **[Annotated CIF inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/annotated_cif_inputs.html)** — the recommended input format (motifs, hotspots, ligands, bonds, H-bonds, RASA, PTMs, read natively; legacy JSON: [input spec](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/input.html)).
 
 ### Reward-guided search
 
@@ -98,7 +98,7 @@ example config runs as-is on the monomer benchmark:
 python src/rfproteina/generate.py inference_experiment=inference_beam_example
 ```
 
-See **[Reward-Guided Search](docs/search.md)** for the strategy and reward parameters and how to build your own search config.
+See **[Reward-Guided Search](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/search.html)** for the strategy and reward parameters and how to build your own search config.
 
 ---
 
@@ -106,7 +106,7 @@ See **[Reward-Guided Search](docs/search.md)** for the strategy and reward param
 
 Continue training the released model on your own data, add datasets or design tasks, or work on the
 architecture — all in the same `uv` environment. See the
-**[Training & Development guide](docs/DEVELOPMENT.md)**, which includes a fresh-cluster,
+**[Training & Development guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/development.html)**, which includes a fresh-cluster,
 no-container walkthrough that finetunes the released checkpoint on a tiny example dataset.
 
 ---
@@ -114,4 +114,4 @@ no-container walkthrough that finetunes the released checkpoint on a tiny exampl
 ## Links
 
 - 🌐 **[Benchmarks &amp; gallery](https://rosettacommons.github.io/RFD4-Proteina/)** — how RFProteína compares (design quality, speed, compute).
-- 🎯 **[Inference guide](docs/INFERENCE.md)** · 🔎 **[Reward-guided search](docs/search.md)** · 🛠️ **[Training guide](docs/DEVELOPMENT.md)** · 📄 **[Annotated CIF inputs](docs/annotated_cif_inputs.md)** · 🤝 **[Contributing](CLAUDE.md)**
+- 🎯 **[Inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html)** · 🔎 **[Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/search.html)** · 🛠️ **[Training guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/development.html)** · 📄 **[Annotated CIF inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/annotated_cif_inputs.html)** · 🤝 **[Contributing](https://rosettacommons.github.io/RFD4-Proteina/latest/contributor_guide.html)**

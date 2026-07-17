@@ -41,20 +41,25 @@ def add_rasa_condition(
     probe_radius: float = 1.4,
     atom_radii: str | np.ndarray = "ProtOr",
     point_number: int = 100,
-    p_include_non_ligand: bool = 0.1,
+    p_include_non_ligand: float = 0.1,
     rasa_max: float = 0.2,
 ) -> dict:
-    """
-    probe_radius (float, optional): Van-der-Waals radius of the probe in Angstrom. Defaults to
-        1.4 (for water).
-    atom_radii (str | np.ndarray, optional): Atom radii set to use for calculation. Defaults to
-        "ProtOr". "ProtOr" will not get sasa's for hydrogen atoms and some other atoms, like ions
-        or certain atoms with charges
-    point_number (int, optional): Number of points in the Shrake-Rupley algorithm to sample for
-        calculating SASA. Defaults to 100.
-    p_include_non_ligand (float, optional): Probability of providing RASA conditioning for
-        non-ligand atoms. Defaults to 0.1.
-    rasa_max (float, optional): Maximum RASA value for binning. Defaults to 0.2.
+    """Add binned RASA conditioning to an example.
+
+    Args:
+        data: Example dictionary containing an atom array.
+        probe_radius: Van der Waals radius of the probe in Angstrom. Defaults to
+            1.4 for water.
+        atom_radii: Atom radii used for the calculation. ``"ProtOr"`` excludes
+            hydrogens and some ions or charged atoms. Defaults to ``"ProtOr"``.
+        point_number: Number of points sampled by the Shrake-Rupley algorithm.
+            Defaults to 100.
+        p_include_non_ligand: Probability of conditioning non-ligand atoms.
+            Defaults to 0.1.
+        rasa_max: Maximum RASA value used to construct bins. Defaults to 0.2.
+
+    Returns:
+        The example dictionary with RASA annotations added to its atom array.
     """
     atom_array = as_atom_array_plus(data["atom_array"])
 

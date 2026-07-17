@@ -5,12 +5,16 @@ advancing them iteratively while pruning based on reward scores. This balances
 exploration (branching) with exploitation (keeping only top candidates).
 
 Algorithm:
+
 1. Initialize beam with N noise samples at t=0
+
 2. While t < 1:
+
    - For each state in beam, generate L branches by running K denoising steps
    - Roll out each branch to completion to compute rewards R(x, s)
    - Select top-N branches by reward to form new beam
    - Update timestep t += K
+
 3. Return all samples that meet success criteria
 
 Key insight: We roll out to clean samples for reward evaluation instead of

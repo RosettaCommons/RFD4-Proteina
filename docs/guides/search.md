@@ -2,7 +2,7 @@
 
 Instead of sampling once, search explores multiple generation paths and keeps the ones a **reward**
 scores highest. **Beam search** ships ready to run; it can score candidates with arbitrary rewards; for example, we provide a default **AF3 oracle** implementation (which
-needs an apptainer — see [Evaluating Results](INFERENCE.md#evaluating-results)).
+needs an apptainer — see [Evaluating Results](inference.md#evaluating-results)).
 
 | Strategy | How it works | When to use |
 | --- | --- | --- |

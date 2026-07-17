@@ -26,11 +26,10 @@ def get_rasa_metrics(
     Returns:
         dict: Dictionary containing RASA adherence metrics
 
-    NOTE: RASA (Relative Accessible Surface Area) is computed using the Shrake-Rupley algorithm.
-    The conditioning bins match those used in training:
-        - buried: RASA in [0.0, 0.1)
-        - intermediate: RASA in [0.1, 0.2)
-        - exposed: RASA >= 0.2
+    Note:
+        RASA is computed with the Shrake-Rupley algorithm. Training uses buried
+        values in ``[0.0, 0.1)``, intermediate values in ``[0.1, 0.2)``, and
+        exposed values greater than or equal to ``0.2``.
     """
 
     output_metrics = {}

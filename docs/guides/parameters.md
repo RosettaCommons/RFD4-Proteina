@@ -1,7 +1,7 @@
 # Parameter Reference
 
 Every generation parameter, grouped by purpose. All arguments are `key=value` (Hydra style),
-never `--key value`. Back to the [Inference Guide](INFERENCE.md).
+never `--key value`. Back to the [Inference Guide](inference.md).
 
 ## Essential
 
@@ -12,7 +12,7 @@ The parameters you almost always want to set — their defaults are rarely what 
 | `out_dir` | Output directory. Set this to a real path for anything but a quick test. | `./runs/<run_name>` |
 | `num_replicates` | Designs generated per input example. `1` is only useful for a smoke test. | 1 |
 | `batch_size` | Designs processed in parallel on GPU. Start at 8; confirm your longest input fits at 1 first. | 1 |
-| `metrics_tags` | Evaluation metrics to compute inline (Hydra list) — see [Evaluating Results](INFERENCE.md#evaluating-results). Empty = none. | `[]` |
+| `metrics_tags` | Evaluation metrics to compute inline (Hydra list) — see [Evaluating Results](inference.md#evaluating-results). Empty = none. | `[]` |
 
 ## Inputs & checkpoints
 
@@ -35,7 +35,7 @@ The parameters you almost always want to set — their defaults are rarely what 
 
 ## Diversity (stochasticity)
 
-Higher values increase diversity but may reduce designability — see [Inference Noise Parameters](INFERENCE.md#inference-noise-parameters).
+Higher values increase diversity but may reduce designability — see [Inference Noise Parameters](inference.md#inference-noise-parameters).
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ Higher values increase diversity but may reduce designability — see [Inference
 
 ## Partial diffusion
 
-Refine an existing structure instead of generating from scratch — see [Partial Diffusion](INFERENCE.md#partial-diffusion).
+Refine an existing structure instead of generating from scratch — see [Partial Diffusion](inference.md#partial-diffusion).
 
 | Parameter | Description | Default |
 | --- | --- | --- |
