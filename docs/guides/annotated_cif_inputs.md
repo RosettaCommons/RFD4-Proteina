@@ -65,9 +65,11 @@ annotate exactly what you want the model to do by clicking on atoms, and **Save
 Active As** an annotated CIF that goes straight into the model. No config files
 are ever written.
 
-Full setup and usage live in the plugin README:
-[`lib/atomworks/src/atomworks/pymol_plugin/README.md`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/lib/atomworks/src/atomworks/pymol_plugin/README.md)
-(also symlinked at [`src/rfproteina/pymol/README.md`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/pymol/README.md)).
+Full setup and usage live in the plugin README, in the `atomworks` submodule:
+[`src/atomworks/pymol_plugin/README.md`](https://github.com/RosettaCommons/atomworks/tree/dev/src/atomworks/pymol_plugin/README.md)
+(also available locally at `lib/atomworks/src/atomworks/pymol_plugin/README.md`, and
+symlinked at `src/rfproteina/pymol/README.md`, once the submodule is initialized with
+`git submodule update --init`).
 
 The short version, from the **rfproteina repo root**:
 
