@@ -16,6 +16,7 @@ Inference
    guides/input
    guides/parameters
    guides/search
+   guides/metrics
 
 Design tasks
 ------------
@@ -37,5 +38,6 @@ Development and extension
    :maxdepth: 1
 
    guides/development
+   guides/metrics
    guides/custom_metrics
    guides/small_molecule_featurization
