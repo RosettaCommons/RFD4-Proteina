@@ -137,6 +137,27 @@ Create `configs/metrics/custom_metrics/all_custom_metrics.yaml` (git-ignored;
 `setup.sh` scaffolds it for you on first run). Use `# @package metrics` so Hydra
 merges your entries directly into the overall metrics config under the right keys.
 
+Each entry can also carry `required_tags_any` / `required_tags_all` / `prohibited_tags`, which gate
+whether the metric runs at all. Every metric run is gated by comparing these fields against
+whatever list you pass as `metrics_tags` on the CLI:
+
+- `required_tags_any: [a, b]` — runs if `metrics_tags` contains **at least one** of `a`, `b`.
+- `required_tags_all: [a, b]` — runs only if `metrics_tags` contains **both** `a` and `b`.
+- `prohibited_tags: [c]` — skipped if `metrics_tags` contains `c`, even if the required tags match.
+
+**These fields are optional, not required — but omitting them is a choice, not a no-op.** If a
+metric has none of the three set, it has no gate at all and runs on **every** generated design,
+regardless of what `metrics_tags` you pass. That's fine for something cheap and always-applicable
+(e.g. counting residues). Add a gate whenever your metric assumes something about the input that
+isn't universally true — for example, a metric that reads hotspot-conditioning data should declare
+`required_tags_any: ["hotspot_conditioning"]` so it only runs on inputs that actually have hotspots,
+rather than erroring (or silently returning junk) on inputs that don't.
+
+Design tags and refolding tags are **separate, unrelated namespaces** — there's no hierarchy or
+implication between them. A metric gated on `required_tags_any: ["design"]` will not run just
+because you passed `unconditional_refolding`, and vice versa; to run both metric families, pass
+both tags: `metrics_tags='[design, unconditional_refolding]'`.
+
 ```yaml
 # configs/metrics/custom_metrics/all_custom_metrics.yaml
 # @package metrics
@@ -216,7 +237,18 @@ pass_criteria:
 ## Step 3 — Run
 
 Custom metrics are picked up automatically (`all_custom_metrics.yaml` is a default). The most common
-use-case is to compute them **inline during generation** — just pass `metrics_tags`:
+use-case is to compute them **inline during generation** — just pass whichever tag(s) your
+metric(s) declared in `required_tags_any`/`required_tags_all` as `metrics_tags`. Common ones you'll
+see across this repo's built-in metrics: `design` (raw-structure design metrics — clash, bond
+length, SSE distribution, and any custom design metrics), `unconditional_refolding` (AF3 refolding +
+pLDDT/scRMSD, for unconditional generation), `ppi_refolding` / `motif_scaffold_refolding` /
+`sm_binder_refolding` / `ame_refolding` (task-specific AF3 refolding variants — see
+[Evaluating Results](INFERENCE.md#evaluating-results)), `hotspot_conditioning` (hotspot-obedience
+metrics, only meaningful if your input specifies hotspots), `3d_coordinate_conditioning` (motif
+coordinate RMSD metrics), and `rasa_conditioning` (RASA buried/exposed adherence metrics). Tags are
+just free-form strings matched by set intersection — there's no fixed enum to register against — so
+if you invent a new tag for a custom metric, remember to also pass that exact string in
+`metrics_tags`, or the metric will silently be skipped (no error):
 
 ```bash
 python src/rfproteina/generate.py \
