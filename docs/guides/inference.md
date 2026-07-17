@@ -11,7 +11,7 @@ checkpoint download, and a first design; this guide assumes that's done.
 - [Design Use Cases](#design-use-cases)
 - [Running Inference](#running-inference)
 - [Partial Diffusion](#partial-diffusion)
-- [Evaluating Results](#evaluating-results)
+- [Evaluating Results](#evaluating-results) — see also [Metrics Reference](metrics.md)
 - [Search Strategies](#search-strategies)
 - [Parameter Reference](#parameter-reference)
 - [Supported Conditioning](#supported-conditioning)
@@ -140,6 +140,8 @@ python src/rfproteina/generate.py \
 
 Pass `metrics_tags` during inference to compute metrics immediately after each design. Results are written to `per_example_metrics.csv` alongside the CIF files.
 
+**See [the metrics reference](metrics.md)** — every metric that ships enabled, what it outputs, and which tag turns it on, plus a walkthrough of adding your own config on top of an existing metric.
+
 `metrics_tags` takes a Hydra-style list — pass it as a bracket-quoted list:
 
 ```bash
@@ -164,7 +166,9 @@ python src/rfproteina/generate.py \
 | `rasa_conditioning` | RASA adherence metrics |
 | `interchain_interactions` | Interchain interaction (H-bond/π-stack/π-cation/salt-bridge/hydrophobic/metal-coordination) adherence and counts |
 
-Metrics that require a tag will be silently skipped if the tag is not present.
+Metrics that require a tag will be silently skipped if the tag is not present. This is a shortlist —
+**[metrics.md](metrics.md)** covers all 36 metrics/pass-criteria/filters that ship enabled, plus
+every ready-made-but-opt-in metric class.
 
 ### Concatenating Multi-Job Runs
 

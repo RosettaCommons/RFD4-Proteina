@@ -2,6 +2,10 @@
 
 This guide explains how to write and register your own evaluation metrics without modifying any tracked files. Your code stays local unless you decide to contribute it back.
 
+> Looking for what's already available? **[the metrics reference](metrics.md)** lists every metric that
+> ships enabled (and its tag), plus ready-made classes you can wire in with just a YAML config —
+> often what you want is already here, or a config away from it.
+
 Both `configs/metrics/custom_metrics/` and `src/rfproteina/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
 
 > **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `src/rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md) for contribution guidelines.

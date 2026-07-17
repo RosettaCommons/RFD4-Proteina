@@ -268,6 +268,7 @@ For offline validation on a val set, run it with `inference_experiment=inference
 Metrics subclass `rfproteina.metrics.metric.Metric` and score generated structures. They run inline
 during inference (`metrics_tags=[...]`) and during training validation. Refolding-based metrics use
 the **AF3 oracle**, which needs an apptainer (see the [README](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#refolding--search-requires-af3)).
+See the [metrics reference](metrics.md) for the full reference of what's already enabled and its tags.
 
 **Offline evaluation** of already-generated structures (Hydra-based, like `generate.py`):
 
