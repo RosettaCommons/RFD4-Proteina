@@ -48,7 +48,7 @@ if [ ! -f "$CUSTOM_METRICS_CONFIG" ]; then
 # @package metrics
 #
 # Git-ignored: register your own custom metrics here without touching tracked
-# files. See docs/custom_metrics.md for the full guide.
+# files. See docs/guides/custom_metrics.md for the full guide.
 #
 # inline_metrics:
 #   my_metric:
@@ -146,5 +146,6 @@ echo ""
 echo " Next steps:"
 echo "   1. Reload your shell:  source $RC_FILE"
 echo "   2. Activate the venv:  source $PROJECT_ROOT/.venv/bin/activate"
-echo "   3. Make some designs! See README.md for instructions."
+echo "   3. Follow the quickstart:"
+echo "      https://rosettacommons.github.io/RFD4-Proteina/latest/tutorial/quickstart.html"
 echo ""

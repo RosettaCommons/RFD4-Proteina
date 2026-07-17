@@ -15,7 +15,7 @@
 - [Full schema: `InputSpecification`](#full-schema-inputspecification)
 - [The `InputSelection` mini-language](#the-inputselection-mini-language)
 - [Unindexing specifics](#unindexing-specifics)
-- [FAQ / gotchas](#faq--gotchas)
+- [FAQ / gotchas](#faq-gotchas)
 - [Shorthand atoms](#shorthand-atoms)
 
 ---

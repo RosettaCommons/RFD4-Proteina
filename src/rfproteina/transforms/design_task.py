@@ -108,7 +108,8 @@ class RFD3DesignTask(DesignTaskABC):
     design task without having to specify all kwargs in each design task separately.
     All kwargs and default values are specified in the RFD3_DESIGN_TASK_DEFAULTS constant.
 
-    **kwargs: See RFD3_DESIGN_TASK_DEFAULTS for details.
+    Keyword Args:
+        See ``RFD3_DESIGN_TASK_DEFAULTS`` for supported options and defaults.
     """
 
     # Overrides for the RFD3_DESIGN_TASK_DEFAULTS. Subclasses can modify their defaults or set to {}

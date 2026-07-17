@@ -9,15 +9,14 @@
 
 - [Why annotated CIFs](#why-annotated-cifs)
 - [Two ways to make one](#two-ways-to-make-one)
-  - [Option A — the PyMOL plugin (AtomWorks Design Studio)](#option-a--the-pymol-plugin-atomworks-design-studio)
-  - [Option B — programmatically with AtomWorks](#option-b--programmatically-with-atomworks)
+  - [Option A — the PyMOL plugin (AtomWorks Design Studio)](#option-a-the-pymol-plugin-atomworks-design-studio)
+  - [Option B — programmatically with AtomWorks](#option-b-programmatically-with-atomworks)
 - [Running the model](#running-the-model)
 - [Supported annotations (reference)](#supported-annotations-reference)
 - [Interaction rules (read before conditioning)](#interaction-rules-read-before-conditioning)
 - [Charges and bonds](#charges-and-bonds)
 - [Expandable segments](#expandable-segments)
-- [How annotations are stored in the CIF](#how-annotations-are-stored-in-the-cif)
-- [FAQ / gotchas](#faq--gotchas)
+- [FAQ / gotchas](#faq-gotchas)
 
 ---
 
@@ -52,7 +51,7 @@ An annotated CIF is built (or loaded) once with correct atoms, bonds, and
 charges, then carries your design intent as annotations straight into the model.
 **What you see is what the model gets.**
 
-> See `docs/input.md` for the **legacy** JSON `InputSpecification` (dialect 2).
+> See the [legacy input guide](input.md) for the JSON `InputSpecification` (dialect 2).
 > It is still supported for RFD3 compatibility, but annotated CIFs are preferred
 > for anything involving newer conditioning types or complex inputs like non-canonicals,
 > PTMs, small molecules, etc.
@@ -67,8 +66,8 @@ Active As** an annotated CIF that goes straight into the model. No config files
 are ever written.
 
 Full setup and usage live in the plugin README:
-[`lib/atomworks/src/atomworks/pymol_plugin/README.md`](../lib/atomworks/src/atomworks/pymol_plugin/README.md)
-(also symlinked at [`src/rfproteina/pymol/README.md`](../src/rfproteina/pymol/README.md)).
+[`lib/atomworks/src/atomworks/pymol_plugin/README.md`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/lib/atomworks/src/atomworks/pymol_plugin/README.md)
+(also symlinked at [`src/rfproteina/pymol/README.md`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/pymol/README.md)).
 
 The short version, from the **rfproteina repo root**:
 
@@ -230,7 +229,7 @@ polypeptide expandable segments are supported for now.
 
 ## FAQ / gotchas
 
-**Do I have to use annotated CIFs?** No — JSON/YAML (`docs/input.md`) still works
+**Do I have to use annotated CIFs?** No — JSON/YAML (see the [legacy input guide](input.md)) still works
 for RFD3-style contigs. But for non-canonicals, PTMs, small molecules, bonds,
 charges, or new conditioning types not available in RFD3, annotated CIFs are strongly
 preferred and lossless.

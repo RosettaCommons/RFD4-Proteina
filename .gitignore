@@ -85,6 +85,8 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/auto_examples/
+docs/sg_execution_times.rst
 
 # PyBuilder
 .pybuilder/
@@ -206,6 +208,7 @@ dev.py
 *.gif
 *.bmp
 *.tiff
+!docs/_static/wordmark.svg
 
 # Versioning
 **/version.py

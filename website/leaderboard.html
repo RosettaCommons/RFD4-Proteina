@@ -1,0 +1,214 @@
+<meta charset="utf-8">
+<title>RFD4-Proteína — Leaderboard</title>
+<style>
+
+  /* dark by default; the light palette is opt-in via data-theme="light" */
+  :root{ --bg:#141414; --panel:#1c1c1b; --ink:#fff; --ink2:#c9c8bf; --muted:#928f86;
+         --grid:#2c2c2a; --hair:#383835; --band:#232322; --accent:#c22a9c; --rf:#a80c84; --pt:#4f9633; }
+  @media (prefers-color-scheme:light){ :root{ --bg:#141414; --panel:#1c1c1b; --ink:#fff; --ink2:#c9c8bf;
+         --muted:#928f86; --grid:#2c2c2a; --hair:#383835; --band:#232322; --accent:#c22a9c; --rf:#a80c84; --pt:#4f9633; } }
+  :root[data-theme="dark"]{ --bg:#1a1a19; --panel:#212120; --ink:#fff; --ink2:#c3c2b7; --muted:#8f8e86;
+         --grid:#2e2e2c; --hair:#3a3a37; --band:#242423; --accent:#c22a9c; --rf:#a80c84; --pt:#4f9633; }
+  :root[data-theme="light"]{ --bg:#fcfcfb; --panel:#fff; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8880;
+         --grid:#e6e5e1; --hair:#dedcd6; --band:#f5f4f0; --accent:#a80c84; --rf:#a80c84; --pt:#2f7a1f; }
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:30px 22px 60px}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:-.015em}
+  .lede{color:var(--ink2);margin:0 0 22px;max-width:82ch;font-size:13.5px}
+  h2{font-size:15.5px;margin:34px 0 3px;letter-spacing:-.01em}
+  .sub{color:var(--ink2);font-size:12.5px;margin:0 0 14px;max-width:82ch}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 18px;
+            padding:11px 13px;background:var(--panel);border:1px solid var(--hair);border-radius:10px}
+  .ctl{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink2)}
+  .mchips{display:flex;gap:6px;flex-wrap:wrap}
+  .mchip{font:inherit;font-size:12px;padding:4px 10px;border-radius:99px;cursor:pointer;
+         border:1px solid var(--hair);background:var(--panel);color:var(--muted);display:flex;gap:6px;align-items:center}
+  .mchip .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.35}
+  .mchip[aria-pressed="true"]{color:var(--ink);border-color:currentColor}
+  .mchip[aria-pressed="true"] .dot{opacity:1}
+  select{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid var(--hair);border-radius:6px;
+         background:var(--panel);color:var(--ink)}
+  .seg{display:inline-flex;border:1px solid var(--hair);border-radius:7px;overflow:hidden}
+  .seg button{font:inherit;font-size:12.5px;padding:5px 11px;border:0;background:var(--panel);color:var(--ink2);cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:12px 12px 6px}
+  .card h3{font-size:12.5px;margin:0 0 2px;color:var(--ink)}
+  .card .cap{font-size:11.5px;color:var(--muted);margin:0 0 6px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .tickt{fill:var(--muted);font-size:10px}
+  .axl{fill:var(--ink2);font-size:10.5px}
+  .tlab{fill:var(--ink2);font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--ink2);margin:4px 0 10px}
+  .legend .key{white-space:nowrap;align-items:center}
+  .legend svg{width:auto;height:auto;flex:none;display:block}
+  .key{display:flex;gap:6px;align-items:center}
+  .sw{width:20px;height:2.5px;border-radius:2px}
+  .rowg:hover .band{fill:var(--grid);opacity:.6}
+  .note{color:var(--muted);font-size:12px;margin-top:16px;max-width:88ch}
+  .note b{color:var(--ink2)}
+  .tip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--hair);border-radius:8px;
+       padding:8px 10px;font-size:12px;box-shadow:0 6px 22px rgba(0,0,0,.18);opacity:0;transition:opacity .08s;z-index:9}
+  .tip .t{color:var(--ink);font-weight:600;margin-bottom:3px}
+  .tip .r{display:flex;justify-content:space-between;gap:16px;color:var(--ink2)}
+  .scroller{overflow-x:auto}
+  .sp{cursor:crosshair}
+  .sp:hover{fill:rgba(127,212,255,.25)}
+  @media (max-width:980px){ .grid6{grid-template-columns:1fr} }
+
+  .logobar{display:flex;gap:30px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 4px}
+  .logobar img{display:block;width:auto}
+  .logobar img:nth-of-type(-n+2){height:50px}      /* IPD lockup (horizontal) */
+  .logobar img:nth-last-of-type(-n+2){height:74px} /* NVIDIA (stacked) */
+  .logobar .lt{display:none}
+  .logobar .dk{display:block}
+  .logobar .div{width:1px;height:44px;background:var(--hair)}
+
+  :root[data-theme="dark"] .logobar .lt{display:none}
+  :root[data-theme="dark"] .logobar .dk{display:block}
+  :root[data-theme="light"] .logobar .lt{display:block}
+  :root[data-theme="light"] .logobar .dk{display:none}
+  .secttl{font-size:20px;letter-spacing:-.02em;margin:0 0 5px;font-weight:700}
+  .sectbreak{height:1px;background:var(--hair);margin:46px 0 32px}
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 22px;
+       border-bottom:1px solid var(--hair);position:sticky;top:0;background:var(--bg);z-index:20;
+       backdrop-filter:blur(8px)}
+  .brand{font-weight:800;letter-spacing:-.02em;font-size:16px;text-decoration:none}
+  .navlinks{display:flex;gap:4px}
+  .navlinks a{font-size:13px;color:var(--ink2);text-decoration:none;padding:6px 11px;border-radius:7px}
+  .navlinks a:hover{background:var(--band);color:var(--ink)}
+  .navlinks a[aria-current="page"]{background:var(--band);color:var(--ink);font-weight:600}
+  .mast{border-bottom:1px solid var(--hair);padding-bottom:26px;margin-bottom:26px;text-align:center}
+  .eyebrow{display:flex;gap:9px;align-items:center;justify-content:center;font-size:12px;color:var(--muted);margin-bottom:10px}
+  .chip{padding:3px 9px;border:1px solid var(--hair);border-radius:99px;color:var(--ink2)}
+  .hero-title{font-size:clamp(48px,8.5vw,104px);line-height:1;letter-spacing:-.04em;margin:6px 0 4px;font-weight:800}
+  .gradRF{color:var(--rf)}      /* RF       = IPD purple */
+  .gradPT{color:var(--pt)}      /* Proteína = IPD dark green */
+  .hero-sub{font-size:14.5px;color:var(--ink2);max-width:74ch;margin:0 auto}
+  .stage{margin:26px auto 0;max-width:1000px}
+  .frame{position:relative}
+  #viewer{width:100%;aspect-ratio:16/9;z-index:1;border:1px solid var(--hair);border-radius:14px;position:relative;
+          background:radial-gradient(120% 120% at 30% 15%, #10202c 0%, #05070a 100%);overflow:hidden}
+  .overlay{position:absolute;right:12px;bottom:12px;z-index:3;display:grid;grid-template-columns:auto auto;
+           gap:4px 14px;padding:8px 10px;border-radius:9px;background:rgba(8,12,17,.74);backdrop-filter:blur(7px);
+           border:1px solid rgba(255,255,255,.10);text-align:left;pointer-events:none}
+  .overlay .k{font-size:9.5px;color:#93a3b5;letter-spacing:.02em;line-height:1.2}
+  .overlay .v{font-size:13px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.25}
+  .caption{position:absolute;left:12px;bottom:12px;text-align:left;pointer-events:none;z-index:3;
+           padding:8px 11px;border-radius:9px;background:rgba(8,12,17,.74);backdrop-filter:blur(7px);
+           border:1px solid rgba(255,255,255,.10);max-width:46%}
+  .caption .nm{font-size:14px;font-weight:600;color:#fff;line-height:1.3}
+  .caption .bl{font-size:11px;color:#a8b6c5;line-height:1.35;margin-top:1px}
+  .kindpill{display:inline-block;font-size:9.5px;color:#cfe3a0;background:#76b90026;border:1px solid #76b90059;
+            border-radius:99px;padding:2px 8px;margin-bottom:6px}
+  .hint{position:absolute;right:12px;top:12px;font-size:10.5px;color:#a8b6c5;pointer-events:none;z-index:3;
+         padding:4px 9px;border-radius:99px;background:rgba(8,12,17,.6);border:1px solid rgba(255,255,255,.08)}
+  .thumbs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .thumb{padding:7px 12px;border:1px solid var(--hair);border-radius:9px;background:var(--panel);cursor:pointer;
+         font-size:12px;color:var(--ink2)}
+  .thumb[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);box-shadow:0 0 0 1px var(--accent) inset}
+  .passnote{font-size:12px;color:var(--muted);margin-top:12px}
+  @media (max-width:860px){ .overlay{position:static;margin-top:10px;background:var(--panel);
+      border-color:var(--hair)} .overlay .k{color:var(--muted)} .overlay .v{color:var(--ink)} }
+
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--hair);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;letter-spacing:.02em}
+  th[data-k]{cursor:pointer;user-select:none}
+  th[data-k]:hover,th[data-k]:focus-visible{color:var(--ink)}
+  th[aria-sort]{color:var(--ink)}
+  tbody tr:hover{background:var(--band)}
+  td.best{font-weight:700;color:var(--ink)}
+  .mdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+  .lbnote{color:var(--muted);font-size:12px;margin-top:16px;max-width:88ch}
+</style>
+<nav class="nav">
+  <a class="brand" href="index.html"><span class="gradRF">RFD4-</span><span class="gradPT">Proteína</span></a>
+  <div class="navlinks">
+    <a href="index.html" data-p="home">Home</a>
+    <a href="leaderboard.html" data-p="leaderboard" aria-current="page">Leaderboard</a>
+    <a href="latest/index.html" data-p="docs">Documentation</a>
+  </div>
+</nav>
+
+<div class="wrap">
+<h2 class="secttl">Leaderboard</h2>
+<p class="sub">Every model, every benchmark, one metric code path. <b>Clustered</b> = distinct passing folds &divide; designs
+(Foldseek TM 0.5). <b>Per GPU-hour</b> = clustered successes divided by measured GPU cost (sampling + AF3 refold).
+Click a column to sort. Bold marks the best value in each benchmark.</p>
+<div class="scroller"><table id="lb">
+  <thead><tr>
+    <th data-k="bench" tabindex="0">Benchmark</th><th data-k="model" tabindex="0">Model</th>
+    <th data-k="clust" tabindex="0">Clustered</th><th data-k="raw" tabindex="0">Raw pass</th>
+    <th data-k="cost" tabindex="0">GPU-s / design</th><th data-k="perh" tabindex="0">Clustered / GPU-h</th>
+    <th data-k="n" tabindex="0">Targets</th>
+  </tr></thead><tbody></tbody>
+</table></div>
+
+<h2 class="secttl" style="margin-top:40px">Batch-one cost at L=200</h2>
+<p class="sub">Single-design sampling on one H200 (excludes the AF3 refold used for scoring).</p>
+<div class="scroller"><table>
+  <thead><tr><th>Model</th><th>Latency</th><th>Peak memory</th><th>Sampler steps</th><th>OOM at</th></tr></thead>
+  <tbody>
+    <tr><td><span class="mdot" style="background:#a80c84"></span>RFD4-Proteína</td><td class="best">1.1463 s</td>
+        <td class="best">2.036 GB</td><td>100</td><td>4450 res</td></tr>
+    <tr><td><span class="mdot" style="background:#1f78a8"></span>RFD3</td><td>15.3093 s</td>
+        <td>7.791 GB</td><td>200</td><td>1000 res</td></tr>
+    <tr><td><span class="mdot" style="background:#7346c0"></span>DISCO model</td><td>201.4942 s</td>
+        <td>5.316 GB</td><td>200</td><td>2200 res</td></tr>
+  </tbody>
+</table></div>
+
+<p class="lbnote"><b>Footnotes.</b> The DISCO model ran AF3 at 5 recycles rather than 10 recycles / 5 samples, which
+<i>inflates</i> its pass rate. On MCSA fixed-ligand all models are n-matched to 96 designs/target, since clustered pass
+is clusters &divide; n. Proteína-Complexa's sampling cost is <i>assumed equal to RFD4-Proteína's</i> (not separately
+benchmarked), and it is absent from the batch-one table. Targets whose ligands crash the AF3 atom-mapping are excluded
+(5 on MCSA, 8 on DISCO) rather than scored as failures.</p>
+</div>
+<script>
+const R = [{"bench": "MCSA \u2014 fixed ligand", "benchkey": "mcsa_fixed", "model": "RFD4-Proteína", "color": "#a80c84", "clust": 0.1866, "raw": 0.2893, "cost": 6.7, "perh": 100.3, "n": 35}, {"bench": "MCSA \u2014 fixed ligand", "benchkey": "mcsa_fixed", "model": "RFD3", "color": "#1f78a8", "clust": 0.0681, "raw": 0.0896, "cost": 10.0, "perh": 24.5, "n": 35}, {"bench": "MCSA \u2014 fixed ligand", "benchkey": "mcsa_fixed", "model": "Proteína-Complexa", "color": "#5f9400", "clust": 0.0762, "raw": 0.1076, "cost": 6.7, "perh": 40.9, "n": 35}, {"bench": "MCSA \u2014 unfixed ligand", "benchkey": "mcsa_unfixed", "model": "RFD4-Proteína", "color": "#a80c84", "clust": 0.2224, "raw": 0.3373, "cost": 6.7, "perh": 119.5, "n": 33}, {"bench": "MCSA \u2014 unfixed ligand", "benchkey": "mcsa_unfixed", "model": "RFD3", "color": "#1f78a8", "clust": 0.0583, "raw": 0.1009, "cost": 10.0, "perh": 21.0, "n": 33}, {"bench": "DISCO \u2014 ligand binders", "benchkey": "disco", "model": "RFD4-Proteína", "color": "#a80c84", "clust": 0.3176, "raw": 0.554, "cost": 4.95, "perh": 231.0, "n": 153}, {"bench": "DISCO \u2014 ligand binders", "benchkey": "disco", "model": "RFD3", "color": "#1f78a8", "clust": 0.1827, "raw": 0.2771, "cost": 8.55, "perh": 76.9, "n": 153}, {"bench": "DISCO \u2014 ligand binders", "benchkey": "disco", "model": "DISCO model", "color": "#4a3aa7", "clust": 0.1393, "raw": 0.2667, "cost": 205.8, "perh": 2.4, "n": 153}];
+let sortK = 'perh', sortDir = -1;
+const best = {};                                    // best value per benchmark per column
+['clust','raw','perh'].forEach(k=>{ R.forEach(r=>{
+  const key = r.benchkey + '|' + k;
+  best[key] = Math.max(best[key] ?? -Infinity, r[k]);
+}); });
+R.forEach(r=>{ const key=r.benchkey+'|cost'; best[key]=Math.min(best[key] ?? Infinity, r.cost); });
+function draw(){
+  const rows=[...R].sort((a,b)=>{
+    const x=a[sortK], y=b[sortK];
+    return (typeof x==='string' ? x.localeCompare(y) : x-y) * sortDir;
+  });
+  document.querySelector('#lb tbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.bench}</td>
+      <td><span class="mdot" style="background:${r.color}"></span>${r.model}</td>
+      <td class="${r.clust===best[r.benchkey+'|clust']?'best':''}">${r.clust.toFixed(3)}</td>
+      <td class="${r.raw===best[r.benchkey+'|raw']?'best':''}">${r.raw.toFixed(3)}</td>
+      <td class="${r.cost===best[r.benchkey+'|cost']?'best':''}">${r.cost}</td>
+      <td class="${r.perh===best[r.benchkey+'|perh']?'best':''}">${r.perh.toFixed(1)}</td>
+      <td>${r.n}</td>
+    </tr>`).join('');
+  document.querySelectorAll('#lb th').forEach(th=>{
+    if(th.dataset.k===sortK) th.setAttribute('aria-sort', sortDir<0?'descending':'ascending');
+    else th.removeAttribute('aria-sort');
+  });
+}
+function sortBy(th){
+  const k=th.dataset.k;
+  if(k===sortK) sortDir*=-1; else { sortK=k; sortDir = (k==='bench'||k==='model') ? 1 : -1; }
+  draw();
+}
+document.querySelectorAll('#lb th[data-k]').forEach(th=>{
+  th.addEventListener('click', ()=>sortBy(th));
+  th.addEventListener('keydown', event=>{
+    if(event.key==='Enter'||event.key===' '){
+      event.preventDefault();
+      sortBy(th);
+    }
+  });
+});
+draw();
+</script>

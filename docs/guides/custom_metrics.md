@@ -4,7 +4,7 @@ This guide explains how to write and register your own evaluation metrics withou
 
 Both `configs/metrics/custom_metrics/` and `src/rfproteina/metrics/custom_metrics/` are entirely git-ignored — nothing you put in them is ever tracked. `setup.sh` scaffolds an empty `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run; the Python-side directory is created the moment you drop your first metric module into it.
 
-> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `src/rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](../CLAUDE.md) for contribution guidelines.
+> **Broadly useful?** If your metric measures something general, consider contributing it. Move the class to a tracked file under `src/rfproteina/metrics/`, add a YAML entry to a tracked config file, and open a pull request. See [CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md) for contribution guidelines.
 
 ---
 
@@ -243,7 +243,7 @@ see across this repo's built-in metrics: `design` (raw-structure design metrics 
 length, SSE distribution, and any custom design metrics), `unconditional_refolding` (AF3 refolding +
 pLDDT/scRMSD, for unconditional generation), `ppi_refolding` / `motif_scaffold_refolding` /
 `sm_binder_refolding` / `ame_refolding` (task-specific AF3 refolding variants — see
-[Evaluating Results](INFERENCE.md#evaluating-results)), `hotspot_conditioning` (hotspot-obedience
+[Evaluating Results](inference.md#evaluating-results)), `hotspot_conditioning` (hotspot-obedience
 metrics, only meaningful if your input specifies hotspots), `3d_coordinate_conditioning` (motif
 coordinate RMSD metrics), and `rasa_conditioning` (RASA buried/exposed adherence metrics). Tags are
 just free-form strings matched by set intersection — there's no fixed enum to register against — so
@@ -264,7 +264,7 @@ Results land in `per_example_metrics.csv`, with column names prefixed by the con
 
 To score **already-generated** structures instead, run the same metrics offline with
 `evaluate.py` (`inputs=<dir> out_dir=<dir> metrics_tags='[...]'`) — see the
-[Developer Guide](DEVELOPMENT.md).
+[Developer Guide](development.md).
 
 ---
 
@@ -297,4 +297,4 @@ git push -u origin HEAD
 # 5. Navigate to the foundry-dev GitHub page and open a pull request in the web interface
 ```
 
-See [CLAUDE.md](../CLAUDE.md) for the full commit message format and PR checklist.
+See [CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md) for the full commit message format and PR checklist.
