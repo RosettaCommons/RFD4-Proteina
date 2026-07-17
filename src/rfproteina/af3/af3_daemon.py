@@ -122,6 +122,10 @@ def _safe_unlink(path: str) -> None:
 
 
 def _serve(args: argparse.Namespace) -> int:
+    if args.skip_if_no_env and not all(os.environ.get(v) for v in _REQUIRED_ENV_VARS):
+        print("[af3-daemon] AF3 env vars not set; not serving.", file=sys.stderr)
+        return 0
+
     sock_path = args.socket_path
     if os.path.exists(sock_path):
         _safe_unlink(sock_path)
@@ -369,6 +373,11 @@ def main() -> int:
         help="Path to run_alphafold_batch.py.",
     )
     s.add_argument("--gpu-device", type=int, default=0, help="Driver-level GPU index for the warm worker.")
+    s.add_argument(
+        "--skip-if-no-env",
+        action="store_true",
+        help=f"Exit 0 without binding the socket if any of {', '.join(_REQUIRED_ENV_VARS)} is unset.",
+    )
 
     l = sub.add_parser("launch", help="Spawn N serve daemons and block on signals.")
     l.add_argument("--num-gpus", type=int, required=True)
