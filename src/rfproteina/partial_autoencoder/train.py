@@ -366,15 +366,6 @@ def main(cfg_exp: DictConfig) -> None:
     if hasattr(dist_strategy, "_target_"):
         dist_strategy = hydra.utils.instantiate(dist_strategy)
 
-    # Gradient clipping must be handled manually when Muon is enabled (manual optimization).
-    muon_patterns = list(cfg_exp.opt.get("muon_param_patterns") or [])
-    gradient_kwargs = {}
-    if not muon_patterns:
-        gradient_kwargs = {
-            "gradient_clip_algorithm": "norm",
-            "gradient_clip_val": cfg_exp.opt.get("gradient_clip_val", 1.0),
-        }
-
     trainer = L.Trainer(
         max_epochs=cfg_exp.opt.max_epochs,
         accelerator=cfg_exp.hardware.accelerator,
@@ -391,12 +382,10 @@ def main(cfg_exp: DictConfig) -> None:
         plugins=plugins,
         limit_train_batches=cfg_exp.opt.get("limit_train_batches", 1.0),
         limit_val_batches=cfg_exp.opt.get("limit_val_batches", 1.0),
-        accumulate_grad_batches=cfg_exp.opt.accumulate_grad_batches,
         num_sanity_val_steps=cfg_exp.opt.get("num_sanity_val_steps", 1),
         precision=get_training_precision(cfg_exp),
         use_distributed_sampler=False,
         profiler=cfg_exp.log.get("profiler", None),
-        **gradient_kwargs,
     )
 
     # ==============================================================================

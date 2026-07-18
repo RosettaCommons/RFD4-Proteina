@@ -1,7 +1,6 @@
 import hashlib
 import os
 import random
-import re
 import time
 from contextlib import nullcontext
 from pathlib import Path
@@ -53,6 +52,7 @@ from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
+from rfproteina.utils.optim_utils import build_optimizers
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
@@ -361,10 +361,9 @@ class Proteina(L.LightningModule):
 
         self.nn_ag = None
 
-        # Optimizers
-        muon_patterns = list(self.cfg_exp.opt.get("muon_param_patterns") or [])
-        if muon_patterns:
-            self.automatic_optimization = False
+        # Muon and Adam are stepped by hand in training_step, which requires manual optimization.
+        # Gradient clipping and accumulation are handled there too, not by the Trainer.
+        self.automatic_optimization = False
 
         # Search integration
         self.search_strategy = None
@@ -423,28 +422,7 @@ class Proteina(L.LightningModule):
         return autoencoder, autoencoder.latent_dim
 
     def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
-        muon_patterns = [re.compile(p) for p in (self.cfg_exp.opt.get("muon_param_patterns") or [])]
-        if muon_patterns:
-            muon_params, adam_params = [], []
-            for name, param in self.named_parameters():
-                if not param.requires_grad:
-                    continue
-                if any(pat.search(name) for pat in muon_patterns):
-                    muon_params.append(param)
-                else:
-                    adam_params.append(param)
-
-            return [
-                torch.optim.Muon(
-                    muon_params, lr=self.cfg_exp.opt.lr, adjust_lr_fn=self.cfg_exp.opt.get("muon_adjust_lr_fn")
-                ),
-                torch.optim.Adam(adam_params, lr=self.cfg_exp.opt.lr),
-            ]
-        else:
-            return torch.optim.Adam(
-                [p for p in self.parameters() if p.requires_grad],
-                lr=self.cfg_exp.opt.lr,
-            )
+        return build_optimizers(self.named_parameters(), self.cfg_exp.opt)
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
@@ -637,31 +615,35 @@ class Proteina(L.LightningModule):
                 self.update_n_log_nsamples_processed(bs)
                 self.log_nparams()
 
-                if not self.automatic_optimization:
-                    should_step = (batch_idx + 1) % self.cfg_exp.opt.get("accumulate_grad_batches", 1) == 0
+                should_step = (batch_idx + 1) % self.cfg_exp.opt.get("accumulate_grad_batches", 1) == 0
 
-                    # If we are not stepping, we wrap backward in no_sync to stay local
-                    if not should_step:
-                        with self.trainer.strategy.no_sync(self):
-                            self.manual_backward(train_loss)
-                    else:
+                # If we are not stepping, we wrap backward in no_sync to stay local
+                if not should_step:
+                    with self.trainer.strategy.no_sync(self):
                         self.manual_backward(train_loss)
+                else:
+                    self.manual_backward(train_loss)
 
-                        muon_opt, adam_opt = self.optimizers()
+                    # [muon, adam], or just adam if the exclude patterns left Muon nothing.
+                    optimizers = self.optimizers()
+                    if not isinstance(optimizers, list):
+                        optimizers = [optimizers]
 
-                        clip_val = self.cfg_exp.opt.gradient_clip_val
-                        self.clip_gradients(muon_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
-                        self.clip_gradients(adam_opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+                    clip_val = self.cfg_exp.opt.gradient_clip_val
+                    for opt in optimizers:
+                        self.clip_gradients(opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
 
-                        muon_opt.step()
-                        # undo Muon's bump here so both hooks see the same global_step
-                        manual_opt = self.trainer.fit_loop.epoch_loop.manual_optimization
-                        manual_opt.optim_step_progress.total.completed -= 1
-                        manual_opt.optim_step_progress.current.completed -= 1
-                        adam_opt.step()
+                    manual_opt = self.trainer.fit_loop.epoch_loop.manual_optimization
+                    for i, opt in enumerate(optimizers):
+                        opt.step()
+                        # Lightning bumps global_step on every manual step; undo all but the last
+                        # so one training step is one global_step and every hook sees the same value.
+                        if i < len(optimizers) - 1:
+                            manual_opt.optim_step_progress.total.completed -= 1
+                            manual_opt.optim_step_progress.current.completed -= 1
 
-                        muon_opt.zero_grad()
-                        adam_opt.zero_grad()
+                    for opt in optimizers:
+                        opt.zero_grad()
 
             # Return dict with loss and extra data for callbacks.
             # Lightning uses the reserved "loss" key for backpropagation - other keys are

@@ -26,7 +26,6 @@ class PairReprUpdate(torch.nn.Module):
         self.linear_x = torch.nn.Linear(token_dim, int(2 * pair_dim), bias=False)
 
         if use_tri_mult:
-            tri_mult_c = min(pair_dim, tri_mult_c)
             self.tri_mult_out = TriangleMultiplicationOutgoing(c_z=pair_dim, c_hidden=tri_mult_c)
             self.tri_mult_in = TriangleMultiplicationIncoming(c_z=pair_dim, c_hidden=tri_mult_c)
         self.transition_out = PairTransition(c_z=pair_dim, n=expansion_factor_transition)

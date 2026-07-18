@@ -1110,7 +1110,7 @@ class FeaturizeChainCentroid(Transform):
     """Write per-chain centroid (from ``coord_annotation``, plus Gaussian noise) to ``C_CENTROID``.
 
     Centroid conditioning is all-or-nothing per example: when the per-example gate fires, every
-    chain with resolved coordinates receives a centroid; otherwise none do.
+    chain with at least one resolved coordinate receives a centroid; otherwise none do.
 
     Args:
         p_add_centroid_condition: Per-example gate probability.
