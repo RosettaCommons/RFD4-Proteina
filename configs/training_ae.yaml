@@ -53,7 +53,10 @@ force_precision_f32: False  # If false will use bf16-mixed precision
 opt:
   lr: 0.0001
   gradient_clip_val: 1.0
-  muon_param_patterns: []
+  muon_exclude_param_patterns:  # Kept on Adam (Muon also never sees non-2D params: norms, biases)
+    - '_factory\.'  # FeatureFactory input embeddings (init_repr_factory, cond_factory, pair_rep_factory)
+    - '^encoder\.latent_decoder_mean_n_log_scale\.'  # encoder output head
+    - '^decoder\.(logit_linear|struct_linear)\.'  # decoder output heads
   muon_adjust_lr_fn: "match_rms_adamw"
   max_epochs: 10000000
   accumulate_grad_batches: 1

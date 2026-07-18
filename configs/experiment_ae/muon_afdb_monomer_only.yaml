@@ -51,8 +51,3 @@ datasets:
 
 opt:
   val_every_n_epochs: 1
-  muon_param_patterns:
-    - '^encoder\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
-    - '^encoder\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
-    - '^decoder\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
-    - '^decoder\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'

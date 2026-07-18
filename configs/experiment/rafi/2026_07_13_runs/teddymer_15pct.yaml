@@ -1,0 +1,17 @@
+# @package _global_
+# 2026_07_13_runs_base, but with ted_dimers (the base's existing
+# ted_dimers_train dataset) bumped to 15% frequency, up from 3%. The extra
+# 12% is taken out of afdb_monomer (0.75 -> 0.63) so datasets.train
+# probabilities still sum to 1.0.
+defaults:
+  - /experiment/rafi/2026_07_13_runs_base
+  - _self_
+
+run_name_: 2026_07_13_runs_teddymer_15pct
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.63
+    ted_dimers:
+      probability: 0.15

@@ -1,0 +1,29 @@
+# @package _global_
+# 2026_07_13_runs_base, but training entirely on afdb_monomer (probability
+# 1.0; the other four training datasets zeroed out -- probabilities across
+# datasets.train must sum to 1.0). AFDB's own design tasks (motif_scaffold,
+# tip_atom, tip_atom_partial_ligand, tip_atom_pocket, already configured with
+# p_internal_coords in the base) are left untouched -- only the dataset mix
+# changes. 4 nodes. Matches the precedent set by the now-deleted
+# rafi/pair_trimult_every3_pretrain_afdb_only.yaml.
+defaults:
+  - /experiment/rafi/2026_07_13_runs_base
+  - _self_
+
+run_name_: 2026_07_13_runs_afdb_pretrain_4nodes
+
+hardware:
+  nnodes_: 4
+
+datasets:
+  train:
+    afdb_monomer:
+      probability: 1.0
+    omol:
+      probability: 0.0
+    plinder:
+      probability: 0.0
+    ted_dimers:
+      probability: 0.0
+    pdb_interfaces:
+      probability: 0.0

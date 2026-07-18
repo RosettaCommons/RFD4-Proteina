@@ -140,7 +140,7 @@ lora:
 # Optimization
 opt:
   lr: 0.0001
-  gradient_clip_val: 1.0       # Max gradient norm; used for both automatic and manual optimization
+  gradient_clip_val: 1.0       # Max gradient norm
   max_epochs: 10000000
   accumulate_grad_batches: 1
   dist_strategy: ddp
@@ -149,9 +149,9 @@ opt:
   val_start_epoch: 0          # Delay validation until this epoch (0 = start immediately)
   compute_val_loss: false     # Global off-switch for per-dataset compute_loss (validation_loss_* logging)
   foldseek_timeout_minutes: 25  # Wall-clock budget for Foldseek diversity clustering per validation epoch
-  muon_param_patterns:  # Parameter name prefixes routed to Muon; rest go to Adam
-    - '^nn\.transformer_layers\.\d+\.mhba\.(?!.*norm).*\.weight$'
-    - '^nn\.transformer_layers\.\d+\.transition\.(?!.*norm).*\.weight$'
+  muon_exclude_param_patterns:  # Kept on Adam (Muon also never sees non-2D params: norms, biases)
+    - '_factory\.'  # FeatureFactory input embeddings (init_repr_factory, cond_factory, pair ones)
+    - '^nn\.(local_latents_linear|ca_linear|insertion_q_proj|insertion_k_proj)\.'  # output heads
   muon_adjust_lr_fn: "match_rms_adamw" # Either "original" or "match_rms_adamw"
 
 # Logging and checkpoints
