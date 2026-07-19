@@ -132,9 +132,14 @@ def _send_to_daemon(
 ) -> dict:
     """Send one JSON request to the launcher daemon over a Unix socket.
 
-    Retries on ECONNREFUSED for up to ``connect_retry_s`` seconds so callers
-    that start before the daemon has finished warming up (e.g. evaluate.py,
-    which has no model-load delay) do not fail immediately.
+    Retries on ECONNREFUSED/EAGAIN for up to ``connect_retry_s`` seconds so
+    callers that start before the daemon has finished warming up (e.g.
+    evaluate.py, which has no model-load delay) do not fail immediately.
+    EAGAIN shows up alongside ECONNREFUSED because AF_UNIX listen backlogs are
+    small by default: when several rank processes connect to the same daemon
+    socket in a burst (e.g. right as a validation epoch starts), the kernel
+    returns EAGAIN for connections that arrive while the backlog is full,
+    rather than queuing them like AF_INET does.
     """
     deadline = time.monotonic() + connect_retry_s
     while True:
@@ -151,7 +156,7 @@ def _send_to_daemon(
                 buf += chunk
             return json.loads(buf.decode().strip())
         except OSError as exc:
-            if exc.errno == errno.ECONNREFUSED and time.monotonic() < deadline:
+            if exc.errno in (errno.ECONNREFUSED, errno.EAGAIN, errno.EWOULDBLOCK) and time.monotonic() < deadline:
                 sock.close()
                 time.sleep(connect_retry_interval_s)
                 continue

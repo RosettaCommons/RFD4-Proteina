@@ -9,8 +9,11 @@ Run with:
     pytest tests/test_oracles.py -v                  # all tests (needs GPU)
 """
 
+import errno
 import io
 import os
+import socket
+import threading
 import time
 
 import biotite.structure as struc
@@ -37,7 +40,7 @@ from biotite.structure.io.pdbx import get_structure
 from rfproteina.metrics import MetricManager
 from rfproteina.metrics.design_metrics import ClashMetric
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
-from rfproteina.metrics.oracles.af3_oracle import AF3Oracle
+from rfproteina.metrics.oracles.af3_oracle import AF3Oracle, _send_to_daemon
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
 
@@ -205,6 +208,49 @@ def test_disambiguate_chain_ids():
     assert result.chain_id[1] == a_iid0_id
     assert result.chain_id[3] == a_iid1_id
     assert np.all(result.chain_id[4:] == "B")
+
+
+def test_send_to_daemon_retries_on_eagain(tmp_path, monkeypatch):
+    """A connect() that raises EAGAIN (the errno Linux returns for an AF_UNIX
+    socket whose listen backlog is momentarily full -- e.g. several rank
+    processes connecting to the daemon in a burst) must be retried like
+    ECONNREFUSED, not propagated.
+    """
+    sock_path = tmp_path / "daemon.sock"
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(sock_path))
+    server.listen(1)
+
+    def serve_once():
+        conn, _ = server.accept()
+        data = b""
+        while not data.endswith(b"\n"):
+            data += conn.recv(65536)
+        conn.sendall(b'{"status": "ok"}\n')
+        conn.close()
+
+    thread = threading.Thread(target=serve_once, daemon=True)
+    thread.start()
+
+    real_connect = socket.socket.connect
+    calls = {"n": 0}
+
+    def flaky_connect(self, address):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise BlockingIOError(errno.EAGAIN, "Resource temporarily unavailable")
+        return real_connect(self, address)
+
+    monkeypatch.setattr(socket.socket, "connect", flaky_connect)
+
+    try:
+        response = _send_to_daemon(str(sock_path), {"cmd": "ping"}, connect_retry_interval_s=0.01)
+    finally:
+        thread.join(timeout=5)
+        server.close()
+
+    assert response == {"status": "ok"}
+    assert calls["n"] == 2
 
 
 # ---------------------------------------------------------------------------
