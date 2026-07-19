@@ -58,6 +58,9 @@ from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
+# Fixed t levels used for the stratified val loss; a dataset may override via its t_grid.
+VAL_T_GRID_DEFAULT = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+
 # Lazy import Transformer Engine for FP8 support
 TE_AVAILABLE = None
 te_autocast = None
@@ -570,14 +573,14 @@ class Proteina(L.LightningModule):
             # Add clean samples for all data modes / spaces we are working on
             batch = self.add_clean_samples(batch)
 
-            # Corrupt the batch. On validation, override t with uniform draws so the
-            # val loss is an unbiased estimator of E_{t~U[0,1]}[loss] instead of the
-            # Beta-weighted training distribution.
+            # Val t: fixed grid levels (same t for every mode) cycled across the dataset;
+            # val_t_offset continues the phase across batches so per-level counts stay balanced.
             if val_step:
-                batch_shape = batch["padding_mask"].shape[:1]
                 device = batch["padding_mask"].device
-                t_uniform = {dm: torch.rand(batch_shape, device=device) for dm in self.fm.data_modes}
-                batch = self.fm.corrupt_batch(batch, t=t_uniform)
+                levels = torch.tensor(batch.pop("val_t_grid"), device=device)
+                offset = batch.pop("val_t_offset")
+                t_i = levels[(offset + torch.arange(batch["padding_mask"].shape[0], device=device)) % len(levels)]
+                batch = self.fm.corrupt_batch(batch, t={dm: t_i for dm in self.fm.data_modes})
             else:
                 batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
             bs, n = batch["padding_mask"].shape
@@ -605,7 +608,7 @@ class Proteina(L.LightningModule):
                 prog_bar=False,
                 logger=True,
                 batch_size=bs,
-                sync_dist=False,
+                sync_dist=val_step,  # reduce across ranks on val so the metric is the full-set mean
                 add_dataloader_idx=False,
             )
 
@@ -996,6 +999,10 @@ class Proteina(L.LightningModule):
         per_example_losses: dict[str, torch.Tensor] | None = None
         if dataset_cfg.get("compute_loss", False) and self.cfg_exp.opt.get("compute_val_loss", True):
             batch["validation_dataset_name"] = dataset_name
+            # Stratified t (default grid unless the dataset overrides t_grid); val_t_offset
+            # continues the level phase across batches so per-level counts stay balanced.
+            batch["val_t_grid"] = list(dataset_cfg.get("t_grid") or VAL_T_GRID_DEFAULT)
+            batch["val_t_offset"] = batch_idx * self.cfg_exp.dataloaders.val.dataloader_params.batch_size
             with torch.no_grad():
                 step_outputs = self.training_step(batch, batch_idx=-1)
             per_example_losses = step_outputs["losses_per_sample"]
