@@ -28,13 +28,13 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.chain import create_chain_id_generator
 from atomworks.io.utils.io_utils import CIFWriteConfig, _to_cif_or_bcif, to_cif_file, to_cif_string
-from atomworks.ml.utils.annotator import ANNOTATOR_REGISTRY
 from biotite.structure import AtomArray
 from biotite.structure.io.pdbx import CIFFile
 from biotite.structure.residues import apply_residue_wise, residue_iter, spread_residue_wise
 
 from rfproteina.af3.af3_apptainer import build_apptainer_fold_command
 from rfproteina.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
+from rfproteina.metrics.utils.atom_selection import atom_selection_from_spec
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
@@ -221,18 +221,19 @@ class AF3Oracle(OracleMetric):
 
     Args:
         oracle_name: Output subdirectory label. Defaults to ``"af3"``.
-        template_annotations: Annotation name(s) to use for templating.
+        template_query: AtomWorks query string selecting which atoms to template
+            (e.g. ``"mask_coordinate_1_atom & ~is_nucleic_acid"``).
         extra_af3_flags: Additional flags forwarded to the AF3 subprocess.
     """
 
     def __init__(
         self,
         oracle_name: str = "af3",
-        template_annotations: str | list[str] | None = None,
+        template_query: str | None = None,
         extra_af3_flags: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(oracle_name=oracle_name, template_annotations=template_annotations, **kwargs)
+        super().__init__(oracle_name=oracle_name, template_query=template_query, **kwargs)
         self.extra_flags = extra_af3_flags or []
 
     # ------------------------------------------------------------------
@@ -414,10 +415,6 @@ class AF3Oracle(OracleMetric):
                     "AF3 treats 'UNL' as a reserved token and silently drops most ligand atoms. "
                     "Rename UNL residues to a different code (e.g. 'L;G') before evaluating with AF3Oracle."
                 )
-            if self.template_annotations is not None:
-                annotations_to_ensure = [annot for annot in self.template_annotations if annot in ANNOTATOR_REGISTRY]
-                if annotations_to_ensure:
-                    ensure_annotations(input_atom_array, *annotations_to_ensure)
             example_id = job.example_id
             job_name = example_id.replace(" ", "_")
 
@@ -553,26 +550,19 @@ class AF3Oracle(OracleMetric):
     # ------------------------------------------------------------------
 
     def _build_af3_template_dict(self, atom_array: AtomArray) -> dict[str, dict] | None:
-        """Build the AF3 per-chain template dict from :attr:`template_annotations`.
+        """Build the AF3 per-chain template dict from :attr:`template_query`.
 
         Args:
-            atom_array: Input structure, with template annotation(s) set.
+            atom_array: Input structure, with any query annotations set.
 
         Returns:
-            Dict mapping chain ID → template dict, or ``None`` if no annotations.
+            Dict mapping chain ID → template dict, or ``None`` if the query is
+            unset or selects no atoms.
         """
-        if not self.template_annotations:
+        if not self.template_query:
             return None
 
-        template_mask = np.zeros(atom_array.array_length(), dtype=bool)
-        for annot_name in self.template_annotations:
-            assert (
-                annot_name in atom_array.get_annotation_categories()
-            ), f"Annotation '{annot_name}' not found in AtomArray"
-            annot = atom_array.get_annotation(annot_name)
-            assert annot.dtype == bool, f"Annotation '{annot_name}' must be boolean, got {annot.dtype}"
-            template_mask |= annot
-
+        template_mask = atom_selection_from_spec(atom_array, {"query": self.template_query})
         if not np.any(template_mask):
             return None
 
@@ -581,8 +571,9 @@ class AF3Oracle(OracleMetric):
         if np.any(non_protein_templated):
             bad_res = np.unique(atom_array.res_name[non_protein_templated])
             raise ValueError(
-                f"Template mask covers non-protein residues: {bad_res}. "
-                "AF3 structural templating is only supported for protein chains."
+                f"Template query {self.template_query!r} selects non-protein residues: {bad_res}. "
+                "AF3 structural templating is only supported for protein chains; "
+                "exclude them in the query (e.g. '& ~is_nucleic_acid')."
             )
 
         template_dict: dict[str, dict] = {}

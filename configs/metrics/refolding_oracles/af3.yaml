@@ -21,19 +21,17 @@ oracle:
 oracle_ppi:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
-  template_annotations: [mask_coordinate_1_atom]
+  template_query: "mask_coordinate_1_atom"
   aggregation: [median]
   frac_under_thresholds:
     min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
 
-# Protein-DNA binder refolding (DNA held fixed as template). Same config as
-# oracle_ppi but gated by dna_refolding so it produces oracle_dna.* COI metrics.
 oracle_dna:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_dna
-  template_annotations: [mask_coordinate_1_atom]
+  template_query: "mask_coordinate_1_atom & ~is_nucleic_acid"
   aggregation: [median]
   frac_under_thresholds:
     min_ipae_coi: [1, 1.5, 2]
