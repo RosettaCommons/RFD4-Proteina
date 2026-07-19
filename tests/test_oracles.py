@@ -120,7 +120,7 @@ def oracle_info(request, modified_1a1e):
     if not has_af3:
         pytest.skip("AF3 apptainer image not available")
 
-    oracle = AF3Oracle(num_recycles=5, template_annotations="is_templated")
+    oracle = AF3Oracle(num_recycles=5, template_query="is_templated")
 
     oracle.setup()
     yield {

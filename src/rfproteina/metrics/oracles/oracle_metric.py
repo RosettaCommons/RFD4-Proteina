@@ -195,8 +195,10 @@ class OracleMetric(Metric):
     Args:
         oracle_name: Short label included in output filenames
             (e.g. ``"rf3"`` → ``…/{digest8}/{example_id}_rf3_refolded.cif``).
-        template_annotations: Annotation name(s) on the input AtomArray to use
-            for templating. Multiple names are OR'd together. Defaults to ``None``.
+        template_query: AtomWorks query string selecting which atoms to pass to the
+            oracle as a structural template (e.g.
+            ``"mask_coordinate_1_atom & ~is_nucleic_acid"``). ``None`` disables
+            templating. Defaults to ``None``.
         frac_under_thresholds: Per-output-key thresholds for which to emit
             ``frac_under_<T>`` rows in :py:meth:`aggregate`. Keys are bare output
             names (e.g. ``"min_ipae_coi"``), values are threshold lists. Uses
@@ -206,15 +208,13 @@ class OracleMetric(Metric):
     def __init__(
         self,
         oracle_name: str,
-        template_annotations: str | list[str] | None = None,
+        template_query: str | None = None,
         frac_under_thresholds: dict[str, list[float]] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.oracle_name = oracle_name
-        self.template_annotations = (
-            [template_annotations] if isinstance(template_annotations, str) else template_annotations
-        )
+        self.template_query = template_query
         self.frac_under_thresholds = frac_under_thresholds or {}
 
     def aggregate(self, column: str, values: pd.Series) -> dict[str, float]:
