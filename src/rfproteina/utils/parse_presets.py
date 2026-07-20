@@ -51,7 +51,13 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
 )
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 
-ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(load_standard_annotations=True, remove_waters=False, remove_ccds=())
+ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(
+    load_standard_annotations=True,
+    remove_waters=False,
+    remove_ccds=(),
+    # Annotated CIFs may carry custom ligands reusing real CCD codes; keep them as authored.
+    cif_ccd_on_mismatch="ignore",
+)
 """Config for loading annotated cifs that makes minimal changes to structure while loading standard annotations"""
 
 
