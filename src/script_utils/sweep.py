@@ -89,7 +89,7 @@ def generate_sweep_configs(
     sweep_overrides: list[str] | None = None,
     output_dir: str = "./configs/sweep_configs",
     run_name_prefix: str | None = None,
-    config_path: str = "../configs",
+    config_path: str = "../../configs",
     clean_output: bool = True,
 ) -> list[Path]:
     """Generate config files for each combination in the sweeper.
@@ -303,7 +303,7 @@ Examples:
     parser.add_argument(
         "--config-path",
         type=str,
-        default="../configs",
+        default="../../configs",
         help="Relative path to Hydra config directory",
     )
 
