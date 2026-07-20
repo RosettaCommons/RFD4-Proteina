@@ -4,6 +4,7 @@ Utilities for inference input preparation
 
 import ast
 import copy
+import itertools
 import logging
 import os
 from os import PathLike
@@ -11,12 +12,19 @@ from os import PathLike
 import biotite.structure as struc
 import numpy as np
 from atomworks import parse
-from atomworks.constants import STANDARD_DNA
+from atomworks.constants import HYDROGEN_LIKE_SYMBOLS, STANDARD_DNA, STANDARD_POLYMER_RESIDUES
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import (
     STANDARD_PARSER_ARGS,
 )
+from atomworks.io.utils.atom_array import annotate_and_remove_hydrogens
 from atomworks.io.utils.atom_array_plus import concatenate_atom_array_plus
+from atomworks.io.utils.ccd import (
+    atom_array_from_ccd_code,
+    clear_custom_ccd_registry,
+    get_available_ccd_codes,
+    register_custom_ccd_entry,
+)
 from atomworks.io.utils.io_utils import infer_pdb_file_type
 from atomworks.ml.conditions import CONDITIONS
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
@@ -339,6 +347,56 @@ def extract_na_array(atom_array_input: AtomArray) -> AtomArray:
 #################################################################################
 
 
+def register_custom_ccd_overrides(atom_array: AtomArray) -> list[str]:
+    """Register input-defined ligands that override or extend the standard CCD.
+
+    Registers a non-standard residue when its code is absent from the CCD or its real
+    heavy atoms aren't a subset of the bundled template. Clears the registry first so a
+    prior input's overrides can't leak into this one.
+
+    Raises:
+      ValueError: If copies of one code have different atom sets (ambiguous which to
+        register) — the user should give the variants distinct residue codes.
+    """
+    clear_custom_ccd_registry()
+
+    def real_atoms(residue: AtomArray) -> set[str]:
+        # Real chemistry only: ignore hydrogens (H/D/T) and placeholder atoms (element "X").
+        return {str(n) for n in residue.atom_name[~np.isin(residue.element, [*HYDROGEN_LIKE_SYMBOLS, "X"])]}
+
+    # Group copies by code so we can enforce one consistent atom set per code.
+    residues_by_code: dict[str, list[AtomArray]] = {}
+    res_starts = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
+    for start, stop in itertools.pairwise(res_starts):
+        code = str(atom_array.res_name[start])
+        if code in STANDARD_POLYMER_RESIDUES:
+            continue
+        residues_by_code.setdefault(code, []).append(atom_array[start:stop])
+
+    available = get_available_ccd_codes()  # registry just cleared, so this is the bundled CCD
+    registered: list[str] = []
+    for code, residues in residues_by_code.items():
+        template = residues[0]
+        atoms = real_atoms(template)
+        if not atoms:
+            continue
+        # One code must mean one molecule; a later copy with different atoms is ambiguous.
+        if any(real_atoms(other) != atoms for other in residues[1:]):
+            raise ValueError(
+                f"Residue '{code}' appears with different atom sets across copies; "
+                f"give the variants distinct residue codes."
+            )
+
+        bundled = {str(n) for n in atom_array_from_ccd_code(code).atom_name} if code in available else None
+        if bundled is None or not atoms.issubset(bundled):
+            register_custom_ccd_entry(code, template)
+            registered.append(code)
+
+    if registered:
+        ranked_logger.info(f"Registered custom CCD overrides from input: {registered}")
+    return registered
+
+
 def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: dict | None = None) -> dict:
     # Default cif_parser_args to an empty dictionary if not provided
     if cif_parser_args is None:
@@ -359,10 +417,13 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
             "remove_waters": False,
             "convert_mse_to_met": False,
             "remove_ccds": [],
+            # Custom ligands may reuse a real CCD code; keep authored atoms, don't raise.
+            "cif_ccd_on_mismatch": "ignore",
         },
         **cif_parser_args,
     }
-    merged_cif_parser_args["hydrogen_policy"] = "remove"
+    # Keep hydrogens so custom-CCD override templates reflect them; stripped below.
+    merged_cif_parser_args["hydrogen_policy"] = "keep"
 
     # Ensure the required annotations can be loaded
     merged_cif_parser_args["extra_fields"] = list(
@@ -384,6 +445,10 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
         atom_array = result_dict["assemblies"][assembly_id][0]
     else:
         atom_array = result_dict["asym_unit"][0]
+
+    # Register custom-CCD overrides from the input, then match the hydrogen-free pipeline.
+    register_custom_ccd_overrides(atom_array)
+    atom_array = annotate_and_remove_hydrogens(atom_array, increment=True)
 
     atom_array = convert_existing_annotations_to_bool(atom_array)
 
