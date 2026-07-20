@@ -105,7 +105,7 @@ condition API, and write the result back out. This is ideal for scripting many
 variants of a design.
 
 See the runnable, end-to-end walkthrough:
-[**`docs/tutorials/annotated_cif_tutorial.ipynb`**](tutorials/annotated_cif_tutorial.ipynb).
+[**`docs/guides/tutorials/annotated_cif_tutorial.ipynb`**](tutorials/annotated_cif_tutorial.ipynb).
 It parses a protein–ligand complex, applies a complex conditioning task
 (unindexed tip atoms around a ligand + RASA + hydrogen-bond conditioning + an
 expandable segment + a PTM), writes an annotated CIF, and closes with a loop that
