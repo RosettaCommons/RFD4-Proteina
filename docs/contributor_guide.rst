@@ -71,7 +71,8 @@ Documentation structure
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 * ``docs/tutorial/`` — guided first-use workflows
-* ``docs/guides/`` — task-oriented Markdown guides
+* ``docs/guides/`` — task-oriented Markdown guides and their notebooks under
+  ``docs/guides/tutorials/``
 * ``docs/api/`` — API pages generated from Python docstrings
 * ``docs/examples/`` — Sphinx Gallery source scripts
 * ``docs/_static/`` — logos and theme overrides
