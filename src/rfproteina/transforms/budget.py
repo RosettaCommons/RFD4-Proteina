@@ -45,9 +45,14 @@ class EnforceCropBudget(Transform):
       if present, else whole-array COM. Must-keep tokens always survive.
     - Trims ``data["crop_info"]["crop_atom_idxs"] / ["crop_token_idxs"]`` so downstream
       consumers see a consistent view.
+
+    The token budget is resolved as ``data["crop_info"]["crop_size"]`` if present — the
+    concrete size actually sampled by an upstream dynamic crop (e.g.
+    :py:class:`~atomworks.ml.transforms.crop.CropSpatialLikeAF3` with ``crop_size_range``
+    set) — else the fixed ``crop_size`` passed at construction.
     """
 
-    def __init__(self, crop_size: int, plan_expansion: PlanFn):
+    def __init__(self, crop_size: int | None, plan_expansion: PlanFn):
         self.crop_size = crop_size
         self.plan_expansion = plan_expansion
 
@@ -55,15 +60,21 @@ class EnforceCropBudget(Transform):
         atom_array: AtomArray = data["atom_array"]
         extra_tokens, must_keep_atom_mask = self.plan_expansion(atom_array)
 
+        crop_size = data.get("crop_info", {}).get("crop_size", self.crop_size)
+        assert crop_size is not None, (
+            "No crop_size available to enforce: pass crop_size explicitly to EnforceCropBudget, "
+            "or ensure an upstream crop populates data['crop_info']['crop_size']."
+        )
+
         T = get_token_count(atom_array)
-        if T + extra_tokens <= self.crop_size:
+        if T + extra_tokens <= crop_size:
             return data
 
         center = _resolve_ranking_center(data, atom_array)
 
         atom_array, atom_keep_mask, keep_token_mask = _drop_periphery_tokens_to_fit(
             atom_array,
-            max_tokens=self.crop_size - extra_tokens,
+            max_tokens=crop_size - extra_tokens,
             must_keep_atom_mask=must_keep_atom_mask,
             center=center,
         )

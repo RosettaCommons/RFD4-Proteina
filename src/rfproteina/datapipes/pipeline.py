@@ -1253,6 +1253,8 @@ def _get_design_task_name(data: dict) -> str | None:
 
 def _build_design_clean_and_sample_pipeline(
     crop_size: int | None = None,
+    crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
+    max_crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     dna_contact_crop_probability: float = 0.0,
@@ -1334,10 +1336,13 @@ def _build_design_clean_and_sample_pipeline(
 
     if (
         not is_inference
-        and crop_size
+        and (crop_size or crop_size_range)
         and (crop_contiguous_probability > 0 or crop_spatial_probability > 0 or dna_contact_crop_probability > 0)
     ):
-        assert crop_size > 0, "Crop size must be greater than 0"
+        if crop_size_range is not None:
+            assert crop_size is None, "crop_size must be None when crop_size_range is set, to avoid ambiguity"
+        else:
+            assert crop_size is not None and crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
 
         crop_routes = [
@@ -1345,6 +1350,8 @@ def _build_design_clean_and_sample_pipeline(
                 crop_contiguous_probability,  # DISCUSS: Does this even make sense for design??
                 CropContiguousLikeAF3(
                     crop_size=crop_size,
+                    crop_size_range=crop_size_range,
+                    max_crop_size=max_crop_size,
                     keep_uncropped_atom_array=True,
                     max_atoms_in_crop=max_atoms_in_crop,
                     annotate_crop_boundary=True,
@@ -1354,6 +1361,8 @@ def _build_design_clean_and_sample_pipeline(
                 crop_spatial_probability,
                 CropSpatialLikeAF3(
                     crop_size=crop_size,
+                    crop_size_range=crop_size_range,
+                    max_crop_size=max_crop_size,
                     crop_center_cutoff_distance=crop_center_cutoff_distance,
                     keep_uncropped_atom_array=True,
                     max_atoms_in_crop=max_atoms_in_crop,
@@ -1374,6 +1383,8 @@ def _build_design_clean_and_sample_pipeline(
                     dna_contact_crop_probability,
                     ProteinDNAContactContiguousCrop(
                         crop_size=crop_size,
+                        crop_size_range=crop_size_range,
+                        max_crop_size=max_crop_size,
                         crop_center_cutoff_distance=crop_center_cutoff_distance,
                         protein_contact_type="all",
                         dna_contact_type="base",
@@ -1440,8 +1451,10 @@ def _build_design_clean_and_sample_pipeline(
         # TODO: Template this
 
         # We may have introduced (or will later introduce) extra tokens;
-        # we must make space for them here
-        if crop_size:
+        # we must make space for them here. With crop_size_range, the actual
+        # per-example budget is read from data["crop_info"]["crop_size"] instead
+        # (see EnforceCropBudget), so crop_size itself may be None here.
+        if crop_size or crop_size_range:
             T += EnforceCropBudget(crop_size=crop_size, plan_expansion=plan_unindex_expansion)
 
     return T.tolist()
@@ -1610,6 +1623,8 @@ def _build_design_featurize_pipeline(
 
 def build_design_train_pipeline(
     crop_size: int | None = None,
+    crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
+    max_crop_size: int | None = None,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     dna_contact_crop_probability: float = 0.0,
@@ -1650,7 +1665,17 @@ def build_design_train_pipeline(
         - ``RNA_MSA_DIRS``: Comma-separated paths for RNA MSAs
 
     Args:
-        crop_size: Max residues after cropping
+        crop_size: Max residues after cropping. Either this or `crop_size_range`
+            must be set (not both).
+        crop_size_range: If set, the crop size is resampled per-example from this
+            inclusive ``(min, max)`` range instead of using a fixed `crop_size`
+            (which must then be `None`). Either a pair of absolute token counts,
+            or a pair of fractions of the structure's token count (requires
+            `max_crop_size`). See
+            :py:func:`~atomworks.ml.transforms.crop.sample_dynamic_crop_size`.
+            Defaults to `None`.
+        max_crop_size: Upper bound on the sampled crop size. Required when
+            `crop_size_range` is fraction-based. Defaults to `None`.
         crop_contiguous_probability: Probability of contiguous cropping
         crop_spatial_probability: Probability of spatial cropping
         dna_contact_crop_probability: Probability of protein-DNA contact-centered
@@ -1684,6 +1709,8 @@ def build_design_train_pipeline(
     transforms = []
     transforms += _build_design_clean_and_sample_pipeline(
         crop_size=crop_size,
+        crop_size_range=crop_size_range,
+        max_crop_size=max_crop_size,
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
         dna_contact_crop_probability=dna_contact_crop_probability,

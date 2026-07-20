@@ -30,6 +30,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.transforms.crop import (
     CropSpatialLikeAF3,
     resize_crop_info_if_too_many_atoms,
+    sample_dynamic_crop_size,
 )
 from atomworks.ml.utils.token import get_token_count, get_token_starts
 from biotite.structure import Atom, AtomArray
@@ -150,8 +151,12 @@ def protein_dna_contact_contiguous_crop_mask(
     protein_expand_max: int,
     dna_expand_min: int,
     dna_expand_max: int,
+    crop_size: int | None = None,
 ) -> dict:
     """Build a crop_info dict keeping a contiguous protein region + contiguous DNA duplex around a sampled contact.
+
+    Args:
+      crop_size: Token budget to record under ``crop_info["crop_size"]``.
 
     Raises:
       ValueError: If no protein-DNA contact exists, or the kept region exceeds
@@ -183,6 +188,7 @@ def protein_dna_contact_contiguous_crop_mask(
         "crop_atom_idxs": np.where(mask)[0],
         "crop_token_idxs": np.where(mask[token_starts])[0],
         "atom_array": atom_array,
+        "crop_size": crop_size,
     }
 
 
@@ -197,7 +203,15 @@ class ProteinDNAContactContiguousCrop(Transform):
     still usable.
 
     Args:
-      crop_size: Token budget for the spatial-crop fallback.
+      crop_size: Token budget for the spatial-crop fallback. Either this or
+        `crop_size_range` must be set (not both) — see
+        :py:class:`~atomworks.ml.transforms.crop.CropSpatialLikeAF3`.
+      crop_size_range: If set, the spatial-crop fallback's token budget is
+        resampled per-call from this ``(min, max)`` range instead of using a
+        fixed `crop_size` (which must then be `None`). Forwarded verbatim to
+        the fallback's `CropSpatialLikeAF3`. Defaults to `None`.
+      max_crop_size: Upper bound on the sampled crop size when `crop_size_range`
+        is fraction-based. Forwarded verbatim to the fallback. Defaults to `None`.
       crop_center_cutoff_distance: Cutoff (Å) for the spatial-crop fallback's
         crop-center selection.
       protein_contact_type: ``"all"`` or ``"backbone"`` (N/CA/C).
@@ -213,7 +227,9 @@ class ProteinDNAContactContiguousCrop(Transform):
 
     def __init__(
         self,
-        crop_size: int,
+        crop_size: int | None = None,
+        crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
+        max_crop_size: int | None = None,
         crop_center_cutoff_distance: float = 15.0,
         protein_contact_type: str = "all",
         dna_contact_type: str = "base",
@@ -246,11 +262,16 @@ class ProteinDNAContactContiguousCrop(Transform):
         self.contact_distance_cutoff = contact_distance_cutoff
         self.keep_uncropped_atom_array = keep_uncropped_atom_array
         self.max_atoms_in_crop = max_atoms_in_crop
+        self.crop_size = crop_size
+        self.crop_size_range = crop_size_range
+        self.max_crop_size = max_crop_size
 
         # Fallback used when no protein-DNA contact can be sampled. Mirrors the
         # kwargs of the main spatial crop in the design pipeline.
         self._spatial_fallback = CropSpatialLikeAF3(
             crop_size=crop_size,
+            crop_size_range=crop_size_range,
+            max_crop_size=max_crop_size,
             crop_center_cutoff_distance=crop_center_cutoff_distance,
             keep_uncropped_atom_array=keep_uncropped_atom_array,
             max_atoms_in_crop=max_atoms_in_crop,
@@ -264,6 +285,16 @@ class ProteinDNAContactContiguousCrop(Transform):
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         try:
+            # Resolve the token budget
+            crop_size = self.crop_size
+            if self.crop_size_range is not None:
+                crop_size = sample_dynamic_crop_size(
+                    self.crop_size,
+                    self.crop_size_range,
+                    reference_length=get_token_count(atom_array),
+                    max_crop_size=self.max_crop_size,
+                )
+
             crop_info = protein_dna_contact_contiguous_crop_mask(
                 atom_array,
                 self.protein_contact_atoms,
@@ -273,6 +304,7 @@ class ProteinDNAContactContiguousCrop(Transform):
                 self.protein_expand_max,
                 self.dna_expand_min,
                 self.dna_expand_max,
+                crop_size=crop_size,
             )
         except ValueError:
             # No sampleable protein-DNA contact (RNA-only, single-stranded, or
