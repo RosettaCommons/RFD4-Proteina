@@ -21,7 +21,6 @@ from typing import Any
 import biotite.structure as struc
 import numpy as np
 import torch.distributed as dist
-from atomworks.constants import PROTEIN_BACKBONE_ATOM_NAMES
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.annotator import ensure_annotations
@@ -810,9 +809,9 @@ class AF3Oracle(OracleMetric):
 
         1. **OXT stripping** — AF3 adds OXT to chain C-termini; remove it for
            any residue where the input does not have an OXT
-        2. **Backbone/CA-only stripping** — when the input contains only backbone
-           atoms for every protein residue (e.g. N/CA/C/O, or CA-only), AF3's
-           protein output is subsetted to the protein atom names present in the input
+        2. **Per-residue sidechain trimming** — AF3 fills in atoms missing from
+           the input. For canonical protein and nucleic acid residues, we remove these
+           extra atoms, as they were likely unresolved in crystal-derived input conditioning.
 
         Args:
             input_array: Normalised input structure (after NaN-residue removal).
@@ -838,15 +837,27 @@ class AF3Oracle(OracleMetric):
                 extra_oxt_mask[af3_in] = spread_residue_wise(af3_array[af3_in], extra_per_res) & af3_oxt_mask[af3_in]
             af3_array = af3_array[~extra_oxt_mask]
 
-        # Pass 2: if input has only backbone atoms for every protein residue
-        # (e.g. N/CA/C/O, or CA-only), strip AF3 sidechains to match.
+        # Pass 2: per-residue sidechain trimming
         if input_array.array_length() != af3_array.array_length():
-            ensure_annotations(input_array, "is_protein")
-            ensure_annotations(af3_array, "is_protein")
-            if (~input_array.is_protein | np.isin(input_array.atom_name, PROTEIN_BACKBONE_ATOM_NAMES)).all():
-                input_protein_atom_names = set(input_array.atom_name[input_array.is_protein].tolist())
-                af3_keep = ~af3_array.is_protein | np.isin(af3_array.atom_name, list(input_protein_atom_names))
-                af3_array = af3_array[af3_keep]
+            ensure_annotations(input_array, "is_standard_aa", "is_standard_dna", "is_standard_rna")
+            is_standard_polymer = input_array.is_standard_aa | input_array.is_standard_dna | input_array.is_standard_rna
+
+            inp_bounds = struc.get_residue_starts(input_array, add_exclusive_stop=True)
+            af3_bounds = struc.get_residue_starts(af3_array, add_exclusive_stop=True)
+            if len(inp_bounds) == len(af3_bounds):
+                keep_mask = np.ones(af3_array.array_length(), dtype=bool)
+                for i in range(len(inp_bounds) - 1):
+                    i0, i1 = inp_bounds[i], inp_bounds[i + 1]
+                    a0, a1 = af3_bounds[i], af3_bounds[i + 1]
+                    n_extra = (a1 - a0) - (i1 - i0)
+                    if n_extra <= 0 or not is_standard_polymer[i0]:
+                        continue
+                    inp_names = set(input_array.atom_name[i0:i1].tolist())
+                    af3_names = af3_array.atom_name[a0:a1]
+                    extra = ~np.isin(af3_names, list(inp_names))
+                    if extra.sum() == n_extra:
+                        keep_mask[a0:a1] = ~extra
+                af3_array = af3_array[keep_mask]
 
         return af3_array
 
