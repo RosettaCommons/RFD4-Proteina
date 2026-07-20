@@ -1939,8 +1939,16 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
                     max_atoms=max_atoms_in_crop,
                 )
 
-                # Overwrite the old crop info with the info for the newly-applied PPI crop
-                data["crop_info"] = {"type": "PPIFullBinderCropSpatial"} | crop_info
+                # Overwrite the old crop info with the info for the newly-applied PPI crop.
+                # Carry forward crop_size/max_atoms_in_crop/crop_center_cutoff_distance from
+                # pre_crop_info -- crop_spatial_keep_full_binder()'s return dict doesn't include
+                # them, but EnforceCropBudget (and a subsequent re-crop) still needs them.
+                data["crop_info"] = {
+                    "type": "PPIFullBinderCropSpatial",
+                    "crop_size": crop_size,
+                    "max_atoms_in_crop": max_atoms_in_crop,
+                    "crop_center_cutoff_distance": crop_center_cutoff_distance,
+                } | crop_info
                 data["crop_info"]["atom_array"] = pre_crop_atom_array
 
                 # Update data with the newly-cropped atom array
