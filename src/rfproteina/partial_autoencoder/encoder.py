@@ -2,6 +2,7 @@ import torch
 
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
+from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
 
@@ -16,6 +17,8 @@ class EncoderTransformer(torch.nn.Module):
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
         super().__init__()
+        # Set the process-global norm type before building submodules (make_norm reads it).
+        set_norm_type(kwargs["encoder"].get("norm_type"))
         self.nlayers = kwargs["encoder"]["nlayers"]
         self.token_dim = kwargs["encoder"]["token_dim"]
         self.pair_repr_dim = kwargs["encoder"]["pair_repr_dim"]
