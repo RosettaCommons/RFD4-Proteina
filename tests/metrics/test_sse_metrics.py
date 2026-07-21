@@ -32,21 +32,25 @@ def test_secondary_structure_distribution_metric(deterministic_rng, pdb_id, use_
 
     # Verify return structure
     assert isinstance(result, dict)
-    expected_keys = {"helix_fraction", "sheet_fraction", "loop_fraction", "num_ss_elements"}
+    base_keys = {"helix_fraction", "sheet_fraction", "loop_fraction", "num_ss_elements"}
+    expected_keys = base_keys | {f"{k}_coi" for k in base_keys}
     assert set(result.keys()) == expected_keys
 
-    # Verify values are valid
-    assert 0 <= result["helix_fraction"] <= 1, f"Invalid helix_fraction: {result['helix_fraction']}"
-    assert 0 <= result["sheet_fraction"] <= 1, f"Invalid sheet_fraction: {result['sheet_fraction']}"
-    assert 0 <= result["loop_fraction"] <= 1, f"Invalid loop_fraction: {result['loop_fraction']}"
-    assert result["num_ss_elements"] >= 0, f"Invalid num_ss_elements: {result['num_ss_elements']}"
+    # Verify values are valid, both overall and for the chain of interest
+    for suffix in ("", "_coi"):
+        assert 0 <= result[f"helix_fraction{suffix}"] <= 1, f"Invalid helix_fraction{suffix}"
+        assert 0 <= result[f"sheet_fraction{suffix}"] <= 1, f"Invalid sheet_fraction{suffix}"
+        assert 0 <= result[f"loop_fraction{suffix}"] <= 1, f"Invalid loop_fraction{suffix}"
+        assert result[f"num_ss_elements{suffix}"] >= 0, f"Invalid num_ss_elements{suffix}"
 
-    # Verify fractions sum to ~1.0
-    total_fraction = result["helix_fraction"] + result["sheet_fraction"] + result["loop_fraction"]
-    assert 0.95 <= total_fraction <= 1.05, f"Fractions don't sum to ~1.0: {total_fraction}"
+        # Verify fractions sum to ~1.0
+        total_fraction = (
+            result[f"helix_fraction{suffix}"] + result[f"sheet_fraction{suffix}"] + result[f"loop_fraction{suffix}"]
+        )
+        assert 0.95 <= total_fraction <= 1.05, f"Fractions don't sum to ~1.0: {total_fraction}"
 
-    # Verify num_ss_elements is reasonable for real proteins
-    assert result["num_ss_elements"] > 0, "Real proteins should have SSE elements"
+        # Verify num_ss_elements is reasonable for real proteins
+        assert result[f"num_ss_elements{suffix}"] > 0, "Real proteins should have SSE elements"
 
 
 @pytest.mark.parametrize("pdb_id", ["6lyz", "1fu2"])

@@ -13,6 +13,7 @@ from biotite.structure import AtomArray, AtomArrayStack, annotate_sse, spread_re
 
 from rfproteina.conditions import C_SEC
 from rfproteina.metrics import Metric
+from rfproteina.utils.chain import get_chain_of_interest
 
 
 def annotate_secondary_structure(
@@ -78,8 +79,41 @@ def annotate_secondary_structure(
     return atom_array
 
 
+def _sse_fractions(valid_sse: np.ndarray, suffix: str = "") -> dict[str, float]:
+    """Compute SSE fraction and element-count metrics from valid token SSE codes.
+
+    Args:
+      valid_sse: Token-level SSEnum values for valid tokens only.
+      suffix: Suffix appended to each metric key (e.g. ``"_coi"``). Defaults to ``""``.
+
+    Returns:
+      Dict with ``helix_fraction{suffix}``, ``sheet_fraction{suffix}``,
+      ``loop_fraction{suffix}``, and ``num_ss_elements{suffix}`` keys. Values are
+      NaN when ``valid_sse`` is empty.
+    """
+    if len(valid_sse) == 0:
+        return {
+            f"helix_fraction{suffix}": np.nan,
+            f"sheet_fraction{suffix}": np.nan,
+            f"loop_fraction{suffix}": np.nan,
+            f"num_ss_elements{suffix}": np.nan,
+        }
+
+    n_valid = len(valid_sse)
+    return {
+        f"helix_fraction{suffix}": float((valid_sse == SSEnum.HELIX).sum() / n_valid),
+        f"sheet_fraction{suffix}": float((valid_sse == SSEnum.SHEET).sum() / n_valid),
+        f"loop_fraction{suffix}": float((valid_sse == SSEnum.LOOP).sum() / n_valid),
+        f"num_ss_elements{suffix}": float(count_contiguous_sse_elements(valid_sse)),
+    }
+
+
 def compute_sse_distribution(atom_array: AtomArray) -> dict[str, float]:
     """Compute secondary structure distribution using P-SEA algorithm.
+
+    Metrics are reported both over all valid tokens and restricted to the chain
+    of interest (``_coi`` suffix), as determined by
+    :py:func:`~rfproteina.utils.chain.get_chain_of_interest`.
 
     Args:
       atom_array: Protein structure to analyze.
@@ -90,6 +124,8 @@ def compute_sse_distribution(atom_array: AtomArray) -> dict[str, float]:
         - sheet_fraction: Fraction of tokens in beta sheet
         - loop_fraction: Fraction of tokens in coil/loop
         - num_ss_elements: Number of contiguous SSE regions
+        - helix_fraction_coi / sheet_fraction_coi / loop_fraction_coi /
+          num_ss_elements_coi: Same metrics restricted to the chain of interest.
 
       Returns NaN values if annotation fails or no valid annotations exist.
     """
@@ -102,46 +138,26 @@ def compute_sse_distribution(atom_array: AtomArray) -> dict[str, float]:
         )
     except Exception:
         # Annotation failed - return NaN
-        return {
-            "helix_fraction": np.nan,
-            "sheet_fraction": np.nan,
-            "loop_fraction": np.nan,
-            "num_ss_elements": np.nan,
-        }
+        return {**_sse_fractions(np.array([]), ""), **_sse_fractions(np.array([]), "_coi")}
 
     # Get token-level annotations
     token_starts = get_token_starts(atom_array)
     token_sse = atom_array.sse[token_starts]
     token_is_valid = atom_array.sse_is_valid[token_starts]
 
-    # Filter to valid tokens only
-    valid_mask = token_is_valid
-    if not valid_mask.any():
-        # No valid annotations
-        return {
-            "helix_fraction": np.nan,
-            "sheet_fraction": np.nan,
-            "loop_fraction": np.nan,
-            "num_ss_elements": np.nan,
-        }
+    # Overall metrics across all valid tokens
+    valid_sse = token_sse[token_is_valid]
 
-    valid_sse = token_sse[valid_mask]
-    n_valid = len(valid_sse)
+    # Chain-of-interest metrics
+    chain_of_interest, _ = get_chain_of_interest(atom_array)
+    if "chain_iid" in atom_array.get_annotation_categories():
+        token_chain = atom_array.get_annotation("chain_iid")[token_starts]
+    else:
+        token_chain = atom_array.chain_id[token_starts]
+    coi_valid_mask = token_is_valid & (token_chain == chain_of_interest)
+    valid_sse_coi = token_sse[coi_valid_mask]
 
-    # Compute fractions
-    helix_fraction = (valid_sse == SSEnum.HELIX).sum() / n_valid
-    sheet_fraction = (valid_sse == SSEnum.SHEET).sum() / n_valid
-    loop_fraction = (valid_sse == SSEnum.LOOP).sum() / n_valid
-
-    # Count contiguous SSE elements
-    num_ss_elements = count_contiguous_sse_elements(valid_sse)
-
-    return {
-        "helix_fraction": float(helix_fraction),
-        "sheet_fraction": float(sheet_fraction),
-        "loop_fraction": float(loop_fraction),
-        "num_ss_elements": float(num_ss_elements),
-    }
+    return {**_sse_fractions(valid_sse, ""), **_sse_fractions(valid_sse_coi, "_coi")}
 
 
 def count_contiguous_sse_elements(sse_array: np.ndarray) -> int:
@@ -296,6 +312,8 @@ class SecondaryStructureDistribution(Metric):
             - sheet_fraction: Fraction of tokens in sheet
             - loop_fraction: Fraction of tokens in loop
             - num_ss_elements: Number of contiguous SSE regions
+            - helix_fraction_coi / sheet_fraction_coi / loop_fraction_coi /
+              num_ss_elements_coi: Same metrics restricted to the chain of interest.
 
           For AtomArrayStack inputs, returns nanmean across all structures.
         """
@@ -304,12 +322,17 @@ class SecondaryStructureDistribution(Metric):
 
         atom_array_stack = ensure_atom_array_stack(atom_array)
         results = [compute_sse_distribution(arr) for arr in atom_array_stack]
-        return {
-            "helix_fraction": float(np.nanmean([r["helix_fraction"] for r in results])),
-            "sheet_fraction": float(np.nanmean([r["sheet_fraction"] for r in results])),
-            "loop_fraction": float(np.nanmean([r["loop_fraction"] for r in results])),
-            "num_ss_elements": float(np.nanmean([r["num_ss_elements"] for r in results])),
-        }
+        keys = [
+            "helix_fraction",
+            "sheet_fraction",
+            "loop_fraction",
+            "num_ss_elements",
+            "helix_fraction_coi",
+            "sheet_fraction_coi",
+            "loop_fraction_coi",
+            "num_ss_elements_coi",
+        ]
+        return {key: float(np.nanmean([r[key] for r in results])) for key in keys}
 
 
 class SecondaryStructureAccuracy(Metric):
