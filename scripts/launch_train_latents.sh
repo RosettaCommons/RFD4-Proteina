@@ -162,6 +162,11 @@ build_sbatch_header > "$SBATCH_FILE"
 cat >> "$SBATCH_FILE" << EOF
 #SBATCH --output ./slurm_run_outputs/slurm.out
 #SBATCH --error ./slurm_run_outputs/slurm.err
+EOF
+
+emit_ulimit_block >> "$SBATCH_FILE"
+
+cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
 export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH

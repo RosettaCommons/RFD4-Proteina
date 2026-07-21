@@ -351,6 +351,8 @@ else
 EOF
 fi
 
+emit_ulimit_block >> "$SBATCH_FILE"
+
 # Add environment setup
 cat >> "$SBATCH_FILE" << EOF
 
