@@ -82,7 +82,7 @@ The short version, from the **rfproteina repo root**:
 # 1. Build + activate the dedicated conda env (open-source PyMOL isn't pip-installable)
 make setup-pymol
 conda activate rfproteina          # or mamba / conda activate atomworks
-uv pip install -e ./lib/atomworks -e ./
+uv pip install -e "./lib/atomworks[ml]" -e ./
 
 # 2. Register the plugin with PyMOL (writes a loader line into ~/.pymolrc)
 atomworks setup pymol
