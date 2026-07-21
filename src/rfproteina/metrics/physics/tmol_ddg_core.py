@@ -11,7 +11,10 @@ import tmol.database
 import torch
 from biotite.structure import AtomArray, get_residue_starts
 from tmol.database import ParameterDatabase
-from tmol.io.pose_stack_from_biotite import pose_stack_from_biotite
+from tmol.io.pose_stack_from_biotite import (
+    BiotitePoseBuildContext,
+    pose_stack_from_biotite,
+)
 from tmol.kinematics.fold_forest import FoldForest
 from tmol.kinematics.move_map import CartesianMoveMap, MoveMap
 from tmol.pack.packer_task import PackerPalette
@@ -27,27 +30,30 @@ from rfproteina.utils.ddp import RankedLogger
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def create_score_function(device: torch.device, *, use_soft_rep: bool = False) -> Any:
-    """Create TMol's beta2016 score function, or its native ``beta_soft`` variant.
+def create_score_function(
+    device: torch.device,
+    *,
+    param_db: ParameterDatabase | None,
+    use_soft_rep: bool = False,
+) -> Any:
+    """Create TMol beta2016, or ``beta_soft`` when ``use_soft_rep`` is set.
 
-    ``beta_soft`` (``tmol/database/score_functions/beta_soft.yaml``) is TMol's own
-    softened-repulsion score function — a smoother LJ-repulsion potential plus rebalanced
-    reference weights, not just a smaller ``fa_ljrep`` weight — recommended for scoring
-    AI-generated structures that may still have minor clashes.
+    ``param_db`` must be the ligand-extended database from a BiotitePoseBuildContext.
     """
-    if not use_soft_rep:
-        return beta2016_score_function(device)
+    if param_db is None:
+        raise ValueError("param_db is required; use the PoseBuildContext parameter database")
 
-    weights_path = Path(tmol.database.__file__).parent / "score_functions" / "beta_soft.yaml"
-    return ScoreFunction.from_weights_file(str(weights_path), ParameterDatabase.get_default(), device)
+    if not use_soft_rep:
+        return beta2016_score_function(device, param_db=param_db)
+
+    weights_path = Path(tmol.database.__file__).parent / "score_functions" / "beta_soft.sfxn"
+    return ScoreFunction.from_sfxn_file(str(weights_path), param_db, device)
 
 
 def _residue_keys(atom_array: AtomArray, atom_sel: np.ndarray) -> set[tuple[str, int, str]]:
     """``(chain_id, res_id, ins_code)`` keys for residues with an atom in ``atom_sel``.
 
-    Author identity is all TMol's :attr:`PoseStack.pdb_info` retains, so two residues
-    sharing a key would make the block-to-residue mapping ambiguous — hence a global
-    uniqueness check across every residue, not just the selected ones.
+    Keys must be unique globally: pdb_info cannot disambiguate duplicates.
     """
     has_ins_code = "ins_code" in atom_array.get_annotation_categories()
     residue_bounds = get_residue_starts(atom_array, add_exclusive_stop=True)
@@ -74,14 +80,9 @@ def atom_sel_to_block_mask(
     *,
     raise_on_dropped_residues: bool = True,
 ) -> torch.Tensor:
-    """Map a boolean atom selection to a TMol block mask, by residue identity.
+    """Map an atom selection to a TMol block mask via residue identity in pdb_info.
 
-    TMol may silently drop residues while building the PoseStack (waters, unsupported
-    ligands, residues missing backbone atoms), so block index and AtomArray residue
-    index can diverge. Matching by ``(chain_id, res_id, ins_code)`` via
-    :attr:`PoseStack.pdb_info` — which TMol keeps in sync with kept blocks — is robust
-    to that, unlike a positional mapping. A selected residue with no surviving block
-    was dropped: raise when ``raise_on_dropped_residues`` (default), else warn.
+    Positional indices can diverge when TMol drops residues; unmatched selected residues raise by default.
     """
     selected_keys = _residue_keys(atom_array, atom_sel)
     pdb_info = pose_stack.pdb_info
@@ -143,18 +144,17 @@ def build_pose_and_masks(
     region_a: dict[str, Any] | list[dict[str, Any]] | None = None,
     region_b: dict[str, Any] | list[dict[str, Any]] | None = None,
     raise_on_dropped_residues: bool = True,
+    context: BiotitePoseBuildContext | None = None,
 ) -> tuple[PoseStack, torch.Tensor, torch.Tensor]:
     """Build a PoseStack and binder/target (or region) block masks.
 
-    No ``ParameterDatabase`` is passed to TMol: with ``prepare_ligands=True``, TMol
-    derives ligand chemistry (SMILES -> RDKit/OpenBabel typing) from the AtomArray
-    itself and defaults to ``ParameterDatabase.get_default()`` (a cached singleton)
-    otherwise. When ``region_a``/``region_b`` are omitted, the binder is the chain of
-    interest (see :func:`~rfproteina.utils.chain.get_chain_of_interest`)
-    and the target is every other atom. ``raise_on_dropped_residues`` forwards to
-    :func:`atom_sel_to_block_mask`.
+    Pass a reusable BiotitePoseBuildContext to avoid redoing ligand prep; omit regions to
+    infer binder as the chain of interest and target as everything else.
     """
-    pose_stack = pose_stack_from_biotite(atom_array, device, prepare_ligands=True, no_optH=no_opt_h)
+    if context is not None:
+        pose_stack = pose_stack_from_biotite(atom_array, device, context=context, no_optH=no_opt_h)
+    else:
+        pose_stack = pose_stack_from_biotite(atom_array, device, prepare_ligands=True, no_optH=no_opt_h)
 
     if region_a is not None and region_b is not None:
         mask_a = atom_spec_to_block_mask(
@@ -193,14 +193,9 @@ def relax_pose_stack(
     cartesian: bool = True,
     num_repeats: int = 2,
 ) -> PoseStack:
-    """Relax an entire PoseStack via TMol's FastRelax (repeated rotamer packing +
-    ramped-fa_rep minimization), Cartesian or torsion-space.
-
-    ``task_operations=None`` uses FastRelax's own default packer task (Dunbrack
-    rotamers + fixed-chi + include-current, restricted to repacking).
-    """
+    """Relax a PoseStack with TMol FastRelax (Cartesian or torsion-space)."""
     fold_forest = FoldForest.reasonable_fold_forest(pose_stack)
-    palette = PackerPalette(pose_stack.packed_block_types.restype_set)
+    palette = PackerPalette()
 
     if cartesian:
         move_map = CartesianMoveMap()  # coord_mask=None -> every atom is free to move.
@@ -223,15 +218,7 @@ def score_block_pair(
     term_names: list[str] | None = None,
     term_cutoffs: dict[str, tuple[str, float]] | None = None,
 ) -> dict[str, float]:
-    """Score a block-pair interface in one TMol pass.
-
-    Always returns ``interface_ddg`` (the sum of every score term over the cross-region
-    block pairs). ``term_names`` additionally gives each named term's own summed
-    cross-region energy, keyed by that term name (e.g. ``["hbond"]`` -> ``{"hbond":
-    ...}``). ``term_cutoffs`` maps an output key to ``(term_name, energy_cutoff)``,
-    adding the count of cross-region block-pairs at or under ``energy_cutoff`` for that
-    term, keyed by the given key.
-    """
+    """Score a block-pair interface; returns ``interface_ddg`` plus optional term outputs."""
     scorer = sfxn.render_block_pair_scoring_module(pose_stack)
     # [n_terms, n_poses, n_blocks, n_blocks]
     block_pair_scores = scorer(pose_stack.coords, sum_terms=False)
@@ -239,10 +226,7 @@ def score_block_pair(
         raise ValueError("Expected a single pose for interface scoring")
     score_type_names = [st.name for st in sfxn.all_score_types()]
 
-    # TMol's block-pair scorer only populates one triangular half of the (block, block)
-    # matrix (whichever of (i, j) / (j, i) it computed), so both cross directions must
-    # be OR'd — a one-sided mask silently reads all zeros whenever region_a's block
-    # indices land after region_b's (the common case, e.g. a ligand added after chains).
+    # Scorer fills only one triangle of the block-pair matrix; OR both directions.
     cross_mask = ((mask_a.unsqueeze(2) & mask_b.unsqueeze(1)) | (mask_b.unsqueeze(2) & mask_a.unsqueeze(1)))[0]
 
     out = {"interface_ddg": float((block_pair_scores[:, 0] * cross_mask).sum().item())}
