@@ -1007,6 +1007,10 @@ class Proteina(L.LightningModule):
                 step_outputs = self.training_step(batch, batch_idx=-1)
             per_example_losses = step_outputs["losses_per_sample"]
 
+        # ``generate: false`` marks a loss-only dataset: skip generation + oracle folding.
+        if not dataset_cfg.get("generate", True):
+            return {}
+
         metrics_output = {}
         if self.inf_cfg is None:
             return metrics_output
