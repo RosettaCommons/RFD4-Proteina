@@ -29,6 +29,24 @@ the vendored AtomWorks dependency automatically. Choose ``other`` at the
 cluster prompt for a local workstation; select a named cluster only when its
 shared storage and container configuration are available to you.
 
+IPD / DIGS cluster
+------------------
+
+On DIGS, setup is the single command above — choose ``1) digs`` at the cluster
+prompt. Nothing else is required: the shared data directory and the apptainer
+SIF are already wired in the committed ``.ipd/.env.digs``, which the entry
+scripts source automatically, so you can skip the "Configure data and
+checkpoints" step below and run inference directly. ``setup.sh`` is idempotent
+and safe to re-run.
+
+.. code-block:: bash
+
+   git clone --recurse-submodules \
+       https://github.com/RosettaCommons/RFD4-Proteina.git
+   cd RFD4-Proteina
+   bash setup.sh          # choose 1) digs at the cluster prompt
+   source .venv/bin/activate
+
 Configure data and checkpoints
 ------------------------------
 
