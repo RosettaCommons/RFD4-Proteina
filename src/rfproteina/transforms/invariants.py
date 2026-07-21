@@ -538,6 +538,27 @@ def check_idxgrp_violations(aa: AtomArray, feats: dict) -> list[InvariantViolati
     return violations
 
 
+def find_index_group_res_id_gaps(aa: AtomArray) -> list[str]:
+    """Describe each internal res_id gap within a C_IDXGRP index group (atomized residues skipped).
+
+    Returns one ``"index group <g>: res_id jumps from <a> to <b>"`` per gap; gaps on index-group
+    boundaries are expected and not reported.
+    """
+    starts = get_residue_starts(aa)
+    starts = starts[~S_ATM.mask(aa, default="generate")[starts]]
+    index_groups = C_IDXGRP.annotation(aa, default="generate")
+    messages: list[str] = []
+    prev_group: int | None = None
+    prev_res_id: int | None = None
+    for start in starts:
+        group = int(index_groups[start])
+        res_id = int(aa.res_id[start])
+        if group == prev_group and prev_res_id is not None and (res_id - prev_res_id) not in (0, 1):
+            messages.append(f"index group {group}: res_id jumps from {prev_res_id} to {res_id}")
+        prev_group, prev_res_id = group, res_id
+    return messages
+
+
 # ---------------------------------------------------------------------------
 # Cross-cutting checks (require both aa and feats)
 # ---------------------------------------------------------------------------
