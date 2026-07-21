@@ -337,7 +337,7 @@ def convert_to_internal_coords(atom_array: AtomArray, mask: np.ndarray) -> AtomA
     return atom_array
 
 
-def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_input_coords: np.ndarray) -> AtomArray:
+def insert_internal_coord_conditioned_groups(atom_array: AtomArray) -> AtomArray:
     """Update coord_with_insertion AtomArray annotation with internal coordinate conditioning.
 
     Aligns each internally-conditioned group to the model-generated coordinates before insertion.
@@ -345,6 +345,8 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_inp
     intcrd_mask = C_INTCRD.mask(atom_array)
     if not intcrd_mask.any():
         return atom_array
+
+    intcrd_conditioning = C_INTCRD.annotation(atom_array, default="generate")
 
     if not SA_CWI.has_annotation(atom_array):
         SA_CWI.set_annotation(atom_array, SA_CWI.default_annotation(atom_array))
@@ -362,18 +364,18 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray, original_inp
         group_intcrd_mask = intcrd_mask & (coord_groups == group_id)
 
         # Extract coordinates for alignment
-        original_coords = original_input_coords[group_intcrd_mask]  # [n_atoms, 3]
+        group_intcrd_conditioning = intcrd_conditioning[group_intcrd_mask]  # [n_atoms, 3]
         generated_coords = atom_array.coord[group_intcrd_mask]  # [n_atoms, 3]
 
         # Check for valid coordinates (no NaNs)
-        if np.isnan(original_coords).any() or np.isnan(generated_coords).any():
+        if np.isnan(group_intcrd_conditioning).any() or np.isnan(generated_coords).any():
             raise ValueError(f"NaN values detected in input or generated coords for coord group {group_id}.")
 
         # Superimpose original internal coordinates onto model-generated coordinates
         # This aligns the internal coordinate conditioning to match the model output
         aligned_coords, _ = superimpose(
             fixed=generated_coords,
-            mobile=original_coords,
+            mobile=group_intcrd_conditioning,
         )
 
         # Update coords_with_insertion with aligned coordinates
