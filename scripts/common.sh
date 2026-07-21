@@ -177,7 +177,7 @@ setup_pythonpath() {
     local repo_root="$1"
     
     export PYTHONPATH="${repo_root}/src:${repo_root}/lib/atomworks/src:$PYTHONPATH"
-    echo "PYTHONPATH set to include rfproteina, foundry, atomworks"
+    echo "PYTHONPATH set to include rfproteina, atomworks"
 }
 
 # Setup common environment variables for training/inference
@@ -336,6 +336,15 @@ build_sbatch_header() {
     if [ -n "$SLURM_EXTRA_OPTIONS" ]; then
         echo "#SBATCH $SLURM_EXTRA_OPTIONS"
     fi
+}
+
+# Emit the open-file ulimit bump. MUST be appended only after every #SBATCH directive
+emit_ulimit_block() {
+    cat <<'EOF'
+
+# Raise the open-file soft limit to the hard cap. Low defaults (e.g. 1024 on coreweave)
+ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
+EOF
 }
 
 # Detect GPU type and set appropriate batch size
@@ -704,18 +713,16 @@ build_container_env_cmds() {
 
 # Copy codebase to a target directory (used by launch_infer.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
-# Copies the project (incl. the vendored foundry pkg and lib/atomworks) and .ipd.
+# Copies the project (incl. lib/atomworks) and .ipd.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
 copy_code_to_dir() {
     local repo_root="$1"
     local code_dir="$2"
     local cluster="${3:-}"
 
-    mkdir -p "$code_dir/lib/atomworks"
+    mkdir -p "$code_dir/lib/atomworks" "$code_dir/src" "$code_dir/data"
     rsync -a --no-compress \
         "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
-    rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/src/foundry/" "$code_dir/src/foundry/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/src/rfproteina/" "$code_dir/src/rfproteina/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
