@@ -2,6 +2,7 @@
 # CIFs from src/script_utils/build_val_cifs.py. Loss on held-out structures.
 
 compute_loss: true  # stratified val loss on the default t grid (override with t_grid: [...])
+generate: false  # loss-only: no generation/AF3 folding (set generate: true to also generate)
 
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
