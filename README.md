@@ -21,9 +21,9 @@ Two ways in:
 
 ## Setup
 
-> **On an configured cluster (DIGS)?** Skip all of this. Run the [`/setup-rfproteina-on-digs`](.claude/commands/setup-rfproteina-on-digs.md)
-> Claude Code command — the shared data dir, checkpoints, and apptainer SIF are already wired in
-> `.ipd/.env.digs`.
+> **On an configured cluster (DIGS)?** Just run `bash setup.sh` below and choose `1) digs` at the cluster
+> prompt — the shared data dir, checkpoints, and apptainer SIF are already wired in `.ipd/.env.digs`,
+> so you can skip the data-configuration step entirely and run inference directly.
 
 These instructions use [`uv`](https://github.com/astral-sh/uv). Prefer apptainer or docker? See
 [Running in a container](#running-in-a-container).
