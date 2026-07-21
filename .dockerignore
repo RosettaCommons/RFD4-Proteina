@@ -1,0 +1,7 @@
+# This dependency image only COPYs these two manifests. Before this file was
+# added, Docker sent the entire repository as build context.
+**
+!pyproject.toml
+!lib/
+!lib/atomworks/
+!lib/atomworks/pyproject.toml

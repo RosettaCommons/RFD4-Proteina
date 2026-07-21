@@ -4,17 +4,14 @@ version = "0.0.1"
 description = "protein foundation models"
 requires-python = ">=3.12,<=3.12.10"
 dependencies = [
-    # Structure I/O + ML data pipeline. Vendored as a submodule under lib/ -- see
-    # [tool.uv.sources]. `uv pip install` does NOT honour tool.uv.sources, so setup.sh
-    # installs `-e lib/atomworks` explicitly; otherwise it resolves from PyPI instead.
-    "atomworks[ml]",
+    # AtomWorks is installed from the local lib/atomworks submodule by setup.sh.
     # atomworks hard-asserts this exact version at import; posebusters/mace pull newer.
     "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
     "hydra-core>=1.3.0,<1.4",
     "environs>=11.0.0,<12",
-    "typer>=0.20.0,<1",
+    "typer>=0.20.0,<0.26",
     "fire",
     # Logging
     "wandb>=0.15.10,<1",
@@ -32,7 +29,7 @@ dependencies = [
     "opt_einsum>=3.4.0,<4",
     "dm-tree>=0.1.6,<1",
     # Data / numerics
-    "pandas",
+    "pandas>=2,<3",
     "zstandard",
     "toolz",
     "matplotlib",
@@ -49,10 +46,6 @@ dependencies = [
     "assertpy",
 ]
 
-# atomworks is vendored as a git submodule under lib/.
-[tool.uv.sources]
-atomworks = { path = "lib/atomworks", editable = true }
-
 [project.optional-dependencies]
 docs = [
     "linkify-it-py>=2.0.0,<3",
@@ -64,33 +57,26 @@ docs = [
     "sphinx-autodoc-typehints>=2.0.0,<4",
     "sphinx-gallery>=0.19.0,<1",
 ]
-# TMol wheel must match NGC PyTorch (torch 2.10 + CUDA 13.1 + cp312); see latent-dev.def.
-# Runtime deps are listed here so Docker `uv pip compile --extra tmol` installs them in the main
-# layer (torch excluded). The tmol wheel is installed --no-deps at image build end.
-tmol = [
-    "attrs>=21.0,<26",
-    "attrs-strict>=1.0,<2",
-    "astor>=0.8,<1",
-    "cattrs>=22.0,<25",
-    "frozendict>=2.4,<3",
-    "hypothesis>=5.35,<7",
-    "ipython>=8.0",
-    "llvmlite>=0.39,<1",
-    "numba>=0.56,<1",
-    "pint>=0.23,<1",
-    "psutil>=5.9,<8",
-    "pyarrow>=12,<23",
-    "rdkit>=2024.3",
-    "sparse>=0.13,<1",
-    "typing-inspect>=0.9,<1",
-    "tmol @ https://github.com/uw-ipd/tmol/releases/download/v0.1.35/tmol-0.1.35+cu131torch2.10-cp312-cp312-linux_x86_64.whl ; sys_platform == 'linux'",
+# Select one TMol/metrics pair matching the container's Torch and CUDA stack.
+tmol-cuda12 = [
+    "tmol[ligand]; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
-metrics = [
+tmol-cuda13 = [
+    "tmol[ligand]; sys_platform == 'linux'",
+]
+metrics-cuda12 = [
     "hydride>=1.2",
     "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
-    "cuequivariance-torch>=0.8.1; sys_platform == 'linux'",
-    "cuequivariance-ops-cu13>=0.8.1; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu13>=0.8.1; sys_platform == 'linux'",
+    "cuequivariance-torch>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance-ops-cu12>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12>=0.10.0; sys_platform == 'linux'",
+]
+metrics-cuda13 = [
+    "hydride>=1.2",
+    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
+    "cuequivariance-torch>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance-ops-cu13>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu13>=0.10.0; sys_platform == 'linux'",
 ]
 dev = [
     # Linters & formatters
@@ -106,6 +92,29 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "pytest-benchmark>=5.0.0,<6",
     "assertpy",
+]
+
+# atomworks is vendored as a git submodule under lib/.
+[tool.uv]
+conflicts = [
+    [
+        { extra = "tmol-cuda12" },
+        { extra = "tmol-cuda13" },
+    ],
+    [
+        { extra = "metrics-cuda12" },
+        { extra = "metrics-cuda13" },
+    ],
+]
+
+[tool.uv.sources]
+atomworks = { path = "lib/atomworks", editable = true }
+# TMol's stable Torch 2.13 wheel is built with cu130. It is validated with the
+# public Torch 2.13/cu132 stack used by NGC 26.06-based containers.
+tmol = [
+    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu128torch2.10-cp312-cp312-manylinux_2_28_x86_64.whl", extra = "tmol-cuda12", marker = "platform_machine == 'x86_64'" },
+    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl", extra = "tmol-cuda13", marker = "platform_machine == 'x86_64'" },
+    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl", extra = "tmol-cuda13", marker = "platform_machine == 'aarch64'" },
 ]
 
 # Build system

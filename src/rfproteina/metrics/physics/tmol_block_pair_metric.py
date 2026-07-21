@@ -1,14 +1,7 @@
 """TMol block-pair interface metric for arbitrary region pairs.
 
-One general metric covers every interface case; express project-specific presets
-(ligand ddG, PPI H-bonds, electrostatics, …) as Hydra configs that instantiate it
-with the regions (and, optionally, ``term_names`` / ``term_cutoffs``) you care about
-— see ``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``.
-
-Each region is an ``atom_selection_from_spec`` spec (query string or field filters),
-e.g. ``{"query": "res_name == 'lpr'"}`` or ``{"chain_id": "A"}``. When both regions are
-omitted, the binder is the chain of interest and the target is every other atom (see
-:func:`~rfproteina.metrics.physics.tmol_ddg_core.build_pose_and_masks`).
+Instantiate via Hydra configs (see ``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``).
+Regions are ``atom_selection_from_spec`` specs; when both are omitted, binder is the chain of interest.
 """
 
 from __future__ import annotations
@@ -18,6 +11,7 @@ from typing import Any, Literal
 
 import torch
 from biotite.structure import AtomArray
+from tmol.io.pose_stack_from_biotite import build_context_from_biotite
 
 from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.physics.tmol_ddg_core import (
@@ -32,27 +26,12 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 
 
 class TMolBlockPairMetric(Metric):
-    """TMol interface ddG, plus optional per-term energies and interaction counts.
+    """TMol interface ddG with optional per-term energies and interaction counts.
 
-    Always returns ``interface_ddg``. Additionally:
-
-    - ``term_names`` (e.g. ``["hbond"]``) adds each term's summed cross-region energy,
-      keyed by that term's own name (e.g. ``{"hbond": ...}``).
-    - ``term_cutoffs`` (e.g. ``{"n_interface_hbonds": ("hbond", -0.3)}``) adds the count
-      of cross-region block-pairs at or under the given cutoff for that term, keyed by
-      whatever output key you choose.
-
-    ``relax="fast_relax"`` relaxes the *entire* structure (TMol FastRelax: repeated
-    rotamer packing + ramped-repulsion minimization) before scoring, since a single
-    cheap minimization is known to get stuck in clashy local minima on raw generated
-    structures. ``cartesian=True`` relaxes in Cartesian space (recommended — it can
-    remove backbone strain that torsion-space relax can't reach); ``cartesian=False``
-    relaxes torsions only.
-
-    ``raise_on_dropped_residues`` (default ``True``) raises if any residue in a scored
-    region is silently dropped while TMol builds the PoseStack (waters, unsupported
-    ligands, residues missing backbone atoms); set ``False`` to warn and score the
-    survivors instead — e.g. when an inconsequential PTM is expected to drop.
+    Returns ``interface_ddg``; ``term_names`` / ``term_cutoffs`` add per-term energies and counts.
+    ``reuse_context=True`` caches the ligand build context across structures that share chemistry;
+    set ``False`` when ligands differ sample-to-sample. ``raise_on_dropped_residues`` (default
+    ``True``) errors if a scored residue is dropped from the PoseStack.
     """
 
     def __init__(
@@ -68,6 +47,8 @@ class TMolBlockPairMetric(Metric):
         term_names: list[str] | tuple[str, ...] | None = None,
         term_cutoffs: dict[str, tuple[str, float]] | None = None,
         raise_on_dropped_residues: bool = True,
+        reuse_context: bool = True,
+        ligand_params_files: list[str] | None = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -77,6 +58,9 @@ class TMolBlockPairMetric(Metric):
         if requested.type == "cuda" and not torch.cuda.is_available():
             logger.warning("CUDA requested but unavailable; falling back to CPU for %s", self.__class__.__name__)
             requested = torch.device("cpu")
+        elif requested.type == "cuda" and requested.index is None:
+            # TMol compares devices exactly; torch.device("cuda") != torch.device("cuda:0").
+            requested = torch.device("cuda", torch.cuda.current_device())
         self.device = requested
         self.relax = relax
         self.cartesian = cartesian
@@ -86,21 +70,47 @@ class TMolBlockPairMetric(Metric):
         self.term_names = list(term_names) if term_names is not None else None
         self.term_cutoffs = term_cutoffs
         self.raise_on_dropped_residues = raise_on_dropped_residues
+        self.reuse_context = reuse_context
+        self.ligand_params_files = list(ligand_params_files) if ligand_params_files is not None else None
         self._sfxn = None
+        self._context = None
 
     @cached_property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
         return {"predicted_atom_array": "predicted_atom_array"}
 
     def setup(self) -> None:
-        self._sfxn = create_score_function(self.device, use_soft_rep=self.use_soft_rep)
+        # Context needs a structure for ligand detection; clear caches so a new epoch starts fresh.
+        self._sfxn = None
+        self._context = None
 
     def teardown(self) -> None:
         self._sfxn = None
+        self._context = None
+
+    def _ensure_context_and_sfxn(self, atom_array: AtomArray) -> None:
+        """Build (and optionally cache) the PoseBuildContext and ligand-aware score function."""
+        if self.reuse_context and self._context is not None and self._sfxn is not None:
+            return
+        # Commit both only on full success so a failed sfxn build cannot leave a half-cached context.
+        context = build_context_from_biotite(
+            atom_array,
+            self.device,
+            prepare_ligands=True,
+            strict_ligands=True,
+            ligand_params_files=self.ligand_params_files,
+            sample_proton_chi=False,
+        )
+        sfxn = create_score_function(
+            self.device,
+            use_soft_rep=self.use_soft_rep,
+            param_db=context.parameter_database,
+        )
+        self._context = context
+        self._sfxn = sfxn
 
     def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
-        if self._sfxn is None:
-            self.setup()
+        self._ensure_context_and_sfxn(predicted_atom_array)
         pose_stack, mask_a, mask_b = build_pose_and_masks(
             atom_array=predicted_atom_array,
             device=self.device,
@@ -108,6 +118,7 @@ class TMolBlockPairMetric(Metric):
             region_a=self.region_a,
             region_b=self.region_b,
             raise_on_dropped_residues=self.raise_on_dropped_residues,
+            context=self._context,
         )
         if self.relax == "fast_relax":
             pose_stack = relax_pose_stack(

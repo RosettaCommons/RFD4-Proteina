@@ -69,8 +69,8 @@ mkdir -p "$CUSTOM_METRICS_PKG"
 
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
-# atomworks is installed explicitly from the submodule: `uv pip install` does not honour
-# [tool.uv.sources], so without this it would resolve atomworks from PyPI instead.
+# AtomWorks is intentionally omitted from RFProteina's pyproject and installed
+# explicitly from the local submodule.
 uv pip install -e "lib/atomworks[dev,ml,openbabel,docs]" -e ".[dev]"
 
 # ── 7. Shell rc file ───────────────────────────────────────────────────────

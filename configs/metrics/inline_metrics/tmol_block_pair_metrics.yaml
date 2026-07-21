@@ -10,6 +10,12 @@
 # NOTE: TMol scoring is heavy (GPU), so this file is intentionally NOT included in
 # `all_inline_metrics.yaml`; opt in explicitly where you want interface energies.
 # The `lpr` ligand resname and `chain_id: A` partner below are just placeholders.
+#
+# By default each preset reuses one TMol build context (ligand prep + ligand-extended
+# parameter database) across the whole validation set — the fast path when every scored
+# structure shares the same ligand chemistry. Set `reuse_context: false` for a set whose
+# ligand differs from sample to sample, and/or set `ligand_params_files: [/path/to.tmol]`
+# to type a fixed, known ligand from tmol YAML params instead of RDKit/OpenBabel.
 
 # --- Ligand-partner presets (was LigandInterface*Metric) ---
 ligand_interface_ddg:
