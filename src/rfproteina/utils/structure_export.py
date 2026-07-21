@@ -139,10 +139,7 @@ def process_single_sample_to_atom_array(
 
     C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
     C_INTCRD.set_mask(updated_array, C_INTCRD.mask(updated_array))
-    updated_array = insert_internal_coord_conditioned_groups(
-        updated_array,
-        original_input_coords=updated_array.original_input_coord,
-    )
+    updated_array = insert_internal_coord_conditioned_groups(updated_array)
 
     S_SEGMIN.set_mask(updated_array, np.zeros_like(S_SEGMIN.mask(updated_array)))
     S_SEGMAX.set_mask(updated_array, np.zeros_like(S_SEGMAX.mask(updated_array)))

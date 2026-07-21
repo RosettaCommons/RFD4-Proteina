@@ -223,17 +223,18 @@ def test_insert_internal_coord_conditioned_groups(deterministic_rng, pdb_id):
         0
     ].numpy()
     atom_array.coord = generated_coords
-    atom_array.set_annotation("original_input_coord", original_coords)
 
     # Run insertion
-    atom_array = insert_internal_coord_conditioned_groups(atom_array, original_input_coords=original_coords)
+    atom_array = insert_internal_coord_conditioned_groups(atom_array)
 
     # Verify coords_with_insertion was created
     assert SA_CWI.has_annotation(atom_array)
     inserted_coords = SA_CWI.annotation(atom_array)[group_mask]
 
     # Verify inserted coords match aligned original coords
-    aligned_original, _ = superimpose(fixed=generated_coords[group_mask], mobile=original_coords[group_mask])
+    aligned_original, _ = superimpose(
+        fixed=generated_coords[group_mask], mobile=C_INTCRD.annotation(atom_array)[group_mask]
+    )
     assert np.allclose(inserted_coords, aligned_original, atol=1e-3)
 
 
