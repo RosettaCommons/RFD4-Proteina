@@ -138,8 +138,12 @@ class HotspotObedience(Metric):
             Dictionary with keys 'hotspot_obedience'
         """
 
-        return hotspot_obedience(
+        result = hotspot_obedience(
             predicted_atom_array_stack=predicted_atom_array_stack,
             predicted_coords=predicted_coords,
             max_hotspot_distance=self.max_hotspot_distance,
         )
+        # hotspot_obedience() returns one value per replicate as a numpy array; reduce to a
+        # plain float here, since downstream metric-dict cleaning only accepts int/float/1-elem
+        # tensors and silently drops anything else (e.g. an un-reduced numpy array).
+        return {k: float(np.nanmean(v)) for k, v in result.items()}

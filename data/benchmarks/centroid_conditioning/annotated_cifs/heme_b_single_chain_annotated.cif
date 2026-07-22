@@ -1,0 +1,274 @@
+data_heme_b_single_chain_annotated.cif
+#
+_entry.id       heme_b_single_chain_annotated.cif
+_entry.author   unknown_user
+_entry.date     2026-07-19
+_entry.time     02:24:34
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+1 non-polymer .
+2 polymer     .
+#
+_entity_poly.entity_id                      2
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       X
+_entity_poly.pdbx_seq_one_letter_code_can   X
+_entity_poly.pdbx_strand_id                 B
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   2
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      100-155
+_entity_poly_seq.num         1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+100-155 100-155 NON-POLYMER ? ? ? ?
+L;G     L;G     NON-POLYMER ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+L;G C0  C4  DOUB N
+L;G C0  C29 SING N
+L;G C1  C7  SING N
+L;G C1  C12 DOUB N
+L;G C2  C15 SING N
+L;G C2  C19 DOUB N
+L;G C3  C22 SING N
+L;G C3  C26 DOUB N
+L;G C4  C5  SING N
+L;G C4  N0  SING N
+L;G C5  C6  DOUB N
+L;G C5  C9  SING N
+L;G C6  C7  SING N
+L;G C6  C8  SING N
+L;G C7  N0  DOUB N
+L;G C9  C10 SING N
+L;G C10 C11 SING N
+L;G C11 O0  DOUB N
+L;G C11 O1  SING N
+L;G C12 C13 SING N
+L;G C12 N1  SING N
+L;G C13 C14 DOUB N
+L;G C13 C16 SING N
+L;G C14 C15 SING N
+L;G C14 C17 SING N
+L;G C15 N1  DOUB N
+L;G C17 C18 DOUB N
+L;G C19 C20 SING N
+L;G C19 N2  SING N
+L;G C20 C21 DOUB N
+L;G C20 C23 SING N
+L;G C21 C22 SING N
+L;G C21 C24 SING N
+L;G C22 N2  DOUB N
+L;G C24 C25 DOUB N
+L;G C26 C27 SING N
+L;G C26 N3  SING N
+L;G C27 C28 DOUB N
+L;G C27 C30 SING N
+L;G C28 C29 SING N
+L;G C28 C31 SING N
+L;G C29 N3  DOUB N
+L;G C31 C32 SING N
+L;G C32 C33 SING N
+L;G C33 O2  DOUB N
+L;G C33 O3  SING N
+L;G N0  FE0 SING N
+L;G N1  FE0 SING N
+L;G N2  FE0 SING N
+L;G N3  FE0 SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_ChainCentroid_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+HETATM C  C0  . L;G     A 1 0 . 0 L;G     A C0  0  nan 1.0 ? True False -1  False -1  0  -2.053 -0.282 0.695  1
+HETATM C  C1  . L;G     A 1 0 . 0 L;G     A C1  1  nan 1.0 ? True False -1  False -1  1  1.436  -3.554 0.217  1
+HETATM C  C2  . L;G     A 1 0 . 0 L;G     A C2  2  nan 1.0 ? True False -1  False -1  2  4.474  0.156  -0.123 1
+HETATM C  C3  . L;G     A 1 0 . 0 L;G     A C3  3  nan 1.0 ? True False -1  False -1  3  0.953  3.422  0.082  1
+HETATM C  C4  . L;G     A 1 0 . 0 L;G     A C4  4  nan 1.0 ? True False -1  False -1  4  -1.364 -1.476 0.613  1
+HETATM C  C5  . L;G     A 1 0 . 0 L;G     A C5  5  nan 1.0 ? True False -1  False -1  5  -2.01  -2.766 0.714  1
+HETATM C  C6  . L;G     A 1 0 . 0 L;G     A C6  6  nan 1.0 ? True False -1  False -1  6  -1.035 -3.7   0.539  1
+HETATM C  C7  . L;G     A 1 0 . 0 L;G     A C7  7  nan 1.0 ? True False -1  False -1  7  0.196  -2.971 0.365  1
+HETATM C  C8  . L;G     A 1 0 . 0 L;G     A C8  8  nan 1.0 ? True False -1  False -1  8  -1.137 -5.186 0.526  1
+HETATM C  C9  . L;G     A 1 0 . 0 L;G     A C9  9  nan 1.0 ? True False -1  False -1  9  -3.465 -3.011 0.954  1
+HETATM C  C10 . L;G     A 1 0 . 0 L;G     A C10 10 nan 1.0 ? True False -1  False -1  10 -4.3   -2.902 -0.335 1
+HETATM C  C11 . L;G     A 1 0 . 0 L;G     A C11 11 nan 1.0 ? True False -1  False -1  11 -5.022 -1.582 -0.45  1
+HETATM O  O0  . L;G     A 1 0 . 0 L;G     A O0  12 nan 1.0 ? True False -1  False -1  12 -5.356 -0.89  0.478  1
+HETATM O  O1  . L;G     A 1 0 . 0 L;G     A O1  13 nan 1.0 ? True False -1  False -1  13 -5.285 -1.26  -1.715 1
+HETATM C  C12 . L;G     A 1 0 . 0 L;G     A C12 14 nan 1.0 ? True False -1  False -1  14 2.597  -2.814 0.111  1
+HETATM C  C13 . L;G     A 1 0 . 0 L;G     A C13 15 nan 1.0 ? True False -1  False -1  15 3.918  -3.372 0.0    1
+HETATM C  C14 . L;G     A 1 0 . 0 L;G     A C14 16 nan 1.0 ? True False -1  False -1  16 4.775  -2.309 -0.08  1
+HETATM C  C15 . L;G     A 1 0 . 0 L;G     A C15 17 nan 1.0 ? True False -1  False -1  17 3.951  -1.116 -0.018 1
+HETATM C  C16 . L;G     A 1 0 . 0 L;G     A C16 18 nan 1.0 ? True False -1  False -1  18 4.235  -4.824 0.048  1
+HETATM C  C17 . L;G     A 1 0 . 0 L;G     A C17 19 nan 1.0 ? True False -1  False -1  19 6.22   -2.312 -0.173 1
+HETATM C  C18 . L;G     A 1 0 . 0 L;G     A C18 20 nan 1.0 ? True False -1  False -1  20 6.941  -3.204 -0.842 1
+HETATM C  C19 . L;G     A 1 0 . 0 L;G     A C19 21 nan 1.0 ? True False -1  False -1  21 3.777  1.349  -0.108 1
+HETATM C  C20 . L;G     A 1 0 . 0 L;G     A C20 22 nan 1.0 ? True False -1  False -1  22 4.424  2.628  -0.262 1
+HETATM C  C21 . L;G     A 1 0 . 0 L;G     A C21 23 nan 1.0 ? True False -1  False -1  23 3.434  3.572  -0.225 1
+HETATM C  C22 . L;G     A 1 0 . 0 L;G     A C22 24 nan 1.0 ? True False -1  False -1  24 2.2    2.844  -0.026 1
+HETATM C  C23 . L;G     A 1 0 . 0 L;G     A C23 25 nan 1.0 ? True False -1  False -1  25 5.894  2.836  -0.368 1
+HETATM C  C24 . L;G     A 1 0 . 0 L;G     A C24 26 nan 1.0 ? True False -1  False -1  26 3.527  5.012  -0.332 1
+HETATM C  C25 . L;G     A 1 0 . 0 L;G     A C25 27 nan 1.0 ? True False -1  False -1  27 4.389  5.668  -1.101 1
+HETATM C  C26 . L;G     A 1 0 . 0 L;G     A C26 28 nan 1.0 ? True False -1  False -1  28 -0.194 2.679  0.276  1
+HETATM C  C27 . L;G     A 1 0 . 0 L;G     A C27 29 nan 1.0 ? True False -1  False -1  29 -1.516 3.236  0.411  1
+HETATM C  C28 . L;G     A 1 0 . 0 L;G     A C28 30 nan 1.0 ? True False -1  False -1  30 -2.356 2.18   0.59   1
+HETATM C  C29 . L;G     A 1 0 . 0 L;G     A C29 31 nan 1.0 ? True False -1  False -1  31 -1.536 0.99   0.554  1
+HETATM C  C30 . L;G     A 1 0 . 0 L;G     A C30 32 nan 1.0 ? True False -1  False -1  32 -1.833 4.689  0.355  1
+HETATM C  C31 . L;G     A 1 0 . 0 L;G     A C31 33 nan 1.0 ? True False -1  False -1  33 -3.843 2.209  0.7    1
+HETATM C  C32 . L;G     A 1 0 . 0 L;G     A C32 34 nan 1.0 ? True False -1  False -1  34 -4.471 2.162  -0.704 1
+HETATM C  C33 . L;G     A 1 0 . 0 L;G     A C33 35 nan 1.0 ? True False -1  False -1  35 -5.969 2.198  -0.616 1
+HETATM O  O2  . L;G     A 1 0 . 0 L;G     A O2  36 nan 1.0 ? True False -1  False -1  36 -6.62  2.947  0.056  1
+HETATM O  O3  . L;G     A 1 0 . 0 L;G     A O3  37 nan 1.0 ? True False -1  False -1  37 -6.556 1.274  -1.412 1
+HETATM N  N0  . L;G     A 1 0 . 0 L;G     A N0  38 nan 1.0 ? True False -1  False -1  38 -0.022 -1.625 0.403  1
+HETATM N  N1  . L;G     A 1 0 . 0 L;G     A N1  39 nan 1.0 ? True False -1  False -1  39 2.632  -1.448 0.099  1
+HETATM N  N2  . L;G     A 1 0 . 0 L;G     A N2  40 nan 1.0 ? True False -1  False -1  40 2.424  1.501  0.028  1
+HETATM N  N3  . L;G     A 1 0 . 0 L;G     A N3  41 nan 1.0 ? True False -1  False -1  41 -0.223 1.318  0.357  1
+HETATM Fe FE0 . L;G     A 1 0 . 0 L;G     A FE0 42 nan 1.0 ? True False -1  False -1  42 1.204  -0.063 0.23   1
+HETATM X  UNK . 100-155 B 2 1 . 1 100-155 B UNK 43 nan 0.0 ? True True  100 True  155 43 nan    nan    nan    1
+#
+loop_
+_condition_ChainCentroid_1_atom.idx0 
+_condition_ChainCentroid_1_atom.val0 
+_condition_ChainCentroid_1_atom.val1 
+_condition_ChainCentroid_1_atom.val2 
+0  0.17290707 0.05123244 0.011883715
+1  0.17290707 0.05123244 0.011883715
+2  0.17290707 0.05123244 0.011883715
+3  0.17290707 0.05123244 0.011883715
+4  0.17290707 0.05123244 0.011883715
+5  0.17290707 0.05123244 0.011883715
+6  0.17290707 0.05123244 0.011883715
+7  0.17290707 0.05123244 0.011883715
+8  0.17290707 0.05123244 0.011883715
+9  0.17290707 0.05123244 0.011883715
+10 0.17290707 0.05123244 0.011883715
+11 0.17290707 0.05123244 0.011883715
+12 0.17290707 0.05123244 0.011883715
+13 0.17290707 0.05123244 0.011883715
+14 0.17290707 0.05123244 0.011883715
+15 0.17290707 0.05123244 0.011883715
+16 0.17290707 0.05123244 0.011883715
+17 0.17290707 0.05123244 0.011883715
+18 0.17290707 0.05123244 0.011883715
+19 0.17290707 0.05123244 0.011883715
+20 0.17290707 0.05123244 0.011883715
+21 0.17290707 0.05123244 0.011883715
+22 0.17290707 0.05123244 0.011883715
+23 0.17290707 0.05123244 0.011883715
+24 0.17290707 0.05123244 0.011883715
+25 0.17290707 0.05123244 0.011883715
+26 0.17290707 0.05123244 0.011883715
+27 0.17290707 0.05123244 0.011883715
+28 0.17290707 0.05123244 0.011883715
+29 0.17290707 0.05123244 0.011883715
+30 0.17290707 0.05123244 0.011883715
+31 0.17290707 0.05123244 0.011883715
+32 0.17290707 0.05123244 0.011883715
+33 0.17290707 0.05123244 0.011883715
+34 0.17290707 0.05123244 0.011883715
+35 0.17290707 0.05123244 0.011883715
+36 0.17290707 0.05123244 0.011883715
+37 0.17290707 0.05123244 0.011883715
+38 0.17290707 0.05123244 0.011883715
+39 0.17290707 0.05123244 0.011883715
+40 0.17290707 0.05123244 0.011883715
+41 0.17290707 0.05123244 0.011883715
+42 0.17290707 0.05123244 0.011883715
+43 7.172907   0.05123244 0.011883715
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+100-155 UNK X  0 N N nan                  nan                  nan
+L;G     C0  C  0 N N -2.052999973297119   -0.28200000524520874 0.6949999928474426
+L;G     C1  C  0 N N 1.4359999895095825   -3.553999900817871   0.21699999272823334
+L;G     C2  C  0 N N 4.473999977111816    0.15600000321865082  -0.12300000339746475
+L;G     C3  C  0 N N 0.953000009059906    3.421999931335449    0.0820000022649765
+L;G     C4  C  0 N N -1.3639999628067017  -1.4759999513626099  0.6129999756813049
+L;G     C5  C  0 N N -2.009999990463257   -2.7660000324249268  0.7139999866485596
+L;G     C6  C  0 N N -1.034999966621399   -3.700000047683716   0.5389999747276306
+L;G     C7  C  0 N N 0.19599999487400055  -2.9709999561309814  0.36500000953674316
+L;G     C8  C  0 N N -1.1369999647140503  -5.185999870300293   0.5260000228881836
+L;G     C9  C  0 N N -3.4649999141693115  -3.010999917984009   0.9539999961853027
+L;G     C10 C  0 N N -4.300000190734863   -2.9019999504089355  -0.33500000834465027
+L;G     C11 C  0 N N -5.021999835968018   -1.5820000171661377  -0.44999998807907104
+L;G     O0  O  0 N N -5.355999946594238   -0.8899999856948853  0.4779999852180481
+L;G     O1  O  0 N N -5.284999847412109   -1.2599999904632568  -1.715000033378601
+L;G     C12 C  0 N N 2.5969998836517334   -2.813999891281128   0.11100000143051147
+L;G     C13 C  0 N N 3.9179999828338623   -3.371999979019165   0.0
+L;G     C14 C  0 N N 4.775000095367432    -2.309000015258789   -0.07999999821186066
+L;G     C15 C  0 N N 3.9509999752044678   -1.1160000562667847  -0.017999999225139618
+L;G     C16 C  0 N N 4.235000133514404    -4.823999881744385   0.04800000041723251
+L;G     C17 C  0 N N 6.21999979019165     -2.312000036239624   -0.17299999296665192
+L;G     C18 C  0 N N 6.940999984741211    -3.2039999961853027  -0.8420000076293945
+L;G     C19 C  0 N N 3.7769999504089355   1.3489999771118164   -0.1080000028014183
+L;G     C20 C  0 N N 4.423999786376953    2.628000020980835    -0.2619999945163727
+L;G     C21 C  0 N N 3.434000015258789    3.572000026702881    -0.22499999403953552
+L;G     C22 C  0 N N 2.200000047683716    2.8440001010894775   -0.026000000536441803
+L;G     C23 C  0 N N 5.894000053405762    2.8359999656677246   -0.36800000071525574
+L;G     C24 C  0 N N 3.5269999504089355   5.01200008392334     -0.3319999873638153
+L;G     C25 C  0 N N 4.388999938964844    5.668000221252441    -1.1009999513626099
+L;G     C26 C  0 N N -0.1940000057220459  2.678999900817871    0.2759999930858612
+L;G     C27 C  0 N N -1.5160000324249268  3.2360000610351562   0.41100001335144043
+L;G     C28 C  0 N N -2.3559999465942383  2.180000066757202    0.5899999737739563
+L;G     C29 C  0 N N -1.5360000133514404  0.9900000095367432   0.5540000200271606
+L;G     C30 C  0 N N -1.8329999446868896  4.689000129699707    0.35499998927116394
+L;G     C31 C  0 N N -3.8429999351501465  2.2090001106262207   0.699999988079071
+L;G     C32 C  0 N N -4.4710001945495605  2.1619999408721924   -0.7039999961853027
+L;G     C33 C  0 N N -5.968999862670898   2.197999954223633    -0.6159999966621399
+L;G     O2  O  0 N N -6.619999885559082   2.947000026702881    0.0560000017285347
+L;G     O3  O  0 N N -6.556000232696533   1.2740000486373901   -1.4119999408721924
+L;G     N0  N  0 N N -0.02199999988079071 -1.625               0.40299999713897705
+L;G     N1  N  0 N N 2.631999969482422    -1.4479999542236328  0.0989999994635582
+L;G     N2  N  0 N N 2.4240000247955322   1.5010000467300415   0.02800000086426735
+L;G     N3  N  0 N N -0.22300000488758087 1.3179999589920044   0.3569999933242798
+L;G     FE0 Fe 0 N N 1.2039999961853027   -0.06300000101327896 0.23000000417232513
+#
