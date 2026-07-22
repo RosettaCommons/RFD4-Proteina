@@ -10,7 +10,7 @@ if [ -z "$DATA_PATH" ] || [ "${DATA_PATH:0:1}" = "-" ]; then
     echo "Usage: $0 <DATA_PATH> [--with-test-dataset]" >&2
     exit 1
 fi
-BASE="${RFPROTEINA_DATA_URL:-https://private-dataset-store.cwobject.com}"
+BASE="${RFPROTEINA_DATA_URL:-https://rfd4-proteina-public.cwobject.com}"
 
 # Download to <dest-dir>/<basename>, skipping if already present; a partial download lands in a
 # .tmp file so an interrupted run re-fetches instead of leaving a corrupt checkpoint.
