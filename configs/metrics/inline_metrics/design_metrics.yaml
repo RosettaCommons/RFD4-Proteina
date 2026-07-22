@@ -19,6 +19,10 @@ rasa_adherence:
   _target_: rfproteina.metrics.rasa_metrics.RasaAdherenceMetric
   required_tags_any: ["rasa_conditioning"]
 
+centroid_conditioning_adherence:
+  _target_: rfproteina.metrics.centroid_metrics.CentroidConditioningAdherenceMetric
+  required_tags_any: ["centroid_conditioning"]
+
 interchain_interactions:
   _target_: rfproteina.metrics.interaction_metrics.InterchainInteractionMetric
   required_tags_any: ["interchain_interactions"]
