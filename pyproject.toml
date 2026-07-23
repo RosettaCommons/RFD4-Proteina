@@ -117,6 +117,21 @@ tmol = [
     { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl", extra = "tmol-cuda13", marker = "platform_machine == 'aarch64'" },
 ]
 
+# Pytest
+[tool.pytest.ini_options]
+# Register the markers used across the suite so `-m` filters (and any future
+# `--strict-markers`) stay warning-free.
+markers = [
+    "digs: host-environment sanity checks that only pass on the DIGS cluster",
+    "gpu: end-to-end tests that require a GPU",
+    "regression: GPU regression tests gated on a SOTA checkpoint",
+    "cluster: cluster launcher / srun syntax checks",
+    "slow: slower tests",
+    "very_slow: tests too slow for the default CPU lane",
+    "benchmark: pytest-benchmark performance tests",
+    "fast: fast-running tests",
+]
+
 # Build system
 [build-system]
 requires = ["hatchling"]
