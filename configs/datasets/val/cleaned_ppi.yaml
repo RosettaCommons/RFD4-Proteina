@@ -4,9 +4,9 @@ dataset:
   _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/all_ppi.yaml  
-  name: all_ppi
-  
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/cleaned_ppi.yaml
+  name: cleaned_ppi
+
   num_replicates: 200
 
   transform:

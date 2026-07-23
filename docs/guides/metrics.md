@@ -279,10 +279,14 @@ above):
 ```bash
 python src/rfproteina/evaluate.py \
     inputs=/path/to/structures \
-    metrics_tags='[unconditional_refolding]'
+    metrics_tags='[unconditional_refolding]' \
+    out_dir=/path/to/eval_output
 ```
 
-`inputs` is scanned recursively for CIF-like files. Pass `task_csv=<csv with designed_structure_path,
+`inputs` is scanned recursively for CIF-like files. `out_dir` is mandatory (`evaluate.py` has no
+run directory to derive one from) and receives the usual `evaluation_metrics/` subdirectory.
+
+Pass `task_csv=<csv with designed_structure_path,
 task columns>` if different structures need different `metrics_tags`/pass-criteria treatment;
 otherwise every structure is scored the same way. This is the same script the [Developer
 Guide](development.md#evaluation-and-metrics) points to for custom-metric development — write a

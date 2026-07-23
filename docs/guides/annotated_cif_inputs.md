@@ -170,14 +170,16 @@ the Python shorthand used in the [notebook](tutorials/annotated_cif_tutorial.ipy
 | **RASA bin** | `C_RAS` | `condition_rasa-binned_1_atom` | Tells the model how buried/exposed an atom should be. Useful for steering ligand pockets and surface design. | `RasaEnum`: `0`=UNSPECIFIED, `1`=BURIED, `2`=INTERMEDIATE, `3`=EXPOSED | Relative SASA (Shrake–Rupley, probe 1.4 Å, ProtOr radii, 100 points). Bins by `rASA` edges `[0.0, 0.1, 0.2]`: `[0,0.1)`→BURIED, `[0.1,0.2)`→INTERMEDIATE, `≥0.2`→EXPOSED. |
 | **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests a donor/acceptor role for an atom (e.g. specify a ligand-binding H-bond network). | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR, `3`=BOTH | Computed with `hbplus` (H–A ≤ 2.2 Å, D–A ≤ 3.2 Å). **Only H-bonds between the motif and the diffused region** are conditioned on; subsampled when many are present. |
 | **Chain centroid** | `C_CENTROID` | `condition_ChainCentroid_1_atom` | Provides a target center-of-mass for a chain (position a binder/ligand without fixing atoms). | per-atom xyz (Å), broadcast per chain | Used in place of an explicit ORI token to guide COM placement. |
-| **Coordinate group** | `C_CRDGRP` | `condition_CoordinateGroup_1_atom` | Groups atoms with known *relative* coordinates (internal structure without a fixed global dock). | int: `0`=known-absolute, `-1`=unknown, `1`=internal | Note internal coords are not yet supported, but will be soon |
+| **Secondary structure** | `C_SEC` | `condition_secondary-structure_1_residue` | Requests helix / sheet / loop at the selected residues; leave `NONE` where you don't care. | `SSEnum`: `0`=NONE, `1`=HELIX, `2`=SHEET, `3`=LOOP | P-SEA assignment on the ground-truth structure. |
+| **Internal coordinate** | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms (centered, randomly rotated xyz) without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per-atom xyz (Å) in the group's own frame; NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so a design can carry several independently-placed rigid motifs. |
+| **Coordinate group** | `C_CRDGRP` | `condition_CoordinateGroup_1_atom` | Groups atoms with known *relative* coordinates (internal structure without a fixed global dock). | int: `-1`=unknown, `0`=known-absolute, `≥1`=one internal-coordinate group per id | Each internal-coord region gets its own id; relative geometry is known within an id, unknown across ids. |
 
 Additional conditions are *defined* and will round-trip through a CIF but are
 **not consumed by the current feature pipeline** (so they have no effect at
 inference): π-stacking, π-cation, salt bridge, hydrophobic, metal-coordination,
-antibody CDR/heavy/light, pairwise distance, secondary structure, not-cysteine,
-CATH label, and nucleic-acid base-pairing. The plugin's Annotations tab only
-exposes conditions the model actually uses.
+antibody CDR/heavy/light, pairwise distance, not-cysteine, CATH label, and
+nucleic-acid base-pairing. The plugin's Annotations tab only exposes conditions
+the model actually uses.
 
 ## Interaction rules (read before conditioning)
 
@@ -194,7 +196,9 @@ save the CIF.
    identity, and fixing even one of them reveals that residue's full sequence.
    **Exception:** backbone-only (`N/CA/C/O`) conditioning shares its slots across
    all residues and leaks nothing, so it does *not* force sequence conditioning —
-   this is exactly how you fix a backbone and redesign its sequence.
+   this is exactly how you fix a backbone and redesign its sequence. The rule
+   applies to internal-coordinate conditioning (`C_INTCRD`) exactly as it does to
+   absolute (`C_CRD`): the slot-occupancy fingerprint leaks identity either way.
 
 2. **Atomized tokens are always sequence-conditioned.** Non-standard residues,
    PTMs, ligands, and small molecules (`atomize` = true) are context the model is
@@ -247,7 +251,7 @@ the plugin's **Load CIF** (not File → Open) if you want the annotations loaded
 reveals identity (see interaction rules). To redesign sequence under a fixed
 fold, condition on backbone atoms only.
 
-**Can I condition expandable segments?** Yes, for residue-based conditions like chain COM or secondary structure conditioning (coming soon), it may make sense to condition entire expanded regions at once. If you condition an expandable segment, the condition is applied to all tokens that result from its expansion.
+**Can I condition expandable segments?** Yes, for residue-based conditions like chain COM or secondary structure conditioning, it may make sense to condition entire expanded regions at once. If you condition an expandable segment, the condition is applied to all tokens that result from its expansion.
 
 **I have a ligand bound to a peptide chain via a PTM. Should it have its own `IndexGroup`?** NO!!! The model reasons
 over _molecules_ not _chains_. A PTM is by definition part of the same molecule as the peptide chain, so there is

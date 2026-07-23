@@ -241,7 +241,8 @@ Each modality is specified per-residue or per-atom. **Annotated CIFs are the rec
 them** ([guide](annotated_cif_inputs.md)); the legacy JSON syntax is in the [Input Specification](input.md).
 
 > The status column reflects the legacy JSON path; the **annotated-CIF path additionally exposes
-> H-bond and RASA conditioning** — see [Annotated CIF inputs](annotated_cif_inputs.md).
+> H-bond, RASA, and secondary-structure conditioning** — see
+> [Annotated CIF inputs](annotated_cif_inputs.md).
 
 | Conditioning | Input field | Status |
 | --- | --- | --- |
@@ -251,11 +252,11 @@ them** ([guide](annotated_cif_inputs.md)); the legacy JSON syntax is in the [Inp
 | **Hotspot residues** | `select_hotspots` | ✅ Supported |
 | **Partial diffusion** | `partial_t_backbone` / `partial_t_latent` | ✅ Supported |
 | **Small molecules / ligands** | `ligand` | ✅ Supported |
-| **Internal coordinate** | `contig` + relative geometry | 🔜 Planned |
+| **Internal coordinate** | `internal_coord_groups` | ✅ Supported |
 | **Symmetry** | `symmetry` | 🔜 Planned |
 | **H-bond donors/acceptors** | `select_hbond_donor` / `select_hbond_acceptor` | ✅ via annotated CIF |
 | **RASA (buried/exposed)** | `select_buried` / `select_exposed` | ✅ via annotated CIF |
-| **Secondary structure** | — | 🔜 Planned |
+| **Secondary structure** | — (annotated CIF) | ✅ via annotated CIF |
 | **CATH fold class** | `add_cath_code` | 🔜 Planned |
 | **π-stacking** | — (annotated CIF) | 🔜 Planned |
 | **π-cation** | — (annotated CIF) | 🔜 Planned |
@@ -263,6 +264,10 @@ them** ([guide](annotated_cif_inputs.md)); the legacy JSON syntax is in the [Inp
 
 > **Planned** features are parsed and stored but the model is not yet trained to respond to them —
 > passing them causes no error but has no effect.
+
+**Internal coordinates** (`internal_coord_groups`, a list of selections within `contig`/`unindex`)
+give the model a motif's *internal* geometry without fixing where it sits in space — see
+[Internal coordinates and coordinate groups](annotated_cif_inputs.md#internal-coordinates-and-coordinate-groups).
 
 ---
 
@@ -307,14 +312,23 @@ generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode
 
 ## Output Files
 
-Each design is a CIF with per-atom annotations recording how each residue was produced:
+Each design is a CIF with per-atom annotations recording how each atom was produced. These are
+written as `_atom_site` columns, so any CIF reader can pick them up:
 
-| Annotation | Level | Description |
+| Accessor | CIF column | Description |
 | --- | --- | --- |
-| `src_component` | Residue | Which part of the input spec a residue originated from |
-| `mapped_to_coordinate_conditioned_region` | Atom | `True` for atoms mapped from a coordinate-conditioned motif |
-| `mapped_to_coordinate_conditioned_region_token_lvl` | Residue | Residue-level aggregation — use to hold regions fixed in downstream MPNN redesign |
-| `src_coordinate_conditioned_region` | Atom | Which input motif region provided each atom's conditioning |
+| `SA_SRC` | `annotation_src-component_1_atom` | Which part of the input spec the atom originated from (`.` if unassigned) |
+| `SA_CRDSRC` | `mapped_to_coordinate_conditioned_region` | `True` for atoms corresponding to a coordinate-conditioned motif |
+| `SA_CRDSRC` | `annotation_src-coordinate-conditioned-region_1_atom` | Which input motif region provided each atom's coordinate conditioning (`.` if none) |
+| `SA_CRDGRPSRC` | `annotation_src-coord-group_1_atom` | Which input `CoordinateGroup` the atom came from (`-1` if none) |
+| `SA_UII` | `is_unindexed_insertion` | `True` for atoms corresponding to an unindexed input motif |
+
+The aliases live in `rfproteina.utils.standard_annotations`; read them off a parsed structure with
+`SA_CRDSRC.mask(atom_array)` / `SA_SRC.annotation(atom_array)`. 
+
+The aligned motif coordinates themselves are written as a separate `_annotation_coords-with-insertion_1_atom`
+loop rather than an `_atom_site` column (`SA_CWI`), but these are accessible analogously
+to any other `StandardAnnotation`.
 
 ---
 

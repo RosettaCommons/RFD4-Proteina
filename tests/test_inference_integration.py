@@ -200,7 +200,6 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
         "seed=42",
         "num_workers=0",
         "metrics_tags=[]",
-        "generation.args.nsteps=10",
     ]
 
     all_overrides = base_overrides + (overrides or [])
@@ -461,7 +460,7 @@ class TestEndToEndInference:
         assert all(df["seed"] == 42)
         assert all(df["generation.model.bb_ca.simulation_step_params.sc_scale_noise"] == bb_ca_noise_scale)
         assert all(df["generation.model.local_latents.simulation_step_params.sc_scale_noise"] == latents_noise_scale)
-        assert all(df["generation.args.nsteps"] == 10)
+        assert all(df["generation.args.nsteps"] == 100)
         assert all(df["chain_of_interest"].notna())
         assert any("oracle." in col for col in df.columns), "Refolding oracle did not run."
         for eid in df["example_id"]:
@@ -689,9 +688,7 @@ class TestEndToEndInference:
             [
                 f"inputs={input_path}",
                 f"out_dir={tmp_output_dir}",
-                "generation.args.nsteps=400",
-                "generation.args.partial_t_backbone=0.4",
-                "generation.args.partial_t_latent=0.4",
+                "generation.args.partial_trajectory_fraction_steps=0.7",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_partial_diffusion")

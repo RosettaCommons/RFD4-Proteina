@@ -274,8 +274,12 @@ See the [metrics reference](metrics.md) for the full reference of what's already
 
 ```bash
 python src/rfproteina/evaluate.py \
-    inputs=/path/to/structures metrics_tags='[unconditional_refolding]'
+    inputs=/path/to/structures metrics_tags='[unconditional_refolding]' \
+    out_dir=/path/to/eval_output
 ```
+
+`out_dir` is mandatory here (unlike `generate.py`, which derives one) — the metrics CSVs are
+written under `<out_dir>/evaluation_metrics/`.
 
 **Custom metrics/rewards** — add Python metric classes under `src/rfproteina/metrics/custom_metrics/`
 and register them in `configs/metrics/custom_metrics/` (both git-ignored; `setup.sh` scaffolds the

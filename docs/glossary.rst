@@ -74,16 +74,22 @@ Common condition aliases
    Requests donor, acceptor, or combined hydrogen-bond roles for selected
    atoms.
 
+``C_SEC``
+   Requests helix, sheet, or loop secondary structure at selected residues.
+
 ``C_CENTROID``
    Supplies a target center of mass for a chain without fixing its individual
    atoms.
 
 ``C_CRDGRP``
    Groups atoms with known relative coordinates but potentially unknown global
-   placement.
+   placement. Group ``0`` is the absolutely-conditioned frame, ``-1`` is
+   unconditioned, and each id ``>= 1`` is one internal-coordinate group.
 
 ``C_INTCRD``
-   Represents internal-coordinate conditioning.
+   Internal-coordinate conditioning: gives a group's centered, randomly-rotated
+   coordinates, so its internal structure is known but its global placement is
+   designed.
 
 Input formats
 -------------

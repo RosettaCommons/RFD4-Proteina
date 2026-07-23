@@ -19,7 +19,7 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
 # ckpt_name/ckpt_path straight from this file (see tests/e2e/helpers/regression_baselines.py).
 # To advance SOTA: edit ckpt_name here and regenerate the e2e baselines. Override on the CLI
 # for a one-off checkpoint.
-ckpt_name: arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt
+ckpt_name: 2026_07_22_release_280k-ema.ckpt
 ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ldm_checkpoints
 
 # Only applies if the metrics_tags for a pre-oracle design filter are given.
