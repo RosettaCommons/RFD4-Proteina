@@ -1,3 +1,9 @@
+# Cleaned PPI benchmark: one structure per target.
+# Excluded relative to the earlier all-PPI set:
+# - all but one entry for any given target
+# - rfd3_il2ra, which has a huge chainbreak so doesn't fold well with AF3
+#   unless various bcov inference hacks are used.
+
 global_args:
   dialect: 2
 
@@ -28,17 +34,6 @@ rfd3_il7ra:
     B84: CG,CD1
     B143: CD2,OH
 
-rfd3_il2ra:
-  input: rfd3_ppi_paper_benchmark/1z92_cropped.cif
-  contig: 65-120,/0,B0-47,B53-64,B104-165
-  select_fixed_atoms: True
-  select_hotspots:
-    B2: CB,CD1
-    B25: CE,SD
-    B42: CB,CD1
-    B43: CD2,OH
-    B120: CD2,CE1
-
 rfd3_tie2:
   input: rfd3_ppi_paper_benchmark/2gy5_cropped.cif
   contig: 65-120,/0,A23-210
@@ -64,29 +59,6 @@ rfd3_tie2:
     A97: TIP
     A102: TIP
 
-02_PDL1:
-  input: complexa_targets/bindcraft_targets/PD-L1.cif
-  contig: 64-155,/0,A1-115
-  select_fixed_atoms: True
-  select_hotspots:
-    A37: TIP
-    A39: TIP
-    A49: TIP
-    A98: TIP
-
-03_PDL1_AAV:
-  input: complexa_targets/bindcraft_targets/PD-L1.cif
-  contig: 75-115,/0,A1-115
-  select_fixed_atoms: True
-  select_hotspots:
-    A37: TIP
-    A39: TIP
-    A41: TIP
-    A46: TIP
-    A49: TIP
-    A96: TIP
-    A98: TIP
-
 04_IFNAR2:
   input: complexa_targets/bindcraft_targets/IFNAR2_2lag.cif
   contig: 60-175,/0,A8-110
@@ -106,51 +78,6 @@ rfd3_tie2:
   select_hotspots:
     A1: ALL
 
-06_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A2: ALL
-
-07_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A3: TIP
-
-08_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A4: TIP
-
-09_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A1: ALL
-    A2: ALL
-
-10_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A2: ALL
-    A3: TIP
-
-11_CD45:
-  input: complexa_targets/bindcraft_targets/CD45.cif
-  contig: 80-200,/0,A1-88
-  select_fixed_atoms: True
-  select_hotspots:
-    A3: TIP
-    A4: TIP
-
 12_Claudin1:
   input: complexa_targets/bindcraft_targets/CLDN1.cif
   contig: 80-175,/0,A1-188
@@ -161,11 +88,10 @@ rfd3_tie2:
     A55: TIP
     A152: TIP
 
-# Contains unresolved sidechain for first MET
-# 13_BBF14:
-#   input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
-#   contig: 70-250,/0,A1-112
-#   select_fixed_atoms: True
+13_BBF14:
+  input: complexa_targets/bindcraft_targets/BBF-14_9hag.cif
+  contig: 70-250,/0,A1-112
+  select_fixed_atoms: True
 
 14_CrSAS6:
   input: complexa_targets/bindcraft_targets/Sas6.cif
@@ -179,54 +105,12 @@ rfd3_tie2:
   select_hotspots:
     A115: TIP
 
-16_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.cif
-  contig: 70-185,/0,A1-196
-  select_fixed_atoms: True
-  select_hotspots:
-    A161: TIP
-
-17_DerF7:
-  input: complexa_targets/bindcraft_targets/DerF7.cif
-  contig: 70-185,/0,A1-196
-  select_fixed_atoms: True
-  select_hotspots:
-    A184: TIP
-
 18_DerF21:
   input: complexa_targets/bindcraft_targets/DerF21.cif
   contig: 70-185,/0,A1-118
   select_fixed_atoms: True
   select_hotspots:
     A10: TIP
-
-19_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.cif
-  contig: 70-185,/0,A1-118
-  select_fixed_atoms: True
-  select_hotspots:
-    A28: TIP
-
-20_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.cif
-  contig: 70-185,/0,A1-118
-  select_fixed_atoms: True
-  select_hotspots:
-    A63: ALL
-
-21_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.cif
-  contig: 70-185,/0,A1-118
-  select_fixed_atoms: True
-  select_hotspots:
-    A81: TIP
-
-22_DerF21:
-  input: complexa_targets/bindcraft_targets/DerF21.cif
-  contig: 70-185,/0,A1-118
-  select_fixed_atoms: True
-  select_hotspots:
-    A92: TIP
 
 23_BetV1:
   input: complexa_targets/bindcraft_targets/BetV1.cif
@@ -242,26 +126,12 @@ rfd3_tie2:
   select_hotspots:
     A360: TIP
 
-25_CbAgo:
-  input: complexa_targets/bindcraft_targets/CbAgo_cropped_NPIWI.cif
-  contig: 70-160,/0,A1-175,A298-343,A635-689
-  select_fixed_atoms: True
-  select_hotspots:
-    A39: TIP
-
 26_CbAgo:
   input: complexa_targets/bindcraft_targets/CbAgo_cropped_PAZ.cif
   contig: 70-160,/0,A180-276
   select_fixed_atoms: True
   select_hotspots:
     A268: TIP
-
-27_HER2_AAV:
-  input: complexa_targets/bindcraft_targets/HER2_cropped_1n8z.cif
-  contig: 60-100,/0,C23-101,C111-268
-  select_fixed_atoms: True
-  select_hotspots:
-    C170: TIP
 
 28_HER2_AAV:
   input: complexa_targets/bindcraft_targets/HER2_cropped_1n8z.cif
@@ -294,24 +164,6 @@ rfd3_tie2:
     E500: TIP
     E505: TIP
 
-31_IL7RA:
-  input: complexa_targets/alpha_proteo_targets/3di3_cropped.cif
-  contig: 50-120,/0,B17-209
-  select_fixed_atoms: True
-  select_hotspots:
-    B58: TIP
-    B80: TIP
-    B139: TIP
-
-32_PDL1_ALPHA:
-  input: complexa_targets/alpha_proteo_targets/5o45_cropped.cif
-  contig: 50-120,/0,A17-132
-  select_fixed_atoms: True
-  select_hotspots:
-    A56: TIP
-    A115: TIP
-    A123: TIP
-
 33_TrkA:
   input: complexa_targets/alpha_proteo_targets/1www_cropped.cif
   contig: 50-120,/0,X282-382
@@ -320,15 +172,6 @@ rfd3_tie2:
     X294: TIP
     X296: TIP
     X333: TIP
-
-34_Insulin:
-  input: complexa_targets/alpha_proteo_targets/4zxb_cropped.cif
-  contig: 40-120,/0,E6-155
-  select_fixed_atoms: True
-  select_hotspots:
-    E64: TIP
-    E88: TIP
-    E96: TIP
 
 35_H1:
   input: complexa_targets/alpha_proteo_targets/5vli_cropped.cif

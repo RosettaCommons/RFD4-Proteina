@@ -1,28 +1,21 @@
 compute_loss: true
 
-dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
+defaults:
+  # package reference needed for validation using `+datasets/val@generation=ppi_subset`
+  - /datasets/val@_here_: cleaned_ppi
+  - _self_
 
-  # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/all_ppi.yaml
+dataset:
   name: ppi_subset
   subset_to_keys:
     # easy
-    - 04_IFNAR2 
+    - 04_IFNAR2
     - rfd3_insulinr # can reveal topology-mimicking if present
     # medium
-    - 31_IL7RA
+    - rfd3_il7ra
     - 15_DerF7
     # hard
     - rfd3_tie2
     - 36_VEGFA
-  
-  num_replicates: 200
 
-  transform:
-    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
-    metrics_tags:
-      - design
-      - 3d_coordinate_conditioning
-      - hotspot_conditioning
-      - ppi_refolding
+  num_replicates: 200

@@ -1,7 +1,7 @@
 # @package _global_
 # Canonical "SOTA" training recipe. Repoint the default below to advance it.
 defaults:
-  - /experiment/ncorley/pair_trimult_every2
+  - /experiment/releases/2026_07_22_release
   - _self_
 
 run_name_: sota

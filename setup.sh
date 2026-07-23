@@ -31,9 +31,9 @@ fi
 
 # ── 3. Create virtualenv ───────────────────────────────────────────────────
 if [ ! -d ".venv" ]; then
-    echo ">>> Creating .venv with Python 3.12.10..."
-    uv python install 3.12.10
-    uv venv --python 3.12.10
+    echo ">>> Creating .venv with Python (>=3.12,<=3.12.10)..."
+    uv python install '>=3.12,<=3.12.10'
+    uv venv --python '>=3.12,<=3.12.10'
 else
     echo ">>> .venv already exists — skipping creation."
 fi

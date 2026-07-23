@@ -26,6 +26,7 @@ from atomworks.io.utils.atom_array_plus import AtomArrayPlus
 from atomworks.io.utils.standard_annotations.base import STANDARD_ANNOTATIONS
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.base import ConditionBase
+from atomworks.ml.transforms.dssp import SSEnum
 from atomworks.ml.utils.visualize import display_atom_ids
 from atomworks.pymol_plugin.editors import exclude_annotation, register_editor
 from atomworks.pymol_plugin.editors.widgets import BaseAnnotationEditor, MaskEditor
@@ -38,12 +39,15 @@ from rfproteina.conditions import (
     C_HB,
     C_HOT,
     C_IDXGRP,
+    C_INTCRD,
     C_RAS,
+    C_SEC,
     HBondEnum,
     RasaEnum,
 )
 from rfproteina.pymol.chain_centroid_editor import ChainCentroidEditor
 from rfproteina.pymol.group_editor import GroupEditor
+from rfproteina.pymol.internal_coord_editor import InternalCoordEditor
 from rfproteina.pymol.widgets import ValueButtonEditor
 
 # ---------------------------------------------------------------------------
@@ -109,6 +113,10 @@ class ConditionSpec:
             ``selection_generator`` is set) per-value PyMOL highlight selections.
         null_value: The enum member that represents "unconditioned". Required
             whenever ``enum_cls`` is set.
+        enum_editor_exclude: Enum values the auto-built editor must not offer,
+            because the model cannot consume them (e.g. ``SSEnum.NON_PROTEIN``,
+            outside the secondary-structure embedding's range). They are still
+            reported in summaries and highlights if a loaded file carries them.
         selection_generator: Register a per-value PyMOL highlight-selection
             generator. Only meaningful with ``enum_cls`` set.
         summary: How to report this condition in the "Summarize changes" dialog.
@@ -128,6 +136,7 @@ class ConditionSpec:
     editor: type | Callable[..., BaseAnnotationEditor] | None = None
     enum_cls: type[IntEnum] | None = None
     null_value: int | None = None
+    enum_editor_exclude: frozenset[int] = frozenset()
     selection_generator: bool = False
     summary: Literal["mask", "enum", "custom", None] = "mask"
     summary_label: str | None = None
@@ -139,6 +148,8 @@ class ConditionSpec:
             raise ValueError(f"{self.condition.name}: selection_generator requires enum_cls and null_value")
         if self.summary == "enum" and (self.enum_cls is None or self.null_value is None):
             raise ValueError(f"{self.condition.name}: summary='enum' requires enum_cls and null_value")
+        if self.enum_editor_exclude and self.enum_cls is None:
+            raise ValueError(f"{self.condition.name}: enum_editor_exclude requires enum_cls")
         if self.summary == "custom" and self.summary_fn is None:
             raise ValueError(f"{self.condition.name}: summary='custom' requires summary_fn")
 
@@ -226,14 +237,17 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
         summary="enum",
         summary_label="RASA",
     ),
-    # ConditionSpec(
-    #     C_SEC,
-    #     enum_cls=SSEnum,
-    #     null_value=SSEnum.NONE.value,
-    #     selection_generator=True,
-    #     summary="enum",
-    #     summary_label="Secondary structure",
-    # ),
+    # NON_PROTEIN is a DSSP-output sentinel, not a conditioning value: the model's
+    # secondary-structure embedding only spans NONE/HELIX/SHEET/LOOP and raises on 4.
+    ConditionSpec(
+        C_SEC,
+        enum_cls=SSEnum,
+        null_value=SSEnum.NONE.value,
+        enum_editor_exclude=frozenset({SSEnum.NON_PROTEIN.value}),
+        selection_generator=True,
+        summary="enum",
+        summary_label="Secondary structure",
+    ),
     ConditionSpec(
         C_HB,
         enum_cls=HBondEnum,
@@ -248,7 +262,7 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     ConditionSpec(C_IDXGRP, editor=GroupEditor, summary="custom", summary_fn=_index_group_summary, hide_display=True),
     ConditionSpec(C_CRDGRP, editor=GroupEditor, summary="custom", summary_fn=_coord_group_summary, hide_display=True),
     # Internal coordinate conditioning -- wraps convert_to_internal_coords.
-    # ConditionSpec(C_INTCRD, editor=InternalCoordEditor, summary_label="Internal coordinate"),
+    ConditionSpec(C_INTCRD, editor=InternalCoordEditor, summary_label="Internal coordinate"),
     # Chain centroid conditioning -- manual xyz entry + indicator spheres.
     ConditionSpec(C_CENTROID, editor=ChainCentroidEditor, summary="custom", summary_fn=_chain_centroid_summary),
     # BasePair: excluded for now (2-body enum condition; no dedicated editor
@@ -262,11 +276,11 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
 # ---------------------------------------------------------------------------
 
 
-def _enum_editor(enum_cls: type[IntEnum], null_value: int) -> Callable[..., ValueButtonEditor]:
+def _enum_editor(enum_cls: type[IntEnum], null_value: int, exclude: frozenset[int]) -> Callable[..., ValueButtonEditor]:
     """Build a `editor_cls(annotation_cls, state, parent=None)`-compatible callable."""
     return functools.partial(
         ValueButtonEditor,
-        named_values=[(m.name, m.value) for m in enum_cls],
+        named_values=[(m.name, m.value) for m in enum_cls if m.value not in exclude],
         null_value=null_value,
     )
 
@@ -381,7 +395,7 @@ def apply() -> None:
     for spec in SUPPORTED_CONDITIONS:
         editor = spec.editor
         if editor is None and spec.enum_cls is not None:
-            editor = _enum_editor(spec.enum_cls, spec.null_value)
+            editor = _enum_editor(spec.enum_cls, spec.null_value, spec.enum_editor_exclude)
         if editor is not None:
             register_editor(spec.condition)(editor)
 

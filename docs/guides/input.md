@@ -48,6 +48,7 @@ Please create annotated CIFs in order to use these.
 | `atom_array_input`                                             | internal          | Pre-loaded `AtomArray` (not recommended).                             |
 | `contig`                                                       | `InputSelection` | Indexed motif specification, e.g., `"A1-80,10,/0,B5-12"`.             |
 | `unindex`                                                      | `InputSelection` | Unindexed motif components (unknown sequence placement).              |
+| `internal_coord_groups`                                        | `list[InputSelection]` | Regions conditioned on *internal* geometry only — structure known, global placement designed. Must be a subset of `contig` ∪ `unindex`; one group per selection ([details](annotated_cif_inputs.md#internal-coordinates-and-coordinate-groups)). |
 | `length`                                                       | `str`            | Total design length constraint (optional); `"min-max"` or int.                   |
 | `ligand`                                                       | `str`            | Ligand(s) by resname or index.                                        |
 | `cif_parser_args`                                              | `dict`           | Optional args to atomworks CIF parser.                                          |

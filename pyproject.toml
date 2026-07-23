@@ -242,6 +242,7 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]              # re-exports and import-for-side-effect
 "tests/*" = ["D", "E", "RUF", "ANN"]  # annotating test signatures buys nothing
+"docs/**/*.ipynb" = ["D", "E", "RUF", "ANN"]  # tutorial helpers: annotations/style buy nothing (B stays on)
 
 [tool.pyright]
 typeCheckingMode = "off"
