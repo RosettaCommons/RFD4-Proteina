@@ -766,25 +766,25 @@ def check_token_features_consistent_violations(aa: AtomArray) -> list[InvariantV
     if "token_id" not in categories:
         return []
 
+    token_starts = get_token_starts(aa, add_exclusive_stop=False)  # [n_tokens]
+    n_atoms = aa.array_length()
+    atom_token_idx = aa.token_id  # [n_atoms], values 0..n_tokens-1
+
     violations = []
     for feat_name in ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL:
         if feat_name not in categories:
             continue
         feat_values = aa.get_annotation(feat_name)
-        token_starts = get_token_starts(aa, add_exclusive_stop=True)
 
-        # handle multi-dimensional features
-        if feat_values.ndim > 1:
+        first = feat_values[token_starts][atom_token_idx]  # token-first value per atom
+        differs = feat_values != first
+        if np.issubdtype(feat_values.dtype, np.floating):
+            # NaN == NaN (all-NaN token is consistent); NaN != any real value.
+            differs &= ~(np.isnan(feat_values) & np.isnan(first))
+        atom_differs = differs.reshape(n_atoms, -1).any(axis=1)  # [n_atoms]
 
-            def compare_fn(seg: np.ndarray) -> int:
-                return np.unique(np.nan_to_num(seg), axis=0, equal_nan=True).shape[0]
-        else:
-
-            def compare_fn(seg: np.ndarray) -> int:
-                return np.unique(seg).size
-
-        n_unique_per_seg = apply_segment_wise(token_starts, feat_values, compare_fn)
-        n_bad = int((n_unique_per_seg > 1).sum())
+        # A token is bad if any of its atoms differ from the token's first atom.
+        n_bad = int((np.add.reduceat(atom_differs.astype(np.int64), token_starts) > 0).sum())
         if n_bad:
             violations.append(
                 InvariantViolation(
