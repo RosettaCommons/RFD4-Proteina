@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "skill": "rfd4-proteina-inputs",
+  "cases": [
+    {
+      "id": "build-and-validate-monomer-cif",
+      "prompt": "Convert the 'monomer-short' example from data/benchmarks/monomer.json into an annotated CIF and validate it.",
+      "setup": {
+        "cwd": "repo root of RFD4-Proteina",
+        "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]
+      },
+      "expected_behavior": [
+        "Recognizes this is an unconditional length spec (no motif) and does not over-interrogate",
+        "Runs bash skills/rfd4-proteina-inputs/scripts/build_cif.sh data/benchmarks/monomer.json monomer-short --output /tmp/monomer_short.cif",
+        "Runs bash skills/rfd4-proteina-inputs/scripts/check_annotated_cif.sh /tmp/monomer_short.cif",
+        "Confirms 0 errors and hands the CIF path to rfd4-proteina-generate"
+      ],
+      "success_criteria": {
+        "artifact_glob": "/tmp/monomer_short.cif",
+        "validator_errors": 0
+      }
+    }
+  ]
+}
