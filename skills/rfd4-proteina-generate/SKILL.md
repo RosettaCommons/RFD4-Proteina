@@ -1,0 +1,191 @@
+---
+name: rfd4-proteina-generate
+description: >
+  Run RFProteína (RFD4-Proteína) single-shot generation across every design
+  task — the scientific anchor of the skill set. Reach for this skill for "design
+  a protein", "generate a monomer", "run rfproteina inference", "scaffold a
+  motif", "design an enzyme", "design a small molecule binder", "design a
+  protein binder", "design a DNA binder", "fold / inverse-fold this backbone",
+  "partial diffusion", "refine this structure", "make my designs more diverse",
+  "deterministic (ODE) sampling", or "compute refolding metrics inline". It first
+  runs the setup preflight, then routes by design case to the right benchmark
+  example + overrides, and drives `src/rfproteina/generate.py`. It hands off to
+  rfd4-proteina-inputs to build an annotated CIF when one is needed, to
+  rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
+  for deep metric analysis (the AF3 oracle).
+compatibility: "rfd4-proteina-setup complete (venv + atomworks + checkpoints, green preflight); 1x CUDA GPU for generation; an apptainer/docker container is only needed for *_refolding metrics tags (AF3 oracle), not for plain generation"
+allowed-tools: Bash, Read, Write, AskUserQuestion
+license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+---
+
+# RFProteína Generate
+
+Single-shot generation for RFProteína. One entry point drives every design task —
+unconditional monomers/complexes, folding & inverse folding, motif scaffolding,
+enzyme design, small-molecule binders, and (planned) protein / DNA binders. The
+skill's job is to **route** the request to the right example input and the right
+overrides, then run one command. Deep input construction, reward-guided search,
+and oracle metrics live in sibling skills; this skill points at them.
+
+Run everything from the **repo root** (`RFProteína-dev/`). All model arguments
+are Hydra `key=value`, **never** `--key value`.
+
+## Step 1 — Preflight
+
+Never launch a long run against a broken environment. Confirm venv, GPU, and
+checkpoints first:
+
+```bash
+bash skills/rfd4-proteina-setup/scripts/preflight.sh
+```
+
+Fix every `FAIL` (see **rfd4-proteina-setup**) before generating. If only the
+*example* data was downloaded, remember the checkpoint-name mismatch: override
+`ckpt_name=arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt` (the
+`configs/inference.yaml` default is the *release* checkpoint
+`2026_07_22_release_280k-ema.ckpt`).
+
+## Step 2 — Route the task
+
+Pick the design case, then open its reference for the exact command, example
+input, task-specific overrides, and gotchas:
+
+| Design task | Example input(s) in `data/benchmarks/` | Reference |
+| --- | --- | --- |
+| Unconditional (monomer / complex) | `monomer.json`, `monomer_helical.json`, `monomer_ig.json`, `multipolymer_uncond.json` | [tasks/unconditional.md](references/tasks/unconditional.md) |
+| Folding / inverse folding | annotated CIF (backbone-only vs `C_SEQ`) | [tasks/folding-inverse.md](references/tasks/folding-inverse.md) |
+| Motif scaffolding | `motif_scaffold_afdb.json`, `motif_scaffold_aa_tasks_*.json` | [tasks/motif.md](references/tasks/motif.md) |
+| Enzyme design (active site) | `mcsa_40.json`, `mcsa_40_fixed_ligand.json`, `mcsa_40_no_ligand.json`, `enz_design.json` | [tasks/enzyme.md](references/tasks/enzyme.md) |
+| Small-molecule binder | `sm_binder.json`, `sm_binder_hbonds.json`, `sm_binder_fixed_ligand.json` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
+| Protein binder (planned) | `cleaned_ppi.yaml`, `complexa_paper_ppi.yaml` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
+| DNA binder (planned) | `dna_binder_120_150_campaign.json`, `dna_binder_denovo_val.json`, `dna_binder_short_site.json`, `paper_dna.json` | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
+
+> [!WARNING]
+> Protein-binder and DNA-binder tasks are **not fully supported in the current
+> checkpoint** (planned). They run without error but may produce low-quality
+> results. State this to the user before spending compute.
+
+**Need an input the request doesn't have?** Annotated CIF is the recommended,
+lossless format. When the task needs coordinate/sequence conditioning, hotspots,
+fixed ligands, H-bonds, RASA, or unindexed motifs, **hand off to
+rfd4-proteina-inputs** to build and validate the CIF, then come back and pass it via
+`inputs=<file>.cif`. The ready-made JSON/YAML benchmarks above run directly.
+
+## Step 3 — Run
+
+General form:
+
+```bash
+python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+```
+
+On a cluster with a container configured, the shebang form re-execs inside
+apptainer/docker automatically:
+
+```bash
+./src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+```
+
+**The four parameters you almost always set** (defaults are only right for a
+smoke test):
+
+| Parameter | What to set it to | Default |
+| --- | --- | --- |
+| `out_dir` | a real output path | `./runs/<run_name>` |
+| `num_replicates` | designs per example (e.g. 8-80); `1` is a smoke test | 1 |
+| `batch_size` | start at 8, but first confirm the longest input fits at `batch_size=1` | 1 |
+| `metrics_tags` | inline metrics as a bracket-quoted Hydra list (needs a container) | `[]` |
+
+Useful extras: `subset_to_examples=monomer-short` (run only named keys),
+`seed=<int>` (reproducibility), `skip_existing=true` (resume a run),
+`save_chain_of_interest=true` (required for later foldseek clustering).
+
+```bash
+# 80 designs of each monomer example, 8 at a time
+python src/rfproteina/generate.py \
+    inputs=data/benchmarks/monomer.json \
+    num_replicates=80 batch_size=8 out_dir=./runs/monomers
+```
+
+## Step 4 — Pick your overrides
+
+Full cheat sheet: [references/overrides.md](references/overrides.md). The knobs
+that matter most:
+
+- **Diversity (stochasticity).** Backbone temperature
+  `generation.model.bb_ca.simulation_step_params.sc_scale_noise` (default 0.3)
+  and sidechain/sequence temperature
+  `generation.model.local_latents.simulation_step_params.sc_scale_noise`
+  (default 0.1). Roughly: `(0.1,0.1)` = high designability, `(0.5,0.5)` =
+  natural UniProt-like sequences, `(0.9,0.9)` = maximum diversity.
+- **Partial diffusion (refine an existing structure).** Simple:
+  `generation.args.partial_trajectory_fraction_steps=<f>` (fraction of `nsteps`).
+  Advanced: `generation.args.partial_t_backbone=<t>` /
+  `generation.args.partial_t_latent=<t>` (floats in `(0,1)`; near 1 stays close
+  to the input, near 0 approaches full generation), optionally
+  `generation.args.couple_partial_t=true`. `partial_t` is a corruption level, not
+  Angstroms.
+- **Deterministic (ODE) sampling** (no mid-trajectory noise):
+  `generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode`.
+- **Steps / self-conditioning.** `generation.args.nsteps` (default 100 with the
+  `vf_tsr` sampler) and `generation.args.self_cond` (leave on).
+
+## Step 5 — Inline metrics (optional)
+
+Pass `metrics_tags='[...]'` to compute metrics right after each design; results
+land in `per_example_metrics.csv` alongside the CIFs. Available tags:
+`unconditional_refolding`, `ppi_refolding`, `motif_scaffold_refolding`,
+`sm_binder_refolding`, `ame_refolding`, `hotspot_conditioning`,
+`3d_coordinate_conditioning`, `rasa_conditioning`, `interchain_interactions`.
+
+> [!NOTE]
+> Every `*_refolding` tag runs the **AF3 oracle**, which needs an apptainer/docker
+> container (see **rfd4-proteina-setup** for the container, **rfd4-proteina-evaluate**
+> for what the metrics mean and how to read them). Plain generation needs no
+> container. Deep metric detail belongs to **rfd4-proteina-evaluate** — this skill
+> only turns the tags on.
+
+```bash
+python src/rfproteina/generate.py \
+    inputs=data/benchmarks/monomer.json num_replicates=50 batch_size=8 \
+    out_dir=./runs/monomers_scored metrics_tags='[unconditional_refolding]'
+```
+
+## Reward-guided / beam search
+
+For "generate many, keep the best under an AF3 reward", do **not** hand-roll it
+here — use **rfd4-proteina-search**, which drives
+`configs/inference_experiment/inference_beam_example.yaml` and the search config
+knobs (beam width, branching, checkpoints, metric weights).
+
+## Reusable configs
+
+For a repeatable experiment instead of one-off CLI overrides, copy
+`configs/inference_experiment/TEMPLATE.yaml` — it documents the three ways to run
+(in-tree experiment config, CLI overrides, config file anywhere on the
+filesystem). The default group is `inference_on_user_inputs`.
+
+## Outputs
+
+Each design is an **annotated CIF** with per-atom provenance columns (`SA_SRC`,
+`SA_CRDSRC`, `SA_CRDGRPSRC`, `SA_UII`) tying output atoms back to the input spec.
+With metrics on, a `per_example_metrics.csv` is written alongside. Full column
+table and how to read annotations: [references/outputs.md](references/outputs.md).
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| Out of memory | Lower `batch_size`; confirm your longest input fits at `batch_size=1` first |
+| `--inputs`/`--out_dir` not recognized / Hydra config error | Use `=` not `--`: `inputs=file.cif`, never `--inputs file.cif` |
+| checkpoint not found / name mismatch | Override `ckpt_name=` to the file you actually downloaded (example vs release ckpt — see Step 1 and rfd4-proteina-setup) |
+| `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_example_data.sh "$DATA_PATH"` |
+| `atomworks not found` | `git submodule update --init lib/atomworks`, re-run `setup.sh` |
+| `hydra not found` / import errors | `source .venv/bin/activate` |
+| `No .env file found for cluster 'digs'` | `export CLUSTER=local` and create `.ipd/.env.local` |
+| AF3 / `*_refolding` errors | Refolding metrics need an AF3 container — see rfd4-proteina-setup + rfd4-proteina-evaluate |
+| Segfault in rdkit/posebusters | uv's Python needs `LD_PRELOAD` set to the bundled `libstdc++.so.6` (see `Makefile`) |
+
+For deeper detail: [overrides](references/overrides.md) ·
+[outputs](references/outputs.md) · per-task guides under
+[references/tasks/](references/tasks/).

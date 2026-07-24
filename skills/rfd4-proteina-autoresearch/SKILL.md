@@ -1,0 +1,151 @@
+---
+name: rfd4-proteina-autoresearch
+description: >
+  Run an iterative, inspectable design campaign with RFProteína — a
+  design -> score -> iterate loop that composes rfd4-proteina-generate,
+  rfd4-proteina-search, and rfd4-proteina-evaluate over multiple waves. Reach for this
+  skill for "autoresearch", "run a design campaign", "optimize binders over
+  several rounds", "sweep search parameters", "what should I try to improve my
+  designs", "tune the reward function", "which knobs matter", "beam width / branch
+  / checkpoints sweep", "explore vs exploit design branches", or "make my design
+  loop reproducible/inspectable". It provides the methodology: how to define a
+  composite reward, which RFProteína knobs to vary, wave-based freeze/promote/
+  allocate rules, and how to keep every wave's decisions and results on disk so
+  failed branches stay useful. It does not add new model capability — it
+  orchestrates the existing skills.
+compatibility: "rfd4-proteina-setup complete; for reward-guided waves an AF3 apptainer/docker container (see rfd4-proteina-search); multi-GPU or SLURM recommended for real campaigns; no new dependencies"
+allowed-tools: Bash, Read, Write, AskUserQuestion
+license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+---
+
+# RFProteína Autoresearch
+
+An autoresearch campaign is a **design -> score -> iterate** loop: generate
+candidates, score them against an explicit reward, keep what improves the metric,
+and let the results steer the next round. This skill is the *strategy layer* over
+the mechanics that already exist:
+
+- **rfd4-proteina-generate** — produce designs for a task.
+- **rfd4-proteina-inputs** — build the annotated CIF that defines the design problem
+  (length, epitope/hotspots, ligand).
+- **rfd4-proteina-search** — reward-guided beam search (AF3 oracle) for a single run.
+- **rfd4-proteina-evaluate** — metrics + aggregation + diversity clustering.
+
+The value is not any single run — it is the **trajectory**: which hypotheses you
+tested, where you reset, and what evidence spawned the next wave. Make the reward
+and rules explicit so the loop is steerable and replaceable when you get better
+evidence.
+
+> Methodology note and provenance. The wave/branch loop and composite-reward
+> engineering below are adapted from muni's autoresearch experiments
+> ([scoring-function-dependent strategies](https://muni.bio/research/scoring-function-dependent-strategies),
+> [autoresearch + CLI](https://www.muni.bio/research/muni-makeover-cli-autoresearch)),
+> themselves inspired by Karpathy's autoresearch framing. **Those experiments ran
+> Proteina-Complexa on TREM2, a different model and target** — their specific
+> findings (e.g. a `cdr2_bias` epitope, `beam_width 4->12`, `MCTS n=8`, an ipSAE of
+> ~0.95) are **illustrative, not RFProteína defaults**, and RFProteína's search is
+> **beam search only** (no MCTS / best-of-n / FK-steering). Port the *method*, not
+> the numbers. See [references/loop.md](references/loop.md).
+
+## Step 1 — Make the objective explicit
+
+Before generating anything, write down (on disk, so it is inspectable):
+
+- **Design problem** — task + input (monomer, motif, small-molecule/enzyme
+  active site; for binders the target + epitope/hotspots). Build it with
+  **rfd4-proteina-inputs**.
+- **Reward** — the composite metric you optimize, as RFProteína reward keys with
+  weights and gates (Step 3). A provisional reward is still useful — it is a
+  hypothesis about what matters, meant to steer search and be replaced.
+- **Rules** — freeze/promote/allocate thresholds and the per-wave job budget
+  (Step 4).
+
+Keep these in a small campaign directory, e.g. `campaign/program.md`,
+`campaign/wave1.json`, `campaign/decisions.md`, `campaign/results.tsv`.
+
+## Step 2 — Seed the first wave of branches
+
+A **branch** is one (input, search-config) combination. Seed a handful that span
+the hypotheses you actually want to test — for a binder that might be
+{epitope A, epitope B} x {length 60-100, 80-130}; for a monomer it might be
+{diversity noise low/high} x {nsteps}. Each branch is a `rfd4-proteina-search` (or
+plain `rfd4-proteina-generate`) run.
+
+## Step 3 — Engineer the composite reward
+
+RFProteína's reward is defined inline under `search.rewards` (see
+**rfd4-proteina-search**). The autoresearch-specific discipline — from the muni
+technical note, and directly applicable here:
+
+- **Normalize term scales before weighting.** Terms live on wildly different
+  scales (confidence terms ~0-1, interface areas in hundreds/thousands of Å²,
+  H-bond counts small integers). Left raw, one term dominates for boring numerical
+  reasons.
+- **Gate, don't pay forever.** Use `clip_values` to turn a "must clear a bar" term
+  into a gate — e.g. clip an interface-area/`min_ipae` term at a threshold so the
+  reward stops responding once it is satisfied, instead of rewarding ever-larger
+  values.
+- **Down-weight wide-range terms** so a 0-100 style term does not swamp a 0-1 one.
+- Use **negative weights to minimize** (e.g. minimize `oracle.ipae_coi`).
+
+Full worked patterns and the RFProteína reward keys
+(`oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`, `oracle.min_ipae_coi`):
+[references/reward-engineering.md](references/reward-engineering.md).
+
+## Step 4 — Run the wave, then freeze / promote / allocate
+
+Run the wave's branches, score them (reward-guided search scores inline; otherwise
+evaluate with **rfd4-proteina-evaluate**), then update branches by **branch health**
+(the median of that branch's top-3 scores):
+
+- **Freeze** a branch whose health is in the bottom quartile (stop funding it).
+- **Promote** a branch that produced a current global top-k design — spawn one
+  child by mutating **exactly one** knob (Step 5).
+- **Allocate** the next wave's budget ~70% to the strongest branches
+  (promoted + top-half by health) and ~30% to unexplored combinations
+  (explore/exploit).
+
+Record every branch outcome and the promote/freeze reasoning. Losing branches are
+signal: capture *why* they failed. See [references/loop.md](references/loop.md).
+
+## Step 5 — Choose which knob to mutate (RFProteína-accurate axes)
+
+Change **one** axis per child so effects are attributable:
+
+- **Search**: `beam_width`, `n_branch`, `step_checkpoints` / `nsteps` (cost scales
+  ~ `beam_width x n_branch x #checkpoints` oracle calls). Beam vs vanilla is the
+  only algorithm axis — RFProteína has no MCTS/best-of-n.
+- **Reward**: term weights, add/tighten a gate, swap `reward_metrics_tags`.
+- **Diversity**: `generation.model.bb_ca.simulation_step_params.sc_scale_noise`
+  and `...local_latents...sc_scale_noise` (higher = more diverse, often less
+  designable).
+- **Input**: binder length window, epitope/hotspot set, ligand pose/conditioning
+  — via **rfd4-proteina-inputs** (a new branch input).
+
+Full axis catalog with defaults and cautions:
+[references/sweep-axes.md](references/sweep-axes.md).
+
+## Step 6 — Track diversity and stop conditions
+
+Use `rfd4-proteina-evaluate` with `--cluster_with_foldseek` (needs
+`save_chain_of_interest=true` at generation) to avoid optimizing into a single
+structural family. Stop when the running best plateaus across waves, or the budget
+is spent — and record that the search space was (or was not) exhausted.
+
+## Outputs
+
+A campaign directory that is fully replayable: the objective + rules
+(`program.md`), per-wave branch payloads (`wave*.json`), agent/human reasoning
+(`decisions.md`), and per-branch outcomes (`results.tsv`), alongside the
+per-branch design CIFs and metrics CSVs produced by the underlying skills. The
+running-best trajectory — including failed branches and why — is the deliverable,
+not just the top design.
+
+## Caveats
+
+- Rewards optimize a **proxy** (AF3 confidence / interface metrics), not
+  experimental success — validate designs downstream.
+- Reward-guided waves are **compute-intensive** (many AF3 oracle calls); size
+  `beam_width`/`n_branch`/waves to budget. See **rfd4-proteina-search** `references/cost.md`.
+- The muni TREM2/Complexa numbers are illustrations; derive RFProteína settings
+  empirically from your own early waves.
