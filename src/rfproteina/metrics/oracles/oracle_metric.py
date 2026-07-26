@@ -47,6 +47,8 @@ class OracleJobInput:
     example_id: str
     out_dir: Path
     chain_of_interest: str | None = None
+    # Per-chain a3m paths (plain or gzipped), keyed by the input's chain_id; ``None`` folds single-sequence.
+    msa_paths_by_chain_id: dict[str, str | Path] | None = None
 
 
 def _coi_interface_vals(matrix: list, coi_idx: int, n_chains: int) -> list:

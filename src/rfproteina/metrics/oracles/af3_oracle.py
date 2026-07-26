@@ -3,6 +3,7 @@
 import atexit
 import contextlib
 import errno
+import gzip
 import io
 import json
 import os
@@ -223,6 +224,8 @@ class AF3Oracle(OracleMetric):
         template_query: AtomWorks query string selecting which atoms to template
             (e.g. ``"mask_coordinate_1_atom & ~is_nucleic_acid"``).
         extra_af3_flags: Additional flags forwarded to the AF3 subprocess.
+        seed: Pins AF3's diffusion seed for reproducibility; leave ``None`` in
+            production so each fold samples its own.
     """
 
     def __init__(
@@ -230,10 +233,12 @@ class AF3Oracle(OracleMetric):
         oracle_name: str = "af3",
         template_query: str | None = None,
         extra_af3_flags: list[str] | None = None,
+        seed: int | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(oracle_name=oracle_name, template_query=template_query, **kwargs)
         self.extra_flags = extra_af3_flags or []
+        self.seed = seed
 
     # ------------------------------------------------------------------
     # OracleMetric framework hooks
@@ -445,12 +450,17 @@ class AF3Oracle(OracleMetric):
             }
 
             # Optional payloads when the design needs them:
-            #   template — structural template constraint (chain coords) for the design
-            #   user_ccd — connectivity for any non-standard residues so AF3 can bond them
+            #   template     — structural template constraint (chain coords) for the design
+            #   user_ccd     — connectivity for any non-standard residues so AF3 can bond them
+            #   unpaired_msa — per-chain a3m for designs that fold better than single-sequence
             if template := self._build_af3_template_dict(disambiguated_valid):
                 entry["template"] = template
             if user_ccd := self._build_user_ccd_string(disambiguated_valid):
                 entry["user_ccd"] = user_ccd
+            if unpaired_msa := self._build_unpaired_msa_dict(job, disambiguated_atom_array):
+                entry["unpaired_msa"] = unpaired_msa
+            if self.seed is not None:
+                entry["seed"] = self.seed
             manifest_entries.append(entry)
 
             job_states.append(
@@ -603,6 +613,45 @@ class AF3Oracle(OracleMetric):
                 "template_indices": query_indices,
             }
         return template_dict or None
+
+    @staticmethod
+    def _build_unpaired_msa_dict(job: OracleJobInput, disambiguated_atom_array: AtomArray) -> dict[str, str] | None:
+        """Inline each chain's a3m, keyed by the chain ID AF3 will see.
+
+        The MSA must travel as text: AF3 runs in its own container, and a path that
+        does not resolve there is silently taken as the MSA itself
+        (``run_alphafold_from_cif.py:_resolve_path_or_string``).
+
+        Args:
+            job: Queued design; ``msa_paths_by_chain_id`` is keyed by input ``chain_id``.
+            disambiguated_atom_array: ``job.atom_array`` after chain-ID disambiguation.
+
+        Returns:
+            Dict mapping every AF3 chain ID → a3m text, or ``None`` when the job carries no MSA.
+
+        Raises:
+            ValueError: If a keyed chain ID is not in the design.
+        """
+        if not job.msa_paths_by_chain_id:
+            return None
+
+        # Disambiguation only renames chains, so the two arrays line up atom-for-atom.
+        # One input chain can yield several AF3 chains (multi-copy); all of them need the a3m.
+        pairs = set(zip(job.atom_array.chain_id, disambiguated_atom_array.chain_id, strict=True))
+
+        unpaired_msa: dict[str, str] = {}
+        for chain_id, msa_path in job.msa_paths_by_chain_id.items():
+            af3_chain_ids = [af3 for original, af3 in pairs if original == chain_id]
+            if not af3_chain_ids:
+                raise ValueError(
+                    f"MSA given for chain {chain_id!r}, which is not in design {job.example_id!r}; "
+                    f"available chains: {sorted(set(job.atom_array.chain_id))}"
+                )
+            path = Path(msa_path)
+            opener = gzip.open if path.suffix == ".gz" else open
+            with opener(path, "rt") as fh:
+                unpaired_msa.update(dict.fromkeys(af3_chain_ids, fh.read()))
+        return unpaired_msa
 
     def _build_user_ccd_string(self, atom_array: AtomArray) -> str | None:
         """Build the user CCD string for AF3 from the input AtomArray.

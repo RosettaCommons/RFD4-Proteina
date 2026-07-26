@@ -17,6 +17,7 @@ Spawned by :py:mod:`scripts.af3_daemon`. Two run modes:
   ``shutdown`` exits cleanly.
 """
 
+import dataclasses
 import datetime
 import importlib.util
 import json
@@ -34,17 +35,18 @@ from alphafold3.constants import chemical_components
 from alphafold3.data import featurisation as _featurisation
 
 
-def _load_raf3() -> Any:
+def _load_af3_cif_entrypoint() -> Any:
     """Load AF3's upstream ``run_alphafold_from_cif.py`` from the mount."""
     scripts_dir = os.environ.get("AF3_SCRIPTS_DIR", "/path/to/data")
-    raf3_path = os.path.join(scripts_dir, "run_alphafold_from_cif.py")
-    spec = importlib.util.spec_from_file_location("run_alphafold_from_cif", raf3_path)
+    entrypoint_path = os.path.join(scripts_dir, "run_alphafold_from_cif.py")
+    spec = importlib.util.spec_from_file_location("run_alphafold_from_cif", entrypoint_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-_raf3 = _load_raf3()
+_af3_cif_entrypoint = _load_af3_cif_entrypoint()
+
 
 _MANIFEST = flags.DEFINE_string("manifest", None, "JSON manifest with a list of design payloads.")
 _SERVE = flags.DEFINE_bool(
@@ -66,7 +68,7 @@ def _build_fold_input(payload: dict) -> Any:
     else:
         cif_string, cif_name = cif_value, payload["name"]
 
-    return _raf3._build_fold_input_from_cif(
+    fold_input = _af3_cif_entrypoint._build_fold_input_from_cif(
         cif_string=cif_string,
         cif_name=cif_name,
         paired_msa=payload.get("paired_msa"),
@@ -74,6 +76,18 @@ def _build_fold_input(payload: dict) -> Any:
         template=payload.get("template"),
         user_ccd=payload.get("user_ccd"),
     )
+    # _build_fold_input_from_cif fills MSAs in for protein chains only, so an RNA chain reaches
+    # featurisation with unpaired_msa=None, which AF3 rejects; "" is its "custom MSA, no sequences".
+    rna_msa = _af3_cif_entrypoint._parse_chain_dict(payload.get("unpaired_msa"))
+    for chain in fold_input.rna_chains:
+        if chain.unpaired_msa is None:
+            chain._unpaired_msa = _af3_cif_entrypoint._resolve_path_or_string(rna_msa.get(chain.id, ""))
+
+    # from_mmcif samples a fresh random seed per call; a manifest ``seed`` pins it for reproducibility.
+    seed = payload.get("seed")
+    if seed is None:
+        return fold_input
+    return dataclasses.replace(fold_input, rng_seeds=(int(seed),))
 
 
 def _featurise(
@@ -82,7 +96,7 @@ def _featurise(
     conformer_max_iters: int | None,
     resolve_msa_overlaps: bool,
 ) -> Any:
-    buckets = tuple(int(b) for b in _raf3._BUCKETS.value)
+    buckets = tuple(int(b) for b in _af3_cif_entrypoint._BUCKETS.value)
     ccd = chemical_components.Ccd(user_ccd=fold_input.user_ccd)
     return _featurisation.featurise_input(
         fold_input=fold_input,
@@ -105,7 +119,7 @@ def _infer_and_extract(fold_input: Any, featurised_examples: Any, model_runner: 
             batch=example, result=result, target_name=fold_input.name
         )
         results.append(
-            _raf3.ResultsForSeed(
+            _af3_cif_entrypoint.ResultsForSeed(
                 seed=seed,
                 inference_results=inference_results,
                 full_fold_input=fold_input,
@@ -130,8 +144,8 @@ def _run(
                 feats = _featurise(
                     fold_input,
                     max_template_date,
-                    _raf3._CONFORMER_MAX_ITERATIONS.value,
-                    _raf3._RESOLVE_MSA_OVERLAPS.value,
+                    _af3_cif_entrypoint._CONFORMER_MAX_ITERATIONS.value,
+                    _af3_cif_entrypoint._RESOLVE_MSA_OVERLAPS.value,
                 )
                 q.put(("ok", i, payload, fold_input, feats))
             except Exception as exc:
@@ -156,7 +170,7 @@ def _run(
         try:
             os.makedirs(payload["output_dir"], exist_ok=True)
             results = _infer_and_extract(fold_input, feats, model_runner)
-            _raf3.write_outputs(
+            _af3_cif_entrypoint.write_outputs(
                 all_inference_results=results,
                 output_dir=payload["output_dir"],
                 job_name=fold_input.name.replace(" ", "_"),
@@ -180,21 +194,21 @@ def _run(
 
 def _setup_runner() -> tuple[Any, datetime.date]:
     """Load AF3 once and return ``(model_runner, max_template_date)``."""
-    if _raf3._JAX_COMPILATION_CACHE_DIR.value is not None:
-        jax.config.update("jax_compilation_cache_dir", _raf3._JAX_COMPILATION_CACHE_DIR.value)
+    if _af3_cif_entrypoint._JAX_COMPILATION_CACHE_DIR.value is not None:
+        jax.config.update("jax_compilation_cache_dir", _af3_cif_entrypoint._JAX_COMPILATION_CACHE_DIR.value)
 
-    max_template_date = datetime.date.fromisoformat(_raf3._MAX_TEMPLATE_DATE.value)
+    max_template_date = datetime.date.fromisoformat(_af3_cif_entrypoint._MAX_TEMPLATE_DATE.value)
 
     devices = jax.local_devices(backend="gpu")
-    gpu_device = _raf3._GPU_DEVICE.value
-    model_runner = _raf3.ModelRunner(
-        config=_raf3.make_model_config(
-            flash_attention_implementation=_raf3._FLASH_ATTENTION_IMPLEMENTATION.value,
-            num_diffusion_samples=_raf3._NUM_DIFFUSION_SAMPLES.value,
-            num_recycles=_raf3._NUM_RECYCLES.value,
+    gpu_device = _af3_cif_entrypoint._GPU_DEVICE.value
+    model_runner = _af3_cif_entrypoint.ModelRunner(
+        config=_af3_cif_entrypoint.make_model_config(
+            flash_attention_implementation=_af3_cif_entrypoint._FLASH_ATTENTION_IMPLEMENTATION.value,
+            num_diffusion_samples=_af3_cif_entrypoint._NUM_DIFFUSION_SAMPLES.value,
+            num_recycles=_af3_cif_entrypoint._NUM_RECYCLES.value,
         ),
         device=devices[gpu_device],
-        model_dir=pathlib.Path(_raf3.MODEL_DIR.value),
+        model_dir=pathlib.Path(_af3_cif_entrypoint.MODEL_DIR.value),
     )
     _ = model_runner.model_params  # force weights load
     return model_runner, max_template_date
@@ -207,7 +221,7 @@ def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
     ``shutdown`` to exit cleanly.
     """
     print(json.dumps({"status": "ready"}), flush=True)
-    save_full = _raf3._SAVE_FULL_OUTPUTS.value
+    save_full = _af3_cif_entrypoint._SAVE_FULL_OUTPUTS.value
     for raw in sys.stdin:
         line = raw.strip()
         if not line:
@@ -251,7 +265,7 @@ def main(_argv: list[str]) -> None:
     if not designs:
         raise SystemExit("Manifest is empty.")
     t0 = time.perf_counter()
-    n_ok = _run(designs, model_runner, max_template_date, _raf3._SAVE_FULL_OUTPUTS.value)
+    n_ok = _run(designs, model_runner, max_template_date, _af3_cif_entrypoint._SAVE_FULL_OUTPUTS.value)
     wall_s = time.perf_counter() - t0
     print(
         f"AF3 batch wrapper: {n_ok}/{len(designs)} succeeded in {wall_s:.1f}s "
