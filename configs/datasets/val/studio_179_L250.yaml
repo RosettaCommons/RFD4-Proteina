@@ -11,3 +11,4 @@ dataset:
     metrics_tags:
       - design
       - disco_refolding
+      - sm_binder_refolding # Stricter, includes confidences
