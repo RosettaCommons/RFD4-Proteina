@@ -1,7 +1,7 @@
 """Tests for OracleMetric subclasses (AF3Oracle) and the full refolding pipeline.
 
 Slow/GPU tests require:
-  - AF3 apptainer image at $AF3_APPTAINER_PATH
+  - AF3 runtime image at $AF3_IMAGE
   - A CUDA device
 
 Run with:
