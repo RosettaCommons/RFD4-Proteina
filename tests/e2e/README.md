@@ -33,8 +33,7 @@ For the `muon_compile_af3` training smoke, AF3 prevalidation also needs the clus
 AF3 env vars (defaults in `.ipd/.env.coreweave`):
 
 ```bash
-export AF3_APPTAINER_PATH=/path/to/shared/storage
-export AF3_SCRIPTS_DIR=/path/to/shared/storage
+export AF3_IMAGE=/path/to/shared/storage
 export AF3_JAX_CACHE_DIR=/path/to/data
 export AF3_MODEL_DIR=/path/to/shared/storage
 # Host-side daemons (outside latent-dev); training talks to them via:
@@ -162,8 +161,7 @@ run-to-run variance. Refresh command documented in
 | `GPU_E2E_STREAM_OUTPUT` | 0 | set to `1` to tee train/infer subprocess logs to the terminal (debugging) |
 | `RF3_CKPT_PATH` | — | abs RF3 oracle `.ckpt`; else `$DATA_PATH/rf3_checkpoints/$RF3_CKPT_NAME` |
 | `RF3_CKPT_NAME` | `rf3-with-confidence-xaira-epoch-0711-fixed.ckpt` | basename under `rf3_checkpoints/` |
-| `AF3_APPTAINER_PATH` | `/path/to/data` | AF3 apptainer image (`muon_compile_af3` only) |
-| `AF3_SCRIPTS_DIR` | `/path/to/data` | must contain `run_alphafold_from_cif.py` |
+| `AF3_IMAGE` | `/path/to/data` | AF3 runtime image (`muon_compile_af3` only) |
 | `AF3_JAX_CACHE_DIR` | `/path/to/data` | JAX compilation cache for AF3 daemon |
 | `AF3_MODEL_DIR` | `/path/to/data` | AF3 model weights |
 | `AF3_LAUNCHER_SOCKET_TEMPLATE` | set by `af3_daemon.py launch` | Unix socket template for daemon route (required at train time) |

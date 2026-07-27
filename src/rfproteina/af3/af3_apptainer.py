@@ -66,14 +66,13 @@ def _data_bind_args() -> list[str]:
 
 
 def _af3_resource_bind_args() -> list[str]:
-    """Bind AF3 script/weight/cache paths into ``af3.sif``.
+    """Bind AF3 weight/cache paths into ``af3-open.sif``.
 
-    Without these binds, nested ``apptainer run af3.sif`` (e.g. from inside
-    latent-dev during GPU e2e) cannot see host paths like
-    ``/path/to/shared/storage``.
+    Without these binds, nested ``apptainer run af3-open.sif`` (e.g. from inside
+    latent-dev during GPU e2e) cannot see the host weights or compilation cache.
     """
     specs: list[str] = []
-    for env_name in ("AF3_SCRIPTS_DIR", "AF3_MODEL_DIR", "AF3_JAX_CACHE_DIR"):
+    for env_name in ("AF3_MODEL_DIR", "AF3_JAX_CACHE_DIR"):
         path = os.environ.get(env_name, "").strip().rstrip("/")
         if path:
             specs.append(f"{path}:{path}")
@@ -87,9 +86,9 @@ def build_apptainer_fold_command(
     batch_script: str | Path | None = None,
     serve: bool = False,
 ) -> list[str]:
-    """Build the ``apptainer run af3.sif python run_alphafold_batch.py`` argv.
+    """Build the ``apptainer run af3-open.sif python run_alphafold_batch.py`` argv.
 
-    Reads ``AF3_APPTAINER_PATH`` / ``AF3_SCRIPTS_DIR`` / ``AF3_JAX_CACHE_DIR`` /
+    Reads ``AF3_IMAGE`` / ``AF3_JAX_CACHE_DIR`` /
     ``AF3_MODEL_DIR`` from env (set by ``.ipd/.env.<cluster>``); raises
     :py:class:`OSError` on missing var. Data binds come from
     ``APPTAINER_BIND_PATHS`` (see :py:func:`_data_bind_args`).
@@ -108,8 +107,7 @@ def build_apptainer_fold_command(
             subprocess loads AF3 once and reads manifest paths on stdin
             instead of folding a single ``--manifest`` argument and exiting.
     """
-    sif = _require("AF3_APPTAINER_PATH")
-    scripts_dir = _require("AF3_SCRIPTS_DIR")
+    sif = _require("AF3_IMAGE")
     jax_cache = _require("AF3_JAX_CACHE_DIR")
     weights = _require("AF3_MODEL_DIR")
     if batch_script is None:
@@ -126,8 +124,6 @@ def build_apptainer_fold_command(
         "XLA_PYTHON_CLIENT_PREALLOCATE=false",
         "--env",
         "JAX_PLATFORMS=cuda",
-        "--env",
-        f"AF3_SCRIPTS_DIR={scripts_dir}",
         "--env",
         f"AF3_MODEL_DIR={weights}",
         *_data_bind_args(),

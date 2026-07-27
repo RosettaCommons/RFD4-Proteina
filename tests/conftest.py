@@ -61,7 +61,6 @@ def _pin_gpu_for_xdist_worker() -> None:
 _pin_gpu_for_xdist_worker()
 
 import shutil
-from pathlib import Path
 
 import pytest
 from atomworks.ml.executables import _EXECUTABLES
@@ -96,20 +95,13 @@ def _has_dssp() -> bool:
 has_dssp = _has_dssp()
 skip_if_no_dssp = pytest.mark.skipif(not has_dssp, reason="DSSP is not installed or unavailable")
 
-AF3_APPTAINER_PATH = os.environ.get("AF3_APPTAINER_PATH", "/path/to/shared/storage")
-AF3_SCRIPTS_DIR = os.environ.get("AF3_SCRIPTS_DIR", "")
+AF3_IMAGE = os.environ.get("AF3_IMAGE", "/path/to/shared/storage")
+AF3_MODEL_DIR = os.environ.get("AF3_MODEL_DIR", "")
 
 
 def _has_af3() -> bool:
-    """Check if AF3 is available: apptainer image, apptainer binary, and run-scripts all present."""
-    if not os.path.isfile(AF3_APPTAINER_PATH):
-        return False
-    if shutil.which("apptainer") is None:
-        return False
-    if not AF3_SCRIPTS_DIR:
-        return False
-    scripts = Path(AF3_SCRIPTS_DIR)
-    return (scripts / "run_alphafold_server.py").is_file() and (scripts / "run_alphafold_from_cif.py").is_file()
+    """Check if AF3 is available: runtime image, apptainer binary, and weights all present."""
+    return os.path.isfile(AF3_IMAGE) and shutil.which("apptainer") is not None and bool(AF3_MODEL_DIR)
 
 
 has_af3 = _has_af3()

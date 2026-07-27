@@ -1,4 +1,4 @@
-"""Batch fold wrapper for AF3, executed inside af3.sif.
+"""Batch fold wrapper for AF3-compatible weights, executed inside af3-open.sif.
 
 Manifest format (JSON list)::
 
@@ -7,7 +7,7 @@ Manifest format (JSON list)::
       "template"?: {...}, "user_ccd"?: "...",
       "paired_msa"?: {...}, "unpaired_msa"?: {...}}, ...]
 
-Spawned by :py:mod:`scripts.af3_daemon`. Two run modes:
+Spawned by :mod:`rfproteina.af3.af3_daemon`. Two run modes:
 
 - One-shot: pass ``--manifest=...`` and the script loads AF3, folds the
   designs, and exits.
@@ -19,7 +19,6 @@ Spawned by :py:mod:`scripts.af3_daemon`. Two run modes:
 
 import dataclasses
 import datetime
-import importlib.util
 import json
 import os
 import pathlib
@@ -29,24 +28,11 @@ import threading
 import time
 from typing import Any
 
+import af3_runtime as _runtime
 import jax
 from absl import app, flags
 from alphafold3.constants import chemical_components
 from alphafold3.data import featurisation as _featurisation
-
-
-def _load_af3_cif_entrypoint() -> Any:
-    """Load AF3's upstream ``run_alphafold_from_cif.py`` from the mount."""
-    scripts_dir = os.environ.get("AF3_SCRIPTS_DIR", "/path/to/data")
-    entrypoint_path = os.path.join(scripts_dir, "run_alphafold_from_cif.py")
-    spec = importlib.util.spec_from_file_location("run_alphafold_from_cif", entrypoint_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-_af3_cif_entrypoint = _load_af3_cif_entrypoint()
-
 
 _MANIFEST = flags.DEFINE_string("manifest", None, "JSON manifest with a list of design payloads.")
 _SERVE = flags.DEFINE_bool(
@@ -55,6 +41,38 @@ _SERVE = flags.DEFINE_bool(
     "If True, load AF3 once and loop reading manifest paths (one per line) on stdin. "
     "Each request runs a fold and prints a JSON status line to stdout. The literal "
     "line 'shutdown' exits cleanly. When --serve is set, --manifest is ignored.",
+)
+_MODEL_DIR = flags.DEFINE_string(
+    "model_dir",
+    None,
+    "Directory containing exactly one AF3-format parameter set.",
+)
+_JAX_COMPILATION_CACHE_DIR = flags.DEFINE_string(
+    "jax_compilation_cache_dir",
+    os.environ.get("AF3_JAX_CACHE_DIR"),
+    "Persistent JAX compilation cache directory.",
+)
+_GPU_DEVICE = flags.DEFINE_integer("gpu_device", 0, "Visible JAX GPU index.")
+_BUCKETS = flags.DEFINE_list(
+    "buckets",
+    ["64", "128", "192", "256", "384", "512", "768", "1024", "1536", "2048", "2560", "3072"],
+    "Token buckets used to control JAX recompilation.",
+)
+_FLASH_ATTENTION_IMPLEMENTATION = flags.DEFINE_enum(
+    "flash_attention_implementation",
+    "triton",
+    ["triton", "cudnn", "xla"],
+    "AF3 attention backend.",
+)
+_NUM_RECYCLES = flags.DEFINE_integer("num_recycles", 5, "AF3 recycle count.", lower_bound=1)
+_NUM_DIFFUSION_SAMPLES = flags.DEFINE_integer("num_diffusion_samples", 1, "Number of diffusion samples.", lower_bound=1)
+_MAX_TEMPLATE_DATE = flags.DEFINE_string("max_template_date", "2021-09-30", "Maximum template date.")
+_CONFORMER_MAX_ITERATIONS = flags.DEFINE_integer(
+    "conformer_max_iterations", None, "Optional RDKit conformer iteration limit.", lower_bound=0
+)
+_RESOLVE_MSA_OVERLAPS = flags.DEFINE_bool("resolve_msa_overlaps", True, "Deduplicate paired and unpaired MSA rows.")
+_SAVE_FULL_OUTPUTS = flags.DEFINE_bool(
+    "save_full_outputs", False, "Retain full confidences and per-sample output files."
 )
 
 
@@ -68,7 +86,7 @@ def _build_fold_input(payload: dict) -> Any:
     else:
         cif_string, cif_name = cif_value, payload["name"]
 
-    fold_input = _af3_cif_entrypoint._build_fold_input_from_cif(
+    fold_input = _runtime.build_fold_input_from_cif(
         cif_string=cif_string,
         cif_name=cif_name,
         paired_msa=payload.get("paired_msa"),
@@ -76,12 +94,6 @@ def _build_fold_input(payload: dict) -> Any:
         template=payload.get("template"),
         user_ccd=payload.get("user_ccd"),
     )
-    # _build_fold_input_from_cif fills MSAs in for protein chains only, so an RNA chain reaches
-    # featurisation with unpaired_msa=None, which AF3 rejects; "" is its "custom MSA, no sequences".
-    rna_msa = _af3_cif_entrypoint._parse_chain_dict(payload.get("unpaired_msa"))
-    for chain in fold_input.rna_chains:
-        if chain.unpaired_msa is None:
-            chain._unpaired_msa = _af3_cif_entrypoint._resolve_path_or_string(rna_msa.get(chain.id, ""))
 
     # from_mmcif samples a fresh random seed per call; a manifest ``seed`` pins it for reproducibility.
     seed = payload.get("seed")
@@ -96,7 +108,7 @@ def _featurise(
     conformer_max_iters: int | None,
     resolve_msa_overlaps: bool,
 ) -> Any:
-    buckets = tuple(int(b) for b in _af3_cif_entrypoint._BUCKETS.value)
+    buckets = tuple(int(b) for b in _BUCKETS.value)
     ccd = chemical_components.Ccd(user_ccd=fold_input.user_ccd)
     return _featurisation.featurise_input(
         fold_input=fold_input,
@@ -112,17 +124,16 @@ def _featurise(
 def _infer_and_extract(fold_input: Any, featurised_examples: Any, model_runner: Any) -> list[Any]:
     """Mirror of `predict_structure`'s per-seed loop body."""
     results = []
-    for seed, example in zip(fold_input.rng_seeds, featurised_examples, strict=False):
+    for seed, example in zip(fold_input.rng_seeds, featurised_examples, strict=True):
         rng_key = jax.random.PRNGKey(seed)
         result = model_runner.run_inference(example, rng_key)
         inference_results = model_runner.extract_inference_results(
             batch=example, result=result, target_name=fold_input.name
         )
         results.append(
-            _af3_cif_entrypoint.ResultsForSeed(
+            _runtime.ResultsForSeed(
                 seed=seed,
                 inference_results=inference_results,
-                full_fold_input=fold_input,
             )
         )
     return results
@@ -144,8 +155,8 @@ def _run(
                 feats = _featurise(
                     fold_input,
                     max_template_date,
-                    _af3_cif_entrypoint._CONFORMER_MAX_ITERATIONS.value,
-                    _af3_cif_entrypoint._RESOLVE_MSA_OVERLAPS.value,
+                    _CONFORMER_MAX_ITERATIONS.value,
+                    _RESOLVE_MSA_OVERLAPS.value,
                 )
                 q.put(("ok", i, payload, fold_input, feats))
             except Exception as exc:
@@ -170,7 +181,7 @@ def _run(
         try:
             os.makedirs(payload["output_dir"], exist_ok=True)
             results = _infer_and_extract(fold_input, feats, model_runner)
-            _af3_cif_entrypoint.write_outputs(
+            _runtime.write_outputs(
                 all_inference_results=results,
                 output_dir=payload["output_dir"],
                 job_name=fold_input.name.replace(" ", "_"),
@@ -194,21 +205,25 @@ def _run(
 
 def _setup_runner() -> tuple[Any, datetime.date]:
     """Load AF3 once and return ``(model_runner, max_template_date)``."""
-    if _af3_cif_entrypoint._JAX_COMPILATION_CACHE_DIR.value is not None:
-        jax.config.update("jax_compilation_cache_dir", _af3_cif_entrypoint._JAX_COMPILATION_CACHE_DIR.value)
+    if _JAX_COMPILATION_CACHE_DIR.value is not None:
+        jax.config.update("jax_compilation_cache_dir", _JAX_COMPILATION_CACHE_DIR.value)
 
-    max_template_date = datetime.date.fromisoformat(_af3_cif_entrypoint._MAX_TEMPLATE_DATE.value)
+    max_template_date = datetime.date.fromisoformat(_MAX_TEMPLATE_DATE.value)
 
     devices = jax.local_devices(backend="gpu")
-    gpu_device = _af3_cif_entrypoint._GPU_DEVICE.value
-    model_runner = _af3_cif_entrypoint.ModelRunner(
-        config=_af3_cif_entrypoint.make_model_config(
-            flash_attention_implementation=_af3_cif_entrypoint._FLASH_ATTENTION_IMPLEMENTATION.value,
-            num_diffusion_samples=_af3_cif_entrypoint._NUM_DIFFUSION_SAMPLES.value,
-            num_recycles=_af3_cif_entrypoint._NUM_RECYCLES.value,
+    gpu_device = _GPU_DEVICE.value
+    model_dir = _MODEL_DIR.value or os.environ.get("AF3_MODEL_DIR")
+    if model_dir is None:
+        raise ValueError("--model_dir or AF3_MODEL_DIR is required")
+    model_runner = _runtime.ModelRunner(
+        config=_runtime.make_model_config(
+            flash_attention_implementation=_FLASH_ATTENTION_IMPLEMENTATION.value,
+            num_diffusion_samples=_NUM_DIFFUSION_SAMPLES.value,
+            num_recycles=_NUM_RECYCLES.value,
         ),
         device=devices[gpu_device],
-        model_dir=pathlib.Path(_af3_cif_entrypoint.MODEL_DIR.value),
+        model_dir=pathlib.Path(model_dir),
+        cache_dir=(pathlib.Path(_JAX_COMPILATION_CACHE_DIR.value) if _JAX_COMPILATION_CACHE_DIR.value else None),
     )
     _ = model_runner.model_params  # force weights load
     return model_runner, max_template_date
@@ -221,7 +236,7 @@ def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
     ``shutdown`` to exit cleanly.
     """
     print(json.dumps({"status": "ready"}), flush=True)
-    save_full = _af3_cif_entrypoint._SAVE_FULL_OUTPUTS.value
+    save_full = _SAVE_FULL_OUTPUTS.value
     for raw in sys.stdin:
         line = raw.strip()
         if not line:
@@ -244,10 +259,13 @@ def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
                 file=sys.stderr,
                 flush=True,
             )
-            print(
-                json.dumps({"status": "ok", "n_ok": n_ok, "n_total": len(designs)}),
-                flush=True,
-            )
+            response = {"status": "ok", "n_ok": n_ok, "n_total": len(designs)}
+            if n_ok != len(designs):
+                response.update(
+                    status="error",
+                    message=f"{len(designs) - n_ok}/{len(designs)} designs failed",
+                )
+            print(json.dumps(response), flush=True)
         except Exception as exc:
             print(json.dumps({"status": "error", "message": str(exc)}), flush=True)
 
@@ -265,13 +283,15 @@ def main(_argv: list[str]) -> None:
     if not designs:
         raise SystemExit("Manifest is empty.")
     t0 = time.perf_counter()
-    n_ok = _run(designs, model_runner, max_template_date, _af3_cif_entrypoint._SAVE_FULL_OUTPUTS.value)
+    n_ok = _run(designs, model_runner, max_template_date, _SAVE_FULL_OUTPUTS.value)
     wall_s = time.perf_counter() - t0
     print(
         f"AF3 batch wrapper: {n_ok}/{len(designs)} succeeded in {wall_s:.1f}s "
         f"({wall_s / max(len(designs), 1):.2f}s/example)",
         file=sys.stderr,
     )
+    if n_ok != len(designs):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

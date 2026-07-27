@@ -114,11 +114,7 @@ def require_preval_oracle(oracle: PrevalOracle) -> None:
         if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
             return
         if not has_af3:
-            pytest.skip("AF3 not available (set AF3_APPTAINER_PATH, AF3_SCRIPTS_DIR, or AF3_LAUNCHER_SOCKET_TEMPLATE)")
-        scripts_dir = os.environ.get("AF3_SCRIPTS_DIR", "")
-        script = os.path.join(scripts_dir, "run_alphafold_from_cif.py")
-        if not os.path.isfile(script):
-            pytest.skip(f"AF3 script not found: {script}")
+            pytest.skip("AF3 not available (set AF3_IMAGE and AF3_MODEL_DIR, or AF3_LAUNCHER_SOCKET_TEMPLATE)")
 
 
 def _rmtree_robust(path: Path) -> None:

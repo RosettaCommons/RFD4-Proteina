@@ -7,7 +7,7 @@
   daemon down on SIGTERM/SIGINT/SIGHUP.
 
 Cluster paths come from ``.ipd/.env.<cluster>``:
-    AF3_APPTAINER_PATH, AF3_SCRIPTS_DIR, AF3_JAX_CACHE_DIR, AF3_MODEL_DIR.
+    AF3_IMAGE, AF3_JAX_CACHE_DIR, AF3_MODEL_DIR.
 
 Socket protocol (line-delimited JSON):
     {"cmd": "fold", "manifest": "...", "save_full_outputs": false}
@@ -33,7 +33,7 @@ from af3_apptainer import (
     build_apptainer_fold_command,
 )
 
-_REQUIRED_ENV_VARS = ("AF3_APPTAINER_PATH", "AF3_SCRIPTS_DIR", "AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
+_REQUIRED_ENV_VARS = ("AF3_IMAGE", "AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
 
 
 # ----------------------------------------------------------------------------
