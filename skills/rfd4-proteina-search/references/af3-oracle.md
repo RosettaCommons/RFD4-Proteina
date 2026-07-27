@@ -34,6 +34,54 @@ file provides the AF3 SIF path and related oracle paths. This is set up by
 for cluster/container details and the `CONTAINER_TYPE` per cluster
 (`apptainer` on `digs`/`coreweave`, `docker` on `ord`/`gb200`).
 
+## Rebuilding the AF3/OpenFold3 runtime
+
+The canonical build definitions live with the AF3/OpenFold3 source in
+[`kierandidi/alphafold3`](https://github.com/kierandidi/alphafold3):
+
+- [Dockerfile on `main`](https://github.com/kierandidi/alphafold3/blob/main/docker/Dockerfile)
+- [Apptainer definition on `main`](https://github.com/kierandidi/alphafold3/blob/main/apptainer/af3-open.def)
+
+Use the validated revision for reproducible builds:
+
+```bash
+git clone https://github.com/kierandidi/alphafold3.git
+cd alphafold3
+git checkout --detach 8278d3901c76cdce79360dae26266370194a52b5
+```
+
+Build Docker:
+
+```bash
+DOCKER_BUILDKIT=1 docker build \
+  --file docker/Dockerfile \
+  --tag af3-open:8278d39 \
+  .
+```
+
+Build Apptainer:
+
+```bash
+apptainer build af3-open-8278d39.sif apptainer/af3-open.def
+```
+
+Both images contain JAX/CUDA inference dependencies and CPU-only PyTorch for
+the one-time OpenFold3 checkpoint conversion. They contain no model parameters.
+Mount Google AF3 parameters for standard inference or converted OpenFold3
+parameters for inference with `--of3_weights`.
+
+Validate CUDA visibility and the OpenFold3 parameter reader on a GPU node:
+
+```bash
+apptainer exec --nv af3-open-8278d39.sif \
+  /alphafold3_venv/bin/python -c \
+  'import jax; from alphafold3.model import of3_weight_converter; print(jax.devices())'
+```
+
+For Pyxis, publish the Docker image and use it with `--container-image`, or
+export it with `enroot import`. Do not directly squash an unpacked SIF: that
+drops Docker environment metadata and can cause JAX to fall back to CPU.
+
 ## Running in-container (shebang form)
 
 On a cluster with a container configured, run the entry point **directly** so its
