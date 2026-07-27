@@ -45,7 +45,7 @@ def _resolve_sota_ckpt_path() -> Path | None:
 
 # SOTA checkpoint: read from configs/inference.yaml so generate.py and these baselines pin the
 # same immutable, named file (not the moving "latest.ckpt" symlink). Synced to every cluster from
-# s3://private-dataset-store/latent_checkpoints/ldm_checkpoints/. Baselines are regenerated against this
+# s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/. Baselines are regenerated against this
 # exact file (see src/script_utils/generate_e2e_baselines.py); to advance SOTA, edit inference.yaml.
 SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
 # Single MCSA example used for all inference regression tests.
@@ -100,7 +100,7 @@ def require_sota_ckpt() -> None:
         pytest.fail("DATA_PATH is not set; cannot resolve the SOTA checkpoint from configs/inference.yaml")
     if not SOTA_CKPT_PATH.is_file():
         pytest.fail(
-            f"SOTA checkpoint not found: {SOTA_CKPT_PATH}. Sync it from s3://private-dataset-store/latent_checkpoints/ldm_checkpoints/"
+            f"SOTA checkpoint not found: {SOTA_CKPT_PATH}. Sync it from s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/"
         )
 
 
