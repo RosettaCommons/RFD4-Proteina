@@ -57,6 +57,8 @@ def _pin_gpu_for_xdist_worker() -> None:
 
     os.environ["CUDA_VISIBLE_DEVICES"] = devices[index]
 
+    os.environ["AF3_DAEMON_RANK"] = str(index)
+
 
 _pin_gpu_for_xdist_worker()
 

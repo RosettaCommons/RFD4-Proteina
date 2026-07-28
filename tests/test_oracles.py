@@ -117,8 +117,13 @@ def oracle_info(request, modified_1a1e):
         "ranking_score",
     ]
 
-    if not has_af3:
-        pytest.skip("AF3 apptainer image not available")
+    if not has_af3 and not os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
+        # See gpu_e2e.require_preval_oracle: when the cluster declares AF3, skipping
+        # would make an absent runtime look like a pass.
+        message = "AF3 apptainer image not available"
+        if os.environ.get("REQUIRE_AF3") == "1":
+            pytest.fail(message)
+        pytest.skip(message)
 
     oracle = AF3Oracle(num_recycles=5, template_query="is_templated")
 

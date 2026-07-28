@@ -114,7 +114,10 @@ def require_preval_oracle(oracle: PrevalOracle) -> None:
         if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
             return
         if not has_af3:
-            pytest.skip("AF3 not available (set AF3_IMAGE and AF3_MODEL_DIR, or AF3_LAUNCHER_SOCKET_TEMPLATE)")
+            message = "AF3 not available (set AF3_IMAGE and AF3_MODEL_DIR, or AF3_LAUNCHER_SOCKET_TEMPLATE)"
+            if os.environ.get("REQUIRE_AF3") == "1":
+                pytest.fail(message)
+            pytest.skip(message)
 
 
 def _rmtree_robust(path: Path) -> None:
