@@ -110,11 +110,42 @@ def _parse_na_ss_position(pos_str: str) -> tuple[str, int] | None:
     return str(chain_id), int(res_id)
 
 
+#: Bracket families whose open/close roles are fixed by shape.
+_SYMBOL_PAIRS = {"(": ")", "[": "]", "{": "}", "<": ">"}
+
+
+def _opener_for(dot_bracket: str) -> dict[str, str]:
+    """Map each closing character to its opener, resolving letter-case per string.
+
+    Letter families (``Aa``, ``Bb``, ...) encode higher-order pseudoknots, but the
+    case convention is not universal: Vienna/bpRNA write ``A...a`` (uppercase opens)
+    while Eterna/OpenKnot write ``a...A`` (lowercase opens). Both are well-formed, so
+    the opener is taken to be whichever case appears first for that letter.
+
+    Args:
+        dot_bracket: Dot-bracket notation string.
+
+    Returns:
+        Mapping of closing character to its opening character.
+    """
+    opener_for = {close: open_ for open_, close in _SYMBOL_PAIRS.items()}
+    for lower in {c.lower() for c in dot_bracket if c.isalpha()}:
+        upper = lower.upper()
+        i_lower, i_upper = dot_bracket.find(lower), dot_bracket.find(upper)
+        # A missing case leaves an unbalanced string; either assignment surfaces it below.
+        if i_upper >= 0 and (i_lower < 0 or i_upper < i_lower):
+            opener_for[lower] = upper
+        else:
+            opener_for[upper] = lower
+    return opener_for
+
+
 def parse_dot_bracket(dot_bracket: str) -> tuple[list[tuple[int, int]], list[int]]:
     """Parse a dot-bracket string into base pairs and unpaired positions.
 
-    Supports standard ``()``, ``[]``, ``{}``, ``<>`` and pseudoknot
-    brackets ``A``-``E`` / ``a``-``e``.
+    Supports standard ``()``, ``[]``, ``{}``, ``<>`` plus letter families
+    (``Aa``, ``Bb``, ...) for higher-order pseudoknots, in either case convention
+    (see :py:func:`_opener_for`).
 
     Args:
         dot_bracket: Dot-bracket notation string.
@@ -123,36 +154,45 @@ def parse_dot_bracket(dot_bracket: str) -> tuple[list[tuple[int, int]], list[int
         Tuple of ``(pairs, unpaired)`` where *pairs* is a list of 0-based
         ``(i, j)`` index tuples and *unpaired* is a list of 0-based indices
         corresponding to ``.`` characters.
+
+    Raises:
+        ValueError: If a bracket is unmatched or an unrecognized character appears.
+            Malformed conditioning is never dropped silently — an ignored bracket
+            would quietly weaken the requested secondary structure.
+
+    Examples:
+        >>> parse_dot_bracket("((..))")[0]
+        [(1, 4), (0, 5)]
+        >>> parse_dot_bracket("a.A")[0]  # lowercase opens (Eterna/OpenKnot)
+        [(0, 2)]
+        >>> parse_dot_bracket("A.a")[0]  # uppercase opens (Vienna/bpRNA)
+        [(0, 2)]
     """
+    dot_bracket = str(dot_bracket)
+    opener_for = _opener_for(dot_bracket)
+    openers = set(opener_for.values())
+
     stack: dict[str, list[int]] = {}
     pairs: list[tuple[int, int]] = []
     unpaired: list[int] = []
 
-    opener_for = {
-        ")": "(",
-        "]": "[",
-        "}": "{",
-        ">": "<",
-        "a": "A",
-        "b": "B",
-        "c": "C",
-        "d": "D",
-        "e": "E",
-    }
-
-    for i, ch in enumerate(str(dot_bracket)):
+    for i, ch in enumerate(dot_bracket):
         if ch == ".":
             unpaired.append(i)
-        elif ch in "([{<ABCDE":
+        elif ch in openers:
             stack.setdefault(ch, []).append(i)
-        elif ch in ")]}>abcde":
-            o = opener_for.get(ch)
-            if o is None or o not in stack or not stack[o]:
-                continue
-            j = stack[o].pop()
-            pairs.append((j, i))
+        elif ch in opener_for:
+            open_ = opener_for[ch]
+            if not stack.get(open_):
+                raise ValueError(f"unmatched closing bracket {ch!r} at position {i} in dot-bracket string")
+            pairs.append((stack[open_].pop(), i))
         else:
-            continue
+            raise ValueError(f"unrecognized dot-bracket character {ch!r} at position {i}")
+
+    dangling = {open_: idxs for open_, idxs in stack.items() if idxs}
+    if dangling:
+        detail = ", ".join(f"{open_!r} at {idxs}" for open_, idxs in sorted(dangling.items()))
+        raise ValueError(f"unmatched opening bracket(s) in dot-bracket string: {detail}")
     return pairs, unpaired
 
 
