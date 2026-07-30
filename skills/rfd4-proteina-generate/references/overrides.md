@@ -40,17 +40,11 @@ python src/rfproteina/generate.py \
 | `save_chain_of_interest` | Write per-design chain-of-interest CIFs — required for later foldseek clustering | false |
 | `ckpt_path` / `ckpt_name` | Override the checkpoint dir / filename for a one-off. Read from `$DATA_PATH` otherwise. | from `$DATA_PATH` |
 
-> **Checkpoint mismatch.** `configs/inference.yaml` defaults `ckpt_name` to the
-> *release* checkpoint `2026_07_22_release_280k-ema.ckpt`, but
-> `scripts/download_example_data.sh` fetches the *example* checkpoint
-> `arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt`. If you only have the
-> example data, override:
->
-> ```bash
-> python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json \
->     subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke \
->     ckpt_name=arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt
-> ```
+> **Checkpoints.** `configs/inference.yaml` defaults `ckpt_name` to the release
+> checkpoint `2026_07_22_release_280k-ema.ckpt`, which is exactly what
+> `scripts/download_example_data.sh` fetches from the public bucket
+> `YOUR_DATASET_STORE` — so no override is needed. Point at a different
+> checkpoint with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 >
 > See **rfd4-proteina-setup** for full checkpoint detail.
 

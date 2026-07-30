@@ -285,3 +285,6 @@ outputs/
 store/
 runs/
 .benchmarks/
+
+# Local DATA_PATH created by the setup docs (checkpoints, test dataset)
+data_path/

@@ -19,33 +19,21 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_
 `generate.py` loads `ckpt_name` from it by default, and the GPU regression tests
 read it too.
 
-## The checkpoint-name mismatch (read this)
-
-`download_example_data.sh` fetches:
-
-- denoiser: `arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt`
-- autoencoder: `AE_ucond_512.ckpt`
-
-but `configs/inference.yaml` defaults `ckpt_name` to the **release** checkpoint
-`2026_07_22_release_280k-ema.ckpt`. If you only ran the example download, the
-default name will not resolve. Two options:
-
-1. Obtain the release checkpoint and place it in `ldm_checkpoints/`, or
-2. Override on the CLI to use the example checkpoint you downloaded:
-
-```bash
-python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json out_dir=./runs/smoke \
-    ckpt_name=arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt
-```
-
-You can also point at an entirely different directory with
-`ckpt_path=<dir> ckpt_name=<file.ckpt>`.
+`download_example_data.sh` fetches exactly these two names, so a default
+`generate.py` run resolves with no CLI override. To use a different checkpoint,
+point at it with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 
 ## Sizes / download
 
 - ~4 GB each (~8 GB total), public HTTPS, no credentials.
-- Host override: `RFPROTEINA_DATA_URL` (default `https://YOUR_DATASET_STORE`).
+- **Public bucket: `YOUR_DATASET_STORE`** — everything published for
+  external use (both checkpoints, the `test_dataset` tarball, the CCD mirror)
+  lives there and is served anonymously at
+  `https://YOUR_DATASET_STORE`. The internal `YOUR_DATASET_STORE`
+  and `YOUR_DATASET_STORE` buckets return `403` without private credentials — never
+  point external users at them.
+- Host override: `RFPROTEINA_DATA_URL` (default
+  `https://YOUR_DATASET_STORE`).
 - Add `--with-test-dataset` to also fetch a tiny training set:
   `./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset`.
 

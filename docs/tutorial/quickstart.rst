@@ -48,7 +48,9 @@ Download the example data and released model checkpoints:
    ./scripts/download_example_data.sh "$DATA_PATH"
 
 The two model checkpoints require approximately 8 GB in total and are
-downloaded over public HTTPS.
+downloaded over public HTTPS from the public bucket
+``YOUR_DATASET_STORE`` (``https://YOUR_DATASET_STORE``),
+which needs no credentials. Override the host with ``RFPROTEINA_DATA_URL``.
 
 Generate a design
 -----------------

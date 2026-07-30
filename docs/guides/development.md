@@ -54,7 +54,10 @@ prove the training loop runs end-to-end on a fresh cluster. It uses no squashfs 
 
 `download_example_data.sh` with `--with-test-dataset` pulls both checkpoints (denoiser +
 autoencoder) and the ~50-system `test_dataset` (parquet + a plain directory of CIFs) into
-`$DATA_PATH`:
+`$DATA_PATH`. Everything it fetches comes from the public bucket
+**`YOUR_DATASET_STORE`** (`https://YOUR_DATASET_STORE`) — anonymous
+HTTPS, no AWS CLI, no credentials, no IPD account. That bucket is the only externally reachable
+one; the internal `YOUR_DATASET_STORE*` buckets return `403` without credentials.
 
 ```bash
 ./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset
@@ -65,8 +68,8 @@ This lays out:
 ```
 $DATA_PATH/
 ├── latent_checkpoints/
-│   ├── ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt   # denoiser
-│   └── ae_checkpoints/AE_ucond_512.ckpt                                          # autoencoder
+│   ├── ldm_checkpoints/2026_07_22_release_280k-ema.ckpt   # denoiser (= ckpt_name in inference.yaml)
+│   └── ae_checkpoints/AE_ucond_512.ckpt                   # autoencoder
 └── test_dataset/
     ├── test_systems.parquet
     └── cifs/systems/<xx>/<id>/<id>.cif
@@ -90,7 +93,7 @@ checkpoint inference uses, named in [`configs/inference.yaml`](https://github.co
 ```bash
 python src/rfproteina/train.py \
     experiment=tutorial/finetune_test_dataset \
-    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt \
+    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt \
     +single=true +nolog=true
 ```
 

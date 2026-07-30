@@ -34,8 +34,8 @@ Do not include secrets in prompts/logs/output; use least-privilege credentials; 
 
 ## Known Risks and Mitigations
 
-Risk: The checkpoint name in `configs/inference.yaml` (release checkpoint) differs from what `download_example_data.sh` fetches (example checkpoint), so a default run can fail to resolve the checkpoint.
-Mitigation: The skill documents the mismatch and the `ckpt_name=` override; preflight reports which `.ckpt` files are actually present.
+Risk: The checkpoint name in `configs/inference.yaml` must match what `download_example_data.sh` fetches, or a default run fails to resolve the checkpoint.
+Mitigation: Both name `2026_07_22_release_280k-ema.ckpt`, served from the public bucket `YOUR_DATASET_STORE`; preflight reports which `.ckpt` files are actually present, and `ckpt_path=`/`ckpt_name=` override either.
 
 Risk: Running the model before the `atomworks` submodule/venv is ready produces confusing import errors.
 Mitigation: Preflight checks imports and submodule presence and exits non-zero before any run.

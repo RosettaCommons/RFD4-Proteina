@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Download the example checkpoints (and, with --with-test-dataset, the tiny training set) into a
+# Download the released checkpoints (and, with --with-test-dataset, the tiny training set) into a
 # local dir you then export as DATA_PATH. Public download over HTTPS — no AWS CLI or credentials.
+#
+# Everything published for external use lives in the single public bucket
+# `YOUR_DATASET_STORE` (https://YOUR_DATASET_STORE), which allows
+# anonymous GET/LIST. The internal `YOUR_DATASET_STORE*` buckets are NOT reachable without credentials.
 # Override the host with RFPROTEINA_DATA_URL. See the README Setup section.
 #   ./scripts/download_example_data.sh <DATA_PATH> [--with-test-dataset]
 set -euo pipefail
@@ -22,7 +26,9 @@ fetch() {  # fetch <url> <dest-dir>
 }
 
 echo ">>> Downloading into DATA_PATH=$DATA_PATH"
-fetch "$BASE/latent_checkpoints/ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt" \
+# Denoiser name must stay in sync with `ckpt_name` in configs/inference.yaml, so a default
+# `generate.py` run resolves it with no CLI override.
+fetch "$BASE/latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt" \
       "$DATA_PATH/latent_checkpoints/ldm_checkpoints"
 fetch "$BASE/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt" \
       "$DATA_PATH/latent_checkpoints/ae_checkpoints"

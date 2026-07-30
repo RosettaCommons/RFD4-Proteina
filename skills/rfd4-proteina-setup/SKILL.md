@@ -60,15 +60,17 @@ printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local   # startup reads this
 ```
 
 This downloads two checkpoints (~4 GB each) over public HTTPS — no credentials:
-- denoiser (LDM): `latent_checkpoints/ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt`
+- denoiser (LDM): `latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt`
 - autoencoder: `latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt`
 
-> IMPORTANT checkpoint mismatch: `configs/inference.yaml` defaults `ckpt_name`
-> to the **release** checkpoint (`2026_07_22_release_280k-ema.ckpt`), which is
-> *not* what `download_example_data.sh` fetches. If you only downloaded the
-> example data, either obtain the release checkpoint or override on the CLI:
-> `ckpt_name=arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt`.
-> See [references/checkpoints.md](references/checkpoints.md).
+The denoiser name matches `ckpt_name` in `configs/inference.yaml`, so a default
+`generate.py` run resolves it with no CLI override.
+
+> **Public assets live in one bucket: `YOUR_DATASET_STORE`**
+> (`https://YOUR_DATASET_STORE`) — checkpoints, the
+> `test_dataset` tarball, and the CCD mirror, all served anonymously. The
+> internal `YOUR_DATASET_STORE` / `YOUR_DATASET_STORE` buckets require IPD credentials
+> and 403 for external users. See [references/checkpoints.md](references/checkpoints.md).
 
 ## Step 3 — Preflight (do this before every fresh clone / new host)
 

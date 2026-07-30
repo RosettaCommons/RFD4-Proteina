@@ -39,11 +39,10 @@ checkpoints first:
 bash skills/rfd4-proteina-setup/scripts/preflight.sh
 ```
 
-Fix every `FAIL` (see **rfd4-proteina-setup**) before generating. If only the
-*example* data was downloaded, remember the checkpoint-name mismatch: override
-`ckpt_name=arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt` (the
-`configs/inference.yaml` default is the *release* checkpoint
-`2026_07_22_release_280k-ema.ckpt`).
+Fix every `FAIL` (see **rfd4-proteina-setup**) before generating.
+`scripts/download_example_data.sh` fetches the same denoiser
+(`2026_07_22_release_280k-ema.ckpt`) that `configs/inference.yaml` names, so the
+default run needs no `ckpt_name` override.
 
 ## Step 2 — Route the task
 

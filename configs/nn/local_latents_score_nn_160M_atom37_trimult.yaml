@@ -1,4 +1,5 @@
-# Architecture of the released denoiser
+# Architecture of the released denoiser (2026_07_22_release_280k-ema.ckpt), extracted from that
+# checkpoint's own `hyper_parameters.cfg_exp.nn`. Keep in sync with experiment/releases/2026_07_22_release.
 
 defaults:
   - local_latents_score_nn_160M_atom37
@@ -8,6 +9,7 @@ norm_type: rmsnorm_torch
 update_pair_repr: true
 update_pair_repr_every_n: 2
 use_tri_mult: true
+pair_repr_dim: 384
 
 feats_seq:
   - xt_bb_ca

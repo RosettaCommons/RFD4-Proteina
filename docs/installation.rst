@@ -65,6 +65,12 @@ The per-cluster environment file is loaded by the entry points. Exporting
 ``DATA_PATH`` in the current shell is also useful for scripts and interactive
 sessions.
 
+All publicly released assets — both checkpoints, the tutorial ``test_dataset``,
+and the CCD mirror — are served anonymously from the public bucket
+``YOUR_DATASET_STORE`` at ``https://YOUR_DATASET_STORE``.
+No AWS CLI, credentials, or IPD account are required; set ``RFPROTEINA_DATA_URL``
+to point the download script at a mirror.
+
 Container installation
 ----------------------
 
