@@ -3,7 +3,7 @@ name: rfd4-proteina-inputs
 description: >
   Turn a design intent (or a legacy RFD3-style JSON/YAML spec) into a correct
   **annotated CIF** for RFProteína — the recommended, lossless input format. Reach
-  for this skill for "convert this JSON to a CIF", "json2cif", "build an annotated
+  for this skill for "convert this JSON to a CIF", "design2cif", "build an annotated
   CIF", "prepare an input for rfproteina", "how do I fix atoms / unindex a motif /
   set hotspots / condition RASA or hydrogen bonds", "my ligand lost its charges /
   bonds", "how do I express this motif", or when rfd4-proteina-generate needs an input
@@ -37,7 +37,7 @@ There are three ways to produce an annotated CIF; this skill drives (2)/(3):
 
 1. **PyMOL plugin** (AtomWorks Design Studio) — visual; see
    `docs/guides/annotated_cif_inputs.md` (Option A) and `make setup-pymol`.
-2. **`/json2cif` from a legacy JSON** — this skill's primary path.
+2. **`/design2cif` from a legacy JSON** — this skill's primary path.
 3. **Programmatic AtomWorks** — for scripting many variants; see the tutorial
    notebook `docs/guides/tutorials/annotated_cif_tutorial.ipynb`.
 

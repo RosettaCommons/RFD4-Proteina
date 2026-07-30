@@ -1,6 +1,6 @@
 # Legacy JSON dialect reference
 
-Source of truth: `docs/guides/input.md`, `.claude/commands/json2cif.md`, and
+Source of truth: `docs/guides/input.md`, `.claude/commands/design2cif.md`, and
 `scripts/json2cif/build_cif.py`. The JSON `InputSpecification` (dialect 2) is
 retained for RFD3 compatibility; **annotated CIFs are preferred**. Use this
 reference when converting a legacy JSON with `build_cif.sh`.
