@@ -54,7 +54,10 @@ prove the training loop runs end-to-end on a fresh cluster. It uses no squashfs 
 
 `download_example_data.sh` with `--with-test-dataset` pulls both checkpoints (denoiser +
 autoencoder) and the ~50-system `test_dataset` (parquet + a plain directory of CIFs) into
-`$DATA_PATH`:
+`$DATA_PATH`. Everything it fetches comes from the public bucket
+**`rfd4-proteina-public-e04a`** (`https://rfd4-proteina-public-e04a.cwobject.com`) — anonymous
+HTTPS, no AWS CLI, no credentials, no IPD account. That bucket is the only externally reachable
+one; the internal `private-dataset-store*` buckets return `403` without credentials.
 
 ```bash
 ./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset
@@ -65,8 +68,8 @@ This lays out:
 ```
 $DATA_PATH/
 ├── latent_checkpoints/
-│   ├── ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt   # denoiser
-│   └── ae_checkpoints/AE_ucond_512.ckpt                                          # autoencoder
+│   ├── ldm_checkpoints/2026_07_22_release_280k-ema.ckpt   # denoiser (= ckpt_name in inference.yaml)
+│   └── ae_checkpoints/AE_ucond_512.ckpt                   # autoencoder
 └── test_dataset/
     ├── test_systems.parquet
     └── cifs/systems/<xx>/<id>/<id>.cif
@@ -77,7 +80,7 @@ The autoencoder is required for latent-diffusion training and is read from
 
 > **CCD / PDB mirrors (optional).** The tutorial needs neither. For broader work that parses
 > arbitrary ligands or PDB entries, a CCD mirror is published at
-> `https://private-dataset-store.cwobject.com/train_datasets/ccd_mirror/2026_01_06_ccd/2026_01_06_ccd.sqfs`
+> `https://rfd4-proteina-public-e04a.cwobject.com/train_datasets/ccd_mirror/2026_01_06_ccd/2026_01_06_ccd.sqfs`
 > (a squashfs — mount it or `unsquashfs` it and point `CCD_MIRROR_PATH` at the directory). The full
 > PDB mirror is too large to host; fetch structures from [RCSB](https://www.rcsb.org/) or point
 > `PDB_MIRROR_PATH` at your own copy.
@@ -90,7 +93,7 @@ checkpoint inference uses, named in [`configs/inference.yaml`](https://github.co
 ```bash
 python src/rfproteina/train.py \
     experiment=tutorial/finetune_test_dataset \
-    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/arch_sweep_2026_07_03_pair_trimult_every2_720k-ema.ckpt \
+    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt \
     +single=true +nolog=true
 ```
 

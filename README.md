@@ -50,6 +50,11 @@ Download the model (two checkpoints, ~4 GB each) over public HTTPS — no creden
 ./scripts/download_example_data.sh "$DATA_PATH"
 ```
 
+> Everything published for external use — both checkpoints, the tutorial `test_dataset`, and the
+> CCD mirror — lives in the public bucket **`rfd4-proteina-public-e04a`**, served anonymously at
+> `https://rfd4-proteina-public-e04a.cwobject.com` (override with `RFPROTEINA_DATA_URL`). It is the
+> only bucket reachable without private credentials.
+
 ---
 
 ## Running in a container
