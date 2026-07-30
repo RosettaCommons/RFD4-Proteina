@@ -68,16 +68,32 @@ annotate exactly what you want the model to do by clicking on atoms, and **Save
 Active As** an annotated CIF that goes straight into the model. No config files
 are ever written.
 
-Full setup and usage now live in the standalone AtomWorks Studio repository:
+Full setup and usage live in the plugin README, in the `atomworks` submodule:
+[`src/atomworks/pymol_plugin/README.md`](https://github.com/RosettaCommons/atomworks/tree/dev/src/atomworks/pymol_plugin/README.md)
+(also available locally at `lib/atomworks/src/atomworks/pymol_plugin/README.md`, and
+symlinked at `src/rfproteina/pymol/README.md`, once the submodule is initialized with
+`git submodule update --init`).
 
-- [Studio overview and quick start](https://github.com/private-organization/atomworks-studio/blob/main/README.md)
-- [PyMOL plugin guide](https://github.com/private-organization/atomworks-studio/blob/main/packages/pymol-plugin/README.md)
-- [VS Code and Cursor extension guide](https://github.com/private-organization/atomworks-studio/blob/main/packages/vscode/README.md)
-- [Deployment guide](https://github.com/private-organization/atomworks-studio/blob/main/deploy/README.md)
+The short version, from the **rfproteina repo root**:
 
-The Studio interfaces write the same annotated CIF format consumed by RFD4.
-Install and launch them from the standalone repository; RFD4 no longer ships a
-PyMOL environment, plugin extension, web application, or editor package.
+```bash
+# 0. Install conda or miniconda on your machine (https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
+
+# 1. Build + activate the dedicated conda env (open-source PyMOL isn't pip-installable)
+make setup-pymol
+conda activate rfproteina          # or mamba / conda activate atomworks
+uv pip install -e "./lib/atomworks[ml]" -e ./
+
+# 2. Register the plugin with PyMOL (writes a loader line into ~/.pymolrc)
+atomworks setup pymol
+
+# 3. Register the RFProteina condition editors (REQUIRED — without this the
+#    Annotations tab only shows base AtomWorks annotations)
+atomworks pymol add rfproteina.pymol.editors
+
+# 4. Launch PyMOL with the env active, then open Plugin -> AtomWorks
+pymol
+```
 
 Inside the panel: **Load CIF** (Main tab), annotate on the **Annotations** tab
 (each entry is a condition the model reads — see the table below), edit the bond

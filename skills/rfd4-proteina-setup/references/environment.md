@@ -51,7 +51,8 @@ mirror it if you hit a segfault outside `make`.
 
 ## PyMOL (optional, for the annotated-CIF plugin)
 
-The PyMOL plugin and its environment are owned by the standalone
-[`atomworks-studio`](https://github.com/private-organization/atomworks-studio)
-repository. See `docs/guides/annotated_cif_inputs.md` (Option A) for the current
-installation and workflow links.
+```bash
+make setup-pymol      # builds a dedicated conda env (open-source PyMOL isn't pip-installable)
+```
+
+See `docs/guides/annotated_cif_inputs.md` (Option A) for the plugin workflow.
