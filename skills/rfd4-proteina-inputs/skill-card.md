@@ -45,7 +45,7 @@ Mitigation: The validator flags ligand heavy-atom truncation as an ERROR; metals
 
 ## References
 
-- `.claude/commands/json2cif.md`
+- `.claude/commands/design2cif.md`
 - `docs/guides/annotated_cif_inputs.md`, `docs/guides/input.md`, `docs/guides/json_to_annotated_cif.md`
 - `scripts/json2cif/build_cif.py`, `scripts/json2cif/check_annotated_cif.py`
 - `docs/guides/tutorials/annotated_cif_tutorial.ipynb`

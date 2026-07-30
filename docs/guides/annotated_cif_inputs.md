@@ -58,7 +58,7 @@ charges, then carries your design intent as annotations straight into the model.
 
 ## Two ways to make one
 
-> Already have a legacy RFD3-style JSON input? The **`/json2cif`** Claude command converts it to an
+> Already have a legacy RFD3-style JSON input? The **`/design2cif`** Claude command converts it to an
 > annotated CIF by interrogating your intent — see [converting a JSON](json_to_annotated_cif.md).
 
 ### Option A — the PyMOL plugin (AtomWorks Design Studio)

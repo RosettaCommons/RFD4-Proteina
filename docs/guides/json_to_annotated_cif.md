@@ -1,7 +1,7 @@
 # Converting a legacy JSON to an annotated CIF
 
 Have a legacy RFD3-style JSON input and want the recommended [annotated CIF](annotated_cif_inputs.md)
-instead? Use the **`/json2cif`** Claude command. It does not transliterate the JSON field-by-field —
+instead? Use the **`/design2cif`** Claude command. It does not transliterate the JSON field-by-field —
 that loses intent — it interrogates you where the JSON is ambiguous, then builds the CIF from scratch.
 
 ## Running it
@@ -9,10 +9,21 @@ that loses intent — it interrogates you where the JSON is ambiguous, then buil
 In Claude Code:
 
 ```
-/json2cif <input.json> [example_key]
+/design2cif <input.json> [example_key]
 ```
 
 Pass the JSON path, and (for a multi-example JSON) the key to convert.
+
+You can also skip the JSON entirely and just describe what you want:
+
+```
+/design2cif scaffold a 120-residue binder against the SAM pocket of 1abc,
+            keeping the four catalytic residues fixed but letting the model place them
+```
+
+The command then elicits the same fields by asking, drafts the equivalent JSON, shows it to you for
+sign-off, and builds from that. The draft is kept alongside the CIF as the reproducible record of
+what was actually built.
 
 ## What to expect
 
