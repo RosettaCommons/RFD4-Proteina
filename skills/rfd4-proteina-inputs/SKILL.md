@@ -36,7 +36,8 @@ right?"* about everything material.
 There are three ways to produce an annotated CIF; this skill drives (2)/(3):
 
 1. **PyMOL plugin** (AtomWorks Design Studio) — visual; see
-   `docs/guides/annotated_cif_inputs.md` (Option A) and `make setup-pymol`.
+   `docs/guides/annotated_cif_inputs.md` (Option A) for the standalone Studio
+   repository and its installation guide.
 2. **`/json2cif` from a legacy JSON** — this skill's primary path.
 3. **Programmatic AtomWorks** — for scripting many variants; see the tutorial
    notebook `docs/guides/tutorials/annotated_cif_tutorial.ipynb`.
