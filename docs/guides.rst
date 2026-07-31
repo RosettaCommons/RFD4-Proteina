@@ -12,7 +12,6 @@ Inference
 
    guides/inference
    guides/annotated_cif_inputs
-   guides/tutorials/annotated_cif_tutorial
    guides/input
    guides/parameters
    guides/search
@@ -27,7 +26,6 @@ Design tasks
    guides/unconditional_generation
    guides/motif_scaffolding
    guides/enzyme_design
-   guides/tutorials/enzyme_design_tutorial
    guides/small_molecule_binder_design
    guides/protein_binder_design
    guides/dna_binder_design

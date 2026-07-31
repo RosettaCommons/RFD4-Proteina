@@ -55,7 +55,6 @@ docs = [
     "pydata-sphinx-theme>=0.16.0,<1",
     "sphinx>=8.0.0,<9",
     "sphinx-autodoc-typehints>=2.0.0,<4",
-    "sphinx-gallery>=0.19.0,<1",
     "sphinx-togglebutton>=0.3,<1",
 ]
 # Select one TMol/metrics pair matching the container's Torch and CUDA stack.

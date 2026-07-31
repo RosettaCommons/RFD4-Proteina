@@ -269,7 +269,7 @@ reading the CIF by hand is that the pipeline does this bookkeeping for you.
 
 If you do want to explore the annotation format directly (e.g. for a bespoke analysis a built-in
 metric doesn't cover), the runnable **[annotated CIF tutorial
-notebook](tutorials/annotated_cif_tutorial.ipynb)** is the best reference — it builds up the same
+notebook](../examples/annotated_cif_tutorial.ipynb)** is the best reference — it builds up the same
 annotation system these outputs use, atom by atom.
 Programmatically, parse an output CIF with the `STANDARD_ANNOTATIONS_ONLY` preset
 (`rfproteina.utils.parse_presets`) to load all of the above with minimal intervention.

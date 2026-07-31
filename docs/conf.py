@@ -42,7 +42,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinx_gallery.gen_gallery",
     "sphinx_togglebutton",
 ]
 
@@ -66,15 +65,6 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    "examples/GALLERY_HEADER.rst",
-    "auto_examples/*.codeobj.json",
-    "auto_examples/*.ipynb",
-    "auto_examples/*.py",
-    "auto_examples/*.zip",
-    "auto_examples/**/*.codeobj.json",
-    "auto_examples/**/*.ipynb",
-    "auto_examples/**/*.py",
-    "auto_examples/**/*.zip",
 ]
 
 autodoc_member_order = "bysource"
@@ -131,22 +121,13 @@ html_theme_options = {
 }
 
 
-sphinx_gallery_conf = {
-    "examples_dirs": "examples",
-    "gallery_dirs": "auto_examples",
-    "image_scrapers": ("matplotlib",),
-    "thumbnail_size": (350, 350),
-    "default_thumb_file": "../assets/model_pipeline.png",
-    "plot_gallery": False,
-}
-
 nbsphinx_execute = "never"
 
 # Thumbnail for the `.. nbgallery::` tutorial card (notebooks emit interactive 3Dmol, not a
 # static image, so point nbsphinx at one explicitly).
 nbsphinx_thumbnails = {
-    "guides/tutorials/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
-    "auto_examples/inference_smoke_test": "../assets/model_pipeline.png",
+    "examples/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
+    "examples/annotated_cif_tutorial": "_static/annotated_cif_thumb.png",
 }
 
 # Offer the runnable notebook for download at the bottom of every notebook page.
