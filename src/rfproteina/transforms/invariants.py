@@ -104,11 +104,14 @@ def check_molecules_on_separate_chains(aa: AtomArray) -> list[InvariantViolation
 def check_centroid_conditioning_all_or_nothing_violations(
     aa: AtomArray, is_inference: bool
 ) -> list[InvariantViolation]:
-    """Return violations where centroid conditioning is applied to some but not all chains.
+    """Return violations where centroid conditioning covers some but not all of an example.
 
-    Centroid conditioning (``C_CENTROID``) must be all-or-nothing per example: either every chain
-    has a finite centroid, or none do, matching
-    :py:class:`~rfproteina.datapipes.pipeline.FeaturizeChainCentroid`.
+    Centroid conditioning (``C_CENTROID``) is a per-chain value, and must be all-or-nothing
+    per example: either every chain has a finite centroid on every one of its atoms, or none
+    do, matching :py:class:`~rfproteina.datapipes.pipeline.FeaturizeChainCentroid`. Two ways
+    to break that are reported separately: conditioning only *some* chains, and conditioning
+    only part of a chain (which leaves the rest of it with a NaN centroid the model reads as
+    "not conditioned").
 
     At train time, a chain with no resolved coordinates (fully unresolved) is exempt from this,
     as its ground-truth centroid would be undefined.
@@ -125,6 +128,7 @@ def check_centroid_conditioning_all_or_nothing_violations(
 
     n_chains = 0
     n_conditioned = 0
+    partially_conditioned: list[str] = []
     for chain_id in np.unique(chain_identifier):
         chain_mask = chain_identifier == chain_id
         if not is_inference and coords is not None and np.isnan(coords[chain_mask]).all():
@@ -132,9 +136,23 @@ def check_centroid_conditioning_all_or_nothing_violations(
         n_chains += 1
         if centroid_mask[chain_mask].any():
             n_conditioned += 1
+            if not centroid_mask[chain_mask].all():
+                partially_conditioned.append(str(chain_id))
 
+    violations = []
+    if partially_conditioned:
+        violations.append(
+            InvariantViolation(
+                check="centroid_conditioning_partial_chain",
+                message=(
+                    f"chain(s) {partially_conditioned} have a centroid on only some of their atoms; "
+                    "the centroid is a per-chain value and must cover every atom of the chain"
+                ),
+                count=len(partially_conditioned),
+            )
+        )
     if n_chains and 0 < n_conditioned < n_chains:
-        return [
+        violations.append(
             InvariantViolation(
                 check="centroid_conditioning_not_all_or_nothing",
                 message=(
@@ -143,8 +161,19 @@ def check_centroid_conditioning_all_or_nothing_violations(
                 ),
                 count=n_chains,
             )
-        ]
-    return []
+        )
+    return violations
+
+
+def _segment_has_one_value(segment: np.ndarray) -> bool:
+    """Whether every entry of one segment of a StandardAnnotation carries the same value."""
+    if segment.ndim == 1:
+        return np.unique(segment).size <= 1
+    first = segment[:1]
+    equal = segment == first
+    if np.issubdtype(segment.dtype, np.floating):
+        equal |= np.isnan(segment) & np.isnan(first)
+    return bool(equal.all())
 
 
 def check_standard_annotation_level_violations(aa: AtomArray) -> list[InvariantViolation]:
@@ -178,8 +207,8 @@ def check_standard_annotation_level_violations(aa: AtomArray) -> list[InvariantV
         else:
             continue
 
-        n_unique_per_seg = apply_segment_wise(starts, values, lambda seg: np.unique(seg).size)
-        n_bad = int((n_unique_per_seg > 1).sum())
+        uniform_per_seg = np.asarray(apply_segment_wise(starts, values, _segment_has_one_value), dtype=bool)
+        n_bad = int((~uniform_per_seg).sum())
         if n_bad:
             violations.append(
                 InvariantViolation(

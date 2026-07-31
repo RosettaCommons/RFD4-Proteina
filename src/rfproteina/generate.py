@@ -1,10 +1,10 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../.ipd/shebang/latent_inference_exec.sh" "$0" "$@"'
 
 import hashlib
-import json
 import os
 import sys
 import time
+import warnings
 from functools import partial
 from os import PathLike
 from pathlib import Path
@@ -14,7 +14,6 @@ import hydra
 import lightning as L
 import rootutils
 import torch
-import yaml
 from atomworks.common import exists
 from atomworks.ml.transforms.base import Identity, Transform
 from omegaconf import DictConfig, ListConfig, OmegaConf
@@ -23,7 +22,14 @@ from torch.utils.data import DataLoader, Subset
 from rfproteina.datapipes.collate import collate_batch
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
 from rfproteina.guidance.guidance_model import GuidanceModel, build_guidance_terms
-from rfproteina.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
+from rfproteina.inference_utils.condition_spec import is_legacy_dialect, load_spec_file
+from rfproteina.inference_utils.datasets import (
+    ConditionSpecDataset,
+    ContigJsonDataset,
+    DesignProblemDataset,
+    JsonDataset,
+)
+from rfproteina.inference_utils.inference_utils import is_structure_file
 from rfproteina.inference_utils.input_parsing import InputSpecification
 from rfproteina.metrics.metric import MetricManager
 from rfproteina.proteina import Proteina
@@ -125,40 +131,49 @@ def _assemble_dataset_inputs_from_dict(
     return all_example_specifications
 
 
-def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple:
+def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
+    """Resolve `inputs=` to a `DesignProblemDataset` (CIF), `ConditionSpecDataset`, or
+    `ContigJsonDataset` (legacy) source.
+
+    A `.json`/`.yaml` file uses the condition_spec format by default -- the legacy
+    `InputSpecification`-based dialect (`ContigJsonDataset`) is auto-detected instead (see
+    :py:func:`~rfproteina.inference_utils.condition_spec.is_legacy_dialect`) and is
+    deprecated: it will be removed soon, so switch to `docs/condition_spec_yaml.md`'s format.
+
+    Returns:
+      A ``(data, kind)`` pair, where ``kind`` is one of ``"cif"``,
+      ``"condition_spec"``, or ``"legacy"``.
+    """
     if isinstance(inputs, list | ListConfig):
         inputs = [str(p) for p in inputs]
-        if not all((".cif" in p or ".bcif" in p) for p in inputs):
+        if not all(is_structure_file(p) for p in inputs):
             raise ValueError(
                 "If passing a list of structure files, they must all be in CIF format. "
                 "For json/yaml inputs, please pass only a single file containing entries "
                 "for each of your design problems."
             )
-        use_design_problem_dataset = True
-    else:
-        inputs = str(inputs)
-        if not os.path.exists(inputs):
-            raise FileNotFoundError(f"Input path {inputs} does not exist.")
-        if Path(inputs).is_dir():
-            use_design_problem_dataset = True
-        elif ".cif" in inputs or ".bcif" in inputs:
-            inputs = [inputs]
-            use_design_problem_dataset = True
-        elif inputs.endswith(".json"):
-            with open(inputs) as f:
-                data = json.load(f)
-            use_design_problem_dataset = exists(data.get("cif_creation_strategy", None))
-        elif inputs.endswith(".yaml"):
-            with open(inputs) as f:
-                data = yaml.safe_load(f)
-            use_design_problem_dataset = exists(data.get("cif_creation_strategy", None))
-        else:
-            raise ValueError(f"Input must be a path to a directory or a .cif/.bcif/.json/.yaml file, got {inputs}.")
+        return inputs, "cif"
 
-    if use_design_problem_dataset:
-        return inputs, use_design_problem_dataset
-    else:
-        return data, use_design_problem_dataset
+    inputs = str(inputs)
+    if not os.path.exists(inputs):
+        raise FileNotFoundError(f"Input path {inputs} does not exist.")
+    if Path(inputs).is_dir():
+        return inputs, "cif"
+    if is_structure_file(inputs):
+        return [inputs], "cif"
+    if inputs.endswith((".json", ".yaml", ".yml")):
+        data = load_spec_file(Path(inputs))
+        if is_legacy_dialect(data):
+            warnings.warn(
+                f"{inputs}: this file uses the legacy `InputSpecification`-based JSON/YAML dialect, which "
+                "is deprecated and will be removed soon. Switch to the condition_spec format "
+                "(docs/condition_spec_yaml.md) for future compatibility.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return data, "legacy"
+        return data, "condition_spec"
+    raise ValueError(f"Input must be a path to a directory or a .cif/.bcif/.json/.yaml file, got {inputs}.")
 
 
 def split_replicates_by_job(num_replicates: int, job_id: int, njobs: int) -> int:
@@ -192,7 +207,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     # If a design Dataset was passed, use it directly
     cfg_gen.dataset.num_replicates = num_replicates
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
-    if isinstance(instantiated_dset, (DesignProblemDataset | ContigJsonDataset)):
+    if isinstance(instantiated_dset, (DesignProblemDataset | JsonDataset)):
         if cfg_gen.val_set_name_override is None:
             if "data" in cfg_gen.dataset:
                 cfg_gen.val_set_name_override = cfg_gen.dataset.data
@@ -239,6 +254,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
         global_prefix=cfg.get("global_prefix"),
+        prevalidate=cfg.get("prevalidate_inputs", False),
     )
 
     if cfg_gen.val_set_name_override is None:
@@ -254,8 +270,10 @@ def get_contig_or_design_problem_dataset(
     subset_to_examples: list[str] | str | None = None,
     specification_overrides: dict = {},
     global_prefix: str | None = None,
+    prevalidate: bool = False,
 ) -> torch.utils.data.Dataset:
-    """Create either a ContigJsonDataset or DesignProblemDataset based on the input type.
+    """Create a DesignProblemDataset, ConditionSpecDataset, or ContigJsonDataset (legacy)
+    based on the input type.
 
     Args:
         json_or_design_problem_inputs: A PFM-style json/yaml file, or a list/directory of Condition-annotated CIF files.
@@ -264,36 +282,56 @@ def get_contig_or_design_problem_dataset(
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
         specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
         global_prefix: Optional global prefix for output example ids.
+        prevalidate: If True, build + validate each unique input once up front (fail fast). Not
+            supported for the legacy contig-JSON dialect (skipped with a warning).
 
     Returns:
         A torch Dataset instance.
     """
     # Determine which dataset class to create
-    data, use_design_problem_dataset = _extract_input_data(json_or_design_problem_inputs)
+    data, kind = _extract_input_data(json_or_design_problem_inputs)
 
     # Default to 1 replicate per example
     if not exists(num_replicates):
         num_replicates = 1
 
-    # Create the appropriate Dataset
-    if use_design_problem_dataset:
+    if kind == "cif":
         return DesignProblemDataset(
             dir_path_or_file_paths=data,
             transform=transform if exists(transform) else Identity(),
-            filter_fn=lambda x: str(x).endswith((".cif", ".json", ".yaml")),
             num_replicates=num_replicates,
             global_prefix=global_prefix,
+            prevalidate=prevalidate,
         )
 
     input_path = Path(json_or_design_problem_inputs)
+    source_path = str(input_path.resolve())
+
+    if kind == "condition_spec":
+        if subset_to_examples is not None:
+            subset_to_keys = (
+                subset_to_examples.split(",") if isinstance(subset_to_examples, str) else list(subset_to_examples)
+            )
+        else:
+            subset_to_keys = None
+        return ConditionSpecDataset(
+            data=data,
+            transform=transform if exists(transform) else Identity(),
+            name="inference-dataset",
+            subset_to_keys=subset_to_keys,
+            num_replicates=num_replicates,
+            global_prefix=global_prefix,
+            source_path=source_path,
+            prevalidate=prevalidate,
+        )
+
+    # kind == "legacy"
     data = _assemble_dataset_inputs_from_dict(
         data,
         input_file_path=input_path,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
     )
-
-    source_path = str(input_path.resolve()) if input_path.suffix.lower() in (".json", ".yaml", ".yml") else None
 
     return ContigJsonDataset(
         data=data,
@@ -302,6 +340,7 @@ def get_contig_or_design_problem_dataset(
         num_replicates=num_replicates,
         global_prefix=global_prefix,
         source_path=source_path,
+        prevalidate=prevalidate,
     )
 
 
@@ -511,12 +550,12 @@ def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str
     """Extract example IDs from a dataset without loading data.
 
     Args:
-        dataset: A ContigJsonDataset or DesignProblemDataset instance.
+        dataset: A JsonDataset (ContigJsonDataset/ConditionSpecDataset) or DesignProblemDataset instance.
 
     Returns:
         List of example ID strings, one per dataset index.
     """
-    if isinstance(dataset, ContigJsonDataset):
+    if isinstance(dataset, JsonDataset):
         return dataset.names
     elif isinstance(dataset, DesignProblemDataset):
         ids = []

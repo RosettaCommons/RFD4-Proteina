@@ -1,6 +1,6 @@
 """Regression tests for LigandCentroidDistanceMetric.
 
-Guards the metric's end-to-end path (including the shared ``extract_annotation_names``
+Guards the metric's end-to-end path (including the shared ``resolve_mask``
 wiring) — comparing a ligand-bearing structure against itself must succeed and yield
 a ~zero centroid distance.
 """

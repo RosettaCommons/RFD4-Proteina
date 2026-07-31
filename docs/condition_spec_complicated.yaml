@@ -1,0 +1,30 @@
+# Redesign a SAM-binding pocket: fix the ligand and two motif blocks, graft a fresh
+# variable-length helix, and condition sequence / burial / secondary structure.
+# Selections mostly use the concise `sel('<chain>/<resname>/<resid>/<atom>')` path syntax
+# (trailing fields default to `*`); C_HOT uses the general-purpose query syntax instead.
+sam_pocket_redesign:
+  input: ../tests/data/sam_binder_generated_minimized.cif   # 150-res binder (chain A) + SAM ligand (chain B)
+  contig: "A1-150, /0, B386, /0, EX1:15-30"   # keep binder + SAM, add a de-novo 15-30-residue helix chain
+  conditions:
+    C_CRD:                             # fix the ligand + two binder motif blocks in space
+      true:
+        - select: "sel('B')"                     # whole ligand chain (chain field only; rest wildcard)
+        - select: "sel('A/*/[1-30, 120-150]')"   # two res_id ranges of chain A in one path
+    C_SEQ:                             # lock a few pocket-lining sidechain identities
+      true:
+        - select: "sel('A/*/[10, 20, 130]')"     # a res_id list
+    C_HOT:                             # general-purpose query: hotspot every ligand atom by a computed
+      true:                            # annotation rather than a path -- any array annotation is queryable
+        - select: "is_ligand"
+    C_SEC:                             # secondary-structure conditioning on the expandable segment: force helix
+      HELIX:
+        - select: "sel('*/EX1')"     # the expandable segment, by the res_name you named it in `contig`
+    C_RAS:                             # enum: two binder residues marked buried
+      BURIED:
+        - select: "sel('A/*/[40, 45]')"
+    C_IDX:                             # unindex both motif blocks as one group (free relative placement)
+      false:
+        - select: "sel('A/*/[1-30]')"
+          group: motif
+        - select: "sel('A/*/[120-150]')"
+          group: motif                 # same label -> the two blocks merge into one unindexed group

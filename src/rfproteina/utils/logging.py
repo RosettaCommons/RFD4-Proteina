@@ -26,10 +26,23 @@ class CachedDataFilter(logging.Filter):
         return "Cached data not found" not in record.getMessage()
 
 
+class HydrogenRemovalFilter(logging.Filter):
+    """Filter atomworks' per-hydrogen "removing non-heavy atom" standardization warnings.
+
+    Parsing with ``add_missing_atoms=True`` logs one WARNING per hydrogen whose name
+    doesn't match the CCD template (they're stripped and rebuilt); on protonated inputs
+    that's thousands of lines of noise. Heavy-atom warnings are left untouched.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "removing non-heavy atom" not in record.getMessage()
+
+
 def silence_warnings() -> None:
     """Silence common warnings that appear during foundry execution."""
     # Suppress atomworks cached data warnings (logging filter)
     logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
+    logging.getLogger("atomworks.io.utils.standardize").addFilter(HydrogenRemovalFilter())
 
     warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=RuntimeWarning)
     warnings.filterwarnings(

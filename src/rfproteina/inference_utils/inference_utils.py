@@ -462,6 +462,15 @@ def inference_load_(file: PathLike, *, assembly_id: str = "1", cif_parser_args: 
     return data
 
 
+#: Structure-file suffixes this codebase can load.
+STRUCTURE_FILE_SUFFIXES = (".cif", ".cif.gz", ".bcif")
+
+
+def is_structure_file(path: PathLike) -> bool:
+    """Whether ``path`` names a loadable structure file (case-insensitively)."""
+    return str(path).lower().endswith(STRUCTURE_FILE_SUFFIXES)
+
+
 def ensure_input_is_abspath(args: dict, path: PathLike | None) -> dict:
     """
     Ensures the input source is an absolute path if exists, if not it will convert
