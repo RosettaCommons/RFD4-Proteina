@@ -11,6 +11,7 @@ checkpoint download, and a first design; this guide assumes that's done.
 - [Design Use Cases](#design-use-cases)
 - [Running Inference](#running-inference)
 - [Partial Diffusion](#partial-diffusion)
+- [Inverse Folding](#inverse-folding)
 - [Evaluating Results](#evaluating-results) — see also [Metrics Reference](metrics.md)
 - [Search Strategies](#search-strategies)
 - [Parameter Reference](#parameter-reference)
@@ -66,13 +67,13 @@ Each page below has example inputs and run commands.
 The general form is:
 
 ```bash
-python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+./src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
 > [!TIP]
 > On a cluster with apptainer/docker configured (e.g. IPD), the **preferred** interactive form is to run the
 > script directly — `./src/rfproteina/generate.py inputs=… …` — whose shebang executes it inside the
-> container. `python src/rfproteina/generate.py …` (used throughout these docs) runs in your current
+> container. `./src/rfproteina/generate.py …` (used throughout these docs) runs in your current
 > environment instead; use it when no container is set up. At the IPD, the slurm launch scripts
 > (e.g. `scripts/launch_infer.sh`) handle this automatically.
 
@@ -86,7 +87,7 @@ python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir>
 
 ```bash
 # 80 designs of each example in a JSON, 8 at a time
-python src/rfproteina/generate.py \
+./src/rfproteina/generate.py \
     inputs=data/benchmarks/monomer.json \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
@@ -121,10 +122,31 @@ interfaces:
 independent of the level.
 
 ```bash
-python src/rfproteina/generate.py \
+./src/rfproteina/generate.py \
     inputs=my_structure.cif \
     generation.args.partial_t_backbone=0.8 generation.args.partial_t_latent=0.8 \
     num_replicates=8 out_dir=./runs/partial
+```
+
+---
+
+## Inverse Folding
+
+Inverse folding is a special case of partial diffusion: it holds the input **backbone** fixed and
+resamples only the sequence and side chains (the `local_latents`), producing new sequences that fold
+to the same shape. Pass the backbone with `inputs=` and turn it on either way:
+
+- **Simple** — `generation=inverse_folding` turns it on in one flag.
+- **Advanced** — tune sequence diversity with the sidechain/sequence noise scale
+  `generation.model.local_latents.simulation_step_params.sc_scale_noise` (default `0.1`): higher values
+  give more varied sequences.
+
+```bash
+./src/rfproteina/generate.py \
+    inputs=my_backbone.cif \
+    generation=inverse_folding \
+    generation.model.local_latents.simulation_step_params.sc_scale_noise=1.0 \
+    num_replicates=8 out_dir=./runs/inverse_folding
 ```
 
 ---
@@ -146,11 +168,11 @@ Pass `metrics_tags` during inference to compute metrics immediately after each d
 
 ```bash
 # Single tag
-python src/rfproteina/generate.py \
+./src/rfproteina/generate.py \
     inputs=design.json num_replicates=50 metrics_tags='[unconditional_refolding]'
 
 # Multiple tags
-python src/rfproteina/generate.py \
+./src/rfproteina/generate.py \
     inputs=design.json num_replicates=50 metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
 
@@ -210,7 +232,7 @@ keep the ones an AF3 reward scores highest. A ready-to-run example:
 
 ```bash
 # Beam search — branch and prune at checkpoints.
-python src/rfproteina/generate.py inference_experiment=inference_beam_example
+./src/rfproteina/generate.py inference_experiment=inference_beam_example
 ```
 
 **See [Reward-Guided Search](search.md)** for the strategy and reward parameters (beam width, branching,
@@ -251,6 +273,7 @@ them** ([guide](annotated_cif_inputs.md)); the legacy JSON syntax is in the [Inp
 | **Sequence constraint** | `select_unfixed_sequence` | ✅ Supported |
 | **Hotspot residues** | `select_hotspots` | ✅ Supported |
 | **Partial diffusion** | `partial_t_backbone` / `partial_t_latent` | ✅ Supported |
+| **Inverse folding** | `generation=inverse_folding` | ✅ Supported |
 | **Small molecules / ligands** | `ligand` | ✅ Supported |
 | **Internal coordinate** | `internal_coord_groups` | ✅ Supported |
 | **Symmetry** | `symmetry` | 🔜 Planned |
@@ -286,7 +309,7 @@ Higher values increase diversity but may reduce designability. The shipped defau
 `(0.5, 0.5)` shifts sequences toward the natural UniProt distribution; `(0.9, 0.9)` maximizes diversity.
 
 ```bash
-python src/rfproteina/generate.py \
+./src/rfproteina/generate.py \
     inputs=data/benchmarks/monomer.json out_dir=./runs/diverse \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5

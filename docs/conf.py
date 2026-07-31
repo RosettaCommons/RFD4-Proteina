@@ -43,7 +43,17 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
+    "sphinx_togglebutton",
 ]
+
+# Collapse the tutorial's setup helper cells by default. sphinx-togglebutton works off a
+# CSS selector, not Jupyter cell tags (those do not survive nbsphinx -> HTML). The selector
+# targets the code cells under the notebook's Setup section (#Pass-criteria is nested inside
+# #Setup); later sections stay expanded.
+togglebutton_selector = "#Setup .nbinput"
+togglebutton_hint = "show code"
+togglebutton_hint_hide = "hide code"
+
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -120,6 +130,7 @@ html_theme_options = {
     ],
 }
 
+
 sphinx_gallery_conf = {
     "examples_dirs": "examples",
     "gallery_dirs": "auto_examples",
@@ -130,6 +141,20 @@ sphinx_gallery_conf = {
 }
 
 nbsphinx_execute = "never"
+
+# Thumbnail for the `.. nbgallery::` tutorial card (notebooks emit interactive 3Dmol, not a
+# static image, so point nbsphinx at one explicitly).
+nbsphinx_thumbnails = {
+    "guides/tutorials/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
+    "auto_examples/inference_smoke_test": "../assets/model_pipeline.png",
+}
+
+# Offer the runnable notebook for download at the bottom of every notebook page.
+nbsphinx_epilog = r"""
+----
+
+:download:`Download this notebook <{{ env.docname.split("/")|last }}.ipynb>`
+"""
 
 
 def _convert_markdown_docstring_fences(

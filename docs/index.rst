@@ -22,7 +22,7 @@ preparation, design tasks, reward-guided search, evaluation, and development.
    :caption: Learn
 
    guides
-   auto_examples/index
+   examples
 
 .. toctree::
    :maxdepth: 2

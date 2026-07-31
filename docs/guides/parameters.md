@@ -51,3 +51,12 @@ Refine an existing structure instead of generating from scratch — see [Partial
 | `generation.args.partial_trajectory_fraction_steps` | Simple interface: run this fraction of `nsteps` (e.g. 0.3 = 30%) | null |
 | `generation.args.partial_t_backbone` / `partial_t_latent` | Advanced: per-modality starting corruption level, float in (0, 1) | null |
 | `generation.args.couple_partial_t` | Derive one modality's `partial_t` from the other via the schedule | false |
+
+## Inverse folding
+
+Hold the input backbone fixed and resample only the sequence and side chains — see [Inverse Folding](inference.md#inverse-folding). The `generation=inverse_folding` preset sets both keys at once.
+
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `generation.args.inverse_folding` | Fix the backbone and resample sequence/side chains only | false |
+| `generation.args.inverse_folding_method` | Sampling method; `resampled_forward_marginal` is the only supported value | `resampled_forward_marginal` |
