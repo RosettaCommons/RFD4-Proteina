@@ -7,6 +7,10 @@
 > per-atom and per-residue. The model reads it **natively**: no JSON, no YAML, no
 > contig string, no lossy conversion step.
 
+**Prefer to learn by doing?** Follow the [**Annotated CIF tutorial**](../examples/annotated_cif_tutorial.ipynb) — it builds a
+pocket-conditioned input step by step and ends with an interactive view of exactly what each
+annotation fixed. This page is the reference.
+
 - [Why annotated CIFs](#why-annotated-cifs)
 - [Two ways to make one](#two-ways-to-make-one)
   - [Option A — the PyMOL plugin (AtomWorks Design Studio)](#option-a--the-pymol-plugin-atomworks-design-studio)
@@ -109,7 +113,7 @@ condition API, and write the result back out. This is ideal for scripting many
 variants of a design.
 
 See the runnable, end-to-end walkthrough:
-[**`docs/guides/tutorials/annotated_cif_tutorial.ipynb`**](tutorials/annotated_cif_tutorial.ipynb).
+[**`docs/examples/annotated_cif_tutorial.ipynb`**](../examples/annotated_cif_tutorial.ipynb).
 It parses a protein–ligand complex, applies a complex conditioning task
 (unindexed tip atoms around a ligand + RASA + hydrogen-bond conditioning + an
 expandable segment + a PTM), writes an annotated CIF, and closes with a loop that
@@ -169,7 +173,7 @@ for the on/off mask; boolean "mask" conditions use a single `mask_…` column).
 
 The **"Training Definition"** column is the important part for getting good
 results: condition the model the way it was supervised. The **Import** column is
-the Python shorthand used in the [notebook](tutorials/annotated_cif_tutorial.ipynb);
+the Python shorthand used in the [notebook](../examples/annotated_cif_tutorial.ipynb);
 `C_CRD`, `C_SEQ`, and `C_IDX` come from `atomworks.ml.conditions`, the rest from
 `rfproteina.conditions`.
 

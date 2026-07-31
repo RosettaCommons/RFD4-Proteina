@@ -3,7 +3,7 @@
 Design enzymes with catalytic residues around a ligand active site. The input is a **theozyme** — a
 handful of catalytic residues and a substrate, with no scaffold — and the model builds a protein that
 holds them in place. For a hands-on walkthrough see the
-[enzyme design tutorial](tutorials/enzyme_design_tutorial.ipynb); this page is the quick reference.
+[enzyme design tutorial](../examples/enzyme_design_tutorial.ipynb); this page is the quick reference.
 
 ## Conditions
 
@@ -121,7 +121,7 @@ ca     = aa[aa.mask("(chain_id == 'A') & (atom_name == 'CA')")]            # the
 
 This is how the tutorial re-applies `C_CRD`/`C_SEQ` from the mask to carry the conditions onto a
 chosen design, and how it highlights the motif in the
-[interactive 3D viewer](tutorials/enzyme_design_tutorial.ipynb) — selecting the conditioned atoms and
+[interactive 3D viewer](../examples/enzyme_design_tutorial.ipynb) — selecting the conditioned atoms and
 colouring them apart from the rest of the scaffold.
 
 For a quick visual check without wiring up a viewer yourself, AtomWorks' `view` helper renders an

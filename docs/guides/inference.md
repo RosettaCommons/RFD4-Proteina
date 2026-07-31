@@ -4,7 +4,7 @@ Full reference for running inference — examples, conditioning, partial diffusi
 parameter. **New here? Start with the [quickstart tutorial](../tutorial/quickstart.rst)** for installation,
 checkpoint download, and a first design; this guide assumes that's done.
 
-> Configuring inputs? **[Annotated CIF inputs](annotated_cif_inputs.md)** is the recommended format (with a [tutorial notebook](tutorials/annotated_cif_tutorial.ipynb)); the JSON [Input Specification](input.md) is legacy.
+> Configuring inputs? **[Annotated CIF inputs](annotated_cif_inputs.md)** is the recommended format (with a [tutorial notebook](../examples/annotated_cif_tutorial.ipynb)); the JSON [Input Specification](input.md) is legacy.
 
 ## Contents
 
@@ -77,7 +77,7 @@ The general form is:
 > environment instead; use it when no container is set up. At the IPD, the slurm launch scripts
 > (e.g. `scripts/launch_infer.sh`) handle this automatically.
 
-- **Inputs** — **annotated CIF** is the recommended format ([guide](annotated_cif_inputs.md) · [tutorial](tutorials/annotated_cif_tutorial.ipynb)); JSON/YAML/CIF/PDB via the legacy
+- **Inputs** — **annotated CIF** is the recommended format ([guide](annotated_cif_inputs.md) · [tutorial](../examples/annotated_cif_tutorial.ipynb)); JSON/YAML/CIF/PDB via the legacy
   [Input Specification](input.md) also work. See `data/benchmarks/` for ready-made examples.
 - **All model arguments are `key=value`** (Hydra style), never `--key value`.
 - **Checkpoints** are read from `$DATA_PATH` by default; override on the CLI only for a one-off
