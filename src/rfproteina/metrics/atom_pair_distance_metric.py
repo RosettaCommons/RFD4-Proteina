@@ -9,9 +9,9 @@ import numpy as np
 from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
-from rfproteina.metrics.utils.atom_selection import atom_selection_from_spec
 from rfproteina.metrics.utils.soft_threshold import apply_soft_bounds_to_outputs
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -27,13 +27,12 @@ class AtomPairDistanceMetric(Metric):
 
     - ``name`` — output prefix (optional; default ``constraint_{i}``).
     - ``max_distance_angstrom`` — hard **upper** bound in Å (required).
-    - ``atom_a`` / ``atom_b`` — one atom spec dict **or** a list of spec dicts
-      (both required). When a list is given, the constraint uses the **minimum**
-      distance over all A-to-B pairs (OR semantics over alternative atoms).
-    - Atom specs are dicts passed to :func:`atom_selection_from_spec` (``query``,
-      ``chain_id``, ``res_name``, ``res_id``, ``atom_name``). Each spec must
-      resolve to exactly one atom; specs that resolve to zero or multiple atoms
-      are skipped.
+    - ``atom_a`` / ``atom_b`` — one AtomWorks query string **or** a list of query
+      strings (both required). When a list is given, the constraint uses the
+      **minimum** distance over all A-to-B pairs (OR semantics over alternative
+      atoms). Each query (see :py:func:`~rfproteina.utils.mask_spec.resolve_mask`)
+      must resolve to exactly one atom; queries that resolve to zero or multiple
+      atoms are skipped.
 
     If neither endpoint resolves any atom, the distance is ``inf`` so the
     constraint always reads as violated — constrained atoms that are missing from
@@ -63,30 +62,46 @@ class AtomPairDistanceMetric(Metric):
         return {"predicted_atom_array": "predicted_atom_array"}
 
     @staticmethod
-    def _endpoint_specs(constraint: dict[str, Any], key: str) -> list[dict[str, Any]]:
-        """Return the atom spec dict(s) for endpoint ``key`` (``atom_a`` / ``atom_b``)."""
+    def _endpoint_queries(constraint: dict[str, Any], key: str) -> list[str]:
+        """Return the query string(s) for endpoint ``key`` (``atom_a`` / ``atom_b``)."""
         if key not in constraint:
             raise ValueError(f"Constraint '{constraint.get('name', '?')}' is missing required '{key}'")
         val = constraint[key]
-        return [val] if isinstance(val, dict) else list(val)
+        if isinstance(val, str):
+            return [val]
+        if isinstance(val, list | tuple) and all(isinstance(v, str) for v in val):
+            return list(val)
+        raise ValueError(
+            f"Constraint '{constraint.get('name', '?')}' field '{key}' must be an AtomWorks query "
+            f"string or a list of them, got {val!r}. The old dict form is no longer supported -- "
+            "rewrite it as a query, e.g. \"res_id == 31 and atom_name == 'NE2'\" "
+            "(see docs/guides/metrics.md)."
+        )
 
     @classmethod
-    def _resolve_coords(cls, atom_array: AtomArray, specs: list[dict[str, Any]]) -> list[np.ndarray]:
-        """Resolve each spec to the coordinate of its single matching atom (skipping non-unique specs)."""
+    def _resolve_coords(cls, atom_array: AtomArray, queries: list[str]) -> list[np.ndarray]:
+        """Resolve each query to the coordinate of its single matching atom (skipping non-unique queries).
+
+        The queries for one endpoint are *alternatives* -- the metric takes the minimum
+        distance over them -- so a query that resolves to zero or several atoms only
+        drops that one alternative. Bailing out on the whole endpoint instead would let
+        a single inapplicable alternative (e.g. an atom name absent from this design)
+        discard the perfectly resolvable ones alongside it.
+        """
         coords: list[np.ndarray] = []
-        for spec in specs:
-            idxs = np.flatnonzero(atom_selection_from_spec(atom_array, spec))
+        for query in queries:
+            idxs = np.flatnonzero(resolve_mask(atom_array, query))
             if len(idxs) != 1:
                 if len(idxs) > 1:
-                    logger.warning(f"Spec matched {len(idxs)} atoms, expected 1 — returning None: {spec}")
-                return []
+                    logger.warning(f"Query matched {len(idxs)} atoms, expected 1 — skipping: {query!r}")
+                continue
             coords.append(atom_array.coord[idxs[0]])
         return coords
 
     @classmethod
     def _min_pair_distance(cls, atom_array: AtomArray, constraint: dict[str, Any]) -> float:
-        a_coords = cls._resolve_coords(atom_array, cls._endpoint_specs(constraint, "atom_a"))
-        b_coords = cls._resolve_coords(atom_array, cls._endpoint_specs(constraint, "atom_b"))
+        a_coords = cls._resolve_coords(atom_array, cls._endpoint_queries(constraint, "atom_a"))
+        b_coords = cls._resolve_coords(atom_array, cls._endpoint_queries(constraint, "atom_b"))
         if not a_coords or not b_coords:
             logger.warning(
                 f"No atoms resolved for constraint '{constraint.get('name', '?')}' "

@@ -63,8 +63,8 @@ def test_score_function_requires_parameter_database():
 @pytest.mark.gpu
 def test_sam_binder_block_pair_interface_metrics(sam_binder_atom_array):
     metric = TMolBlockPairMetric(
-        region_a={"res_name": "SAM"},
-        region_b={"chain_id": "A"},
+        region_a="res_name == 'SAM'",
+        region_b="chain_id == 'A'",
         device="cuda",
         no_opt_h=False,
         term_names=["hbond"],
@@ -83,8 +83,8 @@ def test_sam_binder_block_pair_interface_metrics(sam_binder_atom_array):
 @pytest.mark.gpu
 def test_sam_binder_fast_relax_block_pair_interface_metrics(sam_binder_atom_array):
     metric = TMolBlockPairMetric(
-        region_a={"res_name": "SAM"},
-        region_b={"chain_id": "A"},
+        region_a="res_name == 'SAM'",
+        region_b="chain_id == 'A'",
         device="cuda",
         relax="fast_relax",
         no_opt_h=False,

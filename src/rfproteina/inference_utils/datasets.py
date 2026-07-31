@@ -1,7 +1,6 @@
 """Dataset wrappers for design task inference."""
 
 import json
-import os
 import pathlib
 import time
 from collections.abc import Callable
@@ -20,11 +19,19 @@ from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandabl
 from biotite.structure import AtomArray
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
+from rfproteina.conditions_reporting import run_pipeline_validation
+from rfproteina.inference_utils.condition_spec import (
+    build_annotated_atom_array_from_condition_spec,
+    is_legacy_dialect,
+    split_global_args,
+)
 from rfproteina.inference_utils.inference_utils import (
     REQUIRED_INFERENCE_ANNOTATIONS,
+    STRUCTURE_FILE_SUFFIXES,
     check_has_required_conditioning_annotations,
     convert_existing_annotations_to_bool,
     ensure_input_is_abspath,
+    is_structure_file,
 )
 from rfproteina.inference_utils.input_parsing import (
     adapt_legacy_atom_array_for_condition_pipeline,
@@ -38,11 +45,8 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 all_ranks_logger = RankedLogger(__name__, rank_zero_only=False)
 
 
-class ContigJsonDataset(MolecularDataset):
-    """
-    Enables loading of JSON files containing contig data for benchmark design tasks,
-    or the passing of examples through analogously-structured hydra configs.
-    """
+class JsonDataset(MolecularDataset):
+    """Base for datasets whose source is one JSON/YAML file: a dict of `{example_id: spec}`."""
 
     def __init__(
         self,
@@ -50,23 +54,22 @@ class ContigJsonDataset(MolecularDataset):
         data: PathLike | dict,
         transform: Transform | Compose | None,
         name: str | None,
-        cif_parser_overrides: dict | None = None,
         subset_to_keys: list[str] | None = None,
         num_replicates: int = 1,
         global_prefix: str | None = None,
         source_path: PathLike | str | None = None,
+        prevalidate: bool = False,
     ):
         """
         Args:
-            - data: path to the JSON file containing the contig data
+            - data: path to the JSON/YAML file containing the example data, or an already-loaded dict
             - transform: transform to apply to the data
             - name: name of the dataset
             - subset_to_keys: list of keys to subset the data to
-            - evaluate_every_n: how many times should this dataset be evaluated?
-            - cif_parser_overrides: overrides to the default CIF parsing arguments
             - num_replicates: number of times to repeat each example in the dataset
             - global_prefix: optional global prefix for output example ids
             - source_path: original JSON/YAML path when ``data`` is an in-memory dict
+            - prevalidate: if True, build + validate each unique example once during init
         """
 
         if isinstance(data, PathLike | str):
@@ -79,13 +82,7 @@ class ContigJsonDataset(MolecularDataset):
             self.json_path = str(source_path) if source_path is not None else None
             original_data = data
 
-        # These will have already been added at inference time, but this block is useful for validation.
-        if "global_args" in original_data:
-            global_args = original_data.pop("global_args")
-            for k, _v in original_data.items():
-                original_data[k].update(global_args)
-
-        self._data = original_data
+        self._data = self._extract_examples(original_data)
 
         # Subset to requested keys
         if subset_to_keys is not None:
@@ -96,6 +93,10 @@ class ContigJsonDataset(MolecularDataset):
             self._data = {f"{global_prefix}_{k}": v for k, v in self._data.items()}
 
         self._check_json_keys()
+
+        # Validate each unique example once, before replication fans them out.
+        if prevalidate:
+            self._prevalidate()
 
         # Create the requested number of replicates
         if num_replicates >= 1:
@@ -108,10 +109,8 @@ class ContigJsonDataset(MolecularDataset):
         self.name = name if name is not None else "json-dataset"
         self.transform = transform
 
-        self.cif_parser_overrides = cif_parser_overrides
-
         if len(self) == 0:
-            raise ValueError(f"ContigJsonDataset is empty, data: {data}. Names: {self.names}")
+            raise ValueError(f"{type(self).__name__} is empty, data: {data}. Names: {self.names}")
 
         # Condense output: show first 3 and last 3 names if more than 8 examples
         if len(self.names) <= 8:
@@ -123,15 +122,36 @@ class ContigJsonDataset(MolecularDataset):
     @staticmethod
     def _load_from_path(data: str | PathLike) -> dict:
         """Load data from a JSON or YAML file."""
-        assert os.path.exists(data), f"Input file {data} does not exist."
-        with open(data) as f:
-            if data.endswith(".json"):
-                data = json.load(f)
-            elif data.endswith(".yaml"):
-                data = yaml.safe_load(f)
-            else:
-                raise ValueError(f"Input file {data} must be a JSON or YAML file.")
+        path = pathlib.Path(data)
+        assert path.exists(), f"Input file {path} does not exist."
+        with open(path) as f:
+            if path.suffix == ".json":
+                return json.load(f)
+            if path.suffix in (".yaml", ".yml"):
+                return yaml.safe_load(f)
+        raise ValueError(f"Input file {path} must be a JSON or YAML file.")
+
+    def _extract_examples(self, data: dict) -> dict:
+        """Subclass-specific preprocessing hook: raw loaded dict -> `{example_id: spec}`.
+
+        The default is a no-op; override to drop reserved top-level keys or fold
+        file-level defaults into each example before the shared subset/replicate/lookup
+        machinery below runs.
+        """
         return data
+
+    def _build_example(self, example_id: str, spec: dict) -> dict:
+        """Build the `{atom_array, chain_info, ligand_info, metadata}` dict for one example."""
+        raise NotImplementedError
+
+    def _prevalidate(self) -> None:
+        """Build each unique example's AtomArray and run the validation pipeline on it (fail fast)."""
+        for example_id, spec in self.data.items():
+            logger.info(f"Prevalidating input example: {example_id}")
+            atom_array = self._build_example(example_id, spec)["atom_array"]
+            violations = run_pipeline_validation(atom_array)
+            if violations:
+                raise ValueError(f"Prevalidation failed for input example {example_id!r}:\n" + "\n".join(violations))
 
     def _check_json_keys(self) -> None:
         """Check if the JSON keys are valid."""
@@ -168,10 +188,53 @@ class ContigJsonDataset(MolecularDataset):
         return self.names[idx]
 
     def __getitem__(self, idx: int) -> Any:
-        """Pass through the getitem method of the wrapped dataset."""
+        """Build one example, then send it through the transform pipeline."""
         example_id = self.idx_to_id(idx)
         spec = self.data[example_id]
 
+        data = self._build_example(example_id, spec)
+        data["example_id"] = example_id
+        data["task"] = "_".join(example_id.split("_")[:-1])
+
+        data = self.transform(data)
+        return data
+
+
+class ContigJsonDataset(JsonDataset):
+    """
+    Enables loading of JSON files containing contig data for benchmark design tasks,
+    or the passing of examples through analogously-structured hydra configs.
+
+    Deprecated: this is the legacy `InputSpecification`-based dialect (see
+    :py:func:`~rfproteina.inference_utils.condition_spec.is_legacy_dialect`). Switch to
+    the condition_spec format (`docs/condition_spec_yaml.md`,
+    :py:class:`ConditionSpecDataset`) for future compatibility.
+    """
+
+    def __init__(self, *, cif_parser_overrides: dict | None = None, **kwargs):
+        """
+        Args:
+            - cif_parser_overrides: overrides to the default CIF parsing arguments
+            - **kwargs: forwarded to :py:class:`JsonDataset`
+        """
+        self.cif_parser_overrides = cif_parser_overrides
+        super().__init__(**kwargs)
+
+    def _extract_examples(self, data: dict) -> dict:
+        # These will have already been added at inference time, but this block is useful for validation.
+        if "global_args" in data:
+            global_args = data.pop("global_args")
+            for k in data:
+                data[k].update(global_args)
+        return data
+
+    def _prevalidate(self) -> None:
+        logger.warning(
+            "prevalidate_inputs is not supported for the legacy contig-JSON format; skipping. "
+            "Migrate to the condition_spec format (docs/condition_spec_yaml.md) to enable it."
+        )
+
+    def _build_example(self, example_id: str, spec: dict) -> dict:
         # if 'input' in metadata and not abspath, prepend the source json directory to the file path
         spec = ensure_input_is_abspath(spec, self.json_path)
 
@@ -181,22 +244,69 @@ class ContigJsonDataset(MolecularDataset):
         )
 
         # ... Adapt to Condition-based pipeline if needed and run parse
-        data = prepare_pipeline_input_from_atom_array(
-            atom_array,
-        )
+        data = prepare_pipeline_input_from_atom_array(atom_array)
 
         # ... Wrap up with additional features
-        data["example_id"] = example_id
-        data["task"] = "_".join(example_id.split("_")[:-1])
         if "extra" not in spec_dict:
             spec_dict["extra"] = {}
         spec_dict["extra"]["example_id"] = example_id
         if self.json_path is not None:
             spec_dict["input_json_path"] = str(pathlib.Path(self.json_path).resolve())
         data["specification"] = spec_dict
+        return data
 
-        # ... Send through pipeline
-        data = self.transform(data)
+
+class ConditionSpecDataset(JsonDataset):
+    """Loads condition_spec YAML/JSON files (docs/condition_spec_yaml.md): one dataset example
+    per top-level key, built directly into an AtomArray -- no CIF round trip through disk.
+    """
+
+    def __init__(self, *, transform: Transform | Compose | None, **kwargs):
+        """
+        Args:
+            - transform: transform to apply to each built example
+            - **kwargs: forwarded to :py:class:`JsonDataset`
+        """
+        # Necessary for working with expandable segments. Once the ContigJsonDataset is deprecated,
+        # this can be incorporated into the standard Transform pipeline.
+        self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
+        super().__init__(
+            transform=self.pre_transform + transform if transform is not None else self.pre_transform, **kwargs
+        )
+
+    def _extract_examples(self, data: dict) -> dict:
+        if is_legacy_dialect(data):
+            raise ValueError(
+                f"{self.json_path or 'input'} uses the legacy `InputSpecification`-based JSON/YAML "
+                "dialect, which ConditionSpecDataset does not consume. Use ContigJsonDataset instead "
+                "(generate.py's default json/yaml routing already does this automatically)."
+            )
+        self.spec_dir = pathlib.Path(self.json_path).parent if self.json_path is not None else pathlib.Path()
+        # `global_args` holds shared defaults folded into every example (per-example values win).
+        return split_global_args(data)
+
+    def _prevalidate(self) -> None:
+        """Build each unique example with condition_spec's own pre-save safeguards (fail fast)."""
+        for example_id, spec in self.data.items():
+            logger.info(f"Prevalidating input example: {example_id}")
+            data = build_annotated_atom_array_from_condition_spec(
+                spec, spec_dir=self.spec_dir, example_id=example_id, validate=True
+            )
+            # Validate again after realizing expandable segments
+            realized = self.pre_transform(TransformedDict(data))["atom_array"]
+            violations = run_pipeline_validation(realized)
+            if violations:
+                raise ValueError(
+                    f"Prevalidation failed for input example {example_id!r} after realizing "
+                    "expandable segments:\n" + "\n".join(violations)
+                )
+
+    def _build_example(self, example_id: str, spec: dict) -> dict:
+        data = TransformedDict(
+            build_annotated_atom_array_from_condition_spec(spec, spec_dir=self.spec_dir, example_id=example_id)
+        )
+        if self.json_path is not None:
+            data["specification"] = {"input_json_path": str(pathlib.Path(self.json_path).resolve())}
         return data
 
 
@@ -253,12 +363,6 @@ def prepare_pipeline_input_from_atom_array(atom_array_orig: AtomArray) -> dict:
     return data
 
 
-def _default_design_file_filter(x: PathLike) -> bool:
-    """Default filter for design problem files (CIF, JSON, YAML)."""
-    p = pathlib.Path(x)
-    return p.suffix == ".cif" or (len(p.suffixes) >= 2 and p.suffixes[-2:] == [".cif", ".gz"])
-
-
 class DesignProblemDataset(FileDataset):
     """
     Loads a design problem specification from a set of CIF files that adhere to the
@@ -269,10 +373,11 @@ class DesignProblemDataset(FileDataset):
         self,
         dir_path_or_file_paths: list[PathLike] | PathLike,
         *,
-        filter_fn: Callable[[PathLike], bool] | None = _default_design_file_filter,
+        filter_fn: Callable[[PathLike], bool] | None = is_structure_file,
         transform: Transform | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
+        prevalidate: bool = False,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
 
@@ -283,6 +388,7 @@ class DesignProblemDataset(FileDataset):
             transform: Optional transform to apply to loaded data.
             global_prefix: Optional global prefix for output example ids.
             subset_to_keys: Optional list of keys to subset the data to.
+            prevalidate: if True, load + validate each unique CIF once during init.
             num_replicates: Optional number of times to repeat each file in the dataset
         """
         # Ensure input is a list
@@ -292,8 +398,7 @@ class DesignProblemDataset(FileDataset):
         # Assemble list of file paths
         if len(dir_path_or_file_paths) == 1 and pathlib.Path(dir_path_or_file_paths[0]).is_dir():
             dir_path = pathlib.Path(dir_path_or_file_paths[0])
-            suffixes = ["*.cif", "*.cif.gz"]
-            file_paths = [p for suffix in suffixes for p in dir_path.rglob(suffix)]
+            file_paths = [p for suffix in STRUCTURE_FILE_SUFFIXES for p in dir_path.rglob(f"*{suffix}")]
         else:
             dir_path = None
             file_paths = [pathlib.Path(p) for p in dir_path_or_file_paths]
@@ -308,8 +413,8 @@ class DesignProblemDataset(FileDataset):
 
         # Annotate SA_SRC before expansion so original res_ids are preserved,
         # then realize expandable segments and continue with transform pipeline.
-        pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
-        self.transform = pre_transform + transform if transform is not None else pre_transform
+        self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
+        self.transform = self.pre_transform + transform if transform is not None else self.pre_transform
 
         self.global_prefix = global_prefix
 
@@ -333,6 +438,10 @@ class DesignProblemDataset(FileDataset):
             candidate_ids = [f"{self.global_prefix}_{cid}" for cid in candidate_ids]
         self.base_ids = candidate_ids
 
+        # Validate each unique CIF once, before replication fans them out.
+        if prevalidate:
+            self._prevalidate()
+
         # Allow for multiple replicates of the same validation example
         if exists(num_replicates):
             self.num_replicates = num_replicates
@@ -342,6 +451,16 @@ class DesignProblemDataset(FileDataset):
         if self.num_replicates > 1:
             self.file_paths = self.file_paths * self.num_replicates
             self.base_ids = self.base_ids * self.num_replicates
+
+    def _prevalidate(self) -> None:
+        """Load each unique CIF, realize its expandable segments, and validate it (fail fast)."""
+        for path, base_id in zip(self.file_paths, self.base_ids, strict=True):
+            logger.info(f"Prevalidating input example: {base_id}")
+            data = self._load_from_path(path)
+            atom_array = self.pre_transform(TransformedDict(data))["atom_array"]
+            violations = run_pipeline_validation(atom_array)
+            if violations:
+                raise ValueError(f"Prevalidation failed for input example {base_id!r}:\n" + "\n".join(violations))
 
     def _load_from_path(self, path: PathLike) -> Any:
         """

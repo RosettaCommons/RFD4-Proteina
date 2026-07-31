@@ -493,3 +493,14 @@ C_CENTROID = CONDITIONS.ChainCentroid
 C_BP = CONDITIONS.basepair
 C_NA_SS_STATE = CONDITIONS.na_ss_state
 C_NCYS = CONDITIONS.not_cysteine
+
+# Conditions whose int-valued annotation is backed by an IntEnum, keyed by condition class.
+ENUM_CONDITIONS: dict[type[ConditionBase], type[IntEnum]] = {
+    Rasa: RasaEnum,
+    HydrogenBond: HBondEnum,
+    PiCation: PiCationEnum,
+    SaltBridge: SaltBridgeEnum,
+    MetalCoordination: MetalCoordEnum,
+    SecondaryStructure: SSEnum,
+    NucleicSSState: BasePairEnum,
+}

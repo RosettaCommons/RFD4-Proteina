@@ -9,8 +9,9 @@
 
 - [Why annotated CIFs](#why-annotated-cifs)
 - [Two ways to make one](#two-ways-to-make-one)
-  - [Option A — the PyMOL plugin (AtomWorks Design Studio)](#option-a-the-pymol-plugin-atomworks-design-studio)
-  - [Option B — programmatically with AtomWorks](#option-b-programmatically-with-atomworks)
+  - [Option A — the PyMOL plugin (AtomWorks Design Studio)](#option-a--the-pymol-plugin-atomworks-design-studio)
+  - [Option B — programmatically with AtomWorks](#option-b--programmatically-with-atomworks)
+  - [Option C — a YAML/JSON condition spec (no code)](#option-c--a-yamljson-condition-spec-no-code)
 - [Running the model](#running-the-model)
 - [Supported annotations (reference)](#supported-annotations-reference)
 - [Interaction rules (read before conditioning)](#interaction-rules-read-before-conditioning)
@@ -133,6 +134,18 @@ C_HOT.set_mask(aa, hotspot_atom_mask)   # mark hotspots
 
 to_cif_file(aa, "annotated.cif", save_standard_annotations=True, chain_disambiguation="chain_iid")
 ```
+
+### Option C — a YAML/JSON condition spec (no code)
+
+If you want to script or template design problems without writing Python or
+driving PyMOL, describe them as a small YAML/JSON file — subset the input,
+insert expandable segments, and set Conditions on atom selections — and
+either write annotated CIF(s) from it or hand them straight to `generate.py`.
+This still produces exactly the annotated-CIF representation described
+above; it's a shorthand for authoring one, not a different format.
+
+See [**`docs/condition_spec_yaml.md`**](../condition_spec_yaml.md) for the full
+reference and examples.
 
 ## Running the model
 

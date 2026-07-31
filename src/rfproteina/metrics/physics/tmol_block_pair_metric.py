@@ -1,7 +1,8 @@
 """TMol block-pair interface metric for arbitrary region pairs.
 
 Instantiate via Hydra configs (see ``configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml``).
-Regions are ``atom_selection_from_spec`` specs; when both are omitted, binder is the chain of interest.
+Regions are AtomWorks query strings (see :py:func:`~rfproteina.utils.mask_spec.resolve_mask`);
+when both are omitted, binder is the chain of interest.
 """
 
 from __future__ import annotations
@@ -36,8 +37,8 @@ class TMolBlockPairMetric(Metric):
 
     def __init__(
         self,
-        region_a: dict[str, Any] | list[dict[str, Any]] | None = None,
-        region_b: dict[str, Any] | list[dict[str, Any]] | None = None,
+        region_a: str | None = None,
+        region_b: str | None = None,
         device: str = "cuda",
         relax: Literal["none", "fast_relax"] = "none",
         cartesian: bool = True,

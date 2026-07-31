@@ -101,12 +101,17 @@ def tmp_output_dir():
 
 @pytest.fixture
 def minimal_monomer_json(tmp_output_dir):
-    """Write a single-example monomer JSON to disk."""
+    """Write a single-example monomer JSON to disk.
+
+    No ``input`` key and a ``length``/per-example ``dialect`` field -- both legacy-only
+    markers `is_legacy_dialect` uses to auto-route this through `ContigJsonDataset`
+    (see `_write_input_json` for more on that per-example ``dialect`` field).
+    """
     data = {
         "tiny_monomer": {
             "length": _TEST_LENGTH,
             "dialect": 2,
-        }
+        },
     }
     path = os.path.join(tmp_output_dir, "tiny_monomer.json")
     with open(path, "w") as f:
@@ -122,7 +127,7 @@ def diffused_na_json(tmp_output_dir):
             "length": "15-15",
             "contig": "5D,/0,5R,/0,5P",
             "dialect": 2,
-        }
+        },
     }
     path = os.path.join(tmp_output_dir, "diffused_na.json")
     with open(path, "w") as f:
@@ -138,7 +143,7 @@ def bad_diffused_na_json(tmp_output_dir):
             "length": "15-15",
             "contig": "5D,/0,5R,5P",
             "dialect": 2,
-        }
+        },
     }
     path = os.path.join(tmp_output_dir, "bad_diffused_na.json")
     with open(path, "w") as f:
@@ -171,7 +176,13 @@ def two_example_json(tmp_output_dir):
 
 
 def _write_input_json(out_dir: str, data: dict, filename: str = "input.json") -> str:
-    """Write an input JSON file and return its path."""
+    """Write a legacy contig-JSON input file and return its path.
+
+    Every caller in this test module exercises the legacy `ContigJsonDataset` dialect
+    (RFD3-style `length`/`contig` per-example specs, no `input` key). There's no explicit
+    marker to add -- `is_legacy_dialect` auto-detects this from the example fields
+    themselves, so this helper just writes `data` as-is.
+    """
     path = os.path.join(out_dir, filename)
     with open(path, "w") as f:
         json.dump(data, f)

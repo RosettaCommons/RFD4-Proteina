@@ -204,17 +204,23 @@ inline_metrics:
     constraints:
       - name: triad_his_asp
         max_distance_angstrom: 3.2
-        atom_a: { res_id: 31, res_name: HIS, atom_name: NE2 }
-        atom_b: { res_id: 14, res_name: ASP, atom_name: OD1 }
+        atom_a: "res_id == 31 and res_name == 'HIS' and atom_name == 'NE2'"
+        atom_b: "res_id == 14 and res_name == 'ASP' and atom_name == 'OD1'"
       - name: oxyanion_cys
         max_distance_angstrom: 3.0
-        atom_a: { chain_id: B, res_name: lpr, atom_name: O29 }
-        atom_b: { chain_id: A, res_name: CYS, atom_name: N }
+        atom_a: "chain_id == 'B' and res_name == 'lpr' and atom_name == 'O29'"
+        atom_b: "chain_id == 'A' and res_name == 'CYS' and atom_name == 'N'"
 ```
 
-Each `atom_a`/`atom_b` is an `atom_selection_from_spec` query (`chain_id`, `res_name`, `res_id`,
-`atom_name`, or a raw biotite `query` string); give a list instead of a dict to check the minimum
-distance over several alternative atoms. Omitting `required_tags_any`/`required_tags_all` means the
+Each `atom_a`/`atom_b` is an AtomWorks query string (see
+[`resolve_mask`](../../src/rfproteina/utils/mask_spec.py), the one shared string-to-mask
+evaluator used everywhere in this codebase) that must resolve to exactly one atom; give a
+list of query strings instead of a single one to check the minimum distance over several
+alternative atoms. Alternatives that resolve to zero or several atoms are skipped
+individually, so one inapplicable option doesn't discard the rest of the list. For the full
+query and path-selection grammar, see AtomWorks' [Atom Selection
+Syntax](../../lib/atomworks/docs/io/utils/selection_syntax.rst) guide.
+Omitting `required_tags_any`/`required_tags_all` means the
 metric has no gate and runs on every design — appropriate here since a design either has a catalytic
 triad or it doesn't (the metric reports `inf`/violated if the named atoms are missing, rather than
 erroring).

@@ -4,12 +4,12 @@
 # instantiations of the one general class in
 # `rfproteina.metrics.physics.tmol_block_pair_metric` — there are no
 # project-specific Python subclasses to maintain. Copy an entry into your metric
-# set and edit the `region_a` / `region_b` specs (any `atom_selection_from_spec`
-# query string or field filter) for your system.
+# set and edit the `region_a` / `region_b` queries (any AtomWorks query string,
+# see `rfproteina.utils.mask_spec.resolve_mask`) for your system.
 #
 # NOTE: TMol scoring is heavy (GPU), so this file is intentionally NOT included in
 # `all_inline_metrics.yaml`; opt in explicitly where you want interface energies.
-# The `lpr` ligand resname and `chain_id: A` partner below are just placeholders.
+# The `lpr` ligand resname and `chain_id == 'A'` partner below are just placeholders.
 #
 # By default each preset reuses one TMol build context (ligand prep + ligand-extended
 # parameter database) across the whole validation set — the fast path when every scored
@@ -20,14 +20,14 @@
 # --- Ligand-partner presets (was LigandInterface*Metric) ---
 ligand_interface_ddg:
   _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
-  region_a: { query: is_ligand }
-  region_b: { query: is_protein }
+  region_a: is_ligand
+  region_b: is_protein
   required_tags_any: ["small_molecule_only"]
 
 ligand_interface_hbonds:
   _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
-  region_a: { query: is_ligand }
-  region_b: { query: is_protein }
+  region_a: is_ligand
+  region_b: is_protein
   term_names: ["hbond"]
   term_cutoffs:
     n_interface_hbonds: [hbond, -0.3]
@@ -35,8 +35,8 @@ ligand_interface_hbonds:
 
 ligand_interface_electrostatics:
   _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
-  region_a: { query: is_ligand }
-  region_b: { query: is_protein }
+  region_a: is_ligand
+  region_b: is_protein
   term_names: ["fa_elec"]
   term_cutoffs:
     n_interface_elec_interactions: [fa_elec, -0.2]
@@ -52,13 +52,13 @@ soft_ddg:
 # every other atom; set explicit regions when that is insufficient.
 ppi_interface_ddg:
   _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
-  region_a: { chain_id: A }
-  region_b: { chain_id: B }
+  region_a: "chain_id == 'A'"
+  region_b: "chain_id == 'B'"
 
 ppi_interface_coulomb:
   _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolBlockPairMetric
-  region_a: { chain_id: A }
-  region_b: { chain_id: B }
+  region_a: "chain_id == 'A'"
+  region_b: "chain_id == 'B'"
   term_names: ["fa_elec"]
   term_cutoffs:
     n_coulomb_interactions: [fa_elec, -0.2]

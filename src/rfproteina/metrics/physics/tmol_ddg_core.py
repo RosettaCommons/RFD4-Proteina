@@ -23,9 +23,9 @@ from tmol.relax.fast_relax import _default_cart_min_fn, fast_relax
 from tmol.score import beta2016_score_function
 from tmol.score.score_function import ScoreFunction
 
-from rfproteina.metrics.utils.atom_selection import atom_selection_from_spec
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -114,22 +114,19 @@ def atom_sel_to_block_mask(
     return torch.as_tensor(block_mask_np, dtype=torch.bool, device=device)
 
 
-def atom_spec_to_block_mask(
+def region_query_to_block_mask(
     pose_stack: PoseStack,
     atom_array: AtomArray,
-    region_spec: dict[str, Any] | list[dict[str, Any]],
+    query: str,
     device: torch.device,
     *,
     raise_on_dropped_residues: bool = True,
 ) -> torch.Tensor:
-    """Convert atom-level region specs to TMol block masks."""
-    specs = region_spec if isinstance(region_spec, list) else [region_spec]
-    atom_sel = np.zeros(atom_array.array_length(), dtype=bool)
-    for spec in specs:
-        atom_sel |= atom_selection_from_spec(atom_array, spec)
+    """Convert an AtomWorks query string region to a TMol block mask."""
+    atom_sel = resolve_mask(atom_array, query)
 
     if not atom_sel.any():
-        raise ValueError(f"Region spec selected zero atoms: {region_spec}")
+        raise ValueError(f"Region query selected zero atoms: {query!r}")
 
     return atom_sel_to_block_mask(
         pose_stack, atom_array, atom_sel, device, raise_on_dropped_residues=raise_on_dropped_residues
@@ -141,8 +138,8 @@ def build_pose_and_masks(
     device: torch.device,
     *,
     no_opt_h: bool,
-    region_a: dict[str, Any] | list[dict[str, Any]] | None = None,
-    region_b: dict[str, Any] | list[dict[str, Any]] | None = None,
+    region_a: str | None = None,
+    region_b: str | None = None,
     raise_on_dropped_residues: bool = True,
     context: BiotitePoseBuildContext | None = None,
 ) -> tuple[PoseStack, torch.Tensor, torch.Tensor]:
@@ -157,10 +154,10 @@ def build_pose_and_masks(
         pose_stack = pose_stack_from_biotite(atom_array, device, prepare_ligands=True, no_optH=no_opt_h)
 
     if region_a is not None and region_b is not None:
-        mask_a = atom_spec_to_block_mask(
+        mask_a = region_query_to_block_mask(
             pose_stack, atom_array, region_a, device, raise_on_dropped_residues=raise_on_dropped_residues
         )
-        mask_b = atom_spec_to_block_mask(
+        mask_b = region_query_to_block_mask(
             pose_stack, atom_array, region_b, device, raise_on_dropped_residues=raise_on_dropped_residues
         )
     else:

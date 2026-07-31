@@ -30,7 +30,9 @@ from rfproteina.generate import get_contig_or_design_problem_dataset
 from rfproteina.inference_utils.aggregate_metrics import (
     aggregate_metrics_from_per_example_df,
 )
-from rfproteina.inference_utils.datasets import ContigJsonDataset, DesignProblemDataset
+from rfproteina.inference_utils.condition_spec import load_example_input
+from rfproteina.inference_utils.contig_spec import has_variable_length_segments
+from rfproteina.inference_utils.datasets import ConditionSpecDataset, ContigJsonDataset, DesignProblemDataset
 from rfproteina.inference_utils.inference_utils import set_com
 from rfproteina.metrics import MetricManager
 from rfproteina.metrics.oracles.oracle_metric import OracleMetric
@@ -383,6 +385,13 @@ def apply_centering_method(
                 input_file = os.path.abspath(os.path.join(os.path.dirname(pfm_dataset_input), input_file))
 
             full_input_atom_array = _parse_and_extract_first_assembly(input_file)
+        elif isinstance(dataset, ConditionSpecDataset):
+            # Same reason as above: `apply_contig` drops every atom no preserved segment
+            # names, and an ORI marker is a bare origin token that normally sits outside
+            # the motif -- so searching `loaded_atom_array` would raise "must contain an
+            # ORI token" for specs that do have one.
+            example_key = row.example_id if row.example_id in dataset.names else f"{row.example_id}_0"
+            full_input_atom_array = load_example_input(dataset.data[example_key], dataset.spec_dir)
         else:
             full_input_atom_array = loaded_atom_array
 
@@ -719,8 +728,25 @@ def run_external_eval(
                 idx = dataset.id_to_idx(f"{row.example_id}_0")
                 spec = dataset.data[f"{row.example_id}_0"]
             loaded_atom_array = dataset[idx]["atom_array"]
+        elif isinstance(dataset, ConditionSpecDataset):
+            # condition_spec examples are keyed like ContigJsonDataset (id or `<id>_0`).
+            example_key = row.example_id if row.example_id in dataset.names else f"{row.example_id}_0"
+            idx = dataset.id_to_idx(example_key)
+            spec = dataset.data[example_key]
+            contig = spec.get("contig")
+            if contig and has_variable_length_segments(contig):
+                raise ValueError(
+                    f"External evaluation of condition_spec example {example_key!r} is not supported: "
+                    f"its contig {contig!r} has a variable-length expandable segment, so the gap "
+                    "between indexed motifs is re-sampled per design and the index groups built at "
+                    "load time no longer describe the generated structure. Use fixed-length segments "
+                    "for designs you intend to evaluate externally."
+                )
+            loaded_atom_array = dataset[idx]["atom_array"]
         else:
-            raise ValueError("Expected dataset to be a DesignProblemDataset or a ContigJsonDataset.")
+            raise ValueError(
+                "Expected dataset to be a DesignProblemDataset, ContigJsonDataset, or ConditionSpecDataset."
+            )
 
         # Add basic annotations that would ordinarily have been added by `parse` (e.g. chain type)
         loaded_atom_array = _add_basic_annots(loaded_atom_array)

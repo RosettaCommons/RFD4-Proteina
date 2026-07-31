@@ -7,6 +7,13 @@ from atomworks.io import parse
 from rfproteina.metrics.atom_pair_distance_metric import AtomPairDistanceMetric
 
 
+def _atom(chain_id: str, res_name: str, res_id: int, atom_name: str) -> str:
+    """Build an AtomWorks query string selecting a single atom by its identity."""
+    return (
+        f"chain_id == '{chain_id}' and res_name == '{res_name}' and res_id == {res_id} and atom_name == '{atom_name}'"
+    )
+
+
 def test_lenacap_reference_satisfies_catalytic_distance_constraints():
     cif_path = (
         Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
@@ -18,26 +25,26 @@ def test_lenacap_reference_satisfies_catalytic_distance_constraints():
             {
                 "name": "oxanion_cys",
                 "max_distance_angstrom": 3.0,
-                "atom_a": {"chain_id": "B", "res_name": "lpr", "res_id": 1, "atom_name": "O29"},
-                "atom_b": {"chain_id": "A", "res_name": "CYS", "res_id": 580, "atom_name": "N"},
+                "atom_a": _atom("B", "lpr", 1, "O29"),
+                "atom_b": _atom("A", "CYS", 580, "N"),
             },
             {
                 "name": "oxanion_gln",
                 "max_distance_angstrom": 3.5,
-                "atom_a": {"chain_id": "B", "res_name": "lpr", "res_id": 1, "atom_name": "O29"},
-                "atom_b": {"chain_id": "A", "res_name": "GLN", "res_id": 574, "atom_name": "NE2"},
+                "atom_a": _atom("B", "lpr", 1, "O29"),
+                "atom_b": _atom("A", "GLN", 574, "NE2"),
             },
             {
                 "name": "triad_his_cys",
                 "max_distance_angstrom": 4.0,
-                "atom_a": {"chain_id": "A", "res_name": "HIS", "res_id": 514, "atom_name": "ND1"},
-                "atom_b": {"chain_id": "A", "res_name": "CYS", "res_id": 580, "atom_name": "SG"},
+                "atom_a": _atom("A", "HIS", 514, "ND1"),
+                "atom_b": _atom("A", "CYS", 580, "SG"),
             },
             {
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.2,
-                "atom_a": {"chain_id": "A", "res_name": "HIS", "res_id": 514, "atom_name": "NE2"},
-                "atom_b": {"chain_id": "A", "res_name": "ASP", "res_id": 531, "atom_name": "OD1"},
+                "atom_a": _atom("A", "HIS", 514, "NE2"),
+                "atom_b": _atom("A", "ASP", 531, "OD1"),
             },
         ]
     )
@@ -61,18 +68,43 @@ def test_atom_a_and_b_options_use_minimum_pair_distance():
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.0,
                 "atom_a": [
-                    {"chain_id": "A", "res_name": "HIS", "res_id": 514, "atom_name": "ND1"},
-                    {"chain_id": "A", "res_name": "HIS", "res_id": 514, "atom_name": "NE2"},
+                    _atom("A", "HIS", 514, "ND1"),
+                    _atom("A", "HIS", 514, "NE2"),
                 ],
                 "atom_b": [
-                    {"chain_id": "A", "res_name": "ASP", "res_id": 531, "atom_name": "OD1"},
-                    {"chain_id": "A", "res_name": "ASP", "res_id": 531, "atom_name": "OD2"},
+                    _atom("A", "ASP", 531, "OD1"),
+                    _atom("A", "ASP", 531, "OD2"),
                 ],
             }
         ]
     )
     out = metric.compute(predicted_atom_array=atom_array)
     assert out["triad_his_asp_distance"] > 0.0
+    assert out["triad_his_asp_satisfied"] == 1.0
+
+
+def test_atom_options_skip_unresolved_queries():
+    cif_path = (
+        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
+    )
+    atom_array = parse(str(cif_path))["assemblies"]["1"][0]
+
+    metric = AtomPairDistanceMetric(
+        constraints=[
+            {
+                "name": "triad_his_asp",
+                "max_distance_angstrom": 3.2,
+                "atom_a": [
+                    _atom("A", "HIS", 514, "MISSING"),
+                    _atom("A", "HIS", 514, "NE2"),
+                ],
+                "atom_b": _atom("A", "ASP", 531, "OD1"),
+            }
+        ]
+    )
+
+    out = metric.compute(predicted_atom_array=atom_array)
+    assert out["triad_his_asp_distance"] < float("inf")
     assert out["triad_his_asp_satisfied"] == 1.0
 
 
@@ -89,8 +121,8 @@ def test_missing_atoms_yield_inf_distance_not_crash():
             {
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.2,
-                "atom_a": {"chain_id": "A", "res_name": "HIS", "res_id": 514, "atom_name": "NE2"},
-                "atom_b": {"chain_id": "A", "res_name": "ASP", "res_id": 531, "atom_name": "OD1"},
+                "atom_a": _atom("A", "HIS", 514, "NE2"),
+                "atom_b": _atom("A", "ASP", 531, "OD1"),
             },
         ],
         soft_margin=1.0,
@@ -115,8 +147,8 @@ def test_soft_min_score_decays_linearly_past_threshold():
             {
                 "name": "oxanion_cys",
                 "max_distance_angstrom": 2.0,
-                "atom_a": {"chain_id": "B", "res_name": "lpr", "res_id": 1, "atom_name": "O29"},
-                "atom_b": {"chain_id": "A", "res_name": "CYS", "res_id": 580, "atom_name": "N"},
+                "atom_a": _atom("B", "lpr", 1, "O29"),
+                "atom_b": _atom("A", "CYS", 580, "N"),
             },
         ],
         soft_margin=1.0,

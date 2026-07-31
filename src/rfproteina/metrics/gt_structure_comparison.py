@@ -11,8 +11,8 @@ from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
 from rfproteina.metrics.metric import Metric
-from rfproteina.metrics.utils.atom_selection import extract_annotation_names
 from rfproteina.utils.logging import RankedLogger
+from rfproteina.utils.mask_spec import resolve_mask
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
 
@@ -94,17 +94,13 @@ def align_structures_by_annotations(
     if not align_to:
         return gt_array_stack, pred_array_stack
 
-    # Extract and ensure annotations from query
-    annotations_to_ensure = extract_annotation_names(align_to)
-    ensure_annotations(gt_array_stack, *annotations_to_ensure)
-
     # Get alignment mask and nan mask
-    gt_align_mask = gt_array_stack.mask(align_to)
+    gt_align_mask = resolve_mask(gt_array_stack, align_to)
     gt_nan_mask = gt_array_stack.mask("~has_nan_coord()")
     gt_combined_mask = gt_align_mask & gt_nan_mask
 
     if apply_query_to_pred:
-        pred_align_mask = pred_array_stack.mask(align_to)
+        pred_align_mask = resolve_mask(pred_array_stack, align_to)
         pred_nan_mask = pred_array_stack.mask("~has_nan_coord()")
         pred_combined_mask = pred_align_mask & pred_nan_mask
     else:
@@ -355,16 +351,6 @@ def structure_comparison_metric(
     pred_stack = pred_stack.copy()
     gt_stack = gt_stack.copy()
 
-    # Extract and ensure annotations from queries
-    annotations_to_ensure = []
-    if subset_mask:
-        annotations_to_ensure.extend(extract_annotation_names(subset_mask))
-    if align_mask:
-        annotations_to_ensure.extend(extract_annotation_names(align_mask))
-    if annotations_to_ensure:
-        ensure_annotations(gt_stack, *annotations_to_ensure)
-        ensure_annotations(pred_stack, *annotations_to_ensure)
-
     # align
     gt_stack, pred_stack = align_structures_by_annotations(gt_stack, pred_stack, align_mask, apply_query_to_pred=True)
 
@@ -374,8 +360,8 @@ def structure_comparison_metric(
 
     # subset
     if subset_mask:
-        final_gt_subset_mask = gt_stack.mask(subset_mask) & gt_stack.mask("~has_nan_coord()")
-        final_pred_subset_mask = pred_stack.mask(subset_mask) & pred_stack.mask("~has_nan_coord()")
+        final_gt_subset_mask = resolve_mask(gt_stack, subset_mask) & gt_stack.mask("~has_nan_coord()")
+        final_pred_subset_mask = resolve_mask(pred_stack, subset_mask) & pred_stack.mask("~has_nan_coord()")
     else:
         final_gt_subset_mask = gt_stack.mask("~has_nan_coord()")
         final_pred_subset_mask = pred_stack.mask("~has_nan_coord()")
@@ -720,9 +706,8 @@ class LigandCentroidDistanceMetric(Metric):
         gt_stack = as_atom_array_plus_stack(ground_truth_atom_array).copy()
         pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
 
-        annotations_to_ensure = [*extract_annotation_names(self.align_mask), "is_ligand"]
-        ensure_annotations(gt_stack, *annotations_to_ensure)
-        ensure_annotations(pred_stack, *annotations_to_ensure)
+        ensure_annotations(gt_stack, "is_ligand")
+        ensure_annotations(pred_stack, "is_ligand")
 
         gt_stack, pred_stack = align_structures_by_annotations(gt_stack, pred_stack, self.align_mask)
         if gt_stack is None or pred_stack is None:
