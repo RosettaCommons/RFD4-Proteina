@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 from atomworks.enums import ChainType
@@ -10,7 +10,9 @@ from atomworks.ml.conditions.annotator import ensure_annotations
 from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
 
+from rfproteina.metrics.lddt_metric import SymmetryLevel
 from rfproteina.metrics.metric import Metric
+from rfproteina.utils.atom_permutation import permute_gt_atoms
 from rfproteina.utils.logging import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 
@@ -445,8 +447,16 @@ class StructureComparisonMetric(Metric):
         metric_kwargs: dict[str, Any] | None = None,
         input_kwarg_names: dict[str, str] | None = None,
         verbose_naming: bool = False,
+        resolve_symmetry: Sequence[SymmetryLevel] = ("atom",),
         **kwargs,
     ):
+        unknown = set(resolve_symmetry) - {"atom", "subunit"}
+        if unknown:
+            raise ValueError(f"Unknown symmetry level(s) {sorted(unknown)}; expected 'atom' and/or 'subunit'")
+        if "subunit" in resolve_symmetry:
+            raise NotImplementedError("Subunit (chain-permutation) symmetry resolution is not implemented yet")
+        self.resolve_symmetry = tuple(resolve_symmetry)
+
         self._input_kwarg_names = input_kwarg_names or {
             "ground_truth_atom_array": "ground_truth_atom_array",
             "predicted_atom_array": "predicted_atom_array",
@@ -486,6 +496,19 @@ class StructureComparisonMetric(Metric):
 
         return gt_stack
 
+    def _atom_classes(self, gt_stack: AtomArrayPlusStack) -> np.ndarray | None:
+        """Barriers that keep a permutation inside what this metric reports on.
+
+        Class -1 marks an atom to leave alone; atoms may only swap within one class.
+        """
+        atom_classes = None
+        if self.subset_mask:
+            outside_subset = ~np.asarray(resolve_mask(gt_stack, self.subset_mask))
+            if outside_subset.any():
+                atom_classes = np.zeros(gt_stack.array_length(), dtype=np.int64)
+                atom_classes[outside_subset] = -1
+        return atom_classes
+
     def _compute_per_group(
         self,
         gt_stack: AtomArrayPlusStack,
@@ -508,6 +531,16 @@ class StructureComparisonMetric(Metric):
             mask = annot == val
             gt_sub = gt_stack[:, mask]
             pred_sub = pred_stack[:, mask]
+            # ... permute within the group, after it is superimposed on itself.  A group's
+            # placement relative to the others is deliberately unspecified, so a labelling
+            # chosen in a whole-structure frame would be chosen in a frame that does not exist.
+            if "atom" in self.resolve_symmetry and gt_sub.array_length() == pred_sub.array_length():
+                gt_sub = permute_gt_atoms(
+                    pred_sub,
+                    gt_sub,
+                    atom_classes=self._atom_classes(gt_sub),
+                    frame_mask=None if not self.align_mask else np.asarray(resolve_mask(gt_sub, self.align_mask)),
+                )
 
             result = structure_comparison_metric(
                 gt_sub,
@@ -572,14 +605,28 @@ class StructureComparisonMetric(Metric):
         """
         metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
         gt_stack = self._prepare_gt_stack(ground_truth_atom_array)
+        pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
+        # Permute chemically equivalent GT atoms so the prediction is not scored on a labelling
+        # it cannot know; atom classes (-1 = leave alone) keep a swap inside what this metric reports on.
+        if (
+            "atom" in self.resolve_symmetry
+            and not self.subdivide_by_annotation  # ...done per group, in each group's own frame
+            and gt_stack.array_length() == pred_stack.array_length()
+            and (gt_stack.stack_depth() == pred_stack.stack_depth() or gt_stack.stack_depth() == 1)
+        ):
+            gt_stack = permute_gt_atoms(
+                pred_stack,
+                gt_stack,
+                atom_classes=self._atom_classes(gt_stack),
+                frame_mask=None if not self.align_mask else np.asarray(resolve_mask(gt_stack, self.align_mask)),
+            )
 
         if self.subdivide_by_annotation:
-            pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
             return self._compute_per_group(gt_stack, pred_stack, metric_kwargs)
 
         return structure_comparison_metric(
             ground_truth_atom_array_stack=gt_stack,
-            predicted_atom_array_stack=predicted_atom_array,
+            predicted_atom_array_stack=pred_stack,
             subset_mask=self.subset_mask,
             align_mask=self.align_mask,
             metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],

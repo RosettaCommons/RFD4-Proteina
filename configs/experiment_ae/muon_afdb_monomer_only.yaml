@@ -25,7 +25,7 @@ dataloaders:
     dataloader_params:
       batch_size: 2
       collate_fn:
-        fixed_dimensions: null
+        fixed_dimensions: {I: 384}
 
 log:
   tags: ["ae", "muon", "afdb-monomer-only"]

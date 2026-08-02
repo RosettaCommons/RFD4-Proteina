@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 from collections.abc import Sequence
+from typing import ClassVar
 
 import numpy as np
 import rootutils
@@ -88,6 +89,7 @@ from atomworks.ml.transforms.msa.msa import (
     LoadPolymerMSAs,
     PairAndMergePolymerMSAs,
 )
+from atomworks.ml.transforms.symmetry import find_automorphisms_with_networkx
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
     get_token_starts,
@@ -257,6 +259,37 @@ def build_atom37_slots(atom_array: AtomArray) -> np.ndarray:
 
 # Module-level cached residue-specific lookups
 _ATOM37_KEYS, _ATOM37_SLOTS = _build_atom37_lookups()
+
+
+class PrecomputeAtomPermutation(Transform):
+    """Search for chemically equivalent atoms, in the dataloader workers.
+
+    Must run after :py:class:`UnindexFlaggedTokens`, the last transform to change atom count
+    or order, because the automorphisms index atoms globally.
+    """
+
+    requires_previous_transforms: ClassVar[list[str | Transform]] = [AtomizeByCCDName, UnindexFlaggedTokens]
+
+    def __init__(self, max_automorphs: int = 1000):
+        self.max_automorphs = max_automorphs
+
+    def check_input(self, data: dict[str, Any]) -> None:
+        check_contains_keys(data, ["atom_array"])
+        check_atom_array_annotation(data, required=["token_id", "pn_unit_iid", "is_polymer"])
+
+    def forward(self, data: dict[str, Any]) -> dict[str, Any]:
+        atom_array = data["atom_array"]
+        extra_info = data.get("extra_info", {})
+        automorphisms = find_automorphisms_with_networkx(atom_array, max_automorphs=self.max_automorphs)
+        # ... an identity-only unit cannot permute anything; dropping it here halves the
+        # per-unit loop the training step still has to run
+        extra_info["atom_automorphisms"] = [group for group in automorphisms if len(group) > 1]
+        extra_info["atom37_layout"] = {
+            "token_ids": np.asarray(atom_array.token_id, dtype=np.int64),  # [n_atoms]
+            "slots": build_atom37_slots(atom_array),  # [n_atoms], -1 where absent
+        }
+        data["extra_info"] = extra_info
+        return data
 
 
 class InferQueryPNUnitIIDsForDimers(Transform):
@@ -1469,6 +1502,7 @@ def _build_design_featurize_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     is_inference: bool = False,
+    precompute_atom_permutation: bool = False,
     # Bond feature dropout (training-only regularization)
     coordination_bond_dropout_p_all: float = 0.5,
     coordination_bond_dropout_p_individual: float = 0.5,
@@ -1520,6 +1554,9 @@ def _build_design_featurize_pipeline(
 
     # Create in-context conditioning corresponding to unindexed regions
     T += UnindexFlaggedTokens()
+    # ... after the last transform that changes atom count or order, so indices stay valid
+    if precompute_atom_permutation:
+        T += PrecomputeAtomPermutation()
     T += AddChainBreaksPerResidue()
     T += AddMissingAtomCount()
 
@@ -1636,6 +1673,7 @@ def build_design_train_pipeline(
     p_mirror: float = 0.0,
     design_tasks: dict[str, dict] | None = None,
     is_inference: bool = False,
+    precompute_atom_permutation: bool = False,
     metrics_tags: list[str] | set[str] | None = None,
     residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
     # Nucleic acid secondary structure featurization
@@ -1734,6 +1772,7 @@ def build_design_train_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         is_inference=is_inference,
+        precompute_atom_permutation=precompute_atom_permutation,
         path_length_search_cutoff=path_length_search_cutoff,
         centroid_kwargs=centroid_kwargs,
         center_conditioning_annotations=center_conditioning_annotations,
@@ -1759,6 +1798,7 @@ def build_design_validation_pipeline(
     convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
+    precompute_atom_permutation: bool = False,
 ) -> Transform:
     """Build the validation/inference pipeline.
 
@@ -1792,4 +1832,5 @@ def build_design_validation_pipeline(
         center_conditioning_annotations=center_conditioning_annotations,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
+        precompute_atom_permutation=precompute_atom_permutation,
     )

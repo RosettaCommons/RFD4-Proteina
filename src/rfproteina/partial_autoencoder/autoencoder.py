@@ -19,6 +19,7 @@ from rfproteina.partial_autoencoder.latent_viz_utils import (
     plot_latent_projection_with_labels,
     project_latents_2d,
 )
+from rfproteina.utils.atom_permutation import permute_gt_atom37
 from rfproteina.utils.coors import nm_to_ang
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.optim_utils import build_optimizers
@@ -289,6 +290,8 @@ class AutoEncoder(L.LightningModule):
                 reduce_mode="sum",
                 loss_ty=self.cfg_ae.loss.struct.type,
                 weight=self.cfg_ae.loss.struct.weight,
+                atom_permutation=self.cfg_ae.loss.struct.get("atom_permutation", False),
+                atom_permutation_align=self.cfg_ae.loss.struct.get("atom_permutation_align", False),
             )
         )
 
@@ -391,13 +394,15 @@ class AutoEncoder(L.LightningModule):
             return train_loss, output_dec
         return train_loss
 
+    @staticmethod
     def compute_struct_rec_loss(
-        self,
         output_dec: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
         reduce_mode: Literal["sum", "mean"] = "sum",
         loss_ty: str = "l2",
         weight: float = 1.0,
+        atom_permutation_align: bool = False,
+        atom_permutation: bool = False,
     ) -> dict[str, Float[Tensor, "b"]]:
         """
         Computes structural loss.
@@ -439,6 +444,26 @@ class AutoEncoder(L.LightningModule):
         coors_nm_true = batch["coords_nm"]  # [b, n, 37, 3] (already converted in training_step)
         mask = output_dec["residue_mask"]  # [b, n] boolean
         atom_mask_true = batch["atom37_mask"] * mask[..., None]  # [b, n, 37] boolean
+
+        # Permute target atom37 coords onto the prediction (Tyr ring flips, ligand
+        # automorphisms, …), using what the dataloader workers precomputed.
+        extra_info = batch.get("extra_info") or {}
+        precomputed = extra_info.get("atom_automorphisms")
+        if atom_permutation and precomputed is None:
+            raise ValueError(
+                "loss.struct.atom_permutation is on but no precomputed permutations reached the loss; "
+                "set transform.precompute_atom_permutation=true on every training dataset."
+            )
+        if atom_permutation:
+            with torch.no_grad():
+                coors_nm_true = permute_gt_atom37(
+                    coors_nm_pred,
+                    coors_nm_true,
+                    atom_mask_true,
+                    precomputed,
+                    extra_info.get("atom37_layout"),
+                    align=atom_permutation_align,
+                )
 
         err = coors_nm_true - coors_nm_pred  # [b, n, 37, 3]
         err = err * mask[..., None, None] * atom_mask_true[..., None]  # [b, n, 37, 3]

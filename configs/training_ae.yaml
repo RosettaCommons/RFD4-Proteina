@@ -42,6 +42,11 @@ loss:
     type: l2
     # type: l2cut_0.01
     weight: 1.0
+    # Permute chemically equivalent ground-truth atoms onto the prediction before scoring;
+    # `_align` decides the labelling in a superimposed frame rather than the raw one.  Turn on
+    # together with dataset.transform.precompute_atom_permutation, or the loss will raise.
+    atom_permutation: false
+    atom_permutation_align: false
   seq:
     weight: 1.0
 
