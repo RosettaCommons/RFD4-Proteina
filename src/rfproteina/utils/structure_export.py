@@ -181,6 +181,6 @@ def write_input_structure_cif(atom_array: AtomArray, path: str | Path) -> None:
 
 
 def write_generated_structure_cif(atom_array: AtomArray, path: str | Path) -> None:
-    """Write a generated AtomArray to CIF, matching flow validation export."""
+    """Write a generated AtomArray to CIF."""
     atom_array = _prepare_bondless_atom_array_for_cif(align_atom_array_to_input_frame(atom_array))
     to_cif_file(atom_array, str(path), include_entity_categories=False)

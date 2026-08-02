@@ -1,19 +1,23 @@
 """All-atom LDDT metric using biotite."""
 
 import logging
-from typing import Any, TypeAlias
+from collections.abc import Sequence
+from typing import Any, Literal, TypeAlias
 
 import numpy as np
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, AtomArrayPlusStack, as_atom_array_plus_stack
 from biotite.structure import AtomArray, AtomArrayStack, lddt
 
 from rfproteina.metrics.metric import Metric
+from rfproteina.utils.atom_permutation import permute_gt_atoms
 
 logger = logging.getLogger(__name__)
 
 AtomArrayInput: TypeAlias = (
     AtomArray | AtomArrayStack | AtomArrayPlus | AtomArrayPlusStack | list[AtomArray | AtomArrayPlus]
 )
+
+SymmetryLevel: TypeAlias = Literal["atom", "subunit"]
 
 
 def _get_occupancy_mask(atom_array: AtomArray) -> np.ndarray | None:
@@ -38,6 +42,7 @@ class AllAtomLDDT(Metric):
         predicted_atom_array_key: str = "predicted_atom_array",
         ground_truth_atom_array_key: str = "ground_truth_atom_array",
         inclusion_radius: float = 15.0,
+        resolve_symmetry: Sequence[SymmetryLevel] = ("atom",),
         **kwargs,
     ):
         """Initialize the LDDT metric.
@@ -46,11 +51,26 @@ class AllAtomLDDT(Metric):
             predicted_atom_array_key: Key for predicted AtomArray(s) in kwargs.
             ground_truth_atom_array_key: Key for ground truth AtomArray(s) in kwargs.
             inclusion_radius: Distance cutoff in Angstroms. Defaults to 15.0.
+            resolve_symmetry: Which symmetries to resolve in the ground truth before
+                scoring, so the prediction is not penalized for a labelling it cannot
+                know. Defaults to `("atom",)`; pass `()` to score the ground truth as
+                deposited.
+
+        Raises:
+            ValueError: If `resolve_symmetry` names an unknown level.
+            NotImplementedError: If `"subunit"` is requested.
         """
+        unknown = set(resolve_symmetry) - {"atom", "subunit"}
+        if unknown:
+            raise ValueError(f"Unknown symmetry level(s) {sorted(unknown)}; expected 'atom' and/or 'subunit'")
+        if "subunit" in resolve_symmetry:
+            raise NotImplementedError("Subunit (chain-permutation) symmetry resolution is not implemented yet")
+
         # Set before super().__init__ because it accesses kwargs_to_compute_args
         self.predicted_atom_array_key = predicted_atom_array_key
         self.ground_truth_atom_array_key = ground_truth_atom_array_key
         self.inclusion_radius = inclusion_radius
+        self.resolve_symmetry = tuple(resolve_symmetry)
         super().__init__(**kwargs)
 
     @property
@@ -77,6 +97,11 @@ class AllAtomLDDT(Metric):
         # Convert to stacks for uniform handling
         pred_stack = as_atom_array_plus_stack(predicted)
         gt_stack = as_atom_array_plus_stack(ground_truth)
+        if "atom" in self.resolve_symmetry and (
+            pred_stack.array_length() == gt_stack.array_length()
+            and (pred_stack.stack_depth() == gt_stack.stack_depth() or gt_stack.stack_depth() == 1)
+        ):
+            gt_stack = permute_gt_atoms(pred_stack, gt_stack)
 
         # Compute LDDT for each pair
         scores = []
