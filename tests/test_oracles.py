@@ -15,6 +15,7 @@ import os
 import socket
 import threading
 import time
+from pathlib import Path
 
 import biotite.structure as struc
 import numpy as np
@@ -42,7 +43,9 @@ from rfproteina.metrics.design_metrics import ClashMetric
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.oracles.af3_oracle import AF3Oracle, _send_to_daemon
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
+from rfproteina.metrics.oracles.pre_oracle_transform import OFF_TARGET_PARSE_CONFIG, OffTargetSubstitutionTransform
 from rfproteina.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
+from rfproteina.utils.parse_presets import ANNOTATED_CIF, STANDARD_ANNOTATIONS_ONLY
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 os.environ["NCCL_DEBUG"] = "WARNING"
@@ -259,8 +262,83 @@ def test_send_to_daemon_retries_on_eagain(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Slow GPU tests — oracle.compute directly
+# Pre-oracle transforms
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def annotated_design() -> AtomArray:
+    """Design with an unambiguous protein COI (``A_1``) plus a ligand partner (``B_1``)."""
+    path = TEST_DATA_DIR / "lencapavir_design_with_covale.cif"
+    return parse(path, config=ANNOTATED_CIF)["assemblies"]["1"][0]
+
+
+@pytest.mark.slow
+@pytest.mark.gpu
+def test_off_target_substitution_refolds_each_off_target_with_af3(annotated_design, tmp_path):
+    """AF3 folds one substituted complex per off-target, storing and scoring each on its own.
+
+    Covers the transform end to end: the design chain, the renamed off-target
+    chains, the aligned annotations and the merged bond graph all survive the
+    round trip through AF3's CIF entrypoint and back, each save_id holds the
+    off-target it names (checked by residue count, which differs between the
+    two), and a second call reloads them all from the manifest.
+    """
+    if not has_af3:
+        pytest.skip("AF3 apptainer image not available")
+
+    # Two off-targets of very different size, so residue count identifies which one
+    # a given refold contains. One carries cofactors, since substituting a real
+    # target usually brings its ligands along.
+    off_target_paths = {
+        "5vht": TEST_DATA_DIR / "5vht_from_file.cif",
+        "5ocm": TEST_DATA_DIR / "pdb" / "5ocm.cif",
+    }
+    oracle = AF3Oracle(
+        oracle_name="af3_off_target",
+        num_recycles=3,
+        pre_oracle_transform=OffTargetSubstitutionTransform(off_target_paths),
+    )
+    oracle.setup()
+    try:
+        result = oracle.compute(
+            input_atom_array=annotated_design,
+            example_id="off_target_design",
+            out_dir=tmp_path,
+            chain_of_interest="A_1",
+        )
+
+        assert oracle.list_save_ids() == list(off_target_paths)
+        coi_mask = annotated_design.chain_iid == "A_1"
+        n_coi_residues = struc.get_residue_count(annotated_design[coi_mask])
+        for save_id, off_target_path in off_target_paths.items():
+            plddt = result[f"{save_id}.overall_plddt"]
+            assert 0 < plddt < 100, f"{save_id}: implausible plddt {plddt}"
+            assert result[f"{save_id}.min_ipae_coi"] > 0, f"{save_id}: no interface pae, off-target not folded with it"
+
+            cif_path = Path(result[f"{save_id}.refolded_structure_path"])
+            assert cif_path.exists() and save_id in cif_path.name
+            refolded = parse(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
+            # The design chain came back whole...
+            assert struc.get_residue_count(refolded[refolded.chain_id == "A"]) == n_coi_residues
+            # ...next to this save_id's off-target and no other. The two off-targets
+            # differ in size, so residue count identifies which one was folded.
+            off_target = parse(off_target_path, config=OFF_TARGET_PARSE_CONFIG)["assemblies"]["1"][0]
+            assert struc.get_residue_count(refolded) == n_coi_residues + struc.get_residue_count(off_target)
+
+        # Resumability: the manifest + per-save_id JSONs reload without refolding.
+        t0 = time.time()
+        cached = oracle.compute(
+            input_atom_array=annotated_design,
+            example_id="off_target_design",
+            out_dir=tmp_path,
+            chain_of_interest="A_1",
+        )
+        assert time.time() - t0 < 1, "cached oracle call took too long, likely re-running"
+        assert cached == result
+    finally:
+        oracle.teardown()
+
 
 # ---------------------------------------------------------------------------
 # Slow GPU integration test — full four-manager oracle pipeline

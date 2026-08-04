@@ -15,9 +15,11 @@ Each subclass implements two abstract methods that share an output contract:
 Both write the refolded CIF and a confidence JSON to canonical paths on disk.
 
 The framework-facing :py:meth:`compute` then routes between them: cache hit
-→ load JSON; cache miss → call ``fold_one``.
+→ load JSON; cache miss → apply :attr:`OracleMetric.pre_oracle_transform` →
+call ``fold_one``.
 """
 
+import dataclasses
 import json
 import tempfile
 from abc import abstractmethod
@@ -33,6 +35,7 @@ from atomworks.ml.utils.misc import hash_sequence
 from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
+from rfproteina.metrics.oracles.pre_oracle_transform import PreOracleTransform
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -46,9 +49,23 @@ class OracleJobInput:
     atom_array: AtomArray
     example_id: str
     out_dir: Path
+    save_id: str | None = None
     chain_of_interest: str | None = None
     # Per-chain a3m paths (plain or gzipped), keyed by the input's chain_id; ``None`` folds single-sequence.
     msa_paths_by_chain_id: dict[str, str | Path] | None = None
+
+
+def _msas_for_present_chains(job: OracleJobInput, transformed: AtomArray, label: str) -> dict[str, str | Path] | None:
+    """Drop MSA entries whose chain a :py:class:`PreOracleTransform` removed or renamed."""
+    if not job.msa_paths_by_chain_id:
+        return job.msa_paths_by_chain_id
+    present = set(np.unique(transformed.chain_id).tolist())
+    kept = {chain_id: path for chain_id, path in job.msa_paths_by_chain_id.items() if chain_id in present}
+    if dropped := sorted(set(job.msa_paths_by_chain_id) - set(kept)):
+        logger.warning(
+            f"{label}: dropping MSAs for chain(s) {dropped}, which the pre-oracle transform removed or renamed."
+        )
+    return kept or None
 
 
 def _coi_interface_vals(matrix: list, coi_idx: int, n_chains: int) -> list:
@@ -192,11 +209,16 @@ class OracleMetric(Metric):
     :py:meth:`fold_batch` (many designs at once); both write the refolded CIF
     and confidence JSON to canonical paths on disk. :py:meth:`compute` is the
     framework-facing entry point and routes between cache hit (load JSON) and
-    cache miss (call ``fold_one`` then load JSON).
+    cache miss (apply :attr:`pre_oracle_transform`, call ``fold_one``, then
+    load JSON).
 
     Args:
         oracle_name: Short label included in output filenames
             (e.g. ``"rf3"`` → ``…/{digest8}/{example_id}_rf3_refolded.cif``).
+        pre_oracle_transform: Optional transform applied to the generated
+            AtomArray before refolding. May fan one design out into several
+            named outputs; see :py:mod:`~rfproteina.metrics.oracles.pre_oracle_transform`
+            and :py:meth:`apply_transform`. Defaults to ``None`` (no transform).
         template_query: AtomWorks query string selecting which atoms to pass to the
             oracle as a structural template (e.g.
             ``"mask_coordinate_1_atom & ~is_nucleic_acid"``). ``None`` disables
@@ -210,19 +232,28 @@ class OracleMetric(Metric):
     def __init__(
         self,
         oracle_name: str,
+        pre_oracle_transform: PreOracleTransform | None = None,
         template_query: str | None = None,
         frac_under_thresholds: dict[str, list[float]] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.oracle_name = oracle_name
+        self.pre_oracle_transform = pre_oracle_transform
         self.template_query = template_query
         self.frac_under_thresholds = frac_under_thresholds or {}
 
     def aggregate(self, column: str, values: pd.Series) -> dict[str, float]:
-        """Default reductions plus per-column ``frac_under_<T>`` rows."""
+        """Default reductions plus per-column ``frac_under_<T>`` rows.
+
+        A :attr:`pre_oracle_transform` fans this oracle's columns out to
+        ``f"{save_id}.{output_key}"``, but thresholds stay keyed by the bare
+        output name — one threshold applies to every output of the fan-out — so
+        the save_id is stripped before the lookup.
+        """
         result = super().aggregate(column, values)
-        for thresh in self.frac_under_thresholds.get(column, []):
+        output_key = column.rpartition(".")[2]
+        for thresh in self.frac_under_thresholds.get(output_key, []):
             result[f"frac_under_{thresh}"] = float((values < thresh).mean())
         return result
 
@@ -230,17 +261,35 @@ class OracleMetric(Metric):
     # Path helpers
     # ------------------------------------------------------------------
 
-    def confidence_path(self, out_dir: Path, example_id: str) -> Path:
+    def output_stem(self, example_id: str, save_id: str | None = None) -> str:
+        """Filename stem shared by one refold's CIF and confidence JSON."""
+        return (
+            f"{example_id}_{save_id}_{self.oracle_name}" if save_id is not None else f"{example_id}_{self.oracle_name}"
+        )
+
+    def confidence_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the path to the on-the-fly confidence JSON for this example."""
-        return example_output_dir(out_dir, example_id) / f"{example_id}_{self.oracle_name}_confidences.json"
+        return example_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_confidences.json"
 
-    def refolded_cif_path(self, out_dir: Path, example_id: str) -> Path:
+    def refolded_cif_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the canonical path at which the refolded CIF will be saved."""
-        return example_output_dir(out_dir, example_id) / f"{example_id}_{self.oracle_name}_refolded.cif"
+        return example_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_refolded.cif"
 
-    def already_refolded(self, out_dir: Path, example_id: str) -> bool:
+    def already_refolded(self, out_dir: Path, example_id: str, save_id: str | None = None) -> bool:
         """Return True if a confidence JSON for this example already exists."""
-        return self.confidence_path(out_dir, example_id).exists()
+        return self.confidence_path(out_dir, example_id, save_id).exists()
+
+    def list_save_ids(self) -> list[str] | None:
+        """Return the save_ids this oracle fans each design into, or ``None`` if it folds it as-is.
+
+        What gets folded is decided by the currently configured
+        :attr:`pre_oracle_transform`, never by what an earlier run happens to
+        have left on disk: a save_id this oracle no longer emits is simply not
+        looked for, so its stale files are ignored rather than reloaded.
+        """
+        if self.pre_oracle_transform is None:
+            return None
+        return self.pre_oracle_transform.expected_save_ids()
 
     def _save_confidence_json(self, confidences: dict, path: Path) -> None:
         """Write confidence dict to JSON (creates parent dirs as needed)."""
@@ -254,6 +303,20 @@ class OracleMetric(Metric):
             return json.load(f)
 
     # ------------------------------------------------------------------
+    # Lifecycle hooks (override in subclasses that load heavy resources)
+    # ------------------------------------------------------------------
+
+    def setup(self) -> None:
+        """Set up oracle resources for validation (called once per epoch)."""
+        if self.pre_oracle_transform is not None:
+            self.pre_oracle_transform.setup()
+
+    def teardown(self) -> None:
+        """Release oracle resources after validation."""
+        if self.pre_oracle_transform is not None:
+            self.pre_oracle_transform.teardown()
+
+    # ------------------------------------------------------------------
     # Abstract interface for subclasses
     # ------------------------------------------------------------------
 
@@ -263,8 +326,8 @@ class OracleMetric(Metric):
 
         Implementations must write:
 
-        - the refolded CIF to :py:meth:`refolded_cif_path` ``(out_dir, example_id)``
-        - the confidence JSON to :py:meth:`confidence_path` ``(out_dir, example_id)``
+        - the refolded CIF to :py:meth:`refolded_cif_path` ``(out_dir, job.example_id, job.save_id)``
+        - the confidence JSON to :py:meth:`confidence_path` ``(out_dir, job.example_id, job.save_id)``
 
         Returns the metrics dict (the same one that was just persisted).
         """
@@ -278,6 +341,69 @@ class OracleMetric(Metric):
           Implementations that skip already-cached designs must still count
           them: callers compare this against ``len(jobs)`` to assert coverage.
         """
+
+    def apply_transform(self, jobs: list[OracleJobInput]) -> list[OracleJobInput]:
+        """Apply :attr:`pre_oracle_transform` to each job's atom_array (if set).
+
+        Each :py:class:`~rfproteina.metrics.oracles.pre_oracle_transform.PreOracleOutput`
+        becomes its own :py:class:`OracleJobInput`, carrying the design's
+        ``example_id`` and that output's ``save_id`` — so all of one design's
+        refolds land in one directory, told apart by
+        :py:meth:`output_stem`. An output that names its chain of interest
+        overrides the job's, since the incoming one describes the untransformed
+        design.
+
+        Anything that goes wrong for one design — ``forward`` raising, or
+        returning save_ids other than the declared ones — is logged and that
+        design dropped rather than raised on: the caller folds a whole rank's
+        designs in one call, and under DDP an exception on the one rank holding
+        the offending design strands every other rank in a collective. The
+        ``expected_save_ids()`` check below is the exception, and is safe to
+        raise from: it reads only this transform's configuration, so every rank
+        fails on it identically.
+
+        Raises:
+            ValueError: If the transform declares no save_ids, or save_ids that
+                are blank, duplicated, or contain a path separator — each of
+                which would silently collide or be unrecoverable on disk.
+        """
+        if self.pre_oracle_transform is None:
+            return jobs
+        transform_name = type(self.pre_oracle_transform).__name__
+        expected = self.pre_oracle_transform.expected_save_ids()
+        if not expected or len(set(expected)) != len(expected) or any("/" in s or "\\" in s or not s for s in expected):
+            raise ValueError(
+                f"{transform_name}.expected_save_ids() returned unusable save_ids {expected!r}: "
+                "expected at least one, all distinct, non-empty and free of path separators"
+            )
+        expanded: list[OracleJobInput] = []
+        for job in jobs:
+            try:
+                outputs = list(self.pre_oracle_transform.forward(job.atom_array))
+            except Exception as e:
+                logger.warning(f"{transform_name} failed for {job.example_id!r}; skipping that design: {e}")
+                continue
+            save_ids = [output.save_id for output in outputs]
+            if sorted(save_ids) != sorted(expected):
+                logger.error(
+                    f"{transform_name}.forward returned save_ids {save_ids!r} for {job.example_id!r}, but its "
+                    f"expected_save_ids() declares {expected!r}; skipping that design. The two must agree, since "
+                    "the fold writes what forward returns and every read looks for what expected_save_ids declares."
+                )
+                continue
+            for output in outputs:
+                expanded.append(
+                    dataclasses.replace(
+                        job,
+                        atom_array=output.atom_array,
+                        save_id=output.save_id,
+                        chain_of_interest=output.chain_of_interest or job.chain_of_interest,
+                        msa_paths_by_chain_id=_msas_for_present_chains(
+                            job, output.atom_array, f"{job.example_id}[{output.save_id}]"
+                        ),
+                    )
+                )
+        return expanded
 
     # ------------------------------------------------------------------
     # Metric interface
@@ -306,6 +432,11 @@ class OracleMetric(Metric):
         """Refold the structure (or load from cache) and return its metrics.
 
         Returns ``{...confidence keys..., "refolded_structure_path", "confidence_json_path"}``.
+        If :attr:`pre_oracle_transform` is configured, the returned dict
+        instead holds one such group per output, each under a
+        ``f"{save_id}."`` key prefix (see :py:meth:`apply_transform`) — even
+        when the transform only produced one output, so callers never have to
+        guess which shape to expect from a given oracle config.
 
         ``out_dir=None`` allocates a tempdir scoped to this call; cache files
         are removed before return, so the returned ``refolded_structure_path``
@@ -318,12 +449,26 @@ class OracleMetric(Metric):
                 return self._fold_then_load(input_atom_array, example_id, Path(tmp), chain_of_interest)
 
         out_dir = Path(out_dir)
-        if self.already_refolded(out_dir, example_id):
-            # Fast path: confidence JSON already exists, so just load and return it
-            return self._load_compute_result(out_dir, example_id)
+        cached = self._load_if_cached(out_dir, example_id)
+        if cached is not None:
+            # Fast path: every output already on disk, so just load and return them
+            return cached
 
         # Slow path: refold then load
         return self._fold_then_load(input_atom_array, example_id, out_dir, chain_of_interest)
+
+    def _load_if_cached(self, out_dir: Path, example_id: str) -> dict | None:
+        """Return this design's result if every output it should have is already on disk, else ``None``.
+
+        The outputs to look for come from
+        :py:meth:`~rfproteina.metrics.oracles.pre_oracle_transform.PreOracleTransform.expected_save_ids`,
+        so a cache hit never needs to re-run the transform (or
+        ``input_atom_array``).
+        """
+        save_ids = self.list_save_ids() or [None]
+        if not all(self.already_refolded(out_dir, example_id, save_id) for save_id in save_ids):
+            return None
+        return self._load_result(out_dir, example_id)
 
     def _fold_then_load(
         self,
@@ -332,20 +477,55 @@ class OracleMetric(Metric):
         out_dir: Path,
         chain_of_interest: str | None,
     ) -> dict:
-        """Slow path of :py:meth:`compute`: run :py:meth:`fold_one` then read back."""
-        self.fold_one(
-            OracleJobInput(
-                atom_array=atom_array,
-                example_id=example_id,
-                out_dir=out_dir,
-                chain_of_interest=chain_of_interest,
-            )
-        )
-        return self._load_compute_result(out_dir, example_id)
+        """Slow path of :py:meth:`compute`: apply transform, fold, then read back.
 
-    def _load_compute_result(self, out_dir: Path, example_id: str) -> dict:
-        """Load the confidence JSON from disk and stamp on the canonical paths."""
-        result = self._load_confidence_json(self.confidence_path(out_dir, example_id))
-        result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id))
-        result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id))
+        A single job folds via :py:meth:`fold_one` — unchanged from before
+        :py:class:`~rfproteina.metrics.oracles.pre_oracle_transform.PreOracleTransform`
+        existed. A fanned-out design folds via :py:meth:`fold_batch`, which
+        subclasses already implement to skip individually-cached outputs.
+        """
+        jobs = self.apply_transform(
+            [
+                OracleJobInput(
+                    atom_array=atom_array,
+                    example_id=example_id,
+                    out_dir=out_dir,
+                    chain_of_interest=chain_of_interest,
+                )
+            ]
+        )
+        if len(jobs) == 1:
+            self.fold_one(jobs[0])
+        else:
+            self.fold_batch(jobs)
+        return self._load_result(out_dir, example_id)
+
+    def _load_compute_result(self, out_dir: Path, example_id: str, save_id: str | None = None) -> dict:
+        """Load one refold's confidence JSON from disk and stamp on its canonical paths."""
+        result = self._load_confidence_json(self.confidence_path(out_dir, example_id, save_id))
+        result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id, save_id))
+        result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id, save_id))
+        return result
+
+    def _load_result(self, out_dir: Path, example_id: str) -> dict:
+        """Load this design's folded output(s), one ``f"{save_id}."``-prefixed group per output.
+
+        An output whose fold produced nothing is skipped, so one failed member of
+        a fan-out costs only its own keys rather than raising and taking every
+        sibling's (and every other oracle's) metrics down with it.
+        """
+        save_ids = self.list_save_ids()
+        if save_ids is None:
+            return self._load_compute_result(out_dir, example_id)
+        result: dict = {}
+        for save_id in save_ids:
+            if not self.already_refolded(out_dir, example_id, save_id):
+                logger.warning(f"{example_id}: no {self.oracle_name} refold for save_id {save_id!r}; skipping it")
+                continue
+            result.update(
+                {
+                    f"{save_id}.{key}": value
+                    for key, value in self._load_compute_result(out_dir, example_id, save_id).items()
+                }
+            )
         return result

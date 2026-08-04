@@ -84,6 +84,10 @@ class MetricManager:
             metrics: A dictionary where keys are metric names and values are Metric instances.
         """
         self.raise_errors = raise_errors
+        # Metrics `on_validation_epoch_start` decided not to set up, i.e. the ones not
+        # yet set up this epoch. `__call__` sets one up on the spot if it turns out to
+        # apply after all; `on_validation_epoch_end` tears down everything not in here.
+        self._skipped_metrics: set[str] = set()
         self.metrics = {}
         for name, metric in metrics.items():
             assert isinstance(metric, Metric), f"{name} must be a Metric instance, not {type(metric)}"
@@ -136,7 +140,7 @@ class MetricManager:
                 for it).  When the outer list itself is ``None``, all metrics are
                 set up unconditionally (backward-compatible default).
         """
-        self._skipped_metrics: set[str] = set()
+        self._skipped_metrics = set()
         for name, metric in self.metrics.items():
             if val_dataset_tags is not None:
                 will_run = any(metric.applies_to_tags(tags) for tags in val_dataset_tags)
@@ -147,9 +151,8 @@ class MetricManager:
 
     def on_validation_epoch_end(self) -> None:
         """Teardown all metrics after validation."""
-        skipped = getattr(self, "_skipped_metrics", set())
         for name, metric in self.metrics.items():
-            if name not in skipped:
+            if name not in self._skipped_metrics:
                 metric.teardown()
 
     def __call__(self, **kwargs: Any) -> dict[str, Any]:
@@ -174,6 +177,11 @@ class MetricManager:
                 metrics_tags = set(kwargs["extra_info"]["metrics_tags"])
                 if not metric.applies_to_tags(metrics_tags):
                     continue
+
+            if name in self._skipped_metrics:
+                # Setup on first call if this Metric was needed after all
+                metric.setup()
+                self._skipped_metrics.discard(name)
 
             with error.context(
                 msg=f"Computing '{name}' ({type(metric).__name__}){example_msg}",
@@ -276,7 +284,9 @@ class Metric(ABC):
         """Aggregate per-example values for one of this metric's output columns.
 
         Args:
-          column: Bare output-key name (the metric-name prefix already stripped).
+          column: Bare output-key name (the metric-name prefix already stripped),
+            or ``f"{save_id}.{output_key}"`` for a metric an oracle's
+            ``pre_oracle_transform`` fanned out.
           values: Per-example values for that column (NaNs already dropped).
 
         Returns:
@@ -386,7 +396,7 @@ class Metric(ABC):
         return not (self.prohibited_tags and tags.intersection(self.prohibited_tags))
 
     def setup(self) -> None:
-        """Called at validation epoch start. Override to load expensive resources."""
+        """Once-per-epoch Metric setup. Override to load expensive resources."""
         return None
 
     def teardown(self) -> None:

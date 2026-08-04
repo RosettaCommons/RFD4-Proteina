@@ -175,6 +175,8 @@ class _AF3JobState:
         input_atom_array: The original (pre-disambiguation) input AtomArray;
             the canvas the final remapped coords get written into.
         example_id: Caller-supplied identifier; used for canonical filenames.
+        save_id: Which ``pre_oracle_transform`` output this is, or ``None``;
+            distinguishes the filenames of one design's several refolds.
         out_dir: Canonical val output dir for this design (where the refolded
             CIF and confidence JSON go).
         disambiguated_atom_array: ``input_atom_array`` with chain_ids made
@@ -182,13 +184,14 @@ class _AF3JobState:
         af3_chain_id_to_original_iid: Mapping from the chain_ids AF3 saw to
             the original chain_iids, ``None`` if no disambiguation happened.
         af3_output_dir: Per-design tempdir under which AF3 wrote its files.
-        job_name: Sanitised ``example_id`` (spaces → underscores) used as the
-            AF3 job name and CIF id.
+        job_name: Sanitised ``example_id`` (plus ``save_id``, spaces →
+            underscores) used as the AF3 job name and CIF id.
         chain_of_interest: Pre-computed chain of interest, or ``None``.
     """
 
     input_atom_array: AtomArray
     example_id: str
+    save_id: str | None
     out_dir: Path
     disambiguated_atom_array: AtomArray
     af3_chain_id_to_original_iid: dict[str, str] | None
@@ -250,6 +253,8 @@ class AF3Oracle(OracleMetric):
         Called only when this oracle's tags matched a validation set, so a run that
         never refolds never pays the worker's ~10 GB.
         """
+        super().setup()
+
         # A slurm launcher already pre-spawned the daemons.
         if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
             return
@@ -292,7 +297,9 @@ class AF3Oracle(OracleMetric):
         logger.info(f"AF3 daemon started for rank {rank} (log: {log})")
 
     def teardown(self) -> None:
-        """No-op. A launcher's daemon dies with its slurm step; ours dies at exit."""
+        """Tear down :attr:`pre_oracle_transform`. A launcher's daemon dies with
+        its slurm step; ours dies at exit."""
+        super().teardown()
         if dist.is_initialized():
             dist.barrier()
 
@@ -309,7 +316,7 @@ class AF3Oracle(OracleMetric):
         n_ok = self.fold_batch([job])
         if n_ok != 1:
             raise RuntimeError(f"AF3Oracle.fold_one: fold_batch returned {n_ok} for {job.example_id!r}")
-        return self._load_confidence_json(self.confidence_path(job.out_dir, job.example_id))
+        return self._load_confidence_json(self.confidence_path(job.out_dir, job.example_id, job.save_id))
 
     def fold_batch(self, jobs: list[OracleJobInput]) -> int:
         """Fold every applicable design in one AF3 subprocess (per rank).
@@ -324,7 +331,7 @@ class AF3Oracle(OracleMetric):
           Number of jobs that have a refold on disk once this call returns,
           counting both cached hits and freshly folded designs.
         """
-        pending = [j for j in jobs if not self.already_refolded(j.out_dir, j.example_id)]
+        pending = [j for j in jobs if not self.already_refolded(j.out_dir, j.example_id, j.save_id)]
         n_cached = len(jobs) - len(pending)
         if not pending:
             return n_cached
@@ -420,7 +427,9 @@ class AF3Oracle(OracleMetric):
                     "Rename UNL residues to a different code (e.g. 'L;G') before evaluating with AF3Oracle."
                 )
             example_id = job.example_id
-            job_name = example_id.replace(" ", "_")
+            # The save_id keeps sibling refolds of one design in AF3 output
+            # subdirectories of their own, just as it does on the canonical side.
+            job_name = (f"{example_id}_{job.save_id}" if job.save_id is not None else example_id).replace(" ", "_")
 
             # Disambiguate chain IDs so AF3 can distinguish chain_iid variants and keep an id_map for remapping outputs
             disambiguated_atom_array, af3_chain_id_to_original_iid = self._disambiguate_chain_ids(input_atom_array)
@@ -467,6 +476,7 @@ class AF3Oracle(OracleMetric):
                 _AF3JobState(
                     input_atom_array=input_atom_array,
                     example_id=example_id,
+                    save_id=job.save_id,
                     out_dir=job.out_dir,
                     disambiguated_atom_array=disambiguated_atom_array,
                     af3_chain_id_to_original_iid=af3_chain_id_to_original_iid,
@@ -522,7 +532,7 @@ class AF3Oracle(OracleMetric):
                 predicted_atom_array = None
 
         if predicted_atom_array is not None:
-            cif_path = self.refolded_cif_path(state.out_dir, state.example_id)
+            cif_path = self.refolded_cif_path(state.out_dir, state.example_id, state.save_id)
             cif_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 to_cif_file(align_atom_array_to_input_frame(predicted_atom_array), cif_path)
@@ -551,7 +561,7 @@ class AF3Oracle(OracleMetric):
         metrics["chain_of_interest"] = chain_of_interest
 
         # Cache canonical confidence JSON so per-item compute() resumability returns instantly.
-        self._save_confidence_json(metrics, self.confidence_path(state.out_dir, state.example_id))
+        self._save_confidence_json(metrics, self.confidence_path(state.out_dir, state.example_id, state.save_id))
         return metrics
 
     # ------------------------------------------------------------------
