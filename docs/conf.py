@@ -128,6 +128,7 @@ nbsphinx_execute = "never"
 nbsphinx_thumbnails = {
     "examples/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
     "examples/annotated_cif_tutorial": "_static/annotated_cif_thumb.png",
+    "examples/ppi_specificity_tutorial": "../assets/model_pipeline.png",
 }
 
 # Offer the runnable notebook for download at the bottom of every notebook page.
