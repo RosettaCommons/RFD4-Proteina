@@ -49,6 +49,23 @@ from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
+# Name under which a refolding metric can address the refold of a design no
+# pre_oracle_transform rewrote, whichever oracle a given benchmark folds it with
+# (see :py:func:`run_oracle_and_refolding_metrics`). Transformed refolds are
+# addressed by their save_id.
+UNTRANSFORMED_REFOLD = "untransformed"
+
+# The two tag families a refolding metric gates on, both keyed by the addresses under which
+# :py:func:`run_oracle_and_refolding_metrics` hands out refolds:
+#
+# - `exists_refold:{address}` -- this design has that refold. Require it wherever a metric *reads*
+#   one by name, so a design missing it is skipped rather than raising.
+# - `is_refold:{address}` -- the refold this scoring pass is scoring is that one. Require it to
+#   scope a metric to the kind of refold it was written for; `is_refold:untransformed` is often
+#   desirable to avoid issues where a pre-oracle transform leads to a shape mismatch
+EXISTS_REFOLD_TAG_PREFIX = "exists_refold:"
+IS_REFOLD_TAG_PREFIX = "is_refold:"
+
 
 class ValOutput(TypedDict, total=False):
     """One entry on :py:attr:`Proteina.validation_output_generation`."""
@@ -300,6 +317,20 @@ def run_oracle_and_refolding_metrics(
     running pass_mm and merging its output so that pass criteria can reference
     design-phase metrics alongside oracle/refolding results.
 
+    Refolding metrics are handed the design as ``ground_truth_atom_array`` and the
+    refold being scored as ``predicted_atom_array``, plus *every* refold of this
+    design, addressable two ways: by origin, as ``refold.{oracle_key}`` /
+    ``refold.{oracle_key}.{save_id}``, and -- when exactly one refold is of that
+    kind -- by kind, as ``refold.{save_id}`` or ``refold.untransformed``. A metric
+    whose ``input_kwarg_names`` names two of those compares two refolds against
+    each other rather than a design against its refold.
+
+    Every address is injected as a tag twice over — ``exists_refold:{address}`` for
+    each refold this design has, and ``is_refold:{address}`` for the one the current
+    pass is scoring — so a metric can require what it reads and scope itself to what
+    it was written for. See :py:data:`EXISTS_REFOLD_TAG_PREFIX` /
+    :py:data:`IS_REFOLD_TAG_PREFIX`.
+
     Args:
         atom_array: Designed structure, already parsed and annotated.
         example_id: Identifier used for file naming and resumability.
@@ -336,34 +367,82 @@ def run_oracle_and_refolding_metrics(
         refolding_output: dict = {}
         if refold_mm is not None and oracle_mm is not None and output_dir is not None:
             active_tags = set(metrics_tags or [])
-            ran_refolding = False
-            for oracle_metric in oracle_mm.metrics.values():
+            # Read every refold this design has before scoring any of them
+            refolds: dict[str, AtomArray] = {}
+            scoring_passes: list[tuple[str, str | None, str]] = []  # (label, save_id, oracle_name)
+            by_kind: dict[str, list[str]] = {}  # alias -> labels of the refolds claiming it
+            for oracle_key, oracle_metric in oracle_mm.metrics.items():
                 if not oracle_metric.applies_to_tags(active_tags):
                     continue
-                # Inject oracle:{name} so refolding metrics can scope themselves to a
-                # specific oracle when multiple oracles are active simultaneously.
-                oracle_scoped_tags = active_tags | {f"oracle:{oracle_metric.oracle_name}"}
+                for save_id in oracle_metric.list_save_ids() or [None]:
+                    label = oracle_key if save_id is None else f"{oracle_key}.{save_id}"
+                    cif_path = oracle_metric.refolded_cif_path(output_dir, example_id, save_id)
+                    if not cif_path.exists():
+                        logger.warning(f"{example_id}: refolded CIF missing for {label}: {cif_path}")
+                        continue
+                    try:
+                        refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
+                    except Exception as e:
+                        logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
+                        continue
+                    refolds[label] = remove_terminal_oxygen_atoms(refolded_aa)
+                    scoring_passes.append((label, save_id, oracle_metric.oracle_name))
+                    by_kind.setdefault(save_id if save_id is not None else UNTRANSFORMED_REFOLD, []).append(label)
+
+            # Also address a refold by what it *is* -- e.g. "untransformed" as a
+            # convenience alias, independent of the baseline oracle. An alias that
+            # collides with an oracle's own label would shadow that oracle's refold,
+            # so the by-origin name wins and the alias is simply not offered.
+            alias_of: dict[str, str] = {}  # label -> its by-kind alias, where one is offered
+            for alias, labels in by_kind.items():
+                if len(labels) == 1 and alias not in refolds:
+                    refolds[alias] = refolds[labels[0]]
+                    alias_of[labels[0]] = alias
+                else:
+                    logger.warning(
+                        f"{example_id}: refold alias {alias!r} is claimed by {labels} or collides with an oracle's "
+                        f"own name, so neither `refold.{alias}` nor `is_refold:{alias}` is offered; address those "
+                        "refolds by oracle instead."
+                    )
+
+            refold_kwargs = {f"refold.{label}": refold for label, refold in refolds.items()}
+            # One exists_refold:{address} tag per refold this design actually has, mirroring the
+            # refold.{address} kwargs above. A metric that reads a refold gates itself on the
+            # matching tag and is skipped when the refold is absent, rather than raising an error.
+            exists_refold_tags = {f"{EXISTS_REFOLD_TAG_PREFIX}{label}" for label in refolds}
+            ran_refolding = False
+            for label, save_id, oracle_name in scoring_passes:
+                # Inject oracle:{name} so refolding metrics can scope themselves to a specific
+                # oracle when several are active at once, and is_refold:{address} -- every address
+                # of the refold *this* pass scores -- so a metric can scope itself to the kind of
+                # refold it is written for, `is_refold:untransformed` being the common case.
+                is_refold_tags = {
+                    f"{IS_REFOLD_TAG_PREFIX}{address}"
+                    for address in (label, alias_of.get(label))
+                    if address is not None
+                }
+                oracle_scoped_tags = active_tags | exists_refold_tags | is_refold_tags | {f"oracle:{oracle_name}"}
                 if not any(m.applies_to_tags(oracle_scoped_tags) for m in refold_mm.metrics.values()):
                     continue
-                cif_path = oracle_metric.refolded_cif_path(output_dir, example_id)
-                if not cif_path.exists():
-                    logger.warning(f"{example_id}: refolded CIF missing for {oracle_metric.oracle_name}: {cif_path}")
-                    continue
-                try:
-                    refolded_aa = _parse_structure(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
-                    refolded_aa = remove_terminal_oxygen_atoms(refolded_aa)
-                except Exception as e:
-                    logger.warning(f"{example_id}: failed to parse refolded CIF {cif_path}: {e}")
-                    continue
-                refolding_output.update(
-                    refold_mm(
-                        network_input=None,
-                        network_output=None,
-                        extra_info={"example_id": example_id, "metrics_tags": list(oracle_scoped_tags)},
-                        ground_truth_atom_array=atom_array,
-                        predicted_atom_array=refolded_aa,
-                    )
+                sub_result = refold_mm(
+                    network_input=None,
+                    network_output=None,
+                    extra_info={"example_id": example_id, "metrics_tags": list(oracle_scoped_tags)},
+                    ground_truth_atom_array=atom_array,
+                    predicted_atom_array=refolds[label],
+                    **refold_kwargs,
                 )
+                for key, value in sub_result.items():
+                    metric_name, sep, output_key = key.partition(".")
+                    # MetricManager stamps a bare "example_id"; the caller sets that itself.
+                    if not sep:
+                        continue
+                    # The save_id goes *after* the metric name, matching the oracle
+                    # side: the aggregation pass resolves the owning metric (and so
+                    # its configured reductions) from the first key segment.
+                    if save_id is not None:
+                        key = f"{metric_name}.{save_id}.{output_key}"
+                    refolding_output[key] = value
                 ran_refolding = True
             if not ran_refolding:
                 logger.warning(
@@ -528,8 +607,10 @@ def fold_designs_for_oracles(
     n_dispatched = n_refolded = 0
     for _, oracle_metric in oracle_mm.metrics.items():
         jobs = _build_applicable_oracle_jobs(val_outputs, oracle_metric)
+        # A pre_oracle_transform may fan each design out into several outputs
+        n_dispatched += len(jobs) * len(oracle_metric.list_save_ids() or [None])
+        jobs = oracle_metric.apply_transform(jobs)
         if jobs:
-            n_dispatched += len(jobs)
             n_refolded += oracle_metric.fold_batch(jobs)
 
     if dist.is_initialized() and dist.get_world_size() > 1:

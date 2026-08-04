@@ -25,7 +25,7 @@
 
 ## How many metrics ship enabled
 
-**36 metric / pass-criterion / filter entries are already registered** in
+**37 metric / pass-criterion / filter entries are already registered** in
 `configs/metrics/all_metrics.yaml` and run automatically — no code, no new config files. Most are
 gated behind one or more **`metrics_tags`**, so turning one on is just passing a tag on the command
 line:
@@ -41,8 +41,8 @@ Breakdown of what's already wired in:
 | --- | --- | --- |
 | Design metrics (run inline, pre-refolding) | 14 | `configs/metrics/inline_metrics/design_metrics.yaml` |
 | Structure-prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
-| Refolding metrics (design vs. refolded structure) | 6 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
-| Refolding oracles (AF3 variants) | 3 | `configs/metrics/refolding_oracles/af3.yaml` |
+| Refolding metrics (design vs. refolded structure, or refold vs. refold) | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
+| Refolding oracles (AF3 variants) | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
 | Pass criteria (pass/fail thresholds) | 9 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
 | Pre-oracle filters (skip the oracle on cheap-check failures) | 3 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
@@ -54,7 +54,7 @@ needs **no Python** — just a few lines of YAML, exactly like the [worked
 example](#worked-example-an-existing-metric-your-own-config) below. See [Ready-made but
 opt-in](#ready-made-but-opt-in).
 
-Only write a brand-new `Metric` subclass when none of the ~46 above cover what you need — see
+Only write a brand-new `Metric` subclass when none of the ~47 above cover what you need — see
 [Writing your own](#writing-your-own).
 
 ---
@@ -97,16 +97,62 @@ Computed directly on the generated structure, before any oracle refolds it.
 
 ### Refolding metrics (post-oracle)
 
-Compare the **design** (ground truth) against the **oracle-refolded structure** (predicted).
+Compare the **design** (ground truth) against the **oracle-refolded structure** (predicted). See
+[pre-oracle transforms](#pre-oracle-transforms) for what the `is_refold:` / `exists_refold:` gates
+below are for — they only matter once an oracle carries a pre-oracle transform.
 
 | Config key | Tag gate | What it measures | Output columns |
 | --- | --- | --- | --- |
-| `refolded_backbone_rmsd` | any: `unconditional_refolding`, `ppi_refolding`, `dna_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding` | Backbone self-consistency RMSD (scRMSD) between design and refold | `rmsd` |
-| `refolded_target_aligned_binder_rmsd` | any: `ppi_refolding`, `dna_refolding` | Binder RMSD after aligning on the fixed target | `rmsd` |
-| `refolded_motif_allatom_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding` | All-atom motif RMSD between design and refold (includes unindexed regions) | `rmsd` |
-| `refolded_motif_ca_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding` | CA-only motif RMSD between design and refold (includes unindexed regions) | `rmsd` |
-| `refolded_backbone_aligned_ligand_rmsd` | any: `sm_binder_refolding` | Ligand RMSD after backbone alignment | `rmsd` |
-| `max_ligand_centroid_distance` | any: `disco_refolding` | Max ligand-centroid displacement after backbone alignment | `ligand_centroid_distance` |
+| `refolded_backbone_rmsd` | any: `unconditional_refolding`, `ppi_refolding`, `dna_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding`; all: `is_refold:untransformed` | Backbone self-consistency RMSD (scRMSD) between design and refold | `rmsd` |
+| `refolded_target_aligned_binder_rmsd` | any: `ppi_refolding`, `dna_refolding`; all: `is_refold:untransformed` | Binder RMSD after aligning on the fixed target | `rmsd` |
+| `refolded_motif_allatom_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`; all: `is_refold:untransformed` | All-atom motif RMSD between design and refold (includes unindexed regions) | `rmsd` |
+| `refolded_motif_ca_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`; all: `is_refold:untransformed` | CA-only motif RMSD between design and refold (includes unindexed regions) | `rmsd` |
+| `refolded_backbone_aligned_ligand_rmsd` | any: `sm_binder_refolding`; all: `is_refold:untransformed` | Ligand RMSD after backbone alignment | `rmsd` |
+| `max_ligand_centroid_distance` | any: `disco_refolding`; all: `is_refold:untransformed` | Max ligand-centroid displacement after backbone alignment | `ligand_centroid_distance` |
+| `refolded_apo_holo_rmsd` | all: `is_refold:apo` (i.e. `apo_refolding`, which is what runs that oracle), `exists_refold:untransformed` | Backbone RMSD of the designed chain between its **apo** refold and its refold in the whole design — does a binder hold its fold once the target is gone? **Requires a paired untransformed oracle** — see the warning below | `apo.rmsd` |
+
+Every refolding metric is handed the design as `ground_truth_atom_array` and the refold being
+scored as `predicted_atom_array` — plus **every** refold of that design, addressable two ways:
+
+| Address | Names the refold by | Example |
+| --- | --- | --- |
+| `refold.{save_id}` / `refold.untransformed` | what it **is** — one output of a [pre-oracle transform](#pre-oracle-transforms), or the design folded as-is (only when exactly one refold is of that kind) | `refold.apo`, `refold.her2`, `refold.untransformed` |
+| `refold.{oracle_config_key}[.{save_id}]` | which **oracle** produced it | `refold.oracle_ppi`, `refold.oracle_apo.apo` |
+
+Each address is injected as a tag twice over, alongside the `oracle:{oracle_name}` tag —
+`exists_refold:{address}` for every refold this design has, and `is_refold:{address}` for the one
+being scored right now. See the note below on gating.
+
+Naming two of those in `input_kwarg_names` turns any `StructureComparisonMetric` into a comparison
+of two *refolds* instead of design vs. refold; that is all `refolded_apo_holo_rmsd` is:
+
+```yaml
+input_kwarg_names:
+  ground_truth_atom_array: refold.apo             # chain of interest, folded alone
+  predicted_atom_array: refold.untransformed      # the same chain, folded in the whole design
+```
+
+A by-kind name is only defined when it is unambiguous — if two untransformed oracles run at once,
+or if the name would shadow an oracle's own config key, `refold.untransformed` is not offered at
+all, nor are its `is_refold:` / `exists_refold:` tags; name the oracle (`refold.oracle_ppi`) to pick
+one. So running two untransformed oracles at once switches every metric gated on
+`is_refold:untransformed` off (with a warning) rather than scoring each of them twice into one
+column and reporting whichever pass happened to fire last.
+
+> [!IMPORTANT]
+> **If using pre-oracle transforms and/or multiple OracleMetric instances, gate every metric on
+> the relevant refold-specific tags.** `is_refold:{address}` says *which* refold this scoring pass is scoring — one
+> pass runs per refold, so without it a metric written for one kind of refold also runs against the
+> others, repeating its value once per refold. `exists_refold:{address}` says the design **has**
+> that refold — required wherever `input_kwarg_names` reads another refold.
+> `refolded_apo_holo_rmsd` uses one of each:
+>
+> ```yaml
+> input_kwarg_names:
+>   ground_truth_atom_array: refold.apo             # scored on the pass for this refold...
+>   predicted_atom_array: refold.untransformed      # ...against this one, which must exist
+> required_tags_all: ["is_refold:apo", "exists_refold:untransformed"]
+> ```
 
 ### Refolding oracles
 
@@ -150,6 +196,62 @@ in — see [`all_pre_oracle_filters.yaml`](../../configs/metrics/pre_oracle_filt
 | `insertion_rmsd_filter` | all: `unindexed`, `insertion_rmsd_filter` | `unindexed_metrics.insertion_rmsd` ≤ 1.0 — you'll need a metric producing that exact key (e.g. an aliased copy of `design_unindexed_motif_allatom_rmsd`) for this filter to have something to threshold |
 | `motif_rmsd_filter` | all: `motif_rmsd_filter` | `motif_rmsd.rmsd` ≤ 1.0 — likewise, needs a metric under the `motif_rmsd` key |
 
+### Pre-oracle transforms
+
+Where a pre-oracle *filter* decides **whether** a design reaches the oracle, a pre-oracle
+*transform* changes **what** gets folded. A transform is attached to an oracle via its
+`pre_oracle_transform` key and may fan one design out into several named outputs; each is
+refolded separately and saved into the design's own output directory under a filename carrying
+its `save_id` (`{example_id}_{save_id}_{oracle_name}_refolded.cif`), and its metrics carry that
+`save_id` between the metric name and the output key. So an oracle whose **config key** is
+`oracle_off_target` and which carries a two-output transform reports
+`oracle_off_target.her2.min_ipae_coi` and `oracle_off_target.egfr.min_ipae_coi` rather than one
+`oracle_off_target.min_ipae_coi`. (As everywhere else, the prefix is the config key the oracle is
+registered under in `af3.yaml`, not its `oracle_name`.) Config keyed by the bare output name — a
+`frac_under_thresholds` entry, an `aggregation` list — applies to every output of the fan-out.
+
+Each output is also addressed and tagged separately — `refold.her2` / `is_refold:her2` alongside
+`refold.oracle_off_target.her2` / `is_refold:oracle_off_target.her2` — so a metric gated on
+`is_refold:her2` is scored on that off-target's pass alone and reports under `.her2.`. Gate on the
+oracle instead and the metric runs once per output, repeating itself under every `save_id`.
+
+**The default refolding metrics above do not run against a transformed refold**, since a transform can
+change the shape of what is being compared. Each carries `required_tags_all:
+["is_refold:untransformed"]`, so it runs only the refold of the design as generated —
+override that gate in your own `custom_metrics` config to score transformed refolds too.
+A metric written for a transformed refold typically requires that refold instead (`is_refold:apo`), plus
+`exists_refold:{address}` for every other refold it compares against.
+
+| Class | What it folds | Outputs |
+| --- | --- | --- |
+| `ApoOnlyTransform` | The chain of interest alone, everything else dropped | `apo` |
+| `OffTargetSubstitutionTransform` | The chain of interest, with its binding partner swapped for each off-target loaded from disk | one per entry in `off_target_paths` |
+
+Off-target files are read as annotated CIFs, and an annotation is only guaranteed to survive into the folded
+structure if **both** sides have it — concatenation keeps only what its inputs share. Anything
+that knows its own default (a registered lazy annotator or a `StandardAnnotation`) is filled in
+automatically on the side that lacks it, so if you need an off-target to carry a *non-default*
+value for one, put it in the file.
+
+`OffTargetSubstitutionTransform` flags every substituted atom `is_loaded_target` (and the design's
+atoms `False`), separating the experimental half of the complex from the designed half. It could for
+example be used to template the target via the oracle's
+`template_query: "is_loaded_target & is_protein"`. That annotation is the way to template a
+substituted off-target: the transform gives it no conditioning it did not already carry on disk, so
+a mask-based query (`oracle_ppi`'s `template_query: "mask_coordinate_1_atom"`) will generally select
+nothing on its half of the complex.
+
+A transform's refolds are cached by filename (`{example_id}_{save_id}_{oracle_name}_*`), so a re-run
+into the same output directory reuses whatever a previous run left under that save_id. Repointing
+`off_target_paths` at a different structure means writing to a fresh `output_dir` (or deleting the
+stale refolds), or the previous structure's numbers will be reported under the new one's name.
+
+Both live in
+[`pre_oracle_transform.py`](../../src/rfproteina/metrics/oracles/pre_oracle_transform.py); see
+[`af3.yaml`](../../configs/metrics/refolding_oracles/af3.yaml) for wired examples. To add your
+own, subclass `PreOracleTransform` and implement `forward` — it receives the generated AtomArray
+and returns one `PreOracleOutput` per structure to fold.
+
 ### Ready-made but opt-in
 
 These classes exist and are tested, but aren't included in any default config — add a YAML entry
@@ -173,7 +275,7 @@ Python required.
 
 ## Writing your own
 
-If none of the ~46 metrics above cover what you need, **[custom_metrics.md](custom_metrics.md)**
+If none of the ~47 metrics above cover what you need, **[custom_metrics.md](custom_metrics.md)**
 walks through writing a brand-new `Metric` subclass from scratch: the three metric categories
 (design / refolding / pass-criterion), the `kwargs_to_compute_args` routing, registering it in a
 git-ignored config so nothing you write is ever committed by accident, and — if it's generally

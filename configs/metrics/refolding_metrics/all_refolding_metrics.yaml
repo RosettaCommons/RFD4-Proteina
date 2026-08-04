@@ -1,6 +1,15 @@
 # Post-refolding structure comparison metrics.
 # ground_truth = design structure, predicted = refolded structure.
 # Tags control which metrics run for each example.
+#
+# Many metrics that compute rmsd of the design (or a subset of it) against a refold will want
+# `is_refold:untransformed` as a tag. This is because the
+# subset of the refold/design being compared will need to have the same shape,
+# and a `pre_oracle_transform` might affect that. If this is undesirable, you can override
+# this tag-gating in your `custom_metrics` configs.
+
+# A metric written for a transformed refold will typically require that refold (`is_refold:apo` in
+# `refolded_apo_holo_rmsd` below), plus `exists_refold:{address}` for every other refold it compares to.
 
 refolded_backbone_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -19,6 +28,7 @@ refolded_backbone_rmsd:
     - ame_no_ligand_refolding
     - ame_original_benchmark_refolding
     - disco_refolding
+  required_tags_all: ["is_refold:untransformed"]
 
 refolded_target_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -27,6 +37,7 @@ refolded_target_aligned_binder_rmsd:
   metric_type: rmsd
   aggregation: [median]
   required_tags_any: [ppi_refolding, dna_refolding]
+  required_tags_all: ["is_refold:untransformed"]
 
 refolded_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -42,6 +53,7 @@ refolded_motif_allatom_rmsd:
     - ame_refolding
     - ame_no_ligand_refolding
     - ame_original_benchmark_refolding
+  required_tags_all: ["is_refold:untransformed"]
 
 refolded_motif_ca_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -54,6 +66,7 @@ refolded_motif_ca_rmsd:
   required_tags_any:
     - motif_scaffold_refolding
     - internal_coordinate_motif_scaffold_refolding
+  required_tags_all: ["is_refold:untransformed"]
 
 refolded_backbone_aligned_ligand_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
@@ -62,9 +75,29 @@ refolded_backbone_aligned_ligand_rmsd:
   metric_type: rmsd
   aggregation: [median]
   required_tags_any: [sm_binder_refolding]
+  required_tags_all: ["is_refold:untransformed"]
+
+# Apo/holo consistency
+refolded_apo_holo_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: is_protein_backbone & ~mask_coordinate_1_atom
+  subset_mask: is_protein_backbone & ~mask_coordinate_1_atom
+  metric_type: rmsd
+  aggregation: [median]
+  input_kwarg_names:
+    ground_truth_atom_array: refold.apo
+    predicted_atom_array: refold.untransformed
+  # `is_refold:apo` scores this once, on the pass that scores the apo refold. The refold it
+  # reads on top of that one is required to exist: reading a refold this design does not have
+  # raises, and the error would discard its whole oracle + refolding row, whereas gating on the
+  # tag skips the metric — so an unpaired apo oracle costs only this column.
+  required_tags_all:
+    - "is_refold:apo"
+    - "exists_refold:untransformed"
 
 max_ligand_centroid_distance:
   _target_: rfproteina.metrics.gt_structure_comparison.LigandCentroidDistanceMetric
   align_mask: is_protein_backbone
   aggregation: max
   required_tags_any: [disco_refolding]
+  required_tags_all: ["is_refold:untransformed"]

@@ -17,7 +17,7 @@ setup-pymol:
 	@echo "  conda activate rfproteina"
 	@echo "  uv pip install -e ./lib/atomworks -e ./"
 
-## Format and lint rfproteina source, tests, and script_utils using ruff
+## Format and lint rfproteina source, tests, and script_utils using ruff (notebooks excluded)
 format:
 	ruff format .
 	ruff check --fix .

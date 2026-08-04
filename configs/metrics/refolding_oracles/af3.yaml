@@ -38,3 +38,55 @@ oracle_dna:
   required_tags_any:
     - dna_refolding
 
+# --- Pre-oracle transforms -------------------------------------------------
+# A `pre_oracle_transform` rewrites each design just before it is folded, and may
+# fan one design out into several named outputs. Every output is refolded and
+# saved under its own filename in the design's output directory, and its metrics
+# carry its `save_id` after the usual oracle prefix -- which is this file's config
+# key, not `oracle_name` (e.g. `oracle_apo.apo.overall_plddt`,
+# `oracle_off_target.her2.min_ipae_coi`) -- so refolds that differ only by the
+# transform stay directly comparable.
+
+# Folds the designed chain on its own to ask whether a binder holds its fold apo.
+# Emits `oracle_apo.apo.*` keys.
+#
+# Pair `apo_refolding` with a tag that runs one of the untransformed oracles above (e.g.
+# `ppi_refolding`) to supply the holo half. `refolded_apo_holo_rmsd` reads that refold as
+# `refold.untransformed` and gates on the matching `exists_refold:untransformed` tag, so an unpaired
+# apo oracle just drops that one column -- the apo confidences below are still reported.
+#
+# Note no `refolded_*.apo.*` key is emitted for the design-vs-refold metrics: this refold is missing
+# the chains the transform dropped, so comparing it against the design compares two different
+# structures, and each of those metrics requires `is_refold:untransformed` for that reason. Use
+# `refolded_apo_holo_rmsd`, which compares the apo refold against the untransformed one instead.
+oracle_apo:
+  _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
+  oracle_name: af3_apo
+  aggregation: [median]
+  pre_oracle_transform:
+    _target_: rfproteina.metrics.oracles.pre_oracle_transform.ApoOnlyTransform
+  required_tags_any:
+    - apo_refolding
+
+# Specificity assay: keeps the designed chain and swaps its binding partner for
+# each off-target loaded from disk, one refold apiece. Emits
+# `oracle_off_target.{save_id}.*` keys, scoreable against the on-target refold
+# from the plain `oracle` above.
+# Uncomment and point `off_target_paths` at your own structures.
+# The transform flags every substituted atom `is_loaded_target`, so the template
+# query below gives AF3 the off-target's known structure (protein chains only)
+# oracle_off_target:
+#   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
+#   oracle_name: af3_off_target
+#   template_query: "is_loaded_target & is_protein"
+#   aggregation: [median]
+#   frac_under_thresholds:
+#     min_ipae_coi: [1, 1.5, 2]
+#   pre_oracle_transform:
+#     _target_: rfproteina.metrics.oracles.pre_oracle_transform.OffTargetSubstitutionTransform
+#     off_target_paths:
+#       her2: /path/to/her2.cif
+#       egfr: /path/to/egfr.cif
+#   required_tags_any:
+#     - off_target_refolding
+

@@ -151,6 +151,7 @@ line-length = 120
 indent-width = 4
 target-version = "py310"
 exclude = [
+    "*.ipynb",  # notebooks are not linted or formatted
     "lib",  # separate repo, pinned as a submodule
     ".bzr",
     ".direnv",
