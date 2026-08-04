@@ -8,3 +8,4 @@ GPU and re-run it end to end when you have one.
 
    examples/annotated_cif_tutorial
    examples/enzyme_design_tutorial
+   examples/ppi_specificity_tutorial

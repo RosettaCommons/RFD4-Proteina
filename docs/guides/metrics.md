@@ -246,6 +246,18 @@ into the same output directory reuses whatever a previous run left under that sa
 `off_target_paths` at a different structure means writing to a fresh `output_dir` (or deleting the
 stale refolds), or the previous structure's numbers will be reported under the new one's name.
 
+**Substituting a binding partner is only the first thing this was used for.** A transform may
+rewrite the design however it likes before folding, and the fan-out is there so one design can be
+asked several questions in a single row of the metrics table. In enzyme design, for instance, a
+transform can swap the bound species for another state along the reaction coordinate and fold that as well.
+
+**Substitutions that cut into bonded chemistry need checking.** `OffTargetSubstitutionTransform`
+can get away with concatenating two structures because it only ever joins protein chains that were
+never bonded to each other. Anything that breaks or forms a covalent bond, or
+touches a residue coordinating a metal, has to come out consistent in its bonds, leaving atoms,
+charges, elements and annotations. A substituted array that wires a bond to the wrong atom, or
+silently drops one, will still fold, so it's important to be careful with this.
+
 Both live in
 [`pre_oracle_transform.py`](../../src/rfproteina/metrics/oracles/pre_oracle_transform.py); see
 [`af3.yaml`](../../configs/metrics/refolding_oracles/af3.yaml) for wired examples. To add your
