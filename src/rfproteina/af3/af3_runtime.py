@@ -49,10 +49,18 @@ def make_model_config(
     flash_attention_implementation: str = "triton",
     num_diffusion_samples: int = 1,
     num_recycles: int = 5,
+    of3_weights: bool = False,
 ) -> model.Model.Config:
-    """Return an inference config for one resident parameter family."""
+    """Return an inference config for one resident parameter family.
+
+    ``of3_weights`` selects the OpenFold3 branches: most AF3/OF3 differences have no
+    on-disk form, so converting the parameters is not enough on its own.
+    """
     config = model.Model.Config()
     config.global_config.flash_attention_implementation = flash_attention_implementation
+    # Only on the OF3 path: images predating the fork have no such field.
+    if of3_weights:
+        config.global_config.of3_weights = True
     config.heads.diffusion.eval.num_samples = num_diffusion_samples
     config.num_recycles = num_recycles
     return config
@@ -164,12 +172,20 @@ def build_fold_input_from_cif(
     unpaired_msa: dict[str, str] | None,
     template: dict[str, Any] | None,
     user_ccd: str | None,
+    rng_seeds: Sequence[int] | None = None,
 ) -> folding_input.Input:
-    """Create an AF3 input from a CIF and optional per-chain overrides."""
+    """Create an AF3 input from a CIF and optional per-chain overrides.
+
+    ``from_mmcif`` samples a seed at random, so refolds are reproducible only when
+    ``rng_seeds`` is passed.
+    """
     user_ccd_string = _resolve_path_or_string(user_ccd) if user_ccd is not None else None
     ccd = chemical_components.Ccd(user_ccd=user_ccd_string)
     fold_input = folding_input.Input.from_mmcif(cif_string, ccd=ccd)
-    fold_input = dataclasses.replace(fold_input, name=cif_name, user_ccd=user_ccd_string)
+    replacements: dict[str, Any] = {"name": cif_name, "user_ccd": user_ccd_string}
+    if rng_seeds is not None:
+        replacements["rng_seeds"] = tuple(int(seed) for seed in rng_seeds)
+    fold_input = dataclasses.replace(fold_input, **replacements)
 
     paired_msa_by_chain = {chain_id: _resolve_path_or_string(value) for chain_id, value in (paired_msa or {}).items()}
     unpaired_msa_by_chain = {

@@ -42,12 +42,19 @@ The canonical build definitions live with the AF3/OpenFold3 source in
 - [Dockerfile on `main`](https://github.com/kierandidi/alphafold3/blob/main/docker/Dockerfile)
 - [Apptainer definition on `main`](https://github.com/kierandidi/alphafold3/blob/main/apptainer/af3-open.def)
 
-Use the validated revision for reproducible builds:
+Use the validated revision for reproducible builds. `36fad16` is current; each earlier pin
+fixed something the one before got wrong, so building older is a downgrade:
+
+| revision | brings |
+| --- | --- |
+| `cf0fade` | correct weight conversion. Earlier revisions embed RNA residues as their neighbour and transpose the template aatype term; `setup_of3_weights.py` refuses them. |
+| `4b38b7b` | addresses a bond to the real atom of an atomized residue, not its `CA`. |
+| `36fad16` | keeps covalent bonds between atomized residues, which both cleaning and the layout split were discarding, and ungates the `CA` fix. |
 
 ```bash
 git clone https://github.com/kierandidi/alphafold3.git
 cd alphafold3
-git checkout --detach 8278d3901c76cdce79360dae26266370194a52b5
+git checkout --detach 36fad169902c
 ```
 
 Build Docker:
@@ -55,25 +62,25 @@ Build Docker:
 ```bash
 DOCKER_BUILDKIT=1 docker build \
   --file docker/Dockerfile \
-  --tag af3-open:8278d39 \
+  --tag af3-open:36fad16 \
   .
 ```
 
 Build Apptainer:
 
 ```bash
-apptainer build af3-open-8278d39.sif apptainer/af3-open.def
+apptainer build af3-open-36fad16.sif apptainer/af3-open.def
 ```
 
 Both images contain JAX/CUDA inference dependencies and CPU-only PyTorch for
 the one-time OpenFold3 checkpoint conversion. They contain no model parameters.
-Mount Google AF3 parameters for standard inference or converted OpenFold3
-parameters for inference with `--of3_weights`.
+Mount Google AF3 parameters for standard inference, or converted OpenFold3 parameters:
+the runtime reads the provenance file beside them and enables the OF3 branches itself.
 
 Validate CUDA visibility and the OpenFold3 parameter reader on a GPU node:
 
 ```bash
-apptainer exec --nv af3-open-8278d39.sif \
+apptainer exec --nv af3-open-36fad16.sif \
   /alphafold3_venv/bin/python -c \
   'import jax; from alphafold3.model import of3_weight_converter; print(jax.devices())'
 ```
@@ -81,6 +88,21 @@ apptainer exec --nv af3-open-8278d39.sif \
 For Pyxis, publish the Docker image and use it with `--container-image`, or
 export it with `enroot import`. Do not directly squash an unpacked SIF: that
 drops Docker environment metadata and can cause JAX to fall back to CPU.
+
+## Which artifacts are current
+
+`s3://YOUR_DATASET_STORE/af3/artifacts/af3-open.manifest.json` records every artifact's sha256,
+and flags any built before `36fad16` with `stale: true`.
+
+| cluster | what to do |
+|---|---|
+| coreweave (cw-east, cw-west) | nothing; image and OF3 weights are staged on both |
+| digs | re-pull `af3/apptainer_images/af3-open.sif` if you converted weights with an older copy |
+| ord, gb200 | no `AF3_*` is set in their env files, so nothing runs AF3 there today. The pyxis `.sqsh` and OCI images are still built from the pre-`cf0fade` commit, so rebuild them from `docker/Dockerfile` before enabling it |
+
+`cf0fade` changed only the converter, so an image older than it still *infers* correctly with
+correctly-converted weights -- hence that guard lives in `setup_of3_weights.py`. `4b38b7b` and
+`36fad16` changed inference itself, so an image older than those silently drops bonds.
 
 ## Running in-container (shebang form)
 

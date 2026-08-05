@@ -221,7 +221,6 @@ def _serve(args: argparse.Namespace) -> int:
 # `launch` subcommand: spawn N daemons, signal-handle cleanup.
 # ----------------------------------------------------------------------------
 
-_SOCKET_TEMPLATE = "/tmp/af3_{job_id}/af3_daemon_rank{rank}.sock"
 # AF3 JIT compilation + model loading can take several minutes on slower GPUs.
 # Keep retries generous so the launcher doesn't declare failure during warmup.
 # Each retry: 2s socket timeout + _PING_INTERVAL_S sleep = ~7s -> 120 x 7 ~= 14 min.
@@ -231,8 +230,7 @@ _PING_INTERVAL_S = 5.0
 
 def _socket_template() -> str:
     """Return the socket template, scoped to the current SLURM job (or PID as fallback)."""
-    job_id = os.environ.get("SLURM_JOB_ID") or str(os.getpid())
-    return _SOCKET_TEMPLATE.replace("{job_id}", job_id)
+    return f"{_socket_dir()}/af3_daemon_rank{{rank}}.sock"
 
 
 def _socket_path(rank: int) -> str:
@@ -240,6 +238,11 @@ def _socket_path(rank: int) -> str:
 
 
 def _socket_dir() -> str:
+    # AF3_SOCKET_DIR separates two daemon sets in one job: `_spawn_one` unlinks whatever
+    # socket it finds, so a second launch would otherwise rebind the first set's paths.
+    override = os.environ.get("AF3_SOCKET_DIR")
+    if override:
+        return override
     job_id = os.environ.get("SLURM_JOB_ID") or str(os.getpid())
     return f"/tmp/af3_{job_id}"
 
