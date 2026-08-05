@@ -1,4 +1,5 @@
 from functools import wraps
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -151,3 +152,34 @@ def true_with_prob(p: float | np.ndarray, rng: np.random.Generator | None = None
 def ensure_dtype(tensor: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
     """Convert tensor to target dtype if it's not already that dtype."""
     return tensor if tensor.dtype == dtype else tensor.to(dtype)
+
+
+def validate_design_id(design_id: str) -> str:
+    """Return ``design_id`` unchanged, raising if it cannot serve as a single directory name."""
+    if design_id in ("", ".", "..") or any(c in design_id for c in ("/", "\\", "\0")):
+        raise ValueError(
+            f"Invalid design id {design_id!r}: ids name a single output directory, so they cannot be "
+            "blank, '.', '..', or contain a path separator."
+        )
+    return design_id
+
+
+def design_output_dir(base_dir: Path | str, design_id: str) -> Path:
+    """Return the ``base_dir / design_id`` directory holding every file for one design.
+
+    Design ids come from keys in a user-supplied input file, so an id like ``..`` or ``a/b``
+    would otherwise write (or, at the cleanup sites that ``rmtree`` a design directory, delete)
+    outside the run's output tree.
+
+    Raises:
+      ValueError: If the id is not a plain directory name, or if the join does not land on a
+        direct child of ``base_dir`` (e.g. it resolves through a symlink).
+    """
+    base_dir = Path(base_dir)
+    design_dir = base_dir / validate_design_id(design_id)
+    if design_dir.resolve().parent != base_dir.resolve():
+        raise ValueError(
+            f"Refusing to use {design_dir} for design id {design_id!r}: it is not a direct child "
+            f"of the output base {base_dir}."
+        )
+    return design_dir

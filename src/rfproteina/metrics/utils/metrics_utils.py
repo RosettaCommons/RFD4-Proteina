@@ -11,8 +11,9 @@ The three MetricManager roles used here are:
 import itertools
 import multiprocessing as mp
 import os
+import shutil
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Hashable, Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, TypedDict
@@ -33,16 +34,13 @@ from biotite.structure.io.xtc import XTCFile
 from biotite.structure.residues import spread_residue_wise
 from omegaconf import OmegaConf
 
+from rfproteina.inference_utils.foldseek import chain_cif_dir
 from rfproteina.metrics.metric import MetricManager
-from rfproteina.metrics.oracles.oracle_metric import (
-    OracleJobInput,
-    OracleMetric,
-    example_chain_dir,
-    example_output_dir,
-)
+from rfproteina.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from rfproteina.utils.chain import get_chain_of_interest
+from rfproteina.utils.common import design_output_dir
 from rfproteina.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
@@ -543,7 +541,7 @@ def apply_pre_oracle_filters(
 
     passing: list[ValOutput] = []
     n_filtered = 0
-    dirs_to_clean: set[Path] = set()
+    dirs_to_clean: set[tuple[Path, str]] = set()
     for entry in val_outputs:
         example_id = entry.get("example_id", "unknown")
         metrics_tags_str = entry.get("metrics_tags", "")
@@ -564,33 +562,33 @@ def apply_pre_oracle_filters(
             if delete_failing and should_delete:
                 designed_path = entry.get("designed_structure_path")
                 if designed_path:
-                    p = Path(designed_path)
                     try:
-                        p.unlink(missing_ok=True)
-                        dirs_to_clean.add(p.parent)
+                        Path(designed_path).unlink(missing_ok=True)
                     except Exception as e:
                         logger.warning(f"pre-oracle filter: could not delete {designed_path}: {e}")
+
+                output_base_dir = entry.get("output_base_dir")
+                if output_base_dir:
+                    dirs_to_clean.add((Path(output_base_dir), example_id))
                 chain_path = entry.get("designed_chain_path")
                 if chain_path:
-                    p = Path(chain_path)
                     try:
-                        p.unlink(missing_ok=True)
-                        dirs_to_clean.add(p.parent)
+                        Path(chain_path).unlink(missing_ok=True)
                     except Exception as e:
                         logger.warning(f"pre-oracle filter: could not delete chain CIF {chain_path}: {e}")
             n_filtered += 1
         else:
             passing.append(entry)
 
-    for shard_dir in dirs_to_clean:
+    # Only the design's own directory is cleaned up; the foldseek chain directory is
+    # shared across designs and left for the run to finish with.  design_output_dir refuses
+    # ids that do not resolve to a direct child of the output root -- an rmtree there would
+    # take every other design in the run with it.
+    for base_dir, design_id in dirs_to_clean:
         try:
-            if shard_dir.is_dir() and not any(shard_dir.iterdir()):
-                shard_dir.rmdir()
-                parent = shard_dir.parent
-                if parent.is_dir() and not any(parent.iterdir()):
-                    parent.rmdir()
-        except Exception as e:
-            logger.warning(f"pre-oracle filter: could not remove empty shard dir {shard_dir}: {e}")
+            shutil.rmtree(design_output_dir(base_dir, design_id), ignore_errors=True)
+        except ValueError as e:
+            logger.error(f"pre-oracle filter: skipping cleanup for example_id {design_id!r} -- {e}")
 
     if n_filtered:
         logger.info(f"pre-oracle filter: removed {n_filtered}/{len(val_outputs)} designs before oracle.")
@@ -703,8 +701,8 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
     """Write a chain-of-interest-only CIF into ``output_dir`` for foldseek.
 
     The file is named ``{example_id}_chain.cif``.  Callers should pass
-    :py:func:`~rfproteina.metrics.oracles.oracle_metric.example_chain_dir` as
-    ``output_dir`` so chain CIFs land under the dedicated ``chains/`` tree.
+    :py:func:`~rfproteina.inference_utils.foldseek.chain_cif_dir` as ``output_dir`` so chain
+    CIFs land under the dedicated ``foldseek_input_chains/`` tree.
     """
     coi, coi_unambiguous = get_chain_of_interest(atom_array)
     if not coi_unambiguous:
@@ -774,9 +772,7 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
                 ds = payload.get("dataset_name")
                 task = payload.get("task")
                 chains_dir = (
-                    example_chain_dir(output_base_dir, example_id, dataset_name=ds, task=task)
-                    if output_base_dir
-                    else gen_path.parent
+                    chain_cif_dir(output_base_dir, dataset_name=ds, task=task) if output_base_dir else gen_path.parent
                 )
                 chains_dir.mkdir(parents=True, exist_ok=True)
                 foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
@@ -797,17 +793,17 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
 
 
 def _write_input_cif(payload: dict, example_id: str) -> None:
-    """Save the input AtomArray into the per-example shard directory."""
+    """Save the input AtomArray into the design's output directory."""
     input_atom_array = payload.get("input_atom_array")
     output_base_dir = payload.get("output_base_dir")
     if input_atom_array is None or output_base_dir is None:
         return
-    save_path = example_output_dir(Path(output_base_dir), example_id) / f"{example_id}_input.cif"
     try:
+        save_path = design_output_dir(output_base_dir, example_id) / f"{example_id}_input.cif"
         save_path.parent.mkdir(parents=True, exist_ok=True)
         to_cif_file(input_atom_array, save_path)
     except Exception as e:
-        logger.warning(f"generated-structure worker: failed to save input CIF to {save_path}: {e}")
+        logger.warning(f"generated-structure worker: failed to save input CIF for {example_id}: {e}")
 
 
 def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
@@ -819,7 +815,7 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
     output_base_dir = payload.get("output_base_dir")
     if not trajectories or output_base_dir is None:
         return
-    traj_dir = example_output_dir(Path(output_base_dir), example_id) / "trajectories"
+    traj_dir = design_output_dir(output_base_dir, example_id) / "trajectories"
     traj_dir.mkdir(parents=True, exist_ok=True)
 
     for traj_key, (traj, step_labels) in trajectories.items():
@@ -918,7 +914,7 @@ class MetricsPool:
         self.num_workers = num_workers
         self._mm_cfgs = mm_cfgs
         self._executor: ProcessPoolExecutor | None = None
-        self._futures: list[tuple[str, Future]] = []
+        self._futures: list[tuple[Hashable, Future]] = []
 
     def start(self, val_dataset_tags: Any) -> None:
         """Lazily create the executor (idempotent)."""
@@ -938,16 +934,18 @@ class MetricsPool:
         self._executor.shutdown(wait=True, cancel_futures=False)
         self._executor = None
 
-    def submit_generated_structure(self, example_id: str, payload: dict, fallback_mm: MetricManager | None) -> None:
+    def submit_generated_structure(
+        self, design_key: Hashable, payload: dict, fallback_mm: MetricManager | None
+    ) -> None:
         """Dispatch one generated structure; runs inline when the pool is disabled."""
         if self._executor is not None:
             fut = self._executor.submit(_stage_generated_structure, payload)
         else:
             fut = _completed(_stage_generated_structure(payload, fallback_mm))
-        self._futures.append((example_id, fut))
+        self._futures.append((design_key, fut))
 
-    def drain_generated_structure(self) -> dict[str, dict]:
-        """Drain submitted futures into one ``{example_id: metrics}`` map.
+    def drain_generated_structure(self) -> dict[Hashable, dict]:
+        """Drain submitted futures into one ``{design_key: metrics}`` map.
 
         Re-raises the first worker exception. ``_futures`` is cleared first
         so the pool is left in a clean state for re-use even on failure.
@@ -957,10 +955,10 @@ class MetricsPool:
         t0 = time.perf_counter()
         futures = self._futures
         self._futures = []
-        out: dict[str, dict] = {}
+        out: dict[Hashable, dict] = {}
         try:
-            for example_id, fut in futures:
-                out[example_id] = fut.result()
+            for design_key, fut in futures:
+                out[design_key] = fut.result()
         finally:
             dt = time.perf_counter() - t0
             logger.info(f"[metrics-pool] drain: n={len(futures)} workers={self.num_workers} wall={dt:.2f}s")

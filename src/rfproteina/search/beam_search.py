@@ -31,12 +31,12 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from rfproteina.utils.common import design_output_dir
 from rfproteina.utils.ddp import RankedLogger
 
 if TYPE_CHECKING:
     pass
 
-from rfproteina.metrics.oracles.oracle_metric import example_output_dir
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
@@ -237,14 +237,10 @@ class BeamSearchStrategy(SearchStrategy):
         all_intermediate_results: list[dict] = []
         all_example_ids: list[str] = []
 
-        # Use the canonical dataset_name_hash prefix so oracle outputs land in the
-        # same content-addressed directory that proteina.py will assign the design CIF to.
-        _raw_batch_ids: list[str] = batch.get("example_id_batch", [f"sample{k}" for k in range(nsamples)])
-        _dataset_name_hash: str = getattr(model, "_current_dataset_name_hash", "")
-        batch_ids: list[str] = (
-            [f"{_dataset_name_hash}__{rid}" for rid in _raw_batch_ids] if _dataset_name_hash else _raw_batch_ids
-        )
+        batch_ids: list[str] = batch.get("example_id_batch", [f"sample{k}" for k in range(nsamples)])
 
+        # Oracle results are written during search under the same design id proteina.py
+        # will later assign the design CIF, so the epoch-end pass reuses them as-is.
         output_base_dir = getattr(model, "_current_output_base_dir", None)
         output_suffix: str = getattr(model, "_current_output_suffix", "")
 
@@ -311,6 +307,7 @@ class BeamSearchStrategy(SearchStrategy):
             checkpoint_example_ids = [
                 f"{batch_ids[j % nsamples]}_bsc{i}_{j // nsamples}" for j in range(eval_batch_size)
             ]
+            checkpoint_design_ids = [f"{eid}{output_suffix}" for eid in checkpoint_example_ids]
 
             # Compute rewards by rolling out to completion.
             # atom_array_results is in interleaved format (i % nsamples maps to batch item i).
@@ -325,7 +322,7 @@ class BeamSearchStrategy(SearchStrategy):
                 gt=gt,
                 example_ids=checkpoint_example_ids,
                 output_base_dir=output_base_dir,
-                output_suffix=output_suffix,
+                design_ids=checkpoint_design_ids,
             )
 
             # Keep the intermediate samples that satisfy the configured save criterion.
@@ -348,27 +345,15 @@ class BeamSearchStrategy(SearchStrategy):
                 )
 
             # Clean up oracle output dirs for scored candidates we are not keeping as outputs.
-            # These were written during reward computation.
+            # These were written during reward computation. Each design owns its directory,
+            # so removing it cannot disturb a concurrent per-GPU process.
             if output_base_dir is not None:
-                failing_indices = (~keep_mask).nonzero(as_tuple=False).squeeze(1).tolist()
-                for k_idx in failing_indices:
-                    eid = checkpoint_example_ids[k_idx]
-                    full_eid = f"{eid}{output_suffix}" if output_suffix else eid
-                    target = example_output_dir(output_base_dir, full_eid)
-                    if target.exists():
-                        shutil.rmtree(target, ignore_errors=True)
-                    # Remove empty shard parent dirs up to (but not including) output_base_dir.
-                    # Concurrent per-GPU processes share these shard buckets, so a sibling
-                    # process may populate one between our emptiness check and the rmdir.
-                    shard_parent = target.parent
-                    while shard_parent != output_base_dir and shard_parent.exists():
-                        if next(shard_parent.iterdir(), None) is not None:
-                            break
-                        try:
-                            shard_parent.rmdir()
-                        except OSError:
-                            break
-                        shard_parent = shard_parent.parent
+                for k_idx in (~keep_mask).nonzero(as_tuple=False).squeeze(1).tolist():
+                    design_id = checkpoint_design_ids[k_idx]
+                    try:
+                        shutil.rmtree(design_output_dir(output_base_dir, design_id), ignore_errors=True)
+                    except ValueError as e:
+                        logger.error(f"beam search: skipping cleanup for design {design_id!r} -- {e}")
 
             # Reshape and select top beam_width candidates
             # Current shape: [n_branch * beam_width * nsamples] in interleaved format
@@ -440,9 +425,8 @@ class BeamSearchStrategy(SearchStrategy):
             model,
             final_results,
             reward_model,
-            example_ids=final_example_ids,
             output_base_dir=output_base_dir,
-            output_suffix=output_suffix,
+            design_ids=[f"{eid}{output_suffix}" for eid in final_example_ids],
         )
 
         expected_sample_count = nsamples * self.beam_width
@@ -488,7 +472,7 @@ class BeamSearchStrategy(SearchStrategy):
         gt: dict[str, torch.Tensor],
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
-        output_suffix: str = "",
+        design_ids: list[str] | None = None,
     ) -> tuple[dict, torch.Tensor, list[dict], list[dict]]:
         """Roll out samples to completion and compute rewards.
 
@@ -503,9 +487,9 @@ class BeamSearchStrategy(SearchStrategy):
             current_step: Current timestep in diffusion process
             mask: Residue mask [nsamples, n_residues]
             reward_model: Reward model for scoring
-            example_ids: Per-sample IDs forwarded to oracle metrics for saving.
+            example_ids: Per-sample base IDs carried on the returned atom-array results.
             output_base_dir: Directory for oracle saving (enables caching).
-            output_suffix: Rank/job suffix appended to each id before saving.
+            design_ids: Per-sample on-disk design IDs to save oracle results under.
 
         Returns:
             Tuple of (sample_prots dict, rewards tensor, atom_array_results list,
@@ -595,9 +579,8 @@ class BeamSearchStrategy(SearchStrategy):
             model,
             atom_array_results,
             reward_model,
-            example_ids=example_ids,
             output_base_dir=output_base_dir,
-            output_suffix=output_suffix,
+            design_ids=design_ids,
         )
 
         logger.debug(
@@ -612,9 +595,8 @@ class BeamSearchStrategy(SearchStrategy):
         model: "Proteina",
         atom_array_results: list[dict],
         reward_model: "RewardModel",
-        example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
-        output_suffix: str = "",
+        design_ids: list[str] | None = None,
     ) -> tuple[torch.Tensor, list[dict]]:
         """Compute rewards for pre-formatted atom array results.
 
@@ -627,12 +609,10 @@ class BeamSearchStrategy(SearchStrategy):
             atom_array_results: Pre-formatted list of result dicts from
                 :py:meth:`~Proteina.format_sample_prots_to_atom_arrays`.
             reward_model: Reward model for scoring
-            example_ids: Per-sample IDs (without output_suffix). When provided, oracle
-                metrics save results keyed by ``f"{example_ids[i]}{output_suffix}"``,
-                enabling on_validation_epoch_end to skip re-folding.
             output_base_dir: Directory for oracle CIF / confidence JSON saving.
                 Pass ``None`` to skip saving (oracle results won't be cached).
-            output_suffix: Rank/job suffix appended to each example_id before saving.
+            design_ids: On-disk design IDs to save oracle results under. Must match the ids
+                ``validation_step`` later assigns, so on_validation_epoch_end skips re-folding.
 
         Returns:
             Tuple of (rewards tensor, per-sample metrics dicts), both in the same order as
@@ -649,9 +629,7 @@ class BeamSearchStrategy(SearchStrategy):
         all_metrics: list[dict] = []
         for i, result in enumerate(atom_array_results):
             orig_batch_idx = i % max(len(batch.get("atom_array_batch", [batch.get("atom_array")])), 1)
-            example_id: str | None = None
-            if example_ids is not None:
-                example_id = f"{example_ids[i]}{output_suffix}" if output_suffix else example_ids[i]
+            example_id: str | None = design_ids[i] if design_ids is not None else None
 
             # Annotate unindexed insertion before scoring, mirroring _stage_generated_structure.
             array_to_annotate = result.get("full_array_with_unindexed") or result["generated_atom_array"]

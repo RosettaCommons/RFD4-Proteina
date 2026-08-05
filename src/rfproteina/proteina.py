@@ -1,4 +1,3 @@
-import hashlib
 import os
 import random
 import time
@@ -37,7 +36,6 @@ from rfproteina.inference_utils.foldseek import (
 from rfproteina.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from rfproteina.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
 from rfproteina.metrics.metric import MetricManager
-from rfproteina.metrics.oracles.oracle_metric import example_output_dir
 from rfproteina.metrics.utils.metrics_utils import (
     MetricsPool,
     apply_pre_oracle_filters,
@@ -49,6 +47,7 @@ from rfproteina.metrics.utils.metrics_utils import (
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
+from rfproteina.utils.common import design_output_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
@@ -283,6 +282,11 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
 
     # Return None if only metadata (no actual metrics)
     return cleaned if non_metadata_metrics_detected else None
+
+
+def _design_key(metrics: dict) -> tuple[str, str]:
+    """Identify one design across a whole validation epoch by (dataset_name, example_id)."""
+    return metrics.get("dataset_name", ""), metrics.get("example_id", "")
 
 
 class Proteina(L.LightningModule):
@@ -894,8 +898,22 @@ class Proteina(L.LightningModule):
                 sync_dist=True,
             )
 
+    def _check_val_set_name_override(self) -> None:
+        """Reject a ``val_set_name_override`` that would collapse several val sets onto one name."""
+        if self.inf_cfg is None or self.inf_cfg.get("val_set_name_override") is None:
+            return
+        val_cfg = self.cfg_exp.datasets.val if "val" in self.cfg_exp.datasets else None
+        val_dataset_names = [k for k, v in (val_cfg or {}).items() if v]
+        if len(val_dataset_names) > 1:
+            raise ValueError(
+                f"val_set_name_override={self.inf_cfg.val_set_name_override!r} is set, but this run has "
+                f"{len(val_dataset_names)} validation datasets ({', '.join(val_dataset_names)}). The override "
+                "renames a single val set and would collapse these onto one name and one output directory. "
+            )
+
     def on_validation_start(self) -> None:
         """Bring up the per-rank metrics pool."""
+        self._check_val_set_name_override()
         self._metrics_pool.start(self.val_dataset_tags)
 
     def on_validation_end(self) -> None:
@@ -950,7 +968,6 @@ class Proteina(L.LightningModule):
         n_val_datasets = len(val_dataset_names)
         actual_dataset_name = val_dataset_names[dataloader_idx]
         if self.inf_cfg is not None and self.inf_cfg.get("val_set_name_override") is not None:
-            # Use override as prefix, but keep actual name for uniqueness
             dataset_name = f"{self.inf_cfg.val_set_name_override}"
         else:
             dataset_name = actual_dataset_name
@@ -1033,12 +1050,6 @@ class Proteina(L.LightningModule):
         self._current_output_base_dir = output_base
         self._current_output_suffix = output_suffix
 
-        # Hash dataset_name to keep example_id short; full name is preserved in metrics_output["dataset_name"].
-        # Computed before predict_step so beam search can build canonical IDs that match what
-        # proteina will use here, avoiding a content-addressed directory mismatch.
-        dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
-        self._current_dataset_name_hash = dataset_name_hash
-
         # Generate designs for this inference batch
         generation_list = self.predict_step(batch, batch_idx)
 
@@ -1048,18 +1059,12 @@ class Proteina(L.LightningModule):
             orig_batch_idx = i % n_batch if n_batch > 0 else 0
             raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
 
-            # Use example_id pre-assigned by the search strategy if available.
-            # Beam search pre-assigns canonical IDs that already include the dataset_name_hash
-            # prefix so oracle outputs land in the same directory as the design CIF.
+            # Search strategies pre-assign a base id per sample they emit (e.g. the beam
+            # position); without one, disambiguate multiple samples per input ourselves.
             base_id = generation_list[i].get("example_id", raw_batch_id)
-            if base_id == raw_batch_id:
-                # Not pre-assigned — apply the standard naming logic.
-                if len(generation_list) > n_batch:
-                    base_id = f"{base_id}_s{i}"
-                example_id = f"{dataset_name_hash}__{base_id}{output_suffix}"
-            else:
-                # Pre-assigned by beam search with canonical prefix already included.
-                example_id = f"{base_id}{output_suffix}"
+            if base_id == raw_batch_id and len(generation_list) > n_batch:
+                base_id = f"{base_id}_s{i}"
+            example_id = f"{base_id}{output_suffix}"
 
             metrics_output: dict = {"example_id": example_id}
 
@@ -1075,10 +1080,9 @@ class Proteina(L.LightningModule):
                     v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
                 )
 
-            # Generated CIF path: shard_{N}/{digest[:8]}/{example_id}_generated.cif
-            # All files for this design (chain PDB, oracle outputs, trajectories) share
-            # the same per-example subdirectory so related artifacts stay together.
-            generated_output_path = example_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
+            # All files for this design (oracle outputs, trajectories, input CIF) share the
+            # same per-design subdirectory so related artifacts stay together.
+            generated_output_path = design_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
 
             # Add dataset_name and task as metadata
             metrics_output["dataset_name"] = dataset_name
@@ -1134,7 +1138,9 @@ class Proteina(L.LightningModule):
             # Store for epoch-end aggregation
             self.validation_output_generation.append(metrics_output)
             if staged_payload is not None:
-                self._metrics_pool.submit_generated_structure(example_id, staged_payload, self.design_metric_manager)
+                self._metrics_pool.submit_generated_structure(
+                    _design_key(metrics_output), staged_payload, self.design_metric_manager
+                )
 
         return metrics_output
 
@@ -1173,12 +1179,12 @@ class Proteina(L.LightningModule):
         """
 
         # 1. Drain per-structure metric futures + merge into validation_output_generation.
-        staged_results_by_id = self._metrics_pool.drain_generated_structure()
-        if staged_results_by_id:
+        staged_results_by_key = self._metrics_pool.drain_generated_structure()
+        if staged_results_by_key:
             for entry in self.validation_output_generation:
-                eid = entry.get("example_id")
-                if eid in staged_results_by_id:
-                    for k, v in staged_results_by_id[eid].items():
+                staged = staged_results_by_key.get(_design_key(entry))
+                if staged is not None:
+                    for k, v in staged.items():
                         entry.setdefault(k, v)
         if self.design_metric_manager is not None:
             self.design_metric_manager.on_validation_epoch_end()
@@ -1224,10 +1230,10 @@ class Proteina(L.LightningModule):
             self._oracle_mms_setup_this_epoch = True
 
         local_refolding_metrics: list[dict] = []
-        example_id_to_design_metrics = {m["example_id"]: m for m in (local_design_metrics or []) if m}
+        design_metrics_by_key = {_design_key(m): m for m in (local_design_metrics or []) if m}
         items = sorted(
             self.validation_output_generation,
-            key=lambda it: example_id_to_design_metrics.get(it.get("example_id", ""), {}).get("token_count", 0),
+            key=lambda it: design_metrics_by_key.get(_design_key(it), {}).get("token_count", 0),
         )
 
         # 3b. Oracle fold_batch — the actual structure prediction (AF3 or RF3).
@@ -1242,11 +1248,7 @@ class Proteina(L.LightningModule):
             )
 
         post_fold_payloads = [
-            {
-                "val_output": item,
-                "design_metrics": example_id_to_design_metrics.get(item.get("example_id", ""), {}),
-            }
-            for item in items
+            {"val_output": item, "design_metrics": design_metrics_by_key.get(_design_key(item), {})} for item in items
         ]
 
         def _post_fold_inline(payload: dict) -> dict | None:
@@ -1289,15 +1291,11 @@ class Proteina(L.LightningModule):
             logger.warning("on_validation_epoch_end_generation: no metrics to log")
             return
 
-        # Merge design and refolding metrics per example_id.
-        example_id_to_design_metrics = {m["example_id"]: m for m in (all_design_metrics or []) if m}
-        refold_by_id = {m["example_id"]: m for m in (all_refolding_metrics or []) if m}
-        all_ids = list(example_id_to_design_metrics) + [
-            eid for eid in refold_by_id if eid not in example_id_to_design_metrics
-        ]
-        combined_metrics = [
-            {**example_id_to_design_metrics.get(eid, {}), **refold_by_id.get(eid, {})} for eid in all_ids
-        ]
+        # Merge design and refolding metrics per design.
+        design_by_key = {_design_key(m): m for m in (all_design_metrics or []) if m}
+        refold_by_key = {_design_key(m): m for m in (all_refolding_metrics or []) if m}
+        all_keys = list(design_by_key) + [k for k in refold_by_key if k not in design_by_key]
+        combined_metrics = [{**design_by_key.get(k, {}), **refold_by_key.get(k, {})} for k in all_keys]
 
         if not combined_metrics:
             return
@@ -1562,6 +1560,8 @@ class Proteina(L.LightningModule):
         self.ckpt_path = ckpt_path
         self.ckpt_name = ckpt_name
         self.save_chain_of_interest = save_chain_of_interest
+
+        self._check_val_set_name_override()
 
     def configure_search(
         self,

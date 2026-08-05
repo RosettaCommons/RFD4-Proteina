@@ -38,6 +38,7 @@ from rfproteina.inference_utils.input_parsing import (
     create_atom_array_from_design_specification,
 )
 from rfproteina.transforms.inference_annotations import AddSrcComponentAnnotation
+from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import ANNOTATED_CIF
 
@@ -154,8 +155,14 @@ class JsonDataset(MolecularDataset):
                 raise ValueError(f"Prevalidation failed for input example {example_id!r}:\n" + "\n".join(violations))
 
     def _check_json_keys(self) -> None:
-        """Check if the JSON keys are valid."""
-        for _k, data in self.data.items():
+        """Check that each key names one output directory and maps to a spec dict.
+
+        Every design writes its outputs to ``<output_base_dir>/<example_id>/``, so an id
+        carrying a path separator (or ``..``) would escape the run's output tree; catch it
+        here rather than partway through generation.
+        """
+        for k, data in self.data.items():
+            validate_design_id(k)
             if not isinstance(data, dict):
                 raise ValueError("Each item in the JSON data must be a dictionary.")
 

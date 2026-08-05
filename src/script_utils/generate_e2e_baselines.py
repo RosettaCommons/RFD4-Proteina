@@ -264,8 +264,8 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
         "search.strategy.n_branch=2",
         "search.strategy.beam_width=2",
         f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
-        # Pin val_set_name_override so the hash prefix in output filenames is
-        # stable across machines and mount points.
+        # Pin val_set_name_override so the val set is named the same on every machine,
+        # regardless of where the inputs are mounted.
         "generation.val_set_name_override=beam_example",
         "seed=42",
         "torch_deterministic=true",
@@ -289,7 +289,7 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
     for c1, c2 in zip(cifs_1, cifs_2, strict=False):
         _assert_cif_reproducible(c1, c2, f"{name}/{c1.name}", atol=0.05)
 
-    # Write baselines — store every generated CIF with its original filename.
+    # Write baselines.
     bl_dir = BASELINES_DIR / name
     bl_dir.mkdir(parents=True, exist_ok=True)
     # Remove any stale baseline CIFs before writing fresh ones.
