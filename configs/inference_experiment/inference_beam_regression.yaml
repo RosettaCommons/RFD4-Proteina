@@ -17,7 +17,7 @@ metrics_tags: [design]
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 100, 200, 300, 400]
+    step_checkpoints: [0, 25, 50, 75, 100]
     n_branch: 2
     beam_width: 3
     # No intermediate_sample_save_criterion => only the final beam is returned.
@@ -31,7 +31,7 @@ search:
 
 generation:
   args:
-    nsteps: 400
+    nsteps: 100
     self_cond: true
     guidance_w: 1.0
   model:

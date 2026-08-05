@@ -6,7 +6,8 @@ there is no separate reward file. This mirrors `docs/guides/search.md`.
 
 A reward has three parts: `reward_metrics_tags` (which metrics fire during
 scoring), `weights` (how to combine them into a scalar), and optional
-`clip_values` (per-key bounds applied before weighting).
+`clip_values` (per-key bounds applied before weighting). An optional fourth,
+`checkpoint_overrides`, lets any of those three change per checkpoint.
 
 ## `reward_metrics_tags`
 
@@ -64,6 +65,87 @@ below pLDDT 50 as equally bad (garbage), so the reward gradient there is flat.
 > If your reward seems to plateau or stop improving, check whether a `clip_values`
 > bound is being hit — past the bound the metric no longer contributes.
 
+## `checkpoint_overrides` (optional)
+
+By default one reward scores every checkpoint. `checkpoint_overrides` maps a
+**scored step** to a *sub-version* of the base reward; anything it does not name
+is inherited. Semantics:
+
+| Field in an override | Behaviour |
+| --- | --- |
+| `weights` | replaces the base weights wholesale |
+| `clip_values` | replaces the base clips wholesale (`{}` clears them) |
+| `reward_metrics_tags` | replaces the base list wholesale |
+
+Nothing merges key-by-key: a field an override names is the complete value for
+that checkpoint, and a field it omits is inherited untouched. This is deliberate
+— an override that switches `reward_metrics_tags` changes *which metrics exist*,
+and an inherited weight whose metric no longer fires makes the whole reward
+`-inf`, so every candidate at that checkpoint ties and the prune ranks nothing.
+Restating the weights alongside the tags keeps the two in sync; if it is missed,
+the run raises at that checkpoint rather than pruning on nothing (as it does when
+the `intermediate_sample_save_criterion` is unevaluable for every candidate).
+
+Keys must be one of `step_checkpoints` **past the first** — step 0 is the beam
+initialization and is never scored, so an override there (or on any unscored
+step) is rejected up front rather than silently ignored. Malformed overrides
+(unknown field, non-integer step key, clip on an unweighted key) also fail at
+config load.
+
+```yaml
+search:
+  strategy:
+    step_checkpoints: [0, 25, 50, 75, 100]
+  rewards:
+    reward_metrics_tags: [interchain_interactions]      # cheap: no refolding
+    weights:
+      interchain_interactions.hbond_atom_pair_count_coi: 1.0
+    checkpoint_overrides:
+      75:
+        weights:                                        # restate the H-bond term, add packing
+          interchain_interactions.hbond_atom_pair_count_coi: 1.0
+          interchain_interactions.hydrophobic_atom_pair_count_coi: 0.5
+        clip_values:
+          interchain_interactions.hbond_atom_pair_count_coi:
+            max: 6.0                                    # stop paying past 6 H-bonds
+      100:
+        reward_metrics_tags: [unconditional_refolding]  # AF3 only at the last prune
+        weights:                                        # oracle keys only: the interchain
+          oracle.plddt_coi: 1.0                         # metrics no longer fire here
+```
+
+Every entry is defined against the **base** reward, never against the previous
+checkpoint's — the H-bond clip added at 75 does not carry into 100.
+
+### Why stage a reward
+
+A checkpoint prunes on a rollout of a **still-noisy** state. Early in the
+trajectory only broad features are settled — fold, topology, whether an interface
+forms at all — while fine details are not yet determined by the state being
+ranked. Scoring those details early therefore ranks noise, and a candidate killed
+at an early checkpoint for a detail it had not yet committed to is a pass lost for
+no reason.
+
+Matching each checkpoint's reward to what the trajectory has actually committed
+to by then is the point of this feature, and it moves **pass rate**, usually more
+than it moves cost:
+
+- **Objective annealing** — broad structural features early, finer details late.
+  The primary use: each prune ranks on something the state has actually decided.
+- **Targeted oracle placement** — put refolding where it changes *which
+  candidates survive*. Oracle calls then scale with the overridden checkpoints
+  rather than all of them, so this cuts cost as well. The best placement is not
+  automatically the last checkpoint — mid-trajectory, or even early (steering the
+  whole run toward foldable topologies from the start), can win. Test it.
+- **Gating over time** — clip a term once it is good enough at a later
+  checkpoint and let the remaining terms drive the last prunes.
+
+Two cautions: `search.reward` values from different checkpoints are **different
+objectives** and are not comparable (so an `intermediate_sample_save_criterion`
+threshold on `search.reward` must make sense for each), and metric managers are
+set up once for *every* checkpoint's tag set, so a tag used only in an override
+still works.
+
 ## Worked example
 
 Maximize refolding confidence while keeping interface PAE low, with a floor on
@@ -87,7 +169,7 @@ metrics_tags: [design, unconditional_refolding]   # epoch-end loop reuses cached
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 100, 200, 300, 400]
+    step_checkpoints: [0, 25, 50, 75, 100]
     n_branch: 2
     beam_width: 3
   rewards:
@@ -100,7 +182,7 @@ search:
         min: 50.0
 generation:
   args:
-    nsteps: 400                     # must equal the last step_checkpoint
+    nsteps: 100                     # the default; must equal the last step_checkpoint
 ```
 
 See [af3-oracle.md](af3-oracle.md) for what the oracle needs, and

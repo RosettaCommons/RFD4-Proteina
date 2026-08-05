@@ -2,7 +2,7 @@
 #
 # Beam search inference example.
 # BeamSearchStrategy with an AF3 reward on the monomer-short benchmark:
-#   - 400 diffusion steps, checkpointed at [0, 100, 200, 300, 400]
+#   - 100 diffusion steps, checkpointed at [0, 25, 50, 75, 100]
 #   - n_branch=2, beam_width=3
 #   - sc_scale_noise=0.3/0.1 (bb_ca/latents)
 #   - AF3 reward: pLDDT (chain-of-interest) only
@@ -38,7 +38,9 @@ search:
     step_checkpoints: [0, 25, 50, 75, 100]
     n_branch: 2
     beam_width: 3
-    # Keep any rolled-out candidates that scored sufficiently high
+    # Keep any rolled-out candidates that scored sufficiently high. This one bar applies at
+    # every checkpoint, against whichever reward is in force there — so if you add
+    # `checkpoint_overrides` below, keep their rewards on a scale this threshold still suits.
     intermediate_sample_save_criterion:
       _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
       metric_thresholds:

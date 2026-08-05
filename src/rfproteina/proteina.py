@@ -215,16 +215,17 @@ def _log_batch_example_ids(
 
 def _combined_val_tags(
     val_dataset_tags: "list[set[str] | None] | None",
-    reward_metrics_tags: list[str],
+    reward_metrics_tag_sets: "list[set[str]]",
 ) -> "list[set[str] | None] | None":
-    """Merge val_dataset_tags with reward_metrics_tags for MetricManager setup.
+    """Merge val_dataset_tags with the reward model's tag sets for MetricManager setup.
 
     Ensures metrics needed by the reward model are set up even when no validation
-    dataset uses their tags.
+    dataset uses their tags. Each reward variant (base plus each per-checkpoint
+    override) contributes its own tag set, so tag rules are evaluated exactly as they
+    will be at scoring time rather than against a union no checkpoint ever uses.
     """
     base = list(val_dataset_tags or [])
-    if reward_metrics_tags:
-        base.append(set(reward_metrics_tags))
+    base.extend(tag_set for tag_set in reward_metrics_tag_sets if tag_set)
     return base if base else None
 
 
@@ -927,15 +928,17 @@ class Proteina(L.LightningModule):
         # to avoid double-setup
         self._oracle_mms_setup_this_epoch = False
 
-        reward_metrics_tags = (
-            self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
+        # One entry per reward variant: a per-checkpoint override may score with a metric
+        # family the base reward never uses, and its manager still has to be set up.
+        reward_metrics_tag_sets = (
+            self.search_reward_model.reward_metrics_tag_sets if self.search_reward_model is not None else []
         )
-        combined_tags = _combined_val_tags(self.val_dataset_tags, reward_metrics_tags)
+        combined_tags = _combined_val_tags(self.val_dataset_tags, reward_metrics_tag_sets)
 
         if self.design_metric_manager is not None:
             self.design_metric_manager.on_validation_epoch_start(val_dataset_tags=combined_tags)
 
-        if reward_metrics_tags:
+        if reward_metrics_tag_sets:
             for mm in [
                 self.oracle_metric_manager,
                 self.refolding_metric_manager,
@@ -1200,7 +1203,7 @@ class Proteina(L.LightningModule):
         pre_oracle_filter_mm = self.pre_oracle_filter_metric_manager
         if pre_oracle_filter_mm is not None:
             _reward_tags_for_filter = (
-                self.search_reward_model.reward_metrics_tags if self.search_reward_model is not None else []
+                self.search_reward_model.reward_metrics_tag_sets if self.search_reward_model is not None else []
             )
             if not _reward_tags_for_filter:
                 pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
@@ -1587,7 +1590,8 @@ class Proteina(L.LightningModule):
             logger.info(
                 f"Configured search reward model: "
                 f"reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"weights={list(search_reward_model.weights.keys())}"
+                f"weights={list(search_reward_model.weights.keys())}, "
+                f"checkpoint_overrides at steps {sorted(search_reward_model.checkpoint_overrides)}"
             )
 
     def configure_guidance(self, guidance_model: Any) -> None:

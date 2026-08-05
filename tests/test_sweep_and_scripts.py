@@ -27,9 +27,9 @@ class TestParseSweepArg:
     """Test CLI --sweep argument parsing."""
 
     def test_int_list(self):
-        key, vals = sweep.parse_sweep_arg("nsteps=[100,200,400]")
+        key, vals = sweep.parse_sweep_arg("nsteps=[25,50,100]")
         assert key == "nsteps"
-        assert vals == [100, 200, 400]
+        assert vals == [25, 50, 100]
 
     def test_float_list(self):
         key, vals = sweep.parse_sweep_arg("temperature=[0.5,1.0]")

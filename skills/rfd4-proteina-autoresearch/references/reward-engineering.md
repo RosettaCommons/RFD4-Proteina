@@ -55,6 +55,48 @@ term names there are Complexa's — translate to the RFProteína keys above):
 4. **Use negative weights to minimize.** Error-like metrics (`*_ipae_*`) should
    carry negative coefficients.
 
+## Scheduling the reward across the trajectory
+
+A reward does not have to be constant. `search.rewards.checkpoint_overrides` maps
+a scored step to a sub-version of the base reward. Any field an entry names —
+`weights`, `clip_values`, `reward_metrics_tags` — **replaces** the base one
+wholesale; fields it omits are inherited. So an entry that switches tags must
+restate the weights that go with the new metrics, since a weight whose metric no
+longer fires scores `-inf` (and a checkpoint where that drowns every candidate
+raises rather than pruning on nothing):
+
+```yaml
+search:
+  rewards:
+    reward_metrics_tags: [interchain_interactions]      # cheap prunes early
+    weights:
+      interchain_interactions.hbond_atom_pair_count_coi: 1.0
+    checkpoint_overrides:
+      100:                                              # last checkpoint only (step_checkpoints: [0, 25, 50, 75, 100])
+        reward_metrics_tags: [unconditional_refolding]
+        weights:                                        # oracle keys only — the interchain
+          oracle.plddt_coi: 1.0                         # metric does not run under these tags
+```
+
+Every prune ranks a **noisy** state. Early in the trajectory only broad features
+are settled — fold, topology, whether an interface forms at all — so a candidate
+killed at an early checkpoint on a fine detail it had not yet committed to is a
+pass lost for nothing. Staging the reward to match what the trajectory has
+actually decided by each checkpoint (broad structural features early, finer
+details late) is therefore a **pass-rate** lever first and a cost lever second.
+
+The cost lever is still real: restricting the refolding tags to selected
+checkpoints makes oracle calls scale with those checkpoints rather than all of
+them, freeing budget for a wider beam. But do not assume the oracle belongs at
+the end — the useful placement is wherever it changes *which candidates survive*,
+which for some problems is mid-trajectory or even early. Treat both "flat vs
+staged reward" and "where the oracle sits" as their own branches.
+
+Two things to check when staging: a term added late is only worth it if it is
+still *reachable* then (an objective the trajectory can no longer satisfy just
+wastes the last prune), and a term dropped early must not be one the search will
+irreversibly destroy before anything scores it again.
+
 ## Reward as a hypothesis
 
 The score you optimize is not ground truth — it is a hypothesis about what matters,

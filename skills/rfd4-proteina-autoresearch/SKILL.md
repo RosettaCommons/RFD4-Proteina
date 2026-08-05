@@ -87,6 +87,8 @@ technical note, and directly applicable here:
   values.
 - **Down-weight wide-range terms** so a 0-100 style term does not swamp a 0-1 one.
 - Use **negative weights to minimize** (e.g. minimize `oracle.ipae_coi`).
+- **The reward may vary over the trajectory.** `checkpoint_overrides` re-specifies
+  weights/gates/tags at a given checkpoint. Certain rewards might be better-suited to running earlier or later in the trajectory.
 
 Full worked patterns and the RFProteína reward keys
 (`oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`, `oracle.min_ipae_coi`):
@@ -116,6 +118,11 @@ Change **one** axis per child so effects are attributable:
   ~ `beam_width x n_branch x #checkpoints` oracle calls). Beam vs vanilla is the
   only algorithm axis — RFProteína has no MCTS/best-of-n.
 - **Reward**: term weights, add/tighten a gate, swap `reward_metrics_tags`.
+- **Reward schedule**: `search.rewards.checkpoint_overrides` — same objective,
+  different *timing*. Each entry is a sub-version of the base reward at one
+  checkpoint; any field it names (`weights`, `clip_values`, `reward_metrics_tags`)
+  replaces the base one wholesale, so restate every term that should still count.
+  It is often possible to improve both overall pass rates and overall efficiency based on the reward scheduling that is used.
 - **Diversity**: `generation.model.bb_ca.simulation_step_params.sc_scale_noise`
   and `...local_latents...sc_scale_noise` (higher = more diverse, often less
   designable).

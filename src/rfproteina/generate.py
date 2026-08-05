@@ -518,10 +518,15 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
 
             rewards_cfg = cfg.search.rewards
             clip_values_cfg = rewards_cfg.get("clip_values")
+            overrides_cfg = rewards_cfg.get("checkpoint_overrides")
+            tags_cfg = rewards_cfg.get("reward_metrics_tags")
             search_reward_model = RewardModel(
                 weights=dict(rewards_cfg.weights),
-                reward_metrics_tags=list(rewards_cfg.get("reward_metrics_tags", [])),
+                reward_metrics_tags=OmegaConf.to_container(tags_cfg, resolve=True)
+                if OmegaConf.is_config(tags_cfg)
+                else tags_cfg,
                 clip_values=OmegaConf.to_container(clip_values_cfg, resolve=True) if clip_values_cfg else None,
+                checkpoint_overrides=OmegaConf.to_container(overrides_cfg, resolve=True) if overrides_cfg else None,
             )
             logger.info(
                 f"Search reward model: reward_metrics_tags={search_reward_model.reward_metrics_tags}, "

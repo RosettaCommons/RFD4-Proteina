@@ -14,8 +14,8 @@ the effect is attributable. These are the axes RFProteína actually exposes — 
 | --- | --- | --- |
 | Beam width | `search.strategy.beam_width` | Candidates kept after each prune (default 4). More = better designs, more oracle calls. |
 | Branching | `search.strategy.n_branch` | Candidates spawned per surviving beam (default 4). |
-| Checkpoints | `search.strategy.step_checkpoints` | Steps to score+prune (e.g. `[0,100,200,300,400]`). Must start at 0, strictly increase, and end at `nsteps`. More checkpoints = more oracle calls. |
-| Steps | `generation.args.nsteps` | Must equal the last `step_checkpoint`. |
+| Checkpoints | `search.strategy.step_checkpoints` | Steps to score+prune (e.g. `[0,25,50,75,100]`). Must start at 0, strictly increase, and end at `nsteps`. More checkpoints = more oracle calls. |
+| Steps | `generation.args.nsteps` | 100 by default with the `vf_tsr` sampler; must equal the last `step_checkpoint`. |
 | Vanilla vs beam | (presence of `search:` block) | No search = fastest baseline; beam = best quality, slower. |
 
 Cost scales roughly with `beam_width x n_branch x (#checkpoints)` oracle calls —
@@ -28,6 +28,36 @@ raise these only as the budget allows (see rfd4-proteina-search `references/cost
 | Term weights | `search.rewards.weights` | Rebalance which objective dominates |
 | Gates | `search.rewards.clip_values` | Turn a "must-clear" term into a bar |
 | Which metrics score | `search.rewards.reward_metrics_tags` | Change the objective family entirely |
+| **Reward schedule** | `search.rewards.checkpoint_overrides` | Change the reward *mid-trajectory*, per checkpoint |
+
+### Reward-schedule axis (`checkpoint_overrides`)
+
+A distinct axis from the reward itself: hold the final objective fixed and vary
+**when** each term starts counting. Each entry is a sub-version of the base reward
+keyed by a scored step (one of `step_checkpoints` past the first); any field it
+names (`weights`, `clip_values`, `reward_metrics_tags`) replaces the base one
+wholesale, so an arm that changes tags must restate its weights. Branches worth
+comparing:
+
+| Branch | Override shape | Hypothesis |
+| --- | --- | --- |
+| Flat (control) | none — base reward everywhere | Baseline for every schedule arm |
+| Annealed | broad structural term early, add the fine terms at a later checkpoint | Early prunes rank noise when scored on details the state has not committed to |
+| Oracle placement | `reward_metrics_tags: [*_refolding]` at one chosen checkpoint (early / middle / last) | There is a step where refolding actually changes which candidates survive; find it |
+| Gated over time | add `clip_values` on a satisfied term at a later checkpoint | Stops over-optimizing one term and redirects the last prunes |
+
+The reason the schedule matters is that every prune ranks a **noisy** state: early
+on, only broad features (fold, topology, whether an interface forms) are settled,
+so a candidate killed early on a detail it had not yet committed to is a pass lost
+for nothing. Correctly staged rewards can therefore move **pass rate**
+substantially, not just cost. Oracle placement is worth its own arm for both
+reasons — calls scale with the overridden checkpoints rather than all of them —
+and do not assume the last checkpoint is the right place for it; sweep the
+placement rather than fixing it.
+
+Note that `search.reward` totals are not comparable across checkpoints or across
+schedule arms; compare arms on final-design metrics and pass rate (plus
+oracle-call count for the cost story), never on reward.
 
 ## Diversity axes (generation)
 

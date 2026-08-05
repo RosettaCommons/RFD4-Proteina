@@ -55,7 +55,7 @@ class BeamSearchStrategy(SearchStrategy):
     at specified checkpoints. Maintains top-k candidates based on rewards.
 
     Args:
-        step_checkpoints: Diffusion steps at which to evaluate and prune (e.g., [0, 100, 200, 300, 400])
+        step_checkpoints: Diffusion steps at which to evaluate and prune (e.g., [0, 25, 50, 75, 100])
         n_branch: Number of candidates to generate at each branch point (typically 4)
         beam_width: Number of candidates to keep after each prune (typically 4)
         intermediate_sample_save_criterion: PassCriterionMetric deciding which of the rolled-out
@@ -63,7 +63,7 @@ class BeamSearchStrategy(SearchStrategy):
 
     Example:
         >>> strategy = BeamSearchStrategy(
-        ...     step_checkpoints=[0, 100, 200, 300, 400],
+        ...     step_checkpoints=[0, 25, 50, 75, 100],
         ...     n_branch=4,
         ...     beam_width=4,
         ...     intermediate_sample_save_criterion=PassCriterionMetric(
@@ -133,10 +133,15 @@ class BeamSearchStrategy(SearchStrategy):
                 - (optionally) intermediate_samples
 
         Raises:
-            ValueError: If reward_model is None
+            ValueError: If reward_model is None, if an override targets an unscored step, or if
+                a checkpoint's reward or save criterion turns out to be unevaluable there.
         """
         if reward_model is None:
             raise ValueError("Beam search requires a reward model")
+
+        # Scoring happens after advancing to each checkpoint past the first, so those are
+        # the steps a per-checkpoint reward override may target.
+        reward_model.validate_checkpoint_steps(self.step_checkpoints[1:])
 
         logger.info(
             f"Running beam search with n_branch={self.n_branch}, "
@@ -309,6 +314,9 @@ class BeamSearchStrategy(SearchStrategy):
             ]
             checkpoint_design_ids = [f"{eid}{output_suffix}" for eid in checkpoint_example_ids]
 
+            # Reward used at this checkpoint: the base reward unless the config overrides it here.
+            checkpoint_reward_model = reward_model.at_step(end_step)
+
             # Compute rewards by rolling out to completion.
             # atom_array_results is in interleaved format (i % nsamples maps to batch item i).
             _, rewards, atom_array_results, candidate_metrics = self._simulate_and_compute_reward(
@@ -317,7 +325,7 @@ class BeamSearchStrategy(SearchStrategy):
                 xt,
                 end_step,
                 init_mask,
-                reward_model,
+                checkpoint_reward_model,
                 ts=ts,
                 gt=gt,
                 example_ids=checkpoint_example_ids,
@@ -325,9 +333,28 @@ class BeamSearchStrategy(SearchStrategy):
                 design_ids=checkpoint_design_ids,
             )
 
+            # A weighted key that no metric produces under this checkpoint's tags scores every
+            # candidate -inf, which would silently reduce the prune below to index order.
+            if torch.isinf(rewards).all():
+                raise ValueError(
+                    f"Every candidate at step {end_step} scored -inf, so the prune would rank nothing: "
+                    f"a weighted key in {sorted(checkpoint_reward_model.weights)} is not produced under "
+                    f"reward_metrics_tags={checkpoint_reward_model.reward_metrics_tags}. The warnings above "
+                    f"name the missing key(s)."
+                )
+
             # Keep the intermediate samples that satisfy the configured save criterion.
+            criterion = self.intermediate_sample_save_criterion
+            criterion_outputs = [criterion.compute(m) for m in candidate_metrics] if criterion is not None else []
+            if criterion_outputs and not any(out["all_metrics_present"] for out in criterion_outputs):
+                raise ValueError(
+                    f"intermediate_sample_save_criterion thresholds {sorted(criterion.metric_thresholds)} were "
+                    f"unevaluable for every candidate at step {end_step}, so no intermediate sample can ever be "
+                    f"kept there: those metrics do not run under "
+                    f"reward_metrics_tags={checkpoint_reward_model.reward_metrics_tags}."
+                )
             keep_mask = torch.tensor(
-                [self._keep_intermediate_sample(m) for m in candidate_metrics],
+                [bool(out["pass"]) for out in criterion_outputs] or [False] * len(candidate_metrics),
                 dtype=torch.bool,
                 device=rewards.device,
             )
@@ -421,10 +448,11 @@ class BeamSearchStrategy(SearchStrategy):
         final_results = model.format_sample_prots_to_atom_arrays(
             sample_prots, batch, batch_idx=0, example_ids=final_example_ids, insertion_logits=insertion_logits
         )
+        # The final beam sits at the last checkpoint, so it scores with that checkpoint's reward.
         final_rewards, _ = self._compute_rewards(
             model,
             final_results,
-            reward_model,
+            reward_model.at_step(self.step_checkpoints[-1]),
             output_base_dir=output_base_dir,
             design_ids=[f"{eid}{output_suffix}" for eid in final_example_ids],
         )
@@ -448,17 +476,6 @@ class BeamSearchStrategy(SearchStrategy):
             result["reward"] = final_rewards[i].item()
 
         return all_intermediate_results + final_results
-
-    def _keep_intermediate_sample(self, metrics: dict[str, Any]) -> bool:
-        """Decide whether a scored intermediate candidate is kept as an output.
-
-        Args:
-            metrics: The candidate's merged metrics dict, including its aggregated
-                reward under :py:data:`~rfproteina.rewards.reward_model.SEARCH_REWARD_KEY`.
-        """
-        if self.intermediate_sample_save_criterion is None:
-            return False
-        return bool(self.intermediate_sample_save_criterion.compute(metrics)["pass"])
 
     def _simulate_and_compute_reward(
         self,

@@ -106,13 +106,61 @@ search:
   the metric passes the bound (the raw metric is still reported). Each clipped
   key must also appear in `weights`.
 
+### Changing the reward mid-trajectory (`checkpoint_overrides`, optional)
+
+`search.rewards.checkpoint_overrides` makes the reward change as the trajectory
+progresses. Each entry is a **sub-version of the base reward**, keyed by the step
+it takes effect at; anything unspecified is inherited:
+
+```yaml
+search:
+  strategy:
+    step_checkpoints: [0, 25, 50, 75, 100]
+  rewards:
+    reward_metrics_tags: [interchain_interactions]     # cheap, no refolding
+    weights:
+      interchain_interactions.hbond_atom_pair_count_coi: 1.0
+    checkpoint_overrides:
+      100:                                              # final checkpoint only
+        reward_metrics_tags: [unconditional_refolding]  # replaces the list -> AF3 runs now
+        weights:
+          oracle.plddt_coi: 1.0                         # replaces the base weights
+```
+
+- Keys must be one of `step_checkpoints` **past the first** (those are the scored
+  steps); a step never scored at is an error.
+- Every field an override names — `weights`, `clip_values`, `reward_metrics_tags`
+  — **replaces** the base one wholesale; there is no key-by-key merge. Restate
+  every term that should still count at that checkpoint.
+- That is what keeps weights and metrics in sync: a weighted key whose metric no
+  longer fires under the override's tags scores `-inf`; if that drowns every
+  candidate at a checkpoint, the run raises there instead of pruning on nothing.
+- Replacing `weights` while inheriting `clip_values` errors if a clip no longer
+  matches a weighted key — set `clip_values: {}` to clear them.
+- Unlisted checkpoints use the base reward, so existing configs are unaffected.
+
+**Why stage a reward.** Each checkpoint prunes on a rollout of a still-noisy
+state. Early on, only broad features are settled — fold, topology, whether an
+interface forms at all — so ranking on fine details there ranks noise, not
+promise. Matching the reward to what the trajectory has actually committed to by
+each checkpoint (**broad structural features early, finer details late**) can
+raise pass rates substantially, typically a larger effect than the compute saved.
+Placing the oracle deliberately — only where it changes which candidates survive
+— also cuts cost; that is not necessarily the last checkpoint, and mid-trajectory
+or even early placement is worth testing on your problem.
+
+Rewards from different checkpoints are different objectives, so their
+`search.reward` values are not comparable (mind any
+`intermediate_sample_save_criterion` bar on `search.reward`).
+`sm_binder_hbond_search.yaml` ships a worked example.
+
 ### The beam strategy (`search.strategy`)
 
 ```yaml
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 100, 200, 300, 400]   # steps to score + prune at
+    step_checkpoints: [0, 25, 50, 75, 100]      # steps to score + prune at
     n_branch: 2                                  # candidates spawned per surviving beam (default 4)
     beam_width: 3                                # candidates kept after each prune (default 4)
     intermediate_sample_save_criterion:          # optional; omit to return only the final beam
@@ -122,7 +170,7 @@ search:
           min: 80.0
 generation:
   args:
-    nsteps: 400                                  # MUST equal the last step_checkpoint
+    nsteps: 100                                  # the default; MUST equal the last step_checkpoint
 ```
 
 - **`step_checkpoints`** — the diffusion steps to score and prune at. **Must
@@ -186,6 +234,7 @@ the same schema as plain generation (see `docs/guides/inference.md` Output Files
 | Error about `step_checkpoints` / `nsteps` | `step_checkpoints` must start at 0, be strictly increasing, and end at `nsteps`; set `generation.args.nsteps` to the last checkpoint |
 | Reward not changing / plateaus early | A `clip_values` bound was hit — the metric is clipped before weighting, so it stops contributing past the bound; raise/remove the bound or reweight |
 | Run far slower / more GPU than expected | Cost is `beam_width x n_branch x checkpoints` oracle calls — lower them, or use rfd4-proteina-generate for an unguided baseline. See [references/cost.md](references/cost.md) |
+| Error that an override targets a step the search never scores at | `search.rewards.checkpoint_overrides` keys must be one of `step_checkpoints` *past the first* (step 0 is never scored) |
 | Only final designs returned, no intermediates | Add `intermediate_sample_save_criterion` (a `PassCriterionMetric`) to also keep lost-beam candidates that clear a bar |
 | Hydra `--key value` not applied | All args are `key=value` (Hydra), never `--key value` |
 
