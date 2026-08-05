@@ -252,15 +252,9 @@ def test_beam_search_regression() -> None:
     out_dir = _run_beam_search("regression_beam_search")
     observed_cifs = find_beam_search_cifs(out_dir)
 
-    def _strip_hash(name: str) -> str:
-        """Strip the machine-dependent dataset-hash prefix (e.g. 'd8a1e1ef__')."""
-        _, _, rest = name.partition("__")
-        return rest or name
-
-    # Every baseline CIF must have a matching output CIF.
-    # Match on the part after the dataset-hash prefix, which is machine-dependent.
+    # Every baseline CIF must have a matching output CIF, by name.
     for bl_cif in baseline_cifs:
-        obs_matches = [c for c in observed_cifs if _strip_hash(c.name) == _strip_hash(bl_cif.name)]
+        obs_matches = [c for c in observed_cifs if c.name == bl_cif.name]
         assert obs_matches, f"Beam search output missing expected CIF: {bl_cif.name}"
         rmsd = all_atom_rmsd(obs_matches[0], bl_cif)
         assert rmsd <= BASELINE_RMSD_ATOL_TIGHT, (

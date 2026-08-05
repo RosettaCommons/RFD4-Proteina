@@ -38,6 +38,7 @@ from rfproteina.inference_utils.contig_spec import apply_contig
 from rfproteina.inference_utils.inference_utils import is_structure_file
 from rfproteina.inference_utils.input_parsing import InputSpecification
 from rfproteina.transforms.utils.conditioning_utils import convert_to_internal_coords
+from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.condition_resolution import coerce_enum_value, parse_centroid_value, resolve_standard_annotation
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
@@ -546,7 +547,7 @@ def resolve_condition_spec_inputs(
 
     written_paths = []
     for example_id, example_spec in split_global_args(spec).items():
-        out_path = out_dir / f"{example_id}.cif"
+        out_path = out_dir / f"{validate_design_id(example_id)}.cif"
         written_paths.append(
             write_condition_spec_cif(example_id, example_spec, out_path, spec_dir=spec_path.parent, validate=validate)
         )

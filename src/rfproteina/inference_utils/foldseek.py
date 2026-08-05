@@ -3,8 +3,7 @@
 Bulk clustering
 ---------------
 :py:func:`cluster_structures` accepts the ``foldseek_input_chains/`` subdirectory produced by
-:py:func:`~rfproteina.metrics.oracles.oracle_metric.example_chain_dir` and
-returns ``{example_id: cluster_id}``.
+:py:func:`~rfproteina.inference_utils.foldseek.chain_cif_dir` and returns ``{example_id: cluster_id}``.
 """
 
 import os
@@ -140,12 +139,11 @@ def cluster_structures(
     """Cluster all chain-of-interest CIF files and return ``{example_id: cluster_id}``.
 
     Pass the ``foldseek_input_chains/`` subdirectory of the output tree (produced by
-    :py:func:`~rfproteina.metrics.oracles.oracle_metric.example_chain_dir`).
-    ``easy-cluster`` recurses into subdirectories automatically; the
-    ``_chain`` suffix is stripped from each file stem to recover the example ID.
+    :py:func:`~rfproteina.inference_utils.foldseek.chain_cif_dir`). The ``_chain`` suffix is
+    stripped from each file stem to recover the example ID.
 
     Args:
-        chains_dir: The ``foldseek_input_chains/`` subdirectory containing sharded ``*_chain.cif`` files.
+        chains_dir: The ``foldseek_input_chains/`` subdirectory containing ``*_chain.cif`` files.
         tm_threshold: TM-score threshold for clustering.
         alignment_type: 1 (structure) or 2 (structure+sequence).
         min_seq_id: Required when ``alignment_type == 2``.
@@ -192,8 +190,9 @@ def add_foldseek_diversity_to_per_example_df(
 
     Two modes:
 
-    - **Sharded-directory mode** (df has ``output_base_dir`` column): auto-discovers
-      ``foldseek_input_chains/`` group dirs from the df; cluster IDs are joined by ``example_id``.
+    - **Output-tree mode** (df has ``output_base_dir`` column): auto-discovers
+      ``foldseek_input_chains/`` group dirs from the df; cluster IDs are joined by
+      ``(dataset_name, example_id)``.
 
     - **Per-group copy mode** (fallback): groups by ``group_by``, copies each group's chain
       files from ``designed_chain_path`` to a flat temp directory, and runs ``easy-cluster``
@@ -205,7 +204,7 @@ def add_foldseek_diversity_to_per_example_df(
         group_by: Columns to group by when clustering (per-group mode only).
             Defaults to ``["task"]``.
         timeout: Wall-clock budget in seconds. In per-group mode the remaining budget is
-            passed to each per-group subprocess; in sharded mode it is the total budget.
+            passed to each per-group subprocess; in output-tree mode it is the total budget.
         **kwargs: Additional arguments forwarded to :py:func:`diversity_foldseek` /
             :py:func:`cluster_structures` (``tm_threshold``, ``alignment_type``,
             ``min_seq_id``, ``threads``).
@@ -217,15 +216,26 @@ def add_foldseek_diversity_to_per_example_df(
 
     if "output_base_dir" in per_example_df.columns:
         groups = _partition_groups(per_example_df.to_dict("records"))
-        combined_map: dict[str, int] = {}
+        # Keyed by (dataset_name, example_id): example IDs repeat across datasets.
+        combined_map: dict[tuple[str, str], int] = {}
         for g in groups:
             gmap = cluster_structures(g["chains_dir"], timeout=timeout, **cs_kwargs)
             if gmap:
-                combined_map.update(gmap)
+                combined_map.update({(g["dataset_name"], eid): cid for eid, cid in gmap.items()})
             else:
                 logger.warning(f"cluster_structures returned None for {g['chains_dir']}; skipping group.")
         out = per_example_df.copy()
-        out["foldseek_cluster_id"] = out["example_id"].map(combined_map) if "example_id" in out.columns else None
+        if "example_id" in out.columns:
+            datasets = (
+                out["dataset_name"].fillna("unknown_dataset")
+                if "dataset_name" in out.columns
+                else pd.Series("unknown_dataset", index=out.index)
+            )
+            out["foldseek_cluster_id"] = [
+                combined_map.get(key) for key in zip(datasets, out["example_id"], strict=True)
+            ]
+        else:
+            out["foldseek_cluster_id"] = None
         return out
 
     if group_by is None:
@@ -398,8 +408,31 @@ def add_diversity_summary_metrics(
     return per_example_df
 
 
+def chain_cif_dir(
+    out_dir: Path,
+    dataset_name: str | None = None,
+    task: str | None = None,
+) -> Path:
+    """Return the directory of chain-only CIFs that foldseek clusters together.
+
+    Grouped by dataset and task because those define a clustering job; each design's own
+    id is in the filename, so no further nesting is needed. ``dataset_name`` is hashed
+    because it is typically an input path, which cannot be a single path segment.
+
+    Args:
+        out_dir: Top-level output base directory.
+        dataset_name: Dataset name (groups foldseek clustering jobs by dataset).
+        task: Task label (e.g. ``"unconditional"``).
+    """
+    subdir = out_dir / "foldseek_input_chains"
+    if dataset_name is None and task is None:
+        return subdir
+    ds_seg = hash_sequence(dataset_name, 8) if dataset_name is not None else "unknown_dataset"
+    return subdir / ds_seg / (task if task is not None else "unknown_task")
+
+
 def _partition_groups(all_design_metrics: list[dict]) -> list[dict]:
-    """Build ``[{"key": str, "chains_dir": Path}]`` from per-design metrics.
+    """Build ``[{"key": str, "chains_dir": Path, "dataset_name": str}]`` from per-design metrics.
 
     Derives the group chains directory from ``output_base_dir``, ``dataset_name``,
     and ``task`` columns.  Missing ``dataset_name`` or ``task`` values are replaced
@@ -428,32 +461,33 @@ def _partition_groups(all_design_metrics: list[dict]) -> list[dict]:
     groups: list[dict] = []
     seen: set[Path] = set()
     for (output_base, ds, task), _ in valid.groupby(["output_base_dir", "dataset_name", "task"]):
-        ds_hash = hash_sequence(str(ds))[:8]
-        chains_dir = Path(output_base) / "foldseek_input_chains" / ds_hash / str(task)
+        chains_dir = chain_cif_dir(Path(output_base), dataset_name=str(ds), task=str(task))
         if chains_dir in seen or not chains_dir.is_dir():
             continue
         seen.add(chains_dir)
-        groups.append({"key": f"{ds_hash}/{task}", "chains_dir": chains_dir})
+        groups.append({"key": f"{chains_dir.parent.name}/{task}", "chains_dir": chains_dir, "dataset_name": str(ds)})
     return groups
 
 
-def _cluster_groups_locally(groups: list[dict], rank_label: str = "0") -> dict[str, int]:
+def _cluster_groups_locally(groups: list[dict], rank_label: str = "0") -> dict[tuple[str, str], int]:
     """Run :py:func:`cluster_structures` on each group directory serially.
 
-    Each group's ``chains_dir`` is passed directly to foldseek — no file copying.
+    Each group's ``chains_dir`` is passed directly to foldseek — no file copying. Results
+    are keyed by ``(dataset_name, example_id)``: example IDs repeat across validation
+    datasets, so merging the group maps on ``example_id`` alone would cross-assign clusters.
     """
     try:
         available_cpus = len(os.sched_getaffinity(0))
     except AttributeError:
         available_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", "0")) or os.cpu_count() or 4
 
-    results: dict[str, int] = {}
+    results: dict[tuple[str, str], int] = {}
     for g in groups:
         t0 = time.perf_counter()
         try:
             chain_map = cluster_structures(g["chains_dir"], threads=available_cpus)
             if chain_map:
-                results.update(chain_map)
+                results.update({(g["dataset_name"], eid): cid for eid, cid in chain_map.items()})
             logger.info(
                 f"[foldseek] rank{rank_label} group={g['key']} "
                 f"n={len(chain_map or {})} threads={available_cpus} "
@@ -470,13 +504,13 @@ def run_foldseek_distributed(
     world_size: int,
     global_rank: int,
     is_inference: bool,
-) -> dict[str, int] | None:
+) -> dict[tuple[str, str], int] | None:
     """Cluster ``(dataset_name, task)`` groups, optionally across DDP ranks.
 
     Each rank receives a slice of the ``foldseek_input_chains/{dataset}/{task}/`` directories and
     runs :py:func:`cluster_structures` on each one independently — no file copying.
-    Rank 0 gathers and returns ``{example_id: cluster_id}``; other ranks return
-    ``None``. Returns ``None`` (no-op) for inference or when ``FOLDSEEK_EXEC``
+    Rank 0 gathers and returns ``{(dataset_name, example_id): cluster_id}``; other ranks
+    return ``None``. Returns ``None`` (no-op) for inference or when ``FOLDSEEK_EXEC``
     is unset.
     """
     if os.getenv("FOLDSEEK_EXEC") is None or is_inference:
@@ -502,7 +536,7 @@ def run_foldseek_distributed(
     dist.gather_object(my_results, gathered, dst=0)
     if global_rank != 0:
         return None
-    merged: dict[str, int] = {}
+    merged: dict[tuple[str, str], int] = {}
     for d in gathered or []:
         if d:
             merged.update(d)
@@ -511,15 +545,15 @@ def run_foldseek_distributed(
 
 def apply_cluster_map_to_metrics(
     metrics: list[dict],
-    cluster_map: dict[str, int] | None,
+    cluster_map: dict[tuple[str, str], int] | None,
 ) -> None:
-    """Write ``foldseek_cluster_id`` onto rows whose ``example_id`` is in ``cluster_map``.
+    """Write ``foldseek_cluster_id`` onto rows whose ``(dataset_name, example_id)`` is in ``cluster_map``.
 
     Mutates ``metrics`` in place. No-op when ``cluster_map`` is ``None`` or empty.
     """
     if not cluster_map:
         return
     for m in metrics:
-        eid = m.get("example_id")
-        if eid and eid in cluster_map:
-            m["foldseek_cluster_id"] = cluster_map[eid]
+        cluster_id = cluster_map.get((m.get("dataset_name") or "unknown_dataset", m.get("example_id")))
+        if cluster_id is not None:
+            m["foldseek_cluster_id"] = cluster_id

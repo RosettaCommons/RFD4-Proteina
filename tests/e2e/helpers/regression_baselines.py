@@ -157,8 +157,8 @@ def find_beam_search_cifs(out_dir: Path) -> list[Path]:
 def find_oracle_refolded_cif(out_dir: Path, oracle_name: str) -> Path:
     """Return the refolded CIF produced by evaluate.py for the given oracle.
 
-    evaluate.py writes oracle outputs under ``out_dir/evaluation_samples/``
-    in a sharded subdirectory.  Since we evaluate a single design, there is
+    evaluate.py writes oracle outputs under ``out_dir/evaluation_samples/`` in the
+    design's own subdirectory.  Since we evaluate a single design, there is
     exactly one match.
 
     Args:
@@ -179,8 +179,8 @@ def parse_per_example_metrics(
 ) -> dict:
     """Read per-example metrics for example_id from the inference_metrics CSV.
 
-    The CSV ``example_id`` column contains a hash-prefixed value like
-    ``8b2985a4__M0664_2dhn_0``; we match by substring so callers can pass
+    The CSV ``example_id`` column contains a hash-suffixed value like
+    ``M0664_2dhn_0_8b2985``; we match by substring so callers can pass
     the bare example key (e.g. ``"M0664_2dhn"``).
 
     Args:

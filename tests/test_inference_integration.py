@@ -55,7 +55,7 @@ _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
 
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
-    """Return generated structure CIFs (sharded under ``inference_samples/``)."""
+    """Return generated structure CIFs (one per-design directory under ``inference_samples/``)."""
     return list(Path(out_dir).glob("inference_samples/**/*_generated.cif"))
 
 

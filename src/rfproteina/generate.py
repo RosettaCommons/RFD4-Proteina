@@ -1,6 +1,5 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../.ipd/shebang/latent_inference_exec.sh" "$0" "$@"'
 
-import hashlib
 import os
 import sys
 import time
@@ -572,13 +571,6 @@ def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str
         raise ValueError(f"Unexpected Dataset type: {type(dataset).__name__}")
 
 
-def _stored_example_id(base_id: str, dataset_name: str, job_id: int | None) -> str:
-    """Match ``proteina.validation_step`` output filenames (hashed dataset prefix)."""
-    dataset_name_hash = hashlib.md5(dataset_name.encode()).hexdigest()[:8]
-    output_suffix = f"_job{job_id}" if job_id is not None else ""
-    return f"{dataset_name_hash}__{base_id}{output_suffix}"
-
-
 def _filter_existing_outputs(
     dataset: torch.utils.data.Dataset,
     model: Proteina,
@@ -599,32 +591,18 @@ def _filter_existing_outputs(
     """
     store_dir = model.store_dir
     output_dir = Path(store_dir) / "inference_samples"
-    # proteina.py builds filenames from model.job_id (set via cfg), not the run_generation job_id.
-    # Use model.job_id here so the glob/strip matches the actual saved filenames.
-    model_job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
-    suffix = f"{model_job_suffix}_generated.cif"
 
-    # Collect example IDs that already have outputs.
-    # Files live under {hex2}/{hex8}/ subdirectories, so glob recursively.
-    existing_ids: set[str] = set()
-    if output_dir.exists():
-        for p in output_dir.glob(f"**/*{suffix}"):
-            example_id = p.name.removesuffix(suffix)
-            existing_ids.add(example_id)
-
+    # Collect design IDs that already have outputs. Sibling jobs' designs land here too but
+    # carry their own job suffix, so they never match.
+    existing_ids = {p.name.removesuffix("_generated.cif") for p in output_dir.glob("*/*_generated.cif")}
     if not existing_ids:
         return dataset
 
-    # Determine which indices to keep (compare hashed on-disk ids from validation_step).
+    # Determine which indices to keep (compare against the on-disk ids validation_step assigns).
     all_ids = _get_example_ids_from_dataset(dataset)
-    dataset_name = None
-    if model.inf_cfg is not None:
-        dataset_name = model.inf_cfg.get("val_set_name_override")
-    if not dataset_name:
-        dataset_name = str(root_path)
-    keep_indices = [
-        i for i, eid in enumerate(all_ids) if _stored_example_id(eid, dataset_name, model.job_id) not in existing_ids
-    ]
+    # proteina.py names outputs from model.job_id (set via cfg), not the run_generation job_id.
+    job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
+    keep_indices = [i for i, eid in enumerate(all_ids) if f"{eid}{job_suffix}" not in existing_ids]
     n_skipped = len(all_ids) - len(keep_indices)
 
     if n_skipped > 0:

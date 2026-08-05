@@ -30,12 +30,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from atomworks.io.utils.io_utils import apply_sharding_pattern
-from atomworks.ml.utils.misc import hash_sequence
 from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.oracles.pre_oracle_transform import PreOracleTransform
+from rfproteina.utils.common import design_output_dir
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -165,43 +164,6 @@ def extract_confidence_metrics(
     return metrics
 
 
-def _example_shard_path(out_dir: Path, example_id: str) -> Path:
-    """Return a sharded subdirectory under ``out_dir`` for the given example."""
-    return out_dir / apply_sharding_pattern(hash_sequence(example_id), "/0:2/0:8/")
-
-
-def example_output_dir(out_dir: Path, example_id: str) -> Path:
-    """Return a sharded per-example output directory under ``out_dir``.
-
-    Args:
-        out_dir: Top-level output base directory.
-        example_id: Unique example identifier.
-    """
-    return _example_shard_path(out_dir, example_id)
-
-
-def example_chain_dir(
-    out_dir: Path,
-    example_id: str,
-    dataset_name: str | None = None,
-    task: str | None = None,
-) -> Path:
-    """Return the foldseek chain CIF directory for the given example.
-
-    Args:
-        out_dir: Top-level output base directory.
-        example_id: Unique example identifier.
-        dataset_name: Dataset name (groups foldseek clustering jobs by dataset).
-        task: Task label (e.g. ``"unconditional"``).
-    """
-    subdir = out_dir / "foldseek_input_chains"
-    if dataset_name is not None or task is not None:
-        ds_seg = hash_sequence(dataset_name)[:8] if dataset_name is not None else "unknown_dataset"
-        task_seg = task if task is not None else "unknown_task"
-        subdir = subdir / ds_seg / task_seg
-    return _example_shard_path(subdir, example_id)
-
-
 class OracleMetric(Metric):
     """Base class for structure-prediction oracles (RF3Oracle, AF3Oracle).
 
@@ -214,7 +176,7 @@ class OracleMetric(Metric):
 
     Args:
         oracle_name: Short label included in output filenames
-            (e.g. ``"rf3"`` → ``…/{digest8}/{example_id}_rf3_refolded.cif``).
+            (e.g. ``"rf3"`` → ``…/{example_id}/{example_id}_rf3_refolded.cif``).
         pre_oracle_transform: Optional transform applied to the generated
             AtomArray before refolding. May fan one design out into several
             named outputs; see :py:mod:`~rfproteina.metrics.oracles.pre_oracle_transform`
@@ -269,11 +231,11 @@ class OracleMetric(Metric):
 
     def confidence_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the path to the on-the-fly confidence JSON for this example."""
-        return example_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_confidences.json"
+        return design_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_confidences.json"
 
     def refolded_cif_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the canonical path at which the refolded CIF will be saved."""
-        return example_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_refolded.cif"
+        return design_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_refolded.cif"
 
     def already_refolded(self, out_dir: Path, example_id: str, save_id: str | None = None) -> bool:
         """Return True if a confidence JSON for this example already exists."""

@@ -7,7 +7,6 @@ Usage::
     python rfproteina/evaluate.py inputs=/path/to/structures metrics_tags=[unconditional_refolding]
 """
 
-import hashlib
 import os
 from pathlib import Path
 
@@ -17,10 +16,11 @@ import rootutils
 from atomworks.common import exists
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import CIF_LIKE_EXTENSIONS
+from atomworks.ml.utils.misc import hash_sequence
 from omegaconf import DictConfig
 
+from rfproteina.inference_utils.foldseek import chain_cif_dir
 from rfproteina.metrics import MetricManager
-from rfproteina.metrics.oracles.oracle_metric import example_chain_dir, example_output_dir
 from rfproteina.metrics.utils.metrics_utils import (
     _write_chain_only_cif_if_unambiguous,
     apply_pre_oracle_filters,
@@ -28,6 +28,7 @@ from rfproteina.metrics.utils.metrics_utils import (
 )
 from rfproteina.proteina import _clean_metrics_dict
 from rfproteina.utils.chain import get_chain_of_interest
+from rfproteina.utils.common import design_output_dir
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree, silence_warnings
@@ -46,8 +47,9 @@ def _iter_structure_files(directory: Path) -> list[Path]:
 
 
 def _find_input_structure(structure_file: Path) -> Path | None:
+    """Locate the design's input CIF, which inference saves alongside the generated CIF."""
     base_name = structure_file.name.split(".")[0].removesuffix("_generated")
-    input_path = structure_file.parent.parent / "input" / f"{base_name}_input.cif"
+    input_path = structure_file.parent / f"{base_name}_input.cif"
     return input_path if input_path.exists() else None
 
 
@@ -111,8 +113,9 @@ def run_evaluate(cfg: DictConfig) -> None:
 
     for structure_file in structure_files:
         rel = structure_file.relative_to(inputs_dir)
-        rel_hash = hashlib.md5(str(rel).encode()).hexdigest()[:8]
-        example_id = f"{rel_hash}__{rel.name.split('.')[0]}"
+        # Inputs come from a nested tree flattened into one output dir, so basenames repeat
+        # (af3/design.cif vs boltz/design.cif); the path hash is what keeps them distinct.
+        example_id = f'{rel.name.split(".")[0]}_{hash_sequence(str(rel), 8)}'
         task = filename_to_task.get(str(structure_file), "all")
         try:
             atom_array = parse(structure_file, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
@@ -132,7 +135,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         # inference_samples/ and is self-contained.  Using the original filename avoids a
         # double _generated suffix when processing inference outputs.
         try:
-            example_dir = example_output_dir(samples_dir, example_id)
+            example_dir = design_output_dir(samples_dir, example_id)
             example_dir.mkdir(parents=True, exist_ok=True)
             link = example_dir / structure_file.name
             if not link.exists() and not link.is_symlink():
@@ -142,7 +145,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         # Write chain-of-interest CIF under foldseek_input_chains/{ds_hash}/{task}/ so that
         # _partition_groups can discover and route the correct files to each foldseek job.
         try:
-            chains_dir = example_chain_dir(samples_dir, example_id, dataset_name=dataset_name, task=task)
+            chains_dir = chain_cif_dir(samples_dir, dataset_name=dataset_name, task=task)
             chains_dir.mkdir(parents=True, exist_ok=True)
             chain_cif = _write_chain_only_cif_if_unambiguous(atom_array, example_id, chains_dir)
             if chain_cif is not None:
