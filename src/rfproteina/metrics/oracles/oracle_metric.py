@@ -150,7 +150,7 @@ def extract_confidence_metrics(
 
     for src, dst, scale in _COI_CHAIN_METRICS:
         v = summary_confidences.get(src)
-        if v is not None:
+        if v is not None and v[coi_idx] is not None:
             metrics[dst] = float(v[coi_idx]) * scale
 
     for src, dst, reduce_fn, scale in _COI_INTERFACE_METRICS:

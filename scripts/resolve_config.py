@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 import hydra
+import rootutils
 from hydra import initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
@@ -75,12 +76,10 @@ def main() -> int:
     script_dir = Path(__file__).parent
     configs_root = (script_dir / "../configs").resolve()
 
-    # Ensure PROJECT_ROOT is set for configs that interpolate it (e.g. external
-    # configs using ``hydra.searchpath: file://${oc.env:PROJECT_ROOT}/...``).
-    # generate.py sets this via rootutils at import; here we set it explicitly so
-    # config composition doesn't fail on the interpolation. ``configs_root`` is
-    # ``<repo>/projects/rfproteina/configs``, so the repo root is 3 levels up.
-    os.environ.setdefault("PROJECT_ROOT", str(configs_root.parents[2]))
+    # Ensure PROJECT_ROOT is set for configs that interpolate it (e.g. ``out_dir``,
+    # ``inputs``, or ``hydra.searchpath: file://${oc.env:PROJECT_ROOT}/...``).
+    repo_root = rootutils.find_root(indicator=".project-root", search_from=__file__)
+    os.environ.setdefault("PROJECT_ROOT", str(repo_root))
 
     # Mirror Hydra exactly: --config-path is the search-path root (defaults to the
     # repo configs/ tree), --config-name is the config name within it

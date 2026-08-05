@@ -1043,7 +1043,13 @@ class Proteina(L.LightningModule):
         if not self.is_inference:
             output_base = output_base / dataset_name / f"step_{self.global_step}"
 
-        output_base.mkdir(parents=True, exist_ok=True)
+        # Tolerate FileExistsErrors which may arise from race conditions (even with ``exist_ok=True``),
+        # but not the case where something non-directory is sitting at the path.
+        try:
+            output_base.mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            if not output_base.is_dir():
+                raise
 
         # Expose to search strategies so they can save oracle results during generation
         # (enables on_validation_epoch_end to skip re-folding already-computed results).
