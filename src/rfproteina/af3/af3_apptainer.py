@@ -17,6 +17,11 @@ from pathlib import Path
 # different value is genuinely needed.
 AF3_NUM_RECYCLES = 5
 
+# AF3 attention backend (triton/cudnn/xla). AF3's ``triton`` default over-requests shared memory on the
+# Ampere/Ada cards here, failing folds with ``RESOURCE_EXHAUSTED``; ``cudnn`` is robust everywhere, so set
+# ``=triton`` only on a datacenter GPU. Lowercased: the container flag is a case-sensitive absl enum.
+AF3_FLASH_ATTENTION_IMPLEMENTATION = os.environ.get("AF3_FLASH_ATTENTION_IMPLEMENTATION", "cudnn").strip().lower()
+
 # Default location of the warm-worker entry script (sibling under scripts/).
 _DEFAULT_BATCH_SCRIPT = Path(__file__).resolve().parent / "run_alphafold_batch.py"
 
@@ -134,6 +139,7 @@ def build_apptainer_fold_command(
         "python",
         str(batch_script),
         f"--num_recycles={AF3_NUM_RECYCLES}",
+        f"--flash_attention_implementation={AF3_FLASH_ATTENTION_IMPLEMENTATION}",
         "--num_diffusion_samples=1",
         "--gpu_device=0",
         f"--jax_compilation_cache_dir={jax_cache}",

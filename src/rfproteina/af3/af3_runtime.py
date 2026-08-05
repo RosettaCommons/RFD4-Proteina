@@ -43,6 +43,22 @@ from alphafold3.model import features, model, params, post_processing
 from alphafold3.model.components import utils
 from jax import numpy as jnp
 
+# Pin tokamax's GLU/layer-norm ops to XLA: their default Triton/Pallas kernels over-request shared memory on
+# the Ampere/Ada GPUs here and fail at *runtime*, past tokamax's trace-time XLA fallback (autotuning, which
+# would pick a fitting block, is broken in this container). Private internals, so warn if a bump moves them.
+try:
+    import tokamax._src.ops.gated_linear_unit.api as _tokamax_glu_api
+    import tokamax._src.ops.normalization.api as _tokamax_ln_api
+
+    _tokamax_glu_api._DEFAULT_IMPLEMENTATION = ("xla",)
+    _tokamax_ln_api._DEFAULT_IMPLEMENTATION = ("xla",)
+except (ImportError, AttributeError) as e:
+    logging.warning(
+        "Could not pin tokamax GLU/layer-norm to XLA (%s); folds on GPUs with <108 KB shared "
+        "memory per block may fail with RESOURCE_EXHAUSTED.",
+        e,
+    )
+
 
 def make_model_config(
     *,
