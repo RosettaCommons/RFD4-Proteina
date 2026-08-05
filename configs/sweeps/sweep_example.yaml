@@ -32,8 +32,8 @@ run_name_prefix: sweep_example
 
 sweep:
   generation.args.nsteps:
-    - 200
-    - 400
+    - 50
+    - 100
   generation.model.bb_ca.simulation_step_params.sc_scale_noise:
     - 0.3
     - 0.4

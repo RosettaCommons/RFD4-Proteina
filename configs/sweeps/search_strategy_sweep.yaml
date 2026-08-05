@@ -25,5 +25,5 @@ sweep:
 
   # Diffusion steps
   generation.args.nsteps:
-    - 200
-    - 400
+    - 50
+    - 100

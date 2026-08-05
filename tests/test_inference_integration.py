@@ -763,7 +763,9 @@ class TestEndToEndInference:
                 "generation=inverse_folding",
                 f"inputs={input_pdb}",
                 f"out_dir={tmp_output_dir}",
-                "generation.args.nsteps=400",
+                # Deliberately not the config default, so the assertion below would catch
+                # run_generation dropping the override.
+                "generation.args.nsteps=125",
             ]
         )
         args_before = OmegaConf.to_container(cfg.generation.args, resolve=True)

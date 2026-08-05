@@ -19,13 +19,13 @@ Usage (CLI with YAML sweep config):
 Usage (CLI with inline overrides):
     python src/script_utils/sweep.py --base-config inference \
         --sweep 'ckpt_name=["ckpt_a.ckpt","ckpt_b.ckpt"]' \
-        --sweep 'generation.args.nsteps=[100,400]'
+        --sweep 'generation.args.nsteps=[50,100]'
 
 Python API:
     from script_utils.sweep import generate_sweep_configs
     configs = generate_sweep_configs(
         base_config_name="inference",
-        sweeper={"generation.args.nsteps": [100, 400], "num_replicates": [50, 200]},
+        sweeper={"generation.args.nsteps": [50, 100], "num_replicates": [50, 200]},
     )
 """
 
@@ -68,7 +68,7 @@ def load_sweep_config(sweep_config_path: str | Path) -> dict:
         output_dir: ./configs/sweep_configs  # Where to save generated configs
         sweep:
             ckpt_path: ["/path/1", "/path/2"]
-            generation.args.nsteps: [100, 400]
+            generation.args.nsteps: [50, 100]
 
     Returns:
         Dictionary with sweep configuration.
@@ -203,7 +203,7 @@ def parse_sweep_arg(sweep_str: str) -> tuple[str, list]:
     """Parse a --sweep argument like 'key=[val1,val2]' into (key, [val1, val2]).
 
     Supports:
-        'nsteps=[100,400]'
+        'nsteps=[50,100]'
         'ckpt_path=["/path/a","/path/b"]'
     """
     if "=" not in sweep_str:
@@ -256,7 +256,7 @@ Examples:
 
   # Inline sweep:
   python sweep.py --base-config inference \\
-      --sweep 'generation.args.nsteps=[100,400]' \\
+      --sweep 'generation.args.nsteps=[50,100]' \\
       --sweep 'num_replicates=[50,200]'
 
   # Dry run (shows what would be generated):
