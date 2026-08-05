@@ -166,6 +166,20 @@ apptainer/AF3 setup requirement.
 | `oracle_ppi` | any: `ppi_refolding` | Target chain templated (fixed) for protein-binder design | same key set, prefixed `oracle_ppi.` |
 | `oracle_dna` | any: `dna_refolding` | DNA templated (fixed) for DNA-binder design | same key set, prefixed `oracle_dna.` |
 
+#### Refolding with OpenFold3 instead
+
+The same oracles run on OpenFold3's Apache-licensed parameters. Converted OF3 weights are an
+ordinary AF3 model directory, so there is no separate runtime — the worker reads the provenance
+file the converter leaves beside them and enables the OF3 architecture branches itself.
+
+1. Convert the weights once: `python scripts/setup_of3_weights.py --image "$AF3_IMAGE" --output_dir <dir>`
+2. Point `AF3_MODEL_DIR` at `<dir>`.
+3. Swap the config group: `metrics/refolding_oracles=of3`.
+
+Step 3 only changes the artifact namespace (`of3`, `of3_ppi`, `of3_dna`) so results do not collide
+with AF3 ones; the parameter family follows `AF3_MODEL_DIR` alone. One job uses one family —
+run AF3 and OF3 as separate jobs and compare afterwards.
+
 ### Pass criteria
 
 Threshold one or more already-computed metric values into a binary pass/fail flag

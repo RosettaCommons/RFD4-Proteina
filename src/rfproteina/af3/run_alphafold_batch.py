@@ -17,7 +17,6 @@ Spawned by :mod:`rfproteina.af3.af3_daemon`. Two run modes:
   ``shutdown`` exits cleanly.
 """
 
-import dataclasses
 import datetime
 import json
 import os
@@ -76,6 +75,39 @@ _SAVE_FULL_OUTPUTS = flags.DEFINE_bool(
 )
 
 
+# Written by scripts/setup_of3_weights.py; the two names must match.
+_PROVENANCE_FILENAME = "of3_ported_weights.provenance.json"
+
+
+def _is_of3_model_dir(model_dir: pathlib.Path) -> bool:
+    """Report whether ``model_dir`` holds converted OpenFold3 parameters."""
+    provenance_path = model_dir / _PROVENANCE_FILENAME
+    if not provenance_path.is_file():
+        return False
+    provenance = json.loads(provenance_path.read_text())
+    if provenance.get("weight_family") != "openfold3":
+        return False
+    try:
+        recorded = provenance["converted_checkpoint"]
+        params_path = model_dir / recorded["filename"]
+        expected_bytes = recorded["bytes"]
+    except KeyError as exc:
+        # Older converters wrote conversion.output_filename instead; the weights staged
+        # on coreweave are still in that schema.
+        raise ValueError(
+            f"{provenance_path} has no {exc} field, so it predates the current converter. "
+            "Re-run scripts/setup_of3_weights.py against this directory."
+        ) from exc
+    if not params_path.is_file() or params_path.stat().st_size != expected_bytes:
+        raise ValueError(
+            f"{provenance_path} records converted OpenFold3 parameters in {recorded['filename']} "
+            f"({expected_bytes} bytes), but that file is missing or has a different size. "
+            "Refusing to enable the OpenFold3 code paths against parameters that are not the "
+            "recorded ones; re-run scripts/setup_of3_weights.py."
+        )
+    return True
+
+
 def _build_fold_input(payload: dict) -> Any:
     cif_value = payload["cif"]
     # Inline CIF strings are far longer than any filesystem limit, so guard the
@@ -86,20 +118,17 @@ def _build_fold_input(payload: dict) -> Any:
     else:
         cif_string, cif_name = cif_value, payload["name"]
 
-    fold_input = _runtime.build_fold_input_from_cif(
+    # from_mmcif samples a fresh random seed per call; a manifest ``seed`` pins it for reproducibility.
+    seed = payload.get("seed")
+    return _runtime.build_fold_input_from_cif(
         cif_string=cif_string,
         cif_name=cif_name,
         paired_msa=payload.get("paired_msa"),
         unpaired_msa=payload.get("unpaired_msa"),
         template=payload.get("template"),
         user_ccd=payload.get("user_ccd"),
+        rng_seeds=None if seed is None else (int(seed),),
     )
-
-    # from_mmcif samples a fresh random seed per call; a manifest ``seed`` pins it for reproducibility.
-    seed = payload.get("seed")
-    if seed is None:
-        return fold_input
-    return dataclasses.replace(fold_input, rng_seeds=(int(seed),))
 
 
 def _featurise(
@@ -107,6 +136,7 @@ def _featurise(
     max_template_date: datetime.date,
     conformer_max_iters: int | None,
     resolve_msa_overlaps: bool,
+    of3_weights: bool = False,
 ) -> Any:
     buckets = tuple(int(b) for b in _BUCKETS.value)
     ccd = chemical_components.Ccd(user_ccd=fold_input.user_ccd)
@@ -118,6 +148,7 @@ def _featurise(
         ref_max_modified_date=max_template_date,
         conformer_max_iterations=conformer_max_iters,
         resolve_msa_overlaps=resolve_msa_overlaps,
+        of3_weights=of3_weights,
     )
 
 
@@ -144,6 +175,7 @@ def _run(
     model_runner: Any,
     max_template_date: datetime.date,
     save_full: bool,
+    of3_weights: bool = False,
 ) -> int:
     """Producer thread featurises design N+1 while main thread runs inference on N."""
     q: queue.Queue = queue.Queue(maxsize=1)
@@ -157,6 +189,7 @@ def _run(
                     max_template_date,
                     _CONFORMER_MAX_ITERATIONS.value,
                     _RESOLVE_MSA_OVERLAPS.value,
+                    of3_weights=of3_weights,
                 )
                 q.put(("ok", i, payload, fold_input, feats))
             except Exception as exc:
@@ -203,8 +236,8 @@ def _run(
     return n_ok
 
 
-def _setup_runner() -> tuple[Any, datetime.date]:
-    """Load AF3 once and return ``(model_runner, max_template_date)``."""
+def _setup_runner() -> tuple[Any, datetime.date, bool]:
+    """Load AF3 once and return ``(model_runner, max_template_date, of3_weights)``."""
     if _JAX_COMPILATION_CACHE_DIR.value is not None:
         jax.config.update("jax_compilation_cache_dir", _JAX_COMPILATION_CACHE_DIR.value)
 
@@ -215,21 +248,30 @@ def _setup_runner() -> tuple[Any, datetime.date]:
     model_dir = _MODEL_DIR.value or os.environ.get("AF3_MODEL_DIR")
     if model_dir is None:
         raise ValueError("--model_dir or AF3_MODEL_DIR is required")
+    of3_weights = _is_of3_model_dir(pathlib.Path(model_dir))
+    if of3_weights and _SAVE_FULL_OUTPUTS.value:
+        # Retained CIFs carry AlphaFold3's non-commercial terms, which misstate the
+        # licence of Apache-2.0 OpenFold3 outputs.
+        raise ValueError(
+            "--save_full_outputs is not supported with converted OpenFold3 weights: "
+            "retained CIFs would carry AlphaFold3 output terms that do not apply to them."
+        )
     model_runner = _runtime.ModelRunner(
         config=_runtime.make_model_config(
             flash_attention_implementation=_FLASH_ATTENTION_IMPLEMENTATION.value,
             num_diffusion_samples=_NUM_DIFFUSION_SAMPLES.value,
             num_recycles=_NUM_RECYCLES.value,
+            of3_weights=of3_weights,
         ),
         device=devices[gpu_device],
         model_dir=pathlib.Path(model_dir),
         cache_dir=(pathlib.Path(_JAX_COMPILATION_CACHE_DIR.value) if _JAX_COMPILATION_CACHE_DIR.value else None),
     )
     _ = model_runner.model_params  # force weights load
-    return model_runner, max_template_date
+    return model_runner, max_template_date, of3_weights
 
 
-def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
+def _serve_loop(model_runner: Any, max_template_date: datetime.date, of3_weights: bool) -> None:
     """Read manifest paths from stdin, fold each, print one JSON status line per request.
 
     Each input line is either an absolute manifest path or the literal line
@@ -251,7 +293,7 @@ def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
                 print(json.dumps({"status": "error", "message": "empty manifest"}), flush=True)
                 continue
             t0 = time.perf_counter()
-            n_ok = _run(designs, model_runner, max_template_date, save_full)
+            n_ok = _run(designs, model_runner, max_template_date, save_full, of3_weights)
             wall_s = time.perf_counter() - t0
             print(
                 f"AF3 batch wrapper: {n_ok}/{len(designs)} succeeded in {wall_s:.1f}s "
@@ -271,10 +313,10 @@ def _serve_loop(model_runner: Any, max_template_date: datetime.date) -> None:
 
 
 def main(_argv: list[str]) -> None:
-    model_runner, max_template_date = _setup_runner()
+    model_runner, max_template_date, of3_weights = _setup_runner()
 
     if _SERVE.value:
-        _serve_loop(model_runner, max_template_date)
+        _serve_loop(model_runner, max_template_date, of3_weights)
         return
 
     if _MANIFEST.value is None:
@@ -283,7 +325,7 @@ def main(_argv: list[str]) -> None:
     if not designs:
         raise SystemExit("Manifest is empty.")
     t0 = time.perf_counter()
-    n_ok = _run(designs, model_runner, max_template_date, _SAVE_FULL_OUTPUTS.value)
+    n_ok = _run(designs, model_runner, max_template_date, _SAVE_FULL_OUTPUTS.value, of3_weights)
     wall_s = time.perf_counter() - t0
     print(
         f"AF3 batch wrapper: {n_ok}/{len(designs)} succeeded in {wall_s:.1f}s "

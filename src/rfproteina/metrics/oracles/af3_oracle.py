@@ -22,6 +22,7 @@ from typing import Any
 import biotite.structure as struc
 import numpy as np
 import torch.distributed as dist
+from atomworks.constants import STANDARD_AA
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.annotator import ensure_annotations
@@ -198,6 +199,77 @@ class _AF3JobState:
     af3_output_dir: Path
     job_name: str
     chain_of_interest: str | None
+
+
+# Atom-name pairs that make an inter-residue bond a polymer backbone link, matching how
+# OpenFold3's tokenizer classifies them (core/data/resources/residues.py).
+_PEPTIDE_BOND_ATOMS = frozenset({"N", "C"})
+_PHOSPHODIESTER_BOND_ATOMS = frozenset({"P", "O3'", "O5'"})
+
+
+def _is_backbone_link(atom_name_i: str, atom_name_j: str) -> bool:
+    """Whether a bond between these two atoms is a peptide or phosphodiester backbone link."""
+    pair = {atom_name_i, atom_name_j}
+    return pair <= _PEPTIDE_BOND_ATOMS or pair <= _PHOSPHODIESTER_BOND_ATOMS
+
+
+def _is_implicit_backbone_link(res_name_i: str, atom_name_i: str, res_name_j: str, atom_name_j: str) -> bool:
+    """Whether AF3 leaves this backbone link implicit while our writer emits it.
+
+    Atomizing a residue means giving it a custom CCD code, and our writer then emits its
+    flanking peptide bonds.
+    """
+    if not _is_backbone_link(atom_name_i, atom_name_j):
+        return False
+    return (res_name_i in STANDARD_AA) != (res_name_j in STANDARD_AA)
+
+
+_OF3_PROVENANCE_FILENAME = "of3_ported_weights.provenance.json"
+# Custom CCD codes shaped like the one tests/e2e uses for its user-CCD heme.
+_ATOMIZED_CODE_FORMAT = "L:{index}"
+
+
+def _using_of3_weights() -> bool:
+    """Whether ``AF3_MODEL_DIR`` holds converted OpenFold3 parameters, per its provenance stamp.
+
+    Duplicated in ``run_alphafold_batch``, which runs in the AF3 image without ``rfproteina``.
+    """
+    model_dir = os.environ.get("AF3_MODEL_DIR", "").strip()
+    provenance = Path(model_dir) / _OF3_PROVENANCE_FILENAME if model_dir else None
+    if provenance is None or not provenance.is_file():
+        return False
+    # Deliberately unguarded: a corrupt stamp must not quietly fall back to AF3 weights.
+    return json.loads(provenance.read_text()).get("weight_family") == "openfold3"
+
+
+def _atomize_ligand_bonded_residues(atom_array: AtomArray) -> AtomArray:
+    """Give a custom CCD code to standard residues covalently bonded to a non-polymer.
+
+    OpenFold3 tokenizes those per atom; a custom code is the only lever AF3 exposes.
+    Returns a copy, or the input if there are none.
+    """
+    if atom_array.bonds is None:
+        return atom_array
+    ensure_annotations(atom_array, "is_protein", "is_nucleic_acid")
+    is_polymer = atom_array.is_protein | atom_array.is_nucleic_acid
+
+    targets: set[tuple[str, int]] = set()
+    for i, j, _bond_type in atom_array.bonds.as_array():
+        if is_polymer[i] == is_polymer[j]:
+            continue
+        polymer_idx = i if is_polymer[i] else j
+        # Non-standard residues are already atomized by AF3, so leave their identity alone.
+        if str(atom_array.res_name[polymer_idx]) not in STANDARD_AA:
+            continue
+        targets.add((str(atom_array.chain_id[polymer_idx]), int(atom_array.res_id[polymer_idx])))
+
+    if not targets:
+        return atom_array
+    renamed = atom_array.copy()
+    for index, (chain_id, res_id) in enumerate(sorted(targets), start=1):
+        mask = (renamed.chain_id == chain_id) & (renamed.res_id == res_id)
+        renamed.res_name[mask] = _ATOMIZED_CODE_FORMAT.format(index=index)
+    return renamed
 
 
 class AF3Oracle(OracleMetric):
@@ -434,13 +506,16 @@ class AF3Oracle(OracleMetric):
             # Disambiguate chain IDs so AF3 can distinguish chain_iid variants and keep an id_map for remapping outputs
             disambiguated_atom_array, af3_chain_id_to_original_iid = self._disambiguate_chain_ids(input_atom_array)
 
-            # AF3's CIF parser refuses NaN coordinates, so drop atoms with any NaN component.
-            # (AF3 will internally pad missing atoms back; we reconcile in _finalize_af3_result.)
+            # Match OF3's tokenization before anything derives from this array; AF3's own
+            # weights learned the single-token convention, so gate it.
+            if _using_of3_weights():
+                disambiguated_atom_array = _atomize_ligand_bonded_residues(disambiguated_atom_array)
+
+            # AF3's CIF parser refuses NaN coordinates; it pads them back and we reconcile later.
             valid_mask = np.all(np.isfinite(disambiguated_atom_array.coord), axis=-1)
             disambiguated_valid = disambiguated_atom_array[valid_mask]
 
-            # Biotite's CIF writer requires occupancy + b_factor columns;
-            # designs don't have meaningful values, so fill in defaults.
+            # Biotite's CIF writer requires occupancy + b_factor; designs have no real values.
             disambiguated_valid.set_annotation("occupancy", np.ones(disambiguated_valid.array_length()))
             disambiguated_valid.set_annotation("b_factor", np.zeros(disambiguated_valid.array_length()))
 
@@ -821,11 +896,10 @@ class AF3Oracle(OracleMetric):
 
     @staticmethod
     def _validate_inter_residue_bonds(input_array: AtomArray, af3_array: AtomArray) -> None:
-        """Assert input and AF3 inter-residue bond graphs are identical.
+        """Assert input and AF3 inter-residue bond graphs match, atomized-to-unatomized backbone links aside.
 
         Raises:
-          ValueError: If the input and AF3 inter-residue bond sets
-            differ in either direction (drop or addition).
+          ValueError: If the compared bond sets differ in either direction.
         """
 
         def _keys(arr: AtomArray) -> set[tuple]:
@@ -841,8 +915,11 @@ class AF3Oracle(OracleMetric):
 
             # Build up sorted tuples of ((chain_id, res_id, atom_name), (chain_id, res_id, atom_name)) for each bond
             out: set[tuple] = set()
+            res_name = renumbered.res_name
             for i, j, _btype in renumbered.bonds.as_array():
                 if chain_id[i] == chain_id[j] and res_id[i] == res_id[j]:
+                    continue
+                if _is_implicit_backbone_link(str(res_name[i]), str(atom_name[i]), str(res_name[j]), str(atom_name[j])):
                     continue
                 ep1 = (str(chain_id[i]), int(res_id[i]), str(atom_name[i]))
                 ep2 = (str(chain_id[j]), int(res_id[j]), str(atom_name[j]))
