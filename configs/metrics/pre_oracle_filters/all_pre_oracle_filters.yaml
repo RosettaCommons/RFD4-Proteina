@@ -1,5 +1,26 @@
-# Pre-oracle filters: only forward passing designs to the oracle.
-# NOTE: All of these filters must have required metrics_tags so that by default none are applied
+# Pre-oracle filters: only forward passing designs to the oracle. Tag-gated like other Metrics.
+# NOTE: When benchmarking per-example, disable every pre-oracle filter -- see docs/guides/metrics.md
+
+# Sequence conditioning is a hard constraint, so a design that breaks it is almost never worth folding.
+# NOTE: These two filters gate on the same tags as the metric they threshold -- a filter whose metric
+# never ran sees a missing key, which counts as a (non-deleting) failure and drops every design.
+sequence_adherence_filter:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  required_tags_any: ["design"]
+  metric_thresholds:
+    sequence_adherence.n_violations:
+      max: 0
+
+# Likewise for unindexed conditioning: an unindexed token that was never inserted, or was inserted
+# onto a residue of the wrong identity, means the design does not contain the requested motif.
+unindexed_insertion_mapping_filter:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  required_tags_all: ["unindexed"]
+  metric_thresholds:
+    unindexed_insertion_mapping.n_unmapped_tokens:
+      max: 0
+    unindexed_insertion_mapping.n_sequence_mismatches:
+      max: 0
 
 # NOTE: This is `insertion_rmsd` in the sense of rfd3, which only includes unindexed regions
 insertion_rmsd_filter:

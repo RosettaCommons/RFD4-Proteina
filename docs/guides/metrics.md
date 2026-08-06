@@ -25,7 +25,7 @@
 
 ## How many metrics ship enabled
 
-**37 metric / pass-criterion / filter entries are already registered** in
+**40 metric / pass-criterion / filter entries are already registered** in
 `configs/metrics/all_metrics.yaml` and run automatically — no code, no new config files. Most are
 gated behind one or more **`metrics_tags`**, so turning one on is just passing a tag on the command
 line:
@@ -39,12 +39,12 @@ Breakdown of what's already wired in:
 
 | Category | Count | Config |
 | --- | --- | --- |
-| Design metrics (run inline, pre-refolding) | 14 | `configs/metrics/inline_metrics/design_metrics.yaml` |
+| Design metrics (run inline, pre-refolding) | 16 | `configs/metrics/inline_metrics/design_metrics.yaml` |
 | Structure-prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
 | Refolding metrics (design vs. refolded structure, or refold vs. refold) | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
 | Refolding oracles (AF3 variants) | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
 | Pass criteria (pass/fail thresholds) | 9 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
-| Pre-oracle filters (skip the oracle on cheap-check failures) | 3 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
+| Pre-oracle filters (skip the oracle on cheap-check failures) | 5 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
 Beyond those, **10 more metric classes already exist in the codebase** but aren't wired into any
 default config — they cover TMol interface ddG/H-bonds/electrostatics, an atom-pair distance
@@ -54,7 +54,7 @@ needs **no Python** — just a few lines of YAML, exactly like the [worked
 example](#worked-example-an-existing-metric-your-own-config) below. See [Ready-made but
 opt-in](#ready-made-but-opt-in).
 
-Only write a brand-new `Metric` subclass when none of the ~47 above cover what you need — see
+Only write a brand-new `Metric` subclass when none of the ~50 above cover what you need — see
 [Writing your own](#writing-your-own).
 
 ---
@@ -79,12 +79,14 @@ Computed directly on the generated structure, before any oracle refolds it.
 | `hotspot_obedience` | any: `hotspot_conditioning` | Fraction of hotspot atoms with a binder atom within 4.5 Å | `hotspot_obedience` |
 | `rasa_adherence` | any: `rasa_conditioning` | Adherence of generated burial to RASA-bin conditioning | `buried_conditioning_adherence`, `intermediate_conditioning_adherence`, `exposed_conditioning_adherence` |
 | `interchain_interactions` | any: `interchain_interactions`; not: `small_molecule_only`, `structure_prediction` | Adherence + atom/pair counts for H-bond, π-stacking, π-cation, salt-bridge, hydrophobic, and metal-coordination conditioning, interchain only | `*_conditioning_adherence`, `*_atom_count_coi` / `*_residue_count_coi`, `*_atom_pair_count_coi` / `*_residue_pair_count_coi` per interaction type |
+| `sequence_adherence` | any: `design` | Fraction of sequence-conditioned residues whose generated identity matches what was asked for; NaN when nothing was sequence-conditioned, and in the offline re-scoring path (which has no input structure to read the conditioning off) | `sequence_adherence`, `n_violations` |
 | `sse_distribution` | any: `design`; not: `small_molecule_only`, `structure_prediction` | Helix/sheet/loop fraction and number of contiguous SSE elements (P-SEA) | `helix_fraction`, `sheet_fraction`, `loop_fraction`, `num_ss_elements` |
 | `sse_accuracy` | any: `design`; not: `small_molecule_only`, `structure_prediction` | Accuracy of generated secondary structure vs. secondary-structure conditioning | `overall_accuracy`, `helix_recall`, `sheet_recall`, `loop_recall`, `n_conditioned_atoms` |
 | `posebusters_metrics` | any: `small_molecule_only` | Ligand geometry/validity checks (PoseBusters) | one pass/fail column per PoseBusters check |
 | `chiral_accuracy` | any: `small_molecule_only` | Fraction of stereogenic centers with correct handedness, split tetrahedral vs. non-tetrahedral | `tetrahedral_percent_correct_chirality`, `non_tetrahedral_percent_correct_chirality` |
 | `design_motif_allatom_rmsd` | any: `3d_coordinate_conditioning`, `unindexed`, `internal_coordinate_conditioning` | All-atom RMSD of the coordinate-conditioned motif region, self-consistency within the design itself | `rmsd` (median over replicates; per-`CoordinateGroup` when multiple motifs) |
 | `design_unindexed_motif_allatom_rmsd` | all: `unindexed` | All-atom RMSD restricted to **unindexed** insertion atoms only — this is RFD3's "insertion RMSD" | `rmsd` |
+| `unindexed_insertion_mapping` | all: `unindexed` | Whether the insertion head's unindexed → generated token mapping was applied in full: every unindexed token inserted, onto a residue of the conditioned identity where the unindexed region was sequence-conditioned | `n_unmapped_tokens`, `n_sequence_mismatches` |
 | `contact_molecular_surface` | any: `cms` | Distance-weighted interfacial contact surface area between binder and target (Lawrence & Colman 1993) | see `rfproteina.metrics.physics.contact_ms.metric` |
 | `sequence_similarity_to_input` | any: `partial_diffusion` | Sequence identity vs. the seed structure, for partial diffusion | `sequence_identity_to_input` |
 | `cath_metric` | any: `cath` | CATH superfamily classification of the chain of interest via Foldseek | `C`, `A`, `T`, `H`, `type`, `evalue`, `tmscore` |
@@ -203,12 +205,22 @@ two interfaces being good enough), use a `min_of` / `max_of` / `mean_of` list �
 
 ### Pre-oracle filters
 
-Cheap checks that decide whether a design is even **forwarded to the (expensive) oracle**. All
-require an explicit filter tag in addition to their conditioning tag, so none run unless you opt
-in — see [`all_pre_oracle_filters.yaml`](../../configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml).
+Cheap checks that decide whether a design is even **forwarded to the (expensive) oracle**.
+These are tag-gated like other Metrics in the codebase. A subset of the built-in filters run by default: see 
+[`all_pre_oracle_filters.yaml`](../../configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml).
+A filter reading a metric key that is absent (e.g. because the metric's own tag gate kept it from
+running) counts as a failure, so keep a filter's tag gate at least as strict as its metric's.
+
+> **Benchmarking:** turn every pre-oracle filter off (`~metrics/pre_oracle_filters`) when you are
+> benchmarking **per example** — a filter that discards designs before the oracle inflates the
+> success rate among the designs that survive. They are fine, and are the point, when you are
+> **compute-normalizing** (success per unit of oracle compute), since a filtered design still
+> costs its share of the budget.
 
 | Config key | Tag gate | Threshold |
 | --- | --- | --- |
+| `sequence_adherence_filter` | any: `design` | `sequence_adherence.n_violations` = 0, i.e. the design must reproduce every conditioned residue exactly. Vacuous when nothing was sequence-conditioned |
+| `unindexed_insertion_mapping_filter` | all: `unindexed` | `unindexed_insertion_mapping.n_unmapped_tokens` = 0 and `.n_sequence_mismatches` = 0, i.e. the whole unindexed motif was inserted, at the conditioned identities |
 | `ligand_clash_filter` | all: `ligand_clash_filter`; not: `no_ligand` | Zero inter-residue polymer-ligand clashes (from `clash_metrics`) |
 | `insertion_rmsd_filter` | all: `unindexed`, `insertion_rmsd_filter` | `unindexed_metrics.insertion_rmsd` ≤ 1.0 — you'll need a metric producing that exact key (e.g. an aliased copy of `design_unindexed_motif_allatom_rmsd`) for this filter to have something to threshold |
 | `motif_rmsd_filter` | all: `motif_rmsd_filter` | `motif_rmsd.rmsd` ≤ 1.0 — likewise, needs a metric under the `motif_rmsd` key |

@@ -17,7 +17,7 @@ gen_njobs: 1       # Total number of parallel jobs (used when chunk_size is null
 run_name_: evaluate
 
 
-# Only applies if the metrics_tags for a pre-oracle design filter are given.
+# Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: False # False here to avoid deleting input structures
 
