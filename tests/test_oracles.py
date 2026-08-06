@@ -41,11 +41,14 @@ from biotite.structure.io.pdbx import get_structure
 from rfproteina.metrics import MetricManager
 from rfproteina.metrics.design_metrics import ClashMetric
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
+from rfproteina.metrics.oracles import af2_oracle
+from rfproteina.metrics.oracles.af2_oracle import AF2Oracle, _AF2JobState
 from rfproteina.metrics.oracles.af3_oracle import AF3Oracle, _send_to_daemon
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.oracles.pre_oracle_transform import OFF_TARGET_PARSE_CONFIG, OffTargetSubstitutionTransform
 from rfproteina.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
 from rfproteina.utils.parse_presets import ANNOTATED_CIF, STANDARD_ANNOTATIONS_ONLY
+from rfproteina.utils.standard_annotations import SA_CWI
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 os.environ["NCCL_DEBUG"] = "WARNING"
@@ -55,6 +58,16 @@ from tests.conftest import TEST_DATA_DIR, has_af3  # noqa: E402
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def isolate_af2_oracle_instance_registry():
+    """Keep process-wide AF2 resident-model discovery local to each test."""
+    from rfproteina.metrics.oracles import af2_oracle
+
+    af2_oracle._AF2_ORACLE_INSTANCES.clear()
+    yield
+    af2_oracle._AF2_ORACLE_INSTANCES.clear()
 
 
 @pytest.fixture(scope="module")
@@ -171,6 +184,25 @@ def test_renumber_emits_1_based_struct_conn_seq_ids(lencapavir_design_with_coval
         ), f"_struct_conn seq_id {seq} out of [1..{chain_len[chain]}] for chain {chain}"
 
 
+def test_af2_template_uses_original_conditioned_coordinates(modified_1a1e):
+    target = modified_1a1e[modified_1a1e.chain_id == "A"].copy()
+    generated_coords = target.coord.copy()
+    conditioned_coords = generated_coords + np.array([11.0, -7.0, 3.0])
+    C_CRD.set_mask(target, np.ones(target.array_length(), dtype=bool))
+    SA_CWI.set_annotation(target, conditioned_coords)
+
+    template = AF2Oracle(template_query=C_CRD.get_mask_name())._build_af2_template_dict(target)
+    assert template is not None
+    template_structure = get_structure(
+        pdbx.CIFFile.read(io.StringIO(template["A"]["mmcif"])),
+        model=1,
+        include_bonds=False,
+    )
+
+    assert np.allclose(template_structure.coord, conditioned_coords, atol=5e-4)
+    assert not np.allclose(template_structure.coord, generated_coords)
+
+
 def test_validate_inter_residue_bonds_match_passes(lencapavir_design_with_covale):
     """Identical input and AF3 arrays satisfy the validator."""
     aa = lencapavir_design_with_covale
@@ -259,6 +291,111 @@ def test_send_to_daemon_retries_on_eagain(tmp_path, monkeypatch):
 
     assert response == {"status": "ok"}
     assert calls["n"] == 2
+
+
+def test_af2_manifest_preserves_initial_guess_and_pct_seq_mask(modified_1a1e, tmp_path):
+    """AF2 manifests preserve the two runtime feature-routing controls."""
+    from rfproteina.metrics.oracles.oracle_metric import OracleJobInput
+
+    aa = modified_1a1e.copy()
+    ensure_annotations(aa, "is_protein")
+    protein_only = aa[aa.is_protein]
+    oracle = AF2Oracle(model_name="model_1_multimer_v3", initial_guess=True, pct_seq_mask=0.0)
+    job = OracleJobInput(atom_array=protein_only, example_id="guess_mask", out_dir=tmp_path)
+    entries, _states = oracle._build_manifest([job], tmp_path / "out")
+    assert entries[0]["initial_guess"] is True
+    assert entries[0]["pct_seq_mask"] == 0.0
+
+
+@pytest.mark.parametrize("actual", [None, "model_2_ptm"])
+def test_af2_fixed_model_requires_exact_worker_model_identity(actual):
+    oracle = AF2Oracle(model_name="model_1_ptm")
+
+    with pytest.raises(RuntimeError, match="does not identify|returned model"):
+        oracle._validated_model_name(actual, "model_1_ptm", "design")
+
+
+def test_af2_dispatch_passes_batch_timeout_to_daemon(tmp_path, monkeypatch):
+    monkeypatch.setenv("AF2_LAUNCHER_SOCKET_TEMPLATE", "/tmp/af2_rank{rank}.sock")
+    monkeypatch.setattr(af2_oracle.time, "time", lambda: 1000.0)
+    observed = {}
+
+    def send(_socket, request, *, timeout_s, **_kwargs):
+        observed.update(request=request, timeout_s=timeout_s)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(af2_oracle, "_send_to_daemon", send)
+    AF2Oracle()._dispatch_fold(tmp_path / "manifest.json", daemon_rank=2, n_designs=31)
+
+    assert observed["request"]["timeout_s"] == 3720.0
+    assert observed["request"]["deadline_unix_s"] == 4720.0
+    assert observed["timeout_s"] > observed["request"]["timeout_s"]
+
+
+@pytest.mark.parametrize("value", [0, -1, float("nan"), "not-a-number"])
+def test_af2_daemon_rejects_invalid_request_timeout(value):
+    from rfproteina.af2 import af2_daemon
+
+    with pytest.raises(ValueError, match="positive finite"):
+        af2_daemon._request_timeout_s({"timeout_s": value})
+
+
+def test_af2_daemon_deadline_includes_queue_and_replacement_warmup():
+    from rfproteina.af2 import af2_daemon
+
+    assert af2_daemon._request_timeout_s({"deadline_unix_s": 3400}, now_s=1000) == 2400
+    with pytest.raises(TimeoutError, match="deadline expired"):
+        af2_daemon._request_timeout_s({"deadline_unix_s": 1000}, now_s=1000)
+
+
+def test_af2_daemon_replaces_an_exited_worker(monkeypatch):
+    from rfproteina.af2 import af2_daemon
+
+    class ExitedWorker:
+        @staticmethod
+        def poll():
+            return 17
+
+    replacement = (object(), threading.Event(), [])
+    monkeypatch.setattr(af2_daemon, "_start_warm_worker", lambda _script, _gpu: replacement)
+
+    assert af2_daemon._replace_exited_worker(ExitedWorker(), "batch.py", 2) == replacement
+
+
+def test_af2_missing_predicted_cif_matches_af3_confidence_only_behavior(tmp_path, monkeypatch):
+    oracle = AF2Oracle(model_name="model_1_ptm")
+    protein = AtomArray(1)
+    state = _AF2JobState(
+        input_atom_array=protein,
+        example_id="missing_cif",
+        out_dir=tmp_path,
+        disambiguated_atom_array=protein,
+        af2_chain_id_to_original_iid=None,
+        af2_output_dir=tmp_path,
+        job_name="missing_cif",
+        chain_of_interest="A",
+        model_name="model_1_ptm",
+    )
+    summary = {
+        "af2_model_name": "model_1_ptm",
+        "chain_ids": ["A"],
+        "overall_plddt": 0.8,
+        "overall_pae": 3.0,
+        "ptm": 0.7,
+    }
+    monkeypatch.setattr(oracle, "_parse_af2_confidences", lambda *_args: summary)
+    monkeypatch.setattr(oracle, "_parse_af2_predicted_structure", lambda *_args: None)
+    stale_cif = oracle.refolded_cif_path(tmp_path, "missing_cif")
+    stale_cif.parent.mkdir(parents=True, exist_ok=True)
+    stale_cif.write_text("stale model output")
+
+    metrics = oracle._finalize_af2_result(state)
+
+    assert metrics["overall_plddt"] == 80.0
+    assert oracle.confidence_path(tmp_path, "missing_cif").is_file()
+    assert oracle.raw_summary_path(tmp_path, "missing_cif").is_file()
+    assert not stale_cif.exists()
+    assert oracle.already_refolded(tmp_path, "missing_cif")
 
 
 # ---------------------------------------------------------------------------

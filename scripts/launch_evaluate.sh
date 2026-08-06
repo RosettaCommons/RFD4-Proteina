@@ -304,6 +304,10 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
     echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
+if should_spawn_af2_daemons; then
+    echo "  AF2Oracle detected in resolved config — emitting AF2 daemon pre-spawn block"
+    emit_af2_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+fi
 
 SCRIPT_EVALUATE="$CODE_DIR/src/rfproteina/evaluate.py"
 
@@ -317,7 +321,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running evaluate.py with job_id=$JOB_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 \\
+        AF3_DAEMON_RANK=\$LOCAL_ID AF2_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 \\
             --cpus-per-task=\$CPUS_PER_STEP --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_EVALUATE \\
             $CONFIG_HYDRA_ARGS \\
@@ -343,8 +347,8 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running evaluate.py with job_id=$JOB_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --kill-on-bad-exit $CONTAINER_CMD \\
-            --container-mounts="/lustre:/lustre" \\
+        AF2_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --kill-on-bad-exit $CONTAINER_CMD \\
+            --container-mounts="/lustre:/lustre,/tmp:/tmp" \\
             --container-workdir=$RUN_DIR \\
             $SCRIPT_EVALUATE \\
             $CONFIG_HYDRA_ARGS \\

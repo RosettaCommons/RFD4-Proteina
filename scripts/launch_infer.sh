@@ -437,6 +437,10 @@ if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
     echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
+if should_spawn_af2_daemons; then
+    echo "  AF2Oracle detected in resolved config — emitting AF2 daemon pre-spawn block"
+    emit_af2_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
+fi
 
 # Platform-specific generation command
 SCRIPT_GENERATE="$CODE_DIR/src/rfproteina/generate.py"
@@ -453,7 +457,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running generation with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        AF3_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 \\
+        AF3_DAEMON_RANK=\$LOCAL_ID AF2_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 \\
             --cpus-per-task=\$CPUS_PER_STEP --cpu-bind=none \\
             --kill-on-bad-exit $SCRIPT_GENERATE \\
             $CONFIG_HYDRA_ARGS \\
@@ -485,7 +489,7 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
         echo "Running generation with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
     cat >> "$SBATCH_FILE" << EOF
-        srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
+        AF2_DAEMON_RANK=\$LOCAL_ID srun --exclusive --ntasks=1 --gpus=1 --cpu-bind=none --kill-on-bad-exit $CONTAINER_CMD \\
             --container-mounts="$CONTAINER_MOUNTS_STR" \\
             --container-workdir=$RUN_DIR \\
             bash -c "$CONTAINER_ENV_CMDS && python $SCRIPT_GENERATE \\

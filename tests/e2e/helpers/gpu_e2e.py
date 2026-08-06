@@ -25,7 +25,7 @@ from typing import Literal, NoReturn
 
 import pytest
 
-from tests.conftest import has_af3
+from tests.conftest import has_af2, has_af3
 
 # helpers/ -> e2e/ -> tests/ -> rfproteina (project root for train/infer)
 ROOT = Path(__file__).resolve().parents[3]
@@ -38,7 +38,7 @@ def get_data_path() -> Path | None:
     return Path(raw) if raw else None
 
 
-PrevalOracle = Literal["af3", "none"]
+PrevalOracle = Literal["af3", "af2", "none"]
 
 # CI training smokes use a small batch to limit VRAM and speed up steps.
 GPU_E2E_TRAIN_BATCH_SIZE = int(os.getenv("GPU_E2E_TRAIN_BATCH_SIZE", "2"))
@@ -104,6 +104,8 @@ def preval_oracle_overrides(oracle: PrevalOracle) -> list[str]:
     """Hydra overrides for prevalidation refolding oracle selection."""
     if oracle == "af3":
         return ["metrics/refolding_oracles=af3"]
+    if oracle == "af2":
+        return ["metrics/refolding_oracles=af2"]
     return ["~metrics.refolding_oracles"]
 
 
@@ -116,6 +118,15 @@ def require_preval_oracle(oracle: PrevalOracle) -> None:
         if not has_af3:
             message = "AF3 not available (set AF3_IMAGE and AF3_MODEL_DIR, or AF3_LAUNCHER_SOCKET_TEMPLATE)"
             if os.environ.get("REQUIRE_AF3") == "1":
+                pytest.fail(message)
+            pytest.skip(message)
+        return
+    if oracle == "af2":
+        if os.environ.get("AF2_LAUNCHER_SOCKET_TEMPLATE"):
+            return
+        if not has_af2:
+            message = "AF2 not available (set AF2_IMAGE and AF2_MODEL_DIR, or AF2_LAUNCHER_SOCKET_TEMPLATE)"
+            if os.environ.get("REQUIRE_AF2") == "1":
                 pytest.fail(message)
             pytest.skip(message)
 
