@@ -245,6 +245,36 @@ export AF3_LAUNCHER_SOCKET_TEMPLATE="/tmp/af3_\${SLURM_JOB_ID}/af3_daemon_rank{r
 EOF
 }
 
+# AF2 supervisors are needed only for resolved configs that select AF2.
+should_spawn_af2_daemons() {
+    [ "${AF2_NEEDED:-false}" = "true" ] &&
+        [ -n "${AF2_IMAGE:-}" ] &&
+        [ -n "${AF2_MODEL_DIR:-}" ] &&
+        [ -n "${AF2_JAX_CACHE_DIR:-}" ]
+}
+
+# Emit the AF2-daemon pre-spawn block to stdout (caller appends to the SBATCH file)
+# Usage: emit_af2_daemon_block <code_dir> <gpus_per_node>
+emit_af2_daemon_block() {
+    local code_dir="$1"
+    local gpus_per_node="$2"
+    local resident_quoted
+    printf -v resident_quoted '%q' "${AF2_REQUIRED_MODELS:-}"
+    cat <<EOF
+
+# Pre-launch AF2 daemons (one supervisor per node, sockets in each node's /tmp).
+export AF2_RESIDENT_MODELS=$resident_quoted
+AF2_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF2_OUT"
+srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
+  /usr/bin/python3 $code_dir/src/rfproteina/af2/af2_daemon.py launch \\
+  --num-gpus \${SLURM_GPUS_PER_NODE:-${gpus_per_node}} --log-dir "\$AF2_OUT" \\
+  --skip-if-no-env 2>>"\$AF2_OUT/af2_daemons.log" >/dev/null &
+AF2_DAEMON_SRUN_PID=\$!
+trap 'for pid in \${AF3_DAEMON_SRUN_PID:-} \${AF2_DAEMON_SRUN_PID:-}; do kill -TERM "\$pid" 2>/dev/null || true; wait "\$pid" 2>/dev/null || true; done' EXIT
+export AF2_LAUNCHER_SOCKET_TEMPLATE="/tmp/af2_\${SLURM_JOB_ID}/af2_daemon_rank{rank}.sock"
+EOF
+}
+
 # Get the srun command with appropriate container settings
 # Usage: SRUN_CMD=$(get_srun_cmd)
 get_srun_cmd() {

@@ -23,15 +23,18 @@ Shell usage:
 
 import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import hydra
 import rootutils
 from hydra import initialize_config_dir
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 _AF3_ORACLE_TARGET = "rfproteina.metrics.oracles.af3_oracle.AF3Oracle"
+_AF2_ORACLE_TARGET = "rfproteina.metrics.oracles.af2_oracle.AF2Oracle"
+_AF2_DEFAULT_MODELS = ("model_1_ptm", "model_1_multimer_v3")
 
 
 def _has_af3_oracle_target(cfg: DictConfig) -> bool:
@@ -50,6 +53,50 @@ def _has_af3_oracle_target(cfg: DictConfig) -> bool:
         return False
 
     return walk(container)
+
+
+def _af2_oracle_nodes(cfg: DictConfig) -> Iterator[DictConfig]:
+    """Yield AF2 oracle nodes without resolving unrelated scalar leaves."""
+
+    def walk(node: Any) -> Iterator[DictConfig]:
+        if isinstance(node, DictConfig):
+            if "_target_" in node and node["_target_"] == _AF2_ORACLE_TARGET:
+                yield node
+            for _key, child in node.items_ex(resolve=False):
+                if isinstance(child, DictConfig | ListConfig):
+                    yield from walk(child)
+        elif isinstance(node, ListConfig):
+            for index in range(len(node)):
+                child = node._get_node(index)
+                if isinstance(child, DictConfig | ListConfig):
+                    yield from walk(child)
+
+    yield from walk(cfg)
+
+
+def _af2_required_model_names(cfg: DictConfig) -> tuple[str, ...]:
+    """Collect explicitly configured AF2 models in stable first-seen order."""
+    required: list[str] = []
+    seen: set[str] = set()
+
+    def add(name: Any) -> None:
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"Invalid AF2 model name: {name!r}")
+        if name not in seen:
+            seen.add(name)
+            required.append(name)
+
+    for node in _af2_oracle_nodes(cfg):
+        configured = False
+        if "model_name" in node:
+            model_name = node["model_name"]
+            if model_name is not None:
+                configured = True
+                add(model_name)
+        if not configured:
+            for model_name in _AF2_DEFAULT_MODELS:
+                add(model_name)
+    return tuple(required)
 
 
 def main() -> int:
@@ -128,6 +175,8 @@ def main() -> int:
                 af3_needed = _has_af3_oracle_target(cfg)
             except Exception:
                 af3_needed = False
+            af2_required_models = _af2_required_model_names(cfg)
+            af2_needed = bool(af2_required_models)
     except Exception as e:
         print(f"Error resolving config: {e}", file=sys.stderr)
         return 1
@@ -142,6 +191,8 @@ def main() -> int:
     print(f"CPUS_PER_TASK={cpus_per_task}")
     print(f"GEN_NJOBS={gen_njobs}")
     print(f"AF3_NEEDED={'true' if af3_needed else 'false'}")
+    print(f"AF2_NEEDED={'true' if af2_needed else 'false'}")
+    print(f"AF2_REQUIRED_MODELS='{','.join(af2_required_models)}'")
 
     # Optional overrides (only output if explicitly set in config)
     if gpu_type is not None:

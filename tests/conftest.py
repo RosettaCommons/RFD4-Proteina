@@ -57,6 +57,7 @@ def _pin_gpu_for_xdist_worker() -> None:
 
     os.environ["CUDA_VISIBLE_DEVICES"] = devices[index]
 
+    os.environ["AF2_DAEMON_RANK"] = str(index)
     os.environ["AF3_DAEMON_RANK"] = str(index)
 
 
@@ -108,6 +109,53 @@ def _has_af3() -> bool:
 
 has_af3 = _has_af3()
 skip_if_no_af3 = pytest.mark.skipif(not has_af3, reason="AF3 apptainer image not available")
+
+AF2_IMAGE = os.environ.get("AF2_IMAGE", "")
+AF2_MODEL_DIR = os.environ.get("AF2_MODEL_DIR", "")
+
+
+def _af2_image_available(image: str, backend: str) -> bool:
+    """Apply the same image-reference rules as the selected AF2 runtime."""
+    if not image:
+        return False
+    if backend == "apptainer":
+        return os.path.isfile(image)
+
+    from rfproteina.af2.af2_apptainer import (
+        _normalize_docker_container_image,
+        _normalize_pyxis_container_image,
+    )
+
+    normalizer = {
+        "docker": _normalize_docker_container_image,
+        "pyxis": _normalize_pyxis_container_image,
+    }.get(backend)
+    if normalizer is None:
+        return False
+    try:
+        normalizer(image)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def _has_af2() -> bool:
+    """Check if the configured AF2 image, runtime backend, and weights are available."""
+    image = os.environ.get("AF2_IMAGE", AF2_IMAGE)
+    model_dir = os.environ.get("AF2_MODEL_DIR", AF2_MODEL_DIR)
+    backend = os.environ.get("AF2_RUNTIME_BACKEND", "apptainer").strip().lower()
+    runtime = {"apptainer": "apptainer", "pyxis": "srun", "docker": "docker"}.get(backend)
+    return (
+        bool(image)
+        and _af2_image_available(image, backend)
+        and runtime is not None
+        and shutil.which(runtime) is not None
+        and bool(model_dir)
+    )
+
+
+has_af2 = _has_af2()
+skip_if_no_af2 = pytest.mark.skipif(not has_af2, reason="AF2 runtime is not available")
 
 
 @pytest.fixture
