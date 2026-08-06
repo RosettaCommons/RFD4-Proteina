@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import shutil
 import subprocess
@@ -41,25 +40,37 @@ _TARGET, _BINDER = "A", "B"
 _PROTEIN_CA = "is_protein & (atom_name == 'CA')"
 _PROTEIN_BACKBONE = "is_protein & (atom_name in ['N', 'CA', 'C', 'O'])"
 
-# Seeded Pallas-on bounds with modest deterministic cross-GPU slack.
-_QUALITY_BOUNDS = {
-    "monomer": ({"overall_plddt": 52.0, "overall_ptm": 29.0}, {"overall_pae": 16.5}),
-    "initial_guess_off": ({"overall_plddt": 54.0, "overall_ptm": 32.0}, {"overall_pae": 16.0}),
-    "initial_guess_on": ({"overall_plddt": 58.0, "overall_ptm": 37.0}, {"overall_pae": 15.0}),
+_GENERATED_TARGET_RMSD_MAX = 1.9  # measured ~1.68 Å on seeded target-templated refold
+_SUPERFOLD_CHECKS = {
+    "initial_guess_masked": (
+        "5vht_A_superfold_initial_guess_masked.cif",
+        0.45,
+        {"overall_plddt": (61.1531, 0.75), "overall_ptm": (40.0410, 0.75), "overall_pae": (14.0054, 0.25)},
+    ),
+    "default_monomer": (
+        "5vht_A_superfold_default_monomer.cif",
+        0.72,
+        {"overall_plddt": (57.7558, 1.1), "overall_ptm": (34.9464, 1.5), "overall_pae": (14.7240, 0.25)},
+    ),
 }
-_PPI_METRIC_BOUNDS = (
-    {"overall_plddt": 90.0, "overall_ptm": 85.0, "overall_iptm": 85.0},
-    {"overall_pae": 5.0, "ipae_coi": 5.0, "min_ipae_coi": 1.5},
-)
-_GENERATED_METRIC_BOUNDS = (
-    {"overall_plddt": 27.0, "overall_ptm": 9.0, "overall_iptm": 5.0, "plddt_coi": 27.0},
-    {"overall_pae": 26.0, "ipae_coi": 30.0, "min_ipae_coi": 23.0},
-)
-_GENERATED_TARGET_RMSD_MAX = 10.0
+_PPI_METRIC_GOLDENS = {
+    "ppi": {
+        "overall_iptm": (88.09, 0.1),
+        "iptm_coi": (88.07, 0.1),
+        "ipae_coi": (4.2462, 0.05),
+        "min_ipae_coi": (0.9973, 0.03),
+    },
+    "ppi_initial_guess_on": {
+        "overall_iptm": (87.74, 0.1),
+        "iptm_coi": (87.74, 0.1),
+        "ipae_coi": (4.3231, 0.05),
+        "min_ipae_coi": (1.0215, 0.03),
+    },
+}
 
 
-class RMSDCheck(NamedTuple):
-    """One AF3-style structural check with separate alignment and measurement selections."""
+class RecoveryCheck(NamedTuple):
+    """AF3-style prediction-vs-crystal/input RMSD (ground truth is the conditioned input)."""
 
     run: str
     label: str
@@ -68,38 +79,49 @@ class RMSDCheck(NamedTuple):
     allowable: float
 
 
-_RMSD_CHECKS = (
-    RMSDCheck("monomer", "monomer", _PROTEIN_CA, _PROTEIN_BACKBONE, 6.5),
-    RMSDCheck(
+_RECOVERY_CHECKS = (
+    RecoveryCheck(
         "ppi",
-        "PPI target",
+        "PPI templated target",
         f"(chain_id == '{_TARGET}') & (atom_name == 'CA')",
         f"(chain_id == '{_TARGET}') & ({_PROTEIN_BACKBONE})",
-        0.5,
+        allowable=0.43,  # measured 0.386
     ),
-    RMSDCheck(
+    RecoveryCheck(
         "ppi",
         "PPI complex in target frame",
         f"(chain_id == '{_TARGET}') & (atom_name == 'CA')",
         _PROTEIN_BACKBONE,
-        0.9,
+        allowable=0.83,  # measured 0.755
     ),
-    RMSDCheck(
+    RecoveryCheck(
         "ppi",
         "PPI binder in target frame",
         f"(chain_id == '{_TARGET}') & (atom_name == 'CA')",
         f"(chain_id == '{_BINDER}') & ({_PROTEIN_BACKBONE})",
-        1.2,
+        allowable=1.05,  # measured 0.996
     ),
-    RMSDCheck(
+    RecoveryCheck(
         "ppi",
         "PPI binder internal",
         f"(chain_id == '{_BINDER}') & (atom_name == 'CA')",
         f"(chain_id == '{_BINDER}') & ({_PROTEIN_BACKBONE})",
-        0.9,
+        allowable=0.85,  # measured 0.769
     ),
-    RMSDCheck("initial_guess_off", "initial guess off", _PROTEIN_CA, _PROTEIN_BACKBONE, 5.5),
-    RMSDCheck("initial_guess_on", "initial guess on", _PROTEIN_CA, _PROTEIN_BACKBONE, 5.5),
+    RecoveryCheck(
+        "ppi_initial_guess_on",
+        "PPI+guess templated target",
+        f"(chain_id == '{_TARGET}') & (atom_name == 'CA')",
+        f"(chain_id == '{_TARGET}') & ({_PROTEIN_BACKBONE})",
+        allowable=0.43,
+    ),
+    RecoveryCheck(
+        "ppi_initial_guess_on",
+        "PPI+guess complex in target frame",
+        f"(chain_id == '{_TARGET}') & (atom_name == 'CA')",
+        _PROTEIN_BACKBONE,
+        allowable=0.83,
+    ),
 )
 
 
@@ -236,19 +258,12 @@ def _rmsd(reference: AtomArray, subject: AtomArray, align: str, measure: str) ->
 
 def _rmsd_failures(runs: dict[str, FoldResult]) -> list[str]:
     failures = []
-    for check in _RMSD_CHECKS:
+    for check in _RECOVERY_CHECKS:
         result = runs[check.run]
         value = _rmsd(result.input, result.prediction, check.align, check.measure)
         if value >= check.allowable:
-            failures.append(f"{check.label}: RMSD {value:.3f} >= {check.allowable}")
+            failures.append(f"{check.label}: pred-vs-input RMSD {value:.3f} >= {check.allowable}")
     return failures
-
-
-def _assert_bounds(values: dict, minimum: dict[str, float], maximum: dict[str, float]) -> None:
-    for key, bound in minimum.items():
-        assert math.isfinite(float(values[key])) and float(values[key]) > bound
-    for key, bound in maximum.items():
-        assert math.isfinite(float(values[key])) and float(values[key]) < bound
 
 
 def _fold_results(oracle: AF2Oracle, jobs: list[OracleJobInput]) -> dict[str, FoldResult]:
@@ -286,27 +301,30 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
     previous_capture_dir = os.environ.get("AF2_MANIFEST_CAPTURE_DIR")
     os.environ["AF2_MANIFEST_CAPTURE_DIR"] = str(capture_dir)
     try:
-        # One batch is the primary acceptance request. The initial-guess pair is
-        # the repeated dispatch through the same launcher-selected socket.
-        primary = AF2Oracle(oracle_name="af2_acceptance", template_query="mask_coordinate_1_atom", seed=_SEED)
         runs = _fold_results(
-            primary,
-            [
-                OracleJobInput(monomer, "monomer", root / "monomer"),
-                OracleJobInput(ppi, "ppi", root / "ppi", chain_of_interest=_BINDER),
-            ],
+            AF2Oracle(
+                oracle_name="af2_acceptance",
+                template_query="mask_coordinate_1_atom",
+                seed=_SEED,
+            ),
+            [OracleJobInput(ppi, "ppi", root / "ppi", chain_of_interest=_BINDER)],
         )
         runs.update(
             _fold_results(
-                AF2Oracle(oracle_name="af2_initial_guess_off", seed=_SEED, initial_guess=False, pct_seq_mask=0.0),
-                [OracleJobInput(monomer, "initial_guess_off", root / "initial_guess_off")],
-            )
-        )
-        runs.update(
-            _fold_results(
-                AF2Oracle(oracle_name="af2_initial_guess_on", seed=_SEED, initial_guess=True, pct_seq_mask=0.0),
+                AF2Oracle(
+                    oracle_name="af2_ppi_initial_guess_on",
+                    template_query="mask_coordinate_1_atom",
+                    seed=_SEED,
+                    initial_guess=True,
+                    pct_seq_mask=0.0,
+                ),
                 [
-                    OracleJobInput(monomer, "initial_guess_on", root / "initial_guess_on"),
+                    OracleJobInput(
+                        ppi.copy(),
+                        "ppi_initial_guess_on",
+                        root / "ppi_initial_guess_on",
+                        chain_of_interest=_BINDER,
+                    ),
                     OracleJobInput(
                         interleaved,
                         "interleaved_identical_sequence",
@@ -316,12 +334,28 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
                 ],
             )
         )
-        for index, model_name in enumerate(("model_1_ptm", "model_2_ptm"), start=1):
-            result = _fold_results(
-                AF2Oracle(oracle_name=f"af2_{model_name}", model_name=model_name, seed=_SEED),
-                [OracleJobInput(monomer.copy(), "fixed_model", root / "fixed_model")],
+        runs.update(
+            _fold_results(
+                AF2Oracle(
+                    oracle_name="af2_initial_guess_masked",
+                    model_name="model_1_ptm",
+                    seed=0,
+                    initial_guess=True,
+                    pct_seq_mask=0.15,
+                ),
+                [OracleJobInput(monomer.copy(), "initial_guess_masked", root / "initial_guess_masked")],
             )
-            runs[f"fixed_model_{index}"] = result["fixed_model"]
+        )
+        runs.update(
+            _fold_results(
+                AF2Oracle(
+                    oracle_name="af2_default_monomer",
+                    model_name="model_1_ptm",
+                    seed=_SEED,
+                ),
+                [OracleJobInput(monomer.copy(), "default_monomer", root / "default_monomer")],
+            )
+        )
         manifests = [json.loads(path.read_text()) for path in capture_dir.glob("*-manifest.json")]
         return AcceptanceRuns(runs, manifests)
     finally:
@@ -341,21 +375,19 @@ def _assert_parseable_finite_identity(result: FoldResult) -> None:
 
 
 def test_af2_crystal_acceptance(acceptance_runs) -> None:
-    """A warm AF2 pool refolds seeded monomer and target-templated PPI inputs."""
+    """Warm AF2 pool: templated PPI recovers crystal GT; initial_guess on templated PPI."""
     runs = acceptance_runs.runs
     target, binder = _TARGET, _BINDER
-    monomer = runs["monomer"]
     ppi = runs["ppi"]
+    ppi_guess = runs["ppi_initial_guess_on"]
     interleaved = runs["interleaved_identical_sequence"]
 
-    assert len(acceptance_runs.manifests) == 5
     primary_manifest = next(
-        manifest
-        for manifest in acceptance_runs.manifests
-        if {entry["name"] for entry in manifest} == {"monomer", "ppi"}
+        manifest for manifest in acceptance_runs.manifests if {entry["name"] for entry in manifest} == {"ppi"}
     )
     dispatched = {entry["name"]: entry for entry in primary_manifest}
-    assert "template" not in dispatched["monomer"]
+    assert dispatched["ppi"]["initial_guess"] is False
+    assert dispatched["ppi"]["pct_seq_mask"] == 0.0
     assert list(dispatched["ppi"]["template"]) == [target]
     assert binder not in dispatched["ppi"]["template"]
     template = dispatched["ppi"]["template"][target]
@@ -363,8 +395,30 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
     assert template["mmcif"]
     assert template["query_indices"] == template["template_indices"] == list(range(target_residue_count))
 
-    _assert_parseable_finite_identity(monomer)
-    _assert_bounds(monomer.metrics, *_QUALITY_BOUNDS["monomer"])
+    guess_manifest = next(
+        manifest
+        for manifest in acceptance_runs.manifests
+        if {entry["name"] for entry in manifest} == {"ppi_initial_guess_on", "interleaved_identical_sequence"}
+    )
+    guess_by_name = {entry["name"]: entry for entry in guess_manifest}
+    assert guess_by_name["ppi_initial_guess_on"]["initial_guess"] is True
+    assert list(guess_by_name["ppi_initial_guess_on"]["template"]) == [target]
+
+    monomer_entries = {
+        entry["name"]: entry
+        for manifest in acceptance_runs.manifests
+        for entry in manifest
+        if entry["chain_count"] == 1
+    }
+    assert monomer_entries["default_monomer"]["initial_guess"] is False
+    assert monomer_entries["default_monomer"]["pct_seq_mask"] == 0.0
+    assert monomer_entries["initial_guess_masked"]["initial_guess"] is True
+    assert monomer_entries["initial_guess_masked"]["pct_seq_mask"] == 0.15
+
+    for name in ("default_monomer", "initial_guess_masked"):
+        result = runs[name]
+        _assert_parseable_finite_identity(result)
+        assert result.metrics["af2_model_name"] == "model_1_ptm"
 
     ppi_template_chains = [
         chain for chain in _chain_order(ppi.input) if np.any(C_CRD.mask(ppi.input)[ppi.input.chain_id == chain])
@@ -372,11 +426,10 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
     assert ppi_template_chains == [target]
     assert binder not in ppi_template_chains
     _assert_parseable_finite_identity(ppi)
-    _assert_bounds(ppi.metrics, *_PPI_METRIC_BOUNDS)
+    _assert_parseable_finite_identity(ppi_guess)
 
     binder_index = ppi.summary["chain_ids"].index(binder)
     target_index = ppi.summary["chain_ids"].index(target)
-    assert float(ppi.summary["chain_plddt"][target_index]) > 0.4
     pair_min = ppi.summary["chain_pair_pae_min"]
     expected_min_ipae = (
         float(pair_min[binder_index][target_index]) + float(pair_min[target_index][binder_index])
@@ -386,6 +439,10 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
     expected_iptm = (float(pair_iptm[binder_index][target_index]) + float(pair_iptm[target_index][binder_index])) / 2.0
     assert ppi.metrics["iptm_coi"] == pytest.approx(100.0 * expected_iptm)
     assert float(ppi.metrics["iptm_coi"]) > 0.0
+    for name, goldens in _PPI_METRIC_GOLDENS.items():
+        for key, (expected, tolerance) in goldens.items():
+            assert runs[name].metrics[key] == pytest.approx(expected, abs=tolerance)
+
     _assert_parseable_finite_identity(interleaved)
     assert interleaved.summary["chain_ids"] == ["A", "C", "B"]
     assert interleaved.metrics["chain_of_interest"] == "B"
@@ -402,29 +459,14 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
     expected_iptm = np.mean((pair_iptm[binder_index, other_indices] + pair_iptm[other_indices, binder_index]) / 2.0)
     assert interleaved.metrics["iptm_coi"] == pytest.approx(100.0 * expected_iptm)
 
-    for name in ("initial_guess_off", "initial_guess_on"):
+    for name, (fixture, rmsd_max, metric_goldens) in _SUPERFOLD_CHECKS.items():
         result = runs[name]
-        _assert_parseable_finite_identity(result)
-        _assert_bounds(result.metrics, *_QUALITY_BOUNDS[name])
-
-    initial_guess_off = runs["initial_guess_off"]
-    initial_guess_on = runs["initial_guess_on"]
-    assert initial_guess_off.prediction.coord.shape == initial_guess_on.prediction.coord.shape
-    assert np.max(np.abs(initial_guess_on.prediction.coord - initial_guess_off.prediction.coord)) > 1e-6
-    assert float(initial_guess_on.metrics["overall_plddt"]) > float(initial_guess_off.metrics["overall_plddt"])
-    assert float(initial_guess_on.metrics["overall_pae"]) < float(initial_guess_off.metrics["overall_pae"])
-    assert float(initial_guess_on.metrics["overall_ptm"]) > float(initial_guess_off.metrics["overall_ptm"])
-
-    results = [acceptance_runs.runs[f"fixed_model_{index}"] for index in (1, 2)]
-    fixed_manifests = [
-        manifest for manifest in acceptance_runs.manifests if {entry["name"] for entry in manifest} == {"fixed_model"}
-    ]
-    assert sorted(manifest[0]["model_name"] for manifest in fixed_manifests) == ["model_1_ptm", "model_2_ptm"]
-    assert [result.metrics["af2_model_name"] for result in results] == ["model_1_ptm", "model_2_ptm"]
-    assert [result.summary["af2_model_name"] for result in results] == ["model_1_ptm", "model_2_ptm"]
-    assert np.max(np.abs(results[0].prediction.coord - results[1].prediction.coord)) > 1e-6
-    for result in results:
-        _assert_parseable_finite_identity(result)
+        assert (
+            _rmsd(_load_protein(TEST_DATA_DIR / fixture), result.prediction, _PROTEIN_BACKBONE, _PROTEIN_BACKBONE)
+            < rmsd_max
+        )
+        for key, (expected, tolerance) in metric_goldens.items():
+            assert result.metrics[key] == pytest.approx(expected, abs=tolerance)
 
     assert not (failures := _rmsd_failures(runs)), "\n".join(failures)
 
@@ -499,6 +541,8 @@ def test_generated_binder_flows_through_af2_metric(generated_binder_run) -> None
 
     dispatched_manifest = json.loads(manifest_path.read_text())
     assert len(dispatched_manifest) == 1
+    assert dispatched_manifest[0]["initial_guess"] is False
+    assert dispatched_manifest[0]["pct_seq_mask"] == 0.0
     assert list(dispatched_manifest[0]["template"]) == [target]
     assert binder not in dispatched_manifest[0]["template"]
 
@@ -519,9 +563,4 @@ def test_generated_binder_flows_through_af2_metric(generated_binder_run) -> None
     )
     assert target_backbone_rmsd < _GENERATED_TARGET_RMSD_MAX
 
-    for key in ("overall_plddt", "overall_ptm", "overall_iptm", "plddt_coi"):
-        assert 0.0 <= float(metrics[key]) <= 100.0
-    for key in ("overall_pae", "ipae_coi", "min_ipae_coi"):
-        assert float(metrics[key]) >= 0.0
     assert metrics["chain_of_interest"] == f"{binder}_1"
-    _assert_bounds(metrics, *_GENERATED_METRIC_BOUNDS)

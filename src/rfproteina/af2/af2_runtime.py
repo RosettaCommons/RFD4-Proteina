@@ -298,6 +298,22 @@ def _make_chain_features(
     }
 
 
+def _mock_template_features(num_res: int) -> dict[str, np.ndarray]:
+    """Build Superfold's inert template row for optional monomer initial-guess parity."""
+    template_aatype = residue_constants.sequence_to_onehot(
+        "-" * num_res,
+        residue_constants.HHBLITS_AA_TO_ID,
+    ).astype(np.float32)
+    return {
+        "template_aatype": template_aatype[None],
+        "template_all_atom_masks": np.zeros((1, num_res, residue_constants.atom_type_num), dtype=np.float32),
+        "template_all_atom_positions": np.zeros((1, num_res, residue_constants.atom_type_num, 3), dtype=np.float32),
+        "template_domain_names": np.asarray([b"none"], dtype=object),
+        "template_sequence": np.asarray([b"none"], dtype=object),
+        "template_sum_probs": np.asarray([0.0], dtype=np.float32),
+    }
+
+
 def parse_protein_chains(cif_string: str) -> dict[str, str]:
     """Parse coordinate-chain sequences without requiring ``_chem_comp`` loops."""
     from Bio.PDB import MMCIFParser
@@ -461,7 +477,7 @@ def build_raw_features_from_payload(
     if unknown_template_chains:
         raise ValueError(f"Templates supplied for unknown chains: {sorted(unknown_template_chains)}")
 
-    replace_fraction = float(payload.get("pct_seq_mask", 0.15))
+    replace_fraction = float(payload.get("pct_seq_mask", 0.0))
     if not 0.0 <= replace_fraction <= 1.0:
         raise ValueError(f"pct_seq_mask must be in [0, 1], got {replace_fraction!r}")
     initial_guess = bool(payload.get("initial_guess", False))
@@ -488,6 +504,8 @@ def build_raw_features_from_payload(
     else:
         chain_id, sequence = next(iter(chains.items()))
         raw_features = _make_chain_features(sequence, chain_id, templates.get(chain_id))
+        if initial_guess and not templates:
+            raw_features.update(_mock_template_features(len(sequence)))
 
     metadata: dict[str, Any] = {
         "chain_ids": list(chains),
@@ -707,7 +725,7 @@ def predict_and_write(
     _configure_masked_msa_replace_fraction(
         model_runner.config,
         multimer_mode=multimer_mode,
-        replace_fraction=float(metadata.get("pct_seq_mask", 0.15)),
+        replace_fraction=float(metadata.get("pct_seq_mask", 0.0)),
     )
     processed_features = model_runner.process_features(raw_features, random_seed=seed)
     if metadata.get("initial_guess"):

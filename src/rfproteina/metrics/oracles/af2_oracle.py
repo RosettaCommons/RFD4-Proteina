@@ -174,7 +174,7 @@ class AF2Oracle(OracleMetric):
         seed: int | None = None,
         extra_af2_flags: list[str] | None = None,
         initial_guess: bool = False,
-        pct_seq_mask: float = 0.15,
+        pct_seq_mask: float = 0.0,
         **kwargs: Any,
     ) -> None:
         if kwargs.get("pre_oracle_transform") is not None:
