@@ -25,6 +25,7 @@ import tempfile
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +116,13 @@ _COI_INTERFACE_METRICS: list[tuple[str, str, Callable, float]] = [
     ("chain_pair_iptm", "iptm_coi", np.mean, 100.0),
 ]
 
+# Emitted per chain pair as `<prefix>_<chain_i>_<chain_j>`, forward/reverse averaged.
+# Format: (af3_key, output_key_prefix, scale).
+_CHAIN_PAIR_METRICS: list[tuple[str, str, float]] = [
+    ("chain_pair_pae_min", "min_ipae", 1.0),
+    ("chain_pair_iptm", "iptm", 100.0),
+]
+
 
 def extract_confidence_metrics(
     summary_confidences: dict,
@@ -123,6 +131,9 @@ def extract_confidence_metrics(
 ) -> dict[str, float]:
     """Translate an AF3-shaped summary-confidences dict into the flat metric keys
     the val pipeline expects (``overall_plddt``, ``plddt_coi``, ``ptm_coi``, …).
+
+    Also emits one ``min_ipae_<chain_i>_<chain_j>`` key per chain pair, which ``min_ipae_coi``
+    cannot express: it is one ``np.min`` over the COI's pairs, so the tightest hides the rest.
 
     Both :class:`AF3Oracle` and :class:`RF3Oracle` produce summary-confidences
     in the same shape and call this helper before persisting the result.
@@ -141,6 +152,19 @@ def extract_confidence_metrics(
         v = summary_confidences.get(src)
         if v is not None:
             metrics[dst] = float(v) * scale
+
+    # Emitted for all pairs, not just the COI's, and before the reduction that collapses them.
+    for src, dst_prefix, scale in _CHAIN_PAIR_METRICS:
+        matrix = summary_confidences.get(src)
+        if matrix is None:
+            continue
+        for i, j in combinations(range(len(chains_in_order)), 2):
+            # chains_in_order may carry None where a label failed to map back.
+            if chains_in_order[i] is None or chains_in_order[j] is None:
+                continue
+            vals = [v for v in (matrix[i][j], matrix[j][i]) if v is not None]
+            if vals:
+                metrics[f"{dst_prefix}_{chains_in_order[i]}_{chains_in_order[j]}"] = float(np.mean(vals)) * scale
 
     if chain_of_interest is None or chain_of_interest not in chains_in_order:
         return metrics

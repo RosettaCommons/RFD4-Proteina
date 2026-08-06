@@ -185,6 +185,9 @@ run AF3 and OF3 as separate jobs and compare afterwards.
 Threshold one or more already-computed metric values into a binary pass/fail flag
 (`{config_key}.pass`), evaluated after design + oracle + refolding metrics. All are built from the
 generic `PassCriterionMetric` — see [Adding your own pass criterion](custom_metrics.md#pass-criteria-config).
+Separate entries are ANDed; to threshold the best/worst/mean of several keys instead (e.g. either of
+two interfaces being good enough), use a `min_of` / `max_of` / `mean_of` list — see
+[Thresholding a reduction over several keys](custom_metrics.md#thresholding-a-reduction-over-several-keys).
 
 | Config key | Tag gate | Thresholds |
 | --- | --- | --- |
