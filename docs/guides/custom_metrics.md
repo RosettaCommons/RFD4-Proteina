@@ -236,6 +236,35 @@ pass_criteria:
     required_tags_any: [unconditional_refolding]
 ```
 
+#### Thresholding a reduction over several keys
+
+Listing two keys as separate entries **ANDs** them — both must pass. To threshold a
+*reduction* over several keys instead, give one spec a `min_of`, `max_of`, or `mean_of` list;
+the outer key becomes just a label.
+
+For example, a three-chain complex that only needs to engage **one** of two targets: threshold
+the best (lowest) of the two per-chain-pair interface ipAEs. `max_of` would instead demand both
+are good, `mean_of` that they hold on average.
+
+```yaml
+pass_criteria:
+  either_target_engaged:
+    _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+    metric_thresholds:
+      best_target_ipae:          # label only — output column is `either_target_engaged.pass`
+        min_of:
+          - oracle_ppi.min_ipae_A_B
+          - oracle_ppi.min_ipae_A_C
+        max: 1.5
+    required_tags_any: [ppi_refolding]
+```
+
+Oracles emit one `min_ipae_<chain_i>_<chain_j>` key per chain pair (prefixed by the oracle's
+config-entry name), which is what makes per-interface thresholds like this possible. Every listed
+key must be present — a design missing a chain is reported indeterminate
+(`all_metrics_present = 0`) rather than passing on the interfaces that survived. One spec may
+carry at most one reducer.
+
 ---
 
 ## Step 3 — Run

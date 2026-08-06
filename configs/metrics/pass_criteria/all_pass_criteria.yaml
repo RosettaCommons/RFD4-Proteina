@@ -92,3 +92,14 @@ disco:
     max_ligand_centroid_distance.ligand_centroid_distance:
       max: 2.0
   required_tags_any: [disco_refolding]
+
+# --- Reducing several metric keys into one threshold (example, commented out) ---
+# E.g. you have a multi-chain binder but only want to evaluate on the min ipae over all binder chains
+#   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+#   metric_thresholds:
+#     best_target_ipae:                # label only; output column is
+#       min_of:                        # `either_target_engaged.pass`
+#         - oracle_ppi.min_ipae_A_B
+#         - oracle_ppi.min_ipae_A_C
+#       max: 1.5
+#   required_tags_any: [ppi_refolding]
