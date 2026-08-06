@@ -1,14 +1,12 @@
 # AF2 protein refolding oracle configurations.
 # Tags (via metrics_tags) control which oracle runs for each example.
 #
-# Optional ColabFold knobs (defaults preserve stock AF2 behavior):
-#   initial_guess: true   # seed recycle prev_pos from design CIF coords
-#   pct_seq_mask: 0.0     # BERT MSA mask rate; 0.15 is AF2 default
-
 oracle:
   _target_: rfproteina.metrics.oracles.af2_oracle.AF2Oracle
   oracle_name: af2
   model_name: model_1_ptm  # model_{1..5}_ptm (monomer) or model_{1..5}_multimer_v3 (multimer)
+  initial_guess: false
+  pct_seq_mask: 0.0  # Superfold uses 0.15; override this to reproduce that masking behavior.
   aggregation: [median]
   required_tags_any:
     - af2_refolding
