@@ -384,6 +384,7 @@ class DesignProblemDataset(FileDataset):
         transform: Transform | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
+        subset_to_keys: list[str] | None = None,
         prevalidate: bool = False,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
@@ -394,9 +395,14 @@ class DesignProblemDataset(FileDataset):
             filter_fn: Optional function to filter which files to include based on filename.
             transform: Optional transform to apply to loaded data.
             global_prefix: Optional global prefix for output example ids.
-            subset_to_keys: Optional list of keys to subset the data to.
+            subset_to_keys: Optional list of base ids (the file stem, before any
+                ``global_prefix``) to keep; useful for running a few examples out of a large
+                input directory.
             prevalidate: if True, load + validate each unique CIF once during init.
             num_replicates: Optional number of times to repeat each file in the dataset
+
+        Raises:
+            ValueError: If a key in ``subset_to_keys`` matches none of the discovered files.
         """
         # Ensure input is a list
         if not isinstance(dir_path_or_file_paths, list | ListConfig):
@@ -441,6 +447,18 @@ class DesignProblemDataset(FileDataset):
                 f"Could not build unique base_ids for {len(self.file_paths)} files even "
                 "using their full paths; remove duplicate input paths."
             )
+        # Subset before prevalidation and replication, so discarded inputs cost nothing.
+        if exists(subset_to_keys):
+            keys = set(subset_to_keys)
+            if missing := keys - set(candidate_ids):
+                raise ValueError(
+                    f"subset_to_keys entries {sorted(missing)} match none of the "
+                    f"{len(candidate_ids)} discovered inputs (e.g. {candidate_ids[0]!r})."
+                )
+            kept = [i for i, cid in enumerate(candidate_ids) if cid in keys]
+            self.file_paths = [self.file_paths[i] for i in kept]
+            candidate_ids = [candidate_ids[i] for i in kept]
+
         if exists(self.global_prefix):
             candidate_ids = [f"{self.global_prefix}_{cid}" for cid in candidate_ids]
         self.base_ids = candidate_ids
