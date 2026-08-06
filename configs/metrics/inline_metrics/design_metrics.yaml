@@ -28,6 +28,11 @@ interchain_interactions:
   required_tags_any: ["interchain_interactions"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
+# Reports NaN when nothing was sequence-conditioned
+sequence_adherence:
+  _target_: rfproteina.metrics.sequence_adherence_metric.SequenceAdherenceMetric
+  required_tags_any: ["design"]
+
 sse_distribution:
   _target_: rfproteina.metrics.sse_metrics.SecondaryStructureDistribution
   required_tags_any: ["design"]
@@ -75,6 +80,10 @@ design_unindexed_motif_allatom_rmsd:
   input_kwarg_names:
     ground_truth_atom_array: predicted_atom_array
     predicted_atom_array: predicted_atom_array
+  required_tags_all: ["unindexed"]
+
+unindexed_insertion_mapping:
+  _target_: rfproteina.metrics.unindexed_insertion_metric.UnindexedInsertionMappingMetric
   required_tags_all: ["unindexed"]
 
 contact_molecular_surface:

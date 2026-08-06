@@ -119,6 +119,8 @@ def run_metrics_for_result(
                 "output_base_dir": output_base_dir,
                 "chain_of_interest": coi if coi_unambiguous else None,
                 "save_input_structure": save_input_structure,
+                "full_array_with_unindexed": result.get("full_array_with_unindexed"),
+                "predicted_insertion_mapping": result.get("predicted_insertion_mapping") or {},
             },
             ground_truth_atom_array=result["input_atom_array"],
             predicted_atom_array=result["generated_atom_array"],
@@ -743,6 +745,8 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
     result = {
         "generated_atom_array": generated_array,
         "input_atom_array": payload.get("input_atom_array"),
+        "full_array_with_unindexed": payload.get("full_array_with_unindexed"),
+        "predicted_insertion_mapping": token_mapping,
         "example_id": example_id,
     }
     output_base_dir = Path(payload["output_base_dir"]) if payload.get("output_base_dir") else None

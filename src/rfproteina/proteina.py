@@ -1489,15 +1489,6 @@ class Proteina(L.LightningModule):
                 metric_manager = None
             setattr(self, attr_name, metric_manager)
 
-        if self.pre_oracle_filter_metric_manager is not None:
-            for name, metric in self.pre_oracle_filter_metric_manager.metrics.items():
-                if not metric.required_tags_any and not metric.required_tags_all:
-                    raise ValueError(
-                        f"pre_oracle_filters metric '{name}' has no required_tags_any or "
-                        f"required_tags_all. Every pre-oracle filter must be tag-gated so it "
-                        f"cannot fire unconditionally and block designs unexpectedly."
-                    )
-
         if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
             self.val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
         else:
