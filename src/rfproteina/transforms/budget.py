@@ -42,7 +42,9 @@ class EnforceCropBudget(Transform):
 
     - ``plan_expansion(atom_array) -> (extra_tokens, must_keep_atom_mask)``.
     - Ranks non-reserved tokens by distance to the upstream crop center (``data["crop_info"]``)
-      if present, else whole-array COM. Must-keep tokens always survive.
+      if present, else whole-array COM. Must-keep tokens survive unless the reservation itself
+      exceeds ``crop_size // 2`` (each reserved token is duplicated by the expander, so it costs
+      two slots), in which case the outermost reserved tokens are dropped to make it fit.
     - Trims ``data["crop_info"]["crop_atom_idxs"] / ["crop_token_idxs"]`` so downstream
       consumers see a consistent view.
 
@@ -74,7 +76,7 @@ class EnforceCropBudget(Transform):
 
         atom_array, atom_keep_mask, keep_token_mask = _drop_periphery_tokens_to_fit(
             atom_array,
-            max_tokens=crop_size - extra_tokens,
+            crop_size=crop_size,
             must_keep_atom_mask=must_keep_atom_mask,
             center=center,
         )
@@ -112,29 +114,30 @@ def _resolve_ranking_center(data: dict, atom_array: AtomArray) -> np.ndarray:
 def _drop_periphery_tokens_to_fit(
     atom_array: AtomArray,
     *,
-    max_tokens: int,
+    crop_size: int,
     must_keep_atom_mask: np.ndarray,
     center: np.ndarray,
 ) -> tuple[AtomArray, np.ndarray, np.ndarray]:
-    """Drop non-reserved tokens farthest from ``center`` until ``T <= max_tokens``.
+    """Drop tokens farthest from ``center`` so ``T + extra_tokens == crop_size`` after expansion.
 
     - Returns (new_atom_array, atom_keep_mask, token_keep_mask) for caller bookkeeping.
     - Preserves/extends ``at_crop_boundary`` if present.
     """
-    keep_token_mask = apply_token_wise(atom_array, must_keep_atom_mask, np.any)
-
-    n_reserved_tokens = int(keep_token_mask.sum())
-    assert (
-        n_reserved_tokens <= max_tokens
-    ), f"Reserved token count ({n_reserved_tokens}) exceeds budget ({max_tokens}); tighten the upstream reservation."
+    reserved_token_mask = apply_token_wise(atom_array, must_keep_atom_mask, np.any)
 
     coords = get_af3_token_center_coords(atom_array)
     valid = np.isfinite(coords).all(axis=1)
+    dists = np.linalg.norm(coords - center, axis=1)
 
-    target_idxs = np.where(~keep_token_mask & valid)[0]
-    n_keep = max_tokens - n_reserved_tokens
-    dists = np.linalg.norm(coords[target_idxs] - center, axis=1)
-    keep_token_mask[target_idxs[np.argsort(dists)[:n_keep]]] = True
+    reserved_idxs = np.where(reserved_token_mask)[0]
+    n_reserved_tokens = min(len(reserved_idxs), crop_size // 2)
+    keep_token_mask = np.zeros(len(coords), dtype=bool)
+    keep_token_mask[reserved_idxs[np.argsort(dists[reserved_idxs])[:n_reserved_tokens]]] = True
+
+    # ... then spend what the reservation left over on the innermost non-reserved tokens
+    target_idxs = np.where(~reserved_token_mask & valid)[0]
+    n_keep = crop_size - 2 * n_reserved_tokens
+    keep_token_mask[target_idxs[np.argsort(dists[target_idxs])[:n_keep]]] = True
 
     atom_keep_mask = spread_token_wise(atom_array, keep_token_mask)
 
