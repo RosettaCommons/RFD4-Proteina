@@ -15,7 +15,7 @@ import rootutils
 import torch
 from atomworks.common import exists
 from atomworks.ml.transforms.base import Identity, Transform
-from omegaconf import DictConfig, ListConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
 from torch.utils.data import DataLoader, Subset
 
 from rfproteina.datapipes.collate import collate_batch
@@ -176,7 +176,11 @@ def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
 
 
 def split_replicates_by_job(num_replicates: int, job_id: int, njobs: int) -> int:
-    """Split total replicates across multiple jobs.
+    """Split total replicates as evenly as possible across multiple jobs.
+
+    The remainder is spread one-per-job over the lowest job ids, so no job is starved when
+    ``njobs <= num_replicates`` (e.g. 10 replicates over 8 jobs gives jobs 0-1 two each and
+    jobs 2-7 one each).
 
     Args:
         num_replicates: Total number of replicates per example.
@@ -186,11 +190,29 @@ def split_replicates_by_job(num_replicates: int, job_id: int, njobs: int) -> int
     Returns:
         Number of replicates for this job_id.
     """
-    replicates_per_split = (num_replicates - 1) // njobs + 1
-    if replicates_per_split * job_id >= num_replicates:
-        logger.info(f"Job id {job_id} gets 0 replicates. Finishing job...")
-        sys.exit(0)
-    return min(replicates_per_split, num_replicates - replicates_per_split * job_id)
+    replicates_per_split, remainder = divmod(num_replicates, njobs)
+    return replicates_per_split + int(job_id < remainder)
+
+
+def plan_job_split(num_replicates: int, job_id: int, njobs: int) -> tuple[int, int | None, int | None]:
+    """Decide which axis ``gen_njobs`` divides for this job.
+
+    Replicates are divided while there are enough to go round (at least one per job). Beyond that
+    the surplus jobs would get zero replicates, so the examples are divided instead and every job
+    keeps the full replicate count.
+
+    Args:
+        num_replicates: Total number of replicates per example.
+        job_id: Current job ID (0-indexed).
+        njobs: Total number of parallel jobs.
+
+    Returns:
+        ``(num_replicates, shard_index, num_shards)``, where the shard values are ``None`` when
+        replicates were divided and ``num_replicates`` is this job's share.
+    """
+    if njobs <= num_replicates:
+        return split_replicates_by_job(num_replicates, job_id, njobs), None, None
+    return num_replicates, job_id, njobs
 
 
 def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Dataset:
@@ -198,13 +220,18 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     cfg_gen = cfg.generation
     check_cfg_validity(cfg_gen.args)
 
-    # Get the desired number of replicates and adjust for job splitting
+    # Divide the work across parallel jobs; see `plan_job_split`.
     njobs = cfg.get("gen_njobs", 1)
     num_replicates = cfg.get("num_replicates", 1)
-    num_replicates = split_replicates_by_job(num_replicates, job_id, njobs)
+    num_replicates, shard_index, num_shards = plan_job_split(num_replicates, job_id, njobs)
 
     # If a design Dataset was passed, use it directly
     cfg_gen.dataset.num_replicates = num_replicates
+    if exists(num_shards):
+        # A pre-instantiated dataset must be sharded too, or every surplus job repeats the whole set.
+        with open_dict(cfg_gen.dataset):
+            cfg_gen.dataset.shard_index = shard_index
+            cfg_gen.dataset.num_shards = num_shards
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
     if isinstance(instantiated_dset, (DesignProblemDataset | JsonDataset)):
         if cfg_gen.val_set_name_override is None:
@@ -261,6 +288,8 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
         specification_overrides=specification_overrides,
         global_prefix=cfg.get("global_prefix"),
         prevalidate=cfg.get("prevalidate_inputs", False),
+        shard_index=shard_index,
+        num_shards=num_shards,
     )
 
     if cfg_gen.val_set_name_override is None:
@@ -278,6 +307,8 @@ def get_contig_or_design_problem_dataset(
     specification_overrides: dict = {},
     global_prefix: str | None = None,
     prevalidate: bool = False,
+    shard_index: int | None = None,
+    num_shards: int | None = None,
 ) -> torch.utils.data.Dataset:
     """Create a DesignProblemDataset, ConditionSpecDataset, or ContigJsonDataset (legacy)
     based on the input type.
@@ -294,6 +325,9 @@ def get_contig_or_design_problem_dataset(
         global_prefix: Optional global prefix for output example ids.
         prevalidate: If True, build + validate each unique input once up front (fail fast). Not
             supported for the legacy contig-JSON dialect (skipped with a warning).
+        shard_index: Which shard of the replicated examples this job serves, in ``[0, num_shards)``.
+        num_shards: Number of shards to divide the replicated examples into; see
+            :py:func:`~rfproteina.inference_utils.datasets.take_shard`.
 
     Returns:
         A torch Dataset instance.
@@ -313,6 +347,8 @@ def get_contig_or_design_problem_dataset(
             num_replicates=num_replicates,
             global_prefix=global_prefix,
             prevalidate=prevalidate,
+            shard_index=shard_index,
+            num_shards=num_shards,
         )
 
     input_path = Path(json_or_design_problem_inputs)
@@ -335,6 +371,8 @@ def get_contig_or_design_problem_dataset(
             global_prefix=global_prefix,
             source_path=source_path,
             prevalidate=prevalidate,
+            shard_index=shard_index,
+            num_shards=num_shards,
         )
 
     # kind == "legacy"
@@ -354,6 +392,8 @@ def get_contig_or_design_problem_dataset(
         global_prefix=global_prefix,
         source_path=source_path,
         prevalidate=prevalidate,
+        shard_index=shard_index,
+        num_shards=num_shards,
     )
 
 

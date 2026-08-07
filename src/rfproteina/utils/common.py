@@ -1,3 +1,4 @@
+import os
 from functools import wraps
 from pathlib import Path
 
@@ -152,6 +153,22 @@ def true_with_prob(p: float | np.ndarray, rng: np.random.Generator | None = None
 def ensure_dtype(tensor: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
     """Convert tensor to target dtype if it's not already that dtype."""
     return tensor if tensor.dtype == dtype else tensor.to(dtype)
+
+
+def ensure_dir(path: "str | os.PathLike") -> Path:
+    """Create a directory, tolerating another rank creating it at the same time.
+
+    ``mkdir(exist_ok=True)`` is not enough on NFS: pathlib cannot trust EEXIST, so it falls back to
+    an ``is_dir()`` check that races a concurrent mkdir and re-raises FileExistsError, killing the
+    task. A name that exists but is not a directory is left to fail at the first write.
+    """
+    path = Path(path)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except FileExistsError:
+        if not path.is_dir():
+            raise
+    return path
 
 
 def validate_design_id(design_id: str) -> str:
