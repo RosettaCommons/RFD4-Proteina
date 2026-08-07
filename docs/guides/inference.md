@@ -14,6 +14,7 @@ checkpoint download, and a first design; this guide assumes that's done.
 - [Inverse Folding](#inverse-folding)
 - [Evaluating Results](#evaluating-results) — see also [Metrics Reference](metrics.md)
 - [Search Strategies](#search-strategies)
+- [Sampling Transforms](#sampling-transforms)
 - [Parameter Reference](#parameter-reference)
 - [Supported Conditioning](#supported-conditioning)
 - [Inference Noise Parameters](#inference-noise-parameters)
@@ -240,7 +241,63 @@ checkpoints, metric weights) and how to build your own search config.
 
 ---
 
+## Sampling Transforms
 
+By default every replicate of an input file conditions on exactly the same annotated CIF. A
+**sampling transform** runs once per replicate, so each design can start from a different
+condition — useful when a conditioning value is a guess rather than a measurement (e.g. the
+CA position of a residue whose structure you don't know).
+
+Write one as an AtomWorks `Transform` whose `forward` edits `data["atom_array"]` in place. Drop it
+in `src/rfproteina/transforms/sampling/`, which is git-ignored (and created by `setup.sh`) so your
+code stays local — the same arrangement as [custom metrics](custom_metrics.md):
+
+```python
+# src/rfproteina/transforms/sampling/jitter_chain.py
+import numpy as np
+from atomworks.ml.transforms.base import Transform
+
+
+class JitterChainCoordinates(Transform):
+    """
+    Perturb one chain's conditioning coordinates by Gaussian noise.
+    NOTE: This can influence chirality featurization as chirality is determined by input coordinates
+    """
+
+    def __init__(self, chain_id: str, scale: float = 1.0):
+        super().__init__()
+        self.chain_id = chain_id
+        self.scale = scale
+
+    def forward(self, data: dict) -> dict:
+        atom_array = data["atom_array"]
+        mask = atom_array.chain_id == self.chain_id
+        atom_array.coord[mask] += np.random.normal(scale=self.scale, size=(mask.sum(), 3))
+        return data
+```
+
+Then list it in your experiment config; `_target_` args are instantiated by Hydra:
+
+```yaml
+generation:
+  dataset:
+    sampling_transforms:
+      - _target_: rfproteina.transforms.sampling.jitter_chain.JitterChainCoordinates
+        chain_id: A
+        scale: 1.0
+```
+
+Notes:
+
+- **Annotated-CIF and condition_spec inputs only.** Passing `sampling_transforms` with the legacy
+  contig-JSON dialect raises rather than being silently ignored — migrate that input to an
+  annotated CIF or the [condition_spec format](../condition_spec_yaml.md).
+- Transforms run **after** expandable segments are realized (residue positions are final) and
+  **before** featurization, so any change to the atom array will be reflected in the model input.
+- `prevalidate_inputs=true` validates the input as authored and skips these transforms.
+- Broadly useful? Move the class to a tracked module under `src/rfproteina/transforms/` and open a PR.
+
+---
 
 ## Parameter Reference
 

@@ -55,6 +55,7 @@ class JsonDataset(MolecularDataset):
         data: PathLike | dict,
         transform: Transform | Compose | None,
         name: str | None,
+        sampling_transforms: list[Transform] | None = None,
         subset_to_keys: list[str] | None = None,
         num_replicates: int = 1,
         global_prefix: str | None = None,
@@ -66,12 +67,26 @@ class JsonDataset(MolecularDataset):
             - data: path to the JSON/YAML file containing the example data, or an already-loaded dict
             - transform: transform to apply to the data
             - name: name of the dataset
+            - sampling_transforms: unsupported here; :py:class:`ConditionSpecDataset` consumes
+              this before it reaches us
             - subset_to_keys: list of keys to subset the data to
             - num_replicates: number of times to repeat each example in the dataset
             - global_prefix: optional global prefix for output example ids
             - source_path: original JSON/YAML path when ``data`` is an in-memory dict
             - prevalidate: if True, build + validate each unique example once during init
+
+        Raises:
+            NotImplementedError: If ``sampling_transforms`` are provided.
         """
+        # The legacy `InputSpecification` dialect builds its AtomArray through a CIF-shaped round
+        # trip with no post-realization hook, so reject sampling transforms rather than ignore them.
+        if sampling_transforms:
+            raise NotImplementedError(
+                f"`sampling_transforms` are not supported for {type(self).__name__} inputs. The legacy "
+                "`InputSpecification`-based JSON dialect is deprecated: migrate to Condition-annotated "
+                "CIF inputs or the condition_spec JSON/YAML format (docs/condition_spec_yaml.md), both "
+                "of which support sampling transforms."
+            )
 
         if isinstance(data, PathLike | str):
             self.json_path = data
@@ -268,18 +283,30 @@ class ConditionSpecDataset(JsonDataset):
     per top-level key, built directly into an AtomArray -- no CIF round trip through disk.
     """
 
-    def __init__(self, *, transform: Transform | Compose | None, **kwargs):
+    def __init__(
+        self,
+        *,
+        transform: Transform | Compose | None,
+        sampling_transforms: list[Transform] | None = None,
+        **kwargs,
+    ):
         """
         Args:
             - transform: transform to apply to each built example
+            - sampling_transforms: optional transforms that edit the built ``atom_array`` (typically
+              resampling a condition per replicate) after expandable segments are realized and
+              before the featurization ``transform`` runs. They are deliberately excluded from
+              ``prevalidate``, which checks the input as authored.
             - **kwargs: forwarded to :py:class:`JsonDataset`
         """
         # Necessary for working with expandable segments. Once the ContigJsonDataset is deprecated,
         # this can be incorporated into the standard Transform pipeline.
         self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
-        super().__init__(
-            transform=self.pre_transform + transform if transform is not None else self.pre_transform, **kwargs
-        )
+        # Sampling runs per __getitem__ call, so each replicate of a spec draws its own condition.
+        sampled = self.pre_transform
+        for sampling_transform in sampling_transforms or []:
+            sampled = sampled + sampling_transform
+        super().__init__(transform=sampled + transform if transform is not None else sampled, **kwargs)
 
     def _extract_examples(self, data: dict) -> dict:
         if is_legacy_dialect(data):
@@ -382,6 +409,7 @@ class DesignProblemDataset(FileDataset):
         *,
         filter_fn: Callable[[PathLike], bool] | None = is_structure_file,
         transform: Transform | None = None,
+        sampling_transforms: list[Transform] | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
         subset_to_keys: list[str] | None = None,
@@ -394,6 +422,10 @@ class DesignProblemDataset(FileDataset):
             dir_path_or_file_paths: Path to directory with CIF/JSON/YAML files, or list of file paths.
             filter_fn: Optional function to filter which files to include based on filename.
             transform: Optional transform to apply to loaded data.
+            sampling_transforms: Optional transforms that edit the loaded ``atom_array`` (typically
+                resampling a condition per replicate) after expandable segments are realized and
+                before the featurization ``transform`` runs. They are deliberately excluded from
+                ``prevalidate``, which checks the input as authored.
             global_prefix: Optional global prefix for output example ids.
             subset_to_keys: Optional list of base ids (the file stem, before any
                 ``global_prefix``) to keep; useful for running a few examples out of a large
@@ -427,7 +459,11 @@ class DesignProblemDataset(FileDataset):
         # Annotate SA_SRC before expansion so original res_ids are preserved,
         # then realize expandable segments and continue with transform pipeline.
         self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
-        self.transform = self.pre_transform + transform if transform is not None else self.pre_transform
+        # Sampling runs per __getitem__ call, so each replicate of a file draws its own condition.
+        sampled = self.pre_transform
+        for sampling_transform in sampling_transforms or []:
+            sampled = sampled + sampling_transform
+        self.transform = sampled + transform if transform is not None else sampled
 
         self.global_prefix = global_prefix
 
