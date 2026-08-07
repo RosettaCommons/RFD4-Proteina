@@ -6,7 +6,7 @@ import pytest
 import torch
 from atomworks.io import parse
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.ml.transforms.symmetry import find_automorphisms_with_networkx
+from atomworks.ml.transforms.symmetry import build_automorphism_units, find_automorphisms_with_networkx
 from biotite.structure import AtomArray
 
 from rfproteina.datapipes.collate import collate_batch
@@ -15,8 +15,8 @@ from rfproteina.datapipes.schema.proteina import ProteinaDataSample
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.lddt_metric import AllAtomLDDT
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
-from rfproteina.utils.atom_permutation import permute_gt_atom37
-from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
+from rfproteina.utils.atom_permutation import atom_permutation, permute_gt_atom37
+from rfproteina.utils.parse_presets import RCSB_WITH_METALS, STANDARD_ANNOTATIONS_ONLY
 from tests.conftest import TEST_DATA_DIR
 
 _STRUCTURE = TEST_DATA_DIR / "pdb" / "6wtf.cif"
@@ -296,3 +296,98 @@ def test_autoencoder_loss_ignores_a_relabelling_of_a_residue(res_name: str, grou
 def test_autoencoder_loss_ignores_a_relabelling_of_a_hard_ligand(ccd_code: str) -> None:
     """The same, for ligands whose symmetry groups are far larger than any amino acid's."""
     assert_permutation_absorbs_relabelling(as_ligand(ccd_code))
+
+
+# +------------------- whole plinder systems, checked in -------------------+
+
+# Every case above is one residue or an isolated CCD ligand in its own pn_unit, so none has a
+# group spanning residues. 1gya does: a covalent modification reassigns a residue onto the
+# ligand's pn_unit, which is then searched whole. 1h0a carries the widest search, 216 candidates.
+PLINDER_CASES = [
+    # (stem, min residues spanned by one unit, min candidate permutations in one group)
+    ("plinder_1gya_covalent_modification", 9, 2),
+    ("plinder_1h0a_wide_automorphism", 1, 216),
+]
+
+_HEAVY_ATOMS = RCSB_WITH_METALS.replace(hydrogen_policy="remove")
+
+
+@pytest.fixture(scope="module")
+def plinder_system():
+    """Parse a checked-in plinder system, heavy atoms with resolved coordinates."""
+
+    def load(stem: str) -> AtomArray:
+        structure = parse(str(_GENERATED / f"{stem}.cif.gz"), config=_HEAVY_ATOMS)["assemblies"]["1"][0]
+        return structure[np.isfinite(structure.coord).all(axis=-1)]
+
+    return load
+
+
+@pytest.mark.parametrize(
+    ("stem", "min_span_residues", "min_candidates"),
+    PLINDER_CASES,
+    ids=[case[0] for case in PLINDER_CASES],
+)
+def test_plinder_system_keeps_the_symmetry_it_was_chosen_for(
+    stem: str, min_span_residues: int, min_candidates: int, plinder_system
+) -> None:
+    """Guard the fixtures: each must still carry the topology it is here to exercise."""
+    structure = plinder_system(stem)
+
+    # ... res_id alone repeats across chains, so pair it with the chain to key a residue
+    res_key = structure.res_id + 1000 * np.unique(structure.chain_id, return_inverse=True)[1]
+    spans = [len(np.unique(res_key[np.asarray(unit)])) for unit in build_automorphism_units(structure)]
+    assert max(spans) >= min_span_residues
+
+    groups = [np.asarray(g) for g in find_automorphisms_with_networkx(structure) if len(g) > 1]
+    assert max(int(group.shape[0]) for group in groups) >= min_candidates
+
+
+@pytest.mark.parametrize("stem", [case[0] for case in PLINDER_CASES])
+def test_metrics_ignore_a_relabelling_of_a_whole_plinder_system(stem: str, plinder_system) -> None:
+    """Relabelling by the system's own automorphisms must cost nothing -- and something without."""
+    ground_truth = plinder_system(stem)
+    predicted = relabelled(ground_truth)
+    assert not np.allclose(predicted.coord, ground_truth.coord), "the relabelling must move something"
+
+    assert AllAtomLDDT().compute(predicted, ground_truth)["all_atom_lddt"] == pytest.approx(1.0)
+    assert StructureComparisonMetric(metric_type="rmsd").compute(ground_truth, predicted)["rmsd"] == pytest.approx(
+        0.0, abs=1e-6
+    )
+    # ... without resolution the same relabelling is penalized, so the above is not vacuous
+    assert AllAtomLDDT(resolve_symmetry=()).compute(predicted, ground_truth)["all_atom_lddt"] < 1.0
+
+
+def reference_permutation(x_pred, x_gt, gt_mask, automorphisms):
+    """The per-group loop `atom_permutation` replaced, kept as the thing it must match."""
+    permutation = torch.arange(x_gt.shape[0])
+    for automorphism in automorphisms:
+        group = torch.as_tensor(np.asarray(automorphism), dtype=torch.long)
+        if group.ndim != 2 or group.shape[0] <= 1 or group.shape[1] == 0:
+            continue
+        movable = torch.any(group != group[0], dim=0)
+        destinations, sources = group[0][movable], group[:, movable]
+        active = gt_mask[destinations]
+        if not bool(active.any()):
+            continue
+        destinations, sources = destinations[active], sources[:, active]
+        legal = torch.all(gt_mask[sources], dim=-1)
+        error = torch.square(x_pred[destinations] - x_gt[sources]).sum(dim=-1).mean(dim=-1)
+        error = error.nan_to_num(nan=torch.inf, posinf=torch.inf, neginf=torch.inf).masked_fill(~legal, torch.inf)
+        permutation[destinations] = permutation[sources[int(error.argmin())]]
+    return permutation
+
+
+def test_batched_search_matches_a_per_group_loop(plinder_system) -> None:
+    """Batching the groups must pick the identical permutation the per-group loop picked."""
+    structure = plinder_system("plinder_1h0a_wide_automorphism")
+    groups = [np.asarray(g) for g in find_automorphisms_with_networkx(structure) if len(g) > 1]
+    x_gt = torch.tensor(structure.coord, dtype=torch.float32)
+    x_pred = x_gt + torch.tensor(np.random.default_rng(0).normal(scale=1.5, size=x_gt.shape), dtype=torch.float32)
+    gt_mask = torch.ones(x_gt.shape[0], dtype=torch.bool)
+
+    batched = atom_permutation(x_pred, x_gt, gt_mask, groups, align=False)
+    looped = reference_permutation(x_pred, x_gt, gt_mask, groups)
+
+    assert not torch.equal(batched, torch.arange(x_gt.shape[0])), "noise this large must move something"
+    assert torch.equal(batched, looped)
