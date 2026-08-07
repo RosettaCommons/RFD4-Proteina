@@ -148,6 +148,7 @@ def _send_to_daemon(
 class _AF2JobState:
     input_atom_array: AtomArray
     example_id: str
+    save_id: str | None
     out_dir: Path
     disambiguated_atom_array: AtomArray
     af2_chain_id_to_original_iid: dict[str, str] | None
@@ -177,8 +178,6 @@ class AF2Oracle(OracleMetric):
         pct_seq_mask: float = 0.0,
         **kwargs: Any,
     ) -> None:
-        if kwargs.get("pre_oracle_transform") is not None:
-            raise NotImplementedError("AF2Oracle does not support pre_oracle_transform")
         super().__init__(oracle_name=oracle_name, template_query=template_query, **kwargs)
         if not 0.0 <= float(pct_seq_mask) <= 1.0:
             raise ValueError(f"pct_seq_mask must be in [0, 1], got {pct_seq_mask!r}")
@@ -270,12 +269,12 @@ class AF2Oracle(OracleMetric):
         n_ok = self.fold_batch([job])
         if n_ok != 1:
             raise RuntimeError(f"AF2Oracle.fold_one: fold_batch returned {n_ok} for {job.example_id!r}")
-        return self._load_confidence_json(self.confidence_path(job.out_dir, job.example_id))
+        return self._load_confidence_json(self.confidence_path(job.out_dir, job.example_id, job.save_id))
 
-    def raw_summary_path(self, out_dir: Path, example_id: str) -> Path:
+    def raw_summary_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the canonical sharded AF2 worker-summary artifact path."""
-        confidence_path = self.confidence_path(out_dir, example_id)
-        return confidence_path.with_name(f"{example_id}_{self.oracle_name}_summary_confidences.json")
+        confidence_path = self.confidence_path(out_dir, example_id, save_id)
+        return confidence_path.with_name(f"{self.output_stem(example_id, save_id)}_summary_confidences.json")
 
     def already_refolded(self, out_dir: Path, example_id: str, save_id: str | None = None) -> bool:
         confidence_path = self.confidence_path(out_dir, example_id, save_id)
@@ -288,7 +287,7 @@ class AF2Oracle(OracleMetric):
         return cached_model_name is not None and (self.model_name is None or cached_model_name == self.model_name)
 
     def fold_batch(self, jobs: list[OracleJobInput]) -> int:
-        pending = [job for job in jobs if not self.already_refolded(job.out_dir, job.example_id)]
+        pending = [job for job in jobs if not self.already_refolded(job.out_dir, job.example_id, job.save_id)]
         n_cached = len(jobs) - len(pending)
         if not pending:
             return n_cached
@@ -374,7 +373,11 @@ class AF2Oracle(OracleMetric):
                     f"AF2Oracle only supports proteins; {job.example_id!r} contains non-protein residues: {bad_res}."
                 )
 
-            job_name = job.example_id.replace(" ", "_")
+            # The save_id keeps sibling refolds of one design in distinct AF2 worker
+            # output dirs, mirroring AF3Oracle's naming.
+            job_name = (f"{job.example_id}_{job.save_id}" if job.save_id is not None else job.example_id).replace(
+                " ", "_"
+            )
             disambiguated, chain_map = self._disambiguate_chain_ids(input_atom_array)
             valid = disambiguated[np.all(np.isfinite(disambiguated.coord), axis=-1)]
             valid.set_annotation("occupancy", np.ones(valid.array_length()))
@@ -408,6 +411,7 @@ class AF2Oracle(OracleMetric):
                 _AF2JobState(
                     input_atom_array=input_atom_array,
                     example_id=job.example_id,
+                    save_id=job.save_id,
                     out_dir=job.out_dir,
                     disambiguated_atom_array=disambiguated,
                     af2_chain_id_to_original_iid=chain_map,
@@ -470,7 +474,7 @@ class AF2Oracle(OracleMetric):
             state.model_name,
             state.example_id,
         )
-        cif_path = self.refolded_cif_path(state.out_dir, state.example_id)
+        cif_path = self.refolded_cif_path(state.out_dir, state.example_id, state.save_id)
 
         predicted = self._parse_af2_predicted_structure(state.af2_output_dir, state.job_name)
         if predicted is not None:
@@ -485,10 +489,23 @@ class AF2Oracle(OracleMetric):
                 # reorder predicted atoms to match the input chain sequence first.
                 predicted = self._reorder_chains_like(partial, predicted)
                 predicted = self._normalize_af2_output(partial, predicted)
+                # AF2 emits no OXT, so an input carrying one (a target read from a crystal
+                # structure, say) has an atom the output cannot match. Drop those from the
+                # mapping and NaN them: keeping the input coordinate would strand a C-terminal
+                # atom at its pre-refold position, a chainbreak against its own residue.
+                omitted = partial.atom_name == "OXT"
+                if omitted.any():
+                    logger.warning(
+                        f"AF2 emits no OXT; writing {int(omitted.sum())} input OXT atom(s) of "
+                        f"{state.example_id!r} as NaN. RMSDs whose mask covers them are skipped."
+                    )
+                partial = partial[~omitted]
                 self._validate_inter_residue_bonds(partial, predicted)
                 input_to_af2 = self._build_atom_index_mapping(partial, predicted)
                 result = as_atom_array_plus(state.input_atom_array.copy())
-                result.coord[~missing_residue_mask] = predicted.coord[input_to_af2]
+                kept = np.where(~missing_residue_mask)[0]
+                result.coord[kept[~omitted]] = predicted.coord[input_to_af2]
+                result.coord[kept[omitted]] = np.nan
                 predicted = result
             except (ValueError, KeyError) as exc:
                 logger.warning(f"AF2 coord transfer failed for {state.example_id}: {exc}")
@@ -521,10 +538,10 @@ class AF2Oracle(OracleMetric):
         )
         metrics["af2_model_name"] = actual_model_name
         metrics["chain_of_interest"] = chain_of_interest
-        raw_summary_path = self.raw_summary_path(state.out_dir, state.example_id)
+        raw_summary_path = self.raw_summary_path(state.out_dir, state.example_id, state.save_id)
         raw_summary_path.parent.mkdir(parents=True, exist_ok=True)
         raw_summary_path.write_text(json.dumps(summary))
-        self._save_confidence_json(metrics, self.confidence_path(state.out_dir, state.example_id))
+        self._save_confidence_json(metrics, self.confidence_path(state.out_dir, state.example_id, state.save_id))
         return metrics
 
     @staticmethod
