@@ -23,6 +23,22 @@ def resolve_inverse_folding_method(cfg_args: Any) -> str | None:
     return method
 
 
+def _validate_partial_t(partial_t_dict: dict[str, float]) -> dict[str, float]:
+    """Reject start times at or above 1, where the score conversion is undefined.
+
+    Raises:
+      ValueError: If any modality's start time is >= 1.
+    """
+    at_or_above_one = {data_mode: t for data_mode, t in partial_t_dict.items() if t >= 1.0}
+    if at_or_above_one:
+        raise ValueError(
+            "Partial-diffusion start time must be < 1 (t=1 is the clean state, and the score "
+            f"conversion divides by 1 - t); resolved {at_or_above_one}. Lower partial_t_backbone / "
+            "partial_t_latent, or raise partial_trajectory_fraction_steps."
+        )
+    return partial_t_dict
+
+
 def resolve_partial_t(
     cfg_args: Any,
     fm: Any,
@@ -68,7 +84,7 @@ def resolve_partial_t(
         ref_ts, _ = fm.sample_schedule(nsteps=ref_nsteps, sampling_model_args=sampling_model_args)
         k = round((1.0 - frac) * ref_nsteps)
         k = max(0, min(ref_nsteps, k))
-        return {dm: ref_ts[dm][k].item() for dm in fm.data_modes}
+        return _validate_partial_t({dm: ref_ts[dm][k].item() for dm in fm.data_modes})
 
     n_set = (pt_backbone is not None) + (pt_latent is not None)
 
@@ -81,7 +97,7 @@ def resolve_partial_t(
                 "couple_partial_t=true requires exactly one of partial_t_backbone or "
                 "partial_t_latent; got both. Remove the one to be derived."
             )
-        return {"bb_ca": pt_backbone, "local_latents": pt_latent}
+        return _validate_partial_t({"bb_ca": pt_backbone, "local_latents": pt_latent})
 
     # n_set == 1
     if not do_couple:
@@ -99,7 +115,7 @@ def resolve_partial_t(
         ref_sched, ref_val = ref_ts["local_latents"], pt_latent
     above = ref_sched >= ref_val - 1e-6
     k = above.nonzero(as_tuple=True)[0][0].item() if above.any() else ref_nsteps
-    return {dm: ref_ts[dm][k].item() for dm in fm.data_modes}
+    return _validate_partial_t({dm: ref_ts[dm][k].item() for dm in fm.data_modes})
 
 
 def build_partial_schedule(
@@ -130,7 +146,6 @@ def build_partial_schedule(
     partial_gt: dict = {}
     for data_mode in fm.data_modes:
         pt = float(partial_t_dict.get(data_mode, 0.0))
-        pt = min(pt, 1.0 - 1.0 / nsteps)
 
         above = dense_ts[data_mode] >= pt - 1e-6
         i_start = above.nonzero(as_tuple=True)[0][0].item() if above.any() else nsteps_dense
