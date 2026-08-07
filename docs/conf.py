@@ -5,6 +5,8 @@ from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
 
+import nbformat
+from docutils import nodes
 from sphinx.application import Sphinx
 
 DOCS_DIR = Path(__file__).resolve().parent
@@ -45,11 +47,12 @@ extensions = [
     "sphinx_togglebutton",
 ]
 
-# Collapse the tutorial's setup helper cells by default. sphinx-togglebutton works off a
-# CSS selector, not Jupyter cell tags (those do not survive nbsphinx -> HTML). The selector
-# targets the code cells under the notebook's Setup section (#Pass-criteria is nested inside
-# #Setup); later sections stay expanded.
-togglebutton_selector = "#Setup .nbinput"
+# Put a "show code" button on a notebook's incidental code -- setup, plotting, Slurm plumbing --
+# so a tutorial reads as prose and results, while the cells that show how the model is actually
+# driven stay open. Two ways to opt a cell in: everything under a `Setup` heading, or any cell
+# tagged `collapse-code` (see `_mark_tagged_cells` below). `.nbinput` is the input half of an
+# nbsphinx cell, so outputs -- tables, charts, viewers -- always stay visible.
+togglebutton_selector = "#Setup .nbinput, .nbinput.collapse-code"
 togglebutton_hint = "show code"
 togglebutton_hint_hide = "hide code"
 
@@ -128,7 +131,7 @@ nbsphinx_execute = "never"
 nbsphinx_thumbnails = {
     "examples/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
     "examples/annotated_cif_tutorial": "_static/annotated_cif_thumb.png",
-    "examples/ppi_specificity_tutorial": "../assets/model_pipeline.png",
+    "examples/ppi_specificity_tutorial": "_static/ppi_tutorial_thumb.png",
 }
 
 # Offer the runnable notebook for download at the bottom of every notebook page.
@@ -166,5 +169,31 @@ def _convert_markdown_docstring_fences(
     lines[:] = converted
 
 
+def _mark_tagged_cells(app: Sphinx, doctree: nodes.document, docname: str) -> None:
+    """Copy the ``collapse-code`` cell tag onto the rendered cell, as a CSS class.
+
+    nbsphinx does not carry Jupyter cell tags through to the HTML, so a notebook has no way to
+    ask for one particular code cell to be collapsed. Pair the doctree's ``nbinput`` containers
+    back to the notebook's code cells by their source text and stamp the class
+    :confval:`togglebutton_selector` looks for.
+    """
+    source = Path(str(app.env.doc2path(docname)))
+    if source.suffix != ".ipynb":
+        return
+    tagged = {
+        cell.source.strip()
+        for cell in nbformat.read(source, as_version=4).cells
+        if cell.cell_type == "code" and "collapse-code" in cell.metadata.get("tags", [])
+    }
+    for node in doctree.findall(nodes.container):
+        if "nbinput" not in node["classes"]:
+            continue
+        # An `nbinput` holds two literal blocks: the `[n]:` prompt, then the cell source.
+        *_, code = node.findall(nodes.literal_block)
+        if code.astext().strip() in tagged:
+            node["classes"].append("collapse-code")
+
+
 def setup(app: Sphinx) -> None:
     app.connect("autodoc-process-docstring", _convert_markdown_docstring_fences)
+    app.connect("doctree-resolved", _mark_tagged_cells)
