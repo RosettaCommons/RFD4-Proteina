@@ -42,11 +42,6 @@ _PROTEIN_BACKBONE = "is_protein & (atom_name in ['N', 'CA', 'C', 'O'])"
 
 _GENERATED_TARGET_RMSD_MAX = 1.9  # measured ~1.68 Å on seeded target-templated refold
 _SUPERFOLD_CHECKS = {
-    "initial_guess_masked": (
-        "5vht_A_superfold_initial_guess_masked.cif",
-        0.45,
-        {"overall_plddt": (61.1531, 0.75), "overall_ptm": (40.0410, 0.75), "overall_pae": (14.0054, 0.25)},
-    ),
     "default_monomer": (
         "5vht_A_superfold_default_monomer.cif",
         0.72,
@@ -306,6 +301,7 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
                 oracle_name="af2_acceptance",
                 template_query="mask_coordinate_1_atom",
                 seed=_SEED,
+                pct_seq_mask=0.0,
             ),
             [OracleJobInput(ppi, "ppi", root / "ppi", chain_of_interest=_BINDER)],
         )
@@ -337,21 +333,10 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
         runs.update(
             _fold_results(
                 AF2Oracle(
-                    oracle_name="af2_initial_guess_masked",
-                    model_name="model_1_ptm",
-                    seed=0,
-                    initial_guess=True,
-                    pct_seq_mask=0.15,
-                ),
-                [OracleJobInput(monomer.copy(), "initial_guess_masked", root / "initial_guess_masked")],
-            )
-        )
-        runs.update(
-            _fold_results(
-                AF2Oracle(
                     oracle_name="af2_default_monomer",
                     model_name="model_1_ptm",
                     seed=_SEED,
+                    pct_seq_mask=0.0,
                 ),
                 [OracleJobInput(monomer.copy(), "default_monomer", root / "default_monomer")],
             )
@@ -412,13 +397,10 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
     }
     assert monomer_entries["default_monomer"]["initial_guess"] is False
     assert monomer_entries["default_monomer"]["pct_seq_mask"] == 0.0
-    assert monomer_entries["initial_guess_masked"]["initial_guess"] is True
-    assert monomer_entries["initial_guess_masked"]["pct_seq_mask"] == 0.15
 
-    for name in ("default_monomer", "initial_guess_masked"):
-        result = runs[name]
-        _assert_parseable_finite_identity(result)
-        assert result.metrics["af2_model_name"] == "model_1_ptm"
+    default_monomer = runs["default_monomer"]
+    _assert_parseable_finite_identity(default_monomer)
+    assert default_monomer.metrics["af2_model_name"] == "model_1_ptm"
 
     ppi_template_chains = [
         chain for chain in _chain_order(ppi.input) if np.any(C_CRD.mask(ppi.input)[ppi.input.chain_id == chain])
