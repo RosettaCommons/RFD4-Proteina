@@ -290,6 +290,10 @@ entry config). Search rewards are configured inline in the search experiment con
 `configs/inference_experiment/inference_beam_example.yaml`). See
 the [custom metrics guide](custom_metrics.md) for the full walkthrough.
 
+**Custom sampling transforms** — same arrangement for per-replicate condition sampling: drop Python
+classes in the git-ignored `src/rfproteina/transforms/sampling/` and reference them by `_target_`
+from your experiment config. See [Sampling Transforms](inference.md#sampling-transforms).
+
 ---
 
 ## Advanced Topics

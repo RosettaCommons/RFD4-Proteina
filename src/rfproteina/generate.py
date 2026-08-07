@@ -246,10 +246,17 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
             metrics_tags.append("partial_diffusion")
     inference_pipeline = build_design_validation_pipeline(metrics_tags=metrics_tags, **transform_overrides)
 
+    sampling_transforms = (
+        hydra.utils.instantiate(cfg_gen.dataset.sampling_transforms)
+        if "sampling_transforms" in cfg_gen.dataset
+        else None
+    )
+
     dataset = get_contig_or_design_problem_dataset(
         cfg.inputs,
         num_replicates=num_replicates,
         transform=inference_pipeline,
+        sampling_transforms=sampling_transforms,
         subset_to_examples=subset_to_examples,
         specification_overrides=specification_overrides,
         global_prefix=cfg.get("global_prefix"),
@@ -266,6 +273,7 @@ def get_contig_or_design_problem_dataset(
     json_or_design_problem_inputs: str | list[str],
     num_replicates: int | None = None,
     transform: Transform | None = None,
+    sampling_transforms: list[Transform] | None = None,
     subset_to_examples: list[str] | str | None = None,
     specification_overrides: dict = {},
     global_prefix: str | None = None,
@@ -278,6 +286,9 @@ def get_contig_or_design_problem_dataset(
         json_or_design_problem_inputs: A PFM-style json/yaml file, or a list/directory of Condition-annotated CIF files.
         num_replicates: Number of times to replicate each example. If None, defaults to 1 replicate per example.
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
+        sampling_transforms: Per-replicate condition-sampling transforms. Supported for
+            Condition-annotated CIF and condition_spec JSON/YAML inputs; the legacy contig-JSON
+            dialect raises :py:exc:`NotImplementedError`.
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
         specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
         global_prefix: Optional global prefix for output example ids.
@@ -298,6 +309,7 @@ def get_contig_or_design_problem_dataset(
         return DesignProblemDataset(
             dir_path_or_file_paths=data,
             transform=transform if exists(transform) else Identity(),
+            sampling_transforms=sampling_transforms,
             num_replicates=num_replicates,
             global_prefix=global_prefix,
             prevalidate=prevalidate,
@@ -317,6 +329,7 @@ def get_contig_or_design_problem_dataset(
             data=data,
             transform=transform if exists(transform) else Identity(),
             name="inference-dataset",
+            sampling_transforms=sampling_transforms,
             subset_to_keys=subset_to_keys,
             num_replicates=num_replicates,
             global_prefix=global_prefix,
@@ -336,6 +349,7 @@ def get_contig_or_design_problem_dataset(
         data=data,
         transform=transform if exists(transform) else Identity(),
         name="inference-dataset",
+        sampling_transforms=sampling_transforms,
         num_replicates=num_replicates,
         global_prefix=global_prefix,
         source_path=source_path,

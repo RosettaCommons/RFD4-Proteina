@@ -67,6 +67,10 @@ fi
 CUSTOM_METRICS_PKG="src/rfproteina/metrics/custom_metrics"
 mkdir -p "$CUSTOM_METRICS_PKG"
 
+# Same for custom sampling transforms. See docs/guides/inference.md#sampling-transforms.
+CUSTOM_SAMPLING_TRANSFORMS_PKG="src/rfproteina/transforms/sampling"
+mkdir -p "$CUSTOM_SAMPLING_TRANSFORMS_PKG"
+
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
 # AtomWorks is intentionally omitted from RFProteina's pyproject and installed

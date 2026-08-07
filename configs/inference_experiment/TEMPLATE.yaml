@@ -73,6 +73,24 @@ run_name: my_experiment
 num_replicates: 10                    # Number of samples per input example
 batch_size: 10                        # Batch size for generation
 
+# --- Sampling transforms (optional) ---
+# Transforms that run once per replicate, so each of the `num_replicates` designs from a
+# single input file can start from a different condition instead of reusing one guess.
+# Annotated-CIF and condition_spec JSON/YAML inputs only (the legacy contig-JSON dialect raises).
+#
+# Write one as an AtomWorks `Transform` whose `forward(data)` edits `data["atom_array"]` in
+# place -- e.g. jitter a conditioning coordinate, or redraw it from a measured distribution.
+# It runs after expandable segments are realized (so residue positions are final) and before
+# featurization, and `_target_` args are instantiated by Hydra. Put your module in the
+# git-ignored `src/rfproteina/transforms/sampling/` so it stays local (see the guide):
+#
+# generation:
+#   dataset:
+#     sampling_transforms:
+#       - _target_: rfproteina.transforms.sampling.my_sampler.MySamplingTransform
+#         chain_id: A
+#         scale: 1.0
+
 # --- Search strategy (optional, remove for vanilla single-pass) ---
 # search:
 #   strategy:

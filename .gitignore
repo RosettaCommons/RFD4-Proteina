@@ -5,6 +5,9 @@ examples/*.cif
 configs/metrics/custom_metrics/
 src/rfproteina/metrics/custom_metrics/
 
+# User-defined custom sampling transforms
+src/rfproteina/transforms/sampling/
+
 # Checkpoints
 **.ckpt
 **.pt
