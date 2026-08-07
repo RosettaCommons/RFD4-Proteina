@@ -3,7 +3,7 @@
 import json
 import pathlib
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from os import PathLike
 from typing import Any
 
@@ -46,6 +46,34 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 all_ranks_logger = RankedLogger(__name__, rank_zero_only=False)
 
 
+def take_shard(items: Sequence, shard_index: int | None, num_shards: int | None, num_replicates: int) -> list:
+    """Keep every ``num_shards``-th item, starting at ``shard_index``; no-op if unsharded.
+
+    The stride is deliberate: entries are in name order, which usually correlates with length, so
+    each shard gets a similar length mix (and runtime) where a contiguous slice would not.
+
+    Args:
+        items: Entries to divide, already expanded to one per (example, replicate).
+        shard_index: Which shard to keep, in ``[0, num_shards)``.
+        num_shards: Number of shards to divide `items` into.
+        num_replicates: Number of times each example is replicated.
+
+    Raises:
+        ValueError: If `shard_index` is out of range, or this shard would be empty.
+    """
+    if not exists(num_shards) or num_shards <= 1:
+        return list(items)
+    if not exists(shard_index) or not 0 <= shard_index < num_shards:
+        raise ValueError(f"shard_index must be in [0, {num_shards}), got {shard_index!r}")
+    shard = list(items)[shard_index::num_shards]
+    if not shard:
+        raise ValueError(
+            f"Shard {shard_index} of {num_shards} is empty: only {len(items)} example-replicate(s) "
+            f"to divide. Lower gen_njobs to at most {max(len(items), num_replicates)}."
+        )
+    return shard
+
+
 class JsonDataset(MolecularDataset):
     """Base for datasets whose source is one JSON/YAML file: a dict of `{example_id: spec}`."""
 
@@ -61,6 +89,8 @@ class JsonDataset(MolecularDataset):
         global_prefix: str | None = None,
         source_path: PathLike | str | None = None,
         prevalidate: bool = False,
+        shard_index: int | None = None,
+        num_shards: int | None = None,
     ):
         """
         Args:
@@ -74,6 +104,9 @@ class JsonDataset(MolecularDataset):
             - global_prefix: optional global prefix for output example ids
             - source_path: original JSON/YAML path when ``data`` is an in-memory dict
             - prevalidate: if True, build + validate each unique example once during init
+            - shard_index: which shard this instance serves, in ``[0, num_shards)``
+            - num_shards: number of shards to divide the replicated examples into; see
+              :py:func:`take_shard`
 
         Raises:
             NotImplementedError: If ``sampling_transforms`` are provided.
@@ -120,6 +153,9 @@ class JsonDataset(MolecularDataset):
             self._data = new_data
         else:
             raise ValueError(f"num_replicates must be an integer greater than or equal to 1, got {num_replicates}")
+
+        # Shard after replication, so both axes are divided by the same stride.
+        self._data = dict(take_shard(list(self._data.items()), shard_index, num_shards, num_replicates))
 
         # ...basic assignments
         self.name = name if name is not None else "json-dataset"
@@ -414,6 +450,8 @@ class DesignProblemDataset(FileDataset):
         global_prefix: str | None = None,
         subset_to_keys: list[str] | None = None,
         prevalidate: bool = False,
+        shard_index: int | None = None,
+        num_shards: int | None = None,
     ):
         """Initialize a dataset for loading design problem specifications from CIF files.
 
@@ -432,6 +470,9 @@ class DesignProblemDataset(FileDataset):
                 input directory.
             prevalidate: if True, load + validate each unique CIF once during init.
             num_replicates: Optional number of times to repeat each file in the dataset
+            shard_index: Which shard this instance serves, in ``[0, num_shards)``.
+            num_shards: Number of shards to divide the replicated example list into. See
+                :py:func:`take_shard`.
 
         Raises:
             ValueError: If a key in ``subset_to_keys`` matches none of the discovered files.
@@ -512,6 +553,11 @@ class DesignProblemDataset(FileDataset):
         if self.num_replicates > 1:
             self.file_paths = self.file_paths * self.num_replicates
             self.base_ids = self.base_ids * self.num_replicates
+
+        # Shard after replication, so both axes are divided by the same stride.
+        kept = take_shard(range(len(self.file_paths)), shard_index, num_shards, self.num_replicates)
+        self.file_paths = [self.file_paths[i] for i in kept]
+        self.base_ids = [self.base_ids[i] for i in kept]
 
     def _prevalidate(self) -> None:
         """Load each unique CIF, realize its expandable segments, and validate it (fail fast)."""

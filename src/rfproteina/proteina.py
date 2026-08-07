@@ -47,7 +47,7 @@ from rfproteina.metrics.utils.metrics_utils import (
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
-from rfproteina.utils.common import design_output_dir
+from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
@@ -1046,13 +1046,7 @@ class Proteina(L.LightningModule):
         if not self.is_inference:
             output_base = output_base / dataset_name / f"step_{self.global_step}"
 
-        # Tolerate FileExistsErrors which may arise from race conditions (even with ``exist_ok=True``),
-        # but not the case where something non-directory is sitting at the path.
-        try:
-            output_base.mkdir(parents=True, exist_ok=True)
-        except FileExistsError:
-            if not output_base.is_dir():
-                raise
+        ensure_dir(output_base)
 
         # Expose to search strategies so they can save oracle results during generation
         # (enables on_validation_epoch_end to skip re-folding already-computed results).
@@ -1326,7 +1320,7 @@ class Proteina(L.LightningModule):
 
     def _save_and_log_csv(self, all_metrics: list[dict], metrics_dir: Path, csv_stem: str) -> None:
         """Save per-example CSV, aggregate, and log to WandB (rank 0 only)."""
-        metrics_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(metrics_dir)
         output_prefix, output_suffix = self._output_prefix_suffix()
 
         per_example_df = pd.DataFrame(all_metrics).round(4)

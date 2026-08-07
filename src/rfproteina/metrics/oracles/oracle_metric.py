@@ -35,7 +35,7 @@ from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.oracles.pre_oracle_transform import PreOracleTransform
-from rfproteina.utils.common import design_output_dir
+from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -279,7 +279,7 @@ class OracleMetric(Metric):
 
     def _save_confidence_json(self, confidences: dict, path: Path) -> None:
         """Write confidence dict to JSON (creates parent dirs as needed)."""
-        path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(path.parent)
         json_confidences = {k: (v.item() if isinstance(v, np.generic) else v) for k, v in confidences.items()}
         path.write_text(json.dumps(json_confidences, indent=2))
 

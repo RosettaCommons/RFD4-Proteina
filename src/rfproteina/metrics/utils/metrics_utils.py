@@ -40,7 +40,7 @@ from rfproteina.metrics.oracles.oracle_metric import OracleJobInput, OracleMetri
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from rfproteina.utils.chain import get_chain_of_interest
-from rfproteina.utils.common import design_output_dir
+from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
@@ -99,7 +99,7 @@ def run_metrics_for_result(
     """
     if output_base_dir is not None:
         output_base_dir = Path(output_base_dir)
-        output_base_dir.mkdir(parents=True, exist_ok=True)
+        ensure_dir(output_base_dir)
 
     if metrics_tags_override is not None:
         metrics_tags = metrics_tags_override
@@ -778,7 +778,7 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
                 chains_dir = (
                     chain_cif_dir(output_base_dir, dataset_name=ds, task=task) if output_base_dir else gen_path.parent
                 )
-                chains_dir.mkdir(parents=True, exist_ok=True)
+                ensure_dir(chains_dir)
                 foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
             except Exception as e:
                 logger.warning(
@@ -804,7 +804,7 @@ def _write_input_cif(payload: dict, example_id: str) -> None:
         return
     try:
         save_path = design_output_dir(output_base_dir, example_id) / f"{example_id}_input.cif"
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_dir(save_path.parent)
         to_cif_file(input_atom_array, save_path)
     except Exception as e:
         logger.warning(f"generated-structure worker: failed to save input CIF for {example_id}: {e}")
@@ -820,7 +820,7 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
     if not trajectories or output_base_dir is None:
         return
     traj_dir = design_output_dir(output_base_dir, example_id) / "trajectories"
-    traj_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir(traj_dir)
 
     for traj_key, (traj, step_labels) in trajectories.items():
         if traj is None:
