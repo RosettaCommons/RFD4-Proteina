@@ -32,6 +32,49 @@ def _superimpose_on(
     return (x_pred - pred_centre) @ rotation.transpose(-1, -2) + gt_centre
 
 
+def _pack_groups(
+    automorphisms: Sequence[np.ndarray | torch.Tensor],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    """Stack ragged automorphism groups into one padded batch of atom indices.
+
+    Groups are bucketed by shape so each bucket stacks in a single call.
+
+    Returns:
+        ``(destinations, sources, valid_atom, valid_cand)`` of shape ``[n_groups, n_atoms]``,
+        ``[n_groups, n_cand, n_atoms]``, ``[n_groups, n_atoms]`` and ``[n_groups, n_cand]``.
+        ``valid_atom`` marks the atoms a group may exchange, ``valid_cand`` the real candidate
+        rows. ``None`` if no group can exchange anything.
+    """
+    by_shape: dict[tuple[int, int], list[np.ndarray]] = {}
+    for automorphism in automorphisms:
+        group = np.asarray(automorphism)
+        if group.ndim != 2 or group.shape[0] <= 1 or group.shape[1] == 0:
+            continue
+        by_shape.setdefault(group.shape, []).append(group)
+    if not by_shape:
+        return None
+
+    n_groups = sum(len(g) for g in by_shape.values())
+    n_cand = max(shape[0] for shape in by_shape)
+    n_atoms = max(shape[1] for shape in by_shape)
+    destinations = np.zeros((n_groups, n_atoms), dtype=np.int64)
+    sources = np.zeros((n_groups, n_cand, n_atoms), dtype=np.int64)
+    valid_atom = np.zeros((n_groups, n_atoms), dtype=bool)
+    valid_cand = np.zeros((n_groups, n_cand), dtype=bool)
+
+    at = 0
+    for (cand, atoms), groups in by_shape.items():
+        stacked = np.stack(groups)  # [k, n_cand, n_atoms]
+        k = stacked.shape[0]
+        destinations[at : at + k, :atoms] = stacked[:, 0]
+        sources[at : at + k, :cand, :atoms] = stacked
+        sources[at : at + k, cand:, :atoms] = stacked[:, :1]  # ...pad with identity, masked anyway
+        valid_atom[at : at + k, :atoms] = np.any(stacked != stacked[:, :1], axis=1)
+        valid_cand[at : at + k, :cand] = True
+        at += k
+    return destinations, sources, valid_atom, valid_cand
+
+
 def atom_permutation(
     x_pred: Float[torch.Tensor, "n_atoms 3"],
     x_gt: Float[torch.Tensor, "n_atoms 3"],
@@ -77,29 +120,29 @@ def atom_permutation(
     if align and int(frame_mask.sum()) >= 3:  # ...Kabsch needs three points; below that leave the frame alone
         x_pred = _superimpose_on(x_pred, x_gt, frame_mask)  # [n_atoms, 3]
 
-    for automorphism in automorphisms:
-        group = torch.as_tensor(np.asarray(automorphism), device=x_gt.device, dtype=torch.long)
-        if group.ndim != 2 or group.shape[0] <= 1 or group.shape[1] == 0:
-            continue
-        movable = torch.any(group != group[0], dim=0)  # [n_group_atoms]
-        destinations, sources = group[0][movable], group[:, movable]  # [n_mov], [n_cand, n_mov]
+    packed = _pack_groups(automorphisms)
+    if packed is None:  # ...nothing exchangeable
+        return permutation
+    dest, src, valid_atom, valid_cand = (torch.as_tensor(a, device=x_gt.device) for a in packed)
 
-        active = gt_mask[destinations]
-        if atom_classes is not None:
-            active &= atom_classes[destinations] >= 0
-        if not bool(active.any()):
-            continue
-        destinations, sources = destinations[active], sources[:, active]
+    active = gt_mask[dest] & valid_atom  # [n_groups, n_mov]
+    if atom_classes is not None:
+        active &= atom_classes[dest] >= 0
 
-        # Reject candidates that change the validity mask or cross a class boundary.
-        legal = torch.all(gt_mask[sources], dim=-1)  # [n_cand]
-        if atom_classes is not None:
-            legal &= torch.all(atom_classes[sources] == atom_classes[destinations], dim=-1)
+    # Reject candidates that change the validity mask or cross a class boundary.
+    legal = torch.where(active[:, None, :], gt_mask[src], True).all(dim=-1) & valid_cand  # [n_groups, n_cand]
+    if atom_classes is not None:
+        same_class = atom_classes[src] == atom_classes[dest][:, None, :]
+        legal &= torch.where(active[:, None, :], same_class, True).all(dim=-1)
 
-        error = torch.square(x_pred[destinations] - x_gt[sources]).sum(dim=-1).mean(dim=-1)  # [n_cand]
-        error = error.nan_to_num(nan=torch.inf, posinf=torch.inf, neginf=torch.inf).masked_fill(~legal, torch.inf)
-        permutation[destinations] = permutation[sources[int(error.argmin())]]
+    error = torch.square(x_pred[dest][:, None, :, :] - x_gt[src]).sum(dim=-1)  # [n_groups, n_cand, n_mov]
+    error = torch.where(active[:, None, :], error, 0.0).sum(dim=-1) / active.sum(dim=-1, keepdim=True).clamp(min=1)
+    error = error.nan_to_num(nan=torch.inf, posinf=torch.inf, neginf=torch.inf).masked_fill(~legal, torch.inf)
 
+    chosen = src[torch.arange(src.shape[0], device=src.device), error.argmin(dim=-1)]  # [n_groups, n_mov]
+    # Groups partition the atoms (`build_automorphism_units` splits by argsort), so writing them all
+    # at once matches applying them in sequence -- no group can read another's write.
+    permutation[dest[active]] = permutation[chosen[active]]
     return permutation  # [n_atoms]
 
 
