@@ -25,6 +25,8 @@
 #                                over .user_info PARTITION
 #   --mem <size>                 SLURM --mem override (e.g. 64g); takes
 #                                precedence over .user_info MEM
+#   --cpus-per-task N            SLURM --cpus-per-task override; takes
+#                                precedence over .user_info CPUS_PER_TASK
 #   --no-concatenate             Skip the per-config concatenation job
 #   --no-foldseek                Disable Foldseek clustering in concatenation (on by default)
 #   --base-out-dir <path>        Base directory for all sweep runs; each config
@@ -83,6 +85,7 @@ CLI_GRES=""
 CLI_TIME=""
 CLI_PARTITION=""
 CLI_MEM=""
+CLI_CPUS_PER_TASK=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -150,6 +153,10 @@ while [[ $# -gt 0 ]]; do
             CLI_MEM="$2"
             shift 2
             ;;
+        --cpus-per-task)
+            CLI_CPUS_PER_TASK="$2"
+            shift 2
+            ;;
         *)
             if [ -z "$CLUSTER" ]; then
                 CLUSTER="$1"
@@ -201,10 +208,11 @@ CLUSTER_ARG="$CLUSTER"
 load_user_info "$CLUSTER" || exit 1
 
 # Apply CLI overrides (take precedence over .user_info)
-[ -n "$CLI_GRES" ]      && GRES="$CLI_GRES"
-[ -n "$CLI_TIME" ]      && RUNTIME="$CLI_TIME"
-[ -n "$CLI_PARTITION" ] && PARTITION="$CLI_PARTITION"
-[ -n "$CLI_MEM" ]       && MEM="$CLI_MEM"
+[ -n "$CLI_GRES" ]           && GRES="$CLI_GRES"
+[ -n "$CLI_TIME" ]           && RUNTIME="$CLI_TIME"
+[ -n "$CLI_PARTITION" ]      && PARTITION="$CLI_PARTITION"
+[ -n "$CLI_MEM" ]            && MEM="$CLI_MEM"
+[ -n "$CLI_CPUS_PER_TASK" ]  && CPUS_PER_TASK="$CLI_CPUS_PER_TASK"
 
 # Find repository root
 REPO_ROOT=$(find_repo_root "$SCRIPT_DIR")
@@ -366,6 +374,9 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     fi
     if [ -n "$CLI_MEM" ]; then
         COMMON_FLAGS="$COMMON_FLAGS --mem $CLI_MEM"
+    fi
+    if [ -n "$CLI_CPUS_PER_TASK" ]; then
+        COMMON_FLAGS="$COMMON_FLAGS --cpus-per-task $CLI_CPUS_PER_TASK"
     fi
 
     # Run launch_infer.sh and capture output to extract the concat job ID
