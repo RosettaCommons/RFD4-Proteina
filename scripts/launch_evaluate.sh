@@ -27,6 +27,8 @@
 #   --time <HH:MM:SS>       SLURM --time override (default: 6:00:00)
 #   --partition <name>      SLURM --partition override
 #   --mem <size>            SLURM --mem override (e.g. 64G)
+#   --cpus-per-task N       SLURM --cpus-per-task override; takes precedence
+#                           over .user_info CPUS_PER_TASK
 #   --no-concatenate        Skip automatic per-job CSV concatenation
 #   --no-foldseek           Disable Foldseek clustering in concatenation (on by default)
 #   --copy                  Copy repo to run directory before submitting
@@ -85,6 +87,7 @@ CLI_GRES=""
 CLI_TIME="6:00:00"
 CLI_PARTITION=""
 CLI_MEM=""
+CLI_CPUS_PER_TASK=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -104,6 +107,7 @@ while [[ $# -gt 0 ]]; do
         --time)             CLI_TIME="$2"; shift 2 ;;
         --partition)        CLI_PARTITION="$2"; shift 2 ;;
         --mem)              CLI_MEM="$2"; shift 2 ;;
+        --cpus-per-task)    CLI_CPUS_PER_TASK="$2"; shift 2 ;;
         --follow|-f)        FOLLOW_LOGS="true"; shift ;;
         *)
             if [ -z "$CLUSTER" ]; then
@@ -130,10 +134,11 @@ fi
 # ============================================================
 load_user_info "$CLUSTER" || exit 1
 
-[ -n "$CLI_GRES" ]      && GRES="$CLI_GRES"
-[ -n "$CLI_TIME" ]      && RUNTIME="$CLI_TIME"
-[ -n "$CLI_PARTITION" ] && PARTITION="$CLI_PARTITION"
-[ -n "$CLI_MEM" ]       && MEM="$CLI_MEM"
+[ -n "$CLI_GRES" ]           && GRES="$CLI_GRES"
+[ -n "$CLI_TIME" ]           && RUNTIME="$CLI_TIME"
+[ -n "$CLI_PARTITION" ]      && PARTITION="$CLI_PARTITION"
+[ -n "$CLI_MEM" ]            && MEM="$CLI_MEM"
+[ -n "$CLI_CPUS_PER_TASK" ]  && CPUS_PER_TASK="$CLI_CPUS_PER_TASK"
 
 print_cluster_config
 
@@ -168,7 +173,14 @@ echo "  Config name: $CONFIG_NAME"
 [ -n "$CONFIG_PATH" ] && echo "  Config path: $CONFIG_PATH"
 echo "  Extra args:  $EXTRA_ARGS"
 
+# resolve_config.py's CPUS_PER_TASK is training-oriented and falls back to 8
+# for evaluate configs; save/restore ours so the eval below doesn't clobber it.
+_CLUSTER_CPUS_PER_TASK="${CPUS_PER_TASK:-}"
 eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $RESOLVE_PATH_ARG $EXTRA_ARGS)
+if [ -n "$_CLUSTER_CPUS_PER_TASK" ]; then
+    CPUS_PER_TASK="$_CLUSTER_CPUS_PER_TASK"
+fi
+unset _CLUSTER_CPUS_PER_TASK
 
 if [ -z "$RUN_NAME" ]; then
     echo ""

@@ -33,6 +33,8 @@
 #                           .user_info PARTITION
 #   --mem <size>            SLURM --mem override (e.g. 64g); takes precedence
 #                           over .user_info MEM
+#   --cpus-per-task N       SLURM --cpus-per-task override; takes precedence
+#                           over .user_info CPUS_PER_TASK
 #   --no-concatenate        Skip the automatic post-generation concatenation job
 #   --no-foldseek           Disable Foldseek clustering during concatenation (on by default)
 #   --copy                  Copy the repo to the run directory before submitting
@@ -100,6 +102,7 @@ CLI_GRES=""
 CLI_TIME=""
 CLI_PARTITION=""
 CLI_MEM=""
+CLI_CPUS_PER_TASK=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -168,6 +171,10 @@ while [[ $# -gt 0 ]]; do
             CLI_MEM="$2"
             shift 2
             ;;
+        --cpus-per-task)
+            CLI_CPUS_PER_TASK="$2"
+            shift 2
+            ;;
         --follow|-f)
             FOLLOW_LOGS="true"
             shift
@@ -199,10 +206,11 @@ fi
 load_user_info "$CLUSTER" || exit 1
 
 # Apply CLI overrides (take precedence over .user_info)
-[ -n "$CLI_GRES" ]      && GRES="$CLI_GRES"
-[ -n "$CLI_TIME" ]      && RUNTIME="$CLI_TIME"
-[ -n "$CLI_PARTITION" ] && PARTITION="$CLI_PARTITION"
-[ -n "$CLI_MEM" ]       && MEM="$CLI_MEM"
+[ -n "$CLI_GRES" ]           && GRES="$CLI_GRES"
+[ -n "$CLI_TIME" ]           && RUNTIME="$CLI_TIME"
+[ -n "$CLI_PARTITION" ]      && PARTITION="$CLI_PARTITION"
+[ -n "$CLI_MEM" ]            && MEM="$CLI_MEM"
+[ -n "$CLI_CPUS_PER_TASK" ]  && CPUS_PER_TASK="$CLI_CPUS_PER_TASK"
 
 print_cluster_config
 
@@ -239,7 +247,14 @@ echo "  Config name: $CONFIG_NAME"
 [ -n "$CONFIG_PATH" ] && echo "  Config path: $CONFIG_PATH"
 echo "  Extra args:  $EXTRA_ARGS"
 
+# resolve_config.py's CPUS_PER_TASK is training-oriented and falls back to 8
+# for inference configs; save/restore ours so the eval below doesn't clobber it.
+_CLUSTER_CPUS_PER_TASK="${CPUS_PER_TASK:-}"
 eval $(resolve_hydra_config "$REPO_ROOT" "$CONFIG_NAME" $RESOLVE_PATH_ARG $EXTRA_ARGS)
+if [ -n "$_CLUSTER_CPUS_PER_TASK" ]; then
+    CPUS_PER_TASK="$_CLUSTER_CPUS_PER_TASK"
+fi
+unset _CLUSTER_CPUS_PER_TASK
 
 # Validate that run_name_ was resolved
 if [ -z "$RUN_NAME" ]; then
