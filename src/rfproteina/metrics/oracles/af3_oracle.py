@@ -601,6 +601,10 @@ class AF3Oracle(OracleMetric):
                 input_to_af3 = self._build_atom_index_mapping(disambiguated_partial, predicted_atom_array)
                 result = as_atom_array_plus(state.input_atom_array.copy())
                 result.coord[~missing_residue_mask] = predicted_atom_array.coord[input_to_af3]
+                # Carry per-atom pLDDT (b_factor) across with the coords; dropped residues keep 0.0.
+                plddt = np.zeros(result.array_length(), dtype=float)
+                plddt[~missing_residue_mask] = predicted_atom_array.b_factor[input_to_af3]
+                result.set_annotation("b_factor", plddt)
                 predicted_atom_array = result
             except (ValueError, KeyError) as e:
                 logger.warning(f"AF3 coord transfer failed for {state.example_id}: {e}")
