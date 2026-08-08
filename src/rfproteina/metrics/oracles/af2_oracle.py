@@ -506,6 +506,10 @@ class AF2Oracle(OracleMetric):
                 kept = np.where(~missing_residue_mask)[0]
                 result.coord[kept[~omitted]] = predicted.coord[input_to_af2]
                 result.coord[kept[omitted]] = np.nan
+                # Carry per-atom pLDDT (b_factor) across with the coords; NaN-coord atoms keep 0.0.
+                plddt = np.zeros(result.array_length(), dtype=float)
+                plddt[kept[~omitted]] = predicted.b_factor[input_to_af2]
+                result.set_annotation("b_factor", plddt)
                 predicted = result
             except (ValueError, KeyError) as exc:
                 logger.warning(f"AF2 coord transfer failed for {state.example_id}: {exc}")
