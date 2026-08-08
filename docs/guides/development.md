@@ -176,7 +176,9 @@ Two knobs apply only on the `pretrain_ckpt_path` path (see the commented example
 `configs/training_proteina.yaml`):
 
 - **`weight_loading`** (`rfproteina.utils.weights.WeightLoadingConfig`) — per-parameter copy /
-  reinit / zero-init / copy-and-zero-pad policies. Null → `strict=False`.
+  reinit / zero-init / copy-and-zero-pad policies. Null → `strict=True`, so any key or shape
+  mismatch between the checkpoint and the configured architecture is a hard error. Set this
+  (with an explicit `fallback_policy`) to load a checkpoint across an architecture change.
 - **`parameter_freezing`** (`rfproteina.utils.weights.ParameterFreezingConfig`) — freeze subsets of
   parameters (e.g. the trunk).
 

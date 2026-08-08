@@ -42,7 +42,9 @@ resume_ckpt_path:
 delete_failing_pre_oracle: True
 
 # Weight loading policies (ONLY honored on the pretrain_ckpt_path path).
-# When null, falls back to strict=False (silently drop missing/extra keys).
+# When null, the checkpoint is loaded with strict=True: any key or shape mismatch
+# against the configured architecture is a hard error. Set this (with an explicit
+# fallback_policy) to deliberately load a checkpoint across an architecture change.
 weight_loading: null
 # Example:
 #   _target_: rfproteina.utils.weights.WeightLoadingConfig

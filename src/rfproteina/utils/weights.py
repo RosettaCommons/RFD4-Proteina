@@ -81,10 +81,16 @@ class _PatternPolicyMixin:
 
 @dataclass
 class WeightLoadingConfig(_PatternPolicyMixin):
-    """Configuration for handling weights when loading a checkpoint."""
+    """Configuration for handling weights when loading a checkpoint.
+
+    ``fallback_policy`` defaults to ``None``, meaning a parameter whose primary policy fails
+    (missing from the checkpoint, or a shape mismatch) raises rather than being silently
+    reinitialized. Set it to ``reinit``/``zero_init`` to opt into loading across a deliberate
+    architecture change.
+    """
 
     default_policy: WeightLoadingPolicy | str = WeightLoadingPolicy.COPY
-    fallback_policy: WeightLoadingPolicy | str = WeightLoadingPolicy.REINIT
+    fallback_policy: WeightLoadingPolicy | str | None = None
     param_policies: dict[str, WeightLoadingPolicy | str] = field(default_factory=dict)
     _compiled_patterns: dict[Pattern, WeightLoadingPolicy] = field(default_factory=dict, repr=False)
 
@@ -230,7 +236,13 @@ def load_weights_with_policies(
             result = _apply_policy(name, current_param, checkpoint_param, policy)
             updated_state[name] = result
         except WeightLoadingError as e:
-            # Primary policy failed, try fallback
+            if config.fallback_policy is None:
+                raise WeightLoadingError(
+                    f"Failed to apply policy '{policy}' to '{name}': {e!s}. No fallback_policy is set, "
+                    f"so this is a hard error — the checkpoint does not match the configured architecture. "
+                    f"Set weight_loading.fallback_policy (e.g. 'reinit') to load across this change."
+                ) from e
+            # Primary policy failed, try the explicitly-requested fallback
             ranked_logger.warning(
                 f"Failed to apply policy: '{policy}' to '{name}': {e!s}. "
                 f"Falling back to policy: '{config.fallback_policy}'."

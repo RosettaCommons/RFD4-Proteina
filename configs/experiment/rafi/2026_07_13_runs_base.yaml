@@ -24,6 +24,10 @@
 #     muon-everywhere/pair-dim-384 arch-sweep run.
 #   - Widen the triangle-multiplication hidden dim (nn.tri_mult_c) from its default
 #     196 to 256, which is both faster (more optimal shape) and more expressive.
+#     NOTE: nn.tri_mult_c did not actually reach PairReprUpdate until the plumbing was
+#     fixed, so the historical runs from this config all trained at the 196 default.
+#     Re-running now builds a genuinely 256-wide trimult -- a different architecture
+#     from those runs' checkpoints, which will therefore no longer load into it.
 #   - Turn on secondary-structure conditioning at p=0.1 (off by default upstream).
 #   - Turn on 25% internal-coordinate conditioning for every design task, across every
 #     training dataset, that both (a) supports p_internal_coords in code and (b) is

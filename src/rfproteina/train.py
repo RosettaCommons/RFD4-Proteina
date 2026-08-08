@@ -221,8 +221,10 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
             updated_state = load_weights_with_policies(model, ckpt["state_dict"], wl_config)
             model.load_state_dict(updated_state, strict=True)
         else:
-            # Legacy behaviour: silently drop missing/extra keys
-            model.load_state_dict(ckpt["state_dict"], strict=False)
+            # Strict by default: a checkpoint that does not match the configured architecture
+            # is a config bug, not something to paper over. Set `weight_loading` (with an
+            # explicit reinit/zero_init fallback) to deliberately load across an arch change.
+            model.load_state_dict(ckpt["state_dict"], strict=True)
 
         # Stash any SimpleEMA state from the pretrain ckpt so we can load it later
         ema_callback_state = ckpt.get("callbacks", {}).get("SimpleEMA") or {}
@@ -536,7 +538,9 @@ def main(cfg_exp: DictConfig) -> None:
             # NOTE: Requires strict checkpoint architecture equivalence if resuming from prior checkpoint
             trainer.validate(model, dataloaders=val_loaders, ckpt_path=resume_ckpt_path)
         else:
-            # NOTE: Allows for architectural changes since we loaded with strict=False in get_model_n_ckpt_resume
+            # NOTE: Weights are already in `model` from get_model_n_ckpt_resume, so this validates
+            # them without a second Lightning restore. Architectural changes still need an explicit
+            # `weight_loading` policy there; otherwise that load is strict and would have failed.
             logger.info(f"PREVALIDATE_ONLY: trainer.validate on weights pre-loaded from {pretrain_ckpt_path}")
             trainer.validate(model, dataloaders=val_loaders)
 

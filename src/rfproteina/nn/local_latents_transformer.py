@@ -113,6 +113,7 @@ class LocalLatentsTransformer(torch.nn.Module):
                             token_dim=kwargs["token_dim"],
                             pair_dim=kwargs["pair_repr_dim"],
                             use_tri_mult=self.use_tri_mult,
+                            tri_mult_c=kwargs["tri_mult_c"],
                         )
                         if i % self.update_pair_repr_every_n == 0
                         else None
