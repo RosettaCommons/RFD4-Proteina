@@ -27,15 +27,9 @@ import copy
 import shutil
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import torch
-
-from rfproteina.utils.common import design_output_dir
-from rfproteina.utils.ddp import RankedLogger
-
-if TYPE_CHECKING:
-    pass
 
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
@@ -43,6 +37,8 @@ from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.search.base_strategy import SearchStrategy
 from rfproteina.search.vanilla import build_partial_schedule, resolve_partial_t
 from rfproteina.transforms.unindexing import annotate_unindexed_insertion
+from rfproteina.utils.common import design_output_dir
+from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.torch import concat_dict_tensors
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -59,7 +55,8 @@ class BeamSearchStrategy(SearchStrategy):
         n_branch: Number of candidates to generate at each branch point (typically 4)
         beam_width: Number of candidates to keep after each prune (typically 4)
         intermediate_sample_save_criterion: PassCriterionMetric deciding which of the rolled-out
-            candidates scored at each checkpoint are kept as extra outputs.
+            candidates scored at each checkpoint are kept as extra outputs. Final-beam members
+            are always returned, and never also counted as intermediates.
 
     Example:
         >>> strategy = BeamSearchStrategy(
@@ -237,10 +234,8 @@ class BeamSearchStrategy(SearchStrategy):
             xt = x_0
 
         x_1_pred = None
-        insertion_logits = None
 
         all_intermediate_results: list[dict] = []
-        all_example_ids: list[str] = []
 
         batch_ids: list[str] = batch.get("example_id_batch", [f"sample{k}" for k in range(nsamples)])
 
@@ -308,6 +303,8 @@ class BeamSearchStrategy(SearchStrategy):
             # Example ids for each of the n_branch * beam_width * nsamples evaluated
             # samples at this checkpoint.  Interleaved format: entry j maps to batch
             # item j % nsamples and intra-checkpoint position j // nsamples.
+            # Survivors of the last checkpoint keep these ids as their final design ids, so the
+            # oracle results written here are the ones the epoch-end pass finds cached.
             eval_batch_size = self.n_branch * self.beam_width * nsamples
             checkpoint_example_ids = [
                 f"{batch_ids[j % nsamples]}_bsc{i}_{j // nsamples}" for j in range(eval_batch_size)
@@ -319,7 +316,7 @@ class BeamSearchStrategy(SearchStrategy):
 
             # Compute rewards by rolling out to completion.
             # atom_array_results is in interleaved format (i % nsamples maps to batch item i).
-            _, rewards, atom_array_results, candidate_metrics = self._simulate_and_compute_reward(
+            rewards, atom_array_results, candidate_metrics = self._simulate_and_compute_reward(
                 model,
                 batch,
                 xt,
@@ -331,6 +328,7 @@ class BeamSearchStrategy(SearchStrategy):
                 example_ids=checkpoint_example_ids,
                 output_base_dir=output_base_dir,
                 design_ids=checkpoint_design_ids,
+                insertion_logits=insertion_logits,
             )
 
             # A weighted key that no metric produces under this checkpoint's tags scores every
@@ -342,45 +340,6 @@ class BeamSearchStrategy(SearchStrategy):
                     f"reward_metrics_tags={checkpoint_reward_model.reward_metrics_tags}. The warnings above "
                     f"name the missing key(s)."
                 )
-
-            # Keep the intermediate samples that satisfy the configured save criterion.
-            criterion = self.intermediate_sample_save_criterion
-            criterion_outputs = [criterion.compute(m) for m in candidate_metrics] if criterion is not None else []
-            if criterion_outputs and not any(out["all_metrics_present"] for out in criterion_outputs):
-                raise ValueError(
-                    f"intermediate_sample_save_criterion thresholds {sorted(criterion.metric_thresholds)} were "
-                    f"unevaluable for every candidate at step {end_step}, so no intermediate sample can ever be "
-                    f"kept there: those metrics do not run under "
-                    f"reward_metrics_tags={checkpoint_reward_model.reward_metrics_tags}."
-                )
-            keep_mask = torch.tensor(
-                [bool(out["pass"]) for out in criterion_outputs] or [False] * len(candidate_metrics),
-                dtype=torch.bool,
-                device=rewards.device,
-            )
-            if keep_mask.any():
-                for k_idx in keep_mask.nonzero(as_tuple=False).squeeze(1).tolist():
-                    result = dict(atom_array_results[k_idx])
-                    result["reward"] = rewards[k_idx].item()
-                    all_intermediate_results.append(result)
-                    all_example_ids.append(checkpoint_example_ids[k_idx])
-                logger.info(f"Checkpoint {i}: kept {keep_mask.sum().item()}/{keep_mask.numel()} intermediate samples")
-            elif self.intermediate_sample_save_criterion is not None:
-                logger.info(
-                    f"Checkpoint {i}: no intermediate samples met the save criterion "
-                    f"(max reward={rewards.max().item():.3f})"
-                )
-
-            # Clean up oracle output dirs for scored candidates we are not keeping as outputs.
-            # These were written during reward computation. Each design owns its directory,
-            # so removing it cannot disturb a concurrent per-GPU process.
-            if output_base_dir is not None:
-                for k_idx in (~keep_mask).nonzero(as_tuple=False).squeeze(1).tolist():
-                    design_id = checkpoint_design_ids[k_idx]
-                    try:
-                        shutil.rmtree(design_output_dir(output_base_dir, design_id), ignore_errors=True)
-                    except ValueError as e:
-                        logger.error(f"beam search: skipping cleanup for design {design_id!r} -- {e}")
 
             # Reshape and select top beam_width candidates
             # Current shape: [n_branch * beam_width * nsamples] in interleaved format
@@ -410,70 +369,71 @@ class BeamSearchStrategy(SearchStrategy):
             # Transpose and flatten to get interleaved format [1,2,3,1,2,3]
             select_indices = global_indices.T.flatten()
 
+            # Survivors of the last checkpoint are the final beam. They are already fully denoised
+            # and already scored here, so they are returned as-is instead of being decoded and
+            # scored a second time under a different design id (which the oracle cache would miss).
+            survivor_mask = torch.zeros_like(rewards, dtype=torch.bool)
+            if i == len(self.step_checkpoints) - 2:
+                survivor_mask[select_indices] = True
+
+            # Keep the intermediate samples that satisfy the configured save criterion.
+            criterion = self.intermediate_sample_save_criterion
+            criterion_outputs = [criterion.compute(m) for m in candidate_metrics] if criterion is not None else []
+            if criterion_outputs and not any(out["all_metrics_present"] for out in criterion_outputs):
+                raise ValueError(
+                    f"intermediate_sample_save_criterion thresholds {sorted(criterion.metric_thresholds)} were "
+                    f"unevaluable for every candidate at step {end_step}, so no intermediate sample can ever be "
+                    f"kept there: those metrics do not run under "
+                    f"reward_metrics_tags={checkpoint_reward_model.reward_metrics_tags}."
+                )
+            keep_mask = torch.tensor(
+                [bool(out["pass"]) for out in criterion_outputs] or [False] * len(candidate_metrics),
+                dtype=torch.bool,
+                device=rewards.device,
+            )
+            # A final-beam member is returned once, as a final sample -- never also as an intermediate.
+            keep_mask &= ~survivor_mask
+            if keep_mask.any():
+                for k_idx in keep_mask.nonzero(as_tuple=False).squeeze(1).tolist():
+                    result = dict(atom_array_results[k_idx])
+                    result["reward"] = rewards[k_idx].item()
+                    all_intermediate_results.append(result)
+                logger.info(f"Checkpoint {i}: kept {keep_mask.sum().item()}/{keep_mask.numel()} intermediate samples")
+            elif criterion is not None:
+                logger.info(
+                    f"Checkpoint {i}: no intermediate samples met the save criterion "
+                    f"(max reward={rewards.max().item():.3f})"
+                )
+
+            # Clean up oracle output dirs for scored candidates we are not keeping as outputs.
+            # These were written during reward computation. Each design owns its directory,
+            # so removing it cannot disturb a concurrent per-GPU process.
+            if output_base_dir is not None:
+                for k_idx in (~(keep_mask | survivor_mask)).nonzero(as_tuple=False).squeeze(1).tolist():
+                    design_id = checkpoint_design_ids[k_idx]
+                    try:
+                        shutil.rmtree(design_output_dir(output_base_dir, design_id), ignore_errors=True)
+                    except ValueError as e:
+                        logger.error(f"beam search: skipping cleanup for design {design_id!r} -- {e}")
+
             # Select samples
             xt = {key: value[select_indices] for key, value in xt.items()}
             if x_1_pred is not None:
                 x_1_pred = {key: value[select_indices] for key, value in x_1_pred.items()}
-            if insertion_logits is not None:
-                insertion_logits = insertion_logits[select_indices]
 
-        # Format final beam samples
-        # mask here is already the expanded beam mask [nsamples * beam_width, n] in interleaved format
-        # Need to expand can_be_encoded to match (interleaved: [1,2,3,1,2,3])
-        can_be_encoded = batch.get("can_be_encoded")
-        if can_be_encoded is not None:
-            # Expand from [nsamples, n] to [nsamples * beam_width, n] in interleaved format
-            expanded_can_be_encoded = can_be_encoded.repeat(self.beam_width, 1)
-        else:
-            expanded_can_be_encoded = None
+        # The final beam is the last checkpoint's survivors, already decoded and scored above.
+        final_results = [atom_array_results[k] for k in select_indices.tolist()]
+        final_rewards = rewards[select_indices]
+        for result, reward in zip(final_results, final_rewards.tolist(), strict=True):
+            result["reward"] = reward
 
-        final_extra_info = {
-            "padding_mask": mask,
-            "can_be_encoded": expanded_can_be_encoded,
-        }
-        sample_prots = model.sample_formatting(
-            x=xt,
-            extra_info=final_extra_info,
-            ret_mode="coors37_n_aatype",
-        )
-
-        # Example ids for the final beam: entry k maps to batch item k % nsamples
-        # and beam position k // nsamples.  Always saved so oracle results are cached.
-        final_example_ids = [
-            f"{batch_ids[k % nsamples]}_bsfinal_{k // nsamples}" for k in range(nsamples * self.beam_width)
-        ]
-        all_example_ids.extend(final_example_ids)
-
-        # Format and score the final beam in one pass
-        final_results = model.format_sample_prots_to_atom_arrays(
-            sample_prots, batch, batch_idx=0, example_ids=final_example_ids, insertion_logits=insertion_logits
-        )
-        # The final beam sits at the last checkpoint, so it scores with that checkpoint's reward.
-        final_rewards, _ = self._compute_rewards(
-            model,
-            final_results,
-            reward_model.at_step(self.step_checkpoints[-1]),
-            output_base_dir=output_base_dir,
-            design_ids=[f"{eid}{output_suffix}" for eid in final_example_ids],
-        )
-
-        expected_sample_count = nsamples * self.beam_width
-        actual_count = sample_prots["coors"].shape[0]
-        assert (
-            actual_count == expected_sample_count
-        ), f"Expected {expected_sample_count} final beam samples, got {actual_count}"
-
-        total_count = len(all_intermediate_results) + actual_count
         logger.info(
-            f"Beam search complete. Generated {total_count} samples "
-            f"({len(all_intermediate_results)} intermediate + {actual_count} final)"
+            f"Beam search complete. Generated {len(all_intermediate_results) + len(final_results)} samples "
+            f"({len(all_intermediate_results)} intermediate + {len(final_results)} final)"
         )
         logger.info(
-            f"Final beam reward stats: mean={final_rewards.mean().item():.4f}, " f"std={final_rewards.std().item():.4f}"
+            f"Final beam reward stats: mean={final_rewards.mean().item():.4f}, std={final_rewards.std().item():.4f}"
         )
-
-        for i, result in enumerate(final_results):
-            result["reward"] = final_rewards[i].item()
 
         return all_intermediate_results + final_results
 
@@ -490,7 +450,8 @@ class BeamSearchStrategy(SearchStrategy):
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         design_ids: list[str] | None = None,
-    ) -> tuple[dict, torch.Tensor, list[dict], list[dict]]:
+        insertion_logits: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, list[dict], list[dict]]:
         """Roll out samples to completion and compute rewards.
 
         This implements the "roll out to get clean sample" step.
@@ -507,11 +468,13 @@ class BeamSearchStrategy(SearchStrategy):
             example_ids: Per-sample base IDs carried on the returned atom-array results.
             output_base_dir: Directory for oracle saving (enables caching).
             design_ids: Per-sample on-disk design IDs to save oracle results under.
+            insertion_logits: Fallback ``[batch, n, n]`` logits for *xt*, kept when the rollout
+                produces none.
 
         Returns:
-            Tuple of (sample_prots dict, rewards tensor, atom_array_results list,
-            per-sample metrics list). The two lists contain one entry per sample, in
-            interleaved batch-item order — safe to index directly by position.
+            Tuple of (rewards tensor, atom_array_results list, per-sample metrics list).
+            The two lists contain one entry per sample, in interleaved batch-item order —
+            safe to index directly by position.
         """
         # Derive actual schedule length from the passed schedule (partial or full).
         actual_nsteps = next(iter(ts.values())).shape[0] - 1
@@ -559,7 +522,8 @@ class BeamSearchStrategy(SearchStrategy):
         # Concatenate batches
         final_xt = concat_dict_tensors(final_xt_batches, dim=0)
 
-        insertion_logits = None
+        # A zero-step rollout (last checkpoint) runs no forward pass, so the caller's logits stand:
+        # they come from the step that produced this state, exactly as the vanilla path uses them.
         if all(logits is not None for logits in insertion_logits_batches):
             insertion_logits = torch.cat(insertion_logits_batches, dim=0)
 
@@ -605,7 +569,7 @@ class BeamSearchStrategy(SearchStrategy):
             f"min={rewards.min().item():.4f}, max={rewards.max().item():.4f}"
         )
 
-        return final_sample_prots, rewards, atom_array_results, candidate_metrics
+        return rewards, atom_array_results, candidate_metrics
 
     def _compute_rewards(
         self,

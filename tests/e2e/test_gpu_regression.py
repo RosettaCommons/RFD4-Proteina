@@ -4,7 +4,7 @@ Four tests, all gated on H200 GPUs (cw-west only):
   1. SOTA training      — 100 muon steps from random init; losses match baseline
   2. AE training        — 100 muon steps from AE_ucond_512.ckpt; losses match baseline
   3. Inference          — generate one MCSA example; designed CIF matches baseline
-  4. Beam search        — minimal beam search; designed structures match baselines
+  4. Beam search        — unindexed-motif beam search; per-design motif RMSDs match baseline
 
 Plus one CPU-only test (no GPU marker, runs on digs): the SOTA checkpoint
 from configs/inference.yaml actually exists on disk. Catches the case where the
@@ -21,6 +21,7 @@ Run:
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -36,11 +37,13 @@ from tests.e2e.helpers.gpu_e2e import (
 from tests.e2e.helpers.regression_baselines import (
     BASELINE_RMSD_ATOL_TIGHT,
     BASELINES_DIR,
-    BEAM_SEARCH_EXAMPLE,
+    BEAM_SEARCH_OVERRIDES,
+    BEAM_SEARCH_RMSD_ATOL,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
     all_atom_rmsd,
+    beam_search_motif_rmsds,
     deterministic_env,
     find_beam_search_cifs,
     find_inference_cif,
@@ -131,20 +134,9 @@ def _run_beam_search(run_name: str) -> Path:
 
     cmd = [
         "src/rfproteina/generate.py",
-        "inference_experiment=inference_beam_regression",
-        "~metrics/refolding_oracles",
-        "generation.args.nsteps=20",
-        "search.strategy.step_checkpoints=[0,10,20]",
-        "search.strategy.n_branch=2",
-        "search.strategy.beam_width=2",
-        f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
-        "generation.val_set_name_override=beam_example",
+        *BEAM_SEARCH_OVERRIDES,
         f"run_name_={run_name}",
         f"out_dir={out_dir}",
-        "seed=42",
-        "torch_deterministic=true",
-        # No compilation for regression tests
-        "compile_lengths=null",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())
@@ -239,24 +231,27 @@ def test_inference_regression(inference_out: Path) -> None:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_beam_search_regression() -> None:
-    """Minimal beam search on monomer-short; designed structure matches baseline."""
+    """Minimal beam search on an unindexed motif; per-design motif RMSDs match baseline."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
     require_sota_ckpt()
 
-    baseline_dir = BASELINES_DIR / "beam_search"
-    baseline_cifs = sorted(baseline_dir.glob("*_generated.cif"))
-    if not baseline_cifs:
+    baseline_path = BASELINES_DIR / "beam_search" / "metrics.json"
+    if not baseline_path.is_file():
         pytest.skip("Beam search baselines not generated yet.")
+    expected = json.loads(baseline_path.read_text())["motif_rmsd"]
 
     out_dir = _run_beam_search("regression_beam_search")
-    observed_cifs = find_beam_search_cifs(out_dir)
+    observed = beam_search_motif_rmsds(out_dir)
 
-    # Every baseline CIF must have a matching output CIF, by name.
-    for bl_cif in baseline_cifs:
-        obs_matches = [c for c in observed_cifs if c.name == bl_cif.name]
-        assert obs_matches, f"Beam search output missing expected CIF: {bl_cif.name}"
-        rmsd = all_atom_rmsd(obs_matches[0], bl_cif)
-        assert rmsd <= BASELINE_RMSD_ATOL_TIGHT, (
-            f"Beam search {bl_cif.name}: all-atom RMSD {rmsd:.4f} Å exceeds " f"{BASELINE_RMSD_ATOL_TIGHT} Å"
+    assert len(observed) == len(expected), f"Expected {len(expected)} scored designs, got {observed}"
+    for obs, exp in zip(observed, expected, strict=True):
+        assert abs(obs - exp) <= BEAM_SEARCH_RMSD_ATOL, (
+            f"Beam search motif RMSD {obs:.4f} Å differs from baseline {exp:.4f} Å by more than "
+            f"{BEAM_SEARCH_RMSD_ATOL} Å"
         )
+
+    # Final designs keep the checkpoint id they were scored under, rather than being re-decoded
+    # and re-scored under a fresh id.
+    for cif in find_beam_search_cifs(out_dir):
+        assert "_bsc" in cif.name, f"Final beam design was renamed on the way out: {cif.name}"

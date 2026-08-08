@@ -52,8 +52,38 @@ SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
-# Beam search pins to the single monomer-short spec in benchmarks/monomer.json.
-BEAM_SEARCH_EXAMPLE = "monomer-short"
+# Beam search runs the smallest unindexed motif in benchmarks/motif_scaffold_aa_tasks_unindexed.json
+# (3IXT, motif P254-277) and ranks candidates on how closely they reproduce that motif.
+BEAM_SEARCH_EXAMPLE = "3IXT_AA"
+BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
+
+# Shared by the regression test and the baseline generator so the two cannot drift.
+BEAM_SEARCH_OVERRIDES = [
+    "inference_experiment=inference_beam_regression",
+    "~metrics/refolding_oracles",
+    "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffold_aa_tasks_unindexed.json",
+    f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
+    "++metrics_tags=[design,unindexed]",
+    "++search.rewards.reward_metrics_tags=[design,unindexed]",
+    # The motif reward is a design metric, so no oracle is needed and this stays fast. The zero
+    # weight neutralises the inherited clash term: hydra cannot delete a key containing dots,
+    # and aggregate_metrics_output skips falsy weights.
+    f"++search.rewards.weights={{clash_metrics.frac_atoms_clashing_1p5A: 0.0, {BEAM_SEARCH_REWARD_KEY}: -1.0}}",
+    # 20 steps is too few here: the insertion mapping goes infeasible for reasons unrelated to
+    # what this guards, which would mask a real regression behind a spurious failure.
+    "generation.args.nsteps=100",
+    "search.strategy.step_checkpoints=[0,50,100]",
+    "search.strategy.n_branch=2",
+    "search.strategy.beam_width=2",
+    "num_replicates=1",
+    # Pin val_set_name_override so the val set is named the same on every machine,
+    # regardless of where the inputs are mounted.
+    "generation.val_set_name_override=beam_example",
+    "seed=42",
+    "torch_deterministic=true",
+    # No compilation for regression tests.
+    "compile_lengths=null",
+]
 
 # Tolerances.
 # Per-step early-exit threshold: kill the training subprocess as soon as any
@@ -62,7 +92,8 @@ LOSS_ATOL_PER_STEP = 0.2
 # Mean absolute deviation threshold: applied after all steps complete to catch
 # systematic drift that stays below the per-step limit on every individual step.
 LOSS_ATOL_MEAN = 0.05
-BASELINE_RMSD_ATOL_TIGHT = 0.20  # Å — all-atom RMSD for deterministic outputs (inference, beam search)
+BASELINE_RMSD_ATOL_TIGHT = 0.20  # Å — all-atom RMSD for deterministic outputs (inference)
+BEAM_SEARCH_RMSD_ATOL = 0.05  # Å — motif RMSD drift for a deterministic beam-search run
 METRIC_ATOL = 1e-3  # pLDDT / ptm / iptm for deterministic outputs
 
 
@@ -128,7 +159,7 @@ def all_atom_rmsd(cif_path_a: Path, cif_path_b: Path) -> float:
     atoms_b = _load_atom_array(cif_path_b)
     if len(atoms_a) != len(atoms_b):
         raise ValueError(
-            f"Atom count mismatch: {cif_path_a.name} has {len(atoms_a)} atoms, " f"{cif_path_b.name} has {len(atoms_b)}"
+            f"Atom count mismatch: {cif_path_a.name} has {len(atoms_a)} atoms, {cif_path_b.name} has {len(atoms_b)}"
         )
     return float(rmsd(atoms_a, atoms_b))
 
@@ -169,6 +200,22 @@ def find_oracle_refolded_cif(out_dir: Path, oracle_name: str) -> Path:
     if not matches:
         raise FileNotFoundError(f"No *_{oracle_name}_refolded.cif found under {out_dir / 'evaluation_samples'}")
     return matches[0]
+
+
+def beam_search_motif_rmsds(out_dir: Path) -> list[float]:
+    """Return each final design's motif RMSD from a beam-search run, ascending.
+
+    This is what the beam-search baseline pins instead of whole CIFs: it tracks the same
+    coordinates without committing ~200 KB of generated structure per design.
+    """
+    csv_files = list((out_dir / "inference_metrics").glob("per_example_metrics*.csv"))
+    if not csv_files:
+        return []
+    df = pd.read_csv(max(csv_files))
+    if BEAM_SEARCH_REWARD_KEY not in df.columns or "example_id" not in df.columns:
+        return []
+    rows = df[df["example_id"].astype(str).str.contains(BEAM_SEARCH_EXAMPLE, regex=False)]
+    return sorted(float(v) for v in rows[BEAM_SEARCH_REWARD_KEY] if not _is_nan(v))
 
 
 def parse_per_example_metrics(

@@ -40,12 +40,13 @@ import rootutils
 from tests.e2e.helpers.gpu_e2e import parse_train_losses_from_csv_logger
 from tests.e2e.helpers.regression_baselines import (
     BASELINES_DIR,
-    BEAM_SEARCH_EXAMPLE,
+    BEAM_SEARCH_OVERRIDES,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
     SOTA_CKPT_PATH,
     all_atom_rmsd,
+    beam_search_motif_rmsds,
     deterministic_env,
     find_beam_search_cifs,
     find_inference_cif,
@@ -61,10 +62,10 @@ PYTHON = sys.executable
 
 
 def _run(cmd: list[str], label: str) -> subprocess.CompletedProcess:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {label}")
     print(f"  {' '.join(cmd[:4])} ...")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     proc = subprocess.run(
         cmd,
         cwd=ROOT,
@@ -102,7 +103,7 @@ def _run_captured(cmd: list[str], label: str) -> subprocess.CompletedProcess:
 def _assert_losses_reproducible(losses_a: list[float], losses_b: list[float], label: str) -> None:
     if len(losses_a) != len(losses_b):
         raise RuntimeError(
-            f"[{label}] Run 1 produced {len(losses_a)} losses, " f"run 2 produced {len(losses_b)} — not reproducible!"
+            f"[{label}] Run 1 produced {len(losses_a)} losses, run 2 produced {len(losses_b)} — not reproducible!"
         )
     diffs = [abs(a - b) for a, b in zip(losses_a, losses_b, strict=False)]
     max_diff = max(diffs) if diffs else 0.0
@@ -255,20 +256,8 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
     base_cmd = [
         PYTHON,
         "src/rfproteina/generate.py",
-        "inference_experiment=inference_beam_regression",
-        "~metrics/refolding_oracles",
         *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
-        "generation.args.nsteps=20",
-        "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
-        "search.strategy.step_checkpoints=[0,10,20]",
-        "search.strategy.n_branch=2",
-        "search.strategy.beam_width=2",
-        f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
-        # Pin val_set_name_override so the val set is named the same on every machine,
-        # regardless of where the inputs are mounted.
-        "generation.val_set_name_override=beam_example",
-        "seed=42",
-        "torch_deterministic=true",
+        *BEAM_SEARCH_OVERRIDES,
         "+single=true",
     ]
 
@@ -289,17 +278,20 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
     for c1, c2 in zip(cifs_1, cifs_2, strict=False):
         _assert_cif_reproducible(c1, c2, f"{name}/{c1.name}", atol=0.05)
 
-    # Write baselines.
+    # Write baselines: the per-design motif RMSDs, not the CIFs. They track the same
+    # coordinates without committing ~200 KB of generated structure per design.
+    rmsds = beam_search_motif_rmsds(run1_dir)
+    if len(rmsds) != len(cifs_1):
+        raise RuntimeError(f"[{name}] {len(cifs_1)} design(s) but {len(rmsds)} motif RMSD(s): {rmsds}")
+
     bl_dir = BASELINES_DIR / name
     bl_dir.mkdir(parents=True, exist_ok=True)
-    # Remove any stale baseline CIFs before writing fresh ones.
+    # Remove stale CIF baselines from when this test pinned whole structures.
     for stale in bl_dir.glob("*.cif"):
         stale.unlink()
-    for cif in cifs_1:
-        shutil.copy2(cif, bl_dir / cif.name)
 
-    (bl_dir / "metrics.json").write_text(json.dumps({"seed": 42, "n_gpus": 1, "n_cifs": len(cifs_1)}, indent=2))
-    print(f"  ✓ [{name}] Wrote {len(cifs_1)} CIF(s) + metrics.json to {bl_dir}")
+    (bl_dir / "metrics.json").write_text(json.dumps({"seed": 42, "n_gpus": 1, "motif_rmsd": rmsds}, indent=2))
+    print(f"  ✓ [{name}] Wrote motif RMSDs {rmsds} to {bl_dir}/metrics.json")
 
     shutil.rmtree(run1_dir, ignore_errors=True)
     shutil.rmtree(run2_dir, ignore_errors=True)
