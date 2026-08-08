@@ -24,7 +24,10 @@
 #     omol 4%, plinder 3%, ted_dimers 3%; loss weighting 2.5/2.5/0 across the whole
 #     mix via ${_loss_weights}.
 #   - Sequential triangle-mult in the pair update every 2nd layer, pair repr widened
-#     to 384, triangle-mult hidden dim 256, RMSNorm trunk.
+#     to 384, triangle-mult hidden dim 196, RMSNorm trunk. (The chain nominally asked
+#     for 256, but `nn.tri_mult_c` never reached PairReprUpdate until the plumbing fix,
+#     so every run in the chain -- and the released checkpoint -- is 196. Value pinned
+#     here to what the checkpoint actually is; see the note on tri_mult_c below.)
 #   - Conditioning: RASA p=0.6, hbond p=0.2, not-cysteine p=0.05, secondary-structure
 #     p=0.1, and 25% internal-coordinate conditioning (${_p_internal_coords}) on every
 #     supporting+active design task across the mix.
@@ -33,7 +36,7 @@
 #
 # Only settings that actually differ from what the defaults above produce are set
 # below; redundant overrides have been pruned (verified byte-identical to the
-# original 4_nodes.yaml composition).
+# original 4_nodes.yaml composition, except for tri_mult_c -- see above).
 ###################################################################################
 
 defaults:
@@ -90,7 +93,9 @@ nn:
   use_tri_mult: True
   update_pair_repr_every_n: 2
   pair_repr_dim: 384
-  tri_mult_c: 25
+  # 196 is what 2026_07_22_release_280k-ema.ckpt actually has. Changing it makes this
+  # recipe incompatible with that checkpoint (pretrain/resume will fail loudly).
+  tri_mult_c: 196
   # feats_seq re-declared in full (Hydra replaces lists) to add "not_cysteine".
   feats_seq: [
     "xt_bb_ca",

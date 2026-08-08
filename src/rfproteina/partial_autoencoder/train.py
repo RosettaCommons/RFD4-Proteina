@@ -196,8 +196,10 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
             updated_state = load_weights_with_policies(model, ckpt["state_dict"], wl_config)
             model.load_state_dict(updated_state, strict=True)
         else:
-            # Legacy behaviour: silently drop missing/extra keys
-            model.load_state_dict(ckpt["state_dict"], strict=False)
+            # Strict by default: a checkpoint that does not match the configured architecture
+            # is a config bug, not something to paper over. Set `weight_loading` (with an
+            # explicit reinit/zero_init fallback) to deliberately load across an arch change.
+            model.load_state_dict(ckpt["state_dict"], strict=True)
 
         # Optional parameter freezing (applied after weight loading)
         param_freezing_cfg = cfg_exp.get("parameter_freezing", None)

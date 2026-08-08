@@ -86,6 +86,7 @@ pair_repr_dim: 256
 update_pair_repr: False  # whether to update pair representation
 update_pair_repr_every_n: 3  # Update the pair representation every n layers
 use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
+tri_mult_c: 196  # hidden dim of the triangle multiplication layers; every checkpoint to date uses 196
 
 use_qkln: True
 

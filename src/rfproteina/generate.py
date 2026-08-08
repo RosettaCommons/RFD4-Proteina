@@ -450,7 +450,7 @@ def load_ag_ckpt(cfg: dict) -> None | torch.nn.Module:
         )
         ckpt_ag_file = cfg.ag_ckpt_path
         assert os.path.exists(ckpt_ag_file), f"Not a valid checkpoint {ckpt_ag_file}"
-        model_ag = Proteina.load_from_checkpoint(ckpt_ag_file, strict=False)
+        model_ag = Proteina.load_from_checkpoint(ckpt_ag_file, strict=True)
 
         # OPTIMIZATION: Remove encoder from autoguidance model autoencoder during generation (only decoder needed)
         if model_ag.autoencoder is not None:
@@ -517,9 +517,12 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_file}")
     logger.info(f"Loading checkpoint: {ckpt_file}")
 
+    # strict=True: the architecture is rebuilt from the checkpoint's own saved hparams, so any
+    # missing/unexpected key means the code has drifted from what produced these weights. Loading
+    # a partially-initialized model would silently produce garbage designs.
     model = Proteina.load_from_checkpoint(
         ckpt_file,
-        strict=False,
+        strict=True,
         autoencoder_ckpt_path=cfg.get("autoencoder_ckpt_path"),
         weights_only=False,
         map_location="cpu",

@@ -706,7 +706,7 @@ def autoencoder_and_fm():
     cfg_train = OmegaConf.load(TRAIN_CONFIG_PATH)
     cfg_nn = OmegaConf.load(NN_CONFIG_PATH)
 
-    autoencoder = AutoEncoder.load_from_checkpoint(str(AUTOENCODER_CKPT_PATH), strict=False, weights_only=False)
+    autoencoder = AutoEncoder.load_from_checkpoint(str(AUTOENCODER_CKPT_PATH), strict=True, weights_only=False)
     autoencoder = autoencoder.to(device).eval()
     for p in autoencoder.parameters():
         p.requires_grad = False
