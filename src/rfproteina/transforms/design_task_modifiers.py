@@ -20,7 +20,7 @@ from atomworks.ml.conditions import (
     C_SEQ,
 )
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
-from biotite.structure import AtomArray, spread_residue_wise
+from biotite.structure import AtomArray, BadStructureError, spread_residue_wise
 
 from rfproteina.conditions import (
     C_CATH,
@@ -147,8 +147,17 @@ def temporary_pdb_directory(atom_array: AtomArray, raise_on_failure: bool = True
     pdb_path = os.path.join(temp_dir, pdb_filename)
 
     try:
+        try:
+            pdb_string = to_pdb_string(atom_array)
+        except BadStructureError:
+            # PDB cannot hold e.g. 5-character CCD codes; drop the condition, not the example.
+            if raise_on_failure:
+                raise
+            yield None, None, None, None, None, True
+            return
+
         with open(pdb_path, "w") as f:
-            f.write(to_pdb_string(atom_array))
+            f.write(pdb_string)
 
         yield temp_dir, pdb_filename, atom_array, nan_mask, inverted_chain_map, False
     finally:
