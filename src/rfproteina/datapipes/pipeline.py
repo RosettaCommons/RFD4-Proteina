@@ -66,7 +66,7 @@ from atomworks.ml.transforms.base import (
 )
 from atomworks.ml.transforms.bfactor_conditioned_transforms import SetOccToZeroOnBfactor
 from atomworks.ml.transforms.covalent_modifications import (
-    FlagAndReassignCovalentModifications,
+    AnnotateCovalentModifications,
 )
 from atomworks.ml.transforms.crop import CropContiguousLikeAF3, CropSpatialLikeAF3
 from atomworks.ml.transforms.design_task import SampleDesignTask
@@ -1348,7 +1348,7 @@ def _build_design_clean_and_sample_pipeline(
     ### 2. Add basic annotations                            ###
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    T += FlagAndReassignCovalentModifications()
+    T += AnnotateCovalentModifications()
     T += FlagNonPolymersForAtomization()
     if not is_inference:
         T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
