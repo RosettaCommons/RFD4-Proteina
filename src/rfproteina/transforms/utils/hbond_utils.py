@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 from atomworks.io.utils.io_utils import to_pdb_string
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, BadStructureError
 
 
 @contextmanager
@@ -63,8 +63,17 @@ def temporary_pdb_directory(atom_array: AtomArray, raise_on_failure: bool = True
     pdb_path = os.path.join(temp_dir, pdb_filename)
 
     try:
+        try:
+            pdb_string = to_pdb_string(atom_array)
+        except BadStructureError:
+            # PDB cannot hold e.g. 5-character CCD codes; drop the condition, not the example.
+            if raise_on_failure:
+                raise
+            yield None, None, None, None, None, True
+            return
+
         with open(pdb_path, "w") as f:
-            f.write(to_pdb_string(atom_array))
+            f.write(pdb_string)
 
         yield temp_dir, pdb_filename, atom_array, nan_mask, inverted_chain_map, False
     finally:
