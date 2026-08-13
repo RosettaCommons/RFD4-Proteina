@@ -1511,7 +1511,7 @@ def _build_design_featurize_pipeline(
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
     # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (),
+    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1687,7 +1687,7 @@ def build_design_train_pipeline(
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
     # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (),
+    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1793,7 +1793,7 @@ def build_design_validation_pipeline(
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
     # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (),
+    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
