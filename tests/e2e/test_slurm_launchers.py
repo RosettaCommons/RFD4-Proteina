@@ -21,7 +21,8 @@ SLURM_UTILS = ROOT / "scripts"
 LAUNCHERS = [
     "launch_train_latents.sh",
     "launch_train_ae.sh",
-    "launch_infer.sh",
+    "launch_generate.sh",
+    "launch_infer.sh",  # deprecated alias forwarding to launch_generate.sh
     "launch_infer_ae.sh",
     "launch_search.sh",
     "launch_evaluate.sh",

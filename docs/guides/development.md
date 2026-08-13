@@ -254,11 +254,11 @@ you pick a known cluster. Key launchers:
 | --- | --- |
 | Train latent diffusion | `scripts/launch_train_latents.sh <cluster> [hydra args]` |
 | Train autoencoder | `scripts/launch_train_ae.sh <cluster>` |
-| Inference / offline validation | `scripts/launch_infer.sh <cluster> [--njobs N] [hydra args]` |
+| Inference / offline validation | `scripts/launch_generate.sh <cluster> [--njobs N] [hydra args]` |
 | Parameter sweeps | `scripts/launch_sweep.sh <cluster> --sweep-config <yaml>` |
 | Reward-guided search | `scripts/launch_search.sh <cluster>` |
 
-`launch_infer.sh` splits inputs across job-array tasks (`--njobs`), then a dependent job
+`launch_generate.sh` splits inputs across job-array tasks (`--njobs`), then a dependent job
 concatenates per-job metric CSVs (Foldseek clustering on by default; `--no-foldseek` to disable).
 Pass any trailing `key=value` args straight through to the underlying script. To load a config from
 outside the repo tree, pass `--config-path <dir> --config-name <stem>` (the config must inherit the

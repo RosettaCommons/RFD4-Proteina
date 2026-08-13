@@ -1,7 +1,8 @@
 """AF3 launcher daemon. Two subcommands:
 
 - ``serve`` — one Unix-socket daemon per GPU. Spawns a warm AF3 worker
-  (apptainer subprocess) at startup and forwards ``fold`` requests to it.
+  (apptainer subprocess) at startup — or, under ``--lazy-warmup``, on the first
+  ``prewarm``/``fold`` — and forwards ``fold`` requests to it.
 - ``launch`` — slurm-side supervisor. Spawns N ``serve`` daemons, pings
   each until ready, daemonises (printing eval-able exports), shuts every
   daemon down on SIGTERM/SIGINT/SIGHUP.
@@ -13,6 +14,7 @@ Socket protocol (line-delimited JSON):
     {"cmd": "fold", "manifest": "...", "save_full_outputs": false}
         -> {"status": "ok"}
     {"cmd": "ping"}     -> {"status": "ok"}
+    {"cmd": "prewarm"}  -> {"status": "ok"}, starts a lazy daemon's warmup.
     {"cmd": "shutdown"} -> {"status": "ok"}, daemon exits.
 """
 
@@ -135,32 +137,43 @@ def _serve(args: argparse.Namespace) -> int:
     os.chmod(sock_path, 0o600)
     print(f"[af3-daemon] listening on {sock_path} (pid={os.getpid()})", file=sys.stderr, flush=True)
 
-    print(
-        f"[af3-daemon] starting warm AF3 worker (gpu={args.gpu_device}, num_recycles={AF3_NUM_RECYCLES})",
-        file=sys.stderr,
-        flush=True,
-    )
-    worker = _spawn_warm_worker(args.batch_script, args.gpu_device)
+    # Warmup, spawn included, runs in a background thread: the socket answers pings
+    # immediately while AF3 loads, and any failure is reported to `fold` callers
+    # rather than taking the daemon down.
+    worker_ready = threading.Event()
+    worker: subprocess.Popen | None = None
+    worker_error: Exception | None = None
+    warmup_started = False
 
-    # Run warmup in a background thread so the socket can accept ping
-    # requests immediately. Without this, the launcher's _ping_until_ready
-    # (which only polls for ~15-75s) declares the daemon "failed to come up"
-    # while AF3 JIT compilation is still running (which can take several minutes
-    # on slower GPUs). Fold requests block on _worker_ready until warmup finishes.
-    _worker_ready = threading.Event()
-    _worker_errors: list[Exception] = []
-
-    def _warmup() -> None:
+    def warmup() -> None:
+        nonlocal worker, worker_error
         try:
+            print(
+                f"[af3-daemon] starting warm AF3 worker (gpu={args.gpu_device}, num_recycles={AF3_NUM_RECYCLES})",
+                file=sys.stderr,
+                flush=True,
+            )
+            worker = _spawn_warm_worker(args.batch_script, args.gpu_device)
             _wait_for_worker_ready(worker)
             print(f"[af3-daemon] warm AF3 worker ready (pid={worker.pid})", file=sys.stderr, flush=True)
         except Exception as exc:
             print(f"[af3-daemon] warm worker failed: {exc}", file=sys.stderr, flush=True)
-            _worker_errors.append(exc)
+            worker_error = exc
         finally:
-            _worker_ready.set()
+            worker_ready.set()
 
-    threading.Thread(target=_warmup, daemon=True, name="af3-warmup").start()
+    def start_warmup_once() -> None:
+        """Start the warm worker on the first caller. No lock: every call comes from
+        this thread -- the eager path below, or the single-threaded accept loop."""
+        nonlocal warmup_started
+        if not warmup_started:
+            warmup_started = True
+            threading.Thread(target=warmup, daemon=True, name="af3-warmup").start()
+
+    # Eager by default, so warmup overlaps whatever the caller does next. Under
+    # --lazy-warmup, AF3 loads on the first prewarm/fold instead.
+    if not args.lazy_warmup:
+        start_warmup_once()
 
     try:
         while True:
@@ -183,13 +196,21 @@ def _serve(args: argparse.Namespace) -> int:
                     conn.sendall((json.dumps({"status": "ok"}) + "\n").encode())
                     conn.close()
                     break
+                elif cmd == "prewarm":
+                    # Sent by a client that knows it will fold later, so a lazy daemon
+                    # starts loading AF3 now and the warmup still overlaps generation.
+                    # A no-op once warmup has started, so it is safe to send repeatedly.
+                    start_warmup_once()
+                    resp = {"status": "ok"}
                 elif cmd == "fold":
+                    start_warmup_once()
                     # Block until the warm worker is ready (or failed).
-                    if not _worker_ready.wait(timeout=1200.0):
+                    if not worker_ready.wait(timeout=1200.0):
                         resp = {"status": "error", "message": "AF3 worker warmup timed out after 1200s"}
-                    elif _worker_errors:
-                        resp = {"status": "error", "message": f"AF3 worker failed during warmup: {_worker_errors[0]}"}
+                    elif worker_error is not None:
+                        resp = {"status": "error", "message": f"AF3 worker failed during warmup: {worker_error}"}
                     else:
+                        # Neither timed out nor errored, so the spawn succeeded.
                         resp = _handle_fold(req, worker)
                 else:
                     resp = {"status": "error", "message": f"unknown cmd: {cmd}"}
@@ -200,16 +221,19 @@ def _serve(args: argparse.Namespace) -> int:
             finally:
                 conn.close()
     finally:
-        # Tell the warm worker to exit cleanly; if that fails, kill it.
-        try:
-            if worker.poll() is None:
-                worker.stdin.write("shutdown\n")
-                worker.stdin.flush()
-                worker.wait(timeout=10)
-        except Exception:
-            with contextlib.suppress(Exception):
-                worker.terminate()
-                worker.wait(timeout=5)
+        # Tell the warm worker to exit cleanly; if that fails, kill it. `worker` is None
+        # when warmup never ran, the spawn failed, or a shutdown landed mid-spawn; in that
+        # last case the worker still exits on its own, on stdin EOF, when this process does.
+        if worker is not None:
+            try:
+                if worker.poll() is None:
+                    worker.stdin.write("shutdown\n")
+                    worker.stdin.flush()
+                    worker.wait(timeout=10)
+            except Exception:
+                with contextlib.suppress(Exception):
+                    worker.terminate()
+                    worker.wait(timeout=5)
 
     sock.close()
     if os.path.exists(sock_path):
@@ -274,7 +298,7 @@ def _send_shutdown(sock_path: str, timeout_s: float = 5.0) -> None:
         pass
 
 
-def _spawn_one(rank: int, log_dir: Path) -> subprocess.Popen:
+def _spawn_one(rank: int, log_dir: Path, lazy_warmup: bool = False) -> subprocess.Popen:
     """Start one daemon (this script in `serve` mode) on rank's socket."""
     os.makedirs(_socket_dir(), exist_ok=True)
     sock = _socket_path(rank)
@@ -295,6 +319,7 @@ def _spawn_one(rank: int, log_dir: Path) -> subprocess.Popen:
                 sock,
                 "--gpu-device",
                 str(rank),
+                *(["--lazy-warmup"] if lazy_warmup else []),
             ],
             stdout=log_fh,
             stderr=subprocess.STDOUT,
@@ -309,7 +334,7 @@ def _launch(args: argparse.Namespace) -> int:
     log_dir = Path(args.log_dir).resolve()
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    procs: list[subprocess.Popen] = [_spawn_one(r, log_dir) for r in range(args.num_gpus)]
+    procs: list[subprocess.Popen] = [_spawn_one(r, log_dir, lazy_warmup=args.lazy_warmup) for r in range(args.num_gpus)]
 
     for r in range(args.num_gpus):
         if not _ping_until_ready(_socket_path(r)):
@@ -381,6 +406,12 @@ def main() -> int:
         action="store_true",
         help=f"Exit 0 without binding the socket if any of {', '.join(_REQUIRED_ENV_VARS)} is unset.",
     )
+    s.add_argument(
+        "--lazy-warmup",
+        action="store_true",
+        help="Load AF3 on the first prewarm/fold request instead of at startup, so a daemon "
+        "that is never asked to fold never loads AF3 or touches the GPU.",
+    )
 
     l = sub.add_parser("launch", help="Spawn N serve daemons and block on signals.")
     l.add_argument("--num-gpus", type=int, required=True)
@@ -395,6 +426,11 @@ def main() -> int:
         "--skip-if-no-env",
         action="store_true",
         help=f"Exit 0 if any of {', '.join(_REQUIRED_ENV_VARS)} is unset.",
+    )
+    l.add_argument(
+        "--lazy-warmup",
+        action="store_true",
+        help="Pass --lazy-warmup to each spawned daemon.",
     )
 
     args = p.parse_args()

@@ -741,7 +741,7 @@ build_container_env_cmds() {
     echo "$cmds"
 }
 
-# Copy codebase to a target directory (used by launch_infer.sh and launch_sweep.sh)
+# Copy codebase to a target directory (used by launch_generate.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
 # Copies the project (incl. lib/atomworks) and .ipd.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.

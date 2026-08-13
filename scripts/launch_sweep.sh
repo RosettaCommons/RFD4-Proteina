@@ -3,7 +3,7 @@
 # launch_sweep.sh - Generate sweep configs and submit SLURM jobs for each
 # =============================================================================
 # Runs sweep.py to generate a set of Hydra inference configs, then calls
-# launch_infer.sh once per config. Each config gets its own run directory
+# launch_generate.sh once per config. Each config gets its own run directory
 # and concatenation job, so results are aggregated per-config.
 #
 # Usage:
@@ -38,7 +38,7 @@
 #   --no-sweep-concatenate       Skip the final sweep-level concatenation job
 #
 # Hydra overrides:
-#   Any remaining arguments are forwarded to every launch_infer.sh call.
+#   Any remaining arguments are forwarded to every launch_generate.sh call.
 #   This is the idiomatic way to share settings across all configs in a sweep:
 #     ckpt_path=/path/to/ckpts ckpt_name=model.ckpt
 #     num_replicates=5
@@ -70,7 +70,7 @@ strip_inherited_slurm_env
 CLUSTER=""
 SWEEP_CONFIG=""
 GPUS_PER_JOB=1
-NJOBS=""    # empty = each per-config launch_infer.sh reads gen_njobs from the config
+NJOBS=""    # empty = each per-config launch_generate.sh reads gen_njobs from the config
 DO_CONCATENATE="true"
 CONCATENATE_FOLDSEEK="true"  # foldseek on by default
 DRY_RUN="false"
@@ -308,7 +308,7 @@ echo ""
 echo "Generated $NUM_CONFIGS config(s) in: $CONFIG_DIR"
 
 # =============================================================================
-# Step 2: Submit each config as a SLURM job via launch_infer.sh
+# Step 2: Submit each config as a SLURM job via launch_generate.sh
 # =============================================================================
 print_header "Submitting Jobs"
 echo "  GPUs per job: $GPUS_PER_JOB"
@@ -334,15 +334,15 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
     config_dir=$(cd "$(dirname "$config_file")" && pwd)
 
     # Build per-config out_dir Hydra override if a base directory was specified.
-    # This is passed as a Hydra override so launch_infer.sh's resolve_config.py
+    # This is passed as a Hydra override so launch_generate.sh's resolve_config.py
     # picks it up as OUT_DIR and uses it as the run directory.
     OUT_DIR_OVERRIDE=""
     if [ -n "$BASE_OUT_DIR" ]; then
         OUT_DIR_OVERRIDE="out_dir=$BASE_OUT_DIR/$config_name"
     fi
 
-    # Build common flags for launch_infer.sh
-    # --njobs is only passed if explicitly set; otherwise launch_infer.sh reads
+    # Build common flags for launch_generate.sh
+    # --njobs is only passed if explicitly set; otherwise launch_generate.sh reads
     # gen_njobs from the per-config Hydra config (allowing per-config control).
     # Code is always handled at the sweep level
     COMMON_FLAGS="--gpus-per-job $GPUS_PER_JOB"
@@ -379,8 +379,8 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
         COMMON_FLAGS="$COMMON_FLAGS --cpus-per-task $CLI_CPUS_PER_TASK"
     fi
 
-    # Run launch_infer.sh and capture output to extract the concat job ID
-    infer_output=$("$SCRIPT_DIR/launch_infer.sh" "$CLUSTER_ARG" \
+    # Run launch_generate.sh and capture output to extract the concat job ID
+    infer_output=$("$SCRIPT_DIR/launch_generate.sh" "$CLUSTER_ARG" \
         $COMMON_FLAGS \
         --config-path "$config_dir" --config-name "$config_name" \
         run_name_="$config_name" \
@@ -389,7 +389,7 @@ for config_file in $(find "$CONFIG_DIR" -name "*.yaml" | sort); do
 
     echo "$infer_output"
 
-    # Extract per-config concat job ID emitted by launch_infer.sh
+    # Extract per-config concat job ID emitted by launch_generate.sh
     config_concat_id=$(echo "$infer_output" | grep -oP 'LAUNCH_INFER_CONCAT_JOB_ID=\K\d+' || true)
     if [ -n "$config_concat_id" ]; then
         ALL_CONCAT_JOB_IDS="${ALL_CONCAT_JOB_IDS:+$ALL_CONCAT_JOB_IDS:}$config_concat_id"

@@ -19,7 +19,7 @@ Optional ColabFold knobs on `AF2Oracle` / manifest (defaults preserve stock AF2)
 The runtime requires `AF2_IMAGE`, `AF2_MODEL_DIR`, and
 `AF2_JAX_CACHE_DIR`. `AF2_RESIDENT_MODELS` defaults to
 `model_1_ptm,model_1_multimer_v3`. On Apptainer clusters,
-`launch_infer.sh` and `launch_evaluate.sh` start one resident daemon per GPU;
+`launch_generate.sh` and `launch_evaluate.sh` start one resident daemon per GPU;
 without a launcher, `AF2Oracle.setup()` starts a rank-local daemon.
 
 Build `AF2_IMAGE` manually by layering the public

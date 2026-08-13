@@ -46,12 +46,12 @@
 # For SLURM:
 #   # In-tree config (Pattern A): selected as a config group on the default
 #   # inference config, just like generate.py.
-#   ./scripts/launch_infer.sh digs \
+#   ./scripts/launch_generate.sh digs \
 #       inference_experiment=my_experiment \
 #       gen_njobs=4
 #
 #   # External config (Pattern C): same two Hydra flags as generate.py.
-#   ./scripts/launch_infer.sh digs \
+#   ./scripts/launch_generate.sh digs \
 #       --config-path /abs/path/to/config/dir --config-name my_experiment \
 #       gen_njobs=4
 #

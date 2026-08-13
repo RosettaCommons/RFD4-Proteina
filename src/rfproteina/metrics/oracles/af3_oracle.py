@@ -166,6 +166,23 @@ def _send_to_daemon(
             sock.close()
 
 
+def _prewarm_daemon(sock_path: str, timeout_s: float = 5.0) -> None:
+    """Ask a pre-spawned daemon to start loading AF3 now.
+
+    Best effort: an eager daemon treats it as a no-op, and the fold path reports an
+    unreachable daemon on its own. No connect retry -- if the daemon is not up yet,
+    the fold that follows will wait for it.
+
+    Args:
+      sock_path: Unix socket of this rank's daemon.
+      timeout_s: Connect/send budget. Short -- the daemon replies before warming up.
+    """
+    try:
+        _send_to_daemon(sock_path, {"cmd": "prewarm"}, timeout_s=timeout_s, connect_retry_s=0.0)
+    except (OSError, ValueError) as exc:
+        logger.debug(f"AF3 daemon prewarm at {sock_path} skipped: {exc}")
+
+
 @dataclass(slots=True)
 class _AF3JobState:
     """In-flight bookkeeping for one design between manifest-build and finalise.
@@ -327,8 +344,9 @@ class AF3Oracle(OracleMetric):
         """
         super().setup()
 
-        # A slurm launcher already pre-spawned the daemons.
-        if os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
+        # A slurm launcher (or the shebang wrapper) already pre-spawned the daemons.
+        if template := os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
+            _prewarm_daemon(template.format(rank=_resolve_daemon_rank(_resolve_local_rank())))
             return
 
         local_rank = _resolve_local_rank()
