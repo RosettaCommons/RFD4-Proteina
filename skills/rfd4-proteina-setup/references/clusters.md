@@ -24,7 +24,7 @@ you create `.ipd/.env.local` yourself (`printf 'DATA_PATH=%s\n' "$DATA_PATH" >
 
 | Script | Purpose |
 | --- | --- |
-| `scripts/launch_infer.sh` | Submit `generate.py` (+ auto metric aggregation as a dependent job) |
+| `scripts/launch_generate.sh` | Submit `generate.py` (+ auto metric aggregation as a dependent job) |
 | `scripts/launch_search.sh` | Reward-guided search jobs |
 | `scripts/launch_evaluate.sh` | Standalone post-hoc evaluation |
 | `scripts/launch_train_latents.sh` / `launch_train_ae.sh` | Training |
@@ -33,7 +33,7 @@ you create `.ipd/.env.local` yourself (`printf 'DATA_PATH=%s\n' "$DATA_PATH" >
 Example:
 
 ```bash
-./scripts/launch_infer.sh digs --njobs 8 \
+./scripts/launch_generate.sh digs --njobs 8 \
     inputs=data/benchmarks/monomer.json \
     run_name_=my_run \
     out_dir=/path/to/shared/storage

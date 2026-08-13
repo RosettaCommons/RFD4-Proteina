@@ -177,7 +177,7 @@ class TestLaunchScripts:
     @pytest.mark.parametrize(
         "script",
         [
-            "launch_infer.sh",
+            "launch_generate.sh",
             "launch_sweep.sh",
         ],
     )
@@ -189,7 +189,7 @@ class TestLaunchScripts:
     @pytest.mark.parametrize(
         "script",
         [
-            "launch_infer.sh",
+            "launch_generate.sh",
             "launch_sweep.sh",
         ],
     )
@@ -206,7 +206,7 @@ class TestLaunchScripts:
     @pytest.mark.parametrize(
         "script",
         [
-            "launch_infer.sh",
+            "launch_generate.sh",
             "launch_sweep.sh",
         ],
     )
@@ -226,14 +226,14 @@ class TestLaunchScripts:
         )
         assert result.returncode == 0, f"Syntax error in common.sh: {result.stderr}"
 
-    def test_launch_infer_uses_resolve_config(self):
-        """launch_infer.sh should use resolve_hydra_config, not grep."""
-        content = (SLURM_DIR / "launch_infer.sh").read_text()
-        assert "resolve_hydra_config" in content, "launch_infer.sh should use resolve_hydra_config"
+    def test_launch_generate_uses_resolve_config(self):
+        """launch_generate.sh should use resolve_hydra_config, not grep."""
+        content = (SLURM_DIR / "launch_generate.sh").read_text()
+        assert "resolve_hydra_config" in content, "launch_generate.sh should use resolve_hydra_config"
 
-    def test_launch_infer_has_scontrol_check(self):
-        content = (SLURM_DIR / "launch_infer.sh").read_text()
-        assert "scontrol" in content, "launch_infer.sh should check scontrol for auto-requeue"
+    def test_launch_generate_has_scontrol_check(self):
+        content = (SLURM_DIR / "launch_generate.sh").read_text()
+        assert "scontrol" in content, "launch_generate.sh should check scontrol for auto-requeue"
 
     def test_launch_sweep_has_dry_run(self):
         content = (SLURM_DIR / "launch_sweep.sh").read_text()

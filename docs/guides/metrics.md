@@ -441,13 +441,13 @@ otherwise every structure is scored the same way. This is the same script the [D
 Guide](development.md#evaluation-and-metrics) points to for custom-metric development — write a
 metric once and use it both inline during generation and offline over existing outputs.
 
-For large batches split across SLURM array jobs (`launch_infer.sh --njobs N`), each job writes its
+For large batches split across SLURM array jobs (`launch_generate.sh --njobs N`), each job writes its
 own `per_example_metrics_job{N}.csv`; concatenate them afterward with:
 
 ```bash
 python -m rfproteina.inference_utils.aggregate_metrics ./inference/my_run/metrics/
 ```
 
-This also runs automatically as a dependent job when using `launch_infer.sh`. See [Evaluating
+This also runs automatically as a dependent job when using `launch_generate.sh`. See [Evaluating
 Results](inference.md#evaluating-results) for FoldSeek diversity clustering and other
 `aggregate_metrics` options.

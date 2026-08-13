@@ -164,8 +164,8 @@ def verify(image: Path, model_dir: Path) -> dict[str, Any]:
 
 def main(
     image: str,
-    output_dir: str = "/path/to/data",
-    checkpoint: str = "/path/to/data",
+    output_dir: str,
+    checkpoint: str | None = None,
     url: str = OF3_CHECKPOINT_URL,
     checkpoint_sha256: str = OF3_CHECKPOINT_SHA256,
 ) -> None:
@@ -178,13 +178,16 @@ def main(
       image: ``af3-open`` Apptainer image carrying CPU torch and the OF3 converter.
         See ``skills/rfd4-proteina-search/references/af3-oracle.md`` to build one.
       output_dir: Destination AF3 model directory for the converted parameters.
-      checkpoint: Download/cache location of the source PyTorch checkpoint.
+      checkpoint: Download/cache location of the source PyTorch checkpoint. Defaults to
+        ``<output_dir>/../of3_source/<basename of url>``.
       url: Source of the checkpoint. Override it only together with its digest.
       checkpoint_sha256: Digest the downloaded checkpoint must have.
     """
     image_path = Path(image)
-    checkpoint_path = Path(checkpoint)
     model_dir = Path(output_dir)
+    checkpoint_path = (
+        Path(checkpoint) if checkpoint is not None else model_dir.parent / "of3_source" / url.rsplit("/", 1)[-1]
+    )
 
     if not checkpoint_path.is_file():
         print(f"Downloading {url} to {checkpoint_path}", flush=True)

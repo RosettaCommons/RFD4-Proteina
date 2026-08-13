@@ -154,10 +154,10 @@ def main() -> int:
                     cfg, "dataloaders.num_workers", throw_on_resolution_failure=False, default=8
                 )
 
-            # Parallel generation jobs (used by launch_infer.sh)
+            # Parallel generation jobs (used by launch_generate.sh)
             gen_njobs = OmegaConf.select(cfg, "gen_njobs", throw_on_resolution_failure=False, default=1)
 
-            # Output directory (used by launch_infer.sh to set RUN_DIR)
+            # Output directory (used by launch_generate.sh to set RUN_DIR)
             out_dir = OmegaConf.select(cfg, "out_dir", throw_on_resolution_failure=False, default=None)
 
             # Optional hardware overrides (only output if set)

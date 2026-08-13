@@ -9,7 +9,7 @@ checkpoint download, and a first design; this guide assumes that's done.
 ## Contents
 
 - [Design Use Cases](#design-use-cases)
-- [Running Inference](#running-inference)
+- [Running Inference](#running-inference) — including [Choosing an entry point](#choosing-an-entry-point)
 - [Partial Diffusion](#partial-diffusion)
 - [Inverse Folding](#inverse-folding)
 - [Evaluating Results](#evaluating-results) — see also [Metrics Reference](metrics.md)
@@ -71,12 +71,17 @@ The general form is:
 ./src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
-> [!TIP]
-> On a cluster with apptainer/docker configured (e.g. IPD), the **preferred** interactive form is to run the
-> script directly — `./src/rfproteina/generate.py inputs=… …` — whose shebang executes it inside the
-> container. `./src/rfproteina/generate.py …` (used throughout these docs) runs in your current
-> environment instead; use it when no container is set up. At the IPD, the slurm launch scripts
-> (e.g. `scripts/launch_infer.sh`) handle this automatically.
+### Choosing an entry point
+
+Submitting a job → `launch_generate.sh`. Running one thing right now → `generate.py`.
+
+| | Use it for |
+|---|---|
+| `scripts/launch_generate.sh <cluster> …` | SLURM job arrays, multi-GPU fan-out, sweeps, metric aggregation, AF2 refolding |
+| `python src/rfproteina/generate.py …` | One process in your venv — a node you already hold, or a machine with no container |
+| `./src/rfproteina/generate.py …` | One process inside the cluster container (the shebang re-execs into `$LATENT_APPTAINER_SIF`) |
+
+All three start AF3's refolding daemon on the host for you.
 
 - **Inputs** — **annotated CIF** is the recommended format ([guide](annotated_cif_inputs.md) · [tutorial](../examples/annotated_cif_tutorial.ipynb)); JSON/YAML/CIF/PDB via the legacy
   [Input Specification](input.md) also work. See `data/benchmarks/` for ready-made examples.
@@ -201,7 +206,7 @@ When running large evaluations in parallel across multiple SLURM jobs, each job 
 python -m rfproteina.inference_utils.aggregate_metrics ./inference/my_run/metrics/
 ```
 
-This concatenates all per-example job CSVs, writes `aggregated_metrics.csv` and `per_task_metrics.csv`, and moves the individual job files into `individual_job_results/`. Pass `--output_dir <dir>` to write results elsewhere. When using `launch_infer.sh`, this runs automatically as a dependent SLURM job.
+This concatenates all per-example job CSVs, writes `aggregated_metrics.csv` and `per_task_metrics.csv`, and moves the individual job files into `individual_job_results/`. Pass `--output_dir <dir>` to write results elsewhere. When using `launch_generate.sh`, this runs automatically as a dependent SLURM job.
 
 Pass `--cluster_with_foldseek` to also run structural diversity clustering (see below).
 

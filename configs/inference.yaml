@@ -57,7 +57,7 @@ hardware:
 ncpus_: 24  # Number of CPUs per task
 gen_njobs: 1  # Number of parallel generation jobs per config
 eval_njobs: 1  # Number of parallel evaluation jobs per config
-job_id: null  # Set by launch_infer.sh; used to disambiguate per-job output files
+job_id: null  # Set by launch_generate.sh; used to disambiguate per-job output files
 
 hydra:
   run:

@@ -78,7 +78,7 @@ the per-example job CSVs, writes `aggregated_metrics.csv` and
 `per_task_metrics.csv`, and moves the individual job files into
 `individual_job_results/`. Flags: `--output_dir <dir>` to write elsewhere,
 `--cluster_with_foldseek` for diversity clustering (Step 3). With
-`scripts/launch_evaluate.sh` (or `launch_infer.sh`) this aggregation runs
+`scripts/launch_evaluate.sh` (or `launch_generate.sh`) this aggregation runs
 **automatically** as a dependent SLURM job — foldseek on by default; disable with
 `--no-foldseek`.
 
