@@ -2,18 +2,17 @@ Glossary
 ========
 
 This glossary defines the conditioning and inference terms used throughout
-RFD4-Proteína. For structure-parsing nomenclature such as entities, instances,
-chains, and polymer/non-polymer units, see the `AtomWorks glossary
+RFD4-Proteína. For structure parsing nomenclature such as entities, instances,
+chains, and polymer or non-polymer units, see the `AtomWorks glossary
 <https://rosettacommons.github.io/atomworks/latest/glossary.html>`_.
 
 Conditioning
 ------------
 
-Conditioning gives the model information or constraints that should be
-preserved while the remaining sequence and structure are generated. In an
-annotated CIF, each condition is represented by one or more standard annotation
-columns. See the :doc:`annotated-CIF guide <guides/annotated_cif_inputs>` for
-the complete schema.
+Conditioning gives the model information or constraints to preserve while it
+generates the rest of the sequence and structure. In an annotated CIF, one or
+more standard annotation columns carry each condition. See
+:doc:`Preparing inputs <workflow/inputs>` for the complete schema.
 
 Indexed and unindexed residues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,15 +36,14 @@ RASA
 residue is relative to a reference maximum. ``C_RAS`` provides binned RASA
 conditioning:
 
-* ``0`` — unspecified; no RASA condition is applied
-* ``1`` — buried, with RASA in ``[0.0, 0.1)``
-* ``2`` — intermediate, with RASA in ``[0.1, 0.2)``
-* ``3`` — exposed, with RASA at least ``0.2``
+* ``0`` is unspecified, so no RASA condition is applied
+* ``1`` is buried, with RASA in ``[0.0, 0.1)``
+* ``2`` is intermediate, with RASA in ``[0.1, 0.2)``
+* ``3`` is exposed, with RASA at least ``0.2``
 
-The training transform computes solvent-accessible surface area with the
-Shrake-Rupley algorithm, a 1.4 Å probe, ProtOr radii, and 100 sphere points.
-RASA conditioning can steer surface exposure and the formation of buried
-ligand pockets.
+The training transform computes solvent accessible surface area with the Shrake
+and Rupley algorithm, a 1.4 Å probe, ProtOr radii, and 100 sphere points. RASA
+conditioning steers surface exposure and the formation of buried ligand pockets.
 
 Common condition aliases
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,14 +63,14 @@ Common condition aliases
    Groups residues whose relative sequence offsets are known.
 
 ``C_HOT``
-   Marks target-interface hotspot atoms that a designed binder should engage.
+   Marks hotspot atoms on the target interface that a designed binder should
+   engage.
 
 ``C_RAS``
    Requests buried, intermediate, or exposed surface placement.
 
 ``C_HB``
-   Requests donor, acceptor, or combined hydrogen-bond roles for selected
-   atoms.
+   Requests donor, acceptor, or combined hydrogen bond roles for selected atoms.
 
 ``C_SEC``
    Requests helix, sheet, or loop secondary structure at selected residues.
@@ -82,14 +80,14 @@ Common condition aliases
    atoms.
 
 ``C_CRDGRP``
-   Groups atoms with known relative coordinates but potentially unknown global
-   placement. Group ``0`` is the absolutely-conditioned frame, ``-1`` is
-   unconditioned, and each id ``>= 1`` is one internal-coordinate group.
+   Groups atoms with known relative coordinates but possibly unknown global
+   placement. Group ``0`` is the absolutely conditioned frame, ``-1`` is
+   unconditioned, and every id ``>= 1`` is one internal coordinate group.
 
 ``C_INTCRD``
-   Internal-coordinate conditioning: gives a group's centered, randomly-rotated
-   coordinates, so its internal structure is known but its global placement is
-   designed.
+   Internal coordinate conditioning. It gives a group's centered, randomly
+   rotated coordinates, so the model knows the internal structure and designs
+   the global placement.
 
 Input formats
 -------------
@@ -114,19 +112,20 @@ Flow matching
 Vanilla sampling
    One uninterrupted generation trajectory. This is the fastest baseline.
 
-Reward-guided search
-   Generation that periodically branches trajectories, scores rolled-out
-   candidates with a reward model, and retains the strongest candidates.
+Reward guided search
+   Generation that periodically branches trajectories, scores rolled out
+   candidates with a reward model, and keeps the strongest ones.
 
 Beam search
-   The provided reward-guided strategy. ``step_checkpoints`` controls when
-   candidates are scored, ``n_branch`` controls children per surviving beam,
-   and ``beam_width`` controls how many candidates survive each pruning step.
+   The reward guided strategy that ships with the model. ``step_checkpoints``
+   controls when candidates get scored, ``n_branch`` controls children per
+   surviving beam, and ``beam_width`` controls how many candidates survive each
+   pruning step.
 
 Reward
    A weighted sum of metric outputs selected by ``reward_metrics_tags``.
-   Positive weights maximize a metric; negative weights minimize it. Optional
-   clipping limits a metric's influence after a threshold.
+   Positive weights maximize a metric and negative weights minimize it.
+   Optional clipping limits a metric's influence past a threshold.
 
 Oracle
    An external evaluator used during generation or final evaluation. For
@@ -135,5 +134,5 @@ Oracle
 
 Metrics tag
    A named group of metrics selected through configuration. Search uses
-   ``reward_metrics_tags`` independently of the top-level ``metrics_tags`` used
-   for final outputs.
+   ``reward_metrics_tags`` independently of the top level ``metrics_tags`` that
+   produce final outputs.

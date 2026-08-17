@@ -45,7 +45,57 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_togglebutton",
+    "sphinx_reredirects",
 ]
+
+# The 2026-08 rework reorganised the docs around the pipeline: one page per stage under
+# `workflow/`, lookup tables under `reference/`. Everything below is an address the tutorial
+# decks, Mattermost threads and people's bookmarks still point at, so it keeps resolving.
+redirects = {
+    # 2026-08: "reference" was a leftover bucket, not a category. Its pages now sit under the
+    # workflow stage they belong to, and the two that duplicated a workflow page were merged in.
+    "reference": "workflow.html",
+    "reference/metrics": "../workflow/metrics.html",
+    "reference/parameters": "../workflow/running.html#every-parameter",
+    "reference/custom-metrics": "../workflow/custom-metrics.html",
+    "reference/condition-spec": "../workflow/condition-spec.html",
+    "reference/small-molecule-featurization": "../workflow/inputs.html",
+    "workflow/conditions": "inputs.html",
+    # guides -> workflow
+    "guides/annotated_cif_inputs": "../workflow/inputs.html",
+    "guides/inference": "../workflow/running.html",
+    "guides/metrics": "../workflow/metrics.html",
+    "guides/search": "../workflow/search.html",
+    "guides/enzyme_design": "../examples/enzyme_design_tutorial.html",
+    "guides/json_to_annotated_cif": "../workflow/design2cif.html",
+    # guides -> reference
+    "guides/parameters": "../workflow/running.html#every-parameter",
+    "guides/small_molecule_featurization": "../workflow/inputs.html",
+    # the small-molecule featurization page was retired; inputs covers what the model reads
+    "workflow/small-molecule-featurization": "inputs.html",
+    "condition_spec_yaml": "workflow/condition-spec.html",
+    # /design2cif outgrew being a JSON converter, so the page moved off that name
+    "workflow/from-json": "design2cif.html",
+    # the enzyme design page was a condensed copy of its own tutorial; the tutorial is the page now
+    "workflow/enzyme-design": "../examples/enzyme_design_tutorial.html",
+    # guides -> top level
+    "guides/custom_metrics": "../workflow/custom-metrics.html",
+    # custom metrics moved off the top-level nav and under the metrics reference
+    "custom-metrics": "workflow/custom-metrics.html",
+    "guides/development": "../development.html",
+    "guides": "workflow.html",
+    # the legacy RFD3 JSON spec is retired; its replacement is the inputs page
+    "guides/input": "../workflow/inputs.html",
+    # design-task stubs never had content — send readers to the runnable examples
+    "guides/unconditional_generation": "../examples.html",
+    "guides/motif_scaffolding": "../examples.html",
+    "guides/protein_binder_design": "../examples.html",
+    "guides/small_molecule_binder_design": "../examples.html",
+    "guides/dna_binder_design": "../examples.html",
+    # quickstart moved out of its single-page wrapper directory
+    "tutorial/index": "../quickstart.html",
+    "tutorial/quickstart": "../quickstart.html",
+}
 
 # Put a "show code" button on a notebook's incidental code -- setup, plotting, Slurm plumbing --
 # so a tutorial reads as prose and results, while the cells that show how the model is actually
@@ -68,6 +118,9 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
+    # Superpowers plans and specs are process docs checked in for traceability, not site pages.
+    "superpowers/plans/**",
+    "superpowers/specs/**",
 ]
 
 autodoc_member_order = "bysource"
@@ -99,6 +152,9 @@ html_theme_options = {
     "header_links_before_dropdown": 8,
     "navbar_start": ["navbar-logo"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    # Drop the theme's default "Show Source" link. Readers want the rendered page, and the source
+    # is a click away on GitHub for anyone who wants it.
+    "secondary_sidebar_items": ["page-toc"],
     "logo": {
         "image_light": "_static/wordmark.svg",
         "image_dark": "_static/wordmark.svg",

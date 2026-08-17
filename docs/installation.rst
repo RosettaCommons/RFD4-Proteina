@@ -4,17 +4,17 @@ Installation
 Prerequisites
 -------------
 
-RFD4-Proteína requires:
+RFD4-Proteína needs:
 
 * Linux with an NVIDIA GPU
 * Python 3.12
 * ``git`` and ``curl``
-* Enough local storage for two model checkpoints (approximately 8 GB)
+* Enough local storage for two model checkpoints, about 8 GB
 
 Local installation with uv
 --------------------------
 
-The repository setup script provides the recommended local installation:
+Use the repository setup script.
 
 .. code-block:: bash
 
@@ -24,34 +24,30 @@ The repository setup script provides the recommended local installation:
    bash setup.sh
    source .venv/bin/activate
 
-If the repository was cloned without submodules, the setup script initializes
-the vendored AtomWorks dependency automatically. Choose ``other`` at the
-cluster prompt for a local workstation; select a named cluster only when its
-shared storage and container configuration are available to you.
+If you cloned without submodules, the setup script initializes the vendored
+AtomWorks dependency for you. At the cluster prompt, choose ``other`` for a local
+workstation. Pick a named cluster only when you actually have access to its
+shared storage and container configuration. ``setup.sh`` is idempotent, so
+re-running it is safe.
 
-IPD / DIGS cluster
-------------------
+.. admonition:: On a configured compute cluster?
+   :class: ipd-cluster
 
-On DIGS, setup is the single command above — choose ``1) digs`` at the cluster
-prompt. Nothing else is required: the shared data directory and the apptainer
-SIF are already wired in the committed ``.ipd/.env.digs``, which the entry
-scripts source automatically, so you can skip the "Configure data and
-checkpoints" step below and run inference directly. ``setup.sh`` is idempotent
-and safe to re-run.
+   Run exactly the commands above and choose ``1) digs`` at the cluster prompt,
+   which is the default. That is the entire installation. The shared data
+   directory, the released checkpoints, and the apptainer image are already
+   wired up in the committed ``.ipd/.env.digs``, which the entry scripts source
+   automatically.
 
-.. code-block:: bash
-
-   git clone --recurse-submodules \
-       https://github.com/RosettaCommons/RFD4-Proteina.git
-   cd RFD4-Proteina
-   bash setup.sh          # choose 1) digs at the cluster prompt
-   source .venv/bin/activate
+   So skip `Configure data and checkpoints`_ and `Container installation`_.
+   Nothing to download, nothing to build. Go straight to
+   `Run your first design`_.
 
 Configure data and checkpoints
 ------------------------------
 
-RFD4-Proteína resolves checkpoints and shared data through ``DATA_PATH``.
-For a local installation:
+RFD4-Proteína resolves checkpoints and shared data through ``DATA_PATH``. For a
+local installation:
 
 .. code-block:: bash
 
@@ -61,59 +57,67 @@ For a local installation:
    printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local
    ./scripts/download_example_data.sh "$DATA_PATH"
 
-The per-cluster environment file is loaded by the entry points. Exporting
-``DATA_PATH`` in the current shell is also useful for scripts and interactive
+The entry points load the per cluster environment file for you. Exporting
+``DATA_PATH`` in your current shell also helps for scripts and interactive
 sessions.
 
-All publicly released assets — both checkpoints, the tutorial ``test_dataset``,
-and the CCD mirror — are served anonymously from the public bucket
-``YOUR_DATASET_STORE`` at ``https://YOUR_DATASET_STORE``.
-No AWS CLI, credentials, or IPD account are required; set ``RFPROTEINA_DATA_URL``
-to point the download script at a mirror.
+The two released checkpoints come from the public bucket
+``YOUR_DATASET_STORE`` at ``https://YOUR_DATASET_STORE``,
+served anonymously. Add ``--with-test-dataset`` to the download command when
+you also need the small training dataset used by the developer tutorial. The
+script does not install a CCD mirror. You need no AWS CLI, credentials, or IPD
+account. To download from a mirror instead, set ``RFPROTEINA_DATA_URL``.
 
 Container installation
 ----------------------
 
-Apptainer definitions and local image links live under ``.ipd/apptainer/``.
-Run inference in an existing image with:
+Apptainer definitions and cluster image links live under ``.ipd/apptainer/``.
+On a configured cluster, run the entry point directly; its shebang loads
+``.ipd/.env.<cluster>`` and enters the image with the required binds:
 
 .. code-block:: bash
 
-   apptainer exec --nv --bind "$PWD" .ipd/apptainer/latent-dev.sif \
-       python src/rfproteina/generate.py \
+   ./src/rfproteina/generate.py \
        inputs=data/benchmarks/monomer.json \
        num_replicates=1 \
        out_dir=./runs/smoke
 
-When no image is staged, build one from the supplied definition:
+``LATENT_APPTAINER_SIF`` comes from the per cluster environment file
+``.ipd/.env.<cluster>``. Do not invoke ``apptainer exec`` with that variable
+until the environment file has been loaded; a new shell does not define it by
+itself.
+
+When no image is staged, build one from the supplied definition and record its
+absolute path in your local cluster profile:
 
 .. code-block:: bash
 
-   apptainer build latent-dev.sif .ipd/apptainer/latent-dev.def
+   apptainer build "$PWD/latent-dev.sif" .ipd/apptainer/latent-dev.def
+   printf 'DATA_PATH=%s\nLATENT_APPTAINER_SIF=%s\n' \
+       "$DATA_PATH" "$PWD/latent-dev.sif" > .ipd/.env.local
+   export CLUSTER=local
 
-Dockerfiles are available under ``.ipd/docker/``. On configured clusters,
-running an entry script directly can re-execute it inside the selected
-container, while ``python src/rfproteina/generate.py`` uses the active Python
-environment.
+Dockerfiles live under ``.ipd/docker/``. On a configured cluster, running an
+entry script directly can re-execute it inside the selected container, while
+``python src/rfproteina/generate.py`` uses your active Python environment.
 
-Verify the installation
------------------------
+Run your first design
+---------------------
 
-Generate the smoke-test design from the :doc:`quickstart
-<tutorial/quickstart>`, then run the CPU test suite:
-
-.. code-block:: bash
-
-   pytest -m "not gpu"
+Check your installation by generating something on a GPU rather than by running
+the test suite. One design exercises the checkpoints, the data paths and the
+model together. Grab an interactive GPU session, then follow :doc:`Generate a
+design <quickstart>` in the quickstart. It gives the command for both the local
+and the IPD case, and explains what lands in your output directory.
 
 Documentation development
 -------------------------
 
-Install and build the documentation locally:
+Install and build the documentation locally.
 
 .. code-block:: bash
 
    uv pip install -r docs/docs_requirements.txt
    make -C docs html
 
-Open ``docs/_build/html/index.html`` in a browser.
+Then open ``docs/_build/html/index.html`` in a browser.

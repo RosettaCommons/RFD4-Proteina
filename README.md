@@ -21,9 +21,18 @@ Two ways in:
 
 ## Setup
 
-> **On an configured cluster (DIGS)?** Just run `bash setup.sh` below and choose `1) digs` at the cluster
-> prompt — the shared data dir, checkpoints, and apptainer SIF are already wired in `.ipd/.env.digs`,
-> so you can skip the data-configuration step entirely and run inference directly.
+> 🖥️ **On a configured compute cluster?** Just run `bash setup.sh` below and choose `1) digs` at the
+> cluster prompt — the shared data dir, checkpoints, and apptainer SIF are already wired in
+> `.ipd/.env.digs`, so you can skip the data-configuration step entirely and run inference directly.
+> Call the entry scripts **directly** rather than prefixing them with `python`, so the shebang runs
+> them inside the container — no virtualenv needed:
+>
+> ```bash
+> ./src/rfproteina/generate.py inputs=data/benchmarks/monomer.json out_dir=./runs/smoke
+> ```
+>
+> Do this on an interactive GPU; the SLURM launchers (e.g. `scripts/launch_generate.sh`) enter the
+> container for you.
 
 These instructions use [`uv`](https://github.com/astral-sh/uv). Prefer apptainer or docker? See
 [Running in a container](#running-in-a-container).
@@ -65,10 +74,12 @@ prebuilt SIFs are symlinked in place):
 - **Apptainer** — `.ipd/apptainer/` holds the definitions and SIFs (`latent-dev.def` /
   `latent-dev.sif`). Run any command inside the image with a repo bind mount and GPU:
   ```bash
-  apptainer exec --nv --bind "$PWD" .ipd/apptainer/latent-dev.sif \
+  apptainer exec --nv --bind "$PWD" "$LATENT_APPTAINER_SIF" \
       python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json out_dir=./runs/smoke
   ```
   Where no prebuilt SIF is staged, build one: `apptainer build latent-dev.sif .ipd/apptainer/latent-dev.def`.
+  `LATENT_APPTAINER_SIF` comes from `.ipd/.env.<cluster>`, so it follows image upgrades;
+  `.ipd/apptainer/latent-dev.sif` symlinks to the same image.
 - **Docker** — Dockerfiles are in `.ipd/docker/` (e.g. `latent-dev.Dockerfile`).
 - **Auto** — the entry scripts re-exec themselves inside the SIF when `CONTAINER_TYPE=apptainer`, so
   running `./src/rfproteina/generate.py …` directly uses the container, while
