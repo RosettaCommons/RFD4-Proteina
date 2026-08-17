@@ -12,7 +12,7 @@ from rfproteina.metrics.metric import Metric
 def get_rasa_metrics(
     atom_array: AtomArray,
     probe_radius: float = 1.4,
-    atom_radii: str = "ProtOr",
+    atom_radii: str = "element",
     point_number: int = 100,
 ) -> dict[str, float]:
     """Compute RASA adherence metrics for a given input atom array.
@@ -20,7 +20,8 @@ def get_rasa_metrics(
     Args:
         atom_array (AtomArray): Input AtomArray with predicted structure and rasa annotations.
         probe_radius (float): Van-der-Waals radius of the probe in Angstrom. Defaults to 1.4 (for water).
-        atom_radii (str): Atom radii set to use for calculation. Defaults to "ProtOr".
+        atom_radii (str): Atom radii set to use for calculation. Defaults to "element", matching
+            the radii used for RASA conditioning during training.
         point_number (int): Number of points in the Shrake-Rupley algorithm. Defaults to 100.
 
     Returns:
