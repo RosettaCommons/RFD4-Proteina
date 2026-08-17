@@ -1,8 +1,8 @@
 Examples
 ========
 
-Complete, runnable tutorials. Each renders saved outputs, so you can read it through without a
-GPU and re-run it end to end when you have one.
+Complete, runnable tutorials. Each one renders its saved outputs, so you can read it through
+without a GPU and re-run it end to end once you have one.
 
 .. nbgallery::
 

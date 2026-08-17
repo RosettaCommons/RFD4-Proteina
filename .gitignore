@@ -211,7 +211,11 @@ dev.py
 *.gif
 *.bmp
 *.tiff
-!docs/_static/wordmark.svg
+# The docs ship their own images, and the blanket ignore above drops them silently: the build
+# still succeeds locally off the working tree, so the loss only shows up as broken images on the
+# published site. Keep the whole static dir exempt rather than naming files one at a time.
+!docs/_static/*.png
+!docs/_static/*.svg
 
 # Versioning
 **/version.py
