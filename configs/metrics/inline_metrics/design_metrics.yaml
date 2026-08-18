@@ -94,6 +94,17 @@ sequence_similarity_to_input:
   _target_: rfproteina.metrics.design_metrics.SequenceSimilarityToInput
   required_tags_any: ["partial_diffusion"]
 
+# The structural companion to sequence_similarity_to_input: under partial diffusion the input is the
+# structure being re-noised, so CA RMSD to it says how much of that backbone the output kept.
+# Returns nothing (rather than a wrong number) if the CA counts differ, e.g. after an insertion.
+ca_rmsd_to_input:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: "is_protein & (atom_name == 'CA')"
+  subset_mask: "is_protein & (atom_name == 'CA')"
+  metric_type: rmsd
+  aggregation: [median]
+  required_tags_any: ["partial_diffusion"]
+
 cath_metric:
   _target_: rfproteina.metrics.cath_metric.CathMetric
   required_tags_any: ["cath"]

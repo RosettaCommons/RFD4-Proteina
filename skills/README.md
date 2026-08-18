@@ -9,7 +9,7 @@ generating designs, searching for better ones, and evaluating the results. They
 encode the repository's real commands, config keys, and gotchas so an agent can
 operate the model correctly without re-deriving them.
 
-## The six skills
+## The seven skills
 
 | Skill | What it does | Order |
 | --- | --- | --- |
@@ -19,10 +19,12 @@ operate the model correctly without re-deriving them.
 | [`rfd4-proteina-search`](rfd4-proteina-search/) | Reward-guided search (beam/branching) that keeps the candidates an AF3 reward scores highest — more sample-efficient than generate-then-filter. | 4 (optional) |
 | [`rfd4-proteina-evaluate`](rfd4-proteina-evaluate/) | Post-hoc metrics on generated structures + aggregation across parallel jobs (scRMSD/pLDDT/ipAE, designability, FoldSeek diversity, custom metrics). | 5 |
 | [`rfd4-proteina-autoresearch`](rfd4-proteina-autoresearch/) | Strategy layer: run an inspectable design -> score -> iterate **campaign** over many waves, composing the skills above with explicit composite-reward engineering and freeze/promote/allocate branch rules. | 6 (optional) |
+| [`rfd4-proteina-commitment-curves`](rfd4-proteina-commitment-curves/) | Analysis layer: partially re-diffuse finished designs across a grid of restart steps to find **where along the trajectory** a property is decided — how early a metric can be screened on. | 7 (optional) |
 
 Typical order of use: **setup -> inputs -> generate -> [search] -> evaluate**, with
 **autoresearch** wrapping the whole loop when you want a multi-wave optimization
-campaign.
+campaign and **commitment-curves** answering, after the fact, how early in a
+trajectory each metric could have been screened on.
 
 ## Install
 
