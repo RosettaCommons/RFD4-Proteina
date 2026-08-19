@@ -59,7 +59,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_element_encoding_violations(feats)
     violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
-    violations += check_hbond_no_both_violations(feats)
+    violations += check_hbond_no_both_violations(feats, is_inference=is_inference)
     violations += check_not_cysteine_sequence_conditioning_violations(aa)
 
     # --- Cross-cutting checks (require both aa and feats) ---
@@ -462,13 +462,20 @@ def check_unresolved_tokens_not_lossed_violations(aa: AtomArray, feats: dict) ->
     return []
 
 
-def check_hbond_no_both_violations(feats: dict) -> list[InvariantViolation]:
+def check_hbond_no_both_violations(feats: dict, is_inference: bool) -> list[InvariantViolation]:
     """Return violations where a valid atom's hydrogen-bond annotation is ``HBondEnum.BOTH``.
 
-    TEMPORARY: the model does not yet support the ``BOTH`` class.
+    TEMPORARY, inference-only: the released checkpoint consumes the legacy ``hbond`` feature
+    (:py:class:`~rfproteina.nn.feature_factory.HydrogenBondSeqFeat`), which feeds the raw enum
+    into a linear layer -- so ``BOTH`` is a value it never saw in training. Training now uses
+    ``hbond_modernized``, which encodes ``BOTH`` correctly as both donor and acceptor channels
+    set, so the constraint must not reject training examples.
 
-    TODO: Remove this check once the training workflow is patched.
+    TODO: Remove this check entirely once the SOTA checkpoint is trained on ``hbond_modernized``.
     """
+    if not is_inference:
+        return []
+
     if C_HB.full_name not in feats or "atom37_mask" not in feats:
         return []
 

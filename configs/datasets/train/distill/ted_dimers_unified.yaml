@@ -9,9 +9,12 @@ probability: 1.0
 
 dataset:
   name: ted_dimers_unified
-  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/data/ted_dimers_annotated.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
+    parser_args:
+      # Annotated CIFs: load the StandardAnnotations the interaction conditions read from.
+      load_standard_annotations: true
   columns_to_load:
     - example_id
     - path

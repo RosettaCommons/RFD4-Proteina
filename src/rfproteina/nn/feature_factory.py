@@ -14,12 +14,21 @@ from rfproteina.conditions import (
     C_CRDGRP,
     C_HB,
     C_HOT,
+    C_HPHOB,
     C_IDXGRP,
     C_INTCRD,
+    C_MCOORD,
     C_NCYS,
+    C_PICATION,
+    C_PISTACK,
     C_RAS,
+    C_SALT,
     C_SEC,
+    HBondEnum,
+    MetalCoordEnum,
+    PiCationEnum,
     RasaEnum,
+    SaltBridgeEnum,
 )
 from rfproteina.datapipes.pipeline import TokenType
 from rfproteina.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
@@ -27,6 +36,16 @@ from rfproteina.utils.angle import bond_angles, signed_dihedral_angle
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def _require_condition_in_batch(batch: dict, full_name: str, feature_name: str) -> None:
+    """Raise if a requested conditioning annotation is absent from the batch."""
+    if full_name not in batch:
+        raise KeyError(
+            f"{feature_name}: required conditioning annotation '{full_name}' is missing from the batch. "
+            f"This feature is requested in the model's feats_seq but the annotation was not produced "
+            f"upstream. Remove it from feats_seq if it should not be provided."
+        )
 
 
 @lru_cache(maxsize=128)
@@ -868,6 +887,9 @@ class HydrogenBondSeqFeat(Feature):
     """Hydrogen bonds: 0=NONE, 1=DONOR, 2=ACCEPTOR.
 
     Returns atom37 representation [b, n, 37] as feature.
+
+    NOTE: Legacy feature, kept for inference with older checkpoints.
+    New models should train with ``hbond_modernized`` (:py:class:`ModernizedHydrogenBondSeqFeat`).
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -885,6 +907,112 @@ class HydrogenBondSeqFeat(Feature):
         # Zero out invalid atoms
         hb_feat = hb_atom37 * atom37_mask.float()  # [b, n, 37]
         return hb_feat
+
+
+class ModernizedHydrogenBondSeqFeat(Feature):
+    """Hydrogen bonds as two binary atom37 channels: ``[is_donor (37), is_acceptor (37)]``.
+
+    ``HBondEnum.BOTH`` (donor in one bond, acceptor in another) sets both channels. Returns
+    ``[b, n, 74]``.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=74)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_HB.full_name, "ModernizedHydrogenBondSeqFeat")
+        hb = batch[C_HB.full_name]  # [b, n, 37]
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        is_donor = ((hb == HBondEnum.DONOR) | (hb == HBondEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_acceptor = ((hb == HBondEnum.ACCEPTOR) | (hb == HBondEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        return torch.cat([is_donor, is_acceptor], dim=-1)  # [b, n, 74]
+
+
+class PiStackingSeqFeat(Feature):
+    """Pi-stacking contacts as a binary atom37 feature.
+
+    Returns ``[b, n, 37]``: 1 for atoms involved in pi-stacking, 0 otherwise.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=37)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_PISTACK.full_name, "PiStackingSeqFeat")
+
+        pistack = batch[C_PISTACK.full_name].float()  # [b, n, 37] bool
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        return pistack * atom37_mask  # [b, n, 37]
+
+
+class PiCationSeqFeat(Feature):
+    """Pi-cation contacts as two binary atom37 channels: ``[is_aromatic (37), is_cation (37)]``.
+
+    ``PiCationEnum.BOTH`` (aromatic in one interaction, cation in another) sets both channels.
+    Returns ``[b, n, 74]``.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=74)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_PICATION.full_name, "PiCationSeqFeat")
+        pc = batch[C_PICATION.full_name]  # [b, n, 37]
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        is_aromatic = ((pc == PiCationEnum.AROMATIC) | (pc == PiCationEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_cation = ((pc == PiCationEnum.CATION) | (pc == PiCationEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        return torch.cat([is_aromatic, is_cation], dim=-1)  # [b, n, 74]
+
+
+class SaltBridgeSeqFeat(Feature):
+    """Salt bridge contacts as a binary atom37 feature.
+
+    Returns ``[b, n, 37]``: 1 for atoms involved in a salt bridge, 0 otherwise.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=37)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_SALT.full_name, "SaltBridgeSeqFeat")
+
+        salt = batch[C_SALT.full_name].long()  # [b, n, 37]
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        return (salt != SaltBridgeEnum.NONE).float() * atom37_mask  # [b, n, 37]
+
+
+class HydrophobicSeqFeat(Feature):
+    """Hydrophobic contacts as a binary atom37 feature.
+
+    Returns ``[b, n, 37]``: 1 for atoms involved in hydrophobic contacts, 0 otherwise.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=37)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_HPHOB.full_name, "HydrophobicSeqFeat")
+
+        hphob = batch[C_HPHOB.full_name].float()  # [b, n, 37] bool
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        return hphob * atom37_mask  # [b, n, 37]
+
+
+class MetalCoordinationSeqFeat(Feature):
+    """Metal coordination as a binary atom37 feature.
+
+    Returns ``[b, n, 37]``: 1 for atoms involved in metal coordination, 0 otherwise.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=37)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        _require_condition_in_batch(batch, C_MCOORD.full_name, "MetalCoordinationSeqFeat")
+
+        mcoord = batch[C_MCOORD.full_name].long()  # [b, n, 37]
+        atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
+        return (mcoord != MetalCoordEnum.NONE).float() * atom37_mask  # [b, n, 37]
 
 
 class HotspotSeqFeat(Feature):
@@ -1628,6 +1756,18 @@ class FeatureFactory(torch.nn.Module):
                 return SecondaryStructureSeqFeat(**kwargs)
             elif f == "hbond":
                 return HydrogenBondSeqFeat(**kwargs)
+            elif f == "hbond_modernized":
+                return ModernizedHydrogenBondSeqFeat(**kwargs)
+            elif f == "pistack":
+                return PiStackingSeqFeat(**kwargs)
+            elif f == "pication":
+                return PiCationSeqFeat(**kwargs)
+            elif f == "saltbridge":
+                return SaltBridgeSeqFeat(**kwargs)
+            elif f == "hydrophobic":
+                return HydrophobicSeqFeat(**kwargs)
+            elif f == "metal_coord":
+                return MetalCoordinationSeqFeat(**kwargs)
             elif f == "hotspot":
                 return HotspotSeqFeat(**kwargs)
             elif f == "not_cysteine":

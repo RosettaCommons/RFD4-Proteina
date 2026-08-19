@@ -10,7 +10,7 @@ probability: 1.0
 
 dataset:
   name: afdb_monomer_256
-  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_genie3_32_512.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_genie3_32_512_annotated.parquet
   memory_map: True
   columns_to_load:
     - example_id
@@ -20,5 +20,8 @@ dataset:
     - 'length <= 256'
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/afdb_monomer
+    parser_args:
+      # Annotated CIFs: load the StandardAnnotations the interaction conditions read from.
+      load_standard_annotations: true
   transform:
     crop_size: 256

@@ -936,6 +936,11 @@ def _render_dataset_panel(
 _GLOBAL_KWARG_LABELS: dict[tuple[str, str], str] = {
     ("rasa_kwargs", "p_add_rasa_condition"): "rasa",
     ("hbond_kwargs", "p_add_hbond_condition"): "hbond",
+    ("pistack_kwargs", "p_add_pistack_condition"): "pistack",
+    ("pication_kwargs", "p_add_pication_condition"): "pication",
+    ("salt_kwargs", "p_add_salt_condition"): "salt",
+    ("hydrophobic_kwargs", "p_add_hydrophobic_condition"): "hydrophobic",
+    ("metal_kwargs", "p_add_metal_condition"): "metal",
     ("secondary_structure_kwargs", "p_add_secondary_structure_condition"): "ss",
     ("cath_kwargs", "p_add_cath_c_condition"): "cath-c",
     ("cath_kwargs", "p_add_cath_ca_condition"): "cath-ca",
