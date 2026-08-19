@@ -126,8 +126,8 @@ def compute_token_bond_features(
     atom_array: AtomArray,
     distance_cutoff: float = np.inf,
     path_length_cutoff: int | None = None,
-    pre_crop_atom_array: AtomArray | None = None,
-    crop_token_idxs: np.ndarray | None = None,
+    source_atom_array: AtomArray | None = None,
+    source_token_idxs: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """Compute token-level bond features for all tokens, including unindexed expansion copies.
 
@@ -135,12 +135,12 @@ def compute_token_bond_features(
     graph of indexed atoms only (unindexed copies have no valid inter-token bonds).
     The output [n_total x n_total] matrices are then populated per IndexGroup.
 
-    Path lengths are special: when ``pre_crop_atom_array`` and ``crop_token_idxs`` are
-    provided (training path after :py:class:`EnforceCropBudget`), the BFS is run on the
-    full pre-crop bond graph so that shortest paths through cropped-out tokens are
-    preserved. The result is then subsetted to ``crop_token_idxs``. Bond mask, order,
-    aromaticity, and canonical ordering are computed on the post-crop indexed block only
-    (direct bonds cannot span a crop boundary).
+    Path lengths are special: when ``source_atom_array`` and ``source_token_idxs`` are
+    provided (the training path), the BFS is run on a wider bond graph from earlier in the
+    pipeline, so that shortest paths through tokens dropped since then -- by the crop, or by
+    :py:class:`RemoveTokensWithAnyNaNAtom` -- are preserved. The result is then subsetted
+    to ``source_token_idxs``. Bond mask, order, aromaticity, and canonical ordering are
+    computed on the post-crop indexed block only (direct bonds cannot span a crop boundary).
 
     Args:
         atom_array: Post-expansion atom array with ``insertion_source_idx`` annotation.
@@ -148,12 +148,12 @@ def compute_token_bond_features(
             ``np.inf`` (all bonds accepted regardless of distance).
         path_length_cutoff: Paths longer than this are stored as 0 (treated as
             disconnected). ``None`` keeps all distances.
-        pre_crop_atom_array: Full pre-crop atom array (``crop_info["atom_array"]``).
-            When provided together with ``crop_token_idxs``, path lengths are computed
-            here and subsetted, preserving paths through cropped-out tokens.
-        crop_token_idxs: Token-level indices into ``pre_crop_atom_array`` that survived
-            the crop (``crop_info["crop_token_idxs"]``). Must be provided iff
-            ``pre_crop_atom_array`` is provided.
+        source_atom_array: A wider atom array from earlier in the pipeline. When provided
+            together with ``source_token_idxs``, path lengths are computed here and
+            subsetted, preserving paths through tokens dropped since.
+        source_token_idxs: Token-level indices into ``source_atom_array`` of the tokens
+            that survive in ``atom_array``, in order. Must be provided iff
+            ``source_atom_array`` is provided.
 
     Returns:
         Dict with five ``[n_total, n_total]`` arrays:
@@ -169,9 +169,9 @@ def compute_token_bond_features(
         - ``"canonical_polymer_ordering"`` (int8): ``sign(i - j)`` for bonded same-type
           canonical polymer pairs (protein/RNA/DNA), else 0.
     """
-    assert (pre_crop_atom_array is None) == (
-        crop_token_idxs is None
-    ), "pre_crop_atom_array and crop_token_idxs must be provided together"
+    assert (source_atom_array is None) == (
+        source_token_idxs is None
+    ), "source_atom_array and source_token_idxs must be provided together"
     assert (
         "insertion_source_idx" in atom_array.get_annotation_categories()
     ), "atom_array must have insertion_source_idx annotation (set by UnindexFlaggedTokens)"
@@ -262,22 +262,22 @@ def compute_token_bond_features(
     idx_is_aromatic[is_poly_poly] = False
 
     # ── Path lengths [n_indexed x n_indexed] ─────────────────────────────────
-    if pre_crop_atom_array is not None:
-        # BFS only from the crop-surviving tokens through the full pre-crop graph, so we
-        # never allocate an [n_pre_crop x n_pre_crop] dense matrix.
-        pc_token_starts = get_token_starts(pre_crop_atom_array)
-        n_pre_crop = len(pc_token_starts)
-        pc_atom_to_token = spread_token_wise(pre_crop_atom_array, np.arange(n_pre_crop, dtype=np.int32))
-        pc_edges = _inter_token_bond_edges(pre_crop_atom_array, pc_atom_to_token)
+    if source_atom_array is not None:
+        # BFS only from the surviving tokens through the full source graph, so we never
+        # allocate an [n_source x n_source] dense matrix.
+        src_token_starts = get_token_starts(source_atom_array)
+        n_source = len(src_token_starts)
+        src_atom_to_token = spread_token_wise(source_atom_array, np.arange(n_source, dtype=np.int32))
+        src_edges = _inter_token_bond_edges(source_atom_array, src_atom_to_token)
         idx_path_length = _compute_token_path_lengths(
-            pc_edges["tok1"],
-            pc_edges["tok2"],
-            source_indices=crop_token_idxs,
+            src_edges["tok1"],
+            src_edges["tok2"],
+            source_indices=source_token_idxs,
             path_length_cutoff=path_length_cutoff,
-        )  # [n_crop, n_crop]
-        source_mol_ids = pre_crop_atom_array.molecule_iid[pc_token_starts[crop_token_idxs]]
+        )  # [n_indexed, n_indexed]
+        source_mol_ids = source_atom_array.molecule_iid[src_token_starts[source_token_idxs]]
     else:
-        # Inference path: no pre-crop array; compute on the indexed block directly.
+        # Inference path: no wider array; compute on the indexed block directly.
         idx_path_length = _compute_token_path_lengths(
             edges["tok1"],
             edges["tok2"],

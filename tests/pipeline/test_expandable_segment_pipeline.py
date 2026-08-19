@@ -40,7 +40,6 @@ from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.transforms.filters import (
     HandleUndesiredResTokens,
     RemovePolymersWithTooFewResolvedResidues,
-    RemoveUnresolvedLigandAtomsIfTooMany,
     RemoveUnresolvedPNUnits,
 )
 from atomworks.ml.utils.expandable_segment import (
@@ -211,7 +210,6 @@ def _preclean_input(atom_array):
         RemoveUnresolvedPNUnits(),
         HandleUndesiredResTokens(undesired_res_tokens=AF3_EXCLUDED_LIGANDS),
         RemovePolymersWithTooFewResolvedResidues(min_residues=1),
-        RemoveUnresolvedLigandAtomsIfTooMany(unresolved_ligand_atom_limit=5),
     ):
         data = transform(data)
 
