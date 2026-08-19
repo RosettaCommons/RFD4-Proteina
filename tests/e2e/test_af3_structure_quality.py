@@ -20,8 +20,10 @@ from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen,
 from biotite.structure import AtomArray
 
 from rfproteina.metrics.design_metrics import BondLengthMetric, ClashMetric
+from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.oracles.af3_oracle import AF3Oracle
 from rfproteina.metrics.oracles.oracle_metric import OracleJobInput
+from rfproteina.metrics.oracles.pre_oracle_transform import BinderContextCropTransform
 from rfproteina.utils.atom_permutation import permute_gt_atoms
 from tests.conftest import TEST_DATA_DIR
 from tests.e2e.helpers.gpu_e2e import require_preval_oracle
@@ -390,3 +392,126 @@ def test_of3_refold_structure_quality(of3_refolds):
     A converter regression like the missing ``msa_activations`` permutation put 1y26 at 24.9 A.
     """
     assert not (failures := _quality_failures(of3_refolds, "of3")), "\n".join(failures)
+
+
+# --- cropped-refold capability -------------------------------------------------------------------
+
+
+class CropExample(NamedTuple):
+    """One cropped-refold case: which crystal, which atoms to template+crop, and how tightly to score.
+
+    ``template`` selects the atoms coordinate-conditioned (and thus the crop's *target* — the chain
+    of interest kept whole is whatever the query leaves out). ``measure`` selects the cropped
+    target's atoms whose RMSD to the full crystal is checked. Both are atomworks query strings.
+    """
+
+    pdb: str
+    template: str
+    measure: str
+    crop_size: int
+    allowable_af3: float
+    allowable_of3: float
+
+
+_CROP_EXAMPLES: tuple[CropExample, ...] = (
+    # Crop the protein target A down to ~64 tokens; the 8-residue peptide is the binder kept whole.
+    CropExample("2w3o", "chain_id == 'A'", "is_protein_backbone & (chain_id == 'A')", 64, 1.5, 1.8),
+)
+
+
+def _template_by_query(atom_array: AtomArray, query: str) -> AtomArray:
+    """Copy of ``atom_array`` with the atoms matching ``query`` flagged for templating."""
+    marked = atom_array.copy()
+    C_CRD.set_mask(marked, _query(marked, query))
+    return marked
+
+
+def _fold_cropped_examples(out_dir: Path) -> dict[str, tuple[AtomArray, AtomArray]]:
+    """Aggressively crop each example's templated target, refold, return ``{pdb: (crystal, refold)}``."""
+    mirror = Path(PDB_MIRROR_PATH)
+    oracle = AF3Oracle(oracle_name="af3", template_query="mask_coordinate_1_atom", seed=1)
+    crystals: dict[str, AtomArray] = {}
+    jobs = []
+    for ex in _CROP_EXAMPLES:
+        crystal = _load_assembly(mirror / ex.pdb[1:3] / f"{ex.pdb}.cif.gz")
+        # ``template`` conditions the target so the crop's chain of interest is the (untouched) binder
+        # and the target is what gets cropped and gapped.
+        (crop,) = BinderContextCropTransform(crop_size=ex.crop_size, crop_center_selection="centroid").forward(
+            _template_by_query(crystal, ex.template)
+        )
+        # Template everything AF3 can (proteins) so the whole cropped complex reproduces the crystal
+        # rather than the binder drifting and dragging the templated target off it.
+        cropped = crop.atom_array.copy()
+        C_CRD.set_mask(cropped, _query(cropped, "is_protein"))
+        crystals[ex.pdb] = crystal
+        jobs.append(OracleJobInput(cropped, ex.pdb, out_dir, chain_of_interest=crop.chain_of_interest))
+    oracle.setup()
+    try:
+        assert oracle.fold_batch(jobs) == len(jobs), "the oracle failed to fold a cropped design"
+        return {
+            ex.pdb: (
+                crystals[ex.pdb],
+                as_atom_array_plus(
+                    parse(oracle.refolded_cif_path(out_dir, ex.pdb), config=ParseConfig.from_preset("minimal"))[
+                        "asym_unit"
+                    ][0]
+                ),
+            )
+            for ex in _CROP_EXAMPLES
+        }
+    finally:
+        oracle.teardown()
+
+
+def _crop_target_rmsd(example: CropExample, refolds: dict[str, tuple[AtomArray, AtomArray]]) -> float:
+    """Backbone RMSD of the cropped target against the full crystal, over their common atoms."""
+    crystal, refold = refolds[example.pdb]
+    metric = StructureComparisonMetric(
+        restrict_to_common_atoms=True, align_mask=example.measure, subset_mask=example.measure, metric_type="rmsd"
+    )
+    return metric.compute(ground_truth_atom_array=crystal, predicted_atom_array=refold).get("rmsd", float("inf"))
+
+
+@pytest.fixture(scope="module")
+def cropped_refolds(tmp_path_factory, monkeypatch_module) -> dict[str, tuple[AtomArray, AtomArray]]:
+    """Each crop example folded with AlphaFold3 weights."""
+    require_preval_oracle("af3")
+    if not PDB_MIRROR_PATH or not Path(PDB_MIRROR_PATH).is_dir():
+        pytest.skip("PDB_MIRROR_PATH is unset")
+    monkeypatch_module.setenv("AF3_LAUNCHER_SOCKET_TEMPLATE", _AF3_SOCKET_TEMPLATE)
+    return _fold_cropped_examples(tmp_path_factory.mktemp("af3_cropped"))
+
+
+@pytest.fixture(scope="module")
+def of3_cropped_refolds(tmp_path_factory, monkeypatch_module) -> dict[str, tuple[AtomArray, AtomArray]]:
+    """Each crop example folded with converted OpenFold3 weights, via the lane's second daemon set."""
+    require_preval_oracle("af3")
+    if not PDB_MIRROR_PATH or not Path(PDB_MIRROR_PATH).is_dir():
+        pytest.skip("PDB_MIRROR_PATH is unset")
+
+    of3_socket = os.environ.get("OF3_LAUNCHER_SOCKET_TEMPLATE")
+    if not of3_socket:
+        message = "OF3_LAUNCHER_SOCKET_TEMPLATE is unset; set OF3_MODEL_DIR in .ipd/.env.<cluster>"
+        pytest.fail(message) if os.environ.get("REQUIRE_AF3") == "1" else pytest.skip(message)
+    if of3_socket == _AF3_SOCKET_TEMPLATE:
+        pytest.fail("OF3_LAUNCHER_SOCKET_TEMPLATE equals the AF3 one; the OF3 arm would fold with AF3 weights.")
+
+    monkeypatch_module.setenv("AF3_LAUNCHER_SOCKET_TEMPLATE", of3_socket)
+    of3_model_dir = os.environ.get("OF3_MODEL_DIR")
+    if of3_model_dir:
+        monkeypatch_module.setenv("AF3_MODEL_DIR", of3_model_dir)
+    return _fold_cropped_examples(tmp_path_factory.mktemp("of3_cropped"))
+
+
+@pytest.mark.parametrize("example", _CROP_EXAMPLES, ids=[e.pdb for e in _CROP_EXAMPLES])
+def test_af3_cropped_structure_quality(cropped_refolds, example):
+    """The cropped, res_id-gapped target still refolds onto the full crystal (tight backbone RMSD)."""
+    rmsd = _crop_target_rmsd(example, cropped_refolds)
+    assert rmsd < example.allowable_af3, f"{example.pdb} cropped target RMSD {rmsd:.3f} >= {example.allowable_af3}"
+
+
+@pytest.mark.parametrize("example", _CROP_EXAMPLES, ids=[e.pdb for e in _CROP_EXAMPLES])
+def test_of3_cropped_structure_quality(of3_cropped_refolds, example):
+    """Same crop capability through the converted OpenFold3 weights."""
+    rmsd = _crop_target_rmsd(example, of3_cropped_refolds)
+    assert rmsd < example.allowable_of3, f"{example.pdb} cropped target RMSD {rmsd:.3f} >= {example.allowable_of3}"

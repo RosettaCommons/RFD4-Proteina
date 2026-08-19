@@ -148,6 +148,7 @@ def crop_spatial_keep_full_binder(
     crop_size: int,
     jitter_scale: float = 1e-3,
     crop_center_cutoff_distance: float = 15.0,
+    crop_center_selection: Literal["random", "centroid"] = "random",
     force_crop: bool = False,
 ) -> dict:
     """
@@ -163,6 +164,11 @@ def crop_spatial_keep_full_binder(
             Defaults to 1e-3.
         - crop_center_cutoff_distance (float, optional): Maximum distance from query units to
             consider for crop center. Defaults to 15.0 Angstroms.
+        - crop_center_selection ({"random", "centroid"}, optional): How to pick the crop centre from the
+            interface-candidate atoms. ``"random"`` (AF3-style) draws one uniformly at random, so the crop
+            wanders across the interface shell between calls. ``"centroid"`` picks the candidate atom nearest
+            the mean of all interface-candidate atoms, giving a deterministic crop centred on the
+            binder-target interface. Defaults to ``"random"``.
         - force_crop (bool, optional): Whether to force crop even if the atom array is already small enough.
             Defaults to False.
 
@@ -199,8 +205,16 @@ def crop_spatial_keep_full_binder(
         # Get possible crop centers
         can_be_crop_center = get_spatial_crop_center(atom_array, query_pn_unit_iids, crop_center_cutoff_distance)
 
-        # ... sample crop center atom
-        crop_center_atom_id = np.random.choice(atom_array[can_be_crop_center].atom_id)
+        # ... pick the crop center atom
+        candidate_atoms = atom_array[can_be_crop_center]
+        if crop_center_selection == "centroid":
+            # Deterministic: the interface-candidate atom nearest the interface centroid.
+            interface_centroid = candidate_atoms.coord.mean(axis=0)
+            nearest_to_centroid = np.argmin(np.linalg.norm(candidate_atoms.coord - interface_centroid, axis=1))
+            crop_center_atom_id = candidate_atoms.atom_id[nearest_to_centroid]
+        else:
+            # AF3-style: uniform random draw over interface-candidate atoms.
+            crop_center_atom_id = np.random.choice(candidate_atoms.atom_id)
         crop_center_atom_idx = atom_id_to_atom_idx(atom_array, crop_center_atom_id)
 
         # ... sample crop, excluding the binder polymer/non-polymer unit

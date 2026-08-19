@@ -318,6 +318,12 @@ class AF3Oracle(OracleMetric):
         extra_af3_flags: Additional flags forwarded to the AF3 subprocess.
         seed: Pins AF3's diffusion seed for reproducibility; leave ``None`` in
             production so each fold samples its own.
+        preserve_res_id: When ``True`` (default), the design's per-chain ``res_id``
+            is written to the CIF verbatim, so numbering gaps from a pre-oracle crop
+            survive into AF3's relative position encoding (AF3 reads ``res_id`` from
+            the CIF; see ``folding_input.from_mmcif``). When ``False``, res_ids are
+            collapsed to a contiguous ``1..N`` per chain via
+            :py:meth:`_renumber_res_ids_per_chain` before folding.
     """
 
     def __init__(
@@ -326,11 +332,13 @@ class AF3Oracle(OracleMetric):
         template_query: str | None = None,
         extra_af3_flags: list[str] | None = None,
         seed: int | None = None,
+        preserve_res_id: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(oracle_name=oracle_name, template_query=template_query, **kwargs)
         self.extra_flags = extra_af3_flags or []
         self.seed = seed
+        self.preserve_res_id = preserve_res_id
 
     # ------------------------------------------------------------------
     # OracleMetric framework hooks
@@ -537,9 +545,9 @@ class AF3Oracle(OracleMetric):
             disambiguated_valid.set_annotation("occupancy", np.ones(disambiguated_valid.array_length()))
             disambiguated_valid.set_annotation("b_factor", np.zeros(disambiguated_valid.array_length()))
 
-            # AF3 reads `_struct_conn` partner seq_ids as 1-based chain
-            # indices (folding_input.py:1420); renumber so bonds survive.
-            disambiguated_valid = self._renumber_res_ids_per_chain(disambiguated_valid)
+            # Optionally squash all res_id gaps to contiguous 1..N per chain
+            if not self.preserve_res_id:
+                disambiguated_valid = self._renumber_res_ids_per_chain(disambiguated_valid)
 
             # Inline CIF in the manifest (avoid file I/O)
             cif_string = to_cif_string(disambiguated_valid.copy(), config=CIFWriteConfig(id=job_name))

@@ -70,6 +70,52 @@ def align_structures_with_masks(
     return gt_array_stack, pred_array_stack
 
 
+def restrict_to_common_atoms(
+    gt_stack: AtomArrayStack, pred_stack: AtomArrayStack
+) -> tuple[AtomArrayStack, AtomArrayStack]:
+    """Subset both stacks to the atoms they share, in correspondence.
+
+    Atoms are matched by ``(chain_iid, res_id, res_name, atom_name)`` -- falling back to ``chain_id`` when
+    either side lacks ``chain_iid`` -- and returned in ground-truth order, so a refold that is a
+    strict subset of the design (e.g. after a crop ``pre_oracle_transform``) can be compared against
+    the full design by the positional logic downstream.
+
+    Returns:
+        ``(gt_common, pred_common)``, each the shared atoms in the same order.
+    """
+    chain_attr = (
+        "chain_iid"
+        if "chain_iid" in gt_stack.get_annotation_categories() and "chain_iid" in pred_stack.get_annotation_categories()
+        else "chain_id"
+    )
+
+    def keys(stack: AtomArrayStack) -> list[tuple]:
+        return list(
+            zip(
+                stack.get_annotation(chain_attr),
+                stack.res_id.tolist(),
+                stack.res_name,
+                stack.atom_name,
+                strict=True,
+            )
+        )
+
+    pred_index: dict[tuple, int] = {}
+    for i, key in enumerate(keys(pred_stack)):
+        if key in pred_index:
+            raise ValueError(f"Duplicate atom key in predicted structure: {key}")
+        pred_index[key] = i
+
+    gt_idx, pred_idx = [], []
+    for i, key in enumerate(keys(gt_stack)):
+        j = pred_index.pop(key, None)  # pop so each pred atom is claimed at most once
+        if j is not None:
+            gt_idx.append(i)
+            pred_idx.append(j)
+
+    return gt_stack[:, np.asarray(gt_idx, dtype=int)], pred_stack[:, np.asarray(pred_idx, dtype=int)]
+
+
 def align_structures_by_annotations(
     gt_array_stack: AtomArrayStack,
     pred_array_stack: AtomArrayStack,
@@ -425,6 +471,13 @@ class StructureComparisonMetric(Metric):
             "predicted_atom_array": "predicted_atom_array"}``.
         verbose_naming: Emit verbose metric keys
             (e.g. ``rmsd_align=<is_backbone>_subset=<is_backbone>`` instead of ``rmsd``).
+        restrict_to_common_atoms: Before comparing, restrict both structures to the atoms they
+            share by ``(chain_iid, res_id, res_name, atom_name)`` (or ``chain_id`` when ``chain_iid`` is
+            absent), in correspondence. Needed when a
+            ``pre_oracle_transform`` (e.g. a crop) makes the refold a strict subset of the design,
+            since alignment otherwise matches positionally and requires identical atom sets. Off by
+            default. Safe only when the two carry the same numbering — refolds do, as the oracle
+            transfers coordinates back onto the untransformed input.
 
     Examples:
         >>> metric = StructureComparisonMetric(
@@ -447,6 +500,7 @@ class StructureComparisonMetric(Metric):
         metric_kwargs: dict[str, Any] | None = None,
         input_kwarg_names: dict[str, str] | None = None,
         verbose_naming: bool = False,
+        restrict_to_common_atoms: bool = False,
         resolve_symmetry: Sequence[SymmetryLevel] = ("atom",),
         **kwargs,
     ):
@@ -471,6 +525,7 @@ class StructureComparisonMetric(Metric):
         self.metric_type = metric_type
         self.metric_kwargs = metric_kwargs or {}
         self.verbose_naming = verbose_naming
+        self.restrict_to_common_atoms = restrict_to_common_atoms
 
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
@@ -606,6 +661,11 @@ class StructureComparisonMetric(Metric):
         metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
         gt_stack = self._prepare_gt_stack(ground_truth_atom_array)
         pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
+
+        # Drop atoms one side lacks (e.g. a crop refold vs the full design) so the positional
+        # matching below lines up; leaves aligned inputs untouched.
+        if self.restrict_to_common_atoms:
+            gt_stack, pred_stack = restrict_to_common_atoms(gt_stack, pred_stack)
         # Permute chemically equivalent GT atoms so the prediction is not scored on a labelling
         # it cannot know; atom classes (-1 = leave alone) keep a swap inside what this metric reports on.
         if (
