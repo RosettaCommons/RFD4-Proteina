@@ -78,7 +78,6 @@ from atomworks.ml.transforms.filters import (
     RemoveNucleicAcidTerminalOxygen,
     RemovePolymersWithTooFewResolvedResidues,
     RemoveTerminalOxygen,
-    RemoveUnresolvedLigandAtomsIfTooMany,
     RemoveUnresolvedPNUnits,
 )
 from atomworks.ml.transforms.mirror_transform import RandomlyMirrorInputs
@@ -734,6 +733,9 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
     - is_aromatic: [n_tokens, n_tokens] - True if the bond is aromatic
     - token_bond_path_length: [n_tokens, n_tokens] - shortest bond-graph path length between tokens
 
+    Path lengths run on the widest bond graph the pipeline still holds -- the snapshot from before
+    :py:class:`RemoveTokensWithAnyNaNAtom` where it dropped anything, else the pre-crop array -- so
+    that hops through tokens since removed are still counted.
 
     NOTE: This is computed after DesignTask application so that C_IDXGRP is known
     """
@@ -758,17 +760,26 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
 
     def forward(self, data: dict) -> dict:
         crop_info = data.get("crop_info", {})
-        pre_crop_atom_array = crop_info.get("atom_array", None)
-        crop_token_idxs = crop_info.get("crop_token_idxs", None)
-        if pre_crop_atom_array is not None:
-            assert crop_token_idxs is not None, "crop_info has pre-crop atom_array but crop_token_idxs is missing"
+        nan_info = data.pop("pre_nan_removal_info", None)
+
+        if nan_info is not None:
+            source_atom_array = nan_info["atom_array"]
+            source_token_idxs = nan_info["kept_token_idxs"]
+            if "atom_array" in crop_info:
+                source_token_idxs = source_token_idxs[crop_info["crop_token_idxs"]]
+        elif "atom_array" in crop_info:
+            # No NaN token was dropped, so the pre-crop array is the widest graph available.
+            source_atom_array = crop_info["atom_array"]
+            source_token_idxs = crop_info["crop_token_idxs"]
+        else:
+            source_atom_array = source_token_idxs = None
 
         bond_feats = compute_token_bond_features(
             data["atom_array"],
             distance_cutoff=self.distance_cutoff,
             path_length_cutoff=self.path_length_cutoff,
-            pre_crop_atom_array=pre_crop_atom_array,
-            crop_token_idxs=crop_token_idxs,
+            source_atom_array=source_atom_array,
+            source_token_idxs=source_token_idxs,
         )
         data["feats"].update(bond_feats)
         return data
@@ -940,6 +951,10 @@ class RemoveTokensWithAnyNaNAtom(Transform):
 
     NOTE: With the fixing of the PDB, we are hoping to eliminate most if not all occurances of cases (1) and (3).
     As we fix those, this Transform will remove fewer and fewer tokens.
+
+    The input is snapshotted into ``data["pre_nan_removal_info"]`` for
+    :py:class:`ComputeTokenLevelBondFeaturesLikeAF3` to run its BFS on, together with the token
+    indices into it that survive here.
     """
 
     def forward(self, data: dict) -> dict:
@@ -950,8 +965,13 @@ class RemoveTokensWithAnyNaNAtom(Transform):
             s, e = starts[i], starts[i + 1]
             if np.any(np.isnan(atom_array.coord[s:e])):
                 mask_to_keep[s:e] = False
-        atom_array = atom_array[mask_to_keep]
-        data["atom_array"] = atom_array
+        if mask_to_keep.all():
+            return data
+        data["pre_nan_removal_info"] = {
+            "atom_array": atom_array.copy(),
+            "kept_token_idxs": np.where(mask_to_keep[starts[:-1]])[0],
+        }
+        data["atom_array"] = atom_array[mask_to_keep]
         return data
 
 
@@ -1356,7 +1376,6 @@ def _build_design_clean_and_sample_pipeline(
         T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)  # e.g., non-standard residues
         T += RemovePolymersWithTooFewResolvedResidues(min_residues=1)
         T += SetOccToZeroOnBfactor(bmin=b_factor_occupancy_min)
-        T += RemoveUnresolvedLigandAtomsIfTooMany(unresolved_ligand_atom_limit=5)
 
     # Validate structure has atoms after filtering (defensive; useful for both)
     T += ValidateNonEmptyStructure()
