@@ -28,14 +28,11 @@ from rfproteina.conditions import (
     C_HPHOB,
     C_IDXGRP,
     C_MCOORD,
-    C_PICATION,
-    C_PISTACK,
     C_RAS,
     C_SALT,
     C_SEC,
     HBondEnum,
     MetalCoordEnum,
-    PiCationEnum,
     RasaEnum,
     SaltBridgeEnum,
     SSEnum,
@@ -44,8 +41,6 @@ from rfproteina.transforms.design_task_modifiers import (
     add_hbond_condition,
     add_hydrophobic_condition,
     add_metal_condition,
-    add_pication_condition,
-    add_pistack_condition,
     add_rasa_condition,
     add_salt_condition,
     add_secondary_structure_condition,
@@ -405,10 +400,12 @@ def protein_with_contacting_partner_chain(simple_protein):
 
 @pytest.mark.fast
 class TestSubsetGroundTruthInteractionConditions:
-    """Tests for the interaction-condition modifiers (hbond/pistack/pication/salt/hydrophobic/metal).
+    """Tests for the interaction-condition modifiers (hbond/salt/hydrophobic/metal).
 
     These modifiers subset a ground-truth interaction Condition that is already present on the
-    AtomArray -- they do not compute interactions themselves.
+    AtomArray -- they do not compute interactions themselves. The ring-level conditions
+    (pistack/pication) need a real aromatic ring to say anything, so they live in
+    ``test_pi_ring_conditioning.py`` instead.
     """
 
     @pytest.mark.parametrize(
@@ -423,26 +420,6 @@ class TestSubsetGroundTruthInteractionConditions:
                 "p_add_hbond_condition",
                 "p_hbond_subsample",
                 "hbond_subsample_frac",
-            ),
-            (
-                add_pistack_condition,
-                C_PISTACK,
-                False,
-                True,
-                True,
-                "p_add_pistack_condition",
-                "p_pistack_subsample",
-                "pistack_subsample_frac",
-            ),
-            (
-                add_pication_condition,
-                C_PICATION,
-                PiCationEnum.NONE,
-                PiCationEnum.AROMATIC,
-                PiCationEnum.CATION,
-                "p_add_pication_condition",
-                "p_pication_subsample",
-                "pication_subsample_frac",
             ),
             (
                 add_salt_condition,
@@ -518,10 +495,10 @@ class TestSubsetGroundTruthInteractionConditions:
         assert np.all(revealed[10:] == none_value)
 
         # p_add=1.0 with subsampling forced -> a strict subset of the 10 motif atoms survives.
-        # keep_count = int(10 * 0.5) = 5, and survivors must still be within the motif region.
         data = {"atom_array": base_atom_array.copy(), "task": {}}
         result = add_condition_fn(data, **{p_add_kwarg: 1.0, p_subsample_kwarg: 1.0, subsample_frac_kwarg: 0.5})
         subsampled = condition.annotation(result["atom_array"])
+        # keep_count = int(10 * 0.5) = 5, and survivors must still be within the motif region.
         assert np.sum(subsampled != none_value) == 5
         assert np.all(subsampled[10:] == none_value)
 

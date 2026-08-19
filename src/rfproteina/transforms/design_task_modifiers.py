@@ -1,6 +1,8 @@
 import ast
+from collections.abc import Sequence
 from typing import Any
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 from atomworks.io.utils.annotator import ensure_annotations
@@ -13,6 +15,8 @@ from atomworks.ml.conditions import (
 )
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
 from biotite.structure import get_residue_count, spread_residue_wise
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
 from scipy.spatial import cKDTree
 
 from rfproteina.conditions import (
@@ -104,29 +108,121 @@ def add_rasa_condition(
     return data
 
 
-def subsample_condition_enum(condition_array: np.ndarray, fraction: float, none_value: Any = 0) -> np.ndarray:
-    """Randomly clear a subset of active entries in a condition array, keeping ``fraction`` of them.
+def subsample_condition_enum(
+    condition_values: np.ndarray,
+    fraction: float,
+    none_value: Any = 0,
+    groups: Sequence[np.ndarray] = (),
+) -> np.ndarray:
+    """Randomly clear a subset of the active condition values, keeping ``fraction`` of them.
 
     Args:
-      condition_array: Array of condition values (boolean mask or integer enum).
+      condition_values: Per-atom condition values (boolean mask or integer enum).
       fraction: Fraction of active (non-``none_value``) entries to keep. Must be in ``(0, 1]``.
-      none_value: Value denoting "no condition" for this array. Defaults to ``0``.
+      none_value: Value denoting "no condition". Defaults to ``0``.
+      groups: Index groups kept or cleared as a unit, e.g. the atoms of one aromatic ring. Groups
+        may overlap, so an atom shared by a kept and a cleared ring stays; any active entry outside
+        every group is its own group. ``fraction`` then counts groups rather than atoms.
 
     Returns:
-      A copy of ``condition_array`` with ``1 - fraction`` of its active entries reset to
+      A copy of ``condition_values`` with ``1 - fraction`` of its active entries reset to
       ``none_value``. At least one active entry is always kept.
     """
     if not (0 < fraction <= 1):
         raise ValueError("Fraction must be in the range (0, 1].")
 
-    condition_array = condition_array.copy()
-    active_indices = np.where(condition_array != none_value)[0]
-    keep_count = max(1, int(len(active_indices) * fraction))
+    condition_values = condition_values.copy()
+    grouped = np.zeros(len(condition_values), dtype=bool)
+    for group in groups:
+        grouped[group] = True
+    ungrouped_active = np.where((condition_values != none_value) & ~grouped)[0]
+    units = [*groups, *(np.array([atom]) for atom in ungrouped_active)]
 
-    np.random.shuffle(active_indices)
-    condition_array[active_indices[keep_count:]] = none_value
+    keep_count = max(1, int(len(units) * fraction))
+    order = np.arange(len(units))
+    np.random.shuffle(order)
 
-    return condition_array
+    kept = np.zeros(len(condition_values), dtype=bool)
+    for unit in order[:keep_count]:
+        kept[units[unit]] = True
+    condition_values[~kept] = none_value
+
+    return condition_values
+
+
+def _carries(condition_values: np.ndarray, base_value: Any, unions: dict[Any, tuple[Any, ...]]) -> np.ndarray:
+    """Atoms whose value is ``base_value``, or a union that includes it."""
+    return np.isin(condition_values, [base_value, *(u for u, bases in unions.items() if base_value in bases)])
+
+
+def _whole_ring_groups(
+    atom_array: Any,
+    condition_values: np.ndarray,
+    none_value: Any,
+    ring_level_values: tuple[Any, ...],
+    unions: dict[Any, tuple[Any, ...]],
+) -> tuple[np.ndarray, list[np.ndarray]]:
+    """Group the atoms of each annotated aromatic ring, so a ring is only ever conditioned whole.
+
+    Rings are the minimal cycles of the bond graph induced by the annotated atoms alone. We sidestep
+    aromaticity detection since any rings annotated with these pi-system-based interactions must be
+    aromatic.
+
+    Args:
+      condition_values: Per-atom condition values to group.
+      none_value: Value denoting "no condition".
+      ring_level_values: The subset of those values that lives on a ring; see
+        :py:func:`_subset_ground_truth_interaction_condition`.
+      unions: Maps each value that combines several base values to those bases, e.g.
+        ``PiCationEnum.BOTH``.
+
+    Returns:
+      A copy of ``condition_values`` with any ring-level value outside a whole ring cleared, and one
+      index array per ring. Groups overlap where rings are fused.
+    """
+    if not ring_level_values:
+        return condition_values, []
+    ring_atoms = np.logical_or.reduce(
+        [_carries(condition_values, ring_level_value, unions) for ring_level_value in ring_level_values]
+    )
+    if not ring_atoms.any():
+        return condition_values, []
+
+    bonds = np.empty((0, 2), dtype=int) if atom_array.bonds is None else atom_array.bonds.as_array()[:, :2]
+    bonds = bonds[ring_atoms[bonds].all(axis=1)]
+
+    groups = []
+    if len(bonds):
+        atoms = np.unique(bonds)
+        edges = np.searchsorted(atoms, bonds)
+        adjacency = coo_matrix(
+            (np.ones(len(edges), dtype=bool), (edges[:, 0], edges[:, 1])), shape=(len(atoms), len(atoms))
+        )
+        _, component_of_atom = connected_components(adjacency, directed=False)
+        degree = np.bincount(edges.ravel(), minlength=len(atoms))
+        for component in range(component_of_atom.max() + 1):
+            members = component_of_atom == component
+            if (degree[members] == 2).all():
+                # A connected component whose atoms all have two bonds is a single ring already.
+                groups.append(atoms[members])
+                continue
+            # Fused rings, so pay for a minimum cycle basis to split the system into its rings.
+            component_edges = edges[members[edges[:, 0]]].tolist()
+            groups += [
+                atoms[np.fromiter(cycle, dtype=int)]
+                for cycle in nx.minimum_cycle_basis(nx.from_edgelist(component_edges))
+            ]
+
+    grouped = np.zeros(len(condition_values), dtype=bool)
+    for group in groups:
+        grouped[group] = True
+
+    # A ring missing some of its atoms leaves no cycle to find; drop its remnant rather than train
+    # on a fragment of a ring.
+    condition_values = condition_values.copy()
+    condition_values[ring_atoms & ~grouped] = none_value
+
+    return condition_values, groups
 
 
 def _drop_annotations_without_cross_chain_partner(
@@ -137,7 +233,8 @@ def _drop_annotations_without_cross_chain_partner(
     partners: dict[Any, Any],
     unions: dict[Any, tuple[Any, ...]],
     partner_cutoff: float,
-    residue_level_values: tuple[Any, ...] = (),
+    ring_level_values: tuple[Any, ...] = (),
+    rings: Sequence[np.ndarray] = (),
 ) -> np.ndarray:
     """Drop two-body annotations whose interaction partner did not survive cropping.
 
@@ -147,23 +244,17 @@ def _drop_annotations_without_cross_chain_partner(
       partners: Maps each base value to the value a partner atom must carry.
       unions: Describes enum values that combine multiple base values, e.g. ``HBondEnum.BOTH``.
       partner_cutoff: Distance cutoff (A) of the detector that produced the annotation.
-      residue_level_values: Base values kept or dropped per residue rather than per atom. Used for the
-        pi side of pi-stacking/pi-cation, where the interaction belongs to the ring as a whole and
-        conditioning on part of a ring would be out of distribution.
+      ring_level_values: See :py:func:`_subset_ground_truth_interaction_condition`.
+      rings: The annotated rings, from :py:func:`_whole_ring_groups`.
     """
     chains = np.asarray(atom_array.chain_iid)
     coords = atom_array.coord
-    residue_starts = get_residue_starts(atom_array, add_exclusive_stop=True)
-
-    def carries(values: np.ndarray, base_value: Any) -> np.ndarray:
-        """Atoms whose value is ``base_value``, or a union that includes it."""
-        return np.isin(values, [base_value, *(u for u, bases in unions.items() if base_value in bases)])
 
     # Which atoms have a cross-chain atom carrying the complementary value within the cutoff.
     supported = {}
     for base_value, partner_value in partners.items():
-        query = np.where(carries(ground_truth, base_value))[0]
-        candidates = carries(stored, partner_value)
+        query = np.where(_carries(ground_truth, base_value, unions))[0]
+        candidates = _carries(stored, partner_value, unions)
         mask = np.zeros(len(ground_truth), dtype=bool)
         for chain in np.unique(chains[query]):
             rows = query[chains[query] == chain]
@@ -172,11 +263,12 @@ def _drop_annotations_without_cross_chain_partner(
                 continue
             tree = cKDTree(coords[cross_chain])
             mask[rows] = tree.query(coords[rows], k=1)[0] <= partner_cutoff
-        if base_value in residue_level_values:
-            # One supported atom carries its whole residue, but only over atoms that were already
-            # annotated -- this widens nothing beyond what the motif mask revealed.
-            residue_supported = np.logical_or.reduceat(mask, residue_starts[:-1])
-            mask = spread_residue_wise(atom_array, residue_supported) & carries(ground_truth, base_value)
+        if base_value in ring_level_values:
+            # A ring interacts as a unit, so one supported atom carries the whole ring. Fused rings
+            # share atoms, so support is unioned over rings rather than partitioned between them.
+            for ring in rings:
+                if mask[ring].any():
+                    mask[ring] = True
         supported[base_value] = mask
 
     kept = np.full_like(ground_truth, none_value)
@@ -200,7 +292,7 @@ def _subset_ground_truth_interaction_condition(
     partners: dict[Any, Any],
     unions: dict[Any, tuple[Any, ...]],
     partner_cutoff: float,
-    residue_level_values: tuple[Any, ...] = (),
+    ring_level_values: tuple[Any, ...] = (),
 ) -> dict:
     """Subset a ground-truth interaction Condition already present on the AtomArray.
 
@@ -222,7 +314,9 @@ def _subset_ground_truth_interaction_condition(
       partners: See :py:func:`_drop_annotations_without_cross_chain_partner`.
       unions: See :py:func:`_drop_annotations_without_cross_chain_partner`.
       partner_cutoff: Distance cutoff (A) of the detector that produced the annotation.
-      residue_level_values: See :py:func:`_drop_annotations_without_cross_chain_partner`.
+      ring_level_values: Values that belong to an aromatic ring rather than to its individual
+        atoms, such as pi-stacking and the pi side of pi-cation. Their rings are dropped
+        and subsampled whole, since conditioning on part of a ring would be unphysical.
 
     Returns:
       Updated data dict with ``condition`` set on the AtomArray.
@@ -230,6 +324,7 @@ def _subset_ground_truth_interaction_condition(
     atom_array = as_atom_array_plus(data["atom_array"])
 
     ground_truth = None
+    rings: list[np.ndarray] = []
     if np.random.rand() < p_add_condition:
         seq_mask = C_SEQ.mask(atom_array, default="generate")
         crd_mask = C_CRD.mask(atom_array, default="generate")
@@ -240,11 +335,20 @@ def _subset_ground_truth_interaction_condition(
         stored = condition.annotation(atom_array, default="generate")
         ground_truth = stored.copy()
         ground_truth[~motif_mask] = none_value
+        ground_truth, rings = _whole_ring_groups(atom_array, ground_truth, none_value, ring_level_values, unions)
 
         # The annotation predates cropping, so drop entries whose partner the crop removed.
         if np.any(ground_truth != none_value):
             ground_truth = _drop_annotations_without_cross_chain_partner(
-                atom_array, ground_truth, stored, none_value, partners, unions, partner_cutoff, residue_level_values
+                atom_array,
+                ground_truth,
+                stored,
+                none_value,
+                partners,
+                unions,
+                partner_cutoff,
+                ring_level_values,
+                rings,
             )
 
         # Nothing left to reveal (single-chain input, or the crop took every partner): fall
@@ -261,7 +365,13 @@ def _subset_ground_truth_interaction_condition(
         return data
 
     if np.random.rand() < p_subsample:
-        ground_truth = subsample_condition_enum(ground_truth, subsample_frac, none_value=none_value)
+        # The partner might have dropped some rings, so we check for this explicitly
+        ground_truth = subsample_condition_enum(
+            ground_truth,
+            subsample_frac,
+            none_value=none_value,
+            groups=[ring for ring in rings if (ground_truth[ring] != none_value).all()],
+        )
 
     condition.set_annotation(atom_array, ground_truth)
     condition.set_mask(atom_array, ground_truth != none_value)
@@ -311,7 +421,7 @@ def add_pistack_condition(
         # 5.5 A ring centre-to-centre maximum, plus a ring radius at each end.
         partner_cutoff=8.5,
         # Both sides are rings: keep or drop each one whole.
-        residue_level_values=(True,),
+        ring_level_values=(True,),
     )
 
 
@@ -335,7 +445,7 @@ def add_pication_condition(
         # 6.0 A cation-to-ring-centre maximum, plus a ring radius.
         partner_cutoff=7.5,
         # The aromatic side is a ring: keep or drop it whole. The cation stays per-atom.
-        residue_level_values=(PiCationEnum.AROMATIC,),
+        ring_level_values=(PiCationEnum.AROMATIC,),
     )
 
 
