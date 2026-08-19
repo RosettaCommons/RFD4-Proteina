@@ -9,7 +9,7 @@ probability: 1.0
 
 dataset:
   name: omol
-  lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol/data
+  lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol_annotated/data
   memory_map: True
   data: ${oc.env:DATA_PATH}/train_datasets/omol/omol.parquet
   lmdb_idx_column: lmdb_idx
@@ -28,6 +28,8 @@ dataset:
 
   parser_args:
     _target_: rfproteina.utils.parse_presets.distillation
+    # Annotated CIFs: load the StandardAnnotations the interaction conditions read from.
+    load_standard_annotations: true
     # Cache parsed structures to node-local NVMe
     save_to_cache: true
     load_from_cache: true

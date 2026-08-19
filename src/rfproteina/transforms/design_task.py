@@ -34,8 +34,13 @@ from rfproteina.conditions import C_CRDGRP, C_HOT, C_IDXGRP, C_INTCRD
 from rfproteina.transforms.design_task_modifiers import (
     add_cath_condition,
     add_hbond_condition,
+    add_hydrophobic_condition,
+    add_metal_condition,
     add_not_cysteine_condition,
+    add_pication_condition,
+    add_pistack_condition,
     add_rasa_condition,
+    add_salt_condition,
     add_secondary_structure_condition,
 )
 from rfproteina.transforms.na_geom import apply_training_na_ss_condition
@@ -76,9 +81,33 @@ RFD3_DESIGN_TASK_DEFAULTS = {
     },
     "hbond_kwargs": {
         "p_add_hbond_condition": 0.0,  # 0.2 in RFD3
-        "cutoff_HA_dist": 2.2,
-        "cutoff_DA_distance": 3.2,
         "p_hbond_subsample": 0.5,
+        "hbond_subsample_frac": 0.5,
+    },
+    "pistack_kwargs": {
+        "p_add_pistack_condition": 0.0,
+        "p_pistack_subsample": 0.5,
+        "pistack_subsample_frac": 0.5,
+    },
+    "pication_kwargs": {
+        "p_add_pication_condition": 0.0,
+        "p_pication_subsample": 0.5,
+        "pication_subsample_frac": 0.5,
+    },
+    "salt_kwargs": {
+        "p_add_salt_condition": 0.0,
+        "p_salt_subsample": 0.5,
+        "salt_subsample_frac": 0.5,
+    },
+    "hydrophobic_kwargs": {
+        "p_add_hydrophobic_condition": 0.0,
+        "p_hydrophobic_subsample": 0.5,
+        "hydrophobic_subsample_frac": 0.5,
+    },
+    "metal_kwargs": {
+        "p_add_metal_condition": 0.0,
+        "p_metal_subsample": 0.5,
+        "metal_subsample_frac": 0.5,
     },
     "secondary_structure_kwargs": {
         "p_add_secondary_structure_condition": 0.0,  # 0.1 in RFD3
@@ -164,6 +193,11 @@ class RFD3DesignTask(DesignTaskABC):
         # Make local copies to avoid mutating instance state
         rasa_kwargs = self.rasa_kwargs.copy() | overrides.get("rasa_kwargs", {})
         hbond_kwargs = self.hbond_kwargs.copy() | overrides.get("hbond_kwargs", {})
+        pistack_kwargs = self.pistack_kwargs.copy() | overrides.get("pistack_kwargs", {})
+        pication_kwargs = self.pication_kwargs.copy() | overrides.get("pication_kwargs", {})
+        salt_kwargs = self.salt_kwargs.copy() | overrides.get("salt_kwargs", {})
+        hydrophobic_kwargs = self.hydrophobic_kwargs.copy() | overrides.get("hydrophobic_kwargs", {})
+        metal_kwargs = self.metal_kwargs.copy() | overrides.get("metal_kwargs", {})
         secondary_structure_kwargs = self.secondary_structure_kwargs.copy() | overrides.get(
             "secondary_structure_kwargs", {}
         )
@@ -174,6 +208,11 @@ class RFD3DesignTask(DesignTaskABC):
         data["task"] |= {
             "added_rasa_condition": False,
             "added_hbond_condition": False,
+            "added_pistack_condition": False,
+            "added_pication_condition": False,
+            "added_salt_condition": False,
+            "added_hydrophobic_condition": False,
+            "added_metal_condition": False,
             "added_secondary_structure_condition": False,
             "added_cath_c_condition": False,
             "added_cath_ca_condition": False,
@@ -182,18 +221,15 @@ class RFD3DesignTask(DesignTaskABC):
         }
 
         # Possibly add Conditions corresponding to design task modifiers
-        if true_with_prob(rasa_kwargs.pop("p_add_rasa_condition")):
-            data = add_rasa_condition(data, **rasa_kwargs)
-            data["task"]["added_rasa_condition"] = True
-        if true_with_prob(hbond_kwargs.pop("p_add_hbond_condition")):
-            data = add_hbond_condition(data, **hbond_kwargs)
-            data["task"]["added_hbond_condition"] = True
-        if true_with_prob(secondary_structure_kwargs.pop("p_add_secondary_structure_condition")):
-            data = add_secondary_structure_condition(data, **secondary_structure_kwargs)
-            data["task"]["added_secondary_structure_condition"] = True
-        if true_with_prob(not_cysteine_kwargs.pop("p_add_not_cysteine_condition")):
-            data = add_not_cysteine_condition(data, **not_cysteine_kwargs)
-            data["task"]["added_not_cysteine_condition"] = True
+        data = add_rasa_condition(data, **rasa_kwargs)
+        data = add_secondary_structure_condition(data, **secondary_structure_kwargs)
+        data = add_not_cysteine_condition(data, **not_cysteine_kwargs)
+        data = add_hbond_condition(data, **hbond_kwargs)
+        data = add_pistack_condition(data, **pistack_kwargs)
+        data = add_pication_condition(data, **pication_kwargs)
+        data = add_salt_condition(data, **salt_kwargs)
+        data = add_hydrophobic_condition(data, **hydrophobic_kwargs)
+        data = add_metal_condition(data, **metal_kwargs)
 
         # Stochasticity and task annotations handled internally for CATH conditioning
         data = add_cath_condition(data, **cath_kwargs)

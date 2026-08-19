@@ -1,0 +1,18 @@
+# Interchain interaction conditioning benchmark: 6 examples, each a single small-molecule
+# ligand (SAM, cholesterol, or vitamin B12) with one interaction type baked in via annotated
+# CIFs (benchmarks/interchain_interaction_conditioning): salt bridge, pi-stacking, pi-cation,
+# hbond donor/acceptor, hydrophobic, and metal coordination. Exercises the same annotated-CIF /
+# load_standard_annotations conditioning code path used during training, letting
+# InterchainInteractionMetric report per-interaction-type conditioning adherence.
+compute_loss: true
+
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/interchain_interaction_conditioning
+  num_replicates: 50
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - interchain_interactions

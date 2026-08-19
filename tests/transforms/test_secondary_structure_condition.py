@@ -20,7 +20,7 @@ def test_add_secondary_structure_condition_basic(cleanup_dssp, deterministic_rng
     """
     data = {"atom_array": cached_parse("1a8o")["atom_array"]}
 
-    result = add_secondary_structure_condition(data)
+    result = add_secondary_structure_condition(data, p_add_secondary_structure_condition=1.0)
     atom_array = result["atom_array"]
 
     # Verify DSSP annotations were created
@@ -54,7 +54,7 @@ def test_secondary_structure_requires_valid_dssp(cleanup_dssp, deterministic_rng
     """
     data = {"atom_array": cached_parse("1a8o")["atom_array"]}
 
-    result = add_secondary_structure_condition(data)
+    result = add_secondary_structure_condition(data, p_add_secondary_structure_condition=1.0)
     atom_array = result["atom_array"]
 
     # Where SS is conditioned (not 0/NONE), sse_is_valid must be True
@@ -75,7 +75,9 @@ def test_secondary_structure_island_sampling(cleanup_dssp, deterministic_rng):
     data = {"atom_array": cached_parse("1a8o")["atom_array"]}
 
     # Use controlled island parameters
-    result = add_secondary_structure_condition(data, min_ss_island_len=3, max_ss_island_len=3, n_islands_max=1)
+    result = add_secondary_structure_condition(
+        data, p_add_secondary_structure_condition=1.0, min_ss_island_len=3, max_ss_island_len=3, n_islands_max=1
+    )
     atom_array = result["atom_array"]
 
     # Check at token level

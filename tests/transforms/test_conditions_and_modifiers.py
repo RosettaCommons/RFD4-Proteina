@@ -25,21 +25,35 @@ from rfproteina.conditions import (
     C_CDR,
     C_HB,
     C_HOT,
+    C_HPHOB,
     C_IDXGRP,
+    C_MCOORD,
+    C_PICATION,
+    C_PISTACK,
     C_RAS,
+    C_SALT,
     C_SEC,
     HBondEnum,
+    MetalCoordEnum,
+    PiCationEnum,
     RasaEnum,
+    SaltBridgeEnum,
     SSEnum,
 )
 from rfproteina.transforms.design_task_modifiers import (
     add_hbond_condition,
+    add_hydrophobic_condition,
+    add_metal_condition,
+    add_pication_condition,
+    add_pistack_condition,
     add_rasa_condition,
+    add_salt_condition,
     add_secondary_structure_condition,
 )
 from rfproteina.transforms.utils.conditioning_utils import (
     sample_unindexed_groups,
 )
+from tests.transforms.synthetic_example_generator import concat_atom_arrays_without_conflict
 
 
 @pytest.fixture
@@ -292,7 +306,7 @@ class TestAddRasaCondition:
         rasa_max = 0.2
 
         # Run the modifier with p_include_non_ligand=1.0 to ensure all atoms are included
-        result = add_rasa_condition(data, p_include_non_ligand=1.0, rasa_max=rasa_max)
+        result = add_rasa_condition(data, p_add_rasa_condition=1.0, p_include_non_ligand=1.0, rasa_max=rasa_max)
         atom_array = result["atom_array"]
 
         # Check that binned RASA annotation was added
@@ -353,7 +367,7 @@ class TestAddRasaCondition:
 
         try:
             with pytest.raises(ValueError, match="Negative RASA value"):
-                add_rasa_condition(data, p_include_non_ligand=1.0)
+                add_rasa_condition(data, p_add_rasa_condition=1.0, p_include_non_ligand=1.0)
         finally:
             mod.calculate_atomwise_rasa = original_calc
 
@@ -366,41 +380,194 @@ class TestAddSecondaryStructureCondition:
         """Test that SS annotations are added and are a subset of ground-truth SS."""
         data = {"atom_array": unannotated_atom_array}
 
-        result = add_secondary_structure_condition(data)
+        result = add_secondary_structure_condition(data, p_add_secondary_structure_condition=1.0)
         atom_array = result["atom_array"]
 
         # Check that the SS condition annotation was added
         assert C_SEC.full_name in atom_array.get_annotation_categories()
 
 
-@pytest.mark.slow
-class TestAddHbondCondition:
-    """Tests for the add_hbond_condition modifier function."""
+@pytest.fixture
+def protein_with_contacting_partner_chain(simple_protein):
+    """``simple_protein`` plus a copy of itself as a second chain, offset by 2.5 A.
 
-    def test_hbond_annotations_and_subsampling(self, unannotated_atom_array):
-        """Test that hydrogen bond annotations are added and subsampling works correctly."""
-        data = {"atom_array": unannotated_atom_array.copy()}
+    An interaction annotation is only revealed while some *other* chain carries the
+    complementary value within the detector's cutoff -- 3.0 A at the tightest (metal
+    coordination). Duplicating the chain 2.5 A away gives every atom a cross-chain neighbour,
+    so which annotations have a partner is decided purely by the values a test writes onto
+    chain B, not by the geometry of the original structure.
+    """
+    chain_a = simple_protein["atom_array"].copy()
+    chain_b = chain_a.copy()
+    chain_b.coord = chain_b.coord + np.array([2.5, 0.0, 0.0])
+    return concat_atom_arrays_without_conflict(chain_a, chain_b)
 
-        # First run with subsampling enabled
-        result = add_hbond_condition(data, p_hbond_subsample=1.0)
-        atom_array = result["atom_array"]
 
-        # Check that hbond annotations were added
-        assert C_HB.full_name in atom_array.get_annotation_categories()
+@pytest.mark.fast
+class TestSubsetGroundTruthInteractionConditions:
+    """Tests for the interaction-condition modifiers (hbond/pistack/pication/salt/hydrophobic/metal).
 
-        hbond_annot = C_HB.annotation(atom_array)
+    These modifiers subset a ground-truth interaction Condition that is already present on the
+    AtomArray -- they do not compute interactions themselves.
+    """
 
-        assert hbond_annot.dtype == int
+    @pytest.mark.parametrize(
+        "add_condition_fn,condition,none_value,active_value,partner_value,p_add_kwarg,p_subsample_kwarg,subsample_frac_kwarg",
+        [
+            (
+                add_hbond_condition,
+                C_HB,
+                HBondEnum.NONE,
+                HBondEnum.DONOR,
+                HBondEnum.ACCEPTOR,
+                "p_add_hbond_condition",
+                "p_hbond_subsample",
+                "hbond_subsample_frac",
+            ),
+            (
+                add_pistack_condition,
+                C_PISTACK,
+                False,
+                True,
+                True,
+                "p_add_pistack_condition",
+                "p_pistack_subsample",
+                "pistack_subsample_frac",
+            ),
+            (
+                add_pication_condition,
+                C_PICATION,
+                PiCationEnum.NONE,
+                PiCationEnum.AROMATIC,
+                PiCationEnum.CATION,
+                "p_add_pication_condition",
+                "p_pication_subsample",
+                "pication_subsample_frac",
+            ),
+            (
+                add_salt_condition,
+                C_SALT,
+                SaltBridgeEnum.NONE,
+                SaltBridgeEnum.POSITIVE,
+                SaltBridgeEnum.NEGATIVE,
+                "p_add_salt_condition",
+                "p_salt_subsample",
+                "salt_subsample_frac",
+            ),
+            (
+                add_hydrophobic_condition,
+                C_HPHOB,
+                False,
+                True,
+                True,
+                "p_add_hydrophobic_condition",
+                "p_hydrophobic_subsample",
+                "hydrophobic_subsample_frac",
+            ),
+            (
+                add_metal_condition,
+                C_MCOORD,
+                MetalCoordEnum.NONE,
+                MetalCoordEnum.METAL,
+                MetalCoordEnum.COORDINATING,
+                "p_add_metal_condition",
+                "p_metal_subsample",
+                "metal_subsample_frac",
+            ),
+        ],
+    )
+    def test_gates_masks_and_clears_ground_truth(
+        self,
+        deterministic_rng,
+        protein_with_contacting_partner_chain,
+        add_condition_fn,
+        condition,
+        none_value,
+        active_value,
+        partner_value,
+        p_add_kwarg,
+        p_subsample_kwarg,
+        subsample_frac_kwarg,
+    ):
+        base_atom_array = protein_with_contacting_partner_chain
+        n = base_atom_array.array_length()
+        n_chain_a = int(np.sum(base_atom_array.chain_id == "A"))
 
-        # Check that subsampling occurred (should be in log_dict)
-        assert "hbond_subsample_atoms" in result["log_dict"]
-        assert "hbond_total_count" in result["log_dict"]
+        # Synthetic ground truth: the first 20 atoms of chain A carry a real interaction, but only
+        # the first 10 are "motif" (sequence-conditioned) -- i.e., eligible to be revealed. Chain B
+        # carries the complementary value throughout, so every chain-A annotation keeps a partner.
+        ground_truth = np.full(n, none_value)
+        ground_truth[:20] = active_value
+        ground_truth[n_chain_a:] = partner_value
+        condition.set_annotation(base_atom_array, ground_truth)
 
-        # Subsampled count should be < total count
-        assert result["log_dict"]["hbond_subsample_atoms"] < result["log_dict"]["hbond_total_count"]
+        motif_mask = np.zeros(n, dtype=bool)
+        motif_mask[:10] = True
+        C_SEQ.set_mask(base_atom_array, motif_mask)
 
-        # make sure there are actually some hbonds
-        assert hbond_annot.sum() > 0
+        # p_add=0.0 -> ground truth must be fully cleared, even though it was present on the array.
+        data = {"atom_array": base_atom_array.copy(), "task": {}}
+        result = add_condition_fn(data, **{p_add_kwarg: 0.0, p_subsample_kwarg: 0.0})
+        assert np.all(condition.annotation(result["atom_array"]) == none_value)
+
+        # p_add=1.0, no subsampling -> only the motif-masked subset of ground truth is revealed.
+        data = {"atom_array": base_atom_array.copy(), "task": {}}
+        result = add_condition_fn(data, **{p_add_kwarg: 1.0, p_subsample_kwarg: 0.0})
+        revealed = condition.annotation(result["atom_array"])
+        assert np.all(revealed[:10] == active_value)
+        assert np.all(revealed[10:] == none_value)
+
+        # p_add=1.0 with subsampling forced -> a strict subset of the 10 motif atoms survives.
+        # keep_count = int(10 * 0.5) = 5, and survivors must still be within the motif region.
+        data = {"atom_array": base_atom_array.copy(), "task": {}}
+        result = add_condition_fn(data, **{p_add_kwarg: 1.0, p_subsample_kwarg: 1.0, subsample_frac_kwarg: 0.5})
+        subsampled = condition.annotation(result["atom_array"])
+        assert np.sum(subsampled != none_value) == 5
+        assert np.all(subsampled[10:] == none_value)
+
+    def test_clears_condition_when_no_partner_survives(self, deterministic_rng, simple_protein):
+        """A crop that took the partner chain leaves nothing to reveal, so nothing is flagged."""
+        atom_array = simple_protein["atom_array"].copy()
+        n = atom_array.array_length()
+
+        ground_truth = np.full(n, HBondEnum.NONE)
+        ground_truth[:20] = HBondEnum.DONOR
+        C_HB.set_annotation(atom_array, ground_truth)
+
+        motif_mask = np.zeros(n, dtype=bool)
+        motif_mask[:10] = True
+        C_SEQ.set_mask(atom_array, motif_mask)
+
+        data = {"atom_array": atom_array, "task": {}}
+        result = add_hbond_condition(data, p_add_hbond_condition=1.0, p_hbond_subsample=0.0)
+
+        assert np.all(C_HB.annotation(result["atom_array"]) == HBondEnum.NONE)
+        assert "added_hbond_condition" not in result["task"]
+
+    def test_union_degrades_to_the_role_that_keeps_a_partner(
+        self, deterministic_rng, protein_with_contacting_partner_chain
+    ):
+        """``BOTH`` stays a union only while each of its two roles keeps a partner."""
+        atom_array = protein_with_contacting_partner_chain
+        n = atom_array.array_length()
+        n_chain_a = int(np.sum(atom_array.chain_id == "A"))
+
+        ground_truth = np.full(n, HBondEnum.NONE)
+        ground_truth[:10] = HBondEnum.BOTH
+        ground_truth[n_chain_a:] = HBondEnum.ACCEPTOR  # the partner chain accepts, but never donates
+        C_HB.set_annotation(atom_array, ground_truth)
+
+        motif_mask = np.zeros(n, dtype=bool)
+        motif_mask[:10] = True
+        C_SEQ.set_mask(atom_array, motif_mask)
+
+        data = {"atom_array": atom_array, "task": {}}
+        result = add_hbond_condition(data, p_add_hbond_condition=1.0, p_hbond_subsample=0.0)
+
+        # The donor half of BOTH keeps its acceptor partner; the acceptor half has no donor left.
+        revealed = C_HB.annotation(result["atom_array"])
+        assert np.all(revealed[:10] == HBondEnum.DONOR)
+        assert np.all(revealed[10:] == HBondEnum.NONE)
 
 
 @pytest.mark.fast

@@ -1,5 +1,5 @@
 # AFDB Dimer Training - Protein dimers from TED dataset
-# Uses extracted PDB files for dimer training with PPI tasks
+# Uses the annotated CIFs served by the /squash/ted_dimers mount, with PPI tasks
 
 defaults:
   - ../base_pandas@dataset
@@ -10,8 +10,9 @@ probability: 1.0  # Need this default for mixed samples
 
 dataset:
   name: afdb_dimer_train
-  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/data/ted_dimers_annotated.parquet
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
     parser_args:
       _target_: rfproteina.utils.parse_presets.distillation
+      load_standard_annotations: true

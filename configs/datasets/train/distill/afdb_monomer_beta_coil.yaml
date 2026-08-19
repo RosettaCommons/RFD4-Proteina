@@ -10,7 +10,7 @@ probability: 1.0
 
 dataset:
   name: afdb_monomer_beta_coil
-  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_monomer.parquet
+  data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_monomer_annotated.parquet
   memory_map: True
   columns_to_load:
     - example_id
@@ -25,6 +25,8 @@ dataset:
     - on_disk
   loader:
     base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/afdb_monomer
+    parser_args:
+      load_standard_annotations: true
   filters:
     - "length >= 33 and length <= 511"
     - "plddt_avg >= 80 and plddt_avg <= 100"

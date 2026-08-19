@@ -106,15 +106,23 @@ from rfproteina.conditions import (
     C_CRDGRP,
     C_HB,
     C_HOT,
+    C_HPHOB,
     C_IDXGRP,
     C_INTCRD,
+    C_MCOORD,
     C_NA_SS_STATE,
     C_NCYS,
+    C_PICATION,
+    C_PISTACK,
     C_RAS,
+    C_SALT,
     C_SEC,
     BasePairEnum,
     HBondEnum,
+    MetalCoordEnum,
+    PiCationEnum,
     RasaEnum,
+    SaltBridgeEnum,
 )
 from rfproteina.datapipes.bonds import compute_token_bond_features
 from rfproteina.transforms.atom_names import (
@@ -494,6 +502,11 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats[C_RAS.full_name] = C_RAS.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_SEC.full_name] = C_SEC.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
+        feats[C_PISTACK.full_name] = C_PISTACK.annotation(aa, default="generate")
+        feats[C_PICATION.full_name] = C_PICATION.annotation(aa, default="generate")
+        feats[C_SALT.full_name] = C_SALT.annotation(aa, default="generate")
+        feats[C_HPHOB.full_name] = C_HPHOB.annotation(aa, default="generate")
+        feats[C_MCOORD.full_name] = C_MCOORD.annotation(aa, default="generate")
         feats[C_IDXGRP.full_name] = C_IDXGRP.annotation(aa, default="generate")
         feats[C_CRDGRP.full_name] = C_CRDGRP.annotation(aa, default="generate")
         feats[C_CENTROID.full_name] = C_CENTROID.annotation(
@@ -563,6 +576,11 @@ ATOM37_FEATURES = [
     (C_HOT.full_name, (), False),
     (C_RAS.full_name, (), RasaEnum.UNSPECIFIED),
     (C_HB.full_name, (), HBondEnum.NONE),
+    (C_PISTACK.full_name, (), False),
+    (C_PICATION.full_name, (), PiCationEnum.NONE),
+    (C_SALT.full_name, (), SaltBridgeEnum.NONE),
+    (C_HPHOB.full_name, (), False),
+    (C_MCOORD.full_name, (), MetalCoordEnum.NONE),
 ]
 """Features to convert from atom-level to token-level atom37 representation.
 

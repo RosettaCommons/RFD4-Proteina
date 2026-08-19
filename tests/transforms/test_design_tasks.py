@@ -87,7 +87,7 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 
-from rfproteina.conditions import C_HB, C_RAS, C_SEC, RasaEnum, SSEnum
+from rfproteina.conditions import C_RAS, C_SEC, RasaEnum, SSEnum
 from rfproteina.transforms.design_task import (
     InverseFoldingTask,
     ProteinFromDNASequenceContextTask,
@@ -319,12 +319,11 @@ def test_coords_and_distances_only_applied_to_sequence_conditioned_or_backbone_a
 def test_design_task_modifiers(protein_with_ligand):
     """
     Uses protein + ligand example and runs UnconditionalTask with design task modifiers set to 100% probability.
-    Then makes sure the RASA, hbond, and secondary structure conditions are present and not all 0s
+    Then makes sure the RASA and secondary structure conditions are present and not all 0s
     """
 
     design_task = UnconditionalTask(
         rasa_kwargs={"p_add_rasa_condition": 1.0},
-        hbond_kwargs={"p_add_hbond_condition": 1.0},
         secondary_structure_kwargs={"p_add_secondary_structure_condition": 1.0},
     )
 
@@ -333,12 +332,10 @@ def test_design_task_modifiers(protein_with_ligand):
 
     # check task dict
     assert data["task"]["added_rasa_condition"]
-    assert data["task"]["added_hbond_condition"]
     assert data["task"]["added_secondary_structure_condition"]
 
     # check masks
     assert C_RAS.mask(atom_array).sum() > 0
-    assert C_HB.mask(atom_array).sum() > 0
     assert C_SEC.mask(atom_array).sum() > 0
 
     # check annotations
