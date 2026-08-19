@@ -17,6 +17,7 @@ import contextlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from atomworks.io.config import ParseConfig
@@ -31,8 +32,11 @@ from atomworks.io.utils.annotator import ensure_annotations, remove_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.chain import create_chain_id_generator
 from atomworks.io.utils.selection import get_annotation_categories
+from atomworks.ml.transforms.atom_array import add_global_atom_id_annotation
+from atomworks.ml.transforms.crop import get_token_count
 from biotite.structure import AtomArray
 
+from rfproteina.transforms.utils.ppi_utils import crop_spatial_keep_full_binder
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import ANNOTATED_CIF
@@ -103,6 +107,24 @@ class PreOracleTransform(ABC):
             A non-empty list of :py:class:`PreOracleOutput` whose save_ids are
             :py:meth:`expected_save_ids`. The common case is a single-element list.
         """
+
+
+def _binder_pn_unit_iid(atom_array: AtomArray, coi_mask: np.ndarray) -> str:
+    """The single ``pn_unit_iid`` covering the chain of interest.
+
+    Args:
+        atom_array: Structure carrying a ``pn_unit_iid`` annotation.
+        coi_mask: Atom mask selecting the chain of interest (see :py:func:`_coi_mask`).
+
+    Raises:
+        ValueError: If the chain of interest is not exactly one polymer/non-polymer unit,
+            which is what :py:func:`~rfproteina.transforms.utils.ppi_utils.crop_spatial_keep_full_binder`
+            treats as "the binder".
+    """
+    pn_unit_iids = np.unique(atom_array.pn_unit_iid[coi_mask])
+    if len(pn_unit_iids) != 1:
+        raise ValueError(f"Chain of interest spans pn_unit_iids {pn_unit_iids.tolist()}; expected exactly one.")
+    return str(pn_unit_iids[0])
 
 
 def _coi_mask(atom_array: AtomArray) -> tuple[np.ndarray, str]:
@@ -300,3 +322,79 @@ class OffTargetSubstitutionTransform(PreOracleTransform):
                 f"substituted {off_target.array_length()} atoms from {self.off_target_paths[save_id].name}"
             )
         return outputs
+
+
+class BinderContextCropTransform(PreOracleTransform):
+    """Crop the target to the interface neighbourhood, keeping the whole binder.
+
+    Reserves the full chain of interest, then spends the remaining ``crop_size``
+    budget on the target tokens nearest a sampled binder-target interface centre
+    (:py:func:`~rfproteina.transforms.utils.ppi_utils.crop_spatial_keep_full_binder`).
+
+    Args:
+        crop_size: Token budget for the whole cropped complex (binder + target context).
+        crop_center_cutoff_distance: Max distance (Å) from the partner used to pick a
+            crop centre at the interface.
+        crop_center_selection: How to pick the crop centre from the interface-candidate atoms.
+            ``"random"`` (AF3-style) draws one uniformly at random, so the crop wanders across the
+            interface between replicates; ``"centroid"`` picks the candidate atom nearest the
+            interface centroid for a deterministic crop centred on the binder-target interface.
+        save_id: save_id for the single emitted output.
+    """
+
+    def __init__(
+        self,
+        crop_size: int = 256,
+        crop_center_cutoff_distance: float = 15.0,
+        crop_center_selection: Literal["random", "centroid"] = "random",
+        save_id: str = "crop",
+    ) -> None:
+        self.crop_size = crop_size
+        self.crop_center_cutoff_distance = crop_center_cutoff_distance
+        self.crop_center_selection = crop_center_selection
+        self.save_id = save_id
+
+    def expected_save_ids(self) -> list[str]:
+        return [self.save_id]
+
+    def forward(self, atom_array: AtomArray) -> list[PreOracleOutput]:
+        """Crop ``atom_array`` to the binder plus its nearest target context.
+
+        Raises:
+            ValueError: If no chain of interest could be determined, or it is not a
+                single pn_unit (see :py:func:`_binder_pn_unit_iid`).
+        """
+        coi_mask, coi = _coi_mask(atom_array)
+        binder_pn_unit_iid = _binder_pn_unit_iid(atom_array, coi_mask)
+        query_pn_unit_iids = sorted(np.unique(atom_array.pn_unit_iid).tolist())
+
+        n_binder_tokens = get_token_count(atom_array[atom_array.pn_unit_iid == binder_pn_unit_iid])
+        assert n_binder_tokens <= self.crop_size, (
+            f"BinderContextCrop: binder {coi!r} has {n_binder_tokens} tokens, "
+            f"which exceeds the crop_size budget of {self.crop_size} tokens"
+        )
+
+        # The spatial crop reads two annotations a generated design may not carry: ``occupancy``
+        # (its interface-centre search skips unresolved atoms) and ``atom_id`` (the crop-centre
+        # lookup). Fill both if missing -- assume that every atom is resolved, and atom_id is a positional
+        # index -- on a copy, so the untransformed array is left untouched.
+        atom_array = as_atom_array_plus(atom_array.copy())
+        if "occupancy" not in atom_array.get_annotation_categories():
+            atom_array.set_annotation("occupancy", np.ones(atom_array.array_length()))
+        if "atom_id" not in atom_array.get_annotation_categories():
+            add_global_atom_id_annotation(atom_array)
+
+        crop_info = crop_spatial_keep_full_binder(
+            atom_array,
+            query_pn_unit_iids=query_pn_unit_iids,
+            binder_pn_unit_iid=binder_pn_unit_iid,
+            crop_size=self.crop_size,
+            crop_center_cutoff_distance=self.crop_center_cutoff_distance,
+            crop_center_selection=self.crop_center_selection,
+        )
+        cropped = as_atom_array_plus(atom_array[crop_info["crop_atom_idxs"]])
+        logger.info(
+            f"BinderContextCrop: kept binder {coi!r} whole, cropped "
+            f"{atom_array.array_length()}->{cropped.array_length()} atoms (budget {self.crop_size} tokens)"
+        )
+        return [PreOracleOutput(save_id=self.save_id, atom_array=cropped, chain_of_interest=coi)]
