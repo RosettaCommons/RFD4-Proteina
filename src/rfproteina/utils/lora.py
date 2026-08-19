@@ -1,9 +1,36 @@
 import loralib as lora
+from omegaconf import DictConfig
 from torch import nn
 
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def maybe_apply_lora(model: nn.Module, cfg_exp: DictConfig) -> bool:
+    """Insert LoRA layers into ``model`` in place if ``cfg_exp.lora.r`` asks for them.
+
+    Idempotent (skips if LoRA layers already present). Returns True if the model has
+    LoRA layers on return, False if LoRA is off.
+    """
+    if not (cfg_exp.get("lora") and cfg_exp.lora.get("r")):
+        return False
+
+    if any(isinstance(m, lora.Linear | lora.Embedding) for m in model.modules()):
+        logger.info("LoRA layers already present; skipping replacement.")
+        return True
+
+    lora_r = cfg_exp.lora.r
+    lora_alpha = cfg_exp.lora.lora_alpha
+    lora_dropout = cfg_exp.lora.lora_dropout
+    logger.info(f"Applying LoRA with r={lora_r}, alpha={lora_alpha}, dropout={lora_dropout}")
+
+    replace_lora_layers(
+        model, lora_r, lora_alpha, lora_dropout, exclude_keys=tuple(cfg_exp.lora.get("exclude_keys", []))
+    )
+    lora.mark_only_lora_as_trainable(model, bias=cfg_exp.lora.train_bias)
+    logger.info("LoRA layers successfully applied")
+    return True
 
 
 def replace_lora_layers(

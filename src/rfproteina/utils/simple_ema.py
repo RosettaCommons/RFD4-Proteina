@@ -61,9 +61,16 @@ class SimpleEMA(Callback):
         if self.ema_model is None:
             self.ema_model = AveragedModel(pl_module, avg_fn=get_ema_avg_fn(self.decay), use_buffers=True)
 
-            # Load saved state if resuming from checkpoint
+            # Load saved state if resuming. Missing LoRA keys are fine (a pre-LoRA
+            # checkpoint has none, and they start from init); anything else still raises.
             if hasattr(self, "_loaded_ema_state"):
-                self.ema_model.load_state_dict(self._loaded_ema_state)
+                incompatible = self.ema_model.load_state_dict(self._loaded_ema_state, strict=False)
+                missing = [k for k in incompatible.missing_keys if not k.endswith((".lora_A", ".lora_B"))]
+                if missing or incompatible.unexpected_keys:
+                    raise RuntimeError(
+                        f"EMA state does not match the model: missing={missing}, "
+                        f"unexpected={list(incompatible.unexpected_keys)}"
+                    )
                 delattr(self, "_loaded_ema_state")
                 rank_zero_info("Restored EMA state from checkpoint")
             else:

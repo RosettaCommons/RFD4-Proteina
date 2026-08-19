@@ -22,6 +22,7 @@ from rfproteina.partial_autoencoder.latent_viz_utils import (
 from rfproteina.utils.atom_permutation import permute_gt_atom37
 from rfproteina.utils.coors import nm_to_ang
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.lora import maybe_apply_lora
 from rfproteina.utils.optim_utils import build_optimizers
 from rfproteina.utils.structure_export import (
     process_single_sample_to_atom_array,
@@ -120,6 +121,7 @@ class AutoEncoder(L.LightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
+        maybe_apply_lora(self, self.cfg_ae)
         try:
             self.nsamples_processed = checkpoint["nsamples_processed"]
         except KeyError:

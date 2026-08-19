@@ -42,6 +42,7 @@ from rfproteina.utils.datasets import (  # noqa: E402
     recursively_instantiate_datasets_and_samplers,
 )
 from rfproteina.utils.hydra import instantiate_callbacks  # noqa: E402
+from rfproteina.utils.lora import maybe_apply_lora  # noqa: E402
 from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
 from rfproteina.utils.torch import apply_torch_deterministic  # noqa: E402
 from rfproteina.utils.torch_compile import SaveCompileCacheCallback, load_compile_cache  # noqa: E402
@@ -182,26 +183,7 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
 
     # If LoRA is turned on, replace Linear with LoRA layers
     # Note: We do not use LoRA in the La-Proteina paper.
-    if cfg_exp.get("lora") and cfg_exp.lora.get("r"):
-        try:
-            import loralib as lora
-
-            from rfproteina.utils.lora import replace_lora_layers
-
-            lora_r = cfg_exp.lora.r
-            lora_alpha = cfg_exp.lora.lora_alpha
-            lora_dropout = cfg_exp.lora.lora_dropout
-            logger.info(f"Applying LoRA with r={lora_r}, alpha={lora_alpha}, dropout={lora_dropout}")
-
-            # Get exclude_keys from config (if specified)
-            exclude_keys = tuple(cfg_exp.lora.get("exclude_keys", []))
-
-            replace_lora_layers(model, lora_r, lora_alpha, lora_dropout, exclude_keys=exclude_keys)
-            lora.mark_only_lora_as_trainable(model, bias=cfg_exp.lora.train_bias)
-            logger.info("LoRA layers successfully applied")
-        except ImportError:
-            logger.info("WARNING: LoRA is enabled in config but loralib is not installed.")
-            logger.info("To use LoRA, install loralib: pip install loralib")
+    maybe_apply_lora(model, cfg_exp)
 
     # If this is the first run for fine-tuning, load pre-trained checkpoint
     pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)

@@ -51,6 +51,7 @@ from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
+from rfproteina.utils.lora import maybe_apply_lora
 from rfproteina.utils.optim_utils import build_optimizers
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
@@ -439,6 +440,10 @@ class Proteina(L.LightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
+        # Re-insert LoRA layers before load_state_dict runs, or strict loading of a LoRA
+        # checkpoint fails on its lora_A/lora_B keys. Idempotent, so a resume is unaffected.
+        maybe_apply_lora(self, self.cfg_exp)
+
         try:
             self.nflops = checkpoint["nflops"]
             self.nsamples_processed = checkpoint["nsamples_processed"]
