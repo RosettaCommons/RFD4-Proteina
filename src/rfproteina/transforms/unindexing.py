@@ -770,6 +770,11 @@ def annotate_unindexed_insertion(
     coord_groups_all = C_CRDGRP.annotation(atom_array, default="generate")
     unindexed_coord_groups = coord_groups_all[~has_index]
 
+    # Only coordinate-conditioned atoms are transferred onto the target token, so the rest (e.g. the
+    # sidechain of a sequence-free residue) must not be matched -- they have no partner to find.
+    is_coord_conditioned_in_context = np.zeros(atom_array.array_length(), dtype=bool)
+    is_coord_conditioned_in_context[~has_index] = has_3d_conditioning
+
     # Apply the token mapping
     try:
         for unindexed_token_id, target_token_id in token_mapping.items():
@@ -782,7 +787,7 @@ def annotate_unindexed_insertion(
                 token_src_id = str(unindexed_token_id)
 
             # Local permutation of atoms within the target token matching the unindexed token's atom ordering/subset
-            insertion_mask = (atom_array.token_id == unindexed_token_id) & ~has_index
+            insertion_mask = (atom_array.token_id == unindexed_token_id) & is_coord_conditioned_in_context
             target_mask = (atom_array.token_id == target_token_id) & has_index
             target_indices_corresponding_to_inserted = _get_target_indices_corresponding_to_inserted(
                 atom_array,
@@ -795,17 +800,20 @@ def annotate_unindexed_insertion(
                 target_indices_corresponding_to_inserted
             ]
 
-            mapped_to_unindexed_insertion[permuted_target_indices_generated] = True
+            mapped_to_unindexed_insertion[target_mask_generated] = True
 
-            # Per-atom coord-conditioning mask for this token (aligned with the inserted-atom order,
-            # hence with permuted_target_indices_generated). Only these atoms are coordinate-conditioned.
+            # Selects this token's coord-conditioned atoms out of its in-context slice, in the same
+            # order as the matched atoms in permuted_target_indices_generated.
             token_coord_mask = has_3d_conditioning[unindexed_token_mask]
-            cond_target_indices = permuted_target_indices_generated[token_coord_mask]
-            mapped_to_coordinate_conditioned_region[cond_target_indices] = True
-            src_coordinate_conditioned_region[cond_target_indices] = token_src_id
-            src_coord_group[cond_target_indices] = unindexed_coord_groups[unindexed_token_mask][token_coord_mask]
-            remapped_coord[cond_target_indices] = unindexed_token.coord[token_coord_mask]
-            reference_coord[cond_target_indices] = unindexed_internal_coords[unindexed_token_mask][token_coord_mask]
+            mapped_to_coordinate_conditioned_region[permuted_target_indices_generated] = True
+            src_coordinate_conditioned_region[permuted_target_indices_generated] = token_src_id
+            src_coord_group[permuted_target_indices_generated] = unindexed_coord_groups[unindexed_token_mask][
+                token_coord_mask
+            ]
+            remapped_coord[permuted_target_indices_generated] = unindexed_token.coord[token_coord_mask]
+            reference_coord[permuted_target_indices_generated] = unindexed_internal_coords[unindexed_token_mask][
+                token_coord_mask
+            ]
 
         SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
         SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
