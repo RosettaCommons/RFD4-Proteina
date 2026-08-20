@@ -190,6 +190,14 @@ atomworks pymol add rfproteina.pymol.editors
 pymol
 ```
 
+**On Windows** there is no `make`, so replace `make setup-pymol` with
+`conda env create -f src\rfproteina\pymol\pymol_env.yaml` and leave the other steps as they are.
+Three things bite only there, all covered in the plugin README's *Windows (PowerShell)* section:
+`conda activate` silently no-ops until you run `conda init powershell` and
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`; the submodule clone needs an elevated
+`Start-Service ssh-agent` plus an SSH key authorized for `private-organization` SSO; and pip's
+`pymol requires numpy<2` warning is stale metadata that you should not act on.
+
 Inside the panel, start with **Load CIF** on the Main tab. Annotate on the **Annotations** tab,
 where each entry is a condition the model reads, listed in the table below. Edit the bond graph on
 the **Bonds** tab and formal charges on the **Charges** tab. Insert variable length **expandable
