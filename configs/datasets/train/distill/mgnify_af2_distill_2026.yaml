@@ -1,0 +1,42 @@
+# MGnify metagenomic sequences predicted with AlphaFold2.
+#
+#   structures   7,679,297
+#   size         704 GB
+#   median len   321 tokens
+#   after filters (mean_plddt >= 85, ptm >= 0.80, n_tokens <= 256):  1,017,875
+#
+
+defaults:
+  - ../base@dataset
+  - /design_tasks/presets/motif_pretraining@dataset.transform.design_tasks
+  - _self_
+
+probability: 1.0
+
+dataset:
+  _target_: atomworks.ml.datasets.PandasDataset
+  name: mgnify_af2_distill_2026
+  data: ${oc.env:DATA_PATH}/train_datasets/mgnify_af2_distill_2026/mgnify_af2_distill_2026.parquet
+  memory_map: True
+
+  columns_to_load:
+    - example_id
+    - n_tokens
+    - mean_plddt
+    - ptm
+
+  filters:
+    # Confidence floor.
+    - "mean_plddt >= 85"
+    - "ptm >= 0.80"
+    # Length gate, tracking the crop. <= 256 keeps 1,647,545 of 7,679,297 on its own, and
+    # 1,017,875 once the confidence floor is applied too.
+    - "n_tokens <= ${oc.select:_max_tokens,256}"
+
+  loader:
+    _target_: atomworks.ml.datasets.loaders.create_blob_cif_loader
+    blob_dir: s3://YOUR_DATASET_STORE/train_datasets/mgnify_af2_distill_2026/data/blob
+    example_id_colname: example_id
+    assembly_id_colname: null  # no assembly column; the loader falls back to "1"
+    parser_args:
+      _target_: rfproteina.utils.parse_presets.distillation
