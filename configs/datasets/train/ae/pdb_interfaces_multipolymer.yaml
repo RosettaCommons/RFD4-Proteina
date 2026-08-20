@@ -35,7 +35,6 @@ dataset:
       _target_: rfproteina.utils.parse_presets.distillation
       save_to_cache: True
       load_from_cache: True
-      cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache
 
   filters:
     - "deposition_date < '2024-01-01'"

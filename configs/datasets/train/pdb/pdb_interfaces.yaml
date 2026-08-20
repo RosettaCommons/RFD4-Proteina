@@ -26,7 +26,6 @@ dataset:
       load_standard_annotations: true
       save_to_cache: True
       load_from_cache: True
-      cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache
 
   # Filters for PDB interfaces dataset
   filters:

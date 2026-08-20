@@ -30,7 +30,6 @@ dataset:
       # Cache parsed structures to node-local NVMe
       save_to_cache: true
       load_from_cache: true
-      cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache
 
   columns_to_load:
     - example_id
