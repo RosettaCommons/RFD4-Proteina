@@ -223,7 +223,10 @@ def run_evaluate(cfg: DictConfig) -> None:
     for mm in filter(None, [oracle_mm, refold_mm, pass_mm]):
         mm.on_validation_epoch_end()
 
-    cleaned_design = [c for m in design_results if (c := _clean_metrics_dict(m)) is not None]
+    # Design rows may carry only metadata (e.g. when every design metric is disabled), but that
+    # metadata -- output_base_dir, designed_chain_path, task -- is what routes Foldseek clustering
+    # downstream, so keep those rows and let the merge below fold them into the refolding rows.
+    cleaned_design = [c for m in design_results if (c := _clean_metrics_dict(m, keep_metadata_only=True)) is not None]
     cleaned_refold = [c for m in refolding_results if (c := _clean_metrics_dict(m)) is not None]
     if cleaned_design or cleaned_refold:
         by_id: dict = {}

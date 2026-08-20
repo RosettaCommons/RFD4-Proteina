@@ -230,8 +230,17 @@ def _combined_val_tags(
     return base if base else None
 
 
-def _clean_metrics_dict(metrics: dict) -> dict | None:
-    """Convert a metrics dict to clean floats for gathering across ranks."""
+def _clean_metrics_dict(metrics: dict, keep_metadata_only: bool = False) -> dict | None:
+    """Convert a metrics dict to clean floats for gathering across ranks.
+
+    Args:
+      metrics: Raw metrics dict, possibly mixing metadata and numeric metrics.
+      keep_metadata_only: If True, return metadata-only dicts instead of ``None``.
+        Set this when the row carries routing metadata (``output_base_dir``,
+        ``designed_chain_path``, ``task``) that a later merge step still needs,
+        as in :py:func:`~rfproteina.evaluate.run_evaluate`, where design rows are
+        merged into refolding rows by ``example_id``.
+    """
     if metrics is None:
         return None
 
@@ -282,8 +291,8 @@ def _clean_metrics_dict(metrics: dict) -> dict | None:
     else:
         cleaned["chain_of_interest"] = None
 
-    # Return None if only metadata (no actual metrics)
-    return cleaned if non_metadata_metrics_detected else None
+    # Return None if only metadata (no actual metrics), unless the caller needs it kept
+    return cleaned if (non_metadata_metrics_detected or keep_metadata_only) else None
 
 
 def _design_key(metrics: dict) -> tuple[str, str]:
