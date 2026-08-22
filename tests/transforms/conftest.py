@@ -1,17 +1,23 @@
 """Fixtures for design task tests."""
 
 import copy
+from pathlib import Path
 
 import numpy as np
 import pytest
-from atomworks.io.parser import STANDARD_PARSER_ARGS
+from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
+from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.utils.testing import cached_parse
 
+from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 from tests.transforms.synthetic_example_generator import add_chain_nearby_without_clash
 
 cif_parser_args = STANDARD_PARSER_ARGS | {
     "hydrogen_policy": "remove",
 }
+
+_TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"
 
 # ============================== Meta-fixtures ==============================
 
@@ -81,6 +87,21 @@ def protein_protein_interface():
 def simple_dna():
     """Simple single-chain DNA structure."""
     data = cached_parse("1bna", **cif_parser_args)
+    return data
+
+
+@pytest.fixture
+def protein_dna_complex():
+    """Real protein-DNA complex (4kpy) for PPI-against-nucleic-target tasks.
+
+    A DNA-binding protein bound to a multi-strand DNA target. Filtered to the protein
+    and DNA chains so the PPI task sees a clean binder/target interface.
+    """
+    data = parse(_TEST_DATA_DIR / "4kpy.cif", config=RCSB_WITH_METALS)
+    atom_array = as_atom_array_plus(data["assemblies"]["1"][0])
+    ensure_annotations(atom_array, "is_protein", "is_dna")
+    data["atom_array"] = atom_array[atom_array.is_protein | atom_array.is_dna]
+    data["example_id"] = "4kpy"
     return data
 
 

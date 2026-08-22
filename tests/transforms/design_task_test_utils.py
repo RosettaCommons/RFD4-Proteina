@@ -11,9 +11,9 @@ from biotite.structure import AtomArray
 from rfproteina.conditions import C_HB, C_RAS, C_SEC
 from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
 from rfproteina.transforms.design_task import (
+    BinderHotspotWith3DTarget,
     InverseFoldingTask,
     MotifScaffoldTask,
-    PPIHotspotWith3DTarget,
     ProteinFromDNASequenceContextTask,
     ProteinFromDNAStructureContextTask,
     StructurePredictionTask,
@@ -158,7 +158,7 @@ MINIMAL_ELIGIBLE_EXAMPLE_MAP = {
     TipAtomPartialLigandTask: "protein_with_ligand",
     TipAtomTask: "simple_protein",
     MotifScaffoldTask: "simple_protein",
-    PPIHotspotWith3DTarget: "protein_protein_interface_crop_info",
+    BinderHotspotWith3DTarget: "protein_protein_interface_crop_info",
     TipAtomActiveSiteTask: "simple_protein",
 }
 
@@ -169,7 +169,7 @@ COMPLEX_ELIGIBLE_EXAMPLE_MAP = {
     TipAtomPartialLigandTask: "complex_protein",
     TipAtomTask: "complex_protein",
     MotifScaffoldTask: "complex_protein",
-    PPIHotspotWith3DTarget: "complex_protein_crop_info",
+    BinderHotspotWith3DTarget: "complex_protein_crop_info",
     TipAtomActiveSiteTask: "complex_protein",
     # DNA-binder tasks require a protein + DNA example; ``complex_protein`` carries
     # both (plus RNA/ligand). They are complex-only — no minimal protein+DNA fixture

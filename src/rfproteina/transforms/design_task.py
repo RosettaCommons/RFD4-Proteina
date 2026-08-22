@@ -1,12 +1,14 @@
 import itertools
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from functools import partial
 from typing import ClassVar, Literal
 
 import biotite.structure as struc
 import numpy as np
 from atomworks.common import exists
+from atomworks.enums import ChainType, ChainTypeInfo
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array import apply_and_spread
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
@@ -68,6 +70,17 @@ def _default_tip_atom_potential(x: np.ndarray, scaling_factor: float = 8.0) -> n
 
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def _get_pn_unit_chain_type(atom_array: AtomArray, pn_unit_iid: str) -> ChainType | None:
+    """Return the pn_unit chain's :py:class:`ChainType`, or ``None`` if absent or mixed."""
+    mask = atom_array.pn_unit_iid == pn_unit_iid
+    if not mask.any():
+        return None
+    chain_types = np.unique(atom_array.chain_type[mask])
+    if len(chain_types) != 1:
+        return None
+    return ChainType(int(chain_types[0]))
 
 
 RFD3_DESIGN_TASK_DEFAULTS = {
@@ -1825,7 +1838,7 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
         return data
 
 
-class PPIHotspotWith3DTarget(RFD3DesignTask):
+class BinderHotspotWith3DTarget(RFD3DesignTask):
     RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
         "rasa_kwargs": {"p_add_rasa_condition": 0.6},
         "hbond_kwargs": {"p_add_hbond_condition": 0.2},
@@ -1848,6 +1861,7 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         p_sample_ppi_crop: float = 0.75,
         ppi_crop_binder_fraction: float = 0.667,
         bb_only_coord_conditioning: bool = False,
+        target_chain_types: Sequence[ChainType] = (ChainType.POLYPEPTIDE_L, ChainType.POLYPEPTIDE_D),
         **kwargs,
     ):
         """
@@ -1882,6 +1896,10 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
             bb_only_coord_conditioning: If True, only the backbone atoms of the target chain
                 receive coordinate conditioning. NOTE: Sidechain atoms can still be hotspots, but
                 their precise coordinates are not given.
+            target_chain_types: :py:class:`~atomworks.enums.ChainType` values allowed for the 3D
+                target chain. The designed binder is always a protein. Defaults to protein-only
+                (classic protein-protein interfaces); add ``ChainType.DNA`` / ``ChainType.RNA`` to
+                design binders against nucleic-acid targets.
 
         Note:
             Crop parameters (``crop_size``, ``crop_center_cutoff_distance``, ``max_atoms_in_crop``)
@@ -1899,6 +1917,10 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         self.p_sample_ppi_crop = p_sample_ppi_crop
         self.ppi_crop_binder_fraction = ppi_crop_binder_fraction
         self.bb_only_coord_conditioning = bb_only_coord_conditioning
+        # Accept ChainType members directly; coerce str names (e.g. from YAML configs) for convenience.
+        self.target_chain_types = tuple(
+            ChainType[ct.upper()] if isinstance(ct, str) else ChainType(ct) for ct in target_chain_types
+        )
 
     def annotate_for_task_selection(self, data: dict) -> dict:
         if "crop_info" in data:
@@ -1908,12 +1930,35 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         else:
             atom_array = data["atom_array"]
 
-        ensure_annotations(atom_array, "is_protein")
+        ensure_annotations(atom_array, "chain_type")
         return data
+
+    def _valid_binder_pn_units(self, atom_array: AtomArray, query_pn_unit_iids: Sequence[str]) -> list[str]:
+        """Return the query pn_units that can serve as the (protein) binder.
+
+        A pn_unit is a valid binder if it is a protein chain and every *other* query chain's
+        type is in :py:attr:`target_chain_types`. The remaining query chains form the 3D target (
+        which may span multiple chains -- e.g. a double-stranded DNA target).
+
+        For a protein-protein interface both chains are valid binders; for a protein-nucleic
+        interface only the protein is a valid binder.
+        """
+        chain_types = {pn: _get_pn_unit_chain_type(atom_array, pn) for pn in query_pn_unit_iids}
+        valid_binders: list[str] = []
+        for binder in query_pn_unit_iids:
+            if chain_types[binder] not in ChainTypeInfo.PROTEINS:
+                continue
+            other_types = [chain_types[pn] for pn in query_pn_unit_iids if pn != binder]
+            if all(ct in self.target_chain_types for ct in other_types):
+                valid_binders.append(binder)
+        return valid_binders
 
     def can_apply(self, data: dict) -> bool:
         """
-        Can be applied if there are exactly two different chains in query_pn_unit_iids that are both protein chains.
+        Can be applied if query_pn_unit_iids has at least two distinct chains that form a valid
+        binder/target interface: a protein binder and one or more target chains whose types are in
+        :py:attr:`target_chain_types` (protein-only by default; add DNA/RNA for nucleic-acid targets).
+        The target may span multiple chains, e.g. a double-stranded DNA target (two nucleic chains).
         Based on Rafi's code in PPICondition.is_valid_for_example() here: https://github.dev/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
         """
         query_pn_unit_iids = data.get("query_pn_unit_iids")
@@ -1921,23 +1966,37 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
             atom_array = data["crop_info"]["atom_array"]
         else:
             atom_array = data["atom_array"]
-        if query_pn_unit_iids is None or len(query_pn_unit_iids) != 2 or len(np.unique(query_pn_unit_iids)) != 2:
+        if query_pn_unit_iids is None or len(query_pn_unit_iids) < 2:
+            return False
+        if len(np.unique(query_pn_unit_iids)) != len(query_pn_unit_iids):
             return False
 
         for pn_unit_iid in query_pn_unit_iids:
             # make sure pn_unit_iid is actually in the atom array
             if atom_array.mask(f"pn_unit_iid == '{pn_unit_iid}'").sum() == 0:
                 return False
-            if not atom_array[atom_array.mask(f"pn_unit_iid == '{pn_unit_iid}'")].mask("is_protein").all():
-                return False
 
-        return True
+        return len(self._valid_binder_pn_units(atom_array, query_pn_unit_iids)) > 0
 
     def forward(self, data: dict) -> dict:
         query_pn_unit_iids = data["query_pn_unit_iids"]  # existence guaranteed via can_apply()
 
-        # randomly select one of the chains as the binder chain
-        binder_pn_unit_iid, target_pn_unit_iid = np.random.permutation(query_pn_unit_iids)
+        # Select the binder chain (always protein); every other query chain is the 3D target.
+        # The target may span multiple chains (e.g. double-stranded DNA). Uses the uncropped
+        # array (if present) so chain types match can_apply().
+        selection_atom_array = (
+            data["crop_info"]["atom_array"]
+            if "crop_info" in data and "atom_array" in data["crop_info"]
+            else data["atom_array"]
+        )
+        valid_binders = self._valid_binder_pn_units(selection_atom_array, query_pn_unit_iids)
+        if len(query_pn_unit_iids) == 2 and len(valid_binders) == 2:
+            # Legacy protein-protein path: keep the exact RNG draw (permutation of the two
+            # chains) so training trajectories and regression baselines are unchanged.
+            binder_pn_unit_iid = np.random.permutation(query_pn_unit_iids)[0]
+        else:
+            binder_pn_unit_iid = valid_binders[np.random.randint(len(valid_binders))]
+        target_pn_unit_iids = [pn for pn in query_pn_unit_iids if pn != binder_pn_unit_iid]
 
         # Possibly apply the PPI crop instead of the previously-sampled crop
         pre_crop_info = data.get("crop_info")
@@ -2013,15 +2072,16 @@ class PPIHotspotWith3DTarget(RFD3DesignTask):
         n_atoms = atom_array.array_length()
         _true = np.ones(n_atoms, dtype=bool)
         _false = np.zeros(n_atoms, dtype=bool)
-        is_target_chain = atom_array.mask(f"pn_unit_iid == '{target_pn_unit_iid}'")
+        is_target_chain = np.isin(atom_array.pn_unit_iid, target_pn_unit_iids)
         nan_coord_mask = atom_array.mask("has_nan_coord()")
 
         C_HOT.set_annotation(atom_array=atom_array, array=hotspot_atom_mask)
         C_HOT.set_mask(atom_array, hotspot_atom_mask, 1, "atom")
 
         if self.bb_only_coord_conditioning:
-            ensure_annotations(atom_array, "is_protein_backbone")
-            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask & atom_array.is_protein_backbone)
+            ensure_annotations(atom_array, "is_protein_backbone", "is_nucleic_acid_backbone")
+            is_backbone = atom_array.is_protein_backbone | atom_array.is_nucleic_acid_backbone
+            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask & is_backbone)
         else:
             C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask)
 

@@ -232,9 +232,11 @@ class UnindexFlaggedTokens(Transform):
         if is_inference:
             atom_array.set_annotation("insertion_source_idx", np.full(atom_array.array_length(), -1, dtype=np.int32))
         else:
+            # Cast token_id to signed int for NumPy 2 (NEP 50) compatibility: otherwise np.where
+            # resolves to uint32 and rejects the -1 sentinel with an OverflowError.
             atom_array.set_annotation(
                 "insertion_source_idx",
-                np.where(C_IDX.mask(atom_array, default="raise"), -1, atom_array.token_id).astype(np.int32),
+                np.where(C_IDX.mask(atom_array, default="raise"), -1, atom_array.token_id.astype(np.int32)),
             )
 
         # Concatenate unindexed parts to the end

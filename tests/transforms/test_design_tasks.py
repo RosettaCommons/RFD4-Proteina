@@ -82,13 +82,16 @@ The framework makes it easy to write two types of tests:
 
 import numpy as np
 import pytest
+from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 
-from rfproteina.conditions import C_RAS, C_SEC, RasaEnum, SSEnum
+from rfproteina.conditions import C_HOT, C_RAS, C_SEC, RasaEnum, SSEnum
+from rfproteina.datapipes.pipeline import InferQueryPNUnitIIDsForDimers
 from rfproteina.transforms.design_task import (
+    BinderHotspotWith3DTarget,
     InverseFoldingTask,
     ProteinFromDNASequenceContextTask,
     ProteinFromDNAStructureContextTask,
@@ -244,6 +247,38 @@ def test_dna_sequence_context_conditions(atom_array_fixture):
     is_std_aa = atom_array.is_standard_aa
     assert not C_SEQ.mask(atom_array)[is_std_aa].any()
     assert not C_CRD.mask(atom_array)[is_std_aa].any()
+
+
+def test_ppi_designs_protein_against_dna_target(protein_dna_complex):
+    """BinderHotspotWith3DTarget designs a protein binder against a real DNA target: the DNA
+    chains are the 3D target (coord + seq context + hotspots) and the protein is generated.
+    """
+    data = InferQueryPNUnitIIDsForDimers()(protein_dna_complex)
+    # p_sample_ppi_crop=0 avoids needing upstream crop_info; p_no_hotspots=0 forces hotspots.
+    # DNA/RNA are opt-in (protein-only default), so allow the DNA target explicitly.
+    task = BinderHotspotWith3DTarget(
+        p_no_hotspots=0.0,
+        p_sample_ppi_crop=0.0,
+        target_chain_types=(ChainType.POLYPEPTIDE_L, ChainType.POLYPEPTIDE_D, ChainType.DNA, ChainType.RNA),
+    )
+    out = apply_design_task(data, task)
+    atom_array = as_atom_array_plus(out["atom_array"])
+    ensure_annotations(atom_array, "is_protein", "is_dna")
+
+    is_target = atom_array.is_dna  # every DNA chain is the target
+    is_binder = atom_array.is_protein  # protein is the designed binder
+    resolved = atom_array.occupancy > 0  # only resolved atoms are coord-conditioned
+
+    # DNA target (all strands) provides structure + sequence context.
+    assert C_SEQ.mask(atom_array)[is_target].all()
+    assert C_CRD.mask(atom_array)[is_target & resolved].all()
+    # Protein binder is generated from noise: no coord/seq context leaked.
+    assert not C_CRD.mask(atom_array)[is_binder].any()
+    assert not C_SEQ.mask(atom_array)[is_binder].any()
+    # Hotspots land only on the DNA target, never on the binder.
+    hotspots = C_HOT.mask(atom_array)
+    assert hotspots.any()
+    assert hotspots[is_target].sum() == hotspots.sum()
 
 
 # ============================== Comprehensive Tests ==============================

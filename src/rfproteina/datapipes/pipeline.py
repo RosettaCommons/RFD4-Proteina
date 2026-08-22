@@ -302,11 +302,16 @@ class PrecomputeAtomPermutation(Transform):
 class InferQueryPNUnitIIDsForDimers(Transform):
     """Automatically infer query_pn_unit_iids for dimer structures.
 
-    For simple datasets (TED dimers, AFDB dimers) that don't have query_pn_unit_iids
-    in the parquet file, this transform automatically detects protein chains and
-    sets query_pn_unit_iids if there are exactly 2 protein chains.
+    For simple datasets (TED dimers, AFDB dimers, protein-nucleic complexes) that
+    don't have query_pn_unit_iids in the parquet file, this transform automatically
+    detects the interface chains and sets query_pn_unit_iids for either:
 
-    This enables PPI tasks to work with simple dimer datasets without needing
+    - a protein-protein dimer (exactly 2 protein chains, no nucleic acid), or
+    - a protein-nucleic complex (exactly 1 protein chain + one or more nucleic-acid
+      chains), which lets the binder design task place a protein binder against a DNA/RNA target.
+      The nucleic target may span multiple chains (e.g. double-stranded DNA is two chains).
+
+    This enables protein binder design tasks to work with simple dimer datasets without needing
     metadata columns in the parquet file.
     """
 
@@ -317,18 +322,17 @@ class InferQueryPNUnitIIDsForDimers(Transform):
             return data
 
         atom_array = data["atom_array"]
-        ensure_annotations(atom_array, "is_protein", "pn_unit_iid")
+        ensure_annotations(atom_array, "is_protein", "is_nucleic_acid", "pn_unit_iid")
 
-        # Get all protein pn_unit_iids
-        protein_mask = atom_array.is_protein
-        if not protein_mask.any():
-            return data  # No proteins, skip
+        protein_pn_unit_iids = np.unique(atom_array.pn_unit_iid[atom_array.is_protein])
+        nucleic_pn_unit_iids = np.unique(atom_array.pn_unit_iid[atom_array.is_nucleic_acid])
 
-        protein_pn_unit_iids = np.unique(atom_array.pn_unit_iid[protein_mask])
-
-        # Only set query_pn_unit_iids if there are exactly 2 protein chains (dimer)
-        if len(protein_pn_unit_iids) == 2:
+        if len(protein_pn_unit_iids) == 2 and len(nucleic_pn_unit_iids) == 0:
+            # Protein-protein dimer.
             data["query_pn_unit_iids"] = protein_pn_unit_iids.tolist()
+        elif len(protein_pn_unit_iids) == 1 and len(nucleic_pn_unit_iids) >= 1:
+            # Protein binder against a (possibly multi-chain) nucleic-acid target.
+            data["query_pn_unit_iids"] = protein_pn_unit_iids.tolist() + nucleic_pn_unit_iids.tolist()
 
         return data
 
@@ -1470,7 +1474,7 @@ def _build_design_clean_and_sample_pipeline(
     ### Step 3.5: Infer query_pn_unit_iids for dimers      ###
     ###########################################################
     # For simple datasets (TED dimers, AFDB dimers) that don't have query_pn_unit_iids
-    # from the parquet loader, automatically detect and set them for PPI tasks
+    # from the parquet loader, automatically detect and set them for binder design tasks
     if not is_inference:
         T += InferQueryPNUnitIIDsForDimers()
 

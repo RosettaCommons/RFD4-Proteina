@@ -36,6 +36,6 @@ tip_atom_pocket:
   frequency: 30.0
   transform: {global_design_task_kwargs: *dose}
 
-ppi_hotspot_with_3d_target:
+binder_hotspot_with_3d_target:
   frequency: 50.0
   transform: {global_design_task_kwargs: *dose}

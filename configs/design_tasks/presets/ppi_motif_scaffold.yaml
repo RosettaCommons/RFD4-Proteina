@@ -1,4 +1,4 @@
-# PPI + motif scaffold: ppi_hotspot_with_3d_target-dominant mix.
+# PPI + motif scaffold: binder_hotspot_with_3d_target-dominant mix.
 
 defaults:
   - all_off
@@ -8,4 +8,4 @@ unconditional:              {frequency: 10.0}
 folding:                    {frequency: 5.0}
 inverse_folding:            {frequency: 5.0}
 motif_scaffold:             {frequency: 10.0}
-ppi_hotspot_with_3d_target: {frequency: 70.0}
+binder_hotspot_with_3d_target: {frequency: 70.0}

@@ -60,8 +60,8 @@ from rfproteina.flow_matching.product_space_flow_matcher import (
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.transforms.design_task import (
+    BinderHotspotWith3DTarget,
     MotifScaffoldTask,
-    PPIHotspotWith3DTarget,
     StructurePredictionTask,
     TipAtomActiveSiteTask,
     TipAtomPartialLigandTask,
@@ -397,9 +397,9 @@ def _tip_atom_pocket_factory():
     return TipAtomActiveSiteTask(global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS)
 
 
-def _ppi_hotspot_with_3d_target_factory():
+def _binder_hotspot_with_3d_target_factory():
     # Mirrors all_off.yaml settings that deviate from the class defaults.
-    return PPIHotspotWith3DTarget(
+    return BinderHotspotWith3DTarget(
         hotspot_count_distribution="geometric",
         hotspot_geometric_p=0.2,
         max_hotspots_frac_to_provide=0.1,
@@ -414,7 +414,7 @@ def _ppi_hotspot_with_3d_target_factory():
 
 # Per-PDB applicable design tasks. We always test motif_scaffold and folding;
 # tip_atom_partial_ligand for structures with non-polymer ligands;
-# ppi_hotspot_with_3d_target for structures with two protein chains.
+# binder_hotspot_with_3d_target for structures with two protein chains.
 _PDB_DESIGN_TASKS: dict[str, list[tuple[str, Callable]]] = {
     "6lyz": [
         ("motif_scaffold", _motif_scaffold_factory),
@@ -425,7 +425,7 @@ _PDB_DESIGN_TASKS: dict[str, list[tuple[str, Callable]]] = {
         ("motif_scaffold", _motif_scaffold_factory),
         ("folding", _folding_factory),
         ("tip_atom_partial_ligand", _tip_atom_partial_ligand_factory),
-        ("ppi_hotspot_with_3d_target", _ppi_hotspot_with_3d_target_factory),
+        ("binder_hotspot_with_3d_target", _binder_hotspot_with_3d_target_factory),
     ],
     "6wtf": [
         ("motif_scaffold", _motif_scaffold_factory),
@@ -445,7 +445,7 @@ _PDB_DESIGN_TASKS: dict[str, list[tuple[str, Callable]]] = {
         ("motif_scaffold", _motif_scaffold_factory),
         ("folding", _folding_factory),
         ("tip_atom_partial_ligand", _tip_atom_partial_ligand_factory),
-        ("ppi_hotspot_with_3d_target", _ppi_hotspot_with_3d_target_factory),
+        ("binder_hotspot_with_3d_target", _binder_hotspot_with_3d_target_factory),
     ],
     "5w40": [
         ("motif_scaffold", _motif_scaffold_factory),
@@ -487,7 +487,7 @@ def test_train_save_load_val_pipeline_feats_match(
     base["example_id"] = pdb_id
     base["atom_array"] = _preclean_input(base["atom_array"])
 
-    # PPIHotspotWith3DTarget.can_apply requires ``query_pn_unit_iids`` (a
+    # BinderHotspotWith3DTarget.can_apply requires ``query_pn_unit_iids`` (a
     # length-2 list of distinct protein pn_unit_iids) — normally supplied by
     # dimer datasets. Inject the first one or two protein pn_unit_iids here
     # so PPI is eligible on multi-protein-chain inputs; harmless for other
