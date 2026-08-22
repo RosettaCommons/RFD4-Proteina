@@ -12,4 +12,4 @@ dataset:
       folding:                    {frequency: 0.05}
       inverse_folding:            {frequency: 0.05}
       motif_scaffold:             {frequency: 0.2}
-      ppi_hotspot_with_3d_target: {frequency: 0.5}
+      binder_hotspot_with_3d_target: {frequency: 0.5}

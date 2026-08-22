@@ -71,10 +71,10 @@ motif_scaffold:
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 
-ppi_hotspot_with_3d_target:
+binder_hotspot_with_3d_target:
   frequency: 0.0
   transform:
-    _target_: rfproteina.transforms.design_task.PPIHotspotWith3DTarget
+    _target_: rfproteina.transforms.design_task.BinderHotspotWith3DTarget
     hotspot_count_distribution: geometric
     hotspot_geometric_p: 0.2
     max_hotspots_frac_to_provide: 0.1

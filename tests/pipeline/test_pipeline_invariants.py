@@ -30,9 +30,9 @@ from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 
 from rfproteina.datapipes.pipeline import build_design_train_pipeline
 from rfproteina.transforms.design_task import (
+    BinderHotspotWith3DTarget,
     InverseFoldingTask,
     MotifScaffoldTask,
-    PPIHotspotWith3DTarget,
     StructurePredictionTask,
     TipAtomActiveSiteTask,
     TipAtomPartialLigandTask,
@@ -119,7 +119,7 @@ DESIGN_TASKS = {
         "frequency": 1.0,
     },
     "ppi_hotspot": {
-        "transform": PPIHotspotWith3DTarget(
+        "transform": BinderHotspotWith3DTarget(
             hotspot_count_distribution="geometric",
             hotspot_geometric_p=0.2,
             max_hotspots_frac_to_provide=0.1,

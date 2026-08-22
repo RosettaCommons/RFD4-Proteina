@@ -12,8 +12,8 @@ from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
 from rfproteina.transforms.design_task import (
+    BinderHotspotWith3DTarget,
     MotifScaffoldTask,
-    PPIHotspotWith3DTarget,
     UnconditionalTask,
 )
 from rfproteina.utils.coordinate_transfer import (
@@ -108,8 +108,8 @@ DESIGN_TASK_CONFIGS = {
         ),
         "frequency": 1.0,
     },
-    "ppi_hotspot_with_3d_target": {
-        "transform": PPIHotspotWith3DTarget(
+    "binder_hotspot_with_3d_target": {
+        "transform": BinderHotspotWith3DTarget(
             global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
         ),
         "frequency": 1.0,
@@ -125,7 +125,7 @@ DESIGN_TASK_CONFIGS = {
     "design_task_config",
     [
         {"motif_scaffold": DESIGN_TASK_CONFIGS["motif_scaffold"]},
-        {"ppi_hotspot_with_3d_target": DESIGN_TASK_CONFIGS["ppi_hotspot_with_3d_target"]},
+        {"binder_hotspot_with_3d_target": DESIGN_TASK_CONFIGS["binder_hotspot_with_3d_target"]},
         {"unconditional": DESIGN_TASK_CONFIGS["unconditional"]},
     ],
 )
