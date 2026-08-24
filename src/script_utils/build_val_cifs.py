@@ -32,7 +32,7 @@ def _plinder_leaked_pdb_ids(data_path: str) -> set[str]:
     return {p for p in plinder.column("pdb_id").to_pylist() if p in post}
 
 
-def main(n: int = 128, out: str | None = None, experiment: str = "ncorley/hero_runs_2026_07_02_lw_2p5_2p5_0") -> None:
+def main(n: int = 128, out: str | None = None, experiment: str = "sota") -> None:
     """Write n holdout CIFs.
 
     Args:

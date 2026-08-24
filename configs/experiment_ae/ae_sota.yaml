@@ -1,15 +1,62 @@
 # @package _global_
 #
-# Canonical AE training recipe — stable entry point for tooling and CI,
-# mirroring the pattern of experiment/sota.yaml for SOTA training.
-# Used by the GPU regression test (test_ae_training_regression).
-# To advance the AE SOTA recipe, repoint the single default below.
+# Canonical AE training recipe — stable entry point for tooling and CI, mirroring the pattern of
+# experiment/sota.yaml for SOTA training. Used by the GPU regression test
+# (test_ae_training_regression), so its resolved values are pinned by committed baselines.
+#
+# Self-contained on purpose: a CI-critical recipe should not depend on personal experiment
+# configs, so everything it needs is spelled out here rather than inherited.
 
 defaults:
-  - /experiment_ae/kdidi/ae_multipolymer_unified
+  - /datasets/train/ae/na_complex@datasets.train.na_complex
+  # (Hydra requires `override` entries last in the defaults list.)
+  - override /nn_ae@nn_ae: nn_60m_unified
+  - override /datasets@datasets: ae_pdb_multipolymer_datasets
   - _self_
 
 run_name_: ae_sota
+
+pretrain_ckpt_path: null
+
+hardware:
+  ngpus_per_node_: 8
+  nnodes_: 2
+
+dataloaders:
+  train:
+    dataloader_params:
+      batch_size: 12
+      collate_fn:
+        fixed_dimensions: {I: 384}
+
+datasets:
+  train:
+    rna_monomer:
+      probability: 0.10
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
+    pdb_interfaces:
+      probability: 0.45
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_interfaces.parquet
+      weights:
+        alphas:
+          a_prot: 3.0
+          a_nuc: 4.0
+          a_ligand: 1.0
+          a_loi: 5.0
+    pdb_pn_units:
+      probability: 0.35
+      dataset:
+        data: ${oc.env:DATA_PATH}/train_datasets/pdb/pdb_pn_units.parquet
+      weights:
+        alphas:
+          a_prot: 3.0
+          a_nuc: 4.0
+          a_ligand: 1.0
+          a_loi: 5.0
+    na_complex:
+      probability: 0.10
 
 log:
   tags: ["ae", "sota"]

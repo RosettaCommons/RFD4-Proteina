@@ -21,7 +21,8 @@ defaults:
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
-  - experiment: mkazman/debug/motif_scaffold_tiny
+  # Canonical recipe.
+  - experiment: sota
 
 
   # debug configs to add onto any experiment for quickly testing or debugging code
