@@ -165,8 +165,9 @@ def test_sota_training_regression() -> None:
         run_name="regression_sota_training",
         script="src/rfproteina/train.py",
         overrides=[
-            # `sota` with its volatile datasets pinned; the recipe itself stays live.
-            "experiment=sota_regression",
+            # The live recipe, matching generate_e2e_baselines.py. A data change moves these
+            # losses on purpose: regenerate the baseline when it does.
+            "experiment=sota",
             # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
             # baselines are anchored to random-init losses (seed=42).
             "nn.use_torch_compile=false",
@@ -189,9 +190,8 @@ def test_ae_training_regression() -> None:
         run_name="regression_ae_training",
         script="src/rfproteina/partial_autoencoder/train.py",
         overrides=[
-            # Frozen fixture, not `ae_sota`: the baselines are anchored to a fixed dataset
-            # mix, so improvements to the shared sources cannot move these losses.
-            "experiment_ae=ae_regression",
+            # The live recipe, matching generate_e2e_baselines.py.
+            "experiment_ae=ae_sota",
             "dataloaders.train.dataloader_params.batch_size=2",
             # No compile for regression tests
             "+nn_ae.use_torch_compile=false",
