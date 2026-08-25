@@ -580,16 +580,25 @@ def find_index_group_res_id_gaps(aa: AtomArray) -> list[str]:
     Returns one ``"index group <g>: res_id jumps from <a> to <b>"`` per gap; gaps on index-group
     boundaries are expected and not reported.
     """
-    starts = get_residue_starts(aa)
-    starts = starts[~S_ATM.mask(aa, default="generate")[starts]]
+    all_starts = get_residue_starts(aa)
     index_groups = C_IDXGRP.annotation(aa, default="generate")
+    present: dict[int, set[int]] = {}  # res_ids per group, atomized residues included
+    for start in all_starts:
+        present.setdefault(int(index_groups[start]), set()).add(int(aa.res_id[start]))
+    starts = all_starts[~S_ATM.mask(aa, default="generate")[all_starts]]
     messages: list[str] = []
     prev_group: int | None = None
     prev_res_id: int | None = None
     for start in starts:
         group = int(index_groups[start])
         res_id = int(aa.res_id[start])
-        if group == prev_group and prev_res_id is not None and (res_id - prev_res_id) not in (0, 1):
+        if (
+            group == prev_group
+            and prev_res_id is not None
+            and (res_id - prev_res_id) not in (0, 1)
+            # an atomized residue is skipped as an anchor but still occupies its res_id
+            and not all(r in present[group] for r in range(prev_res_id + 1, res_id))
+        ):
             messages.append(f"index group {group}: res_id jumps from {prev_res_id} to {res_id}")
         prev_group, prev_res_id = group, res_id
     return messages

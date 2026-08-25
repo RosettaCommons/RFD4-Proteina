@@ -26,7 +26,9 @@ import pandas as pd
 import pytest
 from atomworks.io import parse
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.standard_annotations import S_ATM
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
+from biotite.structure import get_residue_starts
 
 from rfproteina.datapipes.pipeline import build_design_train_pipeline
 from rfproteina.transforms.design_task import (
@@ -38,6 +40,7 @@ from rfproteina.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
+from rfproteina.transforms.invariants import find_index_group_res_id_gaps
 from rfproteina.utils.logging import print_df_as_table
 from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 
@@ -280,6 +283,27 @@ def log_timing_statistics():
         print_df_as_table(per_example_df, title=f"{pdb_id} ({task})", console_width=120)
 
     logger.info("\n" + "=" * 80)
+
+
+def test_atomized_residue_is_not_a_res_id_gap():
+    """A PTM mid-chain must not read as a break in residue numbering.
+
+    `find_index_group_res_id_gaps` skips atomized residues as gap anchors; it must also not count
+    the res_id they occupy as missing, or every peptide with an internal PTM/NCAA fails validation.
+    Fixture is chain B of an EGFR phosphopeptide design input: residues 1-13 with PTR at 7.
+    """
+    aa = parse(
+        Path(__file__).parents[1] / "data" / "egfr2_phosphopeptide.cif",
+        load_standard_annotations=True,
+        add_missing_atoms=False,
+    )["assemblies"]["1"][0]
+
+    starts = get_residue_starts(aa)
+    res_ids = [int(aa.res_id[i]) for i in starts]
+    assert res_ids == list(range(1, 14)), "fixture must be contiguous, or it tests nothing"
+    assert S_ATM.mask(aa, default="generate")[starts].sum() == 1, "fixture must have one atomized residue"
+
+    assert find_index_group_res_id_gaps(aa) == []
 
 
 if __name__ == "__main__":
