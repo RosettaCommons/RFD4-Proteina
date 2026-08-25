@@ -2,7 +2,7 @@
 
 import numpy as np
 from atomworks.io.utils.annotator import ensure_annotations
-from atomworks.ml.conditions import C_CRD, C_DIS
+from atomworks.ml.conditions import C_CRD, C_SEQ
 from biotite.structure import AtomArray
 
 from rfproteina.conditions import C_INTCRD
@@ -18,10 +18,11 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
     1. If there is only one unique chain, return that chain.
     2. Subset to only consider protein chains. If none remain, return the first
        chain in sorted order with a warning.
-    3. Subset to chains with FEWEST coordinate conditioned atoms (absolute or internal).
-    4. Subset to chains with FEWEST absolute coordinate conditioned atoms.
-    5. Subset to chains with FEWEST distance conditioned atoms.
-    6. If this is still ambiguous, return the first chain in sorted order and give a warning.
+    3. Subset to chains with the LEAST sequence conditioning relative to chain length
+       (the designed chain has its sequence generated, so it is least sequence-conditioned).
+    4. Tie-break: subset to chains with the LEAST coordinate conditioning relative to chain
+       length (absolute or internal).
+    5. If this is still ambiguous, return the first chain in sorted order and give a warning.
 
     TODO: This heuristic will need to be adjusted for more complex use-cases.
 
@@ -54,11 +55,26 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
         logger.warning("No pure-protein chains found; defaulting to first chain in sorted order.")
         return sorted(unique_chain_identifiers)[0], False
 
-    # Subset by all coordinate conditioning (absolute or internal)
+    chain_subset_by_id = {cid: atom_array[chain_identifiers == cid] for cid in protein_chain_identifiers}
+
+    # Subset by sequence conditioning relative to chain length. The designed chain has its
+    # sequence generated rather than given, so it is the least sequence-conditioned chain.
+    sequence_conditioned_fraction_by_chain = {
+        cid: C_SEQ.mask(chain_subset_by_id[cid]).mean() for cid in protein_chain_identifiers
+    }
+    least_sequence_conditioned_fraction = min(sequence_conditioned_fraction_by_chain.values())
+    least_sequence_conditioned_chain_identifiers = [
+        cid
+        for cid, frac in sequence_conditioned_fraction_by_chain.items()
+        if frac == least_sequence_conditioned_fraction
+    ]
+    if len(least_sequence_conditioned_chain_identifiers) == 1:
+        return least_sequence_conditioned_chain_identifiers[0], True
+
+    # Tie-break by coordinate conditioning relative to chain length (absolute or internal).
     coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean()
-        + C_INTCRD.mask(atom_array[chain_identifiers == cid]).mean()
-        for cid in protein_chain_identifiers
+        cid: C_CRD.mask(chain_subset_by_id[cid]).mean() + C_INTCRD.mask(chain_subset_by_id[cid]).mean()
+        for cid in least_sequence_conditioned_chain_identifiers
     }
     least_coord_conditioned_fraction = min(coord_conditioned_fraction_by_chain.values())
     least_coord_conditioned_chain_identifiers = [
@@ -67,35 +83,6 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
     if len(least_coord_conditioned_chain_identifiers) == 1:
         return least_coord_conditioned_chain_identifiers[0], True
 
-    # Further subset by absolute coordinate conditioning
-    absolute_coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(atom_array[chain_identifiers == cid]).mean()
-        for cid in least_coord_conditioned_chain_identifiers
-    }
-    least_absolute_coord_conditioned_fraction = min(absolute_coord_conditioned_fraction_by_chain.values())
-    least_absolute_coord_conditioned_chain_identifiers = [
-        cid
-        for cid, frac in absolute_coord_conditioned_fraction_by_chain.items()
-        if frac == least_absolute_coord_conditioned_fraction
-    ]
-    if len(least_absolute_coord_conditioned_chain_identifiers) == 1:
-        return least_absolute_coord_conditioned_chain_identifiers[0], True
-
-    # Further subset by distance conditioning
-    has_distance_conditioning = C_DIS.mask(atom_array).as_dense_array().any(axis=-1)
-    distance_conditioned_fraction_by_chain = {
-        cid: has_distance_conditioning[chain_identifiers == cid].mean()
-        for cid in least_absolute_coord_conditioned_chain_identifiers
-    }
-    least_distance_conditioned_fraction = min(distance_conditioned_fraction_by_chain.values())
-    least_distance_conditioned_chain_identifiers = [
-        cid
-        for cid, frac in distance_conditioned_fraction_by_chain.items()
-        if frac == least_distance_conditioned_fraction
-    ]
-    if len(least_distance_conditioned_chain_identifiers) == 1:
-        return least_distance_conditioned_chain_identifiers[0], True
-
     # Ambiguous - return first chain with warning
     logger.warning("Could not unambiguously determine chain of interest; defaulting to first chain in sorted order.")
-    return sorted(least_distance_conditioned_chain_identifiers)[0], False
+    return sorted(least_coord_conditioned_chain_identifiers)[0], False
