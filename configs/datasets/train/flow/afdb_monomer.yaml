@@ -1,0 +1,16 @@
+# The one AFDB monomer training dataset: motif-pretraining tasks over the AFDB monomer source.
+# Everything about the data itself lives in `datasets/sources/afdb_monomer`.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/afdb_monomer@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: motif_pretraining
+  - _self_
+
+probability: 1.0
+
+dataset:
+  # No-crop gate matching the crop below.
+  filters: ['length <= 256']
+  transform:
+    crop_size: 256

@@ -1,15 +1,9 @@
-# NA Complex Dataset - Protein-DNA/RNA complexes for autoencoder training.
+# Protein-DNA complexes for the AE.
 
 defaults:
-  - /datasets/train/base_pandas@dataset
-  - base
+  - /datasets/train/backend_lmdb@dataset
+  - /datasets/sources/na_complex@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
   - _self_
 
-dataset:
-  name: na_complex_ae
-  data: ${oc.env:DATA_PATH}/train_datasets/na_complex/na_complex.parquet
-  columns_to_load:
-    - example_id
-    - path
-  loader:
-    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/na_complex
+probability: 1.0

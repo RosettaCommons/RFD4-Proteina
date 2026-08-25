@@ -1,0 +1,20 @@
+# PDB antibody-antigen interfaces for the flow model.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/antibody_interfaces_pdb@dataset
+  - /datasets/sampling/af3_pdb_interfaces@_here_
+  - /design_tasks/presets@dataset.transform.design_tasks: ig_design
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+weights:
+  # Sample mostly protein-protein and protein-peptide.
+  cluster_column: interface_cluster
+  alphas:
+    a_prot: 3.0
+    a_peptide: 3.0
+    a_nuc: 1.0
+    a_ligand: 1.0
+    a_loi: 1.0

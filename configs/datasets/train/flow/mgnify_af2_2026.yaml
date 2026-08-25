@@ -1,0 +1,9 @@
+# MGnify AF2 predictions for the flow model.
+
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/mgnify_af2_2026@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: motif_pretraining
+  - _self_
+
+probability: 1.0

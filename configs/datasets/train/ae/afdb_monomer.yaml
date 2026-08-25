@@ -1,0 +1,10 @@
+# AFDB monomers for the AE. No length gate: the crop tracks `fixed_dimensions.I`, so it
+# takes the full 32-512 range.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/afdb_monomer@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0

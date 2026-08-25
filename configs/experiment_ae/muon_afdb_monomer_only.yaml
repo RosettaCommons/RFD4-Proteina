@@ -7,9 +7,12 @@
 #        +single=true +nolog=true +show_prog_bar=true
 
 defaults:
-  - /datasets/train/distill/afdb_monomer_genie3@datasets.train.afdb_monomer
-  - /design_tasks/unconditional@_unconditional_design_tasks
+  - /datasets/train/ae/afdb_monomer@datasets.train.afdb_monomer
+  - /design_tasks/presets@_unconditional_design_tasks: unconditional
   - /datasets/val/unconditional@datasets.val.unconditional
+  # (Hydra requires `override` entries last in the defaults list.)
+  # Mount no mix: this recipe trains on afdb_monomer alone.
+  - override /datasets@datasets: none
   - _self_
 
 run_name_: ae_muon_afdb_monomer_only
@@ -40,10 +43,6 @@ datasets:
         transform:
           crop_size: 512
           design_tasks: ${_unconditional_design_tasks}
-    na_complex:
-      probability: 0.0
-    rna_monomer:
-      probability: 0.0
   val:
     unconditional:
       dataset:

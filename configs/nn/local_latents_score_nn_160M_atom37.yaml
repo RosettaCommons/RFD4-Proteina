@@ -83,7 +83,7 @@ x_sc_pair_dist_min: 0.1  # in nm (not Å)
 x_sc_pair_dist_max: 3  # in nm (not Å)
 # Relative sequence separation (also used as bin count for TokenBondPathLengthPairFeat).
 # For the bond-path-length feature to populate its high-distance bins, this should be
-# <= (path_length_search_cutoff + 1) in configs/datasets/train/base.yaml (default 65).
+# <= (path_length_search_cutoff + 1) in configs/datasets/train/pipeline_defaults.yaml (default 65).
 seq_sep_dim: 64  # halved vs the rel_seq_sep baseline -- path length is unsigned
 # Dimension of final pair representation
 pair_repr_dim: 256

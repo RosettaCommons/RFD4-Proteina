@@ -1,20 +1,9 @@
-# RNA Monomer Dataset - RNA structures for autoencoder training.
+# RNA monomers for the AE.
 
 defaults:
-  - /datasets/train/base_pandas@dataset
-  - base
+  - /datasets/train/backend_lmdb@dataset
+  - /datasets/sources/rna_monomer@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
   - _self_
 
-dataset:
-  name: rna_monomer_ae
-  data: ${oc.env:DATA_PATH}/train_datasets/rna_monomer/rna_monomer.parquet
-  columns_to_load:
-    - example_id
-    - path
-    - cluster_id
-    - seq_hash
-    - overall_plddt
-    - overall_pde
-    - overall_pae
-  loader:
-    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/rna_monomer
+probability: 1.0

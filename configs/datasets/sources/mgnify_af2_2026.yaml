@@ -1,0 +1,28 @@
+# MGnify metagenomic sequences predicted with AlphaFold2, 2026.
+# Streamed from the S3 blob store; reaching S3 needs AWS_ENDPOINT_URL.
+
+_target_: atomworks.ml.datasets.PandasDataset
+name: mgnify_af2_distill_2026
+data: s3://YOUR_DATASET_STORE/train_datasets/mgnify_af2_distill_2026/mgnify_af2_distill_2026.parquet
+memory_map: False  # downloaded from s3 into a buffer; nothing to mmap
+
+loader:
+  _target_: atomworks.ml.datasets.loaders.create_blob_cif_loader
+  blob_dir: s3://YOUR_DATASET_STORE/train_datasets/mgnify_af2_distill_2026/data/blob
+  example_id_colname: example_id
+  assembly_id_colname: null  # no assembly column; the loader falls back to "1"
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
+
+columns_to_load:
+  - example_id
+  - n_tokens
+  - mean_plddt
+  - ptm
+
+filters:
+  # Confidence floor.
+  - "mean_plddt >= 85"
+  - "ptm >= 0.80"
+  # Length gate, tracking the crop.
+  - "n_tokens <= ${oc.select:_max_tokens,256}"

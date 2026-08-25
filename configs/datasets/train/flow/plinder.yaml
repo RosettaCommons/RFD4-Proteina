@@ -1,0 +1,14 @@
+# PLINDER protein-ligand systems for the flow model.
+# Sampled by inverse cluster size on `pli_unique_qcov__50__community`.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/plinder@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: plinder_tasks
+  - _self_
+
+probability: 1.0  # default for mixed samples; experiment configs override
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_by_inverse_cluster_size
+  cluster_column: pli_unique_qcov__50__community

@@ -13,7 +13,7 @@
 
 defaults:
   - /experiment/releases/2026_06_12_release
-  - /datasets/train/pdb/pdb_interfaces@datasets.train.pdb_interfaces
+  - /datasets/train/flow/pdb_interfaces@datasets.train.pdb_interfaces
   - _self_
 
 run_name_: 2026_06_12_release_fast_pdb_val_15

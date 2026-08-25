@@ -1,0 +1,13 @@
+# AF-3 cluster-weighted sampling for pdb_interfaces.
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_for_pdb_dataset_df
+  cluster_column: interface_cluster
+  altloc_seed_column: altloc_seed
+  pdb_id_column: pdb_id
+  beta: 1.0        # AF-3 interfaces beta (pn_units uses 0.5)
+  alphas:
+    a_prot: 3.0    # 3 for AF-3
+    a_nuc: 3.0     # 3 for AF-3
+    a_ligand: 1.0  # 1 for AF-3
+    a_loi: 5.0     # 5 for RF-3 (not specified in AF-3)

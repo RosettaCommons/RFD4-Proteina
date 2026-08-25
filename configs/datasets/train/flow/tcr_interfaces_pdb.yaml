@@ -1,0 +1,20 @@
+# PDB TCR / peptide-MHC interfaces for the flow model.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/tcr_interfaces_pdb@dataset
+  - /datasets/sampling/af3_pdb_interfaces@_here_
+  - /design_tasks/presets@dataset.transform.design_tasks: ig_design
+  - _self_
+
+probability: 1.0  # Need this default for mixed samples
+
+weights:
+  # Sample mostly protein-peptide. An alpha of 0 still gets sampled, since n_prot >= 1 always.
+  cluster_column: interface_cluster
+  alphas:
+    a_prot: 1.0
+    a_peptide: 5.0
+    a_nuc: 0.0
+    a_ligand: 0.0
+    a_loi: 0.0

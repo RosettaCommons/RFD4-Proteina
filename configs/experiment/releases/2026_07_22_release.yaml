@@ -16,8 +16,10 @@
 #
 # This file folds that entire chain into a single experiment config. It still
 # inherits from the shared config groups (datasets, design-task presets, metrics
-# oracle), but no longer inherits from any other experiment config. The composed
-# result is byte-identical to the original 4_nodes.yaml composition.
+# oracle), but no longer inherits from any other experiment config.
+#
+# The data no longer matches the released checkpoint: pdb_interfaces admits
+# nucleic-acid-containing assemblies, and ted_dimers is gated on interface quality.
 #
 # Recipe summary (see the original chain for the full rationale):
 #   - Data mix: AFDB monomers 75% (genie3), PDB multiconformer interfaces 15%,
@@ -35,16 +37,15 @@
 #     sm_binder_hbonds dropped. AF3 refolding oracle.
 #
 # Only settings that actually differ from what the defaults above produce are set
-# below; redundant overrides have been pruned (verified byte-identical to the
-# original 4_nodes.yaml composition, except for tri_mult_c -- see above).
+# below; redundant overrides have been pruned.
 ###################################################################################
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
-  - /datasets/train/distill/omol@datasets.train.omol
-  - /datasets/train/plinder/plinder@datasets.train.plinder
-  - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
+  - /datasets/train/flow/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/flow/omol@datasets.train.omol
+  - /datasets/train/flow/plinder@datasets.train.plinder
+  - /datasets/train/flow/ted_dimers@datasets.train.ted_dimers
 
   # Validation datasets
   - /datasets/val/unconditional@datasets.val.unconditional
@@ -60,14 +61,13 @@ defaults:
   - /datasets/val/rasa_atomized_residues@datasets.val.rasa_atomized_residues
   - /datasets/val/ppi_subset@datasets.val.ppi_subset
 
-  # Design task presets. Loaded both at the shared `_tip_atom_design_tasks` anchor
-  # (referenced below) and directly into afdb_monomer's design_tasks so that the
+  # Design task presets. Loaded at the shared `_tip_atom_design_tasks` anchor
+  # (referenced below); afdb_monomer's own selection is replaced further down, so the
   # per-task p_internal_coords overlay in `_self_` merges onto the expanded preset.
-  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
-  - /design_tasks/presets/tip_atom_pocket_tasks@datasets.train.afdb_monomer.dataset.transform.design_tasks
+  - /design_tasks/presets@_tip_atom_design_tasks: tip_atom_pocket_tasks
 
-  # PDB multiconformer interfaces (validated-only) train dataset
-  - /datasets/train/pdb/pdb_interfaces@datasets.train.pdb_interfaces
+  # PDB multiconformer interfaces train dataset
+  - /datasets/train/flow/pdb_interfaces@datasets.train.pdb_interfaces
 
   # Additional online-validation benchmarks
   - /datasets/val/disco_subset@datasets.val.disco_subset
@@ -75,6 +75,11 @@ defaults:
 
   # AF3 refolding oracle
   - override /metrics/refolding_oracles: af3
+
+  # afdb_monomer's dataset config selects `motif_pretraining`; this recipe trains it on the
+  # tip-atom pocket mix instead.
+  # (Hydra requires `override` entries last in the defaults list.)
+  - override /design_tasks/presets@datasets.train.afdb_monomer.dataset.transform.design_tasks: tip_atom_pocket_tasks
 
   - _self_
 

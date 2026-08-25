@@ -1,0 +1,21 @@
+# TED dimers, annotated CIFs
+# 600K rows; the interface quality gate keeps ~510K
+
+name: ted_dimers
+data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/data/ted_dimers_annotated.parquet
+
+loader:
+  base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
+
+filters:
+  # Paper-Teddymer interface quality gate
+  - "InterfaceLength > 10"
+  - "AvgIntPAE < 10"
+  - "AvgIntPlddt > 70"
+
+columns_to_load:
+  - example_id
+  - path
+  - InterfaceLength
+  - AvgIntPAE
+  - AvgIntPlddt

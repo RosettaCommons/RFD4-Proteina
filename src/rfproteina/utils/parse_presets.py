@@ -33,7 +33,8 @@ RCSB_WITH_METALS: ParseConfig = ParseConfig(
     # Default altloc handling for determinism while generating non-clashing conformers
     altloc="random_clash_aware",
     altloc_seed=0,
-    # Do not load standard annotations by default (we can override for validation parsers)
+    # Forced off, not a preference: `add_missing_atoms` and `convert_mse_to_met` both renumber
+    # atoms, which invalidates position-indexed annotations. ParseConfig raises if this is True.
     load_standard_annotations=False,
     keep_cif_block=False,
     # No caching by default (we can override if/when needed)
@@ -48,11 +49,13 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
     fix_arginines=False,
     convert_mse_to_met=False,
     altloc="first",  # AFDB / TED distillation files are PDB format; PDB doesn't support 'random_clash_aware'
+    # Neither renumbering step runs here, so annotations survive. On files that carry none it
+    # is a no-op: absent fields are skipped. Every training dataset parses through this preset.
+    load_standard_annotations=True,
 )
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 
 ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(
-    load_standard_annotations=True,
     remove_waters=False,
     remove_ccds=(),
     # Annotated CIFs may carry custom ligands reusing real CCD codes; keep them as authored.
@@ -62,7 +65,6 @@ ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(
 
 
 STANDARD_ANNOTATIONS_ONLY: ParseConfig = DISTILLATION.replace(
-    load_standard_annotations=True,
     remove_waters=False,
     remove_ccds=(),
 )

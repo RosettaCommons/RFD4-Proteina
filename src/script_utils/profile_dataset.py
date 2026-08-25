@@ -10,16 +10,16 @@ Run from the repo root directory:
 
 .. code-block:: bash
 
-    # Default config (plinder_with_missing_atoms)
+    # Default config (flow/plinder)
     python src/script_utils/profile_dataset.py
 
     # Specify a dataset config by its path relative to configs/
-    python src/script_utils/profile_dataset.py datasets/train/plinder/plinder_with_missing_atoms
+    python src/script_utils/profile_dataset.py datasets/train/flow/plinder
 
     # Debug with debugpy (connect a DAP client to localhost:2345 before the script proceeds)
     python -m debugpy --listen 2345 --wait-for-client \\
         src/script_utils/profile_dataset.py \\
-        datasets/train/plinder/plinder_with_missing_atoms
+        datasets/train/flow/plinder
 
 Line-profiling
 --------------
@@ -61,7 +61,7 @@ def run(dataset: Any, indices: list[int]) -> None:
 
 
 def main() -> None:
-    config_name = sys.argv[1] if len(sys.argv) > 1 else "datasets/train/plinder/plinder_with_missing_atoms"
+    config_name = sys.argv[1] if len(sys.argv) > 1 else "datasets/train/flow/plinder"
 
     with initialize_config_dir(config_dir=str(CONFIGS_DIR.resolve()), version_base=None):
         cfg = compose(config_name=config_name)

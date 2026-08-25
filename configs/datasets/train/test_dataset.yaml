@@ -1,17 +1,9 @@
-# Tiny ~50-system PLINDER subset for the training walkthrough; CIFs in a plain dir (no squashfs),
-# so it runs on any cluster. Fetch with scripts/download_example_data.sh --with-test-dataset.
+# Tiny PLINDER subset for the training walkthrough.
+
 defaults:
-  - base_pandas@dataset
-  - /design_tasks/presets/plinder_tasks@dataset.transform.design_tasks
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/test_dataset@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: plinder_tasks
   - _self_
 
 probability: 1.0   # convention: every train dataset sets its mixing probability
-
-dataset:
-  name: test_dataset_train
-  data: ${oc.env:DATA_PATH}/test_dataset/test_systems.parquet
-  loader:
-    base_path: ${oc.env:DATA_PATH}/test_dataset/cifs
-    parser_args:
-      save_to_cache: false
-      load_from_cache: false

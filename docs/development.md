@@ -195,7 +195,7 @@ commented examples of both.
 ## Datasets and dataloaders
 
 Dataset configs live under `configs/datasets/train/` and `configs/datasets/val/`. Parquet backed
-sets inherit from `configs/datasets/train/base_pandas.yaml`, which is
+sets inherit from `configs/datasets/train/backend_pandas.yaml`, which is
 `atomworks.ml.datasets.PandasDataset`, and the production `plinder` set is
 `configs/datasets/train/plinder/plinder.yaml`. Every path uses `${oc.env:DATA_PATH}`, and squashfs
 backed CIFs use `${oc.env:SQUASH_MOUNT_PATH,/squash}`, so nothing is hardcoded.
