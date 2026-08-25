@@ -1,8 +1,8 @@
 # @package _global_
 #
 # Canonical AE training recipe — the entry point to read and to advance, mirroring
-# experiment/sota.yaml. The GPU regression test runs experiment_ae/ae_regression, a frozen
-# fixture, so changes here are not caught by it.
+# experiment/sota.yaml. test_ae_training_regression trains this recipe, so a change here
+# moves the committed losses; regenerate the baseline with generate_e2e_baselines.py.
 #
 # Self-contained on purpose: a CI-critical recipe should not depend on personal experiment
 # configs, so everything it needs is spelled out here rather than inherited.
