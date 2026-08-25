@@ -1,0 +1,10 @@
+# PDB interfaces for the AE.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/pdb_interfaces@dataset
+  - /datasets/sampling/af3_pdb_interfaces@_here_
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0

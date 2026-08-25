@@ -68,7 +68,8 @@ RUN_NAME = "e2e_grad_coverage"
 def test_gradient_coverage(tmp_path: Path) -> None:
     """Train briefly on one GPU; assert the loss is sane and every parameter row gets a gradient."""
     require_gpu_e2e(min_gpus=1)
-    require_data_file("train_datasets/afdb_monomer/afdb_monomer.parquet")
+    # The afdb parquet `experiment=sota` reads; it is 75% of that recipe's mixture.
+    require_data_file("train_datasets/afdb_monomer/afdb_genie3_32_512_annotated.parquet")
     min_alive_rows = _resolve_min_alive_rows()
 
     out_dir = ROOT / "store" / f"{RUN_NAME}_local"

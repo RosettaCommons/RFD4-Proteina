@@ -1,0 +1,20 @@
+# OMol-1 (55M): pure small-molecule systems, CIF bytes in an LMDB with a parquet sidecar.
+
+name: omol
+lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol_annotated/data
+data: ${oc.env:DATA_PATH}/train_datasets/omol/omol.parquet
+lmdb_idx_column: lmdb_idx
+memory_map: True
+
+columns_to_load:
+  - example_id
+  - lmdb_idx
+  - data_id
+  - num_atoms
+
+filters:
+  - "data_id not in ['community/trans1x', 'reactivity/rgd', 'reactivity/RGD_radical', 'reactivity/pmechdb', 'reactivity/rmechdb', 'metal_complexes/reactivity', 'elytes/reactivity']"
+  - "num_atoms <= 256"
+
+parser_args:
+  _target_: rfproteina.utils.parse_presets.distillation

@@ -1,0 +1,9 @@
+# Protein-DNA complexes for the flow model.
+
+defaults:
+  - /datasets/train/backend_lmdb@dataset
+  - /datasets/sources/na_complex@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: protein_from_dna
+  - _self_
+
+probability: 1.0

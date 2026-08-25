@@ -1,0 +1,39 @@
+# Transform pipeline defaults, shared by every training dataset, both models, both backends.
+
+id_column: example_id
+
+transform:
+  # Default transform args applied to all training datasets
+  _target_: rfproteina.datapipes.pipeline.build_design_train_pipeline
+  # Crop to whatever the collate pads to, so the two cannot disagree.
+  crop_size: ${oc.select:dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I,256}
+  crop_contiguous_probability: 0.0
+  crop_spatial_probability: 1.0
+  dna_contact_crop_probability: 0.0  # protein-DNA contact crop; enable per-dataset (e.g. na_complex)
+  crop_center_cutoff_distance: 15.0
+  max_atoms_in_crop: 10000
+  b_factor_occupancy_min: null  # Change for distillation sets where you want to not loss low confidence residues
+  p_random_rotation: 1.0
+  load_msa: False
+  max_msa_sequences: 10000
+  msa_featurize_n_recycles: 1
+  msa_featurize_n_msa: 1024
+  # BFS depth for token bond-graph path lengths. Should be >= (nn.seq_sep_dim - 2)
+  # so the model's exact-distance bins can be fully populated; smaller is fine but
+  # high-distance bins will always be empty. Bounding BFS keeps featurization fast.
+  path_length_search_cutoff: 64
+
+  # Per-token MSE loss weights (AF3-style additive: w = 1 + Σ αₖ · is_k).
+  # Each key names a predicate registered in rfproteina.transforms.loss_weight_predicates.PREDICATES.
+  loss_weight_cfg:
+    non_standard: 2.5
+    unindexed: 2.5
+    sampled_tip_atom: 0.0
+
+  centroid_kwargs:
+    p_add_centroid_condition: 0.2
+    noise_std_angstrom: 5.0
+
+  # Coordinate-valued conditioning annotations that must follow coordinate re-centering
+  center_conditioning_annotations:
+    - condition_ChainCentroid_1_atom

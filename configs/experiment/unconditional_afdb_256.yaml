@@ -9,13 +9,13 @@ defaults:
   - /nn/local_latents_score_nn_160M_atom37@nn
   
   # Train dataset
-  - /datasets/train/distill/afdb_monomer_beta_coil@datasets.train.afdb_monomer
+  - /datasets/train/flow/afdb_monomer@datasets.train.afdb_monomer
   
   # Validation dataset (optional - for monitoring)
   - /datasets/val/unconditional@datasets.val.unconditional
   
   # Unconditional-only design task
-  - /design_tasks/presets/unconditional_only@_unconditional_design_tasks
+  - /design_tasks/presets@_unconditional_design_tasks: unconditional_only
   
   - _self_
 
@@ -27,6 +27,8 @@ datasets:
     afdb_monomer:
       probability: 1.0
       dataset:
+        # Crops at 512, so it takes the source's full 32-512 range.
+        filters: null
         transform:
           crop_size: 512
           design_tasks: ${_unconditional_design_tasks}

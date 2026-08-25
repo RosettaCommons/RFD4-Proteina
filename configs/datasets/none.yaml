@@ -1,0 +1,4 @@
+# Empty dataset group. Lets a config define `datasets.train` entirely itself, with no
+# leaves mounted underneath it.
+
+train: {}

@@ -1,8 +1,0 @@
-# Unconditional-only preset. Standalone (does not inherit all_off) so AE training
-# logs aren't spammed with the zero-frequency task catalogue.
-
-unconditional:
-  frequency: 1.0
-  transform:
-    _target_: rfproteina.transforms.design_task.UnconditionalTask
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

@@ -1,26 +1,9 @@
-# TED Dimers Dataset - Protein dimers for autoencoder training.
-# Unified metadata parquet + paper Teddymer quality filters (~510k rows).
+# TED dimers for the AE.
 
 defaults:
-  - /datasets/train/base_pandas@dataset
-  - base
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/ted_dimers@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
   - _self_
 
-dataset:
-  name: ted_dimers_ae
-  data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/ted_dimers_metadata_annotated.parquet
-  loader:
-    base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
-  filters:
-    - "InterfaceLength > 10"
-    - "AvgIntPAE < 10"
-    - "AvgIntPlddt > 70"
-  columns_to_load:
-    - example_id
-    - path
-    - InterfaceLength
-    - AvgIntPAE
-    - AvgIntPlddt
-    - MemberCount
-    - passes_paper_teddymer
-    - on_disk
+probability: 1.0

@@ -8,7 +8,7 @@ hardware:
 
 defaults:
   - nn_ae: nn_60m_unified  # NEW: 33 residue types (20 AA + RNA + DNA + unknowns)
-  - datasets: ae_na_complex_datasets  # Autoencoder-specific dataset (no design tasks)
+  - datasets: ae_pdb_datasets
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
   - dataloaders: default  
   - callbacks: autoencoder

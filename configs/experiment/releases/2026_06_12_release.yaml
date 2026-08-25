@@ -9,10 +9,10 @@
 
 defaults:
   # Train datasets
-  - /datasets/train/distill/afdb_monomer_256@datasets.train.afdb_monomer
-  - /datasets/train/distill/omol@datasets.train.omol
-  - /datasets/train/plinder/plinder@datasets.train.plinder
-  - /datasets/train/distill/ted_dimers@datasets.train.ted_dimers
+  - /datasets/train/flow/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/flow/omol@datasets.train.omol
+  - /datasets/train/flow/plinder@datasets.train.plinder
+  - /datasets/train/flow/ted_dimers@datasets.train.ted_dimers
 
   # Validation datasets
   - /datasets/val/unconditional@datasets.val.unconditional
@@ -29,7 +29,7 @@ defaults:
   - /datasets/val/ppi_subset@datasets.val.ppi_subset
 
   # Design task presets
-  - /design_tasks/presets/tip_atom_pocket_tasks@_tip_atom_design_tasks
+  - /design_tasks/presets@_tip_atom_design_tasks: tip_atom_pocket_tasks
 
   # AF3 refolding oracle
   - override /metrics/refolding_oracles: af3

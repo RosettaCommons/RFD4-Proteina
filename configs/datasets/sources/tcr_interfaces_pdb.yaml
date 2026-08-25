@@ -1,0 +1,23 @@
+# PDB interfaces restricted to TCR / peptide-MHC pairs; same table and columns as the
+# antibody source, gated on `ig_type == 'tcr'`.
+
+defaults:
+  - antibody_interfaces_pdb
+  - _self_
+
+name: tcr_interfaces_pdb
+
+# Spelled out in full because Hydra replaces lists on merge; only the `ig_type` gate differs.
+filters:
+  - "deposition_date < '2024-01-01'"
+  - "resolution < 9.0"
+  - "num_polymer_pn_units <= 30"
+  - "interface_cluster.notnull()"
+  - "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+  - "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+  - "is_inter_molecule"
+  - "n_nuc == 0"  # exclude interfaces in assemblies containing nucleic acids
+  # Ig-specific gates
+  - "cdr_annotations.notnull()"
+  - "involves_ig"
+  - "ig_type == 'tcr'"

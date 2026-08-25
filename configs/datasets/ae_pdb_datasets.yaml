@@ -1,0 +1,18 @@
+# AE mix over the PDB: RNA monomers, PDB interfaces, PDB polymer/non-polymer units.
+# The mix `experiment_ae/ae_sota` trains on.
+
+defaults:
+  - train/ae/rna_monomer@train.rna_monomer
+  - train/ae/pdb_interfaces@train.pdb_interfaces
+  - train/ae/pdb_pn_units@train.pdb_pn_units
+  - _self_
+
+train:
+  rna_monomer:
+    probability: 0.10
+
+  pdb_interfaces:
+    probability: 0.50
+
+  pdb_pn_units:
+    probability: 0.40

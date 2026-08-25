@@ -1,0 +1,7 @@
+# TCR / peptide-MHC interfaces, predicted with a fine-tuned AF2 model.
+
+name: tcr_interfaces_distill
+data: ${oc.env:DATA_PATH}/train_datasets/tcr_distill/tcr_distill_interfaces_train.parquet
+
+loader:
+  base_path: ${oc.env:DATA_PATH}/train_datasets/tcr_distill/data

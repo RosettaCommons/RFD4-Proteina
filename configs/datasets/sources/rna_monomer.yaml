@@ -1,0 +1,32 @@
+# RNA monomers, predicted with Protenix v2
+
+name: rna_monomer
+lmdb_path: ${oc.env:DATA_PATH}/train_datasets/rna_protenix_v2
+data: ${oc.env:DATA_PATH}/train_datasets/rna_protenix_v2/metadata.parquet
+lmdb_idx_column: lmdb_idx
+memory_map: True
+
+columns_to_load:
+  - example_id
+  - lmdb_idx
+  - length
+  - mean_plddt
+  - ptm
+  - frac_atoms_clashing_1p0A
+  - frac_atoms_clashing_1p5A
+  - rnet2_mcc_t0p7
+  - passes_ribonanza_strict
+  - passes_ribonanza_moderate
+  - passes_ribonanza_loose
+
+filters:
+  # Agreement with Ribonanza chemical-mapping reactivity
+  - "passes_ribonanza_strict == True"
+  # Zero hard clashes plus a soft-clash cut
+  - "frac_atoms_clashing_1p0A == 0"
+  - "frac_atoms_clashing_1p5A < 0.005"
+  # Confidence floor
+  - "mean_plddt > 75"
+
+parser_args:
+  _target_: rfproteina.utils.parse_presets.distillation

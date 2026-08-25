@@ -1,0 +1,14 @@
+# AFDB single-chain predictions, Genie3 subset. 32-512 residues, ~1.19M rows.
+# Length gating belongs to the consumer, which knows its own crop budget.
+
+name: afdb_monomer
+data: ${oc.env:DATA_PATH}/train_datasets/afdb_monomer/afdb_genie3_32_512_annotated.parquet
+memory_map: True
+
+loader:
+  base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/afdb_monomer
+
+columns_to_load:
+  - example_id
+  - path
+  - length

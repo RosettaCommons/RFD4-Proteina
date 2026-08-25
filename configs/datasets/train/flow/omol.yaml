@@ -1,0 +1,20 @@
+# OMol-1 small molecules for the flow model.
+
+defaults:
+  - /datasets/train/backend_lmdb@dataset
+  - /datasets/sources/omol@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: all_off
+  - _self_
+
+probability: 1.0
+
+dataset:
+  transform:
+    design_tasks:
+      folding: {frequency: 5.0}
+      unconditional: {frequency: 1.0}
+      # Fix ligand surroundings with p=0.5 (default is p=0.0) so we see frozen pockets
+      partial_ligand:
+        frequency: 1.0
+        transform:
+          p_fix_ligand_surroundings: 0.5

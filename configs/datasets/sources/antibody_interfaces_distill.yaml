@@ -1,0 +1,7 @@
+# Antibody-antigen interfaces distilled from the Natural Antibody affinity dataset.
+
+name: antibody_interfaces_distill
+data: ${oc.env:DATA_PATH}/train_datasets/antibody_antigen_distill/ab_ag_distill.parquet
+
+loader:
+  base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/antibody_antigen_distill

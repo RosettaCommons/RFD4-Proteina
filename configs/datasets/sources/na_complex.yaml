@@ -1,0 +1,32 @@
+# Protein-DNA complexes, predicted with Protenix v2
+
+name: na_complex
+lmdb_path: ${oc.env:DATA_PATH}/train_datasets/na_complex_protenix_v2
+data: ${oc.env:DATA_PATH}/train_datasets/na_complex_protenix_v2/metadata.parquet
+lmdb_idx_column: lmdb_idx
+memory_map: True
+
+columns_to_load:
+  - example_id
+  - lmdb_idx
+  - n_chains
+  - mean_plddt
+  - iptm
+  - pd_pae_min
+  - pd_iptm_max
+  - frac_atoms_clashing_1p0A
+  - frac_atoms_clashing_1p5A
+  - n_tokens
+  - n_atoms
+
+filters:
+  # Protein-DNA interface min-PAE gate (most are very high confidence)
+  - "pd_pae_min <= 0.5"
+  # Zero hard clashes plus a soft-clash cut
+  - "frac_atoms_clashing_1p0A == 0"
+  - "frac_atoms_clashing_1p5A < 0.005"
+  # Confidence floor (median mean_plddt is about 95).
+  - "mean_plddt > 90"
+
+parser_args:
+  _target_: rfproteina.utils.parse_presets.distillation
