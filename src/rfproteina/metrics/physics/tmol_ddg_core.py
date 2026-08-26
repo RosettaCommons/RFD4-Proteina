@@ -10,6 +10,7 @@ import numpy as np
 import tmol.database
 import torch
 from biotite.structure import AtomArray, get_residue_starts
+from scipy.spatial import cKDTree
 from tmol.database import ParameterDatabase
 from tmol.io.pose_stack_from_biotite import (
     BiotitePoseBuildContext,
@@ -17,7 +18,11 @@ from tmol.io.pose_stack_from_biotite import (
 )
 from tmol.kinematics.fold_forest import FoldForest
 from tmol.kinematics.move_map import CartesianMoveMap, MoveMap
-from tmol.pack.packer_task import PackerPalette
+from tmol.pack.pack_rotamers import pack_rotamers
+from tmol.pack.packer_task import PackerPalette, PackerTask
+from tmol.pack.rotamer.dunbrack.dunbrack_chi_sampler import create_dunbrack_sampler_from_database
+from tmol.pack.rotamer.fixed_aa_chi_sampler import FixedAAChiSampler
+from tmol.pack.rotamer.include_current_sampler import IncludeCurrentSampler
 from tmol.pose.pose_stack import PoseStack
 from tmol.relax.fast_relax import _default_cart_min_fn, fast_relax
 from tmol.score import beta2016_score_function
@@ -161,9 +166,9 @@ def build_pose_and_masks(
             pose_stack, atom_array, region_b, device, raise_on_dropped_residues=raise_on_dropped_residues
         )
     else:
-        coi, _ = get_chain_of_interest(atom_array)
-        if coi is None:
-            raise ValueError("Cannot infer binder chain — no protein chains in structure.")
+        coi, coi_unambiguous = get_chain_of_interest(atom_array)
+        if coi is None or not coi_unambiguous:
+            raise ValueError("Cannot unambiguously infer the binder chain; set region_a/region_b explicitly.")
         has_chain_iid = "chain_iid" in atom_array.get_annotation_categories()
         chain_ids = atom_array.chain_iid if has_chain_iid else atom_array.chain_id
         binder_mask_atoms = chain_ids == coi
@@ -204,6 +209,88 @@ def relax_pose_stack(
         min_fn = None  # FastRelax's default is the kinematic (torsion-space) minimizer.
 
     return fast_relax(pose_stack, sfxn, palette, move_map, fold_forest, min_fn=min_fn, num_repeats=num_repeats)
+
+
+def shell_block_mask(
+    pose_stack: PoseStack,
+    atom_array: AtomArray,
+    seed_query: str,
+    radius: float,
+    device: torch.device,
+) -> torch.Tensor:
+    """Block mask for residues with any atom within ``radius`` of the ``seed_query`` selection.
+
+    The seed residue is always included (distance 0). NaN-coordinate atoms are ignored.
+    """
+    coord = atom_array.coord
+    ok = np.isfinite(coord).all(axis=-1)
+    seed = resolve_mask(atom_array, seed_query) & ok
+    if not seed.any():
+        raise ValueError(f"Mutation selection matched no atoms with coordinates: {seed_query!r}")
+    near = np.zeros(atom_array.array_length(), dtype=bool)
+    near[ok] = cKDTree(coord[seed]).query(coord[ok])[0] <= radius
+    shell = np.zeros_like(near)
+    for lo, hi in pairwise(get_residue_starts(atom_array, add_exclusive_stop=True)):
+        if near[lo:hi].any():
+            shell[lo:hi] = True
+    return atom_sel_to_block_mask(pose_stack, atom_array, shell, device, raise_on_dropped_residues=False)
+
+
+def _configure_shell_task(
+    task: Any, shell_mask: torch.Tensor, mutate_to: str | None, mutation_mask: torch.Tensor | None
+) -> None:
+    """Restrict a PackerTask to repack the shell (freezing the rest), optionally mutating a site.
+
+    With ``mutate_to`` set, the ``mutation_mask`` block is opened to only that name3 (design);
+    everything in the shell repacks at its own identity, everything outside is frozen.
+    """
+    task.restrict_to_repacking()
+    if mutate_to is not None:
+        considered = task.per_block_considered_block_types
+        pose, block, slot = (mutation_mask.unsqueeze(-1) & (considered != -1)).nonzero(as_tuple=True)
+        match = torch.tensor([bt.name3 == mutate_to for bt in task.pbt.active_block_types], device=task.device)
+        task.per_block_is_block_type_allowed[pose, block, slot] = match[considered[pose, block, slot]]
+        if not task.per_block_is_block_type_allowed[mutation_mask].any():
+            raise ValueError(f"name3 {mutate_to!r} is not an available residue type at the mutation site")
+    task.disable_packing_by_block_mask(~shell_mask)
+    dun = create_dunbrack_sampler_from_database(ParameterDatabase.get_default(), task.device)
+    task.add_conformer_sampler(dun)
+    task.add_conformer_sampler(FixedAAChiSampler())
+    task.add_conformer_sampler(IncludeCurrentSampler())
+
+
+def pack_shell(
+    pose_stack: PoseStack,
+    sfxn: Any,
+    shell_mask: torch.Tensor,
+    *,
+    mutate_to: str | None = None,
+    mutation_mask: torch.Tensor | None = None,
+) -> PoseStack:
+    """Repack the ``shell_mask`` blocks in one pass, optionally mutating a site to ``mutate_to``.
+
+    Separate from :func:`relax_shell` because a mutation changes the atom count, which
+    ``fast_relax``'s accept/reject step cannot span.
+    """
+    task = PackerTask(pose_stack, PackerPalette())
+    _configure_shell_task(task, shell_mask, mutate_to, mutation_mask)
+    return pack_rotamers(pose_stack, sfxn, task)
+
+
+def relax_shell(pose_stack: PoseStack, sfxn: Any, shell_mask: torch.Tensor, *, num_repeats: int = 2) -> PoseStack:
+    """Repack + torsion-minimize only ``shell_mask`` blocks at their current identities, backbone fixed."""
+    move_map = MoveMap.from_pose_stack(pose_stack)
+    move_map.set_move_all_sc_tors_for_blocks(shell_mask)
+    fold_forest = FoldForest.reasonable_fold_forest(pose_stack)
+    return fast_relax(
+        pose_stack,
+        sfxn,
+        PackerPalette(),
+        move_map,
+        fold_forest,
+        task_operations=[lambda task: _configure_shell_task(task, shell_mask, None, None)],
+        num_repeats=num_repeats,
+    )
 
 
 def score_block_pair(
