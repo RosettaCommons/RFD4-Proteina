@@ -7,10 +7,6 @@ from typing import Union
 import rootutils
 from dotenv import load_dotenv as _load_dotenv
 
-from rfproteina.utils.ddp import RankedLogger
-
-ranked_logger = RankedLogger(__name__, rank_zero_only=True)
-
 DOTENV_ROOT_PATH = Path(rootutils.find_root(indicator=".project-root", search_from=__file__)) / ".ipd"
 
 
@@ -22,8 +18,7 @@ def load_dotenv(
     """Load the cluster-specific .env file based on the CLUSTER environment variable.
 
     If ``dotenv_path`` is provided it is used directly. Otherwise, the ``CLUSTER``
-    environment variable selects the appropriate file from ``.ipd/``. If ``CLUSTER``
-    is unset, defaults to ``"digs"`` and emits a warning.
+    environment variable selects the appropriate file from ``.ipd/``.
 
     Args:
         dotenv_path: Explicit path to a .env file. Skips cluster detection when given.
@@ -31,17 +26,17 @@ def load_dotenv(
         **kwargs: Additional keyword arguments forwarded to :py:func:`dotenv.load_dotenv`.
 
     Raises:
-        ValueError: If no ``.env`` file exists for the resolved cluster name.
+        ValueError: If ``CLUSTER`` is unset, or no ``.env`` file exists for the resolved
+          cluster name.
     """
     if dotenv_path is None:
         cluster = os.environ.get("CLUSTER")
         if cluster is None:
-            ranked_logger.warning(
-                "CLUSTER environment variable is not set; assuming 'digs'. "
-                "If this is incorrect, add 'export CLUSTER=<cluster>' to your "
-                "~/.bashrc or ~/.zshrc. "
+            raise ValueError(
+                "CLUSTER environment variable is not set. Set it before importing rfproteina, "
+                "e.g. `export CLUSTER=local` (or 'digs'/'ord'/'gb200'/'coreweave' on a named "
+                "cluster) in your ~/.bashrc, ~/.zshrc, or the current shell."
             )
-            cluster = "digs"
 
         dotenv_path = DOTENV_ROOT_PATH / f".env.{cluster}"
 

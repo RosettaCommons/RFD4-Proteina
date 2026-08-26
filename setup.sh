@@ -77,6 +77,15 @@ echo ">>> Installing dependencies..."
 # explicitly from the local submodule.
 uv pip install -e "lib/atomworks[dev,ml,openbabel,docs]" -e ".[dev]"
 
+# ── Register Jupyter kernel (non-fatal) ──────────────────────────────────────
+echo ">>> Registering Jupyter kernel..."
+if python -m ipykernel install --user --name rfd4-proteina --display-name "RFD4-Proteina (.venv)"; then
+    echo ">>> Registered kernel \"RFD4-Proteina (.venv)\" — pick it from Jupyter's kernel picker."
+else
+    echo ">>> WARNING: could not register the Jupyter kernel automatically. Register it manually:"
+    echo "    python -m ipykernel install --user --name rfd4-proteina --display-name \"RFD4-Proteina (.venv)\""
+fi
+
 # ── 7. Shell rc file ───────────────────────────────────────────────────────
 # Determine which rc file to edit based on the user's login shell.
 if [[ "$(basename "$SHELL")" == "zsh" ]]; then

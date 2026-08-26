@@ -7,9 +7,18 @@ Prerequisites
 RFD4-Proteína needs:
 
 * Linux with an NVIDIA GPU
+* An NVIDIA driver new enough for CUDA 13 (580.65.06+ on Linux — check with ``nvidia-smi``)
 * Python 3.12
 * ``git`` and ``curl``
-* Enough local storage for two model checkpoints, about 8 GB
+
+Hardware requirements
+----------------------
+
+No minimum GPU model is enforced. ``batch_size`` sizing depends on your input length and card —
+confirm your longest input fits at ``batch_size=1`` before raising it.
+
+Enough local storage for two model checkpoints (about 8 GB), plus ~5 GB more for OpenFold3,
+downloaded by default on non-configured clusters (see `Configure data and checkpoints`_).
 
 Local installation with uv
 --------------------------
@@ -29,6 +38,21 @@ AtomWorks dependency for you. At the cluster prompt, choose ``other`` for a loca
 workstation. Pick a named cluster only when you actually have access to its
 shared storage and container configuration. ``setup.sh`` is idempotent, so
 re-running it is safe.
+
+The AtomWorks submodule clones over SSH, so you need a GitHub SSH key registered. Without one,
+clone without ``--recurse-submodules`` and rewrite the URL for just this repository, not every
+GitHub clone on your machine:
+
+.. code-block:: bash
+
+   git clone https://github.com/RosettaCommons/RFD4-Proteina.git
+   cd RFD4-Proteina
+   git config url."https://github.com/".insteadOf "git@github.com:"
+   bash setup.sh
+
+AtomWorks is currently a private repository, so this still needs HTTPS credentials configured
+(e.g. via ``gh auth login``, which sets up a git credential helper) — it only changes the
+transport, not who can authenticate.
 
 .. admonition:: On a configured compute cluster?
    :class: ipd-cluster
@@ -67,6 +91,12 @@ served anonymously. Add ``--with-test-dataset`` to the download command when
 you also need the small training dataset used by the developer tutorial. The
 script does not install a CCD mirror. You need no AWS CLI, credentials, or IPD
 account. To download from a mirror instead, set ``RFPROTEINA_DATA_URL``.
+
+On a non-configured cluster, the same command also fetches **OpenFold3** — a free, Apache-licensed
+refolding oracle that needs no gated access — if ``apptainer`` is installed, so refolding
+metrics work with no further setup. configured clusters already have AlphaFold3 pre-configured and
+skip this automatically. Pass ``--skip-of3`` if you'd rather configure AlphaFold3's licensed
+weights yourself instead; see ``skills/rfd4-proteina-setup/references/clusters.md``.
 
 Container installation
 ----------------------
