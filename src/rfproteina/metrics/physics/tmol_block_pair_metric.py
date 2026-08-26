@@ -11,6 +11,7 @@ from functools import cached_property
 from typing import Any, Literal
 
 import torch
+from atomworks.io.utils.ccd import check_ccd_codes_are_available
 from biotite.structure import AtomArray
 from tmol.io.pose_stack_from_biotite import build_context_from_biotite
 
@@ -18,10 +19,15 @@ from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.physics.tmol_ddg_core import (
     build_pose_and_masks,
     create_score_function,
+    pack_shell,
+    region_query_to_block_mask,
     relax_pose_stack,
+    relax_shell,
     score_block_pair,
+    shell_block_mask,
 )
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -63,6 +69,8 @@ class TMolBlockPairMetric(Metric):
             # TMol compares devices exactly; torch.device("cuda") != torch.device("cuda:0").
             requested = torch.device("cuda", torch.cuda.current_device())
         self.device = requested
+        if relax not in ("none", "fast_relax"):
+            raise ValueError(f"relax must be 'none' or 'fast_relax', got {relax!r}")
         self.relax = relax
         self.cartesian = cartesian
         self.num_repeats = num_repeats
@@ -111,6 +119,15 @@ class TMolBlockPairMetric(Metric):
         self._sfxn = sfxn
 
     def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
+        if self.relax == "none":
+            return self._compute(predicted_atom_array)
+        # FastRelax minimizes via autograd, but metrics run under the validation loop's
+        # torch.inference_mode(); tensors allocated there stay inference tensors even after the
+        # mode exits, so the escape must wrap the whole build, not just the relax call.
+        with torch.inference_mode(False), torch.enable_grad():
+            return self._compute(predicted_atom_array)
+
+    def _compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
         self._ensure_context_and_sfxn(predicted_atom_array)
         pose_stack, mask_a, mask_b = build_pose_and_masks(
             atom_array=predicted_atom_array,
@@ -134,3 +151,102 @@ class TMolBlockPairMetric(Metric):
             term_names=self.term_names,
             term_cutoffs=self.term_cutoffs,
         )
+
+
+def _site_label(atom_array: AtomArray, query: str) -> str:
+    """Chain+res_id label (e.g. ``"A50"``) for the single residue ``query`` selects."""
+    idx = int(resolve_mask(atom_array, query).nonzero()[0][0])
+    return f"{atom_array.chain_id[idx]}{atom_array.res_id[idx]}"
+
+
+class TMolMutationDdgMetric(TMolBlockPairMetric):
+    """Change in residue-vs-binder interface energy from point mutation(s) on the target.
+
+    For every ``(site, mutate_to)`` in the cross product of ``mutation_selection`` x ``mutate_to``,
+    relaxes a shell around the site twice -- once as-is, once mutated (backbone fixed, shell
+    repacked + minimized) -- and reports the block-pair energy between ``region_a`` (default: the
+    mutated site) and ``region_b`` (default: the binder chain of interest). The wild-type leg
+    depends only on the site, so it is relaxed once per site and reused across that site's
+    mutations. Identical relax on both legs, so each delta isolates its mutation; it is a relaxed
+    interaction-energy change, not a rigorous bound-minus-unbound binding ddG.
+
+    Output keys are suffixed per pair: ``interface_ddg_wt__<site>``,
+    ``interface_ddg_mut__<site>__<mutate_to>``, ``interface_ddg_delta__<site>__<mutate_to>``,
+    where ``<site>`` is the mutated residue's chain+res_id (e.g. ``A50``).
+
+    Args:
+        mutation_selection: AtomWorks query, or list of queries, each selecting one residue to
+            mutate.
+        mutate_to: Three-letter residue name, or list of names, to mutate each site to.
+        shell_radius: Residues with any atom within this many Angstroms of the mutated residue are
+            repacked and minimized; everything else is frozen. Defaults to 8.0.
+    """
+
+    def __init__(
+        self,
+        mutation_selection: str | list[str],
+        mutate_to: str | list[str],
+        *,
+        shell_radius: float = 8.0,
+        region_a: str | None = None,
+        region_b: str | None = None,
+        num_repeats: int = 2,
+        **kwargs: Any,
+    ):
+        super().__init__(region_a=region_a, region_b=region_b, relax="fast_relax", num_repeats=num_repeats, **kwargs)
+        self.mutation_selections = (
+            [mutation_selection] if isinstance(mutation_selection, str) else list(mutation_selection)
+        )
+        self.mutate_tos = [mutate_to] if isinstance(mutate_to, str) else list(mutate_to)
+        # Fixed at construction, so validate once here rather than per scored structure.
+        check_ccd_codes_are_available(self.mutate_tos, mode="raise")
+        self.shell_radius = shell_radius
+
+    def _compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
+        self._ensure_context_and_sfxn(predicted_atom_array)
+        # Build the pose once; the binder region is shared across all sites, so resolve it once.
+        # Pass region_b for both regions when it is set (mask_a is discarded) so the chain-of-interest
+        # inference -- which needs >= 2 chains -- runs only when region_b is omitted.
+        pose, mask_a, mask_b = build_pose_and_masks(
+            atom_array=predicted_atom_array,
+            device=self.device,
+            no_opt_h=self.no_opt_h,
+            region_a=None if self.region_b is None else self.region_b,
+            region_b=self.region_b,
+            raise_on_dropped_residues=self.raise_on_dropped_residues,
+            context=self._context,
+        )
+        mask_binder = mask_a if self.region_b is None else mask_b
+        resolve = lambda query: region_query_to_block_mask(  # noqa: E731
+            pose, predicted_atom_array, query, self.device, raise_on_dropped_residues=self.raise_on_dropped_residues
+        )
+
+        out: dict[str, float] = {}
+        for site in self.mutation_selections:
+            mask_residue = resolve(self.region_a) if self.region_a is not None else resolve(site)
+            if (mask_residue & mask_binder).any():
+                # Overlap means we'd score the residue against its own chain, not an interface.
+                raise ValueError(
+                    "Mutated-residue region overlaps the binder region; interface ddG would be intra-chain."
+                )
+            mutation_mask = resolve(site)
+            n_mutated = int(mutation_mask.sum().item())
+            if n_mutated != 1:
+                raise ValueError(f"Each mutation_selection must select one residue; {site!r} selected {n_mutated}")
+            shell = shell_block_mask(pose, predicted_atom_array, site, self.shell_radius, self.device)
+            label = _site_label(predicted_atom_array, site)
+
+            # Wild-type leg depends only on the site -> relax once and reuse across this site's mutations.
+            wt = relax_shell(
+                pack_shell(pose.clone(), self._sfxn, shell), self._sfxn, shell, num_repeats=self.num_repeats
+            )
+            ddg_wt = score_block_pair(wt, mask_residue, mask_binder, self._sfxn)["interface_ddg"]
+            out[f"interface_ddg_wt__{label}"] = ddg_wt
+
+            for mutate_to in self.mutate_tos:
+                packed = pack_shell(pose.clone(), self._sfxn, shell, mutate_to=mutate_to, mutation_mask=mutation_mask)
+                mut = relax_shell(packed, self._sfxn, shell, num_repeats=self.num_repeats)
+                ddg_mut = score_block_pair(mut, mask_residue, mask_binder, self._sfxn)["interface_ddg"]
+                out[f"interface_ddg_mut__{label}__{mutate_to}"] = ddg_mut
+                out[f"interface_ddg_delta__{label}__{mutate_to}"] = ddg_mut - ddg_wt
+        return out

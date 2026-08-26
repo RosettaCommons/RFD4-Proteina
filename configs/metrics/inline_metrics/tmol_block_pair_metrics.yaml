@@ -62,3 +62,19 @@ ppi_interface_coulomb:
   term_names: ["fa_elec"]
   term_cutoffs:
     n_coulomb_interactions: [fa_elec, -0.2]
+
+# --- Point-mutation interface ddG (TMolMutationDdgMetric) ---
+mutation_interface_ddg:
+  _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolMutationDdgMetric
+  mutation_selection: "chain_id == 'A' and res_id == 50"
+  mutate_to: ALA
+  shell_radius: 8.0
+
+# Cross-product example: 2 sites x 3 substitutions -> 6 deltas, 8 relaxes/design (not 12).
+mutation_interface_ddg_scan:
+  _target_: rfproteina.metrics.physics.tmol_block_pair_metric.TMolMutationDdgMetric
+  mutation_selection:
+    - "chain_id == 'A' and res_id == 50"
+    - "chain_id == 'A' and res_id == 54"
+  mutate_to: [ALA, ARG, ASP]
+  shell_radius: 8.0
