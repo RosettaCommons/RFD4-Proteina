@@ -732,3 +732,8 @@ html[data-theme="dark"] .bd-content .hero-credits img {
   display: inline;
   margin: 0;
 }
+
+/* Give a dropdown some breathing room from whatever follows it */
+.bd-article details {
+  margin-bottom: 1.5em;
+}
