@@ -725,3 +725,10 @@ html[data-theme="dark"] .bd-content .hero-credits img {
 }
 .aa-swatch-on { fill: var(--wf-specify); }
 .aa-swatch-off { fill: var(--wf-line-strong); }
+
+/* pandoc wraps <summary> text in a <p> (block), pushing it below the native disclosure
+   triangle -- force it inline to match. */
+.bd-article details > summary > p {
+  display: inline;
+  margin: 0;
+}

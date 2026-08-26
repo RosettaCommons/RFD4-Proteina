@@ -62,8 +62,12 @@ Download the example data and released model checkpoints:
 
    ./scripts/download_example_data.sh "$DATA_PATH"
 
-The two checkpoints come to about 8 GB. They download over HTTPS from the public
-bucket ``YOUR_DATASET_STORE``
+The two checkpoints come to about 8 GB. On a non-configured cluster this also fetches
+**OpenFold3** (~5 GB) — a free, Apache-licensed refolding oracle that needs no gated access —
+if ``apptainer`` is installed, so refolding metrics work with no further setup. Skip it with
+``--skip-of3`` if you'd rather configure AlphaFold3's licensed weights instead; see
+``skills/rfd4-proteina-setup/references/clusters.md``.
+Everything downloads over HTTPS from the public bucket ``YOUR_DATASET_STORE``
 (``https://YOUR_DATASET_STORE``), so you need no
 credentials. To pull from somewhere else, set ``RFPROTEINA_DATA_URL``.
 

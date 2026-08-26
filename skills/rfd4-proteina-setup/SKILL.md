@@ -36,7 +36,9 @@ source .venv/bin/activate
 
 `setup.sh` (see [references/environment.md](references/environment.md)):
 - installs `uv` if missing,
-- initializes the `lib/atomworks` submodule (`git submodule update --init lib/atomworks`),
+- initializes the `lib/atomworks` submodule (`git submodule update --init lib/atomworks`) —
+  this clones over SSH, so you need a GitHub SSH key registered (no key? see
+  `docs/installation.rst`'s "Local installation with uv" section for a workaround),
 - creates `.venv` with Python `>=3.12,<=3.12.10`,
 - `uv pip install -e "lib/atomworks[dev,ml,openbabel,docs]" -e ".[dev]"`,
 - scaffolds `configs/metrics/custom_metrics/all_custom_metrics.yaml`,
@@ -65,6 +67,11 @@ This downloads two checkpoints (~4 GB each) over public HTTPS — no credentials
 
 The denoiser name matches `ckpt_name` in `configs/inference.yaml`, so a default
 `generate.py` run resolves it with no CLI override.
+
+On this non-IPD path it also fetches **OpenFold3** (~5 GB, free, Apache-licensed) if
+`apptainer` is installed, so refolding metrics work with no further setup — pass `--skip-of3`
+to configure AlphaFold3's licensed weights instead. See
+[references/clusters.md](references/clusters.md).
 
 > **Public assets live in one bucket: `YOUR_DATASET_STORE`**
 > (`https://YOUR_DATASET_STORE`) — checkpoints, the
@@ -113,11 +120,13 @@ re-execs inside the container automatically; `python src/rfproteina/generate.py
 | --- | --- |
 | `atomworks not found` | `git submodule update --init lib/atomworks`, then re-run `setup.sh` |
 | `hydra not found` / import errors | `source .venv/bin/activate` |
-| `No .env file found for cluster 'digs'` | `export CLUSTER=local` and create `.ipd/.env.local` |
+| `CLUSTER environment variable is not set` | `export CLUSTER=local` (or your cluster name) before importing `rfproteina` — including before running a notebook cell. |
+| `No .env file found for cluster '<name>'` | `export CLUSTER=local` and create `.ipd/.env.local` |
 | `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` and `./scripts/download_example_data.sh "$DATA_PATH"` |
 | checkpoint name mismatch | override `ckpt_name=` to the file you actually downloaded (see Step 2 note) |
 | Segfault in rdkit/posebusters | uv's Python needs `LD_PRELOAD` set to the bundled `libstdc++.so.6` (see `Makefile`; `make test` sets it) |
-| AF3 / refolding errors | refolding & search need an AF3 container — see references/clusters.md |
+| AF3 / refolding errors | refolding & search need an AF3 container. `download_example_data.sh` fetches the gate-free OpenFold3 alternative by default on non-configured clusters (`metrics/refolding_oracles=of3`) if `apptainer` is installed — re-run it if you skipped that or `apptainer` wasn't installed yet. See references/clusters.md. |
+| `Environment variable CCD_MIRROR_PATH/PDB_MIRROR_PATH not set` (printed, not raised) | Harmless unless you need CCD/PDB lookups. Plain generation and the tutorial notebooks don't need either. |
 
 For deeper detail: [environment](references/environment.md) ·
 [checkpoints](references/checkpoints.md) · [clusters](references/clusters.md).
