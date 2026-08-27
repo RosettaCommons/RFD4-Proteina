@@ -33,6 +33,8 @@ num_replicates: 1 # Number of times to replicate each example
 # Token counts to pad batches to for torch.compile. Multiples of 16; null disables.
 compile_lengths: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
 
+precision: bf16-mixed
+
 batch_size: 1
 subset_to_examples: null # If specified, only run inference on these example indices
 prevalidate_inputs: false # Whether to sanity-check each unique input once prior to generation (fail fast on bad inputs).
