@@ -18,8 +18,6 @@ def _configure_flash_attention_backends() -> None:
     torch.backends.cuda.enable_flash_sdp(True)
     torch.backends.cuda.enable_mem_efficient_sdp(True)
     torch.backends.cuda.enable_math_sdp(False)  # Disable slow fallback
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
 
 
 class LocalLatentsTransformer(torch.nn.Module):

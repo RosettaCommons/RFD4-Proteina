@@ -707,6 +707,9 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         job_id: Job ID for parallel job splitting
         config_name: Name of the config (used for output directory naming)
     """
+    precision = cfg.precision
+    torch.set_float32_matmul_precision("high" if precision in ("32", "32-true") else "medium")
+
     # Determine config name for output paths
     if config_name is None:
         config_name = cfg.get("run_name_", "inference")
@@ -806,6 +809,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         default_root_dir=cfg.out_dir,
         logger=False,
         callbacks=[ema_callback] if ema_callback is not None else [],
+        precision=precision,
     )
     trainer.validate(model, dataloader)  # validation_step automatically saves outputs
 
