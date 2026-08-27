@@ -1,3 +1,4 @@
+import contextlib
 import os
 from functools import wraps
 from pathlib import Path
@@ -163,11 +164,8 @@ def ensure_dir(path: "str | os.PathLike") -> Path:
     task. A name that exists but is not a directory is left to fail at the first write.
     """
     path = Path(path)
-    try:
+    with contextlib.suppress(FileExistsError):
         path.mkdir(parents=True, exist_ok=True)
-    except FileExistsError:
-        if not path.is_dir():
-            raise
     return path
 
 
