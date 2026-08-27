@@ -346,7 +346,7 @@ class BinderContextCropTransform(PreOracleTransform):
         self,
         crop_size: int = 256,
         crop_center_cutoff_distance: float = 15.0,
-        crop_center_selection: Literal["random", "centroid"] = "random",
+        crop_center_selection: Literal["random", "centroid"] = "centroid",
         save_id: str = "crop",
     ) -> None:
         self.crop_size = crop_size
