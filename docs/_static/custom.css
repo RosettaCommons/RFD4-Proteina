@@ -25,6 +25,19 @@ html[data-theme="dark"] {
   --ipd-callout-code-bg: #211823;
 }
 
+:root {
+  /* "Try it live" cloud-launch callout. Blue, not the RF magenta -- distinct from ipd-cluster. */
+  --cloud-launch-bg: #eef6ff;
+  --cloud-launch-border: #2b7de9;
+  --cloud-launch-title-fg: #14497a;
+}
+
+html[data-theme="dark"] {
+  --cloud-launch-bg: #16232f;
+  --cloud-launch-border: #4a90e2;
+  --cloud-launch-title-fg: #7fb2ee;
+}
+
 .navbar-brand img {
   max-height: 2.25rem;
 }
@@ -112,6 +125,31 @@ a {
 
 .bd-article .admonition.ipd-cluster p:last-child {
   margin-bottom: 0;
+}
+
+/* "Try it live" cloud-launch box -- raw HTML in notebook markdown cells (pandoc, not MyST, so no `:class:` admonition). */
+.bd-article .cloud-launch-box {
+  background-color: var(--cloud-launch-bg);
+  border-left: 4px solid var(--cloud-launch-border);
+  border-radius: 6px;
+  padding: 14px 20px;
+  margin: 1.25rem 0;
+}
+.bd-article .cloud-launch-box .cloud-launch-title {
+  font-weight: 700;
+  color: var(--cloud-launch-title-fg);
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+.bd-article .cloud-launch-box .badge-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bd-article .cloud-launch-box .badge-group img {
+  height: 28px;
+  display: block;
 }
 
 /* =========== workflow hub ===========  */

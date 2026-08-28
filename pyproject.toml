@@ -93,6 +93,7 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "pytest-benchmark>=5.0.0,<6",
     "assertpy",
+    "boto3>=1.34,<2",
 ]
 
 # atomworks is vendored as a git submodule under lib/.

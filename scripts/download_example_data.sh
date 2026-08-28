@@ -21,6 +21,17 @@ for arg in "$@"; do
     esac
 done
 BASE="${RFPROTEINA_DATA_URL:-https://YOUR_DATASET_STORE}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Opportunistic fast path: S3 multipart GET via boto3 (scripts/s3_fetch.py); falls back to curl
+# if boto3 isn't installed. No aws-cli needed -- boto3 is a normal Python dep (`.[dev]`).
+_BASE_HOST="${BASE#https://}"
+S3_BUCKET="${_BASE_HOST%%.*}"
+S3_ENDPOINT="https://${_BASE_HOST#*.}"
+HAVE_BOTO3=false
+if command -v python3 &>/dev/null && python3 -c "import boto3" 2>/dev/null; then
+    HAVE_BOTO3=true
+fi
 
 # Download to <dest-dir>/<basename>, skipping if already present; a partial download lands in a
 # .tmp file so an interrupted run re-fetches instead of leaving a corrupt checkpoint.
@@ -28,7 +39,12 @@ fetch() {  # fetch <url> <dest-dir>
     mkdir -p "$2"
     local out="$2/$(basename "$1")"
     if [ -f "$out" ]; then echo ">>> have $(basename "$1"), skipping"; return; fi
-    curl -fL -o "$out.tmp" "$1" && mv "$out.tmp" "$out"
+    if [ "$HAVE_BOTO3" = true ] && \
+            python3 "$SCRIPT_DIR/s3_fetch.py" "$S3_BUCKET" "${1#"$BASE"/}" "$out.tmp" "$S3_ENDPOINT"; then
+        mv "$out.tmp" "$out"
+    else
+        curl -fL -o "$out.tmp" "$1" && mv "$out.tmp" "$out"
+    fi
 }
 
 echo ">>> Downloading into DATA_PATH=$DATA_PATH"
