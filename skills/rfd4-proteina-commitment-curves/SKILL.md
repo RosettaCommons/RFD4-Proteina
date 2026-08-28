@@ -13,8 +13,6 @@ description: >
   extrapolates the pass rate where too few designs passed to measure one. Costs one full
   generation per parent per grid point, so it is far more expensive than plain generation
   — use rfd4-proteina-generate for that.
-compatibility: "rfd4-proteina-setup complete; 1x CUDA GPU per sweep point; an AF3 container only if a tracked metric needs refolding; cost scales as parents x grid points"
-allowed-tools: Bash, Read, Write, AskUserQuestion
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
@@ -93,12 +91,21 @@ configs freely for cluster specifics (`hardware:`, transforms).
 one parent are correlated with each other and buy a within-parent spread estimate rather
 than a tighter curve. Spend replicates in phase 1, where each becomes another parent.
 
+## Scheduler intent
+
+For any batch run, read the selected `scripts/.user_info_<cluster>` and the
+launcher before constructing the command. Preserve the user's partition,
+account, QoS/priority options, GPU request, runtime, memory, and CPU settings.
+Use a resource override only when the user explicitly requested it. State the
+resolved scheduler values before submission; use dry-run or non-submitting tests
+when validating the workflow.
+
 ## Step 3 — Phase 1: get the parents
 
 **Either** generate them:
 
 ```bash
-./scripts/launch_infer.sh <cluster> inference_experiment=<name>_phase1 --no-foldseek
+./scripts/launch_generate.sh <cluster> inference_experiment=<name>_phase1 --no-foldseek
 ```
 
 **Or**, if the user already has a curated set, score it offline so the parents carry
@@ -212,7 +219,7 @@ No flag switches them on; if the columns are missing it warns and writes only th
 ## Reading the result
 
 Say the crossing point in steps, not "early/late": *above step X the property is
-preserved; by step Y a child is indistinguishable from an independent design.* Three
+preserved; by step Y a child is indistinguishable from an independent design.* Five
 things that are not obvious:
 
 1. **ρ does not fall to 0 at step 0.** If the parents are different design problems, a
@@ -237,4 +244,4 @@ things that are not obvious:
    passes" means the screen is right but the budget is not.
 
 See [references/method.md](references/method.md) for the statistics and
-[references/gotchas.md](references/gotchas.md) for the traps that cost real GPU hours.
+[references/gotchas.md](references/gotchas.md) for operational constraints and failure conditions.

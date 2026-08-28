@@ -56,9 +56,8 @@ CI, and internal refactors are omitted.
   CIF input can draw its own conditioning instead of reusing one fixed guess
   ([#196](https://github.com/RosettaCommons/RFD4-Proteina/pull/196)) — see the
   [inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html).
-* `/json2cif` becomes `/design2cif` and now accepts either an RFD3-style JSON *or* a paragraph
-  describing what you want; the prose route drafts the equivalent spec, flags every value it
-  inferred, and only builds after you sign off
+* `/design2cif` accepts existing design artifacts or a plain-language description, interviews for
+  unresolved intent, and builds or edits the annotated CIF directly with the Python API
   ([#150](https://github.com/RosettaCommons/RFD4-Proteina/pull/150)).
 
 ### Usability enhancements

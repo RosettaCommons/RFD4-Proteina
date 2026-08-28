@@ -19,7 +19,7 @@ one or more `metrics_tags`, so turning one on is just passing a tag.
 | Pass criteria (pass/fail thresholds) | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
 | Pre-oracle filters (skip the oracle on cheap failures) | 5 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
-Beyond those, **~10 more metric classes exist** in the codebase but are opt-in
+Additional metric classes exist in the codebase but are opt-in
 (not wired into any default config) — TMol interface ddG / H-bonds /
 electrostatics (`TMolBlockPairMetric`), atom-pair distance constraint
 (`AtomPairDistanceMetric`, catalytic geometry), QM ligand interaction energy
@@ -83,8 +83,9 @@ Oracle key outputs (prefixed `<oracle_key>.`): `overall_plddt`, `overall_ptm`,
 
 `aggregate_metrics --cluster_with_foldseek` adds a `foldseek_cluster_id` column
 by clustering the **designed chain** (`chain_of_interest`) at TM-score 0.5.
-Requires `FOLDSEEK_EXEC` in `.env`, and the structures must have been generated
-with `save_chain_of_interest=true` (writes the per-design chain CIFs it reads).
+Requires `FOLDSEEK_EXEC` in the active environment. Post-hoc evaluation writes
+its designed-chain CIFs; generation-time aggregation requires
+`save_chain_of_interest=true`.
 
 ## Custom metrics
 

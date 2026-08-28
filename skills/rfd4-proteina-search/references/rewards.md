@@ -2,7 +2,7 @@
 
 The reward tells search which candidates to keep. In RFProteína it is defined
 **inline** under `search.rewards` in a search `inference_experiment` config —
-there is no separate reward file. This mirrors `docs/guides/search.md`.
+there is no separate reward file. This mirrors `docs/workflow/search.md`.
 
 A reward has three parts: `reward_metrics_tags` (which metrics fire during
 scoring), `weights` (how to combine them into a scalar), and optional
@@ -15,17 +15,19 @@ Tags selecting which metrics run during **beam scoring**, independent of the
 top-level `metrics_tags` (which controls the epoch-end metrics loop). Anything a
 tag produces becomes available as a key in `weights`.
 
-The `*_refolding` tags run the **AF3 oracle** and their outputs are prefixed
-`oracle.`. Common tags (full list in `docs/guides/inference.md`, "Evaluating
-Results"):
+Refolding tags activate the oracle selected by `metrics/refolding_oracles` when
+that backend supports the design case. AF3 is the default; AF2 and OpenFold3 are
+selected with `metrics/refolding_oracles=af2` and
+`metrics/refolding_oracles=of3`. Standard outputs are prefixed `oracle.`. Common
+tags are:
 
-| Tag | Activates | Uses AF3 oracle? |
+| Tag | Activates | Supported backends |
 | --- | --- | --- |
-| `unconditional_refolding` | AF3 refolding + pLDDT/scRMSD for unconditional generation | Yes |
-| `ppi_refolding` | AF3 refolding + interface metrics for protein binder design | Yes |
-| `sm_binder_refolding` | AF3 refolding + binding metrics for small-molecule binders | Yes |
-| `motif_scaffold_refolding` | AF3 refolding + motif RMSD for scaffolding / enzymes | Yes |
-| `interchain_interactions` | Interchain H-bond / salt-bridge / etc. counts and adherence | No |
+| `unconditional_refolding` | Refolding + pLDDT/scRMSD for unconditional generation | AF2, AF3, OpenFold3 |
+| `ppi_refolding` | Refolding + interface metrics for protein binder design | AF2, AF3, OpenFold3 |
+| `sm_binder_refolding` | Refolding + binding metrics for small-molecule binders | AF3, OpenFold3 |
+| `motif_scaffold_refolding` | Refolding + motif RMSD for scaffolding / enzymes | AF2, AF3, OpenFold3 |
+| `interchain_interactions` | Interchain H-bond / salt-bridge / etc. counts and adherence | No oracle |
 
 A reward that uses only non-refolding tags (e.g. `interchain_interactions`)
 needs **no container** — this is how `sm_binder_hbond_search.yaml` avoids the
@@ -37,7 +39,7 @@ Maps each metric output key to a coefficient; the reward is the **weighted sum**
 of those metric values. Use a **negative weight to minimize** a metric (e.g.
 minimize interface PAE).
 
-Available AF3 oracle keys (from `src/rfproteina/metrics/oracles/oracle_metric.py`,
+Common oracle keys (from `src/rfproteina/metrics/oracles/oracle_metric.py`,
 "coi" = chain of interest):
 
 | Key | Meaning | Direction to prefer |
@@ -109,7 +111,7 @@ search:
           interchain_interactions.hbond_atom_pair_count_coi:
             max: 6.0                                    # stop paying past 6 H-bonds
       100:
-        reward_metrics_tags: [unconditional_refolding]  # AF3 only at the last prune
+        reward_metrics_tags: [unconditional_refolding]  # refolding only at the last prune
         weights:                                        # oracle keys only: the interchain
           oracle.plddt_coi: 1.0                         # metrics no longer fire here
 ```
@@ -185,5 +187,6 @@ generation:
     nsteps: 100                     # the default; must equal the last step_checkpoint
 ```
 
-See [af3-oracle.md](af3-oracle.md) for what the oracle needs, and
-[cost.md](cost.md) for how `beam_width`/`n_branch`/`step_checkpoints` drive cost.
+See [af2-oracle.md](af2-oracle.md), [af3-oracle.md](af3-oracle.md), and
+[cost.md](cost.md) for backend requirements and how
+`beam_width`/`n_branch`/`step_checkpoints` drive cost.

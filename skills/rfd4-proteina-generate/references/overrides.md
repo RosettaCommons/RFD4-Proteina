@@ -1,7 +1,7 @@
 # Overrides cheat sheet
 
 Every generation parameter you are likely to touch, mirroring
-`docs/guides/parameters.md`. **All arguments are Hydra `key=value`, never
+`docs/workflow/running.md`. **All arguments are Hydra `key=value`, never
 `--key value`.** Run from the repo root. Back to the [skill](../SKILL.md).
 
 Entry point:
@@ -21,7 +21,7 @@ runs in the current environment.
 | `out_dir` | Output directory. Set a real path for anything but a smoke test. | `./runs/<run_name>` |
 | `num_replicates` | Designs generated per input example. `1` is a smoke test only. | 1 |
 | `batch_size` | Designs processed in parallel on GPU. Start at 8; confirm the longest input fits at 1 first. | 1 |
-| `metrics_tags` | Inline metrics as a bracket-quoted Hydra list (needs an AF3 container for `*_refolding`). Empty = none. | `[]` |
+| `metrics_tags` | Inline metrics as a bracket-quoted Hydra list. Only `*_refolding` tags need an AF3 container. Empty = none. | `[]` |
 
 ```bash
 python src/rfproteina/generate.py \
@@ -131,7 +131,7 @@ Pass as a bracket-quoted Hydra list; results go to `per_example_metrics.csv`.
 
 All `*_refolding` tags run the AF3 oracle (needs an apptainer/docker container).
 Metrics that require a tag are silently skipped if the tag is absent. Deep detail
-lives in **rfd4-proteina-evaluate** and `docs/guides/metrics.md`.
+lives in **rfd4-proteina-evaluate** and `docs/workflow/metrics.md`.
 
 ## Reusable configs and search
 

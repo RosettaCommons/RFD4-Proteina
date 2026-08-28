@@ -1,4 +1,4 @@
-# Traps, each of which has cost real GPU hours
+# Operational constraints and failure conditions
 
 ## Phase-2 conditioning must equal phase-1 conditioning
 

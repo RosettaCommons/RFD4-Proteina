@@ -45,7 +45,7 @@ Mitigation: It only appends a clearly-marked block, is idempotent (skips if the 
 
 ## References
 
-- `docs/guides/inference.md`, `docs/guides/annotated_cif_inputs.md`
+- `docs/workflow/running.md`, `docs/workflow/inputs.md`
 - `setup.sh`, `scripts/download_example_data.sh`, `configs/inference.yaml`
 - RFProteína website: https://rosettacommons.github.io/RFD4-Proteina/
 - NVIDIA agent skills: https://docs.nvidia.com/skills

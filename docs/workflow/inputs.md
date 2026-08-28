@@ -121,28 +121,25 @@ each annotation fixed.
 
 An annotated CIF is an ordinary structure file that also carries the conditions. They sit next to the
 atoms they apply to, so the model reads one file and there is no second config to keep in sync.
+Existing JSON/YAML input specifications remain supported for established workflows. Prefer an
+annotated CIF when the design depends on explicit component chemistry or conditions that should be
+inspected and edited alongside the structure.
 
-The legacy path splits the two apart. You look at a structure in PyMOL, transcribe what you see into
-a JSON or YAML spec, and the pipeline rebuilds a structure from that spec before the model sees it.
-Both conversions drop information the model would otherwise use.
+Three details deserve particular attention for non-canonicals, PTMs and small molecules.
 
-Three things go missing, and they are the ones that matter for non-canonicals, PTMs and small
-molecules.
-
-- **Bonds.** PDB files and JSON rebuilt structures do not reliably preserve the bond graph, meaning
-  order, aromaticity, and explicit covalent or metal coordination bonds. The model uses all of that
-  as features.
-- **Charges.** PDB has no reliable formal charge field, and rebuilt inputs default a missing charge
-  to `0`. The model embeds formal charge per atom.
-- **PTMs and non-canonicals.** Awkward to express as a contig, and a round trip tends to strip the
-  atoms, bonds and charges that define the modification.
+- **Bonds.** Confirm bond order, aromaticity, and explicit covalent or metal
+  coordination bonds. The model uses all of them as features.
+- **Charges.** Confirm formal charge rather than treating an unknown value as
+  neutral. The model embeds formal charge per atom.
+- **PTMs and non-canonicals.** Preserve the atoms, bonds, charges, and component
+  identity that define the modification.
 
 A CIF saved out of your PyMOL session keeps all three, and the model reads CIFs natively, so nothing
 gets rebuilt on the way in.
 
-> The legacy RFD3 JSON dialect still parses, and warns you when it does. It is on its way out, it
-> does not reach the newer conditioning types, and it is the format most likely to fail silently on
-> non-canonicals, PTMs and small molecules. Converting takes [one command](design2cif.md).
+> The [input-authoring skill](design2cif.md) can inspect an existing JSON/YAML
+> specification and build an annotated CIF without requiring JSON as an
+> intermediate for prose or structure-based authoring.
 
 ## Four ways to make one
 
@@ -152,7 +149,7 @@ at atoms. The Python API can express anything the model can read.
 | Route | Reach for it when |
 | --- | --- |
 | [PyMOL plugin](#pymol-plugin) | You want to select atoms by eye |
-| [`/design2cif`](design2cif.md) | You would rather describe the problem and be asked about it |
+| [`rfd4-proteina-inputs` / `/design2cif`](design2cif.md) | You want an agent to interview you, inspect existing artifacts, and author or edit the CIF |
 | [YAML condition spec](#yaml-condition-spec) | You want the problem as data, in version control |
 | [Python API](#python-api) | You are generating many problems, or need something the others cannot say |
 
@@ -276,7 +273,7 @@ way it was supervised. The **Import** column gives the Python shorthand the
 | **Index group** | `C_IDXGRP` | `condition_index-group_1_token` | Groups residues whose *relative* offsets are known, so an unindexed motif can still be internally rigid. | int group id |  |
 | **Hotspot** | `C_HOT` | `mask_hotspot_1_atom` | Marks target-interface atoms the designed binder should engage. | bool | A hotspot is a **target-chain atom within 4.5 Å of any binder-chain atom** (Euclidean). Count sampled `geometric(p=0.2)`, capped at 10 % of eligible atoms. 5 % of the time none are given. Trained alongside a **target conditioned on both coordinates and sequence**, with the binder generated. |
 | **RASA bin** | `C_RAS` | `condition_rasa-binned_1_atom` | Tells the model how buried or exposed an atom should be. Useful for steering ligand pockets and surface design. | `RasaEnum`: `0`=UNSPECIFIED, `1`=BURIED, `2`=INTERMEDIATE, `3`=EXPOSED | Relative SASA, computed Shrake and Rupley with a 1.4 Å probe, ProtOr radii and 100 points. Bins by `rASA` edges `[0.0, 0.1, 0.2]`: `[0,0.1)`→BURIED, `[0.1,0.2)`→INTERMEDIATE, `≥0.2`→EXPOSED. |
-| **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests a donor or acceptor role for an atom, which is how you specify a ligand binding H-bond network. | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR, `3`=BOTH | Computed with `hbplus`, using H to A ≤ 2.2 Å and D to A ≤ 3.2 Å. **Only H-bonds between the motif and the diffused region** are conditioned on, and they get subsampled when there are many. |
+| **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests a donor or acceptor role for an atom, which is how you specify a ligand binding H-bond network. | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR. The enum defines `3`=BOTH, but current input validation rejects it on valid atoms. | Computed with `hbplus`, using H to A ≤ 2.2 Å and D to A ≤ 3.2 Å. **Only H-bonds between the motif and the diffused region** are conditioned on, and they get subsampled when there are many. |
 | **Chain centroid** | `C_CENTROID` | `condition_ChainCentroid_1_atom` | Provides a target center of mass for a chain, so you can position a binder or ligand without fixing any atoms. | per-atom xyz (Å), broadcast per chain | Used in place of an explicit ORI token to guide COM placement. |
 | **Secondary structure** | `C_SEC` | `condition_secondary-structure_1_residue` | Requests helix, sheet or loop at the selected residues. Leave `NONE` where you do not care. | `SSEnum`: `0`=NONE, `1`=HELIX, `2`=SHEET, `3`=LOOP | P-SEA assignment on the ground-truth structure. |
 | **Internal coordinate** | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
@@ -381,11 +378,12 @@ not resample it. Only polypeptide expandable segments work for now.
 
 ## FAQ and gotchas
 
-**Do I have to use annotated CIFs?** No. The legacy RFD3 JSON dialect still parses, and a [YAML
-condition spec](condition-spec.md) is a supported middle ground. But for
-non-canonicals, PTMs, small molecules, bonds, charges, or any conditioning type RFD3 never had,
-annotated CIFs are lossless and the others are not. `/design2cif` will [convert an existing
-JSON](design2cif.md) for you.
+**Do I have to use annotated CIFs?** No. Existing JSON inputs and the [YAML
+condition spec](condition-spec.md) remain supported. Annotated CIFs are useful
+when conditions and explicit component chemistry should be inspected and edited
+with the structure. The input-authoring skill can [interpret an existing
+JSON/YAML specification](design2cif.md), but it does not require JSON for prose
+or CIF-based workflows.
 
 **Can I open an annotated CIF in PyMOL or other tools?** Yes. The annotations are extra columns and
 categories, and the coordinates and topology are standard mmCIF. To load and visualize the

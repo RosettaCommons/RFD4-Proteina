@@ -10,7 +10,7 @@ Usage::
 
     export PYTHONPATH=$PWD/src:$PWD/lib/atomworks/src
     export ALLOW_BIOTITE_CCD=True
-    python scripts/json2cif/check_cif.py <file.cif> [--strict] [--quiet]
+    python skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py <file.cif> [--strict] [--quiet]
 """
 
 from __future__ import annotations
@@ -32,9 +32,7 @@ from biotite.structure import AtomArray
 import rfproteina.conditions  # noqa: F401  (import for registry side-effect ONLY)
 from rfproteina.conditions import C_IDXGRP
 
-# ---------------------------------------------------------------------------
 # Severity model
-# ---------------------------------------------------------------------------
 
 ERROR = "error"
 WARN = "warn"
@@ -43,7 +41,7 @@ NOTE = "note"
 
 _TAGS = {ERROR: "ERROR", WARN: "WARN ", NOTE: "note "}
 
-# Standard AAs + nucleotides; anything else is a ligand (incompleteness = broken molecule).
+# Standard AAs + nucleotides; anything else uses component-level chemistry checks.
 POLYMER_RES_NAMES = frozenset(
     "ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL " "A C G U DA DC DG DT DI".split()
 )
@@ -96,9 +94,7 @@ def _truncate(items: Iterable[object], limit: int = 12) -> str:
     return f"{shown}, ... (+{len(items) - limit} more)"
 
 
-# ---------------------------------------------------------------------------
 # Loading
-# ---------------------------------------------------------------------------
 
 
 def load_atom_array(path: Path) -> AtomArray:
@@ -129,9 +125,7 @@ def load_atom_array(path: Path) -> AtomArray:
     return arr
 
 
-# ---------------------------------------------------------------------------
-# Part 1a - direct coord-implies-sequence pre-check (runs BEFORE the pipeline)
-# ---------------------------------------------------------------------------
+# Direct coord-implies-sequence pre-check (runs before the pipeline)
 
 
 def check_coord_implies_seq(arr: AtomArray) -> list[Violation]:
@@ -197,9 +191,7 @@ def check_coord_implies_seq(arr: AtomArray) -> list[Violation]:
     return violations
 
 
-# ---------------------------------------------------------------------------
-# Part 1b - the invariant pipeline
-# ---------------------------------------------------------------------------
+# Invariant pipeline
 
 
 def run_pipeline_validation(arr: AtomArray) -> list[Violation]:
@@ -221,19 +213,11 @@ def run_pipeline_validation(arr: AtomArray) -> list[Violation]:
         return [Violation(ERROR, "pipeline_error", f"{type(e).__name__}: {e}")]
 
 
-# ---------------------------------------------------------------------------
-# Part 1c - missing atoms (HARD ERROR - never repair) and res_id gaps
-# ---------------------------------------------------------------------------
+# Component atom inventories and res_id gaps
 
 
 def check_missing_atoms(arr: AtomArray) -> list[Violation]:
-    """Report residues short of their CCD template, split by severity.
-
-    Per residue, ``_get_missing_atoms_template`` returns exactly the atoms present in the CCD
-    but absent here (and raises a detailed ``ValueError`` on atoms *not* in the template). A
-    partial polymer residue = note (normal for tip-atom/select_fixed_atoms); a ligand short of
-    its CCD = error (model embeds its bond graph, aromaticity and charges).
-    """
+    """Report incomplete polymers and component/CCD atom-set mismatches for intent review."""
     import biotite.structure as struc
     from atomworks.constants import CCD_MIRROR_PATH
     from atomworks.io.template import _get_missing_atoms_template
@@ -248,7 +232,7 @@ def check_missing_atoms(arr: AtomArray) -> list[Violation]:
     atomize = arr.get_annotation("atomize").astype(bool) if "atomize" in cats else np.zeros(len(arr), bool)
 
     bounds = struc.get_residue_starts(arr, add_exclusive_stop=True)
-    ligand_grew, polymer_grew, n_ligand = [], [], 0
+    ccd_short, ccd_mismatch, polymer_short, n_missing = [], [], [], 0
     for i in range(len(bounds) - 1):
         start, stop = int(bounds[i]), int(bounds[i + 1])
         res_name = str(arr.res_name[start])
@@ -265,7 +249,7 @@ def check_missing_atoms(arr: AtomArray) -> list[Violation]:
                 hydrogen_policy="remove",
             )
         except ValueError:
-            # Unknown/custom CCD, or atoms not in the template: cannot check, so skip this residue.
+            ccd_mismatch.append(_residue_label(arr, start))
             continue
 
         if template is None:
@@ -278,30 +262,42 @@ def check_missing_atoms(arr: AtomArray) -> list[Violation]:
         # Polymer if not atomized and res_name is standard; atomize marks ligands/PTMs/non-canonicals.
         is_polymer = not atomize[start] and res_name in POLYMER_RES_NAMES
         if is_polymer:
-            polymer_grew.append(label)
+            polymer_short.append(label)
         else:
-            ligand_grew.append(label)
-            n_ligand += len(missing)
+            ccd_short.append(label)
+            n_missing += len(missing)
 
     out = []
-    if ligand_grew:
+    if ccd_short:
         out.append(
             Violation(
-                ERROR,
-                "ligand_missing_atoms",
-                f"{len(ligand_grew)} ligand/non-polymer residue(s) are missing {n_ligand} atom(s) vs "
-                f"their CCD definition: {_truncate(sorted(ligand_grew), limit=20)}. Truncated ligand "
-                "misrepresents bond graph, aromaticity and charges. Fix the source CIF; never run add_missing_atoms.",
+                WARN,
+                "component_ccd_atoms_missing",
+                f"{len(ccd_short)} non-polymer component(s) are missing {n_missing} heavy atom(s) "
+                f"from the CCD entry with the same code: {_truncate(sorted(ccd_short), limit=20)}. "
+                "Confirm whether each component is intended to match that CCD or is an explicitly authored "
+                "custom component; validate its atoms, bonds, bond orders, aromaticity, and formal charges.",
             )
         )
-    if polymer_grew:
+    if ccd_mismatch:
         out.append(
             Violation(
-                NOTE,
-                "polymer_partial_residues",
-                f"{len(polymer_grew)} polymer residue(s) incomplete: "
-                f"{_truncate(sorted(polymer_grew), limit=8)}. Normal for tip-atom/select_fixed_atoms; "
-                "flagged to confirm against design intent.",
+                WARN,
+                "component_ccd_atom_set_mismatch",
+                f"Could not compare {len(ccd_mismatch)} component(s) with the CCD entry for their code: "
+                f"{_truncate(sorted(ccd_mismatch), limit=20)}. Non-CCD and custom components are supported; "
+                "confirm their explicit atom inventory, bonds, bond orders, aromaticity, and formal charges.",
+            )
+        )
+    if polymer_short:
+        out.append(
+            Violation(
+                WARN,
+                "polymer_atoms_missing",
+                f"{len(polymer_short)} polymer residue(s) are incomplete: "
+                f"{_truncate(sorted(polymer_short), limit=8)}. Express partial conditioning with masks on a "
+                "complete residue. If the source is genuinely unresolved, confirm the resulting component "
+                "identity and custom-CCD behavior before generation.",
             )
         )
     return out
@@ -328,9 +324,7 @@ def check_res_id_gaps(arr: AtomArray) -> list[Violation]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Part 2.1 - missing / unknown formal charges
-# ---------------------------------------------------------------------------
+# Missing or unknown formal charges
 
 
 def check_formal_charges(path: Path) -> list[Violation]:
@@ -376,9 +370,7 @@ def check_formal_charges(path: Path) -> list[Violation]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Part 2.2 - ligands that lost their bond orders
-# ---------------------------------------------------------------------------
+# Ligands that lost their bond orders
 
 
 def _residue_slices(arr: AtomArray) -> Iterator[tuple[int, int]]:
@@ -453,9 +445,7 @@ def check_ligand_bond_orders(arr: AtomArray) -> list[Violation]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Part 2.3 - metal coordination bonds
-# ---------------------------------------------------------------------------
+# Metal coordination bonds
 
 
 def check_metal_bonds(arr: AtomArray) -> list[Violation]:
@@ -522,7 +512,8 @@ def check_metal_bonds(arr: AtomArray) -> list[Violation]:
                 f"{len(lone_unbonded)} metal atom(s) have no bonds: {_truncate(lone_unbonded)}. Normal "
                 f"-- most CIFs lack struct_conn, so the metal reaches the model as an isolated atom.{detail} "
                 "These are geometric neighbours, NOT bonds -- if any should be COORDINATION, name them: "
-                "build_cif.py --coordination_bond 'C/ZN/296/ZN,A/CYS/365/SG'. Never infer by distance.",
+                "build_from_rfd3.sh input.json example_key --coordination_bond "
+                "'C/ZN/296/ZN,A/CYS/365/SG'. Never infer by distance.",
             )
         )
     if coordinated:
@@ -538,9 +529,7 @@ def check_metal_bonds(arr: AtomArray) -> list[Violation]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Part 2.4 - duplicate res_name describing different ligands
-# ---------------------------------------------------------------------------
+# Duplicate res_name values describing different ligands
 
 
 def check_duplicate_res_names(arr: AtomArray) -> list[Violation]:
@@ -585,9 +574,7 @@ def check_duplicate_res_names(arr: AtomArray) -> list[Violation]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Part 2.5 - struct_conn / polymer<->non-polymer bonds
-# ---------------------------------------------------------------------------
+# struct_conn and polymer-to-non-polymer bonds
 
 
 def check_struct_conn(path: Path, arr: AtomArray) -> list[Violation]:
@@ -722,9 +709,7 @@ def check_struct_conn(path: Path, arr: AtomArray) -> list[Violation]:
     return out
 
 
-# ---------------------------------------------------------------------------
 # Driver
-# ---------------------------------------------------------------------------
 
 
 def check_cif(path: Path, skip_pipeline: bool = False) -> tuple[list[Violation], object]:

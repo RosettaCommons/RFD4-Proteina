@@ -75,7 +75,7 @@ class AtomPairDistanceMetric(Metric):
             f"Constraint '{constraint.get('name', '?')}' field '{key}' must be an AtomWorks query "
             f"string or a list of them, got {val!r}. The old dict form is no longer supported -- "
             "rewrite it as a query, e.g. \"res_id == 31 and atom_name == 'NE2'\" "
-            "(see docs/guides/metrics.md)."
+            "(see docs/workflow/metrics.md)."
         )
 
     @classmethod

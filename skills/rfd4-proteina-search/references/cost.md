@@ -2,8 +2,8 @@
 
 Reward-guided search is **much more expensive** than plain generation. Every
 candidate rolled out during search is scored by the reward, and when the reward
-uses the AF3 oracle (`*_refolding` tags), each score is a full AF3 refolding
-call. Budget accordingly.
+uses a refolding oracle, each score is a full refolding call through the selected
+backend. Budget accordingly.
 
 ## The cost model
 
@@ -28,7 +28,7 @@ Worked numbers (using the shipped example's shape,
 | 4 | 4 | 9 | ~144 |
 
 Multiply by `num_replicates` and by the number of input examples. Each oracle
-call is an AF3 refold, so wall-clock and GPU cost grow the same way. (Non-refold
+call is a refold, so wall-clock and GPU cost grow the same way. (Non-refold
 rewards like `interchain_interactions` skip the oracle and are far cheaper.)
 
 ## Practical guidance
@@ -56,7 +56,8 @@ trajectories and scores each, so a search run can cost tens to hundreds of times
 more than generating the same number of final designs.
 
 Use plain **rfd4-proteina-generate** for a cheap baseline or when you need many
-designs quickly; use search when quality-per-design justifies the AF3 budget.
+designs quickly; use search when quality-per-design justifies the refolding or
+reward-computation budget.
 
 ## SLURM
 

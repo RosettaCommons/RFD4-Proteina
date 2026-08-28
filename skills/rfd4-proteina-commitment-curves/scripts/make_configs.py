@@ -43,9 +43,8 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-# Phase 2 is always one child per parent. Spearman is computed *across* parents, so its precision is
-# set by the parent count; extra children of one parent are correlated and buy a within-parent
-# spread estimate rather than a tighter curve.
+# Phase 2 uses one child per parent because Spearman precision follows the parent count.
+# Additional children estimate within-parent spread rather than tightening the curve.
 PHASE2_NUM_REPLICATES = 1
 
 
@@ -63,12 +62,7 @@ def phase1_config(spec: dict[str, Any]) -> str:
     """The run that produces the parents."""
     name, p1 = spec["name"], spec.get("phase1", {})
     return f"""# @package _global_
-#
-# Phase 1 of the {name} commitment-curve study: make the parents. Every design here becomes one
-# parent of the phase-2 sweep, so replicates belong in this phase -- parent count is what sets the
-# precision of the Spearman curve.
-#
-#   ./scripts/launch_infer.sh <cluster> inference_experiment={name}_phase1 --no-foldseek
+# Phase 1 creates the parent population; replicates increase the independent parent count.
 
 {_defaults_block(spec.get("metrics_group"))}
 inputs: {spec["inputs"]}
@@ -90,12 +84,7 @@ def phase2_config(spec: dict[str, Any]) -> str:
     """The shared settings for every restart step; the grid lives in the sweep config."""
     name, p2 = spec["name"], spec.get("phase2", {})
     return f"""# @package _global_
-#
-# Phase 2 of the {name} commitment-curve study: partial diffusion off the phase-1 parents. Shared
-# settings only -- the restart step is swept by configs/sweeps/{name}.yaml.
-#
-#   ./scripts/launch_sweep.sh <cluster> --sweep-config configs/sweeps/{name}.yaml \\
-#       --base-out-dir {spec["out_root"]}/{name}_sweep --no-foldseek
+# Phase 2 partially diffuses the parents; configs/sweeps/{name}.yaml supplies the restart grid.
 
 {_defaults_block(spec.get("metrics_group"))}
 # Flat directory of phase-1 designs, linked as {{example_id}}.cif so `task` joins to phase 1.
@@ -113,13 +102,9 @@ num_replicates: {PHASE2_NUM_REPLICATES}
 # `gen_njobs` can divide the *examples*. Otherwise parallelism comes from the sweep points.
 gen_njobs: {p2.get("gen_njobs", 1)}
 
-# NOTE: no `generation.dataset.sampling_transforms` here, on purpose. The parent CIF already carries
-# the conditions it was built with; re-drawing them adds a second source of variation on top of the
-# noise being measured, and `scale: 0` is NOT equivalent (it pins the target at a distribution mean).
+# Parent CIFs already carry their conditions; do not add stochastic sampling transforms.
 
-# `partial_trajectory_fraction_steps` makes generate.py add the `partial_diffusion` metrics tag by
-# itself, which switches on sequence_similarity_to_input and ca_rmsd_to_input -- the two fidelity
-# curves. Keep the inline design metrics in whatever metric group you use, or they are lost.
+# Partial diffusion activates the fidelity metrics; retain inline design metrics in custom groups.
 
 # Must match the phase-1 config exactly.
 metrics_tags:
@@ -133,19 +118,10 @@ def sweep_config(spec: dict[str, Any]) -> str:
     nsteps, step = p2.get("nsteps", 100), p2.get("step", 5)
     fracs = [round(1 - k / nsteps, 4) for k in range(nsteps - step, -1, -step)]
     grid = "\n".join(f"    - {f}" for f in fracs)
-    return f"""# {name} commitment curve -- sweep the partial-diffusion restart step. One run per step, merged
-# into <base-out-dir>/sweep_per_example_metrics.csv by a dependent sweep-level job.
-#
-#   ./scripts/launch_sweep.sh <cluster> --sweep-config configs/sweeps/{name}.yaml \\
-#       --base-out-dir {spec["out_root"]}/{name}_sweep --no-foldseek
-#
-# `partial_trajectory_fraction_steps` is the fraction of the trajectory re-run, so restart step is
-# (1 - frac) * {nsteps}: this grid is every {step} of {nsteps} steps. t = 1 is clean and t -> 0 is pure
-# noise, so a SMALL fraction means LESS noise and a SHORTER re-run. Prefer this knob over
-# partial_t_backbone, which hands both modalities the same t despite their different schedule curves.
-#
-# The ends are controls, not data points: the smallest fraction must reproduce the parents (rho ~ 1),
-# and the 1.0 point gives the between-problem floor rather than 0.
+    return f"""# {name}: one partial-diffusion run per restart step, followed by sweep-level aggregation.
+# Restart step is (1 - fraction) * {nsteps}; this grid advances by {step} steps.
+
+# The smallest fraction is the clean-end control; 1.0 is the between-problem floor.
 
 base_config: inference
 
@@ -207,7 +183,7 @@ def main(spec: str, repo_root: str = ".", dry_run: bool = False) -> None:
         print("  2. the curated directory is already the parent directory -- point parents_dir at it")
         print(f"       (spec has parents_dir: {loaded['parents_dir']}, curated designs: {existing})")
     else:
-        print(f"  1. ./scripts/launch_infer.sh <cluster> inference_experiment={name}_phase1 --no-foldseek")
+        print(f"  1. ./scripts/launch_generate.sh <cluster> inference_experiment={name}_phase1 --no-foldseek")
         print(f"  2. mkdir -p {loaded['parents_dir']} && for f in {phase1_dir}/*_generated.cif; do")
         print(f'         ln -sf "$f" "{loaded["parents_dir"]}/$(basename "$f" _generated.cif).cif"; done')
     # Cheap, and it can call the sweep off: a criterion nothing passes is not a commitment question.

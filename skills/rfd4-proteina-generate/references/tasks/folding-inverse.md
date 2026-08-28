@@ -52,7 +52,7 @@ python src/rfproteina/generate.py \
 
 ## Gotchas
 
-- The single most common bug is fixing a sidechain atom during inverse folding
+- Fixing a sidechain atom during inverse folding also reveals residue identity
   and accidentally locking the residue's identity. Let **rfd4-proteina-inputs**
   build and validate the CIF; do not hand-edit.
 - There is no dedicated "folding" JSON benchmark — these are annotated-CIF

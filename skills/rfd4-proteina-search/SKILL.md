@@ -8,52 +8,62 @@ description: >
   and prune candidates at checkpoints". Instead of sampling once, it explores
   multiple generation paths and keeps the candidates a reward scores highest —
   running through the same `generate.py` entry point, selected by a search
-  `inference_experiment` config. The default reward is an AF3 refolding oracle,
-  so this skill NEEDS an AF3 apptainer/docker container configured (see
-  rfd4-proteina-setup) and is MUCH more expensive than plain generation. Use
-  rfd4-proteina-generate for cheap unguided sampling; use this when quality per
-  design matters more than cost.
-compatibility: "rfd4-proteina-setup complete WITH an AF3 apptainer/docker container configured via the cluster env files; 1x CUDA GPU (>=40GB VRAM recommended); high cost — many AF3 oracle calls per run"
-allowed-tools: Bash, Read, Write, AskUserQuestion
+  `inference_experiment` config. Refolding rewards require the selected oracle
+  backend and are much more expensive than plain generation; configured
+  structure-only rewards such as interchain interactions do not require a
+  refolding oracle.
+  Use rfd4-proteina-generate for unguided sampling and this skill when
+  reward-guided pruning justifies the additional compute.
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
 # RFProteína Reward-Guided Search
 
+## Requirements
+
+Complete `rfd4-proteina-setup` first. Generation requires a CUDA GPU. Rewards
+using refolding tags also require a configured refolding backend; RFProteína
+supports AF2, AF3, and OpenFold3 through `metrics/refolding_oracles`. Rewards such
+as `interchain_interactions` do not require a refolding oracle.
+
 Search explores multiple generation trajectories and keeps the candidates a
 **reward** scores highest. **Beam search** ships ready to run: it branches and
 prunes partial trajectories at step checkpoints, scoring survivors with a reward
-model. The default reward is the **AF3 oracle** (refolding confidence), so this
-path requires an AF3 container and costs far more than plain generation.
+model. The shipped `inference_beam_example` uses the default **AF3 oracle** for
+refolding confidence; other search configs may select another backend or avoid
+refolding entirely.
 
 Search runs through the **same entry point as generation** — `generate.py` —
 selected by an `inference_experiment` config that adds one `search:` block. All
 arguments are Hydra `key=value` (never `--key value`).
 
-Run everything from the **repo root** (`RFProteína-dev/`).
+Run everything from the repository root (the directory containing `.project-root`).
 
-## Step 1 — Preflight (env + AF3 container)
+## Step 1 — Preflight the selected reward dependencies
 
-Search needs a green rfd4-proteina-setup **and** a configured AF3 container:
+Every search needs a green rfd4-proteina-setup:
 
 ```bash
 bash skills/rfd4-proteina-setup/scripts/preflight.sh
 ```
 
-Then confirm the container. The AF3 oracle runs only inside apptainer/docker
-configured via the per-cluster env file (`.ipd/.env.$CLUSTER`, providing the AF3
-SIF and oracle paths). See rfd4-proteina-setup
-[references/clusters.md](../rfd4-proteina-setup/references/clusters.md) and
-[references/af3-oracle.md](references/af3-oracle.md). On a cluster with a
-container configured, use the **shebang form** so the entry point re-execs
-inside the container:
+If the reward uses refolding, inspect the selected backend before running. AF3 is
+the default; choose AF2 or OpenFold3 with
+`metrics/refolding_oracles=af2` or `metrics/refolding_oracles=of3`. Backend
+capabilities differ by design case, so confirm that the selected config contains
+an oracle activated by the reward tag. See
+[references/rewards.md](references/rewards.md), the AF2/AF3 references, and
+rfd4-proteina-setup [references/clusters.md](../rfd4-proteina-setup/references/clusters.md).
+On a configured cluster, use the **shebang form** so the entry point can re-exec
+inside the required runtime:
 
 ```bash
 ./src/rfproteina/generate.py inference_experiment=inference_beam_example   # re-execs in the container
 python src/rfproteina/generate.py inference_experiment=inference_beam_example  # runs in the current env
 ```
 
-If refolding/AF3 errors appear, the container is not wired up — fix that first.
+If a refolding reward fails, verify the selected backend, its tag support, and its
+runtime before changing the reward.
 
 ## Step 2 — Run the ready example
 
@@ -94,8 +104,9 @@ search:
 ```
 
 - **`reward_metrics_tags`** — tags selecting which metrics run during scoring,
-  independent of the top-level `metrics_tags`. The `*_refolding` tags (e.g.
-  `unconditional_refolding`) run the **AF3 oracle**; its outputs are prefixed
+  independent of the top-level `metrics_tags`. Refolding tags such as
+  `unconditional_refolding` activate the selected oracle backend when that
+  backend supports the design case. Standard oracle outputs are prefixed
   **`oracle.`**.
 - **`weights`** — maps each metric output key to a coefficient; the reward is
   their weighted sum. Use a **negative weight to minimize** a metric. Available
@@ -122,7 +133,7 @@ search:
       interchain_interactions.hbond_atom_pair_count_coi: 1.0
     checkpoint_overrides:
       100:                                              # final checkpoint only
-        reward_metrics_tags: [unconditional_refolding]  # replaces the list -> AF3 runs now
+        reward_metrics_tags: [unconditional_refolding]  # selected refolding oracle runs now
         weights:
           oracle.plddt_coi: 1.0                         # replaces the base weights
 ```
@@ -201,22 +212,26 @@ finer pruning pays off. For a cheap, unguided baseline use **rfd4-proteina-gener
 
 ## Step 5 — Submit on SLURM
 
-For real runs, submit through the search launcher (run it **on** the cluster):
+Search is an inference configuration, so the standard generation launcher is the
+preferred batch path:
 
 ```bash
-./scripts/launch_search.sh <cluster> [--gpus-per-job=N] [extra hydra args...]
-# e.g.
-./scripts/launch_search.sh digs inference_experiment=inference_beam_example
+./scripts/launch_generate.sh <cluster> \
+    inference_experiment=inference_beam_example
 ```
 
-It expects a top-level `configs/search.yaml` (which you provide — it supplies run
-settings like `run_name_`, `ncpus_`, `gen_njobs`, `eval_njobs`), builds an SBATCH
-script that runs the search (and a dependent evaluation) inside the container, and
-submits it. Extra Hydra args after the cluster name are forwarded to `generate.py`.
-See rfd4-proteina-setup
-[references/clusters.md](../rfd4-proteina-setup/references/clusters.md) for cluster
-env files and `scripts/.user_info_<cluster>`.
+Before submission, read `scripts/.user_info_<cluster>` and the launcher. Preserve
+the user's partition, account, QoS/priority options, GPU request, runtime, memory,
+and CPU settings. Add a launcher resource override only when the user explicitly
+requested it. State the resolved scheduler values and inspect the generated
+`#SBATCH` directives when available.
 
+`launch_search.sh` is a specialized alternative that requires a user-provided
+`configs/search.yaml`. Its generated SBATCH header currently uses the profile's
+account, partition, runtime, and CPU count plus `--gpus-per-job`, but does not
+emit `SLURM_EXTRA_OPTIONS`. Do not use it when the user's QoS, priority,
+reservation, or constraint is carried by that variable. Never submit a job as
+part of skill validation.
 ## Outputs
 
 Search writes the **final beam** (the surviving top candidates) as annotated
@@ -224,13 +239,13 @@ Search writes the **final beam** (the surviving top candidates) as annotated
 `intermediate_sample_save_criterion`. Each output is scored by the reward, and
 its metrics land in `per_example_metrics.csv` (the epoch-end metrics loop reuses
 the oracle results cached during scoring, so it is fast). CIF annotations follow
-the same schema as plain generation (see `docs/guides/inference.md` Output Files).
+the same schema as plain generation (see `docs/workflow/running.md` Output Files).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| AF3 / refolding errors, oracle not found | Search needs an AF3 container configured via `.ipd/.env.$CLUSTER`; run the shebang form `./src/rfproteina/generate.py ...`. See [references/af3-oracle.md](references/af3-oracle.md) and rfd4-proteina-setup [references/clusters.md](../rfd4-proteina-setup/references/clusters.md) |
+| Refolding errors or oracle not found | Confirm `metrics/refolding_oracles` selects a backend that supports the reward tag, then verify that backend's runtime. Use the shebang form on configured clusters. See [references/rewards.md](references/rewards.md), the AF2/AF3 references, and rfd4-proteina-setup [references/clusters.md](../rfd4-proteina-setup/references/clusters.md) |
 | Error about `step_checkpoints` / `nsteps` | `step_checkpoints` must start at 0, be strictly increasing, and end at `nsteps`; set `generation.args.nsteps` to the last checkpoint |
 | Reward not changing / plateaus early | A `clip_values` bound was hit — the metric is clipped before weighting, so it stops contributing past the bound; raise/remove the bound or reweight |
 | Run far slower / more GPU than expected | Cost is `beam_width x n_branch x checkpoints` oracle calls — lower them, or use rfd4-proteina-generate for an unguided baseline. See [references/cost.md](references/cost.md) |
@@ -239,5 +254,7 @@ the same schema as plain generation (see `docs/guides/inference.md` Output Files
 | Hydra `--key value` not applied | All args are `key=value` (Hydra), never `--key value` |
 
 For deeper detail: [rewards](references/rewards.md) ·
-[AF3 oracle](references/af3-oracle.md) · [cost](references/cost.md). Source of
-truth: `docs/guides/search.md` and `docs/guides/inference.md`.
+[AF2 oracle](references/af2-oracle.md) · [AF3 oracle](references/af3-oracle.md) ·
+[cost](references/cost.md). Source of
+truth: `docs/workflow/search.md`, `docs/workflow/running.md`, and the current
+search implementation/configs.

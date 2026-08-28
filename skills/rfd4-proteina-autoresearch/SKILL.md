@@ -2,7 +2,7 @@
 name: rfd4-proteina-autoresearch
 description: >
   Run an iterative, inspectable design campaign with RFProteína — a
-  design -> score -> iterate loop that composes rfd4-proteina-generate,
+  design → score → iterate loop that composes rfd4-proteina-generate,
   rfd4-proteina-search, and rfd4-proteina-evaluate over multiple waves. Reach for this
   skill for "autoresearch", "run a design campaign", "optimize binders over
   several rounds", "sweep search parameters", "what should I try to improve my
@@ -13,14 +13,12 @@ description: >
   allocate rules, and how to keep every wave's decisions and results on disk so
   failed branches stay useful. It does not add new model capability — it
   orchestrates the existing skills.
-compatibility: "rfd4-proteina-setup complete; for reward-guided waves an AF3 apptainer/docker container (see rfd4-proteina-search); multi-GPU or SLURM recommended for real campaigns; no new dependencies"
-allowed-tools: Bash, Read, Write, AskUserQuestion
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
 # RFProteína Autoresearch
 
-An autoresearch campaign is a **design -> score -> iterate** loop: generate
+An autoresearch campaign is a **design → score → iterate** loop: generate
 candidates, score them against an explicit reward, keep what improves the metric,
 and let the results steer the next round. This skill is the *strategy layer* over
 the mechanics that already exist:
@@ -62,6 +60,20 @@ Before generating anything, write down (on disk, so it is inspectable):
 
 Keep these in a small campaign directory, e.g. `campaign/program.md`,
 `campaign/wave1.json`, `campaign/decisions.md`, `campaign/results.tsv`.
+
+When a wave is running inside `rfd4-proteina-campaign`, `campaign.sqlite` is
+the canonical record. Register each branch input/config and ingest every design,
+oracle prediction, and metric observation into that ledger. The Markdown/JSON
+wave files remain decision artifacts and `results.tsv` becomes a derived view.
+
+## Scheduler intent
+
+For any batch run, read the selected `scripts/.user_info_<cluster>` and the
+launcher before constructing the command. Preserve the user's partition,
+account, QoS/priority options, GPU request, runtime, memory, and CPU settings.
+Use a resource override only when the user explicitly requested it. State the
+resolved scheduler values before submission; use dry-run or non-submitting tests
+when validating the workflow.
 
 ## Step 2 — Seed the first wave of branches
 
@@ -141,18 +153,22 @@ is spent — and record that the search space was (or was not) exhausted.
 
 ## Outputs
 
-A campaign directory that is fully replayable: the objective + rules
-(`program.md`), per-wave branch payloads (`wave*.json`), agent/human reasoning
+For standalone autoresearch, produce a replayable directory: the objective + rules
+(`program.md`), per-wave branch payloads (`wave*.json`), decision rationale
 (`decisions.md`), and per-branch outcomes (`results.tsv`), alongside the
 per-branch design CIFs and metrics CSVs produced by the underlying skills. The
 running-best trajectory — including failed branches and why — is the deliverable,
 not just the top design.
 
+Inside an end-to-end campaign, preserve those artifacts while using the campaign
+ledger as the source of truth for design lineage, oracle outputs, actual metric
+values, and passer evidence.
+
 ## Caveats
 
-- Rewards optimize a **proxy** (AF3 confidence / interface metrics), not
+- Rewards optimize a **proxy** (refolding confidence / interface metrics), not
   experimental success — validate designs downstream.
-- Reward-guided waves are **compute-intensive** (many AF3 oracle calls); size
+- Refolding-guided waves are **compute-intensive**; size
   `beam_width`/`n_branch`/waves to budget. See **rfd4-proteina-search** `references/cost.md`.
 - The muni TREM2/Complexa numbers are illustrations; derive RFProteína settings
   empirically from your own early waves.

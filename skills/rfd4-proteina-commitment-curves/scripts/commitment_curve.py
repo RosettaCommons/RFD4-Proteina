@@ -24,8 +24,7 @@ Examples:
   ...     --metrics 'Docking Z=tcr_docking_geometry.docking_z,min ipAE=min(oracle.a|oracle.b)'
 """
 
-# The rho, alpha, angstrom and multiplication-sign characters below are axis and legend text, where
-# the real typography is what belongs on the chart.
+# Preserve mathematical symbols used as chart labels.
 # ruff: noqa: RUF001
 
 from __future__ import annotations

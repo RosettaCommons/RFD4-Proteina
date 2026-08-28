@@ -2,7 +2,7 @@
 
 Which knobs to vary across waves, and how. Change **one** axis per child branch so
 the effect is attributable. These are the axes RFProteína actually exposes — see
-`docs/guides/inference.md`, `docs/guides/parameters.md`, and `docs/guides/search.md`.
+`docs/workflow/running.md`, `docs/workflow/running.md`, and `docs/workflow/search.md`.
 
 > Not available in RFProteína: MCTS, best-of-n, and FK-steering are
 > **Proteina-Complexa** search algorithms. RFProteína's search is **beam search
