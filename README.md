@@ -5,6 +5,16 @@
 <p align="center"><em>A flow-matching foundation model for protein design — Baker Lab × NVIDIA GenAI</em></p>
 
 <p align="center">
+  <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/v/rfproteina.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/pyversions/rfproteina.svg" alt="Python versions"></a>
+  <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/dm/rfproteina.svg" alt="PyPI downloads"></a>
+  <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml/badge.svg" alt="CI status"></a>
+  <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/docs.yaml/badge.svg" alt="Documentation"></a>
+  <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/graph/badge.svg" alt="Code coverage"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/RosettaCommons/RFD4-Proteina.svg" alt="License"></a>
+</p>
+
+<p align="center">
   <img src="assets/hero.gif" width="300" alt="A DISCO-designed BODIPY fluorophore binder, spinning">
 </p>
 
