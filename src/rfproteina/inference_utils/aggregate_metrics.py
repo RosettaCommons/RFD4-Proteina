@@ -1,8 +1,5 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
-"""Concatenate results from multi-job external evaluation runs.
-
-Also provides shared aggregation logic used by external_eval.py.
-"""
+"""Concatenate and aggregate per-example metrics from multi-job evaluation runs."""
 
 import os
 import shutil
@@ -51,7 +48,7 @@ def aggregate_metrics_from_per_example_df(
     # Ensure dataset_name column exists when grouping by it
     if group_by == "dataset_name" and "dataset_name" not in per_example_df.columns:
         per_example_df = per_example_df.copy()
-        per_example_df["dataset_name"] = "external_eval"
+        per_example_df["dataset_name"] = "unknown"
 
     non_metric_cols = {
         "example_id",

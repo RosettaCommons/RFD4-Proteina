@@ -26,7 +26,6 @@ LAUNCHERS = [
     "launch_infer_ae.sh",
     "launch_search.sh",
     "launch_evaluate.sh",
-    "launch_external_eval.sh",
 ]
 
 
