@@ -19,7 +19,7 @@ CIF), then design a new binder chain against that interface.
 | File | Notes |
 | --- | --- |
 | `cleaned_ppi.yaml` | One structure per target; keys like `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, `30_SC2RBD`. Each has `contig` (binder length + target chain) and `select_hotspots` |
-| `complexa_paper_ppi.yaml`, `all_ppi_helical.yaml`, `all_ppi_ig.yaml` | Larger PPI benchmark sets |
+| `all_ppi_helical.yaml`, `all_ppi_ig.yaml` | Larger PPI benchmark sets |
 | `complexa_targets/` | Target CIFs referenced by the YAMLs |
 
 ## Run

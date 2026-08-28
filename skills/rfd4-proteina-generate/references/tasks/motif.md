@@ -9,19 +9,17 @@ conditioning; the model designs the surrounding scaffold. Back to the
 
 | File | Notes |
 | --- | --- |
-| `motif_scaffold_afdb.json` | 6 tasks (e.g. `M0630_1j79_motif`, `M0157_1qh5_motif`); unindexed motifs with `select_fixed_atoms` per residue, `length` 180 |
-| `motif_scaffold_aa_tasks_indexed.json` | Indexed-motif variants |
+| `motif_scaffold_aa_tasks_indexed.json` | Indexed-motif variants (keys like `1PRW_AA`, `1BCF_AA`, `1YCR_AA`) |
 | `motif_scaffold_aa_tasks_unindexed.json` | Unindexed-motif variants (model chooses chain position) |
-| `motif_scaffold_aa_tasks_indexed_internal_coords.json` / `..._unindexed_internal_coords.json` | Internal-coordinate groups (motif's internal geometry without fixing where it sits) |
-| `motif_scaffold_aa_tasks_indexed_all_resolved.json` / `..._unindexed_all_resolved.json` | Fully-resolved variants |
+| `motif_scaffold_aa_tasks_indexed_internal_coords.json` | Internal-coordinate groups (motif's internal geometry without fixing where it sits) |
 
 ## Run
 
 ```bash
-# One AFDB motif task
+# One indexed motif-scaffold task
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/motif_scaffold_afdb.json \
-    subset_to_examples=M0630_1j79_motif \
+    inputs=data/benchmarks/motif_scaffold_aa_tasks_indexed.json \
+    subset_to_examples=1PRW_AA \
     num_replicates=8 batch_size=8 out_dir=./runs/motif \
     metrics_tags='[motif_scaffold_refolding,3d_coordinate_conditioning]'
 ```
