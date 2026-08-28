@@ -49,7 +49,7 @@ filter off, or you end up measuring the filter instead of the model.
 
 ## How many metrics ship enabled
 
-`configs/metrics/all_metrics.yaml` already registers **43 metrics, oracles, pass criteria and
+`configs/metrics/all_metrics.yaml` already registers **46 metrics, oracles, pass criteria and
 filters**, and
 they run automatically. No code, no new config files. Most sit behind one or more **`metrics_tags`**,
 so you turn one on by passing a tag on the command line.
@@ -63,11 +63,11 @@ Here is what is wired in.
 
 | Category | Count | Config |
 | --- | --- | --- |
-| Design metrics, run inline before refolding | 17 | `configs/metrics/inline_metrics/design_metrics.yaml` |
+| Design metrics, run inline before refolding | 19 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
 | Structure prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
 | Refolding metrics, design against refold or refold against refold | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
 | Refolding oracles, the AF3 variants | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
-| Pass criteria | 9 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
+| Pass criteria | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
 | Pre-oracle filters, which skip the oracle when a cheap check fails | 5 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
 Another **10 metric classes already live in the codebase** without a default config. They cover TMol
@@ -147,6 +147,8 @@ These run directly on the generated structure, before any oracle refolds it.
 | `contact_molecular_surface` | any: `cms` | Distance weighted interfacial contact surface area between binder and target, following Lawrence and Colman 1993 | see `rfproteina.metrics.physics.contact_ms.metric` |
 | `sequence_similarity_to_input` | any: `partial_diffusion` | Sequence identity against the seed structure, for partial diffusion | `sequence_identity_to_input` |
 | `cath_metric` | any: `cath` | CATH superfamily classification of the chain of interest, through Foldseek | `C`, `A`, `T`, `H`, `type`, `evalue`, `tmscore` |
+| `sequence_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | GRAVY and the Guruprasad instability index on the designed chain. Half-life is deliberately omitted | `gravy`, `instability_index` |
+| `rosetta_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | Rosetta SAP and ExposedHydrophobics through a nested PyRosetta apptainer. Set `PYROSETTA_CONTAINER` outside the configured cluster environments | `sap_score`, `hydrophobic_exposure_sasa` |
 
 ### Structure prediction metrics
 
@@ -264,6 +266,7 @@ keys](custom-metrics.md#thresholding-a-reduction-over-several-keys).
 | `ame` | any: `ame_refolding`<br>not: `no_ligand` | `refolded_backbone_rmsd.rmsd` ≤ 2.0, `refolded_motif_allatom_rmsd.rmsd` ≤ 1.5, zero inter residue polymer and ligand clashes |
 | `ame_no_ligand` | any: `ame_refolding`<br>all: `no_ligand` | `refolded_backbone_rmsd.rmsd` ≤ 2.0, `refolded_motif_allatom_rmsd.rmsd` ≤ 1.5 |
 | `disco` | any: `disco_refolding` | `refolded_backbone_rmsd.rmsd` ≤ 2.0, `max_ligand_centroid_distance.ligand_centroid_distance` ≤ 2.0 |
+| `developability` | any: `developability` | `rosetta_developability.sap_score` ≤ 75, `rosetta_developability.hydrophobic_exposure_sasa` ≤ 1500, `sequence_developability.gravy` ≤ 0.1, `sequence_developability.instability_index` ≤ 40 |
 
 ### Pre-oracle filters
 
