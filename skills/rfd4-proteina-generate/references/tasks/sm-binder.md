@@ -10,7 +10,7 @@ ligand; the model designs a protein pocket around it. Back to the
 | --- | --- | --- |
 | `sm_binder.json` | `FAD`, `IAI`, `OQO`, `SAM` | Ligand named via `ligand`, `contig` 150, `select_fixed_atoms: false` (model invents pose/conformer) |
 | `sm_binder_fixed_ligand.json` | — | Ligand pose fixed |
-| `sm_binder_hbonds.json` / `sm_binder_hbonds_fixed_ligand.json` | — | Adds H-bond donor/acceptor conditioning to the ligand |
+| `sm_binder_hbonds.json` | — | Adds H-bond donor/acceptor conditioning to the ligand |
 | `rna_sm_aptamer.json` | — | Small-molecule aptamer (nucleic-acid binder) variant |
 
 ## Run

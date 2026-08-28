@@ -53,10 +53,10 @@ input, task-specific overrides, and gotchas:
 | --- | --- | --- |
 | Unconditional (monomer / complex) | `monomer.json`, `monomer_helical.json`, `monomer_ig.json`, `multipolymer_uncond.json` | [tasks/unconditional.md](references/tasks/unconditional.md) |
 | Folding / inverse folding | annotated CIF (backbone-only vs `C_SEQ`) | [tasks/folding-inverse.md](references/tasks/folding-inverse.md) |
-| Motif scaffolding | `motif_scaffold_afdb.json`, `motif_scaffold_aa_tasks_*.json` | [tasks/motif.md](references/tasks/motif.md) |
+| Motif scaffolding | `motif_scaffold_aa_tasks_*.json` | [tasks/motif.md](references/tasks/motif.md) |
 | Enzyme design (active site) | `mcsa_40.json`, `mcsa_40_fixed_ligand.json`, `mcsa_40_no_ligand.json`, `enz_design.json` | [tasks/enzyme.md](references/tasks/enzyme.md) |
 | Small-molecule binder | `sm_binder.json`, `sm_binder_hbonds.json`, `sm_binder_fixed_ligand.json` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
-| Protein binder (planned) | `cleaned_ppi.yaml`, `complexa_paper_ppi.yaml` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
+| Protein binder (planned) | `cleaned_ppi.yaml` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
 | DNA binder (planned) | `dna_binder_120_150_campaign.json`, `dna_binder_denovo_val.json`, `dna_binder_short_site.json`, `paper_dna.json` | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
 
 > [!WARNING]
