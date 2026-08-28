@@ -56,6 +56,11 @@ layout that mirrors the muni loop:
 Alongside these sit the underlying artifacts the other skills already produce:
 per-branch design CIFs (from generate/search) and metrics CSVs (from evaluate).
 
+Within `rfd4-proteina-campaign`, register each branch and ingest every materialized
+design, oracle prediction, and metric into `campaign.sqlite`. The table above
+remains a readable experiment log; `results.tsv` is an export rather than the
+authoritative provenance record.
+
 **Failed branches are signal.** Capture *why* a path was wrong — that is what makes
 the next wave smarter, and what a human reviewer learns from. A final score says
 which branch won; the trajectory says how, and why the rest did not.

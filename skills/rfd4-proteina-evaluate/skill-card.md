@@ -45,7 +45,7 @@ Mitigation: The skill documents both prerequisites and the TM-score-0.5, chain-o
 
 ## References
 
-- `docs/guides/metrics.md`, `docs/guides/custom_metrics.md`, `docs/guides/inference.md` (Evaluating Results)
+- `docs/workflow/metrics.md`, `docs/workflow/custom-metrics.md`, `docs/workflow/running.md` (Evaluating Results)
 - `configs/evaluate.yaml`, `configs/metrics/all_metrics.yaml`
 - `src/rfproteina/evaluate.py`, `src/rfproteina/inference_utils/aggregate_metrics.py`, `scripts/launch_evaluate.sh`
 - NVIDIA agent skills: https://docs.nvidia.com/skills

@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Preflight for RFProteína: verify the environment + checkpoints are ready before
-# launching a generation/evaluation run. Prints a PASS/FAIL report; exits nonzero
-# on any FAIL. Safe to run repeatedly.
-#
-#   bash skills/rfd4-proteina-setup/scripts/preflight.sh
-#
-# Auto-detects the repo root from this script's location, so it can be run from
-# anywhere.
+# Validate the RFProteína environment, GPU visibility, and required checkpoints.
+# Safe to repeat; exits nonzero when a required check fails.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -61,11 +55,11 @@ else
     pass "DATA_PATH=$DATA_PATH"
     ldm_dir="$DATA_PATH/latent_checkpoints/ldm_checkpoints"
     ae_ckpt="$DATA_PATH/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt"
-    if compgen -G "$ldm_dir/*.ckpt" >/dev/null; then
-        pass "denoiser checkpoint(s) found in $ldm_dir"
-        printf '        (%s)\n' "$(cd "$ldm_dir" && ls -1 *.ckpt | tr '\n' ' ')"
+    default_ldm="$(sed -n 's/^ckpt_name:[[:space:]]*//p' configs/inference.yaml | head -n1)"
+    if [ -n "$default_ldm" ] && [ -f "$ldm_dir/$default_ldm" ]; then
+        pass "default denoiser checkpoint found: $default_ldm"
     else
-        bad "no denoiser .ckpt in $ldm_dir (./scripts/download_example_data.sh \"\$DATA_PATH\")"
+        bad "missing default denoiser checkpoint: $ldm_dir/${default_ldm:-<unresolved>}"
     fi
     if [ -f "$ae_ckpt" ]; then pass "autoencoder checkpoint found"; else bad "missing autoencoder checkpoint: $ae_ckpt"; fi
 fi

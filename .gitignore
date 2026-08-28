@@ -269,9 +269,9 @@ tests/data/pdb/*
 **/distillation/
 
 # AI
-**/CLAUDE.md
 **/.claude/*
 !**/.claude/commands/
+!**/.claude/skills
 claude_experiments/**
 
 # User info files (contain secrets - use _example files as templates)

@@ -2,7 +2,10 @@
 
 ## Description
 
-`rfd4-proteina-inputs` converts a design intent or a legacy RFD3-style JSON/YAML spec into a correct, validated **annotated CIF** for RFProteína, by interrogating the author's intent (length, coordinate vs sequence conditioning, indexing, ligand atoms, charges, bonds) and building with native biotite/atomworks primitives.
+`rfd4-proteina-inputs` interviews for design intent, inspects supplied prose,
+structures, existing contig/length JSON/YAML specifications, or annotated CIFs, and builds or edits a correct,
+validated **annotated CIF** with native Biotite/AtomWorks Python APIs. JSON is an
+optional compatibility input, not an intermediate representation.
 
 This skill is for research and development only.
 
@@ -12,11 +15,12 @@ RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository. Skill text follows the NVIDIA agent-skills documentation convention (CC-BY-4.0); helper scripts wrap `scripts/json2cif/*` under the repository's source license.
+See the RFProteína repository. Skill text follows the NVIDIA agent-skills documentation convention
+(CC-BY-4.0); helper scripts are covered by the repository's source license.
 
 ## Use Case
 
-Anyone preparing an input for RFProteína — especially for non-canonicals, PTMs, small molecules, metals, or the newer conditioning types (RASA, H-bond, secondary structure, internal coordinates) that the legacy JSON path cannot express losslessly. Feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
+Anyone preparing an input for RFProteína — especially for non-canonicals, PTMs, small molecules, metals, direct condition authoring (RASA, H-bond, secondary structure, internal coordinates), or translation of an existing contig/length JSON/YAML input. Feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
 
 ## Deployment Geography for Use
 
@@ -40,15 +44,17 @@ Mitigation: The skill mandates interrogation ("this means XYZ, is that right?") 
 Risk: Parsing an annotated CIF without `import rfproteina.conditions` silently drops all conditions.
 Mitigation: The provided scripts import it first; the skill documents the landmine for any custom code.
 
-Risk: A truncated ligand or missing coordination bond misrepresents chemistry the model embeds.
-Mitigation: The validator flags ligand heavy-atom truncation as an ERROR; metals are left unbonded and surfaced for the author to decide, never inferred.
+Risk: An incomplete polymer, a component whose atoms differ from its CCD code, or a missing coordination bond can misrepresent chemistry the model embeds.
+Mitigation: Partial conditioning uses masks without deleting atoms; the validator surfaces incomplete or mismatched components for intent review, supports explicit custom components, and never infers metal bonds.
 
 ## References
 
-- `.claude/commands/design2cif.md`
-- `docs/guides/annotated_cif_inputs.md`, `docs/guides/input.md`, `docs/guides/json_to_annotated_cif.md`
-- `scripts/json2cif/build_cif.py`, `scripts/json2cif/check_annotated_cif.py`
-- `docs/guides/tutorials/annotated_cif_tutorial.ipynb`
+- `skills/rfd4-proteina-inputs/SKILL.md` (canonical instructions)
+- `docs/workflow/inputs.md`, `docs/workflow/design2cif.md`
+- `skills/rfd4-proteina-inputs/scripts/build_from_rfd3.py`
+- `skills/rfd4-proteina-inputs/scripts/inspect_cif.py`
+- `skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py`
+- `docs/examples/annotated_cif_tutorial.ipynb`
 
 ## Skill Output
 
@@ -58,7 +64,9 @@ Output format: mmCIF with AtomWorks condition columns/categories; console PASS/v
 
 Output parameters: one `.cif` per design problem, passing `check_annotated_cif.sh` with 0 errors.
 
-Other properties: `build_cif.sh` writes only the `--output` file; `check_annotated_cif.sh` is read-only and never repairs.
+Other properties: `inspect_cif.sh` and `check_annotated_cif.sh` are read-only;
+`build_from_rfd3.sh` is used only when the user supplies an existing RFD3
+JSON/YAML artifact and writes only the requested output.
 
 ## Skill Version
 

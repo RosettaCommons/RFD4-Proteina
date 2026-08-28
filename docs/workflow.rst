@@ -124,7 +124,7 @@ Workflow
      <a href="workflow/design2cif.html" class="wf-link">
        <rect x="351" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
        <use href="#ico-claude" x="361" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
-       <text x="383" y="125" class="wf-chip-label wf-ink-specify">Claude</text>
+       <text x="383" y="125" class="wf-chip-label wf-ink-specify">Agent</text>
      </a>
 
      <a href="workflow/condition-spec.html" class="wf-link">

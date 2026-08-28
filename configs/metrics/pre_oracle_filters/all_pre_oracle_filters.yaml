@@ -1,5 +1,5 @@
 # Pre-oracle filters: only forward passing designs to the oracle. Tag-gated like other Metrics.
-# NOTE: When benchmarking per-example, disable every pre-oracle filter -- see docs/guides/metrics.md
+# NOTE: When benchmarking per-example, disable every pre-oracle filter -- see docs/workflow/metrics.md
 
 # Sequence conditioning is a hard constraint, so a design that breaks it is almost never worth folding.
 # NOTE: These two filters gate on the same tags as the metric they threshold -- a filter whose metric

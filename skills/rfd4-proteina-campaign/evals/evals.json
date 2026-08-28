@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "skill": "rfd4-proteina-campaign",
+  "cases": [
+    {
+      "id": "resume-interrupted-campaign",
+      "prompt": "A search job was preempted after writing some designs and oracle refolds. Resume the campaign without losing completed work.",
+      "expected_behavior": [
+        "Imports immutable events before retrying",
+        "Reconciles artifacts and records missing or failed outputs explicitly",
+        "Creates a linked retry run instead of overwriting the interrupted run",
+        "Preserves the user's scheduler settings"
+      ]
+    },
+    {
+      "id": "audit-one-passer",
+      "prompt": "Show exactly why design d17 is a passer and where it came from.",
+      "expected_behavior": [
+        "Traces the design to its annotated CIF, resolved config, run, and parent lineage",
+        "Reports the named criteria-set version and actual metric values",
+        "Links oracle-derived values to exact oracle predictions",
+        "Does not infer provenance from filenames"
+      ]
+    }
+  ]
+}

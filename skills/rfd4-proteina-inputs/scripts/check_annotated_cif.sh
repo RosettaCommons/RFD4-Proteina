@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-# Thin wrapper over scripts/json2cif/check_annotated_cif.py — validates an annotated
-# CIF (invariant pipeline + gotcha scan) with the CCD env var set. Never repairs.
-# Exits 1 on any error (with --strict, also on warnings); 2 if the file can't load.
-#
-#   bash skills/rfd4-proteina-inputs/scripts/check_annotated_cif.sh out.cif
-#   bash skills/rfd4-proteina-inputs/scripts/check_annotated_cif.sh out.cif --strict
-#
-# Flags after the path pass through to check_annotated_cif.py (fire):
-# --strict, --skip_pipeline, --quiet.
+# Validate an annotated CIF without repairing it.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,4 +12,8 @@ if [ "$#" -lt 1 ]; then
 fi
 
 export ALLOW_BIOTITE_CCD="${ALLOW_BIOTITE_CCD:-True}"
-exec python scripts/json2cif/check_annotated_cif.py "$@"
+RFPROTEINA_PYTHON="$REPO_ROOT/.venv/bin/python"
+if [ ! -x "$RFPROTEINA_PYTHON" ]; then
+    RFPROTEINA_PYTHON="python"
+fi
+exec "$RFPROTEINA_PYTHON" skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py "$@"

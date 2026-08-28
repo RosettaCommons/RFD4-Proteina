@@ -32,8 +32,7 @@ Examples:
   ...     --metrics 'Docking Z=tcr_docking_geometry.docking_z:min=1.0' --criteria ppi
 """
 
-# The angstrom, middle-dot and inequality characters below are axis and caption text, where the real
-# typography is what belongs on the chart.
+# Preserve mathematical symbols used as chart labels.
 # ruff: noqa: RUF001
 
 from __future__ import annotations
@@ -64,9 +63,8 @@ DEFAULT_PASS_CRITERIA = "configs/metrics/pass_criteria/all_pass_criteria.yaml"
 # PassCriterionMetric's reducers, mapped to the expression syntax resolve_column understands.
 REDUCER_EXPRESSIONS = {"min_of": "min", "max_of": "max", "mean_of": "mean"}
 
-# Density families tried for the overlay curve; lowest AIC wins. Deliberately short and all
-# unimodal -- a bimodal metric has no business getting a smooth tail extrapolated off it, and the
-# KS p-value reported alongside is what exposes that rather than a longer candidate list.
+# Candidate overlays are intentionally unimodal; the KS result exposes incompatible data.
+# The lowest-AIC compatible family supplies the density estimate.
 CANDIDATE_DISTRIBUTIONS = ("norm", "skewnorm", "lognorm", "gamma")
 
 # Below this many finite values a density fit is noise; the histogram is still drawn.
@@ -77,10 +75,8 @@ MIN_UNIQUE_TO_FIT = 5
 # this low is a strong signal of misfit rather than a borderline one.
 POOR_FIT_P = 0.05
 
-# Peaks-over-threshold: fit the generalised Pareto to whatever lies past this quantile of the
-# passing-side tail. 0.8 is the usual compromise -- lower biases the shape with non-tail data,
-# higher leaves too few exceedances to estimate it -- and the threshold drops below it wherever the
-# sample is small enough that the top 20% would not reach MIN_EXCEEDANCES points.
+# Fit the generalized-Pareto tail past this quantile, while retaining MIN_EXCEEDANCES.
+# Small samples use the highest order statistic that preserves that minimum.
 GPD_QUANTILE = 0.80
 MIN_EXCEEDANCES = 25
 
@@ -344,9 +340,8 @@ def gpd_tail(values: np.ndarray, cutoff: Cutoff) -> TailFit:
     oriented = values if cutoff.kind == "min" else -values
     target = cutoff.value if cutoff.kind == "min" else -cutoff.value
 
-    # The highest threshold that still leaves enough exceedances -- an order statistic rather than a
-    # quantile, because an oracle that reports to 4 decimal places still ties often enough that
-    # `> quantile(0.8)` can hand back half the intended tail.
+    # Use an order statistic so tied values cannot reduce the tail below the requested size.
+    # Select the highest threshold that retains enough strict exceedances.
     wanted = max(MIN_EXCEEDANCES, math.ceil((1 - GPD_QUANTILE) * len(oriented)))
     ordered = np.sort(oriented)
     above = len(ordered) - np.searchsorted(ordered, ordered, side="right")

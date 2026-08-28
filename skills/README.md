@@ -1,6 +1,6 @@
 # RFProteína Agent Skills
 
-NVIDIA-compliant agent **skills** for RFProteína (RFD4-Proteína), the Baker Lab x
+Portable agent **skills** for RFProteína (RFD4-Proteína), the Baker Lab x
 NVIDIA GenAI flow-matching model for de novo protein and complex design. Each
 skill is a portable directory containing a `SKILL.md` (plus optional
 `references/` and `scripts/`) that an agent reads on demand to drive one stage of
@@ -9,24 +9,33 @@ generating designs, searching for better ones, and evaluating the results. They
 encode the repository's real commands, config keys, and gotchas so an agent can
 operate the model correctly without re-deriving them.
 
-## The seven skills
+## The nine skills
 
 | Skill | What it does | Order |
 | --- | --- | --- |
 | [`rfd4-proteina-setup`](rfd4-proteina-setup/) | Install the uv/Python-3.12 venv + `atomworks`, wire `DATA_PATH` and the per-cluster env file, download checkpoints, and preflight GPU + weights. | 1 |
-| [`rfd4-proteina-inputs`](rfd4-proteina-inputs/) | Turn a design intent (or legacy JSON/YAML) into a correct, validated **annotated CIF** — the recommended lossless input format. | 2 |
+| [`rfd4-proteina-inputs`](rfd4-proteina-inputs/) | Interview for intent, inspect prose/structures/specs/CIFs, then build or edit a validated **annotated CIF** directly with the Python API. | 2 |
 | [`rfd4-proteina-generate`](rfd4-proteina-generate/) | Run `generate.py` to produce designs; choose task, replicates, batch size, and inline `metrics_tags`. | 3 |
-| [`rfd4-proteina-search`](rfd4-proteina-search/) | Reward-guided search (beam/branching) that keeps the candidates an AF3 reward scores highest — more sample-efficient than generate-then-filter. | 4 (optional) |
+| [`rfd4-proteina-search`](rfd4-proteina-search/) | Reward-guided search (beam/branching) that keeps candidates selected by a configured refolding or structure-only reward. | 4 (optional) |
 | [`rfd4-proteina-evaluate`](rfd4-proteina-evaluate/) | Post-hoc metrics on generated structures + aggregation across parallel jobs (scRMSD/pLDDT/ipAE, designability, FoldSeek diversity, custom metrics). | 5 |
-| [`rfd4-proteina-autoresearch`](rfd4-proteina-autoresearch/) | Strategy layer: run an inspectable design -> score -> iterate **campaign** over many waves, composing the skills above with explicit composite-reward engineering and freeze/promote/allocate branch rules. | 6 (optional) |
-| [`rfd4-proteina-commitment-curves`](rfd4-proteina-commitment-curves/) | Analysis layer: partially re-diffuse finished designs across a grid of restart steps to find **where along the trajectory** a property is decided — how early a metric can be screened on. | 7 (optional) |
+| [`rfd4-proteina-autoresearch`](rfd4-proteina-autoresearch/) | Wave strategy: iterate over branches with explicit reward engineering and freeze/promote/allocate rules. | 6 (optional) |
+| [`rfd4-proteina-commitment-curves`](rfd4-proteina-commitment-curves/) | Partially re-diffuse designs to locate where along the trajectory a property is decided. | 7 (optional) |
+| [`rfd4-proteina-campaign`](rfd4-proteina-campaign/) | End-to-end campaign orchestration with a SQLite ledger linking every design, input, config, oracle refold, metric, and passer decision. | 8 (orchestrator) |
+| [`rfd4-proteina-package`](rfd4-proteina-package/) | Build a database-free TAR of selected designs, actual metrics, exact waterfall, and aligned on/off-target refolds grouped by annotated-CIF input. | 9 (delivery) |
 
 Typical order of use: **setup -> inputs -> generate -> [search] -> evaluate**, with
-**autoresearch** wrapping the whole loop when you want a multi-wave optimization
-campaign and **commitment-curves** answering, after the fact, how early in a
-trajectory each metric could have been screened on.
+**campaign** owning an end-to-end program, **autoresearch** running its multi-wave
+exploration, **commitment-curves** locating useful reward timing, and **package**
+creating the recipient-facing delivery.
 
-## Install
+## Install and discovery
+
+The `skills/` directory is canonical. Repository discovery uses two thin adapters that point to it:
+
+- `.agents/skills` for Codex;
+- `.claude/skills` for Claude Code.
+
+Both agents therefore load the same `SKILL.md`, references, and helper scripts. Do not edit an adapter or copy instructions into a model-specific command. The Claude `/design2cif` command is only a compatibility alias for `rfd4-proteina-inputs`.
 
 Skills install as portable directories, each with a `SKILL.md` at its root. Add
 one (or all) from the catalog with the `skills` CLI:
@@ -47,7 +56,7 @@ folder into your project) without the CLI.
 
 ## Compliance and structure
 
-Every skill directory carries, by hand:
+Every skill directory carries:
 
 - `SKILL.md` — the agent-facing instructions (with `references/` and `scripts/`
   as needed),
@@ -56,7 +65,7 @@ Every skill directory carries, by hand:
 - `evals/evals.json` — a Tier-3 eval dataset with at least one bounded, checkable
   case.
 
-Per NVIDIA's skills pipeline ([docs.nvidia.com/skills](https://docs.nvidia.com/skills)),
+For NVIDIA catalog publication ([docs.nvidia.com/skills](https://docs.nvidia.com/skills)),
 **two more artifacts are added at onboarding time and are NOT committed by hand**:
 
 - `skill.oms.sig` — a detached OMS signature, verifiable against

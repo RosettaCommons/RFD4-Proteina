@@ -25,7 +25,8 @@ you create `.ipd/.env.local` yourself (`printf 'DATA_PATH=%s\n' "$DATA_PATH" >
 | Script | Purpose |
 | --- | --- |
 | `scripts/launch_generate.sh` | Submit `generate.py` (+ auto metric aggregation as a dependent job) |
-| `scripts/launch_search.sh` | Reward-guided search jobs |
+| `scripts/launch_generate.sh` with a search `inference_experiment` | Preferred reward-guided search submission |
+| `scripts/launch_search.sh` | Specialized search launcher requiring `configs/search.yaml`; inspect its narrower SBATCH support before use |
 | `scripts/launch_evaluate.sh` | Standalone post-hoc evaluation |
 | `scripts/launch_train_latents.sh` / `launch_train_ae.sh` | Training |
 | `scripts/launch_sweep.sh` | Hyperparameter sweeps |
@@ -40,8 +41,13 @@ Example:
 ```
 
 Each cluster needs `scripts/.user_info_<cluster>` (copied from
-`scripts/.user_info_<cluster>_example` by `setup.sh`). For most inference
-workflows no edits are needed.
+`scripts/.user_info_<cluster>_example` by `setup.sh`). Treat its scheduler values
+as user intent. Preserve `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `GRES`,
+`RUNTIME`, `MEM`, `CPUS_PER_TASK`, and `SLURM_EXTRA_OPTIONS`. Explicit launcher
+flags override the profile only when the user supplied them. Before submission,
+state the resolved scheduler values and inspect generated SBATCH directives when
+available. Validation must use launcher tests or dry-run modes and must not
+submit jobs.
 
 ## Containers and the AF3 oracle
 

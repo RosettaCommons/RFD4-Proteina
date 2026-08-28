@@ -13,8 +13,6 @@ description: >
   rfd4-proteina-inputs to build an annotated CIF when one is needed, to
   rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
   for deep metric analysis (the AF3 oracle).
-compatibility: "rfd4-proteina-setup complete (venv + atomworks + checkpoints, green preflight); 1x CUDA GPU for generation; an apptainer/docker container is only needed for *_refolding metrics tags (AF3 oracle), not for plain generation"
-allowed-tools: Bash, Read, Write, AskUserQuestion
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
@@ -27,7 +25,7 @@ skill's job is to **route** the request to the right example input and the right
 overrides, then run one command. Deep input construction, reward-guided search,
 and oracle metrics live in sibling skills; this skill points at them.
 
-Run everything from the **repo root** (`RFProteína-dev/`). All model arguments
+Run everything from the repository root (the directory containing `.project-root`). All model arguments
 are Hydra `key=value`, **never** `--key value`.
 
 ## Step 1 — Preflight
@@ -93,7 +91,7 @@ smoke test):
 | `out_dir` | a real output path | `./runs/<run_name>` |
 | `num_replicates` | designs per example (e.g. 8-80); `1` is a smoke test | 1 |
 | `batch_size` | start at 8, but first confirm the longest input fits at `batch_size=1` | 1 |
-| `metrics_tags` | inline metrics as a bracket-quoted Hydra list (needs a container) | `[]` |
+| `metrics_tags` | inline metrics as a bracket-quoted Hydra list; only refolding tags need a container | `[]` |
 
 Useful extras: `subset_to_examples=monomer-short` (run only named keys),
 `seed=<int>` (reproducibility), `skip_existing=true` (resume a run),
@@ -105,6 +103,15 @@ python src/rfproteina/generate.py \
     inputs=data/benchmarks/monomer.json \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
+
+## Scheduler intent
+
+For any batch run, read the selected `scripts/.user_info_<cluster>` and the
+launcher before constructing the command. Preserve the user's partition,
+account, QoS/priority options, GPU request, runtime, memory, and CPU settings.
+Use a resource override only when the user explicitly requested it. State the
+resolved scheduler values before submission; use dry-run or non-submitting tests
+when validating the workflow.
 
 ## Step 4 — Pick your overrides
 
@@ -132,10 +139,12 @@ that matter most:
 ## Step 5 — Inline metrics (optional)
 
 Pass `metrics_tags='[...]'` to compute metrics right after each design; results
-land in `per_example_metrics.csv` alongside the CIFs. Available tags:
-`unconditional_refolding`, `ppi_refolding`, `motif_scaffold_refolding`,
-`sm_binder_refolding`, `ame_refolding`, `hotspot_conditioning`,
-`3d_coordinate_conditioning`, `rasa_conditioning`, `interchain_interactions`.
+land in `per_example_metrics.csv` alongside the CIFs. Common tags include `design`, `unconditional_refolding`, `ppi_refolding`,
+`dna_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`,
+`ame_refolding`, `disco_refolding`, `hotspot_conditioning`,
+`3d_coordinate_conditioning`, `rasa_conditioning`, and
+`interchain_interactions`. Check `docs/workflow/metrics.md` and the composed
+metric configs before treating any list as exhaustive.
 
 > [!NOTE]
 > Every `*_refolding` tag runs the **AF3 oracle**, which needs an apptainer/docker
@@ -177,7 +186,7 @@ table and how to read annotations: [references/outputs.md](references/outputs.md
 | --- | --- |
 | Out of memory | Lower `batch_size`; confirm your longest input fits at `batch_size=1` first |
 | `--inputs`/`--out_dir` not recognized / Hydra config error | Use `=` not `--`: `inputs=file.cif`, never `--inputs file.cif` |
-| checkpoint not found / name mismatch | Override `ckpt_name=` to the file you actually downloaded (example vs release ckpt — see Step 1 and rfd4-proteina-setup) |
+| checkpoint not found | Confirm `DATA_PATH`, then compare `ckpt_name` and `ckpt_path` with `configs/inference.yaml`; override only when intentionally using another checkpoint |
 | `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_example_data.sh "$DATA_PATH"` |
 | `atomworks not found` | `git submodule update --init lib/atomworks`, re-run `setup.sh` |
 | `hydra not found` / import errors | `source .venv/bin/activate` |

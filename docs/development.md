@@ -7,7 +7,7 @@ tasks, metrics and the SLURM launchers.
 For inference and design usage, see the [main
 README](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md). For coding
 standards, see
-[CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md).
+[AGENTS.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/AGENTS.md).
 
 :::{admonition} On a configured compute cluster?
 :class: ipd-cluster

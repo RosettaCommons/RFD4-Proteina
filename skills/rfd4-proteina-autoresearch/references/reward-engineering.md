@@ -2,7 +2,7 @@
 
 The reward is what turns a vague goal into something an autoresearch loop can
 optimize. In RFProteína it is defined inline under `search.rewards` (mechanics in
-the **rfd4-proteina-search** skill and `docs/guides/search.md`); this reference is
+the **rfd4-proteina-search** skill and `docs/workflow/search.md`); this reference is
 about *how to shape it* for a campaign.
 
 ## RFProteína reward keys

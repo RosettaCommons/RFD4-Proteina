@@ -10,8 +10,6 @@ description: >
   submodule, wires DATA_PATH and the per-cluster env file, downloads the model
   weights, and preflights GPU + checkpoints so downstream runs do not fail
   mid-job. Hand off to rfd4-proteina-generate once preflight is green.
-compatibility: "Linux x86_64/arm64 with an NVIDIA GPU (>=40GB VRAM recommended), git, curl; Python 3.12; ~10GB disk for checkpoints; optional apptainer/docker for AF3-backed metrics + search"
-allowed-tools: Bash, Read, Write, AskUserQuestion
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
@@ -23,7 +21,7 @@ importing the model before the `atomworks` submodule / venv exists, and (2)
 launching an hours-long run only to have it die because `DATA_PATH` or a
 checkpoint is missing. Preflight both up front.
 
-Run everything from the **repo root** (`RFProteína-dev/`).
+Run everything from the repository root (the directory containing `.project-root`).
 
 ## Step 1 — Install the environment
 

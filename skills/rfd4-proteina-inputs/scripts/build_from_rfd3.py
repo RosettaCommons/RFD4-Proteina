@@ -7,8 +7,8 @@ sequence conditioning defaults True; missing atoms are an error, never added.
 
 Usage::
 
-    build_cif.py <benchmark.json> <example_key> --output out.cif
-    build_cif.py <benchmark.json> <example_key> --dump      # summary, no file
+    build_from_rfd3.py <benchmark.json> <example_key> --output out.cif
+    build_from_rfd3.py <benchmark.json> <example_key> --dump
 """
 
 from __future__ import annotations
@@ -55,9 +55,7 @@ from rfproteina.transforms.utils.na_geom_utils import annotate_na_ss_from_specif
 from rfproteina.utils.parse_presets import DISTILLATION
 from rfproteina.utils.standard_annotations import SA_SRC
 
-# --------------------------------------------------------------------------- #
 # Constants
-# --------------------------------------------------------------------------- #
 
 
 #: Diffused residue stubs: backbone atom names from atomworks + a representative atom (CB for
@@ -140,9 +138,7 @@ class BuildError(RuntimeError):
     """Raised when a specification cannot be honoured as written."""
 
 
-# --------------------------------------------------------------------------- #
 # Input loading
-# --------------------------------------------------------------------------- #
 
 
 def load_input(path: Path) -> AtomArray:
@@ -163,9 +159,7 @@ def load_input(path: Path) -> AtomArray:
     return result["asym_unit"][0]
 
 
-# --------------------------------------------------------------------------- #
 # Selection resolution
-# --------------------------------------------------------------------------- #
 
 
 def resolve_selection(value: str | bool | dict | None, atom_array: AtomArray) -> dict[str, list[str]]:
@@ -330,9 +324,7 @@ def internal_coord_groups(spec: dict, source: AtomArray, fixed_coord_mask: np.nd
     return group_id, coords
 
 
-# --------------------------------------------------------------------------- #
 # Piece builders
-# --------------------------------------------------------------------------- #
 
 
 def make_diffused(n: int, polymer_type: str = "P") -> AtomArray:
@@ -409,9 +401,7 @@ def _normalise(array: AtomArray) -> AtomArray:
     return out
 
 
-# --------------------------------------------------------------------------- #
 # Assembly
-# --------------------------------------------------------------------------- #
 
 
 def build(spec: dict, benchmark_root: Path, fix_res_id_gap: bool = False) -> AtomArray:
@@ -665,9 +655,8 @@ def build(spec: dict, benchmark_root: Path, fix_res_id_gap: bool = False) -> Ato
     is_ligand = np.concatenate(lig)
     SA_SRC.set_annotation(atom_array, np.concatenate(src_component))
 
-    # --- 5. res_id disambiguation for unindexed residues -------------------- #
-    # Unindexed residues must not collide with polymer numbering. The oracle double-bumps, leaving
-    # a gap (reproduced by default); `--fix_res_id_gap` numbers contiguously instead.
+    # Unindexed residue IDs must not collide with polymer numbering. The default retains the oracle's
+    # numbering gap; `--fix_res_id_gap` numbers contiguously instead.
     indexed_polymer = ~is_unindexed & ~is_ligand
     if is_unindexed.any() and not is_unindexed.all() and indexed_polymer.any():
         max_indexed = int(atom_array.res_id[indexed_polymer].max())
@@ -730,9 +719,8 @@ def build(spec: dict, benchmark_root: Path, fix_res_id_gap: bool = False) -> Ato
     if pending_sentinels:
         atom_array = _insert_diffused_sentinels(atom_array, pending_sentinels)
 
-    # --- 11. CATH ----------------------------------------------------------- #
-    # AFTER step 10: CATH addresses atoms by selection (not index), so it survives sentinel
-    # insertion; the label rides through expansion onto every realised residue.
+    # CATH addresses atoms by selection after sentinel insertion, so its label survives expansion
+    # onto every realized residue.
     if spec.get("add_cath_code") is not None:
         C_CATH.set_annotation(atom_array, cath_annotation(spec, atom_array))
 
@@ -1002,9 +990,7 @@ def _index_groups(atom_array: AtomArray, is_unindexed: np.ndarray, is_break: np.
     return groups
 
 
-# --------------------------------------------------------------------------- #
 # Reporting
-# --------------------------------------------------------------------------- #
 
 
 def dump_summary(atom_array: AtomArray, label: str) -> None:
@@ -1046,9 +1032,7 @@ def dump_summary(atom_array: AtomArray, label: str) -> None:
     print(f"### charges: nonzero = {int(np.sum(atom_array.charge != 0))}/{n}  uniq={np.unique(atom_array.charge)}")
 
 
-# --------------------------------------------------------------------------- #
 # CLI
-# --------------------------------------------------------------------------- #
 
 
 def main(

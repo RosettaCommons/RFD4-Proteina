@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "skill": "rfd4-proteina-package",
+  "cases": [
+    {
+      "id": "package-on-off-target-passers",
+      "prompt": "Package the final-v2 passers so collaborators can browse each design with all on-target and off-target refolds without SQLite.",
+      "expected_behavior": [
+        "Groups designs by exact annotated-CIF input",
+        "Includes one design CIF and all linked aligned refolds with available confidence JSON",
+        "Writes actual criterion values in metrics.csv",
+        "Writes exact overall and per-input waterfall tables",
+        "Does not add a database, manifest, duplicate aligned design, oracle input copy, or alignment JSON"
+      ]
+    }
+  ]
+}

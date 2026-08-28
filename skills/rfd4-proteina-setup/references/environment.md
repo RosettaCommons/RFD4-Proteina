@@ -55,4 +55,4 @@ mirror it if you hit a segfault outside `make`.
 make setup-pymol      # builds a dedicated conda env (open-source PyMOL isn't pip-installable)
 ```
 
-See `docs/guides/annotated_cif_inputs.md` (Option A) for the plugin workflow.
+See `docs/workflow/inputs.md` (Option A) for the plugin workflow.

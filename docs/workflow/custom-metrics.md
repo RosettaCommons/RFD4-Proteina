@@ -21,9 +21,10 @@ directory appears the moment you drop your first metric module into it.
 
 > **Is yours broadly useful?** If your metric measures something general, contribute it. Move the
 > class to a tracked file under `src/rfproteina/metrics/`, add a YAML entry to a tracked config, and
-> open a pull request. See
-> [CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md) for the
-> contribution guidelines.
+> open a pull request. See the {doc}`contributor guide <../contributor_guide>` for contribution
+> guidelines and
+> [AGENTS.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/AGENTS.md) for agent
+> working agreements.
 
 ## Writing your own
 
@@ -408,5 +409,5 @@ git push -u origin HEAD
 # 5. Open a pull request on the foundry-dev GitHub page
 ```
 
-See [CLAUDE.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/CLAUDE.md) for the
-full commit message format and the PR checklist.
+See the {doc}`contributor guide <../contributor_guide>` for the current commit and pull-request
+guidance.

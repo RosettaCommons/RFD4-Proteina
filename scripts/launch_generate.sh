@@ -9,7 +9,7 @@
 # Use this for batch work: job arrays, multi-GPU fan-out, AF2/AF3 refolding
 # daemons, and metric aggregation. To run a single process on a node you already
 # have, call generate.py directly -- see "Choosing an entry point" in
-# docs/guides/inference.md.
+# docs/workflow/running.md.
 #
 # Usage:
 #   ./launch_generate.sh <cluster> [options] [hydra_overrides...]

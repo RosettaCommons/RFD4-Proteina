@@ -16,7 +16,7 @@ See the RFProteína repository. Skill text and documentation follow the NVIDIA a
 
 ## Use Case
 
-Researchers who want the best designs per candidate — optimizing monomers or binders by AF3 confidence (pLDDT / ipTM / ipAE) or by interface interaction counts — and are willing to spend extra compute for it. Requires `rfd4-proteina-setup` complete, with an AF3 apptainer/docker container configured for oracle-backed rewards. For cheap unguided sampling use `rfd4-proteina-generate`; for post-hoc scoring use `rfd4-proteina-evaluate`.
+Researchers who want the best designs per candidate — optimizing monomers or binders by refolding confidence (pLDDT / ipTM / ipAE), interface interactions, or another configured metric — and are willing to spend extra compute for it. Requires `rfd4-proteina-setup` complete and the selected reward dependencies. For cheap unguided sampling use `rfd4-proteina-generate`; for post-hoc scoring use `rfd4-proteina-evaluate`.
 
 ## Deployment Geography for Use
 
@@ -26,30 +26,30 @@ Global, subject to the repository license and export/compliance constraints on t
 
 Requires API Key or External Credential: No
 
-Credential Type(s): None (checkpoints download over public HTTPS; the AF3 oracle runs from a locally configured container/SIF, no credentials).
+Credential Type(s): None (checkpoints download over public HTTPS; supported refolding backends use locally configured runtimes).
 
-Hardware/software: Linux with an NVIDIA GPU (>=40 GB VRAM recommended); `rfd4-proteina-setup` complete; for oracle-backed rewards, an AF3 apptainer/docker container configured via the per-cluster env file (`.ipd/.env.$CLUSTER`). High compute cost — many AF3 oracle calls per run.
+Hardware/software: Linux with an NVIDIA GPU (>=40 GB VRAM recommended); `rfd4-proteina-setup` complete; for refolding rewards, a configured AF2, AF3, or OpenFold3 backend that supports the chosen tags. High compute cost — many reward evaluations per run.
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate.
 
 ## Known Risks and Mitigations
 
-Risk: Search is compute-intensive (many AF3 oracle calls, roughly `beam_width x n_branch x checkpoints` per input) — it can consume large GPU budgets.
+Risk: Search is compute-intensive (many reward evaluations, roughly `beam_width x n_branch x checkpoints` per input) — it can consume large GPU budgets.
 Mitigation: The skill documents the cost model and urges starting small (low `beam_width`/`n_branch`, short `step_checkpoints`, small `nsteps`) and using plain `rfd4-proteina-generate` for cheap baselines. See references/cost.md.
 
 Risk: Misconfigured `step_checkpoints` (not starting at 0, not strictly increasing, or not ending at `nsteps`) will error and waste a submission.
 Mitigation: The skill states the constraint prominently and the `generation.args.nsteps == last step_checkpoint` rule, with a troubleshooting entry.
 
-Risk: The reward optimizes a proxy (AF3 confidence / interface metrics), not experimental success — high-reward designs are not guaranteed to work in the lab.
+Risk: The reward optimizes a proxy (refolding confidence, interface metrics, or another configured score), not experimental success — high-reward designs are not guaranteed to work in the lab.
 Mitigation: The skill frames reward as a proxy and advises experimental validation of any design.
 
 ## References
 
-- `docs/guides/search.md`, `docs/guides/inference.md` ("Search Strategies", "Evaluating Results")
+- `docs/workflow/search.md`, `docs/workflow/running.md` ("Search Strategies", "Evaluating Results")
 - `configs/inference_experiment/inference_beam_example.yaml`, `configs/inference_experiment/sm_binder_hbond_search.yaml`
 - `src/rfproteina/search/beam_search.py`, `src/rfproteina/metrics/oracles/pass_criterion_metric.py`, `src/rfproteina/metrics/oracles/oracle_metric.py`
-- `scripts/launch_search.sh`
-- rfd4-proteina-setup skill (`references/clusters.md` for the AF3 container)
+- `scripts/launch_generate.sh`, `scripts/launch_search.sh`
+- rfd4-proteina-setup skill (`references/clusters.md` for refolding backends)
 - RFProteína website: https://rosettacommons.github.io/RFD4-Proteina/
 - NVIDIA agent skills: https://docs.nvidia.com/skills
 
@@ -61,7 +61,7 @@ Output format: CIF structures with per-atom annotations; CSV metrics table; each
 
 Output parameters: `out_dir/` (e.g. `outputs/beam_example/`), containing the scored design CIFs and `per_example_metrics.csv`.
 
-Other properties: search runs through `generate.py`; oracle results are cached during scoring and reused by the epoch-end metrics loop. Oracle-backed rewards require the container.
+Other properties: search runs through `generate.py`; oracle results are cached during scoring and reused by the epoch-end metrics loop. Refolding rewards require the selected backend's runtime.
 
 ## Skill Version
 

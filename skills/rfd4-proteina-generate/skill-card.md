@@ -78,8 +78,8 @@ Mitigation: Stated prominently and in the troubleshooting table.
 
 ## References
 
-- `docs/guides/inference.md`, `docs/guides/parameters.md`, `configs/inference.yaml`
-- `docs/guides/{unconditional_generation,motif_scaffolding,enzyme_design,small_molecule_binder_design,protein_binder_design,dna_binder_design}.md`
+- `docs/workflow/running.md`, `docs/workflow/running.md`, `configs/inference.yaml`
+- `docs/examples.rst` and `skills/rfd4-proteina-generate/references/tasks/`
 - Example inputs: `data/benchmarks/`
 - Sibling skills: `rfd4-proteina-setup`, `rfd4-proteina-inputs`, `rfd4-proteina-search`, `rfd4-proteina-evaluate`
 - RFProteína website: https://rosettacommons.github.io/RFD4-Proteina/

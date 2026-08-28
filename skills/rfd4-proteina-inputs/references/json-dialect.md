@@ -1,9 +1,12 @@
-# Legacy JSON dialect reference
+# Existing contig/length JSON/YAML reference
 
-Source of truth: `docs/guides/input.md`, `.claude/commands/design2cif.md`, and
-`scripts/json2cif/build_cif.py`. The JSON `InputSpecification` (dialect 2) is
-retained for RFD3 compatibility; **annotated CIFs are preferred**. Use this
-reference when converting a legacy JSON with `build_cif.sh`.
+Source of truth: `docs/workflow/inputs.md`,
+`skills/rfd4-proteina-inputs/scripts/build_from_rfd3.py`, and the current
+input-schema implementation. Use this reference only when the user supplies an
+existing contig/length JSON/YAML artifact. Interpret that file as evidence of
+intent, confirm its material semantics, then use the compatibility adapter when
+the confirmed intent fits this dialect. Do not generate a JSON file for prose or
+annotated-CIF inputs.
 
 ## The two schemas (dispatch on which is present; they never co-occur)
 
@@ -20,8 +23,7 @@ Richer configs add `select_buried`/`select_exposed` (RASA),
 
 - **`ligand` splits on `,` only.** `L;G`, `T:S`, `H:H`, `K:X`, `lpr` are literal
   residue names.
-- **`select_fixed_atoms` has NO default — it raises** if omitted (docs/input.md and
-  the field docstring are stale on this). Omitting a ligand from it **zeroes that
+- **`select_fixed_atoms` is required.** Omitting a ligand from it **zeroes that
   ligand's coordinates**, which is why mcsa configs spell out e.g. `"MG": "MG"`.
 - Atom keywords: `ALL` = every atom; `BKBN` = `N,CA,C,O` (no CB); `TIP` =
   residue-specific tip atoms (raises on ALA/GLY/PRO/UNK); `""` = no atoms.
@@ -48,29 +50,24 @@ their sum.
 | 2+ variable parts, no `length` | N independent collapsed sentinels |
 | 2+ variable parts **with** `length` | **Inexpressible** — raise |
 
-## `build_cif.py` CLI (via `build_cif.sh`)
+## Compatibility adapter
 
-```
-build_cif.py <benchmark> <key> [--output out.cif] [--dump]
-             [--benchmark_root DIR] [--fix_res_id_gap]
-             [--coordination_bond 'C/ZN/296/ZN,A/CYS/365/SG' ...]
-             [--list_metal_candidates]
-```
-
-- `benchmark` falls back to `data/benchmarks/<benchmark>` if not a path.
-- `--output` omitted => build only (no file). `--dump` prints a summary.
-- Coordination-bond selectors are `CHAIN/RES_NAME/RES_ID/ATOM_NAME` against the
-  **built** array (the build renumbers residues; use `--list_metal_candidates` to
-  get usable selectors). A selector matching zero or multiple atoms is an error.
-
-## `check_annotated_cif.py` CLI (via `check_annotated_cif.sh`)
-
-```
-check_annotated_cif.py <file.cif> [--strict] [--skip_pipeline] [--quiet]
+```text
+build_from_rfd3.py <benchmark> <key> [--output out.cif] [--dump]
+                   [--benchmark_root DIR] [--fix_res_id_gap]
+                   [--coordination_bond 'C/ZN/296/ZN,A/CYS/365/SG' ...]
+                   [--list_metal_candidates]
 ```
 
-Part 1: invariant pipeline + missing-atom / res_id-gap checks. Part 2: gotcha scan
-(formal charges, ligand bond orders, metal bonds, duplicate res_names,
-struct_conn). Exit 1 on any error (`--strict` also on warnings), 2 if the file
-cannot load. Severities: ERROR (gates), WARN (gates only under `--strict`), NOTE
-(never gates — expected-but-worth-confirming).
+Invoke it through:
+
+```bash
+bash skills/rfd4-proteina-inputs/scripts/build_from_rfd3.sh input.json example_key --output out.cif
+```
+
+- `benchmark` falls back to `data/benchmarks/<benchmark>` if it is not a path.
+- Omitting `--output` builds without writing; `--dump` prints a summary.
+- Coordination-bond selectors address the built array as
+  `CHAIN/RES_NAME/RES_ID/ATOM_NAME`. A selector matching zero or multiple atoms is
+  an error. Use `--list_metal_candidates` to inspect candidates; never infer a
+  coordination bond from distance alone.

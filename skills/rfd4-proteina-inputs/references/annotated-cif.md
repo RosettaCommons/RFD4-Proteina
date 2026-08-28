@@ -1,7 +1,7 @@
 # Annotated CIF reference
 
-Source of truth: `docs/guides/annotated_cif_inputs.md` and
-`docs/guides/tutorials/annotated_cif_tutorial.ipynb`.
+Source of truth: `docs/workflow/inputs.md` and
+`docs/examples/annotated_cif_tutorial.ipynb`.
 
 An annotated CIF carries design intent as extra `_atom_site` columns and
 categories. Naming scheme: `condition_{name}_{n_body}_{level}` for values,
@@ -18,7 +18,7 @@ single `mask_...` column).
 | Index group | `C_IDXGRP` | `condition_index-group_1_token` | token | Ties residues with known *relative* offsets (rigid but unindexed) |
 | Hotspot | `C_HOT` | `mask_hotspot_1_atom` | atom | Target-interface atoms the binder should engage |
 | RASA bin | `C_RAS` | `condition_rasa-binned_1_atom` | atom | `RasaEnum`: 0 UNSPECIFIED, 1 BURIED, 2 INTERMEDIATE, 3 EXPOSED |
-| Hydrogen bond | `C_HB` | `condition_hbond_1_atom` | atom | `HBondEnum`: 0 NONE, 1 DONOR, 2 ACCEPTOR, 3 BOTH |
+| Hydrogen bond | `C_HB` | `condition_hbond_1_atom` | atom | `HBondEnum`: 0 NONE, 1 DONOR, 2 ACCEPTOR, 3 BOTH. Validate against the selected model contract |
 | Chain centroid | `C_CENTROID` | `condition_ChainCentroid_1_atom` | atom | Target center-of-mass for a chain (place a binder/ligand w/o fixing atoms) |
 | Secondary structure | `C_SEC` | `condition_secondary-structure_1_residue` | residue | `SSEnum`: 0 NONE, 1 HELIX, 2 SHEET, 3 LOOP |
 | Internal coordinate | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | atom | Internal geometry without a fixed global dock; mutually exclusive with `C_CRD` on the same atom |
@@ -57,23 +57,12 @@ Insert with the plugin (Main -> Insert Expandable Segment) or
 `seg_max`). **Save collapsed, not realized** — a realized segment is frozen to one
 length. Only polypeptide expandable segments are supported.
 
-## Programmatic core (from the tutorial)
+## Python authoring
 
-```python
-import rfproteina.conditions  # noqa: F401  REQUIRED before any parse
-from atomworks.io import parse
-from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.conditions import C_SEQ, C_CRD, C_IDX
-from rfproteina.conditions import C_HOT, C_RAS, C_HB, C_IDXGRP, RasaEnum, HBondEnum
-from rfproteina.utils.parse_presets import ANNOTATED_CIF, RCSB_WITH_METALS
-
-aa = as_atom_array_plus(parse("input.cif", config=RCSB_WITH_METALS)["assemblies"]["1"][0])
-C_CRD.set_mask(aa, fixed_atom_mask)     # fix coordinates of selected atoms
-C_SEQ.set_mask(aa, known_seq_res_mask)  # reveal sequence of selected residues
-C_HOT.set_mask(aa, hotspot_atom_mask)   # mark hotspots
-to_cif_file(aa, "annotated.cif", save_standard_annotations=True, chain_disambiguation="chain_iid")
-```
+Read [python-api.md](python-api.md) for the direct build/edit workflow. It covers
+safe annotated-CIF loading, editing an existing condition without replacing
+unmentioned values, expandable segments, chemistry, saving, and round-trip checks.
+No JSON or YAML is involved.
 
 ## Output columns (provenance)
 

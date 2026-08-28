@@ -30,7 +30,7 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None. AF3 refolding, when a tracked metric needs it, runs inside a locally configured apptainer/docker container (no external API).
 
-Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` + `DATA_PATH`); one CUDA GPU per sweep point; SLURM via `scripts/launch_infer.sh` / `scripts/launch_sweep.sh`. An AF3 container is required only if `metrics_tags` includes a `*_refolding` tag.
+Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` + `DATA_PATH`); one CUDA GPU per sweep point; SLURM via `scripts/launch_generate.sh` / `scripts/launch_sweep.sh`. An AF3 container is required only if `metrics_tags` includes a `*_refolding` tag.
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate.
 
@@ -59,7 +59,7 @@ Mitigation: Stated in the skill and here; `references/method.md` requires valida
 
 ## References
 
-- `docs/guides/inference.md` (partial diffusion), `configs/generation/inference_base.yaml`
+- `docs/workflow/running.md` (partial diffusion), `configs/generation/inference_base.yaml`
 - `src/rfproteina/search/vanilla.py` (`resolve_partial_t`, `build_partial_schedule`), `src/rfproteina/flow_matching/product_space_flow_matcher.py` (`partial_simulation`)
 - `scripts/launch_sweep.sh`, `src/script_utils/sweep.py`, `src/script_utils/concatenate_sweep_results.py`
 - `src/rfproteina/evaluate.py`, `src/rfproteina/inference_utils/aggregate_metrics.py`

@@ -37,7 +37,7 @@ Do not include secrets in prompts/logs/output; use least-privilege credentials; 
 Risk: The reward optimizes a proxy (AF3 confidence / interface metrics), not experimental success; a campaign can converge on designs that score well but do not work in the lab.
 Mitigation: The skill frames the reward as a replaceable hypothesis, recommends diversity tracking, and states that downstream experimental validation is required.
 
-Risk: Campaigns are compute-intensive (many AF3 oracle calls) and can consume large GPU budgets.
+Risk: Refolding-guided campaigns are compute-intensive and can consume large GPU budgets.
 Mitigation: The skill documents the cost model and the explore/exploit allocation, and points at `rfd4-proteina-search` cost guidance; stop conditions are explicit.
 
 Risk: Transplanting external (Proteina-Complexa / TREM2) hyperparameters as if they were RFProteína defaults, or assuming search algorithms RFProteína lacks (MCTS/best-of-n).
@@ -48,7 +48,7 @@ Mitigation: The skill labels all muni numbers as illustrative and restricts the 
 - muni: Do Agents Discover Scoring-Function-Dependent Strategies? https://muni.bio/research/scoring-function-dependent-strategies
 - muni: Autoresearch and muni CLI. https://www.muni.bio/research/muni-makeover-cli-autoresearch
 - Didi, K., Zhang, Z., Zhou, G., Reidenbach, D., Cao, Z., Cha, S., Geffner, T., Dallago, C., Tang, J., Bronstein, M. M., Steinegger, M., Kucukbenli, E., Vahdat, A., & Kreis, K. Scaling Atomistic Protein Binder Design with Generative Pretraining and Test-Time Compute. ICLR 2026.
-- `docs/guides/search.md`, `docs/guides/inference.md`, `docs/guides/metrics.md`
+- `docs/workflow/search.md`, `docs/workflow/running.md`, `docs/workflow/metrics.md`
 - Sibling skills: rfd4-proteina-search, rfd4-proteina-evaluate, rfd4-proteina-generate, rfd4-proteina-inputs
 
 ## Skill Output

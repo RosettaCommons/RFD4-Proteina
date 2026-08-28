@@ -1,23 +1,24 @@
-# Describe your design to Claude
+# Describe your design to an agent
 
-Tell Claude what you want to build. It interviews you about the parts you left open, checks the
+Tell your coding agent what you want to build. It interviews you about the parts you left open, checks the
 structure for the usual traps, and hands back a model ready [annotated CIF](inputs.md).
 
-How you state the intent is up to you. A legacy RFD3 style JSON works. So does a paragraph you
-typed, or one you dictated. All three are statements of intent, and all three under specify, so the
-route through them is the same.
+How you state the intent is up to you. A paragraph, lab note, source structure,
+existing annotated CIF, or RFD3-style JSON/YAML can all provide evidence. The
+agent examines what you already have, asks about unresolved choices, and edits the
+annotated CIF directly with the Python API.
 
-**The conversion is not the product. The interview is.** A JSON written months ago encodes a
-mini-language whose defaults surprise people. A paragraph never mentions the dozen switches that
-decide what the model actually sees. Either way the job is to work out what you meant and encode
-*that*. Transliterating your input is the failure mode, not the goal.
+**The conversion is not the product. The interview is.** A structured input records fields whose
+material meaning still needs confirmation, while prose commonly leaves choices unstated. Either
+way the job is to work out what you meant and encode *that*, rather than treating an artifact as a
+substitute for intent.
 
-## Running it
+## Running it with the shared skill
 
-In Claude Code:
+Ask Codex or Claude Code to use `rfd4-proteina-inputs` with a file and optional example key:
 
 ```
-/design2cif <input.json> [example_key]
+Use rfd4-proteina-inputs with <artifact> [example_key]
 ```
 
 Pass the path. If the file holds several examples, pass the key you want too.
@@ -25,31 +26,30 @@ Pass the path. If the file holds several examples, pass the key you want too.
 Or just say what you want:
 
 ```
-/design2cif scaffold a 120-residue binder against the SAM pocket of 1abc,
-            keeping the four catalytic residues fixed but letting the model place them
+Use rfd4-proteina-inputs to scaffold a 120-residue binder against the SAM pocket of 1abc,
+keeping the four catalytic residues fixed but letting the model place them.
 ```
 
-There is also an `rfd4-proteina-inputs` skill covering the same ground, which
-`rfd4-proteina-generate` reaches for when it needs an input you do not have yet.
+Claude Code also exposes `/design2cif` as a compatibility alias. Both routes load
+the same canonical skill under `skills/rfd4-proteina-inputs/`.
 
 ## What to expect
 
-1. **Questions first.** Claude opens the structure rather than reasoning about it, then restates
+1. **Questions first.** The agent opens the structure rather than reasoning about it, then restates
    each thing it plans to do as intent and asks. The pattern is *"I read this as X, is that
    right?"* Your answers determine the output, so take them seriously.
-2. **A JSON draft, if you started from prose.** Claude shows you the spec it inferred, in full,
-   marking every value it guessed rather than heard, and waits for your sign off. It never builds
-   from an unconfirmed draft. The draft stays next to the CIF as the record of what got built.
-3. **A built CIF.** Written from native atomworks primitives, not the legacy parser, then
-   validated.
+2. **An intent plan.** It separates what you stated, what the artifacts show, what it inferred, and
+   what still needs a decision. This is ordinary language, not a generated JSON spec.
+3. **A built or edited CIF.** It uses the Python AtomWorks API directly. For a supplied RFD3
+   JSON/YAML only, it can use the tested compatibility adapter after confirming what the fields mean.
+   Prose, raw structures, and annotated CIFs never route through JSON.
 4. **A report.** Everything worth a second look, described in terms of your design rather than
    stack traces.
 
 ## What it asks about
 
-The interview covers the same ground whichever way you came in. Claude walks the whole list even
-when your paragraph was short, because a description that never mentions hotspots or RASA usually
-means you did not think about them, not that you wanted the defaults.
+The agent asks about the choices material to your design. It uses your artifacts to avoid generic
+questions and does not make you decide conditions that are irrelevant to the requested task.
 
 **Length.** Is that range meant to be sampled per design, or did you mean one fixed length?
 
@@ -76,21 +76,22 @@ These are the ones that bite people. Most are silent.
 | `select_fixed_atoms: false` conditions nothing | The model invents the ligand's pose *and* its conformer. It gets identity, bonds and charge only |
 | A `?` in `pdbx_formal_charge` means unknown, not neutral | The model embeds formal charge per atom, so unknown is a question, not a default |
 | PDB-derived ligands often arrive single bonded | Aromaticity and bond order are lost, and the model reads both |
-| A metal with no bonds is normal, and still a decision | Claude surfaces it and asks. It never picks coordination partners by distance, because a 2.42 Å neighbour might be a real bond or an incidental contact and only you know which |
-| A ligand missing heavy atoms is a defect, a residue missing sidechain atoms is not | The second one is what tip atom scaffolding *is*. Gating on the combined count buries the real problem |
-| Unindexing a PTM or non-canonical residue is not expressible | Claude says so plainly rather than building something that breaks downstream |
-| The legacy JSON path silently drops a covalent polymer to ligand bond | This path keeps it, and tells you the result will differ from what your old JSON runs produced |
+| A metal with no bonds is normal, and still a decision | The agent surfaces it and asks. It never picks coordination partners by distance, because a nearby atom might be a real bond or an incidental contact and only you know which |
+| Missing atoms require intent review | Keep complete residues and express tip-atom conditioning with masks. Raw unresolved structures may need preparation; custom components are valid when their explicit atoms, bonds and charges are complete |
+| Token types can have different indexing capabilities | The agent preserves your requested indexing, runs the checked-out validator, and reports any unsupported combination instead of silently changing it |
+| Covalent polymer-to-ligand bonds must remain present | The annotated CIF preserves and validates the bond explicitly |
 
-> **Check the result.** Claude misreads intent sometimes. Before you run the model, open the
+> **Check the result.** An agent can misread intent. Before you run the model, open the
 > annotated CIF in the [AtomWorks Design Studio plugin](inputs.md#pymol-plugin) and confirm the
 > conditioning says what you meant, including fixed atoms, sequence, ligands and unindexing.
 
 ## What it will not do
 
 - Guess its way past a real ambiguity. It asks instead.
-- Add missing atoms. It flags them so you fix them at the source.
-- Silently drop covalent bonds, charges or PTMs. Those are the failure modes of the legacy JSON
-  path.
+- Silently choose structural preparation. It tells you which preset it used and
+  asks you to confirm material atom, component, and bond changes.
+- Silently drop covalent bonds, charges or PTMs.
 - Realize an expandable segment. A realized segment is frozen to one length and the model will not
   resample it.
 - Claim a check passed that it did not run.
+- Create a JSON/YAML intermediate unless you explicitly ask for one.
