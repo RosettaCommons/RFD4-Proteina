@@ -265,6 +265,22 @@ class OracleMetric(Metric):
         """Return True if a confidence JSON for this example already exists."""
         return self.confidence_path(out_dir, example_id, save_id).exists()
 
+    @staticmethod
+    def manifest_job_name(job: "OracleJobInput") -> str:
+        """Fold identity / output-file stem: bare example_id (+ save_id). Kept unqualified because it
+        flows into the oracle's fold input and some workers (AF2) are name-sensitive; per-fold
+        uniqueness is handled by a batch-index prefix on the output dir, not here."""
+        name = f"{job.example_id}_{job.save_id}" if job.save_id is not None else job.example_id
+        return name.replace(" ", "_")
+
+    @staticmethod
+    def assert_unique_output_dirs(entries: list[dict]) -> None:
+        """Fail loud if two designs map to the same output dir -- one would overwrite the other's refold."""
+        dirs = [e["output_dir"] for e in entries]
+        if len(set(dirs)) != len(dirs):
+            dupes = sorted({d for d in dirs if dirs.count(d) > 1})
+            raise ValueError(f"Oracle manifest has duplicate output dirs (would collide): {dupes}")
+
     def list_save_ids(self) -> list[str] | None:
         """Return the save_ids this oracle fans each design into, or ``None`` if it folds it as-is.
 
