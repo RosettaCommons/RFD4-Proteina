@@ -516,7 +516,7 @@ class AF3Oracle(OracleMetric):
         manifest_entries: list[dict] = []
         job_states: list[_AF3JobState] = []
 
-        for job in pending:
+        for idx, job in enumerate(pending):
             input_atom_array = job.atom_array
             if np.any(input_atom_array.res_name == "UNL"):
                 raise ValueError(
@@ -525,9 +525,7 @@ class AF3Oracle(OracleMetric):
                     "Rename UNL residues to a different code (e.g. 'L;G') before evaluating with AF3Oracle."
                 )
             example_id = job.example_id
-            # The save_id keeps sibling refolds of one design in AF3 output
-            # subdirectories of their own, just as it does on the canonical side.
-            job_name = (f"{example_id}_{job.save_id}" if job.save_id is not None else example_id).replace(" ", "_")
+            job_name = self.manifest_job_name(job)
 
             # Disambiguate chain IDs so AF3 can distinguish chain_iid variants and keep an id_map for remapping outputs
             disambiguated_atom_array, af3_chain_id_to_original_iid = self._disambiguate_chain_ids(input_atom_array)
@@ -551,7 +549,8 @@ class AF3Oracle(OracleMetric):
 
             # Inline CIF in the manifest (avoid file I/O)
             cif_string = to_cif_string(disambiguated_valid.copy(), config=CIFWriteConfig(id=job_name))
-            af3_output_dir = af3_outputs_root / job_name
+            # Batch-index prefix makes each dir unique so sibling benchmarks sharing a target can't collide.
+            af3_output_dir = af3_outputs_root / f"{idx:04d}_{job_name}"
 
             entry: dict = {
                 "name": job_name,
@@ -587,6 +586,7 @@ class AF3Oracle(OracleMetric):
                 )
             )
 
+        self.assert_unique_output_dirs(manifest_entries)
         return manifest_entries, job_states
 
     def _finalize_af3_result(self, state: _AF3JobState) -> dict | None:
