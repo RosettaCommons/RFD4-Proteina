@@ -1,0 +1,13 @@
+# Developability triage metrics (opt-in via metrics_tags=['developability']).
+# Rosetta metrics require a PyRosetta apptainer set via $PYROSETTA_CONTAINER.
+
+sequence_developability:
+  _target_: rfproteina.metrics.physics.developability_metrics.SequenceDevelopabilityMetric
+  required_tags_any: ["developability"]
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
+rosetta_developability:
+  _target_: rfproteina.metrics.physics.developability_metrics.RosettaDevelopabilityMetric
+  required_tags_any: ["developability"]
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+  sasa_cutoff: 20.0

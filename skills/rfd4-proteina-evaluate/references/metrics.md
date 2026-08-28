@@ -1,23 +1,23 @@
 # Metrics reference (compact)
 
-Distilled from [docs/guides/metrics.md](../../../docs/guides/metrics.md) and
-[docs/guides/custom_metrics.md](../../../docs/guides/custom_metrics.md) — read
+Distilled from [docs/workflow/metrics.md](../../../docs/workflow/metrics.md) and
+[docs/workflow/custom-metrics.md](../../../docs/workflow/custom-metrics.md) — read
 those for the full column lists, per-metric thresholds, and worked examples.
 
 ## What ships enabled
 
-**36 metric / pass-criterion / filter entries** are registered in
+**46 metric / pass-criterion / filter entries** are registered in
 `configs/metrics/all_metrics.yaml` and run automatically; most are gated behind
 one or more `metrics_tags`, so turning one on is just passing a tag.
 
 | Category | Count | Config |
 | --- | --- | --- |
-| Design metrics (inline, pre-refolding) | 14 | `configs/metrics/inline_metrics/design_metrics.yaml` |
+| Design metrics (inline, pre-refolding) | 19 | `configs/metrics/inline_metrics/design_metrics.yaml` + `developability_metrics.yaml` |
 | Structure-prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
-| Refolding metrics (design vs. refolded) | 6 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
-| Refolding oracles (AF3 variants) | 3 | `configs/metrics/refolding_oracles/af3.yaml` |
-| Pass criteria (pass/fail thresholds) | 9 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
-| Pre-oracle filters (skip the oracle on cheap failures) | 3 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
+| Refolding metrics (design vs. refolded) | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
+| Refolding oracles (AF3 variants) | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
+| Pass criteria (pass/fail thresholds) | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
+| Pre-oracle filters (skip the oracle on cheap failures) | 5 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
 Beyond those, **~10 more metric classes exist** in the codebase but are opt-in
 (not wired into any default config) — TMol interface ddG / H-bonds /
@@ -49,6 +49,7 @@ implication between them. To run both families pass both:
 | Tag | Activates | Needs AF3 container? |
 | --- | --- | --- |
 | `design` | Raw-structure design metrics (clash, bond length, SSE) | No |
+| `developability` | GRAVY / instability index + Rosetta SAP / ExposedHydrophobics (+ pass criterion) | No (PyRosetta SIF for Rosetta metrics) |
 | `unconditional_refolding` | AF3 refold + scRMSD/pLDDT for unconditional generation | Yes |
 | `ppi_refolding` | AF3 refold + target templating + interface metrics (protein binders) | Yes |
 | `motif_scaffold_refolding` | AF3 refold + motif RMSD (motif scaffolding / enzymes) | Yes |
@@ -93,4 +94,4 @@ git-ignored; `# @package metrics`). Picked up automatically; columns are prefixe
 by the config key. Three categories — design (`inline_metrics`), refolding
 (`refolding_metrics`), and pass criteria (`pass_criteria`, via the built-in
 `PassCriterionMetric`, no Python). Full walkthrough:
-[docs/guides/custom_metrics.md](../../../docs/guides/custom_metrics.md).
+[docs/workflow/custom-metrics.md](../../../docs/workflow/custom-metrics.md).

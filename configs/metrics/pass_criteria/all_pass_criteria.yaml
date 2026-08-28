@@ -93,6 +93,21 @@ disco:
       max: 2.0
   required_tags_any: [disco_refolding]
 
+# Classic monomer developability triage (half-life deliberately excluded).
+# Ideal SAP is often ~<20; 50 is a lenient triage bar.
+developability:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    rosetta_developability.sap_score:
+      max: 50.0
+    rosetta_developability.hydrophobic_exposure_sasa:
+      max: 1500.0
+    sequence_developability.gravy:
+      max: 0.1
+    sequence_developability.instability_index:
+      max: 40.0
+  required_tags_any: [developability]
+
 # --- Reducing several metric keys into one threshold (example, commented out) ---
 # E.g. you have a multi-chain binder but only want to evaluate on the min ipae over all binder chains
 #   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
