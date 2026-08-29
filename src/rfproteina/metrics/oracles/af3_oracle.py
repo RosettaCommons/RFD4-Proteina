@@ -183,6 +183,31 @@ def _prewarm_daemon(sock_path: str, timeout_s: float = 5.0) -> None:
         logger.debug(f"AF3 daemon prewarm at {sock_path} skipped: {exc}")
 
 
+def release_af3_daemon(timeout_s: float = 5.0) -> bool:
+    """Release this rank's resident AF3 worker to free its GPU between validations.
+
+    Best effort: the daemon keeps serving and re-warms on the next prewarm/fold. A
+    no-op returning ``False`` when no daemon socket is configured (the direct fold
+    path holds no persistent GPU worker to release).
+
+    Args:
+      timeout_s: Connect/send budget. Short -- the daemon replies before reaping.
+
+    Returns:
+      ``True`` if the daemon acknowledged the release.
+    """
+    template = os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE")
+    if not template:
+        return False
+    sock_path = template.format(rank=_resolve_daemon_rank(_resolve_local_rank()))
+    try:
+        response = _send_to_daemon(sock_path, {"cmd": "release"}, timeout_s=timeout_s, connect_retry_s=0.0)
+    except (OSError, ValueError) as exc:
+        logger.debug(f"AF3 daemon release at {sock_path} skipped: {exc}")
+        return False
+    return response.get("status") == "ok"
+
+
 @dataclass(slots=True)
 class _AF3JobState:
     """In-flight bookkeeping for one design between manifest-build and finalise.
