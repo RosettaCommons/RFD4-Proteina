@@ -15,6 +15,8 @@ Socket protocol (line-delimited JSON):
         -> {"status": "ok"}
     {"cmd": "ping"}     -> {"status": "ok"}
     {"cmd": "prewarm"}  -> {"status": "ok"}, starts a lazy daemon's warmup.
+    {"cmd": "release"}  -> {"status": "ok", "released": bool}, stops the worker
+        (freeing its GPU) but keeps serving; a later prewarm/fold re-warms.
     {"cmd": "shutdown"} -> {"status": "ok"}, daemon exits.
 """
 
@@ -170,6 +172,26 @@ def _serve(args: argparse.Namespace) -> int:
             warmup_started = True
             threading.Thread(target=warmup, daemon=True, name="af3-warmup").start()
 
+    def stop_worker() -> None:
+        """Stop the resident worker (freeing its GPU) and reset warmup state so a later
+        prewarm/fold re-warms. The socket keeps serving. `worker` is None when warmup
+        never ran, the spawn failed, or a shutdown landed mid-spawn."""
+        nonlocal worker, worker_error, warmup_started, worker_ready
+        if worker is not None:
+            try:
+                if worker.poll() is None:
+                    worker.stdin.write("shutdown\n")
+                    worker.stdin.flush()
+                    worker.wait(timeout=10)
+            except Exception:
+                with contextlib.suppress(Exception):
+                    worker.terminate()
+                    worker.wait(timeout=5)
+        worker = None
+        worker_error = None
+        warmup_started = False
+        worker_ready = threading.Event()
+
     # Eager by default, so warmup overlaps whatever the caller does next. Under
     # --lazy-warmup, AF3 loads on the first prewarm/fold instead.
     if not args.lazy_warmup:
@@ -202,6 +224,12 @@ def _serve(args: argparse.Namespace) -> int:
                     # A no-op once warmup has started, so it is safe to send repeatedly.
                     start_warmup_once()
                     resp = {"status": "ok"}
+                elif cmd == "release":
+                    # Free the resident worker's GPU between training validations; a later
+                    # prewarm/fold re-warms. The socket keeps serving, unlike shutdown.
+                    released = worker is not None
+                    stop_worker()
+                    resp = {"status": "ok", "released": released}
                 elif cmd == "fold":
                     start_warmup_once()
                     # Block until the warm worker is ready (or failed).
@@ -221,19 +249,9 @@ def _serve(args: argparse.Namespace) -> int:
             finally:
                 conn.close()
     finally:
-        # Tell the warm worker to exit cleanly; if that fails, kill it. `worker` is None
-        # when warmup never ran, the spawn failed, or a shutdown landed mid-spawn; in that
-        # last case the worker still exits on its own, on stdin EOF, when this process does.
-        if worker is not None:
-            try:
-                if worker.poll() is None:
-                    worker.stdin.write("shutdown\n")
-                    worker.stdin.flush()
-                    worker.wait(timeout=10)
-            except Exception:
-                with contextlib.suppress(Exception):
-                    worker.terminate()
-                    worker.wait(timeout=5)
+        # Tell the warm worker to exit cleanly; if that fails, kill it. When the worker
+        # exits on its own (on stdin EOF as this process ends), stop_worker is a no-op.
+        stop_worker()
 
     sock.close()
     if os.path.exists(sock_path):

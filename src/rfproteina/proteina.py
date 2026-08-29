@@ -20,6 +20,7 @@ from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 from atomworks.ml.utils.token import get_token_count
 from hydra.errors import InstantiationException
 from jaxtyping import Bool, Float
+from lightning.pytorch.trainer.states import TrainerFn
 from lightning_utilities import apply_to_collection
 from omegaconf import DictConfig, OmegaConf
 from rich.panel import Panel
@@ -36,6 +37,7 @@ from rfproteina.inference_utils.foldseek import (
 from rfproteina.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from rfproteina.inference_utils.solve_rate_metrics import compute_solve_rate_metrics
 from rfproteina.metrics.metric import MetricManager
+from rfproteina.metrics.oracles.af3_oracle import release_af3_daemon
 from rfproteina.metrics.utils.metrics_utils import (
     MetricsPool,
     apply_pre_oracle_filters,
@@ -933,6 +935,11 @@ class Proteina(L.LightningModule):
 
     def on_validation_end(self) -> None:
         self._metrics_pool.shutdown()
+        # Only during training: free the resident AF3 worker's GPU between validation
+        # epochs. Skipped for pure validation/inference runs, which have no training to
+        # reclaim the memory for. A no-op unless an AF3 daemon socket is configured.
+        if self.trainer.state.fn is TrainerFn.FITTING:
+            release_af3_daemon()
 
     def on_validation_epoch_start(self) -> None:
         """Re-initialize validation outputs at the start of each validation epoch."""
