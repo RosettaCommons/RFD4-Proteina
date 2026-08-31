@@ -11,9 +11,9 @@
       },
       "expected_behavior": [
         "Runs bash skills/rfd4-proteina-setup/scripts/preflight.sh and it exits 0",
-        "Recognizes this as the unconditional-generation task and uses data/benchmarks/monomer.json",
-        "Runs python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/gen_eval",
-        "Uses the checkpoint named by configs/inference.yaml, which download_example_data.sh installs under DATA_PATH",
+        "Recognizes this as the unconditional-generation task and uses data/benchmarks/monomer",
+        "Runs python src/rfproteina/generate.py inputs=data/benchmarks/monomer subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/gen_eval",
+        "Handles the checkpoint-name mismatch by overriding ckpt_name if only example data was downloaded",
         "Does not enable any *_refolding metrics tag (no container required for plain generation)"
       ],
       "success_criteria": {

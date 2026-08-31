@@ -94,7 +94,7 @@ Confirm the full path works with the smallest possible run:
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     subset_to_examples=monomer-short \
     num_replicates=1 out_dir=./runs/smoke
 ```

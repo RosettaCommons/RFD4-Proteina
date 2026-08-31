@@ -32,7 +32,7 @@ from tests.e2e.helpers.regression_baselines import deterministic_env, require_so
 pytestmark = [pytest.mark.gpu, pytest.mark.slow]
 
 _COMPLETE_CRYSTAL_FIXTURE = TEST_DATA_DIR / "5vht_from_file.cif"
-_BINDER_SPEC = ROOT / "data/benchmarks/cleaned_ppi.yaml"
+_BINDER_SPEC = ROOT / "data/benchmarks/cleaned_ppi/rfd3_pdl1.cif"
 _SEED = 42
 _BACKBONE = frozenset({"N", "CA", "C", "O"})
 _PHE_ATOMS = frozenset({"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"})
@@ -442,7 +442,7 @@ def test_af2_crystal_acceptance(acceptance_runs) -> None:
 
 @pytest.fixture(scope="module")
 def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Path, dict]:
-    """Generate one 50-residue binder and refold it through the warm AF2 daemon."""
+    """Generate one expandable-length binder and refold it through the warm AF2 daemon."""
     require_preval_oracle("af2")
     require_sota_ckpt()
     assert os.environ.get(
@@ -455,8 +455,6 @@ def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path
         sys.executable,
         str(ROOT / "src/rfproteina/generate.py"),
         f"inputs={_BINDER_SPEC}",
-        "subset_to_examples=rfd3_pdl1",
-        "+generation.dataset.specification.contig='50,/0,A17-131'",
         "num_replicates=1",
         "batch_size=1",
         f"out_dir={root}",
@@ -491,7 +489,7 @@ def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path
 
 
 def test_generated_binder_flows_through_af2_metric(generated_binder_run) -> None:
-    """The release generator conditions one target and refolds one 50-residue binder."""
+    """The release generator conditions one target and refolds one expandable-length binder."""
     generated_path, refolded_path, manifest_path, metrics = generated_binder_run
     generated = _load_protein(generated_path)
     refolded = _load_protein(refolded_path)
@@ -506,7 +504,7 @@ def test_generated_binder_flows_through_af2_metric(generated_binder_run) -> None
         generated[generated.chain_id == target], coordinate_mask[generated.chain_id == target]
     )
     assert not np.any(coordinate_mask[generated.chain_id == binder])
-    assert len(get_residue_starts(generated[generated.chain_id == binder])) == 50
+    assert 50 <= len(get_residue_starts(generated[generated.chain_id == binder])) <= 120
 
     dispatched_manifest = json.loads(manifest_path.read_text())
     assert len(dispatched_manifest) == 1

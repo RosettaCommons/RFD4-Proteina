@@ -1,0 +1,215 @@
+data_M0870_1oh9.cif
+#
+_entry.id       M0870_1oh9.cif
+_entry.author   rib7
+_entry.date     2026-08-28
+_entry.time     19:44:15
+#
+_entity.id                 0
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       XKGGDK
+_entity_poly.pdbx_seq_one_letter_code_can   XKGGDK
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n 180-180 0
+0 n LYS     1
+0 n GLY     2
+0 n GLY     3
+0 n ASP     4
+0 n LYS     5
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+180-180 180-180 NON-POLYMER         ? ? ? ?
+ASP     ASP     'L-PEPTIDE LINKING' ? ? ? ?
+GLY     GLY     'PEPTIDE LINKING'   ? ? ? ?
+LYS     LYS     'L-PEPTIDE LINKING' ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+ASP N   CA  SING N
+ASP N   H   SING N
+ASP N   H2  SING N
+ASP CA  C   SING N
+ASP CA  CB  SING N
+ASP CA  HA  SING N
+ASP C   O   DOUB N
+ASP C   OXT SING N
+ASP CB  CG  SING N
+ASP CB  HB2 SING N
+ASP CB  HB3 SING N
+ASP CG  OD1 DOUB N
+ASP CG  OD2 SING N
+ASP OD2 HD2 SING N
+ASP OXT HXT SING N
+GLY N   CA  SING N
+GLY N   H   SING N
+GLY N   H2  SING N
+GLY CA  C   SING N
+GLY CA  HA2 SING N
+GLY CA  HA3 SING N
+GLY C   O   DOUB N
+GLY C   OXT SING N
+GLY OXT HXT SING N
+LYS N   CA  SING N
+LYS N   H   SING N
+LYS N   H2  SING N
+LYS CA  C   SING N
+LYS CA  CB  SING N
+LYS CA  HA  SING N
+LYS C   O   DOUB N
+LYS C   OXT SING N
+LYS CB  CG  SING N
+LYS CB  HB2 SING N
+LYS CB  HB3 SING N
+LYS CG  CD  SING N
+LYS CG  HG2 SING N
+LYS CG  HG3 SING N
+LYS CD  CE  SING N
+LYS CD  HD2 SING N
+LYS CD  HD3 SING N
+LYS CE  NZ  SING N
+LYS CE  HE2 SING N
+LYS CE  HE3 SING N
+LYS NZ  HZ1 SING N
+LYS NZ  HZ2 SING N
+LYS NZ  HZ3 SING N
+LYS OXT HXT SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_index_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X UNK . 180-180 A 0 0 . 0 180-180 A UNK nan   0.0 ?  True  0 False True  False 0 True  180 180 .    0  nan    nan    nan    1 1
+ATOM   C CD  . LYS     A 0 1 . 1 LYS     A CD  12.54 1.0 ?  False 1 True  False True  0 False -1  -1  A8   1  -0.547 4.498  -0.239 1 2
+ATOM   C CE  . LYS     A 0 1 . 1 LYS     A CE  13.53 1.0 ?  False 1 True  False True  0 False -1  -1  A8   2  0.368  3.335  -0.602 1 3
+ATOM   N NZ  . LYS     A 0 1 . 1 LYS     A NZ  13.43 1.0 +1 False 1 True  False True  0 False -1  -1  A8   3  -0.022 2.087  0.124  1 4
+ATOM   N N   . GLY     A 0 2 . 2 GLY     A N   23.8  1.0 ?  False 2 True  False True  0 False -1  -1  A11  4  -3.374 -1.671 -1.565 1 5
+ATOM   C CA  . GLY     A 0 2 . 2 GLY     A CA  24.38 1.0 ?  False 2 True  False True  0 False -1  -1  A11  5  -4.232 -2.782 -1.188 1 6
+ATOM   C C   . GLY     A 0 2 . 2 GLY     A C   23.73 1.0 ?  False 2 True  False True  0 False -1  -1  A11  6  -4.945 -3.426 -2.361 1 7
+ATOM   N N   . GLY     A 0 3 . 3 GLY     A N   23.19 1.0 ?  False 3 True  False True  0 False -1  -1  A45  7  0.862  -3.743 -5.015 1 8
+ATOM   C CA  . GLY     A 0 3 . 3 GLY     A CA  26.74 1.0 ?  False 3 True  False True  0 False -1  -1  A45  8  1.479  -5.023 -4.722 1 9
+ATOM   C C   . GLY     A 0 3 . 3 GLY     A C   28.57 1.0 ?  False 3 True  False True  0 False -1  -1  A45  9  0.616  -6.177 -5.194 1 10
+ATOM   C CB  . ASP     A 0 4 . 4 ASP     A CB  12.4  1.0 ?  False 4 True  False True  0 False -1  -1  A162 10 3.875  3.535  2.816  1 11
+ATOM   C CG  . ASP     A 0 4 . 4 ASP     A CG  13.42 1.0 ?  False 4 True  False True  0 False -1  -1  A162 11 2.548  2.806  2.887  1 12
+ATOM   O OD1 . ASP     A 0 4 . 4 ASP     A OD1 14.11 1.0 ?  False 4 True  False True  0 False -1  -1  A162 12 1.533  3.36   2.416  1 13
+ATOM   O OD2 . ASP     A 0 4 . 4 ASP     A OD2 15.25 1.0 ?  False 4 True  False True  0 False -1  -1  A162 13 2.512  1.684  3.432  1 14
+ATOM   C CE  . LYS     A 0 5 . 5 LYS     A CE  21.89 1.0 ?  False 5 True  False True  0 False -1  -1  A217 14 -0.471 0.52   5.301  1 15
+ATOM   N NZ  . LYS     A 0 5 . 5 LYS     A NZ  20.92 1.0 +1 False 5 True  False True  0 False -1  -1  A217 15 -0.208 0.995  3.917  1 16
+#
+_rfd_design.sampled_contig   180-180
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+ASP     N   N 0 N N -0.31700000166893005 1.687999963760376      0.06599999964237213
+ASP     CA  C 0 N N -0.4699999988079071  0.28600001335144043    -0.3440000116825104
+ASP     C   C 0 N N -1.8680000305175781  -0.18000000715255737   -0.028999999165534973
+ASP     O   O 0 N N -2.5339999198913574  0.41499999165534973    0.7860000133514404
+ASP     CB  C 0 N N 0.5389999747276306   -0.5799999833106995    0.4129999876022339
+ASP     CG  C 0 N N 1.937999963760376    -0.19499999284744263   0.004000000189989805
+ASP     OD1 O 0 N N 2.1089999675750732   0.6809999942779541     -0.8100000023841858
+ASP     OD2 O 0 N N 2.992000102996826    -0.8259999752044678    0.5429999828338623
+ASP     OXT O 0 N Y -2.374000072479248   -1.25600004196167      -0.6520000100135803
+ASP     H   H 0 N N -0.9279999732971191  2.2890000343322754     -0.46700000762939453
+ASP     H2  H 0 N Y -0.4779999852180481  1.7949999570846558     1.055999994277954
+ASP     HA  H 0 N N -0.2919999957084656  0.19900000095367432    -1.4160000085830688
+ASP     HB2 H 0 N N 0.4189999997615814   -0.42500001192092896   1.4850000143051147
+ASP     HB3 H 0 N N 0.367000013589859    -1.6299999952316284    0.17599999904632568
+ASP     HD2 H 0 N N 3.86899995803833     -0.5450000166893005    0.25
+ASP     HXT H 0 N Y -3.2750000953674316  -1.5169999599456787    -0.41600000858306885
+GLY     N   N 0 N N 1.930999994277954    0.09000000357627869    -0.03400000184774399
+GLY     CA  C 0 N N 0.7609999775886536   -0.7990000247955322    -0.00800000037997961
+GLY     C   C 0 N N -0.49799999594688416 0.028999999165534973   -0.004999999888241291
+GLY     O   O 0 N N -0.42899999022483826 1.2350000143051147     -0.023000000044703484
+GLY     OXT O 0 N Y -1.6970000267028809  -0.5740000009536743    0.017999999225139618
+GLY     H   H 0 N N 1.909999966621399    0.7379999756813049     0.7379999756813049
+GLY     H2  H 0 N Y 2.7880001068115234   -0.44200000166893005   -0.03700000047683716
+GLY     HA2 H 0 N N 0.7720000147819519   -1.440000057220459     -0.8889999985694885
+GLY     HA3 H 0 N N 0.7929999828338623   -1.4149999618530273    0.890999972820282
+GLY     HXT H 0 N Y -2.4769999980926514  -0.0020000000949949026 0.01899999938905239
+LYS     N   N 0 N N 1.4220000505447388   1.7960000038146973     0.1979999989271164
+LYS     CA  C 0 N N 1.3940000534057617   0.35499998927116394    0.48399999737739563
+LYS     C   C 0 N N 2.6570000648498535   -0.2840000092983246    -0.03200000151991844
+LYS     O   O 0 N N 3.315999984741211    0.2750000059604645     -0.8759999871253967
+LYS     CB  C 0 N N 0.18400000035762787  -0.27799999713897705   -0.20600000023841858
+LYS     CG  C 0 N N -1.1019999980926514  0.28200000524520874    0.40700000524520874
+LYS     CD  C 0 N N -2.312999963760376   -0.35100001096725464   -0.28299999237060547
+LYS     CE  C 0 N N -3.5980000495910645  0.20800000429153442    0.32899999618530273
+LYS     NZ  N 1 N N -4.761000156402588   -0.4000000059604645    -0.3319999873638153
+LYS     OXT O 0 N Y 3.049999952316284    -1.4759999513626099    0.44600000977516174
+LYS     H   H 0 N N 1.4889999628067017   1.8910000324249268     -0.8040000200271606
+LYS     H2  H 0 N Y 0.5210000276565552   2.1619999408721924     0.46399998664855957
+LYS     HA  H 0 N N 1.3220000267028809   0.20000000298023224    1.559999942779541
+LYS     HB2 H 0 N N 0.20999999344348907  -0.04699999839067459   -1.2699999809265137
+LYS     HB3 H 0 N N 0.210999995470047    -1.3589999675750732    -0.06800000369548798
+LYS     HG2 H 0 N N -1.128000020980835   0.05000000074505806    1.4709999561309814
+LYS     HG3 H 0 N N -1.1299999952316284  1.3630000352859497     0.26899999380111694
+LYS     HD2 H 0 N N -2.2869999408721924  -0.11999999731779099   -1.3480000495910645
+LYS     HD3 H 0 N N -2.2850000858306885  -1.4320000410079956    -0.14499999582767487
+LYS     HE2 H 0 N N -3.625               -0.023000000044703484  1.3940000534057617
+LYS     HE3 H 0 N N -3.625999927520752   1.2890000343322754     0.19200000166893005
+LYS     HZ1 H 0 N N -4.736000061035156   -0.1850000023841858    -1.3179999589920044
+LYS     HZ2 H 0 N N -4.735000133514404   -1.399999976158142     -0.20499999821186066
+LYS     HZ3 H 0 N N -5.609000205993652   -0.03099999949336052   0.07100000232458115
+LYS     HXT H 0 N Y 3.8610000610351562   -1.8860000371932983    0.11500000208616257
+180-180 UNK X 0 N N nan                  nan                    nan
+#

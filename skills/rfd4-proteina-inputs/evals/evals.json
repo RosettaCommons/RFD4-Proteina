@@ -41,20 +41,19 @@
       }
     },
     {
-      "id": "existing-json-compatibility-input",
-      "prompt": "Interpret and convert the monomer-short example from data/benchmarks/monomer.json into an annotated CIF. Do not assume the JSON is automatically what I intended.",
+      "id": "build-and-validate-monomer-cif",
+      "prompt": "Build an annotated CIF for an unconditional monomer of length 100 (no motif, no ligand) and validate it.",
       "setup": {
         "cwd": "repository root",
         "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]
       },
       "expected_behavior": [
-        "Reads the supplied JSON and restates its length/range semantics as intent without generating another spec",
-        "Asks only material unresolved questions and recognizes that no source structure needs inspection for this unconditional example",
-        "Runs bash skills/rfd4-proteina-inputs/scripts/build_from_rfd3.sh data/benchmarks/monomer.json monomer-short --output /tmp/monomer_short.cif",
-        "Runs inspect_cif.sh and check_annotated_cif.sh on /tmp/monomer_short.cif"
+        "Recognizes this as an unconditional length spec (no motif) and does not over-interrogate",
+        "Builds the CIF with the skill's tooling (build_cif.sh on a minimal length spec it constructs)",
+        "Runs bash skills/rfd4-proteina-inputs/scripts/check_annotated_cif.sh on the output",
+        "Confirms 0 errors and hands the CIF path to rfd4-proteina-generate"
       ],
       "success_criteria": {
-        "artifact_glob": "/tmp/monomer_short.cif",
         "validator_errors": 0
       }
     }

@@ -1,0 +1,827 @@
+data_7n5u_structure_context.cif
+#
+_entry.id       7n5u_structure_context.cif
+_entry.author   rib7
+_entry.date     2026-08-27
+_entry.time     19:43:28
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 polymer .
+1 polymer .
+2 polymer .
+#
+loop_
+_entity_poly.entity_id 
+_entity_poly.type 
+_entity_poly.nstd_linkage 
+_entity_poly.nstd_monomer 
+_entity_poly.pdbx_seq_one_letter_code 
+_entity_poly.pdbx_seq_one_letter_code_can 
+_entity_poly.pdbx_strand_id 
+_entity_poly.pdbx_target_identifier 
+0 polydeoxyribonucleotide no no  TCAAGGGTCC TCAAGGGTCC A ?
+1 polydeoxyribonucleotide no no  GGACCCTTGA GGACCCTTGA B ?
+2 polypeptide(L)          no yes X          X          C ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n DT    1
+0 n DC    2
+0 n DA    3
+0 n DA    4
+0 n DG    5
+0 n DG    6
+0 n DG    7
+0 n DT    8
+0 n DC    9
+0 n DC    10
+1 n DG    1
+1 n DG    2
+1 n DA    3
+1 n DC    4
+1 n DC    5
+1 n DC    6
+1 n DT    7
+1 n DT    8
+1 n DG    9
+1 n DA    10
+2 n 50-80 1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+50-80 50-80 NON-POLYMER   ? ? ? ?
+DA    DA    'DNA LINKING' ? ? ? ?
+DC    DC    'DNA LINKING' ? ? ? ?
+DG    DG    'DNA LINKING' ? ? ? ?
+DT    DT    'DNA LINKING' ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+DA OP3   P      SING N
+DA OP3   HOP3   SING N
+DA P     OP1    DOUB N
+DA P     OP2    SING N
+DA P     "O5'"  SING N
+DA OP2   HOP2   SING N
+DA "O5'" "C5'"  SING N
+DA "C5'" "C4'"  SING N
+DA "C5'" "H5'"  SING N
+DA "C5'" "H5''" SING N
+DA "C4'" "O4'"  SING N
+DA "C4'" "C3'"  SING N
+DA "C4'" "H4'"  SING N
+DA "O4'" "C1'"  SING N
+DA "C3'" "O3'"  SING N
+DA "C3'" "C2'"  SING N
+DA "C3'" "H3'"  SING N
+DA "O3'" "HO3'" SING N
+DA "C2'" "C1'"  SING N
+DA "C2'" "H2'"  SING N
+DA "C2'" "H2''" SING N
+DA "C1'" N9     SING N
+DA "C1'" "H1'"  SING N
+DA N9    C8     SING Y
+DA N9    C4     SING Y
+DA C8    N7     DOUB Y
+DA C8    H8     SING N
+DA N7    C5     SING Y
+DA C5    C6     SING Y
+DA C5    C4     DOUB Y
+DA C6    N6     SING N
+DA C6    N1     DOUB Y
+DA N6    H61    SING N
+DA N6    H62    SING N
+DA N1    C2     SING Y
+DA C2    N3     DOUB Y
+DA C2    H2     SING N
+DA N3    C4     SING Y
+DC OP3   P      SING N
+DC OP3   HOP3   SING N
+DC P     OP1    DOUB N
+DC P     OP2    SING N
+DC P     "O5'"  SING N
+DC OP2   HOP2   SING N
+DC "O5'" "C5'"  SING N
+DC "C5'" "C4'"  SING N
+DC "C5'" "H5'"  SING N
+DC "C5'" "H5''" SING N
+DC "C4'" "O4'"  SING N
+DC "C4'" "C3'"  SING N
+DC "C4'" "H4'"  SING N
+DC "O4'" "C1'"  SING N
+DC "C3'" "O3'"  SING N
+DC "C3'" "C2'"  SING N
+DC "C3'" "H3'"  SING N
+DC "O3'" "HO3'" SING N
+DC "C2'" "C1'"  SING N
+DC "C2'" "H2'"  SING N
+DC "C2'" "H2''" SING N
+DC "C1'" N1     SING N
+DC "C1'" "H1'"  SING N
+DC N1    C2     SING N
+DC N1    C6     SING N
+DC C2    O2     DOUB N
+DC C2    N3     SING N
+DC N3    C4     DOUB N
+DC C4    N4     SING N
+DC C4    C5     SING N
+DC N4    H41    SING N
+DC N4    H42    SING N
+DC C5    C6     DOUB N
+DC C5    H5     SING N
+DC C6    H6     SING N
+DG OP3   P      SING N
+DG OP3   HOP3   SING N
+DG P     OP1    DOUB N
+DG P     OP2    SING N
+DG P     "O5'"  SING N
+DG OP2   HOP2   SING N
+DG "O5'" "C5'"  SING N
+DG "C5'" "C4'"  SING N
+DG "C5'" "H5'"  SING N
+DG "C5'" "H5''" SING N
+DG "C4'" "O4'"  SING N
+DG "C4'" "C3'"  SING N
+DG "C4'" "H4'"  SING N
+DG "O4'" "C1'"  SING N
+DG "C3'" "O3'"  SING N
+DG "C3'" "C2'"  SING N
+DG "C3'" "H3'"  SING N
+DG "O3'" "HO3'" SING N
+DG "C2'" "C1'"  SING N
+DG "C2'" "H2'"  SING N
+DG "C2'" "H2''" SING N
+DG "C1'" N9     SING N
+DG "C1'" "H1'"  SING N
+DG N9    C8     SING Y
+DG N9    C4     SING Y
+DG C8    N7     DOUB Y
+DG C8    H8     SING N
+DG N7    C5     SING Y
+DG C5    C6     SING N
+DG C5    C4     DOUB Y
+DG C6    O6     DOUB N
+DG C6    N1     SING N
+DG N1    C2     SING N
+DG N1    H1     SING N
+DG C2    N2     SING N
+DG C2    N3     DOUB N
+DG N2    H21    SING N
+DG N2    H22    SING N
+DG N3    C4     SING N
+DT OP3   P      SING N
+DT OP3   HOP3   SING N
+DT P     OP1    DOUB N
+DT P     OP2    SING N
+DT P     "O5'"  SING N
+DT OP2   HOP2   SING N
+DT "O5'" "C5'"  SING N
+DT "C5'" "C4'"  SING N
+DT "C5'" "H5'"  SING N
+DT "C5'" "H5''" SING N
+DT "C4'" "O4'"  SING N
+DT "C4'" "C3'"  SING N
+DT "C4'" "H4'"  SING N
+DT "O4'" "C1'"  SING N
+DT "C3'" "O3'"  SING N
+DT "C3'" "C2'"  SING N
+DT "C3'" "H3'"  SING N
+DT "O3'" "HO3'" SING N
+DT "C2'" "C1'"  SING N
+DT "C2'" "H2'"  SING N
+DT "C2'" "H2''" SING N
+DT "C1'" N1     SING N
+DT "C1'" "H1'"  SING N
+DT N1    C2     SING N
+DT N1    C6     SING N
+DT C2    O2     DOUB N
+DT C2    N3     SING N
+DT N3    C4     SING N
+DT N3    H3     SING N
+DT C4    O4     DOUB N
+DT C4    C5     SING N
+DT C5    C7     SING N
+DT C5    C6     DOUB N
+DT C7    H71    SING N
+DT C7    H72    SING N
+DT C7    H73    SING N
+DT C6    H6     SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_index_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+ATOM   P P     . DT    A 0 1  . 1  DT    A P     75.39951  1.0 ? 0 False 0 True -1 True  True  -1 False B83  0   -4.878  -15.926 8.378   1 1
+ATOM   O OP1   . DT    A 0 1  . 1  DT    A OP1   85.28413  1.0 ? 0 False 0 True -1 True  True  -1 False B83  1   -5.382  -16.261 9.729   1 2
+ATOM   O OP2   . DT    A 0 1  . 1  DT    A OP2   63.42612  1.0 ? 0 False 0 True -1 True  True  -1 False B83  2   -5.642  -14.983 7.53    1 3
+ATOM   O "O5'" . DT    A 0 1  . 1  DT    A "O5'" 75.88973  1.0 ? 0 False 0 True -1 True  True  -1 False B83  3   -3.386  -15.372 8.501   1 4
+ATOM   C "C5'" . DT    A 0 1  . 1  DT    A "C5'" 66.87667  1.0 ? 0 False 0 True -1 True  True  -1 False B83  4   -2.307  -16.292 8.581   1 5
+ATOM   C "C4'" . DT    A 0 1  . 1  DT    A "C4'" 70.5972   1.0 ? 0 False 0 True -1 True  True  -1 False B83  5   -1.08   -15.755 7.866   1 6
+ATOM   O "O4'" . DT    A 0 1  . 1  DT    A "O4'" 60.07918  1.0 ? 0 False 0 True -1 True  True  -1 False B83  6   -1.237  -15.886 6.431   1 7
+ATOM   C "C3'" . DT    A 0 1  . 1  DT    A "C3'" 59.25969  1.0 ? 0 False 0 True -1 True  True  -1 False B83  7   -0.768  -14.275 8.123   1 8
+ATOM   O "O3'" . DT    A 0 1  . 1  DT    A "O3'" 58.60878  1.0 ? 0 False 0 True -1 True  True  -1 False B83  8   0.554   -14.151 8.615   1 9
+ATOM   C "C2'" . DT    A 0 1  . 1  DT    A "C2'" 57.31988  1.0 ? 0 False 0 True -1 True  True  -1 False B83  9   -0.919  -13.623 6.741   1 10
+ATOM   C "C1'" . DT    A 0 1  . 1  DT    A "C1'" 57.99808  1.0 ? 0 False 0 True -1 True  True  -1 False B83  10  -0.597  -14.793 5.832   1 11
+ATOM   N N1    . DT    A 0 1  . 1  DT    A N1    58.48531  1.0 ? 0 False 0 True -1 True  True  -1 False B83  11  -1.086  -14.642 4.426   1 12
+ATOM   C C2    . DT    A 0 1  . 1  DT    A C2    56.54332  1.0 ? 0 False 0 True -1 True  True  -1 False B83  12  -0.183  -14.752 3.393   1 13
+ATOM   O O2    . DT    A 0 1  . 1  DT    A O2    56.25998  1.0 ? 0 False 0 True -1 True  True  -1 False B83  13  1.004   -14.966 3.566   1 14
+ATOM   N N3    . DT    A 0 1  . 1  DT    A N3    56.23458  1.0 ? 0 False 0 True -1 True  True  -1 False B83  14  -0.719  -14.602 2.143   1 15
+ATOM   C C4    . DT    A 0 1  . 1  DT    A C4    56.5946   1.0 ? 0 False 0 True -1 True  True  -1 False B83  15  -2.042  -14.36  1.825   1 16
+ATOM   O O4    . DT    A 0 1  . 1  DT    A O4    56.35444  1.0 ? 0 False 0 True -1 True  True  -1 False B83  16  -2.426  -14.239 0.665   1 17
+ATOM   C C5    . DT    A 0 1  . 1  DT    A C5    58.48748  1.0 ? 0 False 0 True -1 True  True  -1 False B83  17  -2.939  -14.253 2.954   1 18
+ATOM   C C7    . DT    A 0 1  . 1  DT    A C7    57.92397  1.0 ? 0 False 0 True -1 True  True  -1 False B83  18  -4.399  -13.99  2.733   1 19
+ATOM   C C6    . DT    A 0 1  . 1  DT    A C6    57.68446  1.0 ? 0 False 0 True -1 True  True  -1 False B83  19  -2.424  -14.399 4.186   1 20
+ATOM   P P     . DC    A 0 2  . 2  DC    A P     69.63476  1.0 ? 0 False 0 True -1 True  True  -1 False B84  20  1.012   -12.815 9.379   1 21
+ATOM   O OP1   . DC    A 0 2  . 2  DC    A OP1   68.8709   1.0 ? 0 False 0 True -1 True  True  -1 False B84  21  1.872   -13.227 10.51   1 22
+ATOM   O OP2   . DC    A 0 2  . 2  DC    A OP2   76.85028  1.0 ? 0 False 0 True -1 True  True  -1 False B84  22  -0.201  -12.008 9.636   1 23
+ATOM   O "O5'" . DC    A 0 2  . 2  DC    A "O5'" 55.28432  1.0 ? 0 False 0 True -1 True  True  -1 False B84  23  1.903   -12.051 8.295   1 24
+ATOM   C "C5'" . DC    A 0 2  . 2  DC    A "C5'" 61.26205  1.0 ? 0 False 0 True -1 True  True  -1 False B84  24  2.962   -12.741 7.648   1 25
+ATOM   C "C4'" . DC    A 0 2  . 2  DC    A "C4'" 59.99799  1.0 ? 0 False 0 True -1 True  True  -1 False B84  25  3.506   -11.937 6.483   1 26
+ATOM   O "O4'" . DC    A 0 2  . 2  DC    A "O4'" 53.16835  1.0 ? 0 False 0 True -1 True  True  -1 False B84  26  2.698   -12.172 5.296   1 27
+ATOM   C "C3'" . DC    A 0 2  . 2  DC    A "C3'" 65.80745  1.0 ? 0 False 0 True -1 True  True  -1 False B84  27  3.522   -10.418 6.686   1 28
+ATOM   O "O3'" . DC    A 0 2  . 2  DC    A "O3'" 67.48614  1.0 ? 0 False 0 True -1 True  True  -1 False B84  28  4.722   -9.895  6.163   1 29
+ATOM   C "C2'" . DC    A 0 2  . 2  DC    A "C2'" 54.8965   1.0 ? 0 False 0 True -1 True  True  -1 False B84  29  2.326   -9.96   5.857   1 30
+ATOM   C "C1'" . DC    A 0 2  . 2  DC    A "C1'" 51.54066  1.0 ? 0 False 0 True -1 True  True  -1 False B84  30  2.423   -10.93  4.697   1 31
+ATOM   N N1    . DC    A 0 2  . 2  DC    A N1    51.92467  1.0 ? 0 False 0 True -1 True  True  -1 False B84  31  1.18    -11.035 3.883   1 32
+ATOM   C C2    . DC    A 0 2  . 2  DC    A C2    51.8093   1.0 ? 0 False 0 True -1 True  True  -1 False B84  32  1.272   -11.379 2.531   1 33
+ATOM   O O2    . DC    A 0 2  . 2  DC    A O2    51.39245  1.0 ? 0 False 0 True -1 True  True  -1 False B84  33  2.386   -11.606 2.042   1 34
+ATOM   N N3    . DC    A 0 2  . 2  DC    A N3    52.25383  1.0 ? 0 False 0 True -1 True  True  -1 False B84  34  0.137   -11.463 1.795   1 35
+ATOM   C C4    . DC    A 0 2  . 2  DC    A C4    52.78589  1.0 ? 0 False 0 True -1 True  True  -1 False B84  35  -1.044  -11.211 2.361   1 36
+ATOM   N N4    . DC    A 0 2  . 2  DC    A N4    53.28843  1.0 ? 0 False 0 True -1 True  True  -1 False B84  36  -2.137  -11.304 1.595   1 37
+ATOM   C C5    . DC    A 0 2  . 2  DC    A C5    53.32089  1.0 ? 0 False 0 True -1 True  True  -1 False B84  37  -1.158  -10.852 3.737   1 38
+ATOM   C C6    . DC    A 0 2  . 2  DC    A C6    55.01007  1.0 ? 0 False 0 True -1 True  True  -1 False B84  38  -0.032  -10.774 4.453   1 39
+ATOM   P P     . DA    A 0 3  . 3  DA    A P     71.36308  1.0 ? 0 False 0 True -1 True  True  -1 False B85  39  5.465   -8.664  6.877   1 40
+ATOM   O OP1   . DA    A 0 3  . 3  DA    A OP1   50.57985  1.0 ? 0 False 0 True -1 True  True  -1 False B85  40  6.151   -9.199  8.074   1 41
+ATOM   O OP2   . DA    A 0 3  . 3  DA    A OP2   48.66871  1.0 ? 0 False 0 True -1 True  True  -1 False B85  41  4.495   -7.552  7.012   1 42
+ATOM   O "O5'" . DA    A 0 3  . 3  DA    A "O5'" 59.73039  1.0 ? 0 False 0 True -1 True  True  -1 False B85  42  6.569   -8.241  5.802   1 43
+ATOM   C "C5'" . DA    A 0 3  . 3  DA    A "C5'" 48.53203  1.0 ? 0 False 0 True -1 True  True  -1 False B85  43  7.213   -9.246  5.026   1 44
+ATOM   C "C4'" . DA    A 0 3  . 3  DA    A "C4'" 55.89605  1.0 ? 0 False 0 True -1 True  True  -1 False B85  44  7.082   -8.954  3.541   1 45
+ATOM   O "O4'" . DA    A 0 3  . 3  DA    A "O4'" 47.93758  1.0 ? 0 False 0 True -1 True  True  -1 False B85  45  5.716   -9.181  3.105   1 46
+ATOM   C "C3'" . DA    A 0 3  . 3  DA    A "C3'" 63.92697  1.0 ? 0 False 0 True -1 True  True  -1 False B85  46  7.43    -7.519  3.129   1 47
+ATOM   O "O3'" . DA    A 0 3  . 3  DA    A "O3'" 45.33984  1.0 ? 0 False 0 True -1 True  True  -1 False B85  47  8.432   -7.536  2.123   1 48
+ATOM   C "C2'" . DA    A 0 3  . 3  DA    A "C2'" 56.58785  1.0 ? 0 False 0 True -1 True  True  -1 False B85  48  6.106   -6.952  2.602   1 49
+ATOM   C "C1'" . DA    A 0 3  . 3  DA    A "C1'" 46.89968  1.0 ? 0 False 0 True -1 True  True  -1 False B85  49  5.388   -8.209  2.146   1 50
+ATOM   N N9    . DA    A 0 3  . 3  DA    A N9    47.30764  1.0 ? 0 False 0 True -1 True  True  -1 False B85  50  3.933   -8.065  2.086   1 51
+ATOM   C C8    . DA    A 0 3  . 3  DA    A C8    55.82801  1.0 ? 0 False 0 True -1 True  True  -1 False B85  51  3.081   -7.838  3.133   1 52
+ATOM   N N7    . DA    A 0 3  . 3  DA    A N7    48.12491  1.0 ? 0 False 0 True -1 True  True  -1 False B85  52  1.819   -7.749  2.779   1 53
+ATOM   C C5    . DA    A 0 3  . 3  DA    A C5    47.93212  1.0 ? 0 False 0 True -1 True  True  -1 False B85  53  1.845   -7.927  1.404   1 54
+ATOM   C C6    . DA    A 0 3  . 3  DA    A C6    48.23208  1.0 ? 0 False 0 True -1 True  True  -1 False B85  54  0.827   -7.943  0.428   1 55
+ATOM   N N6    . DA    A 0 3  . 3  DA    A N6    48.80329  1.0 ? 0 False 0 True -1 True  True  -1 False B85  55  -0.469  -7.768  0.712   1 56
+ATOM   N N1    . DA    A 0 3  . 3  DA    A N1    48.0144   1.0 ? 0 False 0 True -1 True  True  -1 False B85  56  1.194   -8.145  -0.855  1 57
+ATOM   C C2    . DA    A 0 3  . 3  DA    A C2    47.53776  1.0 ? 0 False 0 True -1 True  True  -1 False B85  57  2.491   -8.319  -1.135  1 58
+ATOM   N N3    . DA    A 0 3  . 3  DA    A N3    47.22592  1.0 ? 0 False 0 True -1 True  True  -1 False B85  58  3.535   -8.325  -0.306  1 59
+ATOM   C C4    . DA    A 0 3  . 3  DA    A C4    47.43685  1.0 ? 0 False 0 True -1 True  True  -1 False B85  59  3.14    -8.122  0.961   1 60
+ATOM   P P     . DA    A 0 4  . 4  DA    A P     54.64852  1.0 ? 0 False 0 True -1 True  True  -1 False B86  60  9.138   -6.17   1.658   1 61
+ATOM   O OP1   . DA    A 0 4  . 4  DA    A OP1   58.55943  1.0 ? 0 False 0 True -1 True  True  -1 False B86  61  10.583  -6.45   1.514   1 62
+ATOM   O OP2   . DA    A 0 4  . 4  DA    A OP2   43.29963  1.0 ? 0 False 0 True -1 True  True  -1 False B86  62  8.68    -5.076  2.545   1 63
+ATOM   O "O5'" . DA    A 0 4  . 4  DA    A "O5'" 56.12874  1.0 ? 0 False 0 True -1 True  True  -1 False B86  63  8.53    -5.902  0.208   1 64
+ATOM   C "C5'" . DA    A 0 4  . 4  DA    A "C5'" 44.18507  1.0 ? 0 False 0 True -1 True  True  -1 False B86  64  8.731   -6.849  -0.833  1 65
+ATOM   C "C4'" . DA    A 0 4  . 4  DA    A "C4'" 43.80662  1.0 ? 0 False 0 True -1 True  True  -1 False B86  65  8.14    -6.348  -2.139  1 66
+ATOM   O "O4'" . DA    A 0 4  . 4  DA    A "O4'" 44.27889  1.0 ? 0 False 0 True -1 True  True  -1 False B86  66  6.691   -6.421  -2.074  1 67
+ATOM   C "C3'" . DA    A 0 4  . 4  DA    A "C3'" 42.73012  1.0 ? 0 False 0 True -1 True  True  -1 False B86  67  8.474   -4.899  -2.483  1 68
+ATOM   O "O3'" . DA    A 0 4  . 4  DA    A "O3'" 42.39789  1.0 ? 0 False 0 True -1 True  True  -1 False B86  68  8.639   -4.757  -3.894  1 69
+ATOM   C "C2'" . DA    A 0 4  . 4  DA    A "C2'" 48.87911  1.0 ? 0 False 0 True -1 True  True  -1 False B86  69  7.248   -4.143  -1.976  1 70
+ATOM   C "C1'" . DA    A 0 4  . 4  DA    A "C1'" 43.43145  1.0 ? 0 False 0 True -1 True  True  -1 False B86  70  6.134   -5.137  -2.268  1 71
+ATOM   N N9    . DA    A 0 4  . 4  DA    A N9    47.44926  1.0 ? 0 False 0 True -1 True  True  -1 False B86  71  4.98    -4.994  -1.384  1 72
+ATOM   C C8    . DA    A 0 4  . 4  DA    A C8    43.8352   1.0 ? 0 False 0 True -1 True  True  -1 False B86  72  4.995   -4.858  -0.023  1 73
+ATOM   N N7    . DA    A 0 4  . 4  DA    A N7    44.29164  1.0 ? 0 False 0 True -1 True  True  -1 False B86  73  3.802   -4.747  0.512   1 74
+ATOM   C C5    . DA    A 0 4  . 4  DA    A C5    44.54506  1.0 ? 0 False 0 True -1 True  True  -1 False B86  74  2.944   -4.817  -0.574  1 75
+ATOM   C C6    . DA    A 0 4  . 4  DA    A C6    45.12491  1.0 ? 0 False 0 True -1 True  True  -1 False B86  75  1.539   -4.764  -0.679  1 76
+ATOM   N N6    . DA    A 0 4  . 4  DA    A N6    45.56746  1.0 ? 0 False 0 True -1 True  True  -1 False B86  76  0.728   -4.618  0.374   1 77
+ATOM   N N1    . DA    A 0 4  . 4  DA    A N1    45.32195  1.0 ? 0 False 0 True -1 True  True  -1 False B86  77  1.001   -4.862  -1.912  1 78
+ATOM   C C2    . DA    A 0 4  . 4  DA    A C2    44.97219  1.0 ? 0 False 0 True -1 True  True  -1 False B86  78  1.817   -5.006  -2.963  1 79
+ATOM   N N3    . DA    A 0 4  . 4  DA    A N3    44.44114  1.0 ? 0 False 0 True -1 True  True  -1 False B86  79  3.148   -5.071  -2.989  1 80
+ATOM   C C4    . DA    A 0 4  . 4  DA    A C4    44.23985  1.0 ? 0 False 0 True -1 True  True  -1 False B86  80  3.653   -4.969  -1.75   1 81
+ATOM   P P     . DG    A 0 5  . 5  DG    A P     47.25909  1.0 ? 0 False 0 True -1 True  True  -1 False B87  81  9.308   -3.431  -4.513  1 82
+ATOM   O OP1   . DG    A 0 5  . 5  DG    A OP1   53.74665  1.0 ? 0 False 0 True -1 True  True  -1 False B87  82  10.523  -3.846  -5.247  1 83
+ATOM   O OP2   . DG    A 0 5  . 5  DG    A OP2   40.58626  1.0 ? 0 False 0 True -1 True  True  -1 False B87  83  9.432   -2.415  -3.444  1 84
+ATOM   O "O5'" . DG    A 0 5  . 5  DG    A "O5'" 41.28342  1.0 ? 0 False 0 True -1 True  True  -1 False B87  84  8.217   -2.918  -5.566  1 85
+ATOM   C "C5'" . DG    A 0 5  . 5  DG    A "C5'" 41.62775  1.0 ? 0 False 0 True -1 True  True  -1 False B87  85  6.847   -2.909  -5.202  1 86
+ATOM   C "C4'" . DG    A 0 5  . 5  DG    A "C4'" 41.65696  1.0 ? 0 False 0 True -1 True  True  -1 False B87  86  5.975   -2.41   -6.334  1 87
+ATOM   O "O4'" . DG    A 0 5  . 5  DG    A "O4'" 42.12092  1.0 ? 0 False 0 True -1 True  True  -1 False B87  87  4.596   -2.457  -5.911  1 88
+ATOM   C "C3'" . DG    A 0 5  . 5  DG    A "C3'" 40.75655  1.0 ? 0 False 0 True -1 True  True  -1 False B87  88  6.196   -0.962  -6.722  1 89
+ATOM   O "O3'" . DG    A 0 5  . 5  DG    A "O3'" 40.96624  1.0 ? 0 False 0 True -1 True  True  -1 False B87  89  5.688   -0.732  -8.033  1 90
+ATOM   C "C2'" . DG    A 0 5  . 5  DG    A "C2'" 40.50921  1.0 ? 0 False 0 True -1 True  True  -1 False B87  90  5.377   -0.225  -5.666  1 91
+ATOM   C "C1'" . DG    A 0 5  . 5  DG    A "C1'" 41.45846  1.0 ? 0 False 0 True -1 True  True  -1 False B87  91  4.201   -1.181  -5.438  1 92
+ATOM   N N9    . DG    A 0 5  . 5  DG    A N9    41.627    1.0 ? 0 False 0 True -1 True  True  -1 False B87  92  3.815   -1.307  -4.034  1 93
+ATOM   C C8    . DG    A 0 5  . 5  DG    A C8    41.34434  1.0 ? 0 False 0 True -1 True  True  -1 False B87  93  4.653   -1.366  -2.945  1 94
+ATOM   N N7    . DG    A 0 5  . 5  DG    A N7    41.70093  1.0 ? 0 False 0 True -1 True  True  -1 False B87  94  4.021   -1.478  -1.81   1 95
+ATOM   C C5    . DG    A 0 5  . 5  DG    A C5    42.24948  1.0 ? 0 False 0 True -1 True  True  -1 False B87  95  2.679   -1.496  -2.168  1 96
+ATOM   C C6    . DG    A 0 5  . 5  DG    A C6    42.89806  1.0 ? 0 False 0 True -1 True  True  -1 False B87  96  1.521   -1.6    -1.362  1 97
+ATOM   O O6    . DG    A 0 5  . 5  DG    A O6    43.12665  1.0 ? 0 False 0 True -1 True  True  -1 False B87  97  1.451   -1.701  -0.13   1 98
+ATOM   N N1    . DG    A 0 5  . 5  DG    A N1    43.40361  1.0 ? 0 False 0 True -1 True  True  -1 False B87  98  0.358   -1.58   -2.126  1 99
+ATOM   C C2    . DG    A 0 5  . 5  DG    A C2    45.97641  1.0 ? 0 False 0 True -1 True  True  -1 False B87  99  0.318   -1.472  -3.496  1 100
+ATOM   N N2    . DG    A 0 5  . 5  DG    A N2    58.08365  1.0 ? 0 False 0 True -1 True  True  -1 False B87  100 -0.901  -1.469  -4.056  1 101
+ATOM   N N3    . DG    A 0 5  . 5  DG    A N3    42.71784  1.0 ? 0 False 0 True -1 True  True  -1 False B87  101 1.395   -1.373  -4.264  1 102
+ATOM   C C4    . DG    A 0 5  . 5  DG    A C4    42.20779  1.0 ? 0 False 0 True -1 True  True  -1 False B87  102 2.536   -1.392  -3.534  1 103
+ATOM   P P     . DG    A 0 6  . 6  DG    A P     40.27841  1.0 ? 0 False 0 True -1 True  True  -1 False B88  103 5.787   0.728   -8.7    1 104
+ATOM   O OP1   . DG    A 0 6  . 6  DG    A OP1   49.30873  1.0 ? 0 False 0 True -1 True  True  -1 False B88  104 5.873   0.533   -10.164 1 105
+ATOM   O OP2   . DG    A 0 6  . 6  DG    A OP2   39.45876  1.0 ? 0 False 0 True -1 True  True  -1 False B88  105 6.845   1.487   -7.998  1 106
+ATOM   O "O5'" . DG    A 0 6  . 6  DG    A "O5'" 40.37545  1.0 ? 0 False 0 True -1 True  True  -1 False B88  106 4.377   1.406   -8.359  1 107
+ATOM   C "C5'" . DG    A 0 6  . 6  DG    A "C5'" 41.14159  1.0 ? 0 False 0 True -1 True  True  -1 False B88  107 3.215   1.025   -9.087  1 108
+ATOM   C "C4'" . DG    A 0 6  . 6  DG    A "C4'" 41.31707  1.0 ? 0 False 0 True -1 True  True  -1 False B88  108 1.948   1.537   -8.419  1 109
+ATOM   O "O4'" . DG    A 0 6  . 6  DG    A "O4'" 41.30861  1.0 ? 0 False 0 True -1 True  True  -1 False B88  109 1.928   1.141   -7.03   1 110
+ATOM   C "C3'" . DG    A 0 6  . 6  DG    A "C3'" 40.74016  1.0 ? 0 False 0 True -1 True  True  -1 False B88  110 1.762   3.062   -8.43   1 111
+ATOM   O "O3'" . DG    A 0 6  . 6  DG    A "O3'" 41.30745  1.0 ? 0 False 0 True -1 True  True  -1 False B88  111 0.589   3.393   -9.169  1 112
+ATOM   C "C2'" . DG    A 0 6  . 6  DG    A "C2'" 40.42137  1.0 ? 0 False 0 True -1 True  True  -1 False B88  112 1.627   3.438   -6.945  1 113
+ATOM   C "C1'" . DG    A 0 6  . 6  DG    A "C1'" 41.09678  1.0 ? 0 False 0 True -1 True  True  -1 False B88  113 1.227   2.117   -6.311  1 114
+ATOM   N N9    . DG    A 0 6  . 6  DG    A N9    40.86753  1.0 ? 0 False 0 True -1 True  True  -1 False B88  114 1.582   2.008   -4.897  1 115
+ATOM   C C8    . DG    A 0 6  . 6  DG    A C8    40.29882  1.0 ? 0 False 0 True -1 True  True  -1 False B88  115 2.845   1.955   -4.358  1 116
+ATOM   N N7    . DG    A 0 6  . 6  DG    A N7    40.32     1.0 ? 0 False 0 True -1 True  True  -1 False B88  116 2.851   1.856   -3.057  1 117
+ATOM   C C5    . DG    A 0 6  . 6  DG    A C5    40.94325  1.0 ? 0 False 0 True -1 True  True  -1 False B88  117 1.505   1.844   -2.711  1 118
+ATOM   C C6    . DG    A 0 6  . 6  DG    A C6    41.34312  1.0 ? 0 False 0 True -1 True  True  -1 False B88  118 0.889   1.754   -1.439  1 119
+ATOM   O O6    . DG    A 0 6  . 6  DG    A O6    41.21348  1.0 ? 0 False 0 True -1 True  True  -1 False B88  119 1.429   1.664   -0.328  1 120
+ATOM   N N1    . DG    A 0 6  . 6  DG    A N1    42.05468  1.0 ? 0 False 0 True -1 True  True  -1 False B88  120 -0.5    1.776   -1.538  1 121
+ATOM   C C2    . DG    A 0 6  . 6  DG    A C2    42.3459   1.0 ? 0 False 0 True -1 True  True  -1 False B88  121 -1.203  1.87    -2.715  1 122
+ATOM   N N2    . DG    A 0 6  . 6  DG    A N2    60.13968  1.0 ? 0 False 0 True -1 True  True  -1 False B88  122 -2.539  1.876   -2.61   1 123
+ATOM   N N3    . DG    A 0 6  . 6  DG    A N3    41.98346  1.0 ? 0 False 0 True -1 True  True  -1 False B88  123 -0.638  1.956   -3.912  1 124
+ATOM   C C4    . DG    A 0 6  . 6  DG    A C4    41.28495  1.0 ? 0 False 0 True -1 True  True  -1 False B88  124 0.713   1.936   -3.834  1 125
+ATOM   P P     . DG    A 0 7  . 7  DG    A P     46.87554  1.0 ? 0 False 0 True -1 True  True  -1 False B89  125 0.101   4.919   -9.317  1 126
+ATOM   O OP1   . DG    A 0 7  . 7  DG    A OP1   51.42318  1.0 ? 0 False 0 True -1 True  True  -1 False B89  126 -0.424  5.068   -10.692 1 127
+ATOM   O OP2   . DG    A 0 7  . 7  DG    A OP2   40.11974  1.0 ? 0 False 0 True -1 True  True  -1 False B89  127 1.17    5.831   -8.852  1 128
+ATOM   O "O5'" . DG    A 0 7  . 7  DG    A "O5'" 41.46308  1.0 ? 0 False 0 True -1 True  True  -1 False B89  128 -1.131  5.019   -8.302  1 129
+ATOM   C "C5'" . DG    A 0 7  . 7  DG    A "C5'" 42.40961  1.0 ? 0 False 0 True -1 True  True  -1 False B89  129 -2.183  4.064   -8.377  1 130
+ATOM   C "C4'" . DG    A 0 7  . 7  DG    A "C4'" 54.03278  1.0 ? 0 False 0 True -1 True  True  -1 False B89  130 -3.191  4.265   -7.258  1 131
+ATOM   O "O4'" . DG    A 0 7  . 7  DG    A "O4'" 42.3706   1.0 ? 0 False 0 True -1 True  True  -1 False B89  131 -2.577  3.953   -5.978  1 132
+ATOM   C "C3'" . DG    A 0 7  . 7  DG    A "C3'" 47.8011   1.0 ? 0 False 0 True -1 True  True  -1 False B89  132 -3.751  5.682   -7.128  1 133
+ATOM   O "O3'" . DG    A 0 7  . 7  DG    A "O3'" 73.57051  1.0 ? 0 False 0 True -1 True  True  -1 False B89  133 -5.141  5.617   -6.831  1 134
+ATOM   C "C2'" . DG    A 0 7  . 7  DG    A "C2'" 41.83261  1.0 ? 0 False 0 True -1 True  True  -1 False B89  134 -2.952  6.255   -5.959  1 135
+ATOM   C "C1'" . DG    A 0 7  . 7  DG    A "C1'" 42.04845  1.0 ? 0 False 0 True -1 True  True  -1 False B89  135 -2.789  5.022   -5.084  1 136
+ATOM   N N9    . DG    A 0 7  . 7  DG    A N9    46.60218  1.0 ? 0 False 0 True -1 True  True  -1 False B89  136 -1.656  5.089   -4.163  1 137
+ATOM   C C8    . DG    A 0 7  . 7  DG    A C8    40.60883  1.0 ? 0 False 0 True -1 True  True  -1 False B89  137 -0.323  5.168   -4.49   1 138
+ATOM   N N7    . DG    A 0 7  . 7  DG    A N7    40.07052  1.0 ? 0 False 0 True -1 True  True  -1 False B89  138 0.466   5.207   -3.451  1 139
+ATOM   C C5    . DG    A 0 7  . 7  DG    A C5    40.55272  1.0 ? 0 False 0 True -1 True  True  -1 False B89  139 -0.398  5.143   -2.365  1 140
+ATOM   C C6    . DG    A 0 7  . 7  DG    A C6    40.46079  1.0 ? 0 False 0 True -1 True  True  -1 False B89  140 -0.121  5.147   -0.978  1 141
+ATOM   O O6    . DG    A 0 7  . 7  DG    A O6    43.12641  1.0 ? 0 False 0 True -1 True  True  -1 False B89  141 0.981   5.208   -0.415  1 142
+ATOM   N N1    . DG    A 0 7  . 7  DG    A N1    42.14198  1.0 ? 0 False 0 True -1 True  True  -1 False B89  142 -1.286  5.069   -0.219  1 143
+ATOM   C C2    . DG    A 0 7  . 7  DG    A C2    41.95274  1.0 ? 0 False 0 True -1 True  True  -1 False B89  143 -2.557  4.998   -0.737  1 144
+ATOM   N N2    . DG    A 0 7  . 7  DG    A N2    42.70947  1.0 ? 0 False 0 True -1 True  True  -1 False B89  144 -3.557  4.929   0.154   1 145
+ATOM   N N3    . DG    A 0 7  . 7  DG    A N3    42.04647  1.0 ? 0 False 0 True -1 True  True  -1 False B89  145 -2.831  4.994   -2.035  1 146
+ATOM   C C4    . DG    A 0 7  . 7  DG    A C4    43.18796  1.0 ? 0 False 0 True -1 True  True  -1 False B89  146 -1.707  5.07    -2.787  1 147
+ATOM   P P     . DT    A 0 8  . 8  DT    A P     74.20273  1.0 ? 0 False 0 True -1 True  True  -1 False B90  147 -6.15   6.744   -7.375  1 148
+ATOM   O OP1   . DT    A 0 8  . 8  DT    A OP1   64.57671  1.0 ? 0 False 0 True -1 True  True  -1 False B90  148 -7.377  6.062   -7.843  1 149
+ATOM   O OP2   . DT    A 0 8  . 8  DT    A OP2   49.39354  1.0 ? 0 False 0 True -1 True  True  -1 False B90  149 -5.408  7.621   -8.302  1 150
+ATOM   O "O5'" . DT    A 0 8  . 8  DT    A "O5'" 80.40866  1.0 ? 0 False 0 True -1 True  True  -1 False B90  150 -6.495  7.599   -6.071  1 151
+ATOM   C "C5'" . DT    A 0 8  . 8  DT    A "C5'" 76.61831  1.0 ? 0 False 0 True -1 True  True  -1 False B90  151 -6.952  6.941   -4.9    1 152
+ATOM   C "C4'" . DT    A 0 8  . 8  DT    A "C4'" 72.00765  1.0 ? 0 False 0 True -1 True  True  -1 False B90  152 -6.643  7.763   -3.662  1 153
+ATOM   O "O4'" . DT    A 0 8  . 8  DT    A "O4'" 49.84433  1.0 ? 0 False 0 True -1 True  True  -1 False B90  153 -5.317  7.46    -3.19   1 154
+ATOM   C "C3'" . DT    A 0 8  . 8  DT    A "C3'" 68.8578   1.0 ? 0 False 0 True -1 True  True  -1 False B90  154 -6.665  9.28    -3.865  1 155
+ATOM   O "O3'" . DT    A 0 8  . 8  DT    A "O3'" 63.09226  1.0 ? 0 False 0 True -1 True  True  -1 False B90  155 -7.875  9.821   -3.333  1 156
+ATOM   C "C2'" . DT    A 0 8  . 8  DT    A "C2'" 46.33625  1.0 ? 0 False 0 True -1 True  True  -1 False B90  156 -5.421  9.788   -3.105  1 157
+ATOM   C "C1'" . DT    A 0 8  . 8  DT    A "C1'" 49.17203  1.0 ? 0 False 0 True -1 True  True  -1 False B90  157 -4.893  8.54    -2.406  1 158
+ATOM   N N1    . DT    A 0 8  . 8  DT    A N1    58.5975   1.0 ? 0 False 0 True -1 True  True  -1 False B90  158 -3.404  8.502   -2.288  1 159
+ATOM   C C2    . DT    A 0 8  . 8  DT    A C2    45.15292  1.0 ? 0 False 0 True -1 True  True  -1 False B90  159 -2.834  8.375   -1.043  1 160
+ATOM   O O2    . DT    A 0 8  . 8  DT    A O2    67.80295  1.0 ? 0 False 0 True -1 True  True  -1 False B90  160 -3.485  8.284   -0.018  1 161
+ATOM   N N3    . DT    A 0 8  . 8  DT    A N3    40.98514  1.0 ? 0 False 0 True -1 True  True  -1 False B90  161 -1.465  8.355   -1.04   1 162
+ATOM   C C4    . DT    A 0 8  . 8  DT    A C4    41.1362   1.0 ? 0 False 0 True -1 True  True  -1 False B90  162 -0.626  8.449   -2.134  1 163
+ATOM   O O4    . DT    A 0 8  . 8  DT    A O4    48.81014  1.0 ? 0 False 0 True -1 True  True  -1 False B90  163 0.596   8.42    -2.029  1 164
+ATOM   C C5    . DT    A 0 8  . 8  DT    A C5    40.79945  1.0 ? 0 False 0 True -1 True  True  -1 False B90  164 -1.287  8.584   -3.409  1 165
+ATOM   C C7    . DT    A 0 8  . 8  DT    A C7    43.77732  1.0 ? 0 False 0 True -1 True  True  -1 False B90  165 -0.477  8.695   -4.666  1 166
+ATOM   C C6    . DT    A 0 8  . 8  DT    A C6    54.07012  1.0 ? 0 False 0 True -1 True  True  -1 False B90  166 -2.629  8.606   -3.424  1 167
+ATOM   P P     . DC    A 0 9  . 9  DC    A P     73.73819  1.0 ? 0 False 0 True -1 True  True  -1 False B91  167 -8.092  11.411  -3.218  1 168
+ATOM   O OP1   . DC    A 0 9  . 9  DC    A OP1   106.37109 1.0 ? 0 False 0 True -1 True  True  -1 False B91  168 -9.533  11.667  -3.431  1 169
+ATOM   O OP2   . DC    A 0 9  . 9  DC    A OP2   61.07652  1.0 ? 0 False 0 True -1 True  True  -1 False B91  169 -7.111  12.11   -4.077  1 170
+ATOM   O "O5'" . DC    A 0 9  . 9  DC    A "O5'" 61.51816  1.0 ? 0 False 0 True -1 True  True  -1 False B91  170 -7.742  11.726  -1.69   1 171
+ATOM   C "C5'" . DC    A 0 9  . 9  DC    A "C5'" 61.26093  1.0 ? 0 False 0 True -1 True  True  -1 False B91  171 -8.367  10.978  -0.651  1 172
+ATOM   C "C4'" . DC    A 0 9  . 9  DC    A "C4'" 54.70985  1.0 ? 0 False 0 True -1 True  True  -1 False B91  172 -7.814  11.366  0.708   1 173
+ATOM   O "O4'" . DC    A 0 9  . 9  DC    A "O4'" 68.73214  1.0 ? 0 False 0 True -1 True  True  -1 False B91  173 -6.425  10.945  0.808   1 174
+ATOM   C "C3'" . DC    A 0 9  . 9  DC    A "C3'" 54.96683  1.0 ? 0 False 0 True -1 True  True  -1 False B91  174 -7.823  12.869  1.006   1 175
+ATOM   O "O3'" . DC    A 0 9  . 9  DC    A "O3'" 45.3376   1.0 ? 0 False 0 True -1 True  True  -1 False B91  175 -8.192  13.097  2.364   1 176
+ATOM   C "C2'" . DC    A 0 9  . 9  DC    A "C2'" 78.02125  1.0 ? 0 False 0 True -1 True  True  -1 False B91  176 -6.376  13.272  0.746   1 177
+ATOM   C "C1'" . DC    A 0 9  . 9  DC    A "C1'" 73.80911  1.0 ? 0 False 0 True -1 True  True  -1 False B91  177 -5.638  12.037  1.227   1 178
+ATOM   N N1    . DC    A 0 9  . 9  DC    A N1    51.14029  1.0 ? 0 False 0 True -1 True  True  -1 False B91  178 -4.277  11.9    0.644   1 179
+ATOM   C C2    . DC    A 0 9  . 9  DC    A C2    60.61697  1.0 ? 0 False 0 True -1 True  True  -1 False B91  179 -3.179  11.7    1.488   1 180
+ATOM   O O2    . DC    A 0 9  . 9  DC    A O2    63.51308  1.0 ? 0 False 0 True -1 True  True  -1 False B91  180 -3.364  11.63   2.71    1 181
+ATOM   N N3    . DC    A 0 9  . 9  DC    A N3    52.95345  1.0 ? 0 False 0 True -1 True  True  -1 False B91  181 -1.943  11.584  0.941   1 182
+ATOM   C C4    . DC    A 0 9  . 9  DC    A C4    54.31048  1.0 ? 0 False 0 True -1 True  True  -1 False B91  182 -1.789  11.665  -0.383  1 183
+ATOM   N N4    . DC    A 0 9  . 9  DC    A N4    47.81971  1.0 ? 0 False 0 True -1 True  True  -1 False B91  183 -0.552  11.545  -0.879  1 184
+ATOM   C C5    . DC    A 0 9  . 9  DC    A C5    61.10326  1.0 ? 0 False 0 True -1 True  True  -1 False B91  184 -2.896  11.874  -1.257  1 185
+ATOM   C C6    . DC    A 0 9  . 9  DC    A C6    49.04528  1.0 ? 0 False 0 True -1 True  True  -1 False B91  185 -4.108  11.988  -0.705  1 186
+ATOM   P P     . DC    A 0 10 . 10 DC    A P     60.41353  1.0 ? 0 False 0 True -1 True  True  -1 False B92  186 -8.577  14.575  2.875   1 187
+ATOM   O OP1   . DC    A 0 10 . 10 DC    A OP1   84.75372  1.0 ? 0 False 0 True -1 True  True  -1 False B92  187 -10.045 14.709  2.753   1 188
+ATOM   O OP2   . DC    A 0 10 . 10 DC    A OP2   44.46799  1.0 ? 0 False 0 True -1 True  True  -1 False B92  188 -7.703  15.571  2.217   1 189
+ATOM   O "O5'" . DC    A 0 10 . 10 DC    A "O5'" 73.06985  1.0 ? 0 False 0 True -1 True  True  -1 False B92  189 -8.191  14.548  4.427   1 190
+ATOM   C "C5'" . DC    A 0 10 . 10 DC    A "C5'" 53.10731  1.0 ? 0 False 0 True -1 True  True  -1 False B92  190 -7.168  13.667  4.891   1 191
+ATOM   C "C4'" . DC    A 0 10 . 10 DC    A "C4'" 55.01851  1.0 ? 0 False 0 True -1 True  True  -1 False B92  191 -5.931  14.442  5.313   1 192
+ATOM   O "O4'" . DC    A 0 10 . 10 DC    A "O4'" 52.63338  1.0 ? 0 False 0 True -1 True  True  -1 False B92  192 -4.809  14.025  4.516   1 193
+ATOM   C "C3'" . DC    A 0 10 . 10 DC    A "C3'" 65.23846  1.0 ? 0 False 0 True -1 True  True  -1 False B92  193 -6.011  15.946  5.102   1 194
+ATOM   O "O3'" . DC    A 0 10 . 10 DC    A "O3'" 70.42556  1.0 ? 0 False 0 True -1 True  True  -1 False B92  194 -6.521  16.577  6.273   1 195
+ATOM   C "C2'" . DC    A 0 10 . 10 DC    A "C2'" 62.38684  1.0 ? 0 False 0 True -1 True  True  -1 False B92  195 -4.553  16.357  4.83    1 196
+ATOM   C "C1'" . DC    A 0 10 . 10 DC    A "C1'" 51.9553   1.0 ? 0 False 0 True -1 True  True  -1 False B92  196 -3.826  15.03   4.574   1 197
+ATOM   N N1    . DC    A 0 10 . 10 DC    A N1    56.42758  1.0 ? 0 False 0 True -1 True  True  -1 False B92  197 -3.043  15.015  3.301   1 198
+ATOM   C C2    . DC    A 0 10 . 10 DC    A C2    40.73118  1.0 ? 0 False 0 True -1 True  True  -1 False B92  198 -1.647  14.924  3.345   1 199
+ATOM   O O2    . DC    A 0 10 . 10 DC    A O2    39.9096   1.0 ? 0 False 0 True -1 True  True  -1 False B92  199 -1.082  14.85   4.443   1 200
+ATOM   N N3    . DC    A 0 10 . 10 DC    A N3    39.45065  1.0 ? 0 False 0 True -1 True  True  -1 False B92  200 -0.952  14.918  2.179   1 201
+ATOM   C C4    . DC    A 0 10 . 10 DC    A C4    40.00901  1.0 ? 0 False 0 True -1 True  True  -1 False B92  201 -1.599  14.999  1.015   1 202
+ATOM   N N4    . DC    A 0 10 . 10 DC    A N4    39.19304  1.0 ? 0 False 0 True -1 True  True  -1 False B92  202 -0.873  14.987  -0.108  1 203
+ATOM   C C5    . DC    A 0 10 . 10 DC    A C5    57.15511  1.0 ? 0 False 0 True -1 True  True  -1 False B92  203 -3.021  15.095  0.951   1 204
+ATOM   C C6    . DC    A 0 10 . 10 DC    A C6    56.83433  1.0 ? 0 False 0 True -1 True  True  -1 False B92  204 -3.695  15.102  2.106   1 205
+ATOM   P P     . DG    B 1 1  . 1  DG    B P     42.95985  1.0 ? 0 False 1 True -1 True  True  -1 False C93  205 11.227  14.311  0.901   1 206
+ATOM   O OP1   . DG    B 1 1  . 1  DG    B OP1   41.13054  1.0 ? 0 False 1 True -1 True  True  -1 False C93  206 12.541  14.391  1.579   1 207
+ATOM   O OP2   . DG    B 1 1  . 1  DG    B OP2   43.16291  1.0 ? 0 False 1 True -1 True  True  -1 False C93  207 10.965  13.208  -0.049  1 208
+ATOM   O "O5'" . DG    B 1 1  . 1  DG    B "O5'" 28.20958  1.0 ? 0 False 1 True -1 True  True  -1 False C93  208 10.055  14.285  1.989   1 209
+ATOM   C "C5'" . DG    B 1 1  . 1  DG    B "C5'" 29.82714  1.0 ? 0 False 1 True -1 True  True  -1 False C93  209 9.93    15.343  2.929   1 210
+ATOM   C "C4'" . DG    B 1 1  . 1  DG    B "C4'" 27.44368  1.0 ? 0 False 1 True -1 True  True  -1 False C93  210 9.019   14.938  4.073   1 211
+ATOM   O "O4'" . DG    B 1 1  . 1  DG    B "O4'" 30.8248   1.0 ? 0 False 1 True -1 True  True  -1 False C93  211 7.646   15.295  3.752   1 212
+ATOM   C "C3'" . DG    B 1 1  . 1  DG    B "C3'" 26.33697  1.0 ? 0 False 1 True -1 True  True  -1 False C93  212 9.008   13.444  4.389   1 213
+ATOM   O "O3'" . DG    B 1 1  . 1  DG    B "O3'" 25.92146  1.0 ? 0 False 1 True -1 True  True  -1 False C93  213 8.9     13.244  5.8     1 214
+ATOM   C "C2'" . DG    B 1 1  . 1  DG    B "C2'" 31.50567  1.0 ? 0 False 1 True -1 True  True  -1 False C93  214 7.768   12.953  3.644   1 215
+ATOM   C "C1'" . DG    B 1 1  . 1  DG    B "C1'" 26.87509  1.0 ? 0 False 1 True -1 True  True  -1 False C93  215 6.828   14.144  3.782   1 216
+ATOM   N N9    . DG    B 1 1  . 1  DG    B N9    27.64734  1.0 ? 0 False 1 True -1 True  True  -1 False C93  216 5.854   14.239  2.695   1 217
+ATOM   C C8    . DG    B 1 1  . 1  DG    B C8    28.44283  1.0 ? 0 False 1 True -1 True  True  -1 False C93  217 6.114   14.179  1.348   1 218
+ATOM   N N7    . DG    B 1 1  . 1  DG    B N7    33.0457   1.0 ? 0 False 1 True -1 True  True  -1 False C93  218 5.049   14.287  0.606   1 219
+ATOM   C C5    . DG    B 1 1  . 1  DG    B C5    29.23854  1.0 ? 0 False 1 True -1 True  True  -1 False C93  219 4.012   14.428  1.516   1 220
+ATOM   C C6    . DG    B 1 1  . 1  DG    B C6    35.14057  1.0 ? 0 False 1 True -1 True  True  -1 False C93  220 2.624   14.586  1.294   1 221
+ATOM   O O6    . DG    B 1 1  . 1  DG    B O6    35.48453  1.0 ? 0 False 1 True -1 True  True  -1 False C93  221 2.021   14.636  0.213   1 222
+ATOM   N N1    . DG    B 1 1  . 1  DG    B N1    30.47661  1.0 ? 0 False 1 True -1 True  True  -1 False C93  222 1.92    14.693  2.49    1 223
+ATOM   C C2    . DG    B 1 1  . 1  DG    B C2    28.78194  1.0 ? 0 False 1 True -1 True  True  -1 False C93  223 2.487   14.653  3.743   1 224
+ATOM   N N2    . DG    B 1 1  . 1  DG    B N2    43.34958  1.0 ? 0 False 1 True -1 True  True  -1 False C93  224 1.646   14.773  4.78    1 225
+ATOM   N N3    . DG    B 1 1  . 1  DG    B N3    32.46017  1.0 ? 0 False 1 True -1 True  True  -1 False C93  225 3.788   14.505  3.965   1 226
+ATOM   C C4    . DG    B 1 1  . 1  DG    B C4    31.09192  1.0 ? 0 False 1 True -1 True  True  -1 False C93  226 4.488   14.399  2.809   1 227
+ATOM   P P     . DG    B 1 2  . 2  DG    B P     42.11884  1.0 ? 0 False 1 True -1 True  True  -1 False C94  227 9.045   11.775  6.442   1 228
+ATOM   O OP1   . DG    B 1 2  . 2  DG    B OP1   37.3721   1.0 ? 0 False 1 True -1 True  True  -1 False C94  228 10.195  11.808  7.372   1 229
+ATOM   O OP2   . DG    B 1 2  . 2  DG    B OP2   25.09299  1.0 ? 0 False 1 True -1 True  True  -1 False C94  229 9.037   10.77   5.355   1 230
+ATOM   O "O5'" . DG    B 1 2  . 2  DG    B "O5'" 25.12713  1.0 ? 0 False 1 True -1 True  True  -1 False C94  230 7.7     11.611  7.296   1 231
+ATOM   C "C5'" . DG    B 1 2  . 2  DG    B "C5'" 25.22916  1.0 ? 0 False 1 True -1 True  True  -1 False C94  231 6.466   12.05   6.747   1 232
+ATOM   C "C4'" . DG    B 1 2  . 2  DG    B "C4'" 27.43208  1.0 ? 0 False 1 True -1 True  True  -1 False C94  232 5.344   11.97   7.761   1 233
+ATOM   O "O4'" . DG    B 1 2  . 2  DG    B "O4'" 57.05292  1.0 ? 0 False 1 True -1 True  True  -1 False C94  233 4.105   12.334  7.111   1 234
+ATOM   C "C3'" . DG    B 1 2  . 2  DG    B "C3'" 25.3177   1.0 ? 0 False 1 True -1 True  True  -1 False C94  234 5.077   10.585  8.306   1 235
+ATOM   O "O3'" . DG    B 1 2  . 2  DG    B "O3'" 25.85873  1.0 ? 0 False 1 True -1 True  True  -1 False C94  235 4.314   10.679  9.506   1 236
+ATOM   C "C2'" . DG    B 1 2  . 2  DG    B "C2'" 31.48559  1.0 ? 0 False 1 True -1 True  True  -1 False C94  236 4.261   9.969   7.174   1 237
+ATOM   C "C1'" . DG    B 1 2  . 2  DG    B "C1'" 31.21271  1.0 ? 0 False 1 True -1 True  True  -1 False C94  237 3.417   11.16   6.711   1 238
+ATOM   N N9    . DG    B 1 2  . 2  DG    B N9    26.13081  1.0 ? 0 False 1 True -1 True  True  -1 False C94  238 3.23    11.208  5.263   1 239
+ATOM   C C8    . DG    B 1 2  . 2  DG    B C8    25.92652  1.0 ? 0 False 1 True -1 True  True  -1 False C94  239 4.212   11.194  4.304   1 240
+ATOM   N N7    . DG    B 1 2  . 2  DG    B N7    26.63766  1.0 ? 0 False 1 True -1 True  True  -1 False C94  240 3.751   11.248  3.086   1 241
+ATOM   C C5    . DG    B 1 2  . 2  DG    B C5    32.36715  1.0 ? 0 False 1 True -1 True  True  -1 False C94  241 2.373   11.302  3.246   1 242
+ATOM   C C6    . DG    B 1 2  . 2  DG    B C6    33.13903  1.0 ? 0 False 1 True -1 True  True  -1 False C94  242 1.345   11.373  2.276   1 243
+ATOM   O O6    . DG    B 1 2  . 2  DG    B O6    39.08639  1.0 ? 0 False 1 True -1 True  True  -1 False C94  243 1.456   11.404  1.042   1 244
+ATOM   N N1    . DG    B 1 2  . 2  DG    B N1    29.53223  1.0 ? 0 False 1 True -1 True  True  -1 False C94  244 0.083   11.409  2.863   1 245
+ATOM   C C2    . DG    B 1 2  . 2  DG    B C2    46.28613  1.0 ? 0 False 1 True -1 True  True  -1 False C94  245 -0.156  11.381  4.216   1 246
+ATOM   N N2    . DG    B 1 2  . 2  DG    B N2    56.09835  1.0 ? 0 False 1 True -1 True  True  -1 False C94  246 -1.442  11.425  4.593   1 247
+ATOM   N N3    . DG    B 1 2  . 2  DG    B N3    34.91131  1.0 ? 0 False 1 True -1 True  True  -1 False C94  247 0.799   11.314  5.137   1 248
+ATOM   C C4    . DG    B 1 2  . 2  DG    B C4    33.49635  1.0 ? 0 False 1 True -1 True  True  -1 False C94  248 2.035   11.278  4.581   1 249
+ATOM   P P     . DA    B 1 3  . 3  DA    B P     26.37714  1.0 ? 0 False 1 True -1 True  True  -1 False C95  249 3.966   9.36    10.355  1 250
+ATOM   O OP1   . DA    B 1 3  . 3  DA    B OP1   27.20773  1.0 ? 0 False 1 True -1 True  True  -1 False C95  250 3.576   9.792   11.716  1 251
+ATOM   O OP2   . DA    B 1 3  . 3  DA    B OP2   26.16748  1.0 ? 0 False 1 True -1 True  True  -1 False C95  251 5.083   8.406   10.185  1 252
+ATOM   O "O5'" . DA    B 1 3  . 3  DA    B "O5'" 41.50005  1.0 ? 0 False 1 True -1 True  True  -1 False C95  252 2.685   8.75    9.614   1 253
+ATOM   C "C5'" . DA    B 1 3  . 3  DA    B "C5'" 38.98531  1.0 ? 0 False 1 True -1 True  True  -1 False C95  253 1.5     9.525   9.482   1 254
+ATOM   C "C4'" . DA    B 1 3  . 3  DA    B "C4'" 27.9274   1.0 ? 0 False 1 True -1 True  True  -1 False C95  254 0.425   8.747   8.743   1 255
+ATOM   O "O4'" . DA    B 1 3  . 3  DA    B "O4'" 38.44877  1.0 ? 0 False 1 True -1 True  True  -1 False C95  255 0.545   8.964   7.315   1 256
+ATOM   C "C3'" . DA    B 1 3  . 3  DA    B "C3'" 28.35747  1.0 ? 0 False 1 True -1 True  True  -1 False C95  256 0.462   7.229   8.95    1 257
+ATOM   O "O3'" . DA    B 1 3  . 3  DA    B "O3'" 29.80184  1.0 ? 0 False 1 True -1 True  True  -1 False C95  257 -0.819  6.772   9.332   1 258
+ATOM   C "C2'" . DA    B 1 3  . 3  DA    B "C2'" 52.01793  1.0 ? 0 False 1 True -1 True  True  -1 False C95  258 0.86    6.686   7.575   1 259
+ATOM   C "C1'" . DA    B 1 3  . 3  DA    B "C1'" 38.49267  1.0 ? 0 False 1 True -1 True  True  -1 False C95  259 0.29    7.75    6.657   1 260
+ATOM   N N9    . DA    B 1 3  . 3  DA    B N9    34.1599   1.0 ? 0 False 1 True -1 True  True  -1 False C95  260 0.917   7.788   5.339   1 261
+ATOM   C C8    . DA    B 1 3  . 3  DA    B C8    36.60992  1.0 ? 0 False 1 True -1 True  True  -1 False C95  261 2.253   7.706   5.056   1 262
+ATOM   N N7    . DA    B 1 3  . 3  DA    B N7    28.99651  1.0 ? 0 False 1 True -1 True  True  -1 False C95  262 2.526   7.769   3.774   1 263
+ATOM   C C5    . DA    B 1 3  . 3  DA    B C5    38.81052  1.0 ? 0 False 1 True -1 True  True  -1 False C95  263 1.282   7.9     3.176   1 264
+ATOM   C C6    . DA    B 1 3  . 3  DA    B C6    32.4933   1.0 ? 0 False 1 True -1 True  True  -1 False C95  264 0.884   8.017   1.828   1 265
+ATOM   N N6    . DA    B 1 3  . 3  DA    B N6    29.20321  1.0 ? 0 False 1 True -1 True  True  -1 False C95  265 1.745   8.019   0.804   1 266
+ATOM   N N1    . DA    B 1 3  . 3  DA    B N1    30.22344  1.0 ? 0 False 1 True -1 True  True  -1 False C95  266 -0.437  8.131   1.574   1 267
+ATOM   C C2    . DA    B 1 3  . 3  DA    B C2    50.74579  1.0 ? 0 False 1 True -1 True  True  -1 False C95  267 -1.294  8.129   2.602   1 268
+ATOM   N N3    . DA    B 1 3  . 3  DA    B N3    41.41959  1.0 ? 0 False 1 True -1 True  True  -1 False C95  268 -1.039  8.025   3.906   1 269
+ATOM   C C4    . DA    B 1 3  . 3  DA    B C4    28.32545  1.0 ? 0 False 1 True -1 True  True  -1 False C95  269 0.28    7.913   4.127   1 270
+ATOM   P P     . DC    B 1 4  . 4  DC    B P     44.35792  1.0 ? 0 False 1 True -1 True  True  -1 False C96  270 -0.984  5.413   10.172  1 271
+ATOM   O OP1   . DC    B 1 4  . 4  DC    B OP1   56.29573  1.0 ? 0 False 1 True -1 True  True  -1 False C96  271 -1.175  5.785   11.591  1 272
+ATOM   O OP2   . DC    B 1 4  . 4  DC    B OP2   30.45624  1.0 ? 0 False 1 True -1 True  True  -1 False C96  272 0.113   4.495   9.792   1 273
+ATOM   O "O5'" . DC    B 1 4  . 4  DC    B "O5'" 62.50323  1.0 ? 0 False 1 True -1 True  True  -1 False C96  273 -2.342  4.792   9.605   1 274
+ATOM   C "C5'" . DC    B 1 4  . 4  DC    B "C5'" 45.56363  1.0 ? 0 False 1 True -1 True  True  -1 False C96  274 -3.342  5.65    9.075   1 275
+ATOM   C "C4'" . DC    B 1 4  . 4  DC    B "C4'" 37.55226  1.0 ? 0 False 1 True -1 True  True  -1 False C96  275 -3.846  5.129   7.741   1 276
+ATOM   O "O4'" . DC    B 1 4  . 4  DC    B "O4'" 32.24921  1.0 ? 0 False 1 True -1 True  True  -1 False C96  276 -2.907  5.464   6.691   1 277
+ATOM   C "C3'" . DC    B 1 4  . 4  DC    B "C3'" 41.36893  1.0 ? 0 False 1 True -1 True  True  -1 False C96  277 -4.035  3.606   7.663   1 278
+ATOM   O "O3'" . DC    B 1 4  . 4  DC    B "O3'" 40.01019  1.0 ? 0 False 1 True -1 True  True  -1 False C96  278 -5.417  3.293   7.479   1 279
+ATOM   C "C2'" . DC    B 1 4  . 4  DC    B "C2'" 51.11366  1.0 ? 0 False 1 True -1 True  True  -1 False C96  279 -3.186  3.181   6.453   1 280
+ATOM   C "C1'" . DC    B 1 4  . 4  DC    B "C1'" 47.02232  1.0 ? 0 False 1 True -1 True  True  -1 False C96  280 -3.017  4.484   5.696   1 281
+ATOM   N N1    . DC    B 1 4  . 4  DC    B N1    49.92195  1.0 ? 0 False 1 True -1 True  True  -1 False C96  281 -1.801  4.512   4.833   1 282
+ATOM   C C2    . DC    B 1 4  . 4  DC    B C2    47.57415  1.0 ? 0 False 1 True -1 True  True  -1 False C96  282 -1.93   4.796   3.469   1 283
+ATOM   O O2    . DC    B 1 4  . 4  DC    B O2    33.32821  1.0 ? 0 False 1 True -1 True  True  -1 False C96  283 -3.052  5.036   3.009   1 284
+ATOM   N N3    . DC    B 1 4  . 4  DC    B N3    32.10185  1.0 ? 0 False 1 True -1 True  True  -1 False C96  284 -0.819  4.81    2.693   1 285
+ATOM   C C4    . DC    B 1 4  . 4  DC    B C4    29.5075   1.0 ? 0 False 1 True -1 True  True  -1 False C96  285 0.373   4.546   3.229   1 286
+ATOM   N N4    . DC    B 1 4  . 4  DC    B N4    28.82014  1.0 ? 0 False 1 True -1 True  True  -1 False C96  286 1.441   4.57    2.423   1 287
+ATOM   C C5    . DC    B 1 4  . 4  DC    B C5    29.24148  1.0 ? 0 False 1 True -1 True  True  -1 False C96  287 0.524   4.245   4.616   1 288
+ATOM   C C6    . DC    B 1 4  . 4  DC    B C6    30.24955  1.0 ? 0 False 1 True -1 True  True  -1 False C96  288 -0.579  4.236   5.372   1 289
+ATOM   P P     . DC    B 1 5  . 5  DC    B P     59.01741  1.0 ? 0 False 1 True -1 True  True  -1 False C97  289 -5.873  1.83    6.99    1 290
+ATOM   O OP1   . DC    B 1 5  . 5  DC    B OP1   73.37698  1.0 ? 0 False 1 True -1 True  True  -1 False C97  290 -7.252  1.616   7.482   1 291
+ATOM   O OP2   . DC    B 1 5  . 5  DC    B OP2   59.86074  1.0 ? 0 False 1 True -1 True  True  -1 False C97  291 -4.83   0.844   7.349   1 292
+ATOM   O "O5'" . DC    B 1 5  . 5  DC    B "O5'" 56.87601  1.0 ? 0 False 1 True -1 True  True  -1 False C97  292 -5.917  1.959   5.396   1 293
+ATOM   C "C5'" . DC    B 1 5  . 5  DC    B "C5'" 57.36839  1.0 ? 0 False 1 True -1 True  True  -1 False C97  293 -6.646  3.025   4.791   1 294
+ATOM   C "C4'" . DC    B 1 5  . 5  DC    B "C4'" 55.61037  1.0 ? 0 False 1 True -1 True  True  -1 False C97  294 -7.06   2.671   3.372   1 295
+ATOM   O "O4'" . DC    B 1 5  . 5  DC    B "O4'" 58.06367  1.0 ? 0 False 1 True -1 True  True  -1 False C97  295 -5.954  2.905   2.466   1 296
+ATOM   C "C3'" . DC    B 1 5  . 5  DC    B "C3'" 55.20244  1.0 ? 0 False 1 True -1 True  True  -1 False C97  296 -7.483  1.223   3.161   1 297
+ATOM   O "O3'" . DC    B 1 5  . 5  DC    B "O3'" 54.7482   1.0 ? 0 False 1 True -1 True  True  -1 False C97  297 -8.543  1.155   2.217   1 298
+ATOM   C "C2'" . DC    B 1 5  . 5  DC    B "C2'" 58.67823  1.0 ? 0 False 1 True -1 True  True  -1 False C97  298 -6.211  0.558   2.636   1 299
+ATOM   C "C1'" . DC    B 1 5  . 5  DC    B "C1'" 53.31244  1.0 ? 0 False 1 True -1 True  True  -1 False C97  299 -5.532  1.692   1.873   1 300
+ATOM   N N1    . DC    B 1 5  . 5  DC    B N1    53.24914  1.0 ? 0 False 1 True -1 True  True  -1 False C97  300 -4.045  1.639   1.943   1 301
+ATOM   C C2    . DC    B 1 5  . 5  DC    B C2    52.24757  1.0 ? 0 False 1 True -1 True  True  -1 False C97  301 -3.29   1.775   0.774   1 302
+ATOM   O O2    . DC    B 1 5  . 5  DC    B O2    51.43906  1.0 ? 0 False 1 True -1 True  True  -1 False C97  302 -3.874  1.937   -0.305  1 303
+ATOM   N N3    . DC    B 1 5  . 5  DC    B N3    52.44119  1.0 ? 0 False 1 True -1 True  True  -1 False C97  303 -1.936  1.727   0.859   1 304
+ATOM   C C4    . DC    B 1 5  . 5  DC    B C4    55.06608  1.0 ? 0 False 1 True -1 True  True  -1 False C97  304 -1.345  1.551   2.043   1 305
+ATOM   N N4    . DC    B 1 5  . 5  DC    B N4    61.49165  1.0 ? 0 False 1 True -1 True  True  -1 False C97  305 -0.008  1.51    2.077   1 306
+ATOM   C C5    . DC    B 1 5  . 5  DC    B C5    54.64855  1.0 ? 0 False 1 True -1 True  True  -1 False C97  306 -2.099  1.41    3.244   1 307
+ATOM   C C6    . DC    B 1 5  . 5  DC    B C6    54.43846  1.0 ? 0 False 1 True -1 True  True  -1 False C97  307 -3.432  1.46    3.149   1 308
+ATOM   P P     . DC    B 1 6  . 6  DC    B P     55.50309  1.0 ? 0 False 1 True -1 True  True  -1 False C98  308 -9.226  -0.257  1.871   1 309
+ATOM   O OP1   . DC    B 1 6  . 6  DC    B OP1   62.11145  1.0 ? 0 False 1 True -1 True  True  -1 False C98  309 -10.673 -0.03   1.671   1 310
+ATOM   O OP2   . DC    B 1 6  . 6  DC    B OP2   56.75405  1.0 ? 0 False 1 True -1 True  True  -1 False C98  310 -8.775  -1.24   2.882   1 311
+ATOM   O "O5'" . DC    B 1 6  . 6  DC    B "O5'" 54.43939  1.0 ? 0 False 1 True -1 True  True  -1 False C98  311 -8.565  -0.661  0.473   1 312
+ATOM   C "C5'" . DC    B 1 6  . 6  DC    B "C5'" 53.22621  1.0 ? 0 False 1 True -1 True  True  -1 False C98  312 -8.544  0.271   -0.602  1 313
+ATOM   C "C4'" . DC    B 1 6  . 6  DC    B "C4'" 57.28984  1.0 ? 0 False 1 True -1 True  True  -1 False C98  313 -7.844  -0.326  -1.808  1 314
+ATOM   O "O4'" . DC    B 1 6  . 6  DC    B "O4'" 59.90719  1.0 ? 0 False 1 True -1 True  True  -1 False C98  314 -6.405  -0.211  -1.638  1 315
+ATOM   C "C3'" . DC    B 1 6  . 6  DC    B "C3'" 53.73312  1.0 ? 0 False 1 True -1 True  True  -1 False C98  315 -8.136  -1.81   -2.04   1 316
+ATOM   O "O3'" . DC    B 1 6  . 6  DC    B "O3'" 60.77206  1.0 ? 0 False 1 True -1 True  True  -1 False C98  316 -8.413  -2.051  -3.416  1 317
+ATOM   C "C2'" . DC    B 1 6  . 6  DC    B "C2'" 63.81134  1.0 ? 0 False 1 True -1 True  True  -1 False C98  317 -6.85   -2.504  -1.588  1 318
+ATOM   C "C1'" . DC    B 1 6  . 6  DC    B "C1'" 56.48308  1.0 ? 0 False 1 True -1 True  True  -1 False C98  318 -5.796  -1.455  -1.898  1 319
+ATOM   N N1    . DC    B 1 6  . 6  DC    B N1    53.3817   1.0 ? 0 False 1 True -1 True  True  -1 False C98  319 -4.579  -1.574  -1.041  1 320
+ATOM   C C2    . DC    B 1 6  . 6  DC    B C2    58.07611  1.0 ? 0 False 1 True -1 True  True  -1 False C98  320 -3.307  -1.507  -1.623  1 321
+ATOM   O O2    . DC    B 1 6  . 6  DC    B O2    52.55861  1.0 ? 0 False 1 True -1 True  True  -1 False C98  321 -3.21   -1.34   -2.845  1 322
+ATOM   N N3    . DC    B 1 6  . 6  DC    B N3    53.68368  1.0 ? 0 False 1 True -1 True  True  -1 False C98  322 -2.214  -1.621  -0.827  1 323
+ATOM   C C4    . DC    B 1 6  . 6  DC    B C4    54.54025  1.0 ? 0 False 1 True -1 True  True  -1 False C98  323 -2.36   -1.799  0.488   1 324
+ATOM   N N4    . DC    B 1 6  . 6  DC    B N4    55.34798  1.0 ? 0 False 1 True -1 True  True  -1 False C98  324 -1.255  -1.907  1.233   1 325
+ATOM   C C5    . DC    B 1 6  . 6  DC    B C5    54.87089  1.0 ? 0 False 1 True -1 True  True  -1 False C98  325 -3.647  -1.874  1.097   1 326
+ATOM   C C6    . DC    B 1 6  . 6  DC    B C6    54.25576  1.0 ? 0 False 1 True -1 True  True  -1 False C98  326 -4.717  -1.759  0.302   1 327
+ATOM   P P     . DT    B 1 7  . 7  DT    B P     69.33235  1.0 ? 0 False 1 True -1 True  True  -1 False C99  327 -8.894  -3.505  -3.907  1 328
+ATOM   O OP1   . DT    B 1 7  . 7  DT    B OP1   55.95844  1.0 ? 0 False 1 True -1 True  True  -1 False C99  328 -10.074 -3.32   -4.78   1 329
+ATOM   O OP2   . DT    B 1 7  . 7  DT    B OP2   55.65046  1.0 ? 0 False 1 True -1 True  True  -1 False C99  329 -8.991  -4.396  -2.729  1 330
+ATOM   O "O5'" . DT    B 1 7  . 7  DT    B "O5'" 54.66088  1.0 ? 0 False 1 True -1 True  True  -1 False C99  330 -7.678  -4.017  -4.804  1 331
+ATOM   C "C5'" . DT    B 1 7  . 7  DT    B "C5'" 53.85762  1.0 ? 0 False 1 True -1 True  True  -1 False C99  331 -7.109  -3.153  -5.779  1 332
+ATOM   C "C4'" . DT    B 1 7  . 7  DT    B "C4'" 57.35776  1.0 ? 0 False 1 True -1 True  True  -1 False C99  332 -5.851  -3.765  -6.361  1 333
+ATOM   O "O4'" . DT    B 1 7  . 7  DT    B "O4'" 65.07323  1.0 ? 0 False 1 True -1 True  True  -1 False C99  333 -4.762  -3.62   -5.416  1 334
+ATOM   C "C3'" . DT    B 1 7  . 7  DT    B "C3'" 55.56386  1.0 ? 0 False 1 True -1 True  True  -1 False C99  334 -5.96   -5.256  -6.681  1 335
+ATOM   O "O3'" . DT    B 1 7  . 7  DT    B "O3'" 56.1015   1.0 ? 0 False 1 True -1 True  True  -1 False C99  335 -5.533  -5.502  -8.012  1 336
+ATOM   C "C2'" . DT    B 1 7  . 7  DT    B "C2'" 64.94021  1.0 ? 0 False 1 True -1 True  True  -1 False C99  336 -5.05   -5.932  -5.652  1 337
+ATOM   C "C1'" . DT    B 1 7  . 7  DT    B "C1'" 55.04354  1.0 ? 0 False 1 True -1 True  True  -1 False C99  337 -4.058  -4.832  -5.305  1 338
+ATOM   N N1    . DT    B 1 7  . 7  DT    B N1    55.25024  1.0 ? 0 False 1 True -1 True  True  -1 False C99  338 -3.529  -4.936  -3.914  1 339
+ATOM   C C2    . DT    B 1 7  . 7  DT    B C2    55.45325  1.0 ? 0 False 1 True -1 True  True  -1 False C99  339 -2.172  -4.871  -3.703  1 340
+ATOM   O O2    . DT    B 1 7  . 7  DT    B O2    55.44822  1.0 ? 0 False 1 True -1 True  True  -1 False C99  340 -1.362  -4.728  -4.6    1 341
+ATOM   N N3    . DT    B 1 7  . 7  DT    B N3    55.92094  1.0 ? 0 False 1 True -1 True  True  -1 False C99  341 -1.792  -4.978  -2.39   1 342
+ATOM   C C4    . DT    B 1 7  . 7  DT    B C4    56.2534   1.0 ? 0 False 1 True -1 True  True  -1 False C99  342 -2.617  -5.14   -1.292  1 343
+ATOM   O O4    . DT    B 1 7  . 7  DT    B O4    56.94816  1.0 ? 0 False 1 True -1 True  True  -1 False C99  343 -2.182  -5.227  -0.149  1 344
+ATOM   C C5    . DT    B 1 7  . 7  DT    B C5    56.00436  1.0 ? 0 False 1 True -1 True  True  -1 False C99  344 -4.027  -5.202  -1.583  1 345
+ATOM   C C7    . DT    B 1 7  . 7  DT    B C7    56.5928   1.0 ? 0 False 1 True -1 True  True  -1 False C99  345 -5.016  -5.378  -0.47   1 346
+ATOM   C C6    . DT    B 1 7  . 7  DT    B C6    55.50496  1.0 ? 0 False 1 True -1 True  True  -1 False C99  346 -4.412  -5.098  -2.865  1 347
+ATOM   P P     . DT    B 1 8  . 8  DT    B P     72.13916  1.0 ? 0 False 1 True -1 True  True  -1 False C100 347 -5.694  -6.965  -8.655  1 348
+ATOM   O OP1   . DT    B 1 8  . 8  DT    B OP1   71.36084  1.0 ? 0 False 1 True -1 True  True  -1 False C100 348 -6.07   -6.793  -10.075 1 349
+ATOM   O OP2   . DT    B 1 8  . 8  DT    B OP2   63.01857  1.0 ? 0 False 1 True -1 True  True  -1 False C100 349 -6.56   -7.769  -7.763  1 350
+ATOM   O "O5'" . DT    B 1 8  . 8  DT    B "O5'" 58.35857  1.0 ? 0 False 1 True -1 True  True  -1 False C100 350 -4.215  -7.564  -8.583  1 351
+ATOM   C "C5'" . DT    B 1 8  . 8  DT    B "C5'" 57.94201  1.0 ? 0 False 1 True -1 True  True  -1 False C100 351 -3.12   -6.789  -9.055  1 352
+ATOM   C "C4'" . DT    B 1 8  . 8  DT    B "C4'" 58.72588  1.0 ? 0 False 1 True -1 True  True  -1 False C100 352 -1.802  -7.413  -8.64   1 353
+ATOM   O "O4'" . DT    B 1 8  . 8  DT    B "O4'" 67.32955  1.0 ? 0 False 1 True -1 True  True  -1 False C100 353 -1.597  -7.215  -7.221  1 354
+ATOM   C "C3'" . DT    B 1 8  . 8  DT    B "C3'" 60.49502  1.0 ? 0 False 1 True -1 True  True  -1 False C100 354 -1.699  -8.921  -8.888  1 355
+ATOM   O "O3'" . DT    B 1 8  . 8  DT    B "O3'" 65.28007  1.0 ? 0 False 1 True -1 True  True  -1 False C100 355 -0.566  -9.203  -9.701  1 356
+ATOM   C "C2'" . DT    B 1 8  . 8  DT    B "C2'" 60.64882  1.0 ? 0 False 1 True -1 True  True  -1 False C100 356 -1.564  -9.527  -7.485  1 357
+ATOM   C "C1'" . DT    B 1 8  . 8  DT    B "C1'" 60.69364  1.0 ? 0 False 1 True -1 True  True  -1 False C100 357 -1.01   -8.366  -6.677  1 358
+ATOM   N N1    . DT    B 1 8  . 8  DT    B N1    62.84059  1.0 ? 0 False 1 True -1 True  True  -1 False C100 358 -1.356  -8.432  -5.225  1 359
+ATOM   C C2    . DT    B 1 8  . 8  DT    B C2    70.22523  1.0 ? 0 False 1 True -1 True  True  -1 False C100 359 -0.345  -8.414  -4.292  1 360
+ATOM   O O2    . DT    B 1 8  . 8  DT    B O2    59.94846  1.0 ? 0 False 1 True -1 True  True  -1 False C100 360 0.835   -8.345  -4.586  1 361
+ATOM   N N3    . DT    B 1 8  . 8  DT    B N3    59.47605  1.0 ? 0 False 1 True -1 True  True  -1 False C100 361 -0.767  -8.479  -2.991  1 362
+ATOM   C C4    . DT    B 1 8  . 8  DT    B C4    59.19321  1.0 ? 0 False 1 True -1 True  True  -1 False C100 362 -2.071  -8.56   -2.538  1 363
+ATOM   O O4    . DT    B 1 8  . 8  DT    B O4    59.50773  1.0 ? 0 False 1 True -1 True  True  -1 False C100 363 -2.349  -8.614  -1.344  1 364
+ATOM   C C5    . DT    B 1 8  . 8  DT    B C5    58.78276  1.0 ? 0 False 1 True -1 True  True  -1 False C100 364 -3.083  -8.576  -3.568  1 365
+ATOM   C C7    . DT    B 1 8  . 8  DT    B C7    58.69214  1.0 ? 0 False 1 True -1 True  True  -1 False C100 365 -4.534  -8.662  -3.197  1 366
+ATOM   C C6    . DT    B 1 8  . 8  DT    B C6    58.75903  1.0 ? 0 False 1 True -1 True  True  -1 False C100 366 -2.681  -8.512  -4.847  1 367
+ATOM   P P     . DG    B 1 9  . 9  DG    B P     87.84928  1.0 ? 0 False 1 True -1 True  True  -1 False C101 367 -0.243  -10.709 -10.158 1 368
+ATOM   O OP1   . DG    B 1 9  . 9  DG    B OP1   78.34324  1.0 ? 0 False 1 True -1 True  True  -1 False C101 368 0.38    -10.644 -11.499 1 369
+ATOM   O OP2   . DG    B 1 9  . 9  DG    B OP2   79.55935  1.0 ? 0 False 1 True -1 True  True  -1 False C101 369 -1.459  -11.529 -9.96   1 370
+ATOM   O "O5'" . DG    B 1 9  . 9  DG    B "O5'" 64.4228   1.0 ? 0 False 1 True -1 True  True  -1 False C101 370 0.857   -11.19  -9.104  1 371
+ATOM   C "C5'" . DG    B 1 9  . 9  DG    B "C5'" 68.01626  1.0 ? 0 False 1 True -1 True  True  -1 False C101 371 1.993   -10.374 -8.852  1 372
+ATOM   C "C4'" . DG    B 1 9  . 9  DG    B "C4'" 82.45678  1.0 ? 0 False 1 True -1 True  True  -1 False C101 372 2.853   -10.964 -7.749  1 373
+ATOM   O "O4'" . DG    B 1 9  . 9  DG    B "O4'" 94.37223  1.0 ? 0 False 1 True -1 True  True  -1 False C101 373 2.231   -10.722 -6.458  1 374
+ATOM   C "C3'" . DG    B 1 9  . 9  DG    B "C3'" 66.95787  1.0 ? 0 False 1 True -1 True  True  -1 False C101 374 3.075   -12.475 -7.836  1 375
+ATOM   O "O3'" . DG    B 1 9  . 9  DG    B "O3'" 68.33702  1.0 ? 0 False 1 True -1 True  True  -1 False C101 375 4.414   -12.777 -7.473  1 376
+ATOM   C "C2'" . DG    B 1 9  . 9  DG    B "C2'" 66.54091  1.0 ? 0 False 1 True -1 True  True  -1 False C101 376 2.084   -13.02  -6.811  1 377
+ATOM   C "C1'" . DG    B 1 9  . 9  DG    B "C1'" 71.471    1.0 ? 0 False 1 True -1 True  True  -1 False C101 377 2.148   -11.937 -5.75   1 378
+ATOM   N N9    . DG    B 1 9  . 9  DG    B N9    64.05175  1.0 ? 0 False 1 True -1 True  True  -1 False C101 378 0.977   -11.894 -4.88   1 379
+ATOM   C C8    . DG    B 1 9  . 9  DG    B C8    63.42246  1.0 ? 0 False 1 True -1 True  True  -1 False C101 379 -0.343  -11.942 -5.259  1 380
+ATOM   N N7    . DG    B 1 9  . 9  DG    B N7    62.90691  1.0 ? 0 False 1 True -1 True  True  -1 False C101 380 -1.174  -11.885 -4.254  1 381
+ATOM   C C5    . DG    B 1 9  . 9  DG    B C5    63.23315  1.0 ? 0 False 1 True -1 True  True  -1 False C101 381 -0.351  -11.793 -3.139  1 382
+ATOM   C C6    . DG    B 1 9  . 9  DG    B C6    63.22773  1.0 ? 0 False 1 True -1 True  True  -1 False C101 382 -0.681  -11.702 -1.766  1 383
+ATOM   O O6    . DG    B 1 9  . 9  DG    B O6    62.8926   1.0 ? 0 False 1 True -1 True  True  -1 False C101 383 -1.806  -11.683 -1.245  1 384
+ATOM   N N1    . DG    B 1 9  . 9  DG    B N1    63.9628   1.0 ? 0 False 1 True -1 True  True  -1 False C101 384 0.457   -11.628 -0.966  1 385
+ATOM   C C2    . DG    B 1 9  . 9  DG    B C2    64.60733  1.0 ? 0 False 1 True -1 True  True  -1 False C101 385 1.749   -11.64  -1.434  1 386
+ATOM   N N2    . DG    B 1 9  . 9  DG    B N2    65.50625  1.0 ? 0 False 1 True -1 True  True  -1 False C101 386 2.717   -11.559 -0.51   1 387
+ATOM   N N3    . DG    B 1 9  . 9  DG    B N3    66.49308  1.0 ? 0 False 1 True -1 True  True  -1 False C101 387 2.071   -11.725 -2.717  1 388
+ATOM   C C4    . DG    B 1 9  . 9  DG    B C4    63.92806  1.0 ? 0 False 1 True -1 True  True  -1 False C101 388 0.975   -11.798 -3.509  1 389
+ATOM   P P     . DA    B 1 10 . 10 DA    B P     88.62449  1.0 ? 0 False 1 True -1 True  True  -1 False C102 389 5.071   -14.195 -7.848  1 390
+ATOM   O OP1   . DA    B 1 10 . 10 DA    B OP1   87.59316  1.0 ? 0 False 1 True -1 True  True  -1 False C102 390 5.995   -13.972 -8.981  1 391
+ATOM   O OP2   . DA    B 1 10 . 10 DA    B OP2   71.43655  1.0 ? 0 False 1 True -1 True  True  -1 False C102 391 3.994   -15.203 -7.968  1 392
+ATOM   O "O5'" . DA    B 1 10 . 10 DA    B "O5'" 93.79345  1.0 ? 0 False 1 True -1 True  True  -1 False C102 392 5.934   -14.557 -6.552  1 393
+ATOM   C "C5'" . DA    B 1 10 . 10 DA    B "C5'" 71.26223  1.0 ? 0 False 1 True -1 True  True  -1 False C102 393 6.749   -13.562 -5.939  1 394
+ATOM   C "C4'" . DA    B 1 10 . 10 DA    B "C4'" 71.92279  1.0 ? 0 False 1 True -1 True  True  -1 False C102 394 7.077   -13.938 -4.504  1 395
+ATOM   O "O4'" . DA    B 1 10 . 10 DA    B "O4'" 81.84539  1.0 ? 0 False 1 True -1 True  True  -1 False C102 395 5.922   -13.697 -3.658  1 396
+ATOM   C "C3'" . DA    B 1 10 . 10 DA    B "C3'" 74.36728  1.0 ? 0 False 1 True -1 True  True  -1 False C102 396 7.464   -15.398 -4.289  1 397
+ATOM   O "O3'" . DA    B 1 10 . 10 DA    B "O3'" 79.02419  1.0 ? 0 False 1 True -1 True  True  -1 False C102 397 8.487   -15.486 -3.311  1 398
+ATOM   C "C2'" . DA    B 1 10 . 10 DA    B "C2'" 73.73812  1.0 ? 0 False 1 True -1 True  True  -1 False C102 398 6.162   -16.03  -3.802  1 399
+ATOM   C "C1'" . DA    B 1 10 . 10 DA    B "C1'" 75.86684  1.0 ? 0 False 1 True -1 True  True  -1 False C102 399 5.54    -14.891 -3.007  1 400
+ATOM   N N9    . DA    B 1 10 . 10 DA    B N9    73.05329  1.0 ? 0 False 1 True -1 True  True  -1 False C102 400 4.082   -14.943 -2.966  1 401
+ATOM   C C8    . DA    B 1 10 . 10 DA    B C8    69.90905  1.0 ? 0 False 1 True -1 True  True  -1 False C102 401 3.231   -15.03  -4.033  1 402
+ATOM   N N7    . DA    B 1 10 . 10 DA    B N7    69.7549   1.0 ? 0 False 1 True -1 True  True  -1 False C102 402 1.963   -15.056 -3.698  1 403
+ATOM   C C5    . DA    B 1 10 . 10 DA    B C5    76.26426  1.0 ? 0 False 1 True -1 True  True  -1 False C102 403 1.983   -14.979 -2.315  1 404
+ATOM   C C6    . DA    B 1 10 . 10 DA    B C6    68.08179  1.0 ? 0 False 1 True -1 True  True  -1 False C102 404 0.957   -14.961 -1.349  1 405
+ATOM   N N6    . DA    B 1 10 . 10 DA    B N6    67.31045  1.0 ? 0 False 1 True -1 True  True  -1 False C102 405 -0.343  -15.023 -1.654  1 406
+ATOM   N N1    . DA    B 1 10 . 10 DA    B N1    68.64635  1.0 ? 0 False 1 True -1 True  True  -1 False C102 406 1.321   -14.876 -0.052  1 407
+ATOM   C C2    . DA    B 1 10 . 10 DA    B C2    69.64276  1.0 ? 0 False 1 True -1 True  True  -1 False C102 407 2.623   -14.814 0.25    1 408
+ATOM   N N3    . DA    B 1 10 . 10 DA    B N3    70.20329  1.0 ? 0 False 1 True -1 True  True  -1 False C102 408 3.675   -14.823 -0.567  1 409
+ATOM   C C4    . DA    B 1 10 . 10 DA    B C4    70.0359   1.0 ? 0 False 1 True -1 True  True  -1 False C102 409 3.282   -14.907 -1.848  1 410
+HETATM X UNK   . 50-80 C 2 1  . 1  50-80 C UNK   nan       0.0 ? 0 True  2 True 80 False False 50 True  .    410 nan     nan     nan     1 411
+#
+_rfd_design.sampled_contig   B83-92,/0,C93-102,/0,50-80
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+DA    OP3    O 0 N Y 1.8450000286102295    -1.281999945640564     -5.339000225067139
+DA    P      P 0 N N 0.9340000152587891    -0.15600000321865082   -4.636000156402588
+DA    OP1    O 0 N N 1.781000018119812     0.9959999918937683     -4.255000114440918
+DA    OP2    O 0 N N -0.20399999618530273  0.3310000002384186     -5.664999961853027
+DA    "O5'"  O 0 N N 0.2409999966621399    -0.7710000276565552    -3.319999933242798
+DA    "C5'"  C 0 N N -0.5490000247955322   0.27000001072883606    -2.74399995803833
+DA    "C4'"  C 0 N N -1.2389999628067017   -0.25099998712539673   -1.4819999933242798
+DA    "O4'"  O 0 N N -0.2669999897480011   -0.5640000104904175    -0.4580000042915344
+DA    "C3'"  C 0 N N -2.1050000190734863   0.859000027179718      -0.8349999785423279
+DA    "O3'"  O 0 N N -3.4089999198913574   0.8949999809265137     -1.4179999828338623
+DA    "C2'"  C 0 N N -2.1730000972747803   0.39800000190734863    0.6399999856948853
+DA    "C1'"  C 0 N N -0.9649999737739563   -0.5450000166893005    0.796999990940094
+DA    N9     N 0 Y N -0.07800000160932541  -0.04699999839067459   1.8519999980926514
+DA    C8     C 0 Y N 0.9620000123977661    0.8169999718666077     1.6890000104904175
+DA    N7     N 0 Y N 1.534999966621399     1.0440000295639038     2.8350000381469727
+DA    C5     C 0 Y N 0.8970000147819519    0.34599998593330383    3.805000066757202
+DA    C6     C 0 Y N 1.069000005722046     0.19599999487400055    5.190999984741211
+DA    N6     N 0 N N 2.0789999961853027    0.8690000176429749     5.855999946594238
+DA    N1     N 0 Y N 0.23600000143051147   -0.6029999852180481    5.849999904632568
+DA    C2     C 0 Y N -0.7289999723434448   -1.2489999532699585    5.223999977111816
+DA    N3     N 0 Y N -0.925000011920929    -1.1440000534057617    3.927000045776367
+DA    C4     C 0 Y N -0.1420000046491623   -0.36800000071525574   3.184000015258789
+DA    HOP3   H 0 N N 2.240999937057495     -0.8730000257492065    -6.120999813079834
+DA    HOP2   H 0 N N -0.7319999933242798   -0.44699999690055847   -5.88700008392334
+DA    "H5'"  H 0 N N -1.3020000457763672   0.593999981880188      -3.4630000591278076
+DA    "H5''" H 0 N N 0.09200000017881393   1.1119999885559082     -2.4860000610351562
+DA    "H4'"  H 0 N N -1.8459999561309814   -1.1260000467300415    -1.7120000123977661
+DA    "H3'"  H 0 N N -1.6169999837875366   1.8300000429153442     -0.9179999828338623
+DA    "HO3'" H 0 N Y -3.9240000247955322   1.5379999876022339     -0.9129999876022339
+DA    "H2'"  H 0 N N -3.1029999256134033   -0.13600000739097595   0.8309999704360962
+DA    "H2''" H 0 N N -2.0789999961853027   1.253000020980835      1.3109999895095825
+DA    "H1'"  H 0 N N -1.309000015258789    -1.5490000247955322    1.0460000038146973
+DA    H8     H 0 N N 1.2660000324249268    1.25                   0.7480000257492065
+DA    H61    H 0 N N 2.184999942779541     0.7609999775886536     6.814000129699707
+DA    H62    H 0 N N 2.683000087738037     1.4470000267028809     5.36299991607666
+DA    H2     H 0 N N -1.3830000162124634   -1.8890000581741333    5.797999858856201
+DC    OP3    O 0 N Y 1.940999984741211     -1.0549999475479126    -4.671999931335449
+DC    P      P 0 N N 0.9869999885559082    -0.017000000923871994  -3.8940000534057617
+DC    OP1    O 0 N N 1.8020000457763672    1.0989999771118164     -3.365000009536743
+DC    OP2    O 0 N N -0.11900000274181366  0.5600000023841858     -4.909999847412109
+DC    "O5'"  O 0 N N 0.2549999952316284    -0.7720000147819519    -2.6740000247955322
+DC    "C5'"  C 0 N N -0.5709999799728394   0.19599999487400055    -2.0269999504089355
+DC    "C4'"  C 0 N N -1.2999999523162842   -0.45899999141693115   -0.8519999980926514
+DC    "O4'"  O 0 N N -0.3630000054836273   -0.8629999756813049    0.17100000381469727
+DC    "C3'"  C 0 N N -2.2060000896453857   0.5690000057220459     -0.1289999932050705
+DC    "O3'"  O 0 N N -3.48799991607666     0.6489999890327454     -0.7559999823570251
+DC    "C2'"  C 0 N N -2.322000026702881    -0.03999999910593033   1.2879999876022339
+DC    "C1'"  C 0 N N -1.1059999465942383   -0.9810000061988831    1.3949999809265137
+DC    N1     N 0 N N -0.2669999897480011   -0.5839999914169312    2.5280001163482666
+DC    C2     C 0 N N 0.27000001072883606   0.6480000019073486     2.562999963760376
+DC    O2     O 0 N N 0.052000001072883606  1.4240000247955322     1.6469999551773071
+DC    N3     N 0 N N 1.0369999408721924    1.034999966621399      3.5810000896453857
+DC    C4     C 0 N N 1.2910000085830688    0.21199999749660492    4.589000225067139
+DC    N4     N 0 N N 2.0850000381469727    0.621999979019165      5.635000228881836
+DC    C5     C 0 N N 0.7459999918937683    -1.0880000591278076    4.579999923706055
+DC    C6     C 0 N N -0.03500000014901161  -1.465000033378601     3.5409998893737793
+DC    HOP3   H 0 N N 2.3589999675750732    -0.5640000104904175    -5.392000198364258
+DC    HOP2   H 0 N N -0.6259999871253967   -0.1979999989271164    -5.230999946594238
+DC    "H5'"  H 0 N N -1.3020000457763672   0.5830000042915344     -2.736999988555908
+DC    "H5''" H 0 N N 0.04600000008940697   1.0149999856948853     -1.659000039100647
+DC    "H4'"  H 0 N N -1.8849999904632568   -1.312999963760376     -1.1929999589920044
+DC    "H3'"  H 0 N N -1.7309999465942383   1.5490000247955322     -0.09399999678134918
+DC    "HO3'" H 0 N Y -4.031000137329102    1.2319999933242798     -0.2070000022649765
+DC    "H2'"  H 0 N N -3.25                 -0.6019999980926514    1.3869999647140503
+DC    "H2''" H 0 N N -2.2660000324249268   0.7419999837875366     2.0460000038146973
+DC    "H1'"  H 0 N N -1.444000005722046    -2.009000062942505     1.5260000228881836
+DC    H41    H 0 N N 2.4609999656677246    1.5160000324249268     5.636000156402588
+DC    H42    H 0 N N 2.265000104904175     0.01899999938905239    6.373000144958496
+DC    H5     H 0 N N 0.9430000185966492    -1.7710000276565552    5.394000053405762
+DC    H6     H 0 N N -0.46700000762939453  -2.4539999961853027    3.5139999389648438
+DG    OP3    O 0 N Y -1.6030000448226929   -1.5470000505447388    5.624000072479248
+DG    P      P 0 N N -0.8180000185966492   -0.32100000977516174   4.934999942779541
+DG    OP1    O 0 N N -1.7740000486373901   0.765999972820282      4.630000114440918
+DG    OP2    O 0 N N 0.31200000643730164   0.2240000069141388     5.940999984741211
+DG    "O5'"  O 0 N N -0.12600000202655792  -0.8259999752044678    3.572000026702881
+DG    "C5'"  C 0 N N 0.550000011920929     0.30000001192092896    3.010999917984009
+DG    "C4'"  C 0 N N 1.2330000400543213    -0.11299999803304672   1.7059999704360962
+DG    "O4'"  O 0 N N 0.2529999911785126    -0.47099998593330383   0.7049999833106995
+DG    "C3'"  C 0 N N 1.9759999513626099    1.090999960899353      1.0729999542236328
+DG    "O3'"  O 0 N N 3.2939999103546143    1.218000054359436      1.6119999885559082
+DG    "C2'"  C 0 N N 2.0260000228881836    0.6919999718666077     -0.42100000381469727
+DG    "C1'"  C 0 N N 0.8970000147819519    -0.3449999988079071    -0.5730000138282776
+DG    N9     N 0 Y N -0.06800000369548798  0.11100000143051147    -1.5750000476837158
+DG    C8     C 0 Y N -1.1720000505447388   0.8769999742507935     -1.340999960899353
+DG    N7     N 0 Y N -1.8040000200271606   1.093999981880188      -2.4579999446868896
+DG    C5     C 0 Y N -1.1449999809265137   0.4819999933242798     -3.4719998836517334
+DG    C6     C 0 N N -1.3609999418258667   0.37700000405311584    -4.866000175476074
+DG    O6     O 0 N N -2.321000099182129    0.9139999747276306     -5.390999794006348
+DG    N1     N 0 N N -0.4729999899864197   -0.3269999921321869    -5.60099983215332
+DG    C2     C 0 N N 0.5929999947547913    -0.9279999732971191    -5.002999782562256
+DG    N2     N 0 N N 1.4739999771118164    -1.6430000066757202    -5.77400016784668
+DG    N3     N 0 N N 0.8040000200271606    -0.8389999866485596    -3.7090001106262207
+DG    C4     C 0 Y N -0.027000000700354576 -0.15199999511241913   -2.9170000553131104
+DG    HOP3   H 0 N N -2.002000093460083    -1.2029999494552612    6.434999942779541
+DG    HOP2   H 0 N N 0.9129999876022339    -0.5130000114440918    6.113999843597412
+DG    "H5'"  H 0 N N 1.2990000247955322    0.6610000133514404     3.7149999141693115
+DG    "H5''" H 0 N N -0.17000000178813934  1.093000054359436      2.808000087738037
+DG    "H4'"  H 0 N N 1.9210000038146973    -0.9399999976158142    1.878999948501587
+DG    "H3'"  H 0 N N 1.4110000133514404    2.013000011444092      1.2109999656677246
+DG    "HO3'" H 0 N Y 3.7320001125335693    1.9210000038146973     1.1139999628067017
+DG    "H2'"  H 0 N N 2.990000009536743     0.2460000067949295     -0.6650000214576721
+DG    "H2''" H 0 N N 1.8339999914169312    1.559000015258789      -1.0529999732971191
+DG    "H1'"  H 0 N N 1.315999984741211     -1.305999994277954     -0.8730000257492065
+DG    H8     H 0 N N -1.4769999980926514   1.2480000257492065     -0.37299999594688416
+DG    H1     H 0 N N -0.6010000109672546   -0.4129999876022339    -6.559000015258789
+DG    H21    H 0 N N 2.240000009536743     -2.072999954223633     -5.36299991607666
+DG    H22    H 0 N N 1.3289999961853027    -1.722000002861023     -6.730000019073486
+DT    OP3    O 0 N Y -3.9119999408721924   -2.311000108718872     1.6360000371932983
+DT    P      P 0 N N -3.9679999351501465   -1.6649999618530273    3.118000030517578
+DT    OP1    O 0 N N -4.406000137329102    -2.5989999771118164    4.208000183105469
+DT    OP2    O 0 N N -4.901000022888184    -0.36000001430511475   2.9200000762939453
+DT    "O5'"  O 0 N N -2.493000030517578    -1.027999997138977     3.315000057220459
+DT    "C5'"  C 0 N N -2.005000114440918    -0.13600000739097595   2.3269999027252197
+DT    "C4'"  C 0 N N -0.6110000014305115   0.328000009059906      2.7279999256134033
+DT    "O4'"  O 0 N N 0.24699999392032623   -0.8289999961853027    2.7639999389648438
+DT    "C3'"  C 0 N N 0.00800000037997961   1.2860000133514404     1.7200000286102295
+DT    "O3'"  O 0 N N 0.9649999737739563    2.121000051498413      2.368000030517578
+DT    "C2'"  C 0 N N 0.7099999785423279    0.36000001430511475    0.7540000081062317
+DT    "C1'"  C 0 N N 1.156999945640564     -0.777999997138977     1.656999945640564
+DT    N1     N 0 N N 1.1640000343322754    -2.046999931335449     0.9890000224113464
+DT    C2     C 0 N N 2.3329999446868896    -2.5439999103546143    0.37400001287460327
+DT    O2     O 0 N N 3.4100000858306885    -1.9450000524520874    0.3630000054836273
+DT    N3     N 0 N N 2.194000005722046     -3.7929999828338623    -0.23999999463558197
+DT    C4     C 0 N N 1.0470000505447388    -4.570000171661377     -0.30000001192092896
+DT    O4     O 0 N N 0.9950000047683716    -5.663000106811523     -0.8569999933242798
+DT    C5     C 0 N N -0.14300000667572021  -3.9800000190734863    0.36899998784065247
+DT    C7     C 0 N N -1.4199999570846558   -4.756999969482422     0.34700000286102295
+DT    C6     C 0 N N -0.013000000268220901 -2.7839999198913574    0.9580000042915344
+DT    HOP3   H 0 N N -4.684000015258789    -2.822999954223633     1.312999963760376
+DT    HOP2   H 0 N N -5.874000072479248    -0.4749999940395355    2.871000051498413
+DT    "H5'"  H 0 N N -1.9709999561309814   -0.6539999842643738    1.3660000562667847
+DT    "H5''" H 0 N N -2.683000087738037    0.7179999947547913     2.253999948501587
+DT    "H4'"  H 0 N N -0.6439999938011169   0.753000020980835      3.7360000610351562
+DT    "H3'"  H 0 N N -0.722000002861023    1.940999984741211      1.2359999418258667
+DT    "HO3'" H 0 N Y 0.7429999709129333    3.0420000553131104     2.1459999084472656
+DT    "H2'"  H 0 N N -0.003000000026077032 -0.0010000000474974513 0.003000000026077032
+DT    "H2''" H 0 N N 1.555999994277954     0.8180000185966492     0.23199999332427979
+DT    "H1'"  H 0 N N 2.1630001068115234    -0.6039999723434448    2.053999900817871
+DT    H3     H 0 N N 3.0230000019073486    -4.171000003814697     -0.6890000104904175
+DT    H71    H 0 N N -1.7350000143051147   -4.915999889373779     -0.6830000281333923
+DT    H72    H 0 N N -2.194999933242798    -4.208000183105469     0.8809999823570251
+DT    H73    H 0 N N -1.2719999551773071   -5.7210001945495605    0.8330000042915344
+DT    H6     H 0 N N -0.8569999933242798   -2.318000078201294     1.4579999446868896
+50-80 UNK    X 0 N N nan                   nan                    nan
+#

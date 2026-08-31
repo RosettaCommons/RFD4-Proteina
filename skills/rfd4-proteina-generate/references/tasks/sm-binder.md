@@ -8,17 +8,17 @@ ligand; the model designs a protein pocket around it. Back to the
 
 | File | Keys | Notes |
 | --- | --- | --- |
-| `sm_binder.json` | `FAD`, `IAI`, `OQO`, `SAM` | Ligand named via `ligand`, `contig` 150, `select_fixed_atoms: false` (model invents pose/conformer) |
-| `sm_binder_fixed_ligand.json` | — | Ligand pose fixed |
-| `sm_binder_hbonds.json` | — | Adds H-bond donor/acceptor conditioning to the ligand |
-| `rna_sm_aptamer.json` | — | Small-molecule aptamer (nucleic-acid binder) variant |
+| `sm_binder` | `FAD`, `IAI`, `OQO`, `SAM` | Ligand named via `ligand`, `contig` 150, `select_fixed_atoms: false` (model invents pose/conformer) |
+| `sm_binder_fixed_ligand` | — | Ligand pose fixed |
+| `sm_binder_hbonds` | — | Adds H-bond donor/acceptor conditioning to the ligand |
+| `rna_sm_aptamer` | — | Small-molecule aptamer (nucleic-acid binder) variant |
 
 ## Run
 
 ```bash
 # One small-molecule binder target
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/sm_binder.json \
+    inputs=data/benchmarks/sm_binder \
     subset_to_examples=SAM \
     num_replicates=8 batch_size=8 out_dir=./runs/sm_binder \
     metrics_tags='[sm_binder_refolding,interchain_interactions]'
@@ -28,7 +28,7 @@ python src/rfproteina/generate.py \
 
 - **`sm_binder_refolding`** — AF3 refolding + binding metrics.
 - **`interchain_interactions`** — H-bond / pi-stack / salt-bridge etc. adherence
-  and counts; pair with the `sm_binder_hbonds*.json` inputs to score H-bond
+  and counts; pair with the `sm_binder_hbonds` inputs to score H-bond
   adherence to the ligand.
 - Refolding tags need the AF3 container (see **rfd4-proteina-evaluate**).
 
@@ -39,6 +39,6 @@ python src/rfproteina/generate.py \
   the ligand via **rfd4-proteina-inputs**.
 - `select_fixed_atoms: false` means **nothing is coordinate-conditioned** — the
   model invents both the pose and the conformer. Confirm that is intended; fix
-  the pose (`sm_binder_fixed_ligand.json`) if you want the ligand held in place.
+  the pose (`sm_binder_fixed_ligand`) if you want the ligand held in place.
 - PDB-derived ligands frequently arrive with wrong bond orders / missing charges;
   validate with **rfd4-proteina-inputs** before committing compute.

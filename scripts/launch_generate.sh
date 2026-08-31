@@ -69,7 +69,7 @@
 # Examples:
 #   # Parallel inference with 8 jobs
 #   ./launch_generate.sh digs --njobs 8 \
-#       inputs=benchmarks/monomer.json run_name_=my_run
+#       inputs=benchmarks/monomer run_name_=my_run
 #
 #   # Offline validation (Foldseek on by default)
 #   ./launch_generate.sh digs --njobs 8 \

@@ -13,9 +13,7 @@ from rfproteina.metrics.gt_structure_comparison import LigandCentroidDistanceMet
 
 
 def test_ligand_centroid_distance_on_self_is_zero():
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = LigandCentroidDistanceMetric()

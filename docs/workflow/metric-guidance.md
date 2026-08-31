@@ -12,7 +12,7 @@ The repository ships `+guidance=contract_ca` as a dependency-free mechanics test
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     out_dir=./runs/metric-guidance-smoke \
     num_replicates=1 \
     +guidance=contract_ca
@@ -22,7 +22,7 @@ On an interactive DIGS GPU, use the container entry point:
 
 ```bash
 ./src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     out_dir=./runs/metric-guidance-smoke \
     num_replicates=1 \
     +guidance=contract_ca
@@ -32,7 +32,7 @@ For a submitted DIGS job:
 
 ```bash
 ./scripts/launch_generate.sh digs --njobs 1 \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     out_dir=/path/to/runs/metric-guidance-smoke \
     num_replicates=1 \
     +guidance=contract_ca

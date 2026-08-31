@@ -72,7 +72,7 @@ launchers such as `scripts/launch_generate.sh` enter the container for you.
 ```bash
 # 80 designs of each example in a JSON, 8 at a time
 ./src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
 
@@ -255,7 +255,7 @@ high designability, `(0.5, 0.5)` shifts sequences toward the natural UniProt dis
 
 ```bash
 ./src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json out_dir=./runs/diverse \
+    inputs=data/benchmarks/monomer out_dir=./runs/diverse \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
 ```

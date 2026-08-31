@@ -1,0 +1,234 @@
+data_IAI.cif
+#
+_entry.id       IAI.cif
+_entry.author   rib7
+_entry.date     2026-08-28
+_entry.time     19:48:51
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 non-polymer .
+1 polymer     .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       X
+_entity_poly.pdbx_seq_one_letter_code_can   X
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   1
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      150-150
+_entity_poly_seq.num         1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+150-150 150-150 NON-POLYMER ? ? ? ?
+IAI     IAI     NON-POLYMER ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+IAI C1  C2  DOUB Y
+IAI C1  N3  SING Y
+IAI C1  C4  SING N
+IAI C2  C6  SING N
+IAI C2  C7  SING Y
+IAI N3  N5  SING Y
+IAI C10 N3  SING N
+IAI C4  O8  DOUB N
+IAI C4  N9  SING N
+IAI N5  C7  DOUB Y
+IAI C6  O26 DOUB N
+IAI C6  N27 SING N
+IAI C17 N9  SING N
+IAI C11 N12 SING Y
+IAI C11 N13 DOUB Y
+IAI C11 N14 SING Y
+IAI C17 N12 DOUB Y
+IAI C15 N13 SING Y
+IAI C16 N14 SING Y
+IAI C19 N14 SING Y
+IAI C15 C16 DOUB Y
+IAI C15 C20 SING N
+IAI C17 C18 SING Y
+IAI C18 C19 DOUB Y
+IAI C20 C21 DOUB Y
+IAI C20 C22 SING Y
+IAI C21 C24 SING Y
+IAI C22 C23 DOUB Y
+IAI C23 C25 SING Y
+IAI C24 C25 DOUB Y
+IAI N27 C33 SING N
+IAI N28 C29 SING Y
+IAI N28 C30 DOUB Y
+IAI C29 C32 DOUB Y
+IAI C29 C33 SING N
+IAI C30 O31 SING Y
+IAI O31 C32 SING Y
+IAI C10 H1  SING N
+IAI C10 H2  SING N
+IAI C10 H3  SING N
+IAI C16 H4  SING N
+IAI C18 H5  SING N
+IAI C19 H6  SING N
+IAI C21 H7  SING N
+IAI C22 H8  SING N
+IAI C23 H9  SING N
+IAI C24 H10 SING N
+IAI C25 H11 SING N
+IAI C7  H12 SING N
+IAI N9  H13 SING N
+IAI N27 H14 SING N
+IAI C30 H15 SING N
+IAI C32 H16 SING N
+IAI C33 H17 SING N
+IAI C33 H18 SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_index_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_sequence_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X UNK . 150-150 A 1 1   . 1   150-150 A UNK nan   0.0 ? 0 True True  150 1 False False True  150 .   0  nan nan nan 1 1
+HETATM C C10 . IAI     B 0 392 . 392 IAI     B C10 30.52 1.0 ? 0 True False -1  0 True  False False -1  IAI 1  0.0 0.0 0.0 1 2
+HETATM C C11 . IAI     B 0 392 . 392 IAI     B C11 29.67 1.0 ? 0 True False -1  0 True  False False -1  IAI 2  0.0 0.0 0.0 1 3
+HETATM C C15 . IAI     B 0 392 . 392 IAI     B C15 27.82 1.0 ? 0 True False -1  0 True  False False -1  IAI 3  0.0 0.0 0.0 1 4
+HETATM C C16 . IAI     B 0 392 . 392 IAI     B C16 27.67 1.0 ? 0 True False -1  0 True  False False -1  IAI 4  0.0 0.0 0.0 1 5
+HETATM C C17 . IAI     B 0 392 . 392 IAI     B C17 28.14 1.0 ? 0 True False -1  0 True  False False -1  IAI 5  0.0 0.0 0.0 1 6
+HETATM C C18 . IAI     B 0 392 . 392 IAI     B C18 28.55 1.0 ? 0 True False -1  0 True  False False -1  IAI 6  0.0 0.0 0.0 1 7
+HETATM C C19 . IAI     B 0 392 . 392 IAI     B C19 23.2  1.0 ? 0 True False -1  0 True  False False -1  IAI 7  0.0 0.0 0.0 1 8
+HETATM C C20 . IAI     B 0 392 . 392 IAI     B C20 35.41 1.0 ? 0 True False -1  0 True  False False -1  IAI 8  0.0 0.0 0.0 1 9
+HETATM C C21 . IAI     B 0 392 . 392 IAI     B C21 36.0  1.0 ? 0 True False -1  0 True  False False -1  IAI 9  0.0 0.0 0.0 1 10
+HETATM C C22 . IAI     B 0 392 . 392 IAI     B C22 35.48 1.0 ? 0 True False -1  0 True  False False -1  IAI 10 0.0 0.0 0.0 1 11
+HETATM C C23 . IAI     B 0 392 . 392 IAI     B C23 41.01 1.0 ? 0 True False -1  0 True  False False -1  IAI 11 0.0 0.0 0.0 1 12
+HETATM C C24 . IAI     B 0 392 . 392 IAI     B C24 30.78 1.0 ? 0 True False -1  0 True  False False -1  IAI 12 0.0 0.0 0.0 1 13
+HETATM C C25 . IAI     B 0 392 . 392 IAI     B C25 43.0  1.0 ? 0 True False -1  0 True  False False -1  IAI 13 0.0 0.0 0.0 1 14
+HETATM C C1  . IAI     B 0 392 . 392 IAI     B C1  30.32 1.0 ? 0 True False -1  0 True  False False -1  IAI 14 0.0 0.0 0.0 1 15
+HETATM C C2  . IAI     B 0 392 . 392 IAI     B C2  30.3  1.0 ? 0 True False -1  0 True  False False -1  IAI 15 0.0 0.0 0.0 1 16
+HETATM N N3  . IAI     B 0 392 . 392 IAI     B N3  31.07 1.0 ? 0 True False -1  0 True  False False -1  IAI 16 0.0 0.0 0.0 1 17
+HETATM C C4  . IAI     B 0 392 . 392 IAI     B C4  30.82 1.0 ? 0 True False -1  0 True  False False -1  IAI 17 0.0 0.0 0.0 1 18
+HETATM N N5  . IAI     B 0 392 . 392 IAI     B N5  28.55 1.0 ? 2 True False -1  0 True  False False -1  IAI 18 0.0 0.0 0.0 1 19
+HETATM C C6  . IAI     B 0 392 . 392 IAI     B C6  25.49 1.0 ? 0 True False -1  0 True  False False -1  IAI 19 0.0 0.0 0.0 1 20
+HETATM C C7  . IAI     B 0 392 . 392 IAI     B C7  26.22 1.0 ? 0 True False -1  0 True  False False -1  IAI 20 0.0 0.0 0.0 1 21
+HETATM O O8  . IAI     B 0 392 . 392 IAI     B O8  32.99 1.0 ? 2 True False -1  0 True  False False -1  IAI 21 0.0 0.0 0.0 1 22
+HETATM N N9  . IAI     B 0 392 . 392 IAI     B N9  27.0  1.0 ? 1 True False -1  0 True  False False -1  IAI 22 0.0 0.0 0.0 1 23
+HETATM N N12 . IAI     B 0 392 . 392 IAI     B N12 28.56 1.0 ? 2 True False -1  0 True  False False -1  IAI 23 0.0 0.0 0.0 1 24
+HETATM N N13 . IAI     B 0 392 . 392 IAI     B N13 29.56 1.0 ? 2 True False -1  0 True  False False -1  IAI 24 0.0 0.0 0.0 1 25
+HETATM N N14 . IAI     B 0 392 . 392 IAI     B N14 28.28 1.0 ? 0 True False -1  0 True  False False -1  IAI 25 0.0 0.0 0.0 1 26
+HETATM O O26 . IAI     B 0 392 . 392 IAI     B O26 26.53 1.0 ? 0 True False -1  0 True  False False -1  IAI 26 0.0 0.0 0.0 1 27
+HETATM N N27 . IAI     B 0 392 . 392 IAI     B N27 23.74 1.0 ? 1 True False -1  0 True  False False -1  IAI 27 0.0 0.0 0.0 1 28
+HETATM N N28 . IAI     B 0 392 . 392 IAI     B N28 30.22 1.0 ? 2 True False -1  0 True  False False -1  IAI 28 0.0 0.0 0.0 1 29
+HETATM C C29 . IAI     B 0 392 . 392 IAI     B C29 25.58 1.0 ? 0 True False -1  0 True  False False -1  IAI 29 0.0 0.0 0.0 1 30
+HETATM C C30 . IAI     B 0 392 . 392 IAI     B C30 29.36 1.0 ? 0 True False -1  0 True  False False -1  IAI 30 0.0 0.0 0.0 1 31
+HETATM O O31 . IAI     B 0 392 . 392 IAI     B O31 31.68 1.0 ? 2 True False -1  0 True  False False -1  IAI 31 0.0 0.0 0.0 1 32
+HETATM C C32 . IAI     B 0 392 . 392 IAI     B C32 27.95 1.0 ? 0 True False -1  0 True  False False -1  IAI 32 0.0 0.0 0.0 1 33
+HETATM C C33 . IAI     B 0 392 . 392 IAI     B C33 28.81 1.0 ? 0 True False -1  0 True  False False -1  IAI 33 0.0 0.0 0.0 1 34
+#
+_rfd_design.sampled_contig   150-150
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+IAI     C10 C 0 N N -1.7580000162124634  4.679999828338623     1.1699999570846558
+IAI     C11 C 0 Y N 3.0269999504089355   0.49799999594688416   -0.31700000166893005
+IAI     C15 C 0 Y N 4.986000061035156    -0.4440000057220459   -0.2280000001192093
+IAI     C16 C 0 Y N 4.9029998779296875   0.17599999904632568   -1.4359999895095825
+IAI     C17 C 0 Y N 1.1670000553131104   1.684999942779541     -1.0140000581741333
+IAI     C18 C 0 Y N 1.8029999732971191   1.9780000448226929    -2.239000082015991
+IAI     C19 C 0 Y N 3.055999994277954    1.5219999551773071    -2.4579999446868896
+IAI     C20 C 0 Y N 6.1479997634887695   -1.2209999561309814   0.2720000147819519
+IAI     C21 C 0 Y N 6.104000091552734    -1.809000015258789    1.534999966621399
+IAI     C22 C 0 Y N 7.283999919891357    -1.36899995803833     -0.5210000276565552
+IAI     C23 C 0 Y N 8.361000061035156    -2.0920000076293945   -0.050999999046325684
+IAI     C24 C 0 Y N 7.186999797821045    -2.5299999713897705   1.9950000047683716
+IAI     C25 C 0 Y N 8.314000129699707    -2.6700000762939453   1.2050000429153442
+IAI     C1  C 0 Y N -2.132999897003174   2.257999897003174     0.6050000190734863
+IAI     C2  C 0 Y N -3.249000072479248   1.4299999475479126    0.4970000088214874
+IAI     N3  N 0 Y N -2.5859999656677246  3.492000102996826     0.9480000138282776
+IAI     C4  C 0 N N -0.7269999980926514  1.8669999837875366    0.39399999380111694
+IAI     N5  N 0 Y N -3.9800000190734863  3.431999921798706     1.0520000457763672
+IAI     C6  C 0 N N -3.246000051498413   -0.004999999888241291 0.14300000667572021
+IAI     C7  C 0 Y N -4.377999782562256   2.2149999141693115    0.7860000133514404
+IAI     O8  O 0 N N -0.11699999868869781 1.2929999828338623    1.2760000228881836
+IAI     N9  N 0 N N -0.11800000071525574 2.1449999809265137    -0.7749999761581421
+IAI     N12 N 0 Y N 1.7879999876022339   0.9639999866485596    -0.10000000149011612
+IAI     N13 N 0 Y N 3.8359999656677246   -0.2329999953508377   0.4359999895095825
+IAI     N14 N 0 Y N 3.671999931335449    0.7720000147819519    -1.496000051498413
+IAI     O26 O 0 N N -2.196000099182129   -0.5720000267028809   -0.0860000029206276
+IAI     N27 N 0 N N -4.4079999923706055  -0.6840000152587891   0.07500000298023224
+IAI     N28 N 0 Y N -6.506999969482422   -3.069999933242798    0.7850000262260437
+IAI     C29 C 0 Y N -5.820000171661377   -2.625999927520752    -0.28200000524520874
+IAI     C30 C 0 Y N -7.695000171661377   -3.436000108718872    0.39399999380111694
+IAI     O31 O 0 Y N -7.794000148773193   -3.234999895095825    -0.9269999861717224
+IAI     C32 C 0 Y N -6.622000217437744   -2.7269999980926514   -1.3550000190734863
+IAI     C33 C 0 N N -4.40500020980835    -2.1070001125335693   -0.2750000059604645
+IAI     H1  H 0 N N -1.5640000104904175  5.171000003814697     0.2160000056028366
+IAI     H2  H 0 N N -2.2820000648498535  5.36899995803833      1.8320000171661377
+IAI     H3  H 0 N N -0.8140000104904175  4.385000228881836     1.6260000467300415
+IAI     H4  H 0 N N 5.664000034332275    0.19499999284744263   -2.2019999027252197
+IAI     H5  H 0 N N 1.2929999828338623   2.559000015258789     -2.993000030517578
+IAI     H6  H 0 N N 3.559999942779541    1.7359999418258667    -3.390000104904175
+IAI     H7  H 0 N N 5.224999904632568    -1.7009999752044678   2.1519999504089355
+IAI     H8  H 0 N N 7.321000099182129    -0.9190000295639038   -1.5019999742507935
+IAI     H9  H 0 N N 9.241999626159668    -2.2079999446868896   -0.6650000214576721
+IAI     H10 H 0 N N 7.15500020980835     -2.986999988555908    2.9730000495910645
+IAI     H11 H 0 N N 9.159000396728516    -3.2360000610351562   1.569000005722046
+IAI     H12 H 0 N N -5.4019999504089355  1.871000051498413     0.7879999876022339
+IAI     H13 H 0 N N -0.5799999833106995  2.6679999828338623    -1.4500000476837158
+IAI     H14 H 0 N N -5.245999813079834   -0.23199999332427979  0.257999986410141
+IAI     H15 H 0 N N -8.470999717712402   -3.8359999656677246   1.0290000438690186
+IAI     H16 H 0 N N -6.373000144958496   -2.453000068664551    -2.369999885559082
+IAI     H17 H 0 N N -3.9660000801086426  -2.236999988555908    -1.2640000581741333
+IAI     H18 H 0 N N -3.819000005722046   -2.6610000133514404   0.4580000042915344
+150-150 UNK X 0 N N nan                  nan                   nan
+#

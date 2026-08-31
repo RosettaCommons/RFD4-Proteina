@@ -7,11 +7,10 @@ defaults:
   - _self_
 
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40_fixed_ligand.json
-  name: mcsa_subset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40_fixed_ligand
   subset_to_keys:
     # easy
     - M0664_2dhn

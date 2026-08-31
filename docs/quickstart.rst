@@ -84,7 +84,7 @@ Generate a design
    .. code-block:: bash
 
       ./src/rfproteina/generate.py \
-          inputs=data/benchmarks/monomer.json \
+          inputs=data/benchmarks/monomer \
           num_replicates=1 \
           out_dir=./runs/smoke
 
@@ -96,7 +96,7 @@ Generate an unconditional protein design:
 .. code-block:: bash
 
    python src/rfproteina/generate.py \
-       inputs=data/benchmarks/monomer.json \
+       inputs=data/benchmarks/monomer \
        num_replicates=1 \
        out_dir=./runs/smoke
 
@@ -105,7 +105,7 @@ Generated CIFs and per-design metadata land under
 land separately under ``./runs/smoke/inference_metrics/``.
 
 Watch out for one thing here. ``num_replicates`` counts *per example*, not in
-total. ``monomer.json`` holds three examples, ``monomer-short`` at 100 residues,
+total. ``monomer`` holds three examples, ``monomer-short`` at 100 residues,
 ``monomer-medium`` at 150, and ``monomer-long`` at 250. So ``num_replicates=1``
 gives you **three** designs, one of each length. Point ``inputs`` at a file with
 a single example, or pass ``num_replicates=N`` to get ``3 × N`` designs.

@@ -9,16 +9,16 @@ conditioning; the model designs the surrounding scaffold. Back to the
 
 | File | Notes |
 | --- | --- |
-| `motif_scaffold_aa_tasks_indexed.json` | Indexed-motif variants (keys like `1PRW_AA`, `1BCF_AA`, `1YCR_AA`) |
-| `motif_scaffold_aa_tasks_unindexed.json` | Unindexed-motif variants (model chooses chain position) |
-| `motif_scaffold_aa_tasks_indexed_internal_coords.json` | Internal-coordinate groups (motif's internal geometry without fixing where it sits) |
+| `motif_indexed` | Indexed-motif variants (keys like `1PRW_AA`, `1BCF_AA`, `1YCR_AA`) |
+| `motif_unindexed` | Unindexed-motif variants (model chooses chain position) |
+| `motif_indexed_internal_coords` | Internal-coordinate groups (motif's internal geometry without fixing where it sits) |
 
 ## Run
 
 ```bash
 # One indexed motif-scaffold task
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/motif_scaffold_aa_tasks_indexed.json \
+    inputs=data/benchmarks/motif_indexed \
     subset_to_examples=1PRW_AA \
     num_replicates=8 batch_size=8 out_dir=./runs/motif \
     metrics_tags='[motif_scaffold_refolding,3d_coordinate_conditioning]'

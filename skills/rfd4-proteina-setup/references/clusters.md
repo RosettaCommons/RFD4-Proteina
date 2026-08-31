@@ -35,7 +35,7 @@ Example:
 
 ```bash
 ./scripts/launch_generate.sh digs --njobs 8 \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     run_name_=my_run \
     out_dir=/lustre/.../my_run
 ```

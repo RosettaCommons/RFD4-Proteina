@@ -1,11 +1,10 @@
 compute_loss: true
 
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
   # Required parameters for each inheriting dataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffold_aa_tasks_indexed_internal_coords.json  
-  name: indexed_motif_scaffold_full
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/motif_indexed_internal_coords
   
   num_replicates: 100
 

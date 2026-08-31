@@ -2,8 +2,8 @@ data_M0375_4ts9.cif
 #
 _entry.id       M0375_4ts9.cif
 _entry.author   rib7
-_entry.date     2026-04-18
-_entry.time     15:02:43
+_entry.date     2026-08-28
+_entry.time     20:38:37
 #
 loop_
 _entity.id 
@@ -11,91 +11,170 @@ _entity.type
 _entity.pdbx_description 
 0 polymer     .
 1 non-polymer .
-2 polymer     .
+2 non-polymer .
 #
-loop_
-_entity_poly.entity_id 
-_entity_poly.type 
-_entity_poly.nstd_linkage 
-_entity_poly.nstd_monomer 
-_entity_poly.pdbx_seq_one_letter_code 
-_entity_poly.pdbx_seq_one_letter_code_can 
-_entity_poly.pdbx_strand_id 
-_entity_poly.pdbx_target_identifier 
-0 polypeptide(L) no no GRRSDR GRRSDR A ?
-2 polypeptide(L) no no R      R      C ?
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       XGRRSDRR
+_entity_poly.pdbx_seq_one_letter_code_can   XGRRSDRR
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
 #
 loop_
 _entity_poly_seq.entity_id 
 _entity_poly_seq.hetero 
 _entity_poly_seq.mon_id 
 _entity_poly_seq.num 
-0 n GLY 20
-0 n ARG 24
-0 n ARG 87
-0 n SER 90
-0 n ASP 204
-0 n ARG 217
-2 n ARG 43
+0 n 180-180 0
+0 n GLY     1
+0 n ARG     2
+0 n ARG     3
+0 n SER     4
+0 n ASP     5
+0 n ARG     6
+0 n ARG     7
 #
 loop_
-_chem_comp_bond.pdbx_ordinal 
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+180-180 180-180 NON-POLYMER         ? ? ? ?
+ARG     ARG     'L-PEPTIDE LINKING' ? ? ? ?
+ASP     ASP     'L-PEPTIDE LINKING' ? ? ? ?
+FMC     FMC     NON-POLYMER         ? ? ? ?
+GLY     GLY     'PEPTIDE LINKING'   ? ? ? ?
+PO4     PO4     NON-POLYMER         ? ? ? ?
+SER     SER     'L-PEPTIDE LINKING' ? ? ? ?
+#
+_struct_conn.id                        1
+_struct_conn.conn_type_id              covale
+_struct_conn.pdbx_value_order          sing
+_struct_conn.ptnr1_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr1_label_comp_id       180-180
+_struct_conn.ptnr2_label_comp_id       GLY
+_struct_conn.ptnr1_label_seq_id        0
+_struct_conn.ptnr2_label_seq_id        1
+_struct_conn.ptnr1_label_atom_id       UNK
+_struct_conn.ptnr2_label_atom_id       N
+_struct_conn.pdbx_ptnr1_PDB_ins_code   .
+_struct_conn.pdbx_ptnr2_PDB_ins_code   .
+_struct_conn.ptnr1_transformation_id   1
+_struct_conn.ptnr2_transformation_id   1
+#
+loop_
 _chem_comp_bond.comp_id 
 _chem_comp_bond.atom_id_1 
 _chem_comp_bond.atom_id_2 
 _chem_comp_bond.value_order 
 _chem_comp_bond.pdbx_aromatic_flag 
-_chem_comp_bond.pdbx_stereo_config 
-1  GLY N     CA    SING N ?
-2  GLY CA    C     SING N ?
-3  GLY C     O     DOUB N ?
-4  ARG N     CA    SING N ?
-5  ARG CA    C     SING N ?
-6  ARG CA    CB    SING N ?
-7  ARG C     O     DOUB N ?
-8  ARG CB    CG    SING N ?
-9  ARG CG    CD    SING N ?
-10 ARG CD    NE    SING N ?
-11 ARG NE    CZ    SING N ?
-12 ARG CZ    NH1   SING N ?
-13 ARG CZ    NH2   DOUB N ?
-14 SER N     CA    SING N ?
-15 SER CA    C     SING N ?
-16 SER CA    CB    SING N ?
-17 SER C     O     DOUB N ?
-18 SER CB    OG    SING N ?
-19 ASP N     CA    SING N ?
-20 ASP CA    C     SING N ?
-21 ASP CA    CB    SING N ?
-22 ASP C     O     DOUB N ?
-23 ASP CB    CG    SING N ?
-24 ASP CG    OD1   DOUB N ?
-25 ASP CG    OD2   SING N ?
-26 FMC N1    C2    DOUB Y ?
-27 FMC N1    C6    SING Y ?
-28 FMC C2    N3    SING Y ?
-29 FMC N3    C4    DOUB Y ?
-30 FMC C4    C5    SING Y ?
-31 FMC C4    C9    SING Y ?
-32 FMC C5    C6    DOUB Y ?
-33 FMC C5    N7    SING Y ?
-34 FMC C6    N6    SING N ?
-35 FMC N7    N8    SING Y ?
-36 FMC N8    C9    DOUB Y ?
-37 FMC C9    "C1'" SING N ?
-38 FMC "C1'" "C2'" SING N ?
-39 FMC "C1'" "O4'" SING N ?
-40 FMC "C2'" "O2'" SING N ?
-41 FMC "C2'" "C3'" SING N ?
-42 FMC "C3'" "O3'" SING N ?
-43 FMC "C3'" "C4'" SING N ?
-44 FMC "C4'" "O4'" SING N ?
-45 FMC "C4'" "C5'" SING N ?
-46 FMC "C5'" "O5'" SING N ?
-47 PO4 P     O1    DOUB N ?
-48 PO4 P     O2    SING N ?
-49 PO4 P     O3    SING N ?
-50 PO4 P     O4    SING N ?
+ARG N     CA     SING N
+ARG N     H      SING N
+ARG N     H2     SING N
+ARG CA    C      SING N
+ARG CA    CB     SING N
+ARG CA    HA     SING N
+ARG C     O      DOUB N
+ARG C     OXT    SING N
+ARG CB    CG     SING N
+ARG CB    HB2    SING N
+ARG CB    HB3    SING N
+ARG CG    CD     SING N
+ARG CG    HG2    SING N
+ARG CG    HG3    SING N
+ARG CD    NE     SING N
+ARG CD    HD2    SING N
+ARG CD    HD3    SING N
+ARG NE    CZ     SING N
+ARG NE    HE     SING N
+ARG CZ    NH1    SING N
+ARG CZ    NH2    DOUB N
+ARG NH1   HH11   SING N
+ARG NH1   HH12   SING N
+ARG NH2   HH21   SING N
+ARG NH2   HH22   SING N
+ARG OXT   HXT    SING N
+ASP N     CA     SING N
+ASP N     H      SING N
+ASP N     H2     SING N
+ASP CA    C      SING N
+ASP CA    CB     SING N
+ASP CA    HA     SING N
+ASP C     O      DOUB N
+ASP C     OXT    SING N
+ASP CB    CG     SING N
+ASP CB    HB2    SING N
+ASP CB    HB3    SING N
+ASP CG    OD1    DOUB N
+ASP CG    OD2    SING N
+ASP OD2   HD2    SING N
+ASP OXT   HXT    SING N
+FMC N1    C2     DOUB Y
+FMC N1    C6     SING Y
+FMC C2    N3     SING Y
+FMC C2    H2     SING N
+FMC N3    C4     DOUB Y
+FMC C4    C5     SING Y
+FMC C4    C9     SING Y
+FMC C5    C6     DOUB Y
+FMC C5    N7     SING Y
+FMC C6    N6     SING N
+FMC N6    HN6    SING N
+FMC N6    HN6A   SING N
+FMC N7    N8     SING Y
+FMC N7    HN7    SING N
+FMC N8    C9     DOUB Y
+FMC C9    "C1'"  SING N
+FMC "C1'" "C2'"  SING N
+FMC "C1'" "O4'"  SING N
+FMC "C1'" "H1'"  SING N
+FMC "C2'" "O2'"  SING N
+FMC "C2'" "C3'"  SING N
+FMC "C2'" "H2'"  SING N
+FMC "O2'" "HO2'" SING N
+FMC "C3'" "O3'"  SING N
+FMC "C3'" "C4'"  SING N
+FMC "C3'" "H3'"  SING N
+FMC "O3'" "HO3'" SING N
+FMC "C4'" "O4'"  SING N
+FMC "C4'" "C5'"  SING N
+FMC "C4'" "H4'"  SING N
+FMC "C5'" "O5'"  SING N
+FMC "C5'" "H5'"  SING N
+FMC "C5'" "H5'A" SING N
+FMC "O5'" "HO5'" SING N
+GLY N     CA     SING N
+GLY N     H      SING N
+GLY N     H2     SING N
+GLY CA    C      SING N
+GLY CA    HA2    SING N
+GLY CA    HA3    SING N
+GLY C     O      DOUB N
+GLY C     OXT    SING N
+GLY OXT   HXT    SING N
+PO4 P     O1     DOUB N
+PO4 P     O2     SING N
+PO4 P     O3     SING N
+PO4 P     O4     SING N
+SER N     CA     SING N
+SER N     H      SING N
+SER N     H2     SING N
+SER CA    C      SING N
+SER CA    CB     SING N
+SER CA    HA     SING N
+SER C     O      DOUB N
+SER C     OXT    SING N
+SER CB    OG     SING N
+SER CB    HB2    SING N
+SER CB    HB3    SING N
+SER OG    HG     SING N
+SER OXT   HXT    SING N
 #
 loop_
 _atom_site.group_PDB 
@@ -114,98 +193,182 @@ _atom_site.auth_atom_id
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.rcsb_res_id 
-_atom_site.rcsb_chain_id 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.condition_index-group_1_token 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
 _atom_site.id 
-ATOM   N N     . GLY A 0 20  . 20  GLY A N     0.0 1.0 ?  20  A 0  3.579  -0.945 4.103   1 1
-ATOM   C CA    . GLY A 0 20  . 20  GLY A CA    0.0 1.0 ?  20  A 1  3.388  0.422  4.556   1 2
-ATOM   C C     . GLY A 0 20  . 20  GLY A C     0.0 1.0 ?  20  A 2  2.417  0.5    5.726   1 3
-ATOM   O O     . GLY A 0 20  . 20  GLY A O     0.0 1.0 ?  20  A 3  2.578  1.313  6.635   1 4
-ATOM   N N     . ARG A 0 24  . 24  ARG A N     0.0 1.0 ?  24  A 4  -1.444 -4.239 8.265   1 5
-ATOM   C CA    . ARG A 0 24  . 24  ARG A CA    0.0 1.0 ?  24  A 5  -1.057 -5.359 7.409   1 6
-ATOM   C C     . ARG A 0 24  . 24  ARG A C     0.0 1.0 ?  24  A 6  0.09   -6.129 8.051   1 7
-ATOM   O O     . ARG A 0 24  . 24  ARG A O     0.0 1.0 ?  24  A 7  0.185  -7.341 7.921   1 8
-ATOM   C CB    . ARG A 0 24  . 24  ARG A CB    0.0 1.0 ?  24  A 8  -0.656 -4.885 6.01    1 9
-ATOM   C CG    . ARG A 0 24  . 24  ARG A CG    0.0 1.0 ?  24  A 9  -0.62  -6.008 4.981   1 10
-ATOM   C CD    . ARG A 0 24  . 24  ARG A CD    0.0 1.0 ?  24  A 10 -0.001 -5.538 3.673   1 11
-ATOM   N NE    . ARG A 0 24  . 24  ARG A NE    0.0 1.0 ?  24  A 11 -0.623 -4.306 3.199   1 12
-ATOM   C CZ    . ARG A 0 24  . 24  ARG A CZ    0.0 1.0 ?  24  A 12 -0.033 -3.454 2.369   1 13
-ATOM   N NH1   . ARG A 0 24  . 24  ARG A NH1   0.0 1.0 ?  24  A 13 1.189  -3.713 1.916   1 14
-ATOM   N NH2   . ARG A 0 24  . 24  ARG A NH2   0.0 1.0 +1 24  A 14 -0.664 -2.35  1.991   1 15
-ATOM   N N     . ARG A 0 87  . 87  ARG A N     0.0 1.0 ?  87  A 15 10.407 -5.028 1.471   1 16
-ATOM   C CA    . ARG A 0 87  . 87  ARG A CA    0.0 1.0 ?  87  A 16 9.17   -4.266 1.45    1 17
-ATOM   C C     . ARG A 0 87  . 87  ARG A C     0.0 1.0 ?  87  A 17 8.119  -5.093 0.726   1 18
-ATOM   O O     . ARG A 0 87  . 87  ARG A O     0.0 1.0 ?  87  A 18 8.378  -5.649 -0.352  1 19
-ATOM   C CB    . ARG A 0 87  . 87  ARG A CB    0.0 1.0 ?  87  A 19 9.377  -2.907 0.762   1 20
-ATOM   C CG    . ARG A 0 87  . 87  ARG A CG    0.0 1.0 ?  87  A 20 8.084  -2.174 0.451   1 21
-ATOM   C CD    . ARG A 0 87  . 87  ARG A CD    0.0 1.0 ?  87  A 21 8.337  -0.743 -0.071  1 22
-ATOM   N NE    . ARG A 0 87  . 87  ARG A NE    0.0 1.0 ?  87  A 22 7.317  -0.359 -1.039  1 23
-ATOM   C CZ    . ARG A 0 87  . 87  ARG A CZ    0.0 1.0 ?  87  A 23 6.044  -0.163 -0.737  1 24
-ATOM   N NH1   . ARG A 0 87  . 87  ARG A NH1   0.0 1.0 ?  87  A 24 5.618  -0.318 0.522   1 25
-ATOM   N NH2   . ARG A 0 87  . 87  ARG A NH2   0.0 1.0 +1 87  A 25 5.178  0.155  -1.692  1 26
-ATOM   N N     . SER A 0 90  . 90  SER A N     0.0 1.0 ?  90  A 26 1.896  -2.316 -2.038  1 27
-ATOM   C CA    . SER A 0 90  . 90  SER A CA    0.0 1.0 ?  90  A 27 0.91   -1.992 -3.065  1 28
-ATOM   C C     . SER A 0 90  . 90  SER A C     0.0 1.0 ?  90  A 28 1.505  -1.013 -4.075  1 29
-ATOM   O O     . SER A 0 90  . 90  SER A O     0.0 1.0 ?  90  A 29 2.374  -0.214 -3.725  1 30
-ATOM   C CB    . SER A 0 90  . 90  SER A CB    0.0 1.0 ?  90  A 30 -0.319 -1.33  -2.426  1 31
-ATOM   O OG    . SER A 0 90  . 90  SER A OG    0.0 1.0 ?  90  A 31 -0.778 -2.033 -1.285  1 32
-ATOM   N N     . ASP A 0 204 . 204 ASP A N     0.0 1.0 ?  204 A 32 -4.182 -0.939 -7.786  1 33
-ATOM   C CA    . ASP A 0 204 . 204 ASP A CA    0.0 1.0 ?  204 A 33 -5.025 -0.05  -8.57   1 34
-ATOM   C C     . ASP A 0 204 . 204 ASP A C     0.0 1.0 ?  204 A 34 -4.4   0.198  -9.933  1 35
-ATOM   O O     . ASP A 0 204 . 204 ASP A O     0.0 1.0 ?  204 A 35 -3.204 -0.041 -10.143 1 36
-ATOM   C CB    . ASP A 0 204 . 204 ASP A CB    0.0 1.0 ?  204 A 36 -5.272 1.272  -7.831  1 37
-ATOM   C CG    . ASP A 0 204 . 204 ASP A CG    0.0 1.0 ?  204 A 37 -3.985 2.017  -7.509  1 38
-ATOM   O OD1   . ASP A 0 204 . 204 ASP A OD1   0.0 1.0 ?  204 A 38 -3.284 1.617  -6.552  1 39
-ATOM   O OD2   . ASP A 0 204 . 204 ASP A OD2   0.0 1.0 ?  204 A 39 -3.69  3.01   -8.205  1 40
-ATOM   N N     . ARG A 0 217 . 217 ARG A N     0.0 1.0 ?  217 A 40 -6.404 -4.341 0.749   1 41
-ATOM   C CA    . ARG A 0 217 . 217 ARG A CA    0.0 1.0 ?  217 A 41 -4.96  -4.127 0.817   1 42
-ATOM   C C     . ARG A 0 217 . 217 ARG A C     0.0 1.0 ?  217 A 42 -4.39  -4.597 2.149   1 43
-ATOM   O O     . ARG A 0 217 . 217 ARG A O     0.0 1.0 ?  217 A 43 -3.26  -5.087 2.221   1 44
-ATOM   C CB    . ARG A 0 217 . 217 ARG A CB    0.0 1.0 ?  217 A 44 -4.641 -2.645 0.604   1 45
-ATOM   C CG    . ARG A 0 217 . 217 ARG A CG    0.0 1.0 ?  217 A 45 -5.057 -2.134 -0.766  1 46
-ATOM   C CD    . ARG A 0 217 . 217 ARG A CD    0.0 1.0 ?  217 A 46 -5.246 -0.623 -0.796  1 47
-ATOM   N NE    . ARG A 0 217 . 217 ARG A NE    0.0 1.0 ?  217 A 47 -6.131 -0.228 -1.891  1 48
-ATOM   C CZ    . ARG A 0 217 . 217 ARG A CZ    0.0 1.0 ?  217 A 48 -5.915 0.799  -2.707  1 49
-ATOM   N NH1   . ARG A 0 217 . 217 ARG A NH1   0.0 1.0 ?  217 A 49 -4.836 1.556  -2.562  1 50
-ATOM   N NH2   . ARG A 0 217 . 217 ARG A NH2   0.0 1.0 +1 217 A 50 -6.783 1.071  -3.673  1 51
-ATOM   N N     . ARG C 2 43  . 43  ARG C N     0.0 1.0 ?  43  C 51 -5.173 2.148  8.078   1 52
-ATOM   C CA    . ARG C 2 43  . 43  ARG C CA    0.0 1.0 ?  43  C 52 -3.719 2.182  8.293   1 53
-ATOM   C C     . ARG C 2 43  . 43  ARG C C     0.0 1.0 ?  43  C 53 -3.34  2.617  9.708   1 54
-ATOM   O O     . ARG C 2 43  . 43  ARG C O     0.0 1.0 ?  43  C 54 -2.212 3.037  9.962   1 55
-ATOM   C CB    . ARG C 2 43  . 43  ARG C CB    0.0 1.0 ?  43  C 55 -3.014 3.054  7.235   1 56
-ATOM   C CG    . ARG C 2 43  . 43  ARG C CG    0.0 1.0 ?  43  C 56 -3.075 2.457  5.831   1 57
-ATOM   C CD    . ARG C 2 43  . 43  ARG C CD    0.0 1.0 ?  43  C 57 -2.584 3.43   4.747   1 58
-ATOM   N NE    . ARG C 2 43  . 43  ARG C NE    0.0 1.0 ?  43  C 58 -2.608 2.801  3.425   1 59
-ATOM   C CZ    . ARG C 2 43  . 43  ARG C CZ    0.0 1.0 ?  43  C 59 -1.576 2.17   2.873   1 60
-ATOM   N NH1   . ARG C 2 43  . 43  ARG C NH1   0.0 1.0 ?  43  C 60 -0.418 2.086  3.52    1 61
-ATOM   N NH2   . ARG C 2 43  . 43  ARG C NH2   0.0 1.0 +1 43  C 61 -1.701 1.621  1.672   1 62
-HETATM N N1    . FMC B 1 300 . 300 FMC B N1    0.0 1.0 ?  300 D 62 0.446  5.67   -6.34   1 63
-HETATM C C2    . FMC B 1 300 . 300 FMC B C2    0.0 1.0 ?  300 D 63 1.348  5.8    -5.337  1 64
-HETATM N N3    . FMC B 1 300 . 300 FMC B N3    0.0 1.0 ?  300 D 64 1.468  4.944  -4.308  1 65
-HETATM C C4    . FMC B 1 300 . 300 FMC B C4    0.0 1.0 ?  300 D 65 0.644  3.869  -4.245  1 66
-HETATM C C5    . FMC B 1 300 . 300 FMC B C5    0.0 1.0 ?  300 D 66 -0.361 3.641  -5.299  1 67
-HETATM C C6    . FMC B 1 300 . 300 FMC B C6    0.0 1.0 ?  300 D 67 -0.425 4.637  -6.388  1 68
-HETATM N N6    . FMC B 1 300 . 300 FMC B N6    0.0 1.0 ?  300 D 68 -1.328 4.508  -7.394  1 69
-HETATM N N7    . FMC B 1 300 . 300 FMC B N7    0.0 1.0 ?  300 D 69 -1.028 2.515  -4.995  1 70
-HETATM N N8    . FMC B 1 300 . 300 FMC B N8    0.0 1.0 ?  300 D 70 -0.525 1.967  -3.8    1 71
-HETATM C C9    . FMC B 1 300 . 300 FMC B C9    0.0 1.0 ?  300 D 71 0.481  2.728  -3.301  1 72
-HETATM C "C1'" . FMC B 1 300 . 300 FMC B "C1'" 0.0 1.0 ?  300 D 72 1.279  2.531  -2.046  1 73
-HETATM C "C2'" . FMC B 1 300 . 300 FMC B "C2'" 0.0 1.0 ?  300 D 73 2.351  3.594  -1.723  1 74
-HETATM O "O2'" . FMC B 1 300 . 300 FMC B "O2'" 0.0 1.0 ?  300 D 74 3.636  3.017  -1.722  1 75
-HETATM C "C3'" . FMC B 1 300 . 300 FMC B "C3'" 0.0 1.0 ?  300 D 75 1.939  4.147  -0.352  1 76
-HETATM O "O3'" . FMC B 1 300 . 300 FMC B "O3'" 0.0 1.0 ?  300 D 76 2.669  3.496  0.688   1 77
-HETATM C "C4'" . FMC B 1 300 . 300 FMC B "C4'" 0.0 1.0 ?  300 D 77 0.466  3.805  -0.253  1 78
-HETATM O "O4'" . FMC B 1 300 . 300 FMC B "O4'" 0.0 1.0 ?  300 D 78 0.272  2.623  -1.056  1 79
-HETATM C "C5'" . FMC B 1 300 . 300 FMC B "C5'" 0.0 1.0 ?  300 D 79 -0.486 4.874  -0.731  1 80
-HETATM O "O5'" . FMC B 1 300 . 300 FMC B "O5'" 0.0 1.0 ?  300 D 80 -1.801 4.358  -0.892  1 81
-HETATM P P     . PO4 D 1 301 . 301 PO4 D P     0.0 1.0 ?  301 E 81 1.819  0.081  0.97    1 82
-HETATM O O1    . PO4 D 1 301 . 301 PO4 D O1    0.0 1.0 ?  301 E 82 2.539  0.332  -0.321  1 83
-HETATM O O2    . PO4 D 1 301 . 301 PO4 D O2    0.0 1.0 -1 301 E 83 0.399  -0.34  0.694   1 84
-HETATM O O3    . PO4 D 1 301 . 301 PO4 D O3    0.0 1.0 -1 301 E 84 2.548  -0.996 1.727   1 85
-HETATM O O4    . PO4 D 1 301 . 301 PO4 D O4    0.0 1.0 -1 301 E 85 1.801  1.346  1.804   1 86
+HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan 0.0 ?  False 180 .    True  False True  0 0  180 True  0  nan    nan    nan    1 1
+ATOM   N N     . GLY     A 0 1   . 1   GLY     A N     0.0 1.0 ?  True  -1  A20  False True  False 0 4  -1  False 1  4.057  -0.455 3.999  1 2
+ATOM   C CA    . GLY     A 0 1   . 1   GLY     A CA    0.0 1.0 ?  True  -1  A20  False True  False 0 4  -1  False 2  3.866  0.912  4.452  1 3
+ATOM   C CB    . ARG     A 0 2   . 2   ARG     A CB    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 3  -0.178 -4.395 5.906  1 4
+ATOM   C CG    . ARG     A 0 2   . 2   ARG     A CG    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 4  -0.142 -5.518 4.877  1 5
+ATOM   C CD    . ARG     A 0 2   . 2   ARG     A CD    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 5  0.477  -5.048 3.569  1 6
+ATOM   N NE    . ARG     A 0 2   . 2   ARG     A NE    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 6  -0.145 -3.816 3.095  1 7
+ATOM   C CZ    . ARG     A 0 2   . 2   ARG     A CZ    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 7  0.445  -2.964 2.265  1 8
+ATOM   C CZ    . ARG     A 0 3   . 3   ARG     A CZ    0.0 1.0 ?  True  -1  A87  False True  False 0 6  -1  False 8  6.522  0.327  -0.841 1 9
+ATOM   N NH2   . ARG     A 0 3   . 3   ARG     A NH2   0.0 1.0 +1 True  -1  A87  False True  False 0 6  -1  False 9  5.656  0.645  -1.796 1 10
+ATOM   C CB    . SER     A 0 4   . 4   SER     A CB    0.0 1.0 ?  True  -1  A90  False True  False 0 7  -1  False 10 0.159  -0.84  -2.53  1 11
+ATOM   O OG    . SER     A 0 4   . 4   SER     A OG    0.0 1.0 ?  True  -1  A90  False True  False 0 7  -1  False 11 -0.3   -1.543 -1.389 1 12
+ATOM   C CG    . ASP     A 0 5   . 5   ASP     A CG    0.0 1.0 ?  True  -1  A204 False True  False 0 8  -1  False 12 -3.507 2.507  -7.613 1 13
+ATOM   O OD1   . ASP     A 0 5   . 5   ASP     A OD1   0.0 1.0 ?  True  -1  A204 False True  False 0 8  -1  False 13 -2.806 2.107  -6.656 1 14
+ATOM   N NE    . ARG     A 0 6   . 6   ARG     A NE    0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 14 -5.653 0.262  -1.995 1 15
+ATOM   C CZ    . ARG     A 0 6   . 6   ARG     A CZ    0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 15 -5.437 1.289  -2.811 1 16
+ATOM   N NH1   . ARG     A 0 6   . 6   ARG     A NH1   0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 16 -4.358 2.046  -2.666 1 17
+ATOM   N NH2   . ARG     A 0 6   . 6   ARG     A NH2   0.0 1.0 +1 True  -1  A217 False True  False 0 9  -1  False 17 -6.305 1.561  -3.777 1 18
+ATOM   C CZ    . ARG     A 0 7   . 7   ARG     A CZ    0.0 1.0 ?  True  -1  C43  False True  False 0 10 -1  False 18 -1.098 2.66   2.769  1 19
+ATOM   N NH1   . ARG     A 0 7   . 7   ARG     A NH1   0.0 1.0 ?  True  -1  C43  False True  False 0 10 -1  False 19 0.06   2.576  3.416  1 20
+HETATM P P     . PO4     D 2 301 . 301 PO4     D P     0.0 1.0 ?  True  -1  PO4  True  True  False 0 1  -1  False 20 2.297  0.571  0.866  1 21
+HETATM O O1    . PO4     D 2 301 . 301 PO4     D O1    0.0 1.0 ?  True  -1  PO4  True  True  False 0 1  -1  False 21 3.017  0.822  -0.425 1 22
+HETATM O O2    . PO4     D 2 301 . 301 PO4     D O2    0.0 1.0 -1 True  -1  PO4  True  True  False 0 1  -1  False 22 0.877  0.15   0.59   1 23
+HETATM O O3    . PO4     D 2 301 . 301 PO4     D O3    0.0 1.0 -1 True  -1  PO4  True  False False 0 1  -1  False 23 0.0    0.0    0.0    1 24
+HETATM O O4    . PO4     D 2 301 . 301 PO4     D O4    0.0 1.0 -1 True  -1  PO4  True  False False 0 1  -1  False 24 0.0    0.0    0.0    1 25
+HETATM N N1    . FMC     B 1 300 . 300 FMC     B N1    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 25 0.0    0.0    0.0    1 26
+HETATM C C2    . FMC     B 1 300 . 300 FMC     B C2    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 26 0.0    0.0    0.0    1 27
+HETATM N N3    . FMC     B 1 300 . 300 FMC     B N3    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 27 0.0    0.0    0.0    1 28
+HETATM C C4    . FMC     B 1 300 . 300 FMC     B C4    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 28 0.0    0.0    0.0    1 29
+HETATM C C5    . FMC     B 1 300 . 300 FMC     B C5    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 29 0.0    0.0    0.0    1 30
+HETATM C C6    . FMC     B 1 300 . 300 FMC     B C6    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 30 0.0    0.0    0.0    1 31
+HETATM N N6    . FMC     B 1 300 . 300 FMC     B N6    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 31 0.0    0.0    0.0    1 32
+HETATM N N7    . FMC     B 1 300 . 300 FMC     B N7    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 32 0.0    0.0    0.0    1 33
+HETATM N N8    . FMC     B 1 300 . 300 FMC     B N8    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 33 0.0    0.0    0.0    1 34
+HETATM C C9    . FMC     B 1 300 . 300 FMC     B C9    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 34 0.0    0.0    0.0    1 35
+HETATM C "C1'" . FMC     B 1 300 . 300 FMC     B "C1'" 0.0 1.0 ?  True  -1  FMC  True  True  False 0 2  -1  False 35 1.757  3.021  -2.15  1 36
+HETATM C "C2'" . FMC     B 1 300 . 300 FMC     B "C2'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 36 0.0    0.0    0.0    1 37
+HETATM O "O2'" . FMC     B 1 300 . 300 FMC     B "O2'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 37 0.0    0.0    0.0    1 38
+HETATM C "C3'" . FMC     B 1 300 . 300 FMC     B "C3'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 38 0.0    0.0    0.0    1 39
+HETATM O "O3'" . FMC     B 1 300 . 300 FMC     B "O3'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 39 0.0    0.0    0.0    1 40
+HETATM C "C4'" . FMC     B 1 300 . 300 FMC     B "C4'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 40 0.0    0.0    0.0    1 41
+HETATM O "O4'" . FMC     B 1 300 . 300 FMC     B "O4'" 0.0 1.0 ?  True  -1  FMC  True  True  False 0 2  -1  False 41 0.75   3.113  -1.16  1 42
+HETATM C "C5'" . FMC     B 1 300 . 300 FMC     B "C5'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 42 0.0    0.0    0.0    1 43
+HETATM O "O5'" . FMC     B 1 300 . 300 FMC     B "O5'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 43 0.0    0.0    0.0    1 44
+#
+_rfd_design.sampled_contig   180-180
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+ARG     N      N 0  N N -0.4690000116825104   1.1100000143051147     -0.9929999709129333
+ARG     CA     C 0  N N 0.004000000189989805  2.2939999103546143     -1.7079999446868896
+ARG     C      C 0  N N -0.9070000052452087   2.5209999084472656     -2.9010000228881836
+ARG     O      O 0  N N -1.8270000219345093   1.7890000343322754     -3.242000102996826
+ARG     CB     C 0  N N 1.475000023841858     2.1500000953674316     -2.127000093460083
+ARG     CG     C 0  N N 1.7450000047683716    1.0169999599456787     -3.130000114440918
+ARG     CD     C 0  N N 3.2100000381469727    0.9539999961853027     -3.556999921798706
+ARG     NE     N 0  N N 4.071000099182129     0.7260000109672546     -2.4210000038146973
+ARG     CZ     C 0  N N 5.468999862670898     0.6240000128746033     -2.5280001163482666
+ARG     NH1    N 0  N N 6.258999824523926     0.40400001406669617    -1.4049999713897705
+ARG     NH2    N 1  N N 6.078000068664551     0.7440000176429749     -3.7730000019073486
+ARG     OXT    O 0  N Y -0.5879999995231628   3.6589999198913574     -3.5739998817443848
+ARG     H      H 0  N N -0.057999998331069946 0.902999997138977      -0.10899999737739563
+ARG     H2     H 0  N Y -1.0240000486373901   0.4519999921321869     -1.49399995803833
+ARG     HA     H 0  N N -0.10300000011920929  3.1519999504089355     -1.034000039100647
+ARG     HB2    H 0  N N 2.0859999656677246    1.9880000352859497     -1.2300000190734863
+ARG     HB3    H 0  N N 1.8140000104904175    3.0989999771118164     -2.562999963760376
+ARG     HG2    H 0  N N 1.1360000371932983    1.1699999570846558     -4.0289998054504395
+ARG     HG3    H 0  N N 1.4470000267028809    0.05400000140070915    -2.697999954223633
+ARG     HD2    H 0  N N 3.3480000495910645    0.13300000131130219    -4.269000053405762
+ARG     HD3    H 0  N N 3.505000114440918     1.8799999952316284     -4.061999797821045
+ARG     HE     H 0  N N 3.6740000247955322    0.6269999742507935     -1.4789999723434448
+ARG     HH11   H 0  N N 7.270999908447266     0.3310000002384186     -1.4839999675750732
+ARG     HH12   H 0  N N 5.857999801635742     0.3070000112056732     -0.47600001096725464
+ARG     HH21   H 0  N N 5.53000020980835      0.906000018119812      -4.613999843597412
+ARG     HH22   H 0  N N 7.0879998207092285    0.675000011920929      -3.874000072479248
+ARG     HXT    H 0  N Y -1.1490000486373901   3.8550000190734863     -4.355000019073486
+ASP     N      N 0  N N -0.31700000166893005  1.687999963760376      0.06599999964237213
+ASP     CA     C 0  N N -0.4699999988079071   0.28600001335144043    -0.3440000116825104
+ASP     C      C 0  N N -1.8680000305175781   -0.18000000715255737   -0.028999999165534973
+ASP     O      O 0  N N -2.5339999198913574   0.41499999165534973    0.7860000133514404
+ASP     CB     C 0  N N 0.5389999747276306    -0.5799999833106995    0.4129999876022339
+ASP     CG     C 0  N N 1.937999963760376     -0.19499999284744263   0.004000000189989805
+ASP     OD1    O 0  N N 2.1089999675750732    0.6809999942779541     -0.8100000023841858
+ASP     OD2    O 0  N N 2.992000102996826     -0.8259999752044678    0.5429999828338623
+ASP     OXT    O 0  N Y -2.374000072479248    -1.25600004196167      -0.6520000100135803
+ASP     H      H 0  N N -0.9279999732971191   2.2890000343322754     -0.46700000762939453
+ASP     H2     H 0  N Y -0.4779999852180481   1.7949999570846558     1.055999994277954
+ASP     HA     H 0  N N -0.2919999957084656   0.19900000095367432    -1.4160000085830688
+ASP     HB2    H 0  N N 0.4189999997615814    -0.42500001192092896   1.4850000143051147
+ASP     HB3    H 0  N N 0.367000013589859     -1.6299999952316284    0.17599999904632568
+ASP     HD2    H 0  N N 3.86899995803833      -0.5450000166893005    0.25
+ASP     HXT    H 0  N Y -3.2750000953674316   -1.5169999599456787    -0.41600000858306885
+FMC     N1     N 0  Y N -4.389999866485596    -0.5960000157356262    0.6930000185966492
+FMC     C2     C 0  Y N -3.484999895095825    -1.3220000267028809    1.3289999961853027
+FMC     N3     N 0  Y N -2.194999933242798    -1.1440000534057617    1.1649999618530273
+FMC     C4     C 0  Y N -1.7380000352859497   -0.20200000703334808   0.33000001311302185
+FMC     C5     C 0  Y N -2.6659998893737793   0.5929999947547913     -0.3659999966621399
+FMC     C6     C 0  Y N -4.0320000648498535   0.3619999885559082     -0.15399999916553497
+FMC     N6     N 0  N N -4.98799991607666     1.1150000095367432     -0.8140000104904175
+FMC     N7     N 0  Y N -1.9420000314712524   1.4620000123977661     -1.1369999647140503
+FMC     N8     N 0  Y N -0.5820000171661377   1.2050000429153442     -0.9179999828338623
+FMC     C9     C 0  Y N -0.453000009059906    0.23199999332427979    -0.05999999865889549
+FMC     "C1'"  C 0  N N 0.8529999852180481    -0.33500000834465027   0.4339999854564667
+FMC     "C2'"  C 0  N N 1.4880000352859497    -1.215999960899353     -0.6589999794960022
+FMC     "O2'"  O 0  N N 1.6490000486373901    -2.555999994277954     -0.19099999964237213
+FMC     "C3'"  C 0  N N 2.868000030517578     -0.5630000233650208    -0.9179999828338623
+FMC     "O3'"  O 0  N N 3.880000114440918     -1.559000015258789     -1.0820000171661377
+FMC     "C4'"  C 0  N N 3.0940001010894775    0.24500000476837158    0.38499999046325684
+FMC     "O4'"  O 0  N N 1.774999976158142     0.7319999933242798     0.7129999995231628
+FMC     "C5'"  C 0  N N 4.052000045776367     1.4110000133514404     0.13699999451637268
+FMC     "O5'"  O 0  N N 4.334000110626221     2.069000005722046      1.3739999532699585
+FMC     H2     H 0  N N -3.821000099182129    -2.0899999141693115    2.009000062942505
+FMC     HN7    H 0  N N -2.306999921798706    2.135999917984009      -1.7319999933242798
+FMC     "H5'"  H 0  N N 4.980000019073486     1.034000039100647      -0.2939999997615814
+FMC     "H5'A" H 0  N N 3.5920000076293945    2.11899995803833       -0.5540000200271606
+FMC     "H1'"  H 0  N N 0.6830000281333923    -0.9259999990463257    1.3339999914169312
+FMC     "H2'"  H 0  N N 0.8809999823570251    -1.1990000009536743    -1.5640000104904175
+FMC     "HO2'" H 0  N N 2.0450000762939453    -3.1549999713897705    -0.8399999737739563
+FMC     "H3'"  H 0  N N 2.8299999237060547    0.09700000286102295    -1.784000039100647
+FMC     "HO3'" H 0  N N 4.763000011444092     -1.1990000009536743    -1.246000051498413
+FMC     "H4'"  H 0  N N 3.4719998836517334    -0.4009999930858612    1.1770000457763672
+FMC     "HO5'" H 0  N N 4.936999797821045     2.819999933242798      1.2910000085830688
+FMC     HN6    H 0  N N -5.929999828338623    0.9459999799728394     -0.6600000262260437
+FMC     HN6A   H 0  N N -4.715000152587891    1.812000036239624      -1.430999994277954
+GLY     N      N 0  N N 1.930999994277954     0.09000000357627869    -0.03400000184774399
+GLY     CA     C 0  N N 0.7609999775886536    -0.7990000247955322    -0.00800000037997961
+GLY     C      C 0  N N -0.49799999594688416  0.028999999165534973   -0.004999999888241291
+GLY     O      O 0  N N -0.42899999022483826  1.2350000143051147     -0.023000000044703484
+GLY     OXT    O 0  N Y -1.6970000267028809   -0.5740000009536743    0.017999999225139618
+GLY     H      H 0  N N 1.909999966621399     0.7379999756813049     0.7379999756813049
+GLY     H2     H 0  N Y 2.7880001068115234    -0.44200000166893005   -0.03700000047683716
+GLY     HA2    H 0  N N 0.7720000147819519    -1.440000057220459     -0.8889999985694885
+GLY     HA3    H 0  N N 0.7929999828338623    -1.4149999618530273    0.890999972820282
+GLY     HXT    H 0  N Y -2.4769999980926514   -0.0020000000949949026 0.01899999938905239
+PO4     P      P 0  N N 0.0                   0.0                    0.0
+PO4     O1     O 0  N N 0.0                   -1.2879999876022339    -0.9110000133514404
+PO4     O2     O -1 N N 0.0                   1.2879999876022339     -0.9110000133514404
+PO4     O3     O -1 N N -1.2879999876022339   0.0                    0.9110000133514404
+PO4     O4     O -1 N N 1.2879999876022339    0.0                    0.9110000133514404
+SER     N      N 0  N N 1.524999976158142     0.49300000071525574    -0.6079999804496765
+SER     CA     C 0  N N 0.10000000149011612   0.4690000116825104     -0.25200000405311584
+SER     C      C 0  N N -0.05299999937415123  0.004000000189989805   1.1729999780654907
+SER     O      O 0  N N 0.7509999871253967    -0.7599999904632568    1.6490000486373901
+SER     CB     C 0  N N -0.6420000195503235   -0.48899999260902405   -1.184000015258789
+SER     OG     O 0  N N -0.4959999918937683   -0.04899999871850014   -2.5350000858306885
+SER     OXT    O 0  N Y -1.0839999914169312   0.4399999976158142     1.9129999876022339
+SER     H      H 0  N N 1.8669999837875366    -0.4490000009536743    -0.49900001287460327
+SER     H2     H 0  N Y 1.5740000009536743    0.7070000171661377     -1.593000054359436
+SER     HA     H 0  N N -0.3160000145435333   1.4709999561309814     -0.3540000021457672
+SER     HB2    H 0  N N -0.22499999403953552  -1.4910000562667847    -1.0809999704360962
+SER     HB3    H 0  N N -1.6990000009536743   -0.5070000290870667    -0.9200000166893005
+SER     HG     H 0  N N -0.9779999852180481   -0.6790000200271606    -3.0880000591278076
+SER     HXT    H 0  N Y -1.1829999685287476   0.1420000046491623     2.828000068664551
+180-180 UNK    X 0  N N nan                   nan                    nan
 #

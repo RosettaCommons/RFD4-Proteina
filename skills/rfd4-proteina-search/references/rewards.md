@@ -159,7 +159,7 @@ defaults:
   - inference_on_user_inputs
   - _self_
 
-inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer.json
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer
 subset_to_examples: monomer-short
 num_replicates: 2
 
