@@ -10,8 +10,8 @@
   <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/dm/rfproteina.svg" alt="PyPI downloads"></a>
   <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml/badge.svg" alt="CI status"></a>
   <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/docs.yaml/badge.svg" alt="Documentation"></a>
-  <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/graph/badge.svg" alt="Code coverage"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/RosettaCommons/RFD4-Proteina.svg" alt="License"></a>
+  <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/graph/badge.svg?token=21O2N8apcG" alt="Code coverage"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="Apache License 2.0"></a>
 </p>
 
 <p align="center">
