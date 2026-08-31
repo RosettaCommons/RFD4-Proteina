@@ -1,0 +1,9 @@
+# Bicyclic-peptide PN units for the flow model.
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/bicycle_distillation@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: tip_atom_pocket_tasks
+  - _self_
+
+probability: 1.0
