@@ -92,6 +92,7 @@ dev = [
     "pytest-xdist>=3.6.1,<4",
     "pytest-dotenv>=0.5.2,<1",
     "pytest-cov>=4.1.0,<5",
+    "coverage[toml]>=7.10.2,<8",
     "pytest-benchmark>=5.0.0,<6",
     "assertpy",
     "boto3>=1.34,<2",
