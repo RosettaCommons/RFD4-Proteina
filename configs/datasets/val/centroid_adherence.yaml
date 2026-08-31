@@ -3,7 +3,7 @@ compute_loss: true
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/centroid_conditioning/annotated_cifs
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/centroid_conditioning
 
   num_replicates: 50
 

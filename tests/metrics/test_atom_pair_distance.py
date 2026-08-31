@@ -15,9 +15,7 @@ def _atom(chain_id: str, res_name: str, res_id: int, atom_name: str) -> str:
 
 
 def test_lenacap_reference_satisfies_catalytic_distance_constraints():
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -26,25 +24,25 @@ def test_lenacap_reference_satisfies_catalytic_distance_constraints():
                 "name": "oxanion_cys",
                 "max_distance_angstrom": 3.0,
                 "atom_a": _atom("B", "lpr", 1, "O29"),
-                "atom_b": _atom("A", "CYS", 580, "N"),
+                "atom_b": _atom("A", "CYS", 5, "N"),
             },
             {
                 "name": "oxanion_gln",
                 "max_distance_angstrom": 3.5,
                 "atom_a": _atom("B", "lpr", 1, "O29"),
-                "atom_b": _atom("A", "GLN", 574, "NE2"),
+                "atom_b": _atom("A", "GLN", 3, "NE2"),
             },
             {
                 "name": "triad_his_cys",
                 "max_distance_angstrom": 4.0,
-                "atom_a": _atom("A", "HIS", 514, "ND1"),
-                "atom_b": _atom("A", "CYS", 580, "SG"),
+                "atom_a": _atom("A", "HIS", 1, "ND1"),
+                "atom_b": _atom("A", "CYS", 5, "SG"),
             },
             {
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.2,
-                "atom_a": _atom("A", "HIS", 514, "NE2"),
-                "atom_b": _atom("A", "ASP", 531, "OD1"),
+                "atom_a": _atom("A", "HIS", 1, "NE2"),
+                "atom_b": _atom("A", "ASP", 2, "OD1"),
             },
         ]
     )
@@ -57,9 +55,7 @@ def test_lenacap_reference_satisfies_catalytic_distance_constraints():
 
 
 def test_atom_a_and_b_options_use_minimum_pair_distance():
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -68,12 +64,12 @@ def test_atom_a_and_b_options_use_minimum_pair_distance():
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.0,
                 "atom_a": [
-                    _atom("A", "HIS", 514, "ND1"),
-                    _atom("A", "HIS", 514, "NE2"),
+                    _atom("A", "HIS", 1, "ND1"),
+                    _atom("A", "HIS", 1, "NE2"),
                 ],
                 "atom_b": [
-                    _atom("A", "ASP", 531, "OD1"),
-                    _atom("A", "ASP", 531, "OD2"),
+                    _atom("A", "ASP", 2, "OD1"),
+                    _atom("A", "ASP", 2, "OD2"),
                 ],
             }
         ]
@@ -84,9 +80,7 @@ def test_atom_a_and_b_options_use_minimum_pair_distance():
 
 
 def test_atom_options_skip_unresolved_queries():
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -95,10 +89,10 @@ def test_atom_options_skip_unresolved_queries():
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.2,
                 "atom_a": [
-                    _atom("A", "HIS", 514, "MISSING"),
-                    _atom("A", "HIS", 514, "NE2"),
+                    _atom("A", "HIS", 1, "MISSING"),
+                    _atom("A", "HIS", 1, "NE2"),
                 ],
-                "atom_b": _atom("A", "ASP", 531, "OD1"),
+                "atom_b": _atom("A", "ASP", 2, "OD1"),
             }
         ]
     )
@@ -110,9 +104,7 @@ def test_atom_options_skip_unresolved_queries():
 
 def test_missing_atoms_yield_inf_distance_not_crash():
     """When a constrained atom is missing, the constraint is violated (inf distance, zero soft score)."""
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
     atom_array.res_name[atom_array.res_name == "ASP"] = "ALA"
 
@@ -121,8 +113,8 @@ def test_missing_atoms_yield_inf_distance_not_crash():
             {
                 "name": "triad_his_asp",
                 "max_distance_angstrom": 3.2,
-                "atom_a": _atom("A", "HIS", 514, "NE2"),
-                "atom_b": _atom("A", "ASP", 531, "OD1"),
+                "atom_a": _atom("A", "HIS", 1, "NE2"),
+                "atom_b": _atom("A", "ASP", 2, "OD1"),
             },
         ],
         soft_margin=1.0,
@@ -137,9 +129,7 @@ def test_missing_atoms_yield_inf_distance_not_crash():
 
 
 def test_soft_min_score_decays_linearly_past_threshold():
-    cif_path = (
-        Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design_cifs" / "lenacap_partial_sc.cif"
-    )
+    cif_path = Path(__file__).resolve().parents[2] / "data" / "benchmarks" / "enz_design" / "lenacap_partial_sc.cif"
     atom_array = parse(str(cif_path))["assemblies"]["1"][0]
 
     metric = AtomPairDistanceMetric(
@@ -148,7 +138,7 @@ def test_soft_min_score_decays_linearly_past_threshold():
                 "name": "oxanion_cys",
                 "max_distance_angstrom": 2.0,
                 "atom_a": _atom("B", "lpr", 1, "O29"),
-                "atom_b": _atom("A", "CYS", 580, "N"),
+                "atom_b": _atom("A", "CYS", 5, "N"),
             },
         ],
         soft_margin=1.0,

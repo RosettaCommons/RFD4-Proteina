@@ -2,8 +2,8 @@ data_M0663_1rk2.cif
 #
 _entry.id       M0663_1rk2.cif
 _entry.author   rib7
-_entry.date     2026-04-18
-_entry.time     15:20:16
+_entry.date     2026-08-28
+_entry.time     19:28:14
 #
 loop_
 _entity.id 
@@ -11,14 +11,14 @@ _entity.type
 _entity.pdbx_description 
 0 polymer     .
 1 non-polymer .
-4 non-polymer .
+2 non-polymer .
 #
 _entity_poly.entity_id                      0
 _entity_poly.type                           polypeptide(L)
 _entity_poly.nstd_linkage                   no
-_entity_poly.nstd_monomer                   no
-_entity_poly.pdbx_seq_one_letter_code       AAGD
-_entity_poly.pdbx_seq_one_letter_code_can   AAGD
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       XAAGD
+_entity_poly.pdbx_seq_one_letter_code_can   XAAGD
 _entity_poly.pdbx_strand_id                 A
 _entity_poly.pdbx_target_identifier         ?
 #
@@ -27,72 +27,149 @@ _entity_poly_seq.entity_id
 _entity_poly_seq.hetero 
 _entity_poly_seq.mon_id 
 _entity_poly_seq.num 
-0 n ALA 252
-0 n ALA 253
-0 n GLY 254
-0 n ASP 255
+0 n 180-180 0
+0 n ALA     1
+0 n ALA     2
+0 n GLY     3
+0 n ASP     4
 #
 loop_
-_chem_comp_bond.pdbx_ordinal 
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+180-180 180-180 NON-POLYMER                   ? ? ? ?
+ADP     ADP     NON-POLYMER                   ? ? ? ?
+ALA     ALA     'L-PEPTIDE LINKING'           ? ? ? ?
+ASP     ASP     'L-PEPTIDE LINKING'           ? ? ? ?
+GLY     GLY     'PEPTIDE LINKING'             ? ? ? ?
+RIB     RIB     'D-SACCHARIDE, ALPHA LINKING' ? ? ? ?
+#
+_struct_conn.id                        1
+_struct_conn.conn_type_id              covale
+_struct_conn.pdbx_value_order          sing
+_struct_conn.ptnr1_label_asym_id       A
+_struct_conn.ptnr2_label_asym_id       A
+_struct_conn.ptnr1_label_comp_id       180-180
+_struct_conn.ptnr2_label_comp_id       ALA
+_struct_conn.ptnr1_label_seq_id        0
+_struct_conn.ptnr2_label_seq_id        1
+_struct_conn.ptnr1_label_atom_id       UNK
+_struct_conn.ptnr2_label_atom_id       N
+_struct_conn.pdbx_ptnr1_PDB_ins_code   .
+_struct_conn.pdbx_ptnr2_PDB_ins_code   .
+_struct_conn.ptnr1_transformation_id   1
+_struct_conn.ptnr2_transformation_id   1
+#
+loop_
 _chem_comp_bond.comp_id 
 _chem_comp_bond.atom_id_1 
 _chem_comp_bond.atom_id_2 
 _chem_comp_bond.value_order 
 _chem_comp_bond.pdbx_aromatic_flag 
-_chem_comp_bond.pdbx_stereo_config 
-1  ALA N     CA    SING N ?
-2  ALA CA    C     SING N ?
-3  ALA CA    CB    SING N ?
-4  ALA C     O     DOUB N ?
-5  GLY N     CA    SING N ?
-6  GLY CA    C     SING N ?
-7  GLY C     O     DOUB N ?
-8  ASP N     CA    SING N ?
-9  ASP CA    C     SING N ?
-10 ASP CA    CB    SING N ?
-11 ASP C     O     DOUB N ?
-12 ASP CB    CG    SING N ?
-13 ASP CG    OD1   DOUB N ?
-14 ASP CG    OD2   SING N ?
-15 RIB O5    C5    SING N ?
-16 RIB C5    C4    SING N ?
-17 RIB C4    O4    SING N ?
-18 RIB C4    C3    SING N ?
-19 RIB O4    C1    SING N ?
-20 RIB C3    O3    SING N ?
-21 RIB C3    C2    SING N ?
-22 RIB C2    O2    SING N ?
-23 RIB C2    C1    SING N ?
-24 RIB C1    O1    SING N ?
-25 ADP PB    O1B   DOUB N ?
-26 ADP PB    O2B   SING N ?
-27 ADP PB    O3B   SING N ?
-28 ADP PB    O3A   SING N ?
-29 ADP PA    O1A   DOUB N ?
-30 ADP PA    O2A   SING N ?
-31 ADP PA    O3A   SING N ?
-32 ADP PA    "O5'" SING N ?
-33 ADP "O5'" "C5'" SING N ?
-34 ADP "C5'" "C4'" SING N ?
-35 ADP "C4'" "O4'" SING N ?
-36 ADP "C4'" "C3'" SING N ?
-37 ADP "O4'" "C1'" SING N ?
-38 ADP "C3'" "O3'" SING N ?
-39 ADP "C3'" "C2'" SING N ?
-40 ADP "C2'" "O2'" SING N ?
-41 ADP "C2'" "C1'" SING N ?
-42 ADP "C1'" N9    SING N ?
-43 ADP N9    C8    SING Y ?
-44 ADP N9    C4    SING Y ?
-45 ADP C8    N7    DOUB Y ?
-46 ADP N7    C5    SING Y ?
-47 ADP C5    C6    SING Y ?
-48 ADP C5    C4    DOUB Y ?
-49 ADP C6    N6    SING N ?
-50 ADP C6    N1    DOUB Y ?
-51 ADP N1    C2    SING Y ?
-52 ADP C2    N3    DOUB Y ?
-53 ADP N3    C4    SING Y ?
+ADP PB    O1B    DOUB N
+ADP PB    O2B    SING N
+ADP PB    O3B    SING N
+ADP PB    O3A    SING N
+ADP O2B   HOB2   SING N
+ADP O3B   HOB3   SING N
+ADP PA    O1A    DOUB N
+ADP PA    O2A    SING N
+ADP PA    O3A    SING N
+ADP PA    "O5'"  SING N
+ADP O2A   HOA2   SING N
+ADP "O5'" "C5'"  SING N
+ADP "C5'" "C4'"  SING N
+ADP "C5'" "H5'1" SING N
+ADP "C5'" "H5'2" SING N
+ADP "C4'" "O4'"  SING N
+ADP "C4'" "C3'"  SING N
+ADP "C4'" "H4'"  SING N
+ADP "O4'" "C1'"  SING N
+ADP "C3'" "O3'"  SING N
+ADP "C3'" "C2'"  SING N
+ADP "C3'" "H3'"  SING N
+ADP "O3'" "HO3'" SING N
+ADP "C2'" "O2'"  SING N
+ADP "C2'" "C1'"  SING N
+ADP "C2'" "H2'"  SING N
+ADP "O2'" "HO2'" SING N
+ADP "C1'" N9     SING N
+ADP "C1'" "H1'"  SING N
+ADP N9    C8     SING Y
+ADP N9    C4     SING Y
+ADP C8    N7     DOUB Y
+ADP C8    H8     SING N
+ADP N7    C5     SING Y
+ADP C5    C6     SING Y
+ADP C5    C4     DOUB Y
+ADP C6    N6     SING N
+ADP C6    N1     DOUB Y
+ADP N6    HN61   SING N
+ADP N6    HN62   SING N
+ADP N1    C2     SING Y
+ADP C2    N3     DOUB Y
+ADP C2    H2     SING N
+ADP N3    C4     SING Y
+ALA N     CA     SING N
+ALA N     H      SING N
+ALA N     H2     SING N
+ALA CA    C      SING N
+ALA CA    CB     SING N
+ALA CA    HA     SING N
+ALA C     O      DOUB N
+ALA C     OXT    SING N
+ALA CB    HB1    SING N
+ALA CB    HB2    SING N
+ALA CB    HB3    SING N
+ALA OXT   HXT    SING N
+ASP N     CA     SING N
+ASP N     H      SING N
+ASP N     H2     SING N
+ASP CA    C      SING N
+ASP CA    CB     SING N
+ASP CA    HA     SING N
+ASP C     O      DOUB N
+ASP C     OXT    SING N
+ASP CB    CG     SING N
+ASP CB    HB2    SING N
+ASP CB    HB3    SING N
+ASP CG    OD1    DOUB N
+ASP CG    OD2    SING N
+ASP OD2   HD2    SING N
+ASP OXT   HXT    SING N
+GLY N     CA     SING N
+GLY N     H      SING N
+GLY N     H2     SING N
+GLY CA    C      SING N
+GLY CA    HA2    SING N
+GLY CA    HA3    SING N
+GLY C     O      DOUB N
+GLY C     OXT    SING N
+GLY OXT   HXT    SING N
+RIB O5    C5     SING N
+RIB O5    HO5    SING N
+RIB C5    C4     SING N
+RIB C5    H51    SING N
+RIB C5    H52    SING N
+RIB C4    O4     SING N
+RIB C4    C3     SING N
+RIB C4    H4     SING N
+RIB O4    C1     SING N
+RIB C3    O3     SING N
+RIB C3    C2     SING N
+RIB C3    H3     SING N
+RIB O3    HO3    SING N
+RIB C2    O2     SING N
+RIB C2    C1     SING N
+RIB C2    H2     SING N
+RIB O2    HO2    SING N
+RIB C1    O1     SING N
+RIB C1    H1     SING N
+RIB O1    HO1    SING N
 #
 loop_
 _atom_site.group_PDB 
@@ -108,81 +185,186 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
-_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.rcsb_res_id 
-_atom_site.rcsb_chain_id 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_index_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.condition_index-group_1_token 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-ATOM   N N     . ALA A 0 252 . 252 ALA A N     1830 23.24 1.0 ? 252 A 0  -1.609 2.177  3.227  1
-ATOM   C CA    . ALA A 0 252 . 252 ALA A CA    1831 23.07 1.0 ? 252 A 1  -1.882 2.866  1.961  1
-ATOM   C C     . ALA A 0 252 . 252 ALA A C     1832 21.27 1.0 ? 252 A 2  -0.792 2.677  0.891  1
-ATOM   O O     . ALA A 0 252 . 252 ALA A O     1833 21.28 1.0 ? 252 A 3  -0.802 3.36   -0.136 1
-ATOM   C CB    . ALA A 0 252 . 252 ALA A CB    1834 20.59 1.0 ? 252 A 4  -2.104 4.361  2.217  1
-ATOM   N N     . ALA A 0 253 . 253 ALA A N     1835 18.61 1.0 ? 253 A 5  0.153  1.771  1.121  1
-ATOM   C CA    . ALA A 0 253 . 253 ALA A CA    1836 19.57 1.0 ? 253 A 6  1.194  1.543  0.121  1
-ATOM   C C     . ALA A 0 253 . 253 ALA A C     1837 18.64 1.0 ? 253 A 7  0.497  1.055  -1.153 1
-ATOM   O O     . ALA A 0 253 . 253 ALA A O     1838 18.79 1.0 ? 253 A 8  0.68   1.599  -2.24  1
-ATOM   C CB    . ALA A 0 253 . 253 ALA A CB    1839 16.96 1.0 ? 253 A 9  2.178  0.5    0.609  1
-ATOM   N N     . GLY A 0 254 . 254 GLY A N     1840 18.54 1.0 ? 254 A 10 -0.322 0.025  -0.993 1
-ATOM   C CA    . GLY A 0 254 . 254 GLY A CA    1841 18.16 1.0 ? 254 A 11 -1.06  -0.525 -2.112 1
-ATOM   C C     . GLY A 0 254 . 254 GLY A C     1842 17.53 1.0 ? 254 A 12 -2.023 0.469  -2.734 1
-ATOM   O O     . GLY A 0 254 . 254 GLY A O     1843 16.74 1.0 ? 254 A 13 -2.174 0.512  -3.953 1
-ATOM   N N     . ASP A 0 255 . 255 ASP A N     1844 16.35 1.0 ? 255 A 14 -2.687 1.267  -1.904 1
-ATOM   C CA    . ASP A 0 255 . 255 ASP A CA    1845 15.76 1.0 ? 255 A 15 -3.628 2.255  -2.421 1
-ATOM   C C     . ASP A 0 255 . 255 ASP A C     1846 14.81 1.0 ? 255 A 16 -2.911 3.274  -3.293 1
-ATOM   O O     . ASP A 0 255 . 255 ASP A O     1847 14.98 1.0 ? 255 A 17 -3.433 3.687  -4.327 1
-ATOM   C CB    . ASP A 0 255 . 255 ASP A CB    1848 15.39 1.0 ? 255 A 18 -4.348 2.987  -1.286 1
-ATOM   C CG    . ASP A 0 255 . 255 ASP A CG    1849 16.12 1.0 ? 255 A 19 -5.159 2.06   -0.422 1
-ATOM   O OD1   . ASP A 0 255 . 255 ASP A OD1   1850 16.09 1.0 ? 255 A 20 -5.794 1.145  -0.983 1
-ATOM   O OD2   . ASP A 0 255 . 255 ASP A OD2   1851 17.03 1.0 ? 255 A 21 -5.18  2.257  0.81   1
-HETATM O O5    . RIB C 1 311 . 311 RIB C O5    9093 17.8  1.0 ? 311 E 22 -5.446 0.391  2.749  1
-HETATM C C5    . RIB C 1 311 . 311 RIB C C5    9094 15.19 1.0 ? 311 E 23 -5.308 1.233  3.9    1
-HETATM C C4    . RIB C 1 311 . 311 RIB C C4    9095 12.93 1.0 ? 311 E 24 -6.692 1.757  4.325  1
-HETATM O O4    . RIB C 1 311 . 311 RIB C O4    9096 13.77 1.0 ? 311 E 25 -7.54  0.654  4.629  1
-HETATM C C3    . RIB C 1 311 . 311 RIB C C3    9097 13.57 1.0 ? 311 E 26 -6.675 2.651  5.579  1
-HETATM O O3    . RIB C 1 311 . 311 RIB C O3    9098 13.62 1.0 ? 311 E 27 -6.596 4.038  5.244  1
-HETATM C C2    . RIB C 1 311 . 311 RIB C C2    9099 12.76 1.0 ? 311 E 28 -7.968 2.294  6.331  1
-HETATM O O2    . RIB C 1 311 . 311 RIB C O2    9100 16.42 1.0 ? 311 E 29 -8.884 3.384  6.278  1
-HETATM C C1    . RIB C 1 311 . 311 RIB C C1    9101 13.14 1.0 ? 311 E 30 -8.503 1.044  5.597  1
-HETATM O O1    . RIB C 1 311 . 311 RIB C O1    9102 16.74 1.0 ? 311 E 31 -9.715 1.322  4.938  1
-HETATM P PB    . ADP B 4 310 . 310 ADP B PB    9109 21.71 1.0 ? 310 H 32 -0.696 -3.437 0.234  1
-HETATM O O1B   . ADP B 4 310 . 310 ADP B O1B   9110 22.43 1.0 ? 310 H 33 -0.293 -2.1   0.775  1
-HETATM O O2B   . ADP B 4 310 . 310 ADP B O2B   9111 20.66 1.0 ? 310 H 34 -0.595 -4.656 1.307  1
-HETATM O O3B   . ADP B 4 310 . 310 ADP B O3B   9112 24.69 1.0 ? 310 H 35 -2.099 -3.374 -0.294 1
-HETATM P PA    . ADP B 4 310 . 310 ADP B PA    9113 23.35 1.0 ? 310 H 36 1.792  -4.382 -0.874 1
-HETATM O O1A   . ADP B 4 310 . 310 ADP B O1A   9114 25.72 1.0 ? 310 H 37 2.239  -4.606 0.519  1
-HETATM O O2A   . ADP B 4 310 . 310 ADP B O2A   9115 23.02 1.0 ? 310 H 38 1.839  -5.632 -1.651 1
-HETATM O O3A   . ADP B 4 310 . 310 ADP B O3A   9116 23.97 1.0 ? 310 H 39 0.319  -3.814 -0.87  1
-HETATM O "O5'" . ADP B 4 310 . 310 ADP B "O5'" 9117 23.63 1.0 ? 310 H 40 2.621  -3.209 -1.56  1
-HETATM C "C5'" . ADP B 4 310 . 310 ADP B "C5'" 9118 20.25 1.0 ? 310 H 41 2.012  -2.363 -2.538 1
-HETATM C "C4'" . ADP B 4 310 . 310 ADP B "C4'" 9119 21.13 1.0 ? 310 H 42 3.105  -1.594 -3.285 1
-HETATM O "O4'" . ADP B 4 310 . 310 ADP B "O4'" 9120 20.67 1.0 ? 310 H 43 3.684  -0.519 -2.496 1
-HETATM C "C3'" . ADP B 4 310 . 310 ADP B "C3'" 9121 20.49 1.0 ? 310 H 44 4.311  -2.41  -3.772 1
-HETATM O "O3'" . ADP B 4 310 . 310 ADP B "O3'" 9122 21.07 1.0 ? 310 H 45 4.107  -3.021 -5.046 1
-HETATM C "C2'" . ADP B 4 310 . 310 ADP B "C2'" 9123 21.83 1.0 ? 310 H 46 5.431  -1.395 -3.8   1
-HETATM O "O2'" . ADP B 4 310 . 310 ADP B "O2'" 9124 22.25 1.0 ? 310 H 47 5.44   -0.63  -5.011 1
-HETATM C "C1'" . ADP B 4 310 . 310 ADP B "C1'" 9125 21.79 1.0 ? 310 H 48 5.137  -0.583 -2.573 1
-HETATM N N9    . ADP B 4 310 . 310 ADP B N9    9126 23.26 1.0 ? 310 H 49 5.829  -1.142 -1.334 1
-HETATM C C8    . ADP B 4 310 . 310 ADP B C8    9127 24.79 1.0 ? 310 H 50 5.296  -1.946 -0.401 1
-HETATM N N7    . ADP B 4 310 . 310 ADP B N7    9128 24.99 1.0 ? 310 H 51 6.214  -2.215 0.532  1
-HETATM C C5    . ADP B 4 310 . 310 ADP B C5    9129 24.66 1.0 ? 310 H 52 7.32   -1.598 0.216  1
-HETATM C C6    . ADP B 4 310 . 310 ADP B C6    9130 23.82 1.0 ? 310 H 53 8.596  -1.489 0.781  1
-HETATM N N6    . ADP B 4 310 . 310 ADP B N6    9131 24.71 1.0 ? 310 H 54 8.872  -2.126 1.926  1
-HETATM N N1    . ADP B 4 310 . 310 ADP B N1    9132 23.6  1.0 ? 310 H 55 9.562  -0.73  0.165  1
-HETATM C C2    . ADP B 4 310 . 310 ADP B C2    9133 23.66 1.0 ? 310 H 56 9.322  -0.067 -0.999 1
-HETATM N N3    . ADP B 4 310 . 310 ADP B N3    9134 25.38 1.0 ? 310 H 57 8.092  -0.164 -1.551 1
-HETATM C C4    . ADP B 4 310 . 310 ADP B C4    9135 23.16 1.0 ? 310 H 58 7.08   -0.904 -0.99  1
+_atom_site.id 
+HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan   0.0 ? False .    0 True  180 True  False True  180 0 0  nan    nan    nan    1 1
+ATOM   N N     . ALA     A 0 1   . 1   ALA     A N     23.24 1.0 ? True  A252 0 False -1  False True  False -1  4 1  -2.02  3.021  3.4    1 2
+ATOM   C CA    . ALA     A 0 1   . 1   ALA     A CA    23.07 1.0 ? True  A252 0 False -1  False True  False -1  4 2  -2.293 3.71   2.134  1 3
+ATOM   C CA    . ALA     A 0 2   . 2   ALA     A CA    19.57 1.0 ? True  A253 0 False -1  False True  False -1  5 3  0.783  2.387  0.294  1 4
+ATOM   C CB    . ALA     A 0 2   . 2   ALA     A CB    16.96 1.0 ? True  A253 0 False -1  False True  False -1  5 4  1.767  1.344  0.782  1 5
+ATOM   N N     . GLY     A 0 3   . 3   GLY     A N     18.54 1.0 ? True  A254 0 False -1  False True  False -1  6 5  -0.733 0.869  -0.82  1 6
+ATOM   C CA    . GLY     A 0 3   . 3   GLY     A CA    18.16 1.0 ? True  A254 0 False -1  False True  False -1  6 6  -1.471 0.319  -1.939 1 7
+ATOM   C CB    . ASP     A 0 4   . 4   ASP     A CB    15.39 1.0 ? True  A255 0 False -1  False True  False -1  7 7  -4.759 3.831  -1.113 1 8
+ATOM   C CG    . ASP     A 0 4   . 4   ASP     A CG    16.12 1.0 ? True  A255 0 False -1  False True  False -1  7 8  -5.57  2.904  -0.249 1 9
+ATOM   O OD1   . ASP     A 0 4   . 4   ASP     A OD1   16.09 1.0 ? True  A255 0 False -1  False True  False -1  7 9  -6.205 1.989  -0.81  1 10
+ATOM   O OD2   . ASP     A 0 4   . 4   ASP     A OD2   17.03 1.0 ? True  A255 0 False -1  False True  False -1  7 10 -5.591 3.101  0.983  1 11
+HETATM P PB    . ADP     B 1 310 . 310 ADP     B PB    21.71 1.0 ? True  ADP  0 False -1  True  True  False -1  1 11 -1.107 -2.593 0.407  1 12
+HETATM O O1B   . ADP     B 1 310 . 310 ADP     B O1B   22.43 1.0 ? True  ADP  0 False -1  True  True  False -1  1 12 -0.704 -1.256 0.948  1 13
+HETATM O O2B   . ADP     B 1 310 . 310 ADP     B O2B   20.66 1.0 ? True  ADP  0 False -1  True  True  False -1  1 13 -1.006 -3.812 1.48   1 14
+HETATM O O3B   . ADP     B 1 310 . 310 ADP     B O3B   24.69 1.0 ? True  ADP  0 False -1  True  True  False -1  1 14 -2.51  -2.53  -0.121 1 15
+HETATM P PA    . ADP     B 1 310 . 310 ADP     B PA    23.35 1.0 ? True  ADP  0 False -1  True  True  False -1  1 15 1.381  -3.538 -0.701 1 16
+HETATM O O1A   . ADP     B 1 310 . 310 ADP     B O1A   25.72 1.0 ? True  ADP  0 False -1  True  True  False -1  1 16 1.828  -3.762 0.692  1 17
+HETATM O O2A   . ADP     B 1 310 . 310 ADP     B O2A   23.02 1.0 ? True  ADP  0 False -1  True  True  False -1  1 17 1.428  -4.788 -1.478 1 18
+HETATM O O3A   . ADP     B 1 310 . 310 ADP     B O3A   23.97 1.0 ? True  ADP  0 False -1  True  True  False -1  1 18 -0.092 -2.97  -0.697 1 19
+HETATM O "O5'" . ADP     B 1 310 . 310 ADP     B "O5'" 23.63 1.0 ? True  ADP  0 False -1  True  True  False -1  1 19 2.21   -2.365 -1.387 1 20
+HETATM C "C5'" . ADP     B 1 310 . 310 ADP     B "C5'" 20.25 1.0 ? True  ADP  0 False -1  True  True  False -1  1 20 1.601  -1.519 -2.365 1 21
+HETATM C "C4'" . ADP     B 1 310 . 310 ADP     B "C4'" 21.13 1.0 ? True  ADP  0 False -1  True  True  False -1  1 21 2.694  -0.75  -3.112 1 22
+HETATM O "O4'" . ADP     B 1 310 . 310 ADP     B "O4'" 20.67 1.0 ? True  ADP  0 False -1  True  True  False -1  1 22 3.273  0.325  -2.323 1 23
+HETATM C "C3'" . ADP     B 1 310 . 310 ADP     B "C3'" 20.49 1.0 ? True  ADP  0 False -1  True  True  False -1  1 23 3.9    -1.566 -3.599 1 24
+HETATM O "O3'" . ADP     B 1 310 . 310 ADP     B "O3'" 21.07 1.0 ? True  ADP  0 False -1  True  True  False -1  1 24 3.696  -2.177 -4.873 1 25
+HETATM C "C2'" . ADP     B 1 310 . 310 ADP     B "C2'" 21.83 1.0 ? True  ADP  0 False -1  True  True  False -1  1 25 5.02   -0.551 -3.627 1 26
+HETATM O "O2'" . ADP     B 1 310 . 310 ADP     B "O2'" 22.25 1.0 ? True  ADP  0 False -1  True  True  False -1  1 26 5.029  0.214  -4.838 1 27
+HETATM C "C1'" . ADP     B 1 310 . 310 ADP     B "C1'" 21.79 1.0 ? True  ADP  0 False -1  True  True  False -1  1 27 4.726  0.261  -2.4   1 28
+HETATM N N9    . ADP     B 1 310 . 310 ADP     B N9    23.26 1.0 ? True  ADP  0 False -1  True  True  False -1  1 28 5.418  -0.298 -1.161 1 29
+HETATM C C8    . ADP     B 1 310 . 310 ADP     B C8    24.79 1.0 ? True  ADP  0 False -1  True  True  False -1  1 29 4.885  -1.102 -0.228 1 30
+HETATM N N7    . ADP     B 1 310 . 310 ADP     B N7    24.99 1.0 ? True  ADP  0 False -1  True  True  False -1  1 30 5.803  -1.371 0.705  1 31
+HETATM C C5    . ADP     B 1 310 . 310 ADP     B C5    24.66 1.0 ? True  ADP  0 False -1  True  True  False -1  1 31 6.909  -0.754 0.389  1 32
+HETATM C C6    . ADP     B 1 310 . 310 ADP     B C6    23.82 1.0 ? True  ADP  0 False -1  True  False False -1  1 32 0.0    0.0    0.0    1 33
+HETATM N N6    . ADP     B 1 310 . 310 ADP     B N6    24.71 1.0 ? True  ADP  0 False -1  True  False False -1  1 33 0.0    0.0    0.0    1 34
+HETATM N N1    . ADP     B 1 310 . 310 ADP     B N1    23.6  1.0 ? True  ADP  0 False -1  True  False False -1  1 34 0.0    0.0    0.0    1 35
+HETATM C C2    . ADP     B 1 310 . 310 ADP     B C2    23.66 1.0 ? True  ADP  0 False -1  True  False False -1  1 35 0.0    0.0    0.0    1 36
+HETATM N N3    . ADP     B 1 310 . 310 ADP     B N3    25.38 1.0 ? True  ADP  0 False -1  True  True  False -1  1 36 7.681  0.68   -1.378 1 37
+HETATM C C4    . ADP     B 1 310 . 310 ADP     B C4    23.16 1.0 ? True  ADP  0 False -1  True  True  False -1  1 37 6.669  -0.06  -0.817 1 38
+HETATM O O5    . RIB     C 2 311 . 311 RIB     C O5    17.8  1.0 ? True  RIB  0 False -1  True  True  False -1  2 38 -5.857 1.235  2.922  1 39
+HETATM C C5    . RIB     C 2 311 . 311 RIB     C C5    15.19 1.0 ? True  RIB  0 False -1  True  True  False -1  2 39 -5.719 2.077  4.073  1 40
+HETATM C C4    . RIB     C 2 311 . 311 RIB     C C4    12.93 1.0 ? True  RIB  0 False -1  True  True  False -1  2 40 -7.103 2.601  4.498  1 41
+HETATM O O4    . RIB     C 2 311 . 311 RIB     C O4    13.77 1.0 ? True  RIB  0 False -1  True  True  False -1  2 41 -7.951 1.498  4.802  1 42
+HETATM C C3    . RIB     C 2 311 . 311 RIB     C C3    13.57 1.0 ? True  RIB  0 False -1  True  True  False -1  2 42 -7.086 3.495  5.752  1 43
+HETATM O O3    . RIB     C 2 311 . 311 RIB     C O3    13.62 1.0 ? True  RIB  0 False -1  True  False False -1  2 43 0.0    0.0    0.0    1 44
+HETATM C C2    . RIB     C 2 311 . 311 RIB     C C2    12.76 1.0 ? True  RIB  0 False -1  True  False False -1  2 44 0.0    0.0    0.0    1 45
+HETATM O O2    . RIB     C 2 311 . 311 RIB     C O2    16.42 1.0 ? True  RIB  0 False -1  True  False False -1  2 45 0.0    0.0    0.0    1 46
+HETATM C C1    . RIB     C 2 311 . 311 RIB     C C1    13.14 1.0 ? True  RIB  0 False -1  True  True  False -1  2 46 -8.914 1.888  5.77   1 47
+HETATM O O1    . RIB     C 2 311 . 311 RIB     C O1    16.74 1.0 ? True  RIB  0 False -1  True  False False -1  2 47 0.0    0.0    0.0    1 48
 #
-_cell.length_a      55.201
-_cell.length_b      62.492
-_cell.length_c      337.8
-_cell.angle_alpha   90.0
-_cell.angle_beta    90.0
-_cell.angle_gamma   90.0
+_rfd_design.sampled_contig   180-180
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+ADP     PB     P 0 N N 1.1619999408721924   -0.22100000083446503   -5.684999942779541
+ADP     O1B    O 0 N N 1.725000023841858    1.1330000162124634     -5.492000102996826
+ADP     O2B    O 0 N N 2.190000057220459    -1.1119999885559082    -6.546000003814697
+ADP     O3B    O 0 N N -0.23999999463558197 -0.11299999803304672   -6.4670000076293945
+ADP     PA     P 0 N N -0.10499999672174454 0.02500000037252903    -3.446000099182129
+ADP     O1A    O 0 N N 0.47600001096725464  1.3760000467300415     -3.2880001068115234
+ADP     O2A    O 0 N N -1.4869999885559082  0.1289999932050705     -4.265999794006348
+ADP     O3A    O 0 N N 0.925000011920929    -0.9129999876022339    -4.25
+ADP     "O5'"  O 0 N N -0.3889999985694885  -0.609000027179718     -1.99399995803833
+ADP     "C5'"  C 0 N N -1.3070000410079956  0.2639999985694885     -1.3329999446868896
+ADP     "C4'"  C 0 N N -1.6200000047683716  -0.2840000092983246    0.05900000035762787
+ADP     "O4'"  O 0 N N -0.4169999957084656  -0.3479999899864197    0.8569999933242798
+ADP     "C3'"  C 0 N N -2.549999952316284   0.6830000281333923     0.824999988079071
+ADP     "O3'"  O 0 N N -3.9070000648498535  0.24500000476837158    0.7390000224113464
+ADP     "C2'"  C 0 N N -2.046999931335449   0.6110000014305115     2.2860000133514404
+ADP     "O2'"  O 0 N N -3.0799999237060547  0.1289999932050705     3.1480000019073486
+ADP     "C1'"  C 0 N N -0.8709999918937683  -0.3880000114440918    2.2269999980926514
+ADP     N9     N 0 Y N 0.20100000500679016  0.03099999949336052    3.131999969482422
+ADP     C8     C 0 Y N 1.2309999465942383   0.8700000047683716     2.8269999027252197
+ADP     N7     N 0 Y N 2.0                  1.0269999504089355     3.865000009536743
+ADP     C5     C 0 Y N 1.5089999437332153   0.3050000071525574     4.9019999504089355
+ADP     C6     C 0 Y N 1.909999966621399    0.08699999749660492    6.230999946594238
+ADP     N6     N 0 N N 3.0439999103546143   0.6970000267028809     6.73799991607666
+ADP     N1     N 0 Y N 1.1710000038146973   -0.7139999866485596    6.991000175476074
+ADP     C2     C 0 Y N 0.08799999952316284  -1.2999999523162842    6.515999794006348
+ADP     N3     N 0 Y N -0.32100000977516174 -1.1299999952316284    5.2769999504089355
+ADP     C4     C 0 Y N 0.3529999852180481   -0.34599998593330383   4.441999912261963
+ADP     HOB2   H 0 N N 2.303999900817871    -0.6639999747276306    -7.395999908447266
+ADP     HOB3   H 0 N N -0.5720000267028809  -1.0160000324249268    -6.571000099182129
+ADP     HOA2   H 0 N N -1.8329999446868896  -0.7699999809265137    -4.3460001945495605
+ADP     "H5'1" H 0 N N -2.2269999980926514  0.33000001311302185    -1.9129999876022339
+ADP     "H5'2" H 0 N N -0.8619999885559082  1.2549999952316284     -1.2419999837875366
+ADP     "H4'"  H 0 N N -2.078000068664551   -1.2699999809265137    -0.014999999664723873
+ADP     "H3'"  H 0 N N -2.4509999752044678  1.6959999799728394     0.4350000023841858
+ADP     "HO3'" H 0 N N -4.439000129699707   0.8840000033378601     1.2330000400543213
+ADP     "H2'"  H 0 N N -1.6990000009536743  1.5889999866485596     2.618000030517578
+ADP     "HO2'" H 0 N N -3.806999921798706   0.7639999985694885     3.0940001010894775
+ADP     "H1'"  H 0 N N -1.2120000123977661  -1.3910000324249268    2.484999895095825
+ADP     H8     H 0 N N 1.3869999647140503   1.3350000381469727     1.8650000095367432
+ADP     HN61   H 0 N N 3.308000087738037    0.5419999957084656     7.6579999923706055
+ADP     HN62   H 0 N N 3.5769999027252197   1.2769999504089355     6.171999931335449
+ADP     H2     H 0 N N -0.4819999933242798  -1.944000005722046     7.169000148773193
+ALA     N      N 0 N N -0.9660000205039978  0.49300000071525574    1.5
+ALA     CA     C 0 N N 0.25699999928474426  0.4180000126361847     0.6919999718666077
+ALA     C      C 0 N N -0.09399999678134918 0.017000000923871994   -0.7160000205039978
+ALA     O      O 0 N N -1.055999994277954   -0.6819999814033508    -0.9229999780654907
+ALA     CB     C 0 N N 1.2039999961853027   -0.6200000047683716    1.2960000038146973
+ALA     OXT    O 0 N Y 0.6610000133514404   0.4390000104904175     -1.7419999837875366
+ALA     H      H 0 N N -1.3830000162124634  -0.42500001192092896   1.4819999933242798
+ALA     H2     H 0 N Y -0.6759999990463257  0.6610000133514404     2.4519999027252197
+ALA     HA     H 0 N N 0.7459999918937683   1.3919999599456787     0.6819999814033508
+ALA     HB1    H 0 N N 1.4589999914169312   -0.33000001311302185   2.315999984741211
+ALA     HB2    H 0 N N 0.7149999737739563   -1.593999981880188     1.3070000410079956
+ALA     HB3    H 0 N N 2.11299991607666     -0.6759999990463257    0.6970000267028809
+ALA     HXT    H 0 N Y 0.4350000023841858   0.18199999630451202    -2.6470000743865967
+ASP     N      N 0 N N -0.31700000166893005 1.687999963760376      0.06599999964237213
+ASP     CA     C 0 N N -0.4699999988079071  0.28600001335144043    -0.3440000116825104
+ASP     C      C 0 N N -1.8680000305175781  -0.18000000715255737   -0.028999999165534973
+ASP     O      O 0 N N -2.5339999198913574  0.41499999165534973    0.7860000133514404
+ASP     CB     C 0 N N 0.5389999747276306   -0.5799999833106995    0.4129999876022339
+ASP     CG     C 0 N N 1.937999963760376    -0.19499999284744263   0.004000000189989805
+ASP     OD1    O 0 N N 2.1089999675750732   0.6809999942779541     -0.8100000023841858
+ASP     OD2    O 0 N N 2.992000102996826    -0.8259999752044678    0.5429999828338623
+ASP     OXT    O 0 N Y -2.374000072479248   -1.25600004196167      -0.6520000100135803
+ASP     H      H 0 N N -0.9279999732971191  2.2890000343322754     -0.46700000762939453
+ASP     H2     H 0 N Y -0.4779999852180481  1.7949999570846558     1.055999994277954
+ASP     HA     H 0 N N -0.2919999957084656  0.19900000095367432    -1.4160000085830688
+ASP     HB2    H 0 N N 0.4189999997615814   -0.42500001192092896   1.4850000143051147
+ASP     HB3    H 0 N N 0.367000013589859    -1.6299999952316284    0.17599999904632568
+ASP     HD2    H 0 N N 3.86899995803833     -0.5450000166893005    0.25
+ASP     HXT    H 0 N Y -3.2750000953674316  -1.5169999599456787    -0.41600000858306885
+GLY     N      N 0 N N 1.930999994277954    0.09000000357627869    -0.03400000184774399
+GLY     CA     C 0 N N 0.7609999775886536   -0.7990000247955322    -0.00800000037997961
+GLY     C      C 0 N N -0.49799999594688416 0.028999999165534973   -0.004999999888241291
+GLY     O      O 0 N N -0.42899999022483826 1.2350000143051147     -0.023000000044703484
+GLY     OXT    O 0 N Y -1.6970000267028809  -0.5740000009536743    0.017999999225139618
+GLY     H      H 0 N N 1.909999966621399    0.7379999756813049     0.7379999756813049
+GLY     H2     H 0 N Y 2.7880001068115234   -0.44200000166893005   -0.03700000047683716
+GLY     HA2    H 0 N N 0.7720000147819519   -1.440000057220459     -0.8889999985694885
+GLY     HA3    H 0 N N 0.7929999828338623   -1.4149999618530273    0.890999972820282
+GLY     HXT    H 0 N Y -2.4769999980926514  -0.0020000000949949026 0.01899999938905239
+RIB     O5     O 0 N N -0.7739999890327454  -0.3720000088214874    3.1019999980926514
+RIB     C5     C 0 N N 0.12399999797344208  0.36399999260902405    2.2709999084472656
+RIB     C4     C 0 N N 0.18400000035762787  -0.2809999883174896    0.8849999904632568
+RIB     O4     O 0 N N -1.1100000143051147  -0.24500000476837158   0.2759999930858612
+RIB     C3     C 0 N N 1.1510000228881836   0.5109999775886536     -0.019999999552965164
+RIB     O3     O 0 N N 2.4189999103546143   -0.14100000262260437   -0.11599999666213989
+RIB     C2     C 0 N N 0.41200000047683716  0.4869999885559082     -1.3869999647140503
+RIB     O2     O 0 N N 0.6869999766349792   -0.7200000286102295    -2.0999999046325684
+RIB     C1     C 0 N N -1.065000057220459   0.5389999747276306     -0.925000011920929
+RIB     O1     O 0 N Y -1.9179999828338623  -0.02800000086426735   -1.9210000038146973
+RIB     HO5    H 0 N Y -0.7829999923706055  0.06700000166893005    3.9630000591278076
+RIB     H51    H 0 N N -0.22499999403953552 1.3919999599456787     2.177999973297119
+RIB     H52    H 0 N N 1.11899995803833     0.35899999737739563    2.7179999351501465
+RIB     H4     H 0 N N 0.5230000019073486   -1.312999963760376     0.9729999899864197
+RIB     H3     H 0 N N 1.2690000534057617   1.5329999923706055     0.33899998664855957
+RIB     HO3    H 0 N Y 2.940000057220459    0.3540000021457672     -0.7630000114440918
+RIB     H2     H 0 N N 0.6669999957084656   1.3609999418258667     -1.9869999885559082
+RIB     HO2    H 0 N Y 0.11599999666213989  -0.7200000286102295    -2.880000114440918
+RIB     H1     H 0 N N -1.3600000143051147  1.5679999589920044     -0.7170000076293945
+RIB     HO1    H 0 N Y -2.815999984741211   -0.008999999612569809  -1.562999963760376
+180-180 UNK    X 0 N N nan                  nan                    nan
 #

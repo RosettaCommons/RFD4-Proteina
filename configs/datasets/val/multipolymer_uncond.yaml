@@ -1,8 +1,7 @@
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/multipolymer_uncond.json
-  name: multipolymer_uncond
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/multipolymer_uncond
   subset_to_keys:
     - multipolymer_120p_70r
     - multipolymer_90p_60r_25d_25d
@@ -17,4 +16,3 @@ dataset:
     _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - unconditional_refolding
-      

@@ -1,0 +1,325 @@
+data_FAD.cif
+#
+_entry.id       FAD.cif
+_entry.author   rib7
+_entry.date     2026-08-28
+_entry.time     19:47:19
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 non-polymer .
+1 polymer     .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       X
+_entity_poly.pdbx_seq_one_letter_code_can   X
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   1
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      150-150
+_entity_poly_seq.num         1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+150-150 150-150 NON-POLYMER ? ? ? ?
+FAD     FAD     NON-POLYMER ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+FAD PA    O1A    DOUB N
+FAD PA    O2A    SING N
+FAD PA    O5B    SING N
+FAD PA    O3P    SING N
+FAD O2A   HOA2   SING N
+FAD O5B   C5B    SING N
+FAD C5B   C4B    SING N
+FAD C5B   H51A   SING N
+FAD C5B   H52A   SING N
+FAD C4B   O4B    SING N
+FAD C4B   C3B    SING N
+FAD C4B   H4B    SING N
+FAD O4B   C1B    SING N
+FAD C3B   O3B    SING N
+FAD C3B   C2B    SING N
+FAD C3B   H3B    SING N
+FAD O3B   HO3A   SING N
+FAD C2B   O2B    SING N
+FAD C2B   C1B    SING N
+FAD C2B   H2B    SING N
+FAD O2B   HO2A   SING N
+FAD C1B   N9A    SING N
+FAD C1B   H1B    SING N
+FAD N9A   C8A    SING Y
+FAD N9A   C4A    SING Y
+FAD C8A   N7A    DOUB Y
+FAD C8A   H8A    SING N
+FAD N7A   C5A    SING Y
+FAD C5A   C6A    SING Y
+FAD C5A   C4A    DOUB Y
+FAD C6A   N6A    SING N
+FAD C6A   N1A    DOUB Y
+FAD N6A   H61A   SING N
+FAD N6A   H62A   SING N
+FAD N1A   C2A    SING Y
+FAD C2A   N3A    DOUB Y
+FAD C2A   H2A    SING N
+FAD N3A   C4A    SING Y
+FAD N1    C2     SING N
+FAD N1    C10    DOUB N
+FAD C2    O2     DOUB N
+FAD C2    N3     SING N
+FAD N3    C4     SING N
+FAD N3    HN3    SING N
+FAD C4    O4     DOUB N
+FAD C4    C4X    SING N
+FAD C4X   N5     DOUB N
+FAD C4X   C10    SING N
+FAD N5    C5X    SING N
+FAD C5X   C6     DOUB Y
+FAD C5X   C9A    SING Y
+FAD C6    C7     SING Y
+FAD C6    H6     SING N
+FAD C7    C7M    SING N
+FAD C7    C8     DOUB Y
+FAD C7M   HM71   SING N
+FAD C7M   HM72   SING N
+FAD C7M   HM73   SING N
+FAD C8    C8M    SING N
+FAD C8    C9     SING Y
+FAD C8M   HM81   SING N
+FAD C8M   HM82   SING N
+FAD C8M   HM83   SING N
+FAD C9    C9A    DOUB Y
+FAD C9    H9     SING N
+FAD C9A   N10    SING N
+FAD N10   C10    SING N
+FAD N10   "C1'"  SING N
+FAD "C1'" "C2'"  SING N
+FAD "C1'" "H1'1" SING N
+FAD "C1'" "H1'2" SING N
+FAD "C2'" "O2'"  SING N
+FAD "C2'" "C3'"  SING N
+FAD "C2'" "H2'"  SING N
+FAD "O2'" "HO2'" SING N
+FAD "C3'" "O3'"  SING N
+FAD "C3'" "C4'"  SING N
+FAD "C3'" "H3'"  SING N
+FAD "O3'" "HO3'" SING N
+FAD "C4'" "O4'"  SING N
+FAD "C4'" "C5'"  SING N
+FAD "C4'" "H4'"  SING N
+FAD "O4'" "HO4'" SING N
+FAD "C5'" "O5'"  SING N
+FAD "C5'" "H5'1" SING N
+FAD "C5'" "H5'2" SING N
+FAD "O5'" P      SING N
+FAD P     O1P    DOUB N
+FAD P     O2P    SING N
+FAD P     O3P    SING N
+FAD O2P   HOP2   SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X UNK   . 150-150 A 1 1   . 1   150-150 A UNK   nan   0.0 ? .   True True  True  150 1 150 False False 0 0  nan nan nan 1 1
+HETATM P PA    . FAD     B 0 412 . 412 FAD     B PA    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 1  0.0 0.0 0.0 1 2
+HETATM O O1A   . FAD     B 0 412 . 412 FAD     B O1A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 2  0.0 0.0 0.0 1 3
+HETATM O O2A   . FAD     B 0 412 . 412 FAD     B O2A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 3  0.0 0.0 0.0 1 4
+HETATM O O5B   . FAD     B 0 412 . 412 FAD     B O5B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 4  0.0 0.0 0.0 1 5
+HETATM C C5B   . FAD     B 0 412 . 412 FAD     B C5B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 5  0.0 0.0 0.0 1 6
+HETATM C C4B   . FAD     B 0 412 . 412 FAD     B C4B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 6  0.0 0.0 0.0 1 7
+HETATM O O4B   . FAD     B 0 412 . 412 FAD     B O4B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 7  0.0 0.0 0.0 1 8
+HETATM C C3B   . FAD     B 0 412 . 412 FAD     B C3B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 8  0.0 0.0 0.0 1 9
+HETATM O O3B   . FAD     B 0 412 . 412 FAD     B O3B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 9  0.0 0.0 0.0 1 10
+HETATM C C2B   . FAD     B 0 412 . 412 FAD     B C2B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 10 0.0 0.0 0.0 1 11
+HETATM O O2B   . FAD     B 0 412 . 412 FAD     B O2B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 11 0.0 0.0 0.0 1 12
+HETATM C C1B   . FAD     B 0 412 . 412 FAD     B C1B   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 12 0.0 0.0 0.0 1 13
+HETATM N N9A   . FAD     B 0 412 . 412 FAD     B N9A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 13 0.0 0.0 0.0 1 14
+HETATM C C8A   . FAD     B 0 412 . 412 FAD     B C8A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 14 0.0 0.0 0.0 1 15
+HETATM N N7A   . FAD     B 0 412 . 412 FAD     B N7A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 15 0.0 0.0 0.0 1 16
+HETATM C C5A   . FAD     B 0 412 . 412 FAD     B C5A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 16 0.0 0.0 0.0 1 17
+HETATM C C6A   . FAD     B 0 412 . 412 FAD     B C6A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 17 0.0 0.0 0.0 1 18
+HETATM N N6A   . FAD     B 0 412 . 412 FAD     B N6A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 18 0.0 0.0 0.0 1 19
+HETATM N N1A   . FAD     B 0 412 . 412 FAD     B N1A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 19 0.0 0.0 0.0 1 20
+HETATM C C2A   . FAD     B 0 412 . 412 FAD     B C2A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 20 0.0 0.0 0.0 1 21
+HETATM N N3A   . FAD     B 0 412 . 412 FAD     B N3A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 21 0.0 0.0 0.0 1 22
+HETATM C C4A   . FAD     B 0 412 . 412 FAD     B C4A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 22 0.0 0.0 0.0 1 23
+HETATM N N1    . FAD     B 0 412 . 412 FAD     B N1    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 23 0.0 0.0 0.0 1 24
+HETATM C C2    . FAD     B 0 412 . 412 FAD     B C2    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 24 0.0 0.0 0.0 1 25
+HETATM O O2    . FAD     B 0 412 . 412 FAD     B O2    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 25 0.0 0.0 0.0 1 26
+HETATM N N3    . FAD     B 0 412 . 412 FAD     B N3    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 26 0.0 0.0 0.0 1 27
+HETATM C C4    . FAD     B 0 412 . 412 FAD     B C4    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 27 0.0 0.0 0.0 1 28
+HETATM O O4    . FAD     B 0 412 . 412 FAD     B O4    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 28 0.0 0.0 0.0 1 29
+HETATM C C4X   . FAD     B 0 412 . 412 FAD     B C4X   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 29 0.0 0.0 0.0 1 30
+HETATM N N5    . FAD     B 0 412 . 412 FAD     B N5    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 30 0.0 0.0 0.0 1 31
+HETATM C C5X   . FAD     B 0 412 . 412 FAD     B C5X   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 31 0.0 0.0 0.0 1 32
+HETATM C C6    . FAD     B 0 412 . 412 FAD     B C6    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 32 0.0 0.0 0.0 1 33
+HETATM C C7    . FAD     B 0 412 . 412 FAD     B C7    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 33 0.0 0.0 0.0 1 34
+HETATM C C7M   . FAD     B 0 412 . 412 FAD     B C7M   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 34 0.0 0.0 0.0 1 35
+HETATM C C8    . FAD     B 0 412 . 412 FAD     B C8    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 35 0.0 0.0 0.0 1 36
+HETATM C C8M   . FAD     B 0 412 . 412 FAD     B C8M   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 36 0.0 0.0 0.0 1 37
+HETATM C C9    . FAD     B 0 412 . 412 FAD     B C9    36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 37 0.0 0.0 0.0 1 38
+HETATM C C9A   . FAD     B 0 412 . 412 FAD     B C9A   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 38 0.0 0.0 0.0 1 39
+HETATM N N10   . FAD     B 0 412 . 412 FAD     B N10   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 39 0.0 0.0 0.0 1 40
+HETATM C C10   . FAD     B 0 412 . 412 FAD     B C10   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 40 0.0 0.0 0.0 1 41
+HETATM C "C1'" . FAD     B 0 412 . 412 FAD     B "C1'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 41 0.0 0.0 0.0 1 42
+HETATM C "C2'" . FAD     B 0 412 . 412 FAD     B "C2'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 42 0.0 0.0 0.0 1 43
+HETATM O "O2'" . FAD     B 0 412 . 412 FAD     B "O2'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 43 0.0 0.0 0.0 1 44
+HETATM C "C3'" . FAD     B 0 412 . 412 FAD     B "C3'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 44 0.0 0.0 0.0 1 45
+HETATM O "O3'" . FAD     B 0 412 . 412 FAD     B "O3'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 45 0.0 0.0 0.0 1 46
+HETATM C "C4'" . FAD     B 0 412 . 412 FAD     B "C4'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 46 0.0 0.0 0.0 1 47
+HETATM O "O4'" . FAD     B 0 412 . 412 FAD     B "O4'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 47 0.0 0.0 0.0 1 48
+HETATM C "C5'" . FAD     B 0 412 . 412 FAD     B "C5'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 48 0.0 0.0 0.0 1 49
+HETATM O "O5'" . FAD     B 0 412 . 412 FAD     B "O5'" 36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 49 0.0 0.0 0.0 1 50
+HETATM P P     . FAD     B 0 412 . 412 FAD     B P     36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 50 0.0 0.0 0.0 1 51
+HETATM O O1P   . FAD     B 0 412 . 412 FAD     B O1P   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 51 0.0 0.0 0.0 1 52
+HETATM O O2P   . FAD     B 0 412 . 412 FAD     B O2P   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 52 0.0 0.0 0.0 1 53
+HETATM O O3P   . FAD     B 0 412 . 412 FAD     B O3P   36.17 1.0 ? FAD True False False -1  0 -1  True  False 0 53 0.0 0.0 0.0 1 54
+#
+_rfd_design.sampled_contig   150-150
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+FAD     PA     P 0 N N -1.6480000019073486  -0.6290000081062317   -3.2290000915527344
+FAD     O1A    O 0 N N -3.0350000858306885  -1.0880000591278076   -2.992000102996826
+FAD     O2A    O 0 N N -0.6779999732971191  -1.906000018119812    -3.378000020980835
+FAD     O5B    O 0 N N -1.5950000286102295  0.24500000476837158   -4.579999923706055
+FAD     C5B    C 0 N N -2.0360000133514404  -0.6050000190734863   -5.639999866485596
+FAD     C4B    C 0 N N -2.009000062942505   0.16899999976158142   -6.959000110626221
+FAD     O4B    O 0 N N -0.6650000214576721  0.5830000042915344    -7.25600004196167
+FAD     C3B    C 0 N N -2.4760000705718994  -0.7409999966621399   -8.111000061035156
+FAD     O3B    O 0 N N -3.6389999389648438  -0.2029999941587448   -8.744000434875488
+FAD     C2B    C 0 N N -1.2769999504089355  -0.7480000257492065   -9.095000267028809
+FAD     O2B    O 0 N N -1.7280000448226929  -0.671999990940094    -10.449000358581543
+FAD     C1B    C 0 N N -0.5180000066757202  0.5410000085830688    -8.692000389099121
+FAD     N9A    N 0 Y N 0.8949999809265137   0.4490000009536743    -9.062999725341797
+FAD     C8A    C 0 Y N 1.8890000581741333   -0.11800000071525574  -8.321999549865723
+FAD     N7A    N 0 Y N 3.0230000019073486   -0.024000000208616257 -8.95300006866455
+FAD     C5A    C 0 Y N 2.8299999237060547   0.6060000061988831    -10.13599967956543
+FAD     C6A    C 0 Y N 3.6630001068115234   0.9789999723434448    -11.204999923706055
+FAD     N6A    N 0 N N 5.01800012588501     0.6980000138282776    -11.178000450134277
+FAD     N1A    N 0 Y N 3.11899995803833     1.6069999933242798    -12.241999626159668
+FAD     C2A    C 0 Y N 1.8270000219345093   1.878000020980835     -12.277000427246094
+FAD     N3A    N 0 Y N 1.0099999904632568   1.5490000247955322    -11.298999786376953
+FAD     C4A    C 0 Y N 1.4620000123977661   0.9139999747276306    -10.222999572753906
+FAD     N1     N 0 N N -1.9329999685287476  0.36000001430511475   8.321000099182129
+FAD     C2     C 0 N N -2.802000045776367   1.0329999923706055    9.069999694824219
+FAD     O2     O 0 N N -3.9700000286102295  1.0429999828338623    8.720999717712402
+FAD     N3     N 0 N N -2.4739999771118164  1.7009999752044678    10.1850004196167
+FAD     C4     C 0 N N -1.1970000267028809  1.7339999675750732    10.633999824523926
+FAD     O4     O 0 N N -0.8970000147819519  2.3399999141693115    11.644000053405762
+FAD     C4X    C 0 N N -0.18400000035762787 1.003000020980835     9.842000007629395
+FAD     N5     N 0 N N 1.0779999494552612   0.9679999947547913    10.1850004196167
+FAD     C5X    C 0 Y N 1.968999981880188    0.29499998688697815   9.446000099182129
+FAD     C6     C 0 Y N 3.3239998817443848   0.27000001072883606   9.833000183105469
+FAD     C7     C 0 Y N 4.23199987411499     -0.41200000047683716  9.081999778747559
+FAD     C7M    C 0 N N 5.678999900817871    -0.4339999854564667   9.501999855041504
+FAD     C8     C 0 Y N 3.8410000801086426   -1.0850000381469727   7.929999828338623
+FAD     C8M    C 0 N N 4.866000175476074    -1.8320000171661377   7.116000175476074
+FAD     C9     C 0 Y N 2.5230000019073486   -1.0820000171661377   7.5289998054504395
+FAD     C9A    C 0 Y N 1.5720000267028809   -0.3930000066757202   8.277999877929688
+FAD     N10    N 0 N N 0.2529999911785126   -0.38199999928474426  7.876999855041504
+FAD     C10    C 0 N N -0.6489999890327454  0.3009999990463257    8.633999824523926
+FAD     "C1'"  C 0 N N -0.1679999977350235  -1.093000054359436    6.668000221252441
+FAD     "C2'"  C 0 N N -0.07000000029802322 -0.15299999713897705  5.464000225067139
+FAD     "O2'"  O 0 N N -0.9190000295639038  0.9769999980926514    5.672999858856201
+FAD     "C3'"  C 0 N N -0.5109999775886536  -0.8949999809265137   4.201000213623047
+FAD     "O3'"  O 0 N N 0.3370000123977661   -2.0260000228881836   3.992000102996826
+FAD     "C4'"  C 0 N N -0.4129999876022339  0.04399999976158142   2.996999979019165
+FAD     "O4'"  O 0 N N -1.2619999647140503  1.1740000247955322    3.2060000896453857
+FAD     "C5'"  C 0 N N -0.8539999723434448  -0.6970000267028809   1.7339999675750732
+FAD     "O5'"  O 0 N N -0.7630000114440918  0.17900000512599945   0.6100000143051147
+FAD     P      P 0 N N -1.2389999628067017  -0.6620000004768372   -0.6769999861717224
+FAD     O1P    O 0 N N -0.3540000021457672  -1.8350000381469727   -0.8529999852180481
+FAD     O2P    O 0 N N -2.753999948501587   -1.159999966621399    -0.4620000123977661
+FAD     O3P    O 0 N N -1.1610000133514404  0.27000001072883606   -1.9869999885559082
+FAD     HOA2   H 0 N N 0.21199999749660492  -1.5640000104904175   -3.5309998989105225
+FAD     H51A   H 0 N N -1.3739999532699585  -1.468000054359436    -5.711999893188477
+FAD     H52A   H 0 N N -3.052000045776367   -0.9419999718666077   -5.436999797821045
+FAD     H4B    H 0 N N -2.6589999198913574  1.0410000085830688    -6.889999866485596
+FAD     H3B    H 0 N N -2.6740000247955322  -1.7480000257492065   -7.74399995803833
+FAD     HO3A   H 0 N N -3.8450000286102295  -0.7820000052452087   -9.489999771118164
+FAD     H2B    H 0 N N -0.652999997138977   -1.6299999952316284   -8.944000244140625
+FAD     HO2A   H 0 N N -2.190000057220459   -1.5010000467300415   -10.63599967956543
+FAD     H1B    H 0 N N -0.9779999852180481  1.4160000085830688    -9.149999618530273
+FAD     H8A    H 0 N N 1.753999948501587    -0.5770000219345093   -7.354000091552734
+FAD     H61A   H 0 N N 5.581999778747559    0.9599999785423279    -11.92199993133545
+FAD     H62A   H 0 N N 5.4029998779296875   0.23899999260902405   -10.414999961853027
+FAD     H2A    H 0 N N 1.4270000457763672   2.3910000324249268    -13.138999938964844
+FAD     HN3    H 0 N N -3.1640000343322754  2.1689999103546143    10.678999900817871
+FAD     H6     H 0 N N 3.6410000324249268   0.7919999957084656    10.722999572753906
+FAD     HM71   H 0 N N 5.853000164031982    -1.284999966621399    10.161999702453613
+FAD     HM72   H 0 N N 6.313000202178955    -0.5230000019073486   8.619999885559082
+FAD     HM73   H 0 N N 5.919000148773193    0.4880000054836273    10.029999732971191
+FAD     HM81   H 0 N N 5.284999847412109    -1.1670000553131104   6.361000061035156
+FAD     HM82   H 0 N N 5.6620001792907715   -2.184999942779541    7.771999835968018
+FAD     HM83   H 0 N N 4.39300012588501     -2.684000015258789    6.627999782562256
+FAD     H9     H 0 N N 2.2279999256134033   -1.6089999675750732   6.633999824523926
+FAD     "H1'1" H 0 N N 0.4779999852180481   -1.9550000429153442   6.507999897003174
+FAD     "H1'2" H 0 N N -1.1979999542236328  -1.4279999732971191   6.783999919891357
+FAD     "H2'"  H 0 N N 0.9589999914169312   0.18199999630451202   5.3480000495910645
+FAD     "HO2'" H 0 N N -1.819000005722046   0.6370000243186951    5.770999908447266
+FAD     "H3'"  H 0 N N -1.5410000085830688  -1.2309999465942383   4.316999912261963
+FAD     "HO3'" H 0 N N 1.2369999885559082   -1.6859999895095825   3.8940000534057617
+FAD     "H4'"  H 0 N N 0.6159999966621399   0.3790000081062317    2.88100004196167
+FAD     "HO4'" H 0 N N -2.1619999408721924  0.8339999914169312    3.303999900817871
+FAD     "H5'1" H 0 N N -0.2070000022649765  -1.559999942779541    1.5750000476837158
+FAD     "H5'2" H 0 N N -1.8839999437332153  -1.0329999923706055   1.850000023841858
+FAD     HOP2   H 0 N N -3.2960000038146973  -0.367000013589859    -0.35100001096725464
+150-150 UNK    X 0 N N nan                  nan                   nan
+#

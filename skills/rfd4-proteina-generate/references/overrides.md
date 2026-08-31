@@ -25,7 +25,7 @@ runs in the current environment.
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
 
@@ -60,7 +60,7 @@ python src/rfproteina/generate.py \
 **Deterministic (ODE) sampling** — no noise injected mid-trajectory:
 
 ```bash
-python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json out_dir=./runs/ode \
+python src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/ode \
     generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode
 ```
 
@@ -86,7 +86,7 @@ Rough guide:
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json out_dir=./runs/diverse \
+    inputs=data/benchmarks/monomer out_dir=./runs/diverse \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
 ```

@@ -1,7 +1,6 @@
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/pseudoknot_full.json
-  name: pseudoknot
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/pseudoknot
   subset_to_keys:
     - W05
     - Q20

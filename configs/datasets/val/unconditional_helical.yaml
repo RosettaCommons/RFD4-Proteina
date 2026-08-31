@@ -1,10 +1,9 @@
 compute_loss: true
 
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer_helical.json
-  name: unindexed_new_pipeline
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer_helical
   subset_to_keys: null
 
   num_replicates: 50

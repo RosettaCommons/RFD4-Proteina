@@ -1,0 +1,260 @@
+data_OQO.cif
+#
+_entry.id       OQO.cif
+_entry.author   rib7
+_entry.date     2026-08-28
+_entry.time     19:48:20
+#
+loop_
+_entity.id 
+_entity.type 
+_entity.pdbx_description 
+0 non-polymer .
+1 polymer     .
+#
+_entity_poly.entity_id                      1
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       X
+_entity_poly.pdbx_seq_one_letter_code_can   X
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+_entity_poly_seq.entity_id   1
+_entity_poly_seq.hetero      n
+_entity_poly_seq.mon_id      150-150
+_entity_poly_seq.num         1
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+150-150 150-150 NON-POLYMER ? ? ? ?
+OQO     OQO     NON-POLYMER ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+OQO C4  N5   SING N
+OQO C4  N3   DOUB Y
+OQO C6  C4   SING Y
+OQO C2  N3   SING Y
+OQO C7  C6   DOUB Y
+OQO C2  C1   SING N
+OQO C8  C2   DOUB Y
+OQO C7  C8   SING Y
+OQO C8  C9   SING N
+OQO C13 C9   DOUB Y
+OQO C10 C9   SING Y
+OQO N37 N38  DOUB Y
+OQO N38 N34  SING Y
+OQO N24 O25  SING N
+OQO N36 N37  SING Y
+OQO C13 N12  SING Y
+OQO C10 N11  DOUB Y
+OQO C32 C31  DOUB Y
+OQO C32 C33  SING Y
+OQO C23 N24  DOUB Y
+OQO C23 C22  SING Y
+OQO C31 C29  SING Y
+OQO C33 N34  SING N
+OQO C26 C33  DOUB Y
+OQO C35 N34  SING Y
+OQO C19 N24  SING Y
+OQO C29 CL30 SING N
+OQO C27 C29  DOUB Y
+OQO C26 C27  SING Y
+OQO C22 C26  SING N
+OQO C35 N36  DOUB Y
+OQO C27 F28  SING N
+OQO N11 N12  SING Y
+OQO C14 N12  SING N
+OQO C21 C22  DOUB Y
+OQO C19 C14  SING N
+OQO C20 C19  DOUB Y
+OQO C15 C14  SING N
+OQO C21 C20  SING Y
+OQO C17 C16  SING N
+OQO C17 C18  SING N
+OQO C16 C15  SING N
+OQO C18 C16  SING N
+OQO C21 H1   SING N
+OQO C7  H2   SING N
+OQO C32 H3   SING N
+OQO C31 H4   SING N
+OQO C20 H5   SING N
+OQO C6  H6   SING N
+OQO C10 H7   SING N
+OQO C13 H8   SING N
+OQO C23 H9   SING N
+OQO C35 H10  SING N
+OQO C17 H11  SING N
+OQO C17 H12  SING N
+OQO C18 H13  SING N
+OQO C18 H14  SING N
+OQO C16 H15  SING N
+OQO C1  H16  SING N
+OQO C1  H17  SING N
+OQO C1  H18  SING N
+OQO C15 H19  SING N
+OQO C15 H20  SING N
+OQO C14 H21  SING N
+OQO N5  H22  SING N
+OQO N5  H23  SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X  UNK  . 150-150 A 1 1   . 1   150-150 A UNK  nan   0.0 ?  150 1 False 150 False .   True 0 True  True  0  nan    nan    nan    1 1
+HETATM C  C21  . OQO     B 0 397 . 397 OQO     B C21  15.66 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 1  1.796  1.591  1.888  1 2
+HETATM C  C7   . OQO     B 0 397 . 397 OQO     B C7   21.64 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 2  -3.67  -3.928 -1.832 1 3
+HETATM C  C32  . OQO     B 0 397 . 397 OQO     B C32  16.15 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 3  4.744  4.449  -0.074 1 4
+HETATM C  C31  . OQO     B 0 397 . 397 OQO     B C31  16.37 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 4  6.015  3.877  0.007  1 5
+HETATM C  C20  . OQO     B 0 397 . 397 OQO     B C20  16.25 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 5  0.756  0.69   2.129  1 6
+HETATM C  C6   . OQO     B 0 397 . 397 OQO     B C6   21.24 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 6  -4.261 -4.765 -2.769 1 7
+HETATM C  C10  . OQO     B 0 397 . 397 OQO     B C10  16.84 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 7  -3.584 -0.488 -0.075 1 8
+HETATM C  C13  . OQO     B 0 397 . 397 OQO     B C13  16.89 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 8  -2.147 -2.16  -0.234 1 9
+HETATM C  C23  . OQO     B 0 397 . 397 OQO     B C23  16.54 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 9  2.321  0.302  -0.048 1 10
+HETATM C  C35  . OQO     B 0 397 . 397 OQO     B C35  18.29 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 10 1.998  5.388  0.829  1 11
+HETATM C  C22  . OQO     B 0 397 . 397 OQO     B C22  14.65 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 11 2.596  1.376  0.773  1 12
+HETATM C  C8   . OQO     B 0 397 . 397 OQO     B C8   21.82 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 12 -3.992 -2.556 -1.764 1 13
+HETATM C  C9   . OQO     B 0 397 . 397 OQO     B C9   18.04 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 13 -3.323 -1.716 -0.756 1 14
+HETATM C  C26  . OQO     B 0 397 . 397 OQO     B C26  14.48 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 14 3.754  2.272  0.494  1 15
+HETATM C  C33  . OQO     B 0 397 . 397 OQO     B C33  15.71 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 15 3.638  3.639  0.15   1 16
+HETATM C  C27  . OQO     B 0 397 . 397 OQO     B C27  13.56 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 16 5.041  1.731  0.564  1 17
+HETATM C  C29  . OQO     B 0 397 . 397 OQO     B C29  14.09 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 17 6.165  2.513  0.36   1 18
+HETATM C  C2   . OQO     B 0 397 . 397 OQO     B C2   23.45 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 18 -4.928 -2.088 -2.66  1 19
+HETATM C  C19  . OQO     B 0 397 . 397 OQO     B C19  15.56 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 19 0.532  -0.382 1.291  1 20
+HETATM C  C4   . OQO     B 0 397 . 397 OQO     B C4   22.66 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 20 -5.215 -4.204 -3.626 1 21
+HETATM C  C17  . OQO     B 0 397 . 397 OQO     B C17  18.75 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 21 -1.767 -4.259 2.637  1 22
+HETATM C  C18  . OQO     B 0 397 . 397 OQO     B C18  18.9  1.0 ?  -1  0 True  -1  True  OQO True 0 False False 22 -2.012 -3.855 4.077  1 23
+HETATM C  C16  . OQO     B 0 397 . 397 OQO     B C16  18.34 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 23 -2.079 -2.81  2.972  1 24
+HETATM C  C1   . OQO     B 0 397 . 397 OQO     B C1   22.67 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 24 -5.349 -0.634 -2.677 1 25
+HETATM C  C15  . OQO     B 0 397 . 397 OQO     B C15  18.17 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 25 -0.976 -1.768 2.899  1 26
+HETATM C  C14  . OQO     B 0 397 . 397 OQO     B C14  16.44 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 26 -0.535 -1.455 1.452  1 27
+HETATM N  N11  . OQO     B 0 397 . 397 OQO     B N11  16.83 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 27 -2.585 -0.171 0.816  1 28
+HETATM N  N36  . OQO     B 0 397 . 397 OQO     B N36  18.9  1.0 ?  -1  0 True  -1  True  OQO True 0 False False 28 0.754  5.663  0.496  1 29
+HETATM N  N3   . OQO     B 0 397 . 397 OQO     B N3   22.42 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 29 -5.53  -2.885 -3.584 1 30
+HETATM N  N37  . OQO     B 0 397 . 397 OQO     B N37  20.46 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 30 0.393  4.687  -0.396 1 31
+HETATM N  N38  . OQO     B 0 397 . 397 OQO     B N38  20.11 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 31 1.387  3.83   -0.62  1 32
+HETATM N  N12  . OQO     B 0 397 . 397 OQO     B N12  16.36 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 32 -1.758 -1.237 0.675  1 33
+HETATM N  N34  . OQO     B 0 397 . 397 OQO     B N34  15.24 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 33 2.394  4.279  0.159  1 34
+HETATM N  N24  . OQO     B 0 397 . 397 OQO     B N24  17.32 1.0 +1 -1  0 True  -1  True  OQO True 0 False False 34 1.297  -0.544 0.21   1 35
+HETATM N  N5   . OQO     B 0 397 . 397 OQO     B N5   24.39 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 35 -5.85  -5.028 -4.591 1 36
+HETATM O  O25  . OQO     B 0 397 . 397 OQO     B O25  17.87 1.0 -1 -1  0 True  -1  True  OQO True 0 False False 36 1.138  -1.534 -0.591 1 37
+HETATM F  F28  . OQO     B 0 397 . 397 OQO     B F28  15.46 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 37 5.155  0.395  0.915  1 38
+HETATM CL CL30 . OQO     B 0 397 . 397 OQO     B CL30 15.24 1.0 ?  -1  0 True  -1  True  OQO True 0 False False 38 7.7    1.769  0.497  1 39
+#
+_rfd_design.sampled_contig   150-150
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+OQO     C21  C  0  Y N 1.4780000448226929   -0.6119999885559082   0.8569999933242798
+OQO     C7   C  0  Y N -4.519999980926514   1.2389999628067017    1.7580000162124634
+OQO     C32  C  0  Y N 5.682000160217285    0.9100000262260437    0.7279999852180481
+OQO     C31  C  0  Y N 5.690999984741211    2.2360000610351562    0.33899998664855957
+OQO     C20  C  0  Y N 0.3440000116825104   -1.3700000047683716   0.6159999966621399
+OQO     C6   C  0  Y N -5.093999862670898   2.3489999771118164    2.3459999561309814
+OQO     C10  C  0  Y N -4.452000141143799   -0.7580000162124634   -1.3519999980926514
+OQO     C13  C  0  Y N -2.6410000324249268  -0.531000018119812    -0.057999998331069946
+OQO     C23  C  0  Y N 1.7259999513626099   -0.3919999897480011   -1.5240000486373901
+OQO     C35  C  0  Y N 5.546999931335449    -1.9019999504089355   1.5010000467300415
+OQO     C22  C  0  Y N 2.186000108718872    -0.11100000143051147  -0.23899999260902405
+OQO     C8   C  0  Y N -4.48199987411499    1.1720000505447388    0.3610000014305115
+OQO     C9   C  0  Y N -3.869999885559082   0.0020000000949949026 -0.3199999928474426
+OQO     C26  C  0  Y N 3.4059998989105225   0.7070000171661377    -0.03799999877810478
+OQO     C33  C  0  Y N 4.545000076293945    0.13899999856948853   0.5429999828338623
+OQO     C27  C  0  Y N 3.4240000247955322   2.0460000038146973    -0.4259999990463257
+OQO     C29  C  0  Y N 4.566999912261963    2.802999973297119     -0.23600000143051147
+OQO     C2   C  0  Y N -5.025000095367432   2.2149999141693115    -0.38199999928474426
+OQO     C19  C  0  Y N -0.04500000178813934 -1.6089999675750732   -0.6890000104904175
+OQO     C4   C  0  Y N -5.61299991607666    3.3550000190734863    1.5369999408721924
+OQO     C17  C  0  N N -2.7860000133514404  -5.684999942779541    0.6320000290870667
+OQO     C18  C  0  N N -3.740000009536743   -4.49399995803833     0.746999979019165
+OQO     C16  C  0  N N -2.572999954223633   -4.447999954223633    -0.24199999868869781
+OQO     C1   C  0  N N -4.989999771118164   2.1549999713897705    -1.8869999647140503
+OQO     C15  C  0  N N -1.3930000066757202  -3.5350000858306885   0.10000000149011612
+OQO     C14  C  0  N N -1.277999997138977   -2.434000015258789    -0.9559999704360962
+OQO     N11  N  0  Y N -3.6089999675750732  -1.6979999542236328   -1.6890000104904175
+OQO     N36  N  0  Y N 5.113999843597412    -3.11899995803833     1.7059999704360962
+OQO     N3   N  0  Y N -5.568999767303467   3.255000114440918     0.21799999475479126
+OQO     N37  N  0  Y N 3.9000000953674316   -3.240000009536743    1.305999994277954
+OQO     N38  N  0  Y N 3.4760000705718994   -2.122999906539917    0.8230000138282776
+OQO     N12  N  0  Y N -2.4630000591278076  -1.5740000009536743   -0.8949999809265137
+OQO     N34  N  0  Y N 4.535999774932861    -1.2059999704360962   0.9369999766349792
+OQO     N24  N  1  Y N 0.6460000276565552   -1.1269999742507935   -1.7050000429153442
+OQO     N5   N  0  N N -6.197999954223633   4.4730000495910645    2.121999979019165
+OQO     O25  O  -1 N N 0.2070000022649765   -1.3919999599456787   -3.0239999294281006
+OQO     F28  F  0  N N 2.3289999961853027   2.6019999980926514    -0.9890000224113464
+OQO     CL30 CL 0  N N 4.590000152587891    4.4710001945495605    -0.718999981880188
+OQO     H1   H  0  N N 1.8040000200271606   -0.4099999964237213   1.8660000562667847
+OQO     H2   H  0  N N -4.105999946594238   0.4449999928474426    2.3610000610351562
+OQO     H3   H  0  N N 6.564000129699707    0.4729999899864197    1.1720000505447388
+OQO     H4   H  0  N N 6.578999996185303    2.8329999446868896    0.48500001430511475
+OQO     H5   H  0  N N -0.23000000417232513 -1.7699999809265137   1.4390000104904175
+OQO     H6   H  0  N N -5.140999794006348   2.434000015258789     3.421999931335449
+OQO     H7   H  0  N N -5.427000045776367   -0.5950000286102295   -1.7869999408721924
+OQO     H8   H  0  N N -1.937000036239624   -0.1770000010728836   0.6790000200271606
+OQO     H9   H  0  N N 2.265000104904175    -0.014000000432133675 -2.380000114440918
+OQO     H10  H  0  N N 6.5289998054504395   -1.5230000019073486   1.7419999837875366
+OQO     H11  H  0  N N -2.0850000381469727  -5.849999904632568    1.4500000476837158
+OQO     H12  H  0  N N -3.1619999408721924  -6.585999965667725    0.1459999978542328
+OQO     H13  H  0  N N -4.743000030517578   -4.611999988555908    0.33799999952316284
+OQO     H14  H  0  N N -3.6659998893737793  -3.875999927520752    1.6419999599456787
+OQO     H15  H  0  N N -2.809999942779541   -4.533999919891357    -1.3029999732971191
+OQO     H16  H  0  N N -5.89300012588501    1.6649999618530273    -2.252000093460083
+OQO     H17  H  0  N N -4.938000202178955   3.1659998893737793    -2.2899999618530273
+OQO     H18  H  0  N N -4.114999771118164   1.590000033378601     -2.2079999446868896
+OQO     H19  H  0  N N -1.5540000200271606  -3.0850000381469727   1.0789999961853027
+OQO     H20  H  0  N N -0.4740000069141388  -4.120999813079834    0.11500000208616257
+OQO     H21  H  0  N N -1.2070000171661377  -2.884999990463257    -1.9450000524520874
+OQO     H22  H  0  N N -6.571000099182129   5.172999858856201     1.5640000104904175
+OQO     H23  H  0  N N -6.232999801635742   4.552000045776367     3.0880000591278076
+150-150 UNK  X  0  N N nan                  nan                   nan
+#

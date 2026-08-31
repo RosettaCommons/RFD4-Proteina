@@ -108,7 +108,7 @@ On a configured cluster, run the entry point directly; its shebang loads
 .. code-block:: bash
 
    ./src/rfproteina/generate.py \
-       inputs=data/benchmarks/monomer.json \
+       inputs=data/benchmarks/monomer \
        num_replicates=1 \
        out_dir=./runs/smoke
 

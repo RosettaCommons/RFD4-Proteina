@@ -49,13 +49,13 @@ input, task-specific overrides, and gotchas:
 
 | Design task | Example input(s) in `data/benchmarks/` | Reference |
 | --- | --- | --- |
-| Unconditional (monomer / complex) | `monomer.json`, `monomer_helical.json`, `monomer_ig.json`, `multipolymer_uncond.json` | [tasks/unconditional.md](references/tasks/unconditional.md) |
+| Unconditional (monomer / complex) | `monomer`, `monomer_helical`, `monomer_ig`, `multipolymer_uncond` | [tasks/unconditional.md](references/tasks/unconditional.md) |
 | Folding / inverse folding | annotated CIF (backbone-only vs `C_SEQ`) | [tasks/folding-inverse.md](references/tasks/folding-inverse.md) |
-| Motif scaffolding | `motif_scaffold_aa_tasks_*.json` | [tasks/motif.md](references/tasks/motif.md) |
-| Enzyme design (active site) | `mcsa_40.json`, `mcsa_40_fixed_ligand.json`, `mcsa_40_no_ligand.json`, `enz_design.json` | [tasks/enzyme.md](references/tasks/enzyme.md) |
-| Small-molecule binder | `sm_binder.json`, `sm_binder_hbonds.json`, `sm_binder_fixed_ligand.json` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
-| Protein binder (planned) | `cleaned_ppi.yaml` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
-| DNA binder (planned) | `dna_binder_120_150_campaign.json`, `dna_binder_denovo_val.json`, `dna_binder_short_site.json`, `paper_dna.json` | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
+| Motif scaffolding | `motif_indexed`, `motif_unindexed`, `motif_indexed_internal_coords` | [tasks/motif.md](references/tasks/motif.md) |
+| Enzyme design (active site) | `mcsa_40`, `mcsa_40_fixed_ligand`, `mcsa_40_no_ligand`, `enz_design` | [tasks/enzyme.md](references/tasks/enzyme.md) |
+| Small-molecule binder | `sm_binder`, `sm_binder_hbonds`, `sm_binder_fixed_ligand` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
+| Protein binder (planned) | `cleaned_ppi/` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
+| DNA binder (planned) | `dna_binder_120_150_campaign`, `dna_binder_denovo_val`, `dna_binder_short_site` (the `paper_dna` benchmark is retired) | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
 
 > [!WARNING]
 > Protein-binder and DNA-binder tasks are **not fully supported in the current
@@ -100,7 +100,7 @@ Useful extras: `subset_to_examples=monomer-short` (run only named keys),
 ```bash
 # 80 designs of each monomer example, 8 at a time
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
 
@@ -155,7 +155,7 @@ metric configs before treating any list as exhaustive.
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json num_replicates=50 batch_size=8 \
+    inputs=data/benchmarks/monomer num_replicates=50 batch_size=8 \
     out_dir=./runs/monomers_scored metrics_tags='[unconditional_refolding]'
 ```
 

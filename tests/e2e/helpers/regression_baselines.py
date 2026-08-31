@@ -52,7 +52,7 @@ SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
-# Beam search runs the smallest unindexed motif in benchmarks/motif_scaffold_aa_tasks_unindexed.json
+# Beam search runs the smallest unindexed motif in benchmarks/motif_unindexed
 # (3IXT, motif P254-277) and ranks candidates on how closely they reproduce that motif.
 BEAM_SEARCH_EXAMPLE = "3IXT_AA"
 BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
@@ -61,7 +61,7 @@ BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
 BEAM_SEARCH_OVERRIDES = [
     "inference_experiment=inference_beam_regression",
     "~metrics/refolding_oracles",
-    "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffold_aa_tasks_unindexed.json",
+    "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_unindexed",
     f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
     "++metrics_tags=[design,unindexed]",
     "++search.rewards.reward_metrics_tags=[design,unindexed]",

@@ -38,7 +38,7 @@ Two ways in:
 > them inside the container — no virtualenv needed:
 >
 > ```bash
-> ./src/rfproteina/generate.py inputs=data/benchmarks/monomer.json out_dir=./runs/smoke
+> ./src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/smoke
 > ```
 >
 > Do this on an interactive GPU; the SLURM launchers (e.g. `scripts/launch_generate.sh`) enter the
@@ -85,7 +85,7 @@ prebuilt SIFs are symlinked in place):
   `latent-dev.sif`). Run any command inside the image with a repo bind mount and GPU:
   ```bash
   apptainer exec --nv --bind "$PWD" "$LATENT_APPTAINER_SIF" \
-      python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json out_dir=./runs/smoke
+      python src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/smoke
   ```
   Where no prebuilt SIF is staged, build one: `apptainer build latent-dev.sif .ipd/apptainer/latent-dev.def`.
   `LATENT_APPTAINER_SIF` comes from `.ipd/.env.<cluster>`, so it follows image upgrades;
@@ -105,7 +105,7 @@ Generate one design to confirm the setup (checkpoints load from `$DATA_PATH`, so
 
 ```bash
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     num_replicates=1 out_dir=./runs/smoke
 ```
 

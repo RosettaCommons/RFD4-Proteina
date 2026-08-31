@@ -7,12 +7,12 @@ motif, no ligand, no target. Back to the [skill](../../SKILL.md).
 
 | File | Keys | What it is |
 | --- | --- | --- |
-| `monomer.json` | `monomer-short` (100), `monomer-medium` (150), `monomer-long` (250) | Plain single-chain monomers by length |
-| `monomer_helical.json` | `monomer-short/medium/long` | Monomers with a CATH mainly-alpha code (`add_cath_code` — planned, has no effect yet) |
-| `monomer_ig.json` | `monomer-short` | Monomer with an immunoglobulin CATH code (planned) |
-| `multipolymer_uncond.json` | `multipolymer_120p_70r`, `multipolymer_90p_60r_25d_25d`, `rna_50/60/100/150`, `dna_60`, `protein_60` | Multi-polymer / protein+RNA+DNA complexes and nucleic-acid-only chains |
+| `monomer` | `monomer-short` (100), `monomer-medium` (150), `monomer-long` (250) | Plain single-chain monomers by length |
+| `monomer_helical` | `monomer-short/medium/long` | Monomers with a CATH mainly-alpha code (`add_cath_code` — planned, has no effect yet) |
+| `monomer_ig` | `monomer-short` | Monomer with an immunoglobulin CATH code (planned) |
+| `multipolymer_uncond` | `multipolymer_120p_70r`, `multipolymer_90p_60r_25d_25d`, `rna_50/60/100/150`, `dna_60`, `protein_60` | Multi-polymer / protein+RNA+DNA complexes and nucleic-acid-only chains |
 
-> The `add_cath_code` fields in `monomer_helical.json` / `monomer_ig.json` are a
+> The `add_cath_code` conditioning in `monomer_helical` / `monomer_ig` is a
 > **planned** conditioning — they are parsed but the current checkpoint does not
 > respond to them.
 
@@ -21,12 +21,12 @@ motif, no ligand, no target. Back to the [skill](../../SKILL.md).
 ```bash
 # Smoke test: one short monomer
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json subset_to_examples=monomer-short \
+    inputs=data/benchmarks/monomer subset_to_examples=monomer-short \
     num_replicates=1 out_dir=./runs/uncond_smoke
 
 # Real run: 80 designs of each monomer example, 8 at a time
 python src/rfproteina/generate.py \
-    inputs=data/benchmarks/monomer.json \
+    inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
 
@@ -40,8 +40,7 @@ python src/rfproteina/generate.py \
 - **Metrics.** `metrics_tags='[unconditional_refolding]'` for AF3 refolding +
   pLDDT/scRMSD (needs an AF3 container — see **rfd4-proteina-evaluate**).
 - **Length** is set inside the input (`length` field), not on the CLI. For a new
-  length, build an input (a one-line JSON like `monomer.json`, or an annotated
-  CIF via **rfd4-proteina-inputs**).
+  length, build an annotated CIF input via **rfd4-proteina-inputs**.
 
 ## Gotchas
 

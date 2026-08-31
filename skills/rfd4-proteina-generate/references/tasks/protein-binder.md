@@ -11,23 +11,20 @@ Design a binder to a target protein at specified hotspot residues. Back to the
 ## What the task is
 
 Condition on a target protein's structure (coordinate-conditioned) and a set of
-**hotspot** residues (`select_hotspots` in JSON/YAML, the `C_HOT` annotation in a
-CIF), then design a new binder chain against that interface.
+**hotspot** residues (the `C_HOT` annotation in a CIF), then design a new binder
+chain against that interface.
 
 ## Example inputs (`data/benchmarks/`)
 
 | File | Notes |
 | --- | --- |
-| `cleaned_ppi.yaml` | One structure per target; keys like `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, `30_SC2RBD`. Each has `contig` (binder length + target chain) and `select_hotspots` |
-| `all_ppi_helical.yaml`, `all_ppi_ig.yaml` | Larger PPI benchmark sets |
-| `complexa_targets/` | Target CIFs referenced by the YAMLs |
+| `cleaned_ppi/` | One annotated CIF per target, including `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, and `30_SC2RBD` |
 
 ## Run
 
 ```bash
-python src/rfproteina/generate.py \
-    inputs=data/benchmarks/cleaned_ppi.yaml \
-    subset_to_examples=rfd3_pdl1 \
+./src/rfproteina/generate.py \
+    inputs=data/benchmarks/cleaned_ppi/rfd3_pdl1.cif \
     num_replicates=8 batch_size=8 out_dir=./runs/ppi \
     metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
@@ -43,8 +40,7 @@ python src/rfproteina/generate.py \
 ## Gotchas
 
 - The planned-support caveat above is the headline gotcha — set expectations.
-- Hotspots are set in the input (`select_hotspots`, per-residue atom selections
-  like `TIP` or `ALL`), not on the CLI. To build a new target/hotspot input, use
+- Hotspots are set by the input's `C_HOT` annotation, not on the CLI. To build a new target/hotspot input, use
   **rfd4-proteina-inputs**.
 - The designed (binder) chain is the "chain of interest" for clustering; it is
   identified automatically from the conditioning annotations.

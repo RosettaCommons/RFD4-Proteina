@@ -1,0 +1,196 @@
+data_M0555_1f8r.cif
+#
+_entry.id       M0555_1f8r.cif
+_entry.author   rib7
+_entry.date     2026-08-28
+_entry.time     19:41:40
+#
+_entity.id                 0
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polypeptide(L)
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   yes
+_entity_poly.pdbx_seq_one_letter_code       XHK
+_entity_poly.pdbx_seq_one_letter_code_can   XHK
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n 180-180 0
+0 n HIS     1
+0 n LYS     2
+#
+loop_
+_chem_comp.id 
+_chem_comp.name 
+_chem_comp.type 
+_chem_comp.formula 
+_chem_comp.mon_nstd_parent_comp_id 
+_chem_comp.pdbx_synonyms 
+_chem_comp.formula_weight 
+180-180 180-180 NON-POLYMER         ? ? ? ?
+HIS     HIS     'L-PEPTIDE LINKING' ? ? ? ?
+LYS     LYS     'L-PEPTIDE LINKING' ? ? ? ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+HIS N   CA  SING N
+HIS N   H   SING N
+HIS N   H2  SING N
+HIS CA  C   SING N
+HIS CA  CB  SING N
+HIS CA  HA  SING N
+HIS C   O   DOUB N
+HIS C   OXT SING N
+HIS CB  CG  SING N
+HIS CB  HB2 SING N
+HIS CB  HB3 SING N
+HIS CG  ND1 SING Y
+HIS CG  CD2 DOUB Y
+HIS ND1 CE1 DOUB Y
+HIS ND1 HD1 SING N
+HIS CD2 NE2 SING Y
+HIS CD2 HD2 SING N
+HIS CE1 NE2 SING Y
+HIS CE1 HE1 SING N
+HIS NE2 HE2 SING N
+HIS OXT HXT SING N
+LYS N   CA  SING N
+LYS N   H   SING N
+LYS N   H2  SING N
+LYS CA  C   SING N
+LYS CA  CB  SING N
+LYS CA  HA  SING N
+LYS C   O   DOUB N
+LYS C   OXT SING N
+LYS CB  CG  SING N
+LYS CB  HB2 SING N
+LYS CB  HB3 SING N
+LYS CG  CD  SING N
+LYS CG  HG2 SING N
+LYS CG  HG3 SING N
+LYS CD  CE  SING N
+LYS CD  HD2 SING N
+LYS CD  HD3 SING N
+LYS CE  NZ  SING N
+LYS CE  HE2 SING N
+LYS CE  HE3 SING N
+LYS NZ  HZ1 SING N
+LYS NZ  HZ2 SING N
+LYS NZ  HZ3 SING N
+LYS OXT HXT SING N
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_index_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+HETATM X UNK . 180-180 A 0 0 . 0 180-180 A UNK nan   0.0 ?  True  False True  180 180 .    0 True  False 0 0 nan    nan    nan    1 1
+ATOM   C CG  . HIS     A 0 1 . 1 HIS     A CG  21.89 1.0 ?  False True  False -1  -1  A223 1 False True  0 1 0.536  -2.904 5.107  1 2
+ATOM   N ND1 . HIS     A 0 1 . 1 HIS     A ND1 21.74 1.0 +1 False True  False -1  -1  A223 1 False True  0 2 1.728  -3.524 4.805  1 3
+ATOM   C CD2 . HIS     A 0 1 . 1 HIS     A CD2 21.53 1.0 ?  False True  False -1  -1  A223 1 False True  0 3 0.235  -2.126 4.043  1 4
+ATOM   C CE1 . HIS     A 0 1 . 1 HIS     A CE1 22.49 1.0 ?  False True  False -1  -1  A223 1 False True  0 4 2.133  -3.136 3.608  1 5
+ATOM   N NE2 . HIS     A 0 1 . 1 HIS     A NE2 21.3  1.0 ?  False True  False -1  -1  A223 1 False True  0 5 1.245  -2.286 3.124  1 6
+ATOM   C CD  . LYS     A 0 2 . 2 LYS     A CD  13.59 1.0 ?  False True  False -1  -1  A326 2 False True  0 6 -1.705 5.818  -7.42  1 7
+ATOM   C CE  . LYS     A 0 2 . 2 LYS     A CE  15.25 1.0 ?  False True  False -1  -1  A326 2 False True  0 7 -1.677 4.668  -6.415 1 8
+ATOM   N NZ  . LYS     A 0 2 . 2 LYS     A NZ  16.67 1.0 +1 False True  False -1  -1  A326 2 False True  0 8 -2.497 3.488  -6.852 1 9
+#
+_rfd_design.sampled_contig   180-180
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+HIS     N   N 0 N N -0.03999999910593033 -1.2100000381469727   0.05299999937415123
+HIS     CA  C 0 N N 1.1720000505447388   -1.7089999914169312   0.6520000100135803
+HIS     C   C 0 N N 1.0829999446868896   -3.2070000171661377   0.9049999713897705
+HIS     O   O 0 N N 0.03999999910593033  -3.7699999809265137   1.222000002861023
+HIS     CB  C 0 N N 1.4839999675750732   -0.9750000238418579   1.9620000123977661
+HIS     CG  C 0 Y N 2.940000057220459    -1.059999942779541    2.3529999256134033
+HIS     ND1 N 1 Y N 3.380000114440918    -2.075000047683716    3.128999948501587
+HIS     CD2 C 0 Y N 3.9600000381469727   -0.25099998712539673  2.0460000038146973
+HIS     CE1 C 0 Y N 4.692999839782715    -1.9079999923706055   3.316999912261963
+HIS     NE2 N 0 Y N 5.058000087738037    -0.8009999990463257   2.6619999408721924
+HIS     OXT O 0 N Y 2.246999979019165    -3.881999969482422    0.7440000176429749
+HIS     H   H 0 N N -0.10199999809265137 -1.1549999713897705   -0.949999988079071
+HIS     H2  H 0 N Y -0.7149999737739563  -0.7409999966621399   0.6340000033378601
+HIS     HA  H 0 N N 1.965000033378601    -1.5579999685287476   -0.08900000154972076
+HIS     HB2 H 0 N N 1.215000033378601    0.08699999749660492   1.878999948501587
+HIS     HB3 H 0 N N 0.859000027179718    -1.3680000305175781   2.7750000953674316
+HIS     HD1 H 0 N N 2.828000068664551    -2.8380000591278076   3.510999917984009
+HIS     HD2 H 0 N N 4.107999801635742    0.6470000147819519    1.4789999723434448
+HIS     HE1 H 0 N N 5.340000152587891    -2.549999952316284    3.8919999599456787
+HIS     HE2 H 0 N N 6.001999855041504    -0.42800000309944153  2.627000093460083
+HIS     HXT H 0 N Y 2.187999963760376    -4.8480000495910645   0.9010000228881836
+LYS     N   N 0 N N 1.4220000505447388   1.7960000038146973    0.1979999989271164
+LYS     CA  C 0 N N 1.3940000534057617   0.35499998927116394   0.48399999737739563
+LYS     C   C 0 N N 2.6570000648498535   -0.2840000092983246   -0.03200000151991844
+LYS     O   O 0 N N 3.315999984741211    0.2750000059604645    -0.8759999871253967
+LYS     CB  C 0 N N 0.18400000035762787  -0.27799999713897705  -0.20600000023841858
+LYS     CG  C 0 N N -1.1019999980926514  0.28200000524520874   0.40700000524520874
+LYS     CD  C 0 N N -2.312999963760376   -0.35100001096725464  -0.28299999237060547
+LYS     CE  C 0 N N -3.5980000495910645  0.20800000429153442   0.32899999618530273
+LYS     NZ  N 1 N N -4.761000156402588   -0.4000000059604645   -0.3319999873638153
+LYS     OXT O 0 N Y 3.049999952316284    -1.4759999513626099   0.44600000977516174
+LYS     H   H 0 N N 1.4889999628067017   1.8910000324249268    -0.8040000200271606
+LYS     H2  H 0 N Y 0.5210000276565552   2.1619999408721924    0.46399998664855957
+LYS     HA  H 0 N N 1.3220000267028809   0.20000000298023224   1.559999942779541
+LYS     HB2 H 0 N N 0.20999999344348907  -0.04699999839067459  -1.2699999809265137
+LYS     HB3 H 0 N N 0.210999995470047    -1.3589999675750732   -0.06800000369548798
+LYS     HG2 H 0 N N -1.128000020980835   0.05000000074505806   1.4709999561309814
+LYS     HG3 H 0 N N -1.1299999952316284  1.3630000352859497    0.26899999380111694
+LYS     HD2 H 0 N N -2.2869999408721924  -0.11999999731779099  -1.3480000495910645
+LYS     HD3 H 0 N N -2.2850000858306885  -1.4320000410079956   -0.14499999582767487
+LYS     HE2 H 0 N N -3.625               -0.023000000044703484 1.3940000534057617
+LYS     HE3 H 0 N N -3.625999927520752   1.2890000343322754    0.19200000166893005
+LYS     HZ1 H 0 N N -4.736000061035156   -0.1850000023841858   -1.3179999589920044
+LYS     HZ2 H 0 N N -4.735000133514404   -1.399999976158142    -0.20499999821186066
+LYS     HZ3 H 0 N N -5.609000205993652   -0.03099999949336052  0.07100000232458115
+LYS     HXT H 0 N Y 3.8610000610351562   -1.8860000371932983   0.11500000208616257
+180-180 UNK X 0 N N nan                  nan                   nan
+#

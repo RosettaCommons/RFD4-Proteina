@@ -12,7 +12,7 @@
 #
 # To sweep over regular inference instead of a val set, swap:
 #   - inference_experiment=inference_on_user_inputs
-#   - inputs=benchmarks/monomer.json
+#   - inputs=benchmarks/monomer
 # (remove the +datasets/val line)
 # =============================================================================
 
@@ -23,7 +23,7 @@ base_config_overrides:
   - +datasets/val@generation=unconditional
   # For regular inference, use instead:
   # - inference_experiment=inference_on_user_inputs
-  # - inputs=benchmarks/monomer.json
+  # - inputs=benchmarks/monomer
   - subset_to_examples=monomer-short
   - num_replicates=4
   - batch_size=2

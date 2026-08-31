@@ -1,13 +1,14 @@
 dataset:
-  _target_: rfproteina.inference_utils.datasets.ContigJsonDataset
-  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/rna_quadruplex_8x3_paired_positions.json
-  name: quadruplex
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/rna_quadruplex
   subset_to_keys:
     - rna_quadruplex_8x3_unindexed_scaffold_8x9
-
   num_replicates: 50
 
   transform:
     _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - na_ss_conditioning
+
+# The release checkpoint's legacy 20-class autoencoder cannot decode sequence-diffused RNA.
+# Use an RNA-capable unified checkpoint for biologically meaningful generations from this input.

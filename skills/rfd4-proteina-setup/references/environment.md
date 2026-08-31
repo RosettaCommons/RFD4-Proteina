@@ -36,7 +36,7 @@ Run inside apptainer explicitly:
 
 ```bash
 apptainer exec --nv --bind "$PWD" .ipd/apptainer/latent-dev.sif \
-    python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json \
+    python src/rfproteina/generate.py inputs=data/benchmarks/monomer \
     num_replicates=1 out_dir=./runs/smoke
 ```
 

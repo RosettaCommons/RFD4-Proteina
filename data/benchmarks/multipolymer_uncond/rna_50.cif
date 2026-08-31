@@ -1,0 +1,860 @@
+data_rna_50.cif
+#
+_entry.id       rna_50.cif
+_entry.author   rib7
+_entry.date     2026-08-27
+_entry.time     07:22:19
+#
+_entity.id                 0
+_entity.type               polymer
+_entity.pdbx_description   .
+#
+_entity_poly.entity_id                      0
+_entity_poly.type                           polyribonucleotide
+_entity_poly.nstd_linkage                   no
+_entity_poly.nstd_monomer                   no
+_entity_poly.pdbx_seq_one_letter_code       AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+_entity_poly.pdbx_seq_one_letter_code_can   AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+_entity_poly.pdbx_strand_id                 A
+_entity_poly.pdbx_target_identifier         ?
+#
+loop_
+_entity_poly_seq.entity_id 
+_entity_poly_seq.hetero 
+_entity_poly_seq.mon_id 
+_entity_poly_seq.num 
+0 n A 1
+0 n A 2
+0 n A 3
+0 n A 4
+0 n A 5
+0 n A 6
+0 n A 7
+0 n A 8
+0 n A 9
+0 n A 10
+0 n A 11
+0 n A 12
+0 n A 13
+0 n A 14
+0 n A 15
+0 n A 16
+0 n A 17
+0 n A 18
+0 n A 19
+0 n A 20
+0 n A 21
+0 n A 22
+0 n A 23
+0 n A 24
+0 n A 25
+0 n A 26
+0 n A 27
+0 n A 28
+0 n A 29
+0 n A 30
+0 n A 31
+0 n A 32
+0 n A 33
+0 n A 34
+0 n A 35
+0 n A 36
+0 n A 37
+0 n A 38
+0 n A 39
+0 n A 40
+0 n A 41
+0 n A 42
+0 n A 43
+0 n A 44
+0 n A 45
+0 n A 46
+0 n A 47
+0 n A 48
+0 n A 49
+0 n A 50
+#
+_chem_comp.id                        A
+_chem_comp.name                      A
+_chem_comp.type                      'RNA LINKING'
+_chem_comp.formula                   ?
+_chem_comp.mon_nstd_parent_comp_id   ?
+_chem_comp.pdbx_synonyms             ?
+_chem_comp.formula_weight            ?
+#
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+A OP3   P      SING N
+A OP3   HOP3   SING N
+A P     OP1    DOUB N
+A P     OP2    SING N
+A P     "O5'"  SING N
+A OP2   HOP2   SING N
+A "O5'" "C5'"  SING N
+A "C5'" "C4'"  SING N
+A "C5'" "H5'"  SING N
+A "C5'" "H5''" SING N
+A "C4'" "O4'"  SING N
+A "C4'" "C3'"  SING N
+A "C4'" "H4'"  SING N
+A "O4'" "C1'"  SING N
+A "C3'" "O3'"  SING N
+A "C3'" "C2'"  SING N
+A "C3'" "H3'"  SING N
+A "O3'" "HO3'" SING N
+A "C2'" "O2'"  SING N
+A "C2'" "C1'"  SING N
+A "C2'" "H2'"  SING N
+A "O2'" "HO2'" SING N
+A "C1'" N9     SING N
+A "C1'" "H1'"  SING N
+A N9    C8     SING Y
+A N9    C4     SING Y
+A C8    N7     DOUB Y
+A C8    H8     SING N
+A N7    C5     SING Y
+A C5    C6     SING Y
+A C5    C4     DOUB Y
+A C6    N6     SING N
+A C6    N1     DOUB Y
+A N6    H61    SING N
+A N6    H62    SING N
+A N1    C2     SING Y
+A C2    N3     DOUB Y
+A C2    H2     SING N
+A N3    C4     SING Y
+#
+loop_
+_atom_site.group_PDB 
+_atom_site.type_symbol 
+_atom_site.label_atom_id 
+_atom_site.label_alt_id 
+_atom_site.label_comp_id 
+_atom_site.label_asym_id 
+_atom_site.label_entity_id 
+_atom_site.label_seq_id 
+_atom_site.pdbx_PDB_ins_code 
+_atom_site.auth_seq_id 
+_atom_site.auth_comp_id 
+_atom_site.auth_asym_id 
+_atom_site.auth_atom_id 
+_atom_site.B_iso_or_equiv 
+_atom_site.occupancy 
+_atom_site.pdbx_formal_charge 
+_atom_site.mask_index_1_residue 
+_atom_site.condition_hbond_1_atom 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.atom_array_index 
+_atom_site.Cartn_x 
+_atom_site.Cartn_y 
+_atom_site.Cartn_z 
+_atom_site.pdbx_PDB_model_num 
+_atom_site.id 
+ATOM P P     . A A 0 1  . 1  A A P     0.0 1.0 ? True 0 False 0 False 50R 0   0.0 0.0 0.0 1 1
+ATOM O OP1   . A A 0 1  . 1  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 1   0.0 0.0 0.0 1 2
+ATOM O OP2   . A A 0 1  . 1  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 2   0.0 0.0 0.0 1 3
+ATOM O "O5'" . A A 0 1  . 1  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 3   0.0 0.0 0.0 1 4
+ATOM C "C5'" . A A 0 1  . 1  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 4   0.0 0.0 0.0 1 5
+ATOM C "C4'" . A A 0 1  . 1  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 5   0.0 0.0 0.0 1 6
+ATOM C "C3'" . A A 0 1  . 1  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 6   0.0 0.0 0.0 1 7
+ATOM C "C2'" . A A 0 1  . 1  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 7   0.0 0.0 0.0 1 8
+ATOM C "C1'" . A A 0 1  . 1  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 8   0.0 0.0 0.0 1 9
+ATOM O "O4'" . A A 0 1  . 1  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 9   0.0 0.0 0.0 1 10
+ATOM O "O3'" . A A 0 1  . 1  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 10  0.0 0.0 0.0 1 11
+ATOM O "O2'" . A A 0 1  . 1  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 11  0.0 0.0 0.0 1 12
+ATOM C C4    . A A 0 1  . 1  A A C4    0.0 1.0 ? True 0 False 0 False 50R 12  0.0 0.0 0.0 1 13
+ATOM P P     . A A 0 2  . 2  A A P     0.0 1.0 ? True 0 False 0 False 50R 13  0.0 0.0 0.0 1 14
+ATOM O OP1   . A A 0 2  . 2  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 14  0.0 0.0 0.0 1 15
+ATOM O OP2   . A A 0 2  . 2  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 15  0.0 0.0 0.0 1 16
+ATOM O "O5'" . A A 0 2  . 2  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 16  0.0 0.0 0.0 1 17
+ATOM C "C5'" . A A 0 2  . 2  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 17  0.0 0.0 0.0 1 18
+ATOM C "C4'" . A A 0 2  . 2  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 18  0.0 0.0 0.0 1 19
+ATOM C "C3'" . A A 0 2  . 2  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 19  0.0 0.0 0.0 1 20
+ATOM C "C2'" . A A 0 2  . 2  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 20  0.0 0.0 0.0 1 21
+ATOM C "C1'" . A A 0 2  . 2  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 21  0.0 0.0 0.0 1 22
+ATOM O "O4'" . A A 0 2  . 2  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 22  0.0 0.0 0.0 1 23
+ATOM O "O3'" . A A 0 2  . 2  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 23  0.0 0.0 0.0 1 24
+ATOM O "O2'" . A A 0 2  . 2  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 24  0.0 0.0 0.0 1 25
+ATOM C C4    . A A 0 2  . 2  A A C4    0.0 1.0 ? True 0 False 0 False 50R 25  0.0 0.0 0.0 1 26
+ATOM P P     . A A 0 3  . 3  A A P     0.0 1.0 ? True 0 False 0 False 50R 26  0.0 0.0 0.0 1 27
+ATOM O OP1   . A A 0 3  . 3  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 27  0.0 0.0 0.0 1 28
+ATOM O OP2   . A A 0 3  . 3  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 28  0.0 0.0 0.0 1 29
+ATOM O "O5'" . A A 0 3  . 3  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 29  0.0 0.0 0.0 1 30
+ATOM C "C5'" . A A 0 3  . 3  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 30  0.0 0.0 0.0 1 31
+ATOM C "C4'" . A A 0 3  . 3  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 31  0.0 0.0 0.0 1 32
+ATOM C "C3'" . A A 0 3  . 3  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 32  0.0 0.0 0.0 1 33
+ATOM C "C2'" . A A 0 3  . 3  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 33  0.0 0.0 0.0 1 34
+ATOM C "C1'" . A A 0 3  . 3  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 34  0.0 0.0 0.0 1 35
+ATOM O "O4'" . A A 0 3  . 3  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 35  0.0 0.0 0.0 1 36
+ATOM O "O3'" . A A 0 3  . 3  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 36  0.0 0.0 0.0 1 37
+ATOM O "O2'" . A A 0 3  . 3  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 37  0.0 0.0 0.0 1 38
+ATOM C C4    . A A 0 3  . 3  A A C4    0.0 1.0 ? True 0 False 0 False 50R 38  0.0 0.0 0.0 1 39
+ATOM P P     . A A 0 4  . 4  A A P     0.0 1.0 ? True 0 False 0 False 50R 39  0.0 0.0 0.0 1 40
+ATOM O OP1   . A A 0 4  . 4  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 40  0.0 0.0 0.0 1 41
+ATOM O OP2   . A A 0 4  . 4  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 41  0.0 0.0 0.0 1 42
+ATOM O "O5'" . A A 0 4  . 4  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 42  0.0 0.0 0.0 1 43
+ATOM C "C5'" . A A 0 4  . 4  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 43  0.0 0.0 0.0 1 44
+ATOM C "C4'" . A A 0 4  . 4  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 44  0.0 0.0 0.0 1 45
+ATOM C "C3'" . A A 0 4  . 4  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 45  0.0 0.0 0.0 1 46
+ATOM C "C2'" . A A 0 4  . 4  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 46  0.0 0.0 0.0 1 47
+ATOM C "C1'" . A A 0 4  . 4  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 47  0.0 0.0 0.0 1 48
+ATOM O "O4'" . A A 0 4  . 4  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 48  0.0 0.0 0.0 1 49
+ATOM O "O3'" . A A 0 4  . 4  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 49  0.0 0.0 0.0 1 50
+ATOM O "O2'" . A A 0 4  . 4  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 50  0.0 0.0 0.0 1 51
+ATOM C C4    . A A 0 4  . 4  A A C4    0.0 1.0 ? True 0 False 0 False 50R 51  0.0 0.0 0.0 1 52
+ATOM P P     . A A 0 5  . 5  A A P     0.0 1.0 ? True 0 False 0 False 50R 52  0.0 0.0 0.0 1 53
+ATOM O OP1   . A A 0 5  . 5  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 53  0.0 0.0 0.0 1 54
+ATOM O OP2   . A A 0 5  . 5  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 54  0.0 0.0 0.0 1 55
+ATOM O "O5'" . A A 0 5  . 5  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 55  0.0 0.0 0.0 1 56
+ATOM C "C5'" . A A 0 5  . 5  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 56  0.0 0.0 0.0 1 57
+ATOM C "C4'" . A A 0 5  . 5  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 57  0.0 0.0 0.0 1 58
+ATOM C "C3'" . A A 0 5  . 5  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 58  0.0 0.0 0.0 1 59
+ATOM C "C2'" . A A 0 5  . 5  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 59  0.0 0.0 0.0 1 60
+ATOM C "C1'" . A A 0 5  . 5  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 60  0.0 0.0 0.0 1 61
+ATOM O "O4'" . A A 0 5  . 5  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 61  0.0 0.0 0.0 1 62
+ATOM O "O3'" . A A 0 5  . 5  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 62  0.0 0.0 0.0 1 63
+ATOM O "O2'" . A A 0 5  . 5  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 63  0.0 0.0 0.0 1 64
+ATOM C C4    . A A 0 5  . 5  A A C4    0.0 1.0 ? True 0 False 0 False 50R 64  0.0 0.0 0.0 1 65
+ATOM P P     . A A 0 6  . 6  A A P     0.0 1.0 ? True 0 False 0 False 50R 65  0.0 0.0 0.0 1 66
+ATOM O OP1   . A A 0 6  . 6  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 66  0.0 0.0 0.0 1 67
+ATOM O OP2   . A A 0 6  . 6  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 67  0.0 0.0 0.0 1 68
+ATOM O "O5'" . A A 0 6  . 6  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 68  0.0 0.0 0.0 1 69
+ATOM C "C5'" . A A 0 6  . 6  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 69  0.0 0.0 0.0 1 70
+ATOM C "C4'" . A A 0 6  . 6  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 70  0.0 0.0 0.0 1 71
+ATOM C "C3'" . A A 0 6  . 6  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 71  0.0 0.0 0.0 1 72
+ATOM C "C2'" . A A 0 6  . 6  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 72  0.0 0.0 0.0 1 73
+ATOM C "C1'" . A A 0 6  . 6  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 73  0.0 0.0 0.0 1 74
+ATOM O "O4'" . A A 0 6  . 6  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 74  0.0 0.0 0.0 1 75
+ATOM O "O3'" . A A 0 6  . 6  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 75  0.0 0.0 0.0 1 76
+ATOM O "O2'" . A A 0 6  . 6  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 76  0.0 0.0 0.0 1 77
+ATOM C C4    . A A 0 6  . 6  A A C4    0.0 1.0 ? True 0 False 0 False 50R 77  0.0 0.0 0.0 1 78
+ATOM P P     . A A 0 7  . 7  A A P     0.0 1.0 ? True 0 False 0 False 50R 78  0.0 0.0 0.0 1 79
+ATOM O OP1   . A A 0 7  . 7  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 79  0.0 0.0 0.0 1 80
+ATOM O OP2   . A A 0 7  . 7  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 80  0.0 0.0 0.0 1 81
+ATOM O "O5'" . A A 0 7  . 7  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 81  0.0 0.0 0.0 1 82
+ATOM C "C5'" . A A 0 7  . 7  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 82  0.0 0.0 0.0 1 83
+ATOM C "C4'" . A A 0 7  . 7  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 83  0.0 0.0 0.0 1 84
+ATOM C "C3'" . A A 0 7  . 7  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 84  0.0 0.0 0.0 1 85
+ATOM C "C2'" . A A 0 7  . 7  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 85  0.0 0.0 0.0 1 86
+ATOM C "C1'" . A A 0 7  . 7  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 86  0.0 0.0 0.0 1 87
+ATOM O "O4'" . A A 0 7  . 7  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 87  0.0 0.0 0.0 1 88
+ATOM O "O3'" . A A 0 7  . 7  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 88  0.0 0.0 0.0 1 89
+ATOM O "O2'" . A A 0 7  . 7  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 89  0.0 0.0 0.0 1 90
+ATOM C C4    . A A 0 7  . 7  A A C4    0.0 1.0 ? True 0 False 0 False 50R 90  0.0 0.0 0.0 1 91
+ATOM P P     . A A 0 8  . 8  A A P     0.0 1.0 ? True 0 False 0 False 50R 91  0.0 0.0 0.0 1 92
+ATOM O OP1   . A A 0 8  . 8  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 92  0.0 0.0 0.0 1 93
+ATOM O OP2   . A A 0 8  . 8  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 93  0.0 0.0 0.0 1 94
+ATOM O "O5'" . A A 0 8  . 8  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 94  0.0 0.0 0.0 1 95
+ATOM C "C5'" . A A 0 8  . 8  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 95  0.0 0.0 0.0 1 96
+ATOM C "C4'" . A A 0 8  . 8  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 96  0.0 0.0 0.0 1 97
+ATOM C "C3'" . A A 0 8  . 8  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 97  0.0 0.0 0.0 1 98
+ATOM C "C2'" . A A 0 8  . 8  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 98  0.0 0.0 0.0 1 99
+ATOM C "C1'" . A A 0 8  . 8  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 99  0.0 0.0 0.0 1 100
+ATOM O "O4'" . A A 0 8  . 8  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 100 0.0 0.0 0.0 1 101
+ATOM O "O3'" . A A 0 8  . 8  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 101 0.0 0.0 0.0 1 102
+ATOM O "O2'" . A A 0 8  . 8  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 102 0.0 0.0 0.0 1 103
+ATOM C C4    . A A 0 8  . 8  A A C4    0.0 1.0 ? True 0 False 0 False 50R 103 0.0 0.0 0.0 1 104
+ATOM P P     . A A 0 9  . 9  A A P     0.0 1.0 ? True 0 False 0 False 50R 104 0.0 0.0 0.0 1 105
+ATOM O OP1   . A A 0 9  . 9  A A OP1   0.0 1.0 ? True 0 False 0 False 50R 105 0.0 0.0 0.0 1 106
+ATOM O OP2   . A A 0 9  . 9  A A OP2   0.0 1.0 ? True 0 False 0 False 50R 106 0.0 0.0 0.0 1 107
+ATOM O "O5'" . A A 0 9  . 9  A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 107 0.0 0.0 0.0 1 108
+ATOM C "C5'" . A A 0 9  . 9  A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 108 0.0 0.0 0.0 1 109
+ATOM C "C4'" . A A 0 9  . 9  A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 109 0.0 0.0 0.0 1 110
+ATOM C "C3'" . A A 0 9  . 9  A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 110 0.0 0.0 0.0 1 111
+ATOM C "C2'" . A A 0 9  . 9  A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 111 0.0 0.0 0.0 1 112
+ATOM C "C1'" . A A 0 9  . 9  A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 112 0.0 0.0 0.0 1 113
+ATOM O "O4'" . A A 0 9  . 9  A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 113 0.0 0.0 0.0 1 114
+ATOM O "O3'" . A A 0 9  . 9  A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 114 0.0 0.0 0.0 1 115
+ATOM O "O2'" . A A 0 9  . 9  A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 115 0.0 0.0 0.0 1 116
+ATOM C C4    . A A 0 9  . 9  A A C4    0.0 1.0 ? True 0 False 0 False 50R 116 0.0 0.0 0.0 1 117
+ATOM P P     . A A 0 10 . 10 A A P     0.0 1.0 ? True 0 False 0 False 50R 117 0.0 0.0 0.0 1 118
+ATOM O OP1   . A A 0 10 . 10 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 118 0.0 0.0 0.0 1 119
+ATOM O OP2   . A A 0 10 . 10 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 119 0.0 0.0 0.0 1 120
+ATOM O "O5'" . A A 0 10 . 10 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 120 0.0 0.0 0.0 1 121
+ATOM C "C5'" . A A 0 10 . 10 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 121 0.0 0.0 0.0 1 122
+ATOM C "C4'" . A A 0 10 . 10 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 122 0.0 0.0 0.0 1 123
+ATOM C "C3'" . A A 0 10 . 10 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 123 0.0 0.0 0.0 1 124
+ATOM C "C2'" . A A 0 10 . 10 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 124 0.0 0.0 0.0 1 125
+ATOM C "C1'" . A A 0 10 . 10 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 125 0.0 0.0 0.0 1 126
+ATOM O "O4'" . A A 0 10 . 10 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 126 0.0 0.0 0.0 1 127
+ATOM O "O3'" . A A 0 10 . 10 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 127 0.0 0.0 0.0 1 128
+ATOM O "O2'" . A A 0 10 . 10 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 128 0.0 0.0 0.0 1 129
+ATOM C C4    . A A 0 10 . 10 A A C4    0.0 1.0 ? True 0 False 0 False 50R 129 0.0 0.0 0.0 1 130
+ATOM P P     . A A 0 11 . 11 A A P     0.0 1.0 ? True 0 False 0 False 50R 130 0.0 0.0 0.0 1 131
+ATOM O OP1   . A A 0 11 . 11 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 131 0.0 0.0 0.0 1 132
+ATOM O OP2   . A A 0 11 . 11 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 132 0.0 0.0 0.0 1 133
+ATOM O "O5'" . A A 0 11 . 11 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 133 0.0 0.0 0.0 1 134
+ATOM C "C5'" . A A 0 11 . 11 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 134 0.0 0.0 0.0 1 135
+ATOM C "C4'" . A A 0 11 . 11 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 135 0.0 0.0 0.0 1 136
+ATOM C "C3'" . A A 0 11 . 11 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 136 0.0 0.0 0.0 1 137
+ATOM C "C2'" . A A 0 11 . 11 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 137 0.0 0.0 0.0 1 138
+ATOM C "C1'" . A A 0 11 . 11 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 138 0.0 0.0 0.0 1 139
+ATOM O "O4'" . A A 0 11 . 11 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 139 0.0 0.0 0.0 1 140
+ATOM O "O3'" . A A 0 11 . 11 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 140 0.0 0.0 0.0 1 141
+ATOM O "O2'" . A A 0 11 . 11 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 141 0.0 0.0 0.0 1 142
+ATOM C C4    . A A 0 11 . 11 A A C4    0.0 1.0 ? True 0 False 0 False 50R 142 0.0 0.0 0.0 1 143
+ATOM P P     . A A 0 12 . 12 A A P     0.0 1.0 ? True 0 False 0 False 50R 143 0.0 0.0 0.0 1 144
+ATOM O OP1   . A A 0 12 . 12 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 144 0.0 0.0 0.0 1 145
+ATOM O OP2   . A A 0 12 . 12 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 145 0.0 0.0 0.0 1 146
+ATOM O "O5'" . A A 0 12 . 12 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 146 0.0 0.0 0.0 1 147
+ATOM C "C5'" . A A 0 12 . 12 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 147 0.0 0.0 0.0 1 148
+ATOM C "C4'" . A A 0 12 . 12 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 148 0.0 0.0 0.0 1 149
+ATOM C "C3'" . A A 0 12 . 12 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 149 0.0 0.0 0.0 1 150
+ATOM C "C2'" . A A 0 12 . 12 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 150 0.0 0.0 0.0 1 151
+ATOM C "C1'" . A A 0 12 . 12 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 151 0.0 0.0 0.0 1 152
+ATOM O "O4'" . A A 0 12 . 12 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 152 0.0 0.0 0.0 1 153
+ATOM O "O3'" . A A 0 12 . 12 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 153 0.0 0.0 0.0 1 154
+ATOM O "O2'" . A A 0 12 . 12 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 154 0.0 0.0 0.0 1 155
+ATOM C C4    . A A 0 12 . 12 A A C4    0.0 1.0 ? True 0 False 0 False 50R 155 0.0 0.0 0.0 1 156
+ATOM P P     . A A 0 13 . 13 A A P     0.0 1.0 ? True 0 False 0 False 50R 156 0.0 0.0 0.0 1 157
+ATOM O OP1   . A A 0 13 . 13 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 157 0.0 0.0 0.0 1 158
+ATOM O OP2   . A A 0 13 . 13 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 158 0.0 0.0 0.0 1 159
+ATOM O "O5'" . A A 0 13 . 13 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 159 0.0 0.0 0.0 1 160
+ATOM C "C5'" . A A 0 13 . 13 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 160 0.0 0.0 0.0 1 161
+ATOM C "C4'" . A A 0 13 . 13 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 161 0.0 0.0 0.0 1 162
+ATOM C "C3'" . A A 0 13 . 13 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 162 0.0 0.0 0.0 1 163
+ATOM C "C2'" . A A 0 13 . 13 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 163 0.0 0.0 0.0 1 164
+ATOM C "C1'" . A A 0 13 . 13 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 164 0.0 0.0 0.0 1 165
+ATOM O "O4'" . A A 0 13 . 13 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 165 0.0 0.0 0.0 1 166
+ATOM O "O3'" . A A 0 13 . 13 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 166 0.0 0.0 0.0 1 167
+ATOM O "O2'" . A A 0 13 . 13 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 167 0.0 0.0 0.0 1 168
+ATOM C C4    . A A 0 13 . 13 A A C4    0.0 1.0 ? True 0 False 0 False 50R 168 0.0 0.0 0.0 1 169
+ATOM P P     . A A 0 14 . 14 A A P     0.0 1.0 ? True 0 False 0 False 50R 169 0.0 0.0 0.0 1 170
+ATOM O OP1   . A A 0 14 . 14 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 170 0.0 0.0 0.0 1 171
+ATOM O OP2   . A A 0 14 . 14 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 171 0.0 0.0 0.0 1 172
+ATOM O "O5'" . A A 0 14 . 14 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 172 0.0 0.0 0.0 1 173
+ATOM C "C5'" . A A 0 14 . 14 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 173 0.0 0.0 0.0 1 174
+ATOM C "C4'" . A A 0 14 . 14 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 174 0.0 0.0 0.0 1 175
+ATOM C "C3'" . A A 0 14 . 14 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 175 0.0 0.0 0.0 1 176
+ATOM C "C2'" . A A 0 14 . 14 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 176 0.0 0.0 0.0 1 177
+ATOM C "C1'" . A A 0 14 . 14 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 177 0.0 0.0 0.0 1 178
+ATOM O "O4'" . A A 0 14 . 14 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 178 0.0 0.0 0.0 1 179
+ATOM O "O3'" . A A 0 14 . 14 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 179 0.0 0.0 0.0 1 180
+ATOM O "O2'" . A A 0 14 . 14 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 180 0.0 0.0 0.0 1 181
+ATOM C C4    . A A 0 14 . 14 A A C4    0.0 1.0 ? True 0 False 0 False 50R 181 0.0 0.0 0.0 1 182
+ATOM P P     . A A 0 15 . 15 A A P     0.0 1.0 ? True 0 False 0 False 50R 182 0.0 0.0 0.0 1 183
+ATOM O OP1   . A A 0 15 . 15 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 183 0.0 0.0 0.0 1 184
+ATOM O OP2   . A A 0 15 . 15 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 184 0.0 0.0 0.0 1 185
+ATOM O "O5'" . A A 0 15 . 15 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 185 0.0 0.0 0.0 1 186
+ATOM C "C5'" . A A 0 15 . 15 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 186 0.0 0.0 0.0 1 187
+ATOM C "C4'" . A A 0 15 . 15 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 187 0.0 0.0 0.0 1 188
+ATOM C "C3'" . A A 0 15 . 15 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 188 0.0 0.0 0.0 1 189
+ATOM C "C2'" . A A 0 15 . 15 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 189 0.0 0.0 0.0 1 190
+ATOM C "C1'" . A A 0 15 . 15 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 190 0.0 0.0 0.0 1 191
+ATOM O "O4'" . A A 0 15 . 15 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 191 0.0 0.0 0.0 1 192
+ATOM O "O3'" . A A 0 15 . 15 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 192 0.0 0.0 0.0 1 193
+ATOM O "O2'" . A A 0 15 . 15 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 193 0.0 0.0 0.0 1 194
+ATOM C C4    . A A 0 15 . 15 A A C4    0.0 1.0 ? True 0 False 0 False 50R 194 0.0 0.0 0.0 1 195
+ATOM P P     . A A 0 16 . 16 A A P     0.0 1.0 ? True 0 False 0 False 50R 195 0.0 0.0 0.0 1 196
+ATOM O OP1   . A A 0 16 . 16 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 196 0.0 0.0 0.0 1 197
+ATOM O OP2   . A A 0 16 . 16 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 197 0.0 0.0 0.0 1 198
+ATOM O "O5'" . A A 0 16 . 16 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 198 0.0 0.0 0.0 1 199
+ATOM C "C5'" . A A 0 16 . 16 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 199 0.0 0.0 0.0 1 200
+ATOM C "C4'" . A A 0 16 . 16 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 200 0.0 0.0 0.0 1 201
+ATOM C "C3'" . A A 0 16 . 16 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 201 0.0 0.0 0.0 1 202
+ATOM C "C2'" . A A 0 16 . 16 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 202 0.0 0.0 0.0 1 203
+ATOM C "C1'" . A A 0 16 . 16 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 203 0.0 0.0 0.0 1 204
+ATOM O "O4'" . A A 0 16 . 16 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 204 0.0 0.0 0.0 1 205
+ATOM O "O3'" . A A 0 16 . 16 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 205 0.0 0.0 0.0 1 206
+ATOM O "O2'" . A A 0 16 . 16 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 206 0.0 0.0 0.0 1 207
+ATOM C C4    . A A 0 16 . 16 A A C4    0.0 1.0 ? True 0 False 0 False 50R 207 0.0 0.0 0.0 1 208
+ATOM P P     . A A 0 17 . 17 A A P     0.0 1.0 ? True 0 False 0 False 50R 208 0.0 0.0 0.0 1 209
+ATOM O OP1   . A A 0 17 . 17 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 209 0.0 0.0 0.0 1 210
+ATOM O OP2   . A A 0 17 . 17 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 210 0.0 0.0 0.0 1 211
+ATOM O "O5'" . A A 0 17 . 17 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 211 0.0 0.0 0.0 1 212
+ATOM C "C5'" . A A 0 17 . 17 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 212 0.0 0.0 0.0 1 213
+ATOM C "C4'" . A A 0 17 . 17 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 213 0.0 0.0 0.0 1 214
+ATOM C "C3'" . A A 0 17 . 17 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 214 0.0 0.0 0.0 1 215
+ATOM C "C2'" . A A 0 17 . 17 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 215 0.0 0.0 0.0 1 216
+ATOM C "C1'" . A A 0 17 . 17 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 216 0.0 0.0 0.0 1 217
+ATOM O "O4'" . A A 0 17 . 17 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 217 0.0 0.0 0.0 1 218
+ATOM O "O3'" . A A 0 17 . 17 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 218 0.0 0.0 0.0 1 219
+ATOM O "O2'" . A A 0 17 . 17 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 219 0.0 0.0 0.0 1 220
+ATOM C C4    . A A 0 17 . 17 A A C4    0.0 1.0 ? True 0 False 0 False 50R 220 0.0 0.0 0.0 1 221
+ATOM P P     . A A 0 18 . 18 A A P     0.0 1.0 ? True 0 False 0 False 50R 221 0.0 0.0 0.0 1 222
+ATOM O OP1   . A A 0 18 . 18 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 222 0.0 0.0 0.0 1 223
+ATOM O OP2   . A A 0 18 . 18 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 223 0.0 0.0 0.0 1 224
+ATOM O "O5'" . A A 0 18 . 18 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 224 0.0 0.0 0.0 1 225
+ATOM C "C5'" . A A 0 18 . 18 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 225 0.0 0.0 0.0 1 226
+ATOM C "C4'" . A A 0 18 . 18 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 226 0.0 0.0 0.0 1 227
+ATOM C "C3'" . A A 0 18 . 18 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 227 0.0 0.0 0.0 1 228
+ATOM C "C2'" . A A 0 18 . 18 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 228 0.0 0.0 0.0 1 229
+ATOM C "C1'" . A A 0 18 . 18 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 229 0.0 0.0 0.0 1 230
+ATOM O "O4'" . A A 0 18 . 18 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 230 0.0 0.0 0.0 1 231
+ATOM O "O3'" . A A 0 18 . 18 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 231 0.0 0.0 0.0 1 232
+ATOM O "O2'" . A A 0 18 . 18 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 232 0.0 0.0 0.0 1 233
+ATOM C C4    . A A 0 18 . 18 A A C4    0.0 1.0 ? True 0 False 0 False 50R 233 0.0 0.0 0.0 1 234
+ATOM P P     . A A 0 19 . 19 A A P     0.0 1.0 ? True 0 False 0 False 50R 234 0.0 0.0 0.0 1 235
+ATOM O OP1   . A A 0 19 . 19 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 235 0.0 0.0 0.0 1 236
+ATOM O OP2   . A A 0 19 . 19 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 236 0.0 0.0 0.0 1 237
+ATOM O "O5'" . A A 0 19 . 19 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 237 0.0 0.0 0.0 1 238
+ATOM C "C5'" . A A 0 19 . 19 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 238 0.0 0.0 0.0 1 239
+ATOM C "C4'" . A A 0 19 . 19 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 239 0.0 0.0 0.0 1 240
+ATOM C "C3'" . A A 0 19 . 19 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 240 0.0 0.0 0.0 1 241
+ATOM C "C2'" . A A 0 19 . 19 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 241 0.0 0.0 0.0 1 242
+ATOM C "C1'" . A A 0 19 . 19 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 242 0.0 0.0 0.0 1 243
+ATOM O "O4'" . A A 0 19 . 19 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 243 0.0 0.0 0.0 1 244
+ATOM O "O3'" . A A 0 19 . 19 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 244 0.0 0.0 0.0 1 245
+ATOM O "O2'" . A A 0 19 . 19 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 245 0.0 0.0 0.0 1 246
+ATOM C C4    . A A 0 19 . 19 A A C4    0.0 1.0 ? True 0 False 0 False 50R 246 0.0 0.0 0.0 1 247
+ATOM P P     . A A 0 20 . 20 A A P     0.0 1.0 ? True 0 False 0 False 50R 247 0.0 0.0 0.0 1 248
+ATOM O OP1   . A A 0 20 . 20 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 248 0.0 0.0 0.0 1 249
+ATOM O OP2   . A A 0 20 . 20 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 249 0.0 0.0 0.0 1 250
+ATOM O "O5'" . A A 0 20 . 20 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 250 0.0 0.0 0.0 1 251
+ATOM C "C5'" . A A 0 20 . 20 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 251 0.0 0.0 0.0 1 252
+ATOM C "C4'" . A A 0 20 . 20 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 252 0.0 0.0 0.0 1 253
+ATOM C "C3'" . A A 0 20 . 20 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 253 0.0 0.0 0.0 1 254
+ATOM C "C2'" . A A 0 20 . 20 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 254 0.0 0.0 0.0 1 255
+ATOM C "C1'" . A A 0 20 . 20 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 255 0.0 0.0 0.0 1 256
+ATOM O "O4'" . A A 0 20 . 20 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 256 0.0 0.0 0.0 1 257
+ATOM O "O3'" . A A 0 20 . 20 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 257 0.0 0.0 0.0 1 258
+ATOM O "O2'" . A A 0 20 . 20 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 258 0.0 0.0 0.0 1 259
+ATOM C C4    . A A 0 20 . 20 A A C4    0.0 1.0 ? True 0 False 0 False 50R 259 0.0 0.0 0.0 1 260
+ATOM P P     . A A 0 21 . 21 A A P     0.0 1.0 ? True 0 False 0 False 50R 260 0.0 0.0 0.0 1 261
+ATOM O OP1   . A A 0 21 . 21 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 261 0.0 0.0 0.0 1 262
+ATOM O OP2   . A A 0 21 . 21 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 262 0.0 0.0 0.0 1 263
+ATOM O "O5'" . A A 0 21 . 21 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 263 0.0 0.0 0.0 1 264
+ATOM C "C5'" . A A 0 21 . 21 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 264 0.0 0.0 0.0 1 265
+ATOM C "C4'" . A A 0 21 . 21 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 265 0.0 0.0 0.0 1 266
+ATOM C "C3'" . A A 0 21 . 21 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 266 0.0 0.0 0.0 1 267
+ATOM C "C2'" . A A 0 21 . 21 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 267 0.0 0.0 0.0 1 268
+ATOM C "C1'" . A A 0 21 . 21 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 268 0.0 0.0 0.0 1 269
+ATOM O "O4'" . A A 0 21 . 21 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 269 0.0 0.0 0.0 1 270
+ATOM O "O3'" . A A 0 21 . 21 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 270 0.0 0.0 0.0 1 271
+ATOM O "O2'" . A A 0 21 . 21 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 271 0.0 0.0 0.0 1 272
+ATOM C C4    . A A 0 21 . 21 A A C4    0.0 1.0 ? True 0 False 0 False 50R 272 0.0 0.0 0.0 1 273
+ATOM P P     . A A 0 22 . 22 A A P     0.0 1.0 ? True 0 False 0 False 50R 273 0.0 0.0 0.0 1 274
+ATOM O OP1   . A A 0 22 . 22 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 274 0.0 0.0 0.0 1 275
+ATOM O OP2   . A A 0 22 . 22 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 275 0.0 0.0 0.0 1 276
+ATOM O "O5'" . A A 0 22 . 22 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 276 0.0 0.0 0.0 1 277
+ATOM C "C5'" . A A 0 22 . 22 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 277 0.0 0.0 0.0 1 278
+ATOM C "C4'" . A A 0 22 . 22 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 278 0.0 0.0 0.0 1 279
+ATOM C "C3'" . A A 0 22 . 22 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 279 0.0 0.0 0.0 1 280
+ATOM C "C2'" . A A 0 22 . 22 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 280 0.0 0.0 0.0 1 281
+ATOM C "C1'" . A A 0 22 . 22 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 281 0.0 0.0 0.0 1 282
+ATOM O "O4'" . A A 0 22 . 22 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 282 0.0 0.0 0.0 1 283
+ATOM O "O3'" . A A 0 22 . 22 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 283 0.0 0.0 0.0 1 284
+ATOM O "O2'" . A A 0 22 . 22 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 284 0.0 0.0 0.0 1 285
+ATOM C C4    . A A 0 22 . 22 A A C4    0.0 1.0 ? True 0 False 0 False 50R 285 0.0 0.0 0.0 1 286
+ATOM P P     . A A 0 23 . 23 A A P     0.0 1.0 ? True 0 False 0 False 50R 286 0.0 0.0 0.0 1 287
+ATOM O OP1   . A A 0 23 . 23 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 287 0.0 0.0 0.0 1 288
+ATOM O OP2   . A A 0 23 . 23 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 288 0.0 0.0 0.0 1 289
+ATOM O "O5'" . A A 0 23 . 23 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 289 0.0 0.0 0.0 1 290
+ATOM C "C5'" . A A 0 23 . 23 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 290 0.0 0.0 0.0 1 291
+ATOM C "C4'" . A A 0 23 . 23 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 291 0.0 0.0 0.0 1 292
+ATOM C "C3'" . A A 0 23 . 23 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 292 0.0 0.0 0.0 1 293
+ATOM C "C2'" . A A 0 23 . 23 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 293 0.0 0.0 0.0 1 294
+ATOM C "C1'" . A A 0 23 . 23 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 294 0.0 0.0 0.0 1 295
+ATOM O "O4'" . A A 0 23 . 23 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 295 0.0 0.0 0.0 1 296
+ATOM O "O3'" . A A 0 23 . 23 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 296 0.0 0.0 0.0 1 297
+ATOM O "O2'" . A A 0 23 . 23 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 297 0.0 0.0 0.0 1 298
+ATOM C C4    . A A 0 23 . 23 A A C4    0.0 1.0 ? True 0 False 0 False 50R 298 0.0 0.0 0.0 1 299
+ATOM P P     . A A 0 24 . 24 A A P     0.0 1.0 ? True 0 False 0 False 50R 299 0.0 0.0 0.0 1 300
+ATOM O OP1   . A A 0 24 . 24 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 300 0.0 0.0 0.0 1 301
+ATOM O OP2   . A A 0 24 . 24 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 301 0.0 0.0 0.0 1 302
+ATOM O "O5'" . A A 0 24 . 24 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 302 0.0 0.0 0.0 1 303
+ATOM C "C5'" . A A 0 24 . 24 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 303 0.0 0.0 0.0 1 304
+ATOM C "C4'" . A A 0 24 . 24 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 304 0.0 0.0 0.0 1 305
+ATOM C "C3'" . A A 0 24 . 24 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 305 0.0 0.0 0.0 1 306
+ATOM C "C2'" . A A 0 24 . 24 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 306 0.0 0.0 0.0 1 307
+ATOM C "C1'" . A A 0 24 . 24 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 307 0.0 0.0 0.0 1 308
+ATOM O "O4'" . A A 0 24 . 24 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 308 0.0 0.0 0.0 1 309
+ATOM O "O3'" . A A 0 24 . 24 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 309 0.0 0.0 0.0 1 310
+ATOM O "O2'" . A A 0 24 . 24 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 310 0.0 0.0 0.0 1 311
+ATOM C C4    . A A 0 24 . 24 A A C4    0.0 1.0 ? True 0 False 0 False 50R 311 0.0 0.0 0.0 1 312
+ATOM P P     . A A 0 25 . 25 A A P     0.0 1.0 ? True 0 False 0 False 50R 312 0.0 0.0 0.0 1 313
+ATOM O OP1   . A A 0 25 . 25 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 313 0.0 0.0 0.0 1 314
+ATOM O OP2   . A A 0 25 . 25 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 314 0.0 0.0 0.0 1 315
+ATOM O "O5'" . A A 0 25 . 25 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 315 0.0 0.0 0.0 1 316
+ATOM C "C5'" . A A 0 25 . 25 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 316 0.0 0.0 0.0 1 317
+ATOM C "C4'" . A A 0 25 . 25 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 317 0.0 0.0 0.0 1 318
+ATOM C "C3'" . A A 0 25 . 25 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 318 0.0 0.0 0.0 1 319
+ATOM C "C2'" . A A 0 25 . 25 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 319 0.0 0.0 0.0 1 320
+ATOM C "C1'" . A A 0 25 . 25 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 320 0.0 0.0 0.0 1 321
+ATOM O "O4'" . A A 0 25 . 25 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 321 0.0 0.0 0.0 1 322
+ATOM O "O3'" . A A 0 25 . 25 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 322 0.0 0.0 0.0 1 323
+ATOM O "O2'" . A A 0 25 . 25 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 323 0.0 0.0 0.0 1 324
+ATOM C C4    . A A 0 25 . 25 A A C4    0.0 1.0 ? True 0 False 0 False 50R 324 0.0 0.0 0.0 1 325
+ATOM P P     . A A 0 26 . 26 A A P     0.0 1.0 ? True 0 False 0 False 50R 325 0.0 0.0 0.0 1 326
+ATOM O OP1   . A A 0 26 . 26 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 326 0.0 0.0 0.0 1 327
+ATOM O OP2   . A A 0 26 . 26 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 327 0.0 0.0 0.0 1 328
+ATOM O "O5'" . A A 0 26 . 26 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 328 0.0 0.0 0.0 1 329
+ATOM C "C5'" . A A 0 26 . 26 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 329 0.0 0.0 0.0 1 330
+ATOM C "C4'" . A A 0 26 . 26 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 330 0.0 0.0 0.0 1 331
+ATOM C "C3'" . A A 0 26 . 26 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 331 0.0 0.0 0.0 1 332
+ATOM C "C2'" . A A 0 26 . 26 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 332 0.0 0.0 0.0 1 333
+ATOM C "C1'" . A A 0 26 . 26 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 333 0.0 0.0 0.0 1 334
+ATOM O "O4'" . A A 0 26 . 26 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 334 0.0 0.0 0.0 1 335
+ATOM O "O3'" . A A 0 26 . 26 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 335 0.0 0.0 0.0 1 336
+ATOM O "O2'" . A A 0 26 . 26 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 336 0.0 0.0 0.0 1 337
+ATOM C C4    . A A 0 26 . 26 A A C4    0.0 1.0 ? True 0 False 0 False 50R 337 0.0 0.0 0.0 1 338
+ATOM P P     . A A 0 27 . 27 A A P     0.0 1.0 ? True 0 False 0 False 50R 338 0.0 0.0 0.0 1 339
+ATOM O OP1   . A A 0 27 . 27 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 339 0.0 0.0 0.0 1 340
+ATOM O OP2   . A A 0 27 . 27 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 340 0.0 0.0 0.0 1 341
+ATOM O "O5'" . A A 0 27 . 27 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 341 0.0 0.0 0.0 1 342
+ATOM C "C5'" . A A 0 27 . 27 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 342 0.0 0.0 0.0 1 343
+ATOM C "C4'" . A A 0 27 . 27 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 343 0.0 0.0 0.0 1 344
+ATOM C "C3'" . A A 0 27 . 27 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 344 0.0 0.0 0.0 1 345
+ATOM C "C2'" . A A 0 27 . 27 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 345 0.0 0.0 0.0 1 346
+ATOM C "C1'" . A A 0 27 . 27 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 346 0.0 0.0 0.0 1 347
+ATOM O "O4'" . A A 0 27 . 27 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 347 0.0 0.0 0.0 1 348
+ATOM O "O3'" . A A 0 27 . 27 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 348 0.0 0.0 0.0 1 349
+ATOM O "O2'" . A A 0 27 . 27 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 349 0.0 0.0 0.0 1 350
+ATOM C C4    . A A 0 27 . 27 A A C4    0.0 1.0 ? True 0 False 0 False 50R 350 0.0 0.0 0.0 1 351
+ATOM P P     . A A 0 28 . 28 A A P     0.0 1.0 ? True 0 False 0 False 50R 351 0.0 0.0 0.0 1 352
+ATOM O OP1   . A A 0 28 . 28 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 352 0.0 0.0 0.0 1 353
+ATOM O OP2   . A A 0 28 . 28 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 353 0.0 0.0 0.0 1 354
+ATOM O "O5'" . A A 0 28 . 28 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 354 0.0 0.0 0.0 1 355
+ATOM C "C5'" . A A 0 28 . 28 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 355 0.0 0.0 0.0 1 356
+ATOM C "C4'" . A A 0 28 . 28 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 356 0.0 0.0 0.0 1 357
+ATOM C "C3'" . A A 0 28 . 28 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 357 0.0 0.0 0.0 1 358
+ATOM C "C2'" . A A 0 28 . 28 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 358 0.0 0.0 0.0 1 359
+ATOM C "C1'" . A A 0 28 . 28 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 359 0.0 0.0 0.0 1 360
+ATOM O "O4'" . A A 0 28 . 28 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 360 0.0 0.0 0.0 1 361
+ATOM O "O3'" . A A 0 28 . 28 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 361 0.0 0.0 0.0 1 362
+ATOM O "O2'" . A A 0 28 . 28 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 362 0.0 0.0 0.0 1 363
+ATOM C C4    . A A 0 28 . 28 A A C4    0.0 1.0 ? True 0 False 0 False 50R 363 0.0 0.0 0.0 1 364
+ATOM P P     . A A 0 29 . 29 A A P     0.0 1.0 ? True 0 False 0 False 50R 364 0.0 0.0 0.0 1 365
+ATOM O OP1   . A A 0 29 . 29 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 365 0.0 0.0 0.0 1 366
+ATOM O OP2   . A A 0 29 . 29 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 366 0.0 0.0 0.0 1 367
+ATOM O "O5'" . A A 0 29 . 29 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 367 0.0 0.0 0.0 1 368
+ATOM C "C5'" . A A 0 29 . 29 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 368 0.0 0.0 0.0 1 369
+ATOM C "C4'" . A A 0 29 . 29 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 369 0.0 0.0 0.0 1 370
+ATOM C "C3'" . A A 0 29 . 29 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 370 0.0 0.0 0.0 1 371
+ATOM C "C2'" . A A 0 29 . 29 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 371 0.0 0.0 0.0 1 372
+ATOM C "C1'" . A A 0 29 . 29 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 372 0.0 0.0 0.0 1 373
+ATOM O "O4'" . A A 0 29 . 29 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 373 0.0 0.0 0.0 1 374
+ATOM O "O3'" . A A 0 29 . 29 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 374 0.0 0.0 0.0 1 375
+ATOM O "O2'" . A A 0 29 . 29 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 375 0.0 0.0 0.0 1 376
+ATOM C C4    . A A 0 29 . 29 A A C4    0.0 1.0 ? True 0 False 0 False 50R 376 0.0 0.0 0.0 1 377
+ATOM P P     . A A 0 30 . 30 A A P     0.0 1.0 ? True 0 False 0 False 50R 377 0.0 0.0 0.0 1 378
+ATOM O OP1   . A A 0 30 . 30 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 378 0.0 0.0 0.0 1 379
+ATOM O OP2   . A A 0 30 . 30 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 379 0.0 0.0 0.0 1 380
+ATOM O "O5'" . A A 0 30 . 30 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 380 0.0 0.0 0.0 1 381
+ATOM C "C5'" . A A 0 30 . 30 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 381 0.0 0.0 0.0 1 382
+ATOM C "C4'" . A A 0 30 . 30 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 382 0.0 0.0 0.0 1 383
+ATOM C "C3'" . A A 0 30 . 30 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 383 0.0 0.0 0.0 1 384
+ATOM C "C2'" . A A 0 30 . 30 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 384 0.0 0.0 0.0 1 385
+ATOM C "C1'" . A A 0 30 . 30 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 385 0.0 0.0 0.0 1 386
+ATOM O "O4'" . A A 0 30 . 30 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 386 0.0 0.0 0.0 1 387
+ATOM O "O3'" . A A 0 30 . 30 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 387 0.0 0.0 0.0 1 388
+ATOM O "O2'" . A A 0 30 . 30 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 388 0.0 0.0 0.0 1 389
+ATOM C C4    . A A 0 30 . 30 A A C4    0.0 1.0 ? True 0 False 0 False 50R 389 0.0 0.0 0.0 1 390
+ATOM P P     . A A 0 31 . 31 A A P     0.0 1.0 ? True 0 False 0 False 50R 390 0.0 0.0 0.0 1 391
+ATOM O OP1   . A A 0 31 . 31 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 391 0.0 0.0 0.0 1 392
+ATOM O OP2   . A A 0 31 . 31 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 392 0.0 0.0 0.0 1 393
+ATOM O "O5'" . A A 0 31 . 31 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 393 0.0 0.0 0.0 1 394
+ATOM C "C5'" . A A 0 31 . 31 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 394 0.0 0.0 0.0 1 395
+ATOM C "C4'" . A A 0 31 . 31 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 395 0.0 0.0 0.0 1 396
+ATOM C "C3'" . A A 0 31 . 31 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 396 0.0 0.0 0.0 1 397
+ATOM C "C2'" . A A 0 31 . 31 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 397 0.0 0.0 0.0 1 398
+ATOM C "C1'" . A A 0 31 . 31 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 398 0.0 0.0 0.0 1 399
+ATOM O "O4'" . A A 0 31 . 31 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 399 0.0 0.0 0.0 1 400
+ATOM O "O3'" . A A 0 31 . 31 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 400 0.0 0.0 0.0 1 401
+ATOM O "O2'" . A A 0 31 . 31 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 401 0.0 0.0 0.0 1 402
+ATOM C C4    . A A 0 31 . 31 A A C4    0.0 1.0 ? True 0 False 0 False 50R 402 0.0 0.0 0.0 1 403
+ATOM P P     . A A 0 32 . 32 A A P     0.0 1.0 ? True 0 False 0 False 50R 403 0.0 0.0 0.0 1 404
+ATOM O OP1   . A A 0 32 . 32 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 404 0.0 0.0 0.0 1 405
+ATOM O OP2   . A A 0 32 . 32 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 405 0.0 0.0 0.0 1 406
+ATOM O "O5'" . A A 0 32 . 32 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 406 0.0 0.0 0.0 1 407
+ATOM C "C5'" . A A 0 32 . 32 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 407 0.0 0.0 0.0 1 408
+ATOM C "C4'" . A A 0 32 . 32 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 408 0.0 0.0 0.0 1 409
+ATOM C "C3'" . A A 0 32 . 32 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 409 0.0 0.0 0.0 1 410
+ATOM C "C2'" . A A 0 32 . 32 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 410 0.0 0.0 0.0 1 411
+ATOM C "C1'" . A A 0 32 . 32 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 411 0.0 0.0 0.0 1 412
+ATOM O "O4'" . A A 0 32 . 32 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 412 0.0 0.0 0.0 1 413
+ATOM O "O3'" . A A 0 32 . 32 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 413 0.0 0.0 0.0 1 414
+ATOM O "O2'" . A A 0 32 . 32 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 414 0.0 0.0 0.0 1 415
+ATOM C C4    . A A 0 32 . 32 A A C4    0.0 1.0 ? True 0 False 0 False 50R 415 0.0 0.0 0.0 1 416
+ATOM P P     . A A 0 33 . 33 A A P     0.0 1.0 ? True 0 False 0 False 50R 416 0.0 0.0 0.0 1 417
+ATOM O OP1   . A A 0 33 . 33 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 417 0.0 0.0 0.0 1 418
+ATOM O OP2   . A A 0 33 . 33 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 418 0.0 0.0 0.0 1 419
+ATOM O "O5'" . A A 0 33 . 33 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 419 0.0 0.0 0.0 1 420
+ATOM C "C5'" . A A 0 33 . 33 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 420 0.0 0.0 0.0 1 421
+ATOM C "C4'" . A A 0 33 . 33 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 421 0.0 0.0 0.0 1 422
+ATOM C "C3'" . A A 0 33 . 33 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 422 0.0 0.0 0.0 1 423
+ATOM C "C2'" . A A 0 33 . 33 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 423 0.0 0.0 0.0 1 424
+ATOM C "C1'" . A A 0 33 . 33 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 424 0.0 0.0 0.0 1 425
+ATOM O "O4'" . A A 0 33 . 33 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 425 0.0 0.0 0.0 1 426
+ATOM O "O3'" . A A 0 33 . 33 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 426 0.0 0.0 0.0 1 427
+ATOM O "O2'" . A A 0 33 . 33 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 427 0.0 0.0 0.0 1 428
+ATOM C C4    . A A 0 33 . 33 A A C4    0.0 1.0 ? True 0 False 0 False 50R 428 0.0 0.0 0.0 1 429
+ATOM P P     . A A 0 34 . 34 A A P     0.0 1.0 ? True 0 False 0 False 50R 429 0.0 0.0 0.0 1 430
+ATOM O OP1   . A A 0 34 . 34 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 430 0.0 0.0 0.0 1 431
+ATOM O OP2   . A A 0 34 . 34 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 431 0.0 0.0 0.0 1 432
+ATOM O "O5'" . A A 0 34 . 34 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 432 0.0 0.0 0.0 1 433
+ATOM C "C5'" . A A 0 34 . 34 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 433 0.0 0.0 0.0 1 434
+ATOM C "C4'" . A A 0 34 . 34 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 434 0.0 0.0 0.0 1 435
+ATOM C "C3'" . A A 0 34 . 34 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 435 0.0 0.0 0.0 1 436
+ATOM C "C2'" . A A 0 34 . 34 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 436 0.0 0.0 0.0 1 437
+ATOM C "C1'" . A A 0 34 . 34 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 437 0.0 0.0 0.0 1 438
+ATOM O "O4'" . A A 0 34 . 34 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 438 0.0 0.0 0.0 1 439
+ATOM O "O3'" . A A 0 34 . 34 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 439 0.0 0.0 0.0 1 440
+ATOM O "O2'" . A A 0 34 . 34 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 440 0.0 0.0 0.0 1 441
+ATOM C C4    . A A 0 34 . 34 A A C4    0.0 1.0 ? True 0 False 0 False 50R 441 0.0 0.0 0.0 1 442
+ATOM P P     . A A 0 35 . 35 A A P     0.0 1.0 ? True 0 False 0 False 50R 442 0.0 0.0 0.0 1 443
+ATOM O OP1   . A A 0 35 . 35 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 443 0.0 0.0 0.0 1 444
+ATOM O OP2   . A A 0 35 . 35 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 444 0.0 0.0 0.0 1 445
+ATOM O "O5'" . A A 0 35 . 35 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 445 0.0 0.0 0.0 1 446
+ATOM C "C5'" . A A 0 35 . 35 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 446 0.0 0.0 0.0 1 447
+ATOM C "C4'" . A A 0 35 . 35 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 447 0.0 0.0 0.0 1 448
+ATOM C "C3'" . A A 0 35 . 35 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 448 0.0 0.0 0.0 1 449
+ATOM C "C2'" . A A 0 35 . 35 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 449 0.0 0.0 0.0 1 450
+ATOM C "C1'" . A A 0 35 . 35 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 450 0.0 0.0 0.0 1 451
+ATOM O "O4'" . A A 0 35 . 35 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 451 0.0 0.0 0.0 1 452
+ATOM O "O3'" . A A 0 35 . 35 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 452 0.0 0.0 0.0 1 453
+ATOM O "O2'" . A A 0 35 . 35 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 453 0.0 0.0 0.0 1 454
+ATOM C C4    . A A 0 35 . 35 A A C4    0.0 1.0 ? True 0 False 0 False 50R 454 0.0 0.0 0.0 1 455
+ATOM P P     . A A 0 36 . 36 A A P     0.0 1.0 ? True 0 False 0 False 50R 455 0.0 0.0 0.0 1 456
+ATOM O OP1   . A A 0 36 . 36 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 456 0.0 0.0 0.0 1 457
+ATOM O OP2   . A A 0 36 . 36 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 457 0.0 0.0 0.0 1 458
+ATOM O "O5'" . A A 0 36 . 36 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 458 0.0 0.0 0.0 1 459
+ATOM C "C5'" . A A 0 36 . 36 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 459 0.0 0.0 0.0 1 460
+ATOM C "C4'" . A A 0 36 . 36 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 460 0.0 0.0 0.0 1 461
+ATOM C "C3'" . A A 0 36 . 36 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 461 0.0 0.0 0.0 1 462
+ATOM C "C2'" . A A 0 36 . 36 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 462 0.0 0.0 0.0 1 463
+ATOM C "C1'" . A A 0 36 . 36 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 463 0.0 0.0 0.0 1 464
+ATOM O "O4'" . A A 0 36 . 36 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 464 0.0 0.0 0.0 1 465
+ATOM O "O3'" . A A 0 36 . 36 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 465 0.0 0.0 0.0 1 466
+ATOM O "O2'" . A A 0 36 . 36 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 466 0.0 0.0 0.0 1 467
+ATOM C C4    . A A 0 36 . 36 A A C4    0.0 1.0 ? True 0 False 0 False 50R 467 0.0 0.0 0.0 1 468
+ATOM P P     . A A 0 37 . 37 A A P     0.0 1.0 ? True 0 False 0 False 50R 468 0.0 0.0 0.0 1 469
+ATOM O OP1   . A A 0 37 . 37 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 469 0.0 0.0 0.0 1 470
+ATOM O OP2   . A A 0 37 . 37 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 470 0.0 0.0 0.0 1 471
+ATOM O "O5'" . A A 0 37 . 37 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 471 0.0 0.0 0.0 1 472
+ATOM C "C5'" . A A 0 37 . 37 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 472 0.0 0.0 0.0 1 473
+ATOM C "C4'" . A A 0 37 . 37 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 473 0.0 0.0 0.0 1 474
+ATOM C "C3'" . A A 0 37 . 37 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 474 0.0 0.0 0.0 1 475
+ATOM C "C2'" . A A 0 37 . 37 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 475 0.0 0.0 0.0 1 476
+ATOM C "C1'" . A A 0 37 . 37 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 476 0.0 0.0 0.0 1 477
+ATOM O "O4'" . A A 0 37 . 37 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 477 0.0 0.0 0.0 1 478
+ATOM O "O3'" . A A 0 37 . 37 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 478 0.0 0.0 0.0 1 479
+ATOM O "O2'" . A A 0 37 . 37 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 479 0.0 0.0 0.0 1 480
+ATOM C C4    . A A 0 37 . 37 A A C4    0.0 1.0 ? True 0 False 0 False 50R 480 0.0 0.0 0.0 1 481
+ATOM P P     . A A 0 38 . 38 A A P     0.0 1.0 ? True 0 False 0 False 50R 481 0.0 0.0 0.0 1 482
+ATOM O OP1   . A A 0 38 . 38 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 482 0.0 0.0 0.0 1 483
+ATOM O OP2   . A A 0 38 . 38 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 483 0.0 0.0 0.0 1 484
+ATOM O "O5'" . A A 0 38 . 38 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 484 0.0 0.0 0.0 1 485
+ATOM C "C5'" . A A 0 38 . 38 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 485 0.0 0.0 0.0 1 486
+ATOM C "C4'" . A A 0 38 . 38 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 486 0.0 0.0 0.0 1 487
+ATOM C "C3'" . A A 0 38 . 38 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 487 0.0 0.0 0.0 1 488
+ATOM C "C2'" . A A 0 38 . 38 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 488 0.0 0.0 0.0 1 489
+ATOM C "C1'" . A A 0 38 . 38 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 489 0.0 0.0 0.0 1 490
+ATOM O "O4'" . A A 0 38 . 38 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 490 0.0 0.0 0.0 1 491
+ATOM O "O3'" . A A 0 38 . 38 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 491 0.0 0.0 0.0 1 492
+ATOM O "O2'" . A A 0 38 . 38 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 492 0.0 0.0 0.0 1 493
+ATOM C C4    . A A 0 38 . 38 A A C4    0.0 1.0 ? True 0 False 0 False 50R 493 0.0 0.0 0.0 1 494
+ATOM P P     . A A 0 39 . 39 A A P     0.0 1.0 ? True 0 False 0 False 50R 494 0.0 0.0 0.0 1 495
+ATOM O OP1   . A A 0 39 . 39 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 495 0.0 0.0 0.0 1 496
+ATOM O OP2   . A A 0 39 . 39 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 496 0.0 0.0 0.0 1 497
+ATOM O "O5'" . A A 0 39 . 39 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 497 0.0 0.0 0.0 1 498
+ATOM C "C5'" . A A 0 39 . 39 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 498 0.0 0.0 0.0 1 499
+ATOM C "C4'" . A A 0 39 . 39 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 499 0.0 0.0 0.0 1 500
+ATOM C "C3'" . A A 0 39 . 39 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 500 0.0 0.0 0.0 1 501
+ATOM C "C2'" . A A 0 39 . 39 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 501 0.0 0.0 0.0 1 502
+ATOM C "C1'" . A A 0 39 . 39 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 502 0.0 0.0 0.0 1 503
+ATOM O "O4'" . A A 0 39 . 39 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 503 0.0 0.0 0.0 1 504
+ATOM O "O3'" . A A 0 39 . 39 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 504 0.0 0.0 0.0 1 505
+ATOM O "O2'" . A A 0 39 . 39 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 505 0.0 0.0 0.0 1 506
+ATOM C C4    . A A 0 39 . 39 A A C4    0.0 1.0 ? True 0 False 0 False 50R 506 0.0 0.0 0.0 1 507
+ATOM P P     . A A 0 40 . 40 A A P     0.0 1.0 ? True 0 False 0 False 50R 507 0.0 0.0 0.0 1 508
+ATOM O OP1   . A A 0 40 . 40 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 508 0.0 0.0 0.0 1 509
+ATOM O OP2   . A A 0 40 . 40 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 509 0.0 0.0 0.0 1 510
+ATOM O "O5'" . A A 0 40 . 40 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 510 0.0 0.0 0.0 1 511
+ATOM C "C5'" . A A 0 40 . 40 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 511 0.0 0.0 0.0 1 512
+ATOM C "C4'" . A A 0 40 . 40 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 512 0.0 0.0 0.0 1 513
+ATOM C "C3'" . A A 0 40 . 40 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 513 0.0 0.0 0.0 1 514
+ATOM C "C2'" . A A 0 40 . 40 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 514 0.0 0.0 0.0 1 515
+ATOM C "C1'" . A A 0 40 . 40 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 515 0.0 0.0 0.0 1 516
+ATOM O "O4'" . A A 0 40 . 40 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 516 0.0 0.0 0.0 1 517
+ATOM O "O3'" . A A 0 40 . 40 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 517 0.0 0.0 0.0 1 518
+ATOM O "O2'" . A A 0 40 . 40 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 518 0.0 0.0 0.0 1 519
+ATOM C C4    . A A 0 40 . 40 A A C4    0.0 1.0 ? True 0 False 0 False 50R 519 0.0 0.0 0.0 1 520
+ATOM P P     . A A 0 41 . 41 A A P     0.0 1.0 ? True 0 False 0 False 50R 520 0.0 0.0 0.0 1 521
+ATOM O OP1   . A A 0 41 . 41 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 521 0.0 0.0 0.0 1 522
+ATOM O OP2   . A A 0 41 . 41 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 522 0.0 0.0 0.0 1 523
+ATOM O "O5'" . A A 0 41 . 41 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 523 0.0 0.0 0.0 1 524
+ATOM C "C5'" . A A 0 41 . 41 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 524 0.0 0.0 0.0 1 525
+ATOM C "C4'" . A A 0 41 . 41 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 525 0.0 0.0 0.0 1 526
+ATOM C "C3'" . A A 0 41 . 41 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 526 0.0 0.0 0.0 1 527
+ATOM C "C2'" . A A 0 41 . 41 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 527 0.0 0.0 0.0 1 528
+ATOM C "C1'" . A A 0 41 . 41 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 528 0.0 0.0 0.0 1 529
+ATOM O "O4'" . A A 0 41 . 41 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 529 0.0 0.0 0.0 1 530
+ATOM O "O3'" . A A 0 41 . 41 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 530 0.0 0.0 0.0 1 531
+ATOM O "O2'" . A A 0 41 . 41 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 531 0.0 0.0 0.0 1 532
+ATOM C C4    . A A 0 41 . 41 A A C4    0.0 1.0 ? True 0 False 0 False 50R 532 0.0 0.0 0.0 1 533
+ATOM P P     . A A 0 42 . 42 A A P     0.0 1.0 ? True 0 False 0 False 50R 533 0.0 0.0 0.0 1 534
+ATOM O OP1   . A A 0 42 . 42 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 534 0.0 0.0 0.0 1 535
+ATOM O OP2   . A A 0 42 . 42 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 535 0.0 0.0 0.0 1 536
+ATOM O "O5'" . A A 0 42 . 42 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 536 0.0 0.0 0.0 1 537
+ATOM C "C5'" . A A 0 42 . 42 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 537 0.0 0.0 0.0 1 538
+ATOM C "C4'" . A A 0 42 . 42 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 538 0.0 0.0 0.0 1 539
+ATOM C "C3'" . A A 0 42 . 42 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 539 0.0 0.0 0.0 1 540
+ATOM C "C2'" . A A 0 42 . 42 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 540 0.0 0.0 0.0 1 541
+ATOM C "C1'" . A A 0 42 . 42 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 541 0.0 0.0 0.0 1 542
+ATOM O "O4'" . A A 0 42 . 42 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 542 0.0 0.0 0.0 1 543
+ATOM O "O3'" . A A 0 42 . 42 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 543 0.0 0.0 0.0 1 544
+ATOM O "O2'" . A A 0 42 . 42 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 544 0.0 0.0 0.0 1 545
+ATOM C C4    . A A 0 42 . 42 A A C4    0.0 1.0 ? True 0 False 0 False 50R 545 0.0 0.0 0.0 1 546
+ATOM P P     . A A 0 43 . 43 A A P     0.0 1.0 ? True 0 False 0 False 50R 546 0.0 0.0 0.0 1 547
+ATOM O OP1   . A A 0 43 . 43 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 547 0.0 0.0 0.0 1 548
+ATOM O OP2   . A A 0 43 . 43 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 548 0.0 0.0 0.0 1 549
+ATOM O "O5'" . A A 0 43 . 43 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 549 0.0 0.0 0.0 1 550
+ATOM C "C5'" . A A 0 43 . 43 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 550 0.0 0.0 0.0 1 551
+ATOM C "C4'" . A A 0 43 . 43 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 551 0.0 0.0 0.0 1 552
+ATOM C "C3'" . A A 0 43 . 43 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 552 0.0 0.0 0.0 1 553
+ATOM C "C2'" . A A 0 43 . 43 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 553 0.0 0.0 0.0 1 554
+ATOM C "C1'" . A A 0 43 . 43 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 554 0.0 0.0 0.0 1 555
+ATOM O "O4'" . A A 0 43 . 43 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 555 0.0 0.0 0.0 1 556
+ATOM O "O3'" . A A 0 43 . 43 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 556 0.0 0.0 0.0 1 557
+ATOM O "O2'" . A A 0 43 . 43 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 557 0.0 0.0 0.0 1 558
+ATOM C C4    . A A 0 43 . 43 A A C4    0.0 1.0 ? True 0 False 0 False 50R 558 0.0 0.0 0.0 1 559
+ATOM P P     . A A 0 44 . 44 A A P     0.0 1.0 ? True 0 False 0 False 50R 559 0.0 0.0 0.0 1 560
+ATOM O OP1   . A A 0 44 . 44 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 560 0.0 0.0 0.0 1 561
+ATOM O OP2   . A A 0 44 . 44 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 561 0.0 0.0 0.0 1 562
+ATOM O "O5'" . A A 0 44 . 44 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 562 0.0 0.0 0.0 1 563
+ATOM C "C5'" . A A 0 44 . 44 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 563 0.0 0.0 0.0 1 564
+ATOM C "C4'" . A A 0 44 . 44 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 564 0.0 0.0 0.0 1 565
+ATOM C "C3'" . A A 0 44 . 44 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 565 0.0 0.0 0.0 1 566
+ATOM C "C2'" . A A 0 44 . 44 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 566 0.0 0.0 0.0 1 567
+ATOM C "C1'" . A A 0 44 . 44 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 567 0.0 0.0 0.0 1 568
+ATOM O "O4'" . A A 0 44 . 44 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 568 0.0 0.0 0.0 1 569
+ATOM O "O3'" . A A 0 44 . 44 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 569 0.0 0.0 0.0 1 570
+ATOM O "O2'" . A A 0 44 . 44 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 570 0.0 0.0 0.0 1 571
+ATOM C C4    . A A 0 44 . 44 A A C4    0.0 1.0 ? True 0 False 0 False 50R 571 0.0 0.0 0.0 1 572
+ATOM P P     . A A 0 45 . 45 A A P     0.0 1.0 ? True 0 False 0 False 50R 572 0.0 0.0 0.0 1 573
+ATOM O OP1   . A A 0 45 . 45 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 573 0.0 0.0 0.0 1 574
+ATOM O OP2   . A A 0 45 . 45 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 574 0.0 0.0 0.0 1 575
+ATOM O "O5'" . A A 0 45 . 45 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 575 0.0 0.0 0.0 1 576
+ATOM C "C5'" . A A 0 45 . 45 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 576 0.0 0.0 0.0 1 577
+ATOM C "C4'" . A A 0 45 . 45 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 577 0.0 0.0 0.0 1 578
+ATOM C "C3'" . A A 0 45 . 45 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 578 0.0 0.0 0.0 1 579
+ATOM C "C2'" . A A 0 45 . 45 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 579 0.0 0.0 0.0 1 580
+ATOM C "C1'" . A A 0 45 . 45 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 580 0.0 0.0 0.0 1 581
+ATOM O "O4'" . A A 0 45 . 45 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 581 0.0 0.0 0.0 1 582
+ATOM O "O3'" . A A 0 45 . 45 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 582 0.0 0.0 0.0 1 583
+ATOM O "O2'" . A A 0 45 . 45 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 583 0.0 0.0 0.0 1 584
+ATOM C C4    . A A 0 45 . 45 A A C4    0.0 1.0 ? True 0 False 0 False 50R 584 0.0 0.0 0.0 1 585
+ATOM P P     . A A 0 46 . 46 A A P     0.0 1.0 ? True 0 False 0 False 50R 585 0.0 0.0 0.0 1 586
+ATOM O OP1   . A A 0 46 . 46 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 586 0.0 0.0 0.0 1 587
+ATOM O OP2   . A A 0 46 . 46 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 587 0.0 0.0 0.0 1 588
+ATOM O "O5'" . A A 0 46 . 46 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 588 0.0 0.0 0.0 1 589
+ATOM C "C5'" . A A 0 46 . 46 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 589 0.0 0.0 0.0 1 590
+ATOM C "C4'" . A A 0 46 . 46 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 590 0.0 0.0 0.0 1 591
+ATOM C "C3'" . A A 0 46 . 46 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 591 0.0 0.0 0.0 1 592
+ATOM C "C2'" . A A 0 46 . 46 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 592 0.0 0.0 0.0 1 593
+ATOM C "C1'" . A A 0 46 . 46 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 593 0.0 0.0 0.0 1 594
+ATOM O "O4'" . A A 0 46 . 46 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 594 0.0 0.0 0.0 1 595
+ATOM O "O3'" . A A 0 46 . 46 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 595 0.0 0.0 0.0 1 596
+ATOM O "O2'" . A A 0 46 . 46 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 596 0.0 0.0 0.0 1 597
+ATOM C C4    . A A 0 46 . 46 A A C4    0.0 1.0 ? True 0 False 0 False 50R 597 0.0 0.0 0.0 1 598
+ATOM P P     . A A 0 47 . 47 A A P     0.0 1.0 ? True 0 False 0 False 50R 598 0.0 0.0 0.0 1 599
+ATOM O OP1   . A A 0 47 . 47 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 599 0.0 0.0 0.0 1 600
+ATOM O OP2   . A A 0 47 . 47 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 600 0.0 0.0 0.0 1 601
+ATOM O "O5'" . A A 0 47 . 47 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 601 0.0 0.0 0.0 1 602
+ATOM C "C5'" . A A 0 47 . 47 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 602 0.0 0.0 0.0 1 603
+ATOM C "C4'" . A A 0 47 . 47 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 603 0.0 0.0 0.0 1 604
+ATOM C "C3'" . A A 0 47 . 47 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 604 0.0 0.0 0.0 1 605
+ATOM C "C2'" . A A 0 47 . 47 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 605 0.0 0.0 0.0 1 606
+ATOM C "C1'" . A A 0 47 . 47 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 606 0.0 0.0 0.0 1 607
+ATOM O "O4'" . A A 0 47 . 47 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 607 0.0 0.0 0.0 1 608
+ATOM O "O3'" . A A 0 47 . 47 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 608 0.0 0.0 0.0 1 609
+ATOM O "O2'" . A A 0 47 . 47 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 609 0.0 0.0 0.0 1 610
+ATOM C C4    . A A 0 47 . 47 A A C4    0.0 1.0 ? True 0 False 0 False 50R 610 0.0 0.0 0.0 1 611
+ATOM P P     . A A 0 48 . 48 A A P     0.0 1.0 ? True 0 False 0 False 50R 611 0.0 0.0 0.0 1 612
+ATOM O OP1   . A A 0 48 . 48 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 612 0.0 0.0 0.0 1 613
+ATOM O OP2   . A A 0 48 . 48 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 613 0.0 0.0 0.0 1 614
+ATOM O "O5'" . A A 0 48 . 48 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 614 0.0 0.0 0.0 1 615
+ATOM C "C5'" . A A 0 48 . 48 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 615 0.0 0.0 0.0 1 616
+ATOM C "C4'" . A A 0 48 . 48 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 616 0.0 0.0 0.0 1 617
+ATOM C "C3'" . A A 0 48 . 48 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 617 0.0 0.0 0.0 1 618
+ATOM C "C2'" . A A 0 48 . 48 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 618 0.0 0.0 0.0 1 619
+ATOM C "C1'" . A A 0 48 . 48 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 619 0.0 0.0 0.0 1 620
+ATOM O "O4'" . A A 0 48 . 48 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 620 0.0 0.0 0.0 1 621
+ATOM O "O3'" . A A 0 48 . 48 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 621 0.0 0.0 0.0 1 622
+ATOM O "O2'" . A A 0 48 . 48 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 622 0.0 0.0 0.0 1 623
+ATOM C C4    . A A 0 48 . 48 A A C4    0.0 1.0 ? True 0 False 0 False 50R 623 0.0 0.0 0.0 1 624
+ATOM P P     . A A 0 49 . 49 A A P     0.0 1.0 ? True 0 False 0 False 50R 624 0.0 0.0 0.0 1 625
+ATOM O OP1   . A A 0 49 . 49 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 625 0.0 0.0 0.0 1 626
+ATOM O OP2   . A A 0 49 . 49 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 626 0.0 0.0 0.0 1 627
+ATOM O "O5'" . A A 0 49 . 49 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 627 0.0 0.0 0.0 1 628
+ATOM C "C5'" . A A 0 49 . 49 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 628 0.0 0.0 0.0 1 629
+ATOM C "C4'" . A A 0 49 . 49 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 629 0.0 0.0 0.0 1 630
+ATOM C "C3'" . A A 0 49 . 49 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 630 0.0 0.0 0.0 1 631
+ATOM C "C2'" . A A 0 49 . 49 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 631 0.0 0.0 0.0 1 632
+ATOM C "C1'" . A A 0 49 . 49 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 632 0.0 0.0 0.0 1 633
+ATOM O "O4'" . A A 0 49 . 49 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 633 0.0 0.0 0.0 1 634
+ATOM O "O3'" . A A 0 49 . 49 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 634 0.0 0.0 0.0 1 635
+ATOM O "O2'" . A A 0 49 . 49 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 635 0.0 0.0 0.0 1 636
+ATOM C C4    . A A 0 49 . 49 A A C4    0.0 1.0 ? True 0 False 0 False 50R 636 0.0 0.0 0.0 1 637
+ATOM P P     . A A 0 50 . 50 A A P     0.0 1.0 ? True 0 False 0 False 50R 637 0.0 0.0 0.0 1 638
+ATOM O OP1   . A A 0 50 . 50 A A OP1   0.0 1.0 ? True 0 False 0 False 50R 638 0.0 0.0 0.0 1 639
+ATOM O OP2   . A A 0 50 . 50 A A OP2   0.0 1.0 ? True 0 False 0 False 50R 639 0.0 0.0 0.0 1 640
+ATOM O "O5'" . A A 0 50 . 50 A A "O5'" 0.0 1.0 ? True 0 False 0 False 50R 640 0.0 0.0 0.0 1 641
+ATOM C "C5'" . A A 0 50 . 50 A A "C5'" 0.0 1.0 ? True 0 False 0 False 50R 641 0.0 0.0 0.0 1 642
+ATOM C "C4'" . A A 0 50 . 50 A A "C4'" 0.0 1.0 ? True 0 False 0 False 50R 642 0.0 0.0 0.0 1 643
+ATOM C "C3'" . A A 0 50 . 50 A A "C3'" 0.0 1.0 ? True 0 False 0 False 50R 643 0.0 0.0 0.0 1 644
+ATOM C "C2'" . A A 0 50 . 50 A A "C2'" 0.0 1.0 ? True 0 False 0 False 50R 644 0.0 0.0 0.0 1 645
+ATOM C "C1'" . A A 0 50 . 50 A A "C1'" 0.0 1.0 ? True 0 False 0 False 50R 645 0.0 0.0 0.0 1 646
+ATOM O "O4'" . A A 0 50 . 50 A A "O4'" 0.0 1.0 ? True 0 False 0 False 50R 646 0.0 0.0 0.0 1 647
+ATOM O "O3'" . A A 0 50 . 50 A A "O3'" 0.0 1.0 ? True 0 False 0 False 50R 647 0.0 0.0 0.0 1 648
+ATOM O "O2'" . A A 0 50 . 50 A A "O2'" 0.0 1.0 ? True 0 False 0 False 50R 648 0.0 0.0 0.0 1 649
+ATOM C C4    . A A 0 50 . 50 A A C4    0.0 1.0 ? True 0 False 0 False 50R 649 0.0 0.0 0.0 1 650
+#
+_rfd_design.sampled_contig   50R
+#
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+A OP3    O 0 N Y 2.134999990463257     -1.1410000324249268  -5.313000202178955
+A P      P 0 N N 1.0240000486373901    -0.13699999451637268 -4.7230000495910645
+A OP1    O 0 N N 1.6330000162124634    1.190000057220459    -4.48799991607666
+A OP2    O 0 N N -0.18299999833106995  0.004999999888241291 -5.7779998779296875
+A "O5'"  O 0 N N 0.4560000002384186    -0.7200000286102295  -3.3340001106262207
+A "C5'"  C 0 N N -0.5199999809265137   0.20900000631809235  -2.86299991607666
+A "C4'"  C 0 N N -1.1009999513626099   -0.28700000047683716 -1.5379999876022339
+A "O4'"  O 0 N N -0.06400000303983688  -0.382999986410141   -0.5379999876022339
+A "C3'"  C 0 N N -2.1050000190734863   0.7390000224113464   -0.968999981880188
+A "O3'"  O 0 N N -3.444999933242798    0.36000001430511475  -1.2869999408721924
+A "C2'"  C 0 N N -1.8739999532699585   0.6840000152587891   0.5580000281333923
+A "O2'"  O 0 N N -3.065000057220459    0.2709999978542328   1.2309999465942383
+A "C1'"  C 0 N N -0.7549999952316284   -0.367000013589859   0.7289999723434448
+A N9     N 0 Y N 0.15800000727176666   0.028999999165534973 1.8029999732971191
+A C8     C 0 Y N 1.2649999856948853    0.8130000233650208   1.6720000505447388
+A N7     N 0 Y N 1.843000054359436     0.9629999995231628   2.828000068664551
+A C5     C 0 Y N 1.1430000066757202    0.2919999957084656   3.7730000019073486
+A C6     C 0 Y N 1.2899999618530273    0.09099999815225601  5.156000137329102
+A N6     N 0 N N 2.3440001010894775    0.6639999747276306   5.8460001945495605
+A N1     N 0 Y N 0.39100000262260437   -0.656000018119812   5.7870001792907715
+A C2     C 0 Y N -0.6169999837875366   -1.2059999704360962  5.136000156402588
+A N3     N 0 Y N -0.7919999957084656   -1.0509999990463257  3.8410000801086426
+A C4     C 0 Y N 0.0560000017285347    -0.3199999928474426  3.125999927520752
+A HOP3   H 0 N N 2.447999954223633     -0.7549999952316284  -6.142000198364258
+A HOP2   H 0 N N -0.5519999861717224   -0.8790000081062317  -5.9019999504089355
+A "H5'"  H 0 N N -1.319000005722046    0.3009999990463257   -3.5989999771118164
+A "H5''" H 0 N N -0.052000001072883606 1.1820000410079956   -2.7119998931884766
+A "H4'"  H 0 N N -1.5859999656677246   -1.253999948501587   -1.6770000457763672
+A "H3'"  H 0 N N -1.8899999856948853   1.7359999418258667   -1.3530000448226929
+A "HO3'" H 0 N Y -4.02400016784668     1.034999966621399    -0.9079999923706055
+A "H2'"  H 0 N N -1.5429999828338623   1.6540000438690186   0.9300000071525574
+A "HO2'" H 0 N N -3.740000009536743    0.9359999895095825   1.0369999408721924
+A "H1'"  H 0 N N -1.184999942779541    -1.3459999561309814  0.9399999976158142
+A H8     H 0 N N 1.6109999418258667    1.246000051498413    0.7450000047683716
+A H61    H 0 N N 2.431999921798706     0.5220000147819519   6.801000118255615
+A H62    H 0 N N 2.996000051498413     1.2050000429153442   5.374000072479248
+A H2     H 0 N N -1.3250000476837158   -1.8070000410079956  5.688000202178955
+#

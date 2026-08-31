@@ -13,8 +13,8 @@
         "Runs bash setup.sh and activates .venv",
         "Sets CLUSTER=local and DATA_PATH, creates .ipd/.env.local, runs scripts/download_example_data.sh",
         "Runs skills/rfd4-proteina-setup/scripts/preflight.sh and it exits 0 (PREFLIGHT PASSED)",
-        "Runs python src/rfproteina/generate.py inputs=data/benchmarks/monomer.json subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke",
-        "Uses the checkpoint named by configs/inference.yaml, which download_example_data.sh installs under DATA_PATH"
+        "Runs python src/rfproteina/generate.py inputs=data/benchmarks/monomer subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke",
+        "Handles the checkpoint-name mismatch by overriding ckpt_name if only example data was downloaded"
       ],
       "success_criteria": {
         "preflight_exit_code": 0,

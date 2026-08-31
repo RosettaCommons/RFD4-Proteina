@@ -6,7 +6,6 @@ defaults:
   - _self_
 
 dataset:
-  name: indexed_motif_scaffold_subset
   subset_to_keys:
     # easy
     - 6E6R_AA_MED
