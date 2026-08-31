@@ -251,8 +251,9 @@ The [condition spec reference](condition-spec.md) has the full syntax and exampl
 
 `inputs` takes a single `.cif` or `.bcif`, a **directory** of them, or a list. Each file is one
 design problem. It also takes `.json` and `.yaml`, though we do not recommend those. Outputs echo
-the source component provenance as `SA_SRC` contig labels like `A3-10`, so you can trace which
-input region each output region came from.
+source component provenance as per-residue `SA_SRC` labels like `A3`; expandable segments retain
+range labels like `3-10`. This lets you trace each output residue to its input residue or inserted
+segment.
 
 ## Supported annotations (reference)
 
