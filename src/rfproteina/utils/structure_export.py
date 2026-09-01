@@ -133,9 +133,12 @@ def process_single_sample_to_atom_array(
         input_atom_array=input_atom_array,
     )
 
-    coords_with_insertion = updated_array.coord.copy()
-    coords_with_insertion[C_CRD.mask(updated_array)] = updated_array.original_input_coord[C_CRD.mask(updated_array)]
-    SA_CWI.set_annotation(updated_array, coords_with_insertion)
+    # Stage the motif-RMSD reference only for conditioned designs; C_CRD.annotation is the absolute overlay.
+    crd_mask = C_CRD.mask(updated_array)
+    if crd_mask.any() or C_INTCRD.mask(updated_array).any():
+        coords_with_insertion = updated_array.coord.copy()
+        coords_with_insertion[crd_mask] = C_CRD.annotation(updated_array, default="generate")[crd_mask]
+        SA_CWI.set_annotation(updated_array, np.asarray(coords_with_insertion, dtype=np.float32))
 
     C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
     C_INTCRD.set_mask(updated_array, C_INTCRD.mask(updated_array))

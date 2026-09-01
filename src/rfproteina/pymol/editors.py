@@ -33,7 +33,6 @@ from rfproteina.pymol.visualize import color_by_coord_group, color_by_index_grou
 from rfproteina.utils.standard_annotations import (  # noqa: F401
     SA_CRDGRPSRC,
     SA_CRDSRC,
-    SA_CWI,
     SA_SRC,
     SA_UII,
 )

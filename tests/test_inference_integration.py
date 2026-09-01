@@ -16,16 +16,21 @@ import json
 import os
 import shutil
 import tempfile
+from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
 import biotite.structure as struc
+import lightning as L
 import numpy as np
 import pandas as pd
 import pytest
+import torch
+import zstandard
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
+from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from biotite.structure import get_residue_starts
 
 # Load .env BEFORE any atomworks imports (they read env vars at import time)
@@ -37,6 +42,7 @@ from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 
+from rfproteina.conditions import C_INTCRD
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
 from rfproteina.generate import (
     _get_example_ids_from_dataset,
@@ -44,7 +50,8 @@ from rfproteina.generate import (
     run_generation,
 )
 from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProblemDataset
-from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
+from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
+from tests.conftest import TEST_DATA_DIR
 from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
 from tests.helpers import gpu  # noqa: F401
 
@@ -70,6 +77,34 @@ _1YCR_INPUT = BENCHMARKS_DIR / "motif_data_aa" / "1ycr_aa.cif"
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
     """Return generated structure CIFs (one per-design directory under ``inference_samples/``)."""
     return list(Path(out_dir).glob("inference_samples/**/*_generated.cif"))
+
+
+_MOTIF_RMSD_MAX = 0.75
+
+
+def _enable_determinism(seed: int = 42) -> None:
+    # Best-effort determinism for GPU generation: not bit-exact, but tightens run-to-run variation.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    L.seed_everything(seed, workers=True)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def _parse_annotated(cif_path: Path | str):
+    """Parse a CIF keeping the RFProteína StandardAnnotations intact."""
+    return parse(
+        str(cif_path),
+        config=ParseConfig.from_preset(
+            "rcsb", load_standard_annotations=True, add_missing_atoms=False, convert_mse_to_met=False
+        ),
+    )["asym_unit"][0]
+
+
+def _conditioned_res_names(aa) -> list[str]:
+    """Sorted residue names at the sequence-conditioned residues."""
+    starts = get_residue_starts(aa)
+    return sorted(aa.res_name[starts][C_SEQ.mask(aa, default="generate")[starts]].tolist())
 
 
 # Columns that should always be present in the per-example output dataframe, regardless of input
@@ -609,6 +644,75 @@ class TestEndToEndInference:
         assert not np.array_equal(
             input_ca.res_name[~fixed_mask], output_ca_aligned.res_name[~fixed_mask]
         ), "Non-fixed-region residue types should be different in output"
+
+    def test_motif_conditioning_persists_through_partial_diffusion(self, gpu, tmp_output_dir):  # noqa: F811
+        """Motif conditioning survives a generation + a partial-diffusion re-feed.
+
+        Requires that:
+            - Sequence stays consistent across the input, initial generation (gen-1), and partial diffusion (gen-2)
+            - Coordinate and internal-coordinate conditioning match the input again once the re-feed re-locks the motif
+        """
+        _enable_determinism()
+        # Fixture: indexed absolute + indexed internal + unindexed absolute coordinate conditioning, plus
+        # sequence conditioning. Decompress the zstd fixture to a temp CIF.
+        source = Path(tmp_output_dir) / "mixed_unindexed_motif.cif"
+        source.write_bytes(
+            zstandard.ZstdDecompressor().decompress((TEST_DATA_DIR / "mixed_unindexed_motif.cif.zst").read_bytes())
+        )
+
+        # TODO: run this in-memory instead of through the CLI -- ideally pass inference an AtomArray
+        # directly rather than round-tripping through a CIF on disk.
+        def _generate(inputs: Path, sub: str, extra: list[str]) -> Path:
+            out = Path(tmp_output_dir) / sub
+            cfg = _build_test_cfg(
+                [
+                    f"inputs={inputs}",
+                    f"out_dir={out}",
+                    "~metrics/refolding_oracles",
+                    *extra,
+                ]
+            )
+            run_generation(cfg, job_id=0, config_name=sub)
+            return _inference_generated_cifs(out)[0]
+
+        # The tags activate the coordinate-conditioning inline metrics (design_motif_*) read below.
+        motif_metric_tags = "metrics_tags=[3d_coordinate_conditioning,internal_coordinate_conditioning,unindexed]"
+        # Step 1: generate from the source (unindexed motif)
+        gen1 = _generate(source, "gen1", [motif_metric_tags])
+        # Step 2: re-feed gen1 with partial diffusion to produce gen2
+        gen2 = _generate(gen1, "gen2", ["generation.args.partial_trajectory_fraction_steps=0.8", motif_metric_tags])
+        inp, g1, g2 = (_parse_annotated(c) for c in (source, gen1, gen2))
+
+        # Sequence: the conditioned residues keep their identity across input, gen-1, and gen-2.
+        want = _conditioned_res_names(inp)
+        for label, aa in (("gen-1", g1), ("gen-2", g2)):
+            got = _conditioned_res_names(aa)
+            assert got == want, (
+                f"sequence conditioning drifted on {label}: extra={sorted((Counter(got) - Counter(want)).elements())} "
+                f"missing={sorted((Counter(want) - Counter(got)).elements())} (got {got} vs input {want})"
+            )
+
+        # Motif RMSD via the design_motif metrics (per-coord-group aligned): the whole motif on gen-1 and
+        # (re-locked) gen-2, plus the freshly inserted unindexed motif specifically on gen-1.
+        def _motif_rmsd(out_sub: str, col: str) -> pd.Series:
+            df = pd.read_csv(Path(tmp_output_dir) / out_sub / "inference_metrics" / "per_example_metrics.csv")
+            assert col in df.columns, f"expected {col} in {out_sub} metrics; got {sorted(df.columns)}"
+            return df[col]
+
+        for sub, col in (
+            ("gen1", "design_motif_allatom_rmsd.rmsd"),
+            ("gen1", "design_unindexed_motif_allatom_rmsd.rmsd"),
+            ("gen2", "design_motif_allatom_rmsd.rmsd"),
+        ):
+            r = _motif_rmsd(sub, col)
+            assert (
+                r.notna().all() and (r <= _MOTIF_RMSD_MAX).all()
+            ), f"{sub} {col} exceeds {_MOTIF_RMSD_MAX} A: {r.tolist()}"
+
+        # The unindexed motif should become an indexed fixed motif (not re-unindexed) after the first generation
+        assert SA_UII.mask(g1).any(), "unindexed motif was not flagged as an insertion on gen-1"
+        motif = C_CRD.mask(g2, default="generate") | C_INTCRD.mask(g2, default="generate")
+        assert C_IDX.mask(g2, default="generate")[motif].all(), "motif was re-unindexed on the re-feed"
 
     def test_inverse_folding(self, gpu, tmp_output_dir):  # noqa: F811
         """Resampled-forward-marginal inverse folding preserves the backbone and redesigns sequence.

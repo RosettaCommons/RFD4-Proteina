@@ -187,7 +187,6 @@ def copy_generated_coordinates_to_input(
     ), "Input and generated atom arrays must have the same tokens"
 
     input_atom_array.set_annotation("original_global_index", np.arange(input_atom_array.array_length()))
-    original_input_coords = input_atom_array.coord.copy()
 
     extra_atoms_mask = np.zeros(len(input_atom_array), dtype=bool)
     missing_atoms_and_indices = []
@@ -324,13 +323,6 @@ def copy_generated_coordinates_to_input(
             bonds_as_array[:, 1] = non_atomize_indices[bonds_as_array[:, 1]]
         remapped_bonds = struc.BondList(input_atom_array.array_length(), bonds_as_array)
         input_atom_array.bonds = input_atom_array.bonds.merge(remapped_bonds)
-
-    # Add an annotation for the original coords, with NaNs for added atoms
-    derived_from_original_input = np.where(input_atom_array.original_global_index != -1)[0]
-    reshaped_original_global_index = input_atom_array.original_global_index[derived_from_original_input]
-    reshaped_original_input_coords = np.full_like(input_atom_array.coord, np.nan)
-    reshaped_original_input_coords[derived_from_original_input] = original_input_coords[reshaped_original_global_index]
-    input_atom_array.set_annotation("original_input_coord", reshaped_original_input_coords)
 
     # Broadcast src_component to generated sidechain atoms
     input_atom_array = _broadcast_src_component_residue_wise(input_atom_array)

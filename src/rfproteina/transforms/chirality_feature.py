@@ -4,11 +4,13 @@ from collections.abc import Generator
 
 import numpy as np
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.ml.conditions import C_CRD
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.geometry import get_random_rots
 from biotite.structure import AtomArray
 from scipy.spatial.transform import Rotation
 
+from rfproteina.conditions import C_CRDGRP, C_INTCRD
 from rfproteina.utils.chirals import (
     STEREOISOMER_TEMPLATES,
     classify_stereoisomer,
@@ -43,11 +45,26 @@ def _iter_idealized_chiral_features(
     At inference, no random rotation is applied so the feature is deterministic.
     """
     has_atomize = "atomize" in atom_array.get_annotation_categories()
+    # Per center, take coords from the conditioned original when available: C_CRD -> C_INTCRD -> coord.
+    # NOTE: C_INTCRD is framed per coord-group, so it is only usable when the whole center is in one group!
+    crd_annotation = C_CRD.annotation(atom_array, default="generate")
+    intcrd_annotation = C_INTCRD.annotation(atom_array, default="generate")
+    crdgrp = C_CRDGRP.annotation(atom_array, default="generate")
     for center in identify_stereogenic_centers(atom_array):
         cidx, bonded = center["center_idx"], center["bonded_idxs"]
         if has_atomize and not atom_array.atomize[cidx]:
             continue
-        centered = atom_array.coord[bonded] - atom_array.coord[cidx]
+        center_idxs = np.concatenate([[cidx], bonded])
+        if np.isfinite(crd_annotation[center_idxs]).all():
+            # ... use coordinate conditioning
+            coord = crd_annotation
+        elif np.isfinite(intcrd_annotation[center_idxs]).all() and (crdgrp[center_idxs] == crdgrp[cidx]).all():
+            # ... use internal coordinate conditioning (only if all in the same group)
+            coord = intcrd_annotation
+        else:
+            # ... fall back to the raw coordinates (no conditioning)
+            coord = atom_array.coord
+        centered = coord[bonded] - coord[cidx]
         idealized = _idealize_coords(centered, center["geometry"])
         rot = np.eye(3) if is_inference else get_random_rots(1, mode="numpy")[0]
         yield cidx, bonded, (idealized @ rot.T)

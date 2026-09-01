@@ -12,5 +12,3 @@ dataset:
     metrics_tags:
       - design
       - centroid_conditioning
-    center_conditioning_annotations:
-      - condition_ChainCentroid_1_atom

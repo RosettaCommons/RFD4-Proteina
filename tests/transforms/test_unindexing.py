@@ -2,21 +2,29 @@
 
 import copy
 
+import biotite.structure as struc
 import numpy as np
 import pytest
+from atomworks.constants import MASKED
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.testing import assert_same_atom_array_or_stack
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.conditions.base import ConditionConflictError
 from atomworks.ml.transforms.base import Compose
 from atomworks.ml.utils.testing import cached_parse
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_IDXGRP
-from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
-from rfproteina.transforms.unindexing import UnindexFlaggedTokens
+from rfproteina.conditions import C_CRDGRP, C_HB, C_IDXGRP, C_SEC
+from rfproteina.datapipes.pipeline import FreezeConditionAnnotations, _build_design_clean_and_sample_pipeline
+from rfproteina.transforms.unindexing import (
+    UnindexFlaggedTokens,
+    annotate_unindexed_insertion,
+)
 from rfproteina.transforms.utils.conditioning_utils import sample_unindexed_groups
+from rfproteina.utils.standard_annotations import SA_CWI, SA_UII
 
 _N_UNINDEXED_TOKENS = 6
 
@@ -222,3 +230,77 @@ def test_within_index_group_res_idx_per_unindexed_group(pdb_id: str, p_split_gro
         assert len(np.unique(group_res_idxs)) == len(
             group_res_idxs
         ), f"Group {gid} within_index_group_res_idx has duplicates: {group_res_idxs}"
+
+
+def _insertion_input(*, conflict: bool = False):
+    """One indexed generated token (TRP) + one unindexed motif token (mapping {1: 0}).
+
+    The motif's LIVE coord/res_name (GLY at 5,5,5) differ from its FROZEN C_CRD/C_SEQ annotations (TRP at
+    10,10,10) to prove the transfer reads the frozen annotation, not the live values. Motif conditions:
+    coord + seq + residue-level SSE + atom-level h-bond (CA only). With ``conflict=True`` the target is
+    also SSE-conditioned with a different value, so the transfer must raise. Returns (array, frozen_coords).
+    """
+    raw = struc.AtomArray(6)
+    raw.coord = np.array([[0, 0, 0], [1, 0, 0], [2, 0, 0], [5, 5, 5], [6, 5, 5], [7, 5, 5]], dtype=np.float32)
+    raw.chain_id = np.array(["A"] * 6)
+    raw.res_id = np.array([1, 1, 1, 2, 2, 2])
+    raw.res_name = np.array(["TRP", "TRP", "TRP", "GLY", "GLY", "GLY"])
+    raw.atom_name = np.array(["N", "CA", "C"] * 2)
+    raw.element = np.array(["N", "C", "C"] * 2)
+    arr = as_atom_array_plus(raw)
+    arr.set_annotation("token_id", np.array([0, 0, 0, 1, 1, 1], dtype=np.int32))
+
+    motif = np.array([False, False, False, True, True, True])
+    C_IDX.set_mask(arr, ~motif)
+    C_CRDGRP.set_annotation(arr, C_CRDGRP.default_annotation(arr))
+    for cond in (C_CRD, C_SEQ, C_SEC):
+        cond.set_mask(arr, motif)
+    frozen_coords = np.array([[10, 10, 10], [11, 10, 10], [12, 10, 10]], dtype=np.float32)
+    crd = np.full((6, 3), np.nan, dtype=np.float32)
+    crd[motif] = frozen_coords
+    C_CRD.set_annotation(arr, crd)
+    C_SEQ.set_annotation(arr, np.array([MASKED, MASKED, MASKED, "TRP", "TRP", "TRP"]))
+    C_SEC.set_annotation(arr, np.array([1, 1, 1, 2, 2, 2]))  # residue-level; target value differs from motif
+    if conflict:
+        C_SEC.set_mask(arr, np.ones(6, dtype=bool))  # target SSE now conditioned (1) -> conflicts with motif (2)
+    C_HB.set_mask(arr, np.array([False, False, False, False, True, False]))  # atom-level: motif CA only
+    C_HB.set_annotation(arr, np.array([0, 0, 0, 0, 1, 0]))
+    return arr, frozen_coords
+
+
+def test_annotate_unindexed_insertion_reapplies_conditioning() -> None:
+    """The mapped token carries every condition from the motif's FROZEN annotation (not its live
+    coord/res_name), at the right granularity, and flips to indexed."""
+    arr, frozen = _insertion_input()
+    out = annotate_unindexed_insertion(arr, token_mapping={1: 0})
+    assert C_IDX.mask(out, default="generate").all() and SA_UII.mask(out).all()
+    assert np.allclose(C_CRD.annotation(out, default="raise"), frozen)  # frozen coords, not live [5,5,5]
+    assert np.allclose(SA_CWI.annotation(out), frozen)  # motif-RMSD reference staged from the frozen coords
+    assert list(C_SEQ.annotation(out, default="raise")) == ["TRP"] * 3  # frozen seq, not live GLY
+    assert list(C_SEC.annotation(out, default="raise")) == [2, 2, 2]  # residue-level: whole token
+    assert C_HB.mask(out, default="generate").tolist() == [False, True, False]  # atom-level: CA only
+
+
+@pytest.mark.parametrize("pdb_id", ["6lyz", "5ocm"])
+def test_freeze_populates_unindexed_source_annotations(pdb_id: str) -> None:
+    """The value annotate_unindexed_insertion reads: after UnindexFlaggedTokens + freeze, the unindexed
+    source carries populated C_CRD/C_SEQ annotations (frozen from its coord/res_name). UnindexFlaggedTokens
+    alone does not -- freeze does -- so the transfer must read the annotation, not the live coord/res_name."""
+    _snapshot, _train, data_infer = _make_unindexed_data(pdb_id)
+    aa = FreezeConditionAnnotations()(UnindexFlaggedTokens()(data_infer))["atom_array"]
+
+    unindexed = ~C_IDX.mask(aa, default="generate")
+    crd_masked = C_CRD.mask(aa, default="generate") & unindexed
+    seq_masked = C_SEQ.mask(aa, default="generate") & unindexed
+    assert crd_masked.any() and seq_masked.any(), "expected coord/seq-conditioned unindexed atoms"
+    # Freeze copies the live coord / res_name into the annotation -- equality proves the annotation is
+    # populated (not the empty default); an unresolved atom whose coord is NaN is NaN in both.
+    assert np.allclose(C_CRD.annotation(aa, default="generate")[crd_masked], aa.coord[crd_masked], equal_nan=True)
+    assert (C_SEQ.annotation(aa, default="generate")[seq_masked] == aa.res_name[seq_masked]).all()
+
+
+def test_annotate_unindexed_insertion_raises_on_conditioning_conflict() -> None:
+    """When the mapped target is already conditioned with a different value, transfer raises loudly."""
+    arr, _ = _insertion_input(conflict=True)
+    with pytest.raises(ConditionConflictError):
+        annotate_unindexed_insertion(arr, token_mapping={1: 0})

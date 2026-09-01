@@ -18,7 +18,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_NCYS, HBondEnum
+from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_INTCRD, C_NCYS, HBondEnum
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,8 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_standard_annotation_level_violations(aa)
     violations += check_global_token_id_consistent(aa)
     violations += check_centroid_conditioning_all_or_nothing_violations(aa, is_inference=is_inference)
+    violations += check_conditioning_annotation_matches_ground_truth(aa, is_inference=is_inference)
+    violations += check_conditioning_coords_not_nan(aa)
 
     # --- Feats / token-level checks ---
     violations += check_conditioning_violations(aa, feats)
@@ -74,6 +76,72 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
 # ---------------------------------------------------------------------------
 # Atom-array checks
 # ---------------------------------------------------------------------------
+
+
+def check_conditioning_annotation_matches_ground_truth(aa: AtomArray, is_inference: bool) -> list[InvariantViolation]:
+    """Training-only: C_CRD/C_SEQ annotations equal the ground-truth array at masked positions."""
+    if is_inference:
+        return []
+
+    violations: list[InvariantViolation] = []
+
+    # Check that C_CRD.annotation matches the ground-truth coordinates at every atom with a finite C_CRD.mask
+    crd_mask = C_CRD.mask(aa, default="generate")
+    if crd_mask.any():
+        crd_annot = C_CRD.annotation(aa, default="generate")
+        # Compare against coord_to_be_noised: both C_CRD.annotation and it are re-centered together.
+        cats = aa.get_annotation_categories()
+        gt_coord = aa.get_annotation("coord_to_be_noised") if "coord_to_be_noised" in cats else aa.coord
+        matches = np.isclose(crd_annot[crd_mask], gt_coord[crd_mask], equal_nan=True).all(axis=-1)
+        if not matches.all():
+            violations.append(
+                InvariantViolation(
+                    check="crd_annotation_matches_ground_truth",
+                    message="C_CRD annotation does not equal the conditioning coords at conditioned positions",
+                    count=int((~matches).sum()),
+                )
+            )
+
+    # Check that C_SEQ.annotation matches the ground-truth residue identity at every residue with a finite C_SEQ.mask
+    seq_mask = C_SEQ.mask(aa, default="generate")
+    if seq_mask.any():
+        seq_annot = C_SEQ.annotation(aa, default="generate")
+        mismatched = seq_annot[seq_mask] != aa.res_name[seq_mask]
+        if mismatched.any():
+            violations.append(
+                InvariantViolation(
+                    check="seq_annotation_matches_ground_truth",
+                    message="C_SEQ annotation does not equal atom_array.res_name at sequence-conditioned positions",
+                    count=int(mismatched.sum()),
+                )
+            )
+
+    return violations
+
+
+def check_conditioning_coords_not_nan(aa: AtomArray) -> list[InvariantViolation]:
+    """Coordinate conditioning must never target a non-finite coordinate.
+
+    A NaN coordinate under ``C_CRD`` / ``C_INTCRD`` means we are conditioning on an unresolved atom
+    (e.g. a ligand with no CCD coords); it must be stripped from the mask upstream, not fed to the model.
+    """
+    violations: list[InvariantViolation] = []
+    for cond, label in ((C_CRD, "C_CRD"), (C_INTCRD, "C_INTCRD")):
+        mask = cond.mask(aa, default="generate")
+        if not mask.any():
+            continue
+        annotation = cond.annotation(aa, default="generate")
+        bad = mask & ~np.isfinite(annotation).all(axis=-1)
+        n_bad = int(bad.sum())
+        if n_bad:
+            violations.append(
+                InvariantViolation(
+                    check="conditioning_coord_not_finite",
+                    message=f"{n_bad} {label}-conditioned atom(s) have non-finite conditioning coordinates",
+                    count=n_bad,
+                )
+            )
+    return violations
 
 
 def check_molecules_on_separate_chains(aa: AtomArray) -> list[InvariantViolation]:

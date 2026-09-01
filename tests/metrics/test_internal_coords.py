@@ -227,7 +227,7 @@ def test_insert_internal_coord_conditioned_groups(deterministic_rng, pdb_id):
     # Run insertion
     atom_array = insert_internal_coord_conditioned_groups(atom_array)
 
-    # Verify coords_with_insertion was created
+    # Verify the coords-with-insertion were created
     assert SA_CWI.has_annotation(atom_array)
     inserted_coords = SA_CWI.annotation(atom_array)[group_mask]
 

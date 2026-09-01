@@ -67,27 +67,6 @@ class SrcComponent(StandardAnnotationBase):
         return np.full(atom_array.array_length(), ".", dtype="<U10")
 
 
-class CoordsWithInsertion(StandardAnnotationBase):
-    """Per-atom coordinate array with aligned coordinate-conditioned regions inserted."""
-
-    name = "coords-with-insertion"
-    n_body = 1
-    level = Level.ATOM
-    dtype = np.float32
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """Infer mask from annotation if present, otherwise all-False."""
-        if cls.has_annotation(atom_array):
-            return ~np.isnan(cls.annotation(atom_array)).any(axis=-1)
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        """Default: NaN coordinates for all atoms."""
-        return np.full((atom_array.array_length(), 3), np.nan, dtype=np.float32)
-
-
 class SrcCoordGroup(StandardAnnotationBase):
     """Per-atom source coordinate group identifier.
 
@@ -132,9 +111,39 @@ class IsUnindexedInsertion(StandardAnnotationBase):
         return np.zeros(atom_array.array_length(), dtype=bool)
 
 
+class CoordsWithInsertion(StandardAnnotationBase):
+    """Per-atom reference coordinates for coordinate-conditioned atoms.
+
+    Defined as:
+    - Absolute coords from ``C_CRD`` plus the per-group superposition of the ``C_INTCRD``
+      internal-coord reference onto the generated structure
+    - NaN where an atom is not coordinate-conditioned
+
+    Useful for computing motif-RMSD without needing to run any superposition; registered
+    as a standard annotation so it is automatically saved to CIF and survives re-parse.
+    """
+
+    name = "coords-with-insertion"
+    n_body = 1
+    level = Level.ATOM
+    dtype = np.float32
+
+    @classmethod
+    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+        """Infer mask from annotation if present, otherwise all-False."""
+        if cls.has_annotation(atom_array):
+            return ~np.isnan(cls.annotation(atom_array)).any(axis=-1)
+        return np.zeros(atom_array.array_length(), dtype=bool)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        """Default: NaN coordinates for all atoms."""
+        return np.full((atom_array.array_length(), 3), np.nan, dtype=np.float32)
+
+
 # --- Convenience aliases ---
 SA_CRDSRC = SrcCoordinateConditionedRegion
 SA_SRC = SrcComponent
-SA_CWI = CoordsWithInsertion
 SA_CRDGRPSRC = SrcCoordGroup
 SA_UII = IsUnindexedInsertion
+SA_CWI = CoordsWithInsertion

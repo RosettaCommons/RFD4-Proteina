@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from atomworks.io.parser import parse
-from biotite.structure import rmsd
+from biotite.structure import rmsd, superimpose
 from omegaconf import OmegaConf
 
 from rfproteina.utils.parse_presets import DISTILLATION
@@ -150,18 +150,15 @@ def load_baseline_losses(name: str) -> list[float]:
 
 
 def all_atom_rmsd(cif_path_a: Path, cif_path_b: Path) -> float:
-    """Compute all-atom RMSD between two CIF structures (no superposition).
-
-    Assumes both structures have the same atoms in the same order, as produced
-    by deterministic runs of the same generation pipeline.
-    """
+    """Compute all-atom RMSD between two CIF structures after rigid superposition."""
     atoms_a = _load_atom_array(cif_path_a)
     atoms_b = _load_atom_array(cif_path_b)
     if len(atoms_a) != len(atoms_b):
         raise ValueError(
             f"Atom count mismatch: {cif_path_a.name} has {len(atoms_a)} atoms, {cif_path_b.name} has {len(atoms_b)}"
         )
-    return float(rmsd(atoms_a, atoms_b))
+    fitted, _ = superimpose(atoms_b, atoms_a)
+    return float(rmsd(atoms_b, fitted))
 
 
 def find_inference_cif(out_dir: Path, example_id: str, kind: str) -> Path:
