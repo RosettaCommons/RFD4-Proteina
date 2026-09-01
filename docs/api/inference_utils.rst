@@ -1,18 +1,10 @@
 Inference utilities
 ===================
 
-Input parsing
--------------
+Condition-spec input
+--------------------
 
-.. automodule:: rfproteina.inference_utils.input_parsing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Annotated-CIF parsing
----------------------
-
-.. automodule:: rfproteina.inference_utils.parsing
+.. automodule:: rfproteina.inference_utils.condition_spec
    :members:
    :undoc-members:
    :show-inheritance:

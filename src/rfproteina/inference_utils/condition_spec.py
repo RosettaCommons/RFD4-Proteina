@@ -35,10 +35,8 @@ from rfproteina.conditions_reporting import (
     sync_index_groups,
 )
 from rfproteina.inference_utils.contig_spec import apply_contig
-from rfproteina.inference_utils.inference_utils import is_structure_file
-from rfproteina.inference_utils.input_parsing import InputSpecification
 from rfproteina.transforms.utils.conditioning_utils import convert_to_internal_coords
-from rfproteina.utils.common import validate_design_id
+from rfproteina.utils.common import is_structure_file, validate_design_id
 from rfproteina.utils.condition_resolution import coerce_enum_value, parse_centroid_value, resolve_standard_annotation
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
@@ -72,9 +70,43 @@ _REMINDER = (
 # Every field name a condition_spec example dict consumes. `out_dir` is deliberately absent:
 # nothing reads it (the CLI owns the output directory), so accepting it silently discarded an
 # author's intent -- it is now rejected as an unrecognized field like any other typo.
-# Legacy-only `InputSpecification` fields are derived separately for dialect detection.
 _CONDITION_SPEC_EXAMPLE_KEYS = frozenset({"input", "input_as_annotated_cif", "contig", "conditions"})
-_LEGACY_ONLY_FIELDS = frozenset(InputSpecification.model_fields) - _CONDITION_SPEC_EXAMPLE_KEYS
+
+# Field names unique to the removed legacy `InputSpecification` (contig-JSON) dialect. The legacy
+# realization path (`input_parsing.py`) has been deleted, but any example naming one of these is
+# still detected here so it can be rejected with a clear "migrate to condition_spec/CIF" error
+# rather than misinterpreted as condition_spec. This is the legacy dialect's frozen vocabulary --
+# it never gains fields -- so it is listed explicitly (the two names it shared with condition_spec,
+# `input` and `contig`, are excluded).
+_LEGACY_ONLY_FIELDS = frozenset(
+    {
+        "add_cath_code",
+        "allow_non_motif_centered",
+        "atom_array_input",
+        "cif_parser_args",
+        "dialect",
+        "extra",
+        "infer_ori_strategy",
+        "internal_coord_groups",
+        "is_non_loopy",
+        "is_partial_diffusion",
+        "length",
+        "ligand",
+        "nucleic_ss",
+        "plddt_enhanced",
+        "redesign_motif_sidechains",
+        "select_buried",
+        "select_exposed",
+        "select_fixed_atoms",
+        "select_hbond_acceptor",
+        "select_hbond_donor",
+        "select_hotspots",
+        "select_partially_buried",
+        "select_unfixed_sequence",
+        "symmetry",
+        "unindex",
+    }
+)
 
 
 def split_global_args(spec: dict) -> dict[str, dict]:
@@ -102,18 +134,18 @@ def split_global_args(spec: dict) -> dict[str, dict]:
 
 
 def is_legacy_dialect(data: dict) -> bool:
-    """Whether ``data`` is written in the legacy `InputSpecification`-based JSON/YAML dialect.
+    """Whether ``data`` is written in the removed legacy contig-JSON dialect.
 
-    There's no explicit marker to check for -- the legacy dialect predates the concept of
-    condition_spec existing at all. Instead, this looks at each example's own field names
-    (with ``global_args`` defaults folded in): condition_spec's ``input`` key is required
-    (missing it raises `KeyError` downstream), so an example lacking it can't be condition_spec;
-    and any field name outside condition_spec's small vocabulary (``select_fixed_atoms``,
-    ``unindex``, the per-example ``dialect`` int, ...) is unambiguous evidence of the legacy one.
-    Every legacy example ends up naming at least one such field: `InputSpecification` raises
-    "select_fixed_atoms must be specified" for any example that loads an ``input`` file without
-    it, and a fully-diffused example uses ``length``/``contig`` alone (neither of which
-    condition_spec has/needs).
+    There's no explicit marker to check for -- the legacy dialect predated condition_spec
+    existing at all. Instead, this looks at each example's own field names (with ``global_args``
+    defaults folded in): condition_spec's ``input`` key is required (missing it raises `KeyError`
+    downstream), so an example lacking it can't be condition_spec; and any field name outside
+    condition_spec's small vocabulary -- i.e. any of the legacy-only names in
+    :py:data:`_LEGACY_ONLY_FIELDS` (``select_fixed_atoms``, ``unindex``, the per-example
+    ``dialect`` int, ...) -- is unambiguous evidence of the legacy one. Every legacy example ends
+    up naming at least one such field (a fully-diffused example uses ``length``/``contig`` alone,
+    neither of which condition_spec needs). The legacy path itself is gone, so callers use this
+    only to reject such inputs with a clear migration error.
 
     Args:
       data: A loaded spec file (as returned by :py:func:`load_spec_file`), ``global_args``

@@ -4,7 +4,7 @@ Tell your coding agent what you want to build. It interviews you about the parts
 structure for the usual traps, and hands back a model ready [annotated CIF](inputs.md).
 
 How you state the intent is up to you. A paragraph, lab note, source structure,
-existing annotated CIF, or RFD3-style JSON/YAML can all provide evidence. The
+existing annotated CIF, or condition-spec JSON/YAML can all provide evidence. The
 agent examines what you already have, asks about unresolved choices, and edits the
 annotated CIF directly with the Python API.
 
@@ -40,9 +40,7 @@ the same canonical skill under `skills/rfd4-proteina-inputs/`.
    right?"* Your answers determine the output, so take them seriously.
 2. **An intent plan.** It separates what you stated, what the artifacts show, what it inferred, and
    what still needs a decision. This is ordinary language, not a generated JSON spec.
-3. **A built or edited CIF.** It uses the Python AtomWorks API directly. For a supplied RFD3
-   JSON/YAML only, it can use the tested compatibility adapter after confirming what the fields mean.
-   Prose, raw structures, and annotated CIFs never route through JSON.
+3. **A built or edited CIF.** It uses the Python AtomWorks API directly.
 4. **A report.** Everything worth a second look, described in terms of your design rather than
    stack traces.
 
@@ -73,7 +71,7 @@ These are the ones that bite people. Most are silent.
 | Fixing one sidechain atom also reveals that residue's identity | The atom37 slots fingerprint the amino acid. Backbone only conditioning on `N`, `CA`, `C` and `O` leaks nothing, and that is exactly how you fix a fold and redesign its sequence |
 | A length written as a range gets resampled on every design | `"100-155"` is a distribution, not a number. `"180-180"` is one length |
 | The length counts only what gets designed | 180 plus a four residue motif gives you 184 residues, not 180 |
-| `select_fixed_atoms: false` conditions nothing | The model invents the ligand's pose *and* its conformer. It gets identity, bonds and charge only |
+| Leaving ligand coordinate conditioning unset conditions no pose | The model invents the ligand's pose *and* its conformer. It gets identity, bonds and charge only |
 | A `?` in `pdbx_formal_charge` means unknown, not neutral | The model embeds formal charge per atom, so unknown is a question, not a default |
 | PDB-derived ligands often arrive single bonded | Aromaticity and bond order are lost, and the model reads both |
 | A metal with no bonds is normal, and still a decision | The agent surfaces it and asks. It never picks coordination partners by distance, because a nearby atom might be a real bond or an incidental contact and only you know which |

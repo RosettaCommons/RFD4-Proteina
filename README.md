@@ -113,7 +113,7 @@ A CIF appears under `./runs/smoke/`. From here:
 
 - **[Full inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html)** — design use cases (binders, enzymes, motif
   scaffolding), conditioning, partial diffusion, and relevant parameters.
-- **[Annotated CIF inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/annotated_cif_inputs.html)** — the recommended input format (motifs, hotspots, ligands, bonds, H-bonds, RASA, PTMs, read natively; legacy JSON: [input spec](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/input.html)).
+- **[Annotated CIF inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/annotated_cif_inputs.html)** — the recommended input format for motifs, hotspots, ligands, bonds, H-bonds, RASA, and PTMs. For text-based inputs, use the [condition-spec format](https://rosettacommons.github.io/RFD4-Proteina/latest/condition_spec_yaml.html).
 - **[Metrics reference](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/metrics.html)** — every metric that ships enabled, what it outputs, which tag turns it on, and how to add your own.
 
 ### Reward-guided search

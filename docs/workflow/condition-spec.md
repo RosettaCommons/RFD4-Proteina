@@ -259,8 +259,3 @@ and a stale `global_args` key folded onto every example.
 **Do I need to write CIFs to disk?** No. `generate.py` builds each example in memory. To materialize
 CIFs for inspection, run `scripts/write_condition_spec_cifs.py <spec> --out-dir <dir>`. For anything
 complicated, do this. It is the cheapest way to catch a mistake before you spend GPU time on it.
-
-**I have an old contig JSON file.** It still works. Any `.json` or `.yaml` with legacy only fields
-such as `select_fixed_atoms` or `unindex`, or with no `input` key, gets routed through the legacy
-dialect automatically. But it is deprecated, it emits a `DeprecationWarning`, and it will be
-removed. Migrate when you can.
