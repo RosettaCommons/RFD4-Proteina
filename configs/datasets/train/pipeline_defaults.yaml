@@ -33,7 +33,3 @@ transform:
   centroid_kwargs:
     p_add_centroid_condition: 0.2
     noise_std_angstrom: 5.0
-
-  # Coordinate-valued conditioning annotations that must follow coordinate re-centering
-  center_conditioning_annotations:
-    - condition_ChainCentroid_1_atom

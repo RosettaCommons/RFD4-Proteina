@@ -725,7 +725,7 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
 def _stage_generated_structure(payload: dict, generated_structure_mm: MetricManager | None = None) -> dict:
     """Worker: per-structure metrics + final disk writes for one example.
 
-    - Annotate unindexed-region insertion, SA_CRDSRC, and SA_CWI
+    - Annotate unindexed-region insertion, SA_CRDSRC, and conditioned-reference coords
     - Run the per-structure MetricManager via ``run_metrics_for_result``.
     - Write the final CIF (post-unindex, or aligned variant from the MM)
       and a chain-only PDB for foldseek.

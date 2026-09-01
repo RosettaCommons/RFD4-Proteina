@@ -35,7 +35,10 @@ from rfproteina.conditions_reporting import (
     sync_index_groups,
 )
 from rfproteina.inference_utils.contig_spec import apply_contig
-from rfproteina.transforms.utils.conditioning_utils import convert_to_internal_coords
+from rfproteina.transforms.utils.conditioning_utils import (
+    convert_to_internal_coords,
+    freeze_ground_truth_condition_annotations,
+)
 from rfproteina.utils.common import is_structure_file, validate_design_id
 from rfproteina.utils.condition_resolution import coerce_enum_value, parse_centroid_value, resolve_standard_annotation
 from rfproteina.utils.ddp import RankedLogger
@@ -507,6 +510,8 @@ def build_annotated_atom_array_from_condition_spec(
     conditions = spec.get("conditions")
     if conditions:
         _apply_conditions(atom_array, conditions, original_res_id)
+
+    freeze_ground_truth_condition_annotations(atom_array)
 
     _finalize(example_id, atom_array, strict=strict, validate=validate)
 

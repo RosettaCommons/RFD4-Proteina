@@ -4,7 +4,6 @@ import functools
 import logging
 import os
 import pickle
-from collections.abc import Sequence
 from typing import ClassVar
 
 import numpy as np
@@ -143,6 +142,7 @@ from rfproteina.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
 )
 from rfproteina.transforms.unindexing import UnindexFlaggedTokens
+from rfproteina.transforms.utils.conditioning_utils import freeze_ground_truth_condition_annotations
 from rfproteina.utils.common import true_with_prob
 from rfproteina.utils.fold import extract_cath_code_by_level
 
@@ -427,14 +427,17 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         ###########################################################
 
         # +------ Sequence conditioning (residue type conditioned) ------+
-        # Derive C_SEQ from residue_type to skip a redundant encode pass + AtomArray copy.
+        # C_SEQ.annotation holds the frozen conditioning res-code (MASKED where unset); encode it directly.
         seq_cond_mask = C_SEQ.mask(aa, default="raise")  # [L] True where seq-conditioned
         _mask_token_name = (
             MASKED
             if MASKED in UNIFIED_ATOM37_ENCODING.token_to_idx
             else UNIFIED_ATOM37_ENCODING.resolve_unknown_token_name(MASKED, False)
         )
-        c_seq_encoded = feats["residue_type"].copy()  # [L]
+        seq_annotation = C_SEQ.annotation(aa, default="generate")  # [L] res_name strings; MASKED where unset
+        c_seq_encoded = atom_array_to_encoded_resnames(
+            aa, UNIFIED_ATOM37_ENCODING, atomize_token="<A>", res_names=seq_annotation
+        )  # [L]
         c_seq_encoded[(~seq_cond_mask) & (~aa.atomize)] = UNIFIED_ATOM37_ENCODING.token_to_idx[_mask_token_name]
         feats[C_SEQ.full_name] = c_seq_encoded  # [L]
 
@@ -489,6 +492,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         # +------ Coordinate conditioning (absolute) ------+
         feats[C_CRD.mask_name] = C_CRD.mask(aa, default="generate")  # [L]
+        feats[C_CRD.full_name] = C_CRD.annotation(aa, default="generate")  # [L, 3] conditioning coords
 
         # +------ Coordinate conditioning (internal) ------+
         feats[C_INTCRD.mask_name] = C_INTCRD.mask(aa, default="generate")  # [L]
@@ -575,6 +579,7 @@ ATOM37_FEATURES = [
     (C_INTCRD.mask_name, (), False),
     (C_IDX.mask_name, (), True),
     (C_CRDGRP.full_name, (), C_CRDGRP.UNKNOWN_COORDS),
+    (C_CRD.full_name, (3,), 0.0),
     (C_INTCRD.full_name, (3,), 0.0),
     (C_HOT.full_name, (), False),
     (C_RAS.full_name, (), RasaEnum.UNSPECIFIED),
@@ -677,15 +682,18 @@ class ConvertToAtom37Format(Transform):
 
         # +--------- Derived atom-level features ---------+
 
-        # Absolute coordinate conditioning (zeros for unconditioned atoms)
-        if C_CRD.mask_name in result and "coords" in result:
-            coord_cond_mask_expanded = result[C_CRD.mask_name][..., np.newaxis]
-            result[C_CRD.full_name] = result["coords"] * coord_cond_mask_expanded
+        # Absolute coordinate conditioning, zeroed at unconditioned atoms
+        # NOTE: We source from C_CRD.annotation (the conditioning coords), not the ground-truth coords,
+        # so a persisted annotation (e.g. the target on a re-fed design, or a theozyme) is what the model
+        # conditions on, minimizing drift with respect to the original conditioning.
+        if C_CRD.mask_name in result and C_CRD.full_name in result:
+            coord_cond_mask = result[C_CRD.mask_name][..., np.newaxis]
+            result[C_CRD.full_name] = np.where(coord_cond_mask, result[C_CRD.full_name], 0.0)
 
-        # Internal coordinate conditioning (zeros for unconditioned atoms)
+        # ... same story for internal coordinate conditioning (persisted vs. ground-truth)
         if C_INTCRD.mask_name in result and C_INTCRD.full_name in result:
-            internal_coord_cond_mask_expanded = result[C_INTCRD.mask_name][..., np.newaxis]
-            result[C_INTCRD.full_name] = result[C_INTCRD.full_name] * internal_coord_cond_mask_expanded
+            internal_coord_cond_mask = result[C_INTCRD.mask_name][..., np.newaxis]
+            result[C_INTCRD.full_name] = np.where(internal_coord_cond_mask, result[C_INTCRD.full_name], 0.0)
 
         # Residue-level NA secondary structure is assembled at tokenization time:
         # - sparse 2D base-pair edges live on representative token atoms
@@ -1097,6 +1105,20 @@ class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
         return data
 
 
+class FreezeConditionAnnotations(Transform):
+    """Populate condition annotations from the current array at conditioned positions.
+
+    Currently, includes (see `STRUCTURE_DERIVED_CONDITION_TARGETS` in `conditioning_utils.py`):
+        - C_SEQ: sequence conditioning
+        - C_CRD: absolute coordinate conditioning
+    """
+
+    def forward(self, data: dict) -> dict:
+        aap = as_atom_array_plus(data["atom_array"])
+        data["atom_array"] = freeze_ground_truth_condition_annotations(aap)
+        return data
+
+
 class EnsureNCYSResiduesAreNotSequenceConditioned(Transform):
     """Clear not-cysteine conditioning on any sequence-conditioned residue to keep the feature in-distribution."""
 
@@ -1192,6 +1214,8 @@ class FeaturizeChainCentroid(Transform):
         noise_std_angstrom: Isotropic Gaussian noise std (Å) per included chain.
         coord_annotation: Source coord annotation; must be post-centering for centroids to live in the loss frame.
     """
+
+    requires_previous_transforms: ClassVar[list[str | Transform]] = ["CenterOnCoordinateConditionedAtoms"]
 
     def __init__(
         self,
@@ -1534,6 +1558,11 @@ def _build_design_clean_and_sample_pipeline(
     return T.tolist()
 
 
+# Coordinate-valued conditioning annotations always re-centered with the coords, so they stay in the
+# model's frame
+CONDITIONING_ANNOTATIONS_TO_CENTER = (C_CRD.full_name, C_CENTROID.full_name)
+
+
 def _build_design_featurize_pipeline(
     residue_names_to_encode: list | set,
     metrics_tags: list[str] | set[str] | None = None,
@@ -1551,8 +1580,6 @@ def _build_design_featurize_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
-    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1623,14 +1650,18 @@ def _build_design_featurize_pipeline(
         )
         T += PairAndMergePolymerMSAs(dense=True)  # Re-merge after encoding/filling
 
+    # Populate C_CRD / C_SEQ annotations while the array still holds the original input, so they
+    # refer to the original motif rather than the generated values.
+    T += FreezeConditionAnnotations()
+
     # Prepare coordinates for noising (without modifying the ground truth)
     # ... add placeholder coordinates for noising
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
 
-    # Center coordinates and add centroid of the atoms without coordinate conditioning as a feature
+    # Center coordinates and add centroid of the atoms without coordinate conditioning as a feature.
     T += CenterOnCoordinateConditionedAtoms(
         coord_annotation="coord_to_be_noised",
-        conditioning_annotations=center_conditioning_annotations,
+        conditioning_annotations=CONDITIONING_ANNOTATIONS_TO_CENTER,
     )
     # NOTE: Previously, we called this feature the "ori_token", which is a misnomer since it's no longer the origin
     T += FeaturizeCentroidOfAtomsWithoutCoordinateConditioning(
@@ -1727,8 +1758,6 @@ def build_design_train_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
-    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1816,7 +1845,6 @@ def build_design_train_pipeline(
         precompute_atom_permutation=precompute_atom_permutation,
         path_length_search_cutoff=path_length_search_cutoff,
         centroid_kwargs=centroid_kwargs,
-        center_conditioning_annotations=center_conditioning_annotations,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
     )
@@ -1833,8 +1861,6 @@ def build_design_validation_pipeline(
     msa_featurize_n_recycles: int = 1,
     msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
-    # Coordinate-valued conditioning annotations to re-center alongside the coordinates
-    center_conditioning_annotations: Sequence[str] = (C_CENTROID.full_name,),
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
     # Loss weighting
@@ -1870,7 +1896,6 @@ def build_design_validation_pipeline(
         msa_featurize_n_recycles=msa_featurize_n_recycles,
         msa_featurize_n_msa=msa_featurize_n_msa,
         path_length_search_cutoff=path_length_search_cutoff,
-        center_conditioning_annotations=center_conditioning_annotations,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
         precompute_atom_permutation=precompute_atom_permutation,

@@ -112,7 +112,7 @@ class CenterOnCoordinateConditionedAtoms(Transform):
             Defaults to ``"coord_to_be_noised"``.
         conditioning_annotations: Names of coordinate-valued conditioning annotations to re-center
             alongside the coordinates (see :py:func:`shift_conditioning_annotations`). Defaults to
-            no annotations; configured via the pipeline (e.g. chain-centroid conditioning).
+            no annotations; configured via the pipeline (e.g. C_CRD and chain-centroid conditioning).
     """
 
     def __init__(

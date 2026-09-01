@@ -188,7 +188,7 @@ def test_af2_template_uses_original_conditioned_coordinates(modified_1a1e):
     generated_coords = target.coord.copy()
     conditioned_coords = generated_coords + np.array([11.0, -7.0, 3.0])
     C_CRD.set_mask(target, np.ones(target.array_length(), dtype=bool))
-    SA_CWI.set_annotation(target, conditioned_coords)
+    SA_CWI.set_annotation(target, np.asarray(conditioned_coords, dtype=np.float32))
 
     template = AF2Oracle(template_query=C_CRD.get_mask_name())._build_af2_template_dict(target)
     assert template is not None

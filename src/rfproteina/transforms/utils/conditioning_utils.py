@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
-from atomworks.ml.conditions import C_CRD, C_DIS
+from atomworks.ml.conditions import C_CRD, C_DIS, C_SEQ
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.utils.geometry import random_rigid_augmentation
 from biotite.structure import superimpose
@@ -15,6 +15,42 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.standard_annotations import SA_CWI
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
+
+
+STRUCTURE_DERIVED_CONDITION_TARGETS: dict[type[ConditionBase], str] = {
+    C_SEQ: "res_name",
+    C_CRD: "coord",
+}
+"""Conditions whose target is read off the structure, mapped to its AtomArray attribute."""
+
+
+def freeze_ground_truth_condition_annotations(atom_array: AtomArray) -> AtomArray:
+    """Freeze structure-derived condition targets into their stored annotations.
+
+    NOTE: Such an operation is only need for annotations that would otherwise be directly
+    read from the AtomArray attributes (e.g. C_SEQ, C_CRD). Other conditions, like
+    hydrogen bond annotations, etc. would already be stored as distinct annotations rather
+    than masks and do not need to be frozen.
+    """
+    for cond, target_attr in STRUCTURE_DERIVED_CONDITION_TARGETS.items():
+        mask = cond.mask(atom_array, default="generate")
+        if not mask.any():
+            # No atoms are masked for this condition: skip
+            continue
+        gt = getattr(atom_array, target_attr)
+        annotation = cond.annotation(atom_array, default="generate")
+
+        # Freeze only masked positions whose annotation is still empty; default_mask is the
+        # annotation-derived "is set" mask, so a persisted annotation (re-fed design) is left alone.
+        need = mask & ~cond.default_mask(atom_array)
+        if not need.any():
+            continue
+
+        # Broadcast over any extra axes (e.g. coordinates) so the value copies to every relevant position
+        need = need.reshape((-1,) + (1,) * (gt.ndim - 1))
+        cond.set_annotation(atom_array, np.where(need, gt, annotation))
+
+    return atom_array
 
 
 def sample_island_tokens(
@@ -378,10 +414,10 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray) -> AtomArray
             mobile=group_intcrd_conditioning,
         )
 
-        # Update coords_with_insertion with aligned coordinates
+        # Update the coords-with-insertion annotation with aligned coordinates
         cwi = SA_CWI.annotation(atom_array)
         cwi[group_intcrd_mask] = aligned_coords
-        SA_CWI.set_annotation(atom_array, cwi)
+        SA_CWI.set_annotation(atom_array, np.asarray(cwi, dtype=np.float32))
 
     return atom_array
 
@@ -389,7 +425,7 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray) -> AtomArray
 def align_atom_array_to_input_frame(atom_array: AtomArray, crdgrp_id: int | None = None) -> AtomArray:
     """Apply a rigid transform so the chosen coord group's atoms sit at their input coords.
 
-    Kabsch-aligns ``atom_array.coord[anchor]`` onto ``SA_CWI.annotation[anchor]``,
+    Kabsch-aligns ``atom_array.coord[anchor]`` onto the coords-with-insertion at the anchor,
     and applies that transform to every atom in the array. This is purely cosmetic:
     it makes saved CIFs open consistently across designs (motif at its input position,
     scaffold rotated to match).
@@ -401,7 +437,7 @@ def align_atom_array_to_input_frame(atom_array: AtomArray, crdgrp_id: int | None
       - Else no-op if no anchor found or fewer than 3 atoms
 
     Args:
-        atom_array: AtomArray with ``SA_CWI`` populated for conditioned atoms.
+        atom_array: AtomArray with the coords-with-insertion annotation populated.
         crdgrp_id: Optional ``C_CRDGRP`` value to use as the anchor.
 
     Returns:
