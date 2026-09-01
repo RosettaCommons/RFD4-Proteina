@@ -84,7 +84,7 @@ redirects = {
     "custom-metrics": "workflow/custom-metrics.html",
     "guides/development": "../development.html",
     "guides": "workflow.html",
-    # the legacy RFD3 JSON spec is retired; its replacement is the inputs page
+    # preserve the former input-guide URL
     "guides/input": "../workflow/inputs.html",
     # design-task stubs never had content — send readers to the runnable examples
     "guides/unconditional_generation": "../examples.html",

@@ -120,8 +120,7 @@ each annotation fixed.
 ## Why annotated CIFs
 
 An annotated CIF is an ordinary structure file that also carries the conditions. They sit next to the
-atoms they apply to, so the model reads one file and there is no second config to keep in sync.
-Existing JSON/YAML input specifications remain supported for established workflows. Prefer an
+atoms they apply to, so the model reads one file and there is no second config to keep in sync. Use an
 annotated CIF when the design depends on explicit component chemistry or conditions that should be
 inspected and edited alongside the structure.
 
@@ -137,9 +136,8 @@ Three details deserve particular attention for non-canonicals, PTMs and small mo
 A CIF saved out of your PyMOL session keeps all three, and the model reads CIFs natively, so nothing
 gets rebuilt on the way in.
 
-> The [input-authoring skill](design2cif.md) can inspect an existing JSON/YAML
-> specification and build an annotated CIF without requiring JSON as an
-> intermediate for prose or structure-based authoring.
+> The [input-authoring skill](design2cif.md) can inspect an existing artifact or prose description
+> and build an annotated CIF directly.
 
 ## Four ways to make one
 
@@ -305,27 +303,26 @@ tutorial](../examples/enzyme_design_tutorial.ipynb) builds one of these and runs
 
 ### Status at a glance
 
-Which conditions the model actually acts on today. The **Input field** column names the
-equivalent field in the legacy RFD3 JSON, for anyone migrating one.
+Which conditions the model actually acts on today.
 
-| Conditioning | Input field | Status |
-| --- | --- | --- |
-| **Coordinate (indexed motif)** | `contig` + `select_fixed_atoms` | Supported |
-| **Coordinate (unindexed motif)** | `unindex` | Supported |
-| **Sequence constraint** | `select_unfixed_sequence` | Supported |
-| **Hotspot residues** | `select_hotspots` | Supported |
-| **Partial diffusion** | `partial_t_backbone` / `partial_t_latent` | Supported |
-| **Inverse folding** | `generation=inverse_folding` | Supported |
-| **Small molecules and ligands** | `ligand` | Supported |
-| **Internal coordinate** | `internal_coord_groups` | Supported |
-| **H-bond donors and acceptors** | `select_hbond_donor` / `select_hbond_acceptor` | Annotated CIF only |
-| **RASA (buried or exposed)** | `select_buried` / `select_exposed` | Annotated CIF only |
-| **Secondary structure** | annotated CIF | Annotated CIF only |
-| **Symmetry** | `symmetry` | Planned |
-| **CATH fold class** | `add_cath_code` | Planned |
-| **π-stacking** | annotated CIF | Planned |
-| **π-cation** | annotated CIF | Planned |
-| **Not-cysteine** | annotated CIF | Planned |
+| Conditioning | Status |
+| --- | --- |
+| **Coordinate (indexed motif)** | Supported |
+| **Coordinate (unindexed motif)** | Supported |
+| **Sequence constraint** | Supported |
+| **Hotspot residues** | Supported |
+| **Partial diffusion** | Supported |
+| **Inverse folding** | Supported |
+| **Small molecules and ligands** | Supported |
+| **Internal coordinate** | Supported |
+| **H-bond donors and acceptors** | Annotated CIF only |
+| **RASA (buried or exposed)** | Annotated CIF only |
+| **Secondary structure** | Annotated CIF only |
+| **Symmetry** | Planned |
+| **CATH fold class** | Planned |
+| **π-stacking** | Planned |
+| **π-cation** | Planned |
+| **Not-cysteine** | Planned |
 
 **Planned** conditions parse and get stored, but the model is not trained on them yet. Passing
 one raises no error and changes nothing.

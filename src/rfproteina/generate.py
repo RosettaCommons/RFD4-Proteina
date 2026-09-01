@@ -3,7 +3,6 @@
 import os
 import sys
 import time
-import warnings
 from functools import partial
 from os import PathLike
 from pathlib import Path
@@ -24,15 +23,12 @@ from rfproteina.guidance.guidance_model import GuidanceModel, build_guidance_ter
 from rfproteina.inference_utils.condition_spec import is_legacy_dialect, load_spec_file
 from rfproteina.inference_utils.datasets import (
     ConditionSpecDataset,
-    ContigJsonDataset,
     DesignProblemDataset,
-    JsonDataset,
 )
-from rfproteina.inference_utils.inference_utils import is_structure_file
-from rfproteina.inference_utils.input_parsing import InputSpecification
 from rfproteina.metrics.metric import MetricManager
 from rfproteina.proteina import Proteina
 from rfproteina.search.base_strategy import SearchStrategy
+from rfproteina.utils.common import is_structure_file
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree
@@ -81,67 +77,19 @@ def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, defaul
         return cfg[key2]
 
 
-def _assemble_dataset_inputs_from_dict(
-    data: dict,
-    input_file_path: Path,
-    subset_to_examples: list[str] | str | None,
-    specification_overrides: dict = {},
-) -> dict:
-    # ... Apply any global args for this input file
-    if "global_args" in data:
-        global_args = data.pop("global_args")
-        for example in data:
-            data[example].update(global_args)
-
-    # ... Subset to keys
-    if subset_to_examples is not None:
-        subset_to_examples = (
-            subset_to_examples.split(",") if isinstance(subset_to_examples, str) else subset_to_examples
-        )
-        data = {example: data[example] for example in subset_to_examples if example in data}
-
-    # ... Extract
-    all_example_specifications = {}
-    for example_name, args in data.items():
-        # Validate structure file input, if any
-        if exists(args.get("input", None)):
-            input_structure_file = Path(args["input"])
-
-            # Allow paths relative to the original yaml/json file
-            if not input_structure_file.is_absolute():
-                input_structure_file_absolute = input_file_path.parent / input_structure_file
-            else:
-                input_structure_file_absolute = input_structure_file
-
-            if not input_structure_file_absolute.exists():
-                raise FileNotFoundError(f"Input structure file {input_structure_file_absolute} does not exist.")
-
-            args["input"] = str(input_structure_file_absolute)
-
-        # ... Set json/yaml key as the example name
-        args["extra"] = args.get("extra", {}) | {"example": example_name}
-
-        # Validate input specification
-        logger.info(f"Prevalidating design specification for example: {example_name}")
-        InputSpecification.safe_init(**args)
-
-        all_example_specifications[example_name] = args | specification_overrides
-
-    return all_example_specifications
-
-
 def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
-    """Resolve `inputs=` to a `DesignProblemDataset` (CIF), `ConditionSpecDataset`, or
-    `ContigJsonDataset` (legacy) source.
+    """Resolve `inputs=` to a `DesignProblemDataset` (CIF) or `ConditionSpecDataset` source.
 
-    A `.json`/`.yaml` file uses the condition_spec format by default -- the legacy
-    `InputSpecification`-based dialect (`ContigJsonDataset`) is auto-detected instead (see
-    :py:func:`~rfproteina.inference_utils.condition_spec.is_legacy_dialect`) and is
-    deprecated: it will be removed soon, so switch to `docs/condition_spec_yaml.md`'s format.
+    A `.json`/`.yaml` file is read as the condition_spec format (`docs/condition_spec_yaml.md`).
+    The legacy contig-JSON dialect has been removed: such a file is detected (see
+    :py:func:`~rfproteina.inference_utils.condition_spec.is_legacy_dialect`) and rejected with a
+    migration error rather than misinterpreted as condition_spec.
 
     Returns:
-      A ``(data, kind)`` pair, where ``kind`` is one of ``"cif"``,
-      ``"condition_spec"``, or ``"legacy"``.
+      A ``(data, kind)`` pair, where ``kind`` is one of ``"cif"`` or ``"condition_spec"``.
+
+    Raises:
+      NotImplementedError: If the input is a legacy contig-JSON file.
     """
     if isinstance(inputs, list | ListConfig):
         inputs = [str(p) for p in inputs]
@@ -163,14 +111,11 @@ def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
     if inputs.endswith((".json", ".yaml", ".yml")):
         data = load_spec_file(Path(inputs))
         if is_legacy_dialect(data):
-            warnings.warn(
-                f"{inputs}: this file uses the legacy `InputSpecification`-based JSON/YAML dialect, which "
-                "is deprecated and will be removed soon. Switch to the condition_spec format "
-                "(docs/condition_spec_yaml.md) for future compatibility.",
-                DeprecationWarning,
-                stacklevel=2,
+            raise NotImplementedError(
+                f"{inputs}: this file uses the legacy contig-JSON (`InputSpecification`) dialect, which "
+                "has been removed. Convert it to Condition-annotated CIFs (scripts/json2cif/build_cif.py) "
+                "or rewrite it in the condition_spec format (docs/condition_spec_yaml.md)."
             )
-            return data, "legacy"
         return data, "condition_spec"
     raise ValueError(f"Input must be a path to a directory or a .cif/.bcif/.json/.yaml file, got {inputs}.")
 
@@ -233,7 +178,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
             cfg_gen.dataset.shard_index = shard_index
             cfg_gen.dataset.num_shards = num_shards
     instantiated_dset = hydra.utils.instantiate(cfg_gen.dataset)
-    if isinstance(instantiated_dset, (DesignProblemDataset | JsonDataset)):
+    if isinstance(instantiated_dset, (DesignProblemDataset | ConditionSpecDataset)):
         if cfg_gen.val_set_name_override is None:
             if "data" in cfg_gen.dataset:
                 cfg_gen.val_set_name_override = cfg_gen.dataset.data
@@ -249,16 +194,13 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     subset_to_examples = _get_mutually_exclusive_config(
         cfg, "subset_to_examples", "json_keys_subset", default_value=None
     )
-    specification_overrides = dict(cfg_gen.dataset.specification) if "specification" in cfg_gen.dataset else {}
-
-    # Infer is_partial_diffusion from generation args so ContigJsonDataset specs don't need it explicitly.
-    if "is_partial_diffusion" not in specification_overrides:
-        cfg_args = OmegaConf.to_container(cfg_gen.args, resolve=True) if hasattr(cfg_gen, "args") else {}
-        if cfg_args.get("inverse_folding", False) or any(
-            cfg_args.get(k) is not None
-            for k in ("partial_t_backbone", "partial_t_latent", "partial_trajectory_fraction_steps")
-        ):
-            specification_overrides["is_partial_diffusion"] = True
+    # Infer partial-diffusion runs from the generation args so the partial_diffusion metrics tag
+    # is added below (inverse folding, or an explicit partial-t / trajectory-fraction argument).
+    cfg_args = OmegaConf.to_container(cfg_gen.args, resolve=True) if hasattr(cfg_gen, "args") else {}
+    is_partial_diffusion = cfg_args.get("inverse_folding", False) or any(
+        cfg_args.get(k) is not None
+        for k in ("partial_t_backbone", "partial_t_latent", "partial_trajectory_fraction_steps")
+    )
 
     transform_overrides = (
         OmegaConf.to_container(cfg_gen.dataset.transform, resolve=True) if "transform" in cfg_gen.dataset else {}
@@ -266,7 +208,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     metrics_tags = transform_overrides.pop("metrics_tags", None)
     if isinstance(metrics_tags, str):
         metrics_tags = metrics_tags.split(",")
-    if specification_overrides.get("is_partial_diffusion"):
+    if is_partial_diffusion:
         if metrics_tags is None:
             metrics_tags = []
         if "partial_diffusion" not in metrics_tags:
@@ -285,7 +227,6 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
         transform=inference_pipeline,
         sampling_transforms=sampling_transforms,
         subset_to_examples=subset_to_examples,
-        specification_overrides=specification_overrides,
         global_prefix=cfg.get("global_prefix"),
         prevalidate=cfg.get("prevalidate_inputs", False),
         shard_index=shard_index,
@@ -304,27 +245,22 @@ def get_contig_or_design_problem_dataset(
     transform: Transform | None = None,
     sampling_transforms: list[Transform] | None = None,
     subset_to_examples: list[str] | str | None = None,
-    specification_overrides: dict = {},
     global_prefix: str | None = None,
     prevalidate: bool = False,
     shard_index: int | None = None,
     num_shards: int | None = None,
 ) -> torch.utils.data.Dataset:
-    """Create a DesignProblemDataset, ConditionSpecDataset, or ContigJsonDataset (legacy)
-    based on the input type.
+    """Create a DesignProblemDataset (CIF) or ConditionSpecDataset based on the input type.
 
     Args:
-        json_or_design_problem_inputs: A PFM-style json/yaml file, or a list/directory of Condition-annotated CIF files.
+        json_or_design_problem_inputs: A condition_spec json/yaml file, or a list/directory of
+            Condition-annotated CIF files.
         num_replicates: Number of times to replicate each example. If None, defaults to 1 replicate per example.
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
-        sampling_transforms: Per-replicate condition-sampling transforms. Supported for
-            Condition-annotated CIF and condition_spec JSON/YAML inputs; the legacy contig-JSON
-            dialect raises :py:exc:`NotImplementedError`.
+        sampling_transforms: Per-replicate condition-sampling transforms.
         subset_to_examples: If provided, only use these example keys from the json/yaml input.
-        specification_overrides: Dictionary of input specification overrides (only applies to ContigJsonDataset).
         global_prefix: Optional global prefix for output example ids.
-        prevalidate: If True, build + validate each unique input once up front (fail fast). Not
-            supported for the legacy contig-JSON dialect (skipped with a warning).
+        prevalidate: If True, build + validate each unique input once up front (fail fast).
         shard_index: Which shard of the replicated examples this job serves, in ``[0, num_shards)``.
         num_shards: Number of shards to divide the replicated examples into; see
             :py:func:`~rfproteina.inference_utils.datasets.take_shard`.
@@ -351,43 +287,20 @@ def get_contig_or_design_problem_dataset(
             num_shards=num_shards,
         )
 
-    input_path = Path(json_or_design_problem_inputs)
-    source_path = str(input_path.resolve())
-
-    if kind == "condition_spec":
-        if subset_to_examples is not None:
-            subset_to_keys = (
-                subset_to_examples.split(",") if isinstance(subset_to_examples, str) else list(subset_to_examples)
-            )
-        else:
-            subset_to_keys = None
-        return ConditionSpecDataset(
-            data=data,
-            transform=transform if exists(transform) else Identity(),
-            name="inference-dataset",
-            sampling_transforms=sampling_transforms,
-            subset_to_keys=subset_to_keys,
-            num_replicates=num_replicates,
-            global_prefix=global_prefix,
-            source_path=source_path,
-            prevalidate=prevalidate,
-            shard_index=shard_index,
-            num_shards=num_shards,
+    # kind == "condition_spec"
+    source_path = str(Path(json_or_design_problem_inputs).resolve())
+    if subset_to_examples is not None:
+        subset_to_keys = (
+            subset_to_examples.split(",") if isinstance(subset_to_examples, str) else list(subset_to_examples)
         )
-
-    # kind == "legacy"
-    data = _assemble_dataset_inputs_from_dict(
-        data,
-        input_file_path=input_path,
-        subset_to_examples=subset_to_examples,
-        specification_overrides=specification_overrides,
-    )
-
-    return ContigJsonDataset(
+    else:
+        subset_to_keys = None
+    return ConditionSpecDataset(
         data=data,
         transform=transform if exists(transform) else Identity(),
         name="inference-dataset",
         sampling_transforms=sampling_transforms,
+        subset_to_keys=subset_to_keys,
         num_replicates=num_replicates,
         global_prefix=global_prefix,
         source_path=source_path,
@@ -611,12 +524,12 @@ def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str
     """Extract example IDs from a dataset without loading data.
 
     Args:
-        dataset: A JsonDataset (ContigJsonDataset/ConditionSpecDataset) or DesignProblemDataset instance.
+        dataset: A ConditionSpecDataset or DesignProblemDataset instance.
 
     Returns:
         List of example ID strings, one per dataset index.
     """
-    if isinstance(dataset, JsonDataset):
+    if isinstance(dataset, ConditionSpecDataset):
         return dataset.names
     elif isinstance(dataset, DesignProblemDataset):
         ids = []

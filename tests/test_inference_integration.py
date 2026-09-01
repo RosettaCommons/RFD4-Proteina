@@ -1,8 +1,12 @@
 """Integration tests for rfproteina inference pipeline.
 
 These tests exercise the full inference path end-to-end on a GPU,
-from input parsing through dataset construction, collation,
+from annotated-CIF input parsing through dataset construction, collation,
 model forward pass, and output saving.
+
+Inputs are Condition-annotated CIFs (the legacy contig-JSON dialect has been
+removed). CIF file / list / directory inputs route to a
+:class:`~rfproteina.inference_utils.datasets.DesignProblemDataset`.
 
 Run with:
     pytest projects/rfproteina/tests/test_inference_integration.py -v
@@ -19,7 +23,6 @@ import biotite.structure as struc
 import numpy as np
 import pandas as pd
 import pytest
-from atomworks.enums import ChainType
 from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
@@ -33,14 +36,14 @@ load_dotenv(override=True)
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
-from pydantic_core._pydantic_core import ValidationError
 
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
 from rfproteina.generate import (
+    _get_example_ids_from_dataset,
     get_contig_or_design_problem_dataset,
     run_generation,
 )
-from rfproteina.inference_utils.datasets import ContigJsonDataset
+from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProblemDataset
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC
 from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
 from tests.helpers import gpu  # noqa: F401
@@ -53,22 +56,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARKS_DIR = PROJECT_ROOT / "data" / "benchmarks"
 _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
+# Committed, regression-validated de-novo monomer CIFs (length-only, no input structure).
+_MONOMER_CIF_DIR = BENCHMARKS_DIR / "monomer"
+_MONOMER_CIF = _MONOMER_CIF_DIR / "monomer-short.cif"
+
+# Committed all-atom motif input structures. Structure-conditioned tests build their conditioning
+# on the fly with a condition_spec (see :func:`_motif_condition_spec`) rather than committing a
+# pre-built motif CIF fixture.
+_1PRW_INPUT = BENCHMARKS_DIR / "motif_data_aa" / "1prw_aa.cif"
+_1YCR_INPUT = BENCHMARKS_DIR / "motif_data_aa" / "1ycr_aa.cif"
+
 
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
     """Return generated structure CIFs (one per-design directory under ``inference_samples/``)."""
     return list(Path(out_dir).glob("inference_samples/**/*_generated.cif"))
 
 
-_TEST_LENGTH = "10-10"
-
-# Columns that should always be present in the per-example output dataframe.
+# Columns that should always be present in the per-example output dataframe, regardless of input
+# kind. The source column differs by input kind (CIF inputs record ``input_cif_path``;
+# condition_spec json/yaml inputs record ``input_json_path``) and is checked separately via the
+# ``source_column`` argument to :func:`_load_output_dataframe`.
 _EXPECTED_DF_COLUMNS = {
     "example_id",
     "designed_structure_path",
     "task",
     "dataset_name",
     "seed",
-    "input_json_path",
     "chain_of_interest",
     "ckpt_path",
     "ckpt_name",
@@ -85,12 +98,6 @@ def inference_pipeline():
     return build_design_validation_pipeline(metrics_tags=None)
 
 
-@pytest.fixture(scope="module")
-def monomer_json_path():
-    """Path to the monomer benchmark JSON (simple unconditional generation)."""
-    return str(BENCHMARKS_DIR / "monomer.json")
-
-
 @pytest.fixture
 def tmp_output_dir():
     """Provide a fresh temporary directory for test outputs, cleaned up after."""
@@ -99,94 +106,9 @@ def tmp_output_dir():
     shutil.rmtree(d, ignore_errors=True)
 
 
-@pytest.fixture
-def minimal_monomer_json(tmp_output_dir):
-    """Write a single-example monomer JSON to disk.
-
-    No ``input`` key and a ``length``/per-example ``dialect`` field -- both legacy-only
-    markers `is_legacy_dialect` uses to auto-route this through `ContigJsonDataset`
-    (see `_write_input_json` for more on that per-example ``dialect`` field).
-    """
-    data = {
-        "tiny_monomer": {
-            "length": _TEST_LENGTH,
-            "dialect": 2,
-        },
-    }
-    path = os.path.join(tmp_output_dir, "tiny_monomer.json")
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
-
-
-@pytest.fixture
-def diffused_na_json(tmp_output_dir):
-    """Write a single-example JSON with a mix of RNA, DNA, and protein residues."""
-    data = {
-        "diffused_na": {
-            "length": "15-15",
-            "contig": "5D,/0,5R,/0,5P",
-            "dialect": 2,
-        },
-    }
-    path = os.path.join(tmp_output_dir, "diffused_na.json")
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
-
-
-@pytest.fixture
-def bad_diffused_na_json(tmp_output_dir):
-    """Write a single-example JSON with an invalid polymer type setup (varies within chain)."""
-    data = {
-        "bad_diffused_na": {
-            "length": "15-15",
-            "contig": "5D,/0,5R,5P",
-            "dialect": 2,
-        },
-    }
-    path = os.path.join(tmp_output_dir, "bad_diffused_na.json")
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
-
-
-@pytest.fixture
-def two_example_json(tmp_output_dir):
-    """Write a two-example JSON to disk for subsetting and replicate tests."""
-    data = {
-        "example_a": {
-            "length": _TEST_LENGTH,
-            "dialect": 2,
-        },
-        "example_b": {
-            "length": _TEST_LENGTH,
-            "dialect": 2,
-        },
-    }
-    path = os.path.join(tmp_output_dir, "two_examples.json")
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _write_input_json(out_dir: str, data: dict, filename: str = "input.json") -> str:
-    """Write a legacy contig-JSON input file and return its path.
-
-    Every caller in this test module exercises the legacy `ContigJsonDataset` dialect
-    (RFD3-style `length`/`contig` per-example specs, no `input` key). There's no explicit
-    marker to add -- `is_legacy_dialect` auto-detects this from the example fields
-    themselves, so this helper just writes `data` as-is.
-    """
-    path = os.path.join(out_dir, filename)
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
 
 
 def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
@@ -249,14 +171,16 @@ def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
 def _load_output_dataframe(
     out_dir: str,
     global_prefix: str | None = None,
-    check_input_json_path: bool = False,
+    source_column: str | None = None,
 ) -> pd.DataFrame:
     """Load the per-example metrics CSV and validate expected columns.
 
     Args:
         out_dir: Root output directory for the inference run.
         global_prefix: Prefix used during generation (affects CSV filename).
-        check_input_json_path: If True, verify ``input_json_path`` is set and exists.
+        source_column: If given, the input-source column to verify (``"input_cif_path"``
+            for CIF inputs, ``"input_json_path"`` for condition_spec inputs); the column
+            must be present, fully populated, and point at existing files.
 
     Returns:
         Loaded dataframe with validated columns.
@@ -275,12 +199,40 @@ def _load_output_dataframe(
         f"Present columns ({len(present)}): {sorted(present)}"
     )
 
-    if check_input_json_path:
-        assert df["input_json_path"].notna().all(), "Expected input_json_path for JSON inputs"
-        for json_path in df["input_json_path"].dropna().unique():
-            assert Path(json_path).is_file(), f"input_json_path does not exist: {json_path}"
+    if source_column is not None:
+        assert source_column in present, f"Expected source column {source_column!r} in {csv_path}"
+        assert df[source_column].notna().all(), f"Expected {source_column} for every row"
+        for src_path in df[source_column].dropna().unique():
+            assert Path(src_path).is_file(), f"{source_column} does not exist: {src_path}"
 
     return df
+
+
+def _motif_condition_spec(input_cif: Path, contig: str, fixed_select: str) -> dict:
+    """Build a condition_spec example that fully fixes a motif (coordinates + sequence).
+
+    Coordinate-conditions (``C_CRD``) and sequence-conditions (``C_SEQ``) every atom the
+    ``fixed_select`` query matches, resolved against the input's *original* residue numbering.
+    Any contig residue outside the selection (a diffused expandable segment, or a preserved
+    block left unselected) carries no conditioning, so it is generated / partially diffused.
+
+    Args:
+        input_cif: All-atom CIF providing the motif coordinates.
+        contig: Contig string assembling the design (e.g. ``"5-5, A16-20"``).
+        fixed_select: Selection query for the coordinate+sequence-fixed motif residues
+            (e.g. ``"res_id >= 16 and res_id <= 20"``).
+
+    Returns:
+        A single condition_spec example dict (``{input, contig, conditions}``).
+    """
+    return {
+        "input": str(input_cif),
+        "contig": contig,
+        "conditions": {
+            "C_CRD": {True: [{"select": fixed_select}]},
+            "C_SEQ": {True: [{"select": fixed_select}]},
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -291,121 +243,77 @@ def _load_output_dataframe(
 class TestDatasetConstruction:
     """Tests for dataset creation, replication, subsetting, and prefixing.
 
-    These verify the input-parsing side of inference without requiring a GPU.
+    These verify the input-parsing side of inference (annotated-CIF ->
+    :class:`DesignProblemDataset`) without requiring a GPU.
     """
 
-    def test_contig_json_dataset_basic(self, minimal_monomer_json, inference_pipeline):
-        """Verify ContigJsonDataset loads a single example and applies transforms."""
+    def test_design_problem_dataset_basic(self, inference_pipeline):
+        """A single CIF loads as a DesignProblemDataset and applies transforms."""
         dataset = get_contig_or_design_problem_dataset(
-            minimal_monomer_json,
+            str(_MONOMER_CIF),
             num_replicates=1,
             transform=inference_pipeline,
         )
-        assert isinstance(dataset, ContigJsonDataset)
+        assert isinstance(dataset, DesignProblemDataset)
         assert len(dataset) == 1
-        assert "tiny_monomer_0" in dataset.names
+        assert _get_example_ids_from_dataset(dataset) == ["monomer-short"]
 
         example = dataset[0]
         assert "atom_array" in example
         assert "example_id" in example
         assert "feats" in example
-        assert example["specification"]["input_json_path"] == str(Path(minimal_monomer_json).resolve())
+        assert Path(example["specification"]["input_cif"]) == _MONOMER_CIF
 
-    def test_diffused_na_contigs(self, diffused_na_json, bad_diffused_na_json, inference_pipeline):
-        """Verify ContigJsonDataset loads a single example and applies transforms."""
+    @pytest.mark.parametrize(
+        "num_replicates,global_prefix,expected_ids",
+        [
+            (3, None, ["monomer-short_rep0", "monomer-short_rep1", "monomer-short_rep2"]),
+            (1, "myrun", ["myrun_monomer-short"]),
+            (2, "run1", ["run1_monomer-short_rep0", "run1_monomer-short_rep1"]),
+        ],
+    )
+    def test_example_id_scheme(self, inference_pipeline, num_replicates, global_prefix, expected_ids):
+        """num_replicates (``_rep{i}`` suffix) and global_prefix compose into example ids."""
         dataset = get_contig_or_design_problem_dataset(
-            diffused_na_json,
+            str(_MONOMER_CIF),
+            num_replicates=num_replicates,
+            transform=inference_pipeline,
+            global_prefix=global_prefix,
+        )
+        assert len(dataset) == num_replicates
+        assert _get_example_ids_from_dataset(dataset) == expected_ids
+
+    def test_subset_by_condition_spec_keys(self, inference_pipeline, tmp_path):
+        """``subset_to_examples`` keeps only the requested keys of a multi-example condition_spec.
+
+        This exercises the real ``subset_to_keys`` path of
+        :class:`~rfproteina.inference_utils.datasets.ConditionSpecDataset` (each top-level
+        key is one design), not the CIF file-path notion of subsetting.
+        """
+        spec = {
+            "1ycr_motif": _motif_condition_spec(_1YCR_INPUT, "B19-27", "res_id >= 19 and res_id <= 22"),
+            "1prw_motif": _motif_condition_spec(_1PRW_INPUT, "5-5, A16-20", "res_id >= 16 and res_id <= 20"),
+        }
+        spec_path = tmp_path / "two_examples.json"
+        spec_path.write_text(json.dumps(spec))
+
+        # No subset: both examples load (``num_replicates=1`` appends a ``_0`` replicate suffix).
+        dataset = get_contig_or_design_problem_dataset(
+            str(spec_path),
             num_replicates=1,
             transform=inference_pipeline,
         )
+        assert isinstance(dataset, ConditionSpecDataset)
+        assert set(_get_example_ids_from_dataset(dataset)) == {"1ycr_motif_0", "1prw_motif_0"}
 
-        example = dataset[0]
-        assert "atom_array" in example
-        atom_array = example["atom_array"]
-        annots = ["chain_type", "is_protein", "is_rna", "is_dna", "is_ligand"]
-        for annot in annots:
-            assert annot in atom_array.get_annotation_categories(), f"Expected '{annot}' annotation in atom array"
-
-        residue_starts = get_residue_starts(atom_array)
-        assert len(residue_starts) == 15, f"Expected 15 residues but got {len(residue_starts)}"
-        rna_start, protein_start = residue_starts[5], residue_starts[10]
-
-        aa_and_expectations = [
-            (atom_array[:rna_start], ChainType.DNA, False, False, True, False),  # DNA residues
-            (atom_array[rna_start:protein_start], ChainType.RNA, False, True, False, False),  # RNA residues
-            (atom_array[protein_start:], ChainType.POLYPEPTIDE_L, True, False, False, False),  # Protein residues
-        ]
-
-        for chain_group in aa_and_expectations:
-            aa = chain_group[0]
-            for annot, expectation in zip(annots, chain_group[1:], strict=False):
-                values = aa.get_annotation(annot)
-                assert np.all(
-                    values == expectation
-                ), f"Expected annotation '{annot}' to be {expectation} but got values {values}."
-
-        with pytest.raises(ValidationError, match="Chain types must be consistent"):
-            _ = get_contig_or_design_problem_dataset(
-                bad_diffused_na_json,
-                num_replicates=1,
-                transform=inference_pipeline,
-            )
-
-    def test_num_replicates(self, minimal_monomer_json, inference_pipeline):
-        """Verify num_replicates correctly multiplies dataset size."""
-        dataset = get_contig_or_design_problem_dataset(
-            minimal_monomer_json,
-            num_replicates=3,
-            transform=inference_pipeline,
-        )
-        assert len(dataset) == 3
-        assert len(set(dataset.names)) == 3
-
-    def test_global_prefix(self, minimal_monomer_json, inference_pipeline):
-        """Verify global_prefix is prepended to example IDs."""
-        prefix = "myrun"
-        dataset = get_contig_or_design_problem_dataset(
-            minimal_monomer_json,
+        # Subsetting to one key loads only that example.
+        subset = get_contig_or_design_problem_dataset(
+            str(spec_path),
             num_replicates=1,
             transform=inference_pipeline,
-            global_prefix=prefix,
+            subset_to_examples="1ycr_motif",
         )
-        for name in dataset.names:
-            assert name.startswith(f"{prefix}_"), f"Expected prefix '{prefix}_' in name '{name}'"
-
-    def test_subset_to_examples(self, two_example_json, inference_pipeline):
-        """Verify subset_to_examples filters the dataset to requested keys."""
-        dataset = get_contig_or_design_problem_dataset(
-            two_example_json,
-            num_replicates=1,
-            transform=inference_pipeline,
-            subset_to_examples=["example_a"],
-        )
-        assert len(dataset) == 1
-        assert any("example_a" in name for name in dataset.names)
-        assert not any("example_b" in name for name in dataset.names)
-
-    def test_subset_to_examples_comma_string(self, two_example_json, inference_pipeline):
-        """Verify subset_to_examples works when passed as a comma-separated string."""
-        dataset = get_contig_or_design_problem_dataset(
-            two_example_json,
-            num_replicates=1,
-            transform=inference_pipeline,
-            subset_to_examples="example_a,example_b",
-        )
-        assert len(dataset) == 2
-
-    def test_global_prefix_with_replicates(self, minimal_monomer_json, inference_pipeline):
-        """Verify global_prefix and num_replicates compose correctly."""
-        dataset = get_contig_or_design_problem_dataset(
-            minimal_monomer_json,
-            num_replicates=2,
-            transform=inference_pipeline,
-            global_prefix="run1",
-        )
-        assert len(dataset) == 2
-        for name in dataset.names:
-            assert name.startswith("run1_")
+        assert _get_example_ids_from_dataset(subset) == ["1ycr_motif_0"]
 
 
 # ---------------------------------------------------------------------------
@@ -437,14 +345,10 @@ class TestEndToEndInference:
         num_replicates = 2
         bb_ca_noise_scale = 0.2
         latents_noise_scale = 0.3
-        input_path = _write_input_json(
-            tmp_output_dir,
-            {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
-        )
 
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path}",
+                f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
                 f"num_replicates={num_replicates}",
                 f"global_prefix={prefix}",
@@ -465,8 +369,8 @@ class TestEndToEndInference:
         for cif_file in cif_files:
             assert prefix in cif_file.name, f"Expected prefix '{prefix}' in filename '{cif_file.name}'"
 
-        # Verify output dataframe has expected fields (including input_json_path for JSON inputs)
-        df = _load_output_dataframe(tmp_output_dir, global_prefix=prefix, check_input_json_path=True)
+        # Verify output dataframe has expected fields (including input_cif_path for CIF inputs)
+        df = _load_output_dataframe(tmp_output_dir, global_prefix=prefix, source_column="input_cif_path")
         assert len(df) == num_replicates
         assert all(df["seed"] == 42)
         assert all(df["generation.model.bb_ca.simulation_step_params.sc_scale_noise"] == bb_ca_noise_scale)
@@ -474,71 +378,49 @@ class TestEndToEndInference:
         assert all(df["generation.args.nsteps"] == 100)
         assert all(df["chain_of_interest"].notna())
         assert any("oracle." in col for col in df.columns), "Refolding oracle did not run."
-        for eid in df["example_id"]:
-            assert prefix in eid
+        # Replicates share a base id and differ only by the ``_rep{i}`` suffix.
+        assert set(df["example_id"]) == {f"{prefix}_monomer-short_rep0", f"{prefix}_monomer-short_rep1"}
 
     def test_generation_with_subsetting(self, gpu, tmp_output_dir):  # noqa: F811
-        """Verify subset_to_examples and json_keys_subset (RFD3 alias)."""
-        input_data = {
-            "example_a": {"length": _TEST_LENGTH, "dialect": 2},
-            "example_b": {"length": _TEST_LENGTH, "dialect": 2},
-        }
+        """``subset_to_examples`` generates only the requested key of a multi-example condition_spec.
 
-        # Test subset_to_examples
-        out_a = os.path.join(tmp_output_dir, "subset")
-        os.makedirs(out_a)
-        input_path_a = _write_input_json(out_a, input_data)
+        This exercises the real ``subset_to_keys`` path (each top-level key is one design), not
+        the CIF file-path notion of subsetting.
+        """
+        out = os.path.join(tmp_output_dir, "subset")
+        os.makedirs(out)
+
+        spec = {
+            "1ycr_motif": _motif_condition_spec(_1YCR_INPUT, "B19-27", "res_id >= 19 and res_id <= 22"),
+            "1prw_motif": _motif_condition_spec(_1PRW_INPUT, "5-5, A16-20", "res_id >= 16 and res_id <= 20"),
+        }
+        spec_path = Path(out) / "spec.json"
+        spec_path.write_text(json.dumps(spec))
 
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path_a}",
-                f"out_dir={out_a}",
-                "subset_to_examples=example_a",
+                f"inputs={spec_path}",
+                f"out_dir={out}",
+                "subset_to_examples=1ycr_motif",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
 
-        cif_files_a = _inference_generated_cifs(out_a)
-        assert len(cif_files_a) == 1
-        assert "example_a" in cif_files_a[0].name
+        cif_files = _inference_generated_cifs(out)
+        assert len(cif_files) == 1
+        assert "1ycr_motif" in cif_files[0].name
+        assert "1prw_motif" not in cif_files[0].name
 
-        df_a = _load_output_dataframe(out_a, check_input_json_path=True)
-        assert len(df_a) == 1
-        assert "example_a" in df_a["example_id"].iloc[0]
-
-        # Test json_keys_subset alias
-        out_b = os.path.join(tmp_output_dir, "alias")
-        os.makedirs(out_b)
-        input_path_b = _write_input_json(out_b, input_data)
-
-        cfg = _build_test_cfg(
-            [
-                f"inputs={input_path_b}",
-                f"out_dir={out_b}",
-                "json_keys_subset=example_b",
-            ]
-        )
-        run_generation(cfg, job_id=0, config_name="test_json_keys")
-
-        cif_files_b = _inference_generated_cifs(out_b)
-        assert len(cif_files_b) == 1
-        assert "example_b" in cif_files_b[0].name
-
-        df_b = _load_output_dataframe(out_b, check_input_json_path=True)
-        assert len(df_b) == 1
-        assert "example_b" in df_b["example_id"].iloc[0]
+        df = _load_output_dataframe(out, source_column="input_json_path")
+        assert len(df) == 1
+        assert "1ycr_motif" in df["example_id"].iloc[0]
 
     def test_skip_existing_prevents_regeneration(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify skip_existing=True skips examples whose outputs already exist."""
-        input_path = _write_input_json(
-            tmp_output_dir,
-            {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
-        )
-
         # First run: generate
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path}",
+                f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
             ]
         )
@@ -549,12 +431,12 @@ class TestEndToEndInference:
         mtimes_before = {f.name: f.stat().st_mtime for f in cif_files_before}
 
         # Verify first run produced a valid dataframe
-        _load_output_dataframe(tmp_output_dir, check_input_json_path=True)
+        _load_output_dataframe(tmp_output_dir, source_column="input_cif_path")
 
         # Second run: skip_existing should prevent regeneration
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path}",
+                f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
                 "skip_existing=true",
             ]
@@ -570,11 +452,6 @@ class TestEndToEndInference:
 
     def test_seeded_generation_is_deterministic(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify that two runs with the same seed produce identical outputs."""
-        input_path = _write_input_json(
-            tmp_output_dir,
-            {"tiny": {"length": _TEST_LENGTH, "dialect": 2}},
-        )
-
         out_dirs = []
         for i in range(2):
             out_dir = os.path.join(tmp_output_dir, f"run_{i}")
@@ -583,7 +460,7 @@ class TestEndToEndInference:
 
             cfg = _build_test_cfg(
                 [
-                    f"inputs={input_path}",
+                    f"inputs={_MONOMER_CIF}",
                     f"out_dir={out_dir}",
                     "seed=12345",
                 ]
@@ -599,39 +476,39 @@ class TestEndToEndInference:
             _assert_coords_identical(str(f0), str(f1))
 
         # Verify both runs produced valid dataframes with matching seeds
-        df_0 = _load_output_dataframe(out_dirs[0], check_input_json_path=True)
-        df_1 = _load_output_dataframe(out_dirs[1], check_input_json_path=True)
+        df_0 = _load_output_dataframe(out_dirs[0], source_column="input_cif_path")
+        df_1 = _load_output_dataframe(out_dirs[1], source_column="input_cif_path")
         assert all(df_0["seed"] == 12345)
         assert all(df_1["seed"] == 12345)
 
     def test_output_cif_annotations(self, gpu, tmp_output_dir):  # noqa: F811
-        """Verify that generated CIF files contain expected annotations."""
-        input_data = {
-            "example_a": {
-                "contig": "5-5,A16-20",
-                "dialect": 2,
-                "input": str(BENCHMARKS_DIR / "motif_data_aa/1prw_aa.cif"),
-                "select_fixed_atoms": True,
-            },
-        }
+        """Verify that a motif-scaffold generated CIF carries the expected annotations.
 
-        # Test subset_to_examples
-        out = os.path.join(tmp_output_dir, "subset")
+        The condition_spec (contig ``"5-5, A16-20"`` on 1PRW) is a deterministic 10-residue
+        design: a 5-residue diffused segment plus a 5-residue coordinate+sequence-conditioned
+        motif (chain-A residues 16-20 of 1PRW), so exactly half the residues are coordinate-fixed.
+        """
+        out = os.path.join(tmp_output_dir, "motif_scaffold")
         os.makedirs(out)
-        input_path = _write_input_json(out, input_data)
+
+        spec = {
+            "1prw_motif_scaffold": _motif_condition_spec(_1PRW_INPUT, "5-5, A16-20", "res_id >= 16 and res_id <= 20")
+        }
+        spec_path = Path(out) / "spec.json"
+        spec_path.write_text(json.dumps(spec))
 
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path}",
+                f"inputs={spec_path}",
                 f"out_dir={out}",
                 "generation.args.nsteps=100",
             ]
         )
-        run_generation(cfg, job_id=0, config_name="test_subset")
+        run_generation(cfg, job_id=0, config_name="test_motif_scaffold")
 
         cif_files = _inference_generated_cifs(out)
         assert len(cif_files) == 1
-        assert "example_a" in cif_files[0].name
+        assert "1prw_motif_scaffold" in cif_files[0].name
 
         generated_path = str(cif_files[0])
         # StandardAnnotations require load_standard_annotations=True; add_missing_atoms=False for compatibility.
@@ -647,57 +524,49 @@ class TestEndToEndInference:
 
         residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
 
-        # Atom-level mapped mask (stored under "mapped_to_coordinate_conditioned_region" for backward compat)
+        # Atom-level mapped mask (stored under "mapped_to_coordinate_conditioned_region" for backward compat).
+        # Exactly half of the residues (the 5-residue motif) are coordinate-conditioned.
         assert SA_CRDSRC.has_mask(generated_aa), f"Expected '{SA_CRDSRC.mask_name}' in generated CIF"
         assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.mask_name) == False) == 0.5, (  # noqa: E712
-            f"Expected exactly half of residue starts to have default value False for '{SA_CRDSRC.mask_name}'"
+            f"Expected exactly half of residue starts to be un-conditioned (False) for '{SA_CRDSRC.mask_name}'"
         )
 
-        # Non-mask string annotations (stored under their full_name)
+        # Non-mask string annotations (stored under their full_name).
         assert SA_CRDSRC.has_annotation(generated_aa), f"Expected '{SA_CRDSRC.full_name}' in generated CIF"
         assert SA_SRC.has_annotation(generated_aa), f"Expected '{SA_SRC.full_name}' in generated CIF"
         assert (
             np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.full_name) == ".") == 0.5
         ), f"Expected exactly half of residue starts to have default value '.' for '{SA_CRDSRC.full_name}'"
-        assert (
-            np.mean(residue_starts_aa.get_annotation(SA_SRC.full_name) == "5P") == 0.5
-        ), f"Expected exactly half of residue starts to have value '5P' for '{SA_SRC.full_name}'"
 
-        # coords_with_insertion is now a StandardAnnotation and is loaded automatically
+        # coords_with_insertion is a StandardAnnotation and is loaded automatically.
         assert SA_CWI.has_annotation(generated_aa), f"Expected '{SA_CWI.full_name}' in generated CIF"
 
-        df = _load_output_dataframe(out, check_input_json_path=True)
+        df = _load_output_dataframe(out, source_column="input_json_path")
         assert len(df) == 1
-        assert "example_a" in df["example_id"].iloc[0]
+        assert "1prw_motif_scaffold" in df["example_id"].iloc[0]
 
     def test_partial_diffusion(self, gpu, tmp_output_dir):  # noqa: F811
         """Partial diffusion: fixed atoms are preserved, non-fixed atoms change.
 
-        Runs partial diffusion on a stretch of 1PRW chain A, fixing a subset of
-        residues with ``select_fixed_atoms``.  After aligning the generated structure
-        onto the fixed region of the input, the fixed-region CA RMSD should be near
-        zero while the diffused region should show meaningful coordinate change.
+        Runs partial diffusion on chain B (residues 19-27) of 1YCR via a condition_spec
+        (contig ``"B19-27"``), with residues 19-22 coordinate+sequence-conditioned and
+        residues 23-27 left unconditioned (so they diffuse and redesign). After aligning
+        the generated structure onto the fixed region, the fixed-region CA RMSD should be
+        near zero while the diffused region should show meaningful coordinate change.
         """
-        import biotite.structure as struc
         from atomworks.io.parser import STANDARD_PARSER_ARGS
-        from atomworks.io.utils.io_utils import load_any
 
-        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.cif")
+        # The condition_spec preserves this structure's chain B (19-27), so the original file
+        # provides the reference CA coordinates in the same residue order.
+        input_pdb = str(_1YCR_INPUT)
 
-        input_data = {
-            "partial_diffusion_test_0": {
-                "input": input_pdb,
-                "contig": "B19-22",
-                "select_fixed_atoms": "B19-22",
-                "select_unfixed_sequence": "B23-26",
-                "dialect": 2,
-            }
-        }
+        spec = {"1ycr_partial": _motif_condition_spec(_1YCR_INPUT, "B19-27", "res_id >= 19 and res_id <= 22")}
+        spec_path = Path(tmp_output_dir) / "spec.json"
+        spec_path.write_text(json.dumps(spec))
 
-        input_path = _write_input_json(tmp_output_dir, input_data)
         cfg = _build_test_cfg(
             [
-                f"inputs={input_path}",
+                f"inputs={spec_path}",
                 f"out_dir={tmp_output_dir}",
                 "generation.args.partial_trajectory_fraction_steps=0.7",
             ]
@@ -711,11 +580,11 @@ class TestEndToEndInference:
         input_aa = parse(input_pdb, **STANDARD_PARSER_ARGS)["asym_unit"][0]
         input_ca = input_aa[(input_aa.atom_name == "CA")]
 
-        # Load generated CA atoms (output contains the same 10 residues in order)
+        # Load generated CA atoms (output contains the same 9 residues in order)
         output_aa = load_any(str(cif_files[0]))[0]
         output_ca = output_aa[output_aa.atom_name == "CA"]
 
-        # Superimpose output onto input using only the fixed region (first 5 CA atoms)
+        # Superimpose output onto input using only the fixed region (residues 19-22)
         fixed_mask = (input_ca.res_id >= 19) & (input_ca.res_id <= 22)
         _, transform = struc.superimpose(input_ca[fixed_mask], output_ca[fixed_mask])
 
@@ -731,7 +600,7 @@ class TestEndToEndInference:
             input_ca.res_name[fixed_mask], output_ca_aligned.res_name[fixed_mask]
         ), "Fixed-region residue types should be unchanged in output"
 
-        # Non-fixed region: CA RMSD should be meaningfully > 0, sequences should be non-identical
+        # Non-fixed region (B23-27): CA RMSD should be meaningfully > 0, sequences should be non-identical
         nonfixed_rmsd = struc.rmsd(input_ca[~fixed_mask], output_ca_aligned[~fixed_mask])
         assert nonfixed_rmsd > 1, (
             f"Non-fixed-region CA RMSD {nonfixed_rmsd:.3f} Å should be > 1 Å"
@@ -752,7 +621,6 @@ class TestEndToEndInference:
         differ from the input.
         """
         from atomworks.io.parser import STANDARD_PARSER_ARGS
-        from atomworks.io.utils.io_utils import load_any
 
         from rfproteina.flow_matching import product_space_flow_matcher
 

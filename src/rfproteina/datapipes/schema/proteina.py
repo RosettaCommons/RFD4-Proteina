@@ -105,7 +105,7 @@ class ProteinaDataSample(DataSample):
     task: str = ""
     metrics_tags: set = field(default_factory=set)
     extra_info: dict[str, Any] = field(default_factory=dict)
-    # Input design job metadata (JSON spec from ContigJsonDataset / CIF datasets),
+    # Input design job metadata (spec from condition_spec / CIF datasets),
     # distinct from tensor ``SPECS`` above; collated as ``specification_batch``.
     specification: dict[str, Any] | None = None
 

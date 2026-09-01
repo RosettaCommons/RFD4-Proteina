@@ -61,8 +61,8 @@ launchers such as `scripts/launch_generate.sh` enter the container for you.
 :::
 
 - **Inputs.** Use an **annotated CIF** ([guide](inputs.md) ·
-  [tutorial](../examples/annotated_cif_tutorial.ipynb)). JSON, YAML, CIF and PDB through the legacy
-  [input specification](inputs.md) also work. `data/benchmarks/` has ready made examples.
+  [tutorial](../examples/annotated_cif_tutorial.ipynb)) or a
+  [condition-spec JSON/YAML file](condition-spec.md). `data/benchmarks/` has ready made examples.
 - **Every model argument is `key=value`**, Hydra style, never `--key value`.
 - **Checkpoints** come from `$DATA_PATH` by default. Override them on the command line only for a
   one off model, with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
@@ -81,12 +81,6 @@ Want a reusable config instead of one off CLI overrides? Start from
 [`configs/inference_experiment/TEMPLATE.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/inference_experiment/TEMPLATE.yaml).
 It documents all three ways to run inference, which are an in tree experiment config, CLI
 overrides, and a config file anywhere on the filesystem.
-:::
-
-:::{warning}
-**Coming from RFD3? There is no ORI token.** This model does not use an ORI residue in the input.
-You can supply per chain centroid conditioning in the annotated CIF, but you usually do not need
-to. Try without it first.
 :::
 
 ## Evaluating results
@@ -229,9 +223,8 @@ generation:
 
 Four things to know.
 
-- **Annotated CIF and condition_spec inputs only.** Passing `sampling_transforms` with the legacy
-  contig JSON dialect raises instead of getting silently ignored. Migrate that input to an
-  annotated CIF or the [condition_spec format](condition-spec.md).
+- **Input support.** Sampling transforms work with annotated CIF and
+  [condition-spec](condition-spec.md) inputs.
 - Transforms run **after** expandable segments are realized, so residue positions are final, and
   **before** featurization, so any change you make to the atom array reaches the model input.
 - `prevalidate_inputs=true` validates the input as you authored it and skips these transforms.

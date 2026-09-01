@@ -97,11 +97,6 @@ Annotated CIF
    conditions in a standard mmCIF file and can be edited with the AtomWorks
    PyMOL plugin.
 
-Legacy input specification
-   A JSON or YAML ``InputSpecification`` that describes contigs, selections,
-   motifs, and conditions separately from the structure file. It remains
-   supported for existing workflows.
-
 Generation and search
 ---------------------
 
