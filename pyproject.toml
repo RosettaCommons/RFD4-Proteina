@@ -134,6 +134,7 @@ markers = [
     "very_slow: tests too slow for the default CPU lane",
     "benchmark: pytest-benchmark performance tests",
     "fast: fast-running tests",
+    "no_checkpoint_cache: opt out of the shared checkpoint-load fixture (needs fresh model state per run)",
 ]
 
 # Build system

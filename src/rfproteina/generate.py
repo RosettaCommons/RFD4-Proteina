@@ -258,7 +258,8 @@ def get_contig_or_design_problem_dataset(
         num_replicates: Number of times to replicate each example. If None, defaults to 1 replicate per example.
         transform: Transform apply to loaded dataset examples. If None, an identity transform is used.
         sampling_transforms: Per-replicate condition-sampling transforms.
-        subset_to_examples: If provided, only use these example keys from the json/yaml input.
+        subset_to_examples: If provided, only use these example keys -- CIF file stems for a
+            CIF file/directory input, or top-level keys for a condition_spec json/yaml input.
         global_prefix: Optional global prefix for output example ids.
         prevalidate: If True, build + validate each unique input once up front (fail fast).
         shard_index: Which shard of the replicated examples this job serves, in ``[0, num_shards)``.
@@ -275,6 +276,15 @@ def get_contig_or_design_problem_dataset(
     if not exists(num_replicates):
         num_replicates = 1
 
+    # subset_to_examples selects a subset of example keys for either input kind -- CIF file stems
+    # or condition_spec top-level keys. Both datasets raise on a key that matches nothing.
+    if subset_to_examples is not None:
+        subset_to_keys = (
+            subset_to_examples.split(",") if isinstance(subset_to_examples, str) else list(subset_to_examples)
+        )
+    else:
+        subset_to_keys = None
+
     if kind == "cif":
         return DesignProblemDataset(
             dir_path_or_file_paths=data,
@@ -282,6 +292,7 @@ def get_contig_or_design_problem_dataset(
             sampling_transforms=sampling_transforms,
             num_replicates=num_replicates,
             global_prefix=global_prefix,
+            subset_to_keys=subset_to_keys,
             prevalidate=prevalidate,
             shard_index=shard_index,
             num_shards=num_shards,
@@ -289,12 +300,6 @@ def get_contig_or_design_problem_dataset(
 
     # kind == "condition_spec"
     source_path = str(Path(json_or_design_problem_inputs).resolve())
-    if subset_to_examples is not None:
-        subset_to_keys = (
-            subset_to_examples.split(",") if isinstance(subset_to_examples, str) else list(subset_to_examples)
-        )
-    else:
-        subset_to_keys = None
     return ConditionSpecDataset(
         data=data,
         transform=transform if exists(transform) else Identity(),
