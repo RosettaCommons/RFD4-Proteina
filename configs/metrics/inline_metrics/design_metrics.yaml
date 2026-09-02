@@ -60,7 +60,7 @@ design_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region
   subset_mask: mapped_to_coordinate_conditioned_region
-  subdivide_by_annotation: annotation_src-coord-group_1_atom
+  subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   aggregation: [median]
@@ -73,7 +73,7 @@ design_unindexed_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
   subset_mask: mapped_to_coordinate_conditioned_region & is_unindexed_insertion
-  subdivide_by_annotation: annotation_src-coord-group_1_atom
+  subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   aggregation: [median]

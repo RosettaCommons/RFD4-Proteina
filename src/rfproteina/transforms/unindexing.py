@@ -34,7 +34,7 @@ from rfproteina.transforms.utils.conditioning_utils import (
     set_specified_conditions_to_default,
 )
 from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.standard_annotations import SA_CRDGRPSRC, SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
+from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_IDXGRPSRC, SA_SRC, SA_UII
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -431,13 +431,12 @@ def annotate_unindexed_insertion(
     For each ``{unindexed_token_id: target_token_id}`` entry the unindexed in-context token is
     transferred onto its mapped generated token:
 
-    - Provenance / metric annotations are staged over the coord-conditioned atoms: ``SA_CRDSRC``
-      (source id), ``SA_CRDGRPSRC`` (source CoordinateGroup), ``SA_CWI`` (unindexed coords), plus
-      ``SA_UII`` over the whole mapped token.
-    - Every per-position (atom/token/residue-level) 1-body condition (coords, sequence, SSE, RASA,
-      h-bond, interactions, ... -- the ones not covered above) is additionally re-applied with the
-      ORIGINAL-input value, copied through one per-token atom correspondence (source and target atoms
-      line up 1:1).
+    - Provenance / metric annotations are staged over the coord-conditioned atoms (``SA_CRDSRC`` source
+      id, ``SA_CWI`` reference coords) plus, over the whole mapped token, ``SA_UII`` and ``SA_IDXGRPSRC``
+      (the motif's original unindexed index group, since ``C_IDXGRP`` is re-derived).
+    - Every per-position (atom/token/residue-level) 1-body condition (coords, sequence, coord group,
+      SSE, RASA, h-bond, interactions, ...) is additionally re-applied with the ORIGINAL-input value,
+      copied through one per-token atom correspondence (source and target atoms line up 1:1).
 
     The mapped token is then marked indexed (``C_IDX`` = True): once an unindexed motif atom has a
     definite position it becomes a normal indexed atom, so a further round of partial diffusion treats
@@ -456,8 +455,10 @@ def annotate_unindexed_insertion(
         Annotated generated AtomArray with the unindexed conditioning slice removed.
     """
     # Copy every per-position (atom/token/residue-level), 1-body condition by default
-    # NOTE: Position/termini/coord-group are reassigned separately and pairwise have no 1:1 mapping
-    not_copied = (C_IDX, C_IDXGRP, C_NTR, C_CTR, C_CRDGRP)
+    # NOTE: index/termini are position-derived (re-derived, not carried); pairwise have no 1:1 mapping.
+    # C_CRDGRP is copied too, but with overwrite semantics: every target atom already carries a coord group
+    # (default value UNKNOWN -1, mask always present), so the raise-loop would treat that default as a conflict.
+    not_copied = (C_IDX, C_IDXGRP, C_CRDGRP, C_NTR, C_CTR)
     conditions_to_copy = tuple(
         cond
         for cond in CONDITIONS
@@ -478,9 +479,9 @@ def annotate_unindexed_insertion(
         empty_bool = np.zeros(n_atoms, dtype=bool)
         SA_CRDSRC.set_mask(model_generated_atom_array, empty_bool)
         SA_CRDSRC.set_annotation(model_generated_atom_array, SA_CRDSRC.default_annotation(model_generated_atom_array))
-        SA_CRDGRPSRC.set_mask(model_generated_atom_array, empty_bool)
-        SA_CRDGRPSRC.set_annotation(
-            model_generated_atom_array, SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
+        SA_IDXGRPSRC.set_mask(model_generated_atom_array, empty_bool)
+        SA_IDXGRPSRC.set_annotation(
+            model_generated_atom_array, SA_IDXGRPSRC.default_annotation(model_generated_atom_array)
         )
         SA_UII.set_mask(model_generated_atom_array, empty_bool)
         return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
@@ -499,8 +500,9 @@ def annotate_unindexed_insertion(
             "Insertion annotation for 2d distance-conditioned unindexed regions is not supported."
         )
 
-    # Track every generated atom mapped from an unindexed token (whole token, drives SA_UII) and the
-    # subset that carries coord conditioning (drives SA_CRDSRC / SA_CRDGRPSRC / SA_CWI provenance).
+    # Track every generated atom mapped from an unindexed token (whole token, drives SA_UII / the source
+    # index group) and the coord-conditioned subset (drives SA_CRDSRC / SA_CWI). The coord group itself
+    # is copied live onto C_CRDGRP; only the source *index* group is kept as provenance (SA_IDXGRPSRC).
     mapped_to_unindexed_insertion = np.zeros(n_atoms, dtype=bool)
     mapped_to_coordinate_conditioned_region = np.zeros(n_atoms, dtype=bool)
     # An atom carries at most one coord mode: absolute -> C_CRD, internal -> C_INTCRD.
@@ -511,13 +513,13 @@ def annotate_unindexed_insertion(
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
     reference_coord = C_INTCRD.annotation(model_generated_atom_array, default="generate").copy()
     src_coordinate_conditioned_region = SA_CRDSRC.default_annotation(model_generated_atom_array)
-    src_coord_group = SA_CRDGRPSRC.default_annotation(model_generated_atom_array)
+    src_index_group = SA_IDXGRPSRC.default_annotation(model_generated_atom_array)
     generated_indices = np.arange(n_atoms)
 
     unindexed_internal_coords = C_INTCRD.annotation(in_context_conditioning, default="generate")
     unindexed_absolute_coords = C_CRD.annotation(in_context_conditioning, default="generate")
     unindexed_is_absolute = C_CRD.mask(in_context_conditioning, default="generate")
-    unindexed_coord_groups = C_CRDGRP.annotation(atom_array, default="generate")[~has_index]
+    unindexed_index_groups = C_IDXGRP.annotation(atom_array, default="generate")[~has_index]
 
     # Only coordinate-conditioned atoms feed the SA_* provenance / SA_CWI reference; the rest of a
     # token (e.g. a sequence-free sidechain) has no coord partner to match.
@@ -560,13 +562,28 @@ def annotate_unindexed_insertion(
                     on_mismatch="raise",
                 )
 
+            # The motif's coord group is authoritative post-insertion: overwrite the target's default
+            # UNKNOWN group rather than treating it as a conflict. C_CRDGRP's mask is always present, so
+            # gate on the value -- skip tokens whose source carries no real group (all UNKNOWN).
+            src_group = C_CRDGRP.annotation(atom_array, default="generate")[src_token_indices]
+            if (src_group != C_CRDGRP.UNKNOWN_COORDS).any():
+                C_CRDGRP.transfer(
+                    atom_array,
+                    model_generated_atom_array,
+                    src_token_indices,
+                    token_target_indices,
+                    on_mismatch="overwrite",
+                )
+
             # Coord provenance / metric staging: reuse the token correspondence restricted to the
             # coord-conditioned atoms, so conditions and coords land on the same target atoms.
             coord_target = token_target_indices[is_coord_conditioned_in_context[src_token_indices]]
             token_coord_mask = has_3d_conditioning[unindexed_token_mask]
             mapped_to_coordinate_conditioned_region[coord_target] = True
             src_coordinate_conditioned_region[coord_target] = token_src_id
-            src_coord_group[coord_target] = unindexed_coord_groups[unindexed_token_mask][token_coord_mask]
+            # Record the motif's original unindexed index group over the whole mapped token; C_IDXGRP
+            # itself is re-derived into the indexed frame, so this is the only index-group provenance.
+            src_index_group[target_mask_generated] = unindexed_index_groups[unindexed_token_mask][0]
             # Absolute motif coords come from the frozen C_CRD annotation (matching structure_export and
             # the internal path), not the live coord; internal-only atoms keep the live coord as a
             # placeholder that _restage_internal_coord_cwi_per_group overwrites.
@@ -579,8 +596,8 @@ def annotate_unindexed_insertion(
 
         SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
         SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-        SA_CRDGRPSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
-        SA_CRDGRPSRC.set_annotation(model_generated_atom_array, src_coord_group)
+        SA_IDXGRPSRC.set_mask(model_generated_atom_array, mapped_to_unindexed_insertion)
+        SA_IDXGRPSRC.set_annotation(model_generated_atom_array, src_index_group)
         SA_UII.set_mask(model_generated_atom_array, mapped_to_unindexed_insertion)
 
         # Mapped tokens now have a definite position -> mark C_IDX=True in case of further rounds of sampling.
@@ -650,12 +667,12 @@ def _restage_internal_coord_cwi_per_group(generated_atom_array: AtomArray, refer
     unconditioned groups are left untouched.
 
     Args:
-      generated_atom_array: Generated AtomArray with ``SA_CRDSRC`` / ``SA_CRDGRPSRC`` populated.
+      generated_atom_array: Generated AtomArray with ``SA_CRDSRC`` / live ``C_CRDGRP`` populated.
       reference_coord: Per-atom internal-coord (``C_INTCRD``) reference of shape ``(n_atoms, 3)``;
         NaN for atoms without internal-coord conditioning.
     """
     crd_src = SA_CRDSRC.mask(generated_atom_array)
-    groups = SA_CRDGRPSRC.annotation(generated_atom_array)
+    groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
     is_internal = crd_src & (groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS) & (groups != C_CRDGRP.UNKNOWN_COORDS)
     if not is_internal.any():
         return generated_atom_array
@@ -699,13 +716,6 @@ def _merge_indexed_coord_conditioning_into_src(generated_atom_array: AtomArray) 
     src_crd = SA_CRDSRC.annotation(generated_atom_array)
     src_crd[indexed_coord_conditioned_mask] = SA_SRC.annotation(generated_atom_array)[indexed_coord_conditioned_mask]
     SA_CRDSRC.set_annotation(generated_atom_array, src_crd)
-
-    # Propagate nontrivial CoordGroup values so downstream metrics can group by coordinate group.
-    coord_groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
-    src_crd_grp = SA_CRDGRPSRC.annotation(generated_atom_array)
-    nontrivial = coord_groups != C_CRDGRP.UNKNOWN_COORDS
-    src_crd_grp[nontrivial] = coord_groups[nontrivial]
-    SA_CRDGRPSRC.set_annotation(generated_atom_array, src_crd_grp)
 
     # Token-level mask: True for every token whose atoms include at least one
     # SA_CRDSRC-flagged atom. Consumed by motif-RMSD / internal-coord metrics.
