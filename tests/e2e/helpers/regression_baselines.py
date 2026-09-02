@@ -52,8 +52,8 @@ SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
-# Beam search runs the smallest unindexed motif in benchmarks/motif_unindexed
-# (3IXT, motif P254-277) and ranks candidates on how closely they reproduce that motif.
+# Beam search runs the single smallest unindexed motif (3IXT, P254-277); subset_to_examples
+# filters the motif_unindexed directory down to that one example by CIF stem.
 BEAM_SEARCH_EXAMPLE = "3IXT_AA"
 BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
 

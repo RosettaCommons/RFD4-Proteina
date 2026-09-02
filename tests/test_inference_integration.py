@@ -21,11 +21,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 import biotite.structure as struc
-import lightning as L
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 import zstandard
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
@@ -80,14 +78,9 @@ def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
 
 _MOTIF_RMSD_MAX = 0.75
 
-
-def _enable_determinism(seed: int = 42) -> None:
-    # Best-effort determinism for GPU generation: not bit-exact, but tightens run-to-run variation.
-    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-    L.seed_everything(seed, workers=True)
-    torch.use_deterministic_algorithms(True, warn_only=True)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+# Checkpoint-path -> loaded model, shared across TestEndToEndInference so the SOTA checkpoint
+# is loaded once instead of per run_generation call (see the _cache_checkpoint_load fixture).
+_SHARED_CHECKPOINT_CACHE: dict = {}
 
 
 def _conditioned_res_names(aa) -> list[str]:
@@ -363,6 +356,31 @@ _AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH") or (
 class TestEndToEndInference:
     """End-to-end inference tests that load the model and generate structures."""
 
+    @pytest.fixture(autouse=True)
+    def _cache_checkpoint_load(self, request):
+        """Reuse one loaded model across the class so tests don't reload the checkpoint per run.
+
+        The load dominates per-test cost; ``configure_inference`` re-runs cheaply each call. The
+        seed-determinism test opts out via the ``no_checkpoint_cache`` marker and loads fresh.
+        """
+        if request.node.get_closest_marker("no_checkpoint_cache"):
+            yield
+            return
+        from rfproteina.proteina import Proteina
+
+        original = Proteina.load_from_checkpoint.__func__
+
+        def cached(cls, checkpoint_path, *args, **kwargs):
+            if checkpoint_path not in _SHARED_CHECKPOINT_CACHE:
+                _SHARED_CHECKPOINT_CACHE[checkpoint_path] = original(cls, checkpoint_path, *args, **kwargs)
+            return _SHARED_CHECKPOINT_CACHE[checkpoint_path]
+
+        Proteina.load_from_checkpoint = classmethod(cached)
+        try:
+            yield
+        finally:
+            Proteina.load_from_checkpoint = classmethod(original)
+
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
         prefix = "testprefix"
@@ -380,6 +398,7 @@ class TestEndToEndInference:
                 "diffusion_batch_size=1",
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
+                "generation.args.nsteps=20",
                 "metrics_tags=[unconditional_refolding]",
             ]
         )
@@ -399,7 +418,7 @@ class TestEndToEndInference:
         assert all(df["seed"] == 42)
         assert all(df["generation.model.bb_ca.simulation_step_params.sc_scale_noise"] == bb_ca_noise_scale)
         assert all(df["generation.model.local_latents.simulation_step_params.sc_scale_noise"] == latents_noise_scale)
-        assert all(df["generation.args.nsteps"] == 100)
+        assert all(df["generation.args.nsteps"] == 20)
         assert all(df["chain_of_interest"].notna())
         assert any("oracle." in col for col in df.columns), "Refolding oracle did not run."
         # Replicates share a base id and differ only by the ``_rep{i}`` suffix.
@@ -426,6 +445,7 @@ class TestEndToEndInference:
                 f"inputs={spec_path}",
                 f"out_dir={out}",
                 "subset_to_examples=1ycr_motif",
+                "generation.args.nsteps=10",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
@@ -446,6 +466,7 @@ class TestEndToEndInference:
             [
                 f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
+                "generation.args.nsteps=20",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
@@ -463,6 +484,7 @@ class TestEndToEndInference:
                 f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
                 "skip_existing=true",
+                "generation.args.nsteps=20",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
@@ -474,6 +496,7 @@ class TestEndToEndInference:
         for name in mtimes_before:
             assert mtimes_before[name] == mtimes_after[name], f"File {name} was regenerated despite skip_existing=True"
 
+    @pytest.mark.no_checkpoint_cache
     def test_seeded_generation_is_deterministic(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify that two runs with the same seed produce identical outputs."""
         out_dirs = []
@@ -487,6 +510,7 @@ class TestEndToEndInference:
                     f"inputs={_MONOMER_CIF}",
                     f"out_dir={out_dir}",
                     "seed=12345",
+                    "generation.args.nsteps=20",
                 ]
             )
             run_generation(cfg, job_id=0, config_name="test_seed")
@@ -525,7 +549,7 @@ class TestEndToEndInference:
             [
                 f"inputs={spec_path}",
                 f"out_dir={out}",
-                "generation.args.nsteps=100",
+                "generation.args.nsteps=20",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_motif_scaffold")
@@ -632,7 +656,6 @@ class TestEndToEndInference:
             - Sequence stays consistent across the input, initial generation (gen-1), and partial diffusion (gen-2)
             - Coordinate and internal-coordinate conditioning match the input again once the re-feed re-locks the motif
         """
-        _enable_determinism()
         # Fixture: indexed absolute + indexed internal + unindexed absolute coordinate conditioning, plus
         # sequence conditioning. Decompress the zstd fixture to a temp CIF.
         source = Path(tmp_output_dir) / "mixed_unindexed_motif.cif"
@@ -717,7 +740,7 @@ class TestEndToEndInference:
                 f"out_dir={tmp_output_dir}",
                 # Deliberately not the config default, so the assertion below would catch
                 # run_generation dropping the override.
-                "generation.args.nsteps=125",
+                "generation.args.nsteps=20",
             ]
         )
         args_before = OmegaConf.to_container(cfg.generation.args, resolve=True)

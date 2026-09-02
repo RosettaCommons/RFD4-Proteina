@@ -80,6 +80,31 @@ def pytest_configure(config):
     configure_pytest(config, __file__)
 
 
+# Longest GPU tests first so xdist dispatches them at t=0, not stranded on one worker at the end.
+# Approximate longest-first; unlisted tests keep their collection order after these.
+_HEAVY_TESTS_FIRST = (
+    "test_gradient_coverage",
+    "test_sota_training_regression",
+    "test_inference_regression",
+    "test_generated_binder_flows_through_af2_metric",
+    "test_af3_refold_structure_quality",
+    "test_of3_refold_structure_quality",
+    "test_motif_conditioning_persists",
+    "test_ae_training_regression",
+    "test_partial_diffusion",
+    "test_beam_search_regression",
+)
+
+
+def pytest_collection_modifyitems(items: list) -> None:
+    """Front-load the heaviest tests so xdist workers start them first (stable for the rest)."""
+
+    def rank(item) -> int:
+        return next((i for i, name in enumerate(_HEAVY_TESTS_FIRST) if name in item.nodeid), len(_HEAVY_TESTS_FIRST))
+
+    items.sort(key=rank)
+
+
 # DSSP setup for secondary structure tests
 DSSP_PATH = os.environ.get("DSSP_PATH", "/path/to/data")
 
