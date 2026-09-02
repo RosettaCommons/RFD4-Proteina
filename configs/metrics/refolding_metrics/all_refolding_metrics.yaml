@@ -43,7 +43,7 @@ refolded_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_protein
   subset_mask: mapped_to_coordinate_conditioned_region & is_protein
-  subdivide_by_annotation: annotation_src-coord-group_1_atom
+  subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   aggregation: [median]
@@ -59,7 +59,7 @@ refolded_motif_ca_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
   subset_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
-  subdivide_by_annotation: annotation_src-coord-group_1_atom
+  subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
   aggregation: [median]

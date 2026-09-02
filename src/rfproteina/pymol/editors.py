@@ -31,8 +31,8 @@ from rfproteina.conditions_reporting import (
 from rfproteina.pymol import condition_registry
 from rfproteina.pymol.visualize import color_by_coord_group, color_by_index_group
 from rfproteina.utils.standard_annotations import (  # noqa: F401
-    SA_CRDGRPSRC,
     SA_CRDSRC,
+    SA_IDXGRPSRC,
     SA_SRC,
     SA_UII,
 )

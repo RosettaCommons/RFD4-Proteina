@@ -98,7 +98,7 @@ _GENERATED = TEST_DATA_DIR / "atom_permutation"
 MOTIF_METRIC = {
     "align_mask": "mapped_to_coordinate_conditioned_region",
     "subset_mask": "mapped_to_coordinate_conditioned_region",
-    "subdivide_by_annotation": "annotation_src-coord-group_1_atom",
+    "subdivide_by_annotation": "condition_CoordinateGroup_1_atom",
     "gt_coord_annotation_name": "annotation_coords-with-insertion_1_atom",
     "metric_type": "rmsd",
 }

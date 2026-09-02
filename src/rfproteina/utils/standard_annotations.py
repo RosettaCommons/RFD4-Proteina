@@ -67,14 +67,15 @@ class SrcComponent(StandardAnnotationBase):
         return np.full(atom_array.array_length(), ".", dtype="<U10")
 
 
-class SrcCoordGroup(StandardAnnotationBase):
-    """Per-atom source coordinate group identifier.
+class SrcIndexGroup(StandardAnnotationBase):
+    """Per-atom source index group identifier.
 
-    Integer identifying which input ``CoordinateGroup`` this atom belongs to.
-    ``-1`` means the atom had no coordinate conditioning (``UNKNOWN_COORDS``).
+    Integer recording the original *unindexed* ``IndexGroup`` a mapped motif token came from,
+    before insertion re-derives ``C_IDXGRP`` into the indexed frame. ``-1`` means the token was
+    not an unindexed insertion.
     """
 
-    name = "src-coord-group"
+    name = "src-index-group"
     n_body = 1
     level = Level.ATOM
     dtype = np.int32
@@ -144,6 +145,6 @@ class CoordsWithInsertion(StandardAnnotationBase):
 # --- Convenience aliases ---
 SA_CRDSRC = SrcCoordinateConditionedRegion
 SA_SRC = SrcComponent
-SA_CRDGRPSRC = SrcCoordGroup
+SA_IDXGRPSRC = SrcIndexGroup
 SA_UII = IsUnindexedInsertion
 SA_CWI = CoordsWithInsertion

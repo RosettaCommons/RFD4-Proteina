@@ -1,30 +1,33 @@
 """Tests for UnindexFlaggedTokens transform."""
 
 import copy
+import tempfile
+from pathlib import Path
 
-import biotite.structure as struc
 import numpy as np
 import pytest
-from atomworks.constants import MASKED
-from atomworks.io.parser import STANDARD_PARSER_ARGS
+import zstandard
+from atomworks.io.config import ParseConfig
+from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.testing import assert_same_atom_array_or_stack
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.base import ConditionConflictError
+from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Compose
 from atomworks.ml.utils.testing import cached_parse
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_CRDGRP, C_HB, C_IDXGRP, C_SEC
+from rfproteina.conditions import C_CRDGRP, C_IDXGRP
 from rfproteina.datapipes.pipeline import FreezeConditionAnnotations, _build_design_clean_and_sample_pipeline
 from rfproteina.transforms.unindexing import (
     UnindexFlaggedTokens,
     annotate_unindexed_insertion,
 )
 from rfproteina.transforms.utils.conditioning_utils import sample_unindexed_groups
-from rfproteina.utils.standard_annotations import SA_CWI, SA_UII
+from rfproteina.utils.standard_annotations import SA_CWI, SA_IDXGRPSRC, SA_UII
 
 _N_UNINDEXED_TOKENS = 6
 
@@ -232,53 +235,57 @@ def test_within_index_group_res_idx_per_unindexed_group(pdb_id: str, p_split_gro
         ), f"Group {gid} within_index_group_res_idx has duplicates: {group_res_idxs}"
 
 
-def _insertion_input(*, conflict: bool = False):
-    """One indexed generated token (TRP) + one unindexed motif token (mapping {1: 0}).
+# Captured array_to_annotate (tests/data/annotate_unindexed_input.cif.zst): generated tokens plus two
+# appended unindexed motifs whose LIVE coord/res_name are corrupted, so only their frozen annotations are true.
+_ANNOTATE_FIXTURE = Path(__file__).resolve().parent.parent / "data" / "annotate_unindexed_input.cif.zst"
+_ANNOTATE_MAPPING = {53: 25, 54: 26, 55: 27, 56: 28, 57: 8, 58: 5, 59: 4}
+# (target_token_id, expected live coord group, expected source index group) per mapped motif token.
+_ABS_TARGETS = [(t, C_CRDGRP.KNOWN_ABSOLUTE_COORDS, 5) for t in (25, 26, 27, 28)]
+_INT_TARGETS = [(t, 3, 6) for t in (8, 5, 4)]
 
-    The motif's LIVE coord/res_name (GLY at 5,5,5) differ from its FROZEN C_CRD/C_SEQ annotations (TRP at
-    10,10,10) to prove the transfer reads the frozen annotation, not the live values. Motif conditions:
-    coord + seq + residue-level SSE + atom-level h-bond (CA only). With ``conflict=True`` the target is
-    also SSE-conditioned with a different value, so the transfer must raise. Returns (array, frozen_coords).
-    """
-    raw = struc.AtomArray(6)
-    raw.coord = np.array([[0, 0, 0], [1, 0, 0], [2, 0, 0], [5, 5, 5], [6, 5, 5], [7, 5, 5]], dtype=np.float32)
-    raw.chain_id = np.array(["A"] * 6)
-    raw.res_id = np.array([1, 1, 1, 2, 2, 2])
-    raw.res_name = np.array(["TRP", "TRP", "TRP", "GLY", "GLY", "GLY"])
-    raw.atom_name = np.array(["N", "CA", "C"] * 2)
-    raw.element = np.array(["N", "C", "C"] * 2)
-    arr = as_atom_array_plus(raw)
-    arr.set_annotation("token_id", np.array([0, 0, 0, 1, 1, 1], dtype=np.int32))
 
-    motif = np.array([False, False, False, True, True, True])
-    C_IDX.set_mask(arr, ~motif)
-    C_CRDGRP.set_annotation(arr, C_CRDGRP.default_annotation(arr))
-    for cond in (C_CRD, C_SEQ, C_SEC):
-        cond.set_mask(arr, motif)
-    frozen_coords = np.array([[10, 10, 10], [11, 10, 10], [12, 10, 10]], dtype=np.float32)
-    crd = np.full((6, 3), np.nan, dtype=np.float32)
-    crd[motif] = frozen_coords
-    C_CRD.set_annotation(arr, crd)
-    C_SEQ.set_annotation(arr, np.array([MASKED, MASKED, MASKED, "TRP", "TRP", "TRP"]))
-    C_SEC.set_annotation(arr, np.array([1, 1, 1, 2, 2, 2]))  # residue-level; target value differs from motif
-    if conflict:
-        C_SEC.set_mask(arr, np.ones(6, dtype=bool))  # target SSE now conditioned (1) -> conflicts with motif (2)
-    C_HB.set_mask(arr, np.array([False, False, False, False, True, False]))  # atom-level: motif CA only
-    C_HB.set_annotation(arr, np.array([0, 0, 0, 0, 1, 0]))
-    return arr, frozen_coords
+def _load_annotate_fixture() -> AtomArray:
+    """Load the captured array_to_annotate fixture with a deterministic per-token ``token_id``."""
+    with tempfile.TemporaryDirectory() as td:
+        cif = Path(td) / "f.cif"
+        cif.write_bytes(zstandard.ZstdDecompressor().decompress(_ANNOTATE_FIXTURE.read_bytes()))
+        aa = parse(
+            str(cif),
+            config=ParseConfig.from_preset(
+                "rcsb", load_standard_annotations=True, add_missing_atoms=False, convert_mse_to_met=False
+            ),
+        )["asym_unit"][0]
+    aa = as_atom_array_plus(aa)
+    # token_id is not stored in the CIF; assign it exactly as the pipeline does (per-token arange).
+    return add_global_token_id_annotation(aa)
 
 
 def test_annotate_unindexed_insertion_reapplies_conditioning() -> None:
-    """The mapped token carries every condition from the motif's FROZEN annotation (not its live
-    coord/res_name), at the right granularity, and flips to indexed."""
-    arr, frozen = _insertion_input()
-    out = annotate_unindexed_insertion(arr, token_mapping={1: 0})
-    assert C_IDX.mask(out, default="generate").all() and SA_UII.mask(out).all()
-    assert np.allclose(C_CRD.annotation(out, default="raise"), frozen)  # frozen coords, not live [5,5,5]
-    assert np.allclose(SA_CWI.annotation(out), frozen)  # motif-RMSD reference staged from the frozen coords
-    assert list(C_SEQ.annotation(out, default="raise")) == ["TRP"] * 3  # frozen seq, not live GLY
-    assert list(C_SEC.annotation(out, default="raise")) == [2, 2, 2]  # residue-level: whole token
-    assert C_HB.mask(out, default="generate").tolist() == [False, True, False]  # atom-level: CA only
+    """Each mapped target carries the motif's FROZEN conditioning (not its corrupted live coord/res_name):
+    the coord group is copied live, the source index group recorded, and the token flips to indexed with
+    its motif reference coords staged."""
+    aa = _load_annotate_fixture()
+    out = annotate_unindexed_insertion(aa, token_mapping=_ANNOTATE_MAPPING)
+
+    idx = C_IDX.mask(out, default="generate")
+    uii = SA_UII.mask(out)
+    crdgrp = C_CRDGRP.annotation(out, default="generate")
+    idxgrpsrc = SA_IDXGRPSRC.annotation(out)
+    seq = C_SEQ.annotation(out, default="generate")
+    cwi = SA_CWI.annotation(out)
+
+    for tid, want_group, want_src_index_group in _ABS_TARGETS + _INT_TARGETS:
+        m = out.token_id == tid
+        assert idx[m].all(), f"target {tid} not flipped to indexed"
+        assert uii[m].all(), f"target {tid} not flagged as an unindexed insertion"
+        assert (crdgrp[m] == want_group).all(), f"target {tid} live coord group {crdgrp[m]} != {want_group}"
+        assert (idxgrpsrc[m] == want_src_index_group).all(), f"target {tid} src index group != {want_src_index_group}"
+        assert (seq[m] != "GLY").all(), f"target {tid} took the live (corrupted) res_name, not the frozen seq"
+        assert np.isfinite(cwi[m]).all(), f"target {tid} has no staged motif reference coords"
+
+    # Sequence comes from the frozen annotation: each target gets its motif residue, not the corrupted GLY.
+    for tid, motif_res in ((25, "THR"), (26, "GLN"), (27, "ALA"), (8, "SER"), (5, "ARG"), (4, "TRP")):
+        assert seq[out.token_id == tid][0] == motif_res
 
 
 @pytest.mark.parametrize("pdb_id", ["6lyz", "5ocm"])
@@ -300,7 +307,14 @@ def test_freeze_populates_unindexed_source_annotations(pdb_id: str) -> None:
 
 
 def test_annotate_unindexed_insertion_raises_on_conditioning_conflict() -> None:
-    """When the mapped target is already conditioned with a different value, transfer raises loudly."""
-    arr, _ = _insertion_input(conflict=True)
+    """When a mapped target is already conditioned with a different value, the transfer raises loudly."""
+    aa = _load_annotate_fixture()
+    # Pre-condition target token 25 (the THR motif token 53 maps here) with a different sequence identity,
+    # so transferring the motif's frozen THR onto an already-ALA-conditioned target contradicts.
+    target = aa.token_id == 25
+    C_SEQ.set_mask(aa, C_SEQ.mask(aa, default="generate") | target)
+    seq_ann = C_SEQ.annotation(aa, default="generate")
+    seq_ann[target] = "ALA"
+    C_SEQ.set_annotation(aa, seq_ann)
     with pytest.raises(ConditionConflictError):
-        annotate_unindexed_insertion(arr, token_mapping={1: 0})
+        annotate_unindexed_insertion(aa, token_mapping=_ANNOTATE_MAPPING)
