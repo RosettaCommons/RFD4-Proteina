@@ -1,0 +1,9 @@
+# Autoencoder training mix: mostly plain reconstruction, with a folding minority
+# (where we provide sequence conditioning)
+
+defaults:
+  - all_off
+  - _self_
+
+unconditional: {frequency: 90.0}
+folding:       {frequency: 10.0}

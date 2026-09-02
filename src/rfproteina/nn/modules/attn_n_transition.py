@@ -53,6 +53,8 @@ class MultiheadAttnAndTransition(torch.nn.Module):
 
         # Choose attention implementation: cuequivariance fused kernel, else SDPA.
         if attention_type == "cuequivariance":
+            if not use_attn_pair_bias:
+                raise ValueError("cuequivariance attention has no unbiased path; use attention_type='torch'")
             self.mhba = CuEqMultiHeadBiasedAttentionADALN_MM(
                 dim_token=dim_token,
                 dim_pair=dim_pair,
@@ -63,7 +65,7 @@ class MultiheadAttnAndTransition(torch.nn.Module):
         else:
             self.mhba = MultiHeadBiasedAttentionADALN_MM(
                 dim_token=dim_token,
-                dim_pair=dim_pair,
+                dim_pair=dim_pair if use_attn_pair_bias else None,
                 nheads=nheads,
                 dim_cond=dim_cond,
                 use_qkln=use_qkln,
@@ -78,7 +80,7 @@ class MultiheadAttnAndTransition(torch.nn.Module):
         cond: torch.Tensor,
         mask: torch.Tensor,
     ) -> torch.Tensor:
-        x_attn = self.mhba(x, pair_rep, cond, mask)
+        x_attn = self.mhba(x, pair_rep if self.use_attn_pair_bias else None, cond, mask)
         if self.residual_mha:
             x_attn = x_attn + x
         return x_attn * mask[..., None]

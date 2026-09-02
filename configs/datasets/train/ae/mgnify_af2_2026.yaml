@@ -1,0 +1,9 @@
+# MGnify AF2 metagenomic monomers with only unconditional design tasks
+
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/mgnify_af2_2026@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0

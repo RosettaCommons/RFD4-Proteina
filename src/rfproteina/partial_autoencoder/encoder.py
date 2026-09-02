@@ -25,6 +25,8 @@ class EncoderTransformer(torch.nn.Module):
         self.update_pair_repr = kwargs["encoder"]["update_pair_repr"]
         self.update_pair_repr_every_n = kwargs["encoder"]["update_pair_repr_every_n"]
         self.use_tri_mult = kwargs["encoder"]["use_tri_mult"]
+        # Off drops the pair track entirely: no factory, no bias projection, no pair parameters.
+        self.use_attn_pair_bias = kwargs["encoder"].get("use_attn_pair_bias", True)
         self.normalize_latent = kwargs["encoder"]["normalize_latent"]
         self.attention_type = kwargs["encoder"].get("attention_type", "torch")
 
@@ -50,12 +52,16 @@ class EncoderTransformer(torch.nn.Module):
         self.transition_c_2 = Transition(kwargs["encoder"]["dim_cond"], expansion_factor=2)
 
         # To get pair representation
-        self.pair_rep_factory = FeatureFactory(
-            feats=kwargs["encoder"]["feats_pair_repr"],
-            dim_feats_out=kwargs["encoder"]["pair_repr_dim"],
-            use_ln_out=False,
-            mode="pair",
-            **kwargs["encoder"],
+        self.pair_rep_factory = (
+            FeatureFactory(
+                feats=kwargs["encoder"]["feats_pair_repr"],
+                dim_feats_out=kwargs["encoder"]["pair_repr_dim"],
+                use_ln_out=False,
+                mode="pair",
+                **kwargs["encoder"],
+            )
+            if self.use_attn_pair_bias
+            else None
         )
 
         # Trunk layers
@@ -69,7 +75,7 @@ class EncoderTransformer(torch.nn.Module):
                     residual_mha=True,
                     residual_transition=True,
                     parallel_mha_transition=False,
-                    use_attn_pair_bias=True,
+                    use_attn_pair_bias=self.use_attn_pair_bias,
                     use_qkln=kwargs["encoder"]["use_qkln"],
                     attention_type=self.attention_type,
                 )
@@ -122,7 +128,7 @@ class EncoderTransformer(torch.nn.Module):
         seq_f_repr = self.init_repr_factory(batch)  # [b, n, token_dim]
         seqs = seq_f_repr * mask[..., None]  # [b, n, token_dim]
 
-        pair_rep = self.pair_rep_factory(batch)  # [b, n, n, pair_dim]
+        pair_rep = self.pair_rep_factory(batch) if self.pair_rep_factory is not None else None  # [b, n, n, pair_dim]
 
         # Run trunk
         for i in range(self.nlayers):

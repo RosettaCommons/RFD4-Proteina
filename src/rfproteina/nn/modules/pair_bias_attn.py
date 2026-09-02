@@ -281,7 +281,7 @@ class MultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
     """Pair-biased multi-head self-attention with adaptive layer norm on the input
     and adaptive scaling on the output (SDPA backend)."""
 
-    def __init__(self, dim_token: int, dim_pair: int, nheads: int, dim_cond: int, use_qkln: bool) -> None:
+    def __init__(self, dim_token: int, dim_pair: int | None, nheads: int, dim_cond: int, use_qkln: bool) -> None:
         super().__init__()
         dim_head = int(dim_token // nheads)
         self.adaln = AdaptiveLayerNorm(dim=dim_token, dim_cond=dim_cond)
@@ -292,7 +292,7 @@ class MultiHeadBiasedAttentionADALN_MM(torch.nn.Module):
             bias=True,
             dim_out=dim_token,
             qkln=use_qkln,
-            pair_dim=dim_pair,
+            pair_dim=dim_pair,  # ...None builds no bias projection; attention keeps only the mask
         )
         self.scale_output = AdaptiveOutputScale(dim=dim_token, dim_cond=dim_cond)
 

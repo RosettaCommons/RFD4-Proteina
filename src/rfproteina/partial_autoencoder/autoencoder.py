@@ -1,5 +1,6 @@
 import contextlib
 import os
+from collections.abc import Mapping
 from typing import Literal
 
 import lightning as L
@@ -63,6 +64,35 @@ def create_dir(dir: str) -> None:
         os.makedirs(dir, exist_ok=True)
 
 
+def _torch_compile_kwargs(cfg_nn_ae: Mapping) -> dict:
+    """Build ``torch.compile`` kwargs from the ``nn_ae`` config.
+
+    Args:
+      cfg_nn_ae: The ``nn_ae`` config node. Reads ``torch_compile_fullgraph`` (bool),
+        ``torch_compile_mode`` (str or null) and ``torch_compile_coordinate_descent`` (bool).
+
+    Returns:
+      Keyword arguments for :py:func:`torch.compile`.
+
+    Examples:
+      >>> _torch_compile_kwargs({"torch_compile_fullgraph": True})
+      {'fullgraph': True, 'dynamic': False}
+    """
+    get = cfg_nn_ae.get
+    kwargs = {"fullgraph": bool(get("torch_compile_fullgraph", False)), "dynamic": False}
+
+    mode = get("torch_compile_mode", None)
+    if mode:
+        kwargs["mode"] = mode
+
+    # Inductor searches kernel params by coordinate descent; costs compile time, not step time.
+    if get("torch_compile_coordinate_descent", False):
+        torch._inductor.config.coordinate_descent_tuning = True
+        torch._inductor.config.coordinate_descent_check_all_directions = True
+
+    return kwargs
+
+
 class AutoEncoder(L.LightningModule):
     def __init__(self, cfg_ae: object, store_dir: str | None = None) -> None:
         super().__init__()
@@ -87,8 +117,10 @@ class AutoEncoder(L.LightningModule):
         self.use_torch_compile = self.cfg_ae.nn_ae.get("use_torch_compile", False)
         if self.use_torch_compile:
             logger.info("Enabling torch.compile for AutoEncoder encoder and decoder.")
-            self.encoder.forward = torch.compile(self.encoder.forward)
-            self.decoder.forward = torch.compile(self.decoder.forward)
+            compile_kwargs = _torch_compile_kwargs(self.cfg_ae.nn_ae)
+            logger.info(f"torch.compile kwargs: {compile_kwargs}")
+            self.encoder.forward = torch.compile(self.encoder.forward, **compile_kwargs)
+            self.decoder.forward = torch.compile(self.decoder.forward, **compile_kwargs)
 
         self.nsamples_processed = 0
         self.nparams_enc = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
@@ -879,13 +911,15 @@ class AutoEncoder(L.LightningModule):
                         "atom_array": atom_array_batch[i] if atom_array_batch is not None else None,
                     }
                 )
+                # NOTE: Use clone() below to avoid issues with in-place operations on tensors
+                # that are part of the computation graph
                 self.validation_rec_samples.append(
                     {
-                        "coors_nm": rec_sample["coors_nm"][i, ...],  # [n, 37, 3]
-                        "aatype": rec_sample["aatype_max"][i, ...],  # [n]
-                        "atom_mask": rec_sample["atom_mask"][i, ...],  # [n, 37]
+                        "coors_nm": rec_sample["coors_nm"][i, ...].clone(),  # [n, 37, 3]
+                        "aatype": rec_sample["aatype_max"][i, ...].clone(),  # [n]
+                        "atom_mask": rec_sample["atom_mask"][i, ...].clone(),  # [n, 37]
                         # [n], should be the same as mask from orig sample
-                        "padding_mask": rec_sample["residue_mask"][i, ...],
+                        "padding_mask": rec_sample["residue_mask"][i, ...].clone(),
                     }
                 )
 
