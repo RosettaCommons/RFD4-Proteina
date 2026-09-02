@@ -5,7 +5,9 @@ module focused on transform composition.
 """
 
 import numpy as np
-from atomworks.constants import BIOTITE_BOND_TYPE_TO_BOND_ORDER
+from atomworks.constants import BIOTITE_BOND_TYPE_TO_BOND_ORDER, UNKNOWN_AA, UNKNOWN_DNA, UNKNOWN_RNA
+from atomworks.io.utils.ccd import get_polymerization_atoms
+from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.ml.utils.annotator import ensure_annotations
 from atomworks.ml.utils.token import get_token_starts, spread_token_wise
 from biotite.structure import AtomArray
@@ -14,6 +16,9 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import shortest_path
 
 from rfproteina.conditions import C_IDXGRP
+from rfproteina.datapipes.schema.proteina import TokenType
+
+_UNKNOWN_RES_BY_TOKEN_TYPE = {TokenType.PROTEIN: UNKNOWN_AA, TokenType.RNA: UNKNOWN_RNA, TokenType.DNA: UNKNOWN_DNA}
 
 _AROMATIC_BOND_TYPES = (
     BondType.AROMATIC_SINGLE,
@@ -37,18 +42,47 @@ def _build_symmetric_bond_matrix(
 
 def _token_type_at(atom_array: AtomArray, atom_idxs: np.ndarray) -> np.ndarray:
     """Return token type (0=protein, 1=RNA, 2=DNA, 3=atomized, 4=unknown) at given atom positions."""
+    # Use token type annotation, if it exists
+    if "token_type" in atom_array.get_annotation_categories():
+        return np.asarray(atom_array.token_type)[atom_idxs].astype(np.int16)
     ensure_annotations(
         atom_array,
         "is_standard_unknown_or_masked_aa",
         "is_standard_unknown_or_masked_dna",
         "is_standard_unknown_or_masked_rna",
     )
-    types = np.full(len(atom_idxs), 4, dtype=np.int16)
-    types[atom_array.get_annotation("is_standard_unknown_or_masked_dna")[atom_idxs]] = 2
-    types[atom_array.get_annotation("is_standard_unknown_or_masked_rna")[atom_idxs]] = 1
-    types[atom_array.get_annotation("is_standard_unknown_or_masked_aa")[atom_idxs]] = 0
-    types[atom_array.atomize[atom_idxs]] = 3
+    types = np.full(len(atom_idxs), TokenType.UNKNOWN, dtype=np.int16)
+    types[atom_array.get_annotation("is_standard_unknown_or_masked_dna")[atom_idxs]] = TokenType.DNA
+    types[atom_array.get_annotation("is_standard_unknown_or_masked_rna")[atom_idxs]] = TokenType.RNA
+    types[atom_array.get_annotation("is_standard_unknown_or_masked_aa")[atom_idxs]] = TokenType.PROTEIN
+    types[atom_array.atomize[atom_idxs]] = TokenType.ATOMIZED
     return types
+
+
+def _polymerisation_atoms(res_name: str, token_type: int) -> tuple[str, str]:
+    """(leaving, entering) backbone atoms; ``""`` for a side the residue does not carry."""
+    leaving, entering = get_polymerization_atoms(res_name)
+    if leaving is None and entering is None:
+        unknown = _UNKNOWN_RES_BY_TOKEN_TYPE.get(token_type)
+        if unknown is not None:
+            leaving, entering = get_polymerization_atoms(unknown)
+    return leaving or "", entering or ""
+
+
+def _link_atom_names(atom_array: AtomArray, atom_idxs: np.ndarray, token_type: np.ndarray) -> np.ndarray:
+    """Per-atom ``[leaving, entering]`` names expected of that atom's residue."""
+    res, types = atom_array.res_name[atom_idxs], token_type[atom_idxs]
+    pairs = {(r, t): _polymerisation_atoms(str(r), int(t)) for r, t in set(zip(res, types, strict=False))}
+    return np.array([pairs[k] for k in zip(res, types, strict=False)]).reshape(-1, 2)
+
+
+def _is_link_atom(
+    atom_array: AtomArray, atom_idxs: np.ndarray, token_type: np.ndarray, stands_in: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Whether each atom is its residue's leaving / entering polymerisation atom."""
+    link = _link_atom_names(atom_array, atom_idxs, token_type)
+    names, stand_in = atom_array.atom_name[atom_idxs], stands_in[atom_idxs]
+    return (names == link[:, 0]) | stand_in, (names == link[:, 1]) | stand_in
 
 
 def _inter_token_bond_edges(
@@ -122,6 +156,42 @@ def _compute_token_path_lengths(
     return dist
 
 
+def _closes_ring(edges: dict[str, np.ndarray], res_id_per_tok: np.ndarray, mol_per_tok: np.ndarray) -> np.ndarray:
+    """Whether each bond closes a ring: joins two non-consecutive residues of the same molecule.
+
+    NOTE: Fallible heuristic: only consulted during inference, when both endpoints are expandable-segment
+    stand-ins (S_SEGMIN), so chemistry cannot orient the bond.
+    """
+    tok1, tok2 = edges["tok1"], edges["tok2"]
+    same_mol = mol_per_tok[tok1] == mol_per_tok[tok2]
+    return same_mol & (np.abs(res_id_per_tok[tok1] - res_id_per_tok[tok2]) > 1)
+
+
+def _upstream_direction(
+    atom_array: AtomArray, edges: dict[str, np.ndarray], idx_tok_starts: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Per-bond ``(fwd, rev)`` masks: which endpoint of each inter-token bond is upstream."""
+    # Chemistry: a bond runs from a residue's leaving atom into the next residue's entering atom.
+    atom_type = _token_type_at(atom_array, np.arange(atom_array.array_length()))
+
+    # Expandable-segment sentinels carry no backbone atoms, so they stand in for either role.
+    stands_in = S_SEGMIN.mask(atom_array, default="generate")
+    leaves1, enters1 = _is_link_atom(atom_array, edges["atom1"], atom_type, stands_in)
+    leaves2, enters2 = _is_link_atom(atom_array, edges["atom2"], atom_type, stands_in)
+    fwd, rev = leaves1 & enters2, leaves2 & enters1
+    if not stands_in.any():
+        return fwd, rev  # no expandable-segment stand-ins (all training, most inference): chemistry decides.
+
+    # No chemistry (both endpoints stand-ins): fall back to chain order (lower token upstream),
+    # except a ring-closing bond runs high->low, so flip the tie-break there.
+    res_id_per_tok, mol_per_tok = atom_array.res_id[idx_tok_starts], atom_array.molecule_iid[idx_tok_starts]
+    ring = _closes_ring(edges, res_id_per_tok, mol_per_tok)
+    blind = stands_in[edges["atom1"]] & stands_in[edges["atom2"]]
+    tok1_upstream = (edges["tok1"] < edges["tok2"]) ^ ring
+
+    return (fwd & ~blind) | (blind & tok1_upstream), (rev & ~blind) | (blind & ~tok1_upstream)
+
+
 def compute_token_bond_features(
     atom_array: AtomArray,
     distance_cutoff: float = np.inf,
@@ -166,8 +236,9 @@ def compute_token_bond_features(
         - ``"token_bond_path_length"`` (int16): Shortest bond-graph hop count within
           IndexGroup. 0 = disconnected / cross-group / self. Paths at or exceeding
           ``path_length_cutoff`` are stored as ``path_length_cutoff + 1``.
-        - ``"canonical_polymer_ordering"`` (int8): ``sign(i - j)`` for bonded same-type
-          canonical polymer pairs (protein/RNA/DNA), else 0.
+        - ``"canonical_polymer_ordering"`` (int8): ``+1`` at ``[downstream, upstream]`` of a
+          backbone linkage (C-N / O3'-P) between same-type canonical polymer residues
+          (protein/RNA/DNA), ``-1`` at the transpose, else 0.
     """
     assert (source_atom_array is None) == (
         source_token_idxs is None
@@ -243,23 +314,29 @@ def compute_token_bond_features(
     # Computed BEFORE the bond-feature suppression below so this feature can
     # use the unmasked bond graph (peptide bonds visible). Same logic as #205.
     token_type = _token_type_at(atom_array, idx_tok_starts)
-    is_canonical = token_type < 3  # protein(0), RNA(1), DNA(2)
+    is_canonical = np.isin(token_type, (TokenType.PROTEIN, TokenType.RNA, TokenType.DNA))
     same_type = token_type[:, None] == token_type[None, :]
-    relevant_canonical = idx_bond_mask & is_poly_poly & np.outer(is_canonical, is_canonical) & same_type
-    idx_pos = np.arange(n_indexed, dtype=np.int32)
-    pos_diff = idx_pos[:, None] - idx_pos[None, :]
-    idx_canonical_ordering = np.where(relevant_canonical, np.sign(pos_diff), 0).astype(np.int8)
+    eligible = is_poly_poly & np.outer(is_canonical, is_canonical) & same_type
 
-    # ── Suppress poly-poly bond-feature signal ───────────────────────────────
-    # Polymer-chain connectivity is encoded by rel_seq_sep and (when enabled)
-    # token_bond_path_length / canonical_polymer_ordering above. Bond features
-    # (bond_mask/bond_order/is_aromatic) are reserved for bonds OUTSIDE the
-    # polymer chain. This also resolves the internal inconsistency in the
-    # prior `np.where(is_poly_poly, 1, idx_bond_order)` override, which set
-    # bond_order=1 on unbonded pairs and the diagonal while bond_mask=False.
-    idx_bond_mask[is_poly_poly] = False
-    idx_bond_order[is_poly_poly] = 0
-    idx_is_aromatic[is_poly_poly] = False
+    # Orient each inter-token bond: which endpoint is upstream (chemistry, chain-order tie-break).
+    fwd, rev = _upstream_direction(atom_array, edges, idx_tok_starts)
+
+    up_tok = np.concatenate([edges["tok1"][fwd], edges["tok2"][rev]])
+    dn_tok = np.concatenate([edges["tok2"][fwd], edges["tok1"][rev]])
+    idx_canonical_ordering = np.zeros((n_indexed, n_indexed), dtype=np.int8)
+    idx_canonical_ordering[dn_tok, up_tok] = 1
+    idx_canonical_ordering[up_tok, dn_tok] = -1
+    idx_canonical_ordering[~(eligible & idx_bond_mask)] = 0
+
+    # ── Suppress backbone-linkage bond-feature signal ────────────────────────
+    # Standard residue connectivity is already carried by token_bond_path_length /
+    # canonical_polymer_ordering, so bond features are reserved for bonds outside the chain.
+    suppress = np.zeros((n_indexed, n_indexed), dtype=bool)
+    suppress[up_tok, dn_tok] = suppress[dn_tok, up_tok] = True
+    suppress &= is_poly_poly
+    idx_bond_mask[suppress] = False
+    idx_bond_order[suppress] = 0
+    idx_is_aromatic[suppress] = False
 
     # ── Path lengths [n_indexed x n_indexed] ─────────────────────────────────
     if source_atom_array is not None:

@@ -1459,13 +1459,19 @@ class MoleculeIdxPairFeat(Feature):
 
 
 class CanonicalPolymerOrderingPairFeat(Feature):
-    """Directional ordering of canonical polymer residue bonds.
+    """Directional ordering of canonical polymer backbone linkages.
 
-    For bonded pairs of canonical polymer residues (protein/RNA/DNA) of the same polymer type,
-    encodes:
+    Passes through the ``canonical_polymer_ordering`` array built by
+    :py:func:`~rfproteina.datapipes.bonds.compute_token_bond_features`, which encodes
+    the chemical direction of backbone linkages (C-N / O3'-P) between same-type
+    canonical polymer residues (protein/RNA/DNA):
 
-    - ``+1`` if the source token has a higher ``within_index_group_res_idx`` than the target.
-    - ``-1`` if the source token has a lower ``within_index_group_res_idx`` than the target.
+    - ``+1`` at ``[downstream, upstream]``, where the upstream residue contributes the
+      leaving atom (C / O3') and the downstream residue the entering atom (N / P).
+    - ``-1`` at the transpose.
+
+    Direction is read from the bonded atom pair, so a head-to-tail cyclisation is
+    encoded correctly even though its downstream residue sits at the lower token index.
 
     All other pairs (non-bonded, cross-type, or non-canonical tokens) get ``0``.
     Shape: ``[b, n, n, 1]``.

@@ -27,7 +27,6 @@ import pandas as pd
 import pytest
 import torch
 import zstandard
-from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
@@ -52,7 +51,7 @@ from rfproteina.generate import (
 from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProblemDataset
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
 from tests.conftest import TEST_DATA_DIR
-from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH
+from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH, load_design_cif
 from tests.helpers import gpu  # noqa: F401
 
 # ---------------------------------------------------------------------------
@@ -89,16 +88,6 @@ def _enable_determinism(seed: int = 42) -> None:
     torch.use_deterministic_algorithms(True, warn_only=True)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-
-def _parse_annotated(cif_path: Path | str):
-    """Parse a CIF keeping the RFProteína StandardAnnotations intact."""
-    return parse(
-        str(cif_path),
-        config=ParseConfig.from_preset(
-            "rcsb", load_standard_annotations=True, add_missing_atoms=False, convert_mse_to_met=False
-        ),
-    )["asym_unit"][0]
 
 
 def _conditioned_res_names(aa) -> list[str]:
@@ -546,16 +535,7 @@ class TestEndToEndInference:
         assert "1prw_motif_scaffold" in cif_files[0].name
 
         generated_path = str(cif_files[0])
-        # StandardAnnotations require load_standard_annotations=True; add_missing_atoms=False for compatibility.
-        generated_aa = parse(
-            generated_path,
-            config=ParseConfig.from_preset(
-                "rcsb",
-                load_standard_annotations=True,
-                add_missing_atoms=False,
-                convert_mse_to_met=False,
-            ),
-        )["asym_unit"][0]
+        generated_aa = load_design_cif(generated_path)
 
         residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
 
@@ -681,7 +661,7 @@ class TestEndToEndInference:
         gen1 = _generate(source, "gen1", [motif_metric_tags])
         # Step 2: re-feed gen1 with partial diffusion to produce gen2
         gen2 = _generate(gen1, "gen2", ["generation.args.partial_trajectory_fraction_steps=0.8", motif_metric_tags])
-        inp, g1, g2 = (_parse_annotated(c) for c in (source, gen1, gen2))
+        inp, g1, g2 = (load_design_cif(c) for c in (source, gen1, gen2))
 
         # Sequence: the conditioned residues keep their identity across input, gen-1, and gen-2.
         want = _conditioned_res_names(inp)

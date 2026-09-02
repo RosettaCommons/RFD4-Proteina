@@ -123,6 +123,7 @@ from rfproteina.conditions import (
     SaltBridgeEnum,
 )
 from rfproteina.datapipes.bonds import compute_token_bond_features
+from rfproteina.datapipes.schema.proteina import TokenType
 from rfproteina.transforms.atom_names import (
     AnnotateAtomNameVisibility,
     FeaturizeAtomNamesLikeAF3,
@@ -180,16 +181,6 @@ def _resolve_msa_dirs(load_msa: bool) -> tuple[list[dict], list[dict]]:
         )
 
     return protein_msa_dirs, rna_msa_dirs
-
-
-class TokenType:
-    """Token type constants used in pipeline."""
-
-    PROTEIN = 0
-    RNA = 1
-    DNA = 2
-    ATOMIZED = 3
-    UNKNOWN = 4
 
 
 @functools.lru_cache(maxsize=1)
@@ -1464,7 +1455,7 @@ def _build_design_clean_and_sample_pipeline(
                     crop_center_cutoff_distance=crop_center_cutoff_distance,
                     keep_uncropped_atom_array=True,
                     max_atoms_in_crop=max_atoms_in_crop,
-                    raise_if_missing_query=False,
+                    raise_if_missing_crop_center=False,
                     annotate_crop_boundary=True,
                 ),
             ),

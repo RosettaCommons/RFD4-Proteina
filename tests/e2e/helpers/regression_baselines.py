@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from atomworks.io.parser import parse
-from biotite.structure import rmsd, superimpose
+from biotite.structure import AtomArray, rmsd, superimpose
 from omegaconf import OmegaConf
 
 from rfproteina.utils.parse_presets import DISTILLATION
@@ -97,8 +97,9 @@ BEAM_SEARCH_RMSD_ATOL = 0.05  # Å — motif RMSD drift for a deterministic beam
 METRIC_ATOL = 1e-3  # pLDDT / ptm / iptm for deterministic outputs
 
 
-def _load_atom_array(path: Path):
-    return parse(str(path), config=DISTILLATION)["assemblies"]["1"][0]
+def load_design_cif(path: Path | str) -> AtomArray:
+    """Load a design CIF with all annotations"""
+    return parse(str(path), config=DISTILLATION)["asym_unit"][0]
 
 
 def deterministic_env() -> dict[str, str]:
@@ -151,8 +152,8 @@ def load_baseline_losses(name: str) -> list[float]:
 
 def all_atom_rmsd(cif_path_a: Path, cif_path_b: Path) -> float:
     """Compute all-atom RMSD between two CIF structures after rigid superposition."""
-    atoms_a = _load_atom_array(cif_path_a)
-    atoms_b = _load_atom_array(cif_path_b)
+    atoms_a = load_design_cif(cif_path_a)
+    atoms_b = load_design_cif(cif_path_b)
     if len(atoms_a) != len(atoms_b):
         raise ValueError(
             f"Atom count mismatch: {cif_path_a.name} has {len(atoms_a)} atoms, {cif_path_b.name} has {len(atoms_b)}"

@@ -34,13 +34,24 @@ from rfproteina.conditions import (
 )
 from rfproteina.datapipes.schema.base import DataSample
 
+
+class TokenType:
+    """Token type constants, as carried by the `token_type` annotation and feature."""
+
+    PROTEIN = 0
+    RNA = 1
+    DNA = 2
+    ATOMIZED = 3
+    UNKNOWN = 4
+
+
 # Specs: name -> (dtype, default_value, dim_string)
 # dim_string uses: I=tokens, S=MSA rows, numbers=fixed dims
 SPECS: dict[str, tuple] = {
     # Token-level [I]
     "residue_type": (torch.int64, -1, "I"),
     C_SEQ.full_name: (torch.int64, -1, "I"),
-    "token_type": (torch.int32, 4, "I"),
+    "token_type": (torch.int32, TokenType.UNKNOWN, "I"),
     "tok_idx": (torch.int16, -1, "I"),
     "chain_iid": (torch.int16, -1, "I"),
     "molecule_iid": (torch.int16, -1, "I"),
