@@ -1,0 +1,10 @@
+# PLINDER protein-ligand complexes
+# WARNING: Carries atomized tokens!
+
+defaults:
+  - /datasets/train/backend_pandas@dataset
+  - /datasets/sources/plinder@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0

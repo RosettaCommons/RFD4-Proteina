@@ -1,9 +1,13 @@
 name: transformer_ae_unified  # Unified encoding with DNA/RNA support
 
+# TODO: Update with the latest hero configs for the AE when we merge (higher latent dimensino, no attention pair bias)
+
 latent_z_dim: &latent_z_dim 8
-n_residue_types: &n_residue_types 33  # All UNIFIED_ATOM37_ENCODING types (0-32)
+
+# All UNIFIED_ATOM37_ENCODING types (0-32)
 # 0: MASK, 1-20: standard AAs, 21: UNK, 22-25: RNA (A,C,G,U), 26: N (unknown RNA),
 # 27-30: DNA (DA,DC,DG,DT), 31: DN (unknown DNA), 32: ATOMISED
+n_residue_types: &n_residue_types 33  
 
 encoder:
   nlayers: 12  # number of transformer layers
@@ -15,25 +19,29 @@ encoder:
   strict_feats: False  # if False, then fills missing features with default values (e.g. chain break with zero, residue sequence index by [0, 1, 2, ...], etc)
   # If True, if some feature is not provided, then it raises an error
 
-  # feats_seq: ["res_seq_pdb_idx", "chain_break_per_res", "x1_aatype", "x1_a37coors_nm", "x1_a37coors_nm_rel", "x1_bb_angles", "x1_sidechain_angles"]  # Sequence features to include in initial representation
-  feats_seq: ["chain_break_per_res", "x1_aatype", "token_type", "x1_a37coors_nm", "x1_a37coors_nm_rel", "chain_idx_seq"]  # Sequence features to include in initial representation
-  # feats_seq: ["chain_break_per_res", "x1_aatype", "x1_bb_angles", "x1_sidechain_angles"]  # Sequence features to include in initial representation
+  # TODO: Remove all pair features from the code for simplicity when we merge the new AE; also remove the option to even use attention pair bias
+
+  # Minimal set of sequence and structural features to include in the initial representation
+  feats_seq: ["x1_aatype", "token_type", "x1_a37coors_nm", "x1_a37coors_nm_rel", "chain_idx_seq"]
   feats_cond_seq:  # Sequence features to include in conditioning variables
 
   # Parameters for the features we extract
   dim_cond: 128  # dimension of conditioning vector
   idx_emb_dim: 128  # dimension of the sequence position [0, 1, 2, ...] (if contiguous residues) embeddings
 
-  feats_pair_repr: ["rel_seq_sep", "x1_bb_pair_dists_nm", "chain_idx_pair"]  # Features to include in the pair representation
-  # feats_pair_repr: ["rel_seq_sep", "x1_bb_pair_dists_nm"]  # Features to include in the pair representation
+  # Bond-graph pair track, matching the flow model. `token_bond_path_length` is
+  # chemistry-aware and meaningful for atomized ligands; `canonical_polymer_ordering`
+  # restores the direction a symmetric hop count discards.
+  feats_pair_repr: ["token_bond_path_length", "canonical_polymer_ordering", "molecule_idx_pair", "x1_bb_pair_dists_nm"]
 
-  seq_sep_dim: 127  # should be odd >= 5
+  seq_sep_dim: 64  # bond-path bins, matching the flow model; hop counts are unsigned
   pair_repr_dim: 256
 
   update_pair_repr: False  # whether to update pair representation
   update_pair_repr_every_n: 3  # Update the pair representation every n layers
   use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 
+  use_attn_pair_bias: True  # False drops the pair track: no factory, no bias, no pair params
   use_qkln: True
 
   normalize_latent: false
@@ -46,11 +54,6 @@ decoder:
 
   abs_coors: False  # Compute absolute coors or use relative to CA
 
-  # type: ff_local
-  # # This for 7m params
-  # nlayers: 12  # number of transformer layers
-  # token_dim: 768  # dimension of the tokens dim in the sequence
-
   nheads: 12  # number of attn heads
   token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
   parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
@@ -58,23 +61,26 @@ decoder:
   strict_feats: False  # if False, then fills missing features with default values (e.g. chain break with zero, residue sequence index by [0, 1, 2, ...], etc)
   # If True, if some feature is not provided, then it raises an error
 
-  feats_seq: ["ca_coors_nm", "z_latent_seq", "token_type"]  # Sequence features to include in initial representation
+  # `cond_residue_type` lets the decoder honour a conditioned sequence instead of re-deriving
+  # identity from the latent; it is masked by C_SEQ, so it only carries signal on the folding
+  # fraction of the design-task mix.
+  feats_seq: ["ca_coors_nm", "z_latent_seq", "token_type", "cond_residue_type"]  # Sequence features to include in initial representation
   feats_cond_seq:  # Sequence features to include in conditioning variables
 
   # Parameters for the features we extract
   dim_cond: 128  # dimension of conditioning vector
   idx_emb_dim: 128  # dimension of the sequence position [0, 1, 2, ...] (if contiguous residues) embeddings
 
-  feats_pair_repr: ["rel_seq_sep", "ca_coors_nm_pair_dists"]  # Features to include in the pair representation
+  feats_pair_repr: ["token_bond_path_length", "canonical_polymer_ordering", "molecule_idx_pair", "ca_coors_nm_pair_dists"]
 
-  seq_sep_dim: 127  # should be odd >= 5
+  seq_sep_dim: 64  # bond-path bins, matching the flow model; hop counts are unsigned
   pair_repr_dim: 256
 
   update_pair_repr: False  # whether to update pair representation
   update_pair_repr_every_n: 3  # Update the pair representation every n layers
   use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 
+  use_attn_pair_bias: True  # False drops the pair track: no factory, no bias, no pair params
   use_qkln: True
   latent_z_dim: *latent_z_dim
-  n_residue_types: *n_residue_types  # Used for sequence prediction head (33 output classes)
-
+  n_residue_types: *n_residue_types  # Sequence prediction head (33 output classes)

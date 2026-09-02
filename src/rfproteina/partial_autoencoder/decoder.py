@@ -69,6 +69,8 @@ class DecoderTransformer(torch.nn.Module):
         self.update_pair_repr = kwargs["decoder"]["update_pair_repr"]
         self.update_pair_repr_every_n = kwargs["decoder"]["update_pair_repr_every_n"]
         self.use_tri_mult = kwargs["decoder"]["use_tri_mult"]
+        # Off drops the pair track entirely: no factory, no bias projection, no pair parameters.
+        self.use_attn_pair_bias = kwargs["decoder"].get("use_attn_pair_bias", True)
         self.use_qkln = kwargs["decoder"]["use_qkln"]
         self.attention_type = kwargs["decoder"].get("attention_type", "torch")
         self.abs_coors = kwargs["decoder"].get("abs_coors", True)
@@ -99,12 +101,16 @@ class DecoderTransformer(torch.nn.Module):
         self.transition_c_2 = Transition(kwargs["decoder"]["dim_cond"], expansion_factor=2)
 
         # To get pair representation
-        self.pair_rep_factory = FeatureFactory(
-            feats=kwargs["decoder"]["feats_pair_repr"],
-            dim_feats_out=kwargs["decoder"]["pair_repr_dim"],
-            use_ln_out=False,
-            mode="pair",
-            **kwargs["decoder"],
+        self.pair_rep_factory = (
+            FeatureFactory(
+                feats=kwargs["decoder"]["feats_pair_repr"],
+                dim_feats_out=kwargs["decoder"]["pair_repr_dim"],
+                use_ln_out=False,
+                mode="pair",
+                **kwargs["decoder"],
+            )
+            if self.use_attn_pair_bias
+            else None
         )
 
         # Trunk layers
@@ -118,7 +124,7 @@ class DecoderTransformer(torch.nn.Module):
                     residual_mha=True,
                     residual_transition=True,
                     parallel_mha_transition=False,
-                    use_attn_pair_bias=True,
+                    use_attn_pair_bias=self.use_attn_pair_bias,
                     use_qkln=self.use_qkln,
                     attention_type=self.attention_type,
                 )
@@ -186,7 +192,7 @@ class DecoderTransformer(torch.nn.Module):
         seq_f_repr = self.init_repr_factory(input)  # [b, n, token_dim]
         seqs = seq_f_repr * mask[..., None]  # [b, n, token_dim]
 
-        pair_rep = self.pair_rep_factory(input)  # [b, n, n, pair_dim]
+        pair_rep = self.pair_rep_factory(input) if self.pair_rep_factory is not None else None
 
         # Run trunk
         for i in range(self.nlayers):
@@ -206,13 +212,14 @@ class DecoderTransformer(torch.nn.Module):
             if allowed_res_types is not None:
                 token_type = input["token_type"].long()
                 max_token_type = allowed_res_types.shape[0] - 1
-                invalid_token_type = (token_type < 0) | (token_type > max_token_type)
-                if torch.any(invalid_token_type):
-                    bad_values = torch.unique(token_type[invalid_token_type]).detach().cpu().tolist()
-                    raise ValueError(
-                        f"token_type must be in [0, {max_token_type}] for unified AE decoding; "
-                        f"got invalid values {bad_values}"
-                    )
+                if not torch.compiler.is_compiling():
+                    invalid_token_type = (token_type < 0) | (token_type > max_token_type)
+                    if torch.any(invalid_token_type):
+                        bad_values = torch.unique(token_type[invalid_token_type]).detach().cpu().tolist()
+                        raise ValueError(
+                            f"token_type must be in [0, {max_token_type}] for unified AE decoding; "
+                            f"got invalid values {bad_values}"
+                        )
                 allowed_per_token = allowed_res_types[token_type] | ~mask[..., None]
                 logits_out = logits_out.masked_fill(~allowed_per_token, torch.finfo(logits_out.dtype).min)
 
