@@ -132,9 +132,15 @@ def concatenate_results(
     if input.is_file():
         concatenated_per_example = pd.read_csv(input)
     else:
-        # Find all per-example metric files
-        per_example_files = sorted(input.glob("*per_example_metrics*.csv"))
+        # Find all per-example metric files including from previous concatenations.
+        job_results_dir = input / "individual_job_results"
+        per_example_files = list(input.glob("*per_example_metrics*.csv"))
+        if job_results_dir.is_dir():
+            per_example_files += list(job_results_dir.glob("*per_example_metrics*.csv"))
         per_example_files = [f for f in per_example_files if f.name != "per_example_metrics.csv"]
+        # Order oldest→newest so that, when deduplicating by example_id below, the most recent
+        # metrics for each design win (a rerun's fresh rows override stale ones).
+        per_example_files = sorted(per_example_files, key=lambda f: f.stat().st_mtime)
 
         if not per_example_files:
             logger.info(f"No per-example metric files found in {input}")
@@ -151,6 +157,18 @@ def concatenate_results(
             logger.debug(f"  Loaded {file.name}: {len(df)} examples")
 
         concatenated_per_example = pd.concat(all_per_example_dfs, ignore_index=True)
+
+        # The same design can appear in several files (e.g. an orphaned job's later eval-only
+        # rerun, or an overlapping requeue). Keeping the most recent non-null values for each example_id.
+        if "example_id" in concatenated_per_example.columns:
+            n_before = len(concatenated_per_example)
+            orig_cols = concatenated_per_example.columns
+            concatenated_per_example = (
+                concatenated_per_example.groupby("example_id", sort=False).last().reset_index()[orig_cols]
+            )
+            n_dropped = n_before - len(concatenated_per_example)
+            if n_dropped:
+                logger.info(f"Deduplicated {n_dropped} duplicate rows by example_id (merged, newest non-null wins).")
 
     # 2. (Optional) Cluster results using Foldseek
     if cluster_with_foldseek:
@@ -206,8 +224,10 @@ def concatenate_results(
 
         logger.info(f"Moving individual job files to {job_files_dir}")
 
-        # Move per-example files
+        # Move per-example files (skip any already living in job_files_dir from a prior concat)
         for file in per_example_files:
+            if file.parent == job_files_dir:
+                continue
             file.rename(job_files_dir / file.name)
             logger.debug(f"  Moved {file.name}")
 

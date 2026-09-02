@@ -16,6 +16,7 @@ import torch
 import torch.distributed as dist
 import wandb
 from atomworks.common import exists
+from atomworks.io.parser import parse
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 from atomworks.ml.utils.token import get_token_count
 from hydra.errors import InstantiationException
@@ -55,6 +56,7 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
 from rfproteina.utils.lora import maybe_apply_lora
 from rfproteina.utils.optim_utils import build_optimizers
+from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
@@ -1074,13 +1076,19 @@ class Proteina(L.LightningModule):
         self._current_output_base_dir = output_base
         self._current_output_suffix = output_suffix
 
-        # Generate designs for this inference batch
-        generation_list = self.predict_step(batch, batch_idx)
+        # Generate designs for this inference batch. In eval-from-disk mode we reuse the
+        # structures already on disk (skip generation) and only run the metric/oracle path.
+        if getattr(self, "_eval_from_disk", False):
+            generation_list = self._load_generation_list_from_disk(batch, output_base, output_suffix)
+        else:
+            generation_list = self.predict_step(batch, batch_idx)
 
         example_id_batch = batch.get("example_id_batch", [])
         n_batch = len(example_id_batch)
         for i in range(len(generation_list)):
-            orig_batch_idx = i % n_batch if n_batch > 0 else 0
+            orig_batch_idx = generation_list[i].get("orig_batch_idx")
+            if orig_batch_idx is None:
+                orig_batch_idx = i % n_batch if n_batch > 0 else 0
             raw_batch_id = example_id_batch[orig_batch_idx] if n_batch > 0 else "sample"
 
             # Search strategies pre-assign a base id per sample they emit (e.g. the beam
@@ -1334,6 +1342,7 @@ class Proteina(L.LightningModule):
         if self.is_inference:
             prefix = "" if self.global_prefix is None else self.global_prefix + "_"
             suffix = f"_job{self.job_id}" if self.job_id is not None else ""
+            suffix += getattr(self, "_metrics_suffix_extra", "")
         else:
             prefix = ""
             suffix = f"_step{self.global_step}"
@@ -1730,6 +1739,41 @@ class Proteina(L.LightningModule):
 
         return results
 
+    def _load_generation_list_from_disk(self, batch: dict, output_base: Path, output_suffix: str) -> list[dict]:
+        """Rebuild the generation list from structures already saved on disk for continued evaluation.
+
+        Args:
+          batch: The dataloader batch (supplies example IDs and input AtomArrays).
+          output_base: Directory holding the per-design output subdirectories.
+          output_suffix: Job suffix appended to base IDs to form the on-disk example ID.
+
+        Returns:
+          One dict per design with ``example_id``, ``generated_atom_array`` (parsed from
+          disk), and ``input_atom_array`` — the subset of :py:meth:`predict_step`'s output
+          that the downstream metric path consumes.
+        """
+        example_id_batch = batch.get("example_id_batch", [])
+        atom_array_batch = batch.get("atom_array_batch", [])
+        generation_list: list[dict] = []
+        for orig_batch_idx, base_id in enumerate(example_id_batch):
+            example_id = f"{base_id}{output_suffix}"
+            cif_path = design_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
+            if not cif_path.exists():
+                logger.warning(f"eval_from_disk: missing generated CIF for {example_id}, skipping.")
+                continue
+            generated_atom_array = parse(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
+            input_atom_array = atom_array_batch[orig_batch_idx] if orig_batch_idx < len(atom_array_batch) else None
+            generation_list.append(
+                {
+                    "example_id": base_id,
+                    "raw_batch_id": base_id,
+                    "generated_atom_array": generated_atom_array,
+                    "input_atom_array": input_atom_array,
+                    "orig_batch_idx": orig_batch_idx,
+                }
+            )
+        return generation_list
+
     def _process_single_sample_to_atom_array(
         self,
         coords: torch.Tensor,
@@ -1811,6 +1855,8 @@ class Proteina(L.LightningModule):
             "generated_output_path": str(generated_output_path),
             "save_input": not self.is_inference,
             "save_chain_of_interest": self.save_chain_of_interest,
+            # In eval-from-disk mode the design CIF already exists and must not be rewritten.
+            "reuse_existing_structure": getattr(self, "_eval_from_disk", False),
             "trajectories": trajectories,
             "dataset_name": dataset_name,
             "task": task,
