@@ -546,23 +546,21 @@ def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str
         raise ValueError(f"Unexpected Dataset type: {type(dataset).__name__}")
 
 
-def _filter_existing_outputs(
+def _partition_existing_outputs(
     dataset: torch.utils.data.Dataset,
     model: Proteina,
-    root_path: str,
-    job_id: int,
-) -> torch.utils.data.Dataset:
-    """Filter a dataset to exclude examples that already have output structure files.
+) -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset | None]:
+    """Split a dataset into designs that still need generation vs. those already on disk.
+
+    ``skip_existing`` must never drop the already-generated designs outright. Instead we
+    find them and calculate metrics if needed.
 
     Args:
         dataset: The inference dataset.
         model: The loaded Proteina model (used to determine output paths).
-        root_path: Root output path for this inference run.
-        job_id: Job ID for parallel job splitting.
-
     Returns:
-        A Subset of the original dataset excluding already-completed examples,
-        or the original dataset if no outputs exist yet.
+        ``(to_generate, to_evaluate)``. ``to_evaluate`` is ``None`` when nothing exists
+        on disk yet (the common first-run case), so the caller skips the eval-only pass.
     """
     store_dir = model.store_dir
     output_dir = Path(store_dir) / "inference_samples"
@@ -571,23 +569,25 @@ def _filter_existing_outputs(
     # carry their own job suffix, so they never match.
     existing_ids = {p.name.removesuffix("_generated.cif") for p in output_dir.glob("*/*_generated.cif")}
     if not existing_ids:
-        return dataset
+        return dataset, None
 
-    # Determine which indices to keep (compare against the on-disk ids validation_step assigns).
+    # Determine which indices already exist (compare against the on-disk ids validation_step assigns).
     all_ids = _get_example_ids_from_dataset(dataset)
     # proteina.py names outputs from model.job_id (set via cfg), not the run_generation job_id.
     job_suffix = f"_job{model.job_id}" if model.job_id is not None else ""
-    keep_indices = [i for i, eid in enumerate(all_ids) if f"{eid}{job_suffix}" not in existing_ids]
-    n_skipped = len(all_ids) - len(keep_indices)
+    eval_indices = [i for i, example_id in enumerate(all_ids) if f"{example_id}{job_suffix}" in existing_ids]
 
-    if n_skipped > 0:
-        logger.info(
-            f"skip_existing: Found {len(existing_ids)} existing outputs in {output_dir}. "
-            f"Skipping {n_skipped}/{len(all_ids)} examples."
-        )
-        return torch.utils.data.Subset(dataset, keep_indices)
+    if not eval_indices:
+        return dataset, None
 
-    return dataset
+    logger.info(
+        f"skip_existing: Found {len(existing_ids)} existing outputs in {output_dir}. "
+        f"Skipping generation for {len(eval_indices)}/{len(all_ids)} examples "
+        f"(will still evaluate them from disk)."
+    )
+    eval_index_set = set(eval_indices)
+    gen_indices = [i for i in range(len(all_ids)) if i not in eval_index_set]
+    return torch.utils.data.Subset(dataset, gen_indices), torch.utils.data.Subset(dataset, eval_indices)
 
 
 def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.data.Dataset:
@@ -660,13 +660,13 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     dataset = get_dataset_from_cfg(cfg, job_id)
 
-    # Optionally skip examples that already have outputs on disk
+    # Optionally skip regenerating examples that already have outputs on disk. Skipped
+    # designs are routed to an eval-only pass (below) so their metrics are always computed.
+    eval_only_dataset: torch.utils.data.Dataset | None = None
     if cfg.get("skip_existing", False):
-        dataset = _filter_existing_outputs(
+        dataset, eval_only_dataset = _partition_existing_outputs(
             dataset,
             model=model,
-            root_path=cfg.out_dir,
-            job_id=job_id,
         )
 
     # Support either batch_size argument for backwards compatibility with rfd3 syntax
@@ -697,23 +697,20 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     # Create dataloader
     num_workers = cfg.num_workers
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        collate_fn=partial(
-            collate_batch,
-            schema="rfproteina.datapipes.schema.proteina.ProteinaDataSample",
-            fixed_dimensions=fixed_dimensions,
-        ),
-        num_workers=num_workers,
-        pin_memory=True,
-    )
 
-    logger.info(f"✓ Dataloader created: {len(dataset)} samples, batch_size={batch_size}")
-
-    # Sample model
-    logger.info(f"Running inference on {len(dataloader)} batches...")
+    def _make_dataloader(ds: torch.utils.data.Dataset) -> DataLoader:
+        return DataLoader(
+            ds,
+            batch_size=batch_size,
+            shuffle=False,
+            collate_fn=partial(
+                collate_batch,
+                schema="rfproteina.datapipes.schema.proteina.ProteinaDataSample",
+                fixed_dimensions=fixed_dimensions,
+            ),
+            num_workers=num_workers,
+            pin_memory=True,
+        )
 
     trainer = L.Trainer(
         accelerator="gpu",
@@ -724,11 +721,31 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         callbacks=[ema_callback] if ema_callback is not None else [],
         precision=precision,
     )
-    trainer.validate(model, dataloader)  # validation_step automatically saves outputs
+
+    # Generation pass: sample + evaluate the designs that still need generating.
+    if len(dataset) > 0:
+        dataloader = _make_dataloader(dataset)
+        logger.info(f"✓ Dataloader created: {len(dataset)} samples, batch_size={batch_size}")
+        logger.info(f"Running inference on {len(dataloader)} batches...")
+        trainer.validate(model, dataloader)  # validation_step automatically saves outputs
+    else:
+        logger.info("No designs need generation; skipping generation pass.")
 
     # Persist the graphs compiled for each bucket so the next run starts warm
     if compile_lengths and trainer.is_global_zero:
         save_compile_cache()
+
+    # Eval-only pass: designs already on disk (skip_existing) still get metrics computed.
+    # Generation is skipped (structures loaded from disk); cached oracle refolds are reused.
+    if eval_only_dataset is not None and len(eval_only_dataset) > 0:
+        logger.info(f"Running eval-only pass on {len(eval_only_dataset)} pre-existing designs...")
+        model._eval_from_disk = True
+        model._metrics_suffix_extra = "_reeval"
+        try:
+            trainer.validate(model, _make_dataloader(eval_only_dataset))
+        finally:
+            model._eval_from_disk = False
+            model._metrics_suffix_extra = ""
 
     logger.info(f"✓ Generation complete! Results saved to {cfg.out_dir}")
 

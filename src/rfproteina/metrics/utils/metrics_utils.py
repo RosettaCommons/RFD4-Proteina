@@ -763,13 +763,17 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
     )
 
     gen_path = payload.get("generated_output_path")
+    # When reusing a structure already on disk (eval-only pass), the design CIF is the source
+    # of truth and must not be rewritten; only derived artifacts (chain CIF) are regenerated.
+    reuse_existing_structure = bool(payload.get("reuse_existing_structure", False))
     foldseek_input_path: Path | None = None
     if gen_path is not None:
         gen_path = Path(gen_path)
-        try:
-            to_cif_file(align_atom_array_to_input_frame(generated_array), gen_path)
-        except Exception as e:
-            logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
+        if not reuse_existing_structure:
+            try:
+                to_cif_file(align_atom_array_to_input_frame(generated_array), gen_path)
+            except Exception as e:
+                logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
         # Per-design chain-only CIF is only consumed by foldseek clustering
         if payload.get("save_chain_of_interest", True):
             try:
