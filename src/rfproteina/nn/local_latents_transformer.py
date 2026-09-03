@@ -1,6 +1,7 @@
 import logging
 
 import torch
+from torch.utils.checkpoint import checkpoint
 
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
@@ -120,6 +121,25 @@ class LocalLatentsTransformer(torch.nn.Module):
                 ]
             )
 
+        # Recycle single and pair states through zero-initialized projections
+        recycle_cfg = kwargs.get("recycle", {}) or {}
+        self.recycle_enabled = bool(recycle_cfg.get("enabled", False))
+        self.recycle_grad = recycle_cfg.get("grad", "last")
+        self.recycle_checkpoint = bool(recycle_cfg.get("checkpoint", True))
+
+        if self.recycle_enabled:
+            # Validate recycle backpropagation settings
+            if self.recycle_grad not in ("last", "last2", "all"):
+                raise ValueError(f"nn.recycle.grad must be one of last|last2|all, got {self.recycle_grad!r}")
+
+            self.s_cycle_norm = make_norm(self.token_dim)
+            self.z_cycle_norm = make_norm(self.pair_repr_dim)
+            self.s_cycle_proj = torch.nn.Linear(self.token_dim, self.token_dim, bias=False)
+            self.z_cycle_proj = torch.nn.Linear(self.pair_repr_dim, self.pair_repr_dim, bias=False)
+
+            torch.nn.init.zeros_(self.s_cycle_proj.weight)
+            torch.nn.init.zeros_(self.z_cycle_proj.weight)
+
         self.local_latents_linear = torch.nn.Sequential(
             make_norm(self.token_dim),
             torch.nn.Linear(self.token_dim, kwargs["latent_dim"], bias=False),
@@ -140,7 +160,14 @@ class LocalLatentsTransformer(torch.nn.Module):
         # grad_mode-triggered dynamo recompiles of the shared compiled graph.
         self.use_torch_compile = kwargs.get("use_torch_compile", False)
         self._forward_eval = self._forward_impl  # eager unless enable_inference_compile() is called
-        if self.use_torch_compile:
+        self._trunk_fn = self._trunk_layers
+        self._trunk_fn_eval = self._trunk_layers
+        if self.use_torch_compile and self.recycle_enabled:
+            # One compiled cycle serves every recycle depth
+            logger.info("Enabling torch.compile per trunk cycle for LocalLatentsTransformer training forward.")
+            self._trunk_fn = torch.compile(self._trunk_layers, fullgraph=True, dynamic=False)
+            self._forward_compiled = self._forward_impl
+        elif self.use_torch_compile:
             logger.info("Enabling torch.compile(fullgraph=True) for LocalLatentsTransformer training forward.")
             self._forward_compiled = torch.compile(self._forward_impl, fullgraph=True)
         else:
@@ -153,12 +180,21 @@ class LocalLatentsTransformer(torch.nn.Module):
           lengths: Padded token counts to compile for, i.e. the length buckets.
         """
         n_shapes = 2 * len(lengths) + 2  # one graph per bucket, plus the short final batch
-        logger.info(
-            f"Enabling torch.compile(dynamic=False) for LocalLatentsTransformer "
-            f"inference forward (recompile budget: {n_shapes} shapes)."
-        )
         torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, n_shapes)
-        self._forward_eval = torch.compile(self._forward_impl, dynamic=False)
+        if self.recycle_enabled:
+            # One compiled cycle serves every recycle depth.
+            logger.info(
+                f"Enabling torch.compile(dynamic=False) per trunk cycle for LocalLatentsTransformer "
+                f"inference forward (recompile budget: {n_shapes} shapes)."
+            )
+            self._trunk_fn_eval = torch.compile(self._trunk_layers, dynamic=False)
+        else:
+            # TODO: Delete when we only support recycling
+            logger.info(
+                f"Enabling torch.compile(dynamic=False) for LocalLatentsTransformer "
+                f"inference forward (recompile budget: {n_shapes} shapes)."
+            )
+            self._forward_eval = torch.compile(self._forward_impl, dynamic=False)
 
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """
@@ -212,32 +248,83 @@ class LocalLatentsTransformer(torch.nn.Module):
         c = self.transition_c_2(self.transition_c_1(c, seq_mask), seq_mask)  # [b, n, dim_cond]
         # Initial sequence representation from features
         seq_f_repr = self.init_repr_factory(input)  # [b, n, token_dim]
-        seqs = seq_f_repr * seq_mask[..., None]  # [b, n, token_dim]
+        s_init = seq_f_repr * seq_mask[..., None]  # [b, n, token_dim]
 
-        pair_rep = self.pair_repr_builder(input)  # [b, n, n, pair_dim]
+        z_init = self.pair_repr_builder(input)  # [b, n, n, pair_dim]
 
         if self.use_msa_module:
             # All masks use True = valid convention (same as rest of codebase)
-            pair_rep = self.msa_module(input, pair_rep, seqs, seq_mask, msa_mask)
+            z_init = self.msa_module(input, z_init, s_init, seq_mask, msa_mask)
 
-        # Run trunk
-        for i in range(self.nlayers):
-            seqs = self.transformer_layers[i](seqs, pair_rep, c, seq_mask)  # [b, n, token_dim]
-
-            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
-                pair_rep = self.pair_update_layers[i](seqs, pair_rep, seq_mask)  # [b, n, n, pair_dim]
+        # Run the trunk.
+        s, _z = self._run_trunk(input, s_init, z_init, c, seq_mask)
 
         # Get outputs
-        local_latents_out = self.local_latents_linear(seqs) * seq_mask[..., None]  # [b, n, latent_dim]
-        ca_nm_out = self.ca_linear(seqs) * seq_mask[..., None]  # [b, n, 3]
+        local_latents_out = self.local_latents_linear(s) * seq_mask[..., None]  # [b, n, latent_dim]
+        ca_nm_out = self.ca_linear(s) * seq_mask[..., None]  # [b, n, 3]
         nn_out = {}
         nn_out["bb_ca"] = {self.output_param["bb_ca"]: ca_nm_out}
         nn_out["local_latents"] = {self.output_param["local_latents"]: local_latents_out}
 
         # Detached probe for insertion head
-        insertion_seqs = seqs.detach()
+        insertion_seqs = s.detach()
         q = self.insertion_q_proj(insertion_seqs)  # [b, n, d]
         k = self.insertion_k_proj(insertion_seqs)  # [b, n, d]
         nn_out["insertion"] = {"logits": torch.bmm(q, k.transpose(1, 2)) * self._insertion_head_scale}
 
         return nn_out
+
+    def _trunk_layers(
+        self,
+        s: torch.Tensor,
+        z: torch.Tensor,
+        c: torch.Tensor,
+        seq_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run one pass of the trunk layer stack."""
+        for i in range(self.nlayers):
+            s = self.transformer_layers[i](s, z, c, seq_mask)  # [b, n, token_dim]
+
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                z = self.pair_update_layers[i](s, z, seq_mask)  # [b, n, n, pair_dim]
+
+        return s, z
+
+    def _run_trunk(
+        self,
+        input: dict,
+        s_init: torch.Tensor,
+        z_init: torch.Tensor,
+        c: torch.Tensor,
+        seq_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the configured number of trunk cycles.
+
+        Each cycle reads the previous single and pair states through zero-initialized
+        projections. ``recycle_grad`` selects how many final cycles keep gradients.
+        """
+        trunk = self._trunk_fn if self.training else self._trunk_fn_eval
+
+        if not self.recycle_enabled:
+            return trunk(s_init, z_init, c, seq_mask)
+
+        n_recycle = max(1, int(input.get("n_recycle", 1)))
+        grad_k = {"last": 1, "last2": 2, "all": n_recycle}[self.recycle_grad]
+
+        # Keep both projections in the graph for every recycle depth.
+        s, z = torch.zeros_like(s_init), torch.zeros_like(z_init)
+        for cycle in range(n_recycle):
+            # SDPA requires a contiguous pair bias.
+            z_in = (z_init + self.z_cycle_proj(self.z_cycle_norm(z))).contiguous()
+            s_in = s_init + self.s_cycle_proj(self.s_cycle_norm(s))
+
+            grad_on = torch.is_grad_enabled() and cycle >= n_recycle - grad_k
+            with torch.set_grad_enabled(grad_on):
+                if grad_on and self.recycle_checkpoint:
+                    s, z = checkpoint(trunk, s_in, z_in, c, seq_mask, use_reentrant=False)
+                else:
+                    s, z = trunk(s_in, z_in, c, seq_mask)
+            if not grad_on:
+                s, z = s.detach(), z.detach()
+
+        return s, z

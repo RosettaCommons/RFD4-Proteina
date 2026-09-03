@@ -25,7 +25,6 @@ estimation if they meet success criteria, significantly improving total successe
 
 import copy
 import shutil
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -157,9 +156,6 @@ class BeamSearchStrategy(SearchStrategy):
         guidance_w = model.inf_cfg.args.get("guidance_w", 1.0)
         ag_ratio = model.inf_cfg.args.get("ag_ratio", 0.0)
 
-        # Prepare prediction function
-        fn_predict_for_sampling = partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0))
-
         # Extract batch dimensions
         nsamples = batch["coords_nm"].shape[0]  # batch size
         n = batch["coords_nm"].shape[1]  # number of tokens
@@ -181,6 +177,7 @@ class BeamSearchStrategy(SearchStrategy):
         # partial_trajectory_fraction_steps affects the number of steps to actually run
         frac = model.inf_cfg.args.get("partial_trajectory_fraction_steps", None)
         actual_nsteps = round(frac * nsteps) if frac is not None else nsteps
+        recycle_depths = model.recycle_depths(actual_nsteps)
 
         if self.step_checkpoints[-1] != actual_nsteps:
             frac_hint = f" (nsteps={nsteps} x fraction={frac} = {actual_nsteps})" if frac is not None else ""
@@ -273,7 +270,8 @@ class BeamSearchStrategy(SearchStrategy):
                         x=replica_xt,
                         x_1_pred=replica_x_1_pred,
                         mask=init_mask,
-                        predict_for_sampling=fn_predict_for_sampling,
+                        predict_for_sampling=model.predict_for_sampling,
+                        recycle_depths=recycle_depths[start_step:end_step],
                         nsteps=end_step - start_step,
                         ts=ts_segment,
                         gt=gt_segment,
@@ -325,6 +323,7 @@ class BeamSearchStrategy(SearchStrategy):
                 checkpoint_reward_model,
                 ts=ts,
                 gt=gt,
+                recycle_depths=recycle_depths,
                 example_ids=checkpoint_example_ids,
                 output_base_dir=output_base_dir,
                 design_ids=checkpoint_design_ids,
@@ -447,6 +446,7 @@ class BeamSearchStrategy(SearchStrategy):
         reward_model: "RewardModel",
         ts: dict[str, torch.Tensor],
         gt: dict[str, torch.Tensor],
+        recycle_depths: tuple[int, ...],
         example_ids: list[str] | None = None,
         output_base_dir: "Path | None" = None,
         design_ids: list[str] | None = None,
@@ -465,6 +465,7 @@ class BeamSearchStrategy(SearchStrategy):
             current_step: Current timestep in diffusion process
             mask: Residue mask [nsamples, n_residues]
             reward_model: Reward model for scoring
+            recycle_depths: Recycle depth for each complete-trajectory step.
             example_ids: Per-sample base IDs carried on the returned atom-array results.
             output_base_dir: Directory for oracle saving (enables caching).
             design_ids: Per-sample on-disk design IDs to save oracle results under.
@@ -503,7 +504,8 @@ class BeamSearchStrategy(SearchStrategy):
                 x=batch_xt,
                 x_1_pred=None,
                 mask=mask,
-                predict_for_sampling=partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0)),
+                predict_for_sampling=model.predict_for_sampling,
+                recycle_depths=recycle_depths[current_step:],
                 nsteps=actual_nsteps - current_step,
                 ts=ts_segment,
                 gt=gt_segment,

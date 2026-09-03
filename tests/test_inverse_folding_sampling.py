@@ -146,6 +146,7 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
             x_1_pred=None,
             mask=batch["padding_mask"],
             predict_for_sampling=lambda _: None,
+            recycle_depths=(0, 0),
             nsteps=2,
             ts=ts,
             gt=gt,

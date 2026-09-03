@@ -1,27 +1,42 @@
-n_recycle: 0  # Leave as 0
+############################################################################
+# +--------------- Base inference config for RFD4-Proteína ----------------+
+############################################################################
 
-insert_unindexed_regions: False  # Whether to insert unindexed regions back into the output, overwriting the residues they mapped to
+# Constant recycle depth used when no schedule is configured.
+# Fixed number of recycles to run at every step; only has an effect if n_recycle_schedule is null
+# TODO: Deprecate in favor of n_recycle_schedule, which allows per-step recycle counts
+n_recycle: 0
 
-val_set_name_override: null  # val_dataset # Used for labeling output metrics if computed
+# Optional [number_of_steps, recycle_depth] bands covering the trajectory; overrides n_recycle.
+n_recycle_schedule: null
 
-# General sampling params
+# Used for labeling output metrics if computed
+val_set_name_override: null
+
 args:
+  # TODO: Update when we merge hero run config; these should be no self conditioning, 50 steps
   nsteps: 100  # 100 is sufficient with the default vf_tsr sampler
   self_cond: True
 
-  # Guidance
+  # +---------- Guidance ----------+
+  # TODO: Audit guidance_w and CFG usage
   guidance_w: 1.0   # guidance model weights, 1.0 for w/o CFG and autoguidance, 0.0 for excluding the main model
+
+  # TODO: remove auto guidance from repository
   ag_ratio: 0.0   # a value between 0 and 1, determining the proportion of autoguidance v.s. classifier-free guidance, 1.0 for all autoguidance, 0.0 for all CFG -- ag not supported for now
   ag_ckpt_path: null  # path to bad model checkpoint
 
-  # Partial diffusion: start from a noised version of the input structure rather than pure noise.
+  # +--------- Partial diffusion ----------+
+  # Start from a noised version of the input structure rather than pure noise.
   #
-  # Simple partial diffusion interface: set partial_trajectory_fraction_steps to a float in (0, 1] to run that
+  # Simple partial diffusion interface: 
+  # set partial_trajectory_fraction_steps to a float in (0, 1] to run that
   # fraction of nsteps. E.g. 0.3 runs 30% of the steps; partial_t values for all modalities
   # are inferred from the schedule. Mutually exclusive with the partial_t_* args below.
   partial_trajectory_fraction_steps: null
-  #
-  # Advanced interface: specify partial_t_backbone and/or partial_t_latent (floats in (0,1))
+
+  # Advanced interface: 
+  # Specify partial_t_backbone and/or partial_t_latent (floats in (0,1))
   # to set each modality's starting t independently. Alternatively, set only one and use
   # couple_partial_t=true to derive the other via the default schedule coupling.
   # NOTE: partial_t near 0 means running most of the trajectory; near 1 means running very little of it.
@@ -30,12 +45,14 @@ args:
   partial_t_latent: null
   couple_partial_t: false
 
+  # +--------- Inverse folding ----------+
   # Inverse folding keeps the input backbone on independently resampled forward
   # marginals while generating sequence latents. Prefer the `generation=inverse_folding`
   # preset; these fields remain available for programmatic configuration.
   inverse_folding: false
   inverse_folding_method: resampled_forward_marginal
 
+  # +--------- Trajectory saving ----------+
   save_trajectory_every: 0 # at which step interval to save trajectory snapshots of generation, 0 for no saving
   bb_ca_only_trajectories: true # if true, save CA-only trajectory as XTC; if false, save all-atom trajectory as multi-model CIF (XTC requires fixed atom count per frame)
   dump_noisy_trajectories: false # if true, also save the noisy x_t at each trajectory step alongside x_1

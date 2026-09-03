@@ -1,6 +1,5 @@
 """Vanilla generation strategy (no search)."""
 
-from functools import partial
 from typing import Any
 
 import numpy as np
@@ -201,22 +200,20 @@ class VanillaStrategy(SearchStrategy):
         partial_t_dict = resolve_partial_t(model.inf_cfg.args, model.fm, model.inf_cfg.model)
 
         # Call simulation (batch already has atom37 format from pipeline)
-        fn_predict_for_sampling = partial(model.predict_for_sampling, n_recycle=model.inf_cfg.get("n_recycle", 0))
         nsteps = model.inf_cfg.args.nsteps
         frac = model.inf_cfg.args.get("partial_trajectory_fraction_steps", None)
         device = model.device
         save_trajectory_every = model.inf_cfg.args.get("save_trajectory_every", 0)
         dump_noisy_trajectories = model.inf_cfg.args.get("dump_noisy_trajectories", False)
         bb_ca_only_trajectories = model.inf_cfg.args.get("bb_ca_only_trajectories", False)
+        actual_nsteps = round(frac * nsteps) if partial_t_dict and frac is not None else nsteps
+        recycle_depths = model.recycle_depths(actual_nsteps)
         if len(partial_t_dict) > 0:
             # Default to full trajectory if not specified
             if "bb_ca" not in partial_t_dict:
                 partial_t_dict["bb_ca"] = 0.0
             if "local_latents" not in partial_t_dict:
                 partial_t_dict["local_latents"] = 0.0
-
-            # partial_trajectory_fraction_steps affects the number of steps to actually run
-            actual_nsteps = round(frac * nsteps) if frac is not None else nsteps
 
             # Corrupt the input batch to the given noise level(s)
             batched_partial_t = {
@@ -245,7 +242,8 @@ class VanillaStrategy(SearchStrategy):
                 x=batch["x_t"],
                 x_1_pred=None,
                 mask=batch["padding_mask"],
-                predict_for_sampling=fn_predict_for_sampling,
+                predict_for_sampling=model.predict_for_sampling,
+                recycle_depths=recycle_depths,
                 nsteps=actual_nsteps,
                 ts=partial_ts,
                 gt=partial_gt,
@@ -263,8 +261,9 @@ class VanillaStrategy(SearchStrategy):
         else:
             gen_samples, extra_info = model.fm.full_simulation(
                 batch=batch,
-                predict_for_sampling=fn_predict_for_sampling,
-                nsteps=nsteps,
+                predict_for_sampling=model.predict_for_sampling,
+                recycle_depths=recycle_depths,
+                nsteps=actual_nsteps,
                 nsamples=nsamples,
                 n=n,
                 self_cond=model.inf_cfg.args.self_cond,
