@@ -47,6 +47,7 @@ from rfproteina.generate import (
     run_generation,
 )
 from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProblemDataset
+from rfproteina.proteina import Proteina
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
 from tests.conftest import TEST_DATA_DIR
 from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH, load_design_cif
@@ -366,8 +367,6 @@ class TestEndToEndInference:
         if request.node.get_closest_marker("no_checkpoint_cache"):
             yield
             return
-        from rfproteina.proteina import Proteina
-
         original = Proteina.load_from_checkpoint.__func__
 
         def cached(cls, checkpoint_path, *args, **kwargs):
@@ -380,6 +379,10 @@ class TestEndToEndInference:
             yield
         finally:
             Proteina.load_from_checkpoint = classmethod(original)
+            # A failed setup/call may leave the shared module dirty; evict it so the next test reloads fresh.
+            reports = (getattr(request.node, "rep_setup", None), getattr(request.node, "rep_call", None))
+            if any(r is not None and r.failed for r in reports):
+                _SHARED_CHECKPOINT_CACHE.clear()
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""

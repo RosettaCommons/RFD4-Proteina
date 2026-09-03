@@ -105,6 +105,13 @@ def pytest_collection_modifyitems(items: list) -> None:
     items.sort(key=rank)
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Stash each phase's report on the item so fixtures can read the outcome during teardown."""
+    outcome = yield
+    setattr(item, f"rep_{call.when}", outcome.get_result())
+
+
 # DSSP setup for secondary structure tests
 DSSP_PATH = os.environ.get("DSSP_PATH", "/path/to/data")
 
