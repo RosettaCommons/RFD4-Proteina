@@ -1,0 +1,35 @@
+# RNA design-task mix for RNA monomer design
+# Includes unconditional, nucleic-SS-conditioned (pseudoknot design), folding, and inverse folding tasks.
+
+defaults:
+  - na_motif_scaffold_no_unindex
+  - _self_
+
+unconditional:                      # generate RNA from noise
+  frequency: 40.0
+  transform:
+    _target_: rfproteina.transforms.design_task.UnconditionalTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+nucleic_ss_conditioning:            # SS / pseudoknot conditioned design (deltas over the preset)
+  frequency: 40.0
+  transform:
+    na_only: true                   # annotate/generate only the nucleic base-pairing
+    p_show_partial_feats: 0.90      # ratio-set-A: mostly partial reveal (1-6 islands, 50-100%)
+    nucleic_ss_min_shown: 0.5
+    p_add_motif_scaffold_condition: 0.05
+    global_design_task_kwargs:
+      hbond_kwargs: { p_add_hbond_condition: 0.3 }   # re-enabled for this task (class zeroes it)
+
+folding:                            # RNA folding: reveal sequence, generate structure
+  frequency: 20.0
+  transform:
+    _target_: rfproteina.transforms.design_task.StructurePredictionTask
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
+
+inverse_folding_na:                 # RNA sequence design: reveal backbone, generate base + sequence
+  frequency: 20.0
+  transform:
+    _target_: rfproteina.transforms.design_task.InverseFoldingTask
+    polymer_types: ["rna"]
+    global_design_task_kwargs: ${datasets.global_design_task_kwargs}

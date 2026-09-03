@@ -184,6 +184,30 @@ def test_inverse_folding_conditions(atom_array_fixture):
     check_no_design_task_modifiers(data)
 
 
+def test_rna_inverse_folding_conditions(simple_rna):
+    """InverseFoldingTask(polymer_types=["rna"]) shows RNA backbone coords and designs the sequence.
+
+    RNA sequence design rides the unified autoencoder's 33-type decoder head; the task itself only
+    sets the conditioning masks (reveal backbone coordinates, hide base coordinates + sequence).
+    """
+    data = apply_design_task(simple_rna, InverseFoldingTask, task_kwargs={"polymer_types": ["rna"]})
+    atom_array = data["atom_array"]
+    ensure_annotations(atom_array, "is_rna", "is_rna_backbone")
+
+    # RNA backbone atoms are provided as coordinate context.
+    rna_backbone = atom_array.is_rna & atom_array.is_rna_backbone
+    assert rna_backbone.any(), "1EHZ fixture should contain RNA backbone atoms"
+    assert C_CRD.mask(atom_array)[rna_backbone].all()
+
+    # RNA base/sugar (non-backbone) atoms are hidden (designed).
+    rna_designed_coords = atom_array.is_rna & ~atom_array.is_rna_backbone
+    assert rna_designed_coords.any()
+    assert not C_CRD.mask(atom_array)[rna_designed_coords].any()
+
+    # The RNA sequence is designed -> no sequence conditioning on any RNA atom.
+    assert not C_SEQ.mask(atom_array)[atom_array.is_rna].any()
+
+
 @pytest.mark.parametrize("atom_array_fixture", ["simple_protein", "complex_protein"], indirect=True)
 def test_structure_prediction_conditions(atom_array_fixture):
     """

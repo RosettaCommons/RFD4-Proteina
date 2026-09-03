@@ -338,11 +338,16 @@ class StructurePredictionTask(NoMotifABC):
 
 
 class InverseFoldingTask(NoMotifABC):
-    """
-    Inverse folding task. For non-protein molecules, we provide all coordinates and sequence information.
-    For proteins, we provide backbone coordinates only.
+    """Inverse folding task: reveal backbone coordinates and design the sequence.
 
-    TODO: Extend to DNA/RNA sequence design as well once the model can generate those sequences.
+    For each requested polymer type in ``polymer_types``, backbone coordinates are
+    provided as context while the sidechain/base coordinates and the sequence are
+    hidden (i.e. designed). Molecules of any other type keep all coordinates and
+    sequence information as context.
+
+    Args:
+      polymer_types: Which polymer types to inverse-fold. Any of ``"protein"``,
+        ``"rna"``, ``"dna"``. Defaults to ``["protein"]`` (original behaviour).
     """
 
     RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
@@ -353,18 +358,42 @@ class InverseFoldingTask(NoMotifABC):
         "not_cysteine_kwargs": {"p_add_not_cysteine_condition": 0.2},
     }
 
+    # polymer type -> (per-residue membership annotation, backbone-atom annotation)
+    _POLYMER_MASK_ANNOT: ClassVar[dict[str, tuple[str, str]]] = {
+        "protein": ("is_standard_aa", "is_protein_backbone"),
+        "rna": ("is_rna", "is_rna_backbone"),
+        "dna": ("is_dna", "is_dna_backbone"),
+    }
+
+    def __init__(self, polymer_types: list[str] | None = None, **kwargs):
+        super().__init__(**kwargs)
+        polymer_types = polymer_types or ["protein"]
+        unknown = set(polymer_types) - set(self._POLYMER_MASK_ANNOT)
+        assert not unknown, f"unknown polymer_types {unknown}; choose from {list(self._POLYMER_MASK_ANNOT)}"
+        self.polymer_types = list(polymer_types)
+
     def forward(self, data: dict) -> dict:
         data = super().set_task_info(data)
 
         atom_array = data["atom_array"]
-        ensure_annotations(atom_array, "is_standard_aa", "is_protein_backbone")
+        res_annots = [self._POLYMER_MASK_ANNOT[p][0] for p in self.polymer_types]
+        bb_annots = [self._POLYMER_MASK_ANNOT[p][1] for p in self.polymer_types]
+        ensure_annotations(atom_array, *res_annots, *bb_annots)
 
-        # provide coordinate info for every atom that is not a standard amino acid side chain
-        hidden_coordinates = atom_array.is_standard_aa & ~atom_array.is_protein_backbone
+        # A token is "designed" if it belongs to one of the requested polymer types;
+        # its backbone atoms are still shown as coordinate context.
+        designed = np.zeros(atom_array.array_length(), dtype=bool)
+        backbone = np.zeros(atom_array.array_length(), dtype=bool)
+        for res_annot, bb_annot in zip(res_annots, bb_annots, strict=True):
+            designed |= getattr(atom_array, res_annot).astype(bool)
+            backbone |= getattr(atom_array, bb_annot).astype(bool)
+
+        # provide coordinate info for every atom except designed non-backbone atoms
+        hidden_coordinates = designed & ~backbone
         C_CRD.set_mask(atom_array, ~hidden_coordinates)
 
-        # provide sequence info for every atom that is not a standard amino acid
-        C_SEQ.set_mask(atom_array, ~atom_array.is_standard_aa)
+        # provide sequence info for every atom that is not part of a designed polymer
+        C_SEQ.set_mask(atom_array, ~designed)
 
         data["atom_array"] = atom_array
 
