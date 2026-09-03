@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from functools import partial
 
 import lightning as L
 import torch
@@ -650,6 +651,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         self,
         batch: dict,
         predict_for_sampling: Callable,
+        recycle_depths: Sequence[int],
         nsteps: int,
         nsamples: int,
         n: int,
@@ -689,6 +691,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 - 'mask': torch.BoolTensor, shape [nsamples, n], mask for valid residues (added if not present)
                 - 'x_sc': torch.Tensor, self-conditioning input (added if self_cond=True)
             predict_for_sampling: Function that calls the nn, receives the full batch dict
+            recycle_depths: Recycle depth for each simulation step.
             nsteps: Number of simulation steps
             nsamples: Number of samples to generate
             n: Protein length
@@ -710,6 +713,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 - additional_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
                   'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
         """
+
+        if len(recycle_depths) != nsteps:
+            raise ValueError(f"expected {nsteps} recycle depths, got {len(recycle_depths)}")
 
         # Use mask from batch if present, otherwise generate it
         if "padding_mask" in batch and batch["padding_mask"] is not None:
@@ -770,7 +776,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 # get clean prediction and guided vector
                 nn_out = self.get_clean_pred_n_guided_vector(
                     batch=batch,
-                    predict_for_sampling=predict_for_sampling,
+                    predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
                     ag_ratio=ag_ratio,
                 )
@@ -902,6 +908,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         x_1_pred: dict[str, Tensor] | None,
         mask: Bool[Tensor, "nsamples n"],
         predict_for_sampling: Callable,
+        recycle_depths: Sequence[int],
         nsteps: int,
         ts: dict[str, Tensor],
         gt: dict[str, Tensor],
@@ -925,6 +932,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x_1_pred: Previous clean prediction (for self-conditioning), can be None
             mask: Valid residue mask [nsamples, n]
             predict_for_sampling: Prediction function that takes batch and mode
+            recycle_depths: Recycle depth for each simulation step.
             nsteps: Number of steps to take in the partial simulation
             ts: Time schedules per modality, dict of tensors [nsteps+1]
             gt: Noise injection schedules per modality, dict of tensors [nsteps]
@@ -948,10 +956,12 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 - extra_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
                   'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
         """
+        if len(recycle_depths) != nsteps:
+            raise ValueError(f"expected {nsteps} recycle depths, got {len(recycle_depths)}")
+
         nsamples = x[self.data_modes[0]].shape[0]
         is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
         trajectory_steps: list[dict] = []
-
         if resample_target_backbone:
             if target_backbone is None:
                 target_backbone = batch["x_1"]["bb_ca"]
@@ -991,7 +1001,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 # This calls predict_for_sampling internally with proper mode handling
                 nn_out = self.get_clean_pred_n_guided_vector(
                     batch=batch,
-                    predict_for_sampling=predict_for_sampling,
+                    predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
                     ag_ratio=ag_ratio,
                 )

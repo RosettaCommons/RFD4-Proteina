@@ -5,6 +5,7 @@
 defaults:
   - _self_
   - inference_experiment: inference_on_user_inputs # Default for design
+  - optional recycle_strategy: null
 
 # NOTE: The experiment configs can override values specified in this config
 

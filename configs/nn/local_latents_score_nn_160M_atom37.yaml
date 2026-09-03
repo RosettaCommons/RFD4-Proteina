@@ -93,6 +93,12 @@ update_pair_repr_every_n: 3  # Update the pair representation every n layers
 use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 tri_mult_c: 196  # hidden dim of the triangle multiplication layers; every checkpoint to date uses 196
 
+# Recycle single and pair states through zero-initialized projections.
+recycle:
+  enabled: false
+  grad: last  # last | last2 | all
+  checkpoint: true
+
 use_qkln: True
 
 # Attention implementation:

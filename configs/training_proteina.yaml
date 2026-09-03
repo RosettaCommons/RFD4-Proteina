@@ -9,11 +9,11 @@ out_dir: null
 
 # NOTE: order of defaults determines the order in which configs override each other (higher up items are overridden by lower items)
 defaults:
-  - generation/inference_base@inf_cfg
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
   - dataloaders: default
   - nn: local_latents_score_nn_160M_atom37
   - generation: inference_base
+  - optional recycle_strategy: null
   - metrics: all_metrics # includes refolding
   - callbacks: all_tasks
   # We must keep _self_ before experiment and debug to ensure that the experiment and debug configs can override
@@ -71,9 +71,6 @@ hardware:
   ngpus_per_node_: 1
   nnodes_: 1
 
-inf_cfg:
-  insert_unindexed_regions: False # TODO: I'm not sure we ever want this on
-
 # TODO: Move these into "model" or other appropriate section, following the train.yaml approach in RF3
 # Modalities to use
 product_flowmatcher:
@@ -126,7 +123,13 @@ force_precision_f32: False  # Deprecated: use precision: "32" instead
 
 # Training
 training:
-  n_recycle: 0
+  n_recycle: 0  # clean-prediction recycle count when trunk recycling is disabled
+  # Trunk recycle depth is sampled per step and clamped to [1, n_recycle_max].
+  n_recycle_max: 1
+  n_recycle_sampler: uniform  # uniform (U{1..n_recycle_max}) | poisson (Poisson(n_recycle_lambda), clamped)
+  n_recycle_lambda: 3.0  # Poisson mean when n_recycle_sampler=poisson
+  n_recycle_sync: false  # derive the draw from global_step so all ranks pick the same depth (no DDP straggler)
+  n_recycle_val_loss: 1  # fixed depth for validation-loss forwards; generation uses its recycle schedule
   motif_conditioning: False
   self_cond: True
 

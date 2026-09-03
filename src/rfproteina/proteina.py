@@ -314,13 +314,7 @@ class Proteina(L.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.cfg_exp = cfg_exp
-        # Handle inf_cfg for validation/inference
-        if "inf_cfg" in self.cfg_exp:
-            # The config loads generation/inference_base.yaml directly into inf_cfg
-            # No need to look for a .generation subkey
-            inf_cfg = self.cfg_exp.inf_cfg
-        else:
-            inf_cfg = None
+        inf_cfg = self.cfg_exp.get("inf_cfg") if "inf_cfg" in self.cfg_exp else self.cfg_exp.get("generation")
 
         # If True, these will be set in configure_inference
         self.is_inference = False
@@ -484,14 +478,12 @@ class Proteina(L.LightningModule):
         batch: dict[str, torch.Tensor],
         n_recycle: int,
     ) -> dict[str, torch.Tensor]:
-        """
-        Calls NN with recycling. Should this be here or in the NN? Possibly better here,
-        in case we want to recycle using decoder for some approach, etc, and this is akin
-        to self conditioning, also here.
-        Also, if we want to recycle clean sample predictions... Then we'd need this here,
-        as the nn does not know about relations between v, x1, ...
-        """
+        """Run either trunk or clean-prediction recycling."""
         device = batch["coords_nm"].device
+
+        trunk_recycling = getattr(self.nn, "recycle_enabled", False)
+        if trunk_recycling:
+            batch["n_recycle"] = n_recycle
 
         # Pre-seed x_recycle inactive on the first call; the recycle loop overwrites.
         batch["x_recycle"] = self._inactive_self_cond_placeholder(batch)
@@ -505,14 +497,13 @@ class Proteina(L.LightningModule):
         # First call
         nn_out = self.nn(batch)
 
-        # Recycle n_recycle times detaching gradients and updating input
-        # Note that recycling is supported by the codebase, but the models provided
-        # with the La-Proteina paper do not use it, nor were trained with it.
-        for _ in range(n_recycle):
-            x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
-            batch["x_recycle"] = {dm: x_1_pred[dm].detach() for dm in x_1_pred}
-            batch["x_recycle_is_active"] = torch.ones((), device=device)
-            nn_out = self.nn(batch)
+        # Clean-prediction recycling is the non-trunk mode.
+        if not trunk_recycling:
+            for _ in range(n_recycle):
+                x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
+                batch["x_recycle"] = {dm: x_1_pred[dm].detach() for dm in x_1_pred}
+                batch["x_recycle_is_active"] = torch.ones((), device=device)
+                nn_out = self.nn(batch)
 
         # Final prediction
         return nn_out
@@ -521,38 +512,45 @@ class Proteina(L.LightningModule):
         self,
         batch: dict,
         mode: Literal["full", "ucond"],
-        n_recycle: int,
+        recycle_depth: int,
     ) -> tuple[dict[str, torch.Tensor] | float | None]:
-        """
-        This function predicts clean samples for multiple models:
-        x_pred, the 'original' model, if mode == full
-        x_pred_ucond, the unconditional model, , if mode == ucond
-
-        TODO: Need to update to include autoguidance again
-
-        These predictions will later be used to sample with guidance and autoguidance.
-
-        Args:
-            batch: Dict
-            mode: str
-
-        Returns:
-            x_pred (tensor) for the requested mode
-        """
+        """Run a conditioned or unconditional model prediction for sampling."""
         if mode == "full":
-            nn_out = self.call_nn(batch, n_recycle=n_recycle)
+            nn_out = self.call_nn(batch, n_recycle=recycle_depth)
         elif mode == "ucond":
             assert "cath_code" in batch or "x_motif" in batch, "Only support CFG when cath_code or x_motif is provided"
-            uncond_batch = batch.copy()
-            if "cath_code" in uncond_batch:
-                uncond_batch.pop("cath_code")
-            if "x_motif" in uncond_batch:
-                uncond_batch.pop("x_motif")
-            nn_out = self.call_nn(uncond_batch, n_recycle=n_recycle)
+            batch_keys = batch.keys()
+            uncond_batch = {key: batch[key] for key in batch_keys if key not in {"cath_code", "x_motif"}}
+            msa_row_mask = batch.get("msa_row_mask")
+            if msa_row_mask is not None:
+                uncond_batch["msa_row_mask"] = msa_row_mask
+            nn_out = self.call_nn(uncond_batch, n_recycle=recycle_depth)
         else:
             raise OSError(f"Wrong {mode} passed to `predict_for_sampling`")
 
         return nn_out
+
+    def recycle_depths(self, nsteps: int) -> tuple[int, ...]:
+        """Return the configured recycle depth for each sampling step."""
+        cfg = self.inf_cfg or {}
+        schedule = cfg.get("n_recycle_schedule")
+
+        if schedule is None:
+            # No schedule provided, use the same depth for all steps
+            # TODO: Deprecate this option
+            depths = (cfg.get("n_recycle", 0),) * nsteps
+        else:
+            if not getattr(self.nn, "recycle_enabled", False):
+                raise ValueError("n_recycle_schedule requires a recycling checkpoint")
+            depths = tuple(depth for width, depth in schedule for _ in range(width))
+
+        # Validation of the schedule
+        if len(depths) != nsteps:
+            raise ValueError(f"recycle schedule expands to {len(depths)} steps; expected {nsteps}")
+        if any(not isinstance(depth, int) or depth < 0 for depth in depths):
+            raise ValueError("recycle depths must be non-negative integers")
+
+        return depths
 
     def training_step(self, batch: dict, batch_idx: int) -> dict:
         """
@@ -612,7 +610,7 @@ class Proteina(L.LightningModule):
             batch = self.handle_self_cond(batch, batch_idx=batch_idx, val_step=val_step)
 
             # Number of recycling steps
-            n_recycle = self.handle_recycling()
+            n_recycle = self.handle_recycling(val_step=val_step)
 
             nn_out = self.call_nn(batch, n_recycle=n_recycle)
             losses = self.fm.compute_loss(
@@ -792,7 +790,32 @@ class Proteina(L.LightningModule):
 
         return batch
 
-    def handle_recycling(self) -> int:
+    def handle_recycling(self, val_step: bool = False) -> int:
+        """Choose the recycle depth for a training or validation-loss forward pass."""
+        if getattr(self.nn, "recycle_enabled", False):
+            # Loss validation has no sampling trajectory, so it uses a fixed depth.
+            if val_step:
+                return max(1, int(self.cfg_exp.training.get("n_recycle_val_loss", 1)))
+
+            # Training uses a stochastic depth schedule, optionally synchronized across ranks
+            n_max = max(1, int(self.cfg_exp.training.get("n_recycle_max", 1)))
+            sampler = self.cfg_exp.training.get("n_recycle_sampler", "uniform")
+            if sampler not in ("uniform", "poisson"):
+                raise ValueError(f"training.n_recycle_sampler must be uniform or poisson, got {sampler!r}")
+            lam = float(self.cfg_exp.training.get("n_recycle_lambda", 3.0))
+
+            # ... if we are synchronizing across ranks for efficiency
+            if self.cfg_exp.training.get("n_recycle_sync", False):
+                rng = np.random.default_rng(0x5EED0000 + int(self.global_step))
+                if sampler == "poisson":
+                    return int(np.clip(rng.poisson(lam), 1, n_max))
+                return int(rng.integers(1, n_max + 1))
+
+            if sampler == "poisson":
+                return int(np.clip(np.random.poisson(lam), 1, n_max))
+
+            return random.randint(1, n_max)
+
         n_recycle = self.cfg_exp.training.get("n_recycle", 0)
         if n_recycle == 0:
             return 0
