@@ -43,9 +43,7 @@ opt:
   steps_per_epoch: 50
   val_every_n_epochs: 1
 
-# Compilation is off for a fast first run. Turn it on (nn.use_torch_compile=True,
-# compile_autoencoder=True) to train faster / for a more realistic setup.
-compile_autoencoder: false
+# Compilation is off for a fast first run
 nn:
   use_torch_compile: false
 

@@ -55,6 +55,7 @@ SPECS: dict[str, tuple] = {
     "tok_idx": (torch.int16, -1, "I"),
     "chain_iid": (torch.int16, -1, "I"),
     "molecule_iid": (torch.int16, -1, "I"),
+    "molecule_entity_id": (torch.int16, -1, "I"),
     "within_index_group_res_idx": (torch.int16, -1, "I"),
     "can_be_encoded": (torch.bool, False, "I"),
     "should_be_lossed": (torch.bool, False, "I"),

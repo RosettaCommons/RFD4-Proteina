@@ -97,7 +97,12 @@ tri_mult_c: 196  # hidden dim of the triangle multiplication layers; every check
 recycle:
   enabled: false
   grad: last  # last | last2 | all
-  checkpoint: true
+
+# Activation checkpointing: none | low (pair updates) | medium (pair updates and recycle cycles).
+checkpointing: medium
+
+# Single-to-pair update: sum (z + pi_i + pj_j) or hadamard (z + pi_i * pj_j).
+pair_write: sum
 
 use_qkln: True
 

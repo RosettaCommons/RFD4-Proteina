@@ -7,7 +7,6 @@ from atomworks.io.transforms.atom_array import (
 )
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
-from atomworks.io.utils.scatter import spread_segment_wise
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
 from atomworks.ml.transforms.dssp import SSEnum
@@ -260,10 +259,13 @@ class SecondaryStructure(ConditionBase):
 
 class IndexGroup(ConditionBase):
     """Indicates atoms within the same equivalence class of known index offsets.
-    Does not differentiate between globally indexed vs unindexed groups (that is annotated in C_IDX.mask)
-    While the default annotation is monotonically increasing by one, this should not be expected to always hold.
 
-    NOTE: Residues on different chains do NOT have known index offsets, even if both are globally indexed!!
+    Does not differentiate between globally indexed vs unindexed groups (that is annotated in
+    ``C_IDX.mask``). While the default annotation is monotonically increasing by one, this should
+    not be expected to always hold.
+
+    Groups by molecule to ensure that all tokens of one molecule share a group even if they
+    are not contiguous in the atom array.
     """
 
     name = "index-group"
@@ -285,21 +287,30 @@ class IndexGroup(ConditionBase):
                 atom_array.set_annotation("transformation_id", np.full(atom_array.array_length(), "1", dtype=str))
             atom_array = add_molecule_iid_annotation(atom_array)
 
+        if atom_array.array_length() == 0:
+            return np.zeros(0, dtype=int)
+
         molecule_annot = atom_array.molecule_iid
         is_globally_indexed = C_IDX.mask(atom_array, default="generate")
 
-        molecule_annot_changes = molecule_annot[1:] != molecule_annot[:-1]
-        globally_indexed_changes = is_globally_indexed[1:] != is_globally_indexed[:-1]
-        index_group_changes = molecule_annot_changes | globally_indexed_changes
+        all_index_groups = np.empty(atom_array.array_length(), dtype=int)
 
-        # Convert mask to indices
-        # Add 1, to shift the indices from the end of a residue to the start of a new residue
-        index_group_starts = np.where(index_group_changes)[0] + 1
-        num_index_groups = len(index_group_starts) + 1  # +1 for the first segment starting at 0
+        # Indexed atoms use one group per molecule, including non-adjacent parts of that molecule.
+        _, molecule_iids = np.unique(molecule_annot, return_inverse=True)
+        all_index_groups[is_globally_indexed] = molecule_iids[is_globally_indexed]
+        n_molecules = int(molecule_iids.max()) + 1
 
-        # The first residue is not included yet -> Insert '[0]'
-        index_group_starts_ends = np.concatenate(([0], index_group_starts, [atom_array.array_length()]))
-        all_index_groups = spread_segment_wise(index_group_starts_ends, np.arange(num_index_groups))
+        # Unindexed atoms use one group per contiguous same-molecule run, after the molecule IDs.
+        if not is_globally_indexed.all():
+            run_starts = np.concatenate(
+                (
+                    [True],
+                    (molecule_annot[1:] != molecule_annot[:-1]) | (is_globally_indexed[1:] != is_globally_indexed[:-1]),
+                )
+            )
+            run_ids = np.cumsum(run_starts) - 1
+            _, unindexed_ids = np.unique(run_ids[~is_globally_indexed], return_inverse=True)
+            all_index_groups[~is_globally_indexed] = unindexed_ids + n_molecules
 
         return all_index_groups
 

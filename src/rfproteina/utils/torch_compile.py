@@ -6,6 +6,7 @@ import getpass
 import logging
 import os
 import re
+from collections.abc import Mapping
 
 import lightning as L
 import torch
@@ -27,6 +28,37 @@ def _sanitized_user() -> str:
     ``torchinductor_<user>`` cache dir.
     """
     return re.sub(r'[\\/:*?"<>|]', "_", getpass.getuser())
+
+
+def configure_inductor_cache_dir() -> None:
+    """Point Inductor at a per-rank, node-local cache dir unless one is already set.
+
+    Must be called before the first ``torch.compile``; Inductor reads the env var when it builds a
+    cache path. A cluster env file or launcher that already exports ``TORCHINDUCTOR_CACHE_DIR`` wins.
+    """
+    if os.environ.get("TORCHINDUCTOR_CACHE_DIR"):
+        # Already set, don't override it
+        return
+
+    # Default to a node-local temp dir with the username and rank in the path. Fall back through the
+    # SLURM, torchrun, and Lightning rank vars so non-SLURM multi-process runs never share a cache dir.
+    rank = os.environ.get("SLURM_PROCID") or os.environ.get("LOCAL_RANK") or os.environ.get("RANK") or "0"
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = f"/tmp/torchinductor_{_sanitized_user()}_rank{rank}"
+    logger.info(f"Inductor cache dir set to {os.environ['TORCHINDUCTOR_CACHE_DIR']}")
+
+
+def torch_compile_kwargs(cfg: Mapping, *, default_fullgraph: bool = False) -> dict:
+    """Build ``torch.compile`` kwargs from a config node.
+
+    Args:
+      cfg: A config node exposing ``.get`` (dict or OmegaConf).
+      default_fullgraph: Value used when ``torch_compile_fullgraph`` is absent.
+    """
+    kwargs: dict = {"fullgraph": bool(cfg.get("torch_compile_fullgraph", default_fullgraph)), "dynamic": False}
+    mode = cfg.get("torch_compile_mode", None)
+    if mode:
+        kwargs["mode"] = mode
+    return kwargs
 
 
 def maybe_mark_cudagraph_step_begin() -> None:
@@ -102,6 +134,17 @@ def save_compile_cache() -> None:
             os.unlink(tmp)
         return
     logger.info(f"Saved torch.compile cache to {path}")
+
+
+def setup_run_compile(*, inference: bool = False) -> None:
+    """Configure torch.compile for a run and warm its local Inductor cache."""
+    torch._inductor.config.coordinate_descent_tuning = True
+    configure_inductor_cache_dir()
+    if inference:
+        blob = os.environ.get(_BLOB_ENV)
+        if blob and not blob.endswith(".inference"):
+            os.environ[_BLOB_ENV] = f"{blob}.inference"
+    load_compile_cache()
 
 
 class SaveCompileCacheCallback(Callback):

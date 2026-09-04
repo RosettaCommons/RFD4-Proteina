@@ -2,6 +2,7 @@ import contextlib
 from collections.abc import Generator
 
 import lightning as L
+import torch
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from lightning.pytorch.utilities.rank_zero import rank_zero_info
 from torch.optim.swa_utils import AveragedModel, get_ema_avg_fn
@@ -64,14 +65,19 @@ class SimpleEMA(Callback):
             # Load saved state if resuming. Missing LoRA keys are fine (a pre-LoRA
             # checkpoint has none, and they start from init); anything else still raises.
             if hasattr(self, "_loaded_ema_state"):
-                incompatible = self.ema_model.load_state_dict(self._loaded_ema_state, strict=False)
+                incompatible = self.ema_model.module.load_state_dict(self._loaded_ema_state, strict=False)
                 missing = [k for k in incompatible.missing_keys if not k.endswith((".lora_A", ".lora_B"))]
                 if missing or incompatible.unexpected_keys:
                     raise RuntimeError(
                         f"EMA state does not match the model: missing={missing}, "
                         f"unexpected={list(incompatible.unexpected_keys)}"
                     )
+
+                # Restore the averaging counter that decides whether the next update averages
+                # (n_averaged > 0) or overwrites the EMA weights with raw ones (n_averaged == 0).
+                self.ema_model.n_averaged.copy_(torch.tensor(self._loaded_n_averaged))
                 delattr(self, "_loaded_ema_state")
+                delattr(self, "_loaded_n_averaged")
                 rank_zero_info("Restored EMA state from checkpoint")
             else:
                 rank_zero_info(
@@ -118,6 +124,14 @@ class SimpleEMA(Callback):
         Swaps back to the original training weights so that gradient updates
         continue on the correct parameters.
         """
+        self._restore_training_weights(pl_module)
+
+    def on_exception(self, trainer: L.Trainer, pl_module: L.LightningModule, exception: BaseException) -> None:
+        """Restore training weights if an exception interrupts validation mid-swap."""
+        self._restore_training_weights(pl_module)
+
+    def _restore_training_weights(self, pl_module: L.LightningModule) -> None:
+        """Swap the stashed training weights back in if EMA weights are currently active. Idempotent."""
         if self._ema_weights_active:
             pl_module.load_state_dict(self._original_state_dict)
             self._original_state_dict = None
@@ -202,12 +216,18 @@ class SimpleEMA(Callback):
     def state_dict(self) -> dict:
         """Save EMA state for checkpointing.
 
+        The EMA weights are stored as a plain model state_dict (keys identical to the model), with
+        the AveragedModel averaging counter kept as a sibling ``n_averaged`` field.
+
+        Keeps the saved weights directly loadable for inference without any key rewriting.
+
         Returns:
-            Dictionary containing EMA model state, decay, and update_every_n.
+            Dictionary containing EMA weights, averaging counter, decay, and update_every_n.
             This gets saved in checkpoint['callbacks']['SimpleEMA'].
         """
         return {
-            "ema_state_dict": self.ema_model.state_dict() if self.ema_model else None,
+            "ema_state_dict": self.ema_model.module.state_dict() if self.ema_model else None,
+            "n_averaged": int(self.ema_model.n_averaged) if self.ema_model else 0,
             "decay": self.decay,
             "update_every_n": self.update_every_n,
         }
@@ -225,9 +245,10 @@ class SimpleEMA(Callback):
         Args:
             state_dict: Dictionary saved by state_dict() method.
         """
-        # Only load the EMA model weights, not the hyperparameters
+        # Only load the EMA model weights and averaging counter, not the hyperparameters
         if state_dict.get("ema_state_dict"):
             self._loaded_ema_state = state_dict["ema_state_dict"]
+            self._loaded_n_averaged = int(state_dict.get("n_averaged", 0))
 
 
 class EMAModelCheckpoint(ModelCheckpoint):

@@ -45,7 +45,7 @@ from rfproteina.utils.hydra import instantiate_callbacks  # noqa: E402
 from rfproteina.utils.lora import maybe_apply_lora  # noqa: E402
 from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
 from rfproteina.utils.torch import apply_torch_deterministic  # noqa: E402
-from rfproteina.utils.torch_compile import SaveCompileCacheCallback, load_compile_cache  # noqa: E402
+from rfproteina.utils.torch_compile import SaveCompileCacheCallback, setup_run_compile  # noqa: E402
 from rfproteina.utils.weights import fetch_last_ckpt  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -208,10 +208,10 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
             # explicit reinit/zero_init fallback) to deliberately load across an arch change.
             model.load_state_dict(ckpt["state_dict"], strict=True)
 
-        # Stash any SimpleEMA state from the pretrain ckpt so we can load it later
+        # Stash any SimpleEMA state (weights + averaging counter) from the pretrain ckpt to load later
         ema_callback_state = ckpt.get("callbacks", {}).get("SimpleEMA") or {}
         if ema_callback_state.get("ema_state_dict"):
-            model._pretrain_ema_state_dict = ema_callback_state["ema_state_dict"]
+            model._pretrain_ema_callback_state = ema_callback_state
             logger.info(
                 f"Stashed SimpleEMA state from pretrain ckpt "
                 f"({len(ema_callback_state['ema_state_dict'])} entries) for val-time load"
@@ -323,9 +323,8 @@ def log_config_dashboard(
 def main(cfg_exp: DictConfig) -> None:
     silence_warnings()
 
-    # Torch compile settings
-    torch._inductor.config.coordinate_descent_tuning = True
-    load_compile_cache()  # reuse compiled kernels across runs if a Mega-Cache blob exists
+    # Configure torch.compile + warm the local Inductor cache (before any compile).
+    setup_run_compile()
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
@@ -351,11 +350,11 @@ def main(cfg_exp: DictConfig) -> None:
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
 
     # If pretrain_ckpt_path stashed a SimpleEMA state, feed it to the SimpleEMA callback
-    pretrain_ema_state = getattr(model, "_pretrain_ema_state_dict", None)
+    pretrain_ema_state = getattr(model, "_pretrain_ema_callback_state", None)
     if pretrain_ema_state is not None:
         for cb in callbacks:
             if isinstance(cb, SimpleEMA):
-                cb.load_state_dict({"ema_state_dict": pretrain_ema_state})
+                cb.load_state_dict(pretrain_ema_state)
                 logger.info("Wired pretrain-ckpt SimpleEMA state into callback")
                 break
         else:
@@ -365,7 +364,7 @@ def main(cfg_exp: DictConfig) -> None:
             )
 
         # Remove the stashed state to free memory
-        delattr(model, "_pretrain_ema_state_dict")
+        delattr(model, "_pretrain_ema_callback_state")
 
     # Fully deterministic mode — MUST come after model init, because model.__init__
     # may call _configure_flash_attention_backends() which re-enables Flash SDP.

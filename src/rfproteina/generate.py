@@ -32,9 +32,8 @@ from rfproteina.utils.common import is_structure_file
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree
-from rfproteina.utils.simple_ema import SimpleEMA
 from rfproteina.utils.torch import apply_torch_deterministic
-from rfproteina.utils.torch_compile import load_compile_cache, save_compile_cache
+from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project
@@ -334,50 +333,11 @@ def infer_root_path(create_root: bool = True, config_name: str = ".") -> str:
 
 
 def check_cfg_validity(cfg_sample_args: dict) -> None:
-    """
-    Checks if guidance arguments (CFG and AG) are valid.
-    """
-    # Logging CFG
+    """Checks classifier-free guidance arguments."""
     if cfg_sample_args.guidance_w != 1.0:
-        logger.info(
-            f"Guidance is turned on with guidance weight {cfg_sample_args.guidance_w} "
-            f"and autoguidance ratio {cfg_sample_args.ag_ratio}."
-        )
-        assert (
-            cfg_sample_args.ag_ratio >= 0.0 and cfg_sample_args.ag_ratio <= 1.0
-        ), f"Autoguidance ratio should be between 0 and 1, but now is {cfg_sample_args.ag_ratio}."
-        assert (cfg_sample_args.ag_ratio == 0.0) or (
-            cfg_sample_args.ag_ckpt_path is not None
-        ), "Autoguidance checkpoint path should be provided"
+        logger.info(f"Classifier-free guidance is turned on with guidance weight {cfg_sample_args.guidance_w}.")
     else:
         logger.info("Guidance is turned off.")
-
-
-def load_ag_ckpt(cfg: dict) -> None | torch.nn.Module:
-    """
-    Loads the neural network for the "bad" checkpoint in autoguidance, if requested.
-
-    Returns:
-        A nn module, if autogudance enabled.
-    """
-    nn_ag = None
-    if cfg.ag_ratio > 0 and cfg.guidance_w != 1.0:
-        logger.info(
-            f"Using autoguidance with guidance weight {cfg.guidance_w} and autoguidance ratio {cfg.ag_ratio} "
-            f"based on the checkpoint {cfg.ag_ckpt_path}"
-        )
-        ckpt_ag_file = cfg.ag_ckpt_path
-        assert os.path.exists(ckpt_ag_file), f"Not a valid checkpoint {ckpt_ag_file}"
-        model_ag = Proteina.load_from_checkpoint(ckpt_ag_file, strict=True)
-
-        # OPTIMIZATION: Remove encoder from autoguidance model autoencoder during generation (only decoder needed)
-        if model_ag.autoencoder is not None:
-            logger.info("Removing autoencoder encoder from autoguidance model during generation to save memory")
-            del model_ag.autoencoder.encoder
-            model_ag.autoencoder.encoder = None
-
-        nn_ag = model_ag.nn
-    return nn_ag
 
 
 def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy:
@@ -400,33 +360,34 @@ def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy
     return search_strategy
 
 
-def _load_ema_from_checkpoint(ckpt_file: str) -> SimpleEMA | None:
-    """Load SimpleEMA callback state from a checkpoint if present.
+def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
+    """Load an inference-ready EMA state dict from a training checkpoint.
 
     Args:
         ckpt_file: Path to the checkpoint file.
 
     Returns:
-        Configured SimpleEMA ready for inference (EMA weights will be swapped in on
-        validation_start / loaded directly before predict), or None if no EMA state found.
+        EMA weights keyed for the inference model.
+
+    Raises:
+        ValueError: If the checkpoint carries no SimpleEMA state
+        (rather than silently falling back to training weights).
     """
     raw_ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
     callbacks_state = raw_ckpt.get("callbacks", {})
 
     ema_state = next((v for k, v in callbacks_state.items() if "SimpleEMA" in k), None)
     if ema_state is None or not ema_state.get("ema_state_dict"):
-        logger.info("No EMA state found in checkpoint; inference will use training weights.")
-        return None
+        raise ValueError(
+            f"{ckpt_file} has no SimpleEMA state, but inference requires EMA weights. Use an "
+            "'-ema.ckpt', or a training checkpoint produced with the SimpleEMA callback enabled."
+        )
 
-    decay = ema_state.get("decay", 0.999)
-    update_every_n = ema_state.get("update_every_n", 1)
-    ema_callback = SimpleEMA(decay=decay, update_every_n=update_every_n)
-    ema_callback.load_state_dict(ema_state)
-    logger.info(f"Found EMA state in checkpoint (decay={decay}). Inference will use EMA weights.")
-    return ema_callback
+    # SimpleEMA stores the EMA as a plain model state_dict, so its keys already match the model
+    return ema_state["ema_state_dict"]
 
 
-def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | None]:
+def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     """Load model checkpoint for inference."""
     ckpt_path = cfg.ckpt_path
     ckpt_file = os.path.join(ckpt_path, cfg.ckpt_name)
@@ -446,30 +407,25 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         map_location="cpu",
     )
 
-    # An "-ema" checkpoint's weights are already EMA (loaded above), so re-applying the EMA
-    # callback is redundant and can mismatch under torch.compile. Skip it; non-ema still gets EMA.
     if cfg.ckpt_name.endswith("-ema.ckpt"):
-        logger.info(f"'{cfg.ckpt_name}' is an EMA checkpoint; weights are already EMA, skipping EMA re-application.")
-        ema_callback = None
+        # Already EMA weights, no need to load again
+        logger.info(f"'{cfg.ckpt_name}' is an EMA checkpoint; weights are already EMA.")
     else:
-        # The checkpoint is typically warm in OS page cache here, so this second torch.load is fast.
-        ema_callback = _load_ema_from_checkpoint(ckpt_file)
+        # Training checkpoint: load EMA weights from the SimpleEMA callback and overlay them on the model
+        ema_state_dict = _load_ema_state_dict(ckpt_file)
+        model.load_state_dict(ema_state_dict, strict=True)
+        logger.info(f"Loaded {len(ema_state_dict)} EMA tensors from the training checkpoint.")
 
-    # Remove val sets used in training, and do not compute loss on inference examples, since they start with NaN coords
     # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.
     resolved_dataset = OmegaConf.to_container(cfg.generation.dataset, resolve=True, throw_on_missing=False)
     model.cfg_exp.datasets.val = OmegaConf.create(
         {"inference_dataset": {"dataset": resolved_dataset, "compute_loss": False}}
     )
 
-    # Set inference variables and potentially load autoguidance
-    nn_ag = load_ag_ckpt(cfg.generation.args)
-
     metrics = cfg.get("metrics")
 
     model.configure_inference(
         cfg.generation,
-        nn_ag=nn_ag,
         store_dir=cfg.get("out_dir"),
         metrics_cfg=metrics,
         is_inference=True,
@@ -522,7 +478,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> tuple[Proteina, SimpleEMA | No
         )
         model.configure_guidance(guidance_model)
 
-    return model, ema_callback
+    return model
 
 
 def _get_example_ids_from_dataset(dataset: torch.utils.data.Dataset) -> list[str]:
@@ -654,8 +610,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         logger.info(f"Results already exist at {csv_path}. Exiting generate.py.")
         sys.exit(0)
 
-    # Load model and EMA callback
-    model, ema_callback = load_ckpt_n_configure_inference(cfg)
+    model = load_ckpt_n_configure_inference(cfg)
     model.inference_seed = cfg.seed
 
     # Fully deterministic mode — MUST come after model init, because model.__init__
@@ -688,17 +643,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         ), f"compile_lengths must be 16-aligned for torch.compile, got {compile_lengths}"
         fixed_dimensions = {"I": compile_lengths}
         dataset = _sort_dataset_by_length(dataset)
-        # Match training so inference gets the same coordinate-descent-tuned kernels.
-        torch._inductor.config.coordinate_descent_tuning = True
-        # Inference compiles different graphs than training (no backward, different
-        # shapes), so keep them in a sibling blob: saving here must never overwrite
-        # the training cache that $TORCH_COMPILE_CACHE_BLOB points at.
-        blob = os.environ.get("TORCH_COMPILE_CACHE_BLOB")
-        if blob:
-            os.environ["TORCH_COMPILE_CACHE_BLOB"] = f"{blob}.inference"
-        load_compile_cache()
-        model.nn.enable_inference_compile(compile_lengths)
-        logger.info(f"Inference torch.compile enabled with length buckets {compile_lengths}")
+
+        # Configure torch.compile for inference + warm the local cache (before any compile).
+        setup_run_compile(inference=True)
+        model.reserve_shape_cache(compile_lengths)  # gate the flow model on for these buckets (AE stays eager)
+        logger.info(f"Inference torch.compile ready with length buckets: {compile_lengths}")
 
     # Create dataloader
     num_workers = cfg.num_workers
@@ -723,7 +672,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         num_nodes=cfg.hardware.nnodes_,
         default_root_dir=cfg.out_dir,
         logger=False,
-        callbacks=[ema_callback] if ema_callback is not None else [],
+        callbacks=[],
         precision=precision,
     )
 

@@ -350,8 +350,8 @@ def main() -> None:
                 # inference/beam baselines).
                 # torch.compile selects CUDA kernels at trace time; disable so the
                 # forward pass uses the same eager kernels across runs.
+                # TODO: Use torch compile should be a global flag that compiles both the AE and flow model
                 "nn.use_torch_compile=false",
-                "compile_autoencoder=false",  # frozen AE encoder also compiles by default
             ],
             out_dir=store_base,
         )

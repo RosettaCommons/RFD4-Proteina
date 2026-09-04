@@ -1285,16 +1285,6 @@ def annotate_na_ss(
         dtype=bool,
     )
 
-    # Apply optional filters
-    if NA_only:
-        bp_bool &= is_na_full[:, None]
-        bp_bool &= is_na_full[None, :]
-    if planar_only:
-        n_tokens = bp_bool.shape[0]
-        has_planar_sc = np.asarray(token_level_data.get("has_planar_sc", np.ones(n_tokens, dtype=bool)), dtype=bool)
-        bp_bool &= has_planar_sc[:, None]
-        bp_bool &= has_planar_sc[None, :]
-
     # Optional: filter to canonical Watson-Crick basepairs only.
     # Sampled probabilistically to allow mixed supervision during training.
     do_canonical_filter = bool(p_canonical_bp_filter and (np.random.rand() < float(p_canonical_bp_filter)))

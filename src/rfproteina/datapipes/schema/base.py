@@ -26,7 +26,7 @@ Special Keys (accessed via ``batch[key]``):
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from dataclasses import Field, dataclass, fields, is_dataclass
 from functools import cached_property
 from typing import Any, Union, get_args, get_origin, get_type_hints
@@ -569,3 +569,7 @@ class PaddedBatchedDataSample(BatchedDataSample):
         for f in fields(self.data_samples):
             k.add(f.name)
         return k
+
+    def items(self) -> Iterator[tuple[str, Any]]:
+        """Return dict-like ``(key, value)`` pairs."""
+        return ((key, self[key]) for key in self.keys())

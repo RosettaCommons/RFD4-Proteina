@@ -401,22 +401,18 @@ class RDNFlowMatcher(BaseFlowMatcher):
     def nn_out_add_guided_simulation_tensor(
         self,
         nn_out: dict[str, torch.Tensor],
-        nn_out_ag: dict[str, torch.Tensor] | None,
         nn_out_ucond: dict[str, torch.Tensor] | None,
         guidance_w: float,
-        ag_ratio: float,
     ) -> dict[str, torch.Tensor]:
         """
-        Computes predicted clean sample given nn output. Note this assumes the nn_out
+        Computes the classifier-free-guided velocity given nn output. Note this assumes the nn_out
         dictionaries contain the simulation tensor (v, score, ...) for each corresponding
         base flow matcher.
 
         Args:
             nn_out: output of neural network from full model, Dict[str, Tensor]
-            nn_out_ag: output of neural network from autoguidance model, Dict[str, torch.Tensor] or None
             nn_out_ucond: output of neural network from unconditional model, Dict[str, torch.Tensor] or None
             guidance_w: guidance weight, float
-            ag_ratio: autoguidance ratio, float
 
         Returns:
             The nn_out dictionary updated with guided v.
@@ -426,10 +422,9 @@ class RDNFlowMatcher(BaseFlowMatcher):
             return nn_out
 
         v = nn_out["v"]
-        v_ag = torch.zeros_like(v) if nn_out_ag is None else nn_out_ag["v"]
         v_ucond = torch.zeros_like(v) if nn_out_ucond is None else nn_out_ucond["v"]
 
-        nn_out["v_guided"] = guidance_w * v + (1 - guidance_w) * (ag_ratio * v_ag + (1 - ag_ratio) * v_ucond)
+        nn_out["v_guided"] = guidance_w * v + (1 - guidance_w) * v_ucond
         return nn_out
 
     def simulation_step(

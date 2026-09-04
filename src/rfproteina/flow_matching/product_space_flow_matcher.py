@@ -549,21 +549,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
     def nn_out_add_guided_simulation_tensor(
         self,
         nn_out: dict[str, dict[str, torch.Tensor]],
-        nn_out_ag: dict[str, dict[str, torch.Tensor]] | None,
         nn_out_ucond: dict[str, dict[str, torch.Tensor]] | None,
         guidance_w: float,
-        ag_ratio: float,
     ) -> dict[str, dict[str, torch.Tensor]]:
         """
-        Adds guided version of tensor used for simulation to nn output 'nn_out'. Supports classifier free
-        guidance and autoguidance.
+        Adds classifier-free-guided version of tensor used for simulation to nn output 'nn_out'.
 
         Args:
             nn_out: nn output of full model
-            nn_out_ag: nn output of model used for autoguidance
             nn_out_ucond: nn output of full but unconditional model
             guidance_w: Guidance weights, float
-            ag_ratio: Autoguidance ratio, float
 
         Returns:
             nn_out with guided simulation tensor prediction ("v_guided", "score_guided", ... keys) added to
@@ -572,10 +567,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         for data_mode in self.data_modes:
             nn_out[data_mode] = self.base_flow_matchers[data_mode].nn_out_add_guided_simulation_tensor(
                 nn_out=nn_out[data_mode],
-                nn_out_ag=nn_out_ag[data_mode] if nn_out_ag else None,
                 nn_out_ucond=nn_out_ucond[data_mode] if nn_out_ucond else None,
                 guidance_w=guidance_w,
-                ag_ratio=ag_ratio,
             )
         return nn_out
 
@@ -584,7 +577,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         batch: dict,
         predict_for_sampling: Callable,
         guidance_w: float,
-        ag_ratio: float,
     ) -> dict[str, dict[str, torch.Tensor]]:
         """
         This makes a prediction with the corresponding nn and conditioning, computes the
@@ -600,8 +592,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         we call `nn_out_add_clean_sample_prediction` and `nn_out_add_simulation_tensor` to
         extend each data mode in nn_out with "v"/"score" (the simulation tensor) and "x_1".
 
-        This function does this for the original nn, the unconditional input, and the
-        autoguidance nn, and combines predictions accordingly, adding to nn_out an entry
+        This function does this for the original nn and the unconditional input, and combines
+        predictions accordingly, adding to nn_out an entry
         `v_guided`. Overall, it returns nn_out like
         {
             "bb_ca": {"v": tensor, "x_1": tensor, "v_guided": tensor}
@@ -612,9 +604,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Args:
             batch: input to nn
             predict_for_sampling: function that takes as input batch and mode, where the latter indicated
-            what model to evaluate (supports "full", "ag", "ucond").
+            what model to evaluate (supports "full", "ucond").
             guidance_w: guidance weights
-            ag_ratio: autoguidance ratio
 
         Returns:
             an nn_out dictionary with keys "x_1", "v" (or "score") and "v_guided" (or "score_guided").
@@ -622,7 +613,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
 
         def _add_clean_n_sim_tensor(batch: dict, mode: str) -> dict[str, dict[str, torch.Tensor]]:
             """
-            We will use this for each model (full, ag, ucond).
+            We will use this for each model (full, ucond).
             """
             nn_out_dict = predict_for_sampling(batch, mode=mode)
             nn_out_dict = self.nn_out_add_clean_sample_prediction(batch, nn_out_dict)
@@ -630,20 +621,14 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             return nn_out_dict
 
         nn_out = _add_clean_n_sim_tensor(batch, mode="full")
-        nn_out_ag = None
         nn_out_ucond = None
-        if guidance_w != 1.0:
-            if ag_ratio > 0.0:  # Use auto-guidance
-                nn_out_ag = _add_clean_n_sim_tensor(batch, mode="ag")
-            if ag_ratio < 1.0:  # Use CFG
-                nn_out_ucond = _add_clean_n_sim_tensor(batch, mode="ucond")
+        if guidance_w != 1.0:  # Use CFG
+            nn_out_ucond = _add_clean_n_sim_tensor(batch, mode="ucond")
 
         nn_out = self.nn_out_add_guided_simulation_tensor(
             nn_out=nn_out,
-            nn_out_ag=nn_out_ag,
             nn_out_ucond=nn_out_ucond,
             guidance_w=guidance_w,
-            ag_ratio=ag_ratio,
         )  # Adds guided tensor used for simulation ("guided_v", "guided_score", or whatever the base flow matcher uses)
         return nn_out
 
@@ -661,7 +646,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         save_trajectory_every: int = 0,
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
-        ag_ratio: float = 0.0,
         guidance_model: Callable | None = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
         r"""
@@ -702,7 +686,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             dump_noisy_trajectories: If True, also collect the noisy x_t at each trajectory step in
                 addition to the clean x_1 prediction. Defaults to False.
             guidance_w: Guidance weight
-            ag_ratio: Autoguidance ratio
             guidance_model: Optional differentiable-metric gradient guidance. Called each
                 step with the clean prediction ``x_1_pred``; returns a per-modality ``delta``
                 added to the integrated state.
@@ -778,7 +761,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     batch=batch,
                     predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
-                    ag_ratio=ag_ratio,
                 )
                 # Dict[data_mode,
                 #   Dict[str, torch.Tensor]
@@ -918,7 +900,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         save_trajectory_every: int = 0,
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
-        ag_ratio: float = 0.0,
         resample_target_backbone: bool = False,
         target_backbone: Float[Tensor, "nsamples n 3"] | None = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
@@ -942,7 +923,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             save_trajectory_every: How often to save trajectory snapshots, 0 to disable.
             dump_noisy_trajectories: If True, also collect the noisy x_t alongside x_1.
             guidance_w: Guidance weight (1.0 = no guidance)
-            ag_ratio: Autoguidance ratio (0.0 = CFG only, 1.0 = AG only)
             resample_target_backbone: If True, independently resample the target
                 backbone from its forward marginal at every step while allowing
                 the model to update only the sequence latents.
@@ -1003,7 +983,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     batch=batch,
                     predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
-                    ag_ratio=ag_ratio,
                 )
 
                 # Track clean prediction for self-conditioning

@@ -1889,7 +1889,7 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         p_no_hotspots: float = 0.05,
         p_sample_ppi_crop: float = 0.75,
         ppi_crop_binder_fraction: float = 0.667,
-        bb_only_coord_conditioning: bool = False,
+        p_bb_only_coord_conditioning: float = 0.0,
         target_chain_types: Sequence[ChainType] = (ChainType.POLYPEPTIDE_L, ChainType.POLYPEPTIDE_D),
         **kwargs,
     ):
@@ -1922,9 +1922,10 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
                 upstream crop has run; otherwise the PPI re-crop is skipped entirely.
             ppi_crop_binder_fraction: Max fraction of the upstream crop budget that can be spent
                 on the binder; the rest is reserved for target context. Defaults to ``0.667``.
-            bb_only_coord_conditioning: If True, only the backbone atoms of the target chain
-                receive coordinate conditioning. NOTE: Sidechain atoms can still be hotspots, but
-                their precise coordinates are not given.
+            p_bb_only_coord_conditioning: Probability of applying backbone-only target conditioning:
+                only the backbone atoms of the target chain receive coordinate conditioning (sidechain
+                atoms can still be hotspots, but their precise coordinates are not given). Set to 1.0
+                for always-on, 0.0 to disable.
             target_chain_types: :py:class:`~atomworks.enums.ChainType` values allowed for the 3D
                 target chain. The designed binder is always a protein. Defaults to protein-only
                 (classic protein-protein interfaces); add ``ChainType.DNA`` / ``ChainType.RNA`` to
@@ -1945,7 +1946,7 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         self.p_no_hotspots = p_no_hotspots
         self.p_sample_ppi_crop = p_sample_ppi_crop
         self.ppi_crop_binder_fraction = ppi_crop_binder_fraction
-        self.bb_only_coord_conditioning = bb_only_coord_conditioning
+        self.p_bb_only_coord_conditioning = p_bb_only_coord_conditioning
         # Accept ChainType members directly; coerce str names (e.g. from YAML configs) for convenience.
         self.target_chain_types = tuple(
             ChainType[ct.upper()] if isinstance(ct, str) else ChainType(ct) for ct in target_chain_types
@@ -2107,7 +2108,7 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         C_HOT.set_annotation(atom_array=atom_array, array=hotspot_atom_mask)
         C_HOT.set_mask(atom_array, hotspot_atom_mask, 1, "atom")
 
-        if self.bb_only_coord_conditioning:
+        if true_with_prob(self.p_bb_only_coord_conditioning):
             ensure_annotations(atom_array, "is_protein_backbone", "is_nucleic_acid_backbone")
             is_backbone = atom_array.is_protein_backbone | atom_array.is_nucleic_acid_backbone
             C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask & is_backbone)

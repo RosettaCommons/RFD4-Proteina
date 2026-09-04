@@ -265,6 +265,7 @@ def store_n_log_configs(
 def main(cfg_exp: DictConfig) -> None:
     silence_warnings()
 
+    # TODO: Sync with how we handle this in the file autoencoder.py
     torch._inductor.config.coordinate_descent_tuning = True
 
     nolog = cfg_exp.get("nolog", False)

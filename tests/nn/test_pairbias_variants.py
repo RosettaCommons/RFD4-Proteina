@@ -10,6 +10,8 @@ from rfproteina.nn.modules.pair_bias_attn import (
     PairBiasAttention,
 )
 
+TF32_MAX_ABS_DIFF = 1e-3
+
 
 @pytest.fixture(autouse=True)
 def enable_sdpa_backends():
@@ -77,7 +79,7 @@ def test_sdpa_matches_einsum_reference(batch_size: int, seq_len: int):
 
     assert out.shape == ref.shape
     max_diff = (out - ref).abs().max().item()
-    assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 1e-4)"
+    assert max_diff < TF32_MAX_ABS_DIFF, f"Max diff: {max_diff:.3e} (expected < {TF32_MAX_ABS_DIFF:.0e})"
 
 
 @pytest.mark.skipif(not CUET_AVAILABLE, reason="cuequivariance_torch not installed")
@@ -103,4 +105,4 @@ def test_cuequivariance_matches_reference(batch_size: int, seq_len: int):
 
     assert out_cuet.shape == ref.shape
     max_diff = (out_cuet - ref).abs().max().item()
-    assert max_diff < 1e-4, f"Max diff: {max_diff:.6f} (expected < 1e-4)"
+    assert max_diff < TF32_MAX_ABS_DIFF, f"Max diff: {max_diff:.3e} (expected < {TF32_MAX_ABS_DIFF:.0e})"

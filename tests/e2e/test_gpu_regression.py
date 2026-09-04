@@ -171,7 +171,6 @@ def test_sota_training_regression() -> None:
             # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
             # baselines are anchored to random-init losses (seed=42).
             "nn.use_torch_compile=false",
-            "compile_autoencoder=false",  # frozen AE encoder also compiles by default
         ],
         expected_losses=expected,
     )
