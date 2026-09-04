@@ -22,6 +22,8 @@ from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_INTCRD, C_NCYS, 
 
 logger = logging.getLogger(__name__)
 
+_MAX_REASONABLE_BOND_LENGTH_ANGSTROM = 4.0
+
 
 @dataclass
 class InvariantViolation:
@@ -53,6 +55,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_centroid_conditioning_all_or_nothing_violations(aa, is_inference=is_inference)
     violations += check_conditioning_annotation_matches_ground_truth(aa, is_inference=is_inference)
     violations += check_conditioning_coords_not_nan(aa)
+    violations += check_bond_length_violations(aa, is_inference=is_inference)
 
     # --- Feats / token-level checks ---
     violations += check_conditioning_violations(aa, feats)
@@ -76,6 +79,36 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
 # ---------------------------------------------------------------------------
 # Atom-array checks
 # ---------------------------------------------------------------------------
+
+
+def check_bond_length_violations(aa: AtomArray, is_inference: bool) -> list[InvariantViolation]:
+    """Return training bonds with resolved endpoints farther than 4 Å apart."""
+    if is_inference or aa.bonds is None:
+        return []
+    bonds = aa.bonds.as_array()
+    if len(bonds) == 0:
+        return []
+
+    atom1, atom2 = bonds[:, :2].T
+    distances = np.linalg.norm(aa.coord[atom1] - aa.coord[atom2], axis=-1)
+    measured = ~np.isnan(distances)
+    if "occupancy" in aa.get_annotation_categories():
+        measured &= (aa.occupancy[atom1] > 0) & (aa.occupancy[atom2] > 0)
+    too_long = measured & (distances > _MAX_REASONABLE_BOND_LENGTH_ANGSTROM)
+    if not too_long.any():
+        return []
+
+    count = int(too_long.sum())
+    return [
+        InvariantViolation(
+            check="bond_length",
+            message=(
+                f"{count} bond(s) are longer than {_MAX_REASONABLE_BOND_LENGTH_ANGSTROM:.1f} Å; "
+                f"maximum length is {distances[too_long].max():.2f} Å"
+            ),
+            count=count,
+        )
+    ]
 
 
 def check_conditioning_annotation_matches_ground_truth(aa: AtomArray, is_inference: bool) -> list[InvariantViolation]:
