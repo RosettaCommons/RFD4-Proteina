@@ -194,7 +194,6 @@ def _upstream_direction(
 
 def compute_token_bond_features(
     atom_array: AtomArray,
-    distance_cutoff: float = np.inf,
     path_length_cutoff: int | None = None,
     source_atom_array: AtomArray | None = None,
     source_token_idxs: np.ndarray | None = None,
@@ -214,8 +213,6 @@ def compute_token_bond_features(
 
     Args:
         atom_array: Post-expansion atom array with ``insertion_source_idx`` annotation.
-        distance_cutoff: Maximum bond distance to consider bonded. Defaults to
-            ``np.inf`` (all bonds accepted regardless of distance).
         path_length_cutoff: Paths longer than this are stored as 0 (treated as
             disconnected). ``None`` keeps all distances.
         source_atom_array: A wider atom array from earlier in the pipeline. When provided
@@ -228,7 +225,7 @@ def compute_token_bond_features(
     Returns:
         Dict with five ``[n_total, n_total]`` arrays:
 
-        - ``"bond_mask"`` (bool): True where a direct bond exists within ``distance_cutoff``.
+        - ``"bond_mask"`` (bool): True where the input contains a direct bond.
         - ``"bond_order"`` (int16): Kekulé order (0=none, 1-3, 4=coord).
           Poly-poly pairs and self-diagonal are set to 0
         - ``"is_aromatic"`` (bool): True if any inter-token bond is aromatic.
@@ -267,15 +264,10 @@ def compute_token_bond_features(
     atom_to_token = spread_token_wise(atom_array, np.arange(n_total, dtype=np.int32))
     edges = _inter_token_bond_edges(atom_array, atom_to_token, atom_mask=is_indexed_atom)
 
-    # ── Bond distances → bond mask [n_indexed x n_indexed] ───────────────────
-    coords = atom_array.coord
-    bond_dists = np.linalg.norm(coords[edges["atom1"]] - coords[edges["atom2"]], axis=1)
-
-    _bond_dists_mat = np.full((n_indexed, n_indexed), np.inf)
-    np.minimum.at(_bond_dists_mat, (edges["tok1"], edges["tok2"]), bond_dists)
-    np.minimum.at(_bond_dists_mat, (edges["tok2"], edges["tok1"]), bond_dists)
-
-    idx_bond_mask = _bond_dists_mat < distance_cutoff
+    # ── Bond mask [n_indexed x n_indexed] ───────────────────────────────────
+    idx_bond_mask = np.zeros((n_indexed, n_indexed), dtype=bool)
+    idx_bond_mask[edges["tok1"], edges["tok2"]] = True
+    idx_bond_mask[edges["tok2"], edges["tok1"]] = True
     np.fill_diagonal(idx_bond_mask, False)
 
     # ── Bond orders [n_indexed x n_indexed] ──────────────────────────────────

@@ -760,10 +760,7 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
     NOTE: This is computed after DesignTask application so that C_IDXGRP is known
     """
 
-    def __init__(self, distance_cutoff: float = np.inf, path_length_search_cutoff: int | None = None):
-        # NOTE: Atomworks parsing already handles filtering bonds by cutoff (actually does something fancier).
-        # Thus we default distance cutoff to np.inf.
-        self.distance_cutoff = distance_cutoff
+    def __init__(self, path_length_search_cutoff: int | None = None):
         # BFS depth limit for token bond-graph path lengths. Same-molecule pairs beyond this
         # depth are stored as ``path_length_search_cutoff + 1`` (overflow sentinel).
         # ``None`` means no cutoff (all paths resolved). The model's :py:class:`TokenBondPathLengthPairFeat`
@@ -796,7 +793,6 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
 
         bond_feats = compute_token_bond_features(
             data["atom_array"],
-            distance_cutoff=self.distance_cutoff,
             path_length_cutoff=self.path_length_cutoff,
             source_atom_array=source_atom_array,
             source_token_idxs=source_token_idxs,

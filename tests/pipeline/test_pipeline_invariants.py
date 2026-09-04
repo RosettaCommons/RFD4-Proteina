@@ -28,7 +28,7 @@ from atomworks.io import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.standard_annotations import S_ATM
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
-from biotite.structure import get_residue_starts
+from biotite.structure import AtomArray, BondList, BondType, get_residue_starts
 
 from rfproteina.datapipes.pipeline import build_design_train_pipeline
 from rfproteina.transforms.design_task import (
@@ -40,7 +40,7 @@ from rfproteina.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
-from rfproteina.transforms.invariants import find_index_group_res_id_gaps
+from rfproteina.transforms.invariants import check_bond_length_violations, find_index_group_res_id_gaps
 from rfproteina.utils.logging import print_df_as_table
 from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 
@@ -303,6 +303,34 @@ def test_atomized_residue_is_not_a_res_id_gap():
     assert S_ATM.mask(aa, default="generate")[starts].sum() == 1, "fixture must have one atomized residue"
 
     assert find_index_group_res_id_gaps(aa) == []
+
+
+def _bonded_pair(distance: float, occupancy: tuple[float, float] = (1.0, 1.0)) -> AtomArray:
+    aa = AtomArray(2)
+    aa.coord = np.array([[0.0, 0.0, 0.0], [distance, 0.0, 0.0]])
+    aa.set_annotation("occupancy", np.array(occupancy))
+    aa.bonds = BondList(2, np.array([(0, 1, BondType.SINGLE)]))
+    return aa
+
+
+def test_bond_length_invariant_rejects_long_training_bond():
+    violations = check_bond_length_violations(_bonded_pair(4.1), is_inference=False)
+
+    assert len(violations) == 1
+    assert violations[0].check == "bond_length"
+    assert violations[0].count == 1
+
+
+@pytest.mark.parametrize(
+    ("atom_array", "is_inference"),
+    [
+        pytest.param(_bonded_pair(4.0), False, id="boundary"),
+        pytest.param(_bonded_pair(20.0, occupancy=(0.0, 1.0)), False, id="unresolved"),
+        pytest.param(_bonded_pair(20.0), True, id="inference"),
+    ],
+)
+def test_bond_length_invariant_allows_unmeasured_or_nontraining_bonds(atom_array: AtomArray, is_inference: bool):
+    assert check_bond_length_violations(atom_array, is_inference=is_inference) == []
 
 
 if __name__ == "__main__":
