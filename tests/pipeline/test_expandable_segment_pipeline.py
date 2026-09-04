@@ -306,7 +306,9 @@ def _values_equal(a, b) -> bool:
 # induced partitioning — i.e., for every pair of tokens (i, j), whether they
 # share a chain/molecule. Compare same-group adjacency matrices rather than
 # raw values.
-PARTITION_KEYS = frozenset({"chain_iid", "molecule_iid", "condition_index-group_1_atom"})
+PARTITION_KEYS = frozenset(
+    {"chain_iid", "molecule_iid", "condition_index-group_1_atom", "condition_index-group_1_token"}
+)
 
 
 def _same_group_matrix(x):
@@ -407,7 +409,6 @@ def _binder_hotspot_with_3d_target_factory():
         hotspot_max_distance=4.5,
         ppi_crop_binder_fraction=0.667,
         p_sample_ppi_crop=0.75,
-        bb_only_coord_conditioning=False,
         global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
     )
 

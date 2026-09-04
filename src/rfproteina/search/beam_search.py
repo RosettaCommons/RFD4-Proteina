@@ -154,7 +154,6 @@ class BeamSearchStrategy(SearchStrategy):
         self_cond = model.inf_cfg.args.self_cond
         nsteps = model.inf_cfg.args.nsteps
         guidance_w = model.inf_cfg.args.get("guidance_w", 1.0)
-        ag_ratio = model.inf_cfg.args.get("ag_ratio", 0.0)
 
         # Extract batch dimensions
         nsamples = batch["coords_nm"].shape[0]  # batch size
@@ -177,7 +176,7 @@ class BeamSearchStrategy(SearchStrategy):
         # partial_trajectory_fraction_steps affects the number of steps to actually run
         frac = model.inf_cfg.args.get("partial_trajectory_fraction_steps", None)
         actual_nsteps = round(frac * nsteps) if frac is not None else nsteps
-        recycle_depths = model.recycle_depths(actual_nsteps)
+        recycle_depths = model.recycle_depths(actual_nsteps, full_nsteps=nsteps)
 
         if self.step_checkpoints[-1] != actual_nsteps:
             frac_hint = f" (nsteps={nsteps} x fraction={frac} = {actual_nsteps})" if frac is not None else ""
@@ -279,7 +278,6 @@ class BeamSearchStrategy(SearchStrategy):
                         simulation_step_params=simulation_step_params,
                         device=model.device,
                         guidance_w=guidance_w,
-                        ag_ratio=ag_ratio,
                     )
 
                     all_xt_branches.append(branch_xt)
@@ -516,7 +514,6 @@ class BeamSearchStrategy(SearchStrategy):
                 },
                 device=model.device,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
-                ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
             )
             final_xt_batches.append(batch_final_xt)
             insertion_logits_batches.append(batch_extra_info.get("insertion_logits"))

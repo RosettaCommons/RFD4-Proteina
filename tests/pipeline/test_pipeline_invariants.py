@@ -130,7 +130,6 @@ DESIGN_TASKS = {
             hotspot_max_distance=4.5,
             ppi_crop_binder_fraction=0.667,
             p_sample_ppi_crop=0.75,
-            bb_only_coord_conditioning=False,
             global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
         ),
         "frequency": 1.0,

@@ -64,6 +64,7 @@ _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 # Committed, regression-validated de-novo monomer CIFs (length-only, no input structure).
 _MONOMER_CIF_DIR = BENCHMARKS_DIR / "monomer"
 _MONOMER_CIF = _MONOMER_CIF_DIR / "monomer-short.cif"
+_MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa_40" / "M0664_2dhn.cif"
 
 # Committed all-atom motif input structures. Structure-conditioned tests build their conditioning
 # on the fly with a condition_spec (see :func:`_motif_condition_spec`) rather than committing a
@@ -281,6 +282,33 @@ class TestDatasetConstruction:
         assert "example_id" in example
         assert "feats" in example
         assert Path(example["specification"]["input_cif"]) == _MONOMER_CIF
+
+    def test_generated_residues_get_a_distinct_molecule_entity(self, inference_pipeline):
+        """Generated and conditioned residues in one chain are different entities."""
+        dataset = get_contig_or_design_problem_dataset(
+            str(_MIXED_CONDITION_CIF),
+            num_replicates=1,
+            transform=inference_pipeline,
+        )
+
+        example = dataset[0]
+        atom_array = example["atom_array"]
+
+        _, token_starts = np.unique(atom_array.token_id, return_index=True)
+        generated = ~C_CRD.mask(atom_array, default="generate")[token_starts]
+        chain_ids = atom_array.chain_iid[token_starts]
+        entity_ids = example["feats"]["molecule_entity_id"].numpy()
+
+        mixed_chains = [chain for chain in np.unique(chain_ids) if generated[chain_ids == chain].any()]
+        mixed_chains = [chain for chain in mixed_chains if (~generated[chain_ids == chain]).any()]
+
+        assert mixed_chains
+        for chain in mixed_chains:
+            in_chain = chain_ids == chain
+            generated_entities = set(entity_ids[in_chain & generated])
+            conditioned_entities = set(entity_ids[in_chain & ~generated])
+            assert len(generated_entities) == 1
+            assert generated_entities.isdisjoint(conditioned_entities)
 
     @pytest.mark.parametrize(
         "num_replicates,global_prefix,expected_ids",

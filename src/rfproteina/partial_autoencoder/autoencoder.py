@@ -1,6 +1,5 @@
 import contextlib
 import os
-from collections.abc import Mapping
 from typing import Literal
 
 import lightning as L
@@ -30,67 +29,14 @@ from rfproteina.utils.structure_export import (
     write_generated_structure_cif,
     write_input_structure_cif,
 )
-from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
-
-COLORS_RT = [
-    "#FF0000",  # Red
-    "#008000",  # Green
-    "#0000FF",  # Blue
-    "#FFFF00",  # Yellow
-    "#FFA500",  # Orange
-    "#800080",  # Purple
-    "#00FFFF",  # Cyan
-    "#FF00FF",  # Magenta
-    "#00FF00",  # Lime
-    "#FFC0CB",  # Pink
-    "#008080",  # Teal
-    "#E6E6FA",  # Lavender
-    "#A52A2A",  # Brown
-    "#F5F5DC",  # Beige
-    "#800000",  # Maroon
-    "#808000",  # Olive
-    "#FF7F50",  # Coral
-    "#000080",  # Navy
-    "#AAF0D1",  # Mint
-    "#FFDB58",  # Mustard
-]
 
 
 @rank_zero_only
 def create_dir(dir: str) -> None:
     if not os.path.exists(dir):
         os.makedirs(dir, exist_ok=True)
-
-
-def _torch_compile_kwargs(cfg_nn_ae: Mapping) -> dict:
-    """Build ``torch.compile`` kwargs from the ``nn_ae`` config.
-
-    Args:
-      cfg_nn_ae: The ``nn_ae`` config node. Reads ``torch_compile_fullgraph`` (bool),
-        ``torch_compile_mode`` (str or null) and ``torch_compile_coordinate_descent`` (bool).
-
-    Returns:
-      Keyword arguments for :py:func:`torch.compile`.
-
-    Examples:
-      >>> _torch_compile_kwargs({"torch_compile_fullgraph": True})
-      {'fullgraph': True, 'dynamic': False}
-    """
-    get = cfg_nn_ae.get
-    kwargs = {"fullgraph": bool(get("torch_compile_fullgraph", False)), "dynamic": False}
-
-    mode = get("torch_compile_mode", None)
-    if mode:
-        kwargs["mode"] = mode
-
-    # Inductor searches kernel params by coordinate descent; costs compile time, not step time.
-    if get("torch_compile_coordinate_descent", False):
-        torch._inductor.config.coordinate_descent_tuning = True
-        torch._inductor.config.coordinate_descent_check_all_directions = True
-
-    return kwargs
 
 
 class AutoEncoder(L.LightningModule):
@@ -112,15 +58,6 @@ class AutoEncoder(L.LightningModule):
             self.decoder = DecoderFFLocal(**self.cfg_ae.nn_ae)
         else:
             raise OSError(f"Invalid decoder_type {decoder_type}")
-
-        # Optionally wrap encoder/decoder forward with torch.compile
-        self.use_torch_compile = self.cfg_ae.nn_ae.get("use_torch_compile", False)
-        if self.use_torch_compile:
-            logger.info("Enabling torch.compile for AutoEncoder encoder and decoder.")
-            compile_kwargs = _torch_compile_kwargs(self.cfg_ae.nn_ae)
-            logger.info(f"torch.compile kwargs: {compile_kwargs}")
-            self.encoder.forward = torch.compile(self.encoder.forward, **compile_kwargs)
-            self.decoder.forward = torch.compile(self.decoder.forward, **compile_kwargs)
 
         self.nsamples_processed = 0
         self.nparams_enc = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
@@ -205,9 +142,6 @@ class AutoEncoder(L.LightningModule):
         Returns:
             Training loss averaged over batch dimension.
         """
-        if self.use_torch_compile:
-            maybe_mark_cudagraph_step_begin()
-
         val_step = batch_idx == -1  # validation step is indicated with batch_idx -1
         log_prefix = "validation_loss" if val_step else "train"
         histogram_every_n = 5000

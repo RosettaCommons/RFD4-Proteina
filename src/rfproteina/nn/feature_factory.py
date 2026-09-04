@@ -37,6 +37,11 @@ from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
+# Full-graph compilation cannot trace tensor comparisons with IntEnum members
+# (Equivalent plain integers keep the atom37 feature forwards traceable)
+_HB_DONOR, _HB_ACCEPTOR, _HB_BOTH = int(HBondEnum.DONOR), int(HBondEnum.ACCEPTOR), int(HBondEnum.BOTH)
+_PC_AROMATIC, _PC_CATION, _PC_BOTH = int(PiCationEnum.AROMATIC), int(PiCationEnum.CATION), int(PiCationEnum.BOTH)
+
 
 def _require_condition_in_batch(batch: dict, full_name: str, feature_name: str) -> None:
     """Raise if a requested conditioning annotation is absent from the batch."""
@@ -923,8 +928,8 @@ class ModernizedHydrogenBondSeqFeat(Feature):
         _require_condition_in_batch(batch, C_HB.full_name, "ModernizedHydrogenBondSeqFeat")
         hb = batch[C_HB.full_name]  # [b, n, 37]
         atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
-        is_donor = ((hb == HBondEnum.DONOR) | (hb == HBondEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
-        is_acceptor = ((hb == HBondEnum.ACCEPTOR) | (hb == HBondEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_donor = ((hb == _HB_DONOR) | (hb == _HB_BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_acceptor = ((hb == _HB_ACCEPTOR) | (hb == _HB_BOTH)).float() * atom37_mask  # [b, n, 37]
         return torch.cat([is_donor, is_acceptor], dim=-1)  # [b, n, 74]
 
 
@@ -959,8 +964,8 @@ class PiCationSeqFeat(Feature):
         _require_condition_in_batch(batch, C_PICATION.full_name, "PiCationSeqFeat")
         pc = batch[C_PICATION.full_name]  # [b, n, 37]
         atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
-        is_aromatic = ((pc == PiCationEnum.AROMATIC) | (pc == PiCationEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
-        is_cation = ((pc == PiCationEnum.CATION) | (pc == PiCationEnum.BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_aromatic = ((pc == _PC_AROMATIC) | (pc == _PC_BOTH)).float() * atom37_mask  # [b, n, 37]
+        is_cation = ((pc == _PC_CATION) | (pc == _PC_BOTH)).float() * atom37_mask  # [b, n, 37]
         return torch.cat([is_aromatic, is_cation], dim=-1)  # [b, n, 74]
 
 
@@ -1458,6 +1463,18 @@ class MoleculeIdxPairFeat(Feature):
         return same_molecule.unsqueeze(-1).float()  # [b, n, n, 1]
 
 
+class MoleculeEntityPairFeat(Feature):
+    """Binary feature for whether two tokens belong to the same molecule *entity*."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=1)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        entity = batch["molecule_entity_id"].long()  # [b, n]
+        same_entity = entity[:, :, None] == entity[:, None, :]  # [b, n, n] boolean
+        return same_entity.unsqueeze(-1).float()  # [b, n, n, 1]
+
+
 class CanonicalPolymerOrderingPairFeat(Feature):
     """Directional ordering of canonical polymer backbone linkages.
 
@@ -1843,6 +1860,8 @@ class FeatureFactory(torch.nn.Module):
                 return ChainIdxPairFeat(**kwargs)
             elif f == "molecule_idx_pair":
                 return MoleculeIdxPairFeat(**kwargs)
+            elif f == "molecule_entity_pair":
+                return MoleculeEntityPairFeat(**kwargs)
             elif f == "index_group_pair":
                 return IndexGroupPairFeat(**kwargs)
 

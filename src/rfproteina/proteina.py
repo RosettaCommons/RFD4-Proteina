@@ -314,7 +314,7 @@ class Proteina(L.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.cfg_exp = cfg_exp
-        inf_cfg = self.cfg_exp.get("inf_cfg") if "inf_cfg" in self.cfg_exp else self.cfg_exp.get("generation")
+        inf_cfg = self.cfg_exp.get("inf_cfg") or self.cfg_exp.get("generation")
 
         # If True, these will be set in configure_inference
         self.is_inference = False
@@ -375,8 +375,6 @@ class Proteina(L.LightningModule):
         self.nsamples_processed = 0
         self.nparams = sum(p.numel() for p in self.nn.parameters() if p.requires_grad)
 
-        self.nn_ag = None
-
         # Muon and Adam are stepped by hand in training_step, which requires manual optimization.
         # Gradient clipping and accumulation are handled there too, not by the Trainer.
         self.automatic_optimization = False
@@ -421,12 +419,6 @@ class Proteina(L.LightningModule):
         if freeze_params:
             for param in autoencoder.parameters():
                 param.requires_grad = False
-        # Optionally compile the frozen encoder's forward. It runs every training step to
-        # produce the latent targets but otherwise executes eager; compiling it is
-        # output-preserving and gives ~+10% training steps/s (encoder is ~1/4 of step compute).
-        if cfg_exp.get("compile_autoencoder", False):
-            logger.info("Compiling autoencoder encoder forward (compile_autoencoder=True).")
-            autoencoder.encoder.forward = torch.compile(autoencoder.encoder.forward)
 
         n_ae_residue_types = autoencoder.decoder.logit_linear[-1].out_features
         self._use_unified_ae_encoding = n_ae_residue_types == 33
@@ -436,6 +428,10 @@ class Proteina(L.LightningModule):
         )
 
         return autoencoder, autoencoder.latent_dim
+
+    def reserve_shape_cache(self, lengths: list[int]) -> None:
+        """Declare fixed inference length buckets so the flow model may compile."""
+        self.nn.reserve_shape_cache(lengths)
 
     def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
         return build_optimizers(self.named_parameters(), self.cfg_exp.opt)
@@ -519,34 +515,38 @@ class Proteina(L.LightningModule):
             nn_out = self.call_nn(batch, n_recycle=recycle_depth)
         elif mode == "ucond":
             assert "cath_code" in batch or "x_motif" in batch, "Only support CFG when cath_code or x_motif is provided"
-            batch_keys = batch.keys()
-            uncond_batch = {key: batch[key] for key in batch_keys if key not in {"cath_code", "x_motif"}}
-            msa_row_mask = batch.get("msa_row_mask")
-            if msa_row_mask is not None:
-                uncond_batch["msa_row_mask"] = msa_row_mask
+            uncond_batch = {key: value for key, value in batch.items() if key not in {"cath_code", "x_motif"}}
             nn_out = self.call_nn(uncond_batch, n_recycle=recycle_depth)
         else:
             raise OSError(f"Wrong {mode} passed to `predict_for_sampling`")
 
         return nn_out
 
-    def recycle_depths(self, nsteps: int) -> tuple[int, ...]:
-        """Return the configured recycle depth for each sampling step."""
+    def recycle_depths(self, nsteps: int, full_nsteps: int | None = None) -> tuple[int, ...]:
+        """Return the recycle depth for each of the ``nsteps`` sampling steps actually run.
+
+        A recycle schedule is defined over the full trajectory (``full_nsteps``). Partial diffusion
+        runs only its tail, so when ``nsteps < full_nsteps`` the schedule is expanded over
+        ``full_nsteps`` and its final ``nsteps`` depths are returned. ``full_nsteps`` defaults to
+        ``nsteps`` (a full, non-partial trajectory).
+        """
+        full_nsteps = nsteps if full_nsteps is None else full_nsteps
         cfg = self.inf_cfg or {}
         schedule = cfg.get("n_recycle_schedule")
 
         if schedule is None:
-            # No schedule provided, use the same depth for all steps
+            # No schedule provided, use the same depth for every step actually run.
             # TODO: Deprecate this option
             depths = (cfg.get("n_recycle", 0),) * nsteps
         else:
             if not getattr(self.nn, "recycle_enabled", False):
                 raise ValueError("n_recycle_schedule requires a recycling checkpoint")
             depths = tuple(depth for width, depth in schedule for _ in range(width))
+            if len(depths) != full_nsteps:
+                raise ValueError(f"recycle schedule expands to {len(depths)} steps; expected {full_nsteps}")
+            # Partial diffusion runs the final nsteps of the trajectory; take that tail of the schedule.
+            depths = depths[len(depths) - nsteps :]
 
-        # Validation of the schedule
-        if len(depths) != nsteps:
-            raise ValueError(f"recycle schedule expands to {len(depths)} steps; expected {nsteps}")
         if any(not isinstance(depth, int) or depth < 0 for depth in depths):
             raise ValueError("recycle depths must be non-negative integers")
 
@@ -580,6 +580,7 @@ class Proteina(L.LightningModule):
             batch_idx=batch_idx,
             stage="train",
             total_batches=self.trainer.num_training_batches,
+            log_frequency=int(self.cfg_exp.log.get("step_log_frequency", 100)),
         )
 
         # Preprocess batch from atom37 collate format
@@ -1040,6 +1041,7 @@ class Proteina(L.LightningModule):
             epoch=self.current_epoch,
             batch_idx=batch_idx,
             stage=f"val/{dataset_name}",
+            log_frequency=int(self.cfg_exp.log.get("step_log_frequency", 100)),
         )
 
         # Loss-based validation (training task) - per-dataset opt-in via compute_loss config
@@ -1567,7 +1569,6 @@ class Proteina(L.LightningModule):
     def configure_inference(
         self,
         inf_cfg: DictConfig,
-        nn_ag: torch.nn.Module | None,
         store_dir: str | None = None,
         metrics_cfg: DictConfig | None = None,
         job_id: int | None = None,
@@ -1577,12 +1578,10 @@ class Proteina(L.LightningModule):
         ckpt_name: str | None = None,
         save_chain_of_interest: bool = False,
     ) -> None:
-        """Sets inference config with all sampling parameters required by the method (dt, etc)
-        and autoguidance network (or None if not provided).
+        """Sets inference config with all sampling parameters required by the method (dt, etc).
 
         Args:
             inf_cfg: Inference configuration.
-            nn_ag: Autoguidance neural network (or None).
             store_dir: Directory to store outputs.
             metrics_cfg: Metrics configuration.
             job_id: Job ID used to disambiguate per-job output files.
@@ -1595,7 +1594,6 @@ class Proteina(L.LightningModule):
                 for inference; the launch script enables them when foldseek will run.
         """
         self.inf_cfg = inf_cfg
-        self.nn_ag = nn_ag
         if store_dir is not None:
             self.store_dir = store_dir
 
@@ -2030,7 +2028,14 @@ class Proteina(L.LightningModule):
             # ... and -1 for residue types (so that unfilled tokens are -1 vs. 0 which conflicts with alanine)
             residue_type_full = torch.full((b, n), -1, device=x["bb_ca"].device, dtype=torch.long)
 
-            # Process each batch element separately (since different samples may have different generated masks)
+            # Process each batch element separately (since different samples may have different generated masks).
+            # Per-design so the decoder's rel_seq_sep pair feature sees packed, contiguous positions; a whole-
+            # batch masked decode would count masked atomized/unindexed tokens' positions and shift the output.
+
+            # TODO: When the released AE is the unified AE that handles atomized tokens, replace this loop with
+            # a single whole-batch decode -- self.autoencoder.decode(z_latent=x["local_latents"],
+            # ca_coors_nm=x["bb_ca"], mask=can_be_encoded) -- which is length-bucketable (and re-add AE
+            # torch.compile, removed for now).
             for i in range(b):
                 encoded_mask_i = can_be_encoded[i]  # [n]
                 padding_mask_i = padding_mask[i]  # [n]

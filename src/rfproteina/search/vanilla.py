@@ -207,7 +207,7 @@ class VanillaStrategy(SearchStrategy):
         dump_noisy_trajectories = model.inf_cfg.args.get("dump_noisy_trajectories", False)
         bb_ca_only_trajectories = model.inf_cfg.args.get("bb_ca_only_trajectories", False)
         actual_nsteps = round(frac * nsteps) if partial_t_dict and frac is not None else nsteps
-        recycle_depths = model.recycle_depths(actual_nsteps)
+        recycle_depths = model.recycle_depths(actual_nsteps, full_nsteps=nsteps)
         if len(partial_t_dict) > 0:
             # Default to full trajectory if not specified
             if "bb_ca" not in partial_t_dict:
@@ -253,7 +253,6 @@ class VanillaStrategy(SearchStrategy):
                 save_trajectory_every=save_trajectory_every,
                 dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
-                ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
                 resample_target_backbone=inverse_folding_method == RESAMPLED_FORWARD_MARGINAL,
                 target_backbone=target_backbone,
             )
@@ -272,7 +271,6 @@ class VanillaStrategy(SearchStrategy):
                 save_trajectory_every=save_trajectory_every,
                 dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
-                ag_ratio=model.inf_cfg.args.get("ag_ratio", 0.0),
                 guidance_model=model.guidance_model,
             )
 

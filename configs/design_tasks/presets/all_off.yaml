@@ -86,7 +86,7 @@ binder_hotspot_with_3d_target:
     jitter_sigma: 5.0
     ppi_crop_binder_fraction: 0.667
     p_sample_ppi_crop: 0.75
-    bb_only_coord_conditioning: False
+    p_bb_only_coord_conditioning: 0.0
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 tip_atom_pocket:

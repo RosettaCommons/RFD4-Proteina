@@ -374,6 +374,21 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         random_molecule_indices = np.random.permutation(len(unique_molecules))
         feats["molecule_iid"] = random_molecule_indices[mol_inverse_indices]  # [L]
 
+        # molecule_entity groups all copies of one molecule (same sequence)
+        # NOTE: Only used as a pair feature via equality check; absolute values are not meaningful
+        assert "molecule_entity" in aa.get_annotation_categories(), "molecule_entity annotation missing"
+
+        _, entity_ids = np.unique(aa.molecule_entity, return_inverse=True)  # [L], contiguous 0..k-1
+        if data.get("is_inference", False):
+            generated = ~C_CRD.mask(aa, default="generate")
+            next_entity = int(entity_ids.max()) + 1 if entity_ids.size else 0
+            for chain in np.unique(aa.chain_iid[generated]):
+                entity_ids[generated & (aa.chain_iid == chain)] = next_entity
+                next_entity += 1
+
+        # TODO: Rename to molecule_entity after performing checkpoint surgery
+        feats["molecule_entity_id"] = entity_ids.astype(np.int16)  # [L]
+
         # Encode ground-truth residue types using atom_array_to_encoded_resnames (handles proteins, DNA, RNA, atomized)
         # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns).
         # Maps all masked tokens to singular mask token.
@@ -541,6 +556,8 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "tok_idx",
     "chain_iid",
     "molecule_iid",
+    # TODO: Rename molecule_entity
+    "molecule_entity_id",
     "within_index_group_res_idx",
     "can_be_encoded",
     "should_be_lossed",
@@ -1345,6 +1362,7 @@ def _build_design_clean_and_sample_pipeline(
     crop_size: int | None = None,
     crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
     max_crop_size: int | None = None,
+    p_no_subcrop: float = 0.0,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     dna_contact_crop_probability: float = 0.0,
@@ -1441,6 +1459,7 @@ def _build_design_clean_and_sample_pipeline(
                     crop_size=crop_size,
                     crop_size_range=crop_size_range,
                     max_crop_size=max_crop_size,
+                    p_no_subcrop=p_no_subcrop,
                     keep_uncropped_atom_array=True,
                     max_atoms_in_crop=max_atoms_in_crop,
                     annotate_crop_boundary=True,
@@ -1452,6 +1471,7 @@ def _build_design_clean_and_sample_pipeline(
                     crop_size=crop_size,
                     crop_size_range=crop_size_range,
                     max_crop_size=max_crop_size,
+                    p_no_subcrop=p_no_subcrop,
                     crop_center_cutoff_distance=crop_center_cutoff_distance,
                     keep_uncropped_atom_array=True,
                     max_atoms_in_crop=max_atoms_in_crop,
@@ -1465,6 +1485,7 @@ def _build_design_clean_and_sample_pipeline(
         # a contiguous protein region + contiguous DNA duplex around a sampled
         # binding contact; falls back to a spatial crop when no contact exists.
         # Needs the within_poly_res_idx annotation to walk contiguous windows.
+        # TODO: We should be able to delete this in favor of a generalized ProteinBinder design task and crop
         if dna_contact_crop_probability > 0:
             T += AddWithinPolyResIdxAnnotation()
             crop_routes.append(
@@ -1725,6 +1746,7 @@ def build_design_train_pipeline(
     crop_size: int | None = None,
     crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
     max_crop_size: int | None = None,
+    p_no_subcrop: float = 0.0,
     crop_contiguous_probability: float = 0.5,
     crop_spatial_probability: float = 0.5,
     dna_contact_crop_probability: float = 0.0,
@@ -1810,6 +1832,7 @@ def build_design_train_pipeline(
         crop_size=crop_size,
         crop_size_range=crop_size_range,
         max_crop_size=max_crop_size,
+        p_no_subcrop=p_no_subcrop,
         crop_contiguous_probability=crop_contiguous_probability,
         crop_spatial_probability=crop_spatial_probability,
         dna_contact_crop_probability=dna_contact_crop_probability,

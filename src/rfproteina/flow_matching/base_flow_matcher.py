@@ -196,21 +196,17 @@ class BaseFlowMatcher:
     def nn_out_add_guided_simulation_tensor(
         self,
         nn_out: dict[str, torch.Tensor],
-        nn_out_ag: dict[str, torch.Tensor] | None,
         nn_out_ucond: dict[str, torch.Tensor] | None,
         guidance_w: float,
-        ag_ratio: float,
     ) -> dict[str, torch.Tensor]:
         """
-        Guidance logic, assumes the nn_out stuff contain the corresponding
+        Classifier-free guidance logic, assumes the nn_out dictionary contain the corresponding
         simulation tensors. See `R3NFlowMatcher` for an example.
 
         Args:
             nn_out: output of neural network from full model, Dict[str, torch.Tensor]
-            nn_out_ag: output of neural network from autoguidance model, Dict[str, torch.Tensor] or None
             nn_out_ucond: output of neural network from unconditional model, Dict[str, torch.Tensor] or None
             guidance_w: guidance weight, float
-            ag_ratio: autoguidance ratio, float
 
         Returns:
             The nn_out dictionary updated with guided  simulation tensor ("v" or "score", or whatever is needed).

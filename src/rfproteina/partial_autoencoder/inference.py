@@ -21,29 +21,6 @@ from rfproteina.utils.env import load_dotenv  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
-COLORS_RT = [
-    "#FF0000",  # Red
-    "#008000",  # Green
-    "#0000FF",  # Blue
-    "#FFFF00",  # Yellow
-    "#FFA500",  # Orange
-    "#800080",  # Purple
-    "#00FFFF",  # Cyan
-    "#FF00FF",  # Magenta
-    "#00FF00",  # Lime
-    "#FFC0CB",  # Pink
-    "#008080",  # Teal
-    "#E6E6FA",  # Lavender
-    "#A52A2A",  # Brown
-    "#F5F5DC",  # Beige
-    "#800000",  # Maroon
-    "#808000",  # Olive
-    "#FF7F50",  # Coral
-    "#000080",  # Navy
-    "#AAF0D1",  # Mint
-    "#FFDB58",  # Mustard
-]
-
 
 def parse_args_and_cfg() -> tuple[dict, dict, str]:
     """
