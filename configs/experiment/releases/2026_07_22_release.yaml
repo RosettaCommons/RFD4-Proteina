@@ -98,8 +98,7 @@ nn:
   use_tri_mult: True
   update_pair_repr_every_n: 2
   pair_repr_dim: 384
-  # 196 is what 2026_07_22_release_280k-ema.ckpt actually has. Changing it makes this
-  # recipe incompatible with that checkpoint (pretrain/resume will fail loudly).
+  # This recipe uses the original 196-wide triangle multiplication block.
   tri_mult_c: 196
   # feats_seq re-declared in full (Hydra replaces lists) to add "not_cysteine".
   feats_seq: [

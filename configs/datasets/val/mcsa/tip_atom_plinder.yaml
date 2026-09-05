@@ -11,5 +11,4 @@ dataset:
     metrics_tags:
       - design
       - unindexed
-      - 3d_coordinate_conditioning
       - ame_refolding

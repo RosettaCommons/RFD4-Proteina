@@ -3,8 +3,6 @@
 # annotated by biotite P-SEA. Per-structure class + SS composition (P-SEA and DSSP):
 # benchmarks/afdb_ss/manifest.csv. Structures are AFDB (AlphaFold) predictions from
 # the clustered AFDB set.
-compute_loss: true
-
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/afdb_ss

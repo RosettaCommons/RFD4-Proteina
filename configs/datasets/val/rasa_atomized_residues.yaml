@@ -1,5 +1,3 @@
-compute_loss: true
-
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 

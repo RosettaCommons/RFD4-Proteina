@@ -1,11 +1,6 @@
-compute_loss: true
-
-defaults:
-  # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
-  - /datasets/val/mcsa@_here_: mcsa_full
-  - _self_
-
 dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40
   # 15-target MCSA subset
   subset_to_keys:
     - M0040_13pk
@@ -24,4 +19,11 @@ dataset:
     - M0732_1xs1
     - M0870_1oh9
 
-  num_replicates: 200
+  num_replicates: 100
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - unindexed
+      - ame_refolding

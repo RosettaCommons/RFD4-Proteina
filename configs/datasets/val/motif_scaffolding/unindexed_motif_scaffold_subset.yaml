@@ -1,5 +1,3 @@
-compute_loss: true
-
 defaults:
   # package reference needed for validation using `+datasets/val@generation=motif_scaffolding/indexed_motif_scaffold_subset`
   - /datasets/val/motif_scaffolding@_here_: unindexed_motif_scaffold_full

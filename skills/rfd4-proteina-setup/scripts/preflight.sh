@@ -54,8 +54,9 @@ if [ -z "$DATA_PATH" ]; then
 else
     pass "DATA_PATH=$DATA_PATH"
     ldm_dir="$DATA_PATH/latent_checkpoints/ldm_checkpoints"
-    ae_ckpt="$DATA_PATH/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt"
     default_ldm="$(sed -n 's/^ckpt_name:[[:space:]]*//p' configs/inference.yaml | head -n1)"
+    default_ae="$(sed -n 's/^autoencoder_ckpt_path:[[:space:]]*//p' configs/inference.yaml | head -n1)"
+    ae_ckpt="$DATA_PATH/latent_checkpoints/ae_checkpoints/${default_ae##*/}"
     if [ -n "$default_ldm" ] && [ -f "$ldm_dir/$default_ldm" ]; then
         pass "default denoiser checkpoint found: $default_ldm"
     else
