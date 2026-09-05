@@ -1,5 +1,3 @@
-compute_loss: true
-
 defaults:
   # package reference needed for validation using `+datasets/val@generation=ppi_subset`
   - /datasets/val@_here_: cleaned_ppi
@@ -7,14 +5,17 @@ defaults:
 
 dataset:
   subset_to_keys:
-    # easy
     - 04_IFNAR2
-    - rfd3_insulinr # can reveal topology-mimicking if present
-    # medium
+    - rfd3_insulinr
     - rfd3_il7ra
     - 15_DerF7
-    # hard
     - rfd3_tie2
     - 36_VEGFA
+    - rfd3_pdl1
+    - 05_CD45
+    - 26_CbAgo
+    - 33_TrkA
+    - 37_IL17A
+    - 30_SC2RBD
 
-  num_replicates: 200
+  num_replicates: 100

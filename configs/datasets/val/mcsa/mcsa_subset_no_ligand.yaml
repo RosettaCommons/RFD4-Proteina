@@ -1,29 +1,14 @@
+defaults:
+  - /datasets/val/mcsa@_here_: mcsa_subset
+  - _self_
+
 run_every_n_val_epochs: 3
-compute_loss: true
 
 dataset:
-  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
-
-  # Required parameters for each inheriting dataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40_no_ligand
-  subset_to_keys:
-    # easy
-    - M0664_2dhn
-    - M0711_2esd
-    # medium
-    - M0097_1ctt
-    - M0500_1e3i
-    # hard
-    - M0732_1xs1
-    - M0375_4ts9
-  
-  num_replicates: 200
-
   transform:
-    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
       - unindexed
-      - 3d_coordinate_conditioning
       - ame_refolding
       - no_ligand
