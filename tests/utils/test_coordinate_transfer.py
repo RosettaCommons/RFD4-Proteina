@@ -169,7 +169,6 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
 
     allowed_losses = {
         "coord_to_be_noised",
-        "occupancy",
         "b_factor",
         "atom_id",
         "at_crop_boundary",

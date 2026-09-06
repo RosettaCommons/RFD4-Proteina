@@ -266,7 +266,7 @@ def copy_generated_coordinates_to_input(
             # Create template for new residue type with all residue-level annotations
             template = get_empty_ccd_template(
                 ccd_code=generated_res_name,
-                remove_hydrogens=True,
+                hydrogen_policy="remove",
                 **residue_annots,
             )
 
@@ -275,7 +275,7 @@ def copy_generated_coordinates_to_input(
 
             # Spoof all annotations with defaults so they survive insert_atoms()
             if "occupancy" in get_annotation_categories(input_atom_array, n_body="all"):
-                template.occupancy = np.ones(template.array_length(), dtype=float)
+                template.set_annotation("occupancy", np.ones(template.array_length(), dtype=float))
             annotations_to_default = get_annotation_categories(input_atom_array, n_body="all")
             existing_annotations = get_annotation_categories(template, n_body="all")
             annotations_to_default = set(annotations_to_default) - set(existing_annotations)
@@ -304,7 +304,14 @@ def copy_generated_coordinates_to_input(
         atoms_to_add = [atom_template for _, atom_template in missing_atoms_and_indices]
 
         # NOTE: We insert BEFORE the specified index
-        input_atom_array = insert_atoms(input_atom_array, atoms_to_add, insertion_indices)
+        # TODO: Switch to "raise" once all inserted-template annotations are equivalent.
+        input_atom_array = insert_atoms(
+            input_atom_array,
+            atoms_to_add,
+            insertion_indices,
+            fill_missing_standard_annotations=True,
+            on_annotation_mismatch_policy="drop",
+        )
 
         # Standardize atom order
         input_atom_array = input_atom_array[struc.info.standardize_order(input_atom_array)]
