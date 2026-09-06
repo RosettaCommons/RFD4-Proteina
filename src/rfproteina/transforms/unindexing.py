@@ -141,10 +141,6 @@ class UnindexFlaggedTokens(Transform):
             token.token_id = np.full(token.array_length(), next_copy_token_id, dtype=token.token_id.dtype)
             next_copy_token_id += 1
 
-            # Do not leak index through termini features
-            C_NTR.set_mask(token, np.full(token.array_length(), False, dtype=bool))
-            C_CTR.set_mask(token, np.full(token.array_length(), False, dtype=bool))
-
             # TODO: When we introduce the is_canonical annotation, we should enforce that here instead
             assert token.is_polymer.all(), f"Cannot unindex non-polymer token: {token}"
 
@@ -154,6 +150,15 @@ class UnindexFlaggedTokens(Transform):
             old_to_new_atom_idx_map.update({old_idx: (max_atom_idx := max_atom_idx + 1) for old_idx in used_idxs})
 
         assert len(unindexed_tokens) > 0, "No unindexed tokens found!"
+
+        unindexed = concatenate_any(unindexed_tokens)
+
+        # Do not leak index through termini features
+        false_mask = np.zeros(unindexed.array_length(), dtype=bool)
+        if C_NTR.mask_name in annotation_categories:
+            C_NTR.set_mask(unindexed, false_mask)
+        if C_CTR.mask_name in annotation_categories:
+            C_CTR.set_mask(unindexed, false_mask)
 
         # ... Remove original tokens e.g. during inference
         if is_inference:
@@ -239,7 +244,7 @@ class UnindexFlaggedTokens(Transform):
             )
 
         # Concatenate unindexed parts to the end
-        atom_array_full = concatenate_any([atom_array, *unindexed_tokens])
+        atom_array_full = concatenate_any([atom_array, unindexed])
 
         # Ensure that the newly-created index groups in the indexed region do not overlap with
         # those in the tokens that were copied for unindexing
@@ -299,6 +304,13 @@ class UnindexFlaggedTokens(Transform):
             is_unindexed_atom.copy(),
             function=lambda x: np.any(x),
         )
+        is_token_fully_unindexed = apply_and_spread_token_wise(
+            atom_array,
+            is_unindexed_atom.copy(),
+            function=lambda x: np.all(x),
+        )
+        if not np.array_equal(is_token_with_unindexed_atoms, is_token_fully_unindexed):
+            raise ValueError("C_IDX must be uniform across every token; unindexed polymer tokens are full residues.")
         has_any_unindexed = bool(np.any(is_token_with_unindexed_atoms))
 
         # Expand unindexed motifs if necessary

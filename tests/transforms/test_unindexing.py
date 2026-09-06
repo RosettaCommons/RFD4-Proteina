@@ -12,7 +12,7 @@ from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.testing import assert_same_atom_array_or_stack
-from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
 from atomworks.ml.conditions.base import ConditionConflictError
 from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Compose
@@ -43,7 +43,10 @@ _ID_ANNOTATIONS = ["res_id", "atom_id", "token_id"]
 # Annotations that UnindexFlaggedTokens *adds* to its output (see unindexing.py). They are
 # absent from the pre-transform snapshot by construction, so they are never part of a
 # snapshot-vs-output comparison.
-_UNINDEXING_ADDED_ANNOTATIONS = {"insertion_source_idx", "is_unindexed_source"}
+_UNINDEXING_ADDED_ANNOTATIONS = {
+    "insertion_source_idx",
+    "is_unindexed_source",
+}
 
 
 def assert_same_atom_array_with_group_equivalence(
@@ -139,6 +142,8 @@ def _make_unindexed_data(pdb_id: str, seed: int = 42, p_split_group: float = 0.0
     C_SEQ.set_mask(aa, rng.random(n_atoms) < 0.7)
 
     aa.set_annotation("within_index_group_res_idx", aa.within_chain_source_res_idx.copy())
+    C_NTR.set_mask(aa, C_NTR.mask(aa, default="generate"))
+    C_CTR.set_mask(aa, C_CTR.mask(aa, default="generate"))
 
     # Reset indices to zero to avoid any bias.
     for index_group in np.unique(C_IDXGRP.annotation(aa, default="generate")):
@@ -182,11 +187,23 @@ def test_indexed_region_identical_across_modes(pdb_id: str, p_split_group: float
     # In train mode the original atoms are kept in place; take first n_orig and select indexed
     train_indexed = out_train[:n_orig][idx_mask]
     assert_same_atom_array_with_group_equivalence(orig_indexed, train_indexed, check_ids=True)
+    assert np.array_equal(
+        C_NTR.mask(train_indexed, default="raise"), C_NTR.mask(snapshot.copy(), default="generate")[idx_mask]
+    )
+    assert np.array_equal(
+        C_CTR.mask(train_indexed, default="raise"), C_CTR.mask(snapshot.copy(), default="generate")[idx_mask]
+    )
 
     # In infer mode unindexed atoms are removed; indexed atoms occupy the front of the array
     n_indexed = int(idx_mask.sum())
     infer_indexed = out_infer[:n_indexed]
     assert_same_atom_array_with_group_equivalence(orig_indexed, infer_indexed, check_ids=False)
+    assert np.array_equal(
+        C_NTR.mask(infer_indexed, default="raise"), C_NTR.mask(snapshot.copy(), default="generate")[idx_mask]
+    )
+    assert np.array_equal(
+        C_CTR.mask(infer_indexed, default="raise"), C_CTR.mask(snapshot.copy(), default="generate")[idx_mask]
+    )
 
 
 @pytest.mark.parametrize("p_split_group", [0.0, 1.0])
@@ -205,7 +222,13 @@ def test_appended_tokens_match_original_unindexed_atoms(pdb_id: str, p_split_gro
     for out in [out_train, out_infer]:
         # Appended copies are the last n_unindexed atoms
         appended = out[-n_unindexed:]
-        assert_same_atom_array_with_group_equivalence(orig_unindexed, appended)
+        assert_same_atom_array_with_group_equivalence(
+            orig_unindexed,
+            appended,
+            exclude_annots={C_NTR.mask_name, C_CTR.mask_name},
+        )
+        assert not C_NTR.mask(appended, default="generate").any()
+        assert not C_CTR.mask(appended, default="generate").any()
 
 
 @pytest.mark.parametrize("p_split_group", [0.0, 1.0])

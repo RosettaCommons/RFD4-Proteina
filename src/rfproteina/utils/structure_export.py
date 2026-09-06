@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from atomworks.io.utils.annotator import remove_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
@@ -30,6 +31,10 @@ from rfproteina.utils.pdb import _prepare_bondless_atom_array_for_cif
 from rfproteina.utils.standard_annotations import SA_CWI
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+# Mapping joins regenerated indexed atoms with preserved unindexed atoms; these bookkeeping/export fields may exist
+# on only one side and are not consumed by insertion transfer.
+_INSERTION_MAPPING_IGNORED_ANNOTATIONS = ("atom_id", "b_factor", "coord_to_be_noised", "original_global_index")
 
 
 def process_single_sample_to_atom_array(
@@ -152,8 +157,16 @@ def process_single_sample_to_atom_array(
     if not has_idx_all_token_level.all():
         SA_CWI.set_annotation(unindexed_input_atom_array, SA_CWI.default_annotation(unindexed_input_atom_array))
         unindexed_input_atom_array.coord = unindexed_input_atom_array.coord_to_be_noised.copy()
+
+        mapping_arrays = [updated_array.copy(), unindexed_input_atom_array.copy()]
+        for array in mapping_arrays:
+            remove_annotations(array, *_INSERTION_MAPPING_IGNORED_ANNOTATIONS)
         full_array_with_unindexed = as_atom_array_plus(
-            concatenate_atom_array_plus([updated_array, unindexed_input_atom_array])
+            concatenate_atom_array_plus(
+                mapping_arrays,
+                fill_missing_standard_annotations=True,
+                on_annotation_mismatch_policy="raise",
+            )
         )
         try:
             predicted_insertion_mapping = build_predicted_insertion_mapping(

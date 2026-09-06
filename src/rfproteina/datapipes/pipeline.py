@@ -16,6 +16,7 @@ from atomworks.constants import (
     STANDARD_DNA,
     STANDARD_RNA,
     UNKNOWN_AA,
+    UNKNOWN_ATOM_NAME,
     UNKNOWN_DNA,
     UNKNOWN_RNA,
 )
@@ -659,31 +660,30 @@ class ConvertToAtom37Format(Transform):
                 atom37_arrays[feat_name] = np.full(shape, pad_value, dtype=feats[feat_name].dtype)  # [L, 37, ...]
 
         atom37_mask = np.zeros((num_tokens, 37), dtype=bool)  # [L, 37]
-        n_atoms = atom_array.array_length()
+        atom_slots = build_atom37_slots(atom_array)
 
-        # Initialize slot assignments (-1 = invalid)
-        atom_slots = np.full(n_atoms, -1, dtype=np.int32)  # [n_atoms]
+        missing_slot = atom_slots < 0
+        coordinate_free_stub = (
+            S_SEGMIN.mask(atom_array, default="generate")
+            & (atom_array.res_name == MASKED)
+            & (atom_names == UNKNOWN_ATOM_NAME)
+        )
+        unsupported_atom = missing_slot & ~coordinate_free_stub
+        if unsupported_atom.any():
+            example_indices = np.flatnonzero(unsupported_atom)[:5]
+            atoms = ", ".join(f"{atom_array.res_name[i]}:{atom_names[i]}" for i in example_indices)
+            raise ValueError(f"Atoms cannot be represented in Atom37: {atoms}")
 
-        # Residue-specific slot lookup is required for NA, since purines and
-        # pyrimidines reuse atom names but assign them to different slots.
-        token_type = feats["token_type"]  # [n_atoms] with values from TokenType enum
-
-        is_polymer = (token_type == TokenType.PROTEIN) | (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
-        if is_polymer.any():
-            residue_names = atom_array.res_name[is_polymer].astype(str)
-            polymer_atom_names = atom_names[is_polymer]
-            polymer_keys = np.char.add(np.char.add(residue_names, "|"), polymer_atom_names)
-            atom_slots[is_polymer] = _lookup_atom37_slots(polymer_keys, _ATOM37_KEYS, _ATOM37_SLOTS)
-
-        # Atomized atoms → slot 1
-        atom_slots[(token_type == TokenType.ATOMIZED)] = 1
+        has_slot = ~missing_slot
+        slot_token_id = atom_array.token_id[has_slot]
+        valid_slots = atom_slots[has_slot]
 
         # Scatter atoms into atom37 arrays (vectorized)
-        atom37_mask[atom_array.token_id, atom_slots] = True
+        atom37_mask[slot_token_id, valid_slots] = True
 
         # Scatter all features at once
         for feat_name in atom37_arrays:
-            atom37_arrays[feat_name][atom_array.token_id, atom_slots] = feats[feat_name]
+            atom37_arrays[feat_name][slot_token_id, valid_slots] = feats[feat_name][has_slot]
 
         result["atom37_mask"] = atom37_mask
         result.update(atom37_arrays)
