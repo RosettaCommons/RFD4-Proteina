@@ -362,8 +362,30 @@ def _process_run(
 
     run_start = assembled.array_length() if assembled is not None else 0
     if run_preserved_atoms is not None:
+        # Expandable-segment insertion adds its private UID annotation to `assembled`.
+        # Preserve existing identities and mark untouched atoms with its missing-value sentinel.
+        if (
+            assembled is not None
+            and "_expseg_uid" in assembled.get_annotation_categories()
+            and "_expseg_uid" not in run_preserved_atoms.get_annotation_categories()
+        ):
+            run_preserved_atoms = run_preserved_atoms.copy()
+            run_preserved_atoms.set_annotation(
+                "_expseg_uid",
+                np.full(
+                    run_preserved_atoms.array_length(),
+                    -1,
+                    dtype=assembled.get_annotation("_expseg_uid").dtype,
+                ),
+            )
         assembled = (
-            run_preserved_atoms if assembled is None else concatenate_atom_array_plus([assembled, run_preserved_atoms])
+            run_preserved_atoms
+            if assembled is None
+            else concatenate_atom_array_plus(
+                [assembled, run_preserved_atoms],
+                fill_missing_standard_annotations=True,
+                on_annotation_mismatch_policy="raise",
+            )
         )
         original_res_id = np.concatenate([original_res_id, run_original_res_id])
     run_tail = run_start + (run_preserved_atoms.array_length() if run_preserved_atoms is not None else 0)

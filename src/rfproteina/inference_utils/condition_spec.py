@@ -222,7 +222,11 @@ def load_condition_spec_inputs(paths: list[str | PathLike], *, as_annotated_cif:
                 )
             seen_chain_ids[chain_id] = str(raw_path)
 
-    combined = concatenate_atom_array_plus(arrays)
+    combined = concatenate_atom_array_plus(
+        arrays,
+        on_annotation_mismatch_policy="raise",
+        fill_missing_standard_annotations=True,
+    )
     # Each file's ids (chain/pn_unit/molecule, and their instance-id counterparts) were derived
     # relative to that file alone, so e.g. both files' first molecule would be molecule_iid 0 --
     # blindly concatenating would silently alias two unrelated molecules together (and,
