@@ -32,6 +32,7 @@ from atomworks.io.utils.annotator import ensure_annotations, remove_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.chain import create_chain_id_generator
 from atomworks.io.utils.selection import get_annotation_categories
+from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from atomworks.ml.transforms.atom_array import add_global_atom_id_annotation
 from atomworks.ml.transforms.crop import get_token_count
 from biotite.structure import AtomArray
@@ -147,18 +148,21 @@ def _coi_mask(atom_array: AtomArray) -> tuple[np.ndarray, str]:
 
 
 def _align_annotations(design: AtomArray, off_target: AtomArray) -> tuple[AtomArray, AtomArray]:
-    """Give each array whichever of the other's annotations it can default.
+    """Give each array whichever of the other's non-standard annotations it can default.
 
-    Concatenation keeps only the annotations *common* to its inputs, so without
-    this the design would silently lose every conditioning annotation the
-    off-target file does not have.
+    Registered StandardAnnotations are left for ``concatenate_atom_array_plus``
+    to fill, because it generates masks before values when their defaults depend
+    on one another.
     """
     design, off_target = as_atom_array_plus(design.copy()), as_atom_array_plus(off_target.copy())
+    standard_annotation_names = {
+        name for annotation_cls in STANDARD_ANNOTATIONS for name in (annotation_cls.mask_name, annotation_cls.full_name)
+    }
     for target, reference in ((off_target, design), (design, off_target)):
         missing = set(get_annotation_categories(reference, n_body="all")) - set(
             get_annotation_categories(target, n_body="all")
         )
-        for name in sorted(missing):
+        for name in sorted(missing - standard_annotation_names):
             # No generator registered -> no defensible default; let it be dropped.
             with contextlib.suppress(ValueError):
                 ensure_annotations(target, name)
@@ -315,7 +319,13 @@ class OffTargetSubstitutionTransform(PreOracleTransform):
             design.set_annotation("is_loaded_target", np.zeros(design.array_length(), dtype=bool))
             off_target.set_annotation("is_loaded_target", np.ones(off_target.array_length(), dtype=bool))
             off_target = _rename_chains(off_target, unavailable_chain_ids=unavailable_chain_ids)
-            substituted = _reindex_identities(concatenate_atom_array_plus([design, off_target]))
+            substituted = _reindex_identities(
+                concatenate_atom_array_plus(
+                    [design, off_target],
+                    fill_missing_standard_annotations=True,
+                    on_annotation_mismatch_policy="warn",
+                )
+            )
             outputs.append(PreOracleOutput(save_id=save_id, atom_array=substituted, chain_of_interest=coi))
             logger.info(
                 f"OffTargetSubstitution [{save_id}]: kept chain {coi!r} ({design_chain.array_length()} atoms), "
