@@ -481,6 +481,12 @@ def annotate_unindexed_insertion(
     model_generated_atom_array = atom_array[has_index].copy()
     in_context_conditioning = atom_array[~has_index].copy()
 
+    # Materialize the output schema before early returns for indexed or unmapped inputs.
+    if not C_CRDGRP.has_mask(model_generated_atom_array):
+        C_CRDGRP.set_mask(model_generated_atom_array, C_CRDGRP.default_mask(model_generated_atom_array))
+    if not C_CRDGRP.has_annotation(model_generated_atom_array):
+        C_CRDGRP.set_annotation(model_generated_atom_array, C_CRDGRP.default_annotation(model_generated_atom_array))
+
     n_atoms = model_generated_atom_array.array_length()
 
     def _set_empty_unindexed_annotations() -> AtomArray:
@@ -635,6 +641,10 @@ def annotate_unindexed_insertion(
         )
         # Discard any partial condition transfer -- re-derive the clean generated array before emitting.
         model_generated_atom_array = atom_array[has_index].copy()
+        if not C_CRDGRP.has_mask(model_generated_atom_array):
+            C_CRDGRP.set_mask(model_generated_atom_array, C_CRDGRP.default_mask(model_generated_atom_array))
+        if not C_CRDGRP.has_annotation(model_generated_atom_array):
+            C_CRDGRP.set_annotation(model_generated_atom_array, C_CRDGRP.default_annotation(model_generated_atom_array))
         return _set_empty_unindexed_annotations()
 
     # Fold directly-indexed coord conditioning into SA_CRDSRC so the per-group re-staging below
