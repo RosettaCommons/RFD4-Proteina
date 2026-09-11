@@ -165,7 +165,7 @@ def process_single_sample_to_atom_array(
             concatenate_atom_array_plus(
                 mapping_arrays,
                 fill_missing_standard_annotations=True,
-                on_annotation_mismatch_policy="raise",
+                on_annotation_mismatch_policy="warn",
             )
         )
         try:
