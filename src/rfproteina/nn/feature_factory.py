@@ -31,8 +31,8 @@ from rfproteina.conditions import (
     SaltBridgeEnum,
 )
 from rfproteina.datapipes.pipeline import TokenType
+from rfproteina.nn.modules.norm import make_norm
 from rfproteina.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
-from rfproteina.utils.angle import bond_angles, signed_dihedral_angle
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -112,6 +112,14 @@ def bin_pairwise_distances(x: torch.Tensor, min_dist: float, max_dist: float, di
     return bin_and_one_hot(pair_dists_nm, bin_limits)  # [b, n, n, pair_dist_dim]
 
 
+def one_hot_pair_feature(indices: torch.Tensor, num_classes: int) -> torch.Tensor:
+    """Create one-hot features in the autocast dtype, or FP32 outside autocast."""
+    device_type = indices.device.type
+    dtype = torch.get_autocast_dtype(device_type) if torch.is_autocast_enabled(device_type) else torch.float32
+    out = torch.zeros((*indices.shape, num_classes), device=indices.device, dtype=dtype)
+    return out.scatter_(-1, indices.unsqueeze(-1), 1.0)
+
+
 def bin_and_one_hot(tensor: torch.Tensor, bin_limits: torch.Tensor) -> torch.Tensor:
     """
     Converts a tensor of shape [*] to a tensor of shape [*, d] using the given bin limits.
@@ -125,7 +133,7 @@ def bin_and_one_hot(tensor: torch.Tensor, bin_limits: torch.Tensor) -> torch.Ten
         torch.Tensor: Output tensor of shape [*, d] where d = len(bin_limits) + 1
     """
     bin_indices = torch.bucketize(tensor, bin_limits)
-    return torch.nn.functional.one_hot(bin_indices, len(bin_limits) + 1) * 1.0
+    return one_hot_pair_feature(bin_indices, len(bin_limits) + 1)
 
 
 ################################
@@ -252,75 +260,15 @@ class FoldEmbeddingSeqFeat(Feature):
         return cath_embeddings  # [b, n, fold_emb_dim * 3]
 
 
-class TimeEmbeddingSeqFeat(Feature):
-    """Computes time embedding and returns as sequence feature of shape [b, n, t_emb_dim]."""
+class TimeEmbeddingBatchFeat(Feature):
+    """Compute one time embedding per example with shape [b, t_emb_dim]."""
 
     def __init__(self, data_mode_use: str, t_emb_dim: int, **kwargs: Any) -> None:
         super().__init__(dim=t_emb_dim)
         self.data_mode_use = data_mode_use
 
     def forward(self, batch: dict) -> torch.Tensor:
-        t = batch["t"][self.data_mode_use]  # [b]
-        _, n = self.extract_bs_and_n(batch)
-        t_emb = get_time_embedding(t, edim=self.dim)  # [b, t_emb_dim]
-        t_emb = t_emb[:, None, :]  # [b, 1, t_emb_dim]
-        return t_emb.expand((t_emb.shape[0], n, t_emb.shape[2]))  # [b, n, t_emb_dim]
-
-
-class TimeEmbeddingPairFeat(Feature):
-    """Computes time embedding and returns as pair feature of shape [b, n, n, t_emb_dim]."""
-
-    def __init__(self, data_mode_use: str, t_emb_dim: int, **kwargs: Any) -> None:
-        super().__init__(dim=t_emb_dim)
-        self.data_mode_use = data_mode_use
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        t = batch["t"][self.data_mode_use]  # [b]
-        _, n = self.extract_bs_and_n(batch)
-        t_emb = get_time_embedding(t, edim=self.dim)  # [b, t_emb_dim]
-        t_emb = t_emb[:, None, None, :]  # [b, 1, 1, t_emb_dim]
-        return t_emb.expand((t_emb.shape[0], n, n, t_emb.shape[3]))  # [b, n, t_emb_dim]
-
-
-class ChainBreakPerResidueSeqFeat(Feature):
-    """Computes a 1D sequence feature indicating if a residue is followed by a chain break, shape [b, n, 1]."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=1)
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        if "chain_breaks_per_residue" in batch:
-            chain_breaks = batch["chain_breaks_per_residue"] * 1.0  # [b, n]
-        else:
-            self.assert_defaults_allowed(batch, "Chain break sequence")
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            chain_breaks = torch.zeros((b, n), device=device) * 1.0  # [b, n]
-        return chain_breaks[..., None]  # [b, n, 1]
-
-
-class XscBBCASeqFeat(Feature):
-    """Backbone CA self-conditioning feature, shape [b, n, 3]."""
-
-    def __init__(self, mode_key: str = "x_sc", **kwargs: Any) -> None:
-        super().__init__(dim=3)
-        self.mode_key = mode_key
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        feature_is_active = batch[f"{self.mode_key}_is_active"]
-        return batch[self.mode_key]["bb_ca"] * feature_is_active
-
-
-class XscLocalLatentsSeqFeat(Feature):
-    """Local-latents self-conditioning feature, shape [b, n, latent_dim]."""
-
-    def __init__(self, latent_dim: int, mode_key: str = "x_sc", **kwargs: Any) -> None:
-        super().__init__(dim=latent_dim)
-        self.mode_key = mode_key
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        feature_is_active = batch[f"{self.mode_key}_is_active"]
-        return batch[self.mode_key]["local_latents"] * feature_is_active
+        return get_time_embedding(batch["t"][self.data_mode_use], edim=self.dim)
 
 
 class XtBBCASeqFeat(Feature):
@@ -365,31 +313,6 @@ class CaCoorsNanometersSeqFeat(Feature):
             return batch["ca_coors_nm"]  # [b, n, 3]
         else:
             return batch["coords_nm"][:, :, 1, :]  # [b, n, 3]
-
-
-class ResidueTypeSeqFeat(Feature):
-    """Computes one-hot residue type feature of shape [b, n, n_residue_types].
-
-    Supports both standard 20-class encoding and unified 33-class encoding
-    (used by the autoencoder with ``n_residue_types=33``).
-    """
-
-    def __init__(self, n_residue_types: int = 20, **kwargs: Any) -> None:
-        super().__init__(dim=n_residue_types)
-        self.n_residue_types = n_residue_types
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        assert "residue_type" in batch, "`residue_type` not in batch, cannot compute ResidueTypeSeqFeat"
-        rtype = batch["residue_type"]  # [b, n]
-        if "can_be_encoded" in batch:
-            rpadmask = batch["can_be_encoded"].long()
-        else:
-            rpadmask = batch["padding_mask"]
-        rtype = torch.clamp(rtype, min=0, max=self.n_residue_types - 1)
-        rtype = rtype * rpadmask
-        rtype_onehot = F.one_hot(rtype, num_classes=self.n_residue_types)
-        rtype_onehot = rtype_onehot * rpadmask[..., None]
-        return rtype_onehot * 1.0
 
 
 class ConditionalResidueTypeSeqFeat(Feature):
@@ -594,125 +517,6 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
                 )
                 self._has_logged = True
             return torch.zeros(b, n, self.dim, device=device)
-
-
-# TODO: Remove once AE is retrained without this
-class OpenfoldSideChainAnglesSeqFeat(Feature):
-    """Computes sequence features from side chain angles."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=(4 * 21 + 4))  # 88
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        _, angles, torsion_angles_mask = self._get_sidechain_angles(batch)
-        # _, [b, n, 4] and [b, n, 4]
-        angles_feat = bin_and_one_hot(
-            angles, torch.linspace(-torch.pi, torch.pi, 20, device=angles.device)
-        )  # [b, n, 4, nbins]
-        angles_feat = angles_feat * torsion_angles_mask[..., None]
-        angles_feat = einops.rearrange(angles_feat, "b n s d -> b n (s d)")  # [b, n, 4 * nbins]
-        feat = torch.cat([angles_feat, torsion_angles_mask], dim=-1)  # [b, n, 4 * nbins + 4]
-        return feat
-
-    def _get_sidechain_angles(self, batch: dict) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        orig_dtype = batch["coords"].dtype
-        aatype = batch["residue_type"]  # [b, n]
-        coords = batch["coords"].double()  # [b, n, 37, 3]
-        atom_mask = batch["coord_mask"].double()  # [b, n, 37]
-        p = {
-            "aatype": aatype,
-            "all_atom_positions": coords,
-            "all_atom_mask": atom_mask,
-        }
-        from rfproteina.utils.openfold import atom37_to_torsion_angles
-
-        p = atom37_to_torsion_angles(p, prefix="")
-        torsion_angles_sin_cos = p["torsion_angles_sin_cos"]  # [b, n, 7, 2]
-        alt_torsion_angles_sin_cos = p["alt_torsion_angles_sin_cos"]  # [b, n, 7, 2]
-        # Normalize, all these vectors should have norm 1
-        torsion_angles_sin_cos = torsion_angles_sin_cos / (
-            torch.linalg.norm(torsion_angles_sin_cos, dim=-1, keepdim=True) + 1e-10
-        )  # [b, n, 7, 2]
-        alt_torsion_angles_sin_cos = alt_torsion_angles_sin_cos / (
-            torch.linalg.norm(alt_torsion_angles_sin_cos, dim=-1, keepdim=True) + 1e-10
-        )  # [b, n, 7, 2]
-        torsion_angles_mask = p["torsion_angles_mask"]  # [b, n, 7]
-        torsion_angles_sin_cos = torsion_angles_sin_cos * torsion_angles_mask[..., None]
-        alt_torsion_angles_sin_cos = alt_torsion_angles_sin_cos * torsion_angles_mask[..., None]
-        angles = torch.atan2(torsion_angles_sin_cos[..., 0], torsion_angles_sin_cos[..., 1])  # [b, n, 7]
-        angles = angles * torsion_angles_mask
-        # Keep only sidechain
-        torsion_angles_sin_cos = torsion_angles_sin_cos[..., -4:, :]  # [b, n, 4, 2]
-        alt_torsion_angles_sin_cos = alt_torsion_angles_sin_cos[..., -4:, :]  # [b, n, 4, 2]
-        angles = angles[..., -4:]  # [b, n, 4]
-        torsion_angles_mask = torsion_angles_mask[..., -4:]  # [b, n, 4]
-        return (
-            torsion_angles_sin_cos.to(dtype=orig_dtype),
-            angles.to(dtype=orig_dtype),
-            torsion_angles_mask.bool(),
-        )  # [b, n, 4, 2], [b, n, 4] and [b, n, 4]
-
-
-# TODO: Remove once AE is retrained without this
-class BackboneTorsionAnglesSeqFeat(Feature):
-    """
-    Computes torsion angle and featurizes it, with binning and 1-hot.
-
-    TODO: Add mask?
-    """
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=(3 * 21))
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        bb_torsion = self._get_bb_torsion_angles(batch)  # [b, n, 3]
-        bb_torsion_feats = bin_and_one_hot(
-            bb_torsion,
-            torch.linspace(-torch.pi, torch.pi, 20, device=bb_torsion.device),
-        )  # [b, n, 3, nbins], nbins in 20+1
-        bb_torsion_feats = einops.rearrange(bb_torsion_feats, "b n t d -> b n (t d)")  # [b, n, 3 * nbins]
-        return bb_torsion_feats
-
-    def _get_bb_torsion_angles(self, batch: dict) -> torch.Tensor:
-        a37 = batch["coords"]  # [b, n, 37, 3]
-        b, n = a37.shape[0], a37.shape[1]
-        device = a37.device
-
-        # Get mask for encodable tokens (proteins only, not small molecules)
-        if "can_be_encoded" in batch:
-            can_be_encoded = batch["can_be_encoded"].bool()  # [b, n]
-        elif "padding_mask" in batch:
-            can_be_encoded = batch["padding_mask"].bool()  # [b, n]
-        else:
-            can_be_encoded = torch.ones(b, n, dtype=torch.bool, device=device)
-
-        if "residue_pdb_idx" in batch and batch["residue_pdb_idx"] is not None:
-            idx = batch["residue_pdb_idx"]  # [b, n]
-        else:
-            self.assert_defaults_allowed(batch, "Relative sequence separation pair")
-            idx = torch.arange(1, n + 1, device=device).unsqueeze(0).expand(b, -1).float()  # [b, n]
-
-        # Extract backbone atoms
-        N = a37[:, :, 0, :]  # [b, n, 3]
-        CA = a37[:, :, 1, :]  # [b, n, 3]
-        C = a37[:, :, 2, :]  # [b, n, 3]
-
-        # Compute dihedral angles (these will have NaN for non-protein tokens)
-        psi = signed_dihedral_angle(N[:, :-1, :], CA[:, :-1, :], C[:, :-1, :], N[:, 1:, :])  # [b, n-1]
-        omega = signed_dihedral_angle(CA[:, :-1, :], C[:, :-1, :], N[:, 1:, :], CA[:, 1:, :])  # [b, n-1]
-        phi = signed_dihedral_angle(C[:, :-1, :], N[:, 1:, :], CA[:, 1:, :], C[:, 1:, :])  # [b, n-1]
-        bb_angles = torch.stack([psi, omega, phi], dim=-1)  # [b, n-1, 3]
-
-        # Mask: both residues in pair must be encodable and sequential
-        good_pair = idx[:, 1:] - idx[:, :-1] == 1  # boolean [b, n-1]
-        valid_pair = can_be_encoded[:, :-1] & can_be_encoded[:, 1:] & good_pair  # [b, n-1]
-
-        # Zero out invalid pairs (this handles NaN from small molecules)
-        bb_angles = torch.where(valid_pair[..., None], bb_angles, torch.zeros_like(bb_angles))
-
-        zero_pad = torch.zeros((b, 1, 3), device=device)
-        bb_angles = torch.cat([bb_angles, zero_pad], dim=1)  # [b, n, 3]
-        return bb_angles
 
 
 class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
@@ -1178,61 +982,9 @@ class ChainIdxSeqFeat(Feature):
         super().__init__(dim=1)
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if "chain_iid" in batch:
-            mask = batch["chain_iid"].unsqueeze(-1).float()  # [b, n, 1]
-        elif "chains" in batch:
-            mask = batch["chains"].unsqueeze(-1).float()  # [b, n, 1] (legacy key)
-        else:
-            raise ValueError("Neither 'chain_iid' nor 'chains' found in batch")
-        return mask
-
-
-class SequenceSeparationPairFeat(Feature):
-    """Computes sequence separation and returns feature of shape [b, n, n, seq_sep_dim].
-
-    Args:
-        seq_sep_dim: Output one-hot dimension (must be odd, >= 5).
-        zero_cross_group_seq_sep: If True (default; current latent-main behavior, PR #210),
-            zero out ``seq_sep`` for cross-IndexGroup token pairs. If False, the raw
-            ``inds[i] - inds[j]`` differences are passed through unchanged — required for
-            back-compat with checkpoints trained before PR #210 (e.g. the
-            muon_v9_lossweights_25 240k checkpoint).
-    """
-
-    def __init__(self, seq_sep_dim: int, zero_cross_group_seq_sep: bool = True, **kwargs: Any) -> None:
-        super().__init__(dim=seq_sep_dim)
-        self.zero_cross_group_seq_sep = zero_cross_group_seq_sep
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        if "within_index_group_res_idx" in batch and C_IDXGRP.full_name in batch:
-            # no need to force 1 since taking difference
-            inds = batch["within_index_group_res_idx"]  # [b, n]
-            index_groups = batch[C_IDXGRP.full_name]  # [b, n]
-        else:
-            self.assert_defaults_allowed(batch, "Relative sequence separation pair")
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            inds = torch.arange(1, n + 1, device=device, dtype=torch.long).unsqueeze(0).expand(b, -1)
-            index_groups = torch.zeros(b, n, device=device, dtype=torch.long)
-
-        seq_sep = inds[:, :, None] - inds[:, None, :]  # [b, n, n]
-
-        if self.zero_cross_group_seq_sep:
-            # zero out relative sequence information from different groups (PR #210)
-            same_idx_group = index_groups[:, :, None] == index_groups[:, None, :]  # [b, n, n]
-            seq_sep *= same_idx_group
-
-        # Dimension should be odd, bins limits [-(dim/2-1), ..., -1.5, -0.5, 0.5, 1.5, ..., dim/2-1]
-        # gives dim-2 bins, and the first and last for values beyond the bin limits
-        assert self.dim % 2 == 1, "Relative seq separation feature dimension must be odd and > 3"
-
-        # Create bins limits [..., -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.3, 3.5, ...]
-        # Equivalent to binning relative sequence separation
-        low = -(self.dim / 2.0 - 1)
-        high = self.dim / 2.0 - 1
-        bin_limits = torch.linspace(low, high, self.dim - 1, device=inds.device)
-
-        return bin_and_one_hot(seq_sep, bin_limits)  # [b, n, n, seq_sep_dim]
+        if "chain_iid" not in batch:
+            raise ValueError("'chain_iid' not found in batch")
+        return batch["chain_iid"].unsqueeze(-1).float()  # [b, n, 1]
 
 
 class TokenBondPathLengthPairFeat(Feature):
@@ -1260,7 +1012,7 @@ class TokenBondPathLengthPairFeat(Feature):
     def forward(self, batch: dict) -> torch.Tensor:
         path_lengths = batch["token_bond_path_length"].long()  # [b, n, n]
         clipped = path_lengths.clamp(max=self.dim - 1)  # collapse high distances into overflow bin
-        return F.one_hot(clipped, num_classes=self.dim).float()  # [b, n, n, dim]
+        return one_hot_pair_feature(clipped, num_classes=self.dim)  # [b, n, n, dim]
 
 
 class XtBBCAPairwiseDistancesPairFeat(Feature):
@@ -1306,79 +1058,6 @@ class CaCoorsNanometersPairwiseDistancesPairFeat(Feature):
             max_dist=self.max_dist,
             dim=self.dim,
         )  # [b, n, n, pair_dist_dim]
-
-
-class XscBBCAPairwiseDistancesPairFeat(Feature):
-    """Computes pairwise distances for CA backbone atoms and returns feature of shape [b, n, n, dim_pair_dist]."""
-
-    def __init__(
-        self,
-        x_sc_pair_dist_dim: int,
-        x_sc_pair_dist_min: float,
-        x_sc_pair_dist_max: float,
-        mode_key: str = "x_sc",
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(dim=x_sc_pair_dist_dim)
-        self.min_dist = x_sc_pair_dist_min
-        self.max_dist = x_sc_pair_dist_max
-        self.mode_key = mode_key
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        feature_is_active = batch[f"{self.mode_key}_is_active"]
-        feat = bin_pairwise_distances(
-            x=batch[self.mode_key]["bb_ca"],
-            min_dist=self.min_dist,
-            max_dist=self.max_dist,
-            dim=self.dim,
-        )
-        return feat * feature_is_active
-
-
-# TODO: Remove once AE is retrained without this
-class RelativeResidueOrientationPairFeat(Feature):
-    """Computes pair feature with pairwise residue orientations.
-
-    See paper "Improved protein structure prediction using
-    predicted inter-residue orientations".
-
-    TODO: Impute beta carbon for Glycine
-    TODO: 20 as argument
-    """
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=(5 * 21))  # 105
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        _aatype = batch["residue_type"]  # [b, n]
-        coords = batch["coords"]  # [b, n, 37, 3]
-        atom_mask = batch["coord_mask"]  # [b, n, 37]
-        mask = atom_mask[:, :, 1]  # [b, n]
-        has_cb = atom_mask[:, :, 3]  # [b, n] boolean, indicates if corresponding
-        pair_mask = mask[:, :, None] * mask[:, None, :]  # [b, n, n] boolean
-        beta_carbon_pair_mask = has_cb[:, :, None] * has_cb[:, :, None]  # [b, n, n] boolean
-        pair_mask = pair_mask * beta_carbon_pair_mask  # [b, n, n]
-
-        N = coords[:, :, 0, :]  # [b, n, 3]
-        CA = coords[:, :, 1, :]  # [b, n, 3]
-        CB = coords[:, :, 3, :]  # [b, n, 3]
-
-        N_p1, CA_p1, CB_p1 = (v[:, :, None, :] for v in (N, CA, CB))  # Each [b, n, 1, 3]
-        N_p2, CA_p2, CB_p2 = (v[:, None, :, :] for v in (N, CA, CB))  # Each [b, 1, n, 3]
-
-        theta_12 = signed_dihedral_angle(N_p1, CA_p1, CB_p1, CB_p2)  # [b, n, n]
-        theta_21 = signed_dihedral_angle(N_p2, CA_p2, CB_p2, CB_p1)  # [b, n, n]
-        phi_12 = bond_angles(CA_p1, CB_p1, CB_p2)  # [b, n, n]
-        phi_21 = bond_angles(CA_p2, CB_p2, CB_p1)  # [b, n, n]
-        w = signed_dihedral_angle(CA_p1, CB_p1, CB_p2, CA_p2)  # [b, n, n]
-        angles = torch.stack([theta_12, theta_21, phi_12, phi_21, w], dim=-1)  # [b, n, n, 5]
-
-        angles_feat = bin_and_one_hot(
-            angles, torch.linspace(-torch.pi, torch.pi, 20, device=angles.device)
-        )  # [b, n, n, 5, nbins]
-        angles_feat = einops.rearrange(angles_feat, "b n m f d -> b n m (f d)")  # [b, n, n, 5 * nbins]
-        angles_feat = angles_feat * pair_mask[..., None]  # Mask padding
-        return angles_feat
 
 
 class BackbonePairDistancesNanometerPairFeat(Feature):
@@ -1432,23 +1111,6 @@ class BackbonePairDistancesNanometerPairFeat(Feature):
         feat = torch.cat([CA_N_feat, CA_CA_feat, CA_C_feat, CA_CB_feat], dim=-1)  # [b, n, n, 4 * 21]
         feat = feat * pair_mask[..., None]
         return feat
-
-
-class ChainIdxPairFeat(Feature):
-    """Gets chain idx feature (-1 for padding) and returns feature of shape [b, n, n, 1]."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=1)
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        if "chain_iid" in batch:
-            seq_mask = batch["chain_iid"].float()  # [b, n]
-        elif "chains" in batch:
-            seq_mask = batch["chains"].float()  # [b, n] (legacy key)
-        else:
-            raise ValueError("Neither 'chain_iid' nor 'chains' found in batch")
-        mask = torch.einsum("bi,bj->bij", seq_mask, seq_mask).unsqueeze(-1)  # [b, n, n, 1]
-        return mask
 
 
 class MoleculeIdxPairFeat(Feature):
@@ -1559,7 +1221,7 @@ class BondOrderPairFeat(Feature):
         if "bond_order" in batch:
             # [b, n, n] int -> [b, n, n, 5] one-hot
             bond_order = batch["bond_order"].long()
-            return F.one_hot(bond_order, num_classes=self.num_bond_orders).float()
+            return one_hot_pair_feature(bond_order, num_classes=self.num_bond_orders)
         else:
             if not self._has_logged:
                 logger.warning("No bond_order in batch, returning zeros for BondOrderPairFeat")
@@ -1659,63 +1321,17 @@ class FeatureFactory(torch.nn.Module):
         dim_feats_out: int,
         use_ln_out: bool,
         mode: Literal["seq", "pair"],
+        compact: bool = False,
         **kwargs,
     ):
-        """
-        Feature factory for creating sequence and pair features.
+        """Project selected features to ``dim_feats_out`` channels.
 
-        Sequence features include:
-            Time embeddings:
-                - "time_emb_bb_ca": Time embedding for backbone CA atoms
-                - "time_emb_local_latents": Time embedding for local latents
-
-            Position and structure:
-                - "res_seq_pdb_idx": Residue sequence position (requires ResidueSequencePositionPdbTransform)
-                - "chain_break_per_res": Chain break per residue (requires ChainBreakPerResidueTransform)
-                - "fold_emb": Fold embedding
-
-            Coordinates and angles:
-                - "x_sc_bb_ca": Self-conditioning backbone CA coordinates
-                - "x_recycle_bb_ca": Recycled backbone CA coordinates
-                - "x_sc_local_latents": Self-conditioning local latents
-                - "x_recycle_local_latents": Recycled local latents
-                - "xt_bb_ca": Target backbone CA coordinates
-                - "xt_local_latents": Target local latents
-                - "ca_coors_nm": CA coordinates in nanometers
-                - "ca_coors_nm_try": Try CA coordinates in nanometers
-                - "optional_ca_coors_nm_seq_feat": Optional CA coordinates in nanometers
-                - "x1_bb_angles": Backbone torsion angles
-                - "x1_bond_angles": Backbone bond angles
-                - "x1_sidechain_angles": Sidechain angles
-
-            Residue information:
-                - "x1_aatype": Residue type
-                - "optional_res_type_seq_feat": Optional residue type
-                - "x1_a37coors_nm": Atom37 coordinates in nanometers
-                - "x1_a37coors_nm_rel": Relative atom37 coordinates in nanometers
-                - "z_latent_seq": Latent variable sequence
-
-        Pair features include:
-            Distance features:
-                - "xt_bb_ca_pair_dists": Target backbone CA pairwise distances
-                - "x_sc_bb_ca_pair_dists": Self-conditioning backbone CA pairwise distances
-                - "x_recycle_bb_ca_pair_dists": Recycled backbone CA pairwise distances
-                - "ca_coors_nm_pair_dists": CA coordinates pairwise distances in nanometers
-                - "x1_bb_pair_dists_nm": Backbone pairwise distances in nanometers
-                - "optional_ca_pair_dist": Optional CA pairwise distances
-
-            Sequence and time:
-                - "rel_seq_sep": Relative sequence separation
-                - "time_emb_bb_ca": Time embedding for backbone CA atoms
-                - "time_emb_local_latents": Time embedding for local latents
-
-            Structure and orientation:
-                - "x1_bb_pair_orientation": Relative residue orientation
-                - "chain_idx_pair": Chain index pairwise feature
-
+        Modes return [b, n, d] (seq) or [b, n, n, d] (pair). With ``compact=True``,
+        per-example features stay [b, d] until broadcast by the caller.
         """
         super().__init__()
         self.mode = mode
+        self.compact = compact
         self.ret_zero = bool(feats is None or len(feats) == 0)
         if self.ret_zero:
             logger.info("No features requested")
@@ -1723,28 +1339,23 @@ class FeatureFactory(torch.nn.Module):
             return
 
         self.feat_creators = torch.nn.ModuleList([self.get_creator(f, **kwargs) for f in feats])
-        self.ln_out = torch.nn.LayerNorm(dim_feats_out) if use_ln_out else torch.nn.Identity()
+        self.ln_out = make_norm(dim_feats_out) if use_ln_out else torch.nn.Identity()
         self.linear_out = torch.nn.Linear(sum([c.get_dim() for c in self.feat_creators]), dim_feats_out, bias=False)
 
     def get_creator(self, f: str, **kwargs: Any) -> Feature:
         """Returns the right class for the requested feature f (a string)."""
 
-        if self.mode == "seq":
-            # Time embeddings
-            if f == "time_emb_bb_ca":
-                return TimeEmbeddingSeqFeat(data_mode_use="bb_ca", **kwargs)
-            elif f == "time_emb_local_latents":
-                return TimeEmbeddingSeqFeat(data_mode_use="local_latents", **kwargs)
+        if f == "time_emb_bb_ca":
+            return TimeEmbeddingBatchFeat(data_mode_use="bb_ca", **kwargs)
+        if f == "time_emb_local_latents":
+            return TimeEmbeddingBatchFeat(data_mode_use="local_latents", **kwargs)
 
+        if self.mode == "seq":
             # Position and indexing
-            elif f == "chain_break_per_res":
-                return ChainBreakPerResidueSeqFeat(**kwargs)
-            elif f == "chain_idx_seq":
+            if f == "chain_idx_seq":
                 return ChainIdxSeqFeat(**kwargs)
 
             # Basic residue information
-            elif f == "x1_aatype":
-                return ResidueTypeSeqFeat(**kwargs)
             elif f == "token_type":
                 return TokenTypeSeqFeat(**kwargs)
 
@@ -1761,10 +1372,6 @@ class FeatureFactory(torch.nn.Module):
                 return XtBBCASeqFeat(**kwargs)
             elif f == "xt_local_latents":
                 return XtLocalLatentsSeqFeat(**kwargs)
-            elif f == "x_sc_bb_ca":
-                return XscBBCASeqFeat(**kwargs)
-            elif f == "x_sc_local_latents":
-                return XscLocalLatentsSeqFeat(**kwargs)
 
             # Latent variables
             elif f == "z_latent_seq":
@@ -1802,12 +1409,6 @@ class FeatureFactory(torch.nn.Module):
             elif f == "cath_code":
                 return FoldEmbeddingSeqFeat(**kwargs)
 
-            # Structural features (angles)
-            elif f == "x1_bb_angles":
-                return BackboneTorsionAnglesSeqFeat(**kwargs)
-            elif f == "x1_sidechain_angles":
-                return OpenfoldSideChainAnglesSeqFeat(**kwargs)
-
             # Ligand/atomized features
             elif f == "atom_charge":
                 return AtomChargeSeqFeat(**kwargs)
@@ -1829,35 +1430,19 @@ class FeatureFactory(torch.nn.Module):
                 raise OSError(f"Sequence feature {f} not implemented.")
 
         elif self.mode == "pair":
-            # Time embeddings
-            if f == "time_emb_bb_ca":
-                return TimeEmbeddingPairFeat(data_mode_use="bb_ca", **kwargs)
-            elif f == "time_emb_local_latents":
-                return TimeEmbeddingPairFeat(data_mode_use="local_latents", **kwargs)
-
             # Sequence separation
-            elif f == "rel_seq_sep":
-                return SequenceSeparationPairFeat(**kwargs)
-            elif f == "token_bond_path_length":
+            if f == "token_bond_path_length":
                 return TokenBondPathLengthPairFeat(**kwargs)
 
             # Distance features
             elif f == "xt_bb_ca_pair_dists":
                 return XtBBCAPairwiseDistancesPairFeat(**kwargs)
-            elif f == "x_sc_bb_ca_pair_dists":
-                return XscBBCAPairwiseDistancesPairFeat(**kwargs)
             elif f == "ca_coors_nm_pair_dists":
                 return CaCoorsNanometersPairwiseDistancesPairFeat(**kwargs)
             elif f == "x1_bb_pair_dists_nm":
                 return BackbonePairDistancesNanometerPairFeat(**kwargs)
 
-            # Structural and orientation features
-            elif f == "x1_bb_pair_orientation":
-                return RelativeResidueOrientationPairFeat(**kwargs)
-
             # Chain and indexing features
-            elif f == "chain_idx_pair":
-                return ChainIdxPairFeat(**kwargs)
             elif f == "molecule_idx_pair":
                 return MoleculeIdxPairFeat(**kwargs)
             elif f == "molecule_entity_pair":
@@ -1886,18 +1471,10 @@ class FeatureFactory(torch.nn.Module):
             raise OSError(f"Wrong feature mode (creator): {self.mode}. Should be 'seq' or 'pair'.")
 
     def apply_padding_mask(self, feature_tensor: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """
-        Applies mask to features.
-
-        Args:
-            feature_tensor: tensor with requested features, shape [b, n, d] or [b, n, n, d]
-                depending on self.mode ('seq' or 'pair')
-            mask: Binary mask, shape [b, n]
-
-        Returns:
-            Masked features, same shape as input tensor.
-        """
-        if self.mode == "seq":
+        """Apply a [b, n] padding mask to sequence or pair features."""
+        if feature_tensor.ndim == 2:
+            return feature_tensor * mask.any(dim=-1, keepdim=True)
+        elif self.mode == "seq":
             return feature_tensor * mask[..., None]  # [b, n, d]
         elif self.mode == "pair":
             mask_pair = mask[:, None, :] * mask[:, :, None]  # [b, n, n]
@@ -1906,20 +1483,35 @@ class FeatureFactory(torch.nn.Module):
             raise OSError(f"Wrong feature mode (pad mask): {self.mode}. Should be 'seq' or 'pair'.")
 
     def forward(self, batch: dict) -> torch.Tensor:
-        """Returns masked features, shape depends on mode, either 'seq' or 'pair'."""
+        """Return masked sequence, pair, or per-example features in the projected dtype."""
         # If no features requested just return the zero tensor of appropriate dimensions
         if self.ret_zero:
             return self.zero_creator(batch)
 
-        # Compute requested features
+        device_type = batch["padding_mask"].device.type
+        autocast_enabled = torch.is_autocast_enabled(device_type)
         feature_tensors = []
         for fcreator in self.feat_creators:
-            feature_tensors.append(fcreator(batch))  # [b, n, dim_f] or [b, n, n, dim_f] if seq or pair mode
+            feature = fcreator(batch)
+            if autocast_enabled:
+                feature = feature.to(torch.get_autocast_dtype(device_type))
+            feature_tensors.append(feature)
+
+        if not (self.compact and all(feature.ndim == 2 for feature in feature_tensors)):
+            n = batch["padding_mask"].shape[-1]
+            spatial_shape = {"seq": (n,), "pair": (n, n)}[self.mode]
+            feature_tensors = [
+                feature.reshape(feature.shape[0], *((1,) * len(spatial_shape)), -1).expand(-1, *spatial_shape, -1)
+                if feature.ndim == 2
+                else feature
+                for feature in feature_tensors
+            ]
 
         # Concatenate features and mask
         features = torch.cat(feature_tensors, dim=-1)  # [b, n, dim_f] or [b, n, n, dim_f]
         features = self.apply_padding_mask(features, batch["padding_mask"])  # [b, n, dim_f] or [b, n, n, dim_f]
 
         # Linear layer and mask
-        features_proc = self.ln_out(self.linear_out(features))  # [b, n, dim_f] or [b, n, n, dim_f]
+        projected = self.linear_out(features)
+        features_proc = self.ln_out(projected).to(projected.dtype)
         return self.apply_padding_mask(features_proc, batch["padding_mask"])  # [b, n, dim_f] or [b, n, n, dim_f]

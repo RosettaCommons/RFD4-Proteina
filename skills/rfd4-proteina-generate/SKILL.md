@@ -20,7 +20,7 @@ license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 
 Single-shot generation for RFProteína. One entry point drives every design task —
 unconditional monomers/complexes, folding & inverse folding, motif scaffolding,
-enzyme design, small-molecule binders, and (planned) protein / DNA binders. The
+enzyme design, small-molecule binders, protein binders, and DNA binders. The
 skill's job is to **route** the request to the right example input and the right
 overrides, then run one command. Deep input construction, reward-guided search,
 and oracle metrics live in sibling skills; this skill points at them.
@@ -38,9 +38,8 @@ bash skills/rfd4-proteina-setup/scripts/preflight.sh
 ```
 
 Fix every `FAIL` (see **rfd4-proteina-setup**) before generating.
-`scripts/download_example_data.sh` fetches the same denoiser
-(`2026_07_22_release_280k-ema.ckpt`) that `configs/inference.yaml` names, so the
-default run needs no `ckpt_name` override.
+`scripts/download_example_data.sh` fetches the release pair composed by
+`configs/inference.yaml`, so the default run needs no checkpoint override.
 
 ## Step 2 — Route the task
 
@@ -49,18 +48,13 @@ input, task-specific overrides, and gotchas:
 
 | Design task | Example input(s) in `data/benchmarks/` | Reference |
 | --- | --- | --- |
-| Unconditional (monomer / complex) | `monomer`, `monomer_helical`, `monomer_ig`, `multipolymer_uncond` | [tasks/unconditional.md](references/tasks/unconditional.md) |
+| Unconditional monomer | `monomer`, `adherence/monomer_helical`, `adherence/monomer_ig` | [tasks/unconditional.md](references/tasks/unconditional.md) |
 | Folding / inverse folding | annotated CIF (backbone-only vs `C_SEQ`) | [tasks/folding-inverse.md](references/tasks/folding-inverse.md) |
-| Motif scaffolding | `motif_indexed`, `motif_unindexed`, `motif_indexed_internal_coords` | [tasks/motif.md](references/tasks/motif.md) |
-| Enzyme design (active site) | `mcsa_40`, `mcsa_40_fixed_ligand`, `mcsa_40_no_ligand`, `enz_design` | [tasks/enzyme.md](references/tasks/enzyme.md) |
-| Small-molecule binder | `sm_binder`, `sm_binder_hbonds`, `sm_binder_fixed_ligand` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
-| Protein binder (planned) | `cleaned_ppi/` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
-| DNA binder (planned) | `dna_binder_120_150_campaign`, `dna_binder_denovo_val`, `dna_binder_short_site` (the `paper_dna` benchmark is retired) | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
-
-> [!WARNING]
-> Protein-binder and DNA-binder tasks are **not fully supported in the current
-> checkpoint** (planned). They run without error but may produce low-quality
-> results. State this to the user before spending compute.
+| Motif scaffolding | `motif_scaffolding/motif_indexed`, `motif_scaffolding/motif_unindexed`, `motif_scaffolding/motif_indexed_internal_coords` | [tasks/motif.md](references/tasks/motif.md) |
+| Enzyme design (active site) | `mcsa/mcsa_37`, `mcsa/mcsa_37_fixed_ligand`, `mcsa/mcsa_37_no_ligand` | [tasks/enzyme.md](references/tasks/enzyme.md) |
+| Small-molecule binder | `small_molecule_binder/sm_binder`, `small_molecule_binder/SAM_hbonds.cif` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
+| Protein binder | `ppi/ppi_all_atom/` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
+| DNA binder | `dna_binder/dna_binder_denovo_val` | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
 
 **Need an input the request doesn't have?** Annotated CIF is the recommended,
 lossless format. When the task needs coordinate/sequence conditioning, hotspots,
@@ -133,8 +127,10 @@ that matter most:
   Angstroms.
 - **Deterministic (ODE) sampling** (no mid-trajectory noise):
   `generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode`.
-- **Steps / self-conditioning.** `generation.args.nsteps` (default 100 with the
-  `vf_tsr` sampler) and `generation.args.self_cond` (leave on).
+- **Steps / recycling.** The default 1x schedule uses 60 model evaluations
+  and 185 trunk passes, with twice the integration-step density in the final 20%
+  of each modality's clock. Select `recycle_strategy=midpeak6_x1p5_60` for the
+  1.5x recycle-depth variant.
 
 ## Step 5 — Inline metrics (optional)
 

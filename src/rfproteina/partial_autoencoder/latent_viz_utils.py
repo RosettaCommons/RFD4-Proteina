@@ -15,7 +15,7 @@ from rfproteina.utils.ddp import RankedLogger
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-# Color palette for unified encoding (n_residue_types=33)
+# Color palette for the unified 33-class encoding.
 # Index 0: <M> (mask token)
 # Indices 1-20: Standard amino acids
 # Index 21: UNK
@@ -66,16 +66,8 @@ COLORS_UNIFIED_33 = [
 ]
 
 
-def get_residue_type_labels(n_residue_types: int) -> list[str]:
-    """Get human-readable labels for residue types.
-
-    Args:
-      n_residue_types: Number of residue types (20 for legacy, 33 for unified).
-
-    Returns:
-      List of labels for each residue type index.
-    """
-    # Standard 20 amino acids (3-letter codes)
+def get_residue_type_labels() -> list[str]:
+    """Return human-readable labels for the unified residue encoding."""
     aa_labels = [
         "ALA",
         "ARG",
@@ -99,38 +91,12 @@ def get_residue_type_labels(n_residue_types: int) -> list[str]:
         "VAL",
     ]
 
-    if n_residue_types == 20:
-        return [*aa_labels, "UNK"]
-    elif n_residue_types == 33:
-        return ["MSK", *aa_labels, "UNK", "rA", "rC", "rG", "rU", "rN", "dA", "dC", "dG", "dT", "dN", "ATM"]
-    else:
-        # Fallback for unknown encodings
-        return [f"RT{i}" for i in range(n_residue_types + 1)]
+    return ["MSK", *aa_labels, "UNK", "rA", "rC", "rG", "rU", "rN", "dA", "dC", "dG", "dT", "dN", "ATM"]
 
 
-def get_extended_color_palette(n_colors: int) -> list[str]:
-    """Get extended color palette for visualization.
-
-    Args:
-      n_colors: Number of colors needed (20 for legacy, 33 for unified encoding).
-
-    Returns:
-      List of hex color codes, correctly indexed to match residue type indices.
-    """
-    if n_colors == 33:
-        return COLORS_UNIFIED_33
-    elif n_colors == 20:
-        # Legacy 20 AA + UNK (21 colors total)
-        return COLORS_UNIFIED_33[1:21] + ["#B0B0B0"]
-    elif n_colors <= len(COLORS_UNIFIED_33):
-        return COLORS_UNIFIED_33[:n_colors]
-    else:
-        # Generate additional colors if needed
-        logger.warning(f"Requested {n_colors} colors, only {len(COLORS_UNIFIED_33)} predefined.")
-        cmap = plt.cm.get_cmap("tab20c")
-        extra_colors = [cmap(i / (n_colors - len(COLORS_UNIFIED_33))) for i in range(n_colors - len(COLORS_UNIFIED_33))]
-        extra_hex = [f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}" for r, g, b, _ in extra_colors]
-        return list(COLORS_UNIFIED_33) + extra_hex
+def get_extended_color_palette() -> list[str]:
+    """Return colors indexed by the unified residue encoding."""
+    return COLORS_UNIFIED_33
 
 
 def project_latents_2d(
@@ -186,7 +152,6 @@ def project_latents_2d(
 def plot_latent_projection_with_labels(
     projection: np.ndarray,
     labels: np.ndarray,
-    n_residue_types: int,
     method: str = "t-SNE",
     title: str | None = None,
     figsize: tuple[int, int] = (10, 8),
@@ -197,7 +162,6 @@ def plot_latent_projection_with_labels(
     Args:
       projection: [n_samples, 2] projected coordinates.
       labels: [n_samples] residue type indices.
-      n_residue_types: Number of residue types (20 or 33).
       method: Name of projection method for axis labels.
       title: Plot title (optional).
       figsize: Figure size in inches.
@@ -206,8 +170,8 @@ def plot_latent_projection_with_labels(
     Returns:
       Matplotlib figure object.
     """
-    colors = get_extended_color_palette(n_residue_types)
-    residue_labels = get_residue_type_labels(n_residue_types)
+    colors = get_extended_color_palette()
+    residue_labels = get_residue_type_labels()
 
     fig, ax = plt.subplots(figsize=figsize)
 

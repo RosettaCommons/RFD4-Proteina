@@ -9,13 +9,13 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.scatter import apply_segment_wise
 from atomworks.io.utils.selection import get_residue_starts, get_segments
-from atomworks.io.utils.standard_annotations import S_ATM, STANDARD_ANNOTATIONS
+from atomworks.io.utils.standard_annotations import S_ATM, S_SEGMIN, STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Transform
-from atomworks.ml.utils.token import get_token_starts
+from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_starts
 from biotite.structure import AtomArray
 
 from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_INTCRD, C_NCYS, HBondEnum
@@ -55,6 +55,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_centroid_conditioning_all_or_nothing_violations(aa, is_inference=is_inference)
     violations += check_conditioning_annotation_matches_ground_truth(aa, is_inference=is_inference)
     violations += check_conditioning_coords_not_nan(aa)
+    violations += check_expandable_segment_atom37_conditioning_violations(aa)
     violations += check_bond_length_violations(aa, is_inference=is_inference)
 
     # --- Feats / token-level checks ---
@@ -62,16 +63,15 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_atomized_indexed_violations(feats)
     violations += check_coordinates_not_nan(feats, is_inference=is_inference)
     violations += check_element_encoding_violations(feats)
-    violations += check_unresolved_tokens_not_lossed_violations(aa, feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
     violations += check_hbond_no_both_violations(feats, is_inference=is_inference)
     violations += check_not_cysteine_sequence_conditioning_violations(aa)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
-    violations += check_can_be_encoded_violations(aa, feats)
+    violations += check_supports_local_latent_violations(aa, feats)
     violations += check_token_features_consistent_violations(aa)
-    violations += check_no_oxt_on_encodable_tokens(aa, feats)
+    violations += check_no_oxt_on_local_latent_tokens(aa, feats)
 
     return violations
 
@@ -79,6 +79,51 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
 # ---------------------------------------------------------------------------
 # Atom-array checks
 # ---------------------------------------------------------------------------
+
+
+def check_expandable_segment_atom37_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
+    """Return atom37 conditioning that conversion would silently drop from expandable tokens."""
+    from rfproteina.datapipes.pipeline import ATOM37_FEATURES
+
+    categories = set(aa.get_annotation_categories())
+    expandable = S_SEGMIN.mask(aa, default="generate")
+    if not expandable.any():
+        return []
+
+    # Element and charge only reach the flow model for atomized tokens. Raw coords are not polymer
+    # conditioning (C_CRD/C_INTCRD are); they are clean targets only for training/partial diffusion.
+    not_polymer_flow_conditioning = {"coords", "element", "charge"}
+    coordinate_condition_payloads = {C_CRD.full_name, C_INTCRD.full_name}
+    nondefault_conditions = []
+    affected_atoms = np.zeros(aa.array_length(), dtype=bool)
+    for annotation_name, _, default in ATOM37_FEATURES:
+        if annotation_name not in categories or annotation_name in not_polymer_flow_conditioning:
+            continue
+        annotation = aa.get_annotation(annotation_name)
+        if annotation_name in coordinate_condition_payloads:
+            # Coordinate conditions use NaN as their inactive AtomArray value, whereas the
+            # corresponding atom37 tensors use zero padding after conversion.
+            nondefault = ~np.isnan(annotation).all(axis=tuple(range(1, annotation.ndim)))
+        else:
+            nondefault = annotation != default
+        affected = expandable & nondefault
+        if affected.any():
+            nondefault_conditions.append(annotation_name)
+            affected_atoms |= affected
+
+    if not affected_atoms.any():
+        return []
+    count = int(np.unique(aa.token_id[affected_atoms]).size)
+    return [
+        InvariantViolation(
+            check="expandable_segment_atom37_conditioning",
+            message=(
+                f"{count} expandable-segment token(s) have atom37 conditioning that would be discarded: "
+                f"{', '.join(nondefault_conditions)}. Remove the conditioning or provide ordinary polymer residues."
+            ),
+            count=count,
+        )
+    ]
 
 
 def check_bond_length_violations(aa: AtomArray, is_inference: bool) -> list[InvariantViolation]:
@@ -535,34 +580,6 @@ def check_element_encoding_violations(feats: dict) -> list[InvariantViolation]:
     return violations
 
 
-def check_unresolved_tokens_not_lossed_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
-    """Return violations where tokens with unresolved atoms have should_be_lossed=True."""
-    if "should_be_lossed" not in feats:
-        return []
-    categories = set(aa.get_annotation_categories())
-    if "token_id" not in categories or not hasattr(aa, "occupancy"):
-        return []
-
-    should_be_lossed = feats["should_be_lossed"].cpu().numpy()  # [n_tokens]
-    token_id_per_atom = aa.token_id  # [n_atoms]
-    is_resolved = aa.occupancy > 0.0  # [n_atoms]
-
-    unique_tokens, token_indices = np.unique(token_id_per_atom, return_inverse=True)
-    token_has_unresolved = np.zeros(len(unique_tokens), dtype=bool)
-    np.logical_or.at(token_has_unresolved, token_indices, ~is_resolved)
-
-    n_violated = int((token_has_unresolved & should_be_lossed).sum())
-    if n_violated:
-        return [
-            InvariantViolation(
-                check="unresolved_token_lossed",
-                message=f"{n_violated} token(s) with unresolved atoms have should_be_lossed=True",
-                count=n_violated,
-            )
-        ]
-    return []
-
-
 def check_hbond_no_both_violations(feats: dict, is_inference: bool) -> list[InvariantViolation]:
     """Return violations where a valid atom's hydrogen-bond annotation is ``HBondEnum.BOTH``.
 
@@ -781,8 +798,8 @@ def check_sequence_conditioning_violations(feats: dict, is_inference: bool) -> l
         )
 
     # This check only applies in training, since residue_type will be passed through the encoder
-    can_be_encoded = feats["can_be_encoded"]
-    if not is_inference and (can_be_encoded & (res_type_gt == mask_token_idx)).any():
+    supports_local_latent = feats["supports_local_latent"]
+    if not is_inference and (supports_local_latent & (res_type_gt == mask_token_idx)).any():
         violations.append(
             InvariantViolation(
                 check="residue_type_contains_mask_token",
@@ -833,40 +850,47 @@ def check_sequence_conditioning_violations(feats: dict, is_inference: bool) -> l
     return violations
 
 
-def check_can_be_encoded_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
-    """Return violations where can_be_encoded doesn't match the set of encodable residues."""
-    if "can_be_encoded" not in feats:
+def check_supports_local_latent_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
+    """Return violations where local-latent support disagrees with token eligibility."""
+    if "supports_local_latent" not in feats:
         return []
 
     # Lazy import to avoid circular dependency with pipeline.py
-    from rfproteina.datapipes.pipeline import RESIDUE_NAMES_TO_ENCODE
+    from rfproteina.datapipes.pipeline import RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS
 
     token_starts = get_token_starts(aa)
     res_names = aa.res_name[token_starts]
     categories = set(aa.get_annotation_categories())
 
     is_atomized = aa.atomize[token_starts] if "atomize" in categories else np.zeros(len(token_starts), dtype=bool)
-    is_encodable = np.array([n in RESIDUE_NAMES_TO_ENCODE for n in res_names]) & ~is_atomized
+    is_in_context_conditioning = apply_and_spread_token_wise(aa, ~C_IDX.mask(aa, default="generate"), np.any)[
+        token_starts
+    ]
+    expected = (
+        np.array([n in RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS for n in res_names])
+        & ~is_atomized
+        & ~is_in_context_conditioning
+    )
 
-    can_be_encoded = feats["can_be_encoded"].cpu().numpy()
+    supports_local_latent = feats["supports_local_latent"].cpu().numpy()
     violations = []
 
-    n_invalid = int((can_be_encoded & ~is_encodable).sum())
+    n_invalid = int((supports_local_latent & ~expected).sum())
     if n_invalid:
         violations.append(
             InvariantViolation(
-                check="can_be_encoded_ineligible",
-                message=f"{n_invalid} token(s) have can_be_encoded=True but are not eligible",
+                check="supports_local_latent_ineligible",
+                message=f"{n_invalid} token(s) have supports_local_latent=True but are not eligible",
                 count=n_invalid,
             )
         )
 
-    n_missing = int((~can_be_encoded & is_encodable).sum())
+    n_missing = int((~supports_local_latent & expected).sum())
     if n_missing:
         violations.append(
             InvariantViolation(
-                check="can_be_encoded_missing",
-                message=f"{n_missing} eligible token(s) have can_be_encoded=False",
+                check="supports_local_latent_missing",
+                message=f"{n_missing} eligible token(s) have supports_local_latent=False",
                 count=n_missing,
             )
         )
@@ -874,29 +898,28 @@ def check_can_be_encoded_violations(aa: AtomArray, feats: dict) -> list[Invarian
     return violations
 
 
-def check_no_oxt_on_encodable_tokens(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
-    """Return violations where OXT atoms appear on ``can_be_encoded`` non-atomized tokens.
+def check_no_oxt_on_local_latent_tokens(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
+    """Return violations where OXT atoms appear on ``supports_local_latent`` non-atomized tokens.
 
-    The autoencoder's restype mask excludes OXT, so any OXT atom on an encodable
-    token creates an asymmetry between the reconstruction-loss target and the
-    decoder's advertised output mask. Such atoms must be stripped upstream.
+    The autoencoder's residue-type mask excludes OXT, so it must be stripped
+    from non-atomized tokens that emit local latents.
     """
 
     categories = set(aa.get_annotation_categories())
 
-    can_be_encoded = feats["can_be_encoded"].cpu().numpy()  # [n_tokens]
+    supports_local_latent = feats["supports_local_latent"].cpu().numpy()  # [n_tokens]
     token_id_per_atom = aa.token_id  # [n_atoms]
     is_atomized = aa.atomize if "atomize" in categories else np.zeros(len(aa), dtype=bool)
     is_oxt = aa.atom_name == "OXT"  # [n_atoms]
 
-    encodable_per_atom = can_be_encoded[token_id_per_atom]  # [n_atoms]
-    bad = is_oxt & encodable_per_atom & ~is_atomized
+    supports_local_latent_per_atom = supports_local_latent[token_id_per_atom]  # [n_atoms]
+    bad = is_oxt & supports_local_latent_per_atom & ~is_atomized
     n_bad = int(bad.sum())
     if n_bad:
         return [
             InvariantViolation(
-                check="oxt_on_encodable_token",
-                message=f"{n_bad} OXT atom(s) found on can_be_encoded non-atomized token(s)",
+                check="oxt_on_local_latent_token",
+                message=f"{n_bad} OXT atom(s) found on supports_local_latent non-atomized token(s)",
                 count=n_bad,
             )
         ]

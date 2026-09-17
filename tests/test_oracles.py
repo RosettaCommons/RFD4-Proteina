@@ -43,6 +43,7 @@ from rfproteina.metrics.design_metrics import ClashMetric
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.oracles.af2_oracle import AF2Oracle
 from rfproteina.metrics.oracles.af3_oracle import AF3Oracle, _send_to_daemon
+from rfproteina.metrics.oracles.oracle_metric import OracleJobInput
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.oracles.pre_oracle_transform import OFF_TARGET_PARSE_CONFIG, OffTargetSubstitutionTransform
 from rfproteina.metrics.utils.metrics_utils import run_oracle_refolding_and_pass_criteria
@@ -290,6 +291,37 @@ def test_send_to_daemon_retries_on_eagain(tmp_path, monkeypatch):
 
     assert response == {"status": "ok"}
     assert calls["n"] == 2
+
+
+@pytest.mark.slow
+@pytest.mark.gpu
+def test_af3_refold_preserves_bonded_retinal_without_leaving_atom(tmp_path):
+    """AF3 refolds a LYS-linked retinal without adding its absent CCD leaving atom."""
+    if not has_af3 and not os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE"):
+        message = "AF3 apptainer image not available"
+        pytest.fail(message) if os.environ.get("REQUIRE_AF3") == "1" else pytest.skip(message)
+
+    atom_array = parse(
+        TEST_DATA_DIR / "developability" / "1c3w.cif.gz",
+        config=ParseConfig.from_preset("rcsb", hydrogen_policy="remove"),
+    )["asym_unit"][0]
+    protein_context = (atom_array.chain_id == "A") & np.isin(atom_array.res_id, np.arange(204, 211))
+    retinal = atom_array.res_name == "RET"
+    design = atom_array[protein_context | retinal]
+    assert "O1" not in design.atom_name[design.res_name == "RET"]
+
+    oracle = AF3Oracle(seed=1)
+    oracle.setup()
+    try:
+        oracle.fold_one(OracleJobInput(design, "bonded_retinal", tmp_path))
+    finally:
+        oracle.teardown()
+
+    refolded_path = oracle.refolded_cif_path(tmp_path, "bonded_retinal")
+    assert refolded_path.is_file()
+    refolded = parse(refolded_path, config=ParseConfig.from_preset("minimal"))["asym_unit"][0]
+    assert np.array_equal(refolded.atom_name, design.atom_name)
+    AF3Oracle._validate_inter_residue_bonds(design, refolded)
 
 
 # ---------------------------------------------------------------------------

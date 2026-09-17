@@ -1,32 +1,34 @@
-# Protein-DNA complexes, predicted with Protenix v2
+# Quality-filtered protein-DNA complexes predicted with Protenix v2.
 
+_target_: atomworks.ml.datasets.PandasDataset
 name: na_complex
-lmdb_path: ${oc.env:DATA_PATH}/train_datasets/na_complex_protenix_v2
-data: ${oc.env:DATA_PATH}/train_datasets/na_complex_protenix_v2/metadata.parquet
-lmdb_idx_column: lmdb_idx
-memory_map: True
+data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/metadata_2026_09_10.parquet
+memory_map: False  # loaded into a buffer; nothing to mmap
+
+loader:
+  _target_: atomworks.ml.datasets.loaders.create_structure_loader
+  storage: blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/data/blob_2026_09_08
+  example_id_colname: example_id
+  assembly_id_colname: null
+  altloc_seed_colname: null
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
 
 columns_to_load:
   - example_id
   - lmdb_idx
-  - n_chains
-  - mean_plddt
-  - iptm
+  # Quality gates
   - pd_pae_min
-  - pd_iptm_max
-  - frac_atoms_clashing_1p0A
-  - frac_atoms_clashing_1p5A
-  - n_tokens
-  - n_atoms
+  - protein_dna_hbond_count
+  - dna_quality_hard_gate_v2
+  - dna_b_form_geometry_pass
 
 filters:
-  # Protein-DNA interface min-PAE gate (most are very high confidence)
-  - "pd_pae_min <= 0.5"
-  # Zero hard clashes plus a soft-clash cut
-  - "frac_atoms_clashing_1p0A == 0"
-  - "frac_atoms_clashing_1p5A < 0.005"
-  # Confidence floor (median mean_plddt is about 95).
-  - "mean_plddt > 90"
+  # DNA structural quality
+  - "dna_quality_hard_gate_v2 == True"
+  - "dna_b_form_geometry_pass == True"
 
-parser_args:
-  _target_: rfproteina.utils.parse_presets.distillation
+  # Protein-DNA interface quality
+  - "protein_dna_hbond_count > 24"
+  - "pd_pae_min < 1.5"

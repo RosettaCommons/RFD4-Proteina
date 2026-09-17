@@ -1,13 +1,14 @@
-name: transformer_ae_unified  # Unified encoding with DNA/RNA support
+name: transformer_ae_unified
 
-# TODO: Update with the latest hero configs for the AE when we merge (higher latent dimensino, no attention pair bias)
-
-latent_z_dim: &latent_z_dim 8
+latent_z_dim: &latent_z_dim 16
+use_torch_compile: true
+torch_compile_fullgraph: false
+torch_compile_mode: reduce-overhead
 
 # All UNIFIED_ATOM37_ENCODING types (0-32)
 # 0: MASK, 1-20: standard AAs, 21: UNK, 22-25: RNA (A,C,G,U), 26: N (unknown RNA),
 # 27-30: DNA (DA,DC,DG,DT), 31: DN (unknown DNA), 32: ATOMISED
-n_residue_types: &n_residue_types 33  
+n_residue_types: &n_residue_types 33
 
 encoder:
   nlayers: 12  # number of transformer layers
@@ -16,13 +17,10 @@ encoder:
   parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
   token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
 
-  strict_feats: False  # if False, then fills missing features with default values (e.g. chain break with zero, residue sequence index by [0, 1, 2, ...], etc)
+  strict_feats: False  # if False, missing optional features are filled with defaults
   # If True, if some feature is not provided, then it raises an error
 
-  # TODO: Remove all pair features from the code for simplicity when we merge the new AE; also remove the option to even use attention pair bias
-
-  # Minimal set of sequence and structural features to include in the initial representation
-  feats_seq: ["x1_aatype", "token_type", "x1_a37coors_nm", "x1_a37coors_nm_rel", "chain_idx_seq"]
+  feats_seq: ["token_type", "x1_a37coors_nm", "x1_a37coors_nm_rel", "chain_idx_seq"]
   feats_cond_seq:  # Sequence features to include in conditioning variables
 
   # Parameters for the features we extract
@@ -41,7 +39,7 @@ encoder:
   update_pair_repr_every_n: 3  # Update the pair representation every n layers
   use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 
-  use_attn_pair_bias: True  # False drops the pair track: no factory, no bias, no pair params
+  use_attn_pair_bias: False
   use_qkln: True
 
   normalize_latent: false
@@ -58,7 +56,7 @@ decoder:
   token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
   parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
 
-  strict_feats: False  # if False, then fills missing features with default values (e.g. chain break with zero, residue sequence index by [0, 1, 2, ...], etc)
+  strict_feats: False  # if False, missing optional features are filled with defaults
   # If True, if some feature is not provided, then it raises an error
 
   # `cond_residue_type` lets the decoder honour a conditioned sequence instead of re-deriving
@@ -80,7 +78,7 @@ decoder:
   update_pair_repr_every_n: 3  # Update the pair representation every n layers
   use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 
-  use_attn_pair_bias: True  # False drops the pair track: no factory, no bias, no pair params
+  use_attn_pair_bias: False
   use_qkln: True
   latent_z_dim: *latent_z_dim
   n_residue_types: *n_residue_types  # Sequence prediction head (33 output classes)

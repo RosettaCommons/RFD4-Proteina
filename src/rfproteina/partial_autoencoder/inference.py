@@ -6,6 +6,7 @@ sys.path.insert(0, root)  # Adds project's root directory
 # isort: split
 
 import argparse  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 import hydra  # noqa: E402
 import lightning as L  # noqa: E402
@@ -14,7 +15,9 @@ import lightning as L  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import torch  # noqa: E402
+from omegaconf import DictConfig  # noqa: E402
 
+from rfproteina.model_masks import compute_ae_supervision_mask  # noqa: E402
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 from rfproteina.utils.ddp import RankedLogger  # noqa: E402
 from rfproteina.utils.env import load_dotenv  # noqa: E402
@@ -22,15 +25,8 @@ from rfproteina.utils.env import load_dotenv  # noqa: E402
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def parse_args_and_cfg() -> tuple[dict, dict, str]:
-    """
-    Parses command line arguments and loads the corresponding config file.
-
-    Returns:
-        Command line arguments (dict)
-        Config file (dict)
-        config_name (string)
-    """
+def parse_args_and_cfg() -> tuple[argparse.Namespace, DictConfig, str]:
+    """Return CLI arguments, the composed Hydra config, and its name."""
     parser = argparse.ArgumentParser(description="Job info")
     parser.add_argument(
         "--config_name",
@@ -47,15 +43,11 @@ def parse_args_and_cfg() -> tuple[dict, dict, str]:
     )
     args = parser.parse_args()
 
-    # Inference config
-    # If config_subdir is None then use base inference config
-    # Otherwise use config_subdir/some_config
-    if args.config_subdir is None:
-        config_path = "../../configs"
-    else:
-        config_path = f"../../configs/{args.config_subdir}"
+    config_path = Path(__file__).resolve().parents[3] / "configs"
+    if args.config_subdir is not None:
+        config_path = config_path / args.config_subdir
 
-    with hydra.initialize(config_path, version_base=hydra.__version__):
+    with hydra.initialize_config_dir(str(config_path), version_base=hydra.__version__):
         # If number provided use it, otherwise name
         if args.config_number != -1:
             config_name = f"inf_{args.config_number}"
@@ -163,9 +155,11 @@ def compute_all_atom_rmsd(predictions: list[tuple], model: AutoEncoder) -> list[
     logger.info("Computing all-atom RMSD")
     vals = []
     for x_in, x_out in predictions:
+        loss_mask = compute_ae_supervision_mask(x_in)
         v = model.compute_struct_rec_loss(
             output_dec=x_out,
             batch=x_in,
+            loss_mask=loss_mask,
         )["rmsd_no_align_a37_ang_justlog"]
         vals += v.tolist()
     return vals
@@ -175,22 +169,24 @@ def compute_sec_rec_rate(predictions: list[tuple], model: AutoEncoder) -> list[f
     logger.info("Computing sequence recovery rate")
     vals = []
     for x_in, x_out in predictions:
+        loss_mask = compute_ae_supervision_mask(x_in)
         v = model.compute_seq_rec_loss(
             output_dec=x_out,
             batch=x_in,
+            loss_mask=loss_mask,
         )["seq_rec_rate_justlog"]
         vals += v.tolist()
     return vals
 
 
 def compute_kl_latent(predictions: list[tuple], model: AutoEncoder) -> list[float]:
-    logger.info("Computing sequence recovery rate")
+    logger.info("Computing KL latent penalty")
     vals = []
-    for _, x_out in predictions:
+    for x_in, x_out in predictions:
         v = model.compute_kl_penalty(
             mean=x_out["mean"],
             log_scale=x_out["log_scale"],
-            mask=x_out["residue_mask"],
+            mask=compute_ae_supervision_mask(x_in),
             w=1.0,
         )["kl_now_justlog"]
         vals += v.tolist()
@@ -240,7 +236,12 @@ def main() -> None:
     model = AutoEncoder.load_from_checkpoint(cfg.ckpt_file)
 
     # Make predictions, store them together with inputs
-    trainer = L.Trainer(accelerator="gpu", devices=1, limit_predict_batches=int(cfg.n_structs / cfg.bs))
+    trainer = L.Trainer(
+        accelerator="gpu",
+        devices=1,
+        precision="bf16-mixed",
+        limit_predict_batches=int(cfg.n_structs / cfg.bs),
+    )
     predictions = trainer.predict(model, dataloader)
     # List of tuples, each tuple is (data_batch, predicted_batch)
     # and the predicted batch has all outputs from the endocer and decoder

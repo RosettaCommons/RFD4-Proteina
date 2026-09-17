@@ -10,7 +10,6 @@ Key Concepts:
 
 Dimension Naming:
     - "I": Token/index dimension (primary sequence length dimension)
-    - "S": MSA depth dimension
     - Other dimensions follow jaxtyping conventions
 
 Mask Convention:
@@ -20,8 +19,6 @@ Mask Convention:
 Special Keys (accessed via ``batch[key]``):
     - ``"padding_mask"``: Token-level validity mask from ``padding_masks["I"]``.
       Shape ``[batch, I]``. True = real token.
-    - ``"msa_row_mask"``: MSA row validity mask from ``padding_masks["S"]``.
-      Shape ``[batch, S]``. True = valid MSA row.
 """
 
 import logging
@@ -525,13 +522,6 @@ class PaddedBatchedDataSample(BatchedDataSample):
             if TOKEN_DIM in self.padding_masks:
                 return self.padding_masks[TOKEN_DIM]
             raise KeyError(f"No '{TOKEN_DIM}' dimension in padding_masks")
-
-        # Special key: "msa_row_mask" returns MSA row validity mask
-        # Convention: True = valid MSA row, False = padding
-        if key == "msa_row_mask":
-            if "S" in self.padding_masks:
-                return self.padding_masks["S"]
-            raise KeyError("No 'S' dimension in padding_masks (no MSA data in batch?)")
 
         # Check tensors dict (simplified schema - keys are passed through as-is)
         if (

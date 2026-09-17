@@ -240,14 +240,11 @@ class VanillaStrategy(SearchStrategy):
             gen_samples, _, extra_info = model.fm.partial_simulation(
                 batch=batch,
                 x=batch["x_t"],
-                x_1_pred=None,
-                mask=batch["padding_mask"],
                 predict_for_sampling=model.predict_for_sampling,
                 recycle_depths=recycle_depths,
                 nsteps=actual_nsteps,
                 ts=partial_ts,
                 gt=partial_gt,
-                self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params=simulation_step_params,
                 device=device,
                 save_trajectory_every=save_trajectory_every,
@@ -265,7 +262,6 @@ class VanillaStrategy(SearchStrategy):
                 nsteps=actual_nsteps,
                 nsamples=nsamples,
                 n=n,
-                self_cond=model.inf_cfg.args.self_cond,
                 sampling_model_args=model.inf_cfg.model,
                 device=device,
                 save_trajectory_every=save_trajectory_every,
@@ -274,15 +270,12 @@ class VanillaStrategy(SearchStrategy):
                 guidance_model=model.guidance_model,
             )
 
-        # Format samples (only coors37_n_aatype mode)
-        formatting_extra_info = {
-            **extra_info,
-            "token_type": batch.get("token_type"),
-        }
+        # The full batch supplies the AE decoder's trained seq/pair features.
+        # The decoder derives its masks and emits only generated tokens.
         sample_prots = model.sample_formatting(
             x=gen_samples,
-            extra_info=formatting_extra_info,
             ret_mode="coors37_n_aatype",
+            batch=batch,
         )
 
         # Use the shared processing method to convert to atom arrays
@@ -299,7 +292,6 @@ class VanillaStrategy(SearchStrategy):
                 generation_list=generation_list,
                 model=model,
                 batch=batch,
-                extra_info=extra_info,
                 nsamples=nsamples,
                 bb_ca_only=bb_ca_only_trajectories,
                 dump_noisy_trajectories=dump_noisy_trajectories,
@@ -313,7 +305,6 @@ def _attach_trajectories(
     generation_list: list[dict],
     model: Any,
     batch: dict,
-    extra_info: dict,
     nsamples: int,
     bb_ca_only: bool,
     dump_noisy_trajectories: bool,
@@ -339,7 +330,6 @@ def _attach_trajectories(
         generation_list: List of generation result dicts to attach trajectory steps to.
         model: Proteina model instance used for decoding.
         batch: Original batch dict.
-        extra_info: Additional info from full_simulation containing 'padding_mask' and 'can_be_encoded'.
         nsamples: Number of samples in the batch.
         bb_ca_only: If True, skip the full decoder and store only CA atoms, enabling XTC saving.
             If False, decode full sidechains; result is a list (variable atom counts).
@@ -358,13 +348,13 @@ def _attach_trajectories(
                 sample_prots_step = model._format_sample_bb_ca(
                     x=x_step,
                     ret_mode="coors37_n_aatype",
-                    padding_mask=extra_info["padding_mask"],
+                    padding_mask=batch["padding_mask"],
                 )
             else:
                 sample_prots_step = model.sample_formatting(
                     x=x_step,
-                    extra_info=extra_info,
                     ret_mode="coors37_n_aatype",
+                    batch=batch,
                 )
 
             step_gen_list = model.format_sample_prots_to_atom_arrays(

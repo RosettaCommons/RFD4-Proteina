@@ -1,7 +1,7 @@
 import itertools
-import json
 from collections import defaultdict
 from collections.abc import Sequence
+from enum import StrEnum
 from functools import partial
 from typing import ClassVar, Literal
 
@@ -26,7 +26,7 @@ from atomworks.ml.transforms import mask_generator as mg
 from atomworks.ml.transforms.crop import resize_crop_info_if_too_many_atoms
 from atomworks.ml.transforms.design_task import DesignTaskABC
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
-from atomworks.ml.utils.antibody import IgAnnotation
+from atomworks.ml.utils.numpy import unique_by_first_occurrence
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
 from scipy.spatial import ConvexHull
@@ -338,16 +338,12 @@ class StructurePredictionTask(NoMotifABC):
 
 
 class InverseFoldingTask(NoMotifABC):
-    """Inverse folding task: reveal backbone coordinates and design the sequence.
+    """Design sequence and sidechains/bases from selected polymers' backbone coordinates.
 
-    For each requested polymer type in ``polymer_types``, backbone coordinates are
-    provided as context while the sidechain/base coordinates and the sequence are
-    hidden (i.e. designed). Molecules of any other type keep all coordinates and
-    sequence information as context.
+    Other molecules stay fully conditioned; at least one designable atom is required.
 
     Args:
-      polymer_types: Which polymer types to inverse-fold. Any of ``"protein"``,
-        ``"rna"``, ``"dna"``. Defaults to ``["protein"]`` (original behaviour).
+        polymer_types: Polymer types to design: "protein" (default), "rna", or "dna".
     """
 
     RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
@@ -371,6 +367,12 @@ class InverseFoldingTask(NoMotifABC):
         unknown = set(polymer_types) - set(self._POLYMER_MASK_ANNOT)
         assert not unknown, f"unknown polymer_types {unknown}; choose from {list(self._POLYMER_MASK_ANNOT)}"
         self.polymer_types = list(polymer_types)
+
+    def can_apply(self, data: dict) -> bool:
+        atom_array = data["atom_array"]
+        res_annots = [self._POLYMER_MASK_ANNOT[p][0] for p in self.polymer_types]
+        ensure_annotations(atom_array, *res_annots)
+        return any(getattr(atom_array, annotation).any() for annotation in res_annots)
 
     def forward(self, data: dict) -> dict:
         data = super().set_task_info(data)
@@ -2387,6 +2389,20 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
 # ---------------------------------------------------------------------------
 
 
+class IgRegion(StrEnum):
+    """Allowed values of the per-atom ``ig_region`` CIF annotation."""
+
+    NOT_IG = ""
+    FRAMEWORK = "framework"
+    CDR1 = "cdr1"
+    CDR2 = "cdr2"
+    CDR3 = "cdr3"
+    CDR4 = "cdr4"
+
+
+IG_CDR_REGIONS = (IgRegion.CDR1, IgRegion.CDR2, IgRegion.CDR3, IgRegion.CDR4)
+
+
 def _expand_cdr_mask(
     atom_array: AtomArray,
     cdr_mask: np.ndarray,
@@ -2453,10 +2469,9 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
     """Framework-conditioning task for antibodies and TCRs.
 
     Conditions on the Ig framework and (optionally) the target/antigen while
-    leaving CDR loops free for design.  Replaces the old
-    ``AntibodyFrameworkConditioningTask`` family with a cleaner interface that:
+    leaving CDR loops free for design. It:
 
-    - uses :class:`~atomworks.ml.utils.antibody.IgAnnotation` for CDR parsing,
+    - reads the native ``ig_region`` structure annotation,
     - replaces 2D distance conditioning with internal-coordinate conditioning,
     - supports variable CDR boundary expansion/contraction,
     - supports per-CDR fixation (internal coords + sequence conditioning), and
@@ -2477,8 +2492,7 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
             when ``p_fix_all_but_cdr3`` is not triggered.
         p_design_cdr4: Probability of including CDR4 in the designed (free)
             region. Sampled once per example and applied to CDR4 on every Ig
-            chain; otherwise CDR4 is fixed (internal coords + seq
-            conditioning), independent of how CDR1-3 were resolved above.
+            chain; otherwise CDR4 follows the framework conditioning policy.
         p_framework_seq_cond: Probability of providing sequence conditioning
             on the framework in addition to internal-coord conditioning.
         p_framework_bb_only: Probability of restricting framework internal-coord
@@ -2556,33 +2570,38 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
 
     def annotate_for_task_selection(self, data: dict) -> dict:
         atom_array = data["atom_array"]
+        assert "ig_region" in atom_array.get_annotation_categories(), (
+            "IgFrameworkConditioningTask requires the per-atom 'ig_region' annotation. Generate it with "
+            "atomworks.ml.utils.antibody.IgAnnotation.get_masks(), attach it with "
+            "AtomArray.set_annotation('ig_region', values), save it with AtomWorks "
+            "to_cif_file(..., extra_fields=['ig_region']), and load it with "
+            "ParseConfig(extra_fields=['ig_region']) or equivalent parser_args."
+        )
         ensure_annotations(atom_array, "is_protein")
+        regions = atom_array.get_annotation("ig_region")
+        invalid_regions = sorted(
+            str(region) for region in set(np.unique(regions)) - {region.value for region in IgRegion}
+        )
+        if invalid_regions:
+            raise ValueError(f"Invalid ig_region value(s): {invalid_regions}")
 
-        cdr_annotations_json = data.get("extra_info", {}).get("cdr_annotations")
-        if not cdr_annotations_json:
-            data["_ig_masks"] = None
-            return data
-
-        all_ig_annotations: dict = json.loads(cdr_annotations_json)
-
-        per_chain_cdr_masks: dict[str, dict[str, np.ndarray]] = {}
+        per_chain_cdr_masks: dict[str, dict[IgRegion, np.ndarray]] = {}
         per_chain_ig_masks: dict[str, np.ndarray] = {}
 
-        for pn_unit_iid, ann_dict in all_ig_annotations.items():
-            try:
-                annotation = IgAnnotation.from_dict(ann_dict)
-                cdr_masks, ig_chain_mask = annotation.get_masks(atom_array, pn_unit_iid)
-                per_chain_cdr_masks[pn_unit_iid] = cdr_masks
-                per_chain_ig_masks[pn_unit_iid] = ig_chain_mask
-            except (ValueError, KeyError):
-                # pn_unit not in cropped array or annotation is malformed
-                continue
+        ig_mask = regions != IgRegion.NOT_IG.value
+        for pn_unit_iid in unique_by_first_occurrence(atom_array.pn_unit_iid[ig_mask]):
+            pn_unit_mask = atom_array.pn_unit_iid == pn_unit_iid
+            cdr_masks = {
+                region: pn_unit_mask & (regions == region.value)
+                for region in IG_CDR_REGIONS
+                if np.any(pn_unit_mask & (regions == region.value))
+            }
+            per_chain_cdr_masks[pn_unit_iid] = cdr_masks
+            per_chain_ig_masks[pn_unit_iid] = pn_unit_mask & ig_mask
 
-        antigen_pn_unit_iid = data.get("extra_info", {}).get("antigen_pn_unit_iid")
         data["_ig_masks"] = {
             "per_chain_cdr_masks": per_chain_cdr_masks,
             "per_chain_ig_masks": per_chain_ig_masks,
-            "antigen_pn_unit_iid": antigen_pn_unit_iid,
         }
         return data
 
@@ -2629,7 +2648,7 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
         for ig_mask in per_chain_ig_masks.values():
             combined_ig_mask |= ig_mask
 
-        # Target mask: everything that isn't an ig chain
+        # Target mask: everything that isn't an Ig PN unit
         target_mask = ~np.isin(atom_array.pn_unit_iid, np.unique(atom_array.pn_unit_iid[combined_ig_mask]))
 
         # ------------------------------------------------------------------
@@ -2640,12 +2659,12 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
         expand_n_term = int(np.random.randint(self.cdr_expand_min, self.cdr_expand_max + 1))
         expand_c_term = int(np.random.randint(self.cdr_expand_min, self.cdr_expand_max + 1))
 
-        expanded_cdr_masks: dict[str, dict[str, np.ndarray]] = {}
+        expanded_cdr_masks: dict[str, dict[IgRegion, np.ndarray]] = {}
         for pn_unit_iid, chain_cdrs in per_chain_cdr_masks.items():
             ig_mask = per_chain_ig_masks[pn_unit_iid]
             expanded_cdr_masks[pn_unit_iid] = {}
-            for cdr_name, cdr_mask in chain_cdrs.items():
-                expanded_cdr_masks[pn_unit_iid][cdr_name] = _expand_cdr_mask(
+            for cdr_region, cdr_mask in chain_cdrs.items():
+                expanded_cdr_masks[pn_unit_iid][cdr_region] = _expand_cdr_mask(
                     atom_array, cdr_mask, ig_mask, expand_n_term, expand_c_term
                 )
 
@@ -2659,29 +2678,29 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
             # Fix all CDRs except CDR3; leave CDR3 free for design. CDR4 is
             # excluded here and resolved separately below via p_design_cdr4.
             for chain_cdrs in expanded_cdr_masks.values():
-                for cdr_name, cdr_mask in chain_cdrs.items():
-                    if cdr_name.lower() == "cdr4":
+                for cdr_region, cdr_mask in chain_cdrs.items():
+                    if cdr_region is IgRegion.CDR4:
                         continue
-                    if "cdr3" in cdr_name.lower():
+                    if cdr_region is IgRegion.CDR3:
                         free_cdr_mask |= cdr_mask
                     else:
                         fixed_cdr_mask |= cdr_mask
         else:
             # Per-CDR independent fixation probability (CDR4 excluded, see below).
             for chain_cdrs in expanded_cdr_masks.values():
-                for cdr_name, cdr_mask in chain_cdrs.items():
-                    if cdr_name.lower() == "cdr4":
+                for cdr_region, cdr_mask in chain_cdrs.items():
+                    if cdr_region is IgRegion.CDR4:
                         continue
                     if true_with_prob(self.p_cdr_fixed):
                         fixed_cdr_mask |= cdr_mask
                     else:
                         free_cdr_mask |= cdr_mask
 
-        # CDR4 defaults to fixed; only designed with probability p_design_cdr4,
-        # sampled once and applied uniformly across all Ig chains.
+        # CDR4 is designed with one draw shared across all Ig chains; otherwise
+        # it follows the framework conditioning policy.
         design_cdr4 = true_with_prob(self.p_design_cdr4)
         for chain_cdrs in expanded_cdr_masks.values():
-            cdr4_mask = chain_cdrs.get("cdr4")
+            cdr4_mask = chain_cdrs.get(IgRegion.CDR4)
             if cdr4_mask is None:
                 continue
             if design_cdr4:  # otherwise treated like a framework region

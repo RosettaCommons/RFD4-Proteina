@@ -1,0 +1,35 @@
+# Quality-filtered DNA-binder predictions from Protenix v2.
+# Streamed from cloud-native blob storage; filtered for number of hydrogen bonds, confidence and DNA structural quality
+
+_target_: atomworks.ml.datasets.PandasDataset
+name: dnabind
+data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/dnabind_protenix_v2/metadata_2026_09_10.parquet
+memory_map: False  # loaded into a buffer; nothing to mmap
+
+loader:
+  _target_: atomworks.ml.datasets.loaders.create_structure_loader
+  storage: blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/dnabind_protenix_v2/data/blob_2026_09_08
+  example_id_colname: example_id
+  assembly_id_colname: null
+  altloc_seed_colname: null
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
+
+columns_to_load:
+  - example_id
+  - lmdb_idx
+  # Quality gates
+  - pd_pae_min
+  - protein_dna_hbond_count
+  - dna_quality_hard_gate_v2
+  - dna_b_form_geometry_pass
+
+filters:
+  # DNA structural quality
+  - "dna_quality_hard_gate_v2 == True"
+  - "dna_b_form_geometry_pass == True"
+
+  # Protein-DNA interface quality
+  - "protein_dna_hbond_count > 24"
+  - "pd_pae_min < 1.5"

@@ -1,7 +1,7 @@
 # PDB pn-units for the flow model.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/pdb_pn_units@dataset
   - /datasets/sampling/af3_pdb_pn_units@_here_
   - /design_tasks/presets@dataset.transform.design_tasks: tip_atom_pocket_tasks

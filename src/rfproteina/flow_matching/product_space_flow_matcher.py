@@ -10,6 +10,7 @@ from torch import Tensor
 from rfproteina.conditions import C_CRDGRP
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
 from rfproteina.flow_matching.rdn_flow_matcher import RDNFlowMatcher, compute_tsr_ratio
+from rfproteina.model_masks import compute_flow_emit_masks, compute_flow_supervision_masks
 
 FLOW_MATCHER_FACTORY = {
     "bb_ca": RDNFlowMatcher,
@@ -56,7 +57,7 @@ def sample_noised_target_backbone(
     Only the backbone matcher is evaluated. Sampling uses the same centering
     inputs and one-time centering behavior as training-time corruption.
     """
-    padding_mask = batch["padding_mask"]
+    bb_ca_emit_mask = compute_flow_emit_masks(batch)["bb_ca"]
     coord_cond_mask = batch.get("coord_cond_mask")
     groups = extract_groups(batch)
     batch_shape = target_backbone.shape[:-2]
@@ -68,7 +69,7 @@ def sample_noised_target_backbone(
     x_0 = backbone_matcher.sample_noise(
         n=n,
         shape=batch_shape,
-        mask=padding_mask,
+        emit_mask=bb_ca_emit_mask,
         device=target_backbone.device,
         training=True,
         coord_cond_mask=coord_cond_mask,
@@ -78,7 +79,7 @@ def sample_noised_target_backbone(
         x_0=x_0,
         x_1=target_backbone,
         t=t_bb,
-        mask=padding_mask,
+        emit_mask=bb_ca_emit_mask,
         coord_cond_mask=coord_cond_mask,
         groups=groups,
     )
@@ -96,36 +97,22 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         self.data_modes = list(self.cfg_exp.product_flowmatcher)
         self.base_flow_matchers = self.get_base_flow_matchers()
 
+    def apply_flow_emit_masks(self, x: dict[str, Tensor], batch: dict) -> dict[str, Tensor]:
+        """Zero each modality outside its flow emit mask."""
+        emit_masks = compute_flow_emit_masks(batch)
+        return {mode: value * emit_masks[mode][..., None].to(value.dtype) for mode, value in x.items()}
+
     def get_base_flow_matchers(self) -> dict[str, BaseFlowMatcher]:
         """Constructs all necessary flow matchers."""
         return {m: FLOW_MATCHER_FACTORY[m](**self.cfg_exp.product_flowmatcher[m]) for m in self.data_modes}
-
-    def _apply_mask(self, x: dict[str, Tensor], mask: Bool[Tensor, "* n"] | None = None) -> dict[str, Tensor]:
-        """
-        Masks x.
-
-        Args:
-            x: sample to mask.
-            mask (optional): binary mask, shape [*, n].
-
-        Returns:
-            sample x masked.
-        """
-        x = {
-            data_mode: self.base_flow_matchers[data_mode]._apply_mask(
-                x=x[data_mode],
-                mask=mask,
-            )
-            for data_mode in self.data_modes
-        }
-        return x
 
     def sample_noise(
         self,
         n: int,
         shape: tuple = (),
         device: torch.device | None = None,
-        mask: Bool[Tensor, "* n"] | None = None,
+        *,
+        emit_masks: dict[str, Bool[Tensor, "* n"]],
         training: bool = True,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
@@ -137,7 +124,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             n: number of residues in a single sample (i.e. protein length), int
             shape: tuple (if empty then single sample)
             device (optional): torch device used
-            mask (optional): Binary mask of shape [*, n]
+            emit_masks: Per-modality emit masks of shape [*, n].
             training (optional): whether in training mode
             coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
                 coordinate-conditioned tokens whose noise should not be offset.
@@ -152,7 +139,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 n=n,
                 shape=shape,
                 device=device,
-                mask=mask,
+                emit_mask=emit_masks[data_mode],
                 training=training,
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
@@ -166,7 +153,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         x_0: dict[str, torch.Tensor],
         x_1: dict[str, torch.Tensor],
         t: dict[str, Float[Tensor, "*"]],
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_masks: dict[str, Bool[Tensor, "* n"]],
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> dict[str, torch.Tensor]:
@@ -177,7 +164,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x_0: Samples from reference with batch shape * (each value in the dict)
             x_1: Samples from target with batch shape *
             t: Interpolation times
-            mask (optional): Binary mask, shape [*, n]
+            emit_masks: Per-modality emit masks of shape [*, n].
             coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
                 coordinate-conditioned tokens whose noise should not be offset.
             groups (optional): Dict of token-level group tensors keyed by name
@@ -191,7 +178,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 x_0=x_0[data_mode],
                 x_1=x_1[data_mode],
                 t=t[data_mode],
-                mask=mask,
+                emit_mask=emit_masks[data_mode],
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
             )
@@ -199,17 +186,16 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         }
         return x_t
 
-    def process_batch(self, batch: dict) -> tuple[Tensor, Tensor, tuple, int, torch.dtype]:
+    def process_batch(self, batch: dict) -> tuple[dict[str, Tensor], tuple, int, torch.dtype, torch.device]:
         """
-        Extracts clean sample, mask, batch size, protein length n, dtype and device
-        from the batch coming from the dataloader. (Do we want dtype? Should default
-        work?). Uses padding_mask to mask the x_1
+        Extracts the clean sample, batch size, token count, dtype, and device from
+        the batch coming from the dataloader. Applies each modality's emit mask to ``x_1``.
 
         Args:
             batch: batch from dataloader.
 
         Returns:
-            Tuple (x_1, padding_mask, batch_shape, n, dtype, device)
+            Tuple (x_1, batch_shape, n, dtype, device)
 
         WARNING: For dtype, it might become a dictionary as well, depending on
         type for sequence (discrete)
@@ -223,9 +209,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         dtype = coors_tensor.dtype
         batch_shape = coors_tensor.shape[:-2]
         n = coors_tensor.shape[-2]
-        padding_mask = batch["padding_mask"]  # [b, n_token] boolean
-        x_1 = self._apply_mask(x=batch["x_1"], mask=padding_mask)
-        return (x_1, padding_mask, batch_shape, n, dtype, device)
+        x_1 = self.apply_flow_emit_masks(batch["x_1"], batch)
+        return (x_1, batch_shape, n, dtype, device)
 
     def corrupt_batch(
         self,
@@ -238,7 +223,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
 
         Augmentations in principle happen in the dataloader.
 
-        All positions are corrupted.
+        Corrupted states are zeroed outside the configured per-modality masks.
 
         Args:
             batch: data batch
@@ -249,7 +234,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             Dict[str, Tensor].
         """
 
-        x_1, padding_mask, batch_shape, n, dtype, device = self.process_batch(batch)
+        x_1, batch_shape, n, dtype, device = self.process_batch(batch)
+        flow_emit_masks = compute_flow_emit_masks(batch)
         coord_cond_mask = batch.get("coord_cond_mask")  # [b, n_tokens] or None
         groups = extract_groups(batch)
         if t is None:
@@ -257,7 +243,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         x_0 = self.sample_noise(
             n=n,
             shape=batch_shape,
-            mask=padding_mask,
+            emit_masks=flow_emit_masks,
             device=device,
             training=True,
             coord_cond_mask=coord_cond_mask,
@@ -267,13 +253,15 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             x_0=x_0,
             x_1=x_1,
             t=t,
-            mask=padding_mask,
+            emit_masks=flow_emit_masks,
             coord_cond_mask=coord_cond_mask,
             groups=groups,
         )
-        batch["x_0"] = x_0
-        batch["x_1"] = x_1
-        batch["x_t"] = x_t
+        # Apply emit masks last: centering/interpolation can reintroduce nonzeros at tokens that
+        # must stay zero (padding and tokens without local latents).
+        batch["x_0"] = self.apply_flow_emit_masks(x_0, batch)
+        batch["x_1"] = self.apply_flow_emit_masks(x_1, batch)
+        batch["x_t"] = self.apply_flow_emit_masks(x_t, batch)
         batch["t"] = t
         return batch
 
@@ -333,21 +321,17 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         nn_out: dict[str, dict[str, Tensor]],
     ) -> dict[str, Float[Tensor, "*"]]:
         """
-        Computes flow matching loss for all modalities.
-        We only compute loss for tokens that should be lossed, and we don't compute loss on latents
-        where we couldn't encode them (would have started as zero)
+        Computes flow matching loss on resolved, emitted tokens for all modalities.
 
         Args:
-            batch: Input batch containing x_1, x_0, t, mask, etc
+            batch: Input batch containing x_1, x_0, t, and token masks.
             nn_out: Output of nn
 
         Returns:
             Losses for each data modality, per element in the batch.
         """
-        should_be_lossed_masks = {
-            "bb_ca": batch["should_be_lossed"],
-            "local_latents": batch["should_be_lossed"] & batch["can_be_encoded"],
-        }
+        emit_masks = compute_flow_emit_masks(batch)
+        supervision_masks = compute_flow_supervision_masks(batch)
         # Optional per-token loss weight. None / absent → default-safe (no-op) inside compute_fm_loss.
         loss_weight = batch.get("loss_weight")
         loss = {
@@ -355,7 +339,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 x_0=batch["x_0"][data_mode],
                 x_1=batch["x_1"][data_mode],
                 x_t=batch["x_t"][data_mode],
-                mask=should_be_lossed_masks[data_mode],
+                emit_mask=emit_masks[data_mode],
+                supervision_mask=supervision_masks[data_mode],
                 t=batch["t"][data_mode],
                 nn_out=nn_out[data_mode],
                 weight=loss_weight,
@@ -374,7 +359,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         since it may be a full atom loss, etc, meaning it may interact between modalities.
 
         Args:
-            batch: Input batch containing x_1, x_0, t, mask, etc
+            batch: Input batch containing x_1, x_0, t, and token masks.
             nn_out: Output of nn
 
         Returns:
@@ -447,7 +432,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         dt: dict[str, float],
         gt: dict[str, float],
         simulation_step_params: dict[str, dict],
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_masks: dict[str, Bool[Tensor, "* n"]],
     ) -> dict[str, torch.Tensor]:
         r"""
         Single integration step of ODE \dot{x_t} = v(x_t, t) using Euler integration scheme.
@@ -459,7 +444,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             dt: Step-size, float
             gt: Noise injection schedule, float
             simulation_step_params contain extra simulation steps parameters
-            mask (optional): Binary mask of shape [*, n]
+            emit_masks: Per-modality emit masks of shape [*, n].
 
         Returns:
             Updated x_t after integration step, same shape as input
@@ -472,7 +457,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 dt=dt[data_mode],
                 gt=gt[data_mode],
                 simulation_step_params=simulation_step_params[data_mode],
-                mask=mask,
+                emit_mask=emit_masks[data_mode],
             )
             for data_mode in self.data_modes
         }
@@ -487,7 +472,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Generates clean sample prediction from nn output.
 
         Args:
-            batch: input to nn (needed because it contains t, x_t, and mask)
+            batch: Input to the network, including ``t``, ``x_t``, and token masks.
             nn_out: output of nn
 
         Returns:
@@ -505,17 +490,18 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Adds clean sample prediction to nn output.
 
         Args:
-            batch: input to nn (needed because it contains t, x_t, and mask)
+            batch: Input to the network, including ``t``, ``x_t``, and token masks.
             nn_out: output of nn
 
         Returns:
             nn_out with clean sample prediction ("x_1" key) added to each data modality.
         """
+        flow_emit_masks = compute_flow_emit_masks(batch)
         for data_mode in self.data_modes:
             nn_out[data_mode] = self.base_flow_matchers[data_mode].nn_out_add_clean_sample_prediction(
                 x_t=batch["x_t"][data_mode],
                 t=batch["t"][data_mode],
-                mask=batch["padding_mask"],
+                emit_mask=flow_emit_masks[data_mode],
                 nn_out=nn_out[data_mode],
             )
         return nn_out
@@ -531,17 +517,18 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         but keeping each one seems like an easier implementation.
 
         Args:
-            batch: input to nn (needed because it contains t, x_t, and mask)
+            batch: Input to the network, including ``t``, ``x_t``, and token masks.
             nn_out: output of nn
 
         Returns:
             nn_out with simulation tensor prediction ("v", "score", ... keys) added to data modalities.
         """
+        flow_emit_masks = compute_flow_emit_masks(batch)
         for data_mode in self.data_modes:
             nn_out[data_mode] = self.base_flow_matchers[data_mode].nn_out_add_simulation_tensor(
                 x_t=batch["x_t"][data_mode],
                 t=batch["t"][data_mode],
-                mask=batch["padding_mask"],
+                emit_mask=flow_emit_masks[data_mode],
                 nn_out=nn_out[data_mode],
             )
         return nn_out
@@ -640,14 +627,13 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         nsteps: int,
         nsamples: int,
         n: int,
-        self_cond: bool,
         sampling_model_args: dict[str, dict],
         device: torch.device,
         save_trajectory_every: int = 0,
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         guidance_model: Callable | None = None,
-    ) -> tuple[dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
+    ) -> tuple[dict[str, Tensor], dict[str, Tensor | list[dict] | None]]:
         r"""
         Generates samples by simulating the
 
@@ -662,24 +648,19 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Which equation is simulated depends on data modality and parameters chosen.
 
         Args:
-            batch: Input batch. May contain:
+            batch: Input batch. Must contain ``padding_mask`` with shape ``[nsamples, n]``. May also contain:
                 - 'nsamples': int, number of samples to generate (optional, will use nsamples param if not present)
                 - 'nres' or 'n': int, protein length (optional, will use n param if not present)
-                - 'mask': torch.BoolTensor, shape [nsamples, n], mask for valid residues
-                    (optional, will be generated if not present)
                 - Any conditioning fields required by the prediction function (e.g., cath_codes, motif info, etc.)
 
                 The following fields will be added/updated during simulation:
                 - 'x_t': torch.Tensor, current state (updated each step)
                 - 't': dict of time values for each data mode (updated each step)
-                - 'mask': torch.BoolTensor, shape [nsamples, n], mask for valid residues (added if not present)
-                - 'x_sc': torch.Tensor, self-conditioning input (added if self_cond=True)
             predict_for_sampling: Function that calls the nn, receives the full batch dict
             recycle_depths: Recycle depth for each simulation step.
             nsteps: Number of simulation steps
             nsamples: Number of samples to generate
-            n: Protein length
-            self_cond: Whether to use self-conditioning
+            n: Number of tokens per sample.
             sampling_model_args: Model-specific sampling arguments
             device: Device to run simulation on
             save_trajectory_every: How often to save full generation trajectory, default 0 (no saving)
@@ -693,19 +674,21 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Returns:
             Tuple of (x, additional_info) where:
                 - x: Generated samples, dict with keys for each data mode
-                - additional_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
-                  'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
+                - additional_info: Dict containing ``trajectory_steps`` (each with ``step``, ``x_1``, and
+                  optionally ``x_t``) and final ``insertion_logits`` when available.
         """
 
         if len(recycle_depths) != nsteps:
             raise ValueError(f"expected {nsteps} recycle depths, got {len(recycle_depths)}")
 
-        # Use mask from batch if present, otherwise generate it
-        if "padding_mask" in batch and batch["padding_mask"] is not None:
-            mask = batch["padding_mask"]
-        else:
-            mask = torch.ones(nsamples, n).long().bool().to(device)
-        assert mask.shape == (nsamples, n)
+        if "padding_mask" not in batch:
+            raise KeyError("full_simulation requires batch['padding_mask']")
+        padding_mask = batch["padding_mask"]
+        if padding_mask.dtype != torch.bool or padding_mask.shape != (nsamples, n):
+            raise ValueError(
+                f"padding_mask must be bool with shape {(nsamples, n)}, got {padding_mask.dtype} "
+                f"and {tuple(padding_mask.shape)}"
+            )
 
         trajectory_steps: list[dict] = []
 
@@ -715,26 +698,19 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         with torch.no_grad():
             coord_cond_mask = batch.get("coord_cond_mask")  # [nsamples, n_tokens] or None
             groups = extract_groups(batch)
+            flow_emit_masks = compute_flow_emit_masks(batch)
             x = self.sample_noise(
                 n,
                 shape=(nsamples,),
                 device=device,
-                mask=mask,
+                emit_masks=flow_emit_masks,
                 training=False,
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
             )
 
-            # After sampling noise, mask to generated tokens only
-            is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
-            if is_encoded_mask is not None:
-                x["local_latents"] = x["local_latents"] * is_encoded_mask[..., None]  # zero out non-encoded latents
-            x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
-            x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]  # zero out padded bb_ca tokens
-
-            # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
-            batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
-            batch["x_sc_is_active"] = torch.zeros((), device=device)
+            # Keep only tokens that carry each modality.
+            x = self.apply_flow_emit_masks(x, batch)
 
             x_1_pred = None
             nn_out = None
@@ -746,15 +722,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 dt = {data_mode: ts[data_mode][step + 1] - ts[data_mode][step] for data_mode in self.data_modes}
                 gt_step = {data_mode: gt[data_mode][step] for data_mode in self.data_modes}
 
-                # Update the batch with current x, t, mask, etc.
+                # Update the batch with the current state and time.
                 batch["x_t"] = x
                 batch["t"] = t
-                batch["padding_mask"] = mask
-
-                # self conditioning
-                if step > 0 and self_cond:
-                    batch["x_sc"] = x_1_pred
-                    batch["x_sc_is_active"] = torch.ones((), device=device)
 
                 # get clean prediction and guided vector
                 nn_out = self.get_clean_pred_n_guided_vector(
@@ -779,15 +749,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     t=t,
                     dt=dt,
                     gt=gt_step,
-                    mask=mask,
+                    emit_masks=flow_emit_masks,
                     simulation_step_params=simulation_step_params,
                 )
-
-                # Mask updates to encoded tokens and non-padded tokens only
-                if is_encoded_mask is not None:
-                    x["local_latents"] = x["local_latents"] * is_encoded_mask[..., None]
-                x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
-                x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
 
                 # Differentiable-metric gradient guidance: nudge the integrated state along
                 # the gradient of a weighted objective on the clean prediction x_1_pred.
@@ -796,8 +760,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                         x_1_pred=x_1_pred,
                         extra_info={
                             "t": t,
-                            "padding_mask": mask,
-                            "can_be_encoded": is_encoded_mask,
+                            # The AE decoder pulls its seq/pair features from the current batch.
+                            "batch": batch,
                             # Cheap reference; Hungarian assignment runs in the provider only
                             # when a metric reads the predicted_insertion_mapping namespace.
                             "insertion_logits": nn_out.get("insertion", {}).get("logits"),
@@ -806,6 +770,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     )
                     for data_mode, d in delta.items():
                         x[data_mode] = x[data_mode] + d.to(x[data_mode].dtype)
+
+                # Reapply emit masks after simulation and guidance updates.
+                x = self.apply_flow_emit_masks(x, batch)
 
                 # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
                 if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):
@@ -823,8 +790,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 final_insertion_logits = nn_out["insertion"]["logits"].detach()
 
             additional_info = {
-                "padding_mask": mask,
-                "can_be_encoded": is_encoded_mask,
                 "trajectory_steps": trajectory_steps,
                 "insertion_logits": final_insertion_logits,
             }
@@ -859,10 +824,13 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 schedule_func = get_schedule_tsr_safe
             else:
                 schedule_func = get_schedule
+            schedule_args = sampling_model_args[data_mode]["schedule"]
             ts[data_mode] = schedule_func(
-                mode=sampling_model_args[data_mode]["schedule"]["mode"],
+                mode=schedule_args["mode"],
                 nsteps=int(nsteps),
-                p1=sampling_model_args[data_mode]["schedule"]["p"],
+                p1=schedule_args["p"],
+                tail_steps=schedule_args.get("tail_steps", 0),
+                tail_step_multiplier=schedule_args.get("tail_step_multiplier", 1),
             )
 
         gt = {}
@@ -887,14 +855,11 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         self,
         batch: dict,
         x: dict[str, Tensor],
-        x_1_pred: dict[str, Tensor] | None,
-        mask: Bool[Tensor, "nsamples n"],
         predict_for_sampling: Callable,
         recycle_depths: Sequence[int],
         nsteps: int,
         ts: dict[str, Tensor],
         gt: dict[str, Tensor],
-        self_cond: bool,
         simulation_step_params: dict[str, dict],
         device: torch.device,
         save_trajectory_every: int = 0,
@@ -902,7 +867,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         guidance_w: float = 1.0,
         resample_target_backbone: bool = False,
         target_backbone: Float[Tensor, "nsamples n 3"] | None = None,
-    ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | Bool[Tensor, "nsamples n"]]]:
+    ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | list[dict] | None]]:
         """Run partial diffusion simulation for nsteps.
 
         Used by beam search to evaluate partial trajectories at intermediate checkpoints.
@@ -910,14 +875,11 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Args:
             batch: Input batch dictionary
             x: Current state dict {data_mode: tensor [nsamples, n, d]}
-            x_1_pred: Previous clean prediction (for self-conditioning), can be None
-            mask: Valid residue mask [nsamples, n]
             predict_for_sampling: Prediction function that takes batch and mode
             recycle_depths: Recycle depth for each simulation step.
             nsteps: Number of steps to take in the partial simulation
             ts: Time schedules per modality, dict of tensors [nsteps+1]
             gt: Noise injection schedules per modality, dict of tensors [nsteps]
-            self_cond: Whether to use self-conditioning
             simulation_step_params: Simulation parameters per modality
             device: Device to run on
             save_trajectory_every: How often to save trajectory snapshots, 0 to disable.
@@ -932,26 +894,32 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Returns:
             Tuple of (x, x_1_pred, extra_info) where:
                 - x: Final state after partial simulation, dict of tensors
-                - x_1_pred: Final clean prediction for self-conditioning, dict of tensors
-                - extra_info: Dict with 'padding_mask', 'can_be_encoded', and optionally
-                  'trajectory_steps' (list of dicts, each with 'step', 'x_1', and optionally 'x_t')
+                - x_1_pred: Final clean prediction, dict of tensors
+                - extra_info: Dict containing ``trajectory_steps`` (each with ``step``, ``x_1``, and optionally
+                  ``x_t``) and final ``insertion_logits`` when available.
         """
         if len(recycle_depths) != nsteps:
             raise ValueError(f"expected {nsteps} recycle depths, got {len(recycle_depths)}")
 
         nsamples = x[self.data_modes[0]].shape[0]
-        is_encoded_mask = batch.get("can_be_encoded")  # [nsamples, n_tokens]
         trajectory_steps: list[dict] = []
+        padding_mask = batch["padding_mask"]
+        if padding_mask.dtype != torch.bool or padding_mask.shape != (nsamples, x[self.data_modes[0]].shape[1]):
+            raise ValueError(
+                "padding_mask must be bool with shape "
+                f"{(nsamples, x[self.data_modes[0]].shape[1])}, got {padding_mask.dtype} "
+                f"and {tuple(padding_mask.shape)}"
+            )
+        flow_emit_masks = compute_flow_emit_masks(batch)
+        x = self.apply_flow_emit_masks(x, batch)
         if resample_target_backbone:
             if target_backbone is None:
                 target_backbone = batch["x_1"]["bb_ca"]
             target_backbone = target_backbone.clone()
 
         nn_out = None
+        x_1_pred = None
         with torch.no_grad():
-            # Always-populated x_sc + is_active scalar; feature factory reads both unconditionally.
-            batch["x_sc"] = {dm: torch.zeros_like(x[dm]) for dm in self.data_modes}
-            batch["x_sc_is_active"] = torch.zeros((), device=device)
             if resample_target_backbone:
                 x["bb_ca"] = sample_noised_target_backbone(
                     self,
@@ -970,12 +938,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 # Update batch with current state
                 batch["x_t"] = x
                 batch["t"] = t
-                batch["padding_mask"] = mask
-
-                # Add self-conditioning if enabled
-                if self_cond and x_1_pred is not None:
-                    batch["x_sc"] = {**x_1_pred, "bb_ca": target_backbone} if resample_target_backbone else x_1_pred
-                    batch["x_sc_is_active"] = torch.ones((), device=device)
 
                 # Get model prediction with guidance
                 # This calls predict_for_sampling internally with proper mode handling
@@ -985,7 +947,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     guidance_w=guidance_w,
                 )
 
-                # Track clean prediction for self-conditioning
+                # Track the clean prediction for output and trajectory snapshots.
                 x_1_pred = self.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
 
                 # Take simulation step
@@ -995,15 +957,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     t=t,
                     dt=dt,
                     gt=gt_step,
-                    mask=mask,
+                    emit_masks=flow_emit_masks,
                     simulation_step_params=simulation_step_params,
                 )
-
-                # Mask updates to encoded tokens and non-padded tokens only
-                if is_encoded_mask is not None:
-                    x["local_latents"] = x["local_latents"] * is_encoded_mask[..., None]
-                x["local_latents"] = x["local_latents"] * batch["padding_mask"][..., None]
-                x["bb_ca"] = x["bb_ca"] * batch["padding_mask"][..., None]
 
                 if resample_target_backbone:
                     if step == nsteps - 1:
@@ -1015,6 +971,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                             target_backbone,
                             ts["bb_ca"][step + 1] * torch.ones(nsamples, device=device),
                         )
+
+                # Reapply emit masks after every state update, including target-backbone resampling.
+                x = self.apply_flow_emit_masks(x, batch)
 
                 # Collect trajectory snapshot (x_1 = clean prediction, x_t = noisy state)
                 if save_trajectory_every > 0 and (step % save_trajectory_every == 0 or step == nsteps - 1):
@@ -1032,8 +991,6 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             final_insertion_logits = nn_out["insertion"]["logits"].detach()
 
         extra_info = {
-            "padding_mask": mask,
-            "can_be_encoded": is_encoded_mask,
             "trajectory_steps": trajectory_steps,
             "insertion_logits": final_insertion_logits,
         }
@@ -1107,12 +1064,52 @@ def get_gt(
     return gt  # [s]
 
 
+def _schedule_with_tail_multiplier(
+    schedule_fn: Callable[[int], Float[Tensor, "steps_p_one"]],
+    nsteps: int,
+    tail_steps: int,
+    multiplier: int,
+) -> Float[Tensor, "nsteps_p_one"]:
+    """Sample the final ``tail_steps`` intervals at ``multiplier`` times the density."""
+    if tail_steps < 1:
+        raise ValueError("tail_steps must be positive")
+    try:
+        integer_multiplier = int(multiplier)
+    except (TypeError, ValueError, OverflowError):
+        integer_multiplier = 0
+    if integer_multiplier != multiplier or integer_multiplier < 2:
+        raise ValueError("tail_step_multiplier must be an integer >= 2")
+    multiplier = integer_multiplier
+
+    base_steps = nsteps - (multiplier - 1) * tail_steps
+    if base_steps < tail_steps:
+        raise ValueError("nsteps must be at least tail_steps * tail_step_multiplier")
+
+    fine_steps = base_steps * multiplier
+    tail_start = (base_steps - tail_steps) * multiplier
+    indices = [*range(0, tail_start, multiplier), *range(tail_start, fine_steps + 1)]
+    return schedule_fn(fine_steps)[torch.tensor(indices)]
+
+
 def get_schedule(
-    mode: str, nsteps: int, *, p1: float | None = None, eps: float = 1e-5
+    mode: str,
+    nsteps: int,
+    *,
+    p1: float | None = None,
+    eps: float = 1e-5,
+    tail_steps: int = 0,
+    tail_step_multiplier: int = 1,
 ) -> Float[Tensor, "nsteps_p_one"]:
     """
     Gets the partition of the unit interval with points where we'll evaluate the vector field / score.
     """
+    if tail_steps:
+        return _schedule_with_tail_multiplier(
+            lambda steps: get_schedule(mode, steps, p1=p1, eps=eps),
+            nsteps,
+            tail_steps,
+            tail_step_multiplier,
+        )
     if mode == "uniform":
         t = torch.linspace(0, 1, nsteps + 1)
         return t
@@ -1133,9 +1130,22 @@ def get_schedule(
 
 
 def get_schedule_tsr_safe(
-    mode: str, nsteps: int, *, p1: float | None = None, eps: float = 1e-3
+    mode: str,
+    nsteps: int,
+    *,
+    p1: float | None = None,
+    eps: float = 1e-3,
+    tail_steps: int = 0,
+    tail_step_multiplier: int = 1,
 ) -> Float[Tensor, "nsteps_p_one"]:
     """Schedule safe for t=0 when TSR is used. Starts at eps instead of 0."""
+    if tail_steps:
+        return _schedule_with_tail_multiplier(
+            lambda steps: get_schedule_tsr_safe(mode, steps, p1=p1, eps=eps),
+            nsteps,
+            tail_steps,
+            tail_step_multiplier,
+        )
     if mode == "uniform":
         t = torch.linspace(eps, 1, nsteps + 1)
         return t

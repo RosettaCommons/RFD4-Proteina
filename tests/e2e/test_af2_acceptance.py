@@ -32,7 +32,7 @@ from tests.e2e.helpers.regression_baselines import deterministic_env, require_so
 pytestmark = [pytest.mark.gpu, pytest.mark.slow]
 
 _COMPLETE_CRYSTAL_FIXTURE = TEST_DATA_DIR / "5vht_from_file.cif"
-_BINDER_SPEC = ROOT / "data/benchmarks/cleaned_ppi/rfd3_pdl1.cif"
+_BINDER_SPEC = ROOT / "data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst"
 _SEED = 42
 _BACKBONE = frozenset({"N", "CA", "C", "O"})
 _PHE_ATOMS = frozenset({"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"})
@@ -461,6 +461,7 @@ def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path
         "run_name_=af2_task5_generated_binder",
         f"seed={_SEED}",
         "generation.args.nsteps=20",
+        "generation.n_recycle_schedule=null",
         "metrics_tags=[ppi_refolding,hotspot_conditioning]",
         "metrics/refolding_oracles=af2",
         "prevalidate_inputs=true",

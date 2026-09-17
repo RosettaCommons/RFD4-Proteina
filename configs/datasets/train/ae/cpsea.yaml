@@ -1,5 +1,8 @@
 # CP-SEA designed macrocycles (5-16 residues), cyclized head-to-tail, isopeptide or disulfide.
 
+# Retained for release reproducibility; includes invalid bond lengths and hydrogen-related geometry issues.
+# Regenerate the structures and validate bond geometry before using a replacement dataset.
+
 defaults:
   - /datasets/train/backend_pandas@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: unconditional

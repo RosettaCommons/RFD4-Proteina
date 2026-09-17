@@ -1,4 +1,4 @@
-run_name_: ae_unified_run2_25each_no_token_type_v10
+run_name_: ae_z16
 
 hardware:
   ncpus_per_task_train_: 16  # Number of CPUs per task during training
@@ -7,7 +7,7 @@ hardware:
   nnodes_: 1  # Number of nodes
 
 defaults:
-  - nn_ae: nn_60m_unified  # NEW: 33 residue types (20 AA + RNA + DNA + unknowns)
+  - nn_ae: nn_130m_unified
   - datasets: ae_pdb_datasets
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
   - dataloaders: default  
@@ -20,11 +20,8 @@ defaults:
   # Debug configs for quick testing
   - optional debug: null
 
-# Pre-training checkpoint to start from (must be None for unified - cannot use 20-AA checkpoints)
+# Optional pre-training checkpoint to start from.
 pretrain_ckpt_path:
-
-# Backward compatibility flag
-use_legacy_encoding: false  # Set to true to use old 20-AA autoencoder (requires different config)
 
 # Override batch size from dataloader config
 dataloaders:

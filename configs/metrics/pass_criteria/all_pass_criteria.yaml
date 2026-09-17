@@ -18,7 +18,7 @@ ppi:
       min: 80.0
     oracle_ppi.min_ipae_coi:
       max: 1.5
-    refolded_target_aligned_binder_rmsd.rmsd:
+    refolded_target_backbone_aligned_binder_rmsd.rmsd:
       max: 2.5
   required_tags_any: [ppi_refolding]
 

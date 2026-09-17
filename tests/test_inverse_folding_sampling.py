@@ -26,10 +26,14 @@ def test_forward_marginal_uses_centering_once_with_groups():
         stochastic_centering_scope="per_group",
         stochastic_centering_group_keys=["molecule_iid"],
     )
-    fm = SimpleNamespace(base_flow_matchers={"bb_ca": matcher})
+    fm = SimpleNamespace(
+        base_flow_matchers={"bb_ca": matcher},
+    )
     target = torch.zeros((1, 4, 3))
     batch = {
         "padding_mask": torch.ones((1, 4), dtype=torch.bool),
+        "is_in_context_conditioning": torch.zeros((1, 4), dtype=torch.bool),
+        "supports_local_latent": torch.ones((1, 4), dtype=torch.bool),
         "coord_cond_mask": torch.zeros((1, 4), dtype=torch.bool),
         "molecule_iid": torch.tensor([[0, 0, 1, 1]]),
     }
@@ -87,7 +91,7 @@ def test_inverse_folding_rejects_unknown_method():
         )
 
 
-def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning():
+def test_partial_simulation_uses_resampled_backbone():
     target = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])
     seen_batches = []
 
@@ -98,8 +102,6 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
             seen_batches.append(
                 {
                     "x_t": {key: value.clone() for key, value in batch["x_t"].items()},
-                    "x_sc": {key: value.clone() for key, value in batch["x_sc"].items()},
-                    "x_sc_is_active": batch["x_sc_is_active"].clone(),
                 }
             )
             return {
@@ -113,6 +115,10 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
         def simulation_step(self, x_t, **_kwargs):
             return {key: value + 1.0 for key, value in x_t.items()}
 
+        def apply_flow_emit_masks(self, x, batch):
+            bb_ca_emit_mask = batch["padding_mask"] & ~batch["is_in_context_conditioning"]
+            return {key: value * bb_ca_emit_mask[..., None] for key, value in x.items()}
+
     fake_fm = FakeFlowMatcher()
     x = {
         "bb_ca": torch.zeros_like(target),
@@ -121,6 +127,9 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
     batch = {
         "x_1": {"bb_ca": target, "local_latents": torch.zeros((1, 2, 2))},
         "padding_mask": torch.ones((1, 2), dtype=torch.bool),
+        "supports_local_latent": torch.ones((1, 2), dtype=torch.bool),
+        "is_in_context_conditioning": torch.tensor([[False, True]]),
+        "atom37_mask": torch.ones((1, 2, 37), dtype=torch.bool),
     }
     ts = {
         "bb_ca": torch.tensor([0.0, 0.5, 1.0]),
@@ -143,14 +152,11 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
             fake_fm,
             batch=batch,
             x=x,
-            x_1_pred=None,
-            mask=batch["padding_mask"],
             predict_for_sampling=lambda _: None,
             recycle_depths=(0, 0),
             nsteps=2,
             ts=ts,
             gt=gt,
-            self_cond=True,
             simulation_step_params={},
             device=torch.device("cpu"),
             resample_target_backbone=True,
@@ -159,8 +165,6 @@ def test_partial_simulation_uses_resampled_backbone_and_target_self_conditioning
 
     assert sample_backbone.call_count == 2
     assert torch.equal(seen_batches[0]["x_t"]["bb_ca"], torch.zeros_like(target))
-    assert not seen_batches[0]["x_sc_is_active"]
-    assert torch.equal(seen_batches[1]["x_t"]["bb_ca"], target * 0.5)
-    assert seen_batches[1]["x_sc_is_active"]
-    assert torch.equal(seen_batches[1]["x_sc"]["bb_ca"], target)
-    assert torch.equal(final_x["bb_ca"], target)
+    masked_target = target * ~batch["is_in_context_conditioning"][..., None]
+    assert torch.equal(seen_batches[1]["x_t"]["bb_ca"], masked_target * 0.5)
+    assert torch.equal(final_x["bb_ca"], masked_target)

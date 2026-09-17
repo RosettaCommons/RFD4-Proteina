@@ -6,7 +6,7 @@ defaults:
   - inference_on_user_inputs
   - _self_
 
-inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/SAM_hbonds.cif
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/small_molecule_binder/SAM_hbonds.cif
 num_replicates: 1
 
 out_dir: ./runs/sm_binder_hbond_search
@@ -18,7 +18,7 @@ metrics_tags: [interchain_interactions]
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 50, 100]  # start at 0, increasing, end at nsteps
+    step_checkpoints: [0, 40, 60]  # start at 0, increasing, end at the refined schedule length
     n_branch: 2
     beam_width: 2
   rewards:
@@ -29,12 +29,12 @@ search:
 
     # Optional: change the reward mid-trajectory, keyed by the step it takes effect at
     # (one of step_checkpoints past the first). Each field an entry names replaces the
-    # base one outright; fields it omits are inherited. Here the early checkpoint (50)
-    # uses the base H-bond reward alone, then the final checkpoint (100) caps the H-bond
+    # base one outright; fields it omits are inherited. Here the early checkpoint (40)
+    # uses the base H-bond reward alone, then the final checkpoint (60) caps the H-bond
     # term and starts rewarding hydrophobic packing too — `weights` restates every term
     # that should still count, since it replaces the base list rather than merging.
     checkpoint_overrides:
-      100:
+      60:
         weights:
           "interchain_interactions.hbond_atom_pair_count_coi": 1.0
           "interchain_interactions.hydrophobic_atom_pair_count_coi": 0.5

@@ -1,7 +1,5 @@
-# Checkpoint path. Resolved per-cluster from DATA_PATH (matches the
-# ``autoencoder_ckpt_path`` convention used across the other configs); override
-# ``ckpt_file=...`` on the CLI for a different autoencoder checkpoint.
-ckpt_file: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+# Default released autoencoder; change ckpt_file here to select another checkpoint.
+ckpt_file: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema.ckpt
 
 # Load dataset config using Hydra defaults (matches training)
 defaults:
@@ -54,4 +52,3 @@ latent_analysis:
   
   lda:
     n_components: 2
-

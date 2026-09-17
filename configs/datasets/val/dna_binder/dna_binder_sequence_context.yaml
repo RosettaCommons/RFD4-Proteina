@@ -1,0 +1,20 @@
+# DNA-binder validation (50-80 AA): de novo protein design with only the DNA
+# sequence provided as context (DNA structure is co-generated). 3 targets x 25 replicates.
+
+# Reports design geometry, DNA refolding metrics, and interchain interactions on the generated complex.
+
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/dna_binder/dna_binder_denovo_val
+  subset_to_keys:
+    - 7n5u_sequence_context
+    - 7m5w_sequence_context
+    - 7rte_sequence_context
+  num_replicates: 25
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - dna_refolding
+      - interchain_interactions

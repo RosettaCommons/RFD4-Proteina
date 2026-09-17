@@ -27,6 +27,7 @@ from atomworks.io.config import ParseConfig
 from atomworks.io.parser import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.bonds import hash_atom_array
 from atomworks.io.utils.chain import create_chain_id_generator
 from atomworks.io.utils.io_utils import CIFWriteConfig, _to_cif_or_bcif, to_cif_file, to_cif_string
 from biotite.structure import AtomArray
@@ -271,6 +272,63 @@ _OF3_PROVENANCE_FILENAME = "of3_ported_weights.provenance.json"
 _ATOMIZED_CODE_FORMAT = "L:{index}"
 
 
+def _rename_covalent_modifiers_for_af3(atom_array: AtomArray) -> AtomArray:
+    """Give protein-linked modifiers custom CCD codes built from their observed atoms."""
+    if atom_array.bonds is None:
+        return atom_array
+
+    renamed = atom_array.copy()
+    ensure_annotations(renamed, "is_polymer", "is_standard_aa")
+    residue_starts = struc.get_residue_starts(renamed, add_exclusive_stop=True)
+    atom_to_residue = np.repeat(np.arange(len(residue_starts) - 1), np.diff(residue_starts))
+
+    modifier_residues: set[int] = set()
+    for atom_i, atom_j in renamed.bonds.as_array()[:, :2]:
+        atom_i, atom_j = int(atom_i), int(atom_j)
+        if atom_to_residue[atom_i] == atom_to_residue[atom_j]:
+            continue
+        for polymer_atom, modifier_atom in ((atom_i, atom_j), (atom_j, atom_i)):
+            if (
+                renamed.is_polymer[polymer_atom]
+                and renamed.is_standard_aa[polymer_atom]
+                and not renamed.is_polymer[modifier_atom]
+            ):
+                modifier_residues.add(int(atom_to_residue[modifier_atom]))
+                break
+
+    if not modifier_residues:
+        return atom_array
+
+    res_names = np.asarray(renamed.res_name).astype(object)
+    existing_codes = set(np.unique(renamed.res_name).astype(str).tolist())
+    code_by_graph: dict[str, str] = {}
+    next_index = 0
+    for residue_index in sorted(modifier_residues):
+        start, stop = int(residue_starts[residue_index]), int(residue_starts[residue_index + 1])
+        graph_hash = hash_atom_array(
+            renamed[start:stop],
+            annotations=("element",),
+            bond_order=True,
+            cast_aromatic_bonds_to_same_type=True,
+            use_md5=True,
+        )
+        if graph_hash not in code_by_graph:
+            code = _ATOMIZED_CODE_FORMAT.format(index=next_index)
+            next_index += 1
+            while code in existing_codes:
+                code = _ATOMIZED_CODE_FORMAT.format(index=next_index)
+                next_index += 1
+            code_by_graph[graph_hash] = code
+            existing_codes.add(code)
+        res_names[start:stop] = code_by_graph[graph_hash]
+
+    renamed.set_annotation("res_name", res_names.astype(str))
+    for name in ("is_standard_aa", "is_standard_dna", "is_standard_rna"):
+        if name in renamed.get_annotation_categories():
+            renamed.del_annotation(name)
+    return renamed
+
+
 def _using_of3_weights() -> bool:
     """Whether ``AF3_MODEL_DIR`` holds converted OpenFold3 parameters, per its provenance stamp.
 
@@ -308,9 +366,22 @@ def _atomize_ligand_bonded_residues(atom_array: AtomArray) -> AtomArray:
     if not targets:
         return atom_array
     renamed = atom_array.copy()
-    for index, (chain_id, res_id) in enumerate(sorted(targets), start=1):
+    # Skip codes already present, including any minted by _rename_covalent_modifiers_for_af3,
+    # so two structurally different residues never share one custom CCD code.
+    existing_codes = set(np.unique(renamed.res_name).astype(str).tolist())
+    next_index = 1
+    for chain_id, res_id in sorted(targets):
+        code = _ATOMIZED_CODE_FORMAT.format(index=next_index)
+        next_index += 1
+        while code in existing_codes:
+            code = _ATOMIZED_CODE_FORMAT.format(index=next_index)
+            next_index += 1
+        existing_codes.add(code)
         mask = (renamed.chain_id == chain_id) & (renamed.res_id == res_id)
-        renamed.res_name[mask] = _ATOMIZED_CODE_FORMAT.format(index=index)
+        renamed.res_name[mask] = code
+    for name in ("is_standard_aa", "is_standard_dna", "is_standard_rna"):
+        if name in renamed.get_annotation_categories():
+            renamed.del_annotation(name)
     return renamed
 
 
@@ -551,9 +622,18 @@ class AF3Oracle(OracleMetric):
                 )
             example_id = job.example_id
             job_name = self.manifest_job_name(job)
+            template_mask = (
+                resolve_mask(input_atom_array.copy(), self.template_query)
+                if self.template_query
+                else np.zeros(len(input_atom_array), dtype=bool)
+            )
 
             # Disambiguate chain IDs so AF3 can distinguish chain_iid variants and keep an id_map for remapping outputs
             disambiguated_atom_array, af3_chain_id_to_original_iid = self._disambiguate_chain_ids(input_atom_array)
+
+            # Force covalent modifiers through the user-CCD path. Built-in CCD entries can contain
+            # leaving atoms absent from the design, which AF3 would otherwise add to its output.
+            disambiguated_atom_array = _rename_covalent_modifiers_for_af3(disambiguated_atom_array)
 
             # Match OF3's tokenization before anything derives from this array; AF3's own
             # weights learned the single-token convention, so gate it.
@@ -563,6 +643,7 @@ class AF3Oracle(OracleMetric):
             # AF3's CIF parser refuses NaN coordinates; it pads them back and we reconcile later.
             valid_mask = np.all(np.isfinite(disambiguated_atom_array.coord), axis=-1)
             disambiguated_valid = disambiguated_atom_array[valid_mask]
+            template_mask = template_mask[valid_mask]
 
             # Biotite's CIF writer requires occupancy + b_factor; designs have no real values.
             disambiguated_valid.set_annotation("occupancy", np.ones(disambiguated_valid.array_length()))
@@ -587,7 +668,7 @@ class AF3Oracle(OracleMetric):
             #   template     — structural template constraint (chain coords) for the design
             #   user_ccd     — connectivity for any non-standard residues so AF3 can bond them
             #   unpaired_msa — per-chain a3m for designs that fold better than single-sequence
-            if template := self._build_af3_template_dict(disambiguated_valid):
+            if template := self._build_af3_template_dict(disambiguated_valid, template_mask):
                 entry["template"] = template
             if user_ccd := self._build_user_ccd_string(disambiguated_valid):
                 entry["user_ccd"] = user_ccd
@@ -698,20 +779,16 @@ class AF3Oracle(OracleMetric):
     # AF3 input prep helpers
     # ------------------------------------------------------------------
 
-    def _build_af3_template_dict(self, atom_array: AtomArray) -> dict[str, dict] | None:
-        """Build the AF3 per-chain template dict from :attr:`template_query`.
+    def _build_af3_template_dict(self, atom_array: AtomArray, template_mask: np.ndarray) -> dict[str, dict] | None:
+        """Build AF3 templates using the selection resolved before residue and chain renaming.
 
         Args:
-            atom_array: Input structure, with any query annotations set.
+            atom_array: Prepared structure with finite coordinates.
+            template_mask: Boolean selection aligned to ``atom_array`` after filtering.
 
         Returns:
-            Dict mapping chain ID → template dict, or ``None`` if the query is
-            unset or selects no atoms.
+            Dict mapping chain ID → template dict, or ``None`` if the selection contains no atoms.
         """
-        if not self.template_query:
-            return None
-
-        template_mask = resolve_mask(atom_array, self.template_query)
         if not np.any(template_mask):
             return None
 

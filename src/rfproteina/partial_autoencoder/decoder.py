@@ -1,15 +1,16 @@
 import einops
 import torch
 
+from rfproteina.model_masks import compute_ae_masks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
-from rfproteina.utils.constants import RESTYPE_ATOM37_MASK, UNIFIED_RESTYPE_ATOM37_MASK
+from rfproteina.utils.constants import UNIFIED_RESTYPE_ATOM37_MASK
 
 
-def get_allowed_residue_type_mask(device: torch.device | None = None, n_residue_types: int = 20) -> torch.Tensor | None:
+def get_allowed_residue_type_mask(device: torch.device | None = None) -> torch.Tensor:
     """Get per-token-type allowed residue classes for AE decoding.
 
     Token type convention:
@@ -19,10 +20,7 @@ def get_allowed_residue_type_mask(device: torch.device | None = None, n_residue_
     - 3: atomized
     - 4: unknown
     """
-    if n_residue_types != 33:
-        return None
-
-    allowed = torch.zeros((5, n_residue_types), dtype=torch.bool, device=device)
+    allowed = torch.zeros((5, 33), dtype=torch.bool, device=device)
     allowed[0, 1:22] = True  # 20 AA + UNK
     allowed[1, 22:27] = True  # RNA + unknown RNA
     allowed[2, 27:32] = True  # DNA + unknown DNA
@@ -31,24 +29,9 @@ def get_allowed_residue_type_mask(device: torch.device | None = None, n_residue_
     return allowed
 
 
-def get_atom_mask(device: torch.device | None = None, n_residue_types: int = 20) -> torch.Tensor:
-    """Get atom37 mask for residue types.
-
-    Args:
-        device: torch device
-        n_residue_types: Number of residue types (20 for legacy, 33 for unified)
-
-    Returns:
-        Atom37 mask tensor of shape [21, 37] or [33, 37]
-    """
-    if n_residue_types == 20:
-        # Legacy: use hardcoded protein-only masks [21, 37]
-        return torch.from_numpy(RESTYPE_ATOM37_MASK).to(dtype=torch.bool, device=device)
-    elif n_residue_types == 33:
-        # Unified: use precomputed masks for all UNIFIED_ATOM37_ENCODING types [33, 37]
-        return torch.from_numpy(UNIFIED_RESTYPE_ATOM37_MASK).to(dtype=torch.bool, device=device)
-    else:
-        raise ValueError(f"Unsupported n_residue_types={n_residue_types}. Must be 20 or 33.")
+def get_atom_mask(device: torch.device | None = None) -> torch.Tensor:
+    """Return the unified residue-type Atom37 mask with shape ``[33, 37]``."""
+    return torch.from_numpy(UNIFIED_RESTYPE_ATOM37_MASK).to(dtype=torch.bool, device=device)
 
 
 class DecoderTransformer(torch.nn.Module):
@@ -63,6 +46,10 @@ class DecoderTransformer(torch.nn.Module):
         super().__init__()
         # Set the process-global norm type before building submodules (make_norm reads it).
         set_norm_type(kwargs["decoder"].get("norm_type"))
+        self.n_residue_types = kwargs.get("n_residue_types")
+        if self.n_residue_types != 33:
+            raise ValueError(f"Autoencoder requires the 33-class unified residue encoding, got {self.n_residue_types}")
+
         self.nlayers = kwargs["decoder"]["nlayers"]
         self.token_dim = kwargs["decoder"]["token_dim"]
         self.pair_repr_dim = kwargs["decoder"]["pair_repr_dim"]
@@ -74,10 +61,6 @@ class DecoderTransformer(torch.nn.Module):
         self.use_qkln = kwargs["decoder"]["use_qkln"]
         self.attention_type = kwargs["decoder"].get("attention_type", "torch")
         self.abs_coors = kwargs["decoder"].get("abs_coors", True)
-
-        # Support both legacy (20 AAs) and unified (33 types) encodings
-        # Check both top-level and decoder-level kwargs
-        self.n_residue_types = kwargs.get("n_residue_types") or kwargs["decoder"].get("n_residue_types", 20)
 
         # To form initial representation
         self.init_repr_factory = FeatureFactory(
@@ -167,64 +150,61 @@ class DecoderTransformer(torch.nn.Module):
             input: {
                 "z_latent": torch.Tensor(b, n, latent_dim),
                 "ca_coors_nm": torch.Tensor(b, n, 3),
-                "residue_mask": boolean torch.Tensor(b, n)
+                "padding_mask", "is_in_context_conditioning", "supports_local_latent": boolean torch.Tensor(b, n)
             }
 
         Returns:
             Dictionary:
             {
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
-                "seq_logits": logits for the residue types, shape [b, n, 20]
-                "residue_mask": boolean [b, n]
+                "seq_logits": logits for the residue types, shape [b, n, 33]
+                "emit_mask": boolean [b, n]
                 "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                    with integer values {0, ..., 19}
+                    with integer values {0, ..., 32}
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
         ca_coors_nm = input["ca_coors_nm"]  # [b, n, 3]
-        mask = input["residue_mask"]  # [b, n] boolean
+        # Two token masks, derived from the regular batch (see :py:func:`compute_ae_masks`):
+        #   attn_mask - tokens the decoder attends over; emit_mask - tokens it reconstructs.
+        attn_mask, emit_mask = compute_ae_masks(input)
 
         # Conditioning variables
         c = self.cond_factory(input)  # [b, n, dim_cond]
-        c = self.transition_c_2(self.transition_c_1(c, mask), mask)  # [b, n, dim_cond]
+        c = self.transition_c_2(self.transition_c_1(c, attn_mask), attn_mask)  # [b, n, dim_cond]
 
         # Iinitial sequence representation from features
         seq_f_repr = self.init_repr_factory(input)  # [b, n, token_dim]
-        seqs = seq_f_repr * mask[..., None]  # [b, n, token_dim]
+        seqs = seq_f_repr * attn_mask[..., None]  # [b, n, token_dim]
 
         pair_rep = self.pair_rep_factory(input) if self.pair_rep_factory is not None else None
 
         # Run trunk
         for i in range(self.nlayers):
-            seqs = self.transformer_layers[i](seqs, pair_rep, c, mask)  # [b, n, token_dim]
+            seqs = self.transformer_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
 
             if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
-                pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
 
         # Get logits
-        logits_out = self.logit_linear(seqs) * mask[..., None]  # [b, n, 20]
+        logits_out = self.logit_linear(seqs) * emit_mask[..., None]  # [b, n, 33]
 
         if "token_type" in input:
-            allowed_res_types = get_allowed_residue_type_mask(
-                device=logits_out.device,
-                n_residue_types=self.n_residue_types,
-            )
-            if allowed_res_types is not None:
-                token_type = input["token_type"].long()
-                max_token_type = allowed_res_types.shape[0] - 1
-                if not torch.compiler.is_compiling():
-                    invalid_token_type = (token_type < 0) | (token_type > max_token_type)
-                    if torch.any(invalid_token_type):
-                        bad_values = torch.unique(token_type[invalid_token_type]).detach().cpu().tolist()
-                        raise ValueError(
-                            f"token_type must be in [0, {max_token_type}] for unified AE decoding; "
-                            f"got invalid values {bad_values}"
-                        )
-                allowed_per_token = allowed_res_types[token_type] | ~mask[..., None]
-                logits_out = logits_out.masked_fill(~allowed_per_token, torch.finfo(logits_out.dtype).min)
+            allowed_res_types = get_allowed_residue_type_mask(device=logits_out.device)
+            token_type = input["token_type"].long()
+            max_token_type = allowed_res_types.shape[0] - 1
+            if not torch.compiler.is_compiling():
+                invalid_token_type = (token_type < 0) | (token_type > max_token_type)
+                if torch.any(invalid_token_type):
+                    bad_values = torch.unique(token_type[invalid_token_type]).detach().cpu().tolist()
+                    raise ValueError(
+                        f"token_type must be in [0, {max_token_type}] for AE decoding; got invalid values {bad_values}"
+                    )
+            allowed_per_token = allowed_res_types[token_type] | ~emit_mask[..., None]
+            logits_out = logits_out.masked_fill(~allowed_per_token, torch.finfo(logits_out.dtype).min)
 
         # Get coordinates
-        coors_flat_nm = self.struct_linear(seqs) * mask[..., None]  # [b, n, 37 * 3]
+        coors_flat_nm = self.struct_linear(seqs) * emit_mask[..., None]  # [b, n, 37 * 3]
         coors_a37_nm = einops.rearrange(coors_flat_nm, "b n (a t) -> b n a t", a=37, t=3)  # [b, n, 37, 3]
 
         if self.abs_coors:
@@ -232,22 +212,20 @@ class DecoderTransformer(torch.nn.Module):
         else:
             coors_a37_nm[..., 1, :] = coors_a37_nm[..., 1, :] * 0.0
             coors_a37_nm = coors_a37_nm + ca_coors_nm[:, :, None, :]  # [b, n, 37, 3]
+        coors_a37_nm = coors_a37_nm * emit_mask[..., None, None]
 
         # Get sequence
         aatype_max = torch.argmax(logits_out, dim=-1)  # [b, n]
-        aatype_max = aatype_max * mask  # [b, n]
+        aatype_max = aatype_max * emit_mask  # [b, n]
 
-        # Get atom_mask - use appropriate size for legacy (20) or unified (33) encoding
-        aa_a37_mask = get_atom_mask(
-            device=logits_out.device, n_residue_types=self.n_residue_types
-        )  # [n_residue_types, 37]
+        aa_a37_mask = get_atom_mask(device=logits_out.device)  # [33, 37]
         atom_mask = aa_a37_mask[aatype_max, :]  # [b, n, 37] boolean
-        atom_mask = atom_mask * mask[..., None]  # [b, n, 37] boolean
+        atom_mask = atom_mask * emit_mask[..., None]  # [b, n, 37] boolean
 
         output = {
             "coors_nm": coors_a37_nm,  # [b, n, 37, 3]
-            "seq_logits": logits_out,  # [b, n, 20]
-            "residue_mask": mask,  # [b, n]
+            "seq_logits": logits_out,  # [b, n, 33]
+            "emit_mask": emit_mask,  # [b, n]
             "aatype_max": aatype_max,  # [b, n]
             "atom_mask": atom_mask,  # [b, n, 37]
         }

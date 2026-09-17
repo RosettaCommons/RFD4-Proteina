@@ -1,44 +1,13 @@
 # @package _global_
 #
-# Canonical AE training recipe — the entry point to read and to advance, mirroring
-# experiment/sota.yaml. test_ae_training_regression trains this recipe, so a change here
-# moves the committed losses; regenerate the baseline with generate_e2e_baselines.py.
-#
-# Self-contained on purpose: a CI-critical recipe should not depend on personal experiment
-# configs, so everything it needs is spelled out here rather than inherited.
+# Canonical AE training recipe. Repoint this alias to promote a new reproducible recipe;
+# regression tests compose through this stable name.
 
 defaults:
-  - /datasets/train/ae/na_complex@datasets.train.na_complex
-  # (Hydra requires `override` entries last in the defaults list.)
-  - override /nn_ae@nn_ae: nn_60m_unified
-  - override /datasets@datasets: ae_pdb_datasets
+  - /releases/ae/2026_09_04_release
   - _self_
 
 run_name_: ae_sota
-
-pretrain_ckpt_path: null
-
-hardware:
-  ngpus_per_node_: 8
-  nnodes_: 2
-
-dataloaders:
-  train:
-    dataloader_params:
-      batch_size: 12
-      collate_fn:
-        fixed_dimensions: {I: 384}
-
-datasets:
-  train:
-    rna_monomer:
-      probability: 0.10
-    pdb_interfaces:
-      probability: 0.45
-    pdb_pn_units:
-      probability: 0.35
-    na_complex:
-      probability: 0.10
 
 log:
   tags: ["ae", "sota"]

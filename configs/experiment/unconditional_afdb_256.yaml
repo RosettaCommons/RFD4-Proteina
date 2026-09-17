@@ -33,11 +33,6 @@ datasets:
           crop_size: 512
           design_tasks: ${_unconditional_design_tasks}
 
-# Training settings
-training:
-  self_cond: true
-  self_cond_p: 0.5
-
 opt:
   lr: 0.0002
   warmup_steps: 2000

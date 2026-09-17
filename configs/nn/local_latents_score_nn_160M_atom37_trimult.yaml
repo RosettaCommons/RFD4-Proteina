@@ -1,5 +1,6 @@
 # Architecture of the released denoiser (2026_07_22_release_280k-ema.ckpt), extracted from that
-# checkpoint's own `hyper_parameters.cfg_exp.nn`. Keep in sync with experiment/releases/2026_07_22_release.
+# checkpoint's own `hyper_parameters.cfg_exp.nn`. Keep in sync with
+# releases/flow/2026_07_22_release.
 
 defaults:
   - local_latents_score_nn_160M_atom37
@@ -14,8 +15,6 @@ pair_repr_dim: 384
 feats_seq:
   - xt_bb_ca
   - xt_local_latents
-  - x_sc_bb_ca
-  - x_sc_local_latents
   - token_type
   - cond_residue_type
   - cond_a37coors_nm
@@ -33,7 +32,6 @@ feats_seq:
 
 feats_pair_repr:
   - xt_bb_ca_pair_dists
-  - x_sc_bb_ca_pair_dists
   - bond_mask
   - bond_order
   - is_aromatic

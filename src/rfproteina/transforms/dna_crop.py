@@ -265,6 +265,7 @@ class ProteinDNAContactContiguousCrop(Transform):
         self.crop_size = crop_size
         self.crop_size_range = crop_size_range
         self.max_crop_size = max_crop_size
+        self.crop_center_cutoff_distance = crop_center_cutoff_distance
 
         # Fallback used when no protein-DNA contact can be sampled. Mirrors the
         # kwargs of the main spatial crop in the design pipeline.
@@ -316,8 +317,15 @@ class ProteinDNAContactContiguousCrop(Transform):
             crop_info=crop_info, atom_array=atom_array, max_atoms=self.max_atoms_in_crop
         )
 
+        crop_info = {
+            "crop_size": crop_size,
+            "crop_size_range": self.crop_size_range,
+            "crop_center_cutoff_distance": self.crop_center_cutoff_distance,
+            "max_atoms_in_crop": self.max_atoms_in_crop,
+        } | crop_info
+
         if self.keep_uncropped_atom_array:
-            data["uncropped_atom_array"] = atom_array
+            crop_info["atom_array"] = atom_array
         if crop_info["requires_crop"]:
             data["atom_array"] = atom_array[crop_info["crop_atom_idxs"]]
             data["crop_info"] = crop_info

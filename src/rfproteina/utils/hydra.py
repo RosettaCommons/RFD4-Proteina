@@ -1,6 +1,7 @@
 """Hydra plumbing: custom OmegaConf resolvers and config instantiation helpers."""
 
 import importlib
+from collections.abc import Mapping, Sequence
 
 import hydra
 from atomworks.enums import ChainType, ChainTypeInfo
@@ -10,6 +11,68 @@ from omegaconf import DictConfig, OmegaConf
 
 from rfproteina.callbacks.callback import BaseCallback
 from rfproteina.utils.common import run_once
+
+
+def non_null_values(mapping: Mapping[str, Any | None]) -> list[Any]:
+    """Return non-null mapping values in insertion order.
+
+    Examples:
+        >>> non_null_values({"date": "year < 2024", "resolution": None})
+        ['year < 2024']
+    """
+    return [value for value in mapping.values() if value is not None]
+
+
+def flatten_unique_values(mapping: Mapping[str, Sequence[Any] | None]) -> list[Any]:
+    """Flatten Hydra-mergeable named groups into one de-duplicated list.
+
+    Plain YAML lists are replaced when Hydra composes configs. A mapping is merged
+    by key instead, so a base config can define a common group and a child config
+    can add another group without repeating the common values. The mapping keys
+    are only group names; they are discarded when this function produces the
+    argument passed to the instantiated object.
+
+    For example, suppose the base config contains::
+
+        columns_to_load:
+          _target_: rfproteina.utils.hydra.flatten_unique_values
+          mapping:
+            common: [example_id, path, method]
+
+    A child config can add columns with::
+
+        columns_to_load:
+          mapping:
+            interface: [pn_unit_1_iid, pn_unit_2_iid, method]
+
+    Hydra merges the two ``mapping`` dictionaries. Instantiation then returns::
+
+        [example_id, path, method, pn_unit_1_iid, pn_unit_2_iid]
+
+    Repeated values such as ``method`` appear only once. To remove an entire
+    inherited group, override that key with ``null``::
+
+        columns_to_load:
+          mapping:
+            common: null
+
+    Individual values cannot be subtracted from an inherited group; replace that
+    group's list if different membership is required.
+
+    Examples:
+        >>> flatten_unique_values({"common": ["id", "path"], "extra": ["path", "label"]})
+        ['id', 'path', 'label']
+        >>> flatten_unique_values({"common": None, "extra": ["label"]})
+        ['label']
+    """
+    flattened = []
+    for values in mapping.values():
+        if values is None:
+            continue
+        for value in values:
+            if value not in flattened:
+                flattened.append(value)
+    return flattened
 
 
 #  (Custom resolvers)

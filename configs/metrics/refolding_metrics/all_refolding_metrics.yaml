@@ -39,6 +39,15 @@ refolded_target_aligned_binder_rmsd:
   required_tags_any: [ppi_refolding, dna_refolding]
   required_tags_all: ["is_refold:untransformed"]
 
+refolded_target_backbone_aligned_binder_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: mask_coordinate_1_atom & is_protein_backbone
+  subset_mask: ~mask_coordinate_1_atom
+  metric_type: rmsd
+  aggregation: [median]
+  required_tags_any: [ppi_refolding]
+  required_tags_all: ["is_refold:untransformed"]
+
 refolded_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   align_mask: mapped_to_coordinate_conditioned_region & is_protein

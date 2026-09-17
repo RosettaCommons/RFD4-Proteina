@@ -236,27 +236,9 @@ AME_ATOMS = {
 }
 
 
-def _build_atom37_mask_from_encoding(
-    token_names: list[str],
-    atom_types_list: list[str] | None = None,
-    validate_atoms: bool = True,
-    exclude_oxt: bool = False,
-) -> np.ndarray:
-    """Build atom37 mask from UNIFIED_ATOM37_ENCODING.
-
-    For amino acids: validates that atoms at each position match expected af2_atom_types.
-    For RNA/DNA/other: simply marks which positions have atoms (1) vs are empty (0).
-
-    Args:
-      token_names: List of token names to include in the mask (e.g., STANDARD_AA + [UNKNOWN_AA]).
-      atom_types_list: List of 37 atom type names (af2_atom_types). If None, just mark occupied positions.
-      validate_atoms: If True, verify atoms match atom_types_list for amino acids.
-      exclude_oxt: If True, exclude OXT (C-terminal oxygen) from mask. Useful for compatibility
-                   with AlphaFold2 which treats OXT specially.
-
-    Returns:
-      Mask array of shape [n_tokens, 37] where 1 indicates atom is present.
-    """
+def _build_unified_atom37_mask() -> np.ndarray:
+    """Build the unified residue-type Atom37 mask, excluding terminal oxygen."""
+    token_names = list(UNIFIED_ATOM37_ENCODING.tokens)
     n_tokens = len(token_names)
     n_atoms = 37  # Fixed size for atom37 encoding
     mask = np.zeros((n_tokens, n_atoms), dtype=np.float32)
@@ -273,114 +255,17 @@ def _build_atom37_mask_from_encoding(
         for pos_idx in range(min(n_atoms, len(encoding_atom_names))):
             encoding_atom = encoding_atom_names[pos_idx].strip()
 
-            # Skip OXT if requested (position 36 in af2_atom_types)
-            if exclude_oxt and encoding_atom == "OXT":
+            if encoding_atom == "OXT":
                 continue
 
             if encoding_atom:  # Non-empty position
-                # If validating and atom_types_list provided, check it matches
-                if validate_atoms and atom_types_list is not None:
-                    expected_atom = atom_types_list[pos_idx] if pos_idx < len(atom_types_list) else ""
-                    if encoding_atom == expected_atom:
-                        mask[token_idx, pos_idx] = 1.0
-                else:
-                    # Just mark that this position has an atom
-                    mask[token_idx, pos_idx] = 1.0
+                mask[token_idx, pos_idx] = 1.0
 
     return mask
 
 
-# Mask of which atoms are present for each residue type in atom37 representation
-RESTYPE_ATOM37_MASK = _build_atom37_mask_from_encoding(
-    token_names=[*list(STANDARD_AA), UNKNOWN_AA],
-    atom_types_list=af2_atom_types,
-    validate_atoms=True,
-    exclude_oxt=True,  # Maintain backward compatibility with AF2
-)
-
 # Unified mask for UNIFIED_ATOM37_ENCODING (33 types: 20 AAs + RNA + DNA + unknowns)
-UNIFIED_RESTYPE_ATOM37_MASK = _build_atom37_mask_from_encoding(
-    token_names=list(UNIFIED_ATOM37_ENCODING.tokens),
-    atom_types_list=None,
-    validate_atoms=False,
-    exclude_oxt=True,  # Maintain consistency with RESTYPE_ATOM37_MASK
-)
-
-
-# Chi angles constants (from AlphaFold2/OpenFold)
-# Mapping from amino acid name to chi angles atoms names
-chi_angles_atoms = {
-    "ALA": [],
-    "ARG": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD"], ["CB", "CG", "CD", "NE"], ["CG", "CD", "NE", "CZ"]],
-    "ASN": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "OD1"]],
-    "ASP": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "OD1"]],
-    "CYS": [["N", "CA", "CB", "SG"]],
-    "GLN": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD"], ["CB", "CG", "CD", "OE1"]],
-    "GLU": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD"], ["CB", "CG", "CD", "OE1"]],
-    "GLY": [],
-    "HIS": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "ND1"]],
-    "ILE": [["N", "CA", "CB", "CG1"], ["CA", "CB", "CG1", "CD1"]],
-    "LEU": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD1"]],
-    "LYS": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD"], ["CB", "CG", "CD", "CE"], ["CG", "CD", "CE", "NZ"]],
-    "MET": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "SD"], ["CB", "CG", "SD", "CE"]],
-    "PHE": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD1"]],
-    "PRO": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD"]],
-    "SER": [["N", "CA", "CB", "OG"]],
-    "THR": [["N", "CA", "CB", "OG1"]],
-    "TRP": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD1"]],
-    "TYR": [["N", "CA", "CB", "CG"], ["CA", "CB", "CG", "CD1"]],
-    "VAL": [["N", "CA", "CB", "CG1"]],
-}
-
-# Chi angles mask: which chi angles are defined for each residue type
-# Shape: [20, 4] - 20 standard AAs, up to 4 chi angles per residue
-chi_angles_mask = [
-    [0.0, 0.0, 0.0, 0.0],  # ALA
-    [1.0, 1.0, 1.0, 1.0],  # ARG
-    [1.0, 1.0, 0.0, 0.0],  # ASN
-    [1.0, 1.0, 0.0, 0.0],  # ASP
-    [1.0, 0.0, 0.0, 0.0],  # CYS
-    [1.0, 1.0, 1.0, 0.0],  # GLN
-    [1.0, 1.0, 1.0, 0.0],  # GLU
-    [0.0, 0.0, 0.0, 0.0],  # GLY
-    [1.0, 1.0, 0.0, 0.0],  # HIS
-    [1.0, 1.0, 0.0, 0.0],  # ILE
-    [1.0, 1.0, 0.0, 0.0],  # LEU
-    [1.0, 1.0, 1.0, 1.0],  # LYS
-    [1.0, 1.0, 1.0, 0.0],  # MET
-    [1.0, 1.0, 0.0, 0.0],  # PHE
-    [1.0, 1.0, 0.0, 0.0],  # PRO
-    [1.0, 0.0, 0.0, 0.0],  # SER
-    [1.0, 0.0, 0.0, 0.0],  # THR
-    [1.0, 1.0, 0.0, 0.0],  # TRP
-    [1.0, 1.0, 0.0, 0.0],  # TYR
-    [1.0, 0.0, 0.0, 0.0],  # VAL
-]
-
-# Chi angles with 180-degree periodicity (symmetric)
-# Shape: [20, 4] - indicates which chi angles have 2-fold rotational symmetry
-chi_pi_periodic = [
-    [0.0, 0.0, 0.0, 0.0],  # ALA
-    [0.0, 0.0, 0.0, 0.0],  # ARG
-    [0.0, 0.0, 0.0, 0.0],  # ASN
-    [0.0, 1.0, 0.0, 0.0],  # ASP
-    [0.0, 0.0, 0.0, 0.0],  # CYS
-    [0.0, 0.0, 0.0, 0.0],  # GLN
-    [0.0, 0.0, 1.0, 0.0],  # GLU
-    [0.0, 0.0, 0.0, 0.0],  # GLY
-    [0.0, 0.0, 0.0, 0.0],  # HIS
-    [0.0, 0.0, 0.0, 0.0],  # ILE
-    [0.0, 0.0, 0.0, 0.0],  # LEU
-    [0.0, 0.0, 0.0, 0.0],  # LYS
-    [0.0, 0.0, 0.0, 0.0],  # MET
-    [0.0, 1.0, 0.0, 0.0],  # PHE
-    [0.0, 0.0, 0.0, 0.0],  # PRO
-    [0.0, 0.0, 0.0, 0.0],  # SER
-    [0.0, 0.0, 0.0, 0.0],  # THR
-    [0.0, 0.0, 0.0, 0.0],  # TRP
-    [0.0, 1.0, 0.0, 0.0],  # TYR
-    [0.0, 0.0, 0.0, 0.0],  # VAL
-]
+UNIFIED_RESTYPE_ATOM37_MASK = _build_unified_atom37_mask()
 
 TIP_BY_RESTYPE = {
     "TRP": ["CG", "CD1", "CD2", "NE1", "CE2", "CE3", "CZ2", "CZ3", "CH2"],  # fix both rings

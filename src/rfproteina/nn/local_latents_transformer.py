@@ -4,9 +4,9 @@ from collections.abc import Sequence
 import torch
 from torch.utils.checkpoint import checkpoint
 
+from rfproteina.model_masks import compute_flow_emit_masks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
-from rfproteina.nn.modules.msa_module import MSAModule
 from rfproteina.nn.modules.norm import make_norm, set_norm_type
 from rfproteina.nn.modules.pair_rep_initial import PairReprBuilder
 from rfproteina.nn.modules.pair_update import PairReprUpdate
@@ -88,13 +88,6 @@ class LocalLatentsTransformer(torch.nn.Module):
             **kwargs,
         )
 
-        # MSA module is optional
-        self.use_msa_module = kwargs.get("use_msa_module", False)
-        if self.use_msa_module:
-            self.msa_module = MSAModule(**kwargs["msa_module"])
-        else:
-            self.msa_module = None
-
         checkpointing = kwargs.get("checkpointing", "medium")
         try:
             self.recycle_checkpoint, self.checkpoint_pair_update = CHECKPOINT_LEVELS[checkpointing]
@@ -154,11 +147,10 @@ class LocalLatentsTransformer(torch.nn.Module):
                 raise ValueError(f"nn.recycle.grad must be one of last|last2|all, got {self.recycle_grad!r}")
 
             self.s_cycle_norm = make_norm(self.token_dim)
-            self.z_cycle_norm = make_norm(self.pair_repr_dim)
             self.s_cycle_proj = torch.nn.Linear(self.token_dim, self.token_dim, bias=False)
-            self.z_cycle_proj = torch.nn.Linear(self.pair_repr_dim, self.pair_repr_dim, bias=False)
-
             torch.nn.init.zeros_(self.s_cycle_proj.weight)
+            self.z_cycle_norm = make_norm(self.pair_repr_dim)
+            self.z_cycle_proj = torch.nn.Linear(self.pair_repr_dim, self.pair_repr_dim, bias=False)
             torch.nn.init.zeros_(self.z_cycle_proj.weight)
 
         self.local_latents_linear = torch.nn.Sequential(
@@ -233,7 +225,6 @@ class LocalLatentsTransformer(torch.nn.Module):
                 # Only training (other batch elements)
                 "z_latent": torch.Tensor(b, n, latent_dim),
                 "ca_coors_nm": torch.Tensor(b, n, 3),
-                "residue_mask": boolean torch.Tensor(b, n)
                 ...
             }
 
@@ -242,7 +233,6 @@ class LocalLatentsTransformer(torch.nn.Module):
             {
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
                 "seq_logits": logits for the residue types, shape [b, n, 20]
-                "residue_mask": boolean [b, n]
                 "aatype_max": residue type by taking the most likely logit, shape [b, n],
                     with integer values {0, ..., 19}
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
@@ -262,7 +252,6 @@ class LocalLatentsTransformer(torch.nn.Module):
     def _forward_impl(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Core forward logic. May be wrapped by torch.compile."""
         seq_mask = input["padding_mask"]  # [b, n] boolean, True = valid token
-        msa_mask = input.get("msa_row_mask")  # [b, m] boolean or None, True = valid row
 
         # Conditioning variables
         c = self.cond_factory(input)  # [b, n, dim_cond]
@@ -274,16 +263,13 @@ class LocalLatentsTransformer(torch.nn.Module):
 
         z_init = self.pair_repr_builder(input)  # [b, n, n, pair_dim]
 
-        if self.use_msa_module:
-            # All masks use True = valid convention (same as rest of codebase)
-            z_init = self.msa_module(input, z_init, s_init, seq_mask, msa_mask)
-
         # Run the trunk.
         s, _z = self._run_trunk(input, s_init, z_init, c, seq_mask)
 
         # Get outputs
-        local_latents_out = self.local_latents_linear(s) * seq_mask[..., None]  # [b, n, latent_dim]
-        ca_nm_out = self.ca_linear(s) * seq_mask[..., None]  # [b, n, 3]
+        emit_masks = compute_flow_emit_masks(input)
+        local_latents_out = self.local_latents_linear(s) * emit_masks["local_latents"][..., None]
+        ca_nm_out = self.ca_linear(s) * emit_masks["bb_ca"][..., None]
         nn_out = {}
         nn_out["bb_ca"] = {self.output_param["bb_ca"]: ca_nm_out}
         nn_out["local_latents"] = {self.output_param["local_latents"]: local_latents_out}

@@ -1,0 +1,11 @@
+# Design an entire cyclic peptide against a coordinate-conditioned receptor.
+# Keep both chains and mix full-atom with backbone-only receptor conditioning.
+defaults:
+  - all_off
+  - _self_
+
+binder_hotspot_with_3d_target:
+  frequency: 1.0
+  transform:
+    p_sample_ppi_crop: 1.0
+    p_bb_only_coord_conditioning: 0.5

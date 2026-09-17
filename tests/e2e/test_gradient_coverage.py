@@ -59,8 +59,8 @@ def _resolve_min_alive_rows() -> dict[str, int]:
     return resolved
 
 
-GRAD_TRAIN_STEPS = 100  # x batch 8 = 800 examples, enough to saturate the counts below
-GRAD_BATCH_SIZE = 8
+GRAD_TRAIN_STEPS = 50
+GRAD_BATCH_SIZE = 16
 RUN_NAME = "e2e_grad_coverage"
 
 
@@ -68,7 +68,7 @@ RUN_NAME = "e2e_grad_coverage"
 def test_gradient_coverage(tmp_path: Path) -> None:
     """Train briefly on one GPU; assert the loss is sane and every parameter row gets a gradient."""
     require_gpu_e2e(min_gpus=1)
-    # The afdb parquet `experiment=sota` reads; it is 75% of that recipe's mixture.
+    # The AFDB parquet remains part of the coverage-oriented smoke mixture below.
     require_data_file("train_datasets/afdb_monomer/afdb_genie3_32_512_annotated.parquet")
     min_alive_rows = _resolve_min_alive_rows()
 
@@ -82,9 +82,19 @@ def test_gradient_coverage(tmp_path: Path) -> None:
         f"run_name_={RUN_NAME}",
         "+single=true",  # forces 1 GPU, 1 node
         "+nolog=true",
+        "_max_tokens=128",
+        "datasets.train.afdb_monomer.probability=0.37",
+        "datasets.train.omol.probability=0.20",
+        "datasets.train.plinder.probability=0.20",
         f"opt.steps_per_epoch={GRAD_TRAIN_STEPS}",
         f"dataloaders.batch_size={GRAD_BATCH_SIZE}",
         "nn.use_torch_compile=false",
+        "nn.token_dim=384",
+        "nn.pair_repr_dim=64",
+        "nn.tri_mult_c=64",
+        "nn.update_pair_repr_every_n=3",
+        "nn.recycle.grad=last",
+        "training.n_recycle_max=2",
         "opt.max_epochs=1",
         "++opt.num_sanity_val_steps=0",
         "++opt.limit_val_batches=0",
@@ -92,10 +102,10 @@ def test_gradient_coverage(tmp_path: Path) -> None:
         "log.log_wandb=false",
         "log.log_every_n_steps=1",
         "seed=42",
-        # sota's 16 workers OOMs the lane's 64G, and 0 fixes the sampled batches.
-        "dataloaders.num_workers=0",
-        "dataloaders.prefetch_factor=null",
-        "dataloaders.multiprocessing_context=null",
+        # Spawn keeps each worker's S3 client and connection pool process-local.
+        "dataloaders.num_workers=12",
+        "dataloaders.prefetch_factor=1",
+        "dataloaders.multiprocessing_context=spawn",
         "dataloaders.train.dataloader_params.persistent_workers=false",
         "~metrics/refolding_oracles",
         "+callbacks.grad_coverage._target_=rfproteina.utils.training_analysis.GradientCoverageCallback",

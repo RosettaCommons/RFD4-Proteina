@@ -1,0 +1,14 @@
+# Smoke variant of unconditional val: the same monomer benchmark with few replicates for a fast
+# tutorial/finetune validation run.
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer
+  subset_to_keys: null
+
+  num_replicates: 2
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design  # no unconditional_refolding: keep the smoke run fast, no AF3 oracle

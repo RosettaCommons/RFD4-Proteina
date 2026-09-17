@@ -1,7 +1,8 @@
-# Experimental CP-SEA macrocycles from the PDB
-# Much smaller set than the synthetic CP-SEA dataset
-# Data cleaning and validation applied beforehand to the PDB structures
+# Experimental CP-SEA macrocycles from the PDB.
 # WARNING: Carries atomized tokens!
+
+# KNOWN DATA QUALITY ISSUE: This dataset contains bad geometry, including invalid bond lengths.
+# Regenerate the structures and validate bond geometry before using a replacement dataset.
 
 defaults:
   - /datasets/train/backend_pandas@dataset

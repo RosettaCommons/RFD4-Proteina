@@ -27,7 +27,9 @@ import pytest
 from atomworks.io import parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.standard_annotations import S_ATM
+from atomworks.ml.conditions import C_IDX
 from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
+from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray, BondList, BondType, get_residue_starts
 
 from rfproteina.datapipes.pipeline import build_design_train_pipeline
@@ -189,6 +191,49 @@ def parse_and_run_pipeline(
 # =============================================================================
 # Tests
 # =============================================================================
+
+
+def test_pooled_masks_distinguish_atomized_and_in_context_tokens() -> None:
+    """Atomized and in-context-conditioning tokens retain distinct mask primitives after pooling."""
+    task = TipAtomActiveSiteTask(
+        p_unindex_all=1.0,
+        p_unindex_any=0.0,
+        global_design_task_kwargs=GLOBAL_DESIGN_TASK_KWARGS,
+    )
+    output = parse_and_run_pipeline(
+        pdb_id="6wtf",
+        design_tasks={"tip_atom_pocket": {"transform": task, "frequency": 1.0}},
+        seed=42,
+        crop_size=256,
+    )
+    feats = output["feats"]
+    token_type = np.asarray(feats["token_type"])
+    is_in_context_conditioning = np.asarray(feats["is_in_context_conditioning"])
+    supports_local_latent = np.asarray(feats["supports_local_latent"])
+    is_resolved_mask = np.asarray(feats["is_resolved_mask"])
+
+    assert (
+        token_type.shape
+        == is_in_context_conditioning.shape
+        == supports_local_latent.shape
+        == is_resolved_mask.shape
+        == feats["coords"].shape[:1]
+    )
+    atomized = token_type == 3
+    currently_unindexed = ~C_IDX.mask(output["atom_array"], default="generate")[get_token_starts(output["atom_array"])]
+    assert np.array_equal(is_in_context_conditioning, currently_unindexed)
+    assert atomized.any() and is_in_context_conditioning.any(), "fixture must exercise both token kinds"
+    assert not is_in_context_conditioning[atomized].any() and not supports_local_latent[atomized].any()
+    assert not supports_local_latent[is_in_context_conditioning].any()
+    atom_array = output["atom_array"]
+    token_starts = get_token_starts(atom_array, add_exclusive_stop=True)
+    expected_is_resolved = np.array(
+        [
+            np.all((atom_array.occupancy[start:stop] > 0.0) & ~np.isnan(atom_array.coord[start:stop]).any(axis=-1))
+            for start, stop in zip(token_starts[:-1], token_starts[1:], strict=True)
+        ]
+    )
+    assert np.array_equal(is_resolved_mask, expected_is_resolved)
 
 
 @pytest.mark.parametrize("pdb_id", TEST_STRUCTURES)

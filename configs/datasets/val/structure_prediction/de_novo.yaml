@@ -2,7 +2,7 @@ compute_loss: true
 
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/de_novo_proteins
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/structure_prediction/de_novo_proteins
 
   transform:
     _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline

@@ -1,0 +1,9 @@
+# DNA-binder predictions for the flow model.
+
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/dnabind@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: protein_from_dna
+  - _self_
+
+probability: 1.0

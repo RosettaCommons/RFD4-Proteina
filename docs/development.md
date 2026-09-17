@@ -66,15 +66,14 @@ This lays out:
 ```
 $DATA_PATH/
 ├── latent_checkpoints/
-│   ├── ldm_checkpoints/2026_07_22_release_280k-ema.ckpt   # denoiser (= ckpt_name in inference.yaml)
-│   └── ae_checkpoints/AE_ucond_512.ckpt                   # autoencoder
+│   ├── ldm_checkpoints/<release denoiser>.ckpt
+│   └── ae_checkpoints/<release autoencoder>.ckpt
 └── test_dataset/
     ├── test_systems.parquet
     └── cifs/systems/<xx>/<id>/<id>.cif
 ```
 
-Latent diffusion training needs the autoencoder, and by default it reads from
-`$DATA_PATH/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt`.
+See `configs/inference.yaml` for the current release pair.
 
 > **CCD and PDB mirrors, both optional.** The tutorial needs neither. For broader work that parses
 > arbitrary ligands or PDB entries, we publish a CCD mirror at
@@ -92,7 +91,7 @@ It is the same checkpoint inference uses, named in
 ```bash
 python src/rfproteina/train.py \
     experiment=tutorial/finetune_test_dataset \
-    pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt \
+    pretrain_ckpt_path=/path/to/denoiser.ckpt \
     +single=true +nolog=true
 ```
 

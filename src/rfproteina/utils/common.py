@@ -8,7 +8,7 @@ import torch
 from beartype.typing import Any, Callable, Iterable
 from toolz import merge_with
 
-STRUCTURE_FILE_SUFFIXES = (".cif", ".cif.gz", ".bcif")
+STRUCTURE_FILE_SUFFIXES = (".cif", ".cif.gz", ".cif.zst", ".bcif", ".bcif.gz", ".bcif.zst")
 
 
 def is_structure_file(path: os.PathLike | str) -> bool:

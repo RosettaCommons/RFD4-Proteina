@@ -20,6 +20,7 @@ from omegaconf import DictConfig
 from torch import Tensor
 
 from rfproteina.metrics.metric import MetricManager
+from rfproteina.model_masks import compute_flow_emit_masks
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -45,21 +46,9 @@ def build_guidance_terms(terms_cfg: DictConfig) -> dict[str, Term]:
     }
 
 
-def _valid_mask(mode: str, extra_info: dict, ref: Tensor) -> Tensor | float:
-    """Build a broadcastable validity mask for a modality's delta.
-
-    ``bb_ca`` is masked by ``padding_mask``; ``local_latents`` additionally by
-    ``can_be_encoded`` (only standard-AA tokens carry latents).
-    """
-    padding_mask = extra_info.get("padding_mask")
-    if padding_mask is None:
-        return 1.0
-    mask = padding_mask
-    if mode == "local_latents":
-        can_be_encoded = extra_info.get("can_be_encoded")
-        if can_be_encoded is not None:
-            mask = padding_mask & can_be_encoded
-    return mask[..., None].to(ref.dtype)
+def _flow_emit_mask(mode: str, extra_info: dict, ref: Tensor) -> Tensor:
+    """Return the broadcastable flow emit mask for a modality's delta."""
+    return compute_flow_emit_masks(extra_info["batch"])[mode][..., None].to(ref.dtype)
 
 
 class GuidanceModel:
@@ -128,8 +117,8 @@ class GuidanceModel:
         Args:
             x_1_pred: Clean prediction per modality (e.g. ``bb_ca``, ``local_latents``);
                 the gradient is taken w.r.t. (detached copies of) these leaves.
-            extra_info: Must contain ``t`` (per-modality time, tensor or float) and the
-                masks ``padding_mask`` / ``can_be_encoded``.
+            extra_info: Must contain ``t`` (per-modality time, tensor or float) and
+                ``batch`` with the token-mask primitives used to derive flow emit masks.
 
         Returns:
             Mapping ``modality -> delta`` to add to the integrated state (empty if no term
@@ -182,4 +171,4 @@ class GuidanceModel:
                     delta[m] = contrib if m not in delta else delta[m] + contrib
 
         # Mask outside the grad tape (grads are already detached).
-        return {m: d * _valid_mask(m, extra_info, d) for m, d in delta.items()}
+        return {m: d * _flow_emit_mask(m, extra_info, d) for m, d in delta.items()}

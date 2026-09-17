@@ -41,16 +41,7 @@ def shift_conditioning_annotations(
 
 
 class RandomRotationTransform(Transform):
-    """Apply random SE(3) rotation for data augmentation.
-
-    Rotates all atomic coordinates around center of mass before featurization.
-    Coordinates remain centered; re-centering happens later in training based on:
-    - Monomers: center on all generated atoms
-    - PPI: center on target chains (non-generated)
-
-    Args:
-        p_apply: Probability of applying rotation (default: 1.0)
-    """
+    """Apply a uniform SO(3) rotation and center coordinates with probability ``p_apply``."""
 
     def __init__(self, p_apply: float = 1.0, **kwargs):
         super().__init__(**kwargs)
@@ -80,13 +71,14 @@ class RandomRotationTransform(Transform):
         com = coords.mean(axis=0, keepdims=True)  # [1, 3]
         centered_coords = coords - com
 
-        # Generate random rotation matrix using QR decomposition
-        # This gives uniform random rotations from SO(3)
+        # Correct QR's column signs to sample a uniform orthogonal matrix.
         rand_mat = np.random.randn(3, 3)
         q, r = np.linalg.qr(rand_mat)
+        q *= np.sign(np.diag(r))
 
-        # Ensure proper rotation (determinant = 1, not reflection)
-        q = q * np.sign(np.linalg.det(q))
+        # Choose the third axis to preserve handedness (SO(3), not a reflection).
+        if np.linalg.det(q) < 0:
+            q[:, -1] *= -1
 
         # Apply rotation to centered coordinates
         # coords shape: [n_atoms, 3]

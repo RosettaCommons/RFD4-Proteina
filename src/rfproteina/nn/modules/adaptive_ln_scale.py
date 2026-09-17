@@ -9,11 +9,11 @@ from rfproteina.nn.modules.norm import make_norm
 
 
 class AdaptiveLayerNorm(torch.nn.Module):
-    """Adaptive layer norm layer, where scales and biases are learned from some
-    conditioning variables."""
+    """Conditioned normalization with optional input-dtype preservation before modulation."""
 
-    def __init__(self, *, dim: int, dim_cond: int) -> None:
+    def __init__(self, *, dim: int, dim_cond: int, preserve_dtype: bool = False) -> None:
         super().__init__()
+        self.preserve_dtype = preserve_dtype
         self.norm = make_norm(dim, elementwise_affine=False)
         self.norm_cond = make_norm(dim_cond)
 
@@ -22,20 +22,18 @@ class AdaptiveLayerNorm(torch.nn.Module):
         self.to_beta = torch.nn.Linear(dim_cond, dim, bias=False)
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: input representation, shape [*, dim]
-            cond: conditioning variables, shape [*, dim_cond]
-            mask: binary, shape [*]
-
-        Returns:
-            Representation after adaptive layer norm, shape as input representation [*, dim].
-        """
+        """Modulate and mask ``x``, broadcasting [b, dim_cond] conditioning across spatial axes."""
         normed = self.norm(x)
+        if self.preserve_dtype:
+            normed = normed.to(x.dtype)
         normed_cond = self.norm_cond(cond)
 
         gamma = self.to_gamma(normed_cond)
         beta = self.to_beta(normed_cond)
+        if cond.ndim == 2 and x.ndim > 2:
+            broadcast_shape = (cond.shape[0],) + (1,) * (x.ndim - 2) + (x.shape[-1],)
+            gamma = gamma.reshape(broadcast_shape)
+            beta = beta.reshape(broadcast_shape)
         out = normed * gamma + beta
         return out * mask[..., None]
 

@@ -48,12 +48,14 @@ fetch() {  # fetch <url> <dest-dir>
 }
 
 echo ">>> Downloading into DATA_PATH=$DATA_PATH"
-# Denoiser name must stay in sync with `ckpt_name` in configs/inference.yaml, so a default
-# `generate.py` run resolves it with no CLI override.
-fetch "$BASE/latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt" \
-      "$DATA_PATH/latent_checkpoints/ldm_checkpoints"
-fetch "$BASE/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt" \
-      "$DATA_PATH/latent_checkpoints/ae_checkpoints"
+# Read the release checkpoint names from the inference defaults.
+INFERENCE_CONFIG="$SCRIPT_DIR/../configs/inference.yaml"
+DENOISER_CKPT="$(sed -n 's/^ckpt_name:[[:space:]]*//p' "$INFERENCE_CONFIG")"
+AE_CKPT="$(sed -n 's/^autoencoder_ckpt_path:.*\///p' "$INFERENCE_CONFIG")"
+fetch "$BASE/flow_checkpoints/$DENOISER_CKPT" \
+      "$DATA_PATH/flow_checkpoints"
+fetch "$BASE/ae_checkpoints/$AE_CKPT" \
+      "$DATA_PATH/ae_checkpoints"
 
 if [ "$WITH_TEST_DATASET" = true ]; then
     echo ">>> test_dataset..."

@@ -167,6 +167,7 @@ explains.
 | --- | --- | --- | --- |
 | `refolded_backbone_rmsd` | any: `unconditional_refolding`, `ppi_refolding`, `dna_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding`<br>all: `is_refold:untransformed` | Backbone self-consistency RMSD (scRMSD) between design and refold | `rmsd` |
 | `refolded_target_aligned_binder_rmsd` | any: `ppi_refolding`, `dna_refolding`<br>all: `is_refold:untransformed` | Binder RMSD after aligning on the fixed target | `rmsd` |
+| `refolded_target_backbone_aligned_binder_rmsd` | any: `ppi_refolding`<br>all: `is_refold:untransformed` | RMSD of atoms without coordinate conditioning after aligning on coordinate-conditioned protein backbone atoms; used for PPI passing | `rmsd` |
 | `refolded_motif_allatom_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`<br>all: `is_refold:untransformed` | All atom motif RMSD between design and refold, unindexed regions included | `rmsd` |
 | `refolded_motif_ca_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`<br>all: `is_refold:untransformed` | CA only motif RMSD between design and refold, unindexed regions included | `rmsd` |
 | `refolded_backbone_aligned_ligand_rmsd` | any: `sm_binder_refolding`<br>all: `is_refold:untransformed` | Ligand RMSD after backbone alignment | `rmsd` |
@@ -258,7 +259,7 @@ keys](custom-metrics.md#thresholding-a-reduction-over-several-keys).
 | Config key | Tag gate | Thresholds |
 | --- | --- | --- |
 | `unconditional` | any: `unconditional_refolding` | `refolded_backbone_rmsd.rmsd` ≤ 1.5 |
-| `ppi` | any: `ppi_refolding` | `oracle_ppi.ptm_coi` ≥ 80, `oracle_ppi.min_ipae_coi` ≤ 1.5, `refolded_target_aligned_binder_rmsd.rmsd` ≤ 2.5 |
+| `ppi` | any: `ppi_refolding` | `oracle_ppi.ptm_coi` ≥ 80, `oracle_ppi.min_ipae_coi` ≤ 1.5, `refolded_target_backbone_aligned_binder_rmsd.rmsd` ≤ 2.5 |
 | `dna` | any: `dna_refolding` | `oracle_dna.min_ipae_coi` ≤ 1.5, `refolded_target_aligned_binder_rmsd.rmsd` ≤ 8.0 |
 | `motif_scaffold` | any: `motif_scaffold_refolding` | `refolded_backbone_rmsd.rmsd` ≤ 2.0, `refolded_motif_allatom_rmsd.rmsd` ≤ 2.0, `refolded_motif_ca_rmsd.rmsd` ≤ 1.0 |
 | `internal_coords` | any: `internal_coordinate_motif_scaffold_refolding` | Same thresholds as `motif_scaffold` |
