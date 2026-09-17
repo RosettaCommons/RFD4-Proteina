@@ -17,7 +17,7 @@ def collate_batch(
         schema: Either a DataSample class or a string path to one
             (e.g. "rfproteina.datapipes.schema.proteina.ProteinaDataSample").
         fixed_dimensions: Optional dict of dimension names to fixed sizes.
-            E.g. {"I": 512, "S": 128} for fixed token and MSA row counts.
+            E.g. {"I": 512} for a fixed token count.
             Useful for torch.compile which needs static shapes.
             A value may also be a list of sizes (buckets), e.g. {"I": [256, 512]},
             in which case each batch is padded to the smallest bucket that fits it.

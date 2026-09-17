@@ -5,4 +5,4 @@ defaults:
 run_every_n_val_epochs: 3
 
 dataset:
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40_fixed_ligand
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa/mcsa_37_fixed_ligand

@@ -235,11 +235,10 @@ def viz_x_decoded(batch: dict[str, Any], x: dict[str, torch.Tensor], model: Prot
         None, visualizes the decoded sample in PyMOL
     """
 
-    # Decode from latent space
     sample_prots = model.sample_formatting(
         x=x,
-        extra_info={"padding_mask": batch["padding_mask"], "can_be_encoded": batch["can_be_encoded"]},
         ret_mode="coors37_n_aatype",
+        batch=batch,
     )
 
     formatted_results = model.format_sample_prots_to_atom_arrays(sample_prots, batch, batch_idx=0)

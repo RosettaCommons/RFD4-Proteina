@@ -4,7 +4,7 @@ dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
   # Required parameters for each inheriting dataset
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/motif_indexed_internal_coords
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffolding/motif_indexed_internal_coords
   
   num_replicates: 100
 

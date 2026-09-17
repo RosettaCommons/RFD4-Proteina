@@ -42,8 +42,8 @@ class TestParseSweepArg:
         assert vals == ["a.ckpt", "b.ckpt"]
 
     def test_bool_list(self):
-        key, vals = sweep.parse_sweep_arg("self_cond=[true,false]")
-        assert key == "self_cond"
+        key, vals = sweep.parse_sweep_arg("use_tri_mult=[true,false]")
+        assert key == "use_tri_mult"
         assert vals == [True, False]
 
     def test_single_value(self):

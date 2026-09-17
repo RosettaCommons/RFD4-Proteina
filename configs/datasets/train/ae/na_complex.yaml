@@ -1,7 +1,7 @@
 # Protein-DNA complexes for the AE.
 
 defaults:
-  - /datasets/train/backend_lmdb@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/na_complex@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: unconditional
   - _self_

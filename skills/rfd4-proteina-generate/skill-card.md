@@ -5,7 +5,7 @@
 `rfd4-proteina-generate` drives single-shot generation for RFProteína
 (RFD4-Proteína) across every design task — unconditional monomers and complexes,
 folding / inverse folding, motif scaffolding, enzyme design, small-molecule
-binders, and (planned) protein / DNA binders. It preflights the environment,
+binders, protein binders, and DNA binders. It preflights the environment,
 routes the request to the correct benchmark example and Hydra overrides, runs
 `src/rfproteina/generate.py`, and hands off to sibling skills for input
 construction (`rfd4-proteina-inputs`), reward-guided search (`rfd4-proteina-search`),
@@ -62,11 +62,6 @@ producing a single design.
 Mitigation: The skill documents starting at `batch_size=8` after confirming the
 longest input fits at 1, and setting `num_replicates` to a real count; a
 troubleshooting row covers OOM.
-
-Risk: Protein-binder and DNA-binder tasks are not fully supported in the current
-checkpoint and may produce low-quality results.
-Mitigation: The router and both task references carry an explicit "planned"
-warning instructing the user to set expectations before spending compute.
 
 Risk: Checkpoint-name mismatch (release ckpt in config vs example ckpt
 downloaded) can fail a run, or silently run the wrong model.

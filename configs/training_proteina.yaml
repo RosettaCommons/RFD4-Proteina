@@ -88,15 +88,7 @@ product_flowmatcher:
     stochastic_centering_scale: null
 
 
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
-
-# Set to true when using an AE trained on the unified pipeline (same encoding, no -1 offset)
-use_unified_ae_encoding: false
-
-# MSA module: override to true in experiment configs that set load_msa per-dataset
-nn:
-  use_msa_module: false
-
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema.ckpt
 
 # Loss
 loss:
@@ -121,7 +113,6 @@ force_precision_f32: False  # Deprecated: use precision: "32" instead
 
 # Training
 training:
-  n_recycle: 0  # clean-prediction recycle count when trunk recycling is disabled
   # Trunk recycle depth is sampled per step and clamped to [1, n_recycle_max].
   n_recycle_max: 1
   n_recycle_sampler: uniform  # uniform (U{1..n_recycle_max}) | poisson (Poisson(n_recycle_lambda), clamped)
@@ -129,7 +120,6 @@ training:
   n_recycle_sync: false  # derive the draw from global_step so all ranks pick the same depth (no DDP straggler)
   n_recycle_val_loss: 1  # fixed depth for validation-loss forwards; generation uses its recycle schedule
   motif_conditioning: False
-  self_cond: True
 
 # LoRA fine-tuning configuration
 # Set r to a positive integer (e.g., 8, 16, 32) to enable LoRA

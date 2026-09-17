@@ -223,9 +223,11 @@ def autoencoder_loss(
     **kwargs,
 ):
     """Run the autoencoder's structural reconstruction loss over one sample."""
+    all_tokens = torch.ones((1, pred.shape[0]), dtype=torch.bool)
     return AutoEncoder.compute_struct_rec_loss(
-        output_dec={"coors_nm": pred.unsqueeze(0), "residue_mask": torch.ones((1, pred.shape[0]), dtype=torch.bool)},
+        output_dec={"coors_nm": pred.unsqueeze(0), "emit_mask": all_tokens},
         batch={"coords_nm": gt.unsqueeze(0), "atom37_mask": atom_mask.unsqueeze(0), **kwargs},
+        loss_mask=all_tokens,  # these tests are about permutation, so supervise everything
         loss_ty="l12",
         atom_permutation=atom_permutation,
     )

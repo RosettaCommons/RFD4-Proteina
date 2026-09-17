@@ -57,76 +57,77 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 )
 
     def _force_zero_com(
-        self, x: Float[Tensor, "* n d"], mask: Bool[Tensor, "* n"] | None = None
+        self, x: Float[Tensor, "* n d"], emit_mask: Bool[Tensor, "* n"] | None = None
     ) -> Float[Tensor, "* n d"]:
         """
         Centers tensor over n (residue) dimension.
 
         Args:
             x: Tensor of shape [*, n, d]
-            mask (optional): Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
 
         Returns:
             Centered x = x - mean(x, dim=-2), shape [*, n, d].
         """
-        if mask is None:
+        if emit_mask is None:
             x = x - torch.mean(x, dim=-2, keepdim=True)
         else:
-            x = (x - mean_w_mask(x, mask, keepdim=True)) * mask[..., None]
+            x = (x - mean_w_mask(x, emit_mask, keepdim=True)) * emit_mask[..., None]
         return x
 
-    def _apply_mask(self, x: Float[Tensor, "* n d"], mask: Bool[Tensor, "* n"] | None = None) -> Float[Tensor, "* n d"]:
-        """
-        Applies mask to x. Sets masked elements to zero.
+    def _apply_emit_mask(
+        self, x: Float[Tensor, "* n d"], emit_mask: Bool[Tensor, "* n"] | None = None
+    ) -> Float[Tensor, "* n d"]:
+        """Set values outside the modality's emitted tokens to zero.
 
         Args:
             x: Tensor of shape [*, n, d]
-            mask (optional): Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
 
         Returns:
             Masked x of shape [*, n, d]
         """
-        if mask is None:
+        if emit_mask is None:
             return x
-        return x * mask[..., None]  # [*, n, d]
+        return x * emit_mask[..., None]  # [*, n, d]
 
     def _apply_stochastic_offset(
         self,
         x: Float[Tensor, "* n d"],
-        mask: Bool[Tensor, "* n"] | None,
-        gen_mask: Bool[Tensor, "* n"] | None,
+        emit_mask: Bool[Tensor, "* n"] | None,
+        offset_mask: Bool[Tensor, "* n"] | None,
         group_ids: Int[Tensor, "* n"] | None = None,
     ) -> Float[Tensor, "* n d"]:
         """Apply per-group random offsets to gen tokens.
 
-        Each unique value in ``group_ids`` within ``gen_mask`` receives its own
-        independent per-batch-element random translation. Tokens outside ``gen_mask``
+        Each unique value in ``group_ids`` within ``offset_mask`` receives its own
+        independent per-batch-element random translation. Tokens outside ``offset_mask``
         are never moved.
 
         Args:
             x: Coordinates, shape [*, n, d].
-            mask: Padding mask, shape [*, n].
-            gen_mask: Tokens eligible for offsetting, shape [*, n]. If ``None``,
-                returns ``x`` unchanged (no padding mask provided).
+            emit_mask: Tokens emitted by this modality, shape [*, n].
+            offset_mask: Tokens eligible for offsetting, shape [*, n]. If ``None``,
+                returns ``x`` unchanged.
             group_ids: Integer group label per token, shape [*, n]. If ``None``, all
                 gen tokens are treated as a single group.
 
         Returns:
             x with stochastic offsets applied to gen tokens, shape [*, n, d].
         """
-        if gen_mask is None:
+        if offset_mask is None:
             return x
         if group_ids is None:
             noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
-            x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * gen_mask[..., None].float()
+            x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * offset_mask[..., None].float()
         else:
-            for g in group_ids[gen_mask].unique():
-                group_mask_f = (gen_mask & (group_ids == g))[..., None].float()  # [*, n, 1]
+            for g in group_ids[offset_mask].unique():
+                group_mask_f = (offset_mask & (group_ids == g))[..., None].float()  # [*, n, 1]
                 noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
                 x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * group_mask_f
 
-        if mask is not None:
-            x = x * mask[..., None]
+        if emit_mask is not None:
+            x = x * emit_mask[..., None]
         return x
 
     def _compose_group_ids(
@@ -156,7 +157,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
     def add_stochastic_noise(
         self,
         x: Float[Tensor, "* n d"],
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_mask: Bool[Tensor, "* n"] | None = None,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> Float[Tensor, "* n d"]:
@@ -176,7 +177,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         Args:
             x: Coordinates, shape [*, n, d].
-            mask: Padding mask, shape [*, n].
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             coord_cond_mask: True for absolute-coordinate-conditioned tokens that should
                 not be offset. Shape [*, n].
             groups: Dict of token-level group tensors keyed by name (``chain_iid``,
@@ -186,17 +187,17 @@ class RDNFlowMatcher(BaseFlowMatcher):
         Returns:
             x with stochastic noise added, shape [*, n, d].
         """
-        gen_mask = (mask & ~coord_cond_mask) if coord_cond_mask is not None else mask
+        offset_mask = (emit_mask & ~coord_cond_mask) if coord_cond_mask is not None else emit_mask
 
         scope = self.stochastic_centering_scope
 
         if scope == "all":
-            x = self._apply_stochastic_offset(x, mask, gen_mask=mask)
+            x = self._apply_stochastic_offset(x, emit_mask, offset_mask=emit_mask)
         elif scope == "without_absolute_coords":
-            x = self._apply_stochastic_offset(x, mask, gen_mask=gen_mask)
+            x = self._apply_stochastic_offset(x, emit_mask, offset_mask=offset_mask)
         elif scope == "per_group":
             group_ids = self._compose_group_ids(groups)
-            x = self._apply_stochastic_offset(x, mask, gen_mask=gen_mask, group_ids=group_ids)
+            x = self._apply_stochastic_offset(x, emit_mask, offset_mask=offset_mask, group_ids=group_ids)
         else:
             raise ValueError(f"Unknown stochastic_centering_scope: {scope!r}")
 
@@ -207,7 +208,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         n: int,
         device: torch.device,
         shape: tuple = (),
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_mask: Bool[Tensor, "* n"] | None = None,
         training: bool = True,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
@@ -219,7 +220,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
             n: number of frames in a single sample, int
             device: torch device
             shape: tuple (if empty then single sample)
-            mask (optional): Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             training (optional): whether in training mode
             coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
                 coordinate-conditioned tokens whose noise should not be offset.
@@ -234,13 +235,13 @@ class RDNFlowMatcher(BaseFlowMatcher):
             (*shape, n, self.dim),
             device=device,
         )
-        noise = self._apply_mask(noise, mask)
+        noise = self._apply_emit_mask(noise, emit_mask)
         if self.zero_com_noise:
-            noise = self._force_zero_com(noise, mask)
+            noise = self._force_zero_com(noise, emit_mask)
 
         # Apply stochastic centering at inference time if mode is x_0
         if self.stochastic_centering_mode == "x_0" and not training:
-            noise = self.add_stochastic_noise(noise, mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            noise = self.add_stochastic_noise(noise, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         return noise
 
@@ -249,7 +250,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         x_0: Float[Tensor, "* n d"],
         x_1: Float[Tensor, "* n d"],
         t: Float[Tensor, "*"],
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_mask: Bool[Tensor, "* n"] | None = None,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
     ) -> Float[Tensor, "* n d"]:
@@ -260,7 +261,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
             x_0: Tensor sampled from reference, shape [*, n, d]
             x_1: Tensor sampled from target, shape [*, n, d]
             t: Interpolation times, shape [*]
-            mask (optional): Binary mask, shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             coord_cond_mask (optional): Boolean mask of shape [*, n]. True for
                 coordinate-conditioned tokens whose noise should not be offset.
             groups (optional): Dict of token-level group tensors keyed by name
@@ -270,23 +271,23 @@ class RDNFlowMatcher(BaseFlowMatcher):
         Returns:
             x_t: Interpolated tensor, shape [*, n, d]
         """
-        # x_0 masked, x_1 depends on dataloader
+        # x_0 is already zero outside emitted tokens; x_1 depends on the dataloader.
         # x_0 maybe centered (depends on input arg zero_com_noise), x_1 depends on dataloader
-        x_0, x_1 = self._apply_mask(x_0, mask), self._apply_mask(x_1, mask)
+        x_0, x_1 = self._apply_emit_mask(x_0, emit_mask), self._apply_emit_mask(x_1, emit_mask)
 
         # Apply stochastic centering based on mode (during training)
         if self.stochastic_centering_mode == "x_0":
-            x_0 = self.add_stochastic_noise(x_0, mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            x_0 = self.add_stochastic_noise(x_0, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
         elif self.stochastic_centering_mode == "x_1":
-            x_1 = self.add_stochastic_noise(x_1, mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            x_1 = self.add_stochastic_noise(x_1, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         t = t[..., None, None]
-        # No mask since x_0 and x_1 are masked
+        # No additional masking is needed because both endpoints already obey the emit mask.
         x_t = (1.0 - t) * x_0 + t * x_1
 
         # Apply stochastic centering to interpolated result if mode is x_t
         if self.stochastic_centering_mode == "x_t":
-            x_t = self.add_stochastic_noise(x_t, mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            x_t = self.add_stochastic_noise(x_t, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
         return x_t
 
@@ -294,7 +295,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         self,
         x_t: Float[Tensor, "* n d"],
         t: Float[Tensor, "*"],
-        mask: Bool[Tensor, "* n"],
+        emit_mask: Bool[Tensor, "* n"],
         nn_out: dict[str, torch.Tensor],
     ) -> dict[str, Float[Tensor, "* n d"]]:
         """
@@ -317,14 +318,14 @@ class RDNFlowMatcher(BaseFlowMatcher):
             nn_out["x_1"] = x_t + (1.0 - t) * nn_out["v"]
         else:
             raise OSError(f"Cannot compute clean sample prediction from keys {list(nn_out.keys())}")
-        nn_out["x_1"] = nn_out["x_1"] * mask[..., None]
+        nn_out["x_1"] = nn_out["x_1"] * emit_mask[..., None]
         return nn_out
 
     def nn_out_add_simulation_tensor(
         self,
         x_t: Float[Tensor, "* n d"],
         t: Float[Tensor, "*"],
-        mask: Bool[Tensor, "* n"],
+        emit_mask: Bool[Tensor, "* n"],
         nn_out: dict[str, torch.Tensor],
     ) -> dict[str, Float[Tensor, "* n d"]]:
         """
@@ -349,7 +350,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
             nn_out["v"] = num / (den + 1e-5)  # [*, n, d]
         else:
             raise OSError(f"Cannot compute simulation tensor (v) from keys {list(nn_out.keys())}")
-        nn_out["v"] = nn_out["v"] * mask[..., None]
+        nn_out["v"] = nn_out["v"] * emit_mask[..., None]
         return nn_out
 
     def compute_fm_loss(
@@ -357,7 +358,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         x_0: Float[Tensor, "* n d"],
         x_1: Float[Tensor, "* n d"],
         x_t: Float[Tensor, "* n d"],
-        mask: Bool[Tensor, "* n"],
+        emit_mask: Bool[Tensor, "* n"],
+        supervision_mask: Bool[Tensor, "* n"],
         t: Float[Tensor, "*"],
         nn_out: dict[str, Float[Tensor, "* n d"]],
         weight: Float[Tensor, "* n"] | None = None,
@@ -369,7 +371,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
             x_0: noise sample, shape [*, n, d]
             x_1: clean sample, shape [*, n, d]
             x_t: interpolated sample, shape [*, n, d]
-            mask: Binary mask for generated tokens with non-zero occupancy, shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
+            supervision_mask: Generated, resolved tokens included in the loss, shape [*, n].
             t: time sampled, shape [*]
             nn_out: neural network output, shape [*, n, d]
             weight: optional per-token loss weight, shape [*, n]. ``None`` (default)
@@ -383,15 +386,15 @@ class RDNFlowMatcher(BaseFlowMatcher):
         nn_out = self.nn_out_add_clean_sample_prediction(
             x_t=x_t,
             t=t,
-            mask=mask,
+            emit_mask=emit_mask,
             nn_out=nn_out,
         )
-        nres = torch.sum(mask, dim=-1).clamp(min=1)  # [*] - avoid division by zero
-        err = (x_1 - nn_out["x_1"]) * mask[..., None]  # [*, n, d]
+        nres = torch.sum(supervision_mask, dim=-1).clamp(min=1)  # [*] - avoid division by zero
+        err = (x_1 - nn_out["x_1"]) * supervision_mask[..., None]  # [*, n, d]
         if weight is None:
             weighted_sq = err**2  # [*, n, d]
         else:
-            w = weight.to(dtype=x_1.dtype) * mask  # [*, n], gated weights
+            w = weight.to(dtype=x_1.dtype) * supervision_mask  # [*, n], gated weights
             weighted_sq = (err**2) * w[..., None]  # [*, n, d]
         loss = torch.sum(weighted_sq, dim=(-1, -2)) / nres  # [*]
         total_loss_w = 1.0 / ((1.0 - t) ** 2 + 1e-5)
@@ -434,7 +437,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         t: Float[Tensor, "*"],
         dt: float,
         gt: float,
-        mask: Bool[Tensor, "* n"],
+        emit_mask: Bool[Tensor, "* n"],
         simulation_step_params: dict,
     ) -> Float[Tensor, "* n d"]:
         r"""
@@ -472,7 +475,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
             t: Current time, shape [*]
             dt: Step-size, float
             gt: Noise injection, float
-            mask: Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             simulation_step_params: parameters for the simulation step, keys
                 sampling_mode, sc_scale_noise, sc_scale_score, t_lim_ode
 
@@ -576,10 +579,10 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         x_next = x_t + delta_x
 
-        # Mask and potentially center
-        x_next = self._apply_mask(x_next, mask)
+        # Apply the emit mask and potentially center.
+        x_next = self._apply_emit_mask(x_next, emit_mask)
         if center_every_step:
-            x_next = self._force_zero_com(x_next, mask)
+            x_next = self._force_zero_com(x_next, emit_mask)
         return x_next
 
 

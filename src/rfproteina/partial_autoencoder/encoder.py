@@ -1,5 +1,6 @@
 import torch
 
+from rfproteina.model_masks import compute_ae_masks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
@@ -118,38 +119,40 @@ class EncoderTransformer(torch.nn.Module):
             Dictionary
             ...
         """
-        mask = batch["padding_mask"]  # [b, n] boolean, True = valid token
+        # Two token masks, derived from the regular batch (see :py:func:`compute_ae_masks`):
+        #   attn_mask - tokens the encoder attends over; emit_mask - tokens it emits a latent for.
+        attn_mask, emit_mask = compute_ae_masks(batch)
 
         # Conditioning variables
         c = self.cond_factory(batch)  # [b, n, dim_cond]
-        c = self.transition_c_2(self.transition_c_1(c, mask), mask)  # [b, n, dim_cond]
+        c = self.transition_c_2(self.transition_c_1(c, attn_mask), attn_mask)  # [b, n, dim_cond]
 
         # Iinitial sequence representation from features
         seq_f_repr = self.init_repr_factory(batch)  # [b, n, token_dim]
-        seqs = seq_f_repr * mask[..., None]  # [b, n, token_dim]
+        seqs = seq_f_repr * attn_mask[..., None]  # [b, n, token_dim]
 
         pair_rep = self.pair_rep_factory(batch) if self.pair_rep_factory is not None else None  # [b, n, n, pair_dim]
 
         # Run trunk
         for i in range(self.nlayers):
-            seqs = self.transformer_layers[i](seqs, pair_rep, c, mask)  # [b, n, token_dim]
+            seqs = self.transformer_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
 
             if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
-                pair_rep = self.pair_update_layers[i](seqs, pair_rep, mask)  # [b, n, n, pair_dim]
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
 
-        # Get final coordinates
-        flat_out = self.latent_decoder_mean_n_log_scale(seqs) * mask[..., None]  # [b, n, 2 * latent_dim]
-        flat_out = flat_out * mask[..., None]
+        # Emit only meaningful local latents; occupancy plays no part here.
+        flat_out = self.latent_decoder_mean_n_log_scale(seqs) * emit_mask[..., None]  # [b, n, 2 * latent_dim]
         mean, log_scale = torch.chunk(flat_out, chunks=2, dim=-1)  # [b, n, latent_dim] each
 
         z = mean + torch.randn_like(log_scale) * torch.exp(log_scale)  # [b, n, latent_dim]
 
-        z_pre_ln = z
-        z = self.ln_z(z) * mask[..., None]  # [b, n, latent_dim]
+        z_pre_ln = z * emit_mask[..., None]
+        z = self.ln_z(z) * emit_mask[..., None]  # [b, n, latent_dim]
         output = {
             "mean": mean,
             "log_scale": log_scale,
             "z_latent": z,
             "z_latent_pre_ln": z_pre_ln,
+            "emit_mask": emit_mask,
         }
         return output

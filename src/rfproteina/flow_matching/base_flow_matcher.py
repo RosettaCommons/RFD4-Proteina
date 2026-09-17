@@ -16,7 +16,7 @@ class BaseFlowMatcher:
 
     - Attributes:
         - `zero_com` specifies whether it should center in that modality
-        (see `mask_n_zero_com` method below).
+        (see `_force_zero_com` in concrete implementations).
 
         - `guidance_enabled` specifies whether the underlying data modality
         admits guidance or not.
@@ -28,11 +28,6 @@ class BaseFlowMatcher:
 
         - `compute_loss` In principle, we use the v-loss || v_pred - v_true ||^2
         for all modalities. We can add a config to change this.
-
-        - `mask_n_zero_com`. Should be used carefully, since centering multiple modalities
-        independently yields incorrect behavior. For now, centering can only be used for a
-        single modality. For some modalities centering may not make sense, for these the
-        `mask_n_zero_com` method just masks and does not center.
 
         - `sample_noise`. Samples the reference distribution.
 
@@ -46,26 +41,12 @@ class BaseFlowMatcher:
         self.dim = dim
 
     @abstractmethod
-    def mask_n_zero_com(self, x: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
-        """
-        Masks sample and fixes center of mass to zero (if applicable).
-
-        Args:
-            x: sample to mask and zero com
-            mask: mask, shape [*, n]
-
-        Returns:
-            sample x masked and with zero com
-        """
-        raise NotImplementedError(ABS_CLASS_ERR_MSG)
-
-    @abstractmethod
     def sample_noise(
         self,
         n: int,
         device: torch.device,
         shape: tuple = (),
-        mask: Bool[Tensor, "* n"] | None = None,
+        emit_mask: Bool[Tensor, "* n"] | None = None,
         training: bool = True,
     ) -> torch.Tensor:
         """
@@ -73,9 +54,8 @@ class BaseFlowMatcher:
 
         Args:
             n: number of residues in a single sample (i.e. protein length), int
-            mask_n_zero_com
             shape: tuple (if empty then single sample)
-            mask (optional): Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             training (optional): whether in training mode
 
         Returns:
@@ -89,7 +69,7 @@ class BaseFlowMatcher:
         x_0: torch.Tensor,
         x_1: torch.Tensor,
         t: torch.Tensor,
-        mask: torch.Tensor = None,
+        emit_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Interpolates between x_0 (base) and x_1 (data) using t.
@@ -98,7 +78,7 @@ class BaseFlowMatcher:
             x_0: Samples from reference with batch shape *
             x_1: Sampels from target with batch shape *
             t: Interpolation times, shape [*]
-            mask (optional): Binary mask, shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
 
         Returns:
             x_t: Interpolated samples, same shape as x_0 and x_1
@@ -123,7 +103,7 @@ class BaseFlowMatcher:
         self,
         x_t: torch.Tensor,
         t: torch.Tensor,
-        mask: torch.Tensor,
+        emit_mask: torch.Tensor,
         nn_out: dict[str, torch.Tensor],
     ) -> dict[str, torch.Tensor]:
         """
@@ -147,7 +127,7 @@ class BaseFlowMatcher:
         self,
         x_t: torch.Tensor,
         t: torch.Tensor,
-        mask: torch.Tensor,
+        emit_mask: torch.Tensor,
         nn_out: dict[str, torch.Tensor],
     ) -> dict[str, torch.Tensor]:
         """
@@ -172,9 +152,11 @@ class BaseFlowMatcher:
         x_0: torch.Tensor,
         x_1: torch.Tensor,
         x_t: torch.Tensor,
-        mask: torch.Tensor,
+        emit_mask: torch.Tensor,
+        supervision_mask: torch.Tensor,
         t: torch.Tensor,
-        x_1_pred: torch.Tensor,
+        nn_out: dict[str, torch.Tensor],
+        weight: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Computes flow matching loss per element in the batch.
@@ -183,9 +165,11 @@ class BaseFlowMatcher:
             x_0: noise sample, shape [b, ...]
             x_1: clean sample, shape [b, ...]
             x_t: interpolated sample, shape [b, ...]
-            mask (optional): Binary mask, shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
+            supervision_mask: Tokens included in the loss, shape [*, n].
             t: time sampled, shape [b]
-            x_1_pred: predicted clean sample, shape [b, ...]
+            nn_out: Neural-network output for this modality.
+            weight: Optional per-token loss weight, shape [*, n].
 
         Returns:
             Loss per batch element, shape [b]
@@ -221,7 +205,7 @@ class BaseFlowMatcher:
         t: torch.Tensor,
         dt: float,
         gt: float,
-        mask: torch.Tensor,
+        emit_mask: torch.Tensor,
         simulation_step_params: dict,
     ) -> torch.Tensor:
         r"""
@@ -234,7 +218,7 @@ class BaseFlowMatcher:
             t: Current time, shape [*]
             dt: Step-size, float
             gt: Noise injection, float
-            mask: Binary mask of shape [*, n]
+            emit_mask: Tokens emitted by this modality, shape [*, n].
             simulation_step_params: parameters for the simulation step, depends on
             data mode.
 

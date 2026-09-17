@@ -27,41 +27,38 @@ BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
 
 
-def _resolve_sota_ckpt_path() -> Path | None:
-    """Resolve the SOTA checkpoint from configs/inference.yaml, the single source of truth.
+def _resolve_sota_checkpoint_paths() -> tuple[Path | None, Path | None]:
+    """Resolve the checkpoint pair from configs/inference.yaml.
 
-    Reads ckpt_path/ckpt_name from that config (built-in ``oc.env`` resolves ``$DATA_PATH``;
-    no custom resolvers needed) so inference and the regression suite always pin the same file.
-    Returns ``None`` if ``$DATA_PATH`` is unset, so ``require_sota_ckpt`` can fail with a clear message.
+    Returns ``(None, None)`` if ``$DATA_PATH`` is unset so the requirement helpers can fail with
+    clear messages.
     """
     if not _DATA_PATH:
-        return None
+        return None, None
     inference_yaml = Path(__file__).resolve().parents[3] / "configs" / "inference.yaml"
     cfg = OmegaConf.load(inference_yaml)
-    ckpt_path = OmegaConf.select(cfg, "ckpt_path")  # resolves ${oc.env:DATA_PATH}
-    ckpt_name = OmegaConf.select(cfg, "ckpt_name")
-    return Path(ckpt_path) / ckpt_name
+    return Path(cfg.ckpt_path) / cfg.ckpt_name, Path(cfg.autoencoder_ckpt_path)
 
 
-# SOTA checkpoint: read from configs/inference.yaml so generate.py and these baselines pin the
-# same immutable, named file (not the moving "latest.ckpt" symlink). Published in the public bucket
-# s3://YOUR_DATASET_STORE/latent_checkpoints/ldm_checkpoints/ (fetch it with
-# scripts/download_example_data.sh -- no credentials). Baselines are regenerated against this
-# exact file (see src/script_utils/generate_e2e_baselines.py); to advance SOTA, edit inference.yaml.
-SOTA_CKPT_PATH = _resolve_sota_ckpt_path()
+# Generation and baselines resolve the same immutable SOTA checkpoint from configs/inference.yaml.
+# To advance SOTA, sync the checkpoint under DATA_PATH, edit the config, and regenerate baselines.
+SOTA_CKPT_PATH, SOTA_AE_CKPT_PATH = _resolve_sota_checkpoint_paths()
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
 # Beam search runs the single smallest unindexed motif (3IXT, P254-277); subset_to_examples
-# filters the motif_unindexed directory down to that one example by CIF stem.
+# Filters the motif_unindexed directory down to that one example by CIF stem.
 BEAM_SEARCH_EXAMPLE = "3IXT_AA"
 BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
 
 # Shared by the regression test and the baseline generator so the two cannot drift.
+INFERENCE_OVERRIDES = ["recycle_strategy=midpeak6_60"]
+
 BEAM_SEARCH_OVERRIDES = [
     "inference_experiment=inference_beam_regression",
+    "recycle_strategy=midpeak6_60",
     "~metrics/refolding_oracles",
-    "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_unindexed",
+    "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffolding/motif_unindexed",
     f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
     "++metrics_tags=[design,unindexed]",
     "++search.rewards.reward_metrics_tags=[design,unindexed]",
@@ -69,10 +66,7 @@ BEAM_SEARCH_OVERRIDES = [
     # weight neutralises the inherited clash term: hydra cannot delete a key containing dots,
     # and aggregate_metrics_output skips falsy weights.
     f"++search.rewards.weights={{clash_metrics.frac_atoms_clashing_1p5A: 0.0, {BEAM_SEARCH_REWARD_KEY}: -1.0}}",
-    # 20 steps is too few here: the insertion mapping goes infeasible for reasons unrelated to
-    # what this guards, which would mask a real regression behind a spurious failure.
-    "generation.args.nsteps=100",
-    "search.strategy.step_checkpoints=[0,50,100]",
+    "search.strategy.step_checkpoints=[0,40,60]",
     "search.strategy.n_branch=2",
     "search.strategy.beam_width=2",
     "num_replicates=1",
@@ -119,7 +113,7 @@ def deterministic_env() -> dict[str, str]:
 
 
 def require_h200() -> None:
-    """Skip unless running on an H200; baselines are generated on cw-west and are GPU-specific."""
+    """Skip unless running on an H200; baselines are GPU-specific."""
     try:
         out = subprocess.check_output(["nvidia-smi", "-L"], text=True, timeout=10)
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -132,16 +126,21 @@ def require_sota_ckpt() -> None:
     if SOTA_CKPT_PATH is None:
         pytest.fail("DATA_PATH is not set; cannot resolve the SOTA checkpoint from configs/inference.yaml")
     if not SOTA_CKPT_PATH.is_file():
+        pytest.fail(f"SOTA checkpoint not found: {SOTA_CKPT_PATH}. Sync the released checkpoint under DATA_PATH.")
+
+
+def require_sota_ae_ckpt() -> None:
+    if SOTA_AE_CKPT_PATH is None:
+        pytest.fail("DATA_PATH is not set; cannot resolve the SOTA autoencoder from configs/inference.yaml")
+    if not SOTA_AE_CKPT_PATH.is_file():
         pytest.fail(
-            f'SOTA checkpoint not found: {SOTA_CKPT_PATH}. Fetch it with ./scripts/download_example_data.sh "$DATA_PATH"'
+            f"SOTA autoencoder not found: {SOTA_AE_CKPT_PATH}. "
+            'Fetch it with ./scripts/download_example_data.sh "$DATA_PATH"'
         )
 
 
 def load_baseline_losses(name: str) -> list[float]:
-    """Load reference step losses from baselines/<name>/losses.json.
-
-    Skips the test if the file is missing (baselines not yet generated).
-    """
+    """Load reference step losses, failing if the baseline is missing."""
     path = BASELINES_DIR / name / "losses.json"
     if not path.is_file():
         pytest.fail(

@@ -29,6 +29,7 @@ Options:
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import shutil
 import subprocess
@@ -37,10 +38,11 @@ from pathlib import Path
 
 import rootutils
 
-from tests.e2e.helpers.gpu_e2e import parse_train_losses_from_csv_logger
+from tests.e2e.helpers.gpu_e2e import assert_no_dataset_fallbacks, parse_train_losses_from_csv_logger
 from tests.e2e.helpers.regression_baselines import (
     BASELINES_DIR,
     BEAM_SEARCH_OVERRIDES,
+    INFERENCE_OVERRIDES,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
@@ -91,6 +93,7 @@ def _run_captured(cmd: list[str], label: str) -> subprocess.CompletedProcess:
     if proc.returncode != 0:
         print(proc.stderr or proc.stdout)
         raise RuntimeError(f"{label} failed with exit code {proc.returncode}")
+    assert_no_dataset_fallbacks(proc.stdout + proc.stderr)
     return proc
 
 
@@ -210,12 +213,13 @@ def _ckpt_overrides(sota_ckpt: Path | None) -> list[str]:
 
 
 def generate_inference_baseline(sota_ckpt: Path | None) -> None:
-    """Generate inference baseline: run generate.py twice, verify reproducibility, save designed.cif."""
+    """Save a reproducible inference baseline to ``designed.cif.gz``."""
     name = "inference"
 
     gen_cmd = [
         PYTHON,
         "src/rfproteina/generate.py",
+        *INFERENCE_OVERRIDES,
         "inference_experiment=inference_on_val_set",
         "+datasets/val@generation=mcsa/mcsa_subset",
         f"generation.dataset.subset_to_keys=[{REGRESSION_EXAMPLE_ID}]",
@@ -243,7 +247,7 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
     # Write baseline
     bl_dir = BASELINES_DIR / name
     bl_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(designed_1, bl_dir / "designed.cif")
+    (bl_dir / "designed.cif.gz").write_bytes(gzip.compress(designed_1.read_bytes(), mtime=0))
     print(f"  ✓ [{name}] Wrote baselines to {bl_dir}")
 
     shutil.rmtree(run1_dir, ignore_errors=True)
@@ -345,7 +349,7 @@ def main() -> None:
             script="src/rfproteina/train.py",
             extra_overrides=[
                 "experiment=sota",
-                # This smoke trains 100 steps from random init -- it exercises the
+                # This smoke trains 25 steps from random init -- it exercises the
                 # sota *recipe*, not the sota checkpoint (those are covered by the
                 # inference/beam baselines).
                 # torch.compile selects CUDA kernels at trace time; disable so the
@@ -364,7 +368,7 @@ def main() -> None:
             extra_overrides=[
                 "experiment_ae=ae_sota",
                 "dataloaders.train.dataloader_params.batch_size=2",
-                "+nn_ae.use_torch_compile=false",  # no compile in regression
+                "nn_ae.use_torch_compile=false",  # no compile in regression
             ],
             out_dir=store_base,
         )

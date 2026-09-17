@@ -140,8 +140,6 @@ populate_docker_container_env() {
         "export SQUASH_MOUNT_PATH=$SQUASH_MOUNT_PATH"
         "export PDB_MIRROR_PATH=$PDB_MIRROR_PATH"
         "export CCD_MIRROR_PATH=$CCD_MIRROR_PATH"
-        "export PROTEIN_MSA_DIRS=$PROTEIN_MSA_DIRS"
-        "export RNA_MSA_DIRS=$RNA_MSA_DIRS"
         "export HBPLUS_PATH=$HBPLUS_PATH"
         "export FOLDSEEK_EXEC=$FOLDSEEK_EXEC"
         "export MACE_MODEL_PATH=$MACE_MODEL_PATH"
@@ -801,4 +799,3 @@ print_mount_summary() {
         echo "  Container env:    ${#CONTAINER_ENV[@]} entries"
     fi
 }
-

@@ -46,7 +46,7 @@ class TokenType:
 
 
 # Specs: name -> (dtype, default_value, dim_string)
-# dim_string uses: I=tokens, S=MSA rows, numbers=fixed dims
+# dim_string uses: I=tokens, numbers=fixed dims
 SPECS: dict[str, tuple] = {
     # Token-level [I]
     "residue_type": (torch.int64, -1, "I"),
@@ -57,8 +57,9 @@ SPECS: dict[str, tuple] = {
     "molecule_iid": (torch.int16, -1, "I"),
     "molecule_entity_id": (torch.int16, -1, "I"),
     "within_index_group_res_idx": (torch.int16, -1, "I"),
-    "can_be_encoded": (torch.bool, False, "I"),
-    "should_be_lossed": (torch.bool, False, "I"),
+    "supports_local_latent": (torch.bool, False, "I"),
+    "is_in_context_conditioning": (torch.bool, False, "I"),
+    "is_resolved_mask": (torch.bool, False, "I"),
     "insertion_source_idx": (torch.int32, -1, "I"),
     "loss_weight": (torch.float32, 1.0, "I"),
     "coord_cond_mask": (torch.bool, False, "I"),
@@ -68,8 +69,6 @@ SPECS: dict[str, tuple] = {
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
     "na_ss_state": (torch.int16, 0, "I"),
     "na_ss_state_mask": (torch.bool, False, "I"),
-    "chain_breaks_per_residue": (torch.float32, 0.0, "I"),
-    "missing_atom_count": (torch.float32, 0.0, "I"),
     # Token-level with extra dims [I, ...]
     C_CATH.full_name: (torch.int32, -1, "I 3"),
     C_CENTROID.full_name: (torch.float32, 0.0, "I 3"),
@@ -78,7 +77,6 @@ SPECS: dict[str, tuple] = {
     "coords": (torch.float32, 0.0, "I 37 3"),
     "element": (torch.int16, -1, "I 37"),
     "charge": (torch.int16, 0, "I 37"),
-    "is_resolved_mask": (torch.bool, False, "I 37"),
     "atom37_mask": (torch.bool, False, "I 37"),
     C_CRD.mask_name: (torch.bool, False, "I 37"),
     C_INTCRD.mask_name: (torch.bool, False, "I 37"),
@@ -102,8 +100,6 @@ SPECS: dict[str, tuple] = {
     "na_ss_pair_mask": (torch.bool, False, "I I"),
     "token_bond_path_length": (torch.int16, 0, "I I"),
     "canonical_polymer_ordering": (torch.int8, 0, "I I"),
-    # MSA-level [S, I, ...]
-    "msa_final": (torch.float32, 0.0, "S I 71"),
 }
 
 

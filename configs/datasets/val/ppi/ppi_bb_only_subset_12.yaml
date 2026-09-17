@@ -1,0 +1,21 @@
+defaults:
+  # Package reference needed for validation using `+datasets/val@generation=ppi/ppi_bb_only_subset_12`.
+  - /datasets/val/ppi@_here_: ppi_bb_only
+  - _self_
+
+dataset:
+  subset_to_keys:
+    - 04_IFNAR2
+    - rfd3_insulinr
+    - rfd3_il7ra
+    - 15_DerF7
+    - rfd3_tie2
+    - 36_VEGFA
+    - rfd3_pdl1
+    - 05_CD45
+    - 26_CbAgo
+    - 33_TrkA
+    - 37_IL17A
+    - 30_SC2RBD
+
+  num_replicates: 100

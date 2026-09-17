@@ -3,6 +3,7 @@
 import logging
 
 import torch
+from torch.nn import functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -11,10 +12,31 @@ logger = logging.getLogger(__name__)
 _NORM_TYPE = "layer_norm"
 
 
+def _rms_norm_preserve_dtype(x: torch.Tensor, weight: torch.Tensor | None, eps: float) -> torch.Tensor:
+    """Apply RMSNorm and cast back to the input dtype."""
+    return F.rms_norm(x, (x.shape[-1],), weight, eps).to(x.dtype)
+
+
+_compiled_rms_norm = torch.compile(_rms_norm_preserve_dtype, fullgraph=True, dynamic=True)
+
+
+class CompiledRMSNorm(torch.nn.RMSNorm):
+    """RMSNorm that preserves activation dtype and fuses the output cast on CUDA."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        eps = self.eps if self.eps is not None else torch.finfo(x.dtype).eps
+        if x.device.type == "cuda" and not torch.compiler.is_compiling():
+            return _compiled_rms_norm(x, self.weight, eps)
+        return _rms_norm_preserve_dtype(x, self.weight, eps)
+
+
 def set_norm_type(norm_type: str | None) -> None:
-    """Set the process-global norm type: ``layer_norm`` (default), ``rmsnorm_torch``, ``rmsnorm_apex``."""
+    """Set the process-wide norm implementation used by ``make_norm``."""
     global _NORM_TYPE
     _NORM_TYPE = norm_type or "layer_norm"
+    if _NORM_TYPE == "rmsnorm_torch_fused":
+        # Sequence, pair, and attention layouts specialize separately in grad and no-grad mode.
+        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, 32)
     logger.info(f"Score-network norm type: {_NORM_TYPE!r}")
 
 
@@ -33,9 +55,13 @@ def make_norm(
         return torch.nn.LayerNorm(normalized_shape, eps=eps, elementwise_affine=elementwise_affine, bias=bias)
     if _NORM_TYPE == "rmsnorm_torch":
         return torch.nn.RMSNorm(normalized_shape, eps=eps, elementwise_affine=elementwise_affine)
+    if _NORM_TYPE == "rmsnorm_torch_fused":
+        return CompiledRMSNorm(normalized_shape, eps=eps, elementwise_affine=elementwise_affine)
     if _NORM_TYPE == "rmsnorm_apex":
         # Fail loudly rather than silently falling back to a slower kernel.
         from apex.normalization import FusedRMSNorm
 
         return FusedRMSNorm(normalized_shape, eps=eps, elementwise_affine=elementwise_affine)
-    raise ValueError(f"Unknown norm_type {_NORM_TYPE!r}; expected 'layer_norm', 'rmsnorm_torch', or 'rmsnorm_apex'.")
+    raise ValueError(
+        f"Unknown norm_type {_NORM_TYPE!r}; expected layer_norm, rmsnorm_torch, rmsnorm_torch_fused, or rmsnorm_apex."
+    )

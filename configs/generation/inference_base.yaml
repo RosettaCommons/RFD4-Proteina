@@ -14,9 +14,7 @@ n_recycle_schedule: null
 val_set_name_override: null
 
 args:
-  # TODO: Update when we merge hero run config; these should be no self conditioning, 50 steps
-  nsteps: 100  # 100 is sufficient with the default vf_tsr sampler
-  self_cond: True
+  nsteps: 60
 
   # +---------- Guidance ----------+
   # TODO: Audit guidance_w and CFG usage
@@ -26,13 +24,13 @@ args:
   # +--------- Partial diffusion ----------+
   # Start from a noised version of the input structure rather than pure noise.
   #
-  # Simple partial diffusion interface: 
+  # Simple partial diffusion interface:
   # set partial_trajectory_fraction_steps to a float in (0, 1] to run that
   # fraction of nsteps. E.g. 0.3 runs 30% of the steps; partial_t values for all modalities
   # are inferred from the schedule. Mutually exclusive with the partial_t_* args below.
   partial_trajectory_fraction_steps: null
 
-  # Advanced interface: 
+  # Advanced interface:
   # Specify partial_t_backbone and/or partial_t_latent (floats in (0,1))
   # to set each modality's starting t independently. Alternatively, set only one and use
   # couple_partial_t=true to derive the other via the default schedule coupling.
@@ -60,6 +58,8 @@ model:
     schedule:
       mode: log
       p: 2.0
+      tail_steps: 10
+      tail_step_multiplier: 2
     gt:
       # Non-zero gt => stochastic (TSR-SDE). For a deterministic sampler use `mode: ode`;
       # sc_scale_noise=0 is NOT equivalent (drops the noise, keeps the drift) and collapses.
@@ -82,6 +82,8 @@ model:
     schedule:
       mode: power
       p: 2.0
+      tail_steps: 10
+      tail_step_multiplier: 2
     gt:
       mode: "tan"
       p: 1.0

@@ -1,0 +1,27 @@
+# Loader, filters, and columns shared by all PDB-derived interface datasets
+
+defaults:
+  - pdb_common
+  - _self_
+
+loader:
+  column_mapping:
+    query_pn_unit_iids: ["pn_unit_1_iid", "pn_unit_2_iid"]
+
+filters:
+  mapping:
+    interface_cluster: "interface_cluster.notnull()"
+    pn_unit_1_ligands: "~(pn_unit_1_non_polymer_res_names.notnull() and pn_unit_1_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    pn_unit_2_ligands: "~(pn_unit_2_non_polymer_res_names.notnull() and pn_unit_2_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
+    inter_molecule: "is_inter_molecule"
+
+columns_to_load:
+  mapping:
+    interface:
+      - interface_cluster
+      - pn_unit_1_iid
+      - pn_unit_2_iid
+      - pn_unit_1_non_polymer_res_names
+      - pn_unit_2_non_polymer_res_names
+      - is_inter_molecule
+      - involves_loi

@@ -9,17 +9,16 @@ motif-scaffolding problem where the motif is a set of catalytic residues
 
 | File | Notes |
 | --- | --- |
-| `mcsa_40` | 40 M-CSA active sites *with ligands* (e.g. `M0040_13pk`, `M0630_1j79`); `ligand`, `unindex`, per-residue `select_fixed_atoms`, `length` 180 |
-| `mcsa_40_fixed_ligand` | Same sites with the ligand pose fixed |
-| `mcsa_40_no_ligand` | Same sites without the ligand (catalytic residues only) |
-| `enz_design` | `lenacap_partial_sc` active site with lenacapavir-like ligand (`lpr`) |
+| `mcsa/mcsa_37` | 37 M-CSA active sites *with ligands* (e.g. `M0040_13pk`, `M0630_1j79`); `ligand`, `unindex`, per-residue `select_fixed_atoms`, `length` 180 |
+| `mcsa/mcsa_37_fixed_ligand` | Same sites with the ligand pose fixed |
+| `mcsa/mcsa_37_no_ligand` | Same sites without the ligand (catalytic residues only) |
 
 ## Run
 
 ```bash
 # One M-CSA active site with its ligand
-python src/rfproteina/generate.py \
-    inputs=data/benchmarks/mcsa_40 \
+./src/rfproteina/generate.py \
+    inputs=data/benchmarks/mcsa/mcsa_37 \
     subset_to_examples=M0630_1j79 \
     num_replicates=8 batch_size=8 out_dir=./runs/enzyme \
     metrics_tags='[ame_refolding,motif_scaffold_refolding]'
@@ -36,7 +35,7 @@ python src/rfproteina/generate.py \
 ## Gotchas
 
 - **Ligand present vs absent changes the problem** — pick the right file
-  (`mcsa_40` vs `mcsa_40_no_ligand`). With a ligand, the model designs
+  (`mcsa/mcsa_37` vs `mcsa/mcsa_37_no_ligand`). With a ligand, the model designs
   around a real active-site chemistry; without, it only places catalytic
   geometry.
 - Tip-atom (`select_fixed_atoms: {"A175": "TIP"}`) vs full-sidechain vs

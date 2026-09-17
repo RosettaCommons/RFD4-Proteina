@@ -3,11 +3,6 @@
 Design a binder to a target protein at specified hotspot residues. Back to the
 [skill](../../SKILL.md).
 
-> [!WARNING]
-> **Not fully supported in the current checkpoint (planned).** Protein-binder
-> design runs without error but may produce low-quality results. Tell the user
-> this before spending compute; treat any output as exploratory.
-
 ## What the task is
 
 Condition on a target protein's structure (coordinate-conditioned) and a set of
@@ -18,13 +13,13 @@ chain against that interface.
 
 | File | Notes |
 | --- | --- |
-| `cleaned_ppi/` | One annotated CIF per target, including `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, and `30_SC2RBD` |
+| `ppi/ppi_all_atom/` | One annotated CIF per target, including `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, and `30_SC2RBD` |
 
 ## Run
 
 ```bash
 ./src/rfproteina/generate.py \
-    inputs=data/benchmarks/cleaned_ppi/rfd3_pdl1.cif \
+    inputs=data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst \
     num_replicates=8 batch_size=8 out_dir=./runs/ppi \
     metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```

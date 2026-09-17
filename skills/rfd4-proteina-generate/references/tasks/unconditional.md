@@ -8,9 +8,8 @@ motif, no ligand, no target. Back to the [skill](../../SKILL.md).
 | File | Keys | What it is |
 | --- | --- | --- |
 | `monomer` | `monomer-short` (100), `monomer-medium` (150), `monomer-long` (250) | Plain single-chain monomers by length |
-| `monomer_helical` | `monomer-short/medium/long` | Monomers with a CATH mainly-alpha code (`add_cath_code` — planned, has no effect yet) |
-| `monomer_ig` | `monomer-short` | Monomer with an immunoglobulin CATH code (planned) |
-| `multipolymer_uncond` | `multipolymer_120p_70r`, `multipolymer_90p_60r_25d_25d`, `rna_50/60/100/150`, `dna_60`, `protein_60` | Multi-polymer / protein+RNA+DNA complexes and nucleic-acid-only chains |
+| `adherence/monomer_helical` | `monomer-short/medium/long` | Monomers with a CATH mainly-alpha code (`add_cath_code` — planned, has no effect yet) |
+| `adherence/monomer_ig` | `monomer-short` | Monomer with an immunoglobulin CATH code (planned) |
 
 > The `add_cath_code` conditioning in `monomer_helical` / `monomer_ig` is a
 > **planned** conditioning — they are parsed but the current checkpoint does not
@@ -45,6 +44,4 @@ python src/rfproteina/generate.py \
 ## Gotchas
 
 - `batch_size=8` is a good start, but the longest example (`monomer-long`, 250
-  residues; multipolymer up to 200) should be confirmed at `batch_size=1` first.
-- Nucleic-acid-only or mixed complexes are fully supported here (unlike the
-  *DNA-binder* task, which is planned).
+  residues) should be confirmed at `batch_size=1` first.

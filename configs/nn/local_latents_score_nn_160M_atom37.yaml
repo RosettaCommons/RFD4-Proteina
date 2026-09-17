@@ -22,8 +22,6 @@ use_atom37_factory: True  # Use FeatureFactoryAtom37 for pair features (supports
 feats_seq: [
   "xt_bb_ca",                   # Noised backbone CA coordinates [b, n, 3]
   "xt_local_latents",           # Noised local latents [b, n, latent_dim]
-  "x_sc_bb_ca",                 # Self-conditioning backbone CA [b, n, 3]
-  "x_sc_local_latents",         # Self-conditioning local latents [b, n, latent_dim]
   "token_type",                 # Token type embedding (protein/rna/dna/atomized/unknown) [b, n, token_type_emb_dim]
   "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 20]
   "cond_a37coors_nm",           # Conditional atom37 coordinates (prevents leakage) [b, n, 37*4]
@@ -60,7 +58,6 @@ t_emb_dim: 256  # dimension of the time embedding
 # Pair features - updated for atom37 collate
 feats_pair_repr: [
   "xt_bb_ca_pair_dists",        # Pairwise distances from noised CA [b, n, n, xt_pair_dist_dim]
-  "x_sc_bb_ca_pair_dists",      # Pairwise distances from self-conditioning CA [b, n, n, x_sc_pair_dist_dim]
   "bond_mask",                  # Bond existence mask for atomized molecules [b, n, n, 1]
   "bond_order",                 # Kekulé bond order + coordination for atomized molecules [b, n, n, 5]
   "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
@@ -77,10 +74,6 @@ feats_pair_cond: ["time_emb_bb_ca", "time_emb_local_latents"]  # Features to inc
 xt_pair_dist_dim: 30
 xt_pair_dist_min: 0.1  # in nm (not Å)
 xt_pair_dist_max: 3  # in nm (not Å)
-# Binning for the pair distances for self conditioning
-x_sc_pair_dist_dim: 30
-x_sc_pair_dist_min: 0.1  # in nm (not Å)
-x_sc_pair_dist_max: 3  # in nm (not Å)
 # Relative sequence separation (also used as bin count for TokenBondPathLengthPairFeat).
 # For the bond-path-length feature to populate its high-distance bins, this should be
 # <= (path_length_search_cutoff + 1) in configs/datasets/train/pipeline_defaults.yaml (default 65).
@@ -117,53 +110,6 @@ attention_type: torch
 #   - true: Wraps the forward pass with torch.compile for potential speedups
 use_torch_compile: true
 
-# Trunk norm kernel: layer_norm (default), rmsnorm_torch (~+2.5%), or rmsnorm_apex (~+8%).
-# Honored across the attention paths (both attention_type variants) + AdaptiveLayerNorm.
+# Norm: layer_norm, rmsnorm_torch, rmsnorm_torch_fused (BF16 output), or rmsnorm_apex.
+# Honored by feature output norms, both attention paths, and AdaptiveLayerNorm.
 norm_type: layer_norm
-
-# Whether to use the MSA module
-use_msa_module: false
-
-msa_module:
-  n_block: 4
-  c_m: 64
-  use_cuequivariance: true  # Use cuEquivariance fused kernels for triangle ops in MSA module
-  use_triangle_attention: true  # Whether to use triangle attention layers (disable to save memory)
-  p_drop_msa: 0.15
-  p_drop_pair: 0.25
-  msa_subsample_embedder:
-    num_sequences: 1024
-    dim_raw_msa: 71
-    c_s_inputs: ${nn.token_dim}
-    c_msa_embed: ${nn.msa_module.c_m}
-  outer_product: 
-    c_msa_embed: ${nn.msa_module.c_m}
-    c_outer_product: 32
-    c_out: ${nn.pair_repr_dim}
-  msa_pair_weighted_averaging: 
-    n_heads: 8
-    c_weighted_average: 32
-    c_msa_embed: ${nn.msa_module.c_m}
-    c_z: ${nn.pair_repr_dim}
-  msa_transition: 
-    n: 4  
-    c: ${nn.msa_module.c_m}
-  triangle_multiplication_outgoing: 
-    d_pair: ${nn.pair_repr_dim}
-    d_hidden: ${nn.pair_repr_dim}
-    bias: False
-  triangle_multiplication_incoming: 
-    d_pair: ${nn.pair_repr_dim}
-    d_hidden: ${nn.pair_repr_dim}
-    bias:  False
-  triangle_attention_starting: 
-    d_pair: ${nn.pair_repr_dim}
-    n_head: 4
-    d_hidden: 32
-  triangle_attention_ending: 
-    d_pair: ${nn.pair_repr_dim}
-    n_head: 4
-    d_hidden: 32
-  pair_transition: 
-    n: 4
-    c: ${nn.pair_repr_dim}

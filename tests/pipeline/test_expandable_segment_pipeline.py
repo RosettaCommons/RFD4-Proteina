@@ -15,7 +15,6 @@ Two tests:
    must yield identical tensors at every token (no expanded-region carve-out).
 """
 
-import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -57,6 +56,7 @@ from rfproteina.datapipes.pipeline import (
 from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
+from rfproteina.model_masks import compute_flow_emit_masks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.transforms.design_task import (
@@ -68,6 +68,7 @@ from rfproteina.transforms.design_task import (
     UnconditionalTask,
 )
 from rfproteina.utils.parse_presets import ANNOTATED_CIF
+from tests.e2e.helpers.regression_baselines import SOTA_AE_CKPT_PATH
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -138,15 +139,6 @@ def _load_pdb_for_test(pdb_id: str, **parse_kwargs) -> dict:
     data["pdb_id"] = pdb_id
     return data
 
-
-# Autoencoder checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints``
-# (per-cluster, e.g. /path/to/data on digs). Resolve it from
-# DATA_PATH rather than hardcoding a single cluster's mount, matching the
-# ``autoencoder_ckpt_path`` convention used across the configs.
-_DATA_PATH = os.environ.get("DATA_PATH", "").strip()
-AUTOENCODER_CKPT_PATH = (
-    Path(_DATA_PATH) / "latent_checkpoints" / "ae_checkpoints" / "AE_ucond_512.ckpt" if _DATA_PATH else None
-)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 NN_CONFIG_PATH = PROJECT_ROOT / "configs" / "nn" / "local_latents_score_nn_160M_atom37.yaml"
@@ -563,41 +555,31 @@ def _collate(pipeline_out: dict):
     )
 
 
-def _encode_local_latents(batch, autoencoder, latent_dim: int) -> torch.Tensor:
+def _encode_local_latents(batch, autoencoder) -> torch.Tensor:
     """Mirror :py:meth:`Proteina._get_clean_sample` for ``local_latents``."""
-    can_be_encoded = batch["can_be_encoded"]
-    padding_mask = batch["padding_mask"]
-    encodable_mask = can_be_encoded & padding_mask
-
-    if not encodable_mask.any():
-        b, n = batch["coords_nm"].shape[:2]
-        return torch.zeros(b, n, latent_dim, device=batch["coords_nm"].device)
-
+    supports_local_latent = batch["supports_local_latent"] & (batch["token_type"] == 0)
     residue_type_for_ae = batch["residue_type"] - 1
-    residue_type_for_ae = torch.where(encodable_mask, residue_type_for_ae, torch.zeros_like(residue_type_for_ae))
     ae_batch = {
-        "coords": batch["coords"],
-        "coords_nm": batch["coords_nm"],
-        "coord_mask": batch.get("coord_mask", torch.ones_like(batch["coords"][..., 0])),
-        "residue_type": residue_type_for_ae,
-        "padding_mask": encodable_mask,
-        "can_be_encoded": encodable_mask,
+        **batch,
+        "residue_type": torch.where(
+            supports_local_latent,
+            residue_type_for_ae,
+            torch.zeros_like(residue_type_for_ae),
+        ),
+        "supports_local_latent": supports_local_latent,
     }
-    encoded = autoencoder.encode(ae_batch)
-    latents = encoded["z_latent"]
-    return latents * encodable_mask.unsqueeze(-1).float()
+    return autoencoder.encode(ae_batch)["z_latent"]
 
 
 def _prepare_inference_batch(
     pipeline_out: dict,
     autoencoder,
     fm: ProductSpaceFlowMatcher,
-    latent_dim: int,
     device: torch.device,
 ):
     """Mirror :class:`VanillaStrategy`'s setup up to the first model call:
     collate → ``preprocess_batch_for_generation`` → ``add_clean_samples`` →
-    ``corrupt_batch(t=1)`` → zero ``x_sc`` and ``x_recycle``.
+    ``corrupt_batch(t=1)``.
 
     ``t=1`` and a fixed torch seed make ``x_t`` (drawn from the prior) identical
     across the two runs, so any downstream feature difference reflects a real
@@ -611,30 +593,28 @@ def _prepare_inference_batch(
 
     x_1 = {
         "bb_ca": batch["coords_nm"][:, :, 1, :],
-        "local_latents": _encode_local_latents(batch, autoencoder, latent_dim),
+        "local_latents": _encode_local_latents(batch, autoencoder),
     }
     batch["x_1"] = x_1
 
     # Mirror the first step of ``full_simulation``: ``x_t`` is pure prior noise
-    # (independent of ``x_1``), masked to encodable/non-padding tokens. ``t`` is
+    # (independent of ``x_1``), masked to each flow modality's emitted tokens. ``t`` is
     # set to 1.0 (start of inference). A fixed torch seed makes the noise draw
     # identical across the two runs.
     batch_shape = batch["padding_mask"].shape[:1]
     n = batch["padding_mask"].shape[1]
 
     torch.manual_seed(SEED)
-    x_t = fm.sample_noise(n=n, shape=tuple(batch_shape), mask=batch["padding_mask"], device=device, training=False)
-    is_encoded_mask = batch.get("can_be_encoded")
-    if is_encoded_mask is not None:
-        x_t["local_latents"] = x_t["local_latents"] * is_encoded_mask[..., None]
-    x_t["local_latents"] = x_t["local_latents"] * batch["padding_mask"][..., None]
-    x_t["bb_ca"] = x_t["bb_ca"] * batch["padding_mask"][..., None]
+    x_t = fm.sample_noise(
+        n=n,
+        shape=tuple(batch_shape),
+        emit_masks=compute_flow_emit_masks(batch),
+        device=device,
+        training=False,
+    )
 
     batch["x_t"] = x_t
     batch["t"] = {dm: torch.ones(batch_shape, device=device) for dm in fm.data_modes}
-    batch["x_sc"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
-    batch["x_recycle"] = {k: torch.zeros_like(v) for k, v in batch["x_t"].items()}
-    batch["x_sc_is_active"] = torch.zeros((), device=device)
     return batch
 
 
@@ -681,7 +661,7 @@ def _move_batch_to_device(batch, device: torch.device) -> None:
         batch.data_samples.tensors[k] = v.to(device)
     for k, v in list(batch.padding_masks.items()):
         batch.padding_masks[k] = v.to(device)
-    for nested_key in ("x_1", "x_t", "x_sc", "x_recycle", "x_0", "t"):
+    for nested_key in ("x_1", "x_t", "x_0", "t"):
         if nested_key in batch:
             batch[nested_key] = {dm: t.to(device) for dm, t in batch[nested_key].items()}
 
@@ -697,15 +677,15 @@ def autoencoder_and_fm():
     per module. CUDA-only."""
     if not torch.cuda.is_available():
         pytest.skip(reason="Test 2 requires CUDA")
-    if AUTOENCODER_CKPT_PATH is None or not AUTOENCODER_CKPT_PATH.is_file():
-        pytest.skip(f"Autoencoder checkpoint not found: {AUTOENCODER_CKPT_PATH} (set DATA_PATH)")
+    if SOTA_AE_CKPT_PATH is None or not SOTA_AE_CKPT_PATH.is_file():
+        pytest.skip(f"Autoencoder checkpoint not found: {SOTA_AE_CKPT_PATH} (set DATA_PATH)")
 
     device = torch.device("cuda")
 
     cfg_train = OmegaConf.load(TRAIN_CONFIG_PATH)
     cfg_nn = OmegaConf.load(NN_CONFIG_PATH)
 
-    autoencoder = AutoEncoder.load_from_checkpoint(str(AUTOENCODER_CKPT_PATH), strict=True, weights_only=False)
+    autoencoder = AutoEncoder.load_from_checkpoint(str(SOTA_AE_CKPT_PATH), strict=True, weights_only=False)
     autoencoder = autoencoder.to(device).eval()
     for p in autoencoder.parameters():
         p.requires_grad = False
@@ -743,8 +723,8 @@ def test_expandable_segment_features_match_unconditional(
     input_b = {**base, "atom_array": modified_aa}
     out_b = _run_validation_pipeline(input_b)
 
-    batch_a = _prepare_inference_batch(out_a, autoencoder, fm, latent_dim, device)
-    batch_b = _prepare_inference_batch(out_b, autoencoder, fm, latent_dim, device)
+    batch_a = _prepare_inference_batch(out_a, autoencoder, fm, device)
+    batch_b = _prepare_inference_batch(out_b, autoencoder, fm, device)
 
     n_a = batch_a["padding_mask"].shape[1]
     n_b = batch_b["padding_mask"].shape[1]

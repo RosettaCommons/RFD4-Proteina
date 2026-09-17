@@ -1,9 +1,15 @@
-# Antibody-antigen distillation for the flow model.
+# S3-native antibody-antigen distillation for the flow model.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/antibody_interfaces_distill@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: ig_design
   - _self_
 
-probability: 1.0  # Need this default for mixed samples
+probability: 1.0
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_by_inverse_cluster_size
+  # NOTE: Currently, every row is its own cluster - so the effective weighting is uniform
+  # We leave the machinery here so in the future we can update the cluster column and the sampling will automatically update.
+  cluster_column: interface_cluster

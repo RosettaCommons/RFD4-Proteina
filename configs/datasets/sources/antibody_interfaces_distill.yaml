@@ -1,7 +1,40 @@
-# Antibody-antigen interfaces distilled from the Natural Antibody affinity dataset.
+# KNOWN DATA QUALITY ISSUE: Contains malformed protein terminal carbonyl coordinates with long C-O bonds.
+# Check whole-structure bond geometry before including this dataset in a training mix.
 
+# Quality-filtered antibody-antigen complexes from distillation of known binders
+# Predicted with 10 seeds with Protenix-v2; chose structure by confidence
+# Annotated with mmCIF ``ig_region`` annotations for downstream sampling of conditions
+
+_target_: atomworks.ml.datasets.PandasDataset
 name: antibody_interfaces_distill
-data: ${oc.env:DATA_PATH}/train_datasets/antibody_antigen_distill/ab_ag_distill.parquet
+data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/abag_protenix_v2_2026_09_10.parquet
+memory_map: False  # loaded into a buffer; nothing to mmap
 
 loader:
-  base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/antibody_antigen_distill
+  _target_: atomworks.ml.datasets.loaders.create_structure_loader
+  storage: blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/data/blob_2026_09_09
+  example_id_colname: example_id
+  assembly_id_colname: null
+
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
+    # Identifies CDRs and framework regions in the antibody chains
+    extra_fields: [ig_region]
+
+columns_to_load:
+  - example_id
+  - interface_cluster
+  - pae_min_ab_ag
+  # Geometric antibody metrics
+  - n_contact_pairs
+  - fw_to_cdr_native_pct_strict
+  - tors_total
+
+filters:
+  # Structure prediciton confidence metrics
+  - "pae_min_ab_ag < 1.5"
+  # Geometric antibody metrics
+  - "n_contact_pairs >= 30"
+  - "fw_to_cdr_native_pct_strict.fillna(1.0) <= 0.50"
+  - "tors_total.fillna(0) >= 0"  # negative values mark CDR torsions outside native 2σ support

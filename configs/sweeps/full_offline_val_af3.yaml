@@ -29,16 +29,14 @@ sweep_overrides:
   # - "+datasets/val@generation=mcsa/mcsa_full_internal_coords"
 
   # Small molecule and metal binding
-  - "+datasets/val@generation=sm_binder"
-  - "+datasets/val@generation=studio_179"
+  - "+datasets/val@generation=small_molecule_binder/studio_179"
 
   # Protein binder design
-  - "+datasets/val@generation=ppi_subset"
+  - "+datasets/val@generation=ppi/ppi_all_atom_subset_12"
 
   # Non-refolding datasets (tracking condition adherence)
-  - "+datasets/val@generation=rasa_IAI"
-  # - "+datasets/val@generation=ss_conditioned"
-  - "+datasets/val@generation=sm_binder_hbonds"
+  - "+datasets/val@generation=adherence/rasa_IAI"
+  # - "+datasets/val@generation=adherence/ss_conditioned"
 
 # Dummy sweep key (required by sweep.py)
 sweep:

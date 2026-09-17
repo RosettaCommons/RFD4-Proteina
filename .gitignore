@@ -246,8 +246,6 @@ tests/data/pdb/*
 **/runs/
 **/store/
 **/inference/
-# Committed regression baselines live inside an otherwise-ignored inference/ dir
-!**/tests/e2e/baselines/inference/
 **/inference_samples/
 **/inference_metrics/
 **/evaluation_results*/
@@ -281,7 +279,7 @@ claude_experiments/**
 # Exceptions
 !.ipd/apptainer/latent-dev.sif
 # CCD benchmark files (extracted from ccd.tar.gz)
-data/benchmarks/ccd/*.cif
+data/benchmarks/structure_prediction/ccd/*.cif
 
 #backup
 .merge_backup_*
@@ -289,6 +287,8 @@ data/benchmarks/ccd/*.cif
 # --- generated at runtime by the entrypoints / test suite ---
 hydra_outputs/
 inference/
+# Committed regression baselines live inside an otherwise-ignored inference/ dir
+!/tests/e2e/baselines/inference/
 outputs/
 store/
 runs/

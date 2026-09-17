@@ -15,7 +15,7 @@ the effect is attributable. These are the axes RFProteína actually exposes — 
 | Beam width | `search.strategy.beam_width` | Candidates kept after each prune (default 4). More = better designs, more oracle calls. |
 | Branching | `search.strategy.n_branch` | Candidates spawned per surviving beam (default 4). |
 | Checkpoints | `search.strategy.step_checkpoints` | Steps to score+prune (e.g. `[0,25,50,75,100]`). Must start at 0, strictly increase, and end at `nsteps`. More checkpoints = more oracle calls. |
-| Steps | `generation.args.nsteps` | 100 by default with the `vf_tsr` sampler; must equal the last `step_checkpoint`. |
+| Steps | `generation.args.nsteps` | The default is 60 evaluations, with twice the step density in the final 20% of each modality's clock. |
 | Vanilla vs beam | (presence of `search:` block) | No search = fastest baseline; beam = best quality, slower. |
 
 Cost scales roughly with `beam_width x n_branch x (#checkpoints)` oracle calls —

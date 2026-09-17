@@ -259,6 +259,28 @@ class DesignProblemDataset(FileDataset):
     `DesignSpecification` format.
     """
 
+    def _get_example_id(self, idx: int) -> str:
+        """Return the shortest path-derived ID that is unique within the dataset."""
+        if hasattr(self, "base_ids"):
+            return self.base_ids[idx]
+
+        all_parts = []
+        for path in self.file_paths:
+            path = pathlib.Path(path)
+            stem = path.name
+            while "." in stem:
+                stem = pathlib.Path(stem).stem
+            all_parts.append((*path.parent.parts, stem))
+        max_parts = max(len(parts) for parts in all_parts)
+        for num_parts in range(1, max_parts + 1):
+            candidate_ids = ["-".join(parts[-num_parts:]) for parts in all_parts]
+            if len(set(candidate_ids)) == len(candidate_ids):
+                return candidate_ids[idx]
+
+        raise ValueError(
+            f"Could not build unique base IDs for {len(self.file_paths)} files even using their full paths."
+        )
+
     def __init__(
         self,
         dir_path_or_file_paths: list[PathLike] | PathLike,
@@ -328,22 +350,7 @@ class DesignProblemDataset(FileDataset):
 
         self.global_prefix = global_prefix
 
-        # Split each path into its components (parent directories plus the file stem).
-        def get_base_id_parts(path: PathLike) -> tuple[str, ...]:
-            return pathlib.Path(path).with_suffix("").parts
-
-        all_parts = [get_base_id_parts(p) for p in self.file_paths]
-        max_parts = max(len(parts) for parts in all_parts)
-        # Grow from the stem, prepending one parent dir at a time, until every id is unique.
-        for k in range(1, max_parts + 1):
-            candidate_ids = ["-".join(parts[-k:]) for parts in all_parts]
-            if len(set(candidate_ids)) == len(candidate_ids):
-                break
-        else:
-            raise ValueError(
-                f"Could not build unique base_ids for {len(self.file_paths)} files even "
-                "using their full paths; remove duplicate input paths."
-            )
+        candidate_ids = [self._get_example_id(i) for i in range(len(self.file_paths))]
         # Subset before prevalidation and replication, so discarded inputs cost nothing.
         if exists(subset_to_keys):
             keys = set(subset_to_keys)

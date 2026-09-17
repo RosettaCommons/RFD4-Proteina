@@ -2,7 +2,7 @@
 #
 # Beam search inference example.
 # BeamSearchStrategy with an AF3 reward on the monomer-short benchmark:
-#   - 100 diffusion steps, checkpointed at [0, 25, 50, 75, 100]
+#   - 60 model evaluations, checkpointed at [0, 20, 40, 50, 60]
 #   - n_branch=2, beam_width=3
 #   - sc_scale_noise=0.3/0.1 (bb_ca/latents)
 #   - AF3 reward: pLDDT (chain-of-interest) only
@@ -34,8 +34,8 @@ search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
     # step_checkpoints: controls intervals of diversification/pruning. Must start at 0 and end at nsteps.
-    # The setup below yields four equally-spaced intervals over which search is performed
-    step_checkpoints: [0, 25, 50, 75, 100]
+    # The setup below covers both the lower-density prefix and denser tail.
+    step_checkpoints: [0, 20, 40, 50, 60]
     n_branch: 2
     beam_width: 3
     # Keep any rolled-out candidates that scored sufficiently high. This one bar applies at

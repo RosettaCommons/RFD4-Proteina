@@ -1,0 +1,13 @@
+# S3-native antibody-antigen distillation for the autoencoder.
+
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/antibody_interfaces_distill@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0
+
+weights:
+  _target_: atomworks.ml.samplers.calculate_weights_by_inverse_cluster_size
+  cluster_column: interface_cluster

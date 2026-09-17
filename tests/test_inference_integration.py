@@ -50,27 +50,32 @@ from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProb
 from rfproteina.proteina import Proteina
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
 from tests.conftest import TEST_DATA_DIR
-from tests.e2e.helpers.regression_baselines import SOTA_CKPT_PATH, load_design_cif
-from tests.helpers import gpu  # noqa: F401
+from tests.e2e.helpers.regression_baselines import SOTA_AE_CKPT_PATH, SOTA_CKPT_PATH, load_design_cif
+from tests.helpers import BENCHMARKS_DIR, PROJECT_ROOT, gpu  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BENCHMARKS_DIR = PROJECT_ROOT / "data" / "benchmarks"
 _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
 # Committed, regression-validated de-novo monomer CIFs (length-only, no input structure).
 _MONOMER_CIF_DIR = BENCHMARKS_DIR / "monomer"
 _MONOMER_CIF = _MONOMER_CIF_DIR / "monomer-short.cif"
-_MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa_40" / "M0664_2dhn.cif"
+_CATH_CIFS = [
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-short.cif",
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-medium.cif",
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-long.cif",
+    BENCHMARKS_DIR / "adherence" / "monomer_ig" / "monomer-short.cif",
+]
+_PSEUDOKNOT_DIR = BENCHMARKS_DIR / "rna" / "pseudoknot"
+_MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa" / "mcsa_37" / "M0664_2dhn.cif"
 
 # Committed all-atom motif input structures. Structure-conditioned tests build their conditioning
 # on the fly with a condition_spec (see :func:`_motif_condition_spec`) rather than committing a
 # pre-built motif CIF fixture.
-_1PRW_INPUT = BENCHMARKS_DIR / "motif_data_aa" / "1prw_aa.cif"
-_1YCR_INPUT = BENCHMARKS_DIR / "motif_data_aa" / "1ycr_aa.cif"
+_1PRW_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1prw_aa.cif"
+_1YCR_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1ycr_aa.cif"
 
 
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
@@ -283,32 +288,48 @@ class TestDatasetConstruction:
         assert "feats" in example
         assert Path(example["specification"]["input_cif"]) == _MONOMER_CIF
 
-    def test_generated_residues_get_a_distinct_molecule_entity(self, inference_pipeline):
-        """Generated and conditioned residues in one chain are different entities."""
-        dataset = get_contig_or_design_problem_dataset(
-            str(_MIXED_CONDITION_CIF),
-            num_replicates=1,
+    def test_duplicate_cif_stems_are_qualified_by_parent_directory(self, inference_pipeline):
+        """Explicit CIF lists use parent names when filename stems collide."""
+        dataset = DesignProblemDataset(_CATH_CIFS, transform=inference_pipeline)
+
+        assert _get_example_ids_from_dataset(dataset) == [
+            "monomer_helical-monomer-long",
+            "monomer_helical-monomer-medium",
+            "monomer_helical-monomer-short",
+            "monomer_ig-monomer-short",
+        ]
+
+    def test_compressed_cif_ids_drop_all_extensions(self, inference_pipeline):
+        """Compressed CIFs keep extension-free IDs for subsetting and outputs."""
+        dataset = DesignProblemDataset(
+            _PSEUDOKNOT_DIR,
             transform=inference_pipeline,
+            subset_to_keys=["W05", "Q20"],
         )
 
+        assert _get_example_ids_from_dataset(dataset) == ["Q20", "W05"]
+
+    @pytest.mark.parametrize(
+        "input_cif",
+        [_MIXED_CONDITION_CIF, BENCHMARKS_DIR / "ppi" / "ppi_all_atom" / "12_Claudin1.cif.zst"],
+        ids=["enzyme", "ppi"],
+    )
+    def test_molecule_entities_from_annotated_cif(self, inference_pipeline, input_cif):
+        """Designed chains remain single entities, distinct from their fixed partners."""
+        dataset = get_contig_or_design_problem_dataset(str(input_cif), num_replicates=1, transform=inference_pipeline)
         example = dataset[0]
         atom_array = example["atom_array"]
-
         _, token_starts = np.unique(atom_array.token_id, return_index=True)
-        generated = ~C_CRD.mask(atom_array, default="generate")[token_starts]
+        generated = ~C_SEQ.mask(atom_array, default="raise")[token_starts]
         chain_ids = atom_array.chain_iid[token_starts]
         entity_ids = example["feats"]["molecule_entity_id"].numpy()
 
-        mixed_chains = [chain for chain in np.unique(chain_ids) if generated[chain_ids == chain].any()]
-        mixed_chains = [chain for chain in mixed_chains if (~generated[chain_ids == chain]).any()]
-
-        assert mixed_chains
-        for chain in mixed_chains:
+        assert generated.any() and (~generated).any()
+        for chain in np.unique(chain_ids[generated]):
             in_chain = chain_ids == chain
-            generated_entities = set(entity_ids[in_chain & generated])
-            conditioned_entities = set(entity_ids[in_chain & ~generated])
-            assert len(generated_entities) == 1
-            assert generated_entities.isdisjoint(conditioned_entities)
+            entities = np.unique(entity_ids[in_chain])
+            assert len(entities) == 1
+            assert not np.isin(entity_ids[~in_chain], entities).any()
 
     @pytest.mark.parametrize(
         "num_replicates,global_prefix,expected_ids",
@@ -366,12 +387,8 @@ class TestDatasetConstruction:
 # GPU integration tests (require checkpoint + GPU)
 # ---------------------------------------------------------------------------
 
-# AE checkpoint lives under ``$DATA_PATH/latent_checkpoints/ae_checkpoints`` (per-cluster),
-# matching the ``autoencoder_ckpt_path`` convention used across the configs.
-_DATA_PATH = os.environ.get("DATA_PATH", "").strip()
-_AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH") or (
-    os.path.join(_DATA_PATH, "latent_checkpoints", "ae_checkpoints", "AE_ucond_512.ckpt") if _DATA_PATH else None
-)
+# Allow an explicit test override; otherwise use the AE from the composed inference config.
+_AE_CKPT_PATH = os.environ.get("AE_CKPT_PATH") or SOTA_AE_CKPT_PATH
 
 
 @pytest.mark.skipif(
@@ -430,6 +447,7 @@ class TestEndToEndInference:
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
                 "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
                 "metrics_tags=[unconditional_refolding]",
             ]
         )
@@ -476,7 +494,8 @@ class TestEndToEndInference:
                 f"inputs={spec_path}",
                 f"out_dir={out}",
                 "subset_to_examples=1ycr_motif",
-                "generation.args.nsteps=10",
+                "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_subset")
@@ -498,6 +517,7 @@ class TestEndToEndInference:
                 f"inputs={_MONOMER_CIF}",
                 f"out_dir={tmp_output_dir}",
                 "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
@@ -516,6 +536,7 @@ class TestEndToEndInference:
                 f"out_dir={tmp_output_dir}",
                 "skip_existing=true",
                 "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_skip")
@@ -542,6 +563,7 @@ class TestEndToEndInference:
                     f"out_dir={out_dir}",
                     "seed=12345",
                     "generation.args.nsteps=20",
+                    "generation.n_recycle_schedule=null",
                 ]
             )
             run_generation(cfg, job_id=0, config_name="test_seed")
@@ -581,6 +603,7 @@ class TestEndToEndInference:
                 f"inputs={spec_path}",
                 f"out_dir={out}",
                 "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
             ]
         )
         run_generation(cfg, job_id=0, config_name="test_motif_scaffold")
@@ -762,7 +785,7 @@ class TestEndToEndInference:
 
         from rfproteina.flow_matching import product_space_flow_matcher
 
-        input_pdb = str(BENCHMARKS_DIR / "motif_data_aa/1ycr_aa.cif")
+        input_pdb = str(BENCHMARKS_DIR / "motif_scaffolding/motif_data_aa/1ycr_aa.cif")
 
         cfg = _build_test_cfg(
             [
@@ -772,6 +795,7 @@ class TestEndToEndInference:
                 # Deliberately not the config default, so the assertion below would catch
                 # run_generation dropping the override.
                 "generation.args.nsteps=20",
+                "generation.n_recycle_schedule=null",
             ]
         )
         args_before = OmegaConf.to_container(cfg.generation.args, resolve=True)

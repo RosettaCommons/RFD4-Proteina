@@ -79,10 +79,10 @@ class PairReprUpdate(torch.nn.Module):
             else (lambda module, *args: module(*args))
         )
         if self.use_tri_mult:
-            pair_rep = pair_rep + run(self.tri_mult_out, pair_rep, pair_mask * 1.0)
+            pair_rep = pair_rep + run(self.tri_mult_out, pair_rep, pair_mask)
             pair_rep = self._apply_mask(pair_rep, pair_mask)  # [b, n, n, pair_dim]
-            pair_rep = pair_rep + run(self.tri_mult_in, pair_rep, pair_mask * 1.0)
+            pair_rep = pair_rep + run(self.tri_mult_in, pair_rep, pair_mask)
             pair_rep = self._apply_mask(pair_rep, pair_mask)  # [b, n, n, pair_dim]
-        pair_rep = pair_rep + run(self.transition_out, pair_rep, pair_mask * 1.0)
+        pair_rep = pair_rep + run(self.transition_out, pair_rep, pair_mask)
         pair_rep = self._apply_mask(pair_rep, pair_mask)  # [b, n, n, pair_dim]
         return pair_rep

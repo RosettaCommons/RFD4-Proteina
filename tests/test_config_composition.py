@@ -44,6 +44,16 @@ def _recipes() -> list[tuple[str, str, list[str], str | None]]:
     out = [("training_proteina", "training_proteina", [], "tasks"), ("training_ae", "training_ae", [], "uncond")]
     out += [(f"experiment={e}", "training_proteina", [f"experiment={e}"], "tasks") for e in _options("experiment")]
     out += [(f"experiment_ae={e}", "training_ae", [f"experiment_ae={e}"], "uncond") for e in _options("experiment_ae")]
+    out += [
+        (f"releases={r}", "training_ae", ["~experiment_ae", f"+releases={r}"], "uncond")
+        for r in _options("releases")
+        if r.startswith("ae/")
+    ]
+    out += [
+        (f"releases={r}", "training_proteina", ["~experiment", f"+releases={r}"], "tasks")
+        for r in _options("releases")
+        if r.startswith("flow/")
+    ]
     for mix in sorted(p.stem for p in (PROJECT_ROOT / "configs" / "datasets").glob("*.yaml") if p.stem != "none"):
         if mix.startswith("ae_"):
             out.append((f"datasets={mix}", "training_ae", ["~experiment_ae", f"datasets={mix}"], None))

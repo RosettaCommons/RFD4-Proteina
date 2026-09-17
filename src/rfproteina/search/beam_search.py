@@ -32,6 +32,7 @@ import torch
 
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
+from rfproteina.model_masks import compute_flow_emit_masks
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.search.base_strategy import SearchStrategy
 from rfproteina.search.vanilla import build_partial_schedule, resolve_partial_t
@@ -50,7 +51,7 @@ class BeamSearchStrategy(SearchStrategy):
     at specified checkpoints. Maintains top-k candidates based on rewards.
 
     Args:
-        step_checkpoints: Diffusion steps at which to evaluate and prune (e.g., [0, 25, 50, 75, 100])
+        step_checkpoints: Diffusion steps at which to evaluate and prune (e.g., [0, 25, 50])
         n_branch: Number of candidates to generate at each branch point (typically 4)
         beam_width: Number of candidates to keep after each prune (typically 4)
         intermediate_sample_save_criterion: PassCriterionMetric deciding which of the rolled-out
@@ -59,7 +60,7 @@ class BeamSearchStrategy(SearchStrategy):
 
     Example:
         >>> strategy = BeamSearchStrategy(
-        ...     step_checkpoints=[0, 25, 50, 75, 100],
+        ...     step_checkpoints=[0, 25, 50],
         ...     n_branch=4,
         ...     beam_width=4,
         ...     intermediate_sample_save_criterion=PassCriterionMetric(
@@ -151,7 +152,6 @@ class BeamSearchStrategy(SearchStrategy):
         model._current_batch = batch
 
         # Extract parameters from model's inference config
-        self_cond = model.inf_cfg.args.self_cond
         nsteps = model.inf_cfg.args.nsteps
         guidance_w = model.inf_cfg.args.get("guidance_w", 1.0)
 
@@ -160,12 +160,12 @@ class BeamSearchStrategy(SearchStrategy):
         n = batch["coords_nm"].shape[1]  # number of tokens
         device = model.device
 
-        # Initialize mask (keep batch dimension, no squeezing needed)
-        if "padding_mask" in batch:
-            init_mask = batch["padding_mask"]
-        else:
-            init_mask = torch.ones(nsamples, n).long().bool().to(device)
-        assert init_mask.shape == (nsamples, n), f"Expected mask shape {(nsamples, n)}, got {init_mask.shape}"
+        padding_mask = batch["padding_mask"]
+        if padding_mask.dtype != torch.bool or padding_mask.shape != (nsamples, n):
+            raise ValueError(
+                f"padding_mask must be bool with shape {(nsamples, n)}, got {padding_mask.dtype} "
+                f"and {tuple(padding_mask.shape)}"
+            )
 
         simulation_step_params = {
             data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"] for data_mode in model.fm.data_modes
@@ -207,13 +207,18 @@ class BeamSearchStrategy(SearchStrategy):
             f"Initializing beam: {nsamples} samples x {self.beam_width} width = "
             f"{nsamples * self.beam_width} total states"
         )
-        mask = init_mask.repeat(self.beam_width, 1)
+        tiled_padding_mask = padding_mask.repeat(self.beam_width, 1)
+        beam_emit_mask_batch = {
+            "supports_local_latent": batch["supports_local_latent"].repeat(self.beam_width, 1),
+            "is_in_context_conditioning": batch["is_in_context_conditioning"].repeat(self.beam_width, 1),
+            "padding_mask": tiled_padding_mask,
+        }
 
         x_0 = model.fm.sample_noise(
             n,
             shape=(nsamples * self.beam_width,),
             device=device,
-            mask=mask,
+            emit_masks=compute_flow_emit_masks(beam_emit_mask_batch),
             training=False,
         )
 
@@ -229,7 +234,8 @@ class BeamSearchStrategy(SearchStrategy):
         else:
             xt = x_0
 
-        x_1_pred = None
+        # Mask the initial beam state in its interleaved, beam-width-tiled layout.
+        xt = model.fm.apply_flow_emit_masks(xt, beam_emit_mask_batch)
 
         all_intermediate_results: list[dict] = []
 
@@ -247,7 +253,6 @@ class BeamSearchStrategy(SearchStrategy):
             logger.info(f"Checkpoint {i + 1}/{len(self.step_checkpoints) - 1}: steps {start_step} → {end_step}")
 
             all_xt_branches = []
-            all_x_1_pred_branches = []
             all_insertion_logits_branches = []
 
             # Process each replica separately due to batch size constraints
@@ -256,40 +261,29 @@ class BeamSearchStrategy(SearchStrategy):
                 start = replica_idx * nsamples
                 end = (replica_idx + 1) * nsamples
                 replica_xt = {key: value[start:end] for key, value in xt.items()}
-                replica_x_1_pred = (
-                    {key: value[start:end] for key, value in x_1_pred.items()} if x_1_pred is not None else None
-                )
                 ts_segment = {k: v[start_step:] for k, v in ts.items()}
                 gt_segment = {k: v[start_step:] for k, v in gt.items()}
 
                 # Generate n_branch branches from this replica
                 for _ in range(self.n_branch):
-                    branch_xt, branch_x_1_pred, branch_extra_info = model.fm.partial_simulation(
+                    branch_xt, _, branch_extra_info = model.fm.partial_simulation(
                         batch=copy.deepcopy(batch),
                         x=replica_xt,
-                        x_1_pred=replica_x_1_pred,
-                        mask=init_mask,
                         predict_for_sampling=model.predict_for_sampling,
                         recycle_depths=recycle_depths[start_step:end_step],
                         nsteps=end_step - start_step,
                         ts=ts_segment,
                         gt=gt_segment,
-                        self_cond=self_cond,
                         simulation_step_params=simulation_step_params,
                         device=model.device,
                         guidance_w=guidance_w,
                     )
 
                     all_xt_branches.append(branch_xt)
-                    all_x_1_pred_branches.append(branch_x_1_pred)
                     all_insertion_logits_branches.append(branch_extra_info.get("insertion_logits"))
 
             # Concatenate all replicas and branches
             xt = concat_dict_tensors(all_xt_branches, dim=0)
-
-            x_1_pred = None
-            if all_x_1_pred_branches[0] is not None:
-                x_1_pred = concat_dict_tensors(all_x_1_pred_branches, dim=0)
 
             insertion_logits = None
             if all(logits is not None for logits in all_insertion_logits_branches):
@@ -317,7 +311,6 @@ class BeamSearchStrategy(SearchStrategy):
                 batch,
                 xt,
                 end_step,
-                init_mask,
                 checkpoint_reward_model,
                 ts=ts,
                 gt=gt,
@@ -415,8 +408,6 @@ class BeamSearchStrategy(SearchStrategy):
 
             # Select samples
             xt = {key: value[select_indices] for key, value in xt.items()}
-            if x_1_pred is not None:
-                x_1_pred = {key: value[select_indices] for key, value in x_1_pred.items()}
 
         # The final beam is the last checkpoint's survivors, already decoded and scored above.
         final_results = [atom_array_results[k] for k in select_indices.tolist()]
@@ -440,7 +431,6 @@ class BeamSearchStrategy(SearchStrategy):
         batch: dict,
         xt: dict[str, torch.Tensor],
         current_step: int,
-        mask: torch.Tensor,
         reward_model: "RewardModel",
         ts: dict[str, torch.Tensor],
         gt: dict[str, torch.Tensor],
@@ -461,7 +451,6 @@ class BeamSearchStrategy(SearchStrategy):
             batch: Original batch
             xt: Current intermediate states at timestep current_step
             current_step: Current timestep in diffusion process
-            mask: Residue mask [nsamples, n_residues]
             reward_model: Reward model for scoring
             recycle_depths: Recycle depth for each complete-trajectory step.
             example_ids: Per-sample base IDs carried on the returned atom-array results.
@@ -480,7 +469,7 @@ class BeamSearchStrategy(SearchStrategy):
 
         # Get batch parameters
         batch_size = next(iter(xt.values())).shape[0]
-        segment_size = mask.shape[0]
+        segment_size = batch["padding_mask"].shape[0]
 
         # Roll out from current_step to end of schedule to get clean samples.
         logger.debug(f"Rolling out {batch_size} samples: step {current_step} → {actual_nsteps}")
@@ -500,14 +489,11 @@ class BeamSearchStrategy(SearchStrategy):
             batch_final_xt, _, batch_extra_info = model.fm.partial_simulation(
                 batch=copy.deepcopy(batch),
                 x=batch_xt,
-                x_1_pred=None,
-                mask=mask,
                 predict_for_sampling=model.predict_for_sampling,
                 recycle_depths=recycle_depths[current_step:],
                 nsteps=actual_nsteps - current_step,
                 ts=ts_segment,
                 gt=gt_segment,
-                self_cond=model.inf_cfg.args.self_cond,
                 simulation_step_params={
                     data_mode: model.inf_cfg.model[data_mode]["simulation_step_params"]
                     for data_mode in model.fm.data_modes
@@ -526,29 +512,21 @@ class BeamSearchStrategy(SearchStrategy):
         if all(logits is not None for logits in insertion_logits_batches):
             insertion_logits = torch.cat(insertion_logits_batches, dim=0)
 
-        # Construct extra_info with properly sized masks
-        # Both mask and can_be_encoded need to expand from [nsamples, n] to [batch_size, n]
-        # where batch_size = nsamples * n_branch * beam_width from all the branching
+        # Expand the batch across the branched sample axis.
         num_repeats = (batch_size + segment_size - 1) // segment_size
-        expanded_mask = mask.repeat(num_repeats, 1)[:batch_size]
-
-        # Expand can_be_encoded similarly (if it exists)
-        can_be_encoded = batch.get("can_be_encoded")
-        if can_be_encoded is not None:
-            expanded_can_be_encoded = can_be_encoded.repeat(num_repeats, 1)[:batch_size]
-        else:
-            expanded_can_be_encoded = None
-
-        final_extra_info = {
-            "padding_mask": expanded_mask,
-            "can_be_encoded": expanded_can_be_encoded,
+        expanded_batch = {
+            k: (
+                v.repeat(num_repeats, *([1] * (v.dim() - 1)))[:batch_size]
+                if torch.is_tensor(v) and v.shape[0] == segment_size
+                else v
+            )
+            for k, v in batch.items()
         }
-
         # Format to protein structures (decode to structure-sequence pair)
         final_sample_prots = model.sample_formatting(
             x=final_xt,
-            extra_info=final_extra_info,
             ret_mode="coors37_n_aatype",
+            batch=expanded_batch,
         )
 
         # Format to atom arrays, then compute rewards R(x, s)

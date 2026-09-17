@@ -148,6 +148,7 @@ def _featurise(
         ref_max_modified_date=max_template_date,
         conformer_max_iterations=conformer_max_iters,
         resolve_msa_overlaps=resolve_msa_overlaps,
+        fix_standalone_glycans=True,
         of3_weights=of3_weights,
     )
 

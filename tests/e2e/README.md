@@ -9,7 +9,7 @@ entrypoints (`src/rfproteina/train.py`, `src/rfproteina/partial_autoencoder/trai
 
 | Test | Marker(s) | What it does |
 |------|-----------|--------------|
-| `test_gpu_regression.py` | `gpu, regression, slow` | Exact-match assertions against committed baselines, on H200 (cw-west): SOTA training (100 muon steps from random init), AE training (100 muon steps from `AE_ucond_512.ckpt`), inference (one MCSA example), and unindexed-motif beam search. Plus one CPU-only check that the SOTA checkpoint in `configs/inference.yaml` exists on disk — catches a checkpoint synced to CoreWeave but not to DIGS. Skips when baselines are missing. |
+| `test_gpu_regression.py` | `gpu, regression, slow` | Exact-match assertions against committed baselines, on H200 (cw-west): SOTA and AE training (100 muon steps from random init), inference (one MCSA example), and unindexed-motif beam search. Plus one CPU-only check that the SOTA checkpoint pair in `configs/inference.yaml` exists on disk — catches checkpoints synced to CoreWeave but not to DIGS. Skips when baselines are missing. |
 | `test_gradient_coverage.py` | `gpu` | Training smoke: trains briefly and asserts no parameter is silently disconnected (a feature behind an all-false mask gets an exactly-zero grad, so `grad is None` never fires). |
 | `test_af3_structure_quality.py` | `gpu` | Refolds pre-cutoff crystals (PTM, HEM, N-glycan, custom CCD, protein–DNA, RNA) and checks RMSD, bonds, and clashes. |
 | `test_af2_acceptance.py` | `gpu, slow` | End-to-end acceptance coverage for the launcher-owned AF2 worker pool. |
@@ -96,7 +96,7 @@ additionally passes **`DATA_PATH`** explicitly into apptainer.
 
 **Training regression coverage:** `test_gpu_regression.py` runs 100 Muon
 steps for the SOTA flow recipe from random initialization and 100 Muon steps
-for the autoencoder initialized from `AE_ucond_512.ckpt`. Both deliberately
+for the current autoencoder recipe. Both deliberately
 disable compilation and compare per-step losses with committed H200
 baselines. There are no separate `test_gpu_training_sota.py` or
 `test_gpu_training_ae.py` modules.
@@ -138,7 +138,7 @@ worker per GPU. Tests split by markers: CPU runs everything except
 
 **Known skips:** AF3 unavailable (`muon_compile_af3`), missing data files. A missing SOTA
 checkpoint fails (not skips) the inference/beam search tests — it's the `ckpt_name` from
-`configs/inference.yaml` under each cluster's `$DATA_PATH/latent_checkpoints/ldm_checkpoints`;
+`configs/inference.yaml` under each cluster's `$DATA_PATH/flow_checkpoints`;
 to advance SOTA, edit `ckpt_name` there and regenerate the baselines.
 
 **RF3 regression baselines** refreshed after `remove_ccds` parsing fix and checkpoint

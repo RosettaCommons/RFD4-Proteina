@@ -12,8 +12,8 @@ from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from sklearn.decomposition import PCA
 from torch import Tensor
 
+from rfproteina.model_masks import compute_ae_supervision_mask
 from rfproteina.partial_autoencoder.decoder import DecoderTransformer
-from rfproteina.partial_autoencoder.decoder_ff import DecoderFFLocal
 from rfproteina.partial_autoencoder.encoder import EncoderTransformer
 from rfproteina.partial_autoencoder.latent_viz_utils import (
     plot_latent_projection_with_labels,
@@ -49,15 +49,12 @@ class AutoEncoder(L.LightningModule):
         self.val_path_tmp = os.path.join(self.store_dir, "val_stuff")
         create_dir(self.val_path_tmp)
 
-        self.encoder = EncoderTransformer(**self.cfg_ae.nn_ae)
+        n_residue_types = self.cfg_ae.nn_ae.get("n_residue_types")
+        if n_residue_types != 33:
+            raise ValueError(f"Autoencoder requires the 33-class unified residue encoding, got {n_residue_types}")
 
-        decoder_type = self.cfg_ae.nn_ae.decoder.get("type", "transformer")
-        if decoder_type == "transformer":
-            self.decoder = DecoderTransformer(**self.cfg_ae.nn_ae)
-        elif decoder_type == "ff_local":
-            self.decoder = DecoderFFLocal(**self.cfg_ae.nn_ae)
-        else:
-            raise OSError(f"Invalid decoder_type {decoder_type}")
+        self.encoder = EncoderTransformer(**self.cfg_ae.nn_ae)
+        self.decoder = DecoderTransformer(**self.cfg_ae.nn_ae)
 
         self.nsamples_processed = 0
         self.nparams_enc = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
@@ -103,32 +100,39 @@ class AutoEncoder(L.LightningModule):
         """
         return self.encoder(batch)  # z_latent, mean, log_scale
 
-    def decode(
-        self,
-        z_latent: Float[torch.Tensor, "b n d"],
-        ca_coors_nm: Float[torch.Tensor, "b n 3"],
-        mask: Bool[torch.Tensor, "b n"],
-        token_type: Int[torch.Tensor, "b n"] | None = None,
-    ) -> dict:
+    @staticmethod
+    def _emitted_atom_mask(batch: dict, output_dec: dict) -> Bool[torch.Tensor, "b n 37"]:
+        """Intersect the decoder's atom mask with the input one, so emitted atoms are real.
+
+        The decoder's mask is the idealized atom set for the residue type it predicted, so it
+        re-emits atoms the real residue lacks -- an isopeptide-bonded ASP gave up OD2, and the loss
+        masks that slot out, leaving whatever sat there unconstrained. Generation has no input mask
+        (identity is what is being predicted) and is left alone.
         """
-        Runs the decoder and returns a dictionary with all necessary decoding information.
-        """
-        input_decoder = {
-            "z_latent": z_latent,
-            "ca_coors_nm": ca_coors_nm,
-            "residue_mask": mask,
-            "padding_mask": mask,
-        }
-        if token_type is not None:
-            input_decoder["token_type"] = token_type
-        output_dec = self.decoder(input_decoder)
-        mask = output_dec["residue_mask"]  # [b, n]
         atom_mask = output_dec["atom_mask"]  # [b, n, 37]
-        coors_nm = output_dec["coors_nm"] * mask[..., None, None] * atom_mask[..., None]  # [b, n, 37, 3]
+        if "atom37_mask" not in batch:
+            return atom_mask
+        return atom_mask * batch["atom37_mask"].to(atom_mask.dtype)
+
+    def decode(self, batch: dict) -> dict:
+        """
+        Runs the decoder on the regular batch and returns decoding information.
+
+        The batch must contain ``z_latent``, ``ca_coors_nm``, and the mask features
+        (``padding_mask``, ``is_in_context_conditioning``, ``supports_local_latent``) from which the decoder
+        derives its attention and output masks (see :py:func:`compute_ae_masks`);
+        ``token_type`` is optional.
+
+        Checkpoints with an ``attend_to_*`` flag require the corresponding conditioning feature.
+        """
+        output_dec = self.decoder(batch)
+        emit_mask = output_dec["emit_mask"]  # [b, n]
+        atom_mask = output_dec["atom_mask"]  # [b, n, 37]
+        coors_nm = output_dec["coors_nm"] * emit_mask[..., None, None] * atom_mask[..., None]  # [b, n, 37, 3]
         return {
             "coors_nm": coors_nm,
-            "residue_type": output_dec["aatype_max"] * mask,
-            "residue_mask": mask,
+            "residue_type": output_dec["aatype_max"] * emit_mask,
+            "emit_mask": emit_mask,
             "atom_mask": atom_mask,
         }
 
@@ -147,16 +151,15 @@ class AutoEncoder(L.LightningModule):
         histogram_every_n = 5000
         pca_every_n = self.cfg_ae.get("log", {}).get("projection_every_n", 5000)
         per_aatype_kl = True
-        # Extract from new pipeline batch format
-        mask = batch["padding_mask"]  # [b, n] boolean, True = valid token
+        batch = {**batch}
         batch["coord_mask"] = batch["atom37_mask"]
         coords_nm = batch["coords"] / 10.0  # Convert Angstroms to nanometers
-        batch["coords_nm"] = coords_nm  # For backward compatibility with encoder
+        batch["coords_nm"] = coords_nm  # Consumed by the encoder/decoder feature factories
         ca_coors_nm = coords_nm[..., 1, :]  # [b, n, 3] - CA is at slot 1
-        ca_coors_nm = ca_coors_nm * mask[..., None]  # [b, n, 3]
-        bs, _n = mask.shape[0], mask.shape[1]
+        bs = batch["padding_mask"].shape[0]
 
         output_enc = self.encoder(batch)
+        loss_mask = compute_ae_supervision_mask(batch)
         # {
         #   "z_latent": latent_sample, shape [b, n, d]
         #   "mean": mean of latent (diag) Gaussian dist, shape [b, n, d]
@@ -167,33 +170,33 @@ class AutoEncoder(L.LightningModule):
             bs=bs,
             v=output_enc["mean"],
             log_prefix=log_prefix_stats + "_mean_LS",
-            mask=mask,
+            mask=loss_mask,
             histogram_every_n=histogram_every_n,
         )
         self.log_tensor_statistics(
             bs=bs,
             v=torch.exp(output_enc["log_scale"]),
             log_prefix=log_prefix_stats + "_scale_LS",
-            mask=mask,
+            mask=loss_mask,
             histogram_every_n=histogram_every_n,
         )
         self.log_tensor_statistics(
             bs=bs,
             v=output_enc["z_latent"],
             log_prefix=log_prefix_stats + "_z_LS",
-            mask=mask,
+            mask=loss_mask,
             histogram_every_n=histogram_every_n,
         )
         self.log_pca(
             v=output_enc["z_latent"],
             log_prefix=log_prefix_stats + "_z_PCA",
-            mask=mask,
+            mask=loss_mask,
             every_n=pca_every_n,
         )
         self.log_pca_per_residue_type(
             v=output_enc["z_latent"],
             log_prefix=log_prefix_stats + "_z_PCA_pre_aatype",
-            mask=mask,
+            mask=loss_mask,
             every_n=pca_every_n,
             res_ty=batch["residue_type"],
         )
@@ -205,25 +208,25 @@ class AutoEncoder(L.LightningModule):
             self.log_projection_per_residue_type(
                 v=output_enc["z_latent"],
                 log_prefix=log_prefix_stats + f"_z_{projection_method.upper()}_by_aatype",
-                mask=mask,
+                mask=loss_mask,
                 every_n=pca_every_n,
                 res_ty=batch["residue_type"],
                 method=projection_method,
                 max_samples=projection_max_samples,
             )
 
-        input_decoder = {
-            "z_latent": output_enc["z_latent"],
-            "ca_coors_nm": ca_coors_nm,
-            "residue_mask": mask,
-            "padding_mask": mask,
-        }
-        output_dec = self.decoder(input_decoder)
+        # Decode from the same batch (augmented with the latents + CA); the decoder derives
+        # its masks from the batch and returns `emit_mask`, which drives the losses.
+        batch["z_latent"] = output_enc["z_latent"]
+        batch["ca_coors_nm"] = ca_coors_nm
+        output_dec = self.decoder(batch)
+        # Emit only atoms the input residue actually had.
+        output_dec["atom_mask"] = self._emitted_atom_mask(batch, output_dec)
         # {
         #   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-        #   "seq_logits": logits for the residue types, shape [b, n, 20]
-        #   "residue_mask": boolean [b, n]
-        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+        #   "seq_logits": logits for the residue types, shape [b, n, 33]
+        #   "emit_mask": boolean [b, n]  (tokens we trust; drives the losses)
+        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 32}
         #   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
         # }
 
@@ -245,7 +248,7 @@ class AutoEncoder(L.LightningModule):
             self.compute_kl_penalty(
                 mean=output_enc["mean"],
                 log_scale=output_enc["log_scale"],
-                mask=mask,
+                mask=loss_mask,
                 w=self.cfg_ae.loss.kl.weight * f,
             )
         )
@@ -255,6 +258,7 @@ class AutoEncoder(L.LightningModule):
             self.compute_struct_rec_loss(
                 output_dec=output_dec,
                 batch=batch,
+                loss_mask=loss_mask,
                 reduce_mode="sum",
                 loss_ty=self.cfg_ae.loss.struct.type,
                 weight=self.cfg_ae.loss.struct.weight,
@@ -268,6 +272,7 @@ class AutoEncoder(L.LightningModule):
             self.compute_seq_rec_loss(
                 output_dec=output_dec,
                 batch=batch,
+                loss_mask=loss_mask,
                 weight=self.cfg_ae.loss.seq.weight,
             )
         )
@@ -293,20 +298,20 @@ class AutoEncoder(L.LightningModule):
             componentwise_kl = self._per_component_kl(
                 mean=output_enc["mean"],
                 log_scale=output_enc["log_scale"],
-                mask=mask,
+                mask=loss_mask,
             )  # [b, n, d]
             self.log_tensor_statistics(
                 bs=bs,
                 v=componentwise_kl,
                 log_prefix=log_prefix + "_kl_latent",
-                mask=mask,
+                mask=loss_mask,
                 histogram_every_n=histogram_every_n,
             )
             self.log_tensor_statistics(
                 bs=bs,
                 v=(componentwise_kl > 0.1) * 1.0,
                 log_prefix=log_prefix + "_kl_latent_active_thresh_0p1",
-                mask=mask,
+                mask=loss_mask,
                 do_hist=False,
                 stats_to_log=["mean"],
             )
@@ -319,7 +324,7 @@ class AutoEncoder(L.LightningModule):
                         bs=bs,
                         v=(componentwise_kl > 0.1) * 1.0,
                         log_prefix=log_prefix_stats + "_kl_latent_active_thresh_0p1_per_restype",
-                        mask=mask * (batch["residue_type"] == i),
+                        mask=loss_mask * (batch["residue_type"] == i),
                         do_hist=False,
                         suffix=f"_restype_{i}",
                         stats_to_log=["mean"],
@@ -366,6 +371,7 @@ class AutoEncoder(L.LightningModule):
     def compute_struct_rec_loss(
         output_dec: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
+        loss_mask: Bool[Tensor, "b n"],
         reduce_mode: Literal["sum", "mean"] = "sum",
         loss_ty: str = "l2",
         weight: float = 1.0,
@@ -379,10 +385,10 @@ class AutoEncoder(L.LightningModule):
             output_dec:
                 {
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-                  "seq_logits": logits for the residue types, shape [b, n, 20]
-                  "residue_mask": boolean [b, n]
+                  "seq_logits": logits for the residue types, shape [b, n, 33]
+                  "emit_mask": boolean [b, n]
                   "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                      with integer values {0, ..., 19}
+                      with integer values {0, ..., 32}
                   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
                 }
             batch: data batch from dataloader
@@ -400,8 +406,10 @@ class AutoEncoder(L.LightningModule):
             atom_mask: Bool[torch.Tensor, "b n 37"],
             mode: Literal["sum", "mean"] = "sum",
         ) -> Float[torch.Tensor, "b"]:
-            nres = mask.sum(dim=-1)  # [b]
-            nat = atom_mask.sum(dim=-1) * mask  # [b, n]
+            # Masked entries have zero numerators, so clamping empty-token and empty-atom
+            # denominators preserves zero loss instead of producing NaN.
+            nres = mask.sum(dim=-1).clamp(min=1)  # [b]
+            nat = (atom_mask.sum(dim=-1) * mask).clamp(min=1)  # [b, n]
             err = torch.sum(err, dim=(-1, -2))  # [b, n]
             if mode == "mean":
                 err = err / nat  # Take mean over existing atoms if mode == "mean"
@@ -410,7 +418,8 @@ class AutoEncoder(L.LightningModule):
 
         coors_nm_pred = output_dec["coors_nm"]  # [b, n, 37, 3]
         coors_nm_true = batch["coords_nm"]  # [b, n, 37, 3] (already converted in training_step)
-        mask = output_dec["residue_mask"]  # [b, n] boolean
+        # Unresolved emissions provide context but are excluded from supervision.
+        mask = loss_mask  # [b, n] boolean; tokens we supervise
         atom_mask_true = batch["atom37_mask"] * mask[..., None]  # [b, n, 37] boolean
 
         # Permute target atom37 coords onto the prediction (Tyr ring flips, ligand
@@ -442,7 +451,9 @@ class AutoEncoder(L.LightningModule):
         err_ang = nm_to_ang(err)  # [b, n, 37, 3]
         err_ang = torch.linalg.norm(err_ang, dim=-1) ** 2  # [b, n, 37]
         err_ang = err_ang * mask[..., None] * atom_mask_true  # [b, n, 37]
-        nat = atom_mask_true.sum((-1, -2))  # [b]
+        # clamp(min=1): an element with no supervised atoms has a zero masked numerator, so
+        # this reports an RMSD of 0 rather than a NaN that would poison any average over it.
+        nat = atom_mask_true.sum((-1, -2)).clamp(min=1)  # [b]
         rmsd = torch.sqrt(torch.sum(err_ang, dim=(-1, -2)) / nat)  # [b]
         losses["rmsd_no_align_a37_ang_justlog"] = rmsd
 
@@ -466,6 +477,7 @@ class AutoEncoder(L.LightningModule):
         self,
         output_dec: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
+        loss_mask: Bool[Tensor, "b n"],
         weight: float = 1.0,
     ) -> dict[str, Float[Tensor, "b"]]:
         """
@@ -475,10 +487,10 @@ class AutoEncoder(L.LightningModule):
             output_dec:
                 {
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-                  "seq_logits": logits for the residue types, shape [b, n, 20]
-                  "residue_mask": boolean [b, n]
+                  "seq_logits": logits for the residue types, shape [b, n, 33]
+                  "emit_mask": boolean [b, n]
                   "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                      with integer values {0, ..., 19}
+                      with integer values {0, ..., 32}
                   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
                 }
             batch: data batch from dataloader
@@ -488,15 +500,17 @@ class AutoEncoder(L.LightningModule):
             will not be used to compute the total loss, but will just be logged.
         """
         assert "residue_type" in batch, "`residue_type` not in batch, failed in compute_seq_rec_loss"
-        mask = output_dec["residue_mask"]  # [b, n]
-        nres = mask.sum(dim=-1)  # [b]
+        # See compute_struct_rec_loss: supervision is `loss_mask`, not `emit_mask`.
+        mask = loss_mask  # [b, n]; tokens we supervise
+        # clamp(min=1): elements with no supervised tokens have a zero numerator below,
+        # so this yields 0 loss for them rather than a 0/0 NaN.
+        nres = mask.sum(dim=-1).clamp(min=1)  # [b]
         logits_pred = output_dec["seq_logits"]  # [b, n, n_residue_types]
         target_aa = batch["residue_type"]  # [b, n]
         target_aa = target_aa * mask  # [b, n] gets rid of -1 for padding (issue with cross entropy loss below)
 
-        # Support both legacy (20 AAs) and unified (33 types) encodings
         n_residue_types = logits_pred.shape[-1]
-        assert n_residue_types in [20, 33], f"Expected 20 (legacy) or 33 (unified) residue types, got {n_residue_types}"
+        assert n_residue_types == 33, f"Expected 33 residue types, got {n_residue_types}"
 
         # Compute cross entropy
         b, n = mask.shape[0], mask.shape[1]
@@ -547,7 +561,9 @@ class AutoEncoder(L.LightningModule):
         """
         Computes KL penalty on the latent Gaussian distribution.
         """
-        nres = torch.sum(mask, dim=-1)  # [b]
+        # clamp(min=1): a batch element with no supervised tokens has a zero masked KL
+        # numerator, so this keeps its penalty at 0 instead of dividing 0 by 0.
+        nres = torch.sum(mask, dim=-1).clamp(min=1)  # [b]
         kl_div = self._per_component_kl(
             mean=mean,
             log_scale=log_scale,
@@ -685,8 +701,6 @@ class AutoEncoder(L.LightningModule):
         """Log dimensionality reduction projection colored by residue type.
 
         Uses shared visualization utilities for consistency with inference.
-        Supports both legacy (20 AA) and unified (33 type) encodings automatically.
-
         Args:
           v: Latent vectors [batch, n_tokens, latent_dim].
           res_ty: Residue type indices [batch, n_tokens].
@@ -714,10 +728,6 @@ class AutoEncoder(L.LightningModule):
             vals = vals[indices]
             labels = labels[indices]
 
-        # Detect n_residue_types from unique labels
-        max_label = int(np.max(labels))
-        n_residue_types = 33 if max_label >= 20 else 20
-
         # Project to 2D using shared utility
         projection = project_latents_2d(
             latents=vals,
@@ -732,7 +742,6 @@ class AutoEncoder(L.LightningModule):
         fig = plot_latent_projection_with_labels(
             projection=projection,
             labels=labels,
-            n_residue_types=n_residue_types,
             method=method.upper(),
             title=f"Latent Space ({method.upper()}) - Step {self.trainer.global_step}",
             figsize=(10, 8),
@@ -852,8 +861,7 @@ class AutoEncoder(L.LightningModule):
                         "coors_nm": rec_sample["coors_nm"][i, ...].clone(),  # [n, 37, 3]
                         "aatype": rec_sample["aatype_max"][i, ...].clone(),  # [n]
                         "atom_mask": rec_sample["atom_mask"][i, ...].clone(),  # [n, 37]
-                        # [n], should be the same as mask from orig sample
-                        "padding_mask": rec_sample["residue_mask"][i, ...].clone(),
+                        "emit_mask": rec_sample["emit_mask"][i, ...].clone(),  # [n]
                     }
                 )
 
@@ -871,11 +879,28 @@ class AutoEncoder(L.LightningModule):
                 continue
 
             padding_mask = sample_data["padding_mask"].detach().cpu().bool()
+            emit_mask = sample_rec["emit_mask"].detach().cpu().bool()
+            no_latent_tokens = padding_mask & ~emit_mask
             coords_rec_ang = nm_to_ang(sample_rec["coors_nm"]).float().detach().cpu()
             aatype_data = sample_data["aatype"].detach().cpu()
             aatype_rec = sample_rec["aatype"].detach().cpu()
-            atom_mask_data = sample_data["atom_mask"].detach().cpu()
-            atom_mask_rec = sample_rec["atom_mask"].detach().cpu()
+            atom_mask_data = sample_data["atom_mask"].detach().cpu().clone()
+            atom_mask_rec = sample_rec["atom_mask"].detach().cpu().clone()
+
+            # Atomized context has no latent output. Preserve its input CA as the
+            # unencoded token representation used by flow-model export.
+            coords_rec_ang[no_latent_tokens] = 0
+            coords_rec_ang[..., 1, :] = torch.where(
+                no_latent_tokens[..., None],
+                nm_to_ang(sample_data["coors_nm"].detach().cpu()[..., 1, :]),
+                coords_rec_ang[..., 1, :],
+            )
+            unencoded = torch.full_like(aatype_rec, -1)
+            aatype_rec = torch.where(emit_mask, aatype_rec, unencoded)
+            aatype_data = torch.where(emit_mask, aatype_data, unencoded)
+            for atom_mask in (atom_mask_rec, atom_mask_data):
+                atom_mask[no_latent_tokens] = False
+                atom_mask[..., 1] |= no_latent_tokens
 
             f_base = f"epoch_{self.current_epoch}_id_{count}_rank_{self.global_rank}"
 
@@ -925,33 +950,32 @@ class AutoEncoder(L.LightningModule):
         Returns:
             Dict representing the decoded batch, with all info from the encoder output.
         """
-        # Extract from new pipeline batch format
-        mask = batch["padding_mask"]  # [b, n] boolean, True = valid token
+        # Copied, but the batch returned below still carries the injected keys for the metrics.
+        batch = {**batch}
         coords_nm = batch["coords"] / 10.0  # Convert Angstroms to nanometers
-        batch["coords_nm"] = coords_nm  # For backward compatibility
+        batch["coords_nm"] = coords_nm  # Consumed by the encoder/decoder feature factories
         ca_coors_nm = coords_nm[..., 1, :]  # [b, n, 3] - CA is at slot 1
-        ca_coors_nm = ca_coors_nm * mask[..., None]  # [b, n, 3]
 
         output_enc = self.encoder(batch)
         # {
         #   "z_latent": latent_sample, shape [b, n, d]
         #   "mean": mean of latent (diag) Gaussian dist, shape [b, n, d]
         #   "log_scale": log standard deviation of latent (diag) Gaussian dist, shape [b, n, d]
+        #   "emit_mask": boolean [b, n]
         # }
 
-        input_decoder = {
-            "z_latent": output_enc["z_latent"],
-            "ca_coors_nm": ca_coors_nm,
-            "residue_mask": mask,
-            "padding_mask": mask,
-            "token_type": batch["token_type"],
-        }
-        output = self.decoder(input_decoder)
+        # Decode from the same batch; token_type is already present so the decoder's
+        # per-token-type logit mask still fires. The decoder derives its masks from the batch.
+        batch["z_latent"] = output_enc["z_latent"]
+        batch["ca_coors_nm"] = ca_coors_nm
+        output = self.decoder(batch)
+        # Emit only atoms the input residue actually had.
+        output["atom_mask"] = self._emitted_atom_mask(batch, output)
         # {
         #   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-        #   "seq_logits": logits for the residue types, shape [b, n, 20]
-        #   "residue_mask": boolean [b, n]
-        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 19}
+        #   "seq_logits": logits for the residue types, shape [b, n, 33]
+        #   "emit_mask": boolean [b, n]
+        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 32}
         #   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
         # }
 

@@ -46,8 +46,7 @@ as user intent. Preserve `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `GRES`,
 `RUNTIME`, `MEM`, `CPUS_PER_TASK`, and `SLURM_EXTRA_OPTIONS`. Explicit launcher
 flags override the profile only when the user supplied them. Before submission,
 state the resolved scheduler values and inspect generated SBATCH directives when
-available. Validation must use launcher tests or dry-run modes and must not
-submit jobs.
+available.
 
 ## Containers and the AF3 oracle
 

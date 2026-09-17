@@ -5,7 +5,7 @@
 defaults:
   - _self_
   - inference_experiment: inference_on_user_inputs # Default for design
-  - optional recycle_strategy: null
+  - recycle_strategy: midpeak6_60
 
 # NOTE: The experiment configs can override values specified in this config
 
@@ -15,19 +15,16 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
                # path (e.g. /path/to/shared/storage). SLURM scripts set this
                # automatically. All outputs (samples, metrics) go under this directory.
 
-# The current SOTA checkpoint. This is the SINGLE source of truth for "the SOTA model":
-# generate.py loads it by default, and the GPU regression tests + baseline generators read
-# ckpt_name/ckpt_path straight from this file (see tests/e2e/helpers/regression_baselines.py).
-# To advance SOTA: edit ckpt_name here and regenerate the e2e baselines. Override on the CLI
-# for a one-off checkpoint.
-ckpt_name: 2026_07_22_release_280k-ema.ckpt
-ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ldm_checkpoints
+# Current SOTA; generation and regression tooling resolve the immutable checkpoint from here.
+# Regenerate the inference baselines when advancing it; use CLI overrides for one-off checkpoints.
+ckpt_name: 2026_09_15_pair256_baseline_180k-ema.ckpt
+ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: True
 
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema.ckpt
 
 num_replicates: 1 # Number of times to replicate each example
 
@@ -44,10 +41,6 @@ torch_deterministic: false  # Locks cuDNN/cuBLAS to deterministic algorithms; si
 skip_existing: true # If true, skip examples whose output structure files already exist in the output directory
 save_chain_of_interest: false # If true, write per-design chain-of-interest CIFs (only needed for foldseek clustering).
 metrics_tags: [] # If specified, determines which metrics are computed during inference
-
-# MSA module: override to true in experiment configs that set load_msa per-dataset
-nn:
-  use_msa_module: false
 
 num_workers: 4  # Number of dataloader workers
 

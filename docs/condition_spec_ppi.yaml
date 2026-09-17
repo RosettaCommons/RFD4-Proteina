@@ -1,9 +1,9 @@
 # De-novo PPI binder design against PD-L1 -- the same design as
-# data/benchmarks/cleaned_ppi/rfd3_pdl1.cif, expressed as a condition spec
+# data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst, expressed as a condition spec
 # The target's *backbone* coordinates and its full sequence are given; its sidechain
 # coordinates are deliberately withheld, so the model repacks the interface itself.
 pdl1_binder:
-  input: ../data/benchmarks/rfd3_ppi_paper_benchmark/5o45_cropped.cif   # PD-L1, chain A, res 17-131
+  input: ../data/benchmarks/ppi/rfd3_ppi_paper_benchmark/5o45_cropped.cif   # PD-L1, chain A, res 17-131
   contig: "50-120, /0, A17-131"    # de-novo binder chain (its own run -> fresh chain id), then the whole target
   conditions:
     C_CRD:                             # target backbone (N/CA/C/O) only -- no sidechain coords leaked

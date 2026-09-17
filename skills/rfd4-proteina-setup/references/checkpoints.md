@@ -4,18 +4,20 @@ RFProteína needs **two** checkpoints, both read from `$DATA_PATH` by default:
 
 | Role | Default path (relative to `$DATA_PATH`) |
 | --- | --- |
-| Denoiser (latent diffusion, LDM) | `latent_checkpoints/ldm_checkpoints/<denoiser>.ckpt` |
-| Autoencoder (frozen sidechain latents) | `latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt` |
+| Denoiser (latent diffusion, LDM) | `flow_checkpoints/<denoiser>.ckpt` |
+| Autoencoder (frozen local latents) | `ae_checkpoints/<autoencoder>.ckpt` |
 
-Config wiring (`configs/inference.yaml`):
+Internal S3 copies use the same relative keys. Each release file has a `.sha256` sidecar.
+
+Read the active filenames from `configs/inference.yaml`:
 
 ```yaml
-ckpt_name: 2026_07_22_release_280k-ema.ckpt
-ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ldm_checkpoints
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt
+ckpt_name: <current release denoiser>
+ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/<current release autoencoder>
 ```
 
-`configs/inference.yaml` is the **single source of truth** for "the SOTA model":
+`configs/inference.yaml` is the **runtime source of truth** for "the SOTA model":
 `generate.py` loads `ckpt_name` from it by default, and the GPU regression tests
 read it too.
 
@@ -25,7 +27,7 @@ point at it with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 
 ## Sizes / download
 
-- ~4 GB each (~8 GB total), public HTTPS, no credentials.
+- Public HTTPS, no credentials.
 - **Public bucket: `YOUR_DATASET_STORE`** — everything published for
   external use (both checkpoints, the `test_dataset` tarball, the CCD mirror)
   lives there and is served anonymously at

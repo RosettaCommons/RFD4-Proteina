@@ -4,7 +4,7 @@ dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 
   # Required parameters for each inheriting dataset
-  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa_40_fixed_ligand
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa/mcsa_37_fixed_ligand
   
   num_replicates: 200
 

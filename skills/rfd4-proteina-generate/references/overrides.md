@@ -40,9 +40,8 @@ python src/rfproteina/generate.py \
 | `save_chain_of_interest` | Write per-design chain-of-interest CIFs — required for later foldseek clustering | false |
 | `ckpt_path` / `ckpt_name` | Override the checkpoint dir / filename for a one-off. Read from `$DATA_PATH` otherwise. | from `$DATA_PATH` |
 
-> **Checkpoints.** `configs/inference.yaml` defaults `ckpt_name` to the release
-> checkpoint `2026_07_22_release_280k-ema.ckpt`, which is exactly what
-> `scripts/download_example_data.sh` fetches from the public bucket
+> **Checkpoints.** `configs/inference.yaml` composes the current release pair, which is exactly
+> what `scripts/download_example_data.sh` fetches from the public bucket
 > `YOUR_DATASET_STORE` — so no override is needed. Point at a different
 > checkpoint with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 >
@@ -53,8 +52,8 @@ python src/rfproteina/generate.py \
 | Parameter | Description | Default |
 | --- | --- | --- |
 | `inference_experiment` | Config group controlling generation (nsteps, noise, search, metrics) | `inference_on_user_inputs` |
-| `generation.args.nsteps` | Diffusion steps — 100 is plenty with the default `vf_tsr` sampler | 100 |
-| `generation.args.self_cond` | Self-conditioning — leave on for best quality | true |
+| `generation.args.nsteps` | Number of model evaluations; the default time grid puts twice the step density in the final 20% | 60 |
+| `recycle_strategy` | Recycle-depth preset; use `midpeak6_x1p5_60` for 1.5x depths | `midpeak6_60` |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N steps (0 = off) | 0 |
 
 **Deterministic (ODE) sampling** — no noise injected mid-trajectory:

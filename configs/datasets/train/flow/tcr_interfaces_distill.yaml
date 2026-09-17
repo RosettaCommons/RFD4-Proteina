@@ -1,7 +1,7 @@
 # TCR / peptide-MHC distillation for the flow model.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/tcr_interfaces_distill@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: ig_design
   - _self_

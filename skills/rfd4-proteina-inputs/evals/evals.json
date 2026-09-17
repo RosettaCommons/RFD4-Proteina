@@ -23,7 +23,7 @@
     },
     {
       "id": "modify-existing-annotated-cif",
-      "prompt": "Use data/benchmarks/SAM_hbonds.cif as the starting annotated CIF. First tell me what it currently asks the model to do. Then change only SAM atom O4 from its current hydrogen-bond role to ACCEPTOR and write a new annotated CIF.",
+      "prompt": "Use data/benchmarks/small_molecule_binder/SAM_hbonds.cif as the starting annotated CIF. First tell me what it currently asks the model to do. Then change only SAM atom O4 from its current hydrogen-bond role to ACCEPTOR and write a new annotated CIF.",
       "setup": {
         "cwd": "repository root",
         "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]

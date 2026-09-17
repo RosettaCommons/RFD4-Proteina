@@ -1,0 +1,65 @@
+# Shared loader, quality filters, and metadata columns for all PDB training datasets
+# NOTE: Named mapping merge by key
+
+_target_: atomworks.ml.datasets.PandasDataset
+memory_map: False  # loaded into a buffer; nothing to mmap
+
+loader:
+  _target_: atomworks.ml.datasets.loaders.create_structure_loader
+
+  # Use cloud-native streaming of datasets
+  storage: blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/pdb/data/blob_annotated_2026_09_09
+
+  example_id_colname: example_id
+  record_id_colname: path
+  assembly_id_colname: assembly_id
+
+  # Randomly samples alternative conformations already via the parquet
+  altloc_seed_colname: null
+
+  # Unlike other datasets, we do cache the Protein Data Bank on local storage
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
+    save_to_cache: True
+    load_from_cache: True
+
+filters:
+  _target_: rfproteina.utils.hydra.non_null_values
+  mapping:
+    # Date cutoff
+    deposition_date: "deposition_date < '2024-01-01'"
+
+    # Structure quality
+    resolution: "resolution < 9.0"
+    charge_validation: "validated != False"
+
+    # Exclude enormous assemblies
+    polymer_pn_unit_count: "num_polymer_pn_units <= 300"
+
+columns_to_load:
+  _target_: rfproteina.utils.hydra.flatten_unique_values
+  mapping:
+    common:
+      - example_id
+      - pdb_id
+      - assembly_id
+      - altloc_seed
+      - path
+      - deposition_date
+      - resolution
+      - num_polymer_pn_units
+      - total_num_atoms_in_unprocessed_assembly
+      - all_pn_unit_iids_after_processing
+      - method
+
+      # Type of the query chain(s)
+      # Sums to 1 for pn_unit datasets and 2 for interface datasets
+      # NOTE: This is NOT the number of these chains in the complex!
+      - n_prot
+      - n_nuc
+      - n_ligand
+      - n_peptide
+
+      # Whether the structure passes a set of charge-based validation checks
+      - validated

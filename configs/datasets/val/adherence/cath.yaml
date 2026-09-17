@@ -1,0 +1,15 @@
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths:
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-short.cif
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-medium.cif
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-long.cif
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_ig/monomer-short.cif
+  num_replicates: 10
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - unconditional_refolding
+      - cath

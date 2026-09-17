@@ -14,8 +14,7 @@ Choose the sampling workflow that matches what supplies the extra information:
 
 ## What you can design
 
-The model is trained for all of these. Two are not yet reliable in the released checkpoint, and we
-mark those rather than quietly listing them alongside the rest.
+The released checkpoint supports all of these design tasks.
 
 | Task | Status |
 | --- | --- |
@@ -23,8 +22,8 @@ mark those rather than quietly listing them alongside the rest.
 | Motif scaffolding | Supported |
 | Enzyme design | Supported, with a [worked example](../examples/enzyme_design_tutorial.ipynb) |
 | Small molecule binder design | Supported |
-| Protein binder design | **Not reliable in the current checkpoint.** Planned |
-| DNA binder design | **Not reliable in the current checkpoint.** Planned |
+| Protein binder design | Supported |
+| DNA binder design | Supported |
 
 ## Running inference
 
@@ -298,8 +297,7 @@ The four you almost always set. Their defaults are rarely what you want for a re
 | Parameter | Description | Default |
 | --- | --- | --- |
 | `inference_experiment` | Config group controlling generation, covering nsteps, noise, search and metrics | `inference_on_user_inputs` |
-| `generation.args.nsteps` | Diffusion steps. 100 is plenty with the default `vf_tsr` sampler | 100 |
-| `generation.args.self_cond` | Self conditioning. Leave it on for best quality | true |
+| `generation.args.nsteps` | Number of model evaluations. The default schedule places twice the step density in the final 20% of each modality's clock. | 60 |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N steps, 0 to turn it off | 0 |
 
 ### Metric guidance

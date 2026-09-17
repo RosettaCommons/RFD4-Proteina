@@ -1,12 +1,4 @@
-"""
-Annotate source-component provenance for inference inputs, mimicking behavior for
-json-based input parsing pipeline. Traditional json-based input parsing code adds
-annotations to the output atom array to indicate which parts of the input each part
-of the output came from. These are residue labels like "A3" or "B10", or expandable
-segment labels like "15-20".
-They are meant for readability aids for users when trying to determine how the
-output structure was constructed.
-"""
+"""Prepare source provenance annotations for inference inputs."""
 
 import biotite.structure as struc
 import numpy as np

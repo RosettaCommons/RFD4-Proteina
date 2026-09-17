@@ -327,7 +327,6 @@ class Proteina(L.LightningModule):
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
-
         self._metrics_pool = MetricsPool(num_workers=0, mm_cfgs={})
         try:
             self.configure_metrics(cfg_exp.metrics)
@@ -401,17 +400,11 @@ class Proteina(L.LightningModule):
 
     def load_autoencoder(self, cfg_exp: DictConfig, freeze_params: bool = True) -> tuple[Any, int | None]:
         """Loads autoencoder, if required."""
-        if "autoencoder_ckpt_path" in cfg_exp:
-            # for new runs trained with refactored codebase
-            ae_ckp_path = cfg_exp.autoencoder_ckpt_path
-        elif "autoencoder_ckpt_path" in cfg_exp.product_flowmatcher.local_latents:
-            # for old runs trained with old codebase
-            ae_ckp_path = cfg_exp.product_flowmatcher.local_latents.autoencoder_ckpt_path
-        else:
+        if "autoencoder_ckpt_path" not in cfg_exp:
             raise ValueError("No autoencoder checkpoint path provided")
+        ae_ckp_path = cfg_exp.autoencoder_ckpt_path
 
         if ae_ckp_path is None:
-            self._use_unified_ae_encoding = False
             return None, None
 
         logger.info(f"Loading autoencoder from {ae_ckp_path}")
@@ -419,13 +412,6 @@ class Proteina(L.LightningModule):
         if freeze_params:
             for param in autoencoder.parameters():
                 param.requires_grad = False
-
-        n_ae_residue_types = autoencoder.decoder.logit_linear[-1].out_features
-        self._use_unified_ae_encoding = n_ae_residue_types == 33
-        logger.info(
-            f"Autoencoder uses {'unified' if self._use_unified_ae_encoding else 'legacy'} "
-            f"encoding (n_residue_types={n_ae_residue_types})"
-        )
 
         return autoencoder, autoencoder.latent_dim
 
@@ -455,54 +441,14 @@ class Proteina(L.LightningModule):
             self.nflops = 0
             self.nsamples_processed = 0
 
-    def _inactive_self_cond_placeholder(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Zero-filled ``x_sc`` / ``x_recycle`` dict for steps where the feature is inactive.
-
-        Paired with a ``*_is_active`` 0/1 scalar so the batch shape is invariant
-        to the Bernoulli / recycle outcome and torch.compile traces a single graph.
-        """
-        coords = batch["coords_nm"]
-        b, n = coords.shape[:2]
-        device, dtype = coords.device, coords.dtype
-        return {
-            "bb_ca": torch.zeros(b, n, 3, device=device, dtype=dtype),
-            "local_latents": torch.zeros(b, n, self.latent_dim, device=device, dtype=dtype),
-        }
-
     def call_nn(
         self,
         batch: dict[str, torch.Tensor],
         n_recycle: int,
     ) -> dict[str, torch.Tensor]:
-        """Run either trunk or clean-prediction recycling."""
-        device = batch["coords_nm"].device
-
-        trunk_recycling = getattr(self.nn, "recycle_enabled", False)
-        if trunk_recycling:
-            batch["n_recycle"] = n_recycle
-
-        # Pre-seed x_recycle inactive on the first call; the recycle loop overwrites.
-        batch["x_recycle"] = self._inactive_self_cond_placeholder(batch)
-        batch["x_recycle_is_active"] = torch.zeros((), device=device)
-
-        # Pre-seed x_sc inactive only when not already populated
-        if "x_sc" not in batch:
-            batch["x_sc"] = self._inactive_self_cond_placeholder(batch)
-            batch["x_sc_is_active"] = torch.zeros((), device=device)
-
-        # First call
-        nn_out = self.nn(batch)
-
-        # Clean-prediction recycling is the non-trunk mode.
-        if not trunk_recycling:
-            for _ in range(n_recycle):
-                x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
-                batch["x_recycle"] = {dm: x_1_pred[dm].detach() for dm in x_1_pred}
-                batch["x_recycle_is_active"] = torch.ones((), device=device)
-                nn_out = self.nn(batch)
-
-        # Final prediction
-        return nn_out
+        """Run the trunk at the requested recycle depth."""
+        batch["n_recycle"] = n_recycle
+        return self.nn(batch)
 
     def predict_for_sampling(
         self,
@@ -607,9 +553,6 @@ class Proteina(L.LightningModule):
                 batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
             bs, n = batch["padding_mask"].shape
 
-            # Handle conditioning variables (synced across ranks via per-epoch schedule)
-            batch = self.handle_self_cond(batch, batch_idx=batch_idx, val_step=val_step)
-
             # Number of recycling steps
             n_recycle = self.handle_recycling(val_step=val_step)
 
@@ -709,7 +652,7 @@ class Proteina(L.LightningModule):
             Clean sample for the given data mode.
             For bb_ca, we provide coords for all center atoms (even though some are not resolved
             and not that meaningful).
-            For local_latents, we encode only tokens that the autoencoder can encode (standard AAs for now).
+            For local_latents, the autoencoder receives the full padded batch and masks tokens internally.
         """
         if dm == "bb_ca":
             return batch["coords_nm"][:, :, 1, :]  # [b, n, 3]
@@ -724,72 +667,9 @@ class Proteina(L.LightningModule):
                 device = batch["coords_nm"].device
                 return torch.zeros(b, n_tokens, latent_dim, device=device)
 
-            # Get can_be_encoded mask (token-level from atom37 collate)
-            can_be_encoded = batch["can_be_encoded"]  # [b, n_tokens]
-            padding_mask = batch["padding_mask"]  # [b, n_tokens]
-
-            # Only encode tokens that can be encoded
-            encodable_mask = can_be_encoded & padding_mask  # [b, n_tokens]
-
-            # If no tokens can be encoded (e.g., ligand-only inputs), return zero latents
-            if not encodable_mask.any():
-                b = batch["coords_nm"].shape[0]
-                n_tokens = batch["coords_nm"].shape[1]
-                device = batch["coords_nm"].device
-                return torch.zeros(b, n_tokens, latent_dim, device=device)
-
-            # Legacy AEs were trained with 0-indexed protein-only residue types (ALA=0).
-            # Unified AEs use the full pipeline encoding (<M>=0, ALA=1, ..., RNA/DNA=21+)
-            # and can also encode nucleotides.
-            if self._use_unified_ae_encoding:
-                residue_type_for_ae = batch["residue_type"]
-            else:
-                residue_type_for_ae = batch["residue_type"] - 1
-                # Legacy AE can only encode proteins -- mask out nucleotides
-                token_type = batch["token_type"]  # 0=protein, 1=RNA, 2=DNA, 3=atomized, 4=unknown
-                encodable_mask = encodable_mask & (token_type == 0)
-
-            # Clamp for non-encodable tokens to avoid invalid indices for embeddings
-            residue_type_for_ae = torch.where(
-                encodable_mask, residue_type_for_ae, torch.zeros_like(residue_type_for_ae)
-            )
-            ae_batch = {
-                **batch,
-                "residue_type": residue_type_for_ae,
-                "padding_mask": encodable_mask,
-                "can_be_encoded": encodable_mask,
-            }
-
-            # Encode
-            encoded = self.autoencoder.encode(ae_batch)
-            latents = encoded["z_latent"]  # [b, n_tokens, latent_dim]
-
-            # Zero out non-encodable tokens
-            latents = latents * encodable_mask.unsqueeze(-1).float()
-
-            return latents  # [b, n_tokens, latent_dim]
+            return self.autoencoder.encode(batch)["z_latent"]  # [b, n_tokens, latent_dim]
         else:
             raise ValueError(f"Loading clean samples from data mode {dm} not supported.")
-
-    def handle_self_cond(self, batch: dict, batch_idx: int, val_step: bool) -> dict:
-        enabled = self.cfg_exp.training.get("self_cond", False)
-        use_sc = (not val_step) and enabled and (random.random() < 0.5)
-        device = batch["coords_nm"].device
-
-        if use_sc:
-            n_recycle = self.cfg_exp.training.get("n_recycle", 0)
-            with torch.no_grad():
-                nn_out = self.call_nn(batch, n_recycle=n_recycle)
-            x_1_pred = self.fm.nn_out_to_clean_sample_prediction(batch=batch, nn_out=nn_out)
-            batch["x_sc"] = {k: x_1_pred[k].detach() for k in x_1_pred}
-            # Mark as active so we use these self-cond predictions in the next step
-            batch["x_sc_is_active"] = torch.ones((), device=device)
-        else:
-            batch["x_sc"] = self._inactive_self_cond_placeholder(batch)
-            # Mark as inactive so we can skip later
-            batch["x_sc_is_active"] = torch.zeros((), device=device)
-
-        return batch
 
     def handle_recycling(self, val_step: bool = False) -> int:
         """Choose the recycle depth for a training or validation-loss forward pass."""
@@ -817,10 +697,7 @@ class Proteina(L.LightningModule):
 
             return random.randint(1, n_max)
 
-        n_recycle = self.cfg_exp.training.get("n_recycle", 0)
-        if n_recycle == 0:
-            return 0
-        return random.randint(0, n_recycle)  # 0 and n_recycle included
+        return 1
 
     def log_losses(
         self,
@@ -1656,7 +1533,8 @@ class Proteina(L.LightningModule):
 
         Args:
             state: Grad-enabled clean prediction with ``bb_ca`` and ``local_latents``.
-            extra_info: Must contain ``padding_mask`` and ``can_be_encoded``.
+            extra_info: Must contain ``batch``, the current-step batch from which the AE decoder
+                reads its sequence, pair, and mask features.
 
         Returns:
             Dict with ``atom37_coords`` ([b, n, 37, 3], Angstrom, grad), ``residue_type``
@@ -1665,8 +1543,7 @@ class Proteina(L.LightningModule):
         formatted = self._format_sample_local_latents(
             x=state,
             ret_mode="coors37_n_aatype",
-            padding_mask=extra_info["padding_mask"],
-            extra_info={"can_be_encoded": extra_info["can_be_encoded"]},
+            batch=extra_info["batch"],
         )
         return {
             "atom37_coords": formatted["coors"],
@@ -1692,14 +1569,15 @@ class Proteina(L.LightningModule):
             _state: Grad-enabled clean prediction. Unused here (the mapping depends only on
                 logits + static token metadata); present for a uniform provider signature
                 shared with :py:meth:`decode_for_guidance`.
-            extra_info: Must contain ``insertion_logits`` ([b, n, n] from the insertion head),
-                ``padding_mask`` ([b, n]), and ``atom_array_batch`` (per-sample AtomArrays).
+            extra_info: Must contain ``batch`` (including its ``padding_mask``),
+                ``insertion_logits`` ([b, n, n] from the insertion head), and
+                ``atom_array_batch`` (per-sample AtomArrays).
 
         Returns:
             One ``{unindexed_token_id: generated_token_id}`` dict per batch sample (empty when
             logits/atom arrays are unavailable or a sample has no unindexed tokens).
         """
-        padding_mask = extra_info["padding_mask"]
+        padding_mask = extra_info["batch"]["padding_mask"]
         insertion_logits = extra_info.get("insertion_logits")
         atom_array_batch = extra_info.get("atom_array_batch")
         if insertion_logits is None or atom_array_batch is None:
@@ -1926,8 +1804,8 @@ class Proteina(L.LightningModule):
     def sample_formatting(
         self,
         x: dict[str, Tensor],
-        extra_info: dict[str, Tensor],
         ret_mode: str,
+        batch: dict[str, Tensor],
     ) -> Any:
         """
         Given a batch of b samples x produced by the flow matcher, it returns the samples in the
@@ -1945,9 +1823,6 @@ class Proteina(L.LightningModule):
 
         Args:
             x: sample.
-            extra_info: a dict with additional things, including:
-                - "padding_mask", whose value is boolean of shape [nsamples, n]
-                - ...
             ret_mode: target format, for now only supports atom37.
 
         Returns:
@@ -1955,13 +1830,12 @@ class Proteina(L.LightningModule):
         """
         data_modes = sorted(self.cfg_exp.product_flowmatcher)
         if data_modes == ["bb_ca"]:
-            return self._format_sample_bb_ca(x=x, ret_mode=ret_mode, padding_mask=extra_info["padding_mask"])
+            return self._format_sample_bb_ca(x=x, ret_mode=ret_mode, padding_mask=batch["padding_mask"])
         elif data_modes == ["bb_ca", "local_latents"]:
             return self._format_sample_local_latents(
                 x=x,
                 ret_mode=ret_mode,
-                padding_mask=extra_info["padding_mask"],
-                extra_info=extra_info,
+                batch=batch,
             )
         else:
             raise NotImplementedError(f"Format {ret_mode} not implemented")
@@ -1987,8 +1861,7 @@ class Proteina(L.LightningModule):
         self,
         x: dict[str, torch.Tensor],
         ret_mode: str,
-        padding_mask: Bool[torch.Tensor, "b n"],
-        extra_info: dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
     ) -> dict:
         """
         Given a batch of b samples consisting on `bb_ca` and `local_latents` this
@@ -2001,72 +1874,37 @@ class Proteina(L.LightningModule):
         {
             "coors_nm": [b, n, 37, 3], already masked
             "residue_type": [b, n], already masked, careful with 0s
-            "residue_mask": [b, n]
+            "emit_mask": [b, n]
             "atom_mask": [b, n, 37]
         }
 
         Args:
             x: sample.
             ret_mode: target format.
-            padding_mask: mask tensor of shape [b, n]
-            extra_info: dict with additional info including can_be_encoded
+            batch: Model batch containing decoder features and token masks.
 
         Returns:
             Sample x in the requested format.
         """
         if ret_mode == "coors37_n_aatype":
-            # Only pass generated tokens to decoder (like encoder during training)
-            can_be_encoded = extra_info["can_be_encoded"]
+            padding_mask = batch["padding_mask"]
+            decode_batch = {
+                **batch,
+                "z_latent": x["local_latents"],
+                "ca_coors_nm": x["bb_ca"],
+            }
 
-            # Decode only generated tokens
-            b, n = x["bb_ca"].shape[0], x["bb_ca"].shape[1]
+            output_decoder = self.autoencoder.decode(decode_batch)
+            emit_mask = output_decoder["emit_mask"]
+            coors_nm_full = output_decoder["coors_nm"].clone()
+            residue_type_full = output_decoder["residue_type"].long()
 
-            # Initialize output tensors with zeros for coordinates/residue mask...
-            coors_nm_full = torch.zeros(b, n, 37, 3, device=x["bb_ca"].device, dtype=x["bb_ca"].dtype)
-            residue_mask_full = torch.zeros(b, n, device=x["bb_ca"].device, dtype=torch.bool)
-
-            # ... and -1 for residue types (so that unfilled tokens are -1 vs. 0 which conflicts with alanine)
-            residue_type_full = torch.full((b, n), -1, device=x["bb_ca"].device, dtype=torch.long)
-
-            # Process each batch element separately (since different samples may have different generated masks).
-            # Per-design so the decoder's rel_seq_sep pair feature sees packed, contiguous positions; a whole-
-            # batch masked decode would count masked atomized/unindexed tokens' positions and shift the output.
-
-            # TODO: When the released AE is the unified AE that handles atomized tokens, replace this loop with
-            # a single whole-batch decode -- self.autoencoder.decode(z_latent=x["local_latents"],
-            # ca_coors_nm=x["bb_ca"], mask=can_be_encoded) -- which is length-bucketable (and re-add AE
-            # torch.compile, removed for now).
-            for i in range(b):
-                encoded_mask_i = can_be_encoded[i]  # [n]
-                padding_mask_i = padding_mask[i]  # [n]
-                if encoded_mask_i.any():
-                    # Extract tokens with latents
-                    latents_gen = x["local_latents"][i][encoded_mask_i].unsqueeze(0)  # [1, n_enc, d]
-                    ca_gen = x["bb_ca"][i][encoded_mask_i].unsqueeze(0)  # [1, n_enc, 3]
-                    mask_gen = torch.ones(1, encoded_mask_i.sum().item(), device=x["bb_ca"].device, dtype=torch.bool)
-
-                    # Decode latents
-                    output_decoder = self.autoencoder.decode(z_latent=latents_gen, ca_coors_nm=ca_gen, mask=mask_gen)
-
-                    # Place decoded outputs back into full tensors
-                    coors_nm_full[i, encoded_mask_i] = output_decoder["coors_nm"][0]
-                    residue_type_full[i, encoded_mask_i] = output_decoder["residue_type"][0]
-                    residue_mask_full[i, encoded_mask_i] = output_decoder["residue_mask"][0]
-
-                if (no_latent_tokens := (~encoded_mask_i & padding_mask_i)).any():
-                    # extract tokens with no latents (unfixed ligands, etc.)
-                    coors_nm_full[i, no_latent_tokens, 1] = x["bb_ca"][i, no_latent_tokens]
-                    residue_mask_full[i, no_latent_tokens] = 0
-                    # (We use -1 residue mask to indicate these tokens were not encoded/decoded)
-                    residue_type_full[i, no_latent_tokens] = -1
-
-            # Legacy AEs (n_residue_types=20) were trained with a -1 offset applied to
-            # Legacy AEs (n_residue_types=20) were trained with a -1 offset applied to
-            # the pipeline's UNIFIED_ATOM37_ENCODING indices (ALA=1 -> 0, etc.), so the
-            # decoder outputs in that shifted space and we must undo it here. Unified AEs
-            # (n_residue_types=33) use the encoding indices directly -- no shift needed.
-            if not self._use_unified_ae_encoding:
-                residue_type_full = torch.where(residue_type_full >= 0, residue_type_full + 1, residue_type_full)
+            # Tokens with no latents (unfixed ligands, etc.): keep the sampled CA in slot 1 and
+            # mark them unencoded (residue_type -1).
+            no_latent_tokens = (~emit_mask) & padding_mask  # [b, n]
+            coors_nm_full[..., 1, :] = torch.where(no_latent_tokens[..., None], x["bb_ca"], coors_nm_full[..., 1, :])
+            # -1 marks every token outside the emitted set (unfilled / no-latent / padding).
+            residue_type_full = torch.where(emit_mask, residue_type_full, torch.full_like(residue_type_full, -1))
 
             return {
                 "coors": nm_to_ang(coors_nm_full),  # [b, n, 37, 3] - padded, use mask to slice

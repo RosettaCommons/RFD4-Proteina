@@ -1,0 +1,12 @@
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/paper_model_rasa_inference/annotated_cifs
+
+  num_replicates: 100
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - rasa_conditioning

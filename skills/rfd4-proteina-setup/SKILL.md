@@ -59,9 +59,8 @@ printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local   # startup reads this
 ./scripts/download_example_data.sh "$DATA_PATH"
 ```
 
-This downloads two checkpoints (~4 GB each) over public HTTPS — no credentials:
-- denoiser (LDM): `latent_checkpoints/ldm_checkpoints/2026_07_22_release_280k-ema.ckpt`
-- autoencoder: `latent_checkpoints/ae_checkpoints/AE_ucond_512.ckpt`
+This downloads the current release checkpoint pair over public HTTPS — no credentials. See
+`configs/inference.yaml` for the active defaults.
 
 The denoiser name matches `ckpt_name` in `configs/inference.yaml`, so a default
 `generate.py` run resolves it with no CLI override.

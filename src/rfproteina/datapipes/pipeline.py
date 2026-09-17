@@ -8,7 +8,6 @@ from typing import ClassVar
 
 import numpy as np
 import rootutils
-import torch
 from atomworks.constants import (
     AF3_EXCLUDED_LIGANDS,
     MASKED,
@@ -34,8 +33,7 @@ from atomworks.ml.conditions import (
     C_NTR,
     C_SEQ,
 )
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING, TokenEncoding
-from atomworks.ml.preprocessing.msa.finding import get_msa_dirs
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms._checks import (
     check_atom_array_annotation,
     check_atom_array_has_bonds,
@@ -81,22 +79,13 @@ from atomworks.ml.transforms.filters import (
     RemoveUnresolvedPNUnits,
 )
 from atomworks.ml.transforms.mirror_transform import RandomlyMirrorInputs
-from atomworks.ml.transforms.msa.msa import (
-    EncodeMSA,
-    FeaturizeMSALikeAF3,
-    FillFullMSAFromEncoded,
-    LoadPolymerMSAs,
-    PairAndMergePolymerMSAs,
-)
 from atomworks.ml.transforms.symmetry import find_automorphisms_with_networkx
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
     get_token_starts,
-    spread_token_wise,
 )
 from beartype.typing import Any, Callable
 from biotite.structure import AtomArray, spread_residue_wise
-from einops import rearrange
 
 from rfproteina.conditions import (
     C_BP,
@@ -148,40 +137,12 @@ from rfproteina.transforms.utils.conditioning_utils import freeze_ground_truth_c
 from rfproteina.utils.common import true_with_prob
 from rfproteina.utils.fold import extract_cath_code_by_level
 
-PROTEIN_MSA_DIRS_ENV_VAR = "PROTEIN_MSA_DIRS"
-"""Environment variable for protein MSA directories (comma-separated paths)."""
-
-RNA_MSA_DIRS_ENV_VAR = "RNA_MSA_DIRS"
-"""Environment variable for RNA MSA directories (comma-separated paths)."""
-
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 # Config path
 CATH_MAPPING_PATH = os.path.join(os.environ["PROJECT_ROOT"], "data/cath_label_mapping.pkl")
 
 logger = logging.getLogger(__name__)
-
-
-def _resolve_msa_dirs(load_msa: bool) -> tuple[list[dict], list[dict]]:
-    """Resolve MSA directories and report whether env vars are set vs. usable."""
-    if not load_msa:
-        return [], []
-
-    protein_msa_env = os.getenv(PROTEIN_MSA_DIRS_ENV_VAR, "").strip()
-    rna_msa_env = os.getenv(RNA_MSA_DIRS_ENV_VAR, "").strip()
-    if not protein_msa_env and not rna_msa_env:
-        raise ValueError("load_msa=true but PROTEIN_MSA_DIRS/RNA_MSA_DIRS are not set or empty.")
-
-    protein_msa_dirs = get_msa_dirs(PROTEIN_MSA_DIRS_ENV_VAR)
-    rna_msa_dirs = get_msa_dirs(RNA_MSA_DIRS_ENV_VAR)
-    if not (protein_msa_dirs or rna_msa_dirs):
-        raise ValueError(
-            "load_msa=true but no MSA files were found in the configured directories. "
-            f"PROTEIN_MSA_DIRS='{protein_msa_env}', RNA_MSA_DIRS='{rna_msa_env}'."
-        )
-
-    return protein_msa_dirs, rna_msa_dirs
 
 
 @functools.lru_cache(maxsize=1)
@@ -340,12 +301,12 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         - chain_iid: [L] chain instance ID
         - within_index_group_res_idx: [L] residue index within chain
         - Conditioning masks and values (C_CRD, C_SEQ, C_DIS, C_IDXGRP, etc.) of shape [L]
-        - can_be_encoded: [L] bool mask for atoms to be encoded with the autoencoder
-        - should_be_lossed: [L] bool mask for atoms to include in loss computation
+        - supports_local_latent: [L] bool mask for generated, non-atomized residue types in the AE latent alphabet
+        - is_in_context_conditioning: [L] bool mask for tokens used only as in-context conditioning
     """
 
     def check_input(self, data: dict) -> None:
-        check_atom_array_annotation(data, ["can_be_encoded", "should_be_lossed", "coord_to_be_noised"])
+        check_atom_array_annotation(data, ["supports_local_latent", "coord_to_be_noised"])
 
     def forward(self, data: dict) -> dict:
         """Convert encoded data into atom-level Proteina features."""
@@ -381,10 +342,12 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         _, entity_ids = np.unique(aa.molecule_entity, return_inverse=True)  # [L], contiguous 0..k-1
         if data.get("is_inference", False):
-            generated = ~C_CRD.mask(aa, default="generate")
+            # Any masked sequence gives the entire chain a private entity.
+            # Fully sequence-conditioned chains retain their native entity relationships.
+            masked_sequence = ~C_SEQ.mask(aa, default="raise")
             next_entity = int(entity_ids.max()) + 1 if entity_ids.size else 0
-            for chain in np.unique(aa.chain_iid[generated]):
-                entity_ids[generated & (aa.chain_iid == chain)] = next_entity
+            for chain in np.unique(aa.chain_iid[masked_sequence]):
+                entity_ids[aa.chain_iid == chain] = next_entity
                 next_entity += 1
 
         # TODO: Rename to molecule_entity after performing checkpoint surgery
@@ -408,13 +371,16 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         aa.set_annotation("token_type", token_type)
         feats["token_type"] = token_type  # [L]
 
-        # ... occupancy
-        feats["is_resolved_mask"] = aa.occupancy > 0.0  # [L]
+        # ... resolution (token-uniform so first-atom pooling preserves the all-atoms contract)
+        is_resolved = (aa.occupancy > 0.0) & ~np.isnan(aa.coord).any(axis=-1)
+        feats["is_resolved_mask"] = apply_and_spread_token_wise(aa, is_resolved, np.all)  # [L]
 
-        # ... encoding and loss annotations
+        # ... encoding annotations
         # (Will be pooled to the token-level later)
-        feats["can_be_encoded"] = aa.can_be_encoded  # [L]
-        feats["should_be_lossed"] = aa.should_be_lossed  # [L]
+        feats["supports_local_latent"] = aa.supports_local_latent  # [L]
+        feats["is_in_context_conditioning"] = apply_and_spread_token_wise(
+            aa, ~C_IDX.mask(aa, default="generate"), np.any
+        )  # [L]
 
         # Per-token MSE weight: defaults to 1.0 if no UpweightLossWeightOnSubset ran.
         if "loss_weight" in aa.get_annotation_categories():
@@ -527,21 +493,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
             aa, default="generate"
         )  # (n_atoms, 3) Å, NaN where unincluded
 
-        # +------ Gap / missing-atom features ------+
-        if "chain_breaks_per_residue" in aa.get_annotation_categories():
-            feats["chain_breaks_per_residue"] = aa.chain_breaks_per_residue  # [L]
-        if "missing_atom_count" in aa.get_annotation_categories():
-            feats["missing_atom_count"] = aa.missing_atom_count  # [L]
-
-        ###########################################################
-        # MSA features (if available)
-        ###########################################################
-        # MSA is encoded earlier in pipeline by FillFullMSAFromEncoded
-        # Full MSA: [n_rows, n_tokens] - already token-aligned
-        # NOTE: Only `msa` is needed - MSA Pairformer derives all masks internally
-        if "encoded" in data and "msa" in data["encoded"]:
-            feats["msa"] = data["encoded"]["msa"]  # [n_rows, n_tokens]
-
         # ... add to data dict
         data["feats"] = feats
         return data
@@ -560,8 +511,9 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     # TODO: Rename molecule_entity
     "molecule_entity_id",
     "within_index_group_res_idx",
-    "can_be_encoded",
-    "should_be_lossed",
+    "supports_local_latent",
+    "is_in_context_conditioning",
+    "is_resolved_mask",
     "insertion_source_idx",
     "loss_weight",
     "coord_cond_mask",  # Coordinate conditioning mask (for diagnostics)
@@ -573,8 +525,6 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_IDXGRP.full_name,
     C_CATH.full_name,
     C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
-    "chain_breaks_per_residue",
-    "missing_atom_count",
     "chirality",
 ]
 """Features to convert from atom-level to token-level by taking the first atom in each token."""
@@ -583,7 +533,6 @@ ATOM37_FEATURES = [
     ("coords", (3,), 0.0),
     ("element", (), -1),
     ("charge", (), 0),  # Atomic charge
-    ("is_resolved_mask", (), False),
     (C_CRD.mask_name, (), False),
     (C_INTCRD.mask_name, (), False),
     (C_IDX.mask_name, (), True),
@@ -818,39 +767,36 @@ class DropoutAromaticFlag(Transform):
         return data
 
 
-def add_can_be_encoded_annotation(
+def add_supports_local_latent_annotation(
     atom_array: AtomArray,
-    residue_names_to_encode: list | set,
-    can_be_encoded_annotation: str = "can_be_encoded",
+    residue_names_supporting_local_latents: list | set,
 ) -> AtomArray:
-    """Determine which atoms should be encoded by the autoencoder.
+    """Annotate generated, non-atomized polymer tokens represented by the autoencoder latent alphabet.
 
-    We encode all non-atomized standard amino acids by default.
-    In the future, after re-training the autoencoder, we may expand this to include more residue types.
+    This classifies token eligibility only. Runtime attention, output, and
+    supervision masks also account for padding and resolution.
 
     Returns:
-        atom_array with the `can_be_encoded` annotation set
+        atom_array with the `supports_local_latent` annotation set
     """
-    # Get a mask of the residue types that the autoencoder can encode
-    is_supported_residue = np.isin(atom_array.res_name, residue_names_to_encode)
+    is_supported_residue = np.isin(atom_array.res_name, residue_names_supporting_local_latents)
 
-    # Atomized residues should NOT be encoded (e.g., covalent modifications, atomized unindexed residues, etc.)
-    # NOTE: Prior Transforms ensure atomized residues are sequence- and coordinate-conditioned
-    if "atomize" in atom_array.get_annotation_categories():
+    has_atomize = "atomize" in atom_array.get_annotation_categories()
+    if has_atomize:
         is_atomized = atom_array.atomize
     else:
         is_atomized = np.zeros(atom_array.array_length(), dtype=bool)
 
-    can_be_encoded = is_supported_residue & ~is_atomized
-    if "atomize" in atom_array.get_annotation_categories():
-        assert not np.any(atom_array.atomize[can_be_encoded]), "Atomized residues should not be encoded"
-
-    atom_array.set_annotation(can_be_encoded_annotation, can_be_encoded)
+    is_in_context_conditioning = apply_and_spread_token_wise(
+        atom_array, ~C_IDX.mask(atom_array, default="generate"), np.any
+    )
+    supports_local_latent = is_supported_residue & ~is_atomized & ~is_in_context_conditioning
+    atom_array.set_annotation("supports_local_latent", supports_local_latent)
 
     return atom_array
 
 
-RESIDUE_NAMES_TO_ENCODE = [
+RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS = [
     *STANDARD_AA,
     *STANDARD_RNA,
     *STANDARD_DNA,
@@ -859,25 +805,22 @@ RESIDUE_NAMES_TO_ENCODE = [
     UNKNOWN_DNA,
     MASKED,
 ]
-"""Default residue names that can be encoded by the autoencoder."""
+"""Default residue names that support a meaningful residue-level latent."""
 
 
-class AddCanBeEncodedAnnotation(Transform):
-    """
-    Annotate which atoms can be encoded by the autoencoder using the `can_be_encoded` annotation.
-    Updated to encode standard amino acids, as well as standard RNA/DNA.
-    """
+class AddSupportsLocalLatentAnnotation(Transform):
+    """Annotate generated, non-atomized tokens represented by the autoencoder latent alphabet."""
 
     def __init__(
         self,
-        residue_names_to_encode: list | set,
+        residue_names_supporting_local_latents: list | set,
     ):
         super().__init__()
-        self.residue_names_to_encode = residue_names_to_encode
+        self.residue_names_supporting_local_latents = residue_names_supporting_local_latents
 
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
-        add_can_be_encoded_annotation(atom_array, self.residue_names_to_encode, "can_be_encoded")
+        add_supports_local_latent_annotation(atom_array, self.residue_names_supporting_local_latents)
         return data
 
 
@@ -927,32 +870,6 @@ class UpweightLossWeightOnSubset(Transform):
         return data
 
 
-class AddShouldBeLossedAnnotation(Transform):
-    """Annotate which atoms should be included in the loss computation.
-
-    We apply loss to atoms that have:
-    1. Non-zero occupancy (resolved atoms)
-    2. Known index (C_IDX mask = True, i.e., not unindexed)
-
-    Unindexed atoms should NOT contribute to the loss.
-    """
-
-    def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-
-        occupancy_mask = atom_array.occupancy > 0.0
-
-        # Unindexed atoms should NOT be included in loss
-        has_known_index = C_IDX.mask(atom_array, default="generate")
-
-        should_be_lossed = occupancy_mask & has_known_index
-
-        # NOTE: We apply loss token a token if ALL atoms in the token should be lossed
-        atom_array.set_annotation("should_be_lossed", apply_and_spread_token_wise(atom_array, should_be_lossed, np.all))
-
-        return data
-
-
 class RemoveTokensWithAnyNaNAtom(Transform):
     """Remove tokens if any atom has NaN coordinates.
 
@@ -965,8 +882,8 @@ class RemoveTokensWithAnyNaNAtom(Transform):
     3. An atomized token has NaN coordinates (e.g. a ligand is missing an atom coordinate)
         We would need to have a "CA" coordinate to add noise to, so we cannot encode this token either
 
-    NOTE: With the fixing of the PDB, we are hoping to eliminate most if not all occurances of cases (1) and (3).
-    As we fix those, this Transform will remove fewer and fewer tokens.
+    NOTE: This excises on coordinates, NOT on occupancy. It IS possible to have zero
+    occupancy but resolved coordinates (e.g., missing sidechain atoms imputed by Rosetta).
 
     The input is snapshotted into ``data["pre_nan_removal_info"]`` for
     :py:class:`ComputeTokenLevelBondFeaturesLikeAF3` to run its BFS on, together with the token
@@ -1005,77 +922,6 @@ class ValidateNonEmptyStructure(Transform):
             raise ValueError(
                 f"Structure has no atoms after filtering (example_id: {example_id}). This structure will be skipped."
             )
-        return data
-
-
-class AddChainBreaksPerResidue(Transform):
-    """Annotate polymer tokens adjacent to a sequence gap with a binary flag.
-
-    Sets ``chain_breaks_per_residue`` to 1.0 for any polymer token whose left
-    or right neighbor in the same chain has a gap (``within_index_group_res_idx``
-    difference > 1), and 0.0 otherwise.  Non-polymer tokens are always 0.
-    """
-
-    def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        starts = get_token_starts(atom_array, add_exclusive_stop=False)
-        n_tokens = len(starts)
-        chain_breaks = np.zeros(n_tokens, dtype=np.float32)
-        res_idx = atom_array.within_chain_source_res_idx[starts]
-        chain_iids = atom_array.chain_iid[starts]
-        is_polymer = atom_array.is_polymer[starts]
-        is_indexed = C_IDX.mask(atom_array)[starts]
-
-        for i in range(n_tokens):
-            if not is_polymer[i] or not is_indexed[i]:
-                continue
-            if (
-                i < n_tokens - 1
-                and chain_iids[i] == chain_iids[i + 1]
-                and (res_idx[i + 1] - res_idx[i]) > 1
-                and is_indexed[i + 1]
-            ):
-                chain_breaks[i] = 1.0
-            if i > 0 and chain_iids[i] == chain_iids[i - 1] and (res_idx[i] - res_idx[i - 1]) > 1 and is_indexed[i - 1]:
-                chain_breaks[i] = 1.0
-
-        atom_array.set_annotation(
-            "chain_breaks_per_residue",
-            spread_token_wise(atom_array, chain_breaks),
-        )
-        data["atom_array"] = atom_array
-        return data
-
-
-class AddMissingAtomCount(Transform):
-    """Annotate every atom with the number of unresolved atoms in its token.
-
-    For polymer residues the count reflects how many heavy atoms in that
-    residue have ``occupancy == 0``.  For ligand PN-units the count is the
-    number of unresolved atoms across the whole unit, broadcast to every atom.
-    """
-
-    def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-        is_unresolved = atom_array.occupancy == 0
-
-        missing_count = np.zeros(len(atom_array), dtype=np.float32)
-
-        # Polymer residues: count unresolved atoms per residue
-        starts = get_residue_starts(atom_array, add_exclusive_stop=True)
-        for i in range(len(starts) - 1):
-            s, e = starts[i], starts[i + 1]
-            if atom_array.is_polymer[s]:
-                missing_count[s:e] = float(np.sum(is_unresolved[s:e]))
-
-        # Ligand PN-units: count unresolved atoms per unit
-        is_ligand = ~atom_array.is_polymer
-        for pn_unit in np.unique(atom_array.pn_unit_iid[is_ligand]):
-            unit_mask = (atom_array.pn_unit_iid == pn_unit) & is_ligand
-            missing_count[unit_mask] = float(np.sum(is_unresolved[unit_mask]))
-
-        atom_array.set_annotation("missing_atom_count", missing_count)
-        data["atom_array"] = atom_array
         return data
 
 
@@ -1256,99 +1102,6 @@ class FeaturizeChainCentroid(Transform):
         return data
 
 
-class EncodeQuerySequenceForMSA(Transform):
-    """Encode query sequence for MSA using specified TokenEncoding."""
-
-    def __init__(self, encoding: TokenEncoding, atomize_token: str = "<A>"):
-        self.encoding = encoding
-        self.atomize_token = atomize_token
-
-    def forward(self, data: dict) -> dict:
-        aa = data["atom_array"]
-        # Encode at atom-level first, then convert to token-level
-        atom_level_encoded = atom_array_to_encoded_resnames(aa, self.encoding, atomize_token=self.atomize_token)
-        # Convert to token-level by taking first atom of each token
-        token_starts = get_token_starts(aa)
-        data["msa_query_seq"] = atom_level_encoded[token_starts]
-        return data
-
-
-class ConcatenateMSAFeatures(Transform):
-    """
-    Construct final MSA tensors by taking a dictionary of static and recycle dynamic MSA features
-    """
-
-    def check_input(self, data: dict) -> None:
-        check_contains_keys(
-            data,
-            [
-                "msa_features",
-                "feats",
-            ],
-        )
-        assert (
-            len(data["msa_features"]["msa_features_per_recycle_dict"]["msa"]) == 1
-        ), "Expected only one recycle for MSA feature concatenation."
-
-    def forward(self, data: dict) -> dict:
-        # Aggregate and stack MSA features
-        msa_feats = data["msa_features"]
-
-        msa_stacked_by_recycle = torch.stack(
-            msa_feats["msa_features_per_recycle_dict"]["msa"]
-        ).float()  # [n_recycles, n_sequences, n_tokens_across_chains, n_types_of_tokens]
-        has_deletion_stacked_by_recycle = torch.stack(
-            msa_feats["msa_features_per_recycle_dict"]["has_insertion"]
-        )  # [n_recycles, n_sequences, n_tokens_across_chains]
-        deletion_value_stacked_by_recycle = torch.stack(
-            msa_feats["msa_features_per_recycle_dict"]["insertion_value"]
-        )  # [n_recycles, n_sequences, n_tokens_across_chains]
-
-        msa_stack = torch.concatenate(
-            [
-                msa_stacked_by_recycle,
-                rearrange(has_deletion_stacked_by_recycle, "... -> ... 1"),
-                rearrange(deletion_value_stacked_by_recycle, "... -> ... 1"),
-            ],
-            dim=-1,
-        )  # [n_recycles, n_msa, n_tokens_across_chains, n_types_of_tokens + 2] (float)
-
-        # Add pairing information if present
-        if "residue_is_paired" in msa_feats["msa_features_per_recycle_dict"]:
-            residue_is_paired_stacked_by_recycle = torch.stack(
-                msa_feats["msa_features_per_recycle_dict"]["residue_is_paired"]
-            )
-            msa_stack = torch.concatenate(
-                [
-                    msa_stack,
-                    rearrange(residue_is_paired_stacked_by_recycle, "... -> ... 1"),
-                ],
-                dim=-1,
-            )  # [n_recycles, n_msa_cluster_representatives, n_tokens_across_chains, n_types_of_tokens + 3] (float)
-
-        profile = msa_feats["msa_static_features_dict"]["profile"]
-        deletion_mean = msa_feats["msa_static_features_dict"]["insertion_mean"]
-        # collate all features into a single tensor
-        msa_stack = msa_stack.squeeze(0)  # remove recycle dim for final msa input
-
-        num_msa_sequences = msa_stack.shape[0]
-        data["feats"]["msa_final"] = torch.concatenate(
-            [
-                msa_stack,
-                rearrange(profile, " ... -> 1 ...").expand(num_msa_sequences, -1, -1),
-                rearrange(deletion_mean, " ... -> 1 ... 1").expand(num_msa_sequences, -1, -1),
-            ],
-            dim=-1,
-        )  # [n_msa, n_tokens_across_chains, n_types_of_tokens + 3 + n_profile + n_deletion_mean] (float)
-
-        return data
-
-
-######################################################################################
-# Pipelines
-######################################################################################
-
-
 def _get_design_task_name(data: dict) -> str | None:
     """Get the design task name from the data dict."""
     return (data.get("task") or {}).get("name")
@@ -1368,12 +1121,9 @@ def _build_design_clean_and_sample_pipeline(
     p_atomize_residues: float = 0.0,
     design_tasks: dict[str, dict[str, Any]] = {},
     undesired_res_names: list[str] = AF3_EXCLUDED_LIGANDS,
-    b_factor_occupancy_min: float | None = None,  # For filtering out unresolved atoms from PDB or distillation sets
+    b_factor_occupancy_min: float | None = None,  # Zero occupancy below this b-factor; off by default
     p_random_rotation: float = 1.0,  # Probability of applying random rotation
     p_mirror: float = 0.0,  # Probability of mirroring inputs (chirality augmentation)
-    # MSA parameters
-    load_msa: bool = False,
-    max_msa_sequences: int = 10_000,
     **kwargs,  # to dump remaining args for now
 ) -> list[Transform]:
     # T = transform shorthand for readability
@@ -1418,13 +1168,14 @@ def _build_design_clean_and_sample_pipeline(
     ### 2. Add basic annotations                            ###
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    T += AnnotateCovalentModifications()
+    # Keep the bonded polymer residue tokenized; atomize only the covalent modifier.
+    T += AnnotateCovalentModifications(reassign_modified_residue=False)
     T += FlagNonPolymersForAtomization()
     if not is_inference:
         T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
     T += AtomizeByCCDName(
         atomize_by_default=True,
-        res_names_to_ignore=RESIDUE_NAMES_TO_ENCODE,
+        res_names_to_ignore=RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
         move_atomized_part_to_end=False,
         validate_atomize=False,
     )
@@ -1511,21 +1262,6 @@ def _build_design_clean_and_sample_pipeline(
         T += InferQueryPNUnitIIDsForDimers()
 
     ###########################################################
-    ### Step 3.6: Load MSAs                                 ###
-    ###########################################################
-    # Loading only - encoding and filling done within the featurization pipeline
-    protein_msa_dirs, rna_msa_dirs = _resolve_msa_dirs(load_msa)
-
-    if protein_msa_dirs or rna_msa_dirs:
-        T += LoadPolymerMSAs(
-            protein_msa_dirs=protein_msa_dirs,
-            rna_msa_dirs=rna_msa_dirs,
-            max_msa_sequences=max_msa_sequences,
-            use_paths_in_chain_info=True,
-        )
-        T += PairAndMergePolymerMSAs(dense=True)
-
-    ###########################################################
     ### Step 4: Build design task                           ###
     ###########################################################
     # Design task sampling: Sample and apply design tasks
@@ -1572,13 +1308,9 @@ CONDITIONING_ANNOTATIONS_TO_CENTER = (C_CRD.full_name, C_CENTROID.full_name)
 
 
 def _build_design_featurize_pipeline(
-    residue_names_to_encode: list | set,
+    residue_names_supporting_local_latents: list | set,
     metrics_tags: list[str] | set[str] | None = None,
     apply_na_ss: bool = True,
-    load_msa: bool = False,
-    max_msa_sequences: int = 10_000,
-    msa_featurize_n_recycles: int = 1,
-    msa_featurize_n_msa: int = 1024,
     is_inference: bool = False,
     precompute_atom_permutation: bool = False,
     # Bond feature dropout (training-only regularization)
@@ -1596,7 +1328,7 @@ def _build_design_featurize_pipeline(
     """Build shared featurization pipeline across both training and validation.
 
     Args:
-        residue_names_to_encode: Residue names to encode.
+        residue_names_supporting_local_latents: Residue names that support local latents.
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
 
     Returns:
@@ -1633,35 +1365,9 @@ def _build_design_featurize_pipeline(
     # ... after the last transform that changes atom count or order, so indices stay valid
     if precompute_atom_permutation:
         T += PrecomputeAtomPermutation()
-    T += AddChainBreaksPerResidue()
-    T += AddMissingAtomCount()
-
-    ###########################################################
-    ### MSA Encoding (if MSAs were loaded)                  ###
-    ###########################################################
-    # MSA encoding uses UNIFIED_ATOM37_ENCODING (same as feats["residue_type"])
-    # Remapping to encoding for MSA Pairformer happens in the model (until we re-train a new MSA encoder)
-    protein_msa_dirs, rna_msa_dirs = _resolve_msa_dirs(load_msa)
-
-    if protein_msa_dirs or rna_msa_dirs:
-        # First, we encode the query sequence (which may be cropped)...
-        T += EncodeQuerySequenceForMSA(encoding=UNIFIED_ATOM37_ENCODING)
-        # ... then we encode the (paired) MSA sequences (full, un-cropped)
-        T += EncodeMSA(
-            encoding=UNIFIED_ATOM37_ENCODING,
-            token_to_use_for_gap=UNIFIED_ATOM37_ENCODING.token_to_idx["<G>"],
-        )
-        # ... then finally, copy over the MSA where applicable (handling atomized and cropped regions appropriately)
-        T += FillFullMSAFromEncoded(
-            pad_token=UNIFIED_ATOM37_ENCODING.token_to_idx["<G>"],  # We use gap token for padding
-            encoded_seq_path=("msa_query_seq",),
-        )
-        T += PairAndMergePolymerMSAs(dense=True)  # Re-merge after encoding/filling
-
     # Populate C_CRD / C_SEQ annotations while the array still holds the original input, so they
     # refer to the original motif rather than the generated values.
     T += FreezeConditionAnnotations()
-
     # Prepare coordinates for noising (without modifying the ground truth)
     # ... add placeholder coordinates for noising
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
@@ -1685,16 +1391,13 @@ def _build_design_featurize_pipeline(
     T += AnnotateAtomNameVisibility()
     T += FeaturizeAtomNamesLikeAF3()
 
-    # Add annotation for which atoms should be encoded / lossed in the model
-    T += AddShouldBeLossedAnnotation()
-
     # Per-token loss weighting
     # Each Upweight transform adds factor·is_k(atom_array) to ``loss_weight``
     for predicate, factor in build_loss_weight_upweights(loss_weight_cfg):
         T += UpweightLossWeightOnSubset(predicate, factor=factor)
 
     # Encode standard amino acids, RNA, and DNA nucleotides (atomised things are filtered out already)
-    T += AddCanBeEncodedAnnotation(residue_names_to_encode=residue_names_to_encode)
+    T += AddSupportsLocalLatentAnnotation(residue_names_supporting_local_latents=residue_names_supporting_local_latents)
 
     T += AddChiralityFeature()
     T += ConvertToAtomLevelProteinaFeatures()
@@ -1705,22 +1408,9 @@ def _build_design_featurize_pipeline(
             p_all=coordination_bond_dropout_p_all, p_individual=coordination_bond_dropout_p_individual
         )
         T += DropoutAromaticFlag(p=aromatic_dropout_p)
-    # ConvertToTorch - only include MSA keys when MSA is enabled and configured
-    convert_keys = ["feats"]
-    if protein_msa_dirs or rna_msa_dirs:
-        convert_keys.extend(["encoded", "full_msa_details"])
-    T += ConvertToTorch(keys=convert_keys)
+    T += ConvertToTorch(keys=["feats"])
 
-    # MSA featurization - only if MSA is enabled and configured
-    if protein_msa_dirs or rna_msa_dirs:
-        T += FeaturizeMSALikeAF3(
-            encoding=UNIFIED_ATOM37_ENCODING,
-            n_recycles=msa_featurize_n_recycles,
-            n_msa=msa_featurize_n_msa,
-        )
-        T += ConcatenateMSAFeatures()
     # Subset to necessary keys only
-    # NOTE: MSA features are now included in feats dict (msa, msa_is_padded_mask, etc.)
     keys_to_keep = [
         "example_id",
         "feats",
@@ -1756,14 +1446,9 @@ def build_design_train_pipeline(
     is_inference: bool = False,
     precompute_atom_permutation: bool = False,
     metrics_tags: list[str] | set[str] | None = None,
-    residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
+    residue_names_supporting_local_latents: list | set = RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
     # Nucleic acid secondary structure featurization
     apply_na_ss: bool = True,
-    # MSA parameters
-    load_msa: bool = False,
-    max_msa_sequences: int = 10_000,
-    msa_featurize_n_recycles: int = 1,
-    msa_featurize_n_msa: int = 1024,
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
@@ -1776,10 +1461,6 @@ def build_design_train_pipeline(
 
     Supports both monomer and multi-chain (PPI) training.
     Pipeline: filter → augment → crop → design task → featurize
-
-    MSA directories are loaded from environment variables:
-        - ``PROTEIN_MSA_DIRS``: Comma-separated paths for protein MSAs
-        - ``RNA_MSA_DIRS``: Comma-separated paths for RNA MSAs
 
     Args:
         crop_size: Max residues after cropping. Either this or `crop_size_range`
@@ -1817,8 +1498,6 @@ def build_design_train_pipeline(
                          }
         is_inference: If True, skips augmentation
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
-        max_msa_sequences: Maximum number of MSA sequences to load per chain.
-
     Returns:
         Compose of transforms for training pipeline
     """
@@ -1840,17 +1519,11 @@ def build_design_train_pipeline(
         p_atomize_residues=p_atomize_residues,
         p_random_rotation=p_random_rotation,
         p_mirror=p_mirror,
-        load_msa=load_msa,
-        max_msa_sequences=max_msa_sequences,
     )
     transforms += _build_design_featurize_pipeline(
         metrics_tags=metrics_tags,
         apply_na_ss=apply_na_ss,
-        residue_names_to_encode=residue_names_to_encode,
-        load_msa=load_msa,
-        max_msa_sequences=max_msa_sequences,
-        msa_featurize_n_recycles=msa_featurize_n_recycles,
-        msa_featurize_n_msa=msa_featurize_n_msa,
+        residue_names_supporting_local_latents=residue_names_supporting_local_latents,
         is_inference=is_inference,
         precompute_atom_permutation=precompute_atom_permutation,
         path_length_search_cutoff=path_length_search_cutoff,
@@ -1864,12 +1537,7 @@ def build_design_train_pipeline(
 
 def build_design_validation_pipeline(
     metrics_tags: list[str] | set[str] | None = None,
-    residue_names_to_encode: list | set = RESIDUE_NAMES_TO_ENCODE,
-    # MSA parameters
-    load_msa: bool = False,
-    max_msa_sequences: int = 10_000,
-    msa_featurize_n_recycles: int = 1,
-    msa_featurize_n_msa: int = 1024,
+    residue_names_supporting_local_latents: list | set = RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
     path_length_search_cutoff: int | None = None,
     # Internal-coordinate-only conditioning ablation
     convert_absolute_to_internal: bool = False,
@@ -1884,14 +1552,9 @@ def build_design_validation_pipeline(
     random atomization, NaN-token removal, cropping, dimer query-pn-unit
     inference, and design-task sampling) and feature-dropout regularization.
 
-    MSA directories are loaded from environment variables:
-        - ``PROTEIN_MSA_DIRS``: Comma-separated paths for protein MSAs
-        - ``RNA_MSA_DIRS``: Comma-separated paths for RNA MSAs
-
     Args:
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
-        residue_names_to_encode: Residue names to encode.
-        max_msa_sequences: Maximum number of MSA sequences to load per chain.
+        residue_names_supporting_local_latents: Residue names that support local latents.
         path_length_search_cutoff: BFS depth limit for token bond-graph path lengths.
             ``None`` resolves all paths (acceptable for validation where examples are
             small). For training, set this in the dataset transform config.
@@ -1900,11 +1563,7 @@ def build_design_validation_pipeline(
         is_inference=True,
         metrics_tags=metrics_tags,
         apply_na_ss=bool(metrics_tags is not None and "na_ss_conditioning" in set(metrics_tags)),
-        residue_names_to_encode=residue_names_to_encode,
-        load_msa=load_msa,
-        max_msa_sequences=max_msa_sequences,
-        msa_featurize_n_recycles=msa_featurize_n_recycles,
-        msa_featurize_n_msa=msa_featurize_n_msa,
+        residue_names_supporting_local_latents=residue_names_supporting_local_latents,
         path_length_search_cutoff=path_length_search_cutoff,
         convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,

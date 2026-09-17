@@ -14,10 +14,6 @@ transform:
   max_atoms_in_crop: 10000
   b_factor_occupancy_min: null  # Change for distillation sets where you want to not loss low confidence residues
   p_random_rotation: 1.0
-  load_msa: False
-  max_msa_sequences: 10000
-  msa_featurize_n_recycles: 1
-  msa_featurize_n_msa: 1024
   # BFS depth for token bond-graph path lengths. Should be >= (nn.seq_sep_dim - 2)
   # so the model's exact-distance bins can be fully populated; smaller is fine but
   # high-distance bins will always be empty. Bounding BFS keeps featurization fast.

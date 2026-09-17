@@ -40,14 +40,12 @@ def extract_latents_from_predictions(
         - 'latents': [n_samples, latent_dim] latent vectors
         - 'residue_types': [n_samples] residue type indices
         - 'masks': [n_samples] boolean mask for valid tokens
-        - 'n_residue_types': int, number of residue types (20 or 33)
     """
     logger.info(f"Extracting latents from {len(predictions)} batches")
 
     all_latents = []
     all_residue_types = []
     all_masks = []
-    n_residue_types = None
 
     for batch_input, batch_output in predictions:
         # Extract latent vectors [batch, n_tokens, latent_dim]
@@ -58,11 +56,6 @@ def extract_latents_from_predictions(
 
         # Extract mask [batch, n_tokens] - True = valid token
         mask = batch_input["padding_mask"].cpu().detach().numpy()
-
-        # Detect n_residue_types from logits shape
-        if n_residue_types is None and "seq_logits" in batch_output:
-            n_residue_types = batch_output["seq_logits"].shape[-1]
-            logger.info(f"Detected n_residue_types={n_residue_types} from logits shape")
 
         # Flatten batch dimension
         batch_size, n_tokens, latent_dim = z_latent.shape
@@ -93,15 +86,9 @@ def extract_latents_from_predictions(
         latents = latents[indices]
         residue_types = residue_types[indices]
 
-    # Default to 20 if we couldn't detect
-    if n_residue_types is None:
-        n_residue_types = 20
-        logger.warning("Could not detect n_residue_types from logits, defaulting to 20")
-
     return {
         "latents": latents,
         "residue_types": residue_types,
-        "n_residue_types": n_residue_types,
     }
 
 
@@ -114,7 +101,6 @@ def plot_latent_projection(
     output_path: str,
     title: str = "Latent Space Projection",
     filter_residues: list[int] | None = None,
-    n_residue_types: int = 20,
     method: str = "t-SNE",
 ) -> None:
     """Create scatter plot of 2D projection colored by residue type.
@@ -127,7 +113,6 @@ def plot_latent_projection(
       output_path: Path to save the plot.
       title: Plot title.
       filter_residues: List of residue type indices to include (None = all).
-      n_residue_types: Number of residue types (20 or 33).
       method: Name of projection method for axis labels.
     """
     # Filter if requested
@@ -141,7 +126,6 @@ def plot_latent_projection(
     _fig = plot_latent_projection_with_labels(
         projection=projection,
         labels=labels,
-        n_residue_types=n_residue_types,
         method=method,
         title=title,
         figsize=(14, 12),
@@ -179,11 +163,10 @@ def run_latent_analysis(
     data = extract_latents_from_predictions(predictions, max_samples=n_samples)
     latents = data["latents"]
     residue_types = data["residue_types"]
-    n_residue_types = data["n_residue_types"]
 
     logger.info("Residue type distribution:")
     unique, counts = np.unique(residue_types, return_counts=True)
-    labels = get_residue_type_labels(n_residue_types)
+    labels = get_residue_type_labels()
     for idx, count in zip(unique, counts, strict=False):
         if idx < len(labels):
             logger.info(f"  {labels[int(idx)]}: {count}")
@@ -209,7 +192,6 @@ def run_latent_analysis(
         output_path=output_path,
         title=f"Latent Space Projection ({method.upper()})",
         filter_residues=filter_residues,
-        n_residue_types=n_residue_types,
         method=method.upper(),
     )
 
