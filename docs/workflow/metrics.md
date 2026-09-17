@@ -32,6 +32,12 @@ ignored part of your spec. Those need different fixes, which is why the split ma
 [Every metric that ships](#every-metric-that-ships) below lists all of them, what each outputs,
 and the tag that turns it on.
 
+## Binder and target selections
+
+Binder RMSDs use `is_chain_of_interest`; target alignment uses conditioned atoms outside that chain.
+Ambiguous inference requires an explicit `chain_iid` or `chain_id` query.
+The backbone-aligned variant aligns target backbone atoms but still measures all binder atoms.
+
 ## Metrics can stop a run early
 
 Metrics are not only scored at the end. Three points in a run read them and decide what proceeds,

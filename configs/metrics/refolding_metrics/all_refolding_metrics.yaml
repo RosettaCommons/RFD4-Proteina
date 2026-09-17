@@ -32,8 +32,8 @@ refolded_backbone_rmsd:
 
 refolded_target_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: mask_coordinate_1_atom
-  subset_mask: ~mask_coordinate_1_atom
+  align_mask: ~is_chain_of_interest & mask_coordinate_1_atom
+  subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
   required_tags_any: [ppi_refolding, dna_refolding]
@@ -41,8 +41,8 @@ refolded_target_aligned_binder_rmsd:
 
 refolded_target_backbone_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: mask_coordinate_1_atom & is_protein_backbone
-  subset_mask: ~mask_coordinate_1_atom
+  align_mask: ~is_chain_of_interest & mask_coordinate_1_atom & is_protein_backbone
+  subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
   required_tags_any: [ppi_refolding]
