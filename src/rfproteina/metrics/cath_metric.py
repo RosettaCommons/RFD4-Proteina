@@ -1,23 +1,54 @@
-"""CATH superfamily annotation metric using Foldseek structural search.
+"""CATH superfamily annotation metric, via Foldseek structural search or Proteina's classifier.
 
-Required environment variables:
+Two annotators are available (see :py:class:`CathMetric`):
+
+- ``foldseek``: the Foldseek search against the CATH SSG95 database, which assigns a
+  full C/A/T/H code but only for structures that match a T-level fold already in CATH.
+- ``proteina_classifier``: the GearNet fold classifier released with
+  `NVIDIA-BioNeMo/proteina <https://github.com/NVIDIA-BioNeMo/proteina>`_, which always
+  returns a C/A/T call (no H level), never fails to answer, and costs ~0.2 s/call against
+  Foldseek's ~3.7 s on a single CPU core (both annotators run on CPU only).
+
+Required environment variables (Foldseek):
 - FOLDSEEK_EXEC: path to foldseek binary
 - CATH_FOLDSEEK_DB: path to CATH SSG95 foldseek database prefix (cath_v4_4_0_s95_db)
 - CATH_DOMAIN_LIST: path to CathDomainList.S95.v4.4.0 file
+
+Required environment variables (Proteina classifier):
+- GEARNET_CATH_CKPT_PATH: path to ``gearnet_ca.pth`` (NVIDIA's public release only includes
+  the CA-only checkpoint)
+- GEARNET_CATH_LABEL_MAPPING_PATH: path to ``cath_label_mapping.pt``
+
+Both classifier files come from the ``proteina_additional_files`` bundle of
+NVIDIA-BioNeMo/proteina (NVIDIA non-commercial research license).
 """
 
+import logging
 import os
 import subprocess
 import tempfile
 from functools import cache
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
+import torch
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.io_utils import to_cif_file
-from biotite.structure import AtomArray, AtomArrayStack
+from atomworks.io.utils.selection import get_residue_starts
+from atomworks.ml.transforms.atom_array import apply_and_spread_residue_wise
+from biotite.structure import AtomArray, AtomArrayStack, spread_residue_wise
+from gearnet import GearNet
 
+from rfproteina.conditions import C_IDXGRP
 from rfproteina.metrics import Metric
+
+logger = logging.getLogger(__name__)
+
+# Annotator choices for CathMetric
+FOLDSEEK = "foldseek"
+PROTEINA_CLASSIFIER = "proteina_classifier"
+FOLDSEEK_WITH_FALLBACK = "foldseek_with_fallback"
+_ANNOTATORS = (FOLDSEEK, PROTEINA_CLASSIFIER, FOLDSEEK_WITH_FALLBACK)
 
 # Classification thresholds
 _H_EVALUE = 0.061144
@@ -146,7 +177,7 @@ def _cath_levels(code: str | None) -> dict[str, str | None]:
     }
 
 
-def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
+def annotate_cath(atom_array: AtomArray, threads: int | None = None) -> dict[str, Any]:
     """Compute CATH superfamily annotation for a single-chain AtomArray via Foldseek.
 
     Runs the full Foldseek createdb -> search -> convertalis pipeline against the
@@ -155,6 +186,8 @@ def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
 
     Args:
       atom_array: Single-chain protein structure (chain of interest, amino acids only).
+      threads: ``--threads`` for foldseek. ``None`` leaves foldseek to its own default,
+        which is every core it can see.
 
     Returns:
       Dict with keys:
@@ -182,6 +215,7 @@ def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
         raise RuntimeError("CATH_DOMAIN_LIST environment variable not set")
 
     domain_lookup = _parse_cath_domain_list(cath_domain_list)
+    thread_flags = [] if threads is None else ["--threads", str(threads)]
 
     with tempfile.TemporaryDirectory(prefix="cath_metric_") as tmpdir:
         query_dir = os.path.join(tmpdir, "query_dir")
@@ -198,13 +232,13 @@ def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
         result_m8 = os.path.join(tmpdir, "results.m8")
 
         subprocess.run(
-            [foldseek_exec, "createdb", query_dir, query_db, "--input-format", "2"],
+            [foldseek_exec, "createdb", query_dir, query_db, "--input-format", "2", *thread_flags],
             check=True,
             capture_output=True,
             text=True,
         )
         subprocess.run(
-            [foldseek_exec, "search", query_db, cath_db, result_db, tmpdir, *_SEARCH_FLAGS],
+            [foldseek_exec, "search", query_db, cath_db, result_db, tmpdir, *_SEARCH_FLAGS, *thread_flags],
             check=True,
             capture_output=True,
             text=True,
@@ -219,6 +253,7 @@ def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
                 result_m8,
                 "--format-output",
                 _CONVERTALIS_COLS,
+                *thread_flags,
             ],
             check=True,
             capture_output=True,
@@ -239,14 +274,135 @@ def annotate_cath(atom_array: AtomArray) -> dict[str, Any]:
     }
 
 
-class CathMetric(Metric):
-    """Computes CATH superfamily label for the chain of interest using Foldseek.
+CLASSIFIER_LEVELS: tuple[str, ...] = ("C", "A", "T")
 
-    Required environment variables:
+
+def _assemble_cath_classifier_inputs(atom_array: AtomArray) -> tuple[torch.Tensor, torch.Tensor]:
+    """Build the dense per-residue CA array the classifier consumes, indexed by ``res_id``.
+
+    The classifier takes only ``(coords, coord_mask, batch)``; a residue's sequence position is
+    implicitly its **row index** in this dense array. Rows advance by one per residue, except across
+    an unbonded sequence gap, where they advance by the ``res_id`` difference. Unresolved CA atoms
+    are also excluded. If any residue lacks a backbone CA, returns empty inputs.
+
+    Args:
+      atom_array: One chain of one IndexGroup, amino acids only. ``res_id`` is used to determine
+        sequence position.
+
+    Returns:
+      Tuple of ``coords`` (``[n_rows, 3]``, zero-filled and unused where unresolved) and
+      ``mask`` (``[n_rows]`` bool). ``n_rows`` can exceed the number of residues present in the input.
+
+    Raises:
+      ValueError: If the array spans more than one chain or IndexGroup.
+    """
+    if atom_array.array_length() == 0:
+        return torch.zeros((0, 3)), torch.zeros(0, dtype=torch.bool)
+
+    chain_attr = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
+    index_groups = C_IDXGRP.annotation(atom_array, default="generate")
+    if len(np.unique(atom_array.get_annotation(chain_attr))) > 1 or len(np.unique(index_groups)) > 1:
+        raise ValueError("_assemble_cath_classifier_inputs needs a single chain in a single IndexGroup")
+
+    ensure_annotations(atom_array, "is_protein_backbone")
+    is_ca = atom_array.is_protein_backbone & (atom_array.atom_name == "CA")
+    if not apply_and_spread_residue_wise(atom_array, is_ca, np.any).all():
+        logger.warning("Not every residue carries a backbone CA, so no CATH call is made for this chain")
+        return torch.zeros((0, 3)), torch.zeros(0, dtype=torch.bool)
+
+    residue_starts = get_residue_starts(atom_array)
+    n_residues = len(residue_starts)
+    res_ids = atom_array.res_id[residue_starts].astype(np.int64)
+    if (np.diff(res_ids) < 1).any():
+        raise ValueError("res_id must be strictly increasing along the chain to serve as a sequence axis")
+
+    # A res_id jump only means missing residues when the two are not bonded to each other
+    atom_to_residue = spread_residue_wise(atom_array, np.arange(n_residues))
+    joined_to_next = np.zeros(n_residues, dtype=bool)
+    if atom_array.bonds is not None and len(atom_array.bonds.as_array()):
+        atom1, atom2, _ = atom_array.bonds.as_array().T
+        residue1, residue2 = atom_to_residue[atom1], atom_to_residue[atom2]
+        consecutive = np.abs(residue1 - residue2) == 1
+        joined_to_next[np.minimum(residue1[consecutive], residue2[consecutive])] = True
+
+    # Rows to insert after each residue, for residues the chain is missing at that point.
+    extra_rows_after = np.zeros(n_residues, dtype=np.int64)
+    extra_rows_after[:-1] = np.where(~joined_to_next[:-1] & (np.diff(res_ids) > 1), np.diff(res_ids) - 1, 0)
+
+    residue_rows = np.arange(n_residues) + np.concatenate([[0], np.cumsum(extra_rows_after)[:-1]])
+    n_rows = int(residue_rows[-1]) + 1
+
+    # One CA per residue, and only where it is actually resolved.
+    is_resolved_ca = is_ca & np.isfinite(atom_array.coord).all(axis=-1)
+    rows_of_ca = spread_residue_wise(atom_array, residue_rows)[is_resolved_ca]
+
+    coords = np.zeros((n_rows, 3), dtype=np.float32)
+    mask = np.zeros(n_rows, dtype=bool)
+    coords[rows_of_ca] = atom_array.coord[is_resolved_ca]
+    mask[rows_of_ca] = True
+    return torch.from_numpy(coords), torch.from_numpy(mask)
+
+
+class CathMetric(Metric):
+    """Computes the CATH label for the chain of interest, via Foldseek and/or Proteina's classifier.
+
+    Which annotator runs is set by ``annotator``:
+
+    - ``"foldseek"``: Foldseek structural search against the CATH SSG95 database.
+      Assigns a full C/A/T/H code, but only for chains matching a fold already in CATH;
+      everything else comes back all-``None``.
+    - ``"proteina_classifier"``: the GearNet fold classifier from NVIDIA-BioNeMo/proteina.
+      C/A/T only, and always returns a call.
+    - ``"foldseek_with_fallback"``: run Foldseek first, and fall back to the classifier only
+      for chains where Foldseek finds no match. Gives Foldseek's H-level precision where it
+      applies, and a C/A/T call rather than nothing for novel folds.
+
+    Required environment variables (``foldseek``, and the first pass of
+    ``foldseek_with_fallback``):
+
     - ``FOLDSEEK_EXEC``: path to foldseek binary
     - ``CATH_FOLDSEEK_DB``: path to CATH SSG95 foldseek database prefix
     - ``CATH_DOMAIN_LIST``: path to ``CathDomainList.S95.v4.4.0`` file
+
+    Required environment variables (``proteina_classifier`` and ``foldseek_with_fallback``):
+
+    - ``GEARNET_CATH_CKPT_PATH``: path to ``gearnet_ca.pth``
+    - ``GEARNET_CATH_LABEL_MAPPING_PATH``: path to ``cath_label_mapping.pt``
     """
+
+    def __init__(
+        self,
+        annotator: Literal["foldseek", "proteina_classifier", "foldseek_with_fallback"] = FOLDSEEK_WITH_FALLBACK,
+        classifier_ckpt_path: str | None = None,
+        classifier_label_mapping_path: str | None = None,
+        foldseek_threads: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize CathMetric.
+
+        Args:
+          annotator: Which annotator to use -- see the class docstring. Defaults to
+            ``"foldseek_with_fallback"``.
+          classifier_ckpt_path: Path to ``gearnet_ca.pth``. Falls back to
+            ``GEARNET_CATH_CKPT_PATH``. Only needed when the classifier can run.
+          classifier_label_mapping_path: Path to ``cath_label_mapping.pt``. Falls back to
+            ``GEARNET_CATH_LABEL_MAPPING_PATH``. Only needed when the classifier can run.
+          foldseek_threads: ``--threads`` passed to foldseek -- see :py:func:`annotate_cath`.
+
+        Raises:
+          ValueError: If ``annotator`` is unrecognized. The classifier paths are only resolved and
+            checked in :py:meth:`setup`.
+        """
+        if annotator not in _ANNOTATORS:
+            raise ValueError(f"annotator must be one of {_ANNOTATORS}, got {annotator!r}")
+
+        super().__init__(**kwargs)
+        self.annotator = annotator
+        self.classifier_ckpt_path = classifier_ckpt_path
+        self.classifier_label_mapping_path = classifier_label_mapping_path
+        self.foldseek_threads = foldseek_threads
+        self._classifier: GearNet | None = None
+        self._label_mapping: dict[str, dict[int, str]] = {}
 
     @property
     def kwargs_to_compute_args(self) -> dict[str, Any]:
@@ -256,12 +412,46 @@ class CathMetric(Metric):
             "chain_of_interest": ("extra_info", "chain_of_interest"),
         }
 
+    def setup(self) -> None:
+        """Resolve the classifier paths and load it once for the whole validation epoch, if it can run."""
+        if self.annotator == FOLDSEEK:
+            return
+
+        self.classifier_ckpt_path = self.classifier_ckpt_path or os.getenv("GEARNET_CATH_CKPT_PATH")
+        self.classifier_label_mapping_path = self.classifier_label_mapping_path or os.getenv(
+            "GEARNET_CATH_LABEL_MAPPING_PATH"
+        )
+        if not self.classifier_ckpt_path:
+            raise ValueError(
+                f"annotator={self.annotator!r} needs the Proteina classifier checkpoint: pass "
+                "classifier_ckpt_path or set GEARNET_CATH_CKPT_PATH"
+            )
+        if not self.classifier_label_mapping_path:
+            raise ValueError(
+                f"annotator={self.annotator!r} needs the Proteina classifier label mapping: pass "
+                "classifier_label_mapping_path or set GEARNET_CATH_LABEL_MAPPING_PATH"
+            )
+
+        model = GearNet()
+        model.load_state_dict(torch.load(self.classifier_ckpt_path, map_location="cpu", weights_only=True))
+        self._classifier = model.eval().requires_grad_(False)
+        mapping = torch.load(self.classifier_label_mapping_path, map_location="cpu", weights_only=True)
+        self._label_mapping = {
+            level: {idx: code for code, idx in mapping[level].items()} for level in CLASSIFIER_LEVELS
+        }
+        logger.info(f"Loaded Proteina CATH classifier from {self.classifier_ckpt_path}")
+
+    def teardown(self) -> None:
+        """Free the Proteina classifier after validation."""
+        self._classifier = None
+        self._label_mapping = {}
+
     def compute(  # type: ignore[override]
         self,
         atom_array: AtomArray | AtomArrayStack,
         chain_of_interest: str,
     ) -> dict[str, Any]:
-        """Compute CATH superfamily label for the chain of interest.
+        """Compute the CATH label for the chain of interest.
 
         Args:
           atom_array: Full predicted structure. When a stack is provided,
@@ -270,8 +460,11 @@ class CathMetric(Metric):
             designed chain.
 
         Returns:
-          Dict with keys C, A, T, H (cumulative CATH prefixes or ``None``),
-          plus ``type``, ``evalue``, and ``tmscore``.
+          Dict with keys C, A, T, H (cumulative CATH prefixes or ``None``), plus ``type``,
+          ``evalue``, ``tmscore``, and ``annotator`` -- which of ``"foldseek"`` /
+          ``"proteina_classifier"`` produced the label. Under ``"foldseek_with_fallback"``
+          that key is the only way to tell the two apart, so it is always reported.
+          The classifier leaves ``H``, ``type``, ``evalue``, and ``tmscore`` as ``None``.
         """
         if isinstance(atom_array, AtomArrayStack):
             atom_array = atom_array[0]
@@ -283,4 +476,19 @@ class CathMetric(Metric):
         if not coi_array.is_protein.all():
             raise ValueError(f"Chain {chain_of_interest!r} contains non-protein residues")
 
-        return annotate_cath(coi_array)
+        if self.annotator != PROTEINA_CLASSIFIER:
+            foldseek_result = annotate_cath(coi_array, threads=self.foldseek_threads)
+            # A no-match leaves every level None, so C is enough to tell a hit from a miss.
+            if self.annotator == FOLDSEEK or foldseek_result["C"] is not None:
+                return {**foldseek_result, "annotator": FOLDSEEK}
+
+        if self._classifier is None:
+            raise RuntimeError("Call CathMetric.setup() before computing classifier annotations")
+        result = {**_NO_HIT, "annotator": PROTEINA_CLASSIFIER}
+        coords, coord_mask = _assemble_cath_classifier_inputs(coi_array)
+        if coord_mask.any():
+            with torch.no_grad():
+                output = self._classifier(coords, coord_mask, torch.zeros(len(coords), dtype=torch.long))
+            for level in CLASSIFIER_LEVELS:
+                result[level] = self._label_mapping[level][int(output[f"pred_{level}"][0].argmax())]
+        return result
