@@ -1152,8 +1152,8 @@ class CanonicalPolymerOrderingPairFeat(Feature):
     Direction is read from the bonded atom pair, so a head-to-tail cyclisation is
     encoded correctly even though its downstream residue sits at the lower token index.
 
-    All other pairs (non-bonded, cross-type, or non-canonical tokens) get ``0``.
-    Shape: ``[b, n, n, 1]``.
+    All other pairs (non-bonded, cross-type, cross-IndexGroup, or non-canonical tokens) get
+    ``0``. Shape: ``[b, n, n, 1]``.
     """
 
     def __init__(self, **kwargs: Any) -> None:

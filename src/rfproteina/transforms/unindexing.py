@@ -5,6 +5,7 @@ import biotite.structure as struc
 import numpy as np
 from atomworks.io.utils.atom_array_plus import concatenate_any
 from atomworks.io.utils.selection import get_annotation_categories
+from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_CTR, C_DIS, C_IDX, C_NTR
 from atomworks.ml.conditions.base import CONDITIONS
@@ -27,9 +28,11 @@ from atomworks.ml.utils.token import (
     get_token_count,
 )
 from biotite.structure import AtomArray
+from biotite.structure.residues import get_residue_starts, spread_residue_wise
 from scipy.optimize import linear_sum_assignment
 
 from rfproteina.conditions import C_CRDGRP, C_IDXGRP, C_INTCRD
+from rfproteina.datapipes.bonds import bond_flanking_residues
 from rfproteina.transforms.utils.conditioning_utils import (
     set_specified_conditions_to_default,
 )
@@ -76,7 +79,6 @@ class UnindexFlaggedTokens(Transform):
         max_atom_idx = (
             atom_array.array_length() - 1  # start one less because of the way we increment it
         )
-        starts = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
 
         # Identify tokens which have at least one unindexed atom
         token_to_unindex = struc.spread_residue_wise(
@@ -118,36 +120,49 @@ class UnindexFlaggedTokens(Transform):
                 dict_to_use[cond.name]["annotation"] = cond.annotation(atom_array, default="raise")
 
         idxs = np.arange(atom_array.array_length())
+        if not C_IDXGRP.has_annotation(atom_array):
+            C_IDXGRP.set_annotation(atom_array, C_IDXGRP.default_annotation(atom_array))
+        index_groups = C_IDXGRP.annotation(atom_array, default="raise")
         unindexed_tokens = []
         old_to_new_atom_idx_map = {}
-        for _i, (start, end) in enumerate(itertools.pairwise(starts)):
-            if not token_to_unindex[start]:
-                continue
+        next_free_res_id = {chain: int(max_resid) + 1 for chain, max_resid in max_resid_by_chain_iid.items()}
+        for index_group in np.unique(index_groups[is_motif_atom_unindexed]):
+            in_group = (index_groups == index_group) & is_motif_atom_unindexed
+            motif = copy.deepcopy(atom_array[in_group])
 
-            # Subset to only the unindexed atoms
-            subset_mask = np.isin(idxs, idxs[start:end])
-            token = copy.deepcopy(atom_array[subset_mask])
-            within_residue_is_motif_atom_unindexed = is_motif_atom_unindexed[subset_mask]
-            used_idxs = idxs[start:end][within_residue_is_motif_atom_unindexed]
-            token = token[within_residue_is_motif_atom_unindexed]
-            chain_iid = token.chain_iid[0]
+            assert motif.is_polymer.all(), "Cannot unindex non-polymers!"
 
-            # Break in contiguity between indexed and unindexed regions is fine since they never get relative indices
-            token.res_id = token.res_id + max_resid_by_chain_iid[chain_iid]
+            # Break in contiguity between indexed and unindexed regions is fine since they never get relative indices.
+            # Offsets are per chain and res_ids are strictly increasing within each chain.
+            res_id_offsets = np.zeros(motif.array_length(), dtype=motif.res_id.dtype)
+            for chain_iid in np.unique(motif.chain_iid):
+                in_chain = motif.chain_iid == chain_iid
+                offset = next_free_res_id[chain_iid] - int(motif.res_id[in_chain].min())
+                res_id_offsets[in_chain] = offset
+                next_free_res_id[chain_iid] = int(motif.res_id[in_chain].max()) + offset + 2
+            motif.res_id = motif.res_id + res_id_offsets
 
-            # At inference there is no indexed source to point back to, so leave insertion_source_idx at -1.
-            source_token_id = -1 if is_inference else int(token.token_id[0])
-            token.set_annotation("insertion_source_idx", np.full(token.array_length(), source_token_id, dtype=np.int32))
-            token.token_id = np.full(token.array_length(), next_copy_token_id, dtype=token.token_id.dtype)
-            next_copy_token_id += 1
+            # A residue is still a token: the group is copied in one piece, but its residues must not
+            # be fused into one. Ids are assigned before either array is written back, so the source
+            # ids are read unmodified.
+            residue_starts = struc.get_residue_starts(motif, add_exclusive_stop=True)
+            source_token_ids = np.empty(motif.array_length(), dtype=np.int32)
+            copy_token_ids = np.empty(motif.array_length(), dtype=motif.token_id.dtype)
+            for start, end in itertools.pairwise(residue_starts):
+                # At inference there is no indexed source to point back to, so leave it at -1.
+                source_token_ids[start:end] = -1 if is_inference else int(motif.token_id[start])
+                copy_token_ids[start:end] = next_copy_token_id
+                next_copy_token_id += 1
+            motif.set_annotation("insertion_source_idx", source_token_ids)
+            motif.token_id = copy_token_ids
 
             # TODO: When we introduce the is_canonical annotation, we should enforce that here instead
-            assert token.is_polymer.all(), f"Cannot unindex non-polymer token: {token}"
+            assert motif.is_polymer.all(), f"Cannot unindex non-polymer token: {motif}"
 
-            unindexed_tokens.append(token)
+            unindexed_tokens.append(motif)
 
             # update index map for future 2d conditioning updates
-            old_to_new_atom_idx_map.update({old_idx: (max_atom_idx := max_atom_idx + 1) for old_idx in used_idxs})
+            old_to_new_atom_idx_map.update({old_idx: (max_atom_idx := max_atom_idx + 1) for old_idx in idxs[in_group]})
 
         assert len(unindexed_tokens) > 0, "No unindexed tokens found!"
 
@@ -174,22 +189,51 @@ class UnindexFlaggedTokens(Transform):
             # update old_to_new_atom_idx_map to reflect moving indexed atoms
             old_to_new_atom_idx_map.update(dict(zip(original_indexed_positions, new_indexed_positions, strict=False)))
 
-            # Shift res_ids of surviving atoms down by the number of unique unindexed
-            # res_ids preceding them in the same chain. This collapses the holes left
-            # by deletion while preserving user-specified gaps in the indexed region,
-            # so the recomputed within_chain_source_res_idx reflects only the latter.
-            shifted_res_ids = atom_array.res_id.copy()
-            for chain_iid in np.unique(atom_array.chain_iid):
-                chain_mask = atom_array.chain_iid == chain_iid
-                removed_res_ids = np.unique(atom_array.res_id[chain_mask & token_to_unindex])
-                if len(removed_res_ids) == 0:
-                    continue
-                chain_res_ids = shifted_res_ids[chain_mask]
-                shift = np.searchsorted(removed_res_ids, chain_res_ids, side="right")
-                shifted_res_ids[chain_mask] = chain_res_ids - shift
-            atom_array.res_id = shifted_res_ids
+            # Removing an unindexed motif region leaves a gap. If at least one side of this is
+            # an expandable segment, the gap is assumed to be unintended and is filled.
+            # Otherwise, the gap is preserved with a warning.
+            residue_starts = get_residue_starts(atom_array)
+            is_removed_res = token_to_unindex[residue_starts]
+            is_expandable_res = S_SEGMIN.mask(atom_array, default="generate")[residue_starts]
+            chain_of_res = atom_array.chain_iid[residue_starts]
+            res_id_of_res = atom_array.res_id[residue_starts]
+
+            n_collapsed_before = np.zeros(len(residue_starts), dtype=np.int64)
+            for chain_iid in np.unique(chain_of_res):
+                in_chain = np.where(chain_of_res == chain_iid)[0]
+                is_removed = is_removed_res[in_chain]
+                collapse = is_removed.copy()
+                edges = np.diff(np.concatenate([[0], is_removed.astype(np.int8), [0]]))
+                for run_start, run_stop in zip(np.where(edges == 1)[0], np.where(edges == -1)[0], strict=True):
+                    if run_start == 0 or run_stop == len(in_chain):
+                        continue
+                    if is_expandable_res[in_chain[[run_start - 1, run_stop]]].any():
+                        continue
+                    collapse[run_start:run_stop] = False
+                    global_logger.warning(
+                        f"Unindexed residues {chain_iid}/{res_id_of_res[in_chain[run_start]]}-"
+                        f"{res_id_of_res[in_chain[run_stop - 1]]} lie between two indexed regions taken "
+                        "from the input, so the design keeps that gap between the flanking indexed regions."
+                    )
+                n_collapsed_before[in_chain] = np.cumsum(collapse) - collapse
+            collapsed_before_atom = spread_residue_wise(atom_array, n_collapsed_before)
+            atom_array.res_id = atom_array.res_id - collapsed_before_atom.astype(atom_array.res_id.dtype)
 
             atom_array = atom_array[~token_to_unindex]
+
+            # Re-join the residues an excision left adjacent.
+            res_bounds = get_residue_starts(atom_array, add_exclusive_stop=True)
+            starts = res_bounds[:-1]
+            collapsed_before = collapsed_before_atom[~token_to_unindex][starts]
+            chains, res_ids = atom_array.chain_iid[starts], atom_array.res_id[starts].astype(np.int64)
+            for prev_res, next_res in itertools.pairwise(range(len(starts))):
+                if (
+                    chains[prev_res] == chains[next_res]
+                    and res_ids[next_res] - res_ids[prev_res] == 1
+                    and collapsed_before[next_res] > collapsed_before[prev_res]
+                ):
+                    bond_flanking_residues(atom_array, prev_res, next_res, res_bounds)
+
             new_within_chain_source_res_idx = get_within_group_source_res_idx(atom_array, group_by="chain_iid")
             atom_array.set_annotation("within_chain_source_res_idx", new_within_chain_source_res_idx)
             atom_array.set_annotation(
@@ -297,6 +341,8 @@ class UnindexFlaggedTokens(Transform):
         if "feats" not in data:
             data["feats"] = {}
 
+        _check_index_group_consistency(atom_array)
+
         is_unindexed_atom = ~C_IDX.mask(atom_array, default="generate")
 
         is_token_with_unindexed_atoms = apply_and_spread_token_wise(
@@ -351,6 +397,24 @@ class UnindexFlaggedTokens(Transform):
 
         data["atom_array"] = atom_array_expanded
         return data
+
+
+def _check_index_group_consistency(atom_array: AtomArray) -> None:
+    """Raise if any ``C_IDXGRP`` index group spans both indexed and unindexed tokens."""
+    if not C_IDXGRP.has_annotation(atom_array):
+        return
+    index_groups = C_IDXGRP.annotation(atom_array, default="raise")
+    is_unindexed = ~C_IDX.mask(atom_array, default="generate")
+    groups_with_both = sorted(
+        int(group)
+        for group in np.unique(index_groups)
+        if is_unindexed[index_groups == group].any() and not is_unindexed[index_groups == group].all()
+    )
+    if groups_with_both:
+        raise ValueError(
+            f"Index group(s) {groups_with_both} contain both indexed and unindexed tokens. Each index group must be "
+            "wholly indexed or wholly unindexed."
+        )
 
 
 def _get_target_indices_corresponding_to_inserted(

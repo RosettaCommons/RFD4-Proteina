@@ -387,6 +387,33 @@ def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
     return ema_state["ema_state_dict"]
 
 
+def _adopt_train_path_length_search_cutoff(cfg: DictConfig, cfg_exp: DictConfig) -> None:
+    """Inherit a shared training cutoff unless inference explicitly specifies its own."""
+    transform_cfg = OmegaConf.select(cfg, "generation.dataset.transform", default=None)
+    if transform_cfg is None or "path_length_search_cutoff" in transform_cfg:
+        return
+
+    cutoffs: set[int | None] = set()
+    pending = [OmegaConf.select(cfg_exp, "datasets.train", default=None)]
+    while pending:
+        dataset = pending.pop()
+        if dataset is None:
+            continue
+        if "dataset" in dataset:
+            cutoffs.add(OmegaConf.select(dataset, "dataset.transform.path_length_search_cutoff", default=None))
+        elif "sub_datasets" in dataset:
+            pending.extend(dataset.sub_datasets.values())
+        else:
+            pending.extend(d for d in dataset.values() if d is not None and d.get("probability", 1) > 0)
+    if len(cutoffs) > 1:
+        raise ValueError(
+            "Training datasets disagree on path_length_search_cutoff. Set "
+            "generation.dataset.transform.path_length_search_cutoff explicitly to resolve this."
+        )
+    if cutoffs:
+        OmegaConf.update(transform_cfg, "path_length_search_cutoff", next(iter(cutoffs)), force_add=True)
+
+
 def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     """Load model checkpoint for inference."""
     ckpt_path = cfg.ckpt_path
@@ -415,6 +442,8 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         ema_state_dict = _load_ema_state_dict(ckpt_file)
         model.load_state_dict(ema_state_dict, strict=True)
         logger.info(f"Loaded {len(ema_state_dict)} EMA tensors from the training checkpoint.")
+
+    _adopt_train_path_length_search_cutoff(cfg, model.cfg_exp)
 
     # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.
     resolved_dataset = OmegaConf.to_container(cfg.generation.dataset, resolve=True, throw_on_missing=False)
