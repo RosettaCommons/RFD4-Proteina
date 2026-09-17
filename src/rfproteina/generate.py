@@ -28,10 +28,10 @@ from rfproteina.inference_utils.datasets import (
 from rfproteina.metrics.metric import MetricManager
 from rfproteina.proteina import Proteina
 from rfproteina.search.base_strategy import SearchStrategy
-from rfproteina.utils.common import is_structure_file
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree
+from rfproteina.utils.structure_files import is_structure_file, iter_structure_files, structure_file_stem
 from rfproteina.utils.torch import apply_torch_deterministic
 from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
 
@@ -434,6 +434,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         ckpt_path=ckpt_path,
         ckpt_name=cfg.ckpt_name,
         save_chain_of_interest=cfg.get("save_chain_of_interest", False),
+        compress_outputs=cfg.get("compress_outputs", False),
     )
 
     # Configure search if specified
@@ -529,9 +530,9 @@ def _partition_existing_outputs(
     # Empty files are not completed designs. Sibling jobs carry their own suffix,
     # so their outputs never match this job's IDs.
     existing_ids = {
-        p.name.removesuffix("_generated.cif")
-        for p in output_dir.glob("*/*_generated.cif")
-        if p.is_file() and p.stat().st_size > 0
+        structure_file_stem(p).removesuffix("_generated")
+        for p in iter_structure_files(output_dir, pattern="*/*", stem_suffix="_generated")
+        if p.stat().st_size > 0
     }
     if not existing_ids:
         return dataset, None

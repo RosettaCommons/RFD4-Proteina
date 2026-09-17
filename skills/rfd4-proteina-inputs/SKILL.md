@@ -63,6 +63,7 @@ explicit covalent or coordination bonds.
 ## Choose the authoring route from the evidence
 
 All routes end in an `AtomArrayPlus` written with `to_cif_file()`.
+Readers, writers, inspection, and validation support plain CIFs and `.cif.gz`/`.cif.zst`.
 
 - **Prose or raw structure:** prepare a potentially incomplete source with
   `RCSB_WITH_METALS`, then write a short, task-specific Python recipe using the

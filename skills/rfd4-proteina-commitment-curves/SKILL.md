@@ -160,23 +160,30 @@ The script takes any run's `per_example_metrics.csv`, not only phase 1's.
 ## Step 5 — Assemble the parents into a flat directory
 
 Phase 2's `inputs=` needs a directory holding *only* designs — a phase-1 run directory
-also contains refolded oracle CIFs. Copy the designs across, dropping the `_generated`
-suffix so each child's `task` equals its parent's `example_id`:
+also contains refolded oracle CIFs. Link designs into a new directory, dropping
+`_generated` so each child's `task` matches its parent's `example_id`. Keep the
+compression suffix; phase 2 reads compressed inputs directly:
 
-```bash
-mkdir -p <parents_dir>
-find <out_root>/<name>_phase1 -name '*_generated.cif' | while read -r f; do
-    cp "$f" "<parents_dir>/$(basename "${f%_generated.cif}").cif"
-done
+```python
+from pathlib import Path
+from rfproteina.utils.structure_files import iter_structure_files, structure_file_stem
+
+sources = iter_structure_files("<out_root>/<name>_phase1", stem_suffix="_generated")
+stems = [structure_file_stem(path) for path in sources]
+if not sources or len(set(stems)) != len(stems):
+    raise ValueError("Expected generated designs with unique parent IDs")
+parents = Path("<parents_dir>")
+parents.mkdir(parents=True)  # Refuse an existing destination.
+for path, stem in zip(sources, stems, strict=True):
+    name = stem.removesuffix("_generated") + path.name[len(stem):]
+    (parents / name).symlink_to(path.resolve())
 ```
 
-Only `*_generated.cif` is a design input; the pattern above skips the refolded oracle CIFs.
+Keep the source run directory while using these links.
 After the **offline** path there is nothing to assemble — the curated directory already
 holds only designs, so point `parents_dir` at it directly.
 
-`FileDataset` truncates an example id at the first `.`, so any design input named with a
-decimal (`design_z1.61`) collapses and the run dies with "Example IDs must be unique".
-Rename those before phase 1.
+Design IDs preserve internal dots: `design_z1.61.cif.zst` has ID `design_z1.61`.
 
 ## Step 6 — Phase 2: sweep the restart step
 

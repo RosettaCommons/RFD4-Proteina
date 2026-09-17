@@ -10,13 +10,8 @@ parent's value. Remove the transform.
 
 ## Naming and joins
 
-- **`FileDataset` truncates an example id at the first `.`** — `parent_z1.61_x` and
-  `parent_z1.98_y` both collapse to `parent_z1` and the run dies with "Example IDs must
-  be unique". Rename design inputs with decimals in them before phase 1.
-- **Assemble parents as `{example_id}.cif`**, stripping the `_generated` suffix. That is
-  what makes phase 2's `task` column join straight to phase 1's `example_id`.
-- **Only `*_generated.cif` is a design input.** A run directory also holds refolded oracle
-  CIFs; glob for `*_generated.cif` (SKILL.md Step 5) so they are not picked up as inputs.
+- Follow [Step 5](../SKILL.md#step-5--assemble-the-parents-into-a-flat-directory)
+  for generated-only parent links, stable IDs, and preserved compression suffixes.
 
 ## The fidelity curves go missing
 
@@ -55,11 +50,9 @@ parent's value. Remove the transform.
   `gres`, in which case every concatenation job fails to submit while generation runs
   fine — runs complete and quietly never produce a merged CSV. Both launchers read
   `${CPU_PARTITION:-${PARTITION:-batch}}`; set `CPU_PARTITION` in the cluster env file.
-- **`skip_existing` plus a timeout is a trap.** Metrics are computed at epoch end, after
-  all generation. A task killed during the metric stage leaves its design CIFs on disk
-  but no metrics; on resubmit `skip_existing` skips generation and the run produces
-  nothing useful. Recovery is deleting that shard's CIFs and rerunning. Size the time
-  limit against a measured per-design rate, and clear partial output before a rerun.
+- **Resume with the same design IDs and output directory.** `skip_existing=true`
+  loads saved structures across supported encodings and evaluates them without
+  regenerating or rewriting them. Size the time limit to include the metric stage.
 - **Foldseek off.** Clustering near-identical designs costs time and answers nothing here.
 
 ## Cost

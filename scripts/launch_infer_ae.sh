@@ -129,7 +129,8 @@ echo "  GPUs per SLURM job: $GPUS_PER_JOB"
 echo "  SLURM array tasks: $NUM_ARRAY_TASKS"
 if [ -n "$INPUT_DIR" ]; then
     echo "  Input directory: $INPUT_DIR"
-    num_files=$(find "$INPUT_DIR" -type f \( -name "*.cif" -o -name "*.pdb" \) 2>/dev/null | wc -l)
+    # Keep this display-only list aligned with structure_files.is_structure_file(include_pdb=True).
+    num_files=$(find "$INPUT_DIR" -type f \( -iname "*.cif" -o -iname "*.cif.gz" -o -iname "*.cif.gzip" -o -iname "*.cif.zst" -o -iname "*.bcif" -o -iname "*.bcif.gz" -o -iname "*.bcif.gzip" -o -iname "*.bcif.zst" -o -iname "*.pdb" -o -iname "*.pdb.gz" -o -iname "*.pdb.gzip" -o -iname "*.pdb.zst" \) 2>/dev/null | wc -l)
     echo "  Number of structure files: $num_files"
 fi
 echo "  Extra args: $EXTRA_ARGS"

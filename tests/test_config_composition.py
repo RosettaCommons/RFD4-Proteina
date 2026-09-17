@@ -81,6 +81,14 @@ def _leaves() -> list[tuple[str, str]]:
 _RECIPES = _recipes()
 
 
+@pytest.mark.parametrize(
+    "entry,default", [("inference", False), ("evaluate", False), ("training_proteina", True), ("training_ae", True)]
+)
+def test_output_compression_defaults_and_override(entry, default):
+    assert _compose(entry, [])["compress_outputs"] is default
+    assert _compose(entry, [f"compress_outputs={str(not default).lower()}"])["compress_outputs"] is not default
+
+
 @pytest.mark.parametrize("entry,overrides,invariant", [r[1:] for r in _RECIPES], ids=[r[0] for r in _RECIPES])
 def test_recipe_composes_with_the_right_design_tasks(entry: str, overrides: list[str], invariant: str | None):
     """Every recipe composes, supplies a train mixture, and holds its own task invariant.

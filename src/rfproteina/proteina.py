@@ -58,6 +58,7 @@ from rfproteina.utils.lora import maybe_apply_lora
 from rfproteina.utils.optim_utils import build_optimizers
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
+from rfproteina.utils.structure_files import find_structure_file
 from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -268,7 +269,7 @@ def _clean_metrics_dict(metrics: dict, keep_metadata_only: bool = False) -> dict
                 "confidence_json_path",
             )
         ):
-            cleaned[key] = str(value)
+            cleaned[key] = str(value) if value is not None else None
             continue
         elif key == "metrics_tags":
             cleaned[key] = value if isinstance(value, str) else (",".join(value) if value else "")
@@ -324,6 +325,7 @@ class Proteina(L.LightningModule):
         # Whether to write per-design chain-of-interest CIFs (only used by foldseek clustering).
         # Overridden for inference via configure_inference; training validation always writes.
         self.save_chain_of_interest = True
+        self.output_cif_suffix = ".cif.zst" if cfg_exp.get("compress_outputs", True) else ".cif"
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
@@ -1016,7 +1018,10 @@ class Proteina(L.LightningModule):
 
             # All files for this design (oracle outputs, trajectories, input CIF) share the
             # same per-design subdirectory so related artifacts stay together.
-            generated_output_path = design_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
+            generated_output_path = Path(
+                generation_list[i].get("designed_structure_path")
+                or (design_output_dir(output_base, example_id) / f"{example_id}_generated{self.output_cif_suffix}")
+            )
 
             # Add dataset_name and task as metadata
             metrics_output["dataset_name"] = dataset_name
@@ -1415,6 +1420,10 @@ class Proteina(L.LightningModule):
                 metric_manager = None
             setattr(self, attr_name, metric_manager)
 
+        if self.oracle_metric_manager is not None:
+            for oracle in self.oracle_metric_manager.metrics.values():
+                oracle.output_cif_suffix = self.output_cif_suffix
+
         if hasattr(self.cfg_exp, "datasets") and hasattr(self.cfg_exp.datasets, "val"):
             self.val_dataset_tags = _collect_val_metrics_tags(self.cfg_exp.datasets.val)
         else:
@@ -1454,6 +1463,7 @@ class Proteina(L.LightningModule):
         ckpt_path: str | None = None,
         ckpt_name: str | None = None,
         save_chain_of_interest: bool = False,
+        compress_outputs: bool = False,
     ) -> None:
         """Sets inference config with all sampling parameters required by the method (dt, etc).
 
@@ -1469,11 +1479,13 @@ class Proteina(L.LightningModule):
             save_chain_of_interest: Whether to write per-design chain-of-interest CIFs.
                 These are only consumed by foldseek clustering, so they default to ``False``
                 for inference; the launch script enables them when foldseek will run.
+            compress_outputs: Write new inference structure artifacts as Zstd instead of plain CIF.
         """
         self.inf_cfg = inf_cfg
         if store_dir is not None:
             self.store_dir = store_dir
 
+        self.output_cif_suffix = ".cif.zst" if compress_outputs else ".cif"
         self.configure_metrics(metrics_cfg)
 
         self.is_inference = is_inference
@@ -1656,8 +1668,8 @@ class Proteina(L.LightningModule):
         generation_list: list[dict] = []
         for orig_batch_idx, base_id in enumerate(example_id_batch):
             example_id = f"{base_id}{output_suffix}"
-            cif_path = design_output_dir(output_base, example_id) / f"{example_id}_generated.cif"
-            if not cif_path.exists():
+            cif_path = find_structure_file(design_output_dir(output_base, example_id) / f"{example_id}_generated.cif")
+            if cif_path is None:
                 logger.warning(f"eval_from_disk: missing generated CIF for {example_id}, skipping.")
                 continue
             generated_atom_array = parse(cif_path, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
@@ -1667,6 +1679,7 @@ class Proteina(L.LightningModule):
                     "example_id": base_id,
                     "raw_batch_id": base_id,
                     "generated_atom_array": generated_atom_array,
+                    "designed_structure_path": str(cif_path),
                     "input_atom_array": input_atom_array,
                     "orig_batch_idx": orig_batch_idx,
                 }
@@ -1752,6 +1765,7 @@ class Proteina(L.LightningModule):
             "metrics_tags": metrics_tags,
             "output_base_dir": str(output_base),
             "generated_output_path": str(generated_output_path),
+            "output_cif_suffix": getattr(self, "output_cif_suffix", ".cif"),
             "save_input": not self.is_inference,
             "save_chain_of_interest": self.save_chain_of_interest,
             # In eval-from-disk mode the design CIF already exists and must not be rewritten.

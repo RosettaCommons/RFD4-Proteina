@@ -39,11 +39,12 @@ from rfproteina.transforms.utils.conditioning_utils import (
     convert_to_internal_coords,
     freeze_ground_truth_condition_annotations,
 )
-from rfproteina.utils.common import is_structure_file, validate_design_id
+from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.condition_resolution import coerce_enum_value, parse_centroid_value, resolve_standard_annotation
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 from rfproteina.utils.parse_presets import ANNOTATED_CIF, RCSB_WITH_METALS
+from rfproteina.utils.structure_files import is_structure_file
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -169,7 +170,7 @@ def is_legacy_dialect(data: dict) -> bool:
 def _validate_structure_file_suffix(path: Path) -> None:
     if not is_structure_file(path):
         raise ValueError(
-            f"condition_spec inputs must be .cif/.cif.gz/.bcif, got {path}. PDB files don't "
+            f"condition_spec inputs must be CIF or BinaryCIF (plain, gzip, or Zstandard), got {path}. PDB files don't "
             "reliably encode the bonds/formal charges the model consumes directly -- convert "
             "with atomworks.io.parser.parse + to_cif_file, and manually audit the resulting "
             "bonds/charges before using it."
@@ -181,7 +182,7 @@ def load_condition_spec_inputs(paths: list[str | PathLike], *, as_annotated_cif:
     Loads the asymmetric unit only (``build_assembly=None``).
 
     Args:
-      paths: One or more ``.cif``/``.cif.gz``/``.bcif`` structure file paths.
+      paths: One or more CIF or BinaryCIF paths, optionally gzip- or Zstandard-compressed.
       as_annotated_cif: If ``True``, load any existing Condition/StandardAnnotation
         columns already present (e.g. re-editing a previous output of this tool).
         If ``False`` (default), any existing conditioning is ignored.

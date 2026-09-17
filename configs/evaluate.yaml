@@ -15,6 +15,7 @@ job_id: null       # Chunk index for parallel evaluation
 gen_njobs: 1       # Total number of parallel jobs (used when chunk_size is null)
 
 run_name_: evaluate
+compress_outputs: false # Applies to new refolds and chain exports; input structures are unchanged.
 
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).

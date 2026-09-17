@@ -49,6 +49,7 @@ from rfproteina.generate import (
 from rfproteina.inference_utils.datasets import ConditionSpecDataset, DesignProblemDataset
 from rfproteina.proteina import Proteina
 from rfproteina.utils.standard_annotations import SA_CRDSRC, SA_CWI, SA_SRC, SA_UII
+from rfproteina.utils.structure_files import iter_structure_files
 from tests.conftest import TEST_DATA_DIR
 from tests.e2e.helpers.regression_baselines import SOTA_AE_CKPT_PATH, SOTA_CKPT_PATH, load_design_cif
 from tests.helpers import BENCHMARKS_DIR, PROJECT_ROOT, gpu  # noqa: F401
@@ -80,7 +81,7 @@ _1YCR_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1ycr_aa.
 
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
     """Return generated structure CIFs (one per-design directory under ``inference_samples/``)."""
-    return list(Path(out_dir).glob("inference_samples/**/*_generated.cif"))
+    return iter_structure_files(Path(out_dir) / "inference_samples", stem_suffix="_generated")
 
 
 _MOTIF_RMSD_MAX = 0.75

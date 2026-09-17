@@ -72,3 +72,5 @@ python skills/rfd4-proteina-package/scripts/package_campaign.py --help
 The builder reads the campaign database only while constructing the archive. The
 archive itself is a pure directory tree of Markdown, CSV, CIF, and optional JSON
 files.
+Compressed source structures are decoded into ordinary CIFs in the archive; never
+copy gzip or Zstandard bytes under a plain `.cif` filename.

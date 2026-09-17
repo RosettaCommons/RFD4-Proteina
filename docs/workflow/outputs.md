@@ -5,6 +5,12 @@ What a run writes to disk, and how to read it.
 Each design comes back as a CIF. Per atom annotations record how the model produced each atom, and
 they sit in ordinary `_atom_site` columns, so any CIF reader picks them up.
 
+Generation and standalone evaluation write plain `.cif` files by default; use `compress_outputs=true` for Zstandard level 3.
+Training validation (flow model and autoencoder) defaults to `.cif.zst`;
+use `compress_outputs=false` for plain CIF. Plain, gzip, and Zstd inputs are supported.
+Resume preserves existing files; Foldseek and
+sharing exports receive plain CIFs. Keep one encoding per design in each directory.
+
 | Accessor | CIF column | Description |
 | --- | --- | --- |
 | `SA_SRC.annotation` | `annotation_src-component_1_atom` | Which part of the input spec the atom originated from (`.` if unassigned) |

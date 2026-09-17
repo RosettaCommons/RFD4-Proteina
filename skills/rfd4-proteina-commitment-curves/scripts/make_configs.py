@@ -87,7 +87,7 @@ def phase2_config(spec: dict[str, Any]) -> str:
 # Phase 2 partially diffuses the parents; configs/sweeps/{name}.yaml supplies the restart grid.
 
 {_defaults_block(spec.get("metrics_group"))}
-# Flat directory of phase-1 designs, linked as {{example_id}}.cif so `task` joins to phase 1.
+# Parent links omit _generated and retain compression suffixes so `task` joins to phase 1.
 inputs: {spec["parents_dir"]}
 
 run_name_: {name}_sweep
@@ -184,8 +184,7 @@ def main(spec: str, repo_root: str = ".", dry_run: bool = False) -> None:
         print(f"       (spec has parents_dir: {loaded['parents_dir']}, curated designs: {existing})")
     else:
         print(f"  1. ./scripts/launch_generate.sh <cluster> inference_experiment={name}_phase1 --no-foldseek")
-        print(f"  2. mkdir -p {loaded['parents_dir']} && for f in {phase1_dir}/*_generated.cif; do")
-        print(f'         ln -sf "$f" "{loaded["parents_dir"]}/$(basename "$f" _generated.cif).cif"; done')
+        print(f"  2. link parents from {phase1_dir!r} into {loaded['parents_dir']!r} (SKILL.md Step 5)")
     # Cheap, and it can call the sweep off: a criterion nothing passes is not a commitment question.
     print("  3. how rare is each metric in the parents, before buying the sweep:")
     print("       python .../metric_distributions.py \\")

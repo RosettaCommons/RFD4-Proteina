@@ -1,4 +1,5 @@
 run_name_: ae_z16
+compress_outputs: true # Compress validation structure samples.
 
 hardware:
   ncpus_per_task_train_: 16  # Number of CPUs per task during training

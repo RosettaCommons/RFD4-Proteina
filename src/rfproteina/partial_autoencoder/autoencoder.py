@@ -867,6 +867,7 @@ class AutoEncoder(L.LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         """Write validation structures as CIFs using the flow-model export path."""
+        cif_suffix = ".cif.zst" if self.cfg_ae.get("compress_outputs", True) else ".cif"
         for count, (sample_data, sample_rec) in enumerate(
             zip(self.validation_data_samples, self.validation_rec_samples, strict=False), start=1
         ):
@@ -907,7 +908,7 @@ class AutoEncoder(L.LightningModule):
             try:
                 write_input_structure_cif(
                     input_atom_array,
-                    os.path.join(self.val_path_tmp, f_base + "_data_sample.cif"),
+                    os.path.join(self.val_path_tmp, f_base + "_data_sample" + cif_suffix),
                 )
 
                 rec_result = process_single_sample_to_atom_array(
@@ -919,7 +920,7 @@ class AutoEncoder(L.LightningModule):
                 )
                 write_generated_structure_cif(
                     rec_result["generated_atom_array"],
-                    os.path.join(self.val_path_tmp, f_base + "_rec_sample.cif"),
+                    os.path.join(self.val_path_tmp, f_base + "_rec_sample" + cif_suffix),
                 )
 
                 rec_true_seq_result = process_single_sample_to_atom_array(
@@ -931,7 +932,7 @@ class AutoEncoder(L.LightningModule):
                 )
                 write_generated_structure_cif(
                     rec_true_seq_result["generated_atom_array"],
-                    os.path.join(self.val_path_tmp, f_base + "_rec_sample_w_true_seq.cif"),
+                    os.path.join(self.val_path_tmp, f_base + "_rec_sample_w_true_seq" + cif_suffix),
                 )
             except Exception as e:
                 logger.warning(f"Failed to write validation CIFs for sample {count}: {e}")

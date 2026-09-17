@@ -7,7 +7,6 @@ Bulk clustering
 """
 
 import os
-import shutil
 import subprocess
 import tempfile
 import time
@@ -19,9 +18,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import torch.distributed as dist
+from atomworks.io.utils.compression import transfer_with_compression
+from atomworks.io.utils.io_utils import infer_pdb_file_type
 from atomworks.ml.utils.misc import hash_sequence
 
 from rfproteina.utils.logging import RankedLogger
+from rfproteina.utils.structure_files import iter_structure_files, structure_file_stem
 
 logger = RankedLogger(__name__, rank_zero_only=False)
 
@@ -37,7 +39,7 @@ def diversity_foldseek(
     """Cluster single-chain structures with Foldseek; return per-structure cluster IDs.
 
     Caller must guarantee each input file is already a single-chain structure.
-    Files are ``shutil.copy``'d into a temporary staging dir and ``easy-cluster``
+    Files are decoded into a temporary staging dir and ``easy-cluster``
     is invoked directly. The staging dir is created on tmpfs (``$TMPDIR`` /
     ``/tmp``) and removed on exit.
 
@@ -70,9 +72,9 @@ def diversity_foldseek(
         # the convention once here means a future rename only touches one site.
         staged_stems: list[str] = []
         for i, fcif in enumerate(list_of_cif_paths):
-            ext = os.path.splitext(fcif)[1] or ".cif"
             stem = f"{i + 1}"
-            shutil.copy(fcif, os.path.join(path_designable, f"{stem}{ext}"))
+            file_type = infer_pdb_file_type(fcif)
+            transfer_with_compression(fcif, Path(path_designable) / f"{stem}.{file_type}")
             staged_stems.append(stem)
 
         command = [
@@ -154,12 +156,12 @@ def cluster_structures(
         ``{example_id: cluster_id}`` or ``None`` on foldseek failure.
     """
     chains_dir = Path(chains_dir)
-    cif_files = sorted(chains_dir.rglob("*_chain.cif"))
+    cif_files = iter_structure_files(chains_dir, stem_suffix="_chain")
     if not cif_files:
         logger.warning(f"cluster_structures: no *_chain.cif files found under {chains_dir}")
         return None
     paths = [str(p) for p in cif_files]
-    example_ids = [p.stem.removesuffix("_chain") for p in cif_files]
+    example_ids = [structure_file_stem(p).removesuffix("_chain") for p in cif_files]
     cluster_ids = diversity_foldseek(
         paths,
         tm_threshold=tm_threshold,

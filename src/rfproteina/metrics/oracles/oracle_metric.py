@@ -37,6 +37,7 @@ from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.oracles.pre_oracle_transform import PreOracleTransform
 from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.structure_files import find_structure_file
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -228,6 +229,7 @@ class OracleMetric(Metric):
         self.pre_oracle_transform = pre_oracle_transform
         self.template_query = template_query
         self.frac_under_thresholds = frac_under_thresholds or {}
+        self.output_cif_suffix = ".cif"
 
     def aggregate(self, column: str, values: pd.Series) -> dict[str, float]:
         """Default reductions plus per-column ``frac_under_<T>`` rows.
@@ -259,7 +261,14 @@ class OracleMetric(Metric):
 
     def refolded_cif_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path:
         """Return the canonical path at which the refolded CIF will be saved."""
-        return design_output_dir(out_dir, example_id) / f"{self.output_stem(example_id, save_id)}_refolded.cif"
+        return (
+            design_output_dir(out_dir, example_id)
+            / f"{self.output_stem(example_id, save_id)}_refolded{self.output_cif_suffix}"
+        )
+
+    def existing_refolded_cif_path(self, out_dir: Path, example_id: str, save_id: str | None = None) -> Path | None:
+        """Find the saved refold independently of the encoding selected for new outputs."""
+        return find_structure_file(self.refolded_cif_path(out_dir, example_id, save_id))
 
     def already_refolded(self, out_dir: Path, example_id: str, save_id: str | None = None) -> bool:
         """Return True if a confidence JSON for this example already exists."""
@@ -505,7 +514,8 @@ class OracleMetric(Metric):
     def _load_compute_result(self, out_dir: Path, example_id: str, save_id: str | None = None) -> dict:
         """Load one refold's confidence JSON from disk and stamp on its canonical paths."""
         result = self._load_confidence_json(self.confidence_path(out_dir, example_id, save_id))
-        result["refolded_structure_path"] = str(self.refolded_cif_path(out_dir, example_id, save_id))
+        path = self.existing_refolded_cif_path(out_dir, example_id, save_id)
+        result["refolded_structure_path"] = str(path) if path is not None else None
         result["confidence_json_path"] = str(self.confidence_path(out_dir, example_id, save_id))
         return result
 
