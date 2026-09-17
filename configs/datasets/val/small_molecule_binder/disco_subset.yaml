@@ -1,25 +1,19 @@
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
-  dir_path_or_file_paths:
-    # Mirrors of sm_binder benchmark examples (variable-length contig 100-155)
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/flavin_adenine_dinucleotide_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/IAI_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/OQO_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/s-adenosylmethionine_final_0.cif
-    # Metallo-organic examples (Fe, Mg, Co)
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/heme_b_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/chlorophyll_a_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/vitamin_b12_final_0.cif
-    # Requested CCD codes available in studio_179
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/biotin_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/estradiol_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/cholesterol_final_0.cif
-    # Diverse organic ligands
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/NAD_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/PLP_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/retinal_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/staurosporine_final_0.cif
-    - ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated/colchicine_final_0.cif
+  dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated
+  subset_to_keys:
+    - s-adenosylmethionine_final_0
+    - heme_b_final_0
+    - chlorophyll_a_final_0
+    - vitamin_b12_final_0
+    - biotin_final_0
+    - estradiol_final_0
+    - cholesterol_final_0
+    - NAD_final_0
+    - PLP_final_0
+    - retinal_final_0
+    - staurosporine_final_0
+    - colchicine_final_0
 
   num_replicates: 100
 
@@ -27,5 +21,5 @@ dataset:
     _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
       - design
-      - sm_binder_refolding # Stricter, includes confidences
-      - disco_refolding # Looser, rmsd only
+      - sm_binder_refolding
+      - disco_refolding

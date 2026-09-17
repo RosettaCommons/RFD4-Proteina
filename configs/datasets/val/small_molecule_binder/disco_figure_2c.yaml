@@ -1,0 +1,93 @@
+compute_loss: true
+
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated
+  # Natural, non-natural, and multi-ligand targets plotted in panel C of the DISCO paper.
+  subset_to_keys:
+    - 6PPD-q_final_0
+    - ADP_final_0
+    - BODIPY_final_0
+    - Cu_Cu_ideal
+    - Cu_ideal
+    - DDT_final_0
+    - DFHBI_final_0
+    - DPA_final_0
+    - Fe4-S4_ideal
+    - Mn_ideal
+    - N-acetyl-alpha-neuraminic_acid_final_0
+    - NAD_final_0
+    - NDI_final_0
+    - Ni_ideal
+    - PDI_final_0
+    - PLP_final_0
+    - Rose_Bengal_final_0
+    - UV-328_final_0
+    - Zn_ideal
+    - acetyl_coenzyme_a_final_0
+    - aflatoxin_B1_final_0
+    - apixaban_final_0
+    - benzo_a_pyrene_final_0
+    - beta-d-mannopyranose_final_0
+    - bilirubin_final_0
+    - biotin_final_0
+    - caffeine_final_0
+    - chloramphenicol_final_0
+    - cholesterol_final_0
+    - cholic_acid_final_0
+    - coenzyme_A_final_0
+    - coenzyme_f420_final_0
+    - colchicine_final_0
+    - digoxigenin_final_0
+    - domoic_acid_final_0
+    - dopamine_final_0
+    - erythromycin_a_final_0
+    - estradiol_final_0
+    - fe-akg_ideal
+    - fentanyl_final_0
+    - flavin_mononucleotide_final_0
+    - geosmin_final_0
+    - heme_b_final_0
+    - histamine_final_0
+    - methotrexate_final_0
+    - perfluorooctanoic_acid_final_0
+    - phylloquinone_final_0
+    - pyrroloquinoline_quinone_final_0
+    - resazurin_final_0
+    - retinal_final_0
+    - rocuronium_final_0
+    - s-adenosylmethionine_final_0
+    - saxitoxin_final_0
+    - serotonin_final_0
+    - tetrachlorodibenzodioxin_final_0
+    - tetrahydrofolate_final_0
+    - thiamine_diphosphate_final_0
+    - thyroxine_final_0
+    - ubiquinone-10_final_0
+    - urea_final_0
+    - uric_acid_final_0
+    - vitamin_K1_final_0
+    - vitamin_b12_final_0
+    - warfarin_final_0
+    - xylazine_final_0
+    - PFOA_final_0_PFOS_final_0_combined
+    - pyrroloquinoline_quinone_final_0_Cu_ideal_combined
+    - heme_b_final_0_PLP_final_0_combined
+    - heme_b_final_0_Cu_ideal_combined
+    - flavin_mononucleotide_final_0_Fe2-S2_ideal_combined
+    - s-adenosylmethionine_final_0_Fe2-S2_ideal_combined
+    - ubiquinone-10_final_0_flavin_mononucleotide_final_0_combined
+    - flavin_mononucleotide_final_0_heme_b_final_0_combined
+    - heme_b_final_0_NAD_final_0_combined
+    - flavin_mononucleotide_final_0_NAD_final_0_combined
+    - heme_b_final_0_thiamine_diphosphate_final_0_combined
+    - heme_b_final_0_pyrroloquinoline_quinone_final_0_combined
+
+  num_replicates: 200
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags:
+      - design
+      - disco_refolding
+      - sm_binder_refolding

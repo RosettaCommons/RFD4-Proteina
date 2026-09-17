@@ -1,0 +1,7 @@
+defaults:
+  - /datasets/val/small_molecule_binder@_here_: disco_figure_2c
+  - _self_
+
+dataset:
+  dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_L200
+  num_replicates: 50
