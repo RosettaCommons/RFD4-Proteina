@@ -108,3 +108,7 @@ ca_rmsd_to_input:
 cath_metric:
   _target_: rfproteina.metrics.cath_metric.CathMetric
   required_tags_any: ["cath"]
+  # foldseek: full C/A/T/H, but only for folds precisely matching a T-level fold in the CATH foldseekdb -- ~3.7 s/call on one CPU core.
+  # proteina_classifier: NVIDIA Proteina's GearNet classifier, C/A/T only, always answers -- ~0.2 s/call
+  # foldseek_with_fallback: foldseek first, classifier only where foldseek finds no match.
+  annotator: foldseek_with_fallback

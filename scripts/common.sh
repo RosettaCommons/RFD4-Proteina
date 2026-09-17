@@ -174,8 +174,8 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}/src:${repo_root}/lib/atomworks/src:$PYTHONPATH"
-    echo "PYTHONPATH set to include rfproteina, atomworks"
+    export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${repo_root}/lib/atomworks/src:$PYTHONPATH"
+    echo "PYTHONPATH set to include rfproteina, vendored packages, atomworks"
 }
 
 # Setup common environment variables for training/inference
@@ -756,6 +756,8 @@ copy_code_to_dir() {
     mkdir -p "$code_dir/lib/atomworks" "$code_dir/src" "$code_dir/data"
     rsync -a --no-compress \
         "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
+    rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
+        "$repo_root/lib/gearnet/" "$code_dir/lib/gearnet/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/src/rfproteina/" "$code_dir/src/rfproteina/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \
