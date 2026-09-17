@@ -15,7 +15,6 @@ import pandas as pd
 import rootutils
 from atomworks.common import exists
 from atomworks.io.parser import parse
-from atomworks.io.utils.io_utils import CIF_LIKE_EXTENSIONS
 from atomworks.ml.utils.misc import hash_sequence
 from omegaconf import DictConfig
 
@@ -33,28 +32,27 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.env import load_dotenv
 from rfproteina.utils.logging import print_config_tree, silence_warnings
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
+from rfproteina.utils.structure_files import (
+    find_structure_file,
+    iter_structure_files,
+    structure_file_stem,
+)
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
 
-def _iter_structure_files(directory: Path) -> list[Path]:
-    files = []
-    for suffix in CIF_LIKE_EXTENSIONS:
-        files.extend(directory.rglob(f"*{suffix}"))
-    return sorted(set(files))
-
-
 def _find_input_structure(structure_file: Path) -> Path | None:
     """Locate the design's input CIF, which inference saves alongside the generated CIF."""
-    base_name = structure_file.name.split(".")[0].removesuffix("_generated")
+    base_name = structure_file_stem(structure_file).removesuffix("_generated")
     input_path = structure_file.parent / f"{base_name}_input.cif"
-    return input_path if input_path.exists() else None
+    return find_structure_file(input_path)
 
 
 def run_evaluate(cfg: DictConfig) -> None:
     """Run evaluation on all structure files in ``cfg.inputs``."""
+    cif_suffix = ".cif.zst" if cfg.get("compress_outputs", False) else ".cif"
     metrics_tags_raw = cfg.get("metrics_tags")
     if isinstance(metrics_tags_raw, str):
         metrics_tags: list[str] | None = [t.strip() for t in metrics_tags_raw.split(",") if t.strip()]
@@ -64,7 +62,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         metrics_tags = None
 
     inputs_dir = Path(cfg.inputs)
-    structure_files = _iter_structure_files(inputs_dir)
+    structure_files = iter_structure_files(inputs_dir, include_pdb=True)
     if not structure_files:
         raise ValueError(f"No structure files found in {cfg.inputs}")
 
@@ -100,6 +98,9 @@ def run_evaluate(cfg: DictConfig) -> None:
 
     design_mm = _mm("inline_metrics")
     oracle_mm = _mm("refolding_oracles")
+    if oracle_mm is not None:
+        for oracle in oracle_mm.metrics.values():
+            oracle.output_cif_suffix = cif_suffix
     refold_mm = _mm("refolding_metrics")
     pass_mm = _mm("pass_criteria")
     pre_oracle_filter_mm = _mm("pre_oracle_filters")
@@ -115,7 +116,9 @@ def run_evaluate(cfg: DictConfig) -> None:
         rel = structure_file.relative_to(inputs_dir)
         # Inputs come from a nested tree flattened into one output dir, so basenames repeat
         # (af3/design.cif vs boltz/design.cif); the path hash is what keeps them distinct.
-        example_id = f'{rel.name.split(".")[0]}_{hash_sequence(str(rel), 8)}'
+        stem = structure_file_stem(rel)
+        identity = rel.with_name(stem + ".cif")
+        example_id = f"{stem}_{hash_sequence(str(identity), 8)}"
         task = filename_to_task.get(str(structure_file), "all")
         try:
             atom_array = parse(structure_file, config=STANDARD_ANNOTATIONS_ONLY)["assemblies"]["1"][0]
@@ -147,7 +150,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         try:
             chains_dir = chain_cif_dir(samples_dir, dataset_name=dataset_name, task=task)
             chains_dir.mkdir(parents=True, exist_ok=True)
-            chain_cif = _write_chain_only_cif_if_unambiguous(atom_array, example_id, chains_dir)
+            chain_cif = _write_chain_only_cif_if_unambiguous(atom_array, example_id, chains_dir, cif_suffix)
             if chain_cif is not None:
                 result["designed_chain_path"] = str(chain_cif)
         except Exception as e:

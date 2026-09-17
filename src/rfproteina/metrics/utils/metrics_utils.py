@@ -45,6 +45,7 @@ from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
+from rfproteina.utils.structure_files import find_structure_file
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -377,8 +378,8 @@ def run_oracle_and_refolding_metrics(
                     continue
                 for save_id in oracle_metric.list_save_ids() or [None]:
                     label = oracle_key if save_id is None else f"{oracle_key}.{save_id}"
-                    cif_path = oracle_metric.refolded_cif_path(output_dir, example_id, save_id)
-                    if not cif_path.exists():
+                    cif_path = oracle_metric.existing_refolded_cif_path(output_dir, example_id, save_id)
+                    if cif_path is None:
                         logger.warning(f"{example_id}: refolded CIF missing for {label}: {cif_path}")
                         continue
                     try:
@@ -700,10 +701,12 @@ def _metrics_worker_init(mm_cfgs: dict[str, Any], val_dataset_tags: Any) -> None
         _WORKER_MMS[name] = mm
 
 
-def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str, output_dir: Path) -> Path | None:
+def _write_chain_only_cif_if_unambiguous(
+    atom_array: AtomArray, example_id: str, output_dir: Path, cif_suffix: str = ".cif"
+) -> Path | None:
     """Write a chain-of-interest-only CIF into ``output_dir`` for foldseek.
 
-    The file is named ``{example_id}_chain.cif``.  Callers should pass
+    New files use ``{example_id}_chain{cif_suffix}``; existing encodings are retained. Callers should pass
     :py:func:`~rfproteina.inference_utils.foldseek.chain_cif_dir` as ``output_dir`` so chain
     CIFs land under the dedicated ``foldseek_input_chains/`` tree.
     """
@@ -718,7 +721,8 @@ def _write_chain_only_cif_if_unambiguous(atom_array: AtomArray, example_id: str,
     coi_array.set_annotation("occupancy", np.ones(coi_array.array_length(), dtype=np.float32))
     coi_array.set_annotation("b_factor", np.zeros(coi_array.array_length(), dtype=np.float32))
 
-    foldseek_input_path = output_dir / f"{example_id}_chain.cif"
+    foldseek_input_path = output_dir / f"{example_id}_chain{cif_suffix}"
+    foldseek_input_path = find_structure_file(foldseek_input_path) or foldseek_input_path
     to_cif_file(coi_array, foldseek_input_path, save_standard_annotations=False, extra_fields=[])
     return foldseek_input_path
 
@@ -763,6 +767,7 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
         metrics_tags_override=payload.get("metrics_tags") or [],
     )
 
+    cif_suffix = payload.get("output_cif_suffix", ".cif")
     gen_path = payload.get("generated_output_path")
     # When reusing a structure already on disk (eval-only pass), the design CIF is the source
     # of truth and must not be rewritten; only derived artifacts (chain CIF) are regenerated.
@@ -789,7 +794,9 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
                     chain_cif_dir(output_base_dir, dataset_name=ds, task=task) if output_base_dir else gen_path.parent
                 )
                 ensure_dir(chains_dir)
-                foldseek_input_path = _write_chain_only_cif_if_unambiguous(generated_array, example_id, chains_dir)
+                foldseek_input_path = _write_chain_only_cif_if_unambiguous(
+                    generated_array, example_id, chains_dir, cif_suffix
+                )
             except Exception as e:
                 logger.warning(
                     f"generated-structure worker: failed to pre-extract chain-only CIF for {example_id}: {e}"
@@ -813,7 +820,10 @@ def _write_input_cif(payload: dict, example_id: str) -> None:
     if input_atom_array is None or output_base_dir is None:
         return
     try:
-        save_path = design_output_dir(output_base_dir, example_id) / f"{example_id}_input.cif"
+        save_path = (
+            design_output_dir(output_base_dir, example_id)
+            / f"{example_id}_input{payload.get('output_cif_suffix', '.cif')}"
+        )
         ensure_dir(save_path.parent)
         to_cif_file(input_atom_array, save_path)
     except Exception as e:
@@ -831,6 +841,7 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
         return
     traj_dir = design_output_dir(output_base_dir, example_id) / "trajectories"
     ensure_dir(traj_dir)
+    cif_suffix = payload.get("output_cif_suffix", ".cif")
 
     for traj_key, (traj, step_labels) in trajectories.items():
         if traj is None:
@@ -840,12 +851,12 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
                 # XTC; write a CA-only CIF as the topology reference.
                 generated_array = payload["generated_atom_array"]
                 predicted_bb_ca = generated_array[generated_array.atom_name == "CA"]
-                to_cif_file(predicted_bb_ca, traj_dir / f"{example_id}_{traj_key}_bb_ca.cif")
+                to_cif_file(predicted_bb_ca, traj_dir / f"{example_id}_{traj_key}_bb_ca{cif_suffix}")
                 xtc_file = XTCFile()
                 xtc_file.set_structure(traj, time=step_labels)
                 xtc_file.write(str(traj_dir / f"{example_id}_{traj_key}.xtc"))
             else:
-                to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}.cif")
+                to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}{cif_suffix}")
         except Exception as e:
             logger.warning(f"generated-structure worker: failed to save {traj_key} for {example_id}: {e}")
 

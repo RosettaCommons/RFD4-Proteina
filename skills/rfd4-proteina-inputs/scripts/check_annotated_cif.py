@@ -332,10 +332,10 @@ def check_formal_charges(path: Path) -> list[Violation]:
 
     Reads raw CIF: the parser resolves ``?`` to 0/CCD, hiding unknown-vs-neutral downstream.
     """
-    from biotite.structure.io.pdbx import CIFFile
+    from atomworks.io.utils.io_utils import read_any
 
     try:
-        block = CIFFile.read(str(path)).block
+        block = read_any(path).block
         category = block["atom_site"]
     except Exception as e:
         return [Violation(WARN, "charge_check_failed", f"Could not read atom_site: {type(e).__name__}: {e}")]
@@ -583,12 +583,12 @@ def check_struct_conn(path: Path, arr: AtomArray) -> list[Violation]:
     A declared covale absent from the bond graph is a silently-lost modification; with none
     declared, every polymer<->non-polymer bond was inferred from geometry.
     """
-    from biotite.structure.io.pdbx import CIFFile
+    from atomworks.io.utils.io_utils import read_any
 
     out: list[Violation] = []
 
     try:
-        block = CIFFile.read(str(path)).block
+        block = read_any(path).block
     except Exception as e:
         return [Violation(WARN, "struct_conn_check_failed", f"Could not read CIF: {type(e).__name__}: {e}")]
 

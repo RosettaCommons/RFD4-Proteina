@@ -299,7 +299,8 @@ A pre-oracle *filter* decides **whether** a design reaches the oracle. A pre-ora
 changes **what** gets folded. You attach one to an oracle through its `pre_oracle_transform` key,
 and it can fan a single design out into several named outputs. Each output gets refolded separately
 and saved into the design's own output directory under a filename carrying its `save_id`, as
-`{example_id}_{save_id}_{oracle_name}_refolded.cif`. Its metrics carry that `save_id` between the
+`{example_id}_{save_id}_{oracle_name}_refolded.cif`, with `.zst` appended when compression is enabled (see
+[output compression](outputs.md)). Its metrics carry that `save_id` between the
 metric name and the output key.
 
 So an oracle with the **config key** `oracle_off_target` carrying a two output transform reports

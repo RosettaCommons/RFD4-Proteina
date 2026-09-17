@@ -8,13 +8,6 @@ import torch
 from beartype.typing import Any, Callable, Iterable
 from toolz import merge_with
 
-STRUCTURE_FILE_SUFFIXES = (".cif", ".cif.gz", ".cif.zst", ".bcif", ".bcif.gz", ".bcif.zst")
-
-
-def is_structure_file(path: os.PathLike | str) -> bool:
-    """Whether ``path`` names a loadable structure file (case-insensitively)."""
-    return str(path).lower().endswith(STRUCTURE_FILE_SUFFIXES)
-
 
 def run_once(fn: Callable) -> Callable:
     """Decorator to ensure a function is only executed once per process.

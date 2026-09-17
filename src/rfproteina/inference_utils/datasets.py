@@ -22,9 +22,15 @@ from rfproteina.inference_utils.condition_spec import (
     split_global_args,
 )
 from rfproteina.transforms.inference_annotations import AddSrcComponentAnnotation
-from rfproteina.utils.common import STRUCTURE_FILE_SUFFIXES, is_structure_file, validate_design_id
+from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import ANNOTATED_CIF
+from rfproteina.utils.structure_files import (
+    is_structure_file,
+    iter_structure_files,
+    structure_file_stem,
+    unique_structure_files,
+)
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 all_ranks_logger = RankedLogger(__name__, rank_zero_only=False)
@@ -267,9 +273,7 @@ class DesignProblemDataset(FileDataset):
         all_parts = []
         for path in self.file_paths:
             path = pathlib.Path(path)
-            stem = path.name
-            while "." in stem:
-                stem = pathlib.Path(stem).stem
+            stem = structure_file_stem(path)
             all_parts.append((*path.parent.parts, stem))
         max_parts = max(len(parts) for parts in all_parts)
         for num_parts in range(1, max_parts + 1):
@@ -326,10 +330,10 @@ class DesignProblemDataset(FileDataset):
         # Assemble list of file paths
         if len(dir_path_or_file_paths) == 1 and pathlib.Path(dir_path_or_file_paths[0]).is_dir():
             dir_path = pathlib.Path(dir_path_or_file_paths[0])
-            file_paths = [p for suffix in STRUCTURE_FILE_SUFFIXES for p in dir_path.rglob(f"*{suffix}")]
+            file_paths = iter_structure_files(dir_path)
         else:
             dir_path = None
-            file_paths = [pathlib.Path(p) for p in dir_path_or_file_paths]
+            file_paths = unique_structure_files(pathlib.Path(p) for p in dir_path_or_file_paths)
 
         dataset_name = dir_path if exists(dir_path) else file_paths[0].parent
 

@@ -22,6 +22,7 @@ import biotite.structure as struc
 import numpy as np
 from atomworks.io import parse
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.compression import transfer_with_compression
 from atomworks.io.utils.io_utils import to_cif_file
 from biotite.structure import AtomArray
 
@@ -431,13 +432,13 @@ def build_package(database: str | Path, criteria_set: str, output: str | Path, p
                 input_group = f"{_safe_name(design['input_name'])}__{_safe_name(design['input_id'])}"
                 input_file = f"{input_group}.cif"
                 if design["input_id"] not in input_names:
-                    shutil.copy2(root / design["input_cif_path"], inputs_dir / input_file)
+                    transfer_with_compression(root / design["input_cif_path"], inputs_dir / input_file)
                     input_names[design["input_id"]] = input_file
                 design_dir = outputs_dir / input_group / _safe_name(design["design_id"])
                 design_dir.mkdir(parents=True, exist_ok=True)
                 design_filename = f"{_safe_name(design['design_id'])}__design.cif"
                 design_destination = design_dir / design_filename
-                shutil.copy2(root / design["design_cif_path"], design_destination)
+                transfer_with_compression(root / design["design_cif_path"], design_destination)
                 design["package_input"] = f"inputs/{input_file}"
                 design["package_design"] = design_destination.relative_to(package_root).as_posix()
                 design["package_refolds"] = []

@@ -25,6 +25,7 @@ from biotite.structure.residues import get_residue_starts
 from rfproteina.metrics.oracles.af2_oracle import AF2Oracle
 from rfproteina.metrics.oracles.oracle_metric import OracleJobInput
 from rfproteina.utils.standard_annotations import SA_CWI
+from rfproteina.utils.structure_files import iter_structure_files
 from tests.conftest import TEST_DATA_DIR
 from tests.e2e.helpers.gpu_e2e import ROOT, require_gpu_e2e, require_preval_oracle
 from tests.e2e.helpers.regression_baselines import deterministic_env, require_sota_ckpt
@@ -479,8 +480,8 @@ def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path
         completed = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True, check=False)
         assert completed.returncode == 0, f"generated-binder inference failed:\n{completed.stderr or completed.stdout}"
 
-        generated = list(root.glob("inference_samples/**/*_generated.cif"))
-        refolded = list(root.glob("inference_samples/**/*_af2_ppi_refolded.cif"))
+        generated = iter_structure_files(root / "inference_samples", stem_suffix="_generated")
+        refolded = iter_structure_files(root / "inference_samples", stem_suffix="_af2_ppi_refolded")
         confidences = list(root.glob("inference_samples/**/*_af2_ppi_confidences.json"))
         manifests = list(manifest_capture_dir.glob("*-manifest.json"))
         assert len(generated) == len(refolded) == len(confidences) == len(manifests) == 1

@@ -37,6 +37,7 @@ import sys
 from pathlib import Path
 
 import rootutils
+from atomworks.io.utils.compression import open_compressed
 
 from tests.e2e.helpers.gpu_e2e import assert_no_dataset_fallbacks, parse_train_losses_from_csv_logger
 from tests.e2e.helpers.regression_baselines import (
@@ -247,7 +248,8 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
     # Write baseline
     bl_dir = BASELINES_DIR / name
     bl_dir.mkdir(parents=True, exist_ok=True)
-    (bl_dir / "designed.cif.gz").write_bytes(gzip.compress(designed_1.read_bytes(), mtime=0))
+    with open_compressed(designed_1, "rb") as stream:
+        (bl_dir / "designed.cif.gz").write_bytes(gzip.compress(stream.read(), mtime=0))
     print(f"  ✓ [{name}] Wrote baselines to {bl_dir}")
 
     shutil.rmtree(run1_dir, ignore_errors=True)

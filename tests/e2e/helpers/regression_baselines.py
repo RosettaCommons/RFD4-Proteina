@@ -20,6 +20,7 @@ from biotite.structure import AtomArray, rmsd, superimpose
 from omegaconf import OmegaConf
 
 from rfproteina.utils.parse_presets import DISTILLATION
+from rfproteina.utils.structure_files import iter_structure_files, structure_file_stem
 
 # Absolute path to the baselines directory regardless of cwd.
 BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
@@ -168,7 +169,7 @@ def find_inference_cif(out_dir: Path, example_id: str, kind: str) -> Path:
         kind: ``"generated"`` or ``"af3_refolded"``.
     """
     pattern = f"**/*{example_id}*_{kind}.cif"
-    matches = list(out_dir.rglob(f"*{example_id}*_{kind}.cif"))
+    matches = [p for p in iter_structure_files(out_dir, stem_suffix=f"_{kind}") if example_id in structure_file_stem(p)]
     if not matches:
         raise FileNotFoundError(f"No CIF matching {pattern!r} under {out_dir}")
     return matches[0]
@@ -176,7 +177,7 @@ def find_inference_cif(out_dir: Path, example_id: str, kind: str) -> Path:
 
 def find_beam_search_cifs(out_dir: Path) -> list[Path]:
     """Return all generated CIFs found under out_dir (beam search), sorted."""
-    matches = sorted(out_dir.rglob("*_generated.cif"))
+    matches = iter_structure_files(out_dir, stem_suffix="_generated")
     if not matches:
         raise FileNotFoundError(f"No *_generated.cif found under {out_dir}")
     return matches
@@ -193,7 +194,7 @@ def find_oracle_refolded_cif(out_dir: Path, oracle_name: str) -> Path:
         out_dir: The ``out_dir`` passed to evaluate.py.
         oracle_name: Oracle label, e.g. ``"af3"``.
     """
-    matches = sorted((out_dir / "evaluation_samples").rglob(f"*_{oracle_name}_refolded.cif"))
+    matches = iter_structure_files(out_dir / "evaluation_samples", stem_suffix=f"_{oracle_name}_refolded")
     if not matches:
         raise FileNotFoundError(f"No *_{oracle_name}_refolded.cif found under {out_dir / 'evaluation_samples'}")
     return matches[0]
