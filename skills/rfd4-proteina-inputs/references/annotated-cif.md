@@ -18,7 +18,11 @@ single `mask_...` column).
 | Index group | `C_IDXGRP` | `condition_index-group_1_token` | token | Ties residues with known *relative* offsets (rigid but unindexed) |
 | Hotspot | `C_HOT` | `mask_hotspot_1_atom` | atom | Target-interface atoms the binder should engage |
 | RASA bin | `C_RAS` | `condition_rasa-binned_1_atom` | atom | `RasaEnum`: 0 UNSPECIFIED, 1 BURIED, 2 INTERMEDIATE, 3 EXPOSED |
-| Hydrogen bond | `C_HB` | `condition_hbond_1_atom` | atom | `HBondEnum`: 0 NONE, 1 DONOR, 2 ACCEPTOR, 3 BOTH. Validate against the selected model contract |
+| Hydrogen bond | `C_HB` | `condition_hbond_1_atom` | atom | `HBondEnum`: 0 NONE, 1 DONOR, 2 ACCEPTOR, 3 BOTH; BOTH requests donor and acceptor roles |
+| Pi-stacking | `C_PISTACK` | `mask_pistack_1_atom` | atom | bool; select complete aromatic rings |
+| Pi-cation | `C_PICATION` | `condition_pication_1_atom` | atom | `PiCationEnum`: NONE=0, AROMATIC=1, CATION=2, BOTH=3 |
+| CAT fold | `C_CATH` | `condition_cath-label_1_residue` | residue | C.A.T label, e.g. `1.x.x` or `2.60.40`; `x.x.x` clears it; stored internally as C.A.T.x |
+| Not-cysteine | `C_NCYS` | `mask_not-cysteine_1_residue` | residue | bool; only on residues with sequence conditioning off |
 | Chain centroid | `C_CENTROID` | `condition_ChainCentroid_1_atom` | atom | Target center-of-mass for a chain (place a binder/ligand w/o fixing atoms) |
 | Secondary structure | `C_SEC` | `condition_secondary-structure_1_residue` | residue | `SSEnum`: 0 NONE, 1 HELIX, 2 SHEET, 3 LOOP |
 | Internal coordinate | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | atom | Internal geometry without a fixed global dock; mutually exclusive with `C_CRD` on the same atom |
@@ -27,10 +31,13 @@ single `mask_...` column).
 `C_CRD`, `C_SEQ`, `C_IDX` import from `atomworks.ml.conditions`; the rest from
 `rfproteina.conditions`.
 
-Defined but **not consumed** by the current pipeline (round-trip only, no effect):
-π-stacking, π-cation, salt bridge, hydrophobic, metal-coordination, antibody
-CDR/heavy/light, pairwise distance, not-cysteine, CATH label, nucleic-acid
-base-pairing.
+These conditions are available in annotated CIF/BCIF, condition-spec YAML/JSON, Python,
+and the PyMOL plugin.
+
+Saltbridge, hydrophobic-contact, and metal-coordination annotations are not conditioning
+inputs to the model. Antibody CDR/heavy/light and pairwise-distance annotations also do not
+steer generation. Nucleic-acid secondary structure has dedicated features but no general
+pair editor in condition-spec or PyMOL yet.
 
 ## Interaction rules (enforced)
 

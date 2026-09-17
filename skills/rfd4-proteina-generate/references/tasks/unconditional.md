@@ -8,12 +8,8 @@ motif, no ligand, no target. Back to the [skill](../../SKILL.md).
 | File | Keys | What it is |
 | --- | --- | --- |
 | `monomer` | `monomer-short` (100), `monomer-medium` (150), `monomer-long` (250) | Plain single-chain monomers by length |
-| `adherence/monomer_helical` | `monomer-short/medium/long` | Monomers with a CATH mainly-alpha code (`add_cath_code` — planned, has no effect yet) |
-| `adherence/monomer_ig` | `monomer-short` | Monomer with an immunoglobulin CATH code (planned) |
-
-> The `add_cath_code` conditioning in `monomer_helical` / `monomer_ig` is a
-> **planned** conditioning — they are parsed but the current checkpoint does not
-> respond to them.
+| `adherence/monomer_helical` | `monomer-short/medium/long` | Monomers conditioned on CAT mainly-alpha class `1.x.x` |
+| `adherence/monomer_ig` | `monomer-short` | Monomer conditioned on immunoglobulin CAT topology `2.60.40` |
 
 ## Run
 

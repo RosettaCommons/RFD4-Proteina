@@ -123,6 +123,22 @@ conditions:
   C_RAS:
     BURIED:              # enum member name, or its raw int / numeric string ("3") — both accepted
       - select: "sel('A/*/[10-20]')"
+  C_HB:
+    BOTH:
+      - select: >-
+          res_name == 'SAM' and atom_name == "O2'"
+  C_PISTACK:
+    true:
+      - select: "res_name == 'SAM' and atom_name in ['N1', 'C2', 'N3', 'C4', 'C5', 'C6', 'N7', 'C8', 'N9']"
+  C_PICATION:
+    AROMATIC:
+      - select: "res_name == 'SAM' and atom_name in ['N1', 'C2', 'N3', 'C4', 'C5', 'C6', 'N7', 'C8', 'N9']"
+  C_CATH:
+    "2.60.40":
+      - select: "sel('A')"
+  C_NCYS:
+    true:
+      - select: "sel('A')"
   C_CENTROID:            # literal xyz, not derived from the selection
     "12.3,-4.5,0.0":
       - select: "sel('B')"
@@ -133,13 +149,26 @@ conditions:
   picking which mask, with no separate value to give. `C_CRD` uses the atom's real coordinate,
   `C_SEQ` uses the residue's real `res_name`, `C_IDX` is structural, and `C_INTCRD` is computed.
   `C_IDX: false` and `C_INTCRD: true` also need a `group:`, covered below.
-- **Enum conditions** like `C_RAS` and `C_HB` take the member name or the int. Do not pass `true` or
+- **Enum conditions** like `C_RAS`, `C_HB`, and `C_PICATION` take the member name or the int. Do not pass `true` or
   `false`.
+- **Interaction roles describe the selected atoms.** `C_HB` accepts DONOR, ACCEPTOR, and BOTH;
+  BOTH requests donation and acceptance in different bonds. `C_PICATION` accepts AROMATIC,
+  CATION, and BOTH. For `C_PISTACK` and the AROMATIC side of `C_PICATION`, select complete
+  aromatic rings. Setting both π conditions requests both interaction types.
+- **`C_CATH` takes a quoted C.A.T label** (class, architecture, topology), with `x` for
+  unspecified trailing levels: `"1.x.x"` requests a mainly-alpha class, `"2.60.40"` an
+  immunoglobulin topology, and `"x.x.x"` clears the label and mask. Select whole residues,
+  often an entire chain or expandable segment.
+- **`C_NCYS` takes `true` or `false`** and applies to whole residues with sequence conditioning
+  off. The [default pre-oracle filter](metrics.md#pre-oracle-filters) rejects designs with CYS
+  at any C_NCYS-conditioned residue; cysteines elsewhere are allowed.
 - **`C_CENTROID` works per chain and all or nothing.** Its `select:` must cover *every* atom of each
   chain you condition, so `sel('B')` or `chain_id == 'B'` rather than one residue. And either every
   chain in the example gets a centroid or none does. A partially covered chain leaves the rest with
   a NaN centroid that the model reads as real. Validation rejects both shapes.
 - Overlapping entries for the same annotation resolve **last write wins**, in declaration order.
+  Separate DONOR and ACCEPTOR entries do not combine automatically; use BOTH.
+- JSON uses the same structure, with quoted object keys, including boolean mask values (`"true"`, `"false"`).
 - **Not supported.** Two body conditions like base pairing, because there is no selection pair
   grammar. Everything else works, `C_CENTROID` included. Use the plugin or the Python API for the
   rest.

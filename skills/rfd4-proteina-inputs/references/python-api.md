@@ -79,10 +79,21 @@ hbond[donor_atoms & acceptor_atoms] = HBondEnum.BOTH.value
 C_HB.set_annotation(aa, hbond)
 ```
 
-`HBondEnum.BOTH` faithfully represents an atom with both roles. Run the
-checked-out model-input validator after encoding it. If that model contract
-rejects the value, report the incompatibility instead of silently dropping one
-role.
+`HBondEnum.BOTH` requests both donor and acceptor roles. Use it explicitly when an atom
+must have both roles; sequential writes
+of DONOR and ACCEPTOR replace each other. Run the model-input validator after authoring.
+
+For fold conditioning, expose only CAT (class, architecture, topology) labels:
+
+```python
+from rfproteina.utils.condition_resolution import set_cath_condition
+
+set_cath_condition(aa, np.flatnonzero(aa.chain_id == "A"), "2.60.40")
+# Clear fold conditioning on that chain:
+set_cath_condition(aa, np.flatnonzero(aa.chain_id == "A"), "x.x.x")
+```
+
+This helper preserves the internal C.A.T.x annotation format and prevents string truncation.
 
 Masks for residue-level conditions must have one value across every atom in a
 residue. Index-group annotations must be consistent across each token. When

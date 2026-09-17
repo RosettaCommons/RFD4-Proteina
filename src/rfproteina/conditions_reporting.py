@@ -33,17 +33,23 @@ from atomworks.io.utils.atom_array_plus import AtomArrayPlus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.transforms.dssp import SSEnum
+from biotite.structure import get_residue_starts
 
 from rfproteina.conditions import (
+    C_CATH,
     C_CENTROID,
     C_CRDGRP,
     C_HB,
     C_HOT,
     C_IDXGRP,
     C_INTCRD,
+    C_NCYS,
+    C_PICATION,
+    C_PISTACK,
     C_RAS,
     C_SEC,
     HBondEnum,
+    PiCationEnum,
     RasaEnum,
 )
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
@@ -85,6 +91,12 @@ def _chain_centroid_editor() -> type:
     from rfproteina.pymol.chain_centroid_editor import ChainCentroidEditor
 
     return ChainCentroidEditor
+
+
+def _cath_editor() -> type:
+    from rfproteina.pymol.cath_editor import CathEditor
+
+    return CathEditor
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +236,15 @@ def _chain_centroid_summary(arr: AtomArrayPlus) -> list[str]:
     return ["\n".join(lines)]
 
 
+def _cath_summary(arr: AtomArrayPlus) -> list[str]:
+    starts = get_residue_starts(arr)
+    labels = C_CATH.annotation(arr, default="generate")[starts]
+    mask = C_CATH.mask(arr, default="generate")[starts]
+    labels = np.array([".".join(label.split(".")[:3]) for label in labels])
+    lines = [f"  {label}: {int((mask & (labels == label)).sum())} residues" for label in np.unique(labels[mask])]
+    return ["CAT (class / architecture / topology):\n" + "\n".join(lines)] if lines else []
+
+
 SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     # AtomWorks-native conditions: editors registered by atomworks core itself
     # (register_custom_editors() in atomworks/pymol_plugin/editors/custom.py).
@@ -237,6 +258,8 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     ConditionSpec(C_IDX, editor=_index_mask_editor, summary_label="Index", report_summary=False),
     # Simple boolean mask conditions.
     ConditionSpec(C_HOT, editor=_mask_editor, summary_label="Hotspot"),
+    ConditionSpec(C_PISTACK, editor=_mask_editor, summary_label="Pi-stacking"),
+    ConditionSpec(C_NCYS, editor=_mask_editor, summary_label="Not cysteine"),
     # Enum-valued conditions: editor, summary, and (where useful) PyMOL
     # highlight selections are all built generically from enum_cls/null_value.
     ConditionSpec(
@@ -263,6 +286,14 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
         selection_generator=True,
         summary_label="Hydrogen bonds",
     ),
+    ConditionSpec(
+        C_PICATION,
+        enum_cls=PiCationEnum,
+        null_value=PiCationEnum.NONE.value,
+        selection_generator=True,
+        summary_label="Pi-cation",
+    ),
+    ConditionSpec(C_CATH, editor=_cath_editor, summary_fn=_cath_summary),
     # Integer-valued group conditions -- shared GroupEditor, bespoke summary
     # (group count + view hint), hidden from mask-highlighting (mask is
     # trivially all-True and thus uninformative to highlight).

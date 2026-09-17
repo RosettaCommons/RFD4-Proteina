@@ -271,18 +271,22 @@ way it was supervised. The **Import** column gives the Python shorthand the
 | **Index / unindexing** | `C_IDX` | `mask_index_1_residue` | On means the model knows this residue's position in the chain. **Off means unindexed**, so the model places it. | bool (default **all on**) | Atomized tokens cannot be unindexed. |
 | **Index group** | `C_IDXGRP` | `condition_index-group_1_token` | Groups residues whose *relative* offsets are known, so an unindexed motif can still be internally rigid. | int group id |  |
 | **Hotspot** | `C_HOT` | `mask_hotspot_1_atom` | Marks target-interface atoms the designed binder should engage. | bool | A hotspot is a **target-chain atom within 4.5 Å of any binder-chain atom** (Euclidean). Count sampled `geometric(p=0.2)`, capped at 10 % of eligible atoms. 5 % of the time none are given. Trained alongside a **target conditioned on both coordinates and sequence**, with the binder generated. |
-| **RASA bin** | `C_RAS` | `condition_rasa-binned_1_atom` | Tells the model how buried or exposed an atom should be. Useful for steering ligand pockets and surface design. | `RasaEnum`: `0`=UNSPECIFIED, `1`=BURIED, `2`=INTERMEDIATE, `3`=EXPOSED | Relative SASA, computed Shrake and Rupley with a 1.4 Å probe, ProtOr radii and 100 points. Bins by `rASA` edges `[0.0, 0.1, 0.2]`: `[0,0.1)`→BURIED, `[0.1,0.2)`→INTERMEDIATE, `≥0.2`→EXPOSED. |
-| **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests a donor or acceptor role for an atom, which is how you specify a ligand binding H-bond network. | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR. The enum defines `3`=BOTH, but current input validation rejects it on valid atoms. | Computed with `hbplus`, using H to A ≤ 2.2 Å and D to A ≤ 3.2 Å. **Only H-bonds between the motif and the diffused region** are conditioned on, and they get subsampled when there are many. |
+| **RASA bin** | `C_RAS` | `condition_rasa-binned_1_atom` | Tells the model how buried or exposed an atom should be. Useful for steering ligand pockets and surface design. | `RasaEnum`: `0`=UNSPECIFIED, `1`=BURIED, `2`=INTERMEDIATE, `3`=EXPOSED | Relative SASA, computed Shrake and Rupley with a 1.4 Å probe, element radii and 100 points. Bins by `rASA` edges `[0.0, 0.1, 0.2]`: `[0,0.1)`→BURIED, `[0.1,0.2)`→INTERMEDIATE, `≥0.2`→EXPOSED. |
+| **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests donor, acceptor, or both roles for an atom in a binding H-bond network. | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR, `3`=BOTH. | Uses the precomputed interchain H-bond roles, according to the PLIP definition using atomworks definitions. The model receives separate donor and acceptor channels; BOTH activates both. |
+| **π-stacking** | `C_PISTACK` | `mask_pistack_1_atom` | Requests aromatic stacking contacts with the generated partner. | bool | Select every atom of the intended aromatic ring; training subsamples whole rings. |
+| **π-cation** | `C_PICATION` | `condition_pication_1_atom` | Requests the aromatic or cation side of a π-cation interaction. | `PiCationEnum`: `0`=NONE, `1`=AROMATIC, `2`=CATION, `3`=BOTH | AROMATIC describes the selected atoms, not the desired partner. Select complete aromatic rings for AROMATIC, or single atoms for CATION; BOTH requests both roles in different interactions (e.g. a histidine whose positively-charged nitrogen is the cation in another pi-cation interaction). |
+| **CAT fold** | `C_CATH` | `condition_cath-label_1_residue` | Requests a fold class, architecture, or topology for the selected residues using the CATH hierarchy. | Quoted C.A.T string: `1.x.x`, `2.60.40`; `x.x.x` clears it | Unspecified levels must be a trailing suffix. Select a whole chain or domain, with consistent values within each residue. |
+| **Not cysteine** | `C_NCYS` | `mask_not-cysteine_1_residue` | Requests that selected generated residues avoid cysteine. | bool | Apply to complete residues with sequence conditioning off. The default pre-oracle filter rejects designs with CYS at any C_NCYS-conditioned residue. |
 | **Chain centroid** | `C_CENTROID` | `condition_ChainCentroid_1_atom` | Provides a target center of mass for a chain, so you can position a binder or ligand without fixing any atoms. | per-atom xyz (Å), broadcast per chain | Used in place of an explicit ORI token to guide COM placement. |
 | **Secondary structure** | `C_SEC` | `condition_secondary-structure_1_residue` | Requests helix, sheet or loop at the selected residues. Leave `NONE` where you do not care. | `SSEnum`: `0`=NONE, `1`=HELIX, `2`=SHEET, `3`=LOOP | P-SEA assignment on the ground-truth structure. |
 | **Internal coordinate** | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
 | **Coordinate group** | `C_CRDGRP` | `condition_CoordinateGroup_1_atom` | Groups atoms with known *relative* coordinates, meaning internal structure without a fixed global dock. | int: `-1`=unknown, `0`=known-absolute, `≥1`=one internal-coordinate group per id | Each internal coord region gets its own id. Relative geometry is known within an id and unknown across ids. |
 
-A few more conditions are *defined* and will round trip through a CIF, but the current feature
-pipeline **does not consume them**, so they do nothing at inference. Those are π-stacking, π-cation,
-salt bridge, hydrophobic, metal coordination, antibody CDR, heavy and light chain, pairwise
-distance, not-cysteine, CATH label, and nucleic acid base pairing. The plugin's Annotations tab only
-shows you conditions the model actually uses.
+These conditions can be authored with the PyMOL Annotation Wizard, the Python API, or
+YAML/JSON condition specs, and stored in annotated CIF/BCIF files.
+
+Do not infer conditioning support merely because an
+annotation can be stored.
 
 ### Combining them, in a motif problem
 
@@ -315,17 +319,17 @@ Which conditions the model actually acts on today.
 | **Inverse folding** | Supported |
 | **Small molecules and ligands** | Supported |
 | **Internal coordinate** | Supported |
-| **H-bond donors and acceptors** | Annotated CIF only |
-| **RASA (buried or exposed)** | Annotated CIF only |
-| **Secondary structure** | Annotated CIF only |
+| **H-bond donor, acceptor, or BOTH** | Supported |
+| **RASA (buried or exposed)** | Supported |
+| **Secondary structure** | Supported |
 | **Symmetry** | Planned |
-| **CATH fold class** | Planned |
-| **π-stacking** | Planned |
-| **π-cation** | Planned |
-| **Not-cysteine** | Planned |
+| **CAT fold class, architecture, topology** | Supported |
+| **π-stacking** | Supported |
+| **π-cation** | Supported |
+| **Not-cysteine** | Supported |
 
-**Planned** conditions parse and get stored, but the model is not trained on them yet. Passing
-one raises no error and changes nothing.
+Supported conditions can be authored through the plugin, Python, annotated CIFs, or
+[condition-spec YAML/JSON](condition-spec.md).
 
 ## Interaction rules, read before conditioning
 
