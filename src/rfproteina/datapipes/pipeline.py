@@ -709,12 +709,12 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
     NOTE: This is computed after DesignTask application so that C_IDXGRP is known
     """
 
-    def __init__(self, path_length_search_cutoff: int | None = None):
-        # BFS depth limit for token bond-graph path lengths. Same-molecule pairs beyond this
-        # depth are stored as ``path_length_search_cutoff + 1`` (overflow sentinel).
-        # ``None`` means no cutoff (all paths resolved). The model's :py:class:`TokenBondPathLengthPairFeat`
-        # clamps stored values into ``seq_sep_dim`` bins at tensor time, so the data layer no
-        # longer needs to know ``seq_sep_dim``.
+    def __init__(
+        self,
+        path_length_search_cutoff: int | None = None,
+        fill_res_id_gaps: bool = False,
+    ):
+        self.fill_res_id_gaps = fill_res_id_gaps
         self.path_length_cutoff = path_length_search_cutoff
 
     def check_input(self, data: dict) -> None:
@@ -745,6 +745,7 @@ class ComputeTokenLevelBondFeaturesLikeAF3(Transform):
             path_length_cutoff=self.path_length_cutoff,
             source_atom_array=source_atom_array,
             source_token_idxs=source_token_idxs,
+            fill_res_id_gaps=self.fill_res_id_gaps,
         )
         data["feats"].update(bond_feats)
         return data
@@ -1402,7 +1403,10 @@ def _build_design_featurize_pipeline(
     T += AddChiralityFeature()
     T += ConvertToAtomLevelProteinaFeatures()
     T += ConvertToAtom37Format()  # Convert atom-level to token-level atom37 representation
-    T += ComputeTokenLevelBondFeaturesLikeAF3(path_length_search_cutoff=path_length_search_cutoff)
+    T += ComputeTokenLevelBondFeaturesLikeAF3(
+        path_length_search_cutoff=path_length_search_cutoff,
+        fill_res_id_gaps=is_inference,
+    )
     if not is_inference:
         T += DropoutCoordinationBonds(
             p_all=coordination_bond_dropout_p_all, p_individual=coordination_bond_dropout_p_individual
@@ -1556,8 +1560,8 @@ def build_design_validation_pipeline(
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
         residue_names_supporting_local_latents: Residue names that support local latents.
         path_length_search_cutoff: BFS depth limit for token bond-graph path lengths.
-            ``None`` resolves all paths (acceptable for validation where examples are
-            small). For training, set this in the dataset transform config.
+            ``None`` resolves all paths; connected paths above a finite cutoff use cutoff + 1.
+            Generation inherits the checkpoint's training cutoff unless explicitly overridden.
     """
     return build_design_train_pipeline(
         is_inference=True,

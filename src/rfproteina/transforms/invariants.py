@@ -57,10 +57,12 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_conditioning_coords_not_nan(aa)
     violations += check_expandable_segment_atom37_conditioning_violations(aa)
     violations += check_bond_length_violations(aa, is_inference=is_inference)
+    violations += check_unindexed_coord_conditioning_violations(aa)
 
     # --- Feats / token-level checks ---
     violations += check_conditioning_violations(aa, feats)
     violations += check_atomized_indexed_violations(feats)
+    violations += check_index_group_molecule_connectivity_violations(aa, feats, is_inference=is_inference)
     violations += check_coordinates_not_nan(feats, is_inference=is_inference)
     violations += check_element_encoding_violations(feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
@@ -654,6 +656,85 @@ def check_idxgrp_violations(aa: AtomArray, feats: dict) -> list[InvariantViolati
             )
 
     return violations
+
+
+def check_index_group_molecule_connectivity_violations(
+    aa: AtomArray, feats: dict, is_inference: bool
+) -> list[InvariantViolation]:
+    """Return violations where two tokens of one molecule were featurized as having no path between them."""
+    if not is_inference or "token_bond_path_length" not in feats:
+        return []
+
+    path_length = np.asarray(feats["token_bond_path_length"])  # [n_tokens, n_tokens]
+    token_starts = get_token_starts(aa)
+
+    # Cross-group pairs are zeroed wholesale by the featurizer, so the check is scoped to a group.
+    index_group = C_IDXGRP.annotation(aa, default="generate")[token_starts]  # [n_tokens]
+    molecule_iid = aa.molecule_iid[token_starts]  # [n_tokens]
+    bad = (
+        (index_group[:, None] == index_group[None, :])
+        & (molecule_iid[:, None] == molecule_iid[None, :])
+        & (path_length == 0)
+    )  # [n_tokens, n_tokens]
+    np.fill_diagonal(bad, False)
+    if not bad.any():
+        return []
+
+    # Report the upper triangle only, so a pair is named once.
+    tok_i, tok_j = np.where(np.triu(bad))
+    labels = [
+        f"{aa.chain_id[token_starts[i]]}/{int(aa.res_id[token_starts[i]])}"
+        f"-{aa.chain_id[token_starts[j]]}/{int(aa.res_id[token_starts[j]])}"
+        for i, j in zip(tok_i[:10], tok_j[:10], strict=True)
+    ]
+    count = len(tok_i)
+    return [
+        InvariantViolation(
+            check="index_group_molecule_must_be_connected",
+            message=(
+                f"{count} token pair(s) of one index group have no path between them in the bond "
+                f"graph though they are one molecule: {', '.join(labels)}"
+                f"{' ...' if count > len(labels) else ''}"
+            ),
+            count=count,
+        )
+    ]
+
+
+def check_unindexed_coord_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
+    """Return violations where an unindexed residue carries no coordinate conditioning.
+
+    In the future we could consider supporting sequence-only unindexing, but for now that is
+    explicitly disallowed to avoid subtle errors.
+    """
+    is_unindexed = ~C_IDX.mask(aa, default="generate")
+    if not is_unindexed.any():
+        return []
+
+    has_coord = C_CRD.mask(aa, default="generate") | C_INTCRD.mask(aa, default="generate")
+    starts = get_residue_starts(aa, add_exclusive_stop=True)
+    residue_is_unindexed = np.asarray(apply_segment_wise(starts, is_unindexed, np.any), dtype=bool)
+    residue_has_coord = np.asarray(apply_segment_wise(starts, has_coord, np.any), dtype=bool)
+
+    bad = residue_is_unindexed & ~residue_has_coord
+    if not bad.any():
+        return []
+
+    residue_starts = starts[:-1]
+    labels = [f"{aa.chain_id[s]}/{aa.res_name[s]}/{int(aa.res_id[s])}" for s in residue_starts[bad][:10]]
+    count = int(bad.sum())
+    return [
+        InvariantViolation(
+            check="unindexed_must_be_coord_conditioned",
+            message=(
+                f"{count} unindexed residue(s) have no coordinate conditioning on any atom: "
+                f"{', '.join(labels)}{' ...' if count > len(labels) else ''}. "
+                "To pad an index group without conditioning it, leave a res_id gap instead of "
+                "including an unconditioned spacer residue."
+            ),
+            count=count,
+        )
+    ]
 
 
 def find_index_group_res_id_gaps(aa: AtomArray) -> list[str]:
