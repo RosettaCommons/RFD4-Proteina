@@ -29,7 +29,7 @@ sweep_overrides:
   # - "+datasets/val@generation=mcsa/mcsa_full_internal_coords"
 
   # Small molecule and metal binding
-  - "+datasets/val@generation=small_molecule_binder/studio_179"
+  - "+datasets/val@generation=small_molecule_binder/disco_figure_2c"
 
   # Protein binder design
   - "+datasets/val@generation=ppi/ppi_all_atom_subset_12"
