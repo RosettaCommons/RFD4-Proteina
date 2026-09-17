@@ -18,7 +18,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_CENTROID, C_HB, C_IDXGRP, C_INTCRD, C_NCYS, HBondEnum
+from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, C_NCYS
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,6 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_coordinates_not_nan(feats, is_inference=is_inference)
     violations += check_element_encoding_violations(feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
-    violations += check_hbond_no_both_violations(feats, is_inference=is_inference)
     violations += check_not_cysteine_sequence_conditioning_violations(aa)
 
     # --- Cross-cutting checks (require both aa and feats) ---
@@ -578,41 +577,6 @@ def check_element_encoding_violations(feats: dict) -> list[InvariantViolation]:
                 )
 
     return violations
-
-
-def check_hbond_no_both_violations(feats: dict, is_inference: bool) -> list[InvariantViolation]:
-    """Return violations where a valid atom's hydrogen-bond annotation is ``HBondEnum.BOTH``.
-
-    TEMPORARY, inference-only: the released checkpoint consumes the legacy ``hbond`` feature
-    (:py:class:`~rfproteina.nn.feature_factory.HydrogenBondSeqFeat`), which feeds the raw enum
-    into a linear layer -- so ``BOTH`` is a value it never saw in training. Training now uses
-    ``hbond_modernized``, which encodes ``BOTH`` correctly as both donor and acceptor channels
-    set, so the constraint must not reject training examples.
-
-    TODO: Remove this check entirely once the SOTA checkpoint is trained on ``hbond_modernized``.
-    """
-    if not is_inference:
-        return []
-
-    if C_HB.full_name not in feats or "atom37_mask" not in feats:
-        return []
-
-    hb: torch.Tensor = feats[C_HB.full_name]  # [n_tokens, 37]
-    atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
-
-    n_bad = int(((hb == HBondEnum.BOTH) & atom37_mask).sum())
-    if n_bad:
-        return [
-            InvariantViolation(
-                check="hbond_both_not_supported",
-                message=(
-                    f"{n_bad} valid atom(s) have HBondEnum.BOTH, which the model does not yet "
-                    "support (TEMPORARY check -- will be removed once the training workflow is patched)"
-                ),
-                count=n_bad,
-            )
-        ]
-    return []
 
 
 def check_not_cysteine_sequence_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:

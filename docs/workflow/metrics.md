@@ -69,14 +69,14 @@ Here is what is wired in.
 
 | Category | Count | Config |
 | --- | --- | --- |
-| Design metrics, run inline before refolding | 19 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
+| Design metrics, run inline before refolding | 21 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
 | Structure prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
 | Refolding metrics, design against refold or refold against refold | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
 | Refolding oracles, the AF3 variants | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
 | Pass criteria | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
-| Pre-oracle filters, which skip the oracle when a cheap check fails | 5 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
+| Pre-oracle filters, which skip the oracle when a cheap check fails | 6 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
-Another **10 metric classes already live in the codebase** without a default config. They cover TMol
+Another **9 metric classes already live in the codebase** without a default config. They cover TMol
 interface ddG, H-bonds and electrostatics, an atom pair distance constraint used for catalytic
 geometry, a QM ligand interaction energy, MACE ML potential energies, charge complementarity, and a
 few others. Turning one on takes **no Python**, just a few lines of YAML, exactly like the [worked
@@ -143,6 +143,7 @@ These run directly on the generated structure, before any oracle refolds it.
 | `centroid_conditioning_adherence` | any: `centroid_conditioning` | Mean distance between each conditioned chain centroid and the requested position | `centroid_conditioning_mae` |
 | `interchain_interactions` | any: `interchain_interactions`<br>not: `small_molecule_only`, `structure_prediction` | Adherence plus atom and pair counts for H-bond, π-stacking, π-cation, salt bridge, hydrophobic and metal coordination conditioning, interchain only | `*_conditioning_adherence`, `*_atom_count_coi` / `*_residue_count_coi`, `*_atom_pair_count_coi` / `*_residue_pair_count_coi` per interaction type |
 | `sequence_adherence` | any: `design` | Fraction of sequence conditioned residues whose generated identity matches what you asked for. NaN when nothing was sequence conditioned, and in the offline re-scoring path, which has no input structure to read the conditioning off | `sequence_adherence`, `n_violations` |
+| `not_cysteine_adherence` | any: `design` | Fraction of `C_NCYS`-conditioned residues that are not CYS. Counts violating residues; returns NaN adherence and zero violations when no residues are conditioned | `not_cysteine_adherence`, `n_violations` |
 | `sse_distribution` | any: `design`<br>not: `small_molecule_only`, `structure_prediction` | Helix, sheet and loop fraction, plus the number of contiguous SSE elements, from P-SEA | `helix_fraction`, `sheet_fraction`, `loop_fraction`, `num_ss_elements` |
 | `sse_accuracy` | any: `design`<br>not: `small_molecule_only`, `structure_prediction` | Accuracy of generated secondary structure against your secondary structure conditioning | `overall_accuracy`, `helix_recall`, `sheet_recall`, `loop_recall`, `n_conditioned_atoms` |
 | `posebusters_metrics` | any: `small_molecule_only` | Ligand geometry and validity checks from PoseBusters | one pass or fail column per PoseBusters check |
@@ -294,6 +295,7 @@ tag gate kept it from running. So keep a filter's tag gate at least as strict as
 | Config key | Tag gate | Threshold |
 | --- | --- | --- |
 | `sequence_adherence_filter` | any: `design` | `sequence_adherence.n_violations` = 0, so the design must reproduce every conditioned residue exactly. Vacuous when nothing was sequence conditioned |
+| `not_cysteine_adherence_filter` | any: `design` | `not_cysteine_adherence.n_violations` = 0. Rejects any CYS at a residue conditioned with `C_NCYS`; cysteines elsewhere are allowed. Passes when no no-cysteine conditioning was requested |
 | `unindexed_insertion_mapping_filter` | all: `unindexed` | `unindexed_insertion_mapping.n_unmapped_tokens` = 0 and `.n_sequence_mismatches` = 0, so the whole unindexed motif got inserted at the conditioned identities |
 | `ligand_clash_filter` | all: `ligand_clash_filter`<br>not: `no_ligand` | Zero inter residue polymer and ligand clashes, read off `clash_metrics` |
 | `insertion_rmsd_filter` | all: `unindexed`, `insertion_rmsd_filter` | `unindexed_metrics.insertion_rmsd` ≤ 1.0. You need a metric producing that exact key, such as an aliased copy of `design_unindexed_motif_allatom_rmsd`, or this filter has nothing to threshold |
@@ -385,7 +387,6 @@ example](custom-metrics.md#worked-example-an-existing-metric-your-own-config) sh
 | `ChargeComplementarityMetric` | `rfproteina.metrics.physics.ddg_salt_metrics` | Salt bridge charge complementarity score across a binder and target interface |
 | `InternalResidueBondMetric` | `rfproteina.metrics.bond_length_metric` | Per residue bond lengths against CCD ideal geometry |
 | `NucleicSSSimilarityMetrics` | `rfproteina.metrics.nucleic_ss_metrics` | Nucleic acid secondary structure conditioning adherence, meaning base pairing |
-| `NoCysteineAdherenceMetric` | `rfproteina.metrics.no_cysteine_metric` | Fraction of residues conditioned not to be cysteine that really are not `CYS` |
 | `ContractCAMetric` | `rfproteina.metrics.contract_ca_metric` | Trivial differentiable guidance metric that contracts CA toward the origin, mainly for exercising the search and guidance path |
 
 ## Standard annotations, and why there is no output JSON

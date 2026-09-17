@@ -26,7 +26,7 @@ from atomworks.io.utils.atom_array_plus import AtomArrayPlus, as_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 
-from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, ENUM_CONDITIONS
+from rfproteina.conditions import C_CATH, C_CENTROID, C_IDXGRP, C_INTCRD, ENUM_CONDITIONS
 from rfproteina.conditions_reporting import (
     check_index_group_molecule_consistency,
     check_index_group_res_id_gaps,
@@ -40,7 +40,12 @@ from rfproteina.transforms.utils.conditioning_utils import (
     freeze_ground_truth_condition_annotations,
 )
 from rfproteina.utils.common import validate_design_id
-from rfproteina.utils.condition_resolution import coerce_enum_value, parse_centroid_value, resolve_standard_annotation
+from rfproteina.utils.condition_resolution import (
+    coerce_enum_value,
+    parse_centroid_value,
+    resolve_standard_annotation,
+    set_cath_condition,
+)
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 from rfproteina.utils.parse_presets import ANNOTATED_CIF, RCSB_WITH_METALS
@@ -260,6 +265,9 @@ def _coerce_bool(value: Any) -> bool:
 
 
 def _apply_condition_value(cls: type, atom_array: AtomArrayPlus, indices: np.ndarray, value: Any) -> None:
+    if cls is C_CATH:
+        set_cath_condition(atom_array, indices, value)
+        return
     if cls.is_mask or cls in _MASK_ONLY_CONDITIONS:
         mask = cls.mask(atom_array, default="generate").copy()
         mask[indices] = _coerce_bool(value)

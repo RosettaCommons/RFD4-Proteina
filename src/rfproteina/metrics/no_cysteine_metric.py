@@ -16,14 +16,15 @@ class NoCysteineAdherenceMetric(Metric):
         return {"atom_array": ("predicted_atom_array",)}
 
     def compute(self, atom_array: AtomArray) -> dict[str, float]:
-        not_cys_conditioning = C_NCYS.annotation(atom_array, default="generate")  # [n_atoms] bool
-
+        """Return residue adherence and the violation count used by the pre-oracle filter."""
         residue_starts = get_residue_starts(atom_array)
-        has_not_cys_conditioning = not_cys_conditioning[residue_starts]
-        res_names = atom_array.res_name[residue_starts]
+        is_conditioned = C_NCYS.mask(atom_array, default="generate")[residue_starts]
+        if not is_conditioned.any():
+            return {"not_cysteine_adherence": float(np.nan), "n_violations": 0.0}
 
-        if has_not_cys_conditioning.any():
-            adherence = (res_names[has_not_cys_conditioning] != "CYS").mean()
-            return {"not_cysteine_adherence": float(adherence)}
-        else:
-            return {"not_cysteine_adherence": float(np.nan)}
+        generated = atom_array.res_name[residue_starts][is_conditioned]
+        n_violations = int((generated == "CYS").sum())
+        return {
+            "not_cysteine_adherence": 1.0 - n_violations / len(generated),
+            "n_violations": float(n_violations),
+        }

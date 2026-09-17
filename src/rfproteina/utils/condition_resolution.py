@@ -9,14 +9,19 @@ arbitrary string before this -- the PyMOL registry (``condition_registry.py``)
 only ever imports the Python objects directly.
 """
 
+import pickle
 from enum import IntEnum
+from functools import cache
 
 import numpy as np
 from atomworks.io.utils.standard_annotations.base import STANDARD_ANNOTATIONS, StandardAnnotationBase
 from atomworks.ml import conditions as _atomworks_conditions
 from atomworks.ml.conditions import CONDITIONS
+from biotite.structure import AtomArray
 
 from rfproteina import conditions as _rfproteina_conditions
+from rfproteina.conditions import C_CATH
+from rfproteina.datapipes.pipeline import CATH_MAPPING_PATH
 from rfproteina.utils import standard_annotations as _rfproteina_standard_annotations
 
 # Modules scanned for shorthand aliases (module-level `C_*`/`SA_*` constants), in lookup
@@ -139,3 +144,33 @@ def parse_centroid_value(value: str | list[float] | tuple[float, ...]) -> np.nda
     if len(parts) != 3:
         raise ValueError(f"ChainCentroid value must have exactly 3 components (x, y, z), got {value!r}.")
     return np.array([float(p) for p in parts], dtype=np.float32)
+
+
+@cache
+def _valid_cat_labels() -> frozenset[str]:
+    """Load the model's CAT vocabulary once per process."""
+    with open(CATH_MAPPING_PATH, "rb") as f:
+        vocabulary = pickle.load(f)
+    valid_labels = {"x.x.x"}
+    for depth, level in enumerate(("C", "A", "T")):
+        valid_labels.update(code + ".x" * (2 - depth) for code in vocabulary[level])
+    return frozenset(valid_labels)
+
+
+def set_cath_condition(atom_array: AtomArray, indices: np.ndarray | list[int], value: str) -> None:
+    """Set a C.A.T label, retaining the internal C.A.T.x storage representation."""
+    if not isinstance(value, str):
+        raise ValueError("CAT must be a quoted C.A.T label, e.g. '1.x.x' or '2.60.40'; only C/A/T are supported.")
+    if len(value.split(".")) == 4 and value.endswith(".x"):
+        value = value[:-2]
+    if value not in _valid_cat_labels():
+        raise ValueError(
+            f"Unknown CAT label {value!r}; choose a C/A/T label from the model vocabulary, or 'x.x.x' to clear."
+        )
+    value += ".x"
+    labels = C_CATH.annotation(atom_array, default="generate").astype(object)
+    mask = C_CATH.mask(atom_array, default="generate").copy()
+    labels[indices] = value
+    mask[indices] = value != C_CATH.NULL_VALUE
+    C_CATH.set_annotation(atom_array, labels.astype(str))
+    C_CATH.set_mask(atom_array, mask)
