@@ -4,6 +4,7 @@ import os
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 import torch
 
 import rfproteina.generate as generate
@@ -18,7 +19,12 @@ def _write_metrics(path, rows) -> None:
 def test_partition_existing_outputs_routes_existing_designs_to_evaluation(tmp_path, monkeypatch) -> None:
     output_dir = tmp_path / "inference_samples" / "batch"
     output_dir.mkdir(parents=True)
-    (output_dir / "second_job4_generated.cif").touch()
+    (output_dir / "second_job4_generated.cif").write_text("data_second\n")
+    (output_dir / "third_job4_generated.cif").touch()
+    (output_dir / "first_job5_generated.cif").write_text("data_sibling_job\n")
+    staging_dir = output_dir / ".generated-cif-interrupted"
+    staging_dir.mkdir()
+    (staging_dir / "third_job4_generated.cif").write_text("partial staged CIF")
 
     dataset = torch.utils.data.TensorDataset(torch.arange(3))
     monkeypatch.setattr(generate, "_get_example_ids_from_dataset", lambda _: ["first", "second", "third"])
@@ -31,6 +37,23 @@ def test_partition_existing_outputs_routes_existing_designs_to_evaluation(tmp_pa
     assert to_generate.indices == [0, 2]
     assert to_evaluate is not None
     assert to_evaluate.indices == [1]
+
+
+@pytest.mark.parametrize("job_id", [None, 4])
+def test_partition_existing_outputs_regenerates_empty_cifs(tmp_path, monkeypatch, job_id) -> None:
+    output_dir = tmp_path / "inference_samples" / "batch"
+    output_dir.mkdir(parents=True)
+    suffix = f"_job{job_id}" if job_id is not None else ""
+    (output_dir / f"first{suffix}_generated.cif").touch()
+    dataset = torch.utils.data.TensorDataset(torch.arange(1))
+    monkeypatch.setattr(generate, "_get_example_ids_from_dataset", lambda _: ["first"])
+
+    to_generate, to_evaluate = generate._partition_existing_outputs(
+        dataset, SimpleNamespace(store_dir=tmp_path, job_id=job_id)
+    )
+
+    assert to_generate is dataset
+    assert to_evaluate is None
 
 
 def test_concatenate_results_merges_archived_and_newest_metrics(tmp_path) -> None:

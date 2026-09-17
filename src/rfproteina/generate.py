@@ -526,9 +526,13 @@ def _partition_existing_outputs(
     store_dir = model.store_dir
     output_dir = Path(store_dir) / "inference_samples"
 
-    # Collect design IDs that already have outputs. Sibling jobs' designs land here too but
-    # carry their own job suffix, so they never match.
-    existing_ids = {p.name.removesuffix("_generated.cif") for p in output_dir.glob("*/*_generated.cif")}
+    # Empty files are not completed designs. Sibling jobs carry their own suffix,
+    # so their outputs never match this job's IDs.
+    existing_ids = {
+        p.name.removesuffix("_generated.cif")
+        for p in output_dir.glob("*/*_generated.cif")
+        if p.is_file() and p.stat().st_size > 0
+    }
     if not existing_ids:
         return dataset, None
 

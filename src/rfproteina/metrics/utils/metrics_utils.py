@@ -12,6 +12,7 @@ import itertools
 import multiprocessing as mp
 import os
 import shutil
+import tempfile
 import time
 from collections.abc import Callable, Hashable, Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
@@ -771,7 +772,12 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
         gen_path = Path(gen_path)
         if not reuse_existing_structure:
             try:
-                to_cif_file(align_atom_array_to_input_frame(generated_array), gen_path)
+                ensure_dir(gen_path.parent)
+                # Stage on the same filesystem; keep the basename used for the CIF data block.
+                with tempfile.TemporaryDirectory(dir=gen_path.parent, prefix=".generated-cif-") as staging_dir:
+                    staged_path = Path(staging_dir) / gen_path.name
+                    to_cif_file(align_atom_array_to_input_frame(generated_array), staged_path)
+                    os.replace(staged_path, gen_path)
             except Exception as e:
                 logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
         # Per-design chain-only CIF is only consumed by foldseek clustering
