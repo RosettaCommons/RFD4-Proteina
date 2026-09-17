@@ -56,7 +56,7 @@ Output type(s): environment changes + files (venv, submodule, downloaded checkpo
 
 Output format: console PASS/FAIL report; created files on disk.
 
-Output parameters: `.venv/`, `lib/atomworks/`, `$DATA_PATH/latent_checkpoints/...`, `.ipd/.env.$CLUSTER`.
+Output parameters: `.venv/`, `lib/atomworks/`, `$DATA_PATH/{flow_checkpoints,ae_checkpoints}/`, `.ipd/.env.$CLUSTER`.
 
 Other properties: `preflight.sh` is read-only (no writes); exits non-zero on any failed check. `setup.sh` and the download step modify the filesystem and shell rc.
 

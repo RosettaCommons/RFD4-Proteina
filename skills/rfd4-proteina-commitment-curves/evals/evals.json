@@ -4,18 +4,18 @@
   "cases": [
     {
       "id": "make-configs-from-spec",
-      "prompt": "I want a commitment curve for a study called smoke_commitment. My design inputs are in ./data/smoke_inputs, parents should go to ./runs/smoke_parents, runs under ./runs, and I want to track the design metrics only (no refolding). Grid every 25 steps. Build me the configs.",
+      "prompt": "I want a commitment curve for a study called smoke_commitment. My design inputs are in ./data/smoke_inputs, parents should go to ./runs/smoke_parents, runs under ./runs, and I want to track the design metrics only (no refolding). Grid every 15 steps. Build me the configs.",
       "setup": {
         "cwd": "repository root",
         "requires": ["rfd4-proteina-setup complete; no GPU needed for config generation"]
       },
       "expected_behavior": [
-        "Writes a spec YAML with name/inputs/parents_dir/out_root, metrics_tags: [design], and phase2.step: 25",
+        "Writes a spec YAML with name/inputs/parents_dir/out_root, metrics_tags: [design], and phase2.step: 15",
         "Runs skills/rfd4-proteina-commitment-curves/scripts/make_configs.py --spec <spec>",
         "Produces configs/inference_experiment/smoke_commitment_{phase1,sweep}.yaml and configs/sweeps/smoke_commitment.yaml",
         "The phase-2 config sets num_replicates: 1 and adds no sampling_transforms block",
         "The two experiment configs declare the same metrics_tags",
-        "The sweep grid holds 0.25/0.5/0.75/1.0 for step 25 of 100"
+        "The sweep grid holds 0.25/0.5/0.75/1.0 for step 15 of 60"
       ],
       "success_criteria": {
         "artifact_glob": "configs/sweeps/smoke_commitment.yaml",

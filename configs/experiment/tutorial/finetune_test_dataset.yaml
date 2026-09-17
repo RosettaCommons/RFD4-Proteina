@@ -6,8 +6,6 @@
 defaults:
   - /datasets/train/test_dataset@datasets.train.test_dataset
   - /datasets/val/unconditional@datasets.val.unconditional
-  # override must follow regular includes (Hydra); matches the checkpoint's architecture.
-  - override /nn: local_latents_score_nn_160M_atom37_trimult
   - _self_
 
 run_name_: finetune_test_dataset
@@ -48,4 +46,4 @@ nn:
   use_torch_compile: false
 
 # Required: pass the released denoiser on the CLI (see docs/development.md), e.g.
-#   pretrain_ckpt_path=$DATA_PATH/latent_checkpoints/ldm_checkpoints/<denoiser>.ckpt
+#   pretrain_ckpt_path=$DATA_PATH/flow_checkpoints/<denoiser>.ckpt

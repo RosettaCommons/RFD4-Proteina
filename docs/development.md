@@ -65,9 +65,8 @@ This lays out:
 
 ```
 $DATA_PATH/
-├── latent_checkpoints/
-│   ├── ldm_checkpoints/<release denoiser>.ckpt
-│   └── ae_checkpoints/<release autoencoder>.ckpt
+├── flow_checkpoints/<release denoiser>.ckpt
+├── ae_checkpoints/<release autoencoder>.ckpt
 └── test_dataset/
     ├── test_systems.parquet
     └── cifs/systems/<xx>/<id>/<id>.cif
@@ -102,20 +101,18 @@ python src/rfproteina/train.py \
   without a container.
 - **`pretrain_ckpt_path`** starts a new run from the released weights, resetting the optimizer,
   scheduler, step and epoch. To restore full Lightning state instead, use `resume_ckpt_path=<ckpt>`.
-  The SOTA checkpoint lives only in `inference.yaml`, so advance it there and this command follows.
+  Read the current filename from `inference.yaml` rather than copying a checkpoint name into this guide.
 - **`+single=true`** drops the SLURM and DDP plugins. **`+nolog=true`** disables WandB and
   checkpoint writing.
 
-You should see the model build, roughly 169M trainable parameters plus a frozen 256M autoencoder,
-then the pretrained checkpoint load, then training steps run over the tiny dataset. That confirms
-the data pipeline, the autoencoder and the model all work on your cluster.
+You should see the model and frozen autoencoder build, then the pretrained checkpoint load and
+training steps run over the tiny dataset. That confirms the data pipeline, autoencoder and model
+all work on your cluster.
 
 > **Your architecture must match the checkpoint.** `train.py` builds the model from the `nn` config,
-> not from the checkpoint, so the two have to agree. The released denoiser uses a triangle
-> multiplication pair update architecture that the default `nn` config does not, so the tutorial
-> experiment selects a matching one through `override /nn`, namely
-> [`configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37_trimult.yaml),
-> extracted from the checkpoint's own hyperparameters. To finetune a different checkpoint, select or
+> not from the checkpoint, so the two have to agree. The default
+> [`configs/nn/local_latents_score_nn_160M_atom37.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml)
+> matches the September 15 release checkpoint. To finetune a different checkpoint, select or
 > add the `nn` config it was trained with. A mismatch shows up as `size mismatch` or `Missing
 > key(s)` errors on `load_state_dict`.
 

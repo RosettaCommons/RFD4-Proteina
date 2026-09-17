@@ -18,7 +18,7 @@ checkpoint every surviving beam (`beam_width`) spawns `n_branch` candidates, and
 each candidate is scored.
 
 Worked numbers (using the shipped example's shape,
-`step_checkpoints: [0, 25, 50, 75, 100]` -> 5 checkpoints):
+`step_checkpoints: [0, 20, 40, 50, 60]` -> 5 checkpoints):
 
 | beam_width | n_branch | checkpoints | ~oracle calls per input |
 | --- | --- | --- | --- |

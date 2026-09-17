@@ -73,7 +73,7 @@ phase1:
 
 phase2:
   step: 5                             # grid every N of nsteps
-  nsteps: 100
+  nsteps: 60
   batch_size: 4
   gen_njobs: 1                        # >1 only helps where gen_njobs can divide examples
 ```

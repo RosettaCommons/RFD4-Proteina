@@ -1,7 +1,0 @@
-# @package generation
-
-# 50-step middle-peaked schedule; 170 trunk passes.
-n_recycle_schedule: [[5, 1], [5, 2], [5, 3], [5, 5], [10, 6], [5, 5], [5, 3], [5, 2], [5, 1]]
-
-args:
-  nsteps: 50

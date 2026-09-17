@@ -72,7 +72,7 @@ search:
     weights:
       interchain_interactions.hbond_atom_pair_count_coi: 1.0
     checkpoint_overrides:
-      100:                                              # last checkpoint only (step_checkpoints: [0, 25, 50, 75, 100])
+      60:                                               # last checkpoint only (step_checkpoints: [0, 20, 40, 50, 60])
         reward_metrics_tags: [unconditional_refolding]
         weights:                                        # oracle keys only — the interchain
           oracle.plddt_coi: 1.0                         # metric does not run under these tags

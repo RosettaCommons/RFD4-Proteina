@@ -1,3 +1,5 @@
+# Architecture of the current release denoiser.
+
 name: local_latents_transformer  # name of architecture
 
 output_parameterization:
@@ -31,11 +33,9 @@ feats_seq: [
   "hbond_modernized",           # Hydrogen bonds: [is_donor, is_acceptor] [b, n, 37*2]
   "pistack",                    # Pi-stacking contacts [b, n, 37]
   "pication",                   # Pi-cation contacts: [is_aromatic, is_cation] [b, n, 37*2]
-  "saltbridge",                 # Salt bridge contacts [b, n, 37]
-  "hydrophobic",                # Hydrophobic contacts [b, n, 37]
-  "metal_coord",                # Metal coordination contacts [b, n, 37]
   "na_ss_state",                # Nucleic-acid state feature (unspecified/paired/loop) [b, n, 2]
   "hotspot",                    # Hotspot annotation [b, n, 37]
+  "not_cysteine",               # Prevent cysteine generation at selected positions [b, n, 1]
   "atom_charge",                # Atomic charge embedding for atomized tokens [b, n, 16]
   "atomic_element",             # Atomic element embedding for atomized tokens [b, n, 16]
   "coord_group_seq",              # Raw coordinate group in atom37 representation [b, n, 37]
@@ -63,6 +63,7 @@ feats_pair_repr: [
   "is_aromatic",                # Aromaticity flag for atomized molecule bonds [b, n, n, 1]
   "index_group_pair",           # Binary feature indicating same C_IDXGRP index group [b, n, n, 1]
   "molecule_idx_pair",          # Binary feature indicating same molecule instance [b, n, n, 1]
+  "molecule_entity_pair",       # Binary feature indicating the same molecular entity [b, n, n, 1]
   "token_bond_path_length",     # Pairwise path lengths in the token bond graph
   "canonical_polymer_ordering", # ±1 ordering of bonded canonical polymer residue pairs [b, n, n, 1]
   "na_ss_pair",                 # Nucleic acid secondary structure pair feature [b, n, n, 3]
@@ -81,21 +82,21 @@ seq_sep_dim: 64  # halved vs the rel_seq_sep baseline -- path length is unsigned
 # Dimension of final pair representation
 pair_repr_dim: 256
 
-update_pair_repr: False  # whether to update pair representation
-update_pair_repr_every_n: 3  # Update the pair representation every n layers
-use_tri_mult: False  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
-tri_mult_c: 196  # hidden dim of the triangle multiplication layers; every checkpoint to date uses 196
+update_pair_repr: true  # whether to update pair representation
+update_pair_repr_every_n: 2  # Update the pair representation every n layers
+use_tri_mult: true  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
+tri_mult_c: 256  # hidden dim of the triangle multiplication layers
 
 # Recycle single and pair states through zero-initialized projections.
 recycle:
-  enabled: false
+  enabled: true
   grad: last  # last | last2 | all
 
 # Activation checkpointing: none | low (pair updates) | medium (pair updates and recycle cycles).
-checkpointing: medium
+checkpointing: none
 
 # Single-to-pair update: sum (z + pi_i + pj_j) or hadamard (z + pi_i * pj_j).
-pair_write: sum
+pair_write: hadamard
 
 use_qkln: True
 
@@ -112,4 +113,4 @@ use_torch_compile: true
 
 # Norm: layer_norm, rmsnorm_torch, rmsnorm_torch_fused (BF16 output), or rmsnorm_apex.
 # Honored by feature output norms, both attention paths, and AdaptiveLayerNorm.
-norm_type: layer_norm
+norm_type: rmsnorm_torch_fused

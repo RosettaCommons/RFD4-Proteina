@@ -11,19 +11,20 @@
 base_config: inference
 
 base_config_overrides:
-  - inference_experiment=inference_on_user_inputs
+  - inputs=data/benchmarks/monomer
+  - subset_to_examples=monomer-short
   - num_replicates=50
 
 output_dir: ./configs/sweep_configs/search_strategy_sweep
 run_name_prefix: search_cmp
 
-sweep:
-  # Search strategy to use
-  inference_experiment:
-    - inference_on_user_inputs           # Vanilla
-    - inference_beam_example        # Beam search
+# Search strategy to use. Each preset carries the released 60-evaluation schedule.
+sweep_overrides:
+  - inference_experiment=inference_on_user_inputs
+  - inference_experiment=inference_beam_example
 
-  # Diffusion steps
-  generation.args.nsteps:
-    - 50
-    - 100
+sweep:
+  # Backbone temperature
+  generation.model.bb_ca.simulation_step_params.sc_scale_noise:
+    - 0.2
+    - 0.3

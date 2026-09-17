@@ -97,27 +97,27 @@ config load.
 ```yaml
 search:
   strategy:
-    step_checkpoints: [0, 25, 50, 75, 100]
+    step_checkpoints: [0, 20, 40, 50, 60]
   rewards:
     reward_metrics_tags: [interchain_interactions]      # cheap: no refolding
     weights:
       interchain_interactions.hbond_atom_pair_count_coi: 1.0
     checkpoint_overrides:
-      75:
+      50:
         weights:                                        # restate the H-bond term, add packing
           interchain_interactions.hbond_atom_pair_count_coi: 1.0
           interchain_interactions.hydrophobic_atom_pair_count_coi: 0.5
         clip_values:
           interchain_interactions.hbond_atom_pair_count_coi:
             max: 6.0                                    # stop paying past 6 H-bonds
-      100:
+      60:
         reward_metrics_tags: [unconditional_refolding]  # refolding only at the last prune
         weights:                                        # oracle keys only: the interchain
           oracle.plddt_coi: 1.0                         # metrics no longer fire here
 ```
 
 Every entry is defined against the **base** reward, never against the previous
-checkpoint's — the H-bond clip added at 75 does not carry into 100.
+checkpoint's — the H-bond clip added at 50 does not carry into 60.
 
 ### Why stage a reward
 
@@ -171,7 +171,7 @@ metrics_tags: [design, unconditional_refolding]   # epoch-end loop reuses cached
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 25, 50, 75, 100]
+    step_checkpoints: [0, 20, 40, 50, 60]
     n_branch: 2
     beam_width: 3
   rewards:
@@ -184,7 +184,7 @@ search:
         min: 50.0
 generation:
   args:
-    nsteps: 100                     # the default; must equal the last step_checkpoint
+    nsteps: 60                      # released default; must equal the last step_checkpoint
 ```
 
 See [af2-oracle.md](af2-oracle.md), [af3-oracle.md](af3-oracle.md), and
