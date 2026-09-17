@@ -63,10 +63,10 @@ Mitigation: The skill documents starting at `batch_size=8` after confirming the
 longest input fits at 1, and setting `num_replicates` to a real count; a
 troubleshooting row covers OOM.
 
-Risk: Checkpoint-name mismatch (release ckpt in config vs example ckpt
-downloaded) can fail a run, or silently run the wrong model.
-Mitigation: Preflight reports which `.ckpt` files exist; the skill documents the
-`ckpt_name=` override and cross-references `rfd4-proteina-setup`.
+Risk: A user-supplied checkpoint override or stale local checkpoint can fail a
+run, or silently run a different model than intended.
+Mitigation: Preflight reports the release pair selected by `configs/inference.yaml`
+and which `.ckpt` files exist; one-off overrides are explicit.
 
 Risk: Passing `--key value` instead of Hydra `key=value` fails confusingly.
 Mitigation: Stated prominently and in the troubleshooting table.

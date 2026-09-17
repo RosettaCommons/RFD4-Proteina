@@ -126,13 +126,13 @@ it takes effect at; anything unspecified is inherited:
 ```yaml
 search:
   strategy:
-    step_checkpoints: [0, 25, 50, 75, 100]
+    step_checkpoints: [0, 20, 40, 50, 60]
   rewards:
     reward_metrics_tags: [interchain_interactions]     # cheap, no refolding
     weights:
       interchain_interactions.hbond_atom_pair_count_coi: 1.0
     checkpoint_overrides:
-      100:                                              # final checkpoint only
+      60:                                               # final checkpoint only
         reward_metrics_tags: [unconditional_refolding]  # selected refolding oracle runs now
         weights:
           oracle.plddt_coi: 1.0                         # replaces the base weights
@@ -171,7 +171,7 @@ Rewards from different checkpoints are different objectives, so their
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 25, 50, 75, 100]      # steps to score + prune at
+    step_checkpoints: [0, 20, 40, 50, 60]       # steps to score + prune at
     n_branch: 2                                  # candidates spawned per surviving beam (default 4)
     beam_width: 3                                # candidates kept after each prune (default 4)
     intermediate_sample_save_criterion:          # optional; omit to return only the final beam
@@ -181,7 +181,7 @@ search:
           min: 80.0
 generation:
   args:
-    nsteps: 100                                  # the default; MUST equal the last step_checkpoint
+    nsteps: 60                                   # released default; MUST equal the last step_checkpoint
 ```
 
 - **`step_checkpoints`** — the diffusion steps to score and prune at. **Must

@@ -249,7 +249,7 @@ def compute_curve(
     metrics: list[tuple[str, str]],
     child_key: str = "task",
     parent_key: str = "example_id",
-    nsteps: int = 100,
+    nsteps: int = 60,
     n_boot: int = 500,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -325,7 +325,7 @@ def compute_fidelity(
     sweep: pd.DataFrame,
     series: Sequence[FidelitySeries] = FIDELITY_SERIES,
     child_key: str = "task",
-    nsteps: int = 100,
+    nsteps: int = 60,
     n_boot: int = 500,
     seed: int = 0,
 ) -> pd.DataFrame:
@@ -584,7 +584,7 @@ def main(
     metrics: str | tuple[str, ...] = "",
     child_key: str = "task",
     parent_key: str = "example_id",
-    nsteps: int = 100,
+    nsteps: int = 60,
     n_boot: int = 500,
     seed: int = 0,
 ) -> None:

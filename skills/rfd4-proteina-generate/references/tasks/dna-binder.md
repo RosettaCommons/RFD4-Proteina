@@ -21,15 +21,15 @@ python src/rfproteina/generate.py \
     inputs=data/benchmarks/dna_binder/dna_binder_denovo_val \
     subset_to_examples=7n5u_structure_context \
     num_replicates=8 batch_size=8 out_dir=./runs/dna_binder \
-    metrics_tags='[interchain_interactions]'
+    metrics_tags='[dna_refolding,interchain_interactions]'
 ```
 
 ## Task-specific overrides & metrics
 
 - **`interchain_interactions`** — protein-DNA H-bond / interaction adherence and
   counts (no AF3 container required; see **rfd4-proteina-evaluate**).
-- There is no DNA-specific `*_refolding` tag; use `interchain_interactions` for
-  interface adherence.
+- **`dna_refolding`** — AF3 refolding and DNA-interface quality metrics; requires
+  the configured AF3/OpenFold3 container.
 
 ## Gotchas
 

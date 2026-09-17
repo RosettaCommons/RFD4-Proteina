@@ -41,4 +41,4 @@ sweep_overrides:
 # Dummy sweep key (required by sweep.py)
 sweep:
   generation.args.nsteps:
-    - 100
+    - 60

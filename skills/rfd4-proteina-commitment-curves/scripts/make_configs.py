@@ -24,7 +24,7 @@ Spec (YAML)::
 
     phase2:
       step: 5                             # grid every N of nsteps
-      nsteps: 100
+      nsteps: 60
       batch_size: 4
       gen_njobs: 1
 
@@ -115,7 +115,7 @@ metrics_tags:
 def sweep_config(spec: dict[str, Any]) -> str:
     """The restart-step grid."""
     name, p2 = spec["name"], spec.get("phase2", {})
-    nsteps, step = p2.get("nsteps", 100), p2.get("step", 5)
+    nsteps, step = p2.get("nsteps", 60), p2.get("step", 5)
     fracs = [round(1 - k / nsteps, 4) for k in range(nsteps - step, -1, -step)]
     grid = "\n".join(f"    - {f}" for f in fracs)
     return f"""# {name}: one partial-diffusion run per restart step, followed by sweep-level aggregation.

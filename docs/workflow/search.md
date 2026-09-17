@@ -75,14 +75,14 @@ step it takes effect at, and anything it leaves out it inherits from the base.
 ```yaml
 search:
   strategy:
-    step_checkpoints: [0, 25, 50, 75, 100]
+    step_checkpoints: [0, 20, 40, 50, 60]
   rewards:
     reward_metrics_tags: [interchain_interactions]   # cheap, no refolding
     weights:
       interchain_interactions.hbond_atom_pair_count_coi: 1.0
 
     checkpoint_overrides:
-      100:                                            # only at the final checkpoint
+      60:                                             # only at the final checkpoint
         reward_metrics_tags: [unconditional_refolding]  # replaces the base list, so AF3 now runs
         weights:
           oracle.plddt_coi: 1.0                       # replaces the base weights entirely
@@ -123,7 +123,7 @@ own problem.
 search:
   strategy:
     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 25, 50, 75, 100]      # steps to score and prune at
+    step_checkpoints: [0, 20, 40, 50, 60]       # steps to score and prune at
     n_branch: 2                                  # candidates spawned per surviving beam
     beam_width: 3                                # candidates kept after each prune
     # Optional. Also keep rolled-out candidates that lost the beam but clear a bar.
@@ -135,7 +135,7 @@ search:
           min: 80.0
 generation:
   args:
-    nsteps: 100                                  # the default, must equal the last step_checkpoint
+    nsteps: 60                                   # released default; must equal the last step_checkpoint
 ```
 
 | Parameter | Meaning | Default |

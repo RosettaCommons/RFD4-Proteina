@@ -14,8 +14,8 @@ well would that ranking predict the final one?* Rank correlation because it is s
 ## The x axis
 
 `partial_trajectory_fraction_steps = frac` re-runs that fraction of the trajectory, so
-`restart step = (1 - frac) * nsteps`. With `nsteps: 100`, a grid every 5 steps is
-`frac ∈ {0.05, 0.10, …, 1.00}`. Step 0 is a full regeneration; step 100 is the parent.
+`restart step = (1 - frac) * nsteps`. With `nsteps: 60`, a grid every 5 steps is
+`frac ∈ {0.0833, 0.1667, …, 1.00}`. Step 0 is a full regeneration; step 60 is the parent.
 
 **Use the fraction knob, not `partial_t_backbone`.** The modalities run different
 schedule curves (`bb_ca` log, `local_latents` power), so handing both the same numeric

@@ -95,7 +95,7 @@ batch_size: 10                        # Batch size for generation
 # search:
 #   strategy:
 #     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-#     step_checkpoints: [0, 25, 50, 75, 100]
+#     step_checkpoints: [0, 20, 40, 50, 60]
 #     n_branch: 2
 #     beam_width: 3
 #     # Optional: also keep the rolled-out candidates that lost the beam but pass a bar.
@@ -126,8 +126,7 @@ batch_size: 10                        # Batch size for generation
 #     # (`weights`, `clip_values`, `reward_metrics_tags`) replaces the base one wholesale,
 #     # so restate every term that should still count.
 #     checkpoint_overrides:
-#       100:
+#       60:
 #         weights:
 #           rf3.plddt: 1.0                # restated: omitted terms are dropped, not merged
 #           rf3.ptm_coi: -1.0                # start paying for the interface once the fold is set
-

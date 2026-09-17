@@ -34,7 +34,6 @@ chain against that interface.
 
 ## Gotchas
 
-- The planned-support caveat above is the headline gotcha — set expectations.
 - Hotspots are set by the input's `C_HOT` annotation, not on the CLI. To build a new target/hotspot input, use
   **rfd4-proteina-inputs**.
 - The designed (binder) chain is the "chain of interest" for clustering; it is
