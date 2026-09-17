@@ -97,6 +97,67 @@ def _truncate(items: Iterable[object], limit: int = 12) -> str:
 # Loading
 
 
+def check_entity_sequences(path: Path) -> list[Violation]:
+    """Check raw polymer residue references before parsing can discard CIF metadata."""
+    from atomworks.io.utils.io_utils import read_any
+
+    block = read_any(path).block
+    if "atom_site" not in block:
+        return []
+    if "entity_poly_seq" not in block:
+        return (
+            [
+                Violation(
+                    WARN, "entity_sequence_unavailable", "No _entity_poly_seq; polymer sequence references unchecked."
+                )
+            ]
+            if "entity_poly" in block
+            else []
+        )
+    nonpolymers = set()
+    if "entity" in block:
+        entities = block["entity"]
+        nonpolymers = {
+            entity
+            for entity, kind in zip(entities["id"].as_array(str), entities["type"].as_array(str), strict=True)
+            if kind in ("non-polymer", "water", "branched")
+        }
+    sequences = defaultdict(set)
+    table = block["entity_poly_seq"]
+    for entity, number, component in zip(
+        *(table[key].as_array(str) for key in ("entity_id", "num", "mon_id")), strict=True
+    ):
+        sequences[entity, number].add(component)
+    atoms = block["atom_site"]
+    fields = ("label_asym_id", "label_entity_id", "label_seq_id", "label_comp_id")
+    residues = set(
+        zip(
+            *(atoms[key].as_array(str) for key in fields),
+            strict=True,
+        )
+    )
+    mismatches = []
+    for chain, entity, number, component in sorted(residues):
+        if entity in nonpolymers or number in (".", "?", ""):
+            continue  # Non-polymers have no entity_poly_seq position.
+        expected = sequences[entity, number]
+        if component not in expected:
+            mismatches.append(
+                f"{chain}/{component}{number} references entity {entity}: "
+                f"{','.join(sorted(expected)) if expected else 'sequence position absent'}"
+            )
+    if not mismatches:
+        return []
+    return [
+        Violation(
+            ERROR,
+            "entity_sequence_mismatch",
+            f"{len(mismatches)} residue(s) disagree with _entity_poly_seq: {_truncate(mismatches)}. "
+            "Check entity assignments after chain splitting/cropping; source left unchanged.",
+        )
+    ]
+
+
 def load_atom_array(path: Path) -> AtomArray:
     """Parse *path* into an AtomArrayPlus without repairing anything."""
     from atomworks.io.config import ParseConfig
@@ -126,6 +187,34 @@ def load_atom_array(path: Path) -> AtomArray:
 
 
 # Direct coord-implies-sequence pre-check (runs before the pipeline)
+
+
+def check_conditioned_coordinates(arr: AtomArray) -> list[Violation]:
+    """Require finite selected coordinate references; leave unselected atoms alone.
+    Absolute mask-only inputs use stored coordinates; internal conditions need explicit references.
+    """
+    from atomworks.ml.conditions import C_CRD
+
+    from rfproteina.conditions import C_INTCRD
+
+    violations = []
+    for condition in (C_CRD, C_INTCRD):
+        mask = condition.mask(arr)
+        references = (
+            arr.coord if condition is C_CRD and not condition.has_annotation(arr) else condition.annotation(arr)
+        )
+        bad = mask & ~np.isfinite(references).all(axis=-1)
+        if bad.any():
+            labels = [f"{_residue_label(arr, i)}:{arr.atom_name[i]}" for i in np.flatnonzero(bad)]
+            violations.append(
+                Violation(
+                    ERROR,
+                    "conditioned_coordinates_nonfinite",
+                    f"{condition.name}: {len(labels)} conditioned atom(s) have nonfinite reference coordinates: "
+                    f"{_truncate(labels)}. Source left unchanged.",
+                )
+            )
+    return violations
 
 
 def check_coord_implies_seq(arr: AtomArray) -> list[Violation]:
@@ -714,10 +803,11 @@ def check_struct_conn(path: Path, arr: AtomArray) -> list[Violation]:
 
 def check_cif(path: Path, skip_pipeline: bool = False) -> tuple[list[Violation], object]:
     """Run every check against *path*. Returns ``(violations, atom_array)``."""
-    violations: list[Violation] = []
+    violations = check_entity_sequences(path)
     arr = load_atom_array(path)
 
     # Part 1 - pre-check FIRST (pipeline would auto-fix this away).
+    violations += check_conditioned_coordinates(arr)
     violations += check_coord_implies_seq(arr)
 
     # Part 1 - invariants, then the pipeline backstop.

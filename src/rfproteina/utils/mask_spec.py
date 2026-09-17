@@ -23,6 +23,8 @@ from atomworks.io.utils.query import QueryExpression
 from atomworks.io.utils.selection import get_annotation_categories
 from biotite.structure import AtomArray, AtomArrayStack
 
+from rfproteina.utils import chain  # noqa: F401 (register lazy chain annotations)
+
 
 def resolve_mask(atom_array: AtomArray | AtomArrayStack, query: str) -> np.ndarray:
     """Evaluate a selection query string against ``atom_array``.

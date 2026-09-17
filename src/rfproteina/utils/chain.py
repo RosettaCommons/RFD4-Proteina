@@ -1,14 +1,29 @@
 """Utilities for identifying the chain of interest in a multi-chain structure."""
 
 import numpy as np
-from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.annotator import _register_lazy_annotator, ensure_annotations
 from atomworks.ml.conditions import C_CRD, C_SEQ
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, AtomArrayStack
 
 from rfproteina.conditions import C_INTCRD
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+@_register_lazy_annotator("is_chain_of_interest")
+def annotate_chain_of_interest(atom_array: AtomArray | AtomArrayStack) -> np.ndarray:
+    """Select the unambiguous designed chain, using the first frame for stacks.
+    Remove this cached lazy annotation after changing chain identities or conditioning.
+    """
+    if atom_array.array_length() == 0 or (isinstance(atom_array, AtomArrayStack) and atom_array.stack_depth() == 0):
+        raise ValueError("Cannot determine chain of interest from an empty structure.")
+    frame = atom_array[0] if isinstance(atom_array, AtomArrayStack) else atom_array
+    chain, unambiguous = get_chain_of_interest(frame)
+    if chain is None or not unambiguous:
+        raise ValueError("Cannot unambiguously determine chain of interest; use an explicit chain query.")
+    chain_attr = "chain_iid" if "chain_iid" in frame.get_annotation_categories() else "chain_id"
+    return frame.get_annotation(chain_attr) == chain
 
 
 def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
