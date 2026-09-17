@@ -78,8 +78,8 @@ input to that pipeline — the benchmark report is generated from it.
 
 ## License
 
-Following NVIDIA's dual-license convention, skill **text and documentation**
-follow **CC-BY-4.0**, while **source and helper scripts** follow **Apache-2.0**.
+Skill **text and documentation** follow **CC-BY-4.0**, while **source and helper
+scripts** follow **BSD-3-Clause**, except where third-party license notices apply.
 See the repository's top-level license for the authoritative terms.
 
 ## Verify a signed skill

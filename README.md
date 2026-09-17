@@ -11,7 +11,7 @@
   <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml/badge.svg" alt="CI status"></a>
   <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/docs.yaml/badge.svg" alt="Documentation"></a>
   <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/graph/badge.svg?token=21O2N8apcG" alt="Code coverage"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="Apache License 2.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
 </p>
 
 <p align="center">
@@ -147,4 +147,5 @@ no-container walkthrough that finetunes the released checkpoint on a tiny exampl
 
 ## License
 
-RFProteína is licensed under the [Apache License 2.0](LICENSE).
+RFProteína is licensed under the [BSD 3-Clause License](LICENSE).
+Third-party code retains the license notices included with those components.

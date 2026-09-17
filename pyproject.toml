@@ -2,7 +2,7 @@
 name = "rfproteina"
 version = "0.0.1"
 description = "protein foundation models"
-license = "Apache-2.0"
+license = "BSD-3-Clause"
 requires-python = ">=3.12,<=3.12.10"
 dependencies = [
     # AtomWorks is installed from the local lib/atomworks submodule by setup.sh.
