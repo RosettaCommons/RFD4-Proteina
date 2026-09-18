@@ -35,7 +35,7 @@ copyright = "2026, Baker Lab and NVIDIA GenAI"
 try:
     release = package_version("rfproteina")
 except PackageNotFoundError:
-    release = "0.0.1"
+    release = "0.0.2"
 version = release
 
 extensions = [

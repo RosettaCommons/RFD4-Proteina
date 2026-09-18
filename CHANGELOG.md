@@ -1,3 +1,127 @@
+# RFD4-Proteína v0.0.2
+
+---
+
+Version 0.0.2 adds fold and interaction conditioning, cysteine avoidance, and a new default model.
+It improves motif scaffolding and reuse of generated designs, fixes inference with unindexed regions,
+and makes interrupted generation and evaluation runs easier to resume.
+
+Below are the user-facing inference and evaluation changes since `v0.0.1`.
+
+### New conditions
+
+* **Choose a fold with CAT conditioning (`C_CATH`).** Request a class, architecture, or topology
+  from the CATH hierarchy for a chain or domain, from a broad choice such as `"1.x.x"` to a
+  specific topology such as `"2.60.40"`. The PyMOL editor and YAML/JSON condition specs accept
+  these labels and validate them before generation
+  ([#488](https://github.com/RosettaCommons/RFD4-Proteina/pull/488)).
+* **Request aromatic interactions.** Use `C_PISTACK` for π-stacking or `C_PICATION` for the
+  aromatic, cation, or both roles in π-cation interactions. Select complete aromatic rings when
+  requesting an aromatic role. These conditions can be supplied through annotated CIFs, the
+  Python API, PyMOL, or condition specs
+  ([#488](https://github.com/RosettaCommons/RFD4-Proteina/pull/488),
+  [#261](https://github.com/RosettaCommons/RFD4-Proteina/pull/261)).
+* **Ask selected residues to avoid cysteine (`C_NCYS`).** Apply the condition to residues whose
+  sequence is being designed. A new adherence metric reports violations, and the default design
+  filter rejects violating designs before refolding. As with all pre-oracle filters, disable
+  it for benchmarks that must score every generated sample
+  ([#488](https://github.com/RosettaCommons/RFD4-Proteina/pull/488)).
+
+See [Preparing inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/workflow/inputs.html)
+for condition definitions and examples.
+
+### Generation and evaluation
+
+* **A new default checkpoint and sampling recipe.** Generation now uses the September 15 model
+  and September 4 autoencoder, with a 60-step sampling schedule and configurable recycling.
+  Recycling lets you spend additional model computation at selected stages of generation
+  ([#483](https://github.com/RosettaCommons/RFD4-Proteina/pull/483),
+  [#417](https://github.com/RosettaCommons/RFD4-Proteina/pull/417)).
+* **Refold binders against a cropped target.** Keep the entire designed binder while limiting the
+  target to its interface neighborhood, reducing refolding work on large complexes. Cropped
+  refolds can be compared against the matching region of the full design
+  ([#260](https://github.com/RosettaCommons/RFD4-Proteina/pull/260)).
+* **Classify folds even when Foldseek finds no match.** The CATH metric now falls back to a
+  classifier for class, architecture, and topology. You can also select either method alone;
+  the classifier requires its additional checkpoint and label files
+  ([#478](https://github.com/RosettaCommons/RFD4-Proteina/pull/478)).
+* **Screen developability.** Opt-in metrics report sequence hydrophobicity and instability, plus
+  aggregation propensity (SAP) and exposed hydrophobic surface with PyRosetta. Enable them with
+  `metrics_tags='[developability]'`; the structure-based scores require a configured PyRosetta
+  container ([#294](https://github.com/RosettaCommons/RFD4-Proteina/pull/294)).
+* **Score sensitivity to point mutations.** TMol can estimate changes in interface binding energy
+  for specified substitutions, including scans over multiple sites and amino acids
+  ([#255](https://github.com/RosettaCommons/RFD4-Proteina/pull/255)).
+* **Save compressed structures.** Set `compress_outputs=true` to write `.cif.zst` designs,
+  refolds, and CIF trajectories. Generation and evaluation accept plain, gzip, and Zstandard
+  structures; resuming and Foldseek clustering work with compressed outputs. Plain CIF remains
+  the default ([#490](https://github.com/RosettaCommons/RFD4-Proteina/pull/490)).
+
+### Inference bug fixes
+
+* **Unindexed motifs and residue-number gaps are interpreted correctly.** Connected parts of a
+  motif retain their connectivity, while separate index groups remain independent. Removing an
+  unindexed region no longer leaves incorrect connections in the remaining chain, and inputs
+  without an explicit `IndexGroup` annotation receive a default instead of failing
+  ([#244](https://github.com/RosettaCommons/RFD4-Proteina/pull/244)).
+* **Backbone-only unindexed motifs can change sequence.** A valid placement is no longer rejected
+  because the generated residue has fewer sidechain atoms than the input residue. Thanks
+  [@donghyo1225](https://github.com/donghyo1225) for the detailed report
+  ([#248](https://github.com/RosettaCommons/RFD4-Proteina/issues/248), fixed in
+  [#266](https://github.com/RosettaCommons/RFD4-Proteina/pull/266)).
+* **Generated designs retain their original motif constraints.** Reusing a design for partial
+  diffusion preserves its requested coordinates and residue identities. Motif RMSDs respect
+  independently positioned coordinate groups, and output residue labels preserve the link back
+  to the input motif
+  ([#236](https://github.com/RosettaCommons/RFD4-Proteina/pull/236),
+  [#410](https://github.com/RosettaCommons/RFD4-Proteina/pull/410),
+  [#452](https://github.com/RosettaCommons/RFD4-Proteina/pull/452),
+  [#406](https://github.com/RosettaCommons/RFD4-Proteina/pull/406)).
+* **Chain-centroid requests stay aligned with the input.** Centering a structure no longer moves
+  it away from the supplied centroid condition
+  ([#242](https://github.com/RosettaCommons/RFD4-Proteina/pull/242)).
+* **Binder metrics identify the designed chain more reliably**, including co-folding and
+  backbone-conditioned targets. Target-aligned binder RMSD uses the target backbone, so changes
+  to target sidechains do not distort the alignment
+  ([#317](https://github.com/RosettaCommons/RFD4-Proteina/pull/317),
+  [#493](https://github.com/RosettaCommons/RFD4-Proteina/pull/493)).
+* **More ligand-containing designs can be refolded and scored.** AF3/OF3 refolding handles covalent
+  modifiers with leaving atoms, and AF3 preserves standalone glycan ligands. Ligand RASA
+  adherence no longer becomes undefined because protein-only atom radii were used
+  ([#479](https://github.com/RosettaCommons/RFD4-Proteina/pull/479),
+  [#487](https://github.com/RosettaCommons/RFD4-Proteina/pull/487),
+  [#253](https://github.com/RosettaCommons/RFD4-Proteina/pull/253)). Thanks
+  [@Jonas-Wilhelm](https://github.com/Jonas-Wilhelm) for reporting and diagnosing the RASA issue
+  ([#189](https://github.com/RosettaCommons/RFD4-Proteina/issues/189)).
+* **Resuming finishes evaluation of existing designs.** With `skip_existing=true`, saved designs
+  are evaluated instead of disappearing from the run's results, and cached refolds are reused.
+  Empty output files are regenerated, interrupted writes no longer look like completed designs,
+  and parallel jobs more reliably share an output directory
+  ([#337](https://github.com/RosettaCommons/RFD4-Proteina/pull/337),
+  [#492](https://github.com/RosettaCommons/RFD4-Proteina/pull/492)).
+* **AF3 refolding works when invoking `generate.py` directly on configured Apptainer systems**, and
+  startup failures report their cause. Refolds from different inputs with the same design name
+  no longer overwrite one another
+  ([#241](https://github.com/RosettaCommons/RFD4-Proteina/pull/241),
+  [#354](https://github.com/RosettaCommons/RFD4-Proteina/pull/354)).
+
+### Upgrading from v0.0.1
+
+* **Migrate legacy contig JSON inputs.** Use annotated CIFs or the current YAML/JSON condition-spec
+  format. Legacy fields such as `select_fixed_atoms` and `unindex` are no longer accepted;
+  JSON itself remains supported through condition specs
+  ([#382](https://github.com/RosettaCommons/RFD4-Proteina/pull/382)). See the
+  [condition-spec guide](https://rosettacommons.github.io/RFD4-Proteina/latest/workflow/condition-spec.html).
+* **Use `scripts/launch_generate.sh` for batch generation.** The old `launch_infer.sh` name still
+  forwards its arguments. The separate legacy `external_eval.py` command has been removed;
+  use the supported `evaluate.py` workflow for standalone evaluation
+  ([#241](https://github.com/RosettaCommons/RFD4-Proteina/pull/241),
+  [#355](https://github.com/RosettaCommons/RFD4-Proteina/pull/355)).
+
+**Full Changelog**: [`v0.0.1...v0.0.2`](https://github.com/RosettaCommons/RFD4-Proteina/compare/v0.0.1...v0.0.2)
+
+---
+
 # RFD4-Proteína v0.0.1
 
 ---
