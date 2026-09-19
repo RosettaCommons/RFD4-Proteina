@@ -358,8 +358,8 @@ def _bonded_pair(distance: float, occupancy: tuple[float, float] = (1.0, 1.0)) -
     return aa
 
 
-def test_bond_length_invariant_rejects_long_training_bond():
-    violations = check_bond_length_violations(_bonded_pair(4.1), is_inference=False)
+def test_bond_length_invariant_rejects_long_bond():
+    violations = check_bond_length_violations(_bonded_pair(4.1))
 
     assert len(violations) == 1
     assert violations[0].check == "bond_length"
@@ -367,15 +367,14 @@ def test_bond_length_invariant_rejects_long_training_bond():
 
 
 @pytest.mark.parametrize(
-    ("atom_array", "is_inference"),
+    "atom_array",
     [
-        pytest.param(_bonded_pair(4.0), False, id="boundary"),
-        pytest.param(_bonded_pair(20.0, occupancy=(0.0, 1.0)), False, id="unresolved"),
-        pytest.param(_bonded_pair(20.0), True, id="inference"),
+        pytest.param(_bonded_pair(4.0), id="boundary"),
+        pytest.param(_bonded_pair(20.0, occupancy=(0.0, 1.0)), id="unresolved"),
     ],
 )
-def test_bond_length_invariant_allows_unmeasured_or_nontraining_bonds(atom_array: AtomArray, is_inference: bool):
-    assert check_bond_length_violations(atom_array, is_inference=is_inference) == []
+def test_bond_length_invariant_allows_reasonable_or_unmeasured_bonds(atom_array: AtomArray):
+    assert check_bond_length_violations(atom_array) == []
 
 
 if __name__ == "__main__":

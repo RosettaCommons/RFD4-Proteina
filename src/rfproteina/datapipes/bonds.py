@@ -72,8 +72,12 @@ def _token_type_at(atom_array: AtomArray, atom_idxs: np.ndarray) -> np.ndarray:
     return types
 
 
-def _polymerisation_atoms(res_name: str, token_type: int) -> tuple[str, str]:
-    """(leaving, entering) backbone atoms; ``""`` for a side the residue does not carry."""
+def get_polymerization_atom_names(res_name: str, token_type: int = TokenType.UNKNOWN) -> tuple[str, str]:
+    """Return outgoing/incoming backbone atoms, with ``""`` for an absent side.
+
+    If neither atom is recognized, use the unknown residue of the supplied protein/RNA/DNA
+    token type. A recognized one-sided terminus is preserved without filling its absent side.
+    """
     leaving, entering = get_polymerization_atoms(res_name)
     if leaving is None and entering is None:
         unknown = _UNKNOWN_RES_BY_TOKEN_TYPE.get(token_type)
@@ -85,14 +89,21 @@ def _polymerisation_atoms(res_name: str, token_type: int) -> tuple[str, str]:
 def _link_atom_names(atom_array: AtomArray, atom_idxs: np.ndarray, token_type: np.ndarray) -> np.ndarray:
     """Per-atom ``[leaving, entering]`` names expected of that atom's residue."""
     res, types = atom_array.res_name[atom_idxs], token_type[atom_idxs]
-    pairs = {(r, t): _polymerisation_atoms(str(r), int(t)) for r, t in set(zip(res, types, strict=False))}
+    pairs = {(r, t): get_polymerization_atom_names(str(r), int(t)) for r, t in set(zip(res, types, strict=False))}
     return np.array([pairs[k] for k in zip(res, types, strict=False)]).reshape(-1, 2)
 
 
-def _is_link_atom(
-    atom_array: AtomArray, atom_idxs: np.ndarray, token_type: np.ndarray, stands_in: np.ndarray
+def get_polymerization_atom_masks(
+    atom_array: AtomArray,
+    atom_idxs: np.ndarray,
+    token_type: np.ndarray | None = None,
+    stands_in: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Whether each atom is its residue's leaving / entering polymerisation atom."""
+    """Identify leaving/entering polymerization atoms; expandable placeholders stand in for both."""
+    if token_type is None:
+        token_type = _token_type_at(atom_array, np.arange(len(atom_array)))
+    if stands_in is None:
+        stands_in = S_SEGMIN.mask(atom_array, default="generate")
     link = _link_atom_names(atom_array, atom_idxs, token_type)
     names, stand_in = atom_array.atom_name[atom_idxs], stands_in[atom_idxs]
     return (names == link[:, 0]) | stand_in, (names == link[:, 1]) | stand_in
@@ -191,8 +202,8 @@ def _upstream_direction(
 
     # Expandable-segment sentinels carry no backbone atoms, so they stand in for either role.
     stands_in = S_SEGMIN.mask(atom_array, default="generate")
-    leaves1, enters1 = _is_link_atom(atom_array, edges["atom1"], atom_type, stands_in)
-    leaves2, enters2 = _is_link_atom(atom_array, edges["atom2"], atom_type, stands_in)
+    leaves1, enters1 = get_polymerization_atom_masks(atom_array, edges["atom1"], atom_type, stands_in)
+    leaves2, enters2 = get_polymerization_atom_masks(atom_array, edges["atom2"], atom_type, stands_in)
     fwd, rev = leaves1 & enters2, leaves2 & enters1
     if not stands_in.any():
         return fwd, rev  # no expandable-segment stand-ins (all training, most inference): chemistry decides.
@@ -247,7 +258,7 @@ def polymerisation_atom_idx(
     if res_stop - res_start == 1 and array.res_name[res_start] == MASKED:
         return int(res_start)
 
-    exiting_name, entering_name = _polymerisation_atoms(str(array.res_name[res_start]), int(token_type))
+    exiting_name, entering_name = get_polymerization_atom_names(str(array.res_name[res_start]), int(token_type))
     atom_name = exiting_name if exiting else entering_name
     span = np.arange(res_start, res_stop)
     match = span[array.atom_name[span] == atom_name]
