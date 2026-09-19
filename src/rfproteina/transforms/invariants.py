@@ -19,10 +19,17 @@ from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_star
 from biotite.structure import AtomArray
 
 from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, C_NCYS
+from rfproteina.datapipes.bonds import (
+    get_bond_distances,
+    get_polymerization_atom_masks,
+    get_polymerization_atom_names,
+)
+from rfproteina.datapipes.schema.proteina import TokenType
 
 logger = logging.getLogger(__name__)
 
 _MAX_REASONABLE_BOND_LENGTH_ANGSTROM = 4.0
+_MAX_REASONABLE_POLYMER_BOND_LENGTH_ANGSTROM = 2.0
 
 
 @dataclass
@@ -56,7 +63,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_conditioning_annotation_matches_ground_truth(aa, is_inference=is_inference)
     violations += check_conditioning_coords_not_nan(aa)
     violations += check_expandable_segment_atom37_conditioning_violations(aa)
-    violations += check_bond_length_violations(aa, is_inference=is_inference)
+    violations += check_bond_length_violations(aa)
     violations += check_unindexed_coord_conditioning_violations(aa)
 
     # --- Feats / token-level checks ---
@@ -127,30 +134,69 @@ def check_expandable_segment_atom37_conditioning_violations(aa: AtomArray) -> li
     ]
 
 
-def check_bond_length_violations(aa: AtomArray, is_inference: bool) -> list[InvariantViolation]:
-    """Return training bonds with resolved endpoints farther than 4 Å apart."""
-    if is_inference or aa.bonds is None:
+def check_bond_length_violations(aa: AtomArray) -> list[InvariantViolation]:
+    """Check input bonds in both modes: recognized polymerization bonds ≤2 Å, others ≤4 Å.
+
+    Check existing bonds with resolved, non-placeholder endpoints, using the bond featurizer's
+    polymer-atom lookup in either endpoint order.
+    """
+    if aa.bonds is None:
         return []
     bonds = aa.bonds.as_array()
     if len(bonds) == 0:
         return []
 
     atom1, atom2 = bonds[:, :2].T
-    distances = np.linalg.norm(aa.coord[atom1] - aa.coord[atom2], axis=-1)
-    measured = ~np.isnan(distances)
+    distances = get_bond_distances(aa)
+    resolved = np.isfinite(aa.coord).all(axis=-1) & ~S_SEGMIN.mask(aa, default="generate")
     if "occupancy" in aa.get_annotation_categories():
-        measured &= (aa.occupancy[atom1] > 0) & (aa.occupancy[atom2] > 0)
-    too_long = measured & (distances > _MAX_REASONABLE_BOND_LENGTH_ANGSTROM)
+        resolved &= aa.occupancy > 0
+    measured = resolved[atom1] & resolved[atom2]
+
+    chain = aa.chain_iid if "chain_iid" in aa.get_annotation_categories() else aa.chain_id
+    inter_residue = (
+        (chain[atom1] != chain[atom2])
+        | (aa.res_id[atom1] != aa.res_id[atom2])
+        | (aa.ins_code[atom1] != aa.ins_code[atom2])
+    )
+    outgoing = np.zeros(len(aa), dtype=bool)
+    incoming = np.zeros(len(aa), dtype=bool)
+    token_type = (
+        aa.token_type if "token_type" in aa.get_annotation_categories() else np.full(len(aa), TokenType.UNKNOWN)
+    )
+    endpoints = bonds[measured & inter_residue, :2].ravel()
+    for res_name, res_type in set(zip(aa.res_name[endpoints], token_type[endpoints], strict=True)):
+        exit_atom, entry_atom = get_polymerization_atom_names(str(res_name), int(res_type))
+        residue = (aa.res_name == res_name) & (token_type == res_type)
+        if exit_atom:
+            outgoing |= residue & (aa.atom_name == exit_atom)
+        if entry_atom:
+            incoming |= residue & (aa.atom_name == entry_atom)
+    polymer = inter_residue & ((outgoing[atom1] & incoming[atom2]) | (incoming[atom1] & outgoing[atom2]))
+    limits = np.where(polymer, _MAX_REASONABLE_POLYMER_BOND_LENGTH_ANGSTROM, _MAX_REASONABLE_BOND_LENGTH_ANGSTROM)
+    too_long = measured & (distances > limits)
     if not too_long.any():
         return []
 
     count = int(too_long.sum())
+    details = []
+    for bond_idx in np.flatnonzero(too_long)[:5]:
+        endpoints = [
+            f"{chain[i]}:{aa.res_name[i]}{aa.res_id[i]}{aa.ins_code[i]}:{aa.atom_name[i]}"
+            for i in (atom1[bond_idx], atom2[bond_idx])
+        ]
+        details.append(f"{' -- '.join(endpoints)} = {distances[bond_idx]:.2f} Å (limit {limits[bond_idx]:.1f} Å)")
     return [
         InvariantViolation(
             check="bond_length",
             message=(
-                f"{count} bond(s) are longer than {_MAX_REASONABLE_BOND_LENGTH_ANGSTROM:.1f} Å; "
-                f"maximum length is {distances[too_long].max():.2f} Å"
+                f"{count} bond(s) exceed the polymerization limit of "
+                f"{_MAX_REASONABLE_POLYMER_BOND_LENGTH_ANGSTROM:.1f} Å "
+                f"or general limit of {_MAX_REASONABLE_BOND_LENGTH_ANGSTROM:.1f} Å; "
+                f"maximum length is {distances[too_long].max():.2f} Å. "
+                f"First {len(details)}: {'; '.join(details)}. "
+                "Check source coordinates and residue numbering; "
+                "preserve missing-residue gaps instead of bonding across them."
             ),
             count=count,
         )
@@ -664,6 +710,25 @@ def check_index_group_molecule_connectivity_violations(
     """Return violations where two tokens of one molecule were featurized as having no path between them."""
     if not is_inference or "token_bond_path_length" not in feats:
         return []
+
+    groups = C_IDXGRP.annotation(aa, default="generate")
+    indexed = C_IDX.mask(aa, default="generate") & ~aa.atomize
+    if aa.bonds is not None:
+        i, j = aa.bonds.as_array()[:, :2].T
+        leaving, entering = get_polymerization_atom_masks(aa, np.arange(len(aa)))
+        backbone = (leaving[i] & entering[j]) | (entering[i] & leaving[j])
+        bad_bonds = backbone & indexed[i] & indexed[j] & (groups[i] != groups[j])
+        if bad_bonds.any():
+            a, b = i[bad_bonds][0], j[bad_bonds][0]
+            return [
+                InvariantViolation(
+                    check="backbone_bond_index_group",
+                    message=f"Backbone-bonded {aa.chain_id[a]}{aa.res_id[a]}-{aa.chain_id[b]}{aa.res_id[b]} "
+                    f"have different index groups ({groups[a]}, {groups[b]}), hiding connectivity from the model. "
+                    "Use one index group for the continuous indexed scaffold.",
+                    count=int(bad_bonds.sum()),
+                )
+            ]
 
     path_length = np.asarray(feats["token_bond_path_length"])  # [n_tokens, n_tokens]
     token_starts = get_token_starts(aa)

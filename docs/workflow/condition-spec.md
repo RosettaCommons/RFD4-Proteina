@@ -224,8 +224,9 @@ example per top level key.
 Two complete, runnable specs live beside this file.
 
 - [docs/condition_spec_ppi.yaml](../condition_spec_ppi.yaml) builds a de novo PPI binder against
-  PD-L1, matching `data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst`. It uses an expandable
+  PD-L1, matching `data/benchmarks/ppi/ppi_bb_only/rfd3_pdl1.cif.zst`. It uses an expandable
   binder chain, backbone only coordinate conditioning on the target, and atom level hotspots.
+  Its raw target structure is [5o45_cropped.cif](../examples/inputs/5o45_cropped.cif).
 - [docs/condition_spec_complicated.yaml](../condition_spec_complicated.yaml) redesigns a small
   molecule pocket and exercises most of the above, with a multi chain contig, an expandable segment
   carrying secondary structure conditioning, groups, and both selection styles.

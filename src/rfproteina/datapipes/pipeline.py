@@ -1170,7 +1170,7 @@ def _build_design_clean_and_sample_pipeline(
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
     # Keep the bonded polymer residue tokenized; atomize only the covalent modifier.
-    T += AnnotateCovalentModifications(reassign_modified_residue=False)
+    T += AnnotateCovalentModifications(p_reassign_modified_residue=0.0)
     T += FlagNonPolymersForAtomization()
     if not is_inference:
         T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
