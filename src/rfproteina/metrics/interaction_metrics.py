@@ -206,7 +206,7 @@ def get_interaction_metrics(atom_array: AtomArray) -> dict[str, float]:
         Dict with atom-count, pair-count, and (if applicable) adherence metrics for each interaction type.
         Returns all ``nan`` if interaction annotation fails.
     """
-    annotator = AnnotateInteractions(inter_chain_only=True, silence_rdkit_warnings=True, hbond_model="rosetta")
+    annotator = AnnotateInteractions(inter_chain_only=True, silence_rdkit_warnings=True, hbond_model="plip")
     try:
         data = annotator.forward({"atom_array": atom_array})
         annotated = data["atom_array"]
