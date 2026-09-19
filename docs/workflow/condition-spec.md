@@ -281,7 +281,10 @@ placeholder itself, like `C_HOT`, do not need it.
 it. Pass `prevalidate_inputs=true` to `generate.py` to build every example up front and run the same
 safeguards the CIF writer runs. That catches typos across a whole batch, at the cost of building
 every example before the run starts. The CIF writer script does this by default, and
-`--no-prevalidate` turns it off. Separately, an unrecognized example field always raises at build
+`--no-prevalidate` turns it off. Expandable segments are realized on a temporary copy for the
+pre-save pipeline check; the saved CIF retains their placeholders and length ranges. This
+checks one realization, not every combination of allowed lengths.
+Separately, an unrecognized example field always raises at build
 time rather than getting ignored, whether or not you prevalidate. That covers a typo'd `conditions:`
 and a stale `global_args` key folded onto every example.
 

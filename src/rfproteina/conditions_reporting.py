@@ -33,6 +33,7 @@ from atomworks.io.utils.atom_array_plus import AtomArrayPlus
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.transforms.dssp import SSEnum
+from atomworks.ml.utils.expandable_segment import realize_expandable_segments
 from biotite.structure import get_residue_starts
 
 from rfproteina.conditions import (
@@ -371,12 +372,17 @@ def summarize_conditions(arr: AtomArrayPlus, *, include_host_summarized: bool = 
 def run_pipeline_validation(arr: AtomArrayPlus) -> list[str]:
     """Dry-run the design validation pipeline against ``arr``, without raising.
 
+    Expandable segments are realized on a copy with a fixed local seed before
+    featurization. The caller's placeholders and length ranges are preserved;
+    validation checks one realization, not every possible combination of lengths.
+
     Returns:
       Empty list if valid, otherwise one message per violation.
     """
     pipeline = build_design_validation_pipeline()
     try:
-        pipeline({"atom_array": arr.copy()})
+        realized = realize_expandable_segments(arr.copy(), rng=np.random.default_rng(0))
+        pipeline({"atom_array": realized})
         return []
     except ValueError as e:
         msg = str(e)
