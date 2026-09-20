@@ -46,6 +46,7 @@ from rfproteina.utils.coordinate_transfer import remove_terminal_oxygen_atoms
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_files import find_structure_file
+from rfproteina.utils.verbosity import VERBOSE, configure_verbosity
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -412,7 +413,6 @@ def run_oracle_and_refolding_metrics(
             # refold.{address} kwargs above. A metric that reads a refold gates itself on the
             # matching tag and is skipped when the refold is absent, rather than raising an error.
             exists_refold_tags = {f"{EXISTS_REFOLD_TAG_PREFIX}{label}" for label in refolds}
-            ran_refolding = False
             for label, save_id, oracle_name in scoring_passes:
                 # Inject oracle:{name} so refolding metrics can scope themselves to a specific
                 # oracle when several are active at once, and is_refold:{address} -- every address
@@ -445,12 +445,6 @@ def run_oracle_and_refolding_metrics(
                     if save_id is not None:
                         key = f"{metric_name}.{save_id}.{output_key}"
                     refolding_output[key] = value
-                ran_refolding = True
-            if not ran_refolding:
-                logger.warning(
-                    f"{example_id}: refolding metrics skipped -- either none applied or no refolded structures were"
-                    " found"
-                )
         elif refold_mm is not None:
             logger.warning(f"{example_id}: refolding metrics configured but no oracle output dir — skipping")
 
@@ -688,9 +682,10 @@ def compute_oracle_metrics_for_val_output(
 _WORKER_MMS: dict[str, MetricManager | None] = {}
 
 
-def _metrics_worker_init(mm_cfgs: dict[str, Any], val_dataset_tags: Any) -> None:
+def _metrics_worker_init(mm_cfgs: dict[str, Any], val_dataset_tags: Any, verbose: bool = True) -> None:
     """Worker initializer: rebuild the four MMs from configs.
     Skips ``setup()`` for the oracle MM (would load GPU weights)."""
+    configure_verbosity(verbose)
     for name, cfg in mm_cfgs.items():
         if cfg is None:
             _WORKER_MMS[name] = None
@@ -949,7 +944,7 @@ class MetricsPool:
             max_workers=self.num_workers,
             mp_context=mp.get_context("spawn"),
             initializer=_metrics_worker_init,
-            initargs=(self._mm_cfgs, val_dataset_tags),
+            initargs=(self._mm_cfgs, val_dataset_tags, VERBOSE.get()),
         )
         logger.info(f"Metrics pool: started with {self.num_workers} spawn workers")
 

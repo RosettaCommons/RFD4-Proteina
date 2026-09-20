@@ -1,3 +1,5 @@
+verbose: true # Include routine warnings and detailed diagnostic output.
+
 defaults:
   - /metrics: all_metrics
   - _self_

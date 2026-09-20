@@ -215,7 +215,8 @@ def _log_batch_example_ids(
     logger.info(
         f"[{stage}] epoch={epoch}, batch={batch_idx}{progress_str}, "
         f"steps={log_frequency}, elapsed={elapsed:.1f}s, steps/s={steps_per_sec:.2f}, "
-        f"n_examples={len(example_ids)}, ids={ids_preview}"
+        f"n_examples={len(example_ids)}, ids={ids_preview}",
+        extra={"diagnostic": True},
     )
 
 
@@ -367,7 +368,7 @@ class Proteina(L.LightningModule):
                 OmegaConf.set_struct(cfg_exp, True)
 
         self.fm = ProductSpaceFlowMatcher(cfg_exp)
-        logger.info(f"cfg_exp.nn: {cfg_exp.nn}")
+        logger.info(f"cfg_exp.nn: {cfg_exp.nn}", extra={"diagnostic": True})
 
         self.nn = LocalLatentsTransformer(**cfg_exp.nn, latent_dim=self.latent_dim)
 
@@ -912,7 +913,7 @@ class Proteina(L.LightningModule):
                 border_style="cyan",
                 width=60,
             )
-            safe_print(panel, logger=logger)
+            safe_print(panel, logger=logger, diagnostic=True)
 
         # Log example IDs for debugging batch ordering
         _log_batch_example_ids(

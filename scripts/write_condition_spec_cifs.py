@@ -13,11 +13,10 @@ import argparse
 from pathlib import Path
 
 from rfproteina.inference_utils.condition_spec import resolve_condition_spec_inputs
-from rfproteina.utils.logging import silence_warnings
+from rfproteina.utils.verbosity import configure_verbosity
 
 
 def main() -> None:
-    silence_warnings()  # quiet atomworks' per-hydrogen standardization warnings, etc.
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("spec", type=Path, help="Condition-spec YAML/JSON file (docs/condition_spec_yaml.md).")
     parser.add_argument(
@@ -31,7 +30,9 @@ def main() -> None:
         action="store_true",
         help="Skip the (default-on) validation-pipeline check on each built structure.",
     )
+    parser.add_argument("--verbose", action="store_true", help="Show routine warnings and diagnostic output.")
     args = parser.parse_args()
+    configure_verbosity(args.verbose)
 
     for path in resolve_condition_spec_inputs(args.spec, out_dir=args.out_dir, validate=not args.no_prevalidate):
         print(f"wrote {path}")

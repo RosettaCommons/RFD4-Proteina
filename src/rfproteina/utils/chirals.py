@@ -1,5 +1,6 @@
 """Utilities for handling stereogenic-center geometry"""
 
+import warnings
 from itertools import permutations
 
 import numpy as np
@@ -23,13 +24,16 @@ def _enumerate_stereoisomer_templates(template: np.ndarray, tol: float = 1e-5) -
     """One representative per proper-rotation orbit of all ``n!`` labelings."""
     reps: list[np.ndarray] = []
 
-    # Iterate through all n! permutations
-    for perm in permutations(range(len(template))):
-        candidate = template[list(perm)]
-        if any(Rotation.align_vectors(candidate, existing)[1] < tol for existing in reps):
-            # Skip permutations that are not unique stereocenters
-            continue
-        reps.append(candidate)
+    # Only the residual is needed; the minimizing rotation need not be unique.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="Optimal rotation is not uniquely or poorly defined", category=UserWarning
+        )
+        for perm in permutations(range(len(template))):
+            candidate = template[list(perm)]
+            if any(Rotation.align_vectors(candidate, existing)[1] < tol for existing in reps):
+                continue
+            reps.append(candidate)
 
     return reps
 
@@ -48,7 +52,11 @@ def _template_rmsds(centered: np.ndarray, geometry: str) -> np.ndarray | None:
     if templates is None or not np.isfinite(centered).all():
         return None
     unit = centered / np.maximum(np.linalg.norm(centered, axis=1, keepdims=True), 1e-8)
-    rssds = np.array([Rotation.align_vectors(unit, t)[1] for t in templates])
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="Optimal rotation is not uniquely or poorly defined", category=UserWarning
+        )
+        rssds = np.array([Rotation.align_vectors(unit, t)[1] for t in templates])
     return rssds / np.sqrt(len(centered))
 
 

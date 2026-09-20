@@ -1,3 +1,5 @@
+verbose: true # Include routine warnings and detailed diagnostic output.
+
 run_name_: ae_z16
 compress_outputs: true # Compress validation structure samples.
 

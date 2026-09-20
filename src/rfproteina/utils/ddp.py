@@ -6,6 +6,8 @@ from lightning_fabric.utilities import rank_zero_only
 from lightning_utilities.core.rank_zero import rank_prefixed_message
 from omegaconf import DictConfig
 
+from rfproteina.utils.verbosity import VERBOSE
+
 logger = logging.getLogger(__name__)
 
 
@@ -86,7 +88,11 @@ class RankedLogger(logging.LoggerAdapter):
         if torch.compiler.is_compiling():
             return
         if self.isEnabledFor(level):
+            record_extra = kwargs.get("extra") or {}
             msg, kwargs = self.process(msg, kwargs)
+            kwargs["extra"] = {**(kwargs.get("extra") or {}), **record_extra}
+            if not VERBOSE.get() and level < logging.WARNING and kwargs["extra"].get("diagnostic"):
+                return
             current_rank = getattr(rank_zero_only, "rank", None)
             if current_rank is None:
                 raise RuntimeError("The `rank_zero_only.rank` needs to be set before use")

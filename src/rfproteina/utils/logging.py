@@ -1,10 +1,7 @@
 import contextlib
-import logging
-import warnings
-from contextlib import contextmanager
 
 import pandas as pd
-from beartype.typing import Any, Iterator
+from beartype.typing import Any
 from lightning_fabric.utilities import rank_zero_only
 from omegaconf import DictConfig, OmegaConf
 from rich.console import Console
@@ -14,122 +11,9 @@ from rich.tree import Tree
 from torch import nn
 
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.verbosity import VERBOSE
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
-
-
-class CachedDataFilter(logging.Filter):
-    """Filter to suppress atomworks cached data logging messages."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        # Filter out "Cached data not found" messages
-        return "Cached data not found" not in record.getMessage()
-
-
-class HydrogenRemovalFilter(logging.Filter):
-    """Filter atomworks' per-hydrogen "removing non-heavy atom" standardization warnings.
-
-    Parsing with ``add_missing_atoms=True`` logs one WARNING per hydrogen whose name
-    doesn't match the CCD template (they're stripped and rebuilt); on protonated inputs
-    that's thousands of lines of noise. Heavy-atom warnings are left untouched.
-    """
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        return "removing non-heavy atom" not in record.getMessage()
-
-
-def silence_warnings() -> None:
-    """Silence common warnings that appear during foundry execution."""
-    # Suppress atomworks cached data warnings (logging filter)
-    logging.getLogger("atomworks.ml").addFilter(CachedDataFilter())
-    logging.getLogger("atomworks.io.utils.standardize").addFilter(HydrogenRemovalFilter())
-
-    warnings.filterwarnings("ignore", message="All-NaN slice encountered", category=RuntimeWarning)
-    warnings.filterwarnings(
-        "ignore",
-        message="Category 'chem_comp_bond' not found. No bonds will be parsed",
-        category=UserWarning,
-        module="biotite.structure.io.pdbx.convert",
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message="torch.get_autocast_gpu_dtype\\(\\) is deprecated.*",
-        category=DeprecationWarning,
-        module="cuequivariance_ops_torch.triangle_attention",
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=".*multi-threaded.*fork.*may lead to deadlocks.*",
-        category=DeprecationWarning,
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=".*is_pyramidine.*deprecated.*Use.*is_pyrimidine.*",
-        category=DeprecationWarning,
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=".*index_reduce.*is in beta.*API may change.*",
-        category=UserWarning,
-    )
-    # Lightning sync_dist warnings - we handle distributed aggregation manually
-    warnings.filterwarnings(
-        "ignore",
-        message=".*recommended.*sync_dist=True.*",
-        category=UserWarning,
-    )
-
-
-@contextmanager
-def suppress_warnings(is_inference: bool = False) -> Iterator[None]:
-    """Context manager to suppress specific warnings within its scope.
-
-    Args:
-        is_inference: If True, also suppress inference-specific logging messages
-                     (e.g., atomworks cached data warnings).
-
-    Required to suppress warnings within multiprocessing contexts; e.g., `torch.multiprocessing.spawn`.
-    """
-    cached_data_filter = None
-
-    try:
-        with warnings.catch_warnings():
-            silence_warnings()
-            if is_inference:
-                # Add filter to suppress cached data messages
-                cached_data_filter = CachedDataFilter()
-                atomworks_ml_logger = logging.getLogger("atomworks.ml")
-                atomworks_ml_logger.addFilter(cached_data_filter)
-
-            yield
-    finally:
-        # Remove the filter
-        if cached_data_filter is not None:
-            atomworks_ml_logger = logging.getLogger("atomworks.ml")
-            atomworks_ml_logger.removeFilter(cached_data_filter)
-
-
-def configure_minimal_inference_logging() -> None:
-    """Configure minimal logging for inference (quiet mode)."""
-    # Suppress most logging by default
-    logging.getLogger().setLevel(logging.WARNING)
-
-    # Suppress specific noisy loggers
-    for logger_name in [
-        "atomworks",
-        "transforms",
-        "rfproteina.metrics",
-        "lightning",
-        "lightning_fabric",
-        "root",
-    ]:
-        logging.getLogger(logger_name).setLevel(logging.ERROR)
-
-    # Keep model-specific inference engine loggers at INFO for progress messages
-    logging.getLogger("rfd3.engine").setLevel(logging.INFO)
-
-    # Suppress warnings
-    warnings.filterwarnings("ignore")
 
 
 @rank_zero_only
@@ -146,6 +30,8 @@ def print_config_tree(
         resolve (bool): Whether to resolve reference fields of DictConfig. Default is False.
         console_width (int): The width of the console for printing. Default is 100.
     """
+    if not VERBOSE.get():
+        return
     console = Console(width=console_width)
     style = "dim"
     tree = Tree(title, style=style, guide_style=style)
@@ -264,8 +150,10 @@ def table_from_df(df: pd.DataFrame, title: str) -> Table:
     return table
 
 
-def safe_print(obj: Any, console_width: int = 100, logger: Any | None = None) -> None:
+def safe_print(obj: Any, console_width: int = 100, logger: Any | None = None, diagnostic: bool = False) -> None:
     """Print a Rich object in a console- and logger-safe manner."""
+    if diagnostic and not VERBOSE.get():
+        return
     console = Console(force_terminal=False, color_system=None, width=console_width)
 
     # Capture the table as a string and log it
@@ -274,12 +162,12 @@ def safe_print(obj: Any, console_width: int = 100, logger: Any | None = None) ->
 
     if logger:
         # Use the provided logger
-        logger.info(f"\n{capture.get()}")
+        logger.info(f"\n{capture.get()}", extra={"diagnostic": diagnostic})
     else:
         # Use the default ranked logger
-        ranked_logger.info(f"\n{capture.get()}")
+        ranked_logger.info(f"\n{capture.get()}", extra={"diagnostic": diagnostic})
 
 
 def print_df_as_table(df: pd.DataFrame, title: str, console_width: int = 100) -> None:
     """Pretty-print a DataFrame using Rich Table"""
-    safe_print(table_from_df(df=df, title=title), console_width=console_width)
+    safe_print(table_from_df(df=df, title=title), console_width=console_width, diagnostic=True)

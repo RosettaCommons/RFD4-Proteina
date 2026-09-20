@@ -10,6 +10,7 @@ defaults:
 # NOTE: The experiment configs can override values specified in this config
 
 run_name_: inference
+verbose: false # Set true for routine warnings and detailed diagnostic output.
 
 out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to an external
                # path (e.g. /path/to/shared/storage). SLURM scripts set this
