@@ -8,37 +8,49 @@ Usage::
 """
 
 import os
+import warnings
+from contextlib import nullcontext
 from pathlib import Path
 
-import hydra
-import pandas as pd
-import rootutils
-from atomworks.common import exists
-from atomworks.io.parser import parse
-from atomworks.ml.utils.misc import hash_sequence
-from omegaconf import DictConfig
+# Retain import warnings until the resolved config selects verbosity.
+with (
+    warnings.catch_warnings(record=True)
+    if __name__ in ("__main__", "__mp_main__")
+    else nullcontext([]) as _startup_warnings
+):
+    import hydra
+    import pandas as pd
+    import rootutils
+    from atomworks.common import exists
+    from atomworks.io.parser import parse
+    from atomworks.ml.utils.misc import hash_sequence
+    from omegaconf import DictConfig
 
-from rfproteina.inference_utils.foldseek import chain_cif_dir
-from rfproteina.metrics import MetricManager
-from rfproteina.metrics.utils.metrics_utils import (
-    _write_chain_only_cif_if_unambiguous,
-    apply_pre_oracle_filters,
-    run_oracle_refolding_and_pass_criteria,
-)
-from rfproteina.proteina import _clean_metrics_dict
-from rfproteina.utils.chain import get_chain_of_interest
-from rfproteina.utils.common import design_output_dir
-from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.env import load_dotenv
-from rfproteina.utils.logging import print_config_tree, silence_warnings
-from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
-from rfproteina.utils.structure_files import (
-    find_structure_file,
-    iter_structure_files,
-    structure_file_stem,
-)
+    from rfproteina.inference_utils.foldseek import chain_cif_dir
+    from rfproteina.metrics import MetricManager
+    from rfproteina.metrics.utils.metrics_utils import (
+        _write_chain_only_cif_if_unambiguous,
+        apply_pre_oracle_filters,
+        run_oracle_refolding_and_pass_criteria,
+    )
+    from rfproteina.proteina import _clean_metrics_dict
+    from rfproteina.utils.chain import get_chain_of_interest
+    from rfproteina.utils.common import design_output_dir
+    from rfproteina.utils.ddp import RankedLogger
+    from rfproteina.utils.env import load_dotenv
+    from rfproteina.utils.logging import print_config_tree
+    from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
+    from rfproteina.utils.structure_files import (
+        find_structure_file,
+        iter_structure_files,
+        structure_file_stem,
+    )
 
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    from rfproteina.utils.verbosity import configured_verbosity, queue_startup_warnings
+
+queue_startup_warnings(_startup_warnings)
+
 logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
@@ -50,6 +62,7 @@ def _find_input_structure(structure_file: Path) -> Path | None:
     return find_structure_file(input_path)
 
 
+@configured_verbosity(default=True)
 def run_evaluate(cfg: DictConfig) -> None:
     """Run evaluation on all structure files in ``cfg.inputs``."""
     cif_suffix = ".cif.zst" if cfg.get("compress_outputs", False) else ".cif"
@@ -241,9 +254,9 @@ def run_evaluate(cfg: DictConfig) -> None:
 
 
 @hydra.main(version_base="1.3", config_path=_config_path, config_name="evaluate")
+@configured_verbosity(default=True)
 def main_hydra(cfg: DictConfig) -> None:
     load_dotenv()
-    silence_warnings()
     print_config_tree(cfg, resolve=True)
     run_evaluate(cfg)
 

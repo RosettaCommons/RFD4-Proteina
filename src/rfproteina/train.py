@@ -3,50 +3,61 @@
 import json
 import os
 import time
+import warnings
+from contextlib import nullcontext
 from pathlib import Path
 
-import hydra
-import lightning as L
-import rootutils
-import torch
-import wandb
-from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.loggers import CSVLogger, WandbLogger
-from lightning.pytorch.plugins.environments import SLURMEnvironment
-from lightning.pytorch.utilities import rank_zero_only
-from omegaconf import DictConfig, OmegaConf
+# Retain import warnings until the resolved config selects verbosity.
+with (
+    warnings.catch_warnings(record=True)
+    if __name__ in ("__main__", "__mp_main__")
+    else nullcontext([]) as _startup_warnings
+):
+    import hydra
+    import lightning as L
+    import rootutils
+    import torch
+    import wandb
+    from lightning.pytorch.callbacks import Callback
+    from lightning.pytorch.loggers import CSVLogger, WandbLogger
+    from lightning.pytorch.plugins.environments import SLURMEnvironment
+    from lightning.pytorch.utilities import rank_zero_only
+    from omegaconf import DictConfig, OmegaConf
 
-from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.env import load_dotenv
-from rfproteina.utils.logging import print_config_tree, silence_warnings
-from rfproteina.utils.weights import (
-    WeightLoadingConfig,
-    freeze_parameters_with_config,
-    load_weights_with_policies,
-)
+    from rfproteina.utils.ddp import RankedLogger
+    from rfproteina.utils.env import load_dotenv
+    from rfproteina.utils.logging import print_config_tree
+    from rfproteina.utils.weights import (
+        WeightLoadingConfig,
+        freeze_parameters_with_config,
+        load_weights_with_policies,
+    )
 
-# Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
-# NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the
-# project (where `.project-root` is located)
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
+    # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the
+    # project (where `.project-root` is located)
+    rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-# Absolute, so the entrypoint works regardless of where it sits under src/.
-_config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
+    # Absolute, so the entrypoint works regardless of where it sits under src/.
+    _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
-from rfproteina.callbacks.rank_seed import RankSeedCallback  # noqa: E402
-from rfproteina.proteina import Proteina  # noqa: E402
-from rfproteina.utils.config_html import save_config_html  # noqa: E402
-from rfproteina.utils.datasets import (  # noqa: E402
-    assemble_distributed_loader,
-    assemble_val_loader_dict,
-    recursively_instantiate_datasets_and_samplers,
-)
-from rfproteina.utils.hydra import instantiate_callbacks  # noqa: E402
-from rfproteina.utils.lora import maybe_apply_lora  # noqa: E402
-from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA  # noqa: E402
-from rfproteina.utils.torch import apply_torch_deterministic  # noqa: E402
-from rfproteina.utils.torch_compile import SaveCompileCacheCallback, setup_run_compile  # noqa: E402
-from rfproteina.utils.weights import fetch_last_ckpt  # noqa: E402
+    from rfproteina.callbacks.rank_seed import RankSeedCallback
+    from rfproteina.proteina import Proteina
+    from rfproteina.utils.config_html import save_config_html
+    from rfproteina.utils.datasets import (
+        assemble_distributed_loader,
+        assemble_val_loader_dict,
+        recursively_instantiate_datasets_and_samplers,
+    )
+    from rfproteina.utils.hydra import instantiate_callbacks
+    from rfproteina.utils.lora import maybe_apply_lora
+    from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA
+    from rfproteina.utils.torch import apply_torch_deterministic
+    from rfproteina.utils.torch_compile import SaveCompileCacheCallback, setup_run_compile
+    from rfproteina.utils.verbosity import configured_verbosity, queue_startup_warnings
+    from rfproteina.utils.weights import fetch_last_ckpt
+
+queue_startup_warnings(_startup_warnings)
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -177,7 +188,7 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
     # (Resuming from a checkpoint loads deterministic weights, so no seed is needed here.)
     if last_ckpt_path is None:
         logger.info(f"Not starting from existing checkpoint; seeding with seed: {cfg_exp.seed}")
-        L.seed_everything(cfg_exp.seed, workers=False, verbose=True)
+        L.seed_everything(cfg_exp.seed, workers=False, verbose=cfg_exp.get("verbose", True))
 
     model = Proteina(cfg_exp)
 
@@ -320,9 +331,8 @@ def log_config_dashboard(
     config_path=_config_path,
     config_name="training_proteina",
 )
+@configured_verbosity(default=True)
 def main(cfg_exp: DictConfig) -> None:
-    silence_warnings()
-
     # Configure torch.compile + warm the local Inductor cache (before any compile).
     setup_run_compile()
 
@@ -459,6 +469,7 @@ def main(cfg_exp: DictConfig) -> None:
         val_check_interval=None,  # Use epoch-based validation only
         strategy=dist_strategy,
         enable_progress_bar=show_prog_bar,
+        enable_model_summary=cfg_exp.get("verbose", True),
         plugins=plugins,
         limit_train_batches=limit_train_batches,
         limit_val_batches=cfg_exp.opt.get("limit_val_batches", 1.0),

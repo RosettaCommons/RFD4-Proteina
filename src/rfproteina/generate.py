@@ -3,37 +3,52 @@
 import os
 import sys
 import time
+import warnings
+from contextlib import nullcontext
 from functools import partial
 from os import PathLike
 from pathlib import Path
 from typing import Any
 
-import hydra
-import lightning as L
-import rootutils
-import torch
-from atomworks.common import exists
-from atomworks.ml.transforms.base import Identity, Transform
-from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
-from torch.utils.data import DataLoader, Subset
+# Retain import warnings until the resolved config selects verbosity.
+with (
+    warnings.catch_warnings(record=True)
+    if __name__ in ("__main__", "__mp_main__")
+    else nullcontext([]) as _startup_warnings
+):
+    import rfproteina  # noqa: F401
 
-from rfproteina.datapipes.collate import collate_batch
-from rfproteina.datapipes.pipeline import build_design_validation_pipeline
-from rfproteina.guidance.guidance_model import GuidanceModel, build_guidance_terms
-from rfproteina.inference_utils.condition_spec import is_legacy_dialect, load_spec_file
-from rfproteina.inference_utils.datasets import (
-    ConditionSpecDataset,
-    DesignProblemDataset,
-)
-from rfproteina.metrics.metric import MetricManager
-from rfproteina.proteina import Proteina
-from rfproteina.search.base_strategy import SearchStrategy
-from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.env import load_dotenv
-from rfproteina.utils.logging import print_config_tree
-from rfproteina.utils.structure_files import is_structure_file, iter_structure_files, structure_file_stem
-from rfproteina.utils.torch import apply_torch_deterministic
-from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
+    # isort: split
+    import hydra
+    import lightning as L
+    import rootutils
+    import torch
+    from atomworks.common import exists
+    from atomworks.ml.transforms.base import Identity, Transform
+    from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
+    from torch.utils.data import DataLoader, Subset
+
+    from rfproteina.callbacks.generation_progress import GenerationProgressBar
+    from rfproteina.datapipes.collate import collate_batch
+    from rfproteina.datapipes.pipeline import build_design_validation_pipeline
+    from rfproteina.guidance.guidance_model import GuidanceModel, build_guidance_terms
+    from rfproteina.inference_utils.condition_spec import is_legacy_dialect, load_spec_file
+    from rfproteina.inference_utils.datasets import (
+        ConditionSpecDataset,
+        DesignProblemDataset,
+    )
+    from rfproteina.metrics.metric import MetricManager
+    from rfproteina.proteina import Proteina
+    from rfproteina.search.base_strategy import SearchStrategy
+    from rfproteina.utils.ddp import RankedLogger
+    from rfproteina.utils.env import load_dotenv
+    from rfproteina.utils.logging import print_config_tree
+    from rfproteina.utils.structure_files import is_structure_file, iter_structure_files, structure_file_stem
+    from rfproteina.utils.torch import apply_torch_deterministic
+    from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
+    from rfproteina.utils.verbosity import configured_verbosity, initialize_worker_verbosity, queue_startup_warnings
+
+queue_startup_warnings(_startup_warnings)
 
 # Setup root dir and environment variables (more info: https://github.com/ashleve/rootutils)
 # NOTE: Sets the `PROJECT_ROOT` environment variable to the root directory of the project
@@ -606,6 +621,7 @@ def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.da
     return Subset(base, sorted(indices, key=approx_length))
 
 
+@configured_verbosity(default=False)
 def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = None) -> None:
     """
     Core generation function that runs inference given a Hydra config.
@@ -635,7 +651,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     cfg.seed = base_seed + job_id  # Different seeds for different splits ids
     logger.info(f"Seeding everything to seed {cfg.seed}")
-    L.seed_everything(cfg.seed)
+    L.seed_everything(cfg.seed, verbose=cfg.get("verbose", False))
 
     # Exit if results from analysis already exist
     csv_filename = f"results_{config_name}_{job_id}.csv"
@@ -697,6 +713,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
                 fixed_dimensions=fixed_dimensions,
             ),
             num_workers=num_workers,
+            worker_init_fn=partial(initialize_worker_verbosity, verbose=cfg.get("verbose", False)),
             pin_memory=True,
         )
 
@@ -706,7 +723,8 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         num_nodes=cfg.hardware.nnodes_,
         default_root_dir=cfg.out_dir,
         logger=False,
-        callbacks=[],
+        enable_model_summary=cfg.get("verbose", False),
+        callbacks=[GenerationProgressBar()],
         precision=precision,
     )
 
@@ -735,10 +753,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
             model._eval_from_disk = False
             model._metrics_suffix_extra = ""
 
-    logger.info(f"✓ Generation complete! Results saved to {cfg.out_dir}")
+    logger.info(f"✓ Generation complete! Results saved to {cfg.out_dir}", extra={"always_visible": True})
 
 
 @hydra.main(version_base="1.3", config_path=_config_path, config_name="inference")
+@configured_verbosity(default=False)
 def main_hydra(cfg: DictConfig) -> None:
     """
     Hydra-wrapped main function for generation with command-line config overrides.
@@ -758,10 +777,6 @@ def main_hydra(cfg: DictConfig) -> None:
     """
     load_dotenv()
 
-    from rfproteina.utils.logging import silence_warnings
-
-    silence_warnings()
-
     job_id = cfg.get("job_id", 0)
     if not exists(job_id):
         job_id = 0
@@ -769,9 +784,7 @@ def main_hydra(cfg: DictConfig) -> None:
     if exists(cfg.get("data_path", None)):
         os.environ["DATA_PATH"] = cfg.data_path
 
-    logger.info("Starting inference with config:")
     print_config_tree(cfg, resolve=True)
-
     run_generation(cfg, job_id=job_id)
 
 

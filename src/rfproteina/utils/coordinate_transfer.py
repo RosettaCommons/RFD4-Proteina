@@ -276,9 +276,13 @@ def copy_generated_coordinates_to_input(
             # Spoof all annotations with defaults so they survive insert_atoms()
             if "occupancy" in get_annotation_categories(input_atom_array, n_body="all"):
                 template.set_annotation("occupancy", np.ones(template.array_length(), dtype=float))
+            if "b_factor" in get_annotation_categories(input_atom_array, n_body="all"):
+                template.set_annotation("b_factor", np.full(template.array_length(), np.nan, dtype=float))
             annotations_to_default = get_annotation_categories(input_atom_array, n_body="all")
             existing_annotations = get_annotation_categories(template, n_body="all")
             annotations_to_default = set(annotations_to_default) - set(existing_annotations)
+            # These two annotations have no obvious defaults for the template and can be removed from the input
+            annotations_to_default -= {"atom_id", "coord_to_be_noised"}
             template = default_annotations_and_conditions_from_registry(template, annotations=annotations_to_default)
             SA_SRC.set_annotation(template, SA_SRC.default_annotation(template))
 

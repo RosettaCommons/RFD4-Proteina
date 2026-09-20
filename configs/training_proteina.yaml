@@ -1,3 +1,5 @@
+verbose: true # Include routine warnings and detailed diagnostic output.
+
 # Example training config using the new rf3-style dataset infrastructure
 # Combines PDB interfaces (50%) with AFDB monomer distillation (50%)
 

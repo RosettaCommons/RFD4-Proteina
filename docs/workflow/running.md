@@ -82,6 +82,11 @@ It documents all three ways to run inference, which are an in tree experiment co
 overrides, and a config file anywhere on the filesystem.
 :::
 
+## Verbose output
+
+`verbose` controls many info/warning dumps. It defaults to `false` for generation
+and `true` everywhere else. Override it in the hydra configs or on the command line.
+
 ## Evaluating results
 
 :::{note}

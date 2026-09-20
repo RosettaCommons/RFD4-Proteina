@@ -24,7 +24,7 @@ def align_structures_with_masks(
     pred_array_stack: AtomArrayStack,
     gt_masks: List[np.ndarray],
     pred_masks: List[np.ndarray] | None = None,
-) -> tuple[AtomArrayStack, AtomArrayStack]:
+) -> tuple[AtomArrayStack | None, AtomArrayStack | None]:
     """
     Align predicted structure to ground truth using specified masks (boolean arrays).
     If pred_masks is None, gt_masks are only applied to the groud truth structure and used blindly on the
@@ -53,15 +53,16 @@ def align_structures_with_masks(
         pred_atoms_to_align
     ), "Alignment subsets of ground truth and predicted atom array stacks must be the same length"
 
-    if len(gt_atoms_to_align) == 0:
-        return None, None
-    assert gt_atoms_to_align.mask("(~has_nan_coord())").all(), "Ground truth atoms to align have nan coords"
-    assert pred_atoms_to_align.mask("(~has_nan_coord())").all(), "Predicted atoms to align have nan coords"
-    if not all(len(gt_atoms_to_align[i]) == len(pred_atoms_to_align[i]) for i in range(len(gt_atoms_to_align))):
+    if gt_atoms_to_align.array_length() != pred_atoms_to_align.array_length():
         ranked_logger.warning(
             "Ground truth and predicted atom arrays to align are different lengths. None values will be returned."
         )
         return None, None
+
+    if len(gt_atoms_to_align) == 0 or gt_atoms_to_align.array_length() == 0:
+        return None, None
+    assert gt_atoms_to_align.mask("(~has_nan_coord())").all(), "Ground truth atoms to align have nan coords"
+    assert pred_atoms_to_align.mask("(~has_nan_coord())").all(), "Predicted atoms to align have nan coords"
 
     # align
     _, transform = superimpose(gt_atoms_to_align.coord, pred_atoms_to_align.coord)
@@ -175,7 +176,7 @@ def compute_rmsd(gt_array_stack: AtomArrayStack, pred_array_stack: AtomArrayStac
         pred_array_stack
     ), "Ground truth and predicted atom array stacks must be the same length"
     if len(gt_array_stack) == 0 or len(pred_array_stack) == 0:
-        return np.nan
+        return {"rmsd": np.asarray([np.nan])}
 
     assert all(
         len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))
@@ -438,7 +439,9 @@ def structure_comparison_metric(
     align_str = align_mask.replace(" ", "") if align_mask else "all"
     subset_str = subset_mask.replace(" ", "") if subset_mask else "all"
     metric_result = {
-        (f"{metric}_align=<{align_str}>_subset=<{subset_str}>" if verbose_naming else metric): np.mean(result)
+        (f"{metric}_align=<{align_str}>_subset=<{subset_str}>" if verbose_naming else metric): (
+            np.mean(result) if np.size(result) else np.nan
+        )
         for metric, result in metric_result.items()
     }
 

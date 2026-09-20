@@ -1,3 +1,5 @@
+from functools import partial
+
 import hydra
 import torch
 from atomworks.ml.samplers import (
@@ -22,6 +24,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.hydra import register_resolvers
+from rfproteina.utils.verbosity import VERBOSE, initialize_worker_verbosity
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 try:
@@ -294,6 +297,10 @@ def assemble_distributed_loader(
     loader_params = {"collate_fn": lambda x: x}  # always need a collate function, default to no collation
     if "dataloader_params" in loader_cfg:
         loader_params.update(loader_cfg.dataloader_params)  # Note: collate_fn can be overridden here!
+
+    loader_params["worker_init_fn"] = partial(
+        initialize_worker_verbosity, verbose=VERBOSE.get(), worker_init_fn=loader_params.get("worker_init_fn")
+    )
 
     # ... assemble the final loader
     loader = DataLoader(

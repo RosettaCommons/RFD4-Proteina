@@ -107,4 +107,7 @@ class RasaAdherenceMetric(Metric):
             for k, v in rasa_metrics.items():
                 out_dict[k].append(v)
 
-        return {k: np.nanmean(v) for k, v in out_dict.items()}
+        return {
+            key: float(np.nanmean(values)) if np.any(~np.isnan(values)) else float("nan")
+            for key, values in out_dict.items()
+        }
