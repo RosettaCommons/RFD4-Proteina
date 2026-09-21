@@ -239,11 +239,12 @@ class SkipNanGradCallback(Callback):
         self.iter = 0
 
     def on_after_backward(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
-        nan_flag = False
         self.iter += 1
+        checks_by_device: dict[torch.device, list[torch.Tensor]] = {}
         for p in pl_module.parameters():
-            if p.grad is not None and p.grad.isnan().any():
-                nan_flag = True
+            if p.grad is not None:
+                checks_by_device.setdefault(p.grad.device, []).append(p.grad.isnan().any())
+        nan_flag = any(torch.stack(checks).any().item() for checks in checks_by_device.values())
         if nan_flag:
             self.count += 1
             logger.warning(
