@@ -85,6 +85,7 @@ def _run_training(
             "dataloaders.prefetch_factor=null",
             "dataloaders.multiprocessing_context=null",
             "dataloaders.train.dataloader_params.persistent_workers=false",
+            "dataloaders.train.dataloader_params.in_order=true",
             # Skip end-of-epoch validation — only training losses are regression-tested.
             "++opt.limit_val_batches=0",
         ]
