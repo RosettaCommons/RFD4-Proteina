@@ -75,6 +75,7 @@ def _run_training(
             "hardware.nnodes_=1",
             "opt.steps_per_epoch=25",
             "opt.max_epochs=1",
+            "callbacks.coordinated_gc.interval_batches=10",
             "++opt.num_sanity_val_steps=0",
             "log.checkpoint=false",
             "log.log_wandb=false",
@@ -160,7 +161,7 @@ def test_sota_ckpt_staged_for_gpu_tests() -> None:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_sota_training_regression() -> None:
-    """Check 25 seeded optimizer steps against baseline losses."""
+    """Check 25 seeded optimizer steps against baseline losses with periodic full GC."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
 
@@ -184,7 +185,7 @@ def test_sota_training_regression() -> None:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_ae_training_regression() -> None:
-    """Train the current AE recipe from random initialization and compare its losses."""
+    """Compare current AE losses from random initialization with periodic full GC."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
 
