@@ -5,7 +5,7 @@ import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from lightning.pytorch.utilities.rank_zero import rank_zero_info
-from torch.optim.swa_utils import AveragedModel, get_ema_avg_fn
+from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 
 
 class SimpleEMA(Callback):
@@ -60,7 +60,7 @@ class SimpleEMA(Callback):
             pl_module: The LightningModule to create EMA for.
         """
         if self.ema_model is None:
-            self.ema_model = AveragedModel(pl_module, avg_fn=get_ema_avg_fn(self.decay), use_buffers=True)
+            self.ema_model = AveragedModel(pl_module, multi_avg_fn=get_ema_multi_avg_fn(self.decay), use_buffers=True)
 
             # Load saved state if resuming. Missing LoRA keys are fine (a pre-LoRA
             # checkpoint has none, and they start from init); anything else still raises.
