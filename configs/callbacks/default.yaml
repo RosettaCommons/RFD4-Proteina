@@ -12,3 +12,7 @@ ema_callback:
     _target_: rfproteina.utils.simple_ema.SimpleEMA
     decay: 0.999  # EMA decay rate (higher = more weight to historical params)
     update_every_n: 1  # Update EMA every N steps (1 = every step)
+
+coordinated_gc:
+    _target_: rfproteina.callbacks.coordinated_gc.CoordinatedGC
+    interval_batches: 128
