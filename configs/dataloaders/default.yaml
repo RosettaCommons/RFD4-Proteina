@@ -16,6 +16,7 @@ train:
     prefetch_factor: ${dataloaders.prefetch_factor}
     pin_memory: ${dataloaders.pin_memory}
     persistent_workers: True
+    in_order: False
     drop_last: True
     multiprocessing_context: ${dataloaders.multiprocessing_context}  
     collate_fn:

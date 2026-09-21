@@ -107,6 +107,8 @@ def test_gradient_coverage(tmp_path: Path) -> None:
         "dataloaders.prefetch_factor=1",
         "dataloaders.multiprocessing_context=spawn",
         "dataloaders.train.dataloader_params.persistent_workers=false",
+        # Keep worker assignment and augmentation RNG independent of loading speed.
+        "dataloaders.train.dataloader_params.in_order=true",
         "~metrics/refolding_oracles",
         "+callbacks.grad_coverage._target_=rfproteina.utils.training_analysis.GradientCoverageCallback",
         f"+callbacks.grad_coverage.output_path={coverage_json}",

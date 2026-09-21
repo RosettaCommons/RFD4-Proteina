@@ -166,13 +166,12 @@ def generate_training_baseline(
         "seed=42",
         "torch_deterministic=true",
         "++opt.limit_val_batches=0",  # skip val dataloader (matches the test)
-        # num_workers=0: parallel workers deliver batches in OS-scheduler-dependent
-        # order; two runs with the same seed see different data.  Single-threaded
-        # loading is the only way to guarantee identical batches across runs.
+        # Match the regression tests' single-process loading and ordered delivery.
         "dataloaders.num_workers=0",
         "dataloaders.prefetch_factor=null",
         "dataloaders.multiprocessing_context=null",
         "dataloaders.train.dataloader_params.persistent_workers=false",
+        "dataloaders.train.dataloader_params.in_order=true",
     ]
 
     # Run 1

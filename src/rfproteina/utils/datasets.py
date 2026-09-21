@@ -283,6 +283,21 @@ def assemble_distributed_loader(
             sampler, DistributedSampler | DistributedMixedSampler
         ), "Invalid sampler type for distributed training."
 
+    loader_params = {"collate_fn": lambda x: x}
+    if "dataloader_params" in loader_cfg:
+        loader_params.update(loader_cfg["dataloader_params"])
+    in_order = loader_params.get("in_order", True)
+    if not isinstance(in_order, bool):
+        raise TypeError("dataloader_params.in_order must be a boolean")
+    if not in_order and n_examples_per_epoch is not None:
+        replicas = world_size if world_size is not None else getattr(sampler, "num_replicas", 1)
+        if sampler is None or len(sampler) * replicas > n_examples_per_epoch:
+            raise ValueError(
+                "Unordered training requires a sampler bounded to n_examples_per_epoch. "
+                "A trainer-only step limit can omit deferred slow samples; use a MixedSampler "
+                "with a finite epoch budget, or keep dataloaders.train.dataloader_params.in_order=true."
+            )
+
     # ... wrap the composed dataset and sampler with a fallback mechanism, if needed
     if "n_fallback_retries" in loader_cfg and loader_cfg.n_fallback_retries > 0 and sampler is not None:
         ranked_logger.info(f"Wrapping train dataset and sampler with {loader_cfg.n_fallback_retries} fallbacks...")
@@ -293,10 +308,6 @@ def assemble_distributed_loader(
             sampler_to_fallback_to=sampler,
             n_fallback_retries=loader_cfg.n_fallback_retries,
         )
-
-    loader_params = {"collate_fn": lambda x: x}  # always need a collate function, default to no collation
-    if "dataloader_params" in loader_cfg:
-        loader_params.update(loader_cfg.dataloader_params)  # Note: collate_fn can be overridden here!
 
     loader_params["worker_init_fn"] = partial(
         initialize_worker_verbosity, verbose=VERBOSE.get(), worker_init_fn=loader_params.get("worker_init_fn")
