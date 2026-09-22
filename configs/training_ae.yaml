@@ -63,6 +63,7 @@ opt:
     - '^encoder\.latent_decoder_mean_n_log_scale\.'  # encoder output head
     - '^decoder\.(logit_linear|struct_linear)\.'  # decoder output heads
   muon_adjust_lr_fn: "match_rms_adamw"
+  muon_grouped: true  # Batch equal-shaped FP32 Muon updates; false selects native Muon.
   max_epochs: 10000000
   accumulate_grad_batches: 1
   dist_strategy: ddp

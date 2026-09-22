@@ -97,7 +97,9 @@ def test_recipe_composes_with_the_right_design_tasks(entry: str, overrides: list
     attaching a design-task group over one that already selected a preset UNIONS the two, so
     an AE recipe inheriting a flow config silently keeps its task frequencies.
     """
-    datasets = (_compose(entry, overrides).get("datasets") or {}).get("train") or {}
+    config = _compose(entry, overrides)
+    assert config["opt"]["muon_grouped"] is True
+    datasets = (config.get("datasets") or {}).get("train") or {}
     assert datasets, "composed with no datasets.train"
     offenders = {}
     for name, cfg in datasets.items():

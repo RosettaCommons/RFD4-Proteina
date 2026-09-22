@@ -150,6 +150,7 @@ opt:
     - '_factory\.'  # FeatureFactory input embeddings (init_repr_factory, cond_factory, pair ones)
     - '^nn\.(local_latents_linear|ca_linear|insertion_q_proj|insertion_k_proj)\.'  # output heads
   muon_adjust_lr_fn: "match_rms_adamw" # Either "original" or "match_rms_adamw"
+  muon_grouped: true  # Batch equal-shaped FP32 Muon updates; false selects native Muon.
 
 # Logging and checkpoints
 log:
