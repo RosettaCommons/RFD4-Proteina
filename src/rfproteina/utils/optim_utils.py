@@ -7,6 +7,7 @@ import torch
 from omegaconf import DictConfig
 
 from rfproteina.utils.ddp import RankedLogger
+from rfproteina.utils.grouped_muon import GroupedMuon, supports_grouped_muon
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -26,6 +27,9 @@ def build_optimizers(
 
     The patterns are the only control: exclude every parameter (e.g. ``['.*']``) and the model
     trains on Adam alone.
+
+    ``muon_grouped`` defaults to true and batches ordinary FP32 CPU/CUDA matrices.
+    Set it to false for native Muon. Unsupported parameter types use native Muon.
 
     Args:
       named_parameters: Model parameters, as from :py:meth:`torch.nn.Module.named_parameters`.
@@ -71,7 +75,12 @@ def build_optimizers(
         # Every parameter was excluded: train on Adam alone rather than handing Muon an empty
         # parameter list (which torch rejects).
         return [adam]
+    muon_type = (
+        GroupedMuon
+        if cfg_opt.get("muon_grouped", True) and all(supports_grouped_muon(p) for p in muon_params)
+        else torch.optim.Muon
+    )
     return [
-        torch.optim.Muon(muon_params, lr=lr, adjust_lr_fn=cfg_opt.get("muon_adjust_lr_fn")),
+        muon_type(muon_params, lr=lr, adjust_lr_fn=cfg_opt.get("muon_adjust_lr_fn")),
         adam,
     ]
