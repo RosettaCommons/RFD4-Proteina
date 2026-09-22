@@ -23,6 +23,7 @@ train:
       _target_: rfproteina.datapipes.collate.collate_batch
       _partial_: True
       schema: rfproteina.datapipes.schema.proteina.ProteinaDataSample  # Just a string now!
+      keep_atom_array: false
       fixed_dimensions: {I: 256}  # Datasets crop to this by default; see `datasets/train/pipeline_defaults`.
   n_fallback_retries: 4
 

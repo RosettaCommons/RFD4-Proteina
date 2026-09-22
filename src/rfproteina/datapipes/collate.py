@@ -9,6 +9,7 @@ def collate_batch(
     batch: list[dict],
     schema: str | type[DataSample],
     fixed_dimensions: dict[str, int | list[int]] | None = None,
+    keep_atom_array: bool = True,
 ) -> PaddedBatchedDataSample:
     """Collate a batch of data samples into a single batch with padding.
 
@@ -22,10 +23,14 @@ def collate_batch(
             A value may also be a list of sizes (buckets), e.g. {"I": [256, 512]},
             in which case each batch is padded to the smallest bucket that fits it.
             If None, pads dynamically to max in batch.
+        keep_atom_array: Retain structures for validation, inference or structure-aware callbacks.
 
     Returns:
         PaddedBatchedDataSample with padding masks.
     """
+    if not keep_atom_array:
+        batch = [{**sample, "atom_array": None} for sample in batch]
+
     # Resolve string schema path to class
     if isinstance(schema, str):
         import importlib
