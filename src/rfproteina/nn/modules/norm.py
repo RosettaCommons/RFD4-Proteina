@@ -1,6 +1,8 @@
 """Config-selectable LayerNorm/RMSNorm factory for the score-network trunk."""
 
 import logging
+from collections.abc import Callable
+from functools import lru_cache
 
 import torch
 from torch.nn import functional as F
@@ -17,7 +19,9 @@ def _rms_norm_preserve_dtype(x: torch.Tensor, weight: torch.Tensor | None, eps: 
     return F.rms_norm(x, (x.shape[-1],), weight, eps).to(x.dtype)
 
 
-_compiled_rms_norm = torch.compile(_rms_norm_preserve_dtype, fullgraph=True, dynamic=True)
+@lru_cache(maxsize=1)
+def _compiled_rms_norm() -> Callable:
+    return torch.compile(_rms_norm_preserve_dtype, fullgraph=True, dynamic=True)
 
 
 class CompiledRMSNorm(torch.nn.RMSNorm):
@@ -26,7 +30,7 @@ class CompiledRMSNorm(torch.nn.RMSNorm):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         eps = self.eps if self.eps is not None else torch.finfo(x.dtype).eps
         if x.device.type == "cuda" and not torch.compiler.is_compiling():
-            return _compiled_rms_norm(x, self.weight, eps)
+            return _compiled_rms_norm()(x, self.weight, eps)
         return _rms_norm_preserve_dtype(x, self.weight, eps)
 
 

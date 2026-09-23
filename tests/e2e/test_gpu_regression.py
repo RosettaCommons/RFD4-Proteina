@@ -122,7 +122,10 @@ def _run_inference(run_name: str) -> Path:
         "seed=42",
         "torch_deterministic=true",
         # No compilation for regression tests
-        "compile_lengths=null",
+        "execution.inference.length_buckets=null",
+        "execution.inference.flow=eager",
+        "execution.inference.encoder=eager",
+        "execution.inference.decoder=eager",
         "+single=true",
     ]
     proc = run_cmd(cmd, env=deterministic_env())
@@ -175,7 +178,9 @@ def test_sota_training_regression() -> None:
             "experiment=sota",
             # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
             # baselines are anchored to random-init losses (seed=42).
-            "nn.use_torch_compile=false",
+            "execution.training.flow=eager",
+            "execution.training.encoder=eager",
+            "execution.training.decoder=eager",
         ],
         expected_losses=expected,
     )
@@ -198,7 +203,8 @@ def test_ae_training_regression() -> None:
             "experiment_ae=ae_sota",
             "dataloaders.train.dataloader_params.batch_size=2",
             # No compile for regression tests
-            "nn_ae.use_torch_compile=false",
+            "execution.training.encoder=eager",
+            "execution.training.decoder=eager",
         ],
         expected_losses=expected,
     )

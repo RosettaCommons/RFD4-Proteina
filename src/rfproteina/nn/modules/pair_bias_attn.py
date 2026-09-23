@@ -208,12 +208,11 @@ class CuEqPairBiasAttention(nn.Module):
         self.node_dim, self.pair_dim = node_dim, pair_dim
         self.heads = heads
         self.dim_head = dim_head
-        self.scale = dim_head**-0.5
 
         self.node_norm = make_norm(node_dim)
         self.to_qkv = nn.Linear(node_dim, inner_dim * 3, bias=bias)
         self.to_g = nn.Linear(node_dim, inner_dim)
-        self.to_out_node = nn.Linear(inner_dim, default(dim_out, node_dim))
+        self.to_out_node = nn.Linear(inner_dim, default(dim_out, node_dim), bias=bias)
 
         self.q_layer_norm = make_norm(inner_dim) if qkln else nn.Identity()
         self.k_layer_norm = make_norm(inner_dim) if qkln else nn.Identity()
@@ -240,41 +239,37 @@ class CuEqPairBiasAttention(nn.Module):
         Returns:
             Updated node features of shape (b, n, d_s).
         """
-        h = self.heads
-        node_feats_normed = self.node_norm(node_feats)
-
-        # Compute Q, K, V (matching original PairBiasAttention flow)
-        q, k, v = self.to_qkv(node_feats_normed).chunk(3, dim=-1)
-        q = self.q_layer_norm(q)
-        k = self.k_layer_norm(k)
-
-        # Reshape for cuequivariance: [b, n, (h d)] -> [b, h, n, d]
-        q, k, v = (rearrange(t, "b ... (h d) -> b h ... d", h=h) for t in (q, k, v))
-
-        # Use cuequivariance fused kernel
-        # Note: cuet expects raw pair_feats (pre-normalization) and applies LayerNorm internally
-        # Note: cuet expects 1D token mask [b, n] and computes pair mask internally
-        # Returns tuple (output, z_proj) - we only need the output
+        q_weight, k_weight, v_weight = self.to_qkv.weight.chunk(3)
+        q_bias, k_bias, v_bias = self.to_qkv.bias.chunk(3) if self.to_qkv.bias is not None else (None, None, None)
         result = cuet_attention_pair_bias(
-            s=node_feats_normed,  # Normalized node features
-            q=q,
-            k=k,
-            v=v,
-            z=pair_feats,  # Raw pair features (cuet applies pair_norm internally)
-            mask=mask,  # [b, n] token mask
+            single_repr=node_feats,
+            pair_repr=pair_feats,
+            mask=mask,
             num_heads=self.heads,
+            w_ln_a=self.node_norm.weight,
+            b_ln_a=getattr(self.node_norm, "bias", None),
+            w_proj_q=q_weight,
+            b_proj_q=q_bias,
+            w_proj_k=k_weight,
+            b_proj_k=k_bias,
+            w_proj_v=v_weight,
+            b_proj_v=v_bias,
+            w_ln_q=getattr(self.q_layer_norm, "weight", None),
+            b_ln_q=getattr(self.q_layer_norm, "bias", None),
+            w_ln_k=getattr(self.k_layer_norm, "weight", None),
+            b_ln_k=getattr(self.k_layer_norm, "bias", None),
             w_proj_z=self.to_bias.weight if self.to_bias is not None else None,
+            w_ln_z=getattr(self.pair_norm, "weight", None),
+            b_ln_z=getattr(self.pair_norm, "bias", None),
             w_proj_g=self.to_g.weight,
+            b_proj_g=self.to_g.bias,
             w_proj_o=self.to_out_node.weight,
-            w_ln_z=self.pair_norm.weight if self.pair_norm is not None else None,
-            b_ln_z=self.pair_norm.bias if self.pair_norm is not None else None,
-            b_proj_z=None,  # to_bias has no bias
-            b_proj_g=self.to_g.bias if self.to_g.bias is not None else None,
-            b_proj_o=self.to_out_node.bias if self.to_out_node.bias is not None else None,
+            b_proj_o=self.to_out_node.bias,
+            inf=-NEG_INF,
+            eps=self.node_norm.eps,
+            norm_kind="rms_norm" if isinstance(self.node_norm, nn.RMSNorm) else "layer_norm",
         )
-        # cuet returns (output, z_proj) tuple - extract the output tensor
-        out = result[0] if isinstance(result, tuple) else result
-        return out
+        return result[0] if isinstance(result, tuple) else result
 
 
 class MultiHeadBiasedAttentionADALN_MM(torch.nn.Module):

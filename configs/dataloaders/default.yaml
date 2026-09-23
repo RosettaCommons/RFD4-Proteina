@@ -41,4 +41,4 @@ val:
       _target_: rfproteina.datapipes.collate.collate_batch
       _partial_: True
       schema: rfproteina.datapipes.schema.proteina.ProteinaDataSample
-      fixed_dimensions: null
+      fixed_dimensions: {I: "${oc.select:execution.inference.length_buckets,null}"}

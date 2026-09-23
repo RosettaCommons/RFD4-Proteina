@@ -58,8 +58,8 @@ def _reference_forward(
     return attn.to_out_node(rearrange(o, "b h n d -> b n (h d)", h=h))
 
 
-def _make_attn(cls, device):
-    return cls(node_dim=64, dim_head=16, heads=4, bias=True, dim_out=64, qkln=True, pair_dim=32).to(device)
+def _make_attn(cls, device, *, bias=True, qkln=True):
+    return cls(node_dim=64, dim_head=16, heads=4, bias=bias, dim_out=64, qkln=qkln, pair_dim=32).to(device)
 
 
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
@@ -84,19 +84,23 @@ def test_sdpa_matches_einsum_reference(batch_size: int, seq_len: int):
 
 @pytest.mark.skipif(not CUET_AVAILABLE, reason="cuequivariance_torch not installed")
 @pytest.mark.parametrize("batch_size,seq_len", [(2, 32), (1, 64)])
-def test_cuequivariance_matches_reference(batch_size: int, seq_len: int):
+@pytest.mark.parametrize("bias,qkln", [(True, True), (False, False)])
+@pytest.mark.parametrize("padded", [False, True])
+def test_cuequivariance_matches_reference(batch_size: int, seq_len: int, bias: bool, qkln: bool, padded: bool):
     """The cuEquivariance fused kernel matches the manual-einsum reference."""
     from rfproteina.nn.modules.pair_bias_attn import CuEqPairBiasAttention
 
     torch.manual_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    ref_attn = _make_attn(PairBiasAttention, device)
-    cuet_attn = _make_attn(CuEqPairBiasAttention, device)
-    cuet_attn.load_state_dict(ref_attn.state_dict(), strict=False)
+    ref_attn = _make_attn(PairBiasAttention, device, bias=bias, qkln=qkln)
+    cuet_attn = _make_attn(CuEqPairBiasAttention, device, bias=bias, qkln=qkln)
+    cuet_attn.load_state_dict(ref_attn.state_dict(), strict=True)
 
     node = torch.randn(batch_size, seq_len, 64, device=device)
     pair = torch.randn(batch_size, seq_len, seq_len, 32, device=device)
     token_mask = torch.ones(batch_size, seq_len, dtype=torch.bool, device=device)  # cuEq: [b, n]
+    if padded:
+        token_mask[:, -4:] = False
     pair_mask = token_mask[:, :, None] * token_mask[:, None, :]  # reference: [b, n, n]
 
     with torch.no_grad():
@@ -104,5 +108,5 @@ def test_cuequivariance_matches_reference(batch_size: int, seq_len: int):
         out_cuet = cuet_attn(node, pair, token_mask)
 
     assert out_cuet.shape == ref.shape
-    max_diff = (out_cuet - ref).abs().max().item()
+    max_diff = (out_cuet - ref)[token_mask].abs().max().item()
     assert max_diff < TF32_MAX_ABS_DIFF, f"Max diff: {max_diff:.3e} (expected < {TF32_MAX_ABS_DIFF:.0e})"

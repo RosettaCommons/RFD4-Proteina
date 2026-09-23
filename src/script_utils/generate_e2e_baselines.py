@@ -226,7 +226,10 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
         *_ckpt_overrides(sota_ckpt),  # empty => inference.yaml's default SOTA ckpt
         "~metrics/refolding_oracles",
         "generation.dataset.num_replicates=1",
-        "compile_lengths=null",  # no compile in regression (inference config has no compile_autoencoder key)
+        "execution.inference.length_buckets=null",
+        "execution.inference.flow=eager",
+        "execution.inference.encoder=eager",
+        "execution.inference.decoder=eager",
         "seed=42",
         "torch_deterministic=true",
         "+single=true",
@@ -356,7 +359,9 @@ def main() -> None:
                 # torch.compile selects CUDA kernels at trace time; disable so the
                 # forward pass uses the same eager kernels across runs.
                 # TODO: Use torch compile should be a global flag that compiles both the AE and flow model
-                "nn.use_torch_compile=false",
+                "execution.training.flow=eager",
+                "execution.training.encoder=eager",
+                "execution.training.decoder=eager",
             ],
             out_dir=store_base,
         )
@@ -369,7 +374,8 @@ def main() -> None:
             extra_overrides=[
                 "experiment_ae=ae_sota",
                 "dataloaders.train.dataloader_params.batch_size=2",
-                "nn_ae.use_torch_compile=false",  # no compile in regression
+                "execution.training.encoder=eager",
+                "execution.training.decoder=eager",  # no compile in regression
             ],
             out_dir=store_base,
         )

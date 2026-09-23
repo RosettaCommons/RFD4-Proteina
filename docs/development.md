@@ -117,7 +117,7 @@ all work on your cluster.
 > key(s)` errors on `load_state_dict`.
 
 > **Tip.** The tutorial disables `torch.compile` for a fast first run. Turn it back on with
-> `nn.use_torch_compile=True compile_autoencoder=True` for real training. Add
+> `execution.training.flow=torch execution.training.encoder=torch execution.training.decoder=torch` for real training. Add
 > `opt.steps_per_epoch=3 opt.max_epochs=1` to stop after a few steps.
 
 ### How the dataset works without squashfs
