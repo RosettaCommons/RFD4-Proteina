@@ -1,9 +1,9 @@
 data_M0904_1qgx.cif
 #
 _entry.id       M0904_1qgx.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:39:36
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:57
 #
 loop_
 _entity.id 
@@ -182,77 +182,75 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.mask_expsegmax_1_residue 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.mask_coordinate_1_atom 
-_atom_site.mask_index_1_residue 
 _atom_site.condition_index-group_1_token 
-_atom_site.mask_sequence_1_residue 
 _atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
 _atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan   0.0 ?  True  180 180 .    False True  0  False True  0 0  nan    nan    nan    1 1
-ATOM   C  CB    . ASP     A 0 1   . 1   ASP     A CB    10.53 1.0 ?  False -1  -1  A49  True  False 4  True  False 0 1  -7.286 0.642  -0.739 1 2
-ATOM   C  CG    . ASP     A 0 1   . 1   ASP     A CG    12.69 1.0 ?  False -1  -1  A49  True  False 4  True  False 0 2  -6.443 -0.288 -1.61  1 3
-ATOM   O  OD1   . ASP     A 0 1   . 1   ASP     A OD1   13.19 1.0 ?  False -1  -1  A49  True  False 4  True  False 0 3  -6.935 -0.989 -2.526 1 4
-ATOM   O  OD2   . ASP     A 0 1   . 1   ASP     A OD2   10.52 1.0 ?  False -1  -1  A49  True  False 4  True  False 0 4  -5.211 -0.371 -1.36  1 5
-ATOM   C  CG    . GLU     A 0 2   . 2   GLU     A CG    11.68 1.0 ?  False -1  -1  A72  True  False 5  True  False 0 5  -1.725 5.434  0.345  1 6
-ATOM   C  CD    . GLU     A 0 2   . 2   GLU     A CD    14.59 1.0 ?  False -1  -1  A72  True  False 5  True  False 0 6  -1.544 4.129  -0.293 1 7
-ATOM   O  OE1   . GLU     A 0 2   . 2   GLU     A OE1   12.33 1.0 ?  False -1  -1  A72  True  False 5  True  False 0 7  -1.482 3.136  0.399  1 8
-ATOM   O  OE2   . GLU     A 0 2   . 2   GLU     A OE2   14.7  1.0 ?  False -1  -1  A72  True  False 5  True  False 0 8  -1.354 4.099  -1.51  1 9
-ATOM   C  CB    . ASP     A 0 3   . 3   ASP     A CB    10.58 1.0 ?  False -1  -1  A142 True  False 6  True  False 0 9  -0.081 1.132  4.47   1 10
-ATOM   C  CG    . ASP     A 0 3   . 3   ASP     A CG    12.4  1.0 ?  False -1  -1  A142 True  False 6  True  False 0 10 -0.029 0.809  2.994  1 11
-ATOM   O  OD1   . ASP     A 0 3   . 3   ASP     A OD1   8.78  1.0 ?  False -1  -1  A142 True  False 6  True  False 0 11 -1.183 0.828  2.467  1 12
-ATOM   O  OD2   . ASP     A 0 3   . 3   ASP     A OD2   12.15 1.0 ?  False -1  -1  A142 True  False 6  True  False 0 12 1.044  0.591  2.439  1 13
-ATOM   C  CA    . ILE     A 0 4   . 4   ILE     A CA    9.9   1.0 ?  False -1  -1  A144 True  False 7  True  False 0 13 -3.768 -2.391 1.973  1 14
-ATOM   C  C     . ILE     A 0 4   . 4   ILE     A C     10.71 1.0 ?  False -1  -1  A144 True  False 7  True  False 0 14 -2.326 -2.122 1.509  1 15
-ATOM   O  O     . ILE     A 0 4   . 4   ILE     A O     11.43 1.0 ?  False -1  -1  A144 True  False 7  True  False 0 15 -2.215 -1.357 0.542  1 16
-ATOM   N  N     . ASP     A 0 5   . 5   ASP     A N     8.45  1.0 ?  False -1  -1  A145 True  False 8  True  False 0 16 -1.313 -2.637 2.098  1 17
-ATOM   C  CA    . ASP     A 0 5   . 5   ASP     A CA    9.95  1.0 ?  False -1  -1  A145 True  False 8  True  False 0 17 0.091  -2.41  1.671  1 18
-ATOM   C  C     . ASP     A 0 5   . 5   ASP     A C     6.57  1.0 ?  False -1  -1  A145 True  False 8  True  False 0 18 0.361  -3.544 0.72   1 19
-ATOM   O  O     . ASP     A 0 5   . 5   ASP     A O     8.9   1.0 ?  False -1  -1  A145 True  False 8  True  False 0 19 0.212  -4.729 0.961  1 20
-ATOM   C  CB    . ASP     A 0 5   . 5   ASP     A CB    12.1  1.0 ?  False -1  -1  A145 True  False 8  True  False 0 20 0.886  -2.496 2.955  1 21
-ATOM   C  CG    . ASP     A 0 5   . 5   ASP     A CG    14.03 1.0 ?  False -1  -1  A145 True  False 8  True  False 0 21 2.37   -2.333 2.938  1 22
-ATOM   C  CB    . THR     A 0 6   . 6   THR     A CB    10.94 1.0 ?  False -1  -1  A147 True  False 9  True  False 0 22 -2.896 -2.107 -3.83  1 23
-ATOM   O  OG1   . THR     A 0 6   . 6   THR     A OG1   11.51 1.0 ?  False -1  -1  A147 True  False 9  True  False 0 23 -3.109 -1.457 -2.558 1 24
-ATOM   C  CG    . ASP     A 0 7   . 7   ASP     A CG    14.16 1.0 ?  False -1  -1  A294 True  False 10 True  False 0 24 5.028  1.743  1.378  1 25
-ATOM   O  OD2   . ASP     A 0 7   . 7   ASP     A OD2   12.14 1.0 ?  False -1  -1  A294 True  False 10 True  False 0 25 5.332  2.347  0.332  1 26
-HETATM MG MG    . MG      C 2 401 . 401 MG      C MG    12.96 1.0 +2 False -1  -1  MG   True  True  1  True  False 0 26 -1.602 0.905  0.33   1 27
-HETATM P  P     . AMP     B 1 405 . 405 AMP     B P     11.73 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 27 0.0    0.0    0.0    1 28
-HETATM O  O1P   . AMP     B 1 405 . 405 AMP     B O1P   12.39 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 28 0.0    0.0    0.0    1 29
-HETATM O  O2P   . AMP     B 1 405 . 405 AMP     B O2P   13.36 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 29 0.0    0.0    0.0    1 30
-HETATM O  O3P   . AMP     B 1 405 . 405 AMP     B O3P   12.34 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 30 0.0    0.0    0.0    1 31
-HETATM O  "O5'" . AMP     B 1 405 . 405 AMP     B "O5'" 11.99 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 31 0.0    0.0    0.0    1 32
-HETATM C  "C5'" . AMP     B 1 405 . 405 AMP     B "C5'" 11.56 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 32 4.724  -2.017 -1.689 1 33
-HETATM C  "C4'" . AMP     B 1 405 . 405 AMP     B "C4'" 13.86 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 33 4.877  -0.491 -1.696 1 34
-HETATM O  "O4'" . AMP     B 1 405 . 405 AMP     B "O4'" 11.37 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 34 5.726  -0.167 -2.875 1 35
-HETATM C  "C3'" . AMP     B 1 405 . 405 AMP     B "C3'" 13.72 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 35 3.574  0.267  -1.911 1 36
-HETATM O  "O3'" . AMP     B 1 405 . 405 AMP     B "O3'" 15.72 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 36 2.838  0.349  -0.699 1 37
-HETATM C  "C2'" . AMP     B 1 405 . 405 AMP     B "C2'" 12.95 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 37 4.013  1.549  -2.621 1 38
-HETATM O  "O2'" . AMP     B 1 405 . 405 AMP     B "O2'" 13.04 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 38 3.961  2.716  -1.759 1 39
-HETATM C  "C1'" . AMP     B 1 405 . 405 AMP     B "C1'" 12.39 1.0 ?  False -1  -1  AMP  True  True  2  True  False 0 39 5.48   1.217  -2.852 1 40
-HETATM N  N9    . AMP     B 1 405 . 405 AMP     B N9    14.35 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 40 0.0    0.0    0.0    1 41
-HETATM C  C8    . AMP     B 1 405 . 405 AMP     B C8    15.06 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 41 0.0    0.0    0.0    1 42
-HETATM N  N7    . AMP     B 1 405 . 405 AMP     B N7    16.79 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 42 0.0    0.0    0.0    1 43
-HETATM C  C5    . AMP     B 1 405 . 405 AMP     B C5    14.52 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 43 0.0    0.0    0.0    1 44
-HETATM C  C6    . AMP     B 1 405 . 405 AMP     B C6    16.23 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 44 0.0    0.0    0.0    1 45
-HETATM N  N6    . AMP     B 1 405 . 405 AMP     B N6    18.03 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 45 0.0    0.0    0.0    1 46
-HETATM N  N1    . AMP     B 1 405 . 405 AMP     B N1    14.5  1.0 ?  False -1  -1  AMP  False True  2  True  False 0 46 0.0    0.0    0.0    1 47
-HETATM C  C2    . AMP     B 1 405 . 405 AMP     B C2    15.49 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 47 0.0    0.0    0.0    1 48
-HETATM N  N3    . AMP     B 1 405 . 405 AMP     B N3    15.21 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 48 0.0    0.0    0.0    1 49
-HETATM C  C4    . AMP     B 1 405 . 405 AMP     B C4    14.37 1.0 ?  False -1  -1  AMP  False True  2  True  False 0 49 0.0    0.0    0.0    1 50
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK   . 180-180 A 0 0   . 0   180-180 A UNK   1  nan   0.0 ?  0  True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C  CB    . ASP     A 0 1   . 1   ASP     A CB    2  10.53 1.0 ?  4  False False -1  True  -1  True  0 A49  False 1  -7.286 0.642  -0.739 1
+ATOM   C  CG    . ASP     A 0 1   . 1   ASP     A CG    3  12.69 1.0 ?  4  False False -1  True  -1  True  0 A49  False 2  -6.443 -0.288 -1.61  1
+ATOM   O  OD1   . ASP     A 0 1   . 1   ASP     A OD1   4  13.19 1.0 ?  4  False False -1  True  -1  True  0 A49  False 3  -6.935 -0.989 -2.526 1
+ATOM   O  OD2   . ASP     A 0 1   . 1   ASP     A OD2   5  10.52 1.0 ?  4  False False -1  True  -1  True  0 A49  False 4  -5.211 -0.371 -1.36  1
+ATOM   C  CG    . GLU     A 0 2   . 2   GLU     A CG    6  11.68 1.0 ?  5  False False -1  True  -1  True  0 A72  False 5  -1.725 5.434  0.345  1
+ATOM   C  CD    . GLU     A 0 2   . 2   GLU     A CD    7  14.59 1.0 ?  5  False False -1  True  -1  True  0 A72  False 6  -1.544 4.129  -0.293 1
+ATOM   O  OE1   . GLU     A 0 2   . 2   GLU     A OE1   8  12.33 1.0 ?  5  False False -1  True  -1  True  0 A72  False 7  -1.482 3.136  0.399  1
+ATOM   O  OE2   . GLU     A 0 2   . 2   GLU     A OE2   9  14.7  1.0 ?  5  False False -1  True  -1  True  0 A72  False 8  -1.354 4.099  -1.51  1
+ATOM   C  CB    . ASP     A 0 3   . 3   ASP     A CB    10 10.58 1.0 ?  6  False False -1  True  -1  True  0 A142 False 9  -0.081 1.132  4.47   1
+ATOM   C  CG    . ASP     A 0 3   . 3   ASP     A CG    11 12.4  1.0 ?  6  False False -1  True  -1  True  0 A142 False 10 -0.029 0.809  2.994  1
+ATOM   O  OD1   . ASP     A 0 3   . 3   ASP     A OD1   12 8.78  1.0 ?  6  False False -1  True  -1  True  0 A142 False 11 -1.183 0.828  2.467  1
+ATOM   O  OD2   . ASP     A 0 3   . 3   ASP     A OD2   13 12.15 1.0 ?  6  False False -1  True  -1  True  0 A142 False 12 1.044  0.591  2.439  1
+ATOM   C  CA    . ILE     A 0 4   . 4   ILE     A CA    14 9.9   1.0 ?  7  False False -1  True  -1  True  0 A144 False 13 -3.768 -2.391 1.973  1
+ATOM   C  C     . ILE     A 0 4   . 4   ILE     A C     15 10.71 1.0 ?  7  False False -1  True  -1  True  0 A144 False 14 -2.326 -2.122 1.509  1
+ATOM   O  O     . ILE     A 0 4   . 4   ILE     A O     16 11.43 1.0 ?  7  False False -1  True  -1  True  0 A144 False 15 -2.215 -1.357 0.542  1
+ATOM   N  N     . ASP     A 0 5   . 5   ASP     A N     17 8.45  1.0 ?  8  False False -1  True  -1  True  0 A145 False 16 -1.313 -2.637 2.098  1
+ATOM   C  CA    . ASP     A 0 5   . 5   ASP     A CA    18 9.95  1.0 ?  8  False False -1  True  -1  True  0 A145 False 17 0.091  -2.41  1.671  1
+ATOM   C  C     . ASP     A 0 5   . 5   ASP     A C     19 6.57  1.0 ?  8  False False -1  True  -1  True  0 A145 False 18 0.361  -3.544 0.72   1
+ATOM   O  O     . ASP     A 0 5   . 5   ASP     A O     20 8.9   1.0 ?  8  False False -1  True  -1  True  0 A145 False 19 0.212  -4.729 0.961  1
+ATOM   C  CB    . ASP     A 0 5   . 5   ASP     A CB    21 12.1  1.0 ?  8  False False -1  True  -1  True  0 A145 False 20 0.886  -2.496 2.955  1
+ATOM   C  CG    . ASP     A 0 5   . 5   ASP     A CG    22 14.03 1.0 ?  8  False False -1  True  -1  True  0 A145 False 21 2.37   -2.333 2.938  1
+ATOM   C  CB    . THR     A 0 6   . 6   THR     A CB    23 10.94 1.0 ?  9  False False -1  True  -1  True  0 A147 False 22 -2.896 -2.107 -3.83  1
+ATOM   O  OG1   . THR     A 0 6   . 6   THR     A OG1   24 11.51 1.0 ?  9  False False -1  True  -1  True  0 A147 False 23 -3.109 -1.457 -2.558 1
+ATOM   C  CG    . ASP     A 0 7   . 7   ASP     A CG    25 14.16 1.0 ?  10 False False -1  True  -1  True  0 A294 False 24 5.028  1.743  1.378  1
+ATOM   O  OD2   . ASP     A 0 7   . 7   ASP     A OD2   26 12.14 1.0 ?  10 False False -1  True  -1  True  0 A294 False 25 5.332  2.347  0.332  1
+HETATM MG MG    . MG      C 2 401 . 401 MG      C MG    27 12.96 1.0 +2 1  False False -1  True  -1  True  0 MG   True  26 -1.602 0.905  0.33   1
+HETATM P  P     . AMP     B 1 405 . 405 AMP     B P     28 11.73 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  27 6.306  -4.131 -1.996 1
+HETATM O  O1P   . AMP     B 1 405 . 405 AMP     B O1P   29 12.39 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  28 5.099  -4.979 -1.922 1
+HETATM O  O2P   . AMP     B 1 405 . 405 AMP     B O2P   30 13.36 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  29 6.902  -4.15  -3.394 1
+HETATM O  O3P   . AMP     B 1 405 . 405 AMP     B O3P   31 12.34 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  30 7.332  -4.575 -1.107 1
+HETATM O  "O5'" . AMP     B 1 405 . 405 AMP     B "O5'" 32 11.99 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  31 6.076  -2.634 -1.604 1
+HETATM C  "C5'" . AMP     B 1 405 . 405 AMP     B "C5'" 33 11.56 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  32 4.724  -2.017 -1.689 1
+HETATM C  "C4'" . AMP     B 1 405 . 405 AMP     B "C4'" 34 13.86 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  33 4.877  -0.491 -1.696 1
+HETATM O  "O4'" . AMP     B 1 405 . 405 AMP     B "O4'" 35 11.37 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  34 5.726  -0.167 -2.875 1
+HETATM C  "C3'" . AMP     B 1 405 . 405 AMP     B "C3'" 36 13.72 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  35 3.574  0.267  -1.911 1
+HETATM O  "O3'" . AMP     B 1 405 . 405 AMP     B "O3'" 37 15.72 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  36 2.838  0.349  -0.699 1
+HETATM C  "C2'" . AMP     B 1 405 . 405 AMP     B "C2'" 38 12.95 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  37 4.013  1.549  -2.621 1
+HETATM O  "O2'" . AMP     B 1 405 . 405 AMP     B "O2'" 39 13.04 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  38 3.961  2.716  -1.759 1
+HETATM C  "C1'" . AMP     B 1 405 . 405 AMP     B "C1'" 40 12.39 1.0 ?  2  False False -1  True  -1  True  0 AMP  True  39 5.48   1.217  -2.852 1
+HETATM N  N9    . AMP     B 1 405 . 405 AMP     B N9    41 14.35 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  40 5.988  1.789  -4.149 1
+HETATM C  C8    . AMP     B 1 405 . 405 AMP     B C8    42 15.06 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  41 5.255  2.222  -5.253 1
+HETATM N  N7    . AMP     B 1 405 . 405 AMP     B N7    43 16.79 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  42 6.055  2.68   -6.219 1
+HETATM C  C5    . AMP     B 1 405 . 405 AMP     B C5    44 14.52 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  43 7.32   2.556  -5.726 1
+HETATM C  C6    . AMP     B 1 405 . 405 AMP     B C6    45 16.23 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  44 8.618  2.894  -6.262 1
+HETATM N  N6    . AMP     B 1 405 . 405 AMP     B N6    46 18.03 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  45 8.777  3.469  -7.448 1
+HETATM N  N1    . AMP     B 1 405 . 405 AMP     B N1    47 14.5  1.0 ?  2  False False -1  True  -1  False 0 AMP  True  46 9.659  2.615  -5.465 1
+HETATM C  C2    . AMP     B 1 405 . 405 AMP     B C2    48 15.49 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  47 9.551  2.037  -4.208 1
+HETATM N  N3    . AMP     B 1 405 . 405 AMP     B N3    49 15.21 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  48 8.381  1.729  -3.672 1
+HETATM C  C4    . AMP     B 1 405 . 405 AMP     B C4    50 14.37 1.0 ?  2  False False -1  True  -1  False 0 AMP  True  49 7.325  2.019  -4.425 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -264,6 +262,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK    X  0 N N nan                   nan                   nan
 AMP     P      P  0 N N -4.7829999923706055   -0.9800000190734863   0.10499999672174454
 AMP     O1P    O  0 N N -5.820000171661377    -0.004999999888241291 -0.3019999861717224
 AMP     O2P    O  0 N N -5.310999870300293    -1.8279999494552612   1.3680000305175781
@@ -376,5 +375,4 @@ THR     HG21   H  0 N N -1.0800000429153442   0.0560000017285347    3.1940000057
 THR     HG22   H  0 N N -0.8790000081062317   -1.5470000505447388   2.447999954223633
 THR     HG23   H  0 N N 0.5419999957084656    -0.5180000066757202   2.743000030517578
 THR     HXT    H  0 N Y -1.1430000066757202   -0.09200000017881393  -2.9860000610351562
-180-180 UNK    X  0 N N nan                   nan                   nan
 #

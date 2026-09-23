@@ -1,9 +1,9 @@
 data_M0630_1j79.cif
 #
 _entry.id       M0630_1j79.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:38:54
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:56
 #
 loop_
 _entity.id 
@@ -94,42 +94,40 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.mask_expsegmin_1_residue 
-_atom_site.condition_hbond_1_atom 
 _atom_site.condition_index-group_1_token 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.mask_sequence_1_residue 
+_atom_site.mask_expsegmin_1_residue 
 _atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
 _atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK nan   0.0 ?  .    180 True  0 0 180 True  False True  False 0  nan    nan    nan    1 1
-ATOM   C  CG  . ASP     A 0 1   . 1   ASP     A CG  17.39 1.0 ?  A250 -1  False 0 4 -1  False True  False True  1  0.477  -0.542 2.937  1 2
-ATOM   O  OD1 . ASP     A 0 1   . 1   ASP     A OD1 18.72 1.0 ?  A250 -1  False 0 4 -1  False True  False True  2  0.547  0.656  2.665  1 3
-HETATM N  N1  . ORO     C 2 410 . 410 ORO     C N1  18.66 1.0 ?  ORO  -1  False 0 1 -1  True  True  False True  3  -2.127 0.345  -1.747 1 4
-HETATM C  C2  . ORO     C 2 410 . 410 ORO     C C2  23.79 1.0 ?  ORO  -1  False 0 1 -1  True  True  False True  4  -1.547 -0.999 -1.559 1 5
-HETATM O  O2  . ORO     C 2 410 . 410 ORO     C O2  19.98 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 5  0.0    0.0    0.0    1 6
-HETATM N  N3  . ORO     C 2 410 . 410 ORO     C N3  26.76 1.0 ?  ORO  -1  False 0 1 -1  True  True  False True  6  -0.172 -1.019 -1.547 1 7
-HETATM C  C4  . ORO     C 2 410 . 410 ORO     C C4  100.0 1.0 ?  ORO  -1  False 0 1 -1  True  True  False True  7  0.602  -0.003 -2.126 1 8
-HETATM O  O4  . ORO     C 2 410 . 410 ORO     C O4  39.79 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 8  0.0    0.0    0.0    1 9
-HETATM C  C5  . ORO     C 2 410 . 410 ORO     C C5  30.44 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 9  0.0    0.0    0.0    1 10
-HETATM C  C6  . ORO     C 2 410 . 410 ORO     C C6  29.02 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 10 0.0    0.0    0.0    1 11
-HETATM C  C7  . ORO     C 2 410 . 410 ORO     C C7  21.02 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 11 0.0    0.0    0.0    1 12
-HETATM O  O71 . ORO     C 2 410 . 410 ORO     C O71 17.46 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 12 0.0    0.0    0.0    1 13
-HETATM O  O72 . ORO     C 2 410 . 410 ORO     C O72 18.24 1.0 ?  ORO  -1  False 0 1 -1  True  True  False False 13 0.0    0.0    0.0    1 14
-HETATM ZN ZN  . ZN      B 1 400 . 400 ZN      B ZN  22.02 1.0 +2 ZN   -1  False 0 2 -1  True  True  False True  14 2.223  1.561  1.378  1 15
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan   0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C  CG  . ASP     A 0 1   . 1   ASP     A CG  2  17.39 1.0 ?  4 False False -1  True  -1  True  0 A250 False 1  0.477  -0.542 2.937  1
+ATOM   O  OD1 . ASP     A 0 1   . 1   ASP     A OD1 3  18.72 1.0 ?  4 False False -1  True  -1  True  0 A250 False 2  0.547  0.656  2.665  1
+HETATM N  N1  . ORO     C 2 410 . 410 ORO     C N1  4  18.66 1.0 ?  1 False False -1  True  -1  True  0 ORO  True  3  -2.127 0.345  -1.747 1
+HETATM C  C2  . ORO     C 2 410 . 410 ORO     C C2  5  23.79 1.0 ?  1 False False -1  True  -1  True  0 ORO  True  4  -1.547 -0.999 -1.559 1
+HETATM O  O2  . ORO     C 2 410 . 410 ORO     C O2  6  19.98 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  5  -2.214 -2.027 -1.468 1
+HETATM N  N3  . ORO     C 2 410 . 410 ORO     C N3  7  26.76 1.0 ?  1 False False -1  True  -1  True  0 ORO  True  6  -0.172 -1.019 -1.547 1
+HETATM C  C4  . ORO     C 2 410 . 410 ORO     C C4  8  100.0 1.0 ?  1 False False -1  True  -1  True  0 ORO  True  7  0.602  -0.003 -2.126 1
+HETATM O  O4  . ORO     C 2 410 . 410 ORO     C O4  9  39.79 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  8  1.776  -0.237 -2.366 1
+HETATM C  C5  . ORO     C 2 410 . 410 ORO     C C5  10 30.44 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  9  0.054  1.21   -2.231 1
+HETATM C  C6  . ORO     C 2 410 . 410 ORO     C C6  11 29.02 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  10 -1.177 1.5    -1.509 1
+HETATM C  C7  . ORO     C 2 410 . 410 ORO     C C7  12 21.02 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  11 -1.877 2.775  -1.982 1
+HETATM O  O71 . ORO     C 2 410 . 410 ORO     C O71 13 17.46 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  12 -1.283 3.87   -1.856 1
+HETATM O  O72 . ORO     C 2 410 . 410 ORO     C O72 14 18.24 1.0 ?  1 False False -1  True  -1  False 0 ORO  True  13 -3.048 2.622  -2.411 1
+HETATM ZN ZN  . ZN      B 1 400 . 400 ZN      B ZN  15 22.02 1.0 +2 2 False False -1  True  -1  True  0 ZN   True  14 2.223  1.561  1.378  1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -141,6 +139,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK X  0 N N nan                  nan                    nan
 ASP     N   N  0 N N -0.31700000166893005 1.687999963760376      0.06599999964237213
 ASP     CA  C  0 N N -0.4699999988079071  0.28600001335144043    -0.3440000116825104
 ASP     C   C  0 N N -1.8680000305175781  -0.18000000715255737   -0.028999999165534973
@@ -173,5 +172,4 @@ ORO     HN3 H  0 N N 0.17000000178813934  -0.0                   -3.029999971389
 ORO     H5  H  0 N N -2.1989998817443848  -0.0                   0.4569999873638153
 ORO     HO7 H  0 N N 0.9679999947547913   -0.0                   3.8570001125335693
 ZN      ZN  ZN 2 N N nan                  nan                    nan
-180-180 UNK X  0 N N nan                  nan                    nan
 #

@@ -1,9 +1,9 @@
 data_M0500_1e3i.cif
 #
 _entry.id       M0500_1e3i.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:38:46
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:56
 #
 loop_
 _entity.id 
@@ -254,97 +254,95 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.condition_hbond_1_atom 
-_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
 _atom_site.annotation_expsegmax_1_residue 
 _atom_site.mask_sequence_1_residue 
-_atom_site.condition_index-group_1_token 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
 _atom_site.mask_index_1_residue 
-_atom_site.mask_expsegmax_1_residue 
-_atom_site.mask_expsegmin_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK nan   0.0 ?  180 .    0 False 180 False 0  True  True  True  0  nan    nan    nan    1 1
-ATOM   C  CB  . CYS     A 0 1   . 1   CYS     A CB  22.09 1.0 ?  -1  A46  0 True  -1  True  5  False False False 1  2.875  -1.03  -2.015 1 2
-ATOM   S  SG  . CYS     A 0 1   . 1   CYS     A SG  21.56 1.0 ?  -1  A46  0 True  -1  True  5  False False False 2  1.897  -1.308 -0.532 1 3
-ATOM   N  N   . PRO     A 0 2   . 2   PRO     A N   24.48 1.0 ?  -1  A47  0 True  -1  True  6  False False False 3  4.23   -3.592 -0.186 1 4
-ATOM   C  CG  . PRO     A 0 2   . 2   PRO     A CG  21.14 1.0 ?  -1  A47  0 True  -1  True  6  False False False 4  4.101  -3.204 2.086  1 5
-ATOM   C  CD  . PRO     A 0 2   . 2   PRO     A CD  21.14 1.0 ?  -1  A47  0 True  -1  True  6  False False False 5  4.726  -2.654 0.834  1 6
-ATOM   C  CB  . THR     A 0 3   . 3   THR     A CB  23.84 1.0 ?  -1  A48  0 True  -1  True  7  False False False 6  -0.732 -3.749 -0.416 1 7
-ATOM   O  OG1 . THR     A 0 3   . 3   THR     A OG1 22.5  1.0 ?  -1  A48  0 True  -1  True  7  False False False 7  -0.764 -3.21  0.912  1 8
-ATOM   C  CD2 . HIS     A 0 4   . 4   HIS     A CD2 20.53 1.0 ?  -1  A67  0 True  -1  True  8  False False False 8  -1.275 0.57   -3.79  1 9
-ATOM   C  CE1 . HIS     A 0 4   . 4   HIS     A CE1 20.52 1.0 ?  -1  A67  0 True  -1  True  8  False False False 9  -0.337 -1.397 -3.524 1 10
-ATOM   N  NE2 . HIS     A 0 4   . 4   HIS     A NE2 22.32 1.0 ?  -1  A67  0 True  -1  True  8  False False False 10 -0.608 -0.256 -2.919 1 11
-ATOM   C  CA  . CYS     A 0 5   . 5   CYS     A CA  16.33 1.0 ?  -1  A178 0 True  -1  True  9  False False False 11 0.51   5.041  -1.557 1 12
-ATOM   C  CB  . CYS     A 0 5   . 5   CYS     A CB  14.22 1.0 ?  -1  A178 0 True  -1  True  9  False False False 12 0.379  3.583  -1.995 1 13
-ATOM   S  SG  . CYS     A 0 5   . 5   CYS     A SG  16.19 1.0 ?  -1  A178 0 True  -1  True  9  False False False 13 0.363  2.514  -0.554 1 14
-ATOM   C  CB  . SER     A 0 6   . 6   SER     A CB  16.12 1.0 ?  -1  A182 0 True  -1  True  10 False False False 14 -0.303 5.291  3.601  1 15
-ATOM   O  OG  . SER     A 0 6   . 6   SER     A OG  18.85 1.0 ?  -1  A182 0 True  -1  True  10 False False False 15 -1.153 5.063  2.487  1 16
-HETATM C  C1  . CXF     D 3 378 . 378 CXF     D C1  27.23 1.0 ?  -1  CXF  0 True  -1  True  1  True  False False 16 -4.08  -1.229 1.557  1 17
-HETATM C  C2  . CXF     D 3 378 . 378 CXF     D C2  26.76 1.0 ?  -1  CXF  0 True  -1  True  1  True  False False 17 -3.363 -1.358 2.956  1 18
-HETATM C  C3  . CXF     D 3 378 . 378 CXF     D C3  26.14 1.0 ?  -1  CXF  0 False -1  True  1  True  False False 18 0.0    0.0    0.0    1 19
-HETATM C  C4  . CXF     D 3 378 . 378 CXF     D C4  28.18 1.0 ?  -1  CXF  0 False -1  True  1  True  False False 19 0.0    0.0    0.0    1 20
-HETATM C  C5  . CXF     D 3 378 . 378 CXF     D C5  28.27 1.0 ?  -1  CXF  0 False -1  True  1  True  False False 20 0.0    0.0    0.0    1 21
-HETATM C  C6  . CXF     D 3 378 . 378 CXF     D C6  27.32 1.0 ?  -1  CXF  0 False -1  True  1  True  False False 21 0.0    0.0    0.0    1 22
-HETATM N  N8  . CXF     D 3 378 . 378 CXF     D N8  28.25 1.0 ?  -1  CXF  0 True  -1  True  1  True  False False 22 -3.333 -0.411 0.605  1 23
-HETATM C  C7  . CXF     D 3 378 . 378 CXF     D C7  25.2  1.0 ?  -1  CXF  0 True  -1  True  1  True  False False 23 -2.105 -0.103 0.147  1 24
-HETATM O  O9  . CXF     D 3 378 . 378 CXF     D O9  24.54 1.0 ?  -1  CXF  0 True  -1  True  1  True  False False 24 -1.068 -0.54  0.505  1 25
-HETATM P  PA  . NAI     C 2 377 . 377 NAI     C PA  26.63 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 25 0.0    0.0    0.0    1 26
-HETATM O  O1A . NAI     C 2 377 . 377 NAI     C O1A 23.33 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 26 0.0    0.0    0.0    1 27
-HETATM O  O2A . NAI     C 2 377 . 377 NAI     C O2A 24.56 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 27 0.0    0.0    0.0    1 28
-HETATM O  O5B . NAI     C 2 377 . 377 NAI     C O5B 24.55 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 28 0.0    0.0    0.0    1 29
-HETATM C  C5B . NAI     C 2 377 . 377 NAI     C C5B 25.36 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 29 0.0    0.0    0.0    1 30
-HETATM C  C4B . NAI     C 2 377 . 377 NAI     C C4B 24.2  1.0 ?  -1  NAI  0 False -1  True  2  True  False False 30 0.0    0.0    0.0    1 31
-HETATM O  O4B . NAI     C 2 377 . 377 NAI     C O4B 23.98 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 31 0.0    0.0    0.0    1 32
-HETATM C  C3B . NAI     C 2 377 . 377 NAI     C C3B 22.56 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 32 0.0    0.0    0.0    1 33
-HETATM O  O3B . NAI     C 2 377 . 377 NAI     C O3B 21.7  1.0 ?  -1  NAI  0 False -1  True  2  True  False False 33 0.0    0.0    0.0    1 34
-HETATM C  C2B . NAI     C 2 377 . 377 NAI     C C2B 22.15 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 34 0.0    0.0    0.0    1 35
-HETATM O  O2B . NAI     C 2 377 . 377 NAI     C O2B 20.34 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 35 0.0    0.0    0.0    1 36
-HETATM C  C1B . NAI     C 2 377 . 377 NAI     C C1B 23.19 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 36 0.0    0.0    0.0    1 37
-HETATM N  N9A . NAI     C 2 377 . 377 NAI     C N9A 24.66 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 37 0.0    0.0    0.0    1 38
-HETATM C  C8A . NAI     C 2 377 . 377 NAI     C C8A 25.67 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 38 0.0    0.0    0.0    1 39
-HETATM N  N7A . NAI     C 2 377 . 377 NAI     C N7A 25.35 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 39 0.0    0.0    0.0    1 40
-HETATM C  C5A . NAI     C 2 377 . 377 NAI     C C5A 24.33 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 40 0.0    0.0    0.0    1 41
-HETATM C  C6A . NAI     C 2 377 . 377 NAI     C C6A 24.47 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 41 0.0    0.0    0.0    1 42
-HETATM N  N6A . NAI     C 2 377 . 377 NAI     C N6A 24.71 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 42 0.0    0.0    0.0    1 43
-HETATM N  N1A . NAI     C 2 377 . 377 NAI     C N1A 23.81 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 43 0.0    0.0    0.0    1 44
-HETATM C  C2A . NAI     C 2 377 . 377 NAI     C C2A 23.96 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 44 0.0    0.0    0.0    1 45
-HETATM N  N3A . NAI     C 2 377 . 377 NAI     C N3A 24.96 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 45 0.0    0.0    0.0    1 46
-HETATM C  C4A . NAI     C 2 377 . 377 NAI     C C4A 24.93 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 46 0.0    0.0    0.0    1 47
-HETATM O  O3  . NAI     C 2 377 . 377 NAI     C O3  22.59 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 47 0.0    0.0    0.0    1 48
-HETATM P  PN  . NAI     C 2 377 . 377 NAI     C PN  24.05 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 48 0.0    0.0    0.0    1 49
-HETATM O  O1N . NAI     C 2 377 . 377 NAI     C O1N 22.17 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 49 0.0    0.0    0.0    1 50
-HETATM O  O2N . NAI     C 2 377 . 377 NAI     C O2N 21.05 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 50 0.0    0.0    0.0    1 51
-HETATM O  O5D . NAI     C 2 377 . 377 NAI     C O5D 21.94 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 51 0.0    0.0    0.0    1 52
-HETATM C  C5D . NAI     C 2 377 . 377 NAI     C C5D 21.03 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 52 0.0    0.0    0.0    1 53
-HETATM C  C4D . NAI     C 2 377 . 377 NAI     C C4D 22.12 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 53 0.0    0.0    0.0    1 54
-HETATM O  O4D . NAI     C 2 377 . 377 NAI     C O4D 21.56 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 54 0.0    0.0    0.0    1 55
-HETATM C  C3D . NAI     C 2 377 . 377 NAI     C C3D 21.37 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 55 0.0    0.0    0.0    1 56
-HETATM O  O3D . NAI     C 2 377 . 377 NAI     C O3D 23.18 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 56 0.0    0.0    0.0    1 57
-HETATM C  C2D . NAI     C 2 377 . 377 NAI     C C2D 21.86 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 57 0.0    0.0    0.0    1 58
-HETATM O  O2D . NAI     C 2 377 . 377 NAI     C O2D 23.76 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 58 0.0    0.0    0.0    1 59
-HETATM C  C1D . NAI     C 2 377 . 377 NAI     C C1D 21.04 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 59 0.0    0.0    0.0    1 60
-HETATM N  N1N . NAI     C 2 377 . 377 NAI     C N1N 20.95 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 60 0.0    0.0    0.0    1 61
-HETATM C  C2N . NAI     C 2 377 . 377 NAI     C C2N 19.29 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 61 0.0    0.0    0.0    1 62
-HETATM C  C3N . NAI     C 2 377 . 377 NAI     C C3N 19.66 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 62 0.0    0.0    0.0    1 63
-HETATM C  C7N . NAI     C 2 377 . 377 NAI     C C7N 19.09 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 63 0.0    0.0    0.0    1 64
-HETATM O  O7N . NAI     C 2 377 . 377 NAI     C O7N 20.86 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 64 0.0    0.0    0.0    1 65
-HETATM N  N7N . NAI     C 2 377 . 377 NAI     C N7N 17.71 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 65 0.0    0.0    0.0    1 66
-HETATM C  C4N . NAI     C 2 377 . 377 NAI     C C4N 18.28 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 66 0.0    0.0    0.0    1 67
-HETATM C  C5N . NAI     C 2 377 . 377 NAI     C C5N 21.42 1.0 ?  -1  NAI  0 True  -1  True  2  True  False False 67 -0.245 1.711  2.782  1 68
-HETATM C  C6N . NAI     C 2 377 . 377 NAI     C C6N 21.14 1.0 ?  -1  NAI  0 False -1  True  2  True  False False 68 0.0    0.0    0.0    1 69
-HETATM ZN ZN  . ZN      B 1 380 . 380 ZN      B ZN  22.27 1.0 +2 -1  ZN   0 True  -1  True  3  True  False False 69 0.276  0.269  -0.979 1 70
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan   0.0 ?  0  True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C  CB  . CYS     A 0 1   . 1   CYS     A CB  2  22.09 1.0 ?  5  False False -1  True  -1  True  0 A46  False 1  2.875  -1.03  -2.015 1
+ATOM   S  SG  . CYS     A 0 1   . 1   CYS     A SG  3  21.56 1.0 ?  5  False False -1  True  -1  True  0 A46  False 2  1.897  -1.308 -0.532 1
+ATOM   N  N   . PRO     A 0 2   . 2   PRO     A N   4  24.48 1.0 ?  6  False False -1  True  -1  True  0 A47  False 3  4.23   -3.592 -0.186 1
+ATOM   C  CG  . PRO     A 0 2   . 2   PRO     A CG  5  21.14 1.0 ?  6  False False -1  True  -1  True  0 A47  False 4  4.101  -3.204 2.086  1
+ATOM   C  CD  . PRO     A 0 2   . 2   PRO     A CD  6  21.14 1.0 ?  6  False False -1  True  -1  True  0 A47  False 5  4.726  -2.654 0.834  1
+ATOM   C  CB  . THR     A 0 3   . 3   THR     A CB  7  23.84 1.0 ?  7  False False -1  True  -1  True  0 A48  False 6  -0.732 -3.749 -0.416 1
+ATOM   O  OG1 . THR     A 0 3   . 3   THR     A OG1 8  22.5  1.0 ?  7  False False -1  True  -1  True  0 A48  False 7  -0.764 -3.21  0.912  1
+ATOM   C  CD2 . HIS     A 0 4   . 4   HIS     A CD2 9  20.53 1.0 ?  8  False False -1  True  -1  True  0 A67  False 8  -1.275 0.57   -3.79  1
+ATOM   C  CE1 . HIS     A 0 4   . 4   HIS     A CE1 10 20.52 1.0 ?  8  False False -1  True  -1  True  0 A67  False 9  -0.337 -1.397 -3.524 1
+ATOM   N  NE2 . HIS     A 0 4   . 4   HIS     A NE2 11 22.32 1.0 ?  8  False False -1  True  -1  True  0 A67  False 10 -0.608 -0.256 -2.919 1
+ATOM   C  CA  . CYS     A 0 5   . 5   CYS     A CA  12 16.33 1.0 ?  9  False False -1  True  -1  True  0 A178 False 11 0.51   5.041  -1.557 1
+ATOM   C  CB  . CYS     A 0 5   . 5   CYS     A CB  13 14.22 1.0 ?  9  False False -1  True  -1  True  0 A178 False 12 0.379  3.583  -1.995 1
+ATOM   S  SG  . CYS     A 0 5   . 5   CYS     A SG  14 16.19 1.0 ?  9  False False -1  True  -1  True  0 A178 False 13 0.363  2.514  -0.554 1
+ATOM   C  CB  . SER     A 0 6   . 6   SER     A CB  15 16.12 1.0 ?  10 False False -1  True  -1  True  0 A182 False 14 -0.303 5.291  3.601  1
+ATOM   O  OG  . SER     A 0 6   . 6   SER     A OG  16 18.85 1.0 ?  10 False False -1  True  -1  True  0 A182 False 15 -1.153 5.063  2.487  1
+HETATM C  C1  . CXF     D 3 378 . 378 CXF     D C1  17 27.23 1.0 ?  1  False False -1  True  -1  True  0 CXF  True  16 -4.08  -1.229 1.557  1
+HETATM C  C2  . CXF     D 3 378 . 378 CXF     D C2  18 26.76 1.0 ?  1  False False -1  True  -1  True  0 CXF  True  17 -3.363 -1.358 2.956  1
+HETATM C  C3  . CXF     D 3 378 . 378 CXF     D C3  19 26.14 1.0 ?  1  False False -1  True  -1  False 0 CXF  True  18 -4.14  -2.227 4.002  1
+HETATM C  C4  . CXF     D 3 378 . 378 CXF     D C4  20 28.18 1.0 ?  1  False False -1  True  -1  False 0 CXF  True  19 -5.574 -1.631 4.158  1
+HETATM C  C5  . CXF     D 3 378 . 378 CXF     D C5  21 28.27 1.0 ?  1  False False -1  True  -1  False 0 CXF  True  20 -6.313 -1.247 2.823  1
+HETATM C  C6  . CXF     D 3 378 . 378 CXF     D C6  22 27.32 1.0 ?  1  False False -1  True  -1  False 0 CXF  True  21 -5.414 -0.469 1.806  1
+HETATM N  N8  . CXF     D 3 378 . 378 CXF     D N8  23 28.25 1.0 ?  1  False False -1  True  -1  True  0 CXF  True  22 -3.333 -0.411 0.605  1
+HETATM C  C7  . CXF     D 3 378 . 378 CXF     D C7  24 25.2  1.0 ?  1  False False -1  True  -1  True  0 CXF  True  23 -2.105 -0.103 0.147  1
+HETATM O  O9  . CXF     D 3 378 . 378 CXF     D O9  25 24.54 1.0 ?  1  False False -1  True  -1  True  0 CXF  True  24 -1.068 -0.54  0.505  1
+HETATM P  PA  . NAI     C 2 377 . 377 NAI     C PA  26 26.63 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  25 7.662  -2.627 4.855  1
+HETATM O  O1A . NAI     C 2 377 . 377 NAI     C O1A 27 23.33 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  26 8.791  -1.928 4.174  1
+HETATM O  O2A . NAI     C 2 377 . 377 NAI     C O2A 28 24.56 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  27 7.667  -4.064 4.661  1
+HETATM O  O5B . NAI     C 2 377 . 377 NAI     C O5B 29 24.55 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  28 7.677  -2.267 6.418  1
+HETATM C  C5B . NAI     C 2 377 . 377 NAI     C C5B 30 25.36 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  29 7.663  -3.2   7.536  1
+HETATM C  C4B . NAI     C 2 377 . 377 NAI     C C4B 31 24.2  1.0 ?  2  False False -1  True  -1  False 0 NAI  True  30 8.698  -2.82  8.559  1
+HETATM O  O4B . NAI     C 2 377 . 377 NAI     C O4B 32 23.98 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  31 8.242  -3.272 9.889  1
+HETATM C  C3B . NAI     C 2 377 . 377 NAI     C C3B 33 22.56 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  32 10.091 -3.438 8.36   1
+HETATM O  O3B . NAI     C 2 377 . 377 NAI     C O3B 34 21.7  1.0 ?  2  False False -1  True  -1  False 0 NAI  True  33 11.14  -2.514 8.516  1
+HETATM C  C2B . NAI     C 2 377 . 377 NAI     C C2B 35 22.15 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  34 10.131 -4.579 9.364  1
+HETATM O  O2B . NAI     C 2 377 . 377 NAI     C O2B 36 20.34 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  35 11.428 -4.951 9.81   1
+HETATM C  C1B . NAI     C 2 377 . 377 NAI     C C1B 37 23.19 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  36 9.246  -4.052 10.5   1
+HETATM N  N9A . NAI     C 2 377 . 377 NAI     C N9A 38 24.66 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  37 8.709  -5.122 11.363 1
+HETATM C  C8A . NAI     C 2 377 . 377 NAI     C C8A 39 25.67 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  38 8.216  -6.378 11.079 1
+HETATM N  N7A . NAI     C 2 377 . 377 NAI     C N7A 40 25.35 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  39 7.832  -7.059 12.182 1
+HETATM C  C5A . NAI     C 2 377 . 377 NAI     C C5A 41 24.33 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  40 8.092  -6.2   13.216 1
+HETATM C  C6A . NAI     C 2 377 . 377 NAI     C C6A 42 24.47 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  41 7.923  -6.308 14.628 1
+HETATM N  N6A . NAI     C 2 377 . 377 NAI     C N6A 43 24.71 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  42 7.43   -7.388 15.247 1
+HETATM N  N1A . NAI     C 2 377 . 377 NAI     C N1A 44 23.81 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  43 8.295  -5.228 15.401 1
+HETATM C  C2A . NAI     C 2 377 . 377 NAI     C C2A 45 23.96 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  44 8.813  -4.091 14.794 1
+HETATM N  N3A . NAI     C 2 377 . 377 NAI     C N3A 46 24.96 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  45 9.005  -3.906 13.506 1
+HETATM C  C4A . NAI     C 2 377 . 377 NAI     C C4A 47 24.93 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  46 8.629  -4.994 12.745 1
+HETATM O  O3  . NAI     C 2 377 . 377 NAI     C O3  48 22.59 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  47 6.263  -1.96  4.474  1
+HETATM P  PN  . NAI     C 2 377 . 377 NAI     C PN  49 24.05 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  48 5.715  -0.488 4.27   1
+HETATM O  O1N . NAI     C 2 377 . 377 NAI     C O1N 50 22.17 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  49 5.674  -0.116 2.86   1
+HETATM O  O2N . NAI     C 2 377 . 377 NAI     C O2N 51 21.05 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  50 6.521  0.49   5.019  1
+HETATM O  O5D . NAI     C 2 377 . 377 NAI     C O5D 52 21.94 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  51 4.201  -0.672 4.788  1
+HETATM C  C5D . NAI     C 2 377 . 377 NAI     C C5D 53 21.03 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  52 3.905  -1.03  6.123  1
+HETATM C  C4D . NAI     C 2 377 . 377 NAI     C C4D 54 22.12 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  53 2.538  -1.598 6.31   1
+HETATM O  O4D . NAI     C 2 377 . 377 NAI     C O4D 55 21.56 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  54 1.462  -0.623 6.106  1
+HETATM C  C3D . NAI     C 2 377 . 377 NAI     C C3D 56 21.37 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  55 2.186  -2.79  5.393  1
+HETATM O  O3D . NAI     C 2 377 . 377 NAI     C O3D 57 23.18 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  56 1.654  -3.833 6.201  1
+HETATM C  C2D . NAI     C 2 377 . 377 NAI     C C2D 58 21.86 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  57 1.219  -2.167 4.369  1
+HETATM O  O2D . NAI     C 2 377 . 377 NAI     C O2D 59 23.76 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  58 0.365  -3.111 3.745  1
+HETATM C  C1D . NAI     C 2 377 . 377 NAI     C C1D 60 21.04 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  59 0.494  -1.122 5.185  1
+HETATM N  N1N . NAI     C 2 377 . 377 NAI     C N1N 61 20.95 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  60 -0.119 0.022  4.476  1
+HETATM C  C2N . NAI     C 2 377 . 377 NAI     C C2N 62 19.29 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  61 -1.312 0.469  5.003  1
+HETATM C  C3N . NAI     C 2 377 . 377 NAI     C C3N 63 19.66 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  62 -1.988 1.534  4.433  1
+HETATM C  C7N . NAI     C 2 377 . 377 NAI     C C7N 64 19.09 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  63 -3.345 2.122  4.956  1
+HETATM O  O7N . NAI     C 2 377 . 377 NAI     C O7N 65 20.86 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  64 -4.005 2.933  4.301  1
+HETATM N  N7N . NAI     C 2 377 . 377 NAI     C N7N 66 17.71 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  65 -3.745 1.687  6.177  1
+HETATM C  C4N . NAI     C 2 377 . 377 NAI     C C4N 67 18.28 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  66 -1.479 2.224  3.272  1
+HETATM C  C5N . NAI     C 2 377 . 377 NAI     C C5N 68 21.42 1.0 ?  2  False False -1  True  -1  True  0 NAI  True  67 -0.245 1.711  2.782  1
+HETATM C  C6N . NAI     C 2 377 . 377 NAI     C C6N 69 21.14 1.0 ?  2  False False -1  True  -1  False 0 NAI  True  68 0.479  0.647  3.308  1
+HETATM ZN ZN  . ZN      B 1 380 . 380 ZN      B ZN  70 22.27 1.0 +2 3  False False -1  True  -1  True  0 ZN   True  69 0.276  0.269  -0.979 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -356,6 +354,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X  0 N N nan                   nan                  nan
 CXF     C1   C  0 N N -0.2409999966621399   0.04800000041723251  -0.24799999594688416
 CXF     C2   C  0 N N -1.3760000467300415   -0.07999999821186066 0.7699999809265137
 CXF     C3   C  0 N N -0.9670000076293945   0.6000000238418579   2.0769999027252197
@@ -535,5 +534,4 @@ THR     HG22 H  0 N N -0.8790000081062317   -1.5470000505447388  2.4479999542236
 THR     HG23 H  0 N N 0.5419999957084656    -0.5180000066757202  2.743000030517578
 THR     HXT  H  0 N Y -1.1430000066757202   -0.09200000017881393 -2.9860000610351562
 ZN      ZN   ZN 2 N N nan                   nan                  nan
-180-180 UNK  X  0 N N nan                   nan                  nan
 #

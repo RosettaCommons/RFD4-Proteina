@@ -33,6 +33,8 @@ helpers perform this import.
 - Preserve requested indexing and H-bond roles, then run the checked-out
   validation pipeline. If it reports an unsupported combination, surface that
   exact design conflict; do not force indexing on or discard one H-bond role.
+- The pipeline check realizes expandable segments once, with a fixed seed, as
+  generation does. It validates that one realization, not every length in a range.
 - `nucleic_ss`, `ori_token`, and `atomwise_hbond` are not supported JSON/YAML
   compatibility fields. Use supported annotated-CIF conditions where available.
 - Multiple variable contig segments constrained by one total length are not

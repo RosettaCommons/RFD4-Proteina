@@ -1,9 +1,9 @@
 data_M0907_1rbl.cif
 #
 _entry.id       M0907_1rbl.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:39:44
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:57
 #
 loop_
 _entity.id 
@@ -190,74 +190,72 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.mask_sequence_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.annotation_src-component_1_atom 
 _atom_site.condition_index-group_1_token 
-_atom_site.annotation_expsegmin_1_residue 
 _atom_site.mask_expsegmin_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.mask_coordinate_1_atom 
 _atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK nan 0.0 ?  False True  180 .    0  180 True  0 False True  0  nan    nan    nan    1 1
-ATOM   C  CD  . LYS     A 0 1   . 1   LYS     A CD  0.0 1.0 ?  True  False -1  A175 5  -1  False 0 True  False 1  -2.989 3.79   -4.035 1 2
-ATOM   C  CE  . LYS     A 0 1   . 1   LYS     A CE  0.0 1.0 ?  True  False -1  A175 5  -1  False 0 True  False 2  -1.791 2.888  -3.813 1 3
-ATOM   N  NZ  . LYS     A 0 1   . 1   LYS     A NZ  0.0 1.0 +1 True  False -1  A175 5  -1  False 0 True  False 3  -1.461 2.719  -2.368 1 4
-ATOM   C  CE  . LYS     A 0 2   . 2   LYS     A CE  0.0 1.0 ?  True  False -1  A201 6  -1  False 0 True  False 4  -0.623 -5.423 -2.028 1 5
-ATOM   N  NZ  . LYS     A 0 2   . 2   LYS     A NZ  0.0 1.0 +1 True  False -1  A201 6  -1  False 0 True  False 5  -1.233 -4.507 -1.081 1 6
-ATOM   C  CB  . ASP     A 0 3   . 3   ASP     A CB  0.0 1.0 ?  True  False -1  A203 7  -1  False 0 True  False 6  -4.959 -0.075 0.054  1 7
-ATOM   C  CG  . ASP     A 0 3   . 3   ASP     A CG  0.0 1.0 ?  True  False -1  A203 7  -1  False 0 True  False 7  -3.807 0.844  -0.305 1 8
-ATOM   O  OD1 . ASP     A 0 3   . 3   ASP     A OD1 0.0 1.0 ?  True  False -1  A203 7  -1  False 0 True  False 8  -2.693 0.6    0.171  1 9
-ATOM   O  OD2 . ASP     A 0 3   . 3   ASP     A OD2 0.0 1.0 ?  True  False -1  A203 7  -1  False 0 True  False 9  -3.976 1.773  -1.115 1 10
-ATOM   C  CG  . GLU     A 0 4   . 4   GLU     A CG  0.0 1.0 ?  True  False -1  A204 8  -1  False 0 True  False 10 -1.817 -1.168 4.563  1 11
-ATOM   C  CD  . GLU     A 0 4   . 4   GLU     A CD  0.0 1.0 ?  True  False -1  A204 8  -1  False 0 True  False 11 -1.482 -0.14  3.498  1 12
-ATOM   O  OE1 . GLU     A 0 4   . 4   GLU     A OE1 0.0 1.0 ?  True  False -1  A204 8  -1  False 0 True  False 12 -0.658 -0.454 2.637  1 13
-ATOM   O  OE2 . GLU     A 0 4   . 4   GLU     A OE2 0.0 1.0 ?  True  False -1  A204 8  -1  False 0 True  False 13 -1.986 0.998  3.541  1 14
-ATOM   C  CG  . HIS     A 0 5   . 5   HIS     A CG  0.0 1.0 ?  True  False -1  A294 9  -1  False 0 True  False 14 0.781  -4.82  3.367  1 15
-ATOM   N  ND1 . HIS     A 0 5   . 5   HIS     A ND1 0.0 1.0 +1 True  False -1  A294 9  -1  False 0 True  False 15 1.096  -3.921 4.366  1 16
-ATOM   C  CD2 . HIS     A 0 5   . 5   HIS     A CD2 0.0 1.0 ?  True  False -1  A294 9  -1  False 0 True  False 16 0.827  -4.122 2.208  1 17
-ATOM   C  CE1 . HIS     A 0 5   . 5   HIS     A CE1 0.0 1.0 ?  True  False -1  A294 9  -1  False 0 True  False 17 1.345  -2.739 3.831  1 18
-ATOM   N  NE2 . HIS     A 0 5   . 5   HIS     A NE2 0.0 1.0 ?  True  False -1  A294 9  -1  False 0 True  False 18 1.187  -2.833 2.524  1 19
-ATOM   C  CD  . LYS     A 0 6   . 6   LYS     A CD  0.0 1.0 ?  True  False -1  A334 10 -1  False 0 True  False 19 5.59   5.929  -1.795 1 20
-ATOM   C  CE  . LYS     A 0 6   . 6   LYS     A CE  0.0 1.0 ?  True  False -1  A334 10 -1  False 0 True  False 20 4.615  4.864  -1.317 1 21
-ATOM   N  NZ  . LYS     A 0 6   . 6   LYS     A NZ  0.0 1.0 +1 True  False -1  A334 10 -1  False 0 True  False 21 3.233  5.127  -1.784 1 22
-HETATM MG MG  . MG      D 3 477 . 477 MG      D MG  0.0 1.0 +2 True  True  -1  MG   1  -1  False 0 True  False 22 -0.544 -0.295 0.307  1 23
-HETATM C  C   . FMT     B 1 478 . 478 FMT     B C   0.0 1.0 ?  True  True  -1  FMT  2  -1  False 0 True  False 23 -0.609 -3.238 -0.758 1 24
-HETATM O  O1  . FMT     B 1 478 . 478 FMT     B O1  0.0 1.0 ?  True  True  -1  FMT  2  -1  False 0 False False 24 0.0    0.0    0.0    1 25
-HETATM O  O2  . FMT     B 1 478 . 478 FMT     B O2  0.0 1.0 ?  True  True  -1  FMT  2  -1  False 0 True  False 25 -1.416 -2.394 -0.354 1 26
-HETATM C  C1  . CAP     C 2 476 . 476 CAP     C C1  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 26 2.32   1.353  -2.609 1 27
-HETATM C  C2  . CAP     C 2 476 . 476 CAP     C C2  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 27 1.604  0.898  -1.316 1 28
-HETATM C  C3  . CAP     C 2 476 . 476 CAP     C C3  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 28 2.43   -0.298 -0.756 1 29
-HETATM C  C4  . CAP     C 2 476 . 476 CAP     C C4  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 29 3.749  -0.032 -0.044 1 30
-HETATM C  C5  . CAP     C 2 476 . 476 CAP     C C5  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 30 0.0    0.0    0.0    1 31
-HETATM C  C   . CAP     C 2 476 . 476 CAP     C C   0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 31 1.284  2.001  -0.31  1 32
-HETATM O  O1  . CAP     C 2 476 . 476 CAP     C O1  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 32 1.593  2.217  -3.51  1 33
-HETATM O  O2  . CAP     C 2 476 . 476 CAP     C O2  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 True  False 33 0.377  0.47   -1.763 1 34
-HETATM O  O3  . CAP     C 2 476 . 476 CAP     C O3  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 34 0.0    0.0    0.0    1 35
-HETATM O  O4  . CAP     C 2 476 . 476 CAP     C O4  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 35 0.0    0.0    0.0    1 36
-HETATM O  O5  . CAP     C 2 476 . 476 CAP     C O5  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 36 0.0    0.0    0.0    1 37
-HETATM O  O6  . CAP     C 2 476 . 476 CAP     C O6  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 37 0.0    0.0    0.0    1 38
-HETATM O  O7  . CAP     C 2 476 . 476 CAP     C O7  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 38 0.0    0.0    0.0    1 39
-HETATM P  P1  . CAP     C 2 476 . 476 CAP     C P1  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 39 0.0    0.0    0.0    1 40
-HETATM P  P2  . CAP     C 2 476 . 476 CAP     C P2  0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 40 0.0    0.0    0.0    1 41
-HETATM O  O1P . CAP     C 2 476 . 476 CAP     C O1P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 41 0.0    0.0    0.0    1 42
-HETATM O  O2P . CAP     C 2 476 . 476 CAP     C O2P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 42 0.0    0.0    0.0    1 43
-HETATM O  O3P . CAP     C 2 476 . 476 CAP     C O3P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 43 0.0    0.0    0.0    1 44
-HETATM O  O4P . CAP     C 2 476 . 476 CAP     C O4P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 44 0.0    0.0    0.0    1 45
-HETATM O  O5P . CAP     C 2 476 . 476 CAP     C O5P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 45 0.0    0.0    0.0    1 46
-HETATM O  O6P . CAP     C 2 476 . 476 CAP     C O6P 0.0 1.0 ?  True  True  -1  CAP  3  -1  False 0 False False 46 0.0    0.0    0.0    1 47
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan 0.0 ?  0  True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C  CD  . LYS     A 0 1   . 1   LYS     A CD  2  0.0 1.0 ?  5  False False -1  True  -1  True  0 A175 False 1  -2.989 3.79   -4.035 1
+ATOM   C  CE  . LYS     A 0 1   . 1   LYS     A CE  3  0.0 1.0 ?  5  False False -1  True  -1  True  0 A175 False 2  -1.791 2.888  -3.813 1
+ATOM   N  NZ  . LYS     A 0 1   . 1   LYS     A NZ  4  0.0 1.0 +1 5  False False -1  True  -1  True  0 A175 False 3  -1.461 2.719  -2.368 1
+ATOM   C  CE  . LYS     A 0 2   . 2   LYS     A CE  5  0.0 1.0 ?  6  False False -1  True  -1  True  0 A201 False 4  -0.623 -5.423 -2.028 1
+ATOM   N  NZ  . LYS     A 0 2   . 2   LYS     A NZ  6  0.0 1.0 +1 6  False False -1  True  -1  True  0 A201 False 5  -1.233 -4.507 -1.081 1
+ATOM   C  CB  . ASP     A 0 3   . 3   ASP     A CB  7  0.0 1.0 ?  7  False False -1  True  -1  True  0 A203 False 6  -4.959 -0.075 0.054  1
+ATOM   C  CG  . ASP     A 0 3   . 3   ASP     A CG  8  0.0 1.0 ?  7  False False -1  True  -1  True  0 A203 False 7  -3.807 0.844  -0.305 1
+ATOM   O  OD1 . ASP     A 0 3   . 3   ASP     A OD1 9  0.0 1.0 ?  7  False False -1  True  -1  True  0 A203 False 8  -2.693 0.6    0.171  1
+ATOM   O  OD2 . ASP     A 0 3   . 3   ASP     A OD2 10 0.0 1.0 ?  7  False False -1  True  -1  True  0 A203 False 9  -3.976 1.773  -1.115 1
+ATOM   C  CG  . GLU     A 0 4   . 4   GLU     A CG  11 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 10 -1.817 -1.168 4.563  1
+ATOM   C  CD  . GLU     A 0 4   . 4   GLU     A CD  12 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 11 -1.482 -0.14  3.498  1
+ATOM   O  OE1 . GLU     A 0 4   . 4   GLU     A OE1 13 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 12 -0.658 -0.454 2.637  1
+ATOM   O  OE2 . GLU     A 0 4   . 4   GLU     A OE2 14 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 13 -1.986 0.998  3.541  1
+ATOM   C  CG  . HIS     A 0 5   . 5   HIS     A CG  15 0.0 1.0 ?  9  False False -1  True  -1  True  0 A294 False 14 0.781  -4.82  3.367  1
+ATOM   N  ND1 . HIS     A 0 5   . 5   HIS     A ND1 16 0.0 1.0 +1 9  False False -1  True  -1  True  0 A294 False 15 1.096  -3.921 4.366  1
+ATOM   C  CD2 . HIS     A 0 5   . 5   HIS     A CD2 17 0.0 1.0 ?  9  False False -1  True  -1  True  0 A294 False 16 0.827  -4.122 2.208  1
+ATOM   C  CE1 . HIS     A 0 5   . 5   HIS     A CE1 18 0.0 1.0 ?  9  False False -1  True  -1  True  0 A294 False 17 1.345  -2.739 3.831  1
+ATOM   N  NE2 . HIS     A 0 5   . 5   HIS     A NE2 19 0.0 1.0 ?  9  False False -1  True  -1  True  0 A294 False 18 1.187  -2.833 2.524  1
+ATOM   C  CD  . LYS     A 0 6   . 6   LYS     A CD  20 0.0 1.0 ?  10 False False -1  True  -1  True  0 A334 False 19 5.59   5.929  -1.795 1
+ATOM   C  CE  . LYS     A 0 6   . 6   LYS     A CE  21 0.0 1.0 ?  10 False False -1  True  -1  True  0 A334 False 20 4.615  4.864  -1.317 1
+ATOM   N  NZ  . LYS     A 0 6   . 6   LYS     A NZ  22 0.0 1.0 +1 10 False False -1  True  -1  True  0 A334 False 21 3.233  5.127  -1.784 1
+HETATM MG MG  . MG      D 3 477 . 477 MG      D MG  23 0.0 1.0 +2 1  False False -1  True  -1  True  0 MG   True  22 -0.544 -0.295 0.307  1
+HETATM C  C   . FMT     B 1 478 . 478 FMT     B C   24 0.0 1.0 ?  2  False False -1  True  -1  True  0 FMT  True  23 -0.609 -3.238 -0.758 1
+HETATM O  O1  . FMT     B 1 478 . 478 FMT     B O1  25 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMT  True  24 0.616  -3.014 -0.723 1
+HETATM O  O2  . FMT     B 1 478 . 478 FMT     B O2  26 0.0 1.0 ?  2  False False -1  True  -1  True  0 FMT  True  25 -1.416 -2.394 -0.354 1
+HETATM C  C1  . CAP     C 2 476 . 476 CAP     C C1  27 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  26 2.32   1.353  -2.609 1
+HETATM C  C2  . CAP     C 2 476 . 476 CAP     C C2  28 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  27 1.604  0.898  -1.316 1
+HETATM C  C3  . CAP     C 2 476 . 476 CAP     C C3  29 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  28 2.43   -0.298 -0.756 1
+HETATM C  C4  . CAP     C 2 476 . 476 CAP     C C4  30 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  29 3.749  -0.032 -0.044 1
+HETATM C  C5  . CAP     C 2 476 . 476 CAP     C C5  31 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  30 4.12   -0.697 1.278  1
+HETATM C  C   . CAP     C 2 476 . 476 CAP     C C   32 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  31 1.284  2.001  -0.31  1
+HETATM O  O1  . CAP     C 2 476 . 476 CAP     C O1  33 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  32 1.593  2.217  -3.51  1
+HETATM O  O2  . CAP     C 2 476 . 476 CAP     C O2  34 0.0 1.0 ?  3  False False -1  True  -1  True  0 CAP  True  33 0.377  0.47   -1.763 1
+HETATM O  O3  . CAP     C 2 476 . 476 CAP     C O3  35 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  34 1.687  -1.049 0.13   1
+HETATM O  O4  . CAP     C 2 476 . 476 CAP     C O4  36 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  35 4.64   -0.37  -1.03  1
+HETATM O  O5  . CAP     C 2 476 . 476 CAP     C O5  37 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  36 5.515  -0.637 1.625  1
+HETATM O  O6  . CAP     C 2 476 . 476 CAP     C O6  38 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  37 2.093  3.043  -0.177 1
+HETATM O  O7  . CAP     C 2 476 . 476 CAP     C O7  39 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  38 0.18   2.003  0.461  1
+HETATM P  P1  . CAP     C 2 476 . 476 CAP     C P1  40 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  39 2.237  2.809  -4.724 1
+HETATM P  P2  . CAP     C 2 476 . 476 CAP     C P2  41 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  40 6.418  -1.797 1.686  1
+HETATM O  O1P . CAP     C 2 476 . 476 CAP     C O1P 42 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  41 1.113  3.774  -5.259 1
+HETATM O  O2P . CAP     C 2 476 . 476 CAP     C O2P 43 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  42 2.553  1.517  -5.599 1
+HETATM O  O3P . CAP     C 2 476 . 476 CAP     C O3P 44 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  43 3.506  3.554  -4.135 1
+HETATM O  O4P . CAP     C 2 476 . 476 CAP     C O4P 45 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  44 6.221  -2.593 0.331  1
+HETATM O  O5P . CAP     C 2 476 . 476 CAP     C O5P 46 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  45 5.921  -2.598 2.976  1
+HETATM O  O6P . CAP     C 2 476 . 476 CAP     C O6P 47 0.0 1.0 ?  3  False False -1  True  -1  False 0 CAP  True  46 7.815  -1.108 1.867  1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -269,6 +267,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X  0 N N nan                  nan                   nan
 ASP     N    N  0 N N -0.31700000166893005 1.687999963760376     0.06599999964237213
 ASP     CA   C  0 N N -0.4699999988079071  0.28600001335144043   -0.3440000116825104
 ASP     C    C  0 N N -1.8680000305175781  -0.18000000715255737  -0.028999999165534973
@@ -391,5 +390,4 @@ LYS     HZ2  H  0 N N -4.735000133514404   -1.399999976158142    -0.204999998211
 LYS     HZ3  H  0 N N -5.609000205993652   -0.03099999949336052  0.07100000232458115
 LYS     HXT  H  0 N Y 3.8610000610351562   -1.8860000371932983   0.11500000208616257
 MG      MG   MG 2 N N nan                  nan                   nan
-180-180 UNK  X  0 N N nan                  nan                   nan
 #

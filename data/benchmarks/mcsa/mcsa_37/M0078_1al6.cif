@@ -1,9 +1,9 @@
 data_M0078_1al6.cif
 #
 _entry.id       M0078_1al6.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:37:20
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:54
 #
 loop_
 _entity.id 
@@ -250,108 +250,106 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.annotation_expsegmin_1_residue 
 _atom_site.condition_index-group_1_token 
-_atom_site.mask_sequence_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.mask_index_1_residue 
-_atom_site.mask_expsegmax_1_residue 
-_atom_site.annotation_src-component_1_atom 
 _atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
 _atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK nan   0.0 ?  180 180 0 False 0 True  True  .    True  False 0  nan    nan    nan    1 1
-ATOM   C CB  . SER     A 0 1   . 1   SER     A CB  1.0   1.0 ?  -1  -1  4 True  0 False False A244 False True  1  -6.809 5.83   -7.047 1 2
-ATOM   O OG  . SER     A 0 1   . 1   SER     A OG  7.57  1.0 ?  -1  -1  4 True  0 False False A244 False True  2  -5.64  5.197  -7.546 1 3
-ATOM   C CB  . HIS     A 0 2   . 2   HIS     A CB  2.08  1.0 ?  -1  -1  5 True  0 False False A274 False True  3  -4.033 4.937  -1.306 1 4
-ATOM   C CG  . HIS     A 0 2   . 2   HIS     A CG  3.53  1.0 ?  -1  -1  5 True  0 False False A274 False True  4  -4.106 4.578  -2.769 1 5
-ATOM   N ND1 . HIS     A 0 2   . 2   HIS     A ND1 3.89  1.0 +1 -1  -1  5 True  0 False False A274 False True  5  -3.063 3.955  -3.433 1 6
-ATOM   C CD2 . HIS     A 0 2   . 2   HIS     A CD2 3.76  1.0 ?  -1  -1  5 True  0 False False A274 False True  6  -5.136 4.771  -3.652 1 7
-ATOM   C CE1 . HIS     A 0 2   . 2   HIS     A CE1 1.75  1.0 ?  -1  -1  5 True  0 False False A274 False True  7  -3.479 3.73   -4.684 1 8
-ATOM   N NE2 . HIS     A 0 2   . 2   HIS     A NE2 4.53  1.0 ?  -1  -1  5 True  0 False False A274 False True  8  -4.711 4.259  -4.866 1 9
-ATOM   C CD2 . HIS     A 0 3   . 3   HIS     A CD2 6.25  1.0 ?  -1  -1  6 True  0 False False A320 False True  9  2.013  -2.153 -3.437 1 10
-ATOM   C CE1 . HIS     A 0 3   . 3   HIS     A CE1 10.95 1.0 ?  -1  -1  6 True  0 False False A320 False True  10 0.652  -3.367 -4.647 1 11
-ATOM   N NE2 . HIS     A 0 3   . 3   HIS     A NE2 6.17  1.0 ?  -1  -1  6 True  0 False False A320 False True  11 1.167  -2.145 -4.526 1 12
-ATOM   N NE  . ARG     A 0 4   . 4   ARG     A NE  8.09  1.0 ?  -1  -1  7 True  0 False False A329 False True  12 4.637  0.984  -8.82  1 13
-ATOM   C CZ  . ARG     A 0 4   . 4   ARG     A CZ  3.56  1.0 ?  -1  -1  7 True  0 False False A329 False True  13 3.489  1.234  -8.196 1 14
-ATOM   N NH1 . ARG     A 0 4   . 4   ARG     A NH1 4.98  1.0 ?  -1  -1  7 True  0 False False A329 False True  14 2.585  2.064  -8.709 1 15
-ATOM   N NH2 . ARG     A 0 4   . 4   ARG     A NH2 2.78  1.0 +1 -1  -1  7 True  0 False False A329 False True  15 3.197  0.644  -7.023 1 16
-ATOM   C CB  . ASP     A 0 5   . 5   ASP     A CB  3.23  1.0 ?  -1  -1  8 True  0 False False A375 False True  16 4.948  5.957  -1.678 1 17
-ATOM   C CG  . ASP     A 0 5   . 5   ASP     A CG  12.09 1.0 ?  -1  -1  8 True  0 False False A375 False True  17 3.732  5.916  -2.576 1 18
-ATOM   O OD1 . ASP     A 0 5   . 5   ASP     A OD1 9.84  1.0 ?  -1  -1  8 True  0 False False A375 False True  18 3.738  6.75   -3.575 1 19
-ATOM   O OD2 . ASP     A 0 5   . 5   ASP     A OD2 17.85 1.0 ?  -1  -1  8 True  0 False False A375 False True  19 2.841  5.138  -2.409 1 20
-HETATM O O1  . OAA     C 2 702 . 702 OAA     C O1  8.45  1.0 ?  -1  -1  1 True  0 True  False OAA  False False 20 0.0    0.0    0.0    1 21
-HETATM O O2  . OAA     C 2 702 . 702 OAA     C O2  5.88  1.0 -1 -1  -1  1 True  0 True  False OAA  False False 21 0.0    0.0    0.0    1 22
-HETATM O O4  . OAA     C 2 702 . 702 OAA     C O4  11.19 1.0 ?  -1  -1  1 True  0 True  False OAA  False False 22 0.0    0.0    0.0    1 23
-HETATM O O5  . OAA     C 2 702 . 702 OAA     C O5  12.69 1.0 ?  -1  -1  1 True  0 True  False OAA  False False 23 0.0    0.0    0.0    1 24
-HETATM O O3  . OAA     C 2 702 . 702 OAA     C O3  7.49  1.0 ?  -1  -1  1 True  0 True  False OAA  False True  24 0.938  0.566  -5.484 1 25
-HETATM C C1  . OAA     C 2 702 . 702 OAA     C C1  5.32  1.0 ?  -1  -1  1 True  0 True  False OAA  False False 25 0.0    0.0    0.0    1 26
-HETATM C C2  . OAA     C 2 702 . 702 OAA     C C2  3.38  1.0 ?  -1  -1  1 True  0 True  False OAA  False True  26 -1.36  0.335  -4.727 1 27
-HETATM C C3  . OAA     C 2 702 . 702 OAA     C C3  8.05  1.0 ?  -1  -1  1 True  0 True  False OAA  False True  27 -0.259 0.862  -5.613 1 28
-HETATM C C4  . OAA     C 2 702 . 702 OAA     C C4  13.76 1.0 ?  -1  -1  1 True  0 True  False OAA  False True  28 -0.771 1.832  -6.692 1 29
-HETATM N N1A . HAX     B 1 700 . 700 HAX     B N1A 11.36 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 29 0.0    0.0    0.0    1 30
-HETATM C C2A . HAX     B 1 700 . 700 HAX     B C2A 15.66 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 30 0.0    0.0    0.0    1 31
-HETATM N N3A . HAX     B 1 700 . 700 HAX     B N3A 12.05 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 31 0.0    0.0    0.0    1 32
-HETATM C C4A . HAX     B 1 700 . 700 HAX     B C4A 36.71 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 32 0.0    0.0    0.0    1 33
-HETATM C C5A . HAX     B 1 700 . 700 HAX     B C5A 6.72  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 33 0.0    0.0    0.0    1 34
-HETATM C C6A . HAX     B 1 700 . 700 HAX     B C6A 9.64  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 34 0.0    0.0    0.0    1 35
-HETATM N N6A . HAX     B 1 700 . 700 HAX     B N6A 6.96  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 35 0.0    0.0    0.0    1 36
-HETATM N N7A . HAX     B 1 700 . 700 HAX     B N7A 10.9  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 36 0.0    0.0    0.0    1 37
-HETATM C C8A . HAX     B 1 700 . 700 HAX     B C8A 16.62 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 37 0.0    0.0    0.0    1 38
-HETATM N N9A . HAX     B 1 700 . 700 HAX     B N9A 14.14 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 38 0.0    0.0    0.0    1 39
-HETATM C C1B . HAX     B 1 700 . 700 HAX     B C1B 9.59  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 39 0.0    0.0    0.0    1 40
-HETATM C C2B . HAX     B 1 700 . 700 HAX     B C2B 8.64  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  40 -0.434 -4.298 8.531  1 41
-HETATM O O2B . HAX     B 1 700 . 700 HAX     B O2B 15.99 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 41 0.0    0.0    0.0    1 42
-HETATM C C3B . HAX     B 1 700 . 700 HAX     B C3B 9.62  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  42 -1.134 -5.46  9.212  1 43
-HETATM O O3B . HAX     B 1 700 . 700 HAX     B O3B 32.08 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 43 0.0    0.0    0.0    1 44
-HETATM P P3B . HAX     B 1 700 . 700 HAX     B P3B 51.39 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 44 0.0    0.0    0.0    1 45
-HETATM O O7A . HAX     B 1 700 . 700 HAX     B O7A 36.4  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 45 0.0    0.0    0.0    1 46
-HETATM O O8A . HAX     B 1 700 . 700 HAX     B O8A 75.05 1.0 ?  -1  -1  2 True  0 True  False HAX  False False 46 0.0    0.0    0.0    1 47
-HETATM O O9A . HAX     B 1 700 . 700 HAX     B O9A 38.7  1.0 ?  -1  -1  2 True  0 True  False HAX  False False 47 0.0    0.0    0.0    1 48
-HETATM C C4B . HAX     B 1 700 . 700 HAX     B C4B 9.61  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  48 -0.161 -6.601 8.924  1 49
-HETATM O O4B . HAX     B 1 700 . 700 HAX     B O4B 12.07 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  49 1.122  -5.94  8.744  1 50
-HETATM C C5B . HAX     B 1 700 . 700 HAX     B C5B 14.79 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  50 -0.466 -7.366 7.66   1 51
-HETATM O O5B . HAX     B 1 700 . 700 HAX     B O5B 19.94 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  51 -0.784 -6.429 6.652  1 52
-HETATM P P1A . HAX     B 1 700 . 700 HAX     B P1A 12.78 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  52 -0.438 -6.826 5.134  1 53
-HETATM O O1A . HAX     B 1 700 . 700 HAX     B O1A 18.94 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  53 -1.321 -7.971 4.768  1 54
-HETATM O O2A . HAX     B 1 700 . 700 HAX     B O2A 9.31  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  54 1.032  -7.001 5.068  1 55
-HETATM O O3A . HAX     B 1 700 . 700 HAX     B O3A 18.61 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  55 -0.7   -5.436 4.338  1 56
-HETATM P P2A . HAX     B 1 700 . 700 HAX     B P2A 14.37 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  56 -2.124 -5.15  3.606  1 57
-HETATM O O4A . HAX     B 1 700 . 700 HAX     B O4A 21.2  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  57 -2.16  -5.868 2.29   1 58
-HETATM O O5A . HAX     B 1 700 . 700 HAX     B O5A 10.44 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  58 -3.251 -5.22  4.574  1 59
-HETATM O O6A . HAX     B 1 700 . 700 HAX     B O6A 10.39 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  59 -1.899 -3.551 3.356  1 60
-HETATM C CBP . HAX     B 1 700 . 700 HAX     B CBP 6.93  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  60 -0.415 -1.728 2.823  1 61
-HETATM C CCP . HAX     B 1 700 . 700 HAX     B CCP 5.72  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  61 -0.874 -3.127 2.456  1 62
-HETATM C CDP . HAX     B 1 700 . 700 HAX     B CDP 2.17  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  62 0.332  -1.117 1.606  1 63
-HETATM C CEP . HAX     B 1 700 . 700 HAX     B CEP 9.17  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  63 -1.651 -0.895 3.194  1 64
-HETATM C CAP . HAX     B 1 700 . 700 HAX     B CAP 5.77  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  64 0.518  -1.839 4.018  1 65
-HETATM O OAP . HAX     B 1 700 . 700 HAX     B OAP 5.17  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  65 1.73   -2.473 3.61   1 66
-HETATM C C9P . HAX     B 1 700 . 700 HAX     B C9P 12.67 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  66 0.85   -0.478 4.604  1 67
-HETATM O O9P . HAX     B 1 700 . 700 HAX     B O9P 17.68 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  67 0.118  0.039  5.465  1 68
-HETATM N N8P . HAX     B 1 700 . 700 HAX     B N8P 11.77 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  68 1.973  0.059  4.165  1 69
-HETATM C C7P . HAX     B 1 700 . 700 HAX     B C7P 22.07 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  69 2.423  1.375  4.617  1 70
-HETATM C C6P . HAX     B 1 700 . 700 HAX     B C6P 8.93  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  70 1.667  2.47   3.868  1 71
-HETATM C C5P . HAX     B 1 700 . 700 HAX     B C5P 9.49  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  71 2.144  2.656  2.409  1 72
-HETATM O O5P . HAX     B 1 700 . 700 HAX     B O5P 9.37  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  72 3.352  2.65   2.132  1 73
-HETATM N N4P . HAX     B 1 700 . 700 HAX     B N4P 11.84 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  73 1.164  2.84   1.488  1 74
-HETATM C C3P . HAX     B 1 700 . 700 HAX     B C3P 13.16 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  74 1.451  3.065  0.072  1 75
-HETATM C C2P . HAX     B 1 700 . 700 HAX     B C2P 16.12 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  75 1.369  1.76   -0.729 1 76
-HETATM C C1  . HAX     B 1 700 . 700 HAX     B C1  7.75  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  76 1.454  1.853  -2.275 1 77
-HETATM C C2  . HAX     B 1 700 . 700 HAX     B C2  1.0   1.0 ?  -1  -1  2 True  0 True  False HAX  False True  77 0.415  2.812  -2.849 1 78
-HETATM O O2  . HAX     B 1 700 . 700 HAX     B O2  7.44  1.0 ?  -1  -1  2 True  0 True  False HAX  False True  78 -0.816 2.58   -2.81  1 79
-HETATM N N2  . HAX     B 1 700 . 700 HAX     B N2  10.95 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  79 0.901  3.936  -3.417 1 80
-HETATM O OH  . HAX     B 1 700 . 700 HAX     B OH  13.29 1.0 ?  -1  -1  2 True  0 True  False HAX  False True  80 0.025  4.801  -3.893 1 81
-#
-_rfd_design.sampled_contig   180-180
+HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan   0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C CB  . SER     A 0 1   . 1   SER     A CB  2  1.0   1.0 ?  4 False False -1  True  -1  True  0 A244 False 1  -6.809 5.83   -7.047 1
+ATOM   O OG  . SER     A 0 1   . 1   SER     A OG  3  7.57  1.0 ?  4 False False -1  True  -1  True  0 A244 False 2  -5.64  5.197  -7.546 1
+ATOM   C CB  . HIS     A 0 2   . 2   HIS     A CB  4  2.08  1.0 ?  5 False False -1  True  -1  True  0 A274 False 3  -4.033 4.937  -1.306 1
+ATOM   C CG  . HIS     A 0 2   . 2   HIS     A CG  5  3.53  1.0 ?  5 False False -1  True  -1  True  0 A274 False 4  -4.106 4.578  -2.769 1
+ATOM   N ND1 . HIS     A 0 2   . 2   HIS     A ND1 6  3.89  1.0 +1 5 False False -1  True  -1  True  0 A274 False 5  -3.063 3.955  -3.433 1
+ATOM   C CD2 . HIS     A 0 2   . 2   HIS     A CD2 7  3.76  1.0 ?  5 False False -1  True  -1  True  0 A274 False 6  -5.136 4.771  -3.652 1
+ATOM   C CE1 . HIS     A 0 2   . 2   HIS     A CE1 8  1.75  1.0 ?  5 False False -1  True  -1  True  0 A274 False 7  -3.479 3.73   -4.684 1
+ATOM   N NE2 . HIS     A 0 2   . 2   HIS     A NE2 9  4.53  1.0 ?  5 False False -1  True  -1  True  0 A274 False 8  -4.711 4.259  -4.866 1
+ATOM   C CD2 . HIS     A 0 3   . 3   HIS     A CD2 10 6.25  1.0 ?  6 False False -1  True  -1  True  0 A320 False 9  2.013  -2.153 -3.437 1
+ATOM   C CE1 . HIS     A 0 3   . 3   HIS     A CE1 11 10.95 1.0 ?  6 False False -1  True  -1  True  0 A320 False 10 0.652  -3.367 -4.647 1
+ATOM   N NE2 . HIS     A 0 3   . 3   HIS     A NE2 12 6.17  1.0 ?  6 False False -1  True  -1  True  0 A320 False 11 1.167  -2.145 -4.526 1
+ATOM   N NE  . ARG     A 0 4   . 4   ARG     A NE  13 8.09  1.0 ?  7 False False -1  True  -1  True  0 A329 False 12 4.637  0.984  -8.82  1
+ATOM   C CZ  . ARG     A 0 4   . 4   ARG     A CZ  14 3.56  1.0 ?  7 False False -1  True  -1  True  0 A329 False 13 3.489  1.234  -8.196 1
+ATOM   N NH1 . ARG     A 0 4   . 4   ARG     A NH1 15 4.98  1.0 ?  7 False False -1  True  -1  True  0 A329 False 14 2.585  2.064  -8.709 1
+ATOM   N NH2 . ARG     A 0 4   . 4   ARG     A NH2 16 2.78  1.0 +1 7 False False -1  True  -1  True  0 A329 False 15 3.197  0.644  -7.023 1
+ATOM   C CB  . ASP     A 0 5   . 5   ASP     A CB  17 3.23  1.0 ?  8 False False -1  True  -1  True  0 A375 False 16 4.948  5.957  -1.678 1
+ATOM   C CG  . ASP     A 0 5   . 5   ASP     A CG  18 12.09 1.0 ?  8 False False -1  True  -1  True  0 A375 False 17 3.732  5.916  -2.576 1
+ATOM   O OD1 . ASP     A 0 5   . 5   ASP     A OD1 19 9.84  1.0 ?  8 False False -1  True  -1  True  0 A375 False 18 3.738  6.75   -3.575 1
+ATOM   O OD2 . ASP     A 0 5   . 5   ASP     A OD2 20 17.85 1.0 ?  8 False False -1  True  -1  True  0 A375 False 19 2.841  5.138  -2.409 1
+HETATM O O1  . OAA     C 2 702 . 702 OAA     C O1  21 8.45  1.0 ?  1 False False -1  True  -1  False 0 OAA  True  20 -1.433 -1.496 -6.249 1
+HETATM O O2  . OAA     C 2 702 . 702 OAA     C O2  22 5.88  1.0 -1 1 False False -1  True  -1  False 0 OAA  True  21 -2.712 -1.533 -4.429 1
+HETATM O O4  . OAA     C 2 702 . 702 OAA     C O4  23 11.19 1.0 ?  1 False False -1  True  -1  False 0 OAA  True  22 0.13   2.366  -7.39  1
+HETATM O O5  . OAA     C 2 702 . 702 OAA     C O5  24 12.69 1.0 ?  1 False False -1  True  -1  False 0 OAA  True  23 -1.993 2.063  -6.801 1
+HETATM O O3  . OAA     C 2 702 . 702 OAA     C O3  25 7.49  1.0 ?  1 False False -1  True  -1  True  0 OAA  True  24 0.938  0.566  -5.484 1
+HETATM C C1  . OAA     C 2 702 . 702 OAA     C C1  26 5.32  1.0 ?  1 False False -1  True  -1  False 0 OAA  True  25 -1.876 -1.009 -5.177 1
+HETATM C C2  . OAA     C 2 702 . 702 OAA     C C2  27 3.38  1.0 ?  1 False False -1  True  -1  True  0 OAA  True  26 -1.36  0.335  -4.727 1
+HETATM C C3  . OAA     C 2 702 . 702 OAA     C C3  28 8.05  1.0 ?  1 False False -1  True  -1  True  0 OAA  True  27 -0.259 0.862  -5.613 1
+HETATM C C4  . OAA     C 2 702 . 702 OAA     C C4  29 13.76 1.0 ?  1 False False -1  True  -1  True  0 OAA  True  28 -0.771 1.832  -6.692 1
+HETATM N N1A . HAX     B 1 700 . 700 HAX     B N1A 30 11.36 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  29 4.33   -0.604 8.616  1
+HETATM C C2A . HAX     B 1 700 . 700 HAX     B C2A 31 15.66 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  30 3.773  -1.185 9.683  1
+HETATM N N3A . HAX     B 1 700 . 700 HAX     B N3A 32 12.05 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  31 2.931  -2.216 9.735  1
+HETATM C C4A . HAX     B 1 700 . 700 HAX     B C4A 33 36.71 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  32 2.666  -2.702 8.501  1
+HETATM C C5A . HAX     B 1 700 . 700 HAX     B C5A 34 6.72  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  33 3.167  -2.229 7.309  1
+HETATM C C6A . HAX     B 1 700 . 700 HAX     B C6A 35 9.64  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  34 4.066  -1.128 7.388  1
+HETATM N N6A . HAX     B 1 700 . 700 HAX     B N6A 36 6.96  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  35 4.568  -0.49  6.339  1
+HETATM N N7A . HAX     B 1 700 . 700 HAX     B N7A 37 10.9  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  36 2.667  -2.993 6.241  1
+HETATM C C8A . HAX     B 1 700 . 700 HAX     B C8A 38 16.62 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  37 1.869  -3.887 6.814  1
+HETATM N N9A . HAX     B 1 700 . 700 HAX     B N9A 39 14.14 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  38 1.896  -3.81  8.177  1
+HETATM C C1B . HAX     B 1 700 . 700 HAX     B C1B 40 9.59  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  39 0.985  -4.567 9.003  1
+HETATM C C2B . HAX     B 1 700 . 700 HAX     B C2B 41 8.64  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  40 -0.434 -4.298 8.531  1
+HETATM O O2B . HAX     B 1 700 . 700 HAX     B O2B 42 15.99 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  41 -0.891 -3.055 8.993  1
+HETATM C C3B . HAX     B 1 700 . 700 HAX     B C3B 43 9.62  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  42 -1.134 -5.46  9.212  1
+HETATM O O3B . HAX     B 1 700 . 700 HAX     B O3B 44 32.08 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  43 -1.225 -5.223 10.634 1
+HETATM P P3B . HAX     B 1 700 . 700 HAX     B P3B 45 51.39 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  44 -2.537 -5.654 11.464 1
+HETATM O O7A . HAX     B 1 700 . 700 HAX     B O7A 46 36.4  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  45 -3.692 -4.986 10.807 1
+HETATM O O8A . HAX     B 1 700 . 700 HAX     B O8A 47 75.05 1.0 ?  2 False False -1  True  -1  False 0 HAX  True  46 -2.247 -5.447 12.915 1
+HETATM O O9A . HAX     B 1 700 . 700 HAX     B O9A 48 38.7  1.0 ?  2 False False -1  True  -1  False 0 HAX  True  47 -2.634 -7.119 11.205 1
+HETATM C C4B . HAX     B 1 700 . 700 HAX     B C4B 49 9.61  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  48 -0.161 -6.601 8.924  1
+HETATM O O4B . HAX     B 1 700 . 700 HAX     B O4B 50 12.07 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  49 1.122  -5.94  8.744  1
+HETATM C C5B . HAX     B 1 700 . 700 HAX     B C5B 51 14.79 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  50 -0.466 -7.366 7.66   1
+HETATM O O5B . HAX     B 1 700 . 700 HAX     B O5B 52 19.94 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  51 -0.784 -6.429 6.652  1
+HETATM P P1A . HAX     B 1 700 . 700 HAX     B P1A 53 12.78 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  52 -0.438 -6.826 5.134  1
+HETATM O O1A . HAX     B 1 700 . 700 HAX     B O1A 54 18.94 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  53 -1.321 -7.971 4.768  1
+HETATM O O2A . HAX     B 1 700 . 700 HAX     B O2A 55 9.31  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  54 1.032  -7.001 5.068  1
+HETATM O O3A . HAX     B 1 700 . 700 HAX     B O3A 56 18.61 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  55 -0.7   -5.436 4.338  1
+HETATM P P2A . HAX     B 1 700 . 700 HAX     B P2A 57 14.37 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  56 -2.124 -5.15  3.606  1
+HETATM O O4A . HAX     B 1 700 . 700 HAX     B O4A 58 21.2  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  57 -2.16  -5.868 2.29   1
+HETATM O O5A . HAX     B 1 700 . 700 HAX     B O5A 59 10.44 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  58 -3.251 -5.22  4.574  1
+HETATM O O6A . HAX     B 1 700 . 700 HAX     B O6A 60 10.39 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  59 -1.899 -3.551 3.356  1
+HETATM C CBP . HAX     B 1 700 . 700 HAX     B CBP 61 6.93  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  60 -0.415 -1.728 2.823  1
+HETATM C CCP . HAX     B 1 700 . 700 HAX     B CCP 62 5.72  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  61 -0.874 -3.127 2.456  1
+HETATM C CDP . HAX     B 1 700 . 700 HAX     B CDP 63 2.17  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  62 0.332  -1.117 1.606  1
+HETATM C CEP . HAX     B 1 700 . 700 HAX     B CEP 64 9.17  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  63 -1.651 -0.895 3.194  1
+HETATM C CAP . HAX     B 1 700 . 700 HAX     B CAP 65 5.77  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  64 0.518  -1.839 4.018  1
+HETATM O OAP . HAX     B 1 700 . 700 HAX     B OAP 66 5.17  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  65 1.73   -2.473 3.61   1
+HETATM C C9P . HAX     B 1 700 . 700 HAX     B C9P 67 12.67 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  66 0.85   -0.478 4.604  1
+HETATM O O9P . HAX     B 1 700 . 700 HAX     B O9P 68 17.68 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  67 0.118  0.039  5.465  1
+HETATM N N8P . HAX     B 1 700 . 700 HAX     B N8P 69 11.77 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  68 1.973  0.059  4.165  1
+HETATM C C7P . HAX     B 1 700 . 700 HAX     B C7P 70 22.07 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  69 2.423  1.375  4.617  1
+HETATM C C6P . HAX     B 1 700 . 700 HAX     B C6P 71 8.93  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  70 1.667  2.47   3.868  1
+HETATM C C5P . HAX     B 1 700 . 700 HAX     B C5P 72 9.49  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  71 2.144  2.656  2.409  1
+HETATM O O5P . HAX     B 1 700 . 700 HAX     B O5P 73 9.37  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  72 3.352  2.65   2.132  1
+HETATM N N4P . HAX     B 1 700 . 700 HAX     B N4P 74 11.84 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  73 1.164  2.84   1.488  1
+HETATM C C3P . HAX     B 1 700 . 700 HAX     B C3P 75 13.16 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  74 1.451  3.065  0.072  1
+HETATM C C2P . HAX     B 1 700 . 700 HAX     B C2P 76 16.12 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  75 1.369  1.76   -0.729 1
+HETATM C C1  . HAX     B 1 700 . 700 HAX     B C1  77 7.75  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  76 1.454  1.853  -2.275 1
+HETATM C C2  . HAX     B 1 700 . 700 HAX     B C2  78 1.0   1.0 ?  2 False False -1  True  -1  True  0 HAX  True  77 0.415  2.812  -2.849 1
+HETATM O O2  . HAX     B 1 700 . 700 HAX     B O2  79 7.44  1.0 ?  2 False False -1  True  -1  True  0 HAX  True  78 -0.816 2.58   -2.81  1
+HETATM N N2  . HAX     B 1 700 . 700 HAX     B N2  80 10.95 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  79 0.901  3.936  -3.417 1
+HETATM O OH  . HAX     B 1 700 . 700 HAX     B OH  81 13.29 1.0 ?  2 False False -1  True  -1  True  0 HAX  True  80 0.025  4.801  -3.893 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -363,6 +361,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X 0  N N nan                   nan                  nan
 ARG     N    N 0  N N -0.4690000116825104   1.1100000143051147   -0.9929999709129333
 ARG     CA   C 0  N N 0.004000000189989805  2.2939999103546143   -1.7079999446868896
 ARG     C    C 0  N N -0.9070000052452087   2.5209999084472656   -2.9010000228881836
@@ -544,5 +543,4 @@ SER     HB2  H 0  N N -0.22499999403953552  -1.4910000562667847  -1.080999970436
 SER     HB3  H 0  N N -1.6990000009536743   -0.5070000290870667  -0.9200000166893005
 SER     HG   H 0  N N -0.9779999852180481   -0.6790000200271606  -3.0880000591278076
 SER     HXT  H 0  N Y -1.1829999685287476   0.1420000046491623   2.828000068664551
-180-180 UNK  X 0  N N nan                   nan                  nan
 #

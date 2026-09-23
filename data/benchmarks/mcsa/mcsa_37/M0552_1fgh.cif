@@ -1,9 +1,9 @@
 data_M0552_1fgh.cif
 #
 _entry.id       M0552_1fgh.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     19:27:28
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:56
 #
 loop_
 _entity.id 
@@ -160,58 +160,56 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.mask_coordinate_1_atom 
-_atom_site.mask_sequence_1_residue 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.condition_hbond_1_atom 
 _atom_site.condition_index-group_1_token 
-_atom_site.mask_expsegmax_1_residue 
-_atom_site.annotation_src-component_1_atom 
 _atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK nan  0.0 ?  False False 180 180 True  0 0 True  .    True  0  nan    nan    nan    1 1
-ATOM   C CG  . ASP     A 0 1   . 1   ASP     A CG  5.47 1.0 ?  True  True  -1  -1  False 0 3 False A100 False 1  4.772  -6.984 -1.805 1 2
-ATOM   O OD2 . ASP     A 0 1   . 1   ASP     A OD2 7.75 1.0 ?  True  True  -1  -1  False 0 3 False A100 False 2  3.567  -7.158 -1.842 1 3
-ATOM   C CD2 . HIS     A 0 2   . 2   HIS     A CD2 3.58 1.0 ?  True  True  -1  -1  False 0 4 False A101 False 3  4.045  -1.635 -1.451 1 4
-ATOM   C CE1 . HIS     A 0 2   . 2   HIS     A CE1 2.0  1.0 ?  True  True  -1  -1  False 0 4 False A101 False 4  3.151  -3.566 -1.103 1 5
-ATOM   N NE2 . HIS     A 0 2   . 2   HIS     A NE2 2.98 1.0 ?  True  True  -1  -1  False 0 4 False A101 False 5  2.912  -2.286 -1.281 1 6
-ATOM   C CB  . ASP     A 0 3   . 3   ASP     A CB  4.24 1.0 ?  True  True  -1  -1  False 0 5 False A165 False 6  -1.451 -4.198 2.625  1 7
-ATOM   C CG  . ASP     A 0 3   . 3   ASP     A CG  5.08 1.0 ?  True  True  -1  -1  False 0 5 False A165 False 7  -1.363 -3.623 1.231  1 8
-ATOM   O OD1 . ASP     A 0 3   . 3   ASP     A OD1 5.44 1.0 ?  True  True  -1  -1  False 0 5 False A165 False 8  -0.355 -2.99  0.912  1 9
-ATOM   O OD2 . ASP     A 0 3   . 3   ASP     A OD2 6.23 1.0 ?  True  True  -1  -1  False 0 5 False A165 False 9  -2.33  -3.74  0.449  1 10
-ATOM   C CZ  . ARG     A 0 4   . 4   ARG     A CZ  8.02 1.0 ?  True  True  -1  -1  False 0 6 False A447 False 10 -5.264 1.957  -1.919 1 11
-ATOM   N NH1 . ARG     A 0 4   . 4   ARG     A NH1 7.26 1.0 ?  True  True  -1  -1  False 0 6 False A447 False 11 -3.932 1.847  -1.788 1 12
-ATOM   C CA  . SER     A 0 5   . 5   SER     A CA  4.39 1.0 ?  True  True  -1  -1  False 0 7 False A642 False 12 -3.461 3.372  1.498  1 13
-ATOM   C CB  . SER     A 0 5   . 5   SER     A CB  5.6  1.0 ?  True  True  -1  -1  False 0 7 False A642 False 13 -2.09  3.836  0.936  1 14
-ATOM   O OG  . SER     A 0 5   . 5   SER     A OG  5.49 1.0 ?  True  True  -1  -1  False 0 7 False A642 False 14 -0.916 3.245  1.485  1 15
-ATOM   C CD  . ARG     A 0 6   . 6   ARG     A CD  3.43 1.0 ?  True  True  -1  -1  False 0 8 False A644 False 15 1.348  6.136  2.537  1 16
-ATOM   N NE  . ARG     A 0 6   . 6   ARG     A NE  5.27 1.0 ?  True  True  -1  -1  False 0 8 False A644 False 16 1.11   5.265  1.409  1 17
-ATOM   C CZ  . ARG     A 0 6   . 6   ARG     A CZ  5.13 1.0 ?  True  True  -1  -1  False 0 8 False A644 False 17 1.063  5.729  0.157  1 18
-HETATM C C1  . ATH     B 1 755 . 755 ATH     B C1  8.66 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 18 2.06   1.224  1.551  1 19
-HETATM C C2  . ATH     B 1 755 . 755 ATH     B C2  7.81 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 19 0.682  0.793  1.747  1 20
-HETATM C C3  . ATH     B 1 755 . 755 ATH     B C3  8.66 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 20 -0.118 0.328  0.788  1 21
-HETATM C C4  . ATH     B 1 755 . 755 ATH     B C4  7.08 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 21 0.269  0.118  -0.71  1 22
-HETATM C C5  . ATH     B 1 755 . 755 ATH     B C5  6.43 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 22 -0.59  0.978  -1.617 1 23
-HETATM C C6  . ATH     B 1 755 . 755 ATH     B C6  8.93 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 23 -1.566 0.023  1.17   1 24
-HETATM O O1  . ATH     B 1 755 . 755 ATH     B O1  9.6  1.0 ?  False True  -1  -1  True  0 1 False ATH  False 24 0.0    0.0    0.0    1 25
-HETATM O O2  . ATH     B 1 755 . 755 ATH     B O2  9.98 1.0 -1 False True  -1  -1  True  0 1 False ATH  False 25 0.0    0.0    0.0    1 26
-HETATM O O3  . ATH     B 1 755 . 755 ATH     B O3  8.26 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 26 -0.693 2.203  -1.407 1 27
-HETATM O O4  . ATH     B 1 755 . 755 ATH     B O4  9.01 1.0 -1 True  True  -1  -1  True  0 1 False ATH  False 27 -1.17  0.415  -2.57  1 28
-HETATM O O5  . ATH     B 1 755 . 755 ATH     B O5  6.21 1.0 ?  False True  -1  -1  True  0 1 False ATH  False 28 0.0    0.0    0.0    1 29
-HETATM O O6  . ATH     B 1 755 . 755 ATH     B O6  8.84 1.0 -1 False True  -1  -1  True  0 1 False ATH  False 29 0.0    0.0    0.0    1 30
-HETATM O OH  . ATH     B 1 755 . 755 ATH     B OH  8.59 1.0 ?  True  True  -1  -1  True  0 1 False ATH  False 30 0.319  -1.282 -1.006 1 31
-#
-_rfd_design.sampled_contig   180-180
+HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan  0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C CG  . ASP     A 0 1   . 1   ASP     A CG  2  5.47 1.0 ?  3 False False -1  True  -1  True  0 A100 False 1  4.772  -6.984 -1.805 1
+ATOM   O OD2 . ASP     A 0 1   . 1   ASP     A OD2 3  7.75 1.0 ?  3 False False -1  True  -1  True  0 A100 False 2  3.567  -7.158 -1.842 1
+ATOM   C CD2 . HIS     A 0 2   . 2   HIS     A CD2 4  3.58 1.0 ?  4 False False -1  True  -1  True  0 A101 False 3  4.045  -1.635 -1.451 1
+ATOM   C CE1 . HIS     A 0 2   . 2   HIS     A CE1 5  2.0  1.0 ?  4 False False -1  True  -1  True  0 A101 False 4  3.151  -3.566 -1.103 1
+ATOM   N NE2 . HIS     A 0 2   . 2   HIS     A NE2 6  2.98 1.0 ?  4 False False -1  True  -1  True  0 A101 False 5  2.912  -2.286 -1.281 1
+ATOM   C CB  . ASP     A 0 3   . 3   ASP     A CB  7  4.24 1.0 ?  5 False False -1  True  -1  True  0 A165 False 6  -1.451 -4.198 2.625  1
+ATOM   C CG  . ASP     A 0 3   . 3   ASP     A CG  8  5.08 1.0 ?  5 False False -1  True  -1  True  0 A165 False 7  -1.363 -3.623 1.231  1
+ATOM   O OD1 . ASP     A 0 3   . 3   ASP     A OD1 9  5.44 1.0 ?  5 False False -1  True  -1  True  0 A165 False 8  -0.355 -2.99  0.912  1
+ATOM   O OD2 . ASP     A 0 3   . 3   ASP     A OD2 10 6.23 1.0 ?  5 False False -1  True  -1  True  0 A165 False 9  -2.33  -3.74  0.449  1
+ATOM   C CZ  . ARG     A 0 4   . 4   ARG     A CZ  11 8.02 1.0 ?  6 False False -1  True  -1  True  0 A447 False 10 -5.264 1.957  -1.919 1
+ATOM   N NH1 . ARG     A 0 4   . 4   ARG     A NH1 12 7.26 1.0 ?  6 False False -1  True  -1  True  0 A447 False 11 -3.932 1.847  -1.788 1
+ATOM   C CA  . SER     A 0 5   . 5   SER     A CA  13 4.39 1.0 ?  7 False False -1  True  -1  True  0 A642 False 12 -3.461 3.372  1.498  1
+ATOM   C CB  . SER     A 0 5   . 5   SER     A CB  14 5.6  1.0 ?  7 False False -1  True  -1  True  0 A642 False 13 -2.09  3.836  0.936  1
+ATOM   O OG  . SER     A 0 5   . 5   SER     A OG  15 5.49 1.0 ?  7 False False -1  True  -1  True  0 A642 False 14 -0.916 3.245  1.485  1
+ATOM   C CD  . ARG     A 0 6   . 6   ARG     A CD  16 3.43 1.0 ?  8 False False -1  True  -1  True  0 A644 False 15 1.348  6.136  2.537  1
+ATOM   N NE  . ARG     A 0 6   . 6   ARG     A NE  17 5.27 1.0 ?  8 False False -1  True  -1  True  0 A644 False 16 1.11   5.265  1.409  1
+ATOM   C CZ  . ARG     A 0 6   . 6   ARG     A CZ  18 5.13 1.0 ?  8 False False -1  True  -1  True  0 A644 False 17 1.063  5.729  0.157  1
+HETATM C C1  . ATH     B 1 755 . 755 ATH     B C1  19 8.66 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  18 2.06   1.224  1.551  1
+HETATM C C2  . ATH     B 1 755 . 755 ATH     B C2  20 7.81 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  19 0.682  0.793  1.747  1
+HETATM C C3  . ATH     B 1 755 . 755 ATH     B C3  21 8.66 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  20 -0.118 0.328  0.788  1
+HETATM C C4  . ATH     B 1 755 . 755 ATH     B C4  22 7.08 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  21 0.269  0.118  -0.71  1
+HETATM C C5  . ATH     B 1 755 . 755 ATH     B C5  23 6.43 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  22 -0.59  0.978  -1.617 1
+HETATM C C6  . ATH     B 1 755 . 755 ATH     B C6  24 8.93 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  23 -1.566 0.023  1.17   1
+HETATM O O1  . ATH     B 1 755 . 755 ATH     B O1  25 9.6  1.0 ?  1 False False -1  True  -1  False 0 ATH  True  24 2.184  2.396  1.105  1
+HETATM O O2  . ATH     B 1 755 . 755 ATH     B O2  26 9.98 1.0 -1 1 False False -1  True  -1  False 0 ATH  True  25 3.069  0.46   1.656  1
+HETATM O O3  . ATH     B 1 755 . 755 ATH     B O3  27 8.26 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  26 -0.693 2.203  -1.407 1
+HETATM O O4  . ATH     B 1 755 . 755 ATH     B O4  28 9.01 1.0 -1 1 False False -1  True  -1  True  0 ATH  True  27 -1.17  0.415  -2.57  1
+HETATM O O5  . ATH     B 1 755 . 755 ATH     B O5  29 6.21 1.0 ?  1 False False -1  True  -1  False 0 ATH  True  28 -2.443 -0.139 0.309  1
+HETATM O O6  . ATH     B 1 755 . 755 ATH     B O6  30 8.84 1.0 -1 1 False False -1  True  -1  False 0 ATH  True  29 -1.857 -0.121 2.372  1
+HETATM O OH  . ATH     B 1 755 . 755 ATH     B OH  31 8.59 1.0 ?  1 False False -1  True  -1  True  0 ATH  True  30 0.319  -1.282 -1.006 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -223,6 +221,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X 0  N N nan                   nan                  nan
 ARG     N    N 0  N N -0.4690000116825104   1.1100000143051147   -0.9929999709129333
 ARG     CA   C 0  N N 0.004000000189989805  2.2939999103546143   -1.7079999446868896
 ARG     C    C 0  N N -0.9070000052452087   2.5209999084472656   -2.9010000228881836
@@ -317,5 +316,4 @@ SER     HB2  H 0  N N -0.22499999403953552  -1.4910000562667847  -1.080999970436
 SER     HB3  H 0  N N -1.6990000009536743   -0.5070000290870667  -0.9200000166893005
 SER     HG   H 0  N N -0.9779999852180481   -0.6790000200271606  -3.0880000591278076
 SER     HXT  H 0  N Y -1.1829999685287476   0.1420000046491623   2.828000068664551
-180-180 UNK  X 0  N N nan                   nan                  nan
 #
