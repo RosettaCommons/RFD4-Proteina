@@ -1,9 +1,9 @@
 data_M0110_1c0p.cif
 #
 _entry.id       M0110_1c0p.cif
-_entry.author   rib7
-_entry.date     2026-09-16
-_entry.time     18:16:01
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:55
 #
 loop_
 _entity.id 
@@ -246,90 +246,90 @@ _atom_site.id
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
+_atom_site.condition_index-group_1_token 
 _atom_site.mask_expsegmin_1_residue 
 _atom_site.mask_expsegmax_1_residue 
 _atom_site.annotation_expsegmax_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.mask_coordinate_1_atom 
 _atom_site.mask_sequence_1_residue 
 _atom_site.annotation_expsegmin_1_residue 
-_atom_site.condition_index-group_1_token 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
 _atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-HETATM X UNK   . 180-180 A 0 0    . 0    180-180 A UNK   1  nan   0.0  ?  True  True  180 True  0 False False 180 0 .     0  nan    nan    nan     1
-ATOM   N N     . ASN     A 0 1    . 1    ASN     A N     2  9.46  1.0  ?  False False -1  False 0 True  True  -1  5 A1054 1  -3.338 -3.657 -9.519  1
-ATOM   C CA    . ASN     A 0 1    . 1    ASN     A CA    3  9.66  1.0  ?  False False -1  False 0 True  True  -1  5 A1054 2  -4.115 -4.749 -10.133 1
-ATOM   C CA    . SER     A 0 2    . 2    SER     A CA    4  9.48  1.0  ?  False False -1  False 0 True  True  -1  6 A1335 3  2.313  -6.14  -2.235  1
-ATOM   C C     . SER     A 0 2    . 2    SER     A C     5  9.65  1.0  ?  False False -1  False 0 True  True  -1  6 A1335 4  0.853  -6.327 -2.643  1
-ATOM   O O     . SER     A 0 2    . 2    SER     A O     6  10.57 1.0  ?  False False -1  False 0 True  True  -1  6 A1335 5  0.573  -6.318 -3.849  1
-ATOM   N N     . GLN     A 0 3    . 3    GLN     A N     7  8.91  1.0  ?  False False -1  False 0 True  True  -1  7 A1339 6  -5.634 -5.383 -3.654  1
-ATOM   C CA    . GLN     A 0 3    . 3    GLN     A CA    8  9.48  1.0  ?  False False -1  False 0 True  True  -1  7 A1339 7  -6.372 -6.563 -4.079  1
-HETATM N N     . DAL     C 2 1364 . 1364 DAL     C N     9  16.51 1.0  ?  False False -1  True  0 True  True  -1  3 DAL   8  1.471  -6.181 -6.49   1
-HETATM C CA    . DAL     C 2 1364 . 1364 DAL     C CA    10 12.95 1.0  ?  False False -1  True  0 True  True  -1  3 DAL   9  2.27   -5.387 -7.292  1
-HETATM C CB    . DAL     C 2 1364 . 1364 DAL     C CB    11 18.13 1.0  ?  False False -1  True  0 True  True  -1  3 DAL   10 2.576  -5.91  -8.67   1
-HETATM C C     . DAL     C 2 1364 . 1364 DAL     C C     12 12.21 1.0  ?  False False -1  True  0 True  True  -1  3 DAL   11 3.407  -4.751 -6.527  1
-HETATM O O     . DAL     C 2 1364 . 1364 DAL     C O     13 12.95 1.0  +1 False False -1  True  0 True  True  -1  3 DAL   12 3.378  -4.76  -5.256  1
-HETATM O OXT   . DAL     C 2 1364 . 1364 DAL     C OXT   14 14.53 1.0  ?  False False -1  True  0 False True  -1  3 DAL   13 0.0    0.0    0.0     1
-HETATM O O1    . PER     D 3 1365 . 1365 PER     D O1    15 13.56 0.21 ?  False False -1  True  0 False True  -1  3 PER   14 0.0    0.0    0.0     1
-HETATM O O2    . PER     D 3 1365 . 1365 PER     D O2    16 15.22 0.21 ?  False False -1  True  0 True  True  -1  3 PER   15 1.701  -3.792 -6.074  1
-HETATM P PA    . FAD     B 1 1363 . 1363 FAD     B PA    17 8.76  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   16 -0.46  2.808  3.737   1
-HETATM O O1A   . FAD     B 1 1363 . 1363 FAD     B O1A   18 9.05  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   17 1.016  2.873  3.928   1
-HETATM O O2A   . FAD     B 1 1363 . 1363 FAD     B O2A   19 9.61  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   18 -1.006 3.155  2.389   1
-HETATM O O5B   . FAD     B 1 1363 . 1363 FAD     B O5B   20 9.41  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   19 -1.198 3.77   4.743   1
-HETATM C C5B   . FAD     B 1 1363 . 1363 FAD     B C5B   21 9.55  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   20 -0.788 3.898  6.104   1
-HETATM C C4B   . FAD     B 1 1363 . 1363 FAD     B C4B   22 9.05  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   21 -1.58  5.047  6.691   1
-HETATM O O4B   . FAD     B 1 1363 . 1363 FAD     B O4B   23 9.64  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   22 -1.278 5.172  8.106   1
-HETATM C C3B   . FAD     B 1 1363 . 1363 FAD     B C3B   24 8.98  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   23 -1.28  6.45   6.11    1
-HETATM O O3B   . FAD     B 1 1363 . 1363 FAD     B O3B   25 9.74  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   24 -2.489 7.216  6.2     1
-HETATM C C2B   . FAD     B 1 1363 . 1363 FAD     B C2B   26 9.65  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   25 -0.24  6.93   7.018   1
-HETATM O O2B   . FAD     B 1 1363 . 1363 FAD     B O2B   27 11.14 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   26 0.012  8.3    7.091   1
-HETATM C C1B   . FAD     B 1 1363 . 1363 FAD     B C1B   28 9.51  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   27 -0.824 6.504  8.369   1
-HETATM N N9A   . FAD     B 1 1363 . 1363 FAD     B N9A   29 9.61  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   28 0.08   6.467  9.467   1
-HETATM C C8A   . FAD     B 1 1363 . 1363 FAD     B C8A   30 9.88  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   29 1.284  5.743  9.64    1
-HETATM N N7A   . FAD     B 1 1363 . 1363 FAD     B N7A   31 10.4  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   30 1.883  5.981  10.769  1
-HETATM C C5A   . FAD     B 1 1363 . 1363 FAD     B C5A   32 9.62  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   31 1.08   6.93   11.407  1
-HETATM C C6A   . FAD     B 1 1363 . 1363 FAD     B C6A   33 10.15 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   32 1.18   7.589  12.629  1
-HETATM N N6A   . FAD     B 1 1363 . 1363 FAD     B N6A   34 11.79 1.0  ?  False False -1  True  0 False True  -1  3 FAD   33 0.0    0.0    0.0     1
-HETATM N N1A   . FAD     B 1 1363 . 1363 FAD     B N1A   35 10.81 1.0  ?  False False -1  True  0 False True  -1  3 FAD   34 0.0    0.0    0.0     1
-HETATM C C2A   . FAD     B 1 1363 . 1363 FAD     B C2A   36 11.47 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   35 -0.842 8.686  12.121  1
-HETATM N N3A   . FAD     B 1 1363 . 1363 FAD     B N3A   37 10.84 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   36 -0.987 8.13   10.855  1
-HETATM C C4A   . FAD     B 1 1363 . 1363 FAD     B C4A   38 9.69  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   37 0.055  7.202  10.654  1
-HETATM N N1    . FAD     B 1 1363 . 1363 FAD     B N1    39 10.21 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   38 -1.1   -3.633 -3.974  1
-HETATM C C2    . FAD     B 1 1363 . 1363 FAD     B C2    40 10.38 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   39 -2.007 -4.344 -4.71   1
-HETATM O O2    . FAD     B 1 1363 . 1363 FAD     B O2    41 10.02 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   40 -2.927 -4.982 -4.166  1
-HETATM N N3    . FAD     B 1 1363 . 1363 FAD     B N3    42 10.91 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   41 -1.882 -4.373 -6.077  1
-HETATM C C4    . FAD     B 1 1363 . 1363 FAD     B C4    43 11.27 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   42 -0.852 -3.77  -6.81   1
-HETATM O O4    . FAD     B 1 1363 . 1363 FAD     B O4    44 10.86 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   43 -0.839 -3.862 -8.081  1
-HETATM C C4X   . FAD     B 1 1363 . 1363 FAD     B C4X   45 11.06 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   44 0.058  -3.101 -6.044  1
-HETATM N N5    . FAD     B 1 1363 . 1363 FAD     B N5    46 12.73 1.0  +1 False False -1  True  0 True  True  -1  3 FAD   45 1.114  -2.449 -6.746  1
-HETATM C C5X   . FAD     B 1 1363 . 1363 FAD     B C5X   47 11.62 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   46 2.07   -1.801 -5.937  1
-HETATM C C6    . FAD     B 1 1363 . 1363 FAD     B C6    48 11.85 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   47 3.214  -1.262 -6.509  1
-HETATM C C7    . FAD     B 1 1363 . 1363 FAD     B C7    49 11.98 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   48 4.134  -0.482 -5.798  1
-HETATM C C7M   . FAD     B 1 1363 . 1363 FAD     B C7M   50 13.6  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   49 5.345  0.121  -6.515  1
-HETATM C C8    . FAD     B 1 1363 . 1363 FAD     B C8    51 10.72 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   50 3.943  -0.337 -4.418  1
-HETATM C C8M   . FAD     B 1 1363 . 1363 FAD     B C8M   52 12.15 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   51 4.858  0.527  -3.571  1
-HETATM C C9    . FAD     B 1 1363 . 1363 FAD     B C9    53 10.11 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   52 2.837  -0.875 -3.801  1
-HETATM C C9A   . FAD     B 1 1363 . 1363 FAD     B C9A   54 11.3  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   53 1.973  -1.708 -4.497  1
-HETATM N N10   . FAD     B 1 1363 . 1363 FAD     B N10   55 10.44 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   54 0.832  -2.397 -3.903  1
-HETATM C C10   . FAD     B 1 1363 . 1363 FAD     B C10   56 10.47 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   55 -0.074 -3.057 -4.65   1
-HETATM C "C1'" . FAD     B 1 1363 . 1363 FAD     B "C1'" 57 10.06 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   56 0.791  -2.495 -2.49   1
-HETATM C "C2'" . FAD     B 1 1363 . 1363 FAD     B "C2'" 58 9.58  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   57 -0.082 -1.5   -1.801  1
-HETATM O "O2'" . FAD     B 1 1363 . 1363 FAD     B "O2'" 59 10.96 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   58 0.401  -0.186 -2.199  1
-HETATM C "C3'" . FAD     B 1 1363 . 1363 FAD     B "C3'" 60 8.62  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   59 -0.098 -1.564 -0.303  1
-HETATM O "O3'" . FAD     B 1 1363 . 1363 FAD     B "O3'" 61 9.83  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   60 -0.255 -2.876 0.21    1
-HETATM C "C4'" . FAD     B 1 1363 . 1363 FAD     B "C4'" 62 9.05  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   61 -1.193 -0.774 0.381   1
-HETATM O "O4'" . FAD     B 1 1363 . 1363 FAD     B "O4'" 63 9.62  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   62 -1.13  0.568  -0.185  1
-HETATM C "C5'" . FAD     B 1 1363 . 1363 FAD     B "C5'" 64 8.65  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   63 -1.098 -0.703 1.847   1
-HETATM O "O5'" . FAD     B 1 1363 . 1363 FAD     B "O5'" 65 9.27  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   64 -2.146 0.104  2.378   1
-HETATM P P     . FAD     B 1 1363 . 1363 FAD     B P     66 8.73  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   65 -2.223 0.455  3.899   1
-HETATM O O1P   . FAD     B 1 1363 . 1363 FAD     B O1P   67 9.78  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   66 -3.447 1.233  4.061   1
-HETATM O O2P   . FAD     B 1 1363 . 1363 FAD     B O2P   68 9.46  1.0  ?  False False -1  True  0 True  True  -1  3 FAD   67 -2.011 -0.779 4.697   1
-HETATM O O3P   . FAD     B 1 1363 . 1363 FAD     B O3P   69 15.58 1.0  ?  False False -1  True  0 True  True  -1  3 FAD   68 -0.905 1.34   4.132   1
+HETATM X UNK   . 180-180 A 0 0    . 0    180-180 A UNK   1  nan   0.0  ?  0 True  True  180 False 180 False 0 .     True  0  nan    nan    nan     1
+ATOM   N N     . ASN     A 0 1    . 1    ASN     A N     2  9.46  1.0  ?  5 False False -1  True  -1  True  0 A1054 False 1  -3.338 -3.657 -9.519  1
+ATOM   C CA    . ASN     A 0 1    . 1    ASN     A CA    3  9.66  1.0  ?  5 False False -1  True  -1  True  0 A1054 False 2  -4.115 -4.749 -10.133 1
+ATOM   C CA    . SER     A 0 2    . 2    SER     A CA    4  9.48  1.0  ?  6 False False -1  True  -1  True  0 A1335 False 3  2.313  -6.14  -2.235  1
+ATOM   C C     . SER     A 0 2    . 2    SER     A C     5  9.65  1.0  ?  6 False False -1  True  -1  True  0 A1335 False 4  0.853  -6.327 -2.643  1
+ATOM   O O     . SER     A 0 2    . 2    SER     A O     6  10.57 1.0  ?  6 False False -1  True  -1  True  0 A1335 False 5  0.573  -6.318 -3.849  1
+ATOM   N N     . GLN     A 0 3    . 3    GLN     A N     7  8.91  1.0  ?  7 False False -1  True  -1  True  0 A1339 False 6  -5.634 -5.383 -3.654  1
+ATOM   C CA    . GLN     A 0 3    . 3    GLN     A CA    8  9.48  1.0  ?  7 False False -1  True  -1  True  0 A1339 False 7  -6.372 -6.563 -4.079  1
+HETATM N N     . DAL     C 2 1364 . 1364 DAL     C N     9  16.51 1.0  ?  3 False False -1  True  -1  True  0 DAL   True  8  1.471  -6.181 -6.49   1
+HETATM C CA    . DAL     C 2 1364 . 1364 DAL     C CA    10 12.95 1.0  ?  3 False False -1  True  -1  True  0 DAL   True  9  2.27   -5.387 -7.292  1
+HETATM C CB    . DAL     C 2 1364 . 1364 DAL     C CB    11 18.13 1.0  ?  3 False False -1  True  -1  True  0 DAL   True  10 2.576  -5.91  -8.67   1
+HETATM C C     . DAL     C 2 1364 . 1364 DAL     C C     12 12.21 1.0  ?  3 False False -1  True  -1  True  0 DAL   True  11 3.407  -4.751 -6.527  1
+HETATM O O     . DAL     C 2 1364 . 1364 DAL     C O     13 12.95 1.0  +1 3 False False -1  True  -1  True  0 DAL   True  12 3.378  -4.76  -5.256  1
+HETATM O OXT   . DAL     C 2 1364 . 1364 DAL     C OXT   14 14.53 1.0  ?  3 False False -1  True  -1  False 0 DAL   True  13 4.385  -4.216 -7.161  1
+HETATM O O1    . PER     D 3 1365 . 1365 PER     D O1    15 13.56 0.21 ?  3 False False -1  True  -1  False 0 PER   True  14 2.576  -3.285 -5.048  1
+HETATM O O2    . PER     D 3 1365 . 1365 PER     D O2    16 15.22 0.21 ?  3 False False -1  True  -1  True  0 PER   True  15 1.701  -3.792 -6.074  1
+HETATM P PA    . FAD     B 1 1363 . 1363 FAD     B PA    17 8.76  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  16 -0.46  2.808  3.737   1
+HETATM O O1A   . FAD     B 1 1363 . 1363 FAD     B O1A   18 9.05  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  17 1.016  2.873  3.928   1
+HETATM O O2A   . FAD     B 1 1363 . 1363 FAD     B O2A   19 9.61  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  18 -1.006 3.155  2.389   1
+HETATM O O5B   . FAD     B 1 1363 . 1363 FAD     B O5B   20 9.41  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  19 -1.198 3.77   4.743   1
+HETATM C C5B   . FAD     B 1 1363 . 1363 FAD     B C5B   21 9.55  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  20 -0.788 3.898  6.104   1
+HETATM C C4B   . FAD     B 1 1363 . 1363 FAD     B C4B   22 9.05  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  21 -1.58  5.047  6.691   1
+HETATM O O4B   . FAD     B 1 1363 . 1363 FAD     B O4B   23 9.64  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  22 -1.278 5.172  8.106   1
+HETATM C C3B   . FAD     B 1 1363 . 1363 FAD     B C3B   24 8.98  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  23 -1.28  6.45   6.11    1
+HETATM O O3B   . FAD     B 1 1363 . 1363 FAD     B O3B   25 9.74  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  24 -2.489 7.216  6.2     1
+HETATM C C2B   . FAD     B 1 1363 . 1363 FAD     B C2B   26 9.65  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  25 -0.24  6.93   7.018   1
+HETATM O O2B   . FAD     B 1 1363 . 1363 FAD     B O2B   27 11.14 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  26 0.012  8.3    7.091   1
+HETATM C C1B   . FAD     B 1 1363 . 1363 FAD     B C1B   28 9.51  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  27 -0.824 6.504  8.369   1
+HETATM N N9A   . FAD     B 1 1363 . 1363 FAD     B N9A   29 9.61  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  28 0.08   6.467  9.467   1
+HETATM C C8A   . FAD     B 1 1363 . 1363 FAD     B C8A   30 9.88  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  29 1.284  5.743  9.64    1
+HETATM N N7A   . FAD     B 1 1363 . 1363 FAD     B N7A   31 10.4  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  30 1.883  5.981  10.769  1
+HETATM C C5A   . FAD     B 1 1363 . 1363 FAD     B C5A   32 9.62  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  31 1.08   6.93   11.407  1
+HETATM C C6A   . FAD     B 1 1363 . 1363 FAD     B C6A   33 10.15 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  32 1.18   7.589  12.629  1
+HETATM N N6A   . FAD     B 1 1363 . 1363 FAD     B N6A   34 11.79 1.0  ?  3 False False -1  True  -1  False 0 FAD   True  33 2.193  7.39   13.476  1
+HETATM N N1A   . FAD     B 1 1363 . 1363 FAD     B N1A   35 10.81 1.0  ?  3 False False -1  True  -1  False 0 FAD   True  34 0.187  8.471  12.954  1
+HETATM C C2A   . FAD     B 1 1363 . 1363 FAD     B C2A   36 11.47 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  35 -0.842 8.686  12.121  1
+HETATM N N3A   . FAD     B 1 1363 . 1363 FAD     B N3A   37 10.84 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  36 -0.987 8.13   10.855  1
+HETATM C C4A   . FAD     B 1 1363 . 1363 FAD     B C4A   38 9.69  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  37 0.055  7.202  10.654  1
+HETATM N N1    . FAD     B 1 1363 . 1363 FAD     B N1    39 10.21 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  38 -1.1   -3.633 -3.974  1
+HETATM C C2    . FAD     B 1 1363 . 1363 FAD     B C2    40 10.38 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  39 -2.007 -4.344 -4.71   1
+HETATM O O2    . FAD     B 1 1363 . 1363 FAD     B O2    41 10.02 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  40 -2.927 -4.982 -4.166  1
+HETATM N N3    . FAD     B 1 1363 . 1363 FAD     B N3    42 10.91 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  41 -1.882 -4.373 -6.077  1
+HETATM C C4    . FAD     B 1 1363 . 1363 FAD     B C4    43 11.27 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  42 -0.852 -3.77  -6.81   1
+HETATM O O4    . FAD     B 1 1363 . 1363 FAD     B O4    44 10.86 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  43 -0.839 -3.862 -8.081  1
+HETATM C C4X   . FAD     B 1 1363 . 1363 FAD     B C4X   45 11.06 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  44 0.058  -3.101 -6.044  1
+HETATM N N5    . FAD     B 1 1363 . 1363 FAD     B N5    46 12.73 1.0  +1 3 False False -1  True  -1  True  0 FAD   True  45 1.114  -2.449 -6.746  1
+HETATM C C5X   . FAD     B 1 1363 . 1363 FAD     B C5X   47 11.62 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  46 2.07   -1.801 -5.937  1
+HETATM C C6    . FAD     B 1 1363 . 1363 FAD     B C6    48 11.85 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  47 3.214  -1.262 -6.509  1
+HETATM C C7    . FAD     B 1 1363 . 1363 FAD     B C7    49 11.98 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  48 4.134  -0.482 -5.798  1
+HETATM C C7M   . FAD     B 1 1363 . 1363 FAD     B C7M   50 13.6  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  49 5.345  0.121  -6.515  1
+HETATM C C8    . FAD     B 1 1363 . 1363 FAD     B C8    51 10.72 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  50 3.943  -0.337 -4.418  1
+HETATM C C8M   . FAD     B 1 1363 . 1363 FAD     B C8M   52 12.15 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  51 4.858  0.527  -3.571  1
+HETATM C C9    . FAD     B 1 1363 . 1363 FAD     B C9    53 10.11 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  52 2.837  -0.875 -3.801  1
+HETATM C C9A   . FAD     B 1 1363 . 1363 FAD     B C9A   54 11.3  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  53 1.973  -1.708 -4.497  1
+HETATM N N10   . FAD     B 1 1363 . 1363 FAD     B N10   55 10.44 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  54 0.832  -2.397 -3.903  1
+HETATM C C10   . FAD     B 1 1363 . 1363 FAD     B C10   56 10.47 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  55 -0.074 -3.057 -4.65   1
+HETATM C "C1'" . FAD     B 1 1363 . 1363 FAD     B "C1'" 57 10.06 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  56 0.791  -2.495 -2.49   1
+HETATM C "C2'" . FAD     B 1 1363 . 1363 FAD     B "C2'" 58 9.58  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  57 -0.082 -1.5   -1.801  1
+HETATM O "O2'" . FAD     B 1 1363 . 1363 FAD     B "O2'" 59 10.96 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  58 0.401  -0.186 -2.199  1
+HETATM C "C3'" . FAD     B 1 1363 . 1363 FAD     B "C3'" 60 8.62  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  59 -0.098 -1.564 -0.303  1
+HETATM O "O3'" . FAD     B 1 1363 . 1363 FAD     B "O3'" 61 9.83  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  60 -0.255 -2.876 0.21    1
+HETATM C "C4'" . FAD     B 1 1363 . 1363 FAD     B "C4'" 62 9.05  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  61 -1.193 -0.774 0.381   1
+HETATM O "O4'" . FAD     B 1 1363 . 1363 FAD     B "O4'" 63 9.62  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  62 -1.13  0.568  -0.185  1
+HETATM C "C5'" . FAD     B 1 1363 . 1363 FAD     B "C5'" 64 8.65  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  63 -1.098 -0.703 1.847   1
+HETATM O "O5'" . FAD     B 1 1363 . 1363 FAD     B "O5'" 65 9.27  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  64 -2.146 0.104  2.378   1
+HETATM P P     . FAD     B 1 1363 . 1363 FAD     B P     66 8.73  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  65 -2.223 0.455  3.899   1
+HETATM O O1P   . FAD     B 1 1363 . 1363 FAD     B O1P   67 9.78  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  66 -3.447 1.233  4.061   1
+HETATM O O2P   . FAD     B 1 1363 . 1363 FAD     B O2P   68 9.46  1.0  ?  3 False False -1  True  -1  True  0 FAD   True  67 -2.011 -0.779 4.697   1
+HETATM O O3P   . FAD     B 1 1363 . 1363 FAD     B O3P   69 15.58 1.0  ?  3 False False -1  True  -1  True  0 FAD   True  68 -0.905 1.34   4.132   1
 #
 loop_
 _chem_comp_atom.comp_id 

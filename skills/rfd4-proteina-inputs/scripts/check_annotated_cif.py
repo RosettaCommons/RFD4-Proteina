@@ -284,22 +284,21 @@ def check_coord_implies_seq(arr: AtomArray) -> list[Violation]:
 
 
 def run_pipeline_validation(arr: AtomArray) -> list[Violation]:
-    """Run the design validation pipeline; scrape ``[check]`` lines from the error."""
-    from rfproteina.datapipes.pipeline import build_design_validation_pipeline
+    """Run the design validation pipeline on one realization of *arr*, as generation does.
 
-    pipeline = build_design_validation_pipeline()
-    try:
-        pipeline({"atom_array": arr.copy()})
-        return []
-    except ValueError as e:
-        msg = str(e)
-        if "Batch invariant violation" in msg:
-            return [
-                Violation(ERROR, "pipeline", line.strip()) for line in msg.splitlines() if line.strip().startswith("[")
-            ]
-        return [Violation(ERROR, "pipeline_error", msg.splitlines()[0] if msg else str(e))]
-    except Exception as e:
-        return [Violation(ERROR, "pipeline_error", f"{type(e).__name__}: {e}")]
+    Delegates to :py:func:`rfproteina.conditions_reporting.run_pipeline_validation`, which
+    realizes expandable segments on a copy before featurization.
+    """
+    from rfproteina.conditions_reporting import run_pipeline_validation as validate
+
+    violations = []
+    for message in validate(arr):
+        if message.startswith("[pipeline_error] "):
+            detail = message.removeprefix("[pipeline_error] ")
+            violations.append(Violation(ERROR, "pipeline_error", detail.splitlines()[0] if detail else message))
+        else:
+            violations.append(Violation(ERROR, "pipeline", message))
+    return violations
 
 
 # Component atom inventories and res_id gaps

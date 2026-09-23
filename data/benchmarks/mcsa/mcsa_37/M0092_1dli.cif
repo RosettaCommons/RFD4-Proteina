@@ -1,9 +1,9 @@
 data_M0092_1dli.cif
 #
 _entry.id       M0092_1dli.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:37:29
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:55
 #
 loop_
 _entity.id 
@@ -325,126 +325,124 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.mask_sequence_1_residue 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.mask_coordinate_1_atom 
-_atom_site.mask_expsegmax_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.mask_index_1_residue 
 _atom_site.condition_index-group_1_token 
 _atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan   0.0 ?  False 180 .    False True  0 180 True  0 True  0  nan    nan    nan    1 1
-ATOM   N N     . THR     A 0 1   . 1   THR     A N     26.7  1.0 ?  True  -1  A118 True  False 0 -1  False 4 False 1  -4.76  -7.635 3.47   1 2
-ATOM   C CA    . THR     A 0 1   . 1   THR     A CA    27.97 1.0 ?  True  -1  A118 True  False 0 -1  False 4 False 2  -4.338 -8.091 2.153  1 3
-ATOM   C C     . THR     A 0 1   . 1   THR     A C     29.39 1.0 ?  True  -1  A118 True  False 0 -1  False 4 False 3  -3.857 -9.535 2.299  1 4
-ATOM   C CB    . THR     A 0 1   . 1   THR     A CB    28.82 1.0 ?  True  -1  A118 True  False 0 -1  False 4 False 4  -3.216 -7.219 1.658  1 5
-ATOM   N N     . GLU     A 0 2   . 2   GLU     A N     30.19 1.0 ?  True  -1  A145 True  False 0 -1  False 5 False 5  -1.607 5.422  3.941  1 6
-ATOM   C CA    . GLU     A 0 2   . 2   GLU     A CA    31.09 1.0 ?  True  -1  A145 True  False 0 -1  False 5 False 6  -1.373 5.857  5.306  1 7
-ATOM   C CD    . LYS     A 0 3   . 3   LYS     A CD    27.55 1.0 ?  True  -1  A204 True  False 0 -1  False 6 False 7  -4.973 -4.629 -1.527 1 8
-ATOM   C CE    . LYS     A 0 3   . 3   LYS     A CE    28.14 1.0 ?  True  -1  A204 True  False 0 -1  False 6 False 8  -4.489 -3.502 -2.4   1 9
-ATOM   N NZ    . LYS     A 0 3   . 3   LYS     A NZ    29.54 1.0 +1 True  -1  A204 True  False 0 -1  False 6 False 9  -4.394 -2.234 -1.611 1 10
-ATOM   C CB    . ASN     A 0 4   . 4   ASN     A CB    26.54 1.0 ?  True  -1  A208 True  False 0 -1  False 7 False 10 -0.268 -3.094 -4.215 1 11
-ATOM   C CG    . ASN     A 0 4   . 4   ASN     A CG    27.6  1.0 ?  True  -1  A208 True  False 0 -1  False 7 False 11 -1.053 -2.411 -3.168 1 12
-ATOM   O OD1   . ASN     A 0 4   . 4   ASN     A OD1   31.2  1.0 ?  True  -1  A208 True  False 0 -1  False 7 False 12 -1.749 -1.45  -3.455 1 13
-ATOM   N ND2   . ASN     A 0 4   . 4   ASN     A ND2   28.95 1.0 ?  True  -1  A208 True  False 0 -1  False 7 False 13 -0.946 -2.871 -1.942 1 14
-ATOM   C CA    . CYS     A 0 5   . 5   CYS     A CA    33.51 1.0 ?  True  -1  A260 True  False 0 -1  False 8 False 14 2.274  -2.672 1.462  1 15
-ATOM   C CB    . CYS     A 0 5   . 5   CYS     A CB    33.16 1.0 ?  True  -1  A260 True  False 0 -1  False 8 False 15 0.926  -2.017 1.159  1 16
-ATOM   S SG    . CYS     A 0 5   . 5   CYS     A SG    34.83 1.0 ?  True  -1  A260 True  False 0 -1  False 8 False 16 -0.112 -1.948 2.637  1 17
-ATOM   C CB    . ASP     A 0 6   . 6   ASP     A CB    28.85 1.0 ?  True  -1  A264 True  False 0 -1  False 9 False 17 1.376  -6.185 -2.155 1 18
-ATOM   C CG    . ASP     A 0 6   . 6   ASP     A CG    30.39 1.0 ?  True  -1  A264 True  False 0 -1  False 9 False 18 0.61   -5.94  -0.855 1 19
-ATOM   O OD1   . ASP     A 0 6   . 6   ASP     A OD1   28.01 1.0 ?  True  -1  A264 True  False 0 -1  False 9 False 19 0.773  -6.741 0.094  1 20
-ATOM   O OD2   . ASP     A 0 6   . 6   ASP     A OD2   31.03 1.0 ?  True  -1  A264 True  False 0 -1  False 9 False 20 -0.159 -4.95  -0.78  1 21
-HETATM C "C1'" . UDX     C 2 404 . 404 UDX     C "C1'" 27.52 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 21 -0.103 2.328  -0.816 1 22
-HETATM C "C2'" . UDX     C 2 404 . 404 UDX     C "C2'" 27.58 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 22 -1.155 2.449  -1.894 1 23
-HETATM O "O2'" . UDX     C 2 404 . 404 UDX     C "O2'" 28.47 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 23 -1.067 3.754  -2.429 1 24
-HETATM C "C3'" . UDX     C 2 404 . 404 UDX     C "C3'" 27.75 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 24 -2.559 2.222  -1.301 1 25
-HETATM O "O3'" . UDX     C 2 404 . 404 UDX     C "O3'" 28.4  1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 25 -3.546 2.266  -2.323 1 26
-HETATM C "C4'" . UDX     C 2 404 . 404 UDX     C "C4'" 28.08 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 26 -2.581 0.856  -0.666 1 27
-HETATM O "O4'" . UDX     C 2 404 . 404 UDX     C "O4'" 28.33 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 27 -3.887 0.573  -0.174 1 28
-HETATM C "C5'" . UDX     C 2 404 . 404 UDX     C "C5'" 27.84 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 28 -1.549 0.843  0.455  1 29
-HETATM O "O5'" . UDX     C 2 404 . 404 UDX     C "O5'" 29.03 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 29 -0.241 1.105  -0.094 1 30
-HETATM P PB    . UDX     C 2 404 . 404 UDX     C PB    26.3  1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 30 1.058  3.865  0.929  1 31
-HETATM O O1B   . UDX     C 2 404 . 404 UDX     C O1B   25.19 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 31 1.977  2.713  1.039  1 32
-HETATM O O2B   . UDX     C 2 404 . 404 UDX     C O2B   28.15 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 32 0.495  4.482  2.166  1 33
-HETATM O O3B   . UDX     C 2 404 . 404 UDX     C O3B   26.19 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 33 -0.168 3.449  0.008  1 34
-HETATM O O3A   . UDX     C 2 404 . 404 UDX     C O3A   27.2  1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 34 1.794  5.05   0.167  1 35
-HETATM P PA    . UDX     C 2 404 . 404 UDX     C PA    29.69 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 35 2.078  5.469  -1.342 1 36
-HETATM O O1A   . UDX     C 2 404 . 404 UDX     C O1A   29.11 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 36 1.823  6.929  -1.38  1 37
-HETATM O O2A   . UDX     C 2 404 . 404 UDX     C O2A   27.13 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 37 1.337  4.568  -2.239 1 38
-HETATM O O5D   . UDX     C 2 404 . 404 UDX     C O5D   28.07 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 38 3.647  5.227  -1.537 1 39
-HETATM C C5D   . UDX     C 2 404 . 404 UDX     C C5D   28.27 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 39 4.198  3.916  -1.454 1 40
-HETATM C C4D   . UDX     C 2 404 . 404 UDX     C C4D   27.01 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 40 5.712  3.974  -1.546 1 41
-HETATM O O4D   . UDX     C 2 404 . 404 UDX     C O4D   27.78 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 41 6.096  4.333  -2.906 1 42
-HETATM C C3D   . UDX     C 2 404 . 404 UDX     C C3D   26.9  1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 42 6.265  5.058  -0.631 1 43
-HETATM O O3D   . UDX     C 2 404 . 404 UDX     C O3D   26.8  1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 43 7.548  4.63   -0.151 1 44
-HETATM C C2D   . UDX     C 2 404 . 404 UDX     C C2D   26.58 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 44 6.427  6.253  -1.56  1 45
-HETATM O O2D   . UDX     C 2 404 . 404 UDX     C O2D   25.59 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 45 0.0    0.0    0.0    1 46
-HETATM C C1D   . UDX     C 2 404 . 404 UDX     C C1D   25.88 1.0 ?  True  -1  UDX  True  False 0 -1  True  1 False 46 6.828  5.584  -2.858 1 47
-HETATM N N1    . UDX     C 2 404 . 404 UDX     C N1    25.4  1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 47 0.0    0.0    0.0    1 48
-HETATM C C6    . UDX     C 2 404 . 404 UDX     C C6    26.2  1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 48 0.0    0.0    0.0    1 49
-HETATM C C2    . UDX     C 2 404 . 404 UDX     C C2    26.21 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 49 0.0    0.0    0.0    1 50
-HETATM O O2    . UDX     C 2 404 . 404 UDX     C O2    26.49 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 50 0.0    0.0    0.0    1 51
-HETATM N N3    . UDX     C 2 404 . 404 UDX     C N3    26.96 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 51 0.0    0.0    0.0    1 52
-HETATM C C4    . UDX     C 2 404 . 404 UDX     C C4    25.26 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 52 0.0    0.0    0.0    1 53
-HETATM O O4    . UDX     C 2 404 . 404 UDX     C O4    25.59 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 53 0.0    0.0    0.0    1 54
-HETATM C C5    . UDX     C 2 404 . 404 UDX     C C5    26.83 1.0 ?  True  -1  UDX  False False 0 -1  True  1 False 54 0.0    0.0    0.0    1 55
-HETATM P PA    . NAD     B 1 403 . 403 NAD     B PA    39.23 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 55 0.0    0.0    0.0    1 56
-HETATM O O1A   . NAD     B 1 403 . 403 NAD     B O1A   38.91 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 56 0.0    0.0    0.0    1 57
-HETATM O O2A   . NAD     B 1 403 . 403 NAD     B O2A   38.06 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 57 0.0    0.0    0.0    1 58
-HETATM O O5B   . NAD     B 1 403 . 403 NAD     B O5B   38.36 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 58 0.0    0.0    0.0    1 59
-HETATM C C5B   . NAD     B 1 403 . 403 NAD     B C5B   39.89 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 59 0.0    0.0    0.0    1 60
-HETATM C C4B   . NAD     B 1 403 . 403 NAD     B C4B   40.22 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 60 0.0    0.0    0.0    1 61
-HETATM O O4B   . NAD     B 1 403 . 403 NAD     B O4B   40.74 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 61 0.0    0.0    0.0    1 62
-HETATM C C3B   . NAD     B 1 403 . 403 NAD     B C3B   40.09 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 62 0.0    0.0    0.0    1 63
-HETATM O O3B   . NAD     B 1 403 . 403 NAD     B O3B   39.98 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 63 0.0    0.0    0.0    1 64
-HETATM C C2B   . NAD     B 1 403 . 403 NAD     B C2B   39.93 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 64 0.0    0.0    0.0    1 65
-HETATM O O2B   . NAD     B 1 403 . 403 NAD     B O2B   38.81 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 65 0.0    0.0    0.0    1 66
-HETATM C C1B   . NAD     B 1 403 . 403 NAD     B C1B   39.74 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 66 0.0    0.0    0.0    1 67
-HETATM N N9A   . NAD     B 1 403 . 403 NAD     B N9A   39.15 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 67 0.0    0.0    0.0    1 68
-HETATM C C8A   . NAD     B 1 403 . 403 NAD     B C8A   37.48 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 68 0.0    0.0    0.0    1 69
-HETATM N N7A   . NAD     B 1 403 . 403 NAD     B N7A   38.39 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 69 0.0    0.0    0.0    1 70
-HETATM C C5A   . NAD     B 1 403 . 403 NAD     B C5A   39.2  1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 70 0.0    0.0    0.0    1 71
-HETATM C C6A   . NAD     B 1 403 . 403 NAD     B C6A   39.01 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 71 0.0    0.0    0.0    1 72
-HETATM N N6A   . NAD     B 1 403 . 403 NAD     B N6A   38.76 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 72 0.0    0.0    0.0    1 73
-HETATM N N1A   . NAD     B 1 403 . 403 NAD     B N1A   38.0  1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 73 0.0    0.0    0.0    1 74
-HETATM C C2A   . NAD     B 1 403 . 403 NAD     B C2A   37.83 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 74 0.0    0.0    0.0    1 75
-HETATM N N3A   . NAD     B 1 403 . 403 NAD     B N3A   38.57 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 75 0.0    0.0    0.0    1 76
-HETATM C C4A   . NAD     B 1 403 . 403 NAD     B C4A   38.93 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 76 0.0    0.0    0.0    1 77
-HETATM O O3    . NAD     B 1 403 . 403 NAD     B O3    38.44 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 77 0.0    0.0    0.0    1 78
-HETATM P PN    . NAD     B 1 403 . 403 NAD     B PN    36.76 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 78 0.0    0.0    0.0    1 79
-HETATM O O1N   . NAD     B 1 403 . 403 NAD     B O1N   35.87 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 79 0.0    0.0    0.0    1 80
-HETATM O O2N   . NAD     B 1 403 . 403 NAD     B O2N   35.23 1.0 -1 True  -1  NAD  False False 0 -1  True  2 False 80 0.0    0.0    0.0    1 81
-HETATM O O5D   . NAD     B 1 403 . 403 NAD     B O5D   37.94 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 81 0.0    0.0    0.0    1 82
-HETATM C C5D   . NAD     B 1 403 . 403 NAD     B C5D   37.24 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 82 0.0    0.0    0.0    1 83
-HETATM C C4D   . NAD     B 1 403 . 403 NAD     B C4D   38.21 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 83 0.0    0.0    0.0    1 84
-HETATM O O4D   . NAD     B 1 403 . 403 NAD     B O4D   37.59 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 84 0.0    0.0    0.0    1 85
-HETATM C C3D   . NAD     B 1 403 . 403 NAD     B C3D   37.44 1.0 ?  True  -1  NAD  True  False 0 -1  True  2 False 85 -2.292 -5.777 6.262  1 86
-HETATM O O3D   . NAD     B 1 403 . 403 NAD     B O3D   39.43 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 86 0.0    0.0    0.0    1 87
-HETATM C C2D   . NAD     B 1 403 . 403 NAD     B C2D   37.7  1.0 ?  True  -1  NAD  True  False 0 -1  True  2 False 87 -2.035 -4.696 5.233  1 88
-HETATM O O2D   . NAD     B 1 403 . 403 NAD     B O2D   36.68 1.0 ?  True  -1  NAD  True  False 0 -1  True  2 False 88 -1.282 -5.238 4.147  1 89
-HETATM C C1D   . NAD     B 1 403 . 403 NAD     B C1D   37.68 1.0 ?  True  -1  NAD  True  False 0 -1  True  2 False 89 -3.46  -4.344 4.801  1 90
-HETATM N N1N   . NAD     B 1 403 . 403 NAD     B N1N   39.44 1.0 +1 True  -1  NAD  False False 0 -1  True  2 False 90 0.0    0.0    0.0    1 91
-HETATM C C2N   . NAD     B 1 403 . 403 NAD     B C2N   40.22 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 91 0.0    0.0    0.0    1 92
-HETATM C C3N   . NAD     B 1 403 . 403 NAD     B C3N   40.14 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 92 0.0    0.0    0.0    1 93
-HETATM C C7N   . NAD     B 1 403 . 403 NAD     B C7N   40.23 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 93 0.0    0.0    0.0    1 94
-HETATM O O7N   . NAD     B 1 403 . 403 NAD     B O7N   41.35 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 94 0.0    0.0    0.0    1 95
-HETATM N N7N   . NAD     B 1 403 . 403 NAD     B N7N   39.11 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 95 0.0    0.0    0.0    1 96
-HETATM C C4N   . NAD     B 1 403 . 403 NAD     B C4N   40.05 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 96 0.0    0.0    0.0    1 97
-HETATM C C5N   . NAD     B 1 403 . 403 NAD     B C5N   39.84 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 97 0.0    0.0    0.0    1 98
-HETATM C C6N   . NAD     B 1 403 . 403 NAD     B C6N   39.82 1.0 ?  True  -1  NAD  False False 0 -1  True  2 False 98 0.0    0.0    0.0    1 99
-#
-_rfd_design.sampled_contig   180-180
+HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   1  nan   0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan    nan     nan    1
+ATOM   N N     . THR     A 0 1   . 1   THR     A N     2  26.7  1.0 ?  4 False False -1  True  -1  True  0 A118 False 1  -4.76  -7.635  3.47   1
+ATOM   C CA    . THR     A 0 1   . 1   THR     A CA    3  27.97 1.0 ?  4 False False -1  True  -1  True  0 A118 False 2  -4.338 -8.091  2.153  1
+ATOM   C C     . THR     A 0 1   . 1   THR     A C     4  29.39 1.0 ?  4 False False -1  True  -1  True  0 A118 False 3  -3.857 -9.535  2.299  1
+ATOM   C CB    . THR     A 0 1   . 1   THR     A CB    5  28.82 1.0 ?  4 False False -1  True  -1  True  0 A118 False 4  -3.216 -7.219  1.658  1
+ATOM   N N     . GLU     A 0 2   . 2   GLU     A N     6  30.19 1.0 ?  5 False False -1  True  -1  True  0 A145 False 5  -1.607 5.422   3.941  1
+ATOM   C CA    . GLU     A 0 2   . 2   GLU     A CA    7  31.09 1.0 ?  5 False False -1  True  -1  True  0 A145 False 6  -1.373 5.857   5.306  1
+ATOM   C CD    . LYS     A 0 3   . 3   LYS     A CD    8  27.55 1.0 ?  6 False False -1  True  -1  True  0 A204 False 7  -4.973 -4.629  -1.527 1
+ATOM   C CE    . LYS     A 0 3   . 3   LYS     A CE    9  28.14 1.0 ?  6 False False -1  True  -1  True  0 A204 False 8  -4.489 -3.502  -2.4   1
+ATOM   N NZ    . LYS     A 0 3   . 3   LYS     A NZ    10 29.54 1.0 +1 6 False False -1  True  -1  True  0 A204 False 9  -4.394 -2.234  -1.611 1
+ATOM   C CB    . ASN     A 0 4   . 4   ASN     A CB    11 26.54 1.0 ?  7 False False -1  True  -1  True  0 A208 False 10 -0.268 -3.094  -4.215 1
+ATOM   C CG    . ASN     A 0 4   . 4   ASN     A CG    12 27.6  1.0 ?  7 False False -1  True  -1  True  0 A208 False 11 -1.053 -2.411  -3.168 1
+ATOM   O OD1   . ASN     A 0 4   . 4   ASN     A OD1   13 31.2  1.0 ?  7 False False -1  True  -1  True  0 A208 False 12 -1.749 -1.45   -3.455 1
+ATOM   N ND2   . ASN     A 0 4   . 4   ASN     A ND2   14 28.95 1.0 ?  7 False False -1  True  -1  True  0 A208 False 13 -0.946 -2.871  -1.942 1
+ATOM   C CA    . CYS     A 0 5   . 5   CYS     A CA    15 33.51 1.0 ?  8 False False -1  True  -1  True  0 A260 False 14 2.274  -2.672  1.462  1
+ATOM   C CB    . CYS     A 0 5   . 5   CYS     A CB    16 33.16 1.0 ?  8 False False -1  True  -1  True  0 A260 False 15 0.926  -2.017  1.159  1
+ATOM   S SG    . CYS     A 0 5   . 5   CYS     A SG    17 34.83 1.0 ?  8 False False -1  True  -1  True  0 A260 False 16 -0.112 -1.948  2.637  1
+ATOM   C CB    . ASP     A 0 6   . 6   ASP     A CB    18 28.85 1.0 ?  9 False False -1  True  -1  True  0 A264 False 17 1.376  -6.185  -2.155 1
+ATOM   C CG    . ASP     A 0 6   . 6   ASP     A CG    19 30.39 1.0 ?  9 False False -1  True  -1  True  0 A264 False 18 0.61   -5.94   -0.855 1
+ATOM   O OD1   . ASP     A 0 6   . 6   ASP     A OD1   20 28.01 1.0 ?  9 False False -1  True  -1  True  0 A264 False 19 0.773  -6.741  0.094  1
+ATOM   O OD2   . ASP     A 0 6   . 6   ASP     A OD2   21 31.03 1.0 ?  9 False False -1  True  -1  True  0 A264 False 20 -0.159 -4.95   -0.78  1
+HETATM C "C1'" . UDX     C 2 404 . 404 UDX     C "C1'" 22 27.52 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  21 -0.103 2.328   -0.816 1
+HETATM C "C2'" . UDX     C 2 404 . 404 UDX     C "C2'" 23 27.58 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  22 -1.155 2.449   -1.894 1
+HETATM O "O2'" . UDX     C 2 404 . 404 UDX     C "O2'" 24 28.47 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  23 -1.067 3.754   -2.429 1
+HETATM C "C3'" . UDX     C 2 404 . 404 UDX     C "C3'" 25 27.75 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  24 -2.559 2.222   -1.301 1
+HETATM O "O3'" . UDX     C 2 404 . 404 UDX     C "O3'" 26 28.4  1.0 ?  1 False False -1  True  -1  True  0 UDX  True  25 -3.546 2.266   -2.323 1
+HETATM C "C4'" . UDX     C 2 404 . 404 UDX     C "C4'" 27 28.08 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  26 -2.581 0.856   -0.666 1
+HETATM O "O4'" . UDX     C 2 404 . 404 UDX     C "O4'" 28 28.33 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  27 -3.887 0.573   -0.174 1
+HETATM C "C5'" . UDX     C 2 404 . 404 UDX     C "C5'" 29 27.84 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  28 -1.549 0.843   0.455  1
+HETATM O "O5'" . UDX     C 2 404 . 404 UDX     C "O5'" 30 29.03 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  29 -0.241 1.105   -0.094 1
+HETATM P PB    . UDX     C 2 404 . 404 UDX     C PB    31 26.3  1.0 ?  1 False False -1  True  -1  True  0 UDX  True  30 1.058  3.865   0.929  1
+HETATM O O1B   . UDX     C 2 404 . 404 UDX     C O1B   32 25.19 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  31 1.977  2.713   1.039  1
+HETATM O O2B   . UDX     C 2 404 . 404 UDX     C O2B   33 28.15 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  32 0.495  4.482   2.166  1
+HETATM O O3B   . UDX     C 2 404 . 404 UDX     C O3B   34 26.19 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  33 -0.168 3.449   0.008  1
+HETATM O O3A   . UDX     C 2 404 . 404 UDX     C O3A   35 27.2  1.0 ?  1 False False -1  True  -1  True  0 UDX  True  34 1.794  5.05    0.167  1
+HETATM P PA    . UDX     C 2 404 . 404 UDX     C PA    36 29.69 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  35 2.078  5.469   -1.342 1
+HETATM O O1A   . UDX     C 2 404 . 404 UDX     C O1A   37 29.11 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  36 1.823  6.929   -1.38  1
+HETATM O O2A   . UDX     C 2 404 . 404 UDX     C O2A   38 27.13 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  37 1.337  4.568   -2.239 1
+HETATM O O5D   . UDX     C 2 404 . 404 UDX     C O5D   39 28.07 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  38 3.647  5.227   -1.537 1
+HETATM C C5D   . UDX     C 2 404 . 404 UDX     C C5D   40 28.27 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  39 4.198  3.916   -1.454 1
+HETATM C C4D   . UDX     C 2 404 . 404 UDX     C C4D   41 27.01 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  40 5.712  3.974   -1.546 1
+HETATM O O4D   . UDX     C 2 404 . 404 UDX     C O4D   42 27.78 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  41 6.096  4.333   -2.906 1
+HETATM C C3D   . UDX     C 2 404 . 404 UDX     C C3D   43 26.9  1.0 ?  1 False False -1  True  -1  True  0 UDX  True  42 6.265  5.058   -0.631 1
+HETATM O O3D   . UDX     C 2 404 . 404 UDX     C O3D   44 26.8  1.0 ?  1 False False -1  True  -1  True  0 UDX  True  43 7.548  4.63    -0.151 1
+HETATM C C2D   . UDX     C 2 404 . 404 UDX     C C2D   45 26.58 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  44 6.427  6.253   -1.56  1
+HETATM O O2D   . UDX     C 2 404 . 404 UDX     C O2D   46 25.59 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  45 7.484  7.087   -1.134 1
+HETATM C C1D   . UDX     C 2 404 . 404 UDX     C C1D   47 25.88 1.0 ?  1 False False -1  True  -1  True  0 UDX  True  46 6.828  5.584   -2.858 1
+HETATM N N1    . UDX     C 2 404 . 404 UDX     C N1    48 25.4  1.0 ?  1 False False -1  True  -1  False 0 UDX  True  47 6.517  6.492   -3.95  1
+HETATM C C6    . UDX     C 2 404 . 404 UDX     C C6    49 26.2  1.0 ?  1 False False -1  True  -1  False 0 UDX  True  48 5.221  6.731   -4.295 1
+HETATM C C2    . UDX     C 2 404 . 404 UDX     C C2    50 26.21 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  49 7.553  7.066   -4.609 1
+HETATM O O2    . UDX     C 2 404 . 404 UDX     C O2    51 26.49 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  50 8.721  6.867   -4.292 1
+HETATM N N3    . UDX     C 2 404 . 404 UDX     C N3    52 26.96 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  51 7.183  7.894   -5.648 1
+HETATM C C4    . UDX     C 2 404 . 404 UDX     C C4    53 25.26 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  52 5.892  8.18    -6.047 1
+HETATM O O4    . UDX     C 2 404 . 404 UDX     C O4    54 25.59 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  53 5.67   8.955   -6.968 1
+HETATM C C5    . UDX     C 2 404 . 404 UDX     C C5    55 26.83 1.0 ?  1 False False -1  True  -1  False 0 UDX  True  54 4.89   7.532   -5.287 1
+HETATM P PA    . NAD     B 1 403 . 403 NAD     B PA    56 39.23 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  55 -0.926 -2.225  11.47  1
+HETATM O O1A   . NAD     B 1 403 . 403 NAD     B O1A   57 38.91 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  56 0.37   -2.899  11.77  1
+HETATM O O2A   . NAD     B 1 403 . 403 NAD     B O2A   58 38.06 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  57 -1.037 -0.749  11.549 1
+HETATM O O5B   . NAD     B 1 403 . 403 NAD     B O5B   59 38.36 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  58 -2.079 -2.797  12.396 1
+HETATM C C5B   . NAD     B 1 403 . 403 NAD     B C5B   60 39.89 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  59 -2.086 -4.166  12.769 1
+HETATM C C4B   . NAD     B 1 403 . 403 NAD     B C4B   61 40.22 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  60 -2.712 -4.288  14.134 1
+HETATM O O4B   . NAD     B 1 403 . 403 NAD     B O4B   62 40.74 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  61 -3.2   -5.64   14.331 1
+HETATM C C3B   . NAD     B 1 403 . 403 NAD     B C3B   63 40.09 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  62 -1.686 -4.012  15.238 1
+HETATM O O3B   . NAD     B 1 403 . 403 NAD     B O3B   64 39.98 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  63 -2.203 -2.968  16.09  1
+HETATM C C2B   . NAD     B 1 403 . 403 NAD     B C2B   65 39.93 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  64 -1.623 -5.317  16.035 1
+HETATM O O2B   . NAD     B 1 403 . 403 NAD     B O2B   66 38.81 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  65 -1.523 -5.009  17.435 1
+HETATM C C1B   . NAD     B 1 403 . 403 NAD     B C1B   67 39.74 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  66 -2.982 -5.927  15.729 1
+HETATM N N9A   . NAD     B 1 403 . 403 NAD     B N9A   68 39.15 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  67 -3.056 -7.363  15.96  1
+HETATM C C8A   . NAD     B 1 403 . 403 NAD     B C8A   69 37.48 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  68 -2.131 -8.343  15.554 1
+HETATM N N7A   . NAD     B 1 403 . 403 NAD     B N7A   70 38.39 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  69 -2.653 -9.547  15.764 1
+HETATM C C5A   . NAD     B 1 403 . 403 NAD     B C5A   71 39.2  1.0 ?  2 False False -1  True  -1  False 0 NAD  True  70 -3.9   -9.307  16.318 1
+HETATM C C6A   . NAD     B 1 403 . 403 NAD     B C6A   72 39.01 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  71 -4.767 -10.318 16.675 1
+HETATM N N6A   . NAD     B 1 403 . 403 NAD     B N6A   73 38.76 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  72 -4.43  -11.605 16.562 1
+HETATM N N1A   . NAD     B 1 403 . 403 NAD     B N1A   74 38.0  1.0 ?  2 False False -1  True  -1  False 0 NAD  True  73 -5.978 -9.943  17.16  1
+HETATM C C2A   . NAD     B 1 403 . 403 NAD     B C2A   75 37.83 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  74 -6.279 -8.618  17.274 1
+HETATM N N3A   . NAD     B 1 403 . 403 NAD     B N3A   76 38.57 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  75 -5.375 -7.646  16.917 1
+HETATM C C4A   . NAD     B 1 403 . 403 NAD     B C4A   77 38.93 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  76 -4.171 -8.007  16.433 1
+HETATM O O3    . NAD     B 1 403 . 403 NAD     B O3    78 38.44 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  77 -1.32  -2.709  10.003 1
+HETATM P PN    . NAD     B 1 403 . 403 NAD     B PN    79 36.76 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  78 -2.161 -2.105  8.793  1
+HETATM O O1N   . NAD     B 1 403 . 403 NAD     B O1N   80 35.87 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  79 -1.288 -1.102  8.123  1
+HETATM O O2N   . NAD     B 1 403 . 403 NAD     B O2N   81 35.23 1.0 -1 2 False False -1  True  -1  False 0 NAD  True  80 -3.477 -1.698  9.336  1
+HETATM O O5D   . NAD     B 1 403 . 403 NAD     B O5D   82 37.94 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  81 -2.377 -3.338  7.802  1
+HETATM C C5D   . NAD     B 1 403 . 403 NAD     B C5D   83 37.24 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  82 -3.177 -4.454  8.188  1
+HETATM C C4D   . NAD     B 1 403 . 403 NAD     B C4D   84 38.21 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  83 -3.541 -5.272  6.975  1
+HETATM O O4D   . NAD     B 1 403 . 403 NAD     B O4D   85 37.59 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  84 -4.263 -4.433  6.013  1
+HETATM C C3D   . NAD     B 1 403 . 403 NAD     B C3D   86 37.44 1.0 ?  2 False False -1  True  -1  True  0 NAD  True  85 -2.292 -5.777  6.262  1
+HETATM O O3D   . NAD     B 1 403 . 403 NAD     B O3D   87 39.43 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  86 -2.658 -6.988  5.566  1
+HETATM C C2D   . NAD     B 1 403 . 403 NAD     B C2D   88 37.7  1.0 ?  2 False False -1  True  -1  True  0 NAD  True  87 -2.035 -4.696  5.233  1
+HETATM O O2D   . NAD     B 1 403 . 403 NAD     B O2D   89 36.68 1.0 ?  2 False False -1  True  -1  True  0 NAD  True  88 -1.282 -5.238  4.147  1
+HETATM C C1D   . NAD     B 1 403 . 403 NAD     B C1D   90 37.68 1.0 ?  2 False False -1  True  -1  True  0 NAD  True  89 -3.46  -4.344  4.801  1
+HETATM N N1N   . NAD     B 1 403 . 403 NAD     B N1N   91 39.44 1.0 +1 2 False False -1  True  -1  False 0 NAD  True  90 -3.55  -2.981  4.263  1
+HETATM C C2N   . NAD     B 1 403 . 403 NAD     B C2N   92 40.22 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  91 -2.672 -1.99   4.724  1
+HETATM C C3N   . NAD     B 1 403 . 403 NAD     B C3N   93 40.14 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  92 -2.741 -0.704  4.199  1
+HETATM C C7N   . NAD     B 1 403 . 403 NAD     B C7N   94 40.23 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  93 -1.764 0.355   4.695  1
+HETATM O O7N   . NAD     B 1 403 . 403 NAD     B O7N   95 41.35 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  94 -1.444 1.29    3.972  1
+HETATM N N7N   . NAD     B 1 403 . 403 NAD     B N7N   96 39.11 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  95 -1.296 0.173   5.933  1
+HETATM C C4N   . NAD     B 1 403 . 403 NAD     B C4N   97 40.05 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  96 -3.684 -0.395  3.215  1
+HETATM C C5N   . NAD     B 1 403 . 403 NAD     B C5N   98 39.84 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  97 -4.569 -1.379  2.75   1
+HETATM C C6N   . NAD     B 1 403 . 403 NAD     B C6N   99 39.82 1.0 ?  2 False False -1  True  -1  False 0 NAD  True  98 -4.504 -2.669  3.27   1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -456,6 +454,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK    X 0  N N nan                   nan                   nan
 ASN     N      N 0  N N -0.2930000126361847   1.6859999895095825    0.09399999678134918
 ASN     CA     C 0  N N -0.4480000138282776   0.2919999957084656    -0.3400000035762787
 ASN     C      C 0  N N -1.8459999561309814   -0.17900000512599945  -0.03099999949336052
@@ -691,5 +690,4 @@ UDX     "H1'1" H 0  N N -0.7429999709129333   1.8619999885559082    -5.428999900
 UDX     H61    H 0  N N 1.11899995803833      2.374000072479248     -6.618000030517578
 UDX     HN3    H 0  N N 3.119999885559082     -1.7669999599456787   -5.302000045776367
 UDX     H51    H 0  N N 3.3529999256134033    1.815000057220459     -7.423999786376953
-180-180 UNK    X 0  N N nan                   nan                   nan
 #

@@ -1,9 +1,9 @@
 data_M0738_1o98.cif
 #
 _entry.id       M0738_1o98.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:39:12
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:57
 #
 loop_
 _entity.id 
@@ -139,47 +139,45 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.mask_expsegmin_1_residue 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.mask_sequence_1_residue 
 _atom_site.condition_index-group_1_token 
-_atom_site.mask_coordinate_1_atom 
+_atom_site.mask_expsegmin_1_residue 
 _atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK nan   0.0 ?  .    180 0 True  180 True  False 0 False True  0  nan    nan    nan    1 1
-ATOM   C  CA  . SER     A 0 1   . 1   SER     A CA  7.54  1.0 ?  A62  -1  0 False -1  False True  4 True  False 1  0.73   -3.623 -4.308 1 2
-ATOM   C  CB  . SER     A 0 1   . 1   SER     A CB  8.49  1.0 ?  A62  -1  0 False -1  False True  4 True  False 2  0.57   -4.237 -2.915 1 3
-ATOM   O  OG  . SER     A 0 1   . 1   SER     A OG  8.67  1.0 ?  A62  -1  0 False -1  False True  4 True  False 3  1.806  -4.204 -2.215 1 4
-ATOM   C  CG  . ASP     A 0 2   . 2   ASP     A CG  8.5   1.0 ?  A154 -1  0 False -1  False True  5 True  False 4  0.068  5.622  0.732  1 5
-ATOM   O  OD1 . ASP     A 0 2   . 2   ASP     A OD1 10.97 1.0 ?  A154 -1  0 False -1  False True  5 True  False 5  0.805  4.651  0.476  1 6
-ATOM   C  CZ  . ARG     A 0 3   . 3   ARG     A CZ  6.87  1.0 ?  A261 -1  0 False -1  False True  6 True  False 6  -2.93  -1.251 -1.732 1 7
-ATOM   N  NH1 . ARG     A 0 3   . 3   ARG     A NH1 8.08  1.0 ?  A261 -1  0 False -1  False True  6 True  False 7  -2.034 -0.479 -2.332 1 8
-HETATM C  C1  . 2PG     C 2 801 . 801 2PG     C C1  12.21 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 8  -0.92  -0.069 2.085  1 9
-HETATM C  C2  . 2PG     C 2 801 . 801 2PG     C C2  11.69 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 9  -0.063 0.537  0.969  1 10
-HETATM C  C3  . 2PG     C 2 801 . 801 2PG     C C3  12.54 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 10 0.266  1.953  1.403  1 11
-HETATM P  P   . 2PG     C 2 801 . 801 2PG     C P   10.03 1.0 ?  2PG  -1  0 False -1  True  True  1 False False 11 0.0    0.0    0.0    1 12
-HETATM O  O1  . 2PG     C 2 801 . 801 2PG     C O1  12.37 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 12 -0.217 -0.454 3.101  1 13
-HETATM O  O2  . 2PG     C 2 801 . 801 2PG     C O2  11.53 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 13 -2.177 -0.128 1.938  1 14
-HETATM O  O3  . 2PG     C 2 801 . 801 2PG     C O3  11.85 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 14 -0.82  2.824  1.562  1 15
-HETATM O  O1P . 2PG     C 2 801 . 801 2PG     C O1P 10.21 1.0 ?  2PG  -1  0 False -1  True  True  1 True  False 15 1.104  -0.275 0.692  1 16
-HETATM O  O2P . 2PG     C 2 801 . 801 2PG     C O2P 10.26 1.0 ?  2PG  -1  0 False -1  True  True  1 False False 16 0.0    0.0    0.0    1 17
-HETATM O  O3P . 2PG     C 2 801 . 801 2PG     C O3P 9.28  1.0 ?  2PG  -1  0 False -1  True  True  1 False False 17 0.0    0.0    0.0    1 18
-HETATM O  O4P . 2PG     C 2 801 . 801 2PG     C O4P 10.5  1.0 ?  2PG  -1  0 False -1  True  True  1 False False 18 0.0    0.0    0.0    1 19
-HETATM MN MN  . MN      B 1 701 . 701 MN      B MN  4.5   1.0 +2 MN   -1  0 False -1  True  True  2 True  False 19 3.815  -0.87  0.538  1 20
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan   0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   C  CA  . SER     A 0 1   . 1   SER     A CA  2  7.54  1.0 ?  4 False False -1  True  -1  True  0 A62  False 1  0.73   -3.623 -4.308 1
+ATOM   C  CB  . SER     A 0 1   . 1   SER     A CB  3  8.49  1.0 ?  4 False False -1  True  -1  True  0 A62  False 2  0.57   -4.237 -2.915 1
+ATOM   O  OG  . SER     A 0 1   . 1   SER     A OG  4  8.67  1.0 ?  4 False False -1  True  -1  True  0 A62  False 3  1.806  -4.204 -2.215 1
+ATOM   C  CG  . ASP     A 0 2   . 2   ASP     A CG  5  8.5   1.0 ?  5 False False -1  True  -1  True  0 A154 False 4  0.068  5.622  0.732  1
+ATOM   O  OD1 . ASP     A 0 2   . 2   ASP     A OD1 6  10.97 1.0 ?  5 False False -1  True  -1  True  0 A154 False 5  0.805  4.651  0.476  1
+ATOM   C  CZ  . ARG     A 0 3   . 3   ARG     A CZ  7  6.87  1.0 ?  6 False False -1  True  -1  True  0 A261 False 6  -2.93  -1.251 -1.732 1
+ATOM   N  NH1 . ARG     A 0 3   . 3   ARG     A NH1 8  8.08  1.0 ?  6 False False -1  True  -1  True  0 A261 False 7  -2.034 -0.479 -2.332 1
+HETATM C  C1  . 2PG     C 2 801 . 801 2PG     C C1  9  12.21 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  8  -0.92  -0.069 2.085  1
+HETATM C  C2  . 2PG     C 2 801 . 801 2PG     C C2  10 11.69 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  9  -0.063 0.537  0.969  1
+HETATM C  C3  . 2PG     C 2 801 . 801 2PG     C C3  11 12.54 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  10 0.266  1.953  1.403  1
+HETATM P  P   . 2PG     C 2 801 . 801 2PG     C P   12 10.03 1.0 ?  1 False False -1  True  -1  False 0 2PG  True  11 1.046  -1.533 -0.294 1
+HETATM O  O1  . 2PG     C 2 801 . 801 2PG     C O1  13 12.37 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  12 -0.217 -0.454 3.101  1
+HETATM O  O2  . 2PG     C 2 801 . 801 2PG     C O2  14 11.53 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  13 -2.177 -0.128 1.938  1
+HETATM O  O3  . 2PG     C 2 801 . 801 2PG     C O3  15 11.85 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  14 -0.82  2.824  1.562  1
+HETATM O  O1P . 2PG     C 2 801 . 801 2PG     C O1P 16 10.21 1.0 ?  1 False False -1  True  -1  True  0 2PG  True  15 1.104  -0.275 0.692  1
+HETATM O  O2P . 2PG     C 2 801 . 801 2PG     C O2P 17 10.26 1.0 ?  1 False False -1  True  -1  False 0 2PG  True  16 0.019  -2.479 0.26   1
+HETATM O  O3P . 2PG     C 2 801 . 801 2PG     C O3P 18 9.28  1.0 ?  1 False False -1  True  -1  False 0 2PG  True  17 0.656  -1.031 -1.654 1
+HETATM O  O4P . 2PG     C 2 801 . 801 2PG     C O4P 19 10.5  1.0 ?  1 False False -1  True  -1  False 0 2PG  True  18 2.37   -2.15  -0.311 1
+HETATM MN MN  . MN      B 1 701 . 701 MN      B MN  20 4.5   1.0 +2 2 False False -1  True  -1  True  0 MN   True  19 3.815  -0.87  0.538  1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -191,6 +189,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X  0 N N nan                   nan                  nan
 2PG     C1   C  0 N N -0.7310000061988831   0.05400000140070915  -1.975000023841858
 2PG     C2   C  0 N N 0.296999990940094     -0.09000000357627869 -0.8830000162124634
 2PG     C3   C  0 N N 1.684999942779541     0.21899999678134918  -1.4470000267028809
@@ -267,5 +266,4 @@ SER     HB2  H  0 N N -0.22499999403953552  -1.4910000562667847  -1.080999970436
 SER     HB3  H  0 N N -1.6990000009536743   -0.5070000290870667  -0.9200000166893005
 SER     HG   H  0 N N -0.9779999852180481   -0.6790000200271606  -3.0880000591278076
 SER     HXT  H  0 N Y -1.1829999685287476   0.1420000046491623   2.828000068664551
-180-180 UNK  X  0 N N nan                   nan                  nan
 #

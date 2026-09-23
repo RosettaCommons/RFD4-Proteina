@@ -1,9 +1,9 @@
 data_M0584_1ldm.cif
 #
 _entry.id       M0584_1ldm.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     19:27:46
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:56
 #
 loop_
 _entity.id 
@@ -214,88 +214,86 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.condition_hbond_1_atom 
 _atom_site.condition_index-group_1_token 
-_atom_site.mask_coordinate_1_atom 
 _atom_site.mask_expsegmin_1_residue 
-_atom_site.annotation_expsegmin_1_residue 
 _atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
 _atom_site.annotation_src-component_1_atom 
 _atom_site.mask_index_1_residue 
-_atom_site.mask_sequence_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK nan   0.0 ?  180 0 0 False True  180 True  .    True  False 0  nan    nan    nan    1 1
-ATOM   C CD  . ARG     A 0 1   . 1   ARG     A CD  20.91 1.0 ?  -1  0 4 True  False -1  False A106 False True  1  3.23   3.186  1.554  1 2
-ATOM   N NE  . ARG     A 0 1   . 1   ARG     A NE  20.86 1.0 ?  -1  0 4 True  False -1  False A106 False True  2  2.712  2.488  0.385  1 3
-ATOM   C CZ  . ARG     A 0 1   . 1   ARG     A CZ  20.88 1.0 ?  -1  0 4 True  False -1  False A106 False True  3  3.336  2.54   -0.804 1 4
-ATOM   C CG  . ASP     A 0 2   . 2   ASP     A CG  8.44  1.0 ?  -1  0 5 True  False -1  False A166 False True  4  5.08   -4.16  -1.172 1 5
-ATOM   O OD1 . ASP     A 0 2   . 2   ASP     A OD1 9.05  1.0 ?  -1  0 5 True  False -1  False A166 False True  5  5.318  -3.117 -1.791 1 6
-ATOM   C CZ  . ARG     A 0 3   . 3   ARG     A CZ  8.07  1.0 ?  -1  0 6 True  False -1  False A169 False True  6  0.59   -2.031 -5.154 1 7
-ATOM   N NH2 . ARG     A 0 3   . 3   ARG     A NH2 6.39  1.0 +1 -1  0 6 True  False -1  False A169 False True  7  -0.534 -1.268 -5.219 1 8
-ATOM   C CD2 . HIS     A 0 4   . 4   HIS     A CD2 14.23 1.0 ?  -1  0 7 True  False -1  False A193 False True  8  2.405  -0.657 2.011  1 9
-ATOM   C CE1 . HIS     A 0 4   . 4   HIS     A CE1 14.2  1.0 ?  -1  0 7 True  False -1  False A193 False True  9  2.488  -1.978 0.259  1 10
-ATOM   N NE2 . HIS     A 0 4   . 4   HIS     A NE2 14.53 1.0 ?  -1  0 7 True  False -1  False A193 False True  10 1.858  -0.961 0.785  1 11
-HETATM P PA  . NAD     B 1 330 . 330 NAD     B PA  18.28 1.0 ?  -1  0 1 False False -1  False NAD  True  True  11 0.0    0.0    0.0    1 12
-HETATM O O1A . NAD     B 1 330 . 330 NAD     B O1A 20.34 1.0 ?  -1  0 1 False False -1  False NAD  True  True  12 0.0    0.0    0.0    1 13
-HETATM O O2A . NAD     B 1 330 . 330 NAD     B O2A 16.75 1.0 ?  -1  0 1 False False -1  False NAD  True  True  13 0.0    0.0    0.0    1 14
-HETATM O O5B . NAD     B 1 330 . 330 NAD     B O5B 18.73 1.0 ?  -1  0 1 False False -1  False NAD  True  True  14 0.0    0.0    0.0    1 15
-HETATM C C5B . NAD     B 1 330 . 330 NAD     B C5B 19.68 1.0 ?  -1  0 1 False False -1  False NAD  True  True  15 0.0    0.0    0.0    1 16
-HETATM C C4B . NAD     B 1 330 . 330 NAD     B C4B 19.39 1.0 ?  -1  0 1 False False -1  False NAD  True  True  16 0.0    0.0    0.0    1 17
-HETATM O O4B . NAD     B 1 330 . 330 NAD     B O4B 20.38 1.0 ?  -1  0 1 False False -1  False NAD  True  True  17 0.0    0.0    0.0    1 18
-HETATM C C3B . NAD     B 1 330 . 330 NAD     B C3B 19.93 1.0 ?  -1  0 1 False False -1  False NAD  True  True  18 0.0    0.0    0.0    1 19
-HETATM O O3B . NAD     B 1 330 . 330 NAD     B O3B 19.6  1.0 ?  -1  0 1 False False -1  False NAD  True  True  19 0.0    0.0    0.0    1 20
-HETATM C C2B . NAD     B 1 330 . 330 NAD     B C2B 19.93 1.0 ?  -1  0 1 False False -1  False NAD  True  True  20 0.0    0.0    0.0    1 21
-HETATM O O2B . NAD     B 1 330 . 330 NAD     B O2B 21.23 1.0 ?  -1  0 1 False False -1  False NAD  True  True  21 0.0    0.0    0.0    1 22
-HETATM C C1B . NAD     B 1 330 . 330 NAD     B C1B 20.43 1.0 ?  -1  0 1 False False -1  False NAD  True  True  22 0.0    0.0    0.0    1 23
-HETATM N N9A . NAD     B 1 330 . 330 NAD     B N9A 20.8  1.0 ?  -1  0 1 False False -1  False NAD  True  True  23 0.0    0.0    0.0    1 24
-HETATM C C8A . NAD     B 1 330 . 330 NAD     B C8A 20.51 1.0 ?  -1  0 1 False False -1  False NAD  True  True  24 0.0    0.0    0.0    1 25
-HETATM N N7A . NAD     B 1 330 . 330 NAD     B N7A 20.47 1.0 ?  -1  0 1 False False -1  False NAD  True  True  25 0.0    0.0    0.0    1 26
-HETATM C C5A . NAD     B 1 330 . 330 NAD     B C5A 20.43 1.0 ?  -1  0 1 False False -1  False NAD  True  True  26 0.0    0.0    0.0    1 27
-HETATM C C6A . NAD     B 1 330 . 330 NAD     B C6A 20.13 1.0 ?  -1  0 1 False False -1  False NAD  True  True  27 0.0    0.0    0.0    1 28
-HETATM N N6A . NAD     B 1 330 . 330 NAD     B N6A 19.88 1.0 ?  -1  0 1 False False -1  False NAD  True  True  28 0.0    0.0    0.0    1 29
-HETATM N N1A . NAD     B 1 330 . 330 NAD     B N1A 18.74 1.0 ?  -1  0 1 False False -1  False NAD  True  True  29 0.0    0.0    0.0    1 30
-HETATM C C2A . NAD     B 1 330 . 330 NAD     B C2A 18.49 1.0 ?  -1  0 1 False False -1  False NAD  True  True  30 0.0    0.0    0.0    1 31
-HETATM N N3A . NAD     B 1 330 . 330 NAD     B N3A 18.85 1.0 ?  -1  0 1 False False -1  False NAD  True  True  31 0.0    0.0    0.0    1 32
-HETATM C C4A . NAD     B 1 330 . 330 NAD     B C4A 20.21 1.0 ?  -1  0 1 False False -1  False NAD  True  True  32 0.0    0.0    0.0    1 33
-HETATM O O3  . NAD     B 1 330 . 330 NAD     B O3  17.81 1.0 ?  -1  0 1 False False -1  False NAD  True  True  33 0.0    0.0    0.0    1 34
-HETATM P PN  . NAD     B 1 330 . 330 NAD     B PN  15.81 1.0 ?  -1  0 1 False False -1  False NAD  True  True  34 0.0    0.0    0.0    1 35
-HETATM O O1N . NAD     B 1 330 . 330 NAD     B O1N 16.04 1.0 ?  -1  0 1 False False -1  False NAD  True  True  35 0.0    0.0    0.0    1 36
-HETATM O O2N . NAD     B 1 330 . 330 NAD     B O2N 13.55 1.0 -1 -1  0 1 False False -1  False NAD  True  True  36 0.0    0.0    0.0    1 37
-HETATM O O5D . NAD     B 1 330 . 330 NAD     B O5D 15.12 1.0 ?  -1  0 1 False False -1  False NAD  True  True  37 0.0    0.0    0.0    1 38
-HETATM C C5D . NAD     B 1 330 . 330 NAD     B C5D 14.99 1.0 ?  -1  0 1 False False -1  False NAD  True  True  38 0.0    0.0    0.0    1 39
-HETATM C C4D . NAD     B 1 330 . 330 NAD     B C4D 14.81 1.0 ?  -1  0 1 False False -1  False NAD  True  True  39 0.0    0.0    0.0    1 40
-HETATM O O4D . NAD     B 1 330 . 330 NAD     B O4D 14.68 1.0 ?  -1  0 1 False False -1  False NAD  True  True  40 0.0    0.0    0.0    1 41
-HETATM C C3D . NAD     B 1 330 . 330 NAD     B C3D 14.02 1.0 ?  -1  0 1 False False -1  False NAD  True  True  41 0.0    0.0    0.0    1 42
-HETATM O O3D . NAD     B 1 330 . 330 NAD     B O3D 12.79 1.0 ?  -1  0 1 False False -1  False NAD  True  True  42 0.0    0.0    0.0    1 43
-HETATM C C2D . NAD     B 1 330 . 330 NAD     B C2D 14.54 1.0 ?  -1  0 1 False False -1  False NAD  True  True  43 0.0    0.0    0.0    1 44
-HETATM O O2D . NAD     B 1 330 . 330 NAD     B O2D 15.78 1.0 ?  -1  0 1 False False -1  False NAD  True  True  44 0.0    0.0    0.0    1 45
-HETATM C C1D . NAD     B 1 330 . 330 NAD     B C1D 13.28 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  45 -4.22  2.623  3.403  1 46
-HETATM N N1N . NAD     B 1 330 . 330 NAD     B N1N 12.82 1.0 +1 -1  0 1 True  False -1  False NAD  True  True  46 -3.83  1.703  2.362  1 47
-HETATM C C2N . NAD     B 1 330 . 330 NAD     B C2N 12.81 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  47 -2.976 0.718  2.734  1 48
-HETATM C C3N . NAD     B 1 330 . 330 NAD     B C3N 12.69 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  48 -2.493 -0.146 1.789  1 49
-HETATM C C7N . NAD     B 1 330 . 330 NAD     B C7N 13.14 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  49 -1.527 -1.329 2.126  1 50
-HETATM O O7N . NAD     B 1 330 . 330 NAD     B O7N 12.55 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  50 -1.246 -2.122 1.222  1 51
-HETATM N N7N . NAD     B 1 330 . 330 NAD     B N7N 12.03 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  51 -1.033 -1.302 3.372  1 52
-HETATM C C4N . NAD     B 1 330 . 330 NAD     B C4N 12.35 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  52 -2.92  -0.168 0.439  1 53
-HETATM C C5N . NAD     B 1 330 . 330 NAD     B C5N 12.15 1.0 ?  -1  0 1 True  False -1  False NAD  True  True  53 -3.762 0.92   0.156  1 54
-HETATM C C6N . NAD     B 1 330 . 330 NAD     B C6N 12.39 1.0 ?  -1  0 1 False False -1  False NAD  True  True  54 0.0    0.0    0.0    1 55
-HETATM C C1  . OXM     C 2 331 . 331 OXM     C C1  31.98 1.0 ?  -1  0 2 True  False -1  False OXM  True  True  55 -0.414 1.453  -0.719 1 56
-HETATM N N1  . OXM     C 2 331 . 331 OXM     C N1  31.86 1.0 ?  -1  0 2 True  False -1  False OXM  True  True  56 -1.08  2.557  -0.9   1 57
-HETATM O O1  . OXM     C 2 331 . 331 OXM     C O1  32.33 1.0 ?  -1  0 2 False False -1  False OXM  True  True  57 0.0    0.0    0.0    1 58
-HETATM C C2  . OXM     C 2 331 . 331 OXM     C C2  31.91 1.0 ?  -1  0 2 True  False -1  False OXM  True  True  58 -0.439 0.437  -1.918 1 59
-HETATM O O2  . OXM     C 2 331 . 331 OXM     C O2  31.61 1.0 ?  -1  0 2 True  False -1  False OXM  True  True  59 -1.288 0.639  -2.84  1 60
-HETATM O O3  . OXM     C 2 331 . 331 OXM     C O3  31.93 1.0 ?  -1  0 2 True  False -1  False OXM  True  True  60 0.734  -0.018 -2.075 1 61
-#
-_rfd_design.sampled_contig   180-180
+HETATM X UNK . 180-180 A 0 0   . 0   180-180 A UNK 1  nan   0.0 ?  0 True  True  180 False 180 False 0 .    True  0  nan     nan    nan    1
+ATOM   C CD  . ARG     A 0 1   . 1   ARG     A CD  2  20.91 1.0 ?  4 False False -1  True  -1  True  0 A106 False 1  3.23    3.186  1.554  1
+ATOM   N NE  . ARG     A 0 1   . 1   ARG     A NE  3  20.86 1.0 ?  4 False False -1  True  -1  True  0 A106 False 2  2.712   2.488  0.385  1
+ATOM   C CZ  . ARG     A 0 1   . 1   ARG     A CZ  4  20.88 1.0 ?  4 False False -1  True  -1  True  0 A106 False 3  3.336   2.54   -0.804 1
+ATOM   C CG  . ASP     A 0 2   . 2   ASP     A CG  5  8.44  1.0 ?  5 False False -1  True  -1  True  0 A166 False 4  5.08    -4.16  -1.172 1
+ATOM   O OD1 . ASP     A 0 2   . 2   ASP     A OD1 6  9.05  1.0 ?  5 False False -1  True  -1  True  0 A166 False 5  5.318   -3.117 -1.791 1
+ATOM   C CZ  . ARG     A 0 3   . 3   ARG     A CZ  7  8.07  1.0 ?  6 False False -1  True  -1  True  0 A169 False 6  0.59    -2.031 -5.154 1
+ATOM   N NH2 . ARG     A 0 3   . 3   ARG     A NH2 8  6.39  1.0 +1 6 False False -1  True  -1  True  0 A169 False 7  -0.534  -1.268 -5.219 1
+ATOM   C CD2 . HIS     A 0 4   . 4   HIS     A CD2 9  14.23 1.0 ?  7 False False -1  True  -1  True  0 A193 False 8  2.405   -0.657 2.011  1
+ATOM   C CE1 . HIS     A 0 4   . 4   HIS     A CE1 10 14.2  1.0 ?  7 False False -1  True  -1  True  0 A193 False 9  2.488   -1.978 0.259  1
+ATOM   N NE2 . HIS     A 0 4   . 4   HIS     A NE2 11 14.53 1.0 ?  7 False False -1  True  -1  True  0 A193 False 10 1.858   -0.961 0.785  1
+HETATM P PA  . NAD     B 1 330 . 330 NAD     B PA  12 18.28 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  11 -10.241 6.697  2.805  1
+HETATM O O1A . NAD     B 1 330 . 330 NAD     B O1A 13 20.34 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  12 -10.534 8.051  2.395  1
+HETATM O O2A . NAD     B 1 330 . 330 NAD     B O2A 14 16.75 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  13 -11.313 5.855  2.263  1
+HETATM O O5B . NAD     B 1 330 . 330 NAD     B O5B 15 18.73 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  14 -10.457 6.743  4.386  1
+HETATM C C5B . NAD     B 1 330 . 330 NAD     B C5B 16 19.68 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  15 -10.914 5.479  5.027  1
+HETATM C C4B . NAD     B 1 330 . 330 NAD     B C4B 17 19.39 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  16 -11.941 5.611  6.051  1
+HETATM O O4B . NAD     B 1 330 . 330 NAD     B O4B 18 20.38 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  17 -11.507 5.57   7.414  1
+HETATM C C3B . NAD     B 1 330 . 330 NAD     B C3B 19 19.93 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  18 -13.199 6.445  5.987  1
+HETATM O O3B . NAD     B 1 330 . 330 NAD     B O3B 20 19.6  1.0 ?  1 False False -1  True  -1  False 0 NAD  True  19 -14.366 5.587  6.007  1
+HETATM C C2B . NAD     B 1 330 . 330 NAD     B C2B 21 19.93 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  20 -13.144 7.232  7.307  1
+HETATM O O2B . NAD     B 1 330 . 330 NAD     B O2B 22 21.23 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  21 -14.435 7.636  7.74   1
+HETATM C C1B . NAD     B 1 330 . 330 NAD     B C1B 23 20.43 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  22 -12.465 6.186  8.201  1
+HETATM N N9A . NAD     B 1 330 . 330 NAD     B N9A 24 20.8  1.0 ?  1 False False -1  True  -1  False 0 NAD  True  23 -11.997 6.662  9.488  1
+HETATM C C8A . NAD     B 1 330 . 330 NAD     B C8A 25 20.51 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  24 -11.399 7.836  9.866  1
+HETATM N N7A . NAD     B 1 330 . 330 NAD     B N7A 26 20.47 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  25 -11.241 7.934  11.179 1
+HETATM C C5A . NAD     B 1 330 . 330 NAD     B C5A 27 20.43 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  26 -11.916 6.846  11.698 1
+HETATM C C6A . NAD     B 1 330 . 330 NAD     B C6A 28 20.13 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  27 -12.148 6.39   13.006 1
+HETATM N N6A . NAD     B 1 330 . 330 NAD     B N6A 29 19.88 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  28 -11.784 7.027  14.113 1
+HETATM N N1A . NAD     B 1 330 . 330 NAD     B N1A 30 18.74 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  29 -12.761 5.167  13.149 1
+HETATM C C2A . NAD     B 1 330 . 330 NAD     B C2A 31 18.49 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  30 -13.079 4.482  12.028 1
+HETATM N N3A . NAD     B 1 330 . 330 NAD     B N3A 32 18.85 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  31 -12.937 4.816  10.79  1
+HETATM C C4A . NAD     B 1 330 . 330 NAD     B C4A 33 20.21 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  32 -12.373 6.027  10.681 1
+HETATM O O3  . NAD     B 1 330 . 330 NAD     B O3  34 17.81 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  33 -8.885  5.94   2.53   1
+HETATM P PN  . NAD     B 1 330 . 330 NAD     B PN  35 15.81 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  34 -8.48   4.583  1.823  1
+HETATM O O1N . NAD     B 1 330 . 330 NAD     B O1N 36 16.04 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  35 -8.145  4.792  0.425  1
+HETATM O O2N . NAD     B 1 330 . 330 NAD     B O2N 37 13.55 1.0 -1 1 False False -1  True  -1  False 0 NAD  True  36 -9.537  3.58   1.928  1
+HETATM O O5D . NAD     B 1 330 . 330 NAD     B O5D 38 15.12 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  37 -7.205  4.115  2.651  1
+HETATM C C5D . NAD     B 1 330 . 330 NAD     B C5D 39 14.99 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  38 -7.424  3.819  4.046  1
+HETATM C C4D . NAD     B 1 330 . 330 NAD     B C4D 40 14.81 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  39 -6.037  3.445  4.55   1
+HETATM O O4D . NAD     B 1 330 . 330 NAD     B O4D 41 14.68 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  40 -5.567  2.319  3.771  1
+HETATM C C3D . NAD     B 1 330 . 330 NAD     B C3D 42 14.02 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  41 -5.034  4.615  4.294  1
+HETATM O O3D . NAD     B 1 330 . 330 NAD     B O3D 43 12.79 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  42 -4.194  4.596  5.456  1
+HETATM C C2D . NAD     B 1 330 . 330 NAD     B C2D 44 14.54 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  43 -4.213  4.093  3.121  1
+HETATM O O2D . NAD     B 1 330 . 330 NAD     B O2D 45 15.78 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  44 -2.895  4.704  3.121  1
+HETATM C C1D . NAD     B 1 330 . 330 NAD     B C1D 46 13.28 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  45 -4.22   2.623  3.403  1
+HETATM N N1N . NAD     B 1 330 . 330 NAD     B N1N 47 12.82 1.0 +1 1 False False -1  True  -1  True  0 NAD  True  46 -3.83   1.703  2.362  1
+HETATM C C2N . NAD     B 1 330 . 330 NAD     B C2N 48 12.81 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  47 -2.976  0.718  2.734  1
+HETATM C C3N . NAD     B 1 330 . 330 NAD     B C3N 49 12.69 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  48 -2.493  -0.146 1.789  1
+HETATM C C7N . NAD     B 1 330 . 330 NAD     B C7N 50 13.14 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  49 -1.527  -1.329 2.126  1
+HETATM O O7N . NAD     B 1 330 . 330 NAD     B O7N 51 12.55 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  50 -1.246  -2.122 1.222  1
+HETATM N N7N . NAD     B 1 330 . 330 NAD     B N7N 52 12.03 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  51 -1.033  -1.302 3.372  1
+HETATM C C4N . NAD     B 1 330 . 330 NAD     B C4N 53 12.35 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  52 -2.92   -0.168 0.439  1
+HETATM C C5N . NAD     B 1 330 . 330 NAD     B C5N 54 12.15 1.0 ?  1 False False -1  True  -1  True  0 NAD  True  53 -3.762  0.92   0.156  1
+HETATM C C6N . NAD     B 1 330 . 330 NAD     B C6N 55 12.39 1.0 ?  1 False False -1  True  -1  False 0 NAD  True  54 -4.301  1.8    1.022  1
+HETATM C C1  . OXM     C 2 331 . 331 OXM     C C1  56 31.98 1.0 ?  2 False False -1  True  -1  True  0 OXM  True  55 -0.414  1.453  -0.719 1
+HETATM N N1  . OXM     C 2 331 . 331 OXM     C N1  57 31.86 1.0 ?  2 False False -1  True  -1  True  0 OXM  True  56 -1.08   2.557  -0.9   1
+HETATM O O1  . OXM     C 2 331 . 331 OXM     C O1  58 32.33 1.0 ?  2 False False -1  True  -1  False 0 OXM  True  57 0.461   1.267  0.165  1
+HETATM C C2  . OXM     C 2 331 . 331 OXM     C C2  59 31.91 1.0 ?  2 False False -1  True  -1  True  0 OXM  True  58 -0.439  0.437  -1.918 1
+HETATM O O2  . OXM     C 2 331 . 331 OXM     C O2  60 31.61 1.0 ?  2 False False -1  True  -1  True  0 OXM  True  59 -1.288  0.639  -2.84  1
+HETATM O O3  . OXM     C 2 331 . 331 OXM     C O3  61 31.93 1.0 ?  2 False False -1  True  -1  True  0 OXM  True  60 0.734   -0.018 -2.075 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -307,6 +305,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK  X 0  N N nan                   nan                   nan
 ARG     N    N 0  N N -0.4690000116825104   1.1100000143051147    -0.9929999709129333
 ARG     CA   C 0  N N 0.004000000189989805  2.2939999103546143    -1.7079999446868896
 ARG     C    C 0  N N -0.9070000052452087   2.5209999084472656    -2.9010000228881836
@@ -451,5 +450,4 @@ OXM     O3   O 0  N N -0.890999972820282    -0.0                  -1.58500003814
 OXM     HN1  H 0  N N 0.7179999947547913    0.0                   2.5820000171661377
 OXM     HN2  H 0  N N 1.8049999475479126    -0.003000000026077032 1.3020000457763672
 OXM     HO3  H 0  N N -0.7179999947547913   -0.0                  -2.5360000133514404
-180-180 UNK  X 0  N N nan                   nan                   nan
 #

@@ -1,9 +1,9 @@
 data_M0058_1cju.cif
 #
 _entry.id       M0058_1cju.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     19:24:30
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:54
 #
 loop_
 _entity.id 
@@ -204,72 +204,70 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.annotation_expsegmax_1_residue 
-_atom_site.mask_sequence_1_residue 
 _atom_site.condition_index-group_1_token 
 _atom_site.mask_expsegmin_1_residue 
-_atom_site.mask_coordinate_1_atom 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.mask_index_1_residue 
-_atom_site.annotation_src-component_1_atom 
-_atom_site.condition_hbond_1_atom 
 _atom_site.mask_expsegmax_1_residue 
+_atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
+_atom_site.annotation_src-component_1_atom 
+_atom_site.mask_index_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X  UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan   0.0 ?  180 False 0 True  False 180 True  .     0 True  0  nan    nan    nan    1 1
-ATOM   C  CG    . ASP     A 0 1   . 1   ASP     A CG    46.36 1.0 ?  -1  True  4 False True  -1  False A396  0 False 1  -3.814 -0.834 3.434  1 2
-ATOM   O  OD2   . ASP     A 0 1   . 1   ASP     A OD2   47.17 1.0 ?  -1  True  4 False True  -1  False A396  0 False 2  -2.896 0.007  3.515  1 3
-ATOM   C  CA    . ILE     A 0 2   . 2   ILE     A CA    46.34 1.0 ?  -1  True  5 False True  -1  False A397  0 False 3  -0.829 -2.001 6.479  1 4
-ATOM   C  C     . ILE     A 0 2   . 2   ILE     A C     46.26 1.0 ?  -1  True  5 False True  -1  False A397  0 False 4  -0.344 -0.631 6.021  1 5
-ATOM   O  O     . ILE     A 0 2   . 2   ILE     A O     45.08 1.0 ?  -1  True  5 False True  -1  False A397  0 False 5  -0.522 -0.256 4.864  1 6
-ATOM   C  CG    . ASP     A 0 3   . 3   ASP     A CG    43.41 1.0 ?  -1  True  6 False True  -1  False A440  0 False 6  -0.931 -3.392 2.424  1 7
-ATOM   O  OD2   . ASP     A 0 3   . 3   ASP     A OD2   43.89 1.0 ?  -1  True  6 False True  -1  False A440  0 False 7  -0.496 -2.351 2.964  1 8
-ATOM   N  NE    . ARG     A 0 4   . 4   ARG     A NE    33.97 1.0 ?  -1  True  7 False True  -1  False B1029 0 False 8  2.881  2.671  -4.862 1 9
-ATOM   C  CZ    . ARG     A 0 4   . 4   ARG     A CZ    34.33 1.0 ?  -1  True  7 False True  -1  False B1029 0 False 9  1.91   2.313  -4.021 1 10
-ATOM   N  NH1   . ARG     A 0 4   . 4   ARG     A NH1   31.55 1.0 ?  -1  True  7 False True  -1  False B1029 0 False 10 0.778  1.778  -4.474 1 11
-ATOM   N  NH2   . ARG     A 0 4   . 4   ARG     A NH2   34.46 1.0 +1 -1  True  7 False True  -1  False B1029 0 False 11 2.091  2.463  -2.712 1 12
-ATOM   C  CD    . LYS     A 0 5   . 5   LYS     A CD    61.35 1.0 ?  -1  True  8 False True  -1  False B1065 0 False 12 2.03   5.862  -0.694 1 13
-ATOM   C  CE    . LYS     A 0 5   . 5   LYS     A CE    63.48 1.0 ?  -1  True  8 False True  -1  False B1065 0 False 13 2.196  5.995  0.814  1 14
-ATOM   N  NZ    . LYS     A 0 5   . 5   LYS     A NZ    65.44 1.0 +1 -1  True  8 False True  -1  False B1065 0 False 14 0.919  5.824  1.551  1 15
-HETATM P  PG    . DAD     C 1 102 . 102 DAD     C PG    46.52 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 15 -0.44  3.018  2.462  1 16
-HETATM O  O1G   . DAD     C 1 102 . 102 DAD     C O1G   44.62 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 16 -0.876 4.146  1.6    1 17
-HETATM O  O2G   . DAD     C 1 102 . 102 DAD     C O2G   44.3  1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 17 -1.302 1.813  2.587  1 18
-HETATM O  O3G   . DAD     C 1 102 . 102 DAD     C O3G   46.96 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 18 -0.158 3.544  3.826  1 19
-HETATM P  PB    . DAD     C 1 102 . 102 DAD     C PB    46.56 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 19 1.447  1.37   1.34   1 20
-HETATM O  O1B   . DAD     C 1 102 . 102 DAD     C O1B   46.32 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 20 1.068  0.177  2.143  1 21
-HETATM O  O2B   . DAD     C 1 102 . 102 DAD     C O2B   45.88 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 21 2.866  1.592  0.984  1 22
-HETATM O  O3B   . DAD     C 1 102 . 102 DAD     C O3B   46.95 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 22 0.936  2.59   2.04   1 23
-HETATM P  PA    . DAD     C 1 102 . 102 DAD     C PA    43.87 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 23 -0.315 0.459  -0.608 1 24
-HETATM O  O1A   . DAD     C 1 102 . 102 DAD     C O1A   43.24 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 24 -0.842 1.14   -1.821 1 25
-HETATM O  O2A   . DAD     C 1 102 . 102 DAD     C O2A   41.67 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 25 -1.262 -0.077 0.411  1 26
-HETATM O  O3A   . DAD     C 1 102 . 102 DAD     C O3A   46.1  1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 26 0.64   1.385  0.074  1 27
-HETATM O  "O5'" . DAD     C 1 102 . 102 DAD     C "O5'" 44.84 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 27 0.676  -0.689 -1.1   1 28
-HETATM C  "C5'" . DAD     C 1 102 . 102 DAD     C "C5'" 42.17 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 28 0.251  -2.045 -1.184 1 29
-HETATM C  "C4'" . DAD     C 1 102 . 102 DAD     C "C4'" 40.98 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 29 -0.364 -2.315 -2.537 1 30
-HETATM O  "O4'" . DAD     C 1 102 . 102 DAD     C "O4'" 40.01 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 30 -0.929 -3.648 -2.514 1 31
-HETATM C  "C3'" . DAD     C 1 102 . 102 DAD     C "C3'" 40.91 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 31 0.577  -2.279 -3.741 1 32
-HETATM C  "C2'" . DAD     C 1 102 . 102 DAD     C "C2'" 38.97 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 32 -0.079 -3.246 -4.731 1 33
-HETATM C  "C1'" . DAD     C 1 102 . 102 DAD     C "C1'" 38.66 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 33 -0.771 -4.218 -3.789 1 34
-HETATM N  N9    . DAD     C 1 102 . 102 DAD     C N9    37.14 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 34 -0.506 -5.65  -3.706 1 35
-HETATM C  C8    . DAD     C 1 102 . 102 DAD     C C8    36.81 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 35 0.63   -6.269 -3.273 1 36
-HETATM N  N7    . DAD     C 1 102 . 102 DAD     C N7    38.26 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 36 0.0    0.0    0.0    1 37
-HETATM C  C5    . DAD     C 1 102 . 102 DAD     C C5    37.64 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 37 0.0    0.0    0.0    1 38
-HETATM C  C6    . DAD     C 1 102 . 102 DAD     C C6    39.36 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 38 0.0    0.0    0.0    1 39
-HETATM N  N6    . DAD     C 1 102 . 102 DAD     C N6    40.21 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 39 0.0    0.0    0.0    1 40
-HETATM N  N1    . DAD     C 1 102 . 102 DAD     C N1    38.76 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 40 0.0    0.0    0.0    1 41
-HETATM C  C2    . DAD     C 1 102 . 102 DAD     C C2    37.43 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 41 0.0    0.0    0.0    1 42
-HETATM N  N3    . DAD     C 1 102 . 102 DAD     C N3    37.62 1.0 ?  -1  True  1 False False -1  True  DAD   0 False 42 0.0    0.0    0.0    1 43
-HETATM C  C4    . DAD     C 1 102 . 102 DAD     C C4    37.35 1.0 ?  -1  True  1 False True  -1  True  DAD   0 False 43 -1.386 -6.653 -4.025 1 44
-HETATM MG MG    . MG      D 2 582 . 582 MG      D MG    53.65 1.0 +2 -1  True  2 False True  -1  True  MG    0 False 44 -2.829 -1.595 0.254  1 45
-#
-_rfd_design.sampled_contig   180-180
+HETATM X  UNK   . 180-180 A 0 0   . 0   180-180 A UNK   1  nan   0.0 ?  0 True  True  180 False 180 False 0 .     True  0  nan    nan     nan    1
+ATOM   C  CG    . ASP     A 0 1   . 1   ASP     A CG    2  46.36 1.0 ?  4 False False -1  True  -1  True  0 A396  False 1  -3.814 -0.834  3.434  1
+ATOM   O  OD2   . ASP     A 0 1   . 1   ASP     A OD2   3  47.17 1.0 ?  4 False False -1  True  -1  True  0 A396  False 2  -2.896 0.007   3.515  1
+ATOM   C  CA    . ILE     A 0 2   . 2   ILE     A CA    4  46.34 1.0 ?  5 False False -1  True  -1  True  0 A397  False 3  -0.829 -2.001  6.479  1
+ATOM   C  C     . ILE     A 0 2   . 2   ILE     A C     5  46.26 1.0 ?  5 False False -1  True  -1  True  0 A397  False 4  -0.344 -0.631  6.021  1
+ATOM   O  O     . ILE     A 0 2   . 2   ILE     A O     6  45.08 1.0 ?  5 False False -1  True  -1  True  0 A397  False 5  -0.522 -0.256  4.864  1
+ATOM   C  CG    . ASP     A 0 3   . 3   ASP     A CG    7  43.41 1.0 ?  6 False False -1  True  -1  True  0 A440  False 6  -0.931 -3.392  2.424  1
+ATOM   O  OD2   . ASP     A 0 3   . 3   ASP     A OD2   8  43.89 1.0 ?  6 False False -1  True  -1  True  0 A440  False 7  -0.496 -2.351  2.964  1
+ATOM   N  NE    . ARG     A 0 4   . 4   ARG     A NE    9  33.97 1.0 ?  7 False False -1  True  -1  True  0 B1029 False 8  2.881  2.671   -4.862 1
+ATOM   C  CZ    . ARG     A 0 4   . 4   ARG     A CZ    10 34.33 1.0 ?  7 False False -1  True  -1  True  0 B1029 False 9  1.91   2.313   -4.021 1
+ATOM   N  NH1   . ARG     A 0 4   . 4   ARG     A NH1   11 31.55 1.0 ?  7 False False -1  True  -1  True  0 B1029 False 10 0.778  1.778   -4.474 1
+ATOM   N  NH2   . ARG     A 0 4   . 4   ARG     A NH2   12 34.46 1.0 +1 7 False False -1  True  -1  True  0 B1029 False 11 2.091  2.463   -2.712 1
+ATOM   C  CD    . LYS     A 0 5   . 5   LYS     A CD    13 61.35 1.0 ?  8 False False -1  True  -1  True  0 B1065 False 12 2.03   5.862   -0.694 1
+ATOM   C  CE    . LYS     A 0 5   . 5   LYS     A CE    14 63.48 1.0 ?  8 False False -1  True  -1  True  0 B1065 False 13 2.196  5.995   0.814  1
+ATOM   N  NZ    . LYS     A 0 5   . 5   LYS     A NZ    15 65.44 1.0 +1 8 False False -1  True  -1  True  0 B1065 False 14 0.919  5.824   1.551  1
+HETATM P  PG    . DAD     C 1 102 . 102 DAD     C PG    16 46.52 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  15 -0.44  3.018   2.462  1
+HETATM O  O1G   . DAD     C 1 102 . 102 DAD     C O1G   17 44.62 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  16 -0.876 4.146   1.6    1
+HETATM O  O2G   . DAD     C 1 102 . 102 DAD     C O2G   18 44.3  1.0 ?  1 False False -1  True  -1  True  0 DAD   True  17 -1.302 1.813   2.587  1
+HETATM O  O3G   . DAD     C 1 102 . 102 DAD     C O3G   19 46.96 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  18 -0.158 3.544   3.826  1
+HETATM P  PB    . DAD     C 1 102 . 102 DAD     C PB    20 46.56 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  19 1.447  1.37    1.34   1
+HETATM O  O1B   . DAD     C 1 102 . 102 DAD     C O1B   21 46.32 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  20 1.068  0.177   2.143  1
+HETATM O  O2B   . DAD     C 1 102 . 102 DAD     C O2B   22 45.88 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  21 2.866  1.592   0.984  1
+HETATM O  O3B   . DAD     C 1 102 . 102 DAD     C O3B   23 46.95 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  22 0.936  2.59    2.04   1
+HETATM P  PA    . DAD     C 1 102 . 102 DAD     C PA    24 43.87 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  23 -0.315 0.459   -0.608 1
+HETATM O  O1A   . DAD     C 1 102 . 102 DAD     C O1A   25 43.24 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  24 -0.842 1.14    -1.821 1
+HETATM O  O2A   . DAD     C 1 102 . 102 DAD     C O2A   26 41.67 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  25 -1.262 -0.077  0.411  1
+HETATM O  O3A   . DAD     C 1 102 . 102 DAD     C O3A   27 46.1  1.0 ?  1 False False -1  True  -1  True  0 DAD   True  26 0.64   1.385   0.074  1
+HETATM O  "O5'" . DAD     C 1 102 . 102 DAD     C "O5'" 28 44.84 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  27 0.676  -0.689  -1.1   1
+HETATM C  "C5'" . DAD     C 1 102 . 102 DAD     C "C5'" 29 42.17 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  28 0.251  -2.045  -1.184 1
+HETATM C  "C4'" . DAD     C 1 102 . 102 DAD     C "C4'" 30 40.98 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  29 -0.364 -2.315  -2.537 1
+HETATM O  "O4'" . DAD     C 1 102 . 102 DAD     C "O4'" 31 40.01 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  30 -0.929 -3.648  -2.514 1
+HETATM C  "C3'" . DAD     C 1 102 . 102 DAD     C "C3'" 32 40.91 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  31 0.577  -2.279  -3.741 1
+HETATM C  "C2'" . DAD     C 1 102 . 102 DAD     C "C2'" 33 38.97 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  32 -0.079 -3.246  -4.731 1
+HETATM C  "C1'" . DAD     C 1 102 . 102 DAD     C "C1'" 34 38.66 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  33 -0.771 -4.218  -3.789 1
+HETATM N  N9    . DAD     C 1 102 . 102 DAD     C N9    35 37.14 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  34 -0.506 -5.65   -3.706 1
+HETATM C  C8    . DAD     C 1 102 . 102 DAD     C C8    36 36.81 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  35 0.63   -6.269  -3.273 1
+HETATM N  N7    . DAD     C 1 102 . 102 DAD     C N7    37 38.26 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  36 0.555  -7.574  -3.295 1
+HETATM C  C5    . DAD     C 1 102 . 102 DAD     C C5    38 37.64 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  37 -0.714 -7.827  -3.781 1
+HETATM C  C6    . DAD     C 1 102 . 102 DAD     C C6    39 39.36 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  38 -1.412 -9.02   -4.032 1
+HETATM N  N6    . DAD     C 1 102 . 102 DAD     C N6    40 40.21 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  39 -0.882 -10.237 -3.854 1
+HETATM N  N1    . DAD     C 1 102 . 102 DAD     C N1    41 38.76 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  40 -2.672 -8.927  -4.517 1
+HETATM C  C2    . DAD     C 1 102 . 102 DAD     C C2    42 37.43 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  41 -3.189 -7.708  -4.703 1
+HETATM N  N3    . DAD     C 1 102 . 102 DAD     C N3    43 37.62 1.0 ?  1 False False -1  True  -1  False 0 DAD   True  42 -2.637 -6.515  -4.503 1
+HETATM C  C4    . DAD     C 1 102 . 102 DAD     C C4    44 37.35 1.0 ?  1 False False -1  True  -1  True  0 DAD   True  43 -1.386 -6.653  -4.025 1
+HETATM MG MG    . MG      D 2 582 . 582 MG      D MG    45 53.65 1.0 +2 2 False False -1  True  -1  True  0 MG    True  44 -2.829 -1.595  0.254  1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -281,6 +279,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK    X  0 N N nan                   nan                   nan
 ARG     N      N  0 N N -0.4690000116825104   1.1100000143051147    -0.9929999709129333
 ARG     CA     C  0 N N 0.004000000189989805  2.2939999103546143    -1.7079999446868896
 ARG     C      C  0 N N -0.9070000052452087   2.5209999084472656    -2.9010000228881836
@@ -417,5 +416,4 @@ LYS     HZ2    H  0 N N -4.735000133514404    -1.399999976158142    -0.204999998
 LYS     HZ3    H  0 N N -5.609000205993652    -0.03099999949336052  0.07100000232458115
 LYS     HXT    H  0 N Y 3.8610000610351562    -1.8860000371932983   0.11500000208616257
 MG      MG     MG 2 N N nan                   nan                   nan
-180-180 UNK    X  0 N N nan                   nan                   nan
 #

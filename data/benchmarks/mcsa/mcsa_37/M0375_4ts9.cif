@@ -1,9 +1,9 @@
 data_M0375_4ts9.cif
 #
 _entry.id       M0375_4ts9.cif
-_entry.author   rib7
-_entry.date     2026-08-28
-_entry.time     20:38:37
+_entry.author   michli26
+_entry.date     2026-09-23
+_entry.time     06:04:56
 #
 loop_
 _entity.id 
@@ -190,71 +190,69 @@ _atom_site.auth_seq_id
 _atom_site.auth_comp_id 
 _atom_site.auth_asym_id 
 _atom_site.auth_atom_id 
+_atom_site.id 
 _atom_site.B_iso_or_equiv 
 _atom_site.occupancy 
 _atom_site.pdbx_formal_charge 
-_atom_site.mask_sequence_1_residue 
+_atom_site.condition_index-group_1_token 
+_atom_site.mask_expsegmin_1_residue 
+_atom_site.mask_expsegmax_1_residue 
 _atom_site.annotation_expsegmax_1_residue 
+_atom_site.mask_sequence_1_residue 
+_atom_site.annotation_expsegmin_1_residue 
+_atom_site.mask_coordinate_1_atom 
+_atom_site.condition_hbond_1_atom 
 _atom_site.annotation_src-component_1_atom 
 _atom_site.mask_index_1_residue 
-_atom_site.mask_coordinate_1_atom 
-_atom_site.mask_expsegmin_1_residue 
-_atom_site.condition_hbond_1_atom 
-_atom_site.condition_index-group_1_token 
-_atom_site.annotation_expsegmin_1_residue 
-_atom_site.mask_expsegmax_1_residue 
 _atom_site.atom_array_index 
 _atom_site.Cartn_x 
 _atom_site.Cartn_y 
 _atom_site.Cartn_z 
 _atom_site.pdbx_PDB_model_num 
-_atom_site.id 
-HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   nan 0.0 ?  False 180 .    True  False True  0 0  180 True  0  nan    nan    nan    1 1
-ATOM   N N     . GLY     A 0 1   . 1   GLY     A N     0.0 1.0 ?  True  -1  A20  False True  False 0 4  -1  False 1  4.057  -0.455 3.999  1 2
-ATOM   C CA    . GLY     A 0 1   . 1   GLY     A CA    0.0 1.0 ?  True  -1  A20  False True  False 0 4  -1  False 2  3.866  0.912  4.452  1 3
-ATOM   C CB    . ARG     A 0 2   . 2   ARG     A CB    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 3  -0.178 -4.395 5.906  1 4
-ATOM   C CG    . ARG     A 0 2   . 2   ARG     A CG    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 4  -0.142 -5.518 4.877  1 5
-ATOM   C CD    . ARG     A 0 2   . 2   ARG     A CD    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 5  0.477  -5.048 3.569  1 6
-ATOM   N NE    . ARG     A 0 2   . 2   ARG     A NE    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 6  -0.145 -3.816 3.095  1 7
-ATOM   C CZ    . ARG     A 0 2   . 2   ARG     A CZ    0.0 1.0 ?  True  -1  A24  False True  False 0 5  -1  False 7  0.445  -2.964 2.265  1 8
-ATOM   C CZ    . ARG     A 0 3   . 3   ARG     A CZ    0.0 1.0 ?  True  -1  A87  False True  False 0 6  -1  False 8  6.522  0.327  -0.841 1 9
-ATOM   N NH2   . ARG     A 0 3   . 3   ARG     A NH2   0.0 1.0 +1 True  -1  A87  False True  False 0 6  -1  False 9  5.656  0.645  -1.796 1 10
-ATOM   C CB    . SER     A 0 4   . 4   SER     A CB    0.0 1.0 ?  True  -1  A90  False True  False 0 7  -1  False 10 0.159  -0.84  -2.53  1 11
-ATOM   O OG    . SER     A 0 4   . 4   SER     A OG    0.0 1.0 ?  True  -1  A90  False True  False 0 7  -1  False 11 -0.3   -1.543 -1.389 1 12
-ATOM   C CG    . ASP     A 0 5   . 5   ASP     A CG    0.0 1.0 ?  True  -1  A204 False True  False 0 8  -1  False 12 -3.507 2.507  -7.613 1 13
-ATOM   O OD1   . ASP     A 0 5   . 5   ASP     A OD1   0.0 1.0 ?  True  -1  A204 False True  False 0 8  -1  False 13 -2.806 2.107  -6.656 1 14
-ATOM   N NE    . ARG     A 0 6   . 6   ARG     A NE    0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 14 -5.653 0.262  -1.995 1 15
-ATOM   C CZ    . ARG     A 0 6   . 6   ARG     A CZ    0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 15 -5.437 1.289  -2.811 1 16
-ATOM   N NH1   . ARG     A 0 6   . 6   ARG     A NH1   0.0 1.0 ?  True  -1  A217 False True  False 0 9  -1  False 16 -4.358 2.046  -2.666 1 17
-ATOM   N NH2   . ARG     A 0 6   . 6   ARG     A NH2   0.0 1.0 +1 True  -1  A217 False True  False 0 9  -1  False 17 -6.305 1.561  -3.777 1 18
-ATOM   C CZ    . ARG     A 0 7   . 7   ARG     A CZ    0.0 1.0 ?  True  -1  C43  False True  False 0 10 -1  False 18 -1.098 2.66   2.769  1 19
-ATOM   N NH1   . ARG     A 0 7   . 7   ARG     A NH1   0.0 1.0 ?  True  -1  C43  False True  False 0 10 -1  False 19 0.06   2.576  3.416  1 20
-HETATM P P     . PO4     D 2 301 . 301 PO4     D P     0.0 1.0 ?  True  -1  PO4  True  True  False 0 1  -1  False 20 2.297  0.571  0.866  1 21
-HETATM O O1    . PO4     D 2 301 . 301 PO4     D O1    0.0 1.0 ?  True  -1  PO4  True  True  False 0 1  -1  False 21 3.017  0.822  -0.425 1 22
-HETATM O O2    . PO4     D 2 301 . 301 PO4     D O2    0.0 1.0 -1 True  -1  PO4  True  True  False 0 1  -1  False 22 0.877  0.15   0.59   1 23
-HETATM O O3    . PO4     D 2 301 . 301 PO4     D O3    0.0 1.0 -1 True  -1  PO4  True  False False 0 1  -1  False 23 0.0    0.0    0.0    1 24
-HETATM O O4    . PO4     D 2 301 . 301 PO4     D O4    0.0 1.0 -1 True  -1  PO4  True  False False 0 1  -1  False 24 0.0    0.0    0.0    1 25
-HETATM N N1    . FMC     B 1 300 . 300 FMC     B N1    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 25 0.0    0.0    0.0    1 26
-HETATM C C2    . FMC     B 1 300 . 300 FMC     B C2    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 26 0.0    0.0    0.0    1 27
-HETATM N N3    . FMC     B 1 300 . 300 FMC     B N3    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 27 0.0    0.0    0.0    1 28
-HETATM C C4    . FMC     B 1 300 . 300 FMC     B C4    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 28 0.0    0.0    0.0    1 29
-HETATM C C5    . FMC     B 1 300 . 300 FMC     B C5    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 29 0.0    0.0    0.0    1 30
-HETATM C C6    . FMC     B 1 300 . 300 FMC     B C6    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 30 0.0    0.0    0.0    1 31
-HETATM N N6    . FMC     B 1 300 . 300 FMC     B N6    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 31 0.0    0.0    0.0    1 32
-HETATM N N7    . FMC     B 1 300 . 300 FMC     B N7    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 32 0.0    0.0    0.0    1 33
-HETATM N N8    . FMC     B 1 300 . 300 FMC     B N8    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 33 0.0    0.0    0.0    1 34
-HETATM C C9    . FMC     B 1 300 . 300 FMC     B C9    0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 34 0.0    0.0    0.0    1 35
-HETATM C "C1'" . FMC     B 1 300 . 300 FMC     B "C1'" 0.0 1.0 ?  True  -1  FMC  True  True  False 0 2  -1  False 35 1.757  3.021  -2.15  1 36
-HETATM C "C2'" . FMC     B 1 300 . 300 FMC     B "C2'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 36 0.0    0.0    0.0    1 37
-HETATM O "O2'" . FMC     B 1 300 . 300 FMC     B "O2'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 37 0.0    0.0    0.0    1 38
-HETATM C "C3'" . FMC     B 1 300 . 300 FMC     B "C3'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 38 0.0    0.0    0.0    1 39
-HETATM O "O3'" . FMC     B 1 300 . 300 FMC     B "O3'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 39 0.0    0.0    0.0    1 40
-HETATM C "C4'" . FMC     B 1 300 . 300 FMC     B "C4'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 40 0.0    0.0    0.0    1 41
-HETATM O "O4'" . FMC     B 1 300 . 300 FMC     B "O4'" 0.0 1.0 ?  True  -1  FMC  True  True  False 0 2  -1  False 41 0.75   3.113  -1.16  1 42
-HETATM C "C5'" . FMC     B 1 300 . 300 FMC     B "C5'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 42 0.0    0.0    0.0    1 43
-HETATM O "O5'" . FMC     B 1 300 . 300 FMC     B "O5'" 0.0 1.0 ?  True  -1  FMC  True  False False 0 2  -1  False 43 0.0    0.0    0.0    1 44
-#
-_rfd_design.sampled_contig   180-180
+HETATM X UNK   . 180-180 A 0 0   . 0   180-180 A UNK   1  nan 0.0 ?  0  True  True  180 False 180 False 0 .    True  0  nan    nan    nan    1
+ATOM   N N     . GLY     A 0 1   . 1   GLY     A N     2  0.0 1.0 ?  4  False False -1  True  -1  True  0 A20  False 1  4.057  -0.455 3.999  1
+ATOM   C CA    . GLY     A 0 1   . 1   GLY     A CA    3  0.0 1.0 ?  4  False False -1  True  -1  True  0 A20  False 2  3.866  0.912  4.452  1
+ATOM   C CB    . ARG     A 0 2   . 2   ARG     A CB    4  0.0 1.0 ?  5  False False -1  True  -1  True  0 A24  False 3  -0.178 -4.395 5.906  1
+ATOM   C CG    . ARG     A 0 2   . 2   ARG     A CG    5  0.0 1.0 ?  5  False False -1  True  -1  True  0 A24  False 4  -0.142 -5.518 4.877  1
+ATOM   C CD    . ARG     A 0 2   . 2   ARG     A CD    6  0.0 1.0 ?  5  False False -1  True  -1  True  0 A24  False 5  0.477  -5.048 3.569  1
+ATOM   N NE    . ARG     A 0 2   . 2   ARG     A NE    7  0.0 1.0 ?  5  False False -1  True  -1  True  0 A24  False 6  -0.145 -3.816 3.095  1
+ATOM   C CZ    . ARG     A 0 2   . 2   ARG     A CZ    8  0.0 1.0 ?  5  False False -1  True  -1  True  0 A24  False 7  0.445  -2.964 2.265  1
+ATOM   C CZ    . ARG     A 0 3   . 3   ARG     A CZ    9  0.0 1.0 ?  6  False False -1  True  -1  True  0 A87  False 8  6.522  0.327  -0.841 1
+ATOM   N NH2   . ARG     A 0 3   . 3   ARG     A NH2   10 0.0 1.0 +1 6  False False -1  True  -1  True  0 A87  False 9  5.656  0.645  -1.796 1
+ATOM   C CB    . SER     A 0 4   . 4   SER     A CB    11 0.0 1.0 ?  7  False False -1  True  -1  True  0 A90  False 10 0.159  -0.84  -2.53  1
+ATOM   O OG    . SER     A 0 4   . 4   SER     A OG    12 0.0 1.0 ?  7  False False -1  True  -1  True  0 A90  False 11 -0.3   -1.543 -1.389 1
+ATOM   C CG    . ASP     A 0 5   . 5   ASP     A CG    13 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 12 -3.507 2.507  -7.613 1
+ATOM   O OD1   . ASP     A 0 5   . 5   ASP     A OD1   14 0.0 1.0 ?  8  False False -1  True  -1  True  0 A204 False 13 -2.806 2.107  -6.656 1
+ATOM   N NE    . ARG     A 0 6   . 6   ARG     A NE    15 0.0 1.0 ?  9  False False -1  True  -1  True  0 A217 False 14 -5.653 0.262  -1.995 1
+ATOM   C CZ    . ARG     A 0 6   . 6   ARG     A CZ    16 0.0 1.0 ?  9  False False -1  True  -1  True  0 A217 False 15 -5.437 1.289  -2.811 1
+ATOM   N NH1   . ARG     A 0 6   . 6   ARG     A NH1   17 0.0 1.0 ?  9  False False -1  True  -1  True  0 A217 False 16 -4.358 2.046  -2.666 1
+ATOM   N NH2   . ARG     A 0 6   . 6   ARG     A NH2   18 0.0 1.0 +1 9  False False -1  True  -1  True  0 A217 False 17 -6.305 1.561  -3.777 1
+ATOM   C CZ    . ARG     A 0 7   . 7   ARG     A CZ    19 0.0 1.0 ?  10 False False -1  True  -1  True  0 C43  False 18 -1.098 2.66   2.769  1
+ATOM   N NH1   . ARG     A 0 7   . 7   ARG     A NH1   20 0.0 1.0 ?  10 False False -1  True  -1  True  0 C43  False 19 0.06   2.576  3.416  1
+HETATM P P     . PO4     D 2 301 . 301 PO4     D P     21 0.0 1.0 ?  1  False False -1  True  -1  True  0 PO4  True  20 2.297  0.571  0.866  1
+HETATM O O1    . PO4     D 2 301 . 301 PO4     D O1    22 0.0 1.0 ?  1  False False -1  True  -1  True  0 PO4  True  21 3.017  0.822  -0.425 1
+HETATM O O2    . PO4     D 2 301 . 301 PO4     D O2    23 0.0 1.0 -1 1  False False -1  True  -1  True  0 PO4  True  22 0.877  0.15   0.59   1
+HETATM O O3    . PO4     D 2 301 . 301 PO4     D O3    24 0.0 1.0 -1 1  False False -1  True  -1  False 0 PO4  True  23 3.026  -0.506 1.623  1
+HETATM O O4    . PO4     D 2 301 . 301 PO4     D O4    25 0.0 1.0 -1 1  False False -1  True  -1  False 0 PO4  True  24 2.279  1.836  1.7    1
+HETATM N N1    . FMC     B 1 300 . 300 FMC     B N1    26 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  25 0.924  6.16   -6.444 1
+HETATM C C2    . FMC     B 1 300 . 300 FMC     B C2    27 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  26 1.826  6.29   -5.441 1
+HETATM N N3    . FMC     B 1 300 . 300 FMC     B N3    28 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  27 1.946  5.434  -4.412 1
+HETATM C C4    . FMC     B 1 300 . 300 FMC     B C4    29 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  28 1.122  4.359  -4.349 1
+HETATM C C5    . FMC     B 1 300 . 300 FMC     B C5    30 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  29 0.117  4.131  -5.403 1
+HETATM C C6    . FMC     B 1 300 . 300 FMC     B C6    31 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  30 0.053  5.127  -6.492 1
+HETATM N N6    . FMC     B 1 300 . 300 FMC     B N6    32 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  31 -0.85  4.998  -7.498 1
+HETATM N N7    . FMC     B 1 300 . 300 FMC     B N7    33 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  32 -0.55  3.005  -5.099 1
+HETATM N N8    . FMC     B 1 300 . 300 FMC     B N8    34 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  33 -0.047 2.457  -3.904 1
+HETATM C C9    . FMC     B 1 300 . 300 FMC     B C9    35 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  34 0.959  3.218  -3.405 1
+HETATM C "C1'" . FMC     B 1 300 . 300 FMC     B "C1'" 36 0.0 1.0 ?  2  False False -1  True  -1  True  0 FMC  True  35 1.757  3.021  -2.15  1
+HETATM C "C2'" . FMC     B 1 300 . 300 FMC     B "C2'" 37 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  36 2.829  4.084  -1.827 1
+HETATM O "O2'" . FMC     B 1 300 . 300 FMC     B "O2'" 38 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  37 4.114  3.507  -1.826 1
+HETATM C "C3'" . FMC     B 1 300 . 300 FMC     B "C3'" 39 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  38 2.417  4.637  -0.456 1
+HETATM O "O3'" . FMC     B 1 300 . 300 FMC     B "O3'" 40 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  39 3.147  3.986  0.584  1
+HETATM C "C4'" . FMC     B 1 300 . 300 FMC     B "C4'" 41 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  40 0.944  4.295  -0.357 1
+HETATM O "O4'" . FMC     B 1 300 . 300 FMC     B "O4'" 42 0.0 1.0 ?  2  False False -1  True  -1  True  0 FMC  True  41 0.75   3.113  -1.16  1
+HETATM C "C5'" . FMC     B 1 300 . 300 FMC     B "C5'" 43 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  42 -0.008 5.364  -0.835 1
+HETATM O "O5'" . FMC     B 1 300 . 300 FMC     B "O5'" 44 0.0 1.0 ?  2  False False -1  True  -1  False 0 FMC  True  43 -1.323 4.848  -0.996 1
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -266,6 +264,7 @@ _chem_comp_atom.pdbx_leaving_atom_flag
 _chem_comp_atom.pdbx_model_Cartn_x_ideal 
 _chem_comp_atom.pdbx_model_Cartn_y_ideal 
 _chem_comp_atom.pdbx_model_Cartn_z_ideal 
+180-180 UNK    X 0  N N nan                   nan                    nan
 ARG     N      N 0  N N -0.4690000116825104   1.1100000143051147     -0.9929999709129333
 ARG     CA     C 0  N N 0.004000000189989805  2.2939999103546143     -1.7079999446868896
 ARG     C      C 0  N N -0.9070000052452087   2.5209999084472656     -2.9010000228881836
@@ -370,5 +369,4 @@ SER     HB2    H 0  N N -0.22499999403953552  -1.4910000562667847    -1.08099997
 SER     HB3    H 0  N N -1.6990000009536743   -0.5070000290870667    -0.9200000166893005
 SER     HG     H 0  N N -0.9779999852180481   -0.6790000200271606    -3.0880000591278076
 SER     HXT    H 0  N Y -1.1829999685287476   0.1420000046491623     2.828000068664551
-180-180 UNK    X 0  N N nan                   nan                    nan
 #
