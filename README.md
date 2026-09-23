@@ -18,9 +18,9 @@
   <img src="assets/hero.gif" width="300" alt="A DISCO-designed BODIPY fluorophore binder, spinning">
 </p>
 
-RFProteína generates proteins — and RNA, DNA, and small-molecule complexes — under rich conditioning.
+RFD4-Proteína generates proteins — and RNA, DNA, and small-molecule complexes — under rich conditioning.
 
-Check out the **[RFProteína website](https://rosettacommons.github.io/RFD4-Proteina/)** for complete benchmarks and documentation.
+Check out the **[RFD4-Proteína website](https://rosettacommons.github.io/RFD4-Proteina/)** for complete benchmarks and documentation.
 
 Two ways in:
 
@@ -54,7 +54,7 @@ bash setup.sh                 # installs uv, the atomworks submodule, a py3.12 v
 source .venv/bin/activate
 ```
 
-Point RFProteína at a local data directory and create a tiny env file for it:
+Point RFD4-Proteína at a local data directory and create a tiny env file for it:
 
 ```bash
 export CLUSTER=local
@@ -140,12 +140,12 @@ no-container walkthrough that finetunes the released checkpoint on a tiny exampl
 
 ## Links
 
-- 🌐 **[Benchmarks &amp; gallery](https://rosettacommons.github.io/RFD4-Proteina/)** — how RFProteína compares (design quality, speed, compute).
+- 🌐 **[Benchmarks &amp; gallery](https://rosettacommons.github.io/RFD4-Proteina/)** — how RFD4-Proteína compares (design quality, speed, compute).
 - 🎯 **[Inference guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/inference.html)** · 🔎 **[Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/search.html)** · 🛠️ **[Training guide](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/development.html)** · 📄 **[Annotated CIF inputs](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/annotated_cif_inputs.html)** · 📊 **[Metrics reference](https://rosettacommons.github.io/RFD4-Proteina/latest/guides/metrics.html)** · 🤝 **[Contributing](https://rosettacommons.github.io/RFD4-Proteina/latest/contributor_guide.html)**
 
 ---
 
 ## License
 
-RFProteína is licensed under the [BSD 3-Clause License](LICENSE).
+RFD4-Proteína is licensed under the [BSD 3-Clause License](LICENSE).
 Third-party code retains the license notices included with those components.

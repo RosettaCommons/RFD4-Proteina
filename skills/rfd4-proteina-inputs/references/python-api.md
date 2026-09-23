@@ -5,7 +5,7 @@ executable record of the build; it does not need a JSON or YAML companion.
 
 ## Load without losing annotations
 
-Register RFProteína conditions before parsing, then choose the preset from the
+Register RFD4-Proteína conditions before parsing, then choose the preset from the
 artifact rather than from whether the file is used for training or inference:
 
 - Use `ANNOTATED_CIF` when the source already carries StandardAnnotations or its

@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-search
 description: >
-  Reward-guided search for RFProteína (RFD4-Proteína) — the Baker Lab x NVIDIA
+  Reward-guided search for RFD4-Proteína (RFD4-Proteína) — the Baker Lab x NVIDIA
   flow-matching protein design model. Reach for this skill for "reward-guided
   search", "beam search", "optimize designs", "AF3 oracle reward", "generate the
   best binders/monomers by pLDDT/ipTM/ipAE", "search with a reward", or "branch
@@ -14,15 +14,15 @@ description: >
   refolding oracle.
   Use rfd4-proteina-generate for unguided sampling and this skill when
   reward-guided pruning justifies the additional compute.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína Reward-Guided Search
+# RFD4-Proteína Reward-Guided Search
 
 ## Requirements
 
 Complete `rfd4-proteina-setup` first. Generation requires a CUDA GPU. Rewards
-using refolding tags also require a configured refolding backend; RFProteína
+using refolding tags also require a configured refolding backend; RFD4-Proteína
 supports AF2, AF3, and OpenFold3 through `metrics/refolding_oracles`. Rewards such
 as `interchain_interactions` do not require a refolding oracle.
 

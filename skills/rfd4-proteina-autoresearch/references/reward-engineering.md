@@ -1,11 +1,11 @@
 # Composite reward engineering
 
 The reward is what turns a vague goal into something an autoresearch loop can
-optimize. In RFProteína it is defined inline under `search.rewards` (mechanics in
+optimize. In RFD4-Proteína it is defined inline under `search.rewards` (mechanics in
 the **rfd4-proteina-search** skill and `docs/workflow/search.md`); this reference is
 about *how to shape it* for a campaign.
 
-## RFProteína reward keys
+## RFD4-Proteína reward keys
 
 Reward keys come from the metrics that run under `reward_metrics_tags` during
 scoring. The AF3 oracle prefixes its outputs with `oracle.`; commonly used:
@@ -37,7 +37,7 @@ search:
 ## Four rules that keep a composite reward honest
 
 Adapted from the muni technical note (the reasoning transfers directly; the exact
-term names there are Complexa's — translate to the RFProteína keys above):
+term names there are Complexa's — translate to the RFD4-Proteína keys above):
 
 1. **Normalize term scales before weighting.** Confidence terms are ~0-1,
    interface-area terms can be hundreds-thousands (Å²), H-bond counts are small

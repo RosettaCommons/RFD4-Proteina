@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-generate
 description: >
-  Run RFProteína (RFD4-Proteína) single-shot generation across every design
+  Run RFD4-Proteína (RFD4-Proteína) single-shot generation across every design
   task — the scientific anchor of the skill set. Reach for this skill for "design
   a protein", "generate a monomer", "run rfproteina inference", "scaffold a
   motif", "design an enzyme", "design a small molecule binder", "design a
@@ -13,12 +13,12 @@ description: >
   rfd4-proteina-inputs to build an annotated CIF when one is needed, to
   rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
   for deep metric analysis (the AF3 oracle).
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína Generate
+# RFD4-Proteína Generate
 
-Single-shot generation for RFProteína. One entry point drives every design task —
+Single-shot generation for RFD4-Proteína. One entry point drives every design task —
 unconditional monomers/complexes, folding & inverse folding, motif scaffolding,
 enzyme design, small-molecule binders, protein binders, and DNA binders. The
 skill's job is to **route** the request to the right example input and the right

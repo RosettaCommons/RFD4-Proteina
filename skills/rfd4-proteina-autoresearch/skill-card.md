@@ -2,21 +2,21 @@
 
 ## Description
 
-`rfd4-proteina-autoresearch` orchestrates an iterative, inspectable RFProteína design campaign — a design -> score -> iterate loop over multiple waves that composes `rfd4-proteina-generate`, `rfd4-proteina-inputs`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`, with explicit composite-reward engineering and freeze/promote/allocate branch rules.
+`rfd4-proteina-autoresearch` orchestrates an iterative, inspectable RFD4-Proteína design campaign — a design -> score -> iterate loop over multiple waves that composes `rfd4-proteina-generate`, `rfd4-proteina-inputs`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`, with explicit composite-reward engineering and freeze/promote/allocate branch rules.
 
 This skill is for research and development only.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository. Skill text follows the NVIDIA agent-skills documentation convention (CC-BY-4.0). The autoresearch methodology is adapted from muni's public write-ups (see References) and Karpathy's autoresearch framing.
+See the RFD4-Proteína repository. Skill text follows the NVIDIA agent-skills documentation convention (CC-BY-4.0). The autoresearch methodology is adapted from muni's public write-ups (see References) and Karpathy's autoresearch framing.
 
 ## Use Case
 
-Researchers running a multi-round optimization campaign (e.g. binder or enzyme design) who want a reproducible loop: define a reward, sweep RFProteína's knobs, prune/promote branches, and keep the whole trajectory on disk. It adds no model capability; it is a strategy layer over the other RFProteína skills.
+Researchers running a multi-round optimization campaign (e.g. binder or enzyme design) who want a reproducible loop: define a reward, sweep RFD4-Proteína's knobs, prune/promote branches, and keep the whole trajectory on disk. It adds no model capability; it is a strategy layer over the other RFD4-Proteína skills.
 
 ## Deployment Geography for Use
 
@@ -40,8 +40,8 @@ Mitigation: The skill frames the reward as a replaceable hypothesis, recommends 
 Risk: Refolding-guided campaigns are compute-intensive and can consume large GPU budgets.
 Mitigation: The skill documents the cost model and the explore/exploit allocation, and points at `rfd4-proteina-search` cost guidance; stop conditions are explicit.
 
-Risk: Transplanting external (Proteina-Complexa / TREM2) hyperparameters as if they were RFProteína defaults, or assuming search algorithms RFProteína lacks (MCTS/best-of-n).
-Mitigation: The skill labels all muni numbers as illustrative and restricts the sweep axes to RFProteína's real knobs (beam search only).
+Risk: Transplanting external (Proteina-Complexa / TREM2) hyperparameters as if they were RFD4-Proteína defaults, or assuming search algorithms RFD4-Proteína lacks (MCTS/best-of-n).
+Mitigation: The skill labels all muni numbers as illustrative and restricts the sweep axes to RFD4-Proteína's real knobs (beam search only).
 
 ## References
 

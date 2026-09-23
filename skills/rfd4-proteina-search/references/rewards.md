@@ -1,6 +1,6 @@
 # Reward reference
 
-The reward tells search which candidates to keep. In RFProteína it is defined
+The reward tells search which candidates to keep. In RFD4-Proteína it is defined
 **inline** under `search.rewards` in a search `inference_experiment` config —
 there is no separate reward file. This mirrors `docs/workflow/search.md`.
 

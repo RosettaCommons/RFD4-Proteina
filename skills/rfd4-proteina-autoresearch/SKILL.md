@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-autoresearch
 description: >
-  Run an iterative, inspectable design campaign with RFProteína — a
+  Run an iterative, inspectable design campaign with RFD4-Proteína — a
   design → score → iterate loop that composes rfd4-proteina-generate,
   rfd4-proteina-search, and rfd4-proteina-evaluate over multiple waves. Reach for this
   skill for "autoresearch", "run a design campaign", "optimize binders over
@@ -9,14 +9,14 @@ description: >
   designs", "tune the reward function", "which knobs matter", "beam width / branch
   / checkpoints sweep", "explore vs exploit design branches", or "make my design
   loop reproducible/inspectable". It provides the methodology: how to define a
-  composite reward, which RFProteína knobs to vary, wave-based freeze/promote/
+  composite reward, which RFD4-Proteína knobs to vary, wave-based freeze/promote/
   allocate rules, and how to keep every wave's decisions and results on disk so
   failed branches stay useful. It does not add new model capability — it
   orchestrates the existing skills.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína Autoresearch
+# RFD4-Proteína Autoresearch
 
 An autoresearch campaign is a **design → score → iterate** loop: generate
 candidates, score them against an explicit reward, keep what improves the metric,
@@ -41,7 +41,7 @@ evidence.
 > themselves inspired by Karpathy's autoresearch framing. **Those experiments ran
 > Proteina-Complexa on TREM2, a different model and target** — their specific
 > findings (e.g. a `cdr2_bias` epitope, `beam_width 4->12`, `MCTS n=8`, an ipSAE of
-> ~0.95) are **illustrative, not RFProteína defaults**, and RFProteína's search is
+> ~0.95) are **illustrative, not RFD4-Proteína defaults**, and RFD4-Proteína's search is
 > **beam search only** (no MCTS / best-of-n / FK-steering). Port the *method*, not
 > the numbers. See [references/loop.md](references/loop.md).
 
@@ -52,7 +52,7 @@ Before generating anything, write down (on disk, so it is inspectable):
 - **Design problem** — task + input (monomer, motif, small-molecule/enzyme
   active site; for binders the target + epitope/hotspots). Build it with
   **rfd4-proteina-inputs**.
-- **Reward** — the composite metric you optimize, as RFProteína reward keys with
+- **Reward** — the composite metric you optimize, as RFD4-Proteína reward keys with
   weights and gates (Step 3). A provisional reward is still useful — it is a
   hypothesis about what matters, meant to steer search and be replaced.
 - **Rules** — freeze/promote/allocate thresholds and the per-wave job budget
@@ -85,7 +85,7 @@ plain `rfd4-proteina-generate`) run.
 
 ## Step 3 — Engineer the composite reward
 
-RFProteína's reward is defined inline under `search.rewards` (see
+RFD4-Proteína's reward is defined inline under `search.rewards` (see
 **rfd4-proteina-search**). The autoresearch-specific discipline — from the muni
 technical note, and directly applicable here:
 
@@ -102,7 +102,7 @@ technical note, and directly applicable here:
 - **The reward may vary over the trajectory.** `checkpoint_overrides` re-specifies
   weights/gates/tags at a given checkpoint. Certain rewards might be better-suited to running earlier or later in the trajectory.
 
-Full worked patterns and the RFProteína reward keys
+Full worked patterns and the RFD4-Proteína reward keys
 (`oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`, `oracle.min_ipae_coi`):
 [references/reward-engineering.md](references/reward-engineering.md).
 
@@ -122,13 +122,13 @@ evaluate with **rfd4-proteina-evaluate**), then update branches by **branch heal
 Record every branch outcome and the promote/freeze reasoning. Losing branches are
 signal: capture *why* they failed. See [references/loop.md](references/loop.md).
 
-## Step 5 — Choose which knob to mutate (RFProteína-accurate axes)
+## Step 5 — Choose which knob to mutate (RFD4-Proteína-accurate axes)
 
 Change **one** axis per child so effects are attributable:
 
 - **Search**: `beam_width`, `n_branch`, `step_checkpoints` / `nsteps` (cost scales
   ~ `beam_width x n_branch x #checkpoints` oracle calls). Beam vs vanilla is the
-  only algorithm axis — RFProteína has no MCTS/best-of-n.
+  only algorithm axis — RFD4-Proteína has no MCTS/best-of-n.
 - **Reward**: term weights, add/tighten a gate, swap `reward_metrics_tags`.
 - **Reward schedule**: `search.rewards.checkpoint_overrides` — same objective,
   different *timing*. Each entry is a sub-version of the base reward at one
@@ -170,5 +170,5 @@ values, and passer evidence.
   experimental success — validate designs downstream.
 - Refolding-guided waves are **compute-intensive**; size
   `beam_width`/`n_branch`/waves to budget. See **rfd4-proteina-search** `references/cost.md`.
-- The muni TREM2/Complexa numbers are illustrations; derive RFProteína settings
+- The muni TREM2/Complexa numbers are illustrations; derive RFD4-Proteína settings
   empirically from your own early waves.

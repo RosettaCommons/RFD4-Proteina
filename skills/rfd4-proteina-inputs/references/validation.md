@@ -1,17 +1,17 @@
 # Annotated-CIF validation requirements
 
 Source of truth: `skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py`, the
-RFProteína condition definitions, and pipeline invariant checks.
+RFD4-Proteína condition definitions, and pipeline invariant checks.
 
 ## Registry initialization
 
 ```python
-import rfproteina.conditions  # noqa: F401 -- registers RFProteína annotations
+import rfproteina.conditions  # noqa: F401 -- registers RFD4-Proteína annotations
 ```
 
 Import `rfproteina.conditions` before parsing annotated CIFs. The reader resolves
 standard-annotation columns from the runtime registry; without registration,
-RFProteína-specific conditions are unavailable. The provided build and validation
+RFD4-Proteína-specific conditions are unavailable. The provided build and validation
 helpers perform this import.
 
 ## Missing atoms

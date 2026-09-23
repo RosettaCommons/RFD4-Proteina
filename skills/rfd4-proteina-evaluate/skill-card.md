@@ -2,21 +2,21 @@
 
 ## Description
 
-`rfd4-proteina-evaluate` computes post-hoc evaluation metrics on already-generated RFProteína structures via `src/rfproteina/evaluate.py` (Hydra config `configs/evaluate.yaml`), then aggregates the per-job CSVs into `aggregated_metrics.csv` / `per_task_metrics.csv` with `rfproteina.inference_utils.aggregate_metrics`, optionally clustering designs structurally with FoldSeek.
+`rfd4-proteina-evaluate` computes post-hoc evaluation metrics on already-generated RFD4-Proteína structures via `src/rfproteina/evaluate.py` (Hydra config `configs/evaluate.yaml`), then aggregates the per-job CSVs into `aggregated_metrics.csv` / `per_task_metrics.csv` with `rfproteina.inference_utils.aggregate_metrics`, optionally clustering designs structurally with FoldSeek.
 
 This skill is for research and development only.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); the underlying scripts follow the repository's source license.
+See the RFD4-Proteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); the underlying scripts follow the repository's source license.
 
 ## Use Case
 
-Anyone who has generated RFProteína designs and needs to score them — designability (scRMSD/pLDDT/ipAE via AF3 refolding), design-quality checks (clash, bond length, SSE, motif RMSD), pass/fail criteria, structural-diversity clustering, or a bespoke custom metric — either inline during generation (see `rfd4-proteina-generate`) or offline over an existing folder of CIFs. Consumes the output of `rfd4-proteina-generate` / `rfd4-proteina-search`.
+Anyone who has generated RFD4-Proteína designs and needs to score them — designability (scRMSD/pLDDT/ipAE via AF3 refolding), design-quality checks (clash, bond length, SSE, motif RMSD), pass/fail criteria, structural-diversity clustering, or a bespoke custom metric — either inline during generation (see `rfd4-proteina-generate`) or offline over an existing folder of CIFs. Consumes the output of `rfd4-proteina-generate` / `rfd4-proteina-search`.
 
 ## Deployment Geography for Use
 

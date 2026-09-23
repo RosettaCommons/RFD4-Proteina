@@ -2,22 +2,22 @@
 
 ## Description
 
-`rfd4-proteina-package` creates a simple TAR of selected RFProteína designs grouped
+`rfd4-proteina-package` creates a simple TAR of selected RFD4-Proteína designs grouped
 by annotated-CIF input, with exact filter waterfall, actual metric values, aligned
 on/off-target refolds, and available confidence JSON.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository.
+See the RFD4-Proteína repository.
 
 ## Use Case
 
 Use when campaign results need to be shared with recipients who should not need
-SQLite or the RFProteína runtime to browse the deliverable.
+SQLite or the RFD4-Proteína runtime to browse the deliverable.
 
 ## Requirements / Dependencies
 
