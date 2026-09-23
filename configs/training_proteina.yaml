@@ -12,6 +12,7 @@ compress_outputs: true # Compress validation structures, refolds, and CIF trajec
 
 # NOTE: order of defaults determines the order in which configs override each other (higher up items are overridden by lower items)
 defaults:
+  - execution: default
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level
   - dataloaders: default
   - nn: local_latents_score_nn_160M_atom37

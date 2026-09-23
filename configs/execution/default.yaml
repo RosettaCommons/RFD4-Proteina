@@ -1,0 +1,13 @@
+# Native parameters stay registered for checkpointing and optimizer updates.
+training:
+  flow: torch
+  encoder: torch
+  decoder: torch
+inference:
+  flow: bioir
+  encoder: bioir
+  decoder: bioir
+  length_buckets: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
+bioir:
+  dtype: bfloat16
+  attention_backend: SDPA

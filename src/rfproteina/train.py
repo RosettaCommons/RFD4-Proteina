@@ -42,6 +42,7 @@ with (
     _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
     from rfproteina.callbacks.rank_seed import RankSeedCallback
+    from rfproteina.nn.execution import ExecutionCallback, setup_execution
     from rfproteina.proteina import Proteina
     from rfproteina.utils.config_html import save_config_html
     from rfproteina.utils.datasets import (
@@ -53,7 +54,7 @@ with (
     from rfproteina.utils.lora import maybe_apply_lora
     from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA
     from rfproteina.utils.torch import apply_torch_deterministic
-    from rfproteina.utils.torch_compile import SaveCompileCacheCallback, setup_run_compile
+    from rfproteina.utils.torch_compile import SaveCompileCacheCallback
     from rfproteina.utils.verbosity import configured_verbosity, queue_startup_warnings
     from rfproteina.utils.weights import fetch_last_ckpt
 
@@ -334,7 +335,7 @@ def log_config_dashboard(
 @configured_verbosity(default=True)
 def main(cfg_exp: DictConfig) -> None:
     # Configure torch.compile + warm the local Inductor cache (before any compile).
-    setup_run_compile()
+    setup_execution(cfg_exp.execution)
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
@@ -414,6 +415,7 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Add per-rank seeding callback to ensure RNG diversity across GPUs
     callbacks.append(RankSeedCallback(base_seed=cfg_exp.seed))
+    callbacks.append(ExecutionCallback(cfg_exp.execution))
     callbacks.append(SaveCompileCacheCallback())
     val_start_epoch = cfg_exp.opt.get("val_start_epoch", 0)
     if val_start_epoch and val_start_epoch > 0:

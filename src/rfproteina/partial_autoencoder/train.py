@@ -40,6 +40,7 @@ with (
     _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
     from rfproteina.callbacks.rank_seed import RankSeedCallback
+    from rfproteina.nn.execution import ExecutionCallback, setup_execution
     from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
     from rfproteina.utils.datasets import (
         assemble_distributed_loader,
@@ -278,6 +279,7 @@ def main(cfg_exp: DictConfig) -> None:
     # TODO: Sync with how we handle this in the file autoencoder.py
     torch._inductor.config.coordinate_descent_tuning = True
 
+    setup_execution(cfg_exp.execution)
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
     plugins = [SLURMEnvironment(auto_requeue=True)] if not single else []
@@ -329,6 +331,7 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Add per-rank seeding callback to ensure RNG diversity across GPUs
     callbacks.append(RankSeedCallback(base_seed=cfg_exp.seed))
+    callbacks.append(ExecutionCallback(cfg_exp.execution))
     val_start_epoch = cfg_exp.opt.get("val_start_epoch", 0)
     if val_start_epoch and val_start_epoch > 0:
         callbacks.append(

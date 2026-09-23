@@ -39,9 +39,11 @@ dependencies = [
     # ASE for molecular datasets
     "ase>=3.22.0",
     "lmdb",  # Python LMDB bindings for ASE's LMDB backend
+    "boto3>=1.34,<2",
     # Validation metrics
     "posebusters",
     "mace-torch>=0.3.15",
+    "anarcii>=2.0.8,<3",
     # Interactive
     "ipykernel>=6.31.0",
     "assertpy",

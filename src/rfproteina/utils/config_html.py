@@ -1218,9 +1218,15 @@ def _render_system_card(resolved: dict) -> str:
         )
 
     chips: list[str] = []
-    tc = nn_cfg.get("use_torch_compile")
-    if tc is not None:
-        chips.append(_chip("torch.compile", "on" if tc else "off", "on" if tc else "off"))
+    for phase in ("training", "inference"):
+        policy = (resolved.get("execution") or {}).get(phase, {})
+        if policy:
+            chips.append(
+                _chip(
+                    phase,
+                    ", ".join(f"{name}={policy[name]}" for name in ("flow", "encoder", "decoder") if name in policy),
+                )
+            )
     attn = nn_cfg.get("attention_type")
     if attn:
         chips.append(_chip("attention", str(attn)))

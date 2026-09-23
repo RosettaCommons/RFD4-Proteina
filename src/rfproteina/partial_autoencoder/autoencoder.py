@@ -29,6 +29,7 @@ from rfproteina.utils.structure_export import (
     write_generated_structure_cif,
     write_input_structure_cif,
 )
+from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -146,6 +147,7 @@ class AutoEncoder(L.LightningModule):
         Returns:
             Training loss averaged over batch dimension.
         """
+        maybe_mark_cudagraph_step_begin()
         val_step = batch_idx == -1  # validation step is indicated with batch_idx -1
         log_prefix = "validation_loss" if val_step else "train"
         histogram_every_n = 5000
