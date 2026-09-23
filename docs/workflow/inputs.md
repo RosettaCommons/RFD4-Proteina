@@ -177,7 +177,7 @@ uv pip install -e "./lib/atomworks[ml]" -e ./
 # 2. Register the plugin with PyMOL (writes a loader line into ~/.pymolrc)
 atomworks setup pymol
 
-# 3. Register the RFProteina condition editors. REQUIRED. Without this the
+# 3. Register the RFD4-Proteína condition editors. REQUIRED. Without this the
 #    Annotations tab only shows base AtomWorks annotations.
 atomworks pymol add rfproteina.pymol.editors
 

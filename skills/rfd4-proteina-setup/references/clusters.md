@@ -1,6 +1,6 @@
 # Clusters and SLURM reference
 
-RFProteína reads a **per-cluster env file** at startup: `.ipd/.env.$CLUSTER`.
+RFD4-Proteína reads a **per-cluster env file** at startup: `.ipd/.env.$CLUSTER`.
 Set `CLUSTER` (and, for containerized runs, `CONTAINER_TYPE`) in your shell rc —
 `setup.sh` offers to do this.
 

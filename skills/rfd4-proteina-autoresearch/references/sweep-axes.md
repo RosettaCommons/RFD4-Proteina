@@ -1,11 +1,11 @@
-# Sweep axes (RFProteína-accurate)
+# Sweep axes (RFD4-Proteína-accurate)
 
 Which knobs to vary across waves, and how. Change **one** axis per child branch so
-the effect is attributable. These are the axes RFProteína actually exposes — see
+the effect is attributable. These are the axes RFD4-Proteína actually exposes — see
 `docs/workflow/running.md`, `docs/workflow/running.md`, and `docs/workflow/search.md`.
 
-> Not available in RFProteína: MCTS, best-of-n, and FK-steering are
-> **Proteina-Complexa** search algorithms. RFProteína's search is **beam search
+> Not available in RFD4-Proteína: MCTS, best-of-n, and FK-steering are
+> **Proteina-Complexa** search algorithms. RFD4-Proteína's search is **beam search
 > only** (vanilla vs beam). Do not sweep an "algorithm" axis expecting those.
 
 ## Search axes (rfd4-proteina-search)

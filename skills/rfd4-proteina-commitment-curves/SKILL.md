@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-commitment-curves
 description: >
-  Commitment curves for RFProteína (RFD4-Proteína) — measure *where along the
+  Commitment curves for RFD4-Proteína (RFD4-Proteína) — measure *where along the
   flow-matching trajectory* the model decides a property. Reach for this skill for
   "commitment curve", "when does the model commit", "at what step is the fold/dock
   decided", "partial diffusion sweep", or "how early can I screen designs". It takes a
@@ -13,10 +13,10 @@ description: >
   extrapolates the pass rate where too few designs passed to measure one. Costs one full
   generation per parent per grid point, so it is far more expensive than plain generation
   — use rfd4-proteina-generate for that.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína Commitment Curves
+# RFD4-Proteína Commitment Curves
 
 Take a finished design, re-noise it back to a restart step, denoise it again, and ask
 how much its metric still agrees with its parent's. Sweep the restart step and you get a

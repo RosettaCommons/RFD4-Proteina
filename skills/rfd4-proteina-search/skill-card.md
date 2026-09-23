@@ -2,17 +2,17 @@
 
 ## Description
 
-`rfd4-proteina-search` runs reward-guided **beam search** for RFProteína (RFD4-Proteína): instead of sampling once, it explores multiple generation trajectories, scores candidates with a reward (by default an AF3 refolding oracle), and keeps the highest-scoring designs. It runs through the same `generate.py` entry point as generation, selected by a search `inference_experiment` config that adds one `search:` block (a `strategy` and inline `rewards`).
+`rfd4-proteina-search` runs reward-guided **beam search** for RFD4-Proteína (RFD4-Proteína): instead of sampling once, it explores multiple generation trajectories, scores candidates with a reward (by default an AF3 refolding oracle), and keeps the highest-scoring designs. It runs through the same `generate.py` entry point as generation, selected by a search `inference_experiment` config that adds one `search:` block (a `strategy` and inline `rewards`).
 
 This skill is for research and development only.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); helper scripts follow the repository's source license.
+See the RFD4-Proteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); helper scripts follow the repository's source license.
 
 ## Use Case
 
@@ -50,7 +50,7 @@ Mitigation: The skill frames reward as a proxy and advises experimental validati
 - `src/rfproteina/search/beam_search.py`, `src/rfproteina/metrics/oracles/pass_criterion_metric.py`, `src/rfproteina/metrics/oracles/oracle_metric.py`
 - `scripts/launch_generate.sh`, `scripts/launch_search.sh`
 - rfd4-proteina-setup skill (`references/clusters.md` for refolding backends)
-- RFProteína website: https://rosettacommons.github.io/RFD4-Proteina/
+- RFD4-Proteína website: https://rosettacommons.github.io/RFD4-Proteina/
 - NVIDIA agent skills: https://docs.nvidia.com/skills
 
 ## Skill Output
@@ -69,4 +69,4 @@ Other properties: search runs through `generate.py`; oracle results are cached d
 
 ## Ethical Considerations
 
-RFProteína is a de novo protein/complex design model with dual-use potential. Reward-guided search actively optimizes designs toward an objective, which sharpens both benefit and misuse potential; use is governed by the repository's usage terms. Do not use to design hazardous biomolecules. Reward is a computational proxy — validate designs experimentally and follow applicable biosafety and export/compliance requirements.
+RFD4-Proteína is a de novo protein/complex design model with dual-use potential. Reward-guided search actively optimizes designs toward an objective, which sharpens both benefit and misuse potential; use is governed by the repository's usage terms. Do not use to design hazardous biomolecules. Reward is a computational proxy — validate designs experimentally and follow applicable biosafety and export/compliance requirements.

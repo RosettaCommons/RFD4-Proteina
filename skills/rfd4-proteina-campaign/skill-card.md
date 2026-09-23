@@ -2,18 +2,18 @@
 
 ## Description
 
-`rfd4-proteina-campaign` orchestrates a reproducible RFProteína design campaign.
+`rfd4-proteina-campaign` orchestrates a reproducible RFD4-Proteína design campaign.
 It records exact annotated-CIF inputs, resolved configs, runs, design lineage,
 oracle predictions, actual metrics, and versioned passer decisions in a portable
 SQLite ledger with archived artifacts.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository.
+See the RFD4-Proteína repository.
 
 ## Use Case
 

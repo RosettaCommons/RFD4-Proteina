@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-evaluate
 description: >
-  Compute post-hoc metrics on already-generated RFProteína structures and
+  Compute post-hoc metrics on already-generated RFD4-Proteína structures and
   aggregate them across parallel jobs. Reach for this skill for "evaluate my
   designs", "compute metrics", "refold with AF3", "scRMSD / pLDDT / ipAE",
   "is my design designable", "designability", "aggregate metrics", "concatenate
@@ -12,10 +12,10 @@ description: >
   `aggregated_metrics.csv` / `per_task_metrics.csv` and (optionally) clusters
   designs structurally with FoldSeek. Deep metric detail lives here; inline
   metrics during generation are covered by rfd4-proteina-generate.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína Evaluate (post-hoc metrics + aggregation)
+# RFD4-Proteína Evaluate (post-hoc metrics + aggregation)
 
 Score structures that already exist on disk, without re-running generation.
 `evaluate.py` shares the exact same metrics stack and Hydra config as generation,

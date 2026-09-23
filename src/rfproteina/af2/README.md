@@ -1,6 +1,6 @@
 # AF2 runtime
 
-RFProteína's AF2 oracle performs database-free protein refolding from inline
+RFD4-Proteína's AF2 oracle performs database-free protein refolding from inline
 mmCIF. A resident worker keeps `model_1_ptm` and `model_1_multimer_v3` loaded;
 the oracle chooses between them from chain count unless `model_name` is set.
 

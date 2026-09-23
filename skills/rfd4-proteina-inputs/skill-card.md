@@ -11,16 +11,16 @@ This skill is for research and development only.
 
 ## Owner
 
-RFProteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFProteína repository. Skill text follows the NVIDIA agent-skills documentation convention
+See the RFD4-Proteína repository. Skill text follows the NVIDIA agent-skills documentation convention
 (CC-BY-4.0); helper scripts are covered by the repository's source license.
 
 ## Use Case
 
-Anyone preparing an input for RFProteína — especially for non-canonicals, PTMs, small molecules, metals, direct condition authoring (RASA, H-bond, secondary structure, internal coordinates), or translation of an existing contig/length JSON/YAML input. Feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
+Anyone preparing an input for RFD4-Proteína — especially for non-canonicals, PTMs, small molecules, metals, direct condition authoring (RASA, H-bond, secondary structure, internal coordinates), or translation of an existing contig/length JSON/YAML input. Feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
 
 ## Deployment Geography for Use
 

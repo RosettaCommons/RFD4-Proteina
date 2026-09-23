@@ -1,6 +1,6 @@
 # Checkpoints reference
 
-RFProteína needs **two** checkpoints, both read from `$DATA_PATH` by default:
+RFD4-Proteína needs **two** checkpoints, both read from `$DATA_PATH` by default:
 
 | Role | Default path (relative to `$DATA_PATH`) |
 | --- | --- |

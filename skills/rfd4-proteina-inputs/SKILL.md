@@ -3,16 +3,16 @@ name: rfd4-proteina-inputs
 description: >
   Interview the user about a protein-design intent, inspect any prose, structure,
   existing contig/length JSON/YAML, or annotated-CIF artifacts they provide, and build or edit a
-  validated annotated CIF for RFProteína with the Python AtomWorks API. Reach for
-  this skill for "design2cif", "prepare an RFProteína input", "convert this RFD3
+  validated annotated CIF for RFD4-Proteína with the Python AtomWorks API. Reach for
+  this skill for "design2cif", "prepare an RFD4-Proteína input", "convert this RFD3
   JSON", "edit this annotated CIF", fixed atoms, sequence conditioning,
   unindexing, hotspots, RASA, hydrogen bonds, expandable segments, ligand bonds,
   charges, PTMs, and non-canonical residues. JSON is optional compatibility input,
   never a required intermediate representation.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína annotated-CIF authoring
+# RFD4-Proteína annotated-CIF authoring
 
 The product is a design problem whose meaning the user has confirmed, encoded in
 one annotated CIF. The route is:
@@ -92,8 +92,8 @@ for condition levels and interaction rules, and
 import rfproteina.conditions  # noqa: F401
 ```
 
-This import registers RFProteína conditions with AtomWorks. It must execute before
-any annotated CIF is parsed; otherwise RFProteína-specific condition columns can
+This import registers RFD4-Proteína conditions with AtomWorks. It must execute before
+any annotated CIF is parsed; otherwise RFD4-Proteína-specific condition columns can
 be dropped during deserialization. The inspection and validation helpers enforce
 this for their own parsing; custom authoring recipes must import it explicitly.
 
