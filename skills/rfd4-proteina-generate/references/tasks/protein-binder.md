@@ -34,7 +34,9 @@ chain against that interface.
 
 ## Gotchas
 
-- Hotspots are set by the input's `C_HOT` annotation, not on the CLI. To build a new target/hotspot input, use
-  **rfd4-proteina-inputs**.
+- Hotspots are set in the input (`select_hotspots`, per-residue atom selections
+  like `TIP` or `ALL`), not on the CLI. To build a new target/hotspot input, use
+  **rfd4-proteina-annotated-cif**. Use **rfd4-proteina-inputs** only when adapting
+  an old `select_hotspots` JSON/YAML config.
 - The designed (binder) chain is the "chain of interest" for clustering; it is
   identified automatically from the conditioning annotations.

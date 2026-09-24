@@ -39,7 +39,8 @@ motif-scaffolding problem where the motif is a set of catalytic residues
   around a real active-site chemistry; without, it only places catalytic
   geometry.
 - Tip-atom (`select_fixed_atoms: {"A175": "TIP"}`) vs full-sidechain vs
-  backbone-only conditioning are distinct design decisions — build these inputs
-  via **rfd4-proteina-inputs**, which interrogates exactly this.
+  backbone-only conditioning are distinct design decisions. Use
+  **rfd4-proteina-inputs** to interpret that legacy field, or
+  **rfd4-proteina-annotated-cif** to author the condition directly.
 - Charges/bonds on a PDB-derived ligand are often wrong (aromaticity lost);
-  validate the input before spending compute.
+  validate the input with **rfd4-proteina-annotated-cif** before spending compute.

@@ -31,7 +31,8 @@ Start from the validated annotated CIF and create explicit variants for material
 conditioning hypotheses. Candidate levers include coordinate and sequence masks,
 which atoms or sidechains are fixed, index groups, expandable segments, SSE,
 burial/RASA, hydrogen-bond roles, and hotspot or interaction conditions. Use
-`rfd4-proteina-inputs` to confirm what the selected checkpoint supports.
+`rfd4-proteina-annotated-cif` to confirm what the selected checkpoint supports
+and to author each variant.
 
 Do not turn a campaign preference into a universal condition. For example,
 cysteine exclusion, sidechain freedom, or a particular secondary structure is

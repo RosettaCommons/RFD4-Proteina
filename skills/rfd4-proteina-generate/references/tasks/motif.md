@@ -40,6 +40,6 @@ python src/rfproteina/generate.py \
   length); a real range like `"150-350"` resamples length each replicate — the
   motif residues are *not* subtracted from the count.
 - Building a new motif input (which atoms to fix, index vs unindex, internal
-  coordinate groups) is exactly what **rfd4-proteina-inputs** is for — hand off
-  rather than editing JSON by hand. `select_fixed_atoms` semantics are subtle
-  (sidechain atoms leak identity via `C_SEQ`).
+  coordinate groups) is exactly what **rfd4-proteina-annotated-cif** is for.
+  When migrating an existing JSON benchmark, use **rfd4-proteina-inputs** rather
+  than editing subtle `select_fixed_atoms` fields by hand.

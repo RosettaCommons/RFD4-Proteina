@@ -15,23 +15,32 @@ substitute for intent.
 
 ## Running it with the shared skill
 
-Ask Codex or Claude Code to use `rfd4-proteina-inputs` with a file and optional example key:
+For prose, a structure, or an existing annotated CIF, ask Codex or Claude Code
+to use `rfd4-proteina-annotated-cif` with the artifact:
 
 ```
-Use rfd4-proteina-inputs with <artifact> [example_key]
+Use rfd4-proteina-annotated-cif with <artifact>
 ```
 
-Pass the path. If the file holds several examples, pass the key you want too.
+For an existing legacy RFD3 JSON/YAML file, use `rfd4-proteina-inputs` and pass
+the example key when the file contains several entries:
+
+```
+Use rfd4-proteina-inputs with <legacy.json> [example_key]
+```
 
 Or just say what you want:
 
 ```
-Use rfd4-proteina-inputs to scaffold a 120-residue binder against the SAM pocket of 1abc,
+Use rfd4-proteina-annotated-cif to scaffold a 120-residue binder against the SAM pocket of 1abc,
 keeping the four catalytic residues fixed but letting the model place them.
 ```
 
-Claude Code also exposes `/design2cif` as a compatibility alias. Both routes load
-the same canonical skill under `skills/rfd4-proteina-inputs/`.
+The `rfd4-proteina-inputs` skill covers legacy RFD3 JSON/YAML adaptation. For
+new annotated-CIF creation or editing from a structure, use
+`rfd4-proteina-annotated-cif`; `rfd4-proteina-generate` routes to the appropriate
+one based on the source format. Claude Code's `/design2cif` compatibility alias
+loads the legacy adapter.
 
 ## What to expect
 
@@ -89,7 +98,7 @@ These are the ones that bite people. Most are silent.
 - Silently choose structural preparation. It tells you which preset it used and
   asks you to confirm material atom, component, and bond changes.
 - Silently drop covalent bonds, charges or PTMs.
-- Realize an expandable segment. A realized segment is frozen to one length and the model will not
-  resample it.
+- Freeze a variable source template unintentionally. For intentionally materialized child CIFs,
+  follow the [expandable-segment guidance](inputs.md#expandable-segments) and workspace policy.
 - Claim a check passed that it did not run.
 - Create a JSON/YAML intermediate unless you explicitly ask for one.

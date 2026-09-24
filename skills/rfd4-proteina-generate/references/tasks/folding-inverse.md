@@ -1,7 +1,7 @@
 # Folding and inverse folding
 
 Two mirror-image conditioning problems, both expressed through an **annotated
-CIF** (build it with **rfd4-proteina-inputs**). Back to the [skill](../../SKILL.md).
+CIF** (build it with **rfd4-proteina-annotated-cif**). Back to the [skill](../../SKILL.md).
 
 - **Folding** — condition on the *sequence* (`C_SEQ`) and let the model generate
   the structure. "I know what it is; predict where it goes."
@@ -22,8 +22,8 @@ The distinction is entirely in what you condition, which lives inside the CIF:
   coordinates, so the model builds the structure.
 
 These are per-residue / per-atom decisions; get them right in
-**rfd4-proteina-inputs**, which interrogates exactly this ("know where it is, or
-what it is, or both?").
+**rfd4-proteina-annotated-cif**, which separates "know where it is" from "know
+what it is."
 
 ## Run
 
@@ -52,8 +52,8 @@ python src/rfproteina/generate.py \
 
 ## Gotchas
 
-- Fixing a sidechain atom during inverse folding also reveals residue identity
-  and accidentally locking the residue's identity. Let **rfd4-proteina-inputs**
-  build and validate the CIF; do not hand-edit.
+- The single most common bug is fixing a sidechain atom during inverse folding
+  and accidentally locking the residue's identity. Let
+  **rfd4-proteina-annotated-cif** build and validate the CIF; do not hand-edit.
 - There is no dedicated "folding" JSON benchmark — these are annotated-CIF
   conditioning problems built from your own structure.

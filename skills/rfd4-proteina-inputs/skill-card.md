@@ -2,10 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-inputs` interviews for design intent, inspects supplied prose,
-structures, existing contig/length JSON/YAML specifications, or annotated CIFs, and builds or edits a correct,
-validated **annotated CIF** with native Biotite/AtomWorks Python APIs. JSON is an
-optional compatibility input, not an intermediate representation.
+`rfd4-proteina-inputs` adapts legacy RFD3-style JSON/YAML `InputSpecification` configs into validated RFD4-Proteína annotated CIFs. It interrogates ambiguous legacy semantics such as contigs, length ranges, fixed-atom selectors, sequence defaults, unindexing, ligand pose, charges, and bonds before conversion.
 
 This skill is for research and development only.
 
@@ -20,7 +17,7 @@ See the RFD4-Proteína repository. Skill text follows the NVIDIA agent-skills do
 
 ## Use Case
 
-Anyone preparing an input for RFD4-Proteína — especially for non-canonicals, PTMs, small molecules, metals, direct condition authoring (RASA, H-bond, secondary structure, internal coordinates), or translation of an existing contig/length JSON/YAML input. Feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
+Anyone migrating a legacy RFD3 JSON/YAML benchmark or reproducing/interpreting old `InputSpecification` behavior. General annotated-CIF creation and editing belongs to `rfd4-proteina-annotated-cif`. The converted output feeds `rfd4-proteina-generate` and `rfd4-proteina-search`.
 
 ## Deployment Geography for Use
 
@@ -32,7 +29,9 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None. `ALLOW_BIOTITE_CCD=True` is set by the wrapper scripts for CCD lookups (offline; no network credential).
 
-Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` submodule). No GPU required to build/validate CIFs.
+Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` submodule)
+and `rfd4-proteina-annotated-cif` for native CIF semantics and validation. No GPU
+is required to build or validate CIFs.
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate.
 
@@ -41,8 +40,8 @@ Do not include secrets in prompts/logs/output; use least-privilege credentials; 
 Risk: Silently transliterating a JSON produces an input that means something different from the author's intent (e.g. fixing a sidechain atom also fixes the residue's sequence; a range length is resampled per design).
 Mitigation: The skill mandates interrogation ("this means XYZ, is that right?") before building, and documents the counter-intuitive defaults; `check_annotated_cif.sh` validates the result.
 
-Risk: Parsing an annotated CIF without `import rfproteina.conditions` silently drops all conditions.
-Mitigation: The provided scripts import it first; the skill documents the landmine for any custom code.
+Risk: The legacy oracle can encode lossy or buggy behavior and may disagree with the native RFD4 representation.
+Mitigation: The skill treats oracle disagreement as an intent question, catalogs known incompatibilities, and does not rewrite native output merely to match the oracle.
 
 Risk: An incomplete polymer, a component whose atoms differ from its CCD code, or a missing coordination bond can misrepresent chemistry the model embeds.
 Mitigation: Partial conditioning uses masks without deleting atoms; the validator surfaces incomplete or mismatched components for intent review, supports explicit custom components, and never infers metal bonds.
@@ -54,7 +53,7 @@ Mitigation: Partial conditioning uses masks without deleting atoms; the validato
 - `skills/rfd4-proteina-inputs/scripts/build_from_rfd3.py`
 - `skills/rfd4-proteina-inputs/scripts/inspect_cif.py`
 - `skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py`
-- `docs/examples/annotated_cif_tutorial.ipynb`
+- Sibling skill: `rfd4-proteina-annotated-cif`
 
 ## Skill Output
 
@@ -70,7 +69,7 @@ JSON/YAML artifact and writes only the requested output.
 
 ## Skill Version
 
-0.1.0 (initial authoring, 2026-07).
+0.2.0 (narrowed to legacy RFD3 input adaptation, 2026-08).
 
 ## Ethical Considerations
 
