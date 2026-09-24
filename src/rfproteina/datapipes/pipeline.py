@@ -991,9 +991,11 @@ class FeaturizeExpandedSegments(Transform):
     Currently only polypeptide expandable segments are supported by the model. Here we ensure that only
     polypeptide expandable segments make it through the transform pipeline.
 
-    The model featurizes coordinates by multiplying the coords from the AtomArray by a mask. Thus, nan
-    coords from expandable segments need to be replaced with 0s.
+    At inference, unindexed segments contribute only their sampled residue-index gaps; their
+    placeholders are removed before creating in-context conditioning tokens.
 
+    The model featurizes coordinates by multiplying the coords from the AtomArray by a mask. Thus, nan
+    coords from indexed expandable segments need to be replaced with 0s.
     """
 
     def forward(self, data: dict) -> dict:
@@ -1003,6 +1005,13 @@ class FeaturizeExpandedSegments(Transform):
             # Check for only MASKED_AA gap residues! (TODO: Remove when we support DNA and RNA)
             if not np.all(atom_array.chain_type[expanded_segment_mask] == ChainType.POLYPEPTIDE_L):
                 raise ValueError("Only polypeptide expandable segments are currently supported.")
+
+            if data.get("is_inference", False):
+                unindexed_segments = expanded_segment_mask & ~C_IDX.mask(atom_array, default="generate")
+                if unindexed_segments.any():
+                    # Preserve res_id gaps so motif offsets and bond-path lengths retain the sampled spacing.
+                    atom_array = atom_array[~unindexed_segments].copy()
+                    expanded_segment_mask = expanded_segment_mask[~unindexed_segments]
 
             atom_array.coord[expanded_segment_mask] = 0.0
         data["atom_array"] = atom_array
