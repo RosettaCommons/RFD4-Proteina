@@ -378,6 +378,12 @@ and where it goes, either inside a chain or as a new chain.
 expands per sample. A realized segment is already frozen to one concrete length, so the model will
 not resample it. Only polypeptide expandable segments work for now.
 
+In an **unindexed motif**, expandable segments specify spacing rather than extra conditioning
+residues. Mark the segment and its flanking motif residues unindexed and give them the same index
+group. The sampled length becomes a residue-number gap: `C–[2–2]–C` gives the cysteines relative
+indices `0` and `3`, without creating unindexed spacer tokens. Length ranges are sampled per design,
+and indexed expandable segments still produce generated residues as usual.
+
 ## FAQ and gotchas
 
 **Do I have to use annotated CIFs?** No. Existing JSON inputs and the [YAML
