@@ -9,12 +9,13 @@ generating designs, searching for better ones, and evaluating the results. They
 encode the repository's real commands, config keys, and gotchas so an agent can
 operate the model correctly without re-deriving them.
 
-## The nine skills
+## The ten skills
 
 | Skill | What it does | Order |
 | --- | --- | --- |
 | [`rfd4-proteina-setup`](rfd4-proteina-setup/) | Install the uv/Python-3.12 venv + `atomworks`, wire `DATA_PATH` and the per-cluster env file, download checkpoints, and preflight GPU + weights. | 1 |
-| [`rfd4-proteina-inputs`](rfd4-proteina-inputs/) | Interview for intent, inspect prose/structures/specs/CIFs, then build or edit a validated **annotated CIF** directly with the Python API. | 2 |
+| [`rfd4-proteina-annotated-cif`](rfd4-proteina-annotated-cif/) | Create, inspect, modify, and validate annotated CIFs with Python-first AtomWorks workflows, including conditions, derived masks, expandable segments, chemistry, and pre-save invariants. | 2 |
+| [`rfd4-proteina-inputs`](rfd4-proteina-inputs/) | Adapt ambiguous legacy RFD3 JSON/YAML `InputSpecification` configs into validated annotated CIFs. | 2 (legacy) |
 | [`rfd4-proteina-generate`](rfd4-proteina-generate/) | Run `generate.py` to produce designs; choose task, replicates, batch size, and inline `metrics_tags`. | 3 |
 | [`rfd4-proteina-search`](rfd4-proteina-search/) | Reward-guided search (beam/branching) that keeps candidates selected by a configured refolding or structure-only reward. | 4 (optional) |
 | [`rfd4-proteina-evaluate`](rfd4-proteina-evaluate/) | Post-hoc metrics on generated structures + aggregation across parallel jobs (scRMSD/pLDDT/ipAE, designability, FoldSeek diversity, custom metrics). | 5 |
@@ -23,10 +24,11 @@ operate the model correctly without re-deriving them.
 | [`rfd4-proteina-campaign`](rfd4-proteina-campaign/) | End-to-end campaign orchestration with a SQLite ledger linking every design, input, config, oracle refold, metric, and passer decision. | 8 (orchestrator) |
 | [`rfd4-proteina-package`](rfd4-proteina-package/) | Build a database-free TAR of selected designs, actual metrics, exact waterfall, and aligned on/off-target refolds grouped by annotated-CIF input. | 9 (delivery) |
 
-Typical order of use: **setup -> inputs -> generate -> [search] -> evaluate**, with
-**campaign** owning an end-to-end program, **autoresearch** running its multi-wave
-exploration, **commitment-curves** locating useful reward timing, and **package**
-creating the recipient-facing delivery.
+Typical order of use: **setup -> annotated-cif (or inputs for legacy JSON) ->
+generate -> [search] -> evaluate**, with **campaign** owning an end-to-end
+program, **autoresearch** running its multi-wave exploration,
+**commitment-curves** locating useful reward timing, and **package** creating the
+recipient-facing delivery.
 
 ## Install and discovery
 

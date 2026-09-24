@@ -69,7 +69,7 @@ oracle-call count for the cost story), never on reward.
 Rough guide: `(0.1,0.1)` high designability, `(0.5,0.5)` natural UniProt-like,
 `(0.9,0.9)` maximum diversity.
 
-## Input axes (rfd4-proteina-inputs)
+## Input axes (rfd4-proteina-annotated-cif)
 
 These change the design *problem*, so they define a new branch input rather than a
 CLI override:
@@ -81,8 +81,9 @@ CLI override:
 | Ligand pose / conditioning | `C_CRD` on ligand atoms | All atoms vs a catalytically relevant subset |
 | Motif placement | indexed vs unindexed, index groups | Independent fragments vs rigidly tied |
 
-Building or editing these inputs is the **rfd4-proteina-inputs** skill's job; treat
-each distinct input as a branch seed.
+Building or editing these inputs is the **rfd4-proteina-annotated-cif** skill's
+job; treat each distinct input as a branch seed. Use **rfd4-proteina-inputs** only
+when a branch starts from a legacy RFD3 JSON/YAML config.
 
 ## Diversity accounting
 

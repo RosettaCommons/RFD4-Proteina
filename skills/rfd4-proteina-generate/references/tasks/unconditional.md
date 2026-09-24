@@ -35,7 +35,9 @@ python src/rfproteina/generate.py \
 - **Metrics.** `metrics_tags='[unconditional_refolding]'` for AF3 refolding +
   pLDDT/scRMSD (needs an AF3 container — see **rfd4-proteina-evaluate**).
 - **Length** is set inside the input (`length` field), not on the CLI. For a new
-  length, build an annotated CIF input via **rfd4-proteina-inputs**.
+  length, build an input (a one-line JSON like `monomer.json`, or an annotated
+  CIF via **rfd4-proteina-annotated-cif**). Use **rfd4-proteina-inputs** only to
+  adapt the legacy JSON form.
 
 ## Gotchas
 

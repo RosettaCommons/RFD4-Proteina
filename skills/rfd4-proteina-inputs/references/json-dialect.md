@@ -2,11 +2,12 @@
 
 Source of truth: `docs/workflow/inputs.md`,
 `skills/rfd4-proteina-inputs/scripts/build_from_rfd3.py`, and the current
-input-schema implementation. Use this reference only when the user supplies an
-existing contig/length JSON/YAML artifact. Interpret that file as evidence of
-intent, confirm its material semantics, then use the compatibility adapter when
-the confirmed intent fits this dialect. Do not generate a JSON file for prose or
-annotated-CIF inputs.
+input-schema implementation. Read this reference for every supplied legacy
+contig/length JSON/YAML artifact. Interpret the file as evidence of intent,
+confirm its material semantics, then use the compatibility adapter when the
+confirmed intent fits this dialect. Do not generate a JSON intermediary for
+prose, raw structures, or annotated-CIF inputs; those belong to
+`rfd4-proteina-annotated-cif`.
 
 ## The two schemas (dispatch on which is present; they never co-occur)
 
@@ -71,3 +72,8 @@ bash skills/rfd4-proteina-inputs/scripts/build_from_rfd3.sh input.json example_k
   `CHAIN/RES_NAME/RES_ID/ATOM_NAME`. A selector matching zero or multiple atoms is
   an error. Use `--list_metal_candidates` to inspect candidates; never infer a
   coordination bond from distance alone.
+
+After conversion, use the sibling
+[`rfd4-proteina-annotated-cif`](../../rfd4-proteina-annotated-cif/SKILL.md)
+skill for condition semantics, Python inspection, invariant interpretation, and
+any direct edits to the resulting CIF.

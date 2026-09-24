@@ -10,7 +10,8 @@ description: >
   "deterministic (ODE) sampling", or "compute refolding metrics inline". It first
   runs the setup preflight, then routes by design case to the right benchmark
   example + overrides, and drives `src/rfproteina/generate.py`. It hands off to
-  rfd4-proteina-inputs to build an annotated CIF when one is needed, to
+  rfd4-proteina-annotated-cif to build or edit an annotated CIF, to
+  rfd4-proteina-inputs only for legacy RFD3 JSON/YAML adaptation, to
   rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
   for deep metric analysis (the AF3 oracle).
 license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
@@ -59,8 +60,9 @@ input, task-specific overrides, and gotchas:
 **Need an input the request doesn't have?** Annotated CIF is the recommended,
 lossless format. When the task needs coordinate/sequence conditioning, hotspots,
 fixed ligands, H-bonds, RASA, or unindexed motifs, **hand off to
-rfd4-proteina-inputs** to build and validate the CIF, then come back and pass it via
-`inputs=<file>.cif`. The ready-made JSON/YAML benchmarks above run directly.
+rfd4-proteina-annotated-cif** to build and validate the CIF, then come back and
+pass it via `inputs=<file>.cif`. The ready-made JSON/YAML benchmarks above run
+directly; use **rfd4-proteina-inputs** only when migrating or interpreting them.
 
 ## Step 3 — Run
 

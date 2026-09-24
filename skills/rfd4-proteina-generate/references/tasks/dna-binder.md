@@ -33,10 +33,10 @@ python src/rfproteina/generate.py \
 
 ## Gotchas
 
-- The retired `paper_dna` benchmark carried `ori_token` and `atomwise_hbond`,
-  which are **dead knobs** in the current path (the model does not use an ORI
-  token). Use the de novo inputs. See **rfd4-proteina-inputs** for the
-  catalog of known-bad legacy fields.
+- `ori_token` and `atomwise_hbond` are unsupported compatibility-format
+  fields. Use **rfd4-proteina-inputs** to interpret benchmarks containing them,
+  then validate the resulting annotated CIF with
+  **rfd4-proteina-annotated-cif**.
 - Base-edge H-bond selections (`select_hbond_acceptor` / `select_hbond_donor`)
-  are per-atom and easy to get wrong — build DNA inputs with
-  **rfd4-proteina-inputs**.
+  are per-atom and easy to get wrong. Use **rfd4-proteina-inputs** to interpret
+  those legacy fields, or **rfd4-proteina-annotated-cif** to author them directly.

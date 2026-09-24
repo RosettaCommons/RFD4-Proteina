@@ -136,8 +136,10 @@ Three details deserve particular attention for non-canonicals, PTMs and small mo
 A CIF saved out of your PyMOL session keeps all three, and the model reads CIFs natively, so nothing
 gets rebuilt on the way in.
 
-> The [input-authoring skill](design2cif.md) can inspect an existing artifact or prose description
-> and build an annotated CIF directly.
+> The [`rfd4-proteina-annotated-cif` skill](design2cif.md) authors directly from
+> prose, structures, or an existing annotated CIF. The separate
+> `rfd4-proteina-inputs` compatibility skill interprets existing legacy RFD3
+> JSON/YAML without making JSON an intermediate for other workflows.
 
 ## Four ways to make one
 
@@ -147,9 +149,12 @@ at atoms. The Python API can express anything the model can read.
 | Route | Reach for it when |
 | --- | --- |
 | [PyMOL plugin](#pymol-plugin) | You want to select atoms by eye |
-| [`rfd4-proteina-inputs` / `/design2cif`](design2cif.md) | You want an agent to interview you, inspect existing artifacts, and author or edit the CIF |
+| [`rfd4-proteina-annotated-cif`](design2cif.md) | You want an agent to interview you, inspect existing artifacts, and author or edit the CIF |
 | [YAML condition spec](#yaml-condition-spec) | You want the problem as data, in version control |
 | [Python API](#python-api) | You are generating many problems, or need something the others cannot say |
+
+Use `rfd4-proteina-inputs` (or the `/design2cif` compatibility alias) only when
+adapting an existing legacy RFD3 JSON/YAML specification.
 
 ### PyMOL plugin
 
@@ -374,9 +379,17 @@ from the plugin's Main tab under **Insert Expandable Segment...**, or in code wi
 `atomworks.ml.utils.expandable_segment.insert_expandable_segment`. You give it `seg_min`, `seg_max`,
 and where it goes, either inside a chain or as a new chain.
 
-**Save your segments *collapsed*, not realized.** A collapsed segment is a sentinel that the model
-expands per sample. A realized segment is already frozen to one concrete length, so the model will
-not resample it. Only polypeptide expandable segments work for now.
+**Keep source templates collapsed when lengths should resample per design.** A collapsed segment
+is a sentinel expanded per sample. An intentionally materialized child CIF, such as a fixed-length
+benchmark input, records one concrete sampled length and will not resample it. Follow workspace
+rules for retaining the source template and recording child provenance. Only polypeptide
+expandable segments work for now.
+
+In an **unindexed motif**, expandable segments specify spacing rather than extra conditioning
+residues. Mark the segment and its flanking motif residues unindexed and give them the same index
+group. The sampled length becomes a residue-number gap: `C–[2–2]–C` gives the cysteines relative
+indices `0` and `3`, without creating unindexed spacer tokens. Length ranges are sampled per design,
+and indexed expandable segments still produce generated residues as usual.
 
 In an **unindexed motif**, expandable segments specify spacing rather than extra conditioning
 residues. Mark the segment and its flanking motif residues unindexed and give them the same index

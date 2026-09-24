@@ -41,12 +41,12 @@ crd_mask = SA_CRDSRC.mask(atom_array)      # boolean: coordinate-conditioned ato
 src_labels = SA_SRC.annotation(atom_array)  # which input component each atom came from
 ```
 
-> The **import-order landmine** from **rfd4-proteina-inputs** applies here too:
+> The **import-order landmine** from **rfd4-proteina-annotated-cif** applies here too:
 > `import rfproteina.conditions` must run before parsing, or every rfproteina
 > annotation column is silently dropped on read.
 
 These provenance columns map output atoms back to the exact input regions you
-defined when building the annotated CIF (via **rfd4-proteina-inputs**) — e.g. which
+defined when building the annotated CIF (via **rfd4-proteina-annotated-cif**) — e.g. which
 atoms are your fixed motif, which are unindexed insertions, which came from a
 coordinate group.
 

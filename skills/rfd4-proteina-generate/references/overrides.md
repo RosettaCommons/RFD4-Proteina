@@ -33,7 +33,7 @@ python src/rfproteina/generate.py \
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `inputs` | Input file (annotated CIF / JSON / YAML / CIF / PDB) or a directory of them. Annotated CIF is preferred — build via **rfd4-proteina-inputs**. | Required |
+| `inputs` | Input file (annotated CIF / JSON / YAML / CIF / PDB) or a directory of them. Annotated CIF is preferred — build via **rfd4-proteina-annotated-cif**; use **rfd4-proteina-inputs** for legacy JSON/YAML adaptation. | Required |
 | `subset_to_examples` | Run only specific example keys (comma-separated), e.g. `subset_to_examples=monomer-short` | null |
 | `skip_existing` | Skip examples whose output already exists (resume a run) | true |
 | `seed` | Random seed (`null` = different each run) | null |

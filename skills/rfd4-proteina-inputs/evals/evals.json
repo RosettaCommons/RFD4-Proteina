@@ -3,59 +3,42 @@
   "skill": "rfd4-proteina-inputs",
   "cases": [
     {
-      "id": "prose-intent-direct-python",
-      "prompt": "I want a 110-140 residue protein scaffold around catalytic residues 36 and 87 in data/benchmarks/tip_atom_plinder_training_examples/5eni__1__1.A__1.B.cif. Keep only each catalytic sidechain tip fixed and let the model choose their positions in the new chain. Prepare the annotated CIF.",
+      "id": "existing-json-compatibility-input",
+      "prompt": "Interpret and convert the monomer-short example from data/benchmarks/monomer.json into an annotated CIF. Do not assume the JSON is automatically what I intended.",
       "setup": {
         "cwd": "repository root",
         "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]
       },
       "expected_behavior": [
-        "Inspects the supplied CIF before asking targeted questions about exact tip atoms, sequence identity, independent versus tied index groups, ligand retention, and whether 110-140 counts generated residues",
-        "Shows a plain-language intent plan and confirms material inferences",
-        "Builds with a task-specific Python AtomWorks recipe and does not create a JSON/YAML intermediate",
-        "Leaves the 110-140 expandable segment collapsed, reparses the output, inspects it, and runs check_annotated_cif.sh"
+        "Reads the supplied JSON and restates its length/range semantics as intent without generating another spec",
+        "Asks only material unresolved questions and recognizes that no source structure needs inspection for this unconditional example",
+        "Runs bash skills/rfd4-proteina-inputs/scripts/build_from_rfd3.sh data/benchmarks/monomer.json monomer-short --output /tmp/monomer_short.cif",
+        "Runs inspect_cif.sh and check_annotated_cif.sh on /tmp/monomer_short.cif"
       ],
       "success_criteria": {
-        "output_type": "annotated CIF",
-        "forbidden_generated_output_extensions": [".json", ".yaml", ".yml"],
+        "artifact_glob": "/tmp/monomer_short.cif",
         "validator_errors": 0
       }
     },
     {
-      "id": "modify-existing-annotated-cif",
-      "prompt": "Use data/benchmarks/small_molecule_binder/SAM_hbonds.cif as the starting annotated CIF. First tell me what it currently asks the model to do. Then change only SAM atom O4 from its current hydrogen-bond role to ACCEPTOR and write a new annotated CIF.",
-      "setup": {
-        "cwd": "repository root",
-        "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]
-      },
+      "id": "interrogate-legacy-unindex-semantics",
+      "prompt": "Convert an old RFD3 JSON entry with length 120, unindex 'A39,A219', ligand 'L;G', and select_fixed_atoms mapping both residues to TIP.",
       "expected_behavior": [
-        "Runs inspect_cif.sh on the source and loads it with rfproteina.conditions registered plus ANNOTATED_CIF",
-        "Summarizes current structure, chemistry, and conditions before editing",
-        "Copies the existing C_HB annotation, changes only the uniquely selected SAM O4 atom through the Python API, and writes a new file without creating JSON",
-        "Reparses and inspects both files, proves that the requested H-bond role changed and unrelated conditions, charges, bonds, components, and expandable segments did not, then validates the output"
-      ],
-      "success_criteria": {
-        "source_unchanged": true,
-        "changed_condition_entries": 1,
-        "validator_errors": 0
-      }
+        "Classifies the input as the length/unindex legacy schema",
+        "Treats L;G as one literal residue name because ligand splits only on commas",
+        "Explains that A39 and A219 are separate unindexed islands and confirms that independent placement is intended",
+        "Checks the built residues are not atomized before unindexing and that index groups do not mix indexed and unindexed residues",
+        "Builds with build_from_rfd3.sh and validates with check_annotated_cif.sh"
+      ]
     },
     {
-      "id": "build-and-validate-monomer-cif",
-      "prompt": "Build an annotated CIF for an unconditional monomer of length 100 (no motif, no ligand) and validate it.",
-      "setup": {
-        "cwd": "repository root",
-        "requires": ["rfd4-proteina-setup complete (venv + atomworks)"]
-      },
+      "id": "route-generic-cif-editing-away",
+      "prompt": "Coordinate-condition the backbone of chain A in this annotated CIF.",
       "expected_behavior": [
-        "Recognizes this as an unconditional length spec (no motif) and does not over-interrogate",
-        "Builds the CIF with the skill's tooling (build_cif.sh on a minimal length spec it constructs)",
-        "Runs bash skills/rfd4-proteina-inputs/scripts/check_annotated_cif.sh on the output",
-        "Confirms 0 errors and hands the CIF path to rfd4-proteina-generate"
-      ],
-      "success_criteria": {
-        "validator_errors": 0
-      }
+        "Recognizes that no legacy JSON/YAML adaptation is involved",
+        "Routes the task to rfd4-proteina-annotated-cif",
+        "Does not create an intermediate legacy InputSpecification"
+      ]
     }
   ]
 }

@@ -14,9 +14,11 @@ identity, and any dirty diff needed to explain the running code.
 
 ## 2. Build the input portfolio
 
-Inspect existing prose and artifacts with `rfd4-proteina-inputs`. Preserve the
-original annotated CIF and create explicit variants for each conditioning
-hypothesis. Validate and register every variant before using it in a run.
+Inspect prose, structures, and annotated CIFs with
+`rfd4-proteina-annotated-cif`. Use `rfd4-proteina-inputs` only to adapt a legacy
+RFD3 JSON/YAML artifact. Preserve the original annotated CIF and create explicit
+variants for each conditioning hypothesis. Validate and register every variant
+before using it in a run.
 
 Do not silently add conditions during later phases. A new conditioning hypothesis
 is a new registered input with a recorded parent and rationale.

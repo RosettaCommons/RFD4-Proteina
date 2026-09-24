@@ -24,8 +24,9 @@ and let the results steer the next round. This skill is the *strategy layer* ove
 the mechanics that already exist:
 
 - **rfd4-proteina-generate** — produce designs for a task.
-- **rfd4-proteina-inputs** — build the annotated CIF that defines the design problem
-  (length, epitope/hotspots, ligand).
+- **rfd4-proteina-annotated-cif** — build or edit the annotated CIF that defines
+  the design problem (length, epitope/hotspots, ligand).
+- **rfd4-proteina-inputs** — adapt a legacy RFD3 JSON/YAML branch input when needed.
 - **rfd4-proteina-search** — reward-guided beam search (AF3 oracle) for a single run.
 - **rfd4-proteina-evaluate** — metrics + aggregation + diversity clustering.
 
@@ -51,7 +52,7 @@ Before generating anything, write down (on disk, so it is inspectable):
 
 - **Design problem** — task + input (monomer, motif, small-molecule/enzyme
   active site; for binders the target + epitope/hotspots). Build it with
-  **rfd4-proteina-inputs**.
+  **rfd4-proteina-annotated-cif**.
 - **Reward** — the composite metric you optimize, as RFD4-Proteína reward keys with
   weights and gates (Step 3). A provisional reward is still useful — it is a
   hypothesis about what matters, meant to steer search and be replaced.
@@ -139,7 +140,7 @@ Change **one** axis per child so effects are attributable:
   and `...local_latents...sc_scale_noise` (higher = more diverse, often less
   designable).
 - **Input**: binder length window, epitope/hotspot set, ligand pose/conditioning
-  — via **rfd4-proteina-inputs** (a new branch input).
+  — via **rfd4-proteina-annotated-cif** (a new branch input).
 
 Full axis catalog with defaults and cautions:
 [references/sweep-axes.md](references/sweep-axes.md).
