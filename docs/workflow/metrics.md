@@ -155,7 +155,18 @@ These run directly on the generated structure, before any oracle refolds it.
 | `sequence_similarity_to_input` | any: `partial_diffusion` | Sequence identity against the seed structure, for partial diffusion | `sequence_identity_to_input` |
 | `cath_metric` | any: `cath` | CATH superfamily classification of the chain of interest, through Foldseek | `C`, `A`, `T`, `H`, `type`, `evalue`, `tmscore` |
 | `sequence_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | GRAVY and the Guruprasad instability index on the designed chain. Half-life is deliberately omitted | `gravy`, `instability_index` |
+| `antibody_contacts` | any: `antibody` | Fraction of contacting variable-domain residues in Chothia CDRs | `cdr_contact_count`, `fw_contact_count`, `cdr_contact_fraction` |
+| `cdr_torsion_naturalness` | any: `antibody` | Chothia CDR phi/psi naturalness against bundled native samples | `H1`–`L3`, corresponding `*_length`, `n_scored_cdrs` |
 | `rosetta_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | Rosetta SAP and ExposedHydrophobics through a nested PyRosetta apptainer. Set `PYROSETTA_CONTAINER` outside the configured cluster environments | `sap_score`, `hydrophobic_exposure_sasa` |
+
+Antibody metrics use ANARCII and basic Chothia CDRs across all protein chains,
+independently of conditioning masks. `annotate_antibody_numbering()` caches
+annotations; use `overwrite=True` after sequence edits. Contacts compare numbered
+variable domains against chains without antibody domains.
+
+Torsions use VH/VL references when a light domain is present, otherwise VHH. For an
+isolated VH, set `cdr_torsion_naturalness.reference_set=vhvl`. Incomplete or unsupported
+CDRs return NaN; score multiple domains of the same antibody chain type separately.
 
 ### Structure prediction metrics
 
@@ -172,8 +183,8 @@ explains.
 
 | Config key | Tag gate | What it measures | Output columns |
 | --- | --- | --- | --- |
-| `refolded_backbone_rmsd` | any: `unconditional_refolding`, `ppi_refolding`, `dna_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding`<br>all: `is_refold:untransformed` | Backbone self-consistency RMSD (scRMSD) between design and refold | `rmsd` |
-| `refolded_target_aligned_binder_rmsd` | any: `ppi_refolding`, `dna_refolding`<br>all: `is_refold:untransformed` | Binder RMSD after aligning on the fixed target | `rmsd` |
+| `refolded_backbone_rmsd` | any: `unconditional_refolding`, `ppi_refolding`, `antibody`, `dna_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding`<br>all: `is_refold:untransformed` | Backbone self-consistency RMSD (scRMSD) between design and refold | `rmsd` |
+| `refolded_target_aligned_binder_rmsd` | any: `ppi_refolding`, `dna_refolding`, `antibody`<br>all: `is_refold:untransformed` | Binder all-atom RMSD after aligning on the fixed target | `rmsd` |
 | `refolded_target_backbone_aligned_binder_rmsd` | any: `ppi_refolding`<br>all: `is_refold:untransformed` | RMSD of atoms without coordinate conditioning after aligning on coordinate-conditioned protein backbone atoms; used for PPI passing | `rmsd` |
 | `refolded_motif_allatom_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`<br>all: `is_refold:untransformed` | All atom motif RMSD between design and refold, unindexed regions included | `rmsd` |
 | `refolded_motif_ca_rmsd` | any: `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`<br>all: `is_refold:untransformed` | CA only motif RMSD between design and refold, unindexed regions included | `rmsd` |
@@ -234,7 +245,7 @@ apptainer and AF3 setup you need.
 | Config key | Tag gate | Notes | Key outputs (prefix `<key>.`) |
 | --- | --- | --- | --- |
 | `oracle` | any: `af3_refolding`, `unconditional_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding` | Untemplated AF3 refold | `overall_plddt`, `overall_ptm`, `overall_iptm`, `plddt_coi`, `ptm_coi`, `pae_coi`, `ipae_coi`, `min_ipae_coi`, `iptm_coi`, `frac_under_1`/`1.5`/`2` (on `min_ipae_coi`) |
-| `oracle_ppi` | any: `ppi_refolding` | Target chain templated and fixed, for protein binder design | same key set, prefixed `oracle_ppi.` |
+| `oracle_ppi` | any: `ppi_refolding`, `antibody` | Templates protein atoms with ordinary or internal coordinate conditioning | same key set, prefixed `oracle_ppi.` |
 | `oracle_dna` | any: `dna_refolding` | DNA templated and fixed, for DNA binder design | same key set, prefixed `oracle_dna.` |
 
 #### Refolding with OpenFold3 instead
@@ -258,7 +269,8 @@ A pass criterion thresholds one or more already computed metric values into a bi
 from the generic `PassCriterionMetric`. See [Adding your own pass
 criterion](custom-metrics.md#pass-criteria-config).
 
-Separate entries are ANDed together. To threshold the best, worst or mean of several keys instead,
+Separate entries are ANDed together. `min` and `max` are inclusive.
+To threshold the best, worst or mean of several keys instead,
 say when either of two interfaces being good enough will do, use a `min_of`, `max_of` or `mean_of`
 list. See [Thresholding a reduction over several
 keys](custom-metrics.md#thresholding-a-reduction-over-several-keys).
@@ -267,6 +279,7 @@ keys](custom-metrics.md#thresholding-a-reduction-over-several-keys).
 | --- | --- | --- |
 | `unconditional` | any: `unconditional_refolding` | `refolded_backbone_rmsd.rmsd` ≤ 1.5 |
 | `ppi` | any: `ppi_refolding` | `oracle_ppi.ptm_coi` ≥ 80, `oracle_ppi.min_ipae_coi` ≤ 1.5, `refolded_target_backbone_aligned_binder_rmsd.rmsd` ≤ 2.5 |
+| `antibody` | any: `antibody` | `oracle_ppi.min_ipae_coi` ≤ 2.0, `refolded_target_aligned_binder_rmsd.rmsd` ≤ 2.0 Å |
 | `dna` | any: `dna_refolding` | `oracle_dna.min_ipae_coi` ≤ 1.5, `refolded_target_aligned_binder_rmsd.rmsd` ≤ 8.0 |
 | `motif_scaffold` | any: `motif_scaffold_refolding` | `refolded_backbone_rmsd.rmsd` ≤ 2.0, `refolded_motif_allatom_rmsd.rmsd` ≤ 2.0, `refolded_motif_ca_rmsd.rmsd` ≤ 1.0 |
 | `internal_coords` | any: `internal_coordinate_motif_scaffold_refolding` | Same thresholds as `motif_scaffold` |
@@ -345,7 +358,7 @@ atom `False`, which separates the experimental half of the complex from the desi
 use that to template the target through the oracle's
 `template_query: "is_loaded_target & is_protein"`. That annotation is the way to template a
 substituted off-target. The transform gives it no conditioning it did not already carry on disk, so
-a mask based query like `oracle_ppi`'s `template_query: "mask_coordinate_1_atom"` will generally
+a query selecting coordinate-conditioning masks, as used by `oracle_ppi`, will generally
 select nothing on its half of the complex.
 
 A transform's refolds are cached by filename, as `{example_id}_{save_id}_{oracle_name}_*`, so

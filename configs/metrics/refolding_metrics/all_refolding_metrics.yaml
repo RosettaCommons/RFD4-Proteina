@@ -20,6 +20,7 @@ refolded_backbone_rmsd:
   required_tags_any:
     - unconditional_refolding
     - ppi_refolding
+    - antibody
     - dna_refolding
     - motif_scaffold_refolding
     - internal_coordinate_motif_scaffold_refolding
@@ -36,7 +37,7 @@ refolded_target_aligned_binder_rmsd:
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
-  required_tags_any: [ppi_refolding, dna_refolding]
+  required_tags_any: [ppi_refolding, dna_refolding, antibody]
   required_tags_all: ["is_refold:untransformed"]
 
 refolded_target_backbone_aligned_binder_rmsd:

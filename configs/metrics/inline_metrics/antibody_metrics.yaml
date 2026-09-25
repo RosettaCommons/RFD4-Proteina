@@ -1,0 +1,8 @@
+antibody_contacts:
+  _target_: rfproteina.metrics.antibody_metrics.AntibodyContacts
+  required_tags_any: [antibody]
+  contact_threshold: 7.0
+
+cdr_torsion_naturalness:
+  _target_: rfproteina.metrics.cdr_torsions.CDRTorsionNaturalness
+  required_tags_any: [antibody]

@@ -136,6 +136,7 @@ turns it on, and how to layer your own config on top of an existing metric.
 | --- | --- |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD for unconditional generation |
 | `ppi_refolding` | AF3 refolding, target templating and interface metrics for protein binder design |
+| `antibody` | Antibody contacts and CDR torsions, templated refolding, and antibody pass criteria |
 | `motif_scaffold_refolding` | AF3 refolding plus motif RMSD for motif scaffolding and enzyme design |
 | `sm_binder_refolding` | AF3 refolding plus binding metrics for small molecule binder design |
 | `ame_refolding` | AF3 refolding for enzyme (MCSA) active site benchmarks |

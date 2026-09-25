@@ -21,12 +21,13 @@ oracle:
 oracle_ppi:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
-  template_query: "mask_coordinate_1_atom"
+  template_query: "(mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein"
   aggregation: [median]
   frac_under_thresholds:
     min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
+    - antibody
 
 oracle_dna:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
