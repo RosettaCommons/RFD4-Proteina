@@ -25,3 +25,4 @@ oracle_ppi:
     min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
+    - antibody

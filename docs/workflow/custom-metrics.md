@@ -238,7 +238,8 @@ many modules as you like and reference each one as
 ### Pass criteria config
 
 `PassCriterionMetric` evaluates one or more values from the merged oracle and refolding metrics
-dict, through `metric_thresholds`, a dict of `metric_key: {min: ..., max: ...}`. The output key is
+dict, through `metric_thresholds`, a dict of `metric_key: {min: ..., max: ...}` with inclusive bounds.
+The output key is
 `{config_name}.pass`. You need no custom Python class.
 
 ```yaml
@@ -292,7 +293,7 @@ Here are the common ones across this repo's built in metrics.
 | --- | --- |
 | `design` | Raw structure design metrics, so clash, bond length, SSE distribution, and any custom design metric |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD, for unconditional generation |
-| `ppi_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding` | Task specific AF3 refolding variants. See [Evaluating results](running.md#evaluating-results) |
+| `antibody`, `ppi_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding` | Task specific AF3 refolding variants. See [Evaluating results](running.md#evaluating-results) |
 | `hotspot_conditioning` | Hotspot obedience metrics, only meaningful when your input specifies hotspots |
 | `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
 | `rasa_conditioning` | RASA buried and exposed adherence metrics |

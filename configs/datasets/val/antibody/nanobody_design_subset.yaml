@@ -1,0 +1,46 @@
+defaults:
+  - /datasets/val/antibody@_here_: nanobody_design
+  - _self_
+
+dataset:
+  subset_to_keys:
+    - vhh_cross_8rmy_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8rmy_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8rmy_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8rmy_target__h-NbBCII10_cdr123
+    - vhh_cross_8ror_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8ror_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8ror_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8ror_target__h-NbBCII10_cdr123
+    - vhh_cross_8s72_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8s72_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8s72_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8s72_target__h-NbBCII10_cdr123
+    - vhh_cross_8tmg_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8tmg_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8tmg_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8tmg_target__h-NbBCII10_cdr123
+    - vhh_cross_8w5i_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8w5i_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8w5i_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8w5i_target__h-NbBCII10_cdr123
+    - vhh_cross_8w5o_target__VHH_caplacizumab_cdr123
+    - vhh_cross_8w5o_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_8w5o_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_8w5o_target__h-NbBCII10_cdr123
+    - vhh_cross_9cq8_target__VHH_caplacizumab_cdr123
+    - vhh_cross_9cq8_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_9cq8_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_9cq8_target__h-NbBCII10_cdr123
+    - vhh_cross_9dlf_target__VHH_caplacizumab_cdr123
+    - vhh_cross_9dlf_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_9dlf_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_9dlf_target__h-NbBCII10_cdr123
+    - vhh_cross_9dm7_target__VHH_caplacizumab_cdr123
+    - vhh_cross_9dm7_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_9dm7_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_9dm7_target__h-NbBCII10_cdr123
+    - vhh_cross_9fyt_target__VHH_caplacizumab_cdr123
+    - vhh_cross_9fyt_target__VHH_ozoralizumab_cdr123
+    - vhh_cross_9fyt_target__VHH_vobarilizumab_cdr123
+    - vhh_cross_9fyt_target__h-NbBCII10_cdr123
