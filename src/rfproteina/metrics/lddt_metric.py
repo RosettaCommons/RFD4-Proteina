@@ -10,6 +10,7 @@ from biotite.structure import AtomArray, AtomArrayStack, lddt
 
 from rfproteina.metrics.metric import Metric
 from rfproteina.utils.atom_permutation import permute_gt_atoms
+from rfproteina.utils.subunit_permutation import permute_gt_subunits
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,8 @@ class AllAtomLDDT(Metric):
         predicted_atom_array_key: str = "predicted_atom_array",
         ground_truth_atom_array_key: str = "ground_truth_atom_array",
         inclusion_radius: float = 15.0,
-        resolve_symmetry: Sequence[SymmetryLevel] = ("atom",),
+        resolve_symmetry: Sequence[SymmetryLevel] = ("subunit", "atom"),
+        max_subunit_permutations: int = 720,
         **kwargs,
     ):
         """Initialize the LDDT metric.
@@ -51,26 +53,24 @@ class AllAtomLDDT(Metric):
             predicted_atom_array_key: Key for predicted AtomArray(s) in kwargs.
             ground_truth_atom_array_key: Key for ground truth AtomArray(s) in kwargs.
             inclusion_radius: Distance cutoff in Angstroms. Defaults to 15.0.
-            resolve_symmetry: Which symmetries to resolve in the ground truth before
-                scoring, so the prediction is not penalized for a labelling it cannot
-                know. Defaults to `("atom",)`; pass `()` to score the ground truth as
-                deposited.
+            resolve_symmetry: Enabled levels; defaults to subunit then atom. Empty disables both.
+                Subunits are matched by aligned coordinate error before atom resolution and LDDT scoring.
+            max_subunit_permutations: Maximum combined subunit assignments. Defaults to 720.
 
         Raises:
             ValueError: If `resolve_symmetry` names an unknown level.
-            NotImplementedError: If `"subunit"` is requested.
+            NotImplementedError: During scoring, if the subunit permutation limit is exceeded.
         """
         unknown = set(resolve_symmetry) - {"atom", "subunit"}
         if unknown:
             raise ValueError(f"Unknown symmetry level(s) {sorted(unknown)}; expected 'atom' and/or 'subunit'")
-        if "subunit" in resolve_symmetry:
-            raise NotImplementedError("Subunit (chain-permutation) symmetry resolution is not implemented yet")
 
         # Set before super().__init__ because it accesses kwargs_to_compute_args
         self.predicted_atom_array_key = predicted_atom_array_key
         self.ground_truth_atom_array_key = ground_truth_atom_array_key
         self.inclusion_radius = inclusion_radius
         self.resolve_symmetry = tuple(resolve_symmetry)
+        self.max_subunit_permutations = max_subunit_permutations
         super().__init__(**kwargs)
 
     @property
@@ -97,6 +97,14 @@ class AllAtomLDDT(Metric):
         # Convert to stacks for uniform handling
         pred_stack = as_atom_array_plus_stack(predicted)
         gt_stack = as_atom_array_plus_stack(ground_truth)
+        if (
+            "subunit" in self.resolve_symmetry
+            and pred_stack.array_length() == gt_stack.array_length()
+            and gt_stack.stack_depth() in (1, pred_stack.stack_depth())
+        ):
+            gt_stack = as_atom_array_plus_stack(
+                permute_gt_subunits(pred_stack, gt_stack, max_permutations=self.max_subunit_permutations)
+            )
         if "atom" in self.resolve_symmetry and (
             pred_stack.array_length() == gt_stack.array_length()
             and (pred_stack.stack_depth() == gt_stack.stack_depth() or gt_stack.stack_depth() == 1)

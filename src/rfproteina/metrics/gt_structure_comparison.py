@@ -15,6 +15,7 @@ from rfproteina.metrics.metric import Metric
 from rfproteina.utils.atom_permutation import permute_gt_atoms
 from rfproteina.utils.logging import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
+from rfproteina.utils.subunit_permutation import permute_gt_subunits
 
 ranked_logger = RankedLogger(name=__name__, rank_zero_only=False)
 
@@ -481,6 +482,8 @@ class StructureComparisonMetric(Metric):
             since alignment otherwise matches positionally and requires identical atom sets. Off by
             default. Safe only when the two carry the same numbering — refolds do, as the oracle
             transfers coordinates back onto the untransformed input.
+        resolve_symmetry: Enabled levels; defaults to subunit then atom. Empty disables both.
+        max_subunit_permutations: Exhaustive assignment limit; larger searches raise NotImplementedError.
 
     Examples:
         >>> metric = StructureComparisonMetric(
@@ -504,15 +507,15 @@ class StructureComparisonMetric(Metric):
         input_kwarg_names: dict[str, str] | None = None,
         verbose_naming: bool = False,
         restrict_to_common_atoms: bool = False,
-        resolve_symmetry: Sequence[SymmetryLevel] = ("atom",),
+        resolve_symmetry: Sequence[SymmetryLevel] = ("subunit", "atom"),
+        max_subunit_permutations: int = 720,
         **kwargs,
     ):
         unknown = set(resolve_symmetry) - {"atom", "subunit"}
         if unknown:
             raise ValueError(f"Unknown symmetry level(s) {sorted(unknown)}; expected 'atom' and/or 'subunit'")
-        if "subunit" in resolve_symmetry:
-            raise NotImplementedError("Subunit (chain-permutation) symmetry resolution is not implemented yet")
         self.resolve_symmetry = tuple(resolve_symmetry)
+        self.max_subunit_permutations = max_subunit_permutations
 
         self._input_kwarg_names = input_kwarg_names or {
             "ground_truth_atom_array": "ground_truth_atom_array",
@@ -589,6 +592,7 @@ class StructureComparisonMetric(Metric):
             mask = annot == val
             gt_sub = gt_stack[:, mask]
             pred_sub = pred_stack[:, mask]
+            gt_sub = self._resolve_subunits(gt_sub, pred_sub)
             # ... permute within the group, after it is superimposed on itself.  A group's
             # placement relative to the others is deliberately unspecified, so a labelling
             # chosen in a whole-structure frame would be chosen in a frame that does not exist.
@@ -639,6 +643,26 @@ class StructureComparisonMetric(Metric):
         else:
             return {k: float(v / total_atoms) for k, v in weighted.items()}
 
+    def _resolve_subunits(self, gt_stack: AtomArrayPlusStack, pred_stack: AtomArrayPlusStack) -> AtomArrayPlusStack:
+        """Match equivalent subunits in this metric's alignment and scoring selections."""
+        if (
+            "subunit" not in self.resolve_symmetry
+            or gt_stack.array_length() != pred_stack.array_length()
+            or gt_stack.stack_depth() not in (1, pred_stack.stack_depth())
+        ):
+            return gt_stack
+        frame_query = self.align_mask or (self.subset_mask if self.metric_type == "dist_mae" else None)
+        return as_atom_array_plus_stack(
+            permute_gt_subunits(
+                pred_stack,
+                gt_stack,
+                frame_mask=None if not frame_query else np.asarray(resolve_mask(gt_stack, frame_query)),
+                score_mask=None if not self.subset_mask else np.asarray(resolve_mask(gt_stack, self.subset_mask)),
+                align=bool(self.align_mask) or self.metric_type == "dist_mae",
+                max_permutations=self.max_subunit_permutations,
+            )
+        )
+
     def compute(
         self,
         ground_truth_atom_array: AtomArray
@@ -669,6 +693,8 @@ class StructureComparisonMetric(Metric):
         # matching below lines up; leaves aligned inputs untouched.
         if self.restrict_to_common_atoms:
             gt_stack, pred_stack = restrict_to_common_atoms(gt_stack, pred_stack)
+        if not self.subdivide_by_annotation:
+            gt_stack = self._resolve_subunits(gt_stack, pred_stack)
         # Permute chemically equivalent GT atoms so the prediction is not scored on a labelling
         # it cannot know; atom classes (-1 = leave alone) keep a swap inside what this metric reports on.
         if (
