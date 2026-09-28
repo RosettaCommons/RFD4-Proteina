@@ -72,9 +72,6 @@ datasets:
     mgnify_af2_2026:
       probability: 0.26
       dataset:
-        # The training run memory-mapped local metadata while streaming structures from the blob store.
-        data: ${oc.env:DATA_PATH}/train_datasets/mgnify_af2_distill_2026/mgnify_af2_distill_2026.parquet
-        memory_map: true
         transform: {crop_size: "${_crop_size}", design_tasks: "${_ae_design_tasks}", precompute_atom_permutation: true}
     ted_dimers:
       probability: 0.14
