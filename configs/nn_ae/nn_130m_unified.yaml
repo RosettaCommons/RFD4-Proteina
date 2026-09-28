@@ -1,6 +1,7 @@
 name: transformer_ae_unified
 
 latent_z_dim: &latent_z_dim 16
+use_torch_compile: true
 torch_compile_fullgraph: false
 torch_compile_mode: reduce-overhead
 

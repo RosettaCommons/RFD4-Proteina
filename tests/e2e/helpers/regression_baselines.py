@@ -77,10 +77,7 @@ BEAM_SEARCH_OVERRIDES = [
     "seed=42",
     "torch_deterministic=true",
     # No compilation for regression tests.
-    "execution.inference.length_buckets=null",
-    "execution.inference.flow=eager",
-    "execution.inference.encoder=eager",
-    "execution.inference.decoder=eager",
+    "compile_lengths=null",
 ]
 
 # Tolerances.

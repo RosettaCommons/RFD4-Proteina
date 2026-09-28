@@ -38,7 +38,6 @@ def collate_batch(
         module_path, class_name = schema.rsplit(".", 1)
         schema = getattr(importlib.import_module(module_path), class_name)
 
-    fixed_dimensions = {key: value for key, value in (fixed_dimensions or {}).items() if value is not None} or None
     samples = [schema.from_dict(item) for item in batch]
     batched_samples = BatchedDataSample(samples, default_padding_dimensions=fixed_dimensions)
     return batched_samples.pad_and_stack()

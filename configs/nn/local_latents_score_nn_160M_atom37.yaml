@@ -106,6 +106,10 @@ use_qkln: True
 #   - "cuequivariance": cuequivariance_torch fused kernel (requires cuequivariance_torch).
 attention_type: torch
 
+# torch.compile:
+#   - false (default): No compilation, eager mode
+#   - true: Wraps the forward pass with torch.compile for potential speedups
+use_torch_compile: true
 
 # Norm: layer_norm, rmsnorm_torch, rmsnorm_torch_fused (BF16 output), or rmsnorm_apex.
 # Honored by feature output norms, both attention paths, and AdaptiveLayerNorm.

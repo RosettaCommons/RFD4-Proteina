@@ -388,7 +388,7 @@ class BatchedDataSample(ABC):
                     raise ValueError(
                         f"Sample dimension {dim_name}={observed} exceeds the largest bucket "
                         f"{buckets[-1]}. Add a bucket >= {observed} (at inference, a longer "
-                        "value in `execution.inference.length_buckets`) to run an input this long."
+                        "value in `compile_lengths`) to run an input this long."
                     )
             elif observed > fixed_size:
                 raise ValueError(f"Sample dimension {dim_name}={observed} exceeds fixed size {fixed_size}")
