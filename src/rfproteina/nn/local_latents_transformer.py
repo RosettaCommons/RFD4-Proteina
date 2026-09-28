@@ -5,7 +5,6 @@ import torch
 from torch.utils.checkpoint import checkpoint
 
 from rfproteina.model_masks import compute_flow_emit_masks
-from rfproteina.nn.execution import execution_blocks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import make_norm, set_norm_type
@@ -19,6 +18,9 @@ CHECKPOINT_LEVELS = {
     "low": (False, True),
     "medium": (True, True),
 }
+
+# Dynamo caches one graph per (grad-mode, shape)
+_TRAIN_COMPILE_CACHE_SLOTS = 16
 
 logger = logging.getLogger(__name__)
 
@@ -166,11 +168,45 @@ class LocalLatentsTransformer(torch.nn.Module):
         self.insertion_k_proj = torch.nn.Linear(self.token_dim, self.token_dim, bias=False)
         self._insertion_head_scale = self.token_dim**-0.5
 
+        # Each trunk block is torch.compiled into off-tree lists (loop stays eager)
+        self.use_torch_compile = kwargs.get("use_torch_compile", False)
+        self._compiled_attn_blocks: list = []
+        self._compiled_pair_blocks: list = []
+        self._trunk_compiled = False
+
+        # Compile only on shapes we know are fixed/bucketed (to avoid recompilation/thrashing)
+        self._shapes_reserved = False
         self._compile_kwargs = torch_compile_kwargs(kwargs, default_fullgraph=True)
+        if self.use_torch_compile:
+            self._setup_compiled_trunk()
+
+    def _setup_compiled_trunk(self) -> None:
+        """Compile each trunk block into off-tree lists; the trunk loop stays eager."""
+        logger.info("Enabling torch.compile per trunk block.")
+        self._compiled_attn_blocks = [torch.compile(layer, **self._compile_kwargs) for layer in self.transformer_layers]
+        if self.update_pair_repr:
+            self._compiled_pair_blocks = [
+                torch.compile(layer, **self._compile_kwargs) if layer is not None else None
+                for layer in self.pair_update_layers
+            ]
+        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, _TRAIN_COMPILE_CACHE_SLOTS)
+        self._trunk_compiled = True
 
     def reserve_shape_cache(self, lengths: list[int]) -> None:
-        """Reserve compiler capacity without selecting an execution backend."""
-        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, 2 * len(lengths) + 2)
+        """Declare fixed length buckets so eval may compile, and size the dynamo cache for them.
+
+        Args:
+          lengths: Padded token counts to reserve cache slots for, i.e. the length buckets.
+        """
+        if not self._trunk_compiled:
+            # Compile the trunk blocks if not already done (e.g. if use_torch_compile was False at init).
+            self._setup_compiled_trunk()
+
+        # Reserve the cache for the given lengths, so eval can compile them without thrashing the training shapes
+        self._shapes_reserved = True
+        n_shapes = 2 * len(lengths) + 2  # one graph per bucket per grad-mode, plus the short final batch
+        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, n_shapes)
+        logger.info(f"Reserved dynamo cache for {len(lengths)} length buckets ({n_shapes} shapes).")
 
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Runs the network.
@@ -202,6 +238,15 @@ class LocalLatentsTransformer(torch.nn.Module):
                 "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
             }
         """
+        if self.use_torch_compile and self.training:
+            # torch.compile miscompiles the layer-norm backward into a misaligned CUDA access
+            # unless the token dim is 16-aligned. Fail fast instead of crashing deep in a kernel.
+            n_tokens = input["padding_mask"].shape[1]
+            assert n_tokens % 16 == 0, (
+                f"nn.use_torch_compile requires a 16-aligned token dim (got n={n_tokens}); set the train "
+                "collate_fn's fixed_dimensions to an aligned value, e.g. {I: 256}."
+            )
+
         return self._forward_impl(input)
 
     def _forward_impl(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
@@ -262,8 +307,18 @@ class LocalLatentsTransformer(torch.nn.Module):
         c: torch.Tensor,
         seq_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Run one trunk pass using the selected execution policy."""
-        attn, pair = execution_blocks(self, seq_mask)
+        """Run one trunk pass.
+
+        Runs compiled if the model has compiled blocks and the pass is over
+        a fixed shape (training or reserved eval buckets); otherwise, runs the registered eager layers.
+        """
+        use_compiled = bool(self._compiled_attn_blocks) and (self.training or self._shapes_reserved)
+        attn = self._compiled_attn_blocks if use_compiled else self.transformer_layers
+
+        if not self.update_pair_repr:
+            pair: Sequence = []
+        else:
+            pair = self._compiled_pair_blocks if use_compiled else self.pair_update_layers
 
         return self._apply_trunk(s, z, c, seq_mask, attn, pair)
 
@@ -280,6 +335,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         Each cycle reads the previous single and pair states through zero-initialized
         projections. ``recycle_grad`` selects how many final cycles keep gradients.
         """
+        # (Routes to either eager or compiled trunk blocks, depending
+        # on the model's compilation state and the input shape.)
         trunk = self._trunk_step
 
         if not self.recycle_enabled:

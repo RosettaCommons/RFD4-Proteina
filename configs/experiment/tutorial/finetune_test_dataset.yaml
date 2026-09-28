@@ -41,15 +41,9 @@ opt:
   steps_per_epoch: 50
   val_every_n_epochs: 1
 
+# Compilation is off for a fast first run
+nn:
+  use_torch_compile: false
+
 # Required: pass the released denoiser on the CLI (see docs/development.md), e.g.
 #   pretrain_ckpt_path=$DATA_PATH/flow_checkpoints/<denoiser>.ckpt
-
-execution:
-  training:
-    flow: eager
-    encoder: eager
-    decoder: eager
-  inference:
-    flow: eager
-    encoder: eager
-    decoder: eager

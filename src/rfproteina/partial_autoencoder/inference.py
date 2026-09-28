@@ -18,7 +18,6 @@ import torch  # noqa: E402
 from omegaconf import DictConfig  # noqa: E402
 
 from rfproteina.model_masks import compute_ae_supervision_mask  # noqa: E402
-from rfproteina.nn.execution import configure_execution, setup_execution  # noqa: E402
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 from rfproteina.utils.ddp import RankedLogger  # noqa: E402
 from rfproteina.utils.env import load_dotenv  # noqa: E402
@@ -235,8 +234,6 @@ def main() -> None:
 
     # Model
     model = AutoEncoder.load_from_checkpoint(cfg.ckpt_file)
-    setup_execution(cfg.execution, inference=True)
-    configure_execution(model, cfg.execution, "inference")
 
     # Make predictions, store them together with inputs
     trainer = L.Trainer(

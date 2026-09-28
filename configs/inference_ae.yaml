@@ -3,7 +3,6 @@ ckpt_file: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema
 
 # Load dataset config using Hydra defaults (matches training)
 defaults:
-  - execution: default
   - datasets: ae_pdb_datasets
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs
   - dataloaders: default  # Use same dataloader config as training

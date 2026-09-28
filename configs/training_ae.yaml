@@ -10,7 +10,6 @@ hardware:
   nnodes_: 1  # Number of nodes
 
 defaults:
-  - execution: default
   - nn_ae: nn_130m_unified
   - datasets: ae_pdb_datasets
   - design_tasks/global_design_task_kwargs@datasets.global_design_task_kwargs  # need this at global level

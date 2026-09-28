@@ -44,23 +44,6 @@ means `generate.py`.
 
 All three start AF3's refolding daemon on the host for you.
 
-### Execution backends
-
-`execution.training.{flow,encoder,decoder}` defaults to `torch` for every component.
-`execution.inference.{flow,encoder,decoder}` defaults to `bioir` for inference and validation.
-Choose `eager` (native), `torch` (PyTorch compilation), or `bioir` (inference only).
-These policies select trunk blocks; checkpoint-selected `rmsnorm_torch_fused` normalization
-retains its fused implementation under every policy to preserve its numerical behavior.
-BioIR requires a compatible local installation and always enables verified CUDA graphs.
-Guidance automatically switches a BioIR decoder to `torch` for backpropagation.
-
-`execution.inference.length_buckets` supplies inference/validation padding buckets; `null` disables them.
-Explicit dataloader padding overrides take precedence; training keeps its own fixed crop dimension.
-Validation builds BioIR blocks from active EMA weights, then releases them and resumes native training.
-
-BioIR defaults to `execution.bioir.dtype=bfloat16` and `execution.bioir.attention_backend=SDPA`.
-Regression: `RUN_GPU_E2E_TESTS=1 pytest tests/e2e/test_bioir_regression.py -v`.
-
 :::{admonition} On a configured compute cluster?
 :class: ipd-cluster
 

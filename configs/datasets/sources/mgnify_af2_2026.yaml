@@ -8,7 +8,7 @@ memory_map: False  # loaded into a buffer; nothing to mmap
 
 loader:
   _target_: atomworks.ml.datasets.loaders.create_blob_cif_loader
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/blob
   example_id_colname: example_id
   assembly_id_colname: null  # no assembly column; the loader falls back to "1"
   parser_args:

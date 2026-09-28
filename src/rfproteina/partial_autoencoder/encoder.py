@@ -1,13 +1,11 @@
 import torch
 
 from rfproteina.model_masks import compute_ae_masks
-from rfproteina.nn.execution import execution_blocks
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
-from rfproteina.utils.torch_compile import torch_compile_kwargs
 
 
 class EncoderTransformer(torch.nn.Module):
@@ -20,7 +18,6 @@ class EncoderTransformer(torch.nn.Module):
         Initializes the NN. The seqs and pair representations used are just zero in case
         no features are required."""
         super().__init__()
-        self._compile_kwargs = torch_compile_kwargs(kwargs)
         # Set the process-global norm type before building submodules (make_norm reads it).
         set_norm_type(kwargs["encoder"].get("norm_type"))
         self.nlayers = kwargs["encoder"]["nlayers"]
@@ -137,12 +134,11 @@ class EncoderTransformer(torch.nn.Module):
         pair_rep = self.pair_rep_factory(batch) if self.pair_rep_factory is not None else None  # [b, n, n, pair_dim]
 
         # Run trunk
-        attn_layers, pair_layers = execution_blocks(self, attn_mask)
         for i in range(self.nlayers):
-            seqs = attn_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
+            seqs = self.transformer_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
 
-            if self.update_pair_repr and i < self.nlayers - 1 and pair_layers[i] is not None:
-                pair_rep = pair_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
 
         # Emit only meaningful local latents; occupancy plays no part here.
         flat_out = self.latent_decoder_mean_n_log_scale(seqs) * emit_mask[..., None]  # [b, n, 2 * latent_dim]
