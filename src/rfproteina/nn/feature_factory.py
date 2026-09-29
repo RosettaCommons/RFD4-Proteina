@@ -5,6 +5,7 @@ from typing import Any, Literal
 import einops
 import torch
 from atomworks.ml.conditions import C_CRD, C_SEQ
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from jaxtyping import Float
 from torch.nn import functional as F
 
@@ -339,8 +340,7 @@ class ConditionalResidueTypeSeqFeat(Feature):
     Uses `C_SEQ.full_name` if available, otherwise returns zeros.
     This prevents leakage of ground truth sequence information during training.
 
-    The feature is masked by `C_SEQ.mask_name` which indicates which tokens
-    have sequence conditioning applied (zeros for to-be-generated tokens).
+    The encoded mask token in the annotation indicates which tokens are unconditioned.
 
     Supports 33 classes:
     0: mask token
@@ -366,9 +366,9 @@ class ConditionalResidueTypeSeqFeat(Feature):
             self.embedding.weight.requires_grad = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if C_SEQ.full_name in batch and C_SEQ.mask_name in batch:
+        if C_SEQ.full_name in batch:
             rtype = batch[C_SEQ.full_name]  # [b, n] - contains <M> for unconditioned tokens
-            seq_cond_mask = batch[C_SEQ.mask_name]  # [b, n] - True for sequence-conditioned tokens
+            seq_cond_mask = rtype != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
 
             # Apply sequence conditioning mask
             rtype = rtype * seq_cond_mask  # [b, n]
@@ -398,10 +398,7 @@ class ConditionalResidueTypeSeqFeat(Feature):
             b, n = self.extract_bs_and_n(batch)
             device = self.extract_device(batch)
             if not self._has_logged:
-                logger.warning(
-                    f"No {C_SEQ.full_name} or {C_SEQ.mask_name} in batch, "
-                    f"returning zeros for ConditionalResidueTypeSeqFeat"
-                )
+                logger.warning(f"No {C_SEQ.full_name} in batch, returning zeros for ConditionalResidueTypeSeqFeat")
                 self._has_logged = True
             return torch.zeros(b, n, self.num_classes, device=device)
 
@@ -491,14 +488,10 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
     """
     Computes feature from conditional atom37 coordinates, feature of shape [b, n, 37 * 4].
 
-    Uses `C_CRD.full_name` and `C_CRD.mask_name` if available, otherwise returns zeros.
+    Uses `C_CRD.full_name` if available, otherwise returns zeros.
     This prevents leakage of ground truth coordinate information during training.
 
-    The feature is masked by `C_CRD.mask_name` which indicates which atoms have
-    absolute coordinate conditioning applied (zeros for internal or no coordinate conditioning).
-
-    Note: `C_CRD.full_name` is pre-masked by the pipeline as `coords * C_CRD.mask_name`.
-    For unconditional generation, this is all zeros.
+    Finite coordinates indicate absolute coordinate conditioning; unconditioned values are NaN.
     """
 
     def __init__(self, rel: bool = False, **kwargs: Any) -> None:
@@ -507,13 +500,12 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
         self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if C_CRD.full_name in batch and C_CRD.mask_name in batch:
+        if C_CRD.full_name in batch:
             # C_CRD.full_name coordinates are in Angstroms from collate, convert to nm
-            # Already pre-masked by pipeline, but we apply mask explicitly for clarity
-            # turn nans into 0s in coors
-            coors = torch.nan_to_num(batch[C_CRD.full_name], nan=0.0) / 10.0  # [b, n, 37, 3] - convert Angstroms to nm
-            coors_mask = batch[C_CRD.mask_name]  # [b, n, 37] - CONDITIONING mask (not atom validity)
-            coors = coors * coors_mask[..., None]  # Zero-out unconditioned atoms
+            conditioned_coords = batch[C_CRD.full_name]
+            coors_mask = torch.isfinite(conditioned_coords).any(dim=-1)
+            coors = torch.nan_to_num(conditioned_coords, nan=0.0) / 10.0
+            coors = coors * coors_mask[..., None]
 
             if self.rel:
                 # If relative remove CA coordinates
@@ -529,8 +521,7 @@ class ConditionalAtom37NanometersCoorsSeqFeat(Feature):
             device = self.extract_device(batch)
             if not self._has_logged:
                 logger.warning(
-                    f"No {C_CRD.full_name} or {C_CRD.mask_name} in batch, "
-                    f"returning zeros for ConditionalAtom37NanometersCoorsSeqFeat"
+                    f"No {C_CRD.full_name} in batch, returning zeros for ConditionalAtom37NanometersCoorsSeqFeat"
                 )
                 self._has_logged = True
             return torch.zeros(b, n, self.dim, device=device)
@@ -540,13 +531,11 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
     """
     Computes feature from conditional atom37 coordinates, feature of shape [b, n, 37 * 4].
 
-    Uses `C_INTCRD.full_name` and `C_INTCRD.mask_name` if available, otherwise returns zeros.
+    Uses `C_INTCRD.full_name` if available, otherwise returns zeros.
     This prevents leakage of ground truth coordinate information during training.
 
-    The feature is masked by `C_INTCRD.mask_name` which indicates which atoms have
-    internal coordinate conditioning applied (zeros for absolute or no coordinate conditioning).
-
-    For unconditional generation, this is all zeros.
+    Positive ``C_CRDGRP`` values indicate internal-coordinate conditioning;
+    ``C_INTCRD`` contains the materialized coordinate payload.
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -554,15 +543,15 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
         self._has_logged = False
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if C_INTCRD.full_name in batch and C_INTCRD.mask_name in batch:
-            # Ensure valid inputs
-            internal_coords_mask = batch[C_INTCRD.mask_name]  # [b, n, 37] - CONDITIONING mask (not atom validity)
-
+        if C_INTCRD.full_name in batch and C_CRDGRP.full_name in batch:
             # C_INTCRD.full_name coordinates are in Angstroms from collate, convert to nm
-            # Already pre-masked by pipeline, but we apply mask explicitly for clarity
-            internal_coords = batch[C_INTCRD.full_name] / 10.0  # [b, n, 37, 3] - convert Angstroms to nm
-            internal_coords = torch.nan_to_num(internal_coords)  # Replace NaN values  with zeros
-            internal_coords = internal_coords * internal_coords_mask[..., None]  # Zero-out unconditioned atoms
+            conditioned_internal_coords = batch[C_INTCRD.full_name]
+            coord_groups = batch[C_CRDGRP.full_name]
+            internal_coords_mask = (coord_groups != C_CRDGRP.UNKNOWN_COORDS) & (
+                coord_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS
+            )
+            internal_coords = torch.nan_to_num(conditioned_internal_coords) / 10.0
+            internal_coords = internal_coords * internal_coords_mask[..., None]
 
             internal_coords_flat = einops.rearrange(
                 internal_coords, "b n a t -> b n (a t)"
@@ -574,7 +563,7 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
             device = self.extract_device(batch)
             if not self._has_logged:
                 logger.warning(
-                    f"No {C_INTCRD.full_name} or {C_INTCRD.mask_name} in batch, "
+                    f"Missing {C_INTCRD.full_name} or {C_CRDGRP.full_name} in batch, "
                     f"returning zeros for ConditionalAtom37NanometersInternalCoorsSeqFeat"
                 )
                 self._has_logged = True
@@ -879,10 +868,8 @@ class SequenceProbabilitiesSeqFeat(Feature):
         probabilities = torch.stack(
             [batch[condition.full_name] for condition in SEQUENCE_PROBABILITY_CONDITIONS], dim=-1
         ).float()
-        masks = torch.stack(
-            [batch[condition.mask_name] for condition in SEQUENCE_PROBABILITY_CONDITIONS], dim=-1
-        ).float()
-        return torch.cat((probabilities * masks, masks), dim=-1)
+        masks = ~torch.isnan(probabilities)
+        return torch.cat((probabilities.masked_fill(~masks, 0.0), masks.float()), dim=-1)
 
 
 class IndexGroupPairFeat(Feature):

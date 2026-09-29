@@ -22,9 +22,9 @@ from scipy.spatial import cKDTree
 
 from rfproteina.conditions import (
     C_CATH,
+    C_CRDGRP,
     C_HB,
     C_HPHOB,
-    C_INTCRD,
     C_MCOORD,
     C_PICATION,
     C_PISTACK,
@@ -83,7 +83,7 @@ def add_rasa_condition(
     # Determine valid residues for rasa conditioning
     if np.random.rand() < p_include_non_ligand:
         seq_mask = C_SEQ.mask(atom_array, default="generate")
-        crd_mask = C_CRD.mask(atom_array, default="generate") | C_INTCRD.mask(atom_array, default="generate")
+        crd_mask = C_CRD.mask(atom_array, default="generate") | C_CRDGRP.is_internal(atom_array)
         dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
         inclusion_mask = seq_mask | crd_mask | dis_mask
     else:
@@ -331,7 +331,7 @@ def _subset_ground_truth_interaction_condition(
     if np.random.rand() < p_add_condition:
         seq_mask = C_SEQ.mask(atom_array, default="generate")
         crd_mask = C_CRD.mask(atom_array, default="generate")
-        intcrd_mask = C_INTCRD.mask(atom_array, default="generate")
+        intcrd_mask = C_CRDGRP.is_internal(atom_array)
         dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
         motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
 
@@ -360,9 +360,6 @@ def _subset_ground_truth_interaction_condition(
             ground_truth = None
 
     if ground_truth is None:
-        atom_array.del_annotation(condition.mask_name)
-        atom_array.del_annotation(condition.full_name)
-        condition.set_mask(atom_array, condition.default_mask(atom_array))
         condition.set_annotation(atom_array, condition.default_annotation(atom_array))
         data["atom_array"] = atom_array
         return data
@@ -377,7 +374,6 @@ def _subset_ground_truth_interaction_condition(
         )
 
     condition.set_annotation(atom_array, ground_truth)
-    condition.set_mask(atom_array, ground_truth != none_value)
     data.setdefault("task", {})[task_key] = True
     data["atom_array"] = atom_array
     return data
@@ -669,7 +665,7 @@ def diversify_sequence_conditioning(
     residue_boundaries = get_residue_starts(atom_array, add_exclusive_stop=True)
     residue_starts = residue_boundaries[:-1]
     backbone = atom_array.is_protein_backbone | atom_array.is_rna_backbone | atom_array.is_dna_backbone
-    coord_conditioned = C_CRD.mask(atom_array, default="generate") | C_INTCRD.mask(atom_array, default="generate")
+    coord_conditioned = C_CRD.mask(atom_array, default="generate") | C_CRDGRP.is_internal(atom_array)
     has_conditioned_nonbackbone = apply_residue_wise(atom_array, coord_conditioned & ~backbone, np.any)
     must_keep_exact = apply_residue_wise(atom_array, atom_array.atomize, np.any) | has_conditioned_nonbackbone
     has_probability_condition = apply_residue_wise(
@@ -694,7 +690,6 @@ def diversify_sequence_conditioning(
     modes = np.full(len(residue_starts), -1, dtype=np.int8)
     whole_chain_selected = np.zeros(len(residue_starts), dtype=bool)
     condition_values: dict[type[ConditionBase], np.ndarray] = {}
-    condition_masks: dict[type[ConditionBase], np.ndarray] = {}
     polymer_specs = (
         (STANDARD_AA, UNIPROT_AA_PRIOR),
         (STANDARD_RNA, UNIFORM_RNA_PRIOR),
@@ -740,9 +735,7 @@ def diversify_sequence_conditioning(
                     condition = SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN[tokens[token_index]]
                     if condition not in condition_values:
                         condition_values[condition] = condition.annotation(atom_array, default="generate").copy()
-                        condition_masks[condition] = condition.mask(atom_array, default="generate").copy()
                     condition_values[condition][chain_atom_mask] = 0.0
-                    condition_masks[condition][chain_atom_mask] = True
                 whole_chain_selected |= chain_residue_mask
                 locally_selected[chain_residue_mask] = False
             else:
@@ -800,15 +793,16 @@ def diversify_sequence_conditioning(
             condition = SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN[tokens[token_index]]
             if condition not in condition_values:
                 condition_values[condition] = condition.annotation(atom_array, default="generate").copy()
-                condition_masks[condition] = condition.mask(atom_array, default="generate").copy()
             condition_values[condition][residue_slice] = probabilities[token_index]
-            condition_masks[condition][residue_slice] = True
 
     for condition, values in condition_values.items():
         condition.set_annotation(atom_array, values)
-        condition.set_mask(atom_array, condition_masks[condition])
 
-    C_SEQ.set_mask(atom_array, updated_seq_mask)
+    sequence = C_SEQ.annotation(atom_array, default="generate").copy()
+    newly_exact = updated_seq_mask & ~seq_mask
+    sequence[newly_exact] = C_SEQ.ground_truth_value(atom_array)[newly_exact]
+    sequence[~updated_seq_mask] = C_SEQ.default_annotation(atom_array)[~updated_seq_mask]
+    C_SEQ.set_annotation(atom_array, sequence)
 
     data["atom_array"] = atom_array
     task = data.setdefault("task", {})

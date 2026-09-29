@@ -411,9 +411,9 @@ structure itself instead of living in a side file that can drift out of sync.
 
 | Standard annotation | CIF column | What it tells you |
 | --- | --- | --- |
-| `SA_SRC` | `annotation_src-component_1_atom` | Per atom source component label like `A3`, naming which input residue this atom came from; expandable segments use range labels like `3-10` |
-| `SA_CRDSRC` | `mapped_to_coordinate_conditioned_region` plus `annotation_src-coordinate-conditioned-region_1_atom` | Per atom mask and source contig for the coordinate-conditioned region, where `"."` means not conditioned |
-| `SA_CRDGRPSRC` | `annotation_src-coord-group_1_atom` | Integer `CoordinateGroup` id the atom maps to, where `-1` means not mapped. This is how motif RMSD metrics subdivide designs with several motifs |
+| `SA_SRC` | `annotation_src-component_1_atom` | Per atom source component contig label like `A3-10`, naming which input region this atom came from |
+| `SA_CRDSRC` | `annotation_src-coordinate-conditioned-region_1_atom` | Per atom source contig for the coordinate-conditioned region, where `"."` means not conditioned and determines the derived mask |
+| `SA_IDXGRPSRC` | `annotation_src-index-group_1_atom` | Original unindexed `IndexGroup` of a mapped motif token, where `-1` means the token was not an unindexed insertion |
 | `SA_CWI` | `_annotation_coords-with-insertion_1_atom` loop | The ground truth coordinate to compare against for coordinate-conditioned atoms, which is what `design_motif_allatom_rmsd` and friends align and score against |
 | `SA_UII` | `is_unindexed_insertion` | Per atom boolean, where `True` marks the atom as an unindexed insertion target. That is what `design_unindexed_motif_allatom_rmsd` restricts itself to |
 

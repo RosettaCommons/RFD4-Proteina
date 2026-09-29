@@ -19,7 +19,7 @@ from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_toke
 from biotite.structure import AtomArray
 from torch._tensor import Tensor
 
-from rfproteina.conditions import C_INTCRD
+from rfproteina.conditions import C_CRDGRP
 from rfproteina.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from rfproteina.transforms.utils.conditioning_utils import (
     align_atom_array_to_input_frame,
@@ -140,17 +140,13 @@ def process_single_sample_to_atom_array(
 
     # Stage the motif-RMSD reference only for conditioned designs; C_CRD.annotation is the absolute overlay.
     crd_mask = C_CRD.mask(updated_array)
-    if crd_mask.any() or C_INTCRD.mask(updated_array).any():
+    if crd_mask.any() or C_CRDGRP.is_internal(updated_array).any():
         coords_with_insertion = updated_array.coord.copy()
         coords_with_insertion[crd_mask] = C_CRD.annotation(updated_array, default="generate")[crd_mask]
         SA_CWI.set_annotation(updated_array, np.asarray(coords_with_insertion, dtype=np.float32))
 
-    C_INTCRD.set_mask(input_atom_array, C_INTCRD.mask(input_atom_array))
-    C_INTCRD.set_mask(updated_array, C_INTCRD.mask(updated_array))
     updated_array = insert_internal_coord_conditioned_groups(updated_array)
 
-    S_SEGMIN.set_mask(updated_array, np.zeros_like(S_SEGMIN.mask(updated_array)))
-    S_SEGMAX.set_mask(updated_array, np.zeros_like(S_SEGMAX.mask(updated_array)))
     S_SEGMIN.set_annotation(updated_array, S_SEGMIN.default_annotation(updated_array))
     S_SEGMAX.set_annotation(updated_array, S_SEGMAX.default_annotation(updated_array))
 

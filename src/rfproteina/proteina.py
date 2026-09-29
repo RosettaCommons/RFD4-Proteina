@@ -18,6 +18,7 @@ import wandb
 from atomworks.common import exists
 from atomworks.io.parser import parse
 from atomworks.ml.conditions import C_SEQ
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 from atomworks.ml.utils.token import get_token_count
 from hydra.errors import InstantiationException
@@ -1972,10 +1973,10 @@ class Proteina(L.LightningModule):
                     )
                 predicted_residue_type = logits_for_decode.argmax(dim=-1)
 
-                # Preserve user-provided C_SEQ exactly and fill only the emitted tokens whose
-                # sequence is being generated. This is the same encoded value + mask interface
-                # consumed by the modernized AE's ConditionalResidueTypeSeqFeat.
-                sequence_conditioning_mask = decode_batch[C_SEQ.mask_name].bool()
+                # Preserve user-provided C_SEQ and fill only emitted tokens with unspecified sequence.
+                sequence_conditioning_mask = (
+                    decode_batch[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
+                )
                 _, decoder_emit_mask = compute_ae_masks(decode_batch)
                 prediction_mask = decoder_emit_mask & ~sequence_conditioning_mask
                 decode_batch[C_SEQ.full_name] = torch.where(
@@ -1983,7 +1984,6 @@ class Proteina(L.LightningModule):
                     predicted_residue_type,
                     decode_batch[C_SEQ.full_name],
                 )
-                decode_batch[C_SEQ.mask_name] = sequence_conditioning_mask | prediction_mask
 
             output_decoder = self.autoencoder.decode(decode_batch)
             emit_mask = output_decoder["emit_mask"]

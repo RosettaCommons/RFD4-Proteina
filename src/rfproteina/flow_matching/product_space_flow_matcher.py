@@ -5,6 +5,7 @@ import lightning as L
 import torch
 import torch.nn.functional as F
 from atomworks.ml.conditions import C_SEQ
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
@@ -383,9 +384,11 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             return {}
 
         target: Int[Tensor, "b n"] = batch["residue_type"].long()
-        sequence_conditioned = batch.get(C_SEQ.mask_name)
-        if sequence_conditioned is None:
+        sequence = batch.get(C_SEQ.full_name)
+        if sequence is None:
             sequence_conditioned = torch.zeros_like(batch["padding_mask"])
+        else:
+            sequence_conditioned = sequence != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
         loss_mask: Bool[Tensor, "b n"] = compute_flow_supervision_masks(batch)["local_latents"] & ~sequence_conditioned
 
         b, n, n_classes = logits.shape

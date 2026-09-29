@@ -143,12 +143,13 @@ def get_atom_array_style_cmd(
     for cond in Condition:
         if cond.n_body == 1 and cond.mask(atom_array, default="generate").any():
             _atom_ids = atom_ids[np.where(cond.mask(atom_array, default="generate"))[0]]
+            selection_name = f"mask_{cond.name}_{cond.n_body}_{cond.level}_{obj}"
             if cond.level == Level.ATOM:
                 _selection = f"model {obj} and id {'+'.join(str(id) for id in _atom_ids)}"
-                commands.extend([f"select {cond.mask_name}_{obj}, {_selection}"])
+                commands.extend([f"select {selection_name}, {_selection}"])
             elif cond.level == Level.RESIDUE or cond.level == Level.TOKEN:
                 _selection = f"model {obj} and byres (id {'+'.join(str(id) for id in _atom_ids)})"
-                commands.extend([f"select {cond.mask_name}_{obj}, {_selection}"])
+                commands.extend([f"select {selection_name}, {_selection}"])
 
     return "\n".join(commands)
 

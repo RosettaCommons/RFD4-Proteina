@@ -680,10 +680,16 @@ def build(spec: dict, benchmark_root: Path, fix_res_id_gap: bool = False) -> Ato
 
     # --- 8. Conditions ------------------------------------------------------ #
     atom_array = as_atom_array_plus(atom_array)
-    C_CRD.set_mask(atom_array, is_crd)
-    C_SEQ.set_mask(atom_array, is_seq)
+    C_CRD.set_annotation(
+        atom_array,
+        np.where(is_crd[:, None], C_CRD.ground_truth_value(atom_array), C_CRD.default_annotation(atom_array)),
+    )
+    C_SEQ.set_annotation(
+        atom_array,
+        np.where(is_seq, C_SEQ.ground_truth_value(atom_array), C_SEQ.default_annotation(atom_array)),
+    )
     # C_IDX defaults all-on: mark indexed, i.e. the inverse of unindexed.
-    C_IDX.set_mask(atom_array, ~is_unindexed)
+    C_IDX.set_annotation(atom_array, ~is_unindexed)
     C_IDXGRP.set_annotation(atom_array, _index_groups(atom_array, is_unindexed, is_break))
 
     # C_HB set unconditionally (all-NONE == absent); C_RAS / C_HOT only when selected.
@@ -707,7 +713,6 @@ def build(spec: dict, benchmark_root: Path, fix_res_id_gap: bool = False) -> Ato
         coord_groups[in_group] = group_id[in_group]
         C_CRDGRP.set_annotation(atom_array, coord_groups)
 
-        C_INTCRD.set_mask(atom_array, in_group)
         C_INTCRD.set_annotation(atom_array, _map_from_source(intcrd_coords, source_of, np.nan))
 
     # --- 9. Entity IDs ------------------------------------------------------ #

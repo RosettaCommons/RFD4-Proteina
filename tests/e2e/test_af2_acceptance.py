@@ -140,7 +140,7 @@ def _load_protein(path: Path) -> AtomArray:
     atom_array = as_atom_array_plus(
         parse(
             str(path),
-            config=ParseConfig.from_preset("minimal", load_standard_annotations=True),
+            config=ParseConfig.from_preset("minimal", load_standard_annotations=True, return_atom_array_plus=True),
         )["asym_unit"][0]
     )
     ensure_annotations(atom_array, "is_protein")
@@ -186,7 +186,7 @@ def _monomer_fixture() -> AtomArray:
     crystal = _load_complete_input(_COMPLETE_CRYSTAL_FIXTURE)
     first_chain = _chain_order(crystal)[0]
     monomer = _canonicalize_chains(crystal[crystal.chain_id == first_chain], [first_chain])
-    C_CRD.set_mask(monomer, np.zeros(monomer.array_length(), dtype=bool))
+    C_CRD.set_annotation(monomer, C_CRD.default_annotation(monomer))
     return monomer
 
 
@@ -195,7 +195,11 @@ def _ppi_fixture() -> AtomArray:
     original_ids = _chain_order(complex_gt)
     assert len(original_ids) == 2
     canonical = _canonicalize_chains(complex_gt, original_ids)
-    C_CRD.set_mask(canonical, canonical.chain_id == _TARGET)
+    template_mask = canonical.chain_id == _TARGET
+    C_CRD.set_annotation(
+        canonical,
+        np.where(template_mask[:, None], C_CRD.ground_truth_value(canonical), C_CRD.default_annotation(canonical)),
+    )
     canonical_mask = C_CRD.mask(canonical)
     target_atoms = canonical.chain_id == _TARGET
     assert _all_residues_selected(canonical[target_atoms], canonical_mask[target_atoms])
@@ -220,7 +224,15 @@ def _interleaved_identical_sequence_fixture(ppi: AtomArray) -> AtomArray:
     assert sequence_a == sequence_c
     assert sequence_a != sequence_b
     interleaved = struc.concatenate([chain_a, chain_b, chain_c])
-    C_CRD.set_mask(interleaved, interleaved.chain_id == "A")
+    template_mask = interleaved.chain_id == "A"
+    C_CRD.set_annotation(
+        interleaved,
+        np.where(
+            template_mask[:, None],
+            C_CRD.ground_truth_value(interleaved),
+            C_CRD.default_annotation(interleaved),
+        ),
+    )
     return interleaved
 
 
@@ -296,7 +308,7 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
         runs = _fold_results(
             AF2Oracle(
                 oracle_name="af2_acceptance",
-                template_query="mask_coordinate_1_atom",
+                template_query="sa_mask('coordinate')",
                 seed=_SEED,
                 pct_seq_mask=0.0,
             ),
@@ -306,7 +318,7 @@ def acceptance_runs(tmp_path_factory: pytest.TempPathFactory) -> AcceptanceRuns:
             _fold_results(
                 AF2Oracle(
                     oracle_name="af2_ppi_initial_guess_on",
-                    template_query="mask_coordinate_1_atom",
+                    template_query="sa_mask('coordinate')",
                     seed=_SEED,
                     initial_guess=True,
                     pct_seq_mask=0.0,

@@ -7,21 +7,12 @@ lives in a separate conda env -- confirmed by direct import test). This
 module has no PyMOL/Qt imports and is safe to import during training/inference,
 notably from :py:mod:`rfproteina.inference_utils.condition_spec`.
 
-:py:data:`SUPPORTED_CONDITIONS` is the single vocabulary of which Conditions
-the codebase knows about: which gets a PyMOL editor (and how), and how each
-is summarized in the "summarize changes" report. These used to be two
-separately-maintained lists (an editor list in ``condition_registry.py`` and
-a reporting list here) that happened to overlap almost entirely -- easy to
-add a Condition to one and forget the other. Since this module must stay
-PyMOL-free, ``editor`` is a zero-argument factory that defers its
-``pymol``/Qt imports until actually called, which only happens inside a live
-PyMOL session, from :py:func:`~rfproteina.pymol.condition_registry.apply`.
+:py:data:`SUPPORTED_CONDITIONS` is the user-facing condition vocabulary shared
+with the PyMOL plugin. Reporting behavior is derived from each condition's
+annotation metadata, with explicit summaries only for group-like conditions.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
-from enum import IntEnum
-from typing import Literal
 
 import numpy as np
 from atomworks.io.transforms.atom_array import (
@@ -30,10 +21,12 @@ from atomworks.io.transforms.atom_array import (
 )
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus
-from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.conditions import (
+    C_CRD,
+    C_IDX,
+    C_SEQ,
+)
 from atomworks.ml.conditions.base import ConditionBase
-from atomworks.ml.transforms.dssp import SSEnum
-from atomworks.ml.utils.expandable_segment import realize_expandable_segments
 from biotite.structure import get_residue_starts, spread_residue_wise
 
 from rfproteina.conditions import (
@@ -49,9 +42,6 @@ from rfproteina.conditions import (
     C_RAS,
     C_SEC,
     SEQUENCE_PROBABILITY_CONDITIONS,
-    HBondEnum,
-    PiCationEnum,
-    RasaEnum,
     SequenceProbability,
 )
 from rfproteina.datapipes.pipeline import CanonicalizeSequenceProbabilityConditions, build_design_validation_pipeline
@@ -59,182 +49,6 @@ from rfproteina.transforms.invariants import (
     check_sequence_probability_conditioning_violations,
     find_index_group_res_id_gaps,
 )
-
-# ---------------------------------------------------------------------------
-# Editor factories -- each defers its `pymol`/Qt import to call time, since
-# this module itself must stay importable with no PyMOL installed. Actually
-# calling one of these outside a live PyMOL session will raise ImportError,
-# same as importing `rfproteina.pymol.editors` directly would.
-# ---------------------------------------------------------------------------
-
-
-def _sequence_probability_editor() -> type:
-    from rfproteina.pymol.sequence_probability_editor import SequenceProbabilityEditor
-
-    return SequenceProbabilityEditor
-
-
-def set_sequence_probability_condition(
-    arr: AtomArrayPlus,
-    indices: np.ndarray | list[int],
-    condition: type[SequenceProbability],
-    value: float | None,
-) -> None:
-    """Set a probability on whole selected residues; None clears its presence mask.
-
-    Validate on a copy before changing the input, including probability mass,
-    polymer type, and exact sequence conflicts. Other channels remain unchanged.
-    """
-    if condition not in SEQUENCE_PROBABILITY_CONDITIONS:
-        raise ValueError("Choose a canonical polymer sequence-probability condition.")
-    if value is not None and (not np.isfinite(value) or not 0 <= value <= 1):
-        raise ValueError("Sequence probabilities must be finite and between 0 and 1.")
-    if len(indices) == 0:
-        return
-    selected = np.zeros(len(arr), dtype=bool)
-    selected[indices] = True
-    starts = get_residue_starts(arr)
-    selected = spread_residue_wise(arr, np.maximum.reduceat(selected, starts))
-    candidate = arr.copy()
-    probabilities = condition.annotation(candidate, default="generate").copy()
-    mask = condition.mask(candidate, default="generate").copy()
-    probabilities[selected] = 0 if value is None else value
-    mask[selected] = value is not None
-    condition.set_annotation(candidate, probabilities)
-    condition.set_mask(candidate, mask)
-    # Exact sequence conditions imply a complete distribution during validation.
-    normalized = CanonicalizeSequenceProbabilityConditions()({"atom_array": candidate})["atom_array"]
-    violations = check_sequence_probability_conditioning_violations(normalized)
-    if violations:
-        raise ValueError("; ".join(violation.message for violation in violations))
-    condition.set_annotation(arr, probabilities)
-    condition.set_mask(arr, mask)
-
-
-def _mask_editor() -> type:
-    from atomworks.pymol_plugin.editors.widgets import MaskEditor
-
-    return MaskEditor
-
-
-def _index_mask_editor() -> type:
-    from rfproteina.pymol.condition_registry import _IndexMaskEditor
-
-    return _IndexMaskEditor
-
-
-def _group_editor() -> type:
-    from rfproteina.pymol.group_editor import GroupEditor
-
-    return GroupEditor
-
-
-def _internal_coord_editor() -> type:
-    from rfproteina.pymol.internal_coord_editor import InternalCoordEditor
-
-    return InternalCoordEditor
-
-
-def _chain_centroid_editor() -> type:
-    from rfproteina.pymol.chain_centroid_editor import ChainCentroidEditor
-
-    return ChainCentroidEditor
-
-
-def _cath_editor() -> type:
-    from rfproteina.pymol.cath_editor import CathEditor
-
-    return CathEditor
-
-
-# ---------------------------------------------------------------------------
-# The registry
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class ConditionSpec:
-    """Everything the codebase needs to know about one user-facing Condition.
-
-    A single list of these, instead of separate PyMOL-editor and reporting
-    vocabularies that happened to overlap almost entirely -- see the module
-    docstring.
-
-    Args:
-        condition: The Condition class this spec describes.
-        editor: Zero-arg factory returning an editor class (or an
-            ``editor_cls(annotation_cls, state, parent=None)``-compatible
-            callable) to register in the PyMOL plugin. ``None`` means either
-            an enum-driven editor is built automatically (see ``enum_cls``),
-            or the editor is registered elsewhere (e.g. atomworks core
-            registers ``C_SEQ``/``C_CRD``) and this spec exists purely to
-            keep the condition from being auto-excluded.
-        enum_cls: ``IntEnum`` backing this condition's values, if any. Drives
-            an automatic PyMOL value-button editor when ``editor`` is unset,
-            a per-value summary line, and (if ``selection_generator``)
-            per-value PyMOL highlight selections.
-        null_value: The enum member that represents "unconditioned". Required
-            whenever ``enum_cls`` is set.
-        enum_editor_exclude: Enum values the auto-built PyMOL editor must not
-            offer, because the model cannot consume them (e.g.
-            ``SSEnum.NON_PROTEIN``, outside the secondary-structure
-            embedding's range). Still reported/highlighted if present.
-        selection_generator: Register a per-value PyMOL highlight-selection
-            generator. Only meaningful with ``enum_cls`` set.
-        hide_display: Suppress automatic PyMOL mask-highlight-selection
-            generation (e.g. group conditions, whose mask is always all-True
-            and thus uninformative to highlight). Independent of reporting.
-        summary_label: Display label in the "summarize changes" text;
-            defaults to ``condition.name``.
-        summary_fn: Custom summary-line builder, for conditions whose
-            reporting doesn't fit the generic mask-count / per-enum-value
-            shape (e.g. index/coord groups, chain centroid). Overrides the
-            default mask/enum-derived summary below.
-        report_summary: Whether :py:func:`summarize_conditions` emits a line
-            for this condition. ``False`` for conditions whose value is
-            redundant with another summary line (``C_IDX``, conveyed by the
-            index-group summary); the spec still exists to keep the condition
-            from being auto-excluded and to register its editor.
-        summarized_by_host: Whether an embedding application reports this
-            condition through its *own* summary hook, alongside ours
-            (AtomWorks' built-in PyMOL hook does, for ``C_SEQ``/``C_CRD``).
-            Such conditions are omitted by default so the PyMOL report doesn't
-            list them twice, and included when the caller passes
-            ``include_host_summarized=True`` because no host hook is running --
-            notably the condition_spec CLI, whose printed report is the only
-            confirmation the user gets that these were applied.
-    """
-
-    condition: type[ConditionBase]
-    editor: Callable[[], type | Callable] | None = None
-    enum_cls: type[IntEnum] | None = None
-    null_value: int | None = None
-    enum_editor_exclude: frozenset[int] = frozenset()
-    selection_generator: bool = False
-    hide_display: bool = False
-    summary_label: str | None = None
-    summary_fn: Callable[[AtomArrayPlus], list[str]] | None = None
-    report_summary: bool = True
-    summarized_by_host: bool = False
-
-    def __post_init__(self) -> None:
-        if self.enum_cls is not None and self.null_value is None:
-            raise ValueError(f"{self.condition.name}: enum_cls requires null_value")
-        if self.selection_generator and self.enum_cls is None:
-            raise ValueError(f"{self.condition.name}: selection_generator requires enum_cls")
-
-    @property
-    def label(self) -> str:
-        return self.summary_label or self.condition.name
-
-    @property
-    def summary_kind(self) -> Literal["mask", "enum", "custom"]:
-        """How :py:func:`summarize_conditions` reports this condition, derived from the other fields."""
-        if self.summary_fn is not None:
-            return "custom"
-        if self.enum_cls is not None:
-            return "enum"
-        return "mask"
 
 
 def _index_group_summary(arr: AtomArrayPlus) -> list[str]:
@@ -246,7 +60,7 @@ def _index_group_summary(arr: AtomArrayPlus) -> list[str]:
     # Report implied res_id gaps within unindexed groups so the user can confirm
     # that non-contiguous regions were split as intended (rather than collapsed
     # into one group with fixed-size gaps).
-    if C_IDX.has_mask(arr):
+    if C_IDX.has_annotation(arr):
         is_indexed = C_IDX.mask(arr, default="generate")
         res_id = arr.res_id
         for gid in np.unique(groups):
@@ -284,6 +98,21 @@ def _chain_centroid_summary(arr: AtomArrayPlus) -> list[str]:
     return ["\n".join(lines)]
 
 
+def _index_summary(arr: AtomArrayPlus) -> list[str]:
+    if not C_IDX.has_annotation(arr):
+        return []
+    _, mask = C_IDX.annotation_and_mask_at_declared_level(arr)
+    count = int((~mask).sum())
+    return [f"Index: {count} {_unit_name(C_IDX, count)} unindexed"] if count else []
+
+
+def _internal_coord_summary(arr: AtomArrayPlus) -> list[str]:
+    if not C_CRDGRP.has_annotation(arr):
+        return []
+    count = int(C_CRDGRP.is_internal(arr).sum())
+    return [f"{C_INTCRD.__name__}: {count} {_unit_name(C_INTCRD, count)}"] if count else []
+
+
 def _cath_summary(arr: AtomArrayPlus) -> list[str]:
     starts = get_residue_starts(arr)
     labels = C_CATH.annotation(arr, default="generate")[starts]
@@ -293,146 +122,114 @@ def _cath_summary(arr: AtomArrayPlus) -> list[str]:
     return ["CAT (class / architecture / topology):\n" + "\n".join(lines)] if lines else []
 
 
-def _sequence_probability_summary(condition: type[ConditionBase]) -> Callable[[AtomArrayPlus], list[str]]:
-    """Build a concise value/count summary for one canonical-polymer probability Condition."""
-
-    def _summary(arr: AtomArrayPlus) -> list[str]:
-        if not condition.has_annotation(arr) or not condition.has_mask(arr):
-            return []
-        starts = get_residue_starts(arr)
-        mask = condition.mask(arr, default="raise")[starts]
-        if not mask.any():
-            return []
-        values, counts = np.unique(condition.annotation(arr, default="raise")[starts][mask], return_counts=True)
-        value_counts = ", ".join(
-            f"{float(value):g} ({int(count)} residues)" for value, count in zip(values, counts, strict=False)
-        )
-        return [f"Sequence probability {condition.token_name}: {value_counts}"]
-
-    return _summary
-
-
-SUPPORTED_CONDITIONS: list[ConditionSpec] = [
-    # AtomWorks-native conditions: editors registered by atomworks core itself
-    # (register_custom_editors() in atomworks/pymol_plugin/editors/custom.py).
-    # AtomWorks' own built-in hook reports these inside PyMOL, so they're
-    # `summarized_by_host` -- suppressed there, emitted for callers with no
-    # host hook of their own (the condition_spec CLI).
-    ConditionSpec(C_SEQ, summary_label="Sequence", summarized_by_host=True),
-    ConditionSpec(C_CRD, summary_label="Coordinates", summarized_by_host=True),
-    # Index conditioning -- rfproteina overrides the editor to keep index groups in sync;
-    # the set of indexed atoms is already conveyed by the index-group summary.
-    ConditionSpec(C_IDX, editor=_index_mask_editor, summary_label="Index", report_summary=False),
-    # Simple boolean mask conditions.
-    ConditionSpec(C_HOT, editor=_mask_editor, summary_label="Hotspot"),
-    ConditionSpec(C_PISTACK, editor=_mask_editor, summary_label="Pi-stacking"),
-    # Enum-valued conditions: editor, summary, and (where useful) PyMOL
-    # highlight selections are all built generically from enum_cls/null_value.
-    ConditionSpec(
-        C_RAS,
-        enum_cls=RasaEnum,
-        null_value=RasaEnum.UNSPECIFIED.value,
-        selection_generator=True,
-        summary_label="RASA",
-    ),
-    # NON_PROTEIN is a DSSP-output sentinel, not a conditioning value: the model's
-    # secondary-structure embedding only spans NONE/HELIX/SHEET/LOOP and raises on 4.
-    ConditionSpec(
-        C_SEC,
-        enum_cls=SSEnum,
-        null_value=SSEnum.NONE.value,
-        enum_editor_exclude=frozenset({SSEnum.NON_PROTEIN.value}),
-        selection_generator=True,
-        summary_label="Secondary structure",
-    ),
-    ConditionSpec(
-        C_HB,
-        enum_cls=HBondEnum,
-        null_value=HBondEnum.NONE.value,
-        selection_generator=True,
-        summary_label="Hydrogen bonds",
-    ),
-    ConditionSpec(
-        C_PICATION,
-        enum_cls=PiCationEnum,
-        null_value=PiCationEnum.NONE.value,
-        selection_generator=True,
-        summary_label="Pi-cation",
-    ),
-    ConditionSpec(C_CATH, editor=_cath_editor, summary_fn=_cath_summary),
-    # Integer-valued group conditions -- shared GroupEditor, bespoke summary
-    # (group count + view hint), hidden from mask-highlighting (mask is
-    # trivially all-True and thus uninformative to highlight).
-    ConditionSpec(C_IDXGRP, editor=_group_editor, hide_display=True, summary_fn=_index_group_summary),
-    ConditionSpec(C_CRDGRP, editor=_group_editor, hide_display=True, summary_fn=_coord_group_summary),
-    # Internal coordinate conditioning -- wraps convert_to_internal_coords.
-    ConditionSpec(C_INTCRD, editor=_internal_coord_editor, summary_label="Internal coordinates"),
-    # Chain centroid conditioning -- manual xyz entry + indicator spheres.
-    ConditionSpec(C_CENTROID, editor=_chain_centroid_editor, summary_fn=_chain_centroid_summary),
-    *[
-        ConditionSpec(
-            condition, editor=_sequence_probability_editor, summary_fn=_sequence_probability_summary(condition)
-        )
-        for condition in SEQUENCE_PROBABILITY_CONDITIONS
-    ],
-    # BasePair: excluded for now (2-body enum condition; no dedicated editor
-    # yet -- the generic PairValueEditor fallback is built for Angstrom
-    # distances and would be actively wrong for PAIR/LOOP semantics).
-]
-
-
-def _mask_summary(spec: ConditionSpec, arr: AtomArrayPlus) -> list[str]:
-    if not spec.condition.has_mask(arr):
-        return []
-    mask = spec.condition.mask(arr, default="generate")
+def _sequence_probability_summary(arr: AtomArrayPlus, condition: type[ConditionBase]) -> list[str]:
+    """Report each specified probability and its residue count, including explicit zeros."""
+    values, mask = condition.annotation_and_mask_at_declared_level(arr)
     if not mask.any():
         return []
-    return [f"{spec.label}: {int(mask.sum())} atoms"]
+    values, counts = np.unique(values[mask], return_counts=True)
+    value_counts = ", ".join(
+        f"{float(value):g} ({int(count)} residues)" for value, count in zip(values, counts, strict=True)
+    )
+    return [f"Sequence probability {condition.token_name}: {value_counts}"]
 
 
-def _enum_summary(spec: ConditionSpec, arr: AtomArrayPlus) -> list[str]:
-    if not spec.condition.has_annotation(arr):
+SUPPORTED_CONDITIONS: tuple[type[ConditionBase], ...] = (
+    C_SEQ,
+    C_CRD,
+    C_IDX,
+    C_HOT,
+    C_RAS,
+    C_SEC,
+    C_HB,
+    C_IDXGRP,
+    C_CRDGRP,
+    C_INTCRD,
+    C_CATH,
+    C_PICATION,
+    C_PISTACK,
+    C_CENTROID,
+    *SEQUENCE_PROBABILITY_CONDITIONS,
+)
+
+_CUSTOM_SUMMARIES: dict[type[ConditionBase], Callable[[AtomArrayPlus], list[str]]] = {
+    C_CATH: _cath_summary,
+    C_IDX: _index_summary,
+    C_IDXGRP: _index_group_summary,
+    C_CRDGRP: _coord_group_summary,
+    C_INTCRD: _internal_coord_summary,
+    C_CENTROID: _chain_centroid_summary,
+}
+
+
+def _unit_name(condition: type[ConditionBase], count: int) -> str:
+    if condition.n_body == 2:
+        return "pair" if count == 1 else "pairs"
+    unit = condition.level.value
+    return unit if count == 1 else f"{unit}s"
+
+
+def _generic_summary(condition: type[ConditionBase], arr: AtomArrayPlus) -> list[str]:
+    if not condition.has_annotation(arr):
         return []
-    annot = spec.condition.annotation(arr, default="raise")
-    mask = spec.condition.mask(arr, default="generate")
-    section: list[str] = []
-    for enum_val in spec.enum_cls:
-        if enum_val.value == spec.null_value:
-            continue
-        atom_mask = mask & (annot == enum_val.value)
-        if not atom_mask.any():
-            continue
-        section.append(f"  {enum_val.name}: {int(atom_mask.sum())} atoms")
-    if not section:
+    values, mask = condition.annotation_and_mask_at_declared_level(arr)
+    if not mask.any():
         return []
-    return [f"{spec.label}:\n" + "\n".join(section)]
+
+    label = condition.__name__
+    if condition.enum is None:
+        count = int(mask.sum())
+        return [f"{label}: {count} {_unit_name(condition, count)}"]
+
+    enum_cls = condition.enum
+    assert enum_cls is not None
+    default_value = condition.default_value
+    section = []
+    for member in enum_cls:
+        member_mask = mask & (values == member.value)
+        count = int(member_mask.sum())
+        if member.value != default_value and count:
+            section.append(f"  {member.name}: {count} {_unit_name(condition, count)}")
+    return [f"{label}:\n" + "\n".join(section)] if section else []
 
 
-def summarize_conditions(arr: AtomArrayPlus, *, include_host_summarized: bool = False) -> str:
-    """Summarize every set condition/annotation covered by :py:data:`SUPPORTED_CONDITIONS`.
-
-    Args:
-      arr: The annotated structure to summarize.
-      include_host_summarized: Also emit lines for conditions an embedding
-        application reports through its own summary hook (see
-        :py:attr:`ConditionSpec.summarized_by_host`). Leave ``False`` inside
-        PyMOL, where AtomWorks' hook already lists them; pass ``True`` when this
-        report is the only one the user sees.
-    """
+def summarize_conditions(arr: AtomArrayPlus) -> str:
+    """Summarize every set condition covered by :py:data:`SUPPORTED_CONDITIONS`."""
     lines: list[str] = []
-    for spec in SUPPORTED_CONDITIONS:
-        if not spec.report_summary:
-            continue
-        if spec.summarized_by_host and not include_host_summarized:
-            continue
-        kind = spec.summary_kind
-        if kind == "mask":
-            lines.extend(_mask_summary(spec, arr))
-        elif kind == "enum":
-            lines.extend(_enum_summary(spec, arr))
+    for condition in SUPPORTED_CONDITIONS:
+        if condition in SEQUENCE_PROBABILITY_CONDITIONS:
+            lines.extend(_sequence_probability_summary(arr, condition))
+        elif custom_summary := _CUSTOM_SUMMARIES.get(condition):
+            lines.extend(custom_summary(arr))
         else:
-            lines.extend(spec.summary_fn(arr))
+            lines.extend(_generic_summary(condition, arr))
     return "\n\n".join(lines)
+
+
+def set_sequence_probability_condition(
+    arr: AtomArrayPlus, indices: np.ndarray, condition: type[SequenceProbability], value: float | None
+) -> None:
+    """Set a probability on selected residues in place, preserving the array if validation fails.
+
+    Selecting any atom edits its whole residue. ``None`` clears the selected values;
+    exact sequence targets and other probability channels remain unchanged.
+    """
+    if value is not None and (not np.isfinite(value) or not 0.0 <= value <= 1.0):
+        raise ValueError("Sequence probability must be finite and in [0, 1], or None to clear it.")
+    selected = np.zeros(len(arr), dtype=bool)
+    selected[np.asarray(indices, dtype=int)] = True
+    if not selected.any():
+        return
+    selected = spread_residue_wise(arr, np.logical_or.reduceat(selected, get_residue_starts(arr)))
+    values = condition.annotation(arr, default="generate").copy()
+    values[selected] = np.nan if value is None else value
+    candidate = arr.copy()
+    condition.set_annotation(candidate, values)
+    candidate = CanonicalizeSequenceProbabilityConditions()({"atom_array": candidate})["atom_array"]
+    violations = check_sequence_probability_conditioning_violations(candidate)
+    if violations:
+        raise ValueError("\n".join(violation.message for violation in violations))
+    condition.set_annotation(arr, values)
 
 
 # ---------------------------------------------------------------------------
@@ -450,10 +247,9 @@ def run_pipeline_validation(arr: AtomArrayPlus) -> list[str]:
     Returns:
       Empty list if valid, otherwise one message per violation.
     """
-    pipeline = build_design_validation_pipeline()
+    pipeline = build_design_validation_pipeline(expandable_segment_rng=np.random.default_rng(0))
     try:
-        realized = realize_expandable_segments(arr.copy(), rng=np.random.default_rng(0))
-        pipeline({"atom_array": realized})
+        pipeline({"atom_array": arr.copy()})
         return []
     except ValueError as e:
         msg = str(e)

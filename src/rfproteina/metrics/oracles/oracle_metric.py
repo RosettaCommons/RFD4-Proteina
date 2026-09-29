@@ -208,7 +208,7 @@ class OracleMetric(Metric):
             and :py:meth:`apply_transform`. Defaults to ``None`` (no transform).
         template_query: AtomWorks query string selecting which atoms to pass to the
             oracle as a structural template (e.g.
-            ``"mask_coordinate_1_atom & ~is_nucleic_acid"``). ``None`` disables
+            ``"sa_mask('C_CRD') & ~is_nucleic_acid"``). ``None`` disables
             templating. Defaults to ``None``.
         frac_under_thresholds: Per-output-key thresholds for which to emit
             ``frac_under_<T>`` rows in :py:meth:`aggregate`. Keys are bare output

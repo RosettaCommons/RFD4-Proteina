@@ -21,7 +21,7 @@ oracle:
 oracle_ppi:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_ppi
-  template_query: "(mask_coordinate_1_atom | mask_InternalCoordinate_1_atom) & is_protein"
+  template_query: "(sa_mask('C_CRD') | sa_mask('C_INTCRD')) & is_protein"
   aggregation: [median]
   frac_under_thresholds:
     min_ipae_coi: [1, 1.5, 2]
@@ -32,7 +32,7 @@ oracle_ppi:
 oracle_dna:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
   oracle_name: af3_dna
-  template_query: "mask_coordinate_1_atom & ~is_nucleic_acid"
+  template_query: "sa_mask('C_CRD') & ~is_nucleic_acid"
   aggregation: [median]
   frac_under_thresholds:
     min_ipae_coi: [1, 1.5, 2]
@@ -90,4 +90,3 @@ oracle_apo:
 #       egfr: /path/to/egfr.cif
 #   required_tags_any:
 #     - off_target_refolding
-

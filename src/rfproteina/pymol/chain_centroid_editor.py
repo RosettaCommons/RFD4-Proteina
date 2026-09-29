@@ -204,9 +204,6 @@ class ChainCentroidEditor(QtWidgets.QWidget, BaseAnnotationEditor):
                 annot[chain_mask] = np.nan
             self._annotation_cls.set_annotation(arr, annot)
 
-            mask = self._annotation_cls.mask(arr, default="generate").copy()
-            mask[chain_mask] = value
-            self._annotation_cls.set_mask(arr, mask)
         except Exception as e:
             self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "Apply failed", str(e))

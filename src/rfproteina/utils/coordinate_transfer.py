@@ -21,20 +21,16 @@ from rfproteina.utils.standard_annotations import SA_SRC
 logger = RankedLogger(rank_zero_only=False)
 
 # Default atom-level annotations that vary within residues
-DEFAULT_ATOM_LEVEL_ANNOTATIONS = (
-    {
-        "atom_name",
-        "element",
-        "coord",
-        "hetero",
-        "atom_id",
-        "b_factor",
-        "occupancy",
-        "charge",
-    }
-    | {sa.mask_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
-    | {sa.full_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
-)
+DEFAULT_ATOM_LEVEL_ANNOTATIONS = {
+    "atom_name",
+    "element",
+    "coord",
+    "hetero",
+    "atom_id",
+    "b_factor",
+    "occupancy",
+    "charge",
+} | {sa.full_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
 
 # These are copied over from the input if present as residue-level annotations
 # Recomputing them might lead to an input-output mismatch

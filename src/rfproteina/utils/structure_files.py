@@ -6,7 +6,8 @@ from pathlib import Path
 
 from atomworks.io.utils.io_utils import CIF_LIKE_EXTENSIONS
 
-_ALL_SUFFIXES = tuple(CIF_LIKE_EXTENSIONS)
+# In this codebase, jsons are never structure files, and instead may be ConditionSpec inputs
+_ALL_SUFFIXES = tuple(suffix for suffix in CIF_LIKE_EXTENSIONS if not suffix.startswith(".json"))
 STRUCTURE_FILE_SUFFIXES = tuple(suffix for suffix in _ALL_SUFFIXES if not suffix.startswith(".pdb"))
 
 

@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from atomworks.ml.conditions import C_CRD, C_IDX
 
-from rfproteina.conditions import C_HOT, C_INTCRD, RasaEnum
+from rfproteina.conditions import C_HOT, RasaEnum
 from rfproteina.utils.condition_resolution import coerce_enum_value, resolve_standard_annotation
 from rfproteina.utils.standard_annotations import SA_SRC
 
@@ -46,17 +46,31 @@ def test_enum_value_coercion_accepts_equivalent_forms(value, expected):
     assert coerce_enum_value(RasaEnum, value) == expected
 
 
-def test_mask_only_conditions_never_write_a_value_annotation(lysozyme):
-    """C_IDX/C_CRD/C_INTCRD are mask-only: driving them through the spec sets a
-    mask but never the (otherwise meaningless) value annotation.
-    """
+def test_presence_authored_conditions_write_unified_annotations(lysozyme):
     from rfproteina.inference_utils.condition_spec import _apply_condition_value
 
-    for cls in (C_CRD, C_IDX, C_INTCRD):
+    for cls in (C_CRD, C_IDX):
         arr = lysozyme.copy()
         indices = np.arange(5)
         _apply_condition_value(cls, arr, indices, True)
 
-        assert cls.has_mask(arr)
+        assert cls.has_annotation(arr)
         assert cls.mask(arr, default="generate")[indices].all()
-        assert not cls.has_annotation(arr)
+
+
+def test_presence_authoring_only_updates_selected_coordinate_values(lysozyme):
+    from rfproteina.inference_utils.condition_spec import _apply_condition_value
+
+    arr = lysozyme.copy()
+    persisted = C_CRD.default_annotation(arr)
+    persisted[5:10] = C_CRD.ground_truth_value(arr)[5:10] + 100
+    C_CRD.set_annotation(arr, persisted)
+
+    _apply_condition_value(C_CRD, arr, np.arange(5), True)
+    np.testing.assert_array_equal(C_CRD.annotation(arr)[:5], C_CRD.ground_truth_value(arr)[:5])
+    np.testing.assert_array_equal(C_CRD.annotation(arr)[5:10], persisted[5:10])
+
+    _apply_condition_value(C_CRD, arr, np.arange(2), False)
+    assert np.isnan(C_CRD.annotation(arr)[:2]).all()
+    np.testing.assert_array_equal(C_CRD.annotation(arr)[2:5], C_CRD.ground_truth_value(arr)[2:5])
+    np.testing.assert_array_equal(C_CRD.annotation(arr)[5:10], persisted[5:10])

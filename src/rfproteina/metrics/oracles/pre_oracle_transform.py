@@ -151,13 +151,10 @@ def _align_annotations(design: AtomArray, off_target: AtomArray) -> tuple[AtomAr
     """Give each array whichever of the other's non-standard annotations it can default.
 
     Registered StandardAnnotations are left for ``concatenate_atom_array_plus``
-    to fill, because it generates masks before values when their defaults depend
-    on one another.
+    to fill with their annotation defaults.
     """
     design, off_target = as_atom_array_plus(design.copy()), as_atom_array_plus(off_target.copy())
-    standard_annotation_names = {
-        name for annotation_cls in STANDARD_ANNOTATIONS for name in (annotation_cls.mask_name, annotation_cls.full_name)
-    }
+    standard_annotation_names = {annotation_cls.full_name for annotation_cls in STANDARD_ANNOTATIONS}
     for target, reference in ((off_target, design), (design, off_target)):
         missing = set(get_annotation_categories(reference, n_body="all")) - set(
             get_annotation_categories(target, n_body="all")

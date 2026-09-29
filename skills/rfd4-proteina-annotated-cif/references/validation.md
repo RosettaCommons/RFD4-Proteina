@@ -64,7 +64,7 @@ violations = [message for check in checks for message in check(aa)]
 if violations:
     raise ValueError("Annotated CIF validation failed:\n" + "\n".join(violations))
 
-print(summarize_conditions(aa, include_host_summarized=True))
+print(summarize_conditions(aa))
 ```
 
 The pipeline check realizes expandable segments once with a fixed seed. It

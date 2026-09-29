@@ -52,6 +52,7 @@ DISTILLATION: ParseConfig = RCSB_WITH_METALS.replace(
     # Neither renumbering step runs here, so annotations survive. On files that carry none it
     # is a no-op: absent fields are skipped. Every training dataset parses through this preset.
     load_standard_annotations=True,
+    return_atom_array_plus=True,
 )
 """Lightweight config for datasets that require minimal processing; e.g., predicted structures"""
 

@@ -215,7 +215,8 @@ class JitterChainCoordinates(Transform):
         return data
 ```
 
-Then list it in your experiment config. Hydra instantiates the `_target_` args.
+Then list it in your experiment config. Hydra instantiates the `_target_` args and passes
+the transforms to the main pipeline’s `sampling_transforms` argument.
 
 ```yaml
 generation:

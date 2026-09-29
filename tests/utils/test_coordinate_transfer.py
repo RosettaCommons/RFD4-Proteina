@@ -151,7 +151,7 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
     # Save original coordinates and annotations
     original_coords = input_array.coord.copy()
     initial_annotations = set(get_annotation_categories(input_array, n_body="all"))
-    initial_seq_mask = input_array.get_annotation(C_SEQ.get_mask_name()).copy()
+    initial_seq_mask = C_SEQ.mask(input_array, default="raise").copy()
 
     # Apply mutations and generate - skip seq-conditioned tokens
     mutated_array = apply_test_mutations(input_array, skip_mask=initial_seq_mask)

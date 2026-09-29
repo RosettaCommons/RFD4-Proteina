@@ -18,6 +18,7 @@ from atomworks.pymol_plugin.state import PluginState
 from pymol.Qt import QtCore, QtWidgets
 
 from rfproteina.conditions import C_CRDGRP, CoordinateGroup
+from rfproteina.pymol.coordinate_edit import commit_coordinate_edit
 
 logger = logging.getLogger("atomworks.pymol_plugin")
 
@@ -124,8 +125,17 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
     def _read_groups(self, arr: AtomArrayPlus) -> np.ndarray:
         return np.asarray(self._annotation_cls.annotation(arr, default="generate")).astype(int)
 
-    def _write_groups(self, arr: AtomArrayPlus, values: np.ndarray) -> None:
-        self._annotation_cls.set_annotation(arr, values.astype(int))
+    def _write_groups(self, obj_name: str, arr: AtomArrayPlus, values: np.ndarray) -> bool:
+        edited = arr.copy()
+        if self._annotation_cls is C_CRDGRP:
+            C_CRDGRP.set_annotation(edited, values, on_internal_coord_mismatch="clear")
+            return commit_coordinate_edit(self, obj_name, arr, edited)
+        if np.array_equal(self._read_groups(arr), values):
+            return False
+        self._annotation_cls.set_annotation(edited, values)
+        self._state.push_snapshot(obj_name)
+        self._state.set_array(obj_name, edited)
+        return True
 
     def _selected_group_id(self) -> int | None:
         data = self._group_combo.currentData()
@@ -140,6 +150,7 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
 
     def refresh(self) -> None:
         """Rebuild the group dropdown from the current annotation."""
+        selected = self._selected_group_id()
         self._group_combo.blockSignals(True)
         self._group_combo.clear()
 
@@ -150,15 +161,19 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             return
 
         _obj, arr = active
+        self._displayed = (_obj, self._state.structure_version(_obj))
         groups = self._read_groups(arr)
         uniques, counts = np.unique(groups, return_counts=True)
         for gid, count in zip(uniques, counts, strict=True):
             gid_int = int(gid)
             label = f"Group {gid_int} ({int(count)} atoms)"
-            if gid_int in self._reserved:
-                label += f" [{self._reserved[gid_int]}]"
+            if self._annotation_cls is C_CRDGRP and gid_int <= 0:
+                continue
             self._group_combo.addItem(label, gid_int)
 
+        selected_index = self._group_combo.findData(selected)
+        if selected_index >= 0:
+            self._group_combo.setCurrentIndex(selected_index)
         self._group_combo.blockSignals(False)
 
     # -- actions ---------------------------------------------------------
@@ -168,22 +183,25 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         if active is None:
             return
         obj_name, arr = active
+        if getattr(self, "_displayed", None) != (obj_name, self._state.structure_version(obj_name)):
+            self.refresh()
+            self._status.setText("The structure changed. Select the intended group and try again.")
+            return
         indices = self._get_selection_indices()
         if not indices:
             QtWidgets.QMessageBox.warning(self, "No selection", "Make a selection in PyMOL first.")
             return
         gid = self._selected_group_id()
-        if gid is None:
+        if gid is None or (self._annotation_cls is C_CRDGRP and gid <= 0):
             QtWidgets.QMessageBox.warning(self, "No group", "Pick a group from the dropdown first.")
             return
 
-        self._state.push_snapshot(obj_name)
         try:
             values = self._read_groups(arr).copy()
             values[indices] = gid
-            self._write_groups(arr, values)
+            if not self._write_groups(obj_name, arr, values):
+                return
         except Exception as e:
-            self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "Add to group failed", str(e))
             return
         self._post_edit(obj_name, f"Added {len(indices)} atoms to group {gid}.")
@@ -198,7 +216,6 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             QtWidgets.QMessageBox.warning(self, "No selection", "Make a selection in PyMOL first.")
             return
 
-        self._state.push_snapshot(obj_name)
         try:
             values = self._read_groups(arr).copy()
             existing_max = int(values.max()) if len(values) else 0
@@ -206,12 +223,13 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             while new_id in self._reserved:
                 new_id += 1
             values[indices] = new_id
-            self._write_groups(arr, values)
+            if not self._write_groups(obj_name, arr, values):
+                return
         except Exception as e:
-            self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "New group failed", str(e))
             return
         self._post_edit(obj_name, f"Created group {new_id} with {len(indices)} atoms.")
+        self._group_combo.setCurrentIndex(self._group_combo.findData(new_id))
 
     def _remove_from_group(self) -> None:
         active = self._active()
@@ -223,13 +241,14 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             QtWidgets.QMessageBox.warning(self, "No selection", "Make a selection in PyMOL first.")
             return
 
-        self._state.push_snapshot(obj_name)
         try:
             values = self._read_groups(arr).copy()
-            values[indices] = self._unassigned
-            self._write_groups(arr, values)
+            values[indices] = (
+                C_CRDGRP.default_annotation(arr)[indices] if self._annotation_cls is C_CRDGRP else self._unassigned
+            )
+            if not self._write_groups(obj_name, arr, values):
+                return
         except Exception as e:
-            self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "Remove from group failed", str(e))
             return
         self._post_edit(obj_name, f"Reassigned {len(indices)} atoms to {self._unassigned}.")
@@ -239,6 +258,10 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         if active is None:
             return
         obj_name, arr = active
+        if getattr(self, "_displayed", None) != (obj_name, self._state.structure_version(obj_name)):
+            self.refresh()
+            self._status.setText("The structure changed. Select the intended group and try again.")
+            return
         gid = self._selected_group_id()
         if gid is None:
             return
@@ -246,23 +269,18 @@ class GroupEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             QtWidgets.QMessageBox.warning(self, "Cannot delete", f"Group {gid} is the unassigned value.")
             return
         if gid in self._reserved:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Delete reserved group?",
-                f"Group {gid} is reserved ({self._reserved[gid]}). Delete anyway?",
-            )
-            if reply != QtWidgets.QMessageBox.Yes:
-                return
+            return
 
-        self._state.push_snapshot(obj_name)
         try:
             values = self._read_groups(arr).copy()
             mask = values == gid
             count = int(mask.sum())
-            values[mask] = self._unassigned
-            self._write_groups(arr, values)
+            values[mask] = (
+                C_CRDGRP.default_annotation(arr)[mask] if self._annotation_cls is C_CRDGRP else self._unassigned
+            )
+            if not self._write_groups(obj_name, arr, values):
+                return
         except Exception as e:
-            self._state.pop_snapshot(obj_name)
             QtWidgets.QMessageBox.critical(self, "Delete group failed", str(e))
             return
         self._post_edit(obj_name, f"Deleted group {gid} ({count} atoms reassigned).")

@@ -188,10 +188,10 @@ def test_af2_template_uses_original_conditioned_coordinates(modified_1a1e):
     target = modified_1a1e[modified_1a1e.chain_id == "A"].copy()
     generated_coords = target.coord.copy()
     conditioned_coords = generated_coords + np.array([11.0, -7.0, 3.0])
-    C_CRD.set_mask(target, np.ones(target.array_length(), dtype=bool))
+    C_CRD.set_annotation(target, C_CRD.ground_truth_value(target))
     SA_CWI.set_annotation(target, np.asarray(conditioned_coords, dtype=np.float32))
 
-    template = AF2Oracle(template_query=C_CRD.get_mask_name())._build_af2_template_dict(target)
+    template = AF2Oracle(template_query="sa_mask('C_CRD')")._build_af2_template_dict(target)
     assert template is not None
     template_structure = get_structure(
         pdbx.CIFFile.read(io.StringIO(template["A"]["mmcif"])),
@@ -432,7 +432,15 @@ def test_oracle_pipeline_integration(oracle_info, modified_1a1e, tmp_path):
     # Template chain A, and ensure that chain B is the chain of interest
     aa_templated = modified_1a1e.copy()
     aa_templated.set_annotation("is_templated", aa_templated.chain_id == "A")
-    C_CRD.set_mask(aa_templated, (aa_templated.chain_id != "B"))
+    coord_condition_mask = aa_templated.chain_id != "B"
+    C_CRD.set_annotation(
+        aa_templated,
+        np.where(
+            coord_condition_mask[:, None],
+            C_CRD.ground_truth_value(aa_templated),
+            C_CRD.default_annotation(aa_templated),
+        ),
+    )
 
     # --- design_mm ---
     design_mm = MetricManager({"general_metrics": ClashMetric()})

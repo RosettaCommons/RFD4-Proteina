@@ -33,7 +33,7 @@ refolded_backbone_rmsd:
 
 refolded_target_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: ~is_chain_of_interest & mask_coordinate_1_atom
+  align_mask: "~is_chain_of_interest & sa_mask('C_CRD')"
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
@@ -42,7 +42,7 @@ refolded_target_aligned_binder_rmsd:
 
 refolded_target_backbone_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: ~is_chain_of_interest & mask_coordinate_1_atom & is_protein_backbone
+  align_mask: "~is_chain_of_interest & sa_mask('C_CRD') & is_protein_backbone"
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
@@ -51,8 +51,8 @@ refolded_target_backbone_aligned_binder_rmsd:
 
 refolded_motif_allatom_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: mapped_to_coordinate_conditioned_region & is_protein
-  subset_mask: mapped_to_coordinate_conditioned_region & is_protein
+  align_mask: "sa_mask('SA_CRDSRC') & is_protein"
+  subset_mask: "sa_mask('SA_CRDSRC') & is_protein"
   subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
@@ -67,8 +67,8 @@ refolded_motif_allatom_rmsd:
 
 refolded_motif_ca_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
-  subset_mask: "mapped_to_coordinate_conditioned_region & is_protein & (atom_name == 'CA')"
+  align_mask: "sa_mask('SA_CRDSRC') & is_protein & (atom_name == 'CA')"
+  subset_mask: "sa_mask('SA_CRDSRC') & is_protein & (atom_name == 'CA')"
   subdivide_by_annotation: condition_CoordinateGroup_1_atom
   gt_coord_annotation_name: annotation_coords-with-insertion_1_atom
   metric_type: rmsd
@@ -90,8 +90,8 @@ refolded_backbone_aligned_ligand_rmsd:
 # Apo/holo consistency
 refolded_apo_holo_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: is_protein_backbone & ~mask_coordinate_1_atom
-  subset_mask: is_protein_backbone & ~mask_coordinate_1_atom
+  align_mask: "is_protein_backbone & ~sa_mask('C_CRD')"
+  subset_mask: "is_protein_backbone & ~sa_mask('C_CRD')"
   metric_type: rmsd
   aggregation: [median]
   input_kwarg_names:

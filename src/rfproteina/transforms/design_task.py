@@ -32,7 +32,7 @@ from biotite.structure import AtomArray
 from scipy.spatial import ConvexHull
 from scipy.special import softmax
 
-from rfproteina.conditions import C_CRDGRP, C_HOT, C_IDXGRP, C_INTCRD
+from rfproteina.conditions import C_CRDGRP, C_HOT, C_IDXGRP
 from rfproteina.transforms.design_task_modifiers import (
     add_cath_condition,
     add_hbond_condition,
@@ -263,7 +263,8 @@ class RFD3DesignTask(DesignTaskABC):
         atom_array = data["atom_array"]
         if "atomize" in atom_array.get_annotation_categories():
             seq_cond_mask = C_SEQ.mask(atom_array, default="generate")
-            C_SEQ.set_mask(atom_array, seq_cond_mask | atom_array.atomize)
+            seq_cond_mask |= atom_array.atomize
+            C_SEQ.set_annotation_from_ground_truth(atom_array, seq_cond_mask)
         data["atom_array"] = atom_array
         return data
 
@@ -337,7 +338,8 @@ class StructurePredictionTask(NoMotifABC):
         data = super().set_task_info(data)
 
         # ... show sequence to the model
-        C_SEQ.set_mask(data["atom_array"], np.ones(data["atom_array"].array_length(), dtype=bool))
+        atom_array = data["atom_array"]
+        C_SEQ.set_annotation(atom_array, C_SEQ.ground_truth_value(atom_array))
 
         data = self.apply_design_task_modifiers(data)  # This won't do anything because probs are defualted to 0.0
 
@@ -398,10 +400,10 @@ class InverseFoldingTask(NoMotifABC):
 
         # provide coordinate info for every atom except designed non-backbone atoms
         hidden_coordinates = designed & ~backbone
-        C_CRD.set_mask(atom_array, ~hidden_coordinates)
+        C_CRD.set_annotation_from_ground_truth(atom_array, ~hidden_coordinates)
 
         # provide sequence info for every atom that is not part of a designed polymer
-        C_SEQ.set_mask(atom_array, ~designed)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, ~designed)
 
         data["atom_array"] = atom_array
 
@@ -464,8 +466,9 @@ class ProteinFromDNAStructureContextTask(ProteinFromDNAContextABC):
 
         # Provide DNA coordinates (skipping NaN coords) and DNA sequence.
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
-        C_CRD.set_mask(atom_array, is_dna & ~nan_coord_mask)
-        C_SEQ.set_mask(atom_array, is_dna)
+        coord_condition_mask = is_dna & ~nan_coord_mask
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_dna)
         data["atom_array"] = atom_array
 
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
@@ -486,7 +489,7 @@ class ProteinFromDNASequenceContextTask(ProteinFromDNAContextABC):
         is_dna = atom_array.is_dna.astype(bool)
 
         # Provide DNA sequence only; no coordinate conditioning.
-        C_SEQ.set_mask(atom_array, is_dna)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_dna)
         data["atom_array"] = atom_array
 
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
@@ -578,12 +581,12 @@ class PartialLigandTask(RFD3DesignTask):
         # Do not coord condition nan coordinates
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = coord_conditioned_mask & ~nan_coord_mask
-        C_CRD.set_mask(atom_array, coord_condition_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
-        C_SEQ.set_mask(atom_array, sequence_condition_mask)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, sequence_condition_mask)
 
         _n_atoms = atom_array.array_length()
-        C_IDX.set_mask(atom_array, np.ones(atom_array.array_length(), dtype=bool))
+        C_IDX.set_annotation(atom_array, np.ones(atom_array.array_length(), dtype=bool))
 
         data["atom_array"] = atom_array
 
@@ -743,7 +746,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
 
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask
-        C_CRD.set_mask(atom_array, coord_condition_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
         # Possibly convert some absolute coordinate conditioning to internal coordinate conditioning.
         # Sample the number of masks geometrically based on p_internal_coords.
@@ -769,7 +772,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
             is_res_seq_conditioned[is_res_seq_conditioned] = show_sequence
             is_seq_conditioned = spread_segment_wise(res_segments, is_res_seq_conditioned)
             is_seq_conditioned |= atom_array.mask("~is_standard_aa")
-            C_SEQ.set_mask(atom_array, is_seq_conditioned)
+            C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
         # Sample the regions to be unindexed
         show_idx = _true
@@ -779,7 +782,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
             is_unindexed = apply_and_spread_token_wise(atom_array, is_unindexed, np.any)
             show_idx = ~is_unindexed
         show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
-        C_IDX.set_mask(atom_array, show_idx)
+        C_IDX.set_annotation(atom_array, show_idx)
 
         # Sample the unindexed groups
         all_index_group_ids = sample_unindexed_groups(
@@ -1005,7 +1008,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         atom_array.set_annotation("is_sampled_tip_atom", total_mask & atom_array.is_protein)
 
         # set coordinate conditions for sampled atoms
-        C_CRD.set_mask(atom_array, total_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, total_mask)
 
         # Possibly convert some absolute coordinate conditioning to internal coordinate conditioning.
 
@@ -1044,7 +1047,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         # also sequence condition coordinates with sequence conditioning probability
         if true_with_prob(self.p_seq_conditioned):
             seq_cond_mask = apply_and_spread_token_wise(atom_array, total_mask, np.any)
-            C_SEQ.set_mask(atom_array, seq_cond_mask)
+            C_SEQ.set_annotation_from_ground_truth(atom_array, seq_cond_mask)
 
         # ... unindex atoms appropriately
         show_idx = np.ones(atom_array.array_length(), dtype=bool)
@@ -1061,7 +1064,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
             is_unindexed = apply_and_spread_token_wise(atom_array, is_unindexed, np.any)
             show_idx = ~is_unindexed
         show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
-        C_IDX.set_mask(atom_array, show_idx)
+        C_IDX.set_annotation(atom_array, show_idx)
 
         # ... sample unindexed groups
         all_index_group_ids = sample_unindexed_groups(
@@ -1202,7 +1205,7 @@ class TipAtomTask(RFD3DesignTask):
 
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask
-        C_CRD.set_mask(atom_array, coord_condition_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
         # Possibly convert some absolute coordinate conditioning to internal coordinate conditioning.
         # Sample the number of masks geometrically based on p_internal_coords.
@@ -1221,7 +1224,7 @@ class TipAtomTask(RFD3DesignTask):
         res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
         is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
         is_seq_conditioned |= atom_array.mask("~is_standard_aa")
-        C_SEQ.set_mask(atom_array, is_seq_conditioned)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
         # Sample the regions to be unindexed
         show_idx = _true
@@ -1231,7 +1234,7 @@ class TipAtomTask(RFD3DesignTask):
             is_unindexed = apply_and_spread_token_wise(atom_array, is_unindexed, np.any)
             show_idx = ~is_unindexed
         show_idx[S_ATM.mask(atom_array, default="generate")] = True  # Never unindex atomized regions
-        C_IDX.set_mask(atom_array, show_idx)
+        C_IDX.set_annotation(atom_array, show_idx)
 
         # Sample the unindexed groups
         all_index_group_ids = sample_unindexed_groups(
@@ -1387,11 +1390,11 @@ class MotifScaffoldTask(RFD3DesignTask):
 
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask
-        C_CRD.set_mask(atom_array, coord_condition_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
         res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
         is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
-        C_SEQ.set_mask(atom_array, is_seq_conditioned)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
         # Per-residue probability of reducing coord conditioning to backbone atoms only.
         # We do not give sequence conditioning in such cases
@@ -1405,8 +1408,8 @@ class MotifScaffoldTask(RFD3DesignTask):
                         is_seq_conditioned[start:stop] = True
                     else:
                         is_seq_conditioned[start:stop] = False
-            C_CRD.set_mask(atom_array, coord_condition_mask)
-            C_SEQ.set_mask(atom_array, is_seq_conditioned)
+            C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
+            C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
         # Sample the regions to be unindexed using an island mask
         # NOTE: Since absolute coords aren't converted to internal coords until later, this may
@@ -1416,9 +1419,9 @@ class MotifScaffoldTask(RFD3DesignTask):
             unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
             if "atomize" in atom_array.get_annotation_categories():
                 unindexed_mask &= ~atom_array.atomize
-            C_IDX.set_mask(atom_array, ~unindexed_mask)
+            C_IDX.set_annotation(atom_array, ~unindexed_mask)
         else:
-            C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
+            C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
 
         # Sample the unindexed groups
         all_index_group_ids = sample_unindexed_groups(
@@ -1431,8 +1434,6 @@ class MotifScaffoldTask(RFD3DesignTask):
 
         # By default, coord-conditioned regions all have absolute coords
         C_CRDGRP.set_annotation(atom_array, C_CRDGRP.default_annotation(atom_array))
-        C_INTCRD.set_mask(atom_array, C_INTCRD.default_mask(atom_array))
-        C_INTCRD.set_annotation(atom_array, C_INTCRD.default_annotation(atom_array))
 
         # Sample the internal coordinate groups, keeping full coord-conditioned islands together
         if true_with_prob(self.p_internal_coords):
@@ -1778,18 +1779,18 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
         # Set coordinate conditioning for selected atoms
         nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
         coord_condition_mask = total_mask & ~nan_coord_mask
-        C_CRD.set_mask(atom_array, coord_condition_mask)
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
         # Set sequence conditioning for motif residues (spread to entire residue)
         res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
         is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
         is_seq_conditioned |= atom_array.mask("~is_standard_aa")  # Always condition on non-standard AAs
-        C_SEQ.set_mask(atom_array, is_seq_conditioned)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
         # Handle unindexing based on mode
         if self.unindex_mode == "none":
             # Everything is indexed (no unindexing)
-            C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
+            C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
             C_IDXGRP.set_annotation(atom_array, C_IDXGRP.default_annotation(atom_array))
 
         elif self.unindex_mode == "simple":
@@ -1799,10 +1800,10 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
                 motif_residues_mask = apply_and_spread(res_segments, total_mask, np.any)
                 # Only unindex protein residues, not atomized/ligands
                 motif_to_unindex = motif_residues_mask & atom_array.is_protein & ~atom_array.atomize
-                C_IDX.set_mask(atom_array, ~motif_to_unindex)
+                C_IDX.set_annotation(atom_array, ~motif_to_unindex)
             else:
                 # Keep everything indexed
-                C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
+                C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
 
             unindexed_group_ids = sample_unindexed_groups(
                 atom_array  # just use default args because we are in simple mode
@@ -1812,18 +1813,19 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
         elif self.unindex_mode == "complex":
             # Complex mode: use island sampling with merge/split logic
             # Create unindexed mask using island sampling
+            C_CRDGRP.set_annotation(atom_array, C_CRDGRP.default_annotation(atom_array))
             fn_sample_seed = mg.SampleUniformly(
-                is_eligible=f"{C_CRD.mask_name} & is_protein & ~atomize",
+                is_eligible="sa_mask('coordinate') & is_protein & ~atomize",
             )
             fn_grow_seed = mg.GrowToSegmentIsland(
                 island_min_size=1,
                 island_max_size=self.max_unindexed_tokens,
-                segment_has_same_annotation=("chain_iid", "res_name", "res_id", C_CRD.get_mask_name()),
-                require_same_annotation=("chain_iid", C_CRD.get_mask_name(), "atomize"),
+                segment_has_same_annotation=("chain_iid", "res_name", "res_id", C_CRDGRP.full_name),
+                require_same_annotation=("chain_iid", C_CRDGRP.full_name, "atomize"),
             )
 
             target_fraction = np.random.uniform(0.0, 1.0)
-            total_eligible = atom_array.mask(f"is_protein & is_token_start & {C_CRD.get_mask_name()}").sum()
+            total_eligible = atom_array.mask("is_protein & is_token_start & sa_mask('coordinate')").sum()
             min_tokens = max(0, int((target_fraction - 0.05) * total_eligible))
             max_tokens = min(int((target_fraction + 0.05) * total_eligible), self.max_unindexed_tokens)
 
@@ -1835,7 +1837,7 @@ class MotifScaffoldProteinaTask(RFD3DesignTask):
                 fn_grow_seed=fn_grow_seed,
                 fn_check_budget=fn_check_budget,
             )
-            C_IDX.set_mask(atom_array, ~unindexed_mask)
+            C_IDX.set_annotation(atom_array, ~unindexed_mask)
 
         else:
             raise ValueError(f"Unknown unindex_mode: {self.unindex_mode}. Must be 'none', 'simple', or 'complex'.")
@@ -2106,19 +2108,19 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         is_target_chain = np.isin(atom_array.pn_unit_iid, target_pn_unit_iids)
         nan_coord_mask = atom_array.mask("has_nan_coord()")
 
-        C_HOT.set_annotation(atom_array=atom_array, array=hotspot_atom_mask)
-        C_HOT.set_mask(atom_array, hotspot_atom_mask, 1, "atom")
+        C_HOT.set_annotation(atom_array, hotspot_atom_mask)
 
         if true_with_prob(self.p_bb_only_coord_conditioning):
             ensure_annotations(atom_array, "is_protein_backbone", "is_nucleic_acid_backbone")
             is_backbone = atom_array.is_protein_backbone | atom_array.is_nucleic_acid_backbone
-            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask & is_backbone)
+            coord_condition_mask = is_target_chain & ~nan_coord_mask & is_backbone
         else:
-            C_CRD.set_mask(atom_array, is_target_chain & ~nan_coord_mask)
+            coord_condition_mask = is_target_chain & ~nan_coord_mask
+        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
-        C_SEQ.set_mask(atom_array, is_target_chain)
+        C_SEQ.set_annotation_from_ground_truth(atom_array, is_target_chain)
         # TODO: enable `unindexed` condition
-        C_IDX.set_mask(atom_array, _true, 1, "atom")
+        C_IDX.set_annotation(atom_array, _true)
 
         # ... update the now condition-annotated atom array
         data["atom_array"] = atom_array
@@ -2331,19 +2333,19 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
 
             nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
             coord_condition_mask = total_mask & ~nan_coord_mask
-            C_CRD.set_mask(atom_array, coord_condition_mask)
+            C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
 
             res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
             is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
-            C_SEQ.set_mask(atom_array, is_seq_conditioned)
+            C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
 
             if true_with_prob(self.p_unindex_any):
                 unindexed_mask = self.sample_unindexed_mask(all_masks, get_token_starts(atom_array))
                 if "atomize" in atom_array.get_annotation_categories():
                     unindexed_mask &= ~atom_array.atomize
-                C_IDX.set_mask(atom_array, ~unindexed_mask)
+                C_IDX.set_annotation(atom_array, ~unindexed_mask)
             else:
-                C_IDX.set_mask(atom_array, C_IDX.default_mask(atom_array))
+                C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
 
             all_index_group_ids = sample_unindexed_groups(
                 atom_array,
@@ -2353,8 +2355,6 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
             )
             C_IDXGRP.set_annotation(atom_array, all_index_group_ids)
             C_CRDGRP.set_annotation(atom_array, C_CRDGRP.default_annotation(atom_array))
-            C_INTCRD.set_mask(atom_array, C_INTCRD.default_mask(atom_array))
-            C_INTCRD.set_annotation(atom_array, C_INTCRD.default_annotation(atom_array))
 
             if true_with_prob(self.p_internal_coords) and len(all_masks) > 0:
                 mask_indices = np.random.permutation(len(all_masks))
@@ -2725,13 +2725,15 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
         # ------------------------------------------------------------------
         fixed_cdr_conditioning_mask = fixed_cdr_mask & ~nan_coord_mask
         if fixed_cdr_mask.any():
-            C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | fixed_cdr_mask)
+            seq_condition_mask = C_SEQ.mask(atom_array, default="generate") | fixed_cdr_mask
+            C_SEQ.set_annotation_from_ground_truth(atom_array, seq_condition_mask)
 
         # ------------------------------------------------------------------
         # Step 5: Framework sequence conditioning (optional)
         # ------------------------------------------------------------------
         if true_with_prob(self.p_framework_seq_cond):
-            C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | framework_mask)
+            seq_condition_mask = C_SEQ.mask(atom_array, default="generate") | framework_mask
+            C_SEQ.set_annotation_from_ground_truth(atom_array, seq_condition_mask)
         else:  # need to remove any type of coordinate conditioning from framework sidechains (keep backbone coords)
             fw_coordinate_conditioning_mask = fw_coordinate_conditioning_mask & atom_array.is_protein_backbone
 
@@ -2751,13 +2753,11 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
             for pn_unit_iid in ig_chain_ids:
                 ig_mask = per_chain_ig_masks[pn_unit_iid]
                 # Only re-group atoms that already received internal coord conditioning
-                intcrd_mask = C_INTCRD.mask(atom_array, default="generate")
+                intcrd_mask = C_CRDGRP.is_internal(atom_array)
                 chain_intcrd = ig_mask & intcrd_mask
                 if chain_intcrd.any():
-                    # Reassign to a fresh coord group by calling convert again
-                    # (it always picks max+1, so each call creates a new group)
-                    # We only update the CRDGRP annotation, not re-run the full conditioning
-                    coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
+                    # Assign each chain a fresh group before targets are materialized.
+                    coord_groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
                     coord_groups[chain_intcrd] = coord_groups.max() + 1
                     C_CRDGRP.set_annotation(atom_array, coord_groups)
         # (else: all Ig chains are already in the same group from convert_to_internal_coords calls)
@@ -2769,7 +2769,7 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
 
         if true_with_prob(self.p_flexible_target):
             # No coordinate conditioning for target
-            coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
+            coord_groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
             coord_groups[target_mask] = C_CRDGRP.UNKNOWN_COORDS
             C_CRDGRP.set_annotation(atom_array, coord_groups)
         elif true_with_prob(self.p_target_intcoord):
@@ -2783,12 +2783,15 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
             target_cond_mask = (
                 target_mask & atom_array.is_protein_backbone if true_with_prob(self.p_target_bb_only) else target_mask
             )
-            C_CRD.set_mask(
-                atom_array, C_CRD.mask(atom_array, default="generate") | (target_cond_mask & ~target_nan_mask)
-            )
+            coord_condition_mask = C_CRD.mask(atom_array, default="generate") | (target_cond_mask & ~target_nan_mask)
+            C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
+            coord_groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
+            coord_groups[coord_condition_mask] = C_CRDGRP.KNOWN_ABSOLUTE_COORDS
+            C_CRDGRP.set_annotation(atom_array, coord_groups)
 
         # Target always gets sequence conditioning
-        C_SEQ.set_mask(atom_array, C_SEQ.mask(atom_array, default="generate") | target_mask)
+        seq_condition_mask = C_SEQ.mask(atom_array, default="generate") | target_mask
+        C_SEQ.set_annotation_from_ground_truth(atom_array, seq_condition_mask)
 
         # ------------------------------------------------------------------
         # Step 8: Hotspots
@@ -2805,13 +2808,12 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
                 hotspot_geometric_p=self.hotspot_geometric_p,
             )
 
-        C_HOT.set_annotation(atom_array=atom_array, array=hotspot_mask)
-        C_HOT.set_mask(atom_array, hotspot_mask)
+        C_HOT.set_annotation(atom_array, hotspot_mask)
 
         # ------------------------------------------------------------------
         # Step 9: Index everything
         # ------------------------------------------------------------------
-        C_IDX.set_mask(atom_array, np.ones(atom_array.array_length(), dtype=bool))
+        C_IDX.set_annotation(atom_array, np.ones(atom_array.array_length(), dtype=bool))
 
         data["atom_array"] = atom_array
         if "task" not in data:

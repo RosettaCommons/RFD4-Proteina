@@ -3,12 +3,13 @@ import itertools
 
 import biotite.structure as struc
 import numpy as np
+from atomworks.io.utils.annotator import remove_annotations
 from atomworks.io.utils.atom_array_plus import concatenate_any
-from atomworks.io.utils.selection import get_annotation_categories
+from atomworks.io.utils.scatter import safe_scatter
 from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_CTR, C_DIS, C_IDX, C_NTR
-from atomworks.ml.conditions.base import CONDITIONS
+from atomworks.ml.conditions.base import CONDITIONS, ConditionConflictError
 from atomworks.ml.transforms._checks import (
     check_contains_keys,
     check_is_instance,
@@ -91,10 +92,9 @@ class UnindexFlaggedTokens(Transform):
         )
         assert token_to_unindex.sum() > 0, "No tokens to unindex!"
 
-        # record original annotations and masks, to be added back later where appropriate
+        # Record original annotations, to be added back later where appropriate.
         original_1d_conditions = {}
         original_2d_conditions = {}
-        annotation_categories = get_annotation_categories(atom_array, n_body="all")
         for cond in CONDITIONS:
             # Add to the appropriate dict for the current n_body
             if cond.n_body == 0:
@@ -106,18 +106,18 @@ class UnindexFlaggedTokens(Transform):
             else:
                 raise NotImplementedError(f"Unindexing does not yet support conditions with n_body={cond.n_body}")
 
-            has_mask = cond.get_mask_name() in annotation_categories
-            has_annot = cond.get_full_name() in annotation_categories
-
-            # Store the annotation and/or mask if present
-            if has_mask:
-                if cond.name not in dict_to_use:
-                    dict_to_use[cond.name] = {}
-                dict_to_use[cond.name]["mask"] = cond.mask(atom_array, default="raise")
-            if has_annot:
+            if cond.has_annotation(atom_array):
                 if cond.name not in dict_to_use:
                     dict_to_use[cond.name] = {}
                 dict_to_use[cond.name]["annotation"] = cond.annotation(atom_array, default="raise")
+
+        # Canonicalize condition storage before copying the motif.
+        # Condition accessors validate aliases before any redundant columns are removed.
+        for conditions in (original_1d_conditions, original_2d_conditions):
+            for cond_name, condition_dict in conditions.items():
+                cond = CONDITIONS[cond_name]
+                cond.set_annotation(atom_array, condition_dict["annotation"])
+                remove_annotations(atom_array, *cond.aliases)
 
         idxs = np.arange(atom_array.array_length())
         if not C_IDXGRP.has_annotation(atom_array):
@@ -170,10 +170,10 @@ class UnindexFlaggedTokens(Transform):
 
         # Do not leak index through termini features
         false_mask = np.zeros(unindexed.array_length(), dtype=bool)
-        if C_NTR.mask_name in annotation_categories:
-            C_NTR.set_mask(unindexed, false_mask)
-        if C_CTR.mask_name in annotation_categories:
-            C_CTR.set_mask(unindexed, false_mask)
+        if C_NTR.has_annotation(unindexed):
+            C_NTR.set_annotation(unindexed, false_mask)
+        if C_CTR.has_annotation(unindexed):
+            C_CTR.set_annotation(unindexed, false_mask)
 
         # ... Remove original tokens e.g. during inference
         if is_inference:
@@ -242,31 +242,19 @@ class UnindexFlaggedTokens(Transform):
 
         else:
             # Temporarily set all previously-existing conditions to their default values
-            conditions_to_remove_dict = {}
-            for cond_name, val in original_1d_conditions.items():
-                cond = CONDITIONS[cond_name]
-                conditions_to_remove_dict[cond] = {}
-                for k in ["mask", "annotation"]:
-                    if k in val:
-                        conditions_to_remove_dict[cond][k] = True
-                    else:
-                        conditions_to_remove_dict[cond][k] = False
-            set_specified_conditions_to_default(atom_array, conditions=conditions_to_remove_dict)
+            conditions_to_remove = [CONDITIONS[cond_name] for cond_name in original_1d_conditions]
+            set_specified_conditions_to_default(atom_array, conditions=conditions_to_remove)
 
-            # Overwrite the null conditions everywhere except on tokens with atoms which were copied for unindexing
-            # TODO: Doesn't this procedure of setting annotations to their defaults partially leak the identity of the
-            # ground-truth tokens that were copied for unindexing? Keeping them also partially leaks it, so maybe we
-            # should do this reset to defaults stochastically? To avoid the model learning something undesirable. And
-            # unindexed tokens should also get some of their non-positional Conditions set to default stochastically.
-            for cond_name, condition_dict in original_1d_conditions.items():
+            # TODO: Consider stochastic condition resets to avoid leaking which source tokens were copied.
+
+            # Restore conditions on tokens whose atoms were not copied for unindexing.
+            # Restore coordinate-group membership before its saved internal-coordinate payload.
+            for cond_name, condition_dict in sorted(
+                original_1d_conditions.items(), key=lambda item: item[0] == C_INTCRD.name
+            ):
                 cond = CONDITIONS[cond_name]
-                if "mask" in condition_dict:
-                    current_mask = condition_dict["mask"]
-                    default_mask = cond.mask(atom_array, default="raise")
-                    current_mask[token_to_unindex] = default_mask[token_to_unindex]
-                    cond.set_mask(atom_array, current_mask)
                 if "annotation" in condition_dict:
-                    current_annotation = condition_dict["annotation"]
+                    current_annotation = condition_dict["annotation"].copy()
                     default_annotation = cond.annotation(atom_array, default="raise")
                     current_annotation[token_to_unindex] = default_annotation[token_to_unindex]
                     cond.set_annotation(atom_array, current_annotation)
@@ -321,12 +309,6 @@ class UnindexFlaggedTokens(Transform):
         # Update all 2D conditions to reflect movement of unindexed atoms
         for cond_name, condition_dict in original_2d_conditions.items():
             cond = CONDITIONS[cond_name]
-            if "mask" in condition_dict:
-                mask = condition_dict["mask"]
-                pairs, values = mask.pairs, mask.values
-                if len(pairs) > 0:
-                    pairs = vectorized_map(pairs)
-                    cond.set_mask(atom_array_full, pairs=pairs, values=values)
             if "annotation" in condition_dict:
                 annotation = condition_dict["annotation"]
                 pairs, values = annotation.pairs, annotation.values
@@ -546,8 +528,6 @@ def annotate_unindexed_insertion(
     in_context_conditioning = atom_array[~has_index].copy()
 
     # Materialize the output schema before early returns for indexed or unmapped inputs.
-    if not C_CRDGRP.has_mask(model_generated_atom_array):
-        C_CRDGRP.set_mask(model_generated_atom_array, C_CRDGRP.default_mask(model_generated_atom_array))
     if not C_CRDGRP.has_annotation(model_generated_atom_array):
         C_CRDGRP.set_annotation(model_generated_atom_array, C_CRDGRP.default_annotation(model_generated_atom_array))
 
@@ -558,14 +538,11 @@ def annotate_unindexed_insertion(
 
         Used both when there are no unindexed tokens and when the token mapping fails.
         """
-        empty_bool = np.zeros(n_atoms, dtype=bool)
-        SA_CRDSRC.set_mask(model_generated_atom_array, empty_bool)
         SA_CRDSRC.set_annotation(model_generated_atom_array, SA_CRDSRC.default_annotation(model_generated_atom_array))
-        SA_IDXGRPSRC.set_mask(model_generated_atom_array, empty_bool)
         SA_IDXGRPSRC.set_annotation(
             model_generated_atom_array, SA_IDXGRPSRC.default_annotation(model_generated_atom_array)
         )
-        SA_UII.set_mask(model_generated_atom_array, empty_bool)
+        SA_UII.set_annotation(model_generated_atom_array, SA_UII.default_annotation(model_generated_atom_array))
         return _merge_indexed_coord_conditioning_into_src(model_generated_atom_array)
 
     # Short-circuit: no unindexed tokens at all — populate indexed conditioning and return.
@@ -573,8 +550,8 @@ def annotate_unindexed_insertion(
         return _set_empty_unindexed_annotations()
 
     # Union of absolute and internal coord conditioning
-    has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate") | C_INTCRD.mask(
-        in_context_conditioning, default="generate"
+    has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate") | C_CRDGRP.is_internal(
+        in_context_conditioning
     )
     has_distance_conditioning = C_DIS.mask(in_context_conditioning, default="generate").as_dense_array().any(axis=0)
     if has_distance_conditioning.any():
@@ -589,11 +566,11 @@ def annotate_unindexed_insertion(
     mapped_to_coordinate_conditioned_region = np.zeros(n_atoms, dtype=bool)
     # An atom carries at most one coord mode: absolute -> C_CRD, internal -> C_INTCRD.
     assert not (
-        C_CRD.mask(in_context_conditioning, default="generate")
-        & C_INTCRD.mask(in_context_conditioning, default="generate")
+        C_CRD.mask(in_context_conditioning, default="generate") & C_CRDGRP.is_internal(in_context_conditioning)
     ).any(), "Atom carries both absolute (C_CRD) and internal (C_INTCRD) coord conditioning; modes are exclusive."
     remapped_coord = np.full_like(model_generated_atom_array.coord, np.nan)
     reference_coord = C_INTCRD.annotation(model_generated_atom_array, default="generate").copy()
+    coordinate_groups = C_CRDGRP.annotation(model_generated_atom_array, default="generate").copy()
     src_coordinate_conditioned_region = SA_CRDSRC.default_annotation(model_generated_atom_array)
     src_index_group = SA_IDXGRPSRC.default_annotation(model_generated_atom_array)
     generated_indices = np.arange(n_atoms)
@@ -649,13 +626,7 @@ def annotate_unindexed_insertion(
             # gate on the value -- skip tokens whose source carries no real group (all UNKNOWN).
             src_group = C_CRDGRP.annotation(atom_array, default="generate")[src_token_indices]
             if (src_group != C_CRDGRP.UNKNOWN_COORDS).any():
-                C_CRDGRP.transfer(
-                    atom_array,
-                    model_generated_atom_array,
-                    src_token_indices,
-                    token_target_indices,
-                    on_mismatch="overwrite",
-                )
+                coordinate_groups = safe_scatter(src_group, token_target_indices, coordinate_groups)
 
             # Coord provenance / metric staging: reuse the token correspondence restricted to the
             # coord-conditioned atoms, so conditions and coords land on the same target atoms.
@@ -676,14 +647,22 @@ def annotate_unindexed_insertion(
             remapped_coord[coord_target] = token_ref_coord[token_coord_mask]
             reference_coord[coord_target] = unindexed_internal_coords[unindexed_token_mask][token_coord_mask]
 
-        SA_CRDSRC.set_mask(model_generated_atom_array, mapped_to_coordinate_conditioned_region)
+        # Insertion restores membership and frozen targets together, in the source groups' frames.
+        internal_targets = C_INTCRD.annotation(model_generated_atom_array, default="generate").copy()
+        if np.any(
+            C_CRD.mask(model_generated_atom_array, default="generate")
+            & (coordinate_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
+        ) or np.any(~np.isnan(internal_targets).all(axis=1) & (coordinate_groups <= C_CRDGRP.KNOWN_ABSOLUTE_COORDS)):
+            raise ConditionConflictError("Unindexed insertion conflicts with existing coordinate conditioning modes.")
+        C_CRDGRP.set_annotation(model_generated_atom_array, coordinate_groups, on_internal_coord_mismatch="clear")
+        C_INTCRD.set_annotation(model_generated_atom_array, internal_targets)
+
         SA_CRDSRC.set_annotation(model_generated_atom_array, src_coordinate_conditioned_region)
-        SA_IDXGRPSRC.set_mask(model_generated_atom_array, mapped_to_unindexed_insertion)
         SA_IDXGRPSRC.set_annotation(model_generated_atom_array, src_index_group)
-        SA_UII.set_mask(model_generated_atom_array, mapped_to_unindexed_insertion)
+        SA_UII.set_annotation(model_generated_atom_array, mapped_to_unindexed_insertion)
 
         # Mapped tokens now have a definite position -> mark C_IDX=True in case of further rounds of sampling.
-        C_IDX.set_mask(
+        C_IDX.set_annotation(
             model_generated_atom_array,
             C_IDX.mask(model_generated_atom_array, default="generate") | mapped_to_unindexed_insertion,
         )
@@ -705,8 +684,6 @@ def annotate_unindexed_insertion(
         )
         # Discard any partial condition transfer -- re-derive the clean generated array before emitting.
         model_generated_atom_array = atom_array[has_index].copy()
-        if not C_CRDGRP.has_mask(model_generated_atom_array):
-            C_CRDGRP.set_mask(model_generated_atom_array, C_CRDGRP.default_mask(model_generated_atom_array))
         if not C_CRDGRP.has_annotation(model_generated_atom_array):
             C_CRDGRP.set_annotation(model_generated_atom_array, C_CRDGRP.default_annotation(model_generated_atom_array))
         return _set_empty_unindexed_annotations()
@@ -759,7 +736,7 @@ def _restage_internal_coord_cwi_per_group(generated_atom_array: AtomArray, refer
     """
     crd_src = SA_CRDSRC.mask(generated_atom_array)
     groups = C_CRDGRP.annotation(generated_atom_array, default="generate")
-    is_internal = crd_src & (groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS) & (groups != C_CRDGRP.UNKNOWN_COORDS)
+    is_internal = crd_src & (groups != C_CRDGRP.UNKNOWN_COORDS) & (groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
     if not is_internal.any():
         return generated_atom_array
 
@@ -790,11 +767,9 @@ def _merge_indexed_coord_conditioning_into_src(generated_atom_array: AtomArray) 
           (the indexed motif scaffold case) — NOT yet in ``SA_CRDSRC``.
     """
     # (b) — atoms with directly-indexed coordinate conditioning in the input
-    indexed_coord_conditioned_mask = C_CRD.mask(generated_atom_array) | C_INTCRD.mask(generated_atom_array)
+    indexed_coord_conditioned_mask = C_CRD.mask(generated_atom_array) | C_CRDGRP.is_internal(generated_atom_array)
 
-    # Union (a) + (b) into the SA_CRDSRC mask
-    mapped_mask = SA_CRDSRC.mask(generated_atom_array) | indexed_coord_conditioned_mask
-    SA_CRDSRC.set_mask(generated_atom_array, mapped_mask)
+    indexed_coord_conditioned_mask &= ~SA_CRDSRC.mask(generated_atom_array)
 
     # For the (b) atoms only, copy SA_SRC ids over so the source-region label
     # exists for every CRDSRC-flagged atom (the (a) atoms got their ids set

@@ -5,7 +5,7 @@ from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
 from atomworks.ml.utils.token import apply_token_wise, get_token_starts, spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack
 
-from rfproteina.conditions import C_BP, C_INTCRD, C_NA_SS_STATE, BasePairEnum
+from rfproteina.conditions import C_BP, C_CRDGRP, C_NA_SS_STATE, BasePairEnum
 from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.utils.metrics_utils import normalize_to_atom_array_list
 from rfproteina.transforms.utils.na_geom_utils import annotate_na_ss
@@ -60,7 +60,7 @@ def _get_candidate_token_ids(
         is_unindexed = ~C_IDX.mask(atom_array, default="generate")
         has_fixed_coord = C_CRD.mask(atom_array, default="generate")
         has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-        has_internal_coords = C_INTCRD.mask(atom_array, default="generate")
+        has_internal_coords = C_CRDGRP.is_internal(atom_array)
         has_coord_or_dist_conditioning = has_fixed_coord | has_dist | has_internal_coords
 
         token_is_unindexed = apply_token_wise(atom_array, is_unindexed, np.any)

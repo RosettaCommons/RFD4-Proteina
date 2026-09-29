@@ -68,7 +68,7 @@ def main(cif: str) -> None:
     bond_counts = Counter(int(value) for value in bonds[:, 2]) if len(bonds) else {}
     print(f"  bonds: {len(bonds)} by type {dict(sorted(bond_counts.items()))}")
 
-    if S_SEGMIN.has_mask(array):
+    if S_SEGMIN.has_annotation(array):
         segment_mask = S_SEGMIN.mask(array, default="generate")
         minimum = S_SEGMIN.annotation(array, default="generate")
         maximum = S_SEGMAX.annotation(array, default="generate")
@@ -77,14 +77,14 @@ def main(cif: str) -> None:
     else:
         print("  expandable segments: none")
 
-    if C_IDX.has_mask(array):
+    if C_IDX.has_annotation(array):
         unindexed = ~C_IDX.mask(array, default="generate")
         labels = _residue_labels(array, unindexed)
         print(f"  unindexed residues: {', '.join(labels) if labels else 'none'}")
     else:
         print("  unindexed residues: none (implicit all-indexed default)")
 
-    summary = summarize_conditions(array, include_host_summarized=True)
+    summary = summarize_conditions(array)
     print("  active conditions:")
     print(summary if summary else "    none explicitly set")
 

@@ -20,21 +20,14 @@ class SrcCoordinateConditionedRegion(StandardAnnotationBase):
     """
 
     name = "src-coordinate-conditioned-region"
+    aliases = ("SA_CRDSRC",)
     n_body = 1
     level = Level.ATOM
     dtype = np.dtype("<U10")
 
     @classmethod
-    def get_mask_name(cls, n_body: int | None = None, level: Level | str | None = None) -> str:
-        """Return backward-compatible mask key."""
-        return "mapped_to_coordinate_conditioned_region"
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """Infer mask from annotation if present, otherwise all-False."""
-        if cls.has_annotation(atom_array):
-            return cls.annotation(atom_array) != "."
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: np.ndarray) -> np.ndarray:
+        return annotation != "."
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
@@ -50,16 +43,14 @@ class SrcComponent(StandardAnnotationBase):
     """
 
     name = "src-component"
+    aliases = ("SA_SRC",)
     n_body = 1
     level = Level.ATOM
     dtype = np.dtype("<U10")
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """Infer mask from annotation if present, otherwise all-False."""
-        if cls.has_annotation(atom_array):
-            return cls.annotation(atom_array) != "."
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: np.ndarray) -> np.ndarray:
+        return annotation != "."
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
@@ -76,16 +67,14 @@ class SrcIndexGroup(StandardAnnotationBase):
     """
 
     name = "src-index-group"
+    aliases = ("SA_IDXGRPSRC",)
     n_body = 1
     level = Level.ATOM
     dtype = np.int32
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """Infer mask from annotation if present, otherwise all-False."""
-        if cls.has_annotation(atom_array):
-            return cls.annotation(atom_array) != -1
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: np.ndarray) -> np.ndarray:
+        return annotation != -1
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
@@ -101,13 +90,17 @@ class IsUnindexedInsertion(StandardAnnotationBase):
     """
 
     name = "is-unindexed-insertion"
+    aliases = ("SA_UII",)
     n_body = 1
     level = Level.ATOM
     dtype = bool
-    alias = "is_unindexed_insertion"
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
+    def get_full_name(cls) -> str:
+        return "is_unindexed_insertion"
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
         """Default: all-False (no unindexed insertion)."""
         return np.zeros(atom_array.array_length(), dtype=bool)
 
@@ -125,16 +118,15 @@ class CoordsWithInsertion(StandardAnnotationBase):
     """
 
     name = "coords-with-insertion"
+    aliases = ("SA_CWI",)
     n_body = 1
     level = Level.ATOM
     dtype = np.float32
+    value_shape = (3,)
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """Infer mask from annotation if present, otherwise all-False."""
-        if cls.has_annotation(atom_array):
-            return ~np.isnan(cls.annotation(atom_array)).any(axis=-1)
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: np.ndarray) -> np.ndarray:
+        return ~np.isnan(annotation).any(axis=-1)
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:

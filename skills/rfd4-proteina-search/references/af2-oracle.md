@@ -6,7 +6,7 @@ publishes the standard oracle confidence metrics and caches the refolded CIF.
 
 Enable it through `configs/metrics/refolding_oracles/af2.yaml`. The `oracle`
 entry handles protein refolding tags; `oracle_ppi` templates atoms selected by
-`mask_coordinate_1_atom`. Inputs containing ligands, nucleic acids, or `UNL`
+the derived `C_CRD` mask. Inputs containing ligands, nucleic acids, or `UNL`
 are rejected before dispatch.
 
 Optional ColabFold knobs on `AF2Oracle` / manifest (defaults preserve stock AF2):

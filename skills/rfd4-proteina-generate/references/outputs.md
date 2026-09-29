@@ -20,9 +20,8 @@ Python aliases live in `rfproteina.utils.standard_annotations`.
 | Accessor | CIF column / key | Description |
 | --- | --- | --- |
 | `SA_SRC` | `annotation_src-component_1_atom` | Which part of the input spec the atom originated from (`.` if unassigned) |
-| `SA_CRDSRC.mask(...)` | `mapped_to_coordinate_conditioned_region` | `True` for atoms corresponding to a coordinate-conditioned motif |
 | `SA_CRDSRC.annotation(...)` | `annotation_src-coordinate-conditioned-region_1_atom` | Which input motif region provided each atom's coordinate conditioning (`.` if none) |
-| `SA_CRDGRPSRC` | `annotation_src-coord-group_1_atom` | Which input `CoordinateGroup` the atom came from (`-1` if none) |
+| `SA_IDXGRPSRC` | `annotation_src-index-group_1_atom` | Original unindexed `IndexGroup` of a mapped motif token (`-1` if none) |
 | `SA_UII` | `is_unindexed_insertion` | `True` for atoms corresponding to an unindexed input motif |
 
 The aligned motif coordinates themselves are written as a separate
@@ -37,7 +36,7 @@ import rfproteina.conditions  # noqa: F401 -- REQUIRED registry side-effect; do 
 from rfproteina.utils.standard_annotations import SA_SRC, SA_CRDSRC, SA_UII
 # ... parse the output CIF into an AtomArray with your usual atomworks/biotite reader ...
 
-crd_mask = SA_CRDSRC.mask(atom_array)      # boolean: coordinate-conditioned atoms
+crd_mask = SA_CRDSRC.mask(atom_array)       # derived from non-"." source labels
 src_labels = SA_SRC.annotation(atom_array)  # which input component each atom came from
 ```
 

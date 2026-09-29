@@ -96,8 +96,8 @@ _GENERATED = TEST_DATA_DIR / "atom_permutation"
 # ...design_motif_allatom_rmsd, verbatim: the ground truth is the prediction with the motif's
 # conditioning coordinates substituted in, so only one structure is needed per case
 MOTIF_METRIC = {
-    "align_mask": "mapped_to_coordinate_conditioned_region",
-    "subset_mask": "mapped_to_coordinate_conditioned_region",
+    "align_mask": "sa_mask('SA_CRDSRC')",
+    "subset_mask": "sa_mask('SA_CRDSRC')",
     "subdivide_by_annotation": "condition_CoordinateGroup_1_atom",
     "gt_coord_annotation_name": "annotation_coords-with-insertion_1_atom",
     "metric_type": "rmsd",

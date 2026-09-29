@@ -410,7 +410,7 @@ class AF3Oracle(OracleMetric):
     Args:
         oracle_name: Output subdirectory label. Defaults to ``"af3"``.
         template_query: AtomWorks query string selecting which atoms to template
-            (e.g. ``"mask_coordinate_1_atom & ~is_nucleic_acid"``).
+            (e.g. ``"sa_mask('C_CRD') & ~is_nucleic_acid"``).
         extra_af3_flags: Additional flags forwarded to the AF3 subprocess.
         seed: Pins AF3's diffusion seed for reproducibility; leave ``None`` in
             production so each fold samples its own.
