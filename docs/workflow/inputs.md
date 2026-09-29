@@ -227,9 +227,11 @@ from rfproteina.utils.parse_presets import ANNOTATED_CIF, RCSB_WITH_METALS
 
 aa = as_atom_array_plus(parse("input.cif", config=RCSB_WITH_METALS)["assemblies"]["1"][0])
 
-C_CRD.set_mask(aa, fixed_atom_mask)     # fix coordinates of selected atoms
-C_SEQ.set_mask(aa, known_seq_res_mask)  # reveal sequence of selected residues
-C_HOT.set_mask(aa, hotspot_atom_mask)   # mark hotspots
+C_CRD.set_annotation_from_ground_truth(aa, fixed_atom_mask)
+
+C_SEQ.set_annotation_from_ground_truth(aa, known_seq_res_mask)
+
+C_HOT.set_annotation(aa, hotspot_atom_mask)  # the boolean annotation is itself the hotspot mask
 
 to_cif_file(aa, "annotated.cif", save_standard_annotations=True, chain_disambiguation="chain_iid")
 ```
@@ -261,8 +263,9 @@ segment.
 ## Supported annotations (reference)
 
 Each annotation below is a *condition* the model reads. The **CIF column** is the exact key written
-into the file. Values follow `condition_{name}_{n_body}_{level}` and the on/off mask follows
-`mask_{name}_{n_body}_{level}`. Boolean mask conditions use a single `mask_…` column.
+into the file. Values follow `condition_{name}_{n_body}_{level}`. A condition's active mask is
+derived from that one value column: sentinel values such as `MASKED`, NaN, or an enum's null value
+mean inactive, while a boolean condition is its own mask.
 
 The **Training Definition** column matters most for getting good results. Condition the model the
 way it was supervised. The **Import** column gives the Python shorthand the
@@ -271,21 +274,39 @@ way it was supervised. The **Import** column gives the Python shorthand the
 
 | Condition | Import | CIF column | What it does | Values | Training Definition (where applicable) |
 |---|---|---|---|---|---|
-| **Fixed coordinates** (motif / "fixed atoms") | `C_CRD` | `mask_coordinate_1_atom` + `condition_coordinate_1_atom` | Gives the model the ground truth xyz of the selected atoms. Everything else is generated. | per-atom xyz (Å) |  |
-| **Known sequence** (folding / fix identity) | `C_SEQ` | `mask_sequence_1_residue` + `condition_sequence_1_residue` | Reveals the residue identity. Where the mask is off, the sequence is designed. | per residue `res_name`, `MASKED` where free |  |
-| **Sequence probabilities** | `SEQUENCE_PROBABILITY_CONDITIONS` | `condition_sequence-probability-{token}_1_residue` + matching mask | Partially constrains probabilities over the 28 canonical polymer identities. Explicit zero excludes an identity; an unset mask leaves it flexible. `C_SEQ` fills the complete exact distribution and rejects conflicting values. | float in `[0, 1]`; specified values sum to at most 1 | Eligible `C_SEQ` positions are diversified into exact, zero-only, soft-positive, or mixed zero-and-positive conditions. |
-| **Index / unindexing** | `C_IDX` | `mask_index_1_residue` | On means the model knows this residue's position in the chain. **Off means unindexed**, so the model places it. | bool (default **all on**) | Atomized tokens cannot be unindexed. |
+| **Fixed coordinates** (motif / "fixed atoms") | `C_CRD` | `condition_coordinate_1_atom` | Gives the model the ground truth xyz of the selected atoms. Everything else is generated. | per-atom xyz (Å), NaN where free |  |
+| **Known sequence** (folding / fix identity) | `C_SEQ` | `condition_sequence_1_residue` | Reveals the residue identity. Where the value is `MASKED`, the sequence is designed. | per residue `res_name`, `MASKED` where free |  |
+| **Sequence probabilities** | `SEQUENCE_PROBABILITY_CONDITIONS` | `condition_sequence-probability-{token}_1_residue` | Partially constrains probabilities over the 28 canonical polymer identities. Explicit zero excludes an identity; NaN leaves it flexible. `C_SEQ` fills the complete exact distribution and rejects conflicting values. | float in `[0, 1]`, NaN where unset; specified values sum to at most 1 | Eligible `C_SEQ` positions are diversified into exact, zero-only, soft-positive, or mixed zero-and-positive conditions. |
+| **Index / unindexing** | `C_IDX` | `condition_index_1_residue` | `True` means the model knows this residue's position in the chain. **False means unindexed**, so the model places it. | bool (default **all on**) | Atomized tokens cannot be unindexed. |
 | **Index group** | `C_IDXGRP` | `condition_index-group_1_token` | Groups residues whose *relative* offsets are known, so an unindexed motif can still be internally rigid. | int group id |  |
-| **Hotspot** | `C_HOT` | `mask_hotspot_1_atom` | Marks target-interface atoms the designed binder should engage. | bool | A hotspot is a **target-chain atom within 4.5 Å of any binder-chain atom** (Euclidean). Count sampled `geometric(p=0.2)`, capped at 10 % of eligible atoms. 5 % of the time none are given. Trained alongside a **target conditioned on both coordinates and sequence**, with the binder generated. |
+| **Hotspot** | `C_HOT` | `condition_hotspot_1_atom` | Marks target-interface atoms the designed binder should engage. | bool | A hotspot is a **target-chain atom within 4.5 Å of any binder-chain atom** (Euclidean). Count sampled `geometric(p=0.2)`, capped at 10 % of eligible atoms. 5 % of the time none are given. Trained alongside a **target conditioned on both coordinates and sequence**, with the binder generated. |
 | **RASA bin** | `C_RAS` | `condition_rasa-binned_1_atom` | Tells the model how buried or exposed an atom should be. Useful for steering ligand pockets and surface design. | `RasaEnum`: `0`=UNSPECIFIED, `1`=BURIED, `2`=INTERMEDIATE, `3`=EXPOSED | Relative SASA, computed Shrake and Rupley with a 1.4 Å probe, element radii and 100 points. Bins by `rASA` edges `[0.0, 0.1, 0.2]`: `[0,0.1)`→BURIED, `[0.1,0.2)`→INTERMEDIATE, `≥0.2`→EXPOSED. |
 | **Hydrogen bond** | `C_HB` | `condition_hbond_1_atom` | Requests donor, acceptor, or both roles for an atom in a binding H-bond network. | `HBondEnum`: `0`=NONE, `1`=DONOR, `2`=ACCEPTOR, `3`=BOTH. | Uses the precomputed interchain H-bond roles, according to the PLIP definition using atomworks definitions. The model receives separate donor and acceptor channels; BOTH activates both. |
-| **π-stacking** | `C_PISTACK` | `mask_pistack_1_atom` | Requests aromatic stacking contacts with the generated partner. | bool | Select every atom of the intended aromatic ring; training subsamples whole rings. |
+| **π-stacking** | `C_PISTACK` | `condition_pistack_1_atom` | Requests aromatic stacking contacts with the generated partner. | bool | Select every atom of the intended aromatic ring; training subsamples whole rings. |
 | **π-cation** | `C_PICATION` | `condition_pication_1_atom` | Requests the aromatic or cation side of a π-cation interaction. | `PiCationEnum`: `0`=NONE, `1`=AROMATIC, `2`=CATION, `3`=BOTH | AROMATIC describes the selected atoms, not the desired partner. Select complete aromatic rings for AROMATIC, or single atoms for CATION; BOTH requests both roles in different interactions (e.g. a histidine whose positively-charged nitrogen is the cation in another pi-cation interaction). |
 | **CAT fold** | `C_CATH` | `condition_cath-label_1_residue` | Requests a fold class, architecture, or topology for the selected residues using the CATH hierarchy. | Quoted C.A.T string: `1.x.x`, `2.60.40`; `x.x.x` clears it | Unspecified levels must be a trailing suffix. Select a whole chain or domain, with consistent values within each residue. |
 | **Chain centroid** | `C_CENTROID` | `condition_ChainCentroid_1_atom` | Provides a target center of mass for a chain, so you can position a binder or ligand without fixing any atoms. | per-atom xyz (Å), broadcast per chain | Used in place of an explicit ORI token to guide COM placement. |
 | **Secondary structure** | `C_SEC` | `condition_secondary-structure_1_residue` | Requests helix, sheet or loop at the selected residues. Leave `NONE` where you do not care. | `SSEnum`: `0`=NONE, `1`=HELIX, `2`=SHEET, `3`=LOOP | P-SEA assignment on the ground-truth structure. |
-| **Internal coordinate** | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
+| **Internal coordinate** | `C_INTCRD` | `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
 | **Coordinate group** | `C_CRDGRP` | `condition_CoordinateGroup_1_atom` | Groups atoms with known *relative* coordinates, meaning internal structure without a fixed global dock. | int: `-1`=unknown, `0`=known-absolute, `≥1`=one internal-coordinate group per id | Each internal coord region gets its own id. Relative geometry is known within an id and unknown across ids. |
+
+Edit internal coordinate conditioning through **CoordinateGroup** in the plugin.
+The reserved groups (`0` absolute, `-1` unknown) are managed automatically. Newly
+authored groups get their targets during model-input preparation, before unindexing.
+To move atoms out of group `0`, clear their absolute conditioning through `C_CRD` first.
+Complete saved `C_INTCRD` targets remain unchanged until group membership changes.
+The plugin asks for confirmation only when an edit would discard existing finite
+targets; Cancel leaves the structure untouched, and Undo restores accepted edits.
+A whole-group rename preserves targets. Combining independent inputs remaps group
+IDs so unrelated saved coordinate frames cannot silently merge.
+
+In Python, `C_CRDGRP.set_annotation(array, groups)` raises if an edit would
+invalidate saved `C_INTCRD` targets. Pass
+`on_internal_coord_mismatch="clear"` to clear targets throughout affected groups;
+unchanged whole groups retain their targets even when their IDs change. Pass a new
+group array instead of modifying the existing annotation in place. Group `0` must
+match `C_CRD` under both policies.
+
 
 These conditions can be authored with the PyMOL Annotation Wizard, the Python API, or
 YAML/JSON condition specs, and stored in annotated CIF/BCIF files.

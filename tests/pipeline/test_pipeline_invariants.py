@@ -339,6 +339,7 @@ def test_atomized_residue_is_not_a_res_id_gap():
     aa = parse(
         Path(__file__).parents[1] / "data" / "egfr2_phosphopeptide.cif",
         load_standard_annotations=True,
+        return_atom_array_plus=True,
         add_missing_atoms=False,
     )["assemblies"]["1"][0]
 

@@ -95,7 +95,7 @@ def test_subsampling_reveals_only_complete_rings(fad_pistacking, subsample_frac)
     atom_array = atom_array.copy()
 
     C_PISTACK.set_annotation(atom_array, is_pistacking)
-    C_SEQ.set_mask(atom_array, np.ones(len(atom_array), dtype=bool))
+    C_SEQ.set_annotation(atom_array, C_SEQ.ground_truth_value(atom_array))
 
     data = {"atom_array": atom_array, "task": {}}
     result = add_pistack_condition(

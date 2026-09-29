@@ -123,7 +123,7 @@ def test_unindexed_motif_spacing_matches_training(design_res_ids, unindexed_res_
     def unindexed_block(is_inference: bool) -> dict[str, dict[str, np.ndarray]]:
         aa = build_poly_gly_chain(design_res_ids)
         is_unindexed = np.isin(aa.res_id, unindexed_res_ids)
-        C_IDX.set_mask(aa, ~is_unindexed)
+        C_IDX.set_annotation(aa, ~is_unindexed)
         C_IDXGRP.set_annotation(aa, np.where(is_unindexed, 1, 0).astype(np.int32))
 
         source_atom_array = source_token_idxs = None
@@ -208,7 +208,7 @@ def test_unindexing_preserves_bonds_within_a_motif():
     # Residues 3-4 are one unindexed motif and 5-6 another, so res 4 and res 5 are bonded in the
     # source but belong to different groups.
     group = np.select([np.isin(aa.res_id, [3, 4]), np.isin(aa.res_id, [5, 6])], [1, 2], default=0)
-    C_IDX.set_mask(aa, group == 0)
+    C_IDX.set_annotation(aa, group == 0)
     C_IDXGRP.set_annotation(aa, group.astype(np.int32))
 
     expanded = UnindexFlaggedTokens()({"atom_array": aa, "is_inference": True})["atom_array"]
@@ -246,7 +246,7 @@ def test_excision_bonds_an_indexed_flank_to_a_designed_one():
     # Residues 1-3 come from the input and 4-6 are the designed stubs, so excising res 3 leaves an
     # indexed residue on one side of the gap and the expandable segment on the other.
     is_unindexed = aa.res_id == 3
-    C_IDX.set_mask(aa, ~is_unindexed)
+    C_IDX.set_annotation(aa, ~is_unindexed)
     C_IDXGRP.set_annotation(aa, is_unindexed.astype(np.int32))
 
     expanded = UnindexFlaggedTokens()({"atom_array": aa, "is_inference": True})["atom_array"]
@@ -288,7 +288,7 @@ def test_excision_only_closes_the_gap_a_designed_flank_can_absorb(
         aa = build_poly_gly_chain(list(range(1, 10)))
 
     is_unindexed = np.isin(aa.res_id, [7, 8])  # an interior motif, in both arms
-    C_IDX.set_mask(aa, ~is_unindexed)
+    C_IDX.set_annotation(aa, ~is_unindexed)
     C_IDXGRP.set_annotation(aa, is_unindexed.astype(np.int32))
 
     with caplog.at_level(logging.WARNING):

@@ -20,9 +20,6 @@ from atomworks.ml.utils.rng import create_rng_state_from_seeds, rng_state
 from biotite.structure import AtomArray, BondList
 
 from rfproteina.conditions import (
-    C_ABH,
-    C_ABL,
-    C_CDR,
     C_HB,
     C_HOT,
     C_HPHOB,
@@ -78,7 +75,7 @@ class TestRasaCondition:
     def test_default_mask_no_annotation(self, simple_protein):
         """Test default mask when no RASA annotation exists."""
         simple_protein = simple_protein["atom_array"]
-        mask = C_RAS.default_mask(simple_protein)
+        mask = C_RAS.mask(simple_protein, default="generate")
         assert mask.shape == (len(simple_protein),)
         assert np.all(~mask)  # All False when no annotation exists
 
@@ -92,7 +89,7 @@ class TestRasaCondition:
         # Leave rest as UNSPECIFIED
         C_RAS.set_annotation(simple_protein, rasa_annotation)
 
-        mask = C_RAS.default_mask(simple_protein)
+        mask = C_RAS.mask(simple_protein, default="generate")
         # Mask should be True only for non-UNSPECIFIED atoms
         assert np.sum(mask) == 20
         assert np.all(mask[0:20])
@@ -114,7 +111,7 @@ class TestSecondaryStructureCondition:
     def test_default_mask_no_annotation(self, simple_protein):
         """Test default mask when no secondary structure annotation exists."""
         simple_protein = simple_protein["atom_array"]
-        mask = C_SEC.default_mask(simple_protein)
+        mask = C_SEC.mask(simple_protein, default="generate")
         assert mask.shape == (len(simple_protein),)
         assert np.all(~mask)
 
@@ -127,7 +124,7 @@ class TestSecondaryStructureCondition:
         ss_annotation[20:30] = SSEnum.LOOP
         C_SEC.set_annotation(simple_protein, ss_annotation)
 
-        mask = C_SEC.default_mask(simple_protein)
+        mask = C_SEC.mask(simple_protein, default="generate")
         # Mask should be True only for non-NONE atoms
         assert np.sum(mask) == 30
         assert np.all(mask[0:30])
@@ -163,7 +160,7 @@ class TestHotspotCondition:
     def test_default_mask_no_annotation(self, simple_protein):
         """Test default mask when no hotspot annotation exists."""
         simple_protein = simple_protein["atom_array"]
-        mask = C_HOT.default_mask(simple_protein)
+        mask = C_HOT.mask(simple_protein, default="generate")
         assert mask.shape == (len(simple_protein),)
         assert np.all(~mask)
 
@@ -175,32 +172,8 @@ class TestHotspotCondition:
         hotspot_annotation[5] = True  # One hotspot atom in chain A
         C_HOT.set_annotation(simple_protein, hotspot_annotation)
 
-        mask = C_HOT.default_mask(simple_protein)
+        mask = C_HOT.mask(simple_protein, default="generate")
         assert np.all(mask == hotspot_annotation)  # All atoms are in chain A in this test fixture
-
-
-@pytest.mark.fast
-class TestAntibodyConditions:
-    """Tests for antibody-specific condition classes."""
-
-    def test_cdr_default_mask(self, simple_protein):
-        """Test CDR condition default mask."""
-        simple_protein = simple_protein["atom_array"]
-        mask = C_CDR.default_mask(simple_protein)
-        assert mask.shape == (len(simple_protein),)
-        assert np.all(~mask)
-        assert mask.dtype == bool
-
-    def test_antibody_chain_default_masks(self, simple_protein):
-        """Test antibody heavy and light chain default masks."""
-        simple_protein = simple_protein["atom_array"]
-        heavy_mask = C_ABH.default_mask(simple_protein)
-        light_mask = C_ABL.default_mask(simple_protein)
-
-        assert heavy_mask.shape == (len(simple_protein),)
-        assert light_mask.shape == (len(simple_protein),)
-        assert np.all(~heavy_mask)
-        assert np.all(~light_mask)
 
 
 # ============================================================================
@@ -214,9 +187,6 @@ def test_condition_aliases():
     from atomworks.ml.conditions import CONDITIONS
 
     assert CONDITIONS.hotspot == C_HOT
-    assert CONDITIONS.cdr == C_CDR
-    assert CONDITIONS.ab_heavy == C_ABH
-    assert CONDITIONS.ab_light == C_ABL
     assert CONDITIONS.rasa_binned == C_RAS
     assert CONDITIONS.secondary_structure == C_SEC
     assert CONDITIONS.hbond == C_HB
@@ -295,7 +265,7 @@ class TestAddRasaCondition:
         """Test that RASA values are calculated, added, and binned correctly."""
 
         # add sequence conditioning to everything so rasa conditioning is added
-        C_SEQ.set_mask(unannotated_atom_array, np.ones(len(unannotated_atom_array), dtype=bool))
+        C_SEQ.set_annotation(unannotated_atom_array, C_SEQ.ground_truth_value(unannotated_atom_array))
 
         data = {"atom_array": unannotated_atom_array}
         rasa_max = 0.2
@@ -480,7 +450,14 @@ class TestSubsetGroundTruthInteractionConditions:
 
         motif_mask = np.zeros(n, dtype=bool)
         motif_mask[:10] = True
-        C_SEQ.set_mask(base_atom_array, motif_mask)
+        C_SEQ.set_annotation(
+            base_atom_array,
+            np.where(
+                motif_mask,
+                C_SEQ.ground_truth_value(base_atom_array),
+                C_SEQ.default_annotation(base_atom_array),
+            ),
+        )
 
         # p_add=0.0 -> ground truth must be fully cleared, even though it was present on the array.
         data = {"atom_array": base_atom_array.copy(), "task": {}}
@@ -513,7 +490,10 @@ class TestSubsetGroundTruthInteractionConditions:
 
         motif_mask = np.zeros(n, dtype=bool)
         motif_mask[:10] = True
-        C_SEQ.set_mask(atom_array, motif_mask)
+        C_SEQ.set_annotation(
+            atom_array,
+            np.where(motif_mask, C_SEQ.ground_truth_value(atom_array), C_SEQ.default_annotation(atom_array)),
+        )
 
         data = {"atom_array": atom_array, "task": {}}
         result = add_hbond_condition(data, p_add_hbond_condition=1.0, p_hbond_subsample=0.0)
@@ -536,7 +516,10 @@ class TestSubsetGroundTruthInteractionConditions:
 
         motif_mask = np.zeros(n, dtype=bool)
         motif_mask[:10] = True
-        C_SEQ.set_mask(atom_array, motif_mask)
+        C_SEQ.set_annotation(
+            atom_array,
+            np.where(motif_mask, C_SEQ.ground_truth_value(atom_array), C_SEQ.default_annotation(atom_array)),
+        )
 
         data = {"atom_array": atom_array, "task": {}}
         result = add_hbond_condition(data, p_add_hbond_condition=1.0, p_hbond_subsample=0.0)
@@ -555,7 +538,7 @@ class TestIndexGroupCondition:
         """Test default mask and annotation behavior with rigorous value checks."""
         # Test mask: all atoms should have an index group
         simple_protein = simple_protein["atom_array"]
-        mask = C_IDXGRP.default_mask(simple_protein)
+        mask = C_IDXGRP.mask(simple_protein, default="generate")
         assert mask.shape == (len(simple_protein),)
         assert mask.dtype == bool
         assert mask.sum() == len(
@@ -575,7 +558,7 @@ class TestIndexGroupCondition:
 
         # Test annotation with C_IDX: indexed atoms get group 0, unindexed get group 1
         idx_mask = np.array([True] * 20 + [False] * 20 + [False] * (len(simple_protein) - 40))
-        C_IDX.set_mask(simple_protein, idx_mask)
+        C_IDX.set_annotation(simple_protein, idx_mask)
         annotation = C_IDXGRP.default_annotation(simple_protein)
 
         # Check indexed region (first 20 atoms)
@@ -604,7 +587,7 @@ class TestSampleUnindexedGroups:
 
         # Middle section is indexed
         idx_mask = np.array([False] * 10 + [True] * 10 + [False] * 10)
-        C_IDX.set_mask(atom_array, idx_mask)
+        C_IDX.set_annotation(atom_array, idx_mask)
 
         groups = sample_unindexed_groups(atom_array, p_merge_groups=0.0, p_split_group=0.0)
 

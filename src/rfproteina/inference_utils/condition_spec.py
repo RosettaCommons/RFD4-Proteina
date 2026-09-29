@@ -24,10 +24,9 @@ from atomworks.io.transforms.atom_array import add_id_and_entity_annotations, ad
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
-from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
+from atomworks.ml.conditions import C_CRD, C_IDX, ConditionBase
 
-from rfproteina.conditions import C_CATH, C_CENTROID, C_IDXGRP, C_INTCRD, ENUM_CONDITIONS
+from rfproteina.conditions import C_CATH, C_CENTROID, C_CRDGRP, C_IDXGRP, C_INTCRD
 from rfproteina.conditions_reporting import (
     check_index_group_molecule_consistency,
     check_index_group_res_id_gaps,
@@ -37,8 +36,8 @@ from rfproteina.conditions_reporting import (
 )
 from rfproteina.inference_utils.contig_spec import apply_contig
 from rfproteina.transforms.utils.conditioning_utils import (
-    convert_to_internal_coords,
-    freeze_ground_truth_condition_annotations,
+    separate_coordinate_groups,
+    set_absolute_coordinate_conditioning,
 )
 from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.condition_resolution import (
@@ -53,13 +52,6 @@ from rfproteina.utils.parse_presets import ANNOTATED_CIF, RCSB_WITH_METALS
 from rfproteina.utils.structure_files import is_structure_file
 
 logger = RankedLogger(__name__, rank_zero_only=True)
-
-# Mask-only annotations: `<value>` still selects which mask to set (true/false), but there's
-# no separate value written -- see §4.4. C_CRD's "value" is the atom's real coordinate
-# (already on the array), C_SEQ's is the residue's real `res_name`, C_IDX's is a
-# structurally-derived index, and C_INTCRD's requires an actual internal-coordinate transform,
-# not a scalar.
-_MASK_ONLY_CONDITIONS = (C_CRD, C_SEQ, C_IDX, C_INTCRD)
 
 _PREPARE_CONFIG_FIELD_NAMES = {f.name for f in dataclass_fields(PrepareConfig)}
 
@@ -230,7 +222,7 @@ def load_condition_spec_inputs(paths: list[str | PathLike], *, as_annotated_cif:
             seen_chain_ids[chain_id] = str(raw_path)
 
     combined = concatenate_atom_array_plus(
-        arrays,
+        separate_coordinate_groups(arrays),
         on_annotation_mismatch_policy="raise",
         fill_missing_standard_annotations=True,
     )
@@ -265,46 +257,61 @@ def _coerce_bool(value: Any) -> bool:
     raise ValueError(f"Expected a boolean condition value (true/false), got {value!r} ({type(value).__name__}).")
 
 
-def _apply_condition_value(cls: type, atom_array: AtomArrayPlus, indices: np.ndarray, value: Any) -> None:
+def _apply_condition_value(
+    cls: type,
+    atom_array: AtomArrayPlus,
+    indices: np.ndarray,
+    value: Any,
+) -> None:
     if cls is C_CATH:
         set_cath_condition(atom_array, indices, value)
         return
-    if cls.is_mask or cls in _MASK_ONLY_CONDITIONS:
-        mask = cls.mask(atom_array, default="generate").copy()
-        mask[indices] = _coerce_bool(value)
-        cls.set_mask(atom_array, mask)
+    if cls.dtype is bool:
+        annotation = cls.annotation(atom_array, default="generate").copy()
+        annotation[indices] = _coerce_bool(value)
+        cls.set_annotation(atom_array, annotation)
+        return
+
+    if cls is C_CRD:
+        set_absolute_coordinate_conditioning(atom_array, indices, _coerce_bool(value))
+        return
+
+    if issubclass(cls, ConditionBase) and cls.has_ground_truth:
+        annotation = cls.annotation(atom_array, default="generate").copy()
+        if _coerce_bool(value):
+            ground_truth = cls.ground_truth_value(atom_array)
+            annotation[indices] = ground_truth[indices]
+        else:
+            default = cls.default_annotation(atom_array)
+            annotation[indices] = default[indices]
+        cls.set_annotation(atom_array, annotation)
         return
 
     if cls is C_CENTROID:
         resolved_value = parse_centroid_value(value)
     else:
-        enum_cls = ENUM_CONDITIONS.get(cls)
+        enum_cls = cls.enum
         if enum_cls is not None:
             resolved_value = coerce_enum_value(enum_cls, value)
         else:
-            # A boolean here means the author treated this as mask-only, but it isn't in
-            # `_MASK_ONLY_CONDITIONS`. Assigning it into the annotation array would silently
-            # write the *string* "True" -- truncated to "Tru" by a short str dtype -- in place
-            # of the ground truth. Fail loudly instead of corrupting the condition.
+            # Reject presence-only authoring for conditions with no structure-derived value;
+            # assigning a bool to a short string annotation could silently truncate it.
             if isinstance(value, bool) or (isinstance(value, str) and value.lower() in ("true", "false")):
                 raise ValueError(
                     f"{cls.get_full_name()} writes a value, so it cannot take {value!r}. Either pass the "
                     "value to write, or -- if this condition's value is ground truth read off the "
-                    "structure -- add it to `_MASK_ONLY_CONDITIONS`."
+                    "structure -- implement ground_truth_value() on the condition class."
                 )
             resolved_value = value
 
     annot = cls.annotation(atom_array, default="generate").copy()
-    mask = cls.mask(atom_array, default="generate").copy()
     annot[indices] = resolved_value
-    mask[indices] = True
     cls.set_annotation(atom_array, annot)
-    cls.set_mask(atom_array, mask)
 
 
 def _requires_group(cls: type, value: Any) -> bool:
     """Whether ``value`` needs an accompanying ``group:`` (§4.4)."""
-    return (cls is C_IDX and not _coerce_bool(value)) or (cls is C_INTCRD and _coerce_bool(value))
+    return cls is C_IDX and not _coerce_bool(value)
 
 
 def _apply_grouped_condition(
@@ -312,46 +319,20 @@ def _apply_grouped_condition(
     atom_array: AtomArrayPlus,
     groups: dict[Any, list[np.ndarray]],
     pending_index_groups: dict[Any, list[np.ndarray]],
-    pending_internal_coords: dict[Any, list[np.ndarray]],
 ) -> None:
-    """Accumulate every user-labeled group for one group-requiring condition (§4.4).
+    """Apply every user-labeled group for one group-requiring condition (§4.4).
 
     ``groups`` maps each raw, user-chosen group label (its value never matters, only
     whether two selections share one) to the list of index arrays selected under that
     label -- possibly from more than one ``select:`` entry.
     """
+    assert cls is C_IDX
     all_indices = np.concatenate([idx for index_arrays in groups.values() for idx in index_arrays])
-    if cls is C_INTCRD:
-        convertible = all_indices[np.isfinite(atom_array.coord[all_indices]).all(axis=1)]
-        mask = C_INTCRD.mask(atom_array, default="generate").copy()
-        mask[convertible] = True
-        C_INTCRD.set_mask(atom_array, mask)
-        target = pending_internal_coords
-    else:
-        assert cls is C_IDX  # the only two group-requiring conditions -- see `_requires_group`
-        mask = C_IDX.mask(atom_array, default="generate").copy()
-        mask[all_indices] = False
-        C_IDX.set_mask(atom_array, mask)
-        target = pending_index_groups
-
+    mask = C_IDX.mask(atom_array, default="generate").copy()
+    mask[all_indices] = False
+    C_IDX.set_annotation(atom_array, mask)
     for label, index_arrays in groups.items():
-        target.setdefault(label, []).extend(index_arrays)
-
-
-def _finalize_internal_coords(atom_array: AtomArrayPlus, pending_internal_coords: dict[Any, list[np.ndarray]]) -> None:
-    """Run the internal-coordinate conversion once, against the *final* ``C_INTCRD`` mask."""
-    if not pending_internal_coords:
-        return
-    wanted = C_INTCRD.mask(atom_array, default="generate")
-    for index_arrays in pending_internal_coords.values():
-        indices = np.concatenate(index_arrays)
-        # Drop atoms a later entry turned back off -- they must never be converted at all.
-        indices = indices[wanted[indices]]
-        if not indices.size:
-            continue
-        mask = np.zeros(atom_array.array_length(), dtype=bool)
-        mask[indices] = True
-        convert_to_internal_coords(atom_array, mask)
+        pending_index_groups.setdefault(label, []).extend(index_arrays)
 
 
 def _finalize_index_groups(atom_array: AtomArrayPlus, pending_index_groups: dict[Any, list[np.ndarray]]) -> None:
@@ -387,14 +368,31 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
     declaration order (e.g. ``C_IDX: {false: [... group: g], true: [...]}`` stayed
     false), which contradicts the documented last-write-wins rule.
 
-    What *is* deferred to the end is the work that can only be done once a mask has
-    settled: the ``C_IDXGRP`` id assignment (:py:func:`_finalize_index_groups`) and the
-    ``C_INTCRD`` coordinate conversion (:py:func:`_finalize_internal_coords`).
+    ``C_IDXGRP`` id assignment is deferred until the final ``C_IDX`` annotation has settled.
+    Internal-coordinate group membership is written directly to ``C_CRDGRP`` and the
+    ``C_INTCRD`` coordinate payload is filled later, before unindexing.
     """
+    for name, values in conditions.items():
+        cls = resolve_standard_annotation(name)
+        if cls is C_INTCRD:
+            raise ValueError("C_INTCRD is a saved payload; edit C_CRDGRP instead.")
+        if cls is C_CRDGRP:
+            for value, entries in values.items():
+                if value is not None and value != "null":
+                    if isinstance(value, bool) or not isinstance(value, int | str):
+                        raise ValueError("C_CRDGRP requires a positive integer group ID or null.")
+                    if not str(value).isdigit() or not 0 < int(value) <= C_CRDGRP.MAX_GROUP_ID:
+                        raise ValueError(
+                            f"C_CRDGRP requires an integer ID from 1 to {C_CRDGRP.MAX_GROUP_ID}; "
+                            "reserved IDs are not editable."
+                        )
+                if not isinstance(entries, list) or any(
+                    not isinstance(e, dict) or set(e) != {"select"} for e in entries
+                ):
+                    raise ValueError("C_CRDGRP entries must contain only select; the value is the group ID.")
     real_res_id = atom_array.res_id.copy()
     atom_array.set_annotation("res_id", original_res_id)
     pending_index_groups: dict[Any, list[np.ndarray]] = {}
-    pending_internal_coords: dict[Any, list[np.ndarray]] = {}
     try:
         for annotation_name, values in conditions.items():
             cls = resolve_standard_annotation(annotation_name)
@@ -404,6 +402,15 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
                     "condition_spec has no selection-pair grammar, so only 1-body conditions (per-atom "
                     "or per-residue) can be set here. Use the PyMOL plugin or the Python API directly."
                 )
+            if cls is C_CRDGRP:
+                groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
+                defaults = C_CRDGRP.default_annotation(atom_array)
+                for value, entries in values.items():
+                    for entry in entries:
+                        mask = resolve_mask(atom_array, entry["select"])
+                        groups[mask] = defaults[mask] if value is None or value == "null" else int(value)
+                C_CRDGRP.set_annotation(atom_array, groups, on_internal_coord_mismatch="clear")
+                continue
             for value, entries in values.items():
                 # Entries sharing one `group:` label merge into a single group id, so they
                 # are collected across this value's entries and applied together below.
@@ -415,19 +422,23 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
                         if group is None:
                             raise ValueError(
                                 f"{annotation_name}: value {value!r} requires a `group:` field alongside "
-                                "`select:` -- see docs/condition_spec_yaml.md#groups-c_idx-false--c_intcrd-true."
+                                "`select:` -- see docs/workflow/condition-spec.md."
                             )
                         groups.setdefault(group, []).append(indices)
                     else:
                         if group is not None:
                             raise ValueError(
-                                f"{annotation_name}: `group:` is only meaningful for C_IDX (value false) "
-                                f"or C_INTCRD (value true), not value {value!r}."
+                                f"{annotation_name}: `group:` is only meaningful for C_IDX (value false), "
+                                f"not {value!r}."
                             )
                         _apply_condition_value(cls, atom_array, indices, value)
                 if groups:
-                    _apply_grouped_condition(cls, atom_array, groups, pending_index_groups, pending_internal_coords)
-        _finalize_internal_coords(atom_array, pending_internal_coords)
+                    _apply_grouped_condition(
+                        cls,
+                        atom_array,
+                        groups,
+                        pending_index_groups,
+                    )
         _finalize_index_groups(atom_array, pending_index_groups)
     finally:
         atom_array.set_annotation("res_id", real_res_id)
@@ -435,24 +446,20 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
 
 def _finalize(example_id: str, arr: AtomArrayPlus, *, strict: bool = True, validate: bool = False) -> None:
     """Log the "summarize changes" report and, if requested, run pre-save validation (§4.5)."""
-    # `include_host_summarized`: this report is the only one the user sees, so it has to
-    # cover C_SEQ/C_CRD too -- otherwise `_REMINDER` reads as a false negative on them.
-    #
     # Emitted through the logger rather than `print`: this runs per example, and during
     # online inference per replicate and per dataloader worker, so bare prints would flood
     # stdout with no way to filter or redirect them.
-    summary = summarize_conditions(arr, include_host_summarized=True)
+    summary = summarize_conditions(arr)
     report = f"\n--- condition_spec: {example_id} ---"
     if summary:
         report = f"{report}\n{summary}"
     logger.info(f"{report}\n{_REMINDER}")
     if not validate:
         return
-    realized = RealizeExpandableSegments()({"atom_array": arr.copy()})["atom_array"]
     violations = [
-        *run_pipeline_validation(realized),
-        *check_index_group_res_id_gaps(realized),
-        *check_index_group_molecule_consistency(realized),
+        *run_pipeline_validation(arr),
+        *check_index_group_res_id_gaps(arr),
+        *check_index_group_molecule_consistency(arr),
     ]
     if violations:
         message = "\n".join(violations)
@@ -525,8 +532,6 @@ def build_annotated_atom_array_from_condition_spec(
     conditions = spec.get("conditions")
     if conditions:
         _apply_conditions(atom_array, conditions, original_res_id)
-
-    freeze_ground_truth_condition_annotations(atom_array)
 
     _finalize(example_id, atom_array, strict=strict, validate=validate)
 

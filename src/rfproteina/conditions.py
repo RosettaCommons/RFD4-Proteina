@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 import numpy as np
 from atomworks.constants import STANDARD_POLYMER_RESIDUES
@@ -14,6 +14,9 @@ from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
 from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.dssp import SSEnum
 from biotite.structure import AtomArray
+from jaxtyping import Bool, Float, Int, Shaped
+
+Array = np.ndarray
 
 
 # TODO: Generalize to give both hotspots and antihotspots!
@@ -23,60 +26,9 @@ class Hotspot(ConditionBase):
     name = "hotspot"
     n_body = 1
     level = Level.ATOM
-    is_mask = True
     dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        """
-        If there exists a hotspot annotation, we derive the mask by setting the mask to true for all atoms in
-        any chain that has a hotspot annotation.
-        """
-        if cls.full_name in atom_array.get_annotation_categories():
-            return atom_array.get_annotation(cls.full_name).astype(bool)
-
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-
-class AntibodyCDR(ConditionBase):
-    name = "cdr"
-    n_body = 1
-    level = Level.RESIDUE
-    is_mask = True
-    dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-
-class AntibodyHeavyChain(ConditionBase):
-    """
-    NOTE: The reason these are residue level and not chain level is because things like scFvs can have the
-    heavy and light 'chains' on the same protein polymer.
-    """
-
-    name = "ab-heavy"
-    n_body = 1
-    level = Level.RESIDUE
-    is_mask = True
-    dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-
-class AntibodyLightChain(ConditionBase):
-    name = "ab-light"
-    n_body = 1
-    level = Level.RESIDUE
-    is_mask = True
-    dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    aliases = ("C_HOT", "mask_hotspot_1_atom")
+    default_value = False
 
 
 # NOTE: In RFD3, the "unspecified" bin was the same as fully exposed! That bug is fixed here.
@@ -95,18 +47,13 @@ class Rasa(ConditionBase):
     name = "rasa-binned"
     n_body = 1
     level = Level.ATOM
-    dtype = int
+    dtype = RasaEnum
+    aliases = ("C_RAS",)
+    default_value = RasaEnum.UNSPECIFIED
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            binned_rasa_annotation = atom_array.get_annotation(cls.full_name)
-            return binned_rasa_annotation != RasaEnum.UNSPECIFIED
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), RasaEnum.UNSPECIFIED, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != RasaEnum.UNSPECIFIED.value
 
 
 class HBondEnum(IntEnum):
@@ -122,18 +69,13 @@ class HydrogenBond(ConditionBase):
     name = "hbond"
     n_body = 1
     level = Level.ATOM
-    dtype = int
+    dtype = HBondEnum
+    aliases = ("C_HB",)
+    default_value = HBondEnum.NONE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            annotation = cls.annotation(atom_array, default="raise")
-            return annotation != HBondEnum.NONE
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), HBondEnum.NONE, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != HBondEnum.NONE.value
 
 
 class PiStacking(ConditionBase):
@@ -142,12 +84,9 @@ class PiStacking(ConditionBase):
     name = "pistack"
     n_body = 1
     level = Level.ATOM
-    is_mask = True
     dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    aliases = ("C_PISTACK", "mask_pistack_1_atom")
+    default_value = False
 
 
 class PiCationEnum(IntEnum):
@@ -163,17 +102,13 @@ class PiCation(ConditionBase):
     name = "pication"
     n_body = 1
     level = Level.ATOM
-    dtype = int
+    dtype = PiCationEnum
+    aliases = ("C_PICATION",)
+    default_value = PiCationEnum.NONE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            return cls.annotation(atom_array, default="raise") != PiCationEnum.NONE
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), PiCationEnum.NONE, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != PiCationEnum.NONE.value
 
 
 class SaltBridgeEnum(IntEnum):
@@ -188,17 +123,13 @@ class SaltBridge(ConditionBase):
     name = "saltbridge"
     n_body = 1
     level = Level.ATOM
-    dtype = int
+    dtype = SaltBridgeEnum
+    aliases = ("C_SALT",)
+    default_value = SaltBridgeEnum.NONE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            return cls.annotation(atom_array, default="raise") != SaltBridgeEnum.NONE
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), SaltBridgeEnum.NONE, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != SaltBridgeEnum.NONE.value
 
 
 class Hydrophobic(ConditionBase):
@@ -207,12 +138,9 @@ class Hydrophobic(ConditionBase):
     name = "hydrophobic"
     n_body = 1
     level = Level.ATOM
-    is_mask = True
     dtype = bool
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    aliases = ("C_HPHOB", "mask_hydrophobic_1_atom")
+    default_value = False
 
 
 class MetalCoordEnum(IntEnum):
@@ -227,17 +155,13 @@ class MetalCoordination(ConditionBase):
     name = "metal-coord"
     n_body = 1
     level = Level.ATOM
-    dtype = int
+    dtype = MetalCoordEnum
+    aliases = ("C_MCOORD",)
+    default_value = MetalCoordEnum.NONE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            return cls.annotation(atom_array, default="raise") != MetalCoordEnum.NONE
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), MetalCoordEnum.NONE, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != MetalCoordEnum.NONE.value
 
 
 class SecondaryStructure(ConditionBase):
@@ -246,18 +170,13 @@ class SecondaryStructure(ConditionBase):
     name = "secondary-structure"
     n_body = 1
     level = Level.RESIDUE
-    dtype = int
+    dtype = SSEnum
+    aliases = ("C_SEC",)
+    default_value = SSEnum.NONE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            annotation = cls.annotation(atom_array, default="raise")
-            return annotation != SSEnum.NONE
-        return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), SSEnum.NONE, dtype=int)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != SSEnum.NONE.value
 
 
 class IndexGroup(ConditionBase):
@@ -275,13 +194,14 @@ class IndexGroup(ConditionBase):
     n_body = 1
     level = Level.TOKEN
     dtype = int
+    aliases = ("C_IDXGRP",)
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.ones(atom_array.array_length(), dtype=bool)  # Every atom has an index group
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return np.ones(annotation.shape[0], dtype=bool)  # Every atom has an index group
 
     @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+    def default_annotation(cls, atom_array: AtomArray) -> Int[Array, "n_atoms"]:
         # Add molecule annotations if not already present
         if "molecule_iid" not in atom_array.get_annotation_categories():
             ensure_annotations(atom_array, "is_polymer")
@@ -325,26 +245,25 @@ class CathLabel(ConditionBase):
     n_body = 1
     level = Level.RESIDUE  # In practice this is often chain-level
     dtype = str
+    aliases = ("C_CATH",)
     NULL_VALUE = "x.x.x.x"
+    default_value = NULL_VALUE
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            annotation = cls.annotation(atom_array, default="raise")
-            return annotation != cls.NULL_VALUE
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: Shaped[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != cls.NULL_VALUE
 
     @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+    def default_annotation(cls, atom_array: AtomArray) -> Shaped[Array, "n_atoms"]:
         # Max size of 23 is more than enough (allows for 5-digit ids at each level of the cath hierarchy)
         return np.full(atom_array.array_length(), cls.NULL_VALUE, dtype=np.dtype("U23"))
 
 
 class InternalCoordinate(ConditionBase):
-    """Conditioning that provides internal coordinates which are only meaningful within a given subset of atoms.
+    """Materialized internal-coordinate payload for atoms in non-reserved coordinate groups.
 
-    For example, centered and rotated coordinates of the antibody framework and the target, providing their internal
-    structures but not the dock between them.
+    ``C_CRDGRP`` is the source of truth for membership. These coordinates provide
+    group-local structure without fixing the groups' relative positions or orientations.
     """
 
     # NOTE: CamelCase is used since underscores are forbidden and dashes break the query syntax
@@ -352,19 +271,14 @@ class InternalCoordinate(ConditionBase):
     n_body = 1
     level = Level.ATOM
     dtype = float
+    aliases = ("C_INTCRD",)
+    default_value = np.nan
+    value_shape = (3,)
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            # ... if annotation exists, derive the mask from it
-            return np.isfinite(cls.annotation(atom_array, default="raise")).any(axis=1)
-        else:
-            # ... otherwise, default to an empty mask
-            return np.zeros(atom_array.array_length(), dtype=bool)
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full((atom_array.array_length(), 3), fill_value=np.nan)
+    def mask_from_annotation(cls, annotation: Float[Array, "n_atoms 3"]) -> Bool[Array, "n_atoms"]:
+        """Report payload presence for the Condition API; do not use as group membership."""
+        return np.isfinite(annotation).any(axis=1)
 
 
 class ChainCentroid(ConditionBase):
@@ -375,15 +289,16 @@ class ChainCentroid(ConditionBase):
     n_body = 1
     level = Level.ATOM
     dtype = float
+    aliases = ("C_CENTROID",)
+    default_value = np.nan
+    value_shape = (3,)
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        if cls.full_name in atom_array.get_annotation_categories():
-            return np.isfinite(cls.annotation(atom_array, default="raise")).any(axis=1)
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: Float[Array, "n_atoms 3"]) -> Bool[Array, "n_atoms"]:
+        return np.isfinite(annotation).any(axis=1)
 
     @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+    def default_annotation(cls, atom_array: AtomArray) -> Float[Array, "n_atoms 3"]:
         return np.full((atom_array.array_length(), 3), fill_value=np.nan, dtype=np.float32)
 
 
@@ -395,24 +310,88 @@ class CoordinateGroup(ConditionBase):
     n_body = 1
     level = Level.ATOM
     dtype = int
+    aliases = ("C_CRDGRP",)
     KNOWN_ABSOLUTE_COORDS = 0  # Standard absolute coordinate conditioning
     UNKNOWN_COORDS = -1  # No form of relative or absolute coordinate conditioning
+    MAX_GROUP_ID = int(np.iinfo(np.int16).max)  # Model batches store group IDs as int16.
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.ones(atom_array.array_length(), dtype=bool)  # Every atom has a coordinate group
+    def set_annotation(
+        cls,
+        atom_array: AtomArray,
+        array: Int[Array, "n_atoms"],
+        *,
+        on_internal_coord_mismatch: Literal["raise", "clear"] = "raise",
+    ) -> None:
+        """Set membership, preserving saved targets for unchanged whole atom sets.
+
+        Args:
+            atom_array: Structure to modify in place.
+            array: New group IDs; pass a copy instead of mutating the existing annotation.
+                IDs must be in [-1, 32767]. Group 0 must match absolute conditioning;
+                modify ``C_CRD`` first.
+            on_internal_coord_mismatch: Raise before writing if membership changes invalidate
+                saved targets, or clear targets throughout affected groups with ``"clear"``.
+                Whole-group renaming preserves targets under either policy.
+        """
+        if on_internal_coord_mismatch not in ("raise", "clear"):
+            raise ValueError("on_internal_coord_mismatch must be 'raise' or 'clear'.")
+        groups = np.asarray(array)
+        if groups.shape != (len(atom_array),) or not np.issubdtype(groups.dtype, np.integer):
+            raise ValueError("Coordinate groups must be a one-dimensional integer array with one ID per atom.")
+        if np.any(groups < cls.UNKNOWN_COORDS):
+            raise ValueError("Coordinate groups must be -1 (unknown), 0 (absolute), or positive (internal).")
+        if np.any(groups > cls.MAX_GROUP_ID):
+            raise ValueError(f"Coordinate group IDs must not exceed {cls.MAX_GROUP_ID} (the int16 model limit).")
+        absolute = C_CRD.annotation(atom_array, default="generate")
+        absolute_present = np.isfinite(absolute).all(axis=1)
+        if not np.all(absolute_present | np.isnan(absolute).all(axis=1)):
+            raise ValueError("Absolute coordinate targets must be entirely finite or entirely unset (NaN) per atom.")
+        if not np.array_equal(absolute_present, groups == cls.KNOWN_ABSOLUTE_COORDS):
+            raise ValueError("Coordinate group 0 must match absolute coordinate conditioning; modify C_CRD first.")
+
+        old = cls.annotation(atom_array, default="generate")
+        payload = None
+        if InternalCoordinate.has_annotation(atom_array):
+            preserved = np.zeros(len(old), dtype=bool)
+            for gid in np.unique(groups[groups > cls.KNOWN_ABSOLUTE_COORDS]):
+                members = groups == gid
+                previous = np.unique(old[members])
+                if (
+                    len(previous) == 1
+                    and previous[0] > cls.KNOWN_ABSOLUTE_COORDS
+                    and np.array_equal(members, old == previous[0])
+                ):
+                    preserved |= members
+            payload = InternalCoordinate.annotation(atom_array).copy()
+            if not np.isnan(payload[~preserved]).all() and on_internal_coord_mismatch == "raise":
+                raise ValueError(
+                    "Coordinate group membership changes invalidate saved C_INTCRD targets; "
+                    "use on_internal_coord_mismatch='clear' to discard affected targets."
+                )
+            payload[~preserved] = np.nan
+        super().set_annotation(atom_array, groups)
+        if payload is not None:
+            InternalCoordinate.set_annotation(atom_array, payload)
 
     @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        # Three groups by default: no coordinate conditioning, absolute coordinate conditioning,
-        # and relative coordinate conditioning
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return np.ones(annotation.shape[0], dtype=bool)  # Every atom has a coordinate group
+
+    @classmethod
+    def is_internal(cls, atom_array: AtomArray) -> Bool[Array, "n_atoms"]:
+        """Return atoms assigned to a non-reserved internal-coordinate group."""
+        groups = cls.annotation(atom_array, default="generate")
+        return (groups != cls.UNKNOWN_COORDS) & (groups != cls.KNOWN_ABSOLUTE_COORDS)
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> Int[Array, "n_atoms"]:
+        # Coordinate groups are the source of truth for internal-coordinate membership;
+        # defaults can therefore infer only absolute conditioning from C_CRD.
         all_coordinate_groups = np.full(atom_array.array_length(), cls.UNKNOWN_COORDS, dtype=int)
-        if C_CRD.get_mask_name() in atom_array.get_annotation_categories():
-            has_known_absolute_coords = atom_array.get_annotation(C_CRD.get_mask_name())
+        if C_CRD.has_annotation(atom_array):
+            has_known_absolute_coords = C_CRD.mask(atom_array, default="raise")
             all_coordinate_groups[has_known_absolute_coords] = cls.KNOWN_ABSOLUTE_COORDS
-        if InternalCoordinate.get_mask_name() in atom_array.get_annotation_categories():
-            has_known_internal_coords = atom_array.get_annotation(InternalCoordinate.get_mask_name())
-            all_coordinate_groups[has_known_internal_coords] = 1
         return all_coordinate_groups
 
 
@@ -433,7 +412,8 @@ class BasePair(ConditionBase):
     n_body = 2
     level = Level.RESIDUE
     is_symmetric = True
-    dtype = int
+    dtype = BasePairEnum
+    aliases = ("C_BP",)
 
     @classmethod
     def default_annotation(cls, atom_array: AtomArray) -> AnnotationList2D:
@@ -441,12 +421,11 @@ class BasePair(ConditionBase):
         return AnnotationList2D(
             n_atoms=atom_array.array_length(),
             pairs=np.array([], dtype=int),
-            values=np.empty((0,), dtype=cls.dtype),
+            values=np.empty((0,), dtype=cls.storage_dtype()),
         )
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> AnnotationList2D:
-        annotation = cls.annotation(atom_array, default="generate")
+    def mask_from_annotation(cls, annotation: AnnotationList2D) -> AnnotationList2D:
         return AnnotationList2D(
             n_atoms=annotation.n_atoms,
             pairs=annotation.pairs,
@@ -460,36 +439,30 @@ class NucleicSSState(ConditionBase):
     name = "na-ss-state"
     n_body = 1
     level = Level.RESIDUE
-    dtype = int
+    dtype = BasePairEnum
+    aliases = ("C_NA_SS_STATE",)
+    default_value = BasePairEnum.UNSPECIFIED
 
     @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        annotation = cls.annotation(atom_array, default="generate")
-        return annotation.astype(int) != BasePairEnum.UNSPECIFIED.value
-
-    @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.full(atom_array.array_length(), BasePairEnum.UNSPECIFIED.value, dtype=cls.dtype)
+    def mask_from_annotation(cls, annotation: Int[Array, "n_atoms"]) -> Bool[Array, "n_atoms"]:
+        return annotation != BasePairEnum.UNSPECIFIED.value
 
 
 class SequenceProbability(ConditionBase):
     """Base class for an explicitly specified unified sequence-token probability.
 
-    The separate Condition mask is semantically important: a probability of zero is a
-    real constraint, while a false mask means that the probability was left unspecified.
+    NaN leaves an identity unspecified; zero explicitly excludes it. Presence is
+    derived from the stored value, including invalid infinities for validation.
     """
 
     token_name: ClassVar[str]
     token_index: ClassVar[int]
     alias_suffix: ClassVar[str]
+    default_value = np.nan
 
     @classmethod
-    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=np.float32)
-
-    @classmethod
-    def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
-        return np.zeros(atom_array.array_length(), dtype=bool)
+    def mask_from_annotation(cls, annotation: np.ndarray) -> np.ndarray:
+        return ~np.isnan(annotation)
 
 
 def _make_sequence_probability_condition(token_name: str, token_index: int) -> type[SequenceProbability]:
@@ -508,6 +481,7 @@ def _make_sequence_probability_condition(token_name: str, token_index: int) -> t
             "n_body": 1,
             "level": Level.RESIDUE,
             "dtype": np.float32,
+            "aliases": (f"C_SEQ_PROB_{token_name}",),
         },
     )
 
@@ -533,9 +507,6 @@ for _condition in SEQUENCE_PROBABILITY_CONDITIONS:
 
 # Aliases for convenience
 C_HOT = CONDITIONS.hotspot
-C_CDR = CONDITIONS.cdr
-C_ABH = CONDITIONS.ab_heavy
-C_ABL = CONDITIONS.ab_light
 C_RAS = CONDITIONS.rasa_binned
 C_SEC = CONDITIONS.secondary_structure
 C_HB = CONDITIONS.hbond
@@ -551,14 +522,3 @@ C_CRDGRP = CONDITIONS.CoordinateGroup
 C_CENTROID = CONDITIONS.ChainCentroid
 C_BP = CONDITIONS.basepair
 C_NA_SS_STATE = CONDITIONS.na_ss_state
-
-# Conditions whose int-valued annotation is backed by an IntEnum, keyed by condition class.
-ENUM_CONDITIONS: dict[type[ConditionBase], type[IntEnum]] = {
-    Rasa: RasaEnum,
-    HydrogenBond: HBondEnum,
-    PiCation: PiCationEnum,
-    SaltBridge: SaltBridgeEnum,
-    MetalCoordination: MetalCoordEnum,
-    SecondaryStructure: SSEnum,
-    NucleicSSState: BasePairEnum,
-}

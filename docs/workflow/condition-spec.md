@@ -114,7 +114,7 @@ conditions:
 
 ```yaml
 conditions:
-  C_CRD:                 # mask-only (see below): reveals ground-truth coords for the selection
+  C_CRD:                 # reveals ground-truth coords for the selection
     true:
       - select: "sel('B')"
   C_HOT:
@@ -136,9 +136,6 @@ conditions:
   C_CATH:
     "2.60.40":
       - select: "sel('A')"
-  C_NCYS:
-    true:
-      - select: "sel('A')"
   C_CENTROID:            # literal xyz, not derived from the selection
     "12.3,-4.5,0.0":
       - select: "sel('B')"
@@ -150,11 +147,10 @@ conditions:
       - select: "sel('B/*/[10-20]')"
 ```
 
-- Most annotations set both a **value**, written to matching atoms, and that atom's mask.
-- **`C_CRD`, `C_SEQ`, `C_IDX` and `C_INTCRD` are mask only.** The value is just `true` or `false`,
-  picking which mask, with no separate value to give. `C_CRD` uses the atom's real coordinate,
-  `C_SEQ` uses the residue's real `res_name`, `C_IDX` is structural, and `C_INTCRD` is computed.
-  `C_IDX: false` and `C_INTCRD: true` also need a `group:`, covered below.
+- Conditions store a single **annotation value**; whether an atom is conditioned is derived from that value.
+- **`C_CRD` and `C_SEQ` use boolean selections in the spec.** `C_CRD` stores the
+  atom's real coordinate and `C_SEQ` stores the residue's real `res_name`.
+  Set internal coordinate conditioning through `C_CRDGRP`; direct `C_INTCRD` entries are rejected.
 - **Enum conditions** like `C_RAS`, `C_HB`, and `C_PICATION` take the member name or the int. Do not pass `true` or
   `false`.
 - **Interaction roles describe the selected atoms.** `C_HB` accepts DONOR, ACCEPTOR, and BOTH;
@@ -171,7 +167,7 @@ conditions:
   mask, atomized, and gap tokens are not conditioning options. Only specified identities are
   constrained; omitted identities remain flexible and share the remaining probability mass. Values
   must be in `[0, 1]`, and specified values on a residue may not sum above 1. A value of zero is an
-  explicit exclusion, while an omitted value is represented by a separate false presence mask. On a
+  explicit exclusion, while an omitted value is represented by NaN in the sole value annotation. On a
   `C_SEQ` residue, the pipeline completes these Conditions to the exact one-hot sequence distribution;
   any already specified probability that conflicts with that identity is an error. Sequence-conditioned
   tokens outside the 28-token vocabulary receive explicitly specified zeros for all 28 probabilities.
@@ -186,17 +182,15 @@ conditions:
   grammar. Everything else works, `C_CENTROID` included. Use the plugin or the Python API for the
   rest.
 
-### Groups, for `C_IDX: false` and `C_INTCRD: true`
+### Index and coordinate groups
 
-These two need a `group:` alongside `select:`.
+`C_IDX: false` requires a `group:` label beside each selection. Selections sharing a
+label receive one fresh index-group ID, preserving their relative residue offsets.
 
-- For unindexed regions, with `C_IDX: false`, these groups 
-  decide which residues have fixed *relative* indices. Unindex several adjacent residues as one
-  group and they stay adjacent in the output.
-- For internal coordinate regions, with `C_INTCRD: true`, groups decide which regions get treated as
-  a single rigid body, like a framework that should move as one piece. If you have several motifs
-  that each need to preserve their internal structure while sitting anywhere relative to each other,
-  give each one its own group.
+For internal coordinate conditioning, assign a **positive integer `C_CRDGRP` ID**
+(numeric strings also work). Atoms sharing an ID form one rigid group. Use `null`
+to remove membership; reserved IDs `0` and `-1` cannot be assigned directly.
+Coordinate-group entries take only `select:`, without a separate `group:` label.
 
 ```yaml
 conditions:
@@ -205,23 +199,26 @@ conditions:
       - select: "sel('A/*/[10-12]')"
         group: linker_a
       - select: "sel('B/*/[40-42]')"
-        group: linker_a       # same label -> one shared unindexed region
-  C_INTCRD:
-    true:
+        group: linker_a
+  C_CRDGRP:
+    1:
       - select: "sel('C')"
-        group: framework
+    null:
+      - select: "sel('C/*/50')"
 ```
 
-The label is any string or int, and it only says "these selections belong to the same group". It
-never gets written verbatim, because it maps to a fresh internal id. `C_INTCRD`'s coordinates are
-computed for you, centered and randomly rotated. No other value takes a `group:`.
+New internal coordinate targets are left unset until model-input preparation, just
+before unindexing. Complete saved `C_INTCRD` targets (for example from a previous
+model output when doing partial diffusion) are preserved. Renaming a whole group preserves its targets; changing
+its member atoms clears the affected groups' targets, which are rebuilt from the
+live structure. Partially populated or nonfinite saved targets raise an error.
+Before assigning an internal coord group to atoms with absolute conditioning, clear
+their absolute targets with a `C_CRD: false` entry before the `C_CRDGRP` entry.
+Setting `C_CRD: true` removes atoms from their internal coord group.
 
-**A `group:` is required here, with no default.** Omit it and the tool raises rather than falling
-back to a per molecule or per contiguous run split. Grouping is the whole point of these two values,
-deciding which residues share relative indices and which atoms move as one rigid body. A silent
-default is easy to miss and hard to debug once the design already exists. This is stricter than the
-raw Python API and the PyMOL plugin, where you can set `C_IDXGRP` and `C_CRDGRP` independently of
-`C_IDX` and `C_INTCRD`. Here the group ids always come from these labels.
+Independent input files receive distinct coordinate-group IDs before concatenation.
+Within one `C_CRDGRP` declaration, assignments are applied together, so renaming or
+swapping IDs does not change geometry when whole-group membership is unchanged.
 
 ## Running the model
 

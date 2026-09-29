@@ -4,7 +4,7 @@ Covers ``docs/condition_spec_yaml.md``'s full order of operations against real
 structures, exercising the trickiest interactions: a `conditions:` selection that
 targets a preserved region by its *original* (pre-contig) `res_id`, one that targets
 an expandable segment by its custom name, mask-only vs. enum vs. fixed-vector
-(`ChainCentroid`) vs. group-requiring (`C_IDX`/`C_INTCRD`) condition kinds, a real CIF
+(`ChainCentroid`) vs. group-requiring (`C_IDX`/`C_CRDGRP`) condition kinds, a real CIF
 write+reload round trip, and confirming an untouched condition reads back as its lazy
 default (no explicit back-fill step exists in this design) -- plus the input-loading
 correctness issues a red-team pass found: symmetry-copy duplication and cross-file
@@ -18,7 +18,7 @@ from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_SEQ
 from atomworks.ml.utils.testing import cached_parse
 
-from rfproteina.conditions import C_CDR, C_CENTROID, C_CRDGRP, C_HOT, C_IDX, C_IDXGRP, C_INTCRD, C_RAS, RasaEnum
+from rfproteina.conditions import C_CENTROID, C_CRDGRP, C_HOT, C_IDX, C_IDXGRP, C_INTCRD, C_RAS, RasaEnum
 from rfproteina.inference_utils.condition_spec import (
     build_annotated_atom_array_from_condition_spec,
     load_condition_spec_inputs,
@@ -79,11 +79,11 @@ def test_end_to_end_condition_spec_survives_cif_round_trip(lysozyme_cif_path, tm
 
         # No explicit back-fill step: an untouched condition still reads back as its
         # lazy default, not as some stale/missing state.
-        assert not C_CDR.mask(built, default="generate").any()
+        assert not C_INTCRD.mask(built, default="generate").any()
 
 
 def test_group_field_merges_disjoint_selections_and_assigns_fresh_ids(lysozyme_cif_path, tmp_path):
-    """`C_IDX: false` / `C_INTCRD: true` need a `group:` -- two disjoint `select:`s sharing
+    """`C_IDX: false` needs a `group:` -- two disjoint `select:`s sharing
     one `group:` label must merge into a single group id, and different labels must never
     collide with each other or with the reserved CoordinateGroup values (0/-1).
     """
@@ -95,7 +95,7 @@ def test_group_field_merges_disjoint_selections_and_assigns_fresh_ids(lysozyme_c
                 {"select": "chain_id == 'A' and res_id >= 60 and res_id <= 70", "group": "g2"},
             ]
         },
-        "C_INTCRD": {True: [{"select": "res_id == 65", "group": "motif_intcrd"}]},
+        "C_CRDGRP": {1: [{"select": "res_id == 65"}]},
     }
     arr = _build_spec_atom_array(lysozyme_cif_path, tmp_path, conditions, contig="A10-20, A60-70, A90-100, MOTIF:5-8")
 
@@ -110,8 +110,8 @@ def test_group_field_merges_disjoint_selections_and_assigns_fresh_ids(lysozyme_c
     assert C_IDX.mask(arr, default="generate")[block3_mask].all()
 
     intcrd_mask = arr.res_id == 17  # orig res_id 65 -> assembled 17
-    assert C_INTCRD.mask(arr, default="generate")[intcrd_mask].all()
-    assert not np.isnan(C_INTCRD.annotation(arr, default="generate")[intcrd_mask]).any()
+    assert C_CRDGRP.is_internal(arr)[intcrd_mask].all()
+    assert np.isnan(C_INTCRD.annotation(arr, default="generate")[intcrd_mask]).all()
     crdgrp = C_CRDGRP.annotation(arr, default="generate")
     assert crdgrp[intcrd_mask][0] not in (C_CRDGRP.KNOWN_ABSOLUTE_COORDS, C_CRDGRP.UNKNOWN_COORDS)
 
@@ -135,9 +135,10 @@ def test_grouped_and_plain_condition_entries_are_last_write_wins(lysozyme_cif_pa
     "conditions,match",
     [
         ({"C_IDX": {False: [{"select": "res_id == 12"}]}}, "requires a `group:` field"),
-        ({"C_INTCRD": {True: [{"select": "res_id == 12"}]}}, "requires a `group:` field"),
+        ({"C_INTCRD": {True: [{"select": "res_id == 12"}]}}, "edit C_CRDGRP"),
         ({"C_HOT": {True: [{"select": "res_id == 12", "group": "oops"}]}}, "only meaningful for"),
         ({"C_BP": {True: [{"select": "res_id == 12"}]}}, "1-body conditions"),  # 2-body: no selection-pair grammar
+        ({"C_CRDGRP": {32768: [{"select": "res_id == 12"}]}}, "32767"),
         # A quoted `"false"` is truthy in Python, so a plain truthiness test would silently
         # condition on exactly the atoms the author meant to exclude. Only real booleans and
         # the exact strings are accepted; everything else is a spec error rather than a guess.

@@ -6,6 +6,7 @@ from typing import Any
 
 import torch
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from biotite.structure import AtomArray
 from torch.nn import functional as F
 
@@ -50,7 +51,7 @@ class TokenType:
 SPECS: dict[str, tuple] = {
     # Token-level [I]
     "residue_type": (torch.int64, -1, "I"),
-    C_SEQ.full_name: (torch.int64, -1, "I"),
+    C_SEQ.full_name: (torch.int64, UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"], "I"),
     "token_type": (torch.int32, TokenType.UNKNOWN, "I"),
     "tok_idx": (torch.int16, -1, "I"),
     "chain_iid": (torch.int16, -1, "I"),
@@ -63,8 +64,7 @@ SPECS: dict[str, tuple] = {
     "insertion_source_idx": (torch.int32, -1, "I"),
     "loss_weight": (torch.float32, 1.0, "I"),
     "coord_cond_mask": (torch.bool, False, "I"),
-    C_SEQ.mask_name: (torch.bool, False, "I"),
-    C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),
+    C_SEC.full_name: (torch.int16, SSEnum.NONE.value, "I"),
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
     "na_ss_state": (torch.int16, 0, "I"),
     "na_ss_state_mask": (torch.bool, False, "I"),
@@ -77,20 +77,18 @@ SPECS: dict[str, tuple] = {
     "element": (torch.int16, -1, "I 37"),
     "charge": (torch.int16, 0, "I 37"),
     "atom37_mask": (torch.bool, False, "I 37"),
-    C_CRD.mask_name: (torch.bool, False, "I 37"),
-    C_INTCRD.mask_name: (torch.bool, False, "I 37"),
-    C_IDX.mask_name: (torch.bool, True, "I 37"),
+    C_CRD.full_name: (torch.float32, float("nan"), "I 37 3"),
+    C_INTCRD.full_name: (torch.float32, float("nan"), "I 37 3"),
+    C_IDX.full_name: (torch.bool, True, "I 37"),
     C_CRDGRP.full_name: (torch.int16, C_CRDGRP.UNKNOWN_COORDS, "I 37"),
-    C_INTCRD.full_name: (torch.float32, 0.0, "I 37 3"),
     C_HOT.full_name: (torch.bool, False, "I 37"),
-    C_RAS.full_name: (torch.int16, RasaEnum.UNSPECIFIED, "I 37"),
-    C_HB.full_name: (torch.int16, HBondEnum.NONE, "I 37"),
+    C_RAS.full_name: (torch.int16, RasaEnum.UNSPECIFIED.value, "I 37"),
+    C_HB.full_name: (torch.int16, HBondEnum.NONE.value, "I 37"),
     C_PISTACK.full_name: (torch.bool, False, "I 37"),
-    C_PICATION.full_name: (torch.int16, PiCationEnum.NONE, "I 37"),
-    C_SALT.full_name: (torch.int16, SaltBridgeEnum.NONE, "I 37"),
+    C_PICATION.full_name: (torch.int16, PiCationEnum.NONE.value, "I 37"),
+    C_SALT.full_name: (torch.int16, SaltBridgeEnum.NONE.value, "I 37"),
     C_HPHOB.full_name: (torch.bool, False, "I 37"),
-    C_MCOORD.full_name: (torch.int16, MetalCoordEnum.NONE, "I 37"),
-    C_CRD.full_name: (torch.float32, 0.0, "I 37 3"),
+    C_MCOORD.full_name: (torch.int16, MetalCoordEnum.NONE.value, "I 37"),
     # Pair-level [I, I]
     "bond_mask": (torch.bool, False, "I I"),
     "bond_order": (torch.int16, 0, "I I"),
@@ -101,10 +99,9 @@ SPECS: dict[str, tuple] = {
     "canonical_polymer_ordering": (torch.int8, 0, "I I"),
 }
 
-# Probability values and their independently padded presence masks.
+# NaN leaves padded probability channels unspecified.
 for _condition in SEQUENCE_PROBABILITY_CONDITIONS:
-    SPECS[_condition.full_name] = (torch.float32, 0.0, "I")
-    SPECS[_condition.mask_name] = (torch.bool, False, "I")
+    SPECS[_condition.full_name] = (torch.float32, float("nan"), "I")
 
 
 @dataclass

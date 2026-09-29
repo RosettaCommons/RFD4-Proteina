@@ -2,7 +2,12 @@
 
 import pytest
 
-from rfproteina.utils.structure_files import find_structure_file, structure_file_stem, unique_structure_files
+from rfproteina.utils.structure_files import (
+    find_structure_file,
+    is_structure_file,
+    structure_file_stem,
+    unique_structure_files,
+)
 
 
 @pytest.mark.parametrize("suffix", [".cif", ".cif.gz", ".cif.zst", ".bcif", ".bcif.gz", ".bcif.zst"])
@@ -10,8 +15,21 @@ def test_structure_file_stem_preserves_dots(suffix):
     assert structure_file_stem(f"1abc.def_generated{suffix}") == "1abc.def_generated"
 
 
-@pytest.mark.parametrize("filename", ["design.txt", "design.cif.bak", "design.cif.zst.tmp"])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "design.txt",
+        "design.cif.bak",
+        "design.cif.zst.tmp",
+        "design.json",
+        "design.json.gz",
+        "design.json.gzip",
+        "design.json.zst",
+    ],
+)
 def test_structure_file_stem_rejects_unsupported_suffix(filename):
+    assert not is_structure_file(filename)
+    assert not is_structure_file(filename, include_pdb=True)
     with pytest.raises(ValueError, match="Unsupported structure filename"):
         structure_file_stem(filename)
 

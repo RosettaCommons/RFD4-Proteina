@@ -189,7 +189,11 @@ def _load_assembly(path: Path) -> AtomArray:
 def _templated(atom_array: AtomArray, chain_id: str | None) -> AtomArray:
     """Copy of ``atom_array`` with ``chain_id`` flagged for templating; nothing when ``chain_id`` is None."""
     marked = atom_array.copy()
-    C_CRD.set_mask(marked, marked.chain_id == (chain_id or ""))  # no chain is named "" -> templates nothing
+    template_mask = marked.chain_id == (chain_id or "")
+    C_CRD.set_annotation(
+        marked,
+        np.where(template_mask[:, None], C_CRD.ground_truth_value(marked), C_CRD.default_annotation(marked)),
+    )
     return marked
 
 
@@ -273,7 +277,7 @@ def _fold_all_examples(out_dir: Path) -> dict[str, AtomArray]:
 
     # seed=1 pins the diffusion seed so these RMSDs are reproducible; production oracles omit it.
     results: dict[str, AtomArray] = {f"crystal_{k}": v for k, v in crystals.items()}
-    oracle = AF3Oracle(oracle_name="af3", template_query="mask_coordinate_1_atom", seed=1)
+    oracle = AF3Oracle(oracle_name="af3", template_query="sa_mask('coordinate')", seed=1)
     oracle.setup()
     try:
         jobs = [
@@ -422,14 +426,18 @@ _CROP_EXAMPLES: tuple[CropExample, ...] = (
 def _template_by_query(atom_array: AtomArray, query: str) -> AtomArray:
     """Copy of ``atom_array`` with the atoms matching ``query`` flagged for templating."""
     marked = atom_array.copy()
-    C_CRD.set_mask(marked, _query(marked, query))
+    template_mask = _query(marked, query)
+    C_CRD.set_annotation(
+        marked,
+        np.where(template_mask[:, None], C_CRD.ground_truth_value(marked), C_CRD.default_annotation(marked)),
+    )
     return marked
 
 
 def _fold_cropped_examples(out_dir: Path) -> dict[str, tuple[AtomArray, AtomArray]]:
     """Aggressively crop each example's templated target, refold, return ``{pdb: (crystal, refold)}``."""
     mirror = Path(PDB_MIRROR_PATH)
-    oracle = AF3Oracle(oracle_name="af3", template_query="mask_coordinate_1_atom", seed=1)
+    oracle = AF3Oracle(oracle_name="af3", template_query="sa_mask('coordinate')", seed=1)
     crystals: dict[str, AtomArray] = {}
     jobs = []
     for ex in _CROP_EXAMPLES:
@@ -442,7 +450,15 @@ def _fold_cropped_examples(out_dir: Path) -> dict[str, tuple[AtomArray, AtomArra
         # Template everything AF3 can (proteins) so the whole cropped complex reproduces the crystal
         # rather than the binder drifting and dragging the templated target off it.
         cropped = crop.atom_array.copy()
-        C_CRD.set_mask(cropped, _query(cropped, "is_protein"))
+        template_mask = _query(cropped, "is_protein")
+        C_CRD.set_annotation(
+            cropped,
+            np.where(
+                template_mask[:, None],
+                C_CRD.ground_truth_value(cropped),
+                C_CRD.default_annotation(cropped),
+            ),
+        )
         crystals[ex.pdb] = crystal
         jobs.append(OracleJobInput(cropped, ex.pdb, out_dir, chain_of_interest=crop.chain_of_interest))
     oracle.setup()

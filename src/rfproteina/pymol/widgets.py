@@ -28,9 +28,6 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         annotation_cls: The annotation class to edit.
         state: Plugin state singleton.
         named_values: Sequence of ``(label, int_value)`` pairs, one button each.
-        null_value: If provided, setting this value also sets mask=False;
-            all other values set mask=True.  Pass ``None`` to skip mask updates
-            (e.g. for annotations whose mask is always all-True).
         allow_arbitrary_int: Show an extra spinbox row for arbitrary integers.
         arbitrary_label: Label shown next to the spinbox.
         arbitrary_range: ``(min, max)`` for the spinbox.
@@ -41,7 +38,6 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         annotation_cls: StandardAnnotationBase,
         state: PluginState,
         named_values: list[tuple[str, int]],
-        null_value: int | None = None,
         allow_arbitrary_int: bool = False,
         arbitrary_label: str = "Value",
         arbitrary_range: tuple[int, int] = (-9999, 9999),
@@ -88,7 +84,6 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
 
         self._annotation_cls = annotation_cls
         self._state = state
-        self._null_value = null_value
 
     def _apply_value(self, value: int) -> None:
         obj_name = self._state.active
@@ -99,18 +94,9 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
         if indices is None:
             return
 
-        # Read both before modifying either (atomic snapshot prevents stale reads
-        # when the same PyMOL selection covers a previously annotated region).
         annot = self._annotation_cls.annotation(arr, default="generate").copy()
-        mask = self._annotation_cls.mask(arr, default="generate").copy() if self._null_value is not None else None
-
         annot[indices] = value
-        if mask is not None:
-            mask[indices] = value != self._null_value
-
         self._annotation_cls.set_annotation(arr, annot)
-        if mask is not None:
-            self._annotation_cls.set_mask(arr, mask)
 
         self._reload_or_recolor()
         # Force the user to make a fresh selection before the next apply,
@@ -124,8 +110,6 @@ class ValueButtonEditor(QtWidgets.QWidget, BaseAnnotationEditor):
             return
         arr = self._state.get_synced_array(obj_name)
         self._annotation_cls.set_annotation(arr, self._annotation_cls.default_annotation(arr))
-        if self._null_value is not None:
-            self._annotation_cls.set_mask(arr, self._annotation_cls.default_mask(arr))
         self._reload_or_recolor()
 
 
@@ -155,7 +139,6 @@ class CoordinateGroupEditor(ValueButtonEditor):
                 ("UNKNOWN_COORDS", CoordinateGroup.UNKNOWN_COORDS),
                 ("KNOWN_ABSOLUTE_COORDS", CoordinateGroup.KNOWN_ABSOLUTE_COORDS),
             ],
-            null_value=None,  # mask is always all-True for CoordinateGroup
             allow_arbitrary_int=True,
             arbitrary_label="Relative group ID",
             arbitrary_range=(1, 9999),

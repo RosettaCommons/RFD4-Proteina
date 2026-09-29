@@ -324,7 +324,7 @@ def _fill_res_id_gaps(atom_array: AtomArray) -> tuple[AtomArray, np.ndarray]:
     """
     filled = as_atom_array_plus(atom_array.copy())
     assert not (
-        S_SEGMIN.has_mask(filled) and (S_SEGMIN.mask(filled) & (filled.res_name != MASKED)).any()
+        S_SEGMIN.has_annotation(filled) and (S_SEGMIN.mask(filled) & (filled.res_name != MASKED)).any()
     ), "input still holds unrealised expandable segments; realising the gaps below would realise those too"
     n_input_tokens = len(get_token_starts(filled))
     res_starts = get_residue_starts(filled, add_exclusive_stop=True)

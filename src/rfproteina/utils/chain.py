@@ -5,7 +5,7 @@ from atomworks.io.utils.annotator import _register_lazy_annotator, ensure_annota
 from atomworks.ml.conditions import C_CRD, C_SEQ
 from biotite.structure import AtomArray, AtomArrayStack
 
-from rfproteina.conditions import C_INTCRD
+from rfproteina.conditions import C_CRDGRP
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -88,7 +88,7 @@ def get_chain_of_interest(atom_array: AtomArray) -> tuple[str | None, bool]:
 
     # Tie-break by coordinate conditioning relative to chain length (absolute or internal).
     coord_conditioned_fraction_by_chain = {
-        cid: C_CRD.mask(chain_subset_by_id[cid]).mean() + C_INTCRD.mask(chain_subset_by_id[cid]).mean()
+        cid: C_CRD.mask(chain_subset_by_id[cid]).mean() + C_CRDGRP.is_internal(chain_subset_by_id[cid]).mean()
         for cid in least_sequence_conditioned_chain_identifiers
     }
     least_coord_conditioned_fraction = min(coord_conditioned_fraction_by_chain.values())

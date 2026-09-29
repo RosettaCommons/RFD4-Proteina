@@ -34,6 +34,7 @@ from unittest.mock import Mock
 import pytest
 import torch
 from atomworks.ml.conditions import C_SEQ
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from omegaconf import OmegaConf
 
 from rfproteina.flow_matching.product_space_flow_matcher import ProductSpaceFlowMatcher
@@ -613,7 +614,7 @@ def test_sequence_prediction_loss_uses_local_latent_supervision_mask(token_batch
     batch = {
         **rows,
         "residue_type": torch.zeros(n, n, dtype=torch.long),
-        C_SEQ.mask_name: torch.zeros(n, n, dtype=torch.bool),
+        C_SEQ.full_name: torch.full((n, n), UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"], dtype=torch.long),
         "t": {"local_latents": torch.ones(n)},
     }
     baseline_logits = torch.zeros(n, n, 33)
@@ -719,12 +720,12 @@ def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_
 
     batch = {
         **token_batch,
-        C_SEQ.full_name: torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
-        C_SEQ.mask_name: torch.zeros(2, len(TOKEN_NAMES), dtype=torch.bool),
+        C_SEQ.full_name: torch.full(
+            (2, len(TOKEN_NAMES)), UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"], dtype=torch.long
+        ),
         "token_type": torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
     }
     batch[C_SEQ.full_name][0, 0] = 7
-    batch[C_SEQ.mask_name][0, 0] = True
     batch["sequence_logits"] = torch.zeros(2, len(TOKEN_NAMES), 33)
     batch["sequence_logits"][..., 4] = 1.0
 
@@ -750,6 +751,4 @@ def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_
     _, emit_mask = compute_ae_masks(batch)
     expected_values = torch.where(emit_mask, 4, batch[C_SEQ.full_name])
     expected_values[0, 0] = 7
-    expected_mask = batch[C_SEQ.mask_name] | emit_mask
     assert torch.equal(conditioned_batch[C_SEQ.full_name], expected_values)
-    assert torch.equal(conditioned_batch[C_SEQ.mask_name], expected_mask)

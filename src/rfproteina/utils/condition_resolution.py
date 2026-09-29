@@ -16,7 +16,6 @@ from functools import cache
 import numpy as np
 from atomworks.io.utils.standard_annotations.base import STANDARD_ANNOTATIONS, StandardAnnotationBase
 from atomworks.ml import conditions as _atomworks_conditions
-from atomworks.ml.conditions import CONDITIONS
 from biotite.structure import AtomArray
 
 from rfproteina import conditions as _rfproteina_conditions
@@ -75,11 +74,9 @@ def resolve_standard_annotation(name: str) -> type[StandardAnnotationBase]:
     if resolved is not None:
         return resolved
 
-    for registry in (CONDITIONS, STANDARD_ANNOTATIONS):
-        try:
-            return registry.get(name)
-        except AttributeError:
-            continue
+    for annotation_cls in STANDARD_ANNOTATIONS:
+        if name in (annotation_cls.name, annotation_cls.full_name, *annotation_cls.aliases):
+            return annotation_cls
 
     valid_aliases = sorted(set(_all_alias_names()))
     valid_systematic = sorted(STANDARD_ANNOTATIONS.list())
@@ -169,8 +166,5 @@ def set_cath_condition(atom_array: AtomArray, indices: np.ndarray | list[int], v
         )
     value += ".x"
     labels = C_CATH.annotation(atom_array, default="generate").astype(object)
-    mask = C_CATH.mask(atom_array, default="generate").copy()
     labels[indices] = value
-    mask[indices] = value != C_CATH.NULL_VALUE
     C_CATH.set_annotation(atom_array, labels.astype(str))
-    C_CATH.set_mask(atom_array, mask)

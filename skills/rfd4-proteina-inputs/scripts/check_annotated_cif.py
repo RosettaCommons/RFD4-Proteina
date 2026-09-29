@@ -228,14 +228,14 @@ def check_coord_implies_seq(arr: AtomArray) -> list[Violation]:
     from atomworks.ml.conditions import C_CRD, C_SEQ
     from atomworks.ml.utils.token import apply_and_spread_token_wise
 
-    from rfproteina.conditions import C_INTCRD
+    from rfproteina.conditions import C_CRDGRP
 
     aap = as_atom_array_plus(arr.copy())
     violations: list[Violation] = []
 
     seq_mask = C_SEQ.mask(aap, default="generate")
     # Absolute OR internal coord conditioning, matching the transform.
-    crd_mask = C_CRD.mask(aap, default="generate") | C_INTCRD.mask(aap, default="generate")
+    crd_mask = C_CRD.mask(aap, default="generate") | C_CRDGRP.is_internal(aap)
 
     has_atomize = "atomize" in aap.get_annotation_categories()
     if not crd_mask.any() and not has_atomize:

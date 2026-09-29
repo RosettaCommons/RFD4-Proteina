@@ -174,7 +174,7 @@ filesystem). The default group is `inference_on_user_inputs`.
 ## Outputs
 
 Each design is an **annotated CIF** with per-atom provenance columns (`SA_SRC`,
-`SA_CRDSRC`, `SA_CRDGRPSRC`, `SA_UII`) tying output atoms back to the input spec.
+`SA_CRDSRC`, `SA_IDXGRPSRC`, `SA_UII`) tying output atoms back to the input spec.
 With metrics on, a `per_example_metrics.csv` is written alongside. Full column
 table and how to read annotations: [references/outputs.md](references/outputs.md).
 

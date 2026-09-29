@@ -39,7 +39,7 @@ from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 
-from rfproteina.conditions import C_INTCRD
+from rfproteina.conditions import C_CRDGRP
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
 from rfproteina.generate import (
     _get_example_ids_from_dataset,
@@ -618,11 +618,10 @@ class TestEndToEndInference:
 
         residue_starts_aa = generated_aa[get_residue_starts(generated_aa)]
 
-        # Atom-level mapped mask (stored under "mapped_to_coordinate_conditioned_region" for backward compat).
-        # Exactly half of the residues (the 5-residue motif) are coordinate-conditioned.
-        assert SA_CRDSRC.has_mask(generated_aa), f"Expected '{SA_CRDSRC.mask_name}' in generated CIF"
-        assert np.mean(residue_starts_aa.get_annotation(SA_CRDSRC.mask_name) == False) == 0.5, (  # noqa: E712
-            f"Expected exactly half of residue starts to be un-conditioned (False) for '{SA_CRDSRC.mask_name}'"
+        # Atom-level coordinate-source annotation; its non-default values imply the mapped mask.
+        assert SA_CRDSRC.has_annotation(generated_aa), f"Expected '{SA_CRDSRC.full_name}' in generated CIF"
+        assert np.mean(SA_CRDSRC.mask(residue_starts_aa) == False) == 0.5, (  # noqa: E712
+            f"Expected exactly half of residue starts to be outside '{SA_CRDSRC.full_name}'"
         )
 
         # Non-mask string annotations (stored under their full_name).
@@ -769,7 +768,7 @@ class TestEndToEndInference:
 
         # The unindexed motif should become an indexed fixed motif (not re-unindexed) after the first generation
         assert SA_UII.mask(g1).any(), "unindexed motif was not flagged as an insertion on gen-1"
-        motif = C_CRD.mask(g2, default="generate") | C_INTCRD.mask(g2, default="generate")
+        motif = C_CRD.mask(g2, default="generate") | C_CRDGRP.is_internal(g2)
         assert C_IDX.mask(g2, default="generate")[motif].all(), "motif was re-unindexed on the re-feed"
 
     def test_inverse_folding(self, gpu, tmp_output_dir):  # noqa: F811

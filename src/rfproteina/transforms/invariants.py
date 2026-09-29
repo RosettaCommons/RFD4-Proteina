@@ -19,7 +19,7 @@ from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_starts
 from biotite.structure import AtomArray, spread_residue_wise
 
-from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, SEQUENCE_PROBABILITY_CONDITIONS
+from rfproteina.conditions import C_CENTROID, C_CRDGRP, C_IDXGRP, C_INTCRD, SEQUENCE_PROBABILITY_CONDITIONS
 from rfproteina.datapipes.bonds import (
     get_bond_distances,
     get_polymerization_atom_masks,
@@ -248,15 +248,31 @@ def check_conditioning_annotation_matches_ground_truth(aa: AtomArray, is_inferen
 def check_conditioning_coords_not_nan(aa: AtomArray) -> list[InvariantViolation]:
     """Coordinate conditioning must never target a non-finite coordinate.
 
-    A NaN coordinate under ``C_CRD`` / ``C_INTCRD`` means we are conditioning on an unresolved atom
-    (e.g. a ligand with no CCD coords); it must be stripped from the mask upstream, not fed to the model.
+    A NaN coordinate under absolute ``C_CRD`` or a non-reserved ``C_CRDGRP`` means
+    we are conditioning on an unresolved atom; it must be stripped upstream, not fed to the model.
     """
     violations: list[InvariantViolation] = []
-    for cond, label in ((C_CRD, "C_CRD"), (C_INTCRD, "C_INTCRD")):
-        mask = cond.mask(aa, default="generate")
+    internal_groups = C_CRDGRP.is_internal(aa)
+    internal_coords = C_INTCRD.annotation(aa, default="generate")
+    orphan_payload = np.isfinite(internal_coords).any(axis=-1) & ~internal_groups
+    if orphan_payload.any():
+        violations.append(
+            InvariantViolation(
+                check="internal_coords_require_coord_group",
+                message=(
+                    f"{int(orphan_payload.sum())} atom(s) have a C_INTCRD payload but no internal C_CRDGRP; "
+                    "coordinate groups are the source of truth for internal-coordinate conditioning"
+                ),
+                count=int(orphan_payload.sum()),
+            )
+        )
+    coordinate_conditions = (
+        (C_CRD.mask(aa, default="generate"), C_CRD.annotation(aa, default="generate"), "C_CRD"),
+        (internal_groups, internal_coords, "C_INTCRD"),
+    )
+    for mask, annotation, label in coordinate_conditions:
         if not mask.any():
             continue
-        annotation = cond.annotation(aa, default="generate")
         bad = mask & ~np.isfinite(annotation).all(axis=-1)
         n_bad = int(bad.sum())
         if n_bad:
@@ -447,9 +463,11 @@ def check_conditioning_violations(aa: AtomArray, feats: dict) -> list[InvariantV
     from rfproteina.datapipes.pipeline import TokenType, build_atom37_slots
 
     token_type: torch.Tensor = feats["token_type"]  # [n_tokens]
-    seq_mask: torch.Tensor = feats["mask_sequence_1_residue"]  # [n_tokens]
+    seq_mask = feats[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
     atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
-    crd_mask: torch.Tensor = feats["mask_coordinate_1_atom"] | feats["mask_InternalCoordinate_1_atom"]  # [n_tokens, 37]
+    coord_groups = feats[C_CRDGRP.full_name]
+    has_internal_coords = (coord_groups != C_CRDGRP.UNKNOWN_COORDS) & (coord_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
+    crd_mask = torch.isfinite(feats[C_CRD.full_name]).any(dim=-1) | has_internal_coords
 
     violations = []
 
@@ -500,7 +518,7 @@ def check_atomized_indexed_violations(feats: dict) -> list[InvariantViolation]:
     from rfproteina.datapipes.pipeline import TokenType
 
     token_type: torch.Tensor = feats["token_type"]  # [n_tokens]
-    idx_mask_raw: torch.Tensor | None = feats.get(C_IDX.mask_name)  # [n_tokens, 37]
+    idx_mask_raw: torch.Tensor | None = feats.get(C_IDX.full_name)  # [n_tokens, 37]
 
     if idx_mask_raw is None:
         return []
@@ -529,7 +547,7 @@ def check_coordinates_not_nan(feats: dict, is_inference: bool = False) -> list[I
     At training time, every valid atom slot (per ``atom37_mask``) must have finite coordinates.
     At inference time, the binder chain has not been generated yet so its ``coords`` may be NaN
     legitimately. Instead, only the atoms that are explicitly coordinate-conditioned —
-    ``condition_coordinate_1_atom`` masked by ``mask_coordinate_1_atom`` — OR atomized (because
+    finite values in ``condition_coordinate_1_atom`` — OR atomized (because
     chirality features need to be calculated from coordinate information) are checked, since
     those are the only coordinates that actually reach the model.
     The padding non-zero check is applied in both modes.
@@ -551,7 +569,13 @@ def check_coordinates_not_nan(feats: dict, is_inference: bool = False) -> list[I
     violations = []
 
     if is_inference:
-        mask_to_check = (feats.get("mask_coordinate_1_atom") | atomized_mask_atom37) & atom37_mask
+        conditioned_coords = feats.get(C_CRD.full_name)
+        coordinate_mask = (
+            torch.isfinite(conditioned_coords).any(dim=-1)
+            if conditioned_coords is not None
+            else torch.zeros_like(atom37_mask)
+        )
+        mask_to_check = (coordinate_mask | atomized_mask_atom37) & atom37_mask
     else:
         mask_to_check = atom37_mask
 
@@ -590,12 +614,12 @@ def check_coordinates_not_nan(feats: dict, is_inference: bool = False) -> list[I
 
 def check_element_encoding_violations(feats: dict) -> list[InvariantViolation]:
     """Return violations where element encoding leaks info to non-seq-conditioned tokens."""
-    if "element" not in feats or "atom37_mask" not in feats or "mask_sequence_1_residue" not in feats:
+    if "element" not in feats or "atom37_mask" not in feats or C_SEQ.full_name not in feats:
         return []
 
     element: torch.Tensor = feats["element"]  # [n_tokens, 37]
     atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
-    seq_mask: torch.Tensor = feats["mask_sequence_1_residue"]  # [n_tokens]
+    seq_mask = feats[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
 
     violations = []
     non_seq = ~seq_mask
@@ -631,7 +655,7 @@ def check_element_encoding_violations(feats: dict) -> list[InvariantViolation]:
 def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
     """Validate sparse canonical-polymer probability conditions residue by residue.
 
-    A unified sequence-token probability is present only where its corresponding mask is true. Present
+    A unified sequence-token probability is present wherever its value is not NaN. Present
     values must be finite and in [0, 1], positive mass may only target identities
     of the residue's polymer type, and the specified mass may not exceed one;
     unspecified identities retain the remaining probability mass. A
@@ -640,27 +664,14 @@ def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[In
     """
 
     aap = as_atom_array_plus(aa)
-    categories = set(aap.get_annotation_categories())
     residue_starts = get_residue_starts(aap)
     n_residues = len(residue_starts)
-    residue_names = aap.res_name[residue_starts]
     probabilities = np.zeros((n_residues, len(SEQUENCE_PROBABILITY_CONDITIONS)), dtype=np.float32)
     specified = np.zeros_like(probabilities, dtype=bool)
     violations: list[InvariantViolation] = []
 
     for channel, condition in enumerate(SEQUENCE_PROBABILITY_CONDITIONS):
-        has_annotation = condition.full_name in categories
-        has_mask = condition.mask_name in categories
-        if has_annotation != has_mask:
-            missing = condition.mask_name if has_annotation else condition.full_name
-            violations.append(
-                InvariantViolation(
-                    check="sequence_probability_missing_value_or_mask",
-                    message=f"{condition.name} is present without its paired annotation '{missing}'",
-                )
-            )
-            continue
-        if not has_annotation:
+        if not condition.has_annotation(aap):
             continue
 
         atom_probabilities = condition.annotation(aap, default="raise")
@@ -675,6 +686,18 @@ def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[In
                     check="sequence_probability_nonuniform_residue_mask",
                     message=f"{condition.name} has a nonuniform mask in {n_nonuniform_masks} residue(s)",
                     count=n_nonuniform_masks,
+                )
+            )
+
+        expected_values = spread_residue_wise(aap, atom_probabilities[residue_starts])
+        inconsistent = atom_mask & ~np.isclose(atom_probabilities, expected_values, equal_nan=True)
+        n_nonuniform_values = int(np.maximum.reduceat(inconsistent, residue_starts).sum())
+        if n_nonuniform_values:
+            violations.append(
+                InvariantViolation(
+                    check="sequence_probability_nonuniform_residue_value",
+                    message=f"{condition.name} has nonuniform values in {n_nonuniform_values} residue(s)",
+                    count=n_nonuniform_values,
                 )
             )
 
@@ -752,7 +775,8 @@ def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[In
         )
 
     fully_specified = compatible.any(axis=-1) & (specified | ~compatible).all(axis=-1)
-    noncanonical_exact = seq_conditioned & ~np.isin(residue_names, list(STANDARD_POLYMER_RESIDUES))
+    sequence_targets = C_SEQ.annotation(aap, default="generate")[residue_starts]
+    noncanonical_exact = seq_conditioned & ~np.isin(sequence_targets, list(STANDARD_POLYMER_RESIDUES))
     missing_mass = fully_specified & ~noncanonical_exact & (specified_mass < 1.0 - 1e-6)
     n_missing_mass = int(missing_mass.sum())
     if n_missing_mass:
@@ -780,7 +804,7 @@ def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[In
 
     expected = np.zeros_like(probabilities)
     for channel, condition in enumerate(SEQUENCE_PROBABILITY_CONDITIONS):
-        expected[:, channel] = residue_names == condition.token_name
+        expected[:, channel] = sequence_targets == condition.token_name
     conflicts = seq_conditioned[:, None] & specified & ~np.isclose(probabilities, expected)
     conflicting_residues = conflicts.any(axis=-1)
     n_conflicting = int(conflicting_residues.sum())
@@ -1007,11 +1031,11 @@ def check_coordinate_centering_violations(aa: AtomArray, feats: dict) -> list[In
             )
         )
 
-    if "coords" not in feats or "mask_coordinate_1_atom" not in feats or "atom37_mask" not in feats:
+    if "coords" not in feats or C_CRD.full_name not in feats or "atom37_mask" not in feats:
         return violations
 
     coords_token: torch.Tensor = feats["coords"]  # [n_tokens, 37, 3]
-    crd_mask_token: torch.Tensor = feats["mask_coordinate_1_atom"]  # [n_tokens, 37]
+    crd_mask_token = torch.isfinite(feats[C_CRD.full_name]).any(dim=-1)
     atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
     valid_and_conditioned = atom37_mask & crd_mask_token
     if valid_and_conditioned.any():
@@ -1030,14 +1054,14 @@ def check_coordinate_centering_violations(aa: AtomArray, feats: dict) -> list[In
 
 def check_sequence_conditioning_violations(feats: dict, is_inference: bool) -> list[InvariantViolation]:
     """Return violations where residue_type encoding is inconsistent with conditioning masks."""
-    required = {"mask_sequence_1_residue", "residue_type", "atom37_mask"}
+    required = {C_SEQ.full_name, "residue_type", "atom37_mask"}
     if not required.issubset(feats):
         return []
 
     # Lazy import to avoid circular dependency with pipeline.py
     from rfproteina.datapipes.pipeline import TokenType
 
-    seq_mask: torch.Tensor = feats["mask_sequence_1_residue"]  # [n_tokens]
+    seq_mask = feats[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
     res_type_gt: torch.Tensor = feats["residue_type"]  # [n_tokens]
     token_type: torch.Tensor = feats["token_type"]  # [n_tokens]
 
@@ -1067,7 +1091,7 @@ def check_sequence_conditioning_violations(feats: dict, is_inference: bool) -> l
             )
         )
 
-    cond_seq_key = "condition_sequence_1_residue"
+    cond_seq_key = C_SEQ.full_name
     if cond_seq_key in feats:
         res_type_cond: torch.Tensor = feats[cond_seq_key]
 

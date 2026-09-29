@@ -59,15 +59,15 @@ assert target.any(), "Target chain A matched no atoms"
 assert target_backbone.any(), "Target chain A has no protein backbone atoms"
 
 # Benchmark BB-only fixes target identity and resolved backbone coordinates.
-C_CRD.set_mask(aa, target_backbone)
-C_SEQ.set_mask(aa, target | aa.is_ligand)
+C_CRD.set_annotation_from_ground_truth(aa, target_backbone)
+C_SEQ.set_annotation_from_ground_truth(aa, target | aa.is_ligand)
 
 # Mark atoms on the target that a generated binder should contact.
 hotspots = target & np.isin(aa.res_id, [35, 38, 42])
-C_HOT.set_mask(aa, hotspots)
+C_HOT.set_annotation(aa, hotspots)
 
 # C_IDX is all-on by default. This explicit call keeps all residues indexed.
-C_IDX.set_mask(aa, np.ones(aa.array_length(), dtype=bool))
+C_IDX.set_annotation(aa, np.ones(aa.array_length(), dtype=bool))
 ```
 
 For explicit target-sequence redesign, use the
@@ -76,17 +76,18 @@ The assembly key above is an example, not a default to apply blindly. Inspect
 the parsed assemblies and select the biological assembly the user intends. Also
 record model and alternate-location choices when the source contains options.
 
-`set_mask()` and `set_annotation()` replace that condition's stored array. For
+`set_annotation_from_ground_truth()` and `set_annotation()` replace that condition's stored array. For
 an additive edit to an existing annotated CIF, start from the current value:
 
 ```python
-fixed = C_CRD.mask(aa, default="generate").copy()
-fixed |= target_backbone
-C_CRD.set_mask(aa, fixed)
+from rfproteina.transforms.utils.conditioning_utils import set_absolute_coordinate_conditioning
 
-known = C_SEQ.mask(aa, default="generate").copy()
-known |= target | aa.is_ligand
-C_SEQ.set_mask(aa, known)
+set_absolute_coordinate_conditioning(aa, np.flatnonzero(target_backbone), True)
+
+known = C_SEQ.annotation(aa, default="generate").copy()
+selected = target | aa.is_ligand
+known[selected] = C_SEQ.ground_truth_value(aa)[selected]
+C_SEQ.set_annotation(aa, known)
 ```
 
 Start from a fresh default only when authoring a new condition or intentionally
@@ -103,7 +104,7 @@ if "chain_iid" in aa.get_annotation_categories():
 
 ## Value-valued conditions
 
-Boolean conditions use `set_mask()`. Enum or coordinate-valued conditions use
+Boolean conditions use `set_annotation()`. Enum or coordinate-valued conditions use
 `default_annotation()`/`annotation()` followed by `set_annotation()`:
 
 ```python
@@ -207,7 +208,7 @@ if (to_unindex & atomized).any():
 
 indexed = C_IDX.mask(aa, default="generate").copy()
 indexed[to_unindex] = False
-C_IDX.set_mask(aa, indexed)
+C_IDX.set_annotation(aa, indexed)
 
 # Retain intentional subdivisions while synchronizing mandatory boundaries.
 sync_index_groups(aa, preserve_manual_edits=True)

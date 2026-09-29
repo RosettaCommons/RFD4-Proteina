@@ -21,6 +21,7 @@ Register with::
 # registered by then and not explicitly listed as supported gets excluded
 # automatically, so these no longer need individual exclude_annotation() calls.
 from atomworks.io.utils.standard_annotations import S_ATM  # noqa: F401
+from atomworks.pymol_plugin.bridge import register_pre_combine_hook
 from atomworks.pymol_plugin.views import register_view
 
 from rfproteina.conditions_reporting import (
@@ -30,6 +31,7 @@ from rfproteina.conditions_reporting import (
 )
 from rfproteina.pymol import condition_registry
 from rfproteina.pymol.visualize import color_by_coord_group, color_by_index_group
+from rfproteina.transforms.utils.conditioning_utils import separate_coordinate_groups
 from rfproteina.utils.standard_annotations import (  # noqa: F401
     SA_CRDSRC,
     SA_IDXGRPSRC,
@@ -54,11 +56,12 @@ def register() -> None:
     register_view("Color by coord group", color_by_coord_group)
 
     # Editors, wizard visibility, and the summary hook for every supported
-    # annotation -- see condition_registry.SUPPORTED_CONDITIONS. Sweeps the
+    # annotation -- see conditions_reporting.SUPPORTED_CONDITIONS. Sweeps the
     # whole StandardAnnotation registry, so the computed/derived annotations
     # imported above (not useful for interactive editing) are excluded
     # automatically for not being listed there.
     condition_registry.apply()
+    register_pre_combine_hook(separate_coordinate_groups)
 
     # Pre-save validation hooks.
     register_pre_save_hook(run_pipeline_validation)

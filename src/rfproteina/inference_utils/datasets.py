@@ -12,7 +12,6 @@ from atomworks.common import exists
 from atomworks.io.parser import parse
 from atomworks.ml.datasets import FileDataset, MolecularDataset
 from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
-from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from rfproteina.conditions_reporting import (
@@ -25,7 +24,6 @@ from rfproteina.inference_utils.condition_spec import (
     is_legacy_dialect,
     split_global_args,
 )
-from rfproteina.transforms.inference_annotations import AddSrcComponentAnnotation
 from rfproteina.utils.common import validate_design_id
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import ANNOTATED_CIF
@@ -81,7 +79,6 @@ class ConditionSpecDataset(MolecularDataset):
         data: PathLike | dict,
         transform: Transform | Compose | None,
         name: str | None,
-        sampling_transforms: list[Transform] | None = None,
         subset_to_keys: list[str] | None = None,
         num_replicates: int = 1,
         global_prefix: str | None = None,
@@ -93,12 +90,8 @@ class ConditionSpecDataset(MolecularDataset):
         """
         Args:
             - data: path to the JSON/YAML file containing the example data, or an already-loaded dict
-            - transform: transform to apply to each built example
+            - transform: pipeline to apply to each built example; None returns the unexpanded input
             - name: name of the dataset
-            - sampling_transforms: optional transforms that edit the built ``atom_array`` (typically
-              resampling a condition per replicate) after expandable segments are realized and
-              before the featurization ``transform`` runs. They are deliberately excluded from
-              ``prevalidate``, which checks the input as authored.
             - subset_to_keys: list of keys to subset the data to
             - num_replicates: number of times to repeat each example in the dataset
             - global_prefix: optional global prefix for output example ids
@@ -108,15 +101,6 @@ class ConditionSpecDataset(MolecularDataset):
             - num_shards: number of shards to divide the replicated examples into; see
               :py:func:`take_shard`
         """
-        # Necessary for working with expandable segments; could be incorporated into the standard
-        # Transform pipeline in future.
-        self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
-        # Sampling runs per __getitem__ call, so each replicate of a spec draws its own condition.
-        sampled = self.pre_transform
-        for sampling_transform in sampling_transforms or []:
-            sampled = sampled + sampling_transform
-        transform = sampled + transform if transform is not None else sampled
-
         if isinstance(data, PathLike | str):
             self.json_path = data
             original_data = self._load_from_path(data)
@@ -227,17 +211,16 @@ class ConditionSpecDataset(MolecularDataset):
         return self.names[idx]
 
     def _prevalidate(self) -> None:
-        """Build, realize, and validate each unique condition-spec example."""
+        """Build and validate each unique condition-spec example through the pipeline."""
         for example_id, spec in self.data.items():
             logger.info(f"Prevalidating input example: {example_id}")
             data = build_annotated_atom_array_from_condition_spec(
                 spec, spec_dir=self.spec_dir, example_id=example_id, validate=False
             )
-            realized = self.pre_transform(TransformedDict(data))["atom_array"]
             violations = [
-                *run_pipeline_validation(realized),
-                *check_index_group_res_id_gaps(realized),
-                *check_index_group_molecule_consistency(realized),
+                *run_pipeline_validation(data["atom_array"]),
+                *check_index_group_res_id_gaps(data["atom_array"]),
+                *check_index_group_molecule_consistency(data["atom_array"]),
             ]
             if violations:
                 raise ValueError(f"Prevalidation failed for input example {example_id!r}:\n" + "\n".join(violations))
@@ -259,7 +242,8 @@ class ConditionSpecDataset(MolecularDataset):
         data["example_id"] = example_id
         data["task"] = "_".join(example_id.split("_")[:-1])
 
-        data = self.transform(data)
+        if self.transform is not None:
+            data = self.transform(data)
         return data
 
 
@@ -295,7 +279,6 @@ class DesignProblemDataset(FileDataset):
         *,
         filter_fn: Callable[[PathLike], bool] | None = is_structure_file,
         transform: Transform | None = None,
-        sampling_transforms: list[Transform] | None = None,
         num_replicates: int | None = None,
         global_prefix: str | None = None,
         subset_to_keys: list[str] | None = None,
@@ -309,11 +292,7 @@ class DesignProblemDataset(FileDataset):
         Args:
             dir_path_or_file_paths: Path to directory with CIF/JSON/YAML files, or list of file paths.
             filter_fn: Optional function to filter which files to include based on filename.
-            transform: Optional transform to apply to loaded data.
-            sampling_transforms: Optional transforms that edit the loaded ``atom_array`` (typically
-                resampling a condition per replicate) after expandable segments are realized and
-                before the featurization ``transform`` runs. They are deliberately excluded from
-                ``prevalidate``, which checks the input as authored.
+            transform: Pipeline to apply to loaded data; None returns the unexpanded input.
             global_prefix: Optional global prefix for output example ids.
             subset_to_keys: Optional list of base ids (the file stem, before any
                 ``global_prefix``) to keep; useful for running a few examples out of a large
@@ -347,14 +326,7 @@ class DesignProblemDataset(FileDataset):
             filter_fn=filter_fn,
         )
 
-        # Annotate SA_SRC before expansion so original res_ids are preserved,
-        # then realize expandable segments and continue with transform pipeline.
-        self.pre_transform = AddSrcComponentAnnotation() + RealizeExpandableSegments()
-        # Sampling runs per __getitem__ call, so each replicate of a file draws its own condition.
-        sampled = self.pre_transform
-        for sampling_transform in sampling_transforms or []:
-            sampled = sampled + sampling_transform
-        self.transform = sampled + transform if transform is not None else sampled
+        self.transform = transform
 
         self.global_prefix = global_prefix
 
@@ -399,8 +371,7 @@ class DesignProblemDataset(FileDataset):
         for path, base_id in zip(self.file_paths, self.base_ids, strict=True):
             logger.info(f"Prevalidating input example: {base_id}")
             data = self._load_from_path(path)
-            atom_array = self.pre_transform(TransformedDict(data))["atom_array"]
-            violations = run_pipeline_validation(atom_array)
+            violations = run_pipeline_validation(data["atom_array"])
             if violations:
                 raise ValueError(f"Prevalidation failed for input example {base_id!r}:\n" + "\n".join(violations))
 
@@ -445,7 +416,8 @@ class DesignProblemDataset(FileDataset):
             }
         )
 
-        data = self.transform(data)
+        if self.transform is not None:
+            data = self.transform(data)
 
         data["specification"] = {
             "input_cif": path,

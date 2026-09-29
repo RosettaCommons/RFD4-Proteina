@@ -8,7 +8,7 @@ The implementation and lazy registry live in
 [annotator.py](../../../lib/atomworks/src/atomworks/io/utils/annotator.py).
 `ensure_annotations()` mutates the array in place, retaining existing annotations
 and computing missing dependencies. If a name is absent from `ANNOTATOR_REGISTRY`,
-its `_resolve_standard_annotation()` fallback matches `full_name` or `mask_name`
+its `_resolve_standard_annotation()` fallback matches canonical names or aliases
 in the [StandardAnnotation registry](../../../lib/atomworks/src/atomworks/io/utils/standard_annotations/base.py).
 Import RFProteína conditions before using that fallback.
 
@@ -24,8 +24,7 @@ requested = {"is_protein", "is_ligand"}
 standard_names = {
     name
     for annotation in STANDARD_ANNOTATIONS
-    for name in (annotation.full_name, annotation.mask_name)
-    if name is not None
+    for name in (annotation.full_name, *annotation.aliases)
 }
 available = (
     set(get_annotation_categories(aa, n_body="all"))
@@ -63,22 +62,23 @@ print("target atoms", int(target.sum()))
 print("resolved target backbone atoms", int(target_backbone.sum()))
 assert target_backbone.any(), "No resolved target backbone atoms selected"
 
-fixed = C_CRD.mask(aa, default="generate").copy()
-fixed[target] = target_backbone[target]
-C_CRD.set_mask(aa, fixed)
+from rfproteina.transforms.utils.conditioning_utils import set_absolute_coordinate_conditioning
+
+set_absolute_coordinate_conditioning(aa, np.flatnonzero(target), False)
+set_absolute_coordinate_conditioning(aa, np.flatnonzero(target_backbone), True)
 ```
 
 Sequence intent is independent. For benchmark **BB-only** mode, keep target
 sequence conditioning enabled over the entire target, including unresolved atoms:
 
 ```python
-known = C_SEQ.mask(aa, default="generate").copy()
-known[target] = True
-C_SEQ.set_mask(aa, known)
+known = C_SEQ.annotation(aa, default="generate").copy()
+known[target] = C_SEQ.ground_truth_value(aa)[target]
+C_SEQ.set_annotation(aa, known)
 ```
 
 Only when the request explicitly calls for target-sequence redesign, set
-`known[target] = False` instead, after checking the
+`known[target] = C_SEQ.default_annotation(aa)[target]` instead, after checking the
 [interaction rules](../../../docs/workflow/inputs.md#interaction-rules-read-before-conditioning)
 for other conditions on that target. Outside-target conditions remain unchanged.
 

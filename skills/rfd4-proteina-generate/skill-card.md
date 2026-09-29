@@ -86,7 +86,7 @@ Mitigation: Stated prominently and in the troubleshooting table.
 Output type(s): generated design files (+ optional inline metrics).
 
 Output format: one annotated CIF per design under `out_dir`, with per-atom
-provenance columns (`SA_SRC`, `SA_CRDSRC`, `SA_CRDGRPSRC`, `SA_UII`); optional
+provenance columns (`SA_SRC`, `SA_CRDSRC`, `SA_IDXGRPSRC`, `SA_UII`); optional
 `per_example_metrics.csv` when `metrics_tags` is set.
 
 Output parameters: `out_dir` (design CIFs), `per_example_metrics.csv`, optional

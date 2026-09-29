@@ -79,6 +79,7 @@ from atomworks.ml.transforms.filters import (
     RemoveUnresolvedPNUnits,
 )
 from atomworks.ml.transforms.mirror_transform import RandomlyMirrorInputs
+from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 from atomworks.ml.transforms.symmetry import find_automorphisms_with_networkx
 from atomworks.ml.utils.token import (
     apply_and_spread_token_wise,
@@ -122,7 +123,8 @@ from rfproteina.transforms.budget import EnforceCropBudget, plan_unindex_expansi
 from rfproteina.transforms.chirality_feature import AddChiralityFeature
 from rfproteina.transforms.dna_crop import ProteinDNAContactContiguousCrop
 from rfproteina.transforms.geometry import CenterOnCoordinateConditionedAtoms, RandomRotationTransform
-from rfproteina.transforms.internal_coords import ConvertAbsoluteToInternalCoords
+from rfproteina.transforms.inference_annotations import AddSrcComponentAnnotation
+from rfproteina.transforms.internal_coords import ConvertAbsoluteToInternalCoords, MaterializeInternalCoords
 from rfproteina.transforms.invariants import ValidateBatchInvariants
 from rfproteina.transforms.loss_weight_predicates import build_loss_weight_upweights
 from rfproteina.transforms.metals import DropoutCoordinationBonds
@@ -133,7 +135,6 @@ from rfproteina.transforms.random_atomize_residues import (
     RandomAtomizeResidues,
 )
 from rfproteina.transforms.unindexing import UnindexFlaggedTokens
-from rfproteina.transforms.utils.conditioning_utils import freeze_ground_truth_condition_annotations
 from rfproteina.utils.common import true_with_prob
 from rfproteina.utils.fold import extract_cath_code_by_level
 
@@ -388,7 +389,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         else:
             feats["loss_weight"] = np.ones(aa.array_length(), dtype=np.float32)  # [L]
 
-        feats["coord_cond_mask"] = C_CRD.mask(aa, default="generate")  # [L] for diagnostics
+        feats["coord_cond_mask"] = C_CRD.mask(aa, default="generate")
 
         # Insertion source index for insertion-prediction training task:
         # -1 for indexed (generated) tokens; j>=0 for unindexed tokens (source token index)
@@ -464,25 +465,19 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats[C_CATH.full_name] = output_cath_codes
 
         # +------ Coordinate conditioning (absolute) ------+
-        feats[C_CRD.mask_name] = C_CRD.mask(aa, default="generate")  # [L]
         feats[C_CRD.full_name] = C_CRD.annotation(aa, default="generate")  # [L, 3] conditioning coords
 
         # +------ Coordinate conditioning (internal) ------+
-        feats[C_INTCRD.mask_name] = C_INTCRD.mask(aa, default="generate")  # [L]
         feats[C_INTCRD.full_name] = C_INTCRD.annotation(aa, default="generate")  # [L]
 
         # +------ Other atom-level conditions ------+
         # ... basic
-        feats[C_SEQ.mask_name] = C_SEQ.mask(aa, default="generate")  # [L] (which atoms are sequence conditioned)
-        feats[C_IDX.mask_name] = C_IDX.mask(aa, default="generate")  # [L] (True = indexed, False = unindexed)
+        feats[C_IDX.full_name] = C_IDX.annotation(aa, default="generate")  # [L]
 
         # ... fancy
         feats[C_HOT.full_name] = C_HOT.annotation(aa, default="generate")
         for condition in SEQUENCE_PROBABILITY_CONDITIONS:
-            # Explicit zero and unset are different states, so values and masks are
-            # carried separately. Generating defaults here does not mutate the AtomArray.
             feats[condition.full_name] = condition.annotation(aa, default="generate")
-            feats[condition.mask_name] = condition.mask(aa, default="generate")
         feats[C_RAS.full_name] = C_RAS.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_SEC.full_name] = C_SEC.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
@@ -520,16 +515,11 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "is_resolved_mask",
     "insertion_source_idx",
     "loss_weight",
-    "coord_cond_mask",  # Coordinate conditioning mask (for diagnostics)
-    C_SEQ.mask_name,
+    "coord_cond_mask",
     C_CTR.full_name,
     C_NTR.full_name,
     C_SEC.full_name,
-    *[
-        feature_name
-        for condition in SEQUENCE_PROBABILITY_CONDITIONS
-        for feature_name in (condition.full_name, condition.mask_name)
-    ],
+    *[condition.full_name for condition in SEQUENCE_PROBABILITY_CONDITIONS],
     C_IDXGRP.full_name,
     C_CATH.full_name,
     C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
@@ -541,20 +531,18 @@ ATOM37_FEATURES = [
     ("coords", (3,), 0.0),
     ("element", (), -1),
     ("charge", (), 0),  # Atomic charge
-    (C_CRD.mask_name, (), False),
-    (C_INTCRD.mask_name, (), False),
-    (C_IDX.mask_name, (), True),
+    (C_CRD.full_name, (3,), np.nan),
+    (C_INTCRD.full_name, (3,), np.nan),
+    (C_IDX.full_name, (), True),
     (C_CRDGRP.full_name, (), C_CRDGRP.UNKNOWN_COORDS),
-    (C_CRD.full_name, (3,), 0.0),
-    (C_INTCRD.full_name, (3,), 0.0),
     (C_HOT.full_name, (), False),
-    (C_RAS.full_name, (), RasaEnum.UNSPECIFIED),
-    (C_HB.full_name, (), HBondEnum.NONE),
+    (C_RAS.full_name, (), RasaEnum.UNSPECIFIED.value),
+    (C_HB.full_name, (), HBondEnum.NONE.value),
     (C_PISTACK.full_name, (), False),
-    (C_PICATION.full_name, (), PiCationEnum.NONE),
-    (C_SALT.full_name, (), SaltBridgeEnum.NONE),
+    (C_PICATION.full_name, (), PiCationEnum.NONE.value),
+    (C_SALT.full_name, (), SaltBridgeEnum.NONE.value),
     (C_HPHOB.full_name, (), False),
-    (C_MCOORD.full_name, (), MetalCoordEnum.NONE),
+    (C_MCOORD.full_name, (), MetalCoordEnum.NONE.value),
 ]
 """Features to convert from atom-level to token-level atom37 representation.
 
@@ -644,21 +632,6 @@ class ConvertToAtom37Format(Transform):
 
         result["atom37_mask"] = atom37_mask
         result.update(atom37_arrays)
-
-        # +--------- Derived atom-level features ---------+
-
-        # Absolute coordinate conditioning, zeroed at unconditioned atoms
-        # NOTE: We source from C_CRD.annotation (the conditioning coords), not the ground-truth coords,
-        # so a persisted annotation (e.g. the target on a re-fed design, or a theozyme) is what the model
-        # conditions on, minimizing drift with respect to the original conditioning.
-        if C_CRD.mask_name in result and C_CRD.full_name in result:
-            coord_cond_mask = result[C_CRD.mask_name][..., np.newaxis]
-            result[C_CRD.full_name] = np.where(coord_cond_mask, result[C_CRD.full_name], 0.0)
-
-        # ... same story for internal coordinate conditioning (persisted vs. ground-truth)
-        if C_INTCRD.mask_name in result and C_INTCRD.full_name in result:
-            internal_coord_cond_mask = result[C_INTCRD.mask_name][..., np.newaxis]
-            result[C_INTCRD.full_name] = np.where(internal_coord_cond_mask, result[C_INTCRD.full_name], 0.0)
 
         # Residue-level NA secondary structure is assembled at tokenization time:
         # - sparse 2D base-pair edges live on representative token atoms
@@ -942,7 +915,8 @@ class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
 
     def forward(self, data: dict) -> dict:
         aap = as_atom_array_plus(data["atom_array"])
-        seq_cond_mask = C_SEQ.mask(aap, default="generate")
+        existing_seq_cond_mask = C_SEQ.mask(aap, default="generate")
+        seq_cond_mask = existing_seq_cond_mask.copy()
 
         # Atomized tokens always require sequence conditioning
         if "atomize" in aap.get_annotation_categories():
@@ -950,7 +924,7 @@ class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
 
         # Only non-backbone coordinate conditioning requires sequence conditioning.
         # Backbone-only conditioning (e.g. inverse folding context) does not.
-        crd_mask = C_CRD.mask(aap, default="generate") | C_INTCRD.mask(aap, default="generate")
+        crd_mask = C_CRD.mask(aap, default="generate") | C_CRDGRP.is_internal(aap)
         if crd_mask.any():
             ensure_annotations(aap, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
             is_backbone = aap.is_protein_backbone | aap.is_rna_backbone | aap.is_dna_backbone
@@ -959,22 +933,11 @@ class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
         # Any token with sequence conditioning should be fully sequence-conditioned
         seq_cond_mask = apply_and_spread_token_wise(aap, seq_cond_mask, np.any)
 
-        C_SEQ.set_mask(aap, seq_cond_mask)
+        sequence = C_SEQ.annotation(aap, default="generate").copy()
+        newly_conditioned = seq_cond_mask & ~existing_seq_cond_mask
+        sequence[newly_conditioned] = C_SEQ.ground_truth_value(aap)[newly_conditioned]
+        C_SEQ.set_annotation(aap, sequence)
         data["atom_array"] = aap
-        return data
-
-
-class FreezeConditionAnnotations(Transform):
-    """Populate condition annotations from the current array at conditioned positions.
-
-    Currently, includes (see `STRUCTURE_DERIVED_CONDITION_TARGETS` in `conditioning_utils.py`):
-        - C_SEQ: sequence conditioning
-        - C_CRD: absolute coordinate conditioning
-    """
-
-    def forward(self, data: dict) -> dict:
-        aap = as_atom_array_plus(data["atom_array"])
-        data["atom_array"] = freeze_ground_truth_condition_annotations(aap)
         return data
 
 
@@ -993,20 +956,14 @@ class CanonicalizeSequenceProbabilityConditions(Transform):
         seq_mask = C_SEQ.mask(aap, default="generate")
         residue_seq = np.maximum.reduceat(seq_mask, starts).astype(bool)
         seq_atoms = spread_residue_wise(aap, residue_seq)
+        sequence = C_SEQ.annotation(aap, default="generate")
 
-        categories = set(aap.get_annotation_categories())
         resolved: dict[type, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
         conflicts: list[str] = []
         for condition in SEQUENCE_PROBABILITY_CONDITIONS:
-            has_annotation = condition.full_name in categories
-            has_mask = condition.mask_name in categories
-            if has_annotation != has_mask:
-                missing = condition.mask_name if has_annotation else condition.full_name
-                raise ValueError(f"{condition.name} is present without its paired annotation '{missing}'")
-
             probability = condition.annotation(aap, default="generate").astype(np.float32)
             mask = condition.mask(aap, default="generate").copy()
-            expected = (aap.res_name == condition.token_name).astype(np.float32)
+            expected = (sequence == condition.token_name).astype(np.float32)
             conflict = seq_atoms & mask & ~np.isclose(probability, expected)
             if conflict.any():
                 n_conflicting_residues = int(np.maximum.reduceat(conflict, starts).sum())
@@ -1021,16 +978,13 @@ class CanonicalizeSequenceProbabilityConditions(Transform):
         for condition, (probability, mask, expected) in resolved.items():
             probability[seq_atoms] = expected[seq_atoms]
             mask[seq_atoms] = True
-            probability[~mask] = 0.0
+            probability[~mask] = np.nan
+            # Remove stored columns before writing so Biotite preserves the normalized float32 dtype.
+            for name in (condition.full_name, *condition.aliases):
+                if name in aap.get_annotation_categories():
+                    aap.del_annotation(name)
             if mask.any():
-                # Biotite promotes replacements to the old dtype unless the column is removed first.
-                aap.del_annotation(condition.full_name)
                 condition.set_annotation(aap, probability)
-                condition.set_mask(aap, mask)
-            elif condition.full_name in categories:
-                # Do not retain globally unset columns in annotated CIF output.
-                aap.del_annotation(condition.full_name)
-                aap.del_annotation(condition.mask_name)
 
         data["atom_array"] = aap
         return data
@@ -1380,7 +1334,7 @@ def _build_design_featurize_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
-    # Internal-coordinate-only conditioning ablation
+    # Internal-coordinate-only conditioning ablation (training only)
     convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
@@ -1412,7 +1366,7 @@ def _build_design_featurize_pipeline(
 
     T += FeaturizeExpandedSegments()
 
-    if convert_absolute_to_internal:
+    if not is_inference and convert_absolute_to_internal:
         T += ConvertAbsoluteToInternalCoords()
 
     # NA-SS annotation follows the same high-level pattern as other conditioning:
@@ -1421,13 +1375,12 @@ def _build_design_featurize_pipeline(
         T += FeaturizeNucleicAcidSecondaryStructure()
 
     # Create in-context conditioning corresponding to unindexed regions
+    T += MaterializeInternalCoords()
     T += UnindexFlaggedTokens()
     # ... after the last transform that changes atom count or order, so indices stay valid
     if precompute_atom_permutation:
         T += PrecomputeAtomPermutation()
-    # Populate C_CRD / C_SEQ annotations while the array still holds the original input, so they
-    # refer to the original motif rather than the generated values.
-    T += FreezeConditionAnnotations()
+
     # Prepare coordinates for noising (without modifying the ground truth)
     # ... add placeholder coordinates for noising
     T += CopyAnnotation(annotation_to_copy="coord", new_annotation="coord_to_be_noised")
@@ -1515,10 +1468,12 @@ def build_design_train_pipeline(
     path_length_search_cutoff: int | None = None,
     # Per-chain centroid conditioning (training-only; None disables)
     centroid_kwargs: dict | None = None,
-    # Internal-coordinate-only conditioning ablation
+    # Internal-coordinate-only conditioning ablation (training only)
     convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
+    sampling_transforms: list[Transform] | None = None,
+    expandable_segment_rng: np.random.Generator | None = None,
 ) -> Transform:
     """Build training pipeline for protein design tasks.
 
@@ -1559,13 +1514,19 @@ def build_design_train_pipeline(
                                  "transform": UnconditionalTask(...)
                              }
                          }
-        is_inference: If True, skips augmentation
+        is_inference: If True, realizes expandable segments and skips augmentation.
+        sampling_transforms: Optional transforms applied in order after source annotation and
+            inference-only segment expansion, before cleanup and featurization.
+        expandable_segment_rng: Optional local RNG for inference-only segment expansion.
         metrics_tags: Tags to use for determining which Metrics apply to the outputs of this pipeline.
     Returns:
         Compose of transforms for training pipeline
     """
 
-    transforms = []
+    transforms = [AddSrcComponentAnnotation()]
+    if is_inference:
+        transforms.append(RealizeExpandableSegments(rng=expandable_segment_rng))
+    transforms.extend(sampling_transforms or [])
     transforms += _build_design_clean_and_sample_pipeline(
         crop_size=crop_size,
         crop_size_range=crop_size_range,
@@ -1602,11 +1563,11 @@ def build_design_validation_pipeline(
     metrics_tags: list[str] | set[str] | None = None,
     residue_names_supporting_local_latents: list | set = RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
     path_length_search_cutoff: int | None = None,
-    # Internal-coordinate-only conditioning ablation
-    convert_absolute_to_internal: bool = False,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,
     precompute_atom_permutation: bool = False,
+    sampling_transforms: list[Transform] | None = None,
+    expandable_segment_rng: np.random.Generator | None = None,
 ) -> Transform:
     """Build the validation/inference pipeline.
 
@@ -1621,6 +1582,9 @@ def build_design_validation_pipeline(
         path_length_search_cutoff: BFS depth limit for token bond-graph path lengths.
             ``None`` resolves all paths; connected paths above a finite cutoff use cutoff + 1.
             Generation inherits the checkpoint's training cutoff unless explicitly overridden.
+        sampling_transforms: Optional transforms applied immediately after segment expansion,
+            before cleanup and featurization. Omit when validating inputs without sampling.
+        expandable_segment_rng: Optional local RNG for segment expansion during prevalidation.
     """
     return build_design_train_pipeline(
         is_inference=True,
@@ -1628,7 +1592,8 @@ def build_design_validation_pipeline(
         apply_na_ss=bool(metrics_tags is not None and "na_ss_conditioning" in set(metrics_tags)),
         residue_names_supporting_local_latents=residue_names_supporting_local_latents,
         path_length_search_cutoff=path_length_search_cutoff,
-        convert_absolute_to_internal=convert_absolute_to_internal,
         loss_weight_cfg=loss_weight_cfg,
         precompute_atom_permutation=precompute_atom_permutation,
+        sampling_transforms=sampling_transforms,
+        expandable_segment_rng=expandable_segment_rng,
     )

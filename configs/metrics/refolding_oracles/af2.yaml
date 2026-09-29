@@ -18,7 +18,7 @@ oracle:
 oracle_ppi:
   _target_: rfproteina.metrics.oracles.af2_oracle.AF2Oracle
   oracle_name: af2_ppi
-  template_query: "mask_coordinate_1_atom"
+  template_query: "sa_mask('C_CRD')"
   model_name: model_1_multimer_v3
   aggregation: [median]
   frac_under_thresholds:

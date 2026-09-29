@@ -171,10 +171,16 @@ def test_inverse_folding_conditions(atom_array_fixture):
     sidechain_mask = atom_array.is_standard_aa & ~atom_array.is_protein_backbone
     assert not C_CRD.mask(atom_array)[sidechain_mask].any()
 
-    # Non-standard residues (ligands, modified AAs) should have both coord and sequence
+    # Resolved atoms in non-standard residues (ligands, modified AAs) should have both coord and sequence.
+    # Missing coordinates cannot imply coordinate conditioning now that the mask is derived from the values.
     non_standard_mask = ~atom_array.is_standard_aa
+    resolved_non_standard_mask = non_standard_mask & np.isfinite(atom_array.coord).any(axis=1)
+    unresolved_non_standard_mask = non_standard_mask & ~np.isfinite(atom_array.coord).any(axis=1)
+    if resolved_non_standard_mask.any():
+        assert C_CRD.mask(atom_array)[resolved_non_standard_mask].all()
+    if unresolved_non_standard_mask.any():
+        assert not C_CRD.mask(atom_array)[unresolved_non_standard_mask].any()
     if non_standard_mask.any():
-        assert C_CRD.mask(atom_array)[non_standard_mask].all()
         assert C_SEQ.mask(atom_array)[non_standard_mask].all()
 
     # Standard AAs should NOT have sequence conditioning

@@ -14,9 +14,8 @@ sharing exports receive plain CIFs. Keep one encoding per design in each directo
 | Accessor | CIF column | Description |
 | --- | --- | --- |
 | `SA_SRC.annotation` | `annotation_src-component_1_atom` | Which part of the input spec the atom originated from (`.` if unassigned) |
-| `SA_CRDSRC.mask` | `mapped_to_coordinate_conditioned_region` | `True` for atoms corresponding to a coordinate-conditioned motif |
-| `SA_CRDSRC.annotation` | `annotation_src-coordinate-conditioned-region_1_atom` | Which input motif region provided each atom's coordinate conditioning (`.` if none) |
-| `SA_CRDGRPSRC.annotation` | `annotation_src-coord-group_1_atom` | Which input `CoordinateGroup` the atom came from (`-1` if none) |
+| `SA_CRDSRC.annotation` | `annotation_src-coordinate-conditioned-region_1_atom` | Which input motif region provided each atom's coordinate conditioning (`.` if none); this value also determines `SA_CRDSRC.mask` |
+| `SA_IDXGRPSRC.annotation` | `annotation_src-index-group_1_atom` | Original unindexed `IndexGroup` of a mapped motif token (`-1` if none) |
 | `SA_UII.annotation` | `is_unindexed_insertion` | `True` for atoms corresponding to an unindexed input motif |
 
 The aliases live in `rfproteina.utils.standard_annotations`. Read them off a parsed structure with
@@ -42,7 +41,7 @@ from rfproteina.utils.parse_presets import ANNOTATED_CIF
 aa = parse("design.cif", config=ANNOTATED_CIF)["assemblies"]["1"][0]
 
 # Annotation names are variables in the query; index the array with the mask to subset it.
-motif  = aa[aa.mask("mapped_to_coordinate_conditioned_region & ~hetero")]  # the conditioned motif
+motif  = aa[aa.mask("sa_mask('SA_CRDSRC') & ~hetero")]  # the conditioned motif
 ligand = aa[aa.mask("hetero")]                                             # the ligand
 ca     = aa[aa.mask("(chain_id == 'A') & (atom_name == 'CA')")]            # the backbone trace
 ```

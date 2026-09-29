@@ -11,6 +11,7 @@ from atomworks.io.config import ParseConfig
 from atomworks.io.parser import STANDARD_PARSER_ARGS, parse
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+from atomworks.io.utils.query import QueryExpression
 from atomworks.io.utils.testing import assert_same_atom_array_or_stack
 from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR, C_SEQ
 from atomworks.ml.conditions.base import ConditionConflictError
@@ -20,8 +21,9 @@ from atomworks.ml.utils.testing import cached_parse
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 
-from rfproteina.conditions import C_CRDGRP, C_IDXGRP
-from rfproteina.datapipes.pipeline import FreezeConditionAnnotations, _build_design_clean_and_sample_pipeline
+from rfproteina.conditions import C_CRDGRP, C_IDXGRP, C_INTCRD
+from rfproteina.datapipes.pipeline import _build_design_clean_and_sample_pipeline
+from rfproteina.transforms.internal_coords import MaterializeInternalCoords
 from rfproteina.transforms.unindexing import (
     UnindexFlaggedTokens,
     annotate_unindexed_insertion,
@@ -101,6 +103,58 @@ def assert_same_atom_array_with_group_equivalence(
 _cif_parser_args = STANDARD_PARSER_ARGS | {"hydrogen_policy": "remove"}
 
 
+@pytest.mark.parametrize(
+    "internal",
+    [[True, False, False], [True, True, False], [False, True, False]],
+    ids=["indexed", "mixed", "unindexed"],
+)
+@pytest.mark.parametrize("storage", ["canonical", "alias", "alias_and_canonical"])
+def test_training_unindexing_preserves_internal_targets(internal: list[bool], storage: str) -> None:
+    aa = as_atom_array_plus(AtomArray(3))
+    aa.chain_id[:] = "A"
+    aa.res_id = np.arange(1, 4)
+    aa.res_name[:] = "ALA"
+    aa.atom_name[:] = "CA"
+    aa.element[:] = "C"
+    aa.coord = np.arange(9, dtype=np.float32).reshape(3, 3)
+    aa.set_annotation("chain_iid", np.full(3, "A_1"))
+    aa.set_annotation("molecule_iid", np.zeros(3, dtype=int))
+    aa.set_annotation("is_polymer", np.ones(3, dtype=bool))
+    aa.set_annotation("atomize", np.zeros(3, dtype=bool))
+    aa.set_annotation("within_chain_source_res_idx", np.arange(3))
+    add_global_token_id_annotation(aa)
+    C_IDX.set_annotation(aa, np.array([True, False, True]))
+    C_IDXGRP.set_annotation(aa, C_IDXGRP.default_annotation(aa))
+    internal = np.asarray(internal)
+    C_CRD.set_annotation_from_ground_truth(aa, ~internal)
+    groups = np.where(internal, 1, C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
+    C_CRDGRP.set_annotation(aa, groups)
+    targets = np.where(internal[:, None], aa.coord + 17, np.nan)
+    C_INTCRD.set_annotation(aa, targets)
+    conditions = (C_IDX, C_IDXGRP, C_CRD, C_CRDGRP, C_INTCRD)
+    if storage != "canonical":
+        for condition in conditions:
+            aa.set_annotation(condition.aliases[0], condition.annotation(aa).copy())
+            if storage == "alias":
+                aa.del_annotation(condition.full_name)
+
+    expected_groups = groups[[0, 1, 2, 1]].copy()
+    expected_groups[1] = C_CRDGRP.UNKNOWN_COORDS
+    expected_targets = targets[[0, 1, 2, 1]].copy()
+    expected_targets[1] = np.nan
+
+    pipeline = Compose([MaterializeInternalCoords(), UnindexFlaggedTokens()])
+    out = pipeline({"atom_array": aa, "is_inference": False})["atom_array"]
+
+    np.testing.assert_array_equal(C_CRDGRP.annotation(out), expected_groups)
+    np.testing.assert_array_equal(C_INTCRD.annotation(out), expected_targets)
+    np.testing.assert_array_equal(C_IDX.annotation(out), [True, True, True, False])
+    for condition in conditions:
+        for alias in condition.aliases:
+            assert alias not in out.get_annotation_categories()
+            np.testing.assert_array_equal(QueryExpression(f"sa_mask('{alias}')").mask(out), condition.mask(out))
+
+
 def _make_unindexed_data(pdb_id: str, seed: int = 42, p_split_group: float = 0.0):
     """Build a data dict with 6 manually-unindexed protein tokens and dense random conditions.
 
@@ -130,7 +184,7 @@ def _make_unindexed_data(pdb_id: str, seed: int = 42, p_split_group: float = 0.0
     # Set C_IDX = False for the chosen atoms
     idx_mask = C_IDX.mask(aa, default="generate").copy()
     idx_mask[atoms_to_unindex] = False
-    C_IDX.set_mask(aa, idx_mask)
+    C_IDX.set_annotation(aa, idx_mask)
 
     # Set C_IDXGRP via sample_unindexed_groups (handles indexed + single contiguous unindexed block)
     C_IDXGRP.set_annotation(aa, sample_unindexed_groups(aa, p_split_group=p_split_group))
@@ -138,12 +192,20 @@ def _make_unindexed_data(pdb_id: str, seed: int = 42, p_split_group: float = 0.0
     # Apply dense random conditioning masks so we test condition preservation thoroughly
     rng = np.random.default_rng(seed)
     n_atoms = aa.array_length()
-    C_CRD.set_mask(aa, rng.random(n_atoms) < 0.7)
-    C_SEQ.set_mask(aa, rng.random(n_atoms) < 0.7)
+    coord_mask = rng.random(n_atoms) < 0.7
+    C_CRD.set_annotation(
+        aa,
+        np.where(coord_mask[:, None], C_CRD.ground_truth_value(aa), C_CRD.default_annotation(aa)),
+    )
+    sequence_mask = rng.random(n_atoms) < 0.7
+    C_SEQ.set_annotation(
+        aa,
+        np.where(sequence_mask, C_SEQ.ground_truth_value(aa), C_SEQ.default_annotation(aa)),
+    )
 
     aa.set_annotation("within_index_group_res_idx", aa.within_chain_source_res_idx.copy())
-    C_NTR.set_mask(aa, C_NTR.mask(aa, default="generate"))
-    C_CTR.set_mask(aa, C_CTR.mask(aa, default="generate"))
+    C_NTR.set_annotation(aa, C_NTR.annotation(aa, default="generate"))
+    C_CTR.set_annotation(aa, C_CTR.annotation(aa, default="generate"))
 
     # Reset indices to zero to avoid any bias.
     for index_group in np.unique(C_IDXGRP.annotation(aa, default="generate")):
@@ -225,7 +287,7 @@ def test_appended_tokens_match_original_unindexed_atoms(pdb_id: str, p_split_gro
         assert_same_atom_array_with_group_equivalence(
             orig_unindexed,
             appended,
-            exclude_annots={C_NTR.mask_name, C_CTR.mask_name},
+            exclude_annots={C_NTR.full_name, C_CTR.full_name},
         )
         assert not C_NTR.mask(appended, default="generate").any()
         assert not C_CTR.mask(appended, default="generate").any()
@@ -275,7 +337,11 @@ def _load_annotate_fixture() -> AtomArray:
         aa = parse(
             str(cif),
             config=ParseConfig.from_preset(
-                "rcsb", load_standard_annotations=True, add_missing_atoms=False, convert_mse_to_met=False
+                "rcsb",
+                load_standard_annotations=True,
+                return_atom_array_plus=True,
+                add_missing_atoms=False,
+                convert_mse_to_met=False,
             ),
         )["asym_unit"][0]
     aa = as_atom_array_plus(aa)
@@ -310,21 +376,24 @@ def test_annotate_unindexed_insertion_reapplies_conditioning() -> None:
     for tid, motif_res in ((25, "THR"), (26, "GLN"), (27, "ALA"), (8, "SER"), (5, "ARG"), (4, "TRP")):
         assert seq[out.token_id == tid][0] == motif_res
 
+    for source_tid, target_tid in _ANNOTATE_MAPPING.items():
+        source = aa[aa.token_id == source_tid]
+        if C_CRDGRP.is_internal(source).any():
+            target = out[out.token_id == target_tid]
+            np.testing.assert_array_equal(C_INTCRD.annotation(target), C_INTCRD.annotation(source))
+
 
 @pytest.mark.parametrize("pdb_id", ["6lyz", "5ocm"])
-def test_freeze_populates_unindexed_source_annotations(pdb_id: str) -> None:
-    """The value annotate_unindexed_insertion reads: after UnindexFlaggedTokens + freeze, the unindexed
-    source carries populated C_CRD/C_SEQ annotations (frozen from its coord/res_name). UnindexFlaggedTokens
-    alone does not -- freeze does -- so the transfer must read the annotation, not the live coord/res_name."""
+def test_unindexing_preserves_source_condition_annotations(pdb_id: str) -> None:
+    """Unindexed sources retain the populated C_CRD/C_SEQ annotations used during insertion transfer."""
     _snapshot, _train, data_infer = _make_unindexed_data(pdb_id)
-    aa = FreezeConditionAnnotations()(UnindexFlaggedTokens()(data_infer))["atom_array"]
+    aa = UnindexFlaggedTokens()(data_infer)["atom_array"]
 
     unindexed = ~C_IDX.mask(aa, default="generate")
     crd_masked = C_CRD.mask(aa, default="generate") & unindexed
     seq_masked = C_SEQ.mask(aa, default="generate") & unindexed
     assert crd_masked.any() and seq_masked.any(), "expected coord/seq-conditioned unindexed atoms"
-    # Freeze copies the live coord / res_name into the annotation -- equality proves the annotation is
-    # populated (not the empty default); an unresolved atom whose coord is NaN is NaN in both.
+    # Equality proves the annotation remains populated rather than being replaced by its empty default.
     assert np.allclose(C_CRD.annotation(aa, default="generate")[crd_masked], aa.coord[crd_masked], equal_nan=True)
     assert (C_SEQ.annotation(aa, default="generate")[seq_masked] == aa.res_name[seq_masked]).all()
 
@@ -335,8 +404,7 @@ def test_annotate_unindexed_insertion_raises_on_conditioning_conflict() -> None:
     # Pre-condition target token 25 (the THR motif token 53 maps here) with a different sequence identity,
     # so transferring the motif's frozen THR onto an already-ALA-conditioned target contradicts.
     target = aa.token_id == 25
-    C_SEQ.set_mask(aa, C_SEQ.mask(aa, default="generate") | target)
-    seq_ann = C_SEQ.annotation(aa, default="generate")
+    seq_ann = C_SEQ.annotation(aa, default="generate").copy()
     seq_ann[target] = "ALA"
     C_SEQ.set_annotation(aa, seq_ann)
     with pytest.raises(ConditionConflictError):

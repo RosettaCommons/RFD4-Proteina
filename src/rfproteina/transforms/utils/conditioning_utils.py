@@ -1,8 +1,7 @@
 import numpy as np
 import torch
 from atomworks.io.utils.annotator import ensure_annotations
-from atomworks.io.utils.atom_array_plus import AnnotationList2D
-from atomworks.ml.conditions import C_CRD, C_DIS, C_SEQ
+from atomworks.ml.conditions import C_CRD
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.utils.geometry import random_rigid_augmentation
 from biotite.structure import superimpose
@@ -15,42 +14,6 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.standard_annotations import SA_CWI
 
 global_logger = RankedLogger(__name__, rank_zero_only=False)
-
-
-STRUCTURE_DERIVED_CONDITION_TARGETS: dict[type[ConditionBase], str] = {
-    C_SEQ: "res_name",
-    C_CRD: "coord",
-}
-"""Conditions whose target is read off the structure, mapped to its AtomArray attribute."""
-
-
-def freeze_ground_truth_condition_annotations(atom_array: AtomArray) -> AtomArray:
-    """Freeze structure-derived condition targets into their stored annotations.
-
-    NOTE: Such an operation is only need for annotations that would otherwise be directly
-    read from the AtomArray attributes (e.g. C_SEQ, C_CRD). Other conditions, like
-    hydrogen bond annotations, etc. would already be stored as distinct annotations rather
-    than masks and do not need to be frozen.
-    """
-    for cond, target_attr in STRUCTURE_DERIVED_CONDITION_TARGETS.items():
-        mask = cond.mask(atom_array, default="generate")
-        if not mask.any():
-            # No atoms are masked for this condition: skip
-            continue
-        gt = getattr(atom_array, target_attr)
-        annotation = cond.annotation(atom_array, default="generate")
-
-        # Freeze only masked positions whose annotation is still empty; default_mask is the
-        # annotation-derived "is set" mask, so a persisted annotation (re-fed design) is left alone.
-        need = mask & ~cond.default_mask(atom_array)
-        if not need.any():
-            continue
-
-        # Broadcast over any extra axes (e.g. coordinates) so the value copies to every relevant position
-        need = need.reshape((-1,) + (1,) * (gt.ndim - 1))
-        cond.set_annotation(atom_array, np.where(need, gt, annotation))
-
-    return atom_array
 
 
 def sample_island_tokens(
@@ -128,43 +91,6 @@ def sample_island_tokens(
 #################################################################################
 # Utility functions
 #################################################################################
-
-
-def replace_2d_distance_conditioning_with_3d_coordinate_conditioning(
-    atom_array: AtomArray,
-    mask: np.ndarray,
-) -> AtomArray:
-    """
-    Removes 2D distance conditioning from masked atoms in the atom array and instead adds
-    absolute coordinate conditioning
-
-    Args:
-        atom_array: AtomArrayPlus
-        mask: Bool[Array, "L"]
-
-    Returns:
-        AtomArrayPlus
-    """
-    assert len(mask) == atom_array.array_length(), "Mask must be the same length as the atom array"
-    if not mask.any():
-        return atom_array
-
-    # remove 2D distance conditioning
-    conditioning_inds = np.where(mask)[0]
-    annot_2d = C_DIS.annotation(atom_array, default="generate")
-    pairs, values = annot_2d.pairs, annot_2d.values
-    pairs_to_discard_mask = np.any(np.isin(pairs, conditioning_inds), axis=1)
-    pairs = pairs[~pairs_to_discard_mask]
-    values = values[~pairs_to_discard_mask]
-    C_DIS.set_annotation(
-        atom_array,
-        AnnotationList2D(n_atoms=atom_array.array_length(), pairs=pairs, values=values),
-    )
-
-    nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
-    mask = mask & ~nan_coord_mask
-    C_CRD.set_mask(atom_array, mask)
-    return atom_array
 
 
 def sample_unindexed_groups(
@@ -278,98 +204,127 @@ def sample_unindexed_groups(
 
 def set_specified_conditions_to_default(
     atom_array: AtomArray,
-    conditions: list[ConditionBase] | dict[ConditionBase, dict[str, bool]],
+    conditions: list[type[ConditionBase]],
 ) -> AtomArray:
-    """Sets the annotations and/or masks of the specified Conditions to their default values.
+    """Set the specified Conditions' sole annotations to their default values.
 
     This is done by first removing all the Conditions and then iteratively re-adding the defaults, to avoid any affect
     on the computation of defaults due to the presence of non-default Conditions to be removed.
 
     Args:
         atom_array (AtomArray): The AtomArray to modify.
-        conditions (list[ConditionBase] | dict[ConditionBase, dict[str, bool]]): The Conditions to
-            reset. If a list, all specified Conditions will have their existing masks/annotations
-            reset to default. If a dict, the keys are the Conditions to reset, and the values are
-            dicts with keys "mask" and "annotation" indicating whether to add the corresponding
-            defaults, whether present or not.
+        conditions: The Conditions to reset.
     """
-
-    condition_dict = {}
     for condition in conditions:
         if not issubclass(condition, ConditionBase):
             raise ValueError(f"Condition {condition} must be a subclass of ConditionBase.")
 
-    # Convert inputs to a standardized format
-    if isinstance(conditions, dict):
-        for val_dict in conditions.values():
-            if not isinstance(val_dict, dict) or set(val_dict.keys()) != {
-                "mask",
-                "annotation",
-            }:
-                raise ValueError(f"Condition dict value {val_dict} must be a dict with keys 'mask' and 'annotation'.")
-        condition_dict = conditions
-    elif isinstance(conditions, list):
-        for condition in conditions:
-            condition_dict[condition] = {"mask": False, "annotation": False}
-            if condition.get_mask_name() in atom_array.get_annotation_categories():
-                condition_dict[condition]["mask"] = True
-            if condition.get_full_name() in atom_array.get_annotation_categories():
-                condition_dict[condition]["annotation"] = True
+    conditions_to_reset = [condition for condition in conditions if condition.has_annotation(atom_array)]
 
     # Remove all conditioning, so that we can compute all of the default annotations independently
-    for cond in condition_dict:
-        if condition_dict[cond]["mask"]:
-            atom_array.del_annotation(cond.get_mask_name())
-        if condition_dict[cond]["annotation"]:
-            atom_array.del_annotation(cond.get_full_name())
+    categories = set(atom_array.get_annotation_categories())
+    for condition in conditions_to_reset:
+        for name in (condition.full_name, *condition.aliases):
+            if name in categories:
+                atom_array.del_annotation(name)
 
     # Now that we have an AtomArray with no Condition annotations, compute the default values
     # NOTE: We assume that order of applying defaults doesn't matter -- otherwise, the Condition default is not robust.
-    for cond in condition_dict:
-        if condition_dict[cond]["mask"]:
-            cond.set_mask(atom_array, cond.default_mask(atom_array))
-        if condition_dict[cond]["annotation"]:
-            cond.set_annotation(atom_array, cond.default_annotation(atom_array))
+    for condition in conditions_to_reset:
+        condition.set_annotation(atom_array, condition.default_annotation(atom_array))
 
     return atom_array
 
 
 def convert_to_internal_coords(atom_array: AtomArray, mask: np.ndarray) -> AtomArray:
-    """Convert the given masked region of the atom array from global to internal coordinate conditioning.
+    """Assign the masked region to a new internal-coordinate group and clear its absolute targets.
 
-    Atoms in ``mask`` with NaN coordinates are dropped from the mask.
+    Atoms without finite live coordinates are excluded. Targets are materialized
+    from live coordinates by ``MaterializeInternalCoords`` in the featurization pipeline.
+    Regrouping must not invalidate existing saved internal targets.
     """
     mask = mask & np.isfinite(atom_array.coord).all(axis=1)
+    if not mask.any():
+        return atom_array
 
     # Absolute coord conditioning mask is False for the new internal coord region
-    coord_condition_mask = C_CRD.mask(atom_array, default="generate")
-    new_coord_condition_mask = coord_condition_mask & ~mask
-    C_CRD.set_mask(atom_array, new_coord_condition_mask)
-
-    # This annotation is rarely used, but if present it should have NaNs for internally-conditioned regions
-    if C_CRD.full_name in atom_array.get_annotation_categories():
-        absolute_coord_annotation = C_CRD.annotation(atom_array, default="raise")
-        absolute_coord_annotation[mask, :] = np.nan
-        C_CRD.set_annotation(atom_array, absolute_coord_annotation)
+    coordinate = C_CRD.annotation(atom_array, default="generate").copy()
+    coordinate[mask] = C_CRD.default_annotation(atom_array)[mask]
+    C_CRD.set_annotation(atom_array, coordinate)
 
     # Create a new coord group for the new internal coord region
-    coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
-    coord_groups[mask] = coord_groups.max() + 1 if coord_groups.max() > 0 else 1
+    coord_groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
+    new_group_id = int(coord_groups.max()) + 1 if coord_groups.max() > 0 else 1
+    coord_groups[mask] = new_group_id
     C_CRDGRP.set_annotation(atom_array, coord_groups)
 
-    # Set internal coord conditioning mask to True for the new internal coord region
-    internal_coords_mask = C_INTCRD.mask(atom_array, default="generate")
-    internal_coords_mask = internal_coords_mask | mask
-    C_INTCRD.set_mask(atom_array, internal_coords_mask)
+    return atom_array
 
-    # Provide the centered and randomly-rotated ground-truth coords for the new internal coord region
-    internal_coord_annotation = C_INTCRD.annotation(atom_array, default="generate")
-    global_coords = atom_array.coord[mask, :]
-    centered_coords = global_coords - global_coords.mean(axis=0, keepdims=True)
-    internal_coords = random_rigid_augmentation(torch.from_numpy(centered_coords)[None], batch_size=1, s=0)[0].numpy()
-    internal_coord_annotation[mask, :] = internal_coords
-    C_INTCRD.set_annotation(atom_array, internal_coord_annotation)
 
+def separate_coordinate_groups(arrays: list[AtomArray]) -> list[AtomArray]:
+    """Copy independent inputs into disjoint internal-coordinate group namespaces."""
+    result = []
+    next_id = 1
+    for original in arrays:
+        arr = original.copy()
+        groups = C_CRDGRP.annotation(arr, default="generate").copy()
+        old = groups.copy()
+        internal = C_CRDGRP.is_internal(arr)
+        if C_INTCRD.has_annotation(arr) and not np.isnan(C_INTCRD.annotation(arr)[~internal]).all():
+            raise ValueError("Internal coordinate targets exist outside internal coordinate groups.")
+        for gid in np.unique(old[internal]):
+            groups[old == gid] = next_id
+            next_id += 1
+        C_CRDGRP.set_annotation(arr, groups)
+        result.append(arr)
+    return result
+
+
+def set_absolute_coordinate_conditioning(atom_array: AtomArray, indices: np.ndarray, active: bool) -> None:
+    """Edit input absolute coordinates, clearing affected saved internal targets for rematerialization."""
+    groups = C_CRDGRP.annotation(atom_array, default="generate").copy()
+    coords = C_CRD.annotation(atom_array, default="generate").copy()
+    coords[indices] = atom_array.coord[indices] if active else C_CRD.default_annotation(atom_array)[indices]
+    C_CRD.set_annotation(atom_array, coords)
+    affected = indices if active else indices[~C_CRDGRP.is_internal(atom_array)[indices]]
+    groups[affected] = C_CRDGRP.default_annotation(atom_array)[affected]
+    C_CRDGRP.set_annotation(atom_array, groups, on_internal_coord_mismatch="clear")
+
+
+def materialize_internal_coords(atom_array: AtomArray) -> AtomArray:
+    """Fill entirely unset groups from live coordinates; preserve complete saved targets.
+
+    Absolute targets must agree with reserved group labels. Partial, nonfinite,
+    and orphan targets are errors; complete saved internal targets are never rebuilt.
+    """
+    groups = C_CRDGRP.annotation(atom_array, default="generate")
+    if np.any(groups < C_CRDGRP.UNKNOWN_COORDS):
+        raise ValueError("Coordinate groups must be -1 (unknown), 0 (absolute), or positive (internal).")
+    if np.any(groups > C_CRDGRP.MAX_GROUP_ID):
+        raise ValueError(f"Coordinate group IDs must not exceed {C_CRDGRP.MAX_GROUP_ID} (the int16 model limit).")
+    absolute = C_CRD.annotation(atom_array, default="generate")
+    absolute_present = np.isfinite(absolute).all(axis=1)
+    if not np.all(absolute_present | np.isnan(absolute).all(axis=1)):
+        raise ValueError("Absolute coordinate targets must be entirely finite or entirely unset (NaN) per atom.")
+    if not np.array_equal(absolute_present, groups == C_CRDGRP.KNOWN_ABSOLUTE_COORDS):
+        raise ValueError("Absolute coordinate targets must exist exactly on coordinate group 0.")
+    payload = C_INTCRD.annotation(atom_array, default="generate").copy()
+    internal = C_CRDGRP.is_internal(atom_array)
+    if not np.isnan(payload[~internal]).all():
+        raise ValueError("Internal coordinate targets exist outside internal coordinate groups.")
+    for gid in np.unique(groups[internal]):
+        members = groups == gid
+        saved = payload[members]
+        if np.isfinite(saved).all():
+            continue
+        if not np.isnan(saved).all():
+            raise ValueError(f"Coordinate group {gid} has incomplete or nonfinite saved internal coordinate targets.")
+        coords = atom_array.coord[members]
+        if not np.isfinite(coords).all():
+            raise ValueError(f"Coordinate group {gid} needs finite live coordinates to materialize its targets.")
+        centered = coords - coords.mean(axis=0, keepdims=True)
+        payload[members] = random_rigid_augmentation(torch.from_numpy(centered)[None], batch_size=1, s=0)[0].numpy()
+    C_INTCRD.set_annotation(atom_array, payload)
     return atom_array
 
 
@@ -378,7 +333,7 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray) -> AtomArray
 
     Aligns each internally-conditioned group to the model-generated coordinates before insertion.
     """
-    intcrd_mask = C_INTCRD.mask(atom_array)
+    intcrd_mask = C_CRDGRP.is_internal(atom_array)
     if not intcrd_mask.any():
         return atom_array
 
@@ -390,9 +345,6 @@ def insert_internal_coord_conditioned_groups(atom_array: AtomArray) -> AtomArray
     # Find unique internal coordinate groups (exclude absolute coords and unknown coords)
     coord_groups = C_CRDGRP.annotation(atom_array, default="generate")
     unique_groups = np.unique(coord_groups[intcrd_mask])
-    unique_groups = unique_groups[
-        (unique_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS) & (unique_groups != C_CRDGRP.UNKNOWN_COORDS)
-    ]
 
     # Align and insert each internal coordinate group separately
     for group_id in unique_groups:
@@ -457,13 +409,8 @@ def align_atom_array_to_input_frame(atom_array: AtomArray, crdgrp_id: int | None
         if absolute_mask.any():
             anchor_mask = absolute_mask
         else:
-            intcrd_groups = np.unique(
-                coord_groups[
-                    cwi_valid
-                    & (coord_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
-                    & (coord_groups != C_CRDGRP.UNKNOWN_COORDS)
-                ]
-            )
+            is_internal = (coord_groups != C_CRDGRP.UNKNOWN_COORDS) & (coord_groups != C_CRDGRP.KNOWN_ABSOLUTE_COORDS)
+            intcrd_groups = np.unique(coord_groups[cwi_valid & is_internal])
             if intcrd_groups.size == 0:
                 return atom_array
             sizes = {int(g): int(((coord_groups == g) & cwi_valid).sum()) for g in intcrd_groups}
