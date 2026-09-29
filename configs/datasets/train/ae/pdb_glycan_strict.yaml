@@ -1,0 +1,23 @@
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/backend_blob@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - _self_
+
+probability: 1.0
+dataset:
+  memory_map: true
+  name: pdb_glycan_strict
+  data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
+  filters:
+    - "passes_ae_audit == True"
+    - "deposition_date < '2024-01-01'"
+    - "glycan_experiment_split == 'train'"
+    - "has_in_vocabulary_glycan == True"
+  loader:
+    _target_: rfproteina.datapipes.glycan.create_glycan_loader
+    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
+    record_id_colname: path
+    assembly_id_colname: assembly_id
+    parser_args:
+      _target_: rfproteina.utils.parse_presets.annotated_cif

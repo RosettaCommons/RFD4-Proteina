@@ -5,6 +5,7 @@ from typing import Any
 import networkx as nx
 import numpy as np
 import pandas as pd
+from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_POLYMER_RESIDUES, STANDARD_RNA
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.selection import get_residue_starts
@@ -14,7 +15,7 @@ from atomworks.ml.conditions import (
     C_SEQ,
 )
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
-from biotite.structure import get_residue_count, spread_residue_wise
+from biotite.structure import apply_residue_wise, get_residue_count, spread_residue_wise
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 from scipy.spatial import cKDTree
@@ -25,12 +26,13 @@ from rfproteina.conditions import (
     C_HPHOB,
     C_INTCRD,
     C_MCOORD,
-    C_NCYS,
     C_PICATION,
     C_PISTACK,
     C_RAS,
     C_SALT,
     C_SEC,
+    SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN,
+    SEQUENCE_PROBABILITY_CONDITIONS,
     ConditionBase,
     HBondEnum,
     MetalCoordEnum,
@@ -41,6 +43,7 @@ from rfproteina.conditions import (
 from rfproteina.metrics.sse_metrics import annotate_secondary_structure
 from rfproteina.transforms.utils.conditioning_utils import sample_island_tokens
 from rfproteina.utils.common import true_with_prob
+from rfproteina.utils.sequence_sampling import UNIFORM_DNA_PRIOR, UNIFORM_RNA_PRIOR, UNIPROT_AA_PRIOR
 
 
 def add_rasa_condition(
@@ -584,43 +587,239 @@ def add_secondary_structure_condition(
     return data
 
 
-def add_not_cysteine_condition(
-    data: dict[str, Any],
-    p_add_not_cysteine_condition: float = 0.0,
-    max_subsample_frac: float = 0.25,
-) -> dict[str, Any]:
-    """Mark a random subset of eligible (standard, non-CYS, non-sequence-conditioned) residues as "not cysteine".
+def _sample_truncated_power_law(alpha: float, maximum: int) -> int:
+    """Sample from ``P(N=k) ∝ k^-alpha`` for integer counts from one through ``maximum``."""
+    counts = np.arange(1, maximum + 1)
+    probabilities = counts.astype(float) ** -alpha
+    return int(np.random.choice(counts, p=probabilities / probabilities.sum()))
 
-    Always subsamples: marking every eligible residue would leave cysteines as the only
-    unmarked ones, leaking their positions.
+
+def diversify_sequence_conditioning(
+    data: dict[str, Any],
+    p_exact: float = 0.5,
+    p_zero_only: float = 1 / 6,
+    p_positive_only: float = 1 / 6,
+    p_zero_and_positive: float = 1 / 6,
+    dirichlet_concentration: float = 3.0,
+    exclusion_count_alpha: float = 2.0,
+    p_full_probability_vector: float = 0.75,
+    p_augment_unconditioned: float = 0.0,
+    min_augmentation_fraction: float = 0.05,
+    max_augmentation_fraction: float = 0.2,
+    p_zero_only_whole_chain: float = 0.0,
+) -> dict[str, Any]:
+    """Sample calibrated sequence conditions on residues whose identity is not otherwise revealed.
+
+    Existing exact conditions are diversified, while an independently sampled subset of
+    unconditioned residues can receive additional conditioning. Atomized residues and residues
+    with conditioned non-backbone coordinates are never modified. A zero-only draw may cover a
+    whole chain by broadcasting identities absent from that chain.
 
     Args:
-      p_add_not_cysteine_condition: Probability of adding this condition at all. Defaults to 0.0.
-      max_subsample_frac: Upper bound on the per-residue keep-fraction, drawn from
-        Uniform(0, max_subsample_frac).
+      data: Example dictionary containing an atom array.
+      p_exact: Relative weight for retaining ordinary exact sequence conditioning.
+      p_zero_only: Relative weight for exposing only exact-zero exclusions.
+      p_positive_only: Relative weight for exposing positive probabilities without exact zeros.
+      p_zero_and_positive: Relative weight for exposing both exclusions and positive probabilities.
+      dirichlet_concentration: Concentration of the restricted prior before truth size-biasing.
+      exclusion_count_alpha: Exponent of the truncated power-law distributions for exclusion and
+        exposed-positive counts. Counts range from one through the maximum valid for the mode.
+      p_full_probability_vector: Probability of exposing every positive probability; otherwise
+        expose a nonempty proper subset.
+      p_augment_unconditioned: Per-example probability of adding conditions to otherwise
+        unconditioned eligible residues.
+      min_augmentation_fraction: Minimum fraction of eligible unconditioned residues selected.
+      max_augmentation_fraction: Maximum fraction of eligible unconditioned residues selected.
+      p_zero_only_whole_chain: Conditional probability that a zero-only draw uses one shared set
+        of exclusions across a whole chain.
     """
-    if not true_with_prob(p_add_not_cysteine_condition):
+    mode_probabilities = np.asarray([p_exact, p_zero_only, p_positive_only, p_zero_and_positive], dtype=float)
+    if (mode_probabilities < 0).any() or mode_probabilities.sum() <= 0:
+        raise ValueError("Sequence-probability mode weights must be nonnegative with positive total weight.")
+    mode_probabilities /= mode_probabilities.sum()
+    if dirichlet_concentration <= 0:
+        raise ValueError(f"dirichlet_concentration must be positive, got {dirichlet_concentration}.")
+    if exclusion_count_alpha <= 0:
+        raise ValueError(f"exclusion_count_alpha must be positive, got {exclusion_count_alpha}.")
+    if not 0 <= p_full_probability_vector <= 1:
+        raise ValueError(f"p_full_probability_vector must lie in [0, 1], got {p_full_probability_vector}.")
+    if not 0 <= p_augment_unconditioned <= 1:
+        raise ValueError(f"p_augment_unconditioned must lie in [0, 1], got {p_augment_unconditioned}.")
+    if not 0 <= min_augmentation_fraction <= max_augmentation_fraction <= 1:
+        raise ValueError(
+            "Augmentation fractions must satisfy "
+            f"0 <= min <= max <= 1, got {min_augmentation_fraction} and {max_augmentation_fraction}."
+        )
+    if not 0 <= p_zero_only_whole_chain <= 1:
+        raise ValueError(f"p_zero_only_whole_chain must lie in [0, 1], got {p_zero_only_whole_chain}.")
+    if mode_probabilities[0] == 1.0 and p_augment_unconditioned == 0.0:
         return data
+    chain_event_probability = mode_probabilities[1] * p_zero_only_whole_chain
 
     atom_array = as_atom_array_plus(data["atom_array"])
-    ensure_annotations(atom_array, "is_standard_aa")
-
-    # Exclude sequence-conditioned residues (identity already leaked); sidechain-conditioned ones stay.
     seq_mask = C_SEQ.mask(atom_array, default="generate")
-    eligible_atoms = atom_array.is_standard_aa & (atom_array.res_name != "CYS") & ~seq_mask
 
-    residue_starts = get_residue_starts(atom_array)
-    residue_eligible = eligible_atoms[residue_starts]
-    if not residue_eligible.any():
+    ensure_annotations(
+        atom_array,
+        "atomize",
+        "is_protein_backbone",
+        "is_rna_backbone",
+        "is_dna_backbone",
+    )
+    residue_boundaries = get_residue_starts(atom_array, add_exclusive_stop=True)
+    residue_starts = residue_boundaries[:-1]
+    backbone = atom_array.is_protein_backbone | atom_array.is_rna_backbone | atom_array.is_dna_backbone
+    coord_conditioned = C_CRD.mask(atom_array, default="generate") | C_INTCRD.mask(atom_array, default="generate")
+    has_conditioned_nonbackbone = apply_residue_wise(atom_array, coord_conditioned & ~backbone, np.any)
+    must_keep_exact = apply_residue_wise(atom_array, atom_array.atomize, np.any) | has_conditioned_nonbackbone
+    has_probability_condition = apply_residue_wise(
+        atom_array,
+        np.logical_or.reduce(
+            [condition.mask(atom_array, default="generate") for condition in SEQUENCE_PROBABILITY_CONDITIONS]
+        ),
+        np.any,
+    )
+    residue_names = atom_array.res_name[residue_starts]
+    exact_condition = apply_residue_wise(atom_array, seq_mask, np.any)
+    locally_eligible = np.isin(residue_names, STANDARD_POLYMER_RESIDUES) & ~must_keep_exact & ~has_probability_condition
+    locally_augmented = np.zeros(len(residue_starts), dtype=bool)
+    augmentable = np.flatnonzero(locally_eligible & ~exact_condition)
+    if len(augmentable) and true_with_prob(p_augment_unconditioned):
+        augmentation_fraction = np.random.uniform(min_augmentation_fraction, max_augmentation_fraction)
+        n_to_augment = min(len(augmentable), int(np.ceil(augmentation_fraction * len(augmentable))))
+        if n_to_augment:
+            locally_augmented[np.random.choice(augmentable, size=n_to_augment, replace=False)] = True
+    locally_selected = locally_eligible & (exact_condition | locally_augmented)
+
+    modes = np.full(len(residue_starts), -1, dtype=np.int8)
+    whole_chain_selected = np.zeros(len(residue_starts), dtype=bool)
+    condition_values: dict[type[ConditionBase], np.ndarray] = {}
+    condition_masks: dict[type[ConditionBase], np.ndarray] = {}
+    polymer_specs = (
+        (STANDARD_AA, UNIPROT_AA_PRIOR),
+        (STANDARD_RNA, UNIFORM_RNA_PRIOR),
+        (STANDARD_DNA, UNIFORM_DNA_PRIOR),
+    )
+    chain_ids = atom_array.chain_iid if "chain_iid" in atom_array.get_annotation_categories() else atom_array.chain_id
+    residue_chain_iids = chain_ids[residue_starts]
+
+    # Reserve part of the zero-only probability for chain-wide exclusions. If the chain-wide
+    # branch is not taken, renormalizing the local probabilities preserves the requested marginal
+    # mode frequencies for every candidate residue.
+    local_mode_weights = mode_probabilities.copy()
+    local_mode_weights[1] *= 1 - p_zero_only_whole_chain
+    if chain_event_probability < 1:
+        local_mode_weights /= 1 - chain_event_probability
+
+    for tokens, _ in polymer_specs:
+        family_mask = np.isin(residue_names, tokens)
+        family_atom_mask = np.isin(atom_array.res_name, tokens)
+        for chain_iid in np.unique(residue_chain_iids[family_mask]):
+            chain_residue_mask = family_mask & (residue_chain_iids == chain_iid)
+            chain_atom_mask = family_atom_mask & (chain_ids == chain_iid)
+            protected_identities = set(residue_names[chain_residue_mask]) | {
+                condition.token_name
+                for condition in SEQUENCE_PROBABILITY_CONDITIONS
+                if condition.token_name in tokens
+                and np.any(
+                    chain_atom_mask
+                    & condition.mask(atom_array, default="generate")
+                    & (condition.annotation(atom_array, default="generate") != 0)
+                )
+            }
+            absent_identities = np.flatnonzero(~np.isin(tokens, list(protected_identities)))
+            whole_chain_is_possible = len(absent_identities) > 0
+            use_whole_chain_zeros = (
+                whole_chain_is_possible and chain_event_probability > 0 and true_with_prob(chain_event_probability)
+            )
+
+            if use_whole_chain_zeros:
+                exclusion_count = _sample_truncated_power_law(exclusion_count_alpha, len(absent_identities))
+                excluded = np.random.choice(absent_identities, size=exclusion_count, replace=False)
+                for token_index in excluded:
+                    condition = SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN[tokens[token_index]]
+                    if condition not in condition_values:
+                        condition_values[condition] = condition.annotation(atom_array, default="generate").copy()
+                        condition_masks[condition] = condition.mask(atom_array, default="generate").copy()
+                    condition_values[condition][chain_atom_mask] = 0.0
+                    condition_masks[condition][chain_atom_mask] = True
+                whole_chain_selected |= chain_residue_mask
+                locally_selected[chain_residue_mask] = False
+            else:
+                probabilities = local_mode_weights if whole_chain_is_possible else mode_probabilities
+                chain_local_selection = locally_selected & chain_residue_mask
+                modes[chain_local_selection] = np.random.choice(4, size=chain_local_selection.sum(), p=probabilities)
+
+    if not whole_chain_selected.any() and not locally_selected.any():
         return data
 
-    keep_frac = np.random.uniform(0, max_subsample_frac)
-    residue_mask = residue_eligible & (np.random.rand(len(residue_starts)) < keep_frac)
+    updated_seq_mask = seq_mask.copy()
+    updated_seq_mask[spread_residue_wise(atom_array, whole_chain_selected & locally_eligible)] = False
+    for residue_index in np.flatnonzero(modes >= 0):
+        mode = modes[residue_index]
+        residue_slice = slice(residue_boundaries[residue_index], residue_boundaries[residue_index + 1])
+        if mode == 0:
+            updated_seq_mask[residue_slice] = True
+            continue
 
-    C_NCYS.set_annotation(atom_array, spread_residue_wise(atom_array, residue_mask))
+        updated_seq_mask[residue_slice] = False
+
+        truth = str(residue_names[residue_index])
+        tokens, prior = next((tokens, prior) for tokens, prior in polymer_specs if truth in tokens)
+        truth_index = tokens.index(truth)
+        excluded = np.empty(0, dtype=int)
+        if mode in (1, 3):
+            off_targets = np.delete(np.arange(len(tokens)), truth_index)
+            # Mixed soft conditioning must retain at least two allowed identities so that it
+            # cannot degenerate into an exact probability-one condition. Negative-only may
+            # exclude every off-target identity.
+            max_excluded = len(tokens) - (2 if mode == 3 else 1)
+            exclusion_count = _sample_truncated_power_law(exclusion_count_alpha, max_excluded)
+            excluded = np.random.choice(off_targets, size=exclusion_count, replace=False)
+
+        allowed = np.setdiff1d(np.arange(len(tokens)), excluded)
+        probabilities = np.zeros(len(tokens), dtype=np.float32)
+        if mode in (2, 3):
+            restricted_prior = prior[allowed] / prior[allowed].sum()
+            parameters = dirichlet_concentration * restricted_prior
+            parameters[np.flatnonzero(allowed == truth_index)[0]] += 1.0
+            sampled = np.random.dirichlet(parameters)
+            # Keep soft samples strictly inside (0, 1) after float32 storage.
+            sampled = np.maximum(sampled, np.finfo(np.float32).eps)
+            sampled /= sampled.sum()
+            probabilities[allowed] = sampled.astype(np.float32)
+            if true_with_prob(p_full_probability_vector):
+                exposed_positive = allowed
+            else:
+                positive_count = _sample_truncated_power_law(exclusion_count_alpha, len(allowed) - 1)
+                exposed_positive = np.random.choice(allowed, size=positive_count, replace=False)
+        else:
+            exposed_positive = np.empty(0, dtype=int)
+
+        for token_index in np.concatenate([excluded, exposed_positive]):
+            condition = SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN[tokens[token_index]]
+            if condition not in condition_values:
+                condition_values[condition] = condition.annotation(atom_array, default="generate").copy()
+                condition_masks[condition] = condition.mask(atom_array, default="generate").copy()
+            condition_values[condition][residue_slice] = probabilities[token_index]
+            condition_masks[condition][residue_slice] = True
+
+    for condition, values in condition_values.items():
+        condition.set_annotation(atom_array, values)
+        condition.set_mask(atom_array, condition_masks[condition])
+
+    C_SEQ.set_mask(atom_array, updated_seq_mask)
 
     data["atom_array"] = atom_array
-    data.setdefault("task", {})["added_not_cysteine_condition"] = True
+    task = data.setdefault("task", {})
+    selected = locally_selected | (whole_chain_selected & locally_eligible)
+    task["sequence_conditioning_replaced_count"] = int((selected & exact_condition).sum())
+    task["sequence_conditioning_augmented_count"] = int((selected & locally_augmented).sum())
+    task["sequence_probability_exact_count"] = int((modes == 0).sum())
+    task["sequence_probability_zero_only_count"] = int((modes == 1).sum())
+    task["sequence_probability_positive_only_count"] = int((modes == 2).sum())
+    task["sequence_probability_zero_and_positive_count"] = int((modes == 3).sum())
+    task["sequence_probability_whole_chain_zero_count"] = int(whole_chain_selected.sum())
     return data
 
 

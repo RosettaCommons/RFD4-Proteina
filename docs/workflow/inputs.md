@@ -273,6 +273,7 @@ way it was supervised. The **Import** column gives the Python shorthand the
 |---|---|---|---|---|---|
 | **Fixed coordinates** (motif / "fixed atoms") | `C_CRD` | `mask_coordinate_1_atom` + `condition_coordinate_1_atom` | Gives the model the ground truth xyz of the selected atoms. Everything else is generated. | per-atom xyz (Å) |  |
 | **Known sequence** (folding / fix identity) | `C_SEQ` | `mask_sequence_1_residue` + `condition_sequence_1_residue` | Reveals the residue identity. Where the mask is off, the sequence is designed. | per residue `res_name`, `MASKED` where free |  |
+| **Sequence probabilities** | `SEQUENCE_PROBABILITY_CONDITIONS` | `condition_sequence-probability-{token}_1_residue` + matching mask | Partially constrains probabilities over the 28 canonical polymer identities. Explicit zero excludes an identity; an unset mask leaves it flexible. `C_SEQ` fills the complete exact distribution and rejects conflicting values. | float in `[0, 1]`; specified values sum to at most 1 | Eligible `C_SEQ` positions are diversified into exact, zero-only, soft-positive, or mixed zero-and-positive conditions. |
 | **Index / unindexing** | `C_IDX` | `mask_index_1_residue` | On means the model knows this residue's position in the chain. **Off means unindexed**, so the model places it. | bool (default **all on**) | Atomized tokens cannot be unindexed. |
 | **Index group** | `C_IDXGRP` | `condition_index-group_1_token` | Groups residues whose *relative* offsets are known, so an unindexed motif can still be internally rigid. | int group id |  |
 | **Hotspot** | `C_HOT` | `mask_hotspot_1_atom` | Marks target-interface atoms the designed binder should engage. | bool | A hotspot is a **target-chain atom within 4.5 Å of any binder-chain atom** (Euclidean). Count sampled `geometric(p=0.2)`, capped at 10 % of eligible atoms. 5 % of the time none are given. Trained alongside a **target conditioned on both coordinates and sequence**, with the binder generated. |
@@ -281,7 +282,6 @@ way it was supervised. The **Import** column gives the Python shorthand the
 | **π-stacking** | `C_PISTACK` | `mask_pistack_1_atom` | Requests aromatic stacking contacts with the generated partner. | bool | Select every atom of the intended aromatic ring; training subsamples whole rings. |
 | **π-cation** | `C_PICATION` | `condition_pication_1_atom` | Requests the aromatic or cation side of a π-cation interaction. | `PiCationEnum`: `0`=NONE, `1`=AROMATIC, `2`=CATION, `3`=BOTH | AROMATIC describes the selected atoms, not the desired partner. Select complete aromatic rings for AROMATIC, or single atoms for CATION; BOTH requests both roles in different interactions (e.g. a histidine whose positively-charged nitrogen is the cation in another pi-cation interaction). |
 | **CAT fold** | `C_CATH` | `condition_cath-label_1_residue` | Requests a fold class, architecture, or topology for the selected residues using the CATH hierarchy. | Quoted C.A.T string: `1.x.x`, `2.60.40`; `x.x.x` clears it | Unspecified levels must be a trailing suffix. Select a whole chain or domain, with consistent values within each residue. |
-| **Not cysteine** | `C_NCYS` | `mask_not-cysteine_1_residue` | Requests that selected generated residues avoid cysteine. | bool | Apply to complete residues with sequence conditioning off. The default pre-oracle filter rejects designs with CYS at any C_NCYS-conditioned residue. |
 | **Chain centroid** | `C_CENTROID` | `condition_ChainCentroid_1_atom` | Provides a target center of mass for a chain, so you can position a binder or ligand without fixing any atoms. | per-atom xyz (Å), broadcast per chain | Used in place of an explicit ORI token to guide COM placement. |
 | **Secondary structure** | `C_SEC` | `condition_secondary-structure_1_residue` | Requests helix, sheet or loop at the selected residues. Leave `NONE` where you do not care. | `SSEnum`: `0`=NONE, `1`=HELIX, `2`=SHEET, `3`=LOOP | P-SEA assignment on the ground-truth structure. |
 | **Internal coordinate** | `C_INTCRD` | `mask_InternalCoordinate_1_atom` + `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
@@ -329,12 +329,19 @@ Which conditions the model actually acts on today.
 | **Secondary structure** | Supported |
 | **Symmetry** | Planned |
 | **CAT fold class, architecture, topology** | Supported |
+| **Sequence probabilities** | Supported; bounded probability editor with Set/Clear controls |
 | **π-stacking** | Supported |
 | **π-cation** | Supported |
-| **Not-cysteine** | Supported |
 
 Supported conditions can be authored through the plugin, Python, annotated CIFs, or
 [condition-spec YAML/JSON](condition-spec.md).
+
+In the Annotation Wizard, choose `sequence-probability-CYS` and set the probability to `0`
+to request cysteine exclusion on selected residues. Selecting any atom applies to its whole
+residue. **Clear** removes that identity's constraint; setting zero actively excludes it.
+The editor rejects invalid probability sums, positive probabilities for the wrong polymer type,
+and conflicts with exact sequence conditions. These are model conditions, not hard output
+constraints: inspect sequence-probability adherence when exclusions matter.
 
 ## Interaction rules, read before conditioning
 

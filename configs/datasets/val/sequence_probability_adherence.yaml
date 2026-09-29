@@ -1,0 +1,12 @@
+compute_loss: false
+
+dataset:
+  _target_: rfproteina.inference_utils.datasets.ConditionSpecDataset
+  data: ${oc.env:PROJECT_ROOT}/data/benchmarks/sequence_probability_adherence.yaml
+  name: sequence_probability_adherence
+  num_replicates: 50
+  prevalidate: true
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags: [design]

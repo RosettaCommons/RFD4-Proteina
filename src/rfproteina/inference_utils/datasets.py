@@ -15,7 +15,11 @@ from atomworks.ml.transforms.base import Compose, Transform, TransformedDict
 from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
-from rfproteina.conditions_reporting import run_pipeline_validation
+from rfproteina.conditions_reporting import (
+    check_index_group_molecule_consistency,
+    check_index_group_res_id_gaps,
+    run_pipeline_validation,
+)
 from rfproteina.inference_utils.condition_spec import (
     build_annotated_atom_array_from_condition_spec,
     is_legacy_dialect,
@@ -223,20 +227,20 @@ class ConditionSpecDataset(MolecularDataset):
         return self.names[idx]
 
     def _prevalidate(self) -> None:
-        """Build each unique example with condition_spec's own pre-save safeguards (fail fast)."""
+        """Build, realize, and validate each unique condition-spec example."""
         for example_id, spec in self.data.items():
             logger.info(f"Prevalidating input example: {example_id}")
             data = build_annotated_atom_array_from_condition_spec(
-                spec, spec_dir=self.spec_dir, example_id=example_id, validate=True
+                spec, spec_dir=self.spec_dir, example_id=example_id, validate=False
             )
-            # Validate again after realizing expandable segments
             realized = self.pre_transform(TransformedDict(data))["atom_array"]
-            violations = run_pipeline_validation(realized)
+            violations = [
+                *run_pipeline_validation(realized),
+                *check_index_group_res_id_gaps(realized),
+                *check_index_group_molecule_consistency(realized),
+            ]
             if violations:
-                raise ValueError(
-                    f"Prevalidation failed for input example {example_id!r} after realizing "
-                    "expandable segments:\n" + "\n".join(violations)
-                )
+                raise ValueError(f"Prevalidation failed for input example {example_id!r}:\n" + "\n".join(violations))
 
     def _build_example(self, example_id: str, spec: dict) -> dict:
         data = TransformedDict(

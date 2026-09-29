@@ -53,7 +53,7 @@ python src/rfproteina/generate.py \
 | --- | --- | --- |
 | `inference_experiment` | Config group controlling generation (nsteps, noise, search, metrics) | `inference_on_user_inputs` |
 | `generation.args.nsteps` | Number of model evaluations; the default time grid puts twice the step density in the final 20% | 60 |
-| `recycle_strategy` | Recycle-depth preset; use `midpeak6_x1p5_60` for 1.5x depths | `midpeak6_60` |
+| `recycle_strategy` | Recycle-depth preset; `thinking_low` for 0.5x or `thinking_high` for 1.5x depths | `thinking_medium` |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N steps (0 = off) | 0 |
 
 **Deterministic (ODE) sampling** — no noise injected mid-trajectory:

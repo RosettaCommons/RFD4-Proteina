@@ -4,6 +4,7 @@ from functools import partial
 import lightning as L
 import torch
 import torch.nn.functional as F
+from atomworks.ml.conditions import C_SEQ
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
@@ -367,7 +368,52 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         """
         losses = {}
         losses.update(self._compute_insertion_prediction_loss(batch, nn_out))
+        losses.update(self._compute_sequence_prediction_loss(batch, nn_out))
         return losses
+
+    def _compute_sequence_prediction_loss(
+        self,
+        batch: dict,
+        nn_out: dict[str, dict[str, Tensor]],
+    ) -> dict[str, Float[Tensor, "b"]]:
+        """Compute configurable CE loss for the flow model's sequence readout."""
+        cfg = self.cfg_exp.loss.get("sequence_prediction")
+        logits: Float[Tensor, "b n classes"] | None = nn_out.get("sequence", {}).get("logits")
+        if cfg is None or not cfg.get("enabled", False) or logits is None:
+            return {}
+
+        target: Int[Tensor, "b n"] = batch["residue_type"].long()
+        sequence_conditioned = batch.get(C_SEQ.mask_name)
+        if sequence_conditioned is None:
+            sequence_conditioned = torch.zeros_like(batch["padding_mask"])
+        loss_mask: Bool[Tensor, "b n"] = compute_flow_supervision_masks(batch)["local_latents"] & ~sequence_conditioned
+
+        b, n, n_classes = logits.shape
+        safe_target = torch.where(loss_mask, target, torch.zeros_like(target))
+        ce_per_token: Float[Tensor, "b n"] = F.cross_entropy(
+            logits.reshape(b * n, n_classes),
+            safe_target.reshape(b * n),
+            reduction="none",
+        ).reshape(b, n)
+
+        n_valid = loss_mask.sum(dim=-1)
+        safe_n_valid = torch.where(n_valid > 0, n_valid, torch.ones_like(n_valid))
+        ce = (ce_per_token * loss_mask).sum(dim=-1) / safe_n_valid
+
+        t_source = cfg.get("t_source", "local_latents")
+        t = batch["t"][t_source]
+        active_t = (t >= cfg.get("t_min", 0.0)) & (t <= cfg.get("t_max", 1.0))
+        active = active_t & (n_valid > 0)
+        active_float = active.to(ce.dtype)
+        ce = ce * active_float
+
+        pred = logits.argmax(dim=-1)
+        accuracy = (((pred == target) & loss_mask).sum(dim=-1) / safe_n_valid) * active_float
+        return {
+            "sequence_prediction": ce * cfg.get("weight", 1.0),
+            "sequence_prediction_ce_justlog": ce,
+            "sequence_prediction_accuracy_justlog": accuracy,
+        }
 
     def _compute_insertion_prediction_loss(
         self,
@@ -765,6 +811,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                             # Cheap reference; Hungarian assignment runs in the provider only
                             # when a metric reads the predicted_insertion_mapping namespace.
                             "insertion_logits": nn_out.get("insertion", {}).get("logits"),
+                            "sequence_logits": nn_out.get("sequence", {}).get("logits"),
                             "atom_array_batch": batch.get("atom_array"),
                         },
                     )
@@ -779,7 +826,10 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     step_snapshot: dict = {
                         "step": step,
                         "x_1": {dm: x_1_pred[dm].detach().cpu() for dm in x_1_pred},
+                        "sequence_logits": nn_out.get("sequence", {}).get("logits"),
                     }
+                    if step_snapshot["sequence_logits"] is not None:
+                        step_snapshot["sequence_logits"] = step_snapshot["sequence_logits"].detach().cpu()
                     if dump_noisy_trajectories:
                         step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
                     trajectory_steps.append(step_snapshot)
@@ -788,10 +838,14 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             final_insertion_logits = None
             if nn_out is not None and "insertion" in nn_out and "logits" in nn_out["insertion"]:
                 final_insertion_logits = nn_out["insertion"]["logits"].detach()
+            final_sequence_logits = None
+            if nn_out is not None and "sequence" in nn_out and "logits" in nn_out["sequence"]:
+                final_sequence_logits = nn_out["sequence"]["logits"].detach()
 
             additional_info = {
                 "trajectory_steps": trajectory_steps,
                 "insertion_logits": final_insertion_logits,
+                "sequence_logits": final_sequence_logits,
             }
             return x, additional_info
 
@@ -980,7 +1034,10 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     step_snapshot: dict = {
                         "step": step,
                         "x_1": {dm: x_1_pred[dm].detach().cpu() for dm in x_1_pred},
+                        "sequence_logits": nn_out.get("sequence", {}).get("logits"),
                     }
+                    if step_snapshot["sequence_logits"] is not None:
+                        step_snapshot["sequence_logits"] = step_snapshot["sequence_logits"].detach().cpu()
                     if dump_noisy_trajectories:
                         step_snapshot["x_t"] = {dm: x[dm].detach().cpu() for dm in x}
                     trajectory_steps.append(step_snapshot)
@@ -989,10 +1046,14 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         final_insertion_logits = None
         if nn_out is not None and "insertion" in nn_out and "logits" in nn_out["insertion"]:
             final_insertion_logits = nn_out["insertion"]["logits"].detach()
+        final_sequence_logits = None
+        if nn_out is not None and "sequence" in nn_out and "logits" in nn_out["sequence"]:
+            final_sequence_logits = nn_out["sequence"]["logits"].detach()
 
         extra_info = {
             "trajectory_steps": trajectory_steps,
             "insertion_logits": final_insertion_logits,
+            "sequence_logits": final_sequence_logits,
         }
         return x, x_1_pred, extra_info
 

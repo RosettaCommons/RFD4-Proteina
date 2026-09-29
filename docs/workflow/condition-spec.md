@@ -142,6 +142,12 @@ conditions:
   C_CENTROID:            # literal xyz, not derived from the selection
     "12.3,-4.5,0.0":
       - select: "sel('B')"
+  C_SEQ_PROB_CYS:         # explicit zero is different from leaving CYS unspecified
+    0.0:
+      - select: "sel('B/*/[10-20]')"
+  C_SEQ_PROB_HIS:
+    0.0:
+      - select: "sel('B/*/[10-20]')"
 ```
 
 - Most annotations set both a **value**, written to matching atoms, and that atom's mask.
@@ -159,9 +165,16 @@ conditions:
   unspecified trailing levels: `"1.x.x"` requests a mainly-alpha class, `"2.60.40"` an
   immunoglobulin topology, and `"x.x.x"` clears the label and mask. Select whole residues,
   often an entire chain or expandable segment.
-- **`C_NCYS` takes `true` or `false`** and applies to whole residues with sequence conditioning
-  off. The [default pre-oracle filter](metrics.md#pre-oracle-filters) rejects designs with CYS
-  at any C_NCYS-conditioned residue; cysteines elsewhere are allowed.
+- **Sequence probabilities** use one Condition per canonical polymer token in
+  `UNIFIED_ATOM37_ENCODING`: 20 amino acids, 4 RNA bases, and 4 DNA bases. They are named
+  `C_SEQ_PROB_<token>` (for example `C_SEQ_PROB_CYS`, `C_SEQ_PROB_U`, or `C_SEQ_PROB_DA`). Unknown,
+  mask, atomized, and gap tokens are not conditioning options. Only specified identities are
+  constrained; omitted identities remain flexible and share the remaining probability mass. Values
+  must be in `[0, 1]`, and specified values on a residue may not sum above 1. A value of zero is an
+  explicit exclusion, while an omitted value is represented by a separate false presence mask. On a
+  `C_SEQ` residue, the pipeline completes these Conditions to the exact one-hot sequence distribution;
+  any already specified probability that conflicts with that identity is an error. Sequence-conditioned
+  tokens outside the 28-token vocabulary receive explicitly specified zeros for all 28 probabilities.
 - **`C_CENTROID` works per chain and all or nothing.** Its `select:` must cover *every* atom of each
   chain you condition, so `sel('B')` or `chain_id == 'B'` rather than one residue. And either every
   chain in the example gets a centroid or none does. A partially covered chain leaves the rest with

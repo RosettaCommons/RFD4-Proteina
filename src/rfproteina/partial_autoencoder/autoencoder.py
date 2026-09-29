@@ -23,7 +23,7 @@ from rfproteina.utils.atom_permutation import permute_gt_atom37
 from rfproteina.utils.coors import nm_to_ang
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.lora import maybe_apply_lora
-from rfproteina.utils.optim_utils import build_optimizers
+from rfproteina.utils.optim_utils import backward_with_accumulation, build_optimizers
 from rfproteina.utils.structure_export import (
     process_single_sample_to_atom_array,
     write_generated_structure_cif,
@@ -334,14 +334,10 @@ class AutoEncoder(L.LightningModule):
             self.update_n_log_nsamples_processed(bs)
             self.log_nparams()
 
-            should_step = (batch_idx + 1) % self.cfg_ae.opt.get("accumulate_grad_batches", 1) == 0
-
-            if not should_step:
-                with self.trainer.strategy.no_sync(self):
-                    self.manual_backward(train_loss)
-            else:
-                self.manual_backward(train_loss)
-
+            should_step = backward_with_accumulation(
+                self, train_loss, batch_idx, self.cfg_ae.opt.get("accumulate_grad_batches", 1)
+            )
+            if should_step:
                 # [muon, adam], or just adam if the exclude patterns left Muon nothing.
                 optimizers = self.optimizers()
                 if not isinstance(optimizers, list):

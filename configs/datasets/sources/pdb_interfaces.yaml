@@ -3,10 +3,11 @@
 
 defaults:
   - pdb_interface_common
+  - pdb_tmol_plip_cath
   - _self_
 
 name: pdb_interfaces
-data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/pdb/pdb_interfaces_2026_01_06_proc_2026_06_18.parquet
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_tmol_plip_cath/sampling/interfaces.parquet
 
 columns_to_load:
   mapping:

@@ -33,8 +33,8 @@ sequence_adherence:
   _target_: rfproteina.metrics.sequence_adherence_metric.SequenceAdherenceMetric
   required_tags_any: ["design"]
 
-not_cysteine_adherence:
-  _target_: rfproteina.metrics.no_cysteine_metric.NoCysteineAdherenceMetric
+sequence_probability_adherence:
+  _target_: rfproteina.metrics.sequence_adherence_metric.SequenceProbabilityAdherenceMetric
   required_tags_any: ["design"]
 
 sse_distribution:

@@ -1,8 +1,10 @@
 #!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
 """Concatenate and aggregate per-example metrics from multi-job evaluation runs."""
 
+import multiprocessing as mp
 import os
 import shutil
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import fire
@@ -18,6 +20,10 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 dotenv_path = os.path.join(os.environ["PROJECT_ROOT"], ".env")
 load_dotenv(dotenv_path)
 
+from atomworks.io.parser import parse  # noqa: E402  (load_dotenv must run first)
+from atomworks.io.utils.selection import get_residue_starts  # noqa: E402
+
+from rfproteina.conditions import SEQUENCE_PROBABILITY_CONDITIONS  # noqa: E402  (load_dotenv must run first)
 from rfproteina.inference_utils.foldseek import (  # noqa: E402  (load_dotenv must run first)
     add_diversity_summary_metrics,
     add_foldseek_diversity_to_per_example_df,
@@ -25,8 +31,140 @@ from rfproteina.inference_utils.foldseek import (  # noqa: E402  (load_dotenv mu
 from rfproteina.inference_utils.solve_rate_metrics import (  # noqa: E402  (load_dotenv must run first)
     compute_solve_rate_metrics,
 )
+from rfproteina.metrics.sequence_adherence_metric import (  # noqa: E402  (load_dotenv must run first)
+    sequence_probability_values_masks_and_outcomes,
+)
+from rfproteina.utils.parse_presets import (  # noqa: E402  (load_dotenv must run first)
+    ANNOTATED_CIF,
+)
 
 logger = RankedLogger(__name__, rank_zero_only=False)
+
+
+def _parse_sequence_probability_observations(
+    task: tuple[str, str, str],
+) -> tuple[list[tuple[str, str, str, int, str, str, float, int]], str | None]:
+    """Read soft conditioning and outcomes keyed by task, output position, and identity."""
+    dataset_name, task_name, designed_path_raw = task
+    designed_path = Path(designed_path_raw)
+    if not designed_path.is_file():
+        return [], f"{designed_path}: file not found"
+
+    try:
+        predicted = parse(designed_path, config=ANNOTATED_CIF)["assemblies"]["1"][0]
+        values, masks, outcomes = sequence_probability_values_masks_and_outcomes(predicted)
+        residues = predicted[get_residue_starts(predicted)]
+        positions = list(zip(residues.chain_id, residues.res_id, residues.ins_code, strict=True))
+        if len(set(positions)) != len(positions):
+            raise ValueError("Output chain ID, residue ID, and insertion code must uniquely identify each residue.")
+    except Exception as error:
+        return [], f"{designed_path}: {error}"
+
+    soft_residue_indices, soft_token_indices = np.where(masks & (values > 0.0) & (values < 1.0))
+    token_names = tuple(condition.token_name for condition in SEQUENCE_PROBABILITY_CONDITIONS)
+    return [
+        (
+            dataset_name,
+            task_name,
+            str(residues.chain_id[residue_index]),
+            int(residues.res_id[residue_index]),
+            str(residues.ins_code[residue_index]),
+            token_names[token_index],
+            float(values[residue_index, token_index]),
+            int(outcomes[residue_index, token_index]),
+        )
+        for residue_index, token_index in zip(soft_residue_indices, soft_token_indices, strict=True)
+    ], None
+
+
+def aggregate_sequence_probability_errors(
+    per_example_df: pd.DataFrame,
+    workers: int | None = None,
+) -> pd.DataFrame:
+    """Pool soft probability observations across designs before computing per-task errors.
+
+    Returns:
+        One row per dataset/task with n (number of pairs), absolute_mass_error
+        (abs(sum(q - p))), mean_absolute_error, and median_absolute_error.
+        Empty when no soft probability conditions were evaluated. Missing or
+        unreadable structures are skipped with a warning.
+    """
+    if workers is not None and workers < 1:
+        raise ValueError(f"workers must be positive, got {workers}.")
+    if "designed_structure_path" not in per_example_df:
+        return pd.DataFrame()
+
+    tasks = []
+    for _, row in per_example_df.iterrows():
+        path = row["designed_structure_path"]
+        if not isinstance(path, str) or not path:
+            continue
+        task_name = row.get("task")
+        if not isinstance(task_name, str) or not task_name:
+            raise ValueError(f"Sequence-probability aggregation requires a nonempty task label for {path}.")
+        dataset_name = row.get("dataset_name", "unknown")
+        tasks.append((str(dataset_name) if pd.notna(dataset_name) else "unknown", task_name, path))
+    if not tasks:
+        return pd.DataFrame()
+
+    if workers is None:
+        allocated_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", "0"))
+        if not allocated_cpus:
+            try:
+                allocated_cpus = len(os.sched_getaffinity(0))
+            except AttributeError:
+                allocated_cpus = os.cpu_count() or 1
+        workers = min(8, allocated_cpus)
+    workers = min(workers, len(tasks))
+    if workers == 1:
+        parsed = map(_parse_sequence_probability_observations, tasks)
+    else:
+        executor = ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn"))
+        chunksize = max(1, len(tasks) // (workers * 4))
+        parsed = executor.map(_parse_sequence_probability_observations, tasks, chunksize=chunksize)
+
+    observations: list[tuple[str, str, str, int, str, str, float, int]] = []
+    errors: list[str] = []
+    try:
+        for records, error in parsed:
+            observations.extend(records)
+            if error is not None:
+                errors.append(error)
+    finally:
+        if workers > 1:
+            executor.shutdown()
+    if errors:
+        logger.warning(
+            f"Failed to reconstruct sequence-probability observations for {len(errors)} output structure(s). "
+            f"First failure: {errors[0]}"
+        )
+
+    if not observations:
+        return pd.DataFrame()
+
+    observed = pd.DataFrame(
+        observations,
+        columns=["dataset_name", "task", "chain_id", "res_id", "ins_code", "token", "probability", "outcome"],
+    )
+    pairs = observed.groupby(["dataset_name", "task", "chain_id", "res_id", "ins_code", "token"], sort=True)[
+        ["probability", "outcome"]
+    ].mean()
+
+    summary_rows: list[dict[str, object]] = []
+    for (dataset_name, task_name), group in pairs.groupby(level=["dataset_name", "task"], sort=True):
+        errors = group["outcome"] - group["probability"]
+        summary_rows.append(
+            {
+                "dataset_name": dataset_name,
+                "task": task_name,
+                "n": len(group),
+                "absolute_mass_error": float(abs(errors.sum())),
+                "mean_absolute_error": float(errors.abs().mean()),
+                "median_absolute_error": float(errors.abs().median()),
+            }
+        )
+
+    return pd.DataFrame(summary_rows)
 
 
 def aggregate_metrics_from_per_example_df(
@@ -108,6 +246,7 @@ def concatenate_results(
     cleanup_chains: bool = True,
     output_dir: str | None = None,
     foldseek_threads: int | None = None,
+    sequence_probability_workers: int | None = None,
 ) -> None:
     """Concatenate per-example and aggregated metrics from multiple jobs.
 
@@ -126,6 +265,9 @@ def concatenate_results(
         foldseek_threads: Number of CPU threads to pass to foldseek. Defaults to all
             available CPUs. Set explicitly when running multiple clustering jobs in parallel
             on the same node to avoid resource contention.
+        sequence_probability_workers: Number of processes used to reconstruct probability
+            observations from output CIFs. Defaults to up to eight CPUs from the SLURM allocation
+            or process affinity; set explicitly to use more.
     """
     input = Path(input)
 
@@ -197,6 +339,15 @@ def concatenate_results(
     concatenated_per_example.to_csv(per_example_output, index=False)
     logger.info(f"Saved concatenated per-example metrics to {per_example_output}")
     logger.info(f"  Total examples: {len(concatenated_per_example)}")
+
+    probability_errors = aggregate_sequence_probability_errors(
+        concatenated_per_example,
+        workers=sequence_probability_workers,
+    )
+    if not probability_errors.empty:
+        probability_errors_output = output_path / "sequence_probability_errors.csv"
+        probability_errors.round(6).to_csv(probability_errors_output, index=False)
+        logger.info(f"Saved sequence-probability errors to {probability_errors_output}")
 
     # 2. Re-aggregate metrics using shared function
     agg_df = aggregate_metrics_from_per_example_df(concatenated_per_example, title="Final Aggregated Metrics")

@@ -68,6 +68,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         )
 
         # To get conditioning variables
+        self.condition_on_recycle_index = "recycle_index" in (kwargs["feats_cond_seq"] or [])
         self.cond_factory = FeatureFactory(
             feats=kwargs["feats_cond_seq"],
             dim_feats_out=kwargs["dim_cond"],
@@ -125,9 +126,11 @@ class LocalLatentsTransformer(torch.nn.Module):
                             pair_dim=kwargs["pair_repr_dim"],
                             use_tri_mult=self.use_tri_mult,
                             tri_mult_c=kwargs["tri_mult_c"],
+                            tri_mult_bias=kwargs.get("tri_mult_bias", True),
                             # TODO: Remove fallback to sum when checkpoint is updated
                             pair_write=kwargs.get("pair_write", "sum"),
                             checkpoint_tri_mult=self.checkpoint_pair_update,
+                            tri_mult_backend=kwargs.get("tri_mult_backend", "torch"),
                         )
                         if i % self.update_pair_repr_every_n == 0
                         else None
@@ -161,6 +164,21 @@ class LocalLatentsTransformer(torch.nn.Module):
             make_norm(self.token_dim),
             torch.nn.Linear(self.token_dim, 3, bias=False),
         )
+
+        # Optional sequence readout. Keeping the probe behind an architecture config
+        # preserves strict loading of older checkpoints, whose saved config has no head.
+        sequence_readout_cfg = kwargs.get("sequence_readout", {}) or {}
+        self.sequence_readout_enabled = sequence_readout_cfg.get("enabled", False)
+        self.sequence_readout_detach = sequence_readout_cfg.get("detach", True)
+        if self.sequence_readout_enabled:
+            self.sequence_readout = torch.nn.Sequential(
+                make_norm(self.token_dim),
+                torch.nn.Linear(
+                    self.token_dim,
+                    sequence_readout_cfg.get("num_classes", 33),
+                    bias=False,
+                ),
+            )
 
         # Insertion prediction head: bilinear [b, n, n] outer product over all token
         # pairs.  Only unindexed-query x indexed-key pairs contribute to the CE loss.
@@ -254,7 +272,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         seq_mask = input["padding_mask"]  # [b, n] boolean, True = valid token
 
         # Conditioning variables
-        c = self.cond_factory(input)  # [b, n, dim_cond]
+        c = self.cond_factory({**input, "recycle_index": 1})  # [b, n, dim_cond]
         c = self.transition_c_2(self.transition_c_1(c, seq_mask), seq_mask)  # [b, n, dim_cond]
 
         # Initial sequence representation from features
@@ -273,6 +291,10 @@ class LocalLatentsTransformer(torch.nn.Module):
         nn_out = {}
         nn_out["bb_ca"] = {self.output_param["bb_ca"]: ca_nm_out}
         nn_out["local_latents"] = {self.output_param["local_latents"]: local_latents_out}
+
+        if self.sequence_readout_enabled:
+            sequence_seqs = s.detach() if self.sequence_readout_detach else s
+            nn_out["sequence"] = {"logits": self.sequence_readout(sequence_seqs) * seq_mask[..., None]}
 
         # Detached probe for insertion head
         insertion_seqs = s.detach()
@@ -333,7 +355,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         """Run the configured number of trunk cycles.
 
         Each cycle reads the previous single and pair states through zero-initialized
-        projections. ``recycle_grad`` selects how many final cycles keep gradients.
+        projections. Optional recycle-index conditioning uses one-based pass numbers
+        in the trunk's adaptive norms. ``recycle_grad`` selects the gradient-bearing cycles.
         """
         # (Routes to either eager or compiled trunk blocks, depending
         # on the model's compilation state and the input shape.)
@@ -354,6 +377,9 @@ class LocalLatentsTransformer(torch.nn.Module):
 
             grad_on = torch.is_grad_enabled() and cycle >= n_recycle - grad_k
             with torch.set_grad_enabled(grad_on):
+                if self.condition_on_recycle_index and cycle > 0:
+                    c = self.cond_factory({**input, "recycle_index": cycle + 1})
+                    c = self.transition_c_2(self.transition_c_1(c, seq_mask), seq_mask)
                 if grad_on and self.recycle_checkpoint:
                     s, z = checkpoint(trunk, s_in, z_in, c, seq_mask, use_reentrant=False)
                 else:

@@ -19,12 +19,12 @@ from rfproteina.conditions import (
     C_IDXGRP,
     C_INTCRD,
     C_MCOORD,
-    C_NCYS,
     C_PICATION,
     C_PISTACK,
     C_RAS,
     C_SALT,
     C_SEC,
+    SEQUENCE_PROBABILITY_CONDITIONS,
     HBondEnum,
     MetalCoordEnum,
     PiCationEnum,
@@ -65,7 +65,6 @@ SPECS: dict[str, tuple] = {
     "coord_cond_mask": (torch.bool, False, "I"),
     C_SEQ.mask_name: (torch.bool, False, "I"),
     C_SEC.full_name: (torch.int16, SSEnum.NONE, "I"),
-    C_NCYS.full_name: (torch.bool, False, "I"),
     C_IDXGRP.full_name: (torch.int16, -1, "I"),
     "na_ss_state": (torch.int16, 0, "I"),
     "na_ss_state_mask": (torch.bool, False, "I"),
@@ -101,6 +100,11 @@ SPECS: dict[str, tuple] = {
     "token_bond_path_length": (torch.int16, 0, "I I"),
     "canonical_polymer_ordering": (torch.int8, 0, "I I"),
 }
+
+# Probability values and their independently padded presence masks.
+for _condition in SEQUENCE_PROBABILITY_CONDITIONS:
+    SPECS[_condition.full_name] = (torch.float32, 0.0, "I")
+    SPECS[_condition.mask_name] = (torch.bool, False, "I")
 
 
 @dataclass

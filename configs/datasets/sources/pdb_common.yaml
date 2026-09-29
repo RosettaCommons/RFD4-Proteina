@@ -1,28 +1,14 @@
 # Shared loader, quality filters, and metadata columns for all PDB training datasets
 # NOTE: Named mapping merge by key
 
-_target_: atomworks.ml.datasets.PandasDataset
-memory_map: False  # loaded into a buffer; nothing to mmap
+defaults:
+  - backend_blob
+  - _self_
 
 loader:
-  _target_: atomworks.ml.datasets.loaders.create_structure_loader
-
-  # Use cloud-native streaming of datasets
-  storage: blob
   blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/pdb/data/blob_annotated_2026_09_09
-
-  example_id_colname: example_id
   record_id_colname: path
   assembly_id_colname: assembly_id
-
-  # Randomly samples alternative conformations already via the parquet
-  altloc_seed_colname: null
-
-  # Unlike other datasets, we do cache the Protein Data Bank on local storage
-  parser_args:
-    _target_: rfproteina.utils.parse_presets.distillation
-    save_to_cache: True
-    load_from_cache: True
 
 filters:
   _target_: rfproteina.utils.hydra.non_null_values
@@ -49,7 +35,6 @@ columns_to_load:
       - deposition_date
       - resolution
       - num_polymer_pn_units
-      - total_num_atoms_in_unprocessed_assembly
       - all_pn_unit_iids_after_processing
       - method
 
@@ -61,5 +46,5 @@ columns_to_load:
       - n_ligand
       - n_peptide
 
-      # Whether the structure passes a set of charge-based validation checks
+    charge_validation:
       - validated

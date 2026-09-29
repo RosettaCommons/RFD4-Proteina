@@ -25,6 +25,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, as_atom_array_plus, concatenate_atom_array_plus
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.transforms.realize_expandable_segments import RealizeExpandableSegments
 
 from rfproteina.conditions import C_CATH, C_CENTROID, C_IDXGRP, C_INTCRD, ENUM_CONDITIONS
 from rfproteina.conditions_reporting import (
@@ -447,10 +448,11 @@ def _finalize(example_id: str, arr: AtomArrayPlus, *, strict: bool = True, valid
     logger.info(f"{report}\n{_REMINDER}")
     if not validate:
         return
+    realized = RealizeExpandableSegments()({"atom_array": arr.copy()})["atom_array"]
     violations = [
-        *run_pipeline_validation(arr),
-        *check_index_group_res_id_gaps(arr),
-        *check_index_group_molecule_consistency(arr),
+        *run_pipeline_validation(realized),
+        *check_index_group_res_id_gaps(realized),
+        *check_index_group_molecule_consistency(realized),
     ]
     if violations:
         message = "\n".join(violations)

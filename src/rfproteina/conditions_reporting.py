@@ -34,7 +34,7 @@ from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.conditions.base import ConditionBase
 from atomworks.ml.transforms.dssp import SSEnum
 from atomworks.ml.utils.expandable_segment import realize_expandable_segments
-from biotite.structure import get_residue_starts
+from biotite.structure import get_residue_starts, spread_residue_wise
 
 from rfproteina.conditions import (
     C_CATH,
@@ -44,17 +44,21 @@ from rfproteina.conditions import (
     C_HOT,
     C_IDXGRP,
     C_INTCRD,
-    C_NCYS,
     C_PICATION,
     C_PISTACK,
     C_RAS,
     C_SEC,
+    SEQUENCE_PROBABILITY_CONDITIONS,
     HBondEnum,
     PiCationEnum,
     RasaEnum,
+    SequenceProbability,
 )
-from rfproteina.datapipes.pipeline import build_design_validation_pipeline
-from rfproteina.transforms.invariants import find_index_group_res_id_gaps
+from rfproteina.datapipes.pipeline import CanonicalizeSequenceProbabilityConditions, build_design_validation_pipeline
+from rfproteina.transforms.invariants import (
+    check_sequence_probability_conditioning_violations,
+    find_index_group_res_id_gaps,
+)
 
 # ---------------------------------------------------------------------------
 # Editor factories -- each defers its `pymol`/Qt import to call time, since
@@ -62,6 +66,49 @@ from rfproteina.transforms.invariants import find_index_group_res_id_gaps
 # calling one of these outside a live PyMOL session will raise ImportError,
 # same as importing `rfproteina.pymol.editors` directly would.
 # ---------------------------------------------------------------------------
+
+
+def _sequence_probability_editor() -> type:
+    from rfproteina.pymol.sequence_probability_editor import SequenceProbabilityEditor
+
+    return SequenceProbabilityEditor
+
+
+def set_sequence_probability_condition(
+    arr: AtomArrayPlus,
+    indices: np.ndarray | list[int],
+    condition: type[SequenceProbability],
+    value: float | None,
+) -> None:
+    """Set a probability on whole selected residues; None clears its presence mask.
+
+    Validate on a copy before changing the input, including probability mass,
+    polymer type, and exact sequence conflicts. Other channels remain unchanged.
+    """
+    if condition not in SEQUENCE_PROBABILITY_CONDITIONS:
+        raise ValueError("Choose a canonical polymer sequence-probability condition.")
+    if value is not None and (not np.isfinite(value) or not 0 <= value <= 1):
+        raise ValueError("Sequence probabilities must be finite and between 0 and 1.")
+    if len(indices) == 0:
+        return
+    selected = np.zeros(len(arr), dtype=bool)
+    selected[indices] = True
+    starts = get_residue_starts(arr)
+    selected = spread_residue_wise(arr, np.maximum.reduceat(selected, starts))
+    candidate = arr.copy()
+    probabilities = condition.annotation(candidate, default="generate").copy()
+    mask = condition.mask(candidate, default="generate").copy()
+    probabilities[selected] = 0 if value is None else value
+    mask[selected] = value is not None
+    condition.set_annotation(candidate, probabilities)
+    condition.set_mask(candidate, mask)
+    # Exact sequence conditions imply a complete distribution during validation.
+    normalized = CanonicalizeSequenceProbabilityConditions()({"atom_array": candidate})["atom_array"]
+    violations = check_sequence_probability_conditioning_violations(normalized)
+    if violations:
+        raise ValueError("; ".join(violation.message for violation in violations))
+    condition.set_annotation(arr, probabilities)
+    condition.set_mask(arr, mask)
 
 
 def _mask_editor() -> type:
@@ -246,6 +293,25 @@ def _cath_summary(arr: AtomArrayPlus) -> list[str]:
     return ["CAT (class / architecture / topology):\n" + "\n".join(lines)] if lines else []
 
 
+def _sequence_probability_summary(condition: type[ConditionBase]) -> Callable[[AtomArrayPlus], list[str]]:
+    """Build a concise value/count summary for one canonical-polymer probability Condition."""
+
+    def _summary(arr: AtomArrayPlus) -> list[str]:
+        if not condition.has_annotation(arr) or not condition.has_mask(arr):
+            return []
+        starts = get_residue_starts(arr)
+        mask = condition.mask(arr, default="raise")[starts]
+        if not mask.any():
+            return []
+        values, counts = np.unique(condition.annotation(arr, default="raise")[starts][mask], return_counts=True)
+        value_counts = ", ".join(
+            f"{float(value):g} ({int(count)} residues)" for value, count in zip(values, counts, strict=False)
+        )
+        return [f"Sequence probability {condition.token_name}: {value_counts}"]
+
+    return _summary
+
+
 SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     # AtomWorks-native conditions: editors registered by atomworks core itself
     # (register_custom_editors() in atomworks/pymol_plugin/editors/custom.py).
@@ -260,7 +326,6 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     # Simple boolean mask conditions.
     ConditionSpec(C_HOT, editor=_mask_editor, summary_label="Hotspot"),
     ConditionSpec(C_PISTACK, editor=_mask_editor, summary_label="Pi-stacking"),
-    ConditionSpec(C_NCYS, editor=_mask_editor, summary_label="Not cysteine"),
     # Enum-valued conditions: editor, summary, and (where useful) PyMOL
     # highlight selections are all built generically from enum_cls/null_value.
     ConditionSpec(
@@ -304,6 +369,12 @@ SUPPORTED_CONDITIONS: list[ConditionSpec] = [
     ConditionSpec(C_INTCRD, editor=_internal_coord_editor, summary_label="Internal coordinates"),
     # Chain centroid conditioning -- manual xyz entry + indicator spheres.
     ConditionSpec(C_CENTROID, editor=_chain_centroid_editor, summary_fn=_chain_centroid_summary),
+    *[
+        ConditionSpec(
+            condition, editor=_sequence_probability_editor, summary_fn=_sequence_probability_summary(condition)
+        )
+        for condition in SEQUENCE_PROBABILITY_CONDITIONS
+    ],
     # BasePair: excluded for now (2-body enum condition; no dedicated editor
     # yet -- the generic PairValueEditor fallback is built for Angstrom
     # distances and would be actively wrong for PAIR/LOOP semantics).

@@ -155,14 +155,14 @@ class Linear(nn.Linear):
 
 
 class LayerNorm(nn.Module):
-    def __init__(self, c_in: int, eps: float = 1e-5) -> None:
+    def __init__(self, c_in: int, eps: float = 1e-5, bias: bool = True) -> None:
         super().__init__()
 
         self.c_in = (c_in,)
         self.eps = eps
 
         self.weight = nn.Parameter(torch.ones(c_in))
-        self.bias = nn.Parameter(torch.zeros(c_in))
+        self.bias = nn.Parameter(torch.zeros(c_in)) if bias else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         _d = x.dtype

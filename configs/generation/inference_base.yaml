@@ -16,6 +16,8 @@ val_set_name_override: null
 args:
   nsteps: 60
 
+  condition_decoder_on_sequence_prediction: true
+
   # +---------- Guidance ----------+
   # TODO: Audit guidance_w and CFG usage
   guidance_w: 1.0   # classifier-free guidance weight, 1.0 for no CFG, 0.0 for excluding the main model

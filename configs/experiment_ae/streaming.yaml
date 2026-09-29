@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /datasets: ae_streaming
+  - _self_
+
+dataloaders:
+  train:
+    dataloader_params:
+      collate_fn:
+        fixed_dimensions: {I: 384}

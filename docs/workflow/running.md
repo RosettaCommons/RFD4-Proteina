@@ -261,11 +261,18 @@ high designability, `(0.5, 0.5)` shifts sequences toward the natural UniProt dis
 ## Sampling with TSR
 
 **`vf_tsr`**, velocity field with temporal score rescaling, is the default sampler with the released
-60-model-evaluation schedule. The default `midpeak6_60` recycle strategy uses 185 trunk passes and
+60-model-evaluation schedule. The default `thinking_medium` recycle strategy uses 185 trunk passes and
 places twice the integration-step density in the final 20% of each modality's clock. TSR applies
 time-dependent score scaling that drives samples toward lower temperature near the end of the
 trajectory. `tsr_k` controls how low the temperature drops, where higher means lower. `tsr_sigma`
 controls how fast it gets there. `inference_base` ships tuned defaults for both.
+
+The default sequence-probability v4 checkpoint accepts generalized sequence-probability conditions
+(see [condition specification](condition-spec.md)). Its flow sequence readout
+conditions the autoencoder by default during inference. Set
+`generation.args.condition_decoder_on_sequence_prediction=false` to disable it
+or use a checkpoint without a sequence readout. Exact user sequence conditions
+are preserved in either mode.
 
 Because `inference_base` sets `sc_scale_noise` and `gt` defaults above zero, default `vf_tsr`
 sampling is **stochastic**. For deterministic ODE sampling with no noise injected mid trajectory:

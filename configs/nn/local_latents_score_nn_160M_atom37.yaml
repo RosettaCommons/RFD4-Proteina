@@ -6,6 +6,12 @@ output_parameterization:
   bb_ca: v  # or x_1
   local_latents: v  # or x_1
 
+# Auxiliary sequence readout; detach prevents its loss from updating the trunk.
+sequence_readout:
+  enabled: true
+  detach: true
+  num_classes: 33
+
 
 nlayers: 14  # number of transformer layers
 token_dim: 768  # dimension of the tokens in the sequence
@@ -25,7 +31,7 @@ feats_seq: [
   "xt_bb_ca",                   # Noised backbone CA coordinates [b, n, 3]
   "xt_local_latents",           # Noised local latents [b, n, latent_dim]
   "token_type",                 # Token type embedding (protein/rna/dna/atomized/unknown) [b, n, token_type_emb_dim]
-  "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 20]
+  "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 33]
   "cond_a37coors_nm",           # Conditional atom37 coordinates (prevents leakage) [b, n, 37*4]
   "cond_a37coors_internal_nm",  # Conditional atom37 internal coordinates [b, n, 37*4]
   "rasa_binned",                # RASA surface accessibility [b, n, 37]
@@ -35,7 +41,6 @@ feats_seq: [
   "pication",                   # Pi-cation contacts: [is_aromatic, is_cation] [b, n, 37*2]
   "na_ss_state",                # Nucleic-acid state feature (unspecified/paired/loop) [b, n, 2]
   "hotspot",                    # Hotspot annotation [b, n, 37]
-  "not_cysteine",               # Prevent cysteine generation at selected positions [b, n, 1]
   "atom_charge",                # Atomic charge embedding for atomized tokens [b, n, 16]
   "atomic_element",             # Atomic element embedding for atomized tokens [b, n, 16]
   "coord_group_seq",              # Raw coordinate group in atom37 representation [b, n, 37]
@@ -86,6 +91,8 @@ update_pair_repr: true  # whether to update pair representation
 update_pair_repr_every_n: 2  # Update the pair representation every n layers
 use_tri_mult: true  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 tri_mult_c: 256  # hidden dim of the triangle multiplication layers
+tri_mult_bias: false  # whether triangle multiplication projections and normalizations learn additive biases
+tri_mult_backend: torch  # or cuequivariance (fused on H200 only at pair_repr_dim 384, tri_mult_c 256; else warns, uses torch)
 
 # Recycle single and pair states through zero-initialized projections.
 recycle:

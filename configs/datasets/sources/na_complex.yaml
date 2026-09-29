@@ -1,19 +1,14 @@
 # Quality-filtered protein-DNA complexes predicted with Protenix v2.
 
-_target_: atomworks.ml.datasets.PandasDataset
+defaults:
+  - backend_blob
+  - _self_
+
 name: na_complex
 data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/metadata_2026_09_10.parquet
-memory_map: False  # loaded into a buffer; nothing to mmap
 
 loader:
-  _target_: atomworks.ml.datasets.loaders.create_structure_loader
-  storage: blob
   blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/data/blob_2026_09_08
-  example_id_colname: example_id
-  assembly_id_colname: null
-  altloc_seed_colname: null
-  parser_args:
-    _target_: rfproteina.utils.parse_presets.distillation
 
 columns_to_load:
   - example_id

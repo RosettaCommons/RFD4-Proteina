@@ -270,6 +270,8 @@ class VanillaStrategy(SearchStrategy):
                 guidance_model=model.guidance_model,
             )
 
+        batch["sequence_logits"] = extra_info.get("sequence_logits")
+
         # The full batch supplies the AE decoder's trained seq/pair features.
         # The decoder derives its masks and emits only generated tokens.
         sample_prots = model.sample_formatting(
@@ -351,10 +353,15 @@ def _attach_trajectories(
                     padding_mask=batch["padding_mask"],
                 )
             else:
+                sequence_logits = step_snapshot.get("sequence_logits")
+                step_batch = {
+                    **batch,
+                    "sequence_logits": sequence_logits.to(model.device) if sequence_logits is not None else None,
+                }
                 sample_prots_step = model.sample_formatting(
                     x=x_step,
                     ret_mode="coors37_n_aatype",
-                    batch=batch,
+                    batch=step_batch,
                 )
 
             step_gen_list = model.format_sample_prots_to_atom_arrays(

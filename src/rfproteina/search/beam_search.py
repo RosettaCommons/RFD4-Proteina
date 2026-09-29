@@ -30,6 +30,7 @@ from typing import Any
 
 import torch
 
+from rfproteina.flow_matching.product_space_flow_matcher import extract_groups
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_refolding_and_pass_criteria
 from rfproteina.model_masks import compute_flow_emit_masks
@@ -213,6 +214,12 @@ class BeamSearchStrategy(SearchStrategy):
             "is_in_context_conditioning": batch["is_in_context_conditioning"].repeat(self.beam_width, 1),
             "padding_mask": tiled_padding_mask,
         }
+        coord_cond_mask = batch.get("coord_cond_mask")
+        tiled_coord_cond_mask = coord_cond_mask.repeat(self.beam_width, 1) if coord_cond_mask is not None else None
+        tiled_groups = {
+            key: value.repeat(self.beam_width, 1) if value is not None else None
+            for key, value in extract_groups(batch).items()
+        }
 
         x_0 = model.fm.sample_noise(
             n,
@@ -220,6 +227,8 @@ class BeamSearchStrategy(SearchStrategy):
             device=device,
             emit_masks=compute_flow_emit_masks(beam_emit_mask_batch),
             training=False,
+            coord_cond_mask=tiled_coord_cond_mask,
+            groups=tiled_groups,
         )
 
         if partial_t_dict:
@@ -254,6 +263,7 @@ class BeamSearchStrategy(SearchStrategy):
 
             all_xt_branches = []
             all_insertion_logits_branches = []
+            all_sequence_logits_branches = []
 
             # Process each replica separately due to batch size constraints
             for replica_idx in range(self.beam_width):
@@ -281,6 +291,7 @@ class BeamSearchStrategy(SearchStrategy):
 
                     all_xt_branches.append(branch_xt)
                     all_insertion_logits_branches.append(branch_extra_info.get("insertion_logits"))
+                    all_sequence_logits_branches.append(branch_extra_info.get("sequence_logits"))
 
             # Concatenate all replicas and branches
             xt = concat_dict_tensors(all_xt_branches, dim=0)
@@ -288,6 +299,9 @@ class BeamSearchStrategy(SearchStrategy):
             insertion_logits = None
             if all(logits is not None for logits in all_insertion_logits_branches):
                 insertion_logits = torch.cat(all_insertion_logits_branches, dim=0)
+            sequence_logits = None
+            if all(logits is not None for logits in all_sequence_logits_branches):
+                sequence_logits = torch.cat(all_sequence_logits_branches, dim=0)
 
             # After each checkpoint transition, evaluate rewards and select top samples.
             # Example ids for each of the n_branch * beam_width * nsamples evaluated
@@ -319,6 +333,7 @@ class BeamSearchStrategy(SearchStrategy):
                 output_base_dir=output_base_dir,
                 design_ids=checkpoint_design_ids,
                 insertion_logits=insertion_logits,
+                sequence_logits=sequence_logits,
             )
 
             # A weighted key that no metric produces under this checkpoint's tags scores every
@@ -439,6 +454,7 @@ class BeamSearchStrategy(SearchStrategy):
         output_base_dir: "Path | None" = None,
         design_ids: list[str] | None = None,
         insertion_logits: torch.Tensor | None = None,
+        sequence_logits: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, list[dict], list[dict]]:
         """Roll out samples to completion and compute rewards.
 
@@ -458,6 +474,8 @@ class BeamSearchStrategy(SearchStrategy):
             design_ids: Per-sample on-disk design IDs to save oracle results under.
             insertion_logits: Fallback ``[batch, n, n]`` logits for *xt*, kept when the rollout
                 produces none.
+            sequence_logits: Fallback ``[batch, n, classes]`` logits for *xt*, kept when the
+                rollout produces none.
 
         Returns:
             Tuple of (rewards tensor, atom_array_results list, per-sample metrics list).
@@ -480,6 +498,7 @@ class BeamSearchStrategy(SearchStrategy):
 
         final_xt_batches = []
         insertion_logits_batches = []
+        sequence_logits_batches = []
 
         # Process in segments to respect batch size constraints
         for i in range(0, batch_size, segment_size):
@@ -503,6 +522,7 @@ class BeamSearchStrategy(SearchStrategy):
             )
             final_xt_batches.append(batch_final_xt)
             insertion_logits_batches.append(batch_extra_info.get("insertion_logits"))
+            sequence_logits_batches.append(batch_extra_info.get("sequence_logits"))
 
         # Concatenate batches
         final_xt = concat_dict_tensors(final_xt_batches, dim=0)
@@ -511,6 +531,8 @@ class BeamSearchStrategy(SearchStrategy):
         # they come from the step that produced this state, exactly as the vanilla path uses them.
         if all(logits is not None for logits in insertion_logits_batches):
             insertion_logits = torch.cat(insertion_logits_batches, dim=0)
+        if all(logits is not None for logits in sequence_logits_batches):
+            sequence_logits = torch.cat(sequence_logits_batches, dim=0)
 
         # Expand the batch across the branched sample axis.
         num_repeats = (batch_size + segment_size - 1) // segment_size
@@ -522,6 +544,7 @@ class BeamSearchStrategy(SearchStrategy):
             )
             for k, v in batch.items()
         }
+        expanded_batch["sequence_logits"] = sequence_logits
         # Format to protein structures (decode to structure-sequence pair)
         final_sample_prots = model.sample_formatting(
             x=final_xt,

@@ -22,7 +22,7 @@ dependencies = [
     "jaxtyping>=0.2.17,<1",
     "beartype>=0.18.0,<1",
     # ML core
-    "torch>=2.9.0,<3",
+    "torch>=2.13.0,<3",
     "lightning>=2.5.0",
     "loralib>=0.1.1",
     "einops>=0.8.0,<1",
@@ -78,9 +78,10 @@ metrics-cuda12 = [
 metrics-cuda13 = [
     "hydride>=1.2",
     "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
-    "cuequivariance-torch>=0.10.0; sys_platform == 'linux'",
-    "cuequivariance-ops-cu13>=0.10.0; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu13>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
 ]
 dev = [
     # Linters & formatters

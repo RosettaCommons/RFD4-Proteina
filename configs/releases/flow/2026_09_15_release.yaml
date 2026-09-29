@@ -48,7 +48,7 @@ defaults:
   - /datasets/val/small_molecule_binder/disco_subset@datasets.val.disco_subset
 
   # Conditioning adherence
-  - /datasets/val/adherence/rasa_IAI@datasets.val.rasa_IAI
+  - /datasets/val/adherence@datasets.val.rasa_IAI: rasa_IAI
 
   # +--------- Design task presets ---------+
   # AFDB monomers use the tip-atom pocket task mix.
@@ -60,7 +60,7 @@ defaults:
 
   # +--------- Metrics + validation-generation recycle schedule ---------+
   - override /metrics/refolding_oracles: af3
-  - override /recycle_strategy: midpeak6_60
+  - override /recycle_strategy: thinking_medium
 
   - _self_
 
@@ -118,7 +118,6 @@ nn:
     "pication",
     "na_ss_state",
     "hotspot",
-    "not_cysteine",
     "atom_charge",
     "atomic_element",
     "coord_group_seq",
@@ -162,8 +161,6 @@ datasets:
       p_add_pistack_condition: 0.2
     pication_kwargs:
       p_add_pication_condition: 0.2
-    not_cysteine_kwargs:
-      p_add_not_cysteine_condition: 0.05
     secondary_structure_kwargs:
       p_add_secondary_structure_condition: 0.1
 

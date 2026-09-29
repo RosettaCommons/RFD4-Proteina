@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
+from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_POLYMER_RESIDUES, STANDARD_RNA
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.scatter import apply_segment_wise
@@ -16,9 +17,9 @@ from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Transform
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_starts
-from biotite.structure import AtomArray
+from biotite.structure import AtomArray, spread_residue_wise
 
-from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, C_NCYS
+from rfproteina.conditions import C_CENTROID, C_IDXGRP, C_INTCRD, SEQUENCE_PROBABILITY_CONDITIONS
 from rfproteina.datapipes.bonds import (
     get_bond_distances,
     get_polymerization_atom_masks,
@@ -73,7 +74,7 @@ def detect_batch_invariant_violations(data: dict, is_inference: bool) -> list[In
     violations += check_coordinates_not_nan(feats, is_inference=is_inference)
     violations += check_element_encoding_violations(feats)
     violations += check_sequence_conditioning_violations(feats, is_inference)
-    violations += check_not_cysteine_sequence_conditioning_violations(aa)
+    violations += check_sequence_probability_conditioning_violations(aa)
 
     # --- Cross-cutting checks (require both aa and feats) ---
     violations += check_coordinate_centering_violations(aa, feats)
@@ -627,24 +628,172 @@ def check_element_encoding_violations(feats: dict) -> list[InvariantViolation]:
     return violations
 
 
-def check_not_cysteine_sequence_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
-    """Return violations where not-cysteine and sequence conditioning co-occur on a residue."""
-    aap = as_atom_array_plus(aa)
-    ncys = C_NCYS.annotation(aap, default="generate")  # [n_atoms] bool
-    if not ncys.any():
-        return []
+def check_sequence_probability_conditioning_violations(aa: AtomArray) -> list[InvariantViolation]:
+    """Validate sparse canonical-polymer probability conditions residue by residue.
 
-    both = ncys & C_SEQ.mask(aap, default="generate")  # [n_atoms] bool
-    n_bad = int(both[get_residue_starts(aap)].sum())  # residues with both conditions
-    if n_bad:
-        return [
-            InvariantViolation(
-                check="not_cysteine_and_sequence_conditioned",
-                message=f"{n_bad} residue(s) have both not-cysteine and sequence conditioning",
-                count=n_bad,
+    A unified sequence-token probability is present only where its corresponding mask is true. Present
+    values must be finite and in [0, 1], positive mass may only target identities
+    of the residue's polymer type, and the specified mass may not exceed one;
+    unspecified identities retain the remaining probability mass. A
+    ``C_SEQ``-conditioned residue must carry the complete exact distribution;
+    identities outside the canonical vocabulary have zero mass in these channels.
+    """
+
+    aap = as_atom_array_plus(aa)
+    categories = set(aap.get_annotation_categories())
+    residue_starts = get_residue_starts(aap)
+    n_residues = len(residue_starts)
+    residue_names = aap.res_name[residue_starts]
+    probabilities = np.zeros((n_residues, len(SEQUENCE_PROBABILITY_CONDITIONS)), dtype=np.float32)
+    specified = np.zeros_like(probabilities, dtype=bool)
+    violations: list[InvariantViolation] = []
+
+    for channel, condition in enumerate(SEQUENCE_PROBABILITY_CONDITIONS):
+        has_annotation = condition.full_name in categories
+        has_mask = condition.mask_name in categories
+        if has_annotation != has_mask:
+            missing = condition.mask_name if has_annotation else condition.full_name
+            violations.append(
+                InvariantViolation(
+                    check="sequence_probability_missing_value_or_mask",
+                    message=f"{condition.name} is present without its paired annotation '{missing}'",
+                )
             )
-        ]
-    return []
+            continue
+        if not has_annotation:
+            continue
+
+        atom_probabilities = condition.annotation(aap, default="raise")
+        atom_mask = condition.mask(aap, default="raise")
+        expected_mask = spread_residue_wise(aap, atom_mask[residue_starts])
+        n_nonuniform_masks = int(
+            np.add.reduceat((atom_mask != expected_mask).astype(np.int64), residue_starts).astype(bool).sum()
+        )
+        if n_nonuniform_masks:
+            violations.append(
+                InvariantViolation(
+                    check="sequence_probability_nonuniform_residue_mask",
+                    message=f"{condition.name} has a nonuniform mask in {n_nonuniform_masks} residue(s)",
+                    count=n_nonuniform_masks,
+                )
+            )
+
+        probabilities[:, channel] = atom_probabilities[residue_starts]
+        specified[:, channel] = atom_mask[residue_starts]
+
+    seq_conditioned = C_SEQ.mask(aap, default="generate")[residue_starts]
+    if not specified.any() and not seq_conditioned.any():
+        return violations
+
+    finite = np.isfinite(probabilities)
+    n_nonfinite = int((specified & ~finite).sum())
+    if n_nonfinite:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_nonfinite",
+                message=f"{n_nonfinite} specified sequence probability value(s) are not finite",
+                count=n_nonfinite,
+            )
+        )
+
+    out_of_range = specified & finite & ((probabilities < 0.0) | (probabilities > 1.0))
+    n_out_of_range = int(out_of_range.sum())
+    if n_out_of_range:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_out_of_range",
+                message=f"{n_out_of_range} specified sequence probability value(s) fall outside [0, 1]",
+                count=n_out_of_range,
+            )
+        )
+
+    ensure_annotations(
+        aap,
+        "is_standard_unknown_or_masked_aa",
+        "is_standard_unknown_or_masked_rna",
+        "is_standard_unknown_or_masked_dna",
+    )
+    compatibility_by_token = {
+        token: residue_mask
+        for tokens, residue_mask in (
+            (STANDARD_AA, aap.is_standard_unknown_or_masked_aa[residue_starts]),
+            (STANDARD_RNA, aap.is_standard_unknown_or_masked_rna[residue_starts]),
+            (STANDARD_DNA, aap.is_standard_unknown_or_masked_dna[residue_starts]),
+        )
+        for token in tokens
+    }
+    compatible = np.column_stack(
+        [compatibility_by_token[condition.token_name] for condition in SEQUENCE_PROBABILITY_CONDITIONS]
+    )
+    wrong_token_type = specified & finite & (probabilities > 0.0) & ~compatible
+    n_wrong_token_type = int(wrong_token_type.sum())
+    if n_wrong_token_type:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_wrong_token_type",
+                message=(
+                    f"{n_wrong_token_type} positive sequence probability value(s) target identities "
+                    "from a different polymer type"
+                ),
+                count=n_wrong_token_type,
+            )
+        )
+
+    specified_mass = np.where(specified & finite, probabilities, 0.0).sum(axis=-1)
+    exceeds_one = specified_mass > 1.0 + 1e-6
+    n_exceeds_one = int(exceeds_one.sum())
+    if n_exceeds_one:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_sum_exceeds_one",
+                message=f"specified sequence probabilities sum above 1 on {n_exceeds_one} residue(s)",
+                count=n_exceeds_one,
+            )
+        )
+
+    fully_specified = compatible.any(axis=-1) & (specified | ~compatible).all(axis=-1)
+    noncanonical_exact = seq_conditioned & ~np.isin(residue_names, list(STANDARD_POLYMER_RESIDUES))
+    missing_mass = fully_specified & ~noncanonical_exact & (specified_mass < 1.0 - 1e-6)
+    n_missing_mass = int(missing_mass.sum())
+    if n_missing_mass:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_sum_below_one",
+                message=f"fully specified sequence probabilities sum below 1 on {n_missing_mass} residue(s)",
+                count=n_missing_mass,
+            )
+        )
+
+    incomplete = seq_conditioned & ~specified.all(axis=-1)
+    n_incomplete = int(incomplete.sum())
+    if n_incomplete:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_incomplete_for_c_seq",
+                message=(
+                    f"{n_incomplete} C_SEQ-conditioned residue(s) do not have all canonical-polymer "
+                    "probabilities explicitly specified"
+                ),
+                count=n_incomplete,
+            )
+        )
+
+    expected = np.zeros_like(probabilities)
+    for channel, condition in enumerate(SEQUENCE_PROBABILITY_CONDITIONS):
+        expected[:, channel] = residue_names == condition.token_name
+    conflicts = seq_conditioned[:, None] & specified & ~np.isclose(probabilities, expected)
+    conflicting_residues = conflicts.any(axis=-1)
+    n_conflicting = int(conflicting_residues.sum())
+    if n_conflicting:
+        violations.append(
+            InvariantViolation(
+                check="sequence_probability_conflicts_with_c_seq",
+                message=f"{n_conflicting} residue(s) have sequence probabilities that conflict with C_SEQ",
+                count=n_conflicting,
+            )
+        )
+
+    return violations
 
 
 def check_idxgrp_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:

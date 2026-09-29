@@ -18,12 +18,12 @@ from rfproteina.conditions import (
     C_IDXGRP,
     C_INTCRD,
     C_MCOORD,
-    C_NCYS,
     C_PICATION,
     C_PISTACK,
     C_RAS,
     C_SALT,
     C_SEC,
+    SEQUENCE_PROBABILITY_CONDITIONS,
     HBondEnum,
     MetalCoordEnum,
     PiCationEnum,
@@ -41,6 +41,8 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 # (Equivalent plain integers keep the atom37 feature forwards traceable)
 _HB_DONOR, _HB_ACCEPTOR, _HB_BOTH = int(HBondEnum.DONOR), int(HBondEnum.ACCEPTOR), int(HBondEnum.BOTH)
 _PC_AROMATIC, _PC_CATION, _PC_BOTH = int(PiCationEnum.AROMATIC), int(PiCationEnum.CATION), int(PiCationEnum.BOTH)
+_SALT_NONE = int(SaltBridgeEnum.NONE)
+_MCOORD_NONE = int(MetalCoordEnum.NONE)
 
 
 def _require_condition_in_batch(batch: dict, full_name: str, feature_name: str) -> None:
@@ -271,6 +273,18 @@ class TimeEmbeddingBatchFeat(Feature):
         return get_time_embedding(batch["t"][self.data_mode_use], edim=self.dim)
 
 
+class RecycleIndexBatchFeat(Feature):
+    """Sinusoidal embedding of the one-based current trunk pass, shaped [b, t_emb_dim]."""
+
+    def __init__(self, t_emb_dim: int, **kwargs: Any) -> None:
+        super().__init__(dim=t_emb_dim)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        mask = batch["padding_mask"]
+        index = torch.full((mask.shape[0],), batch["recycle_index"], device=mask.device, dtype=torch.float32)
+        return get_time_embedding(index / 100, edim=self.dim, max_positions=100)
+
+
 class XtBBCASeqFeat(Feature):
     """Computes feature from backbone CA x_t coordinates, seq feature of shape [b, n, 3]."""
 
@@ -318,6 +332,9 @@ class CaCoorsNanometersSeqFeat(Feature):
 class ConditionalResidueTypeSeqFeat(Feature):
     """
     Computes feature from conditional residue type, feature of shape [b, n, 33].
+
+    Used by the AE decoder and released flow checkpoints. Generalized flow configs
+    use ``SequenceProbabilitiesSeqFeat`` instead.
 
     Uses `C_SEQ.full_name` if available, otherwise returns zeros.
     This prevents leakage of ground truth sequence information during training.
@@ -787,7 +804,7 @@ class SaltBridgeSeqFeat(Feature):
 
         salt = batch[C_SALT.full_name].long()  # [b, n, 37]
         atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
-        return (salt != SaltBridgeEnum.NONE).float() * atom37_mask  # [b, n, 37]
+        return (salt != _SALT_NONE).float() * atom37_mask  # [b, n, 37]
 
 
 class HydrophobicSeqFeat(Feature):
@@ -821,7 +838,7 @@ class MetalCoordinationSeqFeat(Feature):
 
         mcoord = batch[C_MCOORD.full_name].long()  # [b, n, 37]
         atom37_mask = batch["atom37_mask"].float()  # [b, n, 37]
-        return (mcoord != MetalCoordEnum.NONE).float() * atom37_mask  # [b, n, 37]
+        return (mcoord != _MCOORD_NONE).float() * atom37_mask  # [b, n, 37]
 
 
 class HotspotSeqFeat(Feature):
@@ -847,18 +864,25 @@ class HotspotSeqFeat(Feature):
         return hotspot_feat
 
 
-class NotCysteineSeqFeat(Feature):
-    """Per-token binary feature [b, n, 1]: 1 where a residue is marked "should not be CYS", else 0."""
+class SequenceProbabilitiesSeqFeat(Feature):
+    """Canonical-polymer probabilities and masks in unified-encoding order.
+
+    The first half contains probability values and the second half indicates
+    which values were explicitly specified. Thus an explicit zero is distinct
+    from an unconstrained sequence-token probability.
+    """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=1)
+        super().__init__(dim=2 * len(SEQUENCE_PROBABILITY_CONDITIONS))
 
     def forward(self, batch: dict) -> torch.Tensor:
-        if C_NCYS.full_name not in batch:
-            b, n = self.extract_bs_and_n(batch)
-            return torch.zeros(b, n, 1, device=self.extract_device(batch))
-        # C_NCYS is a residue-level (token-level) bool [b, n]; no atom37 reduction needed.
-        return batch[C_NCYS.full_name].unsqueeze(-1).float()  # [b, n, 1]
+        probabilities = torch.stack(
+            [batch[condition.full_name] for condition in SEQUENCE_PROBABILITY_CONDITIONS], dim=-1
+        ).float()
+        masks = torch.stack(
+            [batch[condition.mask_name] for condition in SEQUENCE_PROBABILITY_CONDITIONS], dim=-1
+        ).float()
+        return torch.cat((probabilities * masks, masks), dim=-1)
 
 
 class IndexGroupPairFeat(Feature):
@@ -1351,6 +1375,9 @@ class FeatureFactory(torch.nn.Module):
             return TimeEmbeddingBatchFeat(data_mode_use="local_latents", **kwargs)
 
         if self.mode == "seq":
+            if f == "recycle_index":
+                return RecycleIndexBatchFeat(**kwargs)
+
             # Position and indexing
             if f == "chain_idx_seq":
                 return ChainIdxSeqFeat(**kwargs)
@@ -1400,8 +1427,8 @@ class FeatureFactory(torch.nn.Module):
                 return MetalCoordinationSeqFeat(**kwargs)
             elif f == "hotspot":
                 return HotspotSeqFeat(**kwargs)
-            elif f == "not_cysteine":
-                return NotCysteineSeqFeat(**kwargs)
+            elif f == "sequence_probabilities":
+                return SequenceProbabilitiesSeqFeat(**kwargs)
             elif f == "na_ss_state":
                 return NucleicSecondaryStructureStateSeqFeat(**kwargs)
             elif f == "coord_group_seq":

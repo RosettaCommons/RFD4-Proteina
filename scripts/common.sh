@@ -232,6 +232,9 @@ emit_af3_daemon_block() {
 
 # Pre-launch AF3 daemons (one supervisor per node, sockets in each node's /tmp).
 # Foreground srun + shell background + --overlap keeps the supervisor alive without slurm killing it.
+export AF3_IMAGE="${AF3_IMAGE:-}"
+export AF3_JAX_CACHE_DIR="${AF3_JAX_CACHE_DIR:-}"
+export AF3_MODEL_DIR="${AF3_MODEL_DIR:-}"
 AF3_OUT=\${RUN_DIR:-.}/slurm_run_outputs && mkdir -p "\$AF3_OUT"
 srun --ntasks-per-node=1 --nodes=\$SLURM_JOB_NUM_NODES --overlap --kill-on-bad-exit=0 \\
   /usr/bin/python3 $code_dir/src/rfproteina/af3/af3_daemon.py launch \\

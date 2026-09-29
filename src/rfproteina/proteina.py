@@ -17,6 +17,7 @@ import torch.distributed as dist
 import wandb
 from atomworks.common import exists
 from atomworks.io.parser import parse
+from atomworks.ml.conditions import C_SEQ
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 from atomworks.ml.utils.token import get_token_count
 from hydra.errors import InstantiationException
@@ -47,15 +48,17 @@ from rfproteina.metrics.utils.metrics_utils import (
     fold_designs_for_oracles,
     resolve_mm_cfgs_from_metrics,
 )
+from rfproteina.model_masks import compute_ae_masks
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
+from rfproteina.partial_autoencoder.decoder import get_allowed_residue_type_mask
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
 from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
 from rfproteina.utils.lora import maybe_apply_lora
-from rfproteina.utils.optim_utils import build_optimizers
+from rfproteina.utils.optim_utils import backward_with_accumulation, build_optimizers
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.structure_files import find_structure_file
@@ -422,8 +425,35 @@ class Proteina(L.LightningModule):
         """Declare fixed inference length buckets so the flow model may compile."""
         self.nn.reserve_shape_cache(lengths)
 
-    def configure_optimizers(self) -> torch.optim.Optimizer | list[torch.optim.Optimizer]:
-        return build_optimizers(self.named_parameters(), self.cfg_exp.opt)
+    def configure_optimizers(
+        self,
+    ) -> list[torch.optim.Optimizer] | tuple[list[torch.optim.Optimizer], list[torch.optim.lr_scheduler.LambdaLR]]:
+        """Build Muon and Adam with independent linear warmups counted in optimizer updates."""
+        warmup_steps = {}
+        for name in ("muon", "adam"):
+            key = f"{name}_warmup_steps"
+            steps = self.cfg_exp.opt.get(key, 0)
+            if not isinstance(steps, int) or isinstance(steps, bool) or steps < 0:
+                raise ValueError(f"opt.{key} must be a non-negative integer.")
+            warmup_steps[name] = steps
+        optimizers = build_optimizers(self.named_parameters(), self.cfg_exp.opt)
+        optimizer_steps = []
+        for opt in optimizers:
+            if isinstance(opt, torch.optim.Muon):
+                optimizer_steps.append(warmup_steps["muon"])
+            elif isinstance(opt, torch.optim.Adam):
+                optimizer_steps.append(warmup_steps["adam"])
+            else:
+                raise TypeError(f"No warmup configuration for optimizer {type(opt).__name__}.")
+        if not any(optimizer_steps):
+            return optimizers
+        schedulers = [
+            torch.optim.lr_scheduler.LambdaLR(
+                opt, lr_lambda=lambda step, steps=steps: min((step + 1) / max(steps, 1), 1.0)
+            )
+            for opt, steps in zip(optimizers, optimizer_steps, strict=True)
+        ]
+        return optimizers, schedulers
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Adds additional variables to checkpoint."""
@@ -586,15 +616,10 @@ class Proteina(L.LightningModule):
                 self.update_n_log_nsamples_processed(bs)
                 self.log_nparams()
 
-                should_step = (batch_idx + 1) % self.cfg_exp.opt.get("accumulate_grad_batches", 1) == 0
-
-                # If we are not stepping, we wrap backward in no_sync to stay local
-                if not should_step:
-                    with self.trainer.strategy.no_sync(self):
-                        self.manual_backward(train_loss)
-                else:
-                    self.manual_backward(train_loss)
-
+                should_step = backward_with_accumulation(
+                    self, train_loss, batch_idx, self.cfg_exp.opt.get("accumulate_grad_batches", 1)
+                )
+                if should_step:
                     # [muon, adam], or just adam if the exclude patterns left Muon nothing.
                     optimizers = self.optimizers()
                     if not isinstance(optimizers, list):
@@ -615,6 +640,11 @@ class Proteina(L.LightningModule):
 
                     for opt in optimizers:
                         opt.zero_grad()
+
+                    schedulers = self.lr_schedulers()
+                    if schedulers is not None:
+                        for scheduler in schedulers if isinstance(schedulers, list) else [schedulers]:
+                            scheduler.step()
 
             # Return dict with loss and extra data for callbacks.
             # Lightning uses the reserved "loss" key for backpropagation - other keys are
@@ -1553,10 +1583,14 @@ class Proteina(L.LightningModule):
             Dict with ``atom37_coords`` ([b, n, 37, 3], Angstrom, grad), ``residue_type``
             ([b, n], discrete), and ``padding_mask`` ([b, n]).
         """
+        decode_batch = {
+            **extra_info["batch"],
+            "sequence_logits": extra_info.get("sequence_logits"),
+        }
         formatted = self._format_sample_local_latents(
             x=state,
             ret_mode="coors37_n_aatype",
-            batch=extra_info["batch"],
+            batch=decode_batch,
         )
         return {
             "atom37_coords": formatted["coors"],
@@ -1908,6 +1942,48 @@ class Proteina(L.LightningModule):
                 "z_latent": x["local_latents"],
                 "ca_coors_nm": x["bb_ca"],
             }
+
+            inf_cfg = getattr(self, "inf_cfg", None)
+            condition_on_predicted_sequence = bool(
+                inf_cfg is not None and inf_cfg.args.get("condition_decoder_on_sequence_prediction", False)
+            )
+            if condition_on_predicted_sequence:
+                sequence_logits = batch.get("sequence_logits")
+                if sequence_logits is None:
+                    raise ValueError(
+                        "condition_decoder_on_sequence_prediction is enabled, but the checkpoint has no "
+                        "sequence readout output."
+                    )
+                if sequence_logits.shape[-1] != 33:
+                    raise ValueError(
+                        "condition_decoder_on_sequence_prediction requires 33-class sequence logits, "
+                        f"got {sequence_logits.shape[-1]}."
+                    )
+
+                logits_for_decode = sequence_logits
+                allowed_residue_types = get_allowed_residue_type_mask(
+                    device=logits_for_decode.device,
+                )
+                if "token_type" in decode_batch:
+                    allowed_per_token = allowed_residue_types[decode_batch["token_type"].long()]
+                    logits_for_decode = logits_for_decode.masked_fill(
+                        ~allowed_per_token,
+                        torch.finfo(logits_for_decode.dtype).min,
+                    )
+                predicted_residue_type = logits_for_decode.argmax(dim=-1)
+
+                # Preserve user-provided C_SEQ exactly and fill only the emitted tokens whose
+                # sequence is being generated. This is the same encoded value + mask interface
+                # consumed by the modernized AE's ConditionalResidueTypeSeqFeat.
+                sequence_conditioning_mask = decode_batch[C_SEQ.mask_name].bool()
+                _, decoder_emit_mask = compute_ae_masks(decode_batch)
+                prediction_mask = decoder_emit_mask & ~sequence_conditioning_mask
+                decode_batch[C_SEQ.full_name] = torch.where(
+                    prediction_mask,
+                    predicted_residue_type,
+                    decode_batch[C_SEQ.full_name],
+                )
+                decode_batch[C_SEQ.mask_name] = sequence_conditioning_mask | prediction_mask
 
             output_decoder = self.autoencoder.decode(decode_batch)
             emit_mask = output_decoder["emit_mask"]
