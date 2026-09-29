@@ -1,18 +1,15 @@
 # MGnify metagenomic sequences predicted with AlphaFold2, 2026.
 # Streamed from cloud-native blob storage; filtered for confidence and length
 
-_target_: atomworks.ml.datasets.PandasDataset
+defaults:
+  - backend_blob
+  - _self_
+
 name: mgnify_af2_distill_2026
 data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/examples.parquet
-memory_map: False  # loaded into a buffer; nothing to mmap
 
 loader:
-  _target_: atomworks.ml.datasets.loaders.create_blob_cif_loader
   blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/blob
-  example_id_colname: example_id
-  assembly_id_colname: null  # no assembly column; the loader falls back to "1"
-  parser_args:
-    _target_: rfproteina.utils.parse_presets.distillation
 
 columns_to_load:
   - example_id

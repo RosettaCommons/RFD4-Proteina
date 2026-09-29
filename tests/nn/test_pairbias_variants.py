@@ -4,7 +4,7 @@ import pytest
 import torch
 from einops import rearrange
 
-from rfproteina.nn.modules import norm, pair_bias_attn
+from rfproteina.nn.modules import norm
 from rfproteina.nn.modules.pair_bias_attn import (
     CUET_AVAILABLE,
     NEG_INF,
@@ -115,40 +115,3 @@ def test_cuequivariance_matches_reference(
     assert out_cuet.shape == ref.shape
     max_diff = (out_cuet - ref)[token_mask].abs().max().item()
     assert max_diff < TF32_MAX_ABS_DIFF, f"Max diff: {max_diff:.3e} (expected < {TF32_MAX_ABS_DIFF:.0e})"
-
-
-@pytest.mark.parametrize("norm_type", ["layer_norm", "rmsnorm_torch_fused"])
-@pytest.mark.parametrize("bias,qkln", [(True, True), (False, False)])
-def test_cuequivariance_unprojected_api(norm_type: str, bias: bool, qkln: bool, monkeypatch):
-    """The cuEq adapter preserves checkpoints and supplies the unprojected 0.12 API on CPU."""
-    monkeypatch.setattr(norm, "_NORM_TYPE", norm_type)
-    monkeypatch.setattr(pair_bias_attn, "CUET_AVAILABLE", True)
-    captured = {}
-
-    def attention_pair_bias(*, single_repr, pair_repr, norm_kind, **kwargs):
-        captured.update(single_repr=single_repr, pair_repr=pair_repr, norm_kind=norm_kind, **kwargs)
-        return single_repr, None
-
-    monkeypatch.setattr(pair_bias_attn, "cuet_attention_pair_bias", attention_pair_bias)
-    reference = _make_attn(PairBiasAttention, "cpu", bias=bias, qkln=qkln)
-    attention = _make_attn(pair_bias_attn.CuEqPairBiasAttention, "cpu", bias=bias, qkln=qkln)
-    attention.load_state_dict(reference.state_dict(), strict=True)
-    node = torch.randn(1, 4, 64)
-    pair = torch.randn(1, 4, 4, 32)
-    mask = torch.ones(1, 4, dtype=torch.bool)
-    assert attention(node, pair, mask) is node
-    assert captured["single_repr"] is node
-    assert captured["pair_repr"] is pair
-    assert captured["mask"] is mask
-    assert not {"s", "q", "k", "v", "z"}.intersection(captured)
-    assert captured["norm_kind"] == ("layer_norm" if norm_type == "layer_norm" else "rms_norm")
-    assert captured["eps"] == attention.node_norm.eps
-    torch.testing.assert_close(
-        torch.cat([captured[f"w_proj_{name}"] for name in ("q", "k", "v")]), attention.to_qkv.weight
-    )
-    if norm_type == "rmsnorm_torch_fused":
-        assert all(captured[f"b_ln_{name}"] is None for name in ("a", "q", "k", "z"))
-    if not qkln:
-        assert captured["w_ln_q"] is None and captured["w_ln_k"] is None
-    if not bias:
-        assert all(captured[f"b_proj_{name}"] is None for name in ("q", "k", "v", "o"))

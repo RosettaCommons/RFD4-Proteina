@@ -99,12 +99,12 @@ from rfproteina.conditions import (
     C_INTCRD,
     C_MCOORD,
     C_NA_SS_STATE,
-    C_NCYS,
     C_PICATION,
     C_PISTACK,
     C_RAS,
     C_SALT,
     C_SEC,
+    SEQUENCE_PROBABILITY_CONDITIONS,
     BasePairEnum,
     HBondEnum,
     MetalCoordEnum,
@@ -478,7 +478,11 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         # ... fancy
         feats[C_HOT.full_name] = C_HOT.annotation(aa, default="generate")
-        feats[C_NCYS.full_name] = C_NCYS.annotation(aa, default="generate")  # [L] bool, not-cysteine conditioning
+        for condition in SEQUENCE_PROBABILITY_CONDITIONS:
+            # Explicit zero and unset are different states, so values and masks are
+            # carried separately. Generating defaults here does not mutate the AtomArray.
+            feats[condition.full_name] = condition.annotation(aa, default="generate")
+            feats[condition.mask_name] = condition.mask(aa, default="generate")
         feats[C_RAS.full_name] = C_RAS.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_SEC.full_name] = C_SEC.annotation(aa, default="generate")  # NOTE: this needs to be encoded
         feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
@@ -521,7 +525,11 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_CTR.full_name,
     C_NTR.full_name,
     C_SEC.full_name,
-    C_NCYS.full_name,
+    *[
+        feature_name
+        for condition in SEQUENCE_PROBABILITY_CONDITIONS
+        for feature_name in (condition.full_name, condition.mask_name)
+    ],
     C_IDXGRP.full_name,
     C_CATH.full_name,
     C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
@@ -970,18 +978,60 @@ class FreezeConditionAnnotations(Transform):
         return data
 
 
-class EnsureNCYSResiduesAreNotSequenceConditioned(Transform):
-    """Clear not-cysteine conditioning on any sequence-conditioned residue to keep the feature in-distribution."""
+class CanonicalizeSequenceProbabilityConditions(Transform):
+    """Normalize sequence-probability conditions before featurization.
+
+    ``C_SEQ`` is authoritative: canonical sequence-conditioned residues receive a
+    fully specified one-hot distribution over the 28 probability Conditions. For a
+    sequence-conditioned token outside that vocabulary, all 28 probabilities are
+    explicitly zero. Existing specified values must agree with that distribution.
+    """
 
     def forward(self, data: dict) -> dict:
         aap = as_atom_array_plus(data["atom_array"])
-        ncys = C_NCYS.annotation(aap, default="generate")
-        if ncys.any():
-            # Clear residue-wise: a non-uniform Level.RESIDUE annotation trips ValidateBatchInvariants.
-            seq_mask = C_SEQ.mask(aap, default="generate")
-            starts = get_residue_starts(aap)
-            residue_seq = np.maximum.reduceat(seq_mask, starts).astype(bool)  # [n_residues]
-            C_NCYS.set_annotation(aap, spread_residue_wise(aap, ncys[starts] & ~residue_seq))
+        starts = get_residue_starts(aap)
+        seq_mask = C_SEQ.mask(aap, default="generate")
+        residue_seq = np.maximum.reduceat(seq_mask, starts).astype(bool)
+        seq_atoms = spread_residue_wise(aap, residue_seq)
+
+        categories = set(aap.get_annotation_categories())
+        resolved: dict[type, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        conflicts: list[str] = []
+        for condition in SEQUENCE_PROBABILITY_CONDITIONS:
+            has_annotation = condition.full_name in categories
+            has_mask = condition.mask_name in categories
+            if has_annotation != has_mask:
+                missing = condition.mask_name if has_annotation else condition.full_name
+                raise ValueError(f"{condition.name} is present without its paired annotation '{missing}'")
+
+            probability = condition.annotation(aap, default="generate").astype(np.float32)
+            mask = condition.mask(aap, default="generate").copy()
+            expected = (aap.res_name == condition.token_name).astype(np.float32)
+            conflict = seq_atoms & mask & ~np.isclose(probability, expected)
+            if conflict.any():
+                n_conflicting_residues = int(np.maximum.reduceat(conflict, starts).sum())
+                conflicts.append(f"{condition.token_name}: {n_conflicting_residues} residue(s)")
+            resolved[condition] = probability, mask, expected
+
+        if conflicts:
+            raise ValueError(
+                "Sequence-probability conditioning conflicts with C_SEQ exact identities: " + ", ".join(conflicts)
+            )
+
+        for condition, (probability, mask, expected) in resolved.items():
+            probability[seq_atoms] = expected[seq_atoms]
+            mask[seq_atoms] = True
+            probability[~mask] = 0.0
+            if mask.any():
+                # Biotite promotes replacements to the old dtype unless the column is removed first.
+                aap.del_annotation(condition.full_name)
+                condition.set_annotation(aap, probability)
+                condition.set_mask(aap, mask)
+            elif condition.full_name in categories:
+                # Do not retain globally unset columns in annotated CIF output.
+                aap.del_annotation(condition.full_name)
+                aap.del_annotation(condition.mask_name)
+
         data["atom_array"] = aap
         return data
 
@@ -1178,8 +1228,8 @@ def _build_design_clean_and_sample_pipeline(
     ### 2. Add basic annotations                            ###
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    # Keep the bonded polymer residue tokenized; atomize only the covalent modifier.
-    T += AnnotateCovalentModifications(p_reassign_modified_residue=0.0)
+    # Reassign covalent modifications using the hero model's training policy.
+    T += AnnotateCovalentModifications(p_reassign_modified_residue=1.0)
     T += FlagNonPolymersForAtomization()
     if not is_inference:
         T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
@@ -1355,7 +1405,7 @@ def _build_design_featurize_pipeline(
     ###########################################################
     # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
     T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
-    T += EnsureNCYSResiduesAreNotSequenceConditioned()
+    T += CanonicalizeSequenceProbabilityConditions()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
     T += AddGlobalTokenIdAnnotation(allow_overwrite=True)

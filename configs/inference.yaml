@@ -5,7 +5,7 @@
 defaults:
   - _self_
   - inference_experiment: inference_on_user_inputs # Default for design
-  - recycle_strategy: midpeak6_60
+  - recycle_strategy: thinking_medium
 
 # NOTE: The experiment configs can override values specified in this config
 
@@ -18,7 +18,7 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
 
 # Current SOTA; generation and regression tooling resolve the immutable checkpoint from here.
 # Regenerate the inference baselines when advancing it; use CLI overrides for one-off checkpoints.
-ckpt_name: chk_epoch_00000139_step_000000280000-ema.ckpt
+ckpt_name: chk_epoch_00000169_step_000000340000-ema.ckpt
 ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).

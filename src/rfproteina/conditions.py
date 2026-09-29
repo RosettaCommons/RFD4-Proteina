@@ -1,6 +1,8 @@
 from enum import IntEnum
+from typing import ClassVar
 
 import numpy as np
+from atomworks.constants import STANDARD_POLYMER_RESIDUES
 from atomworks.io.transforms.atom_array import (
     add_id_and_entity_annotations,
     add_molecule_iid_annotation,
@@ -9,6 +11,7 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
+from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.dssp import SSEnum
 from biotite.structure import AtomArray
 
@@ -469,18 +472,63 @@ class NucleicSSState(ConditionBase):
         return np.full(atom_array.array_length(), BasePairEnum.UNSPECIFIED.value, dtype=cls.dtype)
 
 
-class NotCysteine(ConditionBase):
-    """Conditioning that marks residues which should not be a Cysteine."""
+class SequenceProbability(ConditionBase):
+    """Base class for an explicitly specified unified sequence-token probability.
 
-    name = "not-cysteine"
-    n_body = 1
-    level = Level.RESIDUE
-    is_mask = True
-    dtype = bool
+    The separate Condition mask is semantically important: a probability of zero is a
+    real constraint, while a false mask means that the probability was left unspecified.
+    """
+
+    token_name: ClassVar[str]
+    token_index: ClassVar[int]
+    alias_suffix: ClassVar[str]
+
+    @classmethod
+    def default_annotation(cls, atom_array: AtomArray) -> np.ndarray:
+        return np.zeros(atom_array.array_length(), dtype=np.float32)
 
     @classmethod
     def default_mask(cls, atom_array: AtomArray) -> np.ndarray:
         return np.zeros(atom_array.array_length(), dtype=bool)
+
+
+def _make_sequence_probability_condition(token_name: str, token_index: int) -> type[SequenceProbability]:
+    """Create and register the probability Condition for one unified sequence token."""
+
+    return type(
+        f"{token_name.title()}SequenceProbability",
+        (SequenceProbability,),
+        {
+            "__module__": __name__,
+            "__doc__": f"Explicit probability conditioning for unified sequence token {token_name!r}.",
+            "name": f"sequence-probability-{token_name}",
+            "token_name": token_name,
+            "token_index": token_index,
+            "alias_suffix": token_name,
+            "n_body": 1,
+            "level": Level.RESIDUE,
+            "dtype": np.float32,
+        },
+    )
+
+
+# Use the unified encoding as the source of truth for channel order, excluding
+# unknown, mask, atomized, and gap tokens from the conditioning vocabulary.
+SEQUENCE_PROBABILITY_CONDITIONS: tuple[type[SequenceProbability], ...] = tuple(
+    _make_sequence_probability_condition(str(token_name), token_index)
+    for token_index, token_name in enumerate(UNIFIED_ATOM37_ENCODING.tokens)
+    if token_name in STANDARD_POLYMER_RESIDUES
+)
+SEQUENCE_PROBABILITY_CONDITION_BY_TOKEN = {
+    condition.token_name: condition for condition in SEQUENCE_PROBABILITY_CONDITIONS
+}
+SEQUENCE_PROBABILITY_CHANNEL_BY_TOKEN = {
+    condition.token_name: channel for channel, condition in enumerate(SEQUENCE_PROBABILITY_CONDITIONS)
+}
+
+# User-facing condition-spec aliases, e.g. ``C_SEQ_PROB_CYS: {0: ...}``.
+for _condition in SEQUENCE_PROBABILITY_CONDITIONS:
+    globals()[f"C_SEQ_PROB_{_condition.alias_suffix}"] = _condition
 
 
 # Aliases for convenience
@@ -503,7 +551,6 @@ C_CRDGRP = CONDITIONS.CoordinateGroup
 C_CENTROID = CONDITIONS.ChainCentroid
 C_BP = CONDITIONS.basepair
 C_NA_SS_STATE = CONDITIONS.na_ss_state
-C_NCYS = CONDITIONS.not_cysteine
 
 # Conditions whose int-valued annotation is backed by an IntEnum, keyed by condition class.
 ENUM_CONDITIONS: dict[type[ConditionBase], type[IntEnum]] = {

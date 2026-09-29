@@ -1,0 +1,91 @@
+global_args:
+  input: structure_prediction/de_novo_proteins/9Q1V.cif
+
+full_chain_no_cys:
+  contig: "A1-3, DESIGN:97-97"
+  conditions:
+    C_SEQ_PROB_CYS:
+      0.0:
+        - select: "chain_id == 'A'"
+
+soft_complete:
+  contig: "A1-3, FREE1:21-21, ED_HALF:1-1, FREE2:24-24, POLAR:1-1, FREE3:50-50"
+  conditions:
+    C_SEQ_PROB_GLU:
+      0.5:
+        - select: "res_name == 'ED_HALF'"
+    C_SEQ_PROB_ASP:
+      0.5:
+        - select: "res_name == 'ED_HALF'"
+    C_SEQ_PROB_SER:
+      0.4:
+        - select: "res_name == 'POLAR'"
+    C_SEQ_PROB_THR:
+      0.3:
+        - select: "res_name == 'POLAR'"
+    C_SEQ_PROB_ASN:
+      0.2:
+        - select: "res_name == 'POLAR'"
+    C_SEQ_PROB_GLN:
+      0.1:
+        - select: "res_name == 'POLAR'"
+
+soft_partial_with_zeros:
+  contig: "A1-3, FREE1:14-14, HYDRO:1-1, FREE2:20-20, AROMATIC:1-1, FREE3:20-20, POLAR_NO_HIS:1-1, FREE4:40-40"
+  conditions:
+    C_SEQ_PROB_LEU:
+      0.35:
+        - select: "res_name == 'HYDRO'"
+    C_SEQ_PROB_ILE:
+      0.25:
+        - select: "res_name == 'HYDRO'"
+    C_SEQ_PROB_VAL:
+      0.15:
+        - select: "res_name == 'HYDRO'"
+    C_SEQ_PROB_PHE:
+      0.3:
+        - select: "res_name == 'AROMATIC'"
+    C_SEQ_PROB_TYR:
+      0.2:
+        - select: "res_name == 'AROMATIC'"
+    C_SEQ_PROB_TRP:
+      0.1:
+        - select: "res_name == 'AROMATIC'"
+    C_SEQ_PROB_SER:
+      0.4:
+        - select: "res_name == 'POLAR_NO_HIS'"
+    C_SEQ_PROB_THR:
+      0.25:
+        - select: "res_name == 'POLAR_NO_HIS'"
+    C_SEQ_PROB_ASN:
+      0.1:
+        - select: "res_name == 'POLAR_NO_HIS'"
+    C_SEQ_PROB_CYS:
+      0.0:
+        - select: "res_name == 'AROMATIC'"
+    C_SEQ_PROB_HIS:
+      0.0:
+        - select: "res_name == 'POLAR_NO_HIS'"
+
+soft_gly_zero:
+  contig: "A1-3, FREE1:49-49, SOFT_NO_GLY:1-1, FREE2:47-47"
+  conditions:
+    C_SEQ_PROB_LEU:
+      0.35:
+        - select: "res_name == 'SOFT_NO_GLY'"
+    C_SEQ_PROB_ILE:
+      0.25:
+        - select: "res_name == 'SOFT_NO_GLY'"
+    C_SEQ_PROB_VAL:
+      0.15:
+        - select: "res_name == 'SOFT_NO_GLY'"
+    C_SEQ_PROB_GLY:
+      0.0:
+        - select: "res_name == 'SOFT_NO_GLY'"
+
+regular_sequence:
+  contig: "A1-3, DESIGN:97-97"
+  conditions:
+    C_SEQ:
+      true:
+        - select: "chain_id == 'A' and res_id >= 1 and res_id <= 2"

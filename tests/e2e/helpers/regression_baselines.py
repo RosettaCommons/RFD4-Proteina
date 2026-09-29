@@ -53,11 +53,11 @@ BEAM_SEARCH_EXAMPLE = "3IXT_AA"
 BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
 
 # Shared by the regression test and the baseline generator so the two cannot drift.
-INFERENCE_OVERRIDES = ["recycle_strategy=midpeak6_60"]
+INFERENCE_OVERRIDES = ["recycle_strategy=thinking_medium"]
 
 BEAM_SEARCH_OVERRIDES = [
     "inference_experiment=inference_beam_regression",
-    "recycle_strategy=midpeak6_60",
+    "recycle_strategy=thinking_medium",
     "~metrics/refolding_oracles",
     "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffolding/motif_unindexed",
     f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",

@@ -21,8 +21,10 @@ class PairReprUpdate(torch.nn.Module):
         expansion_factor_transition: int = 2,
         use_tri_mult: bool = False,
         tri_mult_c: int = 196,
+        tri_mult_bias: bool = True,
         pair_write: str = "sum",
         checkpoint_tri_mult: bool = True,
+        tri_mult_backend: str = "torch",
     ) -> None:
         super().__init__()
         assert pair_write in PAIR_WRITE_MODES, f"Unknown pair_write {pair_write!r}; expected {PAIR_WRITE_MODES}"
@@ -34,8 +36,9 @@ class PairReprUpdate(torch.nn.Module):
         self.linear_x = torch.nn.Linear(token_dim, int(2 * pair_dim), bias=False)
 
         if use_tri_mult:
-            self.tri_mult_out = TriangleMultiplicationOutgoing(c_z=pair_dim, c_hidden=tri_mult_c)
-            self.tri_mult_in = TriangleMultiplicationIncoming(c_z=pair_dim, c_hidden=tri_mult_c)
+            kwargs = {"c_z": pair_dim, "c_hidden": tri_mult_c, "bias": tri_mult_bias, "backend": tri_mult_backend}
+            self.tri_mult_out = TriangleMultiplicationOutgoing(**kwargs)
+            self.tri_mult_in = TriangleMultiplicationIncoming(**kwargs)
         self.transition_out = PairTransition(c_z=pair_dim, n=expansion_factor_transition)
 
     def _apply_mask(self, pair_rep: torch.Tensor, pair_mask: torch.Tensor) -> torch.Tensor:

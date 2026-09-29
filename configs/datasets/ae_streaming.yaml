@@ -1,0 +1,28 @@
+defaults:
+  - train/ae/pdb_interfaces@train.pdb_interfaces
+  - train/ae/afdb_monomer_streaming@train.afdb_monomer
+  - train/ae/ted_dimers_streaming@train.ted_dimers
+  - train/ae/synthetic_ncaa_strict@train.synthetic_ncaa
+  - train/ae/pdb_ptm_strict@train.pdb_ptm
+  - train/ae/pdb_glycan_strict@train.pdb_glycan
+  - train/ae/na_complex_streaming@train.na_complex
+  - train/ae/rna_monomer_streaming@train.rna_monomer
+  - _self_
+
+train:
+  pdb_interfaces:
+    probability: 0.25
+  afdb_monomer:
+    probability: 0.20
+  ted_dimers:
+    probability: 0.15
+  synthetic_ncaa:
+    probability: 0.10
+  pdb_ptm:
+    probability: 0.05
+  pdb_glycan:
+    probability: 0.15
+  na_complex:
+    probability: 0.05
+  rna_monomer:
+    probability: 0.05

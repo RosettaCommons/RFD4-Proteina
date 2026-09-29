@@ -131,7 +131,7 @@ that matter most:
   `generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode`.
 - **Steps / recycling.** The default 1x schedule uses 60 model evaluations
   and 185 trunk passes, with twice the integration-step density in the final 20%
-  of each modality's clock. Select `recycle_strategy=midpeak6_x1p5_60` for the
+  of each modality's clock. Select `recycle_strategy=thinking_high` for the
   1.5x recycle-depth variant.
 
 ## Step 5 — Inline metrics (optional)

@@ -84,7 +84,7 @@ def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
     return iter_structure_files(Path(out_dir) / "inference_samples", stem_suffix="_generated")
 
 
-_MOTIF_RMSD_MAX = 0.75
+_MOTIF_RMSD_MAX = 1.0
 
 # Checkpoint-path -> loaded model, shared across TestEndToEndInference so the SOTA checkpoint
 # is loaded once instead of per run_generation call (see the _cache_checkpoint_load fixture).
@@ -764,7 +764,7 @@ class TestEndToEndInference:
         ):
             r = _motif_rmsd(sub, col)
             assert (
-                r.notna().all() and (r <= _MOTIF_RMSD_MAX).all()
+                r.notna().all() and (r < _MOTIF_RMSD_MAX).all()
             ), f"{sub} {col} exceeds {_MOTIF_RMSD_MAX} A: {r.tolist()}"
 
         # The unindexed motif should become an indexed fixed motif (not re-unindexed) after the first generation

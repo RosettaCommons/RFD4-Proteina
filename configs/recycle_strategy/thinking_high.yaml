@@ -1,6 +1,6 @@
 # @package generation
 
-# Optional 1.5x recycle depths: the same 60 evaluation times and 295 trunk passes.
+# High thinking: 60 model evaluations and 295 trunk passes.
 n_recycle_schedule: [[5, 2], [5, 3], [5, 5], [5, 8], [10, 9], [5, 8], [5, 5], [10, 3], [10, 2]]
 
 args:

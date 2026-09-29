@@ -191,22 +191,68 @@ commented examples of both.
 ## Datasets and dataloaders
 
 Dataset configs live under `configs/datasets/train/` and `configs/datasets/val/`. Parquet backed
-sets inherit from `configs/datasets/train/backend_pandas.yaml`, which is
-`atomworks.ml.datasets.PandasDataset`, and the production `plinder` set is
-`configs/datasets/train/plinder/plinder.yaml`. Every path uses `${oc.env:DATA_PATH}`, and squashfs
-backed CIFs use `${oc.env:SQUASH_MOUNT_PATH,/squash}`, so nothing is hardcoded.
+sets use `atomworks.ml.datasets.PandasDataset`. File-backed sets inherit
+`configs/datasets/train/backend_pandas.yaml`; S3 blob sets use
+`configs/datasets/sources/backend_blob.yaml`, shared by PDB and distillation sources. Paths use `DATA_PATH` for local data or
+`DATASET_STORE_ROOT` for streaming data, and `SQUASH_MOUNT_PATH` for SquashFS mounts.
 
 A dataset config specifies four things.
 
 - `dataset.data` is the parquet index, holding row metadata and a `path` column for structures.
 - `dataset.loader.base_path` is where the CIFs live, either a squashfs mount or a plain directory as
-  in `test_dataset.yaml`.
+  in `test_dataset.yaml`. Blob loaders instead specify `storage: blob` and `blob_dir`.
 - `dataset.transform.design_tasks` names a design task preset, covered below.
 - `weights` holds optional sampling weights, such as inverse cluster size.
 
 To add a dataset, copy an existing config, point `data` and `base_path` at your files, choose a
 design task preset, and reference it from an experiment with
 `- /datasets/train/<your_dataset>@datasets.train.<key>`.
+
+The blob backend defines the reader, record IDs, parser, and cache defaults. Metadata memory
+mapping defaults to false; new AE streaming sources explicitly enable it. PDB adds its
+quality filters and metadata columns in `pdb_common.yaml`; `pdb_interface_common.yaml` adds
+interface-specific query-chain mappings and filters. These are dataset rules, not different
+streaming implementations. AtomWorks resolves each record through `blob/index.parquet`, fetches
+its byte range from `blob/data/`, decompresses it, then parses the requested assembly. PDB's
+sampling weights normalize alternative conformers separately from this loading step.
+
+### Published AE streaming datasets
+
+Use `experiment_ae=streaming` with the AE training entry point to select the following mix
+and 384-token crops/padding. All sources live under
+`${DATASET_STORE_ROOT:-s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/`:
+
+| Source | Directory | Weight |
+| --- | --- | --- |
+| PDB interfaces | `pdb/2026_09_19_tmol_plip_cath` | 25% |
+| AFDB Genie3 subset | `synthetic/afdb_genie3_subset` | 20% |
+| TED dimers | `synthetic/ted_dimers` | 15% |
+| Synthetic PTMs | `synthetic/2026_09_21_ptm_esmfold2` | 10% |
+| PDB PTM environments | `pdb/2026_09_19_ptm_crop` | 5% |
+| PDB glycans | `pdb/2026_09_19_glycan` | 15% |
+| Protein–DNA complexes | `synthetic/2026_09_22_protein_dna_esmfold2` | 5% |
+| RNA monomers | `synthetic/2026_09_21_rna_monomers` | 5% |
+
+Each directory's README describes its production method. PTM/glycan sources require the
+published strict audit and in-vocabulary flags; experimental sources also require the training
+split and pre-2024 deposition. Glycans load the audited query plus directly bonded residues.
+Those flags describe the published 100-PTM/20-glycan panel, not the model's configured vocabulary;
+selecting this mix does not expand model tokens. The recipe configures training sources only;
+validation datasets must be supplied separately.
+
+PDB retains its cluster weights and conformer normalization. RNA requires
+`source_training_eligible`; TED requires `InterfaceLength > 10`, `AvgIntPAE < 10`,
+`AvgIntPlddt > 70`, and `n_res_a + n_res_b <= 768` before cropping.
+Parsed records are cached under `${LOCAL_DRIVE_MOUNT:-/tmp}/${USER}/atomworks_parse_cache`.
+The CoreWeave profile supplies the LOTA `AWS_ENDPOINT_URL`; retain it when launching there.
+Re-Glyco is not included until its streaming conversion and audit are published.
+
+The independent `train/ae/antibody_antigen_streaming` leaf targets
+`synthetic/2026_09_18_antibody_antigen_esmfold2`. Its default filters are
+`overall_plddt >= 0.75` (confidence is stored on a 0–1 scale), `pae_min_ab_ag < 2`, and
+`n_contact_pairs >= 25`. It is not assigned weight in the mix above. Confirm the destination
+publication is complete before enabling it; the corresponding original publication retains
+3,792 of 75,576 structures after these filters.
 
 ## Design tasks, for conditional training
 

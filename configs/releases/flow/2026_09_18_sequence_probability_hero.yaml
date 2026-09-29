@@ -1,0 +1,141 @@
+# @package _global_
+
+# Hero training run based on the September 15 release recipe, with generalized
+# sequence-probability conditioning and its detached auxiliary sequence readout.
+defaults:
+  - /releases/flow/2026_09_15_release
+  - /datasets/train/flow/antibody_interfaces_distill@datasets.train.antibody_interfaces_distill
+  - /datasets/train/flow/tcr_interfaces_pdb@datasets.train.tcr_interfaces_pdb
+  - /datasets/train/flow/antibody_interfaces_pdb@datasets.train.antibody_interfaces_pdb
+  - override /datasets/val/adherence@datasets.val.rasa_IAI: null
+  - _self_
+
+run_name_: 2026_09_18_sequence_probability_hero_atomize_ptm
+
+# Crop cap and fixed training padding budget in tokens.
+_max_tokens: 256
+# Validation buckets cover the full PPI set, including complexes with up to 558 tokens.
+_val_compile_lengths: [256, 320, 384, 448, 512, 560, 608]
+# Per-coordinate Gaussian noise added to training chain centroids, in angstroms.
+_centroid_noise_std_angstrom: 2.5
+
+nn:
+  sequence_readout:
+    enabled: true
+    detach: true
+  pair_repr_dim: 384
+  tri_mult_c: 256
+  tri_mult_bias: false
+  checkpointing: none
+  recycle:
+    grad: last  # Backpropagate through only the final recycle.
+
+  # Sequence-probability channels and all supported interaction conditions.
+  feats_seq: [
+    "xt_bb_ca",
+    "xt_local_latents",
+    "token_type",
+    "sequence_probabilities",
+    "cond_a37coors_nm",
+    "cond_a37coors_internal_nm",
+    "rasa_binned",
+    "secondary_structure",
+    "hbond_modernized",
+    "pistack",
+    "pication",
+    "saltbridge",
+    "hydrophobic",
+    "metal_coord",
+    "na_ss_state",
+    "hotspot",
+    "atom_charge",
+    "atomic_element",
+    "coord_group_seq",
+    "chirality",
+    "chain_centroid_xyz",
+  ]
+
+loss:
+  sequence_prediction:
+    enabled: true
+    t_min: 0.0
+    t_max: 1.0
+
+generation:
+  args:
+    condition_decoder_on_sequence_prediction: true
+
+datasets:
+  global_design_task_kwargs:
+    salt_kwargs:
+      p_add_salt_condition: 0.2
+    hydrophobic_kwargs:
+      p_add_hydrophobic_condition: 0.2
+    metal_kwargs:
+      p_add_metal_condition: 0.2
+    sequence_probability_kwargs:
+      p_exact: 0.5
+      p_zero_only: 0.17
+      p_positive_only: 0.17
+      p_zero_and_positive: 0.16
+      dirichlet_concentration: 3.0
+      exclusion_count_alpha: 2.0
+      p_full_probability_vector: 0.75
+      p_augment_unconditioned: 0.2
+      min_augmentation_fraction: 0.05
+      max_augmentation_fraction: 0.2
+      p_zero_only_whole_chain: 0.5
+  train:
+    pdb_interfaces:
+      probability: 0.145
+    antibody_interfaces_distill:
+      probability: 0.005
+      dataset:
+        transform:
+          crop_size: null
+          crop_size_range: ${_crop_size_range}
+          max_crop_size: ${_max_tokens}
+          p_no_subcrop: ${_p_no_subcrop}
+          loss_weight_cfg: ${_loss_weights}
+    tcr_interfaces_pdb:
+      probability: 0.005
+      dataset:
+        transform:
+          crop_size: null
+          crop_size_range: ${_crop_size_range}
+          max_crop_size: ${_max_tokens}
+          p_no_subcrop: ${_p_no_subcrop}
+          loss_weight_cfg: ${_loss_weights}
+    antibody_interfaces_pdb:
+      probability: 0.005
+      dataset:
+        transform:
+          crop_size: null
+          crop_size_range: ${_crop_size_range}
+          max_crop_size: ${_max_tokens}
+          p_no_subcrop: ${_p_no_subcrop}
+          loss_weight_cfg: ${_loss_weights}
+  val:
+    ppi_bb_only_subset_12:
+      dataset:
+        subset_to_keys: null
+
+# 32 nodes x 8 GPUs x 2 examples/GPU = 512 examples per optimizer step.
+hardware:
+  nnodes_: 32
+  ngpus_per_node_: 8
+
+opt:
+  num_sanity_val_steps: 2
+
+  # use muon on recycling projection
+  muon_exclude_param_patterns:
+    - '_factory\.'
+    - '^nn\.(local_latents_linear|ca_linear|insertion_q_proj|insertion_k_proj)\.'
+
+dataloaders:
+  batch_size: 2
+  prefetch_factor: 8
+
+log:
+  tags: [sequence-probability, pair-384, trimult-256, trimult-no-bias, recycle-last, crop-256, global-bs512]

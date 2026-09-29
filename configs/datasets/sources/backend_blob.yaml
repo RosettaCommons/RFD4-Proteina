@@ -1,0 +1,16 @@
+# Shared storage and parser defaults for blob-backed dataset sources.
+# Every streaming dataset loads from and saves to the node-local parse cache.
+_target_: atomworks.ml.datasets.PandasDataset
+memory_map: false
+loader:
+  _target_: atomworks.ml.datasets.loaders.create_structure_loader
+  storage: blob
+  example_id_colname: example_id
+  record_id_colname: example_id
+  assembly_id_colname: null
+  altloc_seed_colname: null
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.distillation
+    cache_dir: ${oc.env:LOCAL_DRIVE_MOUNT,/tmp}/${oc.env:USER,shared}/atomworks_parse_cache
+    save_to_cache: true
+    load_from_cache: true

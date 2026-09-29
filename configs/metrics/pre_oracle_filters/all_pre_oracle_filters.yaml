@@ -11,13 +11,6 @@ sequence_adherence_filter:
     sequence_adherence.n_violations:
       max: 0
 
-not_cysteine_adherence_filter:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  required_tags_any: ["design"]
-  metric_thresholds:
-    not_cysteine_adherence.n_violations:
-      max: 0
-
 # Likewise for unindexed conditioning: an unindexed token that was never inserted, or was inserted
 # onto a residue of the wrong identity, means the design does not contain the requested motif.
 unindexed_insertion_mapping_filter:

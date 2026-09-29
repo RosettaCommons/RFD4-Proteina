@@ -33,6 +33,7 @@ from unittest.mock import Mock
 
 import pytest
 import torch
+from atomworks.ml.conditions import C_SEQ
 from omegaconf import OmegaConf
 
 from rfproteina.flow_matching.product_space_flow_matcher import ProductSpaceFlowMatcher
@@ -125,7 +126,8 @@ def simulation_probe(flow_matcher, monkeypatch):
 
     def predict(batch, **_kwargs):
         calls.model_inputs.append({mode: value.clone() for mode, value in batch["x_t"].items()})
-        return {"bb_ca": {}, "local_latents": {}, "insertion": {}}
+        logits = torch.full((*batch["padding_mask"].shape, 33), float(len(calls.model_inputs)))
+        return {"bb_ca": {}, "local_latents": {}, "insertion": {}, "sequence": {"logits": logits}}
 
     def clean_prediction(batch, nn_out):
         del nn_out
@@ -325,6 +327,7 @@ def test_flow_attention_includes_every_nonpadding_context(token_batch, token, ma
         insertion_k_proj=lambda values: values[..., :1],
         _insertion_head_scale=1.0,
         output_param={"bb_ca": "v", "local_latents": "v"},
+        sequence_readout_enabled=False,
         _run_trunk=run_trunk,
     )
     batch = {**token_batch, "probe": torch.ones(2, len(TOKEN_NAMES), 2)}
@@ -396,6 +399,7 @@ def test_full_simulation_preserves_flow_emit_masks_through_trajectory(token_batc
 
     def guidance(x_1_pred, extra_info):
         assert "flow_emit_masks" not in extra_info
+        assert torch.all(extra_info["sequence_logits"] == len(calls.model_inputs))
         guidance_emit_masks.append(
             {mode: value.clone() for mode, value in compute_flow_emit_masks(extra_info["batch"]).items()}
         )
@@ -417,6 +421,9 @@ def test_full_simulation_preserves_flow_emit_masks_through_trajectory(token_batc
         guidance_model=guidance,
     )
 
+    assert torch.all(info["sequence_logits"] == 2)
+    for snapshot in info["trajectory_steps"]:
+        assert torch.all(snapshot["sequence_logits"] == snapshot["step"] + 1)
     _assert_flow_emit_masks(calls.sample_emit_masks[0])
     for emit_masks in calls.step_emit_masks + guidance_emit_masks:
         _assert_flow_emit_masks(emit_masks)
@@ -438,7 +445,7 @@ def test_partial_simulation_passes_flow_emit_masks_at_each_step(token_batch, sim
         "local_latents": torch.ones(2, len(TOKEN_NAMES), 2),
     }
 
-    state, _, _ = model.partial_simulation(
+    state, _, info = model.partial_simulation(
         batch=dict(token_batch),
         x=initial,
         predict_for_sampling=lambda *_args, **_kwargs: None,
@@ -450,6 +457,7 @@ def test_partial_simulation_passes_flow_emit_masks_at_each_step(token_batch, sim
         device=torch.device("cpu"),
     )
 
+    assert torch.all(info["sequence_logits"] == 2)
     for emit_masks in calls.step_emit_masks:
         _assert_flow_emit_masks(emit_masks)
     for mode, field in (("bb_ca", "flow_bb_emit"), ("local_latents", "flow_latent_emit")):
@@ -457,8 +465,8 @@ def test_partial_simulation_passes_flow_emit_masks_at_each_step(token_batch, sim
         _assert_grid(state[mode].ne(0).any(dim=-1), field)
 
 
-def test_beam_initialization_uses_modality_flow_emit_masks(token_batch) -> None:
-    """Beam noise receives the tiled BBCA and latent masks before any rollout."""
+def test_beam_initialization_uses_masks_and_centering_groups(token_batch) -> None:
+    """Beam noise receives tiled modality masks and stochastic-centering metadata."""
     fm = SimpleNamespace(
         data_modes=("bb_ca", "local_latents"),
         sample_schedule=lambda **_kwargs: (
@@ -467,8 +475,15 @@ def test_beam_initialization_uses_modality_flow_emit_masks(token_batch) -> None:
         ),
     )
 
-    def sample_noise(_n, *, emit_masks, **_kwargs):
+    molecule_iid = torch.tensor([[0, 0, 1, 1, 1], [2, 2, 2, 3, 3]])
+    coord_cond_mask = torch.tensor(
+        [[False, False, True, True, False], [True, False, False, False, True]], dtype=torch.bool
+    )
+
+    def sample_noise(_n, *, emit_masks, groups, coord_cond_mask, **_kwargs):
         _assert_flow_emit_masks({mode: value.reshape(2, 2, -1)[0] for mode, value in emit_masks.items()})
+        assert torch.equal(groups["molecule_iid"], molecule_iid.repeat(2, 1))
+        assert torch.equal(coord_cond_mask, batch["coord_cond_mask"].repeat(2, 1))
         # Purely to early-exit the beam search, proves that we passed the above assertion
         raise RuntimeError("beam initialized")
 
@@ -489,6 +504,8 @@ def test_beam_initialization_uses_modality_flow_emit_masks(token_batch) -> None:
     batch = {
         **token_batch,
         "coords_nm": torch.zeros(2, len(TOKEN_NAMES), 37, 3),
+        "molecule_iid": molecule_iid,
+        "coord_cond_mask": coord_cond_mask,
     }
 
     with pytest.raises(RuntimeError, match="beam initialized"):
@@ -573,6 +590,46 @@ def test_flow_loss_changes_only_for_supervised_grid_cells(token_batch, flow_matc
     )
 
 
+def test_sequence_prediction_loss_uses_local_latent_supervision_mask(token_batch) -> None:
+    """The sequence probe ignores context, padding, unsupported, and unresolved tokens."""
+    n = len(TOKEN_NAMES)
+    matcher = ProductSpaceFlowMatcher(
+        OmegaConf.create(
+            {
+                "product_flowmatcher": {"bb_ca": {"dim": 3}, "local_latents": {"dim": 2}},
+                "loss": {
+                    "sequence_prediction": {
+                        "enabled": True,
+                        "weight": 1.0,
+                        "t_source": "local_latents",
+                        "t_min": 0.0,
+                        "t_max": 1.0,
+                    }
+                },
+            }
+        )
+    )
+    rows = {key: value[:1].expand(n, *value.shape[1:]) for key, value in token_batch.items()}
+    batch = {
+        **rows,
+        "residue_type": torch.zeros(n, n, dtype=torch.long),
+        C_SEQ.mask_name: torch.zeros(n, n, dtype=torch.bool),
+        "t": {"local_latents": torch.ones(n)},
+    }
+    baseline_logits = torch.zeros(n, n, 33)
+    changed_logits = baseline_logits.clone()
+    diagonal = torch.arange(n)
+    changed_logits[diagonal, diagonal, 0] = 10.0
+
+    baseline = matcher._compute_sequence_prediction_loss(batch, {"sequence": {"logits": baseline_logits}})
+    changed = matcher._compute_sequence_prediction_loss(batch, {"sequence": {"logits": changed_logits}})
+
+    expected = torch.tensor(GRID["latent_supervised"])
+    assert torch.equal(
+        changed["sequence_prediction_ce_justlog"].ne(baseline["sequence_prediction_ce_justlog"]), expected
+    )
+
+
 def test_autoencoder_losses_change_only_for_supervised_grid_cells(token_batch) -> None:
     """Structure, sequence, and KL losses ignore every unsupervised AE token."""
     n = len(TOKEN_NAMES)
@@ -645,3 +702,54 @@ def test_final_formatting_matches_flow_emit_contract(token_batch, flow_matcher) 
     atomized_coords = result["coors"][atomized].clone()
     atomized_coords[:, 1] = 0
     assert not atomized_coords.any()
+
+
+def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_matcher) -> None:
+    """Predicted identities fill generated tokens without replacing exact conditions."""
+    decoded_batches = []
+
+    def decode(batch):
+        decoded_batches.append(batch)
+        _, emit = compute_ae_masks(batch)
+        return {
+            "coors_nm": torch.ones(2, len(TOKEN_NAMES), 37, 3) * emit[..., None, None],
+            "residue_type": batch[C_SEQ.full_name] * emit,
+            "emit_mask": emit,
+        }
+
+    batch = {
+        **token_batch,
+        C_SEQ.full_name: torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
+        C_SEQ.mask_name: torch.zeros(2, len(TOKEN_NAMES), dtype=torch.bool),
+        "token_type": torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
+    }
+    batch[C_SEQ.full_name][0, 0] = 7
+    batch[C_SEQ.mask_name][0, 0] = True
+    batch["sequence_logits"] = torch.zeros(2, len(TOKEN_NAMES), 33)
+    batch["sequence_logits"][..., 4] = 1.0
+
+    flow_state = flow_matcher.apply_flow_emit_masks(
+        {
+            "bb_ca": torch.ones(2, len(TOKEN_NAMES), 3),
+            "local_latents": torch.ones(2, len(TOKEN_NAMES), 2),
+        },
+        batch,
+    )
+    model = SimpleNamespace(
+        autoencoder=SimpleNamespace(decode=decode),
+        inf_cfg=OmegaConf.create({"args": {"condition_decoder_on_sequence_prediction": True}}),
+    )
+    Proteina._format_sample_local_latents(
+        model,
+        x=flow_state,
+        ret_mode="coors37_n_aatype",
+        batch=batch,
+    )
+
+    conditioned_batch = decoded_batches[0]
+    _, emit_mask = compute_ae_masks(batch)
+    expected_values = torch.where(emit_mask, 4, batch[C_SEQ.full_name])
+    expected_values[0, 0] = 7
+    expected_mask = batch[C_SEQ.mask_name] | emit_mask
+    assert torch.equal(conditioned_batch[C_SEQ.full_name], expected_values)
+    assert torch.equal(conditioned_batch[C_SEQ.mask_name], expected_mask)

@@ -20,5 +20,16 @@ cath_kwargs:
   p_add_cath_cat_condition: 0.0
 na_ss_kwargs:
   p_add_na_ss_condition: 0.0
-not_cysteine_kwargs:
-  p_add_not_cysteine_condition: 0.0
+sequence_probability_kwargs:
+  p_exact: 1.0
+  p_zero_only: 0.0
+  p_positive_only: 0.0
+  p_zero_and_positive: 0.0
+  dirichlet_concentration: 3.0
+  exclusion_count_alpha: 2.0
+  p_full_probability_vector: 0.75
+  # Add partial sequence conditions without changing the design-task mixture.
+  p_augment_unconditioned: 0.0
+  min_augmentation_fraction: 0.05
+  max_augmentation_fraction: 0.2
+  p_zero_only_whole_chain: 0.0

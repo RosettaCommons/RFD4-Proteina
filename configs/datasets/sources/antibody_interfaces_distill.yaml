@@ -4,23 +4,20 @@
 # Annotated with mmCIF ``ig_region`` annotations for downstream sampling of conditions
 # Displaced-coordinate residues are NaN-masked and removed by the training pipeline.
 
-_target_: atomworks.ml.datasets.PandasDataset
+defaults:
+  - backend_blob
+  - _self_
+
 name: antibody_interfaces_distill
 data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/abag_protenix_v2_2026_09_10.parquet
-memory_map: False  # loaded into a buffer; nothing to mmap
 
 transform:
   b_factor_occupancy_min: 80.0
 
 loader:
-  _target_: atomworks.ml.datasets.loaders.create_structure_loader
-  storage: blob
   blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/data/blob
-  example_id_colname: example_id
-  assembly_id_colname: null
 
   parser_args:
-    _target_: rfproteina.utils.parse_presets.distillation
     # Identifies CDRs and framework regions in the antibody chains
     extra_fields: [ig_region]
 

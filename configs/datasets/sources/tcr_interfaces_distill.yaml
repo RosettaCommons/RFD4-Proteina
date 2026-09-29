@@ -1,22 +1,18 @@
 # TCR / peptide-MHC interfaces, predicted with a fine-tuned AF2 model.
 
-_target_: atomworks.ml.datasets.PandasDataset
+defaults:
+  - backend_blob
+  - _self_
+
 name: tcr_interfaces_distill
 data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/tcr_distill/tcr_distill_interfaces_train_2026_09_09.parquet
-memory_map: False  # loaded into a buffer; nothing to mmap
 
 loader:
-  _target_: atomworks.ml.datasets.loaders.create_structure_loader
-  storage: blob
   blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/tcr_distill/data/blob_2026_09_09
-  example_id_colname: example_id
   record_id_colname: path
-  assembly_id_colname: null
-  altloc_seed_colname: null
 
   parser_args:
     # Identifies CDRs and framework regions in the TCR chains
-    _target_: rfproteina.utils.parse_presets.distillation
     extra_fields: [ig_region]
 
 columns_to_load:

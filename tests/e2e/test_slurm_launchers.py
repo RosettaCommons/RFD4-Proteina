@@ -64,6 +64,22 @@ def test_common_sh_pythonpath_resolves_to_real_dirs():
         assert Path(path).is_dir(), f"PYTHONPATH entry does not exist: {path}"
 
 
+def test_af3_daemon_block_exports_runtime_paths():
+    """The host-side AF3 supervisor must receive paths loaded before submission."""
+    script = f"""
+        source {SLURM_UTILS / "common.sh"}
+        AF3_IMAGE=/cluster/af3.sif
+        AF3_JAX_CACHE_DIR=/cluster/jax-cache
+        AF3_MODEL_DIR=/cluster/weights
+        emit_af3_daemon_block /repo 1
+    """
+    proc = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True)
+
+    assert 'export AF3_IMAGE="/cluster/af3.sif"' in proc.stdout
+    assert 'export AF3_JAX_CACHE_DIR="/cluster/jax-cache"' in proc.stdout
+    assert 'export AF3_MODEL_DIR="/cluster/weights"' in proc.stdout
+
+
 def test_entrypoint_scripts_referenced_by_e2e_and_launchers_exist():
     """Every ``*.py`` entrypoint spawned as a subprocess must actually exist.
 

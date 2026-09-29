@@ -2,8 +2,11 @@
 
 import re
 from collections.abc import Iterable
+from contextlib import nullcontext
 
+import lightning as L
 import torch
+from lightning.pytorch.strategies import ParallelStrategy
 from omegaconf import DictConfig
 
 from rfproteina.utils.ddp import RankedLogger
@@ -84,3 +87,19 @@ def build_optimizers(
         muon_type(muon_params, lr=lr, adjust_lr_fn=cfg_opt.get("muon_adjust_lr_fn")),
         adam,
     ]
+
+
+def backward_with_accumulation(
+    module: L.LightningModule, loss: torch.Tensor, batch_idx: int, accumulation: int
+) -> bool:
+    """Average equal-sized microbatches and synchronize only at optimizer boundaries."""
+    if accumulation < 1:
+        raise ValueError("accumulate_grad_batches must be positive")
+    should_step = (batch_idx + 1) % accumulation == 0
+    strategy = module.trainer.strategy
+    context = (
+        strategy.block_backward_sync() if not should_step and isinstance(strategy, ParallelStrategy) else nullcontext()
+    )
+    with context:
+        module.manual_backward(loss / accumulation)
+    return should_step
