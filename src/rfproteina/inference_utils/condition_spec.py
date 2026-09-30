@@ -400,7 +400,7 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
                 raise ValueError(
                     f"{annotation_name!r} resolves to {cls.name!r}, a {cls.n_body}-body condition -- "
                     "condition_spec has no selection-pair grammar, so only 1-body conditions (per-atom "
-                    "or per-residue) can be set here. Use the PyMOL plugin or the Python API directly."
+                    "or per-residue) can be set here. Use the Python API directly."
                 )
             if cls is C_CRDGRP:
                 groups = C_CRDGRP.annotation(atom_array, default="generate").copy()

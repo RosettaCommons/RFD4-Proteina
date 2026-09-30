@@ -1,12 +1,10 @@
 """Resolve a Condition/StandardAnnotation class from an arbitrary user-facing name.
 
 Backs the ``conditions:`` block of a condition spec
-(``design_yaml_condition_spec.md`` / ``docs/condition_spec_yaml.md``), where
+(``docs/workflow/condition-spec.md``), where
 an annotation may be named by any shorthand alias (``C_CRD``, ``SA_SRC``,
 ...) or by its full systematic registry name (``coordinate``, ``hotspot``,
-...). Nothing in the codebase resolved a condition/annotation from an
-arbitrary string before this -- the PyMOL registry (``condition_registry.py``)
-only ever imports the Python objects directly.
+...).
 """
 
 import pickle

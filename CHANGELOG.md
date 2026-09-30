@@ -12,13 +12,13 @@ Below are the user-facing inference and evaluation changes since `v0.0.1`.
 
 * **Choose a fold with CAT conditioning (`C_CATH`).** Request a class, architecture, or topology
   from the CATH hierarchy for a chain or domain, from a broad choice such as `"1.x.x"` to a
-  specific topology such as `"2.60.40"`. The PyMOL editor and YAML/JSON condition specs accept
+  specific topology such as `"2.60.40"`. YAML/JSON condition specs accept
   these labels and validate them before generation
   ([#488](https://github.com/RosettaCommons/RFD4-Proteina/pull/488)).
 * **Request aromatic interactions.** Use `C_PISTACK` for π-stacking or `C_PICATION` for the
   aromatic, cation, or both roles in π-cation interactions. Select complete aromatic rings when
   requesting an aromatic role. These conditions can be supplied through annotated CIFs, the
-  Python API, PyMOL, or condition specs
+  Python API, or condition specs
   ([#488](https://github.com/RosettaCommons/RFD4-Proteina/pull/488),
   [#261](https://github.com/RosettaCommons/RFD4-Proteina/pull/261)).
 * **Ask selected residues to avoid cysteine (`C_NCYS`).** Apply the condition to residues whose

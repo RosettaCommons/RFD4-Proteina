@@ -133,76 +133,26 @@ Three details deserve particular attention for non-canonicals, PTMs and small mo
 - **PTMs and non-canonicals.** Preserve the atoms, bonds, charges, and component
   identity that define the modification.
 
-A CIF saved out of your PyMOL session keeps all three, and the model reads CIFs natively, so nothing
-gets rebuilt on the way in.
+An annotated CIF preserves all three, and the model reads CIFs natively.
 
 > The [`rfd4-proteina-annotated-cif` skill](design2cif.md) authors directly from
 > prose, structures, or an existing annotated CIF. The separate
 > `rfd4-proteina-inputs` compatibility skill interprets existing legacy RFD3
 > JSON/YAML without making JSON an intermediate for other workflows.
 
-## Four ways to make one
+## Three ways to make one
 
-Pick by how much of the design problem you need to express. The plugin is the fastest way to point
-at atoms. The Python API can express anything the model can read.
+Pick by how much of the design problem you need to express. The Python API can express anything
+the model can read.
 
 | Route | Reach for it when |
 | --- | --- |
-| [PyMOL plugin](#pymol-plugin) | You want to select atoms by eye |
 | [`rfd4-proteina-annotated-cif`](design2cif.md) | You want an agent to interview you, inspect existing artifacts, and author or edit the CIF |
 | [YAML condition spec](#yaml-condition-spec) | You want the problem as data, in version control |
 | [Python API](#python-api) | You are generating many problems, or need something the others cannot say |
 
 Use `rfd4-proteina-inputs` (or the `/design2cif` compatibility alias) only when
 adapting an existing legacy RFD3 JSON/YAML specification.
-
-### PyMOL plugin
-
-The plugin makes the whole workflow visual. Load a real structure, edit it, click on atoms to say
-what the model should do with them, then **Save Active As** an annotated CIF that goes straight into
-the model. It never writes a config file.
-
-The plugin has its own walkthrough, **[AtomWorks Design
-Studio](https://github.com/RosettaCommons/atomworks/blob/dev/src/atomworks/pymol_plugin/README.md)**,
-covering setup, the panel, expandable segments, annotations, bonds and the console commands, with
-screenshots. It lives in the `atomworks` submodule, so once you run
-`git submodule update --init` you also have it locally at
-`lib/atomworks/src/atomworks/pymol_plugin/README.md`.
-
-The short version, from the **rfproteina repo root**:
-
-```bash
-# 0. Install conda or miniconda on your machine (https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
-
-# 1. Build and activate the dedicated conda env (open source PyMOL is not pip installable)
-make setup-pymol
-conda activate rfproteina          # or mamba / conda activate atomworks
-uv pip install -e "./lib/atomworks[ml]" -e ./
-
-# 2. Register the plugin with PyMOL (writes a loader line into ~/.pymolrc)
-atomworks setup pymol
-
-# 3. Register the RFD4-Proteína condition editors. REQUIRED. Without this the
-#    Annotations tab only shows base AtomWorks annotations.
-atomworks pymol add rfproteina.pymol.editors
-
-# 4. Launch PyMOL with the env active, then open Plugin -> AtomWorks
-pymol
-```
-
-**On Windows** there is no `make`, so replace `make setup-pymol` with
-`conda env create -f src\rfproteina\pymol\pymol_env.yaml` and leave the other steps as they are.
-Three things bite only there, all covered in the plugin README's *Windows (PowerShell)* section:
-`conda activate` silently no-ops until you run `conda init powershell` and
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`; the submodule clone needs an elevated
-`Start-Service ssh-agent` plus an SSH key authorized for `private-organization` SSO; and pip's
-`pymol requires numpy<2` warning is stale metadata that you should not act on.
-
-Inside the panel, start with **Load CIF** on the Main tab. Annotate on the **Annotations** tab,
-where each entry is a condition the model reads, listed in the table below. Edit the bond graph on
-the **Bonds** tab and formal charges on the **Charges** tab. Insert variable length **expandable
-segments** from the Main tab. Then **Save Active As**. To mark residues *unindexed*, toggle the
-**Index** condition off.
 
 ### Python API
 
@@ -238,7 +188,7 @@ to_cif_file(aa, "annotated.cif", save_standard_annotations=True, chain_disambigu
 
 ### YAML condition spec
 
-To script or template design problems without writing Python or driving PyMOL, describe them in a
+To script or template design problems without writing Python, describe them in a
 small YAML or JSON file. You subset the input, insert expandable segments, and set conditions on
 atom selections. From there you either write annotated CIFs or hand the spec straight to
 `generate.py`. Either way you end up with the same annotated CIF representation described above.
@@ -290,13 +240,11 @@ way it was supervised. The **Import** column gives the Python shorthand the
 | **Internal coordinate** | `C_INTCRD` | `condition_InternalCoordinate_1_atom` | Gives the *internal* geometry of a group of atoms, centered and randomly rotated, without fixing where it sits globally. Mutually exclusive with `C_CRD` on the same atom. | per atom xyz (Å) in the group's own frame, NaN where unset | Trained by converting sampled motif regions from absolute to internal conditioning, so one design can carry several rigid motifs placed independently. |
 | **Coordinate group** | `C_CRDGRP` | `condition_CoordinateGroup_1_atom` | Groups atoms with known *relative* coordinates, meaning internal structure without a fixed global dock. | int: `-1`=unknown, `0`=known-absolute, `≥1`=one internal-coordinate group per id | Each internal coord region gets its own id. Relative geometry is known within an id and unknown across ids. |
 
-Edit internal coordinate conditioning through **CoordinateGroup** in the plugin.
+Edit internal coordinate conditioning through `C_CRDGRP`.
 The reserved groups (`0` absolute, `-1` unknown) are managed automatically. Newly
 authored groups get their targets during model-input preparation, before unindexing.
 To move atoms out of group `0`, clear their absolute conditioning through `C_CRD` first.
 Complete saved `C_INTCRD` targets remain unchanged until group membership changes.
-The plugin asks for confirmation only when an edit would discard existing finite
-targets; Cancel leaves the structure untouched, and Undo restores accepted edits.
 A whole-group rename preserves targets. Combining independent inputs remaps group
 IDs so unrelated saved coordinate frames cannot silently merge.
 
@@ -308,7 +256,7 @@ group array instead of modifying the existing annotation in place. Group `0` mus
 match `C_CRD` under both policies.
 
 
-These conditions can be authored with the PyMOL Annotation Wizard, the Python API, or
+These conditions can be authored with the Python API or
 YAML/JSON condition specs, and stored in annotated CIF/BCIF files.
 
 Do not infer conditioning support merely because an
@@ -350,25 +298,24 @@ Which conditions the model actually acts on today.
 | **Secondary structure** | Supported |
 | **Symmetry** | Planned |
 | **CAT fold class, architecture, topology** | Supported |
-| **Sequence probabilities** | Supported; bounded probability editor with Set/Clear controls |
+| **Sequence probabilities** | Supported; probabilities in `[0, 1]`, NaN where unset |
 | **π-stacking** | Supported |
 | **π-cation** | Supported |
 
-Supported conditions can be authored through the plugin, Python, annotated CIFs, or
+Supported conditions can be authored through Python, annotated CIFs, or
 [condition-spec YAML/JSON](condition-spec.md).
 
-In the Annotation Wizard, choose `sequence-probability-CYS` and set the probability to `0`
-to request cysteine exclusion on selected residues. Selecting any atom applies to its whole
-residue. **Clear** removes that identity's constraint; setting zero actively excludes it.
-The editor rejects invalid probability sums, positive probabilities for the wrong polymer type,
+Set `C_SEQ_PROB_CYS` to `0` on selected residues to request cysteine exclusion.
+Set it to NaN to remove that identity's constraint; zero actively excludes it.
+Validation rejects invalid probability sums, positive probabilities for the wrong polymer type,
 and conflicts with exact sequence conditions. These are model conditions, not hard output
 constraints: inspect sequence-probability adherence when exclusions matter.
 
 ## Interaction rules, read before conditioning
 
 Conditions are **not independent**, and the couplings below get enforced. The same batch invariant
-checks that run in training also run in the plugin's **pre-save validation**, so if you break one
-the plugin tells you before you save the CIF, with something like *"N token(s) with non-backbone
+checks that run in training also run during **input validation**, which reports violations
+before generation, with messages such as *"N token(s) with non-backbone
 coordinate conditioning lack sequence conditioning"*.
 
 1. **Conditioning a sidechain coordinate forces sequence conditioning.** The model lays coordinates
@@ -403,7 +350,7 @@ canonical residue carrying the PTM, and any other residue marked `S_ATM` true.
 
 An expandable segment is the structural equivalent of a variable length contig like `"10-15"`. It is
 a placeholder that tells the model to design a segment and sample its length at runtime. Insert one
-from the plugin's Main tab under **Insert Expandable Segment...**, or in code with
+with
 `atomworks.ml.utils.expandable_segment.insert_expandable_segment`. You give it `seg_min`, `seg_max`,
 and where it goes, either inside a chain or as a new chain.
 
@@ -435,8 +382,8 @@ JSON/YAML specification](design2cif.md), but it does not require JSON for prose
 or CIF-based workflows.
 
 **Can I open an annotated CIF in PyMOL or other tools?** Yes. The annotations are extra columns and
-categories, and the coordinates and topology are standard mmCIF. To load and visualize the
-annotations, use the plugin's **Load CIF** rather than File then Open.
+categories, and the coordinates and topology are standard mmCIF. To inspect the
+annotations programmatically, parse the file with `ANNOTATED_CIF` in the Python API.
 
 **Why is a fixed sidechain also fixing my sequence?** Because `atom37` reveals identity, as the
 interaction rules explain. To redesign sequence under a fixed fold, condition on backbone atoms

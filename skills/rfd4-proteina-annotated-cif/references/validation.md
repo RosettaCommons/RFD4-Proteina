@@ -2,8 +2,7 @@
 
 Use this reference before accepting a newly authored or modified annotated CIF.
 The [condition documentation](../../../docs/workflow/inputs.md#interaction-rules-read-before-conditioning),
-[reporting checks](../../../src/rfproteina/conditions_reporting.py), and
-[plugin pre-save hooks](../../../src/rfproteina/pymol/editors.py) define the
+and [reporting checks](../../../src/rfproteina/conditions_reporting.py) define the
 invariants. Run the checked-out implementation and report unsupported conditions
 rather than silently dropping them.
 
@@ -15,8 +14,8 @@ for chemistry consumed by the model and aromatic bond representation.
 - Preserve authored bonds, formal charges, and atom identities. Do not infer
   missing chemistry or add metal coordination without specified partners.
 - PDB often lacks the bond orders, charges, aromaticity, and connectivity needed
-  for ligand/metal fidelity. Prefer source mmCIF and use AtomWorks Design Studio
-  for visual review when chemistry is uncertain.
+  for ligand/metal fidelity. Prefer source mmCIF and visually review
+  bonds and charges when chemistry is uncertain.
 - Express tip-atom conditioning with masks on a complete residue, not by deleting
   unconditioned atoms. Review unresolved polymer atoms and parser preparation.
 - A known CCD code with a different heavy-atom inventory needs review: determine
@@ -45,7 +44,7 @@ For materialization choices, follow the [segment workflow](python-authoring.md#e
 
 ## Pre-save checks
 
-Run all three plugin-equivalent checks on the authored array:
+Run all three input-validation checks on the authored array:
 
 ```python
 from rfproteina.conditions_reporting import (

@@ -1,8 +1,8 @@
 # YAML and JSON condition specs
 
-A **condition spec** describes one or more design problems as data, in YAML or JSON, instead of a
-PyMOL session or a Python script. It builds the *exact same* condition annotated CIF the plugin
-builds. Annotated CIFs are still the format to reach for, and this is shorthand for authoring one.
+A **condition spec** describes one or more design problems as data, in YAML or JSON. It builds
+a condition-annotated CIF using the Python API. Annotated CIFs are still the preferred input
+format, and a condition spec is shorthand for authoring one.
 
 Read [Preparing inputs](inputs.md) first. It defines every concept used here, including
 conditions, expandable segments and the interaction rules.
@@ -36,7 +36,7 @@ my_design:
 | Field | Default | Meaning |
 |---|---|---|
 | `input` | required | Starting structures. **Must be `.cif`, `.cif.gz` or `.bcif`**, as the FAQ explains. A list gets combined into one structure, and chain ids must not overlap. Relative paths resolve against the spec file's directory. |
-| `input_as_annotated_cif` | `false` | Set `true` when `input` already carries condition annotations, either a prior output of this tool or a plugin CIF. It loads as is so you can edit further. Set `false` for a raw structure, which adds heavy atoms, converts MSE to MET, and ignores any existing conditioning. |
+| `input_as_annotated_cif` | `false` | Set `true` when `input` already carries condition annotations, from a prior output or the Python API. It loads as is so you can edit further. Set `false` for a raw structure, which adds heavy atoms, converts MSE to MET, and ignores any existing conditioning. |
 | `contig` | *keep everything* | Subset the input and insert expandable segments in one pass. See below. |
 | `conditions` | *(none)* | Conditions to set. See below. |
 
@@ -179,8 +179,7 @@ conditions:
   Separate DONOR and ACCEPTOR entries do not combine automatically; use BOTH.
 - JSON uses the same structure, with quoted object keys, including boolean mask values (`"true"`, `"false"`).
 - **Not supported.** Two body conditions like base pairing, because there is no selection pair
-  grammar. Everything else works, `C_CENTROID` included. Use the plugin or the Python API for the
-  rest.
+  grammar. Everything else works, `C_CENTROID` included. Use the Python API for the rest.
 
 ### Index and coordinate groups
 

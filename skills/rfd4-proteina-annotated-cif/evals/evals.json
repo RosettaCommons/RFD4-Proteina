@@ -9,7 +9,7 @@
         "Uses DISTILLATION for the cleaned unannotated input unless inspection shows it is already annotated",
         "Selects chain A protein atoms named N, CA, C, O with finite xyz; excludes OXT and unresolved atoms",
         "Sets C_CRD on the resolved target backbone and leaves target C_SEQ off as explicitly requested, preserving unrelated conditions",
-        "Runs all three plugin-equivalent invariant checks before save",
+        "Runs all three input-validation invariant checks before save",
         "Saves standard annotations, reloads with ANNOTATED_CIF, and compares exact condition selections and values"
       ]
     },
@@ -20,7 +20,7 @@
         "Flags PDB as risky for ligand bonds, bond orders, charges, aromaticity, and connectivity",
         "Determines whether the input is raw RCSB or already cleaned before choosing a parser preset",
         "Does not invent missing ligand chemistry",
-        "Recommends checking bonds and charges in AtomWorks Design Studio"
+        "Recommends visually checking bonds and charges"
       ]
     },
     {
@@ -73,7 +73,7 @@
         "Summarizes current structure, chemistry, and conditions before editing",
         "Copies the existing C_HB annotation and changes only the uniquely selected O4 atom through the condition API",
         "Writes a new file and proves unrelated conditions, charges, bonds, components, and expandable segments did not change",
-        "Runs plugin-equivalent checks before save and after reparsing"
+        "Runs input-validation checks before save and after reparsing"
       ]
     },
     {

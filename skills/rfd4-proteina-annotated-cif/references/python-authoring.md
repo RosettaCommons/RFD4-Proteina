@@ -13,9 +13,8 @@ Use this reference when creating or modifying an annotated CIF. Source of truth:
 | Raw RCSB mmCIF | `RCSB_WITH_METALS` | Prepares an RCSB entry, adds missing atoms, reads covalent/metal `struct_conn`, removes configured waters/aids, and applies cleanup |
 | Cleaned or predicted unannotated structure | `DISTILLATION` | Does not add missing atoms or perform the more destructive RCSB cleanup |
 
-The PyMOL plugin's default **Annotated CIF** choice is AtomWorks' `minimal` preset
-with `load_standard_annotations=True`; `ANNOTATED_CIF` is the RFProteína Python
-preset for the same intent.
+`ANNOTATED_CIF` preserves existing conditions by loading standard annotations
+without rebuilding the structure.
 
 For `.pdb`, establish provenance before choosing between RCSB preparation and
 distillation. See [chemistry review](validation.md#chemistry-and-component-completeness).
@@ -229,16 +228,14 @@ for group_id in np.unique(groups):
     )
 ```
 
-The PyMOL plugin calls `sync_index_groups()` when changing the Index condition;
-manual authoring requires the explicit call shown above.
+Call `sync_index_groups()` after changing the Index condition, as shown above.
 
 ## Combine annotated CIFs / AtomArrays
 
 Multiple annotated CIFs can be loaded as `AtomArrayPlus` objects and combined.
 Use AtomWorks' `concatenate_atom_array_plus()`; do not use plain Biotite
-concatenation or Python `+`, which can lose `AtomArrayPlus` state. The PyMOL
-plugin's **Combine Visible** button uses this method, resolves chain-ID
-collisions, and refreshes chain-derived annotations.
+concatenation or Python `+`, which can lose `AtomArrayPlus` state. Resolve chain-ID
+collisions and refresh chain-derived annotations when combining structures.
 
 For a programmatic combination:
 

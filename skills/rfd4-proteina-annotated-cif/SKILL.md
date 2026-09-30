@@ -18,9 +18,8 @@ license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 An annotated CIF is a structure plus AtomWorks `StandardAnnotation` columns that
 encode the RFProteína design problem. Prefer direct Python manipulation of an
 `AtomArrayPlus`: parse, derive selection annotations, set conditions, validate,
-write, and round-trip. Use the AtomWorks Design Studio PyMOL plugin for visual
-inspection of chemistry and intent, especially for ligands, metals, PTMs, or PDB
-sources.
+write, and round-trip. Visually inspect chemistry and intent, especially for
+ligands, metals, PTMs, or PDB sources.
 
 This skill defines CIF authoring semantics. Workspace instructions and the
 active campaign govern shared-input ownership, output locations, length
