@@ -9,14 +9,6 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-## Create conda environment with PyMOL, then install project deps via uv
-setup-pymol:
-	conda env create -f src/rfproteina/pymol/pymol_env.yaml
-	@echo ""
-	@echo "Conda env 'rfproteina' created. Now run:"
-	@echo "  conda activate rfproteina"
-	@echo "  uv pip install -e ./lib/atomworks -e ./"
-
 ## Format and lint rfproteina source, tests, and script_utils using ruff (notebooks excluded)
 format:
 	ruff format .

@@ -37,10 +37,6 @@ Workflow
        </marker>
 
        <!-- flat line icons, 24x24, stroked in the parent's colour -->
-       <symbol id="ico-pymol" viewBox="0 0 24 24">
-         <circle cx="6" cy="7" r="2.6"/><circle cx="18" cy="9" r="2.6"/><circle cx="11" cy="18" r="2.6"/>
-         <path d="M8.3 8 L15.6 8.8 M16.6 11.3 L12.6 15.8 M9.4 15.7 L7 9.5"/>
-       </symbol>
        <symbol id="ico-claude" viewBox="0 0 24 24">
          <path d="M12 3 L13.6 9.4 L20 11 L13.6 12.6 L12 19 L10.4 12.6 L4 11 L10.4 9.4 Z"/>
        </symbol>
@@ -107,7 +103,7 @@ Workflow
        <use href="#ico-cif" x="266" y="52" width="22" height="22" class="wf-ico wf-ico-specify"/>
        <text x="300" y="68" class="wf-node-label">ANNOTATED CIF</text>
        <text x="300" y="82" class="wf-node-sub">structure and intent in one file</text>
-       <text x="253" y="96" class="wf-inner-eyebrow">FOUR WAYS TO MAKE ONE</text>
+       <text x="253" y="96" class="wf-inner-eyebrow">THREE WAYS TO MAKE ONE</text>
      </a>
 
      <!-- Sub-boxes are drawn after their card so they paint on top of it, and as siblings rather
@@ -115,28 +111,22 @@ Workflow
           page of its own gets `pointer-events: none`, so a click on it falls through to the card
           behind and still opens the card's page. A sub-box that does have a page is a link, marked
           by a magenta border. -->
-     <a href="workflow/inputs.html#pymol-plugin" class="wf-link">
-       <rect x="253" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
-       <use href="#ico-pymol" x="263" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
-       <text x="285" y="125" class="wf-chip-label wf-ink-specify">PyMOL</text>
-     </a>
-
      <a href="workflow/design2cif.html" class="wf-link">
-       <rect x="351" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
-       <use href="#ico-claude" x="361" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
-       <text x="383" y="125" class="wf-chip-label wf-ink-specify">Agent</text>
+       <rect x="302" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
+       <use href="#ico-claude" x="312" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
+       <text x="334" y="125" class="wf-chip-label wf-ink-specify">Agent</text>
      </a>
 
      <a href="workflow/condition-spec.html" class="wf-link">
-       <rect x="449" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
-       <use href="#ico-yaml" x="459" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
-       <text x="481" y="125" class="wf-chip-label wf-ink-specify">YAML</text>
+       <rect x="400" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
+       <use href="#ico-yaml" x="410" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
+       <text x="432" y="125" class="wf-chip-label wf-ink-specify">YAML</text>
      </a>
 
      <a href="examples/annotated_cif_tutorial.html" class="wf-link">
-       <rect x="547" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
-       <use href="#ico-python" x="557" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
-       <text x="579" y="125" class="wf-chip-label wf-ink-specify">Python</text>
+       <rect x="498" y="101" width="90" height="38" rx="6" class="wf-chip wf-chip-link"/>
+       <use href="#ico-python" x="508" y="112" width="16" height="16" class="wf-ico wf-ico-specify"/>
+       <text x="530" y="125" class="wf-chip-label wf-ink-specify">Python</text>
      </a>
 
      <path d="M445 148 L 445 190" class="wf-rail wf-rail-specify" marker-end="url(#wf-arrow)"/>

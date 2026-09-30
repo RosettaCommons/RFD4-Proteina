@@ -48,11 +48,3 @@ re-execs inside the configured container on clusters where `CONTAINER_TYPE` is s
 uv's Python may segfault in rdkit/posebusters unless `LD_PRELOAD` points at the
 bundled `libstdc++.so.6`. The `Makefile` sets this automatically for `make test`;
 mirror it if you hit a segfault outside `make`.
-
-## PyMOL (optional, for the annotated-CIF plugin)
-
-```bash
-make setup-pymol      # builds a dedicated conda env (open-source PyMOL isn't pip-installable)
-```
-
-See `docs/workflow/inputs.md` (Option A) for the plugin workflow.

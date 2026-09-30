@@ -1,11 +1,8 @@
 """Tests for resolving an arbitrary Condition/StandardAnnotation name and value from a spec.
 
-Nothing in the codebase resolved a condition/annotation from a plain string before
-this (the PyMOL registry only ever imports the Python objects directly), and the
-shorthand-alias scan spans three different modules (most `C_*` aliases actually
-live in `atomworks.ml.conditions`, not `rfproteina`) -- both are easy to silently
-regress, so covered explicitly here rather than just exercised incidentally by the
-end-to-end condition_spec test. Enum-value coercion is covered thoroughly because a
+The shorthand-alias scan spans three different modules (most `C_*` aliases
+live in `atomworks.ml.conditions`, not `rfproteina`) and is covered explicitly.
+Enum-value coercion is covered thoroughly because a
 condition spec is often round-tripped through JSON (whose dict keys are always
 strings) or hand-written YAML, both of which can produce inputs Python's own
 `IntEnum` machinery doesn't handle the way a spec author would expect.

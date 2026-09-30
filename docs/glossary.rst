@@ -94,8 +94,7 @@ Input formats
 
 Annotated CIF
    The preferred input format. It stores coordinates, chemistry, and model
-   conditions in a standard mmCIF file and can be edited with the AtomWorks
-   PyMOL plugin.
+   conditions in a standard mmCIF file and can be edited with the Python API.
 
 Generation and search
 ---------------------

@@ -88,9 +88,9 @@ These are the ones that bite people. Most are silent.
 | Token types can have different indexing capabilities | The agent preserves your requested indexing, runs the checked-out validator, and reports any unsupported combination instead of silently changing it |
 | Covalent polymer-to-ligand bonds must remain present | The annotated CIF preserves and validates the bond explicitly |
 
-> **Check the result.** An agent can misread intent. Before you run the model, open the
-> annotated CIF in the [AtomWorks Design Studio plugin](inputs.md#pymol-plugin) and confirm the
-> conditioning says what you meant, including fixed atoms, sequence, ligands and unindexing.
+> **Check the result.** An agent can misread intent. Before you run the model, inspect the
+> annotated CIF and its validation report. Confirm that the conditioning says what you meant,
+> including fixed atoms, sequence, ligands and unindexing.
 
 ## What it will not do
 

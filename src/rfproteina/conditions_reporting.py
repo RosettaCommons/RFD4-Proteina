@@ -1,15 +1,8 @@
-"""PyMOL-free Condition vocabulary, reporting, and pre-save validation.
+"""Condition vocabulary, summaries, and validation for annotated design inputs.
 
-Extracted from :py:mod:`rfproteina.pymol.condition_registry` /
-:py:mod:`rfproteina.pymol.editors`, which transitively import PyMOL at module
-scope and so cannot be imported from ``generate.py``'s environment (PyMOL
-lives in a separate conda env -- confirmed by direct import test). This
-module has no PyMOL/Qt imports and is safe to import during training/inference,
-notably from :py:mod:`rfproteina.inference_utils.condition_spec`.
-
-:py:data:`SUPPORTED_CONDITIONS` is the user-facing condition vocabulary shared
-with the PyMOL plugin. Reporting behavior is derived from each condition's
-annotation metadata, with explicit summaries only for group-like conditions.
+Reporting derives from each condition's annotation metadata, with explicit
+summaries for group-like conditions. The same validation checks apply to
+annotated CIF inputs and structures assembled from YAML/JSON condition specs.
 """
 
 from collections.abc import Callable
@@ -27,7 +20,7 @@ from atomworks.ml.conditions import (
     C_SEQ,
 )
 from atomworks.ml.conditions.base import ConditionBase
-from biotite.structure import get_residue_starts, spread_residue_wise
+from biotite.structure import get_residue_starts
 
 from rfproteina.conditions import (
     C_CATH,
@@ -42,13 +35,9 @@ from rfproteina.conditions import (
     C_RAS,
     C_SEC,
     SEQUENCE_PROBABILITY_CONDITIONS,
-    SequenceProbability,
 )
-from rfproteina.datapipes.pipeline import CanonicalizeSequenceProbabilityConditions, build_design_validation_pipeline
-from rfproteina.transforms.invariants import (
-    check_sequence_probability_conditioning_violations,
-    find_index_group_res_id_gaps,
-)
+from rfproteina.datapipes.pipeline import build_design_validation_pipeline
+from rfproteina.transforms.invariants import find_index_group_res_id_gaps
 
 
 def _index_group_summary(arr: AtomArrayPlus) -> list[str]:
@@ -56,7 +45,7 @@ def _index_group_summary(arr: AtomArrayPlus) -> list[str]:
         return []
     groups = arr.get_annotation(C_IDXGRP.full_name)
     n_groups = len(np.unique(groups))
-    lines = [f'Index groups: {n_groups} groups  (check "Color by index group" in atomworks studio viewer)']
+    lines = [f"Index groups: {n_groups} groups"]
     # Report implied res_id gaps within unindexed groups so the user can confirm
     # that non-contiguous regions were split as intended (rather than collapsed
     # into one group with fixed-size gaps).
@@ -81,7 +70,7 @@ def _coord_group_summary(arr: AtomArrayPlus) -> list[str]:
     if not C_CRDGRP.has_annotation(arr):
         return []
     n_groups = len(np.unique(arr.get_annotation(C_CRDGRP.full_name)))
-    return [f'Coordinate groups: {n_groups} groups  (check "Color by coord group" view)']
+    return [f"Coordinate groups: {n_groups} groups"]
 
 
 def _chain_centroid_summary(arr: AtomArrayPlus) -> list[str]:
@@ -206,32 +195,6 @@ def summarize_conditions(arr: AtomArrayPlus) -> str:
     return "\n\n".join(lines)
 
 
-def set_sequence_probability_condition(
-    arr: AtomArrayPlus, indices: np.ndarray, condition: type[SequenceProbability], value: float | None
-) -> None:
-    """Set a probability on selected residues in place, preserving the array if validation fails.
-
-    Selecting any atom edits its whole residue. ``None`` clears the selected values;
-    exact sequence targets and other probability channels remain unchanged.
-    """
-    if value is not None and (not np.isfinite(value) or not 0.0 <= value <= 1.0):
-        raise ValueError("Sequence probability must be finite and in [0, 1], or None to clear it.")
-    selected = np.zeros(len(arr), dtype=bool)
-    selected[np.asarray(indices, dtype=int)] = True
-    if not selected.any():
-        return
-    selected = spread_residue_wise(arr, np.logical_or.reduceat(selected, get_residue_starts(arr)))
-    values = condition.annotation(arr, default="generate").copy()
-    values[selected] = np.nan if value is None else value
-    candidate = arr.copy()
-    condition.set_annotation(candidate, values)
-    candidate = CanonicalizeSequenceProbabilityConditions()({"atom_array": candidate})["atom_array"]
-    violations = check_sequence_probability_conditioning_violations(candidate)
-    if violations:
-        raise ValueError("\n".join(violation.message for violation in violations))
-    condition.set_annotation(arr, values)
-
-
 # ---------------------------------------------------------------------------
 # Pre-save pipeline validation
 # ---------------------------------------------------------------------------
@@ -340,7 +303,7 @@ def check_index_group_molecule_consistency(arr: AtomArrayPlus) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Index group sync (pure logic behind the Qt-coupled `_IndexMaskEditor`)
+# Index group synchronization
 # ---------------------------------------------------------------------------
 
 

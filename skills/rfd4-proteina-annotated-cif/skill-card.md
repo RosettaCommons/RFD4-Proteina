@@ -2,7 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-annotated-cif` creates, inspects, modifies, combines, and validates RFProteína annotated CIF inputs with Python-first AtomWorks workflows. It covers parser selection, derived masks, conditions, safe unindexing, expandable segments, chemistry preservation, plugin-equivalent invariants, and save/reload validation.
+`rfd4-proteina-annotated-cif` creates, inspects, modifies, combines, and validates RFProteína annotated CIF inputs with Python-first AtomWorks workflows. It covers parser selection, derived masks, conditions, safe unindexing, expandable segments, chemistry preservation, input-validation invariants, and save/reload validation.
 
 This skill is for research and development only.
 
@@ -38,10 +38,10 @@ Risk: Loading an annotated CIF before importing `rfproteina.conditions` can sile
 Mitigation: The skill requires registry import before parsing and a save/reload comparison.
 
 Risk: PDB or poorly prepared ligand inputs may lack charges, bond orders, aromaticity, or connectivity used by the model.
-Mitigation: The skill flags PDB provenance, avoids inferred chemistry, and requires visual plugin review when chemistry fidelity is uncertain.
+Mitigation: The skill flags PDB provenance, avoids inferred chemistry, and requires visual review when chemistry fidelity is uncertain.
 
 Risk: A syntactically valid condition can violate RFProteína interaction rules or be attached at the wrong structural level.
-Mitigation: The skill uses condition APIs, explicit selection counts, and all three plugin-equivalent pre-save checks.
+Mitigation: The skill uses condition APIs, explicit selection counts, and all three input-validation pre-save checks.
 
 Risk: Incorrect unindexing can mix indexed and unindexed residues in one group, unindex atomized tokens, or accidentally tie disconnected motif islands together.
 Mitigation: The skill treats `C_IDX` and `C_IDXGRP` as one edit, checks `S_ATM`, synchronizes mandatory boundaries, and assigns disconnected peptide islands deliberately.
@@ -55,7 +55,6 @@ Mitigation: The skill uses `concatenate_atom_array_plus()`, requires unique chai
 - `docs/workflow/inputs.md`
 - `src/rfproteina/utils/parse_presets.py`
 - `src/rfproteina/conditions_reporting.py`
-- `src/rfproteina/pymol/editors.py`
 - `skills/rfd4-proteina-annotated-cif/references/validation.md`
 - [AtomWorks annotators](../../lib/atomworks/src/atomworks/io/utils/annotator.py)
 - [StandardAnnotation fallback registry](../../lib/atomworks/src/atomworks/io/utils/standard_annotations/base.py)
