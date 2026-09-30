@@ -1,65 +1,14 @@
-# Clusters and SLURM reference
+# User-managed clusters
 
-RFD4-Proteína reads a **per-cluster env file** at startup: `.ipd/.env.$CLUSTER`.
-Set `CLUSTER` (and, for containerized runs, `CONTAINER_TYPE`) in your shell rc —
-`setup.sh` offers to do this.
+The public release does not ship private cluster profiles or images. On a single
+GPU machine, leave CLUSTER unset and follow the installation guide. On SLURM,
+create your own scripts/.user_info_<cluster> and optional .ipd/.env.<cluster>
+profile before using a launcher. Preserve all user-specified scheduler settings;
+do not silently replace partitions, accounts, priorities, resources, or time limits.
 
-| Cluster | `CONTAINER_TYPE` | Notes |
-| --- | --- | --- |
-| `digs` | `apptainer` | IPD / DIGS — shared data + checkpoints + SIF prewired in `.ipd/.env.digs` |
-| `ord` | `docker` | OCI / ORD |
-| `gb200` | `docker` | GB200 |
-| `coreweave` | `apptainer` | CoreWeave |
-| `local` | (none) | Any single host; create `.ipd/.env.local` with `DATA_PATH=...` |
-
-## Env files
-
-Shipped files: `.ipd/.env.digs`, `.ipd/.env.ord`, `.ipd/.env.gb200`,
-`.ipd/.env.coreweave` (each provides at least `DATA_PATH` and any
-container/oracle paths, e.g. AF3 SIF, `FOLDSEEK_EXEC`). For a non-cluster host
-you create `.ipd/.env.local` yourself (`printf 'DATA_PATH=%s\n' "$DATA_PATH" >
-.ipd/.env.local`).
-
-## SLURM launchers (`scripts/`)
-
-| Script | Purpose |
-| --- | --- |
-| `scripts/launch_generate.sh` | Submit `generate.py` (+ auto metric aggregation as a dependent job) |
-| `scripts/launch_generate.sh` with a search `inference_experiment` | Preferred reward-guided search submission |
-| `scripts/launch_search.sh` | Specialized search launcher requiring `configs/search.yaml`; inspect its narrower SBATCH support before use |
-| `scripts/launch_evaluate.sh` | Standalone post-hoc evaluation |
-| `scripts/launch_train_latents.sh` / `launch_train_ae.sh` | Training |
-| `scripts/launch_sweep.sh` | Hyperparameter sweeps |
-
-Example:
-
-```bash
-./scripts/launch_generate.sh digs --njobs 8 \
-    inputs=data/benchmarks/monomer \
-    run_name_=my_run \
-    out_dir=/path/to/shared/storage
-```
-
-Each cluster needs `scripts/.user_info_<cluster>` (copied from
-`scripts/.user_info_<cluster>_example` by `setup.sh`). Treat its scheduler values
-as user intent. Preserve `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `GRES`,
-`RUNTIME`, `MEM`, `CPUS_PER_TASK`, and `SLURM_EXTRA_OPTIONS`. Explicit launcher
-flags override the profile only when the user supplied them. Before submission,
-state the resolved scheduler values and inspect generated SBATCH directives when
-available.
-
-## Containers and the AF3 oracle
-
-Plain generation needs no container. **Refolding metrics** (`*_refolding` tags)
-and **reward-guided search** use the AF3 oracle, which runs only inside
-apptainer/docker configured via the cluster env files. On a cluster with a
-container configured, run the entry point directly so its shebang re-execs
-inside the container:
-
-```bash
-./src/rfproteina/generate.py inputs=... out_dir=...     # runs in the container
-python src/rfproteina/generate.py inputs=... out_dir=... # runs in current env
-```
+Plain generation uses the activated Python environment. If running in a container,
+invoke Python explicitly inside that container. Refolding is optional and needs
+its own configured oracle runtime.
 
 ## OpenFold3: a free, ungated alternative to AF3
 
@@ -67,10 +16,10 @@ AlphaFold3's own weights are gated by Google DeepMind's license. **OpenFold3** r
 exact same AF3 runtime and container on Apache-licensed weights — no license request needed —
 so it's the default refolding oracle on non-configured clusters: `scripts/download_example_data.sh`
 fetches it automatically (skip with `--skip-of3` if you'd rather configure AlphaFold3's licensed
-weights instead). configured clusters already have AlphaFold3 pre-configured and skip this.
+weights instead). Set AF3_IMAGE to use an existing configured oracle image.
 
 To fetch it manually (e.g. to redo it, or on a cluster the script doesn't auto-detect as
-non-IPD), the public checkpoint bucket hosts a prebuilt container image and pre-converted
+new), the public checkpoint bucket hosts a prebuilt container image and pre-converted
 weights, so no building or conversion step is required:
 
 ```bash

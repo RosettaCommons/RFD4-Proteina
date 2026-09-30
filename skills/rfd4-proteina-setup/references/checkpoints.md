@@ -38,9 +38,3 @@ point at it with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
   `https://YOUR_DATASET_STORE`).
 - Add `--with-test-dataset` to also fetch a tiny training set:
   `./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset`.
-
-## IPD/DIGS
-
-On DIGS the shared data dir + checkpoints + apptainer SIF are wired in
-`.ipd/.env.digs`; choose `1) digs` during `setup.sh` and skip the manual
-`DATA_PATH` / download steps.

@@ -174,7 +174,7 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${repo_root}/lib/atomworks/src:$PYTHONPATH"
+    export PYTHONPATH="${repo_root}/src:${repo_root}/lib:$PYTHONPATH"
     echo "PYTHONPATH set to include rfproteina, vendored packages, atomworks"
 }
 
@@ -749,16 +749,14 @@ build_container_env_cmds() {
 
 # Copy codebase to a target directory (used by launch_generate.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
-# Copies the project (incl. lib/atomworks) and .ipd.
+# Copies project code and optional user-created runtime profiles.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
 copy_code_to_dir() {
     local repo_root="$1"
     local code_dir="$2"
     local cluster="${3:-}"
 
-    mkdir -p "$code_dir/lib/atomworks" "$code_dir/src" "$code_dir/data"
-    rsync -a --no-compress \
-        "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
+    mkdir -p "$code_dir/lib" "$code_dir/src" "$code_dir/data"
     rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/lib/gearnet/" "$code_dir/lib/gearnet/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
@@ -770,7 +768,7 @@ copy_code_to_dir() {
     rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
 
     cp "$repo_root/.project-root" "$code_dir/"
-    mkdir -p "$code_dir/.ipd/shebang" && rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"
+    mkdir -p "$code_dir/.ipd"
     rsync -a "$repo_root/.ipd/".env.* "$code_dir/.ipd/" 2>/dev/null || true
     mkdir -p "$code_dir/.ipd/apptainer"
 

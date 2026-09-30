@@ -96,6 +96,13 @@ def test_subset_to_designed_chain_selects_chain_of_interest():
     assert protein_one_letter_sequence(designed) == "ACDEFGHIKL"
 
 
+def test_rosetta_dependency_is_required_only_for_scoring(monkeypatch):
+    monkeypatch.delenv("PYROSETTA_CONTAINER", raising=False)
+    metric = RosettaDevelopabilityMetric()
+    with pytest.raises(OSError, match="PyRosetta container not set"):
+        metric.compute(AtomArray(0))
+
+
 def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
     """The metric shells the apptainer command with the right flags and parses its JSON."""
     container = tmp_path / "pyrosetta.sif"

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env python
 """Concatenate and aggregate per-example metrics from multi-job evaluation runs."""
 
 import multiprocessing as mp

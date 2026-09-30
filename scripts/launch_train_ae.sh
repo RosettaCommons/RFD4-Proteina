@@ -176,7 +176,7 @@ emit_ulimit_block >> "$SBATCH_FILE"
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1

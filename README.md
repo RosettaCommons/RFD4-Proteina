@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/v/rfproteina.svg" alt="PyPI version"></a>
   <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/pyversions/rfproteina.svg" alt="Python versions"></a>
   <a href="https://pypi.org/project/rfproteina/"><img src="https://img.shields.io/pypi/dm/rfproteina.svg" alt="PyPI downloads"></a>
-  <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/lint_and_test.yaml/badge.svg" alt="CI status"></a>
+  <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/manual_tests.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/manual_tests.yaml/badge.svg" alt="CI status"></a>
   <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/docs.yaml/badge.svg" alt="Documentation"></a>
   <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/graph/badge.svg?token=21O2N8apcG" alt="Code coverage"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
@@ -31,71 +31,36 @@ Two ways in:
 
 ## Setup
 
-> 🖥️ **On a configured compute cluster?** Just run `bash setup.sh` below and choose `1) digs` at the
-> cluster prompt — the shared data dir, checkpoints, and apptainer SIF are already wired in
-> `.ipd/.env.digs`, so you can skip the data-configuration step entirely and run inference directly.
-> Call the entry scripts **directly** rather than prefixing them with `python`, so the shebang runs
-> them inside the container — no virtualenv needed:
->
-> ```bash
-> ./src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/smoke
-> ```
->
-> Do this on an interactive GPU; the SLURM launchers (e.g. `scripts/launch_generate.sh`) enter the
-> container for you.
-
-These instructions use [`uv`](https://github.com/astral-sh/uv). Prefer apptainer or docker? See
-[Running in a container](#running-in-a-container).
-
-You need a Linux machine with an NVIDIA GPU, `git`, and `curl`.
+You need Linux, an NVIDIA GPU with a CUDA-13-compatible driver, Git, curl, and
+[uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-bash setup.sh                 # installs uv, the atomworks submodule, a py3.12 venv, and deps
+git clone https://github.com/RosettaCommons/RFD4-Proteina.git
+cd RFD4-Proteina
+bash setup.sh
 source .venv/bin/activate
-```
-
-Point RFD4-Proteína at a local data directory and create a tiny env file for it:
-
-```bash
-export CLUSTER=local
 export DATA_PATH="$PWD/data_path"
-mkdir -p "$DATA_PATH"
-printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local   # startup reads a per-cluster env file
+bash scripts/download_example_data.sh "$DATA_PATH" --skip-of3
 ```
 
-Download the model (two checkpoints, ~4 GB each) over public HTTPS — no credentials:
+Setup installs Python 3.12 and AtomWorks directly from the public
+`release/atomworks-3-0` branch revision pinned in `pyproject.toml`.
+No submodule, GitHub credentials, Rosetta, or private cluster profile is required.
+The default release uses the 340k EMA flow checkpoint and the z16 autoencoder.
 
-```bash
-./scripts/download_example_data.sh "$DATA_PATH"
-```
+Keep `DATA_PATH` exported in your shell, or save it in an optional project-root
+`.env` file. Do not set `CLUSTER` unless you have created a matching runtime profile.
 
-> Everything published for external use — both checkpoints, the tutorial `test_dataset`, and the
-> CCD mirror — lives in the public bucket **`YOUR_DATASET_STORE`**, served anonymously at
-> `https://YOUR_DATASET_STORE` (override with `RFPROTEINA_DATA_URL`). It is the
-> only bucket reachable without private credentials.
-
----
+Checkpoints are downloaded anonymously from the public release bucket.
+Plain generation needs no oracle or container. For optional refolding, see the
+[metrics documentation](docs/workflow/metrics.md).
 
 ## Running in a container
 
-Prefer apptainer or docker over `uv`? Image definitions ship in the repo (and on configured clusters the
-prebuilt SIFs are symlinked in place):
-
-- **Apptainer** — `.ipd/apptainer/` holds the definitions and SIFs (`latent-dev.def` /
-  `latent-dev.sif`). Run any command inside the image with a repo bind mount and GPU:
-  ```bash
-  apptainer exec --nv --bind "$PWD" "$LATENT_APPTAINER_SIF" \
-      python src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/smoke
-  ```
-  Where no prebuilt SIF is staged, build one: `apptainer build latent-dev.sif .ipd/apptainer/latent-dev.def`.
-  `LATENT_APPTAINER_SIF` comes from `.ipd/.env.<cluster>`, so it follows image upgrades;
-  `.ipd/apptainer/latent-dev.sif` symlinks to the same image.
-- **Docker** — Dockerfiles are in `.ipd/docker/` (e.g. `latent-dev.Dockerfile`).
-- **Auto** — the entry scripts re-exec themselves inside the SIF when `CONTAINER_TYPE=apptainer`, so
-  running `./src/rfproteina/generate.py …` directly uses the container, while
-  `python src/rfproteina/generate.py …` uses your local environment.
-
-You still set `DATA_PATH` and download the model as in [Setup](#setup) — only the Python environment differs.
+Run the same installation commands in a GPU-enabled container with Python 3.12
+and Git. Mount the repository, weights, and output directory, and invoke
+`python src/rfproteina/generate.py` inside it. Private cluster images and runtime
+profiles are not included in this release.
 
 ---
 

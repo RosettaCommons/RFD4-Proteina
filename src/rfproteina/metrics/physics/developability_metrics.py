@@ -211,9 +211,7 @@ class RosettaDevelopabilityMetric(Metric):
         **kwargs: Any,
     ) -> None:
         container = container or os.environ.get("PYROSETTA_CONTAINER")
-        if container is None:
-            raise OSError("PyRosetta container not set: pass container=... or set $PYROSETTA_CONTAINER.")
-        self.container = Path(container)
+        self.container = Path(container) if container else None
         default_script = Path(__file__).resolve().parents[4] / "scripts" / "developability" / "score_pose_rosetta.py"
         self.score_script = Path(score_script or default_script)
         self.apptainer_bin = apptainer_bin or shutil.which("apptainer") or "apptainer"
@@ -253,6 +251,8 @@ class RosettaDevelopabilityMetric(Metric):
         predicted_atom_array: AtomArray,
         chain_of_interest: str | None = None,
     ) -> dict[str, float]:
+        if self.container is None:
+            raise OSError("PyRosetta container not set: pass container=... or set $PYROSETTA_CONTAINER.")
         if not self.container.is_file():
             raise FileNotFoundError(f"PyRosetta container missing: {self.container}")
         if not self.score_script.is_file():

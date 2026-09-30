@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env python
 """Run GPU E2E regression tests inside Apptainer with squashfs mounts.
 
 Executed via launch_run_gpu_regression_tests.sh (or directly by srun on DIGS).

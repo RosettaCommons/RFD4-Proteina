@@ -30,7 +30,7 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None.
 
-Depends on: a completed `rfd4-proteina-setup` (venv plus the AtomWorks submodule). No GPU is required to author or validate CIFs.
+Depends on: a completed `rfd4-proteina-setup` (venv plus the installed AtomWorks package). No GPU is required to author or validate CIFs.
 
 ## Known Risks and Mitigations
 
@@ -56,8 +56,8 @@ Mitigation: The skill uses `concatenate_atom_array_plus()`, requires unique chai
 - `src/rfproteina/utils/parse_presets.py`
 - `src/rfproteina/conditions_reporting.py`
 - `skills/rfd4-proteina-annotated-cif/references/validation.md`
-- [AtomWorks annotators](../../lib/atomworks/src/atomworks/io/utils/annotator.py)
-- [StandardAnnotation fallback registry](../../lib/atomworks/src/atomworks/io/utils/standard_annotations/base.py)
+- [AtomWorks annotators](https://github.com/RosettaCommons/atomworks/blob/release/atomworks-3-0/src/atomworks/io/utils/annotator.py)
+- [StandardAnnotation fallback registry](https://github.com/RosettaCommons/atomworks/blob/release/atomworks-3-0/src/atomworks/io/utils/standard_annotations/base.py)
 - [Expandable-segment semantics](../../docs/workflow/inputs.md#expandable-segments)
 
 ## Skill Output

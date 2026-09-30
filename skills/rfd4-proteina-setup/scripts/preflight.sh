@@ -24,8 +24,7 @@ else
 fi
 if [ -n "${VIRTUAL_ENV:-}" ]; then pass "virtualenv active: $VIRTUAL_ENV"; else warn "no VIRTUAL_ENV set (run: source .venv/bin/activate)"; fi
 
-# 2. atomworks submodule importable
-if [ -f "lib/atomworks/pyproject.toml" ]; then pass "atomworks submodule present"; else bad "atomworks submodule missing (git submodule update --init lib/atomworks)"; fi
+# 2. Installed AtomWorks package importable
 if python -c "import atomworks" >/dev/null 2>&1; then pass "atomworks importable"; else bad "cannot import atomworks (re-run setup.sh)"; fi
 
 # 3. rfproteina + conditions registry importable
@@ -42,7 +41,7 @@ fi
 # 5. Cluster env file
 CLUSTER="${CLUSTER:-}"
 if [ -z "$CLUSTER" ]; then
-    warn "CLUSTER not set (export CLUSTER=local for a non-IPD machine)"
+    pass "local environment (no cluster profile required)"
 else
     if [ -f ".ipd/.env.$CLUSTER" ]; then pass "cluster env file: .ipd/.env.$CLUSTER"; else bad "missing .ipd/.env.$CLUSTER (create it; for local: printf 'DATA_PATH=%s\\n' \"\$DATA_PATH\" > .ipd/.env.local)"; fi
 fi

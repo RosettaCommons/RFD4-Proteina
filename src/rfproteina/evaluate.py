@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env python
 
 """Evaluate pre-generated structures: design metrics → oracle refolding → pass criteria.
 
