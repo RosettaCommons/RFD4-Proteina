@@ -29,7 +29,7 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None. `ALLOW_BIOTITE_CCD=True` is set by the wrapper scripts for CCD lookups (offline; no network credential).
 
-Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` submodule)
+Depends on: a completed `rfd4-proteina-setup` (venv + installed `atomworks` package)
 and `rfd4-proteina-annotated-cif` for native CIF semantics and validation. No GPU
 is required to build or validate CIFs.
 

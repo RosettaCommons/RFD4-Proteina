@@ -186,7 +186,7 @@ table and how to read annotations: [references/outputs.md](references/outputs.md
 | `--inputs`/`--out_dir` not recognized / Hydra config error | Use `=` not `--`: `inputs=file.cif`, never `--inputs file.cif` |
 | checkpoint not found | Confirm `DATA_PATH`, then compare `ckpt_name` and `ckpt_path` with `configs/inference.yaml`; override only when intentionally using another checkpoint |
 | `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_example_data.sh "$DATA_PATH"` |
-| `atomworks not found` | `git submodule update --init lib/atomworks`, re-run `setup.sh` |
+| `atomworks not found` | `bash setup.sh`, re-run `setup.sh` |
 | `hydra not found` / import errors | `source .venv/bin/activate` |
 | `No .env file found for cluster 'digs'` | `export CLUSTER=local` and create `.ipd/.env.local` |
 | AF3 / `*_refolding` errors | Refolding metrics need an AF3 container — see rfd4-proteina-setup + rfd4-proteina-evaluate |

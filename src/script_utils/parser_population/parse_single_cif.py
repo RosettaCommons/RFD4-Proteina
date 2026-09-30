@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env python
 """Parse CIF files with specified parser arguments and save to cache.
 
 This script is designed to be called from the command line to parse CIF files

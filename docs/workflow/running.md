@@ -360,7 +360,7 @@ sets both keys at once.
 | --- | --- |
 | `No .env file found for cluster 'digs'` | Set `export CLUSTER=local` and create `.ipd/.env.local`. See [Setup](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#setup) |
 | `DATA_PATH` or checkpoint not found | `export DATA_PATH=...` then run `./scripts/download_example_data.sh "$DATA_PATH"` |
-| `atomworks not found` | `git submodule update --init lib/atomworks` |
+| `atomworks not found` | `bash setup.sh` |
 | `hydra not found` or import errors | Activate the venv with `source .venv/bin/activate` |
 | Hydra config errors | Use `=` not `--`. Write `inputs=file.cif`, not `--inputs file.cif` |
 | Out of memory | Lower `batch_size`, and test your longest input at `batch_size=1` first |

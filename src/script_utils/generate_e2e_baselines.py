@@ -1,4 +1,4 @@
-#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../.ipd/shebang/latent_exec.sh" "$0" "$@"'
+#!/usr/bin/env python
 """Generate regression-test baselines for the four GPU regression tests.
 
 Run this script on DIGS, on a GPU node with the squashfs datasets mounted

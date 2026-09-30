@@ -1,4 +1,4 @@
-"""A patch over load_dotenv to take care of cluster-specific .env files for training on different clusters."""
+"""Load an optional local environment or an explicitly selected runtime profile."""
 
 import os
 from pathlib import Path
@@ -17,8 +17,9 @@ def load_dotenv(
 ) -> None:
     """Load the cluster-specific .env file based on the CLUSTER environment variable.
 
-    If ``dotenv_path`` is provided it is used directly. Otherwise, the ``CLUSTER``
-    environment variable selects the appropriate file from ``.ipd/``.
+    If ``dotenv_path`` is provided it is used directly. Without ``CLUSTER``,
+    load the optional project-root ``.env``. An explicit ``CLUSTER`` selects
+    a user-created profile under ``.ipd/``.
 
     Args:
         dotenv_path: Explicit path to a .env file. Skips cluster detection when given.
@@ -26,17 +27,13 @@ def load_dotenv(
         **kwargs: Additional keyword arguments forwarded to :py:func:`dotenv.load_dotenv`.
 
     Raises:
-        ValueError: If ``CLUSTER`` is unset, or no ``.env`` file exists for the resolved
-          cluster name.
+        ValueError: If no profile exists for an explicitly selected cluster.
     """
     if dotenv_path is None:
         cluster = os.environ.get("CLUSTER")
         if cluster is None:
-            raise ValueError(
-                "CLUSTER environment variable is not set. Set it before importing rfproteina, "
-                "e.g. `export CLUSTER=local` (or 'digs'/'ord'/'gb200'/'coreweave' on a named "
-                "cluster) in your ~/.bashrc, ~/.zshrc, or the current shell."
-            )
+            _load_dotenv(DOTENV_ROOT_PATH.parent / ".env", override=override, **kwargs)
+            return
 
         dotenv_path = DOTENV_ROOT_PATH / f".env.{cluster}"
 

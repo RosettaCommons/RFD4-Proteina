@@ -2,7 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteína (RFD4-Proteína) by installing the uv/Python-3.12 environment and `atomworks` submodule, wiring `DATA_PATH` and the per-cluster env file, downloading the model checkpoints, and running a GPU/checkpoint preflight.
+`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteína (RFD4-Proteína) by installing the uv/Python-3.12 environment and installed `atomworks` package, wiring `DATA_PATH` and the per-cluster env file, downloading the model checkpoints, and running a GPU/checkpoint preflight.
 
 This skill is for research and development only.
 
@@ -37,8 +37,8 @@ Do not include secrets in prompts/logs/output; use least-privilege credentials; 
 Risk: Inference and the download script can drift to different checkpoint releases.
 Mitigation: Keep the downloader aligned with `configs/inference.yaml`; preflight reports which `.ckpt` files are actually present, and `ckpt_path=`/`ckpt_name=` override either.
 
-Risk: Running the model before the `atomworks` submodule/venv is ready produces confusing import errors.
-Mitigation: Preflight checks imports and submodule presence and exits non-zero before any run.
+Risk: Running the model before the installed `atomworks` package/venv is ready produces confusing import errors.
+Mitigation: Preflight checks imports and package availability and exits non-zero before any run.
 
 Risk: `setup.sh` edits the user's shell rc file.
 Mitigation: It only appends a clearly-marked block, is idempotent (skips if the marker exists), and offers an "other / set manually" choice.
@@ -52,11 +52,11 @@ Mitigation: It only appends a clearly-marked block, is idempotent (skips if the 
 
 ## Skill Output
 
-Output type(s): environment changes + files (venv, submodule, downloaded checkpoints, env file), and a preflight report.
+Output type(s): environment changes + files (venv, installed packages, downloaded checkpoints, env file), and a preflight report.
 
 Output format: console PASS/FAIL report; created files on disk.
 
-Output parameters: `.venv/`, `lib/atomworks/`, `$DATA_PATH/{flow_checkpoints,ae_checkpoints}/`, `.ipd/.env.$CLUSTER`.
+Output parameters: `.venv/`, `$DATA_PATH/{flow_checkpoints,ae_checkpoints}/`, optional `.env`.
 
 Other properties: `preflight.sh` is read-only (no writes); exits non-zero on any failed check. `setup.sh` and the download step modify the filesystem and shell rc.
 

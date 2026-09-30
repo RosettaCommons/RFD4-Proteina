@@ -137,7 +137,7 @@ CONTAINER_CMD=$(get_srun_cmd)
 print_mount_summary
 
 # PYTHONPATH for inside the container
-CONTAINER_PYTHONPATH="$REPO_ROOT:$REPO_ROOT/lib/atomworks/src"
+CONTAINER_PYTHONPATH="$REPO_ROOT"
 
 # Create a temporary directory for the session on the shared filesystem
 # (accessible inside the container via /lustre:/lustre:rw mount)
