@@ -22,13 +22,6 @@ to use `rfd4-proteina-annotated-cif` with the artifact:
 Use rfd4-proteina-annotated-cif with <artifact>
 ```
 
-For an existing legacy RFD3 JSON/YAML file, use `rfd4-proteina-inputs` and pass
-the example key when the file contains several entries:
-
-```
-Use rfd4-proteina-inputs with <legacy.json> [example_key]
-```
-
 Or just say what you want:
 
 ```
@@ -36,11 +29,10 @@ Use rfd4-proteina-annotated-cif to scaffold a 120-residue binder against the SAM
 keeping the four catalytic residues fixed but letting the model place them.
 ```
 
-The `rfd4-proteina-inputs` skill covers legacy RFD3 JSON/YAML adaptation. For
-new annotated-CIF creation or editing from a structure, use
-`rfd4-proteina-annotated-cif`; `rfd4-proteina-generate` routes to the appropriate
-one based on the source format. Claude Code's `/design2cif` compatibility alias
-loads the legacy adapter.
+The `rfd4-proteina-generate` skill hands input preparation to
+`rfd4-proteina-annotated-cif`. Claude Code's `/design2cif` command uses the same
+authoring skill and links to the [condition-spec documentation](condition-spec.md)
+for current `input`/`conditions` YAML or JSON.
 
 ## What to expect
 

@@ -5,18 +5,21 @@
 # Run this script directly on the cluster (not from local machine)
 #
 # Usage:
-#   ./launch_train_latents.sh <cluster> [options] [extra_args...]
+#   ./scripts/launch_train_latents.sh [options] [extra_args...]
 #
 # Options:
 #   --no-copy      Skip copying code to run directory (use current repo)
 #   --follow, -f   Follow log output after job submission (Ctrl+C to exit)
-#   --submissions N  Number of job submissions for auto-requeue (default: 2)
+#   --submissions N  Number of job submissions for auto-requeue (default: 1)
 #
-# Examples:
-#   ./launch_train_latents.sh digs
-#   ./launch_train_latents.sh digs --no-copy
-#   ./launch_train_latents.sh digs --follow
-#   ./launch_train_latents.sh gb200 +experiment=ablation
+# Examples (run from the repository root):
+#   # Public native runs use the active Python environment; submissions require SLURM.
+#   ./scripts/launch_train_latents.sh --no-copy run_name_=my_run
+#
+#   ./scripts/launch_train_latents.sh
+#   ./scripts/launch_train_latents.sh --no-copy
+#   ./scripts/launch_train_latents.sh --follow
+#   ./scripts/launch_train_latents.sh experiment=sota
 # =============================================================================
 
 set -e
@@ -27,7 +30,7 @@ source "$SCRIPT_DIR/common.sh"
 strip_inherited_slurm_env
 
 # Parse arguments
-CLUSTER=""
+REQUESTED_CLUSTER=""
 COPY_CODE="true"
 FOLLOW_LOGS="false"
 NUM_SUBMISSIONS=1  # Submit multiple times with --dependency=singleton for auto-requeue
@@ -52,8 +55,8 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            if [ -z "$CLUSTER" ]; then
-                CLUSTER="$1"
+            if [[ -z "$REQUESTED_CLUSTER" && "$1" != -* && "$1" != \~* && "$1" != *=* ]]; then
+                REQUESTED_CLUSTER="$1"
             else
                 EXTRA_ARGS="$EXTRA_ARGS $1"
             fi
@@ -62,11 +65,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "$CLUSTER" ]; then
-    echo "Usage: $0 <cluster> [--no-copy] [extra_args...]"
-    echo "Available clusters: digs, ord, gb200"
-    exit 1
-fi
+export CLUSTER="${REQUESTED_CLUSTER:-${CLUSTER:-local}}"
+
 
 # Load cluster configuration
 load_user_info "$CLUSTER" || exit 1
@@ -169,7 +169,7 @@ emit_ulimit_block >> "$SBATCH_FILE"
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -184,7 +184,7 @@ EOF
 # Apptainer clusters: pass cluster identity to exec_core.sh (via shebang) and
 # compute distributed training endpoints dynamically at job time.
 # Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     cat >> "$SBATCH_FILE" << EOF
 
 # Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
@@ -206,7 +206,7 @@ fi
 # Add container execution command
 SCRIPT_TRAIN="$CODE_DIR/src/rfproteina/train.py"
 
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     # Apptainer: shebang in train.py handles container execution via exec_core.sh
     if [ "$AF3_NEEDED" == "true" ]; then
         echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"

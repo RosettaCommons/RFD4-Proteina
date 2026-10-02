@@ -178,19 +178,19 @@ def main(spec: str, repo_root: str = ".", dry_run: bool = False) -> None:
     if existing:
         tags = ",".join(loaded.get("metrics_tags", []))
         print("  1. score the curated designs offline (they are the parents):")
-        print(f"       python src/rfproteina/evaluate.py inputs={existing} \\")
+        print(f"       rfd4-evaluate inputs={existing} \\")
         print(f"           metrics_tags='[{tags}]' out_dir={phase1_dir}")
         print("  2. the curated directory is already the parent directory -- point parents_dir at it")
         print(f"       (spec has parents_dir: {loaded['parents_dir']}, curated designs: {existing})")
     else:
-        print(f"  1. ./scripts/launch_generate.sh <cluster> inference_experiment={name}_phase1 --no-foldseek")
+        print(f"  1. ./scripts/launch_generate.sh inference_experiment={name}_phase1 --no-foldseek")
         print(f"  2. link parents from {phase1_dir!r} into {loaded['parents_dir']!r} (SKILL.md Step 5)")
     # Cheap, and it can call the sweep off: a criterion nothing passes is not a commitment question.
     print("  3. how rare is each metric in the parents, before buying the sweep:")
     print("       python .../metric_distributions.py \\")
     print(f"           --metrics_csv {phase1_dir}/per_example_metrics.csv \\")
     print(f"           --out_dir {phase1_dir}/analysis")
-    print(f"  4. ./scripts/launch_sweep.sh <cluster> --sweep-config configs/sweeps/{name}.yaml \\")
+    print(f"  4. ./scripts/launch_sweep.sh --sweep-config configs/sweeps/{name}.yaml \\")
     print(f"           --base-out-dir {loaded['out_root']}/{name}_sweep --no-foldseek")
     print("  5. python .../commitment_curve.py --metrics '<Label=column,...>' \\")
     print(f"           --sweep_csv {loaded['out_root']}/{name}_sweep/sweep_per_example_metrics.csv \\")

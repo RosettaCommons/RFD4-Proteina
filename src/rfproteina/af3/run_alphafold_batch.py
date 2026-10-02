@@ -93,7 +93,7 @@ def _is_of3_model_dir(model_dir: pathlib.Path) -> bool:
         expected_bytes = recorded["bytes"]
     except KeyError as exc:
         # Older converters wrote conversion.output_filename instead; the weights staged
-        # on coreweave are still in that schema.
+        # from older runtime images are still in that schema.
         raise ValueError(
             f"{provenance_path} has no {exc} field, so it predates the current converter. "
             "Re-run scripts/setup_of3_weights.py against this directory."

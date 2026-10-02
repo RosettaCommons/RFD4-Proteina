@@ -377,7 +377,7 @@ class DesignProblemDataset(FileDataset):
 
     def _load_from_path(self, path: PathLike) -> Any:
         """
-        Loads a design problem specification from a .ipd file
+        Loads a design problem specification from an annotated CIF file
         """
 
         result_dict = parse(path, config=ANNOTATED_CIF)
@@ -393,7 +393,7 @@ class DesignProblemDataset(FileDataset):
 
     def __getitem__(self, idx: int) -> Any:
         """
-        Loads a design problem specification from a .ipd file
+        Loads a design problem specification from an annotated CIF file
         """
         path = self.file_paths[idx]
         previous_occurrences = self.file_paths[:idx].count(path)

@@ -235,8 +235,7 @@ def check_index_group_res_id_gaps(arr: AtomArrayPlus) -> list[str]:
     Atomized residues (PTMs, ligands, etc.) are skipped: they can share an index
     group with a peptide chain while carrying unrelated res_ids, since atomized
     segments use bond-graph distance -- not res_id -- for relative positional
-    encoding. This mirrors the token filtering in
-    :py:func:`~rfproteina.transforms.invariants.check_idxgrp_violations`.
+    encoding.
     """
     messages = find_index_group_res_id_gaps(arr)
     if not messages:

@@ -8,7 +8,7 @@ probability: 1.0
 dataset:
   memory_map: true
   name: pdb_glycan_strict
-  data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
+  data: ${oc.env:DATASET_STORE_ROOT,s3://latent-data-e04a}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
   filters:
     - "passes_ae_audit == True"
     - "deposition_date < '2024-01-01'"
@@ -16,7 +16,7 @@ dataset:
     - "has_in_vocabulary_glycan == True"
   loader:
     _target_: rfproteina.datapipes.glycan.create_glycan_loader
-    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
+    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://latent-data-e04a}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
     record_id_colname: path
     assembly_id_colname: assembly_id
     parser_args:

@@ -162,7 +162,7 @@ opt:
 # Logging and checkpoints
 log:
   wandb_project: latent_training
-  wandb_entity: bakerlab
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
   tags: []
   log_wandb: True
   log_every_n_steps: 10

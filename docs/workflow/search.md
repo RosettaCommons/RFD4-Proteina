@@ -5,13 +5,6 @@ scores highest. **Beam search** ships ready to run. It can score candidates on a
 and the default implementation uses an **AF3 oracle**, which needs an apptainer. See [Evaluating
 results](running.md#evaluating-results).
 
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-Drop the `python` and call `./src/rfproteina/generate.py` directly, so its shebang runs it inside
-the apptainer image. Do this on an interactive GPU. Full form in
-[Running the model](running.md#running-inference).
-:::
-
 | Strategy | How it works | When to use |
 | --- | --- | --- |
 | **Vanilla** | Standard sampling, no search | Baseline, fastest |
@@ -23,7 +16,7 @@ One example config targets the monomer benchmark and uses AF3 refolding confiden
 
 ```bash
 # Beam search (configs/inference_experiment/inference_beam_example.yaml)
-python src/rfproteina/generate.py inference_experiment=inference_beam_example
+rfd4-generate inference_experiment=inference_beam_example
 ```
 
 Another skips refolding during search and rewards interface hydrogen bonds between protein and
@@ -32,7 +25,7 @@ trajectory](#changing-the-reward-mid-trajectory).
 
 ```bash
 # Beam search, no refolding (configs/inference_experiment/sm_binder_hbond_search.yaml)
-python src/rfproteina/generate.py inference_experiment=sm_binder_hbond_search
+rfd4-generate inference_experiment=sm_binder_hbond_search
 ```
 
 Copy either config to build your own. A search config is an `inference_experiment` with one extra

@@ -31,12 +31,12 @@ Once you have the annotated CIF:
 
 ```bash
 # Inverse folding: backbone-only conditioned CIF, redesign sequence
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=my_backbone.cif \
     num_replicates=8 batch_size=8 out_dir=./runs/inverse_fold
 
 # Folding: sequence-conditioned CIF, generate structure
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=my_sequence.cif \
     num_replicates=8 batch_size=8 out_dir=./runs/fold
 ```

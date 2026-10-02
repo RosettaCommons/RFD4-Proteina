@@ -6,11 +6,14 @@ import getpass
 import logging
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from threading import get_ident
 
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback
+from lightning_utilities.core.rank_zero import rank_zero_only
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,49 @@ logger = logging.getLogger(__name__)
 # this by :py:func:`_blob_path`, which scopes the blob to the current user and torch build
 # -- never point this at a literal file shared across either.
 _BLOB_ENV = "TORCH_COMPILE_CACHE_BLOB"
+_COMPILE_GUIDANCE_SHOWN = False
+
+
+@contextmanager
+def report_compile_progress(batch_size: int, length: int) -> Iterator[None]:
+    """Report Inductor code generation once, leaving disk and in-memory cache hits quiet.
+
+    Inductor's compilation-start log occurs after its graph-cache lookup. Dynamo's
+    compile callbacks also run on disk-cache hits, so they cannot distinguish this work.
+    """
+    compiler_logger = logging.getLogger("torch._inductor.compile_fx")
+    previous_level = compiler_logger.level
+    effective_level = compiler_logger.getEffectiveLevel()
+    thread_id = get_ident()
+    reported = False
+
+    def report(record: logging.LogRecord) -> bool:
+        global _COMPILE_GUIDANCE_SHOWN
+        nonlocal reported
+        if not reported and get_ident() == thread_id and "torchinductor compiling " in record.getMessage():
+            if rank_zero_only.rank == 0:
+                message = f"Compiling model for padded length {length} tokens (batch size {batch_size})."
+                if not _COMPILE_GUIDANCE_SHOWN:
+                    message += " This may take a few minutes."
+                    if os.environ.get(_BLOB_ENV):
+                        message += "\nCached shapes can be reused across runs with compatible settings and hardware."
+                    else:
+                        message += (
+                            "\nThis shape may need recompiling in later runs; "
+                            "set TORCH_COMPILE_CACHE_BLOB to a persistent file path to preserve the cache."
+                        )
+                logger.info(message, extra={"always_visible": True})
+                _COMPILE_GUIDANCE_SHOWN = True
+            reported = True
+        return record.levelno >= effective_level
+
+    compiler_logger.addFilter(report)
+    compiler_logger.setLevel(min(effective_level, logging.INFO))
+    try:
+        yield
+    finally:
+        compiler_logger.removeFilter(report)
+        compiler_logger.setLevel(previous_level)
 
 
 def _sanitized_user() -> str:
@@ -138,6 +184,8 @@ def save_compile_cache() -> None:
 
 def setup_run_compile(*, inference: bool = False) -> None:
     """Configure torch.compile for a run and warm its local Inductor cache."""
+    global _COMPILE_GUIDANCE_SHOWN
+    _COMPILE_GUIDANCE_SHOWN = False
     torch._inductor.config.coordinate_descent_tuning = True
     configure_inductor_cache_dir()
     if inference:

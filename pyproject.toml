@@ -5,8 +5,8 @@ description = "protein foundation models"
 license = "BSD-3-Clause"
 requires-python = ">=3.12,<=3.12.10"
 dependencies = [
-    # Public release/atomworks-3-0 revision; Biotite must match AtomWorks exactly.
-    "atomworks[ml,openbabel] @ git+https://github.com/RosettaCommons/atomworks.git@df50559731c0ba43cc29a82b50c87a60d1a0a951",
+    # Public release/atomworks-3-0 APIs; Biotite must match AtomWorks exactly.
+    "atomworks[ml,openbabel] @ git+https://github.com/RosettaCommons/atomworks.git@release/atomworks-3-0",
     "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
@@ -22,7 +22,7 @@ dependencies = [
     "jaxtyping>=0.2.17,<1",
     "beartype>=0.18.0,<1",
     # ML core
-    "torch>=2.13.0,<3",
+    "torch==2.13.0",
     "lightning>=2.5.0",
     "loralib>=0.1.1",
     "einops>=0.8.0,<1",
@@ -61,23 +61,30 @@ docs = [
     "sphinx-reredirects>=1.0,<2",
     "sphinx-togglebutton>=0.3,<1",
 ]
-# Select one TMol/metrics pair matching the container's Torch and CUDA stack.
+# Select one TMol/metrics pair matching the Torch and CUDA stack.
 tmol-cuda12 = [
-    "tmol[ligand]; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu128torch2.10-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 tmol-cuda13 = [
-    "tmol[ligand]; sys_platform == 'linux'",
+    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl ; sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 metrics-cuda12 = [
     "hydride>=1.2",
-    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
+    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git@e0eb8945c21e203656f4e0bbece5d1da488b6753",
     "cuequivariance-torch>=0.10.0; sys_platform == 'linux'",
     "cuequivariance-ops-cu12>=0.10.0; sys_platform == 'linux'",
     "cuequivariance-ops-torch-cu12>=0.10.0; sys_platform == 'linux'",
 ]
 metrics-cuda13 = [
+    # PyTorch's CuTe RMSNorm kernels require both CUTLASS DSL and TVM FFI.
+    "apache-tvm-ffi==0.1.14.post0; sys_platform == 'linux'",
+    "cuda-core==1.0.1; sys_platform == 'linux'",
+    "cuda-python==13.3.1; sys_platform == 'linux'",
+    "nvidia-cutlass-dsl==4.5.2; sys_platform == 'linux'",
+    "nvidia-cutlass-dsl-libs-base==4.5.2; sys_platform == 'linux'",
     "hydride>=1.2",
-    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
+    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git@e0eb8945c21e203656f4e0bbece5d1da488b6753",
     "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
     "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
     "cuequivariance-ops-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
@@ -101,6 +108,12 @@ dev = [
     "boto3>=1.34,<2",
 ]
 
+[project.scripts]
+rfd4-generate = "script_utils.entrypoints:generate"
+rfd4-evaluate = "rfproteina.evaluate:main_hydra"
+rfd4-train = "rfproteina.train:main"
+rfd4-train-ae = "rfproteina.partial_autoencoder.train:main"
+
 [tool.uv]
 conflicts = [
     [
@@ -113,14 +126,14 @@ conflicts = [
     ],
 ]
 
+# CUDA wheels are selected explicitly; other dependencies resolve from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
 [tool.uv.sources]
-# TMol's stable Torch 2.13 wheel is built with cu130. It is validated with the
-# public Torch 2.13/cu132 stack used by NGC 26.06-based containers.
-tmol = [
-    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu128torch2.10-cp312-cp312-manylinux_2_28_x86_64.whl", extra = "tmol-cuda12", marker = "platform_machine == 'x86_64'" },
-    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl", extra = "tmol-cuda13", marker = "platform_machine == 'x86_64'" },
-    { url = "https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl", extra = "tmol-cuda13", marker = "platform_machine == 'aarch64'" },
-]
+torch = { index = "pytorch-cu132" }
 
 # Pytest
 [tool.pytest.ini_options]
@@ -146,19 +159,43 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.build]
+dev-mode-dirs = ["src", "lib"]
+
 [tool.hatch.build.targets.wheel]
-packages = [
+exclude = [
+    "configs/metrics/custom_metrics/**",
+    "src/rfproteina/metrics/custom_metrics/**",
+    "**/__pycache__/**",
+]
+only-include = [
     "src/rfproteina",
     "src/script_utils",
     "lib/gearnet",
+    "configs",
+    "data/benchmarks",
+    "data/cath_label_mapping.pkl",
+    "scripts/developability/score_pose_rosetta.py",
 ]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+"lib" = ""
+"configs" = "rfproteina/configs"
+"data" = "rfproteina/data"
+"scripts" = "rfproteina/scripts"
+
+[tool.hatch.build.targets.wheel.force-include]
+".project-root" = "rfproteina/.project-root"
 
 [tool.ruff]
 line-length = 120
 indent-width = 4
 target-version = "py310"
 exclude = [
+    "docs/examples/*.py",  # Jupytext notebook sources
     "*.ipynb",  # notebooks are not linted or formatted
+    "lib/atomworks",  # separate repo, pinned as a submodule
     ".bzr",
     ".direnv",
     ".eggs",

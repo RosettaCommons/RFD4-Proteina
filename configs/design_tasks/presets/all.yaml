@@ -1,8 +1,5 @@
 # All available design tasks with default-balanced frequencies.
 # Datasets can inherit this and override individual task frequencies.
-#
-# Distance tasks stay at 0.0 (inherited from all_off) — we cannot provide
-# distance information to the model yet.
 
 defaults:
   - all_off

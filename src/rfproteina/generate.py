@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../scripts/rfproteina_exec.sh" inference "$0" "$@"'
 
 import os
 import sys
@@ -59,36 +59,6 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 
 # If the user has set `PROJECT_PATH`, use it to build the config path; otherwise, fall back to `PROJECT_ROOT`
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
-
-
-def _get_mutually_exclusive_config(cfg: DictConfig, key1: str, key2: str, default_value: Any = None) -> Any:
-    """Get exactly one of two mutually exclusive config keys.
-
-    Primarily used for supporting RFD3 launch syntax, to ease the transition for designers.
-
-    Args:
-        cfg: Configuration DictConfig.
-        key1: First config key.
-        key2: Second config key.
-        default_value: Value to return if neither key is provided.
-
-    Returns:
-        The value of the specified config key.
-
-    Raises:
-        ValueError: If neither or both keys are provided.
-    """
-    has_key1 = exists(cfg.get(key1, None))
-    has_key2 = exists(cfg.get(key2, None))
-
-    if has_key1 and has_key2:
-        raise ValueError(f"Please provide only one of `{key1}` or `{key2}` in the config.")
-    elif not has_key1 and not has_key2:
-        return default_value
-    elif has_key1:
-        return cfg[key1]
-    else:
-        return cfg[key2]
 
 
 def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
@@ -205,9 +175,7 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
 
     # Otherwise, we will create a Dataset based on the user specifications
     assert exists(cfg.inputs), "Must provide `inputs` config if not using a pre-instantiated Dataset."
-    subset_to_examples = _get_mutually_exclusive_config(
-        cfg, "subset_to_examples", "json_keys_subset", default_value=None
-    )
+    subset_to_examples = cfg.get("subset_to_examples")
     # Infer partial-diffusion runs from the generation args so the partial_diffusion metrics tag
     # is added below (inverse folding, or an explicit partial-t / trajectory-fraction argument).
     cfg_args = OmegaConf.to_container(cfg_gen.args, resolve=True) if hasattr(cfg_gen, "args") else {}
@@ -442,6 +410,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         ckpt_file,
         strict=True,
         autoencoder_ckpt_path=cfg.get("autoencoder_ckpt_path"),
+        load_training_metrics=False,
         weights_only=False,
         map_location="cpu",
     )
@@ -676,8 +645,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
             model=model,
         )
 
-    # Support either batch_size argument for backwards compatibility with rfd3 syntax
-    batch_size = _get_mutually_exclusive_config(cfg, "batch_size", "diffusion_batch_size", default_value=1)
+    batch_size = cfg.get("batch_size", 1)
 
     # Pad every batch up to one of a few token counts so the network sees a handful of
     # static shapes and can be compiled (variable lengths otherwise recompile forever).

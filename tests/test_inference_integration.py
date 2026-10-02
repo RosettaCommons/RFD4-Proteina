@@ -431,7 +431,7 @@ class TestEndToEndInference:
                 _SHARED_CHECKPOINT_CACHE.clear()
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
-        """Verify num_replicates, global_prefix, and diffusion_batch_size alias."""
+        """Verify num_replicates, global_prefix, and batch_size."""
         prefix = "testprefix"
         num_replicates = 2
         bb_ca_noise_scale = 0.2
@@ -444,7 +444,7 @@ class TestEndToEndInference:
                 f"num_replicates={num_replicates}",
                 f"global_prefix={prefix}",
                 "batch_size=null",
-                "diffusion_batch_size=1",
+                "batch_size=1",
                 f"generation.model.bb_ca.simulation_step_params.sc_scale_noise={bb_ca_noise_scale}",
                 f"generation.model.local_latents.simulation_step_params.sc_scale_noise={latents_noise_scale}",
                 "generation.args.nsteps=20",

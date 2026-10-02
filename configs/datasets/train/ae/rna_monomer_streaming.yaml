@@ -8,7 +8,7 @@ probability: 1.0
 dataset:
   memory_map: true
   name: rna_monomer
-  data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/examples.parquet
+  data: ${oc.env:DATASET_STORE_ROOT,s3://latent-data-e04a}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/examples.parquet
   columns_to_load:
     - example_id
     - source_training_eligible
@@ -25,4 +25,4 @@ dataset:
     - "passes_clash_filters == True"
     - "n_rna_residues <= 768"
   loader:
-    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/blob
+    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://latent-data-e04a}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/blob

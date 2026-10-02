@@ -1,8 +1,8 @@
 # Bicyclic-peptide distillation set prepared from the 2026-05-27 combined manifest.
 #
-# Remote artifacts (CoreWeave object storage):
-#   s3://YOUR_DATASET_STORE/train_datasets/bicycle_distillation/bicycle_distillation_2026_05_27.parquet
-#   s3://YOUR_DATASET_STORE/train_datasets/bicycle_distillation/data/bicycle_distillation_2026_05_27.sqfs
+# Remote artifacts (object storage):
+#   s3://latent-data-e04a/train_datasets/bicycle_distillation/bicycle_distillation_2026_05_27.parquet
+#   s3://latent-data-e04a/train_datasets/bicycle_distillation/data/bicycle_distillation_2026_05_27.sqfs
 #
 # The parquet contains paths relative to the squashfs root and one row per query
 # PN unit. It retains the original absolute path and example ID in provenance

@@ -1,0 +1,13 @@
+# Copy to scripts/.user_info_local and edit for your site's SLURM settings.
+# Runtime and data settings come from .env.local. Use shared absolute paths.
+ROOT_REMOTE="${PROJECT_ROOT}/runs"
+PARTITION=gpu
+CPU_PARTITION=cpu
+ACCOUNT=""
+SKIP_ACCOUNT=true
+RUNTIME=04:00:00
+MEM=64G
+CPUS_PER_TASK=4
+SIGNAL_TIME=600
+SLURM_EXTRA_OPTIONS=""
+# GRES=gpu:a100:1  # Optional site-specific GPU request.

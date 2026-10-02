@@ -10,10 +10,7 @@
 # Options:
 #   --gpus-per-job N  GPUs per SLURM job (default: 1). Each GPU runs independent search.
 #
-# Examples:
-#   ./launch_search.sh ord
-#   ./launch_search.sh digs
-#   ./launch_search.sh gb200 --gpus-per-job=4
+# IPD cluster profiles are documented in .ipd/docs/clusters.md.
 #
 # Note: If gen_njobs or eval_njobs > 1 in config, uses SLURM job arrays.
 #       With --gpus-per-job=N, each array task runs N parallel searches.
@@ -58,7 +55,7 @@ done
 
 if [ -z "$CLUSTER" ]; then
     echo "Usage: $0 <cluster> [--gpus-per-job=N] [extra_args...]"
-    echo "Available clusters: digs, ord, gb200"
+    echo "Choose an IPD cluster profile; see .ipd/docs/clusters.md"
     exit 1
 fi
 
@@ -164,7 +161,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NCCL_P2P_DISABLE=1
 export PYTHONFAULTHANDLER=1

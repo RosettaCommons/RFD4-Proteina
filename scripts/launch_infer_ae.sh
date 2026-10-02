@@ -15,10 +15,8 @@
 #   --njobs=<int>        Number of parallel jobs (default: 1)
 #   --gpus-per-job=<int> GPUs per SLURM job (default: 1)
 #
-# Examples:
-#   ./launch_infer_ae.sh ord --input_dir=/path/to/structures
-#   ./launch_infer_ae.sh digs --input_dir=./my_pdbs --ckpt=/path/to/ae.ckpt
-#   ./launch_infer_ae.sh gb200 --input_dir=./cifs --njobs=16 --gpus-per-job=4
+# IPD cluster profiles are documented in .ipd/docs/clusters.md.
+#
 # =============================================================================
 
 set -e
@@ -80,7 +78,7 @@ done
 
 if [ -z "$CLUSTER" ]; then
     echo "Usage: $0 <cluster> [--input_dir=<path>] [--njobs=<int>] [--gpus-per-job=<int>] [extra_args...]"
-    echo "Available clusters: digs, ord, gb200"
+    echo "Choose an IPD cluster profile; see .ipd/docs/clusters.md"
     exit 1
 fi
 
@@ -167,7 +165,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4

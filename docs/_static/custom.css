@@ -2,7 +2,7 @@
   --rfproteina-rf: #a80c84;
   --rfproteina-proteina: #4f9633;
 
-  /* "On a configured compute cluster?" callout. Tinted toward the RF magenta so the box reads as ours,
+  /* "On the IPD compute cluster?" callout. Tinted toward the RF magenta so the box reads as ours,
      but desaturated enough that a page carrying several of them doesn't turn into a wall of pink. */
   --ipd-callout-bg: #fdf5fb;
   --ipd-callout-title-bg: #f6e2f1;
@@ -68,7 +68,7 @@ a {
 }
 
 /* ---------------------------------------------------------------------------
-   "On a configured compute cluster?" callout — `:class: ipd-cluster`.
+   "On the IPD compute cluster?" callout — `:class: ipd-cluster`.
 
    The theme only ships styling for its own admonition names (note/tip/warning), so a custom
    class renders as an unstyled grey box unless we draw the whole thing. Everything below is

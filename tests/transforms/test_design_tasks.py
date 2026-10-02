@@ -85,7 +85,7 @@ import pytest
 from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX, C_SEQ
+from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
 from atomworks.ml.utils.token import apply_and_spread_token_wise
 
 from rfproteina.conditions import C_HOT, C_RAS, C_SEC, RasaEnum, SSEnum
@@ -226,9 +226,8 @@ def test_structure_prediction_conditions(atom_array_fixture):
     # Sequence information should be provided
     assert C_SEQ.mask(atom_array).all()
 
-    # Should have no coordinate or distance conditions
+    # Should have no coordinate conditions
     assert C_CRD.mask(atom_array).sum() == 0
-    assert C_DIS.mask(atom_array).as_dense_array().sum() == 0
 
     # Shouldn't have RASA, HBOND, or SS conditions
     check_no_design_task_modifiers(data)
@@ -362,20 +361,19 @@ def test_unindexed_tokens_are_whole_and_atomized_atoms_stay_indexed(task_class, 
 
 
 @parametrize_complex_sweep()
-def test_coords_and_distances_only_applied_to_sequence_conditioned_or_backbone_atoms(task_class, atom_array_fixture):
+def test_coords_only_applied_to_sequence_conditioned_or_backbone_atoms(task_class, atom_array_fixture):
     """
-    Test that coords and distances are only applied to sequence-conditioned or backbone atoms.
+    Test that coordinates are only applied to sequence-conditioned or backbone atoms.
     """
     data = apply_design_task(atom_array_fixture, task_class)
     atom_array = as_atom_array_plus(data["atom_array"])
     ensure_annotations(atom_array, "is_protein_backbone", "is_nucleic_acid_backbone")
 
-    can_be_coord_or_distance_conditioned = (
+    can_be_coord_conditioned = (
         C_SEQ.mask(atom_array) | atom_array.is_protein_backbone | atom_array.is_nucleic_acid_backbone
     )
 
-    assert not C_CRD.mask(atom_array)[~can_be_coord_or_distance_conditioned].any()
-    assert not C_DIS.mask(atom_array).as_dense_array().any(axis=1)[~can_be_coord_or_distance_conditioned].any()
+    assert not C_CRD.mask(atom_array)[~can_be_coord_conditioned].any()
 
 
 # ============================== Edge Case Tests ==============================

@@ -57,7 +57,7 @@ def _data_bind_args() -> list[str]:
     separated host:container specs, e.g. ``/mnt/data:/mnt/data;/scratch:/scratch``.
     ``/tmp`` is always bound (daemon socket lives there), as is the resolved
     ``tempfile.gettempdir()`` root — on clusters where SLURM sets ``TMPDIR`` to
-    a per-job scratch path (e.g. DIGS), that's where ``AF3Oracle`` actually
+    a per-job scratch path, that's where ``AF3Oracle`` actually
     writes ``manifest.json``, and it won't be ``/tmp``.
     """
     specs: list[str] = []

@@ -265,7 +265,7 @@ def build_pyxis_fold_command(
     serve: bool = False,
     resident_models: str | None = None,
 ) -> list[str]:
-    """Build an ORD/GB200 ``srun --container-image`` AF2 worker command."""
+    """Build a Docker/Pyxis ``srun --container-image`` AF2 worker command."""
     image = _normalize_pyxis_container_image(_require("AF2_IMAGE"))
     jax_cache = _require("AF2_JAX_CACHE_DIR")
     _prepare_jax_cache(jax_cache)

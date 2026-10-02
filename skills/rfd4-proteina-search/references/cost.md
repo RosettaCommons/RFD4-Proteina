@@ -61,7 +61,6 @@ reward-computation budget.
 
 ## SLURM
 
-For real runs, submit through `scripts/launch_search.sh <cluster>` (search jobs
-default to a longer runtime, `08:00:00`, and run inside the container). See the
-main [SKILL.md](../SKILL.md) Step 5 and rfd4-proteina-setup
-[references/clusters.md](../../rfd4-proteina-setup/references/clusters.md).
+For real runs, submit through `scripts/launch_generate.sh` with a search
+`inference_experiment`. See the main [SKILL.md](../SKILL.md) Step 5 and the
+[installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).

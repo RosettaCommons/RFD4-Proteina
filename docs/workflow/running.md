@@ -30,34 +30,17 @@ The released checkpoint supports all of these design tasks.
 The general form:
 
 ```bash
-./src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+rfd4-generate inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
-**Three entry points.** Submitting a job means `launch_generate.sh`. Running one thing right now
-means `generate.py`.
+Activate the environment where you installed the project, for example with
+`source .venv/bin/activate`. `rfd4-generate` uses that environment's Python;
+without activation, use `.venv/bin/rfd4-generate`.
 
-| Entry point | Use it for |
-| --- | --- |
-| `scripts/launch_generate.sh <cluster> …` | SLURM job arrays, multi GPU fan out, sweeps, metric aggregation, AF2 refolding |
-| `python src/rfproteina/generate.py …` | One process in your venv, on a node you already hold or a machine with no container |
-| `./src/rfproteina/generate.py …` | One process inside the cluster container, where the shebang runs it in `$LATENT_APPTAINER_SIF` |
-
-All three start AF3's refolding daemon on the host for you.
-
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-
-Call the script **directly**. Its shebang executes it inside the apptainer image named by
-`LATENT_APPTAINER_SIF` in `.ipd/.env.digs`, so you need no virtualenv.
-
-```bash
-./src/rfproteina/generate.py inputs=… num_replicates=… out_dir=…
-```
-
-Prefix it with `python` and it runs in your current environment instead. Use that form only where
-no container is configured. Run the direct form on an interactive GPU. For batch work, the SLURM
-launchers such as `scripts/launch_generate.sh` enter the container for you.
-:::
+For SLURM arrays, GPU workers, and metric aggregation, use
+`scripts/launch_generate.sh …` without a cluster argument. Refolding requires the
+optional oracle setup described in
+[installation](../installation.rst).
 
 - **Inputs.** Use an **annotated CIF** ([guide](inputs.md) ·
   [tutorial](../examples/annotated_cif_tutorial.ipynb)) or a
@@ -70,7 +53,7 @@ launchers such as `scripts/launch_generate.sh` enter the container for you.
 
 ```bash
 # 80 designs of each example in a JSON, 8 at a time
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
@@ -107,11 +90,11 @@ turns it on, and how to layer your own config on top of an existing metric.
 
 ```bash
 # Single tag
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=design.json num_replicates=50 metrics_tags='[unconditional_refolding]'
 
 # Multiple tags
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=design.json num_replicates=50 metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
 
@@ -177,7 +160,7 @@ chain from the conditioning annotations and stores it as `chain_of_interest` in 
 Clustering reads the extracted per design chain CIFs, which only get written when you generate with
 `save_chain_of_interest=true`, so set that if you plan to cluster.
 
-Point `FOLDSEEK_EXEC` in `.env` at the FoldSeek executable. Clustering runs `foldseek easy-cluster`
+Point `FOLDSEEK_EXEC` in `.env.local` at the FoldSeek executable. Clustering runs `foldseek easy-cluster`
 on the extracted single chain with a TM-score threshold of 0.5.
 
 ## Sampling transforms
@@ -253,7 +236,7 @@ high designability, `(0.5, 0.5)` shifts sequences toward the natural UniProt dis
 `(0.9, 0.9)` maximizes diversity.
 
 ```bash
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer out_dir=./runs/diverse \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
@@ -358,9 +341,8 @@ sets both keys at once.
 
 | Issue | Solution |
 | --- | --- |
-| `No .env file found for cluster 'digs'` | Set `export CLUSTER=local` and create `.ipd/.env.local`. See [Setup](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#setup) |
 | `DATA_PATH` or checkpoint not found | `export DATA_PATH=...` then run `./scripts/download_example_data.sh "$DATA_PATH"` |
-| `atomworks not found` | `bash setup.sh` |
+| `atomworks not found` | Activate your Python environment and reinstall with `python -m pip install -e .` |
 | `hydra not found` or import errors | Activate the venv with `source .venv/bin/activate` |
 | Hydra config errors | Use `=` not `--`. Write `inputs=file.cif`, not `--inputs file.cif` |
 | Out of memory | Lower `batch_size`, and test your longest input at `batch_size=1` first |

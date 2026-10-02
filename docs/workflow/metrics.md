@@ -7,13 +7,6 @@ Turn on the metric that already computes it and let the pipeline run it. Metrics
 pipeline can also drive [reward guided search](search.md), which finds good designs on far less
 compute than generating everything and filtering afterwards.
 
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-Drop the `python` and call `./src/rfproteina/generate.py` directly, so its shebang runs it inside
-the apptainer image. Do this on an interactive GPU. Full form in
-[Running the model](running.md#running-inference).
-:::
-
 ## What each metric is looking at
 
 Metrics do not all measure the same object. Four different things get measured, and knowing which
@@ -61,7 +54,7 @@ they run automatically. No code, no new config files. Most sit behind one or mor
 so you turn one on by passing a tag on the command line.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=design.json num_replicates=50 metrics_tags='[unconditional_refolding]'
 ```
 
@@ -93,7 +86,7 @@ already have, on the same Hydra config, so `metrics_tags` and any custom metric 
 as above.
 
 ```bash
-python src/rfproteina/evaluate.py \
+rfd4-evaluate \
     inputs=/path/to/structures \
     metrics_tags='[unconditional_refolding]' \
     out_dir=/path/to/eval_output
@@ -393,7 +386,7 @@ example](custom-metrics.md#worked-example-an-existing-metric-your-own-config) sh
 | --- | --- | --- |
 | `AtomPairDistanceMetric` | `rfproteina.metrics.atom_pair_distance_metric` | Configurable upper bound distance constraints on atom pairs, for catalytic geometry and motif contact checks |
 | `TMolBlockPairMetric` | `rfproteina.metrics.physics.tmol_block_pair_metric` | General interface ddG metric between two atom selection regions. Presets for ligand ddG, H-bonds and electrostatics, plus PPI ddG and Coulomb, live in [`tmol_block_pair_metrics.yaml`](../../configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml). GPU only, and deliberately out of the default set |
-| `QMInteractionEnergyIPA` | `rfproteina.metrics.ipa_interaction_energy_metric` | QM ligand and protein interaction energy through IPA. See [`ipa_metrics.yaml`](../../configs/metrics/inline_metrics/ipa_metrics.yaml), currently commented out of the defaults pending a digs fix |
+| `QMInteractionEnergyIPA` | `rfproteina.metrics.ipa_interaction_energy_metric` | QM ligand and protein interaction energy through IPA. See [`ipa_metrics.yaml`](../../configs/metrics/inline_metrics/ipa_metrics.yaml), currently commented out pending a backend compatibility fix |
 | `MACEEnergyMetric` | `rfproteina.metrics.physics.mace_energy_metric` | MACE ML potential energy of a structure |
 | `MACEInteractionEnergyMetric` | `rfproteina.metrics.physics.mace_interaction_energy_metric` | MACE-POLAR-1 interaction energy decomposition for protein and ligand complexes |
 | `ChargeComplementarityMetric` | `rfproteina.metrics.physics.ddg_salt_metrics` | Salt bridge charge complementarity score across a binder and target interface |
