@@ -209,12 +209,6 @@ setup_env_vars() {
     # CUDA memory allocation (all clusters)
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-    # DIGS-specific NCCL settings (L40s lack NVLink, disable P2P)
-    if [ "$CLUSTER" == "digs" ]; then
-        export NCCL_P2P_DISABLE=1
-        export NCCL_DEBUG=${NCCL_DEBUG:-WARN}
-    fi
-
     echo "Environment variables configured"
 }
 

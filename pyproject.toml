@@ -140,7 +140,6 @@ torch = { index = "pytorch-cu132" }
 # Register the markers used across the suite so `-m` filters (and any future
 # `--strict-markers`) stay warning-free.
 markers = [
-    "digs: host-environment sanity checks that only pass on the DIGS cluster",
     "gpu: end-to-end tests that require a GPU",
     "regression: GPU regression tests gated on a SOTA checkpoint",
     "cluster: cluster launcher / srun syntax checks",
