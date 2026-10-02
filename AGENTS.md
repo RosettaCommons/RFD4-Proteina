@@ -67,7 +67,7 @@ pytest tests/path/to/test_file.py::test_name -q
 make test
 
 # CI-equivalent CPU marker selection (CI runs this inside the configured image)
-pytest -m "not benchmark and not very_slow and not gpu and not regression and not digs" tests
+pytest -m "not benchmark and not very_slow and not gpu and not regression" tests
 
 # Check formatting and lint without modifying files
 ruff format --check .

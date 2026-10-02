@@ -134,7 +134,7 @@ cat > "$SBATCH_FILE" << EOF
 #!/bin/bash
 EOF
 
-# Add account if not DIGS
+# Add the configured account unless the profile omits it
 if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
     echo "#SBATCH --account $ACCOUNT" >> "$SBATCH_FILE"
 fi
@@ -184,8 +184,7 @@ SCRIPT_SEARCH="src/rfproteina/generate.py"
 SCRIPT_EVALUATION="src/rfproteina/evaluate.py"
 CONTAINER_CMD=$(get_srun_cmd)
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run search - each GPU gets its own job_id
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
@@ -193,41 +192,10 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     if [ $JOB_ID -lt $GEN_NJOBS ]; then
         echo "Running search with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
-    cat >> "$SBATCH_FILE" << EOF
-        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD python $SCRIPT_SEARCH +job_id=\$JOB_ID gen_njobs=$GEN_NJOBS $EXTRA_ARGS &
-EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
-    fi
-done
-wait
-
-# Run evaluation - each GPU gets its own job_id
-for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
-    JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
-    if [ $JOB_ID -lt $EVAL_NJOBS ]; then
-        echo "Running evaluation with job_id=$JOB_ID on GPU $LOCAL_ID"
-EOF
-    cat >> "$SBATCH_FILE" << EOF
-        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD python $SCRIPT_EVALUATION +job_id=\$JOB_ID njobs=$EVAL_NJOBS $EXTRA_ARGS &
-EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
-    fi
-done
-wait
-EOF
-else
-    cat >> "$SBATCH_FILE" << 'EOF'
-
-# Run search - each GPU gets its own job_id
-for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
-    JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
-    if [ $JOB_ID -lt $GEN_NJOBS ]; then
-        echo "Running search with job_id=$JOB_ID on GPU $LOCAL_ID"
-EOF
-    cat >> "$SBATCH_FILE" << EOF
+cat >> "$SBATCH_FILE" << EOF
         srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD python $SCRIPT_SEARCH +job_id=\$JOB_ID gen_njobs=$GEN_NJOBS $EXTRA_ARGS &
 EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
     fi
 done
 wait
@@ -238,15 +206,14 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     if [ $JOB_ID -lt $EVAL_NJOBS ]; then
         echo "Running evaluation with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
-    cat >> "$SBATCH_FILE" << EOF
+cat >> "$SBATCH_FILE" << EOF
         srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD python $SCRIPT_EVALUATION +job_id=\$JOB_ID njobs=$EVAL_NJOBS $EXTRA_ARGS &
 EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
     fi
 done
 wait
 EOF
-fi
 
 # Submit job
 print_header "Submitting Job"

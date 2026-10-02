@@ -141,7 +141,7 @@ cat > "$SBATCH_FILE" << EOF
 #!/bin/bash
 EOF
 
-# Add account if not DIGS
+# Add the configured account unless the profile omits it
 if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
     echo "#SBATCH --account $ACCOUNT" >> "$SBATCH_FILE"
 fi
@@ -188,8 +188,7 @@ if [ -n "$INPUT_DIR" ]; then
     PYTHON_ARGS="$PYTHON_ARGS input_dir=$INPUT_DIR"
 fi
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run AE inference - each GPU gets its own job_id
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
@@ -197,32 +196,14 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     if [ $JOB_ID -lt $NJOBS ]; then
         echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
-    cat >> "$SBATCH_FILE" << EOF
-        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
-EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
-    fi
-done
-wait
-EOF
-else
-    cat >> "$SBATCH_FILE" << 'EOF'
-
-# Run AE inference - each GPU gets its own job_id
-for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
-    JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
-    if [ $JOB_ID -lt $NJOBS ]; then
-        echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
-EOF
-    cat >> "$SBATCH_FILE" << EOF
+cat >> "$SBATCH_FILE" << EOF
         srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
 EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
     fi
 done
 wait
 EOF
-fi
 
 # Submit job
 print_header "Submitting Job"

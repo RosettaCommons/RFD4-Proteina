@@ -41,7 +41,7 @@ def load_dotenv(
         if cluster is None and DOTENV_ROOT_PATH.is_dir():
             raise ValueError(
                 "CLUSTER environment variable is not set. Set it before importing rfproteina, "
-                "e.g. `export CLUSTER=digs` or `export CLUSTER=local`."
+                "Use `export CLUSTER=local` for a public installation."
             )
         if not cluster or cluster == "local":
             dotenv_path = DOTENV_ROOT_PATH.parent / ".env.local"
