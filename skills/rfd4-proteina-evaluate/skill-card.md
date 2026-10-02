@@ -2,7 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-evaluate` computes post-hoc evaluation metrics on already-generated RFD4-Proteína structures via `src/rfproteina/evaluate.py` (Hydra config `configs/evaluate.yaml`), then aggregates the per-job CSVs into `aggregated_metrics.csv` / `per_task_metrics.csv` with `rfproteina.inference_utils.aggregate_metrics`, optionally clustering designs structurally with FoldSeek.
+`rfd4-proteina-evaluate` computes post-hoc evaluation metrics on already-generated RFD4-Proteína structures via `rfd4-evaluate` (Hydra config `configs/evaluate.yaml`), then aggregates the per-job CSVs into `aggregated_metrics.csv` / `per_task_metrics.csv` with `rfproteina.inference_utils.aggregate_metrics`, optionally clustering designs structurally with FoldSeek.
 
 This skill is for research and development only.
 
@@ -28,14 +28,14 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None. AF3 refolding runs inside a locally configured apptainer/docker container (no external API); FoldSeek clustering uses a local executable at `FOLDSEEK_EXEC`.
 
-Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` + `DATA_PATH`). A GPU is required for refolding oracles and GPU metrics; plain design metrics are light. The AF3 container is required for any `*_refolding` metric or refolding oracle; `FOLDSEEK_EXEC` in `.env` is required for `--cluster_with_foldseek`.
+Depends on: a completed `rfd4-proteina-setup` (venv + `atomworks` + `DATA_PATH`). A GPU is required for refolding oracles and GPU metrics; plain design metrics are light. The AF3 container is required for any `*_refolding` metric or refolding oracle; `FOLDSEEK_EXEC` in `.env.local` is required for `--cluster_with_foldseek`.
 
 Do not include secrets in prompts/logs/output; use least-privilege credentials; rotate keys as appropriate.
 
 ## Known Risks and Mitigations
 
 Risk: Refolding metrics and refolding oracles require the AF3 container; without it those metrics silently do not run (no oracle columns, no error), so a run can look "done" while measuring nothing about designability.
-Mitigation: The skill flags the container requirement up front, documents which tags need it, and points to `launch_evaluate.sh <cluster>` / `rfd4-proteina-setup` references/clusters.md for container setup.
+Mitigation: The skill flags the container requirement up front, documents which tags need it, and points to `launch_evaluate.sh` / `rfd4-proteina-setup` https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst for container setup.
 
 Risk: Metrics are proxies for designability, not experimental validation. A design that passes scRMSD/pLDDT/ipAE thresholds is not guaranteed to fold, bind, or function in the lab.
 Mitigation: The skill and card state this explicitly; pass criteria are labeled as thresholds on proxy metrics, not certifications.

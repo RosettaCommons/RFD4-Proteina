@@ -7,15 +7,8 @@ stays local unless you decide to contribute it back.
 > that ships enabled along with its tag, plus ready made classes you can wire in with nothing but a
 > YAML config. What you want is often already there, or one config away.
 
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-Drop the `python` and call `./src/rfproteina/generate.py` directly, so its shebang runs it inside
-the apptainer image. Do this on an interactive GPU. Full form in
-[Running the model](running.md#running-inference).
-:::
-
 Both `configs/metrics/custom_metrics/` and `src/rfproteina/metrics/custom_metrics/` are entirely git
-ignored, so nothing you put in them ever gets tracked. `setup.sh` scaffolds an empty
+ignored, so nothing you put in them ever gets tracked. `setup.sh --venv` scaffolds an empty
 `configs/metrics/custom_metrics/all_custom_metrics.yaml` for you on first run, and the Python side
 directory appears the moment you drop your first metric module into it.
 
@@ -149,7 +142,7 @@ class RefoldingResidueCountDelta(Metric):
 
 ## Step 2, register it in the config file
 
-Create `configs/metrics/custom_metrics/all_custom_metrics.yaml`. It is git ignored, and `setup.sh`
+Create `configs/metrics/custom_metrics/all_custom_metrics.yaml`. It is git ignored, and `setup.sh --venv`
 scaffolds it for you on first run. Start it with `# @package metrics` so Hydra merges your entries
 straight into the overall metrics config under the right keys.
 
@@ -303,7 +296,7 @@ if you invent a new tag for a custom metric, remember to pass that exact string 
 Get it wrong and the metric is silently skipped, with no error.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=/path/to/design.cif \
     num_replicates=50 \
     metrics_tags='[unconditional_refolding]'
@@ -338,7 +331,7 @@ under [Ready-made but opt-in](metrics.md#ready-made-but-opt-in), already evaluat
 pair upper bound distance constraints. You only have to tell it *which* atoms and *what* distances.
 
 **Step 1, write the config.** Custom metrics live in the git ignored
-`configs/metrics/custom_metrics/` directory, which `setup.sh` scaffolds on first run.
+`configs/metrics/custom_metrics/` directory, which `setup.sh --venv` scaffolds on first run.
 
 ```yaml
 # configs/metrics/custom_metrics/all_custom_metrics.yaml
@@ -381,7 +374,7 @@ get **added**, and a key matching an existing built in name gets **deep merged o
 everything else. So the normal run command picks it up with no extra flags.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=enzyme_design.cif num_replicates=50
 ```
 

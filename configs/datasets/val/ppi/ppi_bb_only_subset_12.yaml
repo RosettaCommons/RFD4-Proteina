@@ -6,12 +6,12 @@ defaults:
 dataset:
   subset_to_keys:
     - 04_IFNAR2
-    - rfd3_insulinr
-    - rfd3_il7ra
+    - insulinr
+    - il7ra
     - 15_DerF7
-    - rfd3_tie2
+    - tie2
     - 36_VEGFA
-    - rfd3_pdl1
+    - pdl1
     - 05_CD45
     - 26_CbAgo
     - 33_TrkA

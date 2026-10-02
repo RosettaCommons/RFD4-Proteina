@@ -1,9 +1,8 @@
-#!/usr/bin/env python
-"""Run GPU E2E regression tests inside Apptainer with squashfs mounts.
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../scripts/rfproteina_exec.sh" training "$0" "$@"'
+"""Run GPU E2E regression tests in the configured training runtime.
 
-Executed via launch_run_gpu_regression_tests.sh (or directly by srun on DIGS).
-The latent_exec.sh shebang sets up the Apptainer container and squashfs mounts
-before Python runs this file.
+The repository runtime wrapper selects an available private container profile
+or the public Python environment before Python runs this file.
 
 Options:
     --tests NAMES   Comma-separated subset to run (default: all four tests).

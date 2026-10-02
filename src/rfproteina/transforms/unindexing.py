@@ -8,7 +8,7 @@ from atomworks.io.utils.atom_array_plus import concatenate_any
 from atomworks.io.utils.scatter import safe_scatter
 from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.io.utils.standard_annotations.base import Level
-from atomworks.ml.conditions import C_CRD, C_CTR, C_DIS, C_IDX, C_NTR
+from atomworks.ml.conditions import C_CRD, C_CTR, C_IDX, C_NTR
 from atomworks.ml.conditions.base import CONDITIONS, ConditionConflictError
 from atomworks.ml.transforms._checks import (
     check_contains_keys,
@@ -61,10 +61,6 @@ class UnindexFlaggedTokens(Transform):
         # Assemble necessary annotations
         is_motif_atom_unindexed = ~C_IDX.mask(atom_array, default="generate")
         ensure_annotations(atom_array, "is_polymer", "within_chain_source_res_idx")
-
-        # This will be modified if any unindexed tokens are present to give the correct ground-truth index gaps (within
-        # unindexed groups). This enables specification of defined index gaps greater than 1 between unindexed tokens.
-        atom_array.set_annotation("within_index_group_res_idx", atom_array.within_chain_source_res_idx.copy())
 
         if not np.any(is_motif_atom_unindexed):
             atom_array.set_annotation("insertion_source_idx", np.full(atom_array.array_length(), -1, dtype=np.int32))
@@ -236,9 +232,6 @@ class UnindexFlaggedTokens(Transform):
 
             new_within_chain_source_res_idx = get_within_group_source_res_idx(atom_array, group_by="chain_iid")
             atom_array.set_annotation("within_chain_source_res_idx", new_within_chain_source_res_idx)
-            atom_array.set_annotation(
-                "within_index_group_res_idx", new_within_chain_source_res_idx.copy()
-            )  # will be redefined properly later in this method
 
         else:
             # Temporarily set all previously-existing conditions to their default values
@@ -286,21 +279,6 @@ class UnindexFlaggedTokens(Transform):
         min_index_group_in_unindexed_region = index_groups[~is_indexed].min()
         index_groups[~is_indexed] += max_index_group_in_indexed_region - min_index_group_in_unindexed_region + 1
         C_IDXGRP.set_annotation(atom_array_full, index_groups)
-
-        # Reset indices to zero to avoid any bias.
-        for index_group in np.unique(index_groups):
-            group_mask = index_groups == index_group
-
-            # We leave the residue indices unchanged for globally indexed groups
-            is_indexed = C_IDX.mask(atom_array_full[group_mask], default="raise")
-            if (is_indexed != is_indexed[0]).any():
-                raise ValueError(f"Index group {index_group} contains a mix of indexed and unindexed atoms.")
-            if is_indexed[0]:
-                continue
-
-            atom_array_full.within_index_group_res_idx[group_mask] -= atom_array_full.within_index_group_res_idx[
-                group_mask
-            ].min()
 
         # update pairs in place using the old_to_new_atom_idx_map
         # vectorize for efficiency and one-shot update
@@ -553,12 +531,6 @@ def annotate_unindexed_insertion(
     has_3d_conditioning = C_CRD.mask(in_context_conditioning, default="generate") | C_CRDGRP.is_internal(
         in_context_conditioning
     )
-    has_distance_conditioning = C_DIS.mask(in_context_conditioning, default="generate").as_dense_array().any(axis=0)
-    if has_distance_conditioning.any():
-        raise NotImplementedError(
-            "Insertion annotation for 2d distance-conditioned unindexed regions is not supported."
-        )
-
     # Track every generated atom mapped from an unindexed token (whole token, drives SA_UII / the source
     # index group) and the coord-conditioned subset (drives SA_CRDSRC / SA_CWI). The coord group itself
     # is copied live onto C_CRDGRP; only the source *index* group is kept as provenance (SA_IDXGRPSRC).

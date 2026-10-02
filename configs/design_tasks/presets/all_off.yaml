@@ -6,7 +6,6 @@
 # Adding a new design task: add it here (with full default kwargs), then
 # any preset can opt in with just ``<task_name>: {frequency: <n>}``.
 #
-# NOTE: All distance tasks are disabled for now as we cannot provide distance information to the model yet.
 
 unconditional:
   frequency: 0.0
@@ -80,10 +79,6 @@ binder_hotspot_with_3d_target:
     max_hotspots_frac_to_provide: 0.1
     p_no_hotspots: 0.05
     hotspot_max_distance: 4.5
-    motif_distance_knockout_p: 0.95
-    min_dropout_2d_dist: 0.5
-    max_dropout_2d_dist: 0.9
-    jitter_sigma: 5.0
     ppi_crop_binder_fraction: 0.667
     p_sample_ppi_crop: 0.75
     p_bb_only_coord_conditioning: 0.0
@@ -103,18 +98,6 @@ tip_atom_pocket:
     p_merge_unindexed_groups: 0.1
     p_split_unindexed_groups: 0.01
     p_increase_group_id_gap: 0.1
-    global_design_task_kwargs: ${datasets.global_design_task_kwargs}
-
-motif_scaffold_proteina_ame:
-  frequency: 0.0
-  transform:
-    _target_: rfproteina.transforms.design_task.MotifScaffoldProteinaTask
-    atom_selection_mode: ame
-    residue_selection_mode: absolute_number
-    motif_min_n_res: 2
-    motif_max_n_res: 8
-    unindex_mode: simple
-    p_unindex_motif: 1.0
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
 partial_ligand:
@@ -142,6 +125,14 @@ ig_framework_conditioning:
   frequency: 0.0
   transform:
     _target_: rfproteina.transforms.design_task.IgFrameworkConditioningTask
+    global_design_task_kwargs:
+      rasa_kwargs: {p_add_rasa_condition: 0.6}
+      hbond_kwargs: {p_add_hbond_condition: 0.2}
+      secondary_structure_kwargs: {p_add_secondary_structure_condition: 0.1}
+      cath_kwargs:
+        p_add_cath_c_condition: 0.1
+        p_add_cath_ca_condition: 0.15
+        p_add_cath_cat_condition: 0.25
     cdr_expand_min: -3
     cdr_expand_max: 4
     p_fix_all_but_cdr3: 0.2

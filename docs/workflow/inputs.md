@@ -136,9 +136,7 @@ Three details deserve particular attention for non-canonicals, PTMs and small mo
 An annotated CIF preserves all three, and the model reads CIFs natively.
 
 > The [`rfd4-proteina-annotated-cif` skill](design2cif.md) authors directly from
-> prose, structures, or an existing annotated CIF. The separate
-> `rfd4-proteina-inputs` compatibility skill interprets existing legacy RFD3
-> JSON/YAML without making JSON an intermediate for other workflows.
+> prose, structures, or an existing annotated CIF.
 
 ## Three ways to make one
 
@@ -151,8 +149,6 @@ the model can read.
 | [YAML condition spec](#yaml-condition-spec) | You want the problem as data, in version control |
 | [Python API](#python-api) | You are generating many problems, or need something the others cannot say |
 
-Use `rfd4-proteina-inputs` (or the `/design2cif` compatibility alias) only when
-adapting an existing legacy RFD3 JSON/YAML specification.
 
 ### Python API
 
@@ -199,7 +195,7 @@ The [condition spec reference](condition-spec.md) has the full syntax and exampl
 ## Running the model
 
 ```bash
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=annotated.cif \
     num_replicates=10 batch_size=8
 ```
@@ -377,9 +373,8 @@ and indexed expandable segments still produce generated residues as usual.
 **Do I have to use annotated CIFs?** No. Existing JSON inputs and the [YAML
 condition spec](condition-spec.md) remain supported. Annotated CIFs are useful
 when conditions and explicit component chemistry should be inspected and edited
-with the structure. The input-authoring skill can [interpret an existing
-JSON/YAML specification](design2cif.md), but it does not require JSON for prose
-or CIF-based workflows.
+with the structure. The [input-authoring skill](design2cif.md) creates or edits
+annotated CIFs directly from prose and structures.
 
 **Can I open an annotated CIF in PyMOL or other tools?** Yes. The annotations are extra columns and
 categories, and the coordinates and topology are standard mmCIF. To inspect the

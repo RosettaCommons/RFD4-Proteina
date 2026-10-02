@@ -7,13 +7,6 @@ format, and a condition spec is shorthand for authoring one.
 Read [Preparing inputs](inputs.md) first. It defines every concept used here, including
 conditions, expandable segments and the interaction rules.
 
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-Drop the `python` and call `./src/rfproteina/generate.py` directly, so its shebang runs it inside
-the apptainer image. Do this on an interactive GPU. Full form in
-[Running the model](running.md#running-inference).
-:::
-
 > **Anything you do not mention is not provided.** Set only `C_HOT` and the model gets a hotspot
 > and nothing else. No fixed coordinates, no known sequence. The tool prints a summary of what it
 > actually set on every run. Read it.
@@ -225,7 +218,7 @@ Point `inputs=` at the spec file the same way you would at a CIF. It gets consum
 example per top level key.
 
 ```bash
-./src/rfproteina/generate.py inputs=my_designs.yaml num_replicates=10 batch_size=8
+rfd4-generate inputs=my_designs.yaml num_replicates=10 batch_size=8
 ```
 
 ## Examples
@@ -233,7 +226,7 @@ example per top level key.
 Two complete, runnable specs live beside this file.
 
 - [docs/condition_spec_ppi.yaml](../condition_spec_ppi.yaml) builds a de novo PPI binder against
-  PD-L1, matching `data/benchmarks/ppi/ppi_bb_only/rfd3_pdl1.cif.zst`. It uses an expandable
+  PD-L1, matching `data/benchmarks/ppi/ppi_bb_only/pdl1.cif.zst`. It uses an expandable
   binder chain, backbone only coordinate conditioning on the target, and atom level hotspots.
   Its raw target structure is [5o45_cropped.cif](../examples/inputs/5o45_cropped.cif).
 - [docs/condition_spec_complicated.yaml](../condition_spec_complicated.yaml) redesigns a small

@@ -2,7 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteína (RFD4-Proteína) by installing the uv/Python-3.12 environment and installed `atomworks` package, wiring `DATA_PATH` and the per-cluster env file, downloading the model checkpoints, and running a GPU/checkpoint preflight.
+`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteína (RFD4-Proteína) by installing the uv/Python-3.12 environment and AtomWorks dependency, wiring `DATA_PATH` and optional runtime settings, downloading the model checkpoints, and running a GPU/checkpoint preflight.
 
 This skill is for research and development only.
 
@@ -16,7 +16,7 @@ See the RFD4-Proteína repository. Skill text and documentation follow the NVIDI
 
 ## Use Case
 
-Anyone standing up RFD4-Proteína on a new machine or cluster (DIGS/ORD/GB200/CoreWeave/local) before generating, evaluating, or searching. Run this first; it is a prerequisite for `rfd4-proteina-generate`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`.
+Anyone standing up RFD4-Proteína on a new machine or cluster before generating, evaluating, or searching. Run this first; it is a prerequisite for `rfd4-proteina-generate`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`.
 
 ## Deployment Geography for Use
 
@@ -37,11 +37,11 @@ Do not include secrets in prompts/logs/output; use least-privilege credentials; 
 Risk: Inference and the download script can drift to different checkpoint releases.
 Mitigation: Keep the downloader aligned with `configs/inference.yaml`; preflight reports which `.ckpt` files are actually present, and `ckpt_path=`/`ckpt_name=` override either.
 
-Risk: Running the model before the installed `atomworks` package/venv is ready produces confusing import errors.
-Mitigation: Preflight checks imports and package availability and exits non-zero before any run.
+Risk: Running the model before its environment and AtomWorks are installed produces confusing import errors.
+Mitigation: Preflight checks imports through the configured runtime and exits non-zero before any run.
 
-Risk: `setup.sh` edits the user's shell rc file.
-Mitigation: It only appends a clearly-marked block, is idempotent (skips if the marker exists), and offers an "other / set manually" choice.
+Risk: Private setup can edit the user's shell rc file.
+Mitigation: Private setup appends a marked block only when absent and offers an "other / set manually" choice. Public setup does not edit shell startup files.
 
 ## References
 
@@ -52,13 +52,13 @@ Mitigation: It only appends a clearly-marked block, is idempotent (skips if the 
 
 ## Skill Output
 
-Output type(s): environment changes + files (venv, installed packages, downloaded checkpoints, env file), and a preflight report.
+Output type(s): environment changes + files (venv, downloaded checkpoints, env file), and a preflight report. Private setup also initializes its pinned AtomWorks submodule.
 
 Output format: console PASS/FAIL report; created files on disk.
 
-Output parameters: `.venv/`, `$DATA_PATH/{flow_checkpoints,ae_checkpoints}/`, optional `.env`.
+Output parameters: `.venv/`, `$DATA_PATH/{flow_checkpoints,ae_checkpoints}/`, `.env.local` or the selected cluster profile.
 
-Other properties: `preflight.sh` is read-only (no writes); exits non-zero on any failed check. `setup.sh` and the download step modify the filesystem and shell rc.
+Other properties: `preflight.sh` is read-only (no writes); exits non-zero on any failed check. `setup.sh` and the download step modify the filesystem. Only private setup may modify the shell rc.
 
 ## Skill Version
 

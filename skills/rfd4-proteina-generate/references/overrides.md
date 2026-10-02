@@ -7,12 +7,11 @@ Every generation parameter you are likely to touch, mirroring
 Entry point:
 
 ```bash
-python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+rfd4-generate inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
-On a cluster with a container configured, `./src/rfproteina/generate.py ...`
-(shebang form) re-execs inside apptainer/docker; `python src/rfproteina/generate.py ...`
-runs in the current environment.
+Activate the environment where you installed RFD4-Proteína before running these
+commands. `rfd4-generate` uses that environment's Python.
 
 ## Essential (defaults rarely right for a real run)
 
@@ -24,7 +23,7 @@ runs in the current environment.
 | `metrics_tags` | Inline metrics as a bracket-quoted Hydra list. Only `*_refolding` tags need an AF3 container. Empty = none. | `[]` |
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
@@ -33,7 +32,7 @@ python src/rfproteina/generate.py \
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `inputs` | Input file (annotated CIF / JSON / YAML / CIF / PDB) or a directory of them. Annotated CIF is preferred — build via **rfd4-proteina-annotated-cif**; use **rfd4-proteina-inputs** for legacy JSON/YAML adaptation. | Required |
+| `inputs` | Input file (annotated CIF / JSON / YAML / CIF / PDB) or a directory of them. Annotated CIF is preferred — build via **rfd4-proteina-annotated-cif**. | Required |
 | `subset_to_examples` | Run only specific example keys (comma-separated), e.g. `subset_to_examples=monomer-short` | null |
 | `skip_existing` | Skip examples whose output already exists (resume a run) | true |
 | `seed` | Random seed (`null` = different each run) | null |
@@ -59,7 +58,7 @@ python src/rfproteina/generate.py \
 **Deterministic (ODE) sampling** — no noise injected mid-trajectory:
 
 ```bash
-python src/rfproteina/generate.py inputs=data/benchmarks/monomer out_dir=./runs/ode \
+rfd4-generate inputs=data/benchmarks/monomer out_dir=./runs/ode \
     generation.model.bb_ca.gt.mode=ode generation.model.local_latents.gt.mode=ode
 ```
 
@@ -84,7 +83,7 @@ Rough guide:
 - `(0.9, 0.9)` — maximizes diversity.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer out_dir=./runs/diverse \
     generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
     generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
@@ -106,7 +105,7 @@ of the trajectory (output stays close to the input), near `0` runs most of it
 (closer to full generation). `nsteps` is independent of the level.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=my_structure.cif \
     generation.args.partial_t_backbone=0.8 generation.args.partial_t_latent=0.8 \
     num_replicates=8 out_dir=./runs/partial

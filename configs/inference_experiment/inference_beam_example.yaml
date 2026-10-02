@@ -7,7 +7,7 @@
 #   - sc_scale_noise=0.3/0.1 (bb_ca/latents)
 #   - AF3 reward: pLDDT (chain-of-interest) only
 #
-# Usage: python src/rfproteina/generate.py inference_experiment=inference_beam_example
+# Usage: rfd4-generate inference_experiment=inference_beam_example
 
 defaults:
   - inference_on_user_inputs

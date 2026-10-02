@@ -4,10 +4,7 @@ import os
 import torch
 from environs import Env
 
-# Load the cluster .env FIRST. atomworks reads env vars (CCD_MIRROR_PATH, ...) at import
-# time, and importing this package pulls atomworks in via standard_annotations/datapipes
-# below -- so the env must be in place before those lines run. Previously this ordering
-# was guaranteed by `foundry.utils.env` being a cheap, standalone import.
+# Load settings before AtomWorks reads its environment during import.
 from rfproteina.utils.env import load_dotenv
 
 load_dotenv()

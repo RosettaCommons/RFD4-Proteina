@@ -17,7 +17,7 @@ conditioning; the model designs the surrounding scaffold. Back to the
 
 ```bash
 # One indexed motif-scaffold task
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/motif_scaffolding/motif_indexed \
     subset_to_examples=1PRW_AA \
     num_replicates=8 batch_size=8 out_dir=./runs/motif \
@@ -41,5 +41,3 @@ python src/rfproteina/generate.py \
   motif residues are *not* subtracted from the count.
 - Building a new motif input (which atoms to fix, index vs unindex, internal
   coordinate groups) is exactly what **rfd4-proteina-annotated-cif** is for.
-  When migrating an existing JSON benchmark, use **rfd4-proteina-inputs** rather
-  than editing subtle `select_fixed_atoms` fields by hand.

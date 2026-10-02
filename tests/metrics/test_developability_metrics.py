@@ -96,7 +96,7 @@ def test_subset_to_designed_chain_selects_chain_of_interest():
     assert protein_one_letter_sequence(designed) == "ACDEFGHIKL"
 
 
-def test_rosetta_dependency_is_required_only_for_scoring(monkeypatch):
+def test_unselected_rosetta_metric_does_not_require_container(monkeypatch):
     monkeypatch.delenv("PYROSETTA_CONTAINER", raising=False)
     metric = RosettaDevelopabilityMetric()
     with pytest.raises(OSError, match="PyRosetta container not set"):

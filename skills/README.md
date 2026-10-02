@@ -13,9 +13,8 @@ operate the model correctly without re-deriving them.
 
 | Skill | What it does | Order |
 | --- | --- | --- |
-| [`rfd4-proteina-setup`](rfd4-proteina-setup/) | Install the uv/Python-3.12 venv + `atomworks`, wire `DATA_PATH` and the per-cluster env file, download checkpoints, and preflight GPU + weights. | 1 |
+| [`rfd4-proteina-setup`](rfd4-proteina-setup/) | Install the uv/Python-3.12 venv + `atomworks`, wire `DATA_PATH` and optional runtime settings, download checkpoints, and preflight GPU + weights. | 1 |
 | [`rfd4-proteina-annotated-cif`](rfd4-proteina-annotated-cif/) | Create, inspect, modify, and validate annotated CIFs with Python-first AtomWorks workflows, including conditions, derived masks, expandable segments, chemistry, and pre-save invariants. | 2 |
-| [`rfd4-proteina-inputs`](rfd4-proteina-inputs/) | Adapt ambiguous legacy RFD3 JSON/YAML `InputSpecification` configs into validated annotated CIFs. | 2 (legacy) |
 | [`rfd4-proteina-generate`](rfd4-proteina-generate/) | Run `generate.py` to produce designs; choose task, replicates, batch size, and inline `metrics_tags`. | 3 |
 | [`rfd4-proteina-search`](rfd4-proteina-search/) | Reward-guided search (beam/branching) that keeps candidates selected by a configured refolding or structure-only reward. | 4 (optional) |
 | [`rfd4-proteina-evaluate`](rfd4-proteina-evaluate/) | Post-hoc metrics on generated structures + aggregation across parallel jobs (scRMSD/pLDDT/ipAE, designability, FoldSeek diversity, custom metrics). | 5 |
@@ -37,7 +36,7 @@ The `skills/` directory is canonical. Repository discovery uses two thin adapter
 - `.agents/skills` for Codex;
 - `.claude/skills` for Claude Code.
 
-Both agents therefore load the same `SKILL.md`, references, and helper scripts. Do not edit an adapter or copy instructions into a model-specific command. The Claude `/design2cif` command is only a compatibility alias for `rfd4-proteina-inputs`.
+Both agents therefore load the same `SKILL.md`, references, and helper scripts. Do not edit an adapter or copy instructions into a model-specific command. The Claude `/design2cif` command routes to the annotated-CIF authoring skill or the current condition-spec documentation.
 
 Skills install as portable directories, each with a `SKILL.md` at its root. Add
 one (or all) from the catalog with the `skills` CLI:

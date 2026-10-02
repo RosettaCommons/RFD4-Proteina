@@ -2,10 +2,8 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 
 import numpy as np
-from atomworks.enums import ChainType
 from atomworks.io.transforms.atom_array import add_id_and_entity_annotations, add_iid_annotations
 from atomworks.io.utils.atom_array_plus import AtomArrayPlus, AtomArrayPlusStack, as_atom_array_plus_stack
-from atomworks.ml.conditions import C_DIS
 from atomworks.ml.conditions.annotator import ensure_annotations
 from beartype.typing import Any, List, Literal
 from biotite.structure import AtomArray, AtomArrayStack, rmsd, superimpose
@@ -193,171 +191,6 @@ def compute_rmsd(gt_array_stack: AtomArrayStack, pred_array_stack: AtomArrayStac
     return {"rmsd": np.asarray(rmsds)}
 
 
-def compute_distance_mae(
-    gt_array_stack: AtomArrayStack,
-    pred_array_stack: AtomArrayStack,
-    extra_distance_types: List[Literal["tip_atom", "inter_chain", "intra_chain", "intra_chain_protein"]] = [],
-    aggregation_fn: Literal["max", "min", "mean"] = "mean",
-) -> float:
-    """
-    Compute distance MAE between two atom array stacks. Returns the MAE for each atom array in the stack.
-    Will check gt_array_stack for 2D distance annotation and use the mask to mask some distances.
-    Args:
-        gt_array_stack: Ground truth atom array stack
-        pred_array_stack: Predicted atom array stack
-        extra_distance_types: List of extra distance types to compute. Can be "tip_atom", "inter_chain",
-            "intra_chain", or "intra_chain_protein".
-            "tip_atom" will compute the MAE of conditioned distances between protein atoms and non-protein atoms.
-        aggregation_fn: Function to aggregate the MAE values for each pair in an atom array.
-
-    Returns:
-        dict with keys "mae_all_pairs", "mae_pairs_with_2d_condition", "mae_pairs_no_2d_condition" and values as
-        numpy arrays
-    """
-    assert len(gt_array_stack) == len(
-        pred_array_stack
-    ), "Ground truth and predicted atom array stacks must be the same length"
-
-    assert len(gt_array_stack) > 0, "Ground truth atom array stack is empty"
-
-    assert all(
-        len(gt_array_stack[i]) == len(pred_array_stack[i]) for i in range(len(gt_array_stack))
-    ), "Ground truth and predicted atom arrays must be the same length"
-
-    if not all(
-        distance_type in ["tip_atom", "inter_chain", "intra_chain", "intra_chain_protein"]
-        for distance_type in extra_distance_types
-    ):
-        raise ValueError(
-            f"One or more distance types are invalid: {extra_distance_types}. "
-            "Must be one of: tip_atom, inter_chain, intra_chain, intra_chain_protein"
-        )
-
-    if aggregation_fn == "max":
-        aggregation_fn = np.max
-    elif aggregation_fn == "min":
-        aggregation_fn = np.min
-    elif aggregation_fn == "mean":
-        aggregation_fn = np.mean
-    else:
-        raise ValueError(f"Invalid aggregation function: {aggregation_fn}. Must be one of: max, min, mean")
-
-    # ========== Convenience ==========
-    def mae(
-        pred_dists: np.ndarray,
-        gt_dists: np.ndarray,
-        mask: np.ndarray,
-        aggregation_fn: Callable[[np.ndarray], float] = aggregation_fn,
-    ) -> float:
-        if mask.any():
-            return float(aggregation_fn(np.abs(pred_dists[mask.astype(bool)] - gt_dists[mask.astype(bool)])))
-        else:
-            return np.nan
-
-    # =================================
-
-    metrics = {
-        "all_pairs": [],
-        "pairs_with_2d_condition": [],
-        "pairs_short": [],
-        "pairs_medium": [],
-        "pairs_long": [],
-        "pairs_no_2d_condition": [],
-    } | {
-        f"{distance_type}_{length_type}": []
-        for distance_type in extra_distance_types
-        for length_type in ["short", "medium", "long", "all_lengths"]
-    }
-
-    for i in range(len(gt_array_stack)):
-        # Handle empty arrays
-        if len(gt_array_stack[i]) == 0:
-            for metric in metrics:
-                metrics[metric].append(np.nan)
-            continue
-
-        # Compute pairwise distances
-        gt_diff = gt_array_stack[i].coord[:, None, :] - gt_array_stack[i].coord[None, :, :]
-        gt_dists = np.linalg.norm(gt_diff, axis=2)
-
-        pred_diff = pred_array_stack[i].coord[:, None, :] - pred_array_stack[i].coord[None, :, :]
-        pred_dists = np.linalg.norm(pred_diff, axis=2)
-
-        dist_conditioning_mask = C_DIS.mask(gt_array_stack[i]).as_dense_array()
-
-        metrics["all_pairs"].append(mae(pred_dists, gt_dists, np.ones(len(pred_dists))))
-        metrics["pairs_with_2d_condition"].append(mae(pred_dists, gt_dists, dist_conditioning_mask))
-        metrics["pairs_short"].append(mae(pred_dists, gt_dists, dist_conditioning_mask & (gt_dists < 4.0)))
-        metrics["pairs_medium"].append(
-            mae(
-                pred_dists,
-                gt_dists,
-                dist_conditioning_mask & (gt_dists >= 4.0) & (gt_dists < 8.0),
-            )
-        )
-        metrics["pairs_long"].append(mae(pred_dists, gt_dists, dist_conditioning_mask & (gt_dists >= 8.0)))
-        metrics["pairs_no_2d_condition"].append(mae(pred_dists, gt_dists, ~dist_conditioning_mask))
-
-        for distance_type in extra_distance_types:
-            for length_type in ["short", "medium", "long", "all_lengths"]:
-                if length_type == "all_lengths":
-                    length_mask = np.ones_like(gt_dists, dtype=bool)
-                elif length_type == "short":
-                    length_mask = gt_dists < 4.0
-                elif length_type == "medium":
-                    length_mask = (gt_dists >= 4.0) & (gt_dists < 8.0)
-                elif length_type == "long":
-                    length_mask = gt_dists >= 8.0
-                if distance_type == "tip_atom":
-                    protein_mask = np.isin(
-                        gt_array_stack[i].chain_type,
-                        [ChainType.POLYPEPTIDE_D, ChainType.POLYPEPTIDE_L],
-                    )
-                    tipatom_mask_2d = protein_mask[:, None] & ~protein_mask[None, :]
-                    tipatom_mask_2d = tipatom_mask_2d | tipatom_mask_2d.T  # symmetric
-                    metrics[f"{distance_type}_{length_type}"].append(
-                        mae(
-                            pred_dists,
-                            gt_dists,
-                            tipatom_mask_2d & dist_conditioning_mask & length_mask,
-                        )
-                    )
-                elif distance_type == "inter_chain":
-                    inter_chain_mask = gt_array_stack[i].chain_id[:, None] != gt_array_stack[i].chain_id[None, :]
-                    metrics[f"{distance_type}_{length_type}"].append(
-                        mae(
-                            pred_dists,
-                            gt_dists,
-                            inter_chain_mask & dist_conditioning_mask & length_mask,
-                        )
-                    )
-                elif distance_type == "intra_chain":
-                    intra_chain_mask = gt_array_stack[i].chain_id[:, None] == gt_array_stack[i].chain_id[None, :]
-                    metrics[f"{distance_type}_{length_type}"].append(
-                        mae(
-                            pred_dists,
-                            gt_dists,
-                            intra_chain_mask & dist_conditioning_mask & length_mask,
-                        )
-                    )
-                elif distance_type == "intra_chain_protein":
-                    protein_mask = np.isin(
-                        gt_array_stack[i].chain_type,
-                        [ChainType.POLYPEPTIDE_D, ChainType.POLYPEPTIDE_L],
-                    )
-                    protein_mask_2d = protein_mask[:, None] & protein_mask[None, :]
-                    intra_chain_mask = gt_array_stack[i].chain_id[:, None] == gt_array_stack[i].chain_id[None, :]
-                    metrics[f"{distance_type}_{length_type}"].append(
-                        mae(
-                            pred_dists,
-                            gt_dists,
-                            intra_chain_mask & protein_mask_2d & dist_conditioning_mask & length_mask,
-                        )
-                    )
-
-    return {f"mae_{metric}": np.asarray(metrics[metric]) for metric in metrics}
-
-
 def structure_comparison_metric(
     ground_truth_atom_array_stack: AtomArray
     | AtomArrayStack
@@ -453,10 +286,7 @@ def structure_comparison_metric(
 
 
 class StructureComparisonMetric(Metric):
-    """Computes structure comparison metrics between ground truth and predicted structures.
-
-    Supports RMSD and distance MAE, with optional subsetting, alignment, and
-    per-annotation-group alignment.
+    """Compute RMSD with optional subsetting, alignment, and per-annotation-group alignment.
 
     Args:
         subset_mask: Query string to subset the atom arrays (e.g., ``"is_backbone & is_polymer"``).
@@ -467,9 +297,8 @@ class StructureComparisonMetric(Metric):
             Off by default (``None``).
         gt_coord_annotation_name: Per-atom annotation to use as ground-truth coordinates
             instead of ``coord``. Useful when the true target is stored in a separate annotation.
-        metric_type: Comparison metric: ``"rmsd"`` or ``"dist_mae"``.
-        metric_kwargs: Extra kwargs forwarded to the metric function, keyed by metric
-            type (e.g. ``{"dist_mae": {"extra_distance_types": ["tip_atom"]}}``).
+        metric_type: Comparison metric; must be ``"rmsd"``.
+        metric_kwargs: Extra kwargs forwarded to the metric function, keyed by ``"rmsd"``.
         input_kwarg_names: Maps ``compute()`` parameter names to pipeline kwarg names.
             Defaults to ``{"ground_truth_atom_array": "ground_truth_atom_array",
             "predicted_atom_array": "predicted_atom_array"}``.
@@ -502,7 +331,7 @@ class StructureComparisonMetric(Metric):
         align_mask: str | None = None,
         subdivide_by_annotation: str | None = None,
         gt_coord_annotation_name: str = "coord",
-        metric_type: Literal["rmsd", "dist_mae"] = "rmsd",
+        metric_type: Literal["rmsd"] = "rmsd",
         metric_kwargs: dict[str, Any] | None = None,
         input_kwarg_names: dict[str, str] | None = None,
         verbose_naming: bool = False,
@@ -511,6 +340,8 @@ class StructureComparisonMetric(Metric):
         max_subunit_permutations: int = 720,
         **kwargs,
     ):
+        if metric_type != "rmsd":
+            raise ValueError(f"Unsupported metric type {metric_type!r}; expected 'rmsd'.")
         unknown = set(resolve_symmetry) - {"atom", "subunit"}
         if unknown:
             raise ValueError(f"Unknown symmetry level(s) {sorted(unknown)}; expected 'atom' and/or 'subunit'")
@@ -528,7 +359,6 @@ class StructureComparisonMetric(Metric):
         self.align_mask = align_mask
         self.subdivide_by_annotation = subdivide_by_annotation
         self.gt_coord_annotation_name = gt_coord_annotation_name
-        self.metric_type = metric_type
         self.metric_kwargs = metric_kwargs or {}
         self.verbose_naming = verbose_naming
         self.restrict_to_common_atoms = restrict_to_common_atoms
@@ -584,10 +414,6 @@ class StructureComparisonMetric(Metric):
         total_atoms = 0
         any_result = False
 
-        # We need to know how to aggregate the per-group metrics
-        if self.metric_type not in ["rmsd", "dist_mae"]:
-            raise ValueError(f"Unsupported metric type for per-group computation: {self.metric_type}")
-
         for val in unique_vals:
             mask = annot == val
             gt_sub = gt_stack[:, mask]
@@ -609,7 +435,7 @@ class StructureComparisonMetric(Metric):
                 pred_sub,
                 subset_mask=self.subset_mask,
                 align_mask=self.align_mask,
-                metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
+                metric_fn=compute_rmsd,
                 verbose_naming=self.verbose_naming,
                 _return_n_atoms=True,
                 **metric_kwargs,
@@ -625,10 +451,7 @@ class StructureComparisonMetric(Metric):
 
             total_atoms += n
             for k, v in result.items():
-                if self.metric_type == "rmsd":
-                    weighted[k] += v**2 * n
-                else:
-                    weighted[k] += v * n
+                weighted[k] += v**2 * n
             any_result = True
 
         if not any_result:
@@ -638,10 +461,7 @@ class StructureComparisonMetric(Metric):
             )
             return {}
 
-        if self.metric_type == "rmsd":
-            return {k: float(np.sqrt(v / total_atoms)) for k, v in weighted.items()}
-        else:
-            return {k: float(v / total_atoms) for k, v in weighted.items()}
+        return {k: float(np.sqrt(v / total_atoms)) for k, v in weighted.items()}
 
     def _resolve_subunits(self, gt_stack: AtomArrayPlusStack, pred_stack: AtomArrayPlusStack) -> AtomArrayPlusStack:
         """Match equivalent subunits in this metric's alignment and scoring selections."""
@@ -651,14 +471,13 @@ class StructureComparisonMetric(Metric):
             or gt_stack.stack_depth() not in (1, pred_stack.stack_depth())
         ):
             return gt_stack
-        frame_query = self.align_mask or (self.subset_mask if self.metric_type == "dist_mae" else None)
         return as_atom_array_plus_stack(
             permute_gt_subunits(
                 pred_stack,
                 gt_stack,
-                frame_mask=None if not frame_query else np.asarray(resolve_mask(gt_stack, frame_query)),
+                frame_mask=None if not self.align_mask else np.asarray(resolve_mask(gt_stack, self.align_mask)),
                 score_mask=None if not self.subset_mask else np.asarray(resolve_mask(gt_stack, self.subset_mask)),
-                align=bool(self.align_mask) or self.metric_type == "dist_mae",
+                align=bool(self.align_mask),
                 max_permutations=self.max_subunit_permutations,
             )
         )
@@ -685,7 +504,7 @@ class StructureComparisonMetric(Metric):
         Returns:
             Dictionary with comparison results.
         """
-        metric_kwargs = self.metric_kwargs.get(self.metric_type, {})
+        metric_kwargs = self.metric_kwargs.get("rmsd", {})
         gt_stack = self._prepare_gt_stack(ground_truth_atom_array)
         pred_stack = as_atom_array_plus_stack(predicted_atom_array).copy()
 
@@ -718,16 +537,10 @@ class StructureComparisonMetric(Metric):
             predicted_atom_array_stack=pred_stack,
             subset_mask=self.subset_mask,
             align_mask=self.align_mask,
-            metric_fn=STRUCTURE_COMPARISON_METRICS[self.metric_type],
+            metric_fn=compute_rmsd,
             verbose_naming=self.verbose_naming,
             **metric_kwargs,
         )
-
-
-STRUCTURE_COMPARISON_METRICS = {
-    "rmsd": compute_rmsd,
-    "dist_mae": compute_distance_mae,
-}
 
 
 def _get_ligand_molecules(

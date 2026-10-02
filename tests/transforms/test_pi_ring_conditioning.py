@@ -6,9 +6,9 @@ groups by can be checked directly against the ring definitions the annotator its
 
 import numpy as np
 import pytest
+from atomworks.experimental.protonation import add_hydrogens
 from atomworks.io.parser import STANDARD_PARSER_ARGS
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.io.utils.protonation import ensure_hydrogens
 from atomworks.ml.conditions import C_SEQ
 from atomworks.ml.transforms.interactions import annotate_interactions, build_atom_index_mapping
 from atomworks.ml.utils.testing import cached_parse
@@ -36,7 +36,7 @@ def fad_pistacking():
     atom_array = atom_array[np.isin(atom_array.chain_iid, ["A_1", "C_1"])]
 
     # Mirror AnnotateInteractions: detect on a hydrogenated copy, then map back to the heavy atoms.
-    with_h = as_atom_array_plus(ensure_hydrogens(atom_array.copy(), silence_lost_annotation_warnings=True))
+    with_h = as_atom_array_plus(add_hydrogens(atom_array))
     results = annotate_interactions(with_h, interaction_types=("pistacking",), inter_chain_only=True)
     to_heavy = build_atom_index_mapping(with_h, atom_array)
 

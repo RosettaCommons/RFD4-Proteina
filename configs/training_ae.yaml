@@ -18,7 +18,7 @@ defaults:
   - _self_
   
   # Experiment configs override specific hyperparameters
-  - experiment_ae: muon_afdb_monomer_only
+  - experiment_ae: ae_sota
   
   # Debug configs for quick testing
   - optional debug: null
@@ -74,7 +74,7 @@ opt:
 # wandb logging and checkpoints
 log:
   wandb_project: ae_training
-  wandb_entity: bakerlab
+  wandb_entity: ${oc.env:WANDB_ENTITY,null}
   tags: ["ae"]
   log_wandb: True  # whether to log to wandb
   log_every_n_steps: 10  # wandb logging frequency

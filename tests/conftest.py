@@ -120,7 +120,7 @@ def pytest_runtest_makereport(item, call):
 
 
 # DSSP setup for secondary structure tests
-DSSP_PATH = os.environ.get("DSSP_PATH", "/path/to/data")
+DSSP_PATH = os.environ.get("DSSP_PATH", shutil.which("mkdssp") or "")
 
 
 def _has_dssp() -> bool:
@@ -137,7 +137,7 @@ def _has_dssp() -> bool:
 has_dssp = _has_dssp()
 skip_if_no_dssp = pytest.mark.skipif(not has_dssp, reason="DSSP is not installed or unavailable")
 
-AF3_IMAGE = os.environ.get("AF3_IMAGE", "/path/to/shared/storage")
+AF3_IMAGE = os.environ.get("AF3_IMAGE", "")
 AF3_MODEL_DIR = os.environ.get("AF3_MODEL_DIR", "")
 
 

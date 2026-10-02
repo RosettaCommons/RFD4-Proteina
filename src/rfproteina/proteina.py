@@ -316,9 +316,10 @@ class Proteina(L.LightningModule):
         cfg_exp: DictConfig,
         store_dir: str | None = None,
         autoencoder_ckpt_path: str | None = None,
+        load_training_metrics: bool = True,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["load_training_metrics"])
         self.cfg_exp = cfg_exp
         inf_cfg = self.cfg_exp.get("inf_cfg") or self.cfg_exp.get("generation")
 
@@ -336,7 +337,7 @@ class Proteina(L.LightningModule):
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
         self._metrics_pool = MetricsPool(num_workers=0, mm_cfgs={})
         try:
-            self.configure_metrics(cfg_exp.metrics)
+            self.configure_metrics(cfg_exp.metrics if load_training_metrics else None)
         except InstantiationException as e:
             logger.warning(
                 f"Failed to instantiate metric managers: {e}. "

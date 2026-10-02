@@ -7,10 +7,9 @@
 # and concatenation job, so results are aggregated per-config.
 #
 # Usage:
-#   ./launch_sweep.sh <cluster> --sweep-config <path> [options] [hydra_overrides...]
+#   ./scripts/launch_sweep.sh --sweep-config <path> [options] [hydra_overrides...]
 #
 # Required:
-#   <cluster>                    Cluster name (e.g. digs, ord, gb200)
 #   --sweep-config <path>        Path to YAML sweep config file
 #
 # Options:
@@ -44,18 +43,21 @@
 #     num_replicates=5
 #     inference_experiment=inference_on_val_set
 #
-# Examples:
+# Examples (run from the repository root):
+#   # Public native runs use the active Python environment; submissions require SLURM.
+#   ./scripts/launch_sweep.sh --sweep-config configs/sweeps/sweep_example.yaml --dry-run
+#
 #   # Benchmark sweep
-#   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
+#   ./scripts/launch_sweep.sh --sweep-config configs/sweeps/sweep_example.yaml \
 #       ckpt_path=/path/to/checkpoints
 #
 #   # Validation sweep with 8 parallel jobs (Foldseek on by default)
-#   ./launch_sweep.sh ord --sweep-config configs/sweeps/val_ckpt_sweep.yaml \
+#   ./scripts/launch_sweep.sh --sweep-config configs/sweeps/full_offline_val_af3.yaml \
 #       --njobs 8 \
 #       inference_experiment=inference_on_val_set
 #
 #   # Dry run: show configs without submitting
-#   ./launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml \
+#   ./scripts/launch_sweep.sh --sweep-config configs/sweeps/sweep_example.yaml \
 #       --dry-run
 # =============================================================================
 
@@ -67,7 +69,7 @@ source "$SCRIPT_DIR/common.sh"
 strip_inherited_slurm_env
 
 # Parse arguments
-CLUSTER=""
+REQUESTED_CLUSTER=""
 SWEEP_CONFIG=""
 GPUS_PER_JOB=1
 NJOBS=""    # empty = each per-config launch_generate.sh reads gen_njobs from the config
@@ -158,8 +160,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            if [ -z "$CLUSTER" ]; then
-                CLUSTER="$1"
+            if [[ -z "$REQUESTED_CLUSTER" && "$1" != -* && "$1" != \~* && "$1" != *=* ]]; then
+                REQUESTED_CLUSTER="$1"
             else
                 EXTRA_ARGS="$EXTRA_ARGS $1"
             fi
@@ -168,11 +170,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "$CLUSTER" ] || [ -z "$SWEEP_CONFIG" ]; then
-    echo "Usage: $0 <cluster> --sweep-config <path> [options] [hydra_overrides...]"
+export CLUSTER="${REQUESTED_CLUSTER:-${CLUSTER:-local}}"
+
+if [ -z "$SWEEP_CONFIG" ]; then
+    echo "Usage: $0 [cluster] --sweep-config <path> [options] [hydra_overrides...]"
     echo ""
     echo "Required:"
-    echo "  <cluster>              Cluster name: digs, ord, gb200"
     echo "  --sweep-config <path>  Path to YAML sweep config file"
     echo ""
     echo "Options:"
@@ -202,7 +205,7 @@ SWEEP_CONFIG_OUTPUT_DIR="$BASE_OUT_DIR/configs"
 
 # Load cluster configuration
 # Save the original cluster arg before load_user_info overwrites $CLUSTER.
-# .user_info files set CLUSTER to the runtime cluster name (e.g. "coreweave")
+# IPD .user_info files may set CLUSTER to their runtime profile name.
 # so that exec_core.sh can source .ipd/.env.${CLUSTER} inside the job.
 CLUSTER_ARG="$CLUSTER"
 load_user_info "$CLUSTER" || exit 1
@@ -418,7 +421,7 @@ if [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -n "$BASE_OUT_DIR" ] && [ -n "$ALL
     # Use copied script if available, else fall back to repo
     [ -n "$SWEEP_CODE_DIR" ] && [ -f "$SWEEP_CODE_PY" ] && SWEEP_CONCAT_PY="$SWEEP_CODE_PY"
 
-    SWEEP_PYTHONPATH="${SWEEP_CODE_DIR:-$REPO_ROOT}"
+    SWEEP_PYTHONPATH="${SWEEP_CODE_DIR:-$REPO_ROOT}:${SWEEP_CODE_DIR:-$REPO_ROOT}/lib/atomworks/src"
 
     {
         echo "#!/bin/bash"
@@ -426,7 +429,9 @@ if [ "$DO_SWEEP_CONCATENATE" == "true" ] && [ -n "$BASE_OUT_DIR" ] && [ -n "$ALL
         if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
             echo "#SBATCH --account $ACCOUNT"
         fi
-        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
+        if [[ -n "${CPU_PARTITION:-${PARTITION:-}}" ]]; then
+            echo "#SBATCH --partition ${CPU_PARTITION:-$PARTITION}"
+        fi
         echo "#SBATCH --time 01:00:00"
         echo "#SBATCH --nodes 1"
         echo "#SBATCH --ntasks-per-node 1"

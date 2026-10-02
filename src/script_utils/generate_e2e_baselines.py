@@ -1,8 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Generate regression-test baselines for the four GPU regression tests.
 
-Run this script on DIGS, on a GPU node with the squashfs datasets mounted
-(inside apptainer, or with `.ipd/.env.digs` sourced):
+Run this script on a configured GPU node with the required datasets available:
 
     cd /path/to/rfproteina   # repo root
     python src/script_utils/generate_e2e_baselines.py

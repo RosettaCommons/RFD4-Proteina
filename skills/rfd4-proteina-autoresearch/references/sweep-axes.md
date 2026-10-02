@@ -82,8 +82,7 @@ CLI override:
 | Motif placement | indexed vs unindexed, index groups | Independent fragments vs rigidly tied |
 
 Building or editing these inputs is the **rfd4-proteina-annotated-cif** skill's
-job; treat each distinct input as a branch seed. Use **rfd4-proteina-inputs** only
-when a branch starts from a legacy RFD3 JSON/YAML config.
+job; treat each distinct input as a branch seed.
 
 ## Diversity accounting
 

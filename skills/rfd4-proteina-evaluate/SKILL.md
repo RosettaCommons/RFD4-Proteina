@@ -6,7 +6,7 @@ description: >
   designs", "compute metrics", "refold with AF3", "scRMSD / pLDDT / ipAE",
   "is my design designable", "designability", "aggregate metrics", "concatenate
   the per-job CSVs", "cluster designs by diversity", "foldseek clustering", or
-  "add a custom metric". It runs `src/rfproteina/evaluate.py` over a directory
+  "add a custom metric". It runs `rfd4-evaluate` over a directory
   tree of CIF-like files with a chosen set of `metrics_tags`, writes
   `per_example_metrics.csv`, then concatenates parallel-job CSVs into
   `aggregated_metrics.csv` / `per_task_metrics.csv` and (optionally) clusters
@@ -40,7 +40,7 @@ Hydra `key=value`, never `--key value`.**
 ## Step 1 — Run evaluate.py over a folder of structures
 
 ```bash
-python src/rfproteina/evaluate.py \
+rfd4-evaluate \
     inputs=/path/to/structures \
     metrics_tags='[design]' \
     out_dir=/path/to/eval_output
@@ -130,8 +130,8 @@ apptainer/docker container** configured via the cluster env files. Plain
 (non-refolding) design metrics like `[design]` do **not** need a container. If
 you request a refolding tag without the container, those metrics silently do not
 run — you get no oracle columns and no error. Configure the container first (see
-**rfd4-proteina-setup**, [references/clusters.md](../rfd4-proteina-setup/references/clusters.md)),
-or use `scripts/launch_evaluate.sh <cluster> ...` which wires it in.
+**rfd4-proteina-setup**, [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst),
+or use `scripts/launch_evaluate.sh ...` which wires it in.
 
 ## Metrics-tag reference
 

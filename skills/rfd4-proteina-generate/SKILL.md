@@ -9,9 +9,8 @@ description: >
   "partial diffusion", "refine this structure", "make my designs more diverse",
   "deterministic (ODE) sampling", or "compute refolding metrics inline". It first
   runs the setup preflight, then routes by design case to the right benchmark
-  example + overrides, and drives `src/rfproteina/generate.py`. It hands off to
+  example + overrides, and drives `rfd4-generate`. It hands off to
   rfd4-proteina-annotated-cif to build or edit an annotated CIF, to
-  rfd4-proteina-inputs only for legacy RFD3 JSON/YAML adaptation, to
   rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
   for deep metric analysis (the AF3 oracle).
 license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
@@ -61,23 +60,19 @@ input, task-specific overrides, and gotchas:
 lossless format. When the task needs coordinate/sequence conditioning, hotspots,
 fixed ligands, H-bonds, RASA, or unindexed motifs, **hand off to
 rfd4-proteina-annotated-cif** to build and validate the CIF, then come back and
-pass it via `inputs=<file>.cif`. The ready-made JSON/YAML benchmarks above run
-directly; use **rfd4-proteina-inputs** only when migrating or interpreting them.
+pass it via `inputs=<file>.cif`.
 
 ## Step 3 — Run
 
 General form:
 
 ```bash
-python src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
+rfd4-generate inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
-On a cluster with a container configured, the shebang form re-execs inside
-apptainer/docker automatically:
-
-```bash
-./src/rfproteina/generate.py inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
-```
+Use the Python environment activated during setup. The installed command runs
+in that environment; see the [installation guide](../../docs/installation.rst)
+for environment and scheduler settings.
 
 **The four parameters you almost always set** (defaults are only right for a
 smoke test):
@@ -95,7 +90,7 @@ Useful extras: `subset_to_examples=monomer-short` (run only named keys),
 
 ```bash
 # 80 designs of each monomer example, 8 at a time
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
@@ -152,7 +147,7 @@ metric configs before treating any list as exhaustive.
 > only turns the tags on.
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer num_replicates=50 batch_size=8 \
     out_dir=./runs/monomers_scored metrics_tags='[unconditional_refolding]'
 ```
@@ -186,9 +181,9 @@ table and how to read annotations: [references/outputs.md](references/outputs.md
 | `--inputs`/`--out_dir` not recognized / Hydra config error | Use `=` not `--`: `inputs=file.cif`, never `--inputs file.cif` |
 | checkpoint not found | Confirm `DATA_PATH`, then compare `ckpt_name` and `ckpt_path` with `configs/inference.yaml`; override only when intentionally using another checkpoint |
 | `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_example_data.sh "$DATA_PATH"` |
-| `atomworks not found` | `bash setup.sh`, re-run `setup.sh` |
+| `atomworks not found` | `git submodule update --init lib/atomworks`, re-run `setup.sh` |
 | `hydra not found` / import errors | `source .venv/bin/activate` |
-| `No .env file found for cluster 'digs'` | `export CLUSTER=local` and create `.ipd/.env.local` |
+| `No .env file found for cluster '<name>'` | `export CLUSTER=local` and create `.env.local` |
 | AF3 / `*_refolding` errors | Refolding metrics need an AF3 container — see rfd4-proteina-setup + rfd4-proteina-evaluate |
 | Segfault in rdkit/posebusters | uv's Python needs `LD_PRELOAD` set to the bundled `libstdc++.so.6` (see `Makefile`) |
 

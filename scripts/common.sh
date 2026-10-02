@@ -2,8 +2,7 @@
 # =============================================================================
 # common.sh - Shared utilities for SLURM job launching
 # =============================================================================
-# This file provides container-aware utilities for running jobs on different
-# clusters (DIGS with Apptainer, OCI/GB200 with Docker).
+# Shared SLURM setup for native Python jobs and existing container profiles.
 #
 # Usage: source this file in your launch scripts
 #   source ./scripts/common.sh
@@ -33,18 +32,18 @@ find_repo_root() {
 
 # Load user info for a specific cluster
 # Usage: load_user_info <cluster_name>
-# Example: load_user_info ord
+# Example: load_user_info my_cluster
 load_user_info() {
     local cluster="$1"
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
     if [ -z "$cluster" ]; then
-        echo "Error: Cluster name required (digs, ord, gb200)"
+        echo "Error: Runtime profile name required"
         return 1
     fi
     
     local user_info_file="$script_dir/.user_info_${cluster}"
-    if [ ! -f "$user_info_file" ]; then
+    if [[ ! -f "$user_info_file" && "$cluster" != local ]]; then
         echo "Error: User info file not found: $user_info_file"
         echo "Available configs:"
         ls -1 "$script_dir"/.user_info_* 2>/dev/null || echo "  (none found)"
@@ -54,45 +53,50 @@ load_user_info() {
     local repo_root
     repo_root=$(find_repo_root "$script_dir")
 
-    # Shared defaults (.ipd/.env.{cluster}), then per-user .user_info_{cluster}.
-    # CONTAINER_IMAGE is set only in .user_info_{cluster}, not in .ipd/.env.*.
+    # Public or private shared settings, then per-user scheduler settings.
     if [ -n "$repo_root" ]; then
         local env_file="$repo_root/.ipd/.env.${cluster}"
-        if [ -f "$env_file" ]; then
+        if [[ "$cluster" != local && -f "$env_file" ]]; then
             echo "Loading shared env: $env_file"
             set -a
             source "$env_file"
             set +a
+        elif [[ -f "$repo_root/.env.$cluster" || "$cluster" == local ]]; then
+            CLUSTER="$cluster" source "$script_dir/load_local_env.sh"
         fi
     fi
 
-    echo "Loading cluster config: $user_info_file"
-    source "$user_info_file"
+    if [[ -f "$user_info_file" ]]; then
+        echo "Loading cluster config: $user_info_file"
+        source "$user_info_file"
+    fi
+    ROOT_REMOTE="${ROOT_REMOTE:-$repo_root/runs}"
+    if [[ "$cluster" == local || ! -f "$repo_root/.ipd/.env.$cluster" ]]; then
+        export CONTAINER_TYPE=none
+    fi
 
-    case "$cluster" in
-        ord|gb200)
-            if [ -z "${CONTAINER_IMAGE:-}" ]; then
-                echo "Error: CONTAINER_IMAGE not set in $user_info_file" >&2
-                echo "Set CONTAINER_IMAGE to a .sqsh path or GitLab registry URL." >&2
-                return 1
-            fi
-            local _pyxis_image
-            _pyxis_image=$(resolve_pyxis_container_image "$CONTAINER_IMAGE")
-            if [ "$_pyxis_image" != "$CONTAINER_IMAGE" ]; then
-                echo "Container image (Pyxis/Enroot): $_pyxis_image"
-                CONTAINER_IMAGE="$_pyxis_image"
-            fi
-            populate_docker_container_env
-            ;;
-    esac
+    if [[ -f "$repo_root/.ipd/.env.$cluster" && ( "$cluster" == ord || "$cluster" == gb200 ) ]]; then
+        if [ -z "${CONTAINER_IMAGE:-}" ]; then
+            echo "Error: CONTAINER_IMAGE not set in $user_info_file" >&2
+            echo "Set CONTAINER_IMAGE to a .sqsh path or registry URL." >&2
+            return 1
+        fi
+        local _pyxis_image
+        _pyxis_image=$(resolve_pyxis_container_image "$CONTAINER_IMAGE")
+        if [ "$_pyxis_image" != "$CONTAINER_IMAGE" ]; then
+            echo "Container image (Pyxis/Enroot): $_pyxis_image"
+            CONTAINER_IMAGE="$_pyxis_image"
+        fi
+        populate_docker_container_env
+    fi
 
     return 0
 }
 
 # Convert Docker pull reference to Enroot/Pyxis form (registry#repository:tag).
 # Pyxis passes the value to enroot as docker://<this_string>.
-#   registry.example.com:5005/genair/.../latent-dev-v26_01:latest
-#     -> registry.example.com:5005#genair/.../latent-dev-v26_01:latest
+#   registry.example.com:5005/team/image:latest
+#     -> registry.example.com:5005#team/image:latest
 resolve_pyxis_container_image() {
     local image="${1:-}"
     [ -z "$image" ] && return 0
@@ -140,7 +144,6 @@ populate_docker_container_env() {
         "export SQUASH_MOUNT_PATH=$SQUASH_MOUNT_PATH"
         "export PDB_MIRROR_PATH=$PDB_MIRROR_PATH"
         "export CCD_MIRROR_PATH=$CCD_MIRROR_PATH"
-        "export HBPLUS_PATH=$HBPLUS_PATH"
         "export FOLDSEEK_EXEC=$FOLDSEEK_EXEC"
         "export MACE_MODEL_PATH=$MACE_MODEL_PATH"
         "export LOGURU_LEVEL=$LOGURU_LEVEL"
@@ -151,17 +154,26 @@ populate_docker_container_env() {
     fi
 }
 
-# Source the project virtual environment. Host-side orchestration only (config
-# resolution + submission); apptainer jobs still need it and re-exec into the SIF.
+# Public launches prefer the active environment; IPD profiles retain the checkout venv.
 # Usage: source_venv <repo_root>
 source_venv() {
     local repo_root="$1"
     local venv_activate="$repo_root/.venv/bin/activate"
 
+    if [[ "${CLUSTER:-local}" == local || ! -f "$repo_root/.ipd/.env.${CLUSTER:-}" ]]; then
+        if [[ -n "${VIRTUAL_ENV:-${CONDA_PREFIX:-}}" ]] && command -v python >/dev/null; then
+            echo "Using active Python: $(command -v python)"
+            return 0
+        fi
+        if [[ ! -f "$venv_activate" ]] && command -v python >/dev/null &&
+            python -c 'from importlib.metadata import version; version("rfproteina")' 2>/dev/null; then
+            echo "Using installed Python: $(command -v python)"
+            return 0
+        fi
+    fi
     if [ ! -f "$venv_activate" ]; then
-        echo "Error: Virtual environment not found at $repo_root/.venv"
-        echo "Run setup.sh first:"
-        echo "  bash $repo_root/setup.sh"
+        echo "Error: Virtual environment not found at $repo_root/.venv" >&2
+        echo "Activate the environment where you pip-installed RFProteina, or run bash $repo_root/setup.sh --native." >&2
         exit 1
     fi
 
@@ -174,8 +186,12 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    export PYTHONPATH="${repo_root}/src:${repo_root}/lib:$PYTHONPATH"
-    echo "PYTHONPATH set to include rfproteina, vendored packages, atomworks"
+    if [[ "${CLUSTER:-}" != local && -d "$repo_root/.ipd" ]]; then
+        export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${repo_root}/lib/atomworks/src:${PYTHONPATH:-}"
+    else
+        export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${PYTHONPATH:-}"
+    fi
+    echo "PYTHONPATH set for the selected runtime"
 }
 
 # Setup common environment variables for training/inference
@@ -198,7 +214,7 @@ setup_env_vars() {
         export NCCL_P2P_DISABLE=1
         export NCCL_DEBUG=${NCCL_DEBUG:-WARN}
     fi
-    
+
     echo "Environment variables configured"
 }
 
@@ -214,11 +230,6 @@ resolve_hydra_config() {
     local overrides="$@"
 
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-    # Activate project venv if available (needed for hydra/omegaconf)
-    if [ -f "$repo_root/.venv/bin/activate" ]; then
-        source "$repo_root/.venv/bin/activate"
-    fi
 
     cd "$repo_root" && python "$script_dir/resolve_config.py" --config-name "$config_name" $overrides
 }
@@ -284,9 +295,9 @@ get_srun_cmd() {
         return 1
     fi
     
-    case "$CLUSTER" in 
+    case "$CLUSTER" in
         ord|gb200)
-            # OCI/GB200 use Docker squash images via srun --container-image
+            # These IPD profiles use Docker squash images via srun --container-image
             if [ -z "$CONTAINER_IMAGE" ]; then
                 echo "Error: CONTAINER_IMAGE not set for $CLUSTER cluster" >&2
                 return 1
@@ -301,7 +312,8 @@ get_srun_cmd() {
 # Outputs SBATCH directives to stdout
 build_sbatch_header() {
     local job_name="${JOB_NAME:-rfproteina_job}"
-    local partition="${PARTITION:-batch}"
+    local partition="${PARTITION:-}"
+    if [[ "$CONTAINER_TYPE" != none ]]; then partition="${PARTITION:-batch}"; fi
     local runtime="${RUNTIME:-04:00:00}"
     local nodes="${NODES:-1}"
     local gpus_per_node="${GPUS_PER_NODE:-8}"
@@ -326,13 +338,15 @@ build_sbatch_header() {
 
     echo "#!/bin/bash"
 
-    # Account - skip for DIGS
+    # Some profiles do not require an account directive.
     if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
         echo "#SBATCH --account $ACCOUNT"
     fi
 
     echo "#SBATCH --job-name $job_name"
-    echo "#SBATCH --partition $partition"
+    if [[ -n "$partition" ]]; then
+        echo "#SBATCH --partition $partition"
+    fi
     echo "#SBATCH --time $runtime"
     echo "#SBATCH --nodes $nodes"
 
@@ -373,7 +387,7 @@ build_sbatch_header() {
 emit_ulimit_block() {
     cat <<'EOF'
 
-# Raise the open-file soft limit to the hard cap. Low defaults (e.g. 1024 on coreweave)
+# Raise the open-file soft limit to the hard cap on hosts with low defaults.
 ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
 EOF
 }
@@ -436,6 +450,7 @@ get_rsync_command() {
     --exclude='tmp' \\
     --exclude='wandb' \\
     --exclude='.env' \\
+    --exclude='/.env.*' \\
     --exclude='.git' \\
     --exclude='.gitignore' \\
     --exclude='*.ipynb' \\
@@ -463,14 +478,16 @@ print_cluster_config() {
     echo "  GPUs per node:   ${GPUS_PER_NODE:-not set}"
     echo "  Runtime:         ${RUNTIME:-not set}"
     
-    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
-        echo "  Container:       Apptainer (exec_core.sh → .ipd/.env.$CLUSTER)"
+    if [ "$CONTAINER_TYPE" == "none" ]; then
+        echo "  Runtime:         Native Python environment"
+    elif [ "$CONTAINER_TYPE" == "apptainer" ]; then
+        echo "  Container:       Apptainer (profile $CLUSTER)"
     else
         echo "  Container:       Docker ($CONTAINER_IMAGE)"
     fi
     
     if [ "$SKIP_ACCOUNT" == "true" ]; then
-        echo "  Account:         (skipped for DIGS)"
+        echo "  Account:         (skipped by profile)"
     else
         echo "  Account:         ${ACCOUNT:-not set}"
     fi
@@ -643,7 +660,7 @@ build_container_mounts_string() {
         fi
     fi
     
-    # Ensure enroot config is mounted when available (required by some OCI clusters)
+    # Ensure enroot config is mounted when available for Docker/Pyxis profiles.
     local enroot_host="/home/${USER}/.config/enroot"
     local enroot_mount="${enroot_host}:${enroot_host}:ro"
     if [ -d "$enroot_host" ]; then
@@ -657,7 +674,7 @@ build_container_mounts_string() {
     fi
     
     # Add /dev/fuse for squashfs mounting inside container
-    # Note: We don't add .sqfs files here - they're accessible via /lustre mount
+    # The profile is responsible for making .sqfs sources visible in the container.
     # Adding .sqfs files to --container-mounts causes pyxis to auto-mount them
     if [ "${USE_SQUASHFS_MOUNTS:-false}" == "true" ] && [ ${#SQUASHFS_MOUNTS[@]} -gt 0 ]; then
         mounts="$mounts,/dev/fuse:/dev/fuse"
@@ -749,7 +766,7 @@ build_container_env_cmds() {
 
 # Copy codebase to a target directory (used by launch_generate.sh and launch_sweep.sh)
 # Usage: copy_code_to_dir <repo_root> <code_dir> [cluster]
-# Copies project code and optional user-created runtime profiles.
+# Copies the runtime, inputs, and optional private profiles; shares the installed venv.
 # Uses --no-compress (faster on LAN/shared FS) and excludes checkpoint/text files from configs/.
 copy_code_to_dir() {
     local repo_root="$1"
@@ -757,6 +774,11 @@ copy_code_to_dir() {
     local cluster="${3:-}"
 
     mkdir -p "$code_dir/lib" "$code_dir/src" "$code_dir/data"
+    if [ -d "$repo_root/lib/atomworks/src" ]; then
+        mkdir -p "$code_dir/lib/atomworks"
+        rsync -a --no-compress \
+            "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
+    fi
     rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/lib/gearnet/" "$code_dir/lib/gearnet/"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
@@ -768,16 +790,31 @@ copy_code_to_dir() {
     rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
 
     cp "$repo_root/.project-root" "$code_dir/"
-    mkdir -p "$code_dir/.ipd"
-    rsync -a "$repo_root/.ipd/".env.* "$code_dir/.ipd/" 2>/dev/null || true
-    mkdir -p "$code_dir/.ipd/apptainer"
+    rsync -a --no-compress "$repo_root/scripts/" "$code_dir/scripts/"
+    for env_file in "$repo_root/.env" "$repo_root/".env.*; do
+        [ ! -f "$env_file" ] || cp "$env_file" "$code_dir/"
+    done
+    if [ -d "$repo_root/.venv" ] && [ ! -e "$code_dir/.venv" ] && [ ! -L "$code_dir/.venv" ]; then
+        ln -s "$(realpath "$repo_root/.venv")" "$code_dir/.venv"
+    fi
+    if [ -d "$repo_root/.ipd/shebang" ]; then
+        mkdir -p "$code_dir/.ipd/shebang"
+        rsync -a "$repo_root/.ipd/shebang/" "$code_dir/.ipd/shebang/"
+    fi
+    if [ -d "$repo_root/.ipd" ]; then
+        mkdir -p "$code_dir/.ipd"
+        for env_file in "$repo_root/.ipd/".env.*; do
+            [ ! -f "$env_file" ] || cp "$env_file" "$code_dir/.ipd/"
+        done
+    fi
 
-    # Apptainer: recreate container symlink with /mnt/net prefix for compute nodes
+    # Apptainer: recreate the image symlink, applying an optional profile path rewrite.
     if [ "${CONTAINER_TYPE:-}" == "apptainer" ] && [ -L "$repo_root/.ipd/apptainer/latent-dev.sif" ]; then
         local container_target
         container_target="$(readlink -f "$repo_root/.ipd/apptainer/latent-dev.sif" 2>/dev/null || true)"
         if [ -n "$container_target" ]; then
             [[ "$container_target" == /net/* ]] && container_target="/mnt${container_target}"
+            mkdir -p "$code_dir/.ipd/apptainer"
             ln -sf "$container_target" "$code_dir/.ipd/apptainer/latent-dev.sif"
         fi
     fi

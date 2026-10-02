@@ -17,7 +17,7 @@ motif-scaffolding problem where the motif is a set of catalytic residues
 
 ```bash
 # One M-CSA active site with its ligand
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/mcsa/mcsa_37 \
     subset_to_examples=M0630_1j79 \
     num_replicates=8 batch_size=8 out_dir=./runs/enzyme \
@@ -38,9 +38,7 @@ motif-scaffolding problem where the motif is a set of catalytic residues
   (`mcsa/mcsa_37` vs `mcsa/mcsa_37_no_ligand`). With a ligand, the model designs
   around a real active-site chemistry; without, it only places catalytic
   geometry.
-- Tip-atom (`select_fixed_atoms: {"A175": "TIP"}`) vs full-sidechain vs
-  backbone-only conditioning are distinct design decisions. Use
-  **rfd4-proteina-inputs** to interpret that legacy field, or
-  **rfd4-proteina-annotated-cif** to author the condition directly.
+- Tip-atom, full-sidechain, and backbone-only conditioning are distinct design
+  decisions. Use **rfd4-proteina-annotated-cif** to annotate the selected atoms.
 - Charges/bonds on a PDB-derived ligand are often wrong (aromaticity lost);
   validate the input with **rfd4-proteina-annotated-cif** before spending compute.

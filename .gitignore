@@ -147,7 +147,9 @@ celerybeat.pid
 
 # Environments
 .env
-# User-created local cluster env file (see README "Getting Started")
+/.env.*
+!/.env.local.example
+# Private user-created runtime profile
 .ipd/.env.local
 .venv
 env/
@@ -272,9 +274,8 @@ tests/data/pdb/*
 !**/.claude/skills
 claude_experiments/**
 
-# User info files (contain secrets - use _example files as templates)
+# User info files contain secrets; private templates live under .ipd.
 **/scripts/.user_info*
-!**/scripts/.user_info_*_example
 
 # Exceptions
 !.ipd/apptainer/latent-dev.sif
@@ -296,4 +297,3 @@ runs/
 
 # Local DATA_PATH created by the setup docs (checkpoints, test dataset)
 data_path/
-.ci-data/
