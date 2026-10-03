@@ -1,15 +1,14 @@
 """Tests for MACE interaction energy metric.
 
 Uses the MCL1 benchmark (first ligand) to verify the full pipeline:
-hydride H addition -> geometry optimization -> interaction energy decomposition.
+AtomWorks protonation -> geometry optimization -> interaction energy decomposition.
 
-Requires: GPU with CUDA, MACE-POLAR-1 model, hydride installed.
+The protonation test runs on CPU; the full pipeline requires a GPU with CUDA and the MACE-POLAR-1 model.
 Run with: pytest tests/metrics/test_mace_interaction_energy_metric.py -v -s --noconftest
 """
 
 import os
 import time
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -26,8 +25,8 @@ def mcl1_complex():
     """Build a protein-ligand complex from MCL1 benchmark (first ligand).
 
     Uses ``atom_array_from_rdkit`` for the ligand (preserving bonds and
-    charges) and sets ``chain_type`` so ``ensure_annotations`` can derive
-    ``is_protein`` / ``is_ligand`` automatically.
+    charges), reads the protein's bonds, and sets ``charge``, ``pn_unit_iid``
+    and ``chain_type`` so protonation and ``ensure_annotations`` can run.
     """
     import biotite.structure as struc
     from atomworks.enums import ChainType
@@ -39,7 +38,7 @@ def mcl1_complex():
     sdf_path = os.path.join(MCL1_DATASET_PATH, "ligands.sdf")
 
     pdb_file = PDBFile.read(protein_pdb)
-    protein = pdb_file.get_structure(model=1)
+    protein = pdb_file.get_structure(model=1, include_bonds=True)
     if isinstance(protein, struc.AtomArrayStack):
         protein = protein[0]
 
@@ -52,60 +51,43 @@ def mcl1_complex():
     lig_arr.chain_id[:] = "L"
     lig_arr.res_name[:] = "LIG"
 
+    protein.set_annotation("charge", np.zeros(len(protein), dtype=lig_arr.charge.dtype))
     combined = protein + lig_arr
+    combined.set_annotation("pn_unit_iid", np.char.add(combined.chain_id.astype(str), "_1"))
 
     chain_type = np.full(len(combined), ChainType.POLYPEPTIDE_L, dtype=int)
     chain_type[len(protein) :] = ChainType.NON_POLYMER
     combined.set_annotation("chain_type", chain_type)
 
-    # Drop all hydrogens to verify ensure_hydrogens can re-infer them for both
-    # protein residues (via CCD lookup) and the ligand (via preserved
-    # RDKit-derived heavy-atom bond graph).
+    # Drop all hydrogens so protonation rebuilds them for the protein residues
+    # and for the ligand (from its RDKit-derived heavy-atom bond graph).
     combined = combined[combined.element != "H"]
 
     return {"atom_array": combined, "name": name, "exp_dg": exp_dg}
 
 
-@pytest.mark.skip(reason="Test input cannot be parsed by atomworks. Need to fix this")
-def test_chain_type_restored_after_rdkit_protonation(mcl1_complex):
-    """RDKit protonation fallback drops Biotite annotations; restore keeps ligand masks."""
+def test_hydrogens_are_rebuilt_on_every_residue_and_keep_the_chain_types(mcl1_complex):
+    """Each peptide nitrogen gains one hydrogen, and ``chain_type`` still marks the ligand."""
     from atomworks.enums import ChainType
     from atomworks.ml.conditions.annotator import ensure_annotations
 
-    import rfproteina.metrics.physics.mace_interaction_energy_metric as mace_metric
+    from rfproteina.metrics.physics.mace_interaction_energy_metric import _infer_hydrogens
 
-    prepared = mcl1_complex["atom_array"]
-    chain_type_by_id: dict[str, int] = {}
-    for cid in np.unique(prepared.chain_id):
-        mask = prepared.chain_id == cid
-        chain_type_by_id[str(cid)] = int(prepared.chain_type[mask][0])
+    heavy = mcl1_complex["atom_array"]
+    protonated = _infer_hydrogens(heavy, ph=7.0)
 
-    def _rdkit_protonation_only(atom_array, *, ph):
-        from atomworks.io.tools.rdkit import atom_array_from_rdkit, atom_array_to_rdkit
-
-        mol = atom_array_to_rdkit(atom_array, hydrogen_policy="infer", set_coord=True)
-        return atom_array_from_rdkit(mol, remove_hydrogens=False, remove_inferred_atoms=False)
-
-    with patch.object(
-        mace_metric,
-        "_infer_hydrogens",
-        side_effect=_rdkit_protonation_only,
-    ):
-        protonated = mace_metric._infer_hydrogens(prepared, ph=7.0)
-
-    assert "chain_type" not in protonated.get_annotation_categories()
-
-    restored = np.empty(len(protonated), dtype=int)
-    for cid in np.unique(protonated.chain_id):
-        mask = protonated.chain_id == cid
-        restored[mask] = chain_type_by_id.get(str(cid), ChainType.POLYPEPTIDE_L)
-    protonated.set_annotation("chain_type", restored)
-
+    is_h = protonated.element == "H"
+    assert np.array_equal(protonated.coord[~is_h], heavy.coord)
+    assert np.array_equal(protonated.atom_name[~is_h], heavy.atom_name)
+    for n in np.flatnonzero((protonated.atom_name == "N") & (protonated.res_name != "PRO")):
+        neighbours = protonated.bonds.get_bonds(int(n))[0]
+        if any(protonated.atom_name[j] == "C" and protonated.res_id[j] != protonated.res_id[n] for j in neighbours):
+            assert is_h[neighbours].sum() == 1, f"{protonated.res_name[n]}{protonated.res_id[n]}"
+    ligand = protonated.chain_id == "L"
+    assert is_h[ligand].any()
+    assert np.all(protonated.chain_type[ligand] == ChainType.NON_POLYMER)
     ensure_annotations(protonated, "is_ligand", "is_protein")
-    lig_mask = protonated.chain_id == "L"
-    assert np.all(protonated.chain_type[lig_mask] == ChainType.NON_POLYMER)
-    assert np.all(protonated.is_ligand[lig_mask])
-    assert np.all(protonated.is_protein[~lig_mask])
+    assert np.all(protonated.is_ligand == ligand)
 
 
 @pytest.mark.gpu
@@ -117,7 +99,7 @@ def test_mace_interaction(mcl1_complex):
     """Full pipeline test with default settings on one MCL1 ligand.
 
     Uses the MACEInteractionEnergyMetric.compute() API with default
-    parameters (50 opt steps, LBFGS, hydride H addition).
+    parameters (LBFGS, AtomWorks protonation), with a single optimisation step.
     """
     from rfproteina.metrics.physics.mace_interaction_energy_metric import (
         MACEInteractionEnergyMetric,

@@ -3,8 +3,10 @@ import math
 import biotite.structure as struc
 import numpy as np
 from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_RNA
+from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.sequence import is_purine, is_pyrimidine
 from atomworks.ml.encoding_definitions import AF3SequenceEncoding
+from atomworks.ml.transforms.interactions import AnnotateInteractions
 from atomworks.ml.utils.token import (
     get_token_starts,
     is_glycine,
@@ -15,7 +17,6 @@ from atomworks.ml.utils.token import (
 )
 from biotite.structure import AtomArray
 
-from rfproteina.transforms.utils.hbond_utils import run_hbplus
 from rfproteina.utils.constants import (
     ATOM_REGION_BY_RESI,
     PLANAR_ATOMS_BY_RESI,
@@ -298,116 +299,50 @@ def find_planar_positions(
     return planar_atom_list_dict
 
 
-def calculate_hb_counts(
-    atom_array: AtomArray,
-    token_level_data: dict,
-    mol_info: NucMolInfo,
-    cutoff_HA_dist: float = 2.5,
-    cutoff_DA_dist: float = 3.9,
-) -> np.ndarray:
-    """Count hydrogen bonds between residue pairs using HBPLUS.
+def calculate_hb_counts(atom_array: AtomArray, token_level_data: dict) -> np.ndarray:
+    """Count AtomWorks PLIP hydrogen bonds by residue and backbone/base region.
+
+    Protonation and donor/acceptor typing use the same AtomWorks model as the
+    interaction metrics. Both intra-chain and inter-chain contacts are included.
+    The input coordinates and annotations are preserved.
 
     Args:
-        atom_array: Structure to analyse.
-        token_level_data: Token-level metadata dict (must contain
-            ``token_id_list`` and ``resi2index``).
-        mol_info: Molecular-info object for backbone/sidechain atom lookup.
-        cutoff_HA_dist: H-A distance cutoff (Angstrom) passed to HBPLUS.
-        cutoff_DA_dist: D-A distance cutoff (Angstrom) passed to HBPLUS.
+        atom_array: Structure with bonds and protonation annotations.
+        token_level_data: Residue metadata including ``token_starts``.
 
     Returns:
-        np.ndarray of shape ``(I, I, 3)`` (int32) where the last axis
-        encodes: 0 = BB-BB, 1 = BB-SC, 2 = SC-SC H-bond counts.
+        Symmetric int32 counts with shape ``(n_residues, n_residues, 3)``;
+        the channels are backbone-backbone, backbone-sidechain, sidechain-sidechain.
     """
-    num_resis_total = len(token_level_data["token_id_list"])
-    hbond_count = np.zeros((num_resis_total, num_resis_total, 3), dtype=np.int32)
-    atom_array, hbonds, failed = run_hbplus(
-        atom_array,
-        cutoff_HA_dist=cutoff_HA_dist,
-        cutoff_DA_dist=cutoff_DA_dist,
-        raise_on_failure=False,
-        default_hbplus_path="/path/to/data",
-    )
-    if failed or atom_array is None or hbonds is None:
-        return hbond_count
+    residue_starts = token_level_data["token_starts"]
+    counts = np.zeros((len(residue_starts), len(residue_starts), 3), dtype=np.int32)
+    annotated = AnnotateInteractions(
+        interaction_types=("hbond",),
+        hbond_model="plip",
+        inter_chain_only=False,
+    )({"atom_array": atom_array.copy()})["atom_array"]
+    pairs = np.unique(annotated.get_annotation("interaction_hbond", n_body=2).pairs, axis=0)
+    if not len(pairs):
+        return counts
 
-    has_is_ligand = "is_ligand" in atom_array.get_annotation_categories()
+    ensure_annotations(annotated, "is_ligand")
+    regions = np.full(len(annotated), -1, dtype=np.int8)
+    for atom_index in np.unique(pairs):
+        atom_regions = ATOM_REGION_BY_RESI.get(annotated.res_name[atom_index])
+        if atom_regions is not None:
+            for region_index, region in enumerate(("bb", "sc")):
+                if annotated.atom_name[atom_index] in atom_regions[region]:
+                    regions[atom_index] = region_index
+        elif annotated.is_ligand[atom_index]:
+            regions[atom_index] = 0
 
-    for hbond in hbonds:
-        d_chain_iid = hbond["d_chain"]
-        d_resi = int(hbond["d_resi"])
-        d_resn = hbond["d_resn"]
-        d_atom_name = hbond["d_atom"]
-
-        # Initialize donor/acceptor sidechain/backbone flags:
-        # then replace with True if valid for summation
-        d_is_sc = False
-        d_is_bb = False
-        a_is_sc = False
-        a_is_bb = False
-
-        d_mask = (
-            (atom_array.atom_name == d_atom_name)
-            & (atom_array.res_name == d_resn)
-            & (atom_array.res_id == d_resi)
-            & (atom_array.chain_iid == d_chain_iid)
-        )
-        d_idx = token_level_data["resi2index"].get(f"{d_chain_iid}__{d_resi}", None)
-        if d_idx is None:
-            continue
-
-        # Handle standard polymer residues for donor atom:
-        if d_resn in ATOM_REGION_BY_RESI:
-            d_is_sc = d_atom_name in ATOM_REGION_BY_RESI[d_resn]["sc"]
-            d_is_bb = d_atom_name in ATOM_REGION_BY_RESI[d_resn]["bb"]
-        else:
-            # If non-polymer, define any ligand HBonding atom as backbone:
-            if d_mask.sum() > 0:
-                d_first_idx = int(np.flatnonzero(d_mask)[0])
-                d_is_bb = bool(
-                    atom_array.is_ligand[d_first_idx] if has_is_ligand else ~atom_array.is_polymer[d_first_idx]
-                )
-
-        a_chain_iid = hbond["a_chain"]
-        a_resi = int(hbond["a_resi"])
-        a_resn = hbond["a_resn"]
-        a_atom_name = hbond["a_atom"]
-
-        a_mask = (
-            (atom_array.atom_name == a_atom_name)
-            & (atom_array.res_name == a_resn)
-            & (atom_array.res_id == a_resi)
-            & (atom_array.chain_iid == a_chain_iid)
-        )
-        a_idx = token_level_data["resi2index"].get(f"{a_chain_iid}__{a_resi}", None)
-        if a_idx is None:
-            continue
-
-        # Handle standard polymer residues for acceptor atom:
-        if a_resn in ATOM_REGION_BY_RESI:
-            a_is_sc = a_atom_name in ATOM_REGION_BY_RESI[a_resn]["sc"]
-            a_is_bb = a_atom_name in ATOM_REGION_BY_RESI[a_resn]["bb"]
-        else:
-            # If non-polymer, define any ligand HBonding atom as backbone:
-            if a_mask.sum() > 0:
-                a_first_idx = int(np.flatnonzero(a_mask)[0])
-                a_is_bb = bool(
-                    atom_array.is_ligand[a_first_idx] if has_is_ligand else ~atom_array.is_polymer[a_first_idx]
-                )
-
-        # 0 -> both backbone (BB-BB)
-        hbond_count[a_idx, d_idx, 0] += a_is_bb * d_is_bb
-        hbond_count[d_idx, a_idx, 0] += d_is_bb * a_is_bb
-
-        # 1 -> one backbone, one sidechain (BB-SC)
-        hbond_count[a_idx, d_idx, 1] += (a_is_bb * d_is_sc) | (a_is_sc * d_is_bb)
-        hbond_count[d_idx, a_idx, 1] += (d_is_bb * a_is_sc) | (d_is_sc * a_is_bb)
-
-        # 2 -> both sidechain (SC-SC)
-        hbond_count[a_idx, d_idx, 2] += a_is_sc * d_is_sc
-        hbond_count[d_idx, a_idx, 2] += d_is_sc * a_is_sc
-
-    return hbond_count
+    residue_pairs = np.searchsorted(residue_starts, pairs, side="right") - 1
+    valid = np.all(regions[pairs] >= 0, axis=1) & (residue_pairs[:, 0] != residue_pairs[:, 1])
+    donors, acceptors = residue_pairs[valid].T
+    channels = regions[pairs[valid]].sum(axis=1)
+    np.add.at(counts, (donors, acceptors, channels), 1)
+    np.add.at(counts, (acceptors, donors, channels), 1)
+    return counts
 
 
 def make_coord_list(
@@ -1199,8 +1134,6 @@ def annotate_na_ss(
     p_canonical_bp_filter: float = 0.0,
     mol_info: NucMolInfo | None = None,
     token_level_data: dict | None = None,
-    cutoff_HA_dist: float = 3.5,
-    cutoff_DA_dist: float = 3.5,
 ) -> AtomArray:
     """Compute base pairs and write canonical NA-SS conditions onto *atom_array*.
 
@@ -1220,8 +1153,6 @@ def annotate_na_ss(
         mol_info: Molecular-info constants; created if ``None``.
         token_level_data: Pre-computed metadata dict; augmented with
             geometry as needed.
-        cutoff_HA_dist: H-A distance cutoff (Angstrom) for HBPLUS.
-        cutoff_DA_dist: D-A distance cutoff (Angstrom) for HBPLUS.
 
     Returns:
         The same *atom_array* with canonical NA-SS conditions set.
@@ -1263,13 +1194,7 @@ def annotate_na_ss(
 
     is_na_full = np.asarray(token_level_data["is_na"], dtype=bool)
 
-    hbond_count = calculate_hb_counts(
-        atom_array,
-        token_level_data,
-        mol_info,
-        cutoff_HA_dist=cutoff_HA_dist,
-        cutoff_DA_dist=cutoff_DA_dist,
-    )
+    hbond_count = calculate_hb_counts(atom_array, token_level_data)
     bp_bool = np.asarray(
         compute_nucleic_ss(
             mol_info,

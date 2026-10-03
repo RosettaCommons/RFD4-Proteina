@@ -8,8 +8,6 @@ description: >
   hotspots, RASA, H-bonds, internal-coordinate groups, centroids, expandable
   segments, bonds, charges, combining annotated structures, or preparing a
   structure file as an annotated CIF.
-  For interpreting or converting legacy RFD3 JSON/YAML input specifications,
-  use rfd4-proteina-inputs instead.
 license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
 ---
 
@@ -25,8 +23,6 @@ This skill defines CIF authoring semantics. Workspace instructions and the
 active campaign govern shared-input ownership, output locations, length
 materialization, generation, and database accounting. Authoring a CIF does not
 by itself authorize a generation run or establish a campaign ledger policy.
-For legacy RFD3 JSON/YAML interpretation, use
-[rfd4-proteina-inputs](../rfd4-proteina-inputs/SKILL.md).
 
 ## Workflow
 
@@ -43,6 +39,12 @@ For legacy RFD3 JSON/YAML interpretation, use
    annotation's ability to round-trip.
 5. Complete [validation.md](references/validation.md), including chemistry and
    indexing review, pre-save checks, and save/reload comparison.
+
+For a saved CIF, use `bash skills/rfd4-proteina-annotated-cif/scripts/inspect_cif.sh <file.cif>`
+to inventory its structure, chemistry, expandable segments, and conditions. Use
+`bash skills/rfd4-proteina-annotated-cif/scripts/check_annotated_cif.sh <file.cif>`
+for pipeline validation and chemistry checks. Both helpers are read-only; see the
+[validation reference](references/validation.md#saved-cif-checks) for options and limits.
 
 ## Output standard
 

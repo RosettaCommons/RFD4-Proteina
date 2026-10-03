@@ -1,6 +1,6 @@
 # Bicyclic-peptide distillation set prepared from the 2026-05-27 combined manifest.
 #
-# Remote artifacts (CoreWeave object storage):
+# Remote artifacts (object storage):
 #   s3://YOUR_DATASET_STORE/train_datasets/bicycle_distillation/bicycle_distillation_2026_05_27.parquet
 #   s3://YOUR_DATASET_STORE/train_datasets/bicycle_distillation/data/bicycle_distillation_2026_05_27.sqfs
 #

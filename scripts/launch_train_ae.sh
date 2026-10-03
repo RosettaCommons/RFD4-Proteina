@@ -5,18 +5,21 @@
 # Run this script directly on the cluster (not from local machine)
 #
 # Usage:
-#   ./launch_train_ae.sh <cluster> [options] [extra_args...]
+#   ./scripts/launch_train_ae.sh [options] [extra_args...]
 #
 # Options:
 #   --no-copy        Skip copying code to run directory (use current repo)
 #   --follow, -f     Follow log output after job submission (Ctrl+C to exit)
 #   --submissions N  Number of job submissions for auto-requeue (default: 5)
 #
-# Examples:
-#   ./launch_train_ae.sh digs
-#   ./launch_train_ae.sh digs --no-copy
-#   ./launch_train_ae.sh digs --follow
-#   ./launch_train_ae.sh gb200 +experiment=ae_run1
+# Examples (run from the repository root):
+#   # Public native runs use the active Python environment; submissions require SLURM.
+#   ./scripts/launch_train_ae.sh --no-copy run_name_=my_ae_run
+#
+#   ./scripts/launch_train_ae.sh
+#   ./scripts/launch_train_ae.sh --no-copy
+#   ./scripts/launch_train_ae.sh --follow
+#   ./scripts/launch_train_ae.sh experiment_ae=ae_sota
 # =============================================================================
 
 set -e
@@ -27,7 +30,7 @@ source "$SCRIPT_DIR/common.sh"
 strip_inherited_slurm_env
 
 # Parse arguments
-CLUSTER=""
+REQUESTED_CLUSTER=""
 COPY_CODE="true"
 FOLLOW_LOGS="false"
 NUM_SUBMISSIONS=5  # Submit multiple times with --dependency=singleton for auto-requeue
@@ -52,8 +55,8 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            if [ -z "$CLUSTER" ]; then
-                CLUSTER="$1"
+            if [[ -z "$REQUESTED_CLUSTER" && "$1" != -* && "$1" != \~* && "$1" != *=* ]]; then
+                REQUESTED_CLUSTER="$1"
             else
                 EXTRA_ARGS="$EXTRA_ARGS $1"
             fi
@@ -62,11 +65,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "$CLUSTER" ]; then
-    echo "Usage: $0 <cluster> [--no-copy] [--follow] [--submissions N] [extra_args...]"
-    echo "Available clusters: digs, ord, gb200"
-    exit 1
-fi
+export CLUSTER="${REQUESTED_CLUSTER:-${CLUSTER:-local}}"
+
 
 # Load cluster configuration
 load_user_info "$CLUSTER" || exit 1
@@ -109,10 +109,10 @@ fi
 # Rename for consistency with rest of script
 GPUS_PER_NODE="$NGPUS_PER_NODE"
 
-# DIGS/apptainer runs are more reliable as one SLURM task that sees all local GPUs.
+# Apptainer runs are more reliable as one SLURM task that sees all local GPUs.
 # Lightning still expects the local task count to match devices, so we spoof the
 # SLURM task-count env vars at job runtime below.
-if [ "${CONTAINER_TYPE:-}" = "apptainer" ]; then
+if [ "${CONTAINER_TYPE:-}" != "docker" ]; then
     NTASKS_PER_NODE=1
 fi
 
@@ -176,7 +176,7 @@ emit_ulimit_block >> "$SBATCH_FILE"
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -191,7 +191,7 @@ EOF
 # Apptainer clusters: pass cluster identity to exec_core.sh (via shebang) and
 # compute distributed training endpoints dynamically at job time.
 # Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     cat >> "$SBATCH_FILE" << EOF
 
 # Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
@@ -203,7 +203,7 @@ export MASTER_PORT=\$((1024 + RANDOM % 64512))
 export MASTER_ADDR=\$(scontrol show hostnames "\$SLURM_JOB_NODELIST" | head -n 1)
 
 # Present a local task count matching visible GPUs even though SLURM only starts
-# one task on DIGS. This matches the manual interactive/sbatch pattern that works.
+# one task with this profile. This matches the manual interactive/sbatch pattern that works.
 export SLURM_NTASKS_PER_NODE=$GPUS_PER_NODE
 export SLURM_TASKS_PER_NODE=$GPUS_PER_NODE
 EOF
@@ -223,7 +223,7 @@ fi
 # Add container execution command
 SCRIPT_TRAIN="$CODE_DIR/src/rfproteina/partial_autoencoder/train.py"
 
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     # Apptainer: Use shebang in train.py to handle container execution
     cat >> "$SBATCH_FILE" << EOF
 

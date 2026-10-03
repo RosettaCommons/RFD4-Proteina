@@ -9,44 +9,26 @@ README](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md). Fo
 standards, see
 [AGENTS.md](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/AGENTS.md).
 
-:::{admonition} On a configured compute cluster?
-:class: ipd-cluster
-`CLUSTER=digs` is already provisioned. The shared paths in `.ipd/.env.digs` get sourced for you, so
-the `CLUSTER=local` setup below is only for machines outside IPD. Drop the `python` and call the
-entry scripts directly, as `./src/rfproteina/train.py` and `./src/rfproteina/generate.py`, so their
-shebang runs them inside the apptainer image. Do this on an interactive GPU. For multi GPU training
-use `scripts/launch_train_latents.sh` for the main model or `scripts/launch_train_ae.sh` for the
-autoencoder; both enter the container for you.
-:::
+## Setup
 
-## Setup on any cluster, with no container
-
-Training runs in the same plain `uv` environment as inference. No apptainer, no squashfs, no shared
-filesystem. Install and configure exactly as the [README
-setup](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/README.md#setup) describes.
+Install the native Python environment and configure `.env.local` as described in the
+[installation guide](installation.rst). For host tools, notebooks, and SLURM config resolution,
+install the optional development environment as well:
 
 ```bash
-bash setup.sh                      # choose "5) other" at the cluster prompt
+bash setup.sh
+bash setup.sh --venv
 source .venv/bin/activate
-
-export CLUSTER=local
-export DATA_PATH="$PWD/data_path"
-mkdir -p "$DATA_PATH"
-printf 'DATA_PATH=%s\n' "$DATA_PATH" > .ipd/.env.local
+export DATA_PATH="${DATA_PATH:-$PWD/data_path}"  # match the path configured in .env.local
 ```
 
-> **Why `CLUSTER=local` and `.ipd/.env.local`?** Both `train.py` and `generate.py` call
-> `load_dotenv()` at startup, which needs an env file for the current `CLUSTER` to exist and raises
-> when it does not. It loads with `override=False`, so any variable you export yourself wins. On the
-> configured clusters, meaning `digs`, `coreweave`, `gb200` and `ord`, the committed `.ipd/.env.<cluster>`
-> files fill in shared paths and the container and squashfs machinery. On a fresh cluster, a one
-> line `local` file plus your own exports is all you need.
+Use the installed `rfd4-*` commands from the activated Python environment.
+Existing public environment files and private cluster profiles are preserved by setup.
 
 ## Continue training walkthrough
 
 This walkthrough finetunes the released denoiser on a tiny self contained dataset, which is enough
-to prove the training loop runs end to end on a fresh cluster. It uses no squashfs and no
-container.
+to prove the training loop runs end to end on a fresh cluster. It uses the Python environment and plain CIF files, without squashfs.
 
 ### 1. Download the model and the test dataset
 
@@ -54,8 +36,7 @@ Run `download_example_data.sh` with `--with-test-dataset` and it pulls both chec
 denoiser and the autoencoder, plus the roughly 50 system `test_dataset`, which is a parquet and a
 plain directory of CIFs, all into `$DATA_PATH`. Everything comes from the public bucket
 **`YOUR_DATASET_STORE`** at `https://YOUR_DATASET_STORE`, over anonymous
-HTTPS. No AWS CLI, no credentials, no IPD account. That bucket is the only one reachable from
-outside. The internal `YOUR_DATASET_STORE*` buckets return `403` without credentials.
+HTTPS. No AWS CLI or credentials are required.
 
 ```bash
 ./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset
@@ -88,7 +69,7 @@ It is the same checkpoint inference uses, named in
 [`configs/inference.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/inference.yaml).
 
 ```bash
-python src/rfproteina/train.py \
+rfd4-train \
     experiment=tutorial/finetune_test_dataset \
     pretrain_ckpt_path=/path/to/denoiser.ckpt \
     +single=true +nolog=true
@@ -130,29 +111,25 @@ parquet `path` row, like `systems/<xx>/<id>/<id>.cif`, resolves against that bas
 nothing. To build your own dataset the same way, mirror this config with your parquet and CIF
 directory.
 
-### With or without the apptainer shebang
+### Entry points
 
-`train.py` and `generate.py` carry a shebang that re-runs the file inside an apptainer container
-when you *execute* it, as `./train.py ...`. Passing them to Python instead, as
-`python src/rfproteina/train.py ...` above, bypasses the shebang and runs in your `uv` venv. On an
-configured cluster with the SIF present, the shebang path works too. On a fresh cluster, always use the
-`python <script>` form.
+Run `rfd4-train` and `rfd4-generate` from the activated Python environment.
 
 ## Training essentials
 
 ### Entry points
 
-| Model | Script | Config name |
+| Model | Command | Config name |
 | --- | --- | --- |
-| Latent diffusion (main model) | `src/rfproteina/train.py` | `training_proteina` |
-| Autoencoder | `src/rfproteina/partial_autoencoder/train.py` | `training_ae` |
+| Latent diffusion (main model) | `rfd4-train` | `training_proteina` |
+| Autoencoder | `rfd4-train-ae` | `training_ae` |
 
 ```bash
 # Diffusion, quick single-GPU test
-python src/rfproteina/train.py experiment=<name> +single=true +nolog=true
+rfd4-train experiment=<name> +single=true +nolog=true
 
 # Autoencoder
-python src/rfproteina/partial_autoencoder/train.py --config-name training_ae
+rfd4-train-ae --config-name training_ae
 ```
 
 ### Config composition
@@ -218,9 +195,9 @@ sampling weights normalize alternative conformers separately from this loading s
 
 ### Published AE streaming datasets
 
-Use `experiment_ae=streaming` with the AE training entry point to select the following mix
+Use `datasets=ae_streaming` with the AE training entry point to select the following mix
 and 384-token crops/padding. All sources live under
-`${DATASET_STORE_ROOT:-s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/`:
+`${DATASET_STORE_ROOT}/train_datasets/streaming-latest/`:
 
 | Source | Directory | Weight |
 | --- | --- | --- |
@@ -244,7 +221,7 @@ PDB retains its cluster weights and conformer normalization. RNA requires
 `source_training_eligible`; TED requires `InterfaceLength > 10`, `AvgIntPAE < 10`,
 `AvgIntPlddt > 70`, and `n_res_a + n_res_b <= 768` before cropping.
 Parsed records are cached under `${LOCAL_DRIVE_MOUNT:-/tmp}/${USER}/atomworks_parse_cache`.
-The CoreWeave profile supplies the LOTA `AWS_ENDPOINT_URL`; retain it when launching there.
+Object-store-backed profiles must supply `AWS_ENDPOINT_URL`; retain it when launching there.
 Re-Glyco is not included until its streaming conversion and audit are published.
 
 The independent `train/ae/antibody_antigen_streaming` leaf targets
@@ -273,28 +250,24 @@ through a preset from `configs/design_tasks/presets/` such as `plinder_tasks`,
 To override a frequency temporarily, do it on the command line.
 
 ```bash
-python src/rfproteina/train.py experiment=<name> \
+rfd4-train experiment=<name> \
     datasets.train.<key>.dataset.transform.design_tasks.unconditional.frequency=80.0
 ```
 
 ## Launching SLURM jobs
 
-> The `scripts/launch_*.sh` launchers target the configured clusters and need their container and SLURM
-> infrastructure, meaning apptainer or docker and enroot, `.ipd/.env.<cluster>`, and a per user
-> `scripts/.user_info_<cluster>`. On a fresh cluster without that stack, run `train.py` or
-> `generate.py` directly as shown above.
-
-Each cluster needs a `scripts/.user_info_<cluster>` file holding SLURM settings. Copy the matching
-`scripts/.user_info_<cluster>_example` template, or let `setup.sh` create one for you when you pick
-a known cluster. Here are the main launchers.
+The `scripts/launch_*.sh` launchers require SLURM and use the installed Python
+environment. Omit the cluster argument. Configure scheduler resources in the
+optional `scripts/.user_info_local`, using `scripts/user_info.example` as a
+starting point. See {ref}`slurm-installation` for scheduler settings.
 
 | Workflow | Script |
 | --- | --- |
-| Train latent diffusion | `scripts/launch_train_latents.sh <cluster> [hydra args]` |
-| Train autoencoder | `scripts/launch_train_ae.sh <cluster>` |
-| Inference / offline validation | `scripts/launch_generate.sh <cluster> [--njobs N] [hydra args]` |
-| Parameter sweeps | `scripts/launch_sweep.sh <cluster> --sweep-config <yaml>` |
-| Reward guided search | `scripts/launch_search.sh <cluster>` |
+| Train latent diffusion | `scripts/launch_train_latents.sh [hydra args]` |
+| Train autoencoder | `scripts/launch_train_ae.sh` |
+| Inference / offline validation | `scripts/launch_generate.sh [--njobs N] [hydra args]` |
+| Parameter sweeps | `scripts/launch_sweep.sh --sweep-config <yaml>` |
+| Reward guided search | `scripts/launch_generate.sh inference_experiment=<search-config>` |
 
 `launch_generate.sh` splits inputs across job array tasks with `--njobs`, then a dependent job
 concatenates the per job metric CSVs. Foldseek clustering is on by default, and `--no-foldseek`
@@ -317,7 +290,7 @@ To evaluate structures you already generated, run `evaluate.py`. It is Hydra bas
 `generate.py`.
 
 ```bash
-python src/rfproteina/evaluate.py \
+rfd4-evaluate \
     inputs=/path/to/structures metrics_tags='[unconditional_refolding]' \
     out_dir=/path/to/eval_output
 ```
@@ -327,7 +300,7 @@ python src/rfproteina/evaluate.py \
 
 **Custom metrics and rewards.** Add Python metric classes under
 `src/rfproteina/metrics/custom_metrics/` and register them in `configs/metrics/custom_metrics/`.
-Both are git ignored, and `setup.sh` scaffolds the entry config. Search rewards get configured
+Both are git ignored, and `setup.sh --venv` scaffolds the entry config. Search rewards get configured
 inline in the search experiment config, as
 `configs/inference_experiment/inference_beam_example.yaml` shows. The [custom metrics
 guide](workflow/custom-metrics.md) has the full walkthrough.
@@ -352,10 +325,9 @@ averaged weights. The released denoiser is an EMA checkpoint.
 
 | Issue | Solution |
 | --- | --- |
-| `No .env file found for cluster '<x>'` | `export CLUSTER=local` and create `.ipd/.env.local`. See [Setup](#setup-on-any-cluster-with-no-container) |
 | `No autoencoder checkpoint path provided`, or the AE is missing | Download it with `download_example_data.sh`, or set `autoencoder_ckpt_path=` |
 | Parquet or CIF not found | Check `DATA_PATH`. For custom data, confirm `loader.base_path` and the parquet `path` column resolve |
 | Training not resuming | Make sure a `last.ckpt` exists in the run's `checkpoints/`, or pass `resume_ckpt_path=` |
 | Out of memory | Lower `dataloaders.batch_size` or `opt.accumulate_grad_batches` |
 | Segfault in rdkit or posebusters | uv's Python needs `LD_PRELOAD` pointed at the bundled `libstdc++.so.6`, as in the `Makefile`. `make test` sets it for you |
-| SLURM launcher fails on a fresh cluster | The launchers need the container and SLURM stack. Run `python src/rfproteina/train.py ...` directly instead |
+| SLURM launcher fails on a fresh cluster | Check SLURM availability and scheduler resources; use an installed Python environment |

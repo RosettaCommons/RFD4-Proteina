@@ -3,4 +3,4 @@ defaults:
   - structure_prediction_metrics
   - developability_metrics
   - antibody_metrics
-  # - ipa_metrics # Commented out for now until it works on digs
+  # - ipa_metrics # Disabled until the backend compatibility issue is resolved

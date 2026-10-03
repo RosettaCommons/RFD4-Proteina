@@ -71,7 +71,7 @@ def assert_same_atom_array_with_group_equivalence(
     excluded.update(_UNINDEXING_ADDED_ANNOTATIONS)
     if not check_ids:
         excluded.update(_ID_ANNOTATIONS)
-        excluded.update(["within_chain_source_res_idx", "within_index_group_res_idx"])
+        excluded.update(["within_chain_source_res_idx"])
     for cond in _PAIR_MASK_CONDITIONS:
         prefix = f"condition_{cond.name}_"
         excluded.update(cat for cat in all_cats if cat.startswith(prefix))
@@ -203,22 +203,8 @@ def _make_unindexed_data(pdb_id: str, seed: int = 42, p_split_group: float = 0.0
         np.where(sequence_mask, C_SEQ.ground_truth_value(aa), C_SEQ.default_annotation(aa)),
     )
 
-    aa.set_annotation("within_index_group_res_idx", aa.within_chain_source_res_idx.copy())
     C_NTR.set_annotation(aa, C_NTR.annotation(aa, default="generate"))
     C_CTR.set_annotation(aa, C_CTR.annotation(aa, default="generate"))
-
-    # Reset indices to zero to avoid any bias.
-    for index_group in np.unique(C_IDXGRP.annotation(aa, default="generate")):
-        group_mask = C_IDXGRP.annotation(aa, default="generate") == index_group
-
-        # We leave the residue indices unchanged for globally indexed groups
-        is_indexed = C_IDX.mask(aa[group_mask], default="raise")
-        if (is_indexed != is_indexed[0]).any():
-            raise ValueError(f"Index group {index_group} contains a mix of indexed and unindexed atoms.")
-        if is_indexed[0]:
-            continue
-
-        aa.within_index_group_res_idx[group_mask] -= aa.within_index_group_res_idx[group_mask].min()
 
     snapshot = copy.deepcopy(aa)
 
@@ -291,33 +277,6 @@ def test_appended_tokens_match_original_unindexed_atoms(pdb_id: str, p_split_gro
         )
         assert not C_NTR.mask(appended, default="generate").any()
         assert not C_CTR.mask(appended, default="generate").any()
-
-
-@pytest.mark.parametrize("p_split_group", [0.0, 1.0])
-@pytest.mark.parametrize("pdb_id", ["6lyz", "5ocm", "7rxs"])
-def test_within_index_group_res_idx_per_unindexed_group(pdb_id: str, p_split_group: float) -> None:
-    """Each unindexed C_IDXGRP group has within_index_group_res_idx starting at 0 with no duplicates."""
-    _, data_train, _ = _make_unindexed_data(pdb_id, p_split_group=p_split_group)
-    transform = UnindexFlaggedTokens()
-    out = transform(data_train)["atom_array"]
-
-    token_starts = get_token_starts(out)
-    idxgrp = C_IDXGRP.annotation(out, default="generate")[token_starts]  # token-level
-    within_res_idx = out.within_index_group_res_idx[token_starts]  # token-level
-    is_indexed = C_IDX.mask(out, default="generate")[token_starts]  # token-level
-
-    for gid in np.unique(idxgrp):
-        group_mask = idxgrp == gid
-        if is_indexed[group_mask].all():
-            continue  # indexed groups are not required to start at 0
-
-        group_res_idxs = within_res_idx[group_mask]
-        assert (
-            group_res_idxs.min() == 0
-        ), f"Group {gid} within_index_group_res_idx min={group_res_idxs.min()}, expected 0"
-        assert len(np.unique(group_res_idxs)) == len(
-            group_res_idxs
-        ), f"Group {gid} within_index_group_res_idx has duplicates: {group_res_idxs}"
 
 
 # Captured array_to_annotate (tests/data/annotate_unindexed_input.cif.zst): generated tokens plus two

@@ -15,10 +15,8 @@
 #   --njobs=<int>        Number of parallel jobs (default: 1)
 #   --gpus-per-job=<int> GPUs per SLURM job (default: 1)
 #
-# Examples:
-#   ./launch_infer_ae.sh ord --input_dir=/path/to/structures
-#   ./launch_infer_ae.sh digs --input_dir=./my_pdbs --ckpt=/path/to/ae.ckpt
-#   ./launch_infer_ae.sh gb200 --input_dir=./cifs --njobs=16 --gpus-per-job=4
+# IPD cluster profiles are documented in .ipd/docs/clusters.md.
+#
 # =============================================================================
 
 set -e
@@ -80,7 +78,7 @@ done
 
 if [ -z "$CLUSTER" ]; then
     echo "Usage: $0 <cluster> [--input_dir=<path>] [--njobs=<int>] [--gpus-per-job=<int>] [extra_args...]"
-    echo "Available clusters: digs, ord, gb200"
+    echo "Choose an IPD cluster profile; see .ipd/docs/clusters.md"
     exit 1
 fi
 
@@ -143,7 +141,7 @@ cat > "$SBATCH_FILE" << EOF
 #!/bin/bash
 EOF
 
-# Add account if not DIGS
+# Add the configured account unless the profile omits it
 if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
     echo "#SBATCH --account $ACCOUNT" >> "$SBATCH_FILE"
 fi
@@ -167,7 +165,7 @@ cat >> "$SBATCH_FILE" << EOF
 #SBATCH --error ./slurm_run_outputs/slurm_%A_%a.err
 
 # Environment setup
-export PYTHONPATH=$REPO_ROOT:\$PYTHONPATH
+export PYTHONPATH=$REPO_ROOT:$REPO_ROOT/lib/atomworks/src:\$PYTHONPATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
@@ -190,8 +188,7 @@ if [ -n "$INPUT_DIR" ]; then
     PYTHON_ARGS="$PYTHON_ARGS input_dir=$INPUT_DIR"
 fi
 
-if [ "$CLUSTER_TYPE" == "digs" ]; then
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
 
 # Run AE inference - each GPU gets its own job_id
 for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
@@ -199,32 +196,14 @@ for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
     if [ $JOB_ID -lt $NJOBS ]; then
         echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
 EOF
-    cat >> "$SBATCH_FILE" << EOF
-        CUDA_VISIBLE_DEVICES=\$LOCAL_ID $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
-EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
-    fi
-done
-wait
-EOF
-else
-    cat >> "$SBATCH_FILE" << 'EOF'
-
-# Run AE inference - each GPU gets its own job_id
-for LOCAL_ID in $(seq 0 $((GPUS_PER_JOB - 1))); do
-    JOB_ID=$((ARRAY_TASK_ID * GPUS_PER_JOB + LOCAL_ID))
-    if [ $JOB_ID -lt $NJOBS ]; then
-        echo "Running AE inference with job_id=$JOB_ID on GPU $LOCAL_ID"
-EOF
-    cat >> "$SBATCH_FILE" << EOF
+cat >> "$SBATCH_FILE" << EOF
         srun --exclusive --ntasks=1 --gpus=1 $CONTAINER_CMD python $SCRIPT_AE_INFER $PYTHON_ARGS +job_id=\$JOB_ID njobs=$NJOBS $EXTRA_ARGS &
 EOF
-    cat >> "$SBATCH_FILE" << 'EOF'
+cat >> "$SBATCH_FILE" << 'EOF'
     fi
 done
 wait
 EOF
-fi
 
 # Submit job
 print_header "Submitting Job"

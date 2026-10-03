@@ -7,49 +7,42 @@ Run every command from the repository root.
 Prerequisites
 -------------
 
-You need Linux, an NVIDIA GPU, ``git``, and ``curl``. RFD4-Proteína runs on
-Python 3.12. The setup script builds that environment for you with `uv
-<https://docs.astral.sh/uv/>`_, so you do not need to install Python yourself.
+You need Linux x86_64, an NVIDIA GPU with a driver compatible with CUDA 13,
+``git``, and ``curl``. The setup script installs Python 3.12 with ``uv``.
 
-Install and download weights
-----------------------------
-
-Install uv, then run:
+Install
+-------
 
 .. code-block:: bash
 
    git clone https://github.com/RosettaCommons/RFD4-Proteina.git
    cd RFD4-Proteina
-   bash setup.sh
+   make setup
    source .venv/bin/activate
-   export DATA_PATH="$PWD/data_path"
-   bash scripts/download_example_data.sh "$DATA_PATH" --skip-of3
 
-AtomWorks is installed from a pinned revision of its public release branch.
-No submodule, private profile, or credentials are required. The checkpoint pair
-occupies about 7.3 GB. Leave CLUSTER unset for a local install.
+Setup creates ``.venv``, installs the dependencies declared in ``pyproject.toml``,
+and downloads the two released checkpoints (about 8 GB) from the public bucket.
+It configures ``DATA_PATH`` in ``.env.local``, defaulting to ``./data_path``.
+Existing data paths and downloaded checkpoints are reused.
+
+See :doc:`installation` for custom paths, pip installation, and optional refolding.
 
 Generate a design
 -----------------
 
-Generate an unconditional protein design:
+On a GPU node, with the environment activated:
 
 .. code-block:: bash
 
-   python src/rfproteina/generate.py \
-       inputs=data/benchmarks/monomer \
-       num_replicates=1 \
-       out_dir=./runs/smoke
+   rfd4-generate inputs=data/benchmarks/monomer \
+       subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
 
-Generated CIFs and per-design metadata land under
-``./runs/smoke/inference_samples/``. If you enable metrics, their CSV files
-land separately under ``./runs/smoke/inference_metrics/``.
+This generates one 100-residue protein under ``runs/smoke/inference_samples/``.
+Metrics, when enabled, land in ``runs/smoke/inference_metrics/``.
+``num_replicates`` counts designs per example: omitting ``subset_to_examples``
+runs all three monomer examples (100, 150, and 250 residues).
 
-Watch out for one thing here. ``num_replicates`` counts *per example*, not in
-total. ``monomer`` holds three examples, ``monomer-short`` at 100 residues,
-``monomer-medium`` at 150, and ``monomer-long`` at 250. So ``num_replicates=1``
-gives you **three** designs, one of each length. Point ``inputs`` at a file with
-a single example, or pass ``num_replicates=N`` to get ``3 × N`` designs.
+For batch jobs, see :ref:`slurm-installation`.
 
 Next steps
 ----------

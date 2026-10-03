@@ -15,12 +15,12 @@ motif, no ligand, no target. Back to the [skill](../../SKILL.md).
 
 ```bash
 # Smoke test: one short monomer
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer subset_to_examples=monomer-short \
     num_replicates=1 out_dir=./runs/uncond_smoke
 
 # Real run: 80 designs of each monomer example, 8 at a time
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     num_replicates=80 batch_size=8 out_dir=./runs/monomers
 ```
@@ -34,10 +34,8 @@ python src/rfproteina/generate.py \
   `(0.9,0.9)` max diversity (see [overrides](../overrides.md)).
 - **Metrics.** `metrics_tags='[unconditional_refolding]'` for AF3 refolding +
   pLDDT/scRMSD (needs an AF3 container — see **rfd4-proteina-evaluate**).
-- **Length** is set inside the input (`length` field), not on the CLI. For a new
-  length, build an input (a one-line JSON like `monomer.json`, or an annotated
-  CIF via **rfd4-proteina-annotated-cif**). Use **rfd4-proteina-inputs** only to
-  adapt the legacy JSON form.
+- **Length** is defined by the input. Use **rfd4-proteina-annotated-cif** to
+  create an input with the requested length or expandable segments.
 
 ## Gotchas
 

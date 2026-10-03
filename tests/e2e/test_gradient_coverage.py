@@ -19,6 +19,7 @@ from tests.e2e.helpers.gpu_e2e import (
     require_gpu_e2e,
     run_cmd,
 )
+from tests.e2e.helpers.regression_baselines import deterministic_env
 
 # LOWER BOUND on the rows each parameter must reach with a non-zero gradient; the test fails only
 # when a parameter falls BELOW its floor (something got disconnected). A count above the floor is
@@ -114,7 +115,7 @@ def test_gradient_coverage(tmp_path: Path) -> None:
         f"+callbacks.grad_coverage.output_path={coverage_json}",
         f"++out_dir={out_dir}",
     ]
-    proc = run_cmd(cmd, env={"WANDB_MODE": "disabled"})
+    proc = run_cmd(cmd, env=deterministic_env())
     assert proc.returncode == 0, f"Training failed:\n{proc.stderr or proc.stdout}"
 
     output = proc.stdout + "\n" + proc.stderr

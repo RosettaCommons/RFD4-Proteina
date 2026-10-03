@@ -105,14 +105,14 @@ when validating the workflow.
 **Either** generate them:
 
 ```bash
-./scripts/launch_generate.sh <cluster> inference_experiment=<name>_phase1 --no-foldseek
+./scripts/launch_generate.sh inference_experiment=<name>_phase1 --no-foldseek
 ```
 
 **Or**, if the user already has a curated set, score it offline so the parents carry
 metric values from the same metric set:
 
 ```bash
-python src/rfproteina/evaluate.py inputs=/path/to/curated \
+rfd4-evaluate inputs=/path/to/curated \
     metrics_tags='[design,...]' out_dir=<out_root>/<name>_phase1
 ```
 
@@ -188,7 +188,7 @@ Design IDs preserve internal dots: `design_z1.61.cif.zst` has ID `design_z1.61`.
 ## Step 6 — Phase 2: sweep the restart step
 
 ```bash
-./scripts/launch_sweep.sh <cluster> --sweep-config configs/sweeps/<name>.yaml \
+./scripts/launch_sweep.sh --sweep-config configs/sweeps/<name>.yaml \
     --base-out-dir <out_root>/<name>_sweep --no-foldseek
 ```
 

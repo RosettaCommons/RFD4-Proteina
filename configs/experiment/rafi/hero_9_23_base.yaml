@@ -1,7 +1,0 @@
-# @package _global_
-
-defaults:
-  - /releases/flow/2026_09_28_sequence_probability_v4
-  - _self_
-
-run_name_: sequence_probability_no_ncys_adam_readout

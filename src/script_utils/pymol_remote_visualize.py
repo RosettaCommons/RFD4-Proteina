@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.io.utils.visualize import get_pymol_session, view_pymol
-from atomworks.ml.conditions import C_DIS, Condition
+from atomworks.ml.conditions import Condition
 
 from rfproteina.proteina import Proteina
 
@@ -18,8 +18,6 @@ def get_atom_array_style_cmd(
     atom_array: struc.AtomArray | struc.AtomArrayStack,
     obj: str,
     label: bool = False,
-    max_distances: int = 100,
-    grid_slot: int | None = None,
 ) -> str:
     """Generate PyMOL commands to style an atom array visualization.
 
@@ -33,13 +31,10 @@ def get_atom_array_style_cmd(
         atom_array: The biotite AtomArray or AtomArrayStack to be styled
         obj: PyMOL object name to apply the styling to
         label: Whether to label all atoms with their 0-indexed atom_id
-        max_num_dist_lines: Maximum number of distance lines to show (pymol hangs when there's too many
-            distance objects)
 
     Returns:
         str: A PyMOL command string that styles the atom array
     """
-    grid_slot = grid_slot or np.random.randint(0, 10_000)
     commands = [f"hide everything, {obj}"]
     annotations = atom_array.get_annotation_categories()
 
@@ -88,57 +83,6 @@ def get_atom_array_style_cmd(
             ]
         )
 
-    # Style constraints, if present:
-    # 2-body:
-    # ... add distance lines between atoms if specified in annotations
-    if hasattr(atom_array, "_annot_2d"):
-        distance_commands = []
-        if C_DIS.full_name in atom_array._annot_2d:
-            constraint_data = C_DIS.annotation(atom_array).as_array()
-            if len(constraint_data) > 0:
-                _atom_idxs = np.unique(constraint_data[:, :2].flatten()).astype(int)
-                _atom_ids = atom_ids[_atom_idxs]
-                _selection = f"{obj} and id {'+'.join(str(id) for id in _atom_ids)}"
-                commands.extend(
-                    [
-                        f"delete m2d_{obj}",
-                        f"select m2d_{obj}, {_selection}",
-                        f"show spheres, m2d_{obj}",
-                        f"set sphere_color, lime, m2d_{obj}",
-                        f"set sphere_scale, 0.25, m2d_{obj}",
-                        f"set sphere_transparency, 0.5, m2d_{obj}",
-                        f"show sticks, byres m2d_{obj}",
-                    ]
-                )
-
-                if len(constraint_data) > max_distances:
-                    logger.warning(f"Too many distance conditions ({len(constraint_data)}), sampling {max_distances}.")
-                    constraint_idxs = np.arange(len(constraint_data))
-                    constraint_idxs = np.random.choice(constraint_idxs, max_distances, replace=False)
-                    constraint_data = constraint_data[constraint_idxs]
-
-                for row in constraint_data:
-                    idx_i, idx_j, value = row
-                    if (idx_i > idx_j) or (value == 0):
-                        continue
-
-                    i, j = atom_ids[idx_i], atom_ids[idx_j]
-                    # ... if we have a stack, we grab the last frame for the distance computation
-                    if isinstance(atom_array, struc.AtomArrayStack):
-                        distance = struc.distance(atom_array[0, idx_i], atom_array[0, idx_j])
-                    else:
-                        distance = struc.distance(atom_array[idx_i], atom_array[idx_j])
-
-                    distance_name = f"d{idx_i}-{idx_j}_{value:.2f}_{distance:.2f}"
-                    distance_commands.extend(
-                        [
-                            f"distance {distance_name}, model {obj} and id {i}, model {obj} and id {j}",
-                            f"set grid_slot, {grid_slot}, {distance_name}",
-                        ]
-                    )
-
-        commands.extend(distance_commands)
-
     # Handle 1-D conditions (only display masks)
     for cond in Condition:
         if cond.n_body == 1 and cond.mask(atom_array, default="generate").any():
@@ -159,7 +103,6 @@ def viz(
     id: str = "obj",
     clear: bool = False,
     label: bool = False,
-    max_distances: int = 100,
     view_ori_token: bool = False,
     stylize: bool = False,
     connect_mode: Literal[0, 1, 2, 3, 4] = 4,
@@ -207,7 +150,7 @@ def viz(
     slot = np.random.randint(0, 10_000)
     obj_name = view_pymol(atom_array, id=id, grid_slot=slot)
     if stylize:
-        cmd = get_atom_array_style_cmd(atom_array, obj_name, label=label, grid_slot=slot, max_distances=max_distances)
+        cmd = get_atom_array_style_cmd(atom_array, obj_name, label=label)
         pymol.do(cmd)
 
     if view_ori_token:

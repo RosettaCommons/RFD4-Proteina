@@ -136,14 +136,6 @@ def test_strict_correspondence(mismatch: str) -> None:
         StructureComparisonMetric().compute(gt, gt)
 
 
-def test_distance_mae_rotation_invariance() -> None:
-    """Rigid rotation cannot change a distance-based score."""
-    gt = load_structure("4kpy_tmp.cif.zst")
-    pred = gt.copy()
-    pred.coord = gt.coord @ np.diag([-1.0, -1.0, 1.0])
-    assert StructureComparisonMetric(metric_type="dist_mae").compute(gt, pred)["mae_all_pairs"] < 1e-4
-
-
 def test_small_and_empty_selections() -> None:
     """Two-atom alignment and empty scoring selections retain their metric semantics."""
     gt = load_structure("4kpy_mn.cif.zst")

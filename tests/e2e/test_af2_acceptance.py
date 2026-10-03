@@ -33,7 +33,7 @@ from tests.e2e.helpers.regression_baselines import deterministic_env, require_so
 pytestmark = [pytest.mark.gpu, pytest.mark.slow]
 
 _COMPLETE_CRYSTAL_FIXTURE = TEST_DATA_DIR / "5vht_from_file.cif"
-_BINDER_SPEC = ROOT / "data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst"
+_BINDER_SPEC = ROOT / "data/benchmarks/ppi/ppi_all_atom/pdl1.cif.zst"
 _SEED = 42
 _BACKBONE = frozenset({"N", "CA", "C", "O"})
 _PHE_ATOMS = frozenset({"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"})

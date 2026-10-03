@@ -10,7 +10,7 @@
         "requires": ["rfd4-proteina-setup complete (venv + atomworks + DATA_PATH)", "a small set of pre-generated CIFs under ./runs/smoke from the generate/setup smoke test", "no AF3 container required (design tag only)"]
       },
       "expected_behavior": [
-        "Runs python src/rfproteina/evaluate.py inputs=./runs/smoke metrics_tags='[design]' out_dir=./runs/eval_out",
+        "Runs rfd4-evaluate inputs=./runs/smoke metrics_tags='[design]' out_dir=./runs/eval_out",
         "Uses Hydra key=value arguments, never --key value",
         "Does not request any *_refolding tag, so no AF3 container is needed",
         "Reports that per_example_metrics.csv is written under ./runs/eval_out/evaluation_metrics/"

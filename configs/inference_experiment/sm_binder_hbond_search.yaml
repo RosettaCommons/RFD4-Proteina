@@ -1,6 +1,6 @@
 # @package _global_
 # Beam search maximizing interface protein<->ligand H-bonds. Target is SAM.
-#   ./src/rfproteina/generate.py inference_experiment=sm_binder_hbond_search
+#   rfd4-generate inference_experiment=sm_binder_hbond_search
 
 defaults:
   - inference_on_user_inputs

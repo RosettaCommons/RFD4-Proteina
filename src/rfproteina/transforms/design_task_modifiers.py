@@ -11,7 +11,6 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus
 from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import (
     C_CRD,
-    C_DIS,
     C_SEQ,
 )
 from atomworks.ml.transforms.sasa import calculate_atomwise_rasa
@@ -84,8 +83,7 @@ def add_rasa_condition(
     if np.random.rand() < p_include_non_ligand:
         seq_mask = C_SEQ.mask(atom_array, default="generate")
         crd_mask = C_CRD.mask(atom_array, default="generate") | C_CRDGRP.is_internal(atom_array)
-        dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-        inclusion_mask = seq_mask | crd_mask | dis_mask
+        inclusion_mask = seq_mask | crd_mask
     else:
         inclusion_mask = atom_array.is_ligand | atom_array.atomize
 
@@ -332,8 +330,7 @@ def _subset_ground_truth_interaction_condition(
         seq_mask = C_SEQ.mask(atom_array, default="generate")
         crd_mask = C_CRD.mask(atom_array, default="generate")
         intcrd_mask = C_CRDGRP.is_internal(atom_array)
-        dis_mask = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-        motif_mask = seq_mask | crd_mask | intcrd_mask | dis_mask
+        motif_mask = seq_mask | crd_mask | intcrd_mask
 
         stored = condition.annotation(atom_array, default="generate")
         ground_truth = stored.copy()

@@ -72,7 +72,7 @@ refolding oracles (`oracle`, `oracle_ppi`, `oracle_dna`) run the AF3 predictor,
 which runs **only inside an apptainer/docker container** configured via the
 cluster env files. Without the container these metrics silently do not run (no
 oracle columns, no error). Plain design metrics need no container. See
-[rfd4-proteina-setup / references/clusters.md](../../rfd4-proteina-setup/references/clusters.md).
+[RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
 
 Oracle key outputs (prefixed `<oracle_key>.`): `overall_plddt`, `overall_ptm`,
 `overall_iptm`, `plddt_coi`, `ptm_coi`, `pae_coi`, `ipae_coi`, `min_ipae_coi`,

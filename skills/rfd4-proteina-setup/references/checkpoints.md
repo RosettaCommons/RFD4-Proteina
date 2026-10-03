@@ -7,7 +7,7 @@ RFD4-Proteína needs **two** checkpoints, both read from `$DATA_PATH` by default
 | Denoiser (latent diffusion, LDM) | `flow_checkpoints/<denoiser>.ckpt` |
 | Autoencoder (frozen local latents) | `ae_checkpoints/<autoencoder>.ckpt` |
 
-Internal S3 copies use the same relative keys. Each release file has a `.sha256` sidecar.
+Each release file has a `.sha256` sidecar.
 
 Read the active filenames from `configs/inference.yaml`:
 
@@ -31,9 +31,7 @@ point at it with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 - **Public bucket: `YOUR_DATASET_STORE`** — everything published for
   external use (both checkpoints, the `test_dataset` tarball, the CCD mirror)
   lives there and is served anonymously at
-  `https://YOUR_DATASET_STORE`. The internal `YOUR_DATASET_STORE`
-  and `YOUR_DATASET_STORE` buckets return `403` without private credentials — never
-  point external users at them.
+  `https://YOUR_DATASET_STORE`.
 - Host override: `RFPROTEINA_DATA_URL` (default
   `https://YOUR_DATASET_STORE`).
 - Add `--with-test-dataset` to also fetch a tiny training set:

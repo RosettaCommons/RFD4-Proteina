@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../scripts/rfproteina_exec.sh" training "$0" "$@"'
 
 import json
 import os

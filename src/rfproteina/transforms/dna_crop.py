@@ -1,7 +1,6 @@
 """Protein-DNA contact-centered contiguous cropping.
 
-Ported from ``rfd3.transforms.dna_crop`` (the RFD3 model package) so the latent
-diffusion training pipeline can crop protein-DNA examples around their binding
+The training pipeline crops protein-DNA examples around their binding
 interface — keeping a contiguous stretch of the contacting protein region *and*
 a contiguous stretch of the contacting DNA duplex — instead of the generic
 AF3 k-nearest-neighbor spatial crop, which can slice the duplex mid-strand or
@@ -351,9 +350,8 @@ def base_pairs(atom_array: AtomArray, min_atoms_per_base: int = 3, unique: bool 
     """Identify DNA base pairs via DSSR criteria.
 
     Returns an ``(n, 2)`` array where each row holds the first-atom indices (in
-    ``atom_array``) of the two residues forming a base pair. Ported verbatim
-    from the RFD3 implementation (biotite's DSSR base-pair detection restricted
-    to canonical DNA bases).
+    ``atom_array``) of the two residues forming a base pair. Uses Biotite's DSSR base-pair
+    detection restricted to canonical DNA bases.
     """
     dna_boolean = np.logical_and(
         atom_array.chain_type == ChainType.DNA,

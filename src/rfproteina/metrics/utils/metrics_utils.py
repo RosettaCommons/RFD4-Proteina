@@ -26,7 +26,7 @@ from atomworks.common import exists
 from atomworks.io.parser import parse as _parse_structure
 from atomworks.io.utils.atom_array_plus import as_atom_array
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.conditions import C_CRD, C_DIS
+from atomworks.ml.conditions import C_CRD
 from atomworks.ml.preprocessing.utils.structure_utils import (
     get_atom_mask_from_cell_list,
 )
@@ -47,6 +47,7 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_files import find_structure_file
 from rfproteina.utils.verbosity import VERBOSE, configure_verbosity
+from script_utils.entrypoints import initialize_metrics_worker
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -243,8 +244,7 @@ def get_hotspot_contacts(atom_array: AtomArray, hotspot_mask: np.ndarray, distan
 
     # We only count contacts to diffused atoms
     has_coord = C_CRD.mask(atom_array, default="generate")
-    has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
-    is_motif_atom = has_coord | has_dist
+    is_motif_atom = has_coord
     diffused_interchain_contacts_mask = interchain_contacts_mask[:, ~is_motif_atom]
 
     contacted_hotspots_mask = np.any(diffused_interchain_contacts_mask, axis=1)  # (n_hotspots,)
@@ -943,7 +943,7 @@ class MetricsPool:
         self._executor = ProcessPoolExecutor(
             max_workers=self.num_workers,
             mp_context=mp.get_context("spawn"),
-            initializer=_metrics_worker_init,
+            initializer=initialize_metrics_worker,
             initargs=(self._mm_cfgs, val_dataset_tags, VERBOSE.get()),
         )
         logger.info(f"Metrics pool: started with {self.num_workers} spawn workers")

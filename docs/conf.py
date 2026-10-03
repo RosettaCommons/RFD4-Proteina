@@ -13,9 +13,9 @@ DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-# Package imports load a cluster-specific environment. Use a minimal docs
-# profile so autodoc never depends on cluster-only data mirrors.
-os.environ["CLUSTER"] = "docs"
+# Autodoc uses local settings without a private runtime profile.
+os.environ["CLUSTER"] = "local"
+os.environ.setdefault("DATA_PATH", str(Path(__file__).resolve().parent / "_build" / "data"))
 os.environ.pop("CCD_MIRROR_PATH", None)
 
 # nbsphinx invokes pandoc as an executable. The docs extra supplies a bundled

@@ -17,7 +17,7 @@ donor conditioning to base edges) and design a protein that binds a target site.
 ## Run
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/dna_binder/dna_binder_denovo_val \
     subset_to_examples=7n5u_structure_context \
     num_replicates=8 batch_size=8 out_dir=./runs/dna_binder \
@@ -33,10 +33,5 @@ python src/rfproteina/generate.py \
 
 ## Gotchas
 
-- `ori_token` and `atomwise_hbond` are unsupported compatibility-format
-  fields. Use **rfd4-proteina-inputs** to interpret benchmarks containing them,
-  then validate the resulting annotated CIF with
-  **rfd4-proteina-annotated-cif**.
-- Base-edge H-bond selections (`select_hbond_acceptor` / `select_hbond_donor`)
-  are per-atom and easy to get wrong. Use **rfd4-proteina-inputs** to interpret
-  those legacy fields, or **rfd4-proteina-annotated-cif** to author them directly.
+- Base-edge H-bond donor and acceptor selections are per-atom and easy to get
+  wrong. Use **rfd4-proteina-annotated-cif** to annotate and validate them.

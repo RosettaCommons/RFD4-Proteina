@@ -7,7 +7,6 @@ from typing import ClassVar, Literal
 
 import biotite.structure as struc
 import numpy as np
-from atomworks.common import exists
 from atomworks.enums import ChainType, ChainTypeInfo
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array import apply_and_spread
@@ -83,9 +82,9 @@ def _get_pn_unit_chain_type(atom_array: AtomArray, pn_unit_iid: str) -> ChainTyp
     return ChainType(int(chain_types[0]))
 
 
-RFD3_DESIGN_TASK_DEFAULTS = {
+DESIGN_TASK_DEFAULTS = {
     "rasa_kwargs": {
-        "p_add_rasa_condition": 0.0,  # 0.6 in RFD3
+        "p_add_rasa_condition": 0.0,
         "probe_radius": 1.4,
         "atom_radii": "element",
         "point_number": 100,
@@ -93,7 +92,7 @@ RFD3_DESIGN_TASK_DEFAULTS = {
         "rasa_max": 0.2,
     },
     "hbond_kwargs": {
-        "p_add_hbond_condition": 0.0,  # 0.2 in RFD3
+        "p_add_hbond_condition": 0.0,
         "p_hbond_subsample": 0.5,
         "hbond_subsample_frac": 0.5,
     },
@@ -123,7 +122,7 @@ RFD3_DESIGN_TASK_DEFAULTS = {
         "metal_subsample_frac": 0.5,
     },
     "secondary_structure_kwargs": {
-        "p_add_secondary_structure_condition": 0.0,  # 0.1 in RFD3
+        "p_add_secondary_structure_condition": 0.0,
         "max_secondary_structure_frac_to_provide": 0.4,
         "min_ss_island_len": 1,
         # Might want to expand later, this is only average. Done for now to avoid over-conditioning.
@@ -152,82 +151,27 @@ RFD3_DESIGN_TASK_DEFAULTS = {
 }
 
 
-class RFD3DesignTask(DesignTaskABC):
-    """Wrapper class for DesignTasks used to train RFD3
+class ConditionedDesignTask(DesignTaskABC):
+    """Base for tasks with shared conditioning modifiers.
 
-    The concept behind this class is to allow for common functions to be called by each
-    design task without having to specify all kwargs in each design task separately.
-    All kwargs and default values are specified in the RFD3_DESIGN_TASK_DEFAULTS constant.
-
-    Keyword Args:
-        See ``RFD3_DESIGN_TASK_DEFAULTS`` for supported options and defaults.
+    Each modifier has a flat parameter dictionary. Constructor parameters take
+    precedence over global parameters and shared defaults, in that order.
+    Task-specific conditioning rates are configured in the design-task presets.
     """
-
-    # Overrides for the RFD3_DESIGN_TASK_DEFAULTS. Subclasses can modify their defaults or set to {}
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: dict[str, dict]
-
-    def __init_subclass__(cls):
-        super().__init_subclass__()
-        if not hasattr(cls, "RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES"):
-            raise TypeError(
-                f"{cls.__name__} must define class variable `RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES` (even if empty)."
-            )
-
-    @staticmethod
-    def _deep_merge_dicts(base: dict, override: dict) -> dict:
-        """Deep merge two dictionaries, with override values taking precedence.
-
-        Args:
-            base: The base dictionary
-            override: The dictionary with override values
-
-        Returns:
-            A new dictionary with merged values
-        """
-        result = base.copy()
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = RFD3DesignTask._deep_merge_dicts(result[key], value)
-            else:
-                result[key] = value
-        return result
 
     def __init__(self, global_design_task_kwargs: dict | None = None, **kwargs):
         super().__init__()
-        # Set default values for all design task modifiers with proper deep merge
-        design_task_defaults = self._deep_merge_dicts(
-            RFD3_DESIGN_TASK_DEFAULTS, self.RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES
-        )
+        global_design_task_kwargs = global_design_task_kwargs or {}
+        for key, defaults in DESIGN_TASK_DEFAULTS.items():
+            params = {
+                **defaults,
+                **global_design_task_kwargs.get(key, {}),
+                **kwargs.get(key, {}),
+            }
+            setattr(self, key, params)
 
-        # Handle any global args that were passed, with task-specific kwargs taking precedence
-        if not exists(global_design_task_kwargs):
-            global_design_task_kwargs = {}
-        kwargs = self._deep_merge_dicts(global_design_task_kwargs, kwargs)
-
-        for key, value in design_task_defaults.items():
-            params_to_use = value
-            if key in kwargs:
-                # Deep merge with any provided kwargs
-                params_to_use = self._deep_merge_dicts(params_to_use, kwargs[key])
-            setattr(self, key, params_to_use)
-
-    def apply_design_task_modifiers(self, data: dict, overrides: dict = {}) -> dict:
-        # Make local copies to avoid mutating instance state
-        rasa_kwargs = self.rasa_kwargs.copy() | overrides.get("rasa_kwargs", {})
-        hbond_kwargs = self.hbond_kwargs.copy() | overrides.get("hbond_kwargs", {})
-        pistack_kwargs = self.pistack_kwargs.copy() | overrides.get("pistack_kwargs", {})
-        pication_kwargs = self.pication_kwargs.copy() | overrides.get("pication_kwargs", {})
-        salt_kwargs = self.salt_kwargs.copy() | overrides.get("salt_kwargs", {})
-        hydrophobic_kwargs = self.hydrophobic_kwargs.copy() | overrides.get("hydrophobic_kwargs", {})
-        metal_kwargs = self.metal_kwargs.copy() | overrides.get("metal_kwargs", {})
-        secondary_structure_kwargs = self.secondary_structure_kwargs.copy() | overrides.get(
-            "secondary_structure_kwargs", {}
-        )
-        cath_kwargs = self.cath_kwargs.copy() | overrides.get("cath_kwargs", {})
-        sequence_probability_kwargs = self.sequence_probability_kwargs.copy() | overrides.get(
-            "sequence_probability_kwargs", {}
-        )
-
+    def apply_design_task_modifiers(self, data: dict, *, cath_kwargs: dict | None = None) -> dict:
+        """Apply configured modifiers with optional per-sample CATH parameters."""
         # Set defaults for task dictionary
         data["task"] |= {
             "added_rasa_condition": False,
@@ -244,18 +188,18 @@ class RFD3DesignTask(DesignTaskABC):
         }
 
         # Possibly add Conditions corresponding to design task modifiers
-        data = add_rasa_condition(data, **rasa_kwargs)
-        data = add_secondary_structure_condition(data, **secondary_structure_kwargs)
-        data = add_hbond_condition(data, **hbond_kwargs)
-        data = add_pistack_condition(data, **pistack_kwargs)
-        data = add_pication_condition(data, **pication_kwargs)
-        data = add_salt_condition(data, **salt_kwargs)
-        data = add_hydrophobic_condition(data, **hydrophobic_kwargs)
-        data = add_metal_condition(data, **metal_kwargs)
+        data = add_rasa_condition(data, **self.rasa_kwargs)
+        data = add_secondary_structure_condition(data, **self.secondary_structure_kwargs)
+        data = add_hbond_condition(data, **self.hbond_kwargs)
+        data = add_pistack_condition(data, **self.pistack_kwargs)
+        data = add_pication_condition(data, **self.pication_kwargs)
+        data = add_salt_condition(data, **self.salt_kwargs)
+        data = add_hydrophobic_condition(data, **self.hydrophobic_kwargs)
+        data = add_metal_condition(data, **self.metal_kwargs)
 
         # Stochasticity and task annotations handled internally for CATH conditioning
-        data = add_cath_condition(data, **cath_kwargs)
-        data = diversify_sequence_conditioning(data, **sequence_probability_kwargs)
+        data = add_cath_condition(data, **(self.cath_kwargs | (cath_kwargs or {})))
+        data = diversify_sequence_conditioning(data, **self.sequence_probability_kwargs)
 
         return data
 
@@ -269,18 +213,7 @@ class RFD3DesignTask(DesignTaskABC):
         return data
 
 
-class NoMotifABC(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
+class NoMotifABC(ConditionedDesignTask):
     def can_apply(self, data: dict) -> bool:
         return True
 
@@ -306,17 +239,6 @@ class NoMotifABC(RFD3DesignTask):
 class UnconditionalTask(NoMotifABC):
     """Sample a protein backbone & sequence unconditionally."""
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
     def forward(self, data: dict) -> dict:
         data = super().set_task_info(data)
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
@@ -327,13 +249,6 @@ class UnconditionalTask(NoMotifABC):
 class StructurePredictionTask(NoMotifABC):
     """Sample a protein backbone, given the sequence information (= structure prediction)."""
 
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.0},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.0},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
-        "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
-    }
-
     def forward(self, data: dict) -> dict:
         data = super().set_task_info(data)
 
@@ -341,7 +256,7 @@ class StructurePredictionTask(NoMotifABC):
         atom_array = data["atom_array"]
         C_SEQ.set_annotation(atom_array, C_SEQ.ground_truth_value(atom_array))
 
-        data = self.apply_design_task_modifiers(data)  # This won't do anything because probs are defualted to 0.0
+        data = self.apply_design_task_modifiers(data)
 
         return data
 
@@ -354,13 +269,6 @@ class InverseFoldingTask(NoMotifABC):
     Args:
         polymer_types: Polymer types to design: "protein" (default), "rna", or "dna".
     """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.0},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.0},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
-        "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
-    }
 
     # polymer type -> (per-residue membership annotation, backbone-atom annotation)
     _POLYMER_MASK_ANNOT: ClassVar[dict[str, tuple[str, str]]] = {
@@ -411,14 +319,14 @@ class InverseFoldingTask(NoMotifABC):
         return data
 
 
-class ProteinFromDNAContextABC(RFD3DesignTask):
+class ProteinFromDNAContextABC(ConditionedDesignTask):
     """Base for DNA-binder design tasks: the whole protein is generated from
     noise while a DNA chain is provided as context.
 
     The DNA is supplied through the ``C_CRD`` / ``C_SEQ`` condition annotations
     rather than as a protein motif, so there is no motif region — hence the
     all-zeros motif mask stamped by :py:meth:`set_task_info`. This mirrors the
-    no-motif tasks, but subclassing :py:class:`RFD3DesignTask` directly keeps
+    no-motif tasks, but subclassing :py:class:`ConditionedDesignTask` directly keeps
     this a distinct setting. Subclasses decide whether the DNA *structure* is
     given as context or co-generated.
 
@@ -427,11 +335,6 @@ class ProteinFromDNAContextABC(RFD3DesignTask):
     DNA tasks intentionally participate in the same conditioning as the protein
     tasks.
     """
-
-    # Empty: take the base defaults so the experiment's global conditioning rates
-    # flow through unchanged. (A per-class 0.0 override could not force
-    # conditioning off anyway — global kwargs win in the RFD3DesignTask merge.)
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {}
 
     def can_apply(self, data: dict) -> bool:
         atom_array = data["atom_array"]
@@ -497,19 +400,12 @@ class ProteinFromDNASequenceContextTask(ProteinFromDNAContextABC):
         return data
 
 
-class PartialLigandTask(RFD3DesignTask):
+class PartialLigandTask(ConditionedDesignTask):
     """
     Intended only for OMOL examples where we have ligands and maybe some tip atoms.
     In this case, we always coordinate condition the non-ligands and sequence condition everything.
 
     """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.0},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.0},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
-        "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
-    }
 
     def __init__(
         self,
@@ -601,18 +497,7 @@ class PartialLigandTask(RFD3DesignTask):
         return data
 
 
-class TipAtomPartialLigandTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
+class TipAtomPartialLigandTask(ConditionedDesignTask):
     def __init__(
         self,
         *,
@@ -622,7 +507,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         n_hops_expected_tip_atom: int = 1,
         ligand_scaling_factor: float = 5.0,
         tip_atom_scaling_factor: float = 1.5,
-        p_seq_conditioned: float = 1.0,  # For now we always sequence condition things with distance conditioning!
+        p_seq_conditioned: float = 1.0,
         p_knockout_seq: float = 0.0,
         p_unindex_all: float = 0.9,
         p_merge_unindexed_groups: float = 0.1,
@@ -651,7 +536,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         if p_seq_conditioned < 1.0 or p_knockout_seq > 0.0:
             raise ValueError(
                 "p_seq_conditioned < 1.0 or p_knockout_seq > 0.0 not currently supported. "
-                "Model must see sequence conditioning if given a distance or coordinate condition"
+                "Model must see sequence conditioning if given a coordinate condition"
             )
 
     def can_apply(self, data: dict) -> bool:
@@ -809,7 +694,7 @@ class TipAtomPartialLigandTask(RFD3DesignTask):
         return data
 
 
-class TipAtomActiveSiteTask(RFD3DesignTask):
+class TipAtomActiveSiteTask(ConditionedDesignTask):
     """
     Designed to sample tip atoms around a protein pocket when no ligand is present.
     This is done by calculating the SASA of all atoms, and calculating the distance they lie from
@@ -831,12 +716,6 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         p_split_unindexed_groups: probability of splitting unindexed groups
         p_increase_group_id_gap: probability of increasing the gap between unindexed group ids
     """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-    }
 
     def __init__(
         self,
@@ -1092,18 +971,7 @@ class TipAtomActiveSiteTask(RFD3DesignTask):
         return data
 
 
-class TipAtomTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
+class TipAtomTask(ConditionedDesignTask):
     def __init__(
         self,
         min_residues: int = 2,
@@ -1261,18 +1129,7 @@ class TipAtomTask(RFD3DesignTask):
         return data
 
 
-class MotifScaffoldTask(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
+class MotifScaffoldTask(ConditionedDesignTask):
     def __init__(
         self,
         min_tokens_per_motif: int = 1,
@@ -1471,418 +1328,7 @@ class MotifScaffoldTask(RFD3DesignTask):
         return data
 
 
-class MotifScaffoldProteinaTask(RFD3DesignTask):
-    """Motif scaffolding task following la proteina logic.
-
-    Supports:
-    - residue_selection_mode: "relative_fraction" or "absolute_number"
-    - atom_selection_mode: "ca_only", "ame", "tip_atoms", "backbone", "all"
-    - Automatic ligand-proximity selection when ligands present (in absolute_number mode)
-
-    Based on MotifMaskTransform from protein-foundation-models public repo.
-    """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
-    def __init__(
-        self,
-        atom_selection_mode: str = "ca_only",  # "ca_only", "ame", "tip_atoms", "backbone", "all"
-        residue_selection_mode: str = "relative_fraction",  # "relative_fraction", "absolute_number"
-        motif_prob: float = 1.0,
-        # Used if residue_selection_mode == "relative_fraction":
-        motif_min_pct_res: float = 0.05,
-        motif_max_pct_res: float = 0.5,
-        motif_min_n_seg: int = 1,
-        motif_max_n_seg: int = 4,
-        # Used if residue_selection_mode == "absolute_number":
-        motif_min_n_res: int = 1,
-        motif_max_n_res: int = 8,
-        # Ligand proximity (used in absolute_number mode with ligands)
-        ligand_distance_cutoff: float = 8.0,
-        # Unindexing - simple mode like la proteina
-        unindex_mode: str = "simple",  # "simple", "none", "complex"
-        p_unindex_motif: float = 0.5,  # Probability to unindex motif (simple mode only)
-        # Complex unindexing parameters (only used if unindex_mode="complex")
-        max_unindexed_tokens: int = 50,
-        p_merge_unindexed_groups: float = 0.1,
-        p_split_unindexed_groups: float = 0.01,
-        p_increase_group_id_gap: float = 0.1,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.atom_selection_mode = atom_selection_mode
-        self.residue_selection_mode = residue_selection_mode
-        self.motif_prob = motif_prob
-        self.motif_min_pct_res = motif_min_pct_res
-        self.motif_max_pct_res = motif_max_pct_res
-        self.motif_min_n_seg = motif_min_n_seg
-        self.motif_max_n_seg = motif_max_n_seg
-        self.motif_min_n_res = motif_min_n_res
-        self.motif_max_n_res = motif_max_n_res
-        self.ligand_distance_cutoff = ligand_distance_cutoff
-        self.unindex_mode = unindex_mode
-        self.p_unindex_motif = p_unindex_motif
-        self.max_unindexed_tokens = max_unindexed_tokens
-        self.p_merge_unindexed_groups = p_merge_unindexed_groups
-        self.p_split_unindexed_groups = p_split_unindexed_groups
-        self.p_increase_group_id_gap = p_increase_group_id_gap
-
-    def can_apply(self, data: dict) -> bool:
-        atom_array = data["atom_array"]
-        ensure_annotations(
-            atom_array, "is_protein", "is_standard_aa", "is_token_start", "token_min_occupancy", "token_id"
-        )
-
-        n_eligible_residues = atom_array.mask(
-            "is_standard_aa & is_protein & is_token_start & (token_min_occupancy > 0)"
-        ).sum()
-        return n_eligible_residues >= self.motif_min_n_res
-
-    def _select_atoms_by_mode(
-        self,
-        atom_array: AtomArray,
-        residue_mask: np.ndarray,
-        res_token_id: int | None = None,
-    ) -> np.ndarray:
-        """Select atoms within residue based on atom_selection_mode.
-
-        Args:
-            atom_array: Full atom array.
-            residue_mask: Boolean mask for atoms in this single residue.
-            res_token_id: Token ID of the residue (used for some modes).
-
-        Returns:
-            Boolean mask for selected atoms within this residue.
-        """
-        available_atoms = np.where(residue_mask)[0]
-        if len(available_atoms) == 0:
-            return residue_mask
-
-        if self.atom_selection_mode == "ca_only":
-            return residue_mask & (atom_array.atom_name == "CA")
-
-        elif self.atom_selection_mode == "backbone":
-            backbone_atoms = {"N", "CA", "C", "O"}
-            return residue_mask & np.isin(atom_array.atom_name, list(backbone_atoms))
-
-        elif self.atom_selection_mode == "all":
-            return residue_mask
-
-        elif self.atom_selection_mode == "tip_atoms":
-            from rfproteina.utils.constants import SIDECHAIN_TIP_ATOMS
-
-            res_name = atom_array.res_name[available_atoms[0]]
-            tip_atom_names = SIDECHAIN_TIP_ATOMS.get(res_name, [])
-
-            tip_mask = np.zeros(len(atom_array), dtype=bool)
-            for atom_name in tip_atom_names:
-                tip_mask |= residue_mask & (atom_array.atom_name == atom_name)
-
-            return tip_mask if tip_mask.any() else (residue_mask & (atom_array.atom_name == "CA"))
-
-        elif self.atom_selection_mode == "ame":
-            from rfproteina.utils.constants import AME_ATOMS
-
-            res_name = atom_array.res_name[available_atoms[0]]
-            atom_configs = AME_ATOMS.get(res_name, [["CA"]])
-
-            # Randomly select one configuration
-            selected_config = atom_configs[np.random.randint(len(atom_configs))]
-
-            ame_mask = np.zeros(len(atom_array), dtype=bool)
-            for atom_name in selected_config:
-                ame_mask |= residue_mask & (atom_array.atom_name == atom_name)
-
-            return ame_mask if ame_mask.any() else (residue_mask & (atom_array.atom_name == "CA"))
-
-        else:
-            raise ValueError(f"Unknown atom_selection_mode: {self.atom_selection_mode}")
-
-    def _select_residues_near_ligand(self, atom_array: AtomArray, motif_n_res: int) -> list[int]:
-        """Select residue token IDs near ligands (for absolute_number mode with ligands).
-
-        Args:
-            atom_array: Full atom array.
-            motif_n_res: Number of residues to select.
-
-        Returns:
-            List of token IDs for selected residues.
-        """
-        if "atomize" not in atom_array.get_annotation_categories():
-            return []
-
-        is_ligand = atom_array.atomize
-        if not is_ligand.any():
-            return []
-
-        # Get binder chain (non-ligand protein)
-        is_binder = atom_array.is_protein & ~is_ligand & (atom_array.occupancy > 0)
-        if not is_binder.any():
-            return []
-
-        from scipy.spatial.distance import cdist
-
-        binder_coords = atom_array.coord[is_binder]
-        ligand_coords = atom_array.coord[is_ligand]
-
-        # Compute distances
-        dists = cdist(binder_coords, ligand_coords)
-        min_dists = dists.min(axis=1)  # min distance to any ligand atom
-
-        # Find binder atoms within cutoff
-        binder_atom_indices = np.where(is_binder)[0]
-        close_atom_indices = binder_atom_indices[min_dists < self.ligand_distance_cutoff]
-
-        if len(close_atom_indices) == 0:
-            return []
-
-        # Group by token (residue)
-        close_token_ids = atom_array.token_id[close_atom_indices]
-        unique_tokens, counts = np.unique(close_token_ids, return_counts=True)
-
-        # Sort by count (tokens with most atoms near ligand)
-        sorted_indices = np.argsort(-counts)
-
-        # Select top motif_n_res tokens, but also try to expand to nearby tokens
-        selected_tokens = list(unique_tokens[sorted_indices[:motif_n_res]])
-
-        # If we need more tokens, expand to nearby residues (within 5 positions in sequence)
-        if len(selected_tokens) < motif_n_res:
-            all_binder_tokens = np.unique(atom_array.token_id[is_binder & atom_array.is_token_start])
-            for selected_tok in selected_tokens.copy():
-                neighbors = [t for t in all_binder_tokens if abs(t - selected_tok) <= 5 and t not in selected_tokens]
-                for neighbor in neighbors:
-                    if len(selected_tokens) >= motif_n_res:
-                        break
-                    selected_tokens.append(neighbor)
-
-        return selected_tokens[:motif_n_res]
-
-    def _select_residues_by_mode(self, atom_array: AtomArray) -> list[int]:
-        """Select residue token IDs based on residue_selection_mode.
-
-        Returns:
-            List of token IDs for selected residues.
-        """
-        # Get eligible tokens (protein residues with decent occupancy)
-        is_eligible = atom_array.mask("is_standard_aa & is_protein & is_token_start & (token_min_occupancy > 0)")
-        eligible_token_ids = np.unique(atom_array.token_id[is_eligible])
-        num_eligible = len(eligible_token_ids)
-
-        if num_eligible == 0:
-            return []
-
-        if self.residue_selection_mode == "relative_fraction":
-            # Select a fraction of residues in contiguous segments
-            motif_n_res = int(np.random.uniform(self.motif_min_pct_res, self.motif_max_pct_res) * num_eligible)
-            motif_n_res = max(1, min(motif_n_res, num_eligible))
-
-            # Sample number of segments
-            motif_n_seg = np.random.randint(self.motif_min_n_seg, min(motif_n_res, self.motif_max_n_seg) + 1)
-
-            # Create segments
-            if motif_n_seg > 1:
-                split_indices = np.sort(np.random.choice(motif_n_res - 1, motif_n_seg - 1, replace=False)) + 1
-                split_indices = np.concatenate([[0], split_indices, [motif_n_res]])
-            else:
-                split_indices = np.array([0, motif_n_res])
-
-            # Build segment pattern
-            segments = []
-            for i in range(len(split_indices) - 1):
-                segment_len = split_indices[i + 1] - split_indices[i]
-                segments.append([True] * segment_len)
-
-            # Add non-motif residues
-            segments.extend([[False]] * (num_eligible - motif_n_res))
-
-            # Shuffle segments
-            np.random.shuffle(segments)
-            motif_sequence_mask = np.array([val for segment in segments for val in segment])
-
-            selected_token_ids = eligible_token_ids[motif_sequence_mask]
-
-        elif self.residue_selection_mode == "absolute_number":
-            # Check if ligands are present
-            has_ligands = "atomize" in atom_array.get_annotation_categories() and atom_array.atomize.any()
-
-            motif_n_res = np.random.randint(self.motif_min_n_res, self.motif_max_n_res + 1)
-            motif_n_res = min(motif_n_res, num_eligible)
-
-            if has_ligands:
-                # Use ligand-proximity selection
-                selected_token_ids = self._select_residues_near_ligand(atom_array, motif_n_res)
-                if len(selected_token_ids) == 0:
-                    # Fallback to random if no close residues
-                    selected_token_ids = np.random.choice(eligible_token_ids, motif_n_res, replace=False)
-            else:
-                # Random selection
-                selected_token_ids = np.random.choice(eligible_token_ids, motif_n_res, replace=False)
-
-        else:
-            raise ValueError(f"Unknown residue_selection_mode: {self.residue_selection_mode}")
-
-        return selected_token_ids
-
-    def forward(self, data: dict) -> dict:
-        atom_array = data["atom_array"]
-
-        # Maybe skip motif creation based on probability
-        if not true_with_prob(self.motif_prob):
-            # No motif - unconditional generation
-            data = self.apply_design_task_modifiers(data)
-            data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
-            if "task" not in data:
-                data["task"] = {"name": self.__class__.__name__}
-            data["task"] |= {
-                "class": self.__class__.__name__,
-                "mask": np.zeros(atom_array.array_length(), dtype=bool),
-                "motif_created": False,
-            }
-            return data
-
-        # Select residues for motif
-        selected_token_ids = self._select_residues_by_mode(atom_array)
-
-        if len(selected_token_ids) == 0:
-            # Couldn't select any residues
-            data = self.apply_design_task_modifiers(data)
-            data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
-            if "task" not in data:
-                data["task"] = {"name": self.__class__.__name__}
-            data["task"] |= {
-                "class": self.__class__.__name__,
-                "mask": np.zeros(atom_array.array_length(), dtype=bool),
-                "motif_created": False,
-            }
-            return data
-
-        # Select atoms within each selected residue
-        total_mask = np.zeros(atom_array.array_length(), dtype=bool)
-        for token_id in selected_token_ids:
-            # Get all atoms in this token
-            residue_mask = atom_array.token_id == token_id
-
-            # Select specific atoms based on mode
-            atom_mask = self._select_atoms_by_mode(atom_array, residue_mask, token_id)
-            total_mask |= atom_mask
-
-        # Set coordinate conditioning for selected atoms
-        nan_coord_mask = np.any(np.isnan(atom_array.coord), axis=1)
-        coord_condition_mask = total_mask & ~nan_coord_mask
-        C_CRD.set_annotation_from_ground_truth(atom_array, coord_condition_mask)
-
-        # Set sequence conditioning for motif residues (spread to entire residue)
-        res_segments = struc.get_residue_starts(atom_array, add_exclusive_stop=True)
-        is_seq_conditioned = apply_and_spread(res_segments, total_mask, np.any)
-        is_seq_conditioned |= atom_array.mask("~is_standard_aa")  # Always condition on non-standard AAs
-        C_SEQ.set_annotation_from_ground_truth(atom_array, is_seq_conditioned)
-
-        # Handle unindexing based on mode
-        if self.unindex_mode == "none":
-            # Everything is indexed (no unindexing)
-            C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
-            C_IDXGRP.set_annotation(atom_array, C_IDXGRP.default_annotation(atom_array))
-
-        elif self.unindex_mode == "simple":
-            # Simple mode: with probability p_unindex_motif, unindex all motif residues
-            if true_with_prob(self.p_unindex_motif):
-                # Unindex all motif residues (spread coord condition to full residues)
-                motif_residues_mask = apply_and_spread(res_segments, total_mask, np.any)
-                # Only unindex protein residues, not atomized/ligands
-                motif_to_unindex = motif_residues_mask & atom_array.is_protein & ~atom_array.atomize
-                C_IDX.set_annotation(atom_array, ~motif_to_unindex)
-            else:
-                # Keep everything indexed
-                C_IDX.set_annotation(atom_array, C_IDX.default_annotation(atom_array))
-
-            unindexed_group_ids = sample_unindexed_groups(
-                atom_array  # just use default args because we are in simple mode
-            )
-            C_IDXGRP.set_annotation(atom_array, unindexed_group_ids)
-
-        elif self.unindex_mode == "complex":
-            # Complex mode: use island sampling with merge/split logic
-            # Create unindexed mask using island sampling
-            C_CRDGRP.set_annotation(atom_array, C_CRDGRP.default_annotation(atom_array))
-            fn_sample_seed = mg.SampleUniformly(
-                is_eligible="sa_mask('coordinate') & is_protein & ~atomize",
-            )
-            fn_grow_seed = mg.GrowToSegmentIsland(
-                island_min_size=1,
-                island_max_size=self.max_unindexed_tokens,
-                segment_has_same_annotation=("chain_iid", "res_name", "res_id", C_CRDGRP.full_name),
-                require_same_annotation=("chain_iid", C_CRDGRP.full_name, "atomize"),
-            )
-
-            target_fraction = np.random.uniform(0.0, 1.0)
-            total_eligible = atom_array.mask("is_protein & is_token_start & sa_mask('coordinate')").sum()
-            min_tokens = max(0, int((target_fraction - 0.05) * total_eligible))
-            max_tokens = min(int((target_fraction + 0.05) * total_eligible), self.max_unindexed_tokens)
-
-            fn_check_budget = mg.CheckTokenBudget(n_min_tokens=min_tokens, n_max_tokens=max_tokens)
-
-            unindexed_mask, _ = mg.sample_mask_via_seed_grow_merge(
-                atom_array,
-                fn_sample_seed=fn_sample_seed,
-                fn_grow_seed=fn_grow_seed,
-                fn_check_budget=fn_check_budget,
-            )
-            C_IDX.set_annotation(atom_array, ~unindexed_mask)
-
-        else:
-            raise ValueError(f"Unknown unindex_mode: {self.unindex_mode}. Must be 'none', 'simple', or 'complex'.")
-
-        # Sample the unindexed groups (applies to all modes)
-        # This properly assigns group IDs based on contiguous unindexed regions
-        all_index_group_ids = sample_unindexed_groups(
-            atom_array,
-            p_merge_groups=self.p_merge_unindexed_groups,
-            p_split_group=self.p_split_unindexed_groups,
-            p_increase_group_id_gap=self.p_increase_group_id_gap,
-        )
-        C_IDXGRP.set_annotation(atom_array, all_index_group_ids)
-
-        data["atom_array"] = atom_array
-
-        if "task" not in data:
-            data["task"] = {"name": self.__class__.__name__}
-        data["task"] |= {
-            "class": self.__class__.__name__,
-            "mask": total_mask,
-            "motif_created": True,
-            "n_motif_residues": len(selected_token_ids),
-            "atom_selection_mode": self.atom_selection_mode,
-            "residue_selection_mode": self.residue_selection_mode,
-        }
-
-        data = self.apply_design_task_modifiers(data)
-        data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
-
-        return data
-
-
-class BinderHotspotWith3DTarget(RFD3DesignTask):
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
-
+class BinderHotspotWith3DTarget(ConditionedDesignTask):
     def __init__(
         self,
         hotspot_count_distribution: Literal["uniform", "geometric"] = "uniform",
@@ -1897,9 +1343,7 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         **kwargs,
     ):
         """
-        This task samples a set of hotspots (atom level) and provides as 1D conditioning to the
-        model. Logic and implementation is based on Rafi's code here:
-        https://github.com/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
+        This task samples a set of atom-level hotspots and provides them as 1D conditioning to the model.
 
         The logic is as follows:
         1. Decide which chain is the binder. We do this by randomly choosing one of the
@@ -1992,7 +1436,6 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
         binder/target interface: a protein binder and one or more target chains whose types are in
         :py:attr:`target_chain_types` (protein-only by default; add DNA/RNA for nucleic-acid targets).
         The target may span multiple chains, e.g. a double-stranded DNA target (two nucleic chains).
-        Based on Rafi's code in PPICondition.is_valid_for_example() here: https://github.dev/private-organization/modelhub/blob/aa_design/ppi-v2025_06_24/projects/aa_design/transforms/ppi_transforms.py
         """
         query_pn_unit_iids = data.get("query_pn_unit_iids")
         if "crop_info" in data and "atom_array" in data["crop_info"]:
@@ -2139,16 +1582,14 @@ class BinderHotspotWith3DTarget(RFD3DesignTask):
 
         # If we did the ppi crop, we will add CATH labels to the binder chain
         cath_query_pn_unit_iid = binder_pn_unit_iid if perform_ppi_crop else None
-        data = self.apply_design_task_modifiers(
-            data, overrides={"cath_kwargs": {"query_pn_unit_iid": cath_query_pn_unit_iid}}
-        )
+        data = self.apply_design_task_modifiers(data, cath_kwargs={"query_pn_unit_iid": cath_query_pn_unit_iid})
 
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
 
         return data
 
 
-class NucleicSecondaryStructureTask(RFD3DesignTask):
+class NucleicSecondaryStructureTask(ConditionedDesignTask):
     """Apply NA secondary-structure conditioning, with optional small motif scaffolds.
 
     When this task is selected, it computes ``bp_partners`` from the current
@@ -2156,14 +1597,6 @@ class NucleicSecondaryStructureTask(RFD3DesignTask):
     It can also optionally add a motif-scaffold overlay with coordinate/sequence
     conditioning on a small fraction of polymer tokens.
     """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.0},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.0},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.0},
-        "cath_kwargs": {"p_add_cath_c_condition": 0.0, "p_add_cath_ca_condition": 0.0, "p_add_cath_cat_condition": 0.0},
-        "na_ss_kwargs": {"p_add_na_ss_condition": 1.0},
-    }
 
     def __init__(
         self,
@@ -2463,14 +1896,14 @@ def _expand_cdr_mask(
     return new_atom_mask
 
 
-class IgFrameworkConditioningTask(RFD3DesignTask):
+class IgFrameworkConditioningTask(ConditionedDesignTask):
     """Framework-conditioning task for antibodies and TCRs.
 
     Conditions on the Ig framework and (optionally) the target/antigen while
     leaving CDR loops free for design. It:
 
     - reads the native ``ig_region`` structure annotation,
-    - replaces 2D distance conditioning with internal-coordinate conditioning,
+    - conditions framework geometry with internal coordinates,
     - supports variable CDR boundary expansion/contraction,
     - supports per-CDR fixation (internal coords + sequence conditioning), and
     - supports separate rigid-body coordinate groups for multi-chain Ig molecules
@@ -2512,17 +1945,6 @@ class IgFrameworkConditioningTask(RFD3DesignTask):
         hotspot_geometric_p: Geometric distribution parameter (required when
             ``hotspot_count_distribution="geometric"``).
     """
-
-    RFD3_DESIGN_TASK_DEFAULTS_OVERRIDES: ClassVar[dict[str, dict]] = {
-        "rasa_kwargs": {"p_add_rasa_condition": 0.6},
-        "hbond_kwargs": {"p_add_hbond_condition": 0.2},
-        "secondary_structure_kwargs": {"p_add_secondary_structure_condition": 0.1},
-        "cath_kwargs": {
-            "p_add_cath_c_condition": 0.1,
-            "p_add_cath_ca_condition": 0.15,
-            "p_add_cath_cat_condition": 0.25,
-        },
-    }
 
     def __init__(
         self,
