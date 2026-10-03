@@ -1,0 +1,52 @@
+{
+  "assets": [
+    {
+      "name": "TrkA–C10",
+      "asset": "trka-c10.png",
+      "sha256": "ee7be0b50176d673c88d2ae71a71ec4bf9e07b8ee75933caf16b967766c95a1d",
+      "case": "trka-c10",
+      "native_states": 60,
+      "conditioning": "Both chains: backbone coordinates and sequences conditioned.",
+      "generation_source_commit": "4b6ddfa58b09302683cf34022277c0e2cfce62fb",
+      "atomworks_commit": "e00112894bbbf42e664fdb314996f38569b4efb4",
+      "source_trajectory_sha256": "cc47e5631f7178d5ed667da729d5e17de18ee32a6c33987cca83796e05b2dfa1",
+      "renderer": "Blender / Molecular Nodes",
+      "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
+    },
+    {
+      "name": "DNA binder",
+      "asset": "dna-binder-generation.gif",
+      "sha256": "30e68a0328494da13ca3541d44245ce479ae58679f90180b48b62d164d34b224",
+      "case": "dna-binder-7m5w-structure-context-rep5",
+      "native_states": 60,
+      "conditioning": "DNA sequence and coordinates conditioned; protein sequence and coordinates generated freely.",
+      "generation_source_commit": "4b6ddfa58b09302683cf34022277c0e2cfce62fb",
+      "atomworks_commit": "e00112894bbbf42e664fdb314996f38569b4efb4",
+      "source_trajectory_sha256": "3741a1c3d13a526dbcf58ead3ff7c832d21fa7dc463c5802064fa30fe1cb658d",
+      "renderer": "Blender / Molecular Nodes",
+      "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
+    },
+    {
+      "name": "RNA pseudoknot",
+      "asset": "rna-pseudoknot.png",
+      "sha256": "b350c8d31fccca01550388d8839138a1c8661bc19b0b292db9ba88cc033eea44",
+      "case": "rna-pseudoknot-w05-rep3",
+      "native_states": 60,
+      "conditioning": "Base-pair topology conditioned; no sequence or coordinate conditioning.",
+      "generation_source_commit": "4b6ddfa58b09302683cf34022277c0e2cfce62fb",
+      "atomworks_commit": "e00112894bbbf42e664fdb314996f38569b4efb4",
+      "source_trajectory_sha256": "e52ef44ebfdae0bf9ba2d57cdf936b027633c457cacd02108703b333ef5d31b7",
+      "renderer": "Blender / Molecular Nodes",
+      "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
+    }
+  ],
+  "animation": {
+    "duration_seconds": 18,
+    "width": 360,
+    "fps": 10,
+    "palette_colors": 128,
+    "playback": "Forward generation (8 s), endpoint hold (2 s), reverse replay (8 s). Reverse is presentation playback, not another model run.",
+    "conversion": "FFmpeg fps=10, scale=360:-1:flags=lanczos, palettegen=max_colors=128, paletteuse=dither=bayer:bayer_scale=4"
+  },
+  "stills": "Copied from saved Blender endpoint renders; molecular geometry unchanged."
+}
