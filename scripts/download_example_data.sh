@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download the released checkpoints (and, with --with-test-dataset, the tiny training set) into a
-# local dir you then export as DATA_PATH. Public HTTPS, no credentials. On non-configured clusters, also
-# fetches OpenFold3 by default -- see docs/installation.rst.
+# local dir you then export as DATA_PATH. Public HTTPS, no credentials. It also
+# fetches OpenFold3 by default unless an oracle image is already configured.
 #   ./scripts/download_example_data.sh <DATA_PATH> [--with-test-dataset] [--skip-of3]
 set -euo pipefail
 
@@ -63,13 +63,12 @@ if [ "$WITH_TEST_DATASET" = true ]; then
     curl -fL "$BASE/test_dataset/test_dataset.tar.gz" | tar -xzf - -C "$DATA_PATH/test_dataset"
 fi
 
-# configured clusters already have AF3 configured (see docs/installation.rst); everyone else defaults to
-# OpenFold3.
-case "${CLUSTER:-}" in
-    digs|ord|gb200|coreweave) SKIP_OF3=true ;;
-esac
+# A runtime profile may already provide a compatible AF3 image.
+if [ -n "${AF3_IMAGE:-}" ]; then
+    SKIP_OF3=true
+fi
 if [ "$SKIP_OF3" = true ]; then
-    echo ">>> Skipping OpenFold3 download (configured cluster or --skip-of3)."
+    echo ">>> Skipping OpenFold3 download (oracle image configured or --skip-of3)."
 elif ! command -v apptainer &>/dev/null; then
     echo ">>> apptainer not found — skipping OpenFold3 download (it can't run without it)."
     echo "    Install apptainer, then re-run this script to fetch it."

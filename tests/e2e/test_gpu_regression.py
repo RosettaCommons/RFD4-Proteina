@@ -1,4 +1,4 @@
-"""Four H200 regression tests, supported on cw-west and cw-east:
+"""Four H200 regression tests:
 
 1. SOTA training — 25 optimizer steps from random init; losses match baseline.
 2. AE training — 25 optimizer steps from random init; losses match baseline.

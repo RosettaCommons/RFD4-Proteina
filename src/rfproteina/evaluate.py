@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../scripts/rfproteina_exec.sh" training "$0" "$@"'
 
 """Evaluate pre-generated structures: design metrics → oracle refolding → pass criteria.
 
@@ -123,7 +123,7 @@ def run_evaluate(cfg: DictConfig) -> None:
     parsed_arrays: dict[str, tuple[Path, object]] = {}
 
     if design_mm is not None:
-        design_mm.on_validation_epoch_start()
+        design_mm.on_validation_epoch_start(val_dataset_tags=[set(metrics_tags or [])])
 
     for structure_file in structure_files:
         rel = structure_file.relative_to(inputs_dir)
@@ -198,7 +198,7 @@ def run_evaluate(cfg: DictConfig) -> None:
         design_mm.on_validation_epoch_end()
 
     if pre_oracle_filter_mm is not None:
-        pre_oracle_filter_mm.on_validation_epoch_start()
+        pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=[set(metrics_tags or [])])
         design_results = apply_pre_oracle_filters(
             design_results,
             pre_oracle_filter_mm,

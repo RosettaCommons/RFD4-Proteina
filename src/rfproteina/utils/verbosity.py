@@ -57,6 +57,12 @@ def _filter_routine_warnings(action: str) -> None:
     warnings.filterwarnings(action, message=r"`isinstance\(treespec, LeafSpec\)` is deprecated.*")
     warnings.filterwarnings(
         action,
+        message=r"The `srun` command is available on your system but is not used\..*",
+        category=UserWarning,
+        module=r"lightning(?:_fabric|\.fabric)\.plugins\.environments\.slurm",
+    )
+    warnings.filterwarnings(
+        action,
         message="Category 'chem_comp_bond' not found. No bonds will be parsed",
         category=UserWarning,
         module="biotite.structure.io.pdbx.convert",

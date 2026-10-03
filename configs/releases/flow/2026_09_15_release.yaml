@@ -411,4 +411,4 @@ hardware:
 
 # +--------- Logging ---------+
 log:
-  tags: [pair-256, trimult-256, recycle-last, carry-baseline, bf16-optimized, recycle-adam, cw-west, bs8]
+  tags: [pair-256, trimult-256, recycle-last, carry-baseline, bf16-optimized, recycle-adam, bs8]

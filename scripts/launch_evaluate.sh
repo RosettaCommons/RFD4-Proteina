@@ -6,10 +6,7 @@
 # via a MetricManager config. Supports job arrays for parallel evaluation.
 #
 # Usage:
-#   ./launch_evaluate.sh <cluster> [options] [hydra_overrides...]
-#
-# Positional:
-#   <cluster>               Cluster name (e.g. digs, ord, gb200)
+#   ./scripts/launch_evaluate.sh [options] [hydra_overrides...]
 #
 # Options:
 #   --njobs N               Parallel evaluation jobs (default: reads gen_njobs
@@ -24,7 +21,7 @@
 #                           and add a hydra.searchpath entry — see
 #                           configs/inference_experiment/TEMPLATE.yaml Pattern C.
 #   --gres <spec>           SLURM --gres override (e.g. gpu:l40:1)
-#   --time <HH:MM:SS>       SLURM --time override (default: 6:00:00)
+#   --time <HH:MM:SS>       SLURM --time override (default: profile RUNTIME)
 #   --partition <name>      SLURM --partition override
 #   --mem <size>            SLURM --mem override (e.g. 64G)
 #   --cpus-per-task N       SLURM --cpus-per-task override; takes precedence
@@ -43,22 +40,26 @@
 #     metrics_tags=unconditional_refolding
 #     run_name_=my_eval
 #
-# Examples:
+# Examples (run from the repository root):
+#   # Public native runs use the active Python environment; submissions require SLURM.
+#   ./scripts/launch_evaluate.sh --no-foldseek \
+#       inputs=/path/to/structures out_dir=/path/to/output run_name_=my_eval
+#
 #   # Basic evaluation
-#   ./launch_evaluate.sh digs \
+#   ./scripts/launch_evaluate.sh \
 #       inputs=/path/to/structures \
 #       out_dir=/path/to/output \
 #       run_name_=my_eval
 #
 #   # Parallel evaluation with 8 jobs
-#   ./launch_evaluate.sh digs --njobs 8 \
+#   ./scripts/launch_evaluate.sh --njobs 8 \
 #       inputs=/path/to/structures \
 #       out_dir=/path/to/output \
 #       run_name_=my_eval \
 #       gen_njobs=8
 #
 #   # Config that lives outside the repo configs/ tree
-#   ./launch_evaluate.sh coreweave \
+#   ./scripts/launch_evaluate.sh \
 #       --config-path /path/to/my/configs --config-name my_eval
 # =============================================================================
 
@@ -71,7 +72,7 @@ strip_inherited_slurm_env
 # ============================================================
 # Argument parsing
 # ============================================================
-CLUSTER=""
+REQUESTED_CLUSTER=""
 NJOBS=""
 GPUS_PER_JOB=1
 CONFIG_NAME="evaluate"
@@ -84,7 +85,7 @@ FOLLOW_LOGS="false"
 OVERWRITE_RUNDIR="false"
 EXTRA_ARGS=""
 CLI_GRES=""
-CLI_TIME="6:00:00"
+CLI_TIME=""
 CLI_PARTITION=""
 CLI_MEM=""
 CLI_CPUS_PER_TASK=""
@@ -110,8 +111,8 @@ while [[ $# -gt 0 ]]; do
         --cpus-per-task)    CLI_CPUS_PER_TASK="$2"; shift 2 ;;
         --follow|-f)        FOLLOW_LOGS="true"; shift ;;
         *)
-            if [ -z "$CLUSTER" ]; then
-                CLUSTER="$1"
+            if [[ -z "$REQUESTED_CLUSTER" && "$1" != -* && "$1" != \~* && "$1" != *=* ]]; then
+                REQUESTED_CLUSTER="$1"
             else
                 EXTRA_ARGS="$EXTRA_ARGS $1"
             fi
@@ -119,20 +120,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ============================================================
-# Validate
-# ============================================================
-if [ -z "$CLUSTER" ]; then
-    echo "Usage: $0 <cluster> [--njobs N] [options] [hydra_overrides...]"
-    echo "Available clusters: digs, ord, gb200"
-    echo "See script header for full documentation."
-    exit 1
-fi
+export CLUSTER="${REQUESTED_CLUSTER:-${CLUSTER:-local}}"
 
 # ============================================================
 # Load cluster configuration
 # ============================================================
 load_user_info "$CLUSTER" || exit 1
+if [[ "$CONTAINER_TYPE" != none && -z "$CLI_TIME" ]]; then CLI_TIME=6:00:00; fi
 
 [ -n "$CLI_GRES" ]           && GRES="$CLI_GRES"
 [ -n "$CLI_TIME" ]           && RUNTIME="$CLI_TIME"
@@ -205,7 +199,7 @@ if [ -n "$OUT_DIR" ]; then
 else
     RUN_DIR="$ROOT_REMOTE/evaluate/${RUN_NAME}"
 fi
-RUN_DIR="${RUN_DIR%/}"
+RUN_DIR="$(realpath -m "$RUN_DIR")"
 
 mkdir -p "$RUN_DIR/slurm_run_outputs"
 rm -f "$RUN_DIR/slurm_run_outputs/slurm.out" "$RUN_DIR/slurm_run_outputs/slurm.err"
@@ -282,10 +276,13 @@ cat >> "$SBATCH_FILE" << EOF
 EOF
 
 emit_ulimit_block >> "$SBATCH_FILE"
+if [[ "$CONTAINER_TYPE" == none ]]; then
+    printf 'cd %q\n' "$REPO_ROOT" >> "$SBATCH_FILE"
+fi
 
 cat >> "$SBATCH_FILE" << EOF
 
-export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -302,7 +299,7 @@ CPUS_PER_STEP=\$(( CPUS_PER_STEP >= 2 ? CPUS_PER_STEP : 2 ))  # rule of thumb: n
 echo "Array task: \$ARRAY_TASK_ID, GPUs per job: \$GPUS_PER_JOB, total jobs: \$NJOBS, CPUs per step: \$CPUS_PER_STEP"
 EOF
 
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     cat >> "$SBATCH_FILE" << EOF
 export CLUSTER=$CLUSTER
 export CONTAINER_TYPE=$CONTAINER_TYPE
@@ -312,7 +309,7 @@ fi
 [ -n "$DATASET_SQUASH_MOUNTS" ] && echo "export DATASET_SQUASH_MOUNTS=\"$DATASET_SQUASH_MOUNTS\"" >> "$SBATCH_FILE"
 
 # Pre-spawn AF3 daemon block when the resolved config requests AF3 
-if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ] && [ "$AF3_NEEDED" == "true" ]; then
     echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
@@ -323,7 +320,7 @@ fi
 
 SCRIPT_EVALUATE="$CODE_DIR/src/rfproteina/evaluate.py"
 
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     cat >> "$SBATCH_FILE" << 'EOF'
 
 GEN_PIDS=()
@@ -415,7 +412,9 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
             echo "#SBATCH --account $ACCOUNT"
         fi
-        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
+        if [[ -n "${CPU_PARTITION:-${PARTITION:-}}" ]]; then
+            echo "#SBATCH --partition ${CPU_PARTITION:-$PARTITION}"
+        fi
         echo "#SBATCH --time 04:00:00"
         echo "#SBATCH --nodes 1"
         echo "#SBATCH --ntasks-per-node 1"
@@ -425,14 +424,14 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
         echo "#SBATCH --open-mode append"
         echo ""
-        echo "export PYTHONPATH=$CODE_DIR:\$PYTHONPATH"
+        echo "export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
         echo "export PYTHONFAULTHANDLER=1"
         echo ""
         echo "echo \"Running result concatenation for: $RUN_NAME\""
         echo "echo \"Concat dir: $CONCAT_DIR\""
     } > "$CONCAT_SBATCH_FILE"
 
-    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    if [ "$CONTAINER_TYPE" != "docker" ]; then
         cat >> "$CONCAT_SBATCH_FILE" << EOF
 export CLUSTER=$CLUSTER
 export CONTAINER_TYPE=$CONTAINER_TYPE

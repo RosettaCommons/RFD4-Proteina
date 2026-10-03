@@ -12,8 +12,10 @@ if [ "$#" -lt 1 ]; then
 fi
 
 export ALLOW_BIOTITE_CCD="${ALLOW_BIOTITE_CCD:-True}"
-RFPROTEINA_PYTHON="$REPO_ROOT/.venv/bin/python"
-if [ ! -x "$RFPROTEINA_PYTHON" ]; then
-    RFPROTEINA_PYTHON="python"
+if [ -z "${RFPROTEINA_PYTHON:-}" ]; then
+    RFPROTEINA_PYTHON="$REPO_ROOT/.venv/bin/python"
+    if [ ! -x "$RFPROTEINA_PYTHON" ]; then
+        RFPROTEINA_PYTHON="python"
+    fi
 fi
-exec "$RFPROTEINA_PYTHON" skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py "$@"
+exec "$RFPROTEINA_PYTHON" skills/rfd4-proteina-annotated-cif/scripts/check_annotated_cif.py "$@"

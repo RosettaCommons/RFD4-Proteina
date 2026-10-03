@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S /bin/sh -c '"$(dirname "$0")/../../../scripts/rfproteina_exec.sh" training "$0" "$@"'
 """Concatenate and aggregate per-example metrics from multi-job evaluation runs."""
 
 import multiprocessing as mp

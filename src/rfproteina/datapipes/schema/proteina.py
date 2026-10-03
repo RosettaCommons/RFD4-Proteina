@@ -57,7 +57,6 @@ SPECS: dict[str, tuple] = {
     "chain_iid": (torch.int16, -1, "I"),
     "molecule_iid": (torch.int16, -1, "I"),
     "molecule_entity_id": (torch.int16, -1, "I"),
-    "within_index_group_res_idx": (torch.int16, -1, "I"),
     "supports_local_latent": (torch.bool, False, "I"),
     "is_in_context_conditioning": (torch.bool, False, "I"),
     "is_resolved_mask": (torch.bool, False, "I"),
@@ -117,6 +116,7 @@ class ProteinaDataSample(DataSample):
     # Input design job metadata (spec from condition_spec / CIF datasets),
     # distinct from tensor ``SPECS`` above; collated as ``specification_batch``.
     specification: dict[str, Any] | None = None
+    dataset_name: str = "unknown"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ProteinaDataSample":
@@ -141,6 +141,7 @@ class ProteinaDataSample(DataSample):
             metrics_tags=data.get("metrics_tags", set()),
             extra_info=data.get("extra_info", {}),
             specification=data.get("specification"),
+            dataset_name=data.get("dataset_name", "unknown"),
         )
 
     @cached_property
@@ -193,4 +194,5 @@ class ProteinaDataSample(DataSample):
             metrics_tags=self.metrics_tags,
             extra_info=self.extra_info,
             specification=self.specification,
+            dataset_name=self.dataset_name,
         )

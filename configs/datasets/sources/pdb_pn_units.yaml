@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 name: pdb_pn_units
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_tmol_plip_cath/sampling/pn_units.parquet
+data: ${oc.env:DATASET_STORE_ROOT,s3://latent-data-e04a}/train_datasets/streaming-latest/pdb/2026_09_19_tmol_plip_cath/sampling/pn_units.parquet
 
 loader:
   column_mapping:

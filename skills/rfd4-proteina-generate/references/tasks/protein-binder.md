@@ -13,13 +13,13 @@ chain against that interface.
 
 | File | Notes |
 | --- | --- |
-| `ppi/ppi_all_atom/` | One annotated CIF per target, including `rfd3_insulinr`, `rfd3_pdl1`, `01_PD1`, and `30_SC2RBD` |
+| `ppi/ppi_all_atom/` | One annotated CIF per target, including `insulinr`, `pdl1`, `01_PD1`, and `30_SC2RBD` |
 
 ## Run
 
 ```bash
-./src/rfproteina/generate.py \
-    inputs=data/benchmarks/ppi/ppi_all_atom/rfd3_pdl1.cif.zst \
+rfd4-generate \
+    inputs=data/benchmarks/ppi/ppi_all_atom/pdl1.cif.zst \
     num_replicates=8 batch_size=8 out_dir=./runs/ppi \
     metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
@@ -34,9 +34,7 @@ chain against that interface.
 
 ## Gotchas
 
-- Hotspots are set in the input (`select_hotspots`, per-residue atom selections
-  like `TIP` or `ALL`), not on the CLI. To build a new target/hotspot input, use
-  **rfd4-proteina-annotated-cif**. Use **rfd4-proteina-inputs** only when adapting
-  an old `select_hotspots` JSON/YAML config.
+- Hotspots are annotated on the target atoms in the input CIF. To build a new
+  target/hotspot input, use **rfd4-proteina-annotated-cif**.
 - The designed (binder) chain is the "chain of interest" for clustering; it is
   identified automatically from the conditioning annotations.

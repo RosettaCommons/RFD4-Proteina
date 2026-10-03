@@ -19,7 +19,7 @@ nucleic_ss_conditioning:            # SS / pseudoknot conditioned design (deltas
     nucleic_ss_min_shown: 0.5
     p_add_motif_scaffold_condition: 0.05
     global_design_task_kwargs:
-      hbond_kwargs: { p_add_hbond_condition: 0.3 }   # re-enabled for this task (class zeroes it)
+      hbond_kwargs: { p_add_hbond_condition: 0.3 }   # enable H-bond conditioning for this task
 
 folding:                            # RNA folding: reveal sequence, generate structure
   frequency: 20.0

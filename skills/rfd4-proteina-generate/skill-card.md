@@ -7,9 +7,8 @@
 folding / inverse folding, motif scaffolding, enzyme design, small-molecule
 binders, protein binders, and DNA binders. It preflights the environment,
 routes the request to the correct benchmark example and Hydra overrides, runs
-`src/rfproteina/generate.py`, and hands off to sibling skills for input
-construction (`rfd4-proteina-annotated-cif`), legacy input adaptation
-(`rfd4-proteina-inputs`), reward-guided search (`rfd4-proteina-search`),
+`rfd4-generate`, and hands off to sibling skills for input
+construction (`rfd4-proteina-annotated-cif`), reward-guided search (`rfd4-proteina-search`),
 and oracle metrics (`rfd4-proteina-evaluate`).
 
 This skill is for research and development only.
@@ -77,7 +76,7 @@ Mitigation: Stated prominently and in the troubleshooting table.
 - `docs/workflow/running.md`, `docs/workflow/running.md`, `configs/inference.yaml`
 - `docs/examples.rst` and `skills/rfd4-proteina-generate/references/tasks/`
 - Example inputs: `data/benchmarks/`
-- Sibling skills: `rfd4-proteina-setup`, `rfd4-proteina-annotated-cif`, `rfd4-proteina-inputs`, `rfd4-proteina-search`, `rfd4-proteina-evaluate`
+- Sibling skills: `rfd4-proteina-setup`, `rfd4-proteina-annotated-cif`, `rfd4-proteina-search`, `rfd4-proteina-evaluate`
 - RFD4-Proteína website: https://rosettacommons.github.io/RFD4-Proteina/
 - NVIDIA agent skills: https://docs.nvidia.com/skills
 

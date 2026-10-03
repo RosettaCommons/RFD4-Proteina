@@ -11,7 +11,7 @@ from rfproteina.nn.modules.norm import make_norm, set_norm_type
 from rfproteina.nn.modules.pair_rep_initial import PairReprBuilder
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
-from rfproteina.utils.torch_compile import torch_compile_kwargs
+from rfproteina.utils.torch_compile import report_compile_progress, torch_compile_kwargs
 
 CHECKPOINT_LEVELS = {
     "none": (False, False),
@@ -191,6 +191,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         self._compiled_attn_blocks: list = []
         self._compiled_pair_blocks: list = []
         self._trunk_compiled = False
+        self._checked_compile_shapes: set[tuple[int, int]] = set()
 
         # Compile only on shapes we know are fixed/bucketed (to avoid recompilation/thrashing)
         self._shapes_reserved = False
@@ -342,6 +343,12 @@ class LocalLatentsTransformer(torch.nn.Module):
         else:
             pair = self._compiled_pair_blocks if use_compiled else self.pair_update_layers
 
+        shape = (s.shape[0], s.shape[1])
+        if use_compiled and not self.training and shape not in self._checked_compile_shapes:
+            with report_compile_progress(*shape):
+                result = self._apply_trunk(s, z, c, seq_mask, attn, pair)
+            self._checked_compile_shapes.add(shape)
+            return result
         return self._apply_trunk(s, z, c, seq_mask, attn, pair)
 
     def _run_trunk(

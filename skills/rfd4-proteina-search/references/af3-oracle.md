@@ -13,22 +13,18 @@ not use AF3.
 
 ## Runtime configuration
 
-AF3 requires either a native compatible installation or the runtime configured
-by the selected cluster profile. Inspect `.ipd/.env.<cluster>` for the current
-`AF3_IMAGE`, model directory, database directory, and cache settings. Do not
-infer support from the cluster name alone; verify that each required path is set
-and readable in the execution environment.
+Configure the selected oracle's image, weights, and cache paths in `.env.local`,
+as described in the [installation guide](../../../docs/installation.rst).
+Verify that the required paths are readable in the execution environment.
 
-On configured Apptainer clusters, invoke the entry point directly so its shebang
-selects the repository runtime:
+Run generation in the Python environment activated during setup:
 
 ```bash
-./src/rfproteina/generate.py inference_experiment=inference_beam_example
+rfd4-generate inference_experiment=inference_beam_example
 ```
 
-Using `python src/rfproteina/generate.py ...` stays in the active Python
-environment. The standard SLURM generation launcher supplies the configured
-container command.
+The model runs in that Python environment; refolding uses the separately configured
+oracle runtime and host launcher.
 
 ## Search and evaluation behavior
 
@@ -42,5 +38,5 @@ configuration before interpreting the output. A non-refolding tag intentionally
 produces no oracle columns.
 
 Source of truth: `configs/metrics/refolding_oracles/af3.yaml`,
-`src/rfproteina/metrics/oracles/af3_oracle.py`, `.ipd/.env.<cluster>`, and
+`src/rfproteina/metrics/oracles/af3_oracle.py`, `.env.local`, and
 `docs/workflow/metrics.md`.

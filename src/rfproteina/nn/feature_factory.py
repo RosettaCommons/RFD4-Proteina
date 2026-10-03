@@ -698,32 +698,6 @@ class SecondaryStructureSeqFeat(Feature):
         return self.ss_embedding(ss_type)  # [b, n, embed_dim]
 
 
-class HydrogenBondSeqFeat(Feature):
-    """Hydrogen bonds: 0=NONE, 1=DONOR, 2=ACCEPTOR.
-
-    Returns atom37 representation [b, n, 37] as feature.
-
-    NOTE: Legacy feature, kept for inference with older checkpoints.
-    New models should train with ``hbond_modernized`` (:py:class:`ModernizedHydrogenBondSeqFeat`).
-    """
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(dim=37)
-
-    def forward(self, batch: dict) -> torch.Tensor:
-        if C_HB.full_name not in batch:
-            b, n = self.extract_bs_and_n(batch)
-            device = self.extract_device(batch)
-            return torch.zeros(b, n, 37, device=device)
-
-        hb_atom37 = batch[C_HB.full_name].float()  # [b, n, 37]
-        atom37_mask = batch["atom37_mask"]  # [b, n, 37]
-
-        # Zero out invalid atoms
-        hb_feat = hb_atom37 * atom37_mask.float()  # [b, n, 37]
-        return hb_feat
-
-
 class ModernizedHydrogenBondSeqFeat(Feature):
     """Hydrogen bonds as two binary atom37 channels: ``[is_donor (37), is_acceptor (37)]``.
 
@@ -1398,8 +1372,6 @@ class FeatureFactory(torch.nn.Module):
                 return ChainCentroidXyzSeqFeat(**kwargs)
             elif f == "secondary_structure":
                 return SecondaryStructureSeqFeat(**kwargs)
-            elif f == "hbond":
-                return HydrogenBondSeqFeat(**kwargs)
             elif f == "hbond_modernized":
                 return ModernizedHydrogenBondSeqFeat(**kwargs)
             elif f == "pistack":

@@ -53,14 +53,10 @@ the default; choose AF2 or OpenFold3 with
 capabilities differ by design case, so confirm that the selected config contains
 an oracle activated by the reward tag. See
 [references/rewards.md](references/rewards.md), the AF2/AF3 references, and
-rfd4-proteina-setup [references/clusters.md](../rfd4-proteina-setup/references/clusters.md).
-On a configured cluster, use the **shebang form** so the entry point can re-exec
-inside the required runtime:
-
-```bash
-./src/rfproteina/generate.py inference_experiment=inference_beam_example   # re-execs in the container
-python src/rfproteina/generate.py inference_experiment=inference_beam_example  # runs in the current env
-```
+rfd4-proteina-setup and the [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
+Use `rfd4-generate` from the Python environment activated during setup.
+Refolding oracles use their separately configured runtimes. IPD users retain
+their existing container launchers.
 
 If a refolding reward fails, verify the selected backend, its tag support, and its
 runtime before changing the reward.
@@ -71,16 +67,15 @@ Two search configs ship ready to run:
 
 ```bash
 # Beam search, AF3 refolding pLDDT as reward (configs/inference_experiment/inference_beam_example.yaml)
-python src/rfproteina/generate.py inference_experiment=inference_beam_example
+rfd4-generate inference_experiment=inference_beam_example
 
 # Beam search, NO refolding — interface protein<->ligand H-bonds as reward
 # (configs/inference_experiment/sm_binder_hbond_search.yaml)
-python src/rfproteina/generate.py inference_experiment=sm_binder_hbond_search
+rfd4-generate inference_experiment=sm_binder_hbond_search
 ```
 
 The first uses the AF3 oracle (needs the container); the second scores with
-interface H-bond counts and never refolds, so it needs no oracle. On a cluster,
-prefer the shebang form shown in Step 1.
+interface H-bond counts and never refolds, so it needs no oracle.
 
 ## Step 3 — Build your own search config
 
@@ -216,7 +211,7 @@ Search is an inference configuration, so the standard generation launcher is the
 preferred batch path:
 
 ```bash
-./scripts/launch_generate.sh <cluster> \
+./scripts/launch_generate.sh \
     inference_experiment=inference_beam_example
 ```
 
@@ -226,12 +221,9 @@ and CPU settings. Add a launcher resource override only when the user explicitly
 requested it. State the resolved scheduler values and inspect the generated
 `#SBATCH` directives when available.
 
-`launch_search.sh` is a specialized alternative that requires a user-provided
-`configs/search.yaml`. Its generated SBATCH header currently uses the profile's
-account, partition, runtime, and CPU count plus `--gpus-per-job`, but does not
-emit `SLURM_EXTRA_OPTIONS`. Do not use it when the user's QoS, priority,
-reservation, or constraint is carried by that variable. Never submit a job as
-part of skill validation.
+Search uses the standard `launch_generate.sh` path so scheduler settings and
+`SLURM_EXTRA_OPTIONS` follow the same profile contract as ordinary generation.
+Never submit a job as part of skill validation.
 ## Outputs
 
 Search writes the **final beam** (the surviving top candidates) as annotated
@@ -245,7 +237,7 @@ the same schema as plain generation (see `docs/workflow/running.md` Output Files
 
 | Symptom | Fix |
 | --- | --- |
-| Refolding errors or oracle not found | Confirm `metrics/refolding_oracles` selects a backend that supports the reward tag, then verify that backend's runtime. Use the shebang form on configured clusters. See [references/rewards.md](references/rewards.md), the AF2/AF3 references, and rfd4-proteina-setup [references/clusters.md](../rfd4-proteina-setup/references/clusters.md) |
+| Refolding errors or oracle not found | Confirm `metrics/refolding_oracles` selects a backend that supports the reward tag, then verify that backend's runtime. See [references/rewards.md](references/rewards.md), the AF2/AF3 references, rfd4-proteina-setup, and the [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst). |
 | Error about `step_checkpoints` / `nsteps` | `step_checkpoints` must start at 0, be strictly increasing, and end at `nsteps`; set `generation.args.nsteps` to the last checkpoint |
 | Reward not changing / plateaus early | A `clip_values` bound was hit — the metric is clipped before weighting, so it stops contributing past the bound; raise/remove the bound or reweight |
 | Run far slower / more GPU than expected | Cost is `beam_width x n_branch x checkpoints` oracle calls — lower them, or use rfd4-proteina-generate for an unguided baseline. See [references/cost.md](references/cost.md) |

@@ -3,10 +3,8 @@
 Uses MACE-POLAR-1 for interaction energy decomposition:
     E_interaction = E(complex) - E(protein) - E(ligand)
 
-Hydrogen addition uses atomworks' ``ensure_hydrogens`` when available, else RDKit infer:
-    - Per-residue Dimorphite-DL protonation at target pH
-    - RDKit 3D H placement
-    - Backbone charge correction for peptide bond context
+Hydrogens are rebuilt at the target pH with AtomWorks protonation (``add_hydrogens``), which keeps every
+Biotite annotation.
 """
 
 from __future__ import annotations
@@ -26,6 +24,8 @@ import numpy as np
 import torch
 from ase import Atoms
 from ase.optimize import BFGS, FIRE, LBFGS
+from atomworks.constants import HYDROGEN_LIKE_SYMBOLS
+from atomworks.experimental.protonation import add_hydrogens
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.ml.conditions.annotator import ensure_annotations
 from biotite.structure import AtomArray, AtomArrayStack
@@ -46,16 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 def _infer_hydrogens(atom_array: AtomArray, *, ph: float) -> AtomArray:
-    """Add hydrogens for MACE; prefer atomworks protonation, else RDKit infer."""
-    try:
-        from atomworks.io.utils.protonation import ensure_hydrogens
+    """Replace every hydrogen of *atom_array* with those AtomWorks protonation places at *ph*.
 
-        return ensure_hydrogens(atom_array, ph=ph, silence_rdkit_warnings=True)
-    except ModuleNotFoundError:
-        from atomworks.io.tools.rdkit import atom_array_from_rdkit, atom_array_to_rdkit
-
-        mol = atom_array_to_rdkit(atom_array, hydrogen_policy="infer", set_coord=True)
-        return atom_array_from_rdkit(mol, remove_hydrogens=False, remove_inferred_atoms=False)
+    The input needs bonds and ``charge`` and ``pn_unit_iid`` annotations (see ``add_hydrogens``).
+    """
+    heavy = atom_array[~np.isin(atom_array.element, HYDROGEN_LIKE_SYMBOLS)]
+    return add_hydrogens(heavy, ph=ph)
 
 
 def _atom_array_to_ase(array: AtomArray) -> Atoms:
@@ -340,27 +336,8 @@ def compute_interaction_energy(
 
     logger.debug("Structure has %d protein atoms and %d ligand atoms", n_protein, n_ligand)
 
-    # Step 1: Add hydrogens. ``ensure_hydrogens`` (atomworks) preserves Biotite
-    # annotations; the RDKit round-trip fallback in ``_infer_hydrogens`` does not,
-    # so snapshot ``chain_type`` per chain and restore after protonation — otherwise
-    # ``ensure_annotations`` misclassifies ligand chains as protein.
-    prepared = atom_array.copy()
-    chain_type_by_id: dict[str, int] = {}
-    if "chain_type" in prepared.get_annotation_categories():
-        for cid in np.unique(prepared.chain_id):
-            mask = prepared.chain_id == cid
-            chain_type_by_id[str(cid)] = int(prepared.chain_type[mask][0])
-
-    if hydrogen_policy == "infer":
-        prepared = _infer_hydrogens(prepared, ph=pH)
-        if chain_type_by_id:
-            from atomworks.enums import ChainType
-
-            restored = np.empty(len(prepared), dtype=int)
-            for cid in np.unique(prepared.chain_id):
-                mask = prepared.chain_id == cid
-                restored[mask] = chain_type_by_id.get(str(cid), ChainType.POLYPEPTIDE_L)
-            prepared.set_annotation("chain_type", restored)
+    # Step 1: Add hydrogens.
+    prepared = _infer_hydrogens(atom_array, ph=pH) if hydrogen_policy == "infer" else atom_array.copy()
 
     ensure_annotations(prepared, "is_ligand", "is_protein")
     lig_mask = prepared.is_ligand

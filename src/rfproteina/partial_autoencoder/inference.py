@@ -6,7 +6,6 @@ sys.path.insert(0, root)  # Adds project's root directory
 # isort: split
 
 import argparse  # noqa: E402
-from pathlib import Path  # noqa: E402
 
 import hydra  # noqa: E402
 import lightning as L  # noqa: E402
@@ -20,7 +19,7 @@ from omegaconf import DictConfig  # noqa: E402
 from rfproteina.model_masks import compute_ae_supervision_mask  # noqa: E402
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder  # noqa: E402
 from rfproteina.utils.ddp import RankedLogger  # noqa: E402
-from rfproteina.utils.env import load_dotenv  # noqa: E402
+from rfproteina.utils.env import PROJECT_ROOT_PATH, load_dotenv  # noqa: E402
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -43,7 +42,7 @@ def parse_args_and_cfg() -> tuple[argparse.Namespace, DictConfig, str]:
     )
     args = parser.parse_args()
 
-    config_path = Path(__file__).resolve().parents[3] / "configs"
+    config_path = PROJECT_ROOT_PATH / "configs"
     if args.config_subdir is not None:
         config_path = config_path / args.config_subdir
 

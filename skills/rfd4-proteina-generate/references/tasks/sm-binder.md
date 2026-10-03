@@ -15,7 +15,7 @@ ligand; the model designs a protein pocket around it. Back to the
 
 ```bash
 # One small-molecule binder target
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/small_molecule_binder/sm_binder \
     subset_to_examples=SAM \
     num_replicates=8 batch_size=8 out_dir=./runs/sm_binder \
@@ -34,8 +34,8 @@ python src/rfproteina/generate.py \
 - **The ligand must be in the input** — this task cannot be run from a bare
   length spec. Use the ligand-carrying benchmarks or build an annotated CIF with
   the ligand via **rfd4-proteina-annotated-cif**.
-- `select_fixed_atoms: false` means **nothing is coordinate-conditioned** — the
-  model invents both the pose and the conformer. Confirm that is intended; build
-  a fixed-pose input with **rfd4-proteina-inputs** when the ligand should stay put.
+- Without ligand coordinate conditioning, the model generates both the pose
+  and the conformer. Confirm that is intended; build a fixed-pose input with
+  **rfd4-proteina-annotated-cif** when the ligand should stay put.
 - PDB-derived ligands frequently arrive with wrong bond orders / missing charges;
   validate with **rfd4-proteina-annotated-cif** before committing compute.

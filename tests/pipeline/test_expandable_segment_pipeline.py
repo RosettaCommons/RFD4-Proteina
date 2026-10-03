@@ -96,7 +96,7 @@ _TEST_DATA_DIR = Path(__file__).parent.parent / "data" / "pdb"
 
 
 def _preprocessed_mirror_cif(mirror: Path, pdb_id: str) -> Path | None:
-    """Resolve a structure under ``2026_01_06_pdb_preprocessed`` (ord ``/squash/pdb``).
+    """Resolve a structure under ``2026_01_06_pdb_preprocessed``.
 
     The archive uses two conventions per entry directory ``{shard}/{id}/``:
     - single assembly: ``{id}.cif`` (e.g. ``w4/5w40/5w40.cif``)

@@ -26,7 +26,6 @@ the mechanics that already exist:
 - **rfd4-proteina-generate** — produce designs for a task.
 - **rfd4-proteina-annotated-cif** — build or edit the annotated CIF that defines
   the design problem (length, epitope/hotspots, ligand).
-- **rfd4-proteina-inputs** — adapt a legacy RFD3 JSON/YAML branch input when needed.
 - **rfd4-proteina-search** — reward-guided beam search (AF3 oracle) for a single run.
 - **rfd4-proteina-evaluate** — metrics + aggregation + diversity clustering.
 

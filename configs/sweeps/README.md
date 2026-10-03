@@ -22,11 +22,11 @@ run_name_prefix: my_sweep       # Prefix for auto-generated run names
 
 ```bash
 # Generate all sweep configs
-python src/script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml
+python src/script_utils/sweep.py --sweep-config configs/sweeps/sweep_example.yaml
 
 # Dry run (show combinations without writing files)
-python src/script_utils/sweep.py --sweep-config configs/sweeps/ppi_benchmark.yaml --dry-run
+python src/script_utils/sweep.py --sweep-config configs/sweeps/sweep_example.yaml --dry-run
 
 # Generate + submit via launch_sweep.sh
-./scripts/launch_sweep.sh digs --sweep-config configs/sweeps/ppi_benchmark.yaml
+./scripts/launch_sweep.sh --sweep-config configs/sweeps/sweep_example.yaml
 ```

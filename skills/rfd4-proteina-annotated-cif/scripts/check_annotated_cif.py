@@ -8,9 +8,9 @@ any error (``--strict`` also fails on warnings).
 
 Usage::
 
-    export PYTHONPATH=$PWD/src
+    export PYTHONPATH=$PWD/src:$PWD/lib/atomworks/src
     export ALLOW_BIOTITE_CCD=True
-    python skills/rfd4-proteina-inputs/scripts/check_annotated_cif.py <file.cif> [--strict] [--quiet]
+    python skills/rfd4-proteina-annotated-cif/scripts/check_annotated_cif.py <file.cif> [--strict] [--quiet]
 """
 
 from __future__ import annotations
@@ -599,9 +599,9 @@ def check_metal_bonds(arr: AtomArray) -> list[Violation]:
                 "metal_no_bonds",
                 f"{len(lone_unbonded)} metal atom(s) have no bonds: {_truncate(lone_unbonded)}. Normal "
                 f"-- most CIFs lack struct_conn, so the metal reaches the model as an isolated atom.{detail} "
-                "These are geometric neighbours, NOT bonds -- if any should be COORDINATION, name them: "
-                "build_from_rfd3.sh input.json example_key --coordination_bond "
-                "'C/ZN/296/ZN,A/CYS/365/SG'. Never infer by distance.",
+                "These are geometric neighbours, not bonds. If coordination bonds are intended, "
+                "specify their atom pairs and add them explicitly with the AtomWorks API "
+                "or Design Studio. Never infer them by distance.",
             )
         )
     if coordinated:

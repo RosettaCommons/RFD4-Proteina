@@ -456,6 +456,7 @@ class PaddedBatchedDataSample(BatchedDataSample):
         return {
             # Top-level attributes (not in tensors dict)
             "example_id_batch": "example_id",
+            "dataset_name_batch": "dataset_name",
             "atom_array_batch": "atom_array",
             "task_batch": "task",
             "metrics_tags_batch": "metrics_tags",

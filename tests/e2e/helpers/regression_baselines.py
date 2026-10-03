@@ -98,7 +98,7 @@ def load_design_cif(path: Path | str) -> AtomArray:
 
 
 def deterministic_env() -> dict[str, str]:
-    """Env vars that make CUDA operations reproducible on the same hardware."""
+    """Run test subprocesses eagerly with reproducible CUDA operations on the same hardware."""
     env = os.environ.copy()
     # Fix MASTER_PORT: the cluster env file sets it to a bash expression Python can't evaluate.
     env.setdefault("MASTER_PORT", "29500")
@@ -110,6 +110,8 @@ def deterministic_env() -> dict[str, str]:
     env["CUBLAS_DETERMINISTIC"] = "1"
     env["PYTHONHASHSEED"] = "0"
     env["WANDB_MODE"] = "disabled"
+    # Disable all compile wrappers, including module-level RMSNorm, before the child imports Torch.
+    env["TORCHDYNAMO_DISABLE"] = "1"
     return env
 
 

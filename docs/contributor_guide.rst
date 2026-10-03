@@ -52,17 +52,19 @@ We build the documentation with `Sphinx
 Write narrative pages in either reStructuredText or Markdown through MyST.
 Runnable gallery examples live in ``docs/examples/``.
 
-Install the documentation dependencies:
+Create the environment without downloading model weights, then install the
+documentation dependencies. Building documentation does not require a GPU:
 
 .. code-block:: bash
 
-   uv pip install -r docs/docs_requirements.txt
+   bash setup.sh --skip-weights
+   uv pip install --python .venv/bin/python -r docs/docs_requirements.txt
 
 Build the site from the repository root:
 
 .. code-block:: bash
 
-   make -C docs html
+   make -C docs html SPHINXBUILD="$PWD/.venv/bin/sphinx-build" SPHINXOPTS="-W --keep-going"
 
 The generated site lands in ``docs/_build/html/``. Treat every Sphinx warning as
 something to fix before merging, especially broken references and failed autodoc

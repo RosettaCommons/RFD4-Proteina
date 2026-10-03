@@ -12,10 +12,7 @@
 # docs/workflow/running.md.
 #
 # Usage:
-#   ./launch_generate.sh <cluster> [options] [hydra_overrides...]
-#
-# Positional:
-#   <cluster>               Cluster name (e.g. digs, ord, gb200)
+#   ./scripts/launch_generate.sh [options] [hydra_overrides...]
 #
 # Options:
 #   --njobs N               Parallel generation jobs (default: reads gen_njobs
@@ -66,18 +63,22 @@
 #   Pass inference_experiment=inference_on_val_set plus the dataset override
 #   +datasets/val@generation=<name>. See the README for full examples.
 #
-# Examples:
+# Examples (run from the repository root):
+#   # Public native runs use the active Python environment; submissions require SLURM.
+#   ./scripts/launch_generate.sh --no-foldseek \
+#       inputs=data/benchmarks/monomer run_name_=my_run
+#
 #   # Parallel inference with 8 jobs
-#   ./launch_generate.sh digs --njobs 8 \
-#       inputs=benchmarks/monomer run_name_=my_run
+#   ./scripts/launch_generate.sh --njobs 8 \
+#       inputs=data/benchmarks/monomer run_name_=my_run
 #
 #   # Offline validation (Foldseek on by default)
-#   ./launch_generate.sh digs --njobs 8 \
+#   ./scripts/launch_generate.sh --njobs 8 \
 #       inference_experiment=inference_on_val_set \
 #       +datasets/val@generation=mcsa/mcsa_subset run_name_=mcsa_val
 #
 #   # Config that lives outside the repo configs/ tree
-#   ./launch_generate.sh coreweave --njobs 1 \
+#   ./scripts/launch_generate.sh --njobs 1 \
 #       --config-path /path/to/my/configs --config-name my_experiment
 # =============================================================================
 
@@ -91,7 +92,7 @@ strip_inherited_slurm_env
 # ============================================================
 # Argument parsing
 # ============================================================
-CLUSTER=""
+REQUESTED_CLUSTER=""
 NJOBS=""               # empty = read from config's gen_njobs
 GPUS_PER_JOB=1
 CONFIG_NAME="inference"
@@ -185,8 +186,8 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            if [ -z "$CLUSTER" ]; then
-                CLUSTER="$1"
+            if [[ -z "$REQUESTED_CLUSTER" && "$1" != -* && "$1" != \~* && "$1" != *=* ]]; then
+                REQUESTED_CLUSTER="$1"
             else
                 EXTRA_ARGS="$EXTRA_ARGS $1"
             fi
@@ -195,15 +196,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ============================================================
-# Validate arguments
-# ============================================================
-if [ -z "$CLUSTER" ]; then
-    echo "Usage: $0 <cluster> [--njobs N] [--gpus-per-job N] [options] [hydra_overrides...]"
-    echo "Available clusters: digs, ord, gb200"
-    echo "See script header for full documentation."
-    exit 1
-fi
+export CLUSTER="${REQUESTED_CLUSTER:-${CLUSTER:-local}}"
 
 # ============================================================
 # Load cluster configuration
@@ -301,7 +294,7 @@ if [ -n "$OUT_DIR" ]; then
 else
     RUN_DIR="$ROOT_REMOTE/inference/${RUN_NAME}"
 fi
-RUN_DIR="${RUN_DIR%/}"
+RUN_DIR="$(realpath -m "$RUN_DIR")"
 
 # generate.py writes outputs directly into RUN_DIR (as out_dir);
 # concatenation looks for inference_metrics/ within that same directory.
@@ -402,11 +395,14 @@ cat >> "$SBATCH_FILE" << EOF
 EOF
 
 emit_ulimit_block >> "$SBATCH_FILE"
+if [[ "$CONTAINER_TYPE" == none ]]; then
+    printf 'cd %q\n' "$REPO_ROOT" >> "$SBATCH_FILE"
+fi
 
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -425,7 +421,7 @@ EOF
 
 # Apptainer clusters: pass cluster identity to exec_core.sh (via shebang).
 # Static env vars (NCCL, PyTorch) come from .ipd/.env.${CLUSTER} via exec_core.sh.
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     cat >> "$SBATCH_FILE" << EOF
 
 # Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}
@@ -453,7 +449,7 @@ scontrol show job $SLURM_JOB_ID > /dev/null 2>&1 && echo '[slurm] scontrol works
 EOF
 
 # Pre-spawn AF3 daemon block when the resolved config requests AF3
-if [ "$CONTAINER_TYPE" == "apptainer" ] && [ "$AF3_NEEDED" == "true" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ] && [ "$AF3_NEEDED" == "true" ]; then
     echo "  AF3Oracle detected in resolved config — emitting AF3 daemon pre-spawn block"
     emit_af3_daemon_block "$CODE_DIR" "$GPUS_PER_NODE" >> "$SBATCH_FILE"
 fi
@@ -465,7 +461,7 @@ fi
 # Platform-specific generation command
 SCRIPT_GENERATE="$CODE_DIR/src/rfproteina/generate.py"
 
-if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+if [ "$CONTAINER_TYPE" != "docker" ]; then
     # Apptainer: shebang in generate.py handles container execution via exec_core.sh
     cat >> "$SBATCH_FILE" << 'EOF'
 
@@ -495,7 +491,7 @@ done
 wait "${GEN_PIDS[@]}"
 EOF
 else
-    # OCI/GB200: Docker/Pyxis container via srun --container-image
+    # Docker/Pyxis: Docker/Pyxis container via srun --container-image
     CONTAINER_CMD=$(get_srun_cmd)
     CONTAINER_MOUNTS_STR=$(build_container_mounts_string)
     CONTAINER_ENV_CMDS=$(build_container_env_cmds)
@@ -554,7 +550,9 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         if [ "$SKIP_ACCOUNT" != "true" ] && [ -n "$ACCOUNT" ]; then
             echo "#SBATCH --account $ACCOUNT"
         fi
-        echo "#SBATCH --partition ${CPU_PARTITION:-${PARTITION:-batch}}"
+        if [[ -n "${CPU_PARTITION:-${PARTITION:-}}" ]]; then
+            echo "#SBATCH --partition ${CPU_PARTITION:-$PARTITION}"
+        fi
         echo "#SBATCH --time 04:00:00"
         echo "#SBATCH --nodes 1"
         echo "#SBATCH --ntasks-per-node 1"
@@ -564,14 +562,14 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
         echo "#SBATCH --open-mode append"
         echo ""
-        echo "export PYTHONPATH=$CODE_DIR:\$PYTHONPATH"
+        echo "export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
         echo "export PYTHONFAULTHANDLER=1"
         echo ""
         echo "echo \"Running result concatenation for: $RUN_NAME\""
         echo "echo \"Concat dir: $CONCAT_DIR\""
     } > "$CONCAT_SBATCH_FILE"
 
-    if [ "$CONTAINER_TYPE" == "apptainer" ]; then
+    if [ "$CONTAINER_TYPE" != "docker" ]; then
         # Apptainer: shebang in aggregate_metrics.py handles container
         cat >> "$CONCAT_SBATCH_FILE" << EOF
 # Cluster identity — read by exec_core.sh (shebang) to source .ipd/.env.\${CLUSTER}

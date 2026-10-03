@@ -11,27 +11,27 @@ Metric guidance uses the `guidance` Hydra group and does not require any separat
 The repository ships `+guidance=contract_ca` as a dependency-free mechanics test:
 
 ```bash
-python src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     out_dir=./runs/metric-guidance-smoke \
     num_replicates=1 \
     +guidance=contract_ca
 ```
 
-On an interactive DIGS GPU, use the container entry point:
+With a configured container profile, use the container entry point:
 
 ```bash
-./src/rfproteina/generate.py \
+rfd4-generate \
     inputs=data/benchmarks/monomer \
     out_dir=./runs/metric-guidance-smoke \
     num_replicates=1 \
     +guidance=contract_ca
 ```
 
-For a submitted DIGS job:
+For a submitted job:
 
 ```bash
-./scripts/launch_generate.sh digs --njobs 1 \
+./scripts/launch_generate.sh --njobs 1 \
     inputs=data/benchmarks/monomer \
     out_dir=/path/to/runs/metric-guidance-smoke \
     num_replicates=1 \

@@ -5,7 +5,7 @@ RASA, hydrogen bonds, and secondary structure conditioning.
 These tests focus on:
 1. Condition class behavior (default masks, default annotations, enums)
 2. Design task modifier functions (add_rasa_condition, add_hbond_condition, add_secondary_structure_condition)
-3. Integration with the RFD3DesignTask infrastructure
+3. Integration with the ConditionedDesignTask infrastructure
 """
 
 import pickle

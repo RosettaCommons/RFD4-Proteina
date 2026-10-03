@@ -1,7 +1,7 @@
 import numpy as np
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.ml.conditions import C_CRD, C_DIS, C_IDX
+from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.utils.token import apply_token_wise, get_token_starts, spread_token_wise
 from biotite.structure import AtomArray, AtomArrayStack
 
@@ -59,12 +59,11 @@ def _get_candidate_token_ids(
         ensure_annotations(atom_array, "token_id")
         is_unindexed = ~C_IDX.mask(atom_array, default="generate")
         has_fixed_coord = C_CRD.mask(atom_array, default="generate")
-        has_dist = C_DIS.mask(atom_array, default="generate").as_dense_array(False).any(axis=0)
         has_internal_coords = C_CRDGRP.is_internal(atom_array)
-        has_coord_or_dist_conditioning = has_fixed_coord | has_dist | has_internal_coords
+        has_coord_conditioning = has_fixed_coord | has_internal_coords
 
         token_is_unindexed = apply_token_wise(atom_array, is_unindexed, np.any)
-        token_has_conditioning = apply_token_wise(atom_array, has_coord_or_dist_conditioning, np.any)
+        token_has_conditioning = apply_token_wise(atom_array, has_coord_conditioning, np.any)
         token_mask &= ~token_is_unindexed & ~token_has_conditioning
 
     return {int(t) for t in token_ids[token_mask].tolist()}

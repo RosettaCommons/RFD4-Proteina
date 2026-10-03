@@ -300,8 +300,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         - tok_idx: [L] token index for each atom
         - element: [L] atomic number (provided for sequence-conditioned tokens)
         - chain_iid: [L] chain instance ID
-        - within_index_group_res_idx: [L] residue index within chain
-        - Conditioning masks and values (C_CRD, C_SEQ, C_DIS, C_IDXGRP, etc.) of shape [L]
+        - Conditioning masks and values (C_CRD, C_SEQ, C_IDXGRP, etc.) of shape [L]
         - supports_local_latent: [L] bool mask for generated, non-atomized residue types in the AE latent alphabet
         - is_in_context_conditioning: [L] bool mask for tokens used only as in-context conditioning
     """
@@ -323,7 +322,6 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         # ... index features
         feats["tok_idx"] = aa.token_id  # [L]
-        feats["within_index_group_res_idx"] = aa.within_index_group_res_idx  # [L]
 
         # Get unique chain IDs and random permutation
         # NOTE: We ensure that the chain_iid is randomly assigned for each chain in the structure,
@@ -509,7 +507,6 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     "molecule_iid",
     # TODO: Rename molecule_entity
     "molecule_entity_id",
-    "within_index_group_res_idx",
     "supports_local_latent",
     "is_in_context_conditioning",
     "is_resolved_mask",
@@ -1242,7 +1239,7 @@ def _build_design_clean_and_sample_pipeline(
             ),
         ]
 
-        # Protein-DNA contact-centered contiguous crop (ported from RFD3). Keeps
+        # Protein-DNA contact-centered contiguous crop. Keeps
         # a contiguous protein region + contiguous DNA duplex around a sampled
         # binding contact; falls back to a spatial crop when no contact exists.
         # Needs the within_poly_res_idx annotation to walk contiguous windows.
@@ -1290,7 +1287,7 @@ def _build_design_clean_and_sample_pipeline(
     #    design problem configuration
     # 4. Possible `DesignTaskModifier` functions can then be applied afterwards to modify the task
     #    These exist to reduce the overhead of writing full-fledged new design tasks by simply allowing
-    #    to change the condition annotation values (e.g. `rasa`, `sequence`, `distance`) for a given,
+    #    to change the condition annotation values (e.g. `rasa`, `sequence`, `coordinates`) for a given,
     #    existing task.
     #
     # If no design tasks are provided (or empty dict), skip design task routing entirely.

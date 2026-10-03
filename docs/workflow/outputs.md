@@ -46,9 +46,11 @@ ligand = aa[aa.mask("hetero")]                                             # the
 ca     = aa[aa.mask("(chain_id == 'A') & (atom_name == 'CA')")]            # the backbone trace
 ```
 
-That is how the [enzyme design tutorial](../examples/enzyme_design_tutorial.ipynb) re-applies
-`C_CRD` and `C_SEQ` from the mask to carry conditions onto a design it picked, and how it colours
-the motif apart from the rest of the scaffold in its interactive viewer.
+The [enzyme design tutorial](../examples/enzyme_design_tutorial.ipynb) uses this selection to
+colour the motif separately from the scaffold. Generated CIFs already carry saved conditioning
+targets onto the matched atoms; preserve those annotations when chaining refinement runs.
+The saved coordinate targets can differ from the generated coordinates, so rebuilding them from
+the generated structure would change the design problem.
 
 For a quick look without wiring up a viewer yourself, AtomWorks' `view` helper renders an
 `AtomArray` inline in a notebook, including any masked subset. It is the visualization companion to

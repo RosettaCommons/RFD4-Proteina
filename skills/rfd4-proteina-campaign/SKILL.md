@@ -45,8 +45,7 @@ predictions, and versioned passer decision that produced it.
 1. **Intent and setup** — complete `rfd4-proteina-setup`, interview the user, and
    initialize the ledger.
 2. **Inputs** — use `rfd4-proteina-annotated-cif` to create and validate each
-   annotated CIF; archive every conditioning variant as a distinct input. Use
-   `rfd4-proteina-inputs` only when a campaign begins from legacy RFD3 JSON/YAML.
+   annotated CIF; archive every conditioning variant as a distinct input.
 3. **Criteria** — agree on gating metrics, exact operators and thresholds,
    missing-value policy, and the definition of uniqueness.
 4. **Pilot** — run one small end-to-end generation and evaluation, including the

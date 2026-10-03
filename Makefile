@@ -1,8 +1,12 @@
-.PHONY: clean format test train generate
+.PHONY: setup clean format test train generate
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
+
+## Set up the project environment
+setup:
+	bash setup.sh
 
 ## Delete all compiled Python files
 clean:

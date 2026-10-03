@@ -6,6 +6,26 @@ and [reporting checks](../../../src/rfproteina/conditions_reporting.py) define t
 invariants. Run the checked-out implementation and report unsupported conditions
 rather than silently dropping them.
 
+## Saved CIF checks
+
+Run these helpers from the repository root:
+
+```bash
+bash skills/rfd4-proteina-annotated-cif/scripts/inspect_cif.sh input.cif
+bash skills/rfd4-proteina-annotated-cif/scripts/check_annotated_cif.sh input.cif
+```
+
+The inspector reports structure, chemistry, conditions, and expandable segments.
+The checker runs pipeline validation and checks selected coordinates, sequence/index
+consistency, missing atoms, unknown formal charges, ligand bond orders, metal bonds,
+component-name collisions, and declared covalent connections. It reports findings
+without repairing the input. `--strict` also fails on warnings; `--quiet` limits
+output to findings and the verdict. `--skip_pipeline` omits the pipeline check and
+must not be reported as full validation.
+
+Chemistry warnings require intent review: these checks cannot establish whether a
+ligand pose, metal coordination, or unusual component is scientifically appropriate.
+
 ## Chemistry and component completeness
 
 Read the canonical [charges and bonds guidance](../../../docs/workflow/inputs.md#charges-and-bonds)

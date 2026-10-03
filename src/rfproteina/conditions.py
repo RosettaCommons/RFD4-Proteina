@@ -31,9 +31,6 @@ class Hotspot(ConditionBase):
     default_value = False
 
 
-# NOTE: In RFD3, the "unspecified" bin was the same as fully exposed! That bug is fixed here.
-# However, this may cause issues if trying to load the exact weights without any fine-tuning.
-# The enum values are chosen to match RFD3 inference-time behavior to make the transition easy for designers.
 class RasaEnum(IntEnum):
     UNSPECIFIED = 0
     BURIED = 1
