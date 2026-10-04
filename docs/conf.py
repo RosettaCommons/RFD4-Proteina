@@ -124,6 +124,7 @@ exclude_patterns = [
 ]
 
 autodoc_member_order = "bysource"
+viewcode_follow_imported_members = False
 autodoc_typehints = "signature"
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
