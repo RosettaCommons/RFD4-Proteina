@@ -1,17 +1,14 @@
 {
   "assets": [
     {
-      "name": "TrkA–C10",
-      "asset": "trka-c10.png",
-      "sha256": "ee7be0b50176d673c88d2ae71a71ec4bf9e07b8ee75933caf16b967766c95a1d",
-      "case": "trka-c10",
-      "native_states": 60,
-      "conditioning": "Both chains: backbone coordinates and sequences conditioned.",
-      "generation_source_commit": "4b6ddfa58b09302683cf34022277c0e2cfce62fb",
-      "atomworks_commit": "e00112894bbbf42e664fdb314996f38569b4efb4",
-      "source_trajectory_sha256": "cc47e5631f7178d5ed667da729d5e17de18ee32a6c33987cca83796e05b2dfa1",
-      "renderer": "Blender / Molecular Nodes",
-      "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
+      "asset": "design-gallery-mobile.png",
+      "sha256": "60121915eda4acd168739d834e1b467b3de27e5137467d69e117289d55d1beb9",
+      "role": "Unlabelled transparent molecular collage for narrow screens"
+    },
+    {
+      "asset": "design-gallery.png",
+      "sha256": "037564293ed2582451861616539f35d9cfa6ee94e6ba5698d8df95df2f9cf02a",
+      "role": "Unlabelled transparent molecular collage"
     },
     {
       "name": "DNA binder",
@@ -27,26 +24,110 @@
       "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
     },
     {
-      "name": "RNA pseudoknot",
-      "asset": "rna-pseudoknot.png",
-      "sha256": "b350c8d31fccca01550388d8839138a1c8661bc19b0b292db9ba88cc033eea44",
-      "case": "rna-pseudoknot-w05-rep3",
+      "name": "DNA binder",
+      "asset": "dna-binder-generation.mp4",
+      "sha256": "eefd0179d9454ca528f4855108126774df35d161c5939d63b08f22d7d4e1fbc1",
+      "case": "dna-binder-7m5w-structure-context-rep5",
       "native_states": 60,
-      "conditioning": "Base-pair topology conditioned; no sequence or coordinate conditioning.",
+      "conditioning": "DNA sequence and coordinates conditioned; protein sequence and coordinates generated freely.",
       "generation_source_commit": "4b6ddfa58b09302683cf34022277c0e2cfce62fb",
       "atomworks_commit": "e00112894bbbf42e664fdb314996f38569b4efb4",
-      "source_trajectory_sha256": "e52ef44ebfdae0bf9ba2d57cdf936b027633c457cacd02108703b333ef5d31b7",
+      "source_trajectory_sha256": "3741a1c3d13a526dbcf58ead3ff7c832d21fa7dc463c5802064fa30fe1cb658d",
       "renderer": "Blender / Molecular Nodes",
       "coordinate_policy": "Exact discrete native states; no molecular interpolation; generated endpoint retained"
     }
   ],
+  "gallery": {
+    "renderer": "Blender 5.2.1 LTS / EEVEE, 64 samples",
+    "geometry": "Final native model state 60, original scene camera at frame 1. Geometry unchanged; transparent crops uniformly scaled into a 3×2 collage.",
+    "width": 2100,
+    "height": 1000,
+    "transparent_background": true,
+    "panels": [
+      {
+        "case": "ebpa-nanobody",
+        "title": "Nanobody complex",
+        "conditioning": "Both EbpA and nanobody chains: sequence and backbone coordinates conditioned; conditioned reconstruction.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "877bdfd7ab035ac56732e956fb03e6d19c7bea731c957147c1fb2233421e8e0e",
+        "annotated_trajectory_sha256": "f5186d94596f778ad461d658758f53a8d8bbf0700d8e534d73c1994a44de9650",
+        "source_blend_sha256": "7628e1bbe34acd3fb5961add9437b1d138d1914174aff1f65d6cf2ed9a4b782b"
+      },
+      {
+        "case": "dna-binder-7m5w-structure-context-rep5",
+        "title": "Protein–DNA",
+        "conditioning": "DNA sequence and reference coordinates conditioned; protein sequence and coordinates generated freely.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "3741a1c3d13a526dbcf58ead3ff7c832d21fa7dc463c5802064fa30fe1cb658d",
+        "annotated_trajectory_sha256": "61b26856fd7479fb8121fdb7a190d49175a9c5ee5e051655c3a5cf28da702657",
+        "source_blend_sha256": "d0f5f136651599ea152efe48fb7b95308573d4a903fe7e2f31cba487692f9cac"
+      },
+      {
+        "case": "rna-pseudoknot-w05-rep3",
+        "title": "RNA topology",
+        "conditioning": "Base-pair topology conditioned; no sequence or coordinate conditioning.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "e52ef44ebfdae0bf9ba2d57cdf936b027633c457cacd02108703b333ef5d31b7",
+        "annotated_trajectory_sha256": "a3df26ddf9d8aea5d6a41b51b364c58f14b5a74a4e6c6567330e82ad9bcaf9be",
+        "source_blend_sha256": "12024d2be575781a46e06bc1930774da77dd4207e853fba49c071b8274af4ee7"
+      },
+      {
+        "case": "acetyl-coa-barrel",
+        "title": "Ligand pocket",
+        "conditioning": "Protein sequence and backbone coordinates conditioned; acetyl-CoA identity and coordinates conditioned; conditioned reconstruction.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "a3ea8828ccf609faa36a963ad05a2aa27f3ca4151c5d731c9f96d64482e7e435",
+        "annotated_trajectory_sha256": "51572b5a23355b71f02fd0354a8dcc2738ffa8e049ad14244d9599c6e9314fc1",
+        "source_blend_sha256": "78cd58bd9a563c018ad521e704e15fea9ff944ab8736a4ba43a85fbc4adc679c"
+      },
+      {
+        "case": "glycan-binder",
+        "title": "Glycan complex",
+        "conditioning": "Protein sequence and backbone coordinates conditioned; glycan identity and all coordinates conditioned; conditioned reconstruction.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "785a3ca68dccc1a3d6de7b28f1e7d57ba079b3f4366dce578d1c0c947135cd7b",
+        "annotated_trajectory_sha256": "012b355cf272be1329979b1ac4011b117773f7db16e8c6e2e926088fdb0d623e",
+        "source_blend_sha256": "7dd449fb1725ff1dc36f4858be715fe33940022c58afa3153ae884d4d679ffb8"
+      },
+      {
+        "case": "p131-nanopore",
+        "title": "Protein assembly",
+        "conditioning": "All nine protein chains: sequence and backbone coordinates conditioned; conditioned reconstruction.",
+        "native_states": 60,
+        "displayed_native_state": 60,
+        "source_trajectory_sha256": "2cf88e4fabbf4ab2a60da45943c6b8ecb59842b4e987325eb3bdaf7ed4e1eb38",
+        "annotated_trajectory_sha256": "07703655343c2d2fd24e7054371d1dbea2da50daaa6edefdada7fcd367c52aaa",
+        "source_blend_sha256": "cce14536dd3b315399d22e130b6da5d0241cfe40620b3f8105c3bb7fb367e55d"
+      }
+    ],
+    "mobile_layout": {
+      "width": 1400,
+      "height": 1500,
+      "columns": 2,
+      "rows": 3,
+      "labels": false
+    },
+    "theme_policy": "One transparent asset per layout; identical molecular colors in light and dark mode. No embedded labels or titles."
+  },
+  "conditioning_note": "Coordinate conditioning supplies a reference; it does not freeze sampled coordinates. These renders are illustrative model outputs, not experimental validation.",
   "animation": {
     "duration_seconds": 18,
     "width": 360,
     "fps": 10,
     "palette_colors": 128,
     "playback": "Forward generation (8 s), endpoint hold (2 s), reverse replay (8 s). Reverse is presentation playback, not another model run.",
-    "conversion": "FFmpeg fps=10, scale=360:-1:flags=lanczos, palettegen=max_colors=128, paletteuse=dither=bayer:bayer_scale=4"
-  },
-  "stills": "Copied from saved Blender endpoint renders; molecular geometry unchanged."
+    "conversion": "FFmpeg fps=10, scale=360:-1:flags=lanczos, palettegen=max_colors=128, paletteuse=dither=bayer:bayer_scale=4",
+    "mp4": {
+      "width": 960,
+      "height": 960,
+      "fps": 30,
+      "duration_seconds": 18
+    },
+    "coordinate_policy": "Exact discrete native states; no molecular interpolation. The supplied structure is not substituted for the generated endpoint."
+  }
 }

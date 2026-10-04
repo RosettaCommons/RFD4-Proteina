@@ -15,14 +15,28 @@ RFD4-Proteína generates proteins — and RNA, DNA, and small-molecule complexes
 Developed by the **Baker Lab × NVIDIA GenAIR**, it supports sequence–structure co-design,
 binding-site and motif conditioning, partial diffusion, and reward-guided search.
 
-| Protein complex | DNA-binder generation | RNA pseudoknot |
-| :---: | :---: | :---: |
-| <img src="assets/readme/trka-c10.png" width="250" alt="Blender render of a conditioned TrkA–C10 complex"> | <img src="assets/readme/dna-binder-generation.gif" width="250" alt="Native RFD4-Proteína denoising trajectory for a protein binder around a DNA duplex"> | <img src="assets/readme/rna-pseudoknot.png" width="250" alt="Blender render of a topology-conditioned RNA pseudoknot"> |
+<picture>
+  <source media="(max-width: 600px)" srcset="assets/readme/design-gallery-mobile.png">
+  <img src="assets/readme/design-gallery.png" width="1050" alt="Six molecular examples: nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
+</picture>
 
-Blender / Molecular Nodes renders from native model outputs: a sequence- and backbone-conditioned
-TrkA–C10 reconstruction, a freely generated protein binder conditioned on a DNA target, and an RNA
-pseudoknot conditioned on base-pair topology. The animation plays generation forward, holds the
-endpoint, then reverses for the loop. See [render provenance](assets/readme/provenance.json).
+Native model outputs rendered in Blender: DNA-conditioned protein generation and topology-conditioned
+RNA generation, alongside sequence- and backbone-conditioned reconstructions of the other four systems.
+[Render provenance](assets/readme/provenance.json).
+
+<details>
+<summary>Watch a DNA binder emerge · native denoising trajectory</summary>
+
+<p align="center">
+  <a href="assets/readme/dna-binder-generation.mp4"><img src="assets/readme/dna-binder-generation.gif" width="360" alt="Native 60-state generation of a protein binder conditioned on a DNA duplex, followed by reverse playback."></a>
+</p>
+
+[Watch or download the full-resolution MP4](assets/readme/dna-binder-generation.mp4).
+The protein sequence and coordinates are generated freely, conditioned on the DNA sequence and reference
+coordinates. The 18-second loop plays generation forward, holds the endpoint, then reverses for playback;
+the reverse segment is not a second model run.
+
+</details>
 
 Start with the **[documentation](docs/index.rst)** and [worked examples](docs/examples.rst).
 
