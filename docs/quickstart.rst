@@ -11,7 +11,9 @@ Install
 
    pip install rfd4-proteina
 
-See :doc:`installation` for CUDA dependencies, source installation, and optional refolding tools.
+The installed command works from your working directory; a repository checkout is not
+required. To edit the code, use the :ref:`GitHub source setup <native-python-installation>`
+instead. Both installations provide the same Python package and commands.
 
 Download the weights and input
 ------------------------------
@@ -37,6 +39,39 @@ The first run disables compilation and optional metrics. Increase ``num_replicat
 for more designs, or replace ``design.cif`` with your own annotated input.
 See :doc:`workflow/running` for compilation and sampling settings, and
 :doc:`workflow/metrics` for scoring. For batch jobs, see :ref:`slurm-installation`.
+
+Use a Hugging Face model or local bundle
+-----------------------------------------
+
+For models distributed as RFD4 bundles, use one model location instead of the two
+checkpoint paths. A bundle contains the flow model, matching autoencoder and
+configuration. Set ``MODEL`` to a downloaded bundle directory, or to an actual
+Hugging Face model repository ID in the form ``organization/model``:
+
+.. code-block:: bash
+
+   MODEL=./model
+   rfd4-generate pretrained_model_name_or_path="$MODEL" inputs=design.cif \
+       num_replicates=1 out_dir=./runs/first \
+       compile_lengths=null '~metrics'
+
+A Hub repository is downloaded and cached automatically. Add
+``pretrained_revision=FULL_COMMIT_HASH`` to pin a Hub revision. Input preparation,
+sampling options and output paths are identical for local and Hub models.
+
+For Python model loading:
+
+.. code-block:: python
+
+   import rfd4_proteina as rfd4
+
+   model = rfd4.Proteina.from_pretrained("./model", device="cuda")
+
+The same method accepts a Hub repository ID and an optional ``revision``. Use
+``local_files_only=True`` for offline loading. The CLI handles the full design
+workflow, including input preparation, sampling and CIF output; ``from_pretrained``
+loads the model for Python use. Model hosting on the Hub does not run inference
+remotely: generation uses your GPU.
 
 Next steps
 ----------
