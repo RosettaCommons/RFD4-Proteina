@@ -12,6 +12,11 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
 </p>
 
+<picture>
+  <source media="(max-width: 600px)" srcset="assets/readme/design-gallery-mobile.png">
+  <img src="assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
+</picture>
+
 RFD4-Proteína designs proteins and biomolecular complexes with sequence–structure co-design,
 motif and binding-site conditioning, partial diffusion, and reward-guided search.
 
@@ -51,25 +56,8 @@ with your own [annotated input](https://rosettacommons.github.io/RFD4-Proteina/w
 - [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html) · [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html)
 - [Training and fine-tuning](https://rosettacommons.github.io/RFD4-Proteina/development.html) · [Worked examples](https://rosettacommons.github.io/RFD4-Proteina/examples.html)
 
-## Examples
-
-<picture>
-  <source media="(max-width: 600px)" srcset="assets/readme/design-gallery-mobile.png">
-  <img src="assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
-</picture>
-
-Conditioned generation (DNA binder and RNA) and conditioned reconstruction examples.
-[Example details](assets/readme/provenance.json).
-
-<details>
-<summary>DNA-binder generation trajectory</summary>
+[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](LICENSE)
 
 <p align="center">
-  <a href="assets/readme/dna-binder-generation.mp4"><img src="assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex."></a>
+  <img src="assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">
 </p>
-
-[Full-resolution video](assets/readme/dna-binder-generation.mp4). The loop plays generation forward, then reverses for playback.
-
-</details>
-
-[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](LICENSE)
