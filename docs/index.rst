@@ -9,8 +9,8 @@ RFD4-Proteína
        DNA and small molecule complexes.</p>
        <p>Capable of satisfying robust conditioning and generating plausible sequences without
        further refinement.</p>
-       <p>RFD4-Proteína comes out of a year long collaboration between NVIDIA GenAI Research and
-       the Institute for Protein Design at the University of Washington.</p>
+       <p>Developed by the Baker Lab × NVIDIA GenAIR, with the Institute for Protein Design
+       at the University of Washington.</p>
 
        <p class="hero-ack">We gratefully acknowledge the Jen-Hsun and Lori Huang Foundation for
        providing a computational grant used for this study.</p>

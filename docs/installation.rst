@@ -1,9 +1,15 @@
 Installation
 ============
 
-Install directly from a clone into a Python virtual environment. The native
-CUDA 13 profile supports Linux x86_64 with Python 3.12 and a compatible NVIDIA
-driver. Install RFD4-Proteina from this repository.
+Install into a Python 3.12.0–3.12.10 virtual environment on Linux x86_64 with an
+NVIDIA GPU and a CUDA 13-compatible driver:
+
+.. code-block:: bash
+
+   pip install rfd4-proteina
+
+Continue with :doc:`quickstart` to download the checkpoints and run a design.
+The source setup below installs the matching CUDA dependencies and optional metrics.
 
 Prerequisites
 -------------

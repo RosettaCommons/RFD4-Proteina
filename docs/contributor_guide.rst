@@ -79,3 +79,23 @@ Documentation structure
 * ``docs/api/`` holds API pages generated from Python docstrings
 * ``docs/examples/`` holds runnable tutorial notebooks rendered with ``nbgallery``
 * ``docs/_static/`` holds logos and theme overrides
+
+Documentation builds
+--------------------
+
+Install the project with its documentation extra, then build the site:
+
+.. code-block:: bash
+
+   python -m pip install '.[docs]'
+   python -m sphinx -b html -W --keep-going docs docs/_build/html
+
+Documentation CI uses Python 3.12.10 and CPU PyTorch on a GitHub-hosted runner.
+It imports the API modules and renders the notebooks without executing GPU workloads.
+Warnings fail the build. Each pull request provides a downloadable HTML artifact.
+
+After the release repository becomes public, successful ``main`` builds deploy to
+https://rosettacommons.github.io/RFD4-Proteina/ through GitHub Pages. The workflow also
+runs when the repository becomes public; ``workflow_dispatch`` can rebuild the site
+manually. PR builds never deploy, and private staging builds only produce artifacts.
+The repository's Pages publishing source must be set to **GitHub Actions**.

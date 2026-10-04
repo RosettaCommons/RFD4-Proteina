@@ -29,8 +29,8 @@ except ImportError:
     pass
 
 project = "RFD4-Proteína"
-author = "Baker Lab and NVIDIA GenAI"
-copyright = "2026, Baker Lab and NVIDIA GenAI"
+author = "Baker Lab × NVIDIA GenAIR"
+copyright = "2026, Baker Lab × NVIDIA GenAIR"
 
 try:
     release = package_version("rfproteina")
@@ -141,6 +141,7 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_title = "RFD4-Proteína documentation"
+html_baseurl = "https://rosettacommons.github.io/RFD4-Proteina/"
 
 html_theme_options = {
     "show_nav_level": 2,
@@ -165,11 +166,6 @@ html_theme_options = {
             "name": "Home",
             "url": "https://rosettacommons.github.io/RFD4-Proteina/",
             "icon": "fa-solid fa-house",
-        },
-        {
-            "name": "Leaderboard",
-            "url": "https://rosettacommons.github.io/RFD4-Proteina/leaderboard.html",
-            "icon": "fa-solid fa-ranking-star",
         },
         {
             "name": "GitHub",

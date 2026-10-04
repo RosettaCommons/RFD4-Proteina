@@ -1,53 +1,47 @@
 Quickstart
 ==========
 
-Install RFD4-Proteína, get the checkpoints, and generate your first designs.
-Run every command from the repository root.
-
-Prerequisites
--------------
-
-You need Linux x86_64, an NVIDIA GPU with a driver compatible with CUDA 13,
-``git``, and ``curl``. The setup script installs Python 3.12 with ``uv``.
+Install RFD4-Proteína, download the checkpoints, and generate your first design.
+Use Linux x86_64, Python 3.12.0–3.12.10, and an NVIDIA GPU with a CUDA 13-compatible driver.
 
 Install
 -------
 
 .. code-block:: bash
 
-   git clone https://github.com/RosettaCommons/RFD4-Proteina.git
-   cd RFD4-Proteina
-   make setup
-   source .venv/bin/activate
+   pip install rfd4-proteina
 
-Setup creates ``.venv``, installs the dependencies declared in ``pyproject.toml``,
-and downloads the two released checkpoints (about 8 GB) from the public bucket.
-It configures ``DATA_PATH`` in ``.env.local``, defaulting to ``./data_path``.
-Existing data paths and downloaded checkpoints are reused.
+See :doc:`installation` for CUDA dependencies, source installation, and optional refolding tools.
 
-See :doc:`installation` for custom paths, pip installation, and optional refolding.
+Download the weights and input
+------------------------------
+
+Download the `flow checkpoint <https://rfd4-proteina-public-e04a.cwobject.com/flow_checkpoints/chk_epoch_00000169_step_000000340000-ema.ckpt>`_
+and `autoencoder checkpoint <https://rfd4-proteina-public-e04a.cwobject.com/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema.ckpt>`_
+(about 8 GB total). Save them as ``weights/flow.ckpt`` and ``weights/ae.ckpt``.
+Save the :download:`example input <../data/benchmarks/monomer/monomer-short.cif>` as ``design.cif``.
 
 Generate a design
 -----------------
 
-On a GPU node, with the environment activated:
-
 .. code-block:: bash
 
-   rfd4-generate inputs=data/benchmarks/monomer \
-       subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
+   rfd4-generate inputs=design.cif \
+       ckpt_path=./weights ckpt_name=flow.ckpt \
+       autoencoder_ckpt_path=./weights/ae.ckpt \
+       num_replicates=1 out_dir=./runs/first \
+       compile_lengths=null '~metrics'
 
-This generates one 100-residue protein under ``runs/smoke/inference_samples/``.
-Metrics, when enabled, land in ``runs/smoke/inference_metrics/``.
-``num_replicates`` counts designs per example: omitting ``subset_to_examples``
-runs all three monomer examples (100, 150, and 250 residues).
-
-For batch jobs, see :ref:`slurm-installation`.
+This generates one 100-residue protein under ``runs/first/inference_samples/``.
+The first run disables compilation and optional metrics. Increase ``num_replicates``
+for more designs, or replace ``design.cif`` with your own annotated input.
+See :doc:`workflow/running` for compilation and sampling settings, and
+:doc:`workflow/metrics` for scoring. For batch jobs, see :ref:`slurm-installation`.
 
 Next steps
 ----------
 
-That run used the defaults for everything. :doc:`The full workflow <workflow>`
+:doc:`The full workflow <workflow>`
 maps out what a run actually does, from the input file to the metrics that come
 back, with a diagram you can click through to any stage.
 
