@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable, Sequence
 from copy import deepcopy
 from importlib import import_module
+from inspect import signature
 from typing import Literal
 
 import torch
@@ -172,13 +173,78 @@ class _SharedTriangle(nn.Module):
         return self.native(pair, mask)
 
 
+class _KFTriangle(nn.Module):
+    """Experimental KF update with the training triangle as its only fallback.
+
+    ``readiness`` describes construction, not executed CUDA graph dispatches.
+    Both weight copies are retained; BioIR additionally caches folded weights.
+    """
+
+    def __init__(self, bioir: nn.Module, native: _SharedTriangle) -> None:
+        super().__init__()
+        self.bioir = bioir
+        self.native = native
+        self.readiness = "eligible_not_profiled"
+        self._reported_fallback = False
+
+    def can_fuse_residual(self, pair: torch.Tensor) -> bool:
+        return False
+
+    def forward(self, pair: torch.Tensor, mask: torch.Tensor, *, trimul_metadata: object) -> torch.Tensor:
+        output = self.bioir.try_kf_forward(pair, mask, trimul_metadata, residual=False)
+        if output is not None:
+            return output
+        if not self._reported_fallback:
+            logger.warning("Experimental BioIR KF declined this input; using the shared native triangle")
+            self._reported_fallback = True
+        return self.native(pair, mask, trimul_metadata=trimul_metadata)
+
+
+def _select_triangle(
+    bioir: nn.Module, source: nn.Module, dtype: torch.dtype, triangle_backend: str, prefix_masks: bool
+) -> nn.Module:
+    """Select KF explicitly; missing APIs fail and unsupported kernels use the shared triangle."""
+    native = _SharedTriangle(source, dtype)
+    if triangle_backend == "shared":
+        return native
+    if triangle_backend != "kf":
+        raise ValueError("BioIR triangle_backend must be shared or kf")
+    if not prefix_masks:
+        raise ValueError("Experimental BioIR KF requires flow_prefix_masks=true")
+    attempt = getattr(bioir, "try_kf_forward", None)
+    configure = getattr(bioir, "set_token_padding", None)
+    if not callable(attempt) or not callable(configure):
+        raise RuntimeError(
+            "Experimental KF requires the BioIR MR229 try-KF API; the qualified MR545 runtime "
+            "does not provide it. Use triangle_backend=shared until a compatible runtime is qualified."
+        )
+    try:
+        signature(attempt).bind(None, None, None, residual=False)
+    except TypeError as error:
+        raise RuntimeError("Unsupported BioIR try-KF signature; use triangle_backend=shared") from error
+    configure(True)
+    if not bioir.kf_available:
+        logger.warning(
+            "Experimental BioIR KF has no supported kernels for this device/dtype/width; "
+            "using the shared native triangle"
+        )
+        return native
+    logger.info("Experimental BioIR KF is eligible; actual dispatch requires GPU trace verification")
+    return _KFTriangle(bioir, native)
+
+
 def convert_pair_block(
-    source: PairReprUpdate, *, dtype: torch.dtype = torch.bfloat16, prefix_masks: bool = False
+    source: PairReprUpdate,
+    *,
+    dtype: torch.dtype = torch.bfloat16,
+    prefix_masks: bool = False,
+    triangle_backend: Literal["shared", "kf"] = "shared",
 ) -> PairUpdateBlock:
     """Convert a pair update, including optional triangle multiplication.
 
     ``prefix_masks`` configures BioIR mask metadata. Triangle multiplication uses the
-    same native cuEquivariance dispatcher as training, including its supported-shape checks.
+    same native cuEquivariance dispatcher as training by default. Experimental KF retains
+    that dispatcher as its fallback when a supported kernel declines an input.
     """
     _require_bioir()
     target = PairUpdateBlock(
@@ -218,11 +284,13 @@ def convert_pair_block(
     for name in ("layer_norm", "linear_1", "linear_2"):
         weights.rename(f"transition_out.{name}", f"transition_out.{name}")
     weights.load(target)
-    # BioIR's optional internal cuEq predicate is absent from public 0.11.1.
-    # Route triangles through our shared adapter, retaining BioIR's other fused blocks.
     if source.use_tri_mult:
-        target.tri_mult_out = _SharedTriangle(source.tri_mult_out, dtype)
-        target.tri_mult_in = _SharedTriangle(source.tri_mult_in, dtype)
+        for name in ("tri_mult_out", "tri_mult_in"):
+            setattr(
+                target,
+                name,
+                _select_triangle(getattr(target, name), getattr(source, name), dtype, triangle_backend, prefix_masks),
+            )
     return target.eval()
 
 
@@ -297,6 +365,7 @@ def convert_trunk(
     attention_backend: Literal["SDPA", "CuTeDSL"] = "SDPA",
     cuda_graph: bool = True,
     prefix_masks: bool = False,
+    triangle_backend: Literal["shared", "kf"] = "shared",
 ) -> nn.Module:
     """Build one inference pass over a trunk's blocks without changing its registered parameters.
 
@@ -309,6 +378,7 @@ def convert_trunk(
         apply_blocks: Trunk loop shared with the native backends.
         dtype: Block activation dtype.
         attention_backend: BioIR attention kernel.
+        triangle_backend: Shared training triangle, or experimental KF with shared fallback.
         cuda_graph: Capture and replay the pass as a CUDA graph (one shape at a time).
         prefix_masks: Masks list valid tokens before padding (checked on device), so triangle
             metadata is prepared once per pass. Shared native triangles retain their own masks.
@@ -318,6 +388,10 @@ def convert_trunk(
         raise ValueError("BioIR requires dtype=float32|bfloat16 and attention_backend=SDPA|CuTeDSL")
     if attention_backend == "CuTeDSL" and dtype != "bfloat16":
         raise ValueError("BioIR CuTeDSL attention requires dtype=bfloat16")
+    if triangle_backend not in ("shared", "kf"):
+        raise ValueError("BioIR triangle_backend must be shared or kf")
+    if triangle_backend == "kf" and dtype != "bfloat16":
+        raise ValueError("Experimental BioIR KF requires dtype=bfloat16")
     block_dtype = getattr(torch, dtype)
     # Block constructors randomly initialize weights on CPU before the trained weights are loaded.
     # Fork the CPU generator so converting (e.g. at each validation) leaves seeded sampling unchanged.
@@ -329,7 +403,11 @@ def convert_trunk(
         converted_pair = [
             None
             if block is None
-            else _PairUpdate(convert_pair_block(block, dtype=block_dtype, prefix_masks=prefix_masks))
+            else _PairUpdate(
+                convert_pair_block(
+                    block, dtype=block_dtype, prefix_masks=prefix_masks, triangle_backend=triangle_backend
+                )
+            )
             for block in pair
         ]
     trunk_pass = TrunkPass(apply_blocks, converted_attention, converted_pair, block_dtype, prefix_masks)
