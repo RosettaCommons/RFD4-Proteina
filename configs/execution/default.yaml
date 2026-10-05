@@ -12,6 +12,4 @@ bioir:
   cuda_graph: true
   # Each retained shape consumes graph memory; keep one unless explicitly qualified.
   max_graphs: 1
-  flow_prefix_masks: true
-  # Experimental KF needs a separately qualified MR229 runtime; shared preserves training parity.
-  triangle_backend: shared
+  # Flow uses KF automatically; AE and unsupported kernels retain compiled native cuEq triangles.

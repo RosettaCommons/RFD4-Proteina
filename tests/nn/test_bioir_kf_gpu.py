@@ -10,7 +10,8 @@ import torch
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 @pytest.mark.parametrize("length", [128, 250])
 @pytest.mark.parametrize("bias", [False, True])
-def test_kf_pair_batch_and_graph_parity(batch_size, length, bias, monkeypatch):
+@pytest.mark.parametrize("pair_write", ["sum", "hadamard"])
+def test_kf_pair_batch_and_graph_parity(batch_size, length, bias, pair_write, monkeypatch):
     if not torch.cuda.is_available() or torch.cuda.get_device_capability() != (9, 0):
         if os.environ.get("RFD4_REQUIRE_KF") == "1":
             pytest.fail("KF qualification requires an actual SM90 GPU")
@@ -27,6 +28,7 @@ def test_kf_pair_batch_and_graph_parity(batch_size, length, bias, monkeypatch):
             tri_mult_c=256,
             use_tri_mult=True,
             tri_mult_bias=bias,
+            pair_write=pair_write,
             checkpoint_tri_mult=False,
         )
         .cuda()
@@ -38,7 +40,7 @@ def test_kf_pair_batch_and_graph_parity(batch_size, length, bias, monkeypatch):
             parameter.normal_(1.0 if name.endswith("weight") and parameter.ndim == 1 else 0.0, 0.03)
     for triangle in (source.tri_mult_in, source.tri_mult_out):
         triangle.set_backend("cuequivariance")
-    converted = convert_pair_block(source, dtype=torch.bfloat16, prefix_masks=True, triangle_backend="kf")
+    converted = convert_pair_block(source, dtype=torch.bfloat16, prefix_masks=True)
     assert all(
         isinstance(node, _KFTriangle) for node in (converted.tri_mult_in, converted.tri_mult_out)
     ), "KF was requested but this runtime did not provide the actual kernels/configs"
