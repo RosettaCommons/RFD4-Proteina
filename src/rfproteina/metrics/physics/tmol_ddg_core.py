@@ -9,6 +9,10 @@ from typing import Any
 import numpy as np
 import tmol.database
 import torch
+from atomworks.constants import STANDARD_AA
+from atomworks.io.utils.atom_array import chain_identifier
+from atomworks.io.utils.ccd import get_chem_comp_type
+from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from biotite.structure import AtomArray, get_residue_starts
 from scipy.spatial import cKDTree
 from tmol.database import ParameterDatabase
@@ -27,6 +31,35 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def prepare_tmol_atom_array(atom_array: AtomArray) -> AtomArray:
+    """Copy chemistry for TMol, retaining the original array for region selections.
+
+    Canonicalize registered annotation aliases for hydrogen placement. Generic
+    peptide labels on standard amino acids take their specific CCD component type;
+    explicit stereochemical labels and nonstandard components stay unchanged.
+    """
+    prepared = atom_array.copy()
+    categories = set(prepared.get_annotation_categories())
+    for annotation in STANDARD_ANNOTATIONS:
+        if annotation.n_body != 1:
+            continue
+        aliases = categories.intersection(annotation.aliases) - {annotation.full_name}
+        if not aliases:
+            continue
+        value = annotation.annotation(prepared, default="raise")
+        annotation.set_annotation(prepared, value)
+        for alias in aliases:
+            prepared.del_annotation(alias)
+
+    if "chem_comp_type" in categories:
+        types = prepared.chem_comp_type.astype(object)
+        generic = np.char.upper(np.char.strip(types.astype(str))) == "PEPTIDE LINKING"
+        for name in set(prepared.res_name[generic]).intersection(STANDARD_AA):
+            types[generic & (prepared.res_name == name)] = get_chem_comp_type(name, mode="raise")
+        prepared.set_annotation("chem_comp_type", types.astype(str))
+    return prepared
 
 
 def create_score_function(
@@ -50,10 +83,15 @@ def create_score_function(
 
 
 def _residue_keys(atom_array: AtomArray, atom_sel: np.ndarray) -> set[tuple[str, int, str]]:
-    """``(chain_id, res_id, ins_code)`` keys for residues with an atom in ``atom_sel``.
+    """``(chain identifier, res_id, ins_code)`` keys for residues in ``atom_sel``.
 
     Keys must be unique globally: pdb_info cannot disambiguate duplicates.
     """
+    effective_chains = chain_identifier(atom_array)
+    if not np.array_equal(effective_chains, atom_array.chain_id):
+        # Match TMol's instance-aware boundaries without changing selection indices.
+        atom_array = atom_array.copy()
+        atom_array.chain_id = effective_chains.copy()
     has_ins_code = "ins_code" in atom_array.get_annotation_categories()
     residue_bounds = get_residue_starts(atom_array, add_exclusive_stop=True)
     all_keys, selected = [], set()
@@ -65,7 +103,7 @@ def _residue_keys(atom_array: AtomArray, atom_sel: np.ndarray) -> set[tuple[str,
             selected.add(key)
     if len(all_keys) != len(set(all_keys)):
         raise ValueError(
-            "AtomArray has residues sharing a (chain_id, res_id, ins_code) key; "
+            "AtomArray has residues sharing a (chain identifier, res_id, ins_code) key; "
             "TMol's pdb_info cannot disambiguate them for block mapping."
         )
     return selected
@@ -147,10 +185,11 @@ def build_pose_and_masks(
     Pass a reusable PoseBuildContext to avoid redoing ligand prep; omit regions to
     infer binder as the chain of interest and target as everything else.
     """
+    chemistry_array = prepare_tmol_atom_array(atom_array)
     if context is not None:
-        pose_stack = pose_stack_from_biotite(atom_array, device, context=context, no_optH=no_opt_h)
+        pose_stack = pose_stack_from_biotite(chemistry_array, device, context=context, no_optH=no_opt_h)
     else:
-        pose_stack = pose_stack_from_biotite(atom_array, device, prepare_ligands=True, no_optH=no_opt_h)
+        pose_stack = pose_stack_from_biotite(chemistry_array, device, prepare_ligands=True, no_optH=no_opt_h)
 
     if region_a is not None and region_b is not None:
         mask_a = region_query_to_block_mask(

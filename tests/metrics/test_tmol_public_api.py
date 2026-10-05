@@ -3,8 +3,10 @@
 import inspect
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 import torch
+from biotite.structure import AtomArray
 
 pytest.importorskip("tmol")
 
@@ -61,13 +63,20 @@ def test_relax_preserves_selected_degrees_of_freedom(monkeypatch, mode):
 
 
 def test_ligand_context_matches_public_constructor(monkeypatch):
-    atoms, database, scorer = object(), object(), object()
+    atoms = AtomArray(1)
+    atoms.res_name = np.array(["ALA"])
+    database, scorer = object(), object()
     context = SimpleNamespace(parameter_database=database)
     calls = []
 
     def build(*args, **kwargs):
         bound = inspect.signature(build_context_from_biotite).bind(*args, **kwargs)
-        assert args == (atoms, torch.device("cpu"))
+        assert args[0] is not atoms
+        np.testing.assert_array_equal(args[0].coord, atoms.coord)
+        assert args[0].get_annotation_categories() == atoms.get_annotation_categories()
+        for name in atoms.get_annotation_categories():
+            np.testing.assert_array_equal(args[0].get_annotation(name), atoms.get_annotation(name))
+        assert args[1] == torch.device("cpu")
         assert bound.arguments["prepare_ligands"] is True
         assert bound.arguments["strict_ligands"] is True
         assert bound.arguments["ligand_seed"] == 0
