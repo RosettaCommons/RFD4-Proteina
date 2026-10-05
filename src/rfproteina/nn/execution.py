@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 Backend = Literal["eager", "torch", "bioir"]
 BLOCK_ATTRIBUTES = ("transformer_layers", "pair_update_layers")
 CUDA_GRAPH_MODES = frozenset({"reduce-overhead", "max-autotune"})
+BIOIR_TRIANGLE_BACKENDS = frozenset({"shared", "kf"})
 
 
 def native_blocks(trunk: nn.Module) -> tuple[Sequence, Sequence]:
@@ -169,6 +170,11 @@ def resolve_backends(config: Mapping, phase: str, *, guidance: bool = False) -> 
             raise ValueError(f"execution.{name}.tri_mult must be torch or cuequivariance")
     if config.get("inference", {}).get("compile_scope", "blocks") not in ("blocks", "whole_pass"):
         raise ValueError("execution.inference.compile_scope must be blocks or whole_pass")
+    triangle_backend = config.get("bioir", {}).get("triangle_backend", "shared")
+    if triangle_backend not in BIOIR_TRIANGLE_BACKENDS:
+        raise ValueError("execution.bioir.triangle_backend must be shared or kf")
+    if triangle_backend == "kf" and not config.get("bioir", {}).get("flow_prefix_masks", False):
+        raise ValueError("Experimental BioIR KF requires execution.bioir.flow_prefix_masks=true")
     inference_buckets(config)
     result = {name: config.get(phase, {}).get(name, "torch") for name in ("flow", "encoder", "decoder")}
     result = {name: "torch" if backend == "torch_compile" else backend for name, backend in result.items()}
@@ -184,12 +190,15 @@ def inference_padding_buckets(config: Mapping, *, guidance: bool = False) -> lis
     Configured buckets apply to every backend. Without them, torch.compile components pad to the
     next multiple of 16, which bounds static-shape recompilation; BioIR pads inputs longer than 250
     tokens to the next multiple of 16, where its kernels run faster, and runs shorter ones at their
-    own length; eager does not pad.
+    own length; experimental flow KF always uses aligned buckets; eager does not pad.
     """
     buckets = inference_buckets(config)
     if buckets is not None:
         return buckets
-    backends = set(resolve_backends(config, "inference", guidance=guidance).values())
+    resolved = resolve_backends(config, "inference", guidance=guidance)
+    if resolved["flow"] == "bioir" and config.get("bioir", {}).get("triangle_backend", "shared") == "kf":
+        return ALIGNED_LENGTHS
+    backends = set(resolved.values())
     if "torch" in backends:
         return ALIGNED_LENGTHS
     if "bioir" in backends:
@@ -234,6 +243,9 @@ def configure_execution(model: nn.Module, config: Mapping, phase: str) -> None:
         options = dict(config.get("bioir", {}))
         # Flow masks are collated padding masks (valid tokens first); AE masks also drop in-context tokens.
         flow_prefix_masks = options.pop("flow_prefix_masks", False)
+        # KF is a flow-only experiment; AE masks may contain interior invalid tokens.
+        if name != "flow":
+            options["triangle_backend"] = "shared"
         runtime.bioir_options = {**options, "prefix_masks": name == "flow" and bool(flow_prefix_masks)}
         runtime.converted = None
         runtime.compiled.clear()

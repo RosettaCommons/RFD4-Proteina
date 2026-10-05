@@ -11,3 +11,5 @@ bioir:
   attention_backend: SDPA
   cuda_graph: true
   flow_prefix_masks: true
+  # Experimental KF needs a separately qualified MR229 runtime; shared preserves training parity.
+  triangle_backend: shared
