@@ -7,6 +7,7 @@ from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
+from rfproteina.utils.sample_rng import sample_randn_like
 
 
 class EncoderTransformer(torch.nn.Module):
@@ -146,7 +147,7 @@ class EncoderTransformer(torch.nn.Module):
         flat_out = self.latent_decoder_mean_n_log_scale(seqs) * emit_mask[..., None]  # [b, n, 2 * latent_dim]
         mean, log_scale = torch.chunk(flat_out, chunks=2, dim=-1)  # [b, n, latent_dim] each
 
-        z = mean + torch.randn_like(log_scale) * torch.exp(log_scale)  # [b, n, latent_dim]
+        z = mean + sample_randn_like(log_scale) * torch.exp(log_scale)  # [b, n, latent_dim]
 
         z_pre_ln = z * emit_mask[..., None]
         z = self.ln_z(z) * emit_mask[..., None]  # [b, n, latent_dim]
