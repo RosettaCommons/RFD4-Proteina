@@ -5,8 +5,8 @@ description = "protein foundation models"
 license = "BSD-3-Clause"
 requires-python = ">=3.12,<=3.12.10"
 dependencies = [
-    # Public release/atomworks-3-0 APIs; Biotite must match AtomWorks exactly.
-    "atomworks[ml,openbabel] @ git+https://github.com/RosettaCommons/atomworks.git@release/atomworks-3-0",
+    # Public AtomWorks APIs; Biotite must match AtomWorks exactly.
+    "atomworks[ml,openbabel]==3.0.0",
     "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
@@ -61,13 +61,10 @@ docs = [
     "sphinx-reredirects>=1.0,<2",
     "sphinx-togglebutton>=0.3,<1",
 ]
-# Select one TMol/metrics pair matching the Torch and CUDA stack.
-tmol-cuda12 = [
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu128torch2.10-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
-]
+# TMol 0.1.59 supports the pinned Torch 2.13 stack on CUDA 13.
 tmol-cuda13 = [
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl ; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "tmol @ https://github.com/uw-ipd/tmol/releases/download/v0.1.59/tmol-0.1.59+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=5a329fe7fe0565f58a13468b0a645354657deb593688af699a1e4f1a26bd36c8 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "tmol @ https://github.com/uw-ipd/tmol/releases/download/v0.1.59/tmol-0.1.59+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl#sha256=81f5d9da11c8ddcb0911c481b2c7f03ad429d5eb6ae7b31ce1a46b73e5cba7eb ; sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
 metrics-cuda12 = [
     "hydride>=1.2",
@@ -116,10 +113,6 @@ rfd4-train-ae = "rfproteina.partial_autoencoder.train:main"
 
 [tool.uv]
 conflicts = [
-    [
-        { extra = "tmol-cuda12" },
-        { extra = "tmol-cuda13" },
-    ],
     [
         { extra = "metrics-cuda12" },
         { extra = "metrics-cuda13" },

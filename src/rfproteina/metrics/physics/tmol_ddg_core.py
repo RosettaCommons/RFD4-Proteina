@@ -12,21 +12,15 @@ import torch
 from biotite.structure import AtomArray, get_residue_starts
 from scipy.spatial import cKDTree
 from tmol.database import ParameterDatabase
-from tmol.io.pose_stack_from_biotite import (
-    BiotitePoseBuildContext,
-    pose_stack_from_biotite,
-)
-from tmol.kinematics.fold_forest import FoldForest
-from tmol.kinematics.move_map import CartesianMoveMap, MoveMap
-from tmol.pack.pack_rotamers import pack_rotamers
-from tmol.pack.packer_task import PackerPalette, PackerTask
-from tmol.pack.rotamer.dunbrack.dunbrack_chi_sampler import create_dunbrack_sampler_from_database
-from tmol.pack.rotamer.fixed_aa_chi_sampler import FixedAAChiSampler
-from tmol.pack.rotamer.include_current_sampler import IncludeCurrentSampler
-from tmol.pose.pose_stack import PoseStack
-from tmol.relax.fast_relax import _default_cart_min_fn, fast_relax
-from tmol.score import beta2016_score_function
-from tmol.score.score_function import ScoreFunction
+from tmol.io import PoseBuildContext, pose_stack_from_biotite
+from tmol.kinematics import CartesianMoveMap, FoldForest, MoveMap
+from tmol.optimization import run_cart_min, run_kin_min
+from tmol.pack import PackerPalette, PackerTask, pack_rotamers
+from tmol.pack.rotamer import FixedAAChiSampler, IncludeCurrentSampler
+from tmol.pack.rotamer.dunbrack import create_dunbrack_sampler_from_database
+from tmol.pose import PoseStack
+from tmol.relax import fast_relax
+from tmol.score import ScoreFunction, beta2016_score_function
 
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
@@ -43,7 +37,7 @@ def create_score_function(
 ) -> Any:
     """Create TMol beta2016, or ``beta_soft`` when ``use_soft_rep`` is set.
 
-    ``param_db`` must be the ligand-extended database from a BiotitePoseBuildContext.
+    ``param_db`` must be the ligand-extended database from a PoseBuildContext.
     """
     if param_db is None:
         raise ValueError("param_db is required; use the PoseBuildContext parameter database")
@@ -146,11 +140,11 @@ def build_pose_and_masks(
     region_a: str | None = None,
     region_b: str | None = None,
     raise_on_dropped_residues: bool = True,
-    context: BiotitePoseBuildContext | None = None,
+    context: PoseBuildContext | None = None,
 ) -> tuple[PoseStack, torch.Tensor, torch.Tensor]:
     """Build a PoseStack and binder/target (or region) block masks.
 
-    Pass a reusable BiotitePoseBuildContext to avoid redoing ligand prep; omit regions to
+    Pass a reusable PoseBuildContext to avoid redoing ligand prep; omit regions to
     infer binder as the chain of interest and target as everything else.
     """
     if context is not None:
@@ -188,6 +182,32 @@ def build_pose_and_masks(
     return pose_stack, mask_a, mask_b
 
 
+def _minimize_cartesian(
+    pose_stack: PoseStack,
+    sfxn: ScoreFunction,
+    *,
+    fold_forest: FoldForest,
+    move_map: CartesianMoveMap,
+    verbose: bool,
+) -> PoseStack:
+    """Minimize only the Cartesian coordinates selected by the move map."""
+    return run_cart_min(
+        pose_stack, sfxn, coord_mask=move_map.coord_mask, verbose=verbose, optimizer_kwargs={"verbose": verbose}
+    )
+
+
+def _minimize_torsions(
+    pose_stack: PoseStack,
+    sfxn: ScoreFunction,
+    *,
+    fold_forest: FoldForest,
+    move_map: MoveMap,
+    verbose: bool,
+) -> PoseStack:
+    """Minimize only the internal degrees of freedom selected by the move map."""
+    return run_kin_min(pose_stack, sfxn, fold_forest, move_map, verbose=verbose, optimizer_kwargs={"verbose": verbose})
+
+
 def relax_pose_stack(
     pose_stack: PoseStack,
     sfxn: Any,
@@ -201,12 +221,12 @@ def relax_pose_stack(
 
     if cartesian:
         move_map = CartesianMoveMap()  # coord_mask=None -> every atom is free to move.
-        min_fn = _default_cart_min_fn
+        min_fn = _minimize_cartesian
     else:
         move_map = MoveMap.from_pose_stack(pose_stack)
         move_map.move_all_jumps = True
         move_map.move_all_named_torsions = True
-        min_fn = None  # FastRelax's default is the kinematic (torsion-space) minimizer.
+        min_fn = _minimize_torsions
 
     return fast_relax(pose_stack, sfxn, palette, move_map, fold_forest, min_fn=min_fn, num_repeats=num_repeats)
 
@@ -288,6 +308,7 @@ def relax_shell(pose_stack: PoseStack, sfxn: Any, shell_mask: torch.Tensor, *, n
         PackerPalette(),
         move_map,
         fold_forest,
+        min_fn=_minimize_torsions,
         task_operations=[lambda task: _configure_shell_task(task, shell_mask, None, None)],
         num_repeats=num_repeats,
     )
