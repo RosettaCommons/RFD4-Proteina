@@ -70,6 +70,7 @@ def test_ligand_context_matches_public_constructor(monkeypatch):
         assert args == (atoms, torch.device("cpu"))
         assert bound.arguments["prepare_ligands"] is True
         assert bound.arguments["strict_ligands"] is True
+        assert bound.arguments["ligand_seed"] == 0
         calls.append(bound)
         return context
 
@@ -80,7 +81,7 @@ def test_ligand_context_matches_public_constructor(monkeypatch):
 
     monkeypatch.setattr(metric_module, "build_context_from_biotite", build)
     monkeypatch.setattr(metric_module, "create_score_function", score_function)
-    metric = metric_module.TMolBlockPairMetric(device="cpu", reuse_context=False)
+    metric = metric_module.TMolBlockPairMetric(device="cpu", reuse_context=False, ligand_seed=0)
     metric._ensure_context_and_sfxn(atoms)
     assert metric._context is context and metric._sfxn is scorer
     assert len(calls) == 1

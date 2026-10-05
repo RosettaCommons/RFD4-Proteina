@@ -39,6 +39,7 @@ class TMolBlockPairMetric(Metric):
     ``reuse_context=True`` caches the ligand build context across structures that share chemistry;
     set ``False`` when ligands differ sample-to-sample. ``raise_on_dropped_residues`` (default
     ``True``) errors if a scored residue is dropped from the PoseStack.
+    ``ligand_seed`` fixes ligand preparation independently of sampling seeds.
     """
 
     def __init__(
@@ -56,6 +57,7 @@ class TMolBlockPairMetric(Metric):
         raise_on_dropped_residues: bool = True,
         reuse_context: bool = True,
         ligand_params_files: list[str] | None = None,
+        ligand_seed: int | None = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -81,6 +83,7 @@ class TMolBlockPairMetric(Metric):
         self.raise_on_dropped_residues = raise_on_dropped_residues
         self.reuse_context = reuse_context
         self.ligand_params_files = list(ligand_params_files) if ligand_params_files is not None else None
+        self.ligand_seed = ligand_seed
         self._sfxn = None
         self._context = None
 
@@ -108,6 +111,7 @@ class TMolBlockPairMetric(Metric):
             prepare_ligands=True,
             strict_ligands=True,
             ligand_params_files=self.ligand_params_files,
+            ligand_seed=self.ligand_seed,
         )
         sfxn = create_score_function(
             self.device,
