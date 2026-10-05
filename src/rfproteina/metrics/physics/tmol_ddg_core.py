@@ -38,7 +38,8 @@ def prepare_tmol_atom_array(atom_array: AtomArray) -> AtomArray:
 
     Canonicalize registered annotation aliases for hydrogen placement. Generic
     peptide labels on standard amino acids take their specific CCD component type;
-    explicit stereochemical labels and nonstandard components stay unchanged.
+    achiral GLY uses its CCD peptide type. Other explicit stereochemical labels
+    and nonstandard components stay unchanged.
     """
     prepared = atom_array.copy()
     categories = set(prepared.get_annotation_categories())
@@ -55,9 +56,13 @@ def prepare_tmol_atom_array(atom_array: AtomArray) -> AtomArray:
 
     if "chem_comp_type" in categories:
         types = prepared.chem_comp_type.astype(object)
-        generic = np.char.upper(np.char.strip(types.astype(str))) == "PEPTIDE LINKING"
+        normalized = np.char.upper(np.char.strip(types.astype(str)))
+        generic = normalized == "PEPTIDE LINKING"
         for name in set(prepared.res_name[generic]).intersection(STANDARD_AA):
             types[generic & (prepared.res_name == name)] = get_chem_comp_type(name, mode="raise")
+        glycine = (prepared.res_name == "GLY") & (normalized == "L-PEPTIDE LINKING")
+        if np.any(glycine):
+            types[glycine] = get_chem_comp_type("GLY", mode="raise")
         prepared.set_annotation("chem_comp_type", types.astype(str))
     return prepared
 

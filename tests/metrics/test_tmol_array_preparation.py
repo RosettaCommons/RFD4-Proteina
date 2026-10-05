@@ -99,3 +99,38 @@ def test_stereochemical_conflicts_still_reach_native_validation():
     prepared = prepare_tmol_atom_array(atoms)
     with pytest.raises(ValueError, match="Conflicting chem_comp_type annotations for ARG"):
         detect_nonstandard_residues(prepared, canonical_ordering_for_biotite())
+
+
+def test_achiral_glycine_component_labels_agree_in_native_detection():
+    atoms = metadata_fixture()[[6, 7]]
+    atoms.res_name[:] = "GLY"
+    atoms.res_id = np.array([1, 2])
+    atoms.atom_name[:] = "CA"
+    atoms.element[:] = "C"
+    atoms.set_annotation("chem_comp_type", np.array(["L-PEPTIDE LINKING", "PEPTIDE LINKING"]))
+    before = atoms.copy()
+    ordering = canonical_ordering_for_biotite()
+    with pytest.raises(ValueError, match="Conflicting chem_comp_type annotations for GLY"):
+        detect_nonstandard_residues(atoms, ordering)
+    assert get_chem_comp_type("GLY", mode="raise") == "PEPTIDE LINKING"
+    prepared = prepare_tmol_atom_array(atoms)
+    assert list(prepared.chem_comp_type) == ["PEPTIDE LINKING", "PEPTIDE LINKING"]
+    assert detect_nonstandard_residues(prepared, ordering) == []
+    assert_unchanged(atoms, before)
+    np.testing.assert_array_equal(prepared.coord, atoms.coord)
+    np.testing.assert_array_equal(prepared.bonds.as_array(), atoms.bonds.as_array())
+
+
+def test_unrelated_glycine_component_conflicts_are_not_overwritten():
+    atoms = metadata_fixture()[[6, 7]]
+    atoms.res_name[:] = "GLY"
+    atoms.res_id = np.array([1, 2])
+    atoms.atom_name[:] = "CA"
+    atoms.element[:] = "C"
+    atoms.set_annotation("chem_comp_type", np.array(["NON-POLYMER", "PEPTIDE LINKING"]))
+    before = atoms.copy()
+    prepared = prepare_tmol_atom_array(atoms)
+    assert list(prepared.chem_comp_type) == ["NON-POLYMER", "PEPTIDE LINKING"]
+    with pytest.raises(ValueError, match="Conflicting chem_comp_type annotations for GLY"):
+        detect_nonstandard_residues(prepared, canonical_ordering_for_biotite())
+    assert_unchanged(atoms, before)
