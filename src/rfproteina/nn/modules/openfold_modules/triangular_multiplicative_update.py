@@ -29,8 +29,8 @@ from rfproteina.nn.modules.openfold_modules.tensor_utils import permute_final_di
 try:
     import cuequivariance_ops_torch
     from cuequivariance_ops_torch import (
+        triangle_multiplicative_update,
         triangle_multiplicative_update_inference_shape_is_supported,
-        triangle_multiplicative_update_split_parameters,
         triangle_multiplicative_update_training_shape_is_supported,
     )
 
@@ -47,6 +47,16 @@ _CUEQ_SUPPORTED: dict[tuple, bool] = {}
 @cache
 def _warn_once(message: str) -> None:
     logging.getLogger(__name__).warning(message)
+
+
+def _cat_optional(a: torch.Tensor | None, b: torch.Tensor | None) -> torch.Tensor | None:
+    """Row-wise concatenation of two optional bias vectors (both present or both absent)."""
+    return None if a is None or b is None else torch.cat([a, b])
+
+
+def _bias_or_zeros(module: nn.Module) -> torch.Tensor:
+    """The module's bias, or zeros matching its weight when it learns none."""
+    return module.weight.new_zeros(module.weight.shape[0]) if module.bias is None else module.bias
 
 
 @torch.compiler.assume_constant_result
@@ -117,12 +127,27 @@ class TriangleMultiplicativeUpdate(nn.Module):
     ) -> torch.Tensor:
         raise NotImplementedError("This method needs to be overridden")
 
-    def _cueq_parameters(self) -> list[torch.Tensor]:
-        """Parameters in the order of ``triangle_multiplicative_update_split_parameters``; zeros for absent biases."""
-        modules = (self.layer_norm_in, self.linear_a_p, self.linear_a_g, self.linear_b_p, self.linear_b_g)
-        modules += (self.layer_norm_out, self.linear_z, self.linear_g)
-        zeros = [m.weight.new_zeros(m.weight.shape[0]) if m.bias is None else m.bias for m in modules]
-        return [p for m, bias in zip(modules, zeros, strict=True) for p in (m.weight, bias)]
+    def _cueq_parameters(self) -> dict[str, torch.Tensor | None]:
+        """Keyword parameters of ``cuequivariance_ops_torch.triangle_multiplicative_update``.
+
+        The a and b projections are packed row-wise into the op's ``[2 * c_hidden, c_z]`` input weights.
+        Absent projection biases stay ``None`` so the op selects its bias-free kernels; absent LayerNorm
+        biases are passed as zeros because the op's own default assumes ``c_hidden == c_z``.
+        """
+        return {
+            "norm_in_weight": self.layer_norm_in.weight,
+            "norm_in_bias": _bias_or_zeros(self.layer_norm_in),
+            "p_in_weight": torch.cat([self.linear_a_p.weight, self.linear_b_p.weight]),
+            "p_in_bias": _cat_optional(self.linear_a_p.bias, self.linear_b_p.bias),
+            "g_in_weight": torch.cat([self.linear_a_g.weight, self.linear_b_g.weight]),
+            "g_in_bias": _cat_optional(self.linear_a_g.bias, self.linear_b_g.bias),
+            "norm_out_weight": self.layer_norm_out.weight,
+            "norm_out_bias": _bias_or_zeros(self.layer_norm_out),
+            "p_out_weight": self.linear_z.weight,
+            "p_out_bias": self.linear_z.bias,
+            "g_out_weight": self.linear_g.weight,
+            "g_out_bias": self.linear_g.bias,
+        }
 
     def _plain_linears(self) -> bool:
         """Whether every projection is an unwrapped Linear; wrapped ones (e.g. LoRA) need their own forward."""
@@ -169,15 +194,18 @@ class TriangleMultiplicativeUpdate(nn.Module):
             and self._plain_linears()
         ):
             parameters = self._cueq_parameters()
-            training = torch.is_grad_enabled() and any(t.requires_grad for t in (z, *parameters))
+            tensors = [t for t in (z, *parameters.values()) if t is not None]
+            training = torch.is_grad_enabled() and any(t.requires_grad for t in tensors)
             autocast_bf16 = torch.is_autocast_enabled("cuda") and torch.get_autocast_dtype("cuda") == torch.bfloat16
             bf16 = z.dtype == torch.bfloat16 or autocast_bf16
             # Eager no-grad calls can need both cuEq stages, which the public predicate does not report.
             if (training or torch.compiler.is_compiling()) and _cueq_supported(
                 int(z.shape[0]), int(z.shape[1]), self.c_z, self.c_hidden, z.device.index, training, bf16
             ):
-                return triangle_multiplicative_update_split_parameters(
-                    z, self._direction, mask, *parameters, eps=self.layer_norm_in.eps
+                # The op rounds the FP32 module weights to BF16 itself, so every cuEq route sees a
+                # native BF16 call; gradients still flow back to the FP32 parameters.
+                return triangle_multiplicative_update(
+                    z, self._direction, mask, eps=self.layer_norm_in.eps, precision="bfloat16", **parameters
                 )
 
         mask = mask.unsqueeze(-1)
