@@ -44,7 +44,7 @@ def test_capacity_routes_to_all_trunks_without_enabling_ae_kf(monkeypatch, capac
     monkeypatch.setattr(bioir, "_require_bioir", lambda: None)
     config = {
         "inference": {name: "bioir" for name in trunks},
-        "bioir": {"triangle_backend": "kf", "flow_prefix_masks": True},
+        "bioir": {},
     }
     if capacity is not None:
         config["bioir"]["max_graphs"] = capacity
@@ -52,4 +52,5 @@ def test_capacity_routes_to_all_trunks_without_enabling_ae_kf(monkeypatch, capac
     for name, trunk in trunks.items():
         options = trunk._execution.bioir_options
         assert options.get("max_graphs", 1) == (1 if capacity is None else capacity)
-        assert options["triangle_backend"] == ("kf" if name == "flow" else "shared")
+        assert options["prefix_masks"] == (name == "flow")
+        assert "triangle_backend" not in options
