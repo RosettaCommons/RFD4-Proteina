@@ -24,11 +24,14 @@ def independent_sample_rng(states: Sequence[torch.Tensor], device: torch.device 
     """
     if not states:
         raise ValueError("Independent sample RNG requires at least one row state")
+    resolved = torch.device(device)
+    if resolved.type == "cuda" and resolved.index is None:
+        resolved = torch.device("cuda", torch.cuda.current_device())
     generators = []
     for state in states:
         if state.device.type != "cpu" or state.dtype != torch.uint8 or state.ndim != 1:
             raise ValueError("Sample RNG states must be one-dimensional CPU byte tensors")
-        generator = torch.Generator(device=device)
+        generator = torch.Generator(device=resolved)
         generator.set_state(state.clone())
         generators.append(generator)
     token = _GENERATORS.set(tuple(generators))
