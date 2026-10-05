@@ -28,16 +28,22 @@ from rfproteina.nn.modules.openfold_modules.tensor_utils import permute_final_di
 
 try:
     import cuequivariance_ops_torch
-    from cuequivariance_ops_torch import (
-        triangle_multiplicative_update_inference_shape_is_supported,
-        triangle_multiplicative_update_split_parameters,
-        triangle_multiplicative_update_training_shape_is_supported,
-    )
 
-    # A failed Triton import leaves stub functions and records the traceback here.
     _CUEQ_UNAVAILABLE = getattr(cuequivariance_ops_torch, "IMPORT_EXCEPTION", None)
+    _CUEQ_SPLIT = getattr(cuequivariance_ops_torch, "triangle_multiplicative_update_split_parameters", None)
+    _CUEQ_PACKED = getattr(cuequivariance_ops_torch, "triangle_multiplicative_update", None)
+    _CUEQ_TENSOR_SUPPORTED = getattr(cuequivariance_ops_torch, "triangle_multiplicative_update_is_supported", None)
+    _CUEQ_TRAIN_SUPPORTED = getattr(
+        cuequivariance_ops_torch, "triangle_multiplicative_update_training_shape_is_supported", None
+    )
+    _CUEQ_INFERENCE_SUPPORTED = getattr(
+        cuequivariance_ops_torch, "triangle_multiplicative_update_inference_shape_is_supported", None
+    )
+    if not callable(_CUEQ_PACKED):
+        _CUEQ_UNAVAILABLE = "cuEquivariance triangle multiplication API is missing"
 except (ImportError, OSError) as error:
-    _CUEQ_UNAVAILABLE = f"cuequivariance-ops-torch>=0.12 is required ({error})"
+    _CUEQ_UNAVAILABLE = f"cuequivariance-ops-torch-cu13>=0.11.1 is required ({error})"
+    _CUEQ_SPLIT = _CUEQ_PACKED = _CUEQ_TRAIN_SUPPORTED = _CUEQ_INFERENCE_SUPPORTED = _CUEQ_TENSOR_SUPPORTED = None
 if os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower() in ("1", "true", "yes"):
     _CUEQ_UNAVAILABLE = "DISABLE_CUEQUIVARIANCE is set"
 
@@ -46,7 +52,7 @@ _CUEQ_SUPPORTED: dict[tuple, bool] = {}
 
 @cache
 def _warn_once(message: str) -> None:
-    logging.getLogger(__name__).warning(message)
+    logging.getLogger(__name__).warning(message, extra={"always_visible": True})
 
 
 @torch.compiler.assume_constant_result
@@ -54,13 +60,22 @@ def _cueq_supported(batch: int, n: int, c_z: int, c_hidden: int, device: int, tr
     """Whether cuEquivariance fuses this static BF16 shape; warns once per shape otherwise."""
     key = (batch, n, c_z, c_hidden, device, training, bf16)
     if key not in _CUEQ_SUPPORTED:
-        mode = "training" if training else "compiled inference"
-        query = (
-            triangle_multiplicative_update_training_shape_is_supported
-            if training
-            else triangle_multiplicative_update_inference_shape_is_supported
-        )
-        _CUEQ_SUPPORTED[key] = bf16 and query(batch, n, c_z, c_hidden, device)
+        mode = "training" if training else "inference"
+        query = _CUEQ_TRAIN_SUPPORTED if training else _CUEQ_INFERENCE_SUPPORTED
+        if query is not None:
+            supported = bf16 and query(batch, n, c_z, c_hidden, device)
+        else:
+            # The public 0.11 API has no shape predicate. Restrict it to the
+            # SM90 shape family used by BioIR's RFD4 integration.
+            supported = (
+                bf16
+                and n > 256
+                and n % 16 == 0
+                and c_z == 384
+                and c_hidden == 256
+                and torch.cuda.get_device_capability(device) == (9, 0)
+            )
+        _CUEQ_SUPPORTED[key] = supported
         if not _CUEQ_SUPPORTED[key]:
             _warn_once(
                 f"cuEquivariance has no fused {mode} triangle multiplication for batch={batch}, n={n}, "
@@ -76,7 +91,7 @@ class TriangleMultiplicativeUpdate(nn.Module):
 
     _direction: str  # "outgoing" or "incoming"; set by each subclass with its contraction.
 
-    def __init__(self, c_z: int, c_hidden: int, bias: bool = True, backend: str = "torch"):
+    def __init__(self, c_z: int, c_hidden: int, bias: bool = True, backend: str = "cuequivariance"):
         """
         Args:
             c_z:
@@ -89,14 +104,9 @@ class TriangleMultiplicativeUpdate(nn.Module):
                 ``torch`` or ``cuequivariance``
         """
         super().__init__()
-        if backend not in ("torch", "cuequivariance"):
-            raise ValueError(f"nn.tri_mult_backend must be 'torch' or 'cuequivariance', got {backend!r}")
-        if backend == "cuequivariance" and _CUEQ_UNAVAILABLE:
-            _warn_once(f"cuEquivariance is unavailable ({_CUEQ_UNAVAILABLE.strip().splitlines()[-1]}); using torch.")
-            backend = "torch"
         self.c_z = c_z
         self.c_hidden = c_hidden
-        self.backend = backend
+        self.set_backend(backend)
 
         self.linear_a_p = Linear(self.c_z, self.c_hidden, bias=bias)
         self.linear_a_g = Linear(self.c_z, self.c_hidden, bias=bias, init="gating")
@@ -109,6 +119,42 @@ class TriangleMultiplicativeUpdate(nn.Module):
         self.layer_norm_out = LayerNorm(self.c_hidden, bias=bias)
 
         self.sigmoid = nn.Sigmoid()
+
+    def set_backend(self, backend: str) -> None:
+        """Select shared training/inference kernels without changing trained parameters."""
+        if backend not in ("torch", "cuequivariance"):
+            raise ValueError(f"Triangle backend must be torch or cuequivariance, got {backend!r}")
+        self.configured_backend = backend
+        self.backend = backend
+        if backend == "cuequivariance" and _CUEQ_UNAVAILABLE:
+            _warn_once(
+                f"cuEquivariance is unavailable ({str(_CUEQ_UNAVAILABLE).strip().splitlines()[-1]}); using torch."
+            )
+            self.backend = "torch"
+
+    def _cueq_forward(self, z: torch.Tensor, mask: torch.Tensor, parameters: list[torch.Tensor]) -> torch.Tensor:
+        """Dispatch supported calls through the installed 0.12 split or 0.11 packed API."""
+        if _CUEQ_SPLIT is not None:
+            return _CUEQ_SPLIT(z, self._direction, mask, *parameters, eps=self.layer_norm_in.eps)
+        niw, nib, apw, apb, agw, agb, bpw, bpb, bgw, bgb, now, nob, pow, pob, gow, gob = parameters
+        return _CUEQ_PACKED(
+            z,
+            direction=self._direction,
+            mask=mask,
+            norm_in_weight=niw,
+            norm_in_bias=nib,
+            p_in_weight=torch.cat((apw, bpw)),
+            p_in_bias=torch.cat((apb, bpb)),
+            g_in_weight=torch.cat((agw, bgw)),
+            g_in_bias=torch.cat((agb, bgb)),
+            norm_out_weight=now,
+            norm_out_bias=nob,
+            p_out_weight=pow,
+            p_out_bias=pob,
+            g_out_weight=gow,
+            g_out_bias=gob,
+            eps=self.layer_norm_in.eps,
+        )
 
     def _combine_projections(
         self,
@@ -172,13 +218,19 @@ class TriangleMultiplicativeUpdate(nn.Module):
             training = torch.is_grad_enabled() and any(t.requires_grad for t in (z, *parameters))
             autocast_bf16 = torch.is_autocast_enabled("cuda") and torch.get_autocast_dtype("cuda") == torch.bfloat16
             bf16 = z.dtype == torch.bfloat16 or autocast_bf16
-            # Eager no-grad calls can need both cuEq stages, which the public predicate does not report.
-            if (training or torch.compiler.is_compiling()) and _cueq_supported(
+            supported = _cueq_supported(
                 int(z.shape[0]), int(z.shape[1]), self.c_z, self.c_hidden, z.device.index, training, bf16
-            ):
-                return triangle_multiplicative_update_split_parameters(
-                    z, self._direction, mask, *parameters, eps=self.layer_norm_in.eps
+            )
+            if supported and _CUEQ_SPLIT is not None and not training and not torch.compiler.is_compiling():
+                # Eager 0.12 needs both fused stages; its tensor predicate checks
+                # more than the compiled-inference shape predicate alone.
+                supported = _CUEQ_TENSOR_SUPPORTED is not None and _CUEQ_TENSOR_SUPPORTED(
+                    z, direction=self._direction, mask=mask, c_hidden=self.c_hidden
                 )
+                if not supported:
+                    _warn_once("cuEquivariance cannot fuse this eager inference triangle; using the torch backend.")
+            if supported:
+                return self._cueq_forward(z, mask, parameters)
 
         mask = mask.unsqueeze(-1)
 

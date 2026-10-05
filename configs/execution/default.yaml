@@ -1,0 +1,13 @@
+# Execution and numerical kernel selection are independent.
+inference:
+  flow: ${inference_backend}
+  encoder: ${inference_backend}
+  decoder: ${inference_backend}
+  length_buckets: ${compile_lengths}
+  tri_mult: cuequivariance
+  compile_scope: blocks
+bioir:
+  dtype: bfloat16
+  attention_backend: SDPA
+  cuda_graph: true
+  flow_prefix_masks: true

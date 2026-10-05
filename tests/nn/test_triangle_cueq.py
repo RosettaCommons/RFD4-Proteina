@@ -39,14 +39,16 @@ def test_grouped_projections_match_reference(grad: bool, bias: bool, lora: bool)
 
 
 @pytest.mark.gpu
-@pytest.mark.skipif(trimul._CUEQ_UNAVAILABLE is not None, reason="requires cuequivariance-ops-torch>=0.12")
+@pytest.mark.skipif(
+    trimul._CUEQ_UNAVAILABLE is not None or trimul._CUEQ_SPLIT is None, reason="requires cuEquivariance 0.12 split API"
+)
 @pytest.mark.parametrize(
     "triangle,c_hidden,bias", [(Incoming, 256, False), (Outgoing, 256, True), (Outgoing, 384, False)]
 )
 def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -> None:
     """Pair 384 with hidden 256 is fused on H200; hidden 384 falls back to the torch path."""
     torch._dynamo.reset()
-    ref = _randomized(triangle(384, c_hidden, bias=bias)).cuda()
+    ref = _randomized(triangle(384, c_hidden, bias=bias, backend="torch")).cuda()
     fused = triangle(384, c_hidden, bias=bias, backend="cuequivariance").cuda()
     fused.load_state_dict(ref.state_dict())
     x = torch.randn(2, 256, 256, 384, device="cuda")

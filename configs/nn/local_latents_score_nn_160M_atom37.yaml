@@ -92,7 +92,7 @@ update_pair_repr_every_n: 2  # Update the pair representation every n layers
 use_tri_mult: true  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 tri_mult_c: 256  # hidden dim of the triangle multiplication layers
 tri_mult_bias: false  # whether triangle multiplication projections and normalizations learn additive biases
-tri_mult_backend: torch  # or cuequivariance (fused on H200 only at pair_repr_dim 384, tri_mult_c 256; else warns, uses torch)
+tri_mult_backend: cuequivariance  # supported BF16 CUDA shapes; warns and uses torch otherwise
 
 # Recycle single and pair states through zero-initialized projections.
 recycle:

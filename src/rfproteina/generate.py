@@ -38,6 +38,7 @@ with (
         DesignProblemDataset,
     )
     from rfproteina.metrics.metric import MetricManager
+    from rfproteina.nn.execution import configure_execution, inference_padding_buckets, setup_execution
     from rfproteina.proteina import Proteina
     from rfproteina.search.base_strategy import SearchStrategy
     from rfproteina.utils.ddp import RankedLogger
@@ -45,7 +46,7 @@ with (
     from rfproteina.utils.logging import print_config_tree
     from rfproteina.utils.structure_files import is_structure_file, iter_structure_files, structure_file_stem
     from rfproteina.utils.torch import apply_torch_deterministic
-    from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
+    from rfproteina.utils.torch_compile import save_compile_cache
     from rfproteina.utils.verbosity import configured_verbosity, initialize_worker_verbosity, queue_startup_warnings
 
 queue_startup_warnings(_startup_warnings)
@@ -489,6 +490,10 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         )
         model.configure_guidance(guidance_model)
 
+    # Runtime policy deliberately overrides execution flags in old checkpoint hparams.
+    execution = cfg.get("execution", {"inference": {"length_buckets": cfg.get("compile_lengths")}})
+    setup_execution(execution, inference=True, guidance=model.guidance_model is not None)
+    configure_execution(model, execution, "inference")
     return model
 
 
@@ -647,22 +652,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     batch_size = cfg.get("batch_size", 1)
 
-    # Pad every batch up to one of a few token counts so the network sees a handful of
-    # static shapes and can be compiled (variable lengths otherwise recompile forever).
-    compile_lengths = cfg.get("compile_lengths", None)
-    fixed_dimensions = None
+    execution = cfg.get("execution", {"inference": {"length_buckets": cfg.get("compile_lengths")}})
+    compile_lengths = inference_padding_buckets(execution, guidance=model.guidance_model is not None)
+    fixed_dimensions = {"I": compile_lengths} if compile_lengths else None
     if compile_lengths:
-        compile_lengths = sorted(int(n) for n in compile_lengths)
-        assert all(
-            n % 16 == 0 for n in compile_lengths
-        ), f"compile_lengths must be 16-aligned for torch.compile, got {compile_lengths}"
-        fixed_dimensions = {"I": compile_lengths}
         dataset = _sort_dataset_by_length(dataset)
-
-        # Configure torch.compile for inference + warm the local cache (before any compile).
-        setup_run_compile(inference=True)
-        model.reserve_shape_cache(compile_lengths)  # gate the flow model on for these buckets (AE stays eager)
-        logger.info(f"Inference torch.compile ready with length buckets: {compile_lengths}")
 
     # Create dataloader
     num_workers = cfg.num_workers
