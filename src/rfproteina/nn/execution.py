@@ -170,6 +170,9 @@ def resolve_backends(config: Mapping, phase: str, *, guidance: bool = False) -> 
             raise ValueError(f"execution.{name}.tri_mult must be torch or cuequivariance")
     if config.get("inference", {}).get("compile_scope", "blocks") not in ("blocks", "whole_pass"):
         raise ValueError("execution.inference.compile_scope must be blocks or whole_pass")
+    max_graphs = config.get("bioir", {}).get("max_graphs", 1)
+    if type(max_graphs) is not int or max_graphs < 1:
+        raise ValueError("execution.bioir.max_graphs must be a positive integer")
     triangle_backend = config.get("bioir", {}).get("triangle_backend", "shared")
     if triangle_backend not in BIOIR_TRIANGLE_BACKENDS:
         raise ValueError("execution.bioir.triangle_backend must be shared or kf")

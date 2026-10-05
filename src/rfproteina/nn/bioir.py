@@ -366,6 +366,7 @@ def convert_trunk(
     cuda_graph: bool = True,
     prefix_masks: bool = False,
     triangle_backend: Literal["shared", "kf"] = "shared",
+    max_graphs: int = 1,
 ) -> nn.Module:
     """Build one inference pass over a trunk's blocks without changing its registered parameters.
 
@@ -379,10 +380,13 @@ def convert_trunk(
         dtype: Block activation dtype.
         attention_backend: BioIR attention kernel.
         triangle_backend: Shared training triangle, or experimental KF with shared fallback.
-        cuda_graph: Capture and replay the pass as a CUDA graph (one shape at a time).
+        cuda_graph: Capture and replay the pass as a CUDA graph.
+        max_graphs: Maximum resident exact-shape graphs per trunk; more shapes use more memory.
         prefix_masks: Masks list valid tokens before padding (checked on device), so triangle
             metadata is prepared once per pass. Shared native triangles retain their own masks.
     """
+    if type(max_graphs) is not int or max_graphs < 1:
+        raise ValueError("BioIR max_graphs must be a positive integer")
     _require_bioir()
     if dtype not in ("float32", "bfloat16") or attention_backend not in ("SDPA", "CuTeDSL"):
         raise ValueError("BioIR requires dtype=float32|bfloat16 and attention_backend=SDPA|CuTeDSL")
@@ -411,4 +415,4 @@ def convert_trunk(
             for block in pair
         ]
     trunk_pass = TrunkPass(apply_blocks, converted_attention, converted_pair, block_dtype, prefix_masks)
-    return with_cuda_graph(trunk_pass) if cuda_graph else trunk_pass
+    return with_cuda_graph(trunk_pass, max_graphs=max_graphs) if cuda_graph else trunk_pass
