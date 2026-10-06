@@ -8,8 +8,10 @@ inference:
   compile_scope: blocks
 bioir:
   dtype: bfloat16
-  attention_backend: SDPA
+  # Full workflow selects the BioIR default; mixed blocks retain SDPA.
+  attention_backend: null
   cuda_graph: true
-  # Each retained shape consumes graph memory; keep one unless explicitly qualified.
-  max_graphs: 1
-  # Flow uses KF automatically; AE and unsupported kernels retain compiled native cuEq triangles.
+  # Null: full workflow retains each recycling depth for a full batch and tail;
+  # mixed block policies retain one graph. Explicit values always mean actual slots.
+  max_graphs: null
+  # Full BioIR uses automatic KF where eligible; reports cache state and availability.

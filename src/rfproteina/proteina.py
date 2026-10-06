@@ -868,6 +868,10 @@ class Proteina(L.LightningModule):
 
     def on_validation_start(self) -> None:
         """Bring up the per-rank metrics pool."""
+        if getattr(self, "_full_bioir_options", None) is not None:
+            from rfproteina.nn.bioir_full import initialize_full_bioir
+
+            initialize_full_bioir(self)
         self._check_val_set_name_override()
         self._metrics_pool.start(self.val_dataset_tags)
 
@@ -1674,6 +1678,10 @@ class Proteina(L.LightningModule):
                 - "input_atom_array": input AtomArray object (before generation)
                 - "generated_atom_array": output AtomArray object with generated coordinates
         """
+        if getattr(self, "_full_bioir_options", None) is not None:
+            from rfproteina.nn.bioir_full import predict_full_bioir
+
+            return predict_full_bioir(self, batch)
         # Always use search_strategy interface for consistency
         # Default to VanillaStrategy if no search strategy is configured
         if self.search_strategy is None:
@@ -1843,6 +1851,7 @@ class Proteina(L.LightningModule):
                 input_atom_array=input_atom_array,
                 bb_ca_only=bb_ca_only,
                 insertion_logits=sample_insertion_logits,
+                atom_mask=(sample_prots["atom_mask"][i] if sample_prots.get("atom_mask") is not None else None),
             )
             if result is None:
                 continue

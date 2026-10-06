@@ -65,6 +65,29 @@ It documents all three ways to run inference, which are an in tree experiment co
 overrides, and a config file anywhere on the filesystem.
 :::
 
+## Inference backends
+
+Select `inference_backend=eager`, `inference_backend=torch_compile` (the default),
+or `inference_backend=bioir` with the same input and sampling options:
+
+```bash
+rfd4-generate inputs=data/benchmarks/monomer out_dir=./runs/bioir inference_backend=bioir
+```
+
+BioIR runs learned feature representations, sampling and autoencoder computation
+through its full workflow; input parsing, structure formatting, metrics and reward adapters
+remain native. It requires a separately installed, qualified `bionemo-ir` runtime
+with native sampling and emission-mask compatibility. Older trunk-only runtimes
+are rejected. This experimental path still requires end-to-end GPU qualification;
+no speedup or modality qualification is implied by selecting it. Gradient/CFG guidance
+and trajectory export currently require `eager` or `torch_compile`.
+
+Leave `execution.bioir.attention_backend=null` and `execution.bioir.max_graphs=null`
+for automatic full-workflow defaults. The graph budget reserves each recycle
+depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit
+smaller budget is rejected. See [graph cache capacity](../benchmarks/bioir-graph-capacity.md)
+for memory considerations and historical block-level measurements.
+
 ## Verbose output
 
 `verbose` controls many info/warning dumps. It defaults to `false` for generation

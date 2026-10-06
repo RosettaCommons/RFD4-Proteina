@@ -1,5 +1,17 @@
 # BioIR graph cache capacity
 
+Full-workflow inference (`inference_backend=bioir`) defaults
+`execution.bioir.max_graphs` to `null`: reserve each distinct recycle depth for
+a full batch and a tail, giving 10 slots with `thinking_medium`. Explicit values
+remain actual slot limits and must fit the selected schedule. More lengths or
+batch layouts can cause eviction; retained graphs consume GPU memory.
+
+## Historical block-level measurements
+
+The results below predate full-workflow inference. Their default of 1 applies
+to the former block path (and remains the fallback for mixed component policies),
+not the automatic full-workflow budget. They are not full-workflow speed claims.
+
 `execution.bioir.max_graphs` bounds exact-shape CUDA graphs retained by each
 converted trunk. The default is **1**. An explicit value of **3** can retain B1,
 B2 and B4 shapes for one token length, avoiding repeated capture when a request

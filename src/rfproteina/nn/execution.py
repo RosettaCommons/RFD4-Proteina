@@ -15,6 +15,7 @@ Backend = Literal["eager", "torch", "bioir"]
 BLOCK_ATTRIBUTES = ("transformer_layers", "pair_update_layers")
 CUDA_GRAPH_MODES = frozenset({"reduce-overhead", "max-autotune"})
 BIOIR_AUTOMATIC_KF_SUPPORTED = True
+BIOIR_FULL_WORKFLOW_SUPPORTED = True
 
 
 def native_blocks(trunk: nn.Module) -> tuple[Sequence, Sequence]:
@@ -171,8 +172,8 @@ def resolve_backends(config: Mapping, phase: str, *, guidance: bool = False) -> 
     if config.get("inference", {}).get("compile_scope", "blocks") not in ("blocks", "whole_pass"):
         raise ValueError("execution.inference.compile_scope must be blocks or whole_pass")
     max_graphs = config.get("bioir", {}).get("max_graphs", 1)
-    if type(max_graphs) is not int or max_graphs < 1:
-        raise ValueError("execution.bioir.max_graphs must be a positive integer")
+    if max_graphs is not None and (type(max_graphs) is not int or max_graphs < 1):
+        raise ValueError("execution.bioir.max_graphs must be null or a positive integer")
     obsolete = {"triangle_backend", "compile_shared_triangles"} & set(config.get("bioir", {}))
     if obsolete:
         raise ValueError(f"BioIR selects KF/shared triangles automatically; remove {sorted(obsolete)}")
@@ -224,7 +225,24 @@ def configure_execution(model: nn.Module, config: Mapping, phase: str) -> None:
     BioIR copies are discarded on each phase boundary and rebuilt lazily from the
     active weights. Registered parameters and checkpoint keys never change.
     """
-    backends = resolve_backends(config, phase, guidance=getattr(model, "guidance_model", None) is not None)
+    requested = resolve_backends(config, phase)
+    full = phase == "inference" and set(requested.values()) == {"bioir"} and getattr(model, "is_inference", False)
+    previous = getattr(model, "_full_bioir", None)
+    if previous is not None:
+        device = getattr(model, "device", next(previous.model.parameters()).device)
+        if previous.graph_capacity:
+            previous.model.velocity_model.reset()
+        model._full_bioir = None
+        del previous  # Release converted GPU weights before restoring native ones.
+        model.nn.to(device)
+        model.autoencoder.to(device)
+    model._full_bioir = None
+    model._full_bioir_options = dict(config.get("bioir", {})) if full else None
+    backends = (
+        dict.fromkeys(requested, "eager")
+        if full
+        else resolve_backends(config, phase, guidance=getattr(model, "guidance_model", None) is not None)
+    )
     components = execution_components(model)
     configure_triangle_backends(model, config.get(phase, {}).get("tri_mult", "cuequivariance"))
     if "bioir" in backends.values():
@@ -244,6 +262,10 @@ def configure_execution(model: nn.Module, config: Mapping, phase: str) -> None:
         if name == "decoder" and getattr(model, "guidance_model", None) is not None:
             runtime.compile_scope = "blocks"
         options = dict(config.get("bioir", {}))
+        if options.get("attention_backend") is None:
+            options["attention_backend"] = "SDPA"
+        if options.get("max_graphs") is None:
+            options["max_graphs"] = 1
         # Flow masks are collated padding masks (valid tokens first); AE masks also drop in-context tokens.
         options.pop("flow_prefix_masks", None)
         runtime.bioir_options = {**options, "prefix_masks": name == "flow"}
