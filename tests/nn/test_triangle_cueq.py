@@ -40,36 +40,48 @@ def test_grouped_projections_match_reference(grad: bool, bias: bool, lora: bool)
 
 @pytest.mark.gpu
 @pytest.mark.skipif(
-    trimul._CUEQ_UNAVAILABLE is not None or trimul._CUEQ_SPLIT is None, reason="requires cuEquivariance 0.12 split API"
+    trimul._CUEQ_UNAVAILABLE is not None or trimul._CUEQ_PACKED is None,
+    reason="requires cuEquivariance packed BF16 API",
 )
 @pytest.mark.parametrize(
     "triangle,c_hidden,bias", [(Incoming, 256, False), (Outgoing, 256, True), (Outgoing, 384, False)]
 )
-def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -> None:
-    """Pair 384 with hidden 256 is fused on H200; hidden 384 falls back to the torch path."""
+@pytest.mark.parametrize("compiled", [False, True])
+@pytest.mark.parametrize("pair_dtype", [torch.float32, torch.bfloat16])
+def test_cueq_backend_matches_torch(
+    triangle: type, c_hidden: int, bias: bool, compiled: bool, pair_dtype: torch.dtype
+) -> None:
+    """Hidden 256 is shape-admitted on H200; this predicate does not prove which GPU kernel ran."""
     torch._dynamo.reset()
     ref = _randomized(triangle(384, c_hidden, bias=bias, backend="torch")).cuda()
     fused = triangle(384, c_hidden, bias=bias, backend="cuequivariance").cuda()
     fused.load_state_dict(ref.state_dict())
-    x = torch.randn(2, 256, 256, 384, device="cuda")
+    x = torch.randn(2, 256, 256, 384, device="cuda", dtype=pair_dtype)
     mask = torch.ones(2, 256, 256, device="cuda", dtype=torch.bool)
     mask[:, -8:] = mask[:, :, -8:] = False
+    mask[:, 10:14] = mask[:, :, 10:14] = False
 
     results = []
     for source in (ref, fused):
         # Compare identical reductions even when preceding tests enable compiler tuning.
-        module = torch.compile(source, fullgraph=True, dynamic=False, options={"deterministic": True})
+        module = (
+            torch.compile(source, fullgraph=True, dynamic=False, options={"deterministic": True})
+            if compiled
+            else source
+        )
         xi = x.clone().requires_grad_()
         with torch.autocast("cuda", dtype=torch.bfloat16):
             out = module(xi, mask)
             with torch.no_grad():
                 no_grad_out = module(x, mask)
         out.float().square().mean().backward()
+        assert all(p.dtype == torch.float32 and p.grad.dtype == torch.float32 for p in source.parameters())
+        assert xi.grad.dtype == xi.dtype
         results.append([out, no_grad_out, xi.grad, *(p.grad for p in source.parameters())])
-    fused_route = trimul._CUEQ_SUPPORTED[(2, 256, 384, c_hidden, x.device.index, True, True)]
-    assert fused_route == (c_hidden == 256 and torch.cuda.get_device_capability() == (9, 0))
+    admitted_shape = trimul._CUEQ_SUPPORTED[(2, 256, 384, c_hidden, x.device.index, True, True)]
+    assert admitted_shape == (c_hidden == 256 and torch.cuda.get_device_capability() == (9, 0))
     for ref_t, fused_t in zip(*results, strict=True):
-        if fused_route:
+        if admitted_shape:
             cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
             assert cosine > 0.99, f"cosine {cosine:.4f}"
         else:

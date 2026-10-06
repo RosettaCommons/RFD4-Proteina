@@ -132,10 +132,8 @@ class TriangleMultiplicativeUpdate(nn.Module):
             )
             self.backend = "torch"
 
-    def _cueq_forward(self, z: torch.Tensor, mask: torch.Tensor, parameters: list[torch.Tensor]) -> torch.Tensor:
-        """Dispatch supported calls through the installed 0.12 split or 0.11 packed API."""
-        if _CUEQ_SPLIT is not None:
-            return _CUEQ_SPLIT(z, self._direction, mask, *parameters, eps=self.layer_norm_in.eps)
+    def _cueq_forward(self, z: torch.Tensor, mask: torch.Tensor, parameters: list[torch.Tensor | None]) -> torch.Tensor:
+        """Request BF16 compute while retaining FP32 parameter leaves and their gradients."""
         niw, nib, apw, apb, agw, agb, bpw, bpb, bgw, bgb, now, nob, pow, pob, gow, gob = parameters
         return _CUEQ_PACKED(
             z,
@@ -144,9 +142,9 @@ class TriangleMultiplicativeUpdate(nn.Module):
             norm_in_weight=niw,
             norm_in_bias=nib,
             p_in_weight=torch.cat((apw, bpw)),
-            p_in_bias=torch.cat((apb, bpb)),
+            p_in_bias=None if apb is None else torch.cat((apb, bpb)),
             g_in_weight=torch.cat((agw, bgw)),
-            g_in_bias=torch.cat((agb, bgb)),
+            g_in_bias=None if agb is None else torch.cat((agb, bgb)),
             norm_out_weight=now,
             norm_out_bias=nob,
             p_out_weight=pow,
@@ -154,6 +152,7 @@ class TriangleMultiplicativeUpdate(nn.Module):
             g_out_weight=gow,
             g_out_bias=gob,
             eps=self.layer_norm_in.eps,
+            precision="bfloat16",
         )
 
     def _combine_projections(
@@ -163,12 +162,17 @@ class TriangleMultiplicativeUpdate(nn.Module):
     ) -> torch.Tensor:
         raise NotImplementedError("This method needs to be overridden")
 
-    def _cueq_parameters(self) -> list[torch.Tensor]:
-        """Parameters in the order of ``triangle_multiplicative_update_split_parameters``; zeros for absent biases."""
+    def _cueq_parameters(self) -> list[torch.Tensor | None]:
+        """Preserve absent projection biases; supply correctly sized normalization zeros."""
         modules = (self.layer_norm_in, self.linear_a_p, self.linear_a_g, self.linear_b_p, self.linear_b_g)
         modules += (self.layer_norm_out, self.linear_z, self.linear_g)
-        zeros = [m.weight.new_zeros(m.weight.shape[0]) if m.bias is None else m.bias for m in modules]
-        return [p for m, bias in zip(modules, zeros, strict=True) for p in (m.weight, bias)]
+        parameters = []
+        for module in modules:
+            bias = module.bias
+            if bias is None and module in (self.layer_norm_in, self.layer_norm_out):
+                bias = module.weight.new_zeros(module.weight.shape)
+            parameters.extend((module.weight, bias))
+        return parameters
 
     def _plain_linears(self) -> bool:
         """Whether every projection is an unwrapped Linear; wrapped ones (e.g. LoRA) need their own forward."""
@@ -215,20 +219,12 @@ class TriangleMultiplicativeUpdate(nn.Module):
             and self._plain_linears()
         ):
             parameters = self._cueq_parameters()
-            training = torch.is_grad_enabled() and any(t.requires_grad for t in (z, *parameters))
+            training = torch.is_grad_enabled() and any(t.requires_grad for t in (z, *parameters) if t is not None)
             autocast_bf16 = torch.is_autocast_enabled("cuda") and torch.get_autocast_dtype("cuda") == torch.bfloat16
             bf16 = z.dtype == torch.bfloat16 or autocast_bf16
             supported = _cueq_supported(
                 int(z.shape[0]), int(z.shape[1]), self.c_z, self.c_hidden, z.device.index, training, bf16
             )
-            if supported and _CUEQ_SPLIT is not None and not training and not torch.compiler.is_compiling():
-                # Eager 0.12 needs both fused stages; its tensor predicate checks
-                # more than the compiled-inference shape predicate alone.
-                supported = _CUEQ_TENSOR_SUPPORTED is not None and _CUEQ_TENSOR_SUPPORTED(
-                    z, direction=self._direction, mask=mask, c_hidden=self.c_hidden
-                )
-                if not supported:
-                    _warn_once("cuEquivariance cannot fuse this eager inference triangle; using the torch backend.")
             if supported:
                 return self._cueq_forward(z, mask, parameters)
 
