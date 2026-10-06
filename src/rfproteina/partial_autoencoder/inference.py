@@ -238,7 +238,7 @@ def main() -> None:
     trainer = L.Trainer(
         accelerator="gpu",
         devices=1,
-        precision="bf16-mixed",
+        precision=cfg.get("precision", "bf16-mixed"),
         limit_predict_batches=int(cfg.n_structs / cfg.bs),
     )
     predictions = trainer.predict(model, dataloader)

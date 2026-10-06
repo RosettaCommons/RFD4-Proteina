@@ -13,6 +13,7 @@ ncpus_: 24
 seed: 5
 
 # Inference settings
+precision: bf16-mixed
 n_structs: 100  # Number of structures to evaluate
 bs: 10  # Batch size
 

@@ -49,7 +49,7 @@ def extract_latents_from_predictions(
 
     for batch_input, batch_output in predictions:
         # Extract latent vectors [batch, n_tokens, latent_dim]
-        z_latent = batch_output["z_latent"].cpu().detach().numpy()
+        z_latent = batch_output["z_latent"].detach().float().cpu().numpy()
 
         # Extract residue types [batch, n_tokens]
         residue_type = batch_input["residue_type"].cpu().detach().numpy()
@@ -215,7 +215,12 @@ def main() -> None:
     model = AutoEncoder.load_from_checkpoint(cfg.ckpt_file)
 
     # Make predictions
-    trainer = L.Trainer(accelerator="gpu", devices=1, limit_predict_batches=int(cfg.n_structs / cfg.bs))
+    trainer = L.Trainer(
+        accelerator="gpu",
+        devices=1,
+        precision=cfg.get("precision", "bf16-mixed"),
+        limit_predict_batches=int(cfg.n_structs / cfg.bs),
+    )
     predictions = trainer.predict(model, dataloader)
 
     # Run latent analysis
