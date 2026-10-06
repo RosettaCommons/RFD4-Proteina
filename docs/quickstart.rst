@@ -47,28 +47,21 @@ For batch jobs, see :ref:`slurm-installation`.
 Precision and model weights
 ---------------------------
 
-Generation and training default to ``precision=bf16-mixed``. Lightning enables
-BF16 autocast around model calls; the NIM uses the same mixed-precision context
-for eager, Torch compile, BioIR and warmup. Trainable parameters remain FP32,
-and FP32 parameters receive FP32 gradients. Autocast chooses operation dtypes;
-it does not convert the checkpoint or require geometry and reductions to use BF16.
+Generation, training and auxiliary AE tools default to ``precision=bf16-mixed``;
+NIM applies the same mixed-precision context to every backend and warmup.
+Parameters and their gradients remain FP32. Use ``precision=32`` for native
+full precision; do not cast the model to BF16 to enable mixed-precision training.
+Direct calls outside Lightning/NIM need their own autocast context.
 
-The cuEquivariance triangle uses its packed public operation with
-``precision="bfloat16"`` for admitted BF16 calls. This rounds its compute operands,
-including weights, without modifying the parameter leaves. Missing projection
-biases remain ``None``; normalization receives correctly sized zero biases.
-Kernel selection still depends on the installed wheel, device and shape;
-BF16 precision alone is not proof that a KF kernel ran. Explicit rounding can
-change results compared with FP32 normalization under ordinary autocast.
-A compatible cuEquivariance build with KF training kernels and actual dispatch
-validation are needed to claim KF training: older installed runtimes may fall back when projection biases are
-``None``. This precision setting alone makes no training-speed guarantee.
+The packed cuEquivariance triangle requests ``precision="bfloat16"`` for admitted
+BF16 calls, rounding compute operands without changing parameter leaves. Absent
+projection biases stay ``None``; normalization biases keep their correct shapes.
+BioIR uses separate BF16 inference copies and intentionally disables inner autocast.
 
-BioIR keeps separate BF16 inference copies and manages its own block precision;
-its disabled inner autocast context is intentional. Keep ``precision=32`` for a
-full-precision native run. Do not call ``model.bfloat16()`` to enable mixed-precision
-training. Direct model calls outside Lightning or the NIM must supply their own
-``torch.autocast("cuda", dtype=torch.bfloat16)`` context.
+Kernel eligibility depends on the wheel, device and shape; older runtimes may
+fall back when projection biases are ``None``. Explicit rounding can change
+results relative to FP32 normalization. Actual dispatch/parity validation is
+required; this setting alone establishes neither KF training nor a speedup.
 
 Next steps
 ----------
