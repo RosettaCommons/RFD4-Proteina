@@ -87,11 +87,18 @@ def test_kf_routes_only_to_flow(monkeypatch):
     monkeypatch.setattr(execution, "execution_components", lambda model: trunks)
     monkeypatch.setattr(execution, "configure_triangle_backends", lambda model, backend: None)
     monkeypatch.setattr(bioir, "_require_bioir", lambda: None)
-    execution.configure_execution(nn.Identity(), policy(), "inference")
-    assert trunks["flow"]._execution.bioir_options["prefix_masks"]
-    for name in ("encoder", "decoder"):
-        assert "triangle_backend" not in trunks[name]._execution.bioir_options
-        assert not trunks[name]._execution.bioir_options["prefix_masks"]
+    # Keep testing mixed block routes; all-three BioIR now selects the full model.
+    for eager in ("encoder", "decoder"):
+        config = policy()
+        config["inference"][eager] = "eager"
+        execution.configure_execution(nn.Identity(), config, "inference")
+        assert trunks["flow"]._execution.bioir_options["prefix_masks"]
+        for name in ("encoder", "decoder"):
+            assert trunks[name]._execution.backend == config["inference"][name]
+            if name == eager:
+                continue
+            assert "triangle_backend" not in trunks[name]._execution.bioir_options
+            assert not trunks[name]._execution.bioir_options["prefix_masks"]
 
 
 def test_kf_api_signature_guard():

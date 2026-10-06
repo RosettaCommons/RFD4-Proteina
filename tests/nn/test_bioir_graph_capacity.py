@@ -48,9 +48,15 @@ def test_capacity_routes_to_all_trunks_without_enabling_ae_kf(monkeypatch, capac
     }
     if capacity is not None:
         config["bioir"]["max_graphs"] = capacity
-    execution.configure_execution(nn.Identity(), config, "inference")
-    for name, trunk in trunks.items():
-        options = trunk._execution.bioir_options
-        assert options.get("max_graphs", 1) == (1 if capacity is None else capacity)
-        assert options["prefix_masks"] == (name == "flow")
-        assert "triangle_backend" not in options
+    # All-three BioIR selects the full model; mixed routes retain block execution.
+    for eager in trunks:
+        config["inference"] = {name: "eager" if name == eager else "bioir" for name in trunks}
+        execution.configure_execution(nn.Identity(), config, "inference")
+        for name, trunk in trunks.items():
+            assert trunk._execution.backend == config["inference"][name]
+            if name == eager:
+                continue
+            options = trunk._execution.bioir_options
+            assert options.get("max_graphs", 1) == (1 if capacity is None else capacity)
+            assert options["prefix_masks"] == (name == "flow")
+            assert "triangle_backend" not in options
