@@ -33,58 +33,21 @@ def load_full_model(
     native: Any, *, sampling_config: Any, device: torch.device, options: Mapping[str, Any]
 ) -> RFProteina:
     """Strictly convert active native weights without opening checkpoints again."""
-    import inspect
+    from bionemo_ir.models.rfproteina import RFProteina
 
-    from bionemo_ir._torch.modules.rfproteina.sampler import RFProteinaProductSpaceSampler
-    from bionemo_ir.models.rfproteina import RFProteina, RFProteinaConfig, convert
-
-    if "emit_masks" not in inspect.signature(RFProteinaProductSpaceSampler.sample).parameters:
-        raise RuntimeError("Full BioIR requires native flow-emission mask support; install the pinned BioIR runtime")
+    required = ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs")
+    if not all(callable(getattr(RFProteina, name, None)) for name in required):
+        raise RuntimeError("Full BioIR requires public state-loading and graph APIs; install the pinned BioIR runtime")
     if options.get("dtype", "bfloat16") != "bfloat16":
         raise ValueError("Full BioIR currently requires execution.bioir.dtype=bfloat16")
     states = _copy_loaded_states(native)
-    pretrained = RFProteina.get_pretrained_config()
-    trunk = convert.rfproteina_trunk_config_from_weights(
+    return RFProteina.from_reference_state_dicts(
         states["flow"],
-        dtype="bfloat16",
-        pairwise_attention_backend=(options.get("attention_backend") or pretrained.trunk.pairwise_attention_backend),
-        enable_cudnn_graph=pretrained.trunk.enable_cudnn_graph,
+        states["autoencoder"],
+        sampling_config=sampling_config,
+        device=device,
+        attention_backend=options.get("attention_backend"),
     )
-    representation = convert.rfproteina_representation_config_from_weights(
-        states["flow"], latent_dim=trunk.latent_dim, dtype="float32", pair_adaln_dtype="bfloat16"
-    )
-    decoder = convert.rfproteina_decoder_config_from_weights(
-        states["autoencoder"], dtype="float32", transformer_dtype="bfloat16"
-    )
-    encoder = convert.rfproteina_encoder_config_from_weights(
-        states["autoencoder"], dtype="float32", transformer_dtype="bfloat16"
-    )
-    config = RFProteinaConfig(
-        dtype="bfloat16",
-        trunk=trunk,
-        representation=representation,
-        encoder=encoder,
-        decoder=decoder,
-        sampling=sampling_config,
-    )
-    model = RFProteina(config, include_load_weights=False)
-    components = (
-        (model.velocity_model, trunk, states["flow"], convert.convert_rfproteina_trunk_torch),
-        (
-            model.representation_builder,
-            representation,
-            states["flow"],
-            convert.convert_rfproteina_representation_builder_torch,
-        ),
-        (model.decoder, decoder, states["autoencoder"], convert.convert_rfproteina_decoder_torch),
-        (model.encoder, encoder, states["autoencoder"], convert.convert_rfproteina_encoder_torch),
-    )
-    model.native_bridge_conversion_counts = {}
-    for module, component_config, state, converter in components:
-        converted = converter(component_config, state)
-        module.load_state_dict(converted, strict=True)
-        model.native_bridge_conversion_counts[converter.__name__] = len(converted)
-    return model.to(device).eval()
 
 
 def sampling_from_native(native: Any) -> RFProteinaSamplingConfig:
@@ -438,9 +401,6 @@ class FullBioIRAdapter:
         """Size at the request boundary, retaining upstream routing/static keys."""
         if not self.options.get("cuda_graph", True):
             return
-        from bionemo_ir._torch.graph_optimization.decorator import GRAPH_OPT_DEFAULT_ATTR
-        from bionemo_ir.configs import AcceleratedConfig, BackendType, BaseConfig
-
         required = 2 * len({depth for _, depth in sampling_config.n_recycle_schedule})
         requested = self.options.get("max_graphs")
         if requested is not None and requested < required:
@@ -451,20 +411,7 @@ class FullBioIRAdapter:
         capacity = required if requested is None else requested
         if capacity <= self.graph_capacity:
             return
-        if self.graph_capacity:
-            tracker = self.model.velocity_model
-            tracker.reset()
-            self.model.velocity_model = tracker.inner_module
-        config = getattr(self.model.velocity_model, GRAPH_OPT_DEFAULT_ATTR).model_copy(deep=True)
-        config.num_graphs_max_for_this_module = capacity
-        config.verify_capture = True
-        self.model.optimize(
-            {
-                "velocity_model": AcceleratedConfig(
-                    backend=BackendType.TORCH, default=BaseConfig(graph_optimization_config=config)
-                )
-            }
-        )
+        self.model.configure_graphs(capacity=capacity, verify_capture=True)
         self.graph_capacity = capacity
 
 
@@ -512,21 +459,13 @@ def full_bioir_runtime(native: Any) -> dict[str, Any] | None:
         return None
     from bionemo_ir._torch.layers.triangle_nodes import TriangleMultiplicationNode
 
-    tracker = adapter.model.velocity_model
-    states = getattr(tracker, "graph_state_by_key", {})
+    graphs = adapter.model.graph_status()
     nodes = [module for module in adapter.model.modules() if isinstance(module, TriangleMultiplicationNode)]
     return {
         "workflow": "full",
         "graph_scope": "velocity_model",
-        "graph_capacity": adapter.graph_capacity,
-        "graph_cache": {
-            "active": len(states),
-            "captured": sum(state.graph is not None for state in states.values()),
-            "verified": sum(
-                getattr(state.preparation_state, "name", None) == "GRAPH_VERIFIED" for state in states.values()
-            ),
-            "fallback": sum(bool(value) for value in getattr(tracker, "fallback_to_eager_by_key", {}).values()),
-        },
+        "graph_capacity": graphs["capacity"],
+        "graph_cache": {key: graphs[key] for key in ("active", "captured", "verified", "fallback")},
         "completed_calls": adapter.completed_calls,
         "rng_mode": adapter.rng_mode,
         "triangle_modules": len(nodes),
@@ -534,5 +473,13 @@ def full_bioir_runtime(native: Any) -> dict[str, Any] | None:
         "precision": "FP32 features/AE heads and BF16 transformer weights/compute",
         "attention_backend": str(adapter.model.config.trunk.pairwise_attention_backend),
         "native_cuda_parameter_elements": sum(p.numel() for p in native.parameters() if p.is_cuda),
-        "conversion_tensor_counts": adapter.model.native_bridge_conversion_counts,
+        "conversion_tensor_counts": {
+            f"convert_rfproteina_{component}_torch": len(getattr(adapter.model, report).loaded_keys)
+            for component, report in (
+                ("trunk", "conversion_report"),
+                ("representation_builder", "representation_conversion_report"),
+                ("decoder", "decoder_conversion_report"),
+                ("encoder", "encoder_conversion_report"),
+            )
+        },
     }

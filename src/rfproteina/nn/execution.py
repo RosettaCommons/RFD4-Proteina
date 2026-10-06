@@ -230,8 +230,7 @@ def configure_execution(model: nn.Module, config: Mapping, phase: str) -> None:
     previous = getattr(model, "_full_bioir", None)
     if previous is not None:
         device = getattr(model, "device", next(previous.model.parameters()).device)
-        if previous.graph_capacity:
-            previous.model.velocity_model.reset()
+        previous.model.reset_graphs()
         model._full_bioir = None
         del previous  # Release converted GPU weights before restoring native ones.
         model.nn.to(device)

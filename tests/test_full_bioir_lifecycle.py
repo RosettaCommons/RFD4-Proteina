@@ -94,6 +94,7 @@ def test_initializer_waits_for_final_device_and_keeps_runtime_out_of_state_dict(
     # An initialized full runtime offloaded native weights. Switching back must
     # restore both modules to the caller's active device before native execution.
     restored = []
+    monkeypatch.setattr(adapter.model, "reset_graphs", lambda: restored.append("reset"), raising=False)
     for name in ("nn", "autoencoder"):
         module = getattr(native, name)
         original_to = module.to
@@ -107,7 +108,7 @@ def test_initializer_waits_for_final_device_and_keeps_runtime_out_of_state_dict(
     execution.configure_execution(
         native, {"inference": dict.fromkeys(("flow", "encoder", "decoder"), "eager")}, "inference"
     )
-    assert restored == [("nn", native.device), ("autoencoder", native.device)]
+    assert restored == ["reset", ("nn", native.device), ("autoencoder", native.device)]
     assert native._full_bioir is None
     assert native._full_bioir_options is None
     assert tuple(native.state_dict()) == before
@@ -136,7 +137,7 @@ def test_cli_global_batch_stream_continues_after_bioir_fork():
         torch.set_rng_state(original)
 
 
-def test_insufficient_explicit_graph_slots_fail_before_optimization():
+def test_graph_capacity_policy_delegates_only_admitted_growth():
     native = Native()
     model = torch.nn.Linear(2, 2)
     adapter = bridge.FullBioIRAdapter(native, model)
@@ -145,6 +146,14 @@ def test_insufficient_explicit_graph_slots_fail_before_optimization():
     with pytest.raises(ValueError, match="at least 6 graph slots"):
         adapter.configure_graphs(policy)
     assert adapter.graph_capacity == 0
+    calls = []
+    model.configure_graphs = lambda **kwargs: calls.append(kwargs)
+    adapter.options = {}
+    adapter.configure_graphs(policy)
+    adapter.configure_graphs(policy)
+    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
+    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1), (5, 2), (5, 4), (5, 6)]))
+    assert calls == [{"capacity": 6, "verify_capture": True}, {"capacity": 8, "verify_capture": True}]
 
 
 def test_native_predict_dispatch_uses_shared_adapter(monkeypatch):
@@ -231,14 +240,40 @@ def test_bridge_passes_explicit_decoder_mask_and_native_backbone_emission():
     assert captured["atom_mask"] is prediction.atom_mask
 
 
-def test_old_sampler_rejected_before_native_weight_copy(monkeypatch):
-    from bionemo_ir._torch.modules.rfproteina.sampler import RFProteinaProductSpaceSampler
-
-    monkeypatch.setattr(RFProteinaProductSpaceSampler, "sample", lambda self: None)
+def test_old_runtime_rejected_before_native_weight_copy(monkeypatch):
+    from bionemo_ir.models.rfproteina import RFProteina
 
     def forbidden(*args, **kwargs):
         raise AssertionError("Must fail before copying native weights")
 
     monkeypatch.setattr(bridge, "_copy_loaded_states", forbidden)
-    with pytest.raises(RuntimeError, match="flow-emission mask support"):
-        bridge.load_full_model(object(), sampling_config=None, device=torch.device("cpu"), options={})
+    for name in ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs"):
+        with monkeypatch.context() as patch:
+            patch.setattr(RFProteina, name, None)
+            with pytest.raises(RuntimeError, match="public state-loading and graph APIs"):
+                bridge.load_full_model(object(), sampling_config=None, device=torch.device("cpu"), options={})
+
+
+def test_loader_passes_selected_weights_and_native_policy_to_public_factory(monkeypatch):
+    from bionemo_ir.models.rfproteina import RFProteina
+
+    native = Native()
+    policy, converted = object(), object()
+    captured = {}
+
+    def build(flow, autoencoder, **kwargs):
+        captured.update(flow=flow, autoencoder=autoencoder, **kwargs)
+        return converted
+
+    monkeypatch.setattr(RFProteina, "from_reference_state_dicts", build)
+    assert (
+        bridge.load_full_model(
+            native, sampling_config=policy, device=torch.device("cpu"), options={"attention_backend": "SDPA"}
+        )
+        is converted
+    )
+    assert captured["sampling_config"] is policy
+    assert captured["device"] == torch.device("cpu")
+    assert captured["attention_backend"] == "SDPA"
+    torch.testing.assert_close(captured["flow"]["nn.weight"], native.nn.weight)
+    torch.testing.assert_close(captured["autoencoder"]["encoder.weight"], native.autoencoder["encoder"].weight)
