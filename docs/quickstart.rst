@@ -2,7 +2,8 @@ Quickstart
 ==========
 
 Run ``make setup`` to install RFD4-Proteína and download its checkpoints, then generate your first design.
-Use Linux x86_64, Python 3.12, and an NVIDIA GPU with a CUDA 13-compatible driver.
+Use Linux x86_64, Python 3.12, and a :ref:`supported NVIDIA GPU <supported-hardware>` with a
+CUDA 13-compatible driver.
 
 Install
 -------
