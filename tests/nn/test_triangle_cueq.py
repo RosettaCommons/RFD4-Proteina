@@ -44,7 +44,10 @@ def test_grouped_projections_match_reference(grad: bool, bias: bool, lora: bool)
     "triangle,c_hidden,bias", [(Incoming, 256, False), (Outgoing, 256, True), (Outgoing, 384, False)]
 )
 def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -> None:
-    """Pair 384 with hidden 256 is fused on H200; hidden 384 falls back to the torch path."""
+    """The op is called for every BF16 shape: pair 384 with hidden 256 is fused on H200, hidden 384 runs
+    cuEquivariance's reference formula, which must agree with the torch path."""
+    import cuequivariance_ops_torch
+
     torch._dynamo.reset()
     ref = _randomized(triangle(384, c_hidden, bias=bias)).cuda()
     fused = triangle(384, c_hidden, bias=bias, backend="cuequivariance").cuda()
@@ -64,11 +67,12 @@ def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -
                 no_grad_out = module(x, mask)
         out.float().square().mean().backward()
         results.append([out, no_grad_out, xi.grad, *(p.grad for p in source.parameters())])
-    fused_route = trimul._CUEQ_SUPPORTED[(2, 256, 384, c_hidden, x.device.index, True, True)]
-    assert fused_route == (c_hidden == 256 and torch.cuda.get_device_capability() == (9, 0))
+    fused_route = cuequivariance_ops_torch.triangle_multiplicative_update_training_shape_is_supported(
+        2, 256, 384, c_hidden, x.device
+    )
+    if torch.cuda.get_device_capability() == (9, 0):
+        assert fused_route == (c_hidden == 256)
     for ref_t, fused_t in zip(*results, strict=True):
-        if fused_route:
-            cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
-            assert cosine > 0.99, f"cosine {cosine:.4f}"
-        else:
-            torch.testing.assert_close(fused_t, ref_t)
+        # Fused kernels and cuEquivariance's reference formula both reorder the BF16 math.
+        cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
+        assert cosine > 0.99, f"cosine {cosine:.4f}"
