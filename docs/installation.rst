@@ -11,9 +11,36 @@ Prerequisites
 -------------
 
 * Linux, ``git``, and ``curl``.
-* An NVIDIA GPU and a driver compatible with CUDA 13.
+* An NVIDIA GPU and a driver compatible with CUDA 13. See :ref:`supported-hardware`.
 * A C++ compiler and the CUDA 13.2 development toolkit (``nvcc``) to build TMol.
 * Enough storage for the Python environment and released checkpoints (about 8 GB).
+
+.. _supported-hardware:
+
+Supported hardware
+------------------
+
+RFD4-Proteína has been tested and confirmed to run on the following NVIDIA GPUs.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 16 50 34
+
+   * - Architecture
+     - Data center
+     - Workstation and desktop
+   * - Blackwell
+     - B200, B300, GB200, GB300, RTX PRO 6000 Blackwell Server Edition
+     - RTX PRO 6000 Blackwell Workstation Edition, GB10 (DGX Spark)
+   * - Hopper
+     - H100 SXM, H100 PCIe, H100 NVL, H200, H200 NVL, GH200 144GB
+     -
+   * - Ada Lovelace
+     - L40S
+     - RTX 6000 Ada Generation
+   * - Ampere
+     - A100 SXM4 40GB and 80GB, A100 PCIe 40GB and 80GB
+     -
 
 .. _native-python-installation:
 
