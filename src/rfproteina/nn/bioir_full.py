@@ -29,15 +29,35 @@ def _copy_loaded_states(native: Any) -> dict[str, dict[str, torch.Tensor]]:
     }
 
 
+#: Model entry points the full workflow calls on the installed BioIR runtime.
+REQUIRED_MODEL_API = ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs")
+
+
+def require_bioir() -> None:
+    """Reject an installed BioIR that cannot run the whole workflow, naming what to install."""
+    try:
+        from bionemo_ir.models.rfproteina import RFProteina
+    except (ImportError, OSError) as error:
+        raise ImportError(
+            "execution.inference.*=bioir runs the whole workflow through BioIR's RFProteína model, which "
+            "comes from the TensorRT BioNeMo ductr/rfd4 branch. PyPI bionemo-ir 0.1.1 does not contain it. "
+            "Install that compatible BioIR runtime, or select inference_backend=torch_compile or eager."
+        ) from error
+    missing = sorted(name for name in REQUIRED_MODEL_API if not callable(getattr(RFProteina, name, None)))
+    if missing:
+        raise RuntimeError(
+            f"The installed BioIR RFProteína is missing {missing}; install the pinned BioIR runtime, "
+            "or select inference_backend=torch_compile or eager."
+        )
+
+
 def load_full_model(
     native: Any, *, sampling_config: Any, device: torch.device, options: Mapping[str, Any]
 ) -> RFProteina:
     """Strictly convert active native weights without opening checkpoints again."""
     from bionemo_ir.models.rfproteina import RFProteina
 
-    required = ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs")
-    if not all(callable(getattr(RFProteina, name, None)) for name in required):
-        raise RuntimeError("Full BioIR requires public state-loading and graph APIs; install the pinned BioIR runtime")
+    require_bioir()
     if options.get("dtype", "bfloat16") != "bfloat16":
         raise ValueError("Full BioIR currently requires execution.bioir.dtype=bfloat16")
     states = _copy_loaded_states(native)

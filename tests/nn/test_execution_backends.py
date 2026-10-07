@@ -5,6 +5,7 @@ import torch
 from torch import nn
 
 from rfproteina.nn.execution import (
+    ALIGNED_LENGTHS,
     BlockExecution,
     configure_execution,
     inference_padding_buckets,
@@ -30,15 +31,15 @@ class Trunk(nn.Module):
         self.pair_update_layers = nn.ModuleList([])
 
 
+def every_component(backend):
+    return {"inference": {key: backend for key in ("flow", "encoder", "decoder")}}
+
+
 @pytest.mark.parametrize(
     "public,internal", [("eager", "eager"), ("torch_compile", "torch"), ("torch", "torch"), ("bioir", "bioir")]
 )
 def test_resolve_selectors(public, internal):
-    policy = {"inference": {key: public for key in ("flow", "encoder", "decoder")}}
-    assert set(resolve_backends(policy, "inference").values()) == {internal}
-    assert resolve_backends(policy, "inference", guidance=True)["decoder"] == (
-        "torch" if public == "bioir" else internal
-    )
+    assert set(resolve_backends(every_component(public), "inference").values()) == {internal}
 
 
 def test_invalid_and_padding_policies():
@@ -48,9 +49,39 @@ def test_invalid_and_padding_policies():
         resolve_backends({"inference": {"tri_mult": "bogus"}}, "inference")
     with pytest.raises(ValueError, match="multiples of 16"):
         inference_padding_buckets({"inference": {"length_buckets": [17]}})
-    eager = {"inference": {key: "eager" for key in ("flow", "encoder", "decoder")}}
+    eager = every_component("eager")
     assert inference_padding_buckets(eager) is None
     assert inference_padding_buckets({"inference": {"flow": "torch_compile"}})[0] == 16
+    assert inference_padding_buckets(every_component("bioir")) == ALIGNED_LENGTHS
+
+
+def test_bioir_is_the_whole_workflow_or_nothing():
+    for mixed in ({"flow": "bioir"}, {"flow": "bioir", "encoder": "bioir", "decoder": "eager"}):
+        with pytest.raises(ValueError, match="whole workflow"):
+            resolve_backends({"inference": mixed}, "inference")
+    with pytest.raises(ValueError, match="Unsupported"):
+        resolve_backends({"training": every_component("bioir")["inference"]}, "training")
+
+
+def test_guidance_is_refused_rather_than_quietly_downgraded():
+    with pytest.raises(ValueError, match="guidance"):
+        resolve_backends(every_component("bioir"), "inference", guidance=True)
+    for backend in ("eager", "torch_compile", "torch"):
+        policy = every_component(backend)
+        assert resolve_backends(policy, "inference", guidance=True) == resolve_backends(policy, "inference")
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "3"])
+def test_invalid_graph_capacity_is_rejected_before_conversion(value):
+    with pytest.raises(ValueError, match="max_graphs"):
+        resolve_backends({"bioir": {"max_graphs": value}}, "inference")
+    assert resolve_backends({"bioir": {"max_graphs": None}}, "inference")
+
+
+@pytest.mark.parametrize("option", ["triangle_backend", "compile_shared_triangles", "flow_prefix_masks"])
+def test_options_bioir_decides_for_itself_are_rejected(option):
+    with pytest.raises(ValueError, match="automatically"):
+        resolve_backends({"bioir": {option: "shared"}}, "inference")
 
 
 def test_eager_and_compile_preserve_weights(monkeypatch):
@@ -96,37 +127,40 @@ def test_checkpoint_triangle_policy_overridden(monkeypatch):
 
 
 def test_missing_bioir_is_actionable(monkeypatch):
-    from rfproteina.nn import bioir
+    import builtins
 
-    monkeypatch.setattr(bioir, "BIOIR_AVAILABLE", False)
-    monkeypatch.setattr(bioir, "BIOIR_IMPORT_ERROR", ImportError("blocks absent"))
+    real_import = builtins.__import__
+
+    def refuse(name, *args, **kwargs):
+        if name == "bionemo_ir.models.rfproteina":
+            raise ImportError("RFProteína model absent")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", refuse)
+    model = nn.Module()
+    model.is_inference = True
     with pytest.raises(ImportError, match="ductr/rfd4"):
-        configure_execution(nn.Module(), {"inference": {"flow": "bioir"}}, "inference")
+        configure_execution(model, every_component("bioir"), "inference")
 
 
-def test_bioir_cache_tracks_weight_changes(monkeypatch):
-    from rfproteina.nn import bioir
+def test_bioir_selects_the_full_workflow_and_leaves_native_blocks_eager(monkeypatch):
+    monkeypatch.setattr("rfproteina.nn.bioir_full.require_bioir", lambda: None)
+    model = nn.Module()
+    model.nn = Trunk()
+    model.is_inference = True
+    config = {**every_component("bioir"), "bioir": {"max_graphs": 3}}
+    configure_execution(model, config, "inference")
+    assert model._full_bioir_options == {"max_graphs": 3}
+    assert model.nn._execution.backend == "eager"
+    configure_execution(model, every_component("eager"), "inference")
+    assert model._full_bioir_options is None
 
-    trunk = Trunk()
-    runtime = BlockExecution(backend="bioir")
-    copies = []
 
-    def convert(attention, pair, apply, **kwargs):
-        from copy import deepcopy
-
-        copied = deepcopy(attention)
-        copies.append(copied)
-        return lambda s, z, c, mask: apply(s, z, c, mask, copied, pair)
-
-    monkeypatch.setattr(bioir, "convert_trunk", convert)
-    args = (torch.ones(1, 2, 1), None, torch.zeros(1, 2, 1), torch.ones(1, 2, dtype=torch.bool))
-    with torch.no_grad():
-        first, _ = runtime.run(trunk, *args)
-        runtime.run(trunk, *args)
-        trunk.transformer_layers[0].weight.add_(1)
-        second, _ = runtime.run(trunk, *args)
-    assert len(copies) == 2
-    torch.testing.assert_close(second - first, torch.ones_like(first))
+def test_bioir_outside_the_generation_entry_point_is_refused():
+    model = nn.Module()
+    model.nn = Trunk()
+    with pytest.raises(ValueError, match="training-time validation"):
+        configure_execution(model, every_component("bioir"), "inference")
 
 
 def test_public_cueq_011_parameter_packing_and_gradients(monkeypatch):
@@ -150,37 +184,27 @@ def test_public_cueq_011_parameter_packing_and_gradients(monkeypatch):
     assert source.linear_b_p.weight.grad is not None
 
 
-def test_shared_bioir_triangle_matches_native_and_copies_weights():
-    from rfproteina.nn.bioir import _SharedTriangle
-
-    source = triangle.TriangleMultiplicationOutgoing(4, 3, bias=False, backend="torch").eval()
-    with torch.no_grad():
-        for parameter in source.parameters():
-            parameter.normal_(0, 0.1)
-    shared = _SharedTriangle(source, torch.float32)
-    z = torch.randn(1, 5, 5, 4)
-    mask = torch.ones(1, 5, 5)
-    mask[:, 2] = 0
-    with torch.no_grad():
-        torch.testing.assert_close(shared(z, mask, trimul_metadata=None), source(z, mask))
-    assert not shared.can_fuse_residual(z)
-    assert {id(p) for p in shared.parameters()}.isdisjoint(id(p) for p in source.parameters())
-
-
 @pytest.mark.parametrize("backend", ["eager", "torch_compile", "bioir"])
 def test_hydra_inference_backend_composition(backend):
     from pathlib import Path
 
     from hydra import compose, initialize_config_dir
 
-    with initialize_config_dir(config_dir=str(Path(__file__).resolve().parents[2] / "configs"), version_base=None):
-        cfg = compose(
+    configs = str(Path(__file__).resolve().parents[2] / "configs")
+    with initialize_config_dir(config_dir=configs, version_base=None):
+        cfg = compose(config_name="inference", overrides=[f"inference_backend={backend}"])
+    expected = "torch" if backend == "torch_compile" else backend
+    assert resolve_backends(cfg.execution, "inference") == dict.fromkeys(("flow", "encoder", "decoder"), expected)
+    assert cfg.execution.inference.tri_mult == "cuequivariance"
+    with initialize_config_dir(config_dir=configs, version_base=None):
+        mixed = compose(
             config_name="inference", overrides=[f"inference_backend={backend}", "execution.inference.decoder=eager"]
         )
-    expected = "torch" if backend == "torch_compile" else backend
-    policy = resolve_backends(cfg.execution, "inference")
-    assert policy == {"flow": expected, "encoder": expected, "decoder": "eager"}
-    assert cfg.execution.inference.tri_mult == "cuequivariance"
+    if backend == "bioir":
+        with pytest.raises(ValueError, match="whole workflow"):
+            resolve_backends(mixed.execution, "inference")
+    else:
+        assert resolve_backends(mixed.execution, "inference")["decoder"] == "eager"
 
 
 def test_return_to_training_discards_inference_cache():
@@ -191,9 +215,9 @@ def test_return_to_training_discards_inference_cache():
     for cls in (LocalLatentsTransformer, EncoderTransformer, DecoderTransformer):
         trunk = cls.__new__(cls)
         nn.Module.__init__(trunk)
-        trunk._execution = BlockExecution(backend="bioir")
+        trunk._execution = BlockExecution(backend="torch")
         trunk.eval()
-        assert trunk._execution.backend == "bioir"
+        assert trunk._execution.backend == "torch"
         trunk.train()
         assert "_execution" not in trunk.__dict__
 
@@ -248,78 +272,3 @@ def test_whole_pass_owns_graph_output_and_keeps_parameters(monkeypatch):
     model.decoder = Trunk()
     configure_execution(model, {"inference": {"flow": "torch", "compile_scope": "whole_pass"}}, "inference")
     assert model.decoder._execution.compile_scope == "blocks"
-
-
-@pytest.mark.parametrize("fused", [False, True])
-def test_attention_projection_layout_preserves_gate_bias(fused):
-    from rfproteina.nn.bioir import _map_attention_projections, _Weights
-
-    source = nn.Module()
-    source.mhba = nn.Module()
-    source.mhba.mha = nn.Module()
-    source.mhba.mha.to_qkv = nn.Linear(4, 6)
-    source.mhba.mha.to_g = nn.Linear(4, 2)
-    target = nn.Module()
-    target.mha = nn.Module()
-    if fused:
-        target.mha.in_proj = nn.Linear(4, 8)
-    else:
-        target.mha.proj_q = nn.Linear(4, 2)
-        target.mha.proj_g = nn.Linear(4, 2)
-        target.mha.proj_kv = nn.Linear(4, 4)
-    weights = _Weights(source)
-    _map_attention_projections(weights, target.mha)
-    weights.load(target)
-    x = torch.randn(2, 3, 4)
-    q, k, v = source.mhba.mha.to_qkv(x).chunk(3, dim=-1)
-    gate = source.mhba.mha.to_g(x)
-    expected = torch.cat((q, gate, k, v), dim=-1)
-    actual = (
-        target.mha.in_proj(x)
-        if fused
-        else torch.cat((target.mha.proj_q(x), target.mha.proj_g(x), target.mha.proj_kv(x)), dim=-1)
-    )
-    torch.testing.assert_close(actual, expected)
-    target_gate_bias = target.mha.in_proj.bias[2:4] if fused else target.mha.proj_g.bias
-    torch.testing.assert_close(target_gate_bias, source.mhba.mha.to_g.bias, rtol=0, atol=0)
-
-
-@pytest.mark.parametrize(
-    "missing",
-    [
-        "bionemo_ir._torch",
-        "bionemo_ir._torch.layers",
-        "bionemo_ir._torch.layers.transformers",
-        "bionemo_ir._torch.layers.transformers.blocks",
-    ],
-)
-def test_legacy_bioir_import_handles_missing_namespace_ancestors(monkeypatch, missing):
-    from rfproteina.nn import bioir
-
-    legacy = object()
-    calls = []
-
-    def import_blocks(name):
-        calls.append(name)
-        if name == "bionemo_ir.blocks":
-            return legacy
-        raise ModuleNotFoundError("current layout absent", name=missing)
-
-    monkeypatch.setattr(bioir, "import_module", import_blocks)
-    assert bioir._load_bioir_blocks() is legacy
-    assert calls == ["bionemo_ir._torch.layers.transformers.blocks", "bionemo_ir.blocks"]
-
-
-def test_bioir_import_does_not_hide_broken_current_dependency(monkeypatch):
-    from rfproteina.nn import bioir
-
-    calls = []
-
-    def import_blocks(name):
-        calls.append(name)
-        raise ModuleNotFoundError("native dependency absent", name="cutlass")
-
-    monkeypatch.setattr(bioir, "import_module", import_blocks)
-    with pytest.raises(ModuleNotFoundError, match="native dependency absent"):
-        bioir._load_bioir_blocks()
-    assert calls == ["bionemo_ir._torch.layers.transformers.blocks"]

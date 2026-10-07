@@ -43,6 +43,7 @@ def test_conversion_snapshots_selected_weights_without_aliases_or_checkpoint_rea
 
 def test_full_policy_is_deferred_and_cleared_when_returning_to_native(monkeypatch):
     monkeypatch.setattr(execution, "configure_triangle_backends", lambda *args: None)
+    monkeypatch.setattr(bridge, "require_bioir", lambda: None)
     native = Native()
     keys = tuple(native.state_dict())
     cfg = {
@@ -57,16 +58,10 @@ def test_full_policy_is_deferred_and_cleared_when_returning_to_native(monkeypatc
     cfg["inference"] = dict.fromkeys(("flow", "encoder", "decoder"), "eager")
     execution.configure_execution(native, cfg, "inference")
     assert native._full_bioir_options is None
-    from rfproteina.nn import bioir as block_bioir
-
-    monkeypatch.setattr(block_bioir, "_require_bioir", lambda: None)
     cfg["inference"]["flow"] = "bioir"
-    execution.configure_execution(native, cfg, "inference")
+    with pytest.raises(ValueError, match="whole workflow"):
+        execution.configure_execution(native, cfg, "inference")
     assert native._full_bioir_options is None
-    assert native.nn._execution.backend == "bioir"
-    assert native.nn._execution.bioir_options["max_graphs"] == 1
-    assert native.nn._execution.bioir_options["attention_backend"] == "SDPA"
-    assert native.autoencoder.decoder._execution.backend == "eager"
     assert tuple(native.state_dict()) == keys
 
 
@@ -247,10 +242,10 @@ def test_old_runtime_rejected_before_native_weight_copy(monkeypatch):
         raise AssertionError("Must fail before copying native weights")
 
     monkeypatch.setattr(bridge, "_copy_loaded_states", forbidden)
-    for name in ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs"):
+    for name in bridge.REQUIRED_MODEL_API:
         with monkeypatch.context() as patch:
             patch.setattr(RFProteina, name, None)
-            with pytest.raises(RuntimeError, match="public state-loading and graph APIs"):
+            with pytest.raises(RuntimeError, match=f"missing \\['{name}'\\]"):
                 bridge.load_full_model(object(), sampling_config=None, device=torch.device("cpu"), options={})
 
 

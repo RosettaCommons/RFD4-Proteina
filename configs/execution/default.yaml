@@ -6,12 +6,11 @@ inference:
   length_buckets: ${compile_lengths}
   tri_mult: cuequivariance
   compile_scope: blocks
+# BioIR runs the whole workflow, so inference_backend selects it for every component at once.
 bioir:
   dtype: bfloat16
-  # Full workflow selects the BioIR default; mixed blocks retain SDPA.
+  # Null selects BioIR's own attention default.
   attention_backend: null
   cuda_graph: true
-  # Null: full workflow retains each recycling depth for a full batch and tail;
-  # mixed block policies retain one graph. Explicit values always mean actual slots.
+  # Null retains each recycling depth for a full batch and tail; an explicit value means actual slots.
   max_graphs: null
-  # Full BioIR uses automatic KF where eligible; reports cache state and availability.

@@ -82,6 +82,11 @@ are rejected. This experimental path still requires end-to-end GPU qualification
 no speedup or modality qualification is implied by selecting it. Gradient/CFG guidance
 and trajectory export currently require `eager` or `torch_compile`.
 
+`bioir` replaces the model rather than individual trunks, so it is all or nothing:
+overriding one of `execution.inference.flow`, `.encoder` or `.decoder` away from it
+is rejected, and it is available from `rfd4-generate`, not from training-time
+validation.
+
 Leave `execution.bioir.attention_backend=null` and `execution.bioir.max_graphs=null`
 for automatic full-workflow defaults. The graph budget reserves each recycle
 depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit

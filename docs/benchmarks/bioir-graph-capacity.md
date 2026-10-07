@@ -8,15 +8,15 @@ batch layouts can cause eviction; retained graphs consume GPU memory.
 
 ## Historical block-level measurements
 
-The results below predate full-workflow inference. Their default of 1 applies
-to the former block path (and remains the fallback for mixed component policies),
-not the automatic full-workflow budget. They are not full-workflow speed claims.
+The results below predate full-workflow inference and were measured on a
+per-trunk block path that no longer exists. Their default of 1 is not the
+automatic full-workflow budget, and they are not full-workflow speed claims.
 
-`execution.bioir.max_graphs` bounds exact-shape CUDA graphs retained by each
-converted trunk. The default is **1**. An explicit value of **3** can retain B1,
-B2 and B4 shapes for one token length, avoiding repeated capture when a request
-ends with a singleton tail. Additional lengths may still cause LRU eviction.
-More retained graphs consume GPU memory; this option does not enable KF.
+`execution.bioir.max_graphs` bounded exact-shape CUDA graphs retained by each
+converted trunk, defaulting to **1**. An explicit value of **3** could retain
+B1, B2 and B4 shapes for one token length, avoiding repeated capture when a
+request ended with a singleton tail. Additional lengths still caused LRU
+eviction, and more retained graphs consumed GPU memory.
 
 A matched A100-SXM4-80GB comparison used fresh processes on one allocation,
 identical source and weights, seed 20260921, a 120-token unconditional input,
