@@ -134,7 +134,7 @@ def test_guidance_and_trajectory_export_are_refused_rather_than_ignored():
 @pytest.mark.parametrize("workflow", sorted(WORKFLOWS))
 def test_every_covered_workflow_has_a_benchmark_input(workflow: str):
     relative, _ = WORKFLOWS[workflow]
-    assert one_input(relative).is_file(), f"{workflow} names a missing benchmark input"
+    assert one_input(str(BENCHMARKS / relative)).is_file(), f"{workflow} names a missing benchmark input"
 
 
 @pytest.mark.parametrize("workflow", sorted(FROM_NOISE))
@@ -206,7 +206,7 @@ def test_covered_workflows_design_through_bioir(workflow: str, tmp_path: Path):
         sys.executable,
         "-m",
         "rfproteina.generate",
-        f"inputs={one_input(relative)}",
+        f"inputs={one_input(str(BENCHMARKS / relative))}",
         "inference_backend=bioir",
         "recycle_strategy=thinking_medium",
         "num_replicates=1",
