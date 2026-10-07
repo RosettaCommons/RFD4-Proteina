@@ -79,3 +79,13 @@ Documentation structure
 * ``docs/api/`` holds API pages generated from Python docstrings
 * ``docs/examples/`` holds runnable tutorial notebooks rendered with ``nbgallery``
 * ``docs/_static/`` holds logos and theme overrides
+
+Package releases
+----------------
+
+See :doc:`packaging` for distribution builds and release validation.
+
+.. toctree::
+   :hidden:
+
+   packaging

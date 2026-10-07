@@ -23,8 +23,7 @@ Additional metric classes exist in the codebase but are opt-in
 (not wired into any default config) — TMol interface ddG / H-bonds /
 electrostatics (`TMolBlockPairMetric`), atom-pair distance constraint
 (`AtomPairDistanceMetric`, catalytic geometry), QM ligand interaction energy
-(`QMInteractionEnergyIPA`), MACE ML-potential energies (`MACEEnergyMetric`,
-`MACEInteractionEnergyMetric`), charge complementarity
+(`QMInteractionEnergyIPA`), charge complementarity
 (`ChargeComplementarityMetric`), and a few others. Turning one on needs only a
 few lines of YAML, no Python.
 

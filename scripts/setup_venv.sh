@@ -72,13 +72,14 @@ mkdir -p "$CUSTOM_SAMPLING_TRANSFORMS_PKG"
 
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
+build_torch_constraint=$(python -c "import tomllib; print(next(d for d in tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies'] if d.startswith('torch==')))")
 if [[ "$runtime" == true ]]; then
-    uv pip install -e ".[metrics-cuda13,tmol-cuda13]"
+    uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[metrics-cuda13]"
     uv pip check
     echo ">>> Native CUDA 13 environment ready: source $repo_root/.venv/bin/activate"
     exit 0
 fi
-uv pip install -e ".[dev]"
+uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[dev]"
 
 # ── Register Jupyter kernel (non-fatal) ──────────────────────────────────────
 echo ">>> Registering Jupyter kernel..."

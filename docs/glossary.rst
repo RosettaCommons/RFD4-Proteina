@@ -111,13 +111,13 @@ Reward guided search
    candidates with a reward model, and keeps the strongest ones.
 
 Beam search
-   The reward guided strategy that ships with the model. ``step_checkpoints``
+   The reward guided strategy that ships with the model. ``search.checkpoints``
    controls when candidates get scored, ``n_branch`` controls children per
    surviving beam, and ``beam_width`` controls how many candidates survive each
    pruning step.
 
 Reward
-   A weighted sum of metric outputs selected by ``reward_metrics_tags``.
+   A weighted sum of metric outputs named in each checkpoint's ``rewards``.
    Positive weights maximize a metric and negative weights minimize it.
    Optional clipping limits a metric's influence past a threshold.
 
@@ -127,6 +127,6 @@ Oracle
    confidence or agreement with the design.
 
 Metrics tag
-   A named group of metrics selected through configuration. Search uses
-   ``reward_metrics_tags`` independently of the top level ``metrics_tags`` that
-   produce final outputs.
+   A named group of metrics selected through configuration. Top level
+   ``metrics_tags`` controls output evaluation; search instead lists individual
+   metric providers in each checkpoint's ``metrics`` field.

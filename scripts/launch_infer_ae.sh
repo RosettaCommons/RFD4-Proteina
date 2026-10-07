@@ -15,7 +15,7 @@
 #   --njobs=<int>        Number of parallel jobs (default: 1)
 #   --gpus-per-job=<int> GPUs per SLURM job (default: 1)
 #
-# IPD cluster profiles are documented in .ipd/docs/clusters.md.
+# Configure a scheduler profile using scripts/user_info.example.
 #
 # =============================================================================
 
@@ -78,7 +78,7 @@ done
 
 if [ -z "$CLUSTER" ]; then
     echo "Usage: $0 <cluster> [--input_dir=<path>] [--njobs=<int>] [--gpus-per-job=<int>] [extra_args...]"
-    echo "Choose an IPD cluster profile; see .ipd/docs/clusters.md"
+    echo "Choose a configured scheduler profile; see scripts/user_info.example"
     exit 1
 fi
 

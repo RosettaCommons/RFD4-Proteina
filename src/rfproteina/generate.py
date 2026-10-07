@@ -40,6 +40,7 @@ with (
     from rfproteina.metrics.metric import MetricManager
     from rfproteina.proteina import Proteina
     from rfproteina.search.base_strategy import SearchStrategy
+    from rfproteina.search.beam_search import BeamSearchStrategy
     from rfproteina.utils.ddp import RankedLogger
     from rfproteina.utils.env import load_dotenv
     from rfproteina.utils.logging import print_config_tree
@@ -47,6 +48,7 @@ with (
     from rfproteina.utils.torch import apply_torch_deterministic
     from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
     from rfproteina.utils.verbosity import configured_verbosity, initialize_worker_verbosity, queue_startup_warnings
+    from rfproteina.utils.weights import inference_state_dict
 
 queue_startup_warnings(_startup_warnings)
 
@@ -321,23 +323,9 @@ def check_cfg_validity(cfg_sample_args: dict) -> None:
 
 
 def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy:
-    """Configure search strategy from config.
-
-    Args:
-        search_cfg: Search configuration with strategy definition
-
-    Returns:
-        SearchStrategy instance
-    """
-    if not hasattr(search_cfg, "strategy") or search_cfg.strategy is None:
-        raise ValueError(
-            "Search config requires 'strategy:' field with _target_ definition. "
-            "Example: search.strategy._target_: rfproteina.search.beam_search.BeamSearchStrategy"
-        )
-
-    search_strategy = hydra.utils.instantiate(search_cfg.strategy)
-    logger.info(f"Configured search strategy: {type(search_strategy).__name__}")
-    return search_strategy
+    """Instantiate beam search from the flat checkpoint config."""
+    config = OmegaConf.to_container(search_cfg, resolve=True)
+    return BeamSearchStrategy(**config)
 
 
 def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
@@ -354,17 +342,7 @@ def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
         (rather than silently falling back to training weights).
     """
     raw_ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
-    callbacks_state = raw_ckpt.get("callbacks", {})
-
-    ema_state = next((v for k, v in callbacks_state.items() if "SimpleEMA" in k), None)
-    if ema_state is None or not ema_state.get("ema_state_dict"):
-        raise ValueError(
-            f"{ckpt_file} has no SimpleEMA state, but inference requires EMA weights. Use an "
-            "'-ema.ckpt', or a training checkpoint produced with the SimpleEMA callback enabled."
-        )
-
-    # SimpleEMA stores the EMA as a plain model state_dict, so its keys already match the model
-    return ema_state["ema_state_dict"]
+    return inference_state_dict(raw_ckpt, ckpt_file)
 
 
 def _adopt_train_path_length_search_cutoff(cfg: DictConfig, cfg_exp: DictConfig) -> None:
@@ -424,6 +402,11 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         model.load_state_dict(ema_state_dict, strict=True)
         logger.info(f"Loaded {len(ema_state_dict)} EMA tensors from the training checkpoint.")
 
+    if cfg.get("adapter_path"):
+        from rfproteina.utils.lora import load_lora_adapter
+
+        load_lora_adapter(model, cfg.adapter_path)
+
     _adopt_train_path_length_search_cutoff(cfg, model.cfg_exp)
 
     # Resolve cfg.generation.dataset here, while it still has access to the full cfg context.
@@ -450,32 +433,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
     # Configure search if specified
     if hasattr(cfg, "search") and cfg.search is not None:
         search_strategy = configure_search_strategy_from_cfg(cfg.search)
-
-        # Build search reward model from search.rewards config.
-        # Metrics come from the model's configured managers (design, oracle, refolding,
-        # pass_criteria); reward_metrics_tags controls which fire during scoring.
-        search_reward_model = None
-        if hasattr(cfg.search, "rewards") and cfg.search.rewards is not None:
-            from rfproteina.rewards import RewardModel
-
-            rewards_cfg = cfg.search.rewards
-            clip_values_cfg = rewards_cfg.get("clip_values")
-            overrides_cfg = rewards_cfg.get("checkpoint_overrides")
-            tags_cfg = rewards_cfg.get("reward_metrics_tags")
-            search_reward_model = RewardModel(
-                weights=dict(rewards_cfg.weights),
-                reward_metrics_tags=OmegaConf.to_container(tags_cfg, resolve=True)
-                if OmegaConf.is_config(tags_cfg)
-                else tags_cfg,
-                clip_values=OmegaConf.to_container(clip_values_cfg, resolve=True) if clip_values_cfg else None,
-                checkpoint_overrides=OmegaConf.to_container(overrides_cfg, resolve=True) if overrides_cfg else None,
-            )
-            logger.info(
-                f"Search reward model: reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"weights={dict(search_reward_model.weights)}, clip_values={search_reward_model.clip_values}"
-            )
-
-        model.configure_search(search_strategy, search_reward_model)
+        model.configure_search(search_strategy)
 
     # Configure differentiable-metric gradient guidance if specified
     if hasattr(cfg, "guidance") and cfg.guidance is not None:

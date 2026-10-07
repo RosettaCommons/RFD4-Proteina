@@ -1,7 +1,7 @@
 """Reward models for search-based protein design.
 
-RewardModel is a pure aggregator that composes any Metric instances and weights
-them to produce scalar rewards for search.
+RewardModel combines the outputs of explicitly selected metrics into a scalar
+reward for one search checkpoint.
 
 For specialized metrics (RF3, AF2, TMOL), see rfproteina.metrics.
 """

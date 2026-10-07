@@ -91,42 +91,17 @@ batch_size: 10                        # Batch size for generation
 #         chain_id: A
 #         scale: 1.0
 
-# --- Search strategy (optional, remove for vanilla single-pass) ---
+# --- Search (optional, omit for vanilla single-pass generation) ---
 # search:
-#   strategy:
-#     _target_: rfproteina.search.beam_search.BeamSearchStrategy
-#     step_checkpoints: [0, 20, 40, 50, 60]
-#     n_branch: 2
-#     beam_width: 3
-#     # Optional: also keep the rolled-out candidates that lost the beam but pass a bar.
-#     # The criterion sees each candidate's metrics plus its reward under `search.reward`.
-#     # Omit to return only the final beam.
-#     intermediate_sample_save_criterion:
-#       _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-#       metric_thresholds:
-#         search.reward:
-#           min: 80.0
-#
-#   rewards:
-#     metrics:
-#       rf3:
-#         _target_: rfproteina.metrics.rf3_metric.RF3Metric
-#         ckpt_path: ${oc.env:DATA_PATH}/rf3_checkpoints/rf3-with-confidence-xaira-epoch-0711-fixed.ckpt
-#         num_steps: 50
-#         n_recycles: 5
-#     # Optional: clip a metric before its weight is applied (raw value still reported).
-#     clip_values:
-#       rf3.plddt:
-#         min: 60.0
-#     weights:
-#       rf3.plddt: 1.0
-#     # Optional: change the reward mid-trajectory. Keys are steps (one of
-#     # step_checkpoints past the first); each entry is a sub-version of the reward above,
-#     # inheriting anything it does not name. Every field it *does* name
-#     # (`weights`, `clip_values`, `reward_metrics_tags`) replaces the base one wholesale,
-#     # so restate every term that should still count.
-#     checkpoint_overrides:
-#       60:
-#         weights:
-#           rf3.plddt: 1.0                # restated: omitted terms are dropped, not merged
-#           rf3.ptm_coi: -1.0                # start paying for the interface once the fold is set
+#   n_branch: 2
+#   beam_width: 3
+#   checkpoints:
+#     "40":
+#       metrics: [clash_metrics]
+#       use_clean_prediction: true
+#       rewards:
+#         clash_metrics.frac_atoms_clashing_1p5A: {weight: -1.0}
+#     "60":
+#       metrics: [oracle]
+#       rewards:
+#         oracle.plddt_coi: {weight: 1.0}

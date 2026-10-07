@@ -6,10 +6,16 @@ MetricManager, which runs last in the validation flow.
 """
 
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from statistics import fmean
+from tempfile import TemporaryDirectory
 from typing import Any
+from uuid import uuid4
+
+from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
+from rfproteina.metrics.utils.metrics_utils import _write_chain_only_cif_if_unambiguous
 from rfproteina.utils.logging import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=False)
@@ -60,6 +66,8 @@ class PassCriterionMetric(Metric):
             metric keys reduced to a single value before thresholding; the outer
             key is then just a label. Every listed key must be present, or the
             result is indeterminate.
+        archive_dir: Optional shared directory for atomically publishing passing designed chains.
+            Use one directory per target and pass definition; requires the evaluated AtomArray.
 
     Example:
         >>> PassCriterionMetric(metric_thresholds={"standard.plddt_coi": {"min": 70.0}}).compute(
@@ -78,23 +86,36 @@ class PassCriterionMetric(Metric):
     def __init__(
         self,
         metric_thresholds: dict[str, dict[str, Any]],
+        archive_dir: str | None = None,
         **kwargs: Any,
     ) -> None:
+        if archive_dir is not None and not archive_dir:
+            raise ValueError("archive_dir must be a nonempty directory path.")
+        self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         super().__init__(**kwargs)
         self.metric_thresholds = metric_thresholds
         # Resolved here so a malformed spec fails at config load rather than mid-validation.
         self._reductions = {label: _resolve_reduction(label, spec) for label, spec in metric_thresholds.items()}
 
     @property
-    def kwargs_to_compute_args(self) -> dict:
-        return {"metrics": ("extra_info", "metrics")}
+    def required_metric_keys(self) -> set[str]:
+        """Metric keys required by direct thresholds and reductions."""
+        return {key for keys, _ in self._reductions.values() for key in keys}
 
-    def compute(self, metrics: dict) -> dict[str, float]:
+    @property
+    def kwargs_to_compute_args(self) -> dict:
+        mapping = {"metrics": ("extra_info", "metrics")}
+        if self.archive_dir is not None:
+            mapping["atom_array"] = "predicted_atom_array"
+        return mapping
+
+    def compute(self, metrics: dict, atom_array: AtomArray | None = None) -> dict[str, float]:
         """Evaluate the criteria and return a pass/fail flag.
 
         Args:
             metrics: Merged oracle + refolding metrics dict, keyed by
                 ``{manager_name}.{metric_name}`` dot notation.
+            atom_array: Completed design to publish when archive_dir is configured and all criteria pass.
 
         Returns:
             Dict with ``"pass"`` (``1.0``/``0.0``) and ``"all_metrics_present"``
@@ -119,4 +140,13 @@ class PassCriterionMetric(Metric):
                 if not ((min_val is None or val >= min_val) and (max_val is None or val <= max_val)):
                     passed = False
 
+        if passed and self.archive_dir is not None:
+            if atom_array is None:
+                raise ValueError("Passer publication requires the completed design's AtomArray.")
+            self.archive_dir.mkdir(parents=True, exist_ok=True)
+            with TemporaryDirectory(dir=self.archive_dir, prefix=".pending_") as directory:
+                path = _write_chain_only_cif_if_unambiguous(atom_array, "passer", Path(directory))
+                if path is None:
+                    raise ValueError("Passer publication requires an unambiguous chain of interest.")
+                path.replace(self.archive_dir / f"{uuid4().hex}.cif")
         return {"pass": float(passed), "all_metrics_present": float(all_present)}

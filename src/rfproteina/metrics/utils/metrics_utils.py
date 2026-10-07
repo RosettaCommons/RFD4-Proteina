@@ -91,13 +91,15 @@ def run_metrics_for_result(
     example_id: str | None = None,
     save_input_structure: bool = True,
     metrics_tags_override: list[str] | None = None,
+    metric_names: list[str] | None = None,
 ) -> dict:
     """Run a metric manager against one (input, generated) pair.
 
     Builds ``extra_info`` (example_id, metrics_tags, chain_of_interest,
     save_input_structure) and dispatches to ``metric_manager``.
-    ``metrics_tags_override`` overrides the per-batch tags (used by reward
-    scoring). ``chain_of_interest`` is always echoed back in the result.
+    ``metrics_tags_override`` overrides the per-batch tags. Explicit ``metric_names``
+    selects metrics directly instead of dataset tags.
+    ``chain_of_interest`` is always echoed back in the result.
 
     Returns ``{}`` if the metrics fail, mirroring :py:func:`run_oracle_and_refolding_metrics`.
     """
@@ -115,6 +117,7 @@ def run_metrics_for_result(
         coi, coi_unambiguous = get_chain_of_interest(result["generated_atom_array"])
 
         metrics_result = metric_manager(
+            metric_names=metric_names,
             network_input=None,
             network_output=None,
             extra_info={
@@ -293,6 +296,7 @@ def run_oracle_refolding_and_pass_criteria(
 
     if exists(pass_mm):
         pass_output = pass_mm(
+            predicted_atom_array=atom_array,
             network_input=None,
             network_output=None,
             extra_info={
@@ -313,6 +317,7 @@ def run_oracle_and_refolding_metrics(
     oracle_mm: MetricManager | None,
     refold_mm: MetricManager | None,
     metrics_tags: list[str] | None = None,
+    metric_names: list[str] | None = None,
 ) -> dict:
     """Run oracle → refolding metrics for one designed structure.
 
@@ -341,11 +346,19 @@ def run_oracle_and_refolding_metrics(
         oracle_mm: Oracle MetricManager (RF3Oracle or AF3Oracle). May be ``None``.
         refold_mm: Refolding MetricManager (structure comparison metrics). May be ``None``.
         metrics_tags: Tags controlling which metrics activate.
+        metric_names: Explicit metric names across the oracle and refolding managers.
+            Overrides dataset selection tags while preserving refold routing constraints.
 
     Returns:
         Merged dict with oracle + refolding outputs keyed by ``example_id``,
         or an empty dict if an unrecoverable error occurs.
     """
+
+    if metric_names is not None:
+        if oracle_mm is not None and not oracle_mm.active_metrics(metric_names=metric_names):
+            oracle_mm = None
+        if refold_mm is not None and not refold_mm.active_metrics(metric_names=metric_names):
+            refold_mm = None
 
     try:
         atom_array = remove_terminal_oxygen_atoms(atom_array.copy())
@@ -361,6 +374,7 @@ def run_oracle_and_refolding_metrics(
         oracle_output: dict = {}
         if oracle_mm is not None:
             oracle_output = oracle_mm(
+                metric_names=metric_names,
                 network_input=None,
                 network_output=None,
                 extra_info=extra_info,
@@ -374,9 +388,7 @@ def run_oracle_and_refolding_metrics(
             refolds: dict[str, AtomArray] = {}
             scoring_passes: list[tuple[str, str | None, str]] = []  # (label, save_id, oracle_name)
             by_kind: dict[str, list[str]] = {}  # alias -> labels of the refolds claiming it
-            for oracle_key, oracle_metric in oracle_mm.metrics.items():
-                if not oracle_metric.applies_to_tags(active_tags):
-                    continue
+            for oracle_key, oracle_metric in oracle_mm.active_metrics(active_tags, metric_names).items():
                 for save_id in oracle_metric.list_save_ids() or [None]:
                     label = oracle_key if save_id is None else f"{oracle_key}.{save_id}"
                     cif_path = oracle_metric.existing_refolded_cif_path(output_dir, example_id, save_id)
@@ -424,9 +436,10 @@ def run_oracle_and_refolding_metrics(
                     if address is not None
                 }
                 oracle_scoped_tags = active_tags | exists_refold_tags | is_refold_tags | {f"oracle:{oracle_name}"}
-                if not any(m.applies_to_tags(oracle_scoped_tags) for m in refold_mm.metrics.values()):
+                if not refold_mm.active_metrics(oracle_scoped_tags, metric_names):
                     continue
                 sub_result = refold_mm(
+                    metric_names=metric_names,
                     network_input=None,
                     network_output=None,
                     extra_info={"example_id": example_id, "metrics_tags": list(oracle_scoped_tags)},
@@ -735,8 +748,6 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
     if generated_structure_mm is None:
         generated_structure_mm = _WORKER_MMS.get("generated_structure")
     example_id = payload.get("example_id", "sample")
-    if generated_structure_mm is None:
-        return {"example_id": example_id}
 
     array_to_annotate = payload.get("full_array_with_unindexed") or payload["generated_atom_array"]
     token_mapping = payload.get("predicted_insertion_mapping") or {}
@@ -751,16 +762,18 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
     }
     output_base_dir = Path(payload["output_base_dir"]) if payload.get("output_base_dir") else None
     save_input = bool(payload.get("save_input", True))
-    metrics_result = run_metrics_for_result(
-        result=result,
-        batch={},
-        batch_item_idx=0,
-        metric_manager=generated_structure_mm,
-        output_base_dir=output_base_dir,
-        example_id=example_id,
-        save_input_structure=save_input,
-        metrics_tags_override=payload.get("metrics_tags") or [],
-    )
+    metrics_result = {"example_id": example_id}
+    if generated_structure_mm is not None:
+        metrics_result = run_metrics_for_result(
+            result=result,
+            batch={},
+            batch_item_idx=0,
+            metric_manager=generated_structure_mm,
+            output_base_dir=output_base_dir,
+            example_id=example_id,
+            save_input_structure=save_input,
+            metrics_tags_override=payload.get("metrics_tags") or [],
+        )
 
     cif_suffix = payload.get("output_cif_suffix", ".cif")
     gen_path = payload.get("generated_output_path")
@@ -851,7 +864,7 @@ def _write_trajectories_if_present(payload: dict, example_id: str) -> None:
                 xtc_file.set_structure(traj, time=step_labels)
                 xtc_file.write(str(traj_dir / f"{example_id}_{traj_key}.xtc"))
             else:
-                to_cif_file(traj, traj_dir / f"{example_id}_{traj_key}{cif_suffix}")
+                to_cif_file(normalize_to_atom_array_list(traj), traj_dir / f"{example_id}_{traj_key}{cif_suffix}")
         except Exception as e:
             logger.warning(f"generated-structure worker: failed to save {traj_key} for {example_id}: {e}")
 

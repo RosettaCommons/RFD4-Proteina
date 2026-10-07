@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from rfproteina.rewards.reward_model import RewardModel
     from rfproteina.search.base_strategy import SearchStrategy
 
 import lightning as L
@@ -51,6 +50,7 @@ from rfproteina.metrics.utils.metrics_utils import (
 )
 from rfproteina.model_masks import compute_ae_masks
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
+from rfproteina.nn.modules.pair_bias_attn import sdpa_training_context
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.partial_autoencoder.decoder import get_allowed_residue_type_mask
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
@@ -58,7 +58,7 @@ from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
-from rfproteina.utils.lora import maybe_apply_lora
+from rfproteina.utils.lora import add_lora_adapter
 from rfproteina.utils.optim_utils import backward_with_accumulation, build_optimizers
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
@@ -224,22 +224,6 @@ def _log_batch_example_ids(
     )
 
 
-def _combined_val_tags(
-    val_dataset_tags: "list[set[str] | None] | None",
-    reward_metrics_tag_sets: "list[set[str]]",
-) -> "list[set[str] | None] | None":
-    """Merge val_dataset_tags with the reward model's tag sets for MetricManager setup.
-
-    Ensures metrics needed by the reward model are set up even when no validation
-    dataset uses their tags. Each reward variant (base plus each per-checkpoint
-    override) contributes its own tag set, so tag rules are evaluated exactly as they
-    will be at scoring time rather than against a union no checkpoint ever uses.
-    """
-    base = list(val_dataset_tags or [])
-    base.extend(tag_set for tag_set in reward_metrics_tag_sets if tag_set)
-    return base if base else None
-
-
 def _clean_metrics_dict(metrics: dict, keep_metadata_only: bool = False) -> dict | None:
     """Convert a metrics dict to clean floats for gathering across ranks.
 
@@ -337,7 +321,7 @@ class Proteina(L.LightningModule):
         self.store_dir = store_dir if store_dir is not None else os.path.join(".", "runs", cfg_exp.run_name_)
         self._metrics_pool = MetricsPool(num_workers=0, mm_cfgs={})
         try:
-            self.configure_metrics(cfg_exp.metrics if load_training_metrics else None)
+            self.configure_metrics(cfg_exp.get("metrics") if load_training_metrics else None)
         except InstantiationException as e:
             logger.warning(
                 f"Failed to instantiate metric managers: {e}. "
@@ -388,7 +372,6 @@ class Proteina(L.LightningModule):
 
         # Search integration
         self.search_strategy = None
-        self.search_reward_model = None
 
         # Differentiable-metric gradient guidance applied during sampling
         self.guidance_model = None
@@ -464,9 +447,9 @@ class Proteina(L.LightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
-        # Re-insert LoRA layers before load_state_dict runs, or strict loading of a LoRA
-        # checkpoint fails on its lora_A/lora_B keys. Idempotent, so a resume is unaffected.
-        maybe_apply_lora(self, self.cfg_exp)
+        # Direct checkpoint loading constructs adapters before strict state restoration.
+        if (self.cfg_exp.get("lora") or {}).get("r") and not getattr(self.nn, "peft_config", None):
+            add_lora_adapter(self, self.cfg_exp.lora)
 
         try:
             self.nflops = checkpoint["nflops"]
@@ -572,7 +555,7 @@ class Proteina(L.LightningModule):
         # FP8 autocast context for Transformer Engine
         fp8_ctx = te_autocast(enabled=True, recipe=self.fp8_recipe) if self.use_fp8 else nullcontext()
 
-        with fp8_ctx:
+        with fp8_ctx, sdpa_training_context():
             # Add clean samples for all data modes / spaces we are working on
             batch = self.add_clean_samples(batch)
 
@@ -887,17 +870,14 @@ class Proteina(L.LightningModule):
         # to avoid double-setup
         self._oracle_mms_setup_this_epoch = False
 
-        # One entry per reward variant: a per-checkpoint override may score with a metric
-        # family the base reward never uses, and its manager still has to be set up.
-        reward_metrics_tag_sets = (
-            self.search_reward_model.reward_metrics_tag_sets if self.search_reward_model is not None else []
-        )
-        combined_tags = _combined_val_tags(self.val_dataset_tags, reward_metrics_tag_sets)
+        search_metric_names = self.search_strategy.metric_names if self.search_strategy is not None else set()
 
         if self.design_metric_manager is not None:
-            self.design_metric_manager.on_validation_epoch_start(val_dataset_tags=combined_tags)
+            self.design_metric_manager.on_validation_epoch_start(
+                val_dataset_tags=self.val_dataset_tags, metric_names=search_metric_names
+            )
 
-        if reward_metrics_tag_sets:
+        if search_metric_names:
             for mm in [
                 self.oracle_metric_manager,
                 self.refolding_metric_manager,
@@ -905,7 +885,9 @@ class Proteina(L.LightningModule):
                 self.pre_oracle_filter_metric_manager,
             ]:
                 if mm is not None:
-                    mm.on_validation_epoch_start(val_dataset_tags=combined_tags)
+                    mm.on_validation_epoch_start(
+                        val_dataset_tags=self.val_dataset_tags, metric_names=search_metric_names
+                    )
 
             # We just set up the metric managers - ensure we don't set them up again later
             self._oracle_mms_setup_this_epoch = True
@@ -1037,7 +1019,7 @@ class Proteina(L.LightningModule):
 
             metrics_output: dict = {"example_id": example_id}
 
-            # Search strategies score every sample they emit; record the reward they selected on.
+            # Record a search reward when the emitted sample was scored at a checkpoint.
             if "reward" in generation_list[i]:
                 metrics_output[SEARCH_REWARD_KEY] = generation_list[i]["reward"]
 
@@ -1095,24 +1077,21 @@ class Proteina(L.LightningModule):
             _tags = metrics_tags_batch[orig_batch_idx] if orig_batch_idx < len(metrics_tags_batch) else []
             metrics_output["metrics_tags"] = ",".join(_tags) if _tags else ""
 
-            staged_payload = None
-            if self.design_metric_manager is not None:
-                staged_payload = self._build_staged_payload(
-                    generation_list[i],
-                    example_id,
-                    list(_tags),
-                    output_base,
-                    generated_output_path,
-                    dataset_name=dataset_name,
-                    task=metrics_output["task"],
-                )
+            staged_payload = self._build_staged_payload(
+                generation_list[i],
+                example_id,
+                list(_tags),
+                output_base,
+                generated_output_path,
+                dataset_name=dataset_name,
+                task=metrics_output["task"],
+            )
 
             # Store for epoch-end aggregation
             self.validation_output_generation.append(metrics_output)
-            if staged_payload is not None:
-                self._metrics_pool.submit_generated_structure(
-                    _design_key(metrics_output), staged_payload, self.design_metric_manager
-                )
+            self._metrics_pool.submit_generated_structure(
+                _design_key(metrics_output), staged_payload, self.design_metric_manager
+            )
 
         return metrics_output
 
@@ -1165,10 +1144,7 @@ class Proteina(L.LightningModule):
         # oracle folding. Runs inline (no workers) since it is pure dict look-ups.
         pre_oracle_filter_mm = self.pre_oracle_filter_metric_manager
         if pre_oracle_filter_mm is not None:
-            _reward_tags_for_filter = (
-                self.search_reward_model.reward_metrics_tag_sets if self.search_reward_model is not None else []
-            )
-            if not _reward_tags_for_filter:
+            if not self._oracle_mms_setup_this_epoch:
                 pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
             self.validation_output_generation = apply_pre_oracle_filters(
                 self.validation_output_generation,
@@ -1431,6 +1407,7 @@ class Proteina(L.LightningModule):
         """
 
         if metrics_cfg is None:
+            self.val_dataset_tags = None
             self.design_metric_manager = None
             self.oracle_metric_manager = None
             self.refolding_metric_manager = None
@@ -1533,24 +1510,15 @@ class Proteina(L.LightningModule):
     def configure_search(
         self,
         search_strategy: "SearchStrategy",
-        search_reward_model: "RewardModel | None" = None,
     ) -> None:
-        """Configure search strategy and reward model for reward-guided generation.
+        """Configure a search strategy and validate its explicit metric selection.
 
         Args:
             search_strategy: SearchStrategy instance (BeamSearch, Vanilla, etc.)
-            search_reward_model: RewardModel instance for scoring candidates.
         """
+        search_strategy.configure_metrics(self)
         self.search_strategy = search_strategy
-        self.search_reward_model = search_reward_model
         logger.info(f"Configured search strategy: {type(search_strategy).__name__}")
-        if search_reward_model:
-            logger.info(
-                f"Configured search reward model: "
-                f"reward_metrics_tags={search_reward_model.reward_metrics_tags}, "
-                f"weights={list(search_reward_model.weights.keys())}, "
-                f"checkpoint_overrides at steps {sorted(search_reward_model.checkpoint_overrides)}"
-            )
 
     def configure_guidance(self, guidance_model: Any) -> None:
         """Configure differentiable-metric gradient guidance applied during sampling.
@@ -1683,9 +1651,7 @@ class Proteina(L.LightningModule):
         else:
             strategy = self.search_strategy
 
-        results = strategy.generate(self, batch, self.search_reward_model)
-
-        return results
+        return strategy.generate(self, batch)
 
     def _load_generation_list_from_disk(self, batch: dict, output_base: Path, output_suffix: str) -> list[dict]:
         """Rebuild the generation list from structures already saved on disk for continued evaluation.

@@ -1,15 +1,18 @@
 Installation
 ============
 
-Install directly from a clone into a Python virtual environment. The native
-CUDA 13 profile supports Linux x86_64 with Python 3.12 and a compatible NVIDIA
-driver. Install RFD4-Proteina from this repository.
+Use Linux x86_64, Python 3.12 and an NVIDIA GPU with a CUDA 13-compatible driver.
+
+**Recommended: clone the repository and run ``make setup``**, as shown below.
+This installs the environment, downloads the released checkpoints, and configures
+``DATA_PATH``. See the :doc:`quickstart` to generate your first design.
 
 Prerequisites
 -------------
 
 * Linux, ``git``, and ``curl``.
 * An NVIDIA GPU and a driver compatible with CUDA 13.
+* A C++ compiler and the CUDA 13.2 development toolkit (``nvcc``) to build TMol.
 * Enough storage for the Python environment and released checkpoints (about 8 GB).
 
 .. _native-python-installation:
@@ -26,25 +29,29 @@ Clone and run setup:
    make setup
 
 This creates ``.venv`` and installs the dependencies declared in ``pyproject.toml``,
-including CUDA metrics and the matching TMol wheel. It also downloads the two
+including CUDA metrics and TMol 0.1.59. It also downloads the two
 released checkpoints (about 8 GB) and configures ``DATA_PATH`` for generation.
 Use ``bash setup.sh --skip-weights`` for an environment-only install.
 
-For a minimal local install into an existing Python 3.12 environment, use
-``python -m pip install -e .``. To include CUDA metrics and TMol with
-standard pip instead of the setup script:
+TMol and ligand support are included by default. For a manual install into a
+Python 3.12 environment, constrain TMol's isolated build to the runtime Torch:
 
 .. code-block:: bash
 
    python3.12 -m venv .venv
    source .venv/bin/activate
-   python -m pip install --extra-index-url https://download.pytorch.org/whl/cu132 \
-       -e '.[metrics-cuda13,tmol-cuda13]'
+   python -m pip install uv
+   uv pip install --build-constraint <(printf 'torch==2.14.1\n') \
+       --torch-backend cu132 -e '.[metrics-cuda13]'
    python -m pip check
    export DATA_PATH="${DATA_PATH:-$PWD/data_path}"
    ./scripts/download_example_data.sh "$DATA_PATH" --skip-of3
    rfd4-generate inputs=data/benchmarks/monomer \
        subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
+
+Setup reads the Torch requirement from ``pyproject.toml`` and applies it to both
+runtime and build environments. Compilation uses at most eight jobs and one thread
+per CUDA compiler. The first source installation may take several minutes.
 
 The installed commands ``rfd4-generate``, ``rfd4-evaluate``,
 ``rfd4-train``, and ``rfd4-train-ae`` use their Python environment
@@ -56,8 +63,7 @@ Hydra configs and benchmark inputs. A wheel install reads local environment
 files from the working directory; an editable install reads them from the
 checkout root.
 
-AtomWorks is installed automatically from the Git revision declared in
-``pyproject.toml``. System drivers and external metric tools are
+AtomWorks 3.0.0 and TMol 0.1.59 are installed from PyPI. System drivers and external metric tools are
 configured separately. CUDA 12 and native ARM installations have not been validated.
 
 Environment files and paths

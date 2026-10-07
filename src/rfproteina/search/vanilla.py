@@ -173,14 +173,12 @@ class VanillaStrategy(SearchStrategy):
         self,
         model: Any,  # Proteina instance
         batch: dict,
-        reward_model: Any | None = None,  # RewardModel instance (ignored)
     ) -> list[dict[str, Any]]:
         """Generate structures without search.
 
         Args:
             model: Proteina model instance
             batch: Input batch from dataloader
-            reward_model: Ignored for vanilla generation
 
         Returns:
             List of generated-structure dicts.

@@ -49,6 +49,7 @@ class SimpleEMA(Callback):
         # Track which weights are currently loaded in the model
         self._ema_weights_active = False
         self._original_state_dict = None
+        self._last_seen_step = 0
 
     def _ensure_ema_initialized(self, pl_module: L.LightningModule) -> None:
         """Lazily initialize EMA model if not already initialized.
@@ -88,6 +89,10 @@ class SimpleEMA(Callback):
         """Ensure EMA is initialized when training starts."""
         self._ensure_ema_initialized(pl_module)
 
+    def on_train_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """Start counting optimizer updates from the restored training step."""
+        self._last_seen_step = trainer.global_step
+
     def on_train_batch_end(
         self,
         trainer: L.Trainer,
@@ -101,7 +106,11 @@ class SimpleEMA(Callback):
         Updates every update_every_n steps. Use update_every_n > 1 to reduce
         computational overhead at the cost of slightly less smooth averaging.
         """
-        if trainer.global_step % self.update_every_n == 0:
+        step = trainer.global_step
+        if step == self._last_seen_step:
+            return
+        self._last_seen_step = step
+        if step % self.update_every_n == 0:
             self.ema_model.update_parameters(pl_module)
 
     def on_validation_start(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:

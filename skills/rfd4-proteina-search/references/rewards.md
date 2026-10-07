@@ -1,157 +1,128 @@
 # Reward reference
 
-The reward tells search which candidates to keep. In RFD4-Proteína it is defined
-**inline** under `search.rewards` in a search `inference_experiment` config —
-there is no separate reward file. This mirrors `docs/workflow/search.md`.
+Each `search.checkpoints.<step>` entry explicitly selects metric providers and
+aggregates their outputs into a scalar reward. Definitions stay under `metrics`;
+there is no separate reward file. See `docs/workflow/search.md`.
 
-A reward has three parts: `reward_metrics_tags` (which metrics fire during
-scoring), `weights` (how to combine them into a scalar), and optional
-`clip_values` (per-key bounds applied before weighting). An optional fourth,
-`checkpoint_overrides`, lets any of those three change per checkpoint.
+## Select metric providers
 
-## `reward_metrics_tags`
+`metrics` is a list of names defined under `metrics.inline_metrics`,
+`metrics.refolding_oracles`, or `metrics.refolding_metrics`. For example:
 
-Tags selecting which metrics run during **beam scoring**, independent of the
-top-level `metrics_tags` (which controls the epoch-end metrics loop). Anything a
-tag produces becomes available as a key in `weights`.
-
-Refolding tags activate the oracle selected by `metrics/refolding_oracles` when
-that backend supports the design case. AF3 is the default; AF2 and OpenFold3 are
-selected with `metrics/refolding_oracles=af2` and
-`metrics/refolding_oracles=of3`. Standard outputs are prefixed `oracle.`. Common
-tags are:
-
-| Tag | Activates | Supported backends |
-| --- | --- | --- |
-| `unconditional_refolding` | Refolding + pLDDT/scRMSD for unconditional generation | AF2, AF3, OpenFold3 |
-| `ppi_refolding` | Refolding + interface metrics for protein binder design | AF2, AF3, OpenFold3 |
-| `sm_binder_refolding` | Refolding + binding metrics for small-molecule binders | AF3, OpenFold3 |
-| `motif_scaffold_refolding` | Refolding + motif RMSD for scaffolding / enzymes | AF2, AF3, OpenFold3 |
-| `interchain_interactions` | Interchain H-bond / salt-bridge / etc. counts and adherence | No oracle |
-
-A reward that uses only non-refolding tags (e.g. `interchain_interactions`)
-needs **no container** — this is how `sm_binder_hbond_search.yaml` avoids the
-oracle entirely.
-
-## `weights`
-
-Maps each metric output key to a coefficient; the reward is the **weighted sum**
-of those metric values. Use a **negative weight to minimize** a metric (e.g.
-minimize interface PAE).
-
-Common oracle keys (from `src/rfproteina/metrics/oracles/oracle_metric.py`,
-"coi" = chain of interest):
-
-| Key | Meaning | Direction to prefer |
-| --- | --- | --- |
-| `oracle.plddt_coi` | Refolding pLDDT of the chain of interest (0-100) | higher = better -> positive weight |
-| `oracle.iptm_coi` | Interface pTM for the chain of interest | higher = better -> positive weight |
-| `oracle.ipae_coi` | Mean interface PAE | lower = better -> negative weight |
-| `oracle.min_ipae_coi` | Minimum interface PAE | lower = better -> negative weight |
-
-Any key produced under the active tags is usable, not just oracle keys — e.g.
-`interchain_interactions.hbond_atom_pair_count_coi` in the H-bond example.
-
-## `clip_values` (optional)
-
-Maps a weighted key to `{min, max}` bounds (either bound optional). The value is
-**clipped to those bounds before its weight is applied**, so the reward stops
-responding once the metric passes the bound; the raw metric is still reported.
-**Each clipped key must also appear in `weights`.**
-
-This is most useful for multi-objective search: cap a metric that is already
-"good enough" so the search stops over-optimizing it and spends effort on the
-others. For example, clipping `oracle.plddt_coi` at `min: 50.0` treats everything
-below pLDDT 50 as equally bad (garbage), so the reward gradient there is flat.
-
-> If your reward seems to plateau or stop improving, check whether a `clip_values`
-> bound is being hit — past the bound the metric no longer contributes.
-
-## `checkpoint_overrides` (optional)
-
-By default one reward scores every checkpoint. `checkpoint_overrides` maps a
-**scored step** to a *sub-version* of the base reward; anything it does not name
-is inherited. Semantics:
-
-| Field in an override | Behaviour |
+| Checkpoint metric list | Scoring work |
 | --- | --- |
-| `weights` | replaces the base weights wholesale |
-| `clip_values` | replaces the base clips wholesale (`{}` clears them) |
-| `reward_metrics_tags` | replaces the base list wholesale |
+| `[interchain_interactions]` | Interchain H-bond and hydrophobic-contact counts; no oracle |
+| `[oracle]` | Refolding and confidence outputs from the configured `oracle` |
+| `[oracle_ppi]` | Confidence outputs from the configured protein-binder oracle |
+| `[oracle, refolded_backbone_rmsd]` | Refolding plus comparison against the design |
+| `[oracle_ppi, oracle_apo, refolded_apo_holo_rmsd]` | Holo and apo refolds plus their comparison |
 
-Nothing merges key-by-key: a field an override names is the complete value for
-that checkpoint, and a field it omits is inherited untouched. This is deliberate
-— an override that switches `reward_metrics_tags` changes *which metrics exist*,
-and an inherited weight whose metric no longer fires makes the whole reward
-`-inf`, so every candidate at that checkpoint ties and the prune ranks nothing.
-Restating the weights alongside the tags keeps the two in sync; if it is missed,
-the run raises at that checkpoint rather than pruning on nothing (as it does when
-the `intermediate_sample_save_criterion` is unevaluable for every candidate).
+Search does not infer dependencies: name every oracle and comparison explicitly.
+Pass/fail metrics are not supported as search rewards. Selecting a metric computes
+all its outputs; `rewards` chooses which outputs contribute to ranking.
 
-Keys must be one of `step_checkpoints` **past the first** — step 0 is the beam
-initialization and is never scored, so an override there (or on any unscored
-step) is rejected up front rather than silently ignored. Malformed overrides
-(unknown field, non-integer step key, clip on an unweighted key) also fail at
-config load.
+AF3 is the default backend. AF2 and OpenFold3 can be selected with
+`metrics/refolding_oracles=af2` and `metrics/refolding_oracles=of3`. Inspect the
+selected configuration for provider names and supported design cases; providers
+and capabilities differ by backend. The reward-key prefix is the provider's
+configuration name, e.g. `oracle_ppi.iptm_coi`.
+
+Explicit selection bypasses dataset-selection tags but retains routing constraints
+such as `is_refold:untransformed`, `exists_refold:untransformed`, and `oracle:af3`.
+Top-level `metrics_tags` still controls ordinary final evaluation independently.
+A search with design metrics only needs no refolding runtime unless its final
+evaluation requests refolding.
+
+## Reward terms
+
+`rewards` maps `metric.output` to a mapping with these optional fields:
+
+| Field | Default | Effect |
+| --- | --- | --- |
+| `weight` | `1` | Multiply the term; use negative values to minimize and zero to disable |
+| `clip` | No clipping | Bound the raw value with `min` and/or `max` |
+| `normalize_by` | `1` | Divide the clipped value by this positive finite number |
+
+The reward is the sum of `weight * clipped_value / normalize_by`. Raw metric
+values remain unchanged. Each nonzero reward term requires its provider in the
+checkpoint's `metrics`. A weighted output missing at scoring gives that candidate
+`-inf`; if every candidate at a checkpoint scores `-inf`, search raises unless
+continuation criteria stop every input at that checkpoint.
+
+Common outputs (`coi` means chain of interest):
+
+| Key | Meaning | Preferred direction |
+| --- | --- | --- |
+| `oracle.plddt_coi` | Refolding pLDDT of the chain of interest (0–100) | Maximize |
+| `oracle.iptm_coi` | Interface pTM for the chain of interest | Maximize |
+| `oracle.ipae_coi` | Mean interface PAE | Minimize |
+| `oracle.min_ipae_coi` | Minimum interface PAE | Minimize |
+| `interchain_interactions.hbond_atom_pair_count_coi` | Interface H-bond atom-pair count | Maximize |
+
+Check the provider's output units before choosing normalization. A clip flattens
+reward outside its bounds: `clip: {min: 50}` treats pLDDT below 50 equally, while
+`clip: {max: 80}` stops rewarding improvement above 80.
+
+## Checkpoint-specific objectives
+
+Every checkpoint is self-contained. Omitted `metrics`, `rewards`, and
+`use_clean_prediction` mean `[]`, `{}`, and `false`; nothing carries forward
+from another checkpoint. An empty reward gives all candidates zero and selects
+by deterministic input order.
 
 ```yaml
 search:
-  strategy:
-    step_checkpoints: [0, 20, 40, 50, 60]
-  rewards:
-    reward_metrics_tags: [interchain_interactions]      # cheap: no refolding
-    weights:
-      interchain_interactions.hbond_atom_pair_count_coi: 1.0
-    checkpoint_overrides:
-      50:
-        weights:                                        # restate the H-bond term, add packing
-          interchain_interactions.hbond_atom_pair_count_coi: 1.0
-          interchain_interactions.hydrophobic_atom_pair_count_coi: 0.5
-        clip_values:
-          interchain_interactions.hbond_atom_pair_count_coi:
-            max: 6.0                                    # stop paying past 6 H-bonds
-      60:
-        reward_metrics_tags: [unconditional_refolding]  # refolding only at the last prune
-        weights:                                        # oracle keys only: the interchain
-          oracle.plddt_coi: 1.0                         # metrics no longer fire here
+  beam_width: 3
+  n_branch: 2
+  checkpoints:
+    "20":
+      metrics: [interchain_interactions]
+      use_clean_prediction: true
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi: {weight: 1.0}
+    "50":
+      metrics: [interchain_interactions]
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi:
+          weight: 1.0
+          clip: {max: 6.0}
+          normalize_by: 6.0
+        interchain_interactions.hydrophobic_atom_pair_count_coi: {weight: 0.5}
+    "60":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi: {weight: 1.0}
 ```
 
-Every entry is defined against the **base** reward, never against the previous
-checkpoint's — the H-bond clip added at 50 does not carry into 60.
+Keys are positive steps, sorted for execution; zero is implicit. Quote YAML step
+keys so dotted Hydra overrides address them correctly. No step may exceed the
+actual schedule length, including partial diffusion.
 
-### Why stage a reward
+Clean-prediction scoring (`use_clean_prediction: true`) decodes the preceding
+integration step's prediction and runs only design metrics. It does not roll out,
+refold, or save that prediction. Default scoring completes a separate rollout.
+Selected candidates always continue from their intermediate trajectory states.
+A checkpoint at the schedule end must use completed-structure scoring.
 
-A checkpoint prunes on a rollout of a **still-noisy** state. Early in the
-trajectory only broad features are settled — fold, topology, whether an interface
-forms at all — while fine details are not yet determined by the state being
-ranked. Scoring those details early therefore ranks noise, and a candidate killed
-at an early checkpoint for a detail it had not yet committed to is a pass lost for
-no reason.
+Omit the schedule-end checkpoint to finish each retained beam once without
+extra branching, scoring, or selection. Ordinary final metrics still run, but
+those final designs have no final `search.reward`. For the example above,
+`'~search.checkpoints.60'` makes step 50 the last selection.
 
-Matching each checkpoint's reward to what the trajectory has actually committed
-to by then is the point of this feature, and it moves **pass rate**, usually more
-than it moves cost:
+## Retain completed scoring rollouts
 
-- **Objective annealing** — broad structural features early, finer details late.
-  The primary use: each prune ranks on something the state has actually decided.
-- **Targeted oracle placement** — put refolding where it changes *which
-  candidates survive*. Oracle calls then scale with the overridden checkpoints
-  rather than all of them, so this cuts cost as well. The best placement is not
-  automatically the last checkpoint — mid-trajectory, or even early (steering the
-  whole run toward foldable topologies from the start), can win. Test it.
-- **Gating over time** — clip a term once it is good enough at a later
-  checkpoint and let the remaining terms drive the last prunes.
+Set `search.save_rollouts: true` to keep completed scoring rollouts in addition
+to the final beam. Optional `search.save_criteria` maps raw output keys or
+`search.reward` to threshold mappings such as `{min: 80}`. List all providers
+needed by the criteria at every rollout checkpoint; search never adds them.
+Clean-prediction checkpoints do not produce completed scoring rollouts to save.
 
-Two cautions: `search.reward` values from different checkpoints are **different
-objectives** and are not comparable (so an `intermediate_sample_save_criterion`
-threshold on `search.reward` must make sense for each), and metric managers are
-set up once for *every* checkpoint's tag set, so a tag used only in an override
-still works.
+Reward scales can differ by checkpoint. A shared save threshold on `search.reward`
+must make sense for each objective; raw metric thresholds can be easier to compare.
 
-## Worked example
+## Worked monomer example
 
-Maximize refolding confidence while keeping interface PAE low, with a floor on
-pLDDT so sub-50 candidates are all treated as equally bad:
+Maximize refolding pLDDT at steps 40 and 60, treating sub-50 values equally:
 
 ```yaml
 # @package _global_
@@ -162,31 +133,28 @@ defaults:
 inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/monomer
 subset_to_examples: monomer-short
 num_replicates: 2
-
 out_dir: outputs/my_search
 run_name_: my_search
-
-metrics_tags: [design, unconditional_refolding]   # epoch-end loop reuses cached oracle results
+metrics_tags: [design, unconditional_refolding]
 
 search:
-  strategy:
-    _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 20, 40, 50, 60]
-    n_branch: 2
-    beam_width: 3
-  rewards:
-    reward_metrics_tags: [unconditional_refolding]
-    weights:
-      oracle.plddt_coi: 1.0
-      oracle.ipae_coi: -1.0        # negative -> minimize interface PAE
-    clip_values:
-      oracle.plddt_coi:
-        min: 50.0
+  n_branch: 2
+  beam_width: 3
+  checkpoints:
+    "40": &confidence_checkpoint
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi: {weight: 1.0, clip: {min: 50.0}, normalize_by: 100.0}
+    "60": *confidence_checkpoint
 generation:
   args:
-    nsteps: 60                      # released default; must equal the last step_checkpoint
+    nsteps: 60
 ```
 
+The YAML anchor explicitly repeats a configuration; it does not create inheritance
+between checkpoints. Stage different objectives when different properties become
+useful for ranking, and measure the effect using common final metrics and pass
+rates. Put oracle scoring where it changes which candidates survive.
+
 See [af2-oracle.md](af2-oracle.md), [af3-oracle.md](af3-oracle.md), and
-[cost.md](cost.md) for backend requirements and how
-`beam_width`/`n_branch`/`step_checkpoints` drive cost.
+[cost.md](cost.md) for backend requirements and compute budgeting.

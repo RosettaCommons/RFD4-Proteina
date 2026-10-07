@@ -15,19 +15,26 @@ class SearchStrategy(ABC):
         - generate(): Main generation method that uses the model and rewards
     """
 
+    @property
+    def metric_names(self) -> set[str]:
+        """Explicit search metrics to initialize for the validation epoch."""
+        return set()
+
+    def configure_metrics(self, model: Any) -> None:
+        """Validate metric selection before generation, when needed."""
+        return None
+
     @abstractmethod
     def generate(
         self,
         model: Any,  # Proteina instance
         batch: dict,
-        reward_model: Any | None = None,  # RewardModel instance
     ) -> list[dict[str, Any]]:
         """Generate structures using the search strategy.
 
         Args:
             model: Proteina model instance
             batch: Input batch from dataloader
-            reward_model: Optional reward model for guided generation
 
         Returns:
             List of generated-structure dicts (formatted).

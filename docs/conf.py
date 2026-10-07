@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import nbformat
+import tomllib
 from docutils import nodes
 from sphinx.application import Sphinx
 
@@ -29,13 +30,13 @@ except ImportError:
     pass
 
 project = "RFD4-Proteína"
-author = "Baker Lab and NVIDIA GenAI"
-copyright = "2026, Baker Lab and NVIDIA GenAI"
+author = "Baker Lab and NVIDIA GenAIR"
+copyright = "2026, Baker Lab and NVIDIA GenAIR"
 
 try:
-    release = package_version("rfproteina")
+    release = package_version("rfd4-proteina")
 except PackageNotFoundError:
-    release = "0.0.2"
+    release = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
 version = release
 
 extensions = [
@@ -124,6 +125,7 @@ exclude_patterns = [
 ]
 
 autodoc_member_order = "bysource"
+viewcode_follow_imported_members = False
 autodoc_typehints = "signature"
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
@@ -133,7 +135,6 @@ autodoc_mock_imports = [
     "alphafold3",
     "cuequivariance",
     "cuequivariance_torch",
-    "mace",
     "tmol",
 ]
 
@@ -141,6 +142,7 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_title = "RFD4-Proteína documentation"
+html_baseurl = "https://rosettacommons.github.io/RFD4-Proteina/"
 
 html_theme_options = {
     "show_nav_level": 2,
@@ -165,11 +167,6 @@ html_theme_options = {
             "name": "Home",
             "url": "https://rosettacommons.github.io/RFD4-Proteina/",
             "icon": "fa-solid fa-house",
-        },
-        {
-            "name": "Leaderboard",
-            "url": "https://rosettacommons.github.io/RFD4-Proteina/leaderboard.html",
-            "icon": "fa-solid fa-ranking-star",
         },
         {
             "name": "GitHub",

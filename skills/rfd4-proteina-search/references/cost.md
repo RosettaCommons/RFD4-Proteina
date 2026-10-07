@@ -1,35 +1,37 @@
 # Cost and runtime
 
-Reward-guided search is **much more expensive** than plain generation. Every
-candidate rolled out during search is scored by the reward, and when the reward
-uses a refolding oracle, each score is a full refolding call through the selected
-backend. Budget accordingly.
+Reward-guided search is **much more expensive** than plain generation. Scoring
+checkpoints evaluate every branched candidate, and those listing refolding
+oracles run the selected backends for each candidate. Budget accordingly.
 
 ## The cost model
 
-The dominant cost is oracle calls, which scale roughly as:
+For one refold per candidate at each oracle-scored checkpoint:
 
 ```
-oracle calls  ~  beam_width  x  n_branch  x  (number of checkpoints)
+search oracle calls  ~  beam_width  x  n_branch  x  (oracle-scored checkpoints)
 ```
 
-where the number of checkpoints is `len(step_checkpoints)`. Concretely, at each
-checkpoint every surviving beam (`beam_width`) spawns `n_branch` candidates, and
-each candidate is scored.
+Count entries in `search.checkpoints` that explicitly list an oracle. Step zero
+is implicit and is not scored. The shipped example has keys `20`, `40`, `50`,
+and `60`: four scoring checkpoints.
 
-Worked numbers (using the shipped example's shape,
-`step_checkpoints: [0, 20, 40, 50, 60]` -> 5 checkpoints):
-
-| beam_width | n_branch | checkpoints | ~oracle calls per input |
+| beam_width | n_branch | oracle-scored checkpoints | ~search oracle calls per input |
 | --- | --- | --- | --- |
-| 3 | 2 | 5 | ~30 |
-| 4 | 4 | 5 | ~80 |
-| 8 | 4 | 5 | ~160 |
-| 4 | 4 | 9 | ~144 |
+| 3 | 2 | 4 | ~24 |
+| 4 | 4 | 4 | ~64 |
+| 8 | 4 | 4 | ~128 |
+| 4 | 4 | 8 | ~128 |
 
-Multiply by `num_replicates` and by the number of input examples. Each oracle
-call is a refold, so wall-clock and GPU cost grow the same way. (Non-refold
-rewards like `interchain_interactions` skip the oracle and are far cheaper.)
+Multiply by `num_replicates` and the number of input examples. Multiple named
+oracles or transforms emitting multiple refolds add calls per candidate.
+Design-only and clean-prediction checkpoints make no oracle calls. Clean
+prediction scoring also avoids completing separate scoring rollouts.
+
+Ordinary final evaluation can add refolds when no cached result exists. In
+particular, omitting the schedule-end checkpoint finishes each retained beam
+once without search scoring, but final `metrics_tags` can still request oracles.
+Saved scoring rollouts can also need final metrics not computed during search.
 
 ## Practical guidance
 
@@ -38,13 +40,12 @@ rewards like `interchain_interactions` skip the oracle and are far cheaper.)
 - **`beam_width` and `n_branch`** are the two biggest cost multipliers. Defaults
   are 4 and 4; the example ships 3 and 2. Raise them only as compute allows —
   higher values buy quality/diversity at linear cost.
-- **`step_checkpoints`** — more checkpoints means finer pruning but more scoring
-  passes. Remember the constraint: start at 0, strictly increasing, end at
-  `nsteps` (`generation.args.nsteps` must equal the last checkpoint). Fewer,
-  later checkpoints score fewer, more-formed candidates.
-- **`intermediate_sample_save_criterion`** does not add oracle calls (it reuses
-  each candidate's already-computed metrics/reward), but it does write more
-  outputs.
+- **`search.checkpoints`** — more entries mean more scoring passes. Keys are
+  positive steps no greater than the actual schedule length; zero is implicit
+  and the schedule-end entry is optional. Choose each checkpoint's metric list
+  and scoring source deliberately.
+- **`save_rollouts` and `save_criteria`** reuse already-computed scoring metrics
+  when retaining candidates, but increase output count and may add final-evaluation work.
 - **Prefer non-refold rewards when they capture your objective** (e.g. interface
   H-bond counts) — they avoid the oracle entirely.
 

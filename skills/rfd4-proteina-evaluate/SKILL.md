@@ -116,8 +116,8 @@ committed:
 They are picked up automatically (no extra flags), and results land in
 `per_example_metrics.csv` prefixed by the config key (e.g.
 `residue_count.n_residues`). Often you don't even need new Python — an existing
-ready-made-but-opt-in class (interface ddG, atom-pair distance constraints, MACE
-energies, ...) just needs a few lines of YAML. See
+ready-made-but-opt-in class (interface ddG, atom-pair distance constraints,
+charge complementarity, ...) just needs a few lines of YAML. See
 [docs/workflow/custom-metrics.md](../../docs/workflow/custom-metrics.md) and
 [references/metrics.md](references/metrics.md).
 

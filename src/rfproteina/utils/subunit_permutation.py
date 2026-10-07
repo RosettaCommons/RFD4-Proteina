@@ -19,10 +19,10 @@ from rfproteina.utils.atom_permutation import _observed_mask
 
 
 def _subunit_candidates(array: AtomArray, classes: np.ndarray, limit: int) -> np.ndarray:
-    """Enumerate entity-equivalent swaps with identical ordered residue IDs and atoms.
+    """Enumerate entity-equivalent swaps with identical chain/residue boundaries and ordered atoms.
 
     Returns destination-to-source atom maps, with identity first. Wholly inactive
-    molecules stay fixed; incompatible numbering or atom order raises ValueError.
+    molecules stay fixed; incompatible chain/residue boundaries or atom order raises ValueError.
     """
     identity = np.arange(len(array))
     if not len(array):
@@ -61,13 +61,14 @@ def _subunit_candidates(array: AtomArray, classes: np.ndarray, limit: int) -> np
         if not classes[indices].any():
             continue
         chain_starts = get_segments(chains[indices])
-        fields = (array.res_id, array.res_name, array.atom_name, array.element)
-        signature = (chain_starts.tobytes(), *(f[indices].tobytes() for f in fields))
+        residue_starts = get_segments(residues[indices])
+        fields = (array.res_name, array.atom_name, array.element)
+        signature = (chain_starts.tobytes(), residue_starts.tobytes(), *(f[indices].tobytes() for f in fields))
         entity = entities[indices[0]]
         if signatures.setdefault(entity, signature) != signature:
             raise ValueError(
-                f"Molecule entity {entity} requires identical ordered res_id values, chain boundaries and atoms; "
-                "use resolve_symmetry=[atom] for incompatible numbering or coverage."
+                f"Molecule entity {entity} requires identical chain boundaries and ordered atoms "
+                "with matching residue boundaries; use resolve_symmetry=[atom] for incompatible atom order or coverage."
             )
         groups[(entity, classes[indices].tobytes())].append(len(instance_atoms))
         instance_atoms.append(indices)
@@ -105,7 +106,8 @@ def permute_gt_subunits(
 
     Assignment is greedy: current atom labels determine the subunit match, before
     any subsequent atom-symmetry resolution; joint optimality is not guaranteed.
-    Equivalent active molecules must have identical ordered residue IDs and atoms.
+    Equivalent active molecules must have identical chain/residue boundaries and ordered
+    atoms. Absolute residue numbers may differ between copies.
 
     Args:
         predicted: One structure or a stack, in atom correspondence with ground_truth.

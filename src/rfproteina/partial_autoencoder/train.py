@@ -47,7 +47,6 @@ with (
         recursively_instantiate_datasets_and_samplers,
     )
     from rfproteina.utils.hydra import instantiate_callbacks
-    from rfproteina.utils.lora import maybe_apply_lora
     from rfproteina.utils.simple_ema import EMAModelCheckpoint
     from rfproteina.utils.torch import apply_torch_deterministic
     from rfproteina.utils.verbosity import configured_verbosity, queue_startup_warnings
@@ -66,7 +65,7 @@ load_dotenv()
 class DelayedValidationCallback(Callback):
     """Delay validation until a given epoch by temporarily disabling val batches."""
 
-    def __init__(self, start_epoch: int, limit_val_batches: int | float):
+    def __init__(self, start_epoch: int, limit_val_batches: float):
         super().__init__()
         self.start_epoch = start_epoch
         self.limit_val_batches = limit_val_batches
@@ -168,8 +167,8 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
 
     model = AutoEncoder(cfg_exp)
 
-    # If LoRA is turned on, replace Linear with LoRA layers
-    maybe_apply_lora(model, cfg_exp)
+    if (cfg_exp.get("lora") or {}).get("r"):
+        raise ValueError("LoRA adapts the RFD4-Proteína denoiser; autoencoder LoRA is not supported.")
 
     # If this is the first run for fine-tuning, load pre-trained checkpoint
     pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
@@ -422,7 +421,13 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Train the model with dataloaders
     logger.info("Starting training...")
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loaders, ckpt_path=resume_ckpt_path)
+    trainer.fit(
+        model,
+        train_dataloaders=train_loader,
+        val_dataloaders=val_loaders,
+        ckpt_path=resume_ckpt_path,
+        weights_only=False,
+    )
     # If resume_ckpt_path is None then it creates a new optimizer
 
 

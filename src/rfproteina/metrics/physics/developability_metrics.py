@@ -24,7 +24,6 @@ from biotite.structure import AtomArray
 from rfproteina.metrics.metric import Metric
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
-from rfproteina.utils.env import PROJECT_ROOT_PATH
 from rfproteina.utils.structure_export import write_input_structure_cif
 
 logger = RankedLogger(__name__, rank_zero_only=True)
@@ -213,8 +212,8 @@ class RosettaDevelopabilityMetric(Metric):
     ) -> None:
         container = container or os.environ.get("PYROSETTA_CONTAINER")
         self.container = Path(container) if container else None
-        default_script = PROJECT_ROOT_PATH / "scripts" / "developability" / "score_pose_rosetta.py"
-        self.score_script = Path(score_script or default_script)
+        default_script = Path(__file__).with_name("score_pose_rosetta.py")
+        self.score_script = Path(score_script or default_script).resolve()
         self.apptainer_bin = apptainer_bin or shutil.which("apptainer") or "apptainer"
         self.sasa_cutoff = float(sasa_cutoff)
         self.timeout_s = float(timeout_s)
@@ -231,6 +230,8 @@ class RosettaDevelopabilityMetric(Metric):
                 os.environ.get("TMPDIR", "/tmp"),
             )
         )
+        # Bind the installed helper explicitly; site-packages may be outside default container mounts.
+        self.binds.append(f"{self.score_script.parent}:{self.score_script.parent}:ro")
         # The CIF/JSON handoff lives under scratch_dir, so it must be visible inside the container.
         if str(self.scratch_dir) not in self.binds:
             self.binds.append(str(self.scratch_dir))

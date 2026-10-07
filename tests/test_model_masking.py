@@ -501,7 +501,6 @@ def test_beam_initialization_uses_masks_and_centering_groups(token_batch) -> Non
         preprocess_batch_for_generation=lambda batch: batch,
         recycle_depths=lambda nsteps, full_nsteps=None: (1,) * nsteps,
     )
-    reward = SimpleNamespace(validate_checkpoint_steps=lambda _steps: None)
     batch = {
         **token_batch,
         "coords_nm": torch.zeros(2, len(TOKEN_NAMES), 37, 3),
@@ -510,7 +509,7 @@ def test_beam_initialization_uses_masks_and_centering_groups(token_batch) -> Non
     }
 
     with pytest.raises(RuntimeError, match="beam initialized"):
-        BeamSearchStrategy(step_checkpoints=[0, 2], beam_width=2).generate(model, batch, reward)
+        BeamSearchStrategy(checkpoints={2: {}}, beam_width=2).generate(model, batch)
 
 
 def test_flow_predictions_and_simulation_vectors_use_flow_emit_masks(token_batch, flow_matcher) -> None:

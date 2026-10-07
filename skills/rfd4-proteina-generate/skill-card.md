@@ -42,7 +42,7 @@ Requires API Key or External Credential: No
 Credential Type(s): None (runs locally against downloaded checkpoints).
 
 Hardware/software: `rfd4-proteina-setup` complete (uv/Python-3.12 venv, `atomworks`
-submodule, checkpoints in `$DATA_PATH`, green preflight); 1x CUDA GPU for
+package, checkpoints in `$DATA_PATH`, green preflight); 1x CUDA GPU for
 generation. An apptainer/docker container is required only for `*_refolding`
 metrics tags (AF3 oracle) — plain generation needs none.
 

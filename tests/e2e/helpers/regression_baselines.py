@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 from atomworks.io.parser import parse
 from biotite.structure import AtomArray, rmsd, superimpose
 from omegaconf import OmegaConf
@@ -44,6 +45,13 @@ def _resolve_sota_checkpoint_paths() -> tuple[Path | None, Path | None]:
 # Generation and baselines resolve the same immutable SOTA checkpoint from configs/inference.yaml.
 # To advance SOTA, sync the checkpoint under DATA_PATH, edit the config, and regenerate baselines.
 SOTA_CKPT_PATH, SOTA_AE_CKPT_PATH = _resolve_sota_checkpoint_paths()
+LORA_TRAINING_OVERRIDES = [
+    "experiment=sota",
+    f"pretrain_ckpt_path={SOTA_CKPT_PATH}",
+    "lora.r=8",
+    "nn.use_torch_compile=false",
+]
+
 # Single MCSA example used for all inference regression tests.
 REGRESSION_EXAMPLE_ID = "M0664_2dhn"
 
@@ -62,14 +70,15 @@ BEAM_SEARCH_OVERRIDES = [
     "inputs=${oc.env:PROJECT_ROOT}/data/benchmarks/motif_scaffolding/motif_unindexed",
     f"subset_to_examples={BEAM_SEARCH_EXAMPLE}",
     "++metrics_tags=[design,unindexed]",
-    "++search.rewards.reward_metrics_tags=[design,unindexed]",
-    # The motif reward is a design metric, so no oracle is needed and this stays fast. The zero
-    # weight neutralises the inherited clash term: hydra cannot delete a key containing dots,
-    # and aggregate_metrics_output skips falsy weights.
-    f"++search.rewards.weights={{clash_metrics.frac_atoms_clashing_1p5A: 0.0, {BEAM_SEARCH_REWARD_KEY}: -1.0}}",
-    "search.strategy.step_checkpoints=[0,40,60]",
-    "search.strategy.n_branch=2",
-    "search.strategy.beam_width=2",
+    # A zero weight neutralizes the inherited clash reward after Hydra merges metric keys.
+    *[
+        f"++search.checkpoints.{step}.rewards={{clash_metrics.frac_atoms_clashing_1p5A: {{weight: 0.0}}, "
+        f"{BEAM_SEARCH_REWARD_KEY}: {{weight: -1.0}}}}"
+        for step in (40, 60)
+    ],
+    *[f"++search.checkpoints.{step}.metrics=[clash_metrics,design_unindexed_motif_allatom_rmsd]" for step in (40, 60)],
+    "search.n_branch=2",
+    "search.beam_width=2",
     "num_replicates=1",
     # Pin val_set_name_override so the val set is named the same on every machine,
     # regardless of where the inputs are mounted.
@@ -90,6 +99,12 @@ LOSS_ATOL_MEAN = 0.05
 BASELINE_RMSD_ATOL_TIGHT = 0.20  # Å — all-atom RMSD for deterministic outputs (inference)
 BEAM_SEARCH_RMSD_ATOL = 0.05  # Å — motif RMSD drift for a deterministic beam-search run
 METRIC_ATOL = 1e-3  # pLDDT / ptm / iptm for deterministic outputs
+
+
+def inference_baseline_path() -> Path:
+    """Select the inference reference for the installed Torch CUDA major version."""
+    cuda_major = (torch.version.cuda or "cpu").split(".")[0]
+    return BASELINES_DIR / "inference" / f"cuda{cuda_major}" / "designed.cif.gz"
 
 
 def load_design_cif(path: Path | str) -> AtomArray:

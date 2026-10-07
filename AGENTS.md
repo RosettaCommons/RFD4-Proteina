@@ -10,7 +10,11 @@ This is the working guide for AI coding agents in RFD4-Proteína. Keep it concis
 
 ## Setup and environment
 
-Distribution is by cloning and local pip installation. Do not publish this project to PyPI.
+The distribution name is `rfd4-proteina`; the public Python entry point is
+`import rfd4_proteina as rfd4`. This public module exposes the implementation
+currently in `rfproteina`; packaging does not rename checkpoint or Hydra targets.
+See `docs/packaging.md` for release validation.
+Publishing is a separate release action; do not upload packages without explicit authorization.
 
 RFD4-Proteína uses Python 3.12. Install from the repository root:
 
@@ -79,7 +83,7 @@ make format
 
 `make format` changes files; review its diff and avoid formatting unrelated user work.
 
-GPU/regression tests require the appropriate image, GPU, data paths, and often `SOTA_CKPT_PATH`; use the markers and helpers under `.github/ci/`. Do not weaken regression assertions or regenerate baselines merely to obtain a passing run. First determine whether behavior, expectations, or the environment is wrong; baseline changes require explicit user intent.
+GPU/regression tests require the appropriate image, GPU, data paths, and often `SOTA_CKPT_PATH`; use the markers and portable runner in `src/script_utils/run_gpu_regression_tests.py`. Do not weaken regression assertions or regenerate baselines merely to obtain a passing run. First determine whether behavior, expectations, or the environment is wrong; baseline changes require explicit user intent.
 
 Documentation is Sphinx/MyST:
 
@@ -115,6 +119,11 @@ Hydra conventions:
 - Preserve defaults-list ordering. `_self_` placement controls precedence and is intentional.
 - Required values use `???`; do not replace them with machine-specific defaults.
 - Use OmegaConf/Hydra resolvers and environment interpolation instead of hard-coded cluster paths.
+- Search uses a flat `search.checkpoints` mapping of positive integer steps; each checkpoint explicitly lists its metric providers, rewards, and scoring source. Metric definitions stay under `metrics`; search does not infer dependencies.
+- Checkpoint `continuation_criteria` keeps the entire selected beam if any selected candidate passes, using explicitly listed metrics. It is only valid before the schedule end; stopped inputs retain saved rollouts.
+- Novelty is an explicitly selected Foldseek metric gated by continuation criteria. Final pass criteria can publish designed chains via `archive_dir`; archives are shared, append-only, and scoped to one target/pass definition.
+- Checkpoint `n_branch` overrides the global branch count for its incoming interval; omitted counts use the global default.
+- The schedule-end search checkpoint is optional; without it, each surviving beam finishes once without branching or selection, then runs ordinary output metrics.
 - When adding a config option, trace every composition path that needs it and add a config-composition test when precedence or compatibility matters.
 
 ## Architecture map
@@ -189,6 +198,6 @@ Metrics implement the interfaces in `src/rfproteina/metrics/metric.py` and are c
 - Contributor expectations: `docs/contributor_guide.rst`
 - Config behavior: the relevant YAML root and Hydra composition through its workflow entry point
 - Launch behavior: launcher header, `scripts/common.sh`, `scripts/resolve_config.py`, and `tests/e2e/test_slurm_launchers.py`
-- Generation regression flow: `tests/e2e/` and the CI helper under `.github/ci/`
+- Generation regression flow: `tests/e2e/` and `src/script_utils/run_gpu_regression_tests.py`
 
 When code and this file disagree, trust executable code and tests, verify the intended behavior in user-facing documentation, and update this guide as part of the same change.

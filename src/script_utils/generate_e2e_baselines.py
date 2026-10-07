@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate regression-test baselines for the four GPU regression tests.
+"""Generate regression-test baselines for the GPU regression tests.
 
 Run this script on a configured GPU node with the required datasets available:
 
@@ -21,7 +21,7 @@ After running, commit the updated baselines:
 
 Options:
     --tests NAMES   Comma-separated subset to regenerate (default: all).
-                    Choices: sota_training,ae_training,inference,beam_search
+                    Choices: sota_training,lora_training,ae_training,inference,beam_search
     --sota-ckpt     Optional candidate checkpoint; default = inference.yaml's SOTA ckpt.
 """
 
@@ -43,6 +43,7 @@ from tests.e2e.helpers.regression_baselines import (
     BASELINES_DIR,
     BEAM_SEARCH_OVERRIDES,
     INFERENCE_OVERRIDES,
+    LORA_TRAINING_OVERRIDES,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
@@ -52,6 +53,7 @@ from tests.e2e.helpers.regression_baselines import (
     deterministic_env,
     find_beam_search_cifs,
     find_inference_cif,
+    inference_baseline_path,
 )
 
 # ── Repository / path constants ──────────────────────────────────────────────
@@ -244,7 +246,7 @@ def generate_inference_baseline(sota_ckpt: Path | None) -> None:
     _assert_cif_reproducible(designed_1, designed_2, f"{name}/designed", atol=0.05)
 
     # Write baseline
-    bl_dir = BASELINES_DIR / name
+    bl_dir = inference_baseline_path().parent
     bl_dir.mkdir(parents=True, exist_ok=True)
     with open_compressed(designed_1, "rb") as stream:
         (bl_dir / "designed.cif.gz").write_bytes(gzip.compress(stream.read(), mtime=0))
@@ -303,7 +305,7 @@ def generate_beam_search_baseline(sota_ckpt: Path | None) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-ALL_TESTS = ["sota_training", "ae_training", "inference", "beam_search"]
+ALL_TESTS = ["sota_training", "lora_training", "ae_training", "inference", "beam_search"]
 
 
 def main() -> None:
@@ -358,6 +360,14 @@ def main() -> None:
                 "nn.use_torch_compile=false",
             ],
             out_dir=store_base,
+        )
+
+    if "lora_training" in tests:
+        generate_training_baseline(
+            name="lora_training",
+            script="src/rfproteina/train.py",
+            extra_overrides=LORA_TRAINING_OVERRIDES,
+            out_dir=ROOT / "store" / "regression_lora_baseline",
         )
 
     if "ae_training" in tests:

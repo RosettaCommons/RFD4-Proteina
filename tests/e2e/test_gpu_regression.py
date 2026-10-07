@@ -1,17 +1,18 @@
-"""Four H200 regression tests:
+"""H200 regression tests:
 
 1. SOTA training — 25 optimizer steps from random init; losses match baseline.
-2. AE training — 25 optimizer steps from random init; losses match baseline.
-3. Inference — generate one MCSA example; designed CIF matches baseline.
-4. Beam search — unindexed-motif search; per-design motif RMSDs match baseline.
+2. LoRA fine-tuning — 25 steps from the released checkpoint; losses match baseline.
+3. AE training — 25 optimizer steps from random init; losses match baseline.
+4. Inference — generate one MCSA example; designed CIF matches baseline.
+5. Beam search — unindexed-motif search; per-design motif RMSDs match baseline.
 
 A separate GPU-suite preflight checks that both checkpoints selected by
 configs/inference.yaml exist on disk. Inference uses a generate.py subprocess
 through a module fixture.
 
 Generate baselines with src/script_utils/generate_e2e_baselines.py and commit
-these to tests/e2e/baselines/. Missing training baselines fail; missing inference
-or beam-search baselines skip.
+these to tests/e2e/baselines/. Inference references are CUDA-major-specific.
+Missing training/inference baselines fail; missing beam-search baselines skip.
 
 Run:
     RUN_GPU_E2E_TESTS=1 pytest tests/e2e/test_gpu_regression.py -m regression -v
@@ -38,6 +39,7 @@ from tests.e2e.helpers.regression_baselines import (
     BEAM_SEARCH_OVERRIDES,
     BEAM_SEARCH_RMSD_ATOL,
     INFERENCE_OVERRIDES,
+    LORA_TRAINING_OVERRIDES,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
     REGRESSION_EXAMPLE_ID,
@@ -46,6 +48,7 @@ from tests.e2e.helpers.regression_baselines import (
     deterministic_env,
     find_beam_search_cifs,
     find_inference_cif,
+    inference_baseline_path,
     load_baseline_losses,
     require_h200,
     require_sota_ae_ckpt,
@@ -184,6 +187,22 @@ def test_sota_training_regression() -> None:
 @pytest.mark.gpu
 @pytest.mark.regression
 @pytest.mark.slow
+def test_lora_training_regression() -> None:
+    """Compare 25 PEFT fine-tuning steps from the released checkpoint against recorded losses."""
+    require_gpu_e2e(min_gpus=1)
+    require_h200()
+    require_sota_ckpt()
+    _run_training(
+        run_name="regression_lora_training",
+        script="src/rfproteina/train.py",
+        overrides=LORA_TRAINING_OVERRIDES,
+        expected_losses=load_baseline_losses("lora_training"),
+    )
+
+
+@pytest.mark.gpu
+@pytest.mark.regression
+@pytest.mark.slow
 def test_ae_training_regression() -> None:
     """Compare current AE losses from random initialization with periodic full GC."""
     require_gpu_e2e(min_gpus=1)
@@ -213,8 +232,7 @@ def inference_out() -> Path:
     require_gpu_e2e(min_gpus=1)
     require_h200()
     require_sota_ckpt()
-    if not (BASELINES_DIR / "inference" / "designed.cif.gz").is_file():
-        pytest.skip("Inference baselines not generated yet.")
+    assert inference_baseline_path().is_file(), f"Missing inference baseline: {inference_baseline_path()}"
     return _run_inference("regression_inference")
 
 
@@ -225,10 +243,9 @@ def inference_out() -> Path:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_inference_regression(inference_out: Path) -> None:
-    """Generate M0664_2dhn; designed CIF matches baseline."""
-    baseline_dir = BASELINES_DIR / "inference"
+    """Generate M0664_2dhn; designed CIF matches the CUDA-specific baseline."""
     designed = find_inference_cif(inference_out, REGRESSION_EXAMPLE_ID, "generated")
-    rmsd_d = all_atom_rmsd(designed, baseline_dir / "designed.cif.gz")
+    rmsd_d = all_atom_rmsd(designed, inference_baseline_path())
     assert (
         rmsd_d <= BASELINE_RMSD_ATOL_TIGHT
     ), f"Designed structure all-atom RMSD {rmsd_d:.4f} Å exceeds {BASELINE_RMSD_ATOL_TIGHT} Å"

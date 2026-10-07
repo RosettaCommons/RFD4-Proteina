@@ -10,7 +10,7 @@
 # Options:
 #   --gpus-per-job N  GPUs per SLURM job (default: 1). Each GPU runs independent search.
 #
-# IPD cluster profiles are documented in .ipd/docs/clusters.md.
+# Configure a scheduler profile using scripts/user_info.example.
 #
 # Note: If gen_njobs or eval_njobs > 1 in config, uses SLURM job arrays.
 #       With --gpus-per-job=N, each array task runs N parallel searches.
@@ -55,7 +55,7 @@ done
 
 if [ -z "$CLUSTER" ]; then
     echo "Usage: $0 <cluster> [--gpus-per-job=N] [extra_args...]"
-    echo "Choose an IPD cluster profile; see .ipd/docs/clusters.md"
+    echo "Choose a configured scheduler profile; see scripts/user_info.example"
     exit 1
 fi
 

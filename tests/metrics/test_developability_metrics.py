@@ -106,11 +106,13 @@ def test_unselected_rosetta_metric_does_not_require_container(monkeypatch):
 def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
     """The metric shells the apptainer command with the right flags and parses its JSON."""
     container = tmp_path / "pyrosetta.sif"
-    score_script = tmp_path / "score.py"
     container.touch()
-    score_script.touch()
 
     def fake_run(command, **kwargs):
+        script = Path(command[command.index("python") + 1])
+        assert script.is_file()
+        assert script.parent.name == "physics"
+        assert f"{script.parent}:{script.parent}:ro" in command
         assert {"--cif", "--sasa_cutoff", "--output_json"} <= set(command)
         out_path = command[command.index("--output_json") + 1]
         with open(out_path, "w", encoding="utf-8") as handle:
@@ -125,7 +127,6 @@ def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
 
     metric = RosettaDevelopabilityMetric(
         container=str(container),
-        score_script=str(score_script),
         apptainer_bin="apptainer",
         binds=[],
         scratch_dir=str(tmp_path),

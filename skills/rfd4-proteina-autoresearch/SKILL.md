@@ -85,22 +85,23 @@ plain `rfd4-proteina-generate`) run.
 
 ## Step 3 — Engineer the composite reward
 
-RFD4-Proteína's reward is defined inline under `search.rewards` (see
+RFD4-Proteína's reward is defined per step under `search.checkpoints.<step>.rewards` (see
 **rfd4-proteina-search**). The autoresearch-specific discipline — from the muni
 technical note, and directly applicable here:
 
 - **Normalize term scales before weighting.** Terms live on wildly different
-  scales (confidence terms ~0-1, interface areas in hundreds/thousands of Å²,
-  H-bond counts small integers). Left raw, one term dominates for boring numerical
-  reasons.
-- **Gate, don't pay forever.** Use `clip_values` to turn a "must clear a bar" term
+  scales (check each metric's units; interface areas can be hundreds/thousands
+  of Å² and H-bond counts small integers). Set each term's `normalize_by` to
+  bring values onto comparable scales before weighting.
+- **Gate, don't pay forever.** Use each reward term's `clip` to turn a "must clear a bar" term
   into a gate — e.g. clip an interface-area/`min_ipae` term at a threshold so the
   reward stops responding once it is satisfied, instead of rewarding ever-larger
   values.
 - **Down-weight wide-range terms** so a 0-100 style term does not swamp a 0-1 one.
 - Use **negative weights to minimize** (e.g. minimize `oracle.ipae_coi`).
-- **The reward may vary over the trajectory.** `checkpoint_overrides` re-specifies
-  weights/gates/tags at a given checkpoint. Certain rewards might be better-suited to running earlier or later in the trajectory.
+- **The reward may vary over the trajectory.** Each checkpoint explicitly lists
+  its `metrics`, `rewards`, and `use_clean_prediction` setting. Nothing is
+  inherited between checkpoints; list any oracle or comparison provider needed.
 
 Full worked patterns and the RFD4-Proteína reward keys
 (`oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`, `oracle.min_ipae_coi`):
@@ -108,8 +109,8 @@ Full worked patterns and the RFD4-Proteína reward keys
 
 ## Step 4 — Run the wave, then freeze / promote / allocate
 
-Run the wave's branches, score them (reward-guided search scores inline; otherwise
-evaluate with **rfd4-proteina-evaluate**), then update branches by **branch health**
+Run the wave's branches and collect common final metrics (during generation or
+with **rfd4-proteina-evaluate**), then update branches by **branch health**
 (the median of that branch's top-3 scores):
 
 - **Freeze** a branch whose health is in the bottom quartile (stop funding it).
@@ -126,15 +127,16 @@ signal: capture *why* they failed. See [references/loop.md](references/loop.md).
 
 Change **one** axis per child so effects are attributable:
 
-- **Search**: `beam_width`, `n_branch`, `step_checkpoints` / `nsteps` (cost scales
-  ~ `beam_width x n_branch x #checkpoints` oracle calls). Beam vs vanilla is the
-  only algorithm axis — RFD4-Proteína has no MCTS/best-of-n.
-- **Reward**: term weights, add/tighten a gate, swap `reward_metrics_tags`.
-- **Reward schedule**: `search.rewards.checkpoint_overrides` — same objective,
-  different *timing*. Each entry is a sub-version of the base reward at one
-  checkpoint; any field it names (`weights`, `clip_values`, `reward_metrics_tags`)
-  replaces the base one wholesale, so restate every term that should still count.
-  It is often possible to improve both overall pass rates and overall efficiency based on the reward scheduling that is used.
+- **Search**: `search.beam_width`, `search.n_branch`, and `search.checkpoints`
+  alongside `generation.args.nsteps`. Oracle cost depends on which checkpoints
+  list oracles. Beam vs vanilla is the only algorithm axis.
+- **Reward**: each term's `weight`, `clip`, and `normalize_by`, plus the
+  checkpoint's explicit `metrics` list.
+- **Reward schedule**: vary the complete configuration at each checkpoint.
+  Compare clean-prediction design scoring with completed-rollout scoring, or
+  move oracle scoring to a different step. The schedule-end checkpoint is
+  optional: without it, each retained beam finishes once without another selection.
+  Compare arms using common final metrics, not differently scaled search rewards.
 - **Diversity**: `generation.model.bb_ca.simulation_step_params.sc_scale_noise`
   and `...local_latents...sc_scale_noise` (higher = more diverse, often less
   designable).

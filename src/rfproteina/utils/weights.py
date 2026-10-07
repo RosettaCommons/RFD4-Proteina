@@ -15,6 +15,19 @@ from rfproteina.utils.ddp import RankedLogger
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
 
 
+def inference_state_dict(checkpoint: dict, checkpoint_path: str) -> dict[str, torch.Tensor]:
+    """Select canonical EMA weights from an EMA export or a full training checkpoint."""
+    if str(checkpoint_path).endswith("-ema.ckpt"):
+        return checkpoint["state_dict"]
+    ema = next((value for key, value in checkpoint.get("callbacks", {}).items() if "SimpleEMA" in key), None)
+    if ema is None or not ema.get("ema_state_dict"):
+        raise ValueError(
+            f"{checkpoint_path} has no SimpleEMA state, but inference requires EMA weights. Use an "
+            "'-ema.ckpt', or a training checkpoint produced with the SimpleEMA callback enabled."
+        )
+    return ema["ema_state_dict"]
+
+
 class WeightLoadingError(Exception):
     """Exception raised when there's an error loading weights."""
 

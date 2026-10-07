@@ -21,6 +21,9 @@
 # SOFTWARE.
 
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import torch
 import torch.nn.functional as F
 from einops import rearrange
@@ -35,6 +38,21 @@ from rfproteina.utils.common import default, exists
 
 # Large negative value for masking (not -inf to avoid gradient issues)
 NEG_INF = -1e4
+
+
+@contextmanager
+def sdpa_training_context() -> Iterator[None]:
+    """Exclude cuDNN during an eager training step, including its backward pass."""
+    if not torch.is_grad_enabled():
+        yield
+        return
+    enabled = torch.backends.cuda.cudnn_sdp_enabled()
+    try:
+        torch.backends.cuda.enable_cudnn_sdp(False)
+        yield
+    finally:
+        torch.backends.cuda.enable_cudnn_sdp(enabled)
+
 
 # Try to import cuequivariance for fused attention; import the ops module explicitly since the
 # torch wrapper can import even when the compiled extension (e.g., libnvrtc.so) fails to load.

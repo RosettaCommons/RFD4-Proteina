@@ -52,7 +52,7 @@ Mitigation: Private setup appends a marked block only when absent and offers an 
 
 ## Skill Output
 
-Output type(s): environment changes + files (venv, downloaded checkpoints, env file), and a preflight report. Private setup also initializes its pinned AtomWorks submodule.
+Output type(s): environment changes + files (venv, downloaded checkpoints, env file), and a preflight report.
 
 Output format: console PASS/FAIL report; created files on disk.
 

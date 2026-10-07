@@ -1,8 +1,8 @@
 """Triangle multiplication: grouped Torch projections and the cuEquivariance backend."""
 
-import loralib
 import pytest
 import torch
+from peft import LoraConfig, inject_adapter_in_model
 
 import rfproteina.nn.modules.openfold_modules.triangular_multiplicative_update as trimul
 from rfproteina.nn.modules.openfold_modules.triangular_multiplicative_update import (
@@ -27,8 +27,8 @@ def test_grouped_projections_match_reference(grad: bool, bias: bool, lora: bool)
     for triangle, equation in EQUATIONS.items():
         m = _randomized(triangle(32, 16, bias=bias))
         if lora:  # Wrapped projections must still run their own forward.
-            m.linear_b_g = loralib.Linear(32, 16, r=2, bias=bias)
-            torch.nn.init.normal_(m.linear_b_g.lora_B)
+            inject_adapter_in_model(LoraConfig(r=2, target_modules=["linear_b_g"]), m)
+            torch.nn.init.normal_(m.linear_b_g.lora_B["default"].weight)
         z, mask = torch.randn(2, 12, 12, 32), torch.rand(2, 12, 12, 1).round()
         zn = m.layer_norm_in(z)
         a = m.linear_a_p(zn) * torch.sigmoid(m.linear_a_g(zn)) * mask

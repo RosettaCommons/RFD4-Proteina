@@ -135,8 +135,8 @@ lora:
   r: null  # LoRA rank (null = disabled, typical values: 8, 16, 32, 64)
   lora_alpha: 64.0  # LoRA scaling factor
   lora_dropout: 0.0  # Dropout for LoRA layers
-  train_bias: none  # Bias training: "none", "all", or "lora_only"
-  exclude_keys: []  # List of module names to exclude from LoRA (e.g., ["final_layer"])
+  train_bias: none  # Keep base biases frozen.
+  target_modules: [to_qkv, to_out_node]  # Denoiser attention projections, relative to model.nn.
 
 # Optimization
 opt:

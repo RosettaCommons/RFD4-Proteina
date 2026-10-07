@@ -42,6 +42,13 @@ html[data-theme="dark"] {
   max-height: 2.25rem;
 }
 
+@media (max-width: 575.98px) {
+  .navbar-brand img {
+    max-width: calc(100vw - 11rem);
+    height: auto;
+  }
+}
+
 a {
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.15em;

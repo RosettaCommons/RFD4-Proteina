@@ -39,8 +39,7 @@ def build_optimizers(
       cfg_opt: Optimizer config (``cfg_exp.opt`` / ``cfg_ae.opt``).
 
     Returns:
-      ``[muon, adam]``, or ``[adam]`` if the patterns leave Muon with nothing to optimize. The
-      manual optimization step in ``training_step`` steps whichever it gets.
+      Nonempty optimizers in Muon, Adam order. The manual optimization step handles either or both.
 
     Raises:
       ValueError: If the removed ``muon_param_patterns`` allowlist key is still set.
@@ -73,20 +72,19 @@ def build_optimizers(
         f"Adam: {len(adam_params)} params ({sum(p.numel() for p in adam_params) / 1e6:.1f}M)"
     )
 
-    adam = torch.optim.Adam(adam_params, lr=lr)
-    if not muon_params:
-        # Every parameter was excluded: train on Adam alone rather than handing Muon an empty
-        # parameter list (which torch rejects).
-        return [adam]
+    if not muon_params and not adam_params:
+        raise ValueError("No trainable parameters were selected for optimization.")
     muon_type = (
         GroupedMuon
         if cfg_opt.get("muon_grouped", True) and all(supports_grouped_muon(p) for p in muon_params)
         else torch.optim.Muon
     )
-    return [
-        muon_type(muon_params, lr=lr, adjust_lr_fn=cfg_opt.get("muon_adjust_lr_fn")),
-        adam,
-    ]
+    optimizers = []
+    if muon_params:
+        optimizers.append(muon_type(muon_params, lr=lr, adjust_lr_fn=cfg_opt.get("muon_adjust_lr_fn")))
+    if adam_params:
+        optimizers.append(torch.optim.Adam(adam_params, lr=lr))
+    return optimizers
 
 
 def backward_with_accumulation(

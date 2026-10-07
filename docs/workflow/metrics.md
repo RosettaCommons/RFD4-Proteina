@@ -69,14 +69,14 @@ Here is what is wired in.
 | Pass criteria | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
 | Pre-oracle filters, which skip the oracle when a cheap check fails | 6 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
-Another **9 metric classes already live in the codebase** without a default config. They cover TMol
+Another **7 metric classes already live in the codebase** without a default config. They cover TMol
 interface ddG, H-bonds and electrostatics, an atom pair distance constraint used for catalytic
-geometry, a QM ligand interaction energy, MACE ML potential energies, charge complementarity, and a
+geometry, a QM ligand interaction energy, charge complementarity, and a
 few others. Turning one on takes **no Python**, just a few lines of YAML, exactly like the [worked
 example](custom-metrics.md#worked-example-an-existing-metric-your-own-config). See [Ready-made
 but opt-in](#ready-made-but-opt-in).
 
-Write a new `Metric` subclass only when none of those 53 cover what you need. See [Writing your
+Write a new `Metric` subclass only when none of the existing metrics cover what you need. See [Writing your
 own](custom-metrics.md#writing-your-own).
 
 ## Running metrics offline on a folder of structures
@@ -387,8 +387,6 @@ example](custom-metrics.md#worked-example-an-existing-metric-your-own-config) sh
 | `AtomPairDistanceMetric` | `rfproteina.metrics.atom_pair_distance_metric` | Configurable upper bound distance constraints on atom pairs, for catalytic geometry and motif contact checks |
 | `TMolBlockPairMetric` | `rfproteina.metrics.physics.tmol_block_pair_metric` | General interface ddG metric between two atom selection regions. Presets for ligand ddG, H-bonds and electrostatics, plus PPI ddG and Coulomb, live in [`tmol_block_pair_metrics.yaml`](../../configs/metrics/inline_metrics/tmol_block_pair_metrics.yaml). GPU only, and deliberately out of the default set |
 | `QMInteractionEnergyIPA` | `rfproteina.metrics.ipa_interaction_energy_metric` | QM ligand and protein interaction energy through IPA. See [`ipa_metrics.yaml`](../../configs/metrics/inline_metrics/ipa_metrics.yaml), currently commented out pending a backend compatibility fix |
-| `MACEEnergyMetric` | `rfproteina.metrics.physics.mace_energy_metric` | MACE ML potential energy of a structure |
-| `MACEInteractionEnergyMetric` | `rfproteina.metrics.physics.mace_interaction_energy_metric` | MACE-POLAR-1 interaction energy decomposition for protein and ligand complexes |
 | `ChargeComplementarityMetric` | `rfproteina.metrics.physics.ddg_salt_metrics` | Salt bridge charge complementarity score across a binder and target interface |
 | `InternalResidueBondMetric` | `rfproteina.metrics.bond_length_metric` | Per residue bond lengths against CCD ideal geometry |
 | `NucleicSSSimilarityMetrics` | `rfproteina.metrics.nucleic_ss_metrics` | Nucleic acid secondary structure conditioning adherence, meaning base pairing |
