@@ -71,9 +71,7 @@ def native_stub(cfg, *, nsteps: int = THINKING_MEDIUM_STEPS):
     model.inf_cfg = cfg.generation
     model.nn = SimpleNamespace(recycle_enabled=True)
     model.guidance_model = None
-    model.cfg_exp = OmegaConf.create(
-        {"product_flowmatcher": {"bb_ca": {"zero_com_noise": True}, "local_latents": {}}}
-    )
+    model.cfg_exp = OmegaConf.create({"product_flowmatcher": {"bb_ca": {"zero_com_noise": True}, "local_latents": {}}})
     return model
 
 
@@ -203,7 +201,9 @@ def test_covered_workflows_design_through_bioir(workflow: str, tmp_path: Path):
     relative, overrides = WORKFLOWS[workflow]
     out_dir = tmp_path / workflow
     command = [
-        sys.executable, "-m", "rfproteina.generate",
+        sys.executable,
+        "-m",
+        "rfproteina.generate",
         f"inputs={BENCHMARKS / relative}",
         "inference_backend=bioir",
         "recycle_strategy=thinking_medium",
@@ -228,3 +228,46 @@ def test_covered_workflows_design_through_bioir(workflow: str, tmp_path: Path):
     coordinates = np.asarray(array.coord if hasattr(array, "coord") else array)
     assert coordinates.size, f"{workflow} wrote an empty structure"
     assert np.isfinite(coordinates).all(), f"{workflow} wrote non-finite coordinates"
+
+
+def test_bioir_keeps_its_own_triangle_kernels():
+    """``tri_mult`` reconfigures native triangles; a converted model must keep BioIR's.
+
+    The converted model is held on a plain adapter rather than registered as a
+    submodule, so ``configure_triangle_backends`` cannot reach it through
+    ``modules()`` -- and under a full-BioIR policy it is not run at all, since
+    the native blocks it would reconfigure are replaced and offloaded.
+    """
+    import torch
+    from torch import nn
+
+    from rfproteina.nn import execution
+    from rfproteina.nn.bioir_full import FullBioIRAdapter
+
+    class Native(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.nn = nn.Linear(2, 2)
+            self.autoencoder = nn.ModuleDict({"encoder": nn.Linear(2, 2), "decoder": nn.Linear(2, 2)})
+            self.is_inference = True
+            self.device = torch.device("cpu")
+
+    native = Native()
+    converted = nn.Linear(2, 2)
+    native._full_bioir = FullBioIRAdapter(native, converted)
+    assert not isinstance(native._full_bioir, nn.Module)
+    assert all(module is not converted for module in native.modules())
+
+    applied: list[str] = []
+    original = execution.configure_triangle_backends
+    try:
+        execution.configure_triangle_backends = lambda model, backend: applied.append(backend)
+        native._full_bioir = None
+        execution.configure_execution(native, composed().execution, "inference")
+        assert applied == [], "a converted model must not be handed a native triangle policy"
+        execution.configure_execution(
+            native, {"inference": dict.fromkeys(("flow", "encoder", "decoder"), "eager")}, "inference"
+        )
+        assert applied == ["cuequivariance"], "the open-source path still selects its triangle backend"
+    finally:
+        execution.configure_triangle_backends = original

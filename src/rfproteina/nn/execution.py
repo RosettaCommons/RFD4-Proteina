@@ -233,7 +233,12 @@ def configure_execution(model: nn.Module, config: Mapping, phase: str) -> None:
     model._full_bioir_options = dict(config.get("bioir", {})) if full else None
     backends = dict.fromkeys(requested, "eager") if full else requested
     components = execution_components(model)
-    configure_triangle_backends(model, config.get(phase, {}).get("tri_mult", "cuequivariance"))
+    # BioIR picks its own triangle kernels, so ``tri_mult`` has nothing to say
+    # about a converted model: applying it would only reconfigure native blocks
+    # that are about to be replaced and offloaded, and warn about a
+    # cuEquivariance install the run never reaches.
+    if not full:
+        configure_triangle_backends(model, config.get(phase, {}).get("tri_mult", "cuequivariance"))
     for name, trunk in components.items():
         runtime = getattr(trunk, "_execution", None)
         if runtime is None:
