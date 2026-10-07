@@ -183,14 +183,15 @@ def inference_padding_buckets(config: Mapping, *, guidance: bool = False) -> lis
     """Return generation padding sizes: configured buckets, else the sizes the selected backends need.
 
     Configured buckets apply to every backend. Without them, torch.compile components pad to the
-    next multiple of 16, which bounds static-shape recompilation; the BioIR workflow uses the same
-    aligned buckets, where its flow kernels are faster and automatic KF applies; eager does not pad.
+    next multiple of 16, which bounds static-shape recompilation; eager does not pad; and the BioIR
+    workflow pads inside the trunk, so padding it here only hands its kernels a larger problem than
+    the request asked for.
     """
     buckets = inference_buckets(config)
     if buckets is not None:
         return buckets
     backends = set(resolve_backends(config, "inference", guidance=guidance).values())
-    return ALIGNED_LENGTHS if backends & {"torch", "bioir"} else None
+    return ALIGNED_LENGTHS if "torch" in backends else None
 
 
 def configure_triangle_backends(model: nn.Module, backend: str = "cuequivariance") -> None:

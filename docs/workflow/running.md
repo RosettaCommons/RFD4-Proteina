@@ -87,6 +87,11 @@ overriding one of `execution.inference.flow`, `.encoder` or `.decoder` away from
 is rejected, and it is available from `rfd4-generate`, not from training-time
 validation.
 
+It also selects no padding buckets of its own. Token padding lives in the trunk
+and is on by default, so bucketing a request before it arrives only enlarges the
+problem the kernels are given. An explicit `execution.inference.length_buckets`
+still applies, to every backend.
+
 Leave `execution.bioir.attention_backend=null` and `execution.bioir.max_graphs=null`
 for automatic full-workflow defaults. The graph budget reserves each recycle
 depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit

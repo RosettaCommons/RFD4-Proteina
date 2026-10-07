@@ -5,7 +5,6 @@ import torch
 from torch import nn
 
 from rfproteina.nn.execution import (
-    ALIGNED_LENGTHS,
     BlockExecution,
     configure_execution,
     inference_padding_buckets,
@@ -52,7 +51,8 @@ def test_invalid_and_padding_policies():
     eager = every_component("eager")
     assert inference_padding_buckets(eager) is None
     assert inference_padding_buckets({"inference": {"flow": "torch_compile"}})[0] == 16
-    assert inference_padding_buckets(every_component("bioir")) == ALIGNED_LENGTHS
+    # BioIR pads inside the trunk; bucketing it here would only enlarge the shape.
+    assert inference_padding_buckets(every_component("bioir")) is None
 
 
 def test_bioir_is_the_whole_workflow_or_nothing():

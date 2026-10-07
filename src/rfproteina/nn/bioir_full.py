@@ -151,10 +151,16 @@ def _features(batch: Mapping[str, Any]) -> dict[str, torch.Tensor]:
     return features
 
 
+def _batch_aliases(batch: Any) -> tuple[str, ...]:
+    """Alias keys a collated batch resolves but never enumerates from ``items()``."""
+    mappings = getattr(batch, "_build_key_mappings", None)
+    return tuple(mappings()) if callable(mappings) else ()
+
+
 def _rows(batch: Mapping[str, Any], indices: torch.Tensor) -> dict[str, Any]:
     count = batch["padding_mask"].shape[0]
     ids = indices.tolist()
-    return {
+    rows = {
         key: (
             value.index_select(0, indices.to(value.device))
             if torch.is_tensor(value) and value.ndim and value.shape[0] == count
@@ -164,6 +170,20 @@ def _rows(batch: Mapping[str, Any], indices: torch.Tensor) -> dict[str, Any]:
         )
         for key, value in batch.items()
     }
+    # A collated batch resolves ``<key>_batch`` aliases that ``items()`` never
+    # enumerates, and structure export reads them to tell a batch of structures
+    # from a single one. Selecting rows into a plain mapping drops the
+    # resolution, so carry each alias the source batch answers.
+    for alias in _batch_aliases(batch):
+        if alias in rows:
+            continue
+        try:
+            value = batch[alias]
+        except (KeyError, AttributeError, TypeError):
+            continue
+        if isinstance(value, list) and len(value) == count:
+            rows[alias] = [value[index] for index in ids]
+    return rows
 
 
 def format_prediction(
