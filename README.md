@@ -21,7 +21,8 @@ motif and binding-site conditioning, partial diffusion, and reward-guided search
 
 ## Install
 
-**Start with `make setup`.** On Linux x86_64 with Python 3.12 and an NVIDIA GPU
+**Start with `make setup`.** On Linux x86_64 with Python 3.12 and a
+[supported NVIDIA GPU](https://rosettacommons.github.io/RFD4-Proteina/installation.html#supported-hardware)
 with a CUDA 13-compatible driver:
 
 ```bash
