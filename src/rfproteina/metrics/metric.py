@@ -130,7 +130,11 @@ class MetricManager:
         """Return a string representation of the MetricManager."""
         return f"MetricManager({', '.join(self.metrics.keys())})"
 
-    def on_validation_epoch_start(self, val_dataset_tags: list[set[str] | None] | None = None) -> None:
+    def on_validation_epoch_start(
+        self,
+        val_dataset_tags: list[set[str] | None] | None = None,
+        metric_names: set[str] | None = None,
+    ) -> None:
         """Setup metrics for validation.
 
         Args:
@@ -139,10 +143,11 @@ class MetricManager:
                 if that dataset defines no tag filtering (meaning all metrics run
                 for it).  When the outer list itself is ``None``, all metrics are
                 set up unconditionally (backward-compatible default).
+            metric_names: Additional metrics to set up by name, regardless of dataset tags.
         """
         self._skipped_metrics = set()
         for name, metric in self.metrics.items():
-            if val_dataset_tags is not None:
+            if val_dataset_tags is not None and name not in (metric_names or set()):
                 will_run = any(metric.applies_to_tags(tags) for tags in val_dataset_tags)
                 if not will_run:
                     self._skipped_metrics.add(name)
@@ -155,7 +160,22 @@ class MetricManager:
             if name not in self._skipped_metrics:
                 metric.teardown()
 
-    def __call__(self, **kwargs: Any) -> dict[str, Any]:
+    def active_metrics(
+        self, tags: set[str] | None = None, metric_names: list[str] | None = None
+    ) -> dict[str, "Metric"]:
+        """Select by explicit names or dataset tags, preserving refold routing constraints.
+
+        Explicit names may span several managers; each returns its own matching metrics.
+        An empty list selects none. None uses the normal dataset-tag selection.
+        """
+        return {
+            name: metric
+            for name, metric in self.metrics.items()
+            if (metric_names is None or name in metric_names)
+            and metric.applies_to_tags(tags, explicit=metric_names is not None)
+        }
+
+    def __call__(self, metric_names: list[str] | None = None, **kwargs: Any) -> dict[str, Any]:
         """Compute all metrics and return their results as a dictionary mapping metric names to their
         computed values.
         """
@@ -165,18 +185,14 @@ class MetricManager:
 
         # Initialize results dictionary
         results = {"example_id": example_id}
+        tags = nested_dict.get(kwargs, key=("extra_info", "metrics_tags"), default=None)
+        tags = set(tags) if tags is not None else None
 
-        for name, metric in self.metrics.items():
+        for name, metric in self.active_metrics(tags, metric_names).items():
             assert name not in results, f"Duplicate metric name: {name}"
 
             # Add some nice error handling context in case metrics fail
             example_msg = f" for example '{example_id}'" if example_id is not None else ""
-
-            # Decide whether the Metric applies to this batch
-            if "extra_info" in kwargs and "metrics_tags" in kwargs["extra_info"]:
-                metrics_tags = set(kwargs["extra_info"]["metrics_tags"])
-                if not metric.applies_to_tags(metrics_tags):
-                    continue
 
             if name in self._skipped_metrics:
                 # Setup on first call if this Metric was needed after all
@@ -378,7 +394,7 @@ class Metric(ABC):
         """
         raise NotImplementedError
 
-    def applies_to_tags(self, tags: set[str] | None) -> bool:
+    def applies_to_tags(self, tags: set[str] | None, *, explicit: bool = False) -> bool:
         """Return True if this metric would run for a batch with the given tag set.
 
         Mirrors the tag-filtering logic in :py:meth:`MetricManager.__call__`.
@@ -386,14 +402,21 @@ class Metric(ABC):
         Args:
             tags: Tags for a single dataset.  ``None`` means the dataset defines
                 no tag filtering, so this metric always runs for it.
+            explicit: Ignore dataset-selection tags; retain oracle and refold routing tags.
         """
         if tags is None:
             return True
-        if self.required_tags_all and not tags.issuperset(self.required_tags_all):
-            return False
-        if self.required_tags_any and not tags.intersection(self.required_tags_any):
-            return False
-        return not (self.prohibited_tags and tags.intersection(self.prohibited_tags))
+        required_all, required_any, prohibited = self.required_tags_all, self.required_tags_any, self.prohibited_tags
+        if explicit:
+            required_all, required_any, prohibited = (
+                {tag for tag in group if tag.startswith(("is_refold:", "exists_refold:", "oracle:"))}
+                for group in (required_all, required_any, prohibited)
+            )
+        return (
+            (not required_all or tags.issuperset(required_all))
+            and (not required_any or bool(tags.intersection(required_any)))
+            and not tags.intersection(prohibited)
+        )
 
     def setup(self) -> None:
         """Once-per-epoch Metric setup. Override to load expensive resources."""

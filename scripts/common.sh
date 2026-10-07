@@ -145,7 +145,6 @@ populate_docker_container_env() {
         "export PDB_MIRROR_PATH=$PDB_MIRROR_PATH"
         "export CCD_MIRROR_PATH=$CCD_MIRROR_PATH"
         "export FOLDSEEK_EXEC=$FOLDSEEK_EXEC"
-        "export MACE_MODEL_PATH=$MACE_MODEL_PATH"
         "export LOGURU_LEVEL=$LOGURU_LEVEL"
         "export DISABLE_CUEQUIVARIANCE=${DISABLE_CUEQUIVARIANCE:-false}"
     )
@@ -166,7 +165,7 @@ source_venv() {
             return 0
         fi
         if [[ ! -f "$venv_activate" ]] && command -v python >/dev/null &&
-            python -c 'from importlib.metadata import version; version("rfproteina")' 2>/dev/null; then
+            python -c 'from importlib.metadata import version; version("rfd4-proteina")' 2>/dev/null; then
             echo "Using installed Python: $(command -v python)"
             return 0
         fi

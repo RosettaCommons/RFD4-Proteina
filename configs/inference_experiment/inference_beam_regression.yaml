@@ -15,19 +15,17 @@ subset_to_examples: monomer-short
 metrics_tags: [design]
 
 search:
-  strategy:
-    _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 40, 60]
-    n_branch: 2
-    beam_width: 3
-    # No intermediate_sample_save_criterion => only the final beam is returned.
-
-  rewards:
-    reward_metrics_tags: [design]
-    weights:
-      # Penalise steric clashes; frac_atoms_clashing is in [0, 1] so reward
-      # is in [-1, 0], with 0 being clash-free (best).
-      clash_metrics.frac_atoms_clashing_1p5A: -1.0
+  n_branch: 2
+  beam_width: 3
+  checkpoints:
+    "40":
+      metrics: [clash_metrics]
+      rewards:
+        clash_metrics.frac_atoms_clashing_1p5A: {weight: -1.0}
+    "60":
+      metrics: [clash_metrics]
+      rewards:
+        clash_metrics.frac_atoms_clashing_1p5A: {weight: -1.0}
 
 generation:
   args:

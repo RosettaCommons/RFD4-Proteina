@@ -121,18 +121,49 @@ def test_broadcast_per_model_annotations() -> None:
     assert AllAtomLDDT().compute(pred, gt)["all_atom_lddt"] == 1
 
 
-@pytest.mark.parametrize("mismatch", ["res_id", "atom_order"])
+@pytest.mark.parametrize("filename,molecule_iids", CASES)
+def test_independent_residue_numbering(filename: str, molecule_iids: tuple[int, ...]) -> None:
+    """Equivalent copies match despite different residue offsets and gaps, without renumbering."""
+    gt = load_structure(filename).copy()
+    for i, iid in enumerate(molecule_iids):
+        selected = gt.molecule_iid == iid
+        gt.res_id[selected] = gt.res_id[selected] * (i + 2) + 100 * (i + 1)
+    pred = permuted(gt, molecule_iids)
+    residue_ids = gt.res_id.copy()
+    metric = StructureComparisonMetric(align_mask="is_polymer")
+    assert metric.compute(gt, pred)["rmsd"] < 1e-4
+    assert AllAtomLDDT().compute(pred, gt)["all_atom_lddt"] == 1
+    np.testing.assert_array_equal(gt.res_id, residue_ids)
+    np.testing.assert_array_equal(pred.res_id, residue_ids)
+
+
+@pytest.mark.parametrize("displacement", [0.0, 0.5])
+def test_independently_numbered_manganese_ions(displacement: float) -> None:
+    """Swapped single-atom ligands retain their actual displacement after backbone alignment."""
+    gt = load_structure("4kpy_mn.cif.zst").copy()
+    ions = np.flatnonzero(~gt.is_polymer)
+    assert len(ions) == 2
+    assert (gt.res_id[ions] == 101).all()
+    gt.res_id[ions[1]] = 102
+    pred = gt.copy()
+    pred.coord[ions] = gt.coord[ions[::-1]]
+    pred.coord[ions[0], 0] += displacement
+    metric = StructureComparisonMetric(align_mask="is_polymer", subset_mask="~is_polymer")
+    assert metric.compute(gt, pred)["rmsd"] == pytest.approx(displacement / np.sqrt(2), abs=1e-4)
+
+
+@pytest.mark.parametrize("mismatch", ["atom_order", "element"])
 def test_strict_correspondence(mismatch: str) -> None:
-    """Equivalent molecules must keep identical residue numbering and atom order."""
+    """Equivalent molecule copies must keep ordered atom identities."""
     gt = load_structure("4kpy_tmp.cif.zst").copy()
     indices = np.flatnonzero(gt.molecule_iid == 1)
-    if mismatch == "res_id":
-        gt.res_id[indices] += 1
-    else:
+    if mismatch == "atom_order":
         order = np.arange(len(gt))
         order[indices[:2]] = indices[:2][::-1]
         gt = gt[order]
-    with pytest.raises(ValueError, match="identical ordered res_id"):
+    else:
+        gt.element[indices[0]] = "Fe"
+    with pytest.raises(ValueError, match="identical chain boundaries and ordered atoms"):
         StructureComparisonMetric().compute(gt, gt)
 
 

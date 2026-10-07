@@ -30,7 +30,7 @@ Requires API Key or External Credential: No
 
 Credential Type(s): None.
 
-Depends on: a completed `rfd4-proteina-setup` (venv plus the AtomWorks submodule). No GPU is required to author or validate CIFs.
+Depends on: a completed `rfd4-proteina-setup` (venv plus the AtomWorks package). No GPU is required to author or validate CIFs.
 
 ## Known Risks and Mitigations
 

@@ -10,7 +10,12 @@ from atomworks.ml.transforms.symmetry import build_automorphism_units, find_auto
 from biotite.structure import AtomArray
 
 from rfproteina.datapipes.collate import collate_batch
-from rfproteina.datapipes.pipeline import PrecomputeAtomPermutation, TokenType, build_atom37_slots
+from rfproteina.datapipes.pipeline import (
+    ConvertToAtom37Format,
+    PrecomputeAtomPermutation,
+    TokenType,
+    build_atom37_slots,
+)
 from rfproteina.datapipes.schema.proteina import ProteinaDataSample
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.lddt_metric import AllAtomLDDT
@@ -20,6 +25,22 @@ from rfproteina.utils.parse_presets import RCSB_WITH_METALS, STANDARD_ANNOTATION
 from tests.conftest import TEST_DATA_DIR
 
 _STRUCTURE = TEST_DATA_DIR / "pdb" / "6wtf.cif"
+
+
+def test_unknown_amino_acid_retains_observed_atom37_coordinates() -> None:
+    atoms = as_atom_array_plus(AtomArray(9))
+    atoms.res_name[:] = "UNK"
+    atoms.atom_name = np.array(["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2"])
+    atoms.coord = np.arange(27, dtype=np.float32).reshape(9, 3)
+    atoms.set_annotation("token_type", np.full(9, TokenType.PROTEIN))
+    atoms.set_annotation("token_id", np.zeros(9, dtype=int))
+    feats = ConvertToAtom37Format().forward({"atom_array": atoms, "feats": {"coords": atoms.coord}})["feats"]
+    assert feats["atom37_mask"].sum() == 9
+    np.testing.assert_array_equal(feats["coords"][0, [0, 1, 2, 4, 3, 5, 11, 26, 27]], atoms.coord)
+    atoms.atom_name[-1] = "ZZ"
+    with pytest.raises(ValueError, match="UNK:ZZ"):
+        ConvertToAtom37Format().forward({"atom_array": atoms, "feats": {"coords": atoms.coord}})
+
 
 # ...(name, pairs of selection queries whose atoms are interchangeable)
 SWAPPABLE = [

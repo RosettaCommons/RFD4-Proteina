@@ -1,142 +1,190 @@
 # Reward guided search
 
-Instead of sampling once, search explores several generation paths and keeps the ones a **reward**
-scores highest. **Beam search** ships ready to run. It can score candidates on any reward you like,
-and the default implementation uses an **AF3 oracle**, which needs an apptainer. See [Evaluating
-results](running.md#evaluating-results).
+Beam search branches partial generation trajectories and keeps the highest scoring candidates
+at each checkpoint. Run `rfd4-generate inference_experiment=inference_beam_example` for an AF3
+example, or `inference_experiment=sm_binder_hbond_search` for structure-only scoring.
 
-| Strategy | How it works | When to use |
-| --- | --- | --- |
-| **Vanilla** | Standard sampling, no search | Baseline, fastest |
-| **Beam search** | Keep the top k partial trajectories, branch and prune at checkpoints | Best quality, slower |
+## Checkpoint configuration
 
-## Running the example
-
-One example config targets the monomer benchmark and uses AF3 refolding confidence as its reward.
-
-```bash
-# Beam search (configs/inference_experiment/inference_beam_example.yaml)
-rfd4-generate inference_experiment=inference_beam_example
-```
-
-Another skips refolding during search and rewards interface hydrogen bonds between protein and
-ligand instead, then swaps the reward at the final checkpoint. See [Changing the reward mid
-trajectory](#changing-the-reward-mid-trajectory).
-
-```bash
-# Beam search, no refolding (configs/inference_experiment/sm_binder_hbond_search.yaml)
-rfd4-generate inference_experiment=sm_binder_hbond_search
-```
-
-Copy either config to build your own. A search config is an `inference_experiment` with one extra
-`search:` block holding a `strategy` and a `rewards` model.
-
-## The reward
-
-You define the reward **inline** under `search.rewards`. There is no separate reward file.
+Search uses a flat `search` block. Each checkpoint explicitly lists its metrics, rewards, and scoring source:
 
 ```yaml
 search:
-  rewards:
-    reward_metrics_tags: [unconditional_refolding]   # which oracle/metrics run during scoring
-    weights:
-      oracle.plddt_coi: 1.0                           # metric key to coefficient, negative to minimize
-    clip_values:                                      # optional, bound a key before weighting
-      oracle.plddt_coi:
-        min: 50.0
-```
-
-**`reward_metrics_tags`** picks which metrics fire during scoring, independently of the top level
-`metrics_tags`. `unconditional_refolding` and the other `*_refolding` tags run the AF3 oracle, and
-its outputs carry an **`oracle.`** prefix.
-
-**`weights`** maps each metric output key to a weight, and the reward is their weighted sum. Use a
-negative weight to minimize a metric. Any key the active tags produce is fair game, such as
-`oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`, and `oracle.min_ipae_coi`.
-
-**`clip_values`** is optional. It maps a weighted key to `{min, max}` bounds, either of which you can
-omit. The value gets clipped **before** its weight applies, so the reward stops responding once the
-metric passes the bound, while the metric is still reported raw. Every clipped key must also appear
-in `weights`.
-
-## Changing the reward mid trajectory
-
-The block above defines one reward used at every checkpoint. `checkpoint_overrides` lets the reward
-change as the trajectory progresses. Each entry is a sub version of the base reward, keyed by the
-step it takes effect at, and anything it leaves out it inherits from the base.
-
-```yaml
-search:
-  strategy:
-    step_checkpoints: [0, 20, 40, 50, 60]
-  rewards:
-    reward_metrics_tags: [interchain_interactions]   # cheap, no refolding
-    weights:
-      interchain_interactions.hbond_atom_pair_count_coi: 1.0
-
-    checkpoint_overrides:
-      60:                                             # only at the final checkpoint
-        reward_metrics_tags: [unconditional_refolding]  # replaces the base list, so AF3 now runs
-        weights:
-          oracle.plddt_coi: 1.0                       # replaces the base weights entirely
-```
-
-A few rules govern this.
-
-- **Keys are steps.** Each must be one of `step_checkpoints` past the first, because those are the
-  steps where candidates get scored and pruned. A key that never gets scored is an error.
-- **Every field an override names replaces the base one wholesale**, whether that is `weights`,
-  `clip_values` or `reward_metrics_tags`. List every term that should still count at that
-  checkpoint. There is no key by key merge.
-- This matters most when an override changes `reward_metrics_tags`. A weight whose metric no longer
-  fires scores `-inf`, which would drown every candidate at that checkpoint. Replacing rather than
-  merging keeps the weights and the metrics that produce them in sync. If every candidate at a
-  checkpoint does score `-inf`, or its `intermediate_sample_save_criterion` cannot be evaluated for
-  any of them, the run raises there instead of pruning on nothing.
-- Replacing `weights` while inheriting `clip_values` is an error if a clip no longer matches a
-  weighted key. Set `clip_values: {}` to clear the inherited clips.
-- Checkpoints with no entry use the base reward unchanged, so your existing configs keep working.
-
-**Why stage a reward.** A checkpoint prunes on a rollout of a state that is still noisy. Early in
-the trajectory only broad features are settled, things like fold, topology, and whether an interface
-forms at all. Fine details are not decided yet, so scoring on them early ranks noise instead of
-promise. Match each checkpoint's reward to what the trajectory has actually committed to by then,
-broad structure early and fine detail late. Pass rates go up, usually by more than the compute you
-save. The same logic applies to refolding. Put the oracle where it changes which candidates survive,
-which is not always the final checkpoint. Mid trajectory or even early can beat it. Test it on your
-own problem.
-
-> Rewards from different checkpoints are **different objectives**, so their `search.reward` values
-> do not compare. If `intermediate_sample_save_criterion` thresholds on `search.reward`, make sure
-> the bar means something for every checkpoint's reward, or threshold on a raw metric key instead.
-
-## Beam search parameters (`rfproteina.search.beam_search.BeamSearchStrategy`)
-
-```yaml
-search:
-  strategy:
-    _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 20, 40, 50, 60]       # steps to score and prune at
-    n_branch: 2                                  # candidates spawned per surviving beam
-    beam_width: 3                                # candidates kept after each prune
-    # Optional. Also keep rolled-out candidates that lost the beam but clear a bar.
-    # Omit to return only the final beam.
-    intermediate_sample_save_criterion:
-      _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-      metric_thresholds:
-        search.reward:                           # threshold on the reward, or any metric key
-          min: 80.0
+  beam_width: 2
+  n_branch: 2
+  save_rollouts: false
+  checkpoints:
+    "20":
+      n_branch: 4
+      metrics: [interchain_interactions]
+      use_clean_prediction: true
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi: {weight: 1.0}
+    "40":
+      metrics: [interchain_interactions]
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi:
+          weight: 1.0
+          clip: {max: 6.0}
+          normalize_by: 6.0
+        interchain_interactions.hydrophobic_atom_pair_count_coi: {weight: 0.5}
+    "60":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi: {weight: 1.0}
 generation:
   args:
-    nsteps: 60                                   # released default; must equal the last step_checkpoint
+    nsteps: 60
 ```
 
-| Parameter | Meaning | Default |
-| --- | --- | --- |
-| `step_checkpoints` | Diffusion steps to score and prune at. **Must start at 0, increase strictly, and end at `nsteps`.** | required |
-| `n_branch` | Candidates generated from each surviving beam at every checkpoint | 4 |
-| `beam_width` | Candidates kept after each prune, the beam size | 4 |
-| `intermediate_sample_save_criterion` | A `PassCriterionMetric` that decides which lost beam candidates to save anyway. It sees each candidate's metrics plus its reward under `search.reward`. Omit to return only the final beam. | none |
+- Checkpoint keys name positive integer integration steps, executed in sorted order. Quote YAML
+  keys to support dotted Hydra CLI overrides such as `++search.checkpoints.20.use_clean_prediction=true`. Step zero is
+  implicit. Keys cannot exceed the actual schedule length, including partial diffusion.
+- A checkpoint at the schedule end (normally `60`) is optional. If omitted, every survivor of
+  the last configured checkpoint finishes once, without additional branching or selection.
+  These completed designs run ordinary final metrics; they have no final `search.reward`.
+  If present, the end checkpoint branches and selects using its configured metrics and rewards.
+- Each checkpoint is self-contained. Omitted `metrics` means `[]`, omitted `rewards` means `{}`, and omitted
+  `use_clean_prediction` means `false`; nothing carries forward from a previous checkpoint.
+- Reward terms use `metric_name.output_key` from definitions under `metrics`. Each term clips
+  the raw value, divides by `normalize_by` (default 1), then multiplies by `weight` (default 1).
+  Terms are summed; negative weights minimize. Clipping accepts `min` and/or `max`.
+- An empty reward gives every candidate zero, preserving deterministic input order at selection.
+  A zero-weight term does not contribute to ranking or select any metrics.
+- `n_branch` (default 4) is the number of children per surviving beam for every incoming
+  checkpoint interval. A checkpoint may override it with its own positive integer `n_branch`.
+  Omitted values use the global default, not the preceding checkpoint's count. In the example,
+  steps 0–20 generate four children per state, while later intervals generate two.
+  `beam_width` (default 4) is the number retained per input.
 
-Cost scales roughly with `beam_width × n_branch × number of checkpoints` oracle calls, so raise
-`beam_width` and `n_branch` only as far as your compute budget allows.
+## Metric selection
+
+Each checkpoint's `metrics` list selects named providers defined under `metrics.inline_metrics`,
+`metrics.refolding_oracles`, or `metrics.refolding_metrics`. Providers run regardless of dataset
+selection tags. Selecting a provider computes all of its outputs; `rewards` chooses which outputs
+contribute to ranking. Reward terms, save criteria, and continuation criteria never add metrics implicitly.
+
+Each checkpoint has its own `RewardModel` to aggregate outputs. Missing or ambiguous provider
+names fail before sampling. Pass/fail metrics are not supported as search rewards; save
+criteria apply thresholds to the computed outputs instead.
+
+For a refolding comparison, explicitly list both the oracle and the comparison metric, e.g.
+`metrics: [oracle, refolded_backbone_rmsd]`. Search does not choose oracles or infer dependencies.
+Refold routing constraints (`oracle:`, `is_refold:`, and `exists_refold:`) still apply so metrics
+compare the intended structures. Refolding requires the normal backend and runtime environment;
+see [Evaluating results](running.md#evaluating-results).
+
+The top-level `metrics_tags` continues to control ordinary output evaluation. It does not
+select search metrics. Clipping and normalization affect rewards only; metric values remain raw.
+
+## Saving completed rollouts
+
+The final beam is always returned. Set `save_rollouts: true` to also return completed scoring
+rollouts, including candidates that lose selection. An optional `save_criteria` mapping filters
+these extra outputs using raw metric thresholds:
+
+```yaml
+search:
+  save_rollouts: true
+  save_criteria:
+    search.reward: {min: 80.0}
+```
+
+The threshold can reference explicitly selected metric outputs or `search.reward`. Every rollout
+checkpoint must list all providers needed by its save criteria; missing outputs produce an error.
+All thresholds must pass. A saved final-beam member appears only once. Reward scales can differ across checkpoints, so a shared threshold on `search.reward`
+should be chosen accordingly. Clean predictions are never saved as completed designs.
+
+### Scoring clean predictions without completing rollouts
+
+Set `use_clean_prediction: true` on a nonfinal checkpoint to score the clean prediction from
+its preceding integration step. A checkpoint at 19 uses integration step 18 (zero-based).
+Selected trajectories continue from their actual intermediate state. With the default `false`,
+search completes a separate scoring rollout and likewise continues from the intermediate state.
+A checkpoint at the schedule end must score completed structures. Earlier checkpoints can use
+clean predictions even when they are the last configured checkpoint.
+
+Clean scoring decodes the prediction and uses the same design metrics as rollout scoring.
+It rejects oracle, refolding, and pass-criteria providers before sampling. Predictions are
+used only for ranking: they are neither saved as completed designs nor sent to refolding.
+
+## Continuation criteria
+
+A checkpoint before the schedule end stops an input only when every reward-selected candidate
+fails its raw-metric thresholds. If any selected candidate passes, the entire selected beam
+continues, including candidates that failed. Passing candidates that lost selection do not count.
+
+```yaml
+search:
+  beam_width: 3
+  checkpoints:
+    "40":
+      metrics: [interchain_interactions]
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi: {weight: 1.0}
+      continuation_criteria:
+        interchain_interactions.hbond_atom_pair_count_coi: {min: 4}
+```
+
+List every provider needed by the criteria in that checkpoint's `metrics`, including providers
+used only for continuation. All `min`/`max` thresholds must pass. Reductions `min_of`, `max_of`,
+and `mean_of` can name several raw metric keys, with the outer key serving as a label.
+Criteria can also read `search.reward`, which includes clipping and normalization.
+Missing or nonfinite values fail that candidate; a metric absent from every candidate is a
+configuration error. An omitted or empty mapping imposes no threshold.
+
+Criteria work with both clean predictions and completed scoring rollouts. Stopped inputs do
+no further sampling; their saved completed rollouts remain outputs. Other inputs continue with
+their original identity and conditioning. In this example, every survivor of a continuing input finishes once
+from step 40 to the schedule end, with no additional branching or selection.
+
+## Novelty against passing designs
+
+Use `FoldseekNoveltyMetric` as an ordinary checkpoint metric and threshold its `is_novel`
+output with continuation criteria. For example, add these settings to
+`inference_experiment=sm_binder_hbond_search`:
+
+```yaml
+metrics:
+  inline_metrics:
+    novelty:
+      _target_: rfproteina.metrics.foldseek_novelty.FoldseekNoveltyMetric
+      archive_dir: ./passer_archive/SAM
+      tm_threshold: 0.5
+      min_coverage: 0.8
+      threads: 1
+      required_tags_any: [search_novelty]
+  pass_criteria:
+    sm_binder:
+      archive_dir: ${metrics.inline_metrics.novelty.archive_dir}
+metrics_tags: [interchain_interactions, sm_binder_refolding]
+search:
+  checkpoints:
+    "40":
+      metrics: [interchain_interactions, novelty]
+      use_clean_prediction: true
+      continuation_criteria:
+        novelty.is_novel: {min: 1}
+```
+
+Explicit checkpoint selection runs the novelty metric regardless of its tags. The
+`search_novelty` tag keeps it out of ordinary final evaluation in this example.
+Reward selection runs first; any novel selected candidate keeps the whole selected beam.
+Novelty can also contribute an ordinary reward term if it should influence ranking.
+
+The metric exhaustively searches the candidate's designed chain against a cached Foldseek
+passer database. A match requires both query- and target-normalized TM scores to meet
+`tm_threshold`, and both alignment coverages to meet `min_coverage`. Any match gives
+`is_novel: 0`; no match, or an empty archive, gives `1`.
+
+Set `FOLDSEEK_EXEC` to the binary. Each metric instance keeps a temporary database and
+rebuilds it only when the published archive files change. Searches compare the candidate
+against passers without clustering or a prefilter index. `timeout` defaults to 300 seconds
+per Foldseek invocation; failures raise rather than report novelty.
+
+Setting `archive_dir` on an existing final `PassCriterionMetric` publishes the designed chain
+only when that criterion passes. Its thresholds and tags still define acceptance. Files are
+published atomically, so concurrent jobs can share the directory. Use a separate append-only
+archive per target and pass definition. Queries never publish clean predictions or scoring
+rollouts. Final evaluation runs after generation, so new passers become available to later runs
+or concurrently running jobs; an external evaluation run can populate the same archive.

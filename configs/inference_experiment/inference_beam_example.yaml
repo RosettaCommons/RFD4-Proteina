@@ -31,34 +31,33 @@ run_name_: beam_example
 metrics_tags: [design, unconditional_refolding]
 
 search:
-  strategy:
-    _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    # step_checkpoints: controls intervals of diversification/pruning. Must start at 0 and end at nsteps.
-    # The setup below covers both the lower-density prefix and denser tail.
-    step_checkpoints: [0, 20, 40, 50, 60]
-    n_branch: 2
-    beam_width: 3
-    # Keep any rolled-out candidates that scored sufficiently high. This one bar applies at
-    # every checkpoint, against whichever reward is in force there — so if you add
-    # `checkpoint_overrides` below, keep their rewards on a scale this threshold still suits.
-    intermediate_sample_save_criterion:
-      _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-      metric_thresholds:
-        search.reward:
-          min: 80.0
-
-  rewards:
-    # Inner tags: controls which metrics fire during beam scoring.
-    # [unconditional_refolding] → AF3 oracle runs on every rolled-out candidate,
-    # caching results to disk for reuse by the epoch-end loop.
-    reward_metrics_tags: [unconditional_refolding]
-
-    weights:
-      oracle.plddt_coi: 1.0
-
-    # Optionally clip the reward metric values for the purpose of score computation.
-    # Here, this means that everything below plddt_coi 50.0 is treated as equally garbage.
-    # It is most commonly useful for multi-objective search
-    clip_values:
-      oracle.plddt_coi:
-        min: 50.0
+  n_branch: 2
+  beam_width: 3
+  save_rollouts: true
+  save_criteria:
+    search.reward: {min: 80.0}
+  checkpoints:
+    "20":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi:
+          weight: 1.0
+          clip: {min: 50.0}
+    "40":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi:
+          weight: 1.0
+          clip: {min: 50.0}
+    "50":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi:
+          weight: 1.0
+          clip: {min: 50.0}
+    "60":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi:
+          weight: 1.0
+          clip: {min: 50.0}

@@ -1,14 +1,8 @@
 Quickstart
 ==========
 
-Install RFD4-Proteína, get the checkpoints, and generate your first designs.
-Run every command from the repository root.
-
-Prerequisites
--------------
-
-You need Linux x86_64, an NVIDIA GPU with a driver compatible with CUDA 13,
-``git``, and ``curl``. The setup script installs Python 3.12 with ``uv``.
+Run ``make setup`` to install RFD4-Proteína and download its checkpoints, then generate your first design.
+Use Linux x86_64, Python 3.12, and an NVIDIA GPU with a CUDA 13-compatible driver.
 
 Install
 -------
@@ -20,34 +14,29 @@ Install
    make setup
    source .venv/bin/activate
 
-Setup creates ``.venv``, installs the dependencies declared in ``pyproject.toml``,
-and downloads the two released checkpoints (about 8 GB) from the public bucket.
-It configures ``DATA_PATH`` in ``.env.local``, defaulting to ``./data_path``.
-Existing data paths and downloaded checkpoints are reused.
-
-See :doc:`installation` for custom paths, pip installation, and optional refolding.
+Setup creates ``.venv``, downloads the released flow and autoencoder checkpoints
+(about 8 GB), and configures ``DATA_PATH``. See :doc:`installation` for CUDA build
+prerequisites and environment settings. The checkout includes the example input.
 
 Generate a design
 -----------------
 
-On a GPU node, with the environment activated:
-
 .. code-block:: bash
 
-   rfd4-generate inputs=data/benchmarks/monomer \
-       subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
+   rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
+       num_replicates=1 out_dir=./runs/first \
+       compile_lengths=null
 
-This generates one 100-residue protein under ``runs/smoke/inference_samples/``.
-Metrics, when enabled, land in ``runs/smoke/inference_metrics/``.
-``num_replicates`` counts designs per example: omitting ``subset_to_examples``
-runs all three monomer examples (100, 150, and 250 residues).
-
-For batch jobs, see :ref:`slurm-installation`.
+This generates one 100-residue protein under ``runs/first/inference_samples/``.
+Increase ``num_replicates`` for more designs, or replace the example path with
+your own annotated input.
+See :doc:`workflow/running` for compilation and sampling settings, and
+:doc:`workflow/metrics` for scoring. For batch jobs, see :ref:`slurm-installation`.
 
 Next steps
 ----------
 
-That run used the defaults for everything. :doc:`The full workflow <workflow>`
+:doc:`The full workflow <workflow>`
 maps out what a run actually does, from the input file to the metrics that come
 back, with a diagram you can click through to any stage.
 

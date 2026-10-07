@@ -218,6 +218,8 @@ dev.py
 # published site. Keep the whole static dir exempt rather than naming files one at a time.
 !docs/_static/*.png
 !docs/_static/*.svg
+!assets/readme/*.png
+!assets/readme/*.gif
 
 # Versioning
 **/version.py

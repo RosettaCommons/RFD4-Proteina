@@ -169,6 +169,9 @@ def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray]:
             atom_name = atom_name.strip()
             if atom_name:
                 atom_key_to_slot[f"{res_name}|{atom_name}"] = slot
+                # Proteins share atom-name slots; DNA/RNA base slots depend on purine/pyrimidine identity.
+                if res_name in STANDARD_AA:
+                    atom_key_to_slot[f"{UNKNOWN_AA}|{atom_name}"] = slot
     keys_sorted = sorted(atom_key_to_slot.keys())
     atom_keys = np.array(keys_sorted)
     atom_slots = np.array([atom_key_to_slot[key] for key in keys_sorted], dtype=np.int32)

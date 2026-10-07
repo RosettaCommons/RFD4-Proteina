@@ -12,48 +12,54 @@ the effect is attributable. These are the axes RFD4-Proteína actually exposes �
 
 | Axis | Config key | Effect / caution |
 | --- | --- | --- |
-| Beam width | `search.strategy.beam_width` | Candidates kept after each prune (default 4). More = better designs, more oracle calls. |
-| Branching | `search.strategy.n_branch` | Candidates spawned per surviving beam (default 4). |
-| Checkpoints | `search.strategy.step_checkpoints` | Steps to score+prune (e.g. `[0,20,40,50,60]`). Must start at 0, strictly increase, and end at `nsteps`. More checkpoints = more oracle calls. |
+| Beam width | `search.beam_width` | Candidates kept after each prune (default 4). More = better designs, more oracle calls. |
+| Branching | `search.n_branch` | Candidates spawned per surviving beam (default 4). |
+| Checkpoints | `search.checkpoints` | Mapping of positive steps to complete scoring configurations. Zero is implicit; the end checkpoint is optional. Keys cannot exceed the actual schedule length. |
+| Scoring source | `search.checkpoints.<step>.use_clean_prediction` | `true` scores a clean prediction with design metrics only; `false` completes a scoring rollout. The schedule-end checkpoint must use `false`. |
 | Steps | `generation.args.nsteps` | The default is 60 evaluations, with twice the step density in the final 20% of each modality's clock. |
 | Vanilla vs beam | (presence of `search:` block) | No search = fastest baseline; beam = best quality, slower. |
 
-Cost scales roughly with `beam_width x n_branch x (#checkpoints)` oracle calls —
+Cost scales roughly with `beam_width x n_branch x (oracle-scored checkpoints)` refolds for one oracle output per candidate —
 raise these only as the budget allows (see rfd4-proteina-search `references/cost.md`).
 
 ## Reward axes (see reward-engineering.md)
 
 | Axis | Where | Effect |
 | --- | --- | --- |
-| Term weights | `search.rewards.weights` | Rebalance which objective dominates |
-| Gates | `search.rewards.clip_values` | Turn a "must-clear" term into a bar |
-| Which metrics score | `search.rewards.reward_metrics_tags` | Change the objective family entirely |
-| **Reward schedule** | `search.rewards.checkpoint_overrides` | Change the reward *mid-trajectory*, per checkpoint |
+| Term weights | `search.checkpoints.<step>.rewards.<metric.output>.weight` | Rebalance which objective dominates |
+| Gates | `search.checkpoints.<step>.rewards.<metric.output>.clip` | Turn a "must-clear" term into a bar |
+| Which metrics score | `search.checkpoints.<step>.metrics` | Change the objective family entirely |
+| Normalization | `search.checkpoints.<step>.rewards.<metric.output>.normalize_by` | Divide the clipped value before weighting |
+| **Reward schedule** | `search.checkpoints` | Change the reward *mid-trajectory*, per checkpoint |
 
-### Reward-schedule axis (`checkpoint_overrides`)
+`<metric.output>` is a single YAML key containing dots. Edit reward terms as
+mappings; do not split the output name into nested keys in a dotted CLI override.
 
-A distinct axis from the reward itself: hold the final objective fixed and vary
-**when** each term starts counting. Each entry is a sub-version of the base reward
-keyed by a scored step (one of `step_checkpoints` past the first); any field it
-names (`weights`, `clip_values`, `reward_metrics_tags`) replaces the base one
-wholesale, so an arm that changes tags must restate its weights. Branches worth
-comparing:
+### Reward-schedule axis
 
-| Branch | Override shape | Hypothesis |
+Hold the final objective fixed and vary **when** each term starts counting.
+Each checkpoint has a complete configuration; no metrics or reward terms carry
+forward from a previous step. Explicitly list all providers needed by its rewards
+and by any shared `search.save_criteria`. Branches worth comparing:
+
+| Branch | Checkpoint configuration | Hypothesis |
 | --- | --- | --- |
-| Flat (control) | none — base reward everywhere | Baseline for every schedule arm |
+| Flat (control) | Repeat the same metrics and reward at every checkpoint | Baseline for every schedule arm |
 | Annealed | broad structural term early, add the fine terms at a later checkpoint | Early prunes rank noise when scored on details the state has not committed to |
-| Oracle placement | `reward_metrics_tags: [*_refolding]` at one chosen checkpoint (early / middle / last) | There is a step where refolding actually changes which candidates survive; find it |
-| Gated over time | add `clip_values` on a satisfied term at a later checkpoint | Stops over-optimizing one term and redirects the last prunes |
+| Oracle placement | An explicit oracle in `metrics` at one chosen checkpoint (early / middle / last) | There is a step where refolding actually changes which candidates survive; find it |
+| Gated over time | Add a reward term's `clip` on a satisfied term at a later checkpoint | Stops over-optimizing one term and redirects the last prunes |
 
 The reason the schedule matters is that every prune ranks a **noisy** state: early
 on, only broad features (fold, topology, whether an interface forms) are settled,
 so a candidate killed early on a detail it had not yet committed to is a pass lost
 for nothing. Correctly staged rewards can therefore move **pass rate**
 substantially, not just cost. Oracle placement is worth its own arm for both
-reasons — calls scale with the overridden checkpoints rather than all of them —
+reasons — calls scale with the oracle-scored checkpoints rather than all of them —
 and do not assume the last checkpoint is the right place for it; sweep the
 placement rather than fixing it.
+
+If the end checkpoint is omitted, each retained beam finishes once without
+additional branching or selection and has no final search reward.
 
 Note that `search.reward` totals are not comparable across checkpoints or across
 schedule arms; compare arms on final-design metrics and pass rate (plus

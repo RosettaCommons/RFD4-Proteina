@@ -1,12 +1,14 @@
 [project]
-name = "rfproteina"
+name = "rfd4-proteina"
 version = "0.0.2"
-description = "protein foundation models"
+description = "Flow-matching foundation model for protein design"
+readme = "README.md"
+license-files = ["LICENSE"]
 license = "BSD-3-Clause"
-requires-python = ">=3.12,<=3.12.10"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    # Public release/atomworks-3-0 APIs; Biotite must match AtomWorks exactly.
-    "atomworks[ml,openbabel] @ git+https://github.com/RosettaCommons/atomworks.git@release/atomworks-3-0",
+    # AtomWorks 3 APIs; Biotite must match AtomWorks exactly.
+    "atomworks[ml,openbabel]==3.0.0",
     "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
@@ -22,9 +24,9 @@ dependencies = [
     "jaxtyping>=0.2.17,<1",
     "beartype>=0.18.0,<1",
     # ML core
-    "torch==2.13.0",
-    "lightning>=2.5.0",
-    "loralib>=0.1.1",
+    "torch==2.14.1",
+    "lightning>=2.6.0",
+    "peft>=0.21.2,<0.22",
     "einops>=0.8.0,<1",
     "einx>=0.1.0,<1",
     "opt_einsum>=3.4.0,<4",
@@ -42,10 +44,8 @@ dependencies = [
     "boto3>=1.34,<2",
     # Validation metrics
     "posebusters",
-    "mace-torch>=0.3.15",
+    "tmol==0.1.59",
     "anarcii>=2.0.8,<3",
-    # Interactive
-    "ipykernel>=6.31.0",
     "assertpy",
 ]
 
@@ -61,20 +61,12 @@ docs = [
     "sphinx-reredirects>=1.0,<2",
     "sphinx-togglebutton>=0.3,<1",
 ]
-# Select one TMol/metrics pair matching the Torch and CUDA stack.
-tmol-cuda12 = [
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu128torch2.10-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
-]
-tmol-cuda13 = [
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "tmol[ligand] @ https://github.com/uw-ipd/tmol/releases/download/v0.1.42/tmol-0.1.42+cu130torch2.13-cp312-cp312-manylinux_2_28_aarch64.whl ; sys_platform == 'linux' and platform_machine == 'aarch64'",
-]
+# Select the metrics dependencies matching the CUDA stack.
 metrics-cuda12 = [
-    "hydride>=1.2",
-    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git@e0eb8945c21e203656f4e0bbece5d1da488b6753",
-    "cuequivariance-torch>=0.10.0; sys_platform == 'linux'",
-    "cuequivariance-ops-cu12>=0.10.0; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu12>=0.10.0; sys_platform == 'linux'",
+    "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
 ]
 metrics-cuda13 = [
     # PyTorch's CuTe RMSNorm kernels require both CUTLASS DSL and TVM FFI.
@@ -83,8 +75,6 @@ metrics-cuda13 = [
     "cuda-python==13.3.1; sys_platform == 'linux'",
     "nvidia-cutlass-dsl==4.5.2; sys_platform == 'linux'",
     "nvidia-cutlass-dsl-libs-base==4.5.2; sys_platform == 'linux'",
-    "hydride>=1.2",
-    "graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git@e0eb8945c21e203656f4e0bbece5d1da488b6753",
     "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
     "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
     "cuequivariance-ops-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
@@ -95,7 +85,7 @@ dev = [
     "ruff==0.8.3",
     # Debugger/interactive
     "debugpy>=1.8.5,<2",
-    "ipykernel>=6.29.4,<7",
+    "ipykernel>=6.31.0,<7",
     # Testing tools
     "pytest>=8.2.0,<9",
     "pytest-testmon>=2.1.1,<3",
@@ -104,9 +94,12 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "coverage[toml]>=7.10.2,<8",
     "pytest-benchmark>=5.0.0,<6",
-    "assertpy",
-    "boto3>=1.34,<2",
 ]
+
+[project.urls]
+Homepage = "https://rosettacommons.github.io/RFD4-Proteina/"
+Repository = "https://github.com/RosettaCommons/RFD4-Proteina"
+Issues = "https://github.com/RosettaCommons/RFD4-Proteina/issues"
 
 [project.scripts]
 rfd4-generate = "script_utils.entrypoints:generate"
@@ -117,10 +110,6 @@ rfd4-train-ae = "rfproteina.partial_autoencoder.train:main"
 [tool.uv]
 conflicts = [
     [
-        { extra = "tmol-cuda12" },
-        { extra = "tmol-cuda13" },
-    ],
-    [
         { extra = "metrics-cuda12" },
         { extra = "metrics-cuda13" },
     ],
@@ -128,12 +117,19 @@ conflicts = [
 
 # CUDA wheels are selected explicitly; other dependencies resolve from PyPI.
 [[tool.uv.index]]
-name = "pytorch-cu132"
+name = "pytorch"
 url = "https://download.pytorch.org/whl/cu132"
 explicit = true
 
 [tool.uv.sources]
-torch = { index = "pytorch-cu132" }
+torch = { index = "pytorch" }
+
+[tool.uv.extra-build-dependencies]
+tmol = [{ requirement = "torch", match-runtime = true }]
+
+[tool.uv.config-settings-package.tmol]
+"build.tool-args" = "-j8"
+"cmake.define.TMOL_NVCC_THREADS" = "1"
 
 # Pytest
 [tool.pytest.ini_options]
@@ -152,14 +148,25 @@ markers = [
 
 # Build system
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.build]
 dev-mode-dirs = ["src", "lib"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "pyproject.toml", "README.md", "LICENSE", ".project-root",
+    "src", "lib/gearnet", "configs", "data/cath_label_mapping.pkl",
+    "data/benchmarks",
+    "scripts/check_distribution.py",
+    "docs/packaging.md",
+]
+exclude = [
+    "configs/metrics/custom_metrics/**",
+    "src/rfproteina/metrics/custom_metrics/**",
+    "**/__pycache__/**",
+]
 
 [tool.hatch.build.targets.wheel]
 exclude = [
@@ -169,12 +176,12 @@ exclude = [
 ]
 only-include = [
     "src/rfproteina",
+    "src/rfd4_proteina",
     "src/script_utils",
     "lib/gearnet",
     "configs",
     "data/benchmarks",
     "data/cath_label_mapping.pkl",
-    "scripts/developability/score_pose_rosetta.py",
 ]
 
 [tool.hatch.build.targets.wheel.sources]
@@ -182,7 +189,6 @@ only-include = [
 "lib" = ""
 "configs" = "rfproteina/configs"
 "data" = "rfproteina/data"
-"scripts" = "rfproteina/scripts"
 
 [tool.hatch.build.targets.wheel.force-include]
 ".project-root" = "rfproteina/.project-root"

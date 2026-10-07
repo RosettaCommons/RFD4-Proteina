@@ -30,6 +30,7 @@ with (
     from rfproteina.utils.weights import (
         WeightLoadingConfig,
         freeze_parameters_with_config,
+        inference_state_dict,
         load_weights_with_policies,
     )
 
@@ -50,7 +51,7 @@ with (
         recursively_instantiate_datasets_and_samplers,
     )
     from rfproteina.utils.hydra import instantiate_callbacks
-    from rfproteina.utils.lora import maybe_apply_lora
+    from rfproteina.utils.lora import add_lora_adapter
     from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA
     from rfproteina.utils.torch import apply_torch_deterministic
     from rfproteina.utils.torch_compile import SaveCompileCacheCallback, setup_run_compile
@@ -182,6 +183,21 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
             )
         last_ckpt_path = explicit_resume
 
+    lora_enabled = bool(cfg_exp.get("lora") and cfg_exp.lora.get("r"))
+    if lora_enabled and cfg_exp.get("parameter_freezing") is not None:
+        raise ValueError("PEFT LoRA controls freezing; remove parameter_freezing and select lora.target_modules.")
+    if lora_enabled and cfg_exp.get("weight_loading") is not None:
+        raise ValueError(
+            "PEFT LoRA requires strict base loading; remove weight_loading and use a matching base config."
+        )
+    if (
+        lora_enabled
+        and last_ckpt_path is None
+        and not cfg_exp.get("pretrain_ckpt_path")
+        and not (cfg_exp.get("pretrained_model_name_or_path") and hasattr(Proteina, "from_pretrained"))
+    ):
+        raise ValueError("PEFT LoRA requires pretrain_ckpt_path, a loaded model bundle, or a full resume checkpoint.")
+
     logger.info(f"Last checkpoint: {last_ckpt_path}")
 
     # Seed before model init for fresh runs so random weight initialization is reproducible.
@@ -191,10 +207,6 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         L.seed_everything(cfg_exp.seed, workers=False, verbose=cfg_exp.get("verbose", True))
 
     model = Proteina(cfg_exp)
-
-    # If LoRA is turned on, replace Linear with LoRA layers
-    # Note: We do not use LoRA in the La-Proteina paper.
-    maybe_apply_lora(model, cfg_exp)
 
     # If this is the first run for fine-tuning, load pre-trained checkpoint
     pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
@@ -217,11 +229,16 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
             # Strict by default: a checkpoint that does not match the configured architecture
             # is a config bug, not something to paper over. Set `weight_loading` (with an
             # explicit reinit/zero_init fallback) to deliberately load across an arch change.
-            model.load_state_dict(ckpt["state_dict"], strict=True)
+            base_state = (
+                inference_state_dict(ckpt, pretrain_ckpt_path)
+                if lora_enabled and pretrain_ckpt_path
+                else ckpt["state_dict"]
+            )
+            model.load_state_dict(base_state, strict=True)
 
         # Stash any SimpleEMA state (weights + averaging counter) from the pretrain ckpt to load later
         ema_callback_state = ckpt.get("callbacks", {}).get("SimpleEMA") or {}
-        if ema_callback_state.get("ema_state_dict"):
+        if ema_callback_state.get("ema_state_dict") and not lora_enabled:
             model._pretrain_ema_callback_state = ema_callback_state
             logger.info(
                 f"Stashed SimpleEMA state from pretrain ckpt "
@@ -237,6 +254,10 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
                 f"overrides={len(pf_config.param_policies)})"
             )
             freeze_parameters_with_config(model, pf_config)
+
+    # Base weights load before injection; resumed runs construct adapters before Lightning restores state.
+    if (cfg_exp.get("lora") or {}).get("r"):
+        add_lora_adapter(model, cfg_exp.lora)
 
     return model, last_ckpt_path
 
@@ -528,7 +549,7 @@ def main(cfg_exp: DictConfig) -> None:
         if resume_ckpt_path is not None:
             logger.info(f"PREVALIDATE_ONLY: trainer.validate with Lightning restore from {resume_ckpt_path}")
             # NOTE: Requires strict checkpoint architecture equivalence if resuming from prior checkpoint
-            trainer.validate(model, dataloaders=val_loaders, ckpt_path=resume_ckpt_path)
+            trainer.validate(model, dataloaders=val_loaders, ckpt_path=resume_ckpt_path, weights_only=False)
         else:
             # NOTE: Weights are already in `model` from get_model_n_ckpt_resume, so this validates
             # them without a second Lightning restore. Architectural changes still need an explicit
@@ -540,7 +561,13 @@ def main(cfg_exp: DictConfig) -> None:
 
     # Train the model with dataloaders
     logger.info("Starting training...")
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loaders, ckpt_path=resume_ckpt_path)
+    trainer.fit(
+        model,
+        train_dataloaders=train_loader,
+        val_dataloaders=val_loaders,
+        ckpt_path=resume_ckpt_path,
+        weights_only=False,
+    )
     # If resume_ckpt_path is None then it creates a new optimizer
 
 

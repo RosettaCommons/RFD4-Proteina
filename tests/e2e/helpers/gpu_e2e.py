@@ -278,6 +278,8 @@ def run_cmd_with_loss_watcher(
     t_err.join()
     _terminate_process_tree(proc.pid)
 
+    assert_no_dataset_fallbacks(stdout_buf.getvalue() + stderr_buf.getvalue())
+
     if fail_error:
         raise AssertionError(
             f"Training loss mismatch — {fail_error}\n"
@@ -288,8 +290,6 @@ def run_cmd_with_loss_watcher(
     assert proc.returncode == 0, (
         f"Training subprocess failed (exit {proc.returncode}):\n" f"{stderr_text or stdout_buf.getvalue()}"
     )
-
-    assert_no_dataset_fallbacks(stdout_buf.getvalue() + stderr_text)
 
     # Confirm the expected number of steps were produced, then check mean deviation.
     losses = parse_train_losses_from_csv_logger(out_dir)

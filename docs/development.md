@@ -311,8 +311,54 @@ from your experiment config. See [sampling transforms](workflow/running.md#sampl
 
 ## Advanced topics
 
-**LoRA finetuning.** Set a positive `lora.r` in the config to enable low rank adaptation, alongside
-`lora_alpha`, `lora_dropout`, `train_bias` and `exclude_keys`. A null `r` means full model training.
+**LoRA finetuning.** Set `lora.r=8` to enable PEFT adapters on the denoiser's
+`to_qkv` and `to_out_node` attention projections. A null rank retains full-model training.
+The base and autoencoder stay frozen. Select other denoiser projections with
+`lora.target_modules`; keep `lora.train_bias=none`. Use `nn.attention_type=torch`
+because fused cuEquivariance attention reads weights directly and bypasses adapters.
+Start with `nn.use_torch_compile=false` while validating a new recipe.
+
+Use a training experiment matching the base checkpoint's architecture and conditioning,
+and pass its released EMA weights via `pretrain_ckpt_path`. For a full training checkpoint,
+the EMA callback weights are selected, matching generation. Base weights load strictly
+before PEFT injection; a new adapter run starts fresh optimizer and EMA state.
+`resume_ckpt_path` restores a full PEFT Lightning checkpoint, including optimizer and EMA
+state, with the same adapter configuration. LoRA uses PEFT exclusively. To migrate a
+loralib checkpoint, merge its adapters with the original implementation and start a new
+PEFT run from that merged base; adapter weights and optimizer state are not interchangeable.
+
+The optimizer is the same as full training: Muon for eligible 2D parameters and Adam
+for non-matrix/excluded parameters, using the existing `opt` configuration. Attention-only
+adapters normally need only Muon. Tune adapter learning rate and `lora_alpha/r` for the
+task; the optimizer family does not imply that dense-training hyperparameters are optimal.
+
+Export an adapter from a completed EMA checkpoint:
+
+```python
+from rfproteina.proteina import Proteina
+from rfproteina.utils.lora import save_lora_adapter
+
+model = Proteina.load_from_checkpoint(
+    "path/to/finetuned-ema.ckpt", map_location="cpu", weights_only=False,
+    load_training_metrics=False,
+)
+save_lora_adapter(model, "adapter")
+```
+
+This writes `adapter_config.json` and `adapter_model.safetensors` using PEFT's
+in-place injection and adapter-state APIs. This follows the adapter workflow used by
+[HF Diffusers](https://huggingface.co/docs/diffusers/training/lora) and
+[BioNeMo ESM2](https://github.com/NVIDIA-BioNeMo/bionemo-framework/tree/main/recipes/esm2_peft_te);
+adapters remain specific to the RFD4 architecture and base weights.
+The export contains the weights currently loaded in the model; a raw training checkpoint
+exports raw adapters. Full Lightning checkpoints remain the training-resume format.
+
+For generation, select the **exact original base/AE checkpoint pair**, then add
+`adapter_path=/absolute/path/to/adapter compile_lengths=null` to `rfd4-generate`.
+Adapter keys and shapes are checked strictly. Base identity cannot be inferred from
+tensor shapes: record the base checkpoint, AE, model config and dataset revision with
+the adapter when sharing it. A downloaded HF repository can be passed as this local
+directory; no Hub publishing or `from_pretrained` model facade is required.
 
 **Flow matching.** Modality specific time distributions control the diffusion schedule, with
 separate parameters for `bb_ca`, the backbone, and `local_latents`, the sidechain. See the

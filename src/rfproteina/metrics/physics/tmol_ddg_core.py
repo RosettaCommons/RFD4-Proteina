@@ -9,30 +9,62 @@ from typing import Any
 import numpy as np
 import tmol.database
 import torch
+from atomworks.constants import STANDARD_AA
+from atomworks.io.utils.atom_array import chain_identifier
+from atomworks.io.utils.ccd import get_chem_comp_type
+from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from biotite.structure import AtomArray, get_residue_starts
 from scipy.spatial import cKDTree
 from tmol.database import ParameterDatabase
-from tmol.io.pose_stack_from_biotite import (
-    BiotitePoseBuildContext,
-    pose_stack_from_biotite,
-)
-from tmol.kinematics.fold_forest import FoldForest
-from tmol.kinematics.move_map import CartesianMoveMap, MoveMap
-from tmol.pack.pack_rotamers import pack_rotamers
-from tmol.pack.packer_task import PackerPalette, PackerTask
-from tmol.pack.rotamer.dunbrack.dunbrack_chi_sampler import create_dunbrack_sampler_from_database
-from tmol.pack.rotamer.fixed_aa_chi_sampler import FixedAAChiSampler
-from tmol.pack.rotamer.include_current_sampler import IncludeCurrentSampler
-from tmol.pose.pose_stack import PoseStack
-from tmol.relax.fast_relax import _default_cart_min_fn, fast_relax
-from tmol.score import beta2016_score_function
-from tmol.score.score_function import ScoreFunction
+from tmol.io import PoseBuildContext, pose_stack_from_biotite
+from tmol.kinematics import CartesianMoveMap, FoldForest, MoveMap
+from tmol.optimization import run_kin_min
+from tmol.pack import PackerPalette, PackerTask, pack_rotamers
+from tmol.pack.rotamer import FixedAAChiSampler, IncludeCurrentSampler
+from tmol.pack.rotamer.dunbrack import create_dunbrack_sampler_from_database
+from tmol.pose import PoseStack
+from tmol.relax import fast_relax
+from tmol.score import ScoreFunction, beta2016_score_function
 
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def prepare_tmol_atom_array(atom_array: AtomArray) -> AtomArray:
+    """Copy chemistry for TMol, retaining the original array for region selections.
+
+    Canonicalize registered annotation aliases for hydrogen placement. Generic
+    peptide labels on standard amino acids take their specific CCD component type;
+    achiral GLY uses its CCD peptide type. Other explicit stereochemical labels
+    and nonstandard components stay unchanged.
+    """
+    prepared = atom_array.copy()
+    categories = set(prepared.get_annotation_categories())
+    for annotation in STANDARD_ANNOTATIONS:
+        if annotation.n_body != 1:
+            continue
+        aliases = categories.intersection(annotation.aliases) - {annotation.full_name}
+        if not aliases:
+            continue
+        value = annotation.annotation(prepared, default="raise")
+        annotation.set_annotation(prepared, value)
+        for alias in aliases:
+            prepared.del_annotation(alias)
+
+    if "chem_comp_type" in categories:
+        types = prepared.chem_comp_type.astype(object)
+        normalized = np.char.upper(np.char.strip(types.astype(str)))
+        generic = normalized == "PEPTIDE LINKING"
+        for name in set(prepared.res_name[generic]).intersection(STANDARD_AA):
+            types[generic & (prepared.res_name == name)] = get_chem_comp_type(name, mode="raise")
+        glycine = (prepared.res_name == "GLY") & (normalized == "L-PEPTIDE LINKING")
+        if np.any(glycine):
+            types[glycine] = get_chem_comp_type("GLY", mode="raise")
+        prepared.set_annotation("chem_comp_type", types.astype(str))
+    return prepared
 
 
 def create_score_function(
@@ -43,7 +75,7 @@ def create_score_function(
 ) -> Any:
     """Create TMol beta2016, or ``beta_soft`` when ``use_soft_rep`` is set.
 
-    ``param_db`` must be the ligand-extended database from a BiotitePoseBuildContext.
+    ``param_db`` must be the ligand-extended database from a PoseBuildContext.
     """
     if param_db is None:
         raise ValueError("param_db is required; use the PoseBuildContext parameter database")
@@ -56,10 +88,15 @@ def create_score_function(
 
 
 def _residue_keys(atom_array: AtomArray, atom_sel: np.ndarray) -> set[tuple[str, int, str]]:
-    """``(chain_id, res_id, ins_code)`` keys for residues with an atom in ``atom_sel``.
+    """``(chain identifier, res_id, ins_code)`` keys for residues in ``atom_sel``.
 
     Keys must be unique globally: pdb_info cannot disambiguate duplicates.
     """
+    effective_chains = chain_identifier(atom_array)
+    if not np.array_equal(effective_chains, atom_array.chain_id):
+        # Match TMol's instance-aware boundaries without changing selection indices.
+        atom_array = atom_array.copy()
+        atom_array.chain_id = effective_chains.copy()
     has_ins_code = "ins_code" in atom_array.get_annotation_categories()
     residue_bounds = get_residue_starts(atom_array, add_exclusive_stop=True)
     all_keys, selected = [], set()
@@ -71,7 +108,7 @@ def _residue_keys(atom_array: AtomArray, atom_sel: np.ndarray) -> set[tuple[str,
             selected.add(key)
     if len(all_keys) != len(set(all_keys)):
         raise ValueError(
-            "AtomArray has residues sharing a (chain_id, res_id, ins_code) key; "
+            "AtomArray has residues sharing a (chain identifier, res_id, ins_code) key; "
             "TMol's pdb_info cannot disambiguate them for block mapping."
         )
     return selected
@@ -146,17 +183,18 @@ def build_pose_and_masks(
     region_a: str | None = None,
     region_b: str | None = None,
     raise_on_dropped_residues: bool = True,
-    context: BiotitePoseBuildContext | None = None,
+    context: PoseBuildContext | None = None,
 ) -> tuple[PoseStack, torch.Tensor, torch.Tensor]:
     """Build a PoseStack and binder/target (or region) block masks.
 
-    Pass a reusable BiotitePoseBuildContext to avoid redoing ligand prep; omit regions to
+    Pass a reusable PoseBuildContext to avoid redoing ligand prep; omit regions to
     infer binder as the chain of interest and target as everything else.
     """
+    chemistry_array = prepare_tmol_atom_array(atom_array)
     if context is not None:
-        pose_stack = pose_stack_from_biotite(atom_array, device, context=context, no_optH=no_opt_h)
+        pose_stack = pose_stack_from_biotite(chemistry_array, device, context=context, no_optH=no_opt_h)
     else:
-        pose_stack = pose_stack_from_biotite(atom_array, device, prepare_ligands=True, no_optH=no_opt_h)
+        pose_stack = pose_stack_from_biotite(chemistry_array, device, prepare_ligands=True, no_optH=no_opt_h)
 
     if region_a is not None and region_b is not None:
         mask_a = region_query_to_block_mask(
@@ -188,6 +226,18 @@ def build_pose_and_masks(
     return pose_stack, mask_a, mask_b
 
 
+def _torsion_minimize(
+    pose_stack: PoseStack,
+    sfxn: ScoreFunction,
+    *,
+    fold_forest: FoldForest,
+    move_map: MoveMap,
+    verbose: bool,
+) -> PoseStack:
+    """Adapt the public torsion minimizer to FastRelax's callback signature."""
+    return run_kin_min(pose_stack, sfxn, fold_forest, move_map, verbose=verbose)
+
+
 def relax_pose_stack(
     pose_stack: PoseStack,
     sfxn: Any,
@@ -201,12 +251,12 @@ def relax_pose_stack(
 
     if cartesian:
         move_map = CartesianMoveMap()  # coord_mask=None -> every atom is free to move.
-        min_fn = _default_cart_min_fn
+        min_fn = None
     else:
         move_map = MoveMap.from_pose_stack(pose_stack)
         move_map.move_all_jumps = True
         move_map.move_all_named_torsions = True
-        min_fn = None  # FastRelax's default is the kinematic (torsion-space) minimizer.
+        min_fn = _torsion_minimize
 
     return fast_relax(pose_stack, sfxn, palette, move_map, fold_forest, min_fn=min_fn, num_repeats=num_repeats)
 
@@ -289,6 +339,7 @@ def relax_shell(pose_stack: PoseStack, sfxn: Any, shell_mask: torch.Tensor, *, n
         move_map,
         fold_forest,
         task_operations=[lambda task: _configure_shell_task(task, shell_mask, None, None)],
+        min_fn=_torsion_minimize,
         num_repeats=num_repeats,
     )
 

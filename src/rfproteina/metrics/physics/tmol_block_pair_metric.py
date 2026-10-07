@@ -13,13 +13,14 @@ from typing import Any, Literal
 import torch
 from atomworks.io.utils.ccd import check_ccd_codes_are_available
 from biotite.structure import AtomArray
-from tmol.io.pose_stack_from_biotite import build_context_from_biotite
+from tmol.io import build_context_from_biotite
 
 from rfproteina.metrics.metric import Metric
 from rfproteina.metrics.physics.tmol_ddg_core import (
     build_pose_and_masks,
     create_score_function,
     pack_shell,
+    prepare_tmol_atom_array,
     region_query_to_block_mask,
     relax_pose_stack,
     relax_shell,
@@ -103,12 +104,11 @@ class TMolBlockPairMetric(Metric):
             return
         # Commit both only on full success so a failed sfxn build cannot leave a half-cached context.
         context = build_context_from_biotite(
-            atom_array,
+            prepare_tmol_atom_array(atom_array),
             self.device,
             prepare_ligands=True,
             strict_ligands=True,
             ligand_params_files=self.ligand_params_files,
-            sample_proton_chi=False,
         )
         sfxn = create_score_function(
             self.device,

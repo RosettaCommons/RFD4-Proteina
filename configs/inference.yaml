@@ -20,6 +20,7 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
 # Regenerate the inference baselines when advancing it; use CLI overrides for one-off checkpoints.
 ckpt_name: chk_epoch_00000169_step_000000340000-ema.ckpt
 ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
+adapter_path: null  # Local PEFT adapter directory; load onto the exact base/AE pair used for fine-tuning.
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).
 # Determines whether to delete structure files for designs that fail this filter

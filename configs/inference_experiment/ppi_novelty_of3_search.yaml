@@ -1,0 +1,40 @@
+# @package _global_
+# Set inputs and metrics.inline_metrics.novelty.archive_dir for one PPI target.
+# AF3_MODEL_DIR must point to converted OF3 weights.
+
+defaults:
+  - inference_on_user_inputs
+  - override /metrics/refolding_oracles: of3
+  - _self_
+
+run_name_: ppi_novelty_of3_search
+metrics_tags: [design, ppi_refolding]
+
+metrics:
+  inline_metrics:
+    novelty:
+      _target_: rfproteina.metrics.foldseek_novelty.FoldseekNoveltyMetric
+      archive_dir: ???
+      required_tags_any: [search_novelty]
+  pass_criteria:
+    ppi:
+      archive_dir: ${metrics.inline_metrics.novelty.archive_dir}
+
+search:
+  n_branch: 2
+  beam_width: 2
+  checkpoints:
+    "20":
+      metrics: [novelty]
+      use_clean_prediction: true
+      rewards:
+        novelty.is_novel: {weight: 1.0}
+      continuation_criteria:
+        novelty.is_novel: {min: 1}
+    "40":
+      metrics: [oracle_ppi]
+      rewards:
+        oracle_ppi.min_ipae_coi: {weight: -1.0}
+      continuation_criteria:
+        # max is inclusive; this is the largest float below 3.5.
+        oracle_ppi.min_ipae_coi: {max: 3.4999999999999996}

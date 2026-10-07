@@ -22,7 +22,7 @@ license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
 ## Requirements
 
 Complete `rfd4-proteina-setup` first. Generation requires a CUDA GPU. Rewards
-using refolding tags also require a configured refolding backend; RFD4-Proteína
+listing refolding oracles also require a configured refolding backend; RFD4-Proteína
 supports AF2, AF3, and OpenFold3 through `metrics/refolding_oracles`. Rewards such
 as `interchain_interactions` do not require a refolding oracle.
 
@@ -51,14 +51,14 @@ If the reward uses refolding, inspect the selected backend before running. AF3 i
 the default; choose AF2 or OpenFold3 with
 `metrics/refolding_oracles=af2` or `metrics/refolding_oracles=of3`. Backend
 capabilities differ by design case, so confirm that the selected config contains
-an oracle activated by the reward tag. See
+the oracle provider explicitly listed by each refolding checkpoint. See
 [references/rewards.md](references/rewards.md), the AF2/AF3 references, and
 rfd4-proteina-setup and the [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
 Use `rfd4-generate` from the Python environment activated during setup.
 Refolding oracles use their separately configured runtimes. IPD users retain
 their existing container launchers.
 
-If a refolding reward fails, verify the selected backend, its tag support, and its
+If a refolding reward fails, verify the selected backend, the checkpoint metric names, and its
 runtime before changing the reward.
 
 ## Step 2 — Run the ready example
@@ -79,128 +79,129 @@ interface H-bond counts and never refolds, so it needs no oracle.
 
 ## Step 3 — Build your own search config
 
-Copy a shipped config and edit it. A search config is a normal
-`inference_experiment` with **one added `search:` block** — a `strategy` and a
-`rewards` model. Full detail: [references/rewards.md](references/rewards.md).
-
-### The reward (`search.rewards`)
-
-The reward is defined **inline** — there is no separate reward file:
+Copy a shipped config and edit its flat `search` block. Each entry under
+`search.checkpoints` specifies its own metrics, reward terms, and scoring source.
+Metric definitions stay under the normal `metrics` configuration.
 
 ```yaml
 search:
-  rewards:
-    reward_metrics_tags: [unconditional_refolding]   # which oracle/metrics fire during scoring
-    weights:
-      oracle.plddt_coi: 1.0                           # metric key -> coefficient (negative to minimize)
-    clip_values:                                      # optional: bound a key before weighting
-      oracle.plddt_coi:
-        min: 50.0
-```
-
-- **`reward_metrics_tags`** — tags selecting which metrics run during scoring,
-  independent of the top-level `metrics_tags`. Refolding tags such as
-  `unconditional_refolding` activate the selected oracle backend when that
-  backend supports the design case. Standard oracle outputs are prefixed
-  **`oracle.`**.
-- **`weights`** — maps each metric output key to a coefficient; the reward is
-  their weighted sum. Use a **negative weight to minimize** a metric. Available
-  oracle keys include `oracle.plddt_coi`, `oracle.iptm_coi`, `oracle.ipae_coi`,
-  `oracle.min_ipae_coi`.
-- **`clip_values`** *(optional)* — per-key `{min, max}` bounds; the value is
-  clipped **before** its weight is applied, so the reward stops responding once
-  the metric passes the bound (the raw metric is still reported). Each clipped
-  key must also appear in `weights`.
-
-### Changing the reward mid-trajectory (`checkpoint_overrides`, optional)
-
-`search.rewards.checkpoint_overrides` makes the reward change as the trajectory
-progresses. Each entry is a **sub-version of the base reward**, keyed by the step
-it takes effect at; anything unspecified is inherited:
-
-```yaml
-search:
-  strategy:
-    step_checkpoints: [0, 20, 40, 50, 60]
-  rewards:
-    reward_metrics_tags: [interchain_interactions]     # cheap, no refolding
-    weights:
-      interchain_interactions.hbond_atom_pair_count_coi: 1.0
-    checkpoint_overrides:
-      60:                                               # final checkpoint only
-        reward_metrics_tags: [unconditional_refolding]  # selected refolding oracle runs now
-        weights:
-          oracle.plddt_coi: 1.0                         # replaces the base weights
-```
-
-- Keys must be one of `step_checkpoints` **past the first** (those are the scored
-  steps); a step never scored at is an error.
-- Every field an override names — `weights`, `clip_values`, `reward_metrics_tags`
-  — **replaces** the base one wholesale; there is no key-by-key merge. Restate
-  every term that should still count at that checkpoint.
-- That is what keeps weights and metrics in sync: a weighted key whose metric no
-  longer fires under the override's tags scores `-inf`; if that drowns every
-  candidate at a checkpoint, the run raises there instead of pruning on nothing.
-- Replacing `weights` while inheriting `clip_values` errors if a clip no longer
-  matches a weighted key — set `clip_values: {}` to clear them.
-- Unlisted checkpoints use the base reward, so existing configs are unaffected.
-
-**Why stage a reward.** Each checkpoint prunes on a rollout of a still-noisy
-state. Early on, only broad features are settled — fold, topology, whether an
-interface forms at all — so ranking on fine details there ranks noise, not
-promise. Matching the reward to what the trajectory has actually committed to by
-each checkpoint (**broad structural features early, finer details late**) can
-raise pass rates substantially, typically a larger effect than the compute saved.
-Placing the oracle deliberately — only where it changes which candidates survive
-— also cuts cost; that is not necessarily the last checkpoint, and mid-trajectory
-or even early placement is worth testing on your problem.
-
-Rewards from different checkpoints are different objectives, so their
-`search.reward` values are not comparable (mind any
-`intermediate_sample_save_criterion` bar on `search.reward`).
-`sm_binder_hbond_search.yaml` ships a worked example.
-
-### The beam strategy (`search.strategy`)
-
-```yaml
-search:
-  strategy:
-    _target_: rfproteina.search.beam_search.BeamSearchStrategy
-    step_checkpoints: [0, 20, 40, 50, 60]       # steps to score + prune at
-    n_branch: 2                                  # candidates spawned per surviving beam (default 4)
-    beam_width: 3                                # candidates kept after each prune (default 4)
-    intermediate_sample_save_criterion:          # optional; omit to return only the final beam
-      _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-      metric_thresholds:
-        search.reward:
-          min: 80.0
+  n_branch: 2
+  beam_width: 3
+  checkpoints:
+    "40":
+      metrics: [interchain_interactions]
+      use_clean_prediction: true
+      rewards:
+        interchain_interactions.hbond_atom_pair_count_coi:
+          weight: 1.0
+          clip: {max: 6.0}
+          normalize_by: 6.0
+    "60":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi: {weight: 1.0}
 generation:
   args:
-    nsteps: 60                                   # released default; MUST equal the last step_checkpoint
+    nsteps: 60
 ```
 
-- **`step_checkpoints`** — the diffusion steps to score and prune at. **Must
-  start at 0, be strictly increasing, and end at `nsteps`.**
-- **`n_branch`** — candidates spawned per surviving beam at each checkpoint
-  (default 4).
-- **`beam_width`** — candidates kept after each prune, i.e. the beam size
-  (default 4).
-- **`intermediate_sample_save_criterion`** *(optional)* — a
-  `PassCriterionMetric` that also saves lost-beam candidates clearing a bar. It
-  sees each candidate's metrics plus its reward under `search.reward`. Omit to
-  return only the final beam.
-- **`generation.args.nsteps` MUST equal the last `step_checkpoint`** — a
-  mismatch errors.
+### Select metrics and reward terms
+
+- `metrics` lists provider names from `metrics.inline_metrics`,
+  `metrics.refolding_oracles`, or `metrics.refolding_metrics`. For a refold
+  comparison, list both the oracle and comparison, e.g.
+  `[oracle, refolded_backbone_rmsd]`. Search does not infer dependencies.
+- `rewards` maps `metric.output` keys to `{weight, clip, normalize_by}` terms.
+  Each term is clipped, divided by a positive `normalize_by`, then multiplied
+  by `weight`. Weight and normalization default to 1; clipping is optional.
+  Negative weights minimize. Pass/fail metrics are not supported as search rewards.
+- Checkpoints are self-contained: omitted `metrics`, `rewards`, and
+  `use_clean_prediction` mean `[]`, `{}`, and `false`. Nothing is inherited
+  from another checkpoint. An empty reward ranks by deterministic input order.
+- Top-level `metrics_tags` controls ordinary output evaluation. Explicit search
+  selection bypasses dataset-selection tags but preserves oracle/refold routing.
+
+Full provider and reward examples: [references/rewards.md](references/rewards.md).
+
+### Choose checkpoints and scoring sources
+
+Configure at least one checkpoint. Keys are positive integer integration steps, executed in sorted order.
+Quote YAML keys to support dotted Hydra overrides, e.g.
+`++search.checkpoints.40.use_clean_prediction=true`. Step zero is implicit;
+keys cannot exceed the actual schedule length, including partial diffusion.
+
+`use_clean_prediction: true` decodes and scores the preceding integration step's
+clean prediction using design metrics only. It skips scoring rollouts and oracles,
+and does not save the prediction. With the default `false`, a separate rollout
+completes the candidate for scoring. Both modes continue selected trajectories
+from their actual intermediate states.
+
+The schedule-end checkpoint (normally `60`) is optional. If present, it must
+score completed structures, and branches and selects using its own reward.
+If omitted, every survivor of the last configured checkpoint finishes once,
+without additional branching or selection, then runs ordinary final metrics.
+These final designs have no final `search.reward`.
+
+`n_branch` is the number of candidates spawned per surviving beam at each
+configured checkpoint; `beam_width` is the number retained per input. Both
+are positive integers and default to 4. A checkpoint's `n_branch` overrides the
+global count for its incoming interval; omitted counts use the global default.
+
+### Stop unpromising inputs
+
+A checkpoint before the schedule end can specify `continuation_criteria`, for
+example `search.reward: {min: 4}`. If any reward-selected candidate passes, keep
+the entire selected beam. Stop the input only if all selected candidates fail;
+passing candidates that lost selection do not count.
+List all raw-metric providers explicitly in that checkpoint's `metrics`.
+Stopped inputs keep saved rollouts; passing inputs continue normally, including
+when the final checkpoint is omitted. See `docs/workflow/search.md` for reductions
+and missing-value behavior.
+
+For novelty, explicitly select `FoldseekNoveltyMetric` and threshold
+`novelty.is_novel: {min: 1}` in continuation criteria. An `archive_dir` on the
+existing final pass criterion publishes passing designed chains; use one shared
+directory per target and pass definition. Publication happens after generation,
+so these passers help later runs or concurrent jobs. Novelty uses exhaustive Foldseek
+search against a cached database, rebuilt when the archive changes. Matches require
+TM-score and coverage thresholds on both chains; see `docs/workflow/search.md`.
+
+### Save completed scoring rollouts
+
+The final beam is always returned. Set `save_rollouts: true` to additionally
+return completed scoring rollouts. Optional `save_criteria` thresholds filter
+those extra outputs using raw metrics or `search.reward`:
+
+```yaml
+search:
+  beam_width: 3
+  n_branch: 2
+  save_rollouts: true
+  save_criteria:
+    search.reward: {min: 80.0}
+  checkpoints:
+    "60":
+      metrics: [oracle]
+      rewards:
+        oracle.plddt_coi: {weight: 1.0}
+```
+
+Every rollout checkpoint must explicitly list the providers required by its
+save criteria. Clean predictions are never saved as completed designs.
+Rewards at different checkpoints can have different scales; compare final-design
+metrics when assessing reward schedules. `sm_binder_hbond_search.yaml` shows
+checkpoint-specific reward terms.
 
 ## Step 4 — Cost and runtime
 
 Search is **much more expensive** than plain generation. Cost scales roughly as:
 
 ```
-oracle calls  ~  beam_width  x  n_branch  x  (number of checkpoints)
+search oracle calls  ~  beam_width  x  n_branch  x  (oracle-scored checkpoints)
 ```
 
-Raise `beam_width`/`n_branch` only as compute allows; add checkpoints only when
+This estimate assumes one refold per scored candidate; final evaluation may add
+refolds if no cached result exists. Raise `beam_width`/`n_branch` only as compute allows; add checkpoints only when
 finer pruning pays off. For a cheap, unguided baseline use **rfd4-proteina-generate**
 (one trajectory per design, no oracle). Full guidance and worked numbers:
 [references/cost.md](references/cost.md).
@@ -226,24 +227,24 @@ Search uses the standard `launch_generate.sh` path so scheduler settings and
 Never submit a job as part of skill validation.
 ## Outputs
 
-Search writes the **final beam** (the surviving top candidates) as annotated
-`.cif` files, plus any **intermediate candidates** saved by
-`intermediate_sample_save_criterion`. Each output is scored by the reward, and
-its metrics land in `per_example_metrics.csv` (the epoch-end metrics loop reuses
-the oracle results cached during scoring, so it is fast). CIF annotations follow
-the same schema as plain generation (see `docs/workflow/running.md` Output Files).
+Search writes the **final beam** as annotated `.cif` files, plus completed scoring
+rollouts retained by `save_rollouts` and `save_criteria`. Output metrics land in
+`per_example_metrics.csv`; final evaluation reuses any cached oracle results.
+If the schedule-end checkpoint is omitted, final designs receive ordinary metrics
+without a final search reward. CIF annotations follow the same schema as plain
+generation (see `docs/workflow/running.md` Output Files).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| Refolding errors or oracle not found | Confirm `metrics/refolding_oracles` selects a backend that supports the reward tag, then verify that backend's runtime. See [references/rewards.md](references/rewards.md), the AF2/AF3 references, rfd4-proteina-setup, and the [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst). |
-| Error about `step_checkpoints` / `nsteps` | `step_checkpoints` must start at 0, be strictly increasing, and end at `nsteps`; set `generation.args.nsteps` to the last checkpoint |
-| Reward not changing / plateaus early | A `clip_values` bound was hit — the metric is clipped before weighting, so it stops contributing past the bound; raise/remove the bound or reweight |
-| Run far slower / more GPU than expected | Cost is `beam_width x n_branch x checkpoints` oracle calls — lower them, or use rfd4-proteina-generate for an unguided baseline. See [references/cost.md](references/cost.md) |
-| Error that an override targets a step the search never scores at | `search.rewards.checkpoint_overrides` keys must be one of `step_checkpoints` *past the first* (step 0 is never scored) |
-| Only final designs returned, no intermediates | Add `intermediate_sample_save_criterion` (a `PassCriterionMetric`) to also keep lost-beam candidates that clear a bar |
-| Hydra `--key value` not applied | All args are `key=value` (Hydra), never `--key value` |
+| Refolding errors or oracle not found | Check that the selected backend defines the checkpoint's named oracle and supports the design case, then verify its runtime. |
+| Checkpoint exceeds schedule length | Use positive step keys no greater than the actual schedule length; omit the end checkpoint to finish survivors without selection. |
+| Reward not changing / plateaus early | Check the term's `clip` bounds and `normalize_by`, then adjust them or its `weight`. |
+| Missing reward or save-criterion output | Explicitly list every required provider in that checkpoint's `metrics`; a refold comparison also needs its oracle. |
+| Run slower than expected | Reduce `beam_width`, `n_branch`, or oracle-scored checkpoints. See [references/cost.md](references/cost.md). |
+| Only final designs returned | Set `save_rollouts: true` and optionally `save_criteria`; clean-prediction checkpoints never save completed scoring rollouts. |
+| Hydra override fails | Use `key=value`. Quote checkpoint keys in YAML; delete unwanted inherited checkpoints with e.g. `'~search.checkpoints.60'`. |
 
 For deeper detail: [rewards](references/rewards.md) ·
 [AF2 oracle](references/af2-oracle.md) · [AF3 oracle](references/af3-oracle.md) ·

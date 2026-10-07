@@ -5,9 +5,11 @@ with `model_1_ptm` and protein complexes with `model_1_multimer_v3`, then
 publishes the standard oracle confidence metrics and caches the refolded CIF.
 
 Enable it through `configs/metrics/refolding_oracles/af2.yaml`. The `oracle`
-entry handles protein refolding tags; `oracle_ppi` templates atoms selected by
+entry handles monomers; `oracle_ppi` templates atoms selected by
 the derived `C_CRD` mask. Inputs containing ligands, nucleic acids, or `UNL`
-are rejected before dispatch.
+are rejected before dispatch. Search checkpoints explicitly list `oracle` or
+`oracle_ppi` in `metrics`; ordinary final evaluation selects them through
+`metrics_tags`.
 
 Optional ColabFold knobs on `AF2Oracle` / manifest (defaults preserve stock AF2):
 
