@@ -11,10 +11,15 @@ Each workflow names one benchmark input. Pointing ``inputs`` at a directory
 would design every structure in it, and ``subset_to_examples`` selects by
 example ID rather than by position, so the script resolves a single file.
 
+``--lengths`` sweeps unconditional design over chain lengths instead, writing
+one de-novo input per length. ``--batch-sizes`` sweeps the batch beside it.
+Every timed run follows a discarded warm-up of the same shape, so neither
+compilation nor graph capture lands in the measurement.
+
 Examples:
     python src/script_utils/benchmark_backends.py
-    python src/script_utils/benchmark_backends.py --workflows monomer,ppi --backends bioir
-    python src/script_utils/benchmark_backends.py --out-dir runs/backends --recycle-strategy thinking_low
+    python src/script_utils/benchmark_backends.py --workflows unconditional --backends bioir
+    python src/script_utils/benchmark_backends.py --lengths 128,256,400,600 --batch-sizes 1,2,4
 """
 
 from __future__ import annotations
@@ -57,6 +62,33 @@ BACKENDS = ("bioir", "torch_compile", "eager")
 _ELAPSED = re.compile(r"(\d+):(\d\d):(\d\d) • ")
 
 
+#: The monomer benchmark inputs are de-novo length specifications rather than
+#: structures: an expandable segment of ``<min>-<max>`` residues with no
+#: coordinates. Rewriting that span is how a sweep asks for an exact length.
+_DENOVO_TEMPLATE = BENCHMARKS / "monomer" / "monomer-short.cif"
+_TEMPLATE_SPAN = "100-100"
+_EXPSEG_PREFIX = "_atom_site.annotation_expseg"
+
+
+def write_denovo_input(length: int, directory: Path) -> Path:
+    """Write an unconditional input asking for a chain of exactly ``length`` residues."""
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"denovo-{length}.cif"
+    span = f"{length}-{length}"
+    lines = []
+    for line in _DENOVO_TEMPLATE.read_text().splitlines():
+        if _TEMPLATE_SPAN in line:
+            line = line.replace(_TEMPLATE_SPAN, span)
+        elif line.startswith(_EXPSEG_PREFIX):
+            field, _, _ = line.partition(" ")
+            line = f"{field}{' ' * max(1, 45 - len(field))}{length}"
+        elif line.startswith("data_") or line.startswith("_entry.id"):
+            line = line.replace("monomer-short", f"denovo-{length}")
+        lines.append(line)
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
 def one_input(relative: str) -> Path:
     """Resolve a workflow's single benchmark structure."""
     path = BENCHMARKS / relative
@@ -79,20 +111,26 @@ def rollout_seconds(log: Path) -> int | None:
     return max(spans) if spans else None
 
 
-def run_one(workflow: str, backend: str, options: argparse.Namespace) -> dict:
-    """Generate one design and time it."""
-    relative, overrides = WORKFLOWS[workflow]
-    out_dir = options.out_dir / f"{workflow}__{backend}"
-    log = options.out_dir / f"{workflow}__{backend}.log"
+def generate(
+    inputs: Path,
+    backend: str,
+    batch: int,
+    out_dir: Path,
+    log: Path,
+    options: argparse.Namespace,
+    overrides: tuple[str, ...],
+) -> tuple[int, float]:
+    """Run one generation, returning its exit status and wall time."""
     command = [
         sys.executable,
         "-m",
         "rfproteina.generate",
-        f"inputs={one_input(relative)}",
+        f"inputs={inputs}",
         f"inference_backend={backend}",
         f"recycle_strategy={options.recycle_strategy}",
         f"seed={options.seed}",
-        "num_replicates=1",
+        f"num_replicates={batch}",
+        f"batch_size={batch}",
         "num_workers=0",
         # A rerun into a populated directory returns the previous designs in
         # seconds, which would read as an extraordinary speedup.
@@ -104,12 +142,43 @@ def run_one(workflow: str, backend: str, options: argparse.Namespace) -> dict:
     started = time.perf_counter()
     with log.open("w") as handle:
         completed = subprocess.run(command, cwd=PROJECT, stdout=handle, stderr=subprocess.STDOUT, check=False)
-    total = time.perf_counter() - started
+    return completed.returncode, time.perf_counter() - started
+
+
+def run_one(case: dict, backend: str, options: argparse.Namespace) -> dict:
+    """Warm one shape, then measure it.
+
+    Compilation and graph capture are paid on first contact with a shape and
+    land on whichever run meets it first, so a cold measurement reports the
+    build rather than the work. The warm-up run is discarded.
+    """
+    workflow, inputs, batch = case["workflow"], Path(case["inputs"]), case["batch"]
+    overrides = WORKFLOWS[workflow][1]
+    stem = f"{case['slug']}__{backend}"
+    out_dir = options.out_dir / stem
+    log = options.out_dir / f"{stem}.log"
+
+    warmup_status = None
+    if options.warmup:
+        warmup_status, _ = generate(
+            inputs,
+            backend,
+            batch,
+            options.out_dir / f"{stem}__warmup",
+            options.out_dir / f"{stem}__warmup.log",
+            options,
+            overrides,
+        )
+    status, total = generate(inputs, backend, batch, out_dir, log, options, overrides)
     designs = [path for path in out_dir.rglob("*.cif*") if "input" not in path.name]
     return {
         "workflow": workflow,
+        "label": case["label"],
+        "length": case["length"],
+        "batch": batch,
         "backend": backend,
-        "returncode": completed.returncode,
+        "returncode": status,
+        "warmup_returncode": warmup_status,
         "total_seconds": round(total, 2),
         "rollout_seconds": rollout_seconds(log),
         "designs": len(designs),
@@ -118,16 +187,16 @@ def run_one(workflow: str, backend: str, options: argparse.Namespace) -> dict:
 
 
 def report(results: list[dict], backends: tuple[str, ...]) -> None:
-    """Print one row per workflow, rollout time first."""
-    by_workflow: dict[str, dict[str, dict]] = {}
+    """Print one row per measured shape, rollout time first."""
+    by_label: dict[str, dict[str, dict]] = {}
     for result in results:
-        by_workflow.setdefault(result["workflow"], {})[result["backend"]] = result
+        by_label.setdefault(result["label"], {})[result["backend"]] = result
 
     baseline = backends[-1]
     columns = "".join(f"{backend:>16}" for backend in backends)
-    print(f"\n{'workflow':<24}{columns}{'speedup':>10}")
+    print(f"\n{'shape':<28}{columns}{'speedup':>10}")
     speedups = []
-    for workflow, runs in by_workflow.items():
+    for label, runs in by_label.items():
         cells = ""
         for backend in backends:
             run = runs.get(backend)
@@ -151,18 +220,19 @@ def report(results: list[dict], backends: tuple[str, ...]) -> None:
         ):
             speedup = slowest["rollout_seconds"] / fastest["rollout_seconds"]
             speedups.append(speedup)
-        print(f"{workflow:<24}{cells}{(f'{speedup:.2f}x' if speedup else '-'):>10}")
+        print(f"{label:<28}{cells}{(f'{speedup:.2f}x' if speedup else '-'):>10}")
 
-    failed = [f"{r['workflow']}/{r['backend']}" for r in results if r["returncode"] != 0]
+    failed = [f"{r['label']}/{r['backend']}" for r in results if r["returncode"] != 0]
     if failed:
         print(f"\nfailed before producing a design: {', '.join(failed)}")
     if speedups:
         ordered = sorted(speedups)
         print(
             f"\n{backends[0]} against {baseline}: median {ordered[len(ordered) // 2]:.2f}x, "
-            f"range {ordered[0]:.2f}x-{ordered[-1]:.2f}x over {len(ordered)} workflows"
+            f"range {ordered[0]:.2f}x-{ordered[-1]:.2f}x over {len(ordered)} shapes"
         )
-    print("\nRollout time excludes checkpoint loading; the progress bar reports whole seconds.")
+    print("\nRollout time excludes checkpoint loading and a discarded warm-up;")
+    print("the progress bar reports whole seconds, so small gaps are quantization.")
 
 
 def main() -> int:
@@ -173,6 +243,18 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--out-dir", type=Path, default=PROJECT / "runs" / "benchmark_backends")
     parser.add_argument(
+        "--lengths",
+        default="",
+        help="comma-separated chain lengths to sweep unconditionally, instead of the benchmark inputs",
+    )
+    parser.add_argument("--batch-sizes", default="1", help="comma-separated batch sizes; one batch per run")
+    parser.add_argument(
+        "--no-warmup",
+        dest="warmup",
+        action="store_false",
+        help="measure the first run of each shape, including compilation and graph capture",
+    )
+    parser.add_argument(
         "--drop-metrics",
         default="",
         help="comma-separated inline metrics to remove, for environments missing their dependencies",
@@ -181,6 +263,8 @@ def main() -> int:
 
     workflows = [name.strip() for name in options.workflows.split(",") if name.strip()]
     backends = tuple(name.strip() for name in options.backends.split(",") if name.strip())
+    lengths = [int(value) for value in options.lengths.split(",") if value.strip()]
+    batches = [int(value) for value in options.batch_sizes.split(",") if value.strip()]
     options.drop_metrics = [name.strip() for name in options.drop_metrics.split(",") if name.strip()]
     unknown = sorted(set(workflows) - set(WORKFLOWS))
     if unknown:
@@ -188,18 +272,55 @@ def main() -> int:
     unsupported = sorted(set(backends) - set(BACKENDS))
     if unsupported:
         raise SystemExit(f"unknown backends {unsupported}; choose from {sorted(BACKENDS)}")
+    if lengths and workflows != ["unconditional"]:
+        raise SystemExit("--lengths sweeps unconditional design; pass --workflows unconditional")
 
     options.out_dir.mkdir(parents=True, exist_ok=True)
+    cases = []
+    for batch in batches:
+        if lengths:
+            for length in lengths:
+                inputs = write_denovo_input(length, options.out_dir / "inputs")
+                cases.append(
+                    {
+                        "workflow": "unconditional",
+                        "inputs": str(inputs),
+                        "length": length,
+                        "batch": batch,
+                        "label": f"N={length} bs={batch}",
+                        "slug": f"n{length}_bs{batch}",
+                    }
+                )
+        else:
+            for workflow in workflows:
+                inputs = one_input(WORKFLOWS[workflow][0])
+                label = workflow if batch == 1 else f"{workflow} bs={batch}"
+                cases.append(
+                    {
+                        "workflow": workflow,
+                        "inputs": str(inputs),
+                        "length": None,
+                        "batch": batch,
+                        "label": label,
+                        "slug": f"{workflow}_bs{batch}",
+                    }
+                )
+
     report_path = options.out_dir / "benchmark_backends.json"
     results: list[dict] = []
-    for workflow in workflows:
+    for case in cases:
         for backend in backends:
-            print(f"==> {workflow} / {backend}", flush=True)
-            result = run_one(workflow, backend, options)
+            print(f"==> {case['label']} / {backend}", flush=True)
+            result = run_one(case, backend, options)
             results.append(result)
             report_path.write_text(json.dumps(results, indent=2) + "\n")
             status = "ok" if result["returncode"] == 0 else f"exit {result['returncode']}"
-            print(f"    {status}, {result['total_seconds']}s total, {result['designs']} design(s)", flush=True)
+            rollout = result["rollout_seconds"]
+            print(
+                f"    {status}, rollout {rollout}s, {result['total_seconds']}s total, "
+                f"{result['designs']} design(s)",
+                flush=True,
+            )
 
     report(results, backends)
     print(f"\nwrote {report_path}")
