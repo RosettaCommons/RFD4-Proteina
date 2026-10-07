@@ -24,6 +24,8 @@ import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from script_utils.benchmark_backends import one_input
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = str(ROOT / "configs")
 BENCHMARKS = ROOT / "data" / "benchmarks"
@@ -132,7 +134,7 @@ def test_guidance_and_trajectory_export_are_refused_rather_than_ignored():
 @pytest.mark.parametrize("workflow", sorted(WORKFLOWS))
 def test_every_covered_workflow_has_a_benchmark_input(workflow: str):
     relative, _ = WORKFLOWS[workflow]
-    assert (BENCHMARKS / relative).exists(), f"{workflow} names a missing benchmark input"
+    assert one_input(relative).is_file(), f"{workflow} names a missing benchmark input"
 
 
 @pytest.mark.parametrize("workflow", sorted(FROM_NOISE))
@@ -204,13 +206,12 @@ def test_covered_workflows_design_through_bioir(workflow: str, tmp_path: Path):
         sys.executable,
         "-m",
         "rfproteina.generate",
-        f"inputs={BENCHMARKS / relative}",
+        f"inputs={one_input(relative)}",
         "inference_backend=bioir",
         "recycle_strategy=thinking_medium",
         "num_replicates=1",
         "num_workers=0",
         "skip_existing=false",
-        "subset_to_examples=[0]",
         "seed=11",
         f"out_dir={out_dir}",
         *overrides,

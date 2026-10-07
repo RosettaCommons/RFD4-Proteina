@@ -13,8 +13,9 @@ example ID rather than by position, so the script resolves a single file.
 
 ``--lengths`` sweeps unconditional design over chain lengths instead, writing
 one de-novo input per length. ``--batch-sizes`` sweeps the batch beside it.
-Every timed run follows a discarded warm-up of the same shape, so neither
-compilation nor graph capture lands in the measurement.
+The discarded run warms persistent compiler caches. Every measured run starts
+a fresh process and repeats graph capture; rollout is whole-second validation
+progress, including formatting and output staging.
 
 Examples:
     python src/script_utils/benchmark_backends.py
@@ -148,9 +149,8 @@ def generate(
 def run_one(case: dict, backend: str, options: argparse.Namespace) -> dict:
     """Warm one shape, then measure it.
 
-    Compilation and graph capture are paid on first contact with a shape and
-    land on whichever run meets it first, so a cold measurement reports the
-    build rather than the work. The warm-up run is discarded.
+    The discarded process warms persistent compiler caches. The measured
+    process reloads the model and repeats graph capture.
     """
     workflow, inputs, batch = case["workflow"], Path(case["inputs"]), case["batch"]
     overrides = WORKFLOWS[workflow][1]
@@ -231,8 +231,8 @@ def report(results: list[dict], backends: tuple[str, ...]) -> None:
             f"\n{backends[0]} against {baseline}: median {ordered[len(ordered) // 2]:.2f}x, "
             f"range {ordered[0]:.2f}x-{ordered[-1]:.2f}x over {len(ordered)} shapes"
         )
-    print("\nRollout time excludes checkpoint loading and a discarded warm-up;")
-    print("the progress bar reports whole seconds, so small gaps are quantization.")
+    print("\nRollout is whole-second validation progress; compiler caches may be warm,")
+    print("but each measured process reloads the model and repeats graph capture.")
 
 
 def main() -> int:

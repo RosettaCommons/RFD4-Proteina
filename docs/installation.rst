@@ -26,7 +26,7 @@ Clone and run setup:
    make setup
 
 This creates ``.venv`` and installs the dependencies declared in ``pyproject.toml``,
-including CUDA metrics and the matching TMol wheel. TMol 0.1.59 uses the
+including CUDA metrics and the matching TMol wheel. TMol 0.1.62 uses the
 pinned Torch 2.13 CUDA 13 wheel; a matching CUDA 12 wheel is not available. It also downloads the two
 released checkpoints (about 8 GB) and configures ``DATA_PATH`` for generation.
 Use ``bash setup.sh --skip-weights`` for an environment-only install.
