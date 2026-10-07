@@ -98,6 +98,15 @@ depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit
 smaller budget is rejected. See [graph cache capacity](../benchmarks/bioir-graph-capacity.md)
 for memory considerations and historical block-level measurements.
 
+To compare backends on your own hardware, `src/script_utils/benchmark_backends.py`
+runs one design per workflow on each backend and reports the rollout time beside
+the total. Read the rollout: loading the checkpoint pair costs tens of seconds
+on every backend alike, so totals understate whichever one samples faster.
+
+```bash
+python src/script_utils/benchmark_backends.py --backends bioir,torch_compile
+```
+
 ## Verbose output
 
 `verbose` controls many info/warning dumps. It defaults to `false` for generation
