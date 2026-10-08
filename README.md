@@ -1,3 +1,10 @@
+> **CONFIDENTIAL — PRE-RELEASE**
+>
+> This repository, its documentation, and its model checkpoints are shared with
+> authorized reviewers only. Please do not redistribute, publish, or discuss
+> their contents publicly before the release is announced. Contact the project
+> team before sharing access with anyone else.
+
 <p align="center">
   <img src="assets/wordmark.svg" width="587" alt="RFD4-Proteína">
 </p>
