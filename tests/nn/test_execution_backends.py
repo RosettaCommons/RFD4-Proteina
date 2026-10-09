@@ -53,6 +53,8 @@ def test_invalid_and_padding_policies():
     assert inference_padding_buckets({"inference": {"flow": "torch_compile"}})[0] == 16
     # BioIR pads inside the trunk; bucketing it here would only enlarge the shape.
     assert inference_padding_buckets(every_component("bioir")) is None
+    bucketed = {"inference": {**every_component("bioir")["inference"], "length_buckets": [448]}}
+    assert inference_padding_buckets(bucketed) is None
 
 
 def test_bioir_is_the_whole_workflow_or_nothing():
@@ -196,6 +198,9 @@ def test_hydra_inference_backend_composition(backend):
     expected = "torch" if backend == "torch_compile" else backend
     assert resolve_backends(cfg.execution, "inference") == dict.fromkeys(("flow", "encoder", "decoder"), expected)
     assert cfg.execution.inference.tri_mult == "cuequivariance"
+    # The default composition configures the compile buckets, which every backend but BioIR pads to.
+    expected_buckets = None if backend == "bioir" else list(cfg.compile_lengths)
+    assert inference_padding_buckets(cfg.execution) == expected_buckets
     with initialize_config_dir(config_dir=configs, version_base=None):
         mixed = compose(
             config_name="inference", overrides=[f"inference_backend={backend}", "execution.inference.decoder=eager"]

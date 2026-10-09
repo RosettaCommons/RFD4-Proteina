@@ -182,15 +182,17 @@ def resolve_backends(config: Mapping, phase: str, *, guidance: bool = False) -> 
 def inference_padding_buckets(config: Mapping, *, guidance: bool = False) -> list[int] | None:
     """Return generation padding sizes: configured buckets, else the sizes the selected backends need.
 
-    Configured buckets apply to every backend. Without them, torch.compile components pad to the
-    next multiple of 16, which bounds static-shape recompilation; eager does not pad; and the BioIR
-    workflow pads inside the trunk, so padding it here only hands its kernels a larger problem than
-    the request asked for.
+    The BioIR workflow pads tokens inside its trunk and takes no buckets, configured or not:
+    padding a request here only hands its kernels a larger problem than the request asked for.
+    Other backends take the configured buckets. Without them, torch.compile components pad to
+    the next multiple of 16, which bounds static-shape recompilation, and eager does not pad.
     """
+    backends = set(resolve_backends(config, "inference", guidance=guidance).values())
+    if backends == {"bioir"}:
+        return None
     buckets = inference_buckets(config)
     if buckets is not None:
         return buckets
-    backends = set(resolve_backends(config, "inference", guidance=guidance).values())
     return ALIGNED_LENGTHS if "torch" in backends else None
 
 
