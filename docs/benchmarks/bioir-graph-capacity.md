@@ -4,7 +4,9 @@ Full-workflow inference (`inference_backend=bioir`) defaults
 `execution.bioir.max_graphs` to `null`: reserve each distinct recycle depth for
 a full batch and a tail, giving 10 slots with `thinking_medium`. Explicit values
 remain actual slot limits and must fit the selected schedule. More lengths or
-batch layouts can cause eviction; retained graphs consume GPU memory.
+batch layouts can cause eviction; retained graphs consume GPU memory. Only
+requests of at most `execution.bioir.cuda_graph_max_tokens` tokens (511 by
+default) are captured; longer ones run the trunk eagerly and retain no graphs.
 
 ## Historical block-level measurements
 

@@ -156,9 +156,10 @@ def resolve_backends(config: Mapping, phase: str, *, guidance: bool = False) -> 
             raise ValueError(f"execution.{name}.tri_mult must be torch or cuequivariance")
     if config.get("inference", {}).get("compile_scope", "blocks") not in ("blocks", "whole_pass"):
         raise ValueError("execution.inference.compile_scope must be blocks or whole_pass")
-    max_graphs = config.get("bioir", {}).get("max_graphs", 1)
-    if max_graphs is not None and (type(max_graphs) is not int or max_graphs < 1):
-        raise ValueError("execution.bioir.max_graphs must be null or a positive integer")
+    for key in ("max_graphs", "cuda_graph_max_tokens"):
+        value = config.get("bioir", {}).get(key)
+        if value is not None and (type(value) is not int or value < 1):
+            raise ValueError(f"execution.bioir.{key} must be null or a positive integer")
     obsolete = {"triangle_backend", "compile_shared_triangles", "flow_prefix_masks"} & set(config.get("bioir", {}))
     if obsolete:
         raise ValueError(f"BioIR selects KF, shared triangles and masking automatically; remove {sorted(obsolete)}")
@@ -183,9 +184,10 @@ def inference_padding_buckets(config: Mapping, *, guidance: bool = False) -> lis
     """Return generation padding sizes: configured buckets, else the sizes the selected backends need.
 
     The BioIR workflow pads tokens inside its trunk and takes no buckets, configured or not:
-    padding a request here only hands its kernels a larger problem than the request asked for.
-    Other backends take the configured buckets. Without them, torch.compile components pad to
-    the next multiple of 16, which bounds static-shape recompilation, and eager does not pad.
+    padding a request here only hands its kernels a larger problem than the request asked for,
+    and can carry it past ``execution.bioir.cuda_graph_max_tokens``. Other backends take the
+    configured buckets. Without them, torch.compile components pad to the next multiple of 16,
+    which bounds static-shape recompilation, and eager does not pad.
     """
     backends = set(resolve_backends(config, "inference", guidance=guidance).values())
     if backends == {"bioir"}:

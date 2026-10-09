@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import weakref
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -31,6 +32,8 @@ def _copy_loaded_states(native: Any) -> dict[str, dict[str, torch.Tensor]]:
 
 #: Model entry points the full workflow calls on the installed BioIR runtime.
 REQUIRED_MODEL_API = ("from_reference_state_dicts", "configure_graphs", "graph_status", "reset_graphs")
+#: Largest request, in tokens, whose velocity trunk is graphed when ``execution.bioir`` does not say.
+DEFAULT_GRAPH_MAX_TOKENS = 511
 
 
 def require_bioir() -> None:
@@ -44,11 +47,18 @@ def require_bioir() -> None:
             "Install that compatible BioIR runtime, or select inference_backend=torch_compile or eager."
         ) from error
     missing = sorted(name for name in REQUIRED_MODEL_API if not callable(getattr(RFProteina, name, None)))
+    if not missing and not _accepts_keyword(RFProteina.configure_graphs, "max_tokens"):
+        missing = ["configure_graphs(max_tokens=)"]
     if missing:
         raise RuntimeError(
             f"The installed BioIR RFProteína is missing {missing}; install the pinned BioIR runtime, "
             "or select inference_backend=torch_compile or eager."
         )
+
+
+def _accepts_keyword(function: Any, name: str) -> bool:
+    parameters = inspect.signature(function).parameters.values()
+    return any(p.name == name or p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters)
 
 
 def load_full_model(
@@ -438,7 +448,10 @@ class FullBioIRAdapter:
         return results
 
     def configure_graphs(self, sampling_config: RFProteinaSamplingConfig) -> None:
-        """Size at the request boundary, retaining upstream routing/static keys."""
+        """Size at the request boundary, retaining upstream routing/static keys.
+
+        Requests longer than ``execution.bioir.cuda_graph_max_tokens`` run the trunk eagerly.
+        """
         if not self.options.get("cuda_graph", True):
             return
         required = 2 * len({depth for _, depth in sampling_config.n_recycle_schedule})
@@ -451,7 +464,8 @@ class FullBioIRAdapter:
         capacity = required if requested is None else requested
         if capacity <= self.graph_capacity:
             return
-        self.model.configure_graphs(capacity=capacity, verify_capture=True)
+        max_tokens = self.options.get("cuda_graph_max_tokens", DEFAULT_GRAPH_MAX_TOKENS)
+        self.model.configure_graphs(capacity=capacity, verify_capture=True, max_tokens=max_tokens)
         self.graph_capacity = capacity
 
 
@@ -505,6 +519,7 @@ def full_bioir_runtime(native: Any) -> dict[str, Any] | None:
         "workflow": "full",
         "graph_scope": "velocity_model",
         "graph_capacity": graphs["capacity"],
+        "graph_max_tokens": adapter.options.get("cuda_graph_max_tokens", DEFAULT_GRAPH_MAX_TOKENS),
         "graph_cache": {key: graphs[key] for key in ("active", "captured", "verified", "fallback")},
         "completed_calls": adapter.completed_calls,
         "rng_mode": adapter.rng_mode,

@@ -73,11 +73,12 @@ def test_guidance_is_refused_rather_than_quietly_downgraded():
         assert resolve_backends(policy, "inference", guidance=True) == resolve_backends(policy, "inference")
 
 
+@pytest.mark.parametrize("key", ["max_graphs", "cuda_graph_max_tokens"])
 @pytest.mark.parametrize("value", [0, -1, True, 1.5, "3"])
-def test_invalid_graph_capacity_is_rejected_before_conversion(value):
-    with pytest.raises(ValueError, match="max_graphs"):
-        resolve_backends({"bioir": {"max_graphs": value}}, "inference")
-    assert resolve_backends({"bioir": {"max_graphs": None}}, "inference")
+def test_invalid_graph_limits_are_rejected_before_conversion(key, value):
+    with pytest.raises(ValueError, match=key):
+        resolve_backends({"bioir": {key: value}}, "inference")
+    assert resolve_backends({"bioir": {key: None}}, "inference")
 
 
 @pytest.mark.parametrize("option", ["triangle_backend", "compile_shared_triangles", "flow_prefix_masks"])
@@ -198,6 +199,7 @@ def test_hydra_inference_backend_composition(backend):
     expected = "torch" if backend == "torch_compile" else backend
     assert resolve_backends(cfg.execution, "inference") == dict.fromkeys(("flow", "encoder", "decoder"), expected)
     assert cfg.execution.inference.tri_mult == "cuequivariance"
+    assert cfg.execution.bioir.cuda_graph and cfg.execution.bioir.cuda_graph_max_tokens == 511
     # The default composition configures the compile buckets, which every backend but BioIR pads to.
     expected_buckets = None if backend == "bioir" else list(cfg.compile_lengths)
     assert inference_padding_buckets(cfg.execution) == expected_buckets

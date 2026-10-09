@@ -148,7 +148,29 @@ def test_graph_capacity_policy_delegates_only_admitted_growth():
     adapter.configure_graphs(policy)
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1), (5, 2), (5, 4), (5, 6)]))
-    assert calls == [{"capacity": 6, "verify_capture": True}, {"capacity": 8, "verify_capture": True}]
+    assert calls == [
+        {"capacity": 6, "verify_capture": True, "max_tokens": 511},
+        {"capacity": 8, "verify_capture": True, "max_tokens": 511},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("options", "max_tokens"),
+    [({}, 511), ({"cuda_graph_max_tokens": 1024}, 1024), ({"cuda_graph_max_tokens": None}, None)],
+    ids=["default-under-512", "explicit", "bioir-limit"],
+)
+def test_graphs_cover_requests_up_to_the_token_limit(options, max_tokens):
+    model = torch.nn.Linear(2, 2)
+    calls = []
+    model.configure_graphs = lambda **kwargs: calls.append(kwargs)
+    adapter = bridge.FullBioIRAdapter(Native(), model)
+    adapter.options = options
+    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
+    assert calls == [{"capacity": 2, "verify_capture": True, "max_tokens": max_tokens}]
+    adapter = bridge.FullBioIRAdapter(Native(), model)
+    adapter.options = {**options, "cuda_graph": False}
+    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
+    assert len(calls) == 1
 
 
 def test_native_predict_dispatch_uses_shared_adapter(monkeypatch):
@@ -247,6 +269,10 @@ def test_old_runtime_rejected_before_native_weight_copy(monkeypatch):
             patch.setattr(RFProteina, name, None)
             with pytest.raises(RuntimeError, match=f"missing \\['{name}'\\]"):
                 bridge.load_full_model(object(), sampling_config=None, device=torch.device("cpu"), options={})
+    with monkeypatch.context() as patch:
+        patch.setattr(RFProteina, "configure_graphs", lambda self, *, capacity=1, verify_capture=False: None)
+        with pytest.raises(RuntimeError, match=r"missing \['configure_graphs\(max_tokens=\)'\]"):
+            bridge.load_full_model(object(), sampling_config=None, device=torch.device("cpu"), options={})
 
 
 def test_loader_passes_selected_weights_and_native_policy_to_public_factory(monkeypatch):

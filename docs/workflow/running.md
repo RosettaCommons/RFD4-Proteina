@@ -89,14 +89,21 @@ validation.
 
 It also takes no padding buckets. Token padding lives in the trunk and is on by
 default, so bucketing a request before it arrives only enlarges the problem the
-kernels are given. BioIR therefore ignores `execution.inference.length_buckets`,
-which defaults to the compile buckets for the other backends.
+kernels are given, and can push it past the CUDA-graph token limit below. BioIR
+therefore ignores `execution.inference.length_buckets`, which defaults to the
+compile buckets for the other backends.
 
 Leave `execution.bioir.attention_backend=null` and `execution.bioir.max_graphs=null`
 for automatic full-workflow defaults. The graph budget reserves each recycle
 depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit
 smaller budget is rejected. See [graph cache capacity](../benchmarks/bioir-graph-capacity.md)
 for memory considerations and historical block-level measurements.
+
+Graphs cover requests of at most `execution.bioir.cuda_graph_max_tokens` tokens: 511
+by default, so designs under 512 tokens. Longer requests run the velocity trunk
+eagerly, because every graph slot keeps static buffers that grow with the square of
+the token count. Set the limit to `null` for BioIR's own, or set
+`execution.bioir.cuda_graph=false` to run without graphs.
 
 To compare backends on your own hardware, `src/script_utils/benchmark_backends.py`
 runs one design per workflow on each backend and reports the rollout time beside

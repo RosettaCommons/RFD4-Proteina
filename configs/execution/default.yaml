@@ -12,5 +12,7 @@ bioir:
   # Null selects BioIR's own attention default.
   attention_backend: null
   cuda_graph: true
+  # Graph requests under 512 tokens; longer ones run the trunk eagerly. Null keeps BioIR's own limit.
+  cuda_graph_max_tokens: 511
   # Null retains each recycling depth for a full batch and tail; an explicit value means actual slots.
   max_graphs: null
