@@ -4,6 +4,8 @@
 > authorized reviewers only. Please do not redistribute, publish, or discuss
 > their contents publicly before the release is announced. Contact the project
 > team before sharing access with anyone else.
+>
+> RFD4 Copyright 2026 University of Washington. All rights reserved. Permission is granted to external evaluators including NIST to solely perform a biosecurity review of RFD4 and share its findings with UW
 
 <p align="center">
   <img src="assets/wordmark.svg" width="587" alt="RFD4-Proteína">
