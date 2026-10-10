@@ -27,6 +27,7 @@ from lightning_utilities import apply_to_collection
 from omegaconf import DictConfig, OmegaConf
 from rich.panel import Panel
 from torch import Tensor
+from torch.utils._pytree import tree_map
 
 from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
@@ -63,7 +64,7 @@ from rfproteina.utils.optim_utils import backward_with_accumulation, build_optim
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.structure_files import find_structure_file
-from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
+from rfproteina.utils.torch_compile import compiled_with_cudagraphs, maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -466,7 +467,15 @@ class Proteina(L.LightningModule):
     ) -> dict[str, torch.Tensor]:
         """Run the trunk at the requested recycle depth."""
         batch["n_recycle"] = n_recycle
-        return self.nn(batch)
+        cudagraphs = compiled_with_cudagraphs(self.nn)
+        if cudagraphs:
+            # Each trunk call is one cudagraph-tree execution; the recycle depth varies per step.
+            maybe_mark_cudagraph_step_begin(end_execution=True)
+        out = self.nn(batch)
+        if cudagraphs:
+            # Graph outputs live in the tree's pool and are overwritten by the next replay.
+            out = tree_map(lambda t: t.clone() if isinstance(t, torch.Tensor) else t, out)
+        return out
 
     def predict_for_sampling(
         self,
