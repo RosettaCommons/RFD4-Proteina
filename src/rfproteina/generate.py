@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import warnings
+from collections.abc import Mapping
 from contextlib import nullcontext
 from functools import partial
 from os import PathLike
@@ -345,6 +346,40 @@ def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
     return inference_state_dict(raw_ckpt, ckpt_file)
 
 
+# Network settings that may change after training without touching the weights (`nn` in configs/inference.yaml).
+INFERENCE_NN_OVERRIDES = ("torch_compile_mode", "torch_compile_fullgraph", "tri_mult_backend", "attention_type")
+
+
+def _inference_cfg_exp(ckpt_file: str, nn_overrides: Mapping[str, Any]) -> DictConfig | None:
+    """The checkpoint's experiment config with the inference-time ``nn`` overrides applied.
+
+    ``rfd4-generate`` rebuilds the architecture from the checkpoint's own hparams, so the torch.compile
+    mode or the triangle-multiplication backend can only change through this merge. ``None`` values keep
+    the checkpoint's setting; returns ``None`` when nothing changes, so the checkpoint is not read twice.
+
+    Raises:
+        ValueError: If a key outside :data:`INFERENCE_NN_OVERRIDES` is requested.
+    """
+    overrides = {key: value for key, value in nn_overrides.items() if value is not None}
+    if not overrides:
+        return None
+    unknown = sorted(set(overrides) - set(INFERENCE_NN_OVERRIDES))
+    if unknown:
+        raise ValueError(
+            f"nn.{unknown[0]} cannot change at inference; the overridable settings are "
+            + ", ".join(INFERENCE_NN_OVERRIDES)
+        )
+    hparams = torch.load(ckpt_file, map_location="cpu", weights_only=False, mmap=True)["hyper_parameters"]
+    cfg_exp = hparams["cfg_exp"]
+    if not OmegaConf.is_config(cfg_exp):
+        cfg_exp = OmegaConf.create(cfg_exp)
+    with open_dict(cfg_exp.nn):
+        for key, value in overrides.items():
+            cfg_exp.nn[key] = value
+    logger.info(f"Inference nn overrides: {overrides}")
+    return cfg_exp
+
+
 def _adopt_train_path_length_search_cutoff(cfg: DictConfig, cfg_exp: DictConfig) -> None:
     """Inherit a shared training cutoff unless inference explicitly specifies its own."""
     transform_cfg = OmegaConf.select(cfg, "generation.dataset.transform", default=None)
@@ -381,9 +416,9 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_file}")
     logger.info(f"Loading checkpoint: {ckpt_file}")
 
-    # strict=True: the architecture is rebuilt from the checkpoint's own saved hparams, so any
-    # missing/unexpected key means the code has drifted from what produced these weights. Loading
-    # a partially-initialized model would silently produce garbage designs.
+    # strict=True: the architecture is rebuilt from the checkpoint's own saved hparams (plus the inference-time
+    # nn overrides), so any missing/unexpected key means the code has drifted from what produced these weights.
+    cfg_exp = _inference_cfg_exp(ckpt_file, cfg.get("nn") or {})
     model = Proteina.load_from_checkpoint(
         ckpt_file,
         strict=True,
@@ -391,6 +426,7 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         load_training_metrics=False,
         weights_only=False,
         map_location="cpu",
+        **({} if cfg_exp is None else {"cfg_exp": cfg_exp}),
     )
 
     if cfg.ckpt_name.endswith("-ema.ckpt"):

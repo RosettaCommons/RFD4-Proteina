@@ -33,6 +33,14 @@ num_replicates: 1 # Number of times to replicate each example
 # Token counts to pad batches to for torch.compile. Multiples of 16; null disables.
 compile_lengths: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
 
+# Network settings that may change after training without touching the weights; null keeps the checkpoint's
+# value. Example: nn.torch_compile_mode=reduce-overhead nn.tri_mult_backend=cuequivariance
+nn:
+  torch_compile_mode: null
+  torch_compile_fullgraph: null
+  tri_mult_backend: null
+  attention_type: null
+
 precision: bf16-mixed
 
 batch_size: 1

@@ -299,6 +299,20 @@ The four you almost always set. Their defaults are rarely what you want for a re
 | `generation.args.nsteps` | Number of model evaluations. The default schedule places twice the step density in the final 20% of each modality's clock. | 60 |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N steps, 0 to turn it off | 0 |
 
+### Compilation and kernels
+
+`compile_lengths` decides whether the trunk blocks run compiled. The `nn.*` settings below belong to the
+saved network but may change after training without touching the weights; `null` keeps the checkpoint's
+value, and any other `nn.*` key is rejected.
+
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `compile_lengths` | Token counts (multiples of 16) that inputs are padded to so the compiled trunk sees static shapes. `null` runs the trunk eagerly. | 15 buckets from 128 to 1024 |
+| `nn.torch_compile_mode` | `torch.compile` mode of the trunk blocks. `reduce-overhead` replays CUDA graphs: the sampler restarts the graph tree before every trunk call, so the varying recycle depth replays recorded graphs instead of re-recording them. It pays off where a step is host-bound (short sequences, small batches). | null (checkpoint: default mode) |
+| `nn.torch_compile_fullgraph` | Whether each trunk block must compile as a single graph; `false` lets a block split at graph breaks. | null (released checkpoint: single graph per block) |
+| `nn.tri_mult_backend` | `torch` or `cuequivariance` triangle multiplication. The cuEquivariance kernel runs inside the compiled trunk for the shapes it supports; unsupported shapes warn once and run the `torch` formula, as does an eager trunk (`compile_lengths=null`). | null (released checkpoint: `torch`) |
+| `nn.attention_type` | `torch` (SDPA) or `cuequivariance` pair-biased attention. | null (released checkpoint: `torch`) |
+
 ### Metric guidance
 
 [Metric guidance](metric-guidance.md) backpropagates a differentiable metric and is currently wired
