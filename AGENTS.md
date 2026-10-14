@@ -94,6 +94,13 @@ make -C docs html
 
 Treat Sphinx warnings, broken references, and failed autodoc imports as failures to investigate.
 
+## Container deployment
+
+The root Dockerfile builds `runtime` (CLI) and `api` (default, persistent GPU HTTP server).
+Portable serving code and CPU-only tests live under `deploy/api/`; manifests under
+`deploy/kubernetes/` use standard GPU resources and the cluster default StorageClass.
+See `deploy/README.md`. Keep cloud-specific provisioning and overlays in provider recipes.
+
 ## Main entry points and configuration
 
 Most public workflows are Hydra applications. Their CLI arguments use Hydra override syntax (`key=value`, `group=choice`, `+new_key=value` when appropriate). External evaluation is an `argparse` CLI.

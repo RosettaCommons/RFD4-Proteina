@@ -1,7 +1,28 @@
-# This dependency image only COPYs these two manifests. Before this file was
-# added, Docker sent the entire repository as build context.
-**
-!pyproject.toml
-!lib/
-!lib/atomworks/
-!lib/atomworks/pyproject.toml
+# Exclude private configuration and generated data from the source image.
+.git
+.ipd
+.venv
+.env
+.env.*
+**/.env
+**/.env.*
+**/.user_info*
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.ckpt
+**/*.pt
+**/*.sif
+**/*.log
+**/*.tmp
+data_path
+model_weights
+build
+dist
+runs
+outputs
+store
+results
+hydra_outputs
+docs/_build
+website

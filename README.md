@@ -46,6 +46,11 @@ Setup installs the environment, downloads the released flow and autoencoder chec
 [installation guide](https://rosettacommons.github.io/RFD4-Proteina/installation.html)
 for CUDA build prerequisites, optional metrics, and cluster setup.
 
+## Container and Kubernetes deployment
+
+Build a persistent GPU API with the root [Dockerfile](Dockerfile), then run it
+locally or on Kubernetes using the [portable deployment guide](deploy/README.md).
+
 ## Run the model
 
 After setup, generate a design from the included [example input](data/benchmarks/monomer/monomer-short.cif):
