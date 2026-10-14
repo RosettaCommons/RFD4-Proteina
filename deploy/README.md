@@ -17,7 +17,6 @@ docker build --platform linux/amd64 --target api -t rfd4-api:local .
 
 The root Dockerfile has two targets: `runtime` provides the existing model CLI,
 and `api` adds FastAPI/Uvicorn on port 8000. The default target is `api`.
-Building requires internet access, substantial disk space, and no GPU.
 Dependencies come from `pyproject.toml`; checkpoints are downloaded at first startup,
 not embedded in the image. Follow the repository's access and license terms.
 
