@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv build-essential curl ca-certificates \
+    python3 python3-dev python3-pip python3-venv build-essential curl ca-certificates \
     libxrender1 libx11-6 libxext6 && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:/usr/local/nvidia/bin:${PATH}
@@ -21,7 +21,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-sources --build-constraint /tmp/build-constraints.txt \
       --torch-backend cu132 '.[metrics-cuda13]' && \
     uv pip check && rm /tmp/build-constraints.txt
-RUN python -c 'import torch, atomworks, rfd4_proteina; assert torch.version.cuda == "13.2"' && \
+RUN TORCHINDUCTOR_CACHE_DIR=/tmp/rfd4-build-compile python -c \
+    'import torch, atomworks, rfd4_proteina; assert torch.version.cuda == "13.2"; x = torch.ones(8); torch.testing.assert_close(torch.compile(lambda t: t.sin() + 1, backend="inductor", fullgraph=True)(x), x.sin() + 1)' && \
+    rm -rf /tmp/rfd4-build-compile && \
     rfd4-generate --help
 RUN mkdir -p /workspace/models
 WORKDIR /workspace
