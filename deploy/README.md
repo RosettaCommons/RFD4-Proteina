@@ -1,7 +1,6 @@
 # Run the protein-design API
 
 These assets run on Linux x86_64 with an NVIDIA GPU, using Docker or Kubernetes.
-They have no cloud SDK, object-storage, service-account, or cloud-specific node-label dependency.
 Use the repository's [tested GPUs](../docs/installation.rst#supported-hardware).
 An A100 40 GB was validated for 100-residue examples with the earlier runtime;
 profile memory for larger inputs. The image follows this checkout's PyTorch/CUDA dependencies.
