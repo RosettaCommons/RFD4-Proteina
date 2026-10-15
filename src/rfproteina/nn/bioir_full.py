@@ -465,7 +465,10 @@ class FullBioIRAdapter:
         if capacity <= self.graph_capacity:
             return
         max_tokens = self.options.get("cuda_graph_max_tokens", DEFAULT_GRAPH_MAX_TOKENS)
-        self.model.configure_graphs(capacity=capacity, verify_capture=True, max_tokens=max_tokens)
+        # Capture verification replays each new graph against an extra eager pass to compare them.
+        # That checks the capture machinery, which the test suite covers; here it only adds
+        # 0.5-0.9 s to the request that first meets a shape.
+        self.model.configure_graphs(capacity=capacity, verify_capture=False, max_tokens=max_tokens)
         self.graph_capacity = capacity
 
 

@@ -149,8 +149,8 @@ def test_graph_capacity_policy_delegates_only_admitted_growth():
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1), (5, 2), (5, 4), (5, 6)]))
     assert calls == [
-        {"capacity": 6, "verify_capture": True, "max_tokens": 511},
-        {"capacity": 8, "verify_capture": True, "max_tokens": 511},
+        {"capacity": 6, "verify_capture": False, "max_tokens": 511},
+        {"capacity": 8, "verify_capture": False, "max_tokens": 511},
     ]
 
 
@@ -166,7 +166,7 @@ def test_graphs_cover_requests_up_to_the_token_limit(options, max_tokens):
     adapter = bridge.FullBioIRAdapter(Native(), model)
     adapter.options = options
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
-    assert calls == [{"capacity": 2, "verify_capture": True, "max_tokens": max_tokens}]
+    assert calls == [{"capacity": 2, "verify_capture": False, "max_tokens": max_tokens}]
     adapter = bridge.FullBioIRAdapter(Native(), model)
     adapter.options = {**options, "cuda_graph": False}
     adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
