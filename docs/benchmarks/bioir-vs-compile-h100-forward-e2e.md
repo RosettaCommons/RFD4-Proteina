@@ -101,6 +101,38 @@ backend's kernels touch, so it dilutes every ratio. Quote the forward column for
 kernel claims and the e2e column for request-latency claims, and do not mix them
 in one figure.
 
+## Reproducing
+
+From the repository root, with the environment from `make setup` and `DATA_PATH`
+pointing at the released checkpoint pair:
+
+```bash
+source .venv/bin/activate
+CUTEDSL_FORCE_CUBIN=1 python src/script_utils/benchmark_backends.py \
+  --workflows unconditional \
+  --lengths 128,160,192,256,320,384,400 \
+  --batch-sizes 1,2,4 \
+  --backends bioir,torch_compile \
+  --designs 3 \
+  --out-dir runs/benchmark_backends
+```
+
+42 cells, about 70 minutes on this part. `CUTEDSL_FORCE_CUBIN=1` makes BioIR use
+its precompiled CUBINs rather than JIT-compiling them, so a cold kernel cache
+cannot be mistaken for a slow kernel; the measured difference against a warm JIT
+cache was under 2%.
+
+The driver prints the per-batch table, the per-shape design-1-against-steady
+check, and writes every timed design to
+`runs/benchmark_backends/benchmark_backends.json`, which is what the two figures
+above are plotted from. `--designs 3` is what makes the reported figure a median
+of batches 2+; `--no-device-warmup` returns the one-time CUDA context and
+BLAS/DNN setup to the timed region.
+
+The published numbers came from two invocations of this command -- lengths
+`128,400` and then `160,192,256,320,384` -- in one session on one idle GPU, not
+from a single run. A single run of the command above covers the same 42 cells.
+
 ## Limits
 
 Design 1 of each cell is excluded from the medians and reported separately by
