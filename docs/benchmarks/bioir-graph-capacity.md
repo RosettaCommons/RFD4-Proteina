@@ -1,10 +1,13 @@
 # BioIR graph cache capacity
 
 Full-workflow inference (`inference_backend=bioir`) defaults
-`execution.bioir.max_graphs` to `null`: reserve each distinct recycle depth for
-a full batch and a tail, giving 10 slots with `thinking_medium`. Explicit values
-remain actual slot limits and must fit the selected schedule. More lengths or
-batch layouts can cause eviction; retained graphs consume GPU memory. Only
+`execution.bioir.max_graphs` to `null`: two slots, for a full batch and the
+singleton tail a replica count can leave. BioIR captures the trunk's recycle
+step rather than a whole forward, so a slot covers one `(batch, tokens)` shape
+whatever recycle depths the schedule uses, and recapturing an evicted shape
+records a single trunk pass. Explicit values remain actual slot limits. More
+lengths or batch layouts can cause eviction; retained graphs consume GPU
+memory, which is what bounds the budget. Only
 requests of at most `execution.bioir.cuda_graph_max_tokens` tokens (511 by
 default) are captured; longer ones run the trunk eagerly and retain no graphs.
 

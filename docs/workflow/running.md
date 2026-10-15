@@ -94,9 +94,11 @@ therefore ignores `execution.inference.length_buckets`, which defaults to the
 compile buckets for the other backends.
 
 Leave `execution.bioir.attention_backend=null` and `execution.bioir.max_graphs=null`
-for automatic full-workflow defaults. The graph budget reserves each recycle
-depth for a full batch and a tail (10 slots with `thinking_medium`); an explicit
-smaller budget is rejected. See [graph cache capacity](../benchmarks/bioir-graph-capacity.md)
+for automatic full-workflow defaults. BioIR captures the trunk's recycle step, so
+one slot covers one `(batch, tokens)` shape whatever recycle depths the schedule
+asks for, and the budget reserves two: a full batch and the singleton tail a
+replica count can leave. Serving several lengths from one process wants more.
+A budget below two is rejected. See [graph cache capacity](../benchmarks/bioir-graph-capacity.md)
 for memory considerations and historical block-level measurements.
 
 Graphs cover requests of at most `execution.bioir.cuda_graph_max_tokens` tokens: 511

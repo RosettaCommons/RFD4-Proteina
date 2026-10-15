@@ -133,25 +133,26 @@ def test_cli_global_batch_stream_continues_after_bioir_fork():
 
 
 def test_graph_capacity_policy_delegates_only_admitted_growth():
+    """A slot covers a shape, not a recycle depth, so the schedule no longer sizes the cache."""
     native = Native()
     model = torch.nn.Linear(2, 2)
     adapter = bridge.FullBioIRAdapter(native, model)
-    adapter.options = {"max_graphs": 3}
-    policy = SimpleNamespace(n_recycle_schedule=[(5, 1), (5, 2), (5, 4)])
-    with pytest.raises(ValueError, match="at least 6 graph slots"):
-        adapter.configure_graphs(policy)
+    adapter.options = {"max_graphs": 1}
+    with pytest.raises(ValueError, match="at least 2 graph slots"):
+        adapter.configure_graphs()
     assert adapter.graph_capacity == 0
     calls = []
     model.configure_graphs = lambda **kwargs: calls.append(kwargs)
     adapter.options = {}
-    adapter.configure_graphs(policy)
-    adapter.configure_graphs(policy)
-    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
-    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1), (5, 2), (5, 4), (5, 6)]))
-    assert calls == [
-        {"capacity": 6, "verify_capture": False, "max_tokens": 511},
-        {"capacity": 8, "verify_capture": False, "max_tokens": 511},
-    ]
+    adapter.configure_graphs()
+    adapter.configure_graphs()
+    assert calls == [{"capacity": 2, "verify_capture": False, "max_tokens": 511}], "configured once"
+
+    grown = bridge.FullBioIRAdapter(Native(), model)
+    grown.options = {"max_graphs": 6}
+    calls.clear()
+    grown.configure_graphs()
+    assert calls == [{"capacity": 6, "verify_capture": False, "max_tokens": 511}]
 
 
 @pytest.mark.parametrize(
@@ -165,11 +166,11 @@ def test_graphs_cover_requests_up_to_the_token_limit(options, max_tokens):
     model.configure_graphs = lambda **kwargs: calls.append(kwargs)
     adapter = bridge.FullBioIRAdapter(Native(), model)
     adapter.options = options
-    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
+    adapter.configure_graphs()
     assert calls == [{"capacity": 2, "verify_capture": False, "max_tokens": max_tokens}]
     adapter = bridge.FullBioIRAdapter(Native(), model)
     adapter.options = {**options, "cuda_graph": False}
-    adapter.configure_graphs(SimpleNamespace(n_recycle_schedule=[(5, 1)]))
+    adapter.configure_graphs()
     assert len(calls) == 1
 
 

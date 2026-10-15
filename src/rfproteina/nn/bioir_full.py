@@ -402,7 +402,7 @@ class FullBioIRAdapter:
         from rfproteina.utils.sample_rng import sample_rng_active
 
         config = sampling_from_native(self.native)
-        self.configure_graphs(config)
+        self.configure_graphs()
         self.rng_mode = "independent_rows" if sample_rng_active() else "global_batched_stream"
         self.model.config.sampling = self.model.sampler.config = config
         self.last_policy = config.model_dump()
@@ -447,19 +447,22 @@ class FullBioIRAdapter:
         self.used_native_row_rng = self.rng_mode == "independent_rows"
         return results
 
-    def configure_graphs(self, sampling_config: RFProteinaSamplingConfig) -> None:
-        """Size at the request boundary, retaining upstream routing/static keys.
+    def configure_graphs(self) -> None:
+        """Size the trunk's graph cache at the request boundary.
 
         Requests longer than ``execution.bioir.cuda_graph_max_tokens`` run the trunk eagerly.
         """
         if not self.options.get("cuda_graph", True):
             return
-        required = 2 * len({depth for _, depth in sampling_config.n_recycle_schedule})
+        # BioIR captures the trunk's recycle step, so a slot covers one ``(batch, tokens)`` shape
+        # whatever depths the schedule asks for: a request needs its full batch and the singleton
+        # tail a replica count can leave. Serving several lengths at once wants more.
+        required = 2
         requested = self.options.get("max_graphs")
         if requested is not None and requested < required:
             raise ValueError(
-                f"Full BioIR needs at least {required} graph slots for this recycling schedule "
-                "and a singleton tail; increase execution.bioir.max_graphs or leave it null for automatic sizing"
+                f"Full BioIR needs at least {required} graph slots, for a full batch and its "
+                "singleton tail; raise execution.bioir.max_graphs or leave it null for automatic sizing"
             )
         capacity = required if requested is None else requested
         if capacity <= self.graph_capacity:
