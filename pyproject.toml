@@ -63,10 +63,10 @@ docs = [
 ]
 # Select the metrics dependencies matching the CUDA stack.
 metrics-cuda12 = [
-    "cuequivariance>=0.13.0,<0.14; sys_platform == 'linux'",
-    "cuequivariance-torch>=0.13.0,<0.14; sys_platform == 'linux'",
-    "cuequivariance-ops-cu12>=0.13.0,<0.14; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu12>=0.13.0,<0.14; sys_platform == 'linux'",
+    "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
 ]
 metrics-cuda13 = [
     # PyTorch's CuTe RMSNorm kernels require both CUTLASS DSL and TVM FFI.
