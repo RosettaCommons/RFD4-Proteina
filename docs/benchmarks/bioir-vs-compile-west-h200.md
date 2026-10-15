@@ -11,4 +11,11 @@ Unconditional generation with the released final checkpoints on one H200 (CoreWe
 | 400 | 1 | 6 s | 10 s | 1.67× | 52.93 s | 54.88 s | 1.04× |
 | 400 | 4 | 18 s | 25 s | 1.39× | 66.18 s | 72.31 s | 1.09× |
 
+**The driver no longer measures this way.** It now times every design at
+`predict_step` and reports the model forward beside end to end, as the median of
+batches 2+, so the rollout columns below have no current equivalent and these
+figures cannot be compared against a new run. See
+[the H100 forward/e2e comparison](bioir-vs-compile-h100-forward-e2e.md); the
+numbers here stand as measured on H200 and were not relabelled.
+
 Rollout times come from whole-second native progress readings and include output staging. Process times include model loading and graph capture; these are fresh-process measurements, not steady service latency. One measured run per cell provides no variance estimate. The same public-source benchmark driver is [`benchmark_backends.py`](../../src/script_utils/benchmark_backends.py); the measured source revision was `0f9e649e0be8bcb6303a99d6c2a41017a7e1edfd`. This completed subset covers lengths 256/400 and batches 1/4 only.
