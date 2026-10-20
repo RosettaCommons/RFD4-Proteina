@@ -14,7 +14,7 @@ including the 147-class autoencoder, wide recycle conditioning and the checkpoin
 into the base weights when the model loads).
 
 BioIR runs feature representations, sampling and the autoencoder; input parsing, structure
-formatting, metrics and reward adapters stay native. It needs `bionemo-ir` 0.2.0rc0 or later, which provides
+formatting, metrics and reward adapters stay native. It needs `bionemo-ir` 0.2.0rc3 or later, which provides
 the RFProteína model (`graph_status`, `reset_graphs`, `configure_graphs`); older runtimes are rejected before
 anything is converted. It is available from `rfd4-generate`, not from training-time
 validation. These options are rejected when BioIR is selected, instead of being ignored: gradient or

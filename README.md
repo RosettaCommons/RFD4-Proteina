@@ -142,7 +142,7 @@ Training datasets are separate from model downloads: see the
 - **Reward-guided search:** select a search `inference_experiment` config to branch and prune candidates against an oracle; see [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html).
 - **Partial diffusion:** re-noise and refine an existing design; see [Partial diffusion](https://rosettacommons.github.io/RFD4-Proteina/workflow/partial-diffusion.html).
 - **Scoring and refolding:** run `rfd4-evaluate` on generated structures; see [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html).
-- **Inference backends:** `eager`, `torch_compile` (default) or `bioir`; see [Inference backends](https://rosettacommons.github.io/RFD4-Proteina/workflow/backends.html).
+- **Inference backends:** `native` (default, compiled or eager) or `bioir` via `inference_backend=`; see [Inference backends](https://rosettacommons.github.io/RFD4-Proteina/workflow/backends.html).
 
 ## Tutorials
 
