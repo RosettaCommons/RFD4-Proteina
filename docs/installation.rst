@@ -51,7 +51,7 @@ Clone and run setup:
 
 .. code-block:: bash
 
-   git clone https://github.com/RosettaCommons/RFD4-Proteina.git
+   git clone --depth 1 https://github.com/RosettaCommons/RFD4-Proteina.git
    cd RFD4-Proteina
    make setup
 

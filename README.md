@@ -32,6 +32,10 @@ make setup
 source .venv/bin/activate
 ```
 
+The repository history is large because of past notebook outputs. For a fast clone use
+`git clone --depth 1` (no history) or `git clone --filter=blob:none` (full history, blobs fetched on demand).
+Notebooks are committed without outputs; run `pre-commit install` to enforce this with `nbstripout`.
+
 Setup installs the environment, caches the released Hugging Face model bundle
 (about 1.7 GB, including its autoencoder), and configures `DATA_PATH` for optional data.
 The cache location follows `HF_HOME`. See the
