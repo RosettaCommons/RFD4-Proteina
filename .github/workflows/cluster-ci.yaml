@@ -2,9 +2,9 @@ name: Cluster CI
 
 # Maintainers only. Runs the CPU and GPU test lanes on the self-hosted CoreWeave and DIGS runners.
 # Triggers are `workflow_dispatch` and pushes to `main`; pull requests never run here, so
-# contributed code cannot reach a cluster. Every cluster job also waits for the `authorize` job
-# and for the `cluster-ci` environment, so a listed maintainer is required twice over.
-# Runner setup: .github/ci/RUNNERS.md.
+# contributed code cannot reach a cluster. Every cluster job waits for the `authorize` job, which
+# accepts only listed maintainers and only runs from `main`. Cluster credentials live in the
+# runner-local profile, not in GitHub secrets. Runner setup: .github/ci/RUNNERS.md.
 
 on:
   workflow_dispatch:
@@ -37,6 +37,10 @@ jobs:
           # Comma-separated GitHub logins in the repository variable CLUSTER_CI_MAINTAINERS.
           ALLOWED: ${{ vars.CLUSTER_CI_MAINTAINERS }}
         run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Cluster CI only runs from main (got $GITHUB_REF)."
+            exit 1
+          fi
           if [ -z "${ALLOWED//[ ,]/}" ]; then
             echo "::error::Repository variable CLUSTER_CI_MAINTAINERS is empty, so nobody is authorized."
             exit 1
@@ -52,7 +56,6 @@ jobs:
     name: pytest (cpu, coreweave)
     needs: authorize
     if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
-    environment: cluster-ci
     runs-on: [self-hosted, coreweave-cpu]
     timeout-minutes: 30
     env:
@@ -80,7 +83,6 @@ jobs:
     name: pytest (gpu, coreweave)
     needs: authorize
     if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
-    environment: cluster-ci
     runs-on: [self-hosted, coreweave-gpu]
     timeout-minutes: 60
     env:
@@ -92,9 +94,6 @@ jobs:
           SOTA_CKPT_PATH: ${{ vars.SOTA_CKPT_PATH || '' }}  # unset -> skip MCSA validation + search
           # Written by run_gpu_lane.sh once the allocation starts: present => real test failure, no retry.
           GPU_ALLOC_SENTINEL: ${{ github.workspace }}/.gpu_alloc_started
-          # Pass the repository secrets into Apptainer without placing their values in command arguments.
-          APPTAINERENV_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          APPTAINERENV_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           # Retries only cover allocation failures (GPU contention), not test failures.
           attempts=3
@@ -140,7 +139,6 @@ jobs:
     name: pytest (cpu, digs)
     needs: authorize
     if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'coreweave'
-    environment: cluster-ci
     # Repo-level self-hosted runner on a DIGS login node; it only submits srun to the cpu partition.
     runs-on: [self-hosted, digs]
     timeout-minutes: 60

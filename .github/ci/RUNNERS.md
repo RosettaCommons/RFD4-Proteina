@@ -8,8 +8,8 @@ It is triggered only by `workflow_dispatch` and by pushes to `main`. Pull reques
 1. The `authorize` job (GitHub-hosted, no cluster access) checks the triggering user against the repository variable
    `CLUSTER_CI_MAINTAINERS`, a comma-separated list of GitHub logins. An empty variable authorizes nobody.
    Set it under Settings → Secrets and variables → Actions → Variables.
-2. Every cluster job also uses the `cluster-ci` environment. In Settings → Environments → `cluster-ci`, add the
-   maintainers as required reviewers and restrict deployment branches to `main`.
+2. Cluster jobs run only from `main` (the `authorize` job refuses any other ref). GitHub Environments are not
+   available to this organization, so there is no reviewer-approval step.
 3. Settings → Actions → General → "Fork pull request workflows" should require approval for all outside collaborators.
 
 ## Registering a runner
@@ -35,5 +35,7 @@ environment (put `RFD4_CI_PROFILE=/path/to/profile.env` in the runner's `.env` f
 - `AWS_ENDPOINT_URL` (GPU lane), and optionally `AF2_*`, `AF3_*`, `OF3_MODEL_DIR`, `SQUASHFS_MOUNTS` / `USE_SQUASHFS_MOUNTS`,
   `APPTAINER_BIND_PATHS`.
 
-Repository secrets used: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (GPU lane), `CODECOV_TOKEN` (coverage upload).
+The GPU lane also needs the object-store credentials: export `APPTAINERENV_AWS_ACCESS_KEY_ID` and `APPTAINERENV_AWS_SECRET_ACCESS_KEY` in the
+profile (file mode 600). Do not store them as repository secrets: any user with write access could read them from a workflow on a
+branch. Repository secret used: `CODECOV_TOKEN` (coverage upload only).
 Variable used: `SOTA_CKPT_PATH` (optional, enables the checkpoint-gated tests).
