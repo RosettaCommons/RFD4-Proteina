@@ -51,7 +51,14 @@ def test_answers_select_environments_arch_and_cuda(scratch):
     assert result.returncode == 0, result.stderr
     block = env_block(scratch)
     assert "arch=arm64, cuda=12" in block
-    assert "AF2_IMAGE=${DATA_PATH}/af2/runtime/alphafold2-pallas-cuda12-arm64.sif" in block
+    # The image reference is a docker tag where docker is installed and an Apptainer .sif path otherwise.
+    assert any(
+        ref in block
+        for ref in (
+            "AF2_IMAGE=${DATA_PATH}/af2/runtime/alphafold2-pallas-cuda12-arm64.sif",
+            "AF2_IMAGE=alphafold2-pallas-cuda12-arm64:latest",
+        )
+    )
     assert "AF3_JAX_CACHE_DIR=${DATA_PATH}/openfold3/jax_cache" in block
     assert "AF3_MODEL_DIR" not in block  # weights declined
     assert "AF3_IMAGE" not in block  # no prebuilt arm64 image
