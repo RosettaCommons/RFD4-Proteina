@@ -186,7 +186,8 @@ html_static_path = ["_static"]
 templates_path = ["_templates"]
 html_css_files = ["custom.css", "architecture/explorer.css"]
 # Sizes and themes the neural circuit diagrams framed in the architecture explorer.
-html_js_files = [("architecture/ncd-frames.js", {"defer": "defer"}), ('https://scripts.simpleanalyticscdn.com/latest.js', {'async': 'async', 'defer': 'defer'})]
+html_js_files = [("architecture/ncd-frames.js", {"defer": "defer"}), 
+                 ("https://scripts.simpleanalyticscdn.com/latest.js", {"async": "async", "defer": "defer"})]
 # The architecture explorer and the latent explorer give the full width to their diagrams and figures, so
 # neither shows the section navigation.
 LATENT_EXPLORER_PAGES = ("architecture/expanded-chemistry",)
