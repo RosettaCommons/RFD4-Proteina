@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="assets/wordmark.svg" width="587" alt="RFD4-Proteína">
+  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/wordmark.svg" width="587" alt="RFD4-Proteína">
 </p>
 
 <p align="center"><em>A flow-matching foundation model for biomolecular design — Baker Lab × NVIDIA GenAIR</em></p>
 
 <p align="center">
   <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/tree/main"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/branch/main/graph/badge.svg" alt="Codecov coverage"></a>
-  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
+  <a href="https://github.com/RosettaCommons/RFD4-Proteina/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://img.shields.io/badge/docs-read-blue" alt="Documentation"></a>
   <a href="https://huggingface.co/nvidia/RFD4-Proteina"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-model-yellow" alt="Hugging Face model"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
+  <a href="https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
 </p>
 
 <p align="center">
@@ -22,8 +22,8 @@
 </p>
 
 <picture>
-  <source media="(max-width: 600px)" srcset="assets/readme/design-gallery-mobile.png">
-  <img src="assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
+  <source media="(max-width: 600px)" srcset="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/readme/design-gallery-mobile.png">
+  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
 </picture>
 
 RFD4-Proteína designs proteins and biomolecular complexes with sequence–structure co-design,
@@ -96,7 +96,7 @@ for a native-only install. If `pip` cannot see a very recent release, retry with
 
 ## Run the model
 
-After setup, generate a design from the included [example input](data/benchmarks/monomer/monomer-short.cif):
+After setup, generate a design from the included [example input](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/data/benchmarks/monomer/monomer-short.cif):
 
 ```bash
 rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
@@ -161,14 +161,14 @@ Training datasets are separate from model downloads: see the
 
 ## Tutorials
 
-- [Annotated CIF tutorial](docs/examples/annotated_cif_tutorial.ipynb): build and validate conditioned structure inputs.
-- [Enzyme design tutorial](docs/examples/enzyme_design_tutorial.ipynb): motif scaffolding and catalytic-site metrics, end to end.
-- [PPI specificity tutorial](docs/examples/ppi_specificity_tutorial.ipynb): protein-binder design and specificity checks.
-- [Antibody campaign examples](examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
-- [Agent skills](skills/README.md): task-specific guides for setup, generation, search, and evaluation.
+- [Annotated CIF tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/annotated_cif_tutorial.ipynb): build and validate conditioned structure inputs.
+- [Enzyme design tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/enzyme_design_tutorial.ipynb): motif scaffolding and catalytic-site metrics, end to end.
+- [PPI specificity tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/ppi_specificity_tutorial.ipynb): protein-binder design and specificity checks.
+- [Antibody campaign examples](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
+- [Agent skills](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/skills/README.md): task-specific guides for setup, generation, search, and evaluation.
 
-[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](LICENSE)
+[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE)
 
 <p align="center">
-  <img src="assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">
+  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">
 </p>

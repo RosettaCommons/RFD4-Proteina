@@ -1,6 +1,6 @@
 [project]
 name = "rfd4-proteina"
-version = "0.0.2"
+version = "0.0.1"
 description = "Flow-matching foundation model for protein design"
 readme = "README.md"
 license-files = ["LICENSE"]
