@@ -5,7 +5,7 @@ defaults:
   - _self_
 
 name: reglyco_fulltree
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/examples.parquet
 
 columns_to_load:
   _target_: rfproteina.utils.hydra.flatten_unique_values
@@ -30,7 +30,7 @@ filters:
   - "has_in_vocabulary_glycan == True"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob
   record_id_colname: path
   assembly_id_colname: assembly_id
   parser_args:

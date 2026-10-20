@@ -5,10 +5,10 @@ defaults:
   - _self_
 
 name: mgnify_af2_distill_2026
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/examples.parquet
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/mgnify_af2_2026/blob
 
 columns_to_load:
   - example_id

@@ -6,7 +6,7 @@ defaults:
 
 name: rna_monomer
 memory_map: true
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/examples.parquet
 
 columns_to_load:
   - example_id
@@ -28,4 +28,4 @@ filters:
   - "n_rna_residues <= 768"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/blob

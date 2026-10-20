@@ -6,7 +6,7 @@ defaults:
 
 name: pdb_glycan_strict
 memory_map: true
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
 
 columns_to_load:
   - example_id
@@ -35,6 +35,6 @@ loader:
   _target_: rfproteina.datapipes.glycan.create_glycan_loader
   record_id_colname: path
   assembly_id_colname: assembly_id
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
   parser_args:
     _target_: rfproteina.utils.parse_presets.annotated_cif

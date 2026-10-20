@@ -8,7 +8,7 @@ any error (``--strict`` also fails on warnings).
 
 Usage::
 
-    export PYTHONPATH=$PWD/src:$PWD/lib/atomworks/src
+    export PYTHONPATH=$PWD/src
     export ALLOW_BIOTITE_CCD=True
     python skills/rfd4-proteina-annotated-cif/scripts/check_annotated_cif.py <file.cif> [--strict] [--quiet]
 """

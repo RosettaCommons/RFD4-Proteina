@@ -6,11 +6,11 @@ defaults:
   - _self_
 
 name: ted_dimers
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ted_dimers/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ted_dimers/examples.parquet
 memory_map: true
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ted_dimers/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ted_dimers/blob
   record_id_colname: path
 
 filters:

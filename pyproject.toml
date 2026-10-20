@@ -1,11 +1,35 @@
 [project]
 name = "rfd4-proteina"
 version = "0.0.1"
-description = "Flow-matching foundation model for protein design"
+description = "Flow-matching foundation model for all-atom biomolecular design: proteins, nucleic acids, ligands and complexes"
 readme = "README.md"
 license-files = ["LICENSE"]
 license = "BSD-3-Clause"
 requires-python = ">=3.12,<3.13"
+authors = [
+    { name = "Institute for Protein Design", email = "contact@ipd.uw.edu" },
+]
+keywords = [
+    "protein design",
+    "generative model",
+    "flow matching",
+    "diffusion",
+    "structural biology",
+    "bioinformatics",
+    "deep learning",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: GPU :: NVIDIA CUDA :: 13",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 dependencies = [
     # AtomWorks 3 APIs from PyPI; Biotite must match AtomWorks exactly.
     "atomworks[ml,openbabel]==3.0.4",
@@ -109,6 +133,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://rosettacommons.github.io/RFD4-Proteina/"
+Documentation = "https://rosettacommons.github.io/RFD4-Proteina/"
 Repository = "https://github.com/RosettaCommons/RFD4-Proteina"
 Issues = "https://github.com/RosettaCommons/RFD4-Proteina/issues"
 
@@ -154,12 +179,12 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build]
-dev-mode-dirs = ["src", "lib"]
+dev-mode-dirs = ["src"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
     "pyproject.toml", "README.md", "LICENSE", ".project-root",
-    "src", "lib/gearnet", "configs", "data/cath_label_mapping.pkl",
+    "src", "configs", "data/cath_label_mapping.pkl",
     "data/benchmarks",
     "scripts/check_distribution.py",
     "docs/packaging.md",
@@ -180,7 +205,6 @@ only-include = [
     "src/rfproteina",
     "src/rfd4_proteina",
     "src/script_utils",
-    "lib/gearnet",
     "configs",
     "data/benchmarks",
     "data/cath_label_mapping.pkl",
@@ -188,7 +212,6 @@ only-include = [
 
 [tool.hatch.build.targets.wheel.sources]
 "src" = ""
-"lib" = ""
 "configs" = "rfproteina/configs"
 "data" = "rfproteina/data"
 

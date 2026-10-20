@@ -5,7 +5,7 @@ defaults:
   - _self_
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/blob
   column_mapping:
     query_pn_unit_iids: ["pn_unit_1_iid", "pn_unit_2_iid"]
 

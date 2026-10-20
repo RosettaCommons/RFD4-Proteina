@@ -75,7 +75,7 @@ _SAVE_FULL_OUTPUTS = flags.DEFINE_bool(
 )
 
 
-# Written by scripts/setup_of3_weights.py; the two names must match.
+# Written by the OpenFold3 weight converter; the two names must match.
 _PROVENANCE_FILENAME = "of3_ported_weights.provenance.json"
 
 
@@ -96,14 +96,14 @@ def _is_of3_model_dir(model_dir: pathlib.Path) -> bool:
         # from older runtime images are still in that schema.
         raise ValueError(
             f"{provenance_path} has no {exc} field, so it predates the current converter. "
-            "Re-run scripts/setup_of3_weights.py against this directory."
+            "Re-convert the OpenFold3 weights into this directory."
         ) from exc
     if not params_path.is_file() or params_path.stat().st_size != expected_bytes:
         raise ValueError(
             f"{provenance_path} records converted OpenFold3 parameters in {recorded['filename']} "
             f"({expected_bytes} bytes), but that file is missing or has a different size. "
             "Refusing to enable the OpenFold3 code paths against parameters that are not the "
-            "recorded ones; re-run scripts/setup_of3_weights.py."
+            "recorded ones; re-convert the OpenFold3 weights."
         )
     return True
 

@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_03_tmol_plip_cath/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_10_03_tmol_plip_cath/blob
   record_id_colname: path
   assembly_id_colname: assembly_id
   parser_args:

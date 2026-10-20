@@ -402,7 +402,7 @@ fi
 cat >> "$SBATCH_FILE" << EOF
 
 # Environment setup (all clusters)
-export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH
+export PYTHONPATH=$CODE_DIR:\$PYTHONPATH
 export PYTHONFAULTHANDLER=1
 export OMP_NUM_THREADS=4
 export OPENBLAS_NUM_THREADS=4
@@ -562,7 +562,7 @@ if [ "$DO_CONCATENATE" == "true" ]; then
         echo "#SBATCH --error ./slurm_run_outputs/slurm_concat.err"
         echo "#SBATCH --open-mode append"
         echo ""
-        echo "export PYTHONPATH=$CODE_DIR:$CODE_DIR/lib/atomworks/src:\$PYTHONPATH"
+        echo "export PYTHONPATH=$CODE_DIR:\$PYTHONPATH"
         echo "export PYTHONFAULTHANDLER=1"
         echo ""
         echo "echo \"Running result concatenation for: $RUN_NAME\""

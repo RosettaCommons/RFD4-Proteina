@@ -185,11 +185,7 @@ source_venv() {
 setup_pythonpath() {
     local repo_root="$1"
     
-    if [[ "${CLUSTER:-}" != local && -d "$repo_root/.ipd" ]]; then
-        export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${repo_root}/lib/atomworks/src:${PYTHONPATH:-}"
-    else
-        export PYTHONPATH="${repo_root}/src:${repo_root}/lib:${PYTHONPATH:-}"
-    fi
+    export PYTHONPATH="${repo_root}/src:${PYTHONPATH:-}"
     echo "PYTHONPATH set for the selected runtime"
 }
 
@@ -766,14 +762,7 @@ copy_code_to_dir() {
     local code_dir="$2"
     local cluster="${3:-}"
 
-    mkdir -p "$code_dir/lib" "$code_dir/src" "$code_dir/data"
-    if [ -d "$repo_root/lib/atomworks/src" ]; then
-        mkdir -p "$code_dir/lib/atomworks"
-        rsync -a --no-compress \
-            "$repo_root/lib/atomworks/src/" "$code_dir/lib/atomworks/src/"
-    fi
-    rsync -a --no-compress --exclude='__pycache__' --exclude='*.pyc' \
-        "$repo_root/lib/gearnet/" "$code_dir/lib/gearnet/"
+    mkdir -p "$code_dir/src" "$code_dir/data"
     rsync -a --no-compress --exclude='store' --exclude='outputs' --exclude='__pycache__' --exclude='*.pyc' \
         "$repo_root/src/rfproteina/" "$code_dir/src/rfproteina/"
     rsync -a --no-compress --exclude='*.ckpt' --exclude='*.txt' --exclude='ckpt_files' \

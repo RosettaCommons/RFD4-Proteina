@@ -6,7 +6,7 @@ defaults:
 
 name: synthetic_ncaa_strict
 memory_map: true
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_21_ptm_esmfold2/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_21_ptm_esmfold2/examples.parquet
 
 columns_to_load:
   - example_id
@@ -24,6 +24,6 @@ filters:
   - "has_in_vocabulary_ptm == True"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_21_ptm_esmfold2/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_21_ptm_esmfold2/blob
   parser_args:
     _target_: rfproteina.utils.parse_presets.annotated_cif

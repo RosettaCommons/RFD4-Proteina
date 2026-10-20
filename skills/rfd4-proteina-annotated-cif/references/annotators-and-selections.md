@@ -5,11 +5,11 @@ Use this reference when translating structural intent into an atom mask.
 ## Check installed annotation support
 
 The implementation and lazy registry live in
-[annotator.py](../../../lib/atomworks/src/atomworks/io/utils/annotator.py).
+`atomworks.io.utils.annotator` in the installed AtomWorks package.
 `ensure_annotations()` mutates the array in place, retaining existing annotations
 and computing missing dependencies. If a name is absent from `ANNOTATOR_REGISTRY`,
 its `_resolve_standard_annotation()` fallback matches canonical names or aliases
-in the [StandardAnnotation registry](../../../lib/atomworks/src/atomworks/io/utils/standard_annotations/base.py).
+in the StandardAnnotation registry (`atomworks.io.utils.standard_annotations.base`).
 Import RFProteína conditions before using that fallback.
 
 Inspect these installed registries instead of relying on a copied catalog:

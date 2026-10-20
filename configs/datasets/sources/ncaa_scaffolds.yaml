@@ -5,7 +5,7 @@ defaults:
   - _self_
 
 name: ncaa_scaffolds
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/examples.parquet
 
 columns_to_load:
   - example_id
@@ -19,6 +19,6 @@ filters:
   - "has_in_vocabulary_ptm == True"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/blob
   parser_args:
     _target_: rfproteina.utils.parse_presets.annotated_cif

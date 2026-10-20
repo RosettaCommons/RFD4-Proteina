@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 name: cpsea_pdb
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/metadata.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/metadata.parquet
 
 columns_to_load:
   - example_id
@@ -12,6 +12,6 @@ columns_to_load:
   - n_other_heavy_atoms
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/blob
   parser_args:
     _target_: rfproteina.utils.parse_presets.annotated_cif

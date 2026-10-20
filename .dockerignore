@@ -8,9 +8,6 @@
 !.project-root
 !src/
 !src/**
-!lib/
-!lib/gearnet/
-!lib/gearnet/**
 !configs/
 !configs/**
 !data/

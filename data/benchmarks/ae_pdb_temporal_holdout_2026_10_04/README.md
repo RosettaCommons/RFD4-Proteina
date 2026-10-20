@@ -6,7 +6,7 @@ protein-only panel. Structures are annotated mmCIF files compressed with Zstanda
 ## Source and selection
 
 Structures come from
-`s3://YOUR_DATASET_STORE/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/`.
+`${DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/`.
 This processed release uses the same frozen 2026-01-06 PDB mirror as the previous holdout, with updated
 parsing and chemistry. All examples have deposition dates on or after 2024-01-01.
 

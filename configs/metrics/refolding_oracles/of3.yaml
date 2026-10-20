@@ -1,8 +1,8 @@
 # OpenFold3-backed refolding oracle configurations.
 #
 # Identical to the AF3 oracles apart from the artifact namespace: the parameter
-# family follows AF3_MODEL_DIR, so point it at a directory produced by
-# scripts/setup_of3_weights.py and the worker selects the OF3 branches itself.
+# family follows AF3_MODEL_DIR, so point it at a directory of converted OpenFold3
+# weights and the worker selects the OF3 branches itself.
 
 defaults:
   - af3

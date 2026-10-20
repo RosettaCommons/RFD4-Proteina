@@ -6,11 +6,11 @@ defaults:
   - _self_
 
 name: afdb_monomer
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/afdb_genie3_subset/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/afdb_genie3_subset/examples.parquet
 memory_map: true
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/afdb_genie3_subset/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/afdb_genie3_subset/blob
   record_id_colname: path
 
 columns_to_load:

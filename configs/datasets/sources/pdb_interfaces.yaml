@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 name: pdb_interfaces
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/sampling/interfaces.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/sampling/interfaces.parquet
 
 columns_to_load:
   mapping:

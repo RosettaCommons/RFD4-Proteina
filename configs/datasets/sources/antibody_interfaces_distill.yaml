@@ -6,7 +6,7 @@ defaults:
 
 name: antibody_interfaces_distill
 memory_map: true
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/examples.parquet
 
 columns_to_load:
   - example_id
@@ -26,6 +26,6 @@ filters:
   - "cdr_contact_frac >= 0.25"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/blob
   parser_args:
     extra_fields: [ig_region]

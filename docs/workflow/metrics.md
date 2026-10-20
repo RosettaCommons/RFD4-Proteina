@@ -247,11 +247,10 @@ The same oracles run on OpenFold3's Apache licensed parameters. Converted OF3 we
 ordinary AF3 model directory, so there is no separate runtime. The worker reads the provenance file
 the converter leaves beside them and enables the OF3 architecture branches itself.
 
-1. Convert the weights once: `python scripts/setup_of3_weights.py --image "$AF3_IMAGE" --output_dir <dir>`
-2. Point `AF3_MODEL_DIR` at `<dir>`.
-3. Swap the config group: `metrics/refolding_oracles=of3`.
+1. Point `AF3_MODEL_DIR` at a directory of converted OpenFold3 weights.
+2. Swap the config group: `metrics/refolding_oracles=of3`.
 
-Step 3 only changes the artifact namespace to `of3`, `of3_ppi` and `of3_dna`, so results do not
+Step 2 only changes the artifact namespace to `of3`, `of3_ppi` and `of3_dna`, so results do not
 collide with AF3 ones. The parameter family follows `AF3_MODEL_DIR` alone. One job uses one family,
 so run AF3 and OF3 as separate jobs and compare afterwards.
 

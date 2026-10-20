@@ -5,11 +5,11 @@ defaults:
   - _self_
 
 name: omol
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/omol_annotated/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/omol_annotated/examples.parquet
 memory_map: True
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/omol_annotated/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/synthetic/omol_annotated/blob
   record_id_colname: lmdb_idx
 
 columns_to_load:

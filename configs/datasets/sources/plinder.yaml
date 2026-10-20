@@ -5,11 +5,11 @@ defaults:
   - _self_
 
 name: plinder_train
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_05_20_plinder/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_05_20_plinder/examples.parquet
 memory_map: True
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_05_20_plinder/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_05_20_plinder/blob
   record_id_colname: path
 
 columns_to_load:

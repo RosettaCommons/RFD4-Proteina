@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 name: pdb_dna_interface
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/pdb_dna_interface_2026_10_13/interfaces.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/pdb_dna_interface_2026_10_13/interfaces.parquet
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/blob

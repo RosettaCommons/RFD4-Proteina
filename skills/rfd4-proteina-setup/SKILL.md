@@ -32,8 +32,7 @@ source .venv/bin/activate
 ```
 
 Native setup creates `.venv` with the CUDA 13 model dependencies and installs
-the public AtomWorks version pinned in `pyproject.toml`; private setup retains its
-AtomWorks development submodule. It creates `.env.local`
+the public AtomWorks version pinned in `pyproject.toml`. It creates `.env.local`
 only if neither `.env.local` nor `.env` exists, preserves existing files, and does
 not edit shell startup files.
 

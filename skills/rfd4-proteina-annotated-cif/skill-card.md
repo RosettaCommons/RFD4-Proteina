@@ -56,8 +56,8 @@ Mitigation: The skill uses `concatenate_atom_array_plus()`, requires unique chai
 - `src/rfproteina/utils/parse_presets.py`
 - `src/rfproteina/conditions_reporting.py`
 - `skills/rfd4-proteina-annotated-cif/references/validation.md`
-- [AtomWorks annotators](../../lib/atomworks/src/atomworks/io/utils/annotator.py)
-- [StandardAnnotation fallback registry](../../lib/atomworks/src/atomworks/io/utils/standard_annotations/base.py)
+- AtomWorks annotators (`atomworks.io.utils.annotator`)
+- StandardAnnotation fallback registry (`atomworks.io.utils.standard_annotations.base`)
 - [Expandable-segment semantics](../../docs/workflow/inputs.md#expandable-segments)
 
 ## Skill Output

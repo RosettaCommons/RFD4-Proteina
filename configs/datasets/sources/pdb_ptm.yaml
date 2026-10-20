@@ -6,7 +6,7 @@ defaults:
 
 name: pdb_ptm_strict
 memory_map: true
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_ptm_crop/examples.parquet
+data: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_19_ptm_crop/examples.parquet
 
 columns_to_load:
   - example_id
@@ -29,6 +29,6 @@ filters:
   - "has_in_vocabulary_ptm == True"
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_ptm_crop/blob
+  blob_dir: ${oc.env:DATASET_STORE_ROOT}/train_datasets/streaming-latest/pdb/2026_09_19_ptm_crop/blob
   parser_args:
     _target_: rfproteina.utils.parse_presets.annotated_cif
