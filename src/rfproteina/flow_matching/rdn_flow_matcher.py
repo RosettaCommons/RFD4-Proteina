@@ -7,7 +7,6 @@ from torch import Tensor
 
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
 from rfproteina.utils.align import mean_w_mask
-from rfproteina.utils.sample_rng import sample_randn, sample_rng_active, sample_rng_row
 
 _logger = logging.getLogger(__name__)
 
@@ -118,26 +117,13 @@ class RDNFlowMatcher(BaseFlowMatcher):
         """
         if offset_mask is None:
             return x
-        if group_ids is not None and sample_rng_active() and x.shape[0] > 1:
-            rows = []
-            for i in range(x.shape[0]):
-                with sample_rng_row(i):
-                    rows.append(
-                        self._apply_stochastic_offset(
-                            x[i : i + 1],
-                            None if emit_mask is None else emit_mask[i : i + 1],
-                            offset_mask[i : i + 1],
-                            group_ids[i : i + 1],
-                        )
-                    )
-            return torch.cat(rows, dim=0)
         if group_ids is None:
-            noise = sample_randn((*x.shape[:-2], x.shape[-1]), device=x.device)  # [*, d]
+            noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
             x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * offset_mask[..., None].float()
         else:
             for g in group_ids[offset_mask].unique():
                 group_mask_f = (offset_mask & (group_ids == g))[..., None].float()  # [*, n, 1]
-                noise = sample_randn((*x.shape[:-2], x.shape[-1]), device=x.device)  # [*, d]
+                noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
                 x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * group_mask_f
 
         if emit_mask is not None:
@@ -245,7 +231,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         Returns:
             Samples from refenrece [N(0, I_d)]^n shape [*shape, n, d]
         """
-        noise = sample_randn(
+        noise = torch.randn(
             (*shape, n, self.dim),
             device=device,
         )
@@ -532,7 +518,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 delta_x = v_scaled * dt
             else:
                 score = vf_to_score(x_t, v, t)  # get score from v, [*, dim]
-                eps = sample_randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
+                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
                 std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
                 delta_x = (v + gt * score) * dt + std_eps * eps
 
@@ -548,7 +534,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 if t_element > t_lim_ode or t_element < t_lim_ode_below:
                     delta_x = v_scaled * dt
                 else:
-                    eps = sample_randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
+                    eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
                     std_eps = torch.sqrt(torch.as_tensor(2 * gt * sc_scale_noise * dt))
                     delta_x = (v_scaled + gt * scaled_score) * dt + std_eps * eps
 

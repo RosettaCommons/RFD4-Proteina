@@ -266,6 +266,7 @@ Workflow
    :caption: Running the model
 
    workflow/running
+   workflow/backends
    workflow/partial-diffusion
    workflow/metric-guidance
    workflow/search

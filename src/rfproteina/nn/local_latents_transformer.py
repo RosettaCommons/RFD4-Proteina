@@ -6,7 +6,6 @@ from torch.utils.checkpoint import checkpoint
 
 from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.model_masks import compute_flow_emit_masks
-from rfproteina.nn.execution import run_trunk
 from rfproteina.nn.feature_factory import RECYCLE_GRAD_DEPTHS, FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import make_norm, set_norm_type
@@ -207,6 +206,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         # Compile only on shapes we know are fixed/bucketed (to avoid recompilation/thrashing)
         self._shapes_reserved = False
         self._compile_kwargs = torch_compile_kwargs(kwargs, default_fullgraph=True)
+        if self.use_torch_compile:
+            self._setup_compiled_trunk()
 
     def _setup_compiled_trunk(self) -> None:
         """Compile each trunk block into off-tree lists; the trunk loop stays eager."""
@@ -235,12 +236,6 @@ class LocalLatentsTransformer(torch.nn.Module):
         n_shapes = 2 * len(lengths) + 2  # one graph per bucket per grad-mode, plus the short final batch
         raise_dynamo_cache_for(n_shapes)
         logger.info(f"Reserved dynamo cache for {len(lengths)} length buckets ({n_shapes} shapes).")
-
-    def train(self, mode: bool = True) -> "LocalLatentsTransformer":
-        """Discard inference copies when returning to native training."""
-        if mode:
-            self.__dict__.pop("_execution", None)
-        return super().train(mode)
 
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Runs the network.
@@ -350,10 +345,6 @@ class LocalLatentsTransformer(torch.nn.Module):
         Runs compiled if the model has compiled blocks and the pass is over
         a fixed shape (training or reserved eval buckets); otherwise, runs the registered eager layers.
         """
-        if getattr(self, "_execution", None) is not None:
-            return run_trunk(self, s, z, c, seq_mask)
-        if self.use_torch_compile and self.training and not self._trunk_compiled:
-            self._setup_compiled_trunk()
         use_compiled = bool(self._compiled_attn_blocks) and (self.training or self._shapes_reserved)
         attn = self._compiled_attn_blocks if use_compiled else self.transformer_layers
 

@@ -69,14 +69,6 @@ def optimization_loss(metrics: dict[str, Tensor], structure_type: str) -> Tensor
     return sum(metrics[key].mean() for key in keys)
 
 
-def optimization_loss(metrics: dict[str, Tensor], structure_type: str) -> Tensor:
-    """Sum weighted KL, sequence, and configured structure terms, excluding diagnostics."""
-    structure_keys = {"l1": ("struct_l1",), "l2": ("struct_l2",), "l12": ("struct_l1", "struct_l2")}
-    if structure_type not in structure_keys:
-        raise ValueError(f"Unknown structure loss type: {structure_type}")
-    return sum(metrics[key].mean() for key in ("kl_w", "ce_seq", *structure_keys[structure_type]))
-
-
 @rank_zero_only
 def create_dir(dir: str) -> None:
     if not os.path.exists(dir):

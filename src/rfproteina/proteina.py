@@ -52,7 +52,6 @@ from rfproteina.metrics.utils.metrics_utils import (
     resolve_mm_cfgs_from_metrics,
 )
 from rfproteina.model_masks import compute_ae_masks
-from rfproteina.nn.bioir_full import initialize_full_bioir, predict_full_bioir
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.nn.modules.pair_bias_attn import sdpa_training_context
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
@@ -62,6 +61,7 @@ from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
+from rfproteina.utils.lora import add_lora_adapter
 from rfproteina.utils.optim_utils import backward_with_accumulation, build_optimizers
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
@@ -511,8 +511,6 @@ class Proteina(L.LightningModule):
         """Loads additional variables from checkpoint."""
         # Direct checkpoint loading constructs adapters before strict state restoration.
         if (self.cfg_exp.get("lora") or {}).get("r") and not getattr(self.nn, "peft_config", None):
-            from rfproteina.utils.lora import add_lora_adapter
-
             add_lora_adapter(self, self.cfg_exp.lora)
 
         try:
@@ -951,6 +949,8 @@ class Proteina(L.LightningModule):
     def on_validation_start(self) -> None:
         """Bring up the per-rank metrics pool."""
         if getattr(self, "_full_bioir_options", None) is not None:
+            from rfproteina.nn.bioir_full import initialize_full_bioir
+
             initialize_full_bioir(self)
         self._check_val_set_name_override()
         self._metrics_pool.start(self.val_dataset_tags)
@@ -1765,6 +1765,8 @@ class Proteina(L.LightningModule):
                 - "generated_atom_array": output AtomArray object with generated coordinates
         """
         if getattr(self, "_full_bioir_options", None) is not None:
+            from rfproteina.nn.bioir_full import predict_full_bioir
+
             return predict_full_bioir(self, batch)
         # Always use search_strategy interface for consistency
         # Default to VanillaStrategy if no search strategy is configured

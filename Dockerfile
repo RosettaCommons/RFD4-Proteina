@@ -57,6 +57,18 @@ COPY . .
 RUN uv pip install --system --no-cache --no-sources --no-deps . && \
     python -m pip check
 
+# BioIR: the accelerated runtime behind inference_backend=bioir, from PyPI at the version pyproject.toml pins.
+# It is built against CUDA 13, so only the cu13 profile installs it; cu12 and cpu stay on the native runtime.
+# --no-deps because its metadata pins triton<3.8 and an older cuEquivariance than the resolved runtime above
+# carries (pyproject.toml overrides both for resolver installs). lru-dict and nvidia-cudnn-frontend are the
+# reusable-blocks dependencies the metrics-cuda13 extra does not already install.
+RUN if [ "${RFD4_ACCELERATOR}" = "cu13" ]; then \
+        bioir="$(grep -oE 'bionemo-ir==[0-9A-Za-z.]+' pyproject.toml | head -n 1)" && \
+        test -n "${bioir}" && \
+        uv pip install --system --no-cache --no-deps "${bioir}" "lru-dict==1.4.1" "nvidia-cudnn-frontend==1.23.0" && \
+        python -c "from bionemo_ir._torch.layers.transformers.blocks import ConditionedTransformerBlock, PairUpdateBlock, with_cuda_graph"; \
+    fi
+
 RUN mkdir -p /data /opt/rfd4/cache/huggingface /workspace
 WORKDIR /workspace
 

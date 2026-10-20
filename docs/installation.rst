@@ -180,8 +180,10 @@ SSH dependency is reachable: the image needs no submodule and no internal creden
 TMol and its operator packages are installed from published wheels only, never built from
 source. CUDA libraries come from the PyTorch wheels, so the image uses a slim Python base
 rather than a CUDA base image. Dependencies are installed before the source is copied, so
-rebuilding after a code change reuses the cached dependency layer. The image never installs
-BioIR and does not silently fall back to CPU.
+rebuilding after a code change reuses the cached dependency layer. The image does not silently
+fall back to CPU. The ``cu13`` profile additionally installs ``bionemo-ir`` from PyPI at the version
+``pyproject.toml`` pins; ``cu12`` and ``cpu`` stay on the native runtime. See
+:doc:`workflow/backends` for what BioIR does and does not support.
 
 Mount the Hugging Face cache and output directory when running a released checkpoint:
 

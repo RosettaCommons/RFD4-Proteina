@@ -86,6 +86,11 @@ metrics-cuda13 = [
     "cuequivariance-ops-cu13==0.13.0; sys_platform == 'linux'",
     "cuequivariance-ops-torch-cu13==0.13.0; sys_platform == 'linux'",
 ]
+# BioIR, the accelerated runtime behind inference_backend=bioir. It is built against CUDA 13, so install it with
+# metrics-cuda13: pip install "rfd4-proteina[metrics-cuda13,bioir]"
+bioir = [
+    "bionemo-ir==0.2.0rc0; sys_platform == 'linux'",
+]
 dev = [
     # Linters & formatters
     "ruff==0.8.3",
@@ -119,6 +124,18 @@ conflicts = [
         { extra = "metrics-cuda12" },
         { extra = "metrics-cuda13" },
     ],
+    [
+        { extra = "metrics-cuda12" },
+        { extra = "bioir" },
+    ],
+]
+# bionemo-ir pins triton<3.8 and cuEquivariance 0.11.1, which contradict torch 2.14.1 and the metrics-cuda13 extra.
+# Resolve both to the versions this repository installs and tests BioIR against.
+override-dependencies = [
+    "triton>=3.8.0,<3.9; sys_platform == 'linux'",
+    "cuequivariance==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-cu13==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu13==0.13.0; sys_platform == 'linux'",
 ]
 
 # Pytest

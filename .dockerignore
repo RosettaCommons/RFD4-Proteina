@@ -11,13 +11,6 @@
 !lib/
 !lib/gearnet/
 !lib/gearnet/**
-# Internal image only; harmless in the public build, which never COPYs it.
-!lib/atomworks/
-!lib/atomworks/pyproject.toml
-!lib/atomworks/README.md
-!lib/atomworks/LICENSE.md
-!lib/atomworks/src/
-!lib/atomworks/src/**
 !configs/
 !configs/**
 !data/

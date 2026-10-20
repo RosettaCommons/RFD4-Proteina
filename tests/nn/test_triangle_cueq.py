@@ -83,12 +83,11 @@ def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool, c
                 no_grad_out = module(x, mask)
         out.float().square().mean().backward()
         results.append([out, no_grad_out, xi.grad, *(p.grad for p in source.parameters())])
-    fused_route = cuequivariance_ops_torch.triangle_multiplicative_update_training_shape_is_supported(
-        2, 256, 384, c_hidden, x.device
-    )
-    if torch.cuda.get_device_capability() == (9, 0):
-        assert fused_route == (c_hidden == 256)
+    fused_route = trimul._CUEQ_SUPPORTED[(2, 256, 384, c_hidden, x.device.index, True, True)]
+    assert fused_route == (c_hidden == 256 and torch.cuda.get_device_capability() == (9, 0))
     for ref_t, fused_t in zip(*results, strict=True):
-        # Fused kernels and cuEquivariance's reference formula both reorder the BF16 math.
-        cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
-        assert cosine > 0.99, f"cosine {cosine:.4f}"
+        if fused_route:
+            cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
+            assert cosine > 0.99, f"cosine {cosine:.4f}"
+        else:
+            torch.testing.assert_close(fused_t, ref_t)

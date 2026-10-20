@@ -28,7 +28,11 @@ from rfproteina.nn.modules.openfold_modules.tensor_utils import permute_final_di
 
 try:
     import cuequivariance_ops_torch
-    from cuequivariance_ops_torch import triangle_multiplicative_update
+    from cuequivariance_ops_torch import (
+        triangle_multiplicative_update,
+        triangle_multiplicative_update_inference_shape_is_supported,
+        triangle_multiplicative_update_training_shape_is_supported,
+    )
 
     # A failed Triton import leaves stub functions and records the traceback here.
     _CUEQ_UNAVAILABLE = getattr(cuequivariance_ops_torch, "IMPORT_EXCEPTION", None)
@@ -36,6 +40,8 @@ except (ImportError, OSError) as error:
     _CUEQ_UNAVAILABLE = f"cuequivariance-ops-torch>=0.13 is required ({error})"
 if os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower() in ("1", "true", "yes"):
     _CUEQ_UNAVAILABLE = "DISABLE_CUEQUIVARIANCE is set"
+
+_CUEQ_SUPPORTED: dict[tuple, bool] = {}
 
 
 @cache
@@ -51,6 +57,26 @@ def _cat_optional(a: torch.Tensor | None, b: torch.Tensor | None) -> torch.Tenso
 def _bias_or_zeros(module: nn.Module) -> torch.Tensor:
     """The module's bias, or zeros matching its weight when it learns none."""
     return module.weight.new_zeros(module.weight.shape[0]) if module.bias is None else module.bias
+
+
+@torch.compiler.assume_constant_result
+def _cueq_supported(batch: int, n: int, c_z: int, c_hidden: int, device: int, training: bool, bf16: bool) -> bool:
+    """Whether cuEquivariance fuses this static BF16 shape; warns once per shape otherwise."""
+    key = (batch, n, c_z, c_hidden, device, training, bf16)
+    if key not in _CUEQ_SUPPORTED:
+        mode = "training" if training else "compiled inference"
+        query = (
+            triangle_multiplicative_update_training_shape_is_supported
+            if training
+            else triangle_multiplicative_update_inference_shape_is_supported
+        )
+        _CUEQ_SUPPORTED[key] = bf16 and query(batch, n, c_z, c_hidden, device)
+        if not _CUEQ_SUPPORTED[key]:
+            _warn_once(
+                f"cuEquivariance has no fused {mode} triangle multiplication for batch={batch}, n={n}, "
+                f"c_z={c_z}, c_hidden={c_hidden}, bf16={bf16}; using the torch backend."
+            )
+    return _CUEQ_SUPPORTED[key]
 
 
 class TriangleMultiplicativeUpdate(nn.Module):

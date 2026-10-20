@@ -6,11 +6,22 @@ defaults:
   - _self_
   - inference_experiment: inference_on_user_inputs # Default for design
   - recycle_strategy: thinking_medium
-  - execution: default
 
 # NOTE: The experiment configs can override values specified in this config
 
-inference_backend: torch_compile # eager | torch_compile | bioir
+inference_backend: native # native (torch.compile / eager per compile_lengths) | bioir (whole workflow through BioIR)
+
+# Used only with inference_backend=bioir.
+bioir:
+  dtype: bfloat16
+  attention_backend: null # null selects BioIR's own attention default
+  cuda_graph: true
+  cuda_graph_max_tokens: 511 # graph requests under 512 tokens; longer ones run the trunk eagerly (null: BioIR's limit)
+  max_graphs: null # null: one slot per (batch, tokens) shape for a full batch and its tail
+  # Consume random draws in the native backend's order so a fixed seed gives both
+  # backends the same noise and their designs can be compared one to one. Off by
+  # default: production draws with plain torch.randn and skips a draw nothing reads.
+  match_reference_rng: false
 
 run_name_: inference
 verbose: false # Set true for routine warnings and detailed diagnostic output.

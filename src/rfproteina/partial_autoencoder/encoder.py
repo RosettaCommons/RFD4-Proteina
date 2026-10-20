@@ -1,13 +1,11 @@
 import torch
 
 from rfproteina.model_masks import compute_ae_masks
-from rfproteina.nn.execution import run_trunk
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
-from rfproteina.utils.sample_rng import sample_randn_like
 
 
 class EncoderTransformer(torch.nn.Module):
@@ -110,12 +108,6 @@ class EncoderTransformer(torch.nn.Module):
 
         self.ln_z = torch.nn.Identity()
 
-    def train(self, mode: bool = True) -> "EncoderTransformer":
-        """Discard inference copies when returning to native training."""
-        if mode:
-            self.__dict__.pop("_execution", None)
-        return super().train(mode)
-
     def forward(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Runs the network.
@@ -141,13 +133,18 @@ class EncoderTransformer(torch.nn.Module):
 
         pair_rep = self.pair_rep_factory(batch) if self.pair_rep_factory is not None else None  # [b, n, n, pair_dim]
 
-        seqs, pair_rep = run_trunk(self, seqs, pair_rep, c, attn_mask)
+        # Run trunk
+        for i in range(self.nlayers):
+            seqs = self.transformer_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
+
+            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
+                pair_rep = self.pair_update_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
 
         # Emit only meaningful local latents; occupancy plays no part here.
         flat_out = self.latent_decoder_mean_n_log_scale(seqs) * emit_mask[..., None]  # [b, n, 2 * latent_dim]
         mean, log_scale = torch.chunk(flat_out, chunks=2, dim=-1)  # [b, n, latent_dim] each
 
-        z = mean + sample_randn_like(log_scale) * torch.exp(log_scale)  # [b, n, latent_dim]
+        z = mean + torch.randn_like(log_scale) * torch.exp(log_scale)  # [b, n, latent_dim]
 
         z_pre_ln = z * emit_mask[..., None]
         z = self.ln_z(z) * emit_mask[..., None]  # [b, n, latent_dim]
