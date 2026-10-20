@@ -78,10 +78,10 @@ docker build -t rfd4-proteina:cu13 .
 docker run --rm --gpus all rfd4-proteina:cu13 rfd4-generate --help
 ```
 
-While the Hugging Face repositories are private, supply `HF_TOKEN` or use `hf auth login`
+If access to the Hugging Face repositories is restricted, supply `HF_TOKEN` or use `hf auth login`
 with an account that has access. For interactive login on a fresh checkout, run
 `bash setup.sh --skip-weights`, activate `.venv`, log in, then run `bash setup.sh --native`.
-Once public, the same setup works without authentication.
+Public repositories need no authentication.
 
 ### Quick start with pip
 

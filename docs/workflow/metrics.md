@@ -247,7 +247,8 @@ The same oracles run on OpenFold3's Apache licensed parameters. Converted OF3 we
 ordinary AF3 model directory, so there is no separate runtime. The worker reads the provenance file
 the converter leaves beside them and enables the OF3 architecture branches itself.
 
-1. Point `AF3_MODEL_DIR` at a directory of converted OpenFold3 weights.
+1. Point `AF3_MODEL_DIR` at a directory of converted OpenFold3 weights. The model repository on Hugging Face
+   (`nvidia/RFD4-Proteina`) ships them with their provenance file under `openfold3/weights/`.
 2. Swap the config group: `metrics/refolding_oracles=of3`.
 
 Step 2 only changes the artifact namespace to `of3`, `of3_ppi` and `of3_dna`, so results do not

@@ -120,9 +120,16 @@ RFD4-Proteína is also available as a `Hugging Face Diffusers
 the ``rfd4-proteina-prep`` package turns an annotated CIF into those tensors and writes the
 generated structure back to a CIF.
 
+.. warning::
+
+   The pipeline needs Diffusers support that is not in a released Diffusers version yet. It lives on
+   branch ``add-rfd4-proteina-torch`` of ``huggingface/diffusers-new-model-addition-RFD4-Proteina``
+   (pull request 4). ``from diffusers import RFD4ProteinaPipeline`` fails on a released Diffusers until
+   that support is merged.
+
 .. code-block:: bash
 
-   pip install diffusers git+https://huggingface.co/nvidia/RFD4-Proteina-prep
+   pip install diffusers git+https://huggingface.co/nvidia/RFD4-Proteina-prep@c9959efdebd75ac7fe9129fbbf0e291a6e0487d5
 
 .. code-block:: python
 
@@ -142,7 +149,13 @@ generated structure back to a CIF.
    )
    features, atoms = prepare_cif(input_cif, seed=42, device=pipe.device)
 
-   output = pipe(features, generator=torch.Generator("cuda:0").manual_seed(42))
+   required = ["padding_mask", "is_in_context_conditioning", "supports_local_latent", "token_type",
+               "atom37_mask", "coords_nm"]
+   output = pipe(
+       **{name: features[name] for name in required},
+       conditioning_features={name: value for name, value in features.items() if name not in required},
+       generator=torch.Generator("cuda:0").manual_seed(42),
+   )
    write_cif(output, features, atoms, "design.cif")
 
 ``output.coords_nm`` holds the generated atom37 coordinates in nanometers. The model repository

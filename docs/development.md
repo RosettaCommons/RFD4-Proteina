@@ -36,7 +36,7 @@ Run `download_assets.sh` with `--with-test-dataset` to download the configured
 model weights and the tiny parquet/CIF dataset into `$DATA_PATH/test_dataset`.
 The dataset comes from the pinned `nvidia/RFD4-Proteina` model repository with the
 default checkpoint configuration. Authenticate with `HF_TOKEN` or `hf auth login`
-while it is private. The finetuning command below loads the portable HF bundle separately.
+if access is restricted. The finetuning command below loads the portable HF bundle separately.
 
 ```bash
 ./scripts/download_assets.sh "$DATA_PATH" --with-test-dataset --skip-of3
@@ -53,7 +53,7 @@ Initialize a new run from the portable bundle:
 ```bash
 rfd4-train experiment=tutorial/finetune_test_dataset \
     hf_ckpt_path=nvidia/RFD4-Proteina \
-    hf_ckpt_revision=07e281d073c0e0dc345ede33cba20498951fa428 \
+    hf_ckpt_revision=a06e2509c7033b010fc43614e9fd840303588502 \
     pretrain_ckpt_path=null +single=true log.log_wandb=false
 ```
 
