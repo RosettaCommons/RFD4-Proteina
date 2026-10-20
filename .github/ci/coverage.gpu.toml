@@ -1,0 +1,5 @@
+[tool.coverage.run]
+parallel = true
+patch = ["subprocess"]
+relative_files = true
+source = ["src/rfproteina"]

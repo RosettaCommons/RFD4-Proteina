@@ -1,0 +1,159 @@
+name: Cluster CI
+
+# Maintainers only. Runs the CPU and GPU test lanes on the self-hosted CoreWeave and DIGS runners.
+# Triggers are `workflow_dispatch` and pushes to `main`; pull requests never run here, so
+# contributed code cannot reach a cluster. Every cluster job also waits for the `authorize` job
+# and for the `cluster-ci` environment, so a listed maintainer is required twice over.
+# Runner setup: .github/ci/RUNNERS.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusters:
+        description: Which clusters to run
+        type: choice
+        options: [both, coreweave, digs]
+        default: both
+  push:
+    branches: [main]
+
+concurrency:
+  group: cluster-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  authorize:
+    name: authorize (maintainers only)
+    if: github.repository == 'RosettaCommons/RFD4-Proteina'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Only listed maintainers may use the cluster runners
+        env:
+          ACTOR: ${{ github.triggering_actor }}
+          # Comma-separated GitHub logins in the repository variable CLUSTER_CI_MAINTAINERS.
+          ALLOWED: ${{ vars.CLUSTER_CI_MAINTAINERS }}
+        run: |
+          if [ -z "${ALLOWED//[ ,]/}" ]; then
+            echo "::error::Repository variable CLUSTER_CI_MAINTAINERS is empty, so nobody is authorized."
+            exit 1
+          fi
+          allowed=",$(printf '%s' "$ALLOWED" | tr -d ' ' | tr '[:upper:]' '[:lower:]'),"
+          actor="$(printf '%s' "$ACTOR" | tr '[:upper:]' '[:lower:]')"
+          case "$allowed" in
+            *",$actor,"*) echo "$ACTOR is an authorized maintainer." ;;
+            *) echo "::error::$ACTOR is not listed in CLUSTER_CI_MAINTAINERS; cluster CI refused."; exit 1 ;;
+          esac
+
+  coreweave-cpu:
+    name: pytest (cpu, coreweave)
+    needs: authorize
+    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
+    environment: cluster-ci
+    runs-on: [self-hosted, coreweave-cpu]
+    timeout-minutes: 30
+    env:
+      CI_CLUSTER: coreweave
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests (srun + apptainer)
+        env:
+          TEST_PATH: ./tests
+          XDIST_WORKERS: auto
+        run: |
+          export N_CPU=8
+          srun --chdir=$PWD -p interactive -c $N_CPU -t 00:25:00 --mem=32G \
+            bash ./.github/ci/run_cpu_lane.sh
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && hashFiles('coverage.cpu.xml') != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.cpu.xml
+          flags: cluster-cpu
+          fail_ci_if_error: false
+
+  coreweave-gpu:
+    name: pytest (gpu, coreweave)
+    needs: authorize
+    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
+    environment: cluster-ci
+    runs-on: [self-hosted, coreweave-gpu]
+    timeout-minutes: 60
+    env:
+      CI_CLUSTER: coreweave
+    steps:
+      - uses: actions/checkout@v4
+      - name: GPU tests (srun interactive + apptainer)
+        env:
+          SOTA_CKPT_PATH: ${{ vars.SOTA_CKPT_PATH || '' }}  # unset -> skip MCSA validation + search
+          # Written by run_gpu_lane.sh once the allocation starts: present => real test failure, no retry.
+          GPU_ALLOC_SENTINEL: ${{ github.workspace }}/.gpu_alloc_started
+          # Pass the repository secrets into Apptainer without placing their values in command arguments.
+          APPTAINERENV_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          APPTAINERENV_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          # Retries only cover allocation failures (GPU contention), not test failures.
+          attempts=3
+          for i in $(seq 1 "$attempts"); do
+            rm -f "$GPU_ALLOC_SENTINEL"
+            echo "::group::GPU srun attempt $i/$attempts"
+            set +e
+            srun --chdir=$PWD --gres=gpu:6 -p interactive --export=ALL --kill-on-bad-exit \
+              -J "ci-gpu-${GITHUB_RUN_ID}" \
+              -t 00:45:00 --cpus-per-task=96 --mem=768G \
+              bash ./.github/ci/run_gpu_lane.sh 2>&1 | tee "/tmp/gpu_srun.${GITHUB_RUN_ID}.$i"
+            rc=${PIPESTATUS[0]}
+            set -e
+            echo "::endgroup::"
+            [ "$rc" -eq 0 ] && exit 0
+            if [ -f "$GPU_ALLOC_SENTINEL" ]; then
+              echo "Tests ran on the allocated node -> real failure (rc=$rc); not retrying."
+              exit "$rc"
+            fi
+            echo "Allocation failed before tests started; retrying after backoff."
+            sleep 30
+          done
+          echo "GPU allocation kept failing before tests started after $attempts attempts."
+          exit 1
+      - name: Upload GPU coverage to Codecov
+        if: ${{ !cancelled() && hashFiles('coverage.gpu.xml') != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.gpu.xml
+          flags: gpu
+          fail_ci_if_error: false
+      - name: Reap leaked srun allocation
+        if: always()
+        run: scancel --me --name="ci-gpu-${GITHUB_RUN_ID}" 2>/dev/null || true
+      - name: Publish GPU test summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: testing.gpu.junit.xml
+
+  digs-cpu:
+    name: pytest (cpu, digs)
+    needs: authorize
+    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'coreweave'
+    environment: cluster-ci
+    # Repo-level self-hosted runner on a DIGS login node; it only submits srun to the cpu partition.
+    runs-on: [self-hosted, digs]
+    timeout-minutes: 60
+    env:
+      CI_CLUSTER: digs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests (srun + apptainer)
+        env:
+          TEST_PATH: ./tests
+          XDIST_WORKERS: auto
+        run: |
+          export N_CPU=8
+          srun --chdir=$PWD -p cpu -c $N_CPU -t 00:50:00 --mem=32G \
+            -J "ci-digs-${GITHUB_RUN_ID}" \
+            bash ./.github/ci/run_cpu_lane.sh
