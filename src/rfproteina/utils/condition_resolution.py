@@ -1,7 +1,7 @@
 """Resolve a Condition/StandardAnnotation class from an arbitrary user-facing name.
 
 Backs the ``conditions:`` block of a condition spec
-(``docs/workflow/condition-spec.md``), where
+(``docs/how-to/input_prep/yaml-json.md``), where
 an annotation may be named by any shorthand alias (``C_CRD``, ``SA_SRC``,
 ...) or by its full systematic registry name (``coordinate``, ``hotspot``,
 ...).

@@ -156,7 +156,7 @@ if [[ "$af3" == yes ]]; then
         fi
         block+=("AF3_IMAGE=\${DATA_PATH}/openfold3/runtime/$OF3_RUNTIME_NAME")
     else
-        notes+=("No prebuilt AlphaFold 3 / OpenFold3 image is published for $arch. Build one from the runtime source (see docs/workflow/metrics.md), then set AF3_IMAGE to the resulting .sif in $env_file.")
+        notes+=("No prebuilt AlphaFold 3 / OpenFold3 image is published for $arch. Build one from the runtime source (see docs/how-to/evaluate-with-metrics.md), then set AF3_IMAGE to the resulting .sif in $env_file.")
     fi
     block+=("AF3_JAX_CACHE_DIR=\${DATA_PATH}/openfold3/jax_cache")
     if [[ "$of3_weights" == yes ]]; then

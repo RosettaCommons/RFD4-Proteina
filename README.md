@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/wordmark.svg" width="587" alt="RFD4-Proteína">
+  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/wordmark.svg" width="587" alt="RFD4-Proteina">
 </p>
 
 <p align="center"><em>A flow-matching foundation model for biomolecular design — Baker Lab × NVIDIA GenAIR</em></p>
@@ -26,7 +26,7 @@
   <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
 </picture>
 
-RFD4-Proteína designs proteins and biomolecular complexes with sequence–structure co-design,
+RFD4-Proteina designs proteins and biomolecular complexes with sequence–structure co-design,
 motif and binding-site conditioning, partial diffusion, and reward-guided search.
 
 Key features:
@@ -112,7 +112,7 @@ rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
 
 Designs are written to `runs/first/inference_samples/`. Increase `num_replicates`
 for more designs, or replace the example path
-with your own [annotated input](https://rosettacommons.github.io/RFD4-Proteina/workflow/inputs.html).
+with your own [annotated input](https://rosettacommons.github.io/RFD4-Proteina/how-to/input_prep/index.html).
 
 ### Hugging Face and Python
 
@@ -150,30 +150,30 @@ For a native local checkpoint, set `hf_ckpt_path=null`,
 `ckpt_path=/path/to/checkpoints`, `ckpt_name=model.ckpt`, and
 `autoencoder_ckpt_path=/path/to/ae.ckpt`.
 Training datasets are separate from model downloads: see the
-[training guide](https://rosettacommons.github.io/RFD4-Proteina/development.html).
+[training guide](https://rosettacommons.github.io/RFD4-Proteina/contributing/developer-guide.html).
 
-- [Running the model](https://rosettacommons.github.io/RFD4-Proteina/workflow/running.html): binders, motif scaffolding, partial diffusion, and sampling settings.
-- [Input preparation](https://rosettacommons.github.io/RFD4-Proteina/workflow/inputs.html) · [Text-based design specifications](https://rosettacommons.github.io/RFD4-Proteina/workflow/condition-spec.html)
-- [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html) · [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html)
-- [Training and fine-tuning](https://rosettacommons.github.io/RFD4-Proteina/development.html) · [Worked examples](https://rosettacommons.github.io/RFD4-Proteina/examples.html)
+- [Running the model](https://rosettacommons.github.io/RFD4-Proteina/how-to/run-the-model.html): binders, motif scaffolding, partial diffusion, and sampling settings.
+- [Input preparation](https://rosettacommons.github.io/RFD4-Proteina/how-to/input_prep/index.html) · [Text-based design specifications](https://rosettacommons.github.io/RFD4-Proteina/how-to/input_prep/yaml-json.html)
+- [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/how-to/evaluate-with-metrics.html) · [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/how-to/search.html)
+- [Training and fine-tuning](https://rosettacommons.github.io/RFD4-Proteina/contributing/developer-guide.html) · [Worked examples](https://rosettacommons.github.io/RFD4-Proteina/examples/index.html)
 
 ## More workflows
 
-- **Binders and motif scaffolding:** condition on an annotated CIF or a YAML design spec; see [Running the model](https://rosettacommons.github.io/RFD4-Proteina/workflow/running.html).
-- **Reward-guided search:** select a search `inference_experiment` config to branch and prune candidates against an oracle; see [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html).
-- **Partial diffusion:** re-noise and refine an existing design; see [Partial diffusion](https://rosettacommons.github.io/RFD4-Proteina/workflow/partial-diffusion.html).
-- **Scoring and refolding:** run `rfd4-evaluate` on generated structures; see [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html).
-- **Inference backends:** `native` (default, compiled or eager) or `bioir` via `inference_backend=`; see [Inference backends](https://rosettacommons.github.io/RFD4-Proteina/workflow/backends.html).
+- **Binders and motif scaffolding:** condition on an annotated CIF or a YAML design spec; see [Running the model](https://rosettacommons.github.io/RFD4-Proteina/how-to/run-the-model.html).
+- **Reward-guided search:** select a search `inference_experiment` config to branch and prune candidates against an oracle; see [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/how-to/search.html).
+- **Partial diffusion:** re-noise and refine an existing design; see [Partial diffusion](https://rosettacommons.github.io/RFD4-Proteina/how-to/partial-diffusion.html).
+- **Scoring and refolding:** run `rfd4-evaluate` on generated structures; see [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/how-to/evaluate-with-metrics.html).
+- **Inference backends:** `native` (default, compiled or eager) or `bioir` via `inference_backend=`; see [Inference backends](https://rosettacommons.github.io/RFD4-Proteina/how-to/advanced/backends.html).
 
 ## Tutorials
 
-- [Annotated CIF tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/annotated_cif_tutorial.ipynb): build and validate conditioned structure inputs.
+- [Python API tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/python_api_tutorial.ipynb): build and validate conditioned structure inputs.
 - [Enzyme design tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/enzyme_design_tutorial.ipynb): motif scaffolding and catalytic-site metrics, end to end.
 - [PPI specificity tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/ppi_specificity_tutorial.ipynb): protein-binder design and specificity checks.
 - [Antibody campaign examples](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
 - [Agent skills](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/skills/README.md): task-specific guides for setup, generation, search, and evaluation.
 
-[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE)
+[Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributing/index.html) · [BSD 3-Clause license](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">

@@ -80,7 +80,7 @@ def require_bioir(native: Any = None) -> None:
         )
     except (ImportError, OSError) as error:
         raise ImportError(
-            "inference_backend=bioir runs the whole workflow through BioIR's RFProteína model, which is not "
+            "inference_backend=bioir runs the whole workflow through BioIR's RFProteina model, which is not "
             "available in this environment. Install a bionemo-ir runtime that provides it, or select "
             "inference_backend=native."
         ) from error
@@ -106,7 +106,7 @@ def require_bioir(native: Any = None) -> None:
             missing.append(f"bionemo_ir._torch.sampling.random.{name}")
     if missing:
         raise RuntimeError(
-            f"The installed BioIR RFProteína is missing {missing}; install the pinned BioIR runtime, "
+            f"The installed BioIR RFProteina is missing {missing}; install the pinned BioIR runtime, "
             "or select inference_backend=native."
         )
     residue_types = _checkpoint_residue_types(native)
@@ -116,13 +116,13 @@ def require_bioir(native: Any = None) -> None:
             RFProteinaDecoderConfig(num_residue_types=residue_types)
         except ValueError as error:
             raise RuntimeError(
-                f"The installed BioIR RFProteína cannot convert this checkpoint's {residue_types}-class "
+                f"The installed BioIR RFProteina cannot convert this checkpoint's {residue_types}-class "
                 "residue vocabulary; install the pinned BioIR runtime, or select inference_backend=native."
             ) from error
     # An undeclared field is ignored rather than rejected, so declaring it is the capability.
     if _recycle_wider_than_depth(native) and "recycle_conditioning" not in RFProteinaRepresentationConfig.model_fields:
         raise RuntimeError(
-            "The installed BioIR RFProteína cannot convert this checkpoint's recycle conditioning, which is "
+            "The installed BioIR RFProteina cannot convert this checkpoint's recycle conditioning, which is "
             "wider than its gradient depth; install the pinned BioIR runtime, or select inference_backend=native."
         )
     alignment = _noise_alignment(native)
@@ -135,7 +135,7 @@ def require_bioir(native: Any = None) -> None:
         alignment["noise_align_chirality"] or alignment["noise_align_chirality_translate"]
     ) and "noise_align_chirality" not in RFProteinaRepresentationConfig.model_fields:
         raise RuntimeError(
-            "The installed BioIR RFProteína cannot align chirality to the noisy state, which this checkpoint was "
+            "The installed BioIR RFProteina cannot align chirality to the noisy state, which this checkpoint was "
             "trained with; install the pinned BioIR runtime, or select inference_backend=native."
         )
 

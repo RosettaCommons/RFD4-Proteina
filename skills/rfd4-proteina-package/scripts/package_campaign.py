@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Build a simple shareable TAR of RFProteína designs and aligned refolds."""
+"""Build a simple shareable TAR of RFProteina designs and aligned refolds."""
 
 from __future__ import annotations
 
@@ -326,7 +326,7 @@ def _write_readme(
     lines = [
         f"# {package_name}",
         "",
-        f"This package contains {len(designs)} RFProteína designs selected by criteria set "
+        f"This package contains {len(designs)} RFProteina designs selected by criteria set "
         f"`{criteria_set}`, grouped under {len(inputs)} exact annotated-CIF inputs.",
         "",
         "Each design directory contains the generated design and every linked oracle refold. "

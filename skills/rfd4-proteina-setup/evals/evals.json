@@ -4,7 +4,7 @@
   "cases": [
     {
       "id": "preflight-then-smoke-monomer",
-      "prompt": "Set up RFProteína on this machine and confirm it can run. Install the environment, download the example checkpoints into a local DATA_PATH, run the setup preflight, and then run a single-design smoke test on the short monomer benchmark.",
+      "prompt": "Set up RFProteina on this machine and confirm it can run. Install the environment, download the example checkpoints into a local DATA_PATH, run the setup preflight, and then run a single-design smoke test on the short monomer benchmark.",
       "setup": {
         "cwd": "repository root",
         "requires": ["NVIDIA GPU", "git", "curl", "~10GB disk"]

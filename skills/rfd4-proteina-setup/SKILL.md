@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-setup
 description: >
-  Prepare a machine to run RFD4-Proteína (RFD4-Proteína) — the Baker Lab x NVIDIA
+  Prepare a machine to run RFD4-Proteina (RFD4-Proteina) — the Baker Lab x NVIDIA
   flow-matching protein design model. Reach for this skill for "set up
   rfproteina", "install rfproteina", "environment for rfproteina", "download the
   rfproteina checkpoints", "DATA_PATH not found", "atomworks not found", "which
@@ -9,12 +9,12 @@ description: >
   or before any generate/evaluate/search run. It installs the native Python environment and AtomWorks, wires DATA_PATH and runtime settings, downloads the model
   weights, and preflights GPU + checkpoints so downstream runs do not fail
   mid-job. Hand off to rfd4-proteina-generate once preflight is green.
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFD4-Proteína Setup
+# RFD4-Proteina Setup
 
-Get a host ready to run RFD4-Proteína inference: environment, model weights, and a
+Get a host ready to run RFD4-Proteina inference: environment, model weights, and a
 green preflight. The two failure modes this skill exists to prevent are (1)
 importing the model before its environment and AtomWorks are installed, and (2)
 launching an hours-long run only to have it die because `DATA_PATH` or a

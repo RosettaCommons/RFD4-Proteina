@@ -187,7 +187,7 @@ only-include = [
     "src", "configs", "data/cath_label_mapping.pkl",
     "data/benchmarks/monomer",
     "scripts/check_distribution.py",
-    "docs/packaging.md",
+    "docs/contributing/packaging.md",
 ]
 exclude = [
     "configs/metrics/custom_metrics/**",

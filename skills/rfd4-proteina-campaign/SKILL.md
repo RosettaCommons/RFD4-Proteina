@@ -1,17 +1,17 @@
 ---
 name: rfd4-proteina-campaign
 description: >
-  Plan and run an end-to-end RFD4-Proteína design campaign with durable provenance
+  Plan and run an end-to-end RFD4-Proteina design campaign with durable provenance
   from annotated CIFs through generation, search, oracle refolds, metrics,
   versioned passer criteria, partial diffusion, and delivery. Reach for this
   skill for "run a design campaign", "maximize passers", "scale a binder or
   enzyme campaign", "track every design and refold", or "resume a campaign
   without losing work". Use narrower generation, search, evaluation, or
   autoresearch skills for one-off runs or individual experiment waves.
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFD4-Proteína design campaigns
+# RFD4-Proteina design campaigns
 
 A campaign is an inspectable scientific program, not a collection of output
 directories. Its durable product is a ledger that connects every design to the

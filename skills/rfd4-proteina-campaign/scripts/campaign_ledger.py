@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Create and maintain a portable RFProteína campaign ledger.
+"""Create and maintain a portable RFProteina campaign ledger.
 
 The ledger stores immutable identities and relationships in SQLite while archiving
 critical files in a content-addressed directory beside the database. Cluster jobs

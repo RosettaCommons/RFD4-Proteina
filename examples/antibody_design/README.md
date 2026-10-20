@@ -39,7 +39,7 @@ experimental validation.
 
 Launch production-scale runs for promising combinations, retaining several
 alternatives. Keep sampling where useful; save a new annotated input to fix a
-hotspot patch or narrow CDR lengths (see the [input guide](../../docs/workflow/inputs.md)).
+hotspot patch or narrow CDR lengths (see the [input guide](../../docs/how-to/input_prep/index.md)).
 To retain a chosen hotspot patch, set `generation.dataset.sampling_transforms=null`.
 Use `inputs=/path/to/selected_inputs` and increase `num_replicates` for production.
 Cluster passers and continue until satisfied with diversity.

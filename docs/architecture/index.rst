@@ -7,7 +7,7 @@ Architecture
 
 .. container:: wf-intro
 
-   These diagrams take RFD4-Proteína apart one level at a time, from the whole generation loop down
+   These diagrams take RFD4-Proteina apart one level at a time, from the whole generation loop down
    to a single attention head. The top level is a map of the system. Every level below it is a
    `neural circuit diagram <https://vtabbott.io/articles/diagrams-explained-quickly/>`__ generated
    from an algebraic expression of the code, drawn at the dimensions of the reference model (pair
@@ -41,7 +41,7 @@ Architecture
          <div class="arch-map">
            <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" class="wf arch-map-svg" role="group"
                 aria-labelledby="arch-map-title arch-map-desc">
-             <title id="arch-map-title">RFD4-Proteína at a glance</title>
+             <title id="arch-map-title">RFD4-Proteina at a glance</title>
              <desc id="arch-map-desc">An annotated CIF is featurized into design features that do not depend on
                the noisy state. A flow-matching sampler runs 60 steps
                from Gaussian noise; at every step the denoiser embeds the noisy state, runs its trunk R times in a

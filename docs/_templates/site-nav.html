@@ -5,7 +5,7 @@
 {%- set latent = pagename == 'architecture/expanded-chemistry' %}
 {%- set arch = pagename.startswith('architecture') and not latent %}
 <header class="site-nav" id="site-nav">
-    <a class="site-brand" href="{{ site }}index.html" aria-label="RFD4-Proteina home"><img class="theme-light" src="{{ site }}assets/figures/wordmark.webp" alt="RFD4-Proteina" width="520" height="65"><img class="theme-dark" src="{{ site }}assets/figures/wordmark-dark.webp" alt="RFD4-Proteina" width="520" height="65"></a>
+    <a class="site-brand" href="{{ site }}index.html" aria-label="RFD4-Proteina home"><img class="theme-light" src="{{ pathto("_static/wordmark.webp", 1) }}" alt="RFD4-Proteina" width="520" height="65"><img class="theme-dark" src="{{ pathto("_static/wordmark-dark.webp", 1) }}" alt="RFD4-Proteina" width="520" height="65"></a>
     <nav class="site-tabs" aria-label="Main navigation">
         <div class="tab-group">
             <a class="tab" href="{{ site }}index.html">Home</a>

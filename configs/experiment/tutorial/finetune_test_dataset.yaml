@@ -1,7 +1,7 @@
 # @package _global_
 # Continue training the released denoiser on the tiny test_dataset, validating by unconditional
 # monomer generation (the checked-in val/unconditional set, with the AF3 refolding tag dropped so
-# no container is needed). Single GPU, short. See docs/development.md.
+# no container is needed). Single GPU, short. See docs/contributing/developer-guide.md.
 
 defaults:
   - /datasets/train/test_dataset@datasets.train.test_dataset
@@ -46,4 +46,4 @@ nn:
   use_torch_compile: false
 
 # Initialize from a local/HF bundle with hf_ckpt_path, or use
-# pretrain_ckpt_path for a native checkpoint (see docs/development.md).
+# pretrain_ckpt_path for a native checkpoint (see docs/contributing/developer-guide.md).

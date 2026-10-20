@@ -35,7 +35,7 @@
     },
     {
       "id": "unindex-disconnected-motif-islands",
-      "prompt": "Unindex catalytic residues A57 and A102 around this ligand so RFProteína can place them freely.",
+      "prompt": "Unindex catalytic residues A57 and A102 around this ligand so RFProteina can place them freely.",
       "expected_behavior": [
         "Checks that A57 and A102 are standard non-atomized residues and keeps the ligand indexed",
         "Sets C_IDX consistently across every atom of each residue",

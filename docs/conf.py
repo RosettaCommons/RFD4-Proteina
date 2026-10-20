@@ -30,7 +30,7 @@ try:
 except ImportError:
     pass
 
-project = "RFD4-Proteína"
+project = "RFD4-Proteina"
 author = "Baker Lab and NVIDIA GenAIR"
 copyright = "2026, Baker Lab and NVIDIA GenAIR"
 
@@ -56,47 +56,83 @@ extensions = [
 redirects = {
     # 2026-08: "reference" was a leftover bucket, not a category. Its pages now sit under the
     # workflow stage they belong to, and the two that duplicated a workflow page were merged in.
-    "reference": "workflow.html",
-    "reference/metrics": "../workflow/metrics.html",
-    "reference/parameters": "../workflow/running.html#every-parameter",
-    "reference/custom-metrics": "../workflow/custom-metrics.html",
-    "reference/condition-spec": "../workflow/condition-spec.html",
-    "reference/small-molecule-featurization": "../workflow/inputs.html",
-    "workflow/conditions": "inputs.html",
+    # The metrics catalog returned to "reference/metrics" later, so that one redirect is gone.
+    "reference": "concepts/workflow.html",
+    "reference/parameters": "../how-to/run-the-model.html#every-parameter",
+    "reference/custom-metrics": "../how-to/advanced/custom-metrics.html",
+    "reference/condition-spec": "../how-to/input_prep/yaml-json.html",
+    "reference/small-molecule-featurization": "../how-to/input_prep/index.html",
+    "workflow/conditions": "../how-to/input_prep/index.html",
+    "workflow/metrics": "../how-to/evaluate-with-metrics.html",
     # guides -> workflow
-    "guides/annotated_cif_inputs": "../workflow/inputs.html",
-    "guides/inference": "../workflow/running.html",
-    "guides/metrics": "../workflow/metrics.html",
-    "guides/search": "../workflow/search.html",
+    "guides/annotated_cif_inputs": "../how-to/input_prep/index.html",
+    "guides/inference": "../how-to/run-the-model.html",
+    "guides/metrics": "../how-to/evaluate-with-metrics.html",
+    "guides/search": "../concepts/search.html",
     "guides/enzyme_design": "../examples/enzyme_design_tutorial.html",
-    "guides/json_to_annotated_cif": "../workflow/design2cif.html",
+    "guides/json_to_annotated_cif": "../how-to/input_prep/agent.html",
     # guides -> reference
-    "guides/parameters": "../workflow/running.html#every-parameter",
-    "guides/small_molecule_featurization": "../workflow/inputs.html",
+    "guides/parameters": "../how-to/run-the-model.html#every-parameter",
+    "guides/small_molecule_featurization": "../how-to/input_prep/index.html",
     # the small-molecule featurization page was retired; inputs covers what the model reads
-    "workflow/small-molecule-featurization": "inputs.html",
-    "condition_spec_yaml": "workflow/condition-spec.html",
+    "workflow/small-molecule-featurization": "../how-to/input_prep/index.html",
+    "condition_spec_yaml": "how-to/input_prep/yaml-json.html",
+    # condition-spec.md's content was split into the how-to guide, the FAQ, and the field reference
+    "workflow/condition-spec": "../how-to/input_prep/yaml-json.html",
     # /design2cif outgrew being a JSON converter, so the page moved off that name
-    "workflow/from-json": "design2cif.html",
+    "workflow/from-json": "../how-to/input_prep/agent.html",
+    # design2cif moved under input_prep alongside the other input-authoring routes
+    "workflow/design2cif": "../how-to/input_prep/agent.html",
     # the enzyme design page was a condensed copy of its own tutorial; the tutorial is the page now
     "workflow/enzyme-design": "../examples/enzyme_design_tutorial.html",
     # guides -> top level
-    "guides/custom_metrics": "../workflow/custom-metrics.html",
+    "guides/custom_metrics": "../how-to/advanced/custom-metrics.html",
     # custom metrics moved off the top-level nav and under the metrics reference
-    "custom-metrics": "workflow/custom-metrics.html",
-    "guides/development": "../development.html",
-    "guides": "workflow.html",
+    "custom-metrics": "how-to/advanced/custom-metrics.html",
+    "guides/development": "../contributing/developer-guide.html",
+    "development": "contributing/developer-guide.html",
+    "guides": "concepts/workflow.html",
     # preserve the former input-guide URL
-    "guides/input": "../workflow/inputs.html",
+    "guides/input": "../how-to/input_prep/index.html",
+    # inputs moved out of the workflow stage into its own input-preparation section
+    "workflow/inputs": "../how-to/input_prep/index.html",
+    # inputs became the index page of its own input-preparation section
+    "how-to/inputs": "input_prep/index.html",
+    # metric guidance moved into the how-to advanced subsection
+    "how-to/metric-guidance": "advanced/metric-guidance.html",
+    # custom metrics moved under the how-to advanced subsection alongside metric guidance
+    "workflow/custom-metrics": "../how-to/advanced/custom-metrics.html",
     # design-task stubs never had content — send readers to the runnable examples
-    "guides/unconditional_generation": "../examples.html",
-    "guides/motif_scaffolding": "../examples.html",
-    "guides/protein_binder_design": "../examples.html",
-    "guides/small_molecule_binder_design": "../examples.html",
-    "guides/dna_binder_design": "../examples.html",
+    "guides/unconditional_generation": "../examples/index.html",
+    "guides/motif_scaffolding": "../examples/index.html",
+    "guides/protein_binder_design": "../examples/index.html",
+    "guides/small_molecule_binder_design": "../examples/index.html",
+    "guides/dna_binder_design": "../examples/index.html",
     # quickstart moved out of its single-page wrapper directory
     "tutorial/index": "../quickstart.html",
     "tutorial/quickstart": "../quickstart.html",
+    # the workflow overview moved under concepts/ alongside the rest of the conceptual docs
+    "workflow": "concepts/workflow.html",
+    # metric guidance, partial diffusion, and search moved under concepts/ with the workflow overview
+    "workflow/metric-guidance": "../concepts/metric-guidance.html",
+    "workflow/partial-diffusion": "../concepts/partial-diffusion.html",
+    "workflow/search": "../concepts/search.html",
+    # pages moved by the restructuring, including those added to the old layout since
+    "workflow/running": "../how-to/run-the-model.html",
+    "workflow/backends": "../how-to/advanced/backends.html",
+    "workflow/outputs": "../reference/output-format.html",
+    "contributor_guide": "contributing/index.html",
+    "glossary": "reference/glossary.html",
+    "examples/annotated_cif_tutorial": "python_api_tutorial.html",
+    "api_reference": "reference/index.html",
+    "api/conditions": "../reference/api/conditions.html",
+    "api/inference_utils": "../reference/api/inference_utils.html",
+    "api/metrics": "../reference/api/metrics.html",
+    "api/rewards": "../reference/api/rewards.html",
+    "api/search": "../reference/api/search.html",
+    "api/transforms": "../reference/api/transforms.html",
+    # the examples landing page moved alongside its tutorial notebooks
+    "examples": "examples/index.html",
 }
 
 # Put a "show code" button on a notebook's incidental code -- setup, plotting, Slurm plumbing --
@@ -123,6 +159,8 @@ exclude_patterns = [
     # Superpowers plans and specs are process docs checked in for traceability, not site pages.
     "superpowers/plans/**",
     "superpowers/specs/**",
+    # Release/packaging steps are for maintainers, not RFD4-Proteina users; keep it out of the built site.
+    "contributing/packaging.md",
 ]
 
 autodoc_member_order = "bysource"
@@ -166,7 +204,7 @@ if _SITE_ROOT:
     html_css_files = [*globals().get("html_css_files", []), "site-nav.css"]
     html_js_files = [*html_js_files, ("site-nav.js", {"defer": "defer"})]
 html_favicon = "_static/favicon.svg"
-html_title = "RFD4-Proteína documentation"
+html_title = "RFD4-Proteina documentation"
 html_baseurl = "https://rosettacommons.github.io/RFD4-Proteina/latest/"
 
 html_theme_options = {
@@ -187,7 +225,7 @@ html_theme_options = {
     "logo": {
         "image_light": "_static/wordmark.webp",
         "image_dark": "_static/wordmark-dark.webp",
-        "alt_text": "RFD4-Proteína",
+        "alt_text": "RFD4-Proteina",
     },
     "icon_links": [
         *(
@@ -216,8 +254,9 @@ nbsphinx_execute = "never"
 # static image, so point nbsphinx at one explicitly).
 nbsphinx_thumbnails = {
     "examples/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
-    "examples/annotated_cif_tutorial": "_static/annotated_cif_thumb.png",
+    "examples/python_api_tutorial": "_static/annotated_cif_thumb.png",
     "examples/ppi_specificity_tutorial": "_static/ppi_tutorial_thumb.png",
+    "examples/antibody_design_tutorial": "_static/antibody_tutorial_thumb.png",
 }
 
 # Offer the runnable notebook for download at the bottom of every notebook page.

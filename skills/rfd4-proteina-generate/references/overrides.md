@@ -1,7 +1,7 @@
 # Overrides cheat sheet
 
 Every generation parameter you are likely to touch, mirroring
-`docs/workflow/running.md`. **All arguments are Hydra `key=value`, never
+`docs/how-to/run-the-model.md`. **All arguments are Hydra `key=value`, never
 `--key value`.** Run from the repo root. Back to the [skill](../SKILL.md).
 
 Entry point:
@@ -10,7 +10,7 @@ Entry point:
 rfd4-generate inputs=<file> num_replicates=<N> out_dir=<dir> [overrides...]
 ```
 
-Activate the environment where you installed RFD4-Proteína before running these
+Activate the environment where you installed RFD4-Proteina before running these
 commands. `rfd4-generate` uses that environment's Python.
 
 ## Essential (defaults rarely right for a real run)
@@ -129,7 +129,7 @@ Pass as a bracket-quoted Hydra list; results go to `per_example_metrics.csv`.
 
 All `*_refolding` tags run the AF3 oracle (needs an apptainer/docker container).
 Metrics that require a tag are silently skipped if the tag is absent. Deep detail
-lives in **rfd4-proteina-evaluate** and `docs/workflow/metrics.md`.
+lives in **rfd4-proteina-evaluate** and `docs/how-to/evaluate-with-metrics.md`.
 
 ## Reusable configs and search
 

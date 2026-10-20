@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-evaluate
 description: >
-  Compute post-hoc metrics on already-generated RFD4-Proteína structures and
+  Compute post-hoc metrics on already-generated RFD4-Proteina structures and
   aggregate them across parallel jobs. Reach for this skill for "evaluate my
   designs", "compute metrics", "refold with AF3", "scRMSD / pLDDT / ipAE",
   "is my design designable", "designability", "aggregate metrics", "concatenate
@@ -12,10 +12,10 @@ description: >
   `aggregated_metrics.csv` / `per_task_metrics.csv` and (optionally) clusters
   designs structurally with FoldSeek. Deep metric detail lives here; inline
   metrics during generation are covered by rfd4-proteina-generate.
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFD4-Proteína Evaluate (post-hoc metrics + aggregation)
+# RFD4-Proteina Evaluate (post-hoc metrics + aggregation)
 
 Score structures that already exist on disk, without re-running generation.
 `evaluate.py` shares the exact same metrics stack and Hydra config as generation,
@@ -118,7 +118,7 @@ They are picked up automatically (no extra flags), and results land in
 `residue_count.n_residues`). Often you don't even need new Python — an existing
 ready-made-but-opt-in class (interface ddG, atom-pair distance constraints,
 charge complementarity, ...) just needs a few lines of YAML. See
-[docs/workflow/custom-metrics.md](../../docs/workflow/custom-metrics.md) and
+[docs/how-to/advanced/custom-metrics.md](../../docs/how-to/advanced/custom-metrics.md) and
 [references/metrics.md](references/metrics.md).
 
 ## The AF3-container caveat (read this)
@@ -130,7 +130,7 @@ apptainer/docker container** configured via the cluster env files. Plain
 (non-refolding) design metrics like `[design]` do **not** need a container. If
 you request a refolding tag without the container, those metrics silently do not
 run — you get no oracle columns and no error. Configure the container first (see
-**rfd4-proteina-setup**, [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst),
+**rfd4-proteina-setup**, [RFD4-Proteina installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst),
 or use `scripts/launch_evaluate.sh ...` which wires it in.
 
 ## Metrics-tag reference
@@ -139,7 +139,7 @@ A compact table of the 44 configured metric, oracle, pass-criterion, and filter 
 their categories and config paths, the tag semantics
 (`required_tags_any` / `required_tags_all` / `prohibited_tags`), and the opt-in
 classes is in [references/metrics.md](references/metrics.md). The full source of
-truth is [docs/workflow/metrics.md](../../docs/workflow/metrics.md).
+truth is [docs/how-to/evaluate-with-metrics.md](../../docs/how-to/evaluate-with-metrics.md).
 
 ## Outputs
 
@@ -162,6 +162,6 @@ truth is [docs/workflow/metrics.md](../../docs/workflow/metrics.md).
 | Only job CSVs present, no aggregate | Run `python -m rfproteina.inference_utils.aggregate_metrics <metrics_dir>` after all jobs finish |
 
 For deeper detail: [metrics reference](references/metrics.md) ·
-[docs/workflow/metrics.md](../../docs/workflow/metrics.md) ·
-[docs/workflow/custom-metrics.md](../../docs/workflow/custom-metrics.md) ·
-[Evaluating Results](../../docs/workflow/running.md).
+[docs/how-to/evaluate-with-metrics.md](../../docs/how-to/evaluate-with-metrics.md) ·
+[docs/how-to/advanced/custom-metrics.md](../../docs/how-to/advanced/custom-metrics.md) ·
+[Evaluating Results](../../docs/how-to/run-the-model.md).

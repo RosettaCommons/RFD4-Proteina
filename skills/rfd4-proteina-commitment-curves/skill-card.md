@@ -2,7 +2,7 @@
 
 ## Description
 
-`rfd4-proteina-commitment-curves` measures **where along the flow-matching trajectory RFD4-Proteína decides a property**. It generates both phases' configs from one spec, runs phase 1 (make the parent designs, or score a curated set offline with `rfd4-evaluate`), sweeps `generation.args.partial_trajectory_fraction_steps` through `scripts/launch_sweep.sh` to partially re-diffuse each parent at a grid of restart steps, and plots the Spearman correlation between each child's metric and its own parent's. Alongside it, always and without configuration, it plots the two fidelity curves — sequence identity and CA RMSD to the parent structure — which give the scale the correlations are read on.
+`rfd4-proteina-commitment-curves` measures **where along the flow-matching trajectory RFD4-Proteina decides a property**. It generates both phases' configs from one spec, runs phase 1 (make the parent designs, or score a curated set offline with `rfd4-evaluate`), sweeps `generation.args.partial_trajectory_fraction_steps` through `scripts/launch_sweep.sh` to partially re-diffuse each parent at a grid of restart steps, and plots the Spearman correlation between each child's metric and its own parent's. Alongside it, always and without configuration, it plots the two fidelity curves — sequence identity and CA RMSD to the parent structure — which give the scale the correlations are read on.
 
 Between the two phases it also asks how *rare* each metric is: one histogram per metric over the phase-1 parents, cut by the thresholds in the run's pass-criteria config, with the observed pass rate per cut and — where too few designs passed for that to have resolution — a named extrapolation (a generalised-Pareto tail fit, or the best-AIC density fit) of how many designs one passer costs. That is a difficulty question the correlation curve cannot answer, and it is cheap enough to run before the sweep is paid for.
 
@@ -10,11 +10,11 @@ This skill is for research and development only.
 
 ## Owner
 
-RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteina maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFD4-Proteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); the underlying scripts follow the repository's source license.
+See the RFD4-Proteina repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); the underlying scripts follow the repository's source license.
 
 ## Use Case
 
@@ -59,7 +59,7 @@ Mitigation: Stated in the skill and here; `references/method.md` requires valida
 
 ## References
 
-- `docs/workflow/running.md` (partial diffusion), `configs/generation/inference_base.yaml`
+- `docs/how-to/run-the-model.md` (partial diffusion), `configs/generation/inference_base.yaml`
 - `src/rfproteina/search/vanilla.py` (`resolve_partial_t`, `build_partial_schedule`), `src/rfproteina/flow_matching/product_space_flow_matcher.py` (`partial_simulation`)
 - `scripts/launch_sweep.sh`, `src/script_utils/sweep.py`, `src/script_utils/concatenate_sweep_results.py`
 - `src/rfproteina/evaluate.py`, `src/rfproteina/inference_utils/aggregate_metrics.py`

@@ -124,7 +124,7 @@ class AutoEncoder(L.LightningModule):
     def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Loads additional variables from checkpoint."""
         if (self.cfg_ae.get("lora") or {}).get("r"):
-            raise ValueError("LoRA adapts the RFD4-Proteína denoiser; autoencoder LoRA is not supported.")
+            raise ValueError("LoRA adapts the RFD4-Proteina denoiser; autoencoder LoRA is not supported.")
         try:
             self.nsamples_processed = checkpoint["nsamples_processed"]
         except KeyError:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Print a read-only inventory of structure, chemistry, and RFProteína conditions."""
+"""Print a read-only inventory of structure, chemistry, and RFProteina conditions."""
 
 from __future__ import annotations
 

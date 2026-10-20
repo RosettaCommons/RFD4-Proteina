@@ -2,21 +2,21 @@
 
 ## Description
 
-`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteína (RFD4-Proteína) by installing the uv/Python-3.12 environment and AtomWorks dependency, wiring `DATA_PATH` and optional runtime settings, downloading the model checkpoints, and running a GPU/checkpoint preflight.
+`rfd4-proteina-setup` prepares a Linux + NVIDIA-GPU host to run RFD4-Proteina (RFD4-Proteina) by installing the uv/Python-3.12 environment and AtomWorks dependency, wiring `DATA_PATH` and optional runtime settings, downloading the model checkpoints, and running a GPU/checkpoint preflight.
 
 This skill is for research and development only.
 
 ## Owner
 
-RFD4-Proteína maintainers — Baker Lab x NVIDIA GenAI collaboration.
+RFD4-Proteina maintainers — Baker Lab x NVIDIA GenAI collaboration.
 
 ## License/Terms of Use
 
-See the RFD4-Proteína repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); helper scripts follow the repository's source license.
+See the RFD4-Proteina repository. Skill text and documentation follow the NVIDIA agent-skills documentation convention (CC-BY-4.0); helper scripts follow the repository's source license.
 
 ## Use Case
 
-Anyone standing up RFD4-Proteína on a new machine or cluster before generating, evaluating, or searching. Run this first; it is a prerequisite for `rfd4-proteina-generate`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`.
+Anyone standing up RFD4-Proteina on a new machine or cluster before generating, evaluating, or searching. Run this first; it is a prerequisite for `rfd4-proteina-generate`, `rfd4-proteina-search`, and `rfd4-proteina-evaluate`.
 
 ## Deployment Geography for Use
 
@@ -45,9 +45,9 @@ Mitigation: Private setup appends a marked block only when absent and offers an 
 
 ## References
 
-- `docs/workflow/running.md`, `docs/workflow/inputs.md`
+- `docs/how-to/run-the-model.md`, `docs/how-to/input_prep/index.md`
 - `setup.sh`, `scripts/download_assets.sh`, `configs/inference.yaml`
-- RFD4-Proteína website: https://rosettacommons.github.io/RFD4-Proteina/
+- RFD4-Proteina website: https://rosettacommons.github.io/RFD4-Proteina/
 - NVIDIA agent skills: https://docs.nvidia.com/skills
 
 ## Skill Output
@@ -66,4 +66,4 @@ Other properties: `preflight.sh` is read-only (no writes); exits non-zero on any
 
 ## Ethical Considerations
 
-RFD4-Proteína is a de novo protein/complex design model with dual-use potential. Setup does not itself design anything, but it enables generation; downstream use is governed by the design-task skills' ethical notes and the repository's usage terms. Do not use to design hazardous biomolecules.
+RFD4-Proteina is a de novo protein/complex design model with dual-use potential. Setup does not itself design anything, but it enables generation; downstream use is governed by the design-task skills' ethical notes and the repository's usage terms. Do not use to design hazardous biomolecules.

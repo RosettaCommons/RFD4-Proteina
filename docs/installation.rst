@@ -1,8 +1,6 @@
 Installation
 ============
 
-Use Linux x86_64, Python 3.12 and an NVIDIA GPU with a CUDA 13-compatible driver.
-
 **Recommended: clone the repository and run ``make setup``**, as shown below.
 This installs the environment, downloads the configured released model weights, and configures
 ``DATA_PATH``. See the :doc:`quickstart` to generate your first design.
@@ -10,7 +8,8 @@ This installs the environment, downloads the configured released model weights, 
 Prerequisites
 -------------
 
-* Linux, ``git``, and ``curl``.
+* Linux x86_64, ``git``, and ``curl``.
+* Python 3.12 
 * An NVIDIA GPU and a driver compatible with CUDA 13. See :ref:`supported-hardware`.
 * A C++ compiler and the CUDA 13 development toolkit (``nvcc``) only if building TMol from source.
 * Enough storage for the Python environment and configured released model weights.
@@ -20,7 +19,7 @@ Prerequisites
 Supported hardware
 ------------------
 
-RFD4-Proteína has been tested and confirmed to run on the following NVIDIA GPUs.
+RFD4-Proteina has been tested and confirmed to run on the following NVIDIA GPUs.
 
 .. list-table::
    :header-rows: 1
@@ -153,7 +152,7 @@ qualified. The optional BioIR backend is a separate runtime that these installs 
 Docker
 ~~~~~~
 
-The root ``Dockerfile`` builds an application image containing RFD4-Proteína and
+The root ``Dockerfile`` builds an application image containing RFD4-Proteina and
 its command-line tools. CUDA 13 is the default; CUDA 12 and CPU-only images must
 be selected explicitly:
 
@@ -191,7 +190,7 @@ rather than a CUDA base image. Dependencies are installed before the source is c
 rebuilding after a code change reuses the cached dependency layer. The image does not silently
 fall back to CPU. The ``cu13`` profile additionally installs ``bionemo-ir`` from PyPI at the version
 ``pyproject.toml`` pins; ``cu12`` and ``cpu`` stay on the native runtime. See
-:doc:`workflow/backends` for what BioIR does and does not support.
+:doc:`how-to/advanced/backends` for what BioIR does and does not support.
 
 Mount the Hugging Face cache and output directory when running a released checkpoint:
 
@@ -213,12 +212,22 @@ NVIDIA runtime.
 Environment files and paths
 ---------------------------
 
-Use **.env.local** for new configurations. Setup creates it from
-``.env.local.example`` only when neither
-``.env.local`` nor ``.env`` exists. Existing settings are preserved, and
-setup does not edit shell startup files. If the active file and shell both omit
-``DATA_PATH``, setup adds the default data directory to that file.
-``make setup`` runs ``bash setup.sh``.
+RFD4-Proteina reads machine-specific settings from ``.env.local`` in the repository
+root, so you don't have to export them in every shell. ``make setup`` creates it
+from ``.env.local.example`` and sets ``DATA_PATH``, the directory holding the
+released checkpoints. Git ignores this file, so your paths are never committed.
+
+You edit it later to change ``DATA_PATH`` or to add optional settings, such as
+refolding-oracle paths (``AF3_IMAGE``, ``AF3_MODEL_DIR``, ``AF3_JAX_CACHE_DIR``),
+``FOLDSEEK_EXEC``, or mirror and cache settings. Use shell-style ``KEY=value``
+lines, and quote paths that contain spaces. A variable exported in your shell
+overrides the same variable in the file.
+
+.. note::
+
+   Older setups used a file named ``.env``. The loader reads ``.env.local`` if it
+   exists and ignores ``.env`` entirely; the two are never merged. If you have a
+   ``.env``, keep using it or rename it to ``.env.local``, but don't create both.
 
 Set ``DATA_PATH`` to the directory for optional model data (OpenFold3, AlphaFold 2, tutorial data) and any native checkpoints.
 Optional mirror, cache, credential, and refolding-oracle settings also belong in
@@ -267,7 +276,8 @@ set ``AF3_IMAGE``, ``AF3_MODEL_DIR``, and
 ``AF3_JAX_CACHE_DIR`` in your environment file, following the download script's
 printed paths. The oracle runs in a separate Apptainer container. Its host launcher
 requires Python 3 (standard library only), alongside the native model environment.
-Use ``metrics/refolding_oracles=of3`` for OpenFold3.
+Use the command line argument ``metrics/refolding_oracles=of3`` to use OpenFold3
+for refolding your designs.
 
 The downloader fetches the AF3/OpenFold3 runtime image from the model repository and verifies its
 SHA-256 checksum.
@@ -283,9 +293,9 @@ Activate the environment created by setup and run the installed command:
    rfd4-generate inputs=data/benchmarks/monomer \
        subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
 
-The command uses the Python interpreter from that environment.
-Subprocesses inherit that environment. Run SLURM launchers without a cluster
-argument; see :ref:`slurm-installation` for scheduler settings and outputs.
+``rfd4-generate`` runs in whichever Python environment is active, so activate
+``.venv`` first (as above) or call ``.venv/bin/rfd4-generate`` directly. To submit
+runs to a SLURM cluster instead, see :ref:`slurm-installation`.
 
 .. _slurm-installation:
 
@@ -293,11 +303,14 @@ SLURM clusters
 --------------
 
 On the login node, you can launch from the environment where you installed the
-repo with pip. No cluster name is needed. Launchers use the active virtualenv/Conda environment,
+repo with pip. Launchers use the active virtualenv/Conda environment,
 falling back to the checkout ``.venv`` or Python with RFD4-Proteina installed.
 The same environment must be available on the compute nodes.
 
-No scheduler profile is required. Partition and account are omitted
+Scheduler settings
+~~~~~~~~~~~~~~~~~~
+
+No scheduler profile is required: partition and account are omitted
 unless configured, leaving their selection to SLURM. Set scheduler environment
 variables or the launcher's resource flags to match your site. For reusable
 settings, optionally create a scheduler profile:
@@ -314,7 +327,10 @@ site's allocation. Set ``GRES`` if the partition requires a GPU type (for exampl
 or constraint. ``ROOT_REMOTE`` must be on shared storage. These choices belong
 to your cluster; there is no universal partition or account name.
 
-Submit 32 designs of the short monomer example across four jobs:
+Submit a run
+~~~~~~~~~~~~
+
+To submit 32 designs of the short monomer example across four jobs:
 
 .. code-block:: bash
 
@@ -329,25 +345,26 @@ batch scripts, submits the array, and queues metric aggregation. You do not need
 to activate the checkout ``.venv`` when using setup's default environment.
 These launchers submit SLURM jobs; for execution without SLURM use the model
 entry point or installed ``rfd4-generate`` command. Inspect ``slurm_run_outputs/``
-under the run directory if a job fails. Designs and metrics are in
+under the run directory for information if a job fails. Designs and metrics are in
 ``inference_samples/`` and ``inference_metrics/`` respectively.
 ``num_replicates`` counts designs per input example across the jobs; it is not
 multiplied by ``--njobs``. Use ``skip_existing=true`` with the same output directory
 to resume. For a binder campaign, replace ``inputs`` with your annotated CIF;
-see :doc:`workflow/inputs` for conditioning.
+see :doc:`how-to/input_prep/index` for conditioning.
 
 The command above computes structure metrics. To score refolding/designability,
 rerun the data download without ``--skip-of3`` on a host with Apptainer, configure
 the printed OpenFold3 paths in ``.env.local``, and add
 ``metrics/refolding_oracles=of3 metrics_tags='[design,unconditional_refolding]'``.
 Use the task-specific refolding tag for binders or motif scaffolds as described in
-:doc:`workflow/metrics`. Refolding runs in its own container even when generation
+:doc:`how-to/evaluate-with-metrics`. Refolding runs in its own container even when generation
 uses the native environment.
 
 Optional development tools
 -------------------------------
 
-Developers can add test, notebook, and formatting tools to the environment:
+To run the example notebooks or add your own metrics, install the extra
+development dependencies:
 
 .. code-block:: bash
 
@@ -357,15 +374,3 @@ Developers can add test, notebook, and formatting tools to the environment:
 This installs RFD4-Proteina in editable mode and its development dependencies, scaffolds
 custom metric configuration, and registers a notebook kernel. Use the installed
 ``rfd4-*`` commands from the activated environment.
-
-Documentation development
--------------------------
-
-After installing the optional development tools:
-
-.. code-block:: bash
-
-   uv pip install -r docs/docs_requirements.txt
-   make -C docs html
-
-Then open ``docs/_build/html/index.html``.

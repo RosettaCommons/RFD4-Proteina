@@ -193,7 +193,7 @@ a {
      purple  (--wf-specify) = what YOU specify   — routes, the CIF, conditions
      teal    (--wf-return)  = what COMES BACK    — designs, metrics
    Both are the wordmark's own colors, which sets "RFD4-" in purple and
-   "Proteína" in teal. The model node is where the two meet.
+   "Proteina" in teal. The model node is where the two meet.
 
    Labels use the wordmark's monospace stack, so the diagram speaks in the
    brand's typographic voice rather than a generic "technical" font.
@@ -489,13 +489,14 @@ html[data-theme="dark"] {
 }
 
 /* ---------------------------------------------------------------------------
-   Hub cards. Three entrypoints, equal weight, no card pretending to be primary.
+   Hub cards. Quickstart (.wf-card-primary, above) is the one primary entrypoint;
+   these remaining cards are equal weight with each other.
    --------------------------------------------------------------------------- */
 .wf-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.75rem;
-  margin: 1.75rem 0 2.25rem;
+  margin: 0 0 2.25rem;
 }
 
 .wf-card {
@@ -516,6 +517,38 @@ html[data-theme="dark"] {
 }
 .wf-card:focus-visible { outline: 2px solid var(--wf-focus); outline-offset: 3px; }
 
+/* Quickstart is the one entrypoint most first-time visitors want; it stands on
+   its own full-width line above the card grid, in the brand colour, so it reads
+   as the primary call to action rather than just another card. */
+.wf-card-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 1.75rem 0 0.75rem;
+  padding: 1.35rem 1.5rem;
+  border: 1px solid var(--wf-specify);
+  border-radius: 0.5rem;
+  background: var(--wf-specify);
+  text-decoration: none;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+.wf-card-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.wf-card-primary:focus-visible { outline: 2px solid var(--wf-focus); outline-offset: 3px; }
+.wf-card-primary .wf-card-title {
+  color: #fff;
+  font-size: 1.2rem;
+}
+.wf-card-primary .wf-card-body { color: rgba(255, 255, 255, 0.85); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-card-primary { transition: none; }
+  .wf-card-primary:hover { transform: none; }
+}
+
 .wf-card-title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-weight: 700;
@@ -524,6 +557,60 @@ html[data-theme="dark"] {
   color: var(--wf-specify);
 }
 .wf-card-body { font-size: 0.86rem; line-height: 1.45; color: var(--wf-ink-soft); }
+
+.wf-card-soon {
+  cursor: default;
+  opacity: 0.6;
+}
+.wf-card-soon:hover { border-color: var(--wf-line); transform: none; }
+.wf-card-soon .wf-card-title::after {
+  content: "Coming soon";
+  font-family: var(--pst-font-family-base, sans-serif);
+  font-weight: 400;
+  font-size: 0.7rem;
+  letter-spacing: normal;
+  color: var(--wf-ink-soft);
+  margin-left: 0.5rem;
+}
+
+/* A card that also lists specific sub-pages. The card itself is a <div> (not a
+   link) so the title/body link and the sub-page links can be separate anchors
+   instead of nesting <a> inside <a>. */
+.wf-card-group { cursor: default; }
+.wf-card-group:hover { border-color: var(--wf-line); transform: none; }
+
+.wf-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-decoration: none;
+}
+.wf-card-link:hover .wf-card-title { color: var(--wf-specify); text-decoration: underline; }
+.wf-card-link:focus-visible { outline: 2px solid var(--wf-focus); outline-offset: 3px; }
+
+.wf-card-sublinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.wf-card-subbutton {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--wf-line);
+  border-radius: 999px;
+  color: var(--wf-ink-soft);
+  text-decoration: none;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.wf-card-subbutton:hover {
+  border-color: var(--wf-specify);
+  color: var(--wf-specify);
+  text-decoration: none;
+}
+.wf-card-subbutton:focus-visible { outline: 2px solid var(--wf-focus); outline-offset: 3px; }
 
 /* Left-aligned with the cards above it, not centred on the diagram below, so the
    left edge of the page stays a single straight line. */
@@ -704,15 +791,17 @@ html[data-theme="dark"] {
   max-width: 34rem;
 }
 
-/* The two lockups have very different proportions: NVIDIA is a 5.5:1 strip, IPD is 3.3:1 with a
-   third line of type. Sizing them to a common height leaves IPD looking oversized, so each gets
-   its own cap and they hang from a shared vertical centre. */
+/* The marks have very different proportions: NVIDIA is a 5.5:1 strip, IPD is 3.3:1 with a third
+   line of type, and the RosettaCommons mark ships with built-in clear space around a 3.3:1 lockup.
+   Sizing them to a common height leaves the multi-line marks looking oversized, so each gets its
+   own cap and they hang from a shared vertical centre. */
 .hero-credits img {
   width: auto;
   flex: none;
   max-height: 26px;
 }
 .hero-credits img.hero-credit-ipd { max-height: 42px; }
+.hero-credits img.hero-credit-rosetta { max-height: 80px; }
 .hero-credit-rule {
   width: 1px;
   height: 32px;

@@ -4,7 +4,7 @@ Adapted from muni's autoresearch experiments
 ([scoring-function-dependent strategies](https://muni.bio/research/scoring-function-dependent-strategies),
 [autoresearch + CLI](https://www.muni.bio/research/muni-makeover-cli-autoresearch)),
 which build on Karpathy's autoresearch framing. The mechanism transfers to
-RFD4-Proteína; the reported results there are Proteina-Complexa on TREM2 and are used
+RFD4-Proteina; the reported results there are Proteina-Complexa on TREM2 and are used
 here only as illustrations.
 
 ## Vocabulary
@@ -37,7 +37,7 @@ muni's four reward functions produced four *different* behaviors on the same
 target: one climbed steadily by refining a single surface; one anchored on an early
 optimum and spent later waves testing (mostly failing) nearby variants; one shifted
 to a new surface family; one stayed on the same surface but changed strategy within
-it. The lesson for RFD4-Proteína campaigns: **expect the reward to shape the search
+it. The lesson for RFD4-Proteina campaigns: **expect the reward to shape the search
 path**, and read the losing branches — a branch that never beats the incumbent
 still tells you what the reward does and does not value.
 

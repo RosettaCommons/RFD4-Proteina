@@ -1,11 +1,11 @@
 # Composite reward engineering
 
 The reward is what turns a vague goal into something an autoresearch loop can
-optimize. In RFD4-Proteína it is defined under `search.checkpoints.<step>.rewards` (mechanics in
-the **rfd4-proteina-search** skill and `docs/workflow/search.md`); this reference is
+optimize. In RFD4-Proteina it is defined under `search.checkpoints.<step>.rewards` (mechanics in
+the **rfd4-proteina-search** skill and `docs/concepts/search.md`); this reference is
 about *how to shape it* for a campaign.
 
-## RFD4-Proteína reward keys
+## RFD4-Proteina reward keys
 
 Reward keys come from providers explicitly listed in a checkpoint's `metrics`.
 The configured provider name prefixes its outputs (e.g. `oracle` or
@@ -45,7 +45,7 @@ summed. Omitted weight and normalization are 1; clipping is optional.
 ## Four rules that keep a composite reward honest
 
 Adapted from the muni technical note (the reasoning transfers directly; the exact
-term names there are Complexa's — translate to the RFD4-Proteína keys above):
+term names there are Complexa's — translate to the RFD4-Proteina keys above):
 
 1. **Normalize term scales before weighting.** Check the actual provider units;
    pLDDT is 0–100, interface-area terms can be hundreds-thousands (Å²), H-bond counts are small

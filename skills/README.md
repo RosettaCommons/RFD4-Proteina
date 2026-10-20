@@ -1,10 +1,10 @@
-# RFD4-Proteína Agent Skills
+# RFD4-Proteina Agent Skills
 
-Portable agent **skills** for RFD4-Proteína (RFD4-Proteína), the Baker Lab x
+Portable agent **skills** for RFD4-Proteina (RFD4-Proteina), the Baker Lab x
 NVIDIA GenAI flow-matching model for de novo protein and complex design. Each
 skill is a portable directory containing a `SKILL.md` (plus optional
 `references/` and `scripts/`) that an agent reads on demand to drive one stage of
-the RFD4-Proteína workflow — from standing up the environment, to preparing inputs,
+the RFD4-Proteina workflow — from standing up the environment, to preparing inputs,
 generating designs, searching for better ones, and evaluating the results. They
 encode the repository's real commands, config keys, and gotchas so an agent can
 operate the model correctly without re-deriving them.

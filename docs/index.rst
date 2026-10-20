@@ -1,4 +1,4 @@
-RFD4-Proteína
+RFD4-Proteina
 =============
 
 .. raw:: html
@@ -26,11 +26,10 @@ RFD4-Proteína
               alt="Institute for Protein Design, University of Washington">
          <img class="only-dark hero-credit-ipd" src="_static/logo-ipd-dark.png"
               alt="Institute for Protein Design, University of Washington">
+         <span class="hero-credit-rule" aria-hidden="true"></span>
+         <img class="hero-credit-rosetta"
+              src="_static/Full-color_Rosetta-Commons_Logo_NoBackground.png" alt="RosettaCommons">
        </div>
-
-       <p class="hero-actions">
-         <a class="hero-btn" href="quickstart.html">Get started</a>
-       </p>
      </div>
      <figure class="hero-figure">
        <img src="_static/hero-protein.png"
@@ -39,20 +38,66 @@ RFD4-Proteína
      </figure>
    </div>
 
+   <a class="wf-card-primary" href="quickstart.html">
+     <span class="wf-card-title">Quickstart &rarr;</span>
+     <span class="wf-card-body">Install, then generate your first designs on a GPU.</span>
+   </a>
+
    <div class="wf-cards">
-     <a class="wf-card" href="quickstart.html">
-       <span class="wf-card-title">Quickstart</span>
-       <span class="wf-card-body">Install, then generate your first designs on a GPU.</span>
+     <a class="wf-card" href="installation.html">
+       <span class="wf-card-title">Installation</span>
+       <span class="wf-card-body">Set up the environment, checkpoints, and cluster config.</span>
      </a>
-     <a class="wf-card" href="examples.html">
+     <a class="wf-card" href="examples/index.html">
        <span class="wf-card-title">Examples</span>
        <span class="wf-card-body">Runnable notebooks that take one design problem end to end.</span>
      </a>
-     <a class="wf-card" href="workflow.html">
-       <span class="wf-card-title">Workflow</span>
-       <span class="wf-card-body">The map of a run, from input to output. Click any piece.</span>
+     <a class="wf-card" href="how-to/input_prep/index.html">
+       <span class="wf-card-title">Input Preparation</span>
+       <span class="wf-card-body">Build and validate an annotated CIF from your design intent.</span>
+     </a>
+     <a class="wf-card" href="how-to/index.html">
+       <span class="wf-card-title">How-to guides</span>
+       <span class="wf-card-body">Task-oriented instructions: the config overrides and CLI flags
+       for a specific job.</span>
+     </a>
+     <a class="wf-card" href="concepts/index.html">
+       <span class="wf-card-title">Concepts</span>
+       <span class="wf-card-body">How the pieces fit together: annotated CIFs, generation modes,
+       search, and metric guidance.</span>
+     </a>
+     <a class="wf-card" href="reference/index.html">
+       <span class="wf-card-title">Reference docs</span>
+       <span class="wf-card-body">Lookup tables and syntax for configs and CLI options.</span>
+     </a>
+     <a class="wf-card" href="contributing/index.html">
+       <span class="wf-card-title">Contributing</span>
+       <span class="wf-card-body">How to propose changes, code style, and review expectations.</span>
      </a>
    </div>
+
+What you can design
+--------------------
+
+The released checkpoint supports all of these design tasks.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Task
+     - Status
+   * - Unconditional generation
+     - Supported
+   * - Motif scaffolding
+     - Supported
+   * - Enzyme design
+     - Supported, with a :doc:`worked example <examples/enzyme_design_tutorial>`
+   * - Small molecule binder design
+     - Supported
+   * - Protein binder design
+     - Supported
+   * - DNA binder design
+     - Supported
 
 State-of-the-art performance across relevant biomolecular tasks
 ---------------------------------------------------------------
@@ -78,7 +123,7 @@ State-of-the-art performance across relevant biomolecular tasks
          </div>
        </div>
      </div>
-     <figcaption>Within each task, bars are RFD4-Proteína, the strongest open baseline, and
+     <figcaption>Within each task, bars are RFD4-Proteina, the strongest open baseline, and
      RFD3.</figcaption>
    </figure>
 
@@ -88,16 +133,15 @@ State-of-the-art performance across relevant biomolecular tasks
    :hidden:
 
    quickstart
-   workflow
-   examples
+   installation
+   examples/index
+   how-to/index
 
 .. toctree::
    :maxdepth: 1
    :caption: More
    :hidden:
 
-   installation
-   development
-   glossary
-   api_reference
-   contributor_guide
+   concepts/index
+   reference/index
+   contributing/index

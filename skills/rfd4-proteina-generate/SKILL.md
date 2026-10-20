@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-generate
 description: >
-  Run RFD4-Proteína (RFD4-Proteína) single-shot generation across every design
+  Run RFD4-Proteina (RFD4-Proteina) single-shot generation across every design
   task — the scientific anchor of the skill set. Reach for this skill for "design
   a protein", "generate a monomer", "run rfproteina inference", "scaffold a
   motif", "design an enzyme", "design a small molecule binder", "design a
@@ -13,12 +13,12 @@ description: >
   rfd4-proteina-annotated-cif to build or edit an annotated CIF, to
   rfd4-proteina-search for reward-guided / beam search, and to rfd4-proteina-evaluate
   for deep metric analysis (the AF3 oracle).
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFD4-Proteína Generate
+# RFD4-Proteina Generate
 
-Single-shot generation for RFD4-Proteína. One entry point drives every design task —
+Single-shot generation for RFD4-Proteina. One entry point drives every design task —
 unconditional monomers/complexes, folding & inverse folding, motif scaffolding,
 enzyme design, small-molecule binders, protein binders, and DNA binders. The
 skill's job is to **route** the request to the right example input and the right
@@ -135,7 +135,7 @@ land in `per_example_metrics.csv` alongside the CIFs. Common tags include `desig
 `dna_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`,
 `ame_refolding`, `disco_refolding`, `hotspot_conditioning`,
 `3d_coordinate_conditioning`, `rasa_conditioning`, and
-`interchain_interactions`. Check `docs/workflow/metrics.md` and the composed
+`interchain_interactions`. Check `docs/how-to/evaluate-with-metrics.md` and the composed
 metric configs before treating any list as exhaustive.
 
 > [!NOTE]

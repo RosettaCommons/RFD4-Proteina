@@ -2,7 +2,7 @@
 
 Each `search.checkpoints.<step>` entry explicitly selects metric providers and
 aggregates their outputs into a scalar reward. Definitions stay under `metrics`;
-there is no separate reward file. See `docs/workflow/search.md`.
+there is no separate reward file. See `docs/concepts/search.md`.
 
 ## Select metric providers
 

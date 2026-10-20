@@ -1,7 +1,7 @@
 # Annotated-CIF validation
 
 Use this reference before accepting a newly authored or modified annotated CIF.
-The [condition documentation](../../../docs/workflow/inputs.md#interaction-rules-read-before-conditioning),
+The [condition documentation](../../../docs/concepts/conditioning.md#conditions-are-not-independent),
 and [reporting checks](../../../src/rfproteina/conditions_reporting.py) define the
 invariants. Run the checked-out implementation and report unsupported conditions
 rather than silently dropping them.
@@ -28,7 +28,7 @@ ligand pose, metal coordination, or unusual component is scientifically appropri
 
 ## Chemistry and component completeness
 
-Read the canonical [charges and bonds guidance](../../../docs/workflow/inputs.md#charges-and-bonds)
+Read the canonical [charges and bonds guidance](../../../docs/reference/annotations.md#charges-and-bonds)
 for chemistry consumed by the model and aromatic bond representation.
 
 - Preserve authored bonds, formal charges, and atom identities. Do not infer
@@ -54,7 +54,7 @@ for chemistry consumed by the model and aromatic bond representation.
   relative sequence offsets are intentionally tied. Use the bond graph to
   determine connectivity, not residue-number adjacency.
 - Review residue-ID gaps within each group. Preserve intentional offsets,
-  including [sampled unindexed-segment spacing](../../../docs/workflow/inputs.md#expandable-segments),
+  including [sampled unindexed-segment spacing](../../../docs/concepts/conditioning.md#expandable-segments),
   rather than renumbering them to satisfy a check. If the installed validator
   rejects required semantics, report the version conflict.
 

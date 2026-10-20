@@ -1,7 +1,7 @@
 ---
 name: rfd4-proteina-search
 description: >
-  Reward-guided search for RFD4-Proteína (RFD4-Proteína) — the Baker Lab x NVIDIA
+  Reward-guided search for RFD4-Proteina (RFD4-Proteina) — the Baker Lab x NVIDIA
   flow-matching protein design model. Reach for this skill for "reward-guided
   search", "beam search", "optimize designs", "AF3 oracle reward", "generate the
   best binders/monomers by pLDDT/ipTM/ipAE", "search with a reward", or "branch
@@ -14,15 +14,15 @@ description: >
   refolding oracle.
   Use rfd4-proteina-generate for unguided sampling and this skill when
   reward-guided pruning justifies the additional compute.
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFD4-Proteína Reward-Guided Search
+# RFD4-Proteina Reward-Guided Search
 
 ## Requirements
 
 Complete `rfd4-proteina-setup` first. Generation requires a CUDA GPU. Rewards
-listing refolding oracles also require a configured refolding backend; RFD4-Proteína
+listing refolding oracles also require a configured refolding backend; RFD4-Proteina
 supports AF2, AF3, and OpenFold3 through `metrics/refolding_oracles`. Rewards such
 as `interchain_interactions` do not require a refolding oracle.
 
@@ -53,7 +53,7 @@ the default; choose AF2 or OpenFold3 with
 capabilities differ by design case, so confirm that the selected config contains
 the oracle provider explicitly listed by each refolding checkpoint. See
 [references/rewards.md](references/rewards.md), the AF2/AF3 references, and
-rfd4-proteina-setup and the [RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
+rfd4-proteina-setup and the [RFD4-Proteina installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
 Use `rfd4-generate` from the Python environment activated during setup.
 Refolding oracles use their separately configured runtimes. IPD users retain
 their existing container launchers.
@@ -155,7 +155,7 @@ the entire selected beam. Stop the input only if all selected candidates fail;
 passing candidates that lost selection do not count.
 List all raw-metric providers explicitly in that checkpoint's `metrics`.
 Stopped inputs keep saved rollouts; passing inputs continue normally, including
-when the final checkpoint is omitted. See `docs/workflow/search.md` for reductions
+when the final checkpoint is omitted. See `docs/concepts/search.md` for reductions
 and missing-value behavior.
 
 For novelty, explicitly select `FoldseekNoveltyMetric` and threshold
@@ -164,7 +164,7 @@ existing final pass criterion publishes passing designed chains; use one shared
 directory per target and pass definition. Publication happens after generation,
 so these passers help later runs or concurrent jobs. Novelty uses exhaustive Foldseek
 search against a cached database, rebuilt when the archive changes. Matches require
-TM-score and coverage thresholds on both chains; see `docs/workflow/search.md`.
+TM-score and coverage thresholds on both chains; see `docs/concepts/search.md`.
 
 ### Save completed scoring rollouts
 
@@ -232,7 +232,7 @@ rollouts retained by `save_rollouts` and `save_criteria`. Output metrics land in
 `per_example_metrics.csv`; final evaluation reuses any cached oracle results.
 If the schedule-end checkpoint is omitted, final designs receive ordinary metrics
 without a final search reward. CIF annotations follow the same schema as plain
-generation (see `docs/workflow/running.md` Output Files).
+generation (see `docs/how-to/run-the-model.md` Output Files).
 
 ## Troubleshooting
 
@@ -249,5 +249,5 @@ generation (see `docs/workflow/running.md` Output Files).
 For deeper detail: [rewards](references/rewards.md) ·
 [AF2 oracle](references/af2-oracle.md) · [AF3 oracle](references/af3-oracle.md) ·
 [cost](references/cost.md). Source of
-truth: `docs/workflow/search.md`, `docs/workflow/running.md`, and the current
+truth: `docs/concepts/search.md`, `docs/how-to/run-the-model.md`, and the current
 search implementation/configs.

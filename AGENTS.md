@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Quick guide for agents running RFD4-Proteína inference, search, and evaluation.
+Quick guide for agents running RFD4-Proteina inference, search, and evaluation.
 Use the workflow docs and task skills for details; do not duplicate model internals here.
 
 ## Work safely
@@ -24,7 +24,8 @@ Read the relevant skill under `skills/` before acting:
 - `rfd4-proteina-evaluate`: refolding, metrics, aggregation, and structural clustering.
 
 Start with `docs/quickstart.rst` and `docs/installation.rst`; task semantics are in
-`docs/workflow/inputs.md`, `running.md`, `search.md`, and `metrics.md`.
+`docs/how-to/input_prep/index.md`, `docs/how-to/run-the-model.md`, `docs/how-to/search.md`, and
+`docs/how-to/evaluate-with-metrics.md`.
 
 ## Environment and smoke test
 
@@ -60,7 +61,7 @@ and verify required oracle metrics before scaling.
 - For search, explicitly select metric providers needed by rewards and pass criteria.
 - Keep requested sampling, recycle, conditioning, and metric settings explicit.
   Do not substitute another preset just to make a run succeed.
-- Select `recycle_strategy` from the [task schedule table](docs/workflow/running.md#recycling-schedules).
+- Select `recycle_strategy` from the [task schedule table](docs/how-to/run-the-model.md#recycling-schedules).
   Use that task's medium preset unless another budget was requested: front-loaded for PPI/DNA, midpeak for MCSA/small molecules, flat for inverse folding. `thinking_*` alias front-loaded presets, not task-aware defaults.
 
 ## Scheduler submissions

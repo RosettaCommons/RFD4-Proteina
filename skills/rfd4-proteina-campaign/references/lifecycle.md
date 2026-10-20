@@ -9,7 +9,7 @@ compute budget, stop condition, cluster, and scheduler choices. Ask what counts 
 a passer and what counts as unique; do not infer either from a benchmark config.
 
 Run setup preflight, create the campaign directory, and initialize
-`campaign.sqlite`. Capture the RFD4-Proteína and AtomWorks revisions, checkpoint
+`campaign.sqlite`. Capture the RFD4-Proteina and AtomWorks revisions, checkpoint
 identity, and any dirty diff needed to explain the running code.
 
 ## 2. Build the input portfolio

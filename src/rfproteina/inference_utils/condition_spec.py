@@ -422,7 +422,7 @@ def _apply_conditions(atom_array: AtomArrayPlus, conditions: dict, original_res_
                         if group is None:
                             raise ValueError(
                                 f"{annotation_name}: value {value!r} requires a `group:` field alongside "
-                                "`select:` -- see docs/workflow/condition-spec.md."
+                                "`select:` -- see docs/how-to/input_prep/yaml-json.md."
                             )
                         groups.setdefault(group, []).append(indices)
                     else:

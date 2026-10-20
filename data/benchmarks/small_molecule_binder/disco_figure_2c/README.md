@@ -9,7 +9,7 @@ The exact selection is `subset_to_keys` in
 DNA/RNA panels. Both `phylloquinone` and `vitamin_K1` entries are retained;
 this is a selection of benchmark entries, not deduplicated chemical identities.
 
-Inputs come from our RFD4-Proteína-annotated `studio_179_annotated` dataset
+Inputs come from our RFD4-Proteina-annotated `studio_179_annotated` dataset
 (2026-09-18 snapshot), derived from the
 [DISCO studio-179 inputs](https://github.com/DISCO-design/DISCO/tree/82b594f838eb61dd8c78ae3a403ccb8f00cf7abf/studio-179).
 Zstandard level 3 compression is lossless: the 72 CIFs other than B12,
@@ -40,7 +40,7 @@ deliberately retained.
 | 6PPD-q | Encodes oxygen-free 6PPD, not 6PPD-quinone; both quinone oxygens/carbonyls are absent in the upstream input too. |
 | Rocuronium bromide | The 38-atom cation is on chain A and the isolated Br⁻ is a separate `BR` residue on chain C, giving them separate molecule/index groups. Chain B is the 100–155-residue protein segment. Charges and all 43 cation bonds are preserved; Br has no bonds. |
 | Heme b, standalone and six combinations | Seven heme instances have 16 heavy-atom double bonds versus CCD HEM's 15, and lack its 10 aromatic bond flags. This is a metal-chemistry curation concern, not a recommendation to blindly copy CCD conventions. |
-| Aromatic atom metadata (51 files) | 620 atom instances across 52 ligand components have atom-level aromatic flags set to N despite aromatic bond flags. RFD4-Proteína derives pairwise aromaticity from parsed bonds; these redundant atom flags do not by themselves indicate missing aromatic model features. |
+| Aromatic atom metadata (51 files) | 620 atom instances across 52 ligand components have atom-level aromatic flags set to N despite aromatic bond flags. RFD4-Proteina derives pairwise aromaticity from parsed bonds; these redundant atom flags do not by themselves indicate missing aromatic model features. |
 
 B12 and the three NAD inputs intentionally differ from the published inputs.
 B12's charge correction can affect DISCO's charge features. The existing
@@ -54,6 +54,6 @@ All 77 compressed files parse and pass the current design-validation pipeline.
 Passing these checks does not resolve the chemistry caveats above.
 
 Upstream licensing and attribution are preserved in [LICENSE](LICENSE) and
-[NOTICE](NOTICE). RFD4-Proteína annotations, the B12 chemistry correction, and
+[NOTICE](NOTICE). RFD4-Proteina annotations, the B12 chemistry correction, and
 rocuronium's ion-chain assignments, and the NAD coordinate correction are local
 modifications.

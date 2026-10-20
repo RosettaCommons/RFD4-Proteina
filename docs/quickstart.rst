@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-There are three ways to run RFD4-Proteína. All of them need Python 3.12 and a
+There are three ways to run RFD4-Proteina. All of them need Python 3.12 and a
 :ref:`supported NVIDIA GPU <supported-hardware>` with a CUDA 13-compatible driver.
 
 .. list-table::
@@ -34,6 +34,9 @@ Setup creates ``.venv``, caches the released model (flow and autoencoder) from H
 configures ``DATA_PATH``. It then asks whether you want the environments that reward-guided
 search and the refolding metrics score designs with. Both are optional, and you can run the
 questions later with ``bash scripts/setup_search_envs.sh``.
+See the dedicated :doc:`installation` guide for CUDA build prerequisites and environment settings.
+The example input (``monomer-short.cif``) used below is already in the repository, so nothing else
+needs to be downloaded to generate your first design.
 
 #. **Set up an AlphaFold 2 environment for search?** AlphaFold 2 refolds protein-only designs.
    Answer yes to create the AlphaFold 2 data directories and, if you agree, download DeepMind's
@@ -59,7 +62,7 @@ left to do for them:
 
 Skip the questions with ``bash setup.sh --skip-search-envs``. Choose an oracle at run time with a
 Hydra override such as ``metrics/refolding_oracles=of3`` or ``metrics/refolding_oracles=af2``;
-:doc:`workflow/metrics` and :doc:`workflow/search` describe the oracles and how search uses them.
+:doc:`how-to/evaluate-with-metrics` and :doc:`how-to/search` describe the oracles and how search uses them.
 
 Generate a design:
 
@@ -70,10 +73,12 @@ Generate a design:
        ~metrics compile_lengths=null
 
 This generates one 100-residue protein under ``runs/first/inference_samples/``.
-Increase ``num_replicates`` for more designs, or replace the example path with your own
-annotated input. See :doc:`workflow/running` for compilation and sampling settings, and
-:doc:`workflow/metrics` for scoring. For batch jobs, see :ref:`slurm-installation`. For other
-CUDA versions, CPU-only installs, Docker and Apptainer, see :doc:`installation`.
+``compile_lengths=null`` skips ``torch.compile`` warm-up so this first run finishes quickly; drop it
+for larger runs where the warm-up cost is worth paying back. Increase ``num_replicates`` for more
+designs, or replace the example path with your own annotated CIF input. See
+:doc:`how-to/run-the-model` for sampling settings and :doc:`how-to/evaluate-with-metrics` for
+scoring. For batch jobs, see :ref:`slurm-installation`. For other CUDA versions, CPU-only installs,
+Docker and Apptainer, see :doc:`installation`.
 
 .. _quickstart-pip:
 
@@ -100,7 +105,7 @@ Create an environment, install the package for your CUDA major version, and gene
    rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina \
        inputs=design.yaml out_dir=./runs/pip ~metrics compile_lengths=null
 
-``inputs`` takes an annotated CIF or a condition-spec YAML; see :doc:`workflow/condition-spec`.
+``inputs`` takes an annotated CIF or a condition-spec YAML; see :doc:`how-to/input_prep/yaml-json`.
 The released weights are fetched from the Hugging Face Hub and cached. The model is also
 available from Python:
 
@@ -118,7 +123,7 @@ which a clone sets up for you (option 1).
 3. Use the Diffusers pipeline
 -----------------------------
 
-RFD4-Proteína is also available as a `Hugging Face Diffusers
+RFD4-Proteina is also available as a `Hugging Face Diffusers
 <https://huggingface.co/docs/diffusers>`_ pipeline. The pipeline takes prepared feature tensors;
 the ``rfd4-proteina-prep`` package turns an annotated CIF into those tensors and writes the
 generated structure back to a CIF.
@@ -169,17 +174,19 @@ option 1.
 Next steps
 ----------
 
-:doc:`The full workflow <workflow>`
+:doc:`The full workflow <concepts/workflow>`
 maps out what a run actually does, from the input file to the metrics that come
 back, with a diagram you can click through to any stage.
 
-The stages you are most likely to want next:
+Where to go next:
 
-* :doc:`Preparing inputs <workflow/inputs>` covers motifs, hotspots, ligands,
-  bonds, and RASA conditions.
-* :doc:`Running the model <workflow/running>` covers design tasks, evaluation,
-  and every parameter you can set.
-* :doc:`Metric guidance <workflow/metric-guidance>` covers steering the sampling
-  trajectory with a differentiable objective.
-* :doc:`Reward guided search <workflow/search>` branches, scores, and keeps the
-  best trajectories.
+* :doc:`Example notebooks <examples/index>`: runnable example notebooks
+  that create annotated CIFs and run RFD4-Proteina.
+* :doc:`Preparing inputs <how-to/input_prep/index>` shows the different ways to 
+  provide input to RFD4-Proteina to specify your design tasks.
+* :doc:`Running the model <how-to/run-the-model>` covers the generate command, the
+  settings worth changing, and what to do when a run misbehaves.
+* :doc:`Metric guidance <concepts/metric-guidance>` explains how to steer
+  RFD4-Proteina's sampling trajectory toward a differentiable objective.
+* :doc:`Reward guided search <concepts/search>` explains how search branches
+  trajectories, scores them, and keeps the best ones.

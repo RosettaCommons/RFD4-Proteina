@@ -33,7 +33,7 @@ def add_lora_adapter(model: nn.Module, config: DictConfig) -> None:
     if config.get("exclude_keys"):
         raise ValueError("LoRA uses explicit lora.target_modules; remove lora.exclude_keys.")
     if not hasattr(model, "nn"):
-        raise ValueError("LoRA adapts the RFD4-Proteína denoiser; autoencoder LoRA is not supported.")
+        raise ValueError("LoRA adapts the RFD4-Proteina denoiser; autoencoder LoRA is not supported.")
     _inject(
         model,
         LoraConfig(

@@ -1,7 +1,7 @@
 # Metrics reference (compact)
 
-Distilled from [docs/workflow/metrics.md](../../../docs/workflow/metrics.md) and
-[docs/workflow/custom-metrics.md](../../../docs/workflow/custom-metrics.md) — read
+Distilled from [docs/how-to/evaluate-with-metrics.md](../../../docs/how-to/evaluate-with-metrics.md) and
+[docs/how-to/advanced/custom-metrics.md](../../../docs/how-to/advanced/custom-metrics.md) — read
 those for the full column lists, per-metric thresholds, and worked examples.
 
 ## What ships enabled
@@ -71,7 +71,7 @@ refolding oracles (`oracle`, `oracle_ppi`, `oracle_dna`) run the AF3 predictor,
 which runs **only inside an apptainer/docker container** configured via the
 cluster env files. Without the container these metrics silently do not run (no
 oracle columns, no error). Plain design metrics need no container. See
-[RFD4-Proteína installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
+[RFD4-Proteina installation guide](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/installation.rst).
 
 Oracle key outputs (prefixed `<oracle_key>.`): `overall_plddt`, `overall_ptm`,
 `overall_iptm`, `plddt_coi`, `ptm_coi`, `pae_coi`, `ipae_coi`, `min_ipae_coi`,
@@ -94,4 +94,4 @@ git-ignored; `# @package metrics`). Picked up automatically; columns are prefixe
 by the config key. Three categories — design (`inline_metrics`), refolding
 (`refolding_metrics`), and pass criteria (`pass_criteria`, via the built-in
 `PassCriterionMetric`, no Python). Full walkthrough:
-[docs/workflow/custom-metrics.md](../../../docs/workflow/custom-metrics.md).
+[docs/how-to/advanced/custom-metrics.md](../../../docs/how-to/advanced/custom-metrics.md).

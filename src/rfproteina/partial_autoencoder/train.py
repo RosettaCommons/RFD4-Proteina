@@ -168,7 +168,7 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
     model = AutoEncoder(cfg_exp)
 
     if (cfg_exp.get("lora") or {}).get("r"):
-        raise ValueError("LoRA adapts the RFD4-Proteína denoiser; autoencoder LoRA is not supported.")
+        raise ValueError("LoRA adapts the RFD4-Proteina denoiser; autoencoder LoRA is not supported.")
 
     # If this is the first run for fine-tuning, load pre-trained checkpoint
     pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)

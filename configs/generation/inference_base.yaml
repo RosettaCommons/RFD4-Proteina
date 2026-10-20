@@ -1,5 +1,5 @@
 ############################################################################
-# +--------------- Base inference config for RFD4-Proteína ----------------+
+# +--------------- Base inference config for RFD4-Proteina ----------------+
 ############################################################################
 
 # Constant recycle depth used when no schedule is configured.

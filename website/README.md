@@ -1,4 +1,4 @@
-# RFD4-Proteína project page
+# RFD4-Proteina project page
 
 Buildless static site, published to the root of GitHub Pages. The Sphinx docs are built with
 `RFD4_SITE_ROOT=../` and published next to the site under `latest/`, so the links to `latest/...` only

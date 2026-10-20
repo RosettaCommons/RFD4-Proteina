@@ -47,7 +47,7 @@ if [ ! -f "$CUSTOM_METRICS_CONFIG" ]; then
 # @package metrics
 #
 # Git-ignored: register your own custom metrics here without touching tracked
-# files. See docs/workflow/custom-metrics.md for the full guide.
+# files. See docs/how-to/advanced/custom-metrics.md for the full guide.
 #
 # inline_metrics:
 #   my_metric:
@@ -66,7 +66,7 @@ fi
 CUSTOM_METRICS_PKG="src/rfproteina/metrics/custom_metrics"
 mkdir -p "$CUSTOM_METRICS_PKG"
 
-# Same for custom sampling transforms. See docs/workflow/running.md#sampling-transforms.
+# Same for custom sampling transforms. See docs/how-to/run-the-model.md#sampling-transforms.
 CUSTOM_SAMPLING_TRANSFORMS_PKG="src/rfproteina/transforms/sampling"
 mkdir -p "$CUSTOM_SAMPLING_TRANSFORMS_PKG"
 

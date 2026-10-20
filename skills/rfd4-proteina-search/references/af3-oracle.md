@@ -41,4 +41,4 @@ have no cached search refolds and ordinary final evaluation runs as configured.
 
 Source of truth: `configs/metrics/refolding_oracles/af3.yaml`,
 `src/rfproteina/metrics/oracles/af3_oracle.py`, `.env.local`, and
-`docs/workflow/metrics.md`.
+`docs/how-to/evaluate-with-metrics.md`.

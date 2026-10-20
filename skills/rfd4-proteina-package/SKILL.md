@@ -1,17 +1,17 @@
 ---
 name: rfd4-proteina-package
 description: >
-  Package selected RFD4-Proteína designs into a simple shareable TAR organized by
+  Package selected RFD4-Proteina designs into a simple shareable TAR organized by
   annotated-CIF input, with README and exact filter waterfall, one actual-values
   metrics CSV, each generated design, all associated on/off-target oracle refolds
   aligned on the recorded chain of interest, and available confidence JSON. Reach
   for this skill for "package passers", "make a design TAR", "share campaign
   results", or "bundle designs with their refolds". It may read a campaign ledger,
   but recipients need only ordinary files and no SQLite installation.
-license: See the RFD4-Proteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFD4-Proteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# Package RFD4-Proteína designs
+# Package RFD4-Proteina designs
 
 Create a recipient-facing archive, not a second provenance system. The campaign
 ledger remains authoritative; the TAR contains only the files and explanations a

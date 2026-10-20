@@ -2,19 +2,19 @@
 name: rfd4-proteina-annotated-cif
 description: >
   Create, inspect, explain, modify, and validate annotated CIF/mmCIF inputs for
-  RFProteína with AtomWorks Python APIs. Use automatically for any question or
+  RFProteina with AtomWorks Python APIs. Use automatically for any question or
   task involving an existing annotated CIF, adding or changing conditioning,
   selecting fixed backbone or motif atoms, indexing/unindexing residues,
   hotspots, RASA, H-bonds, internal-coordinate groups, centroids, expandable
   segments, bonds, charges, combining annotated structures, or preparing a
   structure file as an annotated CIF.
-license: See the RFProteína repository (Baker Lab x NVIDIA collaboration)
+license: See the RFProteina repository (Baker Lab x NVIDIA collaboration)
 ---
 
-# RFProteína annotated CIF authoring
+# RFProteina annotated CIF authoring
 
 An annotated CIF is a structure plus AtomWorks `StandardAnnotation` columns that
-encode the RFProteína design problem. Prefer direct Python manipulation of an
+encode the RFProteina design problem. Prefer direct Python manipulation of an
 `AtomArrayPlus`: parse, derive selection annotations, set conditions, validate,
 write, and round-trip. Visually inspect chemistry and intent, especially for
 ligands, metals, PTMs, or PDB sources.
@@ -33,8 +33,8 @@ by itself authorize a generation run or establish a campaign ledger policy.
 3. Read [annotators-and-selections.md](references/annotators-and-selections.md)
    when translating structural intent into atom masks or checking installed
    annotation support.
-4. Use the canonical [condition reference](../../docs/workflow/inputs.md#supported-annotations-reference)
-   and [interaction rules](../../docs/workflow/inputs.md#interaction-rules-read-before-conditioning)
+4. Use the canonical [condition reference](../../docs/reference/annotations.md#supported-annotations)
+   and [interaction rules](../../docs/concepts/conditioning.md#conditions-are-not-independent)
    for condition levels, values, and model support. Do not infer support from an
    annotation's ability to round-trip.
 5. Complete [validation.md](references/validation.md), including chemistry and

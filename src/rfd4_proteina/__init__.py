@@ -1,4 +1,4 @@
-"""Public RFD4-Proteína API: ``import rfd4_proteina as rfd4``."""
+"""Public RFD4-Proteina API: ``import rfd4_proteina as rfd4``."""
 
 from importlib.metadata import version
 from typing import TYPE_CHECKING, Any

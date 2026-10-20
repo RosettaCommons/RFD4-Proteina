@@ -1,0 +1,19 @@
+# De-novo PPI binder design against PD-L1 -- the same design as
+# data/benchmarks/ppi/ppi_bb_only/pdl1.cif.zst, expressed as a condition spec
+# The target's *backbone* coordinates and its full sequence are given; its sidechain
+# coordinates are deliberately withheld, so the model repacks the interface itself.
+pdl1_binder:
+  input: ../../../examples/inputs/5o45_cropped.cif   # PD-L1, chain A, res 17-131
+  contig: "50-120, /0, A17-131"    # de-novo binder chain (its own run -> fresh chain id), then the whole target
+  conditions:
+    C_CRD:                             # target backbone (N/CA/C/O) only -- no sidechain coords leaked
+      true:
+        - select: "sel('A') and is_protein_backbone"
+    C_SEQ:                             # ...but the target's sequence is fully known
+      true:
+        - select: "sel('A')"           # whole target chain (chain field only; rest wildcard)
+    C_HOT:                             # atom-level hotspots: the PD-L1 sidechain atoms to engage
+      true:
+        - select: "sel('A/*/56/[CG,OH]')"    # TYR56
+        - select: "sel('A/*/115/[CG,SD]')"   # MET115
+        - select: "sel('A/*/123/[CD2,OH]')"  # TYR123

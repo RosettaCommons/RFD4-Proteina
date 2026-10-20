@@ -10,7 +10,7 @@ The implementation and lazy registry live in
 and computing missing dependencies. If a name is absent from `ANNOTATOR_REGISTRY`,
 its `_resolve_standard_annotation()` fallback matches canonical names or aliases
 in the StandardAnnotation registry (`atomworks.io.utils.standard_annotations.base`).
-Import RFProteína conditions before using that fallback.
+Import RFProteina conditions before using that fallback.
 
 Inspect these installed registries instead of relying on a copied catalog:
 
@@ -40,11 +40,11 @@ ensure_annotations(aa, *sorted(requested))
 If generation itself fails, report the requested name and underlying error;
 do not silently substitute another annotation or an all-false mask. Standard
 annotation defaults are not evidence that the model consumes the condition;
-consult the [condition reference](../../../docs/workflow/inputs.md#supported-annotations-reference).
+consult the [condition reference](../../../docs/reference/annotations.md#supported-annotations).
 
 ## Backbone conditioning
 
-`is_protein_backbone` includes `OXT`. For RFProteína backbone-only coordinate
+`is_protein_backbone` includes `OXT`. For RFProteina backbone-only coordinate
 conditioning, select exactly `N`, `CA`, `C`, and `O`, and require finite xyz:
 
 ```python
@@ -79,7 +79,7 @@ C_SEQ.set_annotation(aa, known)
 
 Only when the request explicitly calls for target-sequence redesign, set
 `known[target] = C_SEQ.default_annotation(aa)[target]` instead, after checking the
-[interaction rules](../../../docs/workflow/inputs.md#interaction-rules-read-before-conditioning)
+[interaction rules](../../../docs/concepts/conditioning.md#conditions-are-not-independent)
 for other conditions on that target. Outside-target conditions remain unchanged.
 
 ## AtomWorks query syntax
