@@ -1,0 +1,578 @@
+/* ---------------------------------------------------------------------------
+   Architecture explorer (docs/architecture/index.rst) and the framed neural
+   circuit diagrams of the architecture notebook.
+
+   The explorer shares the workflow map's palette: magenta (--wf-specify) marks
+   what a reader can open, and green (--wf-return) marks the loops the model
+   runs, recycling first among them. Text that says something is at least
+   --wf-ink-soft; --wf-ink-faint is left to decoration.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --arch-radius: 10px;
+  /* The canvas colour tsncd paints its light and dark diagrams on. */
+  --arch-stage-bg: #ffffff;
+  --arch-loop: var(--wf-return, #3f7a28);
+  --arch-loop-soft: var(--wf-surface-return, #f3f8ef);
+  --arch-open: var(--wf-specify, #a80c84);
+  --arch-open-soft: var(--wf-surface-specify, #fdf5fb);
+}
+
+html[data-theme="dark"] {
+  --arch-stage-bg: #1e1e1e;
+}
+
+/* The explorer takes the full content width, as the workflow page does. */
+.bd-main .bd-content .bd-article-container:has(#arch-explorer) {
+  max-width: none;
+}
+
+.arch {
+  --arch-tree-width: 15.5rem;
+  margin: 1.25rem 0 2rem;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ---- toolbar ---- */
+.arch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--wf-line);
+  border-bottom: none;
+  border-radius: var(--arch-radius) var(--arch-radius) 0 0;
+  background: var(--wf-surface-model);
+}
+
+.arch-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+.arch-crumbs a {
+  color: var(--arch-open);
+  text-decoration: none;
+}
+.arch-crumbs a:hover {
+  text-decoration: underline;
+}
+.arch-crumb-sep {
+  color: var(--wf-ink-faint);
+}
+.arch-crumb-current {
+  font-weight: 700;
+  color: var(--wf-ink);
+}
+.arch-crumb-current:focus {
+  outline: none;
+}
+.arch-crumb-current:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The live region that announces the diagram shown is read by screen readers only, and the focus
+   guards of the expanded explorer are never seen. */
+.arch-live,
+.arch-focus-guard {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.arch-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.arch-zoom {
+  display: inline-flex;
+  border: 1px solid var(--wf-line-strong);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.arch-tools button,
+.arch-tools .arch-open {
+  font: 600 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--wf-ink);
+  background: var(--wf-surface);
+  border: none;
+  padding: 0.42rem 0.62rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.arch-zoom button + button {
+  border-left: 1px solid var(--wf-line);
+}
+.arch-zoom [data-zoom="fit"] {
+  min-width: 3.4rem;
+}
+.arch-tools .arch-open,
+.arch-tools .arch-expand {
+  border: 1px solid var(--wf-line-strong);
+  border-radius: 7px;
+}
+.arch-tools button:hover,
+.arch-tools .arch-open:hover {
+  color: var(--arch-open);
+}
+.arch-tools button:focus-visible,
+.arch-tools .arch-open:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 1px;
+}
+.arch-on-map .arch-zoom {
+  visibility: hidden;
+}
+.arch-on-map .arch-body {
+  height: auto;
+  max-height: none;
+}
+
+/* ---- tree + stage ---- */
+.arch-body {
+  display: grid;
+  grid-template-columns: var(--arch-tree-width) minmax(0, 1fr);
+  height: clamp(460px, 72vh, 960px);
+  border: 1px solid var(--wf-line);
+  border-radius: 0 0 var(--arch-radius) var(--arch-radius);
+  overflow: hidden;
+}
+
+.arch-tree {
+  border-right: 1px solid var(--wf-line);
+  background: var(--wf-surface-model);
+  padding: 0.75rem 0.5rem 0.9rem 0.75rem;
+  font-size: 0.82rem;
+  overflow: auto;
+}
+.arch-tree-title {
+  margin: 0 0 0.4rem;
+  font: 700 0.66rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wf-ink-soft);
+}
+.arch-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.arch-tree ul ul {
+  margin-left: 0.55rem;
+  padding-left: 0.55rem;
+  border-left: 1px solid var(--wf-line);
+}
+.arch-tree li {
+  margin: 0;
+}
+.arch-tree-link {
+  display: block;
+  padding: 0.18rem 0.4rem;
+  border-radius: 5px;
+  color: var(--wf-ink-soft);
+  text-decoration: none;
+  line-height: 1.3;
+}
+.arch-tree-link:hover {
+  color: var(--arch-open);
+  background: var(--arch-open-soft);
+}
+.arch-tree-link[aria-current="page"] {
+  color: var(--arch-open);
+  background: var(--arch-open-soft);
+  font-weight: 700;
+}
+
+.arch-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--arch-stage-bg);
+}
+.arch-stage:focus {
+  outline: none;
+}
+.arch-on-map .arch-stage {
+  background: var(--wf-surface);
+}
+.arch-map {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.9rem 1rem 1.6rem;
+}
+.arch-frame {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: var(--arch-stage-bg);
+}
+/* A row of its own under the frame, so it never covers a diagram or an inspection box. */
+.arch-stage-hint {
+  flex: none;
+  align-self: flex-end;
+  margin: 0;
+  padding: 0.25rem 0.7rem;
+  font: 0.7rem/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--wf-ink-soft);
+}
+.arch-on-map .arch-stage-hint {
+  display: none;
+}
+.arch-hint-touch {
+  display: none;
+}
+@media (hover: none), (pointer: coarse) {
+  .arch-hint-mouse {
+    display: none;
+  }
+  .arch-hint-touch {
+    display: inline;
+  }
+  /* Tree links a finger can hit, at least 24 px tall. */
+  .arch-tree-link {
+    padding-block: 0.3rem;
+  }
+}
+
+/* ---- expanded (fills the window) ---- */
+html.arch-no-scroll {
+  overflow: hidden;
+}
+.arch.arch-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--pst-color-background, var(--wf-surface));
+}
+.arch.arch-expanded .arch-toolbar {
+  border-radius: 0;
+}
+.arch.arch-expanded .arch-body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  border-radius: 0;
+}
+.arch.arch-expanded .arch-panel {
+  display: none;
+}
+
+/* ---- panel ---- */
+.arch-panel {
+  margin-top: 1.1rem;
+  max-width: 62rem;
+}
+.arch-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+.arch-level {
+  font: 700 0.66rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--arch-open);
+  border: 1px solid var(--arch-open);
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  white-space: nowrap;
+}
+.bd-content .arch-panel-title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.arch-summary p {
+  margin: 0.45rem 0;
+}
+.arch-highlights {
+  list-style: none;
+  margin: 0.8rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.arch-highlight {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.55rem 0.75rem;
+  border-left: 3px solid var(--wf-line-strong);
+  border-radius: 0 7px 7px 0;
+  background: var(--wf-surface-model);
+}
+.arch-highlight-label {
+  font: 700 0.72rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arch-highlight-loop {
+  border-left-color: var(--arch-loop);
+  background: var(--arch-loop-soft);
+}
+.arch-highlight-loop .arch-highlight-label {
+  color: var(--arch-loop);
+}
+.arch-highlight-open {
+  border-left-color: var(--arch-open);
+  background: var(--arch-open-soft);
+}
+.arch-highlight-open .arch-highlight-label {
+  color: var(--arch-open);
+}
+.arch-facts {
+  margin: 0.8rem 0;
+  font-size: 0.86rem;
+  border-collapse: collapse;
+}
+.arch-facts th,
+.arch-facts td {
+  padding: 0.28rem 1.2rem 0.28rem 0;
+  border-bottom: 1px solid var(--wf-line);
+  vertical-align: top;
+  text-align: left;
+}
+.arch-facts th {
+  font-weight: 600;
+  color: var(--wf-ink-soft);
+  white-space: nowrap;
+}
+.arch-subhead {
+  margin: 1.1rem 0 0.45rem;
+  font: 700 0.68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wf-ink-soft);
+}
+.arch-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.6rem;
+}
+.bd-content a.arch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--wf-line);
+  border-radius: 8px;
+  background: var(--wf-surface);
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+.bd-content a.arch-card:hover {
+  border-color: var(--arch-open);
+}
+.arch-card-title {
+  font-weight: 700;
+  color: var(--wf-ink);
+}
+.arch-card:hover .arch-card-title {
+  color: var(--arch-open);
+}
+.arch-card-body {
+  font-size: 0.82rem;
+  color: var(--wf-ink-soft);
+  line-height: 1.4;
+}
+.arch-code {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.86rem;
+}
+.arch-notebook {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .arch-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 10rem minmax(0, 1fr);
+    height: clamp(560px, 80vh, 960px);
+  }
+  .arch-tree {
+    border-right: none;
+    border-bottom: 1px solid var(--wf-line);
+  }
+}
+
+/* A short window, such as a laptop at 200% zoom or a phone on its side: the explorer fits under the
+   header with the diagram right below the toolbar, and the expanded explorer gives the diagram all
+   of its height; the breadcrumbs lead back up. */
+@media (max-width: 900px) and (max-height: 640px) {
+  .arch-body {
+    height: calc(100vh - 8rem);
+    height: calc(100dvh - 8rem);
+    grid-template-rows: minmax(0, 1fr) 6rem;
+  }
+  .arch-tree {
+    order: 1;
+    border-bottom: none;
+    border-top: 1px solid var(--wf-line);
+  }
+  .arch.arch-expanded .arch-body {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .arch.arch-expanded .arch-tree {
+    display: none;
+  }
+}
+
+/* On a phone the overview map keeps a readable size and scrolls sideways. */
+@media (max-width: 760px) {
+  .arch-map svg {
+    min-width: 820px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-content a.arch-card {
+    transition: none;
+  }
+}
+
+/* ---- the overview map (inline SVG) ---- */
+.arch-map svg {
+  display: block;
+  width: 100%;
+  max-width: 1180px;
+  height: auto;
+  margin: 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+.arch-map a,
+.arch-map a:hover,
+.arch-map a:focus {
+  text-decoration: none;
+}
+.arch-map [data-arch] {
+  cursor: pointer;
+}
+.arch-map [data-arch]:hover .wf-node,
+.arch-map [data-arch]:hover .wf-chip {
+  stroke: var(--wf-specify);
+  stroke-width: 2;
+}
+.arch-map [data-arch]:hover .wf-node-label,
+.arch-map [data-arch]:hover .wf-chip-label {
+  fill: var(--wf-specify);
+}
+.arch-map [data-arch]:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 3px;
+}
+.arch-loop-rail {
+  fill: none;
+  stroke: var(--arch-loop);
+  stroke-width: 1.8;
+  stroke-dasharray: 5 4;
+}
+.arch-loop-arrow {
+  fill: var(--arch-loop);
+}
+.arch-loop-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  fill: var(--arch-loop);
+}
+.arch-loop-sub {
+  font-size: 9px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  fill: var(--wf-ink-soft);
+}
+.arch-ico-loop {
+  color: var(--arch-loop);
+}
+.arch-node-loop {
+  fill: var(--arch-loop-soft);
+  stroke: var(--arch-loop);
+  stroke-width: 1.4;
+  stroke-dasharray: 6 4;
+}
+.arch-dim {
+  font-size: 9.5px;
+  fill: var(--wf-ink-soft);
+}
+.arch-map .wf-chip-sub,
+.arch-map .arch-loop-sub,
+.arch-map .arch-dim {
+  font-size: 10.5px;
+  fill: var(--wf-ink-soft);
+}
+/* The section labels of the map; the coloured ones keep their colour. */
+.arch-map .wf-eyebrow:not(.wf-ink-specify, .wf-ink-return, .arch-loop-label) {
+  fill: var(--wf-ink-soft);
+}
+
+/* ---- a diagram framed in the notebook ---- */
+.ncd-figure {
+  margin: 1rem 0 1.5rem;
+  border: 1px solid var(--wf-line);
+  border-radius: var(--arch-radius);
+  overflow: hidden;
+  background: var(--arch-stage-bg);
+}
+.ncd-figure iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+.ncd-figure figcaption {
+  padding: 0.55rem 0.8rem;
+  border-top: 1px solid var(--wf-line);
+  background: var(--wf-surface-model);
+  font-size: 0.84rem;
+  color: var(--wf-ink-soft);
+}
+.ncd-figure figcaption a {
+  font-weight: 600;
+}
+
+/* ---- where to read next: the story pages as the docs' hub cards, one row per group, in reading order ---- */
+.arch-guide {
+  max-width: 72rem;
+  margin: 0.5rem 0 2.5rem;
+}
+.arch-guide-group {
+  margin: 1.5rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wf-ink-soft);
+}
+.arch-guide .wf-cards {
+  margin: 0.6rem 0 0;
+}
+.arch-guide-kicker {
+  font-size: 0.76rem;
+  color: var(--wf-ink-soft);
+}

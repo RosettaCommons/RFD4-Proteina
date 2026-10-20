@@ -60,6 +60,14 @@ including CUDA metrics and TMol 0.1.64. It downloads the configured released mod
 weights and configures ``DATA_PATH`` for checkpoints and optional data.
 Use ``bash setup.sh --skip-weights`` for an environment-only install.
 
+Setup then asks whether to add the environments that reward-guided search and the refolding
+metrics use: an AlphaFold 2 environment, and an AlphaFold 3 / OpenFold3 environment with an optional
+download of the OpenFold3 weights. If you say yes to either, it also asks for your CPU
+architecture (``amd64`` or ``arm64``) and CUDA major version (``12`` or ``13``), downloads what is
+published, and records the ``AF2_*`` and ``AF3_*`` settings in ``.env.local``. Skip the questions with
+``bash setup.sh --skip-search-envs`` and run them later with ``bash scripts/setup_search_envs.sh``.
+See the :doc:`quickstart` for what each answer does.
+
 TMol and ligand support are included by default. For a manual install into a
 Python 3.12 environment, use the same CUDA wheel source as setup:
 
@@ -212,7 +220,7 @@ setup does not edit shell startup files. If the active file and shell both omit
 ``DATA_PATH``, setup adds the default data directory to that file.
 ``make setup`` runs ``bash setup.sh``.
 
-Set ``DATA_PATH`` to the directory containing native checkpoints and optional model data.
+Set ``DATA_PATH`` to the directory for optional model data (OpenFold3, AlphaFold 2, tutorial data) and any native checkpoints.
 Optional mirror, cache, credential, and refolding-oracle settings also belong in
 this ignored file. Use shell-compatible ``KEY=value`` assignments; quote paths
 containing spaces. ``PROJECT_ROOT`` supplies the checkout root.
@@ -226,12 +234,13 @@ continue editing that file or rename it to ``.env.local``. Creating a new
 Configure data and checkpoints
 ------------------------------
 
-``make setup`` downloads the native denoiser and matching autoencoder selected in
-``configs/inference.yaml`` into ``DATA_PATH``, defaulting to ``./data_path``.
-If ``hf_ckpt_path`` selects a Hub repository instead, setup caches its model/AE bundle
-in the normal HF cache (``HF_HOME`` controls its location). Optional tutorial/refolding
-data also goes into ``DATA_PATH``. Existing native checkpoint files are reused;
-a failed download stops setup with an error.
+``make setup`` caches the released model bundle (denoiser and matching autoencoder) from the Hugging
+Face repository and revision named by ``hf_ckpt_path`` and ``hf_ckpt_revision`` in
+``configs/inference.yaml`` (``nvidia/RFD4-Proteina`` by default). ``HF_HOME`` controls the cache
+location. Optional tutorial data, the OpenFold3 runtime image and the OpenFold3 weights come from the
+same repository and revision into ``DATA_PATH``, defaulting to ``./data_path``. A failed download stops
+setup with an error. Everything comes from Hugging Face except the AlphaFold 2 parameters, which are
+DeepMind's public release.
 
 To download manually after a pip or ``--skip-weights`` installation:
 
@@ -240,12 +249,8 @@ To download manually after a pip or ``--skip-weights`` installation:
    ./scripts/download_assets.sh ./data_path --skip-of3
 
 If you changed ``DATA_PATH`` in your environment file, pass that directory to the
-script instead. Native checkpoints come from the public object store. Optional tutorial
-data and OpenFold3 weights come from the pinned ``nvidia/RFD4-Proteina`` Hugging Face
-revision when using native checkpoints; with a Hub model selected, assets come from
-that repository and revision. For private Hub downloads,
-provide ``HF_TOKEN`` or log in with ``hf auth login`` using an account with access.
-The same downloader works without credentials once the repository is public.
+script instead. For private Hub downloads, provide ``HF_TOKEN`` or log in with ``hf auth login`` using
+an account with access. The same downloader works without credentials once the repository is public.
 Internal checkouts keep their existing development setup override; after
 activating that environment, use the manual download command above, or select
 ``bash setup.sh --native`` explicitly.
@@ -264,8 +269,8 @@ printed paths. The oracle runs in a separate Apptainer container. Its host launc
 requires Python 3 (standard library only), alongside the native model environment.
 Use ``metrics/refolding_oracles=of3`` for OpenFold3.
 
-The downloader fetches the AF3/OpenFold3 runtime from the public object-storage
-bucket and verifies its SHA-256 checksum.
+The downloader fetches the AF3/OpenFold3 runtime image from the model repository and verifies its
+SHA-256 checksum.
 
 Run your first design
 ---------------------

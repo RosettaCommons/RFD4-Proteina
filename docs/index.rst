@@ -90,6 +90,7 @@ State-of-the-art performance across relevant biomolecular tasks
    quickstart
    workflow
    examples
+   architecture/index
 
 .. toctree::
    :maxdepth: 1

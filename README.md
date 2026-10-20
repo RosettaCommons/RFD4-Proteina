@@ -65,6 +65,10 @@ The cache location follows `HF_HOME`. See the
 [installation guide](https://rosettacommons.github.io/RFD4-Proteina/installation.html)
 for CUDA build prerequisites, optional metrics, and cluster setup.
 
+Setup also asks whether to add an AlphaFold 2 or AlphaFold 3 / OpenFold3 environment for
+reward-guided search and refolding metrics (and, if so, your CPU architecture and CUDA version).
+Skip that with `bash setup.sh --skip-search-envs`; run it later with `bash scripts/setup_search_envs.sh`.
+
 Other options (CUDA 12, CPU-only, Docker, Apptainer, pip) are listed in the
 [deployment options](https://rosettacommons.github.io/RFD4-Proteina/installation.html#deployment-options).
 For example, a container with CUDA 13 (use `RFD4_ACCELERATOR=cu12` or `cpu` for the others):
@@ -90,6 +94,8 @@ pip install "rfd4-proteina[metrics-cuda13,bioir] @ git+https://github.com/Rosett
 EXAMPLE=$(python -c "import rfproteina, pathlib; print(pathlib.Path(rfproteina.__file__).parent / 'data/benchmarks/monomer/monomer-short.cif')")
 rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina inputs=$EXAMPLE num_replicates=1 out_dir=./runs/first ~metrics
 ```
+
+The model can also be run as a Hugging Face Diffusers pipeline. The [quickstart](https://rosettacommons.github.io/RFD4-Proteina/quickstart.html) covers all three routes in order: GitHub clone, PyPI and Diffusers.
 
 Add `inference_backend=bioir` to use the BioIR runtime (installed by the `bioir` extra). Drop the `bioir` extra
 for a native-only install. If `pip` cannot see a very recent release, retry with `--no-cache-dir`.

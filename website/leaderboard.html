@@ -6,15 +6,46 @@
   <link rel="stylesheet" href="benchmarks/explorer.css">
   <link rel="stylesheet" href="assets/branding.css">
   <link rel="stylesheet" href="assets/site-colors.css">
-  <script src="assets/theme.js"></script>
+  <link rel="stylesheet" href="css/site-nav.css">
+  <script>
+  (function () {
+    var theme;
+    try { theme = localStorage.getItem("rfd4-proteina-theme"); } catch (e) {}
+    if (theme !== "light" && theme !== "dark")
+      theme = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+  })();
+  </script>
+  <script src="site-nav.js" defer></script>
   <script type="module" src="benchmarks/explorer.mjs"></script>
 </head>
 <body>
-<nav class="nav" aria-label="Main navigation">
-  <a class="brand site-wordmark" href="index.html"><img class="wordmark-light" src="assets/rfd4-proteina-one-line.png" width="2169" height="725" alt="RFD4-Proteina"><img class="wordmark-dark" src="assets/rfd4-proteina-one-line-dark.png" width="2170" height="725" alt="RFD4-Proteina"></a>
-  <div class="navlinks"><a href="index.html">Home</a><a href="leaderboard.html" aria-current="page">Benchmarks</a><a href="latest/index.html">Documentation</a></div>
-  <button id="theme" class="quiet" aria-label="Switch color theme">Dark mode</button>
-</nav>
+<header class="site-nav" id="site-nav">
+    <a class="site-brand" href="index.html" aria-label="RFD4-Proteina home"><img class="theme-light" src="assets/figures/wordmark.webp" alt="RFD4-Proteina" width="520" height="65"><img class="theme-dark" src="assets/figures/wordmark-dark.webp" alt="RFD4-Proteina" width="520" height="65"></a>
+    <nav class="site-tabs" aria-label="Main navigation">
+        <div class="tab-group">
+            <a class="tab" href="index.html">Home</a>
+            <button class="tab-caret" type="button" aria-label="Sections of the home page" aria-expanded="false" aria-haspopup="true">&#9662;</button>
+            <div class="tab-menu">
+                    <a href="index.html#video">Video</a>
+                    <a href="index.html#quickstart">Quickstart</a>
+                    <a href="index.html#nutshell">Overview</a>
+                    <a href="index.html#abstract">Abstract</a>
+                    <a href="index.html#idea">Latent reasoning</a>
+                    <a href="index.html#benchmarks">In silico results</a>
+                    <a href="index.html#validation">Wet lab</a>
+                    <a href="index.html#resources">Code &amp; weights</a>
+                    <a href="index.html#citations">Citation</a>
+            </div>
+        </div>
+            <a class="tab" href="latest/architecture/expanded-chemistry.html">Latent space</a>
+            <a class="tab" href="latest/architecture/index.html">Architecture</a>
+            <a class="tab" href="leaderboard.html" aria-current="page">Benchmarks</a>
+            <a class="tab" href="latest/index.html">Documentation</a>
+    </nav>
+    <div class="site-nav-end"><button id="theme" class="theme-btn" type="button" aria-label="Switch color theme">Dark mode</button></div>
+    <button class="site-nav-toggle" type="button" aria-label="Menu" aria-expanded="false">&#9776;</button>
+</header>
 <main>
   <header class="page-head"><h1>Benchmark explorer</h1></header>
   <div id="datasets" class="dataset-tabs" role="group" aria-label="Benchmark dataset"></div>

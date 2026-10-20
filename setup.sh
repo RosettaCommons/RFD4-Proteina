@@ -10,14 +10,18 @@ if [[ "${1:-}" == --venv && $# == 1 ]]; then
     exec bash "$repo_root/scripts/setup_venv.sh"
 fi
 download_weights=true
+search_envs=true
 for arg in "$@"; do
     case "$arg" in
         --native) ;;
         --skip-weights) download_weights=false ;;
+        --skip-search-envs) search_envs=false ;;
         -h|--help)
-            echo "Usage: bash setup.sh [--native] [--skip-weights] | --venv"
+            echo "Usage: bash setup.sh [--native] [--skip-weights] [--skip-search-envs] | --venv"
             echo "Install a native .venv and the configured released model."
             echo "Use --skip-weights for an environment-only install."
+            echo "Setup then asks whether to add AlphaFold 2 and AlphaFold 3 / OpenFold3 environments for search;"
+            echo "use --skip-search-envs to skip those questions (scripts/setup_search_envs.sh runs them later)."
             echo "Use --native to select native setup in an IPD checkout; --venv adds development tools."
             exit 0 ;;
         *) echo "Unknown option: $arg" >&2; exit 2 ;;
@@ -38,6 +42,9 @@ if [[ "$download_weights" == true ]]; then
     fi
     PATH="$repo_root/.venv/bin:$PATH" bash "$repo_root/scripts/download_assets.sh" "$DATA_PATH" --skip-of3
     echo 'Configured released model is ready.'
+fi
+if [[ "$search_envs" == true ]]; then
+    PATH="$repo_root/.venv/bin:$PATH" bash "$repo_root/scripts/setup_search_envs.sh"
 fi
 printf 'Next: source %q/.venv/bin/activate\n' "$repo_root"
 if [[ "$download_weights" == true ]]; then

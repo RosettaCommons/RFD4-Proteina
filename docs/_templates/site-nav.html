@@ -1,0 +1,32 @@
+{#- The tab line shared with Home and Benchmarks (generated from website/scripts/sync_nav.py). The docs live
+    under latest/ of the site, so every link is relative. -#}
+{%- set docs_root = pathto('index')[:-10] %}
+{%- set site = docs_root ~ '../' %}
+{%- set latent = pagename == 'architecture/expanded-chemistry' %}
+{%- set arch = pagename.startswith('architecture') and not latent %}
+<header class="site-nav" id="site-nav">
+    <a class="site-brand" href="{{ site }}index.html" aria-label="RFD4-Proteina home"><img class="theme-light" src="{{ site }}assets/figures/wordmark.webp" alt="RFD4-Proteina" width="520" height="65"><img class="theme-dark" src="{{ site }}assets/figures/wordmark-dark.webp" alt="RFD4-Proteina" width="520" height="65"></a>
+    <nav class="site-tabs" aria-label="Main navigation">
+        <div class="tab-group">
+            <a class="tab" href="{{ site }}index.html">Home</a>
+            <button class="tab-caret" type="button" aria-label="Sections of the home page" aria-expanded="false" aria-haspopup="true">&#9662;</button>
+            <div class="tab-menu">
+                    <a href="{{ site }}index.html#video">Video</a>
+                    <a href="{{ site }}index.html#quickstart">Quickstart</a>
+                    <a href="{{ site }}index.html#nutshell">Overview</a>
+                    <a href="{{ site }}index.html#abstract">Abstract</a>
+                    <a href="{{ site }}index.html#idea">Latent reasoning</a>
+                    <a href="{{ site }}index.html#benchmarks">In silico results</a>
+                    <a href="{{ site }}index.html#validation">Wet lab</a>
+                    <a href="{{ site }}index.html#resources">Code &amp; weights</a>
+                    <a href="{{ site }}index.html#citations">Citation</a>
+            </div>
+        </div>
+            <a class="tab" href="{{ docs_root }}architecture/expanded-chemistry.html"{% if latent %} aria-current="page"{% endif %}>Latent space</a>
+            <a class="tab" href="{{ docs_root }}architecture/index.html"{% if arch %} aria-current="page"{% endif %}>Architecture</a>
+            <a class="tab" href="{{ site }}leaderboard.html">Benchmarks</a>
+            <a class="tab" href="{{ docs_root }}index.html"{% if not latent and not arch %} aria-current="page"{% endif %}>Documentation</a>
+    </nav>
+    <div class="site-nav-end"><button id="theme" class="theme-btn" type="button" aria-label="Switch color theme">Dark mode</button></div>
+    <button class="site-nav-toggle" type="button" aria-label="Menu" aria-expanded="false">&#9776;</button>
+</header>

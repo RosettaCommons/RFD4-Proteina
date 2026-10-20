@@ -9,6 +9,7 @@ import nbformat
 import tomllib
 from docutils import nodes
 from sphinx.application import Sphinx
+from sphinx.builders.html._assets import _CascadingStyleSheet
 
 DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
@@ -138,11 +139,35 @@ autodoc_mock_imports = [
     "tmol",
 ]
 
+# Set when the docs are published beside the project page (docs.yaml), so the header can link to it.
+_SITE_ROOT = os.environ.get("RFD4_SITE_ROOT", "")
+
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
-html_css_files = ["custom.css"]
+# _templates/layout.html marks the <body> of the latent explorer, which scopes its stylesheets.
+templates_path = ["_templates"]
+html_css_files = ["custom.css", "architecture/explorer.css"]
+# Sizes and themes the neural circuit diagrams framed in the architecture explorer.
+html_js_files = [("architecture/ncd-frames.js", {"defer": "defer"})]
+# The architecture explorer and the latent explorer give the full width to their diagrams and figures, so
+# neither shows the section navigation.
+LATENT_EXPLORER_PAGES = ("architecture/expanded-chemistry",)
+# The stylesheets of the latent explorer, which _architecture_page_assets adds to that page alone; arch.css (the
+# story pages' fonts, type and shared components) comes first.
+LATENT_EXPLORER_CSS_FILES = ("arch.css", "viz/viz.css")
+html_sidebars = {
+    "architecture/index": [],
+    **{page: [] for page in LATENT_EXPLORER_PAGES},
+}
+# nbsphinx adds require.js from a CDN to every page; the explorer uses none of it and loads nothing remote.
+NO_REMOTE_SCRIPT_PAGES = ("architecture/index",)
+html_context = {"site_root": _SITE_ROOT}
+if _SITE_ROOT:
+    html_css_files = [*globals().get("html_css_files", []), "site-nav.css"]
+    html_js_files = [*html_js_files, ("site-nav.js", {"defer": "defer"})]
+html_favicon = "_static/favicon.svg"
 html_title = "RFD4-Proteína documentation"
-html_baseurl = "https://rosettacommons.github.io/RFD4-Proteina/"
+html_baseurl = "https://rosettacommons.github.io/RFD4-Proteina/latest/"
 
 html_theme_options = {
     "show_nav_level": 2,
@@ -152,22 +177,30 @@ html_theme_options = {
     "globaltoc_includehidden": True,
     "globaltoc_maxdepth": -1,
     "header_links_before_dropdown": 8,
-    "navbar_start": ["navbar-logo"],
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    # Beside the project page the shared tab line (_templates/site-nav.html) carries the wordmark and the
+    # color mode; the documentation header keeps its section links, search and icons.
+    "navbar_start": [] if _SITE_ROOT else ["navbar-logo"],
+    "navbar_end": ["navbar-icon-links"] if _SITE_ROOT else ["theme-switcher", "navbar-icon-links"],
     # Drop the theme's default "Show Source" link. Readers want the rendered page, and the source
     # is a click away on GitHub for anyone who wants it.
     "secondary_sidebar_items": ["page-toc"],
     "logo": {
-        "image_light": "_static/wordmark.svg",
-        "image_dark": "_static/wordmark.svg",
+        "image_light": "_static/wordmark.webp",
+        "image_dark": "_static/wordmark-dark.webp",
         "alt_text": "RFD4-Proteína",
     },
     "icon_links": [
-        {
-            "name": "Home",
-            "url": "https://rosettacommons.github.io/RFD4-Proteina/",
-            "icon": "fa-solid fa-house",
-        },
+        *(
+            []
+            if _SITE_ROOT
+            else [
+                {
+                    "name": "Home",
+                    "url": "https://rosettacommons.github.io/RFD4-Proteina/",
+                    "icon": "fa-solid fa-house",
+                }
+            ]
+        ),
         {
             "name": "GitHub",
             "url": "https://github.com/RosettaCommons/RFD4-Proteina",
@@ -247,6 +280,31 @@ def _mark_tagged_cells(app: Sphinx, doctree: nodes.document, docname: str) -> No
             node["classes"].append("collapse-code")
 
 
+def _architecture_page_assets(
+    app: Sphinx, pagename: str, _templatename: str, context: dict[str, Any], _doctree: nodes.document | None
+) -> None:
+    """Give the latent explorer its stylesheets, and drop remote scripts.
+
+    A page's stylesheets load after html_css_files and on no other page.
+    nbsphinx adds require.js from a CDN to every page; nothing on these pages uses it, so it is dropped.
+    """
+    if pagename in LATENT_EXPLORER_PAGES:
+        stylesheets = LATENT_EXPLORER_CSS_FILES
+    elif pagename in NO_REMOTE_SCRIPT_PAGES:
+        stylesheets = ()
+    else:
+        return
+    # Appended to this page's own context so no other page sees the stylesheets.
+    context["css_files"] = [
+        *context.get("css_files", []),
+        *(_CascadingStyleSheet(f"_static/{name}", priority=800) for name in stylesheets),
+    ]
+    remote = ("http://", "https://", "//")
+    scripts = context.get("script_files", [])
+    context["script_files"] = [s for s in scripts if not str(getattr(s, "filename", s)).startswith(remote)]
+
+
 def setup(app: Sphinx) -> None:
     app.connect("autodoc-process-docstring", _convert_markdown_docstring_fences)
     app.connect("doctree-resolved", _mark_tagged_cells)
+    app.connect("html-page-context", _architecture_page_assets)

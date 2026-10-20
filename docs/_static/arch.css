@@ -1,0 +1,673 @@
+/* ---------------------------------------------------------------------------
+   The architecture story pages: the article (architecture/explainer), the Illustrated page
+   (architecture/illustrated) and the visualisation pages (architecture/viz/*).
+
+   conf.py loads this sheet on those pages only, before explainer.css or viz.css; every rule hangs
+   off the <body> classes docs/_templates/layout.html gives them (`dx-explainer`, which the
+   Illustrated page also carries, and `viz-page`). The site header keeps the theme's fonts.
+
+   Type: IBM Plex Sans (400, 600, 400 italic) for everything and IBM Plex Mono (400) for residue
+   letters and code, IBM's own woff2 files, unmodified, under the SIL Open Font License
+   (fonts/LICENSE.txt). One body size (17 px) and one small size (14 px) carry almost all text;
+   12 px is for axis ticks and sequence indices only. Weights are 400 and 600, and nothing is
+   uppercase or tracked.
+
+   Figures sit on the page ground with no frame or card. A page's one instrument, the only figure with
+   controls, sits on a flat full-width band one tone off the ground (.arch-band). The chrome is ink and
+   grey; data hues appear on data and in keyed terms (.arch-key). Spacing uses --space-1 to --space-8.
+
+   Shared components, used by the pages and both packages' helpers (js/lib/controls.js, explainer
+   js/lib/ui.js):
+     .arch-title > .arch-title-name     a figure's title: its name on one line, the claim under it
+     .arch-band                         the band behind the instrument
+     .arch-readout .arch-controls > .arch-row   the readout line and the control row under a drawing
+     .arch-play .arch-tabs .arch-button .arch-field   play/pause, quiet tabs, a quiet text button, a labelled control
+     .arch-label .arch-key .arch-ramp .arch-methods .arch-tip .arch-sr-only
+   --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+/* ---- tokens ---- */
+.dx-explainer,
+.viz-page {
+  --arch-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --arch-mono: "IBM Plex Mono", var(--pst-font-family-monospace-system, ui-monospace, monospace);
+  --arch-fs-micro: 0.75rem;
+  --arch-fs-small: 0.875rem;
+  --arch-fs-body: 1.0625rem;
+  --arch-fs-lede: 1.25rem;
+  --arch-fs-h3: 1.25rem;
+  --arch-fs-h2: 1.75rem;
+  --arch-fs-h1: 2.5rem;
+  --arch-lh-body: 1.7;
+  --arch-lh-small: 1.5;
+  --arch-lh-drawing: 1.3;
+  --arch-weight: 400;
+  --arch-weight-strong: 600;
+  --arch-ink: var(--wf-ink);
+  --arch-ink-soft: var(--wf-ink-soft);
+  --arch-ink-faint: var(--wf-ink-faint);
+  --arch-line: var(--wf-line);
+  --arch-line-strong: var(--wf-line-strong);
+  --arch-surface: var(--wf-surface);
+  --arch-band: #f6f7f9;
+  --arch-grid: #eceef1;
+  --arch-focus: var(--wf-focus);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --arch-radius: 4px;
+  --arch-text: 44rem;
+  --arch-wide: 67rem;
+  --arch-full: 88rem;
+  --arch-float-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  --arch-tween: 200ms cubic-bezier(0, 0, 0.2, 1);
+  --pst-font-weight-caption: var(--arch-weight);
+}
+html[data-theme="dark"] :is(.dx-explainer, .viz-page) {
+  --arch-band: #21262e;
+  --arch-grid: #272d35;
+  --arch-float-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+}
+
+/* The page ground is the palette's surface, which canvases and 3D scenes clear to, so figures have no edge;
+   in dark the theme's own ground is a step darker. The site header keeps its colours. */
+html[data-theme="dark"] body:is(.dx-explainer, .viz-page) {
+  background-color: var(--wf-surface);
+}
+
+/* ---- type ---- */
+/* The theme's link colours are ink here, so a link is ink whether visited, hovered or active. */
+:is(.dx-explainer, .viz-page) :is(.bd-main, .dx-card) {
+  --pst-font-family-base: var(--arch-sans);
+  --pst-font-family-heading: var(--arch-sans);
+  --pst-font-family-monospace: var(--arch-mono);
+  --pst-color-link: var(--wf-ink);
+  --pst-color-link-hover: var(--wf-ink);
+  font-family: var(--arch-sans);
+}
+/* The faces are 400 and 600: what the theme sets bold takes 600, and code, set in the 400-only mono, stays 400. */
+:where(.dx-explainer, .viz-page) :is(b, strong, th) {
+  font-weight: var(--arch-weight-strong);
+}
+:is(.dx-explainer, .viz-page) .bd-main :is(dt, aside.footnote span.label) {
+  font-weight: var(--arch-weight-strong);
+}
+:is(.dx-explainer, .viz-page) .bd-article {
+  font-size: var(--arch-fs-body);
+  line-height: var(--arch-lh-body);
+  color: var(--wf-ink);
+  font-kerning: normal;
+}
+:is(.dx-explainer, .viz-page) .bd-article :is(h1, h2, h3, h4) {
+  color: var(--wf-ink);
+  font-weight: var(--arch-weight-strong);
+  letter-spacing: normal;
+  border: 0;
+  padding: 0;
+}
+:is(.dx-explainer, .viz-page) .bd-article h1 {
+  font-size: var(--arch-fs-h1);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-4);
+}
+.viz-page .bd-article .viz-kicker + section > h1 {
+  margin-top: 0;
+}
+:is(.dx-explainer, .viz-page) .bd-article h2 {
+  font-size: var(--arch-fs-h2);
+  line-height: 1.25;
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-4);
+}
+:is(.dx-explainer, .viz-page) .bd-article h3 {
+  font-size: var(--arch-fs-h3);
+  line-height: 1.4;
+  margin-top: calc(var(--space-6) + var(--space-2));
+  margin-bottom: var(--space-2);
+}
+:is(.dx-explainer, .viz-page) .bd-article h4 {
+  font-size: var(--arch-fs-body);
+  line-height: 1.5;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
+}
+:is(.dx-explainer, .viz-page) .bd-article :is(i, em, var) {
+  font-style: italic;
+}
+:is(.dx-explainer, .viz-page) .bd-article var {
+  font-family: inherit;
+}
+@media (max-width: 599.98px) {
+  :is(.dx-explainer, .viz-page) .bd-article h1 {
+    font-size: 2rem;
+  }
+  :is(.dx-explainer, .viz-page) .bd-article h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Links are ink (the theme's link colours, set above) with a faint underline that turns ink on hover. */
+:where(.dx-explainer, .viz-page) :where(.bd-article) a {
+  text-decoration: underline;
+  text-decoration-color: var(--wf-ink-faint);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+:where(.dx-explainer, .viz-page) :where(.bd-article) a:hover {
+  text-decoration-color: var(--wf-ink);
+  text-decoration-thickness: 1px;
+}
+:is(.dx-explainer, .viz-page) .prev-next-area a,
+:is(.dx-explainer, .viz-page) .prev-next-area a p.prev-next-title {
+  text-decoration-color: var(--wf-ink-faint);
+}
+:where(.dx-explainer, .viz-page) :where(.bd-article) a:focus-visible {
+  outline: 2px solid var(--arch-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+:is(.dx-explainer, .viz-page) .bd-article code {
+  padding: 0 0.25em;
+  border: 0;
+  border-radius: var(--arch-radius);
+  background: var(--arch-grid);
+  color: var(--wf-ink);
+  font-family: var(--arch-mono);
+  font-size: 0.9em;
+  font-weight: var(--arch-weight);
+}
+:is(.dx-explainer, .viz-page) .bd-article pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Admonitions read as plain notes: no band, icon, rule or shadow. */
+:is(.dx-explainer, .viz-page) .bd-article .admonition {
+  max-width: var(--arch-text);
+  margin: var(--space-5) auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none !important;
+  overflow: visible;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+:is(.dx-explainer, .viz-page) .bd-article .admonition > .admonition-title {
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  background: none;
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+:is(.dx-explainer, .viz-page) .bd-article .admonition > .admonition-title::before,
+:is(.dx-explainer, .viz-page) .bd-article .admonition > .admonition-title::after {
+  display: none;
+}
+:is(.dx-explainer, .viz-page) .bd-article .admonition p.admonition-title ~ * {
+  margin-left: 0;
+  margin-right: 0;
+}
+:is(.dx-explainer, .viz-page) #pst-back-to-top {
+  display: none !important;
+}
+
+/* ---- the parts of a figure: title, drawing, readout, controls, caption ---- */
+/* A figure's title, left-aligned with its drawing and 12 px above it: the name on its own line in 600
+   ink, then the claim in ink-soft. <p class="arch-title"><span class="arch-title-name">…</span> …</p> */
+:is(.dx-explainer, .viz-page) .bd-article .arch-title {
+  display: block;
+  max-width: none;
+  margin: 0 0 var(--space-3);
+  text-align: left;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-weight: var(--arch-weight);
+  color: var(--wf-ink-soft);
+}
+.arch-title-name {
+  display: block;
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+/* A caption's text starts on the prose's left edge: no inset from Sphinx's basic.css. */
+:is(.dx-explainer, .viz-page) .bd-article figcaption {
+  padding: 0;
+}
+
+/* The instrument's band: flat, the width of the window, one tone off the ground. The band is the
+   surface for everything inside it, so canvases, label halos and slider rings clear to its tone. */
+:is(.dx-explainer, .viz-page) .bd-article .arch-band {
+  --wf-surface: var(--arch-band);
+  --viz-surface: var(--arch-band);
+  clear: both;
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-7);
+  padding: var(--space-6) 0 var(--space-5);
+  background: var(--arch-band);
+  border-image: linear-gradient(var(--arch-band) 0 0) fill 0 / / 0 100vw;
+}
+:is(.dx-explainer, .viz-page) .bd-article .arch-band .arch-play {
+  background: var(--wf-line);
+}
+@media (max-width: 599.98px) {
+  :is(.dx-explainer, .viz-page) .bd-article .arch-band {
+    padding: var(--space-5) 0 var(--space-4);
+  }
+}
+.arch-readout {
+  display: block;
+  max-width: var(--arch-text);
+  margin: var(--space-2) auto 0;
+  text-align: center;
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink-soft);
+}
+.arch-readout:empty {
+  display: none;
+}
+/* A small sentence-case label inside a figure: a panel's name where its axis or marks do not name it. */
+.arch-label {
+  margin: 0 0 var(--space-2);
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  font-weight: var(--arch-weight);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--wf-ink-soft);
+}
+.arch-label-strong {
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+
+/* ---- controls: a centred row under the drawing ---- */
+.arch-controls {
+  position: relative;
+  max-width: var(--arch-text);
+  margin: var(--space-2) auto 0;
+}
+.arch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  min-height: 36px;
+}
+.arch-row > input[type="range"],
+.arch-row > .arch-field-range {
+  flex: 1 1 12rem;
+  max-width: 560px;
+}
+.arch-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.arch-field-label {
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  color: var(--wf-ink-soft);
+  white-space: nowrap;
+}
+.arch-field-range > input[type="range"],
+.arch-field-range .arch-field-control {
+  flex: 1 1 auto;
+  min-width: 6rem;
+}
+.arch-field-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.arch-field-value {
+  font-size: var(--arch-fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink);
+  white-space: nowrap;
+}
+
+/* Sliders: a 4 px track, ink up to the thumb (--arch-p, set by the helpers), an 18 px ink thumb. */
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--wf-ink);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--wf-ink) 0 var(--arch-p, 0%), var(--wf-line) var(--arch-p, 0%) 100%);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wf-ink);
+  box-shadow: 0 0 0 2px var(--wf-surface);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--wf-line);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--wf-ink);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wf-ink);
+  box-shadow: 0 0 0 2px var(--wf-surface);
+}
+:is(.dx-explainer, .viz-page) .bd-main input[type="range"]:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+@media (pointer: coarse) {
+  :is(.dx-explainer, .viz-page) .bd-main input[type="range"] {
+    height: 44px;
+  }
+  :is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    margin-top: -12px;
+  }
+  :is(.dx-explainer, .viz-page) .bd-main input[type="range"]::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+}
+:is(.dx-explainer, .viz-page) .bd-main :is(input, button, summary):focus-visible {
+  outline: 2px solid var(--arch-focus);
+  outline-offset: 2px;
+}
+
+/* Play and pause: a 36 px grey square with a drawn icon; aria-pressed="true" shows pause. */
+.arch-play {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--arch-radius);
+  background: var(--arch-grid);
+  color: var(--wf-ink);
+  font-size: 0;
+  cursor: pointer;
+}
+.arch-play::before {
+  content: "";
+  width: 12px;
+  height: 14px;
+  margin-left: 2px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.arch-play[aria-pressed="true"]::before {
+  width: 10px;
+  height: 13px;
+  margin-left: 0;
+  border-left: 3.5px solid currentColor;
+  border-right: 3.5px solid currentColor;
+  background: none;
+  clip-path: none;
+}
+.arch-play:hover {
+  background: var(--arch-line);
+}
+.arch-play:disabled {
+  color: var(--wf-ink-faint);
+  cursor: default;
+}
+
+/* Quiet tabs and a quiet text button: small, ink-soft, ink on hover; a pressed tab is ink with a 2 px bar
+   under it. No border and no fill. */
+.arch-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-4);
+  max-width: 100%;
+}
+.arch-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  font-weight: var(--arch-weight);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink-soft);
+  cursor: pointer;
+}
+.arch-tabs > button[aria-pressed="true"] {
+  color: var(--wf-ink);
+  background: linear-gradient(var(--wf-ink), var(--wf-ink)) bottom / 100% 2px no-repeat;
+}
+.arch-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  font-weight: var(--arch-weight);
+  color: var(--wf-ink-soft);
+  cursor: pointer;
+}
+.arch-tabs > button:hover,
+.arch-button:hover {
+  color: var(--wf-ink);
+}
+.arch-button:disabled {
+  color: var(--wf-ink-faint);
+  cursor: default;
+}
+@media (pointer: coarse) {
+  .arch-tabs > button,
+  .arch-button {
+    min-height: 44px;
+  }
+}
+
+/* ---- keys and ramps ---- */
+/* A keyed term: ink text, underlined in the hue of the part it names; c is always dashed. */
+.arch-key {
+  text-decoration: underline;
+  text-decoration-thickness: 0.16em;
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: none;
+}
+.arch-key[data-key="z"] { text-decoration-color: var(--viz-pair, var(--dx-z)); }
+.arch-key[data-key="s"] { text-decoration-color: var(--viz-single, var(--dx-s)); }
+.arch-key[data-key="c"] { text-decoration-color: var(--viz-cond, var(--dx-c)); text-decoration-style: dashed; }
+.arch-key[data-key="ca"] { text-decoration-color: var(--viz-ca, var(--dx-ca)); }
+.arch-key[data-key="lat"] { text-decoration-color: var(--viz-lat, var(--dx-lat)); }
+.arch-key[data-key="given"] { text-decoration-color: var(--viz-given, var(--dx-given)); }
+.arch-key[data-key="recycle"] { text-decoration-color: var(--viz-recycle, var(--dx-recycle)); }
+
+/* A colour-ramp legend: the quantity above, an 8 px bar, at most three ticks. */
+.arch-ramp {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 200px;
+  max-width: 100%;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  color: var(--wf-ink-soft);
+}
+.arch-ramp-bar {
+  display: block;
+  height: 8px;
+  background: var(--arch-ramp, var(--wf-line));
+}
+.arch-ramp-ticks {
+  position: relative;
+  height: 1.3em;
+  font-size: var(--arch-fs-micro);
+  font-variant-numeric: tabular-nums;
+}
+.arch-ramp-ticks > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.arch-ramp-ticks > .arch-ramp-start {
+  transform: none;
+}
+.arch-ramp-ticks > .arch-ramp-end {
+  transform: translateX(-100%);
+}
+
+/* A short note beside the prose. Below 1200 px it stays in the column. Above that it sits in the
+   gutter between the 44 rem text and the right edge of the 67 rem page, the same place as .dx-aside. */
+:is(.dx-explainer, .viz-page) .bd-article .arch-note {
+  max-width: var(--arch-text);
+  margin: var(--space-4) auto;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+@media (min-width: 1200px) {
+  :is(.dx-explainer, .viz-page) .bd-article .arch-note {
+    float: right;
+    clear: right;
+    width: 10rem;
+    max-width: 10rem;
+    margin: 0.15rem calc((100% - var(--arch-wide)) / 2) var(--space-4) var(--space-5);
+  }
+}
+:is(.dx-explainer, .viz-page) .bd-article .arch-note p {
+  margin: 0;
+}
+/* The one-line close of a series post. */
+:is(.dx-explainer, .viz-page) .bd-article .post-next {
+  clear: both;
+  max-width: var(--arch-text);
+  margin: var(--space-6) auto 0;
+  font-size: var(--arch-fs-body);
+  color: var(--wf-ink);
+}
+:is(.dx-explainer, .viz-page) .bd-article .viz-figure {
+  clear: both;
+}
+
+/* How this was made: one collapsed section at the end of a page. */
+.arch-methods > summary {
+  font-size: var(--arch-fs-body);
+  color: var(--wf-ink);
+  cursor: pointer;
+}
+.arch-methods {
+  clear: both;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+
+/* Tooltips and popovers, the only floating layers, on the page's ground even over the band. */
+.arch-tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 20rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--wf-line);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface);
+  box-shadow: var(--arch-float-shadow);
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink);
+  pointer-events: none;
+}
+.arch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.dx-explainer, .viz-page) .bd-main * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,41 @@
+/* The fixed tab line shared by Home, Benchmarks and the docs. Keep identical in every copy. */
+:root { --site-nav-height: 62px; }
+.site-nav { --nav-bg: #fff; --nav-ink: #333; --nav-muted: #59636c; --nav-line: #d1cedc; --nav-accent: #186c70; --nav-hover: #f3f5f5;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1100; display: flex; align-items: center; gap: 30px; height: var(--site-nav-height);
+  padding: 0 max(20px, calc((100vw - 1320px) / 2)); background: var(--nav-bg); border-bottom: 1px solid var(--nav-line);
+  font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.2; box-sizing: border-box; }
+html[data-theme="dark"] .site-nav { --nav-bg: #1e2231; --nav-ink: #f3f5f5; --nav-muted: #c3c8d2; --nav-line: #414459; --nav-accent: #40d9be; --nav-hover: #2c3047; }
+body { padding-top: var(--site-nav-height); }
+html { scroll-padding-top: calc(var(--site-nav-height) + 14px); }
+.site-nav *, .site-nav *::before, .site-nav *::after { box-sizing: border-box; }
+html body .site-nav a { text-decoration: none; color: var(--nav-muted); }
+.site-brand { display: flex; align-items: center; flex: none; }
+.site-brand img { height: 26px; width: auto; display: block; }
+html body .site-nav .site-brand img.theme-light { display: block; }
+html[data-theme="dark"] body .site-nav .theme-light, html:not([data-theme="dark"]) body .site-nav .theme-dark { display: none !important; }
+.site-tabs { display: flex; align-self: stretch; align-items: stretch; gap: 4px; }
+.tab-group { position: relative; display: flex; align-items: stretch; }
+html body .site-nav .tab { display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--nav-muted); font-size: 14px; }
+html body .site-nav .tab:hover, html body .site-nav .tab:focus-visible { color: var(--nav-ink); background: var(--nav-hover); }
+html body .site-nav .tab[aria-current="page"] { color: var(--nav-ink); font-weight: 700; border-bottom-color: var(--nav-accent); }
+.tab-caret { align-self: stretch; padding: 0 8px 0 0; margin-left: -8px; border: 0; background: transparent; color: var(--nav-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.tab-group:hover .tab, .tab-group:focus-within .tab { color: var(--nav-ink); background: var(--nav-hover); }
+.tab-menu { display: none; position: absolute; top: calc(100% - 1px); left: 0; min-width: 220px; padding: 8px 0; background: var(--nav-bg); border: 1px solid var(--nav-line); border-radius: 0 0 8px 8px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18); }
+.tab-group:hover .tab-menu, .tab-group:focus-within .tab-menu, .tab-group.open .tab-menu { display: block; }
+html body .site-nav .tab-menu a { display: block; padding: 8px 18px; color: var(--nav-muted); font-size: 13.5px; white-space: nowrap; }
+html body .site-nav .tab-menu a:hover, html body .site-nav .tab-menu a:focus-visible { background: var(--nav-hover); color: var(--nav-ink); }
+.site-nav-end { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.site-nav .theme-btn { padding: 7px 12px; border: 1px solid var(--nav-line); border-radius: 6px; background: transparent; color: var(--nav-ink); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.site-nav .theme-btn:hover { background: var(--nav-hover); }
+.site-nav-toggle { display: none; padding: 7px 10px; border: 1px solid var(--nav-line); border-radius: 6px; background: transparent; color: var(--nav-ink); font: inherit; cursor: pointer; }
+@media (max-width: 820px) {
+  .site-nav { gap: 12px; padding: 0 14px; }
+  .site-nav-toggle { display: block; margin-left: auto; order: 2; }
+  .site-nav-end { margin-left: 0; order: 3; }
+  .site-tabs { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; background: var(--nav-bg); border-bottom: 1px solid var(--nav-line); padding: 6px 14px 12px; gap: 0; }
+  .site-nav.open .site-tabs { display: flex; }
+  html body .site-nav .tab { padding: 11px 6px; margin: 0; border-bottom: 0; }
+  .tab-group { flex-wrap: wrap; }
+  .tab-menu { position: static; display: block; width: 100%; box-shadow: none; border: 0; padding: 0 0 4px 12px; }
+  .tab-caret { display: none; }
+}

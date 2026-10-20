@@ -1,0 +1,163 @@
+/* "Sixteen numbers, three alphabets" (js/page-latents.js). The type, colours and components are arch.css's
+   and viz.css's; this sheet places the page's figures. The stage is the page's one instrument, on arch.css's
+   band: the channel grid, the three decoded fragments side by side and the controls of the picked mode (the
+   shift slider; the noise controls; the arrow, turn pad and stretch slider). The figures further down
+   (#latents-nats, -noise, -burda, -arrows, -identity, -rd) are plain figures on the page ground. */
+
+/* ---- the instrument ---- */
+.viz-page .bd-article .arch-band[data-viz-page="latents"] {
+  overflow: visible;
+}
+.latents-grid-host {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+.latents-grid .latents-grid-hit {
+  cursor: pointer;
+}
+.latents-grid:focus-visible,
+.latents-molecule:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: var(--space-1);
+}
+.latents-legend {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-1);
+  padding-right: var(--space-2);
+}
+
+.latents-views {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.latents-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* Side by side, the heads, models and readouts of the three fragments share rows, so the readouts align. */
+@media (min-width: 720px) {
+  .latents-views {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto 1fr auto auto;
+    row-gap: 0;
+  }
+  .latents-view {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+  }
+}
+.latents-view-head {
+  margin: 0;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+.latents-view-name {
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+.latents-view-model {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  width: 100%;
+}
+.latents-molecule {
+  display: block;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+.latents-molecule.is-turning {
+  cursor: grabbing;
+}
+.latents-view-value,
+.latents-view-seq {
+  display: block;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink);
+}
+.latents-view-seq {
+  font-family: var(--arch-mono);
+}
+.latents-view-line {
+  display: block;
+}
+.latents-view-seq .is-changed {
+  color: var(--viz-lat-ink);
+  background: var(--viz-lat-soft);
+}
+.latents-view-note {
+  font-family: var(--arch-sans);
+  color: var(--wf-ink-soft);
+}
+.latents-roles {
+  margin: var(--space-1) 0 0;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+.latents-app .arch-controls {
+  margin-top: var(--space-2);
+}
+/* A row of several controls wraps by their content, so no slider is squeezed under its label. Where
+   controls share a line, each value keeps the width of its longest reading, so a drag never rewraps it. */
+.latents-controls .viz-range {
+  flex: 1 1 auto;
+}
+@media (min-width: 480px) {
+  .latents-controls .viz-range-value {
+    min-width: 4.5em;
+  }
+  .latents-pad-field .arch-field-value {
+    min-width: 6.5em;
+  }
+}
+
+/* ---- the turn pad ---- */
+.latents-pad-field {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.latents-pad {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+.latents-pad:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 2px;
+}
+.latents-pad-frame {
+  fill: var(--wf-surface);
+  stroke: var(--wf-line-strong);
+}
+.latents-pad-axis {
+  stroke: var(--wf-line);
+}
+.latents-pad-dot {
+  fill: var(--wf-ink-faint);
+}
+.latents-pad-handle {
+  fill: var(--viz-lat);
+  stroke: var(--wf-surface);
+  stroke-width: 2;
+}
+
+/* ---- the figures below ---- */
+.latents-chart {
+  width: 100%;
+}
+.latents-svg {
+  display: block;
+  overflow: visible;
+}

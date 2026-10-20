@@ -18,43 +18,18 @@ for arg in "$@"; do
     esac
 done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/oracle_artifacts.sh"
 INFERENCE_CONFIG="$SCRIPT_DIR/../configs/inference.yaml"
-REPO="$(sed -n 's/^hf_ckpt_path: *\([^ #]*\).*/\1/p' "$INFERENCE_CONFIG")"
-REVISION="$(sed -n 's/^hf_ckpt_revision: *\([^ #]*\).*/\1/p' "$INFERENCE_CONFIG")"
-ASSET_REPO="$REPO"
-BASE="${RFPROTEINA_DATA_URL:-https://YOUR_DATASET_STORE}"
+resolve_hf_release "$INFERENCE_CONFIG"
+REPO="$HF_RELEASE_REPO"
+REVISION="$HF_RELEASE_REVISION"
 
 fetch() {
-    hf download "$ASSET_REPO" "$1" --revision "$REVISION" --local-dir "$DATA_PATH"
+    hf download "$REPO" "$@" ${REVISION:+--revision "$REVISION"} --local-dir "$DATA_PATH"
 }
 
-fetch_native() {
-    local relative_path="$1"
-    local output="$DATA_PATH/$relative_path"
-    if [ -f "$output" ]; then
-        echo ">>> have $relative_path, skipping"
-        return
-    fi
-    mkdir -p "$(dirname "$output")"
-    curl --fail --location --retry 3 --output "$output.partial" "$BASE/$relative_path"
-    mv "$output.partial" "$output"
-}
-
-# TODO: Once the unified release is on HF, revisit the native fallback after updating configs/inference.yaml.
-case "$REPO" in
-    ""|null|"~")
-        ASSET_REPO="nvidia/RFD4-Proteina"
-        DENOISER_CKPT="$(sed -n 's/^ckpt_name:[[:space:]]*\([^ #]*\).*/\1/p' "$INFERENCE_CONFIG")"
-        AE_CKPT="$(sed -n 's/^autoencoder_ckpt_path:.*\/\([^ #]*\).*/\1/p' "$INFERENCE_CONFIG")"
-        echo ">>> Downloading released checkpoints into DATA_PATH=$DATA_PATH..."
-        fetch_native "flow_checkpoints/$DENOISER_CKPT"
-        fetch_native "ae_checkpoints/$AE_CKPT"
-        ;;
-    *)
-        echo ">>> Caching the released model (HF_HOME controls the cache location)..."
-        hf download "$REPO" config.json model.safetensors --revision "$REVISION"
-        ;;
-esac
+echo ">>> Caching the released model from Hugging Face ($REPO; HF_HOME controls the cache location)..."
+hf download "$REPO" config.json model.safetensors ${REVISION:+--revision "$REVISION"}
 
 if [ "$WITH_TEST_DATASET" = true ]; then
     echo ">>> test_dataset..."
@@ -74,15 +49,13 @@ elif ! command -v apptainer &>/dev/null; then
     echo "    Install apptainer, then re-run this script to fetch it."
 else
     echo ">>> Downloading OpenFold3 (free, Apache-licensed refolding oracle, ~5 GB)..."
-    RUNTIME_NAME="af3-open-8d36011.sif"
-    RUNTIME_SHA256="100679cc5bb19d0232050b64953bdb1378ec056614bada4ffd124d18a0eca32c"
+    RUNTIME_NAME="$OF3_RUNTIME_NAME"
+    RUNTIME_SHA256="$OF3_RUNTIME_SHA256"
     RUNTIME_PATH="$DATA_PATH/openfold3/runtime/$RUNTIME_NAME"
-    RUNTIME_URL="https://YOUR_DATASET_STORE/af3/apptainer_images/$RUNTIME_NAME"
     mkdir -p "$(dirname "$RUNTIME_PATH")"
     if ! printf '%s  %s\n' "$RUNTIME_SHA256" "$RUNTIME_PATH" | sha256sum --check --status 2>/dev/null; then
-        curl --fail --location --retry 3 --output "$RUNTIME_PATH.partial" "$RUNTIME_URL"
-        printf '%s  %s\n' "$RUNTIME_SHA256" "$RUNTIME_PATH.partial" | sha256sum --check
-        mv "$RUNTIME_PATH.partial" "$RUNTIME_PATH"
+        fetch "$OF3_RUNTIME_FILE"
+        printf '%s  %s\n' "$RUNTIME_SHA256" "$RUNTIME_PATH" | sha256sum --check
     fi
     fetch "openfold3/weights/of3_ported_weights.bin.zst"
     fetch "openfold3/weights/of3_ported_weights.provenance.json"

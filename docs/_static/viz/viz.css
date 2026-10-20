@@ -1,0 +1,542 @@
+/* ---------------------------------------------------------------------------
+   The visualisation pages (docs/architecture/viz/): full-width pages inside the docs theme.
+
+   Scope: page layout hangs off `.viz-page`, a class docs/_templates/layout.html puts on the <body>
+   of every page under architecture/viz/, so nothing leaks to other pages; the components are
+   prefixed `viz-` and may be used anywhere. A static class rather than :has() (Chromium restyles a
+   whole page on every update under a :has() scope). conf.py removes both sidebars of these pages
+   and loads ../arch.css first: the story pages' fonts, type scale, spacing and the shared .arch-*
+   components (figure title, band, control row, play, readout, ramp legend, keyed terms).
+
+   Colour: the tokens of js/lib/palette.js as --viz-* custom properties (the same values; the test
+   compares them). Surfaces, ink and lines are the docs' --wf-* values, so the article, the Illustrated
+   page and these pages share one ground. Colour names the tensor and ink measures the amount: petrol
+   z, saffron s, cobalt Cα, coral latents; attention, magnitudes and the interface are neutral ink.
+   Magenta marks only given tokens and the keyboard focus ring. Figures have no frame; the chrome is
+   ink and grey. Page styles live in css/<slug>.css, loaded by the page's module.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --viz-surface: #ffffff; --viz-surface-alt: #fbfbfc; --viz-ink: #1f2328; --viz-ink-soft: #5b636d; --viz-ink-faint: #8b939d; --viz-line: #d6dae0; --viz-line-strong: #aeb5bd; --viz-grid: #eceef1;
+  --viz-pair-tint: #eaf9fd; --viz-pair-soft: #cfecf3; --viz-pair-fill: #6097a4; --viz-pair-face: #367b89; --viz-pair: #004b58; --viz-pair-ink: #003d47; --viz-pair-on-fill: #1f2328;
+  --viz-single-tint: #fdf5e7; --viz-single-soft: #f9e3bd; --viz-single-fill: #e9c176; --viz-single-face: #e1b255; --viz-single: #d19a12; --viz-single-ink: #5a4000; --viz-single-on-fill: #1f2328;
+  --viz-ca-tint: #f2f6ff; --viz-ca-soft: #dce6ff; --viz-ca-fill: #87a3ec; --viz-ca-face: #6c8adf; --viz-ca: #4462c3; --viz-ca-ink: #273d8a; --viz-ca-on-fill: #1f2328;
+  --viz-lat-tint: #fff3f0; --viz-lat-soft: #ffddd7; --viz-lat-fill: #ea9587; --viz-lat-face: #dc7b6c; --viz-lat: #c15344; --viz-lat-ink: #792218; --viz-lat-on-fill: #1f2328;
+  --viz-cond-tint: #f4f6f8; --viz-cond-soft: #e4e6ea; --viz-cond-fill: #aaaeb5; --viz-cond-face: #959aa1; --viz-cond: #737981; --viz-cond-ink: #41454b; --viz-cond-on-fill: #1f2328;
+  --viz-recycle-tint: #eff9ed; --viz-recycle-soft: #d5efd0; --viz-recycle-fill: #6e9b64; --viz-recycle-face: #4a7f3f; --viz-recycle: #145100; --viz-recycle-ink: #0e4100; --viz-recycle-on-fill: #1f2328;
+  --viz-ligand-tint: #fff3ec; --viz-ligand-soft: #f7e1d4; --viz-ligand-fill: #bb957c; --viz-ligand-face: #a57a5d; --viz-ligand: #80512f; --viz-ligand-ink: #613a1f; --viz-ligand-on-fill: #1f2328;
+  --viz-nucleic-tint: #f8f3ff; --viz-nucleic-soft: #eedfff; --viz-nucleic-fill: #a386c3; --viz-nucleic-face: #7c599e; --viz-nucleic: #4e2472; --viz-nucleic-ink: #3e1c5b; --viz-nucleic-on-fill: #1f2328;
+  --viz-given-tint: #fff1f9; --viz-given-soft: #ffdaf0; --viz-given-fill: #de78bc; --viz-given-face: #cc55a7; --viz-given: #a80c84; --viz-given-ink: #7a005f; --viz-given-on-fill: #1f2328;
+  --viz-designed: #4462c3; --viz-context: #8f949b; --viz-weight: #afb5bd; --viz-input: #d2dae3; --viz-padding: #fbfbfc; --viz-el-n: #294288; --viz-el-o: #862724;
+  --viz-cat-0: #aeb5bd; --viz-cat-1: #1f2328; --viz-cat-2: #80512f; --viz-cat-3: #4e2472;
+  --viz-seq-0: #f1f4f7; --viz-seq-1: #cacdd1; --viz-seq-2: #a4a7ac; --viz-seq-3: #7f8388; --viz-seq-4: #5c6066; --viz-seq-5: #3c4046; --viz-seq-6: #1e2228;
+  --viz-att-0: #fbfcfe; --viz-att-1: #f2f4f6; --viz-att-2: #e5e8ec; --viz-att-3: #cdd1d7; --viz-att-4: #8e939a; --viz-att-5: #535860; --viz-att-6: #20242b;
+  --viz-div-0: #ab8be3; --viz-div-1: #bda6ea; --viz-div-2: #cfc1f0; --viz-div-3: #e2dcf5; --viz-div-4: #f5f7f9; --viz-div-5: #caebda; --viz-div-6: #9ddebc; --viz-div-7: #69d19e; --viz-div-8: #00c380;
+  --viz-pair-0: #ebf6f8; --viz-pair-1: #bcd0d5; --viz-pair-2: #8dacb3; --viz-pair-3: #618892; --viz-pair-4: #336672; --viz-pair-5: #004551; --viz-pair-6: #00242b;
+  --viz-single-0: #faf3e5; --viz-single-1: #efdab3; --viz-single-2: #e3c07f; --viz-single-3: #d7a642; --viz-single-4: #c18e0e; --viz-single-5: #a37705; --viz-single-6: #876200;
+  --viz-ca-0: #eff3ff; --viz-ca-1: #c3d0f2; --viz-ca-2: #99aee5; --viz-ca-3: #708bd6; --viz-ca-4: #4a68c6; --viz-ca-5: #31499c; --viz-ca-6: #1b2d6f;
+  --viz-lat-0: #ffefed; --viz-lat-1: #f3c8c1; --viz-lat-2: #e4a297; --viz-lat-3: #d37b6d; --viz-lat-4: #c15344; --viz-lat-5: #983c30; --viz-lat-6: #71261d;
+  --viz-cond-0: #f2f3f5; --viz-cond-1: #d0d3d7; --viz-cond-2: #b0b4b9; --viz-cond-3: #90959c; --viz-cond-4: #727880; --viz-cond-5: #575c62; --viz-cond-6: #3d4146;
+  --viz-attn: #20242b; --viz-accent: #1f2328; --viz-accent-bg: #eceef1; --viz-select: #1f2328; --viz-hover: #1f2328; --viz-focus: #a80c84;
+  --viz-radius: 0px;
+}
+html[data-theme="dark"] {
+  --viz-surface: #1c2027; --viz-surface-alt: #222831; --viz-ink: #e9edf2; --viz-ink-soft: #a9b2bd; --viz-ink-faint: #79828d; --viz-line: #3a424c; --viz-line-strong: #59626d; --viz-grid: #272d35;
+  --viz-pair-tint: #1c2f31; --viz-pair-soft: #1d4145; --viz-pair-fill: #006069; --viz-pair-face: #1c6c75; --viz-pair: #1794a1; --viz-pair-ink: #c0e6eb; --viz-pair-on-fill: #e9edf2;
+  --viz-single-tint: #332a1a; --viz-single-soft: #48381a; --viz-single-fill: #b28235; --viz-single-face: #c49548; --viz-single: #f0c168; --viz-single-ink: #eedcbb; --viz-single-on-fill: #1c2027;
+  --viz-ca-tint: #242b3b; --viz-ca-soft: #2b3a58; --viz-ca-fill: #4b69a8; --viz-ca-face: #6886c5; --viz-ca: #82aaff; --viz-ca-ink: #cedeff; --viz-ca-on-fill: #e9edf2;
+  --viz-lat-tint: #392621; --viz-lat-soft: #542f26; --viz-lat-fill: #8e4333; --viz-lat-face: #a15746; --viz-lat: #d87059; --viz-lat-ink: #ffd2c7; --viz-lat-on-fill: #e9edf2;
+  --viz-cond-tint: #2a2b2d; --viz-cond-soft: #383b3e; --viz-cond-fill: #81878d; --viz-cond-face: #b9bec6; --viz-cond: #b8bec7; --viz-cond-ink: #dbdee2; --viz-cond-on-fill: #1c2027;
+  --viz-recycle-tint: #262f1f; --viz-recycle-soft: #304022; --viz-recycle-fill: #30500a; --viz-recycle-face: #335212; --viz-recycle: #4b781a; --viz-recycle-ink: #d1e6c3; --viz-recycle-on-fill: #e9edf2;
+  --viz-ligand-tint: #302a25; --viz-ligand-soft: #433830; --viz-ligand-fill: #7b6554; --viz-ligand-face: #988170; --viz-ligand: #c3a48c; --viz-ligand-ink: #e8dbd1; --viz-ligand-on-fill: #e9edf2;
+  --viz-nucleic-tint: #2d2838; --viz-nucleic-soft: #3f3453; --viz-nucleic-fill: #5c4482; --viz-nucleic-face: #66508c; --viz-nucleic: #8d6cc2; --viz-nucleic-ink: #e3d7fc; --viz-nucleic-on-fill: #e9edf2;
+  --viz-given-tint: #352630; --viz-given-soft: #522b47; --viz-given-fill: #964680; --viz-given-face: #b2629b; --viz-given: #e879c9; --viz-given-ink: #fdceed; --viz-given-on-fill: #e9edf2;
+  --viz-designed: #82aaff; --viz-context: #666b71; --viz-weight: #8d939a; --viz-input: #3a424a; --viz-padding: #222831; --viz-el-n: #bad1ff; --viz-el-o: #fbb7ae;
+  --viz-cat-0: #59626d; --viz-cat-1: #e9edf2; --viz-cat-2: #c3a48c; --viz-cat-3: #8d6cc2;
+  --viz-seq-0: #32363c; --viz-seq-1: #4d5157; --viz-seq-2: #6a6e74; --viz-seq-3: #898d92; --viz-seq-4: #a9acb1; --viz-seq-5: #cacdd1; --viz-seq-6: #eceff2;
+  --viz-att-0: #22252b; --viz-att-1: #2a2e34; --viz-att-2: #353a40; --viz-att-3: #4c5056; --viz-att-4: #7f848a; --viz-att-5: #babec4; --viz-att-6: #eff2f6;
+  --viz-div-0: #ac9acd; --viz-div-1: #8a7ea4; --viz-div-2: #69637d; --viz-div-3: #4a4958; --viz-div-4: #2d3135; --viz-div-5: #3a514a; --viz-div-6: #467360; --viz-div-7: #509677; --viz-div-8: #58bb8e;
+  --viz-pair-0: #1b3235; --viz-pair-1: #205258; --viz-pair-2: #1f747e; --viz-pair-3: #2698a4; --viz-pair-4: #6cb6c0; --viz-pair-5: #a3d6dc; --viz-pair-6: #d8f5f8;
+  --viz-single-0: #372c18; --viz-single-1: #5a4827; --viz-single-2: #7f6638; --viz-single-3: #a78649; --viz-single-4: #d0a75a; --viz-single-5: #f2ca80; --viz-single-6: #fbedd4;
+  --viz-ca-0: #242e42; --viz-ca-1: #3a4b6d; --viz-ca-2: #51699c; --viz-ca-3: #6a8acd; --viz-ca-4: #84abff; --viz-ca-5: #b5ceff; --viz-ca-6: #e7efff;
+  --viz-lat-0: #402620; --viz-lat-1: #6b3b31; --viz-lat-2: #995242; --viz-lat-3: #ca6954; --viz-lat-4: #e5917e; --viz-lat-5: #f3bdb0; --viz-lat-6: #ffe9e4;
+  --viz-cond-0: #2c2e30; --viz-cond-1: #474a4e; --viz-cond-2: #65686d; --viz-cond-3: #84888f; --viz-cond-4: #a4a9b1; --viz-cond-5: #c7ccd3; --viz-cond-6: #edeff1;
+  --viz-attn: #eff2f6; --viz-accent: #e9edf2; --viz-accent-bg: #2d333c; --viz-select: #e9edf2; --viz-hover: #e9edf2; --viz-focus: #e879c9;
+}
+
+.viz-page {
+  --viz-mono: var(--arch-mono);
+}
+
+/* ---- page layout: text measure for prose; stages full (88rem) or, with .viz-stage-wide, 67rem ---- */
+.viz-page .bd-main .bd-content .bd-article-container {
+  max-width: none;
+}
+.viz-page .bd-article {
+  --viz-text: var(--arch-text);
+  --viz-wide: var(--arch-full);
+}
+/* Sections of the page, not panels a stage builds from <section> elements. */
+.viz-page .bd-article > :not(section, .viz-stage, .viz-figure, .viz-story, .viz-story-head, .arch-note),
+.viz-page .bd-article section:not(.viz-stage section) > :not(section, .viz-stage, .viz-figure, .viz-story, .viz-story-head, .arch-note) {
+  max-width: var(--viz-text);
+  margin-left: auto;
+  margin-right: auto;
+}
+.viz-page .bd-article :is(.viz-stage, .viz-figure) {
+  max-width: var(--viz-wide);
+  margin-left: auto;
+  margin-right: auto;
+}
+.viz-page .bd-article .viz-stage-wide {
+  max-width: var(--arch-wide);
+}
+.viz-page .bd-article :is(.viz-story, .viz-story-head) {
+  max-width: var(--arch-wide);
+  margin-left: auto;
+  margin-right: auto;
+}
+/* On a phone, long names in the prose (checkpoints, data files) wrap rather than scroll the article sideways. */
+@media (max-width: 767.98px) {
+  .viz-page .bd-article code.literal,
+  .viz-page .bd-article code.literal .pre {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+.viz-dek {
+  margin-bottom: var(--space-7);
+  font-size: var(--arch-fs-lede);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+@media (max-width: 599.98px) {
+  .viz-dek {
+    font-size: 1.125rem;
+  }
+}
+
+/* ---- the stage: posters without scripts, the app with them; no frame ---- */
+.viz-stage,
+.viz-figure {
+  position: relative;
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-7);
+  padding: 0;
+  color: var(--wf-ink);
+  overflow: clip;
+  overflow-clip-margin: var(--space-2);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+}
+.viz-stage > img.viz-poster {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.viz-stage > img.viz-poster:not([src]),
+.viz-live > img.viz-poster {
+  display: none !important;
+}
+.viz-stage[data-viz-pending] {
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+}
+.viz-stage[data-viz-pending]::before {
+  content: "Visualisation in preparation";
+  color: var(--wf-ink-soft);
+}
+.viz-fallback-note {
+  margin: var(--space-2) 0 0;
+  color: var(--wf-ink-soft);
+}
+
+/* A canvas or a 3D scene: a page sets its height through --viz-view-height. */
+.viz-view {
+  position: relative;
+  min-width: 0;
+  height: var(--viz-view-height, clamp(24rem, 64vh, 44rem));
+}
+@media (max-width: 599.98px) {
+  .viz-view {
+    height: var(--viz-view-height-narrow, 24rem);
+  }
+}
+
+/* ---- where am I: the chapter marker above the title, the next hook at the end ---- */
+.viz-kicker {
+  margin: var(--space-7) auto var(--space-2);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-weight: var(--arch-weight);
+  color: var(--wf-ink-soft);
+}
+.viz-next {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--wf-line);
+}
+/* A caption takes the text width, left-aligned with the prose, whatever the width of its figure. */
+.viz-caption {
+  max-width: var(--arch-text);
+  margin-top: var(--space-4);
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  color: var(--wf-ink-soft);
+}
+.viz-caption strong {
+  font-weight: inherit;
+  color: inherit;
+}
+/* ---- controls (js/lib/controls.js): the look is arch.css's; these place them ---- */
+.viz-range {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 560px;
+}
+.viz-range label {
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  color: var(--wf-ink-soft);
+  white-space: nowrap;
+}
+.viz-range input[type="range"] {
+  flex: 1 1 8rem;
+  min-width: 5rem;
+}
+.viz-range-value {
+  min-width: 3em;
+  font-size: var(--arch-fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink);
+}
+
+/* ---- tooltips, tables, data disclosures ---- */
+.viz-tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 20rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--wf-line);
+  border-radius: var(--arch-radius);
+  background: var(--arch-surface);
+  box-shadow: var(--arch-float-shadow);
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--wf-ink);
+  pointer-events: none;
+}
+.viz-table {
+  width: 100%;
+  font-size: var(--arch-fs-small);
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+.viz-table th,
+.viz-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--wf-line);
+  text-align: right;
+  white-space: nowrap;
+}
+.viz-table th {
+  font-weight: var(--arch-weight-strong);
+}
+.viz-table th:first-child,
+.viz-table td:first-child {
+  text-align: left;
+}
+.viz-data {
+  margin-top: var(--space-4);
+  overflow-x: auto;
+  font-size: var(--arch-fs-small);
+}
+.viz-page .bd-article .viz-data {
+  margin-bottom: 0;
+}
+.viz-data summary {
+  cursor: pointer;
+  color: var(--wf-ink-soft);
+}
+.viz-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- scene3d.js: the canvas, its haloed labels, leaders and messages ---- */
+.viz-scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.viz-scene-canvas:active {
+  cursor: grabbing;
+}
+.viz-scene-canvas:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: -2px;
+}
+.viz-scene-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.viz-scene-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--wf-ink-faint);
+  stroke-width: 1;
+}
+.viz-scene-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-family: var(--arch-sans);
+  font-size: var(--arch-fs-small);
+  line-height: var(--arch-lh-drawing);
+  font-weight: var(--arch-weight);
+  color: var(--wf-ink-soft);
+  text-shadow: -1px -1px 0 var(--viz-surface), 1px -1px 0 var(--viz-surface), -1px 1px 0 var(--viz-surface), 1px 1px 0 var(--viz-surface), 0 0 3px var(--viz-surface), 0 0 3px var(--viz-surface);
+  white-space: nowrap;
+  will-change: transform;
+}
+.viz-scene-label-strong {
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+.viz-scene-label-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.viz-scene-label-button:hover {
+  color: var(--wf-ink);
+}
+.viz-scene-label-button:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: 2px;
+}
+.viz-scene-message {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--space-6));
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--wf-line);
+  border-radius: var(--arch-radius);
+  background: var(--viz-surface);
+  box-shadow: var(--arch-float-shadow);
+  font-size: var(--arch-fs-small);
+  color: var(--wf-ink-soft);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ---- the landing page (docs/architecture/viz/index.md): a contents grid, one card per page ---- */
+.viz-lead {
+  color: var(--wf-ink-soft);
+}
+.viz-story {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-7) var(--space-6);
+  margin: var(--space-7) auto var(--space-8);
+  padding: 0;
+  list-style: none;
+}
+.viz-chapter {
+  margin: 0;
+  padding: 0;
+}
+.viz-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.viz-card:focus-visible {
+  outline: 2px solid var(--wf-focus);
+  outline-offset: var(--space-1);
+}
+.viz-card-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+.viz-card-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+}
+/* A crop of the page's poster (--viz-thumb-poster px wide), in poster pixels: the region --viz-thumb-w wide
+   from --viz-thumb-x, --viz-thumb-y fills the card. A card under 450 px shows its own region (the -narrow
+   values, if any) so that the poster's text stays at 11 px or more; no card is wider than 520 px. */
+.viz-card-thumb-zoom {
+  max-width: 32.5rem;
+  container-type: inline-size;
+}
+.viz-card-thumb-zoom img {
+  --viz-crop-w: var(--viz-thumb-w);
+  --viz-crop-x: var(--viz-thumb-x);
+  --viz-crop-y: var(--viz-thumb-y);
+  width: calc(var(--viz-thumb-poster) / var(--viz-crop-w) * 100%);
+  max-width: none;
+  height: auto;
+  margin: calc(var(--viz-crop-y) / var(--viz-crop-w) * -100%) 0 0 calc(var(--viz-crop-x) / var(--viz-crop-w) * -100%);
+  object-fit: fill;
+}
+/* An instrument's poster is cut on its band; a little more contrast lifts the band to the page ground in both
+   themes, so every card sits on one ground. */
+.viz-card-thumb-band img {
+  filter: contrast(1.09);
+}
+@container (max-width: 449.98px) {
+  .viz-card-thumb-zoom img {
+    --viz-crop-w: var(--viz-thumb-w-narrow, var(--viz-thumb-w));
+    --viz-crop-x: var(--viz-thumb-x-narrow, var(--viz-thumb-x));
+    --viz-crop-y: var(--viz-thumb-y-narrow, var(--viz-thumb-y));
+  }
+}
+.viz-card-thumb-pending::before {
+  content: "In preparation";
+  font-size: var(--arch-fs-small);
+  color: var(--wf-ink-soft);
+}
+.viz-card > .viz-kicker {
+  display: block;
+  margin: var(--space-3) 0 var(--space-1);
+}
+.viz-card-title {
+  display: block;
+  font-weight: var(--arch-weight-strong);
+  color: var(--wf-ink);
+}
+a.viz-card:hover .viz-card-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.viz-card-title a {
+  color: inherit;
+  text-decoration: none;
+}
+.viz-card-title a:hover {
+  text-decoration: underline;
+}
+.viz-insight {
+  margin: var(--space-1) 0 0;
+}
+/* Chapter 1 has no page of its own: its row spans the grid, the text beside its schematic. */
+.viz-chapter-lead {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  align-items: center;
+}
+.viz-chapter-lead .viz-kicker {
+  margin: 0 0 var(--space-1);
+}
+@media (max-width: 767.98px) {
+  .viz-story,
+  .viz-chapter-lead {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viz-chapter-lead {
+    gap: var(--space-3);
+  }
+  .viz-chapter-lead > .viz-card-thumb {
+    order: -1;
+  }
+}
+/* Chapter 1's schematic: z as a grid with depth, s as a strip, the bias into attention, no head reading z. */
+.viz-schematic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font: 400 12px var(--arch-sans);
+}
+/* Drawn about 0.9 times its size on a phone; a larger face keeps its labels at 11 px or more. */
+@media (max-width: 599.98px) {
+  .viz-schematic {
+    font-size: 13px;
+  }
+}
+.viz-sch-z .viz-sch-face {
+  fill: var(--viz-pair-fill);
+}
+.viz-sch-z .viz-sch-depth {
+  fill: var(--viz-pair-face);
+}
+.viz-sch-grid {
+  fill: none;
+  stroke: var(--viz-surface);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.viz-sch-s .viz-sch-face {
+  fill: var(--viz-single-fill);
+}
+.viz-sch-box {
+  fill: none;
+  stroke: var(--wf-line-strong);
+  stroke-width: 1;
+}
+.viz-sch-cross {
+  stroke: var(--wf-ink-soft);
+  stroke-width: 1.5;
+}
+.viz-sch-flow {
+  fill: none;
+  stroke: var(--wf-ink-faint);
+  stroke-width: 1.2;
+}
+.viz-sch-none {
+  stroke-dasharray: 3 4;
+}
+.viz-sch-head {
+  fill: var(--wf-ink-faint);
+}
+.viz-sch-label,
+.viz-sch-note {
+  fill: var(--wf-ink);
+  text-anchor: middle;
+}
+.viz-sch-note {
+  fill: var(--wf-ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-stage *,
+  .viz-story * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -1,0 +1,285 @@
+<!doctype html>
+<!-- Generated diagram page; do not edit. -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pair transition · RFD4-Proteína architecture</title><script>(() => { const theme = new URLSearchParams(location.search).get('theme'); document.documentElement.dataset.ncdTheme = theme === 'light' || theme === 'dark' ? theme : 'light'; })();</script><style>html[data-ncd-theme="light"]{color-scheme:light}html[data-ncd-theme="light"] body{background-color:#ffffff;color:#000000}html[data-ncd-theme="dark"]{color-scheme:dark}html[data-ncd-theme="dark"] body{background-color:#1e1e1e;color:#dedede}</style><style>/* The page is painted in the canvas colour of the dark theme before the
+       bundle runs, which is `darkDiagramTheme` in `src/display/Render/DiagramTheme.ts`,
+       and `src/display/loadingScreen.ts` repaints it in the theme of the
+       message once the message is known. */
+    html {
+      color-scheme: dark;
+    }
+    body {
+      -webkit-tap-highlight-color: transparent;
+      font-family: sans-serif;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1e1e1e;
+      color: #dedede;
+    }
+    .page-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .page-loading-ring {
+      width: 36px;
+      height: 36px;
+      border: 3px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      opacity: 0.7;
+      animation: page-loading-turn 0.9s linear infinite;
+    }
+    @keyframes page-loading-turn {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    button {
+      margin-right: 10px;
+      padding: 5px 10px;
+    }
+    @media (any-pointer: coarse) {
+      .inspection-box-close::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: -10px;
+        width: 64px;
+        height: 56px;
+      }
+    }
+    .diagram-container {
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .horizontal-box {
+      display: flex;
+      flex-direction: row;
+      justify-content: start;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .vertical-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .anchor {
+      height: 20px;
+      width: 0px;
+    }
+    .fill {
+      height: 100%;
+      width: 100%;
+      /* display: flex;
+      flex-direction: row;
+      justify-content: start;
+      align-items: center; */
+      /* height: fit-content;
+      width: fit-content; */
+    }
+    .times {
+      display: flex;
+      flex-direction: column;
+      /* align-items: stretch; */
+      width: 100%;
+      flex-grow: 1; /* Don't grow unless forced */
+      flex-shrink: 1; /* Can shrink */
+      flex-basis: auto; /* Fit content */
+      justify-content: space-evenly;
+      /* min-width: 50px;
+      max-width: 100px; */
+      /* width: fit-content; */
+      /* max-width: 100px; */
+      flex: 1;
+    }
+    .compose {
+      display: flex;
+      flex-direction: row;
+      flex: 1 1 auto;
+      justify-content: start;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .floating-svg {
+      position: absolute;
+      left: 0px;
+      /* right: 0px; */
+      top: 0px;
+      width: 0px;
+      height: 0px;
+      background-color: lightblue;
+      z-index: -2;
+    }
+    .floating-svg-2 {
+      position: absolute;
+      left: 0px;
+      /* right: 0px; */
+      top: 0px;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+    }
+    .floating-text {
+      /* This ensures it is not part of flexbox sizing. */
+      position: relative;
+      width: 0px;
+      height: 0px;
+      background-color: white;
+      /* border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px 10px; */
+      font-family: Arial, sans-serif;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      /* No need for z-index unless you have multiple overlapping elements */
+    }
+    .array-indexes {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      flex-grow: 1; /* Don't grow unless forced */
+      flex-shrink: 1; /* Can shrink */
+      flex-basis: auto; /* Fit content */
+      justify-content: space-evenly;
+      flex: 1;
+      width: fit-content;
+    }
+    .times-gap {
+      position: relative;
+      /* flex: 1 1 20px; */
+      height: 20px;
+      width: 100%;
+      /* width: fit-content; */
+      display: flex;
+      overflow: hidden;
+      width: fit-content;
+      svg { 
+        stroke-dasharray: 10,10;
+        min-width: 10px;
+        /* width: 100%; */
+      }
+    }
+    .separator {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
+      height: 100%;
+    }
+    .morphism {
+      display: flex;
+      flex-direction: row;
+      /* min-width: 50px; */
+      width: fit-content;
+      height: 50px;
+      overflow: hidden;
+    }
+    .broadcasted {
+      display: flex;
+      /* flex: 0 1 50px; */
+      width: 50px;
+      height: 50px;
+      overflow: hidden;
+    }
+    .broadcasted-core {
+      position: relative;
+      width: 50px;
+      /* height: 50px; */
+      min-height: 0;
+      /* align-self: stretch; */
+    }
+    .broadcasted-horizontal-box {
+      display: flex;
+      /* flex: 1 1 auto; */
+      width: fit-content;
+      flex-direction: row;
+      /* justify-content: flex-start; */
+      align-items: center;
+      min-height: 0;
+    }
+    .broadcasted-anchor-column {
+      display: flex;
+      flex: 0 1 0px;
+      flex-direction: column;
+      width: 10px;
+      justify-content: space-around;
+    }
+    .broadcasted-anchor {
+      position: relative;
+      width: 10px;
+      height: 0px;
+      flex: 1 1 0px;
+    }
+    .wire {
+      position: relative;
+      flex: 1 1 20px;
+      height: 0px;
+      width: 0px;
+    }
+    /* New Styles */
+    .stack_main {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .stack_annotations {
+      position: absolute;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .annotation_katex {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* The legend and the inspection boxes. `src/advanced_display/` writes the
+       colours of both, because they follow the diagram's theme. */
+    .axis-legend {
+      border-collapse: collapse;
+      white-space: nowrap;
+    }
+    .axis-legend td, .axis-legend th {
+      vertical-align: middle;
+    }
+    .inspection-box {
+      position: absolute;
+      overflow: auto;
+    }
+    .inspection-box-header {
+      font-size: 1.1em;
+    }
+    .inspection-box-references a {
+      color: inherit;
+    }
+    .inspection-box-diagram {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      width: fit-content;
+      height: fit-content;
+    }</style></head><body><h1 id="page-heading" hidden>tsncd</h1><div id="page-loading" class="page-loading"><div class="page-loading-ring"></div></div><div id="diagram" class="stack_main"></div><script type="application/json" id="tsncd-embedded-message">{"msgType": "dataUpdate", "data": "{\"uid_repository\": {\"1962042485\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1962042485, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1173470970\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1173470970, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1962042485}}, \"597591363\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 597591363, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"-\\\\bar{x}\", \"description\": \"Minus the mean over the normalised axes, which the LayerNorm subtracts. An elementwise map. Every value x of the input is replaced by the value y the formula gives at it.\", \"fill_color\": null, \"references\": null, \"formula\": \"y = -x |p|_{384}^{-1}\", \"drawing\": {\"__registered__\": \"enum\", \"type\": \"BlockDrawing\", \"name\": \"BODY_IN_PLACE\"}}}, \"758490154\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 758490154, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"\\\\epsilon\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"917447292\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 917447292, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"\\\\text{LayerNorm}\", \"description\": \"LayerNorm over the normalised axes, jointly when there are several: their mean is subtracted, the result is divided by its root mean square, and a learned gain and bias are applied per channel.\", \"fill_color\": \"#EEF0F3\", \"references\": null, \"formula\": \"\\\\mathrm{LN}(x) = \\\\gamma \\\\odot \\\\frac{x - \\\\bar{x}}{\\\\sqrt{\\\\overline{(x-\\\\bar x)^2} + \\\\epsilon}} + \\\\beta\", \"drawing\": null}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}, \"916309795\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 916309795, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"597254695\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 597254695, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 916309795}}, \"1595079844\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 1595079844, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"\\\\text{ReLU}\", \"description\": \"The rectifier, applied to each of the 768 hidden channels of every pair on its own.\", \"fill_color\": null, \"references\": [{\"__type__\": \"CodeReference\", \"label\": \"pair_transition.py L41-L48\", \"url\": \"https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/pair_transition.py#L41-L48\", \"path\": null, \"line\": null, \"end_line\": null}], \"formula\": \"\\\\mathrm{ReLU}(h) = \\\\max(h, 0) \\\\ \\\\text{ per channel}\", \"drawing\": {\"__registered__\": \"enum\", \"type\": \"BlockDrawing\", \"name\": \"BODY_IN_PLACE\"}}}, \"1719715305\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 1719715305, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"\\\\text{Pair transition}\", \"description\": \"A two-layer ReLU network applied to every pair on its own: the AlphaFold 2 pair transition with a 2\\u00d7 rather than 4\\u00d7 expansion, from 384 to 768 channels and back. Its output weight starts at zero, so a fresh pair transition adds nothing.\", \"fill_color\": \"#D8ECF2\", \"references\": [{\"__type__\": \"CodeReference\", \"label\": \"Open diagram: pair transition\", \"url\": \"pair-transition.html\", \"path\": null, \"line\": null, \"end_line\": null}, {\"__type__\": \"CodeReference\", \"label\": \"pair_transition.py L23-L97\", \"url\": \"https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/pair_transition.py#L23-L97\", \"path\": null, \"line\": null, \"end_line\": null}], \"formula\": \"\\\\Delta z_{ij} = W^{2}\\\\,\\\\mathrm{ReLU}\\\\big(W^{1}\\\\,\\\\mathrm{LN}(z_{ij}) + b^{1}\\\\big) + b^{2},\\\\quad |g| = 2|p|\", \"drawing\": null}}}, \"data\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"BlockOperator\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"LN\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"block\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}]}, {\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}]}, {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"einops\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"signature\": [[0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"BlockOperator\", \"name\": null, \"block\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Arithmetic\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"-\\\\bar{x}\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"operator\": \"arithmetic\", \"formula\": {\"__type__\": \"Multiplication\", \"content\": [{\"__type__\": \"Integer\", \"_value\": -1}, {\"__type__\": \"FreeInput\"}, {\"__type__\": \"Power\", \"base\": {\"__ref__\": 1962042485}, \"exponent\": {\"__type__\": \"Integer\", \"_value\": -1}}]}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"reindexings\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": []}], \"backup_degree\": null}, \"block_tag\": {\"__ref__\": 597591363}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"AdditionOp\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"+\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"part_of_fma\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": [{\"__ref__\": 1173470970}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Normalize\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"RMSNorm\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"gain\": true, \"bias\": true, \"epsilon\": {\"__ref__\": 758490154}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}]}, \"block_tag\": {\"__ref__\": 917447292}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1173470970}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{1}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"bias\": true}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 597254695}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"BlockOperator\", \"name\": null, \"block\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"GenericOperator\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"\\\\mathrm{ReLU}\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 597254695}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 597254695}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}]}], \"backup_degree\": null}, \"block_tag\": {\"__ref__\": 1595079844}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{2}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"bias\": true}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 597254695}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1173470970}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}]}], \"backup_degree\": null}]}, \"block_tag\": {\"__ref__\": 1719715305}}}", "settings": {"darkMode": false, "debugBorders": false, "width": 1200, "subBlocks": false, "drawnBlockTags": [], "legend": true, "inspectionBoxes": true, "axisHover": "legend", "axisLabelFontSize": 0.8, "title": "Pair transition", "heading": "none", "displayMode": "fast"}, "auxiliary": {"legend": [{"latex": "g", "text": "g", "size": 768, "codeName": "pair_transition_hidden", "sizeCodeName": "pair_transition_hidden_size", "uids": [597254695]}, {"latex": "p", "text": "p", "size": 384, "codeName": "pair_repr_dim", "sizeCodeName": "pair_repr_dim_size", "uids": [1173470970]}, {"latex": "x", "text": "x", "size": null, "codeName": "tokens", "sizeCodeName": "tokens_size", "uids": [1759696249]}], "blocks": {"1719715305": {"title": "\\text{Pair transition}", "formula": "\\Delta z_{ij} = W^{2}\\,\\mathrm{ReLU}\\big(W^{1}\\,\\mathrm{LN}(z_{ij}) + b^{1}\\big) + b^{2},\\quad |g| = 2|p|", "description": "A two-layer ReLU network applied to every pair on its own: the AlphaFold 2 pair transition with a 2\u00d7 rather than 4\u00d7 expansion, from 384 to 768 channels and back. Its output weight starts at zero, so a fresh pair transition adds nothing.", "references": [{"label": "Open diagram: pair transition", "url": "pair-transition.html", "path": null, "line": null, "endLine": null, "icon": null}, {"label": "pair_transition.py L23-L97", "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/pair_transition.py#L23-L97", "path": null, "line": null, "endLine": null, "icon": null}]}, "917447292": {"title": "\\text{LayerNorm}", "formula": "\\mathrm{LN}(x) = \\gamma \\odot \\frac{x - \\bar{x}}{\\sqrt{\\overline{(x-\\bar x)^2} + \\epsilon}} + \\beta", "description": "LayerNorm over the normalised axes, jointly when there are several: their mean is subtracted, the result is divided by its root mean square, and a learned gain and bias are applied per channel.", "references": []}, "597591363": {"title": "-\\bar{x}", "formula": "y = -x |p|_{384}^{-1}", "description": "Minus the mean over the normalised axes, which the LayerNorm subtracts. An elementwise map. Every value x of the input is replaced by the value y the formula gives at it.", "references": []}, "1595079844": {"title": "\\text{ReLU}", "formula": "\\mathrm{ReLU}(h) = \\max(h, 0) \\ \\text{ per channel}", "description": "The rectifier, applied to each of the 768 hidden channels of every pair on its own.", "references": [{"label": "pair_transition.py L41-L48", "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/pair_transition.py#L41-L48", "path": null, "line": null, "endLine": null, "icon": null}]}}, "expansions": {"5": {"operator": "Normalize", "latex": "RMSNorm", "formula": "\\mathrm{RMSNorm}_{p}(x) = x \\left(\\frac{1}{|p|}\\sum_{i_{p} \\in p} x[i_{p}]^{2} + \\epsilon\\right)^{-1/2} \\odot \\gamma + \\beta", "description": "Each value divided by the root of the mean of the squares over the normalised axes, with the epsilon of the operator added under the root. The gain, which is one learned weight per position of the normalised axes, multiplies the result where the operator declares one, and the bias is added after it where the operator declares one.", "expansion": "{\"uid_repository\": {\"1962042485\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1962042485, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1173470970\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1173470970, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1962042485}}, \"758490154\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 758490154, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"\\\\epsilon\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}]}, {\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"\\\\beta\", \"subscript\": null, \"settings\": null, \"code_form\": \"bias\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"\\\\gamma\", \"subscript\": null, \"settings\": null, \"code_form\": \"gain\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Arithmetic\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"x^{2}\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"operator\": \"arithmetic\", \"formula\": {\"__type__\": \"Power\", \"base\": {\"__type__\": \"FreeInput\"}, \"exponent\": {\"__type__\": \"Integer\", \"_value\": 2}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"einops\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"signature\": [[0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Arithmetic\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"(x / |p|_{384} + \\\\epsilon)^{-1/2}\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"operator\": \"arithmetic\", \"formula\": {\"__type__\": \"Power\", \"base\": {\"__type__\": \"Addition\", \"content\": [{\"__ref__\": 758490154}, {\"__type__\": \"Multiplication\", \"content\": [{\"__type__\": \"FreeInput\"}, {\"__type__\": \"Power\", \"base\": {\"__ref__\": 1962042485}, \"exponent\": {\"__type__\": \"Integer\", \"_value\": -1}}]}]}, \"exponent\": {\"__type__\": \"Multiplication\", \"content\": [{\"__type__\": \"Integer\", \"_value\": -1}, {\"__type__\": \"Power\", \"base\": {\"__type__\": \"Integer\", \"_value\": 2}, \"exponent\": {\"__type__\": \"Integer\", \"_value\": -1}}]}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"einops\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"signature\": [[], []]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": []}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": [{\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}], \"backup_degree\": null}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"einops\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"signature\": [[], []]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}], \"backup_degree\": null}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"AdditionOp\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"+\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"part_of_fma\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1173470970}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}, "6": {"operator": "Linear", "latex": "\\bold{W^{1}}", "formula": "y[i_{g}] = \\sum_{i_{p} \\in p} x[i_{p}]\\, W_\\bold{W^{1}}[i_{p}, i_{g}] + b_\\bold{W^{1}}[i_{g}]", "description": "A learned linear map. The weight holds one value for every pair of an input position and an output position, and the map contracts the input against the weight over the input positions. It then adds the bias, one learned value per output position. The arrays are read from the tape, and they are shared by every position of the axes the map is broadcast over.", "expansion": "{\"uid_repository\": {\"1962042485\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1962042485, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1173470970\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1173470970, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1962042485}}, \"916309795\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 916309795, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"597254695\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 597254695, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 916309795}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{1}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"weight_W_1\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}, {\"__ref__\": 597254695}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 1173470970}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{1}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"signature\": [[0], [0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1173470970}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}], \"backup_degree\": null}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"b\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{1}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"bias_W_1\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 597254695}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"AdditionOp\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"+\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"part_of_fma\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1, 2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}, "9": {"operator": "Linear", "latex": "\\bold{W^{2}}", "formula": "y[i_{p}] = \\sum_{i_{g} \\in g} x[i_{g}]\\, W_\\bold{W^{2}}[i_{g}, i_{p}] + b_\\bold{W^{2}}[i_{p}]", "description": "A learned linear map. The weight holds one value for every pair of an input position and an output position, and the map contracts the input against the weight over the input positions. It then adds the bias, one learned value per output position. The arrays are read from the tape, and they are shared by every position of the axes the map is broadcast over.", "expansion": "{\"uid_repository\": {\"916309795\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 916309795, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"597254695\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 597254695, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"g\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_transition_hidden\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 916309795}}, \"1962042485\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1962042485, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1173470970\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1173470970, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"p\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"pair_repr_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"384\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1962042485}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{2}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"weight_W_2\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 597254695}, {\"__ref__\": 1173470970}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 597254695}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{2}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"signature\": [[0], [0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 597254695}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 597254695}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 1173470970}]}], \"backup_degree\": null}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"b\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{2}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"bias_W_2\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1173470970}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"AdditionOp\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"+\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"part_of_fma\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1, 2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 1173470970}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [2], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1759696249}, {\"__ref__\": 1173470970}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}}}}</script>
+<script src="ncd-embed.js"></script>
+<script src="tsncd.f271d5573f11.js"></script>
+</body></html>

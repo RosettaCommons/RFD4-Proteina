@@ -1,32 +1,33 @@
 :root {
-  --rfproteina-rf: #a80c84;
-  --rfproteina-proteina: #4f9633;
+  /* Wordmark colors: "RFD4-" purple and "Proteina" teal. */
+  --rfproteina-rf: #8d52ad;
+  --rfproteina-proteina: #186c70;
 
-  /* "On the IPD compute cluster?" callout. Tinted toward the RF magenta so the box reads as ours,
+  /* "On the IPD compute cluster?" callout. Tinted toward the RF purple so the box reads as ours,
      but desaturated enough that a page carrying several of them doesn't turn into a wall of pink. */
-  --ipd-callout-bg: #fdf5fb;
-  --ipd-callout-title-bg: #f6e2f1;
-  --ipd-callout-border: #e6c2dd;
-  /* The heading and the accent bar are the "RFD4-" magenta from the wordmark, verbatim.
+  --ipd-callout-bg: #f7f2fb;
+  --ipd-callout-title-bg: #ebe1f3;
+  --ipd-callout-border: #d4c0e3;
+  /* The heading and the accent bar are the "RFD4-" purple from the wordmark, verbatim.
      5.6:1 on the title ground, so it clears AA as heading text and not just as branding. */
-  --ipd-callout-title-fg: var(--rfproteina-rf);
+  --ipd-callout-title-fg: #6b3a86;
   --ipd-callout-accent: var(--rfproteina-rf);
-  --ipd-callout-code-bg: #f8ecf5;
+  --ipd-callout-code-bg: #f1e9f7;
 }
 
 html[data-theme="dark"] {
-  --ipd-callout-bg: #2a1b26;
-  --ipd-callout-title-bg: #3b2335;
-  --ipd-callout-border: #5d3a53;
-  /* Same hue as the wordmark magenta, lifted for the dark ground -- #a80c84 itself only
+  --ipd-callout-bg: #231d2e;
+  --ipd-callout-title-bg: #2f2640;
+  --ipd-callout-border: #4a3b63;
+  /* Same hue as the wordmark purple, lifted for the dark ground -- #a80c84 itself only
      reaches 2.1:1 there and would be unreadable. These clear AA at 5.4:1. */
-  --ipd-callout-title-fg: #e879c9;
-  --ipd-callout-accent: #d45cb4;
-  --ipd-callout-code-bg: #211823;
+  --ipd-callout-title-fg: #c9aee0;
+  --ipd-callout-accent: #b798cd;
+  --ipd-callout-code-bg: #1c1826;
 }
 
 :root {
-  /* "Try it live" cloud-launch callout. Blue, not the RF magenta -- distinct from ipd-cluster. */
+  /* "Try it live" cloud-launch callout. Blue, not the RF purple -- distinct from ipd-cluster. */
   --cloud-launch-bg: #eef6ff;
   --cloud-launch-border: #2b7de9;
   --cloud-launch-title-fg: #14497a;
@@ -38,8 +39,33 @@ html[data-theme="dark"] {
   --cloud-launch-title-fg: #7fb2ee;
 }
 
+/* Project colors for the theme: teal and purple, with the dark-mode tints used on the project page. */
+html[data-theme="light"] {
+  --pst-color-primary: #186c70;
+  --pst-color-secondary: #8d52ad;
+  --pst-color-accent: #8d52ad;
+  --pst-color-link: #186c70;
+  --pst-color-link-hover: #8d52ad;
+}
+
+html[data-theme="dark"] {
+  --pst-color-primary: #40d9be;
+  --pst-color-secondary: #b798cd;
+  --pst-color-accent: #b798cd;
+  --pst-color-link: #40d9be;
+  --pst-color-link-hover: #b798cd;
+  --pst-color-background: #151723;
+  --pst-color-on-background: #1e2231;
+  --pst-color-surface: #1e2231;
+  --pst-color-on-surface: #d1cedc;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
 .navbar-brand img {
-  max-height: 2.25rem;
+  max-height: 1.9rem;
 }
 
 @media (max-width: 575.98px) {
@@ -164,44 +190,44 @@ a {
    Workflow diagram — "instrument panel".
 
    Two semantic colors, used consistently and never decoratively:
-     magenta (--wf-specify) = what YOU specify   — routes, the CIF, conditions
-     green   (--wf-return)  = what COMES BACK    — designs, metrics
-   Both are the wordmark's own colors, which sets "RFD4-" in magenta and
-   "Proteína" in green. The model node is where the two meet.
+     purple  (--wf-specify) = what YOU specify   — routes, the CIF, conditions
+     teal    (--wf-return)  = what COMES BACK    — designs, metrics
+   Both are the wordmark's own colors, which sets "RFD4-" in purple and
+   "Proteína" in teal. The model node is where the two meet.
 
    Labels use the wordmark's monospace stack, so the diagram speaks in the
    brand's typographic voice rather than a generic "technical" font.
    --------------------------------------------------------------------------- */
 
 :root {
-  --wf-specify: #a80c84;
-  --wf-return: #3f7a28;
+  --wf-specify: #8d52ad;
+  --wf-return: #186c70;
   --wf-ink: #1f2328;
   --wf-ink-soft: #5b636d;
   --wf-ink-faint: #8b939d;
   --wf-surface: #ffffff;
-  --wf-surface-specify: #fdf5fb;
-  --wf-surface-return: #f3f8ef;
+  --wf-surface-specify: #f7f2fb;
+  --wf-surface-return: #edf6f6;
   --wf-surface-model: #fbfbfc;
   --wf-line: #d6dae0;
   --wf-line-strong: #aeb5bd;
-  --wf-focus: #a80c84;
+  --wf-focus: #8d52ad;
   --wf-focus-neutral: #57606a;
 }
 
 html[data-theme="dark"] {
-  --wf-specify: #e879c9;
-  --wf-return: #86c96a;
+  --wf-specify: #b798cd;
+  --wf-return: #40d9be;
   --wf-ink: #e9edf2;
   --wf-ink-soft: #a9b2bd;
   --wf-ink-faint: #79828d;
   --wf-surface: #1c2027;
-  --wf-surface-specify: #2a1b26;
-  --wf-surface-return: #1d2a1a;
+  --wf-surface-specify: #231d2e;
+  --wf-surface-return: #16282a;
   --wf-surface-model: #222831;
   --wf-line: #3a424c;
   --wf-line-strong: #59626d;
-  --wf-focus: #e879c9;
+  --wf-focus: #b798cd;
   --wf-focus-neutral: #c9d1d9;
 }
 
@@ -405,7 +431,7 @@ html[data-theme="dark"] {
 .wf-chip-label.wf-ink-specify { fill: var(--wf-specify); }
 
 /* Model-running modes use color only for their source of control: neutral for ordinary
-   generation, magenta for user-supplied structures/conditions, and green for metric gradients. */
+   generation, purple for user-supplied structures/conditions, and green for metric gradients. */
 .wf-mode-standard .wf-chip {
   fill: var(--wf-surface);
   stroke: var(--wf-line-strong);
@@ -520,7 +546,7 @@ html[data-theme="dark"] {
 
 /* ---------------------------------------------------------------------------
    "What an annotated CIF holds" figure. Same two-colour grammar as the workflow
-   map: standard mmCIF columns neutral, condition columns magenta, because the
+   map: standard mmCIF columns neutral, condition columns purple, because the
    conditions are the part you author.
    --------------------------------------------------------------------------- */
 .cif-fig { max-width: 820px; }
@@ -728,7 +754,7 @@ html[data-theme="dark"] .bd-content .hero-credits img {
 
 /* ---------------------------------------------------------------------------
    "Where each condition attaches" — the AtomArray strip on the inputs page.
-   One accent only: magenta means conditioned. Everything structural is neutral,
+   One accent only: purple means conditioned. Everything structural is neutral,
    so the two condition rows are the only thing competing for attention, and the
    difference between them (per cell vs per span) is the whole lesson.
    --------------------------------------------------------------------------- */
@@ -782,3 +808,10 @@ html[data-theme="dark"] .bd-content .hero-credits img {
 .bd-article details {
   margin-bottom: 1.5em;
 }
+
+/* The shared tab line (site-nav.css) is fixed above the theme's own header. */
+:root { --pst-header-height: 4rem; }
+body > header.site-nav ~ * { scroll-margin-top: 130px; }
+.bd-header { top: var(--site-nav-height, 62px) !important; }
+.bd-sidebar-primary, .bd-sidebar-secondary { top: calc(var(--site-nav-height, 62px) + var(--pst-header-height)) !important; height: calc(100vh - var(--site-nav-height, 62px) - var(--pst-header-height)) !important; }
+html { scroll-padding-top: calc(var(--site-nav-height, 62px) + var(--pst-header-height) + 14px); }

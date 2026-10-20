@@ -49,8 +49,8 @@ and verify required oracle metrics before scaling.
 
 - `rfd4-generate` and `rfd4-evaluate` use Hydra `key=value` arguments, not `--key value`.
   Their roots are `configs/inference.yaml` and `configs/evaluate.yaml`; search also uses generation.
-- `configs/inference.yaml` selects the release checkpoint pair. A non-null `hf_ckpt_path`
-  overrides native checkpoint paths; preserve the matching AE and pin HF revisions.
+- `configs/inference.yaml` selects the release checkpoint pair on the Hugging Face Hub. A non-null `hf_ckpt_path`
+  overrides native checkpoint paths (`hf_ckpt_path=null` selects them); preserve the matching AE and pin HF revisions.
 - Use `configs/inference_experiment/TEMPLATE.yaml` for reusable inference configs.
   Preserve defaults ordering and `_self_` precedence; verify composition after edits.
 - Prefer benchmark examples or validated annotated CIFs. Preserve bonds, annotations,

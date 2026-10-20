@@ -1,9 +1,8 @@
 # Model files
 
-`configs/inference.yaml` selects the native denoiser and matching AE by default.
-Setup downloads them into `DATA_PATH/flow_checkpoints` and `DATA_PATH/ae_checkpoints`.
-If `hf_ckpt_path` selects a Hub repository instead, setup caches `config.json` and
-`model.safetensors` at `hf_ckpt_revision` in the normal HF cache (`HF_HOME`).
+`configs/inference.yaml` selects the Hub repository (`hf_ckpt_path`) and pinned commit
+(`hf_ckpt_revision`) of the released model. Setup caches `config.json` and `model.safetensors`
+in the normal HF cache (`HF_HOME`).
 Private Hub access uses `HF_TOKEN` or `hf auth login`.
 
 Select another Hub repository or local bundle with

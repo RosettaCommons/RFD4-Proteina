@@ -1,0 +1,285 @@
+<!doctype html>
+<!-- Generated diagram page; do not edit. -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SwiGLU transition · RFD4-Proteína architecture</title><script>(() => { const theme = new URLSearchParams(location.search).get('theme'); document.documentElement.dataset.ncdTheme = theme === 'light' || theme === 'dark' ? theme : 'light'; })();</script><style>html[data-ncd-theme="light"]{color-scheme:light}html[data-ncd-theme="light"] body{background-color:#ffffff;color:#000000}html[data-ncd-theme="dark"]{color-scheme:dark}html[data-ncd-theme="dark"] body{background-color:#1e1e1e;color:#dedede}</style><style>/* The page is painted in the canvas colour of the dark theme before the
+       bundle runs, which is `darkDiagramTheme` in `src/display/Render/DiagramTheme.ts`,
+       and `src/display/loadingScreen.ts` repaints it in the theme of the
+       message once the message is known. */
+    html {
+      color-scheme: dark;
+    }
+    body {
+      -webkit-tap-highlight-color: transparent;
+      font-family: sans-serif;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1e1e1e;
+      color: #dedede;
+    }
+    .page-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .page-loading-ring {
+      width: 36px;
+      height: 36px;
+      border: 3px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      opacity: 0.7;
+      animation: page-loading-turn 0.9s linear infinite;
+    }
+    @keyframes page-loading-turn {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    button {
+      margin-right: 10px;
+      padding: 5px 10px;
+    }
+    @media (any-pointer: coarse) {
+      .inspection-box-close::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: -10px;
+        width: 64px;
+        height: 56px;
+      }
+    }
+    .diagram-container {
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .horizontal-box {
+      display: flex;
+      flex-direction: row;
+      justify-content: start;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .vertical-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .anchor {
+      height: 20px;
+      width: 0px;
+    }
+    .fill {
+      height: 100%;
+      width: 100%;
+      /* display: flex;
+      flex-direction: row;
+      justify-content: start;
+      align-items: center; */
+      /* height: fit-content;
+      width: fit-content; */
+    }
+    .times {
+      display: flex;
+      flex-direction: column;
+      /* align-items: stretch; */
+      width: 100%;
+      flex-grow: 1; /* Don't grow unless forced */
+      flex-shrink: 1; /* Can shrink */
+      flex-basis: auto; /* Fit content */
+      justify-content: space-evenly;
+      /* min-width: 50px;
+      max-width: 100px; */
+      /* width: fit-content; */
+      /* max-width: 100px; */
+      flex: 1;
+    }
+    .compose {
+      display: flex;
+      flex-direction: row;
+      flex: 1 1 auto;
+      justify-content: start;
+      align-items: center;
+      height: fit-content;
+      width: fit-content;
+    }
+    .floating-svg {
+      position: absolute;
+      left: 0px;
+      /* right: 0px; */
+      top: 0px;
+      width: 0px;
+      height: 0px;
+      background-color: lightblue;
+      z-index: -2;
+    }
+    .floating-svg-2 {
+      position: absolute;
+      left: 0px;
+      /* right: 0px; */
+      top: 0px;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+    }
+    .floating-text {
+      /* This ensures it is not part of flexbox sizing. */
+      position: relative;
+      width: 0px;
+      height: 0px;
+      background-color: white;
+      /* border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px 10px; */
+      font-family: Arial, sans-serif;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      /* No need for z-index unless you have multiple overlapping elements */
+    }
+    .array-indexes {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      flex-grow: 1; /* Don't grow unless forced */
+      flex-shrink: 1; /* Can shrink */
+      flex-basis: auto; /* Fit content */
+      justify-content: space-evenly;
+      flex: 1;
+      width: fit-content;
+    }
+    .times-gap {
+      position: relative;
+      /* flex: 1 1 20px; */
+      height: 20px;
+      width: 100%;
+      /* width: fit-content; */
+      display: flex;
+      overflow: hidden;
+      width: fit-content;
+      svg { 
+        stroke-dasharray: 10,10;
+        min-width: 10px;
+        /* width: 100%; */
+      }
+    }
+    .separator {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
+      height: 100%;
+    }
+    .morphism {
+      display: flex;
+      flex-direction: row;
+      /* min-width: 50px; */
+      width: fit-content;
+      height: 50px;
+      overflow: hidden;
+    }
+    .broadcasted {
+      display: flex;
+      /* flex: 0 1 50px; */
+      width: 50px;
+      height: 50px;
+      overflow: hidden;
+    }
+    .broadcasted-core {
+      position: relative;
+      width: 50px;
+      /* height: 50px; */
+      min-height: 0;
+      /* align-self: stretch; */
+    }
+    .broadcasted-horizontal-box {
+      display: flex;
+      /* flex: 1 1 auto; */
+      width: fit-content;
+      flex-direction: row;
+      /* justify-content: flex-start; */
+      align-items: center;
+      min-height: 0;
+    }
+    .broadcasted-anchor-column {
+      display: flex;
+      flex: 0 1 0px;
+      flex-direction: column;
+      width: 10px;
+      justify-content: space-around;
+    }
+    .broadcasted-anchor {
+      position: relative;
+      width: 10px;
+      height: 0px;
+      flex: 1 1 0px;
+    }
+    .wire {
+      position: relative;
+      flex: 1 1 20px;
+      height: 0px;
+      width: 0px;
+    }
+    /* New Styles */
+    .stack_main {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .stack_annotations {
+      position: absolute;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: row;
+      min-width: 50px;
+      width: fit-content;
+      height: fit-content;
+    }
+    .annotation_katex {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* The legend and the inspection boxes. `src/advanced_display/` writes the
+       colours of both, because they follow the diagram's theme. */
+    .axis-legend {
+      border-collapse: collapse;
+      white-space: nowrap;
+    }
+    .axis-legend td, .axis-legend th {
+      vertical-align: middle;
+    }
+    .inspection-box {
+      position: absolute;
+      overflow: auto;
+    }
+    .inspection-box-header {
+      font-size: 1.1em;
+    }
+    .inspection-box-references a {
+      color: inherit;
+    }
+    .inspection-box-diagram {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      width: fit-content;
+      height: fit-content;
+    }</style></head><body><h1 id="page-heading" hidden>tsncd</h1><div id="page-loading" class="page-loading"><div class="page-loading-ring"></div></div><div id="diagram" class="stack_main"></div><script type="application/json" id="tsncd-embedded-message">{"msgType": "dataUpdate", "data": "{\"uid_repository\": {\"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}, \"2017188688\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 2017188688, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1418916817\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1418916817, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 2017188688}}, \"1563255354\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1563255354, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1750216352\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1750216352, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1563255354}}, \"1841126239\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 1841126239, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"x \\\\sigma(x)\", \"description\": \"An elementwise map. Every value x of the input is replaced by the value y the formula gives at it.\", \"fill_color\": null, \"references\": null, \"formula\": \"y = x \\\\sigma(x)\", \"drawing\": {\"__registered__\": \"enum\", \"type\": \"BlockDrawing\", \"name\": \"BODY_IN_PLACE\"}}}, \"421069858\": {\"__type__\": \"BlockTag\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"BlockTag\"}, \"_id\": 421069858, \"_name\": null}, \"repetition\": {\"__type__\": \"Integer\", \"_value\": 1}, \"aesthetics\": {\"__type__\": \"BlockAesthetics\", \"title\": \"\\\\text{SwiGLU transition}\", \"description\": \"The feed-forward block of every trunk layer and of every autoencoder layer, applied to each token on its own. The code holds W\\u1d33 and W\\u1d41 as one 768 to 6144 map and splits its output in two; the second half is the gate. The hidden width is 3072 and no map has a bias.\", \"fill_color\": \"#CFE6F4\", \"references\": [{\"__type__\": \"CodeReference\", \"label\": \"Open diagram: SwiGLU transition\", \"url\": \"transition.html\", \"path\": null, \"line\": null, \"end_line\": null}, {\"__type__\": \"CodeReference\", \"label\": \"seq_transition_af3.py L12-L42\", \"url\": \"https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/seq_transition_af3.py#L12-L42\", \"path\": null, \"line\": null, \"end_line\": null}, {\"__type__\": \"CodeReference\", \"label\": \"seq_transition_af3.py L45-L68\", \"url\": \"https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/seq_transition_af3.py#L45-L68\", \"path\": null, \"line\": null, \"end_line\": null}], \"formula\": \"\\\\mathrm{SwiGLU}(s) = W^{D}\\\\big(\\\\mathrm{SiLU}(W^{G} s) \\\\odot W^{U} s\\\\big),\\\\quad |f| = 4|m|\", \"drawing\": null}}}, \"data\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1418916817}]}]}, {\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{G}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"bias\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1418916817}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1750216352}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"BlockOperator\", \"name\": null, \"block\": {\"__type__\": \"Block\", \"body\": {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Arithmetic\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"x \\\\sigma(x)\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"operator\": \"arithmetic\", \"formula\": {\"__type__\": \"Multiplication\", \"content\": [{\"__type__\": \"FreeInput\"}, {\"__type__\": \"Sigmoid\", \"argument\": {\"__type__\": \"FreeInput\"}}]}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"backup_degree\": null}, \"block_tag\": {\"__ref__\": 1841126239}}}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [], \"_dom\": []}], \"backup_degree\": null}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{U}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"bias\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1418916817}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1750216352}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}]}], \"backup_degree\": null}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"einops\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}, \"signature\": [[], []]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0, 1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"backup_degree\": null}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{D}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"bias\": false}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1750216352}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1418916817}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}]}], \"backup_degree\": null}]}, \"block_tag\": {\"__ref__\": 421069858}}}", "settings": {"darkMode": false, "debugBorders": false, "width": 1200, "subBlocks": false, "drawnBlockTags": [], "legend": true, "inspectionBoxes": true, "axisHover": "legend", "axisLabelFontSize": 0.8, "title": "SwiGLU transition", "heading": "none", "displayMode": "fast"}, "auxiliary": {"legend": [{"latex": "f", "text": "f", "size": 3072, "codeName": "dim_inner", "sizeCodeName": "dim_inner_size", "uids": [1750216352]}, {"latex": "m", "text": "m", "size": 768, "codeName": "token_dim", "sizeCodeName": "token_dim_size", "uids": [1418916817]}, {"latex": "x", "text": "x", "size": null, "codeName": "tokens", "sizeCodeName": "tokens_size", "uids": [1759696249]}], "blocks": {"421069858": {"title": "\\text{SwiGLU transition}", "formula": "\\mathrm{SwiGLU}(s) = W^{D}\\big(\\mathrm{SiLU}(W^{G} s) \\odot W^{U} s\\big),\\quad |f| = 4|m|", "description": "The feed-forward block of every trunk layer and of every autoencoder layer, applied to each token on its own. The code holds W\u1d33 and W\u1d41 as one 768 to 6144 map and splits its output in two; the second half is the gate. The hidden width is 3072 and no map has a bias.", "references": [{"label": "Open diagram: SwiGLU transition", "url": "transition.html", "path": null, "line": null, "endLine": null, "icon": null}, {"label": "seq_transition_af3.py L12-L42", "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/seq_transition_af3.py#L12-L42", "path": null, "line": null, "endLine": null, "icon": null}, {"label": "seq_transition_af3.py L45-L68", "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/seq_transition_af3.py#L45-L68", "path": null, "line": null, "endLine": null, "icon": null}]}, "1841126239": {"title": "x \\sigma(x)", "formula": "y = x \\sigma(x)", "description": "An elementwise map. Every value x of the input is replaced by the value y the formula gives at it.", "references": []}}, "expansions": {"0": {"operator": "Linear", "latex": "\\bold{W^{G}}", "formula": "y[i_{f}] = \\sum_{i_{m} \\in m} x[i_{m}]\\, W_\\bold{W^{G}}[i_{m}, i_{f}]", "description": "A learned linear map. The weight holds one value for every pair of an input position and an output position, and the map contracts the input against the weight over the input positions. The arrays are read from the tape, and they are shared by every position of the axes the map is broadcast over.", "expansion": "{\"uid_repository\": {\"2017188688\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 2017188688, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1418916817\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1418916817, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 2017188688}}, \"1563255354\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1563255354, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1750216352\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1750216352, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1563255354}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{G}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"weight_W_G\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1418916817}, {\"__ref__\": 1750216352}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1418916817}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{G}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"signature\": [[0], [0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1418916817}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1418916817}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}, "3": {"operator": "Linear", "latex": "\\bold{W^{U}}", "formula": "y[i_{f}] = \\sum_{i_{m} \\in m} x[i_{m}]\\, W_\\bold{W^{U}}[i_{m}, i_{f}]", "description": "A learned linear map. The weight holds one value for every pair of an input position and an output position, and the map contracts the input against the weight over the input positions. The arrays are read from the tape, and they are shared by every position of the axes the map is broadcast over.", "expansion": "{\"uid_repository\": {\"2017188688\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 2017188688, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1418916817\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1418916817, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 2017188688}}, \"1563255354\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1563255354, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1750216352\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1750216352, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1563255354}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{U}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"weight_W_U\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1418916817}, {\"__ref__\": 1750216352}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1418916817}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{U}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"signature\": [[0], [0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1418916817}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1418916817}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}, "5": {"operator": "Linear", "latex": "\\bold{W^{D}}", "formula": "y[i_{m}] = \\sum_{i_{f} \\in f} x[i_{f}]\\, W_\\bold{W^{D}}[i_{f}, i_{m}]", "description": "A learned linear map. The weight holds one value for every pair of an input position and an output position, and the map contracts the input against the weight over the input positions. The arrays are read from the tape, and they are shared by every position of the axes the map is broadcast over.", "expansion": "{\"uid_repository\": {\"1563255354\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 1563255354, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1750216352\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1750216352, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"f\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"dim_inner\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"3072\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 1563255354}}, \"2017188688\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 2017188688, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim_size\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}}, \"1418916817\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1418916817, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"m\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUBSCRIPT\"}}, \"code_form\": \"token_dim\", \"exponent\": {\"__type__\": \"DynamicName\", \"body\": \"768\", \"subscript\": null, \"settings\": null, \"code_form\": null, \"exponent\": null}}}, \"_size\": {\"__ref__\": 2017188688}}, \"32791590\": {\"__type__\": \"FreeNumeric\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"FreeNumeric\"}, \"_id\": 32791590, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": false, \"overline\": false, \"absolute\": true, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": \"tokens_size\", \"exponent\": null}}}, \"1759696249\": {\"__type__\": \"RawAxis\", \"uid\": {\"__type__\": \"UID\", \"_type\": {\"__registered__\": \"type\", \"repr\": \"RawAxis\"}, \"_id\": 1759696249, \"_name\": {\"__type__\": \"DynamicName\", \"body\": \"x\", \"subscript\": null, \"settings\": null, \"code_form\": \"tokens\", \"exponent\": null}}, \"_size\": {\"__ref__\": 32791590}}}, \"data\": {\"__type__\": \"Composed\", \"content\": [{\"__type__\": \"ProductOfMorphisms\", \"content\": [{\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Linear\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W\", \"subscript\": {\"__type__\": \"DynamicName\", \"body\": \"W^{D}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"settings\": null, \"code_form\": \"weight_W_D\", \"exponent\": null}, \"bias\": false}, \"input_weaves\": [], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1750216352}, {\"__ref__\": 1418916817}]}], \"reindexings\": [], \"backup_degree\": {\"__type__\": \"ProdObject\", \"content\": []}}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__type__\": \"Array\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1750216352}]}]}]}, {\"__type__\": \"Broadcasted\", \"operator\": {\"__type__\": \"Einops\", \"name\": {\"__type__\": \"DynamicName\", \"body\": \"W^{D}\", \"subscript\": null, \"settings\": {\"__type__\": \"DynamicNameSettings\", \"bold\": true, \"overline\": false, \"absolute\": false, \"typewriter\": false, \"exponent_placement\": {\"__registered__\": \"enum\", \"type\": \"ExponentPlacement\", \"name\": \"SUPERSCRIPT\"}}, \"code_form\": null, \"exponent\": null}, \"signature\": [[0], [0]]}, \"input_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__ref__\": 1750216352}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}, {\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__ref__\": 1750216352}]}], \"output_weaves\": [{\"__type__\": \"Weave\", \"datatype\": {\"__type__\": \"Reals\"}, \"_shape\": [{\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}, {\"__registered__\": \"enum\", \"type\": \"WeaveMode\", \"name\": \"TILED\"}]}], \"reindexings\": [{\"__type__\": \"Rearrangement\", \"mapping\": [1], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1418916817}]}, {\"__type__\": \"Rearrangement\", \"mapping\": [0], \"_dom\": [{\"__ref__\": 1759696249}, {\"__ref__\": 1418916817}]}], \"backup_degree\": null}]}}", "auxiliary": {}, "references": []}}}}</script>
+<script src="ncd-embed.js"></script>
+<script src="tsncd.f271d5573f11.js"></script>
+</body></html>

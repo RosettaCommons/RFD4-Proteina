@@ -1,0 +1,315 @@
+{
+  "source": "figure_sources/supplementary/recycling_schedules (supplementary recycling-schedules figure)",
+  "model_commit": "f92f927648dd8631ed3d52fd9454c8e31c349b8f",
+  "definition": "Recycle count is the configured total number of trunk passes, including the first pass, not extra passes. Each zero-based step k occupies [k,k+1).",
+  "profiles": [
+    {
+      "id": "low",
+      "label": "low thinking",
+      "color": "teal",
+      "stages": [
+        [
+          10,
+          1
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          20,
+          3
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          20,
+          1
+        ]
+      ],
+      "passes": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "steps": 60,
+      "total_passes": 110,
+      "source_sha256": "e1ef9db14885cfd9d6856bcdd8a01c7258812fd010221085f31eed4843598cbd"
+    },
+    {
+      "id": "medium",
+      "label": "medium thinking",
+      "color": "purple",
+      "stages": [
+        [
+          5,
+          1
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          10,
+          6
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          10,
+          1
+        ]
+      ],
+      "passes": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        5,
+        5,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "steps": 60,
+      "total_passes": 185,
+      "source_sha256": "8e9a00be7e0c9db2537060a05f91d3cfa66c8955b99fa6b69abcaa9b303e3073"
+    },
+    {
+      "id": "high",
+      "label": "high thinking",
+      "color": "amber",
+      "stages": [
+        [
+          5,
+          2
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          10,
+          9
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          10,
+          3
+        ],
+        [
+          10,
+          2
+        ]
+      ],
+      "passes": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        5,
+        5,
+        5,
+        5,
+        5,
+        8,
+        8,
+        8,
+        8,
+        8,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        8,
+        8,
+        8,
+        8,
+        8,
+        5,
+        5,
+        5,
+        5,
+        5,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "steps": 60,
+      "total_passes": 295,
+      "source_sha256": "e13c91234d7c12627838f95c6573b92ac578cb1a484142ef9affc3ee336679c6"
+    }
+  ]
+}

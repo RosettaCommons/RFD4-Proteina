@@ -1,0 +1,30 @@
+/* Six molecular contexts in the reference latent instrument's visual language. */
+.expanded-grid-scroll { overflow-x: auto; padding: 4px 2px; }
+.expanded-grid { display: grid; grid-template-columns: 145px repeat(32, minmax(13px, 1fr)); gap: 3px; min-width: 710px; align-items: center; }
+.expanded-column { text-align: center; font: 12px var(--arch-mono); color: var(--wf-ink-soft); }
+.expanded-row-name { font-size: var(--arch-fs-small); }
+.expanded-cell { width: 100%; height: 22px; border: 0; border-radius: 0; padding: 0; cursor: pointer; }
+.expanded-cell[aria-pressed="true"] { outline: 2px solid var(--wf-ink); outline-offset: 0; }
+.expanded-cell:focus-visible { outline: 2px solid var(--wf-focus); }
+.expanded-key { text-align: right; margin: 4px 0 14px; }
+[data-viz-page="expanded"] [hidden] { display: none !important; }
+[data-viz-page="expanded"] .latents-view-what { display: block; overflow-wrap: anywhere; }
+[data-viz-page="expanded"] .latents-view-value { margin-top: 8px; }
+[data-viz-page="expanded"] .latents-controls { margin-top: 20px; }
+
+[data-viz-page="expanded"] .latents-views { row-gap: 6px; }
+[data-viz-page="expanded"] .latents-molecule { height: 180px; }
+[data-viz-page="expanded"] .latents-view:nth-child(n+4) { padding-top: 16px; }
+.expanded-chart-panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.viz-page .bd-article .expanded-small-plot { margin: 0; min-width: 0; }
+.expanded-small-plot figcaption { font-size: var(--arch-fs-small); line-height: 1.5; }
+.expanded-small-plot figcaption span { display: block; color: var(--wf-ink-soft); }
+.expanded-information svg { display: block; width: 100%; font: 12px var(--arch-sans); }
+.expanded-information circle[role="button"] { cursor: pointer; }
+.expanded-information circle:focus-visible { outline: 2px solid var(--wf-focus); }
+.expanded-information .viz-caption { margin-top: 8px; }
+.expanded-information .arch-controls { margin-bottom: 24px; }
+@media (max-width: 719px) {
+  .expanded-chart-panels { grid-template-columns: 1fr; }
+  [data-viz-page="expanded"] .latents-view:nth-child(n+4) { padding-top: 0; }
+}
