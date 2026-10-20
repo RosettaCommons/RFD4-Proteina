@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: ruff and notebooks
+    if: github.repository == 'RosettaCommons/RFD4-Proteina'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install "ruff==$(grep -oP 'ruff==\K[0-9.]+' pyproject.toml | head -1)"
+      - name: Get changed Python files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          FILES=$(git diff --name-only --diff-filter=AMR "$BASE"...HEAD -- '*.py' 2>/dev/null | tr '\n' ' ' || true)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+      - name: ruff format (changed files)
+        if: steps.changed.outputs.files != ''
+        run: ruff format --diff ${{ steps.changed.outputs.files }}
+      - name: ruff check (changed files)
+        if: steps.changed.outputs.files != ''
+        run: ruff check ${{ steps.changed.outputs.files }}
+      - name: Notebooks carry no outputs
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          bad = []
+          for path in subprocess.run(
+              ["git", "ls-files", "*.ipynb"], capture_output=True, text=True, check=True
+          ).stdout.split():
+              cells = json.load(open(path, encoding="utf-8"))["cells"]
+              if any(c.get("outputs") or c.get("execution_count") for c in cells if c["cell_type"] == "code"):
+                  bad.append(path)
+          if bad:
+              raise SystemExit("Notebooks must be committed without outputs: " + ", ".join(bad))
+          PY
+
+  test:
+    name: pytest (cpu)
+    if: github.repository == 'RosettaCommons/RFD4-Proteina'
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CLUSTER: local
+      ALLOW_BIOTITE_CCD: "true"
+      CUDA_VISIBLE_DEVICES: ""
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      # CPU lane marker filter, identical to the internal CI.
+      CPU_PYTEST_MARKER: not benchmark and not very_slow and not gpu and not regression and not digs
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install CPU PyTorch and the package
+        run: |
+          python -m pip install --upgrade pip
+          TORCH_VERSION="$(grep -oP '"torch==\K[0-9.]+' pyproject.toml | head -1)"
+          pip install "torch==${TORCH_VERSION}" --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Collect tests (imports succeed)
+        run: pytest -m "$CPU_PYTEST_MARKER" --collect-only -q tests | tail -5
+      - name: Run tests with coverage
+        run: |
+          pytest -m "$CPU_PYTEST_MARKER" -n auto --dist=worksteal \
+            --cov=rfproteina --cov-report=xml:coverage.cpu.xml --cov-report=term:skip-covered tests
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.cpu.xml
+          flags: cpu
+          fail_ci_if_error: false
+      - name: Keep the coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cpu
+          path: coverage.cpu.xml
+          if-no-files-found: ignore
