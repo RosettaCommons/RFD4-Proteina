@@ -111,16 +111,18 @@ class CDRTorsionNaturalness(Metric):
         for reference in ("vhh", "vhvl"):
             path = root / f"{reference}_torsions.npz"
             if not path.is_file():
-                raise FileNotFoundError(
-                    f"Missing CDR native samples: {path}. Run scripts/prepare_cdr_torsion_data.py "
-                    "on the supplied torsion pickles."
-                )
+                raise FileNotFoundError(f"Missing CDR native samples: {path}.")
             with np.load(path, allow_pickle=False) as data:
                 result[reference] = {key: data[key] for key in data.files}
         return result
 
     def setup(self) -> None:
         """Check reference data before scoring designs."""
+        if not Path(__file__).with_name("cdr_torsion_data").is_dir():
+            raise FileNotFoundError(
+                "The CDR torsion reference data is not part of the PyPI package. Use a clone of the GitHub "
+                "repository (src/rfproteina/metrics/cdr_torsion_data/) to run cdr_torsion_naturalness."
+            )
         _ = self.parameters, self.native_samples
 
     def teardown(self) -> None:

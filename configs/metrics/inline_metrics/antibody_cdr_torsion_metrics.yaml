@@ -1,0 +1,6 @@
+# Opt-in: needs the CDR torsion reference data in src/rfproteina/metrics/cdr_torsion_data/, which ships with the
+# GitHub repository but not with the PyPI package. Enable with
+#   metrics/inline_metrics=all_inline_metrics_with_cdr_torsion
+cdr_torsion_naturalness:
+  _target_: rfproteina.metrics.cdr_torsions.CDRTorsionNaturalness
+  required_tags_any: [antibody]

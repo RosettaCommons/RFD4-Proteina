@@ -24,8 +24,12 @@ python scripts/check_distribution.py dist/*
 ```
 
 The wheel is built from the sdist. Both contain model code, CLI entry points,
-Hydra configs and explicitly selected reference inputs. Private files, custom
-metrics, bulk experiment datasets and the repository scripts tree are excluded.
+Hydra configs and the quickstart example input `data/benchmarks/monomer` (about
+1 MB in total). Tests, docs, skills, the website, the repository scripts tree, all
+other benchmark inputs and the CDR torsion reference data (the opt-in
+`cdr_torsion_naturalness` metric) are not packaged, so a pip install cannot run the
+validation or benchmark configs or that metric; clone the repository for those.
+`scripts/check_distribution.py` enforces these rules and a 2 MB size ceiling.
 The optional PyRosetta helper stays beside its runtime metric.
 
 The commands above check archive contents, metadata and dependency URLs.

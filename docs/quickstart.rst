@@ -85,6 +85,9 @@ CUDA versions, CPU-only installs, Docker and Apptainer, see :doc:`installation`.
    The PyPI release is pending. Until it is published, use :ref:`option 1
    <quickstart-make-setup>`.
 
+The wheel is small (about 1 MB): it ships the code, the configs and the monomer example input, not the
+benchmark inputs or the antibody torsion reference data. Clone the repository (option 1) to use those.
+
 Create an environment, install the package for your CUDA major version, and generate:
 
 .. code-block:: bash

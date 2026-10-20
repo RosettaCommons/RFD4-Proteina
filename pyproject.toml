@@ -185,13 +185,14 @@ dev-mode-dirs = ["src"]
 only-include = [
     "pyproject.toml", "README.md", "LICENSE", ".project-root",
     "src", "configs", "data/cath_label_mapping.pkl",
-    "data/benchmarks",
+    "data/benchmarks/monomer",
     "scripts/check_distribution.py",
     "docs/packaging.md",
 ]
 exclude = [
     "configs/metrics/custom_metrics/**",
     "src/rfproteina/metrics/custom_metrics/**",
+    "src/rfproteina/metrics/cdr_torsion_data/**",
     "**/__pycache__/**",
 ]
 
@@ -199,6 +200,7 @@ exclude = [
 exclude = [
     "configs/metrics/custom_metrics/**",
     "src/rfproteina/metrics/custom_metrics/**",
+    "src/rfproteina/metrics/cdr_torsion_data/**",
     "**/__pycache__/**",
 ]
 only-include = [
@@ -206,7 +208,7 @@ only-include = [
     "src/rfd4_proteina",
     "src/script_utils",
     "configs",
-    "data/benchmarks",
+    "data/benchmarks/monomer",
     "data/cath_label_mapping.pkl",
 ]
 

@@ -149,7 +149,7 @@ These run directly on the generated structure, before any oracle refolds it.
 | `cath_metric` | any: `cath` | CATH superfamily classification of the chain of interest, through Foldseek | `C`, `A`, `T`, `H`, `type`, `evalue`, `tmscore` |
 | `sequence_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | GRAVY and the Guruprasad instability index on the designed chain. Half-life is deliberately omitted | `gravy`, `instability_index` |
 | `antibody_contacts` | any: `antibody` | Fraction of contacting variable-domain residues in Chothia CDRs | `cdr_contact_count`, `fw_contact_count`, `cdr_contact_fraction` |
-| `cdr_torsion_naturalness` | any: `antibody` | Chothia CDR phi/psi naturalness against bundled native samples | `H1`–`L3`, corresponding `*_length`, `n_scored_cdrs` |
+| `cdr_torsion_naturalness` | any: `antibody` | Chothia CDR phi/psi naturalness against native samples. Opt in with `metrics/inline_metrics=all_inline_metrics_with_cdr_torsion`; the reference data ships with the GitHub repository, not the PyPI package | `H1`–`L3`, corresponding `*_length`, `n_scored_cdrs` |
 | `rosetta_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | Rosetta SAP and ExposedHydrophobics through a nested PyRosetta apptainer. Set `PYROSETTA_CONTAINER` outside the configured cluster environments | `sap_score`, `hydrophobic_exposure_sasa` |
 
 Antibody metrics use ANARCII and basic Chothia CDRs across all protein chains,

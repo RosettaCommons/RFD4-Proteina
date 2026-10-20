@@ -8,6 +8,9 @@ from pathlib import Path, PurePosixPath
 
 from packaging.requirements import Requirement
 
+# Size ceilings keep bulk data out of the published artifacts.
+MAX_BYTES = {".whl": 2_000_000, ".gz": 2_000_000}
+
 
 def check_distribution(path: Path) -> None:
     """Reject incomplete/private artifacts and direct URL dependencies."""
@@ -26,7 +29,9 @@ def check_distribution(path: Path) -> None:
             "rfproteina/.project-root",
             "rfproteina/data/cath_label_mapping.pkl",
         }
-        assert any(name.startswith("rfproteina/data/benchmarks/") for name in names), "Missing benchmark inputs"
+        assert "rfproteina/data/benchmarks/monomer/monomer-short.cif" in names, "Missing the quickstart example input"
+        benchmark_dirs = {PurePosixPath(n).parts[3] for n in names if n.startswith("rfproteina/data/benchmarks/")}
+        assert benchmark_dirs == {"monomer"}, f"Only the quickstart examples may ship in the wheel: {benchmark_dirs}"
         for command in ("rfd4-generate", "rfd4-evaluate", "rfd4-train", "rfd4-train-ae"):
             assert f"{command} = ".encode() in entry_points, f"Missing entry point: {command}"
     else:
@@ -44,6 +49,8 @@ def check_distribution(path: Path) -> None:
         assert not set(parts) & {".ipd", ".git", ".github", ".agents", ".claude", "__pycache__"}, name
         assert not any(part.startswith((".env", ".user_info_")) for part in parts), name
         assert "custom_metrics" not in parts, name
+        assert "cdr_torsion_data" not in parts, name
+    assert path.stat().st_size < MAX_BYTES[path.suffix], f"{path.name} is {path.stat().st_size / 1e6:.1f} MB"
     meta = BytesParser().parsebytes(metadata)
     assert meta["Name"] == "rfd4-proteina", meta["Name"]
     assert meta["License-Expression"] == "BSD-3-Clause"
