@@ -37,10 +37,10 @@ from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.transforms.atom_array import apply_and_spread_residue_wise
 from biotite.structure import AtomArray, AtomArrayStack, spread_residue_wise
-from rfproteina.metrics.gearnet import GearNet
 
 from rfproteina.conditions import C_IDXGRP
 from rfproteina.metrics import Metric
+from rfproteina.metrics.gearnet import GearNet
 
 logger = logging.getLogger(__name__)
 
