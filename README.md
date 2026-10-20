@@ -8,7 +8,17 @@
   <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/tree/main"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/branch/main/graph/badge.svg" alt="Codecov coverage"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://rosettacommons.github.io/RFD4-Proteina/"><img src="https://img.shields.io/badge/docs-read-blue" alt="Documentation"></a>
+  <a href="https://huggingface.co/nvidia/RFD4-Proteina"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-model-yellow" alt="Hugging Face model"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
+</p>
+
+<p align="center">
+  <a href="#system-requirements">Requirements</a> ·
+  <a href="#install">Installation</a> ·
+  <a href="#run-the-model">Quick start</a> ·
+  <a href="#more-workflows">Workflows</a> ·
+  <a href="#tutorials">Tutorials</a> ·
+  <a href="https://rosettacommons.github.io/RFD4-Proteina/">Documentation</a>
 </p>
 
 <picture>
@@ -19,11 +29,24 @@
 RFD4-Proteína designs proteins and biomolecular complexes with sequence–structure co-design,
 motif and binding-site conditioning, partial diffusion, and reward-guided search.
 
+Key features:
+
+- **Many design tasks from one model:** monomers, protein and DNA binders, antibodies and nanobodies, enzymes and motif scaffolding, small-molecule pockets.
+- **Rich conditioning:** annotated CIF inputs or text-based YAML specifications for fixed motifs, hotspots, burial, hydrogen bonds, and more.
+- **Reward-guided search:** beam search over generation paths scored by structure-prediction oracles and custom metrics.
+- **Partial diffusion** to refine or diversify existing structures.
+- **Fast inference:** `torch.compile` by default, with an optional BioIR backend (`inference_backend=bioir`).
+- **Hugging Face release and Python API** alongside the `rfd4-generate`, `rfd4-evaluate` and training CLIs.
+
+## System requirements
+
+- Linux x86_64, Python 3.12, and an NVIDIA GPU with a CUDA 13-compatible driver (CUDA 12 and CPU-only containers are also available).
+- Tested GPUs: see the [supported hardware table](https://rosettacommons.github.io/RFD4-Proteina/installation.html#supported-hardware). Check yours with `nvidia-smi`.
+- macOS and Windows are not supported.
+
 ## Install
 
-**Start with `make setup`.** On Linux x86_64 with Python 3.12 and a
-[supported NVIDIA GPU](https://rosettacommons.github.io/RFD4-Proteina/installation.html#supported-hardware)
-with a CUDA 13-compatible driver:
+**Start with `make setup`.** On a machine that meets the requirements above:
 
 ```bash
 git clone https://github.com/RosettaCommons/RFD4-Proteina.git
@@ -112,7 +135,22 @@ Training datasets are separate from model downloads: see the
 - [Input preparation](https://rosettacommons.github.io/RFD4-Proteina/workflow/inputs.html) · [Text-based design specifications](https://rosettacommons.github.io/RFD4-Proteina/workflow/condition-spec.html)
 - [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html) · [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html)
 - [Training and fine-tuning](https://rosettacommons.github.io/RFD4-Proteina/development.html) · [Worked examples](https://rosettacommons.github.io/RFD4-Proteina/examples.html)
+
+## More workflows
+
+- **Binders and motif scaffolding:** condition on an annotated CIF or a YAML design spec; see [Running the model](https://rosettacommons.github.io/RFD4-Proteina/workflow/running.html).
+- **Reward-guided search:** select a search `inference_experiment` config to branch and prune candidates against an oracle; see [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html).
+- **Partial diffusion:** re-noise and refine an existing design; see [Partial diffusion](https://rosettacommons.github.io/RFD4-Proteina/workflow/partial-diffusion.html).
+- **Scoring and refolding:** run `rfd4-evaluate` on generated structures; see [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html).
+- **Inference backends:** `eager`, `torch_compile` (default) or `bioir`; see [Inference backends](https://rosettacommons.github.io/RFD4-Proteina/workflow/backends.html).
+
+## Tutorials
+
+- [Annotated CIF tutorial](docs/examples/annotated_cif_tutorial.ipynb): build and validate conditioned structure inputs.
+- [Enzyme design tutorial](docs/examples/enzyme_design_tutorial.ipynb): motif scaffolding and catalytic-site metrics, end to end.
+- [PPI specificity tutorial](docs/examples/ppi_specificity_tutorial.ipynb): protein-binder design and specificity checks.
 - [Antibody campaign examples](examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
+- [Agent skills](skills/README.md): task-specific guides for setup, generation, search, and evaluation.
 
 [Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](LICENSE)
 
