@@ -5,11 +5,19 @@
 <p align="center"><em>A flow-matching foundation model for biomolecular design — Baker Lab × NVIDIA GenAIR</em></p>
 
 <p align="center">
-  <a href="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/tree/main"><img src="https://codecov.io/gh/RosettaCommons/RFD4-Proteina/branch/main/graph/badge.svg" alt="Codecov coverage"></a>
+  <a href="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/ci.yaml"><img src="https://github.com/RosettaCommons/RFD4-Proteina/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://pypi.org/project/rfd4-proteina/"><img src="https://img.shields.io/pypi/v/rfd4-proteina?logo=pypi&amp;logoColor=white" alt="PyPI"></a>
   <a href="https://github.com/RosettaCommons/RFD4-Proteina/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://rfd4-proteina.org/latest/"><img src="https://img.shields.io/badge/docs-read-blue" alt="Documentation"></a>
-  <a href="https://huggingface.co/nvidia/RFD4-Proteina"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-model-yellow" alt="Hugging Face model"></a>
   <a href="https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg" alt="BSD 3-Clause License"></a>
+</p>
+
+<p align="center">
+  <a href="https://huggingface.co/nvidia/RFD4-Proteina"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-model-yellow" alt="Hugging Face model"></a>
+  <a href="https://huggingface.co/datasets/nvidia/RFD4-Proteina"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-dataset-yellow" alt="Hugging Face dataset"></a>
+  <a href="https://huggingface.co/nvidia/RFD4-Proteina-Diffusers"><img src="https://img.shields.io/badge/%F0%9F%A7%A8%20Diffusers-pipeline-orange" alt="Diffusers pipeline"></a>
+  <a href="https://huggingface.co/spaces/nvidia/rfd4-proteina-zerogpu"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Space-ZeroGPU-blue" alt="ZeroGPU Space"></a>
+  <a href="https://huggingface.co/spaces/nvidia/rfd4-proteina-space"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Space-dedicated%20GPU-blue" alt="Dedicated GPU Space"></a>
 </p>
 
 <p align="center">
