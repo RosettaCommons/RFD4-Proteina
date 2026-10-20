@@ -780,6 +780,9 @@ copy_code_to_dir() {
         "$repo_root/configs/" "$code_dir/configs/"
     rsync -a --no-compress "$repo_root/data/benchmarks/" "$code_dir/data/benchmarks/"
     rsync -a --no-compress "$repo_root/data/" "$code_dir/data/"
+    if [ -d "$repo_root/examples" ]; then
+        rsync -a --no-compress "$repo_root/examples/" "$code_dir/examples/"
+    fi
     rsync -a --no-compress "$repo_root/src/script_utils/" "$code_dir/src/script_utils/"
 
     cp "$repo_root/.project-root" "$code_dir/"

@@ -95,6 +95,9 @@ class BeamSearchStrategy(SearchStrategy):
         beam_width: Candidates retained per input after pruning.
         save_rollouts: Keep all completed scoring rollouts as additional outputs.
         save_criteria: Optional raw-metric thresholds for saving completed rollouts.
+        save_states: Save selected candidates at interior checkpoints for later branching.
+        resume_from: Path to a saved candidate batch; start a new beam at its saved step.
+        resume_seed: Seed for the new branches, independent of input preprocessing.
     """
 
     def __init__(
@@ -104,6 +107,9 @@ class BeamSearchStrategy(SearchStrategy):
         beam_width: int = 4,
         save_rollouts: bool = False,
         save_criteria: dict[str, dict[str, Any]] | None = None,
+        save_states: bool = False,
+        resume_from: str | None = None,
+        resume_seed: int | None = None,
     ) -> None:
         self.checkpoints = parse_checkpoints(checkpoints)
         self.step_checkpoints = [0, *self.checkpoints]
@@ -114,6 +120,13 @@ class BeamSearchStrategy(SearchStrategy):
             raise ValueError("save_rollouts must be a bool.")
         if save_criteria is not None and not save_rollouts:
             raise ValueError("save_criteria requires save_rollouts: true.")
+        if (resume_from is None) != (resume_seed is None):
+            raise ValueError("Set resume_from and resume_seed together.")
+        if not isinstance(save_states, bool):
+            raise ValueError("save_states must be a bool.")
+        self.save_states = save_states
+        self.resume_from = resume_from
+        self.resume_seed = resume_seed
         self.n_branch = n_branch
         self.beam_width = beam_width
         self.intermediate_sample_save_criterion = PassCriterionMetric(save_criteria or {}) if save_rollouts else None
@@ -244,6 +257,7 @@ class BeamSearchStrategy(SearchStrategy):
                 nsteps=actual_nsteps,
                 fm=model.fm,
                 sampling_model_args=model.inf_cfg.model,
+                full_nsteps=nsteps if frac is not None else None,
             )
         else:
             ts, gt = model.fm.sample_schedule(
@@ -251,49 +265,75 @@ class BeamSearchStrategy(SearchStrategy):
                 sampling_model_args=model.inf_cfg.model,
             )
 
-        # Initialize beam: nsamples * beam_width samples
-        # Interleaved format: [sample0, sample1, sample2, sample0, sample1, sample2, ...]
-        logger.info(
-            f"Initializing beam: {nsamples} samples x {self.beam_width} width = "
-            f"{nsamples * self.beam_width} total states"
-        )
-        tiled_padding_mask = padding_mask.repeat(self.beam_width, 1)
-        beam_emit_mask_batch = {
-            "supports_local_latent": batch["supports_local_latent"].repeat(self.beam_width, 1),
-            "is_in_context_conditioning": batch["is_in_context_conditioning"].repeat(self.beam_width, 1),
-            "padding_mask": tiled_padding_mask,
-        }
-        coord_cond_mask = batch.get("coord_cond_mask")
-        tiled_coord_cond_mask = coord_cond_mask.repeat(self.beam_width, 1) if coord_cond_mask is not None else None
-        tiled_groups = {
-            key: value.repeat(self.beam_width, 1) if value is not None else None
-            for key, value in extract_groups(batch).items()
-        }
+        start_step = 0
 
-        x_0 = model.fm.sample_noise(
-            n,
-            shape=(nsamples * self.beam_width,),
-            device=device,
-            emit_masks=compute_flow_emit_masks(beam_emit_mask_batch),
-            training=False,
-            coord_cond_mask=tiled_coord_cond_mask,
-            groups=tiled_groups,
-        )
-
-        if partial_t_dict:
-            batch = model.add_clean_samples(batch)
-            x_1 = batch["x_1"]  # {dm: [nsamples, n_tokens, ...]}
-            x_1_tiled = {dm: torch.cat([x_1[dm]] * self.beam_width, dim=0) for dm in partial_t_dict}
-            xt = {dm: (1.0 - pt_val) * x_0[dm] + pt_val * x_1_tiled[dm] for dm, pt_val in partial_t_dict.items()}
-            logger.info(
-                f"Partial diffusion: bb_ca t={partial_t_dict.get('bb_ca', 0):.4f}, "
-                f"local_latents t={partial_t_dict.get('local_latents', 0):.4f}"
-            )
+        if self.resume_from is not None:
+            state = torch.load(self.resume_from, map_location=device, weights_only=True)
+            if not isinstance(state, dict) or "step" not in state or "x" not in state:
+                raise ValueError("Saved candidate must contain a step and modality tensors in x.")
+            start_step, candidate = state["step"], state["x"]
+            if type(start_step) is not int or not 0 <= start_step < actual_nsteps:
+                raise ValueError(f"Saved candidate step must be an integer in [0, {actual_nsteps}).")
+            if not isinstance(candidate, dict) or set(candidate) != set(model.fm.data_modes):
+                raise ValueError(f"Saved candidate modalities must match {model.fm.data_modes}.")
+            for key, value in candidate.items():
+                expected_shape = (nsamples, n, model.fm.base_flow_matchers[key].dim)
+                if (
+                    not isinstance(value, torch.Tensor)
+                    or value.shape != expected_shape
+                    or not value.is_floating_point()
+                    or not torch.isfinite(value).all()
+                ):
+                    raise ValueError(
+                        f"Saved candidate {key} must be a finite floating tensor of shape {expected_shape}."
+                    )
+            xt = {key: value.repeat(self.beam_width, 1, 1) for key, value in candidate.items()}
+            torch.manual_seed(self.resume_seed)
+            model.inference_seed = self.resume_seed
         else:
-            xt = x_0
+            # Initialize beam: nsamples * beam_width samples
+            # Interleaved format: [sample0, sample1, sample2, sample0, sample1, sample2, ...]
+            logger.info(
+                f"Initializing beam: {nsamples} samples x {self.beam_width} width = "
+                f"{nsamples * self.beam_width} total states"
+            )
+            tiled_padding_mask = padding_mask.repeat(self.beam_width, 1)
+            beam_emit_mask_batch = {
+                "supports_local_latent": batch["supports_local_latent"].repeat(self.beam_width, 1),
+                "is_in_context_conditioning": batch["is_in_context_conditioning"].repeat(self.beam_width, 1),
+                "padding_mask": tiled_padding_mask,
+            }
+            coord_cond_mask = batch.get("coord_cond_mask")
+            tiled_coord_cond_mask = coord_cond_mask.repeat(self.beam_width, 1) if coord_cond_mask is not None else None
+            tiled_groups = {
+                key: value.repeat(self.beam_width, 1) if value is not None else None
+                for key, value in extract_groups(batch).items()
+            }
 
-        # Mask the initial beam state in its interleaved, beam-width-tiled layout.
-        xt = model.fm.apply_flow_emit_masks(xt, beam_emit_mask_batch)
+            x_0 = model.fm.sample_noise(
+                n,
+                shape=(nsamples * self.beam_width,),
+                device=device,
+                emit_masks=compute_flow_emit_masks(beam_emit_mask_batch),
+                training=False,
+                coord_cond_mask=tiled_coord_cond_mask,
+                groups=tiled_groups,
+            )
+
+            if partial_t_dict:
+                batch = model.add_clean_samples(batch)
+                x_1 = batch["x_1"]  # {dm: [nsamples, n_tokens, ...]}
+                x_1_tiled = {dm: torch.cat([x_1[dm]] * self.beam_width, dim=0) for dm in partial_t_dict}
+                xt = {dm: (1.0 - pt_val) * x_0[dm] + pt_val * x_1_tiled[dm] for dm, pt_val in partial_t_dict.items()}
+                logger.info(
+                    f"Partial diffusion: bb_ca t={partial_t_dict.get('bb_ca', 0):.4f}, "
+                    f"local_latents t={partial_t_dict.get('local_latents', 0):.4f}"
+                )
+            else:
+                xt = x_0
+
+            # Mask the initial beam state in its interleaved, beam-width-tiled layout.
+            xt = model.fm.apply_flow_emit_masks(xt, beam_emit_mask_batch)
 
         all_intermediate_results: list[dict] = []
 
@@ -304,10 +344,15 @@ class BeamSearchStrategy(SearchStrategy):
         output_base_dir = getattr(model, "_current_output_base_dir", None)
         output_suffix: str = getattr(model, "_current_output_suffix", "")
 
-        # Beam search loop over checkpoints
-        for i in range(len(self.step_checkpoints) - 1):
-            start_step = self.step_checkpoints[i]
-            end_step = self.step_checkpoints[i + 1]
+        if self.resume_from is not None:
+            batch_ids = [f"{name}_r{self.resume_seed}" for name in batch_ids]
+
+        # Keep original checkpoint numbers and absolute schedule indices when continuing.
+        end_step = start_step
+        for i, checkpoint_step in enumerate(self.step_checkpoints[1:]):
+            if checkpoint_step <= start_step:
+                continue
+            end_step = checkpoint_step
             n_branch = self.checkpoints[end_step].get("n_branch", self.n_branch)
             logger.info(f"Checkpoint {i + 1}/{len(self.step_checkpoints) - 1}: steps {start_step} → {end_step}")
 
@@ -492,6 +537,18 @@ class BeamSearchStrategy(SearchStrategy):
                 model._current_batch = batch
 
             xt = {key: value[select_indices] for key, value in xt.items()}
+            if self.save_states and end_step < actual_nsteps:
+                state_dir = Path(output_base_dir).parent / "sampling_states"
+                state_dir.mkdir(parents=True, exist_ok=True)
+                for rank in range(self.beam_width):
+                    path = state_dir / f"{batch_ids[0]}{output_suffix}_step{end_step}_beam{rank}.pt"
+                    candidate = {
+                        key: value[rank * nsamples : (rank + 1) * nsamples].detach().cpu().clone()
+                        for key, value in xt.items()
+                    }
+                    torch.save({"x": candidate, "step": end_step}, path)
+                    logger.info(f"Saved candidate: {path}")
+            start_step = end_step
 
         if end_step == actual_nsteps:
             final_results = [atom_array_results[k] for k in select_indices.tolist()]

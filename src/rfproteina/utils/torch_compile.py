@@ -107,11 +107,19 @@ def torch_compile_kwargs(cfg: Mapping, *, default_fullgraph: bool = False) -> di
     return kwargs
 
 
-def maybe_mark_cudagraph_step_begin() -> None:
-    """Mark a training-step boundary for torch.compile CUDA graphs.
+def maybe_mark_cudagraph_step_begin(*, end_execution: bool = False) -> None:
+    """Mark a step boundary for torch.compile CUDA graphs.
 
     No-op on CPU-only runs and in environments where inductor cache setup fails
     (e.g. pytest-xdist workers without passwd entries).
+
+    Args:
+      end_execution: Also end the cudagraph tree's current execution path so the next compiled
+        call replays from the root. The step mark alone only permits a reset, which the tree takes
+        lazily when a call has no matching child; a step whose first block receives fresh eager
+        inputs continues the previous step's path. Steps with a varying number of compiled calls
+        (the sampling recycle schedule) therefore need the explicit end to replay rather than
+        record. Uses private inductor API and is skipped when unavailable.
     """
     if not torch.cuda.is_available():
         return
@@ -120,8 +128,24 @@ def maybe_mark_cudagraph_step_begin() -> None:
         return
     try:
         compiler.cudagraph_mark_step_begin()
-    except (AssertionError, ImportError, KeyError, OSError, RuntimeError):
+        if end_execution:
+            from torch._inductor.cudagraph_trees import get_container
+
+            manager = get_container(torch.cuda.current_device()).tree_manager
+            if (
+                manager is not None
+                and manager.current_node is not None
+                and not manager.in_recording
+                and not manager.in_warmup
+            ):
+                manager.try_end_curr_execution()
+    except (AssertionError, AttributeError, ImportError, KeyError, OSError, RuntimeError):
         return
+
+
+def compiled_with_cudagraphs(module: torch.nn.Module) -> bool:
+    """Whether ``module``'s trunk blocks were compiled in a CUDA-graph mode (see ``torch_compile_kwargs``)."""
+    return getattr(module, "_compile_kwargs", {}).get("mode") in ("reduce-overhead", "max-autotune")
 
 
 def _blob_path() -> str | None:
@@ -182,11 +206,11 @@ def save_compile_cache() -> None:
     logger.info(f"Saved torch.compile cache to {path}")
 
 
-def setup_run_compile(*, inference: bool = False) -> None:
+def setup_run_compile(*, inference: bool = False, coordinate_descent_tuning: bool = True) -> None:
     """Configure torch.compile for a run and warm its local Inductor cache."""
     global _COMPILE_GUIDANCE_SHOWN
     _COMPILE_GUIDANCE_SHOWN = False
-    torch._inductor.config.coordinate_descent_tuning = True
+    torch._inductor.config.coordinate_descent_tuning = coordinate_descent_tuning
     configure_inductor_cache_dir()
     if inference:
         blob = os.environ.get(_BLOB_ENV)

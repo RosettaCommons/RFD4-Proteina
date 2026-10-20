@@ -6,11 +6,17 @@ defaults:
   - _self_
   - inference_experiment: inference_on_user_inputs # Default for design
   - recycle_strategy: thinking_medium
+  - execution: default
 
 # NOTE: The experiment configs can override values specified in this config
 
+inference_backend: torch_compile # eager | torch_compile | bioir
+
 run_name_: inference
 verbose: false # Set true for routine warnings and detailed diagnostic output.
+# TODO: After uploading the unified Hero/AE bundle, set its HF repo and replace the revision below together.
+hf_ckpt_path: null  # Optional local model bundle or HF repo; overrides ckpt_path/name when set.
+hf_ckpt_revision: eadacbe46a126c6c3622618eb5ac987c654cdd20  # Pin a Hub commit for reproducible model/AE loading.
 
 out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to an external
                # path (e.g. /shared/runs/experiment_name). SLURM scripts set this
@@ -18,7 +24,7 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
 
 # Current SOTA; generation and regression tooling resolve the immutable checkpoint from here.
 # Regenerate the inference baselines when advancing it; use CLI overrides for one-off checkpoints.
-ckpt_name: chk_epoch_00000169_step_000000340000-ema.ckpt
+ckpt_name: rfd4-proteina-flow-release-2026-10-19.ckpt
 ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
 adapter_path: null  # Local PEFT adapter directory; load onto the exact base/AE pair used for fine-tuning.
 
@@ -26,12 +32,20 @@ adapter_path: null  # Local PEFT adapter directory; load onto the exact base/AE 
 # Determines whether to delete structure files for designs that fail this filter
 delete_failing_pre_oracle: True
 
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_z16_400k-ema.ckpt
+autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/rfd4-proteina-ae-release-2026-10-19.ckpt
 
 num_replicates: 1 # Number of times to replicate each example
 
 # Token counts to pad batches to for torch.compile. Multiples of 16; null disables.
 compile_lengths: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
+
+# Network settings that may change after training without touching the weights; null keeps the checkpoint's
+# value. Example: nn.torch_compile_mode=reduce-overhead nn.tri_mult_backend=cuequivariance
+nn:
+  torch_compile_mode: null
+  torch_compile_fullgraph: null
+  tri_mult_backend: null
+  attention_type: null
 
 precision: bf16-mixed
 
@@ -44,6 +58,12 @@ skip_existing: true # If true, skip examples whose output structure files alread
 save_chain_of_interest: false # If true, write per-design chain-of-interest CIFs (only needed for foldseek clustering).
 compress_outputs: false # Compress persistent structure outputs, including refolds and CIF trajectories.
 metrics_tags: [] # If specified, determines which metrics are computed during inference
+
+search:
+  checkpoints: null # Set checkpoint policies to enable beam search.
+  save_states: false
+  resume_from: null
+  resume_seed: null
 
 num_workers: 4  # Number of dataloader workers
 

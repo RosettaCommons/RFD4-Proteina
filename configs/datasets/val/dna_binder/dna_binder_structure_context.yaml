@@ -1,7 +1,11 @@
-# DNA-binder validation (50-80 AA): de novo protein design with the DNA chain
+# DNA-binder validation (120-150 AA): de novo protein design with the DNA chain
 # provided as full context (structure + sequence). 3 targets x 25 replicates.
 # Tags: design (inline geometry + % helicity), dna_refolding (oracle refold +
 # binder/backbone RMSDs), interchain_interactions (interaction metrics on the design).
+
+defaults:
+  - /recycle_strategy@generation: medium/front_loaded
+  - _self_
 
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset

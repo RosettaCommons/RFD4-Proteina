@@ -11,12 +11,15 @@ from atomworks.io.utils.atom_array_plus import insert_atoms
 from atomworks.io.utils.selection import get_annotation_categories
 from atomworks.io.utils.standard_annotations import STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
+from atomworks.ml.conditions import C_CRD
 from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen, remove_protein_terminal_oxygen
 from atomworks.ml.utils.condition import default_annotations_and_conditions_from_registry
 from biotite.structure import AtomArray
 
+from rfproteina.conditions import C_CRDGRP
 from rfproteina.utils.logging import RankedLogger
 from rfproteina.utils.standard_annotations import SA_SRC
+from rfproteina.utils.token_encoding import annotate_token_centers
 
 logger = RankedLogger(rank_zero_only=False)
 
@@ -30,6 +33,7 @@ DEFAULT_ATOM_LEVEL_ANNOTATIONS = {
     "b_factor",
     "occupancy",
     "charge",
+    "is_token_center",
 } | {sa.full_name for sa in STANDARD_ANNOTATIONS if (sa.n_body == 1 and sa.level == Level.ATOM)}
 
 # These are copied over from the input if present as residue-level annotations
@@ -49,11 +53,7 @@ ANNOTS_TO_KEEP = {
 
 
 def remove_terminal_oxygen_atoms(atom_array: AtomArray) -> AtomArray:
-    """Remove terminal oxygens that are not emitted by the atom37 decoder.
-
-    This normalizes structures before coordinate transfer or refolding comparisons,
-    since generated atom37 outputs omit protein ``OXT`` and nucleic-acid ``OP3``.
-    """
+    """Remove protein OXT and nucleic-acid terminal oxygens for refolding comparisons."""
     atom_array = remove_protein_terminal_oxygen(atom_array)
     atom_array = remove_nucleic_acid_terminal_oxygen(atom_array)
     return atom_array
@@ -155,8 +155,8 @@ def copy_generated_coordinates_to_input(
     Handles coordinate transfer for three cases:
 
     1. Single-atom tokens: Direct copy
-    2. Matching residues (seq-conditioned or same type): Atom-wise copy
-    3. Mismatched residues (design): Delete extra atoms, add missing atoms
+    2. Matching residue identities and inventories: Atom-wise copy
+    3. Different identities or inventories: Delete extra atoms, add missing atoms
 
     For case 3, preserves all residue-level annotations from input and creates
     new atoms, defaulting atom-level annotations where possible.
@@ -169,8 +169,10 @@ def copy_generated_coordinates_to_input(
 
     Returns:
       Updated atom array with coordinates from generated structure.
-      May have different atoms if residue types changed for non-seq-conditioned
-      tokens.
+      May have different atoms if residue identities or inventories changed.
+
+    Raises:
+      ValueError: The generated inventory omits coordinate-conditioned atoms.
     """
     ensure_annotations(generated_atom_array, "token_id")
     ensure_annotations(input_atom_array, "token_id")
@@ -212,24 +214,14 @@ def copy_generated_coordinates_to_input(
         if generated_res_name == input_res_name:
             input_atom_name_set = set(input_atom_names)
             generated_atom_name_set = set(generated_atom_names)
-            assert input_atom_name_set.issubset(generated_atom_name_set), (
-                f"Input atom names must be a subset of generated atom names for matching residues. "
-                f"Input token {token_id} has atoms {input_atom_names}, generated has atoms {generated_atom_names}."
-            )
-            if input_atom_name_set != generated_atom_name_set:
-                atom_names_diff = generated_atom_name_set - input_atom_name_set
-                logger.warning(
-                    f"Some generated atom names are not present in the input AtomArray: {atom_names_diff} "
-                    f"for residue type {input_res_name}. This may result from an RCSB PDB structure with missing atoms."
-                )
-            else:
+            if input_atom_name_set == generated_atom_name_set:
                 _copy_coords_by_atom_name(
                     generated_atom_array, generated_token_mask, input_atom_array, input_token_mask
                 )
                 continue
 
         # + ---------------------------------------------------------------------------------- +
-        # CASE 3: Residue name changed -> keep matching atoms; add/remove atoms as needed
+        # CASE 3: Residue identity or inventory changed -> reconcile atoms by name
         # + ---------------------------------------------------------------------------------- +
         missing_atoms = np.setdiff1d(generated_atom_names, input_atom_names)
         extra_atoms = np.setdiff1d(input_atom_names, generated_atom_names)
@@ -268,6 +260,8 @@ def copy_generated_coordinates_to_input(
 
             # Subset to missing atoms only
             template = template[np.isin(template.atom_name, missing_atoms)]
+            if "is_token_center" in input_atom_array.get_annotation_categories():
+                annotate_token_centers(template)
 
             # Spoof all annotations with defaults so they survive insert_atoms()
             if "occupancy" in get_annotation_categories(input_atom_array, n_body="all"):
@@ -288,6 +282,9 @@ def copy_generated_coordinates_to_input(
             )
 
             missing_atoms_and_indices.append((int(token_id), template))
+
+    if np.any(extra_atoms_mask & (C_CRD.mask(input_atom_array) | C_CRDGRP.is_internal(input_atom_array))):
+        raise ValueError("Predicted atom inventory omits coordinate-conditioned atoms; cannot preserve the input motif")
 
     # Delete the extra atoms...
     input_atom_array = input_atom_array[~extra_atoms_mask]
@@ -333,5 +330,7 @@ def copy_generated_coordinates_to_input(
 
     # Broadcast src_component to generated sidechain atoms
     input_atom_array = _broadcast_src_component_residue_wise(input_atom_array)
+    if "is_token_center" in input_atom_array.get_annotation_categories():
+        annotate_token_centers(input_atom_array)
 
     return input_atom_array

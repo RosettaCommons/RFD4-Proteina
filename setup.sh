@@ -16,7 +16,7 @@ for arg in "$@"; do
         --skip-weights) download_weights=false ;;
         -h|--help)
             echo "Usage: bash setup.sh [--native] [--skip-weights] | --venv"
-            echo "Install a native .venv and released checkpoints (about 8 GB)."
+            echo "Install a native .venv and the configured released model."
             echo "Use --skip-weights for an environment-only install."
             echo "Use --native to select native setup in an IPD checkout; --venv adds development tools."
             exit 0 ;;
@@ -36,8 +36,8 @@ if [[ "$download_weights" == true ]]; then
         printf '\nDATA_PATH=${PROJECT_ROOT}/data_path\n' >> "$rfproteina_env_file"
         export DATA_PATH="$PROJECT_ROOT/data_path"
     fi
-    PATH="$repo_root/.venv/bin:$PATH" bash "$repo_root/scripts/download_example_data.sh" "$DATA_PATH" --skip-of3
-    printf 'Released checkpoints ready in %s\n' "$DATA_PATH"
+    PATH="$repo_root/.venv/bin:$PATH" bash "$repo_root/scripts/download_assets.sh" "$DATA_PATH" --skip-of3
+    echo 'Configured released model is ready.'
 fi
 printf 'Next: source %q/.venv/bin/activate\n' "$repo_root"
 if [[ "$download_weights" == true ]]; then

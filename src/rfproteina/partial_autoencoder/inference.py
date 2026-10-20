@@ -159,7 +159,7 @@ def compute_all_atom_rmsd(predictions: list[tuple], model: AutoEncoder) -> list[
             output_dec=x_out,
             batch=x_in,
             loss_mask=loss_mask,
-        )["rmsd_no_align_a37_ang_justlog"]
+        )["rmsd_no_align_a37_ang"]
         vals += v.tolist()
     return vals
 
@@ -173,7 +173,7 @@ def compute_sec_rec_rate(predictions: list[tuple], model: AutoEncoder) -> list[f
             output_dec=x_out,
             batch=x_in,
             loss_mask=loss_mask,
-        )["seq_rec_rate_justlog"]
+        )["seq_rec_rate"]
         vals += v.tolist()
     return vals
 
@@ -187,7 +187,7 @@ def compute_kl_latent(predictions: list[tuple], model: AutoEncoder) -> list[floa
             log_scale=x_out["log_scale"],
             mask=compute_ae_supervision_mask(x_in),
             w=1.0,
-        )["kl_now_justlog"]
+        )["kl_now"]
         vals += v.tolist()
     return vals
 
@@ -228,11 +228,10 @@ def main() -> None:
     df_file_store = os.path.join(root_path, f"../results_{config_name}.csv")
     df_file_store_summary = os.path.join(root_path, f"../results_{config_name}_summary.csv")
 
-    # Get dataloader
-    dataloader = load_dataloader(cfg)
-
     # Model
     model = AutoEncoder.load_from_checkpoint(cfg.ckpt_file)
+
+    dataloader = load_dataloader(cfg)
 
     # Make predictions, store them together with inputs
     trainer = L.Trainer(

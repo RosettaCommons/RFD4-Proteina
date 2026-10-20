@@ -2,9 +2,9 @@
 # WARNING: Carries atomized tokens!
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/plinder@dataset
-  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
   - _self_
 
 probability: 1.0

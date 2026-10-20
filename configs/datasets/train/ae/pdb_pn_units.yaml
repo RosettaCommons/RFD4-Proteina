@@ -4,7 +4,7 @@ defaults:
   - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/pdb_pn_units@dataset
   - /datasets/sampling/af3_pdb_pn_units@_here_
-  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
   - _self_
 
 probability: 1.0

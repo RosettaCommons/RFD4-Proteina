@@ -24,7 +24,7 @@ class PairReprUpdate(torch.nn.Module):
         tri_mult_bias: bool = True,
         pair_write: str = "sum",
         checkpoint_tri_mult: bool = True,
-        tri_mult_backend: str = "torch",
+        tri_mult_backend: str = "cuequivariance",
     ) -> None:
         super().__init__()
         assert pair_write in PAIR_WRITE_MODES, f"Unknown pair_write {pair_write!r}; expected {PAIR_WRITE_MODES}"

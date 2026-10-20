@@ -1,7 +1,4 @@
 # @package generation
 
-# Low thinking: 60 model evaluations and 110 trunk passes.
-n_recycle_schedule: [[5, 1], [5, 1], [5, 2], [5, 3], [10, 3], [5, 3], [5, 2], [10, 1], [10, 1]]
-
-args:
-  nsteps: 60
+defaults:
+  - /recycle_strategy/low/front_loaded@_here_

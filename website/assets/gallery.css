@@ -1,0 +1,11 @@
+.paper-gallery{margin:22px auto 0;max-width:1240px}
+.render-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.molecule{position:relative;min-width:0;height:310px;outline-offset:2px;overflow:hidden;cursor:grab}
+.molecule:active{cursor:grabbing}
+.molecule canvas{display:block}
+:root[data-theme=dark] .molecule canvas{filter:brightness(1.45)}
+.molecule img{width:100%;height:100%;object-fit:contain}
+.molecule[data-ready=true] img{display:none}
+.molecule:focus-visible{outline:2px solid var(--mint);border-radius:8px}
+@media(max-width:980px){.render-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.molecule{height:320px}}
+@media(max-width:520px){.render-grid{gap:0}.molecule{height:215px}.paper-gallery{margin-top:20px}}

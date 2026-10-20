@@ -1,6 +1,6 @@
 # DISCO Figure 2C inputs
 
-These 77 annotated CIFs are the natural, non-natural, and multi-ligand targets
+The Figure 2C preset selects 77 annotated CIFs: natural, non-natural, and multi-ligand targets
 selected from Figure 2C of [*General Multimodal Protein Design Enables
 DNA-Encoding of Chemistry*](https://arxiv.org/html/2604.05181v1).
 The exact selection is `subset_to_keys` in
@@ -19,9 +19,9 @@ chain C with the standard atom name `BR`; the cation stays on chain A. The NAD
 inputs replace only the 44 NAD heavy-atom coordinates with the RCSB CCD ideal
 conformer. All atom names, conditions, and collapsed 100–155-residue protein
 expansion ranges are preserved. These are not the
-paper's fixed-length 150/200/250 sampling inputs; the corresponding fixed-length
-validation configs still use their separate external datasets. The smaller
-`disco_subset` config is also unchanged.
+paper's fixed-length 150/200/250 sampling inputs. Chlorophyll a and staurosporine
+are included here as lossless copies of the same source inputs for the existing
+12-target `disco_subset`; they are not added to the Figure 2C preset's selection.
 
 ## Chemistry caveats
 

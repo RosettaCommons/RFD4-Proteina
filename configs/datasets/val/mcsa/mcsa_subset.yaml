@@ -1,3 +1,7 @@
+defaults:
+  - /recycle_strategy@generation: medium/midpeak
+  - _self_
+
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/mcsa/mcsa_37

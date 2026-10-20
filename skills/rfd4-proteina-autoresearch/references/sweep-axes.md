@@ -65,15 +65,16 @@ Note that `search.reward` totals are not comparable across checkpoints or across
 schedule arms; compare arms on final-design metrics and pass rate (plus
 oracle-call count for the cost story), never on reward.
 
-## Diversity axes (generation)
+## Temperature and diversity axes (generation)
 
 | Axis | Config key | Default | Effect |
 | --- | --- | --- | --- |
-| Backbone noise | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | 0.3 | Structural diversity (higher = more diverse, often less designable) |
-| Sidechain/seq noise | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | 0.1 | Sequence diversity |
+| Backbone temperature | `generation.model.bb_ca.simulation_step_params.tsr_k` | 16 | Lower `k` raises temperature |
+| Sidechain/sequence temperature | `generation.model.local_latents.simulation_step_params.tsr_k` | 4 | Lower `k` raises temperature |
+| Backbone sharpening schedule | `generation.model.bb_ca.simulation_step_params.tsr_sigma` | 3 | Larger values apply sharpening earlier |
+| Latent sharpening schedule | `generation.model.local_latents.simulation_step_params.tsr_sigma` | 12 | Larger values apply sharpening earlier |
 
-Rough guide: `(0.1,0.1)` high designability, `(0.5,0.5)` natural UniProt-like,
-`(0.9,0.9)` maximum diversity.
+Prioritize `tsr_k`; use `tsr_sigma` as a secondary control.
 
 ## Input axes (rfd4-proteina-annotated-cif)
 

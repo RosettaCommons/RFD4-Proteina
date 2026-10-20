@@ -5,10 +5,10 @@ defaults:
   - _self_
 
 name: tcr_interfaces_distill
-data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/tcr_distill/tcr_distill_interfaces_train_2026_09_09.parquet
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_09_tcr_af2/examples.parquet
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/tcr_distill/data/blob_2026_09_09
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_09_tcr_af2/blob
   record_id_colname: path
 
   parser_args:
@@ -18,3 +18,4 @@ loader:
 columns_to_load:
   - example_id
   - path
+  - n_standard_amino_acid_residues

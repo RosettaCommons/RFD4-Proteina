@@ -1,7 +1,7 @@
 """H200 regression tests:
 
 1. SOTA training — 25 optimizer steps from random init; losses match baseline.
-2. LoRA fine-tuning — 25 steps from the released checkpoint; losses match baseline.
+2. LoRA fine-tuning — 25 steps from the release recipe's pretraining checkpoint; losses match baseline.
 3. AE training — 25 optimizer steps from random init; losses match baseline.
 4. Inference — generate one MCSA example; designed CIF matches baseline.
 5. Beam search — unindexed-motif search; per-design motif RMSDs match baseline.
@@ -34,11 +34,14 @@ from tests.e2e.helpers.gpu_e2e import (
     run_cmd_with_loss_watcher,
 )
 from tests.e2e.helpers.regression_baselines import (
+    AE_TRAINING_OVERRIDES,
     BASELINE_RMSD_ATOL_TIGHT,
     BASELINES_DIR,
     BEAM_SEARCH_OVERRIDES,
     BEAM_SEARCH_RMSD_ATOL,
+    FLOW_TRAINING_OVERRIDES,
     INFERENCE_OVERRIDES,
+    LORA_PRETRAIN_CKPT_PATH,
     LORA_TRAINING_OVERRIDES,
     LOSS_ATOL_MEAN,
     LOSS_ATOL_PER_STEP,
@@ -172,14 +175,7 @@ def test_sota_training_regression() -> None:
     _run_training(
         run_name="regression_sota_training",
         script="src/rfproteina/train.py",
-        overrides=[
-            # The live recipe, matching generate_e2e_baselines.py. A data change moves these
-            # losses on purpose: regenerate the baseline when it does.
-            "experiment=sota",
-            # No pretrain_ckpt_path: this smoke exercises the sota *recipe* from random init;
-            # baselines are anchored to random-init losses (seed=42).
-            "nn.use_torch_compile=false",
-        ],
+        overrides=FLOW_TRAINING_OVERRIDES,
         expected_losses=expected,
     )
 
@@ -188,10 +184,12 @@ def test_sota_training_regression() -> None:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_lora_training_regression() -> None:
-    """Compare 25 PEFT fine-tuning steps from the released checkpoint against recorded losses."""
+    """Compare LoRA training losses from the release recipe's base checkpoint."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
-    require_sota_ckpt()
+    assert (
+        LORA_PRETRAIN_CKPT_PATH is not None and LORA_PRETRAIN_CKPT_PATH.is_file()
+    ), f"Stage the release recipe's pretraining checkpoint: {LORA_PRETRAIN_CKPT_PATH}"
     _run_training(
         run_name="regression_lora_training",
         script="src/rfproteina/train.py",
@@ -204,7 +202,7 @@ def test_lora_training_regression() -> None:
 @pytest.mark.regression
 @pytest.mark.slow
 def test_ae_training_regression() -> None:
-    """Compare current AE losses from random initialization with periodic full GC."""
+    """Compare current-release AE losses from random initialization with periodic full GC."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
 
@@ -213,8 +211,7 @@ def test_ae_training_regression() -> None:
         run_name="regression_ae_training",
         script="src/rfproteina/partial_autoencoder/train.py",
         overrides=[
-            # The live recipe, matching generate_e2e_baselines.py.
-            "experiment_ae=ae_sota",
+            *AE_TRAINING_OVERRIDES,
             "dataloaders.train.dataloader_params.batch_size=2",
             # No compile for regression tests
             "nn_ae.use_torch_compile=false",

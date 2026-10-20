@@ -65,6 +65,17 @@ It documents all three ways to run inference, which are an in tree experiment co
 overrides, and a config file anywhere on the filesystem.
 :::
 
+## Recycling schedules
+
+Select `recycle_strategy=<low|medium|high>/<flat|midpeak|front_loaded>`; all use 60 steps and 120/180/300 total trunk passes respectively (including first passes).
+`thinking_low/medium/high` alias front-loaded presets; training validation uses each task's medium.
+
+| Task | Suggested shape |
+| --- | --- |
+| PPI, fixed/unfixed DNA | `front_loaded` |
+| MCSA, small-molecule binders (including DISCO) | `midpeak` |
+| Inverse folding | `flat` |
+
 ## Verbose output
 
 `verbose` controls many info/warning dumps. It defaults to `false` for generation
@@ -220,26 +231,28 @@ Four things to know.
 - Is yours broadly useful? Move the class to a tracked module under `src/rfproteina/transforms/`
   and open a PR.
 
-## Inference noise parameters
+## Inference temperature parameters
 
-The model uses **product space flow matching** with two flows, one for backbone Cα and one for
-sidechain latents. Stochasticity temperatures control diversity.
+Use TSR's `tsr_k` as the main temperature control, separately for backbone Cα coordinates
+and local sidechain/sequence latents. Higher `k` sharpens the distribution more strongly;
+lower `k` raises temperature. At `k=1`, TSR score sharpening is disabled, while the time grid
+and endpoint rules are unchanged. `tsr_sigma` is a secondary control: larger values make
+sharpening take effect earlier along the trajectory.
 
-| Parameter | Config key | Controls |
+| Parameter | Config key | Default |
 | --- | --- | --- |
-| Backbone temperature | `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Structural diversity |
-| Latent temperature | `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain and sequence diversity |
+| Backbone temperature | `generation.model.bb_ca.simulation_step_params.tsr_k` | 16 |
+| Latent temperature | `generation.model.local_latents.simulation_step_params.tsr_k` | 4 |
+| Backbone sharpening schedule | `generation.model.bb_ca.simulation_step_params.tsr_sigma` | 3 |
+| Latent sharpening schedule | `generation.model.local_latents.simulation_step_params.tsr_sigma` | 12 |
 
-Raising these buys diversity and can cost designability. The shipped defaults are `0.3` for
-backbone and `0.1` for latent. Roughly speaking, `(0.1, 0.1)` stays close to the MPNN baseline with
-high designability, `(0.5, 0.5)` shifts sequences toward the natural UniProt distribution, and
-`(0.9, 0.9)` maximizes diversity.
+`sc_scale_noise` remains configurable and defaults to 1.0 for both modalities.
 
 ```bash
 rfd4-generate \
-    inputs=data/benchmarks/monomer out_dir=./runs/diverse \
-    generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
-    generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
+    inputs=data/benchmarks/monomer out_dir=./runs/higher_temperature \
+    generation.model.bb_ca.simulation_step_params.tsr_k=8 \
+    generation.model.local_latents.simulation_step_params.tsr_k=2
 ```
 
 ## Sampling with TSR
@@ -299,6 +312,20 @@ The four you almost always set. Their defaults are rarely what you want for a re
 | `generation.args.nsteps` | Number of model evaluations. The default schedule places twice the step density in the final 20% of each modality's clock. | 60 |
 | `generation.args.save_trajectory_every` | Save a trajectory snapshot every N steps, 0 to turn it off | 0 |
 
+### Compilation and kernels
+
+`compile_lengths` decides whether the trunk blocks run compiled. The `nn.*` settings below belong to the
+saved network but may change after training without touching the weights; `null` keeps the checkpoint's
+value, and any other `nn.*` key is rejected.
+
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `compile_lengths` | Token counts (multiples of 16) that inputs are padded to so the compiled trunk sees static shapes. `null` runs the trunk eagerly. | 15 buckets from 128 to 1024 |
+| `nn.torch_compile_mode` | `torch.compile` mode of the trunk blocks. `reduce-overhead` replays CUDA graphs: the sampler restarts the graph tree before every trunk call, so the varying recycle depth replays recorded graphs instead of re-recording them. It pays off where a step is host-bound (short sequences, small batches). | null (checkpoint: default mode) |
+| `nn.torch_compile_fullgraph` | Whether each trunk block must compile as a single graph; `false` lets a block split at graph breaks. | null (released checkpoint: single graph per block) |
+| `nn.tri_mult_backend` | `torch` or `cuequivariance` triangle multiplication. The cuEquivariance kernel runs inside the compiled trunk for the shapes it supports; unsupported shapes warn once and run the `torch` formula, as does an eager trunk (`compile_lengths=null`). | null (keeps the checkpoint's value; `cuequivariance` when it saved none) |
+| `nn.attention_type` | `torch` (SDPA) or `cuequivariance` pair-biased attention. | null (keeps the checkpoint's value; `cuequivariance` when it saved none) |
+
 ### Metric guidance
 
 [Metric guidance](metric-guidance.md) backpropagates a differentiable metric and is currently wired
@@ -312,7 +339,7 @@ to standard full generation.
 
 ### Diversity and stochasticity
 
-See [Inference noise parameters](#inference-noise-parameters)
+See [Inference temperature parameters](#inference-temperature-parameters)
 above.
 
 ### Partial diffusion
@@ -341,7 +368,7 @@ sets both keys at once.
 
 | Issue | Solution |
 | --- | --- |
-| `DATA_PATH` or checkpoint not found | `export DATA_PATH=...` then run `./scripts/download_example_data.sh "$DATA_PATH"` |
+| `DATA_PATH` or checkpoint not found | `export DATA_PATH=...` then run `./scripts/download_assets.sh "$DATA_PATH"` |
 | `atomworks not found` | Activate your Python environment and reinstall with `python -m pip install -e .` |
 | `hydra not found` or import errors | Activate the venv with `source .venv/bin/activate` |
 | Hydra config errors | Use `=` not `--`. Write `inputs=file.cif`, not `--inputs file.cif` |

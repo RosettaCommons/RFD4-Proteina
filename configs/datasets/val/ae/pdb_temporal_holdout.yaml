@@ -1,0 +1,7 @@
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/ae_pdb_temporal_holdout_2026_10_04
+  num_replicates: 1
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    precompute_atom_permutation: true

@@ -2,8 +2,5 @@ defaults:
   - default
   - _self_
 
-grad_and_weight_analysis_callback:
-    _target_: rfproteina.utils.training_analysis.GradAndWeightAnalysisCallback
-
 skip_nan_grad_callback:
     _target_: rfproteina.utils.training_analysis.SkipNanGradCallback

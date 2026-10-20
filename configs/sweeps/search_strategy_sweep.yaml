@@ -24,7 +24,7 @@ sweep_overrides:
   - inference_experiment=inference_beam_example
 
 sweep:
-  # Backbone temperature
-  generation.model.bb_ca.simulation_step_params.sc_scale_noise:
-    - 0.2
-    - 0.3
+  # Backbone TSR temperature.
+  generation.model.bb_ca.simulation_step_params.tsr_k:
+    - 8.0
+    - 16.0

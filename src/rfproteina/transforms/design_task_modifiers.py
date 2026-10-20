@@ -1,10 +1,8 @@
-import ast
 from collections.abc import Sequence
 from typing import Any
 
 import networkx as nx
 import numpy as np
-import pandas as pd
 from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_POLYMER_RESIDUES, STANDARD_RNA
 from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
@@ -49,25 +47,28 @@ def add_rasa_condition(
     data: dict,
     p_add_rasa_condition: float = 0.0,
     probe_radius: float = 1.4,
-    atom_radii: str | np.ndarray = "ProtOr",
+    atom_radii: str | np.ndarray = "element",
     point_number: int = 100,
     p_include_non_ligand: float = 0.1,
-    rasa_max: float = 0.2,
+    rasa_max: float = 0.1,
 ) -> dict:
     """Add binned RASA conditioning to an example.
+
+    Atoms with nonfinite RASA remain unconditioned.
 
     Args:
         data: Example dictionary containing an atom array.
         p_add_rasa_condition: Probability of adding this condition at all. Defaults to 0.0.
         probe_radius: Van der Waals radius of the probe in Angstrom. Defaults to
             1.4 for water.
-        atom_radii: Atom radii used for the calculation. ``"ProtOr"`` excludes
-            hydrogens and some ions or charged atoms. Defaults to ``"ProtOr"``.
+        atom_radii: Atom radii used for the calculation. Defaults to ``"element"``,
+            matching training and supporting both protein and ligand atoms.
         point_number: Number of points sampled by the Shrake-Rupley algorithm.
             Defaults to 100.
         p_include_non_ligand: Probability of conditioning non-ligand atoms.
             Defaults to 0.1.
-        rasa_max: Maximum RASA value used to construct bins. Defaults to 0.2.
+        rasa_max: Inclusive upper boundary of the intermediate bin. Defaults to 0.1.
+            The buried/intermediate boundary is 0.02.
 
     Returns:
         The example dictionary with RASA annotations added to its atom array.
@@ -87,12 +88,16 @@ def add_rasa_condition(
     else:
         inclusion_mask = atom_array.is_ligand | atom_array.atomize
 
-    rasa = calculate_atomwise_rasa(atom_array, probe_radius, atom_radii, point_number, atom_filter=inclusion_mask)
+    rasa = calculate_atomwise_rasa(atom_array, probe_radius, atom_radii, point_number, sasa_mask=inclusion_mask)
 
-    # NOTE: Bin count is hard-coded at 3 to match the RasaEnum
-    bin_edges = np.linspace(0, rasa_max, 3)  # e.g., [0.0, 0.1, 0.2]
-    bins = np.digitize(rasa, bin_edges, right=False)  # bins in [0, 3] -- however, bin 0 would mean negative rasa!
-    if (bins == 0).any():
+    inclusion_mask = inclusion_mask & np.isfinite(rasa)
+
+    # Round to the SASA sampling grid; the upper threshold belongs to intermediate.
+    rasa = np.rint(rasa.astype(float) * point_number) / point_number
+    bin_edges = [0.0, 0.02, np.nextafter(rasa_max, np.inf)]
+    bins = np.zeros(len(rasa), dtype=int)
+    bins[inclusion_mask] = np.digitize(rasa[inclusion_mask], bin_edges, right=False)
+    if (bins[inclusion_mask] == 0).any():
         raise ValueError("Negative RASA value was detected. This indicates an error.")
 
     # Convert to RasaEnum
@@ -832,94 +837,66 @@ def _fraction_of_chain_retained(data: dict[str, Any], chain_iid: str) -> float:
 
 def add_cath_condition(
     data: dict[str, Any],
-    query_pn_unit_iid: str | None = None,
     p_add_cath_c_condition: float = 0.0,
     p_add_cath_ca_condition: float = 0.0,
     p_add_cath_cat_condition: float = 0.0,
     min_retained_chain_fraction: float = 0.75,
 ) -> dict[str, Any]:
-    """Add CATH annotation to the AtomArray.
+    """Independently sample each chain's training CATH conditioning from stored labels.
+
+    Unselected labels are cleared, including on skipped or ineligible examples. Stored
+    labels retain their domain boundaries. Eligible chains can receive different levels
+    in the same example. Inference does not use this modifier.
 
     Args:
-      data: Data dict containing atom_array.
-      query_pn_unit_iid: Chain ID to use for CATH annotation. Defaults to None, which will skip annotation
-        unless this is a single-chain structure.
-      p_add_cath_c_condition: Probability of adding CATH conditioning at C level only.
-      p_add_cath_ca_condition: Probability of adding CATH conditioning at C and A levels only.
-      p_add_cath_cat_condition: Probability of adding CATH conditioning at C, A, and T levels.
-      min_retained_chain_fraction: Skip CATH conditioning when the crop kept a smaller fraction of
-        the labelled chain's residues than this.
+      data: Data dict containing atom_array with optional per-residue CATH annotations.
+      p_add_cath_c_condition: Per-chain probability of revealing the class only.
+      p_add_cath_ca_condition: Per-chain probability of revealing class and architecture.
+      p_add_cath_cat_condition: Per-chain probability of revealing class, architecture and topology.
+      min_retained_chain_fraction: Minimum fraction of the labelled chain retained by cropping.
     """
-
-    sampled_value = np.random.rand()
+    atom_array = data["atom_array"]
+    stored = C_CATH.annotation(atom_array, default="generate").copy()
+    stored = np.where(np.isin(stored, ["?", ".", ""]), C_CATH.NULL_VALUE, stored)
+    cath_annot = C_CATH.default_annotation(atom_array)
+    C_CATH.set_annotation(atom_array, cath_annot)
+    task = data.setdefault("task", {})
+    for level in ("c", "ca", "cat"):
+        task[f"added_cath_{level}_condition"] = False
 
     p_skip = 1 - (p_add_cath_c_condition + p_add_cath_ca_condition + p_add_cath_cat_condition)
-    if sampled_value < p_skip:
+    if p_skip >= 1:
         return data
 
-    if "extra_info" not in data:
-        return data
+    for chain_iid in np.unique(atom_array.chain_iid):
+        chain_mask = atom_array.chain_iid == chain_iid
+        if not np.any(stored[chain_mask] != C_CATH.NULL_VALUE):
+            continue
+        if _fraction_of_chain_retained(data, chain_iid) < min_retained_chain_fraction:
+            continue
 
-    extra_info = data["extra_info"]
-    atom_array = data["atom_array"]
-
-    if query_pn_unit_iid is None:
-        # Only monomers allowed in this case
-        if len(np.unique(atom_array.chain_iid)) != 1:
-            return data
-
-        query_pn_unit_iid = atom_array.chain_iid[0]
-        cath_code_key = "cath_code"
-    else:
-        if query_pn_unit_iid not in np.unique(atom_array.chain_iid):
-            return data
-
-        if extra_info.get("pn_unit_1_iid") == query_pn_unit_iid:
-            cath_code_key = "pn_unit_1_cath_code"
-        elif extra_info.get("pn_unit_2_iid") == query_pn_unit_iid:
-            cath_code_key = "pn_unit_2_cath_code"
+        sampled_value = np.random.rand()
+        if sampled_value < p_skip:
+            continue
+        if sampled_value < p_skip + p_add_cath_c_condition:
+            n_levels = 1
+        elif sampled_value < p_skip + p_add_cath_c_condition + p_add_cath_ca_condition:
+            n_levels = 2
         else:
-            return data
+            n_levels = 3
 
-    if cath_code_key not in extra_info:
-        return data
+        for cath_code in np.unique(stored[chain_mask]):
+            if cath_code == C_CATH.NULL_VALUE:
+                continue
+            code_parts = cath_code.split(".")
+            if len(code_parts) != 4:
+                raise ValueError(f"Incomplete or invalid CATH code: {cath_code}")
+            code_parts[n_levels:] = ["x"] * (4 - n_levels)
+            cath_annot[chain_mask & (stored == cath_code)] = ".".join(code_parts)
+            revealed_depth = sum(part != "x" for part in code_parts)
+            if revealed_depth:
+                level = ("c", "ca", "cat")[revealed_depth - 1]
+                task[f"added_cath_{level}_condition"] = True
 
-    if pd.isna(extra_info[cath_code_key]):
-        return data
-
-    # Too little of the chain survived for its fold label to describe what remains.
-    if _fraction_of_chain_retained(data, query_pn_unit_iid) < min_retained_chain_fraction:
-        return data
-
-    cath_code = ast.literal_eval(extra_info[cath_code_key])
-
-    # Sample only one cath annotation
-    if isinstance(cath_code, list):
-        cath_code = np.random.choice(cath_code)
-
-    cath_code_split = cath_code.split(".")
-
-    if len(cath_code_split) != 4:
-        raise ValueError(f"Incomplete or invalid CATH code: {cath_code}")
-
-    if sampled_value < p_skip + p_add_cath_c_condition:
-        cath_code_split[1] = "x"
-        cath_code_split[2] = "x"
-        cath_code_split[3] = "x"
-        data["task"]["added_cath_c_condition"] = True
-    elif sampled_value < p_skip + p_add_cath_c_condition + p_add_cath_ca_condition:
-        cath_code_split[2] = "x"
-        cath_code_split[3] = "x"
-        data["task"]["added_cath_ca_condition"] = True
-    else:
-        cath_code_split[3] = "x"
-        data["task"]["added_cath_cat_condition"] = True
-
-    cath_code_output = ".".join(cath_code_split)
-
-    # Apply only to the specified chain
-    cath_annot = C_CATH.default_annotation(atom_array)
-    cath_annot[atom_array.chain_iid == query_pn_unit_iid] = cath_code_output
     C_CATH.set_annotation(atom_array, cath_annot)
-
     return data

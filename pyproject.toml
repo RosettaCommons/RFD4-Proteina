@@ -7,8 +7,8 @@ license-files = ["LICENSE"]
 license = "BSD-3-Clause"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    # AtomWorks 3 APIs; Biotite must match AtomWorks exactly.
-    "atomworks[ml,openbabel]==3.0.0",
+    # AtomWorks 3 APIs from PyPI; Biotite must match AtomWorks exactly.
+    "atomworks[ml,openbabel]==3.0.4",
     "biotite==1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
@@ -16,6 +16,9 @@ dependencies = [
     "environs>=11.0.0,<12",
     "typer>=0.20.0,<0.26",
     "fire",
+    # Model serialization and Hub downloads
+    "huggingface-hub>=1.0,<2",
+    "safetensors>=0.4,<1",
     # Logging
     "wandb>=0.15.10,<1",
     "rich>=13.9.4",
@@ -34,6 +37,7 @@ dependencies = [
     # Data / numerics
     "pandas>=2,<3",
     "zstandard",
+    "pyyaml>=6.0",  # Packaged RFD4 residue vocabulary
     "toolz",
     "matplotlib",
     "networkx",
@@ -44,7 +48,7 @@ dependencies = [
     "boto3>=1.34,<2",
     # Validation metrics
     "posebusters",
-    "tmol==0.1.59",
+    "tmol==0.1.64",
     "anarcii>=2.0.8,<3",
     "assertpy",
 ]
@@ -63,22 +67,24 @@ docs = [
 ]
 # Select the metrics dependencies matching the CUDA stack.
 metrics-cuda12 = [
-    "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-ops-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu12>=0.12.0,<0.13; sys_platform == 'linux'",
+    "tmol[cu12]==0.1.64; sys_platform == 'linux'",
+    "cuequivariance==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-torch==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-cu12==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12==0.13.0; sys_platform == 'linux'",
 ]
 metrics-cuda13 = [
+    "tmol[cu13]==0.1.64; sys_platform == 'linux'",
     # PyTorch's CuTe RMSNorm kernels require both CUTLASS DSL and TVM FFI.
     "apache-tvm-ffi==0.1.14.post0; sys_platform == 'linux'",
     "cuda-core==1.0.1; sys_platform == 'linux'",
     "cuda-python==13.3.1; sys_platform == 'linux'",
     "nvidia-cutlass-dsl==4.5.2; sys_platform == 'linux'",
     "nvidia-cutlass-dsl-libs-base==4.5.2; sys_platform == 'linux'",
-    "cuequivariance>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-torch>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-ops-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
-    "cuequivariance-ops-torch-cu13>=0.12.0,<0.13; sys_platform == 'linux'",
+    "cuequivariance==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-torch==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-cu13==0.13.0; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu13==0.13.0; sys_platform == 'linux'",
 ]
 dev = [
     # Linters & formatters
@@ -115,22 +121,6 @@ conflicts = [
     ],
 ]
 
-# CUDA wheels are selected explicitly; other dependencies resolve from PyPI.
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu132"
-explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch" }
-
-[tool.uv.extra-build-dependencies]
-tmol = [{ requirement = "torch", match-runtime = true }]
-
-[tool.uv.config-settings-package.tmol]
-"build.tool-args" = "-j8"
-"cmake.define.TMOL_NVCC_THREADS" = "1"
-
 # Pytest
 [tool.pytest.ini_options]
 # Register the markers used across the suite so `-m` filters (and any future
@@ -150,6 +140,9 @@ markers = [
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build]
 dev-mode-dirs = ["src", "lib"]
@@ -200,7 +193,6 @@ target-version = "py310"
 exclude = [
     "docs/examples/*.py",  # Jupytext notebook sources
     "*.ipynb",  # notebooks are not linted or formatted
-    "lib/atomworks",  # separate repo, pinned as a submodule
     ".bzr",
     ".direnv",
     ".eggs",

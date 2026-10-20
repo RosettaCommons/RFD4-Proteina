@@ -1,5 +1,11 @@
 # Pre-oracle filters: only forward passing designs to the oracle. Tag-gated like other Metrics.
-# NOTE: When benchmarking per-example, disable every pre-oracle filter -- see docs/workflow/metrics.md
+# Rejected designs remain zero-pass attempts in per-example summaries.
+
+unknown_residue_filter:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    amino_acid_composition.n_generated_unknown_residues:
+      max: 0
 
 # Sequence conditioning is a hard constraint, so a design that breaks it is almost never worth folding.
 # NOTE: Filters gate on the same tags as the metric they threshold -- a filter whose metric

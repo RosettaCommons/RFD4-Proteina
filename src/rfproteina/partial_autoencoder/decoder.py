@@ -1,13 +1,16 @@
 import einops
 import torch
 
+from rfproteina.datapipes.schema.proteina import NUM_TOKEN_TYPES, TokenType
+from rfproteina.encoding import RESIDUES_BY_TOKEN_TYPE, TOKEN_TYPE_IDS, UNIFIED_ATOM37_ENCODING
 from rfproteina.model_masks import compute_ae_masks
+from rfproteina.nn.execution import run_trunk
 from rfproteina.nn.feature_factory import FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import set_norm_type
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
-from rfproteina.utils.constants import UNIFIED_RESTYPE_ATOM37_MASK
+from rfproteina.utils.constants import _build_unified_atom37_mask
 
 
 def get_allowed_residue_type_mask(device: torch.device | None = None) -> torch.Tensor:
@@ -19,19 +22,20 @@ def get_allowed_residue_type_mask(device: torch.device | None = None) -> torch.T
     - 2: DNA
     - 3: atomized
     - 4: unknown
+    - 5: glycan
+    - 6: NCAA/PTM
     """
-    allowed = torch.zeros((5, 33), dtype=torch.bool, device=device)
-    allowed[0, 1:22] = True  # 20 AA + UNK
-    allowed[1, 22:27] = True  # RNA + unknown RNA
-    allowed[2, 27:32] = True  # DNA + unknown DNA
-    allowed[3, 32] = True  # atomized token only
-    allowed[4, 1:33] = True  # unknown token-type: allow any non-mask class
+    allowed = torch.zeros((NUM_TOKEN_TYPES, UNIFIED_ATOM37_ENCODING.n_tokens), dtype=torch.bool, device=device)
+    for group, names in RESIDUES_BY_TOKEN_TYPE.items():
+        if TOKEN_TYPE_IDS[group] != TokenType.UNKNOWN:
+            allowed[TOKEN_TYPE_IDS[group], [UNIFIED_ATOM37_ENCODING.token_to_idx[name] for name in names]] = True
+    allowed[TokenType.UNKNOWN] = allowed.any(dim=0)
     return allowed
 
 
 def get_atom_mask(device: torch.device | None = None) -> torch.Tensor:
-    """Return the unified residue-type Atom37 mask with shape ``[33, 37]``."""
-    return torch.from_numpy(UNIFIED_RESTYPE_ATOM37_MASK).to(dtype=torch.bool, device=device)
+    """Return legal residue-by-Atom37 slots; export applies chain-dependent cleanup."""
+    return torch.from_numpy(_build_unified_atom37_mask()).to(dtype=torch.bool, device=device)
 
 
 class DecoderTransformer(torch.nn.Module):
@@ -47,8 +51,16 @@ class DecoderTransformer(torch.nn.Module):
         # Set the process-global norm type before building submodules (make_norm reads it).
         set_norm_type(kwargs["decoder"].get("norm_type"))
         self.n_residue_types = kwargs.get("n_residue_types")
-        if self.n_residue_types != 33:
-            raise ValueError(f"Autoencoder requires the 33-class unified residue encoding, got {self.n_residue_types}")
+        if self.n_residue_types != UNIFIED_ATOM37_ENCODING.n_tokens:
+            raise ValueError(
+                f"AE vocabulary requires {UNIFIED_ATOM37_ENCODING.n_tokens} classes, " f"got {self.n_residue_types}"
+            )
+        self.register_buffer(
+            "allowed_residue_types",
+            get_allowed_residue_type_mask(),
+            persistent=False,
+        )
+        self.register_buffer("residue_atom_mask", get_atom_mask(), persistent=False)
 
         self.nlayers = kwargs["decoder"]["nlayers"]
         self.token_dim = kwargs["decoder"]["token_dim"]
@@ -141,6 +153,16 @@ class DecoderTransformer(torch.nn.Module):
             torch.nn.LayerNorm(self.token_dim),
             torch.nn.Linear(self.token_dim, (37 * 3), bias=False),
         )
+        self.atom_presence_linear = torch.nn.Sequential(
+            torch.nn.LayerNorm(self.token_dim),
+            torch.nn.Linear(self.token_dim, 37, bias=False),
+        )
+
+    def train(self, mode: bool = True) -> "DecoderTransformer":
+        """Discard inference copies when returning to native training."""
+        if mode:
+            self.__dict__.pop("_execution", None)
+        return super().train(mode)
 
     def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
@@ -157,11 +179,12 @@ class DecoderTransformer(torch.nn.Module):
             Dictionary:
             {
                 "coors_nm": all atom coordinates, shape [b, n, 37, 3]
-                "seq_logits": logits for the residue types, shape [b, n, 33]
+                "seq_logits": logits for the residue types, shape [b, n, n_residue_types]
                 "emit_mask": boolean [b, n]
                 "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                    with integer values {0, ..., 32}
-                "atom_mask": boolean [b, n, 37], atom37 mask corresponding to aatype_max
+                    with integer values {0, ..., n_residue_types - 1}
+                "atom_presence_logits": presence logits [b, n, 37]
+                "atom_mask": predicted presence within aatype_max's allowed slots [b, n, 37]
             }
         """
         ca_coors_nm = input["ca_coors_nm"]  # [b, n, 3]
@@ -179,18 +202,13 @@ class DecoderTransformer(torch.nn.Module):
 
         pair_rep = self.pair_rep_factory(input) if self.pair_rep_factory is not None else None
 
-        # Run trunk
-        for i in range(self.nlayers):
-            seqs = self.transformer_layers[i](seqs, pair_rep, c, attn_mask)  # [b, n, token_dim]
-
-            if self.update_pair_repr and i < self.nlayers - 1 and self.pair_update_layers[i] is not None:
-                pair_rep = self.pair_update_layers[i](seqs, pair_rep, attn_mask)  # [b, n, n, pair_dim]
+        seqs, pair_rep = run_trunk(self, seqs, pair_rep, c, attn_mask)
 
         # Get logits
-        logits_out = self.logit_linear(seqs) * emit_mask[..., None]  # [b, n, 33]
+        logits_out = self.logit_linear(seqs) * emit_mask[..., None]  # [b, n, n_residue_types]
 
         if "token_type" in input:
-            allowed_res_types = get_allowed_residue_type_mask(device=logits_out.device)
+            allowed_res_types = self.allowed_residue_types
             token_type = input["token_type"].long()
             max_token_type = allowed_res_types.shape[0] - 1
             if not torch.compiler.is_compiling():
@@ -218,15 +236,18 @@ class DecoderTransformer(torch.nn.Module):
         aatype_max = torch.argmax(logits_out, dim=-1)  # [b, n]
         aatype_max = aatype_max * emit_mask  # [b, n]
 
-        aa_a37_mask = get_atom_mask(device=logits_out.device)  # [33, 37]
-        atom_mask = aa_a37_mask[aatype_max, :]  # [b, n, 37] boolean
-        atom_mask = atom_mask * emit_mask[..., None]  # [b, n, 37] boolean
+        atom_mask = self.residue_atom_mask[aatype_max] & emit_mask[..., None]
+        atom_presence_logits = self.atom_presence_linear(seqs)
+        predicted_mask = atom_presence_logits > 0
+        predicted_mask[..., 1] = True  # Every emitted token requires its reference atom.
+        atom_mask = atom_mask & predicted_mask
 
         output = {
             "coors_nm": coors_a37_nm,  # [b, n, 37, 3]
-            "seq_logits": logits_out,  # [b, n, 33]
+            "seq_logits": logits_out,  # [b, n, n_residue_types]
             "emit_mask": emit_mask,  # [b, n]
             "aatype_max": aatype_max,  # [b, n]
             "atom_mask": atom_mask,  # [b, n, 37]
         }
+        output["atom_presence_logits"] = atom_presence_logits
         return output

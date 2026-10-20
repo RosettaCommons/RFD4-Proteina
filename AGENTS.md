@@ -1,203 +1,90 @@
 # AGENTS.md
 
-This is the working guide for AI coding agents in RFD4-Proteína. Keep it concise and update it when the repository's commands, layout, or invariants change. The README and `docs/` are the user-facing source of truth; this file explains how to work safely in the codebase.
+Quick guide for agents running RFD4-Proteína inference, search, and evaluation.
+Use the workflow docs and task skills for details; do not duplicate model internals here.
 
-## Scope and repository boundaries
+## Work safely
 
-- The repository is a standalone Python project with a `src/` layout. Run commands from the repository root (the directory containing `.project-root` and `pyproject.toml`).
-- Preserve existing user changes. Check `git status --short` before editing and do not discard, stage, commit, stash, reset, or switch branches unless the user explicitly asks.
-- Generated runs, checkpoints, caches, downloaded datasets, and local environment files do not belong in source changes.
+- Run from the repository root (`.project-root` and `pyproject.toml`).
+- Check `git status --short` before edits and preserve user changes. Do not discard, stage,
+  commit, stash, reset, or switch branches without explicit instruction.
+- Keep generated runs, checkpoints, datasets, caches, credentials, and local environment
+  files out of source changes. Do not publish packages or public releases without authorization.
+- Preserve existing outputs. Record inputs, effective config, code/checkpoint identity,
+  seed, output directory, and job IDs without recording secrets.
 
-## Setup and environment
+## Choose the workflow
 
-The distribution name is `rfd4-proteina`; the public Python entry point is
-`import rfd4_proteina as rfd4`. This public module exposes the implementation
-currently in `rfproteina`; packaging does not rename checkpoint or Hydra targets.
-See `docs/packaging.md` for release validation.
-Publishing is a separate release action; do not upload packages without explicit authorization.
+Read the relevant skill under `skills/` before acting:
 
-RFD4-Proteína uses Python 3.12. Install from the repository root:
+- `rfd4-proteina-setup`: environment, checkpoint availability, and preflight.
+- `rfd4-proteina-annotated-cif`: creating or editing conditioned structure inputs.
+- `rfd4-proteina-generate`: generation, partial diffusion, and inverse folding.
+- `rfd4-proteina-search`: reward-guided branching and selection.
+- `rfd4-proteina-evaluate`: refolding, metrics, aggregation, and structural clustering.
 
+Start with `docs/quickstart.rst` and `docs/installation.rst`; task semantics are in
+`docs/workflow/inputs.md`, `running.md`, `search.md`, and `metrics.md`.
+
+## Environment and smoke test
+
+Use the existing configured environment. For a new installation, follow the setup skill;
+`make setup` can use the internal cluster installer, while `bash setup.sh --native`
+explicitly selects a native `.venv`. Do not reinstall a working environment unnecessarily.
+
+Local runs read `.env.local` (fallback `.env`); named clusters read `.env.<cluster>`.
+Files are not merged; exported settings take precedence. `DATA_PATH` holds native
+checkpoints and optional assets; HF bundles use `HF_HOME`.
+
+Before a large run, pass the setup preflight and generate one representative example:
 ```bash
-make setup
 source .venv/bin/activate
-rfd4-generate inputs=data/benchmarks/monomer out_dir=./runs/smoke
+bash skills/rfd4-proteina-setup/scripts/preflight.sh
+rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif num_replicates=1 out_dir=./runs/smoke
 ```
+Use a fresh output directory. For the actual task, test its longest input at batch size 1
+and verify required oracle metrics before scaling.
 
-`make setup` installs a native `.venv` from `pyproject.toml` (Linux x86_64,
-CUDA 13), including AtomWorks and the matching metrics extras. Setup creates
-`.env.local` from its example only if neither `.env.local` nor `.env` exists;
-it preserves existing settings and does not edit shell startup files. Setup downloads
-the released checkpoint pair to `DATA_PATH`, defaulting to `./data_path` and
-adding that default to the active environment file when no path is configured.
-Existing checkpoints are reused. `bash setup.sh --skip-weights` installs only
-the environment; `bash setup.sh --venv` adds development tools.
+## Configuration and inputs
 
-Runtime configuration:
+- `rfd4-generate` and `rfd4-evaluate` use Hydra `key=value` arguments, not `--key value`.
+  Their roots are `configs/inference.yaml` and `configs/evaluate.yaml`; search also uses generation.
+- `configs/inference.yaml` selects the release checkpoint pair. A non-null `hf_ckpt_path`
+  overrides native checkpoint paths; preserve the matching AE and pin HF revisions.
+- Use `configs/inference_experiment/TEMPLATE.yaml` for reusable inference configs.
+  Preserve defaults ordering and `_self_` precedence; verify composition after edits.
+- Prefer benchmark examples or validated annotated CIFs. Preserve bonds, annotations,
+  charges, and intended conditioning; do not silently repair incomplete residues or atomize inputs.
+  Check designed/fixed regions and chain of interest. Fixing sidechains also fixes identity;
+  use backbone-only conditioning when redesigning sequence.
+- For search, explicitly select metric providers needed by rewards and pass criteria.
+- Keep requested sampling, recycle, conditioning, and metric settings explicit.
+  Do not substitute another preset just to make a run succeed.
+- Select `recycle_strategy` from the [task schedule table](docs/workflow/running.md#recycling-schedules).
+  Use that task's medium preset unless another budget was requested: front-loaded for PPI/DNA, midpeak for MCSA/small molecules, flat for inverse folding. `thinking_*` alias front-loaded presets, not task-aware defaults.
 
-- Installed commands read `.env.local` (falling back to `.env`) for unset/local `CLUSTER`, or `.env.<cluster>` for named clusters. Files are not merged.
-- Exported shell settings take precedence over environment-file values.
-- `DATA_PATH` is the root for released checkpoints and example/model data.
-- Per-user SLURM settings live in ignored `scripts/.user_info_<cluster>` files; `scripts/user_info.example` is the template.
-- Never commit secrets, credentials, or machine-specific path overrides.
+## Scheduler submissions
 
-Use `rfd4-generate`, `rfd4-evaluate`, `rfd4-train`, and `rfd4-train-ae` from the
-activated environment, or by an explicit path such as `.venv/bin/rfd4-generate`.
-Batch jobs use the launchers under `scripts/`. Their cluster argument defaults to
-`$CLUSTER` or `local`; a local scheduler profile is optional. Unconfigured partition
-and account directives are omitted.
+- Read the launcher and `scripts/.user_info_<cluster>` before submitting. Use
+  `scripts/launch_generate.sh` or `scripts/launch_evaluate.sh` for batch inference/evaluation.
+- Preserve `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `GRES`, `RUNTIME`, `MEM`,
+  `CPUS_PER_TASK`, and the exact `SLURM_EXTRA_OPTIONS` unless explicitly overridden.
+  Explicit supported user launcher flags take precedence; never silently change QoS or priority.
+- State cluster, partition, account, GPU allocation, time limit, and extra options before
+  submission. Inspect generated SBATCH directives when available before submitting.
 
-## Launching jobs and preserving scheduler intent
+## Verify results
 
-Scheduler choices belong to the user. Never silently replace or “improve” a requested partition, account, QoS, priority, reservation, constraint, GPU type, time limit, or other SLURM option.
-
-- Read the selected `scripts/.user_info_<cluster>` and the relevant launcher before constructing a command. Treat profile values as intentional.
-- Preserve `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `GRES`, `RUNTIME`, `MEM`, `CPUS_PER_TASK`, and `SLURM_EXTRA_OPTIONS` unless the user explicitly supplies an override.
-- An explicit user-provided launcher flag has precedence over the profile. Do not add `--partition`, `--gres`, `--time`, `--mem`, or `--cpus-per-task` merely because another value seems faster or more available.
-- Priority/QoS-like settings have no common dedicated launcher flag; profiles pass them through `SLURM_EXTRA_OPTIONS`. Preserve that string exactly and do not append a competing directive.
-- `launch_train_latents.sh` and `launch_train_ae.sh` take scheduler resources from the profile. `launch_generate.sh`, `launch_evaluate.sh`, and `launch_sweep.sh` support explicit resource flags after loading the profile. Read other launchers individually; do not assume identical precedence.
-- Before a real submission, state the resolved cluster, partition, account, GPU allocation, time limit, and extra SLURM options. If the generated SBATCH file is available before submission, inspect its directives.
-
-## Validation commands
-
-Prefer the smallest relevant validation first. CPU, GPU, regression, cluster, and very-slow tests have different environment requirements.
-
-```bash
-# Targeted tests
-pytest tests/path/to/test_file.py -q
-pytest tests/path/to/test_file.py::test_name -q
-
-# Local suite through the repository's libstdc++ workaround
-make test
-
-# CI-equivalent CPU marker selection (CI runs this inside the configured image)
-pytest -m "not benchmark and not very_slow and not gpu and not regression" tests
-
-# Check formatting and lint without modifying files
-ruff format --check .
-ruff check .
-
-# Apply the repository formatter/linter fixes
-make format
-```
-
-`make format` changes files; review its diff and avoid formatting unrelated user work.
-
-GPU/regression tests require the appropriate image, GPU, data paths, and often `SOTA_CKPT_PATH`; use the markers and portable runner in `src/script_utils/run_gpu_regression_tests.py`. Do not weaken regression assertions or regenerate baselines merely to obtain a passing run. First determine whether behavior, expectations, or the environment is wrong; baseline changes require explicit user intent.
-
-Documentation is Sphinx/MyST:
-
-```bash
-uv pip install -r docs/docs_requirements.txt
-make -C docs html
-```
-
-Treat Sphinx warnings, broken references, and failed autodoc imports as failures to investigate.
-
-## Main entry points and configuration
-
-Most public workflows are Hydra applications. Their CLI arguments use Hydra override syntax (`key=value`, `group=choice`, `+new_key=value` when appropriate). External evaluation is an `argparse` CLI.
-
-| Workflow | Python entry point | Base config | Cluster launcher |
-| --- | --- | --- | --- |
-| Latent model training | `src/rfproteina/train.py` | `configs/training_proteina.yaml` | `scripts/launch_train_latents.sh` |
-| Autoencoder training | `src/rfproteina/partial_autoencoder/train.py` | `configs/training_ae.yaml` | `scripts/launch_train_ae.sh` |
-| Generation/search | `src/rfproteina/generate.py` | `configs/inference.yaml` | `scripts/launch_generate.sh` |
-| Standalone evaluation | `src/rfproteina/evaluate.py` | `configs/evaluate.yaml` | `scripts/launch_evaluate.sh` |
-
-Other useful launchers include `launch_infer_ae.sh` and `launch_sweep.sh`. Read a launcher's header before changing or invoking it; launchers resolve Hydra configs on the host, then submit container-aware SLURM jobs.
-
-Hydra conventions:
-
-- `configs/training_proteina.yaml` and `configs/training_ae.yaml` are composition roots, not experiment snapshots.
-- Only release aliases and maintained tutorials live under `configs/experiment/` and `configs/experiment_ae/`; dated release recipes live under
-  `configs/releases/flow/` and `configs/releases/ae/`.
-- User-facing inference composition starts at `configs/inference.yaml`, usually via `configs/inference_experiment/`.
-- Reusable groups live under `configs/nn*`, `datasets`, `dataloaders`, `design_tasks`, `generation`, `guidance`, `metrics`, and `callbacks`.
-- Blob-backed sources share `configs/datasets/sources/backend_blob.yaml`; keep storage/loader defaults there and source-specific paths, filters, columns, and sampling policies in their respective configs.
-- PDB source configs inherit named filters and additive column groups from `configs/datasets/sources/pdb_common.yaml`; filters override by key and use `null` to disable an inherited rule.
-- Preserve defaults-list ordering. `_self_` placement controls precedence and is intentional.
-- Required values use `???`; do not replace them with machine-specific defaults.
-- Use OmegaConf/Hydra resolvers and environment interpolation instead of hard-coded cluster paths.
-- Search uses a flat `search.checkpoints` mapping of positive integer steps; each checkpoint explicitly lists its metric providers, rewards, and scoring source. Metric definitions stay under `metrics`; search does not infer dependencies.
-- Checkpoint `continuation_criteria` keeps the entire selected beam if any selected candidate passes, using explicitly listed metrics. It is only valid before the schedule end; stopped inputs retain saved rollouts.
-- Novelty is an explicitly selected Foldseek metric gated by continuation criteria. Final pass criteria can publish designed chains via `archive_dir`; archives are shared, append-only, and scoped to one target/pass definition.
-- Checkpoint `n_branch` overrides the global branch count for its incoming interval; omitted counts use the global default.
-- The schedule-end search checkpoint is optional; without it, each surviving beam finishes once without branching or selection, then runs ordinary output metrics.
-- When adding a config option, trace every composition path that needs it and add a config-composition test when precedence or compatibility matters.
-
-## Architecture map
-
-### Data and conditioning
-
-`src/rfproteina/datapipes/pipeline.py` assembles AtomWorks transforms into training and inference pipelines. AtomWorks parses structures into Biotite `AtomArray` objects; transforms annotate, crop, atomize, condition, encode, and finally convert samples to tensors. RFD4-Proteína-specific transforms live in `src/rfproteina/transforms/`.
-
-Important invariants:
-
-- A token may represent a polymer residue or one atomized atom; atom and token axes are not interchangeable.
-- Atom37 tensors, token annotations, bond features, masks, and loss weights must stay aligned after cropping, atomization, and unindexing.
-- Conditioning constants and enums are centralized in `src/rfproteina/conditions.py`; condition resolution and input parsing live in `utils/condition_resolution.py` and `inference_utils/`.
-- `ValidateBatchInvariants` and pipeline tests encode cross-feature assumptions. Update them deliberately when the schema changes.
-- New coordinate groups are materialized just before unindexing. `C_CRDGRP.set_annotation` preserves complete saved `C_INTCRD` or raises. Training edits use the default; reserve `on_internal_coord_mismatch="clear"` for inference and input preparation that intentionally edit saved targets. Modify `C_CRD` before changing group 0, and remap independent inputs before concatenation.
-- Structure inputs and outputs are primarily mmCIF. Preserve annotations and bonds when transforming `AtomArray` objects.
-- Use `utils/structure_files.py` for codec-independent discovery, IDs, and existing-path lookup. Reject ambiguous sibling encodings and preserve dots in IDs.
-- Generation and standalone evaluation default to plain CIF; training validation defaults to Zstd level 3. Override with `compress_outputs=true/false`. Use AtomWorks IO directly; never rename compressed bytes to `.cif`.
-
-### Models and training
-
-`src/rfproteina/proteina.py` defines the Lightning `Proteina` module. It combines:
-
-- the partial autoencoder loaded from `src/rfproteina/partial_autoencoder/`;
-- `ProductSpaceFlowMatcher` from `flow_matching/`;
-- `LocalLatentsTransformer` from `nn/`;
-- metric, search, reward, and differentiable-guidance integration used during validation/inference.
-
-`src/rfproteina/train.py` constructs datasets/loaders, the model, callbacks, weight-loading/freezing policies, and the Lightning trainer. Optimization is manual inside `Proteina`; changes to accumulation, clipping, Muon/Adam stepping, EMA, or checkpoint resume behavior require focused tests.
-
-The autoencoder has its own training and inference paths under `partial_autoencoder/`. Keep latent dimensionality and checkpoint compatibility explicit: the latent model derives dimensions from the loaded autoencoder and supports deliberate weight-loading policies in `utils/weights.py`.
-
-### Generation, search, and evaluation
-
-`verbose` controls routine warnings and diagnostic dumps: default false for generation, true for training, training-time validation, and standalone evaluation. Propagate it to workers. Shared numerical guards should handle undefined metrics explicitly.
-
-`generate.py` composes inputs, loads checkpoints, configures `Proteina` for inference, and writes samples/metadata. `inference_utils/` owns input/condition parsing, insertion mapping, symmetry, datasets, aggregation, and solve-rate helpers. `search/` implements search strategies; `rewards/` scores trajectories; `guidance/` applies differentiable metric guidance during sampling.
-
-Metrics implement the interfaces in `src/rfproteina/metrics/metric.py` and are composed through `configs/metrics/`. Some metrics require external models, executables, GPUs, or daemon processes (AF2/AF3); make their requirements and skip/failure behavior explicit. Generated samples and metrics live in separate subdirectories under the configured run root.
-
-## Coding conventions
-
-- Name branches with a standard change-type prefix and a concise kebab-case description, such as `feat/add-new-metric`, `fix/checkpoint-loading`, `test/config-composition`, `chore/update-docs`, `refactor/metric-manager`, or `hotfix/broken-release`.
-- Format commit subjects as `<type>: <imperative summary>` using the same change types, for example `feat: add confidence metric` or `fix: preserve checkpoint dtype`.
-- Follow existing local patterns before introducing a new abstraction. Keep changes focused and avoid speculative framework code.
-- Use type annotations on production code. Use `jaxtyping` where named tensor axes materially clarify the contract.
-- Prefer clear module-level functions for stateless operations; use classes where state, Lightning/Hydra interfaces, or transform composition require them.
-- Public APIs need concise Google-style docstrings. Explain tensor shapes, masks, coordinate frames, units, and mutation when they are not obvious.
-- Comments and docstrings describe only current behavior, current invariants, and current interfaces. Do not record old bugs, previous implementations, migration history, or superseded reasoning; write as though the current design has always been the design.
-- Keep consecutive `#` comment blocks to at most two lines. Put longer API or behavioral explanation in a short docstring; put broad design material in `docs/`. Prefer no comment when clear names and structure already explain the code.
-- Avoid lazy imports unless they are required for optional dependencies, import cycles, or startup cost and the reason is documented.
-- Preserve device, dtype, and batch semantics. Avoid implicit CPU tensors or in-place mutation of shared batch/`AtomArray` state.
-- Raise actionable errors for invalid configuration or scientific inputs. Do not silently fall back when that could change a scientific result.
-- Do not hard-code checkpoint versions in multiple places. `configs/inference.yaml` is the current source of truth for the released latent checkpoint.
-- Ruff is configured in `pyproject.toml` (120 columns, double quotes, import sorting, annotations). Do not apply the root Ruff config to the AtomWorks submodule.
-
-## Testing expectations
-
-- Add a regression test with every bug fix when practical.
-- Test transforms both in isolation and in a composed pipeline when alignment or annotations can change.
-- Use parameterization for meaningful cases; do not duplicate near-identical tests.
-- Assert scientific invariants and observable behavior, not private implementation details.
-- Keep ordinary CPU tests independent of cluster storage, checkpoints, network, and GPUs. Mark tests accurately when those dependencies are unavoidable.
-- For Hydra changes, test composition and at least one relevant entry-point resolution path.
-- For checkpoint/schema changes, test strict loading and any explicitly supported compatibility policy.
-- Report exactly what was run and what was skipped or unavailable.
-
-## Where to look first
-
-- User setup and first run: `README.md`, `docs/quickstart.rst`, `docs/installation.rst`
-- Workflow and input semantics: `docs/workflow/` and `docs/examples.rst`
-- Contributor expectations: `docs/contributor_guide.rst`
-- Config behavior: the relevant YAML root and Hydra composition through its workflow entry point
-- Launch behavior: launcher header, `scripts/common.sh`, `scripts/resolve_config.py`, and `tests/e2e/test_slurm_launchers.py`
-- Generation regression flow: `tests/e2e/` and `src/script_utils/run_gpu_regression_tests.py`
-
-When code and this file disagree, trust executable code and tests, verify the intended behavior in user-facing documentation, and update this guide as part of the same change.
+- Outputs are under `inference_samples/` and `inference_metrics/` (or `evaluation_samples/`
+  and `evaluation_metrics/`). Use `verbose=true` for diagnostics; use fresh output directories
+  when changing settings so existing structures are not silently reused.
+- Check generated structures and required metrics, not just job exit status. Report missing
+  outputs, failed designs, and skipped oracle checks; retain failures in pass-rate denominators.
+- Refolding needs the selected oracle's environment and weights. For structural clustering,
+  enable `save_chain_of_interest=true` and use the evaluation skill.
+- Keep input/target identity when aggregating results. Distinguish ordinary pass rates from
+  clustered pass rates and record the criteria used.
+- `compress_outputs=true/false` controls CIF compression. Use supported structure IO;
+  never rename compressed bytes to `.cif`.
+- For code/config edits, run focused tests and config-composition checks. Never weaken
+  regression assertions or regenerate baselines without explicit user approval.

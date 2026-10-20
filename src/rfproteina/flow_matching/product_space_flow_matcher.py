@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable, Sequence
 from functools import partial
 
@@ -12,6 +13,7 @@ from torch import Tensor
 from rfproteina.conditions import C_CRDGRP
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
 from rfproteina.flow_matching.rdn_flow_matcher import RDNFlowMatcher, compute_tsr_ratio
+from rfproteina.flow_matching.signed_volume_loss import signed_volume_loss
 from rfproteina.model_masks import compute_flow_emit_masks, compute_flow_supervision_masks
 
 FLOW_MATCHER_FACTORY = {
@@ -96,6 +98,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
     def __init__(self, cfg_exp: dict):
         super().__init__()
         self.cfg_exp = cfg_exp
+        self.signed_volume_weight = float(cfg_exp.get("loss", {}).get("signed_volume_weight", 0.0))
+        if not math.isfinite(self.signed_volume_weight) or self.signed_volume_weight < 0:
+            raise ValueError("loss.signed_volume_weight must be finite and nonnegative")
         self.data_modes = list(self.cfg_exp.product_flowmatcher)
         self.base_flow_matchers = self.get_base_flow_matchers()
 
@@ -317,6 +322,14 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         loss = {**fm_loss, **aux_loss}
         return loss
 
+    def optimization_terms(self, losses: dict[str, Tensor]) -> dict[str, Tensor]:
+        """Select weighted modality and available auxiliary objectives, excluding diagnostics."""
+        terms = {mode: losses[mode] for mode in self.data_modes}
+        for key in ("insertion_prediction", "sequence_prediction", "signed_volume"):
+            if key in losses:
+                terms[key] = losses[key]
+        return terms
+
     def compute_fm_loss(
         self,
         batch: dict,
@@ -370,6 +383,23 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         losses = {}
         losses.update(self._compute_insertion_prediction_loss(batch, nn_out))
         losses.update(self._compute_sequence_prediction_loss(batch, nn_out))
+        if self.signed_volume_weight > 0:
+            emit_mask = compute_flow_emit_masks(batch)["bb_ca"]
+            supervised = compute_flow_supervision_masks(batch)["bb_ca"]
+            if "loss_weight" in batch:
+                supervised = supervised & (batch["loss_weight"] > 0)
+            predicted = self.base_flow_matchers["bb_ca"].nn_out_add_clean_sample_prediction(
+                x_t=batch["x_t"]["bb_ca"],
+                t=batch["t"]["bb_ca"],
+                emit_mask=emit_mask,
+                nn_out=dict(nn_out["bb_ca"]),
+            )["x_1"]
+            losses["signed_volume"] = self.signed_volume_weight * signed_volume_loss(
+                predicted,
+                batch["x_1"]["bb_ca"],
+                batch["tetrahedral_vertices"],
+                supervised,
+            )
         return losses
 
     def _compute_sequence_prediction_loss(
@@ -900,10 +930,9 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 param=gt_args["p"],
                 clamp_val=gt_args["clamp_val"],
             )
-            # TSR sharpens the drift by tsr_ratio, so divide the noise schedule by it to keep the
-            # injected noise consistent with that lower temperature. No-op under ODE (g is 0).
+            # Use the TSR-rescaled score with a matched Langevin drift and noise schedule.
             if ssp["sampling_mode"] == "vf_tsr":
-                g = g / compute_tsr_ratio(ts[data_mode][:-1], ssp.get("tsr_k", 1.0), ssp.get("tsr_sigma", 1.0))
+                g = g / compute_tsr_ratio(ts[data_mode][:-1], ssp.get("tsr_k", 1.0), ssp.get("tsr_sigma", 1.0)) ** 2
             gt[data_mode] = g
 
         return ts, gt

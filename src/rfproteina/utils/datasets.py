@@ -1,6 +1,7 @@
 from functools import partial
 
 import hydra
+import numpy as np
 import torch
 from atomworks.ml.samplers import (
     DistributedMixedSampler,
@@ -22,8 +23,15 @@ from torch.utils.data import (
 )
 from torch.utils.data.distributed import DistributedSampler
 
+from rfproteina.datapipes.bucketed_sampler import (
+    DistributedBucketedSampler,
+    read_lengths,
+    validate_buckets,
+)
+from rfproteina.datapipes.collate import collate_batch
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.hydra import register_resolvers
+from rfproteina.utils.torch import raise_dynamo_cache_for
 from rfproteina.utils.verbosity import VERBOSE, initialize_worker_verbosity
 
 ranked_logger = RankedLogger(__name__, rank_zero_only=True)
@@ -99,6 +107,10 @@ def instantiate_single_dataset_and_sampler(cfg: DictConfig | dict) -> dict[str, 
     """
     # ... instantiate the dataset
     dataset = hydra.utils.instantiate(cfg.dataset)
+
+    # Metadata estimates affect sampling order, not crop sizes or padding.
+    if "length_columns" in cfg:
+        dataset._bucket_length_columns = cfg["length_columns"]
 
     # Users may provide only weights, in which case we will use a WeightedRandomSampler,
     # or they may provide a sampler directly. Either key set to None falls through
@@ -207,6 +219,36 @@ def recursively_instantiate_datasets_and_samplers(cfg: DictConfig | dict, name: 
         }
 
 
+def sampled_length_metadata(indices: np.ndarray, dataset: Dataset, length_columns: list[str]) -> np.ndarray:
+    """Sum sampled count metadata; explicit null overrides map to infinity."""
+    if np.any(indices < 0) or np.any(indices >= len(dataset)):
+        raise ValueError("Sampled indices are outside the dataset.")
+    lengths = np.empty(len(indices), dtype=np.float64)
+
+    def visit(node: Dataset, offset: int) -> int:
+        children = getattr(node, "datasets", None)
+        if children is not None:
+            end = offset
+            for child in children:
+                end = visit(child, end)
+            if end - offset != len(node):
+                raise ValueError("Concatenated dataset lengths are inconsistent.")
+            return end
+        data = getattr(node, "data", None)
+        name = getattr(node, "name", type(node).__name__)
+        if data is None or len(data) != len(node):
+            raise ValueError(f"{name}: bucketing requires metadata aligned with dataset indices.")
+        positions = np.flatnonzero((indices >= offset) & (indices < offset + len(node)))
+        columns = getattr(node, "_bucket_length_columns", length_columns)
+        lengths[positions] = (
+            np.inf if columns is None else read_lengths(data, columns, name, indices[positions] - offset)
+        )
+        return offset + len(node)
+
+    visit(dataset, 0)
+    return lengths
+
+
 def assemble_distributed_loader(
     dataset: Dataset,
     sampler: Sampler | None = None,
@@ -297,16 +339,43 @@ def assemble_distributed_loader(
                 "A trainer-only step limit can omit deferred slow samples; use a MixedSampler "
                 "with a finite epoch budget, or keep dataloaders.train.dataloader_params.in_order=true."
             )
+    length_bucketing_cfg = loader_cfg.get("length_bucketing")
+    if length_bucketing_cfg and length_bucketing_cfg.get("enabled", False):
+        if not in_order:
+            raise ValueError("Length bucketing requires dataloader_params.in_order=true to keep ranks length-grouped.")
+        if not isinstance(sampler, DistributedMixedSampler):
+            raise TypeError("Length bucketing requires a DistributedMixedSampler.")
+        buckets = list(length_bucketing_cfg["buckets"])
+        validate_buckets(buckets)
+        collate = loader_params["collate_fn"]
+        if not isinstance(collate, partial) or collate.func is not collate_batch:
+            raise TypeError("Length bucketing requires a configured collate_batch partial.")
+        dimensions = dict(collate.keywords.get("fixed_dimensions") or {})
+        crop_cap = dimensions.get("I")
+        if crop_cap is not None and buckets[-1] < (crop_cap if isinstance(crop_cap, int) else max(crop_cap)):
+            raise ValueError("The largest length bucket must cover the configured token crop/pad size.")
+        loader_params["collate_fn"] = partial(collate, fixed_dimensions={**dimensions, "I": buckets})
+        sampler = DistributedBucketedSampler(
+            sampler=sampler,
+            lengths_fn=partial(
+                sampled_length_metadata, dataset=dataset, length_columns=length_bucketing_cfg["length_columns"]
+            ),
+            batch_size=loader_params.get("batch_size", 1),
+            buckets=buckets,
+        )
+        raise_dynamo_cache_for(4 * len(buckets) + 16)
+        ranked_logger.info(f"[length-bucketing] enabled: buckets={buckets}")
 
     # ... wrap the composed dataset and sampler with a fallback mechanism, if needed
-    if "n_fallback_retries" in loader_cfg and loader_cfg.n_fallback_retries > 0 and sampler is not None:
-        ranked_logger.info(f"Wrapping train dataset and sampler with {loader_cfg.n_fallback_retries} fallbacks...")
+    n_fallback_retries = loader_cfg.get("n_fallback_retries", 0)
+    if n_fallback_retries > 0 and sampler is not None:
+        ranked_logger.info(f"Wrapping train dataset and sampler with {n_fallback_retries} fallbacks...")
         dataset, sampler = wrap_dataset_and_sampler_with_fallbacks(
             dataset_to_be_wrapped=dataset,
             sampler_to_be_wrapped=sampler,
             dataset_to_fallback_to=dataset,
             sampler_to_fallback_to=sampler,
-            n_fallback_retries=loader_cfg.n_fallback_retries,
+            n_fallback_retries=n_fallback_retries,
         )
 
     loader_params["worker_init_fn"] = partial(
@@ -314,13 +383,7 @@ def assemble_distributed_loader(
     )
 
     # ... assemble the final loader
-    loader = DataLoader(
-        dataset=dataset,
-        sampler=sampler,
-        **loader_params,
-    )
-
-    return loader
+    return DataLoader(dataset=dataset, sampler=sampler, **loader_params)
 
 
 def subset_dataset_to_example_ids(

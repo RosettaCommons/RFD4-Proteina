@@ -1,0 +1,7 @@
+defaults:
+  - inference
+  - override /recycle_strategy: high/front_loaded
+  - _self_
+
+batch_size: 8
+metrics_tags: [design, antibody, 3d_coordinate_conditioning, internal_coordinate_conditioning, hotspot_conditioning]

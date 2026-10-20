@@ -33,7 +33,8 @@ refolded_backbone_rmsd:
 
 refolded_target_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: "~is_chain_of_interest & sa_mask('C_CRD')"
+  # Unfixed DNA is generated context: align on its design coordinates too.
+  align_mask: "~is_chain_of_interest & (sa_mask('C_CRD') | is_dna)"
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]

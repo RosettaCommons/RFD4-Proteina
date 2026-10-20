@@ -188,3 +188,29 @@ published atomically, so concurrent jobs can share the directory. Use a separate
 archive per target and pass definition. Queries never publish clean predictions or scoring
 rollouts. Final evaluation runs after generation, so new passers become available to later runs
 or concurrently running jobs; an external evaluation run can populate the same archive.
+
+## Continue a saved batch
+
+Save selected candidates, then continue a saved batch with more branches:
+
+```bash
+rfd4-generate inference_experiment=sm_binder_hbond_search \
+  seed=7 num_workers=0 batch_size=1 num_replicates=1 \
+  out_dir=runs/initial search.save_states=true
+
+state=$(find runs/initial/sampling_states -name '*_step40_beam0.pt')
+rfd4-generate inference_experiment=sm_binder_hbond_search \
+  seed=7 num_workers=0 batch_size=1 num_replicates=1 \
+  out_dir=runs/continued search.resume_from="$state" \
+  search.resume_seed=11 search.n_branch=8 search.save_states=true
+```
+
+Each file holds the batch's survivors at one beam rank (`beam0` is best), named after
+its first input. Keep the same inputs, batch size, ordering, weights, generation settings
+and `seed`; larger batches work the same way. Resume only the inputs in that saved batch.
+Change `resume_seed` and use a fresh output directory for another continuation.
+Later intermediate states are saved again; per-checkpoint branch counts override `search.n_branch`.
+The saved step, modalities, tensor dimensions and finite values are checked. Input identity,
+conditioning, weights and schedule compatibility remain the caller's responsibility.
+This starts new seeded branches; it does not restore an interrupted run's RNG state.
+Adapters, gradient guidance and inverse folding are unsupported.

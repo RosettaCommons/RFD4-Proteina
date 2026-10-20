@@ -1,0 +1,17 @@
+defaults:
+  - common
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:PROJECT_ROOT}/configs
+
+inputs: ??? # A selected generated complex with its saved conditioning.
+run_name_: antibody_partial
+
+generation:
+  dataset:
+    sampling_transforms: null # Retain the parent's sampled hotspots.
+  args:
+    # Resume at index 35 of the 60-step grid: global schedule coordinate ~0.7.
+    partial_trajectory_fraction_steps: 0.4166666666666667

@@ -7,6 +7,7 @@ when both are omitted, binder is the chain of interest.
 
 from __future__ import annotations
 
+import importlib
 from functools import cached_property
 from typing import Any, Literal
 
@@ -31,6 +32,16 @@ from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.mask_spec import resolve_mask
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def _precompiled_tmol_scoring_available() -> bool:
+    """Return whether TMol loaded its precompiled LJ/LK scoring operators."""
+    cpp_lib = importlib.import_module("tmol._cpp_lib")
+    cpp_lib._ensure_loaded()
+    if not cpp_lib.has_cuda():
+        return False
+    compiled = importlib.import_module("tmol.score.ljlk.potentials._compiled")
+    return all(callable(getattr(compiled, name, None)) for name in ("ljlk_pose_scores", "ljlk_rotamer_scores"))
 
 
 class TMolBlockPairMetric(Metric):
@@ -63,12 +74,23 @@ class TMolBlockPairMetric(Metric):
         self.region_a = region_a
         self.region_b = region_b
         requested = torch.device(device)
-        if requested.type == "cuda" and not torch.cuda.is_available():
-            logger.warning("CUDA requested but unavailable; falling back to CPU for %s", self.__class__.__name__)
-            requested = torch.device("cpu")
-        elif requested.type == "cuda" and requested.index is None:
-            # TMol compares devices exactly; torch.device("cuda") != torch.device("cuda:0").
-            requested = torch.device("cuda", torch.cuda.current_device())
+        if requested.type == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("CUDA requested but unavailable; set device='cpu' for explicit CPU execution")
+            cuda_major = (torch.version.cuda or "").split(".")[0]
+            if cuda_major not in {"12", "13"}:
+                raise RuntimeError(f"TMol does not provide CUDA operators for torch CUDA {torch.version.cuda!r}")
+            try:
+                operators_available = _precompiled_tmol_scoring_available()
+            except Exception as error:
+                raise RuntimeError(
+                    f"TMol CUDA operators are unavailable; install the 'tmol[cu{cuda_major}]' extra"
+                ) from error
+            if not operators_available:
+                raise RuntimeError(f"TMol CUDA operators are unavailable; install the 'tmol[cu{cuda_major}]' extra")
+            if requested.index is None:
+                # TMol compares devices exactly; torch.device("cuda") != torch.device("cuda:0").
+                requested = torch.device("cuda", torch.cuda.current_device())
         self.device = requested
         if relax not in ("none", "fast_relax"):
             raise ValueError(f"relax must be 'none' or 'fast_relax', got {relax!r}")
@@ -121,9 +143,7 @@ class TMolBlockPairMetric(Metric):
     def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
         if self.relax == "none":
             return self._compute(predicted_atom_array)
-        # FastRelax minimizes via autograd, but metrics run under the validation loop's
-        # torch.inference_mode(); tensors allocated there stay inference tensors even after the
-        # mode exits, so the escape must wrap the whole build, not just the relax call.
+        # Relaxation needs ordinary tensors and autograd even inside validation's inference mode.
         with torch.inference_mode(False), torch.enable_grad():
             return self._compute(predicted_atom_array)
 

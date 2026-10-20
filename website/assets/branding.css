@@ -1,0 +1,11 @@
+/* Original transparent wordmarks from wip/paper 4cfa25623. */
+.site-wordmark{display:block;position:relative;overflow:hidden;width:208px;height:38px;flex:none;background:transparent}
+.site-wordmark img{display:block;position:absolute;width:228px;height:auto;max-width:none;left:-10px;top:-21px}
+.site-wordmark .wordmark-dark{display:none}
+:root[data-theme=dark] .site-wordmark .wordmark-light{display:none}
+:root[data-theme=dark] .site-wordmark .wordmark-dark{display:block}
+.site-wordmark--stacked{width:320px;height:154px;margin:0 auto 20px;border-radius:8px}
+.site-wordmark--stacked img{width:450px;left:-65px;top:-55px}
+.site-theme-toggle{font:inherit;font-size:12px;background:transparent;color:var(--ink);border:1px solid var(--hair);border-radius:6px;padding:8px 12px;cursor:pointer}
+@media(max-width:780px){.nav{flex-wrap:wrap}}
+@media(max-width:420px){.site-wordmark--stacked{width:288px;height:139px}.site-wordmark--stacked img{width:405px;left:-58px;top:-49px}}

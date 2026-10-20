@@ -50,7 +50,7 @@ _entity_poly_seq.num
 1 n DA    8
 1 n DC    9
 1 n DC    10
-2 n 51-80 1
+2 n 120-150 1
 #
 loop_
 _chem_comp.id 
@@ -60,7 +60,7 @@ _chem_comp.formula
 _chem_comp.mon_nstd_parent_comp_id 
 _chem_comp.pdbx_synonyms 
 _chem_comp.formula_weight 
-51-80 51-80 NON-POLYMER   ? ? ? ?
+120-150 120-150 NON-POLYMER   ? ? ? ?
 DA    DA    'DNA LINKING' ? ? ? ?
 DC    DC    'DNA LINKING' ? ? ? ?
 DG    DG    'DNA LINKING' ? ? ? ?
@@ -643,9 +643,9 @@ ATOM   C C4    . DC    B 1 10 . 10 DC    B C4    65.4226   1.0 ? 1 False False -
 ATOM   N N4    . DC    B 1 10 . 10 DC    B N4    59.62891  1.0 ? 1 False False -1 0 C158 False -1 True True  385 0.0 0.0 0.0 1 386
 ATOM   C C5    . DC    B 1 10 . 10 DC    B C5    64.34705  1.0 ? 1 False False -1 0 C158 False -1 True True  386 0.0 0.0 0.0 1 387
 ATOM   C C6    . DC    B 1 10 . 10 DC    B C6    66.87972  1.0 ? 1 False False -1 0 C158 False -1 True True  387 0.0 0.0 0.0 1 388
-HETATM X UNK   . 51-80 C 2 1  . 1  51-80 C UNK   nan       0.0 ? 2 True  False 51 0 .    True  80 True False 388 nan nan nan 1 389
+HETATM X UNK   . 120-150 C 2 1  . 1  120-150 C UNK   nan       0.0 ? 2 True  False 120 0 .    True  150 True False 388 nan nan nan 1 389
 #
-_rfd_design.sampled_contig   B140-148,/0,C149-158,/0,50-80
+_rfd_design.sampled_contig   B140-148,/0,C149-158,/0,120-150
 #
 loop_
 _chem_comp_atom.comp_id 
@@ -800,5 +800,5 @@ DT    H71    H 0 N N -1.7350000143051147   -4.915999889373779     -0.68300002813
 DT    H72    H 0 N N -2.194999933242798    -4.208000183105469     0.8809999823570251
 DT    H73    H 0 N N -1.2719999551773071   -5.7210001945495605    0.8330000042915344
 DT    H6     H 0 N N -0.8569999933242798   -2.318000078201294     1.4579999446868896
-51-80 UNK    X 0 N N nan                   nan                    nan
+120-150 UNK    X 0 N N nan                   nan                    nan
 #

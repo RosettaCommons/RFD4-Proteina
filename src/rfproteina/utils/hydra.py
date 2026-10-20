@@ -82,10 +82,26 @@ def register_resolvers() -> None:
         "resolve_import": resolve_import,
         "chain_type_info_to_regex": chain_type_info_to_regex,
         "eval": eval,  # evaluate a string as a Python expression
+        "bucketize": bucketize,  # length buckets from a step + crop cap
+        "divide_exact": divide_exact,
     }
 
     for name, resolver in resolvers.items():
         OmegaConf.register_new_resolver(name, resolver)
+
+
+def divide_exact(dividend: int, divisor: int) -> int:
+    """Divide two integers, requiring a positive divisor and no remainder."""
+    if divisor < 1 or dividend % divisor:
+        raise ValueError(f"Cannot divide {dividend} exactly by {divisor}")
+    return dividend // divisor
+
+
+def bucketize(step: int, cap: int) -> list[int]:
+    """Bucket sizes from ``step`` up to ``cap``, with ``cap`` always the top bucket."""
+    if any(not isinstance(value, int) or isinstance(value, bool) or value <= 0 for value in (step, cap)):
+        raise ValueError("Bucket step and crop cap must be positive integers.")
+    return sorted(set(range(step, cap, step)) | {cap})
 
 
 def resolve_import(module_path: str, attribute_path: str | None = None) -> Any:
@@ -205,3 +221,22 @@ def instantiate_loggers(logger_cfg: DictConfig | None) -> list[Logger]:
             )
 
     return loggers
+
+
+def training_path_length_search_cutoffs(cfg_exp: DictConfig) -> set[int | None]:
+    """Collect distinct cutoffs across mixed training datasets without retaining their locations."""
+    if "path_length_search_cutoffs" in cfg_exp:
+        return set(cfg_exp.path_length_search_cutoffs)
+    cutoffs: set[int | None] = set()
+    pending = [OmegaConf.select(cfg_exp, "datasets.train", default=None)]
+    while pending:
+        dataset = pending.pop()
+        if dataset is None:
+            continue
+        if "dataset" in dataset:
+            cutoffs.add(OmegaConf.select(dataset, "dataset.transform.path_length_search_cutoff", default=None))
+        elif "sub_datasets" in dataset:
+            pending.extend(dataset.sub_datasets.values())
+        else:
+            pending.extend(d for d in dataset.values() if d is not None and d.get("probability", 1) > 0)
+    return cutoffs

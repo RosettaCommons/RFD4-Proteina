@@ -1,20 +1,25 @@
-# OMol-1 (55M): pure small-molecule systems, CIF bytes in an LMDB with a parquet sidecar.
+# OMol annotated structures, keyed by the source LMDB's global record index.
+
+defaults:
+  - backend_blob
+  - _self_
 
 name: omol
-lmdb_path: ${oc.env:DATA_PATH}/train_datasets/omol_annotated/data
-data: ${oc.env:DATA_PATH}/train_datasets/omol/omol.parquet
-lmdb_idx_column: lmdb_idx
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/omol_annotated/examples.parquet
 memory_map: True
+
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/omol_annotated/blob
+  record_id_colname: lmdb_idx
 
 columns_to_load:
   - example_id
   - lmdb_idx
   - data_id
-  - num_atoms
+  - n_atoms
+  - n_standard_amino_acid_residues
+  - n_other_heavy_atoms
 
 filters:
   - "data_id not in ['community/trans1x', 'reactivity/rgd', 'reactivity/RGD_radical', 'reactivity/pmechdb', 'reactivity/rmechdb', 'metal_complexes/reactivity', 'elytes/reactivity']"
-  - "num_atoms <= 256"
-
-parser_args:
-  _target_: rfproteina.utils.parse_presets.distillation
+  - "n_other_heavy_atoms <= ${oc.select:..transform.max_crop_size,${..transform.crop_size}}"

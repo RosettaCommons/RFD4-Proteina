@@ -12,14 +12,14 @@ from atomworks.io.utils.atom_array_plus import as_atom_array_plus, concatenate_a
 from atomworks.io.utils.io_utils import to_cif_file
 from atomworks.io.utils.standard_annotations import S_SEGMAX, S_SEGMIN
 from atomworks.ml.conditions import C_CRD, C_IDX
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
-from atomworks.ml.transforms.filters import remove_nucleic_acid_terminal_oxygen, remove_protein_terminal_oxygen
+from atomworks.ml.transforms.filters import polymer_terminal_oxygen_mask
 from atomworks.ml.utils.token import apply_token_wise, get_token_count, get_token_starts
 from biotite.structure import AtomArray
 from torch._tensor import Tensor
 
 from rfproteina.conditions import C_CRDGRP
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.inference_utils.insertion_mapping import build_predicted_insertion_mapping
 from rfproteina.transforms.utils.conditioning_utils import (
     align_atom_array_to_input_frame,
@@ -84,14 +84,14 @@ def process_single_sample_to_atom_array(
     if get_token_count(input_atom_array) != coords.shape[0]:
         raise ValueError("Token counts in input AtomArray and generated coords do not match after filtering")
 
-    all_zeros = (coords == 0.0).all(dim=-1, keepdim=True)
-    coords = coords.masked_fill(all_zeros, float("nan"))
     if atom_mask is not None:
         # Use the atom37 mask aligned with residue_type (decoder atom_mask for predicted
         # seq, batch atom37_mask for true seq). Inferring occupancy from coords alone fails
         # when residue_type and coordinate occupancy disagree (e.g. AE seq head vs struct).
         encoded_mask = atom_mask.bool()
+        coords = coords.masked_fill(~encoded_mask[..., None], float("nan"))
     else:
+        coords = coords.masked_fill((coords == 0.0).all(dim=-1, keepdim=True), float("nan"))
         encoded_mask = ~torch.isnan(coords[..., 0])
 
     token_starts = get_token_starts(input_atom_array)
@@ -114,6 +114,11 @@ def process_single_sample_to_atom_array(
             encoded_mask=encoded_mask,
             encoded_seq=residue_type,
             encoding=UNIFIED_ATOM37_ENCODING,
+            chain_id=(
+                input_atom_array.chain_iid
+                if "chain_iid" in input_atom_array.get_annotation_categories()
+                else input_atom_array.chain_id
+            )[token_starts],
             token_id=input_atom_array.token_id[token_starts],
             chain_type=input_atom_array.chain_type[token_starts],
             token_is_atom=input_atom_array.atomize[token_starts],
@@ -126,10 +131,9 @@ def process_single_sample_to_atom_array(
             "When exporting AE reconstructions with a predicted sequence, pass the "
             "decoder atom_mask so occupancy matches the sequence template."
         ) from exc
-    generated_array = remove_protein_terminal_oxygen(generated_array)
-    generated_array = remove_nucleic_acid_terminal_oxygen(generated_array)
-    input_atom_array = remove_protein_terminal_oxygen(input_atom_array)
-    input_atom_array = remove_nucleic_acid_terminal_oxygen(input_atom_array)
+    generated_array = generated_array[generated_array.occupancy > 0]
+    generated_array = generated_array[~polymer_terminal_oxygen_mask(generated_array)]
+    input_atom_array = input_atom_array[~polymer_terminal_oxygen_mask(input_atom_array)]
     if get_token_count(generated_array) != get_token_count(input_atom_array):
         raise ValueError("Token counts in input and generated AtomArrays do not match after removing terminal oxygens")
 

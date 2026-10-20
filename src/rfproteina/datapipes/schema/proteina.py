@@ -6,7 +6,6 @@ from typing import Any
 
 import torch
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from biotite.structure import AtomArray
 from torch.nn import functional as F
 
@@ -34,21 +33,30 @@ from rfproteina.conditions import (
     SSEnum,
 )
 from rfproteina.datapipes.schema.base import DataSample
+from rfproteina.encoding import TOKEN_TYPE_IDS, UNIFIED_ATOM37_ENCODING
+from rfproteina.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 
 
 class TokenType:
     """Token type constants, as carried by the `token_type` annotation and feature."""
 
-    PROTEIN = 0
-    RNA = 1
-    DNA = 2
-    ATOMIZED = 3
-    UNKNOWN = 4
+    PROTEIN = TOKEN_TYPE_IDS["aa"]
+    RNA = TOKEN_TYPE_IDS["rna"]
+    DNA = TOKEN_TYPE_IDS["dna"]
+    ATOMIZED = TOKEN_TYPE_IDS["atomized"]
+    UNKNOWN = TOKEN_TYPE_IDS["unknown"]
+    GLYCAN = TOKEN_TYPE_IDS["glycan"]
+    NCAA = TOKEN_TYPE_IDS["ncaa"]
+
+
+# Tensor row count for direct ID indexing: gaps leave unused rows; aliases share a row.
+NUM_TOKEN_TYPES = max(TOKEN_TYPE_IDS.values()) + 1
 
 
 # Specs: name -> (dtype, default_value, dim_string)
 # dim_string uses: I=tokens, numbers=fixed dims
 SPECS: dict[str, tuple] = {
+    "centroid_of_atoms_without_coordinate_conditioning": (torch.float32, 0.0, "3"),
     # Token-level [I]
     "residue_type": (torch.int64, -1, "I"),
     C_SEQ.full_name: (torch.int64, UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"], "I"),
@@ -70,11 +78,16 @@ SPECS: dict[str, tuple] = {
     # Token-level with extra dims [I, ...]
     C_CATH.full_name: (torch.int32, -1, "I 3"),
     C_CENTROID.full_name: (torch.float32, 0.0, "I 3"),
-    "chirality": (torch.float32, 0.0, "I 18"),
+    "chirality": (torch.float32, 0.0, f"I {MAX_OVERLAPPING_CENTERS * 3}"),
+    "chiral_frame_atoms": (torch.int64, -1, f"I {MAX_OVERLAPPING_CENTERS} 8"),
+    "chiral_slot_owner": (torch.int64, -1, f"I {MAX_OVERLAPPING_CENTERS}"),
+    "tetrahedral_vertices": (torch.int64, -1, "I 4"),
     # Atom37-level [I, 37, ...]
     "coords": (torch.float32, 0.0, "I 37 3"),
     "element": (torch.int16, -1, "I 37"),
+    "ground_truth_element": (torch.int16, 0, "I 37"),
     "charge": (torch.int16, 0, "I 37"),
+    "incident_bond_type_counts": (torch.int16, 0, "I 37 10"),
     "atom37_mask": (torch.bool, False, "I 37"),
     C_CRD.full_name: (torch.float32, float("nan"), "I 37 3"),
     C_INTCRD.full_name: (torch.float32, float("nan"), "I 37 3"),

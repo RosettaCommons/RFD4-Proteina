@@ -1,12 +1,3 @@
-> **CONFIDENTIAL — PRE-RELEASE**
->
-> This repository, its documentation, and its model checkpoints are shared with
-> authorized reviewers only. Please do not redistribute, publish, or discuss
-> their contents publicly before the release is announced. Contact the project
-> team before sharing access with anyone else.
->
-> RFD4 Copyright 2026 University of Washington. All rights reserved. Permission is granted to external evaluators including NIST to solely perform a biosecurity review of RFD4 and share its findings with UW
-
 <p align="center">
   <img src="assets/wordmark.svg" width="587" alt="RFD4-Proteína">
 </p>
@@ -41,10 +32,25 @@ make setup
 source .venv/bin/activate
 ```
 
-Setup installs the environment, downloads the released flow and autoencoder checkpoints
-(about 8 GB), and configures `DATA_PATH`. See the
+Setup installs the environment, caches the released Hugging Face model bundle
+(about 1.7 GB, including its autoencoder), and configures `DATA_PATH` for optional data.
+The cache location follows `HF_HOME`. See the
 [installation guide](https://rosettacommons.github.io/RFD4-Proteina/installation.html)
 for CUDA build prerequisites, optional metrics, and cluster setup.
+
+Other options (CUDA 12, CPU-only, Docker, Apptainer, pip) are listed in the
+[deployment options](https://rosettacommons.github.io/RFD4-Proteina/installation.html#deployment-options).
+For example, a container with CUDA 13 (use `RFD4_ACCELERATOR=cu12` or `cpu` for the others):
+
+```bash
+docker build -t rfd4-proteina:cu13 .
+docker run --rm --gpus all rfd4-proteina:cu13 rfd4-generate --help
+```
+
+While the Hugging Face repositories are private, supply `HF_TOKEN` or use `hf auth login`
+with an account that has access. For interactive login on a fresh checkout, run
+`bash setup.sh --skip-weights`, activate `.venv`, log in, then run `bash setup.sh --native`.
+Once public, the same setup works without authentication.
 
 ## Run the model
 
@@ -53,17 +59,56 @@ After setup, generate a design from the included [example input](data/benchmarks
 ```bash
 rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
     num_replicates=1 out_dir=./runs/first \
-    compile_lengths=null
+    ~metrics compile_lengths=null
 ```
 
 Designs are written to `runs/first/inference_samples/`. Increase `num_replicates`
 for more designs, or replace the example path
 with your own [annotated input](https://rosettacommons.github.io/RFD4-Proteina/workflow/inputs.html).
 
+### Hugging Face and Python
+
+The default model is the pinned Hugging Face release. To select a different Hub repo
+or a local exported bundle, use:
+
+```bash
+rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina \
+    inputs=design.yaml out_dir=./runs/hf ~metrics compile_lengths=null
+```
+
+After the package is published, install it with `pip install rfd4-proteina` on a
+supported CUDA/Python system. The same API works from an installed development checkout:
+
+```python
+from hydra import compose, initialize_config_dir
+import rootutils
+import rfproteina
+from rfd4_proteina import Proteina
+from rfproteina.generate import run_generation
+
+model = Proteina.from_pretrained("nvidia/RFD4-Proteina")
+config_dir = rootutils.find_root(rfproteina.__file__, indicator=".project-root") / "configs"
+with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+    cfg = compose(config_name="inference", overrides=[
+        "inputs=design.yaml", "out_dir=runs/hf", "~metrics", "compile_lengths=null",
+    ])
+run_generation(cfg, model=model)
+```
+
+Use an annotated CIF or condition-spec YAML as `inputs`. Add `revision="<commit>"`
+to `from_pretrained` (or `hf_ckpt_revision=<commit>` to the CLI) for reproducibility.
+HF caches downloaded weights; `run_generation` reuses the loaded model.
+For a native local checkpoint, set `hf_ckpt_path=null`,
+`ckpt_path=/path/to/checkpoints`, `ckpt_name=model.ckpt`, and
+`autoencoder_ckpt_path=/path/to/ae.ckpt`.
+Training datasets are separate from model downloads: see the
+[training guide](https://rosettacommons.github.io/RFD4-Proteina/development.html).
+
 - [Running the model](https://rosettacommons.github.io/RFD4-Proteina/workflow/running.html): binders, motif scaffolding, partial diffusion, and sampling settings.
 - [Input preparation](https://rosettacommons.github.io/RFD4-Proteina/workflow/inputs.html) · [Text-based design specifications](https://rosettacommons.github.io/RFD4-Proteina/workflow/condition-spec.html)
 - [Scoring and refolding](https://rosettacommons.github.io/RFD4-Proteina/workflow/metrics.html) · [Reward-guided search](https://rosettacommons.github.io/RFD4-Proteina/workflow/search.html)
 - [Training and fine-tuning](https://rosettacommons.github.io/RFD4-Proteina/development.html) · [Worked examples](https://rosettacommons.github.io/RFD4-Proteina/examples.html)
+- [Antibody campaign examples](examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
 
 [Documentation](https://rosettacommons.github.io/RFD4-Proteina/) · [Contributing](https://rosettacommons.github.io/RFD4-Proteina/contributor_guide.html) · [BSD 3-Clause license](LICENSE)
 

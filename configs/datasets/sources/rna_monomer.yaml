@@ -1,32 +1,31 @@
-# RNA monomers, predicted with Protenix v2
+# Protenix-v2 RNA monomer predictions, selected for finite coordinates and no audited clashes <1.5 A.
+# Training additionally applies Ribonanza, pLDDT and source-eligibility filters.
+defaults:
+  - backend_blob
+  - _self_
 
 name: rna_monomer
-lmdb_path: ${oc.env:DATA_PATH}/train_datasets/rna_protenix_v2
-data: ${oc.env:DATA_PATH}/train_datasets/rna_protenix_v2/metadata.parquet
-lmdb_idx_column: lmdb_idx
-memory_map: True
+memory_map: true
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/examples.parquet
 
 columns_to_load:
   - example_id
-  - lmdb_idx
-  - length
+  - n_rna_residues
   - mean_plddt
-  - ptm
-  - frac_atoms_clashing_1p0A
-  - frac_atoms_clashing_1p5A
-  - rnet2_mcc_t0p7
-  - passes_ribonanza_strict
-  - passes_ribonanza_moderate
-  - passes_ribonanza_loose
+  - source_training_eligible
+  - passes_structure_validation
+  - passes_bond_filters
+  - passes_ribonanza_filters
+  - passes_clash_filters
 
 filters:
-  # Agreement with Ribonanza chemical-mapping reactivity
-  - "passes_ribonanza_strict == True"
-  # Zero hard clashes plus a soft-clash cut
-  - "frac_atoms_clashing_1p0A == 0"
-  - "frac_atoms_clashing_1p5A < 0.005"
-  # Confidence floor
+  - "source_training_eligible == True"
+  - "passes_structure_validation == True"
+  - "passes_bond_filters == True"
+  - "passes_ribonanza_filters == True"
+  - "passes_clash_filters == True"
   - "mean_plddt > 75"
+  - "n_rna_residues <= 768"
 
-parser_args:
-  _target_: rfproteina.utils.parse_presets.distillation
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_rna_monomers/blob

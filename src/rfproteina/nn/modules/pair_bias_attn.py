@@ -165,6 +165,9 @@ class PairBiasAttention(nn.Module):
                 )
                 attn_bias = torch.masked_fill(attn_bias, ~mask_expanded, NEG_INF)
 
+            # Avoid crashes for fully masked attention rows.
+            attn_bias = attn_bias.masked_fill(~mask_expanded.any(dim=-1, keepdim=True), 0.0)
+
         # SDPA on GPU; explicit einsum fallback on CPU (CI / local dev only, not
         # intended for production CPU inference).
         if not torch.cuda.is_available():

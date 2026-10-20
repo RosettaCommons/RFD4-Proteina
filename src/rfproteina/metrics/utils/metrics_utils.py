@@ -511,7 +511,8 @@ def apply_pre_oracle_filters(
     Designs where any applicable filter returns ``pass: 0.0`` are excised from
     the list. When ``delete_failing`` is ``True``, their CIF files are also
     deleted from disk for definitive failures (all metrics present). Designs for
-    which no filter is applicable (tag mismatch) are always kept.
+    which no filter is applicable (tag mismatch) are always kept. Input rows are
+    annotated in place so callers can retain rejected attempts in their summaries.
 
     This is called after :py:func:`drain_generated_structure` merges design
     metrics into each :class:`ValOutput` entry, so the full design-metric dict
@@ -569,6 +570,7 @@ def apply_pre_oracle_filters(
         )
 
         should_filter, should_delete = _filter_result(filter_output)
+        entry["pre_oracle_pass"] = float(not should_filter)
         if should_filter:
             if delete_failing and should_delete:
                 designed_path = entry.get("designed_structure_path")
@@ -587,6 +589,7 @@ def apply_pre_oracle_filters(
                         Path(chain_path).unlink(missing_ok=True)
                     except Exception as e:
                         logger.warning(f"pre-oracle filter: could not delete chain CIF {chain_path}: {e}")
+            entry["designed_chain_path"] = None  # Exclude from clustering, not its denominator.
             n_filtered += 1
         else:
             passing.append(entry)

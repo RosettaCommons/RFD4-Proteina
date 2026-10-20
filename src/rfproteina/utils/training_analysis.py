@@ -12,16 +12,12 @@ from rfproteina.utils.ddp import RankedLogger
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-def log_metrics(pl_module: L.LightningModule, metrics: dict[str, torch.Tensor]) -> None:
-    for m in metrics:
-        pl_module.log(m, metrics[m], on_step=True, on_epoch=True, prog_bar=False, logger=True)
-
-
 class GradientCoverageCallback(Callback):
     """Record, per parameter, how many dim-0 rows ever receive a non-zero gradient.
 
     Tests ``grad != 0``, not ``grad is None``: a feature behind an all-false mask stays in the
     autograd graph with an exactly-zero grad, so DDP's unused-parameter check never fires.
+    Reject nonfinite gradients rather than counting them as live rows.
 
     Args:
       output_path: JSON destination for the ``{param_name: {alive_rows, n_rows}}`` map.
@@ -43,6 +39,8 @@ class GradientCoverageCallback(Callback):
             if param.grad is None:
                 alive = torch.zeros(n_rows, dtype=torch.bool, device=param.device)
             else:
+                if not torch.isfinite(param.grad).all():
+                    raise FloatingPointError(f"Nonfinite gradient for {name}")
                 alive = (param.grad.reshape(n_rows, -1) != 0).any(dim=1)  # [n_rows]
             key = name.replace("_orig_mod.", "")  # torch.compile wrapper prefix
             if key in self._alive:
@@ -121,113 +119,6 @@ class LogStepTimeCallback(Callback):
             logger=True,
             sync_dist=True,
         )
-
-
-class GradAndWeightAnalysisCallback(Callback):
-    """Some functionality to observe how are weights and gradientsbehaving during trainnig."""
-
-    def __init__(self, debug: bool = True, moving_avg_size: int = 100) -> None:
-        super().__init__()
-        self.debug = debug
-        self.moving_avg_size = moving_avg_size
-        self.avg_grad_history = []
-        self.max_grad_history = []
-
-    def _get_avg_and_max_w(self, pl_module: L.LightningModule) -> tuple[torch.Tensor, torch.Tensor]:
-        """Computes average and max weight in module."""
-        with torch.no_grad():
-            params = torch.nn.utils.parameters_to_vector(pl_module.parameters()).abs()
-            return params.sum() / params.numel(), params.max()
-
-    def on_before_optimizer_step(self, trainer: Any, pl_module: Any, optimizer: Any) -> None:
-        """Before updating log max and average weight."""
-        avg_w, max_w = self._get_avg_and_max_w(pl_module)
-        avg_g, max_g = self._get_avg_and_max_grad(pl_module)
-        metrics = {}
-
-        # Gradient metrics
-        metrics["avg_w_bef_step"] = avg_w
-        metrics["max_w_bef_step"] = max_w
-        metrics["avg_g_bef_step"] = avg_g
-        metrics["max_g_bef_step"] = max_g
-
-        # Add gradient metrics
-        if len(self.max_grad_history) > 1:
-            metrics["moving_avg_max_grad_bef_step"] = sum(self.max_grad_history) / len(self.max_grad_history)
-            metrics["moving_avg_avg_grad_bef_step"] = sum(self.avg_grad_history) / len(self.avg_grad_history)
-            metrics["max_g_over_avg_max_g_bef_step"] = max_g / metrics["moving_avg_max_grad_bef_step"]
-            metrics["avg_g_over_avg_avg_g_bef_step"] = avg_g / metrics["moving_avg_avg_grad_bef_step"]
-
-        # Update history of gradient statistics
-        if len(self.max_grad_history) >= self.moving_avg_size:
-            self.max_grad_history.pop(0)
-        if not (max_g.isnan().any() or max_g.isinf().any()):
-            self.max_grad_history.append(max_g.item())
-
-        if len(self.avg_grad_history) >= self.moving_avg_size:
-            self.avg_grad_history.pop(0)
-        if not (avg_g.isnan().any() or avg_g.isinf().any()):
-            self.avg_grad_history.append(avg_g.item())
-
-        if self.debug and (avg_w.isnan().any() or max_w.isnan().any()):
-            _params = torch.nn.utils.parameters_to_vector(pl_module.parameters()).abs()
-
-        log_metrics(pl_module, metrics)
-
-    def on_train_batch_start(
-        self, trainer: L.Trainer, pl_module: L.LightningModule, batch: dict, batch_idx: int
-    ) -> None:
-        """First thing on training step."""
-        avg_w, max_w = self._get_avg_and_max_w(pl_module)
-
-    def _get_avg_and_max_grad(self, pl_module: L.LightningModule) -> tuple[torch.Tensor, torch.Tensor]:
-        """Computes average and max grad in module, if no grad computed zero."""
-        grad_sum = torch.tensor(0.0, device=pl_module.device)
-        max_grad = torch.tensor(0.0, device=pl_module.device)
-        count = 0
-        for p in pl_module.parameters():
-            if p.grad is not None:
-                abs_grad = p.grad.abs()
-                grad_sum += abs_grad.sum()
-                max_grad = torch.max(max_grad, abs_grad.max())
-                count += p.grad.numel()
-        if count == 0:
-            return torch.tensor(0.0, device=pl_module.device), torch.tensor(0.0, device=pl_module.device)
-        return grad_sum / count, max_grad
-
-    def _count_nan_grad(self, pl_module: L.LightningModule) -> tuple[int, int]:
-        numels, num_nans = 0, 0
-        for p in pl_module.parameters():
-            if p.grad is not None:
-                numels += p.grad.numel()
-                num_nans += p.grad.isnan().sum().item()
-        return numels, num_nans
-
-    def on_before_zero_grad(
-        self, trainer: L.Trainer, pl_module: L.LightningModule, optimizer: torch.optim.Optimizer
-    ) -> None:
-        """Before zero-ing grad log max and average grad
-        (should be shifted one back from next)."""
-        avg_g, max_g = self._get_avg_and_max_grad(pl_module)
-
-        metrics = {
-            "avg_g_bef_zerog": avg_g,
-            "max_g_bef_zerog": max_g,
-        }
-        log_metrics(pl_module, metrics)
-
-    def on_after_backward(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
-        """After computing gradient log max and average grad.
-        This same value should be returned by <on_before_zxero_grad>
-        in the next iteration."""
-        avg_g, max_g = self._get_avg_and_max_grad(pl_module)
-        numels, num_nans = self._count_nan_grad(pl_module)
-
-        metrics = {
-            "avg_g_after_bwd": avg_g,
-            "max_g_after_bwd": max_g,
-        }
-        log_metrics(pl_module, metrics)
 
 
 class SkipNanGradCallback(Callback):

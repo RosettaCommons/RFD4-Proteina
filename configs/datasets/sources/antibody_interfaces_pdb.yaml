@@ -6,12 +6,7 @@ defaults:
   - _self_
 
 name: antibody_interfaces_pdb
-data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/pdb/ig_interfaces_df_2026_09_10.parquet
-
-loader:
-  parser_args:
-    # Identifies CDRs and framework regions in the antibody chains
-    extra_fields: [ig_region]
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_04_tmol_plip_cath/sampling/immune_interfaces.parquet
 
 filters:
   mapping:

@@ -2,7 +2,7 @@
 # Sampled by inverse cluster size on `pli_unique_qcov__50__community`.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/plinder@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: plinder_tasks
   - _self_

@@ -31,10 +31,3 @@ generation:
   args:
     nsteps: 60
     guidance_w: 1.0
-  model:
-    bb_ca:
-      simulation_step_params:
-        sc_scale_noise: 0.3
-    local_latents:
-      simulation_step_params:
-        sc_scale_noise: 0.1

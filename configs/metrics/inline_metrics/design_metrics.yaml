@@ -1,3 +1,7 @@
+amino_acid_composition:
+  _target_: rfproteina.metrics.amino_acid_composition.AminoAcidCompositionMetric
+  aggregation: [mean]
+
 bond_length_metrics:
   _target_: rfproteina.metrics.design_metrics.BondLengthMetric
   verbose: True
@@ -54,7 +58,8 @@ posebusters_metrics:
 
 chiral_accuracy:
   _target_: rfproteina.metrics.chiral_metric.ChiralAccuracy
-  required_tags_any: ["small_molecule_only"]
+  subset_mask: is_ligand
+  required_tags_any: ["has_small_molecule"]
 
 # NOTE: We align the predicted AtomArray to itself, but using coords_with_insertion as the ground-truth, so this is
 # equivalent to aligning directly to the ground-truth input motif.

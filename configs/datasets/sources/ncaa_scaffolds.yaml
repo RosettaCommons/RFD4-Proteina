@@ -1,0 +1,24 @@
+# AFDB/MGnify protein scaffolds with one NCAA substitution, predicted by ESMFold2 (10 recycle loops).
+# Accepted chemistry-validated conformers only; separate from peptide distillation.
+defaults:
+  - backend_blob
+  - _self_
+
+name: ncaa_scaffolds
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/examples.parquet
+
+columns_to_load:
+  - example_id
+  - has_in_vocabulary_ptm
+  - n_standard_amino_acid_residues
+  - n_other_residues
+  - n_other_heavy_atoms
+  - n_atoms
+
+filters:
+  - "has_in_vocabulary_ptm == True"
+
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ncaa/2026_09_26_ncaa_esmfold2_scaffolds/blob
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.annotated_cif

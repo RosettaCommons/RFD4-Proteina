@@ -36,7 +36,7 @@ def fad_pistacking():
     atom_array = atom_array[np.isin(atom_array.chain_iid, ["A_1", "C_1"])]
 
     # Mirror AnnotateInteractions: detect on a hydrogenated copy, then map back to the heavy atoms.
-    with_h = as_atom_array_plus(add_hydrogens(atom_array))
+    with_h = as_atom_array_plus(add_hydrogens(atom_array.copy()))
     results = annotate_interactions(with_h, interaction_types=("pistacking",), inter_chain_only=True)
     to_heavy = build_atom_index_mapping(with_h, atom_array)
 

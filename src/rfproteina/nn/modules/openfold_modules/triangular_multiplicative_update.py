@@ -28,20 +28,14 @@ from rfproteina.nn.modules.openfold_modules.tensor_utils import permute_final_di
 
 try:
     import cuequivariance_ops_torch
-    from cuequivariance_ops_torch import (
-        triangle_multiplicative_update,
-        triangle_multiplicative_update_inference_shape_is_supported,
-        triangle_multiplicative_update_training_shape_is_supported,
-    )
+    from cuequivariance_ops_torch import triangle_multiplicative_update
 
     # A failed Triton import leaves stub functions and records the traceback here.
     _CUEQ_UNAVAILABLE = getattr(cuequivariance_ops_torch, "IMPORT_EXCEPTION", None)
 except (ImportError, OSError) as error:
-    _CUEQ_UNAVAILABLE = f"cuequivariance-ops-torch>=0.12 is required ({error})"
+    _CUEQ_UNAVAILABLE = f"cuequivariance-ops-torch>=0.13 is required ({error})"
 if os.environ.get("DISABLE_CUEQUIVARIANCE", "").strip().lower() in ("1", "true", "yes"):
     _CUEQ_UNAVAILABLE = "DISABLE_CUEQUIVARIANCE is set"
-
-_CUEQ_SUPPORTED: dict[tuple, bool] = {}
 
 
 @cache
@@ -57,26 +51,6 @@ def _cat_optional(a: torch.Tensor | None, b: torch.Tensor | None) -> torch.Tenso
 def _bias_or_zeros(module: nn.Module) -> torch.Tensor:
     """The module's bias, or zeros matching its weight when it learns none."""
     return module.weight.new_zeros(module.weight.shape[0]) if module.bias is None else module.bias
-
-
-@torch.compiler.assume_constant_result
-def _cueq_supported(batch: int, n: int, c_z: int, c_hidden: int, device: int, training: bool, bf16: bool) -> bool:
-    """Whether cuEquivariance fuses this static BF16 shape; warns once per shape otherwise."""
-    key = (batch, n, c_z, c_hidden, device, training, bf16)
-    if key not in _CUEQ_SUPPORTED:
-        mode = "training" if training else "compiled inference"
-        query = (
-            triangle_multiplicative_update_training_shape_is_supported
-            if training
-            else triangle_multiplicative_update_inference_shape_is_supported
-        )
-        _CUEQ_SUPPORTED[key] = bf16 and query(batch, n, c_z, c_hidden, device)
-        if not _CUEQ_SUPPORTED[key]:
-            _warn_once(
-                f"cuEquivariance has no fused {mode} triangle multiplication for batch={batch}, n={n}, "
-                f"c_z={c_z}, c_hidden={c_hidden}, bf16={bf16}; using the torch backend."
-            )
-    return _CUEQ_SUPPORTED[key]
 
 
 class TriangleMultiplicativeUpdate(nn.Module):
@@ -99,14 +73,9 @@ class TriangleMultiplicativeUpdate(nn.Module):
                 ``torch`` or ``cuequivariance``
         """
         super().__init__()
-        if backend not in ("torch", "cuequivariance"):
-            raise ValueError(f"nn.tri_mult_backend must be 'torch' or 'cuequivariance', got {backend!r}")
-        if backend == "cuequivariance" and _CUEQ_UNAVAILABLE:
-            _warn_once(f"cuEquivariance is unavailable ({_CUEQ_UNAVAILABLE.strip().splitlines()[-1]}); using torch.")
-            backend = "torch"
         self.c_z = c_z
         self.c_hidden = c_hidden
-        self.backend = backend
+        self.set_backend(backend)
 
         self.linear_a_p = Linear(self.c_z, self.c_hidden, bias=bias)
         self.linear_a_g = Linear(self.c_z, self.c_hidden, bias=bias, init="gating")
@@ -119,6 +88,15 @@ class TriangleMultiplicativeUpdate(nn.Module):
         self.layer_norm_out = LayerNorm(self.c_hidden, bias=bias)
 
         self.sigmoid = nn.Sigmoid()
+
+    def set_backend(self, backend: str) -> None:
+        """Select the runtime backend without changing checkpoint parameters."""
+        if backend not in ("torch", "cuequivariance"):
+            raise ValueError(f"nn.tri_mult_backend must be 'torch' or 'cuequivariance', got {backend!r}")
+        if backend == "cuequivariance" and _CUEQ_UNAVAILABLE is not None:
+            _warn_once(f"cuEquivariance is unavailable; using torch. Reason: {_CUEQ_UNAVAILABLE}")
+            backend = "torch"
+        self.backend = backend
 
     def _combine_projections(
         self,
@@ -202,10 +180,11 @@ class TriangleMultiplicativeUpdate(nn.Module):
             if (training or torch.compiler.is_compiling()) and _cueq_supported(
                 int(z.shape[0]), int(z.shape[1]), self.c_z, self.c_hidden, z.device.index, training, bf16
             ):
-                # The op rounds the FP32 module weights to BF16 itself, so every cuEq route sees a
-                # native BF16 call; gradients still flow back to the FP32 parameters.
+                # No precision override: precision="bfloat16" rounds the pair and every weight to BF16 before
+                # the LayerNorms, which doubled the parameter-gradient error against FP32 (measured). Under
+                # BF16 autocast the default keeps the LayerNorms on the FP32 pair (documented cuEq behaviour).
                 return triangle_multiplicative_update(
-                    z, self._direction, mask, eps=self.layer_norm_in.eps, precision="bfloat16", **parameters
+                    z, self._direction, mask, eps=self.layer_norm_in.eps, **parameters
                 )
 
         mask = mask.unsqueeze(-1)

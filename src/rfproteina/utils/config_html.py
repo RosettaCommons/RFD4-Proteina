@@ -1172,8 +1172,10 @@ def _render_system_card(resolved: dict) -> str:
     ncpus = hw.get("ncpus_per_task_train_") or hw.get("ncpus_per_task_") if isinstance(hw, dict) else None
 
     batch_size = int(_num(dl.get("batch_size")))
+    train_params = (dl.get("train") or {}).get("dataloader_params") or {}
+    train_batch_size = int(_num(train_params.get("batch_size"), batch_size))
     accum = int(_num(opt.get("accumulate_grad_batches"), 1.0))
-    effective_bs = batch_size * accum * max(total_gpus, 1)
+    effective_bs = train_batch_size * accum * max(total_gpus, 1)
     steps_per_epoch = int(_num(opt.get("steps_per_epoch")))
     examples_per_epoch = steps_per_epoch * effective_bs if (steps_per_epoch and effective_bs) else 0
     val_every = opt.get("val_every_n_epochs")
@@ -1189,8 +1191,8 @@ def _render_system_card(resolved: dict) -> str:
         tiles.append(_stat_tile(str(batch_size), "Per-GPU batch"))
     if effective_bs:
         sub_parts: list[str] = []
-        if batch_size:
-            sub_parts.append(str(batch_size))
+        if train_batch_size:
+            sub_parts.append(str(train_batch_size))
         if accum and accum != 1:
             sub_parts.append(f"×{accum}")  # noqa: RUF001
         if total_gpus and total_gpus != 1:

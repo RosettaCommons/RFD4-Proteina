@@ -6,9 +6,11 @@ defaults:
   - _self_
 
 loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/pdb/data/blob_annotated_2026_09_09
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_03_tmol_plip_cath/blob
   record_id_colname: path
   assembly_id_colname: assembly_id
+  parser_args:
+    extra_fields: [ig_region]
 
 filters:
   _target_: rfproteina.utils.hydra.non_null_values
@@ -18,7 +20,9 @@ filters:
 
     # Structure quality
     resolution: "resolution < 9.0"
-    charge_validation: "validated != False"
+    protein_ligand_quality: "passes_protein_ligand_quality_validation.isnull() or passes_protein_ligand_quality_validation == True"
+    bonds: "passes_bond_filters == True"
+    ligand_identity: "passes_ligand_identity_filters == True"
 
     # Exclude enormous assemblies
     polymer_pn_unit_count: "num_polymer_pn_units <= 300"
@@ -38,13 +42,16 @@ columns_to_load:
       - all_pn_unit_iids_after_processing
       - method
 
-      # Type of the query chain(s)
-      # Sums to 1 for pn_unit datasets and 2 for interface datasets
-      # NOTE: This is NOT the number of these chains in the complex!
+      # Query-chain type counts, not the total number of chains in the complex.
       - n_prot
       - n_nuc
       - n_ligand
       - n_peptide
 
-    charge_validation:
-      - validated
+      - passes_protein_ligand_quality_validation
+      - passes_bond_filters
+      - passes_ligand_identity_filters
+      - n_standard_amino_acid_residues
+      - n_dna_residues
+      - n_rna_residues
+      - n_other_heavy_atoms

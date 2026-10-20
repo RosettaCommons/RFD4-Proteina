@@ -2,9 +2,9 @@
 # takes the full 32-512 range.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/afdb_monomer@dataset
-  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
   - _self_
 
 probability: 1.0

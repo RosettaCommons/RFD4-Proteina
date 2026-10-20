@@ -35,11 +35,18 @@ datasets:
   # Must be overidden for training; validation is not strictly necessary
   train: ???
 
+nn:
+  recycle:
+    grad: last  # Backpropagate through only the final recycle.
+
 # Checkpoint loading (mutually exclusive):
 # - pretrain_ckpt_path: Start new run from saved weights (resets optimizer/scheduler/step/epoch/RNG)
 # - resume_ckpt_path: Resume interrupted run (restores full Lightning state)
 pretrain_ckpt_path:
 resume_ckpt_path:
+hf_ckpt_path: null  # Local/HF initialization for new runs; full checkpoint resume takes precedence.
+hf_ckpt_revision: null  # Pin a full Hub commit; normal HF cache/authentication settings apply.
+hf_bundle_overrides: {}  # Optional nn/flowmatcher/AE/featurization changes; bundle values are defaults.
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).
 # Determines whether to delete structure files for designs that fail this filter
@@ -95,6 +102,7 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/2026_09_04_release_ae_
 
 # Loss
 loss:
+  signed_volume_weight: 2.5  # Auxiliary ligand stereochemistry loss; zero disables it.
   sequence_prediction:
     enabled: true
     t_min: 0.0
@@ -120,6 +128,8 @@ force_precision_f32: False  # Deprecated: use precision: "32" instead
 
 # Training
 training:
+  exploration_k: 1  # Number of noise candidates per processed example; 1 preserves baseline training.
+  exploration_losses: [bb_ca, local_latents]  # Losses summed to select the winning candidate.
   # Trunk recycle depth is sampled per step and clamped to [1, n_recycle_max].
   n_recycle_max: 1
   n_recycle_sampler: uniform  # uniform (U{1..n_recycle_max}) | poisson (Poisson(n_recycle_lambda), clamped)

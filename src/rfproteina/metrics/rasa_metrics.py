@@ -29,8 +29,8 @@ def get_rasa_metrics(
 
     Note:
         RASA is computed with the Shrake-Rupley algorithm. Training uses buried
-        values in ``[0.0, 0.1)``, intermediate values in ``[0.1, 0.2)``, and
-        exposed values greater than or equal to ``0.2``.
+        values in ``[0.0, 0.02)``, intermediate values in ``[0.02, 0.1]``, and
+        exposed values greater than ``0.1``, after rounding to the SASA sampling grid.
     """
 
     output_metrics = {}
@@ -39,7 +39,8 @@ def get_rasa_metrics(
     generated_rasa = calculate_atomwise_rasa(atom_array, probe_radius, atom_radii, point_number)
 
     # Define bin edges matching training (from design_task_modifiers.py)
-    bin_edges = np.linspace(0, 0.2, 3)  # [0.0, 0.1, 0.2]
+    generated_rasa = np.rint(generated_rasa.astype(float) * point_number) / point_number
+    bin_edges = [0.0, 0.02, np.nextafter(0.1, np.inf)]
 
     # Bin the generated RASA values
     generated_rasa_bins = np.digitize(generated_rasa, bin_edges, right=False)

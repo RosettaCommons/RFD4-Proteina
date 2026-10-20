@@ -1,17 +1,7 @@
 defaults:
   - /datasets/train/pipeline_defaults@dataset
-  - /datasets/sources/backend_blob@dataset
-  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - /datasets/sources/synthetic_ncaa@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
   - _self_
 
 probability: 1.0
-dataset:
-  memory_map: true
-  name: synthetic_ncaa_strict
-  data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_ptm_esmfold2/examples.parquet
-  columns_to_load: [example_id, length, passes_ae_audit, has_in_vocabulary_ptm]
-  filters: ["passes_ae_audit == True", "has_in_vocabulary_ptm == True"]
-  loader:
-    blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_21_ptm_esmfold2/blob
-    parser_args:
-      _target_: rfproteina.utils.parse_presets.annotated_cif

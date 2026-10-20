@@ -3,11 +3,10 @@
 
 defaults:
   - pdb_common
-  - pdb_tmol_plip_cath
   - _self_
 
 name: pdb_pn_units
-data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_tmol_plip_cath/sampling/pn_units.parquet
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_10_03_tmol_plip_cath/sampling/pn_units.parquet
 
 loader:
   column_mapping:
@@ -17,12 +16,10 @@ filters:
   mapping:
     cluster: "cluster.notnull()"
     physical_bonds: "pdb_id not in ${resolve_import:atomworks.ml.preprocessing.constants,PDB_IDS_WITH_UNPHYSICAL_BONDS}"
-    query_ligands: "~(q_pn_unit_non_polymer_res_names.notnull() and q_pn_unit_non_polymer_res_names.str.contains('${resolve_import:atomworks.constants,AF3_EXCLUDED_LIGANDS_REGEX}', regex=True))"
 
 columns_to_load:
   mapping:
     pn_unit:
       - cluster
       - q_pn_unit_iid
-      - q_pn_unit_non_polymer_res_names
       - q_pn_unit_is_loi

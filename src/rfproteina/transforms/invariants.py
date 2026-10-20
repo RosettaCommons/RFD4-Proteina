@@ -13,9 +13,9 @@ from atomworks.io.utils.selection import get_residue_starts, get_segments
 from atomworks.io.utils.standard_annotations import S_ATM, S_SEGMIN, STANDARD_ANNOTATIONS
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.atom_array import add_global_token_id_annotation
 from atomworks.ml.transforms.base import Transform
+from atomworks.ml.transforms.filters import polymer_terminal_oxygen_mask
 from atomworks.ml.utils.token import apply_and_spread_token_wise, get_token_starts
 from biotite.structure import AtomArray, spread_residue_wise
 
@@ -26,6 +26,9 @@ from rfproteina.datapipes.bonds import (
     get_polymerization_atom_names,
 )
 from rfproteina.datapipes.schema.proteina import TokenType
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
+from rfproteina.utils.constants import LOCAL_LATENT_RESIDUES
+from rfproteina.utils.token_encoding import build_atom37_slots
 
 logger = logging.getLogger(__name__)
 
@@ -459,9 +462,6 @@ def check_global_token_id_consistent(aa: AtomArray) -> list[InvariantViolation]:
 
 def check_conditioning_violations(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
     """Return violations where atomized/coord-conditioned tokens lack sequence conditioning."""
-    # Lazy imports to avoid circular dependency with pipeline.py
-    from rfproteina.datapipes.pipeline import TokenType, build_atom37_slots
-
     token_type: torch.Tensor = feats["token_type"]  # [n_tokens]
     seq_mask = feats[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
     atom37_mask: torch.Tensor = feats["atom37_mask"]  # [n_tokens, 37]
@@ -1081,9 +1081,6 @@ def check_supports_local_latent_violations(aa: AtomArray, feats: dict) -> list[I
     if "supports_local_latent" not in feats:
         return []
 
-    # Lazy import to avoid circular dependency with pipeline.py
-    from rfproteina.datapipes.pipeline import RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS
-
     token_starts = get_token_starts(aa)
     res_names = aa.res_name[token_starts]
     categories = set(aa.get_annotation_categories())
@@ -1092,14 +1089,23 @@ def check_supports_local_latent_violations(aa: AtomArray, feats: dict) -> list[I
     is_in_context_conditioning = apply_and_spread_token_wise(aa, ~C_IDX.mask(aa, default="generate"), np.any)[
         token_starts
     ]
-    expected = (
-        np.array([n in RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS for n in res_names])
-        & ~is_atomized
-        & ~is_in_context_conditioning
-    )
+    expected = np.isin(res_names, LOCAL_LATENT_RESIDUES) & ~is_atomized & ~is_in_context_conditioning
 
     supports_local_latent = feats["supports_local_latent"].cpu().numpy()
     violations = []
+
+    if "atom37_mask" in feats:
+        missing_reference = supports_local_latent & ~feats["atom37_mask"][:, 1].cpu().numpy().astype(bool)
+        missing_reference &= ~S_SEGMIN.mask(aa, default="generate")[token_starts]
+        n_missing_reference = int(missing_reference.sum())
+        if n_missing_reference:
+            violations.append(
+                InvariantViolation(
+                    check="local_latent_reference_atom_missing",
+                    message=f"{n_missing_reference} local-latent token(s) lack their atom37 slot-1 reference atom",
+                    count=n_missing_reference,
+                )
+            )
 
     n_invalid = int((supports_local_latent & ~expected).sum())
     if n_invalid:
@@ -1125,11 +1131,7 @@ def check_supports_local_latent_violations(aa: AtomArray, feats: dict) -> list[I
 
 
 def check_no_oxt_on_local_latent_tokens(aa: AtomArray, feats: dict) -> list[InvariantViolation]:
-    """Return violations where OXT atoms appear on ``supports_local_latent`` non-atomized tokens.
-
-    The autoencoder's residue-type mask excludes OXT, so it must be stripped
-    from non-atomized tokens that emit local latents.
-    """
+    """Reject local-latent OXT atoms that violate the shared terminal-oxygen policy."""
 
     categories = set(aa.get_annotation_categories())
 
@@ -1140,6 +1142,7 @@ def check_no_oxt_on_local_latent_tokens(aa: AtomArray, feats: dict) -> list[Inva
 
     supports_local_latent_per_atom = supports_local_latent[token_id_per_atom]  # [n_atoms]
     bad = is_oxt & supports_local_latent_per_atom & ~is_atomized
+    bad &= polymer_terminal_oxygen_mask(aa)
     n_bad = int(bad.sum())
     if n_bad:
         return [

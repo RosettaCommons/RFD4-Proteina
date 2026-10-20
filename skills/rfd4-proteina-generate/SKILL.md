@@ -38,7 +38,7 @@ bash skills/rfd4-proteina-setup/scripts/preflight.sh
 ```
 
 Fix every `FAIL` (see **rfd4-proteina-setup**) before generating.
-`scripts/download_example_data.sh` fetches the release pair composed by
+`scripts/download_assets.sh` fetches the release pair composed by
 `configs/inference.yaml`, so the default run needs no checkpoint override.
 
 ## Step 2 — Route the task
@@ -109,12 +109,11 @@ when validating the workflow.
 Full cheat sheet: [references/overrides.md](references/overrides.md). The knobs
 that matter most:
 
-- **Diversity (stochasticity).** Backbone temperature
-  `generation.model.bb_ca.simulation_step_params.sc_scale_noise` (default 0.3)
-  and sidechain/sequence temperature
-  `generation.model.local_latents.simulation_step_params.sc_scale_noise`
-  (default 0.1). Roughly: `(0.1,0.1)` = high designability, `(0.5,0.5)` =
-  natural UniProt-like sequences, `(0.9,0.9)` = maximum diversity.
+- **Temperature / diversity.** Use
+  `generation.model.bb_ca.simulation_step_params.tsr_k` (default 16) and
+  `generation.model.local_latents.simulation_step_params.tsr_k` (default 4).
+  Higher `k` lowers temperature; lower `k` raises it. `tsr_sigma` provides secondary
+  control over when sharpening takes effect (defaults: backbone 3, latent 12).
 - **Partial diffusion (refine an existing structure).** Simple:
   `generation.args.partial_trajectory_fraction_steps=<f>` (fraction of `nsteps`).
   Advanced: `generation.args.partial_t_backbone=<t>` /
@@ -180,8 +179,8 @@ table and how to read annotations: [references/outputs.md](references/outputs.md
 | Out of memory | Lower `batch_size`; confirm your longest input fits at `batch_size=1` first |
 | `--inputs`/`--out_dir` not recognized / Hydra config error | Use `=` not `--`: `inputs=file.cif`, never `--inputs file.cif` |
 | checkpoint not found | Confirm `DATA_PATH`, then compare `ckpt_name` and `ckpt_path` with `configs/inference.yaml`; override only when intentionally using another checkpoint |
-| `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_example_data.sh "$DATA_PATH"` |
-| `atomworks not found` | Re-run `make setup` to install the public AtomWorks dependency |
+| `DATA_PATH` / checkpoint not found | `export DATA_PATH=...` then `./scripts/download_assets.sh "$DATA_PATH"` |
+| `atomworks not found` | `git submodule update --init lib/atomworks`, re-run `setup.sh` |
 | `hydra not found` / import errors | `source .venv/bin/activate` |
 | `No .env file found for cluster '<name>'` | `export CLUSTER=local` and create `.env.local` |
 | AF3 / `*_refolding` errors | Refolding metrics need an AF3 container — see rfd4-proteina-setup + rfd4-proteina-evaluate |

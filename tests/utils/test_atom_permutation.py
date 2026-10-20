@@ -10,28 +10,26 @@ from atomworks.ml.transforms.symmetry import build_automorphism_units, find_auto
 from biotite.structure import AtomArray
 
 from rfproteina.datapipes.collate import collate_batch
-from rfproteina.datapipes.pipeline import (
-    ConvertToAtom37Format,
-    PrecomputeAtomPermutation,
-    TokenType,
-    build_atom37_slots,
-)
+from rfproteina.datapipes.pipeline import ConvertToAtom37Format, PrecomputeAtomPermutation, TokenType
 from rfproteina.datapipes.schema.proteina import ProteinaDataSample
 from rfproteina.metrics.gt_structure_comparison import StructureComparisonMetric
 from rfproteina.metrics.lddt_metric import AllAtomLDDT
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.utils.atom_permutation import atom_permutation, permute_gt_atom37
 from rfproteina.utils.parse_presets import RCSB_WITH_METALS, STANDARD_ANNOTATIONS_ONLY
+from rfproteina.utils.token_encoding import build_atom37_slots
 from tests.conftest import TEST_DATA_DIR
 
 _STRUCTURE = TEST_DATA_DIR / "pdb" / "6wtf.cif"
 
 
 def test_unknown_amino_acid_retains_observed_atom37_coordinates() -> None:
+    """Preserve observed protein atom coordinates in UNK residues and reject unsupported atom names."""
     atoms = as_atom_array_plus(AtomArray(9))
     atoms.res_name[:] = "UNK"
     atoms.atom_name = np.array(["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2"])
     atoms.coord = np.arange(27, dtype=np.float32).reshape(9, 3)
+    atoms.bonds = struc.BondList(len(atoms))
     atoms.set_annotation("token_type", np.full(9, TokenType.PROTEIN))
     atoms.set_annotation("token_id", np.zeros(9, dtype=int))
     feats = ConvertToAtom37Format().forward({"atom_array": atoms, "feats": {"coords": atoms.coord}})["feats"]

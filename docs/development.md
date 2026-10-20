@@ -32,73 +32,45 @@ to prove the training loop runs end to end on a fresh cluster. It uses the Pytho
 
 ### 1. Download the model and the test dataset
 
-Run `download_example_data.sh` with `--with-test-dataset` and it pulls both checkpoints, the
-denoiser and the autoencoder, plus the roughly 50 system `test_dataset`, which is a parquet and a
-plain directory of CIFs, all into `$DATA_PATH`. Everything comes from the public bucket
-**`YOUR_DATASET_STORE`** at `https://YOUR_DATASET_STORE`, over anonymous
-HTTPS. No AWS CLI or credentials are required.
+Run `download_assets.sh` with `--with-test-dataset` to download the configured
+model weights and the tiny parquet/CIF dataset into `$DATA_PATH/test_dataset`.
+The dataset comes from the pinned `nvidia/RFD4-Proteina` model repository with the
+default checkpoint configuration. Authenticate with `HF_TOKEN` or `hf auth login`
+while it is private. The finetuning command below loads the portable HF bundle separately.
 
 ```bash
-./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset
+./scripts/download_assets.sh "$DATA_PATH" --with-test-dataset --skip-of3
 ```
 
-This lays out:
-
-```
-$DATA_PATH/
-├── flow_checkpoints/<release denoiser>.ckpt
-├── ae_checkpoints/<release autoencoder>.ckpt
-└── test_dataset/
-    ├── test_systems.parquet
-    └── cifs/systems/<xx>/<id>/<id>.cif
-```
-
-See `configs/inference.yaml` for the current release pair.
-
-> **CCD and PDB mirrors, both optional.** The tutorial needs neither. For broader work that parses
-> arbitrary ligands or PDB entries, we publish a CCD mirror at
-> `https://YOUR_DATASET_STORE/train_datasets/ccd_mirror/2026_01_06_ccd/2026_01_06_ccd.sqfs`.
-> It is a squashfs, so mount it or run `unsquashfs` on it and point `CCD_MIRROR_PATH` at the
-> directory. The full PDB mirror is too large to host, so fetch structures from
-> [RCSB](https://www.rcsb.org/) or point `PDB_MIRROR_PATH` at your own copy.
+> **CCD and PDB mirrors are optional.** The tutorial needs neither. For broader
+> use, configure your own `CCD_MIRROR_PATH` / `PDB_MIRROR_PATH`, or fetch structures
+> from [RCSB](https://www.rcsb.org/).
 
 ### 2. Run the finetune
 
-Pass the released denoiser, which you downloaded to `$DATA_PATH` above, as `pretrain_ckpt_path`.
-It is the same checkpoint inference uses, named in
-[`configs/inference.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/inference.yaml).
+Initialize a new run from the portable bundle:
 
 ```bash
-rfd4-train \
-    experiment=tutorial/finetune_test_dataset \
-    pretrain_ckpt_path=/path/to/denoiser.ckpt \
-    +single=true +nolog=true
+rfd4-train experiment=tutorial/finetune_test_dataset \
+    hf_ckpt_path=nvidia/RFD4-Proteina \
+    hf_ckpt_revision=eadacbe46a126c6c3622618eb5ac987c654cdd20 \
+    pretrain_ckpt_path=null +single=true log.log_wandb=false
 ```
 
-- **`experiment=tutorial/finetune_test_dataset`** wires up the tiny dataset from
-  [`configs/experiment/tutorial/finetune_test_dataset.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/experiment/tutorial/finetune_test_dataset.yaml),
-  on a single GPU with short epochs. Validation runs the checked in `val/unconditional` set, meaning
-  unconditional monomer generation, with the AF3 refolding tag dropped, so it steps and validates
-  without a container.
-- **`pretrain_ckpt_path`** starts a new run from the released weights, resetting the optimizer,
-  scheduler, step and epoch. To restore full Lightning state instead, use `resume_ckpt_path=<ckpt>`.
-  Read the current filename from `inference.yaml` rather than copying a checkpoint name into this guide.
-- **`+single=true`** drops the SLURM and DDP plugins. **`+nolog=true`** disables WandB and
-  checkpoint writing.
-
-You should see the model and frozen autoencoder build, then the pretrained checkpoint load and
-training steps run over the tiny dataset. That confirms the data pipeline, autoencoder and model
-all work on your cluster.
-
-> **Your architecture must match the checkpoint.** `train.py` builds the model from the `nn` config,
-> not from the checkpoint, so the two have to agree. The default
-> [`configs/nn/local_latents_score_nn_160M_atom37.yaml`](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml)
-> matches the September 15 release checkpoint. To finetune a different checkpoint, select or
-> add the `nn` config it was trained with. A mismatch shows up as `size mismatch` or `Missing
-> key(s)` errors on `load_state_dict`.
+The bundle supplies defaults for `nn`, `product_flowmatcher`, autoencoder settings and
+the training path-length cutoff. The experiment supplies the data, optimizer and logging
+settings. To change a bundle setting, put the corresponding nested value under
+`hf_bundle_overrides` in the experiment YAML. Weight loading stays strict by default;
+set the existing `weight_loading` policy explicitly if a changed architecture needs
+new or resized parameters. LoRA still requires an exactly matching base model.
+Native checkpoints remain supported
+through `pretrain_ckpt_path`, with a matching model configuration. Resume full
+optimizer, scheduler and EMA state with `resume_ckpt_path=<checkpoint>` or the
+run's automatic `last.ckpt`; resume does not need the original HF bundle.
 
 > **Tip.** The tutorial disables `torch.compile` for a fast first run. Turn it back on with
-> `nn.use_torch_compile=True compile_autoencoder=True` for real training. Add
+> `nn.use_torch_compile=True compile_autoencoder=True` for real training. The bundle does
+> not override the experiment's compilation setting. Add
 > `opt.steps_per_epoch=3 opt.max_epochs=1` to stop after a few steps.
 
 ### How the dataset works without squashfs
@@ -201,35 +173,33 @@ and 384-token crops/padding. All sources live under
 
 | Source | Directory | Weight |
 | --- | --- | --- |
-| PDB interfaces | `pdb/2026_09_19_tmol_plip_cath` | 25% |
+| PDB interfaces | `pdb/2026_10_03_tmol_plip_cath` | 25% |
 | AFDB Genie3 subset | `synthetic/afdb_genie3_subset` | 20% |
 | TED dimers | `synthetic/ted_dimers` | 15% |
-| Synthetic PTMs | `synthetic/2026_09_21_ptm_esmfold2` | 10% |
+| Synthetic PTMs | `synthetic/ncaa/2026_09_21_ptm_esmfold2` | 10% |
 | PDB PTM environments | `pdb/2026_09_19_ptm_crop` | 5% |
 | PDB glycans | `pdb/2026_09_19_glycan` | 15% |
 | Protein–DNA complexes | `synthetic/2026_09_22_protein_dna_esmfold2` | 5% |
 | RNA monomers | `synthetic/2026_09_21_rna_monomers` | 5% |
 
-Each directory's README describes its production method. PTM/glycan sources require the
-published strict audit and in-vocabulary flags; experimental sources also require the training
+Each directory's S3-root README describes its production method and exact quality criteria.
+PTM/glycan sources require quality and in-vocabulary flags; experimental sources also require the training
 split and pre-2024 deposition. Glycans load the audited query plus directly bonded residues.
 Those flags describe the published 100-PTM/20-glycan panel, not the model's configured vocabulary;
-selecting this mix does not expand model tokens. The recipe configures training sources only;
-validation datasets must be supplied separately.
+selecting this mix does not expand model tokens. See the source configs for filters and
+the selected training recipe for validation datasets.
 
-PDB retains its cluster weights and conformer normalization. RNA requires
-`source_training_eligible`; TED requires `InterfaceLength > 10`, `AvgIntPAE < 10`,
-`AvgIntPlddt > 70`, and `n_res_a + n_res_b <= 768` before cropping.
+RNA requires conversion/roundtrip, clash and Ribonanza flags plus a confidence limit.
+PDB retains its cluster weights and conformer normalization.
+TED requires `InterfaceLength > 10`, `AvgIntPAE < 10`,
+`AvgIntPlddt > 70`; AE additionally requires `n_res_a + n_res_b <= 768` before cropping to 384 tokens.
 Parsed records are cached under `${LOCAL_DRIVE_MOUNT:-/tmp}/${USER}/atomworks_parse_cache`.
-Object-store-backed profiles must supply `AWS_ENDPOINT_URL`; retain it when launching there.
-Re-Glyco is not included until its streaming conversion and audit are published.
+Re-Glyco is a published candidate but is not selected by this recipe.
 
-The independent `train/ae/antibody_antigen_streaming` leaf targets
+The shared `sources/antibody_interfaces_distill` source targets
 `synthetic/2026_09_18_antibody_antigen_esmfold2`. Its default filters are
 `overall_plddt >= 0.75` (confidence is stored on a 0–1 scale), `pae_min_ab_ag < 2`, and
-`n_contact_pairs >= 25`. It is not assigned weight in the mix above. Confirm the destination
-publication is complete before enabling it; the corresponding original publication retains
-3,792 of 75,576 structures after these filters.
+`n_contact_pairs >= 25`. It is not assigned weight in the AE mix above.
 
 ## Design tasks, for conditional training
 
@@ -371,9 +341,26 @@ averaged weights. The released denoiser is an EMA checkpoint.
 
 | Issue | Solution |
 | --- | --- |
-| `No autoencoder checkpoint path provided`, or the AE is missing | Download it with `download_example_data.sh`, or set `autoencoder_ckpt_path=` |
+| `No autoencoder checkpoint path provided`, or the AE is missing | Use a portable HF bundle, or set `autoencoder_ckpt_path=` for native checkpoints |
 | Parquet or CIF not found | Check `DATA_PATH`. For custom data, confirm `loader.base_path` and the parquet `path` column resolve |
 | Training not resuming | Make sure a `last.ckpt` exists in the run's `checkpoints/`, or pass `resume_ckpt_path=` |
 | Out of memory | Lower `dataloaders.batch_size` or `opt.accumulate_grad_batches` |
 | Segfault in rdkit or posebusters | uv's Python needs `LD_PRELOAD` pointed at the bundled `libstdc++.so.6`, as in the `Makefile`. `make test` sets it for you |
 | SLURM launcher fails on a fresh cluster | Check SLURM availability and scheduler resources; use an installed Python environment |
+
+## Portable models
+
+`Proteina.from_pretrained(repo_id_or_directory, revision=...)` loads the model and
+paired autoencoder from `config.json` and `model.safetensors`. Authentication and
+caching use the normal Hugging Face settings. `model.save_pretrained(directory)`
+exports the currently loaded weights; load an EMA checkpoint first to export EMA.
+
+Generation and new fine-tuning runs accept `hf_ckpt_path` and
+`hf_ckpt_revision` for a Hub repository or local exported bundle. Native inference
+uses `ckpt_path`/`ckpt_name`; native training initialization uses
+`pretrain_ckpt_path`, and training resume uses `resume_ckpt_path`. Sampling
+in Python can reuse a loaded model with `run_generation(cfg, model=model)`.
+Full training resume uses a native Lightning checkpoint, including optimizer and
+EMA state, and does not need the original bundle. Bundle configurations retain
+model/AE architecture and scientific featurization settings, excluding dataset
+locations, metrics and logging configuration.

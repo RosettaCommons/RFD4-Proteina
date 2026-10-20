@@ -1,0 +1,40 @@
+# Experimental PDB branched glycans and CCD-identified standalone sugars, plus directly bonded residue context.
+# Selected components, not radius crops; chemistry/PoseBusters and glycan-vocabulary gates below.
+defaults:
+  - backend_blob
+  - _self_
+
+name: pdb_glycan_strict
+memory_map: true
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/examples.parquet
+
+columns_to_load:
+  - example_id
+  - n_standard_amino_acid_residues
+  - n_rna_residues
+  - n_other_heavy_atoms
+  - path
+  - assembly_id
+  - q_pn_unit_iid
+  - deposition_date
+  - glycan_experiment_split
+  - has_in_vocabulary_glycan
+  - passes_structure_validation
+  - passes_bond_filters
+  - passes_posebusters
+
+filters:
+  - "passes_structure_validation == True"
+  - "passes_bond_filters == True"
+  - "passes_posebusters == True"
+  - "deposition_date < '2024-01-01'"
+  - "glycan_experiment_split == 'train'"
+  - "has_in_vocabulary_glycan == True"
+
+loader:
+  _target_: rfproteina.datapipes.glycan.create_glycan_loader
+  record_id_colname: path
+  assembly_id_colname: assembly_id
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_19_glycan/blob
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.annotated_cif

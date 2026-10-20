@@ -79,7 +79,8 @@ if [[ "$runtime" == true ]]; then
     echo ">>> Native CUDA 13 environment ready: source $repo_root/.venv/bin/activate"
     exit 0
 fi
-uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[dev]"
+uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[dev,metrics-cuda13]"
+uv pip check
 
 # ── Register Jupyter kernel (non-fatal) ──────────────────────────────────────
 echo ">>> Registering Jupyter kernel..."

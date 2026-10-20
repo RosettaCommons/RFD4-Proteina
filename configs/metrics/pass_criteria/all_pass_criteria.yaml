@@ -74,6 +74,8 @@ sm_binder:
 ame:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
+    oracle.min_ipae_coi:
+      max_exclusive: 1.5
     refolded_backbone_rmsd.rmsd:
       max: 2.0
     refolded_motif_allatom_rmsd.rmsd:

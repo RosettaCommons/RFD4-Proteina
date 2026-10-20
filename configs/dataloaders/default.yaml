@@ -11,12 +11,13 @@ metrics:
 
 train:
   dataloader_params:
-    batch_size: ${dataloaders.batch_size}
+    batch_size: ${divide_exact:${dataloaders.batch_size},${oc.select:training.exploration_k,1}}
     num_workers: ${dataloaders.num_workers}
     prefetch_factor: ${dataloaders.prefetch_factor}
     pin_memory: ${dataloaders.pin_memory}
     persistent_workers: True
-    in_order: False
+    # Keep false without length bucketing; set true when length_bucketing.enabled is true.
+    in_order: false
     drop_last: True
     multiprocessing_context: ${dataloaders.multiprocessing_context}  
     collate_fn:
@@ -24,8 +25,21 @@ train:
       _partial_: True
       schema: rfproteina.datapipes.schema.proteina.ProteinaDataSample  # Just a string now!
       keep_atom_array: false
+      num_replicates: ${oc.select:training.exploration_k,1}
       fixed_dimensions: {I: 256}  # Datasets crop to this by default; see `datasets/train/pipeline_defaults`.
   n_fallback_retries: 4
+  # Group estimated lengths across ranks; pad actual lengths without changing crops.
+  length_bucketing:
+    enabled: false
+    bucket_step: 64
+    # Buckets derive from bucket_step up to the crop/pad size; override with an explicit list e.g. [64, 128, 192, 256].
+    buckets: ${bucketize:${dataloaders.train.length_bucketing.bucket_step},${dataloaders.train.dataloader_params.collate_fn.fixed_dimensions.I}}
+    # Sum available categories; null counts go in the largest bucket. Datasets may override this list.
+    length_columns:
+      - n_standard_amino_acid_residues
+      - n_dna_residues
+      - n_rna_residues
+      - n_other_heavy_atoms
 
 val:
   dataloader_params:

@@ -9,6 +9,7 @@ n_recycle: 0
 
 # Optional [number_of_steps, recycle_depth] bands covering the trajectory; overrides n_recycle.
 n_recycle_schedule: null
+condition_on_recycle_remaining: true  # Provide the remaining-pass feature after the first pass, if trained.
 
 # Used for labeling output metrics if computed
 val_set_name_override: null
@@ -25,11 +26,9 @@ args:
 
   # +--------- Partial diffusion ----------+
   # Start from a noised version of the input structure rather than pure noise.
-  #
-  # Simple partial diffusion interface:
-  # set partial_trajectory_fraction_steps to a float in (0, 1] to run that
-  # fraction of nsteps. E.g. 0.3 runs 30% of the steps; partial_t values for all modalities
-  # are inferred from the schedule. Mutually exclusive with the partial_t_* args below.
+
+  # Run the final round(fraction * nsteps) intervals, with fraction in (0, 1]. Corruption
+  # uses that tail's first time. Mutually exclusive with the partial_t_* args below.
   partial_trajectory_fraction_steps: null
 
   # Advanced interface:
@@ -63,17 +62,16 @@ model:
       tail_steps: 10
       tail_step_multiplier: 2
     gt:
-      # Non-zero gt => stochastic (TSR-SDE). For a deterministic sampler use `mode: ode`;
-      # sc_scale_noise=0 is NOT equivalent (drops the noise, keeps the drift) and collapses.
+      # Normal inference and search share matched-noise stochastic TSR.
+      # sc_scale_noise=0 is not equivalent: it removes noise but retains stochastic drift.
       mode: "1/t"
       p: 1.0
       clamp_val: null
     simulation_step_params:
       sampling_mode: vf_tsr  # Options are: vf (plain flow matching), sc (using score), or vf_tsr (temporal score rescaling)
-      sc_scale_noise: 0.3  # scale used to multiply injected noise (sc and vf_tsr modes)
-      sc_scale_score: 1.0  # scale used to multiply score (sc and vf_tsr modes)
-      t_lim_ode: 0.98  # At what point between 0 and 1 we switch to ODE with score scaling (for sc mode)
-      t_lim_ode_below: 0.02  # Before what point between 0 and 1 we use sc mode (for vf_ss mode)
+      sc_scale_noise: 1.0  # injected noise variance multiplier
+      t_lim_ode: 0.95  # Switch to deterministic TSR above this modality time.
+      t_lim_ode_below: 0.02  # Use deterministic TSR below this modality time.
       center_every_step: False  # Whether to center the sample every step
       # tsr_k/tsr_sigma: only used when sampling_mode == vf_tsr. tsr_k controls how low the
       # temperature goes (higher k = lower temp); tsr_sigma controls how fast you reach it
@@ -87,15 +85,14 @@ model:
       tail_steps: 10
       tail_step_multiplier: 2
     gt:
-      mode: "tan"
+      mode: tan
       p: 1.0
       clamp_val: null
     simulation_step_params:
       sampling_mode: vf_tsr
-      sc_scale_noise: 0.1
-      sc_scale_score: 1.0
-      t_lim_ode: 0.98
+      sc_scale_noise: 1.0
+      t_lim_ode: 0.95
       t_lim_ode_below: 0.02
       center_every_step: False
       tsr_k: 4.0
-      tsr_sigma: 8.0
+      tsr_sigma: 12.0

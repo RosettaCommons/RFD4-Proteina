@@ -7,8 +7,11 @@ from atomworks.ml.transforms.interactions import AnnotateInteractions
 from biotite.structure import AtomArray, AtomArrayStack
 
 from rfproteina.conditions import (
+    C_CRD,
+    C_CRDGRP,
     C_HB,
     C_HPHOB,
+    C_INTCRD,
     C_MCOORD,
     C_PICATION,
     C_PISTACK,
@@ -208,7 +211,12 @@ def get_interaction_metrics(atom_array: AtomArray) -> dict[str, float]:
     """
     annotator = AnnotateInteractions(inter_chain_only=True, silence_rdkit_warnings=True, hbond_model="plip")
     try:
-        data = annotator.forward({"atom_array": atom_array})
+        # Geometry conditions do not participate in interaction detection.
+        scoring_array = atom_array.copy()
+        for condition in (C_CRD, C_CRDGRP, C_INTCRD):
+            if condition.full_name in scoring_array.get_annotation_categories():
+                scoring_array.del_annotation(condition.full_name)
+        data = annotator.forward({"atom_array": scoring_array})
         annotated = data["atom_array"]
     except Exception:
         logger.warning("AnnotateInteractions failed", exc_info=True)

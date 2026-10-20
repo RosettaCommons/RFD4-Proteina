@@ -31,11 +31,11 @@ base_config_overrides:
 run_name_prefix: sweep_example
 
 sweep:
-  # Backbone temperature
-  generation.model.bb_ca.simulation_step_params.sc_scale_noise:
-    - 0.3
-    - 0.4
-  # Latent temperature
-  generation.model.local_latents.simulation_step_params.sc_scale_noise:
-    - 0.05
-    - 0.1
+  # Backbone TSR temperature: higher k means lower temperature.
+  generation.model.bb_ca.simulation_step_params.tsr_k:
+    - 8.0
+    - 16.0
+  # Latent TSR temperature.
+  generation.model.local_latents.simulation_step_params.tsr_k:
+    - 2.0
+    - 4.0

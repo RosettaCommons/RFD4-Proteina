@@ -10,6 +10,7 @@ def collate_batch(
     schema: str | type[DataSample],
     fixed_dimensions: dict[str, int | list[int]] | None = None,
     keep_atom_array: bool = True,
+    num_replicates: int = 1,
 ) -> PaddedBatchedDataSample:
     """Collate a batch of data samples into a single batch with padding.
 
@@ -24,6 +25,7 @@ def collate_batch(
             in which case each batch is padded to the smallest bucket that fits it.
             If None, pads dynamically to max in batch.
         keep_atom_array: Retain structures for validation, inference or structure-aware callbacks.
+        num_replicates: Number of adjacent copies of each processed sample.
 
     Returns:
         PaddedBatchedDataSample with padding masks.
@@ -38,6 +40,10 @@ def collate_batch(
         module_path, class_name = schema.rsplit(".", 1)
         schema = getattr(importlib.import_module(module_path), class_name)
 
+    if num_replicates < 1:
+        raise ValueError(f"num_replicates must be at least 1, got {num_replicates}")
     samples = [schema.from_dict(item) for item in batch]
+    if num_replicates > 1:
+        samples = [sample for sample in samples for _ in range(num_replicates)]
     batched_samples = BatchedDataSample(samples, default_padding_dimensions=fixed_dimensions)
     return batched_samples.pad_and_stack()

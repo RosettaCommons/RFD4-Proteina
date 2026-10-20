@@ -1,7 +1,14 @@
 import numpy as np
 import torch
-from atomworks.constants import STANDARD_AA, UNKNOWN_AA
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
+from atomworks.constants import AF3_EXCLUDED_LIGANDS, STANDARD_AA, UNKNOWN_AA
+
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
+
+LOCAL_LATENT_RESIDUES = tuple(name for name in UNIFIED_ATOM37_ENCODING.tokens if name not in ("<A>", "<G>"))
+"""Canonical residue tokens represented by the autoencoder's local latents."""
+
+DEFAULT_UNDESIRED_RES_NAMES = [name for name in AF3_EXCLUDED_LIGANDS if name not in LOCAL_LATENT_RESIDUES]
+"""Default training exclusions, preserving residues supported by the autoencoder."""
 
 af2_atom_types = [
     "N",
@@ -237,7 +244,7 @@ AME_ATOMS = {
 
 
 def _build_unified_atom37_mask() -> np.ndarray:
-    """Build the unified residue-type Atom37 mask, excluding terminal oxygen."""
+    """Build the legal Atom37 slots for each residue in the unified vocabulary."""
     token_names = list(UNIFIED_ATOM37_ENCODING.tokens)
     n_tokens = len(token_names)
     n_atoms = 37  # Fixed size for atom37 encoding
@@ -255,16 +262,13 @@ def _build_unified_atom37_mask() -> np.ndarray:
         for pos_idx in range(min(n_atoms, len(encoding_atom_names))):
             encoding_atom = encoding_atom_names[pos_idx].strip()
 
-            if encoding_atom == "OXT":
-                continue
-
             if encoding_atom:  # Non-empty position
                 mask[token_idx, pos_idx] = 1.0
 
     return mask
 
 
-# Unified mask for UNIFIED_ATOM37_ENCODING (33 types: 20 AAs + RNA + DNA + unknowns)
+# Unified mask for the canonical 147-class encoding.
 UNIFIED_RESTYPE_ATOM37_MASK = _build_unified_atom37_mask()
 
 TIP_BY_RESTYPE = {

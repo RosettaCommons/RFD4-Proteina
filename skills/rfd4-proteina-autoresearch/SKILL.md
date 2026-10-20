@@ -137,9 +137,9 @@ Change **one** axis per child so effects are attributable:
   move oracle scoring to a different step. The schedule-end checkpoint is
   optional: without it, each retained beam finishes once without another selection.
   Compare arms using common final metrics, not differently scaled search rewards.
-- **Diversity**: `generation.model.bb_ca.simulation_step_params.sc_scale_noise`
-  and `...local_latents...sc_scale_noise` (higher = more diverse, often less
-  designable).
+- **Temperature / diversity**: `generation.model.bb_ca.simulation_step_params.tsr_k`
+  and `...local_latents...tsr_k` (lower `k` raises temperature). Use `tsr_sigma`
+  as a secondary control over when sharpening takes effect.
 - **Input**: binder length window, epitope/hotspot set, ligand pose/conditioning
   — via **rfd4-proteina-annotated-cif** (a new branch input).
 

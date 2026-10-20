@@ -6,6 +6,9 @@ Run this script on a configured GPU node with the required datasets available:
     cd /path/to/rfproteina   # repo root
     python src/script_utils/generate_e2e_baselines.py
 
+Use the same container and library versions as GPU CI; seeded CUDA results are
+not guaranteed to match across runtimes.
+
 By default the inference/beam baselines use the SOTA checkpoint from configs/inference.yaml
 (the single source of truth, shared with generate.py). Pass ``--sota-ckpt`` to regenerate them
 against a candidate checkpoint before promoting it in inference.yaml.
@@ -40,8 +43,10 @@ from atomworks.io.utils.compression import open_compressed
 
 from tests.e2e.helpers.gpu_e2e import assert_no_dataset_fallbacks, parse_train_losses_from_csv_logger
 from tests.e2e.helpers.regression_baselines import (
+    AE_TRAINING_OVERRIDES,
     BASELINES_DIR,
     BEAM_SEARCH_OVERRIDES,
+    FLOW_TRAINING_OVERRIDES,
     INFERENCE_OVERRIDES,
     LORA_TRAINING_OVERRIDES,
     LOSS_ATOL_MEAN,
@@ -349,16 +354,7 @@ def main() -> None:
         generate_training_baseline(
             name="sota_training",
             script="src/rfproteina/train.py",
-            extra_overrides=[
-                "experiment=sota",
-                # This smoke trains 25 steps from random init -- it exercises the
-                # sota *recipe*, not the sota checkpoint (those are covered by the
-                # inference/beam baselines).
-                # torch.compile selects CUDA kernels at trace time; disable so the
-                # forward pass uses the same eager kernels across runs.
-                # TODO: Use torch compile should be a global flag that compiles both the AE and flow model
-                "nn.use_torch_compile=false",
-            ],
+            extra_overrides=FLOW_TRAINING_OVERRIDES,
             out_dir=store_base,
         )
 
@@ -376,7 +372,7 @@ def main() -> None:
             name="ae_training",
             script="src/rfproteina/partial_autoencoder/train.py",
             extra_overrides=[
-                "experiment_ae=ae_sota",
+                *AE_TRAINING_OVERRIDES,
                 "dataloaders.train.dataloader_params.batch_size=2",
                 "nn_ae.use_torch_compile=false",  # no compile in regression
             ],

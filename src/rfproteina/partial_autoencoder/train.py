@@ -304,11 +304,16 @@ def main(cfg_exp: DictConfig) -> None:
     if cfg_exp.torch_deterministic:
         apply_torch_deterministic(logger)
 
+    # Avoid cuDNN SDPA NaN query gradients: https://github.com/pytorch/pytorch/issues/196678
+    torch.backends.cuda.enable_cudnn_sdp(False)
+    logger.info("cuDNN SDPA disabled; using other available attention backends")
+
     # logger
     train_logger: WandbLogger | CSVLogger | None = None
     if cfg_exp.log.log_wandb and not nolog:
         train_logger = WandbLogger(
             project=cfg_exp.log.wandb_project,
+            name=run_name,
             id=run_name,
             entity=cfg_exp.log.wandb_entity,
             tags=cfg_exp.log.tags,

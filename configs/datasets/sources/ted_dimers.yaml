@@ -1,21 +1,29 @@
-# TED dimers, annotated CIFs
-# 600K rows; the interface quality gate keeps ~510K
+# Predicted two-domain structures selected using TED domain assignments, with CATH/PLIP annotations.
+# Filtered by interface length, interface PAE and interface pLDDT.
+
+defaults:
+  - backend_blob
+  - _self_
 
 name: ted_dimers
-data: ${oc.env:DATA_PATH}/train_datasets/ted_dimers/data/ted_dimers_annotated.parquet
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ted_dimers/examples.parquet
+memory_map: true
 
 loader:
-  base_path: ${oc.env:SQUASH_MOUNT_PATH,/squash}/ted_dimers
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/ted_dimers/blob
+  record_id_colname: path
 
 filters:
   # Paper-Teddymer interface quality gate
   - "InterfaceLength > 10"
   - "AvgIntPAE < 10"
   - "AvgIntPlddt > 70"
+  - "n_standard_amino_acid_residues <= 768"
 
 columns_to_load:
   - example_id
   - path
+  - n_standard_amino_acid_residues
   - InterfaceLength
   - AvgIntPAE
   - AvgIntPlddt

@@ -7,10 +7,30 @@ collate.py derives its atom→slot mappings correctly from the single source of 
 """
 
 import numpy as np
+import pytest
 from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_RNA
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
+from atomworks.enums import ChainType
 from atomworks.ml.transforms.encoding import atom_array_from_encoding, atom_array_to_encoding
 from biotite.structure import AtomArray
+
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
+from rfproteina.utils.token_encoding import build_atom37_slots
+
+
+@pytest.mark.parametrize("res_name", ["TRP", "NAG", "SEP", "DA", "A"])
+@pytest.mark.parametrize("chain_type", [ChainType.NON_POLYMER, ChainType.POLYPEPTIDE_L])
+def test_vocabulary_slots_ignore_chain_classification(res_name, chain_type):
+    """Verify vocabulary slots ignore chain classification while explicit atomization uses slot 1."""
+    layout = UNIFIED_ATOM37_ENCODING.token_atoms[res_name]
+    occupied = np.flatnonzero(layout != "")
+    aa = AtomArray(len(occupied))
+    aa.res_name[:] = res_name
+    aa.atom_name[:] = layout[occupied]
+    aa.set_annotation("chain_type", np.full(len(aa), chain_type, dtype=int))
+    aa.set_annotation("atomize", np.zeros(len(aa), dtype=bool))
+    np.testing.assert_array_equal(build_atom37_slots(aa), occupied)
+    aa.atomize[:] = True
+    np.testing.assert_array_equal(build_atom37_slots(aa), np.ones(len(aa), dtype=int))
 
 
 def test_unified_atom37_slot_1_is_center_atom():

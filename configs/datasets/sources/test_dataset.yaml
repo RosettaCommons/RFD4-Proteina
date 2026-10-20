@@ -1,5 +1,5 @@
 # Tiny ~50-system PLINDER subset for the training walkthrough; CIFs in a plain dir (no squashfs),
-# so it runs on any cluster. Fetch with scripts/download_example_data.sh --with-test-dataset.
+# so it runs on any cluster. Fetch with scripts/download_assets.sh --with-test-dataset.
 
 name: test_dataset_train
 data: ${oc.env:DATA_PATH}/test_dataset/test_systems.parquet

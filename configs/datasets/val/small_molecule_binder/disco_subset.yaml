@@ -1,6 +1,10 @@
+defaults:
+  - /recycle_strategy@generation: medium/midpeak
+  - _self_
+
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
-  dir_path_or_file_paths: ${oc.env:DATA_PATH}/val_datasets/studio_179/studio_179_annotated
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/small_molecule_binder/disco_figure_2c
   subset_to_keys:
     - s-adenosylmethionine_final_0
     - heme_b_final_0
@@ -20,6 +24,7 @@ dataset:
   transform:
     _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
     metrics_tags:
+      - has_small_molecule
       - design
       - sm_binder_refolding
       - disco_refolding

@@ -175,6 +175,8 @@ def test_coordinate_transfer_preserves_annotations(design_task_config):
     }
     unexpected_losses = lost_annotations - allowed_losses
     assert len(unexpected_losses) == 0, f"Lost unexpected annotations: {unexpected_losses}"
+    expected_centers = updated_array.atomize | (updated_array.atom_name == "CA")
+    np.testing.assert_array_equal(updated_array.is_token_center, expected_centers)
 
     # VERIFICATION 2: Token counts
     assert set(updated_array.token_id) == set(generated_array.token_id), f"[{task_name}] Token IDs must match"

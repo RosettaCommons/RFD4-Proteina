@@ -50,7 +50,8 @@ def resolve_partial_t(
         cfg_args: ``model.inf_cfg.args`` (OmegaConf DictConfig or plain dict).
         fm: ProductSpaceFlowMatcher instance.
         sampling_model_args: Per-modality sampling config (``model.inf_cfg.model``).
-        ref_nsteps: Dense schedule resolution for step-index lookup.
+        ref_nsteps: Dense schedule resolution for coupling explicit modality times.
+            Fractional restarts use ``cfg_args.nsteps`` and its actual schedule.
 
     Returns:
         Per-modality partial_t dict keyed by data-mode name, or ``{}`` for full generation.
@@ -80,9 +81,15 @@ def resolve_partial_t(
             )
         if not (0.0 < frac <= 1.0):
             raise ValueError(f"partial_trajectory_fraction_steps must be in (0, 1], got {frac}.")
-        ref_ts, _ = fm.sample_schedule(nsteps=ref_nsteps, sampling_model_args=sampling_model_args)
-        k = round((1.0 - frac) * ref_nsteps)
-        k = max(0, min(ref_nsteps, k))
+        nsteps = cfg_args["nsteps"]
+        remaining_steps = round(frac * nsteps)
+        if remaining_steps < 1:
+            raise ValueError(
+                f"partial_trajectory_fraction_steps={frac} with nsteps={nsteps} rounds to zero denoising steps. "
+                "Increase the fraction or nsteps."
+            )
+        ref_ts, _ = fm.sample_schedule(nsteps=nsteps, sampling_model_args=sampling_model_args)
+        k = nsteps - remaining_steps
         return _validate_partial_t({dm: ref_ts[dm][k].item() for dm in fm.data_modes})
 
     n_set = (pt_backbone is not None) + (pt_latent is not None)
@@ -122,22 +129,38 @@ def build_partial_schedule(
     nsteps: int,
     fm: Any,
     sampling_model_args: dict,
+    *,
+    full_nsteps: int | None = None,
 ) -> tuple[dict, dict]:
     """Build per-modality time schedules covering [partial_t, 1.0] with exactly nsteps steps.
 
-    Uses a dense reference schedule to locate each modality's partial_t in index space,
-    then expands nsteps so the tail of a full schedule covers exactly [partial_t, 1.0].
+    Fractional restarts slice the configured full schedule when ``full_nsteps`` is
+    supplied. Explicit modality times use a dense reference to estimate an expanded
+    schedule whose final ``nsteps`` intervals cover the requested range.
 
     Args:
         partial_t_dict: Per-modality starting t values.
         nsteps: Number of denoising steps to take.
         fm: ProductSpaceFlowMatcher instance.
         sampling_model_args: Per-modality sampling config.
+        full_nsteps: Full trajectory length for fractional restarts. The starting
+            times must match the first point of its final ``nsteps`` intervals.
 
     Returns:
         Tuple of (ts, gt) partial schedules, each a dict of tensors with
         ts[dm] shape [nsteps+1] and gt[dm] shape [nsteps].
     """
+    if full_nsteps is not None:
+        if not 1 <= nsteps <= full_nsteps:
+            raise ValueError(f"Partial step count must be in [1, {full_nsteps}], got {nsteps}.")
+        full_ts, full_gt = fm.sample_schedule(nsteps=full_nsteps, sampling_model_args=sampling_model_args)
+        ts = {dm: full_ts[dm][-(nsteps + 1) :] for dm in fm.data_modes}
+        gt = {dm: full_gt[dm][-nsteps:] for dm in fm.data_modes}
+        for dm in fm.data_modes:
+            if ts[dm][0] != ts[dm].new_tensor(partial_t_dict[dm]):
+                raise ValueError(f"{dm}: partial corruption time must match the first time of the full schedule tail.")
+        return ts, gt
+
     nsteps_dense = max(nsteps * 100, 1000)
     dense_ts, _ = fm.sample_schedule(nsteps=nsteps_dense, sampling_model_args=sampling_model_args)
 
@@ -232,6 +255,7 @@ class VanillaStrategy(SearchStrategy):
                 nsteps=actual_nsteps,
                 fm=model.fm,
                 sampling_model_args=model.inf_cfg.model,
+                full_nsteps=nsteps if frac is not None else None,
             )
 
             # Start from the corrupted input (not pure noise)

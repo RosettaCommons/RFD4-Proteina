@@ -11,10 +11,11 @@ from atomworks.io.utils.annotator import ensure_annotations
 from atomworks.io.utils.atom_array_plus import AnnotationList2D
 from atomworks.io.utils.standard_annotations.base import Level
 from atomworks.ml.conditions import C_CRD, C_IDX, CONDITIONS, ConditionBase
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.dssp import SSEnum
 from biotite.structure import AtomArray
 from jaxtyping import Bool, Float, Int, Shaped
+
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 
 Array = np.ndarray
 

@@ -319,6 +319,7 @@ class TLossMonitoringCallback(L.Callback):
         # Get task names from batch.
         task_dicts = batch.get("task_batch", [])
         task_names = [str(n) if n is not None else "unknown" for n in task_dicts.get("name", [])]
+        task_names = task_names[:: outputs.get("exploration_k", 1)]
 
         # Ensure we have matching lengths
         if len(task_names) != len(t):

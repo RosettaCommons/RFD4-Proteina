@@ -199,13 +199,13 @@ def run_evaluate(cfg: DictConfig) -> None:
 
     if pre_oracle_filter_mm is not None:
         pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=[set(metrics_tags or [])])
-        design_results = apply_pre_oracle_filters(
+        oracle_results = apply_pre_oracle_filters(
             design_results,
             pre_oracle_filter_mm,
             delete_failing=cfg.get("delete_failing_pre_oracle", False),
         )
         pre_oracle_filter_mm.on_validation_epoch_end()
-        surviving_ids = {m["example_id"] for m in design_results if m.get("example_id")}
+        surviving_ids = {m["example_id"] for m in oracle_results if m.get("example_id")}
         parsed_arrays = {eid: v for eid, v in parsed_arrays.items() if eid in surviving_ids}
 
     samples_dir.mkdir(parents=True, exist_ok=True)
@@ -249,6 +249,12 @@ def run_evaluate(cfg: DictConfig) -> None:
         for m in cleaned_design + cleaned_refold:
             if eid := m.get("example_id"):
                 by_id.setdefault(eid, {}).update(m)
+        if pass_mm is not None:
+            for row in by_id.values():
+                if row.get("pre_oracle_pass") == 0:
+                    for name, metric in pass_mm.metrics.items():
+                        if metric.applies_to_tags(set(metrics_tags or [])):
+                            row[f"{name}.pass"] = row[f"{name}.all_metrics_present"] = 0.0
         combined = pd.DataFrame(list(by_id.values())).round(4)
         combined.to_csv(metrics_dir / f"per_example_metrics{job_suffix}.csv", index=False)
 

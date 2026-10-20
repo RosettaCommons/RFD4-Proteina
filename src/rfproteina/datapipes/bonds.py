@@ -24,10 +24,16 @@ from scipy.sparse.csgraph import connected_components, shortest_path
 
 from rfproteina.conditions import C_IDXGRP
 from rfproteina.datapipes.schema.proteina import TokenType
+from rfproteina.encoding import GLYCAN_NAMES, NCAA_NAMES
 
 logger = logging.getLogger(__name__)
 
-_UNKNOWN_RES_BY_TOKEN_TYPE = {TokenType.PROTEIN: UNKNOWN_AA, TokenType.RNA: UNKNOWN_RNA, TokenType.DNA: UNKNOWN_DNA}
+_UNKNOWN_RES_BY_TOKEN_TYPE = {
+    TokenType.PROTEIN: UNKNOWN_AA,
+    TokenType.NCAA: UNKNOWN_AA,
+    TokenType.RNA: UNKNOWN_RNA,
+    TokenType.DNA: UNKNOWN_DNA,
+}
 
 _AROMATIC_BOND_TYPES = (
     BondType.AROMATIC_SINGLE,
@@ -54,7 +60,7 @@ def _build_symmetric_bond_matrix(
 
 
 def _token_type_at(atom_array: AtomArray, atom_idxs: np.ndarray) -> np.ndarray:
-    """Return token type (0=protein, 1=RNA, 2=DNA, 3=atomized, 4=unknown) at given atom positions."""
+    """Return token types at given atom positions, with atomization taking precedence."""
     # Use token type annotation, if it exists
     if "token_type" in atom_array.get_annotation_categories():
         return np.asarray(atom_array.token_type)[atom_idxs].astype(np.int16)
@@ -68,6 +74,8 @@ def _token_type_at(atom_array: AtomArray, atom_idxs: np.ndarray) -> np.ndarray:
     types[atom_array.get_annotation("is_standard_unknown_or_masked_dna")[atom_idxs]] = TokenType.DNA
     types[atom_array.get_annotation("is_standard_unknown_or_masked_rna")[atom_idxs]] = TokenType.RNA
     types[atom_array.get_annotation("is_standard_unknown_or_masked_aa")[atom_idxs]] = TokenType.PROTEIN
+    types[np.isin(atom_array.res_name[atom_idxs], NCAA_NAMES)] = TokenType.NCAA
+    types[np.isin(atom_array.res_name[atom_idxs], GLYCAN_NAMES)] = TokenType.GLYCAN
     types[atom_array.atomize[atom_idxs]] = TokenType.ATOMIZED
     return types
 
@@ -506,6 +514,7 @@ def compute_token_bond_features(
     # Computed BEFORE the bond-feature suppression below so this feature can
     # use the unmasked bond graph (peptide bonds visible). Same logic as #205.
     token_type = _token_type_at(atom_array, direct_tok_starts)
+    token_type = np.where(token_type == TokenType.NCAA, TokenType.PROTEIN, token_type)
     is_canonical = np.isin(token_type, (TokenType.PROTEIN, TokenType.RNA, TokenType.DNA))
     same_type = token_type[:, None] == token_type[None, :]
     eligible = is_poly_poly & np.outer(is_canonical, is_canonical) & same_type & is_same_group & direct_bond_mask

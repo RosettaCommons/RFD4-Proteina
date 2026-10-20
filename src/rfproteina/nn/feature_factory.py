@@ -5,7 +5,6 @@ from typing import Any, Literal
 import einops
 import torch
 from atomworks.ml.conditions import C_CRD, C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from jaxtyping import Float
 from torch.nn import functional as F
 
@@ -31,12 +30,16 @@ from rfproteina.conditions import (
     RasaEnum,
     SaltBridgeEnum,
 )
-from rfproteina.datapipes.pipeline import TokenType
+from rfproteina.datapipes.schema.proteina import NUM_TOKEN_TYPES, TokenType
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.nn.modules.norm import make_norm
+from rfproteina.nn.noise_alignment import align_chirality, align_internal_coords
 from rfproteina.transforms.chirality_feature import MAX_OVERLAPPING_CENTERS
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+RECYCLE_GRAD_DEPTHS = {"last": 1, "last2": 2}
 
 # Full-graph compilation cannot trace tensor comparisons with IntEnum members
 # (Equivalent plain integers keep the atom37 feature forwards traceable)
@@ -274,16 +277,39 @@ class TimeEmbeddingBatchFeat(Feature):
         return get_time_embedding(batch["t"][self.data_mode_use], edim=self.dim)
 
 
-class RecycleIndexBatchFeat(Feature):
-    """Sinusoidal embedding of the one-based current trunk pass, shaped [b, t_emb_dim]."""
+class RecycleRemainingBatchFeat(Feature):
+    """Encode remaining recycle passes independently of backpropagation depth.
 
-    def __init__(self, t_emb_dim: int, **kwargs: Any) -> None:
-        super().__init__(dim=t_emb_dim)
+    ``recycle.conditioning_dim`` sets the feature width and must match the trained
+    checkpoint. For width 2, zero remaining passes gives [1, 0], one or more gives
+    [0, 1], and absent conditioning gives [0, 0]. Counts saturate at width minus one.
+    Changing ``recycle.grad`` need not change this learned input representation.
+    When no width is specified, it defaults to the gradient depth (or
+    ``training_max_recycles`` for ``grad=all``).
+    """
+
+    def __init__(self, recycle: dict, **kwargs: Any) -> None:
+        grad = recycle.get("grad", "last")
+        if grad == "all":
+            grad_depth = recycle.get("training_max_recycles")
+            if not isinstance(grad_depth, int) or grad_depth < 1:
+                raise ValueError("recycle_remaining with grad=all requires positive nn.recycle.training_max_recycles")
+        elif grad in RECYCLE_GRAD_DEPTHS:
+            grad_depth = RECYCLE_GRAD_DEPTHS[grad]
+        else:
+            raise ValueError(f"nn.recycle.grad must be one of last|last2|all, got {grad!r}")
+        conditioning_dim = recycle.get("conditioning_dim", grad_depth)
+        if not isinstance(conditioning_dim, int) or conditioning_dim < 1:
+            raise ValueError("nn.recycle.conditioning_dim must be a positive integer")
+        super().__init__(dim=conditioning_dim)
 
     def forward(self, batch: dict) -> torch.Tensor:
         mask = batch["padding_mask"]
-        index = torch.full((mask.shape[0],), batch["recycle_index"], device=mask.device, dtype=torch.float32)
-        return get_time_embedding(index / 100, edim=self.dim, max_positions=100)
+        remaining = batch.get("recycle_remaining")
+        if remaining is None:
+            return batch["x_t"]["bb_ca"].new_zeros((mask.shape[0], self.dim))
+        indices = torch.full((mask.shape[0],), min(remaining, self.dim - 1), device=mask.device, dtype=torch.long)
+        return one_hot_pair_feature(indices, self.dim)
 
 
 class XtBBCASeqFeat(Feature):
@@ -330,9 +356,37 @@ class CaCoorsNanometersSeqFeat(Feature):
             return batch["coords_nm"][:, :, 1, :]  # [b, n, 3]
 
 
+class Atom37ElementChargeEmbeddingSeqFeat(Feature):
+    """Combine element and flow charge embeddings at every occupied atom37 slot."""
+
+    def __init__(self, charge_emb_dim: int = 16, **kwargs: Any) -> None:
+        super().__init__(dim=37 * (8 + charge_emb_dim))
+        self.element_embedding = torch.nn.Embedding(119, 8)
+        self.charge_embedding = AtomChargeSeqFeat(charge_emb_dim=charge_emb_dim).embedding
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        mask = batch["atom37_mask"].bool()
+        elements = batch["ground_truth_element"].long().masked_fill(~mask, 0)
+        charges = batch["charge"].long().masked_fill(~mask, 0)
+        encoded = torch.cat(
+            (self.element_embedding(elements), AtomChargeSeqFeat.embed_charge(self.charge_embedding, charges)), dim=-1
+        )
+        return (encoded * mask.unsqueeze(-1)).flatten(start_dim=-2)
+
+
+class IncidentBondTypeCountsSeqFeat(Feature):
+    """Flatten per-Atom37-slot counts of incident Biotite bond types."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dim=37 * 10)
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        counts = batch["incident_bond_type_counts"].float()
+        return (counts * batch["atom37_mask"].unsqueeze(-1)).flatten(start_dim=-2)
+
+
 class ConditionalResidueTypeSeqFeat(Feature):
-    """
-    Computes feature from conditional residue type, feature of shape [b, n, 33].
+    """Compute a feature from the canonical conditional residue type.
 
     Used by the AE decoder and released flow checkpoints. Generalized flow configs
     use ``SequenceProbabilitiesSeqFeat`` instead.
@@ -342,18 +396,17 @@ class ConditionalResidueTypeSeqFeat(Feature):
 
     The encoded mask token in the annotation indicates which tokens are unconditioned.
 
-    Supports 33 classes:
-    0: mask token
-    1-20: standard amino acids
-    21: unknown amino acid
-    22-25: 4 RNA nucleotides
-    26: unknown RNA nucleotide
-    27-30: 4 DNA nucleotides
-    31: unknown DNA nucleotide
-    32: atomised token
+    The final feature dimension matches ``UNIFIED_ATOM37_ENCODING``.
     """
 
-    def __init__(self, num_classes: int = 33, learnable: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        num_classes: int | None = None,
+        learnable: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        if num_classes is None:
+            num_classes = kwargs.get("n_residue_types", UNIFIED_ATOM37_ENCODING.n_tokens)
         super().__init__(dim=num_classes)
         self._has_logged = False
         self.num_classes = num_classes
@@ -404,33 +457,42 @@ class ConditionalResidueTypeSeqFeat(Feature):
 
 
 class TokenTypeSeqFeat(Feature):
-    """Token type embedding (protein/RNA/DNA/atomized/unknown).
+    """Unmasked token type embedding for the unified vocabulary.
 
     Reads token_type from batch (populated by collate) and embeds it.
 
     Token types:
-        0: protein (AAs 1-21)
-        1: RNA (22-26)
-        2: DNA (27-31)
-        3: atomized (32)
+        0: protein (standard amino acids)
+        1: RNA
+        2: DNA
+        3: atomized
         4: unknown (mask/padding)
+        5: glycan
+        6: NCAA/PTM
 
     Args:
         token_type_emb_dim: Embedding dimension. Defaults to 32.
     """
 
-    def __init__(self, token_type_emb_dim: int = 32, **kwargs):
+    def __init__(
+        self,
+        token_type_emb_dim: int = 32,
+        num_token_types: int | None = None,
+        **kwargs,
+    ):
         super().__init__(dim=token_type_emb_dim)
         self.token_type_emb_dim = token_type_emb_dim
-        self.embedding = torch.nn.Embedding(5, token_type_emb_dim)
+        if num_token_types is None:
+            num_token_types = NUM_TOKEN_TYPES
+        self.embedding = torch.nn.Embedding(num_token_types, token_type_emb_dim)
 
     def forward(self, batch: dict) -> torch.Tensor:
         assert "token_type" in batch, "`token_type` not in batch"
-        token_type = batch["token_type"]  # [b, n] integers 0-4
+        token_type = batch["token_type"]  # [b, n] integer token-type indices
 
         # Validate indices before embedding lookup
         if not torch.compiler.is_compiling():
-            invalid_mask = (token_type < 0) | (token_type >= 5)
+            invalid_mask = (token_type < 0) | (token_type >= self.embedding.num_embeddings)
             if invalid_mask.any():
                 invalid_indices = torch.where(invalid_mask)
                 invalid_values = token_type[invalid_mask]
@@ -438,7 +500,7 @@ class TokenTypeSeqFeat(Feature):
                 batch_indices = invalid_indices[0].tolist()
                 raise ValueError(
                     f"TokenTypeSeqFeat: Invalid token_type indices for embedding "
-                    f"(expected 0-4, got values: {invalid_values.tolist()[:20]}). "
+                    f"(expected 0-{self.embedding.num_embeddings - 1}, got values: {invalid_values.tolist()[:20]}). "
                     f"Example IDs: {[example_ids[i] for i in set(batch_indices[:5])]}"
                 )
 
@@ -538,9 +600,16 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
     ``C_INTCRD`` contains the materialized coordinate payload.
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        noise_align_internal_coords: bool = False,
+        noise_align_internal_coords_translate: bool = False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(dim=(37 * 4))
         self._has_logged = False
+        self.noise_align = noise_align_internal_coords
+        self.translate = noise_align_internal_coords_translate
 
     def forward(self, batch: dict) -> torch.Tensor:
         if C_INTCRD.full_name in batch and C_CRDGRP.full_name in batch:
@@ -552,6 +621,20 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
             )
             internal_coords = torch.nan_to_num(conditioned_internal_coords) / 10.0
             internal_coords = internal_coords * internal_coords_mask[..., None]
+
+            if self.noise_align or self.translate:
+                selected = internal_coords_mask & batch["padding_mask"][..., None]
+                if not torch.isfinite(conditioned_internal_coords[selected]).all():
+                    raise ValueError("Internal-coordinate conditioning must be finite within each supplied group")
+                internal_coords = align_internal_coords(
+                    internal_coords,
+                    coord_groups,
+                    internal_coords_mask,
+                    batch["x_t"]["bb_ca"],
+                    batch["padding_mask"],
+                    translate=self.translate,
+                    rotate=self.noise_align,
+                )
 
             internal_coords_flat = einops.rearrange(
                 internal_coords, "b n a t -> b n (a t)"
@@ -571,17 +654,24 @@ class ConditionalAtom37NanometersInternalCoorsSeqFeat(Feature):
 
 
 class ChiralitySeqFeat(Feature):
-    """Raw chirality block-diagonal feature.
+    """Packed chirality vectors, optionally oriented toward the current noisy state.
 
     Output: ``[b, n, MAX_OVERLAPPING_CENTERS * 3]``.
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self, noise_align_chirality: bool = False, noise_align_chirality_translate: bool = False, **kwargs: Any
+    ) -> None:
         super().__init__(dim=MAX_OVERLAPPING_CENTERS * 3)
+        self.noise_align = noise_align_chirality
+        self.translate = noise_align_chirality_translate
 
     def forward(self, batch: dict) -> torch.Tensor:
         if "chirality" in batch:
-            return batch["chirality"].float()
+            feature = batch["chirality"].float()
+            if self.noise_align or self.translate:
+                return align_chirality(feature, batch, translate=self.translate, rotate=self.noise_align)
+            return feature
 
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
@@ -907,14 +997,19 @@ class AtomChargeSeqFeat(Feature):
                 self.embedding.weight[idx, 0::2] = torch.sin(c * freqs)
                 self.embedding.weight[idx, 1::2] = torch.cos(c * freqs)
 
+    @classmethod
+    def embed_charge(cls, embedding: torch.nn.Embedding, charges: torch.Tensor) -> torch.Tensor:
+        """Embed formal charges of any shape using the saturated flow charge vocabulary."""
+        indices = (charges.long() + cls._CHARGE_OFFSET).clamp(0, cls._NUM_CLASSES - 1)
+        return embedding(indices)
+
     def forward(self, batch: dict) -> torch.Tensor:
         b, n = self.extract_bs_and_n(batch)
         device = self.extract_device(batch)
 
         if "charge" in batch and "token_type" in batch:
             charge_slot1 = batch["charge"][:, :, 1].long()  # [b, n]
-            cls_idx = (charge_slot1 + self._CHARGE_OFFSET).clamp(0, self._NUM_CLASSES - 1)
-            emb = self.embedding(cls_idx)  # [b, n, charge_emb_dim]
+            emb = self.embed_charge(self.embedding, charge_slot1)  # [b, n, charge_emb_dim]
             is_atomized = (batch["token_type"] == TokenType.ATOMIZED).unsqueeze(-1)  # [b, n, 1]
             return emb * is_atomized
         if not self._has_logged:
@@ -1336,8 +1431,8 @@ class FeatureFactory(torch.nn.Module):
             return TimeEmbeddingBatchFeat(data_mode_use="local_latents", **kwargs)
 
         if self.mode == "seq":
-            if f == "recycle_index":
-                return RecycleIndexBatchFeat(**kwargs)
+            if f == "recycle_remaining":
+                return RecycleRemainingBatchFeat(**kwargs)
 
             # Position and indexing
             if f == "chain_idx_seq":
@@ -1346,6 +1441,10 @@ class FeatureFactory(torch.nn.Module):
             # Basic residue information
             elif f == "token_type":
                 return TokenTypeSeqFeat(**kwargs)
+            elif f == "incident_bond_type_counts":
+                return IncidentBondTypeCountsSeqFeat(**kwargs)
+            elif f == "atom37_element_charge_embedding":
+                return Atom37ElementChargeEmbeddingSeqFeat(**kwargs)
 
             # Raw coordinate features
             elif f == "ca_coors_nm":

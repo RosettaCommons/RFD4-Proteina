@@ -49,9 +49,10 @@ from typing import Any
 import atomworks.io.transforms.atom_array as ta
 import numpy as np
 from atomworks.io.utils.io_utils import to_cif_file
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms.encoding import atom_array_from_encoding
 from biotite.structure import AtomArray
+
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 
 FeatureDict = Mapping[str, np.ndarray]
 ModelOutput = Mapping[str, Any]  # Is a nested dict.

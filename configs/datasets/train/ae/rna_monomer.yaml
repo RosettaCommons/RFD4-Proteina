@@ -1,9 +1,19 @@
 # RNA monomers for the AE.
 
 defaults:
-  - /datasets/train/backend_lmdb@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/rna_monomer@dataset
-  - /design_tasks/presets@dataset.transform.design_tasks: unconditional
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
   - _self_
 
 probability: 1.0
+
+dataset:
+  filters:
+    - "source_training_eligible == True"
+    - "passes_structure_validation == True"
+    - "passes_bond_filters == True"
+    - "passes_ribonanza_filters == True"
+    - "passes_clash_filters == True"
+    - "mean_plddt > 75"
+    - "n_rna_residues <= 768"

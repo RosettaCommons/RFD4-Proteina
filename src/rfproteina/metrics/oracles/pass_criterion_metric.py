@@ -61,7 +61,8 @@ class PassCriterionMetric(Metric):
 
     Args:
         metric_thresholds: Dict mapping metric keys to threshold specs (dicts with
-            optional ``"min"`` / ``"max"``). All thresholds must pass. A spec may
+            optional inclusive ``"min"`` / ``"max"`` or strict ``"min_exclusive"`` /
+            ``"max_exclusive"`` bounds). All thresholds must pass. A spec may
             instead carry ``"min_of"`` / ``"max_of"`` / ``"mean_of"``, a list of
             metric keys reduced to a single value before thresholding; the outer
             key is then just a label. Every listed key must be present, or the
@@ -138,6 +139,10 @@ class PassCriterionMetric(Metric):
                 min_val = thresholds.get("min")
                 max_val = thresholds.get("max")
                 if not ((min_val is None or val >= min_val) and (max_val is None or val <= max_val)):
+                    passed = False
+                if (min_exclusive := thresholds.get("min_exclusive")) is not None and not val > min_exclusive:
+                    passed = False
+                if (max_exclusive := thresholds.get("max_exclusive")) is not None and not val < max_exclusive:
                     passed = False
 
         if passed and self.archive_dir is not None:

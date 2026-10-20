@@ -50,7 +50,7 @@ with (
         assemble_val_loader_dict,
         recursively_instantiate_datasets_and_samplers,
     )
-    from rfproteina.utils.hydra import instantiate_callbacks
+    from rfproteina.utils.hydra import instantiate_callbacks, training_path_length_search_cutoffs
     from rfproteina.utils.lora import add_lora_adapter
     from rfproteina.utils.simple_ema import EMAModelCheckpoint, SimpleEMA
     from rfproteina.utils.torch import apply_torch_deterministic
@@ -156,10 +156,38 @@ def get_training_precision(cfg_exp: DictConfig) -> str:
     return precision
 
 
+def _adopt_bundle_architecture(cfg_exp: DictConfig, source: DictConfig, overrides: DictConfig | None = None) -> None:
+    """Default to the saved model configuration, with explicit fine-tuning overrides."""
+    fields = ("nn", "product_flowmatcher", "autoencoder_config", "path_length_search_cutoffs")
+    if overrides and (unknown := set(overrides) - set(fields)):
+        raise ValueError(f"Unsupported hf_bundle_overrides keys: {sorted(unknown)}")
+    source_values = OmegaConf.to_container(source, resolve=True)
+    saved = OmegaConf.create({key: source_values[key] for key in fields if key in source_values})
+    # Compilation changes the training runtime, not the saved weight architecture.
+    compile_enabled = OmegaConf.select(cfg_exp, "nn.use_torch_compile", default=None)
+    if compile_enabled is not None and "nn" in saved:
+        OmegaConf.update(saved, "nn.use_torch_compile", compile_enabled, force_add=True)
+    resolved = OmegaConf.merge(saved, overrides or {})
+    expected_cutoffs = set(resolved.get("path_length_search_cutoffs") or [])
+    data_cfg = OmegaConf.create(OmegaConf.to_container(cfg_exp, resolve=False))
+    data_cfg.pop("path_length_search_cutoffs", None)
+    actual_cutoffs = training_path_length_search_cutoffs(data_cfg)
+    if expected_cutoffs and actual_cutoffs and actual_cutoffs != expected_cutoffs:
+        raise ValueError(
+            "Training dataset path_length_search_cutoff must match the pretrained bundle: "
+            f"expected {expected_cutoffs}, got {actual_cutoffs}. Update the dataset transform configuration."
+        )
+    for key in fields:
+        if key in resolved:
+            OmegaConf.update(cfg_exp, key, resolved[key], merge=False, force_add=True)
+    cfg_exp.autoencoder_ckpt_path = None
+
+
 def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[Proteina, str | None]:
     """Load the model and decide whether/how to resume a prior trainer state.
 
-    Two mutually-exclusive checkpoint paths:
+    Model initialization paths:
+    * ``hf_ckpt_path``: start a NEW run from a portable model/AE bundle
     * ``pretrain_ckpt_path``: start a NEW run from saved weights (new optimizer, scheduler, etc.)
     * ``resume_ckpt_path``: continue an interrupted run (full restore of model, optimizer, scheduler, trainer state)
 
@@ -194,11 +222,34 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
         lora_enabled
         and last_ckpt_path is None
         and not cfg_exp.get("pretrain_ckpt_path")
-        and not (cfg_exp.get("pretrained_model_name_or_path") and hasattr(Proteina, "from_pretrained"))
+        and not cfg_exp.get("hf_ckpt_path")
     ):
         raise ValueError("PEFT LoRA requires pretrain_ckpt_path, a loaded model bundle, or a full resume checkpoint.")
 
     logger.info(f"Last checkpoint: {last_ckpt_path}")
+
+    pretrained = cfg_exp.get("hf_ckpt_path")
+    pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
+    if last_ckpt_path is None and pretrained and pretrain_ckpt_path:
+        raise ValueError("Choose hf_ckpt_path or pretrain_ckpt_path for a new run.")
+    if last_ckpt_path is None and cfg_exp.get("hf_bundle_overrides") and not pretrained:
+        raise ValueError("hf_bundle_overrides requires hf_ckpt_path for a new run.")
+    bundle_state = None
+    if pretrained and last_ckpt_path is None:
+        # Defer Hub dependencies until a portable bundle is requested.
+        from rfproteina.utils.hub import load_pretrained_bundle
+
+        payload, bundle_state = load_pretrained_bundle(pretrained, revision=cfg_exp.get("hf_ckpt_revision"))
+        _adopt_bundle_architecture(cfg_exp, OmegaConf.create(payload["config"]), cfg_exp.get("hf_bundle_overrides"))
+    elif last_ckpt_path:
+        checkpoint = torch.load(last_ckpt_path, map_location="cpu", weights_only=False)
+        saved_cfg = checkpoint.get("hyper_parameters", {}).get("cfg_exp")
+        if saved_cfg is not None and saved_cfg.get("autoencoder_config") is not None:
+            saved_cfg = OmegaConf.create(saved_cfg)
+            _adopt_bundle_architecture(cfg_exp, saved_cfg)
+            if saved_cfg.get("lora") is not None:
+                cfg_exp.lora = saved_cfg.lora
+        del checkpoint
 
     # Seed before model init for fresh runs so random weight initialization is reproducible.
     # (Resuming from a checkpoint loads deterministic weights, so no seed is needed here.)
@@ -209,10 +260,13 @@ def get_model_n_ckpt_resume(cfg_exp: DictConfig, ckpt_path_store: str) -> tuple[
     model = Proteina(cfg_exp)
 
     # If this is the first run for fine-tuning, load pre-trained checkpoint
-    pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
-    if last_ckpt_path is None and pretrain_ckpt_path is not None:
-        logger.info(f"Loading from pre-trained checkpoint path {pretrain_ckpt_path}")
-        ckpt = torch.load(pretrain_ckpt_path, map_location="cpu", weights_only=False)
+    if last_ckpt_path is None and (pretrain_ckpt_path is not None or bundle_state is not None):
+        logger.info(f"Loading pretrained weights from {pretrained or pretrain_ckpt_path}")
+        ckpt = (
+            {"state_dict": bundle_state}
+            if bundle_state is not None
+            else torch.load(pretrain_ckpt_path, map_location="cpu", weights_only=False)
+        )
 
         weight_loading_cfg = cfg_exp.get("weight_loading", None)
         if weight_loading_cfg is not None:
@@ -355,7 +409,7 @@ def log_config_dashboard(
 @configured_verbosity(default=True)
 def main(cfg_exp: DictConfig) -> None:
     # Configure torch.compile + warm the local Inductor cache (before any compile).
-    setup_run_compile()
+    setup_run_compile(coordinate_descent_tuning=cfg_exp.opt.get("coordinate_descent_tuning", True))
 
     nolog = cfg_exp.get("nolog", False)
     single = cfg_exp.get("single", False)
@@ -372,13 +426,12 @@ def main(cfg_exp: DictConfig) -> None:
         cfg_exp.hardware.nnodes_ = 1
         cfg_exp.run_name_ = cfg_exp.run_name_ + "_local"
 
-    print_config_tree(cfg_exp, resolve=True)
-
     run_name, root_run, ckpt_path_store = get_run_dirs(cfg_exp)
     callbacks = instantiate_callbacks(cfg_exp.callbacks)
 
     # Create model, warm-up or last ckpt
     model, resume_ckpt_path = get_model_n_ckpt_resume(cfg_exp, ckpt_path_store)
+    print_config_tree(cfg_exp, resolve=True)
 
     # If pretrain_ckpt_path stashed a SimpleEMA state, feed it to the SimpleEMA callback
     pretrain_ema_state = getattr(model, "_pretrain_ema_callback_state", None)
@@ -543,8 +596,11 @@ def main(cfg_exp: DictConfig) -> None:
 
     if prevalidate_only:
         pretrain_ckpt_path = cfg_exp.get("pretrain_ckpt_path", None)
-        if resume_ckpt_path is None and pretrain_ckpt_path is None:
-            raise ValueError("prevalidate_only=true requires resume_ckpt_path or pretrain_ckpt_path")
+        pretrained = cfg_exp.get("hf_ckpt_path")
+        if resume_ckpt_path is None and pretrain_ckpt_path is None and not pretrained:
+            raise ValueError(
+                "prevalidate_only=true requires a resume checkpoint, pretrained checkpoint or model bundle"
+            )
 
         if resume_ckpt_path is not None:
             logger.info(f"PREVALIDATE_ONLY: trainer.validate with Lightning restore from {resume_ckpt_path}")
@@ -554,7 +610,9 @@ def main(cfg_exp: DictConfig) -> None:
             # NOTE: Weights are already in `model` from get_model_n_ckpt_resume, so this validates
             # them without a second Lightning restore. Architectural changes still need an explicit
             # `weight_loading` policy there; otherwise that load is strict and would have failed.
-            logger.info(f"PREVALIDATE_ONLY: trainer.validate on weights pre-loaded from {pretrain_ckpt_path}")
+            logger.info(
+                f"PREVALIDATE_ONLY: trainer.validate on weights pre-loaded from {pretrained or pretrain_ckpt_path}"
+            )
             trainer.validate(model, dataloaders=val_loaders)
 
         return

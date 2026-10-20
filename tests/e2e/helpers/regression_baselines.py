@@ -18,6 +18,7 @@ import pytest
 import torch
 from atomworks.io.parser import parse
 from biotite.structure import AtomArray, rmsd, superimpose
+from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from rfproteina.utils.parse_presets import DISTILLATION
@@ -25,8 +26,10 @@ from rfproteina.utils.structure_files import iter_structure_files, structure_fil
 
 # Absolute path to the baselines directory regardless of cwd.
 BASELINES_DIR = Path(__file__).resolve().parents[1] / "baselines"
+AE_TRAINING_OVERRIDES = ["experiment_ae=sota"]
 
 _DATA_PATH = os.environ.get("DATA_PATH", "").strip()
+_CONFIGS_DIR = Path(__file__).resolve().parents[3] / "configs"
 
 
 def _resolve_sota_checkpoint_paths() -> tuple[Path | None, Path | None]:
@@ -37,7 +40,7 @@ def _resolve_sota_checkpoint_paths() -> tuple[Path | None, Path | None]:
     """
     if not _DATA_PATH:
         return None, None
-    inference_yaml = Path(__file__).resolve().parents[3] / "configs" / "inference.yaml"
+    inference_yaml = _CONFIGS_DIR / "inference.yaml"
     cfg = OmegaConf.load(inference_yaml)
     return Path(cfg.ckpt_path) / cfg.ckpt_name, Path(cfg.autoencoder_ckpt_path)
 
@@ -45,11 +48,27 @@ def _resolve_sota_checkpoint_paths() -> tuple[Path | None, Path | None]:
 # Generation and baselines resolve the same immutable SOTA checkpoint from configs/inference.yaml.
 # To advance SOTA, sync the checkpoint under DATA_PATH, edit the config, and regenerate baselines.
 SOTA_CKPT_PATH, SOTA_AE_CKPT_PATH = _resolve_sota_checkpoint_paths()
-LORA_TRAINING_OVERRIDES = [
+
+
+def _resolve_lora_pretrain_checkpoint() -> Path | None:
+    if not _DATA_PATH:
+        return None
+    with initialize_config_dir(config_dir=str(_CONFIGS_DIR), version_base=None):
+        cfg = compose(config_name="training_proteina", overrides=["experiment=sota_finetune"])
+    return Path(cfg.pretrain_ckpt_path)
+
+
+LORA_PRETRAIN_CKPT_PATH = _resolve_lora_pretrain_checkpoint()
+FLOW_TRAINING_OVERRIDES = [
     "experiment=sota",
-    f"pretrain_ckpt_path={SOTA_CKPT_PATH}",
-    "lora.r=8",
+    "training.exploration_k=1",
+    "dataloaders.batch_size=2",
     "nn.use_torch_compile=false",
+]
+LORA_TRAINING_OVERRIDES = [
+    *FLOW_TRAINING_OVERRIDES,
+    f"pretrain_ckpt_path={LORA_PRETRAIN_CKPT_PATH}",
+    "lora.r=8",
 ]
 
 # Single MCSA example used for all inference regression tests.
@@ -61,9 +80,15 @@ BEAM_SEARCH_EXAMPLE = "3IXT_AA"
 BEAM_SEARCH_REWARD_KEY = "design_unindexed_motif_allatom_rmsd.rmsd"
 
 # Shared by the regression test and the baseline generator so the two cannot drift.
-INFERENCE_OVERRIDES = ["recycle_strategy=thinking_medium"]
+INFERENCE_OVERRIDES = [
+    "hf_ckpt_path=null",
+    # Pin the baseline's sampling budget independently of production preset changes.
+    "generation.n_recycle_schedule=[[5,1],[5,2],[5,3],[5,5],[10,6],[5,5],[5,3],[10,2],[10,1]]",
+    "generation.args.nsteps=60",
+]
 
 BEAM_SEARCH_OVERRIDES = [
+    "hf_ckpt_path=null",
     "inference_experiment=inference_beam_regression",
     "recycle_strategy=thinking_medium",
     "~metrics/refolding_oracles",
@@ -113,7 +138,7 @@ def load_design_cif(path: Path | str) -> AtomArray:
 
 
 def deterministic_env() -> dict[str, str]:
-    """Run test subprocesses eagerly with reproducible CUDA operations on the same hardware."""
+    """Run eagerly with reproducible CUDA operations within the same hardware and runtime."""
     env = os.environ.copy()
     # Fix MASTER_PORT: the cluster env file sets it to a bash expression Python can't evaluate.
     env.setdefault("MASTER_PORT", "29500")
@@ -123,6 +148,8 @@ def deterministic_env() -> dict[str, str]:
     env["PYTHONPATH"] = f"{project_root}:{existing}" if existing else project_root
     env["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
     env["CUBLAS_DETERMINISTIC"] = "1"
+    # Honor the model's matmul precision instead of a container-wide TF32 override.
+    env["TORCH_ALLOW_TF32_CUBLAS_OVERRIDE"] = "0"
     env["PYTHONHASHSEED"] = "0"
     env["WANDB_MODE"] = "disabled"
     # Disable all compile wrappers, including module-level RMSNorm, before the child imports Torch.
@@ -153,7 +180,7 @@ def require_sota_ae_ckpt() -> None:
     if not SOTA_AE_CKPT_PATH.is_file():
         pytest.fail(
             f"SOTA autoencoder not found: {SOTA_AE_CKPT_PATH}. "
-            'Fetch it with ./scripts/download_example_data.sh "$DATA_PATH"'
+            'Fetch it with ./scripts/download_assets.sh "$DATA_PATH"'
         )
 
 

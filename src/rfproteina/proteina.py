@@ -1,6 +1,7 @@
 import os
 import random
 import time
+from collections.abc import Mapping
 from contextlib import nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -17,7 +18,6 @@ import wandb
 from atomworks.common import exists
 from atomworks.io.parser import parse
 from atomworks.ml.conditions import C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.utils.nested_dict import flatten as flatten_nested_dict
 from atomworks.ml.utils.token import get_token_count
 from hydra.errors import InstantiationException
@@ -27,7 +27,10 @@ from lightning_utilities import apply_to_collection
 from omegaconf import DictConfig, OmegaConf
 from rich.panel import Panel
 from torch import Tensor
+from torch.utils._pytree import tree_map
 
+from rfproteina.conditions import C_CRDGRP
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
@@ -49,6 +52,7 @@ from rfproteina.metrics.utils.metrics_utils import (
     resolve_mm_cfgs_from_metrics,
 )
 from rfproteina.model_masks import compute_ae_masks
+from rfproteina.nn.bioir_full import initialize_full_bioir, predict_full_bioir
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.nn.modules.pair_bias_attn import sdpa_training_context
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
@@ -58,12 +62,12 @@ from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.logging import print_df_as_table, safe_print
-from rfproteina.utils.lora import add_lora_adapter
 from rfproteina.utils.optim_utils import backward_with_accumulation, build_optimizers
 from rfproteina.utils.parse_presets import STANDARD_ANNOTATIONS_ONLY
 from rfproteina.utils.structure_export import process_single_sample_to_atom_array
 from rfproteina.utils.structure_files import find_structure_file
-from rfproteina.utils.torch_compile import maybe_mark_cudagraph_step_begin
+from rfproteina.utils.torch import minimum_loss_attempt_indices
+from rfproteina.utils.torch_compile import compiled_with_cudagraphs, maybe_mark_cudagraph_step_begin
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
@@ -295,6 +299,60 @@ def _design_key(metrics: dict) -> tuple[str, str]:
 
 
 class Proteina(L.LightningModule):
+    @classmethod
+    def from_pretrained(
+        cls,
+        model_id: str | Path,
+        *,
+        revision: str | None = None,
+        cache_dir: str | Path | None = None,
+        token: str | bool | None = None,
+        local_files_only: bool = False,
+        force_download: bool = False,
+        device: str | torch.device = "cpu",
+        nn_overrides: Mapping[str, Any] | None = None,
+    ) -> "Proteina":
+        """Load a local or Hub model bundle, including its AE, in evaluation mode.
+
+        Hub options follow ``snapshot_download``. CPU is the loading default;
+        generation still uses the native CUDA/Lightning inference workflow.
+        ``nn_overrides`` replaces settings of the bundle's ``nn`` config that may change after
+        training (compile mode, kernel backends) without touching the weights.
+        """
+        # Hub dependencies are needed only for portable model loading and export.
+        from rfproteina.utils.hub import load_pretrained_bundle
+
+        payload, state = load_pretrained_bundle(
+            model_id,
+            revision=revision,
+            cache_dir=cache_dir,
+            token=token,
+            local_files_only=local_files_only,
+            force_download=force_download,
+        )
+        cfg = payload["config"]
+        cfg.update(
+            {
+                "run_name_": "pretrained",
+                "autoencoder_ckpt_path": None,
+                "precision": "32",
+                "metrics": None,
+                "datasets": {"train": {}, "val": {}},
+                "log": {"step_log_frequency": 100},
+            }
+        )
+        if nn_overrides:
+            cfg["nn"] = {**cfg.get("nn", {}), **nn_overrides}
+        model = cls(OmegaConf.create(cfg), load_training_metrics=False)
+        model.load_state_dict(state, strict=True, assign=True)
+        return model.to(device).eval()
+
+    def save_pretrained(self, directory: str | Path) -> None:
+        """Export loaded model/AE weights and configuration to a local bundle."""
+        from rfproteina.utils.hub import save_pretrained
+
+        save_pretrained(self, directory)
+
     def __init__(
         self,
         cfg_exp: DictConfig,
@@ -335,6 +393,7 @@ class Proteina(L.LightningModule):
             OmegaConf.set_struct(cfg_exp, False)
             # Update the configuration with the new key-value pair
             cfg_exp.autoencoder_ckpt_path = autoencoder_ckpt_path
+            cfg_exp.pop("autoencoder_config", None)
             # Re-enable struct mode if needed
             OmegaConf.set_struct(cfg_exp, True)
 
@@ -395,11 +454,14 @@ class Proteina(L.LightningModule):
             raise ValueError("No autoencoder checkpoint path provided")
         ae_ckp_path = cfg_exp.autoencoder_ckpt_path
 
-        if ae_ckp_path is None:
+        ae_config = cfg_exp.get("autoencoder_config")
+        if ae_config is not None:
+            autoencoder = AutoEncoder(ae_config, store_dir=os.path.join(self.store_dir, "autoencoder"))
+        elif ae_ckp_path is None:
             return None, None
-
-        logger.info(f"Loading autoencoder from {ae_ckp_path}")
-        autoencoder = AutoEncoder.load_from_checkpoint(ae_ckp_path, strict=True, weights_only=False)
+        else:
+            logger.info(f"Loading autoencoder from {ae_ckp_path}")
+            autoencoder = AutoEncoder.load_from_checkpoint(ae_ckp_path, strict=True, weights_only=False)
         if freeze_params:
             for param in autoencoder.parameters():
                 param.requires_grad = False
@@ -449,6 +511,8 @@ class Proteina(L.LightningModule):
         """Loads additional variables from checkpoint."""
         # Direct checkpoint loading constructs adapters before strict state restoration.
         if (self.cfg_exp.get("lora") or {}).get("r") and not getattr(self.nn, "peft_config", None):
+            from rfproteina.utils.lora import add_lora_adapter
+
             add_lora_adapter(self, self.cfg_exp.lora)
 
         try:
@@ -466,7 +530,18 @@ class Proteina(L.LightningModule):
     ) -> dict[str, torch.Tensor]:
         """Run the trunk at the requested recycle depth."""
         batch["n_recycle"] = n_recycle
-        return self.nn(batch)
+        # Only sampling replays graphs from the root; training keeps the compiler's own step handling.
+        cudagraphs = (
+            not self.training and getattr(self.nn, "_shapes_reserved", False) and compiled_with_cudagraphs(self.nn)
+        )
+        if cudagraphs:
+            # Each trunk call is one cudagraph-tree execution; the recycle depth varies per step.
+            maybe_mark_cudagraph_step_begin(end_execution=True)
+        out = self.nn(batch)
+        if cudagraphs:
+            # Graph outputs live in the tree's pool and are overwritten by the next replay.
+            out = tree_map(lambda t: t.clone() if isinstance(t, torch.Tensor) else t, out)
+        return out
 
     def predict_for_sampling(
         self,
@@ -475,6 +550,7 @@ class Proteina(L.LightningModule):
         recycle_depth: int,
     ) -> tuple[dict[str, torch.Tensor] | float | None]:
         """Run a conditioned or unconditional model prediction for sampling."""
+        batch["condition_on_recycle_remaining"] = self.inf_cfg.get("condition_on_recycle_remaining", True)
         if mode == "full":
             nn_out = self.call_nn(batch, n_recycle=recycle_depth)
         elif mode == "ucond":
@@ -555,90 +631,113 @@ class Proteina(L.LightningModule):
         # FP8 autocast context for Transformer Engine
         fp8_ctx = te_autocast(enabled=True, recipe=self.fp8_recipe) if self.use_fp8 else nullcontext()
 
-        with fp8_ctx, sdpa_training_context():
-            # Add clean samples for all data modes / spaces we are working on
+        with fp8_ctx:
+            # Preserve the frozen AE encoder's attention backend when constructing training targets.
             batch = self.add_clean_samples(batch)
+            exploration_k = 1 if val_step else self.cfg_exp.training.get("exploration_k", 1)
 
-            # Val t: fixed grid levels (same t for every mode) cycled across the dataset;
-            # val_t_offset continues the phase across batches so per-level counts stay balanced.
-            if val_step:
-                device = batch["padding_mask"].device
-                levels = torch.tensor(batch.pop("val_t_grid"), device=device)
-                offset = batch.pop("val_t_offset")
-                t_i = levels[(offset + torch.arange(batch["padding_mask"].shape[0], device=device)) % len(levels)]
-                batch = self.fm.corrupt_batch(batch, t={dm: t_i for dm in self.fm.data_modes})
-            else:
-                batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
-            bs, n = batch["padding_mask"].shape
+            with sdpa_training_context():
+                # Val t: fixed grid levels (same t for every mode) cycled across the dataset;
+                # val_t_offset continues the phase across batches so per-level counts stay balanced.
+                if val_step:
+                    device = batch["padding_mask"].device
+                    levels = torch.tensor(batch.pop("val_t_grid"), device=device)
+                    offset = batch.pop("val_t_offset")
+                    t_i = levels[(offset + torch.arange(batch["padding_mask"].shape[0], device=device)) % len(levels)]
+                    batch = self.fm.corrupt_batch(batch, t={dm: t_i for dm in self.fm.data_modes})
+                elif exploration_k > 1:
+                    physical_bs = batch["padding_mask"].shape[0]
+                    if physical_bs % exploration_k:
+                        raise ValueError(
+                            f"Physical batch size {physical_bs} is not divisible by exploration_k={exploration_k}"
+                        )
+                    t = self.fm.sample_t(shape=(physical_bs // exploration_k,), device=batch["padding_mask"].device)
+                    batch = self.fm.corrupt_batch(
+                        batch, t={dm: t_dm.repeat_interleave(exploration_k) for dm, t_dm in t.items()}
+                    )
+                else:
+                    batch = self.fm.corrupt_batch(batch)  # adds x_1, t, x_0, x_t
+                physical_bs, n = batch["padding_mask"].shape
+                bs = physical_bs // exploration_k
 
-            # Number of recycling steps
-            n_recycle = self.handle_recycling(val_step=val_step)
+                # Number of recycling steps
+                n_recycle = self.handle_recycling(val_step=val_step)
 
-            nn_out = self.call_nn(batch, n_recycle=n_recycle)
-            losses = self.fm.compute_loss(
-                batch=batch,
-                nn_out=nn_out,
-            )  # Dict[str, Tensor w.batch shape [*]]
+                nn_out = self.call_nn(batch, n_recycle=n_recycle)
+                losses = self.fm.compute_loss(
+                    batch=batch,
+                    nn_out=nn_out,
+                )  # Dict[str, Tensor w.batch shape [*]]
+                if exploration_k > 1:
+                    exploration_losses = self.cfg_exp.training.get("exploration_losses", self.fm.data_modes)
+                    winner = minimum_loss_attempt_indices(
+                        losses=losses,
+                        loss_names=exploration_losses,
+                        attempts_per_example=exploration_k,
+                    )
+                    losses = {name: loss[winner] for name, loss in losses.items()}
+                    batch["t"] = {dm: t_dm[::exploration_k] for dm, t_dm in batch["t"].items()}
 
-            self.log_losses(bs=bs, losses=losses, log_prefix=log_prefix, batch=batch, val_step=val_step)
-            train_loss = sum([torch.mean(losses[k]) for k in losses if "_justlog" not in k])
+                self.log_losses(bs=bs, losses=losses, log_prefix=log_prefix, batch=batch, val_step=val_step)
+                train_loss = sum(value.mean() for value in self.fm.optimization_terms(losses).values())
 
-            self.log(
-                f"{log_prefix}/loss",
-                train_loss,
-                on_step=not val_step,  # Only log per-step for training, not validation
-                on_epoch=True,
-                prog_bar=False,
-                logger=True,
-                batch_size=bs,
-                sync_dist=val_step,  # reduce across ranks on val so the metric is the full-set mean
-                add_dataloader_idx=False,
-            )
-
-            if not val_step:
-                self.log_train_loss_n_prog_bar(bs, train_loss)
-                self.update_n_log_flops(bs, n)
-                self.update_n_log_nsamples_processed(bs)
-                self.log_nparams()
-
-                should_step = backward_with_accumulation(
-                    self, train_loss, batch_idx, self.cfg_exp.opt.get("accumulate_grad_batches", 1)
+                self.log(
+                    f"{log_prefix}/loss",
+                    train_loss,
+                    on_step=not val_step,  # Only log per-step for training, not validation
+                    on_epoch=True,
+                    prog_bar=False,
+                    logger=True,
+                    batch_size=bs,
+                    sync_dist=val_step,  # reduce across ranks on val so the metric is the full-set mean
+                    add_dataloader_idx=False,
                 )
-                if should_step:
-                    # [muon, adam], or just adam if the exclude patterns left Muon nothing.
-                    optimizers = self.optimizers()
-                    if not isinstance(optimizers, list):
-                        optimizers = [optimizers]
 
-                    clip_val = self.cfg_exp.opt.gradient_clip_val
-                    for opt in optimizers:
-                        self.clip_gradients(opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
+                if not val_step:
+                    self.log_train_loss_n_prog_bar(bs, train_loss)
+                    self.update_n_log_flops(physical_bs, n)
+                    self.update_n_log_nsamples_processed(bs)
+                    self.log_nparams()
 
-                    manual_opt = self.trainer.fit_loop.epoch_loop.manual_optimization
-                    for i, opt in enumerate(optimizers):
-                        opt.step()
-                        # Lightning bumps global_step on every manual step; undo all but the last
-                        # so one training step is one global_step and every hook sees the same value.
-                        if i < len(optimizers) - 1:
-                            manual_opt.optim_step_progress.total.completed -= 1
-                            manual_opt.optim_step_progress.current.completed -= 1
+                    should_step = backward_with_accumulation(
+                        self, train_loss, batch_idx, self.cfg_exp.opt.get("accumulate_grad_batches", 1)
+                    )
+                    if should_step:
+                        # [muon, adam], or just adam if the exclude patterns left Muon nothing.
+                        optimizers = self.optimizers()
+                        if not isinstance(optimizers, list):
+                            optimizers = [optimizers]
 
-                    for opt in optimizers:
-                        opt.zero_grad()
+                        clip_val = self.cfg_exp.opt.gradient_clip_val
+                        for opt in optimizers:
+                            self.clip_gradients(opt, gradient_clip_val=clip_val, gradient_clip_algorithm="norm")
 
-                    schedulers = self.lr_schedulers()
-                    if schedulers is not None:
-                        for scheduler in schedulers if isinstance(schedulers, list) else [schedulers]:
-                            scheduler.step()
+                        manual_opt = self.trainer.fit_loop.epoch_loop.manual_optimization
+                        for i, opt in enumerate(optimizers):
+                            opt.step()
+                            # Lightning bumps global_step on every manual step; undo all but the last
+                            # so one training step is one global_step and every hook sees the same value.
+                            if i < len(optimizers) - 1:
+                                manual_opt.optim_step_progress.total.completed -= 1
+                                manual_opt.optim_step_progress.current.completed -= 1
 
-            # Return dict with loss and extra data for callbacks.
-            # Lightning uses the reserved "loss" key for backpropagation - other keys are
-            # passed through to callbacks via the `outputs` parameter in on_train_batch_end.
-            return {
-                "loss": train_loss,
-                "losses_per_sample": {k: v.detach() for k, v in losses.items()},
-                "t": {k: v.detach() for k, v in batch["t"].items()},
-            }
+                        for opt in optimizers:
+                            opt.zero_grad()
+
+                        schedulers = self.lr_schedulers()
+                        if schedulers is not None:
+                            for scheduler in schedulers if isinstance(schedulers, list) else [schedulers]:
+                                scheduler.step()
+
+                # Return dict with loss and extra data for callbacks.
+                # Lightning uses the reserved "loss" key for backpropagation - other keys are
+                # passed through to callbacks via the `outputs` parameter in on_train_batch_end.
+                return {
+                    "loss": train_loss,
+                    "losses_per_sample": {k: v.detach() for k, v in losses.items()},
+                    "t": {k: v.detach() for k, v in batch["t"].items()},
+                    "exploration_k": exploration_k,
+                }
 
     def add_clean_samples(self, batch: dict) -> dict:
         """
@@ -851,6 +950,8 @@ class Proteina(L.LightningModule):
 
     def on_validation_start(self) -> None:
         """Bring up the per-rank metrics pool."""
+        if getattr(self, "_full_bioir_options", None) is not None:
+            initialize_full_bioir(self)
         self._check_val_set_name_override()
         self._metrics_pool.start(self.val_dataset_tags)
 
@@ -893,6 +994,21 @@ class Proteina(L.LightningModule):
             self._oracle_mms_setup_this_epoch = True
 
     def validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
+        """Apply dataset-specific sampling settings for training-time validation."""
+        if self.is_inference or self.inf_cfg is None:
+            return self._validation_step(batch, batch_idx, dataloader_idx)
+        datasets = [cfg for cfg in self.cfg_exp.datasets.val.values() if cfg]
+        overrides = datasets[dataloader_idx].get("generation")
+        if not overrides:
+            return self._validation_step(batch, batch_idx, dataloader_idx)
+        original = self.inf_cfg
+        try:
+            self.inf_cfg = OmegaConf.merge(original, overrides)
+            return self._validation_step(batch, batch_idx, dataloader_idx)
+        finally:
+            self.inf_cfg = original
+
+    def _validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
         """
         Dual validation step. Runs training task and inference task on each batch.
 
@@ -1024,12 +1140,10 @@ class Proteina(L.LightningModule):
                 metrics_output[SEARCH_REWARD_KEY] = generation_list[i]["reward"]
 
             if per_example_losses is not None:
-                for k, v in per_example_losses.items():
-                    if "_justlog" not in k:
-                        metrics_output[f"loss_{k}"] = v[orig_batch_idx].item()
-                metrics_output["loss"] = sum(
-                    v[orig_batch_idx].item() for k, v in per_example_losses.items() if "_justlog" not in k
-                )
+                objective_terms = self.fm.optimization_terms(per_example_losses)
+                for k, v in objective_terms.items():
+                    metrics_output[f"loss_{k}"] = v[orig_batch_idx].item()
+                metrics_output["loss"] = sum(v[orig_batch_idx].item() for v in objective_terms.values())
 
             # All files for this design (oracle outputs, trajectories, input CIF) share the
             # same per-design subdirectory so related artifacts stay together.
@@ -1143,10 +1257,11 @@ class Proteina(L.LightningModule):
         # 1b. Pre-oracle filter: excise designs that fail design-phase criteria before
         # oracle folding. Runs inline (no workers) since it is pure dict look-ups.
         pre_oracle_filter_mm = self.pre_oracle_filter_metric_manager
+        oracle_outputs = self.validation_output_generation
         if pre_oracle_filter_mm is not None:
             if not self._oracle_mms_setup_this_epoch:
                 pre_oracle_filter_mm.on_validation_epoch_start(val_dataset_tags=self.val_dataset_tags)
-            self.validation_output_generation = apply_pre_oracle_filters(
+            oracle_outputs = apply_pre_oracle_filters(
                 self.validation_output_generation,
                 pre_oracle_filter_mm,
                 delete_failing=self.cfg_exp.get("delete_failing_pre_oracle", True),
@@ -1180,7 +1295,7 @@ class Proteina(L.LightningModule):
         local_refolding_metrics: list[dict] = []
         design_metrics_by_key = {_design_key(m): m for m in (local_design_metrics or []) if m}
         items = sorted(
-            self.validation_output_generation,
+            oracle_outputs,
             key=lambda it: design_metrics_by_key.get(_design_key(it), {}).get("token_count", 0),
         )
 
@@ -1244,6 +1359,13 @@ class Proteina(L.LightningModule):
         refold_by_key = {_design_key(m): m for m in (all_refolding_metrics or []) if m}
         all_keys = list(design_by_key) + [k for k in refold_by_key if k not in design_by_key]
         combined_metrics = [{**design_by_key.get(k, {}), **refold_by_key.get(k, {})} for k in all_keys]
+
+        if pass_mm is not None:
+            for row in combined_metrics:
+                if row.get("pre_oracle_pass") == 0:
+                    for name, metric in pass_mm.metrics.items():
+                        if metric.applies_to_tags(set(filter(None, row.get("metrics_tags", "").split(",")))):
+                            row[f"{name}.pass"] = row[f"{name}.all_metrics_present"] = 0.0
 
         if not combined_metrics:
             return
@@ -1642,6 +1764,8 @@ class Proteina(L.LightningModule):
                 - "input_atom_array": input AtomArray object (before generation)
                 - "generated_atom_array": output AtomArray object with generated coordinates
         """
+        if getattr(self, "_full_bioir_options", None) is not None:
+            return predict_full_bioir(self, batch)
         # Always use search_strategy interface for consistency
         # Default to VanillaStrategy if no search strategy is configured
         if self.search_strategy is None:
@@ -1809,6 +1933,7 @@ class Proteina(L.LightningModule):
                 input_atom_array=input_atom_array,
                 bb_ca_only=bb_ca_only,
                 insertion_logits=sample_insertion_logits,
+                atom_mask=sample_prots["atom_mask"][i] if "atom_mask" in sample_prots else None,
             )
             if result is None:
                 continue
@@ -1922,9 +2047,9 @@ class Proteina(L.LightningModule):
                         "condition_decoder_on_sequence_prediction is enabled, but the checkpoint has no "
                         "sequence readout output."
                     )
-                if sequence_logits.shape[-1] != 33:
+                if sequence_logits.shape[-1] != UNIFIED_ATOM37_ENCODING.n_tokens:
                     raise ValueError(
-                        "condition_decoder_on_sequence_prediction requires 33-class sequence logits, "
+                        "condition_decoder_on_sequence_prediction requires canonical sequence logits, "
                         f"got {sequence_logits.shape[-1]}."
                     )
 
@@ -1952,20 +2077,26 @@ class Proteina(L.LightningModule):
                     decode_batch[C_SEQ.full_name],
                 )
 
-            output_decoder = self.autoencoder.decode(decode_batch)
+            coord_groups = decode_batch.get(C_CRDGRP.full_name)
+            output_decoder = self.autoencoder.decode(
+                decode_batch, required_atom_mask=None if coord_groups is None else coord_groups >= 0
+            )
             emit_mask = output_decoder["emit_mask"]
             coors_nm_full = output_decoder["coors_nm"].clone()
             residue_type_full = output_decoder["residue_type"].long()
+            atom_mask = output_decoder["atom_mask"].clone()
 
             # Tokens with no latents (unfixed ligands, etc.): keep the sampled CA in slot 1 and
             # mark them unencoded (residue_type -1).
             no_latent_tokens = (~emit_mask) & padding_mask  # [b, n]
+            atom_mask[..., 1] |= no_latent_tokens
             coors_nm_full[..., 1, :] = torch.where(no_latent_tokens[..., None], x["bb_ca"], coors_nm_full[..., 1, :])
             # -1 marks every token outside the emitted set (unfilled / no-latent / padding).
             residue_type_full = torch.where(emit_mask, residue_type_full, torch.full_like(residue_type_full, -1))
 
             return {
                 "coors": nm_to_ang(coors_nm_full),  # [b, n, 37, 3] - padded, use mask to slice
+                "atom_mask": atom_mask,
                 "residue_type": residue_type_full,  # [b, n] - padded, use mask to slice
                 "padding_mask": padding_mask,  # [b, n] - True for non-padding tokens
             }

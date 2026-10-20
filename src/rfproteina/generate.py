@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import warnings
+from collections.abc import Mapping
 from contextlib import nullcontext
 from functools import partial
 from os import PathLike
@@ -38,15 +39,18 @@ with (
         DesignProblemDataset,
     )
     from rfproteina.metrics.metric import MetricManager
+    from rfproteina.nn.execution import configure_execution, inference_padding_buckets, setup_execution
+    from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
     from rfproteina.proteina import Proteina
     from rfproteina.search.base_strategy import SearchStrategy
     from rfproteina.search.beam_search import BeamSearchStrategy
     from rfproteina.utils.ddp import RankedLogger
     from rfproteina.utils.env import load_dotenv
+    from rfproteina.utils.hydra import training_path_length_search_cutoffs
     from rfproteina.utils.logging import print_config_tree
     from rfproteina.utils.structure_files import is_structure_file, iter_structure_files, structure_file_stem
     from rfproteina.utils.torch import apply_torch_deterministic
-    from rfproteina.utils.torch_compile import save_compile_cache, setup_run_compile
+    from rfproteina.utils.torch_compile import save_compile_cache
     from rfproteina.utils.verbosity import configured_verbosity, initialize_worker_verbosity, queue_startup_warnings
     from rfproteina.utils.weights import inference_state_dict
 
@@ -322,9 +326,13 @@ def check_cfg_validity(cfg_sample_args: dict) -> None:
         logger.info("Guidance is turned off.")
 
 
-def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy:
-    """Instantiate beam search from the flat checkpoint config."""
+def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy | None:
+    """Instantiate beam search, or leave it disabled when checkpoints are null."""
     config = OmegaConf.to_container(search_cfg, resolve=True)
+    if config.get("checkpoints") is None:
+        if config.get("save_states") or config.get("resume_from") is not None or config.get("resume_seed") is not None:
+            raise ValueError("Saving or resuming beam candidates requires search.checkpoints.")
+        return None
     return BeamSearchStrategy(**config)
 
 
@@ -345,24 +353,54 @@ def _load_ema_state_dict(ckpt_file: str) -> dict[str, torch.Tensor]:
     return inference_state_dict(raw_ckpt, ckpt_file)
 
 
+def _requested_nn_overrides(nn_overrides: Mapping[str, Any]) -> dict[str, Any]:
+    """The non-null ``nn`` overrides of an inference config, rejecting keys that cannot change at inference."""
+    overrides = {key: value for key, value in nn_overrides.items() if value is not None}
+    modes = ("default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs")
+    if overrides.get("torch_compile_mode", "default") not in modes:
+        raise ValueError(f"nn.torch_compile_mode must be one of {modes}, got {overrides['torch_compile_mode']!r}")
+    unknown = sorted(set(overrides) - set(LocalLatentsTransformer.RUNTIME_OPTIONS))
+    if unknown:
+        raise ValueError(
+            f"nn.{unknown[0]} cannot change at inference; the overridable settings are "
+            + ", ".join(LocalLatentsTransformer.RUNTIME_OPTIONS)
+        )
+    return overrides
+
+
+def _inference_cfg_exp(ckpt_file: str, nn_overrides: Mapping[str, Any]) -> DictConfig | None:
+    """The checkpoint's experiment config with the inference-time ``nn`` overrides applied.
+
+    ``rfd4-generate`` rebuilds the architecture from the checkpoint's own hparams, so the torch.compile
+    mode or the triangle-multiplication backend can only change through this merge. ``None`` values keep
+    the checkpoint's setting; returns ``None`` when nothing changes, so the checkpoint is not read twice.
+
+    Raises:
+        ValueError: If a key outside :data:`LocalLatentsTransformer.RUNTIME_OPTIONS` is requested.
+    """
+    overrides = _requested_nn_overrides(nn_overrides)
+    if not overrides:
+        return None
+    hparams = torch.load(ckpt_file, map_location="cpu", weights_only=False, mmap=True).get("hyper_parameters", {})
+    if "cfg_exp" not in hparams:
+        raise ValueError(f"{ckpt_file} has no saved experiment config; nn overrides need a training export")
+    cfg_exp = hparams["cfg_exp"]
+    if not OmegaConf.is_config(cfg_exp):
+        cfg_exp = OmegaConf.create(cfg_exp)
+    with open_dict(cfg_exp.nn):
+        for key, value in overrides.items():
+            cfg_exp.nn[key] = value
+    logger.info(f"Inference nn overrides: {overrides}")
+    return cfg_exp
+
+
 def _adopt_train_path_length_search_cutoff(cfg: DictConfig, cfg_exp: DictConfig) -> None:
     """Inherit a shared training cutoff unless inference explicitly specifies its own."""
     transform_cfg = OmegaConf.select(cfg, "generation.dataset.transform", default=None)
     if transform_cfg is None or "path_length_search_cutoff" in transform_cfg:
         return
 
-    cutoffs: set[int | None] = set()
-    pending = [OmegaConf.select(cfg_exp, "datasets.train", default=None)]
-    while pending:
-        dataset = pending.pop()
-        if dataset is None:
-            continue
-        if "dataset" in dataset:
-            cutoffs.add(OmegaConf.select(dataset, "dataset.transform.path_length_search_cutoff", default=None))
-        elif "sub_datasets" in dataset:
-            pending.extend(dataset.sub_datasets.values())
-        else:
-            pending.extend(d for d in dataset.values() if d is not None and d.get("probability", 1) > 0)
+    cutoffs = training_path_length_search_cutoffs(cfg_exp)
     if len(cutoffs) > 1:
         raise ValueError(
             "Training datasets disagree on path_length_search_cutoff. Set "
@@ -372,35 +410,51 @@ def _adopt_train_path_length_search_cutoff(cfg: DictConfig, cfg_exp: DictConfig)
         OmegaConf.update(transform_cfg, "path_length_search_cutoff", next(iter(cutoffs)), force_add=True)
 
 
-def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
-    """Load model checkpoint for inference."""
-    ckpt_path = cfg.ckpt_path
-    ckpt_file = os.path.join(ckpt_path, cfg.ckpt_name)
-
-    if not os.path.exists(ckpt_file):
-        raise FileNotFoundError(f"Checkpoint not found: {ckpt_file}")
-    logger.info(f"Loading checkpoint: {ckpt_file}")
-
-    # strict=True: the architecture is rebuilt from the checkpoint's own saved hparams, so any
-    # missing/unexpected key means the code has drifted from what produced these weights. Loading
-    # a partially-initialized model would silently produce garbage designs.
-    model = Proteina.load_from_checkpoint(
-        ckpt_file,
-        strict=True,
-        autoencoder_ckpt_path=cfg.get("autoencoder_ckpt_path"),
-        load_training_metrics=False,
-        weights_only=False,
-        map_location="cpu",
-    )
-
-    if cfg.ckpt_name.endswith("-ema.ckpt"):
-        # Already EMA weights, no need to load again
-        logger.info(f"'{cfg.ckpt_name}' is an EMA checkpoint; weights are already EMA.")
+def load_ckpt_n_configure_inference(cfg: dict, model: Proteina | None = None) -> Proteina:
+    """Configure a supplied model or load the configured checkpoint for inference."""
+    if model is not None:
+        if _requested_nn_overrides(cfg.get("nn") or {}):
+            raise ValueError("nn.* overrides apply when the model is built; a supplied model cannot take them")
+        ckpt_path, ckpt_name = None, None
+    elif cfg.get("hf_ckpt_path"):
+        ckpt_path = cfg.hf_ckpt_path
+        ckpt_name = "model.safetensors"
+        model = Proteina.from_pretrained(
+            ckpt_path,
+            revision=cfg.get("hf_ckpt_revision"),
+            nn_overrides=_requested_nn_overrides(cfg.get("nn") or {}),
+        )
     else:
-        # Training checkpoint: load EMA weights from the SimpleEMA callback and overlay them on the model
-        ema_state_dict = _load_ema_state_dict(ckpt_file)
-        model.load_state_dict(ema_state_dict, strict=True)
-        logger.info(f"Loaded {len(ema_state_dict)} EMA tensors from the training checkpoint.")
+        ckpt_path = cfg.ckpt_path
+        ckpt_name = cfg.ckpt_name
+        ckpt_file = os.path.join(ckpt_path, cfg.ckpt_name)
+
+        if not os.path.exists(ckpt_file):
+            raise FileNotFoundError(f"Checkpoint not found: {ckpt_file}")
+        logger.info(f"Loading checkpoint: {ckpt_file}")
+
+        # strict=True: the architecture is rebuilt from the checkpoint's own saved hparams (plus the inference-time
+        # nn overrides), so any missing/unexpected key means the code has drifted from what produced these weights.
+        # Loading a partially-initialized model would silently produce garbage designs.
+        cfg_exp = _inference_cfg_exp(ckpt_file, cfg.get("nn") or {})
+        model = Proteina.load_from_checkpoint(
+            ckpt_file,
+            strict=True,
+            autoencoder_ckpt_path=cfg.get("autoencoder_ckpt_path"),
+            load_training_metrics=False,
+            weights_only=False,
+            map_location="cpu",
+            **({} if cfg_exp is None else {"cfg_exp": cfg_exp}),
+        )
+
+        if cfg.ckpt_name.endswith("-ema.ckpt"):
+            # Already EMA weights, no need to load again
+            logger.info(f"'{cfg.ckpt_name}' is an EMA checkpoint; weights are already EMA.")
+        else:
+            # Training checkpoint: load EMA weights from the SimpleEMA callback and overlay them on the model
+            ema_state_dict = _load_ema_state_dict(ckpt_file)
+            model.load_state_dict(ema_state_dict, strict=True)
+            logger.info(f"Loaded {len(ema_state_dict)} EMA tensors from the training checkpoint.")
 
     if cfg.get("adapter_path"):
         from rfproteina.utils.lora import load_lora_adapter
@@ -425,15 +479,18 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         global_prefix=cfg.get("global_prefix"),
         job_id=cfg.get("job_id"),
         ckpt_path=ckpt_path,
-        ckpt_name=cfg.ckpt_name,
+        ckpt_name=ckpt_name,
         save_chain_of_interest=cfg.get("save_chain_of_interest", False),
         compress_outputs=cfg.get("compress_outputs", False),
     )
 
-    # Configure search if specified
-    if hasattr(cfg, "search") and cfg.search is not None:
+    model.search_strategy = None
+    model.guidance_model = None
+
+    if cfg.get("search") is not None:
         search_strategy = configure_search_strategy_from_cfg(cfg.search)
-        model.configure_search(search_strategy)
+        if search_strategy is not None:
+            model.configure_search(search_strategy)
 
     # Configure differentiable-metric gradient guidance if specified
     if hasattr(cfg, "guidance") and cfg.guidance is not None:
@@ -447,6 +504,10 @@ def load_ckpt_n_configure_inference(cfg: dict) -> Proteina:
         )
         model.configure_guidance(guidance_model)
 
+    # Runtime policy deliberately overrides execution flags in old checkpoint hparams.
+    execution = cfg.get("execution", {"inference": {"length_buckets": cfg.get("compile_lengths")}})
+    setup_execution(execution, inference=True, guidance=model.guidance_model is not None)
+    configure_execution(model, execution, "inference")
     return model
 
 
@@ -546,7 +607,9 @@ def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.da
 
 
 @configured_verbosity(default=False)
-def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = None) -> None:
+def run_generation(
+    cfg: DictConfig, job_id: int = 0, config_name: str | None = None, *, model: Proteina | None = None
+) -> None:
     """
     Core generation function that runs inference given a Hydra config.
 
@@ -554,6 +617,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         cfg: Hydra DictConfig with all generation parameters
         job_id: Job ID for parallel job splitting
         config_name: Name of the config (used for output directory naming)
+        model: Optional model already loaded with ``Proteina.from_pretrained``.
     """
     precision = cfg.precision
     torch.set_float32_matmul_precision("high" if precision in ("32", "32-true") else "medium")
@@ -584,7 +648,7 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
         logger.info(f"Results already exist at {csv_path}. Exiting generate.py.")
         sys.exit(0)
 
-    model = load_ckpt_n_configure_inference(cfg)
+    model = load_ckpt_n_configure_inference(cfg, model=model)
     model.inference_seed = cfg.seed
 
     # Fully deterministic mode — MUST come after model init, because model.__init__
@@ -605,22 +669,11 @@ def run_generation(cfg: DictConfig, job_id: int = 0, config_name: str | None = N
 
     batch_size = cfg.get("batch_size", 1)
 
-    # Pad every batch up to one of a few token counts so the network sees a handful of
-    # static shapes and can be compiled (variable lengths otherwise recompile forever).
-    compile_lengths = cfg.get("compile_lengths", None)
-    fixed_dimensions = None
+    execution = cfg.get("execution", {"inference": {"length_buckets": cfg.get("compile_lengths")}})
+    compile_lengths = inference_padding_buckets(execution, guidance=model.guidance_model is not None)
+    fixed_dimensions = {"I": compile_lengths} if compile_lengths else None
     if compile_lengths:
-        compile_lengths = sorted(int(n) for n in compile_lengths)
-        assert all(
-            n % 16 == 0 for n in compile_lengths
-        ), f"compile_lengths must be 16-aligned for torch.compile, got {compile_lengths}"
-        fixed_dimensions = {"I": compile_lengths}
         dataset = _sort_dataset_by_length(dataset)
-
-        # Configure torch.compile for inference + warm the local cache (before any compile).
-        setup_run_compile(inference=True)
-        model.reserve_shape_cache(compile_lengths)  # gate the flow model on for these buckets (AE stays eager)
-        logger.info(f"Inference torch.compile ready with length buckets: {compile_lengths}")
 
     # Create dataloader
     num_workers = cfg.num_workers
@@ -707,7 +760,12 @@ def main_hydra(cfg: DictConfig) -> None:
     if exists(cfg.get("data_path", None)):
         os.environ["DATA_PATH"] = cfg.data_path
 
-    print_config_tree(cfg, resolve=True)
+    diagnostic_cfg = cfg
+    if cfg.get("hf_ckpt_path"):
+        diagnostic_cfg = OmegaConf.masked_copy(
+            cfg, [key for key in cfg if key not in {"ckpt_path", "ckpt_name", "autoencoder_ckpt_path"}]
+        )
+    print_config_tree(diagnostic_cfg, resolve=True)
     run_generation(cfg, job_id=job_id)
 
 

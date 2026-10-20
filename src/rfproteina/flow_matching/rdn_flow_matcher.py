@@ -7,6 +7,7 @@ from torch import Tensor
 
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
 from rfproteina.utils.align import mean_w_mask
+from rfproteina.utils.sample_rng import sample_randn, sample_rng_active, sample_rng_row
 
 _logger = logging.getLogger(__name__)
 
@@ -117,13 +118,26 @@ class RDNFlowMatcher(BaseFlowMatcher):
         """
         if offset_mask is None:
             return x
+        if group_ids is not None and sample_rng_active() and x.shape[0] > 1:
+            rows = []
+            for i in range(x.shape[0]):
+                with sample_rng_row(i):
+                    rows.append(
+                        self._apply_stochastic_offset(
+                            x[i : i + 1],
+                            None if emit_mask is None else emit_mask[i : i + 1],
+                            offset_mask[i : i + 1],
+                            group_ids[i : i + 1],
+                        )
+                    )
+            return torch.cat(rows, dim=0)
         if group_ids is None:
-            noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
+            noise = sample_randn((*x.shape[:-2], x.shape[-1]), device=x.device)  # [*, d]
             x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * offset_mask[..., None].float()
         else:
             for g in group_ids[offset_mask].unique():
                 group_mask_f = (offset_mask & (group_ids == g))[..., None].float()  # [*, n, 1]
-                noise = torch.randn(*x.shape[:-2], x.shape[-1], device=x.device)  # [*, d]
+                noise = sample_randn((*x.shape[:-2], x.shape[-1]), device=x.device)  # [*, d]
                 x = x + self.stochastic_centering_scale * noise.unsqueeze(-2) * group_mask_f
 
         if emit_mask is not None:
@@ -231,7 +245,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         Returns:
             Samples from refenrece [N(0, I_d)]^n shape [*shape, n, d]
         """
-        noise = torch.randn(
+        noise = sample_randn(
             (*shape, n, self.dim),
             device=device,
         )
@@ -463,7 +477,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         We add a few additional parameters to the SDE to control noise/score scale and
         perform stochastic and low temperature sampling:
 
-        eq. (3): d x_t = [v(x_t, t) + g(t) * sc_score_scale * s(x_t, t) * sc_score_scale] dt + \
+        eq. (3): d x_t = [v(x_t, t) + g(t) * s(x_t, t)] dt + \
                         \sqrt{2 * g(t) * sc_noise_scale} dw_t.
 
         At the moment we do not scale the vector field v.
@@ -477,14 +491,13 @@ class RDNFlowMatcher(BaseFlowMatcher):
             gt: Noise injection, float
             emit_mask: Tokens emitted by this modality, shape [*, n].
             simulation_step_params: parameters for the simulation step, keys
-                sampling_mode, sc_scale_noise, sc_scale_score, t_lim_ode
+                sampling_mode, sc_scale_noise, t_lim_ode
 
         Returns:
             Updated values for x_t after an Euler integration step, shape [*, n, d].
         """
         sampling_mode = simulation_step_params["sampling_mode"]
         sc_scale_noise = simulation_step_params["sc_scale_noise"]
-        sc_scale_score = simulation_step_params["sc_scale_score"]
         t_lim_ode = simulation_step_params["t_lim_ode"]
         t_lim_ode_below = simulation_step_params["t_lim_ode_below"]
         center_every_step = simulation_step_params["center_every_step"]
@@ -494,12 +507,9 @@ class RDNFlowMatcher(BaseFlowMatcher):
         assert sampling_mode in [
             "vf",
             "sc",
-            "vf_ss",
-            "vf_ss_sc_sn",
             "vf_tsr",
-        ], f"Invalid sampling mode {sampling_mode}, should be `vf`, `sc`, `vf_ss`, `vf_ss_sc_sn`, or `vf_tsr`"
+        ], f"Invalid sampling mode {sampling_mode}, should be `vf`, `sc`, or `vf_tsr`"
         assert sc_scale_noise >= 0, f"Scale noise for sampling should be >= 0, got {sc_scale_noise}"
-        assert sc_scale_score >= 0, f"Scale score for sampling should be >= 0, got {sc_scale_score}"
         assert gt >= 0, f"gt for sampling should be >= 0, got {gt}"
         t_element = t.flatten()[0]
         assert torch.all(t_element == t), "Sampling only implemented for same time for all samples"
@@ -509,54 +519,22 @@ class RDNFlowMatcher(BaseFlowMatcher):
         else:
             v = nn_out["v"]
 
-        sc_scale_score_def = 1.5  # used when very close to 1 for sc mode, since we don't want to add more noise, we switch to low temp ODE with this scale for the score  # noqa: E501
-        sc_scale_noise_def = 0.3  # used when very close to 0 for vf_ss mode, since we can't use low temp ODE then, we switch to low temp SDE with this scale for the noise  # noqa: E501
+        endpoint_score_scale = 1.5  # Preserve regular SDE's low-temperature ODE endpoint.
 
         if sampling_mode == "vf":  # ODE mode
             delta_x = v * dt
 
-        elif sampling_mode == "vf_ss":  # ODE with score scaling
-            if t_element < t_lim_ode_below:  # Close to zero cannot do score_to_vf, switch to SDE with noise scaling
-                score = vf_to_score(x_t, v, t)  # get score from v, [*, dim]
-                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
-                std_eps = torch.sqrt(2 * gt * sc_scale_noise_def * dt)
-                delta_x = (v + gt * score) * dt + std_eps * eps
-            else:
-                score = vf_to_score(x_t, v, t)
-                scaled_score = score * sc_scale_score
-                v_scaled = score_to_vf(x_t, scaled_score, t)
-                delta_x = v_scaled * dt
-
         elif sampling_mode == "sc":  # SDE with noise scaling
             if t_element > t_lim_ode:  # close to 1 stop SDE, switch to low temp ODE
                 score = vf_to_score(x_t, v, t)
-                scaled_score = score * sc_scale_score_def
+                scaled_score = score * endpoint_score_scale
                 v_scaled = score_to_vf(x_t, scaled_score, t)
                 delta_x = v_scaled * dt
             else:
                 score = vf_to_score(x_t, v, t)  # get score from v, [*, dim]
-                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
+                eps = sample_randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
                 std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
                 delta_x = (v + gt * score) * dt + std_eps * eps
-
-        elif sampling_mode == "vf_ss_sc_sn":  # SDE with score scaling (in ODE) and noise scaling (in Langevin term)
-            if t_element > t_lim_ode:  # close to 1 stop SDE, switch to plain low temp ODE
-                score = vf_to_score(x_t, v, t)
-                scaled_score = score * sc_scale_score_def
-                v_scaled = score_to_vf(x_t, scaled_score, t)
-                delta_x = v_scaled * dt
-            elif t_element < t_lim_ode_below:  # close to 0 switch to SDE with noise scaling
-                score = vf_to_score(x_t, v, t)  # get score from v, [*, dim]
-                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
-                std_eps = torch.sqrt(2 * gt * sc_scale_noise_def * dt)
-                delta_x = (v + gt * score) * dt + std_eps * eps
-            else:  # ODE scaled with SDE scaled
-                score = vf_to_score(x_t, v, t)
-                scaled_score = score * sc_scale_score
-                v_scaled = score_to_vf(x_t, scaled_score, t)
-                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
-                std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
-                delta_x = (v_scaled + gt * score) * dt + std_eps * eps
 
         elif sampling_mode == "vf_tsr":  # ODE with time-scale-ratio scaling, optionally made stochastic
             tsr_ratio = compute_tsr_ratio(t_element, tsr_k, tsr_sigma)
@@ -570,9 +548,9 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 if t_element > t_lim_ode or t_element < t_lim_ode_below:
                     delta_x = v_scaled * dt
                 else:
-                    eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
+                    eps = sample_randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
                     std_eps = torch.sqrt(torch.as_tensor(2 * gt * sc_scale_noise * dt))
-                    delta_x = (v_scaled + gt * score * sc_scale_score) * dt + std_eps * eps
+                    delta_x = (v_scaled + gt * scaled_score) * dt + std_eps * eps
 
         else:
             raise ValueError(f"Invalid sampling mode {sampling_mode}")

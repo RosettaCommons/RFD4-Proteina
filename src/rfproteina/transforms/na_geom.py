@@ -37,7 +37,7 @@ def sparse_pair_and_state_from_conditions(
     n_tokens = len(token_starts)
     state_values = C_NA_SS_STATE.annotation(atom_array, default="raise")[token_starts].astype(np.int16)
 
-    if C_BP.full_name in atom_array.get_annotation_2d_categories():
+    if C_BP.full_name in atom_array.get_annotation_categories(n_body=2):
         atom_to_token = spread_token_wise(atom_array, np.arange(n_tokens, dtype=np.int32))
         atom_pair_annotation = C_BP.annotation(atom_array, default="raise")
         token_pairs = atom_to_token[atom_pair_annotation.pairs]
@@ -299,7 +299,7 @@ class FeaturizeNucleicAcidSecondaryStructure(Transform):
         token_starts = get_token_starts(atom_array)
         n_tokens = len(token_starts)
         if (
-            C_BP.full_name not in atom_array.get_annotation_2d_categories()
+            C_BP.full_name not in atom_array.get_annotation_categories(n_body=2)
             or C_NA_SS_STATE.full_name not in atom_array.get_annotation_categories()
         ):
             pair_annotation = AnnotationList2D(

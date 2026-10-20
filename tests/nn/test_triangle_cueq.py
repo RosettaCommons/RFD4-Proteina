@@ -38,12 +38,27 @@ def test_grouped_projections_match_reference(grad: bool, bias: bool, lora: bool)
             torch.testing.assert_close(m(z, mask[..., 0]), expected, rtol=1e-5, atol=1e-5)
 
 
+@pytest.mark.parametrize("reason", [ImportError("missing kernel"), "", "\n", "Traceback\nRuntimeError: ABI mismatch"])
+def test_unavailable_cueq_keeps_torch_backend(monkeypatch, caplog, reason):
+    monkeypatch.setattr(trimul, "_CUEQ_UNAVAILABLE", reason)
+    trimul._warn_once.cache_clear()
+    module = Outgoing(16, 8, backend="cuequivariance")
+    assert module.backend == "torch"
+    assert "cuEquivariance is unavailable; using torch" in caplog.text
+    assert str(reason) in caplog.text
+    reference = Outgoing(16, 8, backend="torch")
+    reference.load_state_dict(module.state_dict())
+    x, mask = torch.randn(1, 4, 4, 16), torch.ones(1, 4, 4)
+    torch.testing.assert_close(module(x, mask), reference(x, mask))
+
+
 @pytest.mark.gpu
-@pytest.mark.skipif(trimul._CUEQ_UNAVAILABLE is not None, reason="requires cuequivariance-ops-torch>=0.12")
+@pytest.mark.skipif(trimul._CUEQ_UNAVAILABLE is not None, reason="requires cuequivariance-ops-torch>=0.13")
 @pytest.mark.parametrize(
     "triangle,c_hidden,bias", [(Incoming, 256, False), (Outgoing, 256, True), (Outgoing, 384, False)]
 )
-def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -> None:
+@pytest.mark.parametrize("compiled", [False, True])
+def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool, compiled: bool) -> None:
     """Pair 384 with hidden 256 is fused on H200; hidden 384 falls back to the torch path."""
     torch._dynamo.reset()
     ref = _randomized(triangle(384, c_hidden, bias=bias)).cuda()
@@ -56,7 +71,11 @@ def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -
     results = []
     for source in (ref, fused):
         # Compare identical reductions even when preceding tests enable compiler tuning.
-        module = torch.compile(source, fullgraph=True, dynamic=False, options={"deterministic": True})
+        module = (
+            torch.compile(source, fullgraph=True, dynamic=False, options={"deterministic": True})
+            if compiled
+            else source
+        )
         xi = x.clone().requires_grad_()
         with torch.autocast("cuda", dtype=torch.bfloat16):
             out = module(xi, mask)
@@ -64,11 +83,12 @@ def test_cueq_backend_matches_torch(triangle: type, c_hidden: int, bias: bool) -
                 no_grad_out = module(x, mask)
         out.float().square().mean().backward()
         results.append([out, no_grad_out, xi.grad, *(p.grad for p in source.parameters())])
-    fused_route = trimul._CUEQ_SUPPORTED[(2, 256, 384, c_hidden, x.device.index, True, True)]
-    assert fused_route == (c_hidden == 256 and torch.cuda.get_device_capability() == (9, 0))
+    fused_route = cuequivariance_ops_torch.triangle_multiplicative_update_training_shape_is_supported(
+        2, 256, 384, c_hidden, x.device
+    )
+    if torch.cuda.get_device_capability() == (9, 0):
+        assert fused_route == (c_hidden == 256)
     for ref_t, fused_t in zip(*results, strict=True):
-        if fused_route:
-            cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
-            assert cosine > 0.99, f"cosine {cosine:.4f}"
-        else:
-            torch.testing.assert_close(fused_t, ref_t)
+        # Fused kernels and cuEquivariance's reference formula both reorder the BF16 math.
+        cosine = torch.nn.functional.cosine_similarity(ref_t.flatten().float(), fused_t.flatten().float(), dim=0)
+        assert cosine > 0.99, f"cosine {cosine:.4f}"

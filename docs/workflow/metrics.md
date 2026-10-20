@@ -42,9 +42,9 @@ and that is where most of the compute savings live.
 | **Pass criteria** | after refolding | what counts as a success, judging design, oracle and refold together |
 | **Search pruning** | inside the trajectory | which candidates survive to the next checkpoint |
 
-Refolding costs the most, so a pre-oracle filter that drops obviously broken designs is your biggest
-lever on cost per success. One exception. When you benchmark per example, turn every pre-oracle
-filter off, or you end up measuring the filter instead of the model.
+Pre-oracle filters save refolding compute by skipping designs that already fail a criterion.
+Filtered designs remain in ordinary and clustered pass-rate denominators, so filters can stay
+enabled for benchmarks. Report the filters used; disable them only when you want to refold every design.
 
 ## How many metrics ship enabled
 
@@ -140,7 +140,7 @@ These run directly on the generated structure, before any oracle refolds it.
 | `sse_distribution` | any: `design`<br>not: `small_molecule_only`, `structure_prediction` | Helix, sheet and loop fraction, plus the number of contiguous SSE elements, from P-SEA | `helix_fraction`, `sheet_fraction`, `loop_fraction`, `num_ss_elements` |
 | `sse_accuracy` | any: `design`<br>not: `small_molecule_only`, `structure_prediction` | Accuracy of generated secondary structure against your secondary structure conditioning | `overall_accuracy`, `helix_recall`, `sheet_recall`, `loop_recall`, `n_conditioned_atoms` |
 | `posebusters_metrics` | any: `small_molecule_only` | Ligand geometry and validity checks from PoseBusters | one pass or fail column per PoseBusters check |
-| `chiral_accuracy` | any: `small_molecule_only` | Fraction of stereogenic centers with correct handedness, split tetrahedral against non-tetrahedral | `tetrahedral_percent_correct_chirality`, `non_tetrahedral_percent_correct_chirality` |
+| `chiral_accuracy` | any: `small_molecule_only` | Fraction of reference stereoisomers recovered, split by center geometry and E/Z double bonds | `tetrahedral_percent_correct_chirality`, `non_tetrahedral_percent_correct_chirality`, `double_bond_percent_correct_stereochemistry` |
 | `design_motif_allatom_rmsd` | any: `3d_coordinate_conditioning`, `unindexed`, `internal_coordinate_conditioning` | All atom RMSD of the coordinate conditioned motif region, measuring self consistency within the design itself | `rmsd`, the median over replicates, and per `CoordinateGroup` when there are several motifs |
 | `design_unindexed_motif_allatom_rmsd` | all: `unindexed` | All atom RMSD restricted to **unindexed** insertion atoms only | `rmsd` |
 | `unindexed_insertion_mapping` | all: `unindexed` | Whether the insertion head applied its unindexed to generated token mapping in full, meaning every unindexed token got inserted, onto a residue of the conditioned identity wherever the unindexed region was sequence conditioned | `n_unmapped_tokens`, `n_sequence_mismatches` |
@@ -292,14 +292,13 @@ default. See
 A filter that reads an absent metric key counts as a failure, which happens when the metric's own
 tag gate kept it from running. So keep a filter's tag gate at least as strict as its metric's.
 
-> **Benchmarking.** Turn every pre-oracle filter off with `~metrics/pre_oracle_filters` when you
-> benchmark **per example**. A filter that discards designs before the oracle inflates the success
-> rate among the designs that survive. Filters are fine, and in fact the whole point, when you
-> **compute normalize** and measure success per unit of oracle compute, because a filtered design
-> still costs its share of the budget.
+Rejected designs skip the oracle but remain in per-example summaries as zero-pass attempts,
+including ordinary and clustered pass-rate denominators. `pre_oracle_pass` records the filter
+decision. Disable filters with `~metrics/pre_oracle_filters` only when you want to refold all designs.
 
 | Config key | Tag gate | Threshold |
 | --- | --- | --- |
+| `unknown_residue_filter` | All | `amino_acid_composition.n_generated_unknown_residues` = 0; input sequence-conditioned UNK is exempt |
 | `sequence_adherence_filter` | any: `design` | `sequence_adherence.n_violations` = 0, so the design must reproduce every conditioned residue exactly. Vacuous when nothing was sequence conditioned |
 | `unindexed_insertion_mapping_filter` | all: `unindexed` | `unindexed_insertion_mapping.n_unmapped_tokens` = 0 and `.n_sequence_mismatches` = 0, so the whole unindexed motif got inserted at the conditioned identities |
 | `ligand_clash_filter` | all: `ligand_clash_filter`<br>not: `no_ligand` | Zero inter residue polymer and ligand clashes, read off `clash_metrics` |

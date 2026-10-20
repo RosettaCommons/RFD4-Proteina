@@ -467,6 +467,7 @@ def generated_binder_run(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path
     command = [
         sys.executable,
         str(ROOT / "src/rfproteina/generate.py"),
+        "hf_ckpt_path=null",
         f"inputs={_BINDER_SPEC}",
         "num_replicates=1",
         "batch_size=1",

@@ -6,97 +6,26 @@ dimensionality reduction techniques, used by both training and inference.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import to_hex
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.manifold import TSNE
 
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
 
-# Color palette for the unified 33-class encoding.
-# Index 0: <M> (mask token)
-# Indices 1-20: Standard amino acids
-# Index 21: UNK
-# Indices 22-26: RNA (rA, rC, rG, rU, rN)
-# Indices 27-31: DNA (dA, dC, dG, dT, dN)
-# Index 32: <A> (atomised token)
-
-COLORS_UNIFIED_33 = [
-    # Index 0: Mask token
-    "#2F2F2F",  # Dark Gray (<M>)
-    # Indices 1-20: Standard amino acids (distinct, saturated colors)
-    "#E41A1C",  # Bright Red (ALA)
-    "#377EB8",  # Bright Blue (ARG)
-    "#4DAF4A",  # Bright Green (ASN)
-    "#984EA3",  # Bright Purple (ASP)
-    "#FF7F00",  # Bright Orange (CYS)
-    "#FFFF33",  # Bright Yellow (GLN)
-    "#A65628",  # Brown (GLU)
-    "#F781BF",  # Pink (GLY)
-    "#999999",  # Gray (HIS)
-    "#66C2A5",  # Teal (ILE)
-    "#FC8D62",  # Salmon (LEU)
-    "#8DA0CB",  # Light Blue (LYS)
-    "#E78AC3",  # Light Pink (MET)
-    "#A6D854",  # Lime Green (PHE)
-    "#FFD92F",  # Gold (PRO)
-    "#E5C494",  # Tan (SER)
-    "#B3B3B3",  # Light Gray (THR)
-    "#1B9E77",  # Dark Teal (TRP)
-    "#D95F02",  # Dark Orange (TYR)
-    "#7570B3",  # Lavender (VAL)
-    # Index 21: UNK
-    "#B0B0B0",  # Gray (UNK)
-    # Indices 22-26: RNA - warm, saturated colors
-    "#FF6B6B",  # Bright Red (RNA A)
-    "#FF8C42",  # Bright Orange (RNA C)
-    "#FFD93D",  # Bright Yellow (RNA G)
-    "#FF1493",  # Deep Pink (RNA U)
-    "#FFA07A",  # Light Salmon (RNA N)
-    # Indices 27-31: DNA - cool, saturated colors
-    "#4ECDC4",  # Bright Teal (DNA DA)
-    "#5B5FFF",  # Bright Blue-Purple (DNA DC)
-    "#00CED1",  # Dark Turquoise (DNA DG)
-    "#1E90FF",  # Dodger Blue (DNA DT)
-    "#87CEEB",  # Sky Blue (DNA DN)
-    # Index 32: Atomised token
-    "#696969",  # DimGray (<A>)
-]
-
-
 def get_residue_type_labels() -> list[str]:
-    """Return human-readable labels for the unified residue encoding."""
-    aa_labels = [
-        "ALA",
-        "ARG",
-        "ASN",
-        "ASP",
-        "CYS",
-        "GLN",
-        "GLU",
-        "GLY",
-        "HIS",
-        "ILE",
-        "LEU",
-        "LYS",
-        "MET",
-        "PHE",
-        "PRO",
-        "SER",
-        "THR",
-        "TRP",
-        "TYR",
-        "VAL",
-    ]
-
-    return ["MSK", *aa_labels, "UNK", "rA", "rC", "rG", "rU", "rN", "dA", "dC", "dG", "dT", "dN", "ATM"]
+    """Return residue names in model vocabulary index order."""
+    return UNIFIED_ATOM37_ENCODING.idx_to_token.tolist()
 
 
 def get_extended_color_palette() -> list[str]:
-    """Return colors indexed by the unified residue encoding."""
-    return COLORS_UNIFIED_33
+    """Return one deterministic color per model vocabulary entry."""
+    colors = plt.get_cmap("hsv")(np.arange(UNIFIED_ATOM37_ENCODING.n_tokens) / UNIFIED_ATOM37_ENCODING.n_tokens)
+    return [to_hex(color) for color in colors]
 
 
 def project_latents_2d(

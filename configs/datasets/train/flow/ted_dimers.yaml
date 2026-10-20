@@ -2,7 +2,7 @@
 # Everything about the data itself lives in `datasets/sources/ted_dimers`.
 
 defaults:
-  - /datasets/train/backend_pandas@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/ted_dimers@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: ppi_motif_scaffold
   - _self_

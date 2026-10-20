@@ -40,8 +40,8 @@ rfd4-generate \
 | `ckpt_path` / `ckpt_name` | Override the checkpoint dir / filename for a one-off. Read from `$DATA_PATH` otherwise. | from `$DATA_PATH` |
 
 > **Checkpoints.** `configs/inference.yaml` composes the current release pair, which is exactly
-> what `scripts/download_example_data.sh` fetches from the public bucket
-> `YOUR_DATASET_STORE` — so no override is needed. Point at a different
+> what `scripts/download_assets.sh` downloads — so no override is needed. Native
+> checkpoints go into `DATA_PATH`; a configured HF bundle uses `HF_HOME`. Point at a different
 > checkpoint with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
 >
 > See **rfd4-proteina-setup** for full checkpoint detail.
@@ -67,26 +67,26 @@ stochastic because `sc_scale_noise`/`gt` defaults are nonzero; `tsr_k` /
 `tsr_sigma` (pre-tuned in `inference_base`) control the end-of-trajectory
 temperature drop.
 
-## Diversity (stochasticity)
+## Temperature and diversity
 
-Two flows (product-space flow matching): backbone Cα and sidechain latents.
-Higher temperatures increase diversity but may reduce designability.
+Use `tsr_k` as the main temperature parameter for each flow. Higher `k` means lower
+temperature and stronger score sharpening; lower `k` raises temperature.
+`tsr_sigma` provides secondary control over the schedule: larger values apply sharpening earlier.
 
 | Parameter | Controls | Default |
 | --- | --- | --- |
-| `generation.model.bb_ca.simulation_step_params.sc_scale_noise` | Backbone / structural diversity | 0.3 |
-| `generation.model.local_latents.simulation_step_params.sc_scale_noise` | Sidechain / sequence diversity | 0.1 |
+| `generation.model.bb_ca.simulation_step_params.tsr_k` | Backbone temperature | 16 |
+| `generation.model.local_latents.simulation_step_params.tsr_k` | Sidechain / sequence temperature | 4 |
+| `generation.model.bb_ca.simulation_step_params.tsr_sigma` | Backbone sharpening schedule | 3 |
+| `generation.model.local_latents.simulation_step_params.tsr_sigma` | Latent sharpening schedule | 12 |
 
-Rough guide:
-- `(0.1, 0.1)` — stays close to the MPNN baseline, high designability.
-- `(0.5, 0.5)` — shifts sequences toward the natural UniProt distribution.
-- `(0.9, 0.9)` — maximizes diversity.
+`sc_scale_noise` remains configurable and defaults to 1.0 for both modalities.
 
 ```bash
 rfd4-generate \
-    inputs=data/benchmarks/monomer out_dir=./runs/diverse \
-    generation.model.bb_ca.simulation_step_params.sc_scale_noise=0.5 \
-    generation.model.local_latents.simulation_step_params.sc_scale_noise=0.5
+    inputs=data/benchmarks/monomer out_dir=./runs/higher_temperature \
+    generation.model.bb_ca.simulation_step_params.tsr_k=8 \
+    generation.model.local_latents.simulation_step_params.tsr_k=2
 ```
 
 ## Partial diffusion (refine an existing structure)

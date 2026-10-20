@@ -65,7 +65,7 @@ motif_scaffold:
     p_merge_unindexed_groups: 0.1
     p_split_unindexed_groups: 0.01
     p_increase_group_id_gap: 0.1
-    p_backbone_only: 0.0
+    p_backbone_only: 0.2
     p_bb_only_seq_conditioned: 0.3
     global_design_task_kwargs: ${datasets.global_design_task_kwargs}
 
@@ -129,10 +129,7 @@ ig_framework_conditioning:
       rasa_kwargs: {p_add_rasa_condition: 0.6}
       hbond_kwargs: {p_add_hbond_condition: 0.2}
       secondary_structure_kwargs: {p_add_secondary_structure_condition: 0.1}
-      cath_kwargs:
-        p_add_cath_c_condition: 0.1
-        p_add_cath_ca_condition: 0.15
-        p_add_cath_cat_condition: 0.25
+      cath_kwargs: ${datasets.global_design_task_kwargs.cath_kwargs}
     cdr_expand_min: -3
     cdr_expand_max: 4
     p_fix_all_but_cdr3: 0.2

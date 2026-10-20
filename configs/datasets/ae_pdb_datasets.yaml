@@ -1,5 +1,4 @@
 # AE mix over the PDB: RNA monomers, PDB interfaces, PDB polymer/non-polymer units.
-# The mix `experiment_ae/ae_sota` trains on.
 
 defaults:
   - train/ae/rna_monomer@train.rna_monomer

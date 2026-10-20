@@ -1,0 +1,7 @@
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/cpsea_pdb@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: ppi_motif_scaffold
+  - _self_
+
+probability: 1.0

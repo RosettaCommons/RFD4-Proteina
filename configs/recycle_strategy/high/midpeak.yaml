@@ -1,0 +1,6 @@
+# @package generation
+
+# 60 sampling steps; 300 total trunk passes, including the first pass.
+n_recycle_schedule: [[5, 2], [5, 3], [5, 4], [5, 6], [5, 7], [10, 8], [5, 7], [5, 6], [5, 4], [5, 3], [5, 2]]
+args:
+  nsteps: 60

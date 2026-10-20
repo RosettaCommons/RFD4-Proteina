@@ -2,7 +2,23 @@ import pytest
 import torch
 
 # assert_no_nans is bound at package-import time, so NAN_CHECK cannot be set from here.
-from rfproteina.utils.torch import assert_no_nans, map_to
+from rfproteina.utils.torch import assert_no_nans, map_to, minimum_loss_attempt_indices
+
+
+def test_minimum_loss_attempt_indices_uses_configured_losses():
+    losses = {
+        "bb_ca": torch.tensor([1.0, 2.0, 4.0, 3.0]),
+        "local_latents": torch.tensor([10.0, 0.0, 0.0, 10.0]),
+    }
+
+    assert minimum_loss_attempt_indices(losses, ["bb_ca"], attempts_per_example=2).tolist() == [0, 3]
+    assert minimum_loss_attempt_indices(losses, ["local_latents"], attempts_per_example=2).tolist() == [1, 2]
+    assert minimum_loss_attempt_indices(losses, ["bb_ca", "local_latents"], attempts_per_example=2).tolist() == [1, 2]
+
+
+def test_minimum_loss_attempt_indices_rejects_unknown_loss():
+    with pytest.raises(KeyError, match="Unknown exploration losses.*not_a_loss"):
+        minimum_loss_attempt_indices({"bb_ca": torch.ones(2)}, ["not_a_loss"], attempts_per_example=2)
 
 
 def test_map_to():

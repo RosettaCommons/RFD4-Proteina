@@ -1,26 +1,30 @@
-name: transformer_ae_unified
+name: transformer_ae_aa_rna_dna_glycan_ncaa
 
-latent_z_dim: &latent_z_dim 16
+latent_z_dim: 32
 use_torch_compile: true
 torch_compile_fullgraph: false
-torch_compile_mode: reduce-overhead
 
-# All UNIFIED_ATOM37_ENCODING types (0-32)
-# 0: MASK, 1-20: standard AAs, 21: UNK, 22-25: RNA (A,C,G,U), 26: N (unknown RNA),
-# 27-30: DNA (DA,DC,DG,DT), 31: DN (unknown DNA), 32: ATOMISED
-n_residue_types: &n_residue_types 33
+# Canonical UNIFIED_ATOM37_ENCODING: standard polymers, atomized/mask/gap tokens,
+# 100 NCAAs/PTMs, and 13 glycans.
+n_residue_types: &n_residue_types 147
 
 encoder:
   nlayers: 12  # number of transformer layers
   token_dim: 768  # dimension of the tokens in the sequence
   nheads: 12  # number of attn heads
   parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
-  token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
+  token_type_emb_dim: 32  # Embedding dimension for token type
 
   strict_feats: False  # if False, missing optional features are filled with defaults
   # If True, if some feature is not provided, then it raises an error
 
-  feats_seq: ["token_type", "x1_a37coors_nm", "x1_a37coors_nm_rel", "chain_idx_seq"]
+  feats_seq:
+    - token_type
+    - x1_a37coors_nm
+    - x1_a37coors_nm_rel
+    - chain_idx_seq
+    - incident_bond_type_counts
+    - atom37_element_charge_embedding
   feats_cond_seq:  # Sequence features to include in conditioning variables
 
   # Parameters for the features we extract
@@ -43,7 +47,7 @@ encoder:
   use_qkln: True
 
   normalize_latent: false
-  latent_z_dim: *latent_z_dim
+  latent_z_dim: ${..latent_z_dim}
   n_residue_types: *n_residue_types  # Pass to feature factory
 
 decoder:
@@ -53,7 +57,7 @@ decoder:
   abs_coors: False  # Compute absolute coors or use relative to CA
 
   nheads: 12  # number of attn heads
-  token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
+  token_type_emb_dim: 32  # Embedding dimension for token type
   parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
 
   strict_feats: False  # if False, missing optional features are filled with defaults
@@ -80,5 +84,5 @@ decoder:
 
   use_attn_pair_bias: False
   use_qkln: True
-  latent_z_dim: *latent_z_dim
-  n_residue_types: *n_residue_types  # Sequence prediction head (33 output classes)
+  latent_z_dim: ${..latent_z_dim}
+  n_residue_types: *n_residue_types  # Sequence prediction head

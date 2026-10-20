@@ -387,7 +387,7 @@ def assert_no_dataset_fallbacks(output: str) -> None:
     """
     n_fallbacks = output.count(DATASET_FALLBACK_LINE)
     if n_fallbacks:
-        causes = [line.strip() for line in output.splitlines() if "Error (" in line][:3]
+        causes = re.findall(r"Error \(.*?\) at index [^\n]*", output, flags=re.DOTALL)[:3]
         raise AssertionError(
             f"Dataset fell back {n_fallbacks} times; this run did not train on the configured "
             "data. First causes:\n" + "\n".join(causes)

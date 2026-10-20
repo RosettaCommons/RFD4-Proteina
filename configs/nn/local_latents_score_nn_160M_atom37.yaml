@@ -10,7 +10,7 @@ output_parameterization:
 sequence_readout:
   enabled: true
   detach: true
-  num_classes: 33
+  num_classes: 147
 
 
 nlayers: 14  # number of transformer layers
@@ -18,11 +18,18 @@ token_dim: 768  # dimension of the tokens in the sequence
 nheads: 12  # number of attn heads  12
 parallel_mha_transition: False  # whether to compute mha and transition as parallel and add them up (AF3 style) or sequentially (normal transformers)
 
-token_type_emb_dim: 32  # Embedding dimension for token type (protein/rna/dna/atomized/unknown)
+token_type_emb_dim: 32  # Embedding dimension for token type
 cath_emb_dim: 32 # Embedding dimension for CATH code (subsetted to CAT)
 
 strict_feats: False  # if False, then fills missing features with default values (e.g. chain break with zero, residue sequence index by [0, 1, 2, ...], etc)
 # If True, if some feature is not provided, then it raises an error
+
+# Stored in the checkpoint's nn config; inference restores these exact settings.
+noise_align_chirality: true  # Rotation
+noise_align_internal_coords: false  # Rotation
+# Translation is independent of rotation.
+noise_align_chirality_translate: false
+noise_align_internal_coords_translate: false
 
 use_atom37_factory: True  # Use FeatureFactoryAtom37 for pair features (supports bond features for ligands)
 
@@ -30,8 +37,8 @@ use_atom37_factory: True  # Use FeatureFactoryAtom37 for pair features (supports
 feats_seq: [
   "xt_bb_ca",                   # Noised backbone CA coordinates [b, n, 3]
   "xt_local_latents",           # Noised local latents [b, n, latent_dim]
-  "token_type",                 # Token type embedding (protein/rna/dna/atomized/unknown) [b, n, token_type_emb_dim]
-  "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 33]
+  "token_type",                 # Token type embedding [b, n, token_type_emb_dim]
+  "cond_residue_type",          # Conditional residue type (prevents leakage) [b, n, 147]
   "cond_a37coors_nm",           # Conditional atom37 coordinates (prevents leakage) [b, n, 37*4]
   "cond_a37coors_internal_nm",  # Conditional atom37 internal coordinates [b, n, 37*4]
   "rasa_binned",                # RASA surface accessibility [b, n, 37]
@@ -92,12 +99,14 @@ update_pair_repr_every_n: 2  # Update the pair representation every n layers
 use_tri_mult: true  # whether to use triangular multiplication layers in pair update, ignored if not updating pair representation
 tri_mult_c: 256  # hidden dim of the triangle multiplication layers
 tri_mult_bias: false  # whether triangle multiplication projections and normalizations learn additive biases
-tri_mult_backend: torch  # or cuequivariance (fused on H200 only at pair_repr_dim 384, tri_mult_c 256; else warns, uses torch)
+tri_mult_backend: cuequivariance  # fused kernel in training and under torch.compile (bf16; H200, pair_repr_dim 384, tri_mult_c 256); other shapes warn and use torch
 
 # Recycle single and pair states through zero-initialized projections.
 recycle:
   enabled: true
   grad: last  # last | last2 | all
+  training_max_recycles: ${oc.select:training.n_recycle_max,1}  # Counts cap at this minus one when grad=all.
+  condition_probability: 0.5  # One training draw: condition all passes after the first, or none.
 
 # Activation checkpointing: none | low (pair updates) | medium (pair updates and recycle cycles).
 checkpointing: none

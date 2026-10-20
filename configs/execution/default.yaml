@@ -1,0 +1,17 @@
+# Execution and numerical kernel selection are independent.
+inference:
+  flow: ${inference_backend}
+  encoder: ${inference_backend}
+  decoder: ${inference_backend}
+  # Explicit buckets apply to every backend; otherwise only torch.compile uses legacy compile_lengths.
+  length_buckets: null
+  compile_lengths: ${compile_lengths}
+  tri_mult: cuequivariance
+# BioIR runs the whole workflow, so inference_backend selects it for every component at once.
+bioir:
+  dtype: bfloat16
+  # Null selects BioIR's own attention default.
+  attention_backend: null
+  cuda_graph: true
+  # Null retains each recycling depth for a full batch and tail; an explicit value means actual slots.
+  max_graphs: null

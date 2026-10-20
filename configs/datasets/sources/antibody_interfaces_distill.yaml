@@ -1,39 +1,31 @@
-# Quality-filtered antibody-antigen complexes from distillation of known binders
-# Predicted with 10 seeds with Protenix-v2; chose structure by confidence
-
-# Annotated with mmCIF ``ig_region`` annotations for downstream sampling of conditions
-# Displaced-coordinate residues are NaN-masked and removed by the training pipeline.
-
+# Antibody-antigen pairs predicted by ESMFold2: 20 seeds x 5 samples, 20 effective recurrence passes.
+# Highest-global-ipTM geometry-valid winner per pair; filtered by pLDDT, Ab-Ag PAE and contact count.
 defaults:
   - backend_blob
   - _self_
 
 name: antibody_interfaces_distill
-data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/abag_protenix_v2_2026_09_10.parquet
-
-transform:
-  b_factor_occupancy_min: 80.0
-
-loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/abag_protenix_v2_2026/data/blob
-
-  parser_args:
-    # Identifies CDRs and framework regions in the antibody chains
-    extra_fields: [ig_region]
+memory_map: true
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/examples.parquet
 
 columns_to_load:
   - example_id
   - interface_cluster
+  - n_standard_amino_acid_residues
+  - n_other_heavy_atoms
+  - overall_plddt
   - pae_min_ab_ag
-  # Geometric antibody metrics
   - n_contact_pairs
-  - fw_to_cdr_native_pct_strict
-  - tors_total
+  - cdr_contact_frac
 
 filters:
-  # Structure prediciton confidence metrics
-  - "pae_min_ab_ag < 1.5"
-  # Geometric antibody metrics
-  - "n_contact_pairs >= 30"
-  - "fw_to_cdr_native_pct_strict.fillna(1.0) <= 0.50"
-  - "tors_total.fillna(0) >= 0"  # negative values mark CDR torsions outside native 2σ support
+  # ESMFold2 confidence is stored on a 0–1 scale.
+  - "overall_plddt >= 0.75"
+  - "pae_min_ab_ag < 3"
+  - "n_contact_pairs >= 25"
+  - "cdr_contact_frac >= 0.25"
+
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_18_antibody_antigen_esmfold2/blob
+  parser_args:
+    extra_fields: [ig_region]

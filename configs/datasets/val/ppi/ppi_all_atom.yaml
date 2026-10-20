@@ -1,3 +1,7 @@
+defaults:
+  - /recycle_strategy@generation: medium/front_loaded
+  - _self_
+
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 

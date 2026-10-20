@@ -6,7 +6,7 @@ import logging
 
 import torch
 
-__all__ = ["assert_no_nans", "assert_same_shape", "assert_shape", "map_to"]
+__all__ = ["assert_no_nans", "assert_same_shape", "assert_shape", "map_to", "raise_dynamo_cache_for"]
 
 import time
 import warnings
@@ -21,6 +21,51 @@ from torch.types import _dtype
 
 from rfproteina import should_check_nans
 from rfproteina.utils.common import at_least_one_exists, do_nothing
+
+
+def raise_dynamo_cache_for(n_shapes: int) -> None:
+    """Raise the dynamo recompile caps to hold ``n_shapes`` static graphs without eviction."""
+    cfg = torch._dynamo.config
+    cfg.cache_size_limit = max(cfg.cache_size_limit, n_shapes)
+    cfg.accumulated_cache_size_limit = max(cfg.accumulated_cache_size_limit, 2 * n_shapes)
+
+
+def minimum_loss_attempt_indices(
+    losses: dict[str, Tensor],
+    loss_names: Sequence[str],
+    attempts_per_example: int,
+) -> Tensor:
+    """Return one winning index per adjacent attempt group using summed per-attempt losses."""
+    if attempts_per_example < 1:
+        raise ValueError(f"attempts_per_example must be at least 1, got {attempts_per_example}")
+
+    loss_names = list(loss_names)
+    if not loss_names:
+        raise ValueError("At least one exploration loss must be configured")
+    if len(loss_names) != len(set(loss_names)):
+        raise ValueError(f"Exploration losses must be unique, got {loss_names}")
+
+    missing = [name for name in loss_names if name not in losses]
+    if missing:
+        raise KeyError(f"Unknown exploration losses {missing}; available losses: {sorted(losses)}")
+
+    selected_losses = [losses[name] for name in loss_names]
+    if any(loss.ndim != 1 or loss.shape != selected_losses[0].shape for loss in selected_losses):
+        shapes = {name: tuple(losses[name].shape) for name in loss_names}
+        raise ValueError(f"Exploration losses must have matching one-dimensional shapes, got {shapes}")
+
+    selection_loss = sum(selected_losses)
+    physical_batch_size = selection_loss.shape[0]
+    if physical_batch_size % attempts_per_example:
+        raise ValueError(
+            f"Physical batch size {physical_batch_size} is not divisible by attempts_per_example={attempts_per_example}"
+        )
+
+    logical_batch_size = physical_batch_size // attempts_per_example
+    return (
+        selection_loss.detach().reshape(logical_batch_size, attempts_per_example).argmin(dim=1)
+        + torch.arange(logical_batch_size, device=selection_loss.device) * attempts_per_example
+    )
 
 
 def map_to(

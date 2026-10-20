@@ -34,9 +34,9 @@ from unittest.mock import Mock
 import pytest
 import torch
 from atomworks.ml.conditions import C_SEQ
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from omegaconf import OmegaConf
 
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.flow_matching.product_space_flow_matcher import ProductSpaceFlowMatcher
 from rfproteina.guidance.guidance_model import _flow_emit_mask
 from rfproteina.model_masks import (
@@ -47,12 +47,13 @@ from rfproteina.model_masks import (
 )
 from rfproteina.nn.local_latents_transformer import LocalLatentsTransformer
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
-from rfproteina.partial_autoencoder.decoder import DecoderTransformer
+from rfproteina.partial_autoencoder.decoder import DecoderTransformer, get_allowed_residue_type_mask, get_atom_mask
 from rfproteina.partial_autoencoder.encoder import EncoderTransformer
 from rfproteina.proteina import Proteina
 from rfproteina.search.beam_search import BeamSearchStrategy
 
 TOKEN_NAMES = ("generated", "atomized", "context", "padding", "unresolved")
+N_RESIDUE_TYPES = UNIFIED_ATOM37_ENCODING.n_tokens
 # Columns are literal oracles in the token order above. The padding token's L/R
 # values are deliberately true so padding must dominate every derived mask.
 GRID = {
@@ -127,7 +128,7 @@ def simulation_probe(flow_matcher, monkeypatch):
 
     def predict(batch, **_kwargs):
         calls.model_inputs.append({mode: value.clone() for mode, value in batch["x_t"].items()})
-        logits = torch.full((*batch["padding_mask"].shape, 33), float(len(calls.model_inputs)))
+        logits = torch.full((*batch["padding_mask"].shape, N_RESIDUE_TYPES), float(len(calls.model_inputs)))
         return {"bb_ca": {}, "local_latents": {}, "insertion": {}, "sequence": {"logits": logits}}
 
     def clean_prediction(batch, nn_out):
@@ -168,14 +169,14 @@ def test_current_helpers_match_every_grid_cell(token_batch) -> None:
     assert all(torch.equal(token_batch[key], value) for key, value in before.items())
 
 
-def test_decoder_rejects_nonunified_residue_encoding() -> None:
-    with pytest.raises(ValueError, match="requires the 33-class unified residue encoding"):
+def test_decoder_rejects_mismatched_residue_encoding() -> None:
+    with pytest.raises(ValueError, match=f"requires {N_RESIDUE_TYPES} classes"):
         DecoderTransformer(n_residue_types=20, decoder={})
 
 
-def test_autoencoder_rejects_nonunified_residue_encoding(tmp_path) -> None:
+def test_autoencoder_rejects_mismatched_residue_encoding(tmp_path) -> None:
     cfg = SimpleNamespace(nn_ae={"n_residue_types": 20})
-    with pytest.raises(ValueError, match="requires the 33-class unified residue encoding"):
+    with pytest.raises(ValueError, match=f"requires {N_RESIDUE_TYPES} classes"):
         AutoEncoder(cfg, store_dir=str(tmp_path))
 
 
@@ -239,15 +240,18 @@ def test_autoencoder_context_influence_matches_grid(token_batch, token, matters,
     else:
 
         def residue_logits(values):
-            logits = torch.zeros(*values.shape[:2], 33)
+            logits = torch.zeros(*values.shape[:2], N_RESIDUE_TYPES)
             logits[..., 1] = 1.0
             return logits
 
         extras = {
             "logit_linear": residue_logits,
             "struct_linear": lambda values: values.repeat(1, 1, 37 * 3),
-            "n_residue_types": 33,
+            "atom_presence_linear": lambda values: values.repeat(1, 1, 37),
+            "n_residue_types": N_RESIDUE_TYPES,
             "abs_coors": True,
+            "allowed_residue_types": get_allowed_residue_type_mask(),
+            "residue_atom_mask": get_atom_mask(),
         }
 
     model = SimpleNamespace(
@@ -285,8 +289,9 @@ def test_decoder_coordinates_are_zero_outside_emit_mask(token_batch) -> None:
     }
     model = SimpleNamespace(
         init_repr_factory=lambda input_batch: input_batch["probe"],
-        logit_linear=lambda values: values.repeat(1, 1, 33),
+        logit_linear=lambda values: values.repeat(1, 1, N_RESIDUE_TYPES),
         struct_linear=lambda values: values.repeat(1, 1, 37 * 3),
+        atom_presence_linear=lambda values: values.repeat(1, 1, 37),
         cond_factory=lambda input_batch: torch.ones(*input_batch["padding_mask"].shape, 1),
         transition_c_1=lambda value, _mask: value,
         transition_c_2=lambda value, _mask: value,
@@ -294,8 +299,10 @@ def test_decoder_coordinates_are_zero_outside_emit_mask(token_batch) -> None:
         transformer_layers=[],
         nlayers=0,
         update_pair_repr=False,
-        n_residue_types=33,
+        n_residue_types=N_RESIDUE_TYPES,
         abs_coors=False,
+        allowed_residue_types=get_allowed_residue_type_mask(),
+        residue_atom_mask=get_atom_mask(),
     )
 
     output = DecoderTransformer.forward(model, batch)
@@ -376,7 +383,6 @@ def test_flow_corruption_uses_flow_emit_masks(token_batch, flow_matcher) -> None
             mode: {
                 "sampling_mode": "vf",
                 "sc_scale_noise": 0.0,
-                "sc_scale_score": 1.0,
                 "t_lim_ode": 1.0,
                 "t_lim_ode_below": 0.0,
                 "center_every_step": False,
@@ -512,6 +518,102 @@ def test_beam_initialization_uses_masks_and_centering_groups(token_batch) -> Non
         BeamSearchStrategy(checkpoints={2: {}}, beam_width=2).generate(model, batch)
 
 
+@pytest.mark.parametrize(
+    ("invalidate", "message"),
+    [
+        pytest.param(lambda state: [], "must contain", id="non-mapping-state"),
+        pytest.param(lambda state: {"x": state["x"]}, "must contain", id="missing-step"),
+        pytest.param(lambda state: {"step": 1}, "must contain", id="missing-tensors"),
+        pytest.param(lambda state: {**state, "step": -1}, "step must be an integer", id="negative-step"),
+        pytest.param(lambda state: {**state, "step": 2}, "step must be an integer", id="schedule-end"),
+        pytest.param(lambda state: {**state, "step": True}, "step must be an integer", id="boolean-step"),
+        pytest.param(lambda state: {**state, "step": 0.5}, "step must be an integer", id="fractional-step"),
+        pytest.param(lambda state: {**state, "x": []}, "modalities must match", id="non-mapping-modalities"),
+        pytest.param(
+            lambda state: {**state, "x": {"bb_ca": state["x"]["bb_ca"]}},
+            "modalities must match",
+            id="missing-modality",
+        ),
+        pytest.param(
+            lambda state: {**state, "x": {**state["x"], "unknown": state["x"]["bb_ca"]}},
+            "modalities must match",
+            id="extra-modality",
+        ),
+    ],
+)
+def test_beam_rejects_invalid_saved_state_before_reseeding(
+    token_batch, simulation_probe, tmp_path, monkeypatch, invalidate, message
+) -> None:
+    _assert_saved_candidate_rejected(token_batch, simulation_probe, tmp_path, monkeypatch, invalidate, message)
+
+
+@pytest.mark.parametrize(
+    "invalidate_tensor",
+    [
+        pytest.param(lambda value: value[:1], id="batch-size"),
+        pytest.param(lambda value: value[:, :-1], id="token-count"),
+        pytest.param(lambda value: value[..., :-1], id="latent-dimension"),
+        pytest.param(lambda value: value.to(torch.int64), id="integer-tensor"),
+        pytest.param(lambda value: value.fill_(float("nan")), id="nan"),
+        pytest.param(lambda value: value.fill_(float("inf")), id="infinity"),
+        pytest.param(lambda value: value.tolist(), id="non-tensor"),
+    ],
+)
+def test_beam_rejects_invalid_saved_tensors_before_reseeding(
+    token_batch, simulation_probe, tmp_path, monkeypatch, invalidate_tensor
+) -> None:
+    def invalidate(state):
+        state["x"]["local_latents"] = invalidate_tensor(state["x"]["local_latents"])
+        return state
+
+    _assert_saved_candidate_rejected(
+        token_batch,
+        simulation_probe,
+        tmp_path,
+        monkeypatch,
+        invalidate,
+        "local_latents must be a finite floating tensor",
+    )
+
+
+def _assert_saved_candidate_rejected(token_batch, simulation_probe, tmp_path, monkeypatch, invalidate, message):
+    fm, _ = simulation_probe
+    model = SimpleNamespace(
+        fm=fm,
+        inf_cfg=OmegaConf.create(
+            {
+                "args": {"nsteps": 2},
+                "model": {mode: {"simulation_step_params": {}} for mode in fm.data_modes},
+            }
+        ),
+        device=torch.device("cpu"),
+        inference_seed=17,
+        preprocess_batch_for_generation=lambda batch: batch,
+        recycle_depths=lambda nsteps, full_nsteps=None: (1,) * nsteps,
+    )
+    batch = {**token_batch, "coords_nm": torch.zeros(2, len(TOKEN_NAMES), 37, 3)}
+    state = {
+        "step": 1,
+        "x": {
+            mode: torch.zeros(*batch["padding_mask"].shape, fm.base_flow_matchers[mode].dim) for mode in fm.data_modes
+        },
+    }
+    saved_path = tmp_path / "invalid_candidate.pt"
+    torch.save(invalidate(state), saved_path)
+    reseed = Mock()
+    monkeypatch.setattr(torch, "manual_seed", reseed)
+    rng_before = torch.get_rng_state().clone()
+
+    with pytest.raises(ValueError, match=message):
+        BeamSearchStrategy(checkpoints={2: {}}, beam_width=2, resume_from=str(saved_path), resume_seed=42).generate(
+            model, batch
+        )
+
+    reseed.assert_not_called()
+    assert model.inference_seed == 17
+    assert torch.equal(torch.get_rng_state(), rng_before)
+
+
 def test_flow_predictions_and_simulation_vectors_use_flow_emit_masks(token_batch, flow_matcher) -> None:
     """Both prediction conversions receive modality-specific flow emit masks."""
     batch = {
@@ -616,7 +718,7 @@ def test_sequence_prediction_loss_uses_local_latent_supervision_mask(token_batch
         C_SEQ.full_name: torch.full((n, n), UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"], dtype=torch.long),
         "t": {"local_latents": torch.ones(n)},
     }
-    baseline_logits = torch.zeros(n, n, 33)
+    baseline_logits = torch.zeros(n, n, N_RESIDUE_TYPES)
     changed_logits = baseline_logits.clone()
     diagonal = torch.arange(n)
     changed_logits[diagonal, diagonal, 0] = 10.0
@@ -643,15 +745,16 @@ def test_autoencoder_losses_change_only_for_supervised_grid_cells(token_batch) -
     output = {
         "coors_nm": pred,
         "atom_mask": atom_mask,
-        "seq_logits": torch.zeros(n, n, 33),
+        "seq_logits": torch.zeros(n, n, N_RESIDUE_TYPES),
         "aatype_max": torch.zeros(n, n, dtype=torch.long),
     }
     batch = {**rows, "coords_nm": coords, "residue_type": torch.zeros(n, n, dtype=torch.long)}
 
     struct = AutoEncoder.compute_struct_rec_loss(output, batch, loss_mask=loss_mask)["struct_l2"]
-    baseline_seq = AutoEncoder.compute_seq_rec_loss(None, output, batch, loss_mask=loss_mask)["ce_seq"]
+    ae = SimpleNamespace()
+    baseline_seq = AutoEncoder.compute_seq_rec_loss(ae, output, batch, loss_mask=loss_mask)["ce_seq"]
     output["seq_logits"][diagonal, diagonal, 0] = 10.0
-    changed_seq = AutoEncoder.compute_seq_rec_loss(None, output, batch, loss_mask=loss_mask)["ce_seq"]
+    changed_seq = AutoEncoder.compute_seq_rec_loss(ae, output, batch, loss_mask=loss_mask)["ce_seq"]
     mean = torch.zeros(n, n, 2)
     mean[diagonal, diagonal] = 3.0
     kl_components = AutoEncoder._per_component_kl(None, mean, torch.zeros_like(mean), loss_mask)
@@ -666,13 +769,14 @@ def test_final_formatting_matches_flow_emit_contract(token_batch, flow_matcher) 
     """Formatting retains atomized BBCA while suppressing context and padding output."""
     decoded_batches = []
 
-    def decode(batch):
+    def decode(batch, required_atom_mask=None):
         decoded_batches.append(batch)
         _, emit = compute_ae_masks(batch)
         return {
             "coors_nm": torch.ones(2, len(TOKEN_NAMES), 37, 3) * emit[..., None, None],
             "residue_type": torch.ones(2, len(TOKEN_NAMES), dtype=torch.long) * emit,
             "emit_mask": emit,
+            "atom_mask": emit[..., None].expand(-1, -1, 37),
         }
 
     flow_state = flow_matcher.apply_flow_emit_masks(
@@ -708,13 +812,14 @@ def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_
     """Predicted identities fill generated tokens without replacing exact conditions."""
     decoded_batches = []
 
-    def decode(batch):
+    def decode(batch, required_atom_mask=None):
         decoded_batches.append(batch)
         _, emit = compute_ae_masks(batch)
         return {
             "coors_nm": torch.ones(2, len(TOKEN_NAMES), 37, 3) * emit[..., None, None],
             "residue_type": batch[C_SEQ.full_name] * emit,
             "emit_mask": emit,
+            "atom_mask": emit[..., None].expand(-1, -1, 37),
         }
 
     batch = {
@@ -725,7 +830,7 @@ def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_
         "token_type": torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
     }
     batch[C_SEQ.full_name][0, 0] = 7
-    batch["sequence_logits"] = torch.zeros(2, len(TOKEN_NAMES), 33)
+    batch["sequence_logits"] = torch.zeros(2, len(TOKEN_NAMES), N_RESIDUE_TYPES)
     batch["sequence_logits"][..., 4] = 1.0
 
     flow_state = flow_matcher.apply_flow_emit_masks(

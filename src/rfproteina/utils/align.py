@@ -23,6 +23,7 @@ import sys
 
 import einops
 import torch
+from jaxtyping import Float
 
 root = os.path.abspath(".")
 sys.path.insert(0, root)  # Adds project's root directory
@@ -120,6 +121,24 @@ def kabsch_align(mobile: torch.Tensor, target: torch.Tensor, mask: torch.Tensor 
     return mobile_aligned
 
 
+def proper_rotation(covariance: Float[torch.Tensor, "*batch 3 3"]) -> Float[torch.Tensor, "*batch 3 3"]:
+    """Fit proper row-vector rotations in float32.
+
+    Args:
+        covariance: Source-transpose @ target matrices, with arbitrary batch axes.
+
+    Returns:
+        Rotations applied as ``source @ rotation``. For non-unique fits, use
+        the arbitrary optimum selected by SVD.
+    """
+    with torch.autocast(device_type=covariance.device.type, enabled=False):
+        u, singular, vh = torch.linalg.svd(covariance.float())
+        determinant = torch.linalg.det(u @ vh)
+        signs = torch.ones_like(singular)
+        signs[..., -1] = determinant.sign()
+        return (u * signs[..., None, :]) @ vh
+
+
 # This function was adapted from GeoDock's code (MIT License)
 # https://github.com/Graylab/GeoDock/blob/main/geodock/utils/metrics.py#L103
 # We pulled out translation stuff, vecotrize it and added masks
@@ -163,26 +182,4 @@ def _find_rot_alignment(A: torch.Tensor, B: torch.Tensor, mask: torch.Tensor | N
     A = torch.masked_fill(A, ~mask, 0.0)
     B = torch.masked_fill(B, ~mask, 0.0)
 
-    # Covariance matrix and SVD
-    H = torch.matmul(A.transpose(-2, -1), B)
-
-    # To float32, batched SVD not implemented otherwise
-    U, S, Vt = torch.linalg.svd(H.to(torch.float32), full_matrices=True)  # Breaks with mixed precision
-
-    R = torch.matmul(
-        Vt.transpose(-2, -1),
-        U.transpose(-2, -1),
-    )  # [b, 3, 3]
-
-    # Handle the special reflection case
-    det_R = torch.linalg.det(R.to(torch.float32))  # [b], breaks with mixed precision
-    SS = torch.eye(3, device=R.device).repeat(A.shape[0], 1, 1)  # Shape [b, 3, 3]
-    SS[:, -1, -1] = torch.where(
-        det_R < 0,
-        torch.tensor(-1.0, device=R.device),
-        torch.tensor(1.0, device=R.device),
-    )  # [b, 3, 3]
-    R_aux = torch.matmul(Vt.transpose(-2, -1), SS)
-    R = torch.matmul(R_aux, U.transpose(-2, -1))  # [b, 3, 3]
-
-    return R
+    return proper_rotation(A.transpose(-2, -1) @ B).transpose(-2, -1)

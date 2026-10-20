@@ -18,7 +18,7 @@ defaults:
   - _self_
   
   # Experiment configs override specific hyperparameters
-  - experiment_ae: ae_sota
+  - experiment_ae: sota
   
   # Debug configs for quick testing
   - optional debug: null
@@ -34,6 +34,7 @@ dataloaders:
 
 # Loss
 loss:
+  balanced_fraction: 0.25
   kl:
     weight: 1e-4
     anneal: false
@@ -49,6 +50,8 @@ loss:
     atom_permutation_align: false
   seq:
     weight: 1.0
+  atom_presence:
+    weight: 1.0
 
 
 # Precision
@@ -61,7 +64,7 @@ opt:
   muon_exclude_param_patterns:  # Kept on Adam (Muon also never sees non-2D params: norms, biases)
     - '_factory\.'  # FeatureFactory input embeddings (init_repr_factory, cond_factory, pair_rep_factory)
     - '^encoder\.latent_decoder_mean_n_log_scale\.'  # encoder output head
-    - '^decoder\.(logit_linear|struct_linear)\.'  # decoder output heads
+    - '^decoder\.(logit_linear|struct_linear|atom_presence_linear)\.'  # decoder output heads
   muon_adjust_lr_fn: "match_rms_adamw"
   muon_grouped: true  # Batch equal-shaped FP32 Muon updates; false selects native Muon.
   max_epochs: 10000000
@@ -82,12 +85,6 @@ log:
   checkpoint_every_n_epochs: 10  # Save top-k checkpoint every N epochs (matches val frequency)
   last_ckpt_every_n_epochs: 1    # Save last.ckpt every N epochs (for resume)
   
-  # Latent space projection visualization (training-time logging)
-  projection_method: tsne  # Options: tsne, pca, lda (set to null to disable)
-  projection_every_n: 1000  # Log projection plot every N steps
-  projection_max_samples: 5000  # Max tokens to project (subsample if needed)
-  save_projections_locally: false  # Set to true to save plots locally
-  local_projection_dir: ./latent_projections  # Directory for saved plots
 
 seed: 42
 torch_deterministic: false  # Locks cuDNN/cuBLAS to deterministic algorithms; significantly reduces throughput

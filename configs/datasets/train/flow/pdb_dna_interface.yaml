@@ -1,0 +1,8 @@
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/pdb_dna_interface@dataset
+  - /datasets/sampling/interface_clusters@_here_
+  - /design_tasks/presets@dataset.transform.design_tasks: protein_from_dna
+  - _self_
+
+probability: 1.0

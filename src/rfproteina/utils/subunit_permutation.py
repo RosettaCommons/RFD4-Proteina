@@ -36,19 +36,19 @@ def _subunit_candidates(array: AtomArray, classes: np.ndarray, limit: int) -> np
     starts = get_segments(chains, array.res_id, add_exclusive_stop=True)
     residues = np.repeat(np.arange(len(starts) - 1), np.diff(starts))
 
-    # Reuse molecule annotations; assign missing ones on a private copy.
-    annotated = array
-    if not {"molecule_iid", "molecule_entity"}.issubset(categories):
-        annotated = array.copy()
-        polymer = (
-            array.is_polymer if "is_polymer" in categories else filter_amino_acids(array) | filter_nucleotides(array)
-        )
-        annotated.set_annotation("is_polymer", polymer)
-        _, chain_ids = np.unique(chains, return_inverse=True)
-        annotated.chain_id = np.where(polymer, chain_ids, chain_ids.max() + 1 + residues).astype(str)
-        if annotated.bonds is None:
-            annotated.bonds = BondList(array.array_length())
-        add_id_and_entity_annotations(annotated)
+    # Refine inherited entity classes using the current sequence and connectivity.
+    annotated = array.copy()
+    polymer = array.is_polymer if "is_polymer" in categories else filter_amino_acids(array) | filter_nucleotides(array)
+    annotated.set_annotation("is_polymer", polymer)
+    _, chain_ids = np.unique(chains, return_inverse=True)
+    annotated.chain_id = np.where(polymer, chain_ids, chain_ids.max() + 1 + residues).astype(str)
+    # Entity bond hashes use residue IDs; compare positions within each chain on this private copy.
+    for chain in np.unique(annotated.chain_id):
+        selected = annotated.chain_id == chain
+        annotated.res_id[selected] = np.unique(residues[selected], return_inverse=True)[1] + 1
+    if annotated.bonds is None:
+        annotated.bonds = BondList(array.array_length())
+    add_id_and_entity_annotations(annotated)
     units = array.molecule_iid if "molecule_iid" in categories else annotated.molecule_id
     entities = array.molecule_entity if "molecule_entity" in categories else annotated.molecule_entity
 
@@ -64,7 +64,7 @@ def _subunit_candidates(array: AtomArray, classes: np.ndarray, limit: int) -> np
         residue_starts = get_segments(residues[indices])
         fields = (array.res_name, array.atom_name, array.element)
         signature = (chain_starts.tobytes(), residue_starts.tobytes(), *(f[indices].tobytes() for f in fields))
-        entity = entities[indices[0]]
+        entity = (entities[indices[0]], annotated.molecule_entity[indices[0]])
         if signatures.setdefault(entity, signature) != signature:
             raise ValueError(
                 f"Molecule entity {entity} requires identical chain boundaries and ordered atoms "

@@ -42,7 +42,10 @@ from rfproteina.transforms.design_task import (
     TipAtomPartialLigandTask,
     UnconditionalTask,
 )
-from rfproteina.transforms.invariants import check_bond_length_violations, find_index_group_res_id_gaps
+from rfproteina.transforms.invariants import (
+    check_bond_length_violations,
+    find_index_group_res_id_gaps,
+)
 from rfproteina.utils.logging import print_df_as_table
 from rfproteina.utils.parse_presets import RCSB_WITH_METALS
 
@@ -155,6 +158,7 @@ def parse_and_run_pipeline(
 
     input_data = _parse_test_structure(pdb_id)
     input_data["example_id"] = pdb_id
+    input_data["seed"] = seed
 
     # Inject query_pn_unit_iids so ppi_hotspot tasks can run
     ensure_annotations(input_data["atom_array"], "is_protein")
@@ -168,7 +172,7 @@ def parse_and_run_pipeline(
             design_tasks=design_tasks,
             is_inference=False,
             p_random_rotation=0.0,  # Disable rotation for deterministic testing
-            p_atomize_residues=0.1,  # Small chance to atomize for testing
+            atomization_probabilities=dict.fromkeys(("aa", "rna", "dna"), 0.1),
             loss_weight_cfg=loss_weight_cfg,
         )
 

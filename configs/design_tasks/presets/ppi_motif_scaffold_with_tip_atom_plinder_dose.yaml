@@ -11,6 +11,7 @@ unconditional:
     global_design_task_kwargs: &dose
       rasa_kwargs:  {p_add_rasa_condition: 0.15}
       hbond_kwargs: {p_add_hbond_condition: 0.15}
+      cath_kwargs: ${datasets.global_design_task_kwargs.cath_kwargs}
 
 folding:
   frequency: 5.0

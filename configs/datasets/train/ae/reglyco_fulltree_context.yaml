@@ -1,0 +1,21 @@
+# Spatial crop around the rebuilt glycan in its protein context; opt-in.
+defaults:
+  - /datasets/train/pipeline_defaults@dataset
+  - /datasets/sources/reglyco_fulltree@dataset
+  - /design_tasks/presets@dataset.transform.design_tasks: ae_uncond_folding
+  - _self_
+
+probability: 1.0
+
+dataset:
+  name: reglyco_fulltree_context
+  loader:
+    column_mapping:
+      query_pn_unit_iids: [q_pn_unit_iid]
+
+weights:
+  # Uniform PDB entry → structure variant → assembly/query row, after filtering.
+  _target_: atomworks.ml.samplers.calculate_weights_by_inverse_cluster_size
+  cluster_column: pdb_id
+  pdb_id_column: path
+  altloc_seed_column: example_id

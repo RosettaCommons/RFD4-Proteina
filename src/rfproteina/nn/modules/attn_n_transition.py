@@ -52,6 +52,8 @@ class MultiheadAttnAndTransition(torch.nn.Module):
         self.residual_transition = residual_transition
 
         # Choose attention implementation: cuequivariance fused kernel, else SDPA.
+        if attention_type not in ("torch", "cuequivariance"):
+            raise ValueError(f"nn.attention_type must be 'torch' or 'cuequivariance', got {attention_type!r}")
         if attention_type == "cuequivariance":
             if not use_attn_pair_bias:
                 raise ValueError("cuequivariance attention has no unbiased path; use attention_type='torch'")

@@ -262,6 +262,9 @@ tests/data/pdb/*
 
 # Benchmarks (except rfproteina benchmarks which are source-controlled)
 **/benchmarks/
+!website/benchmarks/
+!website/benchmarks/**
+!website/assets/**
 !data/benchmarks
 !data/benchmarks/**
 !.ipd/benchmarks

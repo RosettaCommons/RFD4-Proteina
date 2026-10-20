@@ -24,6 +24,7 @@ import biotite.structure as struc
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 import zstandard
 from atomworks.io.parser import parse
 from atomworks.io.utils.io_utils import load_any
@@ -43,6 +44,7 @@ from rfproteina.conditions import C_CRDGRP
 from rfproteina.datapipes.pipeline import build_design_validation_pipeline
 from rfproteina.generate import (
     _get_example_ids_from_dataset,
+    configure_search_strategy_from_cfg,
     get_contig_or_design_problem_dataset,
     run_generation,
 )
@@ -70,7 +72,7 @@ _CATH_CIFS = [
     BENCHMARKS_DIR / "adherence" / "monomer_ig" / "monomer-short.cif",
 ]
 _PSEUDOKNOT_DIR = BENCHMARKS_DIR / "rna" / "pseudoknot"
-_MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa" / "mcsa_37" / "M0664_2dhn.cif"
+_MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa" / "mcsa_37" / "M0664_2dhn.cif.zst"
 
 # Committed all-atom motif input structures. Structure-conditioned tests build their conditioning
 # on the fly with a condition_spec (see :func:`_motif_condition_spec`) rather than committing a
@@ -152,6 +154,7 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
     GlobalHydra.instance().clear()
 
     base_overrides = [
+        "hf_ckpt_path=null",
         "inference_experiment=inference_on_user_inputs",
         "metrics/refolding_oracles=af3",
         f"autoencoder_ckpt_path={_AE_CKPT_PATH or 'null'}",
@@ -166,6 +169,42 @@ def _build_test_cfg(overrides: list[str] | None = None) -> DictConfig:
         cfg = compose(config_name="inference", overrides=all_overrides)
 
     return cfg
+
+
+def test_beam_save_resume_defaults() -> None:
+    cfg = _build_test_cfg()
+    assert OmegaConf.to_container(cfg.search) == {
+        "checkpoints": None,
+        "save_states": False,
+        "resume_from": None,
+        "resume_seed": None,
+    }
+    assert configure_search_strategy_from_cfg(cfg.search) is None
+
+
+@pytest.mark.parametrize(
+    "override", ["search.save_states=true", "search.resume_from=candidate.pt", "search.resume_seed=7"]
+)
+def test_beam_save_resume_requires_search(override: str) -> None:
+    with pytest.raises(ValueError, match="requires search.checkpoints"):
+        configure_search_strategy_from_cfg(_build_test_cfg([override]).search)
+
+
+def test_beam_preset_accepts_save_resume_overrides() -> None:
+    cfg = _build_test_cfg(
+        [
+            "inference_experiment=sm_binder_hbond_search",
+            "search.save_states=true",
+            "search.resume_from=candidate.pt",
+            "search.resume_seed=7",
+        ]
+    )
+    strategy = configure_search_strategy_from_cfg(cfg.search)
+    assert strategy.save_states is True
+    assert strategy.resume_from == "candidate.pt"
+    assert strategy.resume_seed == 7
+    assert strategy.beam_width == 2
+    assert strategy.step_checkpoints == [0, 40, 60]
 
 
 def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
@@ -429,6 +468,31 @@ class TestEndToEndInference:
             reports = (getattr(request.node, "rep_setup", None), getattr(request.node, "rep_call", None))
             if any(r is not None and r.failed for r in reports):
                 _SHARED_CHECKPOINT_CACHE.clear()
+
+    def test_save_resume_and_save(self, gpu, tmp_path):  # noqa: F811
+        """Continue a saved batch and save it at a later checkpoint."""
+        cfg = _build_test_cfg([f"inputs={_MONOMER_CIF}", f"out_dir={tmp_path}/initial"])
+        OmegaConf.set_struct(cfg, False)
+        cfg.num_replicates = 2
+        cfg.batch_size = 2
+        cfg.generation.args.nsteps = 20
+        cfg.generation.n_recycle_schedule = None
+        cfg.search = {"checkpoints": {1: {}}, "beam_width": 2, "n_branch": 1, "save_states": True}
+        run_generation(cfg, config_name="beam_start")
+        initial = next((tmp_path / "initial/sampling_states").glob("*_step1_beam0.pt"))
+        cfg.out_dir = str(tmp_path / "resumed")
+        cfg.search.update({"checkpoints": {2: {}}, "resume_from": str(initial), "resume_seed": 11})
+        run_generation(cfg, config_name="beam_resume")
+        saved = list((tmp_path / "resumed/sampling_states").glob("*_r11*_step2_beam0.pt"))
+        assert len(saved) == 1
+        state = torch.load(saved[0], map_location="cpu", weights_only=True)
+        assert state["step"] == 2 and state["x"]["bb_ca"].shape[0] == 2
+        assert len(_inference_generated_cifs(cfg.out_dir)) == 4
+
+        cfg.out_dir = str(tmp_path / "vanilla")
+        cfg.search = None
+        run_generation(cfg, config_name="vanilla_after_resume")
+        assert len(_inference_generated_cifs(cfg.out_dir)) == 2
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify num_replicates, global_prefix, and batch_size."""

@@ -1,0 +1,37 @@
+# PDB glycosylation sites rebuilt with GlycoShape candidates using Re-Glyco conformer optimization.
+# Candidates use site evidence/host priors; disconnected glycans and assembly clashes <1.5 A are excluded.
+defaults:
+  - backend_blob
+  - _self_
+
+name: reglyco_fulltree
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/examples.parquet
+
+columns_to_load:
+  _target_: rfproteina.utils.hydra.flatten_unique_values
+  mapping:
+    common:
+      - example_id
+      - pdb_id
+      - path
+      - assembly_id
+      - q_pn_unit_iid
+      - deposition_date
+      - glycan_experiment_split
+      - has_in_vocabulary_glycan
+      - n_standard_amino_acid_residues
+      - n_other_heavy_atoms
+    nucleic_acids: [n_dna_residues, n_rna_residues]
+
+filters:
+  # Assembly-level disconnected-glycan and <1.5 Å clash checks define dataset membership.
+  - "deposition_date < '2024-01-01'"
+  - "glycan_experiment_split == 'train'"
+  - "has_in_vocabulary_glycan == True"
+
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob
+  record_id_colname: path
+  assembly_id_colname: assembly_id
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.annotated_cif

@@ -1,0 +1,19 @@
+defaults:
+  - common
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:PROJECT_ROOT}/configs
+
+inputs: ${oc.env:PROJECT_ROOT}/examples/antibody_design/structures/vhh
+run_name_: antibody_vhh
+
+generation:
+  dataset:
+    sampling_transforms:
+      - _target_: rfproteina.transforms.hotspot_sampling.SampleNearbyHotspots
+        num_hotspots: [2, 3]
+        min_distance: 5.0
+        patch_diameter: 15.0
+        min_atom_sasa: 1.0

@@ -208,11 +208,9 @@ def main() -> None:
     # Setup
     _root_path = setup(cfg, create_root=True, config_name=config_name)
 
-    # Get dataloader
-    dataloader = load_dataloader(cfg)
-
     # Load model
     model = AutoEncoder.load_from_checkpoint(cfg.ckpt_file)
+    dataloader = load_dataloader(cfg)
 
     # Make predictions
     trainer = L.Trainer(accelerator="gpu", devices=1, limit_predict_batches=int(cfg.n_structs / cfg.bs))

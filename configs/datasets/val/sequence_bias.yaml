@@ -1,0 +1,12 @@
+# One fixed-length design case for ALA/VAL enrichment and Gly-run checks.
+compute_loss: false
+
+dataset:
+  _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
+  dir_path_or_file_paths: ${oc.env:PROJECT_ROOT}/data/benchmarks/sequence_bias/v11_fixed225.cif.zst
+  num_replicates: 20
+  prevalidate: true
+
+  transform:
+    _target_: rfproteina.datapipes.pipeline.build_design_validation_pipeline
+    metrics_tags: []

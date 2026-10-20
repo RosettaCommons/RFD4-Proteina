@@ -45,5 +45,5 @@ opt:
 nn:
   use_torch_compile: false
 
-# Required: pass the released denoiser on the CLI (see docs/development.md), e.g.
-#   pretrain_ckpt_path=$DATA_PATH/flow_checkpoints/<denoiser>.ckpt
+# Initialize from a local/HF bundle with hf_ckpt_path, or use
+# pretrain_ckpt_path for a native checkpoint (see docs/development.md).

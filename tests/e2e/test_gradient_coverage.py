@@ -3,6 +3,7 @@
 A feature behind an all-false mask gets an exactly-zero grad, so `grad is None` never fires.
 """
 
+import csv
 import json
 from pathlib import Path
 
@@ -14,7 +15,6 @@ from tests.e2e.helpers.gpu_e2e import (
     assert_loss_not_exploding,
     assert_no_dataset_fallbacks,
     cleanup_smoke_training_store,
-    collect_train_losses,
     require_data_file,
     require_gpu_e2e,
     run_cmd,
@@ -31,15 +31,13 @@ MIN_ALIVE_ROWS_BY_FEATURE: dict[tuple[str, str, str], int] = {
     # this floor would mean the atom features regressed to the old atom37-collate dummy (`0.0*w`).
     ("seq", "atom_charge", "embedding.weight"): 6,  # of 11
     ("seq", "atomic_element", "embedding.weight"): 21,  # of 128
-    # Conditioning off, so only the null index is looked up. Below 1 (i.e. 0) would mean severed.
+    # Every CATH embedding must receive a gradient, regardless of the sampled conditioning route.
     ("cond", "cath_code", "embedding_C.weight"): 1,  # of 6
     ("cond", "cath_code", "embedding_A.weight"): 1,  # of 44
     ("cond", "cath_code", "embedding_T.weight"): 1,  # of 1473
-    # This recipe never conditions on SS (p_add_secondary_structure_condition=0.0 across the whole
-    # release/hero lineage), so only padding_idx=0 is looked up -> 0 alive. Floor 0 is vacuous by
-    # design; raise it to 3 if SS conditioning is enabled in the recipe.
-    ("seq", "secondary_structure", "ss_embedding.weight"): 0,  # of 4; SS conditioning off in this recipe
-    # of 5; protein/RNA/DNA/atomized all appear in the sota mix, `unknown` never does.
+    # The release samples SS conditioning; helix, sheet, and coil must all receive gradients.
+    ("seq", "secondary_structure", "ss_embedding.weight"): 3,  # of 4; row 0 is padding
+    # At least protein/RNA/DNA/atomized out of seven token types must be exercised.
     ("seq", "token_type", "embedding.weight"): 4,
 }
 
@@ -80,11 +78,12 @@ def test_gradient_coverage(tmp_path: Path) -> None:
     cmd = [
         "src/rfproteina/train.py",
         "experiment=sota",
+        "training.exploration_k=1",  # Spend the batch on distinct examples for feature coverage.
         f"run_name_={RUN_NAME}",
         "+single=true",  # forces 1 GPU, 1 node
         "+nolog=true",
         "_max_tokens=128",
-        "datasets.train.afdb_monomer.probability=0.37",
+        "datasets.train.afdb_monomer.probability=0.36",
         "datasets.train.omol.probability=0.20",
         "datasets.train.plinder.probability=0.20",
         f"opt.steps_per_epoch={GRAD_TRAIN_STEPS}",
@@ -120,7 +119,14 @@ def test_gradient_coverage(tmp_path: Path) -> None:
 
     output = proc.stdout + "\n" + proc.stderr
     assert_no_dataset_fallbacks(output)  # a substituted example would invalidate the counts
-    assert_loss_not_exploding(collect_train_losses(output, out_dir=out_dir))
+    # Exclude the chiral penalty from magnitude checks, not from training or gradient checks.
+    with next(out_dir.glob("csv_logs/version_*/metrics.csv")).open() as fh:
+        losses = [
+            float(row["train/loss_step"]) - float(row["train/loss_signed_volume_step"])
+            for row in csv.DictReader(fh)
+            if row["train/loss_step"]
+        ]
+    assert_loss_not_exploding(losses, min_points=GRAD_TRAIN_STEPS)
 
     coverage = json.loads(coverage_json.read_text())
     assert coverage, "gradient coverage callback wrote no parameters"

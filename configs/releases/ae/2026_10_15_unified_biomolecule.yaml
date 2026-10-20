@@ -1,0 +1,115 @@
+# @package _global_
+# Crop-256 unified biomolecular autoencoder training recipe.
+defaults:
+  # Shared streaming datasets for proteins, modified residues, glycans, and nucleic acids.
+  - /datasets/train/ae/afdb_monomer@datasets.train.afdb_monomer
+  - /datasets/train/ae/pdb_interfaces@datasets.train.pdb_interfaces
+  - /datasets/train/ae/ted_dimers@datasets.train.ted_dimers
+  - /datasets/train/ae/pdb_ptm_strict@datasets.train.pdb_ptm
+  - /datasets/train/ae/pdb_glycan_strict@datasets.train.pdb_glycan
+  - /datasets/train/ae/reglyco_fulltree_context@datasets.train.reglyco
+  - /datasets/train/ae/synthetic_ncaa_strict@datasets.train.synthetic_ncaa
+  - /datasets/train/ae/ncaa_scaffolds@datasets.train.ncaa_scaffolds
+  - /datasets/train/ae/na_complex@datasets.train.na_complex
+  - /datasets/train/ae/rna_monomer@datasets.train.rna_monomer
+  - /datasets/train/ae/antibody_interfaces_distill@datasets.train.antibody_interfaces_distill
+
+  # Cyclic peptides and immune interfaces assembled from shared source definitions.
+  - /datasets/train/pipeline_defaults@datasets.train.cpsea_pdb.dataset
+  - /datasets/sources/cpsea_pdb@datasets.train.cpsea_pdb.dataset
+  - /datasets/train/pipeline_defaults@datasets.train.cpsea_afdb.dataset
+  - /datasets/sources/cpsea_afdb@datasets.train.cpsea_afdb.dataset
+  - /datasets/train/pipeline_defaults@datasets.train.tcr_interfaces_distill.dataset
+  - /datasets/sources/tcr_interfaces_distill@datasets.train.tcr_interfaces_distill.dataset
+  - /datasets/train/pipeline_defaults@datasets.train.antibody_interfaces_pdb.dataset
+  - /datasets/sources/antibody_interfaces_pdb@datasets.train.antibody_interfaces_pdb.dataset
+  - /datasets/sampling/af3_pdb_interfaces@datasets.train.antibody_interfaces_pdb
+  - /datasets/train/pipeline_defaults@datasets.train.tcr_interfaces_pdb.dataset
+  - /datasets/sources/tcr_interfaces_pdb@datasets.train.tcr_interfaces_pdb.dataset
+  - /datasets/sampling/af3_pdb_interfaces@datasets.train.tcr_interfaces_pdb
+
+  # PDB reconstruction holdout and recipe override precedence.
+  - /datasets/val/ae/pdb_temporal_holdout@datasets.val.pdb_temporal_holdout
+  - override /datasets@datasets: none
+  - _self_
+
+# Crop size and reproducible run identity.
+_ae_crop_size: 256
+seed: 43
+run_name_: unified_biomolecule_ae
+
+# Distributed resources and per-GPU batch/loading settings.
+hardware:
+  nnodes_: 4
+  ngpus_per_node_: 8
+  ncpus_per_task_train_: 16
+dataloaders:
+  batch_size: 16
+  num_workers: 16
+  prefetch_factor: 8
+  train:
+    length_bucketing:
+      enabled: true
+    dataloader_params:
+      in_order: true
+      batch_size: ${dataloaders.batch_size}
+      collate_fn:
+        fixed_dimensions: {I: '${_ae_crop_size}'}
+
+# Sampling mixture and shared reconstruction preprocessing.
+datasets:
+  train:
+    afdb_monomer:
+      probability: 0.50
+      dataset:
+        filters: ['n_standard_amino_acid_residues < ${_ae_crop_size}']
+        # Share crop, permutation preprocessing, and loss weights across sources.
+        transform: &ae_transform
+          crop_size: ${_ae_crop_size}
+          precompute_atom_permutation: true
+          loss_weight_cfg: {non_standard: 0.0, unindexed: 0.0, sampled_tip_atom: 0.0}
+    pdb_interfaces: {probability: 0.09, dataset: {transform: *ae_transform}}
+    ted_dimers: {probability: 0.05, dataset: {transform: *ae_transform}}
+    pdb_ptm: {probability: 0.04, dataset: {transform: *ae_transform}}
+    pdb_glycan: {probability: 0.04, dataset: {transform: *ae_transform}}
+    reglyco: {probability: 0.06, dataset: {transform: *ae_transform}}
+    synthetic_ncaa: {probability: 0.04, dataset: {transform: *ae_transform}}
+    ncaa_scaffolds: {probability: 0.02, dataset: {transform: *ae_transform}}
+    na_complex: {probability: 0.06, dataset: {transform: *ae_transform}}
+    rna_monomer: {probability: 0.06, dataset: {transform: *ae_transform}}
+    antibody_interfaces_distill: {probability: 0.005, dataset: {transform: *ae_transform}}
+
+    # Source-only datasets reuse the monomer design-task configuration.
+    cpsea_pdb:
+      probability: 0.01
+      dataset:
+        transform: &new_source_transform
+          <<: *ae_transform
+          design_tasks: ${datasets.train.afdb_monomer.dataset.transform.design_tasks}
+    cpsea_afdb: {probability: 0.01, dataset: {transform: *new_source_transform}}
+    tcr_interfaces_distill: {probability: 0.005, dataset: {transform: *new_source_transform}}
+
+    # Immune-interface sampling weights within each PDB source.
+    antibody_interfaces_pdb:
+      probability: 0.005
+      dataset: {transform: *new_source_transform}
+      weights:
+        alphas: {a_prot: 3.0, a_peptide: 3.0, a_nuc: 1.0, a_ligand: 1.0, a_loi: 1.0}
+    tcr_interfaces_pdb:
+      probability: 0.005
+      dataset: {transform: *new_source_transform}
+      weights:
+        alphas: {a_prot: 1.0, a_peptide: 5.0, a_nuc: 0.0, a_ligand: 0.0, a_loi: 0.0}
+# Symmetry resolution without alignment during the permutation search.
+loss:
+  struct:
+    atom_permutation: true
+    atom_permutation_align: false
+
+# Validation and checkpoint cadence, measured in epochs.
+opt:
+  val_every_n_epochs: 5
+log:
+  checkpoint_every_n_epochs: 20
+  last_ckpt_every_n_epochs: 5
+  tags: [ae, unified, z32, shared-charge]

@@ -268,7 +268,7 @@ class TestAddRasaCondition:
         C_SEQ.set_annotation(unannotated_atom_array, C_SEQ.ground_truth_value(unannotated_atom_array))
 
         data = {"atom_array": unannotated_atom_array}
-        rasa_max = 0.2
+        rasa_max = 0.1
 
         # Run the modifier with p_include_non_ligand=1.0 to ensure all atoms are included
         result = add_rasa_condition(data, p_add_rasa_condition=1.0, p_include_non_ligand=1.0, rasa_max=rasa_max)
@@ -284,9 +284,9 @@ class TestAddRasaCondition:
         rasa_values = calculate_atomwise_rasa(
             atom_array,
             probe_radius=1.4,
-            atom_radii="ProtOr",
+            atom_radii="element",
             point_number=100,
-            atom_filter=np.ones(len(atom_array), dtype=bool),
+            sasa_mask=np.ones(len(atom_array), dtype=bool),
         )
         assert np.all(
             np.isin(
@@ -303,18 +303,41 @@ class TestAddRasaCondition:
         # Check that specified values are binned correctly
         rasa_specified_mask = rasa_binned != RasaEnum.UNSPECIFIED
         for i in np.where(rasa_specified_mask)[0]:
-            rasa_val = rasa_values[i]
+            rasa_val = np.rint(float(rasa_values[i]) * 100) / 100
             bin_val = rasa_binned[i]
 
-            if rasa_val < 0.1:
+            if rasa_val < 0.02:
                 assert bin_val == RasaEnum.BURIED
-            elif rasa_val < 0.2:
+            elif rasa_val <= 0.1:
                 assert bin_val == RasaEnum.INTERMEDIATE
             else:
                 assert bin_val == RasaEnum.EXPOSED
 
+    def test_non_ligand_neighbors_occlude_ligand_rasa(self, deterministic_rng):
+        """Ligand-only conditioning scores ligand atoms in the context of the whole structure."""
+        atoms = AtomArray(3)
+        atoms.coord = np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [12.0, 0.0, 0.0]])
+        atoms.element[:] = "C"
+        atoms.res_id = np.arange(1, 4)
+        atoms.set_annotation("is_ligand", np.array([True, False, True]))
+        atoms.set_annotation("atomize", np.zeros(3, dtype=bool))
+
+        result = add_rasa_condition(
+            {"atom_array": atoms},
+            p_add_rasa_condition=1.0,
+            p_include_non_ligand=0.0,
+            atom_radii="Single",
+            rasa_max=0.8,
+        )
+
+        rasa = C_RAS.annotation(result["atom_array"])
+        assert rasa[0] == RasaEnum.INTERMEDIATE  # the neighbor 1.5 A away occludes it (RASA 0.63, not 1.0)
+        assert rasa[1] == RasaEnum.UNSPECIFIED  # not scored: outside the ligand inclusion mask
+        assert rasa[2] == RasaEnum.EXPOSED
+
     def test_rasa_no_negative_values(self, deterministic_rng, unannotated_atom_array):
         """Test that negative RASA values raise an error."""
+        C_SEQ.set_annotation(unannotated_atom_array, C_SEQ.ground_truth_value(unannotated_atom_array))
         data = {"atom_array": unannotated_atom_array}
 
         # Artificially inject negative RASA (this shouldn't happen in practice)

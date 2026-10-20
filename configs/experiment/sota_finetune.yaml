@@ -1,0 +1,5 @@
+# @package _global_
+# Canonical fine-tuning recipe; update this pointer when advancing the release.
+defaults:
+  - /releases/flow/2026_10_19_hero_lora_c384
+  - _self_

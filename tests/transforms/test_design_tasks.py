@@ -193,7 +193,7 @@ def test_inverse_folding_conditions(atom_array_fixture):
 def test_rna_inverse_folding_conditions(simple_rna):
     """InverseFoldingTask(polymer_types=["rna"]) shows RNA backbone coords and designs the sequence.
 
-    RNA sequence design rides the unified autoencoder's 33-type decoder head; the task itself only
+    RNA sequence design rides the unified autoencoder's canonical decoder head; the task itself only
     sets the conditioning masks (reveal backbone coordinates, hide base coordinates + sequence).
     """
     data = apply_design_task(simple_rna, InverseFoldingTask, task_kwargs={"polymer_types": ["rna"]})

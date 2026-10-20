@@ -111,7 +111,7 @@ def apply_design_task(
     # against atom arrays where most tokens are atomized (rare in real data, but important for
     # invariants like "atomized tokens must remain indexed").
     if extra_atomize_p > 0.0:
-        data = RandomAtomizeResidues(p_atomize=extra_atomize_p)(data)
+        data = RandomAtomizeResidues(probabilities=dict.fromkeys(("aa", "rna", "dna"), extra_atomize_p))(data)
 
     # edge case where we need to apply same transformation to atom array in crop info (always a copy)
     if "crop_info" in data:

@@ -1,29 +1,41 @@
-# Quality-filtered protein-DNA complexes predicted with Protenix v2.
-
+# ESMFold2 protein-DNA predictions: best-of-ten winners passing chemistry, confidence and interface gates.
+# PLIP/CATH-annotated; interface acceptance includes agreement between DSSR and PLIP base-contact detection.
 defaults:
   - backend_blob
   - _self_
 
 name: na_complex
-data: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/metadata_2026_09_10.parquet
-
-loader:
-  blob_dir: ${oc.env:DATASET_STORE_ROOT,${oc.env:DATA_PATH}}/train_datasets/na_complex_protenix_v2/data/blob_2026_09_08
+memory_map: true
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_22_protein_dna_esmfold2/examples.parquet
 
 columns_to_load:
   - example_id
-  - lmdb_idx
-  # Quality gates
-  - pd_pae_min
-  - protein_dna_hbond_count
-  - dna_quality_hard_gate_v2
-  - dna_b_form_geometry_pass
+  - n_standard_amino_acid_residues
+  - n_dna_residues
+  - max_protein_ca_rg_normalized
+  - is_selected_prediction
+  - passes_structure_validation
+  - passes_bond_filters
+  - passes_clash_filters
+  - passes_interface_quality_filters
+  - selection_pae
+  - min_protein_interface_plddt
+  - dssr_major_groove_hbonds
+  - dssr_total_protein_dna_hbonds
 
 filters:
-  # DNA structural quality
-  - "dna_quality_hard_gate_v2 == True"
-  - "dna_b_form_geometry_pass == True"
+  # Maximum over protein chains of CA Rg (angstrom) / N_CA^(1/3); DNA is excluded.
+  # At 4.5, a 100-residue chain may have Rg up to 20.9 angstrom (200 residues: 26.3).
+  - "max_protein_ca_rg_normalized <= 4.5"
+  - "passes_structure_validation == True"
+  - "passes_bond_filters == True"
+  - "passes_clash_filters == True"
+  - "passes_interface_quality_filters == True"
+  - "is_selected_prediction == True"
+  - "selection_pae <= 3"
+  - "min_protein_interface_plddt >= 85"
+  - "dssr_major_groove_hbonds >= 6"
+  - "dssr_total_protein_dna_hbonds >= 12"
 
-  # Protein-DNA interface quality
-  - "protein_dna_hbond_count > 24"
-  - "pd_pae_min < 1.5"
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/synthetic/2026_09_22_protein_dna_esmfold2/blob

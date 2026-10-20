@@ -1,0 +1,24 @@
+/* Northern Nights — paper/style/theme.json, wip/paper f336faf492d3.
+   Dark surfaces and accessible foreground tints are web adaptations. */
+:root,:root[data-theme=light]{
+  --bg:#F3F5F5;--panel:#FFFFFF;--ink:#333333;--ink2:#59636C;
+  --secondary:#59636C;--muted:#667078;--hair:#D1CEDC;--grid:#E9EBEE;
+  --band:#EDEAF2;--wash:#EDEAF2;--accent:#186C70;--blue:#186C70;
+  --teal:#186C70;--heat:#186C70;--rf:#8D52AD;--pt:#186C70;
+  --purple:#8D52AD;--mint:#32B39B;--violet:#463D73;
+  --shadow:0 3px 16px #463D7308;color-scheme:light;
+}
+:root[data-theme=dark]{
+  --bg:#151723;--panel:#1E2231;--ink:#F3F5F5;--ink2:#D1CEDC;
+  --secondary:#D1CEDC;--muted:#AAB3BE;--hair:#414459;--grid:#2D3345;
+  --band:#2C3047;--wash:#2C3047;--accent:#40D9BE;--blue:#40D9BE;
+  --teal:#40D9BE;--heat:#32B39B;--rf:#B798CD;--pt:#40D9BE;
+  --purple:#B798CD;--shadow:none;color-scheme:dark;
+}
+body{font-family:Helvetica,Arial,sans-serif}
+a{color:var(--teal)}
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+.brand span{color:var(--rf)}.brand em{color:var(--pt)}
+.seg button[aria-pressed=true]{border-color:var(--accent)}
+/* The home page's filled controls need a dark foreground on bright mint. */
+:root[data-theme=dark] .wrap .seg button[aria-pressed=true]{color:#151723}

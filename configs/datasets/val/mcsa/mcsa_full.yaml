@@ -1,5 +1,9 @@
 compute_loss: true
 
+defaults:
+  - /recycle_strategy@generation: medium/midpeak
+  - _self_
+
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
 

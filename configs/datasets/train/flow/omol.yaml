@@ -1,7 +1,7 @@
 # OMol-1 small molecules for the flow model.
 
 defaults:
-  - /datasets/train/backend_lmdb@dataset
+  - /datasets/train/pipeline_defaults@dataset
   - /datasets/sources/omol@dataset
   - /design_tasks/presets@dataset.transform.design_tasks: all_off
   - _self_

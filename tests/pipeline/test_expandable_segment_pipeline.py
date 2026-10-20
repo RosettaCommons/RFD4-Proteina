@@ -353,7 +353,7 @@ def test_train_val_pipeline_feats_match(pdb_id: str) -> None:
             },
             is_inference=True,
             p_random_rotation=0.0,
-            p_atomize_residues=0.0,
+            atomization_probabilities={},
         )
         out_a = pipe_a(input_a)
 
@@ -502,7 +502,7 @@ def test_train_save_load_val_pipeline_feats_match(
             },
             is_inference=True,
             p_random_rotation=0.0,
-            p_atomize_residues=0.0,
+            atomization_probabilities={},
         )
         out_train = pipe_train(input_train)
 

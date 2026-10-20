@@ -32,25 +32,24 @@ source .venv/bin/activate
 ```
 
 Native setup creates `.venv` with the CUDA 13 model dependencies and installs
-AtomWorks from the Git revision pinned in `pyproject.toml`. It creates `.env.local`
+the public AtomWorks version pinned in `pyproject.toml`; private setup retains its
+AtomWorks development submodule. It creates `.env.local`
 only if neither `.env.local` nor `.env` exists, preserves existing files, and does
 not edit shell startup files.
 
 ## Step 2 — Check data paths and optional refolding
 
-Setup downloads the released checkpoint pair automatically into `DATA_PATH`,
-defaulting to `./data_path`, and records the default in the active environment
-file when no path is configured. Existing files are reused. Exported shell
-settings take precedence over `.env.local` (or `.env` when `.env.local` is absent).
-Set a custom data path before setup to download there. For an environment-only
-installation, use `bash setup.sh --skip-weights`.
+Setup downloads the configured native checkpoint pair to `DATA_PATH`, or caches
+an enabled Hugging Face bundle under `HF_HOME`. `DATA_PATH` defaults to `./data_path`.
+Exported shell settings take precedence over the environment file. Use
+`bash setup.sh --skip-weights` for an environment-only installation.
 
-`configs/inference.yaml` defines the active checkpoint pair. Downloads use
-`https://YOUR_DATASET_STORE` without credentials.
+`configs/inference.yaml` selects native checkpoints or a pinned model repository.
+Use `HF_TOKEN` or `hf auth login` while private; public downloads use the same code.
 To add OpenFold3 on a host with Apptainer:
 
 ```bash
-./scripts/download_example_data.sh ./data_path
+./scripts/download_assets.sh ./data_path
 ```
 
 Pass your configured `DATA_PATH` instead if it differs from `./data_path`.
@@ -64,13 +63,13 @@ bash skills/rfd4-proteina-setup/scripts/preflight.sh
 ```
 
 This uses the same runtime dispatcher as model entry points and checks imports,
-CUDA visibility, and released checkpoints. Resolve failures before sampling.
+CUDA visibility, and cached model files. Resolve failures before sampling.
 
 ## Step 4 — Smoke test
 
 ```bash
 rfd4-generate inputs=data/benchmarks/monomer \
-    subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
+    subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke ~metrics compile_lengths=null
 ```
 
 A generated CIF under `runs/smoke/inference_samples/` confirms the inference path.
@@ -85,7 +84,7 @@ Setup always creates `.venv` for SLURM configuration resolution.
 ## Troubleshooting
 
 - Import failures: rerun setup or the pip installation in your selected environment.
-- Missing data/checkpoints: check `DATA_PATH` and repeat the download for that directory.
+- Missing model files: check `HF_HOME` and rerun setup. Optional data uses `DATA_PATH`.
 - Missing GPU: verify the NVIDIA driver and the selected runtime's GPU support.
 - Refolding failures: check the separate oracle image, weights, cache, and host Apptainer.
 - SLURM host tooling missing: rerun setup, then configure `scripts/.user_info_local`.

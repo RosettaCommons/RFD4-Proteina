@@ -1,6 +1,5 @@
 """Pipeline for training for La Proteina-style models."""
 
-import functools
 import logging
 import os
 import pickle
@@ -9,22 +8,14 @@ from typing import ClassVar
 import numpy as np
 import rootutils
 from atomworks.constants import (
-    AF3_EXCLUDED_LIGANDS,
     MASKED,
-    STANDARD_AA,
-    STANDARD_DNA,
-    STANDARD_RNA,
-    UNKNOWN_AA,
     UNKNOWN_ATOM_NAME,
-    UNKNOWN_DNA,
-    UNKNOWN_RNA,
 )
 from atomworks.enums import ChainType
 from atomworks.io.utils.annotator import (
     ensure_annotations,
 )
 from atomworks.io.utils.atom_array_plus import as_atom_array_plus
-from atomworks.io.utils.selection import get_residue_starts
 from atomworks.io.utils.standard_annotations import S_SEGMIN
 from atomworks.ml.conditions import (
     C_CRD,
@@ -33,7 +24,6 @@ from atomworks.ml.conditions import (
     C_NTR,
     C_SEQ,
 )
-from atomworks.ml.encoding_definitions import UNIFIED_ATOM37_ENCODING
 from atomworks.ml.transforms._checks import (
     check_atom_array_annotation,
     check_atom_array_has_bonds,
@@ -45,18 +35,17 @@ from atomworks.ml.transforms.atom_array import (
     AddGlobalAtomIdAnnotation,
     AddGlobalTokenIdAnnotation,
     AddWithinPolyResIdxAnnotation,
+    ApplyFunctionToAtomArray,
     CopyAnnotation,
 )
-from atomworks.ml.transforms.atomize import (
-    AtomizeByCCDName,
-    FlagNonPolymersForAtomization,
-)
+from atomworks.ml.transforms.atomize import AtomizeByCCDName
 from atomworks.ml.transforms.base import (
     AddData,
     Compose,
     ConditionalRoute,
     ConvertToTorch,
     ListBuilder,
+    RaiseOnCondition,
     RandomRoute,
     RemoveKeys,
     SubsetToKeys,
@@ -86,7 +75,7 @@ from atomworks.ml.utils.token import (
     get_token_starts,
 )
 from beartype.typing import Any, Callable
-from biotite.structure import AtomArray, spread_residue_wise
+from biotite.structure import AtomArray
 
 from rfproteina.conditions import (
     C_BP,
@@ -115,6 +104,11 @@ from rfproteina.conditions import (
 )
 from rfproteina.datapipes.bonds import compute_token_bond_features
 from rfproteina.datapipes.schema.proteina import TokenType
+from rfproteina.encoding import (
+    RESIDUES_BY_TOKEN_TYPE,
+    TOKEN_TYPE_IDS,
+    UNIFIED_ATOM37_ENCODING,
+)
 from rfproteina.transforms.atom_names import (
     AnnotateAtomNameVisibility,
     FeaturizeAtomNamesLikeAF3,
@@ -131,98 +125,29 @@ from rfproteina.transforms.metals import DropoutCoordinationBonds
 from rfproteina.transforms.na_geom import (
     FeaturizeNucleicAcidSecondaryStructure,
 )
-from rfproteina.transforms.random_atomize_residues import (
-    RandomAtomizeResidues,
+from rfproteina.transforms.random_atomize_residues import RandomAtomizeResidues
+from rfproteina.transforms.sequence_conditioning import (
+    CanonicalizeSequenceProbabilityConditions,
+    FinalizeSequenceConditioning,
 )
 from rfproteina.transforms.unindexing import UnindexFlaggedTokens
 from rfproteina.utils.common import true_with_prob
+from rfproteina.utils.constants import DEFAULT_UNDESIRED_RES_NAMES, LOCAL_LATENT_RESIDUES
 from rfproteina.utils.fold import extract_cath_code_by_level
+from rfproteina.utils.token_encoding import (
+    annotate_token_centers,
+    build_atom37_slots,
+    has_missing_token_reference,
+    missing_token_reference_mask,
+)
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
 
 # Config path
 CATH_MAPPING_PATH = os.path.join(os.environ["PROJECT_ROOT"], "data/cath_label_mapping.pkl")
 
 logger = logging.getLogger(__name__)
-
-
-@functools.lru_cache(maxsize=1)
-def _build_atom37_lookups() -> tuple[np.ndarray, np.ndarray]:
-    """Build sorted residue-specific atom keys for vectorized atom37 slot lookup.
-
-    Uses ``<res_name>|<atom_name>`` keys rather than atom names alone. This is
-    required for nucleic acids, where purines and pyrimidines reuse names like
-    ``N1`` / ``C2`` / ``N3`` but place them in different atom37 slots.
-    """
-    atom_key_to_slot: dict[str, int] = {}
-    residues = [
-        *STANDARD_AA,
-        UNKNOWN_AA,
-        *STANDARD_RNA,
-        *STANDARD_DNA,
-        UNKNOWN_RNA,
-        UNKNOWN_DNA,
-    ]
-    for res_name in residues:
-        atoms = UNIFIED_ATOM37_ENCODING.token_atoms[res_name]
-        for slot, atom_name in enumerate(atoms):
-            atom_name = atom_name.strip()
-            if atom_name:
-                atom_key_to_slot[f"{res_name}|{atom_name}"] = slot
-                # Proteins share atom-name slots; DNA/RNA base slots depend on purine/pyrimidine identity.
-                if res_name in STANDARD_AA:
-                    atom_key_to_slot[f"{UNKNOWN_AA}|{atom_name}"] = slot
-    keys_sorted = sorted(atom_key_to_slot.keys())
-    atom_keys = np.array(keys_sorted)
-    atom_slots = np.array([atom_key_to_slot[key] for key in keys_sorted], dtype=np.int32)
-    return atom_keys, atom_slots
-
-
-def _lookup_atom37_slots(keys: np.ndarray, sorted_keys: np.ndarray, sorted_slots: np.ndarray) -> np.ndarray:
-    """Lookup atom37 slots from sorted residue-specific keys."""
-    positions = np.searchsorted(sorted_keys, keys)
-    valid = positions < len(sorted_keys)
-    matched = valid & (sorted_keys[np.clip(positions, 0, len(sorted_keys) - 1)] == keys)
-    out = np.full(len(keys), -1, dtype=np.int32)
-    out[matched] = sorted_slots[positions[matched]]
-    return out
-
-
-def build_atom37_slots(atom_array: AtomArray) -> np.ndarray:
-    """Map each atom to its atom37 slot index.
-
-    Returns:
-        Integer slot indices of shape ``[n_atoms]``. Unknown atoms get -1.
-    """
-    aap = as_atom_array_plus(atom_array)
-    n_atoms = aap.array_length()
-    atom_names = np.char.strip(aap.atom_name.astype(str))
-    slots = np.full(n_atoms, -1, dtype=np.int32)
-    categories = set(aap.get_annotation_categories())
-
-    if "token_type" in categories:
-        token_type = aap.token_type
-        is_polymer = (token_type == TokenType.PROTEIN) | (token_type == TokenType.RNA) | (token_type == TokenType.DNA)
-        is_atomized = token_type == TokenType.ATOMIZED
-    else:
-        ensure_annotations(aap, "is_protein", "is_rna", "is_dna")
-        is_polymer = aap.is_protein | aap.is_rna | aap.is_dna
-        is_atomized = aap.atomize if "atomize" in categories else np.zeros(n_atoms, dtype=bool)
-
-    if is_polymer.any():
-        residue_names = aap.res_name[is_polymer].astype(str)
-        polymer_atom_names = atom_names[is_polymer]
-        polymer_keys = np.char.add(np.char.add(residue_names, "|"), polymer_atom_names)
-        slots[is_polymer] = _lookup_atom37_slots(polymer_keys, _ATOM37_KEYS, _ATOM37_SLOTS)
-
-    if is_atomized.any():
-        slots[is_atomized] = 1
-
-    return slots
-
-
-# Module-level cached residue-specific lookups
-_ATOM37_KEYS, _ATOM37_SLOTS = _build_atom37_lookups()
 
 
 class PrecomputeAtomPermutation(Transform):
@@ -355,21 +280,19 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # TODO: Rename to molecule_entity after performing checkpoint surgery
         feats["molecule_entity_id"] = entity_ids.astype(np.int16)  # [L]
 
-        # Encode ground-truth residue types using atom_array_to_encoded_resnames (handles proteins, DNA, RNA, atomized)
-        # Uses UNIFIED_ATOM37_ENCODING for full support (20 AAs + 4 RNA + 4 DNA + unknowns).
-        # Maps all masked tokens to singular mask token.
         feats["residue_type"] = atom_array_to_encoded_resnames(aa, UNIFIED_ATOM37_ENCODING, atomize_token="<A>")  # [L]
 
         # ground truth coordinates
         feats["coords"] = aa.coord_to_be_noised  # [L, 3]
 
-        # Derive token_type from existing boolean annotations
-        # 0: protein, 1: RNA, 2: DNA, 3: atomized, 4: unknown/other
-        token_type = np.full(aa.array_length(), 4, dtype=np.int16)  # Default to unknown
-        token_type[aa.get_annotation("is_standard_unknown_or_masked_dna")] = 2  # DNA
-        token_type[aa.get_annotation("is_standard_unknown_or_masked_rna")] = 1  # RNA
-        token_type[aa.get_annotation("is_standard_unknown_or_masked_aa")] = 0  # Protein
-        token_type[aa.get_annotation("atomize")] = 3
+        token_type = np.full(aa.array_length(), TokenType.UNKNOWN, dtype=np.int16)
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_dna")] = TokenType.DNA
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_rna")] = TokenType.RNA
+        token_type[aa.get_annotation("is_standard_unknown_or_masked_aa")] = TokenType.PROTEIN
+        for group, names in RESIDUES_BY_TOKEN_TYPE.items():
+            if TOKEN_TYPE_IDS[group] != TokenType.UNKNOWN:
+                token_type[np.isin(aa.res_name, names)] = TOKEN_TYPE_IDS[group]
+        token_type[aa.get_annotation("atomize")] = TokenType.ATOMIZED
         aa.set_annotation("token_type", token_type)
         feats["token_type"] = token_type  # [L]
 
@@ -419,6 +342,7 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         # Elements are provided if they are part of a sequence conditioned token (which should already include
         # ligands and DNA/RNA). If the token is not sequence conditioned, we pass through the auto-encoder without
         # element information, but we'll remove it here to be thorough
+        feats["ground_truth_element"] = aa.atomic_number.astype(np.int16)
         element_mask = seq_cond_mask
         feats["element"] = np.full(aa.array_length(), -1, dtype=np.int32)
         if any(element_mask):
@@ -479,14 +403,10 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
         feats[C_HOT.full_name] = C_HOT.annotation(aa, default="generate")
         for condition in SEQUENCE_PROBABILITY_CONDITIONS:
             feats[condition.full_name] = condition.annotation(aa, default="generate")
-        feats[C_RAS.full_name] = C_RAS.annotation(aa, default="generate")  # NOTE: this needs to be encoded
-        feats[C_SEC.full_name] = C_SEC.annotation(aa, default="generate")  # NOTE: this needs to be encoded
-        feats[C_HB.full_name] = C_HB.annotation(aa, default="generate")
+        for condition in (C_RAS, C_SEC, C_HB, C_PICATION, C_SALT, C_MCOORD):
+            feats[condition.full_name] = np.asarray(condition.annotation(aa, default="generate"), dtype=np.int64)
         feats[C_PISTACK.full_name] = C_PISTACK.annotation(aa, default="generate")
-        feats[C_PICATION.full_name] = C_PICATION.annotation(aa, default="generate")
-        feats[C_SALT.full_name] = C_SALT.annotation(aa, default="generate")
         feats[C_HPHOB.full_name] = C_HPHOB.annotation(aa, default="generate")
-        feats[C_MCOORD.full_name] = C_MCOORD.annotation(aa, default="generate")
         feats[C_IDXGRP.full_name] = C_IDXGRP.annotation(aa, default="generate")
         feats[C_CRDGRP.full_name] = C_CRDGRP.annotation(aa, default="generate")
         feats[C_CENTROID.full_name] = C_CENTROID.annotation(
@@ -524,12 +444,16 @@ ATOM_LEVEL_FEATURES_TO_CONVERT_TO_TOKEN_LEVEL = [
     C_CATH.full_name,
     C_CENTROID.full_name,  # Per-chain centroid xyz (broadcast per atom; first-atom-per-token is fine)
     "chirality",
+    "chiral_frame_atoms",
+    "chiral_slot_owner",
+    "tetrahedral_vertices",
 ]
 """Features to convert from atom-level to token-level by taking the first atom in each token."""
 
 ATOM37_FEATURES = [
     ("coords", (3,), 0.0),
     ("element", (), -1),
+    ("ground_truth_element", (), 0),
     ("charge", (), 0),  # Atomic charge
     (C_CRD.full_name, (3,), np.nan),
     (C_INTCRD.full_name, (3,), np.nan),
@@ -626,6 +550,19 @@ class ConvertToAtom37Format(Transform):
         # Scatter atoms into atom37 arrays (vectorized)
         atom37_mask[slot_token_id, valid_slots] = True
 
+        result["incident_bond_type_counts"] = np.zeros((num_tokens, 37, 10), dtype=np.int16)
+        if atom_array.bonds is None:
+            raise ValueError("Incident bond-type features require an explicit BondList")
+        bonds = atom_array.bonds.as_array().astype(np.int64)
+        for endpoint in (0, 1):
+            atoms = bonds[:, endpoint]
+            valid = has_slot[atoms]
+            np.add.at(
+                result["incident_bond_type_counts"],
+                (atom_array.token_id[atoms[valid]], atom_slots[atoms[valid]], bonds[valid, 2]),
+                1,
+            )
+
         # Scatter all features at once
         for feat_name in atom37_arrays:
             atom37_arrays[feat_name][slot_token_id, valid_slots] = feats[feat_name][has_slot]
@@ -640,7 +577,7 @@ class ConvertToAtom37Format(Transform):
         na_ss_pair = np.zeros((n_tokens, n_tokens), dtype=np.int16)
         na_ss_pair_mask = np.zeros((n_tokens, n_tokens), dtype=bool)
 
-        if C_BP.full_name in atom_array.get_annotation_2d_categories():
+        if C_BP.full_name in atom_array.get_annotation_categories(n_body=2):
             pair_annotation = C_BP.annotation(atom_array, default="raise")
             atom_to_token = np.full(atom_array.array_length(), -1, dtype=np.int32)
             atom_to_token[token_starts] = np.arange(n_tokens, dtype=np.int32)
@@ -778,18 +715,6 @@ def add_supports_local_latent_annotation(
     return atom_array
 
 
-RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS = [
-    *STANDARD_AA,
-    *STANDARD_RNA,
-    *STANDARD_DNA,
-    UNKNOWN_AA,
-    UNKNOWN_RNA,
-    UNKNOWN_DNA,
-    MASKED,
-]
-"""Default residue names that support a meaningful residue-level latent."""
-
-
 class AddSupportsLocalLatentAnnotation(Transform):
     """Annotate generated, non-atomized tokens represented by the autoencoder latent alphabet."""
 
@@ -853,7 +778,7 @@ class UpweightLossWeightOnSubset(Transform):
 
 
 class RemoveTokensWithAnyNaNAtom(Transform):
-    """Remove tokens if any atom has NaN coordinates.
+    """Remove tokens with NaN coordinates or a missing residue reference atom.
 
     There are a few types of situations where NaNs can show up in a token:
     1. A residue has a single missing side-chain atom
@@ -875,10 +800,11 @@ class RemoveTokensWithAnyNaNAtom(Transform):
     def forward(self, data: dict) -> dict:
         atom_array = data["atom_array"]
         starts = get_token_starts(atom_array, add_exclusive_stop=True)
+        missing_reference = missing_token_reference_mask(atom_array)
         mask_to_keep = np.ones(atom_array.array_length(), dtype=bool)
         for i in range(len(starts) - 1):
             s, e = starts[i], starts[i + 1]
-            if np.any(np.isnan(atom_array.coord[s:e])):
+            if missing_reference[i] or np.any(np.isnan(atom_array.coord[s:e])):
                 mask_to_keep[s:e] = False
         if mask_to_keep.all():
             return data
@@ -904,89 +830,6 @@ class ValidateNonEmptyStructure(Transform):
             raise ValueError(
                 f"Structure has no atoms after filtering (example_id: {example_id}). This structure will be skipped."
             )
-        return data
-
-
-class EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned(Transform):
-    """
-    Ensure that all atomized or coordinate-conditioned residues are sequence conditioned.
-    Temporary annotation that be removed for e.g. unfixed ligands.
-    """
-
-    def forward(self, data: dict) -> dict:
-        aap = as_atom_array_plus(data["atom_array"])
-        existing_seq_cond_mask = C_SEQ.mask(aap, default="generate")
-        seq_cond_mask = existing_seq_cond_mask.copy()
-
-        # Atomized tokens always require sequence conditioning
-        if "atomize" in aap.get_annotation_categories():
-            seq_cond_mask |= aap.atomize
-
-        # Only non-backbone coordinate conditioning requires sequence conditioning.
-        # Backbone-only conditioning (e.g. inverse folding context) does not.
-        crd_mask = C_CRD.mask(aap, default="generate") | C_CRDGRP.is_internal(aap)
-        if crd_mask.any():
-            ensure_annotations(aap, "is_protein_backbone", "is_rna_backbone", "is_dna_backbone")
-            is_backbone = aap.is_protein_backbone | aap.is_rna_backbone | aap.is_dna_backbone
-            seq_cond_mask |= crd_mask & ~is_backbone
-
-        # Any token with sequence conditioning should be fully sequence-conditioned
-        seq_cond_mask = apply_and_spread_token_wise(aap, seq_cond_mask, np.any)
-
-        sequence = C_SEQ.annotation(aap, default="generate").copy()
-        newly_conditioned = seq_cond_mask & ~existing_seq_cond_mask
-        sequence[newly_conditioned] = C_SEQ.ground_truth_value(aap)[newly_conditioned]
-        C_SEQ.set_annotation(aap, sequence)
-        data["atom_array"] = aap
-        return data
-
-
-class CanonicalizeSequenceProbabilityConditions(Transform):
-    """Normalize sequence-probability conditions before featurization.
-
-    ``C_SEQ`` is authoritative: canonical sequence-conditioned residues receive a
-    fully specified one-hot distribution over the 28 probability Conditions. For a
-    sequence-conditioned token outside that vocabulary, all 28 probabilities are
-    explicitly zero. Existing specified values must agree with that distribution.
-    """
-
-    def forward(self, data: dict) -> dict:
-        aap = as_atom_array_plus(data["atom_array"])
-        starts = get_residue_starts(aap)
-        seq_mask = C_SEQ.mask(aap, default="generate")
-        residue_seq = np.maximum.reduceat(seq_mask, starts).astype(bool)
-        seq_atoms = spread_residue_wise(aap, residue_seq)
-        sequence = C_SEQ.annotation(aap, default="generate")
-
-        resolved: dict[type, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
-        conflicts: list[str] = []
-        for condition in SEQUENCE_PROBABILITY_CONDITIONS:
-            probability = condition.annotation(aap, default="generate").astype(np.float32)
-            mask = condition.mask(aap, default="generate").copy()
-            expected = (sequence == condition.token_name).astype(np.float32)
-            conflict = seq_atoms & mask & ~np.isclose(probability, expected)
-            if conflict.any():
-                n_conflicting_residues = int(np.maximum.reduceat(conflict, starts).sum())
-                conflicts.append(f"{condition.token_name}: {n_conflicting_residues} residue(s)")
-            resolved[condition] = probability, mask, expected
-
-        if conflicts:
-            raise ValueError(
-                "Sequence-probability conditioning conflicts with C_SEQ exact identities: " + ", ".join(conflicts)
-            )
-
-        for condition, (probability, mask, expected) in resolved.items():
-            probability[seq_atoms] = expected[seq_atoms]
-            mask[seq_atoms] = True
-            probability[~mask] = np.nan
-            # Remove stored columns before writing so Biotite preserves the normalized float32 dtype.
-            for name in (condition.full_name, *condition.aliases):
-                if name in aap.get_annotation_categories():
-                    aap.del_annotation(name)
-            if mask.any():
-                condition.set_annotation(aap, probability)
-
-        data["atom_array"] = aap
         return data
 
 
@@ -1121,6 +964,11 @@ def _get_design_task_name(data: dict) -> str | None:
     return (data.get("task") or {}).get("name")
 
 
+def _has_missing_token_reference(data: dict[str, Any]) -> bool:
+    """Adapt the reference-atom check to pipeline data for spawned workers."""
+    return has_missing_token_reference(data["atom_array"])
+
+
 def _build_design_clean_and_sample_pipeline(
     crop_size: int | None = None,
     crop_size_range: tuple[int, int] | tuple[float, float] | None = None,
@@ -1132,9 +980,9 @@ def _build_design_clean_and_sample_pipeline(
     crop_center_cutoff_distance: float = 15.0,
     max_atoms_in_crop: int | None = None,
     is_inference: bool = False,
-    p_atomize_residues: float = 0.0,
+    atomization_probabilities: dict[str, float] | None = None,
     design_tasks: dict[str, dict[str, Any]] = {},
-    undesired_res_names: list[str] = AF3_EXCLUDED_LIGANDS,
+    undesired_res_names: list[str] = DEFAULT_UNDESIRED_RES_NAMES,
     b_factor_occupancy_min: float | None = None,  # Zero occupancy below this b-factor; off by default
     p_random_rotation: float = 1.0,  # Probability of applying random rotation
     p_mirror: float = 0.0,  # Probability of mirroring inputs (chirality augmentation)
@@ -1170,7 +1018,7 @@ def _build_design_clean_and_sample_pipeline(
     if not is_inference:
         T += FilterToSpecifiedPNUnits(extra_info_key_with_pn_unit_iids_to_keep="all_pn_unit_iids_after_processing")
         T += RemoveUnresolvedPNUnits()
-        T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)  # e.g., non-standard residues
+        T += HandleUndesiredResTokens(undesired_res_tokens=undesired_res_names)
         T += RemovePolymersWithTooFewResolvedResidues(min_residues=1)
         T += SetOccToZeroOnBfactor(bmin=b_factor_occupancy_min)
 
@@ -1182,14 +1030,16 @@ def _build_design_clean_and_sample_pipeline(
     ### 2. Add basic annotations                            ###
     ###########################################################
     T += AddGlobalAtomIdAnnotation(allow_overwrite=True)
-    # Reassign covalent modifications using the hero model's training policy.
-    T += AnnotateCovalentModifications(p_reassign_modified_residue=1.0)
-    T += FlagNonPolymersForAtomization()
+    # Keep modified polymer residues in their PN units and preserve existing atomization.
+    T += AnnotateCovalentModifications(
+        reassign_modified_residue=False,
+        atomize_modified_residue=False,
+    )
     if not is_inference:
-        T += RandomAtomizeResidues(p_atomize=p_atomize_residues)
+        T += RandomAtomizeResidues(probabilities=atomization_probabilities)
     T += AtomizeByCCDName(
         atomize_by_default=True,
-        res_names_to_ignore=RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
+        res_names_to_ignore=LOCAL_LATENT_RESIDUES,
         move_atomized_part_to_end=False,
         validate_atomize=False,
     )
@@ -1201,6 +1051,13 @@ def _build_design_clean_and_sample_pipeline(
     # Remove tokens with any NaN coordinates (e.g., from unresolved atoms). We cannot generate noisy versions of these.
     if not is_inference:
         T += RemoveTokensWithAnyNaNAtom()
+        T += ValidateNonEmptyStructure()
+    else:
+        T += RaiseOnCondition(
+            condition=_has_missing_token_reference,
+            error_message="Residue tokens lack their required atom37 slot-1 reference atom. "
+            "Provide the reference atom from the original structure or explicitly supply atomized context.",
+        )
 
     if (
         not is_inference
@@ -1212,6 +1069,7 @@ def _build_design_clean_and_sample_pipeline(
         else:
             assert crop_size is not None and crop_size > 0, "Crop size must be greater than 0"
         assert crop_center_cutoff_distance > 0, "Crop center cutoff distance must be greater than 0"
+        T += ApplyFunctionToAtomArray(annotate_token_centers)
 
         crop_routes = [
             (
@@ -1306,10 +1164,6 @@ def _build_design_clean_and_sample_pipeline(
         # ... (optionally) modify the design task post-hoc
         # TODO: Template this
 
-        # We may have introduced (or will later introduce) extra tokens;
-        # we must make space for them here. With crop_size_range, the actual
-        # per-example budget is read from data["crop_info"]["crop_size"] instead
-        # (see EnforceCropBudget), so crop_size itself may be None here.
         if crop_size or crop_size_range:
             T += EnforceCropBudget(crop_size=crop_size, plan_expansion=plan_unindex_expansion)
 
@@ -1357,8 +1211,8 @@ def _build_design_featurize_pipeline(
     ###########################################################
     ### Step 1: Annotation fixes                            ###  # TODO: Should these be in validate / train portions?
     ###########################################################
-    # TODO: Should these "Ensure" transforms be in the train pipeline instead of featurize?
-    T += EnsureAtomizedOrCoordConditionedResiduesAreSequenceConditioned()
+    # Finalize sequence conditioning for both training tasks and inference inputs.
+    T += FinalizeSequenceConditioning()
     T += CanonicalizeSequenceProbabilityConditions()
 
     # ... Annotate finalized token ids after we are sure we are not motifying `atomize` feature anymore
@@ -1414,7 +1268,7 @@ def _build_design_featurize_pipeline(
 
     T += AddChiralityFeature()
     T += ConvertToAtomLevelProteinaFeatures()
-    T += ConvertToAtom37Format()  # Convert atom-level to token-level atom37 representation
+    T += ConvertToAtom37Format()
     T += ComputeTokenLevelBondFeaturesLikeAF3(
         path_length_search_cutoff=path_length_search_cutoff,
         fill_res_id_gaps=is_inference,
@@ -1455,14 +1309,14 @@ def build_design_train_pipeline(
     crop_center_cutoff_distance: float = 15,
     max_atoms_in_crop: int | None = None,
     b_factor_occupancy_min: float | None = None,
-    p_atomize_residues: float = 0.0,
+    atomization_probabilities: dict[str, float] | None = None,
     p_random_rotation: float = 1.0,
     p_mirror: float = 0.0,
     design_tasks: dict[str, dict] | None = None,
     is_inference: bool = False,
     precompute_atom_permutation: bool = False,
     metrics_tags: list[str] | set[str] | None = None,
-    residue_names_supporting_local_latents: list | set = RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
+    residue_names_supporting_local_latents: list | set | None = None,
     # Nucleic acid secondary structure featurization
     apply_na_ss: bool = True,
     path_length_search_cutoff: int | None = None,
@@ -1499,7 +1353,8 @@ def build_design_train_pipeline(
             :py:class:`~rfproteina.transforms.dna_crop.ProteinDNAContactContiguousCrop`).
             The three crop probabilities should sum to 1.0. Defaults to ``0.0``.
         crop_center_cutoff_distance: Distance cutoff (Å) for spatial crop
-        p_atomize_residues: Probability of atomizing standard residues
+        atomization_probabilities: Per-residue-class atomization probabilities. Defaults to 0.5% for
+            standard amino acids/RNA/DNA and 5% for vocabulary NCAAs/glycans.
         p_random_rotation: Probability of random rotation augmentation
         p_mirror: Probability of mirroring inputs (chirality augmentation).
             Defaults to ``0.0`` (disabled).
@@ -1527,6 +1382,8 @@ def build_design_train_pipeline(
     if is_inference:
         transforms.append(RealizeExpandableSegments(rng=expandable_segment_rng))
     transforms.extend(sampling_transforms or [])
+    if residue_names_supporting_local_latents is None:
+        residue_names_supporting_local_latents = LOCAL_LATENT_RESIDUES
     transforms += _build_design_clean_and_sample_pipeline(
         crop_size=crop_size,
         crop_size_range=crop_size_range,
@@ -1540,7 +1397,7 @@ def build_design_train_pipeline(
         b_factor_occupancy_min=b_factor_occupancy_min,
         design_tasks=design_tasks,
         is_inference=is_inference,
-        p_atomize_residues=p_atomize_residues,
+        atomization_probabilities=atomization_probabilities,
         p_random_rotation=p_random_rotation,
         p_mirror=p_mirror,
     )
@@ -1561,7 +1418,7 @@ def build_design_train_pipeline(
 
 def build_design_validation_pipeline(
     metrics_tags: list[str] | set[str] | None = None,
-    residue_names_supporting_local_latents: list | set = RESIDUE_NAMES_SUPPORTING_LOCAL_LATENTS,
+    residue_names_supporting_local_latents: list | set | None = None,
     path_length_search_cutoff: int | None = None,
     # Loss weighting
     loss_weight_cfg: dict[str, float] | None = None,

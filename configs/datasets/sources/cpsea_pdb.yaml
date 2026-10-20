@@ -1,0 +1,17 @@
+# Annotated cyclic peptide complexes, sampled uniformly without metadata filters.
+defaults:
+  - backend_blob
+  - _self_
+
+name: cpsea_pdb
+data: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/metadata.parquet
+
+columns_to_load:
+  - example_id
+  - n_standard_amino_acid_residues
+  - n_other_heavy_atoms
+
+loader:
+  blob_dir: ${oc.env:DATASET_STORE_ROOT,s3://YOUR_DATASET_STORE}/train_datasets/streaming-latest/pdb/2026_09_27_cpsea_pdb/blob
+  parser_args:
+    _target_: rfproteina.utils.parse_presets.annotated_cif

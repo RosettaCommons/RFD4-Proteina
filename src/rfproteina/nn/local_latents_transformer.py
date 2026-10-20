@@ -4,13 +4,16 @@ from collections.abc import Sequence
 import torch
 from torch.utils.checkpoint import checkpoint
 
+from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.model_masks import compute_flow_emit_masks
-from rfproteina.nn.feature_factory import FeatureFactory
+from rfproteina.nn.execution import run_trunk
+from rfproteina.nn.feature_factory import RECYCLE_GRAD_DEPTHS, FeatureFactory
 from rfproteina.nn.modules.attn_n_transition import MultiheadAttnAndTransition
 from rfproteina.nn.modules.norm import make_norm, set_norm_type
 from rfproteina.nn.modules.pair_rep_initial import PairReprBuilder
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
+from rfproteina.utils.torch import raise_dynamo_cache_for
 from rfproteina.utils.torch_compile import report_compile_progress, torch_compile_kwargs
 
 CHECKPOINT_LEVELS = {
@@ -36,6 +39,11 @@ class LocalLatentsTransformer(torch.nn.Module):
     """
     Encoder part of the autoencoder. A transformer with pair-biased attention.
     """
+
+    #: Settings of this module's config that may change after training without touching the weights.
+    #: ``rfd4-generate`` accepts exactly these as ``nn.<key>`` overrides; any other key would change
+    #: the architecture and break strict weight loading.
+    RUNTIME_OPTIONS = ("torch_compile_mode", "torch_compile_fullgraph", "tri_mult_backend", "attention_type")
 
     def __init__(self, **kwargs):
         """
@@ -68,7 +76,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         )
 
         # To get conditioning variables
-        self.condition_on_recycle_index = "recycle_index" in (kwargs["feats_cond_seq"] or [])
+        self.condition_on_recycle_remaining = "recycle_remaining" in (kwargs["feats_cond_seq"] or [])
         self.cond_factory = FeatureFactory(
             feats=kwargs["feats_cond_seq"],
             dim_feats_out=kwargs["dim_cond"],
@@ -130,7 +138,7 @@ class LocalLatentsTransformer(torch.nn.Module):
                             # TODO: Remove fallback to sum when checkpoint is updated
                             pair_write=kwargs.get("pair_write", "sum"),
                             checkpoint_tri_mult=self.checkpoint_pair_update,
-                            tri_mult_backend=kwargs.get("tri_mult_backend", "torch"),
+                            tri_mult_backend=kwargs.get("tri_mult_backend", "cuequivariance"),
                         )
                         if i % self.update_pair_repr_every_n == 0
                         else None
@@ -143,10 +151,13 @@ class LocalLatentsTransformer(torch.nn.Module):
         recycle_cfg = kwargs.get("recycle", {}) or {}
         self.recycle_enabled = bool(recycle_cfg.get("enabled", False))
         self.recycle_grad = recycle_cfg.get("grad", "last")
+        self.recycle_condition_probability = float(recycle_cfg.get("condition_probability", 0.5))
+        if not 0 <= self.recycle_condition_probability <= 1:
+            raise ValueError("nn.recycle.condition_probability must be between 0 and 1")
 
         if self.recycle_enabled:
             # Validate recycle backpropagation settings
-            if self.recycle_grad not in ("last", "last2", "all"):
+            if self.recycle_grad != "all" and self.recycle_grad not in RECYCLE_GRAD_DEPTHS:
                 raise ValueError(f"nn.recycle.grad must be one of last|last2|all, got {self.recycle_grad!r}")
 
             self.s_cycle_norm = make_norm(self.token_dim)
@@ -175,7 +186,7 @@ class LocalLatentsTransformer(torch.nn.Module):
                 make_norm(self.token_dim),
                 torch.nn.Linear(
                     self.token_dim,
-                    sequence_readout_cfg.get("num_classes", 33),
+                    sequence_readout_cfg.get("num_classes", UNIFIED_ATOM37_ENCODING.n_tokens),
                     bias=False,
                 ),
             )
@@ -196,8 +207,6 @@ class LocalLatentsTransformer(torch.nn.Module):
         # Compile only on shapes we know are fixed/bucketed (to avoid recompilation/thrashing)
         self._shapes_reserved = False
         self._compile_kwargs = torch_compile_kwargs(kwargs, default_fullgraph=True)
-        if self.use_torch_compile:
-            self._setup_compiled_trunk()
 
     def _setup_compiled_trunk(self) -> None:
         """Compile each trunk block into off-tree lists; the trunk loop stays eager."""
@@ -224,8 +233,14 @@ class LocalLatentsTransformer(torch.nn.Module):
         # Reserve the cache for the given lengths, so eval can compile them without thrashing the training shapes
         self._shapes_reserved = True
         n_shapes = 2 * len(lengths) + 2  # one graph per bucket per grad-mode, plus the short final batch
-        torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, n_shapes)
+        raise_dynamo_cache_for(n_shapes)
         logger.info(f"Reserved dynamo cache for {len(lengths)} length buckets ({n_shapes} shapes).")
+
+    def train(self, mode: bool = True) -> "LocalLatentsTransformer":
+        """Discard inference copies when returning to native training."""
+        if mode:
+            self.__dict__.pop("_execution", None)
+        return super().train(mode)
 
     def forward(self, input: dict) -> dict[str, dict[str, torch.Tensor]]:
         """Runs the network.
@@ -273,7 +288,7 @@ class LocalLatentsTransformer(torch.nn.Module):
         seq_mask = input["padding_mask"]  # [b, n] boolean, True = valid token
 
         # Conditioning variables
-        c = self.cond_factory({**input, "recycle_index": 1})  # [b, n, dim_cond]
+        c = self.cond_factory({**input, "recycle_remaining": None})  # [b, n, dim_cond]
         c = self.transition_c_2(self.transition_c_1(c, seq_mask), seq_mask)  # [b, n, dim_cond]
 
         # Initial sequence representation from features
@@ -335,6 +350,10 @@ class LocalLatentsTransformer(torch.nn.Module):
         Runs compiled if the model has compiled blocks and the pass is over
         a fixed shape (training or reserved eval buckets); otherwise, runs the registered eager layers.
         """
+        if getattr(self, "_execution", None) is not None:
+            return run_trunk(self, s, z, c, seq_mask)
+        if self.use_torch_compile and self.training and not self._trunk_compiled:
+            self._setup_compiled_trunk()
         use_compiled = bool(self._compiled_attn_blocks) and (self.training or self._shapes_reserved)
         attn = self._compiled_attn_blocks if use_compiled else self.transformer_layers
 
@@ -362,8 +381,9 @@ class LocalLatentsTransformer(torch.nn.Module):
         """Run the configured number of trunk cycles.
 
         Each cycle reads the previous single and pair states through zero-initialized
-        projections. Optional recycle-index conditioning uses one-based pass numbers
-        in the trunk's adaptive norms. ``recycle_grad`` selects the gradient-bearing cycles.
+        projections. Remaining-pass conditioning is absent on the first pass, and
+        supplied for all later passes together with ``recycle_condition_probability``
+        during training. ``recycle_grad`` sets gradient depth independently of conditioning width.
         """
         # (Routes to either eager or compiled trunk blocks, depending
         # on the model's compilation state and the input shape.)
@@ -373,7 +393,14 @@ class LocalLatentsTransformer(torch.nn.Module):
             return trunk(s_init, z_init, c, seq_mask)
 
         n_recycle = max(1, int(input.get("n_recycle", 1)))
-        grad_k = {"last": 1, "last2": 2, "all": n_recycle}[self.recycle_grad]
+        grad_k = n_recycle if self.recycle_grad == "all" else RECYCLE_GRAD_DEPTHS[self.recycle_grad]
+        condition_remaining = self.condition_on_recycle_remaining and n_recycle > 1
+        if condition_remaining:
+            condition_remaining = (
+                bool(torch.rand(()) < self.recycle_condition_probability)
+                if self.training
+                else input.get("condition_on_recycle_remaining", True)
+            )
 
         # Keep both projections in the graph for every recycle depth.
         s, z = torch.zeros_like(s_init), torch.zeros_like(z_init)
@@ -384,8 +411,8 @@ class LocalLatentsTransformer(torch.nn.Module):
 
             grad_on = torch.is_grad_enabled() and cycle >= n_recycle - grad_k
             with torch.set_grad_enabled(grad_on):
-                if self.condition_on_recycle_index and cycle > 0:
-                    c = self.cond_factory({**input, "recycle_index": cycle + 1})
+                if cycle > 0 and condition_remaining:
+                    c = self.cond_factory({**input, "recycle_remaining": n_recycle - cycle - 1})
                     c = self.transition_c_2(self.transition_c_1(c, seq_mask), seq_mask)
                 if grad_on and self.recycle_checkpoint:
                     s, z = checkpoint(trunk, s_in, z_in, c, seq_mask, use_reentrant=False)

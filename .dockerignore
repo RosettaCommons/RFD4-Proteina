@@ -1,7 +1,29 @@
-# This dependency image only COPYs these two manifests. Before this file was
-# added, Docker sent the entire repository as build context.
+# Two images are built from this repository and this file must serve both:
+#   Dockerfile                      the public application image; installs from PyPI only,
+#                                   needs the project source, configs and benchmark inputs.
 **
 !pyproject.toml
+!README.md
+!LICENSE
+!.project-root
+!src/
+!src/**
 !lib/
+!lib/gearnet/
+!lib/gearnet/**
+# Internal image only; harmless in the public build, which never COPYs it.
 !lib/atomworks/
 !lib/atomworks/pyproject.toml
+!lib/atomworks/README.md
+!lib/atomworks/LICENSE.md
+!lib/atomworks/src/
+!lib/atomworks/src/**
+!configs/
+!configs/**
+!data/
+!data/cath_label_mapping.pkl
+!data/benchmarks/
+!data/benchmarks/**
+**/__pycache__
+**/*.pyc
+**/.DS_Store

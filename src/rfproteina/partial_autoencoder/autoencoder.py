@@ -3,22 +3,19 @@ import os
 from typing import Literal
 
 import lightning as L
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import wandb
-from jaxtyping import Bool, Float, Int
+from atomworks.constants import STANDARD_AA, STANDARD_DNA, STANDARD_RNA
+from atomworks.ml.conditions import C_SEQ
+from jaxtyping import Bool, Float
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
-from sklearn.decomposition import PCA
 from torch import Tensor
+from torch.utils.data import DistributedSampler
 
+from rfproteina.encoding import GLYCAN_NAMES, NCAA_NAMES, UNIFIED_ATOM37_ENCODING
 from rfproteina.model_masks import compute_ae_supervision_mask
 from rfproteina.partial_autoencoder.decoder import DecoderTransformer
 from rfproteina.partial_autoencoder.encoder import EncoderTransformer
-from rfproteina.partial_autoencoder.latent_viz_utils import (
-    plot_latent_projection_with_labels,
-    project_latents_2d,
-)
 from rfproteina.utils.atom_permutation import permute_gt_atom37
 from rfproteina.utils.coors import nm_to_ang
 from rfproteina.utils.ddp import RankedLogger
@@ -30,6 +27,54 @@ from rfproteina.utils.structure_export import (
 )
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+VALIDATION_RESIDUE_GROUPS = {
+    "aa": tuple(STANDARD_AA),
+    "ncaa": NCAA_NAMES,
+    "glycan": GLYCAN_NAMES,
+    "dna": tuple(STANDARD_DNA),
+    "rna": tuple(STANDARD_RNA),
+}
+
+_RESIDUE_GROUP_IDS = tuple(
+    next(
+        (i for i, residues in enumerate(VALIDATION_RESIDUE_GROUPS.values()) if name in residues),
+        len(VALIDATION_RESIDUE_GROUPS),
+    )
+    for name in UNIFIED_ATOM37_ENCODING.tokens
+)
+
+
+def blended_token_weights(
+    residue_type: Tensor, mask: Bool[Tensor, "b n"], balanced_fraction: float = 0.25
+) -> Float[Tensor, "b n"]:
+    """Blend token and equal-group averages per example, leaving atomized tokens unweighted."""
+    if not 0 <= balanced_fraction <= 1:
+        raise ValueError("loss.balanced_fraction must be between 0 and 1")
+    residue_mask = mask & (residue_type != UNIFIED_ATOM37_ENCODING.token_to_idx["<A>"])
+    groups = torch.tensor(_RESIDUE_GROUP_IDS, device=mask.device)[residue_type.long()]
+    counts = torch.zeros(mask.shape[0], len(VALIDATION_RESIDUE_GROUPS) + 1, device=mask.device)
+    counts.scatter_add_(1, groups, residue_mask.float())
+    weights = residue_mask / counts.gather(1, groups).clamp(min=1)
+    weights = weights * residue_mask.sum(-1, keepdim=True) / weights.sum(-1, keepdim=True).clamp(min=1)
+    return torch.where(residue_mask, 1 - balanced_fraction + balanced_fraction * weights, 1.0) * mask
+
+
+def optimization_loss(metrics: dict[str, Tensor], structure_type: str) -> Tensor:
+    """Sum weighted objective terms, excluding reconstruction diagnostics."""
+    structure_keys = {"l1": ("struct_l1",), "l2": ("struct_l2",), "l12": ("struct_l1", "struct_l2")}
+    if structure_type not in structure_keys:
+        raise ValueError(f"Unknown structure loss type: {structure_type}")
+    keys = ("kl_w", "ce_seq", "atom_presence_bce") + structure_keys[structure_type]
+    return sum(metrics[key].mean() for key in keys)
+
+
+def optimization_loss(metrics: dict[str, Tensor], structure_type: str) -> Tensor:
+    """Sum weighted KL, sequence, and configured structure terms, excluding diagnostics."""
+    structure_keys = {"l1": ("struct_l1",), "l2": ("struct_l2",), "l12": ("struct_l1", "struct_l2")}
+    if structure_type not in structure_keys:
+        raise ValueError(f"Unknown structure loss type: {structure_type}")
+    return sum(metrics[key].mean() for key in ("kl_w", "ce_seq", *structure_keys[structure_type]))
 
 
 @rank_zero_only
@@ -49,17 +94,17 @@ class AutoEncoder(L.LightningModule):
         create_dir(self.val_path_tmp)
 
         n_residue_types = self.cfg_ae.nn_ae.get("n_residue_types")
-        if n_residue_types != 33:
-            raise ValueError(f"Autoencoder requires the 33-class unified residue encoding, got {n_residue_types}")
+        if n_residue_types != UNIFIED_ATOM37_ENCODING.n_tokens:
+            raise ValueError(
+                f"AE vocabulary requires {UNIFIED_ATOM37_ENCODING.n_tokens} classes, " f"got {n_residue_types}"
+            )
 
         self.encoder = EncoderTransformer(**self.cfg_ae.nn_ae)
         self.decoder = DecoderTransformer(**self.cfg_ae.nn_ae)
-
         self.nsamples_processed = 0
         self.nparams_enc = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
         self.nparams_dec = sum(p.numel() for p in self.decoder.parameters() if p.requires_grad)
 
-        self.validation_output = []
         self.validation_data_samples = []
         self.validation_rec_samples = []
 
@@ -100,21 +145,7 @@ class AutoEncoder(L.LightningModule):
         """
         return self.encoder(batch)  # z_latent, mean, log_scale
 
-    @staticmethod
-    def _emitted_atom_mask(batch: dict, output_dec: dict) -> Bool[torch.Tensor, "b n 37"]:
-        """Intersect the decoder's atom mask with the input one, so emitted atoms are real.
-
-        The decoder's mask is the idealized atom set for the residue type it predicted, so it
-        re-emits atoms the real residue lacks -- an isopeptide-bonded ASP gave up OD2, and the loss
-        masks that slot out, leaving whatever sat there unconstrained. Generation has no input mask
-        (identity is what is being predicted) and is left alone.
-        """
-        atom_mask = output_dec["atom_mask"]  # [b, n, 37]
-        if "atom37_mask" not in batch:
-            return atom_mask
-        return atom_mask * batch["atom37_mask"].to(atom_mask.dtype)
-
-    def decode(self, batch: dict) -> dict:
+    def decode(self, batch: dict, required_atom_mask: Bool[Tensor, "b n 37"] | None = None) -> dict:
         """
         Runs the decoder on the regular batch and returns decoding information.
 
@@ -124,14 +155,25 @@ class AutoEncoder(L.LightningModule):
         ``token_type`` is optional.
 
         Checkpoints with an ``attend_to_*`` flag require the corresponding conditioning feature.
+        ``required_atom_mask`` retains required legal slots with their predicted coordinates.
         """
         output_dec = self.decoder(batch)
         emit_mask = output_dec["emit_mask"]  # [b, n]
-        atom_mask = output_dec["atom_mask"]  # [b, n, 37]
+        residue_type = output_dec["aatype_max"]
+        if C_SEQ.full_name in batch:
+            sequence = batch[C_SEQ.full_name]
+            conditioned = (sequence != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]) & emit_mask
+            residue_type = torch.where(conditioned, sequence, residue_type)
+        legal_slots = self.decoder.residue_atom_mask[residue_type]
+        predicted_mask = output_dec["atom_presence_logits"] > 0
+        predicted_mask[..., 1] = True
+        if required_atom_mask is not None:
+            predicted_mask = predicted_mask | required_atom_mask
+        atom_mask = legal_slots & predicted_mask & emit_mask[..., None]
         coors_nm = output_dec["coors_nm"] * emit_mask[..., None, None] * atom_mask[..., None]  # [b, n, 37, 3]
         return {
             "coors_nm": coors_nm,
-            "residue_type": output_dec["aatype_max"] * emit_mask,
+            "residue_type": residue_type * emit_mask,
             "emit_mask": emit_mask,
             "atom_mask": atom_mask,
         }
@@ -149,8 +191,6 @@ class AutoEncoder(L.LightningModule):
         val_step = batch_idx == -1  # validation step is indicated with batch_idx -1
         log_prefix = "validation_loss" if val_step else "train"
         histogram_every_n = 5000
-        pca_every_n = self.cfg_ae.get("log", {}).get("projection_every_n", 5000)
-        per_aatype_kl = True
         batch = {**batch}
         batch["coord_mask"] = batch["atom37_mask"]
         coords_nm = batch["coords"] / 10.0  # Convert Angstroms to nanometers
@@ -160,11 +200,6 @@ class AutoEncoder(L.LightningModule):
 
         output_enc = self.encoder(batch)
         loss_mask = compute_ae_supervision_mask(batch)
-        # {
-        #   "z_latent": latent_sample, shape [b, n, d]
-        #   "mean": mean of latent (diag) Gaussian dist, shape [b, n, d]
-        #   "log_scale": log standard deviation of latent (diag) Gaussian dist, shape [b, n, d]
-        # }
         log_prefix_stats = "train_stats_latent" if "train" in log_prefix else "val_stats_latent"
         self.log_tensor_statistics(
             bs=bs,
@@ -187,50 +222,15 @@ class AutoEncoder(L.LightningModule):
             mask=loss_mask,
             histogram_every_n=histogram_every_n,
         )
-        self.log_pca(
-            v=output_enc["z_latent"],
-            log_prefix=log_prefix_stats + "_z_PCA",
-            mask=loss_mask,
-            every_n=pca_every_n,
-        )
-        self.log_pca_per_residue_type(
-            v=output_enc["z_latent"],
-            log_prefix=log_prefix_stats + "_z_PCA_pre_aatype",
-            mask=loss_mask,
-            every_n=pca_every_n,
-            res_ty=batch["residue_type"],
-        )
-
-        # t-SNE projection colored by residue type (configurable method)
-        projection_method = self.cfg_ae.get("log", {}).get("projection_method", "tsne")
-        projection_max_samples = self.cfg_ae.get("log", {}).get("projection_max_samples", 5000)
-        if projection_method and projection_method != "pca":  # PCA already logged above
-            self.log_projection_per_residue_type(
-                v=output_enc["z_latent"],
-                log_prefix=log_prefix_stats + f"_z_{projection_method.upper()}_by_aatype",
-                mask=loss_mask,
-                every_n=pca_every_n,
-                res_ty=batch["residue_type"],
-                method=projection_method,
-                max_samples=projection_max_samples,
-            )
-
         # Decode from the same batch (augmented with the latents + CA); the decoder derives
         # its masks from the batch and returns `emit_mask`, which drives the losses.
         batch["z_latent"] = output_enc["z_latent"]
         batch["ca_coors_nm"] = ca_coors_nm
         output_dec = self.decoder(batch)
-        # Emit only atoms the input residue actually had.
-        output_dec["atom_mask"] = self._emitted_atom_mask(batch, output_dec)
-        # {
-        #   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-        #   "seq_logits": logits for the residue types, shape [b, n, 33]
-        #   "emit_mask": boolean [b, n]  (tokens we trust; drives the losses)
-        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 32}
-        #   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
-        # }
 
-        losses = {}  # Will be a Dict[str, tensor[b]]. If "_justlog" in name just for logging
+        losses = {}
+        log_every_n = self.trainer.log_every_n_steps
+        token_metrics = {} if not val_step and log_every_n > 0 and self.global_step % log_every_n == 0 else None
 
         # KL loss with annealing weight
         f = min(1.0, self.global_step / self.cfg_ae.loss.kl.patience) if self.cfg_ae.loss.kl.anneal else 1.0
@@ -241,8 +241,7 @@ class AutoEncoder(L.LightningModule):
             on_epoch=False,
             prog_bar=False,
             logger=True,
-            sync_dist=True,
-            add_dataloader_idx=False,
+            sync_dist=False,
         )
         losses.update(
             self.compute_kl_penalty(
@@ -250,8 +249,13 @@ class AutoEncoder(L.LightningModule):
                 log_scale=output_enc["log_scale"],
                 mask=loss_mask,
                 w=self.cfg_ae.loss.kl.weight * f,
+                token_metrics=token_metrics,
             )
         )
+
+        token_weights = None if val_step else batch.get("loss_weight")
+        if not val_step and self.cfg_ae.loss.get("balanced_fraction", 0):
+            token_weights = blended_token_weights(batch["residue_type"], loss_mask, self.cfg_ae.loss.balanced_fraction)
 
         # Structure loss
         losses.update(
@@ -264,6 +268,8 @@ class AutoEncoder(L.LightningModule):
                 weight=self.cfg_ae.loss.struct.weight,
                 atom_permutation=self.cfg_ae.loss.struct.get("atom_permutation", False),
                 atom_permutation_align=self.cfg_ae.loss.struct.get("atom_permutation_align", False),
+                token_weights=token_weights,
+                token_metrics=token_metrics,
             )
         )
 
@@ -274,12 +280,26 @@ class AutoEncoder(L.LightningModule):
                 batch=batch,
                 loss_mask=loss_mask,
                 weight=self.cfg_ae.loss.seq.weight,
+                token_weights=token_weights,
+                token_metrics=token_metrics,
             )
         )
 
-        # Log losses and training loss, losses with "_justlog" just for logging purposes
+        losses.update(
+            self.compute_atom_presence_loss(
+                output_dec=output_dec,
+                batch=batch,
+                loss_mask=loss_mask,
+                weight=self.cfg_ae.loss.atom_presence.weight,
+                token_weights=token_weights,
+                token_metrics=token_metrics,
+            )
+        )
+
         self.log_losses(bs, losses, log_prefix)
-        train_loss = sum([torch.mean(losses[k]) for k in losses if "_justlog" not in k])
+        train_loss = optimization_loss(losses, self.cfg_ae.loss.struct.type)
+        if token_metrics is not None:
+            self.log_token_type_metrics(batch, loss_mask, token_metrics)
 
         self.log(
             f"{log_prefix}/loss",
@@ -289,8 +309,7 @@ class AutoEncoder(L.LightningModule):
             prog_bar=False,
             logger=True,
             batch_size=bs,
-            sync_dist=True,
-            add_dataloader_idx=False,
+            sync_dist=False,
         )
 
         if not val_step:  # Don't log these for val step
@@ -316,7 +335,7 @@ class AutoEncoder(L.LightningModule):
                 stats_to_log=["mean"],
             )
             # KL per aa type
-            if per_aatype_kl and self.global_step % histogram_every_n == 2000:
+            if self.global_step % histogram_every_n == 2000:
                 # Get number of residue types from decoder output
                 n_residue_types = self.decoder.logit_linear[-1].out_features
                 for i in range(n_residue_types):
@@ -373,6 +392,8 @@ class AutoEncoder(L.LightningModule):
         weight: float = 1.0,
         atom_permutation_align: bool = False,
         atom_permutation: bool = False,
+        token_weights: Float[Tensor, "b n"] | None = None,
+        token_metrics: dict[str, Tensor] | None = None,
     ) -> dict[str, Float[Tensor, "b"]]:
         """
         Computes structural loss.
@@ -381,19 +402,18 @@ class AutoEncoder(L.LightningModule):
             output_dec:
                 {
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-                  "seq_logits": logits for the residue types, shape [b, n, 33]
+                  "seq_logits": logits for the residue types, shape [b, n, n_residue_types]
                   "emit_mask": boolean [b, n]
-                  "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                      with integer values {0, ..., 32}
-                  "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
+                  "aatype_max": residue type by taking the most likely logit, shape [b, n]
+                  "atom_mask": boolean [b, n, 37], predicted atom-presence mask
                 }
             batch: data batch from dataloader
             reduce_mode: whether to apply mean over atoms or just sum, when reducing accross 37 atoms types
             loss_ty: whether to apply l1 loss, l2 loss, or both, l2cut (ignore atoms close to each other, to expand)
-
+            token_weights: Optional reconstruction multipliers; normalization remains the supervised token count.
+            token_metrics: Optional output dictionary for detached per-token diagnostics.
         Returns:
-            Dictionary [str, tensor[b]] with multiple per batch element losses. If the key has "_justlog" then this loss
-            will not be used to compute the total loss, but will just be logged.
+            Per-example weighted losses and diagnostics. Objective terms are selected by optimization_loss.
         """
 
         def reduce_37(
@@ -409,6 +429,8 @@ class AutoEncoder(L.LightningModule):
             err = torch.sum(err, dim=(-1, -2))  # [b, n]
             if mode == "mean":
                 err = err / nat  # Take mean over existing atoms if mode == "mean"
+            if token_weights is not None:
+                err = err * token_weights
             err = err.sum(dim=-1) / nres  # [b]
             return err
 
@@ -451,22 +473,25 @@ class AutoEncoder(L.LightningModule):
         # this reports an RMSD of 0 rather than a NaN that would poison any average over it.
         nat = atom_mask_true.sum((-1, -2)).clamp(min=1)  # [b]
         rmsd = torch.sqrt(torch.sum(err_ang, dim=(-1, -2)) / nat)  # [b]
-        losses["rmsd_no_align_a37_ang_justlog"] = rmsd
+        losses["rmsd_no_align_a37_ang"] = rmsd
 
-        err_l1 = reduce_37(torch.abs(err), mask, atom_mask_true, mode=reduce_mode)  # L1 loss
-        err_l2 = reduce_37(err**2, mask, atom_mask_true, mode=reduce_mode)  # L2 loss
+        err_l1 = reduce_37(torch.abs(err), mask, atom_mask_true, mode=reduce_mode)
+        err_l2 = reduce_37(err**2, mask, atom_mask_true, mode=reduce_mode)
+        if token_metrics is not None:
+            token_metrics["atom_count"] = atom_mask_true.sum(-1).detach()
+            token_metrics["squared_error_ang"] = err_ang.sum(-1).detach()
+            for name, error in (("struct_l1", err.abs()), ("struct_l2", err.square())):
+                values = error.sum((-1, -2)).detach()
+                if reduce_mode == "mean":
+                    values = values / atom_mask_true.sum(-1).clamp(min=1)
+                if token_weights is not None:
+                    values = values * token_weights.detach()
+                token_metrics[name] = values * weight
 
-        if loss_ty == "l1":
-            losses["struct_l1"] = err_l1 * weight
-            losses["struct_l2_justlog"] = err_l2 * weight
-        elif loss_ty == "l2":
-            losses["struct_l1_justlog"] = err_l1 * weight
-            losses["struct_l2"] = err_l2 * weight
-        elif loss_ty == "l12":
-            losses["struct_l1"] = err_l1 * weight
-            losses["struct_l2"] = err_l2 * weight
-        else:
+        if loss_ty not in {"l1", "l2", "l12"}:
             raise OSError(f"Loss type {loss_ty} not recognized")
+        losses["struct_l1"] = err_l1 * weight
+        losses["struct_l2"] = err_l2 * weight
         return losses
 
     def compute_seq_rec_loss(
@@ -475,6 +500,8 @@ class AutoEncoder(L.LightningModule):
         batch: dict[str, torch.Tensor],
         loss_mask: Bool[Tensor, "b n"],
         weight: float = 1.0,
+        token_weights: Float[Tensor, "b n"] | None = None,
+        token_metrics: dict[str, Tensor] | None = None,
     ) -> dict[str, Float[Tensor, "b"]]:
         """
         Computes cross entropy loss on predicted sequence.
@@ -483,17 +510,17 @@ class AutoEncoder(L.LightningModule):
             output_dec:
                 {
                   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-                  "seq_logits": logits for the residue types, shape [b, n, 33]
+                  "seq_logits": logits for the residue types, shape [b, n, n_residue_types]
                   "emit_mask": boolean [b, n]
-                  "aatype_max": residue type by taking the most likely logit, shape [b, n],
-                      with integer values {0, ..., 32}
-                  "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
+                  "aatype_max": residue type by taking the most likely logit, shape [b, n]
+                  "atom_mask": boolean [b, n, 37], predicted atom-presence mask
                 }
             batch: data batch from dataloader
+            token_weights: Optional reconstruction multipliers; recovery metrics remain unweighted.
+            token_metrics: Optional output dictionary for detached per-token diagnostics.
 
         Returns:
-            Dictionary [str, tensor[b]] with multiple per batch element losses. If the key has "_justlog" then this loss
-            will not be used to compute the total loss, but will just be logged.
+            Per-example weighted losses and diagnostics. Objective terms are selected by optimization_loss.
         """
         assert "residue_type" in batch, "`residue_type` not in batch, failed in compute_seq_rec_loss"
         # See compute_struct_rec_loss: supervision is `loss_mask`, not `emit_mask`.
@@ -506,7 +533,9 @@ class AutoEncoder(L.LightningModule):
         target_aa = target_aa * mask  # [b, n] gets rid of -1 for padding (issue with cross entropy loss below)
 
         n_residue_types = logits_pred.shape[-1]
-        assert n_residue_types == 33, f"Expected 33 residue types, got {n_residue_types}"
+        assert (
+            n_residue_types == UNIFIED_ATOM37_ENCODING.n_tokens
+        ), f"Expected {UNIFIED_ATOM37_ENCODING.n_tokens} residue types, got {n_residue_types}"
 
         # Compute cross entropy
         b, n = mask.shape[0], mask.shape[1]
@@ -518,6 +547,12 @@ class AutoEncoder(L.LightningModule):
             reduction="none",
         )  # [b * n]
         seq_loss = seq_loss_flat.view(b, n)  # [b, n]
+        if token_weights is not None:
+            seq_loss = seq_loss * token_weights
+        if token_metrics is not None:
+            token_metrics["ce_seq_before_loss_weight"] = seq_loss.detach()
+            token_metrics["ce_seq"] = seq_loss.detach() * weight
+            token_metrics["seq_rec_rate"] = (output_dec["aatype_max"] == target_aa).float().detach()
         seq_loss = seq_loss * mask  # [b, n]
         seq_loss = torch.sum(seq_loss, dim=-1) / nres  # [b]
 
@@ -528,9 +563,35 @@ class AutoEncoder(L.LightningModule):
         seq_rec_rate = seq_rec.sum(dim=-1) / nres  # [b]
         return {
             "ce_seq": seq_loss * weight,
-            "ce_seq_now": seq_loss,
-            "seq_rec_rate_justlog": seq_rec_rate,
+            "ce_seq_before_loss_weight": seq_loss,
+            "seq_rec_rate": seq_rec_rate,
         }
+
+    def compute_atom_presence_loss(
+        self,
+        output_dec: dict[str, Tensor],
+        batch: dict[str, Tensor],
+        loss_mask: Bool[Tensor, "b n"],
+        weight: float,
+        token_weights: Tensor | None = None,
+        token_metrics: dict[str, Tensor] | None = None,
+    ) -> dict[str, Tensor]:
+        """Supervise input atom inventory on resolved tokens, averaged over legal slots.
+
+        Coordinate supervision remains independently masked by ground-truth presence.
+        """
+        logits = output_dec["atom_presence_logits"]
+        slots = self.decoder.residue_atom_mask[batch["residue_type"].long()] & loss_mask[..., None]
+        bce = torch.nn.functional.binary_cross_entropy_with_logits(
+            logits, batch["atom37_mask"].to(logits.dtype), reduction="none"
+        )
+        per_token = (bce * slots).sum(-1) / slots.sum(-1).clamp(min=1)
+        per_token = per_token * weight
+        if token_weights is not None:
+            per_token = per_token * token_weights
+        if token_metrics is not None:
+            token_metrics["atom_presence_bce"] = per_token.detach()
+        return {"atom_presence_bce": per_token.sum(-1) / loss_mask.sum(-1).clamp(min=1)}
 
     def _per_component_kl(
         self,
@@ -553,10 +614,9 @@ class AutoEncoder(L.LightningModule):
         log_scale: Float[Tensor, "b n d"],
         mask: Bool[Tensor, "b n"],
         w: float,
+        token_metrics: dict[str, Tensor] | None = None,
     ) -> dict[str, Float[Tensor, "b"]]:
-        """
-        Computes KL penalty on the latent Gaussian distribution.
-        """
+        """Compute the KL penalty on the latent Gaussian distribution."""
         # clamp(min=1): a batch element with no supervised tokens has a zero masked KL
         # numerator, so this keeps its penalty at 0 instead of dividing 0 by 0.
         nres = torch.sum(mask, dim=-1).clamp(min=1)  # [b]
@@ -565,13 +625,47 @@ class AutoEncoder(L.LightningModule):
             log_scale=log_scale,
             mask=mask,
         )  # [b, n, d]
+        if token_metrics is not None:
+            token_metrics["kl_now"] = kl_div.detach().sum(-1)
+            token_metrics["kl_w"] = token_metrics["kl_now"] * w
         kl_div = torch.sum(kl_div, dim=(-1, -2))  # [b]
         kl_div = kl_div / nres  # [b]
         loss = {
             "kl_w": kl_div * w,
-            "kl_now_justlog": kl_div,
+            "kl_now": kl_div,
         }
         return loss
+
+    @torch.no_grad()
+    def log_token_type_metrics(
+        self,
+        batch: dict[str, Tensor],
+        mask: Bool[Tensor, "b n"],
+        metrics: dict[str, Tensor],
+    ) -> None:
+        """Log rank-local, token-averaged diagnostics for sampled training batches.
+
+        RMSD averages per-residue RMSDs in Angstroms; losses retain training weights.
+        Empty groups are omitted; sequence recovery and RMSD are unweighted.
+        """
+        groups = torch.tensor(_RESIDUE_GROUP_IDS, device=mask.device)[batch["residue_type"].long()]
+        for group_id, name in enumerate((*VALIDATION_RESIDUE_GROUPS, "other")):
+            selected = mask & (groups == group_id)
+            values = {key: value[selected] for key, value in metrics.items()}
+            if not values["seq_rec_rate"].numel():
+                continue
+            prefix = f"train_by_token_type/{name}"
+            scalars = {
+                key: value.mean() for key, value in values.items() if key not in {"atom_count", "squared_error_ang"}
+            }
+            occupied = values["atom_count"] > 0
+            residue_rmsds = (values["squared_error_ang"][occupied] / values["atom_count"][occupied]).sqrt()
+            if residue_rmsds.numel():
+                scalars["rmsd_no_align_a37_ang"] = residue_rmsds.mean()
+            scalars["token_count"] = selected.sum().float()
+            scalars["loss"] = optimization_loss(scalars, self.cfg_ae.loss.struct.type)
+            for key, value in scalars.items():
+                self.log(f"{prefix}/{key}", value, on_step=True, on_epoch=False, sync_dist=False)
 
     def log_tensor_statistics(
         self,
@@ -585,20 +679,19 @@ class AutoEncoder(L.LightningModule):
         histogram_every_n: int = 3000,
         stats_to_log: list[str] = ["max", "min", "mean", "median", "std"],
     ) -> None:
-        """
-        Logs tensor statistics: mean, median, max, min, std, ...
-
-        If res_type is not None, then it also logs histograms per residue type
-        """
-        vals = v.clone()[mask]  # [num of unmasked residues, d]
-        vals = torch.flatten(vals)  # 1D vector
+        """Log local statistics, every 50 training steps; omit empty supervision."""
+        if log_prefix.startswith("train") and self.global_step % 50:
+            return
+        vals = v.detach()[mask].flatten().float()
+        if not vals.numel():
+            return
         if do_stats:
             funs = {
                 "max": torch.max,
                 "min": torch.min,
                 "mean": torch.mean,
                 "median": torch.median,
-                "std": torch.std,
+                "std": lambda values: values.std() if values.numel() > 1 else values.new_zeros(()),
             }
             for k in stats_to_log:
                 self.log(
@@ -609,171 +702,23 @@ class AutoEncoder(L.LightningModule):
                     prog_bar=False,
                     logger=True,
                     batch_size=bs,
-                    sync_dist=True,
-                    add_dataloader_idx=False,
+                    sync_dist=False,
                 )
 
-        if self.global_step % histogram_every_n == 0 and do_hist:
+        if vals.numel() and histogram_every_n and self.global_step % histogram_every_n == 0 and do_hist:
             self.log_histogram(id_log=f"{log_prefix}/histogram{suffix}", v=vals)
-
-    def log_pca(
-        self,
-        v: Float[torch.Tensor, "b n d"],
-        log_prefix: str,
-        mask: Bool[torch.Tensor, "b n"],
-        every_n: int = 3000,
-    ) -> None:
-        """
-        Logs PCA components plot of latent variable z.
-        """
-
-        def _log_scatter(
-            vals_x: np.ndarray,
-            vals_y: np.ndarray,
-            xlabel: str,
-            ylabel: str,
-            log_id: str,
-        ) -> None:
-            fig, ax = plt.subplots()
-            ax.scatter(vals_x, vals_y)
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
-            ax.set_title(f"{xlabel} - {ylabel} - Step: {self.trainer.global_step}")
-            with contextlib.suppress(Exception):
-                self.logger.experiment.log({log_id: wandb.Image(fig)})
-            plt.close("all")
-
-        if self.global_step % every_n != 0:
-            return
-
-        n_components = 4
-        vals = v.clone()[mask].cpu().detach().float().numpy()  # [num of unmasked residues, d]
-        vals_pca = PCA(n_components=n_components).fit_transform(vals)  # [num of unmasked residues, n_components]
-
-        for i in range(n_components):
-            for j in range(n_components):
-                if j <= i:
-                    continue
-                _log_scatter(
-                    vals_x=vals_pca[:, i],
-                    vals_y=vals_pca[:, j],
-                    xlabel=f"PC {i}",
-                    ylabel=f"PC {j}",
-                    log_id=f"{log_prefix}/{i}_{j}",
-                )
-
-    def log_pca_per_residue_type(
-        self,
-        v: Float[torch.Tensor, "b n d"],
-        res_ty: Int[torch.Tensor, "b n"],
-        log_prefix: str,
-        mask: Bool[torch.Tensor, "b n"],
-        every_n: int = 3000,
-    ) -> None:
-        """Log PCA projection colored by residue type (wrapper for backward compatibility).
-
-        This method now delegates to log_projection_per_residue_type with method='pca'.
-        """
-        self.log_projection_per_residue_type(
-            v=v,
-            res_ty=res_ty,
-            log_prefix=log_prefix,
-            mask=mask,
-            every_n=every_n,
-            method="pca",
-        )
-
-    def log_projection_per_residue_type(
-        self,
-        v: Float[torch.Tensor, "b n d"],
-        res_ty: Int[torch.Tensor, "b n"],
-        log_prefix: str,
-        mask: Bool[torch.Tensor, "b n"],
-        every_n: int = 3000,
-        method: str = "tsne",
-        n_components: int = 2,
-        max_samples: int = 5000,
-    ) -> None:
-        """Log dimensionality reduction projection colored by residue type.
-
-        Uses shared visualization utilities for consistency with inference.
-        Args:
-          v: Latent vectors [batch, n_tokens, latent_dim].
-          res_ty: Residue type indices [batch, n_tokens].
-          log_prefix: Prefix for wandb logging.
-          mask: Valid token mask [batch, n_tokens].
-          every_n: Log every N steps.
-          method: Projection method ('tsne', 'pca', or 'lda').
-          n_components: Number of components (typically 2).
-          max_samples: Max tokens to project (subsample if needed).
-        """
-        if self.global_step % every_n != 0:
-            return
-
-        # Extract valid tokens
-        vals = v.clone()[mask].cpu().detach().float().numpy()  # [n_valid_tokens, latent_dim]
-        labels = res_ty.clone()[mask].cpu().detach().numpy()  # [n_valid_tokens]
-
-        if len(vals) == 0:
-            logger.warning(f"No valid tokens for {log_prefix}, skipping")
-            return
-
-        # Subsample if needed
-        if len(vals) > max_samples:
-            indices = np.random.choice(len(vals), size=max_samples, replace=False)
-            vals = vals[indices]
-            labels = labels[indices]
-
-        # Project to 2D using shared utility
-        projection = project_latents_2d(
-            latents=vals,
-            labels=labels,
-            method=method,
-            perplexity=30,
-            max_iter=1000,
-            random_state=42,
-        )
-
-        # Create plot using shared utility (with cluster labels!)
-        fig = plot_latent_projection_with_labels(
-            projection=projection,
-            labels=labels,
-            method=method.upper(),
-            title=f"Latent Space ({method.upper()}) - Step {self.trainer.global_step}",
-            figsize=(10, 8),
-            add_cluster_labels=True,  # ✅ Now adds cluster labels like inference!
-        )
-
-        # Log to wandb
-        with contextlib.suppress(Exception):
-            self.logger.experiment.log({log_prefix: wandb.Image(fig)})
-
-        # Optional: Save locally for debugging
-        save_local = self.cfg_ae.get("log", {}).get("save_projections_locally", False)
-        if save_local:
-            from pathlib import Path
-
-            save_dir = Path(self.cfg_ae.get("log", {}).get("local_projection_dir", "./latent_projections"))
-            save_dir.mkdir(exist_ok=True, parents=True)
-            save_path = save_dir / f"{log_prefix.replace('/', '_')}_step{self.trainer.global_step}.png"
-            plt.savefig(save_path, dpi=150, bbox_inches="tight")
-            logger.info(f"Saved projection plot to {save_path}")
-
-        plt.close("all")
 
     def log_losses(self, bs: int, losses: dict[str, Float[torch.Tensor, "b"]], log_prefix: str) -> None:
         for k in losses:
-            log_name = k[: -len("_justlog")] if k.endswith("_justlog") else k
             self.log(
-                f"{log_prefix}/loss_{log_name}",
+                f"{log_prefix}/loss_{k}",
                 torch.mean(losses[k]),
                 on_step=True,
                 on_epoch=True,
                 prog_bar=False,
                 logger=True,
                 batch_size=bs,
-                sync_dist=True,
-                add_dataloader_idx=False,
+                sync_dist=False,
             )
 
     def log_train_loss_n_prog_bar(self, b: int, train_loss: torch.Tensor) -> None:
@@ -785,8 +730,7 @@ class AutoEncoder(L.LightningModule):
             prog_bar=True,
             logger=True,
             batch_size=b,
-            sync_dist=True,
-            add_dataloader_idx=False,
+            sync_dist=False,
         )
 
     def log_nparams(self) -> None:
@@ -798,7 +742,7 @@ class AutoEncoder(L.LightningModule):
             prog_bar=False,
             logger=True,
             batch_size=1,
-            sync_dist=True,
+            sync_dist=False,
         )  # constant line but ok, easy to compare # params
 
         self.log(
@@ -809,7 +753,7 @@ class AutoEncoder(L.LightningModule):
             prog_bar=False,
             logger=True,
             batch_size=1,
-            sync_dist=True,
+            sync_dist=False,
         )  # constant line but ok, easy to compare # params
 
     def update_n_log_nsamples_processed(self, b: int) -> None:
@@ -822,47 +766,105 @@ class AutoEncoder(L.LightningModule):
             prog_bar=False,
             logger=True,
             batch_size=1,
-            sync_dist=True,
+            sync_dist=False,
         )
 
-    def validation_step(self, batch: dict, batch_idx: int) -> None:
-        """
-        Evalaute validation loss.
+    def on_validation_epoch_start(self) -> None:
+        """Initialize exact per-panel sums for residue-group reconstruction metrics."""
+        loaders = self.trainer.val_dataloaders
+        self._val_loaders = list(loaders) if isinstance(loaders, list | tuple) else [loaders]
+        self._val_panel_names = [name for name, config in self.cfg_ae.datasets.val.items() if config]
+        if len(self._val_panel_names) != len(self._val_loaders):
+            raise RuntimeError("Validation dataset names and dataloaders are misaligned")
 
-        Args:
-            batch: batch from dataset (see last argument)
-            batch_idx: batch index (unused)
-        """
+        self._val_residue_groups = torch.tensor(_RESIDUE_GROUP_IDS, device=self.device)[:, None] == torch.arange(
+            len(VALIDATION_RESIDUE_GROUPS), device=self.device
+        )
+        self._val_rmsd_totals = [
+            torch.zeros(len(VALIDATION_RESIDUE_GROUPS), 2, device=self.device, dtype=torch.float64)
+            for _ in self._val_loaders
+        ]
+
+    def _accumulate_validation_rmsd(
+        self, batch: dict, output_dec: dict[str, Tensor], batch_idx: int, dataloader_idx: int
+    ) -> None:
+        """Accumulate permutation-aware per-residue RMSD sums and residue counts by group."""
+        mask = compute_ae_supervision_mask(batch)
+        loader = self._val_loaders[dataloader_idx]
+        sampler = loader.sampler
+        if isinstance(sampler, DistributedSampler) and not sampler.drop_last:
+            positions = batch_idx * loader.batch_size + torch.arange(len(mask), device=mask.device)
+            mask = mask & ((positions * sampler.num_replicas + sampler.rank) < len(loader.dataset))[:, None]
+
+        atom_mask = batch["atom37_mask"].bool() & mask[..., None]
+        target_nm = batch["coords"] / 10.0
+        if self.cfg_ae.loss.struct.get("atom_permutation", False):
+            extra_info = batch.get("extra_info") or {}
+            target_nm = permute_gt_atom37(
+                output_dec["coors_nm"],
+                target_nm,
+                atom_mask,
+                extra_info.get("atom_automorphisms"),
+                extra_info.get("atom37_layout"),
+                align=self.cfg_ae.loss.struct.get("atom_permutation_align", False),
+            )
+
+        token_sse_nm2 = (((target_nm - output_dec["coors_nm"]) * atom_mask[..., None]) ** 2).sum((-1, -2))
+        token_atom_count = atom_mask.sum(-1)
+        residue_type = batch["residue_type"]
+        valid_residue_type = (residue_type >= 0) & (residue_type < len(self._val_residue_groups))
+        residue_type = residue_type.clamp(min=0, max=len(self._val_residue_groups) - 1)
+        groups = self._val_residue_groups[residue_type] & valid_residue_type[..., None] & mask[..., None]
+        groups = groups & (token_atom_count > 0)[..., None]
+        token_rmsd_nm = (token_sse_nm2 / token_atom_count.clamp(min=1)).sqrt()
+        numerators = groups.flatten(0, 1).double().T @ token_rmsd_nm.flatten().double()
+        denominators = groups.sum((0, 1)).double()
+        self._val_rmsd_totals[dataloader_idx] += torch.stack((numerators, denominators), dim=-1)
+
+    def validation_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> None:
+        """Compute reconstruction loss and collect reconstructions from each validation loader."""
         with torch.no_grad():
             # Convert to expected format (coords_nm will be set in training_step)
             bs = batch["coords"].shape[0]
-            loss, rec_sample = self.training_step(batch, batch_idx=-1)
-            self.validation_output.append(loss.item())
+            _, rec_sample = self.training_step(batch, batch_idx=-1)
+            self._accumulate_validation_rmsd(batch, rec_sample, batch_idx, dataloader_idx)
             coords_nm = batch["coords"] / 10.0  # Convert Angstroms to nanometers
             atom_array_batch = batch.get("atom_array_batch")
             for i in range(bs):
+                if len(self.validation_data_samples) >= 10:
+                    break
                 self.validation_data_samples.append(
                     {
-                        "coors_nm": coords_nm[i, ...],  # [n, 37, 3]
-                        "aatype": batch["residue_type"][i, ...],  # [n]
-                        "atom_mask": batch["atom37_mask"][i, ...],  # [n, 37]
-                        "padding_mask": batch["padding_mask"][i, :],  # [n]
+                        "coors_nm": coords_nm[i, ...].detach().cpu(),  # [n, 37, 3]
+                        "aatype": batch["residue_type"][i, ...].detach().cpu(),  # [n]
+                        "atom_mask": batch["atom37_mask"][i, ...].detach().cpu(),  # [n, 37]
+                        "padding_mask": batch["padding_mask"][i, :].detach().cpu(),  # [n]
                         "atom_array": atom_array_batch[i] if atom_array_batch is not None else None,
                     }
                 )
-                # NOTE: Use clone() below to avoid issues with in-place operations on tensors
-                # that are part of the computation graph
                 self.validation_rec_samples.append(
                     {
-                        "coors_nm": rec_sample["coors_nm"][i, ...].clone(),  # [n, 37, 3]
-                        "aatype": rec_sample["aatype_max"][i, ...].clone(),  # [n]
-                        "atom_mask": rec_sample["atom_mask"][i, ...].clone(),  # [n, 37]
-                        "emit_mask": rec_sample["emit_mask"][i, ...].clone(),  # [n]
+                        "coors_nm": rec_sample["coors_nm"][i, ...].detach().cpu(),  # [n, 37, 3]
+                        "aatype": rec_sample["aatype_max"][i, ...].detach().cpu(),  # [n]
+                        "atom_mask": rec_sample["atom_mask"][i, ...].detach().cpu(),  # [n, 37]
+                        "emit_mask": rec_sample["emit_mask"][i, ...].detach().cpu(),  # [n]
                     }
                 )
 
     def on_validation_epoch_end(self) -> None:
-        """Write validation structures as CIFs using the flow-model export path."""
+        """Log per-panel residue-group metrics and write representative reconstruction CIFs."""
+        totals_by_loader = [self.trainer.strategy.reduce(totals, reduce_op="sum") for totals in self._val_rmsd_totals]
+        for panel, totals in zip(self._val_panel_names, totals_by_loader, strict=True):
+            for group, row in zip(VALIDATION_RESIDUE_GROUPS, totals, strict=True):
+                if row[1] > 0:
+                    rmsd = 10 * row[0] / row[1]
+                    self.log(
+                        f"validation_rmsd/{panel}/{group}_ang",
+                        rmsd,
+                        add_dataloader_idx=False,
+                        sync_dist=False,
+                    )
+
         cif_suffix = ".cif.zst" if self.cfg_ae.get("compress_outputs", True) else ".cif"
         for count, (sample_data, sample_rec) in enumerate(
             zip(self.validation_data_samples, self.validation_rec_samples, strict=False), start=1
@@ -935,7 +937,6 @@ class AutoEncoder(L.LightningModule):
 
         self.validation_data_samples = []
         self.validation_rec_samples = []
-        self.validation_output_data = []
 
     def predict_step(self, batch: dict, batch_idx: int) -> dict:
         """
@@ -966,15 +967,6 @@ class AutoEncoder(L.LightningModule):
         batch["z_latent"] = output_enc["z_latent"]
         batch["ca_coors_nm"] = ca_coors_nm
         output = self.decoder(batch)
-        # Emit only atoms the input residue actually had.
-        output["atom_mask"] = self._emitted_atom_mask(batch, output)
-        # {
-        #   "coors_nm": all atom coordinates, shape [b, n, 37, 3], in nm
-        #   "seq_logits": logits for the residue types, shape [b, n, 33]
-        #   "emit_mask": boolean [b, n]
-        #   "aatype_max": residue type by taking the most likely logit, shape [b, n], with integer values {0, ..., 32}
-        #   "atom_mask": boolean [b, n, 37, 3], atom37 mask corresponding to aatype_max
-        # }
 
         output.update(output_enc)
         return (batch, output)

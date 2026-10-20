@@ -15,9 +15,11 @@ metal_kwargs:
 secondary_structure_kwargs:
   p_add_secondary_structure_condition: 0.0
 cath_kwargs:
+  # Show the full available CAT label, regardless of how much of its chain survives cropping.
   p_add_cath_c_condition: 0.0
   p_add_cath_ca_condition: 0.0
-  p_add_cath_cat_condition: 0.0
+  p_add_cath_cat_condition: 1.0
+  min_retained_chain_fraction: 0.0
 sequence_probability_kwargs:
   p_exact: 1.0
   p_zero_only: 0.0

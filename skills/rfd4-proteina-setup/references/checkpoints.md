@@ -1,38 +1,16 @@
-# Checkpoints reference
+# Model files
 
-RFD4-Proteína needs **two** checkpoints, both read from `$DATA_PATH` by default:
+`configs/inference.yaml` selects the native denoiser and matching AE by default.
+Setup downloads them into `DATA_PATH/flow_checkpoints` and `DATA_PATH/ae_checkpoints`.
+If `hf_ckpt_path` selects a Hub repository instead, setup caches `config.json` and
+`model.safetensors` at `hf_ckpt_revision` in the normal HF cache (`HF_HOME`).
+Private Hub access uses `HF_TOKEN` or `hf auth login`.
 
-| Role | Default path (relative to `$DATA_PATH`) |
-| --- | --- |
-| Denoiser (latent diffusion, LDM) | `flow_checkpoints/<denoiser>.ckpt` |
-| Autoencoder (frozen local latents) | `ae_checkpoints/<autoencoder>.ckpt` |
+Select another Hub repository or local bundle with
+`hf_ckpt_path=<repo-or-directory>` and `hf_ckpt_revision=<commit>`.
+For native checkpoints, set `hf_ckpt_path=null`, `ckpt_path`,
+`ckpt_name`, and `autoencoder_ckpt_path` explicitly. Preserve the matching flow/AE pair.
+Older namespace checkpoints need the migration described in `docs/packaging.md`.
 
-Each release file has a `.sha256` sidecar.
-
-Read the active filenames from `configs/inference.yaml`:
-
-```yaml
-ckpt_name: <current release denoiser>
-ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
-autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/<current release autoencoder>
-```
-
-`configs/inference.yaml` is the **runtime source of truth** for "the SOTA model":
-`generate.py` loads `ckpt_name` from it by default, and the GPU regression tests
-read it too.
-
-`download_example_data.sh` fetches exactly these two names, so a default
-`generate.py` run resolves with no CLI override. To use a different checkpoint,
-point at it with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
-
-## Sizes / download
-
-- Public HTTPS, no credentials.
-- **Public bucket: `YOUR_DATASET_STORE`** — everything published for
-  external use (both checkpoints, the `test_dataset` tarball, the CCD mirror)
-  lives there and is served anonymously at
-  `https://YOUR_DATASET_STORE`.
-- Host override: `RFPROTEINA_DATA_URL` (default
-  `https://YOUR_DATASET_STORE`).
-- Add `--with-test-dataset` to also fetch a tiny training set:
-  `./scripts/download_example_data.sh "$DATA_PATH" --with-test-dataset`.
+Optional tutorial data goes into `DATA_PATH`:
+`./scripts/download_assets.sh "$DATA_PATH" --with-test-dataset --skip-of3`.

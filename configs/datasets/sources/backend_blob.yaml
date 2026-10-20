@@ -1,7 +1,7 @@
 # Shared storage and parser defaults for blob-backed dataset sources.
 # Every streaming dataset loads from and saves to the node-local parse cache.
 _target_: atomworks.ml.datasets.PandasDataset
-memory_map: false
+memory_map: true
 loader:
   _target_: atomworks.ml.datasets.loaders.create_structure_loader
   storage: blob

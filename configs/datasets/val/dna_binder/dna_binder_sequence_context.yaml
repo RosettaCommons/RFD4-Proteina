@@ -1,7 +1,11 @@
-# DNA-binder validation (50-80 AA): de novo protein design with only the DNA
+# DNA-binder validation (120-150 AA): de novo protein design with only the DNA
 # sequence provided as context (DNA structure is co-generated). 3 targets x 25 replicates.
 
 # Reports design geometry, DNA refolding metrics, and interchain interactions on the generated complex.
+
+defaults:
+  - /recycle_strategy@generation: medium/front_loaded
+  - _self_
 
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset

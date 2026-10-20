@@ -1,0 +1,53 @@
+# @package _global_
+# Experimental-structure fine-tuning; release uses the 60k EMA checkpoint.
+defaults:
+  - /releases/flow/2026_10_19_hero_pretrain
+  - _self_
+
+run_name_: hero_320k_finetune_lora_c384
+_max_tokens: 384
+pretrain_ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints/rfd4-proteina-flow-pretrain-release-2026-10-19.ckpt
+
+hardware:
+  nnodes_: 16
+dataloaders:
+  batch_size: 4
+  train:
+    dataloader_params:
+      in_order: false
+lora:
+  r: 32
+  lora_alpha: 64.0
+  lora_dropout: 0.0
+  train_bias: none
+  target_modules: [to_qkv, to_out_node]
+nn:
+  attention_type: torch
+
+datasets:
+  train:
+    pdb_interfaces:
+      probability: 0.85
+    plinder:
+      probability: 0.10
+    antibody_interfaces_pdb:
+      probability: 0.05
+    afdb_monomer: null
+    omol: null
+    ted_dimers: null
+    tcr_interfaces_distill: null
+    na_complex: null
+    rna_monomer: null
+    antibody_interfaces_distill: null
+    tcr_interfaces_pdb: null
+    cpsea_pdb: null
+    cpsea_afdb: null
+    pdb_dna_interface: null
+
+opt:
+  accumulate_grad_batches: 2
+  lr: 0.00005
+  steps_per_epoch: 1000
+  val_every_n_epochs: 5
+log:
+  checkpoint_every_n_epochs: 5

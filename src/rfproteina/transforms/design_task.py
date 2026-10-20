@@ -89,7 +89,7 @@ DESIGN_TASK_DEFAULTS = {
         "atom_radii": "element",
         "point_number": 100,
         "p_include_non_ligand": 0.1,
-        "rasa_max": 0.2,
+        "rasa_max": 0.1,
     },
     "hbond_kwargs": {
         "p_add_hbond_condition": 0.0,
@@ -133,7 +133,6 @@ DESIGN_TASK_DEFAULTS = {
         "p_add_cath_c_condition": 0.0,
         "p_add_cath_ca_condition": 0.0,
         "p_add_cath_cat_condition": 0.0,
-        "query_pn_unit_iid": None,
     },
     "sequence_probability_kwargs": {
         "p_exact": 1.0,
@@ -785,9 +784,9 @@ class TipAtomActiveSiteTask(ConditionedDesignTask):
         rasa = calculate_atomwise_rasa(
             atom_array,
             probe_radius=1.4,
-            atom_radii="ProtOr",
+            atom_radii="auto",
             point_number=100,
-            atom_filter=eligible_mask & (atom_array.chain_id == self.sampled_chain) & atom_array.is_tip_atom,
+            sasa_mask=eligible_mask & (atom_array.chain_id == self.sampled_chain) & atom_array.is_tip_atom,
         )
 
         atom_array.set_annotation("tip_atom_rasa", rasa)
@@ -1580,9 +1579,7 @@ class BinderHotspotWith3DTarget(ConditionedDesignTask):
             "num_hotspots_to_sample": hotspot_atom_mask.sum(),
         }
 
-        # If we did the ppi crop, we will add CATH labels to the binder chain
-        cath_query_pn_unit_iid = binder_pn_unit_iid if perform_ppi_crop else None
-        data = self.apply_design_task_modifiers(data, cath_kwargs={"query_pn_unit_iid": cath_query_pn_unit_iid})
+        data = self.apply_design_task_modifiers(data)
 
         data = self.ensure_atomized_tokens_are_sequence_conditioned(data)
 
@@ -1990,13 +1987,11 @@ class IgFrameworkConditioningTask(ConditionedDesignTask):
 
     def annotate_for_task_selection(self, data: dict) -> dict:
         atom_array = data["atom_array"]
-        assert "ig_region" in atom_array.get_annotation_categories(), (
-            "IgFrameworkConditioningTask requires the per-atom 'ig_region' annotation. Generate it with "
-            "atomworks.ml.utils.antibody.IgAnnotation.get_masks(), attach it with "
-            "AtomArray.set_annotation('ig_region', values), save it with AtomWorks "
-            "to_cif_file(..., extra_fields=['ig_region']), and load it with "
-            "ParseConfig(extra_fields=['ig_region']) or equivalent parser_args."
-        )
+        if "ig_region" not in atom_array.get_annotation_categories():
+            raise ValueError(
+                "IgFrameworkConditioningTask requires per-atom 'ig_region' annotations. "
+                "Annotate the source CIF and load it with parser_args.extra_fields=[ig_region]."
+            )
         ensure_annotations(atom_array, "is_protein")
         regions = atom_array.get_annotation("ig_region")
         invalid_regions = sorted(
@@ -2009,6 +2004,10 @@ class IgFrameworkConditioningTask(ConditionedDesignTask):
         per_chain_ig_masks: dict[str, np.ndarray] = {}
 
         ig_mask = regions != IgRegion.NOT_IG.value
+        if not ig_mask.any():
+            raise ValueError(
+                "IgFrameworkConditioningTask requires nonempty 'ig_region' labels; all atoms are unlabeled."
+            )
         for pn_unit_iid in unique_by_first_occurrence(atom_array.pn_unit_iid[ig_mask]):
             pn_unit_mask = atom_array.pn_unit_iid == pn_unit_iid
             cdr_masks = {

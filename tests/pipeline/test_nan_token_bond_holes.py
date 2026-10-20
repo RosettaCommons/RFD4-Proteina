@@ -11,6 +11,7 @@ from tests.pipeline.test_pipeline_invariants import DESIGN_TASKS, _parse_test_st
 
 
 @pytest.mark.parametrize("crop_size", [None, 2048], ids=["no_crop", "crop"])
+@pytest.mark.parametrize("damage", ["nan", "missing_reference"])
 @pytest.mark.parametrize(
     # Residues in the middle of a protein chain whose heavy atoms, and both neighbours', are all
     # resolved in the deposit -- so the only NaN in the neighbourhood is the one injected here.
@@ -18,7 +19,7 @@ from tests.pipeline.test_pipeline_invariants import DESIGN_TASKS, _parse_test_st
     [("5ocm", "A_1", 147), ("6wtf", "A_1", 285)],
 )
 def test_flanking_residues_of_a_dropped_nan_token_stay_two_hops_apart(
-    pdb_id: str, chain_iid: str, res_id: int, crop_size: int | None
+    pdb_id: str, chain_iid: str, res_id: int, crop_size: int | None, damage: str
 ) -> None:
     """A NaN'd residue's neighbours are still two peptide bonds apart once it is dropped.
 
@@ -35,9 +36,13 @@ def test_flanking_residues_of_a_dropped_nan_token_stay_two_hops_apart(
 
     # Knock out a single side-chain coordinate of the intermediate residue, the way an unresolved
     # atom arrives from the PDB. That is enough for the whole token to be dropped.
-    victim = (atom_array.chain_iid == chain_iid) & (atom_array.res_id == res_id) & (atom_array.atom_name == "CB")
+    atom_name = "CB" if damage == "nan" else "CA"
+    victim = (atom_array.chain_iid == chain_iid) & (atom_array.res_id == res_id) & (atom_array.atom_name == atom_name)
     assert victim.sum() == 1
-    atom_array.coord[victim] = np.nan
+    if damage == "nan":
+        atom_array.coord[victim] = np.nan
+    else:
+        input_data["atom_array"] = atom_array[~victim]
 
     with rng_state(create_rng_state_from_seeds(np_seed=42, torch_seed=42, py_seed=42)):
         pipeline = build_design_train_pipeline(
@@ -45,7 +50,7 @@ def test_flanking_residues_of_a_dropped_nan_token_stay_two_hops_apart(
             design_tasks={"unconditional": DESIGN_TASKS["unconditional"]},
             is_inference=False,
             p_random_rotation=0.0,
-            p_atomize_residues=0.0,
+            atomization_probabilities={},
             path_length_search_cutoff=path_length_cutoff,
         )
         output = pipeline(input_data)

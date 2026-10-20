@@ -176,3 +176,17 @@ def test_small_and_empty_selections() -> None:
     assert StructureComparisonMetric(align_mask="~is_polymer").compute(ions, ions)["rmsd"] < 1e-4
     metric = StructureComparisonMetric(align_mask="is_polymer", subset_mask="res_name == 'XXX'")
     assert np.isnan(metric.compute(gt, gt)["rmsd"])
+
+
+@pytest.mark.parametrize("residue_index", [0, 10])
+def test_cropped_subunit_keeps_distinct_coverage(residue_index: int) -> None:
+    """Cropping one copy preserves matching of the remaining equivalent subunits."""
+    original = load_structure("tnfa.cif.zst")
+    first_copy = original.molecule_iid == 1
+    residue_id = np.unique(original.res_id[first_copy])[residue_index]
+    gt = original[~(first_copy & (original.res_id == residue_id))]
+    entity_ids = gt.molecule_entity.copy()
+    pred = permuted(gt, (2, 3))
+    assert StructureComparisonMetric(align_mask="is_polymer").compute(gt, pred)["rmsd"] < 1e-4
+    assert AllAtomLDDT().compute(pred, gt)["all_atom_lddt"] == 1
+    np.testing.assert_array_equal(gt.molecule_entity, entity_ids)
