@@ -815,3 +815,9 @@ body > header.site-nav ~ * { scroll-margin-top: 130px; }
 .bd-header { top: var(--site-nav-height, 62px) !important; }
 .bd-sidebar-primary, .bd-sidebar-secondary { top: calc(var(--site-nav-height, 62px) + var(--pst-header-height)) !important; height: calc(100vh - var(--site-nav-height, 62px) - var(--pst-header-height)) !important; }
 html { scroll-padding-top: calc(var(--site-nav-height, 62px) + var(--pst-header-height) + 14px); }
+
+/* The architecture and latent explorers are project-page tabs: the shared tab line is their only header. */
+.standalone-page { --pst-header-height: 0rem; }
+.standalone-page .bd-header,
+.standalone-page .bd-breadcrumbs,
+.standalone-page .header-article-items { display: none !important; }

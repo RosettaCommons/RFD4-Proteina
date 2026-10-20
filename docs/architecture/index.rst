@@ -1,20 +1,17 @@
+:orphan:
+
 :html_theme.sidebar_secondary.remove:
 
 Architecture
 ============
-
-.. note::
-
-   The diagrams below show the 380k/z16 reference. For the z32 release autoencoder and its expanded
-   chemistry, start with :doc:`expanded-chemistry`. That autoencoder has no attention pair-bias track.
 
 .. container:: wf-intro
 
    These diagrams take RFD4-Proteína apart one level at a time, from the whole generation loop down
    to a single attention head. The top level is a map of the system. Every level below it is a
    `neural circuit diagram <https://vtabbott.io/articles/diagrams-explained-quickly/>`__ generated
-   from an algebraic expression of the code on ``main`` at commit ``19540b0``, drawn at the
-   dimensions of the 380k checkpoint (pair width 384, triangle hidden width 256).
+   from an algebraic expression of the code, drawn at the dimensions of the reference model (pair
+   width 384, triangle hidden width 256).
 
    Hover a box or an operation to see its formula, a description and links to the lines of code it
    stands for. Click a box whose details offer "Open diagram" to open its own diagram. The
@@ -313,15 +310,6 @@ token, which carries no latent. `Diagrams Explained (Quickly)
      - 12
      - ``nlayers`` of the autoencoder
      - layers of the encoder and of the decoder
-
-.. admonition:: The 380k checkpoint and ``main``
-
-   The diagrams draw the code on ``main`` at commit ``19540b0`` at the dimensions of
-   ``chk_epoch_00000189_step_000000380000-ema.ckpt``. That checkpoint was trained on a branch that
-   adds three things ``main`` does not have: a detached sequence-readout head whose argmax conditions
-   the decoder, a ``sequence_probabilities`` input feature in place of ``cond_residue_type`` (with
-   salt-bridge, hydrophobic and metal-coordination features, which ``main`` supports by
-   configuration), and triangle multiplications without biases. ``main`` therefore cannot load it.
 
 Where to read next
 ------------------

@@ -1,9 +1,14 @@
 {#- The latent explorer (architecture/expanded-chemistry) scopes its stylesheets by a class on <body>
-    (docs/_static/viz/viz.css); every other page keeps the theme's own tag. Beside the project page, the tab
-    line shared with Home and Benchmarks sits above the documentation header. -#}
+    (docs/_static/viz/viz.css). The architecture and latent explorers are tabs of the project page: beside it
+    they show the shared tab line only, without the documentation header. Every other page keeps the
+    theme's own tag and gets the shared tab line above the documentation header. -#}
 {%- extends "!layout.html" %}
 {% block body_tag %}
-  <body data-default-mode="{{ default_mode }}"{% if pagename == "architecture/expanded-chemistry" %} class="viz-page"{% endif %}>
+  {%- set explorer = pagename in ("architecture/index", "architecture/expanded-chemistry") %}
+  <body data-default-mode="{{ default_mode }}"
+    {%- if pagename == "architecture/expanded-chemistry" and site_root %} class="viz-page standalone-page"
+    {%- elif pagename == "architecture/expanded-chemistry" %} class="viz-page"
+    {%- elif explorer and site_root %} class="standalone-page"{% endif %}>
 {%- endblock %}
 {% block docs_navbar %}
   {%- if site_root %}{% include "site-nav.html" %}{% endif %}

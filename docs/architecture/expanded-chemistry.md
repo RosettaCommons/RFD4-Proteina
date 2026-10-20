@@ -1,5 +1,6 @@
 ---
 html_theme.sidebar_secondary.remove: true
+orphan: true
 ---
 
 # Thirty-two numbers, six molecular contexts
@@ -122,32 +123,15 @@ which is confounded by pose and chemistry imbalance.
 
 The measurements use the release autoencoder `rfd4-proteina-ae-release-2026-10-19` (global step
 400,000, strict load of the EMA weights), the model source at `f5db9617fa98f377cae5984a98187489ea3997a4`
-and AtomWorks 3.0.4. Historical z16 arrow interpretations
-and the manuscript's earlier parent-neighbor result do not transfer to this AE.
+and AtomWorks 3.0.4.
 
 ```{raw} html
 </details>
 
 ```
-
-```{raw} html
-<details class="arch-methods"><summary>Further experiments and reading</summary>
-```
-
-These are proposed experiments, separate from the measured controls above.
-
-| Question | A useful experiment | Starting point |
-| --- | --- | --- |
-| Is one unit of noise equally large in every channel? | Compare the current prior-scaled sweep with noise scaled by each token's posterior standard deviation. Plot reconstruction, identity and stereochemistry separately; keep the conditions fixed. | [Fixing a Broken ELBO](https://proceedings.mlr.press/v80/alemi18a.html), for the rate/reconstruction distinction. |
-| Can a latent walk avoid distorted structures? | Compare a straight path with a path measured through the decoder's local geometry, using the coordinate Jacobian `J` and metric `JᵀJ`. Hold identities, atom correspondence, anchors and alignment fixed. Measure path length, clashes and chirality; a shorter path need not be chemically valid. Start within one chemistry. | [Latent Space Oddity](https://arxiv.org/abs/1710.11379), on decoder-induced geometry. |
-| Are the apparent chemical clusters just a projection? | Use a shared, chemistry-balanced linear projection that the reader can rotate, with linked molecule selection. Control pose first and retain the same projection across interventions. A point-cloud gap is not a measured generation barrier. | [The Grand Tour](https://distill.pub/2020/grand-tour/), for exploring projections without hiding their changes. |
 
 Latent decoding here keeps the input's anchors and conditions; it is not de novo
 sampling from the joint flow prior.
-
-```{raw} html
-</details>
-```
 
 [Architecture explorer](index.rst)
 

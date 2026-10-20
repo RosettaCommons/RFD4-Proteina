@@ -5,7 +5,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "RFD4-Proteína at a glance",
    "short": "Overview",
    "blurb": "The whole system: inputs, the flow-matching sampler, the recycled denoiser and the decoder.",
-   "summary": "<p>RFD4-Proteína generates a design by flow matching in a product space: the CA position of every token (atom37 slot 1: C1′ for a nucleotide), in nm, and 16 latent channels per residue or nucleotide learned by a partial autoencoder. A generation starts from Gaussian noise, runs 60 steps of a stochastic sampler whose velocity comes from the <em>denoiser</em>, a 14-layer pair-biased transformer, and hands the final CA positions and latents to the autoencoder's decoder, which writes the sequence and every atom of the residues and nucleotides; atomized ligand atoms keep the positions the flow produced.</p><p>Click a box to open its diagram; the annotated CIF and design boxes open the workflow pages on inputs and outputs. Every diagram below this map is a neural circuit diagram generated from an algebraic expression of the code on <code>main</code> at commit <code>19540b0</code>, drawn at the dimensions of the 380k checkpoint. In those diagrams, hover a box to see its formula, description and code, click a box whose details offer <em>Open diagram</em> to go one level deeper (the pointer changes over it), and use the breadcrumbs or the tree to go back up.</p>",
+   "summary": "<p>RFD4-Proteína generates a design by flow matching in a product space: the CA position of every token (atom37 slot 1: C1′ for a nucleotide), in nm, and 16 latent channels per residue or nucleotide learned by a partial autoencoder. A generation starts from Gaussian noise, runs 60 steps of a stochastic sampler whose velocity comes from the <em>denoiser</em>, a 14-layer pair-biased transformer, and hands the final CA positions and latents to the autoencoder's decoder, which writes the sequence and every atom of the residues and nucleotides; atomized ligand atoms keep the positions the flow produced.</p><p>Click a box to open its diagram; the annotated CIF and design boxes open the workflow pages on inputs and outputs. Every diagram below this map is a neural circuit diagram generated from an algebraic expression of the code, drawn at the dimensions of the reference model. In those diagrams, hover a box to see its formula, description and code, click a box whose details offer <em>Open diagram</em> to go one level deeper (the pointer changes over it), and use the breadcrumbs or the tree to go back up.</p>",
    "highlights": [
     {
      "kind": "loop",
@@ -26,7 +26,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Denoiser",
-     "178.2 M parameters (main, 380k dimensions)"
+     "178.2 M parameters"
     ],
     [
      "Autoencoder",
@@ -43,10 +43,6 @@ window.RFD4_ARCHITECTURE = {
     [
      "Latents",
      "16 channels per residue or nucleotide"
-    ],
-    [
-     "Checkpoint",
-     "<code>chk_epoch_00000189_step_000000380000-ema.ckpt</code>"
     ]
    ],
    "parent": null,
@@ -144,7 +140,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Parameters",
-     "178,242,737 on main at these dimensions (checkpoint: 178,336,624)"
+     "178,242,737"
     ],
     [
      "Recycle depth R",
@@ -321,7 +317,7 @@ window.RFD4_ARCHITECTURE = {
     ],
     [
      "Per pair update",
-     "2,467,200 parameters (main)"
+     "2,467,200  parameters"
     ],
     [
      "Whole trunk",
@@ -519,7 +515,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Parameters",
-     "2,467,200 per pair update (main)"
+     "2,467,200 per pair update"
     ],
     [
      "Triangle hidden width",
@@ -553,17 +549,11 @@ window.RFD4_ARCHITECTURE = {
    "short": "Triangles",
    "blurb": "Outgoing and incoming triangle multiplicative updates.",
    "summary": "<p>Each pair (<em>i</em>, <em>j</em>) sums, over every token <em>k</em>, the product of two gated projections of the edges that close the triangle <em>i</em>, <em>j</em>, <em>k</em>: <em>i</em>–<em>k</em> and <em>j</em>–<em>k</em> (outgoing) or <em>k</em>–<em>i</em> and <em>k</em>–<em>j</em> (incoming). The contraction over <em>k</em> is the trunk's only step whose cost grows with the cube of the number of tokens, yet at design sizes it is not where most of the work goes: it is about 6% of a trunk pass's multiply-adds at 256 tokens and 21% at 1024, and it overtakes the per-pair projections only near 3,700 tokens.</p>",
-   "highlights": [
-    {
-     "kind": "note",
-     "label": "Checkpoint",
-     "html": "The 380k checkpoint trains these without biases (<code>tri_mult_bias: false</code>); main always has them."
-    }
-   ],
+   "highlights": [],
    "facts": [
     [
      "Parameters",
-     "642,048 per triangle update (main)"
+     "642,048 per triangle update"
     ],
     [
      "Hidden width",
@@ -761,10 +751,6 @@ window.RFD4_ARCHITECTURE = {
     [
      "Decoder",
      "127.9 M parameters, 12 layers"
-    ],
-    [
-     "Checkpoint",
-     "<code>2026_09_04_release_ae_z16_400k</code>"
     ]
    ],
    "parent": "overview",
@@ -834,13 +820,7 @@ window.RFD4_ARCHITECTURE = {
    "short": "Decoder",
    "blurb": "CA positions and latents to residue logits and atom37 coordinates.",
    "summary": "<p>The CA position, the 16 latents, the token type and the conditioned residue type are embedded, run through 12 layers, and read by two heads, each behind its own LayerNorm: 33 residue-class logits restricted to the classes the token type allows, and 37 atom positions relative to the CA, to which the CA position is added.</p>",
-   "highlights": [
-    {
-     "kind": "note",
-     "label": "Checkpoint",
-     "html": "On the 380k checkpoint's branch the decoder's residue-type input is filled from the flow model's sequence readout; main has no readout."
-    }
-   ],
+   "highlights": [],
    "facts": [
     [
      "Inputs",
