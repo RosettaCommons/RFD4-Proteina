@@ -27,7 +27,7 @@ run_name_: inference
 verbose: false # Set true for routine warnings and detailed diagnostic output.
 # TODO: After uploading the unified Hero/AE bundle, set its HF repo and replace the revision below together.
 hf_ckpt_path: null  # Optional local model bundle or HF repo; overrides ckpt_path/name when set.
-hf_ckpt_revision: eadacbe46a126c6c3622618eb5ac987c654cdd20  # Pin a Hub commit for reproducible model/AE loading.
+hf_ckpt_revision: 07e281d073c0e0dc345ede33cba20498951fa428  # Pin a Hub commit for reproducible model/AE loading.
 
 out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to an external
                # path (e.g. /shared/runs/experiment_name). SLURM scripts set this

@@ -53,7 +53,7 @@ Initialize a new run from the portable bundle:
 ```bash
 rfd4-train experiment=tutorial/finetune_test_dataset \
     hf_ckpt_path=nvidia/RFD4-Proteina \
-    hf_ckpt_revision=eadacbe46a126c6c3622618eb5ac987c654cdd20 \
+    hf_ckpt_revision=07e281d073c0e0dc345ede33cba20498951fa428 \
     pretrain_ckpt_path=null +single=true log.log_wandb=false
 ```
 

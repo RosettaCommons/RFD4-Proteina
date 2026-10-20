@@ -79,6 +79,21 @@ with an account that has access. For interactive login on a fresh checkout, run
 `bash setup.sh --skip-weights`, activate `.venv`, log in, then run `bash setup.sh --native`.
 Once public, the same setup works without authentication.
 
+### Quick start with pip
+
+On Linux x86_64 with Python 3.12, an NVIDIA GPU and a CUDA 13-compatible driver:
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install "rfd4-proteina[metrics-cuda13,bioir] @ git+https://github.com/RosettaCommons/RFD4-Proteina.git"
+
+EXAMPLE=$(python -c "import rfproteina, pathlib; print(pathlib.Path(rfproteina.__file__).parent / 'data/benchmarks/monomer/monomer-short.cif')")
+rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina inputs=$EXAMPLE num_replicates=1 out_dir=./runs/first ~metrics
+```
+
+Add `inference_backend=bioir` to use the BioIR runtime (installed by the `bioir` extra). Drop the `bioir` extra
+for a native-only install. If `pip` cannot see a very recent release, retry with `--no-cache-dir`.
+
 ## Run the model
 
 After setup, generate a design from the included [example input](data/benchmarks/monomer/monomer-short.cif):
@@ -95,8 +110,8 @@ with your own [annotated input](https://rosettacommons.github.io/RFD4-Proteina/w
 
 ### Hugging Face and Python
 
-The default model is the pinned Hugging Face release. To select a different Hub repo
-or a local exported bundle, use:
+To load the model from the Hugging Face Hub, with no local checkpoints and no `DATA_PATH`, pass
+`hf_ckpt_path`; use a different Hub repo or a local exported bundle the same way:
 
 ```bash
 rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina \

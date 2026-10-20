@@ -89,7 +89,7 @@ metrics-cuda13 = [
 # BioIR, the accelerated runtime behind inference_backend=bioir. It is built against CUDA 13, so install it with
 # metrics-cuda13: pip install "rfd4-proteina[metrics-cuda13,bioir]"
 bioir = [
-    "bionemo-ir==0.2.0rc3; sys_platform == 'linux'",
+    "bionemo-ir==0.2.0; sys_platform == 'linux'",
 ]
 dev = [
     # Linters & formatters
