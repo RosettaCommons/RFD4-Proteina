@@ -99,7 +99,7 @@ class StructureView {
       if (token !== this.token) return;
       const view = sameStructure ? this.viewer.getView() : null;
       this.viewer.clear();
-      this.viewer.addModel(text, "pdb");
+      this.viewer.addModel(text, file.endsWith(".cif") ? "cif" : "pdb");
       applyStyle(this.viewer, pill.dataset, this.preset);
       if (view) this.viewer.setView(view);
       else this.viewer.zoomTo();

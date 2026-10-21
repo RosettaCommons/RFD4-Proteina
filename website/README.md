@@ -18,5 +18,15 @@ Preview locally: `python -m http.server 4187 --bind 127.0.0.1 --directory websit
 - `leaderboard.html`, `benchmarks/`: the Benchmarks page (benchmark explorer) and its results snapshot
   (`benchmarks/data.json`). Home shows the paper's Figure 2 and links to it. `docs.html` redirects to `latest/index.html`.
 
-The page was built in the manuscript repository (`website/` there), which holds the scripts that
-regenerate the author list, structures and data. Update this directory from there rather than by hand.
+The manuscript repository owns the byline and reviewed figure artwork. With Pillow,
+`pdftoppm` and Inkscape installed, refresh those assets with:
+
+    python website/scripts/sync_paper.py --paper-root /path/to/RFD4-Proteina-paper --work-dir /path/to/scratch/paper-site-sync
+
+Fetch the manuscript repository first. The script verifies that selected sources match its
+origin/main, regenerates the author list and paper panels, and copies selected CaM and H3pT11
+CIFs without changing their coordinates. The manuscript-sync.json in assets/paper records the
+manuscript commit, source/caption hashes, crop bounds and output hashes. Review every crop and
+update surrounding captions, numerical statements and viewer selections when content changes.
+The latent-space crop retains native SVG callouts; other panels use reviewed PDF artwork.
+Keep website styling and interactions in this repository.

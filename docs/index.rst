@@ -105,26 +105,15 @@ State-of-the-art performance across relevant biomolecular tasks
 .. raw:: html
 
    <figure class="fig-card">
-     <div class="fig-plot">
-       <span class="fig-ylabel">Average per-target success rate, unclustered</span>
-       <div class="fig-img">
-         <img src="_static/benchmark-success-rate.png"
-              alt="Grouped bar chart of average per-target success rate on three tasks. Enzyme
-                   design: RFD4-Proteina 0.36, Proteina-Complexa 0.11, RFD3 0.09. Small molecule
-                   binders: RFD4-Proteina 0.62, DISCO model 0.27, RFD3 0.24. Protein binder design:
-                   RFD4-Proteina 0.15, Proteina-Complexa 0.04, RFD3 0.04. Error bars on every bar.">
-         <!-- Positioned at the measured centre of each bar cluster: 23.2%, 52.0%, 80.7% of the
-              image width. The task names were separate text boxes on the slide, so they are not
-              part of the raster. -->
-         <div class="fig-xgroups">
-           <span style="left: 23.2%">Enzyme design</span>
-           <span style="left: 52.0%">Small molecule binders</span>
-           <span style="left: 80.7%">Protein binder design</span>
-         </div>
-       </div>
-     </div>
-     <figcaption>Within each task, bars are RFD4-Proteina, the strongest open baseline, and
-     RFD3.</figcaption>
+     <img src="_static/benchmark-figure.webp?v=47d6a4d"
+          style="display:block;width:100%;height:auto"
+          alt="Current manuscript Figure 2: clustered pass rate versus generation throughput,
+               target coverage and passing clusters per GPU-hour for protein binding,
+               small-molecule binding, enzyme scaffolding and DNA binding.">
+     <figcaption>Figure 2 from the current manuscript. Scatter plots show clustered pass rate
+     versus generation throughput; right-hand bars show target coverage and passing clusters
+     per GPU-hour including AF3 evaluation. Low, medium and high thinking use task-specific
+     recurrent-refinement budgets.</figcaption>
    </figure>
 
 .. toctree::

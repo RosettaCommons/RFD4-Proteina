@@ -13,7 +13,7 @@ async function start(figure) {
   const viewer = $3Dmol.createViewer(canvas, { backgroundAlpha: 0, antialias: true });
   const view = { figure, viewer, visible: true };
   views.push(view);
-  viewer.addModel(await loading, "pdb");
+  viewer.addModel(await loading, figure.dataset.file.endsWith(".cif") ? "cif" : "pdb");
   applyStyle(viewer, figure.dataset, figure.dataset.preset, { transparent: true });
   viewer.zoomTo();
   viewer.render();

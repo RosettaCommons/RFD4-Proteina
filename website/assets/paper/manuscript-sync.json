@@ -1,0 +1,1043 @@
+{
+  "source_repository": "kierandidi/RFD4-Proteina-paper",
+  "source_commit": "47d6a4d648e33b91d0a5f1626bc98eaeb8e87ecb",
+  "source_hashes": {
+    "authors.tex": "d4444d28392f1fe363bd72f39e6fcaec95ac4bd8807d7ffafa3b750b07c9435d",
+    "figures_raw/figure_1_concept.svg": "fa508917c7b9a931d69dd8ba1029ff5b54849a31b4a7bd6c0ef64c78ae6436a6",
+    "drafting/figure4_cam/updated_20261016/selected_complex.cif": "481ac3ab9e268b4cc278138d5e548121773077edb923dd02b64531d70aaec3e4",
+    "drafting/figure5_hbonds/updated_20261020/approved-style/H3T11_hit09.cif": "cb38ebc758f7385f98ce5468852a4d89d511dbf92a69b5bb0bf1f2cee06a4712",
+    "figures_raw/figure_1_concept.pdf": "8f27de2d2e43a45c976a452f90310376ace9c6493e7a3bf9645f3b41e57868f7",
+    "figures_tex/figure_1_concept.tex": "e204fe3794767656ef969cced69dd5855fcc5a014d16dfbde96ed98633c4fcd5",
+    "figures_raw/figure_2_in_silico.pdf": "01febe4de463f8e074eb57208aa4b9354de0cabd1e419478e260155a7da7ad74",
+    "figures_tex/figure_2_in_silico.tex": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94",
+    "figures_raw/figure_4_specificity.pdf": "27c7d38161fb663f766151ae9014ba971be9e67cf56b63e8f984d57e9a46225a",
+    "figures_tex/figure_4_wetlab_overview.tex": "62d549a42130f67b704601b71c612b524ccb6f39dd907aa4a3250a9ae7f33693",
+    "figures_raw/figure_5_ptm_glycosylation.pdf": "044b7cd9dff60a4d9869cd119d8df0afde272eb505047a76d86c9bc74268e611",
+    "figures_tex/figure_5_ptm_glycosylation.tex": "e5eb82b0d7ca0aa60bbcec3ccdcc66661ec169a3e8df884c198dd85f9ab123d5",
+    "figures_raw/figure_6_enzymes.pdf": "db4cd763ef03489e76d5a5f03734ae1f671b40c458735f08b1e2947fd93e2057",
+    "figures_tex/figure_6_enzymes.tex": "aff7e9ff9bf55012a17c616c389ad5bd9077e1e8ad72d51f510e4d7b759e8bb4"
+  },
+  "dpi": 300,
+  "authors": [
+    {
+      "name": "Nathaniel Corley",
+      "affiliations": [
+        1,
+        2,
+        3
+      ],
+      "equal_first": true,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Kieran Didi",
+      "affiliations": [
+        1,
+        4,
+        5
+      ],
+      "equal_first": true,
+      "equal_second": false,
+      "corresponding": true,
+      "email": "kdidi@nvidia.com"
+    },
+    {
+      "name": "Maxwell W. Kazman",
+      "affiliations": [
+        1,
+        2,
+        6
+      ],
+      "equal_first": true,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Rafael I. Brent",
+      "affiliations": [
+        1,
+        2,
+        7
+      ],
+      "equal_first": true,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Magnus S. Bauer",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Riti Biswas",
+      "affiliations": [
+        1,
+        2,
+        7
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Julia E. Bonzanini",
+      "affiliations": [
+        1,
+        2,
+        3
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Adam M. Chazin-Gray",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Jie Chen",
+      "affiliations": [
+        1,
+        2,
+        10
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Maximilian Gantz",
+      "affiliations": [
+        1
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Henry A. Jones",
+      "affiliations": [
+        11,
+        12
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Margaret C. Lunn-Halbert",
+      "affiliations": [
+        1,
+        2,
+        6
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Nora K. McNamara-Bordewick",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Saman Salike",
+      "affiliations": [
+        1,
+        2,
+        19
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "DéJenaé L. See",
+      "affiliations": [
+        1,
+        2,
+        3
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Shajesh Sharma",
+      "affiliations": [
+        1,
+        2,
+        3
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Eric Sun",
+      "affiliations": [
+        1,
+        15
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Preetham Venkatesh",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Seth M. Woodbury",
+      "affiliations": [
+        1,
+        2,
+        3
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Kejia Wu",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Yuyang Zhang",
+      "affiliations": [
+        1,
+        8,
+        9
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Joel D. Allen",
+      "affiliations": [
+        13
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Jasper Butcher",
+      "affiliations": [
+        1,
+        2,
+        10
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Lemuel Chang",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Yehlin Cho",
+      "affiliations": [
+        4
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Alexis Courbet",
+      "affiliations": [
+        1,
+        2,
+        15
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Brian Coventry",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Christian Dallago",
+      "affiliations": [
+        4,
+        17
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Elliot S. Delfosse",
+      "affiliations": [
+        1,
+        2,
+        6
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Helen E. Eisenach",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Andrew Favor",
+      "affiliations": [
+        1,
+        2,
+        7
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Mariana Garcia Sanchez",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Tomas Geffner",
+      "affiliations": [
+        4
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Inna Goreshnik",
+      "affiliations": [
+        1,
+        2,
+        15
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Per Greisen",
+      "affiliations": [
+        18
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "David E. Kim",
+      "affiliations": [
+        1,
+        2,
+        15
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Donghyo Kim",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Paul Kim",
+      "affiliations": [
+        1,
+        2,
+        7
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Brianne R. King",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Rohith Krishna",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Yanjing Li",
+      "affiliations": [
+        1,
+        2,
+        10
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Zi Ming Li",
+      "affiliations": [
+        1,
+        3
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Aiko Muraishi",
+      "affiliations": [
+        1,
+        2,
+        10
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Edin Muratspahić",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Oliver Nagl",
+      "affiliations": [
+        1,
+        16
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Griffin H. Rangel",
+      "affiliations": [
+        1,
+        14
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Antonia Ruder",
+      "affiliations": [
+        1,
+        16
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Hojeong Shin",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Zefei Xu",
+      "affiliations": [
+        11,
+        12
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Yuwei Yang",
+      "affiliations": [
+        4
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Max Crispin",
+      "affiliations": [
+        13
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Neil P. King",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Frank DiMaio",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Gaurav Bhardwaj",
+      "affiliations": [
+        1,
+        14,
+        22
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Michael Bronstein",
+      "affiliations": [
+        5,
+        20
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Karsten Kreis",
+      "affiliations": [
+        4
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Donald Hilvert",
+      "affiliations": [
+        21
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Anthony P. Green",
+      "affiliations": [
+        11,
+        12
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Arash Vahdat",
+      "affiliations": [
+        4
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "David Baker",
+      "affiliations": [
+        1,
+        2,
+        15
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": true,
+      "email": "dabaker@uw.edu"
+    }
+  ],
+  "affiliations": [
+    {
+      "id": 1,
+      "name": "Institute for Protein Design, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 2,
+      "name": "Department of Biochemistry, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 3,
+      "name": "Department of Bioengineering, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 4,
+      "name": "NVIDIA Corporation, Santa Clara, CA, USA"
+    },
+    {
+      "id": 5,
+      "name": "Department of Computer Science, University of Oxford, Oxford, UK"
+    },
+    {
+      "id": 6,
+      "name": "Graduate Program in Biological Physics, Structure and Design, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 7,
+      "name": "Graduate Program in Molecular Engineering, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 8,
+      "name": "MOE Key Laboratory of Bioinformatics, School of Life Sciences, Tsinghua University, Beijing, China"
+    },
+    {
+      "id": 9,
+      "name": "Beijing Frontier Research Center for Biological Structure, Tsinghua University, Beijing, China"
+    },
+    {
+      "id": 10,
+      "name": "Paul G. Allen School of Computer Science and Engineering, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 11,
+      "name": "Manchester Institute of Biotechnology, The University of Manchester, Manchester, UK"
+    },
+    {
+      "id": 12,
+      "name": "Department of Chemistry, The University of Manchester, Manchester, UK"
+    },
+    {
+      "id": 13,
+      "name": "School of Biological Sciences, University of Southampton, Southampton, UK"
+    },
+    {
+      "id": 14,
+      "name": "Department of Medicinal Chemistry, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 15,
+      "name": "Howard Hughes Medical Institute, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 16,
+      "name": "Department of Biosystems Science and Engineering, ETH Zurich, Basel, Switzerland"
+    },
+    {
+      "id": 17,
+      "name": "Department of Biostatistics and Bioinformatics, Duke University, Durham, NC, USA"
+    },
+    {
+      "id": 18,
+      "name": "BioMap Research, Palo Alto, CA, USA"
+    },
+    {
+      "id": 19,
+      "name": "Department of Chemical Engineering, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 20,
+      "name": "AITHYRA, Research Institute for Biomedical Artificial Intelligence, Austrian Academy of Sciences, Vienna, Austria"
+    },
+    {
+      "id": 21,
+      "name": "Laboratory of Organic Chemistry, ETH Zurich, Zurich, Switzerland"
+    },
+    {
+      "id": 22,
+      "name": "Institute for Innovations in Drug Disposition and Delivery, University of Washington, Seattle, WA, USA"
+    }
+  ],
+  "figures": [
+    {
+      "path": "assets/paper/figure1a-latent-callouts.png",
+      "source": "figures_raw/figure_1_concept.svg",
+      "caption": "figures_tex/figure_1_concept.tex",
+      "crop_pdf_points": null,
+      "selected_svg_span": [
+        "g35",
+        "panelA_GLC-selected-point-1"
+      ],
+      "svg_viewbox": [
+        124,
+        16,
+        342,
+        211
+      ],
+      "pixels": [
+        1600,
+        987
+      ],
+      "sha256": "8b1c42b3d657a70fb16e919d58bde8805b26a56abd5de53adb8db9d1fa0b8607"
+    },
+    {
+      "path": "assets/paper/figure1d-trajectory.png",
+      "source": "figures_raw/figure_1_concept.pdf",
+      "caption": "figures_tex/figure_1_concept.tex",
+      "crop_pdf_points": [
+        16,
+        334,
+        494,
+        164
+      ],
+      "pixels": [
+        2058,
+        683
+      ],
+      "sha256": "cc0e814819fb1fdd8c59be3930414889e285bb1c46a15390433a201f4a2cf74d"
+    },
+    {
+      "path": "assets/paper/figure1f-search.png",
+      "source": "figures_raw/figure_1_concept.pdf",
+      "caption": "figures_tex/figure_1_concept.tex",
+      "crop_pdf_points": [
+        85,
+        593.4,
+        335,
+        61.6
+      ],
+      "pixels": [
+        1396,
+        257
+      ],
+      "sha256": "590af6fbfb3eaa888cbf2209d3f8d963cd0a7434117b4624a37306d3aa55b212"
+    },
+    {
+      "path": "assets/paper/fig2-in-silico.webp",
+      "source": "figures_raw/figure_2_in_silico.pdf",
+      "caption": "figures_tex/figure_2_in_silico.tex",
+      "crop_pdf_points": null,
+      "pixels": [
+        2162,
+        2871
+      ],
+      "sha256": "534930def363db383bb081c64899ce0be03209f06209589e3713781f4790b2ee"
+    },
+    {
+      "path": "assets/paper/fig4-specificity-full.webp",
+      "source": "figures_raw/figure_4_specificity.pdf",
+      "caption": "figures_tex/figure_4_wetlab_overview.tex",
+      "crop_pdf_points": null,
+      "pixels": [
+        2162,
+        2918
+      ],
+      "sha256": "41acbe04408bfbe1c6c1639b184eab628c97c0951077b8f2fdb9bafadee5ce5b"
+    },
+    {
+      "path": "assets/paper/fig4a-calmodulin.webp",
+      "source": "figures_raw/figure_4_specificity.pdf",
+      "caption": "figures_tex/figure_4_wetlab_overview.tex",
+      "crop_pdf_points": [
+        0,
+        0,
+        216,
+        249
+      ],
+      "pixels": [
+        900,
+        1038
+      ],
+      "sha256": "c261564f1dd500ca778fc8528e6f3bca67ebff5fee4e573f7b39744a7f82e51b"
+    },
+    {
+      "path": "assets/paper/fig4b-pmhc.webp",
+      "source": "figures_raw/figure_4_specificity.pdf",
+      "caption": "figures_tex/figure_4_wetlab_overview.tex",
+      "crop_pdf_points": [
+        216,
+        0,
+        302.740157,
+        249
+      ],
+      "pixels": [
+        1261,
+        1038
+      ],
+      "sha256": "b2261b939c49857bd1106c43a1013938dde79ab1add091025cb0bea2493febec"
+    },
+    {
+      "path": "assets/paper/fig4cd-idr.webp",
+      "source": "figures_raw/figure_4_specificity.pdf",
+      "caption": "figures_tex/figure_4_wetlab_overview.tex",
+      "crop_pdf_points": [
+        0,
+        249,
+        518.740157,
+        211
+      ],
+      "pixels": [
+        2161,
+        879
+      ],
+      "sha256": "244aea1537ef0f65d7a76c81395b1bcb1961e4db0dcda7a130c686c9e002dc94"
+    },
+    {
+      "path": "assets/paper/fig4ef-trka.webp",
+      "source": "figures_raw/figure_4_specificity.pdf",
+      "caption": "figures_tex/figure_4_wetlab_overview.tex",
+      "crop_pdf_points": [
+        0,
+        460,
+        518.740157,
+        240.15748
+      ],
+      "pixels": [
+        2161,
+        1000
+      ],
+      "sha256": "44257d23cfdc8a3703f7a0c9a9cd3c5c31a639f68d404ddee2bfe7553d7c2e46"
+    },
+    {
+      "path": "assets/paper/fig5-ptm-glycosylation-full.webp",
+      "source": "figures_raw/figure_5_ptm_glycosylation.pdf",
+      "caption": "figures_tex/figure_5_ptm_glycosylation.tex",
+      "crop_pdf_points": null,
+      "pixels": [
+        2162,
+        1459
+      ],
+      "sha256": "8f9dba43e06e75574bbd419b4ad485303ded929d52619df2f2fdb77f4429d6f8"
+    },
+    {
+      "path": "assets/paper/fig5abc-glycan.webp",
+      "source": "figures_raw/figure_5_ptm_glycosylation.pdf",
+      "caption": "figures_tex/figure_5_ptm_glycosylation.tex",
+      "crop_pdf_points": [
+        0,
+        0,
+        518.740157,
+        165
+      ],
+      "pixels": [
+        2161,
+        688
+      ],
+      "sha256": "a053abd1b7f0df95bfefeb12363c887f406ecbc0a8e80a044f245ad122c41ed4"
+    },
+    {
+      "path": "assets/paper/fig5def-phospho.webp",
+      "source": "figures_raw/figure_5_ptm_glycosylation.pdf",
+      "caption": "figures_tex/figure_5_ptm_glycosylation.tex",
+      "crop_pdf_points": [
+        0,
+        165,
+        518.740157,
+        185.07874
+      ],
+      "pixels": [
+        2161,
+        771
+      ],
+      "sha256": "26454add5a25c93a18d3f0c47f67acc834f7c2349a9863b94713e2de6c687608"
+    },
+    {
+      "path": "assets/paper/fig6-enzymes-full.webp",
+      "source": "figures_raw/figure_6_enzymes.pdf",
+      "caption": "figures_tex/figure_6_enzymes.tex",
+      "crop_pdf_points": null,
+      "pixels": [
+        2162,
+        3625
+      ],
+      "sha256": "a0c3a4737d1c7159bac0d6c15aa7423e4f7e0157abac13dab3f293d45ad370de"
+    },
+    {
+      "path": "assets/paper/fig6a-d-pte.webp",
+      "source": "figures_raw/figure_6_enzymes.pdf",
+      "caption": "figures_tex/figure_6_enzymes.tex",
+      "crop_pdf_points": [
+        0,
+        0,
+        518.740173,
+        300
+      ],
+      "pixels": [
+        2161,
+        1250
+      ],
+      "sha256": "052a9f0f9b4e6949eff8633b4e8afb3ee00e6ac7c9706ce06ae7ae56e3d4cd55"
+    },
+    {
+      "path": "assets/paper/fig6h-n-ligase.webp",
+      "source": "figures_raw/figure_6_enzymes.pdf",
+      "caption": "figures_tex/figure_6_enzymes.tex",
+      "crop_pdf_points": [
+        0,
+        444,
+        518.740173,
+        426
+      ],
+      "pixels": [
+        2161,
+        1775
+      ],
+      "sha256": "cb6936a97dc34a968a111db0ebded155754dd8d76e88e6c3af06e982d34725e8"
+    },
+    {
+      "path": "../docs/_static/benchmark-figure.webp",
+      "source": "figures_raw/figure_2_in_silico.pdf",
+      "caption": "figures_tex/figure_2_in_silico.tex",
+      "crop_pdf_points": null,
+      "pixels": [
+        2162,
+        2871
+      ],
+      "sha256": "534930def363db383bb081c64899ce0be03209f06209589e3713781f4790b2ee"
+    }
+  ],
+  "structures": [
+    {
+      "path": "assets/structures/cam_selected.cif.gz",
+      "source": "drafting/figure4_cam/updated_20261016/selected_complex.cif",
+      "source_sha256": "481ac3ab9e268b4cc278138d5e548121773077edb923dd02b64531d70aaec3e4",
+      "export": "Unmodified source CIF, gzip compressed"
+    },
+    {
+      "path": "assets/structures/h3pt11_hit09.cif.gz",
+      "source": "drafting/figure5_hbonds/updated_20261020/approved-style/H3T11_hit09.cif",
+      "source_sha256": "cb38ebc758f7385f98ce5468852a4d89d511dbf92a69b5bb0bf1f2cee06a4712",
+      "export": "Unmodified source CIF, gzip compressed"
+    }
+  ],
+  "notes": [
+    "Reviewed manuscript PDFs are rendered and cropped; latent callouts use the corresponding native SVG elements. Scientific content is not redrawn.",
+    "Surrounding captions and numerical statements were reviewed separately against the recorded caption sources."
+  ]
+}

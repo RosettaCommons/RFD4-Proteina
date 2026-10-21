@@ -130,11 +130,11 @@ b {
 }
 
 .abstract-method {
-    background: linear-gradient(160deg, rgba(87, 110, 140, 0.1), #ffffff 50%);
+    background: linear-gradient(160deg, rgba(24, 108, 112, 0.1), #ffffff 50%);
 }
 
 .abstract-wetlab {
-    background: linear-gradient(160deg, rgba(157, 76, 48, 0.1), #ffffff 50%);
+    background: linear-gradient(160deg, rgba(141, 82, 173, 0.1), #ffffff 50%);
 }
 
 .abstract-card h6 {
@@ -219,14 +219,14 @@ b {
 }
 
 .pdb-pill:hover {
-    border-color: #76b900;
+    border-color: var(--accent);
     color: #333;
 }
 
 .pdb-pill.active {
-    background: #76b900;
-    border-color: #76b900;
-    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--home-on-accent);
 }
 
 .pdb-pill-kd {
@@ -274,7 +274,7 @@ b {
 
 .metric-value {
     margin: 0;
-    color: #5f9400;
+    color: var(--accent);
     font-size: clamp(1.1rem, 2vw, 1.45rem);
     font-weight: 800;
     line-height: 1.15;
@@ -331,16 +331,16 @@ b {
 }
 
 .split-method {
-    background: linear-gradient(160deg, rgba(87, 110, 140, 0.1), #ffffff 50%);
+    background: linear-gradient(160deg, rgba(24, 108, 112, 0.1), #ffffff 50%);
 }
 
 .split-wetlab {
-    background: linear-gradient(160deg, rgba(157, 76, 48, 0.1), #ffffff 50%);
+    background: linear-gradient(160deg, rgba(141, 82, 173, 0.1), #ffffff 50%);
 }
 
 .card-tag {
     margin: 0 0 8px;
-    color: #8cc63f;
+    color: var(--accent);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -381,7 +381,7 @@ b {
 
 .infobox {
     background-color: #F1F4F7;
-    border-left: 4px solid #76b900;
+    border-left: 4px solid var(--accent);
     padding: 1em 1.2em;
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -463,24 +463,24 @@ h2 {
     font-size: 1.75em;
 }
 a:link,a:visited {
-    color: #76b900;
+    color: var(--accent);
     text-decoration: none;
-    background-image: linear-gradient(#208799, #208799);
+    background-image: linear-gradient(var(--accent), var(--accent));
     background-size: 0% 1.5px;
     background-position: left bottom;
     background-repeat: no-repeat;
     transition: background-size 0.3s ease, color 0.2s ease;
 }
 a:hover {
-    color: #208799;
+    color: var(--accent);
     background-size: 100% 1.5px;
 }
 .paper-btn:link, .paper-btn:visited {
-    background: linear-gradient(135deg, #76b900, #5a9a00) !important;
+    background: var(--home-button) !important;
     background-size: auto !important;
 }
 .paper-btn:hover {
-    background: linear-gradient(135deg, #25a0b0, #1a7a88) !important;
+    background: var(--home-button-hover) !important;
     background-size: auto !important;
 }
 .sticky-nav a:link, .sticky-nav a:visited,
@@ -549,7 +549,7 @@ h3 {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #76b900;
+    color: var(--accent);
     text-align: left;
     margin-top: -10px;
     margin-bottom: 32px;
@@ -572,7 +572,7 @@ h3 {
 }
 
 #complexa_validation .author-row-new a {
-    color: #76b900;
+    color: var(--accent);
 }
 
 #complexa_validation .affiliations-new {
@@ -792,12 +792,12 @@ figure figcaption {
     padding: 16px;
 }
 .blue {
-    /*color: #76B900;*/
-    color: #76b900;
+    /*color: var(--accent);*/
+    color: var(--accent);
     font-weight: bold;
 }
 .orange {
-    color: #76b900;
+    color: var(--accent);
     font-weight: bold;
 }
 .flex-row {
@@ -938,12 +938,12 @@ figure figcaption {
   outline: none;
   border-radius: 30px;
   
-  background: linear-gradient(135deg, #76b900, #5a9a00);
+  background: var(--home-button);
   color: white !important;
   font-size: 20px;
   width: 220px;
   font-weight: 600;
-  box-shadow: 0 3px 10px rgba(118, 185, 0, 0.3);
+  box-shadow: 0 3px 10px rgba(24, 108, 112, 0.25);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .paper-btn-parent {
@@ -972,9 +972,9 @@ figure figcaption {
 }
 
 .paper-btn:hover {
-    background: linear-gradient(135deg, #25a0b0, #1a7a88);
+    background: var(--home-button-hover);
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(32, 135, 153, 0.35);
+    box-shadow: 0 6px 18px rgba(24, 108, 112, 0.3);
 }
 
 .container {
@@ -987,7 +987,7 @@ figure figcaption {
 .venue {
     font-size: 18px;
     /*color: #ff5252;*/
-/*    color: #76b900;*/
+/*    color: var(--accent);*/
     color: black;
     margin-top:-6px;
 /*    margin-bottom:-12px;*/
@@ -999,7 +999,7 @@ figure figcaption {
     .venue {
         font-size: 24px;
         /*color: #ff5252;*/
-    /*    color: #76b900;*/
+    /*    color: var(--accent);*/
         color: black;
         margin-top:-6px;
 /*        margin-bottom:-12px;*/
@@ -1400,7 +1400,7 @@ div.footer {
 }
 
 .nav-bar a:hover {
-    background-color: #76b900;
+    background-color: var(--accent);
     color: white !important;
 }
 
@@ -1467,7 +1467,7 @@ div.footer {
 }
 
 .sticky-nav-brand:hover .sticky-nav-title {
-    color: #76b900 !important;
+    color: var(--accent) !important;
 }
 
 .sticky-nav-logo {
@@ -1486,7 +1486,7 @@ div.footer {
 }
 
 .sticky-nav-title:hover {
-    color: #76b900 !important;
+    color: var(--accent) !important;
 }
 
 .sticky-nav-links {
@@ -1564,7 +1564,7 @@ div.footer {
 
 .sticky-nav-dropdown-menu a:hover {
     color: white !important;
-    background-color: #76b900;
+    background-color: var(--accent);
 }
 
 .sticky-nav-toggle {
@@ -1715,11 +1715,11 @@ div.footer {
     padding: 10px 14px;
     text-align: center;
     white-space: nowrap;
-    border-bottom: 2px solid #76b900;
+    border-bottom: 2px solid var(--accent);
 }
 
 .bench-table thead th[colspan] {
-    border-bottom: 2px solid #76b900;
+    border-bottom: 2px solid var(--accent);
 }
 
 .bench-table .gap {
@@ -1730,7 +1730,7 @@ div.footer {
 
 .bench-table thead .gap {
     background: #1a1a2e;
-    border-bottom: 2px solid #76b900 !important;
+    border-bottom: 2px solid var(--accent) !important;
 }
 
 .bench-table thead th:first-child {
@@ -1757,12 +1757,12 @@ div.footer {
 }
 
 .bench-table tbody tr.ours-row {
-    background: rgba(118,185,0,0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     font-weight: 600;
 }
 
 .bench-table .best {
-    color: #76b900;
+    color: var(--accent);
     font-weight: 700;
 }
 
@@ -1807,7 +1807,7 @@ div.footer {
 
 .pdb-viewer-btn:hover {
     background: #f0f3f7;
-    border-color: #76b900;
+    border-color: var(--accent);
 }
 
 .pdb-viewer-canvas {
@@ -1856,7 +1856,7 @@ div.footer {
     }
 }
 /* ---- RFD4-Proteina additions ---- */
-.green-rule { height: 3px; border: none; color: black; background-color: #76b900; }
+.green-rule { height: 3px; border: none; color: black; background: var(--home-spectrum); }
 .video-embed { position: relative; width: 100%; max-width: 900px; margin: 1.5em auto 0; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 32px rgba(16, 24, 40, 0.15); background: #000; }
 .video-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .video-caption { text-align: center; margin-top: 8px; }
@@ -1919,7 +1919,7 @@ div.background_video_header { min-height: 0; background: none; }
 
 .sv-states { position: absolute; left: 8px; bottom: 8px; z-index: 2; display: flex; border: 1px solid #d0d0d0; border-radius: 20px; overflow: hidden; background: rgba(255, 255, 255, 0.92); }
 .sv-states button { font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border: 0; background: transparent; color: #555; cursor: pointer; line-height: 1.3; }
-.sv-states button.active { background: #76b900; color: #fff; }
+.sv-states button.active { background: var(--accent); color: var(--home-on-accent); }
 .sv-states[hidden] { display: none; }
 @media (max-width: 700px) { .nv-btn-parent { flex-wrap: wrap; } .nv-btn.ipd-btn { padding: 6px 12px; } .nv-btn.ipd-btn img { height: 28px; } .nv-btn { max-width: 150px; } .logo-x { display: none; } }
 .split-card { min-width: 0; }

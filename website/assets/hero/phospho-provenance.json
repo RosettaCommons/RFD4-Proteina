@@ -1,0 +1,23 @@
+{
+  "source": "assets/structures/h3pt11_hit09.cif.gz",
+  "source_sha256": "221892c9acc03ee1f90b315282dae8bcf6ee71daab32eb14c0bb4a990eba2414",
+  "render": "3Dmol.js using the website idr preset, binder chain A, peptide chain B, no surface, default zoomTo camera, transparent background",
+  "outputs": [
+    {
+      "path": "assets/hero/phospho-light.webp",
+      "sha256": "2036acad80d188868d110654f112da151e92f6a53d2ddc3e7f5d1fedfccb0987",
+      "pixels": [
+        480,
+        480
+      ]
+    },
+    {
+      "path": "assets/hero/phospho-dark.webp",
+      "sha256": "1df3da40a36056a9f474c1732668061af9c0b45dbab2573e4751f68610de1799",
+      "pixels": [
+        480,
+        480
+      ]
+    }
+  ]
+}

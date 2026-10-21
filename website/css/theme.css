@@ -1,3 +1,14 @@
+/* Northern Nights: manuscript style/figure_theme.json; shared colors in assets/site-colors.css. */
+:root {
+  --home-spectrum: linear-gradient(115deg, #186c70, #3b5a8d, #463d73, #8d52ad);
+  --home-on-accent: #ffffff;
+  --home-button: #186c70;
+  --home-button-hover: #124f52;
+}
+html[data-theme="dark"] { --home-on-accent: #151723; }
+.paper-btn { background: var(--home-button) !important; }
+.paper-btn:hover { background: var(--home-button-hover) !important; }
+
 /* Wordmark, partner logos, hero structures, the nav theme button and dark mode. */
 html { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
@@ -48,17 +59,18 @@ html[data-theme="dark"] .footer, html[data-theme="dark"] .metric-note, html[data
 html[data-theme="dark"] .author-name .aff { color: #a3a9b8; }
 html[data-theme="dark"] .abstract-card, html[data-theme="dark"] .metric-card, html[data-theme="dark"] .split-card, html[data-theme="dark"] .citation-card,
 html[data-theme="dark"] .abstract-method, html[data-theme="dark"] .abstract-wetlab { background: #1b1e28; border-color: #2b2f3c; box-shadow: none; color: #e6e8ee; }
-html[data-theme="dark"] .metric-value { color: #8fd12f; }
+html[data-theme="dark"] .metric-value { color: var(--accent); }
 html[data-theme="dark"] .figure-card { background: #fff; color: #12161b; border-color: #2b2f3c; }
 html[data-theme="dark"] .figure-card .caption_new2 { color: #33363b; }
-html[data-theme="dark"] a { color: #8fd12f; }
+html[data-theme="dark"] a { color: var(--accent); }
 html[data-theme="dark"] .paper-btn { color: #fff; }
 html[data-theme="dark"] .pdb-viewer-inline .pdb-viewer-box { background: #1b1d27; border-color: #2b2f3c; }
 html[data-theme="dark"] .pdb-pill { background: #232734; border-color: #343a4b; color: #c7ccd8; }
 html[data-theme="dark"] .pdb-pill:hover { color: #fff; }
-html[data-theme="dark"] .pdb-pill.active { background: #76b900; border-color: #76b900; color: #fff; }
+html[data-theme="dark"] .pdb-pill.active { background: var(--accent); border-color: var(--accent); color: var(--home-on-accent); }
 html[data-theme="dark"] .sv-states { background: rgba(27,29,39,0.92); border-color: #343a4b; }
 html[data-theme="dark"] .sv-states button { color: #c7ccd8; }
+html[data-theme="dark"] .sv-states button.active { color: var(--home-on-accent); }
 html[data-theme="dark"] .sv-status { color: #a3a9b8; }
 html[data-theme="dark"] .copy-btn { background: #232734; border-color: #343a4b; color: #e6e8ee; }
 html[data-theme="dark"] .bibtex, html[data-theme="dark"] .split-card pre.bibtex { background: #12141b; border-color: #2b2f3c; color: #e6e8ee; }
@@ -81,9 +93,9 @@ details.affiliations[open] > summary { margin-bottom: 6px; }
 html[data-theme="dark"] details.affiliations > summary { color: #a3a9b8; border-color: #343a4b; }
 nav.page-jump { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; margin: 22px auto 4px; max-width: 900px; }
 nav.page-jump a { font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid #d0d6de; color: #33363b; text-decoration: none; }
-nav.page-jump a:hover { border-color: #76b900; color: #12161b; }
+nav.page-jump a:hover { border-color: var(--accent); color: #12161b; }
 html[data-theme="dark"] nav.page-jump a { border-color: #343a4b; color: #c7ccd8; }
-html[data-theme="dark"] nav.page-jump a:hover { border-color: #76b900; color: #fff; }
+html[data-theme="dark"] nav.page-jump a:hover { border-color: var(--accent); color: #fff; }
 html[data-theme="dark"] div.footer { background: #181b26; }
 #resources .split-grid { grid-template-columns: minmax(0, 1fr); margin-top: 18px; }
 #resources .split-card ul { columns: 2; column-gap: 40px; }
