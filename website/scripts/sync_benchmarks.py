@@ -101,12 +101,12 @@ def main():
             )
     labels = existing["labels"] | {r["target"]: r["label"] for r in tables["target-labels.csv"]}
     buffer = io.StringIO(newline="")
-    writer = csv.DictWriter(buffer, fieldnames=fields + ["figure2"])
+    writer = csv.DictWriter(buffer, fieldnames=fields + ["figure2"], lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     (output / "source_data.csv").write_text(buffer.getvalue())
     for name in ("scatter.csv", "coverage.csv", "target-labels.csv"):
-        (output / name).write_bytes((args.paper_root / sources[name]).read_bytes())
+        (output / name).write_text((args.paper_root / sources[name]).read_text())
     for name in hashes:
         hashes[name]["sha256"] = hashlib.sha256((output / name).read_bytes()).hexdigest()
     payload = {
