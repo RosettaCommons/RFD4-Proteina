@@ -56,3 +56,31 @@ The calmodulin viewer uses `drafting/figure4_cam/second_hit.cif`, sequence-match
 replicate fits rated Good and off-rates above the fitting floor. The manuscript's
 Figure 4a retains its separate 69 pM example and the website footnote records its
 fit limitation. Selection and source hashes are in `assets/paper/manuscript-sync.json`.
+
+## Preprint revisions
+
+The homepage Paper button and existing bookmarks use
+`assets/paper/RFD4-Proteina.pdf`, which always contains the current version.
+The smaller **Prior versions** link opens `preprint-versions.html`, with dated
+PDF snapshots and concise changelogs, newest first.
+
+Add a revision from the repository root:
+
+```bash
+python website/scripts/update_preprint.py add /path/to/revised.pdf \
+    --change "Corrected Figure 4a." \
+    --change "Clarified the calmodulin results." \
+    --manuscript-commit FULL_MANUSCRIPT_COMMIT
+```
+
+The helper records the upload time in UTC, saves an immutable dated PDF under
+`assets/paper/versions/`, updates the existing latest-PDF URL, and regenerates
+the revision-history page. Dates on the page are displayed in Pacific time.
+`--manuscript-commit` is optional. Use `--uploaded-at` only to backfill a known
+upload timestamp, rather than using a PDF's build or file-modification date.
+The initial upload date comes from public commit `f2c2ce74f`, when that PDF was added.
+
+Run `python website/scripts/update_preprint.py check` before committing.
+CI checks every archived checksum, the current PDF, and the generated page.
+After changing the shared navigation header, regenerate the history page with
+`python website/scripts/update_preprint.py render`.

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "latest_pdf": "assets/paper/RFD4-Proteina.pdf",
+  "versions": [
+    {
+      "number": 1,
+      "uploaded_at": "2026-10-21T12:07:43Z",
+      "pdf": "assets/paper/versions/RFD4-Proteina-v1-20261021T120743Z.pdf",
+      "sha256": "2722138fa28baa64bb5c93302586a15e8d1560503eeccd540d1f34cd6369801a",
+      "changes": [
+        "Initial preprint."
+      ],
+      "upload_commit": "f2c2ce74fc0e0e5cbc4118a1df6d4e7afee7c389"
+    },
+    {
+      "number": 2,
+      "uploaded_at": "2026-10-21T22:52:29Z",
+      "pdf": "assets/paper/versions/RFD4-Proteina-v2-20261021T225229Z.pdf",
+      "sha256": "3554b22f837a6a0558b8f6f6e29dc88f0d693c24644dc5c69de6eda83f302b8b",
+      "changes": [
+        "Corrected a plotting error in Figure 4a where curves were averaged across multiple replicates.",
+        "Removed claims of resolution within the picomolar range for calmodulin binders.",
+        "Removed precise Kds for calmodulin binders pending further characterization."
+      ],
+      "manuscript_commit": "a89ac2e3f159ff0a91740b06f468eb4aa08faef9"
+    }
+  ]
+}
