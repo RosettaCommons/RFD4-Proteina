@@ -84,17 +84,25 @@ export default definePage({
     const play = button('Walk the channel', () => {
       if (timer) return stop();
       play.textContent = 'Pause';
+      play.setAttribute('aria-pressed', 'true');
       timer = setInterval(() => { state.shift = walks.shifts[(walks.shifts.indexOf(state.shift) + 1) % walks.shifts.length]; shift.set(state.shift); update(); }, 450);
     });
-    function stop() { clearInterval(timer); timer = null; play.textContent = 'Walk the channel'; }
+    play.classList.add('expanded-walk');
+    play.setAttribute('aria-pressed', 'false');
+    function stop() {
+      clearInterval(timer); timer = null; play.textContent = 'Walk the channel';
+      play.setAttribute('aria-pressed', 'false');
+    }
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
     const shiftRow = controlRow([shift, play]);
-    const noiseRow = controlRow([noiseTarget, sigma, draw]);
+    const noiseRow = controlRow([noiseTarget, sigma]);
+    noiseRow.classList.add('expanded-noise-controls');
+    const drawRow = controlRow([draw]);
     const description = el('p', { class: 'latents-roles', 'aria-live': 'polite' });
     const app = el('div', { class: 'latents-app', 'data-viz-poster-region': '' },
       el('p', { class: 'arch-title' }, title, ' ', claim), el('div', { class: 'expanded-grid-scroll' }, heat),
       el('p', { class: 'viz-caption expanded-key' }, `KL to the prior · 0–${fmt(top)} nats per token. Click a column to compare it.`),
-      el('div', { class: 'latents-controls' }, controlRow([mode]), shiftRow, noiseRow), views, description);
+      el('div', { class: 'latents-controls' }, controlRow([mode]), shiftRow, noiseRow, drawRow), views, description);
     stage.append(app);
     stage.querySelector(":scope > .viz-fallback-note")?.remove();
     const plots = informationPlots(document.querySelector('#expanded-rate-plots'), walks.groups, walks.examples, NAMES, GROUPS, walks.sigmas, (c) => { state.channel = c; update(); });
@@ -115,7 +123,8 @@ export default definePage({
         sequences[g].replaceChildren(...frame.types.map((t, i) => el('span', { class: t !== example.names[i] ? 'is-changed' : null }, `${t} `)),
           el('span', { class: 'latents-view-line latents-view-note' }, example.conditioned.every(Boolean) ? 'Identity supplied to the decoder' : 'Identity not supplied for every token'));
       }
-      shiftRow.hidden = state.mode !== 'shift'; noiseRow.hidden = state.mode !== 'noise';
+      shiftRow.hidden = state.mode !== 'shift';
+      noiseRow.hidden = drawRow.hidden = state.mode !== 'noise';
       title.textContent = state.mode === 'shift' ? `Channel ${state.channel}, shifted ${state.shift > 0 ? '+' : ''}${state.shift} SD`
         : `Noise of ${state.sigma} SD on ${state.all ? 'all 32 channels' : `channel ${state.channel}`}`;
       claim.textContent = 'The same intervention, decoded in six molecular contexts.';
