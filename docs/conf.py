@@ -256,8 +256,6 @@ nbsphinx_execute = "never"
 # Thumbnail for the `.. nbgallery::` tutorial card (notebooks emit interactive 3Dmol, not a
 # static image, so point nbsphinx at one explicitly).
 nbsphinx_thumbnails = {
-    # The Colab quickstart runs the same MCSA enzyme design as the enzyme tutorial.
-    "examples/colab_quickstart": "_static/enzyme_tutorial_thumb.png",
     "examples/enzyme_design_tutorial": "_static/enzyme_tutorial_thumb.png",
     "examples/python_api_tutorial": "_static/annotated_cif_thumb.png",
     "examples/ppi_specificity_tutorial": "_static/ppi_tutorial_thumb.png",
