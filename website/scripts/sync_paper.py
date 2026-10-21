@@ -105,11 +105,10 @@ for first in [True, False]:
     if first:
         rows.append(
             '<div class="author-row-new author-row-first">\n'
-            '    <span id="co-first-authors">\n    '
-            + ", ".join(names)
-            + '\n    </span>\n'
-            '    <button id="shuffle-authors" type="button" aria-controls="co-first-authors" hidden>Shuffle again</button>\n'
-            '</div>'
+            '    <span id="co-first-authors">\n    ' + ", ".join(names) + "\n    </span>\n"
+            '    <button id="shuffle-authors" type="button" aria-controls="co-first-authors" hidden>'
+            "Shuffle again</button>\n"
+            "</div>"
         )
     else:
         rows.append('<div class="author-row-new author-row-rest">\n    ' + ", ".join(names) + ".\n</div>")

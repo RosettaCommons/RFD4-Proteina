@@ -2,6 +2,7 @@
 """Serve the project page and built Sphinx docs together, without copying build outputs."""
 
 import argparse
+from contextlib import suppress
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -11,23 +12,23 @@ SITE_ROOT = Path(__file__).resolve().parents[1]
 
 
 class PreviewHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, docs_directory, **kwargs):
+    def __init__(self, *args, docs_directory: str | Path, **kwargs):
         self.docs_directory = str(docs_directory)
         super().__init__(*args, **kwargs)
 
-    def translate_path(self, path):
+    def translate_path(self, path: str) -> str:
         route = urlsplit(path).path
         if route == "/latest" or route.startswith("/latest/"):
             directory = self.directory
             self.directory = self.docs_directory
             try:
-                return super().translate_path(path[len("/latest"):])
+                return super().translate_path(path[len("/latest") :])
             finally:
                 self.directory = directory
         return super().translate_path(path)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=4187)
     parser.add_argument("--bind", default="127.0.0.1")
@@ -39,10 +40,8 @@ def main():
     with ThreadingHTTPServer((args.bind, args.port), handler) as server:
         print(f"Website: http://{args.bind}:{args.port}/", flush=True)
         print(f"Docs: http://{args.bind}:{args.port}/latest/", flush=True)
-        try:
+        with suppress(KeyboardInterrupt):
             server.serve_forever()
-        except KeyboardInterrupt:
-            pass
 
 
 if __name__ == "__main__":

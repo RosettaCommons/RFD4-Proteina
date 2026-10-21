@@ -13,11 +13,11 @@ import math
 from pathlib import Path
 
 
-def read_csv(path):
+def read_csv(path: Path) -> list[dict[str, str]]:
     return list(csv.DictReader(path.open(encoding="utf-8-sig", newline="")))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--paper-root", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
@@ -37,20 +37,56 @@ def main():
         name: {"source_path": path, "source_sha256": hashlib.sha256((args.paper_root / path).read_bytes()).hexdigest()}
         for name, path in sources.items()
     }
-    integers = {"attempts", "scored", "passes", "clusters", "disco_passes", "disco_clusters",
-                "generation_timed_attempts", "generation_unknown_attempts", "af3_timed_attempts",
-                "generation_proxy_attempts", "publication_timed_attempts"}
-    decimals = {"generation_gpu_s", "af3_gpu_s", "pass_percent", "clustered_percent",
-                "successes_per_gpu_hour", "unique_per_gpu_hour", "known_generation_gpu_s",
-                "known_af3_gpu_s", "measured_generation_gpu_s", "generation_proxy_gpu_s"}
-    strings = {"run_id", "model", "protocol", "dataset", "target", "timing_basis", "source_sha256",
-               "criterion", "catalog_model", "catalog_export_sha256", "score_receipt_sha256",
-               "raw_timing_basis", "publication_generation_cost_basis"}
+    integers = {
+        "attempts",
+        "scored",
+        "passes",
+        "clusters",
+        "disco_passes",
+        "disco_clusters",
+        "generation_timed_attempts",
+        "generation_unknown_attempts",
+        "af3_timed_attempts",
+        "generation_proxy_attempts",
+        "publication_timed_attempts",
+    }
+    decimals = {
+        "generation_gpu_s",
+        "af3_gpu_s",
+        "pass_percent",
+        "clustered_percent",
+        "successes_per_gpu_hour",
+        "unique_per_gpu_hour",
+        "known_generation_gpu_s",
+        "known_af3_gpu_s",
+        "measured_generation_gpu_s",
+        "generation_proxy_gpu_s",
+    }
+    strings = {
+        "run_id",
+        "model",
+        "protocol",
+        "dataset",
+        "target",
+        "timing_basis",
+        "source_sha256",
+        "criterion",
+        "catalog_model",
+        "catalog_export_sha256",
+        "score_receipt_sha256",
+        "raw_timing_basis",
+        "publication_generation_cost_basis",
+    }
     # Publish measurement provenance, without machine-local receipt paths.
-    fields = [k for k in tables["source_data.csv"][0] if k in integers | decimals | strings or k == "publication_timing_complete"]
+    fields = [
+        k
+        for k in tables["source_data.csv"][0]
+        if k in integers | decimals | strings or k == "publication_timing_complete"
+    ]
     paper_arms = {
         (r["model"].split("__")[0], r["protocol"], r["benchmark"])
-        for r in tables["scatter.csv"] if r["displayed"] == "True"
+        for r in tables["scatter.csv"]
+        if r["displayed"] == "True"
     }
     rows, identities = [], set()
     for raw in tables["source_data.csv"]:
@@ -81,11 +117,18 @@ def main():
         rows.append(row)
     # Check every plotted arm against the independently supplied plotting table.
     for plot in tables["scatter.csv"]:
-        arm = [r for r in rows if r["model"] == plot["model"].split("__")[0]
-               and r["protocol"] == plot["protocol"] and r["dataset"] == plot["benchmark"]
-               and r["criterion"] != "disco"]
+        arm = [
+            r
+            for r in rows
+            if r["model"] == plot["model"].split("__")[0]
+            and r["protocol"] == plot["protocol"]
+            and r["dataset"] == plot["benchmark"]
+            and r["criterion"] != "disco"
+        ]
         assert len(arm) == int(plot["targets"]), plot["model"]
-        assert math.isclose(sum(r["clustered_percent"] for r in arm) / len(arm), float(plot["clustered_percent"]), abs_tol=1e-8), plot["model"]
+        assert math.isclose(
+            sum(r["clustered_percent"] for r in arm) / len(arm), float(plot["clustered_percent"]), abs_tol=1e-8
+        ), plot["model"]
         assert sum(r["passes"] > 0 for r in arm) == int(plot["solved"]), plot["model"]
         if plot["designs_per_gpu_hour"]:
             speed = 3600 * sum(r["attempts"] for r in arm) / sum(r["generation_gpu_s"] for r in arm)
@@ -101,7 +144,7 @@ def main():
             )
     labels = existing["labels"] | {r["target"]: r["label"] for r in tables["target-labels.csv"]}
     buffer = io.StringIO(newline="")
-    writer = csv.DictWriter(buffer, fieldnames=fields + ["figure2"], lineterminator="\n")
+    writer = csv.DictWriter(buffer, fieldnames=[*fields, "figure2"], lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     (output / "source_data.csv").write_text(buffer.getvalue())
@@ -110,14 +153,25 @@ def main():
     for name in hashes:
         hashes[name]["sha256"] = hashlib.sha256((output / name).read_bytes()).hexdigest()
     payload = {
-        "meta": {"snapshot": args.snapshot_date, "title": "Reviewed manuscript benchmark tables",
-                 "source_repository": "kierandidi/RFD4-Proteina-paper", "source_revision": args.source_commit,
-                 "source_rows": len(rows), "unique_cohorts": len({tuple(r[k] for k in ("model", "protocol", "dataset", "target")) for r in rows}),
-                 "live_database": False, "files": hashes},
-        "models": models, "labels": labels, "rows": rows,
+        "meta": {
+            "snapshot": args.snapshot_date,
+            "title": "Reviewed manuscript benchmark tables",
+            "source_repository": "kierandidi/RFD4-Proteina-paper",
+            "source_revision": args.source_commit,
+            "source_rows": len(rows),
+            "unique_cohorts": len({tuple(r[k] for k in ("model", "protocol", "dataset", "target")) for r in rows}),
+            "live_database": False,
+            "files": hashes,
+        },
+        "models": models,
+        "labels": labels,
+        "rows": rows,
     }
     (output / "data.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
-    print(f"Synced {len(rows)} rows; validated {len(tables['scatter.csv'])} plotted arms against source counts, rates, coverage, and timings.")
+    print(
+        f"Synced {len(rows)} rows; validated {len(tables['scatter.csv'])} plotted arms "
+        "against source counts, rates, coverage, and timings."
+    )
 
 
 if __name__ == "__main__":
