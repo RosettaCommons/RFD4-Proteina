@@ -17,6 +17,11 @@ PROFILE="${RFD4_CI_PROFILE:?RFD4_CI_PROFILE must point to the runner-local clust
 set -a
 source "$PROFILE"
 set +a
+# The Python settings loader reads the root .env.<cluster> (gitignored); expose the runner-local profile
+# there for this run only.
+cp "$PROFILE" ".env.${CI_CLUSTER}"
+chmod 600 ".env.${CI_CLUSTER}"
+trap 'rm -f ".env.${CI_CLUSTER}"' EXIT
 
 APPTAINER_PATH="${LATENT_APPTAINER_SIF:?LATENT_APPTAINER_SIF must be set in $RFD4_CI_PROFILE}"
 TEST_PATH=${TEST_PATH:-"./tests"}
