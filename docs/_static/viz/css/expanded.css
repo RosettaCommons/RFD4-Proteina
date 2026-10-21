@@ -10,35 +10,24 @@ html[data-theme="dark"] :is([data-viz-page="expanded"], .expanded-information) {
   --viz-lat-ink: #cff6ef;
   --viz-lat-soft: #124f52;
 }
-/* Frame each choice, with a stronger selected frame matching the channel grid. */
-:is([data-viz-page="expanded"], .expanded-information) .arch-tabs {
-  gap: 8px;
-}
+/* Match the site's rounded buttons; inherit typography and keyboard focus from arch.css. */
+:is([data-viz-page="expanded"], .expanded-information) .arch-tabs { gap: 8px; }
 :is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk) {
   min-width: 44px;
   min-height: 44px;
-  padding: 6px 12px;
-  border: 2px solid var(--wf-ink-soft);
-  border-radius: 2px;
+  padding: 7px 12px;
+  border: 1px solid var(--wf-ink-soft);
+  border-radius: 6px;
   background: var(--wf-surface);
   color: var(--wf-ink);
 }
-:is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk):hover {
-  border-color: var(--wf-ink);
-  background: color-mix(in srgb, var(--wf-ink) 10%, var(--wf-surface));
-}
 :is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk)[aria-pressed="true"] {
-  border-color: var(--wf-ink);
+  border-color: var(--viz-lat-ink);
   background: var(--viz-lat-soft);
   color: var(--viz-lat-ink);
-  box-shadow: inset 0 0 0 1px var(--wf-ink);
 }
-:is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk)[aria-pressed="true"]:hover {
-  background: color-mix(in srgb, var(--wf-ink) 10%, var(--viz-lat-soft));
-}
-:is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk):focus-visible {
-  outline: 2px solid var(--wf-focus);
-  outline-offset: 3px;
+:is([data-viz-page="expanded"], .expanded-information) :is(.arch-tabs > button, .expanded-walk):hover {
+  box-shadow: 0 0 0 1px currentColor;
 }
 .expanded-grid-scroll { overflow-x: auto; padding: 4px 2px; }
 .expanded-grid { position: relative; display: grid; grid-template-columns: 145px repeat(32, minmax(13px, 1fr)); gap: 3px; min-width: 710px; align-items: center; }
