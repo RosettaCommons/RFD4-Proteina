@@ -36,8 +36,8 @@
 </p>
 
 <picture>
-  <source media="(max-width: 600px)" srcset="https://huggingface.co/datasets/nvidia/RFD4-Proteina/resolve/main/media/assets/readme/design-gallery-mobile.png">
-  <img src="https://huggingface.co/datasets/nvidia/RFD4-Proteina/resolve/main/media/assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
+  <source media="(max-width: 600px)" srcset="assets/readme/design-gallery-mobile.webp">
+  <img src="assets/readme/design-gallery.webp" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
 </picture>
 
 ## Try it now
@@ -234,5 +234,5 @@ See the [project page](https://rfd4-proteina.org/#citations) for citation update
 [Documentation](https://rfd4-proteina.org/latest/) · [Contributing](https://rfd4-proteina.org/latest/contributing/index.html) · [BSD 3-Clause license](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE)
 
 <p align="center">
-  <img src="https://huggingface.co/datasets/nvidia/RFD4-Proteina/resolve/main/media/assets/readme/dna-binder-generation.gif" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">
+  <img src="assets/readme/dna-binder-generation.webp" width="360" alt="Protein-binder generation conditioned on a DNA duplex.">
 </p>
