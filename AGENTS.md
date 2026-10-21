@@ -41,7 +41,7 @@ Before a large run, pass the setup preflight and generate one representative exa
 ```bash
 source .venv/bin/activate
 bash skills/rfd4-proteina-setup/scripts/preflight.sh
-rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif num_replicates=1 out_dir=./runs/smoke
+rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst num_replicates=1 out_dir=./runs/smoke
 ```
 Use a fresh output directory. For the actual task, test its longest input at batch size 1
 and verify required oracle metrics before scaling.

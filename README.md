@@ -101,7 +101,7 @@ pip install uv                      # or: curl -LsSf https://astral.sh/uv/instal
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install "rfd4-proteina[all-cuda13]"   # CUDA 12: all-cuda12; the base package alone is "rfd4-proteina"
 
-EXAMPLE=$(python -c "import rfproteina, pathlib; print(pathlib.Path(rfproteina.__file__).parent / 'data/benchmarks/monomer/monomer-short.cif')")
+EXAMPLE=$(python -c "import rfproteina, pathlib; print(pathlib.Path(rfproteina.__file__).parent / 'data/benchmarks/monomer/monomer-short.cif.zst')")
 rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina inputs=$EXAMPLE num_replicates=1 out_dir=./runs/first ~metrics
 ```
 
@@ -115,10 +115,10 @@ use the native runtime. If `pip` cannot see a very recent release, retry with `-
 
 ## Run the model
 
-After setup, generate a design from the included [example input](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/data/benchmarks/monomer/monomer-short.cif):
+After setup, generate a design from the included [example input](https://github.com/RosettaCommons/RFD4-Proteina/tree/main/data/benchmarks/monomer):
 
 ```bash
-rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
+rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst \
     num_replicates=1 out_dir=./runs/first \
     ~metrics compile_lengths=null
 ```

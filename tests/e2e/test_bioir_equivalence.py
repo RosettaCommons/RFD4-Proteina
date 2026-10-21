@@ -30,7 +30,7 @@ BENCHMARKS = ROOT / "data" / "benchmarks"
 
 #: workflow -> benchmark input
 WORKFLOWS = {
-    "unconditional": "monomer/monomer-short.cif",
+    "unconditional": "monomer/monomer-short.cif.zst",
     "motif_scaffolding": "motif_scaffolding/motif_indexed",
     "ppi_binder": "ppi/ppi_bb_only",
     "small_molecule_binder": "small_molecule_binder/sm_binder",

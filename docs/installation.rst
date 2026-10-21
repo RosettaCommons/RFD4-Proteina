@@ -218,7 +218,7 @@ Mount the Hugging Face cache and output directory when running a released checkp
        -v "${HF_HOME:-$HOME/.cache/huggingface}:/opt/rfd4/cache/huggingface" \
        -v "$PWD/runs:/workspace/runs" \
        rfd4-proteina:cu13 \
-       rfd4-generate inputs=/opt/rfd4/data/benchmarks/monomer/monomer-short.cif \
+       rfd4-generate inputs=/opt/rfd4/data/benchmarks/monomer/monomer-short.cif.zst \
        hf_ckpt_path=nvidia/RFD4-Proteina num_replicates=1 out_dir=/workspace/runs/smoke ~metrics compile_lengths=null
 
 For native checkpoints, mount them read-only and pass ``hf_ckpt_path=null``,

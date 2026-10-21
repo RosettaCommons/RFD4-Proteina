@@ -1,10 +1,10 @@
 dataset:
   _target_: rfproteina.inference_utils.datasets.DesignProblemDataset
   dir_path_or_file_paths:
-    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-short.cif
-    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-medium.cif
-    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-long.cif
-    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_ig/monomer-short.cif
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-short.cif.zst
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-medium.cif.zst
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_helical/monomer-long.cif.zst
+    - ${oc.env:PROJECT_ROOT}/data/benchmarks/adherence/monomer_ig/monomer-short.cif.zst
   num_replicates: 10
 
   transform:

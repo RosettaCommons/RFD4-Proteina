@@ -64,12 +64,12 @@ _CONFIG_DIR = str((PROJECT_ROOT / "configs").resolve())
 
 # Committed, regression-validated de-novo monomer CIFs (length-only, no input structure).
 _MONOMER_CIF_DIR = BENCHMARKS_DIR / "monomer"
-_MONOMER_CIF = _MONOMER_CIF_DIR / "monomer-short.cif"
+_MONOMER_CIF = _MONOMER_CIF_DIR / "monomer-short.cif.zst"
 _CATH_CIFS = [
-    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-short.cif",
-    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-medium.cif",
-    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-long.cif",
-    BENCHMARKS_DIR / "adherence" / "monomer_ig" / "monomer-short.cif",
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-short.cif.zst",
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-medium.cif.zst",
+    BENCHMARKS_DIR / "adherence" / "monomer_helical" / "monomer-long.cif.zst",
+    BENCHMARKS_DIR / "adherence" / "monomer_ig" / "monomer-short.cif.zst",
 ]
 _PSEUDOKNOT_DIR = BENCHMARKS_DIR / "rna" / "pseudoknot"
 _MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa" / "mcsa_37" / "M0664_2dhn.cif.zst"
@@ -77,8 +77,8 @@ _MIXED_CONDITION_CIF = BENCHMARKS_DIR / "mcsa" / "mcsa_37" / "M0664_2dhn.cif.zst
 # Committed all-atom motif input structures. Structure-conditioned tests build their conditioning
 # on the fly with a condition_spec (see :func:`_motif_condition_spec`) rather than committing a
 # pre-built motif CIF fixture.
-_1PRW_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1prw_aa.cif"
-_1YCR_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1ycr_aa.cif"
+_1PRW_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1prw_aa.cif.zst"
+_1YCR_INPUT = BENCHMARKS_DIR / "motif_scaffolding" / "motif_data_aa" / "1ycr_aa.cif.zst"
 
 
 def _inference_generated_cifs(out_dir: str | Path) -> list[Path]:
@@ -849,7 +849,7 @@ class TestEndToEndInference:
 
         from rfproteina.flow_matching import product_space_flow_matcher
 
-        input_pdb = str(BENCHMARKS_DIR / "motif_scaffolding/motif_data_aa/1ycr_aa.cif")
+        input_pdb = str(BENCHMARKS_DIR / "motif_scaffolding/motif_data_aa/1ycr_aa.cif.zst")
 
         cfg = _build_test_cfg(
             [

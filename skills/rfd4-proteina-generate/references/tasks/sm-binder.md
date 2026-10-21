@@ -9,7 +9,7 @@ ligand; the model designs a protein pocket around it. Back to the
 | File | Keys | Notes |
 | --- | --- | --- |
 | `small_molecule_binder/sm_binder` | `FAD`, `IAI`, `OQO`, `SAM` | Ligand named via `ligand`, `contig` 150, `select_fixed_atoms: false` (model invents pose/conformer) |
-| `small_molecule_binder/SAM_hbonds.cif` | `SAM_hbonds` | Adds H-bond donor/acceptor conditioning to SAM |
+| `small_molecule_binder/SAM_hbonds.cif.zst` | `SAM_hbonds` | Adds H-bond donor/acceptor conditioning to SAM |
 
 ## Run
 
@@ -26,7 +26,7 @@ rfd4-generate \
 
 - **`sm_binder_refolding`** — AF3 refolding + binding metrics.
 - **`interchain_interactions`** — H-bond / pi-stack / salt-bridge etc. adherence
-  and counts; use the `SAM_hbonds.cif` input to score H-bond adherence to SAM.
+  and counts; use the `SAM_hbonds.cif.zst` input to score H-bond adherence to SAM.
 - Refolding tags need the AF3 container (see **rfd4-proteina-evaluate**).
 
 ## Gotchas

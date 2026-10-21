@@ -6,7 +6,7 @@ defaults:
   - inference_on_user_inputs
   - _self_
 
-inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/small_molecule_binder/SAM_hbonds.cif
+inputs: ${oc.env:PROJECT_ROOT}/data/benchmarks/small_molecule_binder/SAM_hbonds.cif.zst
 num_replicates: 1
 
 out_dir: ./runs/sm_binder_hbond_search

@@ -1,5 +1,5 @@
 global_args:
-  input: structure_prediction/de_novo_proteins/9Q1V.cif
+  input: structure_prediction/de_novo_proteins/9Q1V.cif.zst
 
 full_chain_no_cys:
   contig: "A1-3, DESIGN:97-97"

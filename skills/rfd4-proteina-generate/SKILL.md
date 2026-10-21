@@ -52,7 +52,7 @@ input, task-specific overrides, and gotchas:
 | Folding / inverse folding | annotated CIF (backbone-only vs `C_SEQ`) | [tasks/folding-inverse.md](references/tasks/folding-inverse.md) |
 | Motif scaffolding | `motif_scaffolding/motif_indexed`, `motif_scaffolding/motif_unindexed`, `motif_scaffolding/motif_indexed_internal_coords` | [tasks/motif.md](references/tasks/motif.md) |
 | Enzyme design (active site) | `mcsa/mcsa_37`, `mcsa/mcsa_37_fixed_ligand`, `mcsa/mcsa_37_no_ligand` | [tasks/enzyme.md](references/tasks/enzyme.md) |
-| Small-molecule binder | `small_molecule_binder/sm_binder`, `small_molecule_binder/SAM_hbonds.cif` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
+| Small-molecule binder | `small_molecule_binder/sm_binder`, `small_molecule_binder/SAM_hbonds.cif.zst` | [tasks/sm-binder.md](references/tasks/sm-binder.md) |
 | Protein binder | `ppi/ppi_all_atom/` | [tasks/protein-binder.md](references/tasks/protein-binder.md) |
 | DNA binder | `dna_binder/dna_binder_denovo_val` | [tasks/dna-binder.md](references/tasks/dna-binder.md) |
 

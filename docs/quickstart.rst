@@ -35,7 +35,7 @@ configures ``DATA_PATH``. It then asks whether you want the environments that re
 search and the refolding metrics score designs with. Both are optional, and you can run the
 questions later with ``bash scripts/setup_search_envs.sh``.
 See the dedicated :doc:`installation` guide for CUDA build prerequisites and environment settings.
-The example input (``monomer-short.cif``) used below is already in the repository, so nothing else
+The example input (``monomer-short.cif.zst``) used below is already in the repository, so nothing else
 needs to be downloaded to generate your first design.
 
 #. **Set up an AlphaFold 2 environment for search?** AlphaFold 2 refolds protein-only designs.
@@ -68,7 +68,7 @@ Generate a design:
 
 .. code-block:: bash
 
-   rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif \
+   rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst \
        num_replicates=1 out_dir=./runs/first \
        ~metrics compile_lengths=null
 

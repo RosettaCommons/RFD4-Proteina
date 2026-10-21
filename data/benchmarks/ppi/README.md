@@ -12,7 +12,7 @@ The two flanking residues are not directly peptide-bonded; no missing loop atoms
 `pdl1` uses experimentally observed coordinates from [PDB 5O45](https://www.rcsb.org/structure/5O45),
 chain A residues 17–131, mapped to target chain B residues 1–115 in both input sets.
 The 15 unobserved sidechain atoms retain their atom rows with NaN coordinates, zero occupancy,
-and no coordinate conditioning. The documentation input `docs/examples/inputs/5o45_cropped.cif` uses the same geometry.
+and no coordinate conditioning. The documentation input `docs/examples/inputs/5o45_cropped.cif.zst` uses the same geometry.
 
 `il7ra` uses observed sidechain coordinates from [PDB 3DI3](https://www.rcsb.org/structure/3DI3),
 chain B residues 17–209, mapped to target B1–193. The 47 source-unobserved atoms remain present
