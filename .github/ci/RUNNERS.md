@@ -1,7 +1,8 @@
 # Cluster CI runners (maintainers only)
 
 `.github/workflows/cluster-ci.yaml` runs the CPU and GPU test lanes on self-hosted runners at CoreWeave and DIGS.
-It is triggered only by `workflow_dispatch` and by pushes to `main`. Pull requests never run on these machines.
+It is triggered only by a `/ci` comment from a listed maintainer on a pull request into `main`, or by a manual run
+(`workflow_dispatch`). Pushes to `main` and plain `pull_request` events never run on these machines.
 
 ## Who may run it
 
@@ -14,11 +15,14 @@ It is triggered only by `workflow_dispatch` and by pushes to `main`. Pull reques
 
 ## Testing a pull request into main
 
-Actions → Cluster CI → Run workflow. Keep "Use workflow from" on `main`, set `pr` to the pull request number, set
-`reviewed_sha` to the full head commit SHA you reviewed, and choose the clusters. The run refuses if the PR is not open,
-does not target `main`, or its head has moved since you reviewed it. The workflow definition comes from `main`; the code under
-test (including `.github/ci/*.sh` and the tests) comes from that exact commit and runs on the cluster as the runner user, so
-read the whole diff first and never run a PR you have not reviewed.
+Comment `/ci` on an open pull request into `main` (or `/ci coreweave` / `/ci digs` for one cluster). Only logins in
+`CLUSTER_CI_MAINTAINERS` are honored; comments from anyone else do nothing. The runner reacts with 🚀 and posts the result
+on the pull request when it finishes. It tests the PR head at the time of the comment, so read the whole diff and make sure
+no new commits landed since you reviewed it, because that code (including `.github/ci/*.sh` and the tests) runs on the cluster
+as the runner user.
+
+From the Actions tab you can instead start the workflow from `main` with `pr` and `reviewed_sha`; that run refuses if the PR
+head has moved since you reviewed it.
 
 ## Registering a runner
 

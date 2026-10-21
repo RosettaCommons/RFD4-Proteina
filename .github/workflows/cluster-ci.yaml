@@ -1,14 +1,19 @@
 name: Cluster CI
 
 # Maintainers only. Runs the CPU and GPU test lanes on the self-hosted CoreWeave and DIGS runners.
-# Triggers are `workflow_dispatch` and pushes to `main`; pull_request events never run here. To test an open
-# pull request into `main`, a maintainer starts this workflow from `main` and gives the PR number and the head
-# commit SHA they reviewed. The workflow definition always comes from `main`; only the code under test comes
-# from the PR, pinned to that exact commit. Every cluster job waits for the `authorize` job, which
-# accepts only listed maintainers and only runs from `main`. Cluster credentials live in the
-# runner-local profile, not in GitHub secrets. Runner setup: .github/ci/RUNNERS.md.
+# Triggers:
+#   - a `/ci` (or `/ci coreweave`, `/ci digs`) comment from a listed maintainer on an open pull request into
+#     `main`: tests the PR head as of the comment;
+#   - `workflow_dispatch`, optionally with a PR number and the head SHA the maintainer reviewed.
+# Pushes to `main` do not trigger it.
+# pull_request events never run here. issue_comment and workflow_dispatch workflows are always read from `main`,
+# so a pull request cannot change these rules; only the code under test comes from the PR. Every cluster job waits
+# for the `authorize` job, which accepts only logins in CLUSTER_CI_MAINTAINERS and only runs from `main`. Cluster
+# credentials live in the runner-local profile, not in GitHub secrets. Runner setup: .github/ci/RUNNERS.md.
 
 on:
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       clusters:
@@ -24,11 +29,9 @@ on:
         description: "Required with pr: the full head commit SHA you reviewed. The run refuses if the PR head has moved."
         type: string
         default: ""
-  push:
-    branches: [main]
 
 concurrency:
-  group: cluster-ci-${{ github.ref }}
+  group: cluster-ci-${{ github.event_name == 'issue_comment' && format('pr-{0}', github.event.issue.number) || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -37,41 +40,81 @@ permissions:
 jobs:
   authorize:
     name: authorize (maintainers only)
-    if: github.repository == 'RosettaCommons/RFD4-Proteina'
+    # Comments are pre-filtered so unrelated comments start no job at all: it must be a PR comment that starts
+    # with /ci from someone with a repository relationship.
+    if: >-
+      github.repository == 'RosettaCommons/RFD4-Proteina'
+      && (github.event_name != 'issue_comment'
+          || (github.event.issue.pull_request
+              && startsWith(github.event.comment.body, '/ci')
+              && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
     outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
       sha: ${{ steps.target.outputs.sha }}
+      clusters: ${{ steps.check.outputs.clusters }}
+      pr: ${{ steps.target.outputs.pr }}
     steps:
       - name: Only listed maintainers may use the cluster runners
+        id: check
         env:
+          EVENT: ${{ github.event_name }}
           ACTOR: ${{ github.triggering_actor }}
           # Comma-separated GitHub logins in the repository variable CLUSTER_CI_MAINTAINERS.
           ALLOWED: ${{ vars.CLUSTER_CI_MAINTAINERS }}
+          INPUT_CLUSTERS: ${{ inputs.clusters }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Cluster CI only runs from main (got $GITHUB_REF)."
-            exit 1
-          fi
-          if [ -z "${ALLOWED//[ ,]/}" ]; then
-            echo "::error::Repository variable CLUSTER_CI_MAINTAINERS is empty, so nobody is authorized."
-            exit 1
-          fi
+          deny() {
+            # Comments from people who are not maintainers are ignored quietly; every other trigger fails loudly.
+            echo "::notice::$1"
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            [ "$EVENT" = issue_comment ] && exit 0
+            echo "::error::$1"; exit 1
+          }
+          [ "$GITHUB_REF" = "refs/heads/main" ] || deny "Cluster CI only runs from main (got $GITHUB_REF)."
+          [ -n "${ALLOWED//[ ,]/}" ] || deny "Repository variable CLUSTER_CI_MAINTAINERS is empty, so nobody is authorized."
           allowed=",$(printf '%s' "$ALLOWED" | tr -d ' ' | tr '[:upper:]' '[:lower:]'),"
           actor="$(printf '%s' "$ACTOR" | tr '[:upper:]' '[:lower:]')"
           case "$allowed" in
-            *",$actor,"*) echo "$ACTOR is an authorized maintainer." ;;
-            *) echo "::error::$ACTOR is not listed in CLUSTER_CI_MAINTAINERS; cluster CI refused."; exit 1 ;;
+            *",$actor,"*) ;;
+            *) deny "$ACTOR is not listed in CLUSTER_CI_MAINTAINERS; cluster CI refused." ;;
           esac
+          clusters=both
+          if [ "$EVENT" = workflow_dispatch ]; then
+            clusters="${INPUT_CLUSTERS:-both}"
+          elif [ "$EVENT" = issue_comment ]; then
+            # Only the first line counts: "/ci", "/ci both", "/ci coreweave" or "/ci digs".
+            line="$(printf '%s' "$COMMENT_BODY" | head -n1 | tr -d '\r')"
+            if [[ "$line" =~ ^/ci([[:space:]]+(both|coreweave|digs))?[[:space:]]*$ ]]; then
+              clusters="${BASH_REMATCH[2]:-both}"
+            else
+              deny "Comment is not a valid /ci command."
+            fi
+          fi
+          echo "$ACTOR is an authorized maintainer; clusters: $clusters."
+          echo "allowed=true" >> "$GITHUB_OUTPUT"
+          echo "clusters=$clusters" >> "$GITHUB_OUTPUT"
+
+      - name: Acknowledge the comment
+        if: github.event_name == 'issue_comment' && steps.check.outputs.allowed == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: gh api -X POST "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=rocket
 
       - name: Resolve the commit to test
         id: target
+        if: steps.check.outputs.allowed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ inputs.pr }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.issue.number || inputs.pr }}
           REVIEWED_SHA: ${{ inputs.reviewed_sha }}
         run: |
           if [ -z "${PR:-}" ]; then
@@ -83,18 +126,19 @@ jobs:
           read -r state base head < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq '[.state, .base.ref, .head.sha] | @tsv')
           [ "$state" = open ] || { echo "::error::PR #$PR is not open."; exit 1; }
           [ "$base" = main ] || { echo "::error::PR #$PR targets '$base', not main."; exit 1; }
-          if [ -z "${REVIEWED_SHA:-}" ] || [ "$REVIEWED_SHA" != "$head" ]; then
+          if [ "$EVENT" = workflow_dispatch ] && { [ -z "${REVIEWED_SHA:-}" ] || [ "$REVIEWED_SHA" != "$head" ]; }; then
             echo "::error::reviewed_sha must equal the PR head $head. Review that commit, then pass its full SHA."
             exit 1
           fi
           echo "sha=$head" >> "$GITHUB_OUTPUT"
-          echo "Testing PR #$PR at the reviewed commit $head"
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+          echo "Testing PR #$PR at $head"
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename' | head -200
 
   coreweave-cpu:
     name: pytest (cpu, coreweave)
     needs: authorize
-    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
+    if: needs.authorize.outputs.allowed == 'true' && contains(fromJSON('["both","coreweave"]'), needs.authorize.outputs.clusters)
     runs-on: [self-hosted, coreweave-cpu]
     timeout-minutes: 30
     env:
@@ -123,7 +167,7 @@ jobs:
   coreweave-gpu:
     name: pytest (gpu, coreweave)
     needs: authorize
-    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'digs'
+    if: needs.authorize.outputs.allowed == 'true' && contains(fromJSON('["both","coreweave"]'), needs.authorize.outputs.clusters)
     runs-on: [self-hosted, coreweave-gpu]
     timeout-minutes: 60
     env:
@@ -181,7 +225,7 @@ jobs:
   digs-cpu:
     name: pytest (cpu, digs)
     needs: authorize
-    if: github.event_name != 'workflow_dispatch' || inputs.clusters != 'coreweave'
+    if: needs.authorize.outputs.allowed == 'true' && contains(fromJSON('["both","digs"]'), needs.authorize.outputs.clusters)
     # Repo-level self-hosted runner on a DIGS login node; it only submits srun to the cpu partition.
     runs-on: [self-hosted, digs]
     timeout-minutes: 60
@@ -200,3 +244,24 @@ jobs:
           srun --chdir=$PWD -p cpu -c $N_CPU -t 00:50:00 --mem=32G \
             -J "ci-digs-${GITHUB_RUN_ID}" \
             bash ./.github/ci/run_cpu_lane.sh
+
+  report:
+    name: report the result on the pull request
+    needs: [authorize, coreweave-cpu, coreweave-gpu, digs-cpu]
+    if: ${{ always() && github.event_name == 'issue_comment' && needs.authorize.outputs.allowed == 'true' && needs.authorize.outputs.pr != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment the outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.authorize.outputs.pr }}
+          SHA: ${{ needs.authorize.outputs.sha }}
+          CW_CPU: ${{ needs.coreweave-cpu.result }}
+          CW_GPU: ${{ needs.coreweave-gpu.result }}
+          DIGS_CPU: ${{ needs.digs-cpu.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Cluster CI for \`${SHA:0:7}\`: CoreWeave CPU **$CW_CPU**, CoreWeave GPU **$CW_GPU**, DIGS CPU **$DIGS_CPU**. Details: $RUN_URL"
