@@ -75,7 +75,6 @@ jobs:
           labels: |
             org.opencontainers.image.title=RFD4-Proteina (${{ matrix.accelerator }})
             org.opencontainers.image.description=RFD4-Proteina runtime image, ${{ matrix.accelerator }} profile
-            org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
