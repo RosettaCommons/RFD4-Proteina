@@ -205,6 +205,9 @@ def test_ae_training_regression() -> None:
     """Compare current-release AE losses from random initialization with periodic full GC."""
     require_gpu_e2e(min_gpus=1)
     require_h200()
+    benchmark = Path(__file__).resolve().parents[2] / "data/benchmarks/ae_pdb_temporal_holdout_2026_10_04"
+    if not benchmark.is_dir() or not any(benchmark.iterdir()):
+        pytest.skip(f"AE validation benchmark missing at {benchmark}; `make setup` downloads it from Hugging Face")
 
     expected = load_baseline_losses("ae_training")
     _run_training(

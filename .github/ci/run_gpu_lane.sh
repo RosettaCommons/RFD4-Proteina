@@ -260,6 +260,17 @@ if [[ -f "$CCD_TAR" ]]; then
   fi
 fi
 
+# The AE validation benchmark lives on Hugging Face, not in git (`make setup` fetches it). Fetch it when missing;
+# the AE training regression test skips when the download is unavailable.
+AE_BENCHMARK="data/benchmarks/ae_pdb_temporal_holdout_2026_10_04"
+if [[ ! -d "$AE_BENCHMARK" ]] || [[ -z "$(ls -A "$AE_BENCHMARK" 2>/dev/null)" ]]; then
+  echo "Fetching ${AE_BENCHMARK} from Hugging Face ..."
+  hf download "${RFD4_BENCHMARKS_REPO:-nvidia/RFD4-Proteina}" --repo-type dataset \
+    ${RFD4_BENCHMARKS_REVISION:+--revision "$RFD4_BENCHMARKS_REVISION"} \
+    --include "benchmarks/ae_pdb_temporal_holdout_2026_10_04/*" --local-dir data \
+    || echo "WARNING: could not download the AE validation benchmark; the AE training regression test will skip." >&2
+fi
+
 MARKER="gpu or regression"
 
 echo "=== GPU tests: collect-only sanity ==="

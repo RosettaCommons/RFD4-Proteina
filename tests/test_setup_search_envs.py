@@ -4,6 +4,7 @@ import hashlib
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -28,7 +29,7 @@ def scratch(tmp_path):
     bin_dir.mkdir()
     (bin_dir / "apptainer").write_text("#!/bin/sh\nexit 0\n")
     (bin_dir / "hf").write_text(
-        "#!/usr/bin/python3\n"
+        f"#!{sys.executable}\n"
         "import pathlib, sys\n"
         "args = sys.argv[1:]\n"
         "target = pathlib.Path(args[args.index('--local-dir') + 1]) / args[2]\n"
