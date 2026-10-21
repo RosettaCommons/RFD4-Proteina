@@ -76,7 +76,7 @@ def test_answers_select_environments_arch_and_cuda(scratch):
     block = env_block(scratch)
     assert "arch=arm64, cuda=12" in block
     assert "AF2_IMAGE" not in block  # no prebuilt arm64 image
-    assert f"AF3_JAX_CACHE_DIR={scratch}/data_path/openfold3/jax_cache" in block
+    assert f'AF3_JAX_CACHE_DIR="{scratch}/data_path/openfold3/jax_cache"' in block
     assert "AF3_MODEL_DIR" not in block  # weights declined
     assert "AF3_IMAGE" not in block  # no prebuilt arm64 image
     assert "No prebuilt AlphaFold 3 / OpenFold3 image is published for arm64" in result.stdout
@@ -95,7 +95,7 @@ def test_rerun_replaces_the_block_instead_of_appending(scratch):
         run(scratch, "--af2", "--no-af2-params", "--arch", "amd64", "--cuda", cuda)
     text = (scratch / ".env.local").read_text()
     assert text.count(MARK_START) == 1
-    assert f"AF2_IMAGE={scratch}/data_path/alphafold2/runtime/alphafold2-pallas-cuda13-amd64.sif" in text
+    assert f'AF2_IMAGE="{scratch}/data_path/alphafold2/runtime/alphafold2-pallas-cuda13-amd64.sif"' in text
     assert "alphafold2-pallas-cuda12-amd64" not in text
     assert text.startswith("DATA_PATH=")  # the rest of the file is untouched
 

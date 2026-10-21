@@ -121,6 +121,16 @@ run() {
     if [[ "$dry_run" == true ]]; then echo "    [dry run] $*"; else "$@"; fi
 }
 
+# Double quotes preserve spaces for both Bash and Python's dotenv loader.
+quote_env_path() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//\$/\\\$}"
+    value="${value//\`/\\\`}"
+    printf '"%s"' "$value"
+}
+
 block=()
 notes=()
 overrides=()
@@ -135,15 +145,15 @@ if [[ "$af3" == yes ]]; then
             notes+=("apptainer is not installed, so the OpenFold3 image was not downloaded. Install it from https://github.com/apptainer/apptainer/releases and re-run this script.")
         else
             download_oracle_runtime "$OF3_RUNTIME_FILE" "$OF3_RUNTIME_SHA256" "$DATA_PATH" "$dry_run"
-            block+=("AF3_IMAGE=$(printf '%q' "$DATA_PATH/$OF3_RUNTIME_FILE")")
+            block+=("AF3_IMAGE=$(quote_env_path "$DATA_PATH/$OF3_RUNTIME_FILE")")
         fi
     else
         notes+=("No prebuilt AlphaFold 3 / OpenFold3 image is published for $arch. Build one from the runtime source (see docs/how-to/evaluate-with-metrics.md), then set AF3_IMAGE to the resulting .sif in $env_file.")
     fi
-    block+=("AF3_JAX_CACHE_DIR=$(printf '%q' "$of3_dir/jax_cache")")
+    block+=("AF3_JAX_CACHE_DIR=$(quote_env_path "$of3_dir/jax_cache")")
     if [[ "$of3_weights" == yes ]]; then
         run hf download "$ORACLE_ARTIFACT_REPO" "${OF3_WEIGHTS_FILES[@]}" --revision "$ORACLE_ARTIFACT_REVISION" --local-dir "$DATA_PATH"
-        block+=("AF3_MODEL_DIR=$(printf '%q' "$of3_dir/weights")")
+        block+=("AF3_MODEL_DIR=$(quote_env_path "$of3_dir/weights")")
         overrides+=("metrics/refolding_oracles=of3")
     else
         notes+=("AlphaFold 3's own weights are gated by Google DeepMind. Set AF3_MODEL_DIR in $env_file to your copy, or re-run with --of3-weights to use the free OpenFold3 weights.")
@@ -173,12 +183,12 @@ if [[ "$af2" == yes ]]; then
     if [[ "$arch" == amd64 ]] && command -v apptainer &>/dev/null; then
         select_af2_runtime "$cuda"
         download_oracle_runtime "$AF2_RUNTIME_FILE" "$AF2_RUNTIME_SHA256" "$DATA_PATH" "$dry_run"
-        block+=("AF2_RUNTIME_BACKEND=apptainer" "AF2_IMAGE=$(printf '%q' "$DATA_PATH/$AF2_RUNTIME_FILE")")
+        block+=("AF2_RUNTIME_BACKEND=apptainer" "AF2_IMAGE=$(quote_env_path "$DATA_PATH/$AF2_RUNTIME_FILE")")
     else
         notes+=("The prebuilt AlphaFold 2 images require amd64 and Apptainer. Install Apptainer and re-run setup, or configure a runtime following docs/installation.rst. Pallas requires GPU compute capability 8.0 or newer.")
     fi
-    block+=("AF2_MODEL_DIR=$(printf '%q' "$af2_dir/model_dir")"
-            "AF2_JAX_CACHE_DIR=$(printf '%q' "$af2_dir/jax_cache")"
+    block+=("AF2_MODEL_DIR=$(quote_env_path "$af2_dir/model_dir")"
+            "AF2_JAX_CACHE_DIR=$(quote_env_path "$af2_dir/jax_cache")"
             "AF2_RESIDENT_MODELS=model_1_ptm,model_1_multimer_v3")
     overrides+=("metrics/refolding_oracles=af2")
 fi
