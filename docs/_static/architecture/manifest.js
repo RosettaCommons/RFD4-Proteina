@@ -122,8 +122,8 @@ window.RFD4_ARCHITECTURE = {
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L1948-L2106"
     },
     {
-     "label": "generate.py L613-L749",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/generate.py#L613-L749"
+     "label": "generate.py L610-L744",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/generate.py#L610-L744"
     }
    ]
   },
@@ -188,6 +188,10 @@ window.RFD4_ARCHITECTURE = {
     {
      "label": "local_latents_score_nn_160M_atom37.yaml L1-L132",
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L1-L132"
+    },
+    {
+     "label": "2026_10_19_hero_pretrain.yaml L390-L423",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L390-L423"
     }
    ]
   },
@@ -828,8 +832,8 @@ window.RFD4_ARCHITECTURE = {
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L1-L171"
     },
     {
-     "label": "autoencoder.py L226-L278",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L226-L278"
+     "label": "autoencoder.py L227-L289",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L227-L289"
     },
     {
      "label": "training_ae.yaml L35-L54",
@@ -906,8 +910,8 @@ window.RFD4_ARCHITECTURE = {
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L140-L171"
     },
     {
-     "label": "proteina.py L2041-L2080",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L2041-L2080"
+     "label": "proteina.py L2041-L2085",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L2041-L2085"
     },
     {
      "label": "nn_130m_unified.yaml L53-L88",
