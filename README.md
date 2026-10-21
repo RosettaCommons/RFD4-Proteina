@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/assets/wordmark.svg" width="587" alt="RFD4-Proteina">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/docs/_static/wordmark-dark.webp">
+    <img src="https://raw.githubusercontent.com/RosettaCommons/RFD4-Proteina/main/docs/_static/wordmark.webp" width="520" alt="RFD4-Proteina">
+  </picture>
 </p>
 
 <p align="center"><em>A flow-matching foundation model for biomolecular design — Baker Lab × NVIDIA GenAIR</em></p>
