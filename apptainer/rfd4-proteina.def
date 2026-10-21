@@ -19,7 +19,8 @@ From: python:3.12.12-slim-bookworm
 
 %arguments
     ACCELERATOR=cu13
-    UV_VERSION=0.12.13
+    # Minimum uv: 0.13.4 is the first release with the emSign CA fix (python.org announcement, Oct 20 2026).
+    UV_MIN_VERSION=0.13.4
 
 %files
     pyproject.toml /opt/rfd4/pyproject.toml
@@ -45,10 +46,20 @@ From: python:3.12.12-slim-bookworm
 
     # build-essential: torch.compile (Inductor/Triton) compiles C++ and CUDA glue at run time.
     # The lib* packages are runtime dependencies of OpenBabel.
+    # ca-certificates: makes sure the system CA bundle is the newest the distro offers.
     apt-get update
-    apt-get install -y --no-install-recommends build-essential libxrender1 libx11-6 libxext6
+    apt-get install -y --no-install-recommends build-essential ca-certificates libxrender1 libx11-6 libxext6
     rm -rf /var/lib/apt/lists/*
+    # Bootstrap trust (eMudhra/emSign CA incident, Oct 2026): the pip shipped in the base image bundles a
+    # certifi that still trusts the compromised CA, and pip always trusts its bundled certifi in addition
+    # to the system store. Install the fixed pip from a hash-pinned URL so this download is verified by
+    # checksum rather than by the old trust store. Remove this step once the base image ships pip >= 26.2.2.
+    python -m pip install --no-cache-dir "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
     python -m pip install --no-cache-dir "uv=={{ UV_VERSION }}"
+
+    # Floor for certifi so no resolution can install a copy that trusts the compromised CA.
+    # A constraint only applies if certifi is pulled in; it does not add the package.
+    printf 'certifi>=2026.10.19\n' > /opt/rfd4-constraints.txt
 
     cd /opt/rfd4
     case "${ACCELERATOR}" in
@@ -64,6 +75,12 @@ From: python:3.12.12-slim-bookworm
         uv pip install --system --no-cache --only-binary tmol "tmol>=0.2.0,<0.3" posebusters
     fi
     python -m pip check
+
+    # Record the tool versions in the build log.
+    uv --version
+    python -m pip --version
+    python -m pip list 2>/dev/null | grep -i '^certifi ' || true
+    rm -f /opt/rfd4-constraints.txt
 
     # Smoke test: imports, TMol operators for the selected profile, Inductor, and the CLI.
     # A private TMPDIR keeps Inductor off any host /tmp directory that the build user does not own.
