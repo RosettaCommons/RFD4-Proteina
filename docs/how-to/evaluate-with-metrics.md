@@ -14,51 +14,53 @@ of them, what each outputs, and the tag that turns it on. For the refolding fami
 oracle, the AF3/OF3 setup it needs, and how a design can carry more than one refold — see the
 [refolding guide](refolding.md).
 
-## How many metrics ship enabled
+## What the default metrics configuration registers
 
-`configs/metrics/all_metrics.yaml` already registers **46 metrics, oracles, pass criteria and
-filters**, and
-they run automatically. No code, no new config files. Most sit behind one or more **`metrics_tags`**,
-so you turn one on by passing a tag on the command line.
+With its default AF3 oracle group, `configs/metrics/all_metrics.yaml` registers **53 metric,
+oracle, pass-criterion and filter entries**. Registered entries do not all run on every design:
+most are gated by `metrics_tags`, and refolding metrics also depend on which refolds are available.
+Select tags on the command line:
 
 ```bash
 rfd4-generate \
     inputs=design.json num_replicates=50 metrics_tags='[unconditional_refolding]'
 ```
 
-Here is what is wired in.
-
 | Category | Count | Config |
 | --- | --- | --- |
-| Design metrics, run inline before refolding | 21 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
+| Design and developability metrics, run inline before refolding | 22 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
+| Antibody contact metrics | 1 | `configs/metrics/inline_metrics/antibody_metrics.yaml` |
 | Structure prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
-| Refolding metrics, design against refold or refold against refold | 7 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
-| Refolding oracles, the AF3 variants | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
-| Pass criteria | 10 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
+| Refolding metrics, design against refold or refold against refold | 8 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
+| Refolding oracles, the default AF3 variants | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
+| Pass criteria | 11 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
 | Pre-oracle filters, which skip the oracle when a cheap check fails | 6 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
 
-Another **7 metric classes already live in the codebase** without a default config. They cover TMol
-interface ddG, H-bonds and electrostatics, an atom pair distance constraint used for catalytic
-geometry, a QM ligand interaction energy, charge complementarity, and a
-few others. Turning one on takes **no Python**, just a few lines of YAML, exactly like the [worked
-example](advanced/custom-metrics.md#worked-example-an-existing-metric-your-own-config). See [Ready-made
-but opt-in](../reference/metrics.md#ready-made-but-opt-in).
+Selecting another oracle group or adding custom metrics changes this inventory. CDR torsion
+naturalness is opt-in through `inline_metrics/all_inline_metrics_with_cdr_torsion.yaml`; it is not
+part of the default count.
 
-Write a new `Metric` subclass only when none of the existing metrics cover what you need. See [Writing your
-own](advanced/custom-metrics.md#writing-your-own).
+Additional metrics are available in the codebase and opt-in config groups, including TMol interface
+energies and atom-pair distance constraints. Enable an existing metric with a YAML entry, as in the
+[worked example](advanced/custom-metrics.md#worked-example-an-existing-metric-your-own-config).
+See [Ready-made but opt-in](../reference/metrics.md#ready-made-but-opt-in).
+
+Write a new `Metric` subclass only when none of the existing metrics cover what you need.
+See [Writing your own](advanced/custom-metrics.md#writing-your-own).
 
 ## Running metrics inline
 
 :::{note}
-Refolding metrics and reward guided search both use the **AF3 oracle**, which runs only inside an
-apptainer container or a native install, configured through the cluster env files. See the
-[Developer Guide](../contributing/developer-guide.md). Plain generation needs none of it. For oracle setup, the
-task specific tags below, and how a design can carry more than one refold, see the [refolding
-guide](refolding.md).
+Refolding uses the configured oracle: AF3 by default, or OpenFold3/AlphaFold 2 through
+`metrics/refolding_oracles=of3` or `metrics/refolding_oracles=af2`. Each needs its own runtime
+and weights; see [oracle setup](refolding.md). Search only needs an oracle when a configured reward
+or continuation criterion uses refolding. [Structure-only search](../concepts/search.md)
+can score designs without a refolding runtime.
 :::
 
 Pass `metrics_tags` during inference and metrics get computed right after each design. Results land
-in `per_example_metrics.csv` next to the CIF files.
+under `<out_dir>/inference_metrics/` in `per_example_metrics.csv` (or a per-job CSV for
+SLURM arrays), while structures go under `<out_dir>/inference_samples/`.
 
 The [metrics reference](../reference/metrics.md) covers every metric that ships enabled, what it
 outputs, and which tag turns it on. See the [custom metrics guide](advanced/custom-metrics.md) for
@@ -80,7 +82,7 @@ rfd4-generate \
 | --- | --- |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD for unconditional generation |
 | `ppi_refolding` | AF3 refolding, target templating and interface metrics for protein binder design |
-| `antibody` | Antibody contacts and CDR torsions, templated refolding, and antibody pass criteria |
+| `antibody` | Antibody contacts, templated refolding and antibody pass criteria; CDR torsions require the opt-in config above |
 | `motif_scaffold_refolding` | AF3 refolding plus motif RMSD for motif scaffolding and enzyme design |
 | `sm_binder_refolding` | AF3 refolding plus binding metrics for small molecule binder design |
 | `ame_refolding` | AF3 refolding for enzyme (MCSA) active site benchmarks |

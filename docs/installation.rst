@@ -93,9 +93,9 @@ directly. Activate that environment first (``source .venv/bin/activate`` for
 setup's venv), or use an explicit path such as ``.venv/bin/rfd4-generate``.
 The command uses the interpreter where it was installed; it does not choose
 a container or automatically activate another environment. Wheels include the
-Hydra configs and benchmark inputs. A wheel install reads local environment
-files from the working directory; an editable install reads them from the
-checkout root.
+Hydra configs and monomer example inputs; clone the repository for the benchmark
+sets. A wheel install reads local environment files from the working directory;
+an editable install reads them from the checkout root.
 
 AtomWorks is installed from the project metadata. The base package runs generation with the
 default metrics. There are two extras; pick the one that matches your driver, because it selects the

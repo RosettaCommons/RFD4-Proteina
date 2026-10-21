@@ -26,6 +26,26 @@ ca     = aa[aa.mask("(chain_id == 'A') & (atom_name == 'CA')")]            # the
 Parse with the `STANDARD_ANNOTATIONS_ONLY` preset from `rfproteina.utils.parse_presets` for minimal
 overhead when all you need is this provenance.
 
+## Reading compressed structures
+
+The same `parse` call reads plain CIF, gzip (`.cif.gz`) and Zstandard (`.cif.zst`) inputs.
+Generation and standalone evaluation still write plain CIF by default; `compress_outputs=true`
+selects Zstandard for newly written outputs. See [Compression](../reference/output-format.md#compression).
+
+To discover outputs in either encoding, use the structure-file helpers rather than a plain
+`*.cif` glob:
+
+```python
+from rfproteina.utils.structure_files import iter_structure_files, structure_file_stem
+
+for path in iter_structure_files("runs/my_run/inference_samples", stem_suffix="_generated"):
+    design_id = structure_file_stem(path)  # strips both the format and compression suffix
+    aa = parse(path, config=ANNOTATED_CIF)["assemblies"]["1"][0]
+```
+
+Keep one encoding of each structure in a directory: discovery rejects duplicate plain/compressed
+copies with the same design ID.
+
 ## Worked examples
 
 The [enzyme design tutorial](../examples/enzyme_design_tutorial.ipynb) uses this same selection to

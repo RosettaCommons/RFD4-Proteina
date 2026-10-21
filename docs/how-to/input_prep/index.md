@@ -47,8 +47,10 @@ rfd4-generate \
     num_replicates=10 batch_size=8
 ```
 
-`inputs` takes a single `.cif` or `.bcif`, a **directory** of them, or a list of file names. Each file is one
-design problem. <!--It also takes `.json` and `.yaml`, though we do not recommend those.--> Outputs echo
+`inputs` takes a single `.cif` or `.bcif`, a **directory** of them, or a list of file names.
+Plain, gzip (`.cif.gz`, `.bcif.gz`) and Zstandard (`.cif.zst`, `.bcif.zst`) inputs are read directly;
+there is no need to decompress them first. Repository benchmark CIFs use `.cif.zst`. Each file is one
+design problem, and compression does not change its example ID. <!--It also takes `.json` and `.yaml`, though we do not recommend those.--> Outputs echo
 source component provenance (information on where each residue, inserted segment in the output structure came from) 
 as per-residue `SA_SRC` labels like `A3`; expandable segments retain
 range labels like `3-10`. This lets you trace each output residue to its input residue or inserted

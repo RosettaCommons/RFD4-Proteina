@@ -96,17 +96,17 @@ instead of only scoring after the fact. See {doc}`../concepts/search` and
 
 ```text
 metrics/            Metric and MetricManager base classes, plus every built-in metric
-af2/, af3/          Apptainer/daemon integration for the AlphaFold2/3 refolding oracles
-evaluate.py         Standalone (argparse) CLI: scores structures you already generated
+af2/, af3/          Runtime/daemon integration for the AF2, AF3 and OpenFold3 refolding oracles
+evaluate.py         Standalone Hydra CLI: scores structures you already generated
 result_analysis/    Post-hoc analysis helpers over aggregated metrics output
 ```
 
 Every metric subclasses `rfproteina.metrics.metric.Metric` and is composed through
 `configs/metrics/`; `evaluate.py` and inline generation metrics share the same `MetricManager`.
-Refolding-based metrics depend on the AF3 (or AF2) oracle, which runs as an apptainer-backed daemon
-under `af3/`/`af2/` rather than in-process — expect metrics that need it to declare that dependency
-explicitly rather than failing silently. {doc}`../reference/metrics` lists every built-in metric and
-its gating tags; {doc}`../how-to/advanced/custom-metrics` and {doc}`contribute-a-metric` cover
+Refolding metrics depend on the configured AF3, OpenFold3 or AF2 oracle, which runs in a
+separate runtime through `af3/` or `af2/`. Metrics that need a refold declare that dependency
+explicitly. See {doc}`../how-to/refolding` for setup and supported inputs.
+{doc}`../reference/metrics` lists every built-in metric and its gating tags; {doc}`../how-to/advanced/custom-metrics` and {doc}`contribute-a-metric` cover
 writing and upstreaming your own.
 
 ## Supporting code

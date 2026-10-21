@@ -51,6 +51,7 @@ These run directly on the generated structure, before any oracle refolds it.
 
 | Config key | Tag gate | What it measures | Output columns (prefixed `<key>.`) |
 | --- | --- | --- | --- |
+| `amino_acid_composition` | Always | Generated UNK count and ALA, VAL and GLY fractions among standard amino acids; sequence-conditioned UNK is exempt from the generated UNK count | `n_generated_unknown_residues`, `n_standard_residues`, `ala_fraction`, `val_fraction`, `gly_fraction` |
 | `bond_length_metrics` | any: `design`<br>not: `small_molecule_only`, `structure_prediction` | Fraction of bonds with an unreasonable length, on element dependent thresholds | `frac_unreasonable`, plus a per category breakdown in verbose mode |
 | `clash_metrics` | any: `design`, `structure_prediction`<br>not: `small_molecule_only` | Fraction of atoms in a steric clash at a configurable threshold, 1.5 Å by default, split by clash type | `frac_atoms_clashing_1p5A` plus 5 category breakdowns, intra and inter residue by polymer and ligand |
 | `hotspot_obedience` | any: `hotspot_conditioning` | Fraction of hotspot atoms with a binder atom within 4.5 Å | `hotspot_obedience` |
@@ -68,6 +69,7 @@ These run directly on the generated structure, before any oracle refolds it.
 | `unindexed_insertion_mapping` | all: `unindexed` | Whether the insertion head applied its unindexed to generated token mapping in full, meaning every unindexed token got inserted, onto a residue of the conditioned identity wherever the unindexed region was sequence conditioned | `n_unmapped_tokens`, `n_sequence_mismatches` |
 | `contact_molecular_surface` | any: `cms` | Distance weighted interfacial contact surface area between binder and target, following [Lawrence and Colman 1993](https://www.sciencedirect.com/science/article/pii/S0022283683716487?via%3Dihub) | see `rfproteina.metrics.physics.contact_ms.metric` |
 | `sequence_similarity_to_input` | any: `partial_diffusion` | Sequence identity against the seed structure, for partial diffusion | `sequence_identity_to_input` |
+| `ca_rmsd_to_input` | any: `partial_diffusion` | Protein CA RMSD to the input after CA alignment, measuring how much of the seed backbone was retained; omitted if CA counts differ | `rmsd` |
 | `cath_metric` | any: `cath` | CATH superfamily classification of the chain of interest, through Foldseek | `C`, `A`, `T`, `H`, `type`, `evalue`, `tmscore` |
 | `sequence_developability` | any: `developability`<br>not: `small_molecule_only`, `structure_prediction` | GRAVY and the Guruprasad instability index on the designed chain. Half-life is deliberately omitted | `gravy`, `instability_index` |
 | `antibody_contacts` | any: `antibody` | Fraction of contacting variable-domain residues in Chothia CDRs | `cdr_contact_count`, `fw_contact_count`, `cdr_contact_fraction` |
@@ -124,15 +126,18 @@ refolds in your own metric, as `refolded_apo_holo_rmsd` does.
 
 ### Refolding oracles
 
-An oracle runs the actual structure prediction that the refolding metrics above compare against. It
-is heavy and AF3 based. [Running metrics inline](../how-to/evaluate-with-metrics.md#running-metrics-inline) covers the
-apptainer and AF3 setup you need. If the tag gates below are included in the `metrics_tags` CLI option then a refolding oracle runs. See [Refolding](../how-to/refolding.md) for more information.
+An oracle runs the structure prediction that the refolding metrics above compare against. AF3 is
+the default; select OpenFold3 or AlphaFold 2 through the corresponding `metrics/refolding_oracles`
+group. See [Refolding](../how-to/refolding.md) for runtime setup and supported molecular inputs.
+The table below describes the default AF3 group. An oracle runs when its tag gates match
+`metrics_tags`.
 
 | Config key | Tag gate | Notes | Key outputs (prefix `<key>.`) |
 | --- | --- | --- | --- |
 | `oracle` | any: `af3_refolding`, `unconditional_refolding`, `motif_scaffold_refolding`, `internal_coordinate_motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding`, `ame_no_ligand_refolding`, `ame_original_benchmark_refolding`, `disco_refolding` | Untemplated AF3 refold | `overall_plddt`, `overall_ptm`, `overall_iptm`, `plddt_coi`, `ptm_coi`, `pae_coi`, `ipae_coi`, `min_ipae_coi`, `iptm_coi`, `frac_under_1`/`1.5`/`2` (on `min_ipae_coi`) |
 | `oracle_ppi` | any: `ppi_refolding`, `antibody` | Templates protein atoms with ordinary or internal coordinate conditioning | same key set, prefixed `oracle_ppi.` |
 | `oracle_dna` | any: `dna_refolding` | DNA templated and fixed, for DNA binder design | same key set, prefixed `oracle_dna.` |
+| `oracle_apo` | any: `apo_refolding` | Refolds the designed chain alone through its apo pre-oracle transform; pair with an untransformed oracle for apo/holo comparison | `oracle_apo.apo.*` |
 
 ### Pass criteria
 

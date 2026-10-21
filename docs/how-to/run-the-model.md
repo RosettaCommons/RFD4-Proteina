@@ -33,8 +33,9 @@ optional oracle setup described in
   [tutorial](../examples/python_api_tutorial.ipynb)) or a
   [condition-spec JSON/YAML file](input_prep/yaml-json.md). `data/benchmarks/` has ready made examples.
 - **Every model argument is `key=value`**, Hydra style, never `--key value`.
-- **Checkpoints** come from `$DATA_PATH` by default. Override them on the command line only for a
-  one off model, with `ckpt_path=<dir> ckpt_name=<file.ckpt>`.
+- **Checkpoints** load from the pinned Hugging Face bundle in `configs/inference.yaml` by default.
+  For native files, set `hf_ckpt_path=null` and supply `ckpt_path=<dir>`,
+  `ckpt_name=<file.ckpt>` and the matching `autoencoder_ckpt_path=<file.ckpt>`.
 - **`batch_size`** of 8 is a good place to start. Bigger batches run faster, but confirm your
   longest input fits at `batch_size=1` first.
 
@@ -227,7 +228,7 @@ reference.
 | Hydra config errors | Use `=` not `--`. Write `inputs=file.cif`, not `--inputs file.cif` |
 | Out of memory | Lower `batch_size`, and test your longest input at `batch_size=1` first |
 | Segfault in rdkit or posebusters | uv's Python needs `LD_PRELOAD` pointed at the bundled `libstdc++.so.6`, as in the `Makefile`. `make test` sets it for you |
-| AF3 or refolding errors | Refolding and search need an AF3 apptainer. See [Running metrics inline](evaluate-with-metrics.md#running-metrics-inline) |
+| AF3 or refolding errors | Check the configured oracle runtime and weights. Search needs an oracle only for refolding-based rewards or criteria. See [Running metrics inline](evaluate-with-metrics.md#running-metrics-inline) |
 | Every design silently fails a pre-oracle filter, with no error | The filter's tag gate is looser than the metric it reads, so it sees a missing key and counts that as a failure. Keep a filter's tag gate at least as strict as its metric's — see [Pre-oracle filters](../reference/metrics.md#pre-oracle-filters) |
 
 ```{toctree}

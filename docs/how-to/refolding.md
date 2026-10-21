@@ -11,8 +11,9 @@ refolding is its own metric family and how a design can carry more than one refo
 
 ## Set up the oracle
 
-Refolding needs a structure prediction **oracle**, which runs in its own Apptainer container, separate
-from the native model environment, even when generation itself runs natively.
+Refolding needs a structure prediction **oracle**, which runs in a separate runtime from
+the model environment. AF3 and OpenFold3 use the AF3 Apptainer runtime; AF2 also supports
+Docker and Pyxis through `AF2_RUNTIME_BACKEND`.
 
 - **AF3** is the default. Set `AF3_IMAGE`, `AF3_MODEL_DIR`, and `AF3_JAX_CACHE_DIR` in your
   environment file, following the paths the download script prints. See
@@ -32,7 +33,12 @@ from the native model environment, even when generation itself runs natively.
   parameter family follows `AF3_MODEL_DIR` alone, so one job uses one family — run AF3 and OF3 as
   separate jobs and compare afterwards.
 
-Plain generation with no refolding tags needs none of this.
+- **AlphaFold 2** supports protein refolding through `metrics/refolding_oracles=af2`.
+  Set `AF2_IMAGE`, `AF2_MODEL_DIR` and `AF2_JAX_CACHE_DIR` for its separate runtime;
+  `bash setup.sh --native` offers AF2 setup. The AF2 group provides untemplated and protein-binder
+  oracles; it does not replace the AF3/OF3 DNA or small-molecule oracles.
+
+Plain generation with no refolding tags and structure-only search need none of this.
 
 ## Turn it on
 
@@ -53,7 +59,7 @@ rfd4-generate \
 | --- | --- |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD for unconditional generation |
 | `ppi_refolding` | AF3 refolding, target templating and interface metrics for protein binder design |
-| `antibody` | Antibody contacts and CDR torsions, templated refolding, and antibody pass criteria |
+| `antibody` | Antibody contacts, templated refolding and antibody pass criteria; CDR torsions require the opt-in config described in [Running metrics inline](evaluate-with-metrics.md) |
 | `dna_refolding` | AF3 refolding, DNA templating and interface metrics for DNA binder design |
 | `motif_scaffold_refolding` | AF3 refolding plus motif RMSD for motif scaffolding and enzyme design |
 | `internal_coordinate_motif_scaffold_refolding` | Same as above, for internal coordinate conditioned motifs |
@@ -105,7 +111,7 @@ selection](search.md#metric-selection) for the full configuration.
 
 | Issue | Solution |
 | --- | --- |
-| AF3 or refolding errors | Refolding and search need an AF3 apptainer, configured as described in [Set up the oracle](#set-up-the-oracle) |
+| AF3 or refolding errors | Check the selected oracle runtime, weights and environment settings in [Set up the oracle](#set-up-the-oracle); structure-only search needs no oracle |
 | A refolding metric or pass criterion is silently missing from the CSV | Check the tag that gates it was actually passed in `metrics_tags`; a missing tag skips the metric with no error |
 | A refold comparison metric (like `refolded_apo_holo_rmsd`) is missing | You likely need a second refolding tag to supply the other refold it compares against — see [A design can have more than one refold](#a-design-can-have-more-than-one-refold) |
 | Running two untransformed oracles together drops `refold.untransformed` | That by-kind address is only unambiguous with one untransformed oracle; address the refold by oracle name instead, per the [output format reference](../reference/output-format.md#refold-addresses) |

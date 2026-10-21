@@ -219,7 +219,7 @@ However, there are three things the Python API can do that a condition spec cann
   structures beyond a simple concatenation of `input` paths.
 - **Pure de novo generation with no real anchor residue.** A spec's `contig` always needs at least
   one preserved segment from `input` (see the note above), so it cannot express a design built
-  entirely from scratch. `data/benchmarks/monomer/*.cif` are exactly this case — a single wholly
+  entirely from scratch. `data/benchmarks/monomer/*.cif.zst` are exactly this case — a single wholly
   expandable chain with no conditions at all — built directly with `insert_expandable_segment()` on
   a placeholder `AtomArray` rather than through a spec.
 

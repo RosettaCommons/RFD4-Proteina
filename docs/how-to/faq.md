@@ -8,7 +8,7 @@ and chain layout `input`/`contig` produced. If you want a *pure* de novo design 
 structure contributing anything, the spec's `contig` cannot express it (see
 [`contig` tokens](../reference/yaml-json.md#contig-tokens)); build a raw annotated CIF with one
 wholly expandable chain and no conditions through the Python API instead, the way
-`data/benchmarks/monomer/*.cif` do.
+`data/benchmarks/monomer/*.cif.zst` do.
 
 ## Why is my `.pdb` rejected?
 

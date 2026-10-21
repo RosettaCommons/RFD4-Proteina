@@ -251,8 +251,9 @@ configs in `configs/datasets/val/`.
 ## Evaluation and metrics
 
 Metrics subclass `rfproteina.metrics.metric.Metric` and score generated structures. They run inline
-during inference through `metrics_tags=[...]`, and during training validation. Refolding based
-metrics use the **AF3 oracle**, which needs an apptainer. See the
+during inference through `metrics_tags=[...]`, and during training validation. Refolding metrics
+use the configured AF3, OpenFold3 or AlphaFold 2 oracle and its separately installed runtime.
+See [oracle setup](../how-to/refolding.md) and the
 [metrics guide](../how-to/evaluate-with-metrics.md#running-metrics-inline).
 The [metrics reference](../reference/metrics.md) lists everything already enabled and its tags.
 

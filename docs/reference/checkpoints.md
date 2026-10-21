@@ -85,12 +85,15 @@ Pass your configured `DATA_PATH` if you changed it from the default. Details:
 Every generation argument is `key=value`, Hydra style:
 
 ```bash
-rfd4-generate ckpt_path=<dir> ckpt_name=<file.ckpt> ...
+rfd4-generate hf_ckpt_path=null \
+    ckpt_path=<dir> ckpt_name=<file.ckpt> \
+    autoencoder_ckpt_path=<matching-ae.ckpt> ...
 ```
 
-See [Inputs and checkpoints](cli-options.md#inputs-and-checkpoints) in the CLI options reference
-for `ckpt_path`, `ckpt_name`, `autoencoder_ckpt_path`, and `adapter_path`, with their defaults and
-an example of each.
+The default non-null `hf_ckpt_path` takes precedence over native paths, so disable it
+explicitly when selecting native files. See [Inputs and checkpoints](cli-options.md#inputs-and-checkpoints)
+in the CLI options reference for `ckpt_path`, `ckpt_name`, `autoencoder_ckpt_path`, and
+`adapter_path`, with their defaults and an example of each.
 
 ## Training-time checkpoint roles
 
