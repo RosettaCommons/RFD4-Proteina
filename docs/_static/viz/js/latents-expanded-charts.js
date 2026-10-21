@@ -92,7 +92,7 @@ export function informationPlots(host, groups, examples, names, order, sigmas, o
     description.textContent = mode === 'budget'
       ? 'Curves accumulate KL from the largest-rate channels. The dashed diagonal is equal allocation; the dot locates the picked channel. Higher rate is not necessarily more usable information.'
       : mode === 'noise' ? 'Thin lines are three seeded draws; the thick line is their arithmetic mean, not a confidence interval. Each dot is a decoder evaluation; connecting lines guide the eye. Fixed anchors, identities and deposited slots. This is a noise-response curve, not a rate–distortion frontier or a molecular-validity score.'
-      : 'Same axes in every panel. Click a dot to pick its channel above. Coral means Var(μ) > 0.01. Ablation zeros that channel across one input’s matching tokens; sensitivity is not a chemical-validity score.';
+      : 'Same axes in every panel. Click a dot to pick its channel above. Teal means Var(μ) > 0.01. Ablation zeros that channel across one input’s matching tokens; sensitivity is not a chemical-validity score.';
   }
   draw();
   return { set(c) { channel = c; draw(); } };

@@ -4,10 +4,13 @@ import { definePage } from './lib/page.js';
 import { controlRow, el, range, toggle, button } from './lib/controls.js';
 import { informationPlots, identityPlot } from './latents-expanded-charts.js';
 import { moleculeView } from './latents-molecule.js';
+import { rampTable } from './lib/palette.js';
 
 const GROUPS = ['aa', 'dna', 'rna', 'ptm', 'ncaa', 'glycan'];
 const NAMES = { aa: 'Protein', dna: 'DNA', rna: 'RNA', ptm: 'PTMs', ncaa: 'Noncanonical AAs', glycan: 'Glycans' };
 const fmt = (n) => n.toFixed(2);
+// Manuscript style/figure_theme.json: sequential palette used in Figures 4 and 5.
+const HEATMAP_COLORS = rampTable(['#CFF6EF', '#32B39B', '#186C70', '#124F52'], { n: 7 });
 
 function fragment(example, group) {
   const rest = example.rest.xyz.flat();
@@ -46,7 +49,8 @@ export default definePage({
         const b = el('button', { type: 'button', class: 'expanded-cell',
           'aria-label': `${NAMES[group]}, channel ${channel}, ${fmt(value)} nats`, 'aria-pressed': 'false',
           title: `${NAMES[group]} · channel ${channel} · ${fmt(value)} nats` });
-        b.style.background = `var(--viz-lat-${Math.min(6, Math.round(value / top * 6))})`;
+        const color = 4 * Math.min(6, Math.round(value / top * 6));
+        b.style.background = `rgb(${HEATMAP_COLORS.subarray(color, color + 3).join(',')})`;
         b.addEventListener('click', () => { state.channel = channel; update(); });
         rows.push({ b, channel }); heat.append(b);
       });
@@ -102,6 +106,7 @@ export default definePage({
       return state.sigma === 0 ? ex.rest : ex.noise[state.all ? 32 : state.channel][state.draw][walks.sigmas.indexOf(state.sigma)];
     }
     function update() {
+      heat.style.setProperty('--expanded-selected-column', String(state.channel + 2));
       for (const { b, channel } of rows) b.setAttribute('aria-pressed', String(channel === state.channel));
       for (const g of GROUPS) {
         const frame = current(g), example = walks.examples[g];
@@ -114,7 +119,7 @@ export default definePage({
       title.textContent = state.mode === 'shift' ? `Channel ${state.channel}, shifted ${state.shift > 0 ? '+' : ''}${state.shift} SD`
         : `Noise of ${state.sigma} SD on ${state.all ? 'all 32 channels' : `channel ${state.channel}`}`;
       claim.textContent = 'The same intervention, decoded in six molecular contexts.';
-      description.textContent = 'Drag a fragment to turn it. Coral marks atoms moved by more than 0.2 Å; thin sticks show the unperturbed decode and nearby context.';
+      description.textContent = 'Drag a fragment to turn it. Teal marks atoms moved by more than 0.2 Å; thin sticks show the unperturbed decode and nearby context.';
       if (stats) stats.replaceChildren(...GROUPS.map((g) => {
         const s = walks.groups[g], c = state.channel;
         return el('tr', {}, el('th', { scope: 'row' }, NAMES[g]), el('td', {}, fmt(s.kl_nats[c])),

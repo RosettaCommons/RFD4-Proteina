@@ -9,8 +9,8 @@ orphan: true
 <p class="viz-dek">Move one latent channel. Watch a protein, DNA, RNA, a phosphorylated residue, a noncanonical amino acid and a glycan respond together.</p>
 <p>Pick a column, shift it, walk along it, or add noise. All six views show actual decodes from the release autoencoder, with anchors and native identity conditions fixed.</p>
 <div class="viz-stage viz-stage-wide arch-band" data-viz-page="expanded" aria-label="Six simultaneous molecular views: protein, DNA, RNA, phosphorylation, noncanonical amino acids and glycans">
-<img class="viz-poster only-light" src="../_static/viz/expanded-data/expanded-light.png" width="1072" height="1090" alt="Six decoded molecular contexts in two rows of three, with shared channel and noise controls." loading="lazy" decoding="async">
-<img class="viz-poster only-dark" src="../_static/viz/expanded-data/expanded-dark.png" width="1072" height="1090" alt="Six decoded molecular contexts in two rows of three, with shared channel and noise controls." loading="lazy" decoding="async">
+<img class="viz-poster only-light" src="../_static/viz/expanded-data/expanded-light.png" width="1072" height="1033" alt="Six decoded molecular contexts in two rows of three, with shared channel and noise controls." loading="lazy" decoding="async">
+<img class="viz-poster only-dark" src="../_static/viz/expanded-data/expanded-dark.png" width="1072" height="1033" alt="Six decoded molecular contexts in two rows of three, with shared channel and noise controls." loading="lazy" decoding="async">
 </div>
 <script type="module" src="../_static/viz/js/latents-expanded.js"></script>
 <p class="viz-caption">Top: protein, DNA, RNA. Bottom: phosphorylation (phosphoserine, SEP), noncanonical amino acids (AIB), glycans. Up to five nearby tokens per view; the full input remains decoder context. Sticks follow deposited atom slots, not validated new chemical topology.</p>

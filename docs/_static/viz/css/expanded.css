@@ -1,10 +1,31 @@
 /* Six molecular contexts in the reference latent instrument's visual language. */
+/* Manuscript sequential palette, scoped to this page's instrument and supporting plots. */
+[data-viz-page="expanded"], .expanded-information {
+  --viz-lat: #186c70;
+  --viz-lat-ink: #124f52;
+  --viz-lat-soft: #cff6ef;
+}
+html[data-theme="dark"] :is([data-viz-page="expanded"], .expanded-information) {
+  --viz-lat: #32b39b;
+  --viz-lat-ink: #cff6ef;
+  --viz-lat-soft: #124f52;
+}
 .expanded-grid-scroll { overflow-x: auto; padding: 4px 2px; }
-.expanded-grid { display: grid; grid-template-columns: 145px repeat(32, minmax(13px, 1fr)); gap: 3px; min-width: 710px; align-items: center; }
+.expanded-grid { position: relative; display: grid; grid-template-columns: 145px repeat(32, minmax(13px, 1fr)); gap: 3px; min-width: 710px; align-items: center; }
+/* One frame around the six cells; an absolute grid item preserves their gaps and fills. */
+.expanded-grid::after {
+  content: "";
+  position: absolute;
+  grid-column: var(--expanded-selected-column, 7) / span 1;
+  grid-row: 2 / 8;
+  inset: -2px;
+  border: 2px solid var(--wf-ink);
+  pointer-events: none;
+}
 .expanded-column { text-align: center; font: 12px var(--arch-mono); color: var(--wf-ink-soft); }
 .expanded-row-name { font-size: var(--arch-fs-small); }
 .expanded-cell { width: 100%; height: 22px; border: 0; border-radius: 0; padding: 0; cursor: pointer; }
-.expanded-cell[aria-pressed="true"] { outline: 2px solid var(--wf-ink); outline-offset: 0; }
+.viz-page .bd-main .expanded-cell:focus:not(:focus-visible) { outline: none; box-shadow: none; }
 .expanded-cell:focus-visible { outline: 2px solid var(--wf-focus); }
 .expanded-key { text-align: right; margin: 4px 0 14px; }
 [data-viz-page="expanded"] [hidden] { display: none !important; }
