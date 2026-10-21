@@ -31,6 +31,7 @@
   <a href="#run-the-model">Quick start</a> ·
   <a href="#more-workflows">Workflows</a> ·
   <a href="#tutorials">Tutorials</a> ·
+  <a href="#citation">Citation</a> ·
   <a href="https://rfd4-proteina.org/latest/">Documentation</a>
 </p>
 
@@ -213,6 +214,22 @@ Training datasets are separate from model downloads: see the
 - [PPI specificity tutorial](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/docs/examples/ppi_specificity_tutorial.ipynb): protein-binder design and specificity checks.
 - [Antibody campaign examples](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/examples/antibody_design/README.md): cropped PMVK/MZB1 VHH inputs, hotspot sampling, high-early recycling, and partial refinement.
 - [Agent skills](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/skills/README.md): task-specific guides for setup, generation, search, and evaluation.
+
+## Citation
+
+If you use RFD4-Proteina in your research, please cite
+*Biomolecular design through latent reasoning with RFD4-Proteina*:
+
+```bibtex
+@article{corley2026rfd4proteina,
+  title        = {Biomolecular design through latent reasoning with {RFD4-Proteina}},
+  author       = {Corley, Nathaniel and Didi, Kieran and Kazman, Maxwell W. and Brent, Rafael I. and others},
+  year         = {2026},
+  note         = {Preprint forthcoming}
+}
+```
+
+See the [project page](https://rfd4-proteina.org/#citations) for citation updates.
 
 [Documentation](https://rfd4-proteina.org/latest/) · [Contributing](https://rfd4-proteina.org/latest/contributing/index.html) · [BSD 3-Clause license](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/LICENSE)
 
