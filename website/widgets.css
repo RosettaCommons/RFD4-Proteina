@@ -1162,14 +1162,68 @@ h2,
 .idea-section .reasoning-caption {
   text-align: right;
 }
+.widget-scope .paper-schematic {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.widget-scope .latent-paper-scroll {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
 .full-trajectory-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  /* Match the schematic's 2058:683 aspect ratio to the square animation. */
+  grid-template-columns: minmax(0, 3.01318fr) minmax(0, 1fr);
   align-items: center;
-  gap: 24px;
+  gap: 16px;
 }
-.full-trajectory-layout .paper-schematic {
+.full-trajectory-layout .schematic-scroll {
   min-width: 0;
+}
+.full-trajectory-layout .reasoning-caption {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+.widget-scope .paper-schematic .reasoning-caption {
+  border-top: 0;
+  padding-top: 0;
+  text-align: right;
+}
+#reasoning-extrinsic .reasoning-caption {
+  margin-top: 8px;
+}
+.widget-scope .reasoning-figure-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 0;
+  padding-top: 0;
+}
+.widget-scope .reasoning-figure-caption .reasoning-description {
+  flex: 1;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.widget-scope .reasoning-figure-caption .text-link {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.widget-scope .paper-schematic .reasoning-caption .text-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+#reasoning-extrinsic .schematic-scroll {
+  padding: clamp(20px, 4vw, 48px);
 }
 .full-trajectory-movie {
   margin: 0;
@@ -1182,18 +1236,12 @@ h2,
   border-radius: 5px;
   background: #e7eded;
 }
-@media (max-width: 1000px) and (min-width: 741px) {
-.full-trajectory-layout {
-    grid-template-columns: minmax(0, 1fr) 210px;
-    gap: 16px;
-  }
-}
 @media (max-width: 740px) {
 .full-trajectory-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 .full-trajectory-movie {
-    width: 220px;
+    width: min(220px, 100%);
     justify-self: center;
   }
 }

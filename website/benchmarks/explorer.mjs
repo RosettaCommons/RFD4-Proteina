@@ -5,7 +5,7 @@ import {DATASETS,CRITERIA,PASS_CHECKS,PASS_CONTEXT,keyOf,select,aggregate,defaul
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=(v,n=1)=>v==null?'—':v.toLocaleString('en-US',{maximumFractionDigits:n,minimumFractionDigits:n});
-const defaultState=()=>({dataset:'ppi',criterion:'ppi',condition:'best',metric:'clustered',targetMetric:'clustered',af3:true,log:true,sort:'rate',target:'',selected:'',targetModels:null,hidden:new Set()});
+const defaultState=()=>({dataset:'ppi',criterion:'ppi',condition:'paper',metric:'clustered',targetMetric:'clustered',af3:true,log:true,sort:'rate',target:'',selected:'',targetModels:null,hidden:new Set()});
 let state=defaultState(), data, current=[];
 const mode=g=>DATASETS[state.dataset].modes[g.dataset];
 const isSearch=g=>g.model.includes('search')||(g.model==='genie3'&&g.protocol==='native_pipeline');
@@ -20,7 +20,7 @@ const color=g=>{
 
 function controls(){
   $('datasets').innerHTML=Object.entries(DATASETS).map(([k,d])=>`<button data-dataset="${k}" aria-pressed="${state.dataset===k}">${d.short}<span>${d.targets}</span></button>`).join('');
-  $('condition').innerHTML='<option value="best">Best per method</option><option value="all">All conditioning variants</option>'+Object.entries(DATASETS[state.dataset].modes).map(([k,n])=>`<option value="${k}">${n}</option>`).join('');
+  $('condition').innerHTML='<option value="paper">Figure 2 comparison</option><option value="best">Best per method</option><option value="all">All conditioning variants</option>'+Object.entries(DATASETS[state.dataset].modes).map(([k,n])=>`<option value="${k}">${n}</option>`).join('');
   const choices=state.dataset==='sm'?{sm_binder:'Small-molecule binder · RF2AA/RFD3',disco:'Original DISCO'}:{[DATASETS[state.dataset].criterion]:'Common pass criteria'};
   $('criterion').innerHTML=Object.entries(choices).map(([k,n])=>`<option value="${k}">${n}</option>`).join('');
   $('criterion').disabled=state.dataset!=='sm';
@@ -36,11 +36,11 @@ function render(){
   const sortValue=g=>state.sort==='efficiency'?g[state.metric==='clustered'?'efficiency':'ordinaryEfficiency']:state.sort==='rate'?g[state.metric]:g[state.sort];
   current.sort((a,b)=>(sortValue(b)??-Infinity)-(sortValue(a)??-Infinity)||name(a).localeCompare(name(b)));
   const definition=state.metric==='clustered'?'clustered':'unclustered';
-  const selection=state.condition==='best'?`Best of ${DATASETS[state.dataset].variants}, where both were run (benchmark-wide mean ${definition} pass rate).`:state.condition==='all'?'All tested conditioning variants shown separately.':`${DATASETS[state.dataset].modes[state.condition]} conditioning.`;
+  const selection=state.condition==='paper'?'The same methods and conditioning arms shown in Figure 2.':state.condition==='best'?`Best of ${DATASETS[state.dataset].variants}, where both were run (benchmark-wide mean ${definition} pass rate).`:state.condition==='all'?'All tested conditioning variants shown separately.':`${DATASETS[state.dataset].modes[state.condition]} conditioning.`;
   $('scope').textContent=`${DATASETS[state.dataset].description} ${current.length} methods · ${new Set(rows.map(r=>r.target)).size} targets · 200 starts per target. ${selection}`;
-  $('ranking-note').textContent=state.condition==='best'?'Best conditioning per method; all workflows included.':'All workflows included; conditioning variants remain separate.';
+  $('ranking-note').textContent=state.condition==='paper'?'Methods and conditioning match Figure 2.':state.condition==='best'?'Best conditioning per method; all workflows included.':'All workflows included; conditioning variants remain separate.';
   $('ligand-criteria-note').hidden=state.dataset!=='sm';
-  $('benchmark-notes').innerHTML=BENCHMARK_NOTES[state.dataset]+'<p>For models evaluated under both conditioning modes, “Best per method” selects the better completed whole-benchmark arm by the displayed mean pass rate, not a different arm for each target. Distinct workflows—such as single-backbone generation and full pipelines—remain separate methods. All originals, including native failures, remain in each arm’s denominator.</p>';
+  $('benchmark-notes').innerHTML=BENCHMARK_NOTES[state.dataset]+`<p>Results synchronized with the manuscript on ${esc(data.meta.snapshot)}. <a href="benchmarks/source_data.csv" download>Per-target CSV</a> · <a href="benchmarks/scatter.csv" download>Figure 2 plotting table</a>.</p>`+'<p>For models evaluated under both conditioning modes, “Best per method” selects the better completed whole-benchmark arm by the displayed mean pass rate, not a different arm for each target. Distinct workflows—such as single-backbone generation and full pipelines—remain separate methods. All originals, including native failures, remain in each arm’s denominator.</p>';
   $('selection-note').innerHTML=state.target?`Target: <b>${esc(data.labels[state.target]||state.target)}</b>`:state.hidden.size?`${state.hidden.size} configuration(s) hidden · <button id="show-all" class="quiet">Show all</button>`:'';
   $('show-all')?.addEventListener('click',()=>{state.hidden.clear();render()});
   $('criteria-chips').innerHTML=PASS_CHECKS[state.criterion].map(([label,value])=>`<span><i aria-hidden="true">✓</i> ${esc(label)} <b>${esc(value)}</b></span>`).join('');
@@ -192,13 +192,13 @@ function restoreView(){const p=new URLSearchParams(location.search);if(p.get('da
   if(state.dataset==='sm'&&p.get('criterion')==='disco')state.criterion='disco';
   if(p.get('condition') in DATASETS[state.dataset].modes)state.condition=p.get('condition');
   // Old URLs exposed protocol/family filters; do not let them hide workflows.
-  if(!p.has('protocol')&&!p.has('family')&&['all','best'].includes(p.get('condition')))state.condition=p.get('condition');
+  if(!p.has('protocol')&&!p.has('family')&&['all','best','paper'].includes(p.get('condition')))state.condition=p.get('condition');
   if(Object.hasOwn(TARGET_METRICS,p.get('targetMetric')))state.targetMetric=p.get('targetMetric');
   if(p.get('metric')==='raw')state.metric='raw';for(const k of ['af3','log'])if(p.get(k)==='false')state[k]=false;
   if(['rate','efficiency','throughput','solved'].includes(p.get('sort')))state.sort=p.get('sort');
   if(data.rows.some(r=>r.dataset in DATASETS[state.dataset].modes&&r.target===p.get('target')))state.target=p.get('target');
 }
-function download(selectedRows=select(data.rows,state,data.models),targetChart=false){const rows=selectedRows.map(r=>({...r,view_include_af3:state.af3,view_metric:targetChart?state.targetMetric:state.metric,...(targetChart?{view_value:targetValue(r,state.targetMetric,state.af3),view_units:TARGET_METRICS[state.targetMetric].percent?'percent':'per GPU-hour'}:{}),view_condition:state.condition,view_selection:state.condition==='best'?`Best completed conditioning arm by whole-benchmark mean ${state.metric} pass rate`:'Explicit conditioning selection'}));if(!rows.length)return;
+function download(selectedRows=select(data.rows,state,data.models),targetChart=false){const rows=selectedRows.map(r=>({...r,view_include_af3:state.af3,view_metric:targetChart?state.targetMetric:state.metric,...(targetChart?{view_value:targetValue(r,state.targetMetric,state.af3),view_units:TARGET_METRICS[state.targetMetric].percent?'percent':'per GPU-hour'}:{}),view_condition:state.condition,view_selection:state.condition==='paper'?'Figure 2 methods and conditioning arms':state.condition==='best'?`Best completed conditioning arm by whole-benchmark mean ${state.metric} pass rate`:'Explicit conditioning selection'}));if(!rows.length)return;
   saveCSV(rows,`benchmarks-${state.dataset}-${state.criterion}-${data.meta.snapshot}.csv`);
 }
 function saveCSV(rows,filename){
@@ -207,7 +207,7 @@ function saveCSV(rows,filename){
 }
 
 try{
-  const response=await fetch(new URL('./data.json',import.meta.url));if(!response.ok)throw Error(`Snapshot HTTP ${response.status}`);data=await response.json();
+  const response=await fetch(new URL('./data.json',import.meta.url),{cache:'no-store'});if(!response.ok)throw Error(`Snapshot HTTP ${response.status}`);data=await response.json();
   restoreView();controls();render();
   $('download-all').onclick=e=>{e.preventDefault();saveCSV(data.rows,`benchmarks-all-${data.meta.snapshot}.csv`)};
   $('datasets').onclick=e=>{const b=e.target.closest('[data-dataset]');if(!b)return;state={...defaultState(),dataset:b.dataset.dataset,criterion:DATASETS[b.dataset.dataset].criterion,af3:state.af3,metric:state.metric,targetMetric:state.targetMetric,log:state.log};$('target-search').value='';controls();render();$('ranking').scrollTop=0};

@@ -47,7 +47,9 @@ export function targetValue(r, metric, af3){
 }
 export function select(rows, s) {
   let selected=rows.filter(r=>r.dataset in DATASETS[s.dataset].modes && r.criterion===s.criterion);
-  if(s.condition==='best') {
+  if(s.condition==='paper') {
+    selected=selected.filter(r=>r.figure2);
+  } else if(s.condition==='best') {
     // Choose a complete benchmark arm before any target drilldown. Never pool
     // protocols or choose a different conditioning winner for each target.
     const metric=s.metric==='raw'?'raw':'clustered', other=metric==='raw'?'clustered':'raw';

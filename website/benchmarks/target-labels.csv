@@ -1,0 +1,151 @@
+panel,target,label
+ame,M0040_13pk,M0040 13pk
+ame,M0050_1dbt,M0050 1dbt
+ame,M0058_1cju,M0058 1cju
+ame,M0078_1al6,M0078 1al6
+ame,M0092_1dli,M0092 1dli
+ame,M0093_1dqa,M0093 1dqa
+ame,M0096_1chm,M0096 1chm
+ame,M0097_1ctt,M0097 1ctt
+ame,M0110_1c0p,M0110 1c0p
+ame,M0129_1os7,M0129 1os7
+ame,M0151_1q0n,M0151 1q0n
+ame,M0157_1qh5,M0157 1qh5
+ame,M0179_1q3s,M0179 1q3s
+ame,M0188_1xel,M0188 1xel
+ame,M0209_1lij,M0209 1lij
+ame,M0255_1mg5,M0255 1mg5
+ame,M0315_1ey3,M0315 1ey3
+ame,M0349_1e3v,M0349 1e3v
+ame,M0365_1pfk,M0365 1pfk
+ame,M0375_4ts9,M0375 4ts9
+ame,M0500_1e3i,M0500 1e3i
+ame,M0552_1fgh,M0552 1fgh
+ame,M0555_1f8r,M0555 1f8r
+ame,M0584_1ldm,M0584 1ldm
+ame,M0630_1j79,M0630 1j79
+ame,M0636_1uaq,M0636 1uaq
+ame,M0663_1rk2,M0663 1rk2
+ame,M0664_2dhn,M0664 2dhn
+ame,M0674_1uf7,M0674 1uf7
+ame,M0710_1ra0,M0710 1ra0
+ame,M0717_1x7d,M0717 1x7d
+ame,M0732_1xs1,M0732 1xs1
+ame,M0738_1o98,M0738 1o98
+ame,M0739_1knp,M0739 1knp
+ame,M0870_1oh9,M0870 1oh9
+ame,M0904_1qgx,M0904 1qgx
+ame,M0907_1rbl,M0907 1rbl
+dna,7m5w,7m5w
+dna,7n5u,7n5u
+dna,7rte,7rte
+ppi,01_PD1,01 PD1
+ppi,04_IFNAR2,04 IFNAR2
+ppi,05_CD45,05 CD45
+ppi,12_Claudin1,12 Claudin1
+ppi,13_BBF14,13 BBF14
+ppi,14_CrSAS6,14 CrSAS6
+ppi,15_DerF7,15 DerF7
+ppi,18_DerF21,18 DerF21
+ppi,23_BetV1,23 BetV1
+ppi,24_SpCas9,24 SpCas9
+ppi,26_CbAgo,26 CbAgo
+ppi,28_HER2_AAV,28 HER2 AAV
+ppi,29_BHRF1,29 BHRF1
+ppi,30_SC2RBD,30 SC2RBD
+ppi,33_TrkA,33 TrkA
+ppi,35_H1,35 H1
+ppi,36_VEGFA,36 VEGFA
+ppi,37_IL17A,37 IL17A
+ppi,38_TNFalpha,38 TNFalpha
+ppi,rfd3_il2ra,rfd3 il2ra
+ppi,rfd3_il7ra,rfd3 il7ra
+ppi,rfd3_insulinr,rfd3 insulinr
+ppi,rfd3_pdl1,rfd3 pdl1
+ppi,rfd3_tie2,rfd3 tie2
+small_molecule,6PPD-q_final_0,6PPD-q
+small_molecule,ADP_final_0,ADP
+small_molecule,BODIPY_final_0,BODIPY
+small_molecule,Cu_Cu_ideal,Cu Cu ideal
+small_molecule,Cu_ideal,Cu ideal
+small_molecule,DDT_final_0,DDT
+small_molecule,DFHBI_final_0,DFHBI
+small_molecule,DPA_final_0,DPA
+small_molecule,Fe4-S4_ideal,Fe4-S4 ideal
+small_molecule,Mn_ideal,Mn ideal
+small_molecule,N-acetyl-alpha-neuraminic_acid_final_0,"N-acetyl-alpha-
+neuraminic acid"
+small_molecule,NAD_final_0,NAD
+small_molecule,NDI_final_0,NDI
+small_molecule,Ni_ideal,Ni ideal
+small_molecule,PDI_final_0,PDI
+small_molecule,PFOA_final_0_PFOS_final_0_combined,PFOA PFOS
+small_molecule,PLP_final_0,PLP
+small_molecule,Rose_Bengal_final_0,Rose Bengal
+small_molecule,UV-328_final_0,UV-328
+small_molecule,Zn_ideal,Zn ideal
+small_molecule,acetyl_coenzyme_a_final_0,acetyl coenzyme a
+small_molecule,aflatoxin_B1_final_0,aflatoxin B1
+small_molecule,apixaban_final_0,apixaban
+small_molecule,benzo_a_pyrene_final_0,benzo a pyrene
+small_molecule,beta-d-mannopyranose_final_0,"beta-d-
+mannopyranose"
+small_molecule,bilirubin_final_0,bilirubin
+small_molecule,biotin_final_0,biotin
+small_molecule,caffeine_final_0,caffeine
+small_molecule,chloramphenicol_final_0,chloramphenicol
+small_molecule,cholesterol_final_0,cholesterol
+small_molecule,cholic_acid_final_0,cholic acid
+small_molecule,coenzyme_A_final_0,coenzyme A
+small_molecule,coenzyme_f420_final_0,coenzyme f420
+small_molecule,colchicine_final_0,colchicine
+small_molecule,digoxigenin_final_0,digoxigenin
+small_molecule,domoic_acid_final_0,domoic acid
+small_molecule,dopamine_final_0,dopamine
+small_molecule,erythromycin_a_final_0,erythromycin a
+small_molecule,estradiol_final_0,estradiol
+small_molecule,fe-akg_ideal,fe-akg ideal
+small_molecule,fentanyl_final_0,fentanyl
+small_molecule,flavin_mononucleotide_final_0,FMN
+small_molecule,flavin_mononucleotide_final_0_Fe2-S2_ideal_combined,FMN Fe2-S2
+small_molecule,flavin_mononucleotide_final_0_NAD_final_0_combined,FMN NAD
+small_molecule,flavin_mononucleotide_final_0_heme_b_final_0_combined,FMN heme b
+small_molecule,geosmin_final_0,geosmin
+small_molecule,heme_b_final_0,heme b
+small_molecule,heme_b_final_0_Cu_ideal_combined,heme b Cu
+small_molecule,heme_b_final_0_NAD_final_0_combined,heme b NAD
+small_molecule,heme_b_final_0_PLP_final_0_combined,heme b PLP
+small_molecule,heme_b_final_0_pyrroloquinoline_quinone_final_0_combined,heme b PQQ
+small_molecule,heme_b_final_0_thiamine_diphosphate_final_0_combined,"heme b thiamine
+diphosphate"
+small_molecule,histamine_final_0,histamine
+small_molecule,methotrexate_final_0,methotrexate
+small_molecule,perfluorooctanoic_acid_final_0,PFOA
+small_molecule,phylloquinone_final_0,phylloquinone
+small_molecule,pyrroloquinoline_quinone_final_0,PQQ
+small_molecule,pyrroloquinoline_quinone_final_0_Cu_ideal_combined,PQQ Cu
+small_molecule,resazurin_final_0,resazurin
+small_molecule,retinal_final_0,retinal
+small_molecule,rocuronium_final_0,rocuronium
+small_molecule,s-adenosylmethionine_final_0,"s-
+adenosylmethioni
+ne"
+small_molecule,s-adenosylmethionine_final_0_Fe2-S2_ideal_combined,"s-
+adenosylmethioni
+ne Fe2-S2"
+small_molecule,saxitoxin_final_0,saxitoxin
+small_molecule,serotonin_final_0,serotonin
+small_molecule,tetrachlorodibenzodioxin_final_0,"tetrachlorodiben
+zodioxin"
+small_molecule,tetrahydrofolate_final_0,tetrahydrofolate
+small_molecule,thiamine_diphosphate_final_0,"thiamine
+diphosphate"
+small_molecule,thyroxine_final_0,thyroxine
+small_molecule,ubiquinone-10_final_0,ubiquinone-10
+small_molecule,ubiquinone-10_final_0_flavin_mononucleotide_final_0_combined,ubiquinone-10 FMN
+small_molecule,urea_final_0,urea
+small_molecule,uric_acid_final_0,uric acid
+small_molecule,vitamin_K1_final_0,vitamin K1
+small_molecule,vitamin_b12_final_0,vitamin b12
+small_molecule,warfarin_final_0,warfarin
+small_molecule,xylazine_final_0,xylazine

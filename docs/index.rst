@@ -6,14 +6,11 @@ RFD4-Proteina
    <div class="hero">
      <div class="hero-copy">
        <p class="hero-lede">A next generation sequence structure codesign model for proteins, RNA,
-       DNA and small molecule complexes.</p>
+       DNA, and small molecule complexes.</p>
        <p>Capable of satisfying robust conditioning and generating plausible sequences without
        further refinement.</p>
        <p>Developed by the Baker Lab × NVIDIA GenAIR, with the Institute for Protein Design
        at the University of Washington.</p>
-
-       <p class="hero-ack">We gratefully acknowledge the Jen-Hsun and Lori Huang Foundation for
-       providing a computational grant used for this study.</p>
 
        <!-- Both marks ship in two variants and the theme swaps them on `only-light`/`only-dark`.
             IPD publishes no reverse lockup, so the dark one is generated from the official 2025
@@ -26,9 +23,6 @@ RFD4-Proteina
               alt="Institute for Protein Design, University of Washington">
          <img class="only-dark hero-credit-ipd" src="_static/logo-ipd-dark.png"
               alt="Institute for Protein Design, University of Washington">
-         <span class="hero-credit-rule" aria-hidden="true"></span>
-         <img class="hero-credit-rosetta"
-              src="_static/Full-color_Rosetta-Commons_Logo_NoBackground.png" alt="RosettaCommons">
        </div>
      </div>
      <figure class="hero-figure">
@@ -98,23 +92,6 @@ The released checkpoint supports all of these design tasks.
      - Supported
    * - DNA binder design
      - Supported
-
-State-of-the-art performance across relevant biomolecular tasks
----------------------------------------------------------------
-
-.. raw:: html
-
-   <figure class="fig-card">
-     <img src="_static/benchmark-figure.webp?v=47d6a4d"
-          style="display:block;width:100%;height:auto"
-          alt="Current manuscript Figure 2: clustered pass rate versus generation throughput,
-               target coverage and passing clusters per GPU-hour for protein binding,
-               small-molecule binding, enzyme scaffolding and DNA binding.">
-     <figcaption>Figure 2 from the current manuscript. Scatter plots show clustered pass rate
-     versus generation throughput; right-hand bars show target coverage and passing clusters
-     per GPU-hour including AF3 evaluation. Low, medium and high thinking use task-specific
-     recurrent-refinement budgets.</figcaption>
-   </figure>
 
 .. toctree::
    :maxdepth: 2

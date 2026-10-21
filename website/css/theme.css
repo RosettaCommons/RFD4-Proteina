@@ -2,12 +2,46 @@
 :root {
   --home-spectrum: linear-gradient(115deg, #186c70, #3b5a8d, #463d73, #8d52ad);
   --home-on-accent: #ffffff;
-  --home-button: #186c70;
-  --home-button-hover: #124f52;
+  --home-button: var(--violet);
+  --home-button-hover: color-mix(in srgb, var(--violet) 85%, black);
 }
 html[data-theme="dark"] { --home-on-accent: #151723; }
 .paper-btn { background: var(--home-button) !important; }
 .paper-btn:hover { background: var(--home-button-hover) !important; }
+
+/* Overview jump links. */
+#nutshell .split-card-title { color: var(--purple); }
+#nutshell .split-card li strong { font-weight: 700; color: #3b5a8d; }
+html[data-theme="dark"] #nutshell .split-card li strong { color: #a6bfe5; }
+.jump-to-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--secondary); text-align: left; }
+.jump-grid .jump-card { display: flex; align-items: center; justify-content: center; background-image: none; text-decoration: none; transition: border-color 0.2s ease; }
+.jump-grid .jump-card:hover { border-color: var(--purple); background-image: none; }
+.jump-grid .jump-card .metric-value { color: var(--teal); font-size: clamp(1rem, 1.7vw, 1.2rem); text-align: center; }
+.jump-arrow { white-space: nowrap; }
+#reasoning-shared, #recycling-examples, #val_pte, #val_idr { scroll-margin-top: 90px; }
+
+/* Static syntax highlighting for the quickstart's shell and Python examples. */
+#quickstart .split-grid { align-items: start; }
+#quickstart .quickstart-details { margin: 16px 0; border-top: 1px solid var(--hair); padding-top: 12px; }
+#quickstart .quickstart-details > summary { cursor: pointer; color: var(--accent); font-size: 15px; font-weight: 600; text-align: left; }
+#quickstart .quickstart-details > summary:focus-visible { outline: 3px solid var(--mint); outline-offset: 4px; border-radius: 2px; }
+#quickstart .quickstart-details[open] > summary { margin-bottom: 12px; }
+#quickstart .quickstart-step { margin: 20px 0 8px; font-size: 15px; font-weight: 600; color: var(--ink); text-align: left; }
+#quickstart pre.syntax { padding: 16px; line-height: 1.7; color: var(--ink); tab-size: 4; }
+#quickstart pre.syntax code { padding: 0; background: none; color: inherit; font: inherit; white-space: pre; }
+.syntax .k, .syntax .kn, .syntax .ow, .syntax .nb { color: #754292; }
+.syntax .s, .syntax .s1, .syntax .s2 { color: #186c70; }
+.syntax .mi, .syntax .mf { color: #8b492b; }
+.syntax .nf, .syntax .nc, .syntax .nn { color: #3b5a8d; }
+.syntax .c1, .syntax .c { color: #59636c; font-style: italic; }
+html[data-theme="dark"] .syntax .k, html[data-theme="dark"] .syntax .kn,
+html[data-theme="dark"] .syntax .ow, html[data-theme="dark"] .syntax .nb { color: #b798cd; }
+html[data-theme="dark"] .syntax .s, html[data-theme="dark"] .syntax .s1,
+html[data-theme="dark"] .syntax .s2 { color: #40d9be; }
+html[data-theme="dark"] .syntax .mi, html[data-theme="dark"] .syntax .mf { color: #e5b080; }
+html[data-theme="dark"] .syntax .nf, html[data-theme="dark"] .syntax .nc,
+html[data-theme="dark"] .syntax .nn { color: #a6bfe5; }
+html[data-theme="dark"] .syntax .c1, html[data-theme="dark"] .syntax .c { color: #aab3be; }
 
 /* Wordmark, partner logos, hero structures, the nav theme button and dark mode. */
 html { color-scheme: light; }
@@ -27,7 +61,7 @@ html[data-theme="dark"] .theme-light, html:not([data-theme="dark"]) .theme-dark 
 .hero-wordmark { display: block; width: min(420px, 78vw); margin: 0 auto; }
 .hero-wordmark img { width: 100%; height: auto; display: block; }
 .partner-row { display: flex; align-items: center; justify-content: center; gap: 26px; margin: 30px auto 6px; }
-.partner-row a { display: inline-flex; }
+.partner-row a { display: inline-flex; background-image: none; text-decoration: none; }
 .partner-row img { height: 50px; width: auto; display: block; }
 .partner-row a:last-child img { height: 38px; }
 .partner-bar { width: 1px; height: 54px; background: currentColor; opacity: 0.25; }
@@ -43,8 +77,9 @@ html[data-theme="dark"] .theme-light, html:not([data-theme="dark"]) .theme-dark 
 html[data-theme="dark"] .hero-struct figcaption { color: #a3a9b8; }
 @media (max-width: 800px) { .hero-structs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .partner-row img { height: 42px; } .partner-row a:last-child img { height: 30px; } }
 #authors { margin-top: 18px; }
-.explorer-link { text-align: center; margin-top: 18px; }
+.explorer-link { display: flex; justify-content: center; text-align: center; margin-top: 18px; }
 .explorer-link .paper-btn { display: inline-flex; width: auto; padding: 10px 26px; }
+#val_cam .assay-footnote { font-size: 12px; line-height: 1.6; color: var(--muted); margin-top: 10px; }
 
 /* ---------- Dark mode ---------- */
 html[data-theme="dark"] body { background: #12141b; color: #e6e8ee; }

@@ -55,6 +55,7 @@ exports = {
     "fig6h-n-ligase.webp": ("6", [0, 444, 518.740173, 426]),
 }
 structures = {
+    "cam_resolved.cif.gz": "drafting/figure4_cam/second_hit.cif",
     "cam_selected.cif.gz": "drafting/figure4_cam/updated_20261016/selected_complex.cif",
     "h3pt11_hit09.cif.gz": "drafting/figure5_hbonds/updated_20261020/approved-style/H3T11_hit09.cif",
 }
@@ -101,12 +102,17 @@ for first in [True, False]:
         names.append(
             f'<span class="author-name">{html.escape(author["name"])}<sup class="aff">{aff}</sup>{marks}</span>'
         )
-    attrs = (
-        'class="author-row-new author-row-first" id="co-first-authors"'
-        if first
-        else 'class="author-row-new author-row-rest"'
-    )
-    rows.append(f"<div {attrs}>\n    " + ", ".join(names) + ("" if first else ".") + "\n</div>")
+    if first:
+        rows.append(
+            '<div class="author-row-new author-row-first">\n'
+            '    <span id="co-first-authors">\n    '
+            + ", ".join(names)
+            + '\n    </span>\n'
+            '    <button id="shuffle-authors" type="button" aria-controls="co-first-authors" hidden>Shuffle again</button>\n'
+            '</div>'
+        )
+    else:
+        rows.append('<div class="author-row-new author-row-rest">\n    ' + ", ".join(names) + ".\n</div>")
 byline = "<!-- authors:start (generated from authors.tex by website/scripts/sync_paper.py) -->\n"
 byline += "\n".join(rows)
 byline += (
@@ -116,8 +122,8 @@ byline += (
 )
 byline += "\n".join(f'        <li value="{a["id"]}">{html.escape(a["name"])}</li>' for a in affiliations)
 byline += '\n    </ol>\n</details>\n<p class="author-notes">\n'
-byline += "    <span>* Equal contribution, shown in random order (reload the page!)</span>\n"
-byline += "    <span>&#8225; Equal contribution as co-second authors</span>\n"
+byline += "    <span>* Equal contribution as co-first authors; order randomized on every refresh</span>\n"
+byline += "    <span>&#8225; Equal contribution as co-second authors; alphabetical by surname</span>\n"
 byline += (
     "    <span>&#9993; Correspondence: "
     + " and ".join(f'{html.escape(a["name"])} ({html.escape(a["email"])})' for a in authors if a["corresponding"])

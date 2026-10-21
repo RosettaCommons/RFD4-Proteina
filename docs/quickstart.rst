@@ -2,7 +2,10 @@ Quickstart
 ==========
 
 There are three ways to run RFD4-Proteina. All of them need Python 3.12 and a
-:ref:`supported NVIDIA GPU <supported-hardware>` with a CUDA 13-compatible driver.
+:ref:`supported NVIDIA GPU <supported-hardware>` with a driver compatible with CUDA 12 or CUDA 13.
+Choose the package extra and PyTorch wheels for your CUDA version; the native
+``make setup`` workflow defaults to CUDA 13. For CUDA 12, use the
+:ref:`PyPI instructions below <quickstart-pip>` or the manual install in :doc:`installation`.
 
 .. list-table::
    :header-rows: 1
@@ -71,7 +74,7 @@ This generates one 100-residue protein under ``runs/first/inference_samples/``.
 for larger runs where the warm-up cost is worth paying back. Increase ``num_replicates`` for more
 designs, or replace the example path with your own annotated CIF input. See
 :doc:`how-to/run-the-model` for sampling settings and :doc:`how-to/evaluate-with-metrics` for
-scoring. For batch jobs, see :ref:`slurm-installation`. For other CUDA versions, CPU-only installs,
+scoring. For batch jobs, see :ref:`slurm-installation`. For CUDA 12 installation details, CPU-only installs,
 Docker and Apptainer, see :doc:`installation`.
 
 .. _quickstart-pip:
@@ -90,7 +93,23 @@ environment is about 7 GB and ``uv`` installs it in about two minutes, where pla
 
    pip install uv                      # or: curl -LsSf https://astral.sh/uv/install.sh | sh
    uv venv --python 3.12 && source .venv/bin/activate
-   uv pip install "rfd4-proteina[all-cuda13]"   # CUDA 12: all-cuda12 (no BioIR); rfd4-proteina alone is the base package
+
+Choose **one** install command to match your driver:
+
+.. code-block:: bash
+
+   # CUDA 12
+   uv pip install --torch-backend cu126 "rfd4-proteina[all-cuda12]"
+
+   # CUDA 13
+   uv pip install --torch-backend cu132 "rfd4-proteina[all-cuda13]"
+
+Both support generation and metrics. The optional BioIR backend requires CUDA 13.
+Installing ``rfd4-proteina`` without an extra gives the base package.
+
+Generate a design:
+
+.. code-block:: bash
 
    rfd4-generate hf_ckpt_path=nvidia/RFD4-Proteina \
        inputs=design.yaml out_dir=./runs/pip ~metrics compile_lengths=null
@@ -117,6 +136,13 @@ RFD4-Proteina is also available as a `Hugging Face Diffusers
 <https://huggingface.co/docs/diffusers>`_ pipeline. The pipeline takes prepared feature tensors;
 the ``rfd4-proteina-prep`` package turns an annotated CIF into those tensors and writes the
 generated structure back to a CIF.
+
+Start with an :doc:`annotated CIF <how-to/input_prep/index>`, or first convert a
+:doc:`YAML/JSON condition spec <how-to/input_prep/yaml-json>` to an annotated CIF.
+``prepare_cif()`` reads the resulting CIF; it does not accept YAML or JSON directly.
+The input guide's :ref:`Diffusers conversion steps <diffusers-condition-spec>` show
+how to write one CIF per design from a spec. The native ``rfd4-generate`` command
+accepts those specs directly.
 
 .. warning::
 

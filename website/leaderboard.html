@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Benchmarks · RFD4-Proteina</title>
+  <link rel="icon" href="assets/favicon.svg?v=northern-nights" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png?v=northern-nights" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=northern-nights">
   <link rel="stylesheet" href="benchmarks/explorer.css">
   <link rel="stylesheet" href="assets/branding.css">
   <link rel="stylesheet" href="assets/site-colors.css">
@@ -55,11 +58,11 @@
   </div>
   <div class="scope-line"><p id="scope"></p><span id="selection-note"></span></div>
   <section class="pass-guide" aria-label="Pass criteria and rate definitions">
-    <div class="pass-guide-heading"><b>A design passes only if it meets every criterion below.</b><span>Common AF3 evaluation · not the model’s own acceptance filter</span></div>
+    <div class="pass-guide-heading"><b>A design passes only if it meets every criterion below.</b><span>Common AlphaFold3 (AF3) evaluation · not the model’s own acceptance filter</span></div>
     <p id="ligand-criteria-note" class="small-note" hidden>Both definitions are available: the original DISCO benchmark criteria and confidence-aware small-molecule binder criteria from the RF2AA/RFD3 design framework. The latter uses AlphaFold confidence to assess interface quality and better reflect experimental design-selection criteria.</p>
     <div id="criteria-chips" class="criteria-chips"></div>
     <div class="rate-definitions"><p><b>Unclustered</b> = passing designs ÷ <b>200 attempts</b>.</p><p><b>Clustered</b> = distinct passing folds ÷ <b>200 attempts</b>.</p><p>Dots show the <b>mean across targets</b>. Failures count; no replacement attempts.</p></div>
-    <details class="pass-explainer"><summary>Example & exact metric definitions</summary><p>Illustration: 20 passing designs forming 8 structural clusters out of 200 attempts give a 10% unclustered rate and a 4% clustered rate. Clustering happens separately within each model, protocol and target (Foldseek TM threshold 0.5).</p><p id="criteria-detail"></p></details>
+    <details class="pass-explainer"><summary>Example & exact metric definitions</summary><p>Illustration: 20 passing designs forming 8 structural clusters out of 200 attempts give a 10% unclustered rate and a 4% clustered rate. Clustering happens separately within each model, protocol, and target (Foldseek TM threshold 0.5).</p><p id="criteria-detail"></p></details>
   </section>
   <div class="viz-controls">
     <div class="seg" role="group" aria-label="Pass rate type"><button data-metric="clustered" aria-pressed="true">Clustered pass rate</button><button data-metric="raw" aria-pressed="false">Unclustered pass rate</button></div>
@@ -78,7 +81,7 @@
         <label class="sr-only" for="sort">Sort methods</label><select id="sort"><option value="rate">By pass rate</option><option value="efficiency">By passers / GPU-h</option><option value="throughput">By throughput</option><option value="solved">By tasks solved</option></select>
       </div>
       <div id="ranking" class="rank-list"></div>
-      <p class="small-note">Bar = selected pass rate. Select a row for counts, timings and target-level evidence.</p>
+      <p class="small-note">Bar = selected pass rate. Select a row for counts, timings, and target-level evidence.</p>
     </section>
   </div>
   <dialog id="detail" class="card detail protocol-dialog" aria-labelledby="protocol-title"></dialog>

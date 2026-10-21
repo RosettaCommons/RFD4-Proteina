@@ -168,6 +168,23 @@ scripts/write_condition_spec_cifs.py my_designs.yaml --out-dir ./cifs
 
 The resulting file is exactly what [`rfd4-generate`](index.md#running-the-model) would have read.
 
+(diffusers-condition-spec)=
+### Using a spec with Diffusers
+
+The Diffusers pipeline takes prepared tensors, and its `prepare_cif()` helper reads an
+annotated CIF. It does not read YAML or JSON condition specs directly.
+
+From an installed RFD4-Proteina checkout, convert your spec first:
+
+```bash
+python scripts/write_condition_spec_cifs.py my_designs.yaml --out-dir ./cifs
+```
+
+The same command accepts a `.json` spec. It writes one annotated CIF per design and
+prints the output paths. Pass one of those paths to `prepare_cif()` in the
+{ref}`Diffusers quickstart <quickstart-diffusers>`, in place of its
+example input. You can also author the CIF with the [Python API](python-api.md).
+
 ## Examples
 
 Two complete, runnable specs live under `docs/how-to/input_prep/examples/`, one for a simpler [ppi example](examples/condition_spec_ppi.yaml)

@@ -1,4 +1,4 @@
-// Exact per-step schedules of the paper's low, medium and high thinking presets.
+// Exact per-step schedules of the current low, medium, and high thinking presets.
 (async () => {
   const response = await fetch("data/recycling-schedules.json", {
     cache: "no-store",

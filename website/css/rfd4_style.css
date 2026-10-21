@@ -187,6 +187,7 @@ b {
 }
 
 .pdb-viewer-inline .pdb-viewer-box {
+    box-sizing: border-box;
     width: 100%;
     aspect-ratio: 1 / 1;
     border-radius: 6px;
@@ -243,18 +244,16 @@ b {
 }
 
 .overview-intro {
-    font-size: 1.15em;
+    font-size: clamp(1.05rem, 1.6vw, 1.2rem);
     font-weight: 400;
     line-height: 1.7;
-    margin-bottom: 1.8em;
-    text-align: inherit;
-    color: #2a2e33;
-}
-
-.overview-label {
-    font-size: 1.15em;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    margin: 0 0 1.8em;
+    padding: clamp(20px, 3vw, 32px);
+    text-align: left;
+    color: var(--ink);
+    background: var(--wash);
+    border: 1px solid var(--hair);
+    border-radius: 16px;
 }
 
 .impact-grid {
@@ -931,7 +930,7 @@ figure figcaption {
   margin-top: 0px;
   margin-left: 12px;
   margin-right: 12px;
-  padding: 8px 0px 12px 0px;
+  padding: 10px 0;
   line-height: 1.2;
 
   border-width: 0;
@@ -943,8 +942,8 @@ figure figcaption {
   font-size: 20px;
   width: 220px;
   font-weight: 600;
-  box-shadow: 0 3px 10px rgba(24, 108, 112, 0.25);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 3px 10px rgba(70, 61, 115, 0.25);
+  transition: background 0.2s ease;
 }
 .paper-btn-parent {
     display: flex;
@@ -973,8 +972,6 @@ figure figcaption {
 
 .paper-btn:hover {
     background: var(--home-button-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(24, 108, 112, 0.3);
 }
 
 .container {
@@ -1864,6 +1861,8 @@ div.footer {
 #title { text-align: center; }
 .author-row-new .author-name { display: inline-block; font-size: 17px; padding: 2px; white-space: nowrap; }
 .author-row-first .author-name { font-size: 20px; font-weight: 500; }
+#shuffle-authors { margin-left: 8px; vertical-align: middle; white-space: nowrap; border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px; background: var(--panel); color: var(--accent); font: inherit; font-size: 13px; cursor: pointer; }
+#shuffle-authors:hover { background: var(--wash); border-color: var(--accent); }
 @media screen and (min-width: 1080px) {
     .author-row-new .author-name { font-size: 18px; }
     .author-row-first .author-name { font-size: 22px; }

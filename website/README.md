@@ -1,13 +1,22 @@
 # RFD4-Proteina project page
 
 Buildless static site, published to the root of GitHub Pages. The Sphinx docs are built with
-`RFD4_SITE_ROOT=../` and published next to the site under `latest/`, so the links to `latest/...` only
-resolve on the deployed site. The tab line at the top is the same markup on
+`RFD4_SITE_ROOT=../` and published next to the site under `latest/`. The combined local preview below
+serves the same paths. The tab line at the top is the same markup on
 the project page, the Benchmarks page and the docs; the manuscript repository's `website/scripts/sync_nav.py` rewrites it in `index.html` and
 `leaderboard.html`, and `docs/_templates/site-nav.html` is the docs copy.
 
-Preview locally: `python -m http.server 4187 --bind 127.0.0.1 --directory website`, then open
-<http://127.0.0.1:4187/> (docs links 404 locally).
+Preview the website and documentation together from the repository root, using an
+environment with the documentation dependencies installed:
+
+```bash
+RFD4_SITE_ROOT=../ python -m sphinx -b html docs docs/_build/html
+python website/scripts/preview.py
+```
+
+Open <http://127.0.0.1:4187/>; documentation links resolve under `/latest/`.
+Use `--docs-dir /path/to/built/html` for a different build location. The server reads
+the website sources directly, so refresh the browser after edits; rebuild after docs edits.
 
 - `index.html`: the project page (Home), laid out after the Proteina-Complexa page with a light and dark theme shared with the benchmark explorer through `localStorage`. Styles in `css/`
   and `widgets.css`; scripts `nav.js`, `authors.js`, `app.js`, `benchmarks.js`, `recycling.js` and
@@ -30,3 +39,20 @@ manuscript commit, source/caption hashes, crop bounds and output hashes. Review 
 update surrounding captions, numerical statements and viewer selections when content changes.
 The latent-space crop retains native SVG callouts; other panels use reviewed PDF artwork.
 Keep website styling and interactions in this repository.
+
+Refresh benchmark results from the same reviewed manuscript commit:
+
+    python website/scripts/sync_benchmarks.py --paper-root /path/to/RFD4-Proteina-paper --source-commit COMMIT --snapshot-date YYYY-MM-DD
+
+This imports the manuscript's per-target CSV and Figure 2 plotting tables, checks
+counts, clustered rates, target coverage, and throughput against all plotted arms,
+and writes the explorer JSON and downloadable CSVs under `benchmarks/`.
+The default explorer view matches Figure 2; other conditioning arms and search
+workflows remain available through the conditioning selector. Review headline
+numbers in `index.html` whenever these source tables change.
+
+The calmodulin viewer uses `drafting/figure4_cam/second_hit.cif`, sequence-matched to
+`c09_31860910_1_bsfinal_11`: 2.48 nM in the final 2026-10-20 assay, with both
+replicate fits rated Good and off-rates above the fitting floor. The manuscript's
+Figure 4a retains its separate 69 pM example and the website footnote records its
+fit limitation. Selection and source hashes are in `assets/paper/manuscript-sync.json`.

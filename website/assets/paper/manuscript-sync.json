@@ -847,7 +847,11 @@
         2162,
         2871
       ],
-      "sha256": "534930def363db383bb081c64899ce0be03209f06209589e3713781f4790b2ee"
+      "sha256": "73078482d6eea8cca6cc6ca93039551af8c6b423cc2bff62466171d0094d18d8",
+      "source_commit": "2e569312b70924cb8174030627c914986372fc51",
+      "source_pull_request": "https://github.com/kierandidi/RFD4-Proteina-paper/pull/110",
+      "source_sha256": "1538ceaf1d74c21c4bbf1a3a230b54b94b2b5351ad2520086b3780f461010db1",
+      "caption_sha256": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94"
     },
     {
       "path": "assets/paper/fig4-specificity-full.webp",
@@ -1019,7 +1023,11 @@
         2162,
         2871
       ],
-      "sha256": "534930def363db383bb081c64899ce0be03209f06209589e3713781f4790b2ee"
+      "sha256": "73078482d6eea8cca6cc6ca93039551af8c6b423cc2bff62466171d0094d18d8",
+      "source_commit": "2e569312b70924cb8174030627c914986372fc51",
+      "source_pull_request": "https://github.com/kierandidi/RFD4-Proteina-paper/pull/110",
+      "source_sha256": "1538ceaf1d74c21c4bbf1a3a230b54b94b2b5351ad2520086b3780f461010db1",
+      "caption_sha256": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94"
     }
   ],
   "structures": [
@@ -1034,10 +1042,32 @@
       "source": "drafting/figure5_hbonds/updated_20261020/approved-style/H3T11_hit09.cif",
       "source_sha256": "cb38ebc758f7385f98ce5468852a4d89d511dbf92a69b5bb0bf1f2cee06a4712",
       "export": "Unmodified source CIF, gzip compressed"
+    },
+    {
+      "path": "assets/structures/cam_resolved.cif.gz",
+      "source": "drafting/figure4_cam/second_hit.cif",
+      "source_commit": "670fc371b2e4bab2fe88f7ec066e0ee27ac5f3f0",
+      "source_sha256": "67ec78d5d19432b70b3f02321e2adbcbe9f98b9958d67f903bd6d71d63df74b9",
+      "export": "Unmodified source CIF, gzip compressed",
+      "design": "tss_beam_manifest_c09_31860910_1_bsfinal_11",
+      "binder_chain": "B",
+      "target_chain": "A",
+      "binder_sequence_matches_assay": true,
+      "assay_source": "drafting/figure4_cam/updated_20261016/holo_summary.csv",
+      "assay_source_sha256": "b56c068449eefad6850138d5d45a60258648f388f53af204daa003f10711703d",
+      "apparent_kd_M": 2.4766942934349233e-09,
+      "fit_quality": "Good",
+      "koff_s_inv": 0.00024882057593875043
     }
   ],
   "notes": [
     "Reviewed manuscript PDFs are rendered and cropped; latent callouts use the corresponding native SVG elements. Scientific content is not redrawn.",
     "Surrounding captions and numerical statements were reviewed separately against the recorded caption sources."
-  ]
+  ],
+  "latest_review": {
+    "source_commit": "670fc371b2e4bab2fe88f7ec066e0ee27ac5f3f0",
+    "unchanged_figures": [
+      "figures_raw/figure_4_specificity.pdf"
+    ]
+  }
 }

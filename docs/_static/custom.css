@@ -791,8 +791,8 @@ html[data-theme="dark"] {
   max-width: 34rem;
 }
 
-/* The marks have very different proportions: NVIDIA is a 5.5:1 strip, IPD is 3.3:1 with a third
-   line of type, and the RosettaCommons mark ships with built-in clear space around a 3.3:1 lockup.
+/* The marks have different proportions: NVIDIA is a 5.5:1 strip, and IPD is 3.3:1 with a third
+   line of type.
    Sizing them to a common height leaves the multi-line marks looking oversized, so each gets its
    own cap and they hang from a shared vertical centre. */
 .hero-credits img {
@@ -801,7 +801,6 @@ html[data-theme="dark"] {
   max-height: 26px;
 }
 .hero-credits img.hero-credit-ipd { max-height: 42px; }
-.hero-credits img.hero-credit-rosetta { max-height: 80px; }
 .hero-credit-rule {
   width: 1px;
   height: 32px;

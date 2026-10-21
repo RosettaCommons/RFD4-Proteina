@@ -10,8 +10,8 @@ Prerequisites
 
 * Linux x86_64, ``git``, and ``curl``.
 * Python 3.12 
-* An NVIDIA GPU and a driver compatible with CUDA 13. See :ref:`supported-hardware`.
-* A C++ compiler and the CUDA 13 development toolkit (``nvcc``) only if building TMol from source.
+* An NVIDIA GPU and a driver compatible with CUDA 12 or CUDA 13. See :ref:`supported-hardware`.
+* A C++ compiler and the matching CUDA 12 or 13 development toolkit (``nvcc``) only if building TMol from source.
 * Enough storage for the Python environment and configured released model weights.
 
 .. _supported-hardware:
@@ -46,6 +46,9 @@ RFD4-Proteina has been tested and confirmed to run on the following NVIDIA GPUs.
 Native Python installation
 --------------------------
 
+``make setup`` installs the CUDA 13 profile. CUDA 12 is also supported; use the
+manual CUDA 12 command below or the :ref:`PyPI quickstart <quickstart-pip>`.
+
 Clone and run setup:
 
 .. code-block:: bash
@@ -69,7 +72,7 @@ published, and records the ``AF2_*`` and ``AF3_*`` settings in ``.env.local``. S
 See the :doc:`quickstart` for what each answer does.
 
 TMol and ligand support are included by default. For a manual install into a
-Python 3.12 environment, use the same CUDA wheel source as setup:
+Python 3.12 environment with CUDA 13, use the same CUDA wheel source as setup:
 
 .. code-block:: bash
 
@@ -83,6 +86,15 @@ Python 3.12 environment, use the same CUDA wheel source as setup:
    ./scripts/download_assets.sh "$DATA_PATH" --skip-of3
    rfd4-generate inputs=data/benchmarks/monomer \
        subset_to_examples=monomer-short num_replicates=1 out_dir=./runs/smoke
+
+For **CUDA 12**, replace the ``uv pip install`` command above with:
+
+.. code-block:: bash
+
+   uv pip install --no-sources --torch-backend cu126 -e '.[all-cuda12]'
+
+Use only one CUDA extra in an environment. Both profiles support generation and
+metrics; the optional BioIR backend requires CUDA 13.
 
 Setup reads the Torch requirement from ``pyproject.toml`` and keeps the qualified
 Torch 2.14 runtime when installing binary metric packages.

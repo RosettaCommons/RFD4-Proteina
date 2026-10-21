@@ -206,7 +206,7 @@ html_context = {"site_root": _SITE_ROOT}
 if _SITE_ROOT:
     html_css_files = [*globals().get("html_css_files", []), "site-nav.css"]
     html_js_files = [*html_js_files, ("site-nav.js", {"defer": "defer"})]
-html_favicon = "_static/favicon.svg"
+html_favicon = "_static/favicon-4p.svg"
 html_title = "RFD4-Proteina documentation"
 html_baseurl = "https://rfd4-proteina.org/latest/"
 

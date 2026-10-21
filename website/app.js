@@ -63,3 +63,20 @@ selectReasoning(
     ? requested
     : "shared",
 );
+
+// Reveal a tab panel before scrolling to a jump link or a bookmarked fragment.
+function revealReasoningAnchor() {
+  const panelId = location.hash.slice(1);
+  const tab = tabs.find((tab) => tab.getAttribute("aria-controls") === panelId);
+  if (!tab) return;
+  selectReasoning(tab.dataset.reasoning);
+  document.getElementById(panelId).scrollIntoView({ block: "start" });
+}
+window.addEventListener("hashchange", revealReasoningAnchor);
+for (const link of document.querySelectorAll(".jump-card")) {
+  link.addEventListener("click", () => {
+    // Clicking the current fragment does not dispatch another hashchange.
+    if (link.hash === location.hash) revealReasoningAnchor();
+  });
+}
+revealReasoningAnchor();
