@@ -847,10 +847,9 @@
         2162,
         2871
       ],
-      "sha256": "73078482d6eea8cca6cc6ca93039551af8c6b423cc2bff62466171d0094d18d8",
-      "source_commit": "2e569312b70924cb8174030627c914986372fc51",
-      "source_pull_request": "https://github.com/kierandidi/RFD4-Proteina-paper/pull/110",
-      "source_sha256": "1538ceaf1d74c21c4bbf1a3a230b54b94b2b5351ad2520086b3780f461010db1",
+      "sha256": "2128cb9038461ead6596f3ee43b5a80550cc360953d81c678e7749090a6ab15f",
+      "source_commit": "18b7fc2cdbb14e71ab69935ca835c13cb0e82eb6",
+      "source_sha256": "6f2574b7a7eabd0b0ab8e0374469e9d7912c397b4dce953980caa579276952c4",
       "caption_sha256": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94"
     },
     {
@@ -1023,10 +1022,9 @@
         2162,
         2871
       ],
-      "sha256": "73078482d6eea8cca6cc6ca93039551af8c6b423cc2bff62466171d0094d18d8",
-      "source_commit": "2e569312b70924cb8174030627c914986372fc51",
-      "source_pull_request": "https://github.com/kierandidi/RFD4-Proteina-paper/pull/110",
-      "source_sha256": "1538ceaf1d74c21c4bbf1a3a230b54b94b2b5351ad2520086b3780f461010db1",
+      "sha256": "2128cb9038461ead6596f3ee43b5a80550cc360953d81c678e7749090a6ab15f",
+      "source_commit": "18b7fc2cdbb14e71ab69935ca835c13cb0e82eb6",
+      "source_sha256": "6f2574b7a7eabd0b0ab8e0374469e9d7912c397b4dce953980caa579276952c4",
       "caption_sha256": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94"
     }
   ],
@@ -1069,5 +1067,24 @@
     "unchanged_figures": [
       "figures_raw/figure_4_specificity.pdf"
     ]
+  },
+  "benchmark_review": {
+    "source_commit": "18b7fc2cdbb14e71ab69935ca835c13cb0e82eb6",
+    "source_pull_request": "https://github.com/kierandidi/RFD4-Proteina-paper/pull/113",
+    "figure": "figures_raw/figure_2_in_silico.pdf",
+    "methods": "appendices/in_silico_methods/benchmarks.tex",
+    "methods_sha256": "2a3e6cba80db639766c3ffd6b060e89e6f638aff072d305f4ece2cde404c7864",
+    "cohort_receipt": "figure_sources/figure_02/data/rfd3-dna-refresh.json",
+    "cohort_receipt_sha256": "28dee69abfc807dbdb0642be63755c652f26e310b26b601fcdccd118c67f6212",
+    "rfd3_dna": {
+      "condition": "dna_fixed",
+      "attempts": 600,
+      "passes": 5,
+      "clusters": 3,
+      "clustered_percent": 0.5,
+      "targets_solved": 2,
+      "targets": 3,
+      "generation_timing": "Transferred from prior fixed-DNA cohort"
+    }
   }
 }

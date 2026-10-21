@@ -111,7 +111,7 @@ function drawDetail(){
   const method=data.models[g.model].protocol_methods?.[g.protocol]||data.models[g.model].method;
   const protocol=protocolFor(g);
   dialog.innerHTML=`<div class="detail-head"><div><h3 id="protocol-title">${esc(name(g))}</h3><p>${esc(DATASETS[state.dataset].name)} · ${esc(recipe(g))}${state.target?' · '+esc(data.labels[state.target]||state.target):''}</p></div><button id="close-detail" class="quiet" aria-label="Close protocol details" autofocus>✕</button></div>
-    <section class="protocol-section"><h4>Workflow</h4><p>${esc(protocol.procedure)}</p><a href="${esc(method.reference_url)}" target="_blank" rel="noopener">${esc(method.reference_label)} ↗</a></section>
+    <section class="protocol-section"><h4>Workflow</h4><p>${esc(protocol.procedure)}</p><a href="${esc(protocol.reference_url||method.reference_url)}" target="_blank" rel="noopener">${esc(protocol.reference_label||method.reference_label)} ↗</a></section>
     <section class="protocol-section"><h4>Benchmark changes</h4><p>${esc(protocol.adaptation)}</p></section>
     ${protocol.note?`<p class="protocol-note">${esc(protocol.note)}</p>`:''}
     <div class="kpis">${kpi(`${g.passes.toLocaleString()} / ${g.attempts.toLocaleString()}`,'Passing originals')}${kpi(g.clusters.toLocaleString(),'Distinct passing folds')}${kpi(`${g.solved} / ${g.targets}`,'Tasks with any pass')}${kpi(fmt(g.seconds)+' s',`GPU seconds / attempt${state.af3?' · with AF3':''}`)}${kpi(fmt(g.efficiency),'Mean unique passers / GPU-hour')}</div>

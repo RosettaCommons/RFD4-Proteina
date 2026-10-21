@@ -36,7 +36,12 @@ export function protocolFor(g) {
       procedure:'Ten Protenix cycles with 150 refinement steps, two MPNN proposals, and five ranked predictions per cycle. The final cycle skips coordinate refinement.',
       adaptation:ppi?'Condition on target sequences and original hotspots, without target-coordinate templates. Enable interaction optimization and selection from cycle 0. Select the final cycle’s packed structure and MPNN sequence with highest evaluation pLDDT. Do not replace rejected starts.':'Condition on all target DNA sequences without coordinate templates, using 120–150-residue binders. Select the final cycle’s packed structure and MPNN sequence with highest evaluation pLDDT. Do not replace rejected starts.',
     };
-    case 'pipelines': return {
+    case 'pipelines': return g.dataset==='dna_fixed'?{
+      procedure:'Follow the DNA-binder design procedure of Sehgal et al., using AF3-predicted target duplexes, a six-base-pair ORI window, donor/acceptor conditioning, and 2.5 Å ORI jitter.',
+      adaptation:'Generate 200 attempts per target at protein lengths of 120–150 residues, followed by one LigandMPNN sequence per backbone. Evaluate the resulting designs with the common AF3 criteria.',
+      reference_label:'Sehgal et al. · Generative design of sequence specific DNA binding proteins',
+      reference_url:'https://doi.org/10.64898/2026.04.27.720408',
+    }:{
       procedure:`RFdiffusion3 generation with 200 steps and classifier-free guidance disabled, followed by one LigandMPNN sequence at temperature 0.1.${g.dataset.startsWith('dna_')?' Use the DNA-finetuned checkpoint.':''}`,
       adaptation:ppi?'Omit terminal OXT constraints. Generate one sequence per backbone, without downstream folding or screening.':g.dataset.startsWith('dna_')?`DNA coordinates are ${g.dataset==='dna_fixed'?'fixed':'unfixed'}. Generate one sequence per backbone, without downstream folding or screening.`:g.dataset.startsWith('mcsa_')?'Omit downstream folding and screening. Retain reference-conformer preprocessing; unmatched required motifs fail. M0110 retains native bond and charge losses.':'Use source-derived ligand inputs; retain native reference-conformer preprocessing. Omit downstream folding and screening.',
     };
