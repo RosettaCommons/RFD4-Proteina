@@ -188,6 +188,10 @@ window.RFD4_ARCHITECTURE = {
     {
      "label": "local_latents_score_nn_160M_atom37.yaml L1-L132",
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L1-L132"
+    },
+    {
+     "label": "2026_10_19_hero_pretrain.yaml L390-L423",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L390-L423"
     }
    ]
   },
