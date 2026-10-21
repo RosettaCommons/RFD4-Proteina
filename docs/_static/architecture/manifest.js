@@ -136,7 +136,7 @@ window.RFD4_ARCHITECTURE = {
     {
      "kind": "loop",
      "label": "Recycling",
-     "html": "The projections <strong>W</strong><sup>s</sup><sub>rec</sub> and <strong>W</strong><sup>z</sup><sub>rec</sub> start at zero, so at first every cycle starts from <em>s</em><sub>0</sub> and <em>z</em><sub>0</sub> alone and <em>R</em> cycles compute the same as one pass. Only the last cycle keeps gradients in training. State does not carry across sampling steps."
+     "html": "The projections <strong>W</strong><sup>s</sup><sub>rec</sub> and <strong>W</strong><sup>z</sup><sub>rec</sub> start at zero, so initially every cycle receives the same <em>s</em><sub>0</sub> and <em>z</em><sub>0</sub>. Later cycles can still produce different results because the recycle flag can change their conditioning. Only the last cycle keeps gradients in training. State does not carry across sampling steps."
     },
     {
      "kind": "note",
@@ -880,7 +880,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "Decoder",
    "short": "Decoder",
    "blurb": "CA positions and latents to residues, atom37 coordinates and atom presence.",
-   "summary": "<p>The CA position, the 32 latents, the token type and the conditioned residue type are embedded, run through 12 layers, and read by three heads, each behind its own LayerNorm: 147 residue-class logits restricted to the classes the token type allows, 37 atom positions relative to the CA, to which the CA position is added, and 37 atom-presence logits. The decoded residue is the conditioned class where one is given and the most likely allowed class elsewhere; its atom mask keeps the slots that residue can have and whose presence logit is positive, and always the CA slot. In a generation the conditioned residue type of every position the input leaves open is the denoiser's sequence prediction.</p>",
+   "summary": "<p>The CA position, the 32 latents, the token type and the conditioned residue type are embedded, run through 12 layers, and read by three heads, each behind its own LayerNorm: 147 residue-class logits restricted to the classes the token type allows, 37 atom positions relative to the CA, to which the CA position is added, and 37 atom-presence logits. The decoded residue is the conditioned class where one is given and the most likely allowed class elsewhere; its atom mask retains legal slots whose presence logit is positive, the CA slot, and any legal atoms required by coordinate conditioning. Tokens the decoder does not emit receive no decoded atoms. In a generation the conditioned residue type of every position the input leaves open is the denoiser's sequence prediction.</p>",
    "highlights": [],
    "facts": [
     [
