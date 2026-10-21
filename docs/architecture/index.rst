@@ -10,8 +10,8 @@ Architecture
    These diagrams take RFD4-Proteina apart one level at a time, from the whole generation loop down
    to a single attention head. The top level is a map of the system. Every level below it is a
    `neural circuit diagram <https://vtabbott.io/articles/diagrams-explained-quickly/>`__ generated
-   from an algebraic expression of the code, drawn at the dimensions of the reference model (pair
-   width 384, triangle hidden width 256).
+   from an algebraic expression of the code, drawn at the dimensions of the October 19 release (pair
+   width 384, triangle hidden width 256, 32 latent channels).
 
    Hover a box or an operation to see its formula, a description and links to the lines of code it
    stands for. Click a box whose details offer "Open diagram" to open its own diagram. The
@@ -42,11 +42,11 @@ Architecture
            <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" class="wf arch-map-svg" role="group"
                 aria-labelledby="arch-map-title arch-map-desc">
              <title id="arch-map-title">RFD4-Proteina at a glance</title>
-             <desc id="arch-map-desc">An annotated CIF is featurized into design features that do not depend on
-               the noisy state. A flow-matching sampler runs 60 steps
+             <desc id="arch-map-desc">An annotated CIF is featurized once into design features; only their
+               coordinate-group labels and chirality vectors follow the noisy state. A flow-matching sampler runs 60 steps
                from Gaussian noise; at every step the denoiser embeds the noisy state, runs its trunk R times in a
-               recycling loop and predicts velocities, and an integration step moves the state. The decoder turns
-               the final CA positions and latents into a sequence and atoms. The autoencoder is trained first and
+               recycling loop and predicts velocities and a sequence, and an integration step moves the state. The
+               decoder turns the final CA positions and latents into a sequence and atoms. The autoencoder is trained first and
                defines the latents that flow training regresses.</desc>
              <defs>
                <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
@@ -94,12 +94,12 @@ Architecture
              <a href="#view=embeddings" data-arch="embeddings" class="wf-link">
                <rect x="20" y="152" width="190" height="144" rx="8" class="wf-node wf-node-specify"/>
                <text x="34" y="178" class="wf-node-label">DESIGN FEATURES</text>
-               <text x="34" y="198" class="wf-node-sub">729 token, 77 pair channels,</text>
+               <text x="34" y="198" class="wf-node-sub">862 token, 77 pair channels,</text>
                <text x="34" y="213" class="wf-node-sub">CATH labels, token types</text>
                <text x="34" y="236" class="wf-node-sub">fixed during a generation,</text>
-               <text x="34" y="251" class="wf-node-sub">except 37 coordinate-group</text>
-               <text x="34" y="266" class="wf-node-sub">channels, relabelled at</text>
-               <text x="34" y="281" class="wf-node-sub">every network evaluation</text>
+               <text x="34" y="251" class="wf-node-sub">but coordinate groups are</text>
+               <text x="34" y="266" class="wf-node-sub">relabelled and chirality</text>
+               <text x="34" y="281" class="wf-node-sub">aligned to the noisy CA</text>
              </a>
 
              <!-- ======================================================== the sampler -->
@@ -141,7 +141,7 @@ Architecture
                <rect x="400" y="138" width="210" height="238" rx="8" class="arch-node-loop"/>
                <use href="#arch-ico-cycle" x="410" y="146" width="20" height="20" class="wf-ico arch-ico-loop"/>
                <text x="436" y="160" class="arch-loop-label">RECYCLE × R</text>
-               <text x="412" y="178" class="arch-loop-sub">R(i) = 1, 2, 3, 5, 6, 5, 3, 2, 1</text>
+               <text x="412" y="178" class="arch-loop-sub">R(i) = 6, 5, 4, 3, 2, 1</text>
              </a>
              <a href="#view=trunk" data-arch="trunk" class="wf-link">
                <rect x="414" y="190" width="182" height="54" rx="6" class="wf-chip wf-chip-link"/>
@@ -167,9 +167,10 @@ Architecture
              <text x="414" y="364" class="arch-dim">s, z feed the next cycle</text>
              <path d="M610 240 H624" class="wf-rail" marker-end="url(#arch-arrow)"/>
              <a href="#view=heads" data-arch="heads" class="wf-link">
-               <rect x="626" y="212" width="90" height="56" rx="6" class="wf-chip wf-chip-link"/>
-               <text x="638" y="235" class="wf-chip-label wf-ink-specify">Heads</text>
-               <text x="638" y="253" class="wf-chip-sub">v̂ CA, v̂ lat</text>
+               <rect x="626" y="206" width="90" height="68" rx="6" class="wf-chip wf-chip-link"/>
+               <text x="638" y="229" class="wf-chip-label wf-ink-specify">Heads</text>
+               <text x="638" y="246" class="wf-chip-sub">v̂ CA, v̂ lat</text>
+               <text x="638" y="260" class="wf-chip-sub">sequence</text>
              </a>
              <path d="M728 240 H742" class="wf-rail" marker-end="url(#arch-arrow)"/>
 
@@ -186,8 +187,9 @@ Architecture
                <rect x="872" y="160" width="200" height="102" rx="8" class="wf-node wf-node-return"/>
                <text x="886" y="186" class="wf-node-label">DECODER</text>
                <text x="886" y="206" class="wf-node-sub">CA positions and latents</text>
-               <text x="886" y="221" class="wf-node-sub">→ 33 residue classes</text>
+               <text x="886" y="221" class="wf-node-sub">→ 147 residue classes</text>
                <text x="886" y="236" class="wf-node-sub">→ atom37 coordinates</text>
+               <text x="886" y="251" class="wf-node-sub">→ atom presence</text>
              </a>
              <a href="../workflow/outputs.html" class="wf-link">
                <rect x="872" y="298" width="200" height="72" rx="8" class="wf-node wf-node-return"/>
@@ -200,7 +202,7 @@ Architecture
              <a href="#view=autoencoder" data-arch="autoencoder" class="wf-link">
                <rect x="20" y="482" width="272" height="80" rx="8" class="wf-node"/>
                <text x="34" y="506" class="wf-node-label">AUTOENCODER</text>
-               <text x="34" y="524" class="wf-node-sub">256 M parameters, frozen afterwards</text>
+               <text x="34" y="524" class="wf-node-sub">257 M parameters, frozen afterwards</text>
              </a>
              <a href="#view=ae-encoder" data-arch="ae-encoder" class="wf-link">
                <rect x="34" y="532" width="110" height="24" rx="5" class="wf-chip wf-chip-link"/>
@@ -214,8 +216,8 @@ Architecture
              <a href="#view=training" data-arch="training" class="wf-link">
                <rect x="394" y="482" width="443" height="80" rx="8" class="wf-node"/>
                <text x="408" y="506" class="wf-node-label">TRAINING STEP</text>
-               <text x="408" y="526" class="wf-node-sub">encode → interpolate with noise → denoise with R ~ Poisson(3)</text>
-               <text x="408" y="543" class="wf-node-sub">→ squared velocity error per modality + insertion loss</text>
+               <text x="408" y="526" class="wf-node-sub">encode → noise 4 ways → denoise with R ~ Poisson(3) in [1, 9]</text>
+               <text x="408" y="543" class="wf-node-sub">→ velocity, insertion, sequence, volume losses; best draw kept</text>
              </a>
            </svg>
          </div>
@@ -291,17 +293,25 @@ token, which carries no latent. `Diagrams Explained (Quickly)
      - ``tri_mult_c``
      - the triangle multiplications
    * - ``l``
-     - 16
+     - 32
      - ``latent_dim``
      - autoencoder latents per residue or nucleotide
+   * - ``a``
+     - 147
+     - ``n_residue_types``
+     - residue classes of the unified vocabulary
+   * - ``k``
+     - 1
+     - ``conditioning_dim``
+     - the recycle flag of the conditioning
    * - ``T``
      - 60
      - ``nsteps``
      - sampling steps
    * - ``R``
-     - 1 to 6
+     - 6 to 1
      - ``n_recycle``
-     - trunk passes per network evaluation, set per sampling step
+     - trunk passes per network evaluation, set per sampling step (1 to 9 in training)
    * - ``P``
      - 7
      - ``nlayers`` / ``update_pair_repr_every_n``
