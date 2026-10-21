@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://rfd4-proteina.org/">Project page</a> ·
-  <a href="https://rfd4-proteina.org/assets/paper/RFD4-Proteina.pdf">Paper</a> ·
+  <a href="website/assets/paper/RFD4-Proteina.pdf">Paper</a> ·
   <a href="#try-it-now">Try it now</a> ·
   <a href="#system-requirements">Requirements</a> ·
   <a href="#install">Installation</a> ·
@@ -219,7 +219,7 @@ Training datasets are separate from model downloads: see the
 ## Citation
 
 If you use RFD4-Proteina in your research, please cite
-[*Biomolecular design through latent reasoning with RFD4-Proteina*](https://rfd4-proteina.org/assets/paper/RFD4-Proteina.pdf):
+[*Biomolecular design through latent reasoning with RFD4-Proteina*](website/assets/paper/RFD4-Proteina.pdf):
 
 ```bibtex
 @article{corley2026rfd4proteina,
