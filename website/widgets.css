@@ -172,6 +172,7 @@
   gap: 7px;
 }
 .reasoning-tabs button {
+  cursor: pointer;
   border: 1px solid #ced8c7;
   background: transparent;
   border-radius: 4px;
