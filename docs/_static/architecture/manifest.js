@@ -5,12 +5,12 @@ window.RFD4_ARCHITECTURE = {
    "title": "RFD4-Proteina at a glance",
    "short": "Overview",
    "blurb": "The whole system: inputs, the flow-matching sampler, the recycled denoiser and the decoder.",
-   "summary": "<p>RFD4-Proteina generates a design by flow matching in a product space: the CA position of every token (atom37 slot 1: C1′ for a nucleotide), in nm, and 16 latent channels per residue or nucleotide learned by a partial autoencoder. A generation starts from Gaussian noise, runs 60 steps of a stochastic sampler whose velocity comes from the <em>denoiser</em>, a 14-layer pair-biased transformer, and hands the final CA positions and latents to the autoencoder's decoder, which writes the sequence and every atom of the residues and nucleotides; atomized ligand atoms keep the positions the flow produced.</p><p>Click a box to open its diagram; the annotated CIF and design boxes open the workflow pages on inputs and outputs. Every diagram below this map is a neural circuit diagram generated from an algebraic expression of the code, drawn at the dimensions of the reference model. In those diagrams, hover a box to see its formula, description and code, click a box whose details offer <em>Open diagram</em> to go one level deeper (the pointer changes over it), and use the breadcrumbs or the tree to go back up.</p>",
+   "summary": "<p>RFD4-Proteina generates a design by flow matching in a product space: the CA position of every token (atom37 slot 1: C1′ for a nucleotide), in nm, and 32 latent channels per residue or nucleotide learned by a partial autoencoder. A generation starts from Gaussian noise, runs 60 steps of a stochastic sampler whose velocity comes from the <em>denoiser</em>, a 14-layer pair-biased transformer, and hands the final CA positions and latents to the autoencoder's decoder, which writes every atom of the residues and nucleotides and, by default, takes the sequence the denoiser predicted wherever the input leaves it open; atomized ligand atoms keep the positions the flow produced.</p><p>Click a box to open its diagram; the annotated CIF and design boxes open the workflow pages on inputs and outputs. Every diagram below this map is a neural circuit diagram generated from an algebraic expression of the code, drawn at the dimensions of the reference model. In those diagrams, hover a box to see its formula, description and code, click a box whose details offer <em>Open diagram</em> to go one level deeper (the pointer changes over it), and use the breadcrumbs or the tree to go back up.</p>",
    "highlights": [
     {
      "kind": "loop",
      "label": "Recycling",
-     "html": "Every network evaluation runs the trunk <em>R</em> times, feeding the previous single and pair states back through zero-initialised projections. <em>R</em> follows the schedule 1, 2, 3, 5, 6, 5, 3, 2, 1 across the 60 steps: 185 trunk passes per design."
+     "html": "Every network evaluation runs the trunk <em>R</em> times, feeding the previous single and pair states back through zero-initialised projections. By default (<code>thinking_medium</code>) <em>R</em> starts at 6 and steps down to 1 across the 60 steps: 180 trunk passes per design."
     },
     {
      "kind": "loop",
@@ -26,11 +26,11 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Denoiser",
-     "178.2 M parameters"
+     "178,448,304 parameters"
     ],
     [
      "Autoencoder",
-     "255.9 M parameters, frozen during flow training"
+     "257,174,161 parameters (encoder 129,013,832, decoder 128,160,329), frozen during flow training"
     ],
     [
      "Token / pair width",
@@ -42,7 +42,15 @@ window.RFD4_ARCHITECTURE = {
     ],
     [
      "Latents",
-     "16 channels per residue or nucleotide"
+     "32 channels per residue or nucleotide"
+    ],
+    [
+     "Release bundle",
+     "435,622,465 stored parameters: <code>nvidia/RFD4-Proteina</code> at revision <code>a06e250</code>, with the fine-tuning LoRA merged into the flow weights"
+    ],
+    [
+     "Recipes",
+     "flow pre-training <code>releases/flow/2026_10_19_hero_pretrain</code>, fine-tuning <code>releases/flow/2026_10_19_hero_lora_c384</code>; autoencoder <code>releases/ae/2026_10_15_unified_biomolecule</code>, checkpoint dated 2026-10-19"
     ]
    ],
    "parent": null,
@@ -57,7 +65,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "Generation",
    "short": "Generation",
    "blurb": "Noise to design: 60 sampling steps around the denoiser, then the decoder.",
-   "summary": "<p>The design features of the annotated CIF are computed and put on the tape; the denoiser reshuffles their coordinate-group labels at every network evaluation. The CA positions and latents start as Gaussian noise, and the loop under the <em>T</em> bracket runs 60 times: the schedule gives both modalities their time and step size, the <strong>Denoiser</strong> predicts both velocities (with the recycle depth of that step), and one <strong>Step</strong> per modality integrates them. The <strong>Decoder</strong> then turns the final CA positions and latents into residue logits and atom37 coordinates.</p>",
+   "summary": "<p>The design features of the annotated CIF are computed and put on the tape; the denoiser reshuffles their coordinate-group labels at every network evaluation. The CA positions and latents start as Gaussian noise, and the loop under the <em>T</em> bracket runs 60 times: the schedule gives both modalities their time and step size, the <strong>Denoiser</strong> predicts both velocities (with the recycle depth of that step), and one <strong>Step</strong> per modality integrates them. The <strong>Decoder</strong> then fills every position the input leaves without a sequence from the denoiser's last sequence prediction and turns the final CA positions and latents into residues, atom37 coordinates and atom masks.</p>",
    "highlights": [
     {
      "kind": "loop",
@@ -82,15 +90,19 @@ window.RFD4_ARCHITECTURE = {
     ],
     [
      "Sampler",
-     "<code>vf_tsr</code>: temperature-scaled score (temporal score rescaling) with a Langevin term between t = 0.02 and 0.98"
+     "<code>vf_tsr</code>: temperature-scaled score (temporal score rescaling) with a Langevin term between t = 0.02 and 0.95"
     ],
     [
      "Network evaluations",
-     "60, with 185 trunk passes under <code>midpeak6_60</code>"
+     "60, with 180 trunk passes under the default <code>thinking_medium</code> schedule (<code>medium/front_loaded</code>: R = 6, 5, 4, 3, 2, 1 for 5, 10, 5, 10, 20 and 10 steps)"
     ],
     [
      "Outputs",
-     "sequence, atom37 coordinates, insertion mapping"
+     "sequence (the flow model's prediction where the input leaves it open), atom37 coordinates and atom mask, insertion mapping"
+    ],
+    [
+     "Backend",
+     "native by default (<code>inference_backend: native</code>); BioIR is optional"
     ]
    ],
    "parent": "overview",
@@ -102,16 +114,16 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/generation.html",
    "code": [
     {
-     "label": "vanilla.py L172-L300",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/search/vanilla.py#L172-L300"
+     "label": "vanilla.py L195-L324",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/search/vanilla.py#L195-L324"
     },
     {
-     "label": "proteina.py L1819-L1930",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L1819-L1930"
+     "label": "proteina.py L1948-L2106",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L1948-L2106"
     },
     {
-     "label": "generate.py L630-L757",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/generate.py#L630-L757"
+     "label": "generate.py L613-L749",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/generate.py#L613-L749"
     }
    ]
   },
@@ -119,7 +131,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "Denoiser and its recycling loop",
    "short": "Denoiser",
    "blurb": "LocalLatentsTransformer: embeddings, the recycled trunk and the output heads.",
-   "summary": "<p>One evaluation of the flow network. The <em>feature factories</em> build the conditioning <em>c</em> and the initial single and pair representations <em>s</em><sub>0</sub>, <em>z</em><sub>0</sub> once, and drop them on the tape. The <strong>Recycling</strong> block, under the <em>R</em> bracket, then runs <em>R</em> times: each cycle adds an RMS-normalised projection of the previous cycle's states to <em>s</em><sub>0</sub> and <em>z</em><sub>0</sub>, reads <em>c</em> from the tape and runs the whole <strong>Trunk</strong>, which passes <em>c</em> through its layers. The first cycle starts from zeros. The heads read the final single representation.</p>",
+   "summary": "<p>One evaluation of the flow network. The <em>feature factories</em> build the conditioning <em>c</em> and the initial single and pair representations <em>s</em><sub>0</sub>, <em>z</em><sub>0</sub> once, and drop them on the tape. The <strong>Recycling</strong> block, under the <em>R</em> bracket, then runs <em>R</em> times: each cycle adds an RMS-normalised projection of the previous cycle's states to <em>s</em><sub>0</sub> and <em>z</em><sub>0</sub>, reads <em>c</em> from the tape (a later cycle can rebuild it with the recycle flag set) and runs the whole <strong>Trunk</strong>, which passes <em>c</em> through its layers. The first cycle starts from zeros. The heads read the final single representation.</p>",
    "highlights": [
     {
      "kind": "loop",
@@ -140,19 +152,19 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Parameters",
-     "178,242,737"
+     "178,448,304"
     ],
     [
      "Recycle depth R",
-     "1 to 6 per step at inference; Poisson(3) clipped to [1, 6] in training"
+     "6 down to 1 per step at inference (<code>thinking_medium</code>); Poisson(3) clipped to [1, 9] in training"
     ],
     [
      "Inputs",
-     "noisy CA (x, 3), noisy latents (x, 16), two times"
+     "noisy CA (x, 3), noisy latents (x, 32), two times"
     ],
     [
      "Outputs",
-     "CA velocity, latent velocity, insertion logits (x, x)"
+     "CA velocity, latent velocity, insertion logits (x, x), sequence logits (x, 147)"
     ]
    ],
    "parent": "generation",
@@ -166,16 +178,16 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/denoiser.html",
    "code": [
     {
-     "label": "local_latents_transformer.py L33-L169",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L33-L169"
+     "label": "local_latents_transformer.py L37-L208",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L37-L208"
     },
     {
-     "label": "local_latents_transformer.py L207-L238",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L207-L238"
+     "label": "local_latents_transformer.py L281-L316",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L281-L316"
     },
     {
-     "label": "local_latents_score_nn_160M_atom37.yaml L1-L112",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L1-L112"
+     "label": "local_latents_score_nn_160M_atom37.yaml L1-L132",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L1-L132"
     }
    ]
   },
@@ -183,7 +195,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "Single and pair embeddings",
    "short": "Embeddings",
    "blurb": "How the noisy state and the design features become s₀ and z₀.",
-   "summary": "<p>The single embedding is one linear map of 748 concatenated token features, drawn as three maps by where the inputs come from: the noisy CA coordinates, the noisy latents, and the 729 channels of design features, which do not depend on the noisy state (their 37 coordinate-group channels are relabelled at random on every evaluation). The pair embedding bins the pairwise distances of the noisy CA positions into 30 classes, adds 77 channels of pair design features, normalises and applies an AdaLN conditioned on the two times.</p>",
+   "summary": "<p>The single embedding is one linear map of 897 concatenated token channels, drawn as three maps by where the inputs come from: the noisy CA coordinates (3), the noisy latents (32), and the 862 channels of design features. The design features are not computed from the noisy state, with two qualifications: their 37 coordinate-group channels are relabelled at random on every evaluation, and their 18 chirality channels are rotated toward the noisy CA positions (<code>noise_align_chirality</code>). The pair embedding bins the pairwise distances of the noisy CA positions into 30 classes, adds 77 channels of pair design features, normalises and applies an AdaLN conditioned on the two times.</p>",
    "highlights": [
     {
      "kind": "note",
@@ -194,11 +206,11 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Single features",
-     "748 → 768 (the released checkpoint: 882)"
+     "897 → 768: 3 CA + 32 latent + 862 design channels"
     ],
     [
      "Pair features",
-     "107 → 384"
+     "107 → 384: 30 distance bins + 77 design channels (the nucleic-acid pair feature is 2 wide)"
     ],
     [
      "Distance bins",
@@ -211,44 +223,48 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/embeddings.html",
    "code": [
     {
-     "label": "local_latents_transformer.py L59-L66",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L59-L66"
+     "label": "local_latents_transformer.py L68-L75",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L68-L75"
     },
     {
-     "label": "local_latents_transformer.py L215-L217",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L215-L217"
+     "label": "local_latents_transformer.py L289-L291",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L289-L291"
     },
     {
-     "label": "feature_factory.py L1317-L1343",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L1317-L1343"
+     "label": "feature_factory.py L1397-L1423",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L1397-L1423"
     },
     {
-     "label": "2026_09_15_release.yaml L107-L127",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_09_15_release.yaml#L107-L127"
+     "label": "2026_10_19_hero_pretrain.yaml L395-L416",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L395-L416"
     },
     {
      "label": "pair_rep_initial.py L7-L47",
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_rep_initial.py#L7-L47"
     },
     {
-     "label": "feature_factory.py L97-L136",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L97-L136"
+     "label": "feature_factory.py L103-L142",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L103-L142"
     },
     {
-     "label": "feature_factory.py L1018-L1036",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L1018-L1036"
+     "label": "feature_factory.py L1098-L1116",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L1098-L1116"
     },
     {
-     "label": "2026_09_15_release.yaml L129-L140",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_09_15_release.yaml#L129-L140"
+     "label": "2026_10_19_hero_pretrain.yaml L417-L423",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L417-L423"
+    },
+    {
+     "label": "local_latents_score_nn_160M_atom37.yaml L70-L93",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L70-L93"
     }
    ]
   },
   "conditioning": {
    "title": "Conditioning",
    "short": "Conditioning",
-   "blurb": "Time embeddings and CATH labels become the vector c read by every AdaLN and output gate of the trunk.",
-   "summary": "<p>Both flow times are embedded with 128 sinusoid pairs, the three CATH levels of each token are looked up in three tables, and the parts are projected to 256 channels and summed. Two SwiGLU transitions without a residual finish the conditioning vector <em>c</em>, which every recycling cycle reads from the tape and the trunk hands to every AdaLN and every output gate.</p>",
+   "blurb": "Time embeddings, the recycle flag and CATH labels become the vector c read by every AdaLN and output gate of the trunk.",
+   "summary": "<p>Both flow times are embedded with 128 sinusoid pairs, a one-channel recycle flag ρ marks recycling cycles after the first, the three CATH levels of each token are looked up in three tables, and the parts are projected to 256 channels and summed. Two SwiGLU transitions without a residual finish the conditioning vector <em>c</em>, which every recycling cycle reads from the tape and the trunk hands to every AdaLN and every output gate. The feature factories build <em>c</em> with ρ = 0; when recycle conditioning applies, every cycle after the first rebuilds it with ρ = 1.</p>",
    "highlights": [
     {
      "kind": "note",
@@ -259,7 +275,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Inputs",
-     "608 channels → 256"
+     "609 channels → 256: 2 × 256 time, 1 recycle flag, 3 × 32 CATH"
     ],
     [
      "Time embedding",
@@ -268,6 +284,10 @@ window.RFD4_ARCHITECTURE = {
     [
      "CATH tables",
      "6, 44 and 1473 rows of width 32"
+    ],
+    [
+     "Recycle flag",
+     "<code>recycle_remaining</code>, 1 channel under <code>recycle.grad: last</code>: it marks a later cycle and does not count the cycles left"
     ]
    ],
    "parent": "denoiser",
@@ -276,20 +296,32 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/conditioning.html",
    "code": [
     {
-     "label": "local_latents_transformer.py L68-L78",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L68-L78"
+     "label": "local_latents_transformer.py L77-L88",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L77-L88"
     },
     {
-     "label": "local_latents_transformer.py L211-L213",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L211-L213"
+     "label": "local_latents_transformer.py L285-L287",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L285-L287"
     },
     {
-     "label": "feature_factory.py L222-L260",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L222-L260"
+     "label": "feature_factory.py L228-L266",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L228-L266"
     },
     {
-     "label": "local_latents_score_nn_160M_atom37.yaml L47-L56",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L47-L56"
+     "label": "feature_factory.py L280-L312",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L280-L312"
+    },
+    {
+     "label": "local_latents_transformer.py L386-L407",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L386-L407"
+    },
+    {
+     "label": "local_latents_score_nn_160M_atom37.yaml L59-L68",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L59-L68"
+    },
+    {
+     "label": "2026_10_19_hero_pretrain.yaml L417-L421",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L417-L421"
     }
    ]
   },
@@ -317,11 +349,11 @@ window.RFD4_ARCHITECTURE = {
     ],
     [
      "Per pair update",
-     "2,467,200  parameters"
+     "2,462,336 parameters"
     ],
     [
      "Whole trunk",
-     "174.4 M of the denoiser's 178.2 M"
+     "174.3 M of the denoiser's 178.4 M"
     ]
    ],
    "parent": "denoiser",
@@ -333,12 +365,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/trunk.html",
    "code": [
     {
-     "label": "local_latents_transformer.py L240-L256",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L240-L256"
+     "label": "local_latents_transformer.py L318-L334",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L318-L334"
     },
     {
-     "label": "local_latents_transformer.py L97-L135",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L97-L135"
+     "label": "local_latents_transformer.py L107-L147",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L107-L147"
     }
    ]
   },
@@ -383,12 +415,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/layer.html",
    "code": [
     {
-     "label": "attn_n_transition.py L94-L111",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/attn_n_transition.py#L94-L111"
+     "label": "attn_n_transition.py L96-L113",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/attn_n_transition.py#L96-L113"
     },
     {
-     "label": "local_latents_transformer.py L98-L114",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L98-L114"
+     "label": "local_latents_transformer.py L108-L124",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L108-L124"
     }
    ]
   },
@@ -401,7 +433,7 @@ window.RFD4_ARCHITECTURE = {
     {
      "kind": "note",
      "label": "Kernel",
-     "html": "With the training backend (<code>execution.training</code> = torch) the attention runs through PyTorch SDPA with the pair bias as <code>attn_mask</code>, which selects the memory-efficient kernel; the pair bias of pairs that touch padding is replaced by −10⁴. Default inference (<code>execution.inference</code> = bioir) swaps each layer for a fused bionemo_ir block in bf16 that masks padding with −10⁶."
+     "html": "With <code>attention_type: torch</code> the attention runs through PyTorch SDPA with the pair bias as <code>attn_mask</code>, which selects the memory-efficient kernel; the pair bias of pairs that touch padding is replaced by −10⁴. Inference runs the same native path by default (<code>inference_backend: native</code>); the optional BioIR backend (<code>inference_backend: bioir</code>) runs the workflow through BioIR's fused kernels, in bf16 by default."
     }
    ],
    "facts": [
@@ -424,12 +456,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/attention.html",
    "code": [
     {
-     "label": "pair_bias_attn.py L51-L172",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_bias_attn.py#L51-L172"
+     "label": "pair_bias_attn.py L69-L193",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_bias_attn.py#L69-L193"
     },
     {
-     "label": "pair_bias_attn.py L275-L309",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_bias_attn.py#L275-L309"
+     "label": "pair_bias_attn.py L296-L330",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_bias_attn.py#L296-L330"
     }
    ]
   },
@@ -515,7 +547,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Parameters",
-     "2,467,200 per pair update"
+     "2,462,336 per pair update"
     ],
     [
      "Triangle hidden width",
@@ -535,12 +567,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/pair-update.html",
    "code": [
     {
-     "label": "pair_update.py L57-L88",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_update.py#L57-L88"
+     "label": "pair_update.py L60-L91",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/pair_update.py#L60-L91"
     },
     {
-     "label": "local_latents_transformer.py L116-L135",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L116-L135"
+     "label": "local_latents_transformer.py L126-L147",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L126-L147"
     }
    ]
   },
@@ -553,7 +585,7 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Parameters",
-     "642,048 per triangle update"
+     "639,616 per triangle update, without biases (<code>tri_mult_bias: false</code>)"
     ],
     [
      "Hidden width",
@@ -566,16 +598,20 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/triangle.html",
    "code": [
     {
-     "label": "triangular_multiplicative_update.py L61-L87",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L61-L87"
+     "label": "triangular_multiplicative_update.py L178-L226",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L178-L226"
     },
     {
-     "label": "triangular_multiplicative_update.py L90-L105",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L90-L105"
+     "label": "triangular_multiplicative_update.py L229-L246",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L229-L246"
     },
     {
-     "label": "triangular_multiplicative_update.py L108-L123",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L108-L123"
+     "label": "local_latents_score_nn_160M_atom37.yaml L100-L102",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn/local_latents_score_nn_160M_atom37.yaml#L100-L102"
+    },
+    {
+     "label": "triangular_multiplicative_update.py L249-L266",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/openfold_modules/triangular_multiplicative_update.py#L249-L266"
     }
    ]
   },
@@ -605,8 +641,8 @@ window.RFD4_ARCHITECTURE = {
   "heads": {
    "title": "Output heads",
    "short": "Heads",
-   "blurb": "CA velocity, latent velocity and insertion logits.",
-   "summary": "<p>Two RMSNorm and linear heads read the final single representation and give the velocity of the CA coordinates (3) and of the latents (16). The insertion head scores every pair of tokens bilinearly on a stop-gradient copy, to match unindexed motif residues to generated tokens.</p>",
+   "blurb": "CA velocity, latent velocity, insertion logits and the sequence readout.",
+   "summary": "<p>Two RMSNorm and linear heads read the final single representation and give the velocity of the CA coordinates (3) and of the latents (32). Two probes read a stop-gradient copy: the insertion head scores every pair of tokens bilinearly, to match unindexed motif residues to generated tokens, and the sequence readout predicts each token's class among the 147 of the unified vocabulary. Generation hands the last step's sequence prediction to the decoder (<code>condition_decoder_on_sequence_prediction: true</code>), which keeps any sequence the input specifies.</p>",
    "highlights": [
     {
      "kind": "note",
@@ -617,11 +653,15 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Velocity heads",
-     "768 → 3 and 768 → 16"
+     "768 → 3 and 768 → 32"
     ],
     [
      "Insertion head",
      "two 768 × 768 maps, scale 768<sup>−1/2</sup>"
+    ],
+    [
+     "Sequence readout",
+     "768 → 147 on a stop-gradient copy, trained by its own cross-entropy"
     ]
    ],
    "parent": "denoiser",
@@ -630,12 +670,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/heads.html",
    "code": [
     {
-     "label": "local_latents_transformer.py L154-L167",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L154-L167"
+     "label": "local_latents_transformer.py L169-L197",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L169-L197"
     },
     {
-     "label": "local_latents_transformer.py L224-L238",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L224-L238"
+     "label": "local_latents_transformer.py L298-L316",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/local_latents_transformer.py#L298-L316"
     }
    ]
   },
@@ -643,16 +683,16 @@ window.RFD4_ARCHITECTURE = {
    "title": "Integration step",
    "short": "Step",
    "blurb": "One vf_tsr step: score, temperature scaling, Euler–Maruyama.",
-   "summary": "<p>The predicted velocity is converted to a score, the score is scaled by a ratio that grows from 1 to <em>k</em> as <em>t</em> goes from 0 to 1, and the state moves by an Euler–Maruyama step with Langevin noise between <em>t</em> = 0.02 and 0.98 and a deterministic Euler step outside that window. The latent step is the same expression with its own constants and a tangent noise schedule in place of 1/(<em>t</em> + 0.01).</p>",
+   "summary": "<p>The predicted velocity is converted to a score, the score is scaled by a ratio that grows from 1 to <em>k</em> as <em>t</em> goes from 0 to 1, and the state moves by an Euler–Maruyama step with Langevin noise between <em>t</em> = 0.02 and 0.95 and a deterministic Euler step outside that window. The latent step is the same expression with its own constants and a tangent noise schedule in place of 1/(<em>t</em> + 0.01).</p>",
    "highlights": [],
    "facts": [
     [
      "CA",
-     "k = 16, σ<sub>tsr</sub> = 3, η = 0.3, noise schedule 1/(t + 0.01); g<sub>t</sub> = schedule / r(t)"
+     "k = 16, σ<sub>tsr</sub> = 3, η = 1, noise schedule 1/(t + 0.01); g<sub>t</sub> = schedule / r(t)²"
     ],
     [
      "Latents",
-     "k = 4, σ<sub>tsr</sub> = 8, η = 0.1, tangent noise schedule; g<sub>t</sub> = schedule / r(t)"
+     "k = 4, σ<sub>tsr</sub> = 12, η = 1, tangent noise schedule; g<sub>t</sub> = schedule / r(t)²"
     ]
    ],
    "parent": "generation",
@@ -661,20 +701,20 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/integrator.html",
    "code": [
     {
-     "label": "rdn_flow_matcher.py L561-L586",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/rdn_flow_matcher.py#L561-L586"
+     "label": "rdn_flow_matcher.py L525-L550",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/rdn_flow_matcher.py#L525-L550"
     },
     {
-     "label": "rdn_flow_matcher.py L589-L605",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/rdn_flow_matcher.py#L589-L605"
+     "label": "rdn_flow_matcher.py L553-L569",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/rdn_flow_matcher.py#L553-L569"
     },
     {
-     "label": "product_space_flow_matcher.py L730-L775",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L730-L775"
+     "label": "product_space_flow_matcher.py L809-L855",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L809-L855"
     },
     {
-     "label": "inference_base.yaml L16-L99",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/generation/inference_base.yaml#L16-L99"
+     "label": "inference_base.yaml L17-L98",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/generation/inference_base.yaml#L17-L98"
     }
    ]
   },
@@ -682,12 +722,17 @@ window.RFD4_ARCHITECTURE = {
    "title": "Training step",
    "short": "Training",
    "blurb": "Encode, interpolate, denoise, regress the velocity.",
-   "summary": "<p>The frozen encoder samples the clean latents from the structure. Both modalities are interpolated with Gaussian noise at independently drawn times, the denoiser runs with a random recycle depth, and the loss is the weighted squared velocity error of each modality plus the insertion cross-entropy against <em>src</em>, the token each unindexed motif copy was taken from.</p>",
+   "summary": "<p>The frozen encoder samples the clean latents from the structure. Both modalities are interpolated with Gaussian noise at independently drawn times, the denoiser runs with a random recycle depth, and the loss is the weighted squared velocity error of each modality plus the insertion cross-entropy against <em>src</em>, the token each unindexed motif copy was taken from, and the cross-entropy of the detached sequence readout against the true residues. Every design is tried four times with fresh noise at the same times, and only the attempt with the lowest summed CA and latent loss is kept. A signed-volume loss on ligand stereocentres (weight 2.5) is added but not drawn.</p>",
    "highlights": [
     {
      "kind": "loop",
      "label": "Recycling",
-     "html": "The recycle depth is drawn from Poisson(3), clipped to [1, 6] and shared by all ranks; gradients flow through the last cycle only."
+     "html": "The recycle depth is drawn from Poisson(3), clipped to [1, 9] and shared by all ranks; gradients flow through the last cycle only."
+    },
+    {
+     "kind": "note",
+     "label": "Exploration",
+     "html": "<code>exploration_k: 4</code>: the four attempts of a design run in one batch; the figure draws one attempt."
     }
    ],
    "facts": [
@@ -698,6 +743,14 @@ window.RFD4_ARCHITECTURE = {
     [
      "Loss weights",
      "1, +2.5 for tokens outside the standard amino acids and nucleotides (modified residues, ligand atoms, ions) and for unindexed sources"
+    ],
+    [
+     "Auxiliary losses",
+     "insertion cross-entropy, sequence-readout cross-entropy, signed volume (weight 2.5)"
+    ],
+    [
+     "Recipe",
+     "pre-training <code>releases/flow/2026_10_19_hero_pretrain</code>; the release is then fine-tuned with <code>releases/flow/2026_10_19_hero_lora_c384</code>"
     ]
    ],
    "parent": "overview",
@@ -706,28 +759,32 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/training.html",
    "code": [
     {
-     "label": "proteina.py L504-L626",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L504-L626"
+     "label": "proteina.py L593-L738",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L593-L738"
     },
     {
-     "label": "product_space_flow_matcher.py L215-L266",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L215-L266"
+     "label": "torch.py L33-L68",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/utils/torch.py#L33-L68"
     },
     {
-     "label": "proteina.py L677-L703",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L677-L703"
+     "label": "product_space_flow_matcher.py L222-L273",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L222-L273"
+    },
+    {
+     "label": "proteina.py L789-L815",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L789-L815"
     },
     {
      "label": "rdn_flow_matcher.py L356-L402",
      "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/rdn_flow_matcher.py#L356-L402"
     },
     {
-     "label": "product_space_flow_matcher.py L300-L425",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L300-L425"
+     "label": "product_space_flow_matcher.py L307-L504",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/flow_matching/product_space_flow_matcher.py#L307-L504"
     },
     {
-     "label": "2026_09_15_release.yaml L142-L148",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_09_15_release.yaml#L142-L148"
+     "label": "2026_10_19_hero_pretrain.yaml L448-L454",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/flow/2026_10_19_hero_pretrain.yaml#L448-L454"
     }
    ]
   },
@@ -735,7 +792,7 @@ window.RFD4_ARCHITECTURE = {
    "title": "Partial autoencoder",
    "short": "Autoencoder",
    "blurb": "The encoder that defines the latents and the decoder that writes atoms.",
-   "summary": "<p>The autoencoder is trained first, on its own: the encoder maps a structure to 16 latent channels per residue or nucleotide, and the decoder maps the CA positions and latents back to residue types and atom37 coordinates. The flow model then learns to generate CA positions and latents, and reuses the decoder at the end of every generation.</p>",
+   "summary": "<p>The autoencoder is trained first, on its own: the encoder maps a structure to 32 latent channels per residue or nucleotide, and the decoder maps the CA positions and latents back to residue types, atom37 coordinates and atom presence. Neither half has a pair track: attention pair bias, pair updates and triangle multiplication are off. The flow model then learns to generate CA positions and latents, and reuses the decoder at the end of every generation.</p>",
    "highlights": [
     {
      "kind": "note",
@@ -746,11 +803,15 @@ window.RFD4_ARCHITECTURE = {
    "facts": [
     [
      "Encoder",
-     "128.0 M parameters, 12 layers"
+     "129,013,832 parameters, 12 layers"
     ],
     [
      "Decoder",
-     "127.9 M parameters, 12 layers"
+     "128,160,329 parameters, 12 layers"
+    ],
+    [
+     "Recipe",
+     "<code>releases/ae/2026_10_15_unified_biomolecule</code> with <code>nn_ae/nn_130m_unified</code>; released checkpoint dated 2026-10-19"
     ]
    ],
    "parent": "overview",
@@ -763,37 +824,37 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/autoencoder.html",
    "code": [
     {
-     "label": "autoencoder.py L1-L138",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L1-L138"
+     "label": "autoencoder.py L1-L171",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L1-L171"
     },
     {
-     "label": "autoencoder.py L236-L280",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L236-L280"
+     "label": "autoencoder.py L226-L278",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L226-L278"
     },
     {
-     "label": "training_ae.yaml L36-L52",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/training_ae.yaml#L36-L52"
+     "label": "training_ae.yaml L35-L54",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/training_ae.yaml#L35-L54"
     },
     {
-     "label": "2026_09_04_release.yaml L1-L60",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/ae/2026_09_04_release.yaml#L1-L60"
+     "label": "2026_10_15_unified_biomolecule.yaml L1-L115",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/ae/2026_10_15_unified_biomolecule.yaml#L1-L115"
     }
    ]
   },
   "ae-encoder": {
    "title": "Encoder",
    "short": "Encoder",
-   "blurb": "Structure to a Gaussian posterior over 16 latents per residue or nucleotide.",
-   "summary": "<p>329 structure channels per token (token type, absolute and CA-relative atom37 coordinates with masks, chain index) are projected to 768, run through 12 layers, and mapped to the mean and log scale of a Gaussian, from which one sample is drawn.</p>",
+   "blurb": "Structure to a Gaussian posterior over 32 latents per residue or nucleotide.",
+   "summary": "<p>1587 structure channels per token (token type 32, absolute 148 and CA-relative 148 atom37 coordinates with masks, chain index 1, incident bond counts 370 and element and charge embeddings 888) are projected to 768, run through 12 layers, and mapped to the mean and log scale of a Gaussian, from which one sample is drawn.</p>",
    "highlights": [],
    "facts": [
     [
      "Inputs",
-     "329 → 768"
+     "1587 → 768"
     ],
     [
      "Output",
-     "μ, log σ ∈ ℝ<sup>16</sup>; x<sup>lat</sup> = μ + σ ε"
+     "μ, log σ ∈ ℝ<sup>32</sup>; x<sup>lat</sup> = μ + σ ε"
     ]
    ],
    "parent": "autoencoder",
@@ -802,33 +863,33 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/ae-encoder.html",
    "code": [
     {
-     "label": "encoder.py L113-L162",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/encoder.py#L113-L162"
+     "label": "encoder.py L111-L158",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/encoder.py#L111-L158"
     },
     {
-     "label": "feature_factory.py L434-L470",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L434-L470"
+     "label": "feature_factory.py L510-L546",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/feature_factory.py#L510-L546"
     },
     {
-     "label": "2026_09_04_release.yaml L45-L57",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/releases/ae/2026_09_04_release.yaml#L45-L57"
+     "label": "nn_130m_unified.yaml L3-L51",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn_ae/nn_130m_unified.yaml#L3-L51"
     }
    ]
   },
   "ae-decoder": {
    "title": "Decoder",
    "short": "Decoder",
-   "blurb": "CA positions and latents to residue logits and atom37 coordinates.",
-   "summary": "<p>The CA position, the 16 latents, the token type and the conditioned residue type are embedded, run through 12 layers, and read by two heads, each behind its own LayerNorm: 33 residue-class logits restricted to the classes the token type allows, and 37 atom positions relative to the CA, to which the CA position is added.</p>",
+   "blurb": "CA positions and latents to residues, atom37 coordinates and atom presence.",
+   "summary": "<p>The CA position, the 32 latents, the token type and the conditioned residue type are embedded, run through 12 layers, and read by three heads, each behind its own LayerNorm: 147 residue-class logits restricted to the classes the token type allows, 37 atom positions relative to the CA, to which the CA position is added, and 37 atom-presence logits. The decoded residue is the conditioned class where one is given and the most likely allowed class elsewhere; its atom mask keeps the slots that residue can have and whose presence logit is positive, and always the CA slot. In a generation the conditioned residue type of every position the input leaves open is the denoiser's sequence prediction.</p>",
    "highlights": [],
    "facts": [
     [
      "Inputs",
-     "84 → 768"
+     "214 → 768: CA 3, latents 32, token type 32, conditioned residue 147"
     ],
     [
      "Heads",
-     "768 → 33 logits, 768 → 37 × 3 coordinates"
+     "768 → 147 logits, 768 → 111 (37 × 3) coordinates, 768 → 37 presence logits"
     ]
    ],
    "parent": "autoencoder",
@@ -837,16 +898,20 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/ae-decoder.html",
    "code": [
     {
-     "label": "decoder.py L148-L236",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/decoder.py#L148-L236"
+     "label": "decoder.py L160-L251",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/decoder.py#L160-L251"
     },
     {
-     "label": "autoencoder.py L118-L138",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L118-L138"
+     "label": "autoencoder.py L140-L171",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/autoencoder.py#L140-L171"
     },
     {
-     "label": "nn_130m_unified.yaml L48-L83",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn_ae/nn_130m_unified.yaml#L48-L83"
+     "label": "proteina.py L2041-L2080",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/proteina.py#L2041-L2080"
+    },
+    {
+     "label": "nn_130m_unified.yaml L53-L88",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/configs/nn_ae/nn_130m_unified.yaml#L53-L88"
     }
    ]
   },
@@ -872,12 +937,12 @@ window.RFD4_ARCHITECTURE = {
    "page": "ncd/ae-layer.html",
    "code": [
     {
-     "label": "encoder.py L72-L88",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/encoder.py#L72-L88"
+     "label": "encoder.py L69-L85",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/partial_autoencoder/encoder.py#L69-L85"
     },
     {
-     "label": "attn_n_transition.py L94-L111",
-     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/attn_n_transition.py#L94-L111"
+     "label": "attn_n_transition.py L96-L113",
+     "url": "https://github.com/RosettaCommons/RFD4-Proteina/blob/main/src/rfproteina/nn/modules/attn_n_transition.py#L96-L113"
     }
    ]
   }
