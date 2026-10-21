@@ -18,7 +18,7 @@
 #
 # CUDA runtime libraries come from the PyTorch wheels, so no CUDA base image is needed;
 # the host only needs an NVIDIA driver and the NVIDIA container toolkit.
-FROM python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+FROM python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c AS model
 
 ARG RFD4_ACCELERATOR=cu13
 ARG UV_VERSION=0.12.13
@@ -77,3 +77,14 @@ RUN TORCHINDUCTOR_CACHE_DIR=/tmp/rfd4-build-compile RFD4_ACCELERATOR="${RFD4_ACC
     rfd4-generate --help
 
 CMD ["rfd4-generate", "--help"]
+
+FROM model AS api
+RUN uv pip install --system --no-cache -r /opt/rfd4/deploy/api/requirements.txt && python -m pip check
+ENV PROJECT_ROOT=/opt/rfd4 DATA_PATH=/workspace/models CLUSTER=local \
+    PYTHONPATH=/opt/rfd4/deploy/api HOME=/workspace OMP_NUM_THREADS=4 \
+    HF_HOME=/workspace/cache/huggingface PYTHONUNBUFFERED=1 \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+EXPOSE 8000
+CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+
+FROM model AS runtime

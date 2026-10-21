@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rfd4-api
+  template:
+    metadata:
+      labels:
+        app: rfd4-api
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: api
+          image: rfd4-api:local
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: '4'
+              memory: 32Gi
+              ephemeral-storage: 30Gi
+            limits:
+              nvidia.com/gpu: '1'
+              memory: 64Gi
+              ephemeral-storage: 100Gi
+          startupProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 10
+            failureThreshold: 180
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 15
+          volumeMounts:
+            - {name: work, mountPath: /workspace}
+            - {name: shm, mountPath: /dev/shm}
+      volumes:
+        - name: work
+          persistentVolumeClaim: {claimName: data}
+        - name: shm
+          emptyDir: {medium: Memory, sizeLimit: 2Gi}

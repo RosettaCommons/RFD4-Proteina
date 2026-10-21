@@ -138,6 +138,12 @@ The model can also be run as a Hugging Face Diffusers pipeline. The [quickstart]
 The CUDA extra also installs the fused cuEquivariance kernels the model loads, so use it even if you skip metrics. Add `inference_backend=bioir` to use the BioIR runtime (included in `all-cuda13`). `all-cuda12` and the plain package
 use the native runtime. If `pip` cannot see a very recent release, retry with `--no-cache-dir`.
 
+## Container and Kubernetes API
+
+Build the GPU HTTP server with `docker build --target api -t rfd4-api:local .`.
+See the [deployment guide](deploy/README.md) for local NVIDIA Docker, Kubernetes,
+API requests, and validation. The default Docker target keeps the CLI behavior.
+
 ## Run the model
 
 After setup, describe a design in a small YAML [condition spec](https://rfd4-proteina.org/latest/how-to/input_prep/yaml-json.html).
