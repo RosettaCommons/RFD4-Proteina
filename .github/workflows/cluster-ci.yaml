@@ -4,14 +4,18 @@ name: Cluster CI
 # Triggers:
 #   - a `/ci` (or `/ci coreweave`, `/ci digs`) comment from a listed maintainer on an open pull request into
 #     `main`: tests the PR head as of the comment;
+#   - a push to `main` (a merged pull request): tests the merged commit and uploads the coverage to Codecov, which
+#     keeps the main baseline current. The code on `main` has already been reviewed and merged, so no maintainer
+#     check applies;
 #   - `workflow_dispatch`, optionally with a PR number and the head SHA the maintainer reviewed.
-# Pushes to `main` do not trigger it.
 # pull_request events never run here. issue_comment and workflow_dispatch workflows are always read from `main`,
 # so a pull request cannot change these rules; only the code under test comes from the PR. Every cluster job waits
 # for the `authorize` job, which accepts only logins in CLUSTER_CI_MAINTAINERS and only runs from `main`. Cluster
 # credentials live in the runner-local profile, not in GitHub secrets. Runner setup: .github/ci/RUNNERS.md.
 
 on:
+  push:
+    branches: [main]
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -32,7 +36,8 @@ on:
 
 concurrency:
   group: cluster-ci-${{ github.event_name == 'issue_comment' && format('pr-{0}', github.event.issue.number) || github.ref }}
-  cancel-in-progress: true
+  # A newer push to main queues behind the running one instead of cancelling it, so every merge reports coverage.
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
   contents: read
@@ -77,6 +82,12 @@ jobs:
             echo "::error::$1"; exit 1
           }
           [ "$GITHUB_REF" = "refs/heads/main" ] || deny "Cluster CI only runs from main (got $GITHUB_REF)."
+          if [ "$EVENT" = push ]; then
+            echo "Push to main: testing the merged commit on both clusters."
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "clusters=both" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           [ -n "${ALLOWED//[ ,]/}" ] || deny "Repository variable CLUSTER_CI_MAINTAINERS is empty, so nobody is authorized."
           allowed=",$(printf '%s' "$ALLOWED" | tr -d ' ' | tr '[:upper:]' '[:lower:]'),"
           actor="$(printf '%s' "$ACTOR" | tr '[:upper:]' '[:lower:]')"

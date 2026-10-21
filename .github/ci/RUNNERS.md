@@ -1,8 +1,9 @@
 # Cluster CI runners (maintainers only)
 
 `.github/workflows/cluster-ci.yaml` runs the CPU and GPU test lanes on self-hosted runners at CoreWeave and DIGS.
-It is triggered only by a `/ci` comment from a listed maintainer on a pull request into `main`, or by a manual run
-(`workflow_dispatch`). Pushes to `main` and plain `pull_request` events never run on these machines.
+It is triggered by a `/ci` comment from a listed maintainer on a pull request into `main`, by a push to `main` (a merged
+pull request, which also refreshes the Codecov baseline) or by a manual run (`workflow_dispatch`). Plain `pull_request`
+events never run on these machines.
 
 ## Who may run it
 
