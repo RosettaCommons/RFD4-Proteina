@@ -12,6 +12,14 @@ It is triggered only by `workflow_dispatch` and by pushes to `main`. Pull reques
    available to this organization, so there is no reviewer-approval step.
 3. Settings → Actions → General → "Fork pull request workflows" should require approval for all outside collaborators.
 
+## Testing a pull request into main
+
+Actions → Cluster CI → Run workflow. Keep "Use workflow from" on `main`, set `pr` to the pull request number, set
+`reviewed_sha` to the full head commit SHA you reviewed, and choose the clusters. The run refuses if the PR is not open,
+does not target `main`, or its head has moved since you reviewed it. The workflow definition comes from `main`; the code under
+test (including `.github/ci/*.sh` and the tests) comes from that exact commit and runs on the cluster as the runner user, so
+read the whole diff first and never run a PR you have not reviewed.
+
 ## Registering a runner
 
 Register repo-level runners (Settings → Actions → Runners → New self-hosted runner), one per label below, on a node that

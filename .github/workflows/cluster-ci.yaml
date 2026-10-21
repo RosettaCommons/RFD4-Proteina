@@ -1,8 +1,10 @@
 name: Cluster CI
 
 # Maintainers only. Runs the CPU and GPU test lanes on the self-hosted CoreWeave and DIGS runners.
-# Triggers are `workflow_dispatch` and pushes to `main`; pull requests never run here, so
-# contributed code cannot reach a cluster. Every cluster job waits for the `authorize` job, which
+# Triggers are `workflow_dispatch` and pushes to `main`; pull_request events never run here. To test an open
+# pull request into `main`, a maintainer starts this workflow from `main` and gives the PR number and the head
+# commit SHA they reviewed. The workflow definition always comes from `main`; only the code under test comes
+# from the PR, pinned to that exact commit. Every cluster job waits for the `authorize` job, which
 # accepts only listed maintainers and only runs from `main`. Cluster credentials live in the
 # runner-local profile, not in GitHub secrets. Runner setup: .github/ci/RUNNERS.md.
 
@@ -14,6 +16,14 @@ on:
         type: choice
         options: [both, coreweave, digs]
         default: both
+      pr:
+        description: "Pull request number (into main) to test instead of main. Leave empty to test main."
+        type: string
+        default: ""
+      reviewed_sha:
+        description: "Required with pr: the full head commit SHA you reviewed. The run refuses if the PR head has moved."
+        type: string
+        default: ""
   push:
     branches: [main]
 
@@ -30,6 +40,11 @@ jobs:
     if: github.repository == 'RosettaCommons/RFD4-Proteina'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.target.outputs.sha }}
     steps:
       - name: Only listed maintainers may use the cluster runners
         env:
@@ -52,6 +67,30 @@ jobs:
             *) echo "::error::$ACTOR is not listed in CLUSTER_CI_MAINTAINERS; cluster CI refused."; exit 1 ;;
           esac
 
+      - name: Resolve the commit to test
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+        run: |
+          if [ -z "${PR:-}" ]; then
+            echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "Testing main at $GITHUB_SHA"
+            exit 0
+          fi
+          case "$PR" in *[!0-9]*) echo "::error::pr must be a pull request number."; exit 1 ;; esac
+          read -r state base head < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq '[.state, .base.ref, .head.sha] | @tsv')
+          [ "$state" = open ] || { echo "::error::PR #$PR is not open."; exit 1; }
+          [ "$base" = main ] || { echo "::error::PR #$PR targets '$base', not main."; exit 1; }
+          if [ -z "${REVIEWED_SHA:-}" ] || [ "$REVIEWED_SHA" != "$head" ]; then
+            echo "::error::reviewed_sha must equal the PR head $head. Review that commit, then pass its full SHA."
+            exit 1
+          fi
+          echo "sha=$head" >> "$GITHUB_OUTPUT"
+          echo "Testing PR #$PR at the reviewed commit $head"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename' | head -200
+
   coreweave-cpu:
     name: pytest (cpu, coreweave)
     needs: authorize
@@ -62,6 +101,8 @@ jobs:
       CI_CLUSTER: coreweave
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
       - name: Run tests (srun + apptainer)
         env:
           TEST_PATH: ./tests
@@ -89,6 +130,8 @@ jobs:
       CI_CLUSTER: coreweave
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
       - name: GPU tests (srun interactive + apptainer)
         env:
           SOTA_CKPT_PATH: ${{ vars.SOTA_CKPT_PATH || '' }}  # unset -> skip MCSA validation + search
@@ -146,6 +189,8 @@ jobs:
       CI_CLUSTER: digs
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.authorize.outputs.sha }}
       - name: Run tests (srun + apptainer)
         env:
           TEST_PATH: ./tests
