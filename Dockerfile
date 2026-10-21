@@ -21,7 +21,8 @@
 FROM python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
 
 ARG RFD4_ACCELERATOR=cu13
-ARG UV_VERSION=0.12.13
+# Minimum uv: 0.13.4 is the first release with the emSign CA fix (python.org announcement, Oct 20 2026).
+ARG UV_MIN_VERSION=0.13.4
 
 ENV DATA_PATH=/data \
     HF_HOME=/opt/rfd4/cache/huggingface \
@@ -33,29 +34,44 @@ ENV DATA_PATH=/data \
 
 # build-essential: torch.compile (Inductor/Triton) compiles C++ and CUDA glue at run time.
 # The lib* packages are runtime dependencies of OpenBabel.
+# ca-certificates: makes sure the system CA bundle is the newest the distro offers.
+#
+# Bootstrap trust (eMudhra/emSign CA incident, Oct 2026): the pip shipped in the base image bundles a
+# certifi that still trusts the compromised CA, and pip always trusts its bundled certifi in addition
+# to the system store. The base image is pinned by digest, so its pip does not change on rebuild.
+# Install the fixed pip from a hash-pinned URL so this download is verified by checksum rather than
+# by the old trust store. Remove this step once the base image ships pip >= 26.2.2.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libxrender1 libx11-6 libxext6 && \
+    apt-get install -y --no-install-recommends ca-certificates build-essential libxrender1 libx11-6 libxext6 && \
     rm -rf /var/lib/apt/lists/* && \
-    python -m pip install --no-cache-dir "uv==${UV_VERSION}"
+    python -m pip install --no-cache-dir "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" && \
+    python -m pip install --no-cache-dir "uv>=${UV_MIN_VERSION}"
 
 WORKDIR /opt/rfd4
 
 # Dependencies first, from pyproject.toml alone, so source edits do not invalidate this layer.
 # TMol and its operators must come from published wheels (never a source build).
+# The certifi constraint is a floor so no resolution can install a copy that trusts the compromised CA;
+# it only applies if certifi is pulled in and does not add the package.
 COPY pyproject.toml ./
-RUN case "${RFD4_ACCELERATOR}" in \
+RUN printf 'certifi>=2026.10.19\n' > /tmp/rfd4-constraints.txt && \
+    case "${RFD4_ACCELERATOR}" in \
         cu13) set -- --extra all-cuda13 --torch-backend cu130 ;; \
         cu12) set -- --extra all-cuda12 --torch-backend cu126 ;; \
         cpu) set -- --torch-backend cpu ;; \
         *) echo "RFD4_ACCELERATOR must be one of: cu13, cu12, cpu" >&2; exit 2 ;; \
     esac && \
-    uv pip install --system --no-cache --no-sources \
-        --only-binary tmol,tmol-ops-cu12,tmol-ops-cu13 "$@" -r pyproject.toml
+    uv pip install --system --no-cache --no-sources -c /tmp/rfd4-constraints.txt \
+        --only-binary tmol,tmol-ops-cu12,tmol-ops-cu13 "$@" -r pyproject.toml && \
+    rm -f /tmp/rfd4-constraints.txt
 
 # The application itself.
 COPY . .
 RUN uv pip install --system --no-cache --no-sources --no-deps . && \
-    python -m pip check
+    python -m pip check && \
+    uv --version && \
+    python -m pip --version && \
+    (python -m pip list 2>/dev/null | grep -i '^certifi ' || true)
 
 # BioIR (inference_backend=bioir) comes with the all-cuda13 extra; cu12 and cpu stay on the native runtime.
 RUN if [ "${RFD4_ACCELERATOR}" = "cu13" ]; then \
@@ -64,7 +80,9 @@ RUN if [ "${RFD4_ACCELERATOR}" = "cu13" ]; then \
 
 # The cpu profile has no CUDA extra; install the physics metrics it needs directly.
 RUN if [ "${RFD4_ACCELERATOR}" = "cpu" ]; then \
-        uv pip install --system --no-cache --only-binary tmol "tmol>=0.2.0,<0.3" posebusters; \
+        printf 'certifi>=2026.10.19\n' > /tmp/rfd4-constraints.txt && \
+        uv pip install --system --no-cache -c /tmp/rfd4-constraints.txt --only-binary tmol "tmol>=0.2.0,<0.3" posebusters && \
+        rm -f /tmp/rfd4-constraints.txt; \
     fi
 
 RUN mkdir -p /data /opt/rfd4/cache/huggingface /workspace
