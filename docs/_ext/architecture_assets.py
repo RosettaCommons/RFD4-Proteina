@@ -35,7 +35,7 @@ def serialize_payloads(value: object) -> object:
         for key, item in value.items():
             item = serialize_payloads(item)
             serialized_field = key == "expansion" or (key == "data" and value.get("msgType") == "dataUpdate")
-            if serialized_field and isinstance(item, (dict, list)):
+            if serialized_field and isinstance(item, dict | list):
                 item = json.dumps(item, ensure_ascii=False, separators=(",", ":"))
             result[key] = item
         return result

@@ -13,9 +13,7 @@ def rewrite_embedded_json(
     pretty: bool,
 ) -> str:
     """Rewrite one application/json payload, preserving the surrounding HTML."""
-    pattern = re.compile(
-        rf'(<script type="application/json" id="{re.escape(script_id)}">)(.*?)(</script>)', re.DOTALL
-    )
+    pattern = re.compile(rf'(<script type="application/json" id="{re.escape(script_id)}">)(.*?)(</script>)', re.DOTALL)
     match = pattern.search(source)
     if match is None:
         raise ValueError(f"Missing {script_id} script")
