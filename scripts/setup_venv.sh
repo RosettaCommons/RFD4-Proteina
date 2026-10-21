@@ -38,6 +38,10 @@ fi
 
 source .venv/bin/activate
 
+# Keep CUDA backend support independent of an older uv on the host.
+uv pip install "uv==0.13.4"
+runtime_uv="$repo_root/.venv/bin/uv"
+
 
 # ── 5. Custom metrics scaffolding ──────────────────────────────────────────
 CUSTOM_METRICS_CONFIG="configs/metrics/custom_metrics/all_custom_metrics.yaml"
@@ -74,13 +78,13 @@ mkdir -p "$CUSTOM_SAMPLING_TRANSFORMS_PKG"
 echo ">>> Installing dependencies..."
 build_torch_constraint=$(python -c "import tomllib; print(next(d for d in tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies'] if d.startswith('torch')))")
 if [[ "$runtime" == true ]]; then
-    uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[all-cuda13]"
-    uv pip check
+    "$runtime_uv" pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[all-cuda13]"
+    "$runtime_uv" pip check
     echo ">>> Native CUDA 13 environment ready: source $repo_root/.venv/bin/activate"
     exit 0
 fi
-uv pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[all-cuda13]" --group dev
-uv pip check
+"$runtime_uv" pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[all-cuda13]" --group dev
+"$runtime_uv" pip check
 
 # ── Register Jupyter kernel (non-fatal) ──────────────────────────────────────
 echo ">>> Registering Jupyter kernel..."

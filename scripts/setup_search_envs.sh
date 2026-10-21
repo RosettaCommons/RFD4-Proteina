@@ -17,7 +17,6 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 source "$repo_root/scripts/oracle_artifacts.sh"
-resolve_hf_release "$repo_root/configs/inference.yaml"
 
 af2="" af2_params="" af3="" of3_weights="" arch="" cuda="" dry_run=false
 while [[ $# -gt 0 ]]; do
@@ -67,14 +66,6 @@ detect_arch() {
     esac
 }
 
-detect_cuda() {
-    local major=""
-    if command -v nvidia-smi &>/dev/null; then
-        major="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9]*\)\..*/\1/p' | head -n 1)"
-    fi
-    if [[ "$major" == 12 || "$major" == 13 ]]; then echo "$major"; else echo 13; fi
-}
-
 # ask_choice <variable> <question> <detected> <option1> <option2>
 ask_choice() {
     local var="$1" question="$2" detected="$3" first="$4" second="$5" reply default=1
@@ -116,11 +107,12 @@ if [[ "$af2" != yes && "$af3" != yes ]]; then
 fi
 
 ask_choice arch "Which CPU architecture will run them?" "$(detect_arch)" amd64 arm64
-ask_choice cuda "Which CUDA major version does your driver support?" "$(detect_cuda)" 12 13
+ask_choice cuda "Which CUDA major version does your driver support?" "$(detect_oracle_cuda)" 12 13
 
 # DATA_PATH and any existing settings come from .env.local, like every other entry point.
 source "$repo_root/scripts/load_local_env.sh"
 DATA_PATH="${DATA_PATH:-$repo_root/data_path}"
+if [[ "$DATA_PATH" != /* ]]; then DATA_PATH="$PWD/$DATA_PATH"; fi
 env_file="$repo_root/.env.local"
 if [[ ! -f "$env_file" && -f "$repo_root/.env" ]]; then env_file="$repo_root/.env"; fi
 echo ">>> Using arch=$arch cuda=$cuda DATA_PATH=$DATA_PATH"
@@ -137,40 +129,21 @@ overrides=()
 if [[ "$af3" == yes ]]; then
     of3_dir="$DATA_PATH/openfold3"
     run mkdir -p "$of3_dir/runtime" "$of3_dir/weights" "$of3_dir/jax_cache"
-    runtime_path="$of3_dir/runtime/$OF3_RUNTIME_NAME"
-    if [[ " $OF3_RUNTIME_ARCHES " == *" $arch "* ]]; then
+    select_of3_runtime "$cuda"
+    if [[ "$arch" == amd64 ]]; then
         if ! command -v apptainer &>/dev/null; then
             notes+=("apptainer is not installed, so the OpenFold3 image was not downloaded. Install it from https://github.com/apptainer/apptainer/releases and re-run this script.")
-        elif [[ "$dry_run" == true ]]; then
-            echo "    [dry run] hf download $HF_RELEASE_REPO $OF3_RUNTIME_FILE -> $DATA_PATH (sha256 $OF3_RUNTIME_SHA256)"
-        elif printf '%s  %s\n' "$OF3_RUNTIME_SHA256" "$runtime_path" | sha256sum --check --status 2>/dev/null; then
-            echo ">>> have $OF3_RUNTIME_NAME, skipping"
         else
-            echo ">>> Downloading the AlphaFold 3 / OpenFold3 runtime image (about 4 GB)..."
-            if ! command -v hf &>/dev/null; then
-                notes+=("The hf command is not on PATH, so the OpenFold3 image was not downloaded. Activate .venv (source .venv/bin/activate) and re-run this script.")
-            else
-                hf download "$HF_RELEASE_REPO" "$OF3_RUNTIME_FILE" ${HF_RELEASE_REVISION:+--revision "$HF_RELEASE_REVISION"} --local-dir "$DATA_PATH"
-                printf '%s  %s\n' "$OF3_RUNTIME_SHA256" "$runtime_path" | sha256sum --check
-            fi
+            download_oracle_runtime "$OF3_RUNTIME_FILE" "$OF3_RUNTIME_SHA256" "$DATA_PATH" "$dry_run"
+            block+=("AF3_IMAGE=$(printf '%q' "$DATA_PATH/$OF3_RUNTIME_FILE")")
         fi
-        block+=("AF3_IMAGE=\${DATA_PATH}/openfold3/runtime/$OF3_RUNTIME_NAME")
     else
         notes+=("No prebuilt AlphaFold 3 / OpenFold3 image is published for $arch. Build one from the runtime source (see docs/how-to/evaluate-with-metrics.md), then set AF3_IMAGE to the resulting .sif in $env_file.")
     fi
-    block+=("AF3_JAX_CACHE_DIR=\${DATA_PATH}/openfold3/jax_cache")
+    block+=("AF3_JAX_CACHE_DIR=$(printf '%q' "$of3_dir/jax_cache")")
     if [[ "$of3_weights" == yes ]]; then
-        hf_repo="$HF_RELEASE_REPO"
-        hf_revision="$HF_RELEASE_REVISION"
-        if [[ "$dry_run" == true ]]; then
-            echo "    [dry run] hf download $hf_repo ${OF3_WEIGHTS_FILES[*]} --local-dir $DATA_PATH"
-        elif ! command -v hf &>/dev/null; then
-            notes+=("The hf command is not on PATH, so the OpenFold3 weights were not downloaded. Activate .venv (source .venv/bin/activate) and re-run this script.")
-        else
-            echo ">>> Downloading the OpenFold3 weights..."
-            hf download "$hf_repo" "${OF3_WEIGHTS_FILES[@]}" ${hf_revision:+--revision "$hf_revision"} --local-dir "$DATA_PATH"
-        fi
-        block+=("AF3_MODEL_DIR=\${DATA_PATH}/openfold3/weights")
+        run hf download "$ORACLE_ARTIFACT_REPO" "${OF3_WEIGHTS_FILES[@]}" --revision "$ORACLE_ARTIFACT_REVISION" --local-dir "$DATA_PATH"
+        block+=("AF3_MODEL_DIR=$(printf '%q' "$of3_dir/weights")")
         overrides+=("metrics/refolding_oracles=of3")
     else
         notes+=("AlphaFold 3's own weights are gated by Google DeepMind. Set AF3_MODEL_DIR in $env_file to your copy, or re-run with --of3-weights to use the free OpenFold3 weights.")
@@ -181,8 +154,7 @@ fi
 # ── AlphaFold 2 ────────────────────────────────────────────────────────────
 if [[ "$af2" == yes ]]; then
     af2_dir="$DATA_PATH/af2"
-    run mkdir -p "$af2_dir/model_dir/params" "$af2_dir/jax_cache" "$af2_dir/runtime"
-    image_name="alphafold2-pallas-cuda${cuda}-${arch}"
+    run mkdir -p "$af2_dir/model_dir/params" "$af2_dir/jax_cache"
     if [[ "$af2_params" == yes ]]; then
         params_dir="$af2_dir/model_dir/params"
         if [[ "$dry_run" == true ]]; then
@@ -198,23 +170,16 @@ if [[ "$af2" == yes ]]; then
     else
         notes+=("Put the AlphaFold 2 parameters under $af2_dir/model_dir/params (model_1_ptm and model_1_multimer_v3), or re-run with --af2-params.")
     fi
-    if command -v docker &>/dev/null; then
-        backend=docker
-        image_ref="$image_name:latest"
-    elif command -v apptainer &>/dev/null; then
-        backend=apptainer
-        image_ref="\${DATA_PATH}/af2/runtime/$image_name.sif"
+    if [[ "$arch" == amd64 ]] && command -v apptainer &>/dev/null; then
+        select_af2_runtime "$cuda"
+        download_oracle_runtime "$AF2_RUNTIME_FILE" "$AF2_RUNTIME_SHA256" "$DATA_PATH" "$dry_run"
+        block+=("AF2_RUNTIME_BACKEND=apptainer" "AF2_IMAGE=$(printf '%q' "$DATA_PATH/$AF2_RUNTIME_FILE")")
     else
-        backend=""
-        image_ref="\${DATA_PATH}/af2/runtime/$image_name.sif"
-        notes+=("Neither docker nor apptainer is installed, so the AlphaFold 2 runtime cannot run yet. Install one of them.")
+        notes+=("The prebuilt AlphaFold 2 images require amd64 and Apptainer. Install Apptainer and re-run setup, or configure a runtime following docs/installation.rst. Pallas requires GPU compute capability 8.0 or newer.")
     fi
-    if [[ -n "$backend" ]]; then block+=("AF2_RUNTIME_BACKEND=$backend"); fi
-    block+=("AF2_IMAGE=$image_ref"
-            "AF2_MODEL_DIR=\${DATA_PATH}/af2/model_dir"
-            "AF2_JAX_CACHE_DIR=\${DATA_PATH}/af2/jax_cache"
+    block+=("AF2_MODEL_DIR=$(printf '%q' "$af2_dir/model_dir")"
+            "AF2_JAX_CACHE_DIR=$(printf '%q' "$af2_dir/jax_cache")"
             "AF2_RESIDENT_MODELS=model_1_ptm,model_1_multimer_v3")
-    notes+=("No prebuilt AlphaFold 2 image is published. Build $image_name for linux/$arch with jax[cuda$cuda] in the pip install, then point AF2_IMAGE at it. Pallas kernels need a GPU with compute capability 8.0 or newer.")
     overrides+=("metrics/refolding_oracles=af2")
 fi
 
@@ -226,7 +191,7 @@ if [[ "$dry_run" == true ]]; then
     printf '      %s\n' "${block[@]}"
 else
     touch "$env_file"
-    tmp="$(mktemp)"
+    tmp="$(mktemp "$env_file.XXXXXX")"
     awk -v start="$marker_start" -v end="$marker_end" \
         '$0 == start { skip = 1 } !skip { print } $0 == end { skip = 0 }' "$env_file" > "$tmp"
     {

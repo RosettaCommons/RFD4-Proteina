@@ -4,20 +4,27 @@ set -euo pipefail
 
 DATA_PATH="${1:-}"
 if [ -z "$DATA_PATH" ] || [ "${DATA_PATH:0:1}" = "-" ]; then
-    echo "Usage: $0 <DATA_PATH> [--with-test-dataset] [--skip-of3] [--skip-benchmarks]" >&2
+    echo "Usage: $0 <DATA_PATH> [--with-test-dataset] [--skip-of3] [--skip-benchmarks] [--cuda 12|13]" >&2
     exit 1
 fi
 shift
 WITH_TEST_DATASET=false
 SKIP_OF3=false
 SKIP_BENCHMARKS=false
-for arg in "$@"; do
-    case "$arg" in
+CUDA_MAJOR=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --with-test-dataset) WITH_TEST_DATASET=true ;;
         --skip-of3) SKIP_OF3=true ;;
         --skip-benchmarks) SKIP_BENCHMARKS=true ;;
-        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+        --cuda)
+            if [[ $# -lt 2 || ( "$2" != 12 && "$2" != 13 ) ]]; then
+                echo "--cuda must be 12 or 13" >&2; exit 2
+            fi
+            CUDA_MAJOR="$2"; shift ;;
+        *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
+    shift
 done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -64,16 +71,11 @@ elif ! command -v apptainer &>/dev/null; then
     echo "    Install apptainer, then re-run this script to fetch it."
 else
     echo ">>> Downloading OpenFold3 (free, Apache-licensed refolding oracle, ~5 GB)..."
-    RUNTIME_NAME="$OF3_RUNTIME_NAME"
-    RUNTIME_SHA256="$OF3_RUNTIME_SHA256"
-    RUNTIME_PATH="$DATA_PATH/openfold3/runtime/$RUNTIME_NAME"
-    mkdir -p "$(dirname "$RUNTIME_PATH")"
-    if ! printf '%s  %s\n' "$RUNTIME_SHA256" "$RUNTIME_PATH" | sha256sum --check --status 2>/dev/null; then
-        fetch "$OF3_RUNTIME_FILE"
-        printf '%s  %s\n' "$RUNTIME_SHA256" "$RUNTIME_PATH" | sha256sum --check
-    fi
-    fetch "openfold3/weights/of3_ported_weights.bin.zst"
-    fetch "openfold3/weights/of3_ported_weights.provenance.json"
+    select_of3_runtime "${CUDA_MAJOR:-$(detect_oracle_cuda)}"
+    RUNTIME_PATH="$DATA_PATH/$OF3_RUNTIME_FILE"
+    download_oracle_runtime "$OF3_RUNTIME_FILE" "$OF3_RUNTIME_SHA256" "$DATA_PATH"
+    hf download "$ORACLE_ARTIFACT_REPO" "${OF3_WEIGHTS_FILES[@]}" --revision "$ORACLE_ARTIFACT_REVISION" --local-dir "$DATA_PATH"
+    mkdir -p "$DATA_PATH/openfold3/jax_cache"
     echo ">>> OpenFold3 ready. For direct generate.py/CLI use (the tutorial notebook finds these"
     echo "    automatically), export:"
     echo "    export AF3_IMAGE=\"$RUNTIME_PATH\""

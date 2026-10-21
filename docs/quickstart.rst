@@ -39,8 +39,8 @@ The example input (``monomer-short.cif.zst``) used below is already in the repos
 needs to be downloaded to generate your first design.
 
 #. **Set up an AlphaFold 2 environment for search?** AlphaFold 2 refolds protein-only designs.
-   Answer yes to create the AlphaFold 2 data directories and, if you agree, download DeepMind's
-   public parameters (CC BY 4.0, about 5.3 GB).
+   Answer yes to download its runtime image (needs ``apptainer``). A follow-up asks whether to
+   download DeepMind's public parameters (CC BY 4.0, about 5.3 GB).
 #. **Set up an AlphaFold 3 / OpenFold3 environment for search?** This refolds designs with ligands,
    nucleic acids or modified residues. Answer yes to download the runtime image
    from Hugging Face (about 4 GB, needs ``apptainer``). A follow-up asks whether to download the Apache-licensed
@@ -51,14 +51,8 @@ needs to be downloaded to generate your first design.
    your machine's values.
 
 The answers are written to a marked block in ``.env.local`` (``AF2_*`` and ``AF3_*`` variables),
-which every entry point reads. Some artifacts are not published, and setup tells you what is
-left to do for them:
-
-* The prebuilt AlphaFold 3 / OpenFold3 image exists for ``amd64`` only. On ``arm64``, build the
-  runtime and set ``AF3_IMAGE``.
-* The AlphaFold 2 image is one you build yourself, with ``jax[cuda]`` for the CUDA major you
-  chose. Setup records the expected image name, for example
-  ``alphafold2-pallas-cuda13-amd64``.
+which every entry point reads. Prebuilt images support ``amd64`` with CUDA ``12`` or ``13``;
+``arm64`` requires a separately built runtime.
 
 Skip the questions with ``bash setup.sh --skip-search-envs``. Choose an oracle at run time with a
 Hydra override such as ``metrics/refolding_oracles=of3`` or ``metrics/refolding_oracles=af2``;

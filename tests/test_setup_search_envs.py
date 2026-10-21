@@ -1,5 +1,7 @@
 """Behaviour of scripts/setup_search_envs.sh, run against a scratch copy of the scripts."""
 
+import hashlib
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,11 +19,33 @@ def scratch(tmp_path):
     (tmp_path / "configs").mkdir()
     shutil.copy(REPO / "configs" / "inference.yaml", tmp_path / "configs" / "inference.yaml")
     (tmp_path / ".env.local").write_text("DATA_PATH=${PROJECT_ROOT}/data_path\n")
+    payload = b"test runtime image"
+    artifacts = tmp_path / "scripts" / "oracle_artifacts.sh"
+    artifacts.write_text(
+        re.sub(r'(?<==")[0-9a-f]{64}(?=")', hashlib.sha256(payload).hexdigest(), artifacts.read_text())
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "apptainer").write_text("#!/bin/sh\nexit 0\n")
+    (bin_dir / "hf").write_text(
+        "#!/usr/bin/python3\n"
+        "import pathlib, sys\n"
+        "args = sys.argv[1:]\n"
+        "target = pathlib.Path(args[args.index('--local-dir') + 1]) / args[2]\n"
+        "target.parent.mkdir(parents=True, exist_ok=True)\n"
+        "target.write_bytes(b'test runtime image')\n"
+    )
+    for executable in bin_dir.iterdir():
+        executable.chmod(0o755)
     return tmp_path
 
 
 def run(scratch, *args, stdin="", prompt=False):
-    env = {"PATH": "/usr/bin:/bin", "HOME": str(scratch), "RFD4_SETUP_PROMPT": "1" if prompt else ""}
+    env = {
+        "PATH": f"{scratch / 'bin'}:/usr/bin:/bin",
+        "HOME": str(scratch),
+        "RFD4_SETUP_PROMPT": "1" if prompt else "",
+    }
     return subprocess.run(
         ["bash", str(scratch / "scripts" / "setup_search_envs.sh"), *args],
         input=stdin,
@@ -51,15 +75,8 @@ def test_answers_select_environments_arch_and_cuda(scratch):
     assert result.returncode == 0, result.stderr
     block = env_block(scratch)
     assert "arch=arm64, cuda=12" in block
-    # The image reference is a docker tag where docker is installed and an Apptainer .sif path otherwise.
-    assert any(
-        ref in block
-        for ref in (
-            "AF2_IMAGE=${DATA_PATH}/af2/runtime/alphafold2-pallas-cuda12-arm64.sif",
-            "AF2_IMAGE=alphafold2-pallas-cuda12-arm64:latest",
-        )
-    )
-    assert "AF3_JAX_CACHE_DIR=${DATA_PATH}/openfold3/jax_cache" in block
+    assert "AF2_IMAGE" not in block  # no prebuilt arm64 image
+    assert f"AF3_JAX_CACHE_DIR={scratch}/data_path/openfold3/jax_cache" in block
     assert "AF3_MODEL_DIR" not in block  # weights declined
     assert "AF3_IMAGE" not in block  # no prebuilt arm64 image
     assert "No prebuilt AlphaFold 3 / OpenFold3 image is published for arm64" in result.stdout
@@ -78,7 +95,7 @@ def test_rerun_replaces_the_block_instead_of_appending(scratch):
         run(scratch, "--af2", "--no-af2-params", "--arch", "amd64", "--cuda", cuda)
     text = (scratch / ".env.local").read_text()
     assert text.count(MARK_START) == 1
-    assert "alphafold2-pallas-cuda13-amd64" in text
+    assert f"AF2_IMAGE={scratch}/data_path/alphafold2/runtime/alphafold2-pallas-cuda13-amd64.sif" in text
     assert "alphafold2-pallas-cuda12-amd64" not in text
     assert text.startswith("DATA_PATH=")  # the rest of the file is untouched
 

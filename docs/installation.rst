@@ -75,7 +75,7 @@ Python 3.12 environment, use the same CUDA wheel source as setup:
 
    python3.12 -m venv .venv
    source .venv/bin/activate
-   python -m pip install uv
+   python -m pip install "uv>=0.13.4"
    uv pip install --build-constraint <(printf 'torch==2.14.1\n') \
        --torch-backend cu132 -e '.[all-cuda13]'
    python -m pip check
@@ -264,10 +264,10 @@ Configure data and checkpoints
 ``make setup`` caches the released model bundle (denoiser and matching autoencoder) from the Hugging
 Face repository and revision named by ``hf_ckpt_path`` and ``hf_ckpt_revision`` in
 ``configs/inference.yaml`` (``nvidia/RFD4-Proteina`` by default). ``HF_HOME`` controls the cache
-location. Optional tutorial data, the OpenFold3 runtime image and the OpenFold3 weights come from the
-same repository and revision into ``DATA_PATH``, defaulting to ``./data_path``. A failed download stops
-setup with an error. Everything comes from Hugging Face except the AlphaFold 2 parameters, which are
-DeepMind's public release.
+location. Optional tutorial data and refolding assets are downloaded into ``DATA_PATH``, defaulting
+to ``./data_path``. Refolding images and OpenFold3 weights use a separate pinned Hub revision.
+A failed download stops setup with an error. Everything comes from Hugging Face except the
+AlphaFold 2 parameters, which are DeepMind's public release.
 
 To download manually after a pip or ``--skip-weights`` installation:
 
@@ -297,8 +297,10 @@ requires Python 3 (standard library only), alongside the native model environmen
 Use the command line argument ``metrics/refolding_oracles=of3`` to use OpenFold3
 for refolding your designs.
 
-The downloader fetches the AF3/OpenFold3 runtime image from the model repository and verifies its
-SHA-256 checksum.
+The downloader selects a CUDA 12 or 13 image and verifies its SHA-256 checksum; pass ``--cuda 12``
+or ``--cuda 13`` to choose explicitly. Prebuilt images support ``amd64``. Docker/OCI archives and
+build recipes are also available in the
+`runtime directory <https://huggingface.co/nvidia/RFD4-Proteina/tree/main/openfold3/runtime>`_.
 
 Run your first design
 ---------------------
