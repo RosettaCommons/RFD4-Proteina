@@ -6,6 +6,16 @@ its concept page for that background. Start at [Quickstart](../quickstart.rst) i
 the model at all yet.
 
 <div class="wf-cards">
+  <a class="wf-card" href="binder-in-10-lines.html">
+    <span class="wf-card-title">Design a binder in 10 lines</span>
+    <span class="wf-card-body">One YAML spec, one command, and a gallery of inputs and designs per
+    task.</span>
+  </a>
+  <a class="wf-card" href="cookbook.html">
+    <span class="wf-card-title">Cookbook</span>
+    <span class="wf-card-body">Copy-paste YAML specs and overrides for monomers, binders, enzymes,
+    nanobodies, small molecules and partial diffusion.</span>
+  </a>
   <div class="wf-card wf-card-group">
     <a class="wf-card-link" href="input_prep/index.html">
       <span class="wf-card-title">Preparing inputs</span>
@@ -88,6 +98,8 @@ More guides are coming; this page will grow with them.
 :hidden:
 :maxdepth: 1
 
+binder-in-10-lines
+cookbook
 input_prep/index
 run-the-model
 partial-diffusion

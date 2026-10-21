@@ -6,6 +6,22 @@ touching, and what to do when a run misbehaves.
 Just getting started? [Quickstart](../quickstart.rst) installs the model and generates a first
 design. [Preparing inputs](input_prep/index.md) covers where the CIF comes from.
 
+With rewards or metrics enabled, a run also writes a metrics CSV next to the designs:
+
+```{image} /_static/diagrams/design-input-pipeline-metrics-light.svg
+:alt: The same input routes write an annotated CIF that goes into RFD4 together with Rewards (Metrics). RFD4 outputs an annotated CIF and a Metrics CSV.
+:class: only-light
+:width: 100%
+:align: center
+```
+
+```{image} /_static/diagrams/design-input-pipeline-metrics-dark.svg
+:alt: The same input routes write an annotated CIF that goes into RFD4 together with Rewards (Metrics). RFD4 outputs an annotated CIF and a Metrics CSV.
+:class: only-dark
+:width: 100%
+:align: center
+```
+
 Choose the sampling workflow that matches what supplies the extra information:
 
 - [Standard generation](#running-inference) starts from noise.

@@ -1,5 +1,24 @@
 # YAML/JSON condition spec
 
+A five-line YAML file is a complete design problem. This one designs a 50-120 residue binder
+to PD-L1 (save it as `binder.yaml` in the repository root):
+
+```yaml
+binder:
+  input: docs/examples/inputs/5o45_cropped.cif.zst
+  contig: "50-120, /0, A17-131"
+  conditions: {C_CRDGRP: {1: [{select: "sel('A/*/*/[N,CA,C,O]')"}]},
+               C_SEQ: {true: [{select: "sel('A')"}]}}
+```
+
+```bash
+rfd4-generate inputs=binder.yaml num_replicates=4 out_dir=./runs/binder '~metrics'
+```
+
+JSON with the same keys is equivalent; YAML is preferred because it allows comments. For more
+runnable specs see the [cookbook](../cookbook.md) and [Design a binder in 10
+lines](../binder-in-10-lines.md).
+
 The condition spec builds an [annotated CIF](../../concepts/annotated-cif.md) from a small YAML or 
 JSON file. You name a design, point it at a starting structure, say which parts to keep, and set
 the conditions you want. For those of you coming from previous RFdiffusion versions, this should

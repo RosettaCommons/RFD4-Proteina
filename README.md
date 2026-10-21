@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="https://rfd4-proteina.org/">Project page</a> ·
+  <a href="#try-it-now">Try it now</a> ·
   <a href="#system-requirements">Requirements</a> ·
   <a href="#install">Installation</a> ·
   <a href="#run-the-model">Quick start</a> ·
@@ -35,13 +36,22 @@
   <img src="https://huggingface.co/datasets/nvidia/RFD4-Proteina/resolve/main/media/assets/readme/design-gallery.png" width="1050" alt="Nanobody complex, protein–DNA binder, RNA pseudoknot, ligand pocket, glycan complex, and protein assembly.">
 </picture>
 
+## Try it now
+
+No install needed: design in your browser with the Hugging Face Studio Spaces.
+
+- [RFD4-Proteina Studio (ZeroGPU)](https://huggingface.co/spaces/nvidia/rfd4-proteina-zerogpu): runs on your own ZeroGPU quota.
+- [RFD4-Proteina Studio (dedicated GPUs)](https://huggingface.co/spaces/nvidia/rfd4-proteina-space): a shared dedicated GPU pool.
+
+Both require a Hugging Face sign-in, and both screen designs with SecureDNA.
+
 RFD4-Proteina designs proteins and biomolecular complexes with sequence–structure co-design,
 motif and binding-site conditioning, partial diffusion, and reward-guided search.
 
 Key features:
 
 - **Many design tasks from one model:** monomers, protein and DNA binders, antibodies and nanobodies, enzymes and motif scaffolding, small-molecule pockets.
-- **Rich conditioning:** annotated CIF inputs or text-based YAML specifications for fixed motifs, hotspots, burial, hydrogen bonds, and more.
+- **Rich conditioning:** annotated CIF inputs or text-based YAML specifications (the quickest way to start) for fixed motifs, hotspots, burial, hydrogen bonds, and more.
 - **Reward-guided search:** beam search over generation paths scored by structure-prediction oracles and custom metrics.
 - **Partial diffusion** to refine or diversify existing structures.
 - **Fast inference:** `torch.compile` by default, with an optional BioIR backend (`inference_backend=bioir`).
@@ -115,17 +125,31 @@ use the native runtime. If `pip` cannot see a very recent release, retry with `-
 
 ## Run the model
 
-After setup, generate a design from the included [example input](https://github.com/RosettaCommons/RFD4-Proteina/tree/main/data/benchmarks/monomer):
+After setup, describe a design in a small YAML [condition spec](https://rfd4-proteina.org/latest/how-to/input_prep/yaml-json.html).
+This one asks for a 50-120 residue binder to PD-L1, using an input included in the repository.
+Save it as `binder.yaml` in the repository root:
 
-```bash
-rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst \
-    num_replicates=1 out_dir=./runs/first \
-    ~metrics compile_lengths=null
+```yaml
+binder:
+  input: docs/examples/inputs/5o45_cropped.cif.zst
+  contig: "50-120, /0, A17-131"
+  conditions: {C_CRDGRP: {1: [{select: "sel('A/*/*/[N,CA,C,O]')"}]},
+               C_SEQ: {true: [{select: "sel('A')"}]}}
 ```
 
-Designs are written to `runs/first/inference_samples/`. Increase `num_replicates`
-for more designs, or replace the example path
-with your own [annotated input](https://rfd4-proteina.org/latest/how-to/input_prep/index.html).
+and run it:
+
+```bash
+rfd4-generate inputs=binder.yaml num_replicates=2 out_dir=./runs/first '~metrics'
+```
+
+JSON with the same keys works too. Designs are written to `runs/first/inference_samples/`.
+`'~metrics'` skips scoring, so no refolding environment is needed (quote it so zsh keeps the `~`).
+Add `compile_lengths=null` to a first smoke test to skip the `torch.compile` warm-up.
+Next: [design a binder in 10 lines](https://rfd4-proteina.org/latest/how-to/binder-in-10-lines.html),
+the [cookbook](https://rfd4-proteina.org/latest/how-to/cookbook.html) with a recipe per task (monomers,
+binders, enzymes, nanobodies, small molecules, partial diffusion), or your own
+[annotated input](https://rfd4-proteina.org/latest/how-to/input_prep/index.html).
 
 ### Hugging Face and Python
 

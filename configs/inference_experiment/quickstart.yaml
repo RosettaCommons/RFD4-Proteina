@@ -1,0 +1,35 @@
+# @package _global_
+#
+# First-run preset: select it with `inference_experiment=quickstart`.
+#
+#   rfd4-generate inference_experiment=quickstart inputs=<annotated CIF> out_dir=./runs/first
+#
+# It makes one design finish quickly on a fresh machine:
+#   - no metrics: the `metrics` group is not composed (the same as `~metrics`), so no refolding oracle
+#     or metric dependency is needed.
+#   - no torch.compile warm-up: `compile_lengths: null` runs the trunk eagerly. The warm-up costs minutes
+#     on a first run and pays off only across many designs, so drop this preset for production runs.
+#   - one design from one replicate; raise `num_replicates` (and `batch_size`) for more.
+#
+# The checkpoint comes from inference.yaml (`hf_ckpt_path` and `hf_ckpt_revision`, the single source of
+# truth for the pinned model revision), so no checkpoint argument is needed. Pass `hf_ckpt_path=null` for
+# native checkpoints under DATA_PATH. Check the machine first with `rfd4-doctor`.
+
+defaults:
+  - /generation: inference_base
+  - _self_
+
+inputs: ??? # json/yaml/cif path or cif directory
+
+compile_lengths: null
+num_replicates: 1
+metrics_tags: []
+
+generation:
+  val_set_name_override: ${inputs}
+  dataset:
+    num_replicates: ${num_replicates}
+    transform:
+      metrics_tags: ${metrics_tags}
+
+global_prefix: null

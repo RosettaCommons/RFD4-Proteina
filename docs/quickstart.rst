@@ -38,7 +38,7 @@ configures ``DATA_PATH``. It then asks whether you want the environments that re
 search and the refolding metrics score designs with. Both are optional, and you can run the
 questions later with ``bash scripts/setup_search_envs.sh``.
 See the dedicated :doc:`installation` guide for CUDA build prerequisites and environment settings.
-The example input (``monomer-short.cif.zst``) used below is already in the repository, so nothing else
+The example input (``5o45_cropped.cif.zst``) used below is already in the repository, so nothing else
 needs to be downloaded to generate your first design.
 
 #. **Set up an AlphaFold 2 environment for search?** AlphaFold 2 refolds protein-only designs.
@@ -61,21 +61,35 @@ Skip the questions with ``bash setup.sh --skip-search-envs``. Choose an oracle a
 Hydra override such as ``metrics/refolding_oracles=of3`` or ``metrics/refolding_oracles=af2``;
 :doc:`how-to/evaluate-with-metrics` and :doc:`how-to/search` describe the oracles and how search uses them.
 
-Generate a design:
+Generate a design. Describe it in a YAML condition spec: this one asks for a 50-120 residue binder
+to PD-L1, using an input that is already in the repository. Save it as ``binder.yaml`` in the
+repository root:
+
+.. code-block:: yaml
+
+   binder:
+     input: docs/examples/inputs/5o45_cropped.cif.zst
+     contig: "50-120, /0, A17-131"
+     conditions: {C_CRDGRP: {1: [{select: "sel('A/*/*/[N,CA,C,O]')"}]},
+                  C_SEQ: {true: [{select: "sel('A')"}]}}
+
+and run it:
 
 .. code-block:: bash
 
-   rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst \
-       num_replicates=1 out_dir=./runs/first \
-       ~metrics compile_lengths=null
+   rfd4-generate inputs=binder.yaml num_replicates=2 out_dir=./runs/first '~metrics'
 
-This generates one 100-residue protein under ``runs/first/inference_samples/``.
-``compile_lengths=null`` skips ``torch.compile`` warm-up so this first run finishes quickly; drop it
-for larger runs where the warm-up cost is worth paying back. Increase ``num_replicates`` for more
-designs, or replace the example path with your own annotated CIF input. See
-:doc:`how-to/run-the-model` for sampling settings and :doc:`how-to/evaluate-with-metrics` for
-scoring. For batch jobs, see :ref:`slurm-installation`. For CUDA 12 installation details, CPU-only installs,
-Docker and Apptainer, see :doc:`installation`.
+JSON with the same keys works too. This writes two designs under ``runs/first/inference_samples/``.
+``'~metrics'`` skips scoring so no refolding environment is needed (the quotes stop zsh from reading
+``~metrics`` as a home directory). Add ``compile_lengths=null`` to a first smoke test to skip the
+``torch.compile`` warm-up; leave it out for larger runs. To design something else, edit the spec
+(:doc:`how-to/input_prep/yaml-json`) or pick a recipe from the :doc:`how-to/cookbook`;
+:doc:`how-to/binder-in-10-lines` walks through this example. See :doc:`how-to/run-the-model` for sampling
+settings and :doc:`how-to/evaluate-with-metrics` for scoring. For batch jobs, see :ref:`slurm-installation`.
+For other CUDA versions, CPU-only installs, Docker and Apptainer, see :doc:`installation`.
+
+For the fastest possible first run add ``inference_experiment=quickstart``: it turns metrics off, skips the
+``torch.compile`` warm-up and generates one design, with no other flags needed.
 
 .. _quickstart-pip:
 
@@ -196,6 +210,7 @@ back, with a diagram you can click through to any stage.
 
 Where to go next:
 
+* :doc:`Cookbook <how-to/cookbook>`: copy-paste YAML specs and overrides for each design task.
 * :doc:`Example notebooks <examples/index>`: runnable example notebooks
   that create annotated CIFs and run RFD4-Proteina.
 * :doc:`Preparing inputs <how-to/input_prep/index>` shows the different ways to 

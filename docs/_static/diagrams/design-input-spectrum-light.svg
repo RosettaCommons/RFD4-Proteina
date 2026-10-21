@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 380" width="1170" height="380" role="img" aria-labelledby="t d">
+<title id="t">Ways to specify a design, from simple to expressive</title>
+<desc id="d">Four ways to specify a design, left to right along an arrow from simple and weakly expressive to complex and maximally expressive: YAML or JSON, marked preferred and the simplest place to start; an Agent Skill; the AtomWorks Studio web GUI; and the Python API.</desc>
+<style>
+    text{font-family:'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif;text-anchor:middle;fill:#1d1d1d}
+    .s{fill:#4a4a4a}
+    .bt{fill:#ffffff;font-weight:700}
+    .box{stroke:#3c3c3c;stroke-width:2;rx:6}
+    .hero{stroke:#2e7d32;stroke-width:5}
+    .green{fill:#dceacf} .purple{fill:#ddd3ea} .red{fill:#f4cccc} .blue{fill:#c9daf8}
+    .badge{fill:#2e7d32}
+    .arr{stroke:#1d1d1d;stroke-width:2.5}
+    .axis{stroke:#1d1d1d;stroke-width:3}
+    .cap{font-weight:700}
+</style>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d1d1d"/></marker></defs>
+<rect x="30" y="40" width="240" height="170" class="box green hero"/>
+<text x="150.0" y="121.6" class="t" font-size="30" font-weight="700">YAML / JSON</text>
+<text x="150.0" y="159.6" class="s" font-size="17">simplest: start here</text>
+<rect x="154.2" y="26" width="105.8" height="28" rx="14" class="badge"/>
+<text x="207.1" y="45" class="bt" font-size="16">preferred</text>
+<rect x="320" y="40" width="240" height="170" class="box green"/>
+<text x="440.0" y="120.3" class="t" font-size="26">Agent Skill</text>
+<text x="440.0" y="154.3" class="s" font-size="17">describe it in words</text>
+<rect x="610" y="40" width="240" height="170" class="box green"/>
+<text x="730.0" y="120.3" class="t" font-size="26">GUI</text>
+<text x="730.0" y="154.3" class="s" font-size="17">AtomWorks Studio (web)</text>
+<rect x="900" y="40" width="240" height="170" class="box green"/>
+<text x="1020.0" y="120.3" class="t" font-size="26">Python API</text>
+<text x="1020.0" y="154.3" class="s" font-size="17">anything the model reads</text>
+<line x1="40" y1="270" x2="1124" y2="270" class="axis" marker-end="url(#ah)"/>
+<text x="40" y="320" class="cap" font-size="24" style="text-anchor:start">Simple / weakly expressive</text>
+<text x="1130" y="320" class="cap" font-size="24" style="text-anchor:end">Complex / maximally expressive</text>
+</svg>

@@ -11,6 +11,20 @@ covers how to build one and run the model against it.
 Pick by how much of the design problem you need to express. The Python API can express anything
 the model can read.
 
+```{image} /_static/diagrams/design-input-spectrum-light.svg
+:alt: Four ways to specify a design, left to right from simple and weakly expressive to complex and maximally expressive: YAML or JSON (preferred, the simplest place to start), Agent Skill, the AtomWorks Studio web GUI, and the Python API.
+:class: only-light
+:width: 100%
+:align: center
+```
+
+```{image} /_static/diagrams/design-input-spectrum-dark.svg
+:alt: Four ways to specify a design, left to right from simple and weakly expressive to complex and maximally expressive: YAML or JSON (preferred, the simplest place to start), Agent Skill, the AtomWorks Studio web GUI, and the Python API.
+:class: only-dark
+:width: 100%
+:align: center
+```
+
 | Route | Reach for it when |
 | --- | --- |
 | [`rfd4-proteina-annotated-cif`](agent.md) | You want an agent to interview you, inspect existing artifacts, and author or edit the CIF |
@@ -38,6 +52,22 @@ This is shorthand for authoring one, not a different format.
 See the [YAML/JSON condition spec how-to guide](yaml-json.md) for a guided tour of the file shape, `contig`, and
 setting conditions; the [field-by-field reference](../../reference/yaml-json.md) has the full syntax
 and examples.
+
+All routes end in the same annotated CIF, which is what the model reads:
+
+```{image} /_static/diagrams/design-input-pipeline-light.svg
+:alt: A YAML file (preferred) or JSON feeds the Python API, as do an Agent Skill and the AtomWorks Studio web GUI. The Python API writes an annotated CIF, which goes into RFD4, which outputs an annotated CIF.
+:class: only-light
+:width: 100%
+:align: center
+```
+
+```{image} /_static/diagrams/design-input-pipeline-dark.svg
+:alt: A YAML file (preferred) or JSON feeds the Python API, as do an Agent Skill and the AtomWorks Studio web GUI. The Python API writes an annotated CIF, which goes into RFD4, which outputs an annotated CIF.
+:class: only-dark
+:width: 100%
+:align: center
+```
 
 ## Running the model
 
