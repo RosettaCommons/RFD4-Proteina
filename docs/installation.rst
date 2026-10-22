@@ -72,12 +72,16 @@ published, and records the ``AF2_*`` and ``AF3_*`` settings in ``.env.local``. S
 See the :doc:`quickstart` for what each answer does.
 
 TMol and ligand support are included by default. For a manual install into a
-Python 3.12 environment with CUDA 13, use the same CUDA wheel source as setup:
+Python 3.12 environment with CUDA 13, use the same CUDA wheel source as setup.
+The pip bundled with a new venv still trusts the compromised eMudhra/emSign CA
+(October 2026), so the first command after activation replaces it with pip 26.2.2
+from a hash-pinned URL before anything else is downloaded:
 
 .. code-block:: bash
 
    python3.12 -m venv .venv
    source .venv/bin/activate
+   python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
    python -m pip install "uv>=0.13.4"
    uv pip install --build-constraint <(printf 'torch==2.14.1\n') \
        --torch-backend cu132 -e '.[all-cuda13]'
