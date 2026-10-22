@@ -1,0 +1,45 @@
+name: HealthOmics example
+
+on:
+  pull_request:
+    paths:
+      - examples/healthomics/**
+      - tests/test_healthomics_workflow.py
+      - .github/workflows/healthomics-example.yaml
+  push:
+    branches: [main]
+    paths:
+      - examples/healthomics/**
+      - tests/test_healthomics_workflow.py
+      - .github/workflows/healthomics-example.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NXF_OFFLINE: "true"
+      NXF_OPTS: -Xms128m -Xmx1g
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install the same Nextflow version as HealthOmics
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -fsSL --retry 3 -o nextflow \
+            https://github.com/nextflow-io/nextflow/releases/download/v25.10.0/nextflow-25.10.0-dist
+          echo "294376ec555695ee0b92e21477600f97c113f2d1ed3fb1f480daf2ee439c4626  nextflow" | sha256sum -c -
+          chmod +x nextflow
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Test shard execution, failures and Nextflow wiring
+        run: python3 tests/test_healthomics_workflow.py -v
