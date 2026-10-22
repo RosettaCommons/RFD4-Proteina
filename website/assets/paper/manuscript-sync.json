@@ -861,7 +861,10 @@
         2162,
         2918
       ],
-      "sha256": "41acbe04408bfbe1c6c1639b184eab628c97c0951077b8f2fdb9bafadee5ce5b"
+      "sha256": "a65e537ad0f54b3352203d0f8282f4b64e0c5bc8d1c57b4c2132111552779627",
+      "source_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa",
+      "source_sha256": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "caption_sha256": "e57e0dbff7a33efa159d6233c65a7ab64c82648e726bbc4efab82ed2d5704442"
     },
     {
       "path": "assets/paper/fig4a-calmodulin.webp",
@@ -877,7 +880,10 @@
         900,
         1038
       ],
-      "sha256": "c261564f1dd500ca778fc8528e6f3bca67ebff5fee4e573f7b39744a7f82e51b"
+      "sha256": "c48c54b9f5a26e12ede1506381b295acb8f425d67799038d481f5120923f69c1",
+      "source_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa",
+      "source_sha256": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "caption_sha256": "e57e0dbff7a33efa159d6233c65a7ab64c82648e726bbc4efab82ed2d5704442"
     },
     {
       "path": "assets/paper/fig4b-pmhc.webp",
@@ -893,7 +899,10 @@
         1261,
         1038
       ],
-      "sha256": "b2261b939c49857bd1106c43a1013938dde79ab1add091025cb0bea2493febec"
+      "sha256": "07253501fa33e25dbb73b1e925e9161e7fd48d8adbc8ee4b5655b2d4b739d409",
+      "source_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa",
+      "source_sha256": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "caption_sha256": "e57e0dbff7a33efa159d6233c65a7ab64c82648e726bbc4efab82ed2d5704442"
     },
     {
       "path": "assets/paper/fig4cd-idr.webp",
@@ -909,7 +918,10 @@
         2161,
         879
       ],
-      "sha256": "244aea1537ef0f65d7a76c81395b1bcb1961e4db0dcda7a130c686c9e002dc94"
+      "sha256": "7bd6686611f169fee8ee165a92bf589e52f5acea1546d974ce84f0e8efe6175c",
+      "source_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa",
+      "source_sha256": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "caption_sha256": "e57e0dbff7a33efa159d6233c65a7ab64c82648e726bbc4efab82ed2d5704442"
     },
     {
       "path": "assets/paper/fig4ef-trka.webp",
@@ -925,7 +937,10 @@
         2161,
         1000
       ],
-      "sha256": "44257d23cfdc8a3703f7a0c9a9cd3c5c31a639f68d404ddee2bfe7553d7c2e46"
+      "sha256": "bd35d12b678399465efd936b31723344470121aecc150d880d4f7f823708e10d",
+      "source_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa",
+      "source_sha256": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "caption_sha256": "e57e0dbff7a33efa159d6233c65a7ab64c82648e726bbc4efab82ed2d5704442"
     },
     {
       "path": "assets/paper/fig5-ptm-glycosylation-full.webp",

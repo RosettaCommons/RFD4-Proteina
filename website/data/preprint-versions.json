@@ -14,15 +14,14 @@
     },
     {
       "number": 2,
-      "uploaded_at": "2026-10-21T22:52:29Z",
-      "pdf": "assets/paper/versions/RFD4-Proteina-v2-20261021T225229Z.pdf",
-      "sha256": "3554b22f837a6a0558b8f6f6e29dc88f0d693c24644dc5c69de6eda83f302b8b",
+      "uploaded_at": "2026-10-22T00:30:19Z",
+      "pdf": "assets/paper/versions/RFD4-Proteina-v2-20261022T003019Z.pdf",
+      "sha256": "33f4efb4833763a76b84b6989b1e56c01cec0dd697ea83d056387feb821b8bcd",
       "changes": [
         "Corrected a plotting error in Figure 4a where curves were averaged across multiple replicates.",
-        "Removed claims of resolution within the picomolar range for calmodulin binders.",
-        "Removed precise Kds for calmodulin binders pending further characterization."
+        "Added confidence intervals and additional methodological details for calmodulin binding."
       ],
-      "manuscript_commit": "a89ac2e3f159ff0a91740b06f468eb4aa08faef9"
+      "manuscript_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa"
     }
   ]
 }
