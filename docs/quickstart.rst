@@ -102,10 +102,13 @@ benchmark inputs. The antibody torsion reference data is downloaded when that me
 
 Create an environment, install the package for your CUDA major version, and generate. ``uv`` is recommended: the
 environment is about 7 GB and ``uv`` installs it in about two minutes, where plain ``pip`` takes about ten.
+Older pip releases still trust the compromised eMudhra/emSign CA (October 2026), so the first command
+installs pip 26.2.2 from a hash-pinned URL before ``uv`` is downloaded:
 
 .. code-block:: bash
 
-   pip install uv                      # or: curl -LsSf https://astral.sh/uv/install.sh | sh
+   pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+   pip install "uv>=0.13.4"            # or: curl -LsSf https://astral.sh/uv/install.sh | sh
    uv venv --python 3.12 && source .venv/bin/activate
 
 Choose **one** install command to match your driver:
