@@ -235,6 +235,12 @@ failure manifest in CloudWatch without publishing a successful summary.
 Local replay tests also rejected a missing CIF, same-size file corruption and
 an incorrect native seed.
 
+An additional control used the same input and seed 79 for this wrapper and two
+independent native CLI executions on L4. The parsed atom identities and coordinates
+were identical; effective configurations matched after normalizing output paths
+and excluding run-name metadata. This is evidence for that fixed configuration,
+not a guarantee of identical samples across hardware or software changes.
+
 The generated CIFs retain warnings for unspecified formal charges and missing
 `_struct_conn`; no oracle refolding was performed. This validates the short
 monomer example, not larger inputs, larger batches or other GPU types.

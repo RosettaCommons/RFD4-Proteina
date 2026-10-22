@@ -178,6 +178,49 @@ class HealthOmicsWorkflowTest(unittest.TestCase):
                 finally:
                     os.chdir(previous)
 
+    def test_summary_rejects_paths_and_symlinks_outside_the_shard(self):
+        for alteration in ["parent-path", "symlink"]:
+            with self.subTest(alteration=alteration):
+                case = self.root / alteration
+                case.mkdir()
+                previous = Path.cwd()
+                os.chdir(case)
+                try:
+                    with patch.object(workflow.subprocess, "run", side_effect=self.successful_cli):
+                        for shard in range(2):
+                            workflow.generate({**self.request, "shard_id": shard})
+                    outside = case / "outside" / "0_generated.cif"
+                    outside.parent.mkdir()
+                    outside.write_text("data_fixture\n")
+                    manifest = case / "shard-0/provenance.json"
+                    record = json.loads(manifest.read_text())
+                    if alteration == "parent-path":
+                        record["generated_files"][0]["path"] = "../outside/0_generated.cif"
+                        manifest.write_text(json.dumps(record))
+                    else:
+                        path = case / "shard-0/inference_samples/0/0_generated.cif"
+                        path.unlink()
+                        path.symlink_to(outside)
+                    with self.assertRaisesRegex(ValueError, "escapes its shard directory"):
+                        workflow.summarize(Path("."), 2)
+                    self.assertFalse((case / "summary").exists())
+                finally:
+                    os.chdir(previous)
+
+    def test_failure_provenance_does_not_dump_environment_credentials(self):
+        marker = "unit-test-value-must-not-appear-in-provenance"
+        stderr = io.StringIO()
+        with (
+            patch.dict(os.environ, {"AWS_SECRET_ACCESS_KEY": marker, "AWS_SESSION_TOKEN": marker}),
+            patch.object(workflow.subprocess, "run", side_effect=subprocess.CalledProcessError(1, ["probe"])),
+            contextlib.redirect_stderr(stderr),
+            self.assertRaises(subprocess.CalledProcessError),
+        ):
+            workflow.generate(self.request)
+        self.assertIn("RFD4_SHARD_FAILURE ", stderr.getvalue())
+        self.assertNotIn(marker, stderr.getvalue())
+        self.assertNotIn(marker, (self.root / "shard-0/provenance.json").read_text())
+
     def test_failed_gpu_preflight_stops_before_model_generation(self):
         error = subprocess.CalledProcessError(1, ["python", "-c", "probe"], stderr="CUDA GPU required")
         with (
