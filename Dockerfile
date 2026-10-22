@@ -83,7 +83,9 @@ RUN uv pip install --system --no-cache -r /opt/rfd4/deploy/api/requirements.txt 
 ENV PROJECT_ROOT=/opt/rfd4 DATA_PATH=/workspace/models CLUSTER=local \
     PYTHONPATH=/opt/rfd4/deploy/api HOME=/workspace OMP_NUM_THREADS=4 \
     HF_HOME=/workspace/cache/huggingface PYTHONUNBUFFERED=1 \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/nvidia/lib \
+    PATH=/usr/local/nvidia/bin:${PATH}
 EXPOSE 8000
 CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 
