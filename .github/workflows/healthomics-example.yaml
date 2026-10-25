@@ -33,6 +33,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Validate the bootstrap template
+        run: |
+          python3 -m pip install cfn-lint==1.58.0
+          cfn-lint examples/healthomics/bootstrap.yaml
       - name: Install the same Nextflow version as HealthOmics
         working-directory: ${{ runner.temp }}
         run: |
