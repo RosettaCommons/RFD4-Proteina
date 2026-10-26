@@ -6,7 +6,3 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
-images:
-  - name: rfd4-api
-    newName: rfd4-api
-    newTag: local

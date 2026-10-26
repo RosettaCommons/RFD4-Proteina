@@ -1,94 +1,50 @@
-"""Reuse upstream preprocessing, sampling, and export with one resident model."""
+"""Serve the upstream generation entry point with one resident model."""
 
 import os
 from pathlib import Path
-from typing import Any
-
-from app.storage import Store
 
 
 class Runner:
-    """Own the resident model and reuse the repository inference pipeline."""
+    """Own the model; upstream owns request configuration, compilation, and sampling."""
 
-    def __init__(self, bucket: Store):
-        # Model imports are deferred so API-only tests need no CUDA runtime.
-        import lightning as L
+    def __init__(self):
+        # Deferred imports keep HTTP-only tests independent of model dependencies.
         import torch
         from hydra import compose, initialize_config_dir
         from omegaconf import OmegaConf
 
         from rfproteina.generate import load_ckpt_n_configure_inference
 
-        self.loads = 0
         root = Path(os.environ["PROJECT_ROOT"])
         with initialize_config_dir(version_base="1.3", config_dir=str(root / "configs")):
             self.base = compose(
                 config_name="inference",
                 overrides=[
                     "~metrics",
-                    "compile_lengths=null",
                     "num_workers=0",
-                    "skip_existing=false",
-                    "inputs=" + str(Path(__file__).resolve().parents[1] / "examples/monomer-short.cif"),
+                    "inputs=null",
                     "out_dir=/workspace/startup",
                     "seed=42",
                 ],
             )
-        torch.set_float32_matmul_precision("medium")
+        # Loading only resolves configuration; no example file is needed at startup.
         self.model = load_ckpt_n_configure_inference(self.base).eval().to("cuda")
-        self.loads += 1
-        self.trainer = L.Trainer(
-            accelerator="gpu",
-            devices=1,
-            num_nodes=1,
-            logger=False,
-            enable_model_summary=False,
-            enable_checkpointing=False,
-            precision=self.base.precision,
-        )
+        self.loads = 1
         self.device = torch.cuda.get_device_name(0)
         self.omega = OmegaConf
 
     def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int]) -> list[Path]:
-        """Generate CIF artifacts serially, resetting configuration and RNG per request."""
-        import lightning as L
-        from atomworks.ml.utils.token import get_token_count
-        from torch.utils.data import DataLoader
-
-        from rfproteina.datapipes.collate import collate_batch
-        from rfproteina.generate import (
-            get_dataset_from_cfg,
-            load_ckpt_n_configure_inference,
-        )
+        """Keep upstream bucketing/cache behavior and isolate each request's outputs."""
+        from rfproteina.generate import run_generation
 
         cfg = self.omega.create(self.omega.to_container(self.base, resolve=False))
         cfg.inputs = str(input_path)
         cfg.out_dir = str(output_dir)
         cfg.seed = settings["seed"]
         cfg.num_replicates = settings["num_replicates"]
-        L.seed_everything(cfg.seed, verbose=False)
-        load_ckpt_n_configure_inference(cfg, model=self.model)
-        self.model.inference_seed = cfg.seed
-        dataset = get_dataset_from_cfg(cfg, job_id=0)
-
-        def collate_checked(samples: list[dict[str, Any]]) -> Any:
-            if any(get_token_count(sample["atom_array"]) > 512 for sample in samples):
-                raise ValueError("This API accepts at most 512 tokens per design")
-            return collate_batch(
-                samples,
-                schema="rfproteina.datapipes.schema.proteina.ProteinaDataSample",
-            )
-
-        loader = DataLoader(
-            dataset,
-            batch_size=1,
-            num_workers=0,
-            pin_memory=True,
-            collate_fn=collate_checked,
-        )
-        self.trainer.validate(self.model, loader)
-        # Lightning may move parameters to CPU during strategy teardown.
-        self.model.to("cuda")
+        # Upstream exits if a results CSV exists in out_dir.parent. Each request
+        # owns that parent, so another request cannot trigger its skip/exit path.
+        run_generation(cfg, model=self.model, max_tokens=512)
         generated = sorted(output_dir.rglob("*_generated.cif"))
         if not generated:
             raise RuntimeError("Generation completed without generated CIF files")

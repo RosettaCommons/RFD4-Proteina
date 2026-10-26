@@ -608,7 +608,12 @@ def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.da
 
 @configured_verbosity(default=False)
 def run_generation(
-    cfg: DictConfig, job_id: int = 0, config_name: str | None = None, *, model: Proteina | None = None
+    cfg: DictConfig,
+    job_id: int = 0,
+    config_name: str | None = None,
+    *,
+    model: Proteina | None = None,
+    max_tokens: int | None = None,
 ) -> None:
     """
     Core generation function that runs inference given a Hydra config.
@@ -618,6 +623,9 @@ def run_generation(
         job_id: Job ID for parallel job splitting
         config_name: Name of the config (used for output directory naming)
         model: Optional model already loaded with ``Proteina.from_pretrained``.
+        max_tokens: Optional service admission limit on transformed samples. When set,
+            materialize the bounded request before creating its DataLoader, so validation
+            errors do not pass through DataLoader/Lightning. CLI behavior is unchanged.
     """
     precision = cfg.precision
     torch.set_float32_matmul_precision("high" if precision in ("32", "32-true") else "medium")
@@ -686,6 +694,20 @@ def run_generation(
         setup_run_compile(inference=True)
         model.reserve_shape_cache(compile_lengths)  # gate the flow model on for these buckets (AE stays eager)
         logger.info(f"Inference torch.compile ready with length buckets: {compile_lengths}")
+
+    if max_tokens is not None:
+        from atomworks.ml.utils.token import get_token_count
+
+        if max_tokens < 1:
+            raise ValueError("max_tokens must be positive")
+        # Inspect the exact transformed samples that will be generated: rerunning
+        # stochastic transforms for validation could sample a different segment length.
+        checked_samples = []
+        for sample in dataset:
+            if get_token_count(sample["atom_array"]) > max_tokens:
+                raise ValueError(f"This API accepts at most {max_tokens} tokens per design")
+            checked_samples.append(sample)
+        dataset = checked_samples
 
     # Create dataloader
     num_workers = cfg.num_workers

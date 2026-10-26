@@ -79,13 +79,22 @@ RUN TORCHINDUCTOR_CACHE_DIR=/tmp/rfd4-build-compile RFD4_ACCELERATOR="${RFD4_ACC
 CMD ["rfd4-generate", "--help"]
 
 FROM model AS api
-RUN uv pip install --system --no-cache -r /opt/rfd4/deploy/api/requirements.txt && python -m pip check
+RUN case "${RFD4_ACCELERATOR}" in \
+        cu13) set -- --extra all-cuda13 --torch-backend cu130 ;; \
+        cu12) set -- --extra all-cuda12 --torch-backend cu126 ;; \
+        cpu) set -- --torch-backend cpu ;; \
+    esac && \
+    uv pip install --system --no-cache --no-sources \
+        --only-binary tmol,tmol-ops-cu12,tmol-ops-cu13 "$@" --extra api -r /opt/rfd4/pyproject.toml && \
+    python -m pip check
 ENV PROJECT_ROOT=/opt/rfd4 DATA_PATH=/workspace/models CLUSTER=local \
     PYTHONPATH=/opt/rfd4/deploy/api HOME=/workspace OMP_NUM_THREADS=4 \
     HF_HOME=/workspace/cache/huggingface PYTHONUNBUFFERED=1 \
+    TORCH_COMPILE_CACHE_BLOB=/workspace/cache/torch/compile \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility \
     LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/nvidia/lib \
     PATH=/usr/local/nvidia/bin:${PATH}
+RUN python -c "from app.api import app; assert app.openapi()['info']['title'] == 'RFD4-Proteína'"
 EXPOSE 8000
 CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 

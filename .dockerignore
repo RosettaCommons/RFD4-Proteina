@@ -20,7 +20,6 @@
 !deploy/api/app/**
 !deploy/api/examples/
 !deploy/api/examples/**
-!deploy/api/requirements.txt
 **/__pycache__
 **/*.pyc
 **/.DS_Store
