@@ -7,7 +7,6 @@
 [![Launch on Brev](https://img.shields.io/badge/Launch-Brev-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://brev.nvidia.com/launchable/deploy?launchableID=env-3L1NTafHCJiQWtve1Jflp8nhpxE)
 
 </div>
-<p>Open a terminal in the RFD4-Proteina repository and follow the steps below.</p>
 </div>
 
 One YAML file, one command. This page designs a de novo protein binder against PD-L1 using the
@@ -33,11 +32,7 @@ JSON with the same keys works too; YAML is just easier to read and comment.
 
 ## The command
 
-From the repository root, activate the installed environment in each new terminal (including
-Brev's Jupyter terminal), then run:
-
 ```bash
-source .venv/bin/activate
 rfd4-generate inputs=binder.yaml num_replicates=4 batch_size=4 out_dir=./runs/binder '~metrics'
 ```
 
