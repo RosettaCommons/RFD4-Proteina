@@ -144,7 +144,7 @@ class ColabSetupTests(unittest.TestCase):
     def test_local_setup_does_not_install_or_download(self):
         sys.modules.pop("google.colab")
         for notebook in NOTEBOOKS:
-            self.assertIn("existing environment", self.execute(setup_source(notebook)))
+            self.assertEqual("", self.execute(setup_source(notebook)))
         self.assertEqual(self.commands, [])
         self.assertEqual(list(self.root.iterdir()), [])
 
