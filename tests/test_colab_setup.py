@@ -7,9 +7,13 @@ Run independently of the model test fixtures:
 import ast
 import io
 import json
+import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import urllib.request
 from contextlib import ExitStack, redirect_stdout
@@ -103,6 +107,11 @@ class ColabSetupTests(unittest.TestCase):
                     install = self.commands[-1]
                     self.assertEqual(install[:4], [sys.executable, "-m", "uv", "pip"])
                     self.assertIn(f"torch==2.14.1+{backend}", install)
+                    self.assertIn(f"torchvision==0.29.1+{backend}", install)
+                    self.assertIn(
+                        [sys.executable, "-m", "uv", "pip", "uninstall", "--python", sys.executable, "torchaudio"],
+                        self.commands,
+                    )
                     self.assertIn(f"rfd4-proteina[all-cuda{cuda}]==0.0.3", install)
                     self.assertEqual(install[install.index("--python") + 1], sys.executable)
                     self.assertEqual(install[install.index("--torch-backend") + 1], backend)
@@ -112,7 +121,13 @@ class ColabSetupTests(unittest.TestCase):
                     self.pid = 101
                     self.assertIn("Ready:", self.execute(source))
                     self.assertIn("Ready:", self.execute(source))
-                    self.assertTrue(all(command[0] == "nvidia-smi" for command in self.commands))
+                    self.assertTrue(
+                        all(
+                            command[0] == "nvidia-smi" or command[:3] == [sys.executable, "-m", "rfproteina.generate"]
+                            for command in self.commands
+                        )
+                    )
+                    self.assertIn([sys.executable, "-m", "rfproteina.generate", "--help"], self.commands)
                     self.torch.ones.assert_called_with(1, device="cuda")
 
     def test_wrong_python_and_missing_gpu_stop_before_install(self):
@@ -132,6 +147,22 @@ class ColabSetupTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.execute(source)
         self.assertFalse((self.root / ".rfd4-colab-setup.json").exists())
+
+    def test_updated_requirements_reinstall_without_deleting_assets(self):
+        source = setup_source(NOTEBOOKS[0])
+        with self.assertRaises(SystemExit):
+            self.execute(source)
+        marker = self.root / ".rfd4-colab-setup.json"
+        state = json.loads(marker.read_text())
+        state["requirements"].append("torchaudio")
+        marker.write_text(json.dumps(state))
+        asset = self.root / "keep-results.cif"
+        asset.write_text("existing design")
+        self.pid = 101
+        with self.assertRaisesRegex(SystemExit, "Restart session"):
+            self.execute(source)
+        self.assertEqual(asset.read_text(), "existing design")
+        self.assertNotIn("torchaudio", json.loads(marker.read_text())["requirements"])
 
     def test_changed_cuda_profile_requires_clean_runtime(self):
         source = setup_source(NOTEBOOKS[0])
@@ -157,6 +188,55 @@ class ColabSetupTests(unittest.TestCase):
                     ast.parse("".join(cell["source"]))
                     self.assertFalse(cell.get("outputs"))
                     self.assertIsNone(cell.get("execution_count"))
+
+
+class EnzymeLaunchTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name)
+        notebook = json.loads((ROOT / "docs/examples/enzyme_design_tutorial.ipynb").read_text())
+        source = next("".join(c["source"]) for c in notebook["cells"] if "def launch(" in "".join(c["source"]))
+        tree = ast.parse(source)
+        functions = ast.Module(
+            body=[n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in {"run", "launch"}],
+            type_ignores=[],
+        )
+        self.scope = dict(
+            os=os,
+            sys=SimpleNamespace(executable="/usr/bin/python3"),
+            shlex=shlex,
+            shutil=shutil,
+            subprocess=subprocess,
+            Path=Path,
+            time=time,
+            TUTORIAL_DIR=root,
+            REPO_ROOT=root,
+            HAS_SLURM=False,
+            OVERWRITE_SAMPLING=False,
+            METRICS_TAGS="[design]",
+            _OF3_OVERRIDE="",
+            CKPT_PATH="/model",
+            CKPT_NAME="release.ckpt",
+            STAGE_TIMES=[],
+        )
+        exec(compile(functions, "<enzyme helpers>", "exec"), self.scope)
+
+    def test_local_launch_uses_kernel_python_not_sibling_executable(self):
+        failure = subprocess.CalledProcessError(7, "generation")
+        with patch.dict(os.environ, {"CLUSTER": "local"}), patch("subprocess.run", side_effect=failure) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.scope["launch"](str(Path(self.temp.name) / "run"), "smoke", "input.cif", 1)
+        command = shlex.split(run.call_args.args[0])
+        self.assertEqual(command[:3], ["/usr/bin/python3", "-m", "rfproteina.generate"])
+        self.assertIn("metrics_tags=[design]", command)
+
+    def test_command_failure_is_reported_before_missing_metrics(self):
+        failed = subprocess.CompletedProcess("generation", 127, "", "command not found")
+        with patch("subprocess.run", return_value=failed), redirect_stdout(io.StringIO()):
+            with self.assertRaises(subprocess.CalledProcessError) as error:
+                self.scope["run"]("generation")
+        self.assertEqual(error.exception.returncode, 127)
 
 
 if __name__ == "__main__":
