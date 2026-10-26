@@ -1,0 +1,12 @@
+{
+  "seed": 42,
+  "num_replicates": 1,
+  "batch_size": 1,
+  "model_source": "nvidia/RFD4-Proteina",
+  "model_revision": "a06e2509c7033b010fc43614e9fd840303588502",
+  "overrides": [
+    "recycle_strategy=medium/front_loaded",
+    "compile_lengths=null",
+    "compress_outputs=true"
+  ]
+}
