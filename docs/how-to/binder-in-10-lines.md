@@ -1,5 +1,15 @@
 # Design a binder in 10 lines
 
+<div class="cloud-launch-box">
+<div class="cloud-launch-title">🚀 Try it live — no local setup needed</div>
+<div class="badge-group">
+
+[![Launch on Brev](https://img.shields.io/badge/Launch-Brev-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://brev.nvidia.com/launchable/deploy?launchableID=env-3L1NTafHCJiQWtve1Jflp8nhpxE)
+
+</div>
+<p>Open a terminal in the RFD4-Proteina repository and follow the steps below.</p>
+</div>
+
 One YAML file, one command. This page designs a de novo protein binder against PD-L1 using the
 inputs that ship in the repository. It needs a clone of the repository and a GPU; see the
 [Quickstart](../quickstart.rst) if you have not installed the model yet.
