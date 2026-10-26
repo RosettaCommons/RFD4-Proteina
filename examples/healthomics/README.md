@@ -1,5 +1,6 @@
 # Run RFD4-Proteina on AWS HealthOmics
 
+This community deployment example uses the upstream RFD4-Proteina model and CLI.
 Use this guide to build the RFD4 image with Finch, stage a matching model bundle
 and one annotated CIF in S3, and submit generation to managed GPUs on AWS
 HealthOmics. You provision the AWS resources once; HealthOmics schedules the
@@ -13,6 +14,30 @@ and file hashes, and rejects incomplete outputs. It uses the existing
 This example covers generation. Refolding, biological designability and
 reward-guided search need separate evaluation/orchestration. AWS usage incurs
 charges, including stored images/model files after compute has finished.
+
+## Licenses and attribution
+
+The example follows the repository's [BSD 3-Clause license](../../LICENSE).
+The pinned generation model and weights have their own
+[BSD 3-Clause LICENSE](https://huggingface.co/nvidia/RFD4-Proteina/blob/a06e2509c7033b010fc43614e9fd840303588502/LICENSE).
+Retain the copyright notices, license conditions and disclaimer when
+redistributing covered source or model assets. The license does not grant
+permission to imply endorsement by the copyright holder or contributors.
+The steps below download and stage the model's LICENSE alongside its weights.
+
+Third-party components retain their own terms. The CUDA 12 build includes
+[Open Babel under GPLv2](https://github.com/openbabel/openbabel/blob/openbabel-3-1-1/COPYING)
+and [cuEquivariance binary kernels under NVIDIA's math-library license](https://pypi.org/project/cuequivariance-ops-cu12/0.13.0/).
+Other installed packages and system tools also carry separate notices.
+Before distributing a built image, review its exact installed versions and
+licensing compatibility, retain applicable notices, and satisfy any
+corresponding-source or redistribution requirements. The repository's BSD
+license does not cover every component inside the image.
+
+This setup downloads the generation bundle and its LICENSE. Optional
+AlphaFold/OpenFold refolding assets and training datasets have separate terms;
+review the [upstream model card](https://huggingface.co/nvidia/RFD4-Proteina)
+before adding them to this example.
 
 ## What you will set up
 
@@ -131,17 +156,19 @@ and [ECR permissions](https://docs.aws.amazon.com/omics/latest/dev/permissions-e
 
 ## 3. Download the model and prepare the first input
 
-Download both files from the same pinned bundle. It contains the matching flow
-model and autoencoder. The model is staged as input data rather than included in
-the image, so GPU tasks do not download weights from Hugging Face.
+Download both model files and their LICENSE from the same pinned bundle. It
+contains the matching flow model and autoencoder. The model is staged as input
+data rather than included in the image, so GPU tasks do not download weights
+from Hugging Face.
 
 ```bash
-hf download nvidia/RFD4-Proteina config.json model.safetensors \
+hf download nvidia/RFD4-Proteina config.json model.safetensors LICENSE \
     --revision a06e2509c7033b010fc43614e9fd840303588502 \
     --local-dir "$RFD4_WORK_DIR/model"
 cp "$RFD4_ROOT/examples/healthomics/settings.json" "$RFD4_WORK_DIR/settings.json"
 test -s "$RFD4_WORK_DIR/model/config.json"
 test -s "$RFD4_WORK_DIR/model/model.safetensors"
+test -s "$RFD4_WORK_DIR/model/LICENSE"
 ```
 
 The supplied settings use seed 42, one replicate, batch size one, the explicit
@@ -210,6 +237,7 @@ bucket, tag = os.environ["RFD4_BUCKET"], os.environ["RFD4_TAG"]
 files = [
     (work / "model/config.json", f"models/rfd4/{tag}/config.json"),
     (work / "model/model.safetensors", f"models/rfd4/{tag}/model.safetensors"),
+    (work / "model/LICENSE", f"models/rfd4/{tag}/LICENSE"),
     (Path(os.environ["RFD4_ROOT"]) / "data/benchmarks/monomer/monomer-short.cif.zst",
      "inputs/monomer-short.cif.zst"),
     (work / "settings.json", f"inputs/{tag}/settings.json"),
