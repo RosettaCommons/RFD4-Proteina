@@ -1,10 +1,15 @@
 """Validate serialization, persistence, and failures without model weights."""
 
+import asyncio
+import json
 import queue
+import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from types import SimpleNamespace
 
+import httpx
 import pytest
 from app import api, runner
 from fastapi import HTTPException
@@ -184,3 +189,79 @@ def test_artifact_path_escape_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(HTTPException) as exc:
         api.artifact(request_id, "../private.txt")
     assert exc.value.status_code == 404
+
+
+def test_slow_large_cif_admission_does_not_block_health(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    """Hold parsing open and verify another request completes before parsing ends."""
+    started = threading.Event()
+    release = threading.Event()
+    finished = threading.Event()
+    original_read = api.CIFFile.read
+
+    def slow_read(file: object) -> object:
+        started.set()
+        assert release.wait(timeout=10), "Test did not release the parser"
+        try:
+            return original_read(file)
+        finally:
+            finished.set()
+
+    monkeypatch.setattr(api.CIFFile, "read", slow_read)
+    api.store = tmp_path / "store"
+    api.update_state(ready=True)
+    content = EXAMPLE + b"\n#" + b"x" * (3 * 1024 * 1024) + b"\n"
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=api.app), base_url="http://test") as client:
+            submission = asyncio.create_task(client.post("/v1/designs", files={"file": ("large.cif", content)}))
+            try:
+                assert await asyncio.to_thread(started.wait, 3)
+                assert not finished.is_set()
+                response = await asyncio.wait_for(client.get("/health/live"), timeout=1)
+                assert response.status_code == 200
+                assert not finished.is_set(), "Health must respond while parsing is still blocked"
+            finally:
+                release.set()
+                response = await asyncio.wait_for(submission, timeout=10)
+            assert response.status_code == 202
+
+    asyncio.run(scenario())
+
+
+def test_recovery_skips_corrupt_and_mismatched_statuses(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(runner, "Runner", lambda: SimpleNamespace(device="fake GPU", loads=1))
+    root = tmp_path / "store" / "requests"
+    corrupt = {
+        "a" * 32: '{"id":',
+        "b" * 32: json.dumps({"id": "b" * 32}),
+        "c" * 32: json.dumps({"id": "../invalid", "status": "running"}),
+        "d" * 32: json.dumps({"id": "e" * 32, "status": "running"}),
+        "f" * 32: "[]",
+        "invalid-directory": json.dumps({"id": "invalid-directory", "status": "queued"}),
+        "3" * 32: json.dumps({"status": "running"}),
+        "4" * 32: json.dumps({"id": "4" * 32, "status": "unknown"}),
+        "5" * 32: json.dumps({"id": "5" * 32, "status": []}),
+    }
+    for request_id, text in corrupt.items():
+        path = root / request_id / "status.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(text)
+    completed_id = "e" * 32
+    healthy = {"1" * 32: "queued", "2" * 32: "running", completed_id: "succeeded"}
+    for request_id, status in healthy.items():
+        path = root / request_id / "status.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({"id": request_id, "status": status}))
+    with TestClient(api.app) as client:
+        wait_for(lambda: client.get("/health/ready").status_code == 200)
+        for request_id in ("1" * 32, "2" * 32):
+            assert client.get(f"/v1/designs/{request_id}").json()["status"] == "failed"
+        assert client.get(f"/v1/designs/{completed_id}").json()["status"] == "succeeded"
+        assert client.get("/health/live").status_code == 200
+    assert sum("Skipping invalid request status" in record.message for record in caplog.records) == len(corrupt)
+    for request_id, text in corrupt.items():
+        assert (root / request_id / "status.json").read_text() == text

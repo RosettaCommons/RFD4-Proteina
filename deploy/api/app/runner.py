@@ -35,7 +35,7 @@ class Runner:
 
     def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int]) -> list[Path]:
         """Keep upstream bucketing/cache behavior and isolate each request's outputs."""
-        from rfproteina.generate import run_generation
+        from rfproteina.generate import TokenLimitError, run_generation
 
         cfg = self.omega.create(self.omega.to_container(self.base, resolve=False))
         cfg.inputs = str(input_path)
@@ -44,7 +44,10 @@ class Runner:
         cfg.num_replicates = settings["num_replicates"]
         # Upstream exits if a results CSV exists in out_dir.parent. Each request
         # owns that parent, so another request cannot trigger its skip/exit path.
-        run_generation(cfg, model=self.model, max_tokens=512)
+        try:
+            run_generation(cfg, model=self.model, max_tokens=512, max_samples=4)
+        except TokenLimitError as exc:
+            raise ValueError(f"This API accepts at most {exc.max_tokens} tokens per design") from exc
         generated = sorted(output_dir.rglob("*_generated.cif"))
         if not generated:
             raise RuntimeError("Generation completed without generated CIF files")

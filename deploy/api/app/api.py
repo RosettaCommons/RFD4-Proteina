@@ -1,5 +1,6 @@
 """Single-replica asynchronous design API with durable disk artifacts."""
 
+import asyncio
 import io
 import json
 import logging
@@ -83,10 +84,19 @@ def worker() -> None:
         # Scan historical status files before readiness. Startup is O(request history);
         # operators should prune old requests according to their retention policy.
         for path in store.glob("requests/*/status.json"):
-            data = json.loads(path.read_text())
-            if data["status"] in ("queued", "running"):
-                data.update(status="failed", error="Server restarted; submit a new request")
-                save_status(data["id"], data)
+            try:
+                request_id = path.parent.name
+                request_dir(request_id)  # Validate the directory ID, not just the JSON.
+                data = json.loads(path.read_text())
+                if not isinstance(data, dict) or data.get("id") != request_id:
+                    raise ValueError("Status ID must match its request directory")
+                if data.get("status") not in ("queued", "running", "succeeded", "failed"):
+                    raise ValueError("Missing or invalid request status")
+                if data["status"] in ("queued", "running"):
+                    data.update(status="failed", error="Server restarted; submit a new request")
+                    save_status(request_id, data)
+            except (OSError, ValueError, HTTPException) as exc:
+                log.warning("Skipping invalid request status %s: %s", path, exc)
         update_state(ready=True)
         log.info("Model ready on %s; checkpoint loads=%s", runner.device, runner.loads)
         while not snapshot()["stop"]:
@@ -184,6 +194,12 @@ async def submit(
     content = await file.read(4 * 1024 * 1024 + 1)
     if len(content) > 4 * 1024 * 1024:
         raise HTTPException(413, "Input limit is 4 MiB")
+    # Keep CPU parsing and filesystem admission off the ASGI event loop.
+    return await asyncio.to_thread(admit_request, content, num_replicates, seed)
+
+
+def admit_request(content: bytes, num_replicates: int, seed: int) -> dict[str, Any]:
+    """Parse and persist an upload in a thread, serializing only queue admission."""
     # Validate CIF syntax and required coordinate columns, not all design semantics.
     # Upstream performs semantic checks and transformed-token admission in the worker.
     try:
@@ -196,6 +212,8 @@ async def submit(
         raise HTTPException(422, "Upload a parseable mmCIF with atom coordinates") from exc
     request_id = uuid.uuid4().hex
     with admission_lock:
+        if not snapshot()["ready"]:
+            raise HTTPException(503, "Model not ready")
         if pending.full():
             raise HTTPException(429, "Queue full; retry later")
         data = {

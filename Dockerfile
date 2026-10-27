@@ -83,6 +83,7 @@ RUN case "${RFD4_ACCELERATOR}" in \
         cu13) set -- --extra all-cuda13 --torch-backend cu130 ;; \
         cu12) set -- --extra all-cuda12 --torch-backend cu126 ;; \
         cpu) set -- --torch-backend cpu ;; \
+        *) echo "RFD4_ACCELERATOR must be one of: cu13, cu12, cpu" >&2; exit 2 ;; \
     esac && \
     uv pip install --system --no-cache --no-sources \
         --only-binary tmol,tmol-ops-cu12,tmol-ops-cu13 "$@" --extra api -r /opt/rfd4/pyproject.toml && \

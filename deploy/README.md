@@ -125,7 +125,11 @@ policy, not a model limit or a guarantee that every design fits the selected GPU
 This is a single-replica deployment sample, not a production service template.
 It uses the upstream compilation buckets and cache handling. The first request for a
 new shape can take minutes to compile; readiness means weights are loaded, not that
-all shapes are warmed. Compiled graphs are reused while the process remains alive.
+all shapes are warmed. Buckets compile on demand as shapes are encountered, rather
+than all configured buckets compiling on the first request. Polling clients should allow
+at least 1800 seconds for a cold design (longer on slower hardware); the Kubernetes
+startup-probe budget covers model loading, not first-request compilation.
+Compiled graphs are reused while the process remains alive.
 The image also sets
 `TORCH_COMPILE_CACHE_BLOB=/workspace/cache/torch/compile` so upstream can save and
 restore compatible artifacts across restarts; reuse depends on hardware and runtime compatibility.
@@ -134,6 +138,8 @@ Checkpoint-load counts do not measure host/device transfers or prove graph reuse
 Completed results survive container/pod restarts when `/workspace` is persisted.
 Interrupted requests are marked failed after restart and may be resubmitted.
 Restart recovery scans historical status files, so startup time grows with request history.
+Malformed statuses and mismatched request IDs are logged and skipped; they do not prevent
+healthy requests from being recovered. Skipped files are retained for operator inspection.
 Manage disk retention yourself. The service has no built-in authentication;
 keep it internal or add authenticated HTTPS at your ingress before remote access.
 
