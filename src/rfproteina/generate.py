@@ -686,6 +686,9 @@ def run_generation(
         apply_torch_deterministic(logger)
 
     dataset = get_dataset_from_cfg(cfg, job_id)
+    if max_tokens is not None and len(dataset) > max_samples:
+        # Bound the full request before partitioning or sorting allocates index lists.
+        raise ValueError(f"dataset exceeds max_samples={max_samples}")
 
     # Optionally skip regenerating examples that already have outputs on disk. Skipped
     # designs are routed to an eval-only pass (below) so their metrics are always computed.
@@ -714,8 +717,6 @@ def run_generation(
     if max_tokens is not None:
         from atomworks.ml.utils.token import get_token_count
 
-        if len(dataset) > max_samples:
-            raise ValueError(f"dataset exceeds max_samples={max_samples}")
         # Inspect exactly the bounded samples that will be generated. A second
         # stochastic transform pass could sample different segment lengths.
         checked_samples = []

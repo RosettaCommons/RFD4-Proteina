@@ -74,7 +74,7 @@ def test_dataset_bound_is_checked_before_transforming_samples(tmp_path, monkeypa
             "out_dir": str(tmp_path / "outputs"),
             "seed": 42,
             "num_workers": 0,
-            "compile_lengths": None,
+            "compile_lengths": [128, 512],
         }
     )
 
@@ -87,10 +87,13 @@ def test_dataset_bound_is_checked_before_transforming_samples(tmp_path, monkeypa
 
     model = SimpleNamespace()
     setup_compile = Mock()
+    sort_dataset = Mock(side_effect=AssertionError("Must reject before sorting index lists"))
     monkeypatch.setattr(generate, "load_ckpt_n_configure_inference", lambda cfg, *, model: model)
     monkeypatch.setattr(generate, "get_dataset_from_cfg", lambda cfg, job_id: TooManySamples())
     monkeypatch.setattr(generate, "inference_backend", lambda cfg: "native")
     monkeypatch.setattr(generate, "setup_run_compile", setup_compile)
+    monkeypatch.setattr(generate, "_sort_dataset_by_length", sort_dataset)
     with pytest.raises(ValueError, match="dataset exceeds max_samples=4"):
         generate.run_generation(cfg, model=model, max_tokens=512, max_samples=4)
     setup_compile.assert_not_called()
+    sort_dataset.assert_not_called()
