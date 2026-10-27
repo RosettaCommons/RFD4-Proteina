@@ -465,8 +465,8 @@ def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
             f"Full BioIR does not bridge search.continuation_policy={policy!r}; it would stop failing "
             "originals instead. Use inference_backend=native."
         )
-    if strategy.save_states or strategy.resume_from is not None:
-        raise NotImplementedError("Full BioIR search does not save or resume candidate states")
+    if strategy.save_states or strategy.export_candidates or strategy.resume_from is not None:
+        raise NotImplementedError("Full BioIR search does not save, export or resume candidate states")
     if strategy.step_checkpoints[-1] != int(native.inf_cfg.args.nsteps):
         raise NotImplementedError("Full BioIR search needs its last checkpoint at the end of the schedule")
     for step, config in strategy.checkpoints.items():
