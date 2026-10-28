@@ -75,6 +75,14 @@ class TokenLimitError(ValueError):
         super().__init__(f"sample exceeds max_tokens={max_tokens}")
 
 
+class SampleLimitError(ValueError):
+    """A dataset exceeds the caller's transformed-sample budget."""
+
+    def __init__(self, max_samples: int):
+        self.max_samples = max_samples
+        super().__init__(f"dataset exceeds max_samples={max_samples}")
+
+
 def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
     """Resolve `inputs=` to a `DesignProblemDataset` (CIF) or `ConditionSpecDataset` source.
 
@@ -688,7 +696,7 @@ def run_generation(
     dataset = get_dataset_from_cfg(cfg, job_id)
     if max_tokens is not None and len(dataset) > max_samples:
         # Bound the full request before partitioning or sorting allocates index lists.
-        raise ValueError(f"dataset exceeds max_samples={max_samples}")
+        raise SampleLimitError(max_samples)
 
     # Optionally skip regenerating examples that already have outputs on disk. Skipped
     # designs are routed to an eval-only pass (below) so their metrics are always computed.

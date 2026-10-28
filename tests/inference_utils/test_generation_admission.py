@@ -93,7 +93,8 @@ def test_dataset_bound_is_checked_before_transforming_samples(tmp_path, monkeypa
     monkeypatch.setattr(generate, "inference_backend", lambda cfg: "native")
     monkeypatch.setattr(generate, "setup_run_compile", setup_compile)
     monkeypatch.setattr(generate, "_sort_dataset_by_length", sort_dataset)
-    with pytest.raises(ValueError, match="dataset exceeds max_samples=4"):
+    with pytest.raises(generate.SampleLimitError, match="dataset exceeds max_samples=4") as exc:
         generate.run_generation(cfg, model=model, max_tokens=512, max_samples=4)
+    assert exc.value.max_samples == 4
     setup_compile.assert_not_called()
     sort_dataset.assert_not_called()

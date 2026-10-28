@@ -18,6 +18,12 @@ class FakeTokenLimitError(ValueError):
         super().__init__(f"sample exceeds max_tokens={max_tokens}")
 
 
+class FakeSampleLimitError(ValueError):
+    def __init__(self, max_samples: int):
+        self.max_samples = max_samples
+        super().__init__(f"dataset exceeds max_samples={max_samples}")
+
+
 def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     root = Path(__file__).resolve().parents[3]
     monkeypatch.setenv("DATA_PATH", str(tmp_path))
@@ -37,7 +43,9 @@ def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Pat
     monkeypatch.setitem(
         sys.modules,
         "rfproteina.generate",
-        SimpleNamespace(run_generation=generate, TokenLimitError=FakeTokenLimitError),
+        SimpleNamespace(
+            run_generation=generate, SampleLimitError=FakeSampleLimitError, TokenLimitError=FakeTokenLimitError
+        ),
     )
     runner = Runner.__new__(Runner)
     runner.model = object()
@@ -55,7 +63,11 @@ def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Pat
 
 def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setitem(
-        sys.modules, "rfproteina.generate", SimpleNamespace(run_generation=Mock(), TokenLimitError=FakeTokenLimitError)
+        sys.modules,
+        "rfproteina.generate",
+        SimpleNamespace(
+            run_generation=Mock(), SampleLimitError=FakeSampleLimitError, TokenLimitError=FakeTokenLimitError
+        ),
     )
     runner = Runner.__new__(Runner)
     runner.model = object()
@@ -65,12 +77,26 @@ def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, monkeypatch
         runner.generate(tmp_path / "input.cif", tmp_path / "outputs", {"seed": 42, "num_replicates": 1})
 
 
-def test_token_limit_is_worded_at_the_api_boundary(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    "failure,expected",
+    [
+        (FakeTokenLimitError(512), "This API accepts at most 512 tokens per design"),
+        (FakeSampleLimitError(4), "This API accepts at most 4 design samples per request"),
+        (ValueError("Unrelated inference failure"), "Unrelated inference failure"),
+    ],
+)
+def test_admission_errors_are_worded_at_the_api_boundary(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    failure: ValueError,
+    expected: str,
+) -> None:
     monkeypatch.setitem(
         sys.modules,
         "rfproteina.generate",
         SimpleNamespace(
-            run_generation=Mock(side_effect=FakeTokenLimitError(512)),
+            run_generation=Mock(side_effect=failure),
+            SampleLimitError=FakeSampleLimitError,
             TokenLimitError=FakeTokenLimitError,
         ),
     )
@@ -78,6 +104,10 @@ def test_token_limit_is_worded_at_the_api_boundary(tmp_path: Path, monkeypatch: 
     runner.model = object()
     runner.base = OmegaConf.create({"inputs": None, "out_dir": None, "seed": None, "num_replicates": 1})
     runner.omega = OmegaConf
-    with pytest.raises(ValueError, match="This API accepts at most 512 tokens") as exc:
+    with pytest.raises(ValueError) as exc:
         runner.generate(tmp_path / "input.cif", tmp_path / "outputs", {"seed": 42, "num_replicates": 1})
-    assert str(exc.value.__cause__) == "sample exceeds max_tokens=512"
+    assert str(exc.value) == expected
+    if isinstance(failure, FakeTokenLimitError | FakeSampleLimitError):
+        assert exc.value.__cause__ is failure
+    else:
+        assert exc.value is failure

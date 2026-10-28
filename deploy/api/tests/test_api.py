@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -265,3 +266,33 @@ def test_recovery_skips_corrupt_and_mismatched_statuses(
     assert sum("Skipping invalid request status" in record.message for record in caplog.records) == len(corrupt)
     for request_id, text in corrupt.items():
         assert (root / request_id / "status.json").read_text() == text
+
+
+def test_full_queue_rejects_without_parsing_or_admission(monkeypatch: MonkeyPatch) -> None:
+    api.update_state(ready=True)
+    for index in range(api.pending.maxsize):
+        api.pending.put_nowait(f"queued-{index}")
+    admit = Mock(side_effect=AssertionError("Full queue must reject before admission"))
+    parse = Mock(side_effect=AssertionError("Full queue must reject before parsing"))
+    monkeypatch.setattr(api, "admit_request", admit)
+    monkeypatch.setattr(api.CIFFile, "read", parse)
+    client = TestClient(api.app)
+    assert client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}).status_code == 429
+    admit.assert_not_called()
+    parse.assert_not_called()
+
+
+def test_locked_queue_check_handles_queue_filling_during_parse(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    api.update_state(ready=True)
+    api.store = tmp_path / "store"
+    original_read = api.CIFFile.read
+
+    def fill_queue_during_parse(file: object) -> object:
+        for index in range(api.pending.maxsize):
+            api.pending.put_nowait(f"queued-{index}")
+        return original_read(file)
+
+    monkeypatch.setattr(api.CIFFile, "read", fill_queue_during_parse)
+    client = TestClient(api.app)
+    assert client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}).status_code == 429
+    assert not api.store.exists(), "Rejection must precede persisting the request"

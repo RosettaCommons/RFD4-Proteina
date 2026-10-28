@@ -191,6 +191,10 @@ async def submit(
     """Queue an annotated mmCIF design and return its polling identifier."""
     if not snapshot()["ready"]:
         raise HTTPException(503, "Model not ready")
+    # Advisory fast path: avoid reading/parsing an upload when already overloaded.
+    # The worker may change the queue while we parse; the locked check remains authoritative.
+    if pending.full():
+        raise HTTPException(429, "Queue full; retry later")
     content = await file.read(4 * 1024 * 1024 + 1)
     if len(content) > 4 * 1024 * 1024:
         raise HTTPException(413, "Input limit is 4 MiB")
