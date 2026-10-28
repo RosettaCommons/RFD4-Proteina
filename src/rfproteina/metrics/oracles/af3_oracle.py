@@ -34,7 +34,7 @@ from biotite.structure import AtomArray
 from biotite.structure.io.pdbx import CIFFile
 from biotite.structure.residues import apply_residue_wise, residue_iter, spread_residue_wise
 
-from rfproteina.af3.af3_apptainer import build_apptainer_fold_command
+from rfproteina.af3.af3_apptainer import build_fold_command, resolve_backend
 from rfproteina.metrics.oracles.oracle_metric import OracleJobInput, OracleMetric, extract_confidence_metrics
 from rfproteina.transforms.utils.conditioning_utils import align_atom_array_to_input_frame
 from rfproteina.utils.chain import get_chain_of_interest
@@ -579,15 +579,18 @@ class AF3Oracle(OracleMetric):
 
         # Direct path: no pinned daemon worker, so resolve our own GPU.
         gpu_device = _resolve_gpu_device(_resolve_local_rank())
-        logger.info(f"AF3 fold_batch: routing {n_designs} designs via direct apptainer call (gpu_device={gpu_device})")
-        cmd = build_apptainer_fold_command(
+        backend = resolve_backend()
+        logger.info(
+            f"AF3 fold_batch: routing {n_designs} designs via direct {backend} call (gpu_device={gpu_device})"
+        )
+        cmd = build_fold_command(
             manifest_path=manifest_path,
             gpu_device=gpu_device,
             save_full_outputs=False,
         )
         rc = subprocess.run(cmd).returncode
         if rc != 0:
-            raise RuntimeError(f"AF3 apptainer subprocess failed with rc={rc}")
+            raise RuntimeError(f"AF3 {backend} subprocess failed with rc={rc}")
 
     def _build_manifest(
         self, pending: list[OracleJobInput], af3_outputs_root: Path

@@ -26,11 +26,68 @@ AF3_FLASH_ATTENTION_IMPLEMENTATION = os.environ.get("AF3_FLASH_ATTENTION_IMPLEME
 _DEFAULT_BATCH_SCRIPT = Path(__file__).resolve().parent / "run_alphafold_batch.py"
 
 
+_BACKENDS = ("apptainer", "native")
+
+
 def _require(name: str) -> str:
     value = os.environ.get(name)
     if not value:
         raise OSError(f"{name} is not set. Source .ipd/.env.<cluster> before running.")
     return value
+
+
+def resolve_backend(backend: str | None = None) -> str:
+    """Return the AF3 worker backend: ``apptainer`` (default) or ``native``.
+
+    ``native`` skips the container and runs the batch script under
+    ``AF3_PYTHON``. Unlike AF2's backend switch there is no ``CONTAINER_TYPE``
+    fallback: a host with no apptainer has nothing to infer from, so the native
+    route is opt-in via ``AF3_RUNTIME_BACKEND``.
+    """
+    explicit = backend or os.environ.get("AF3_RUNTIME_BACKEND")
+    name = explicit.strip().lower() if explicit else "apptainer"
+    if name not in _BACKENDS:
+        raise ValueError(f"AF3_RUNTIME_BACKEND must be one of {_BACKENDS}, got {name!r}")
+    return name
+
+
+def required_env_vars(backend: str | None = None) -> tuple[str, ...]:
+    """Env vars the selected backend needs before a worker can start.
+
+    Both routes need the weights and the JAX cache; only apptainer needs an
+    image, and only native needs an interpreter.
+    """
+    common = ("AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
+    if resolve_backend(backend) == "native":
+        return ("AF3_PYTHON", *common)
+    return ("AF3_IMAGE", *common)
+
+
+def _worker_args(
+    manifest_path: str | Path | None,
+    *,
+    jax_cache: str,
+    weights: str,
+    save_full_outputs: bool,
+    serve: bool,
+) -> list[str]:
+    """Return the batch-script arguments shared by every AF3 backend."""
+    args = [
+        f"--num_recycles={AF3_NUM_RECYCLES}",
+        f"--flash_attention_implementation={AF3_FLASH_ATTENTION_IMPLEMENTATION}",
+        "--num_diffusion_samples=1",
+        "--gpu_device=0",
+        f"--jax_compilation_cache_dir={jax_cache}",
+        f"--model_dir={weights}",
+        f"--save_full_outputs={'true' if save_full_outputs else 'false'}",
+    ]
+    if serve:
+        args.append("--serve")
+    else:
+        if manifest_path is None:
+            raise ValueError("manifest_path is required when serve is False.")
+        args.append(f"--manifest={manifest_path}")
+    return args
 
 
 def _deduped_bind_specs(*specs: str) -> list[str]:
@@ -138,18 +195,83 @@ def build_apptainer_fold_command(
         sif,
         "python",
         str(batch_script),
-        f"--num_recycles={AF3_NUM_RECYCLES}",
-        f"--flash_attention_implementation={AF3_FLASH_ATTENTION_IMPLEMENTATION}",
-        "--num_diffusion_samples=1",
-        "--gpu_device=0",
-        f"--jax_compilation_cache_dir={jax_cache}",
-        f"--model_dir={weights}",
-        f"--save_full_outputs={'true' if save_full_outputs else 'false'}",
+        *_worker_args(
+            manifest_path,
+            jax_cache=jax_cache,
+            weights=weights,
+            save_full_outputs=save_full_outputs,
+            serve=serve,
+        ),
     ]
-    if serve:
-        cmd.append("--serve")
-    else:
-        if manifest_path is None:
-            raise ValueError("manifest_path is required when serve is False.")
-        cmd.append(f"--manifest={manifest_path}")
     return cmd
+
+
+def build_native_fold_command(
+    manifest_path: str | Path | None,
+    gpu_device: int,
+    save_full_outputs: bool,
+    batch_script: str | Path | None = None,
+    serve: bool = False,
+) -> list[str]:
+    """Build the no-container ``python run_alphafold_batch.py`` argv.
+
+    The container only ever supplied the pinned ``alphafold3`` package and its
+    compiled extensions; the adapter in :py:mod:`rfproteina.af3.af3_runtime` and
+    the batch script already live on the host. So the native route is the same
+    worker, invoked through the interpreter of a second venv that has
+    ``alphafold3`` (the OF3-capable fork) and ``jax[cuda12]`` installed.
+
+    Reads ``AF3_PYTHON`` (that venv's interpreter) plus the same
+    ``AF3_JAX_CACHE_DIR`` / ``AF3_MODEL_DIR`` as the apptainer route; no
+    ``AF3_IMAGE``. Environment is carried by a leading ``env`` so the return
+    type stays a plain argv and callers need no ``env=`` plumbing.
+    """
+    python = _require("AF3_PYTHON")
+    jax_cache = _require("AF3_JAX_CACHE_DIR")
+    weights = _require("AF3_MODEL_DIR")
+    if batch_script is None:
+        batch_script = _DEFAULT_BATCH_SCRIPT
+    batch_path = Path(batch_script).resolve()
+
+    python_path = Path(python).expanduser()
+    if not python_path.is_file():
+        raise OSError(f"AF3_PYTHON does not point at an interpreter: {python!r}")
+
+    return [
+        "env",
+        f"CUDA_VISIBLE_DEVICES={int(gpu_device)}",
+        "XLA_PYTHON_CLIENT_PREALLOCATE=false",
+        "JAX_PLATFORMS=cuda",
+        f"AF3_MODEL_DIR={weights}",
+        str(python_path.resolve()),
+        str(batch_path),
+        *_worker_args(
+            manifest_path,
+            jax_cache=jax_cache,
+            weights=weights,
+            save_full_outputs=save_full_outputs,
+            serve=serve,
+        ),
+    ]
+
+
+def build_fold_command(
+    manifest_path: str | Path | None,
+    gpu_device: int,
+    save_full_outputs: bool,
+    batch_script: str | Path | None = None,
+    serve: bool = False,
+    backend: str | None = None,
+) -> list[str]:
+    """Select the Apptainer or native AF3 worker from runtime configuration."""
+    builders = {
+        "apptainer": build_apptainer_fold_command,
+        "native": build_native_fold_command,
+    }
+    return builders[resolve_backend(backend)](
+        manifest_path=manifest_path,
+        gpu_device=gpu_device,
+        save_full_outputs=save_full_outputs,
+        batch_script=batch_script,
+        serve=serve,
+    )

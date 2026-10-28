@@ -27,6 +27,8 @@ Docker and Pyxis through `AF2_RUNTIME_BACKEND`.
     `AF3_MODEL_DIR`, and `AF3_JAX_CACHE_DIR` values to export.
   - **Manual:** point `AF3_MODEL_DIR` at a directory of converted OpenFold3 weights. The model repository on
     Hugging Face (`nvidia/RFD4-Proteina`) ships them with their provenance file under `openfold3/weights/`.
+  - **No container:** set `AF3_RUNTIME_BACKEND=native` and run the worker from a second venv
+    instead of the image — see [Running the oracle without a container](#running-the-oracle-without-a-container).
 
   Either way, swap the config group with `metrics/refolding_oracles=of3`. That only changes the
   artifact namespace to `of3`, `of3_ppi` and `of3_dna`, so results do not collide with AF3 ones. The
@@ -39,6 +41,43 @@ Docker and Pyxis through `AF2_RUNTIME_BACKEND`.
   oracles; it does not replace the AF3/OF3 DNA or small-molecule oracles.
 
 Plain generation with no refolding tags and structure-only search need none of this.
+
+### Running the oracle without a container
+
+The image never supplied the fold logic — the CIF-to-input adapter and the batch script are checked
+into this repository and bind-mounted in. All it carries is the pinned `alphafold3` package, its
+compiled extensions, and `jax`. So on a host with no Apptainer you can run the same worker under a
+second virtualenv:
+
+```bash
+uv venv .venv-af3 --python 3.12
+uv pip install --python .venv-af3 <of3-fork-wheel> 'jax[cuda12]'
+./scripts/download_assets.sh "$DATA_PATH" --native-of3   # weights only, ~1.4 GB, no image
+```
+
+```bash
+export AF3_RUNTIME_BACKEND=native
+export AF3_PYTHON="$PWD/.venv-af3/bin/python"
+export AF3_MODEL_DIR="$DATA_PATH/openfold3/weights"
+export AF3_JAX_CACHE_DIR="$DATA_PATH/openfold3/jax_cache"
+```
+
+Everything downstream is unchanged: same warm-worker daemon, same manifest protocol, same
+`--num_recycles` and attention-backend flags, same provenance-driven selection of the OF3
+architecture branches. `AF3_IMAGE` is not read on this route.
+
+Two things to know:
+
+- **It needs the OF3-capable fork, not upstream AlphaFold3.** The adapter sets
+  `global_config.of3_weights`, which DeepMind's package has no field for — converting the parameters
+  is not enough, because most AF3/OF3 differences have no on-disk form. Install the fork's release
+  wheel, not `alphafold3` from source upstream.
+- **It still wants its own venv.** The oracle needs `jax` plus CUDA while the model environment needs
+  `torch` plus CUDA; sharing one environment makes the two fight over CUDA runtime libraries. The
+  native route removes the container, not the environment split.
+
+AlphaFold3's own parameters are licence-gated, so this route is most useful with OpenFold3, whose
+weights are Apache-licensed and public.
 
 ## Turn it on
 
@@ -112,6 +151,8 @@ selection](search.md#metric-selection) for the full configuration.
 | Issue | Solution |
 | --- | --- |
 | AF3 or refolding errors | Check the selected oracle runtime, weights and environment settings in [Set up the oracle](#set-up-the-oracle); structure-only search needs no oracle |
+| `AttributeError` on `of3_weights` under `AF3_RUNTIME_BACKEND=native` | `AF3_PYTHON`'s venv has upstream AlphaFold3 rather than the OF3-capable fork; reinstall from the fork's release wheel |
+| `AF3_PYTHON does not point at an interpreter` | The path must be the venv's `bin/python` itself, not the venv directory |
 | A refolding metric or pass criterion is silently missing from the CSV | Check the tag that gates it was actually passed in `metrics_tags`; a missing tag skips the metric with no error |
 | A refold comparison metric (like `refolded_apo_holo_rmsd`) is missing | You likely need a second refolding tag to supply the other refold it compares against — see [A design can have more than one refold](#a-design-can-have-more-than-one-refold) |
 | Running two untransformed oracles together drops `refold.untransformed` | That by-kind address is only unambiguous with one untransformed oracle; address the refold by oracle name instead, per the [output format reference](../reference/output-format.md#refold-addresses) |
