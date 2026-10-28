@@ -349,10 +349,24 @@ class NativeMetricEvaluator:
 
     BioIR ranks candidates itself from the reward weights; this only supplies the raw metrics the
     checkpoint lists under ``metrics``. Oracle/refolding results are cached under ``output_dir``.
+
+    That cache is keyed on the example id, so the id has to be unique across every batch sharing
+    ``output_dir``: BioIR's own request ids restart at ``req0`` in each batch, and a bare request id
+    would let batch 1 find batch 0's refold on disk and score a different molecule's oracle result
+    as its own. ``example_ids`` carries the input's run-unique id, prefixed here exactly as the
+    final output does, so a cache hit only ever means this candidate's own earlier fold.
     """
 
-    def __init__(self, native: Any, batch: Mapping[str, Any], output_dir: Path):
+    def __init__(self, native: Any, batch: Mapping[str, Any], output_dir: Path, example_ids: list[str]):
         self.native, self.batch, self.output_dir = native, batch, output_dir
+        self.example_ids = example_ids
+
+    def candidate_ids(self, features: Mapping[str, torch.Tensor], context: Any) -> list[str]:
+        """Qualify each BioIR request id with the id of the input row it was branched from."""
+        rows = features["_native_row_index"].tolist()
+        return [
+            f"{self.example_ids[row]}_{request_id}" for row, request_id in zip(rows, context.request_ids, strict=True)
+        ]
 
     def evaluate(self, prediction: Any, features: Mapping[str, torch.Tensor], context: Any) -> list[dict[str, Any]]:
         from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_and_refolding_metrics
@@ -362,14 +376,15 @@ class NativeMetricEvaluator:
         names = list(strategy.checkpoints[context.checkpoint].get("metrics", []))
         reward_model = strategy.reward_models[context.checkpoint]
         batch = _rows(self.batch, features["_native_row_index"])
-        entries = format_prediction(self.native, prediction, features, self.batch, list(context.request_ids))
+        candidate_ids = self.candidate_ids(features, context)
+        entries = format_prediction(self.native, prediction, features, self.batch, candidate_ids)
         metrics = []
         for index, entry in enumerate(entries):
             array = entry.get("full_array_with_unindexed") or entry["generated_atom_array"]
             entry["generated_atom_array"] = annotate_unindexed_insertion(
                 array, entry.get("predicted_insertion_mapping") or {}
             )
-            example_id = entry.get("example_id") or context.request_ids[index]
+            example_id = entry.get("example_id") or candidate_ids[index]
             row = {}
             if self.native.design_metric_manager is not None:
                 row = run_metrics_for_result(
@@ -526,20 +541,26 @@ class FullBioIRAdapter:
     def predict_step(self, batch: Mapping[str, Any]) -> list[dict[str, Any]]:
         features = _features(batch)
         if self.search is not None:
+            # BioIR ids restart at req0 in every batch, so search evaluation and final output alike
+            # qualify them with the input's own id. The evaluator needs these before search runs:
+            # its oracle cache is keyed on them and is shared by every batch of the run.
+            example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
             # Search derives its own child streams from a root seed.
             output = self.model.search(
                 features,
                 self.search,
                 seed=_fresh_seed(),
                 partial_config=self.partial,
-                evaluators=(NativeMetricEvaluator(self.native, batch, Path(self.native.store_dir) / "bioir_search"),),
+                evaluators=(
+                    NativeMetricEvaluator(
+                        self.native, batch, Path(self.native.store_dir) / "bioir_search", example_ids
+                    ),
+                ),
             )
             results = []
-            example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
             for candidate in output.candidates:
                 index = candidate.request_index
                 one = {key: features[key][index : index + 1] for key in ("padding_mask", "_native_row_index")}
-                # BioIR ids restart at req0 in every batch; prefix the input's own id so outputs never collide.
                 candidate_id = f"{example_ids[index]}_{candidate.candidate_id}"
                 entries = format_prediction(self.native, candidate.prediction, one, batch, [candidate_id])
                 entries[0].update(
