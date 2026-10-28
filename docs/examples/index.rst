@@ -13,3 +13,4 @@ needs no local checkout.
    enzyme_design_tutorial
    ppi_specificity_tutorial
    antibody_design_tutorial
+   cyclic_peptide_tutorial
