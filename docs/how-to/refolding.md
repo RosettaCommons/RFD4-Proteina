@@ -51,9 +51,16 @@ second virtualenv:
 
 ```bash
 uv venv .venv-af3 --python 3.12
-uv pip install --python .venv-af3 <of3-fork-wheel> 'jax[cuda12]'
+uv pip install --python .venv-af3 \
+  'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/vX.Y.Z/alphafold3_open-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl'
+.venv-af3/bin/build_data        # generates the CCD pickles the package loads at import
 ./scripts/download_assets.sh "$DATA_PATH" --native-of3   # weights only, ~1.4 GB, no image
 ```
+
+`jax[cuda12]` is pinned as a dependency of `alphafold3-open`, so it arrives with the
+wheel; do not install it separately. `build_data` is a console script the package
+installs, and it must run once per venv — the wheel ships the CCD generators, not the
+generated pickles.
 
 ```bash
 export AF3_RUNTIME_BACKEND=native
@@ -70,8 +77,9 @@ Two things to know:
 
 - **It needs the OF3-capable fork, not upstream AlphaFold3.** The adapter sets
   `global_config.of3_weights`, which DeepMind's package has no field for — converting the parameters
-  is not enough, because most AF3/OF3 differences have no on-disk form. Install the fork's release
-  wheel, not `alphafold3` from source upstream.
+  is not enough, because most AF3/OF3 differences have no on-disk form. The flag gates OF3 branches
+  across the evoformer, diffusion head, diffusion transformer and atom cross-attention, so the fork
+  (`kierandidi/alphafold3`, distributed as `alphafold3-open`) is not substitutable by upstream.
 - **It still wants its own venv.** The oracle needs `jax` plus CUDA while the model environment needs
   `torch` plus CUDA; sharing one environment makes the two fight over CUDA runtime libraries. The
   native route removes the container, not the environment split.
