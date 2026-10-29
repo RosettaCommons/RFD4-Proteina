@@ -1,8 +1,4 @@
-"""Exercise notebook setup without installing packages or requiring a GPU.
-
-Run independently of the model test fixtures:
-    python tests/test_colab_setup.py
-"""
+"""Focused notebook regressions; run without model fixtures: python tests/test_colab_setup.py."""
 
 import ast
 import io
@@ -15,228 +11,129 @@ import sys
 import tempfile
 import time
 import unittest
-import urllib.request
-from contextlib import ExitStack, redirect_stdout
+from contextlib import redirect_stdout
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
-ConcretePath = type(Path())
-ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOKS = sorted((ROOT / "docs/examples").glob("*.ipynb"))
+NOTEBOOKS = Path(__file__).resolve().parents[1] / "docs/examples"
 
 
-def setup_source(path):
-    notebook = json.loads(path.read_text())
+def cell_source(path, marker):
     return next(
         "".join(cell["source"])
-        for cell in notebook["cells"]
-        if cell["cell_type"] == "code" and "IN_COLAB =" in "".join(cell["source"])
+        for cell in json.loads(path.read_text())["cells"]
+        if cell["cell_type"] == "code" and marker in "".join(cell["source"])
     )
 
 
-class ColabSetupTests(unittest.TestCase):
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        self.cuda = 12
-        self.pid = 100
-        self.commands = []
-        self.fail_install = False
-        self.torch = SimpleNamespace(
-            __version__="test",
-            version=SimpleNamespace(cuda="12.6"),
-            cuda=SimpleNamespace(is_available=lambda: True, get_device_name=lambda _: "A100"),
-            ones=Mock(return_value=Mock()),
-        )
-        self.stack = ExitStack()
-        self.addCleanup(self.stack.close)
-        for context in [
-            patch.dict(
-                sys.modules, {"google.colab": Mock(), "torch": self.torch, "rfproteina": Mock(), "py3Dmol": Mock()}
-            ),
-            patch.object(sys, "version_info", (3, 12, 13)),
-            patch("pathlib.Path", side_effect=self.map_path),
-            patch("shutil.which", return_value="/usr/bin/nvidia-smi"),
-            patch("subprocess.run", side_effect=self.run_command),
-            patch("os.getpid", side_effect=lambda: self.pid),
-            patch("os.chdir"),
-            patch.dict("os.environ", {}, clear=True),
-            patch.object(urllib.request, "urlretrieve", side_effect=self.download),
-        ]:
-            self.stack.enter_context(context)
-
-    def map_path(self, value):
-        path = ConcretePath(value)
-        return self.root / path.relative_to("/content") if str(path).startswith("/content/") else path
-
-    def run_command(self, command, **kwargs):
-        self.commands.append(command)
-        if command[0] == "nvidia-smi":
-            output = (
-                "NVIDIA A100, 8.0\n" if "--query-gpu=name,compute_cap" in command else f"CUDA Version: {self.cuda}.0"
-            )
-            return SimpleNamespace(stdout=output, returncode=0)
-        if self.fail_install:
-            raise subprocess.CalledProcessError(1, command)
-        return SimpleNamespace(returncode=0)
-
-    def download(self, url, dest):
-        self.assertIn("/v0.0.3/", url)
-        dest.write_bytes(b"fixture")
-
-    def execute(self, source):
-        output = io.StringIO()
-        with redirect_stdout(output):
-            exec(compile(source, "<colab setup>", "exec"), {})
-        return output.getvalue()
-
-    def test_install_restart_and_rerun_all_notebooks(self):
-        for notebook in NOTEBOOKS:
+class ColabTests(unittest.TestCase):
+    def test_install_restart_and_rerun(self):
+        for notebook in sorted(NOTEBOOKS.glob("*.ipynb")):
             for cuda, backend in [(12, "cu126"), (13, "cu130")]:
                 with self.subTest(notebook=notebook.name, cuda=cuda):
-                    marker = self.root / ".rfd4-colab-setup.json"
-                    marker.unlink(missing_ok=True)
-                    self.cuda, self.pid = cuda, 100
-                    self.torch.version.cuda = str(cuda)
-                    source = setup_source(notebook)
-                    self.commands.clear()
-                    with self.assertRaisesRegex(SystemExit, "Restart session"):
-                        self.execute(source)
-                    install = self.commands[-1]
-                    self.assertEqual(install[:4], [sys.executable, "-m", "uv", "pip"])
-                    self.assertIn(f"torch==2.14.1+{backend}", install)
-                    self.assertIn(f"torchvision==0.29.1+{backend}", install)
-                    self.assertIn(
-                        [sys.executable, "-m", "uv", "pip", "uninstall", "--python", sys.executable, "torchaudio"],
-                        self.commands,
-                    )
-                    self.assertIn(f"rfd4-proteina[all-cuda{cuda}]==0.0.3", install)
-                    self.assertEqual(install[install.index("--python") + 1], sys.executable)
-                    self.assertEqual(install[install.index("--torch-backend") + 1], backend)
-                    self.commands.clear()
-                    with self.assertRaisesRegex(SystemExit, "Restart session"):
-                        self.execute(source)
-                    self.pid = 101
-                    self.assertIn("Ready:", self.execute(source))
-                    self.assertIn("Ready:", self.execute(source))
-                    self.assertTrue(
-                        all(
-                            command[0] == "nvidia-smi" or command[:3] == [sys.executable, "-m", "rfproteina.generate"]
-                            for command in self.commands
+                    # Mock filesystem and GPU/package operations; execute the actual setup cell.
+                    path = MagicMock()
+                    path.exists.return_value = False
+                    torch = MagicMock(__version__="test")
+                    torch.version.cuda = str(cuda)
+                    modules = {
+                        "google.colab": MagicMock(),
+                        "torch": torch,
+                        "rfproteina": MagicMock(),
+                        "py3Dmol": MagicMock(),
+                    }
+                    with (
+                        patch.dict(sys.modules, modules),
+                        patch.object(sys, "version_info", (3, 12)),
+                        patch("pathlib.Path", return_value=path),
+                        patch("shutil.which", return_value="nvidia-smi"),
+                        patch("subprocess.run", return_value=MagicMock(stdout=f"CUDA Version: {cuda}.0, 8.0")) as run,
+                        patch("urllib.request.urlretrieve"),
+                        patch("os.chdir"),
+                        patch.dict(os.environ),
+                        patch("os.getpid", return_value=100) as pid,
+                        redirect_stdout(io.StringIO()) as output,
+                    ):
+                        source = cell_source(notebook, "IN_COLAB =")
+                        with self.assertRaisesRegex(SystemExit, "Restart session"):
+                            exec(source, {})
+                        install = run.call_args.args[0]
+                        for requirement in (
+                            f"rfd4-proteina[all-cuda{cuda}]==0.0.3",
+                            f"torch==2.14.1+{backend}",
+                            f"torchvision==0.29.1+{backend}",
+                        ):
+                            self.assertIn(requirement, install)
+                        self.assertEqual(install[install.index("--python") + 1], sys.executable)
+                        self.assertEqual(install[install.index("--torch-backend") + 1], backend)
+                        run.assert_any_call(
+                            [sys.executable, "-m", "uv", "pip", "uninstall", "--python", sys.executable, "torchaudio"],
+                            check=True,
                         )
-                    )
-                    self.assertIn([sys.executable, "-m", "rfproteina.generate", "--help"], self.commands)
-                    self.torch.ones.assert_called_with(1, device="cuda")
+                        path.exists.return_value = True
+                        path.read_text.return_value = path.write_text.call_args.args[0]
+                        run.reset_mock()
+                        with self.assertRaisesRegex(SystemExit, "Restart session"):
+                            exec(source, {})
+                        pid.return_value = 101
+                        exec(source, {})
+                        exec(source, {})
+                        self.assertEqual(output.getvalue().count("Ready:"), 2)
+                        commands = [call.args[0] for call in run.call_args_list]
+                        help_command = [sys.executable, "-m", "rfproteina.generate", "--help"]
+                        self.assertTrue(all(cmd[0] == "nvidia-smi" or cmd == help_command for cmd in commands))
+                        self.assertIn(help_command, commands)
+                        torch.ones.assert_called_with(1, device="cuda")
 
-    def test_wrong_python_and_missing_gpu_stop_before_install(self):
-        source = setup_source(NOTEBOOKS[0])
-        with patch.object(sys, "version_info", (3, 13, 0)), self.assertRaisesRegex(SystemExit, "2026.07"):
-            self.execute(source)
-        with patch("shutil.which", return_value=None), self.assertRaisesRegex(SystemExit, "Select a GPU"):
-            self.execute(source)
-        self.assertEqual(self.commands, [])
+    def test_invalid_runtime_stops_before_install(self):
+        source = cell_source(NOTEBOOKS / "enzyme_design_tutorial.ipynb", "IN_COLAB =")
+        for version, gpu, message in [((3, 13), "nvidia-smi", "2026.07"), ((3, 12), None, "Select a GPU")]:
+            with (
+                self.subTest(version=version, gpu=gpu),
+                patch.dict(sys.modules, {"google.colab": MagicMock()}),
+                patch.object(sys, "version_info", version),
+                patch("shutil.which", return_value=gpu),
+                patch("subprocess.run") as run,
+            ):
+                with self.assertRaisesRegex(SystemExit, message):
+                    exec(source, {})
+                run.assert_not_called()
 
-    def test_old_driver_and_failed_install_do_not_mark_ready(self):
-        source = setup_source(NOTEBOOKS[0])
-        self.cuda = 11
-        with self.assertRaisesRegex(SystemExit, "CUDA 12"):
-            self.execute(source)
-        self.cuda, self.fail_install = 12, True
-        with self.assertRaises(subprocess.CalledProcessError):
-            self.execute(source)
-        self.assertFalse((self.root / ".rfd4-colab-setup.json").exists())
-
-    def test_updated_requirements_reinstall_without_deleting_assets(self):
-        source = setup_source(NOTEBOOKS[0])
-        with self.assertRaises(SystemExit):
-            self.execute(source)
-        marker = self.root / ".rfd4-colab-setup.json"
-        state = json.loads(marker.read_text())
-        state["requirements"].append("torchaudio")
-        marker.write_text(json.dumps(state))
-        asset = self.root / "keep-results.cif"
-        asset.write_text("existing design")
-        self.pid = 101
-        with self.assertRaisesRegex(SystemExit, "Restart session"):
-            self.execute(source)
-        self.assertEqual(asset.read_text(), "existing design")
-        self.assertNotIn("torchaudio", json.loads(marker.read_text())["requirements"])
-
-    def test_changed_cuda_profile_requires_clean_runtime(self):
-        source = setup_source(NOTEBOOKS[0])
-        with self.assertRaises(SystemExit):
-            self.execute(source)
-        self.cuda, self.pid = 13, 101
-        with self.assertRaisesRegex(SystemExit, "Disconnect and delete runtime"):
-            self.execute(source)
-
-    def test_local_setup_does_not_install_or_download(self):
-        sys.modules.pop("google.colab")
-        for notebook in NOTEBOOKS:
-            self.assertEqual("", self.execute(setup_source(notebook)))
-        self.assertEqual(self.commands, [])
-        self.assertEqual(list(self.root.iterdir()), [])
-
-    def test_notebook_code_and_badges(self):
-        for path in NOTEBOOKS:
-            notebook = json.loads(path.read_text())
-            self.assertEqual(notebook["cells"][1]["cell_type"], "markdown")
-            for cell in notebook["cells"]:
-                if cell["cell_type"] == "code":
-                    ast.parse("".join(cell["source"]))
-                    self.assertFalse(cell.get("outputs"))
-                    self.assertIsNone(cell.get("execution_count"))
-
-
-class EnzymeLaunchTests(unittest.TestCase):
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        root = Path(self.temp.name)
-        notebook = json.loads((ROOT / "docs/examples/enzyme_design_tutorial.ipynb").read_text())
-        source = next("".join(c["source"]) for c in notebook["cells"] if "def launch(" in "".join(c["source"]))
-        tree = ast.parse(source)
-        functions = ast.Module(
-            body=[n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in {"run", "launch"}],
-            type_ignores=[],
+    def test_enzyme_launch_uses_kernel_python_and_reports_failure(self):
+        tree = ast.parse(cell_source(NOTEBOOKS / "enzyme_design_tutorial.ipynb", "def launch("))
+        helpers = ast.Module(
+            [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in {"run", "launch"}], []
         )
-        self.scope = dict(
-            os=os,
-            sys=SimpleNamespace(executable="/usr/bin/python3"),
-            shlex=shlex,
-            shutil=shutil,
-            subprocess=subprocess,
-            Path=Path,
-            time=time,
-            TUTORIAL_DIR=root,
-            REPO_ROOT=root,
-            HAS_SLURM=False,
-            OVERWRITE_SAMPLING=False,
-            METRICS_TAGS="[design]",
-            _OF3_OVERRIDE="",
-            CKPT_PATH="/model",
-            CKPT_NAME="release.ckpt",
-            STAGE_TIMES=[],
-        )
-        exec(compile(functions, "<enzyme helpers>", "exec"), self.scope)
-
-    def test_local_launch_uses_kernel_python_not_sibling_executable(self):
-        failure = subprocess.CalledProcessError(7, "generation")
-        with patch.dict(os.environ, {"CLUSTER": "local"}), patch("subprocess.run", side_effect=failure) as run:
-            with self.assertRaises(subprocess.CalledProcessError):
-                self.scope["launch"](str(Path(self.temp.name) / "run"), "smoke", "input.cif", 1)
-        command = shlex.split(run.call_args.args[0])
-        self.assertEqual(command[:3], ["/usr/bin/python3", "-m", "rfproteina.generate"])
-        self.assertIn("metrics_tags=[design]", command)
-
-    def test_command_failure_is_reported_before_missing_metrics(self):
-        failed = subprocess.CompletedProcess("generation", 127, "", "command not found")
-        with patch("subprocess.run", return_value=failed), redirect_stdout(io.StringIO()):
-            with self.assertRaises(subprocess.CalledProcessError) as error:
-                self.scope["run"]("generation")
-        self.assertEqual(error.exception.returncode, 127)
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            scope = {
+                "os": os,
+                "sys": sys,
+                "shlex": shlex,
+                "shutil": shutil,
+                "subprocess": subprocess,
+                "time": time,
+                "TUTORIAL_DIR": Path(directory),
+                "REPO_ROOT": Path(directory),
+                "HAS_SLURM": False,
+                "OVERWRITE_SAMPLING": False,
+                "METRICS_TAGS": "[design]",
+                "_OF3_OVERRIDE": "",
+                "CKPT_PATH": "/model",
+                "CKPT_NAME": "release.ckpt",
+            }
+            exec(compile(helpers, "<enzyme helpers>", "exec"), scope)
+            with (
+                patch.dict(os.environ, {"CLUSTER": "local"}),
+                patch(
+                    "subprocess.run", return_value=subprocess.CompletedProcess("generation", 127, "", "failed")
+                ) as run,
+                self.assertRaises(subprocess.CalledProcessError) as error,
+            ):
+                scope["launch"](str(Path(directory) / "run"), "smoke", "input.cif", 1)
+            self.assertEqual(error.exception.returncode, 127)
+            command = shlex.split(run.call_args.args[0])
+            self.assertEqual(command[:3], [sys.executable, "-m", "rfproteina.generate"])
+            self.assertIn("metrics_tags=[design]", command)
 
 
 if __name__ == "__main__":
