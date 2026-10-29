@@ -178,12 +178,21 @@ def test_beam_save_resume_defaults() -> None:
         "save_states": False,
         "resume_from": None,
         "resume_seed": None,
+        "export_candidates": False,
+        "resume_selection": None,
     }
     assert configure_search_strategy_from_cfg(cfg.search) is None
 
 
 @pytest.mark.parametrize(
-    "override", ["search.save_states=true", "search.resume_from=candidate.pt", "search.resume_seed=7"]
+    "override",
+    [
+        "search.save_states=true",
+        "search.resume_from=candidate.pt",
+        "search.resume_seed=7",
+        "search.export_candidates=true",
+        "search.resume_selection=[0,1]",
+    ],
 )
 def test_beam_save_resume_requires_search(override: str) -> None:
     with pytest.raises(ValueError, match="requires search.checkpoints"):
@@ -205,6 +214,37 @@ def test_beam_preset_accepts_save_resume_overrides() -> None:
     assert strategy.resume_seed == 7
     assert strategy.beam_width == 2
     assert strategy.step_checkpoints == [0, 40, 60]
+
+
+def test_beam_preset_accepts_external_selection_overrides() -> None:
+    cfg = _build_test_cfg(
+        [
+            "inference_experiment=sm_binder_hbond_search",
+            "search.resume_from=candidates.pt",
+            "search.resume_seed=7",
+            "search.resume_selection=[0,3]",
+        ]
+    )
+    strategy = configure_search_strategy_from_cfg(cfg.search)
+    assert strategy.resume_selection == [0, 3]
+    assert strategy.export_candidates is False
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        (["search.export_candidates=true", "search.save_states=true"], "enable one"),
+        (["search.resume_selection=[0,1]"], "resume_selection requires resume_from"),
+        (
+            ["search.resume_from=c.pt", "search.resume_seed=7", "search.resume_selection=[-1]"],
+            "non-negative integers",
+        ),
+    ],
+)
+def test_beam_external_selection_rejects_bad_config(overrides: list[str], match: str) -> None:
+    cfg = _build_test_cfg(["inference_experiment=sm_binder_hbond_search", *overrides])
+    with pytest.raises(ValueError, match=match):
+        configure_search_strategy_from_cfg(cfg.search)
 
 
 def _assert_coords_identical(cif_path_a: str, cif_path_b: str) -> None:
@@ -493,6 +533,66 @@ class TestEndToEndInference:
         cfg.search = None
         run_generation(cfg, config_name="vanilla_after_resume")
         assert len(_inference_generated_cifs(cfg.out_dir)) == 2
+
+    def test_export_candidates_then_resume_selection(self, gpu, tmp_path):  # noqa: F811
+        """Export every branch unpruned, then continue the ones an external ranker picked."""
+        cfg = _build_test_cfg([f"inputs={_MONOMER_CIF}", f"out_dir={tmp_path}/exported"])
+        OmegaConf.set_struct(cfg, False)
+        cfg.num_replicates = 2
+        cfg.batch_size = 2
+        cfg.generation.args.nsteps = 20
+        cfg.generation.n_recycle_schedule = None
+        cfg.search = {"checkpoints": {1: {}}, "beam_width": 2, "n_branch": 2, "export_candidates": True}
+        run_generation(cfg, config_name="beam_export")
+
+        exported = next((tmp_path / "exported/sampling_states").glob("*_step1_candidates.pt"))
+        state = torch.load(exported, map_location="cpu", weights_only=True)
+        # n_branch * beam_width * nsamples candidates, none of them pruned.
+        assert state["step"] == 1 and state["nsamples"] == 2 and state["beam_width"] == 2
+        assert "x" not in state, "an exported batch must not look like a saved beam rank"
+        assert state["candidates"]["bb_ca"].shape[0] == 8
+        assert len(state["example_ids"]) == 8
+        # Every candidate was rolled out, so the external ranker has a structure per index.
+        assert len(_inference_generated_cifs(cfg.out_dir)) == 8
+
+        # Stand in for the external oracle: keep candidates 4 and 1, one per input, beam order.
+        cfg.out_dir = str(tmp_path / "continued")
+        cfg.search.update(
+            {
+                "checkpoints": {2: {}},
+                "export_candidates": False,
+                "resume_from": str(exported),
+                "resume_seed": 11,
+                "resume_selection": [4, 1, 0, 3],
+            }
+        )
+        run_generation(cfg, config_name="beam_external_selection")
+        assert len(_inference_generated_cifs(cfg.out_dir)) == 4
+
+    def test_resume_selection_may_not_cross_inputs(self, gpu, tmp_path):  # noqa: F811
+        """Entry j continues input j % nsamples; a selection that moves one is rejected."""
+        cfg = _build_test_cfg([f"inputs={_MONOMER_CIF}", f"out_dir={tmp_path}/exported"])
+        OmegaConf.set_struct(cfg, False)
+        cfg.num_replicates = 2
+        cfg.batch_size = 2
+        cfg.generation.args.nsteps = 20
+        cfg.generation.n_recycle_schedule = None
+        cfg.search = {"checkpoints": {1: {}}, "beam_width": 2, "n_branch": 2, "export_candidates": True}
+        run_generation(cfg, config_name="beam_export_guard")
+        exported = next((tmp_path / "exported/sampling_states").glob("*_step1_candidates.pt"))
+
+        cfg.out_dir = str(tmp_path / "rejected")
+        cfg.search.update(
+            {
+                "checkpoints": {2: {}},
+                "export_candidates": False,
+                "resume_from": str(exported),
+                "resume_seed": 11,
+                "resume_selection": [1, 1, 0, 3],  # entry 0 names a candidate of input 1
+            }
+        )
+        with pytest.raises(ValueError, match="interleaved"):
+            run_generation(cfg, config_name="beam_bad_selection")
 
     def test_generation_with_replicates_and_prefix_and_refolding(self, gpu, tmp_output_dir):  # noqa: F811
         """Verify num_replicates, global_prefix, and batch_size."""

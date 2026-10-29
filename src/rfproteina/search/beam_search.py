@@ -25,6 +25,7 @@ or calling refolding models.
 import copy
 import math
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -98,6 +99,11 @@ class BeamSearchStrategy(SearchStrategy):
         save_states: Save selected candidates at interior checkpoints for later branching.
         resume_from: Path to a saved candidate batch; start a new beam at its saved step.
         resume_seed: Seed for the new branches, independent of input preprocessing.
+        export_candidates: Stop at the first interior checkpoint, score nothing, and write every
+            branched candidate with its rollout. The caller ranks them and supplies the survivors
+            through resume_selection, so a slow external reward model never holds the GPU.
+        resume_selection: Indices into an exported candidate batch, one beam_width x inputs
+            selection in the beam's interleaved order. Replaces the internal top-k.
     """
 
     def __init__(
@@ -110,6 +116,8 @@ class BeamSearchStrategy(SearchStrategy):
         save_states: bool = False,
         resume_from: str | None = None,
         resume_seed: int | None = None,
+        export_candidates: bool = False,
+        resume_selection: Sequence[int] | None = None,
     ) -> None:
         self.checkpoints = parse_checkpoints(checkpoints)
         self.step_checkpoints = [0, *self.checkpoints]
@@ -124,9 +132,24 @@ class BeamSearchStrategy(SearchStrategy):
             raise ValueError("Set resume_from and resume_seed together.")
         if not isinstance(save_states, bool):
             raise ValueError("save_states must be a bool.")
+        if not isinstance(export_candidates, bool):
+            raise ValueError("export_candidates must be a bool.")
+        if export_candidates and save_states:
+            raise ValueError("export_candidates and save_states write different state formats; enable one.")
+        if resume_selection is not None:
+            if resume_from is None:
+                raise ValueError("resume_selection requires resume_from.")
+            if isinstance(resume_selection, str) or not isinstance(resume_selection, Sequence):
+                raise ValueError("resume_selection must be a sequence of candidate indices.")
+            if not resume_selection or any(
+                isinstance(index, bool) or not isinstance(index, int) or index < 0 for index in resume_selection
+            ):
+                raise ValueError("resume_selection must be a non-empty sequence of non-negative integers.")
         self.save_states = save_states
         self.resume_from = resume_from
         self.resume_seed = resume_seed
+        self.export_candidates = export_candidates
+        self.resume_selection = list(resume_selection) if resume_selection is not None else None
         self.n_branch = n_branch
         self.beam_width = beam_width
         self.intermediate_sample_save_criterion = PassCriterionMetric(save_criteria or {}) if save_rollouts else None
@@ -174,6 +197,69 @@ class BeamSearchStrategy(SearchStrategy):
             }
             if missing:
                 raise ValueError(f"Checkpoint {step} rewards {sorted(missing)} require explicitly listed metrics.")
+
+    def _write_exported_candidates(
+        self,
+        xt: dict[str, torch.Tensor],
+        step: int,
+        example_ids: list[str],
+        nsamples: int,
+        output_base_dir: "Path | None",
+        output_suffix: str,
+        batch_ids: list[str],
+    ) -> Path:
+        """Write every branched candidate, unpruned, for an external reward model to rank."""
+        if output_base_dir is None:
+            raise ValueError("export_candidates needs an output directory to write the candidate batch into.")
+        state_dir = Path(output_base_dir).parent / "sampling_states"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        path = state_dir / f"{batch_ids[0]}{output_suffix}_step{step}_candidates.pt"
+        torch.save(
+            {
+                "candidates": {key: value.detach().cpu().clone() for key, value in xt.items()},
+                "step": step,
+                "example_ids": list(example_ids),
+                "nsamples": nsamples,
+                "beam_width": self.beam_width,
+                "backend": "native",
+            },
+            path,
+        )
+        logger.info(f"Exported {len(example_ids)} candidates at step {step}: {path}")
+        return path
+
+    @staticmethod
+    def _exported_batch_size(state: dict, nsamples: int) -> int:
+        """Candidate count an exported batch declares, checked against the current batch."""
+        example_ids = state.get("example_ids")
+        if not isinstance(example_ids, list) or not example_ids:
+            raise ValueError("An exported candidate batch must list one example id per candidate.")
+        if state.get("nsamples") != nsamples:
+            raise ValueError(
+                f"Exported batch holds {state.get('nsamples')!r} inputs; this batch has {nsamples}. "
+                "Resume the same inputs in the same order."
+            )
+        if len(example_ids) % nsamples:
+            raise ValueError(f"Exported candidate count {len(example_ids)} is not a multiple of {nsamples} inputs.")
+        return len(example_ids)
+
+    def _validate_resume_selection(self, n_candidates: int, nsamples: int, device: "torch.device") -> torch.Tensor:
+        """Turn the caller's chosen candidates into the beam's interleaved index tensor."""
+        selection = self.resume_selection
+        if len(selection) != self.beam_width * nsamples:
+            raise ValueError(
+                f"resume_selection must name beam_width x inputs = {self.beam_width * nsamples} candidates, "
+                f"got {len(selection)}."
+            )
+        if any(index >= n_candidates for index in selection):
+            raise ValueError(f"resume_selection indices must lie in [0, {n_candidates}).")
+        # Interleaved layout: entry j continues input j % nsamples, so a selection may not move a
+        # candidate between inputs. Duplicates are allowed; a beam may keep one branch more than once.
+        if any(index % nsamples != position % nsamples for position, index in enumerate(selection)):
+            raise ValueError(
+                "resume_selection entry j must name a candidate of input j % nsamples; the beam is interleaved."
+            )
+        return torch.tensor(selection, dtype=torch.long, device=device)
 
     def generate(
         self,
@@ -269,15 +355,32 @@ class BeamSearchStrategy(SearchStrategy):
 
         if self.resume_from is not None:
             state = torch.load(self.resume_from, map_location=device, weights_only=True)
-            if not isinstance(state, dict) or "step" not in state or "x" not in state:
+            if not isinstance(state, dict) or "step" not in state:
                 raise ValueError("Saved candidate must contain a step and modality tensors in x.")
-            start_step, candidate = state["step"], state["x"]
+            # An exported batch keeps every branch under "candidates"; a saved beam rank keeps one under "x".
+            exported = "candidates" in state
+            if state.get("backend", "native") != "native":
+                # A bioir export also carries x_1, which this beam has no slot for and does not
+                # carry between checkpoints. Resuming it here would quietly drop that half.
+                raise ValueError(
+                    f"{self.resume_from} was exported by the {state['backend']!r} backend; "
+                    "resume it on the backend that wrote it."
+                )
+            if exported == (self.resume_selection is None):
+                raise ValueError(
+                    "resume_selection is required by an exported candidate batch and rejected by a saved beam rank."
+                )
+            candidate = state["candidates"] if exported else state.get("x")
+            start_step = state["step"]
+            if candidate is None:
+                raise ValueError("Saved candidate must contain a step and modality tensors in x.")
             if type(start_step) is not int or not 0 <= start_step < actual_nsteps:
                 raise ValueError(f"Saved candidate step must be an integer in [0, {actual_nsteps}).")
             if not isinstance(candidate, dict) or set(candidate) != set(model.fm.data_modes):
                 raise ValueError(f"Saved candidate modalities must match {model.fm.data_modes}.")
+            n_candidates = self._exported_batch_size(state, nsamples) if exported else nsamples
             for key, value in candidate.items():
-                expected_shape = (nsamples, n, model.fm.base_flow_matchers[key].dim)
+                expected_shape = (n_candidates, n, model.fm.base_flow_matchers[key].dim)
                 if (
                     not isinstance(value, torch.Tensor)
                     or value.shape != expected_shape
@@ -287,7 +390,11 @@ class BeamSearchStrategy(SearchStrategy):
                     raise ValueError(
                         f"Saved candidate {key} must be a finite floating tensor of shape {expected_shape}."
                     )
-            xt = {key: value.repeat(self.beam_width, 1, 1) for key, value in candidate.items()}
+            if exported:
+                selection = self._validate_resume_selection(n_candidates, nsamples, device)
+                xt = {key: value[selection] for key, value in candidate.items()}
+            else:
+                xt = {key: value.repeat(self.beam_width, 1, 1) for key, value in candidate.items()}
             torch.manual_seed(self.resume_seed)
             model.inference_seed = self.resume_seed
         else:
@@ -413,6 +520,33 @@ class BeamSearchStrategy(SearchStrategy):
                 f"{batch_ids[j % nsamples]}_bsc{i}_{j // nsamples}" for j in range(eval_batch_size)
             ]
             checkpoint_design_ids = [f"{eid}{output_suffix}" for eid in checkpoint_example_ids]
+
+            if self.export_candidates:
+                # Score nothing and hand every branch to the caller. The rollout still runs, because
+                # an external reward model ranks completed structures, not mid-trajectory states.
+                _, atom_array_results, _ = self._simulate_and_compute_reward(
+                    model,
+                    batch,
+                    xt,
+                    end_step,
+                    None,
+                    ts=ts,
+                    gt=gt,
+                    recycle_depths=recycle_depths,
+                    example_ids=checkpoint_example_ids,
+                    output_base_dir=output_base_dir,
+                    design_ids=checkpoint_design_ids,
+                    insertion_logits=insertion_logits,
+                    sequence_logits=sequence_logits,
+                    rollout=True,
+                    metric_names=[],
+                )
+                for candidate, result in enumerate(atom_array_results):
+                    result["orig_batch_idx"] = original_batch_indices[candidate % nsamples]
+                self._write_exported_candidates(
+                    xt, end_step, checkpoint_example_ids, nsamples, output_base_dir, output_suffix, batch_ids
+                )
+                return all_intermediate_results + atom_array_results
 
             checkpoint_reward_model = self.reward_models[end_step]
 

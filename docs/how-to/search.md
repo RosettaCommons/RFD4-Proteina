@@ -213,7 +213,56 @@ its first input. Keep the same inputs, batch size, ordering, weights, generation
 and `seed`; larger batches work the same way. Resume only the inputs in that saved batch.
 Change `resume_seed` and use a fresh output directory for another continuation.
 Later intermediate states are saved again; per-checkpoint branch counts override `search.n_branch`.
+
+`search.save_states` lets the model's own reward do the pruning. To prune with a reward
+the model cannot call -- a slow web service, a licensed scorer, a human -- use
+`search.export_candidates=true` instead. The run stops at the first checkpoint, scores
+nothing, rolls out and writes **every** branch to `*_candidates.pt` plus one CIF each, and
+releases the GPU. Rank them yourself, then continue the ones you kept:
+
+```bash
+rfd4-generate inference_experiment=sm_binder_hbond_search \
+  seed=7 num_workers=0 batch_size=1 num_replicates=1 \
+  out_dir=runs/exported search.export_candidates=true
+
+# rank runs/exported/inference_samples yourself, then pass the winners' indices
+rfd4-generate inference_experiment=sm_binder_hbond_search \
+  seed=7 num_workers=0 batch_size=1 num_replicates=1 \
+  out_dir=runs/continued search.resume_from="$state" \
+  search.resume_seed=11 search.resume_selection=[4,1]
+```
+
+`resume_selection` holds `beam_width x inputs` indices into `example_ids`, in the beam's
+interleaved order: entry `j` must name a candidate of input `j % nsamples`. Repeats are
+allowed. Unlike `resume_from` alone, the whole beam continues, so the branches you kept
+still compete with each other.
 The saved step, modalities, tensor dimensions and finite values are checked. Input identity,
 conditioning, weights and schedule compatibility remain the caller's responsibility.
 This starts new seeded branches; it does not restore an interrupted run's RNG state.
 Adapters, gradient guidance and inverse folding are unsupported.
+
+### Backend support
+
+`save_states` and `resume_from` on their own run on the `native` (and `eager`) backend
+only. With `inference_backend=bioir` the run stops at startup with a
+`NotImplementedError` rather than silently ignoring the flag.
+
+`export_candidates` and `resume_selection` run on every backend, but on `bioir` they
+need **bionemo-ir 0.3.0 or newer**, which is the release that carries
+`RFProteina.search(export_states=..., resume_states=...)`. On an older one the run stops
+at startup and the message names the version installed. The check reads `search`'s
+signature, not a version string, so a development build that has the seam works too.
+
+The two backends write the same `*_candidates.pt` file name and **are not
+interchangeable**. BioIR's beam carries the clean prediction `x_1` between checkpoints and
+self-conditions the first resumed step on it, so a `bioir` export stores `x_1` alongside
+`x_t`; the native beam re-initialises self-conditioning at every checkpoint and stores
+only `x_t`. Each backend records which one wrote the file and refuses the other's, because
+resuming a native export under `bioir` would substitute zeros for `x_1` and continue a
+different trajectory while still returning plausible structures.
+
+One behavioural difference is worth knowing before you compare runs. On `bioir`,
+`export_candidates` stops the beam at the first interior checkpoint: the caller is about
+to replace the prune there, so the schedule beyond it is not run. On `native` the same
+flag also returns at that checkpoint. In both cases the candidates still carry a completed
+rollout, because an external reward model ranks finished structures.
