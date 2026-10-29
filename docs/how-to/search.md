@@ -240,3 +240,29 @@ The saved step, modalities, tensor dimensions and finite values are checked. Inp
 conditioning, weights and schedule compatibility remain the caller's responsibility.
 This starts new seeded branches; it does not restore an interrupted run's RNG state.
 Adapters, gradient guidance and inverse folding are unsupported.
+
+### Backend support
+
+`save_states` and `resume_from` on their own run on the `native` (and `eager`) backend
+only. With `inference_backend=bioir` the run stops at startup with a
+`NotImplementedError` rather than silently ignoring the flag.
+
+`export_candidates` and `resume_selection` run on every backend, but on `bioir` they
+need **bionemo-ir 0.3.0 or newer**, which is the release that carries
+`RFProteina.search(export_states=..., resume_states=...)`. On an older one the run stops
+at startup and the message names the version installed. The check reads `search`'s
+signature, not a version string, so a development build that has the seam works too.
+
+The two backends write the same `*_candidates.pt` file name and **are not
+interchangeable**. BioIR's beam carries the clean prediction `x_1` between checkpoints and
+self-conditions the first resumed step on it, so a `bioir` export stores `x_1` alongside
+`x_t`; the native beam re-initialises self-conditioning at every checkpoint and stores
+only `x_t`. Each backend records which one wrote the file and refuses the other's, because
+resuming a native export under `bioir` would substitute zeros for `x_1` and continue a
+different trajectory while still returning plausible structures.
+
+One behavioural difference is worth knowing before you compare runs. On `bioir`,
+`export_candidates` stops the beam at the first interior checkpoint: the caller is about
+to replace the prune there, so the schedule beyond it is not run. On `native` the same
+flag also returns at that checkpoint. In both cases the candidates still carry a completed
+rollout, because an external reward model ranks finished structures.

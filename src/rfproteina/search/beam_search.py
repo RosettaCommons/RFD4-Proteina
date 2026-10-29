@@ -221,6 +221,7 @@ class BeamSearchStrategy(SearchStrategy):
                 "example_ids": list(example_ids),
                 "nsamples": nsamples,
                 "beam_width": self.beam_width,
+                "backend": "native",
             },
             path,
         )
@@ -358,6 +359,13 @@ class BeamSearchStrategy(SearchStrategy):
                 raise ValueError("Saved candidate must contain a step and modality tensors in x.")
             # An exported batch keeps every branch under "candidates"; a saved beam rank keeps one under "x".
             exported = "candidates" in state
+            if state.get("backend", "native") != "native":
+                # A bioir export also carries x_1, which this beam has no slot for and does not
+                # carry between checkpoints. Resuming it here would quietly drop that half.
+                raise ValueError(
+                    f"{self.resume_from} was exported by the {state['backend']!r} backend; "
+                    "resume it on the backend that wrote it."
+                )
             if exported == (self.resume_selection is None):
                 raise ValueError(
                     "resume_selection is required by an exported candidate batch and rejected by a saved beam rank."
