@@ -71,14 +71,24 @@ interface / 67% antibody PDB mixture, merged into its base and exported as EMA
 weights. It is a separate lineage from the general release — it was fine-tuned on
 a pretrained base trained without TED dimers — so it is a self-contained
 checkpoint rather than an adapter, and it cannot be layered onto the released
-base. Point at a local copy with:
+base. It is published as a native checkpoint rather than a model bundle, so it is
+downloaded and then selected by path — `hf_ckpt_path` does not reach it.
+
+```bash
+hf download nvidia/RFD4-Proteina antibody/rfd4-proteina-antibody-2026-10-30-ema.ckpt \
+  --revision 621b785abf9d61dd24f4b81ae4dbd1330728f030 --local-dir ./checkpoints
+```
 
 ```bash
 rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name vhh \
-  hf_ckpt_path=null ckpt_path=/path/to/checkpoint_dir \
+  hf_ckpt_path=null ckpt_path=./checkpoints/antibody \
   ckpt_name=rfd4-proteina-antibody-2026-10-30-ema.ckpt \
   num_replicates=1 batch_size=1 out_dir=./runs/vhh_pilot
 ```
+
+Verify the download against the published
+`antibody/rfd4-proteina-antibody-2026-10-30-ema.ckpt.sha256`
+(`6abf4ed2…`) before a large campaign.
 
 Both `ckpt_path` and `ckpt_name` are required when `hf_ckpt_path=null`.
 
