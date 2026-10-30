@@ -18,7 +18,9 @@ from pyrosetta.rosetta.protocols.denovo_design.filters import ExposedHydrophobic
 
 def _score(cif: Path, sasa_cutoff: float) -> dict[str, float]:
     if not pyrosetta.rosetta.basic.was_init_called():
-        pyrosetta.init("-mute all -ignore_unrecognized_res true -ignore_zero_occupancy false")
+        pyrosetta.init(
+            "-mute all -ignore_unrecognized_res true -ignore_zero_occupancy false -constant_seed -jran 111111"
+        )
 
     pose = pyrosetta.pose_from_file(str(cif))
     sel = TrueResidueSelector()

@@ -27,7 +27,8 @@ oracle_ppi:
     min_ipae_coi: [1, 1.5, 2]
   required_tags_any:
     - ppi_refolding
-    - antibody
+    - antibody_refolding
+    - antibody_developability
 
 oracle_dna:
   _target_: rfproteina.metrics.oracles.af3_oracle.AF3Oracle
@@ -68,6 +69,7 @@ oracle_apo:
     _target_: rfproteina.metrics.oracles.pre_oracle_transform.ApoOnlyTransform
   required_tags_any:
     - apo_refolding
+    - antibody_developability
 
 # Specificity assay: keeps the designed chain and swaps its binding partner for
 # each off-target loaded from disk, one refold apiece. Emits

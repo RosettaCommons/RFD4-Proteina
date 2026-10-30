@@ -33,10 +33,10 @@ out_dir: null  # If null, defaults to ./runs/<run_name>. For production, set to 
                # path (e.g. /shared/runs/experiment_name). SLURM scripts set this
                # automatically. All outputs (samples, metrics) go under this directory.
 
-# Current SOTA; generation and regression tooling resolve the immutable checkpoint from here.
+# Native release identity used by regression tooling; ignored when hf_ckpt_path is set.
 # Regenerate the inference baselines when advancing it; use CLI overrides for one-off checkpoints.
 ckpt_name: rfd4-proteina-flow-release-2026-10-19.ckpt
-ckpt_path: ${oc.env:DATA_PATH}/flow_checkpoints
+ckpt_path: null  # Set explicitly with hf_ckpt_path=null to load a native checkpoint directory.
 adapter_path: null  # Local PEFT adapter directory; load onto the exact base/AE pair used for fine-tuning.
 
 # Only applies when a pre-oracle design filter is active (i.e. its tag gate matched).

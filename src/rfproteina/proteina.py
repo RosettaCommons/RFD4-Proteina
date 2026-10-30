@@ -373,6 +373,7 @@ class Proteina(L.LightningModule):
         # Whether to write per-design chain-of-interest CIFs (only used by foldseek clustering).
         # Overridden for inference via configure_inference; training validation always writes.
         self.save_chain_of_interest = True
+        self.delete_failing_pre_oracle = cfg_exp.get("delete_failing_pre_oracle", True)
         self.output_cif_suffix = ".cif.zst" if cfg_exp.get("compress_outputs", True) else ".cif"
 
         self.inf_cfg = inf_cfg  # Used for inference-like validation
@@ -1264,7 +1265,7 @@ class Proteina(L.LightningModule):
             oracle_outputs = apply_pre_oracle_filters(
                 self.validation_output_generation,
                 pre_oracle_filter_mm,
-                delete_failing=self.cfg_exp.get("delete_failing_pre_oracle", True),
+                delete_failing=self.delete_failing_pre_oracle,
             )
             pre_oracle_filter_mm.on_validation_epoch_end()
 
@@ -1596,6 +1597,7 @@ class Proteina(L.LightningModule):
         ckpt_name: str | None = None,
         save_chain_of_interest: bool = False,
         compress_outputs: bool = False,
+        delete_failing_pre_oracle: bool = True,
     ) -> None:
         """Sets inference config with all sampling parameters required by the method (dt, etc).
 
@@ -1612,6 +1614,7 @@ class Proteina(L.LightningModule):
                 These are only consumed by foldseek clustering, so they default to ``False``
                 for inference; the launch script enables them when foldseek will run.
             compress_outputs: Write new inference structure artifacts as Zstd instead of plain CIF.
+            delete_failing_pre_oracle: Delete structure files for definitive pre-oracle filter failures.
         """
         self.inf_cfg = inf_cfg
         if store_dir is not None:
@@ -1626,6 +1629,7 @@ class Proteina(L.LightningModule):
         self.ckpt_path = ckpt_path
         self.ckpt_name = ckpt_name
         self.save_chain_of_interest = save_chain_of_interest
+        self.delete_failing_pre_oracle = delete_failing_pre_oracle
 
         self._check_val_set_name_override()
 

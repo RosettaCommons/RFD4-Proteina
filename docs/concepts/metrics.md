@@ -6,7 +6,7 @@ which family produced it, how binder and target selections resolve, and where in
 stop further work. 
 
 The [metrics guide](../how-to/evaluate-with-metrics.md) covers turning metrics on and running
-them, inline or offline; the [metrics reference](../reference/metrics.md#every-metric-criteria-and-filter-that-ships)
+them, inline or offline; the [metrics reference](../reference/metrics.md#reading-the-tables)
 lists every metric, oracle, pass criterion, and filter that ships, with what each one outputs and the
 tag that turns it on.
 

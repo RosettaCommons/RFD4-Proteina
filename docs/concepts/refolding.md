@@ -31,7 +31,7 @@ Turning on refolding activates three things together, in order:
 1. **An oracle** ([reference](../reference/metrics.md#refolding-oracles)) — `oracle`, `oracle_ppi`, or
    `oracle_dna` — which actually calls AF3/OF3 and reports its own confidence outputs
    (`overall_plddt`, `ptm_coi`, `min_ipae_coi`, and friends).
-2. **Refolding metrics** ([reference](../reference/metrics.md#refolding-metrics-after-the-oracle))
+2. **Refolding metrics** ([reference](../reference/metrics.md#refolding-metrics))
    that compare the design against that refold, such as `refolded_backbone_rmsd` (self-consistency
    RMSD) or `refolded_motif_allatom_rmsd`.
 3. **Pass criteria** ([reference](../reference/metrics.md#pass-criteria)) that threshold those oracle

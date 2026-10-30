@@ -51,6 +51,17 @@ sse_accuracy:
   required_tags_any: ["design"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
+protruding_helix:
+  _target_: rfproteina.metrics.protruding_helix.ProtrudingHelixMetric
+  min_helix_residues: 30
+  min_helix_span: 35.0
+  min_unpacked_residues: 15
+  packing_distance: 10.0
+  sequence_neighbor_exclusion: 5
+  aggregation: [mean]
+  required_tags_any: ["design"]
+  prohibited_tags: ["small_molecule_only", "structure_prediction"]
+
 posebusters_metrics:
   _target_: rfproteina.metrics.posebusters_metrics.PoseBustersMetric
   atom_array_input_key: predicted_atom_array

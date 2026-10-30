@@ -1,9 +1,9 @@
 """Developability filters: GRAVY, instability index, SAP, and exposed hydrophobics.
 
 Sequence metrics (GRAVY, Guruprasad instability index) are computed in-process from
-the designed-chain sequence. Structure metrics (Rosetta SAP score and
-ExposedHydrophobics) run via a nested PyRosetta apptainer, following the same pattern
-as HBDesigner PyRosetta scoring.
+the designed-chain sequence. Structure metrics are computed directly from the
+designed-chain ``AtomArray``; the PyRosetta implementation remains as a reference
+backend for parity validation.
 """
 
 import json
@@ -17,11 +17,13 @@ from typing import Any
 
 from atomworks.constants import STANDARD_AA_ONE_LETTER
 from atomworks.io.utils.annotator import ensure_annotations
+from atomworks.io.utils.atom_array import remove_hydrogens
 from atomworks.io.utils.selection import get_residue_starts
 from atomworks.io.utils.sequence import aa_chem_comp_3to1
 from biotite.structure import AtomArray
 
 from rfproteina.metrics.metric import Metric
+from rfproteina.metrics.physics.sap import calculate_exposed_hydrophobics, calculate_sap
 from rfproteina.utils.chain import get_chain_of_interest
 from rfproteina.utils.ddp import RankedLogger
 from rfproteina.utils.structure_export import write_input_structure_cif
@@ -188,6 +190,58 @@ class SequenceDevelopabilityMetric(Metric):
         }
 
 
+class AtomWorksDevelopabilityMetric(Metric):
+    """AtomWorks-native SAP score and exposed-hydrophobics SASA.
+
+    The structural scores approximate their Rosetta counterparts without adding
+    explicit hydrogen coordinates or launching a nested container.
+    """
+
+    def __init__(
+        self,
+        sasa_cutoff: float = 20.0,
+        point_number: int = 162,
+        implicit_hydrogen_centers: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        self.sasa_cutoff = float(sasa_cutoff)
+        self.point_number = int(point_number)
+        self.implicit_hydrogen_centers = bool(implicit_hydrogen_centers)
+        super().__init__(**kwargs)
+
+    @cached_property
+    def kwargs_to_compute_args(self) -> dict[str, Any]:
+        return {
+            "predicted_atom_array": "predicted_atom_array",
+            "chain_of_interest": ("extra_info", "chain_of_interest"),
+        }
+
+    @property
+    def optional_kwargs(self) -> frozenset[str]:
+        return frozenset(["chain_of_interest"])
+
+    def compute(
+        self,
+        predicted_atom_array: AtomArray,
+        chain_of_interest: str | None = None,
+    ) -> dict[str, float]:
+        designed = subset_to_designed_protein(predicted_atom_array, chain_of_interest)
+        if designed.array_length() == 0:
+            return {"sap_score": float("nan"), "hydrophobic_exposure_sasa": float("nan")}
+        return {
+            "sap_score": calculate_sap(
+                designed,
+                point_number=self.point_number,
+                implicit_hydrogen_centers=self.implicit_hydrogen_centers,
+            ),
+            "hydrophobic_exposure_sasa": calculate_exposed_hydrophobics(
+                designed,
+                sasa_cutoff=self.sasa_cutoff,
+                point_number=self.point_number,
+            ),
+        }
+
+
 class RosettaDevelopabilityMetric(Metric):
     """Rosetta SAP score and ExposedHydrophobics via a nested PyRosetta apptainer.
 
@@ -263,6 +317,7 @@ class RosettaDevelopabilityMetric(Metric):
         designed = subset_to_designed_protein(predicted_atom_array, chain_of_interest)
         if designed.array_length() == 0:
             return {"sap_score": float("nan"), "hydrophobic_exposure_sasa": float("nan")}
+        designed = remove_hydrogens(designed)
 
         self.scratch_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="rfd4_developability_", dir=self.scratch_dir) as tmp:

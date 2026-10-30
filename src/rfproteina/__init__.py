@@ -32,6 +32,7 @@ except ImportError:
 # Registers annotations with atomworks' annotator registry (import side-effect).
 import rfproteina.datapipes  # noqa: E402
 import rfproteina.utils  # noqa: E402
+import rfproteina.utils.antibody  # noqa: E402
 import rfproteina.utils.standard_annotations  # noqa: E402
 
 __all__ = ["datapipes", "utils"]

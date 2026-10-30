@@ -1,62 +1,61 @@
-# A VHH design campaign
+# Antibody and nanobody design
 
-Build a diverse collection of VHHs predicted to bind your target: discover
-productive combinations, scale for diversity, then refine within clusters.
+Starting recommendations, especially for VHHs; adapt them to the target and project.
 
-Complete [setup](../../docs/installation.rst) first, including AF3 for scoring.
-Use `recycle_strategy=high/front_loaded`, already selected by these configs.
+- **Rank by `oracle_ppi.min_ipae_coi`: lower is better, with values < 1.0 preferred.**
+  The binding criterion allows values up to 2.0, but passing is a cutoff, not a ranking.
+  Among otherwise comparable designs for the same target, prioritize lower values
+  for selection and partial diffusion; do not treat all passers as equally good.
+- Also aim for target-aligned
+  North-CDR backbone RMSD < **1.5 Å** (`antibody_target_aligned_cdr_rmsd.rmsd`) and
+  whole-binder backbone RMSD < **2.0 Å** (`antibody_target_aligned_backbone_rmsd.rmsd`).
+- Prefer candidates passing **all antibody developability checks**
+  (`antibody_developability.pass`); failures carry higher risk of expression difficulties.
+- Use backbone-only target conditioning (`C_CRDGRP`) with full target sequence
+  (`C_SEQ`). Crop the target around the intended interface to reduce spurious AF3 docks.
+- Use the early high-recycle schedule, `recycle_strategy=high/front_loaded`, for
+  every trajectory, including partial diffusion.
+- Start with **large campaigns without search**, varying frameworks, CDR lengths,
+  and hotspots. Search is useful when a particular dock or docking angle is desired.
+  [SampleNearbyHotspots](../../src/rfproteina/transforms/hotspot_sampling.py) samples
+  nearby exposed target atoms per trajectory; [vhh.yaml](vhh.yaml) enables it.
+- Partially diffuse the best designs to increase sequence diversity while largely
+  preserving the dock. This may also improve developability; rescore every child.
 
-## 1. Discover productive combinations with best-of-N
-
-Generate N independent candidates across VHH frameworks, CDR lengths, and target
-hotspots, then score them and retain the strongest. CATH conditioning
-supplies the immunoglobulin fold context; together with the VHH framework, it
-tells the model what kind of binder to build, without guaranteeing success.
-
-The [eight supplied complexes](structures/vhh) pair four frameworks with two
-cropped targets, PMVK and MZB1. Inputs fix the target and preserve the framework's
-internal geometry while allowing it to move. Frameworks vary across files;
-CDR lengths and nearby hotspot patches are sampled anew for each candidate.
-
-First check one candidate per input, from the repository root:
+After [setup](../../docs/installation.rst), including AF3, run from the repository root:
 
 ```bash
+# Check one design per supplied input, then increase num_replicates for the campaign.
 rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name vhh \
-  num_replicates=1 batch_size=1 seed=42 out_dir=./runs/vhh_pilot
-```
+  num_replicates=1 batch_size=1 out_dir=./runs/vhh_pilot
 
-Inspect structures and confirm scoring works before increasing `num_replicates`.
-This count is **per input**: 100 across eight inputs means 800 attempts.
-Use a fresh output directory for each screen.
+# Paired VH/VL, all six CDRs designed against the same target.
+rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name vh_vl \
+  num_replicates=1 batch_size=1 out_dir=./runs/vh_vl_pilot
 
-## 2. Compare, then scale for diverse passers
-
-Compare **within each target**: which frameworks, realized CDR lengths, and hotspot
-patches yield passers? Review pass rates, attempt counts, and structural clusters;
-many near-duplicates are not many distinct solutions. Keep failed evaluations in
-the attempt count. A “passer” meets computational criteria; binding still requires
-experimental validation.
-
-Launch production-scale runs for promising combinations, retaining several
-alternatives. Keep sampling where useful; save a new annotated input to fix a
-hotspot patch or narrow CDR lengths (see the [input guide](../../docs/how-to/input_prep/index.md)).
-To retain a chosen hotspot patch, set `generation.dataset.sampling_transforms=null`.
-Use `inputs=/path/to/selected_inputs` and increase `num_replicates` for production.
-Cluster passers and continue until satisfied with diversity.
-
-## 3. Refine and proliferate within clusters
-
-Choose annotated generated parents from selected clusters for partial diffusion.
-This explores nearby designs to proliferate passers within a family and potentially
-improve their metrics—not replace the earlier search for distinct solutions.
-
-```bash
+# Refine a generated annotated parent; this config preserves its hotspot patch.
 rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name partial \
-  inputs=/path/to/selected_generated_complex.cif \
-  num_replicates=100 out_dir=./runs/vhh_refinement
+  inputs=/path/to/selected_generated_complex.cif num_replicates=100 out_dir=./runs/vhh_partial
 ```
 
-Use the generated annotated complex, not an oracle-refolded structure. The partial
-config retains its sampled hotspots, target, framework conditioning, and realized
-CDR lengths. Track each child's parent, score children independently, and retain
-them only if they meet your criteria; improvement is not guaranteed.
+All three configs select the high front-loaded schedule, `antibody_refolding`
+and design/conditioning checks. Use fresh output directories; `num_replicates`
+is per input.
+
+## Supplied inputs
+
+| Config | Structures | Designed |
+| --- | --- | --- |
+| [vhh.yaml](vhh.yaml) | [structures/vhh](structures/vhh) — four VHH frameworks against two targets (MZB1 `7AAH`, PMVK `3CH4`) | CDR1/2/3 |
+| [vh_vl.yaml](vh_vl.yaml) | [structures/vh_vl](structures/vh_vl) — adalimumab Fv against MZB1 `7AAH` | All six CDRs (H1–H3, L1–L3) |
+
+The VH/VL input uses the same MZB1 target crop as the VHH inputs, so the two can
+be compared directly on one target.
+
+**Developability applies to VHHs only.** `antibody_developability` scores a
+single chain of interest with thresholds calibrated for single-domain VHHs, so
+`vh_vl.yaml` leaves that tag off; `vhh.yaml` and `partial.yaml` keep it. Judge
+paired-Fv designs on binding and the CDR/backbone RMSDs above.
+
+See [Antibody metrics](../../docs/reference/antibody-metrics.md) for score
+definitions, passing thresholds and output columns.

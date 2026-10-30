@@ -1,0 +1,36 @@
+# Antibody design: binding and VHH developability are separate, tag-gated criteria.
+
+# --- Binding ---
+antibody:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  metric_thresholds:
+    oracle_ppi.min_ipae_coi:
+      max: 2.0
+    refolded_target_aligned_binder_rmsd.rmsd:
+      max: 2.0
+  required_tags_any: [antibody_refolding]
+
+# --- VHH developability (apo/holo refolds plus inline scores) ---
+antibody_developability:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  required_tags_any: [antibody_developability]
+  metric_thresholds:
+    # Apo confidence and apo/holo structural consistency
+    antibody_apo_cdr_confidence.apo.plddt:
+      min_exclusive: 85.0
+    antibody_apo_holo_cdr_rmsd.apo.rmsd:
+      max_exclusive: 1.5
+    antibody_apo_holo_rmsd.apo.rmsd:
+      max_exclusive: 1.5
+    # Surface aggregation propensity
+    antibody_developability_scores.cdrh3_sap_score:
+      max_exclusive: 10.0
+    antibody_developability_scores.sap_score:
+      max_exclusive: 55.0
+    # Sequence charge and cysteine parity
+    antibody_developability_scores.net_charge:
+      max: -3.0
+    antibody_developability_scores.cdrh3_net_charge:
+      max_exclusive: 0.0
+    antibody_developability_scores.unpaired_cysteines:
+      max: 0.0

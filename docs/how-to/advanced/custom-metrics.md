@@ -319,7 +319,7 @@ Here are the common ones across this repo's built in metrics.
 | --- | --- |
 | `design` | Raw structure design metrics, so clash, bond length, SSE distribution, and any custom design metric |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD, for unconditional generation |
-| `antibody`, `ppi_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding` | Task specific AF3 refolding variants. See [Running metrics inline](../evaluate-with-metrics.md#running-metrics-inline) |
+| `antibody_refolding`, `ppi_refolding`, `motif_scaffold_refolding`, `sm_binder_refolding`, `ame_refolding` | Task specific AF3 refolding variants. See [Running metrics inline](../evaluate-with-metrics.md#running-metrics-inline) |
 | `hotspot_conditioning` | Hotspot obedience metrics, only meaningful when your input specifies hotspots |
 | `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
 | `rasa_conditioning` | RASA buried and exposed adherence metrics |
@@ -360,7 +360,7 @@ Guide](../../contributing/developer-guide.md).
 
 Often you need no new Python at all. An existing metric just needs **your** parameters. Say you are
 doing enzyme design and want to check catalytic triad geometry. `AtomPairDistanceMetric`, listed
-under [Ready-made but opt-in](../../reference/metrics.md#ready-made-but-opt-in), already evaluates atom
+under [Optional metrics](../../reference/metrics.md#optional-metrics), already evaluates atom
 pair upper bound distance constraints. You only have to tell it *which* atoms and *what* distances.
 
 **Step 1, write the config.** Custom metrics live in the git ignored

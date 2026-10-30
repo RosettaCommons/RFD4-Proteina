@@ -427,7 +427,9 @@ def load_ckpt_n_configure_inference(cfg: dict, model: Proteina | None = None) ->
     else:
         ckpt_path = cfg.ckpt_path
         ckpt_name = cfg.ckpt_name
-        ckpt_file = os.path.join(ckpt_path, cfg.ckpt_name)
+        if not ckpt_path or not ckpt_name:
+            raise ValueError("Set ckpt_path and ckpt_name when hf_ckpt_path=null to load a native checkpoint.")
+        ckpt_file = os.path.join(ckpt_path, ckpt_name)
 
         if not os.path.exists(ckpt_file):
             raise FileNotFoundError(f"Checkpoint not found: {ckpt_file}")
@@ -482,6 +484,7 @@ def load_ckpt_n_configure_inference(cfg: dict, model: Proteina | None = None) ->
         ckpt_name=ckpt_name,
         save_chain_of_interest=cfg.get("save_chain_of_interest", False),
         compress_outputs=cfg.get("compress_outputs", False),
+        delete_failing_pre_oracle=cfg.get("delete_failing_pre_oracle", True),
     )
 
     model.search_strategy = None

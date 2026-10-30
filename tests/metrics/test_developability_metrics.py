@@ -1,4 +1,4 @@
-"""Tests for developability metrics: sequence (GRAVY, instability) and Rosetta scoring."""
+"""Tests for sequence and structure-based developability metrics."""
 
 import json
 import os
@@ -14,6 +14,7 @@ from atomworks.io.tools.inference import sequence_to_annotated_atom_array
 from biotite.structure import AtomArray, concatenate
 
 from rfproteina.metrics.physics.developability_metrics import (
+    AtomWorksDevelopabilityMetric,
     RosettaDevelopabilityMetric,
     SequenceDevelopabilityMetric,
     compute_gravy,
@@ -103,6 +104,26 @@ def test_unselected_rosetta_metric_does_not_require_container(monkeypatch):
         metric.compute(AtomArray(0))
 
 
+@pytest.mark.parametrize(
+    "pdb_id,rosetta_sap,rosetta_exposed_sasa,should_pass",
+    [
+        ("1pgb", 20.8755, 756.4021, True),
+        ("1c3w", 320.4187, 3318.2672, False),
+    ],
+)
+def test_atomworks_developability_matches_rosetta_on_complete_structures(
+    pdb_id: str,
+    rosetta_sap: float,
+    rosetta_exposed_sasa: float,
+    should_pass: bool,
+):
+    atom_array = parse(_DATA_DIR / f"{pdb_id}.cif.gz")["asym_unit"][0]
+    result = AtomWorksDevelopabilityMetric().compute(atom_array)
+    assert result["sap_score"] == pytest.approx(rosetta_sap, abs=5.0)
+    assert result["hydrophobic_exposure_sasa"] == pytest.approx(rosetta_exposed_sasa, rel=0.08)
+    assert (result["sap_score"] <= _ROSETTA_SAP_MAX) == should_pass
+
+
 def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
     """The metric shells the apptainer command with the right flags and parses its JSON."""
     container = tmp_path / "pyrosetta.sif"
@@ -119,10 +140,11 @@ def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
             json.dump({"sap_score": 12.5, "hydrophobic_exposure_sasa": 345.0}, handle)
         return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(
-        "rfproteina.utils.structure_export.write_input_structure_cif",
-        lambda _arr, path: path.write_text("data_design\n", encoding="utf-8"),
-    )
+    def fake_write(atom_array, path):
+        assert not np.any(np.char.upper(atom_array.element.astype(str)) == "H")
+        path.write_text("data_design\n", encoding="utf-8")
+
+    monkeypatch.setattr("rfproteina.metrics.physics.developability_metrics.write_input_structure_cif", fake_write)
     monkeypatch.setattr("rfproteina.metrics.physics.developability_metrics.subprocess.run", fake_run)
 
     metric = RosettaDevelopabilityMetric(
@@ -141,7 +163,7 @@ def test_rosetta_metric_assembles_command_and_reads_json(tmp_path, monkeypatch):
 
 _ROSETTA_SAP_MAX = 50.0  # configs/metrics/pass_criteria threshold
 # Real PDB structures with SAP verified against the container (atomworks parse, full-atom):
-# a soluble monomer passes, a hydrophobic membrane protein fails. Values (~): 1pgb 34, 1c3w 334.
+# a soluble monomer passes, a hydrophobic membrane protein fails.
 _SAP_CASES = {"1pgb": True, "1c3w": False}
 _DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "developability"
 _CONTAINER = os.environ.get("PYROSETTA_CONTAINER")

@@ -9,18 +9,18 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from atomworks.io.utils.annotator import ensure_annotations
 from biotite.structure import (
     AtomArray,
     dihedral_backbone,
-    filter_amino_acids,
     get_residue_starts,
 )
 from huggingface_hub import snapshot_download
 from scipy.integrate import quad
 from scipy.special import i0e, logsumexp
 
-from rfproteina.metrics.antibody_metrics import CDR_RANGES, annotate_antibody_numbering
 from rfproteina.metrics.metric import Metric
+from rfproteina.utils.antibody import CHOTHIA_CDR_RANGES, antibody_domains
 
 CDR_REFERENCE_REPO = "nvidia/RFD4-Proteina"
 CDR_REFERENCE_SUBDIR = "metrics/cdr_torsion_data"
@@ -154,30 +154,23 @@ class CDRTorsionNaturalness(Metric):
 
     def compute(self, predicted_atom_array: AtomArray) -> dict[str, float]:
         """Score a generated antibody without relying on input residue numbering."""
-        array = annotate_antibody_numbering(predicted_atom_array)
-        selected = filter_amino_acids(array)
-        has_light = np.isin(array.chothia_chain_type, ["K", "L"]).any()
+        array = predicted_atom_array
+        ensure_annotations(array, "is_chothia_cdr")
+        domains = list(antibody_domains(array))
+        has_light = any(prefix == "L" for _, _, _, prefix in domains)
         reference = self.reference_set or ("vhvl" if has_light else "vhh")
         if reference == "vhh" and has_light:
             raise ValueError("VHH reference distributions do not support light domains; use reference_set='vhvl'.")
-        chain_attr = "chain_iid" if "chain_iid" in array.get_annotation_categories() else "chain_id"
-        chain_ids = array.get_annotation(chain_attr)
-        result = {cdr: float("nan") for cdr in CDR_RANGES}
-        result.update({f"{cdr}_length": float("nan") for cdr in CDR_RANGES})
+        result = {cdr: float("nan") for cdr in CHOTHIA_CDR_RANGES}
+        result.update({f"{cdr}_length": float("nan") for cdr in CHOTHIA_CDR_RANGES})
         result["n_scored_cdrs"] = 0.0
         seen = set()
-        for domain_id in np.unique(array.chothia_domain_id[array.chothia_domain_id >= 0]):
-            domain = array.chothia_domain_id == domain_id
-            chain_id = chain_ids[domain][0]
-            chain = array[selected & (chain_ids == chain_id)]
-            starts = get_residue_starts(chain)
-            numbers = chain.chothia_numbering[starts]
-            in_domain = chain.chothia_domain_id[starts] == domain_id
-            prefix = "H" if array.chothia_chain_type[domain][0] == "H" else "L"
+        for indices, starts, numbers, prefix in domains:
+            chain = array[indices]
             loops = {}
-            for cdr, (lo, hi) in CDR_RANGES.items():
-                if cdr.startswith(prefix) and lo in numbers[in_domain] and hi in numbers[in_domain]:
-                    loops[cdr] = np.flatnonzero(in_domain & chain.is_cdr[starts] & (numbers >= lo) & (numbers <= hi))
+            for cdr, (lo, hi) in CHOTHIA_CDR_RANGES.items():
+                if cdr.startswith(prefix) and lo in numbers and hi in numbers:
+                    loops[cdr] = np.flatnonzero(chain.is_chothia_cdr[starts[:-1]] & (numbers >= lo) & (numbers <= hi))
             if seen.intersection(loops):
                 raise ValueError(
                     "Multiple domains of the same antibody chain type found; score each antibody separately."
@@ -203,5 +196,5 @@ class CDRTorsionNaturalness(Metric):
                     score = min(0.0, (threshold - ll) / threshold) if np.isfinite(ll) else float("nan")
                     scores.append(score)
                 result[cdr] = float(np.sum(scores))
-        result["n_scored_cdrs"] = float(sum(np.isfinite(result[cdr]) for cdr in CDR_RANGES))
+        result["n_scored_cdrs"] = float(sum(np.isfinite(result[cdr]) for cdr in CHOTHIA_CDR_RANGES))
         return result

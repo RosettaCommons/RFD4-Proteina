@@ -4,4 +4,4 @@ defaults:
   - _self_
 
 batch_size: 8
-metrics_tags: [design, antibody, 3d_coordinate_conditioning, internal_coordinate_conditioning, hotspot_conditioning]
+metrics_tags: [design, antibody_refolding, antibody_developability, 3d_coordinate_conditioning, internal_coordinate_conditioning, hotspot_conditioning]

@@ -1,4 +1,10 @@
+# --- Antibody-target interface contacts ---
 antibody_contacts:
   _target_: rfproteina.metrics.antibody_metrics.AntibodyContacts
-  required_tags_any: [antibody]
+  required_tags_any: [antibody_refolding]
   contact_threshold: 7.0
+
+# --- VHH surface and sequence developability ---
+antibody_developability_scores:
+  _target_: rfproteina.metrics.antibody_metrics.AntibodyDevelopability
+  required_tags_any: [antibody_developability]

@@ -15,6 +15,7 @@ walkthroughs, start at :doc:`../concepts/workflow` instead.
    cli-options
    yaml-json
    metrics
+   antibody-metrics
    search-parameters
    output-format
    troubleshooting

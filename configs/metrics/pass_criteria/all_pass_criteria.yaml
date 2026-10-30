@@ -1,9 +1,17 @@
+defaults:
+  - antibody_design
+  - small_molecule_binding
+  - enzyme_design
+  - _self_
+
 # Pass/fail criteria evaluated against the merged design + oracle + refolding metrics dict.
 # Output key for each entry is {config_key}.pass (e.g. unconditional.pass).
 # Tags control which criteria are evaluated for each example.
-# Oracle-metric keys use the oracle config-entry name as prefix (e.g. "oracle", "oracle_ppi"),
-# so these criteria work regardless of which oracle (RF3 or AF3) is configured.
 
+# Metric prefixes refer to oracle config entries (e.g. "oracle", "oracle_ppi"),
+# not folding models; the configured provider must supply the required metrics.
+
+# --- Unconditional design ---
 unconditional:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
@@ -11,6 +19,7 @@ unconditional:
       max: 1.5
   required_tags_any: [unconditional_refolding]
 
+# --- Protein and DNA binding ---
 ppi:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
@@ -22,18 +31,8 @@ ppi:
       max: 2.5
   required_tags_any: [ppi_refolding]
 
-antibody:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  metric_thresholds:
-    oracle_ppi.min_ipae_coi:
-      max: 2.0
-    refolded_target_aligned_binder_rmsd.rmsd:
-      max: 2.0
-  required_tags_any: [antibody]
-
 dna:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  # This comes from discussion with Enisha about what designs the DNA binder design team would take to the next round for af3 recycling.
   metric_thresholds:
     oracle_dna.min_ipae_coi:
       max: 1.5
@@ -41,6 +40,7 @@ dna:
       max: 8.0
   required_tags_any: [dna_refolding]
 
+# --- Motif scaffolding ---
 motif_scaffold:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
@@ -52,80 +52,23 @@ motif_scaffold:
       max: 1.0
   required_tags_any: [motif_scaffold_refolding]
 
-# Renamed so they are logged separately
+# Internal-coordinate scaffolds share thresholds but report a separate pass rate.
 internal_coords:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds: ${metrics.pass_criteria.motif_scaffold.metric_thresholds}
   required_tags_any: [internal_coordinate_motif_scaffold_refolding]
 
-sm_binder:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  metric_thresholds:
-    oracle.min_ipae_coi:
-      max: 1.5
-    oracle.iptm_coi:
-      min: 80.0
-    refolded_backbone_rmsd.rmsd:
-      max: 1.5
-    refolded_backbone_aligned_ligand_rmsd.rmsd:
-      max: 5.0
-  required_tags_any: [sm_binder_refolding]
-
-ame:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  metric_thresholds:
-    oracle.min_ipae_coi:
-      max_exclusive: 1.5
-    refolded_backbone_rmsd.rmsd:
-      max: 2.0
-    refolded_motif_allatom_rmsd.rmsd:
-      max: 1.5
-    clash_metrics.frac_atoms_clashing_inter_residue_polymer_ligand_1p5A:
-      max: 0
-  required_tags_any: [ame_refolding]
-  prohibited_tags: [no_ligand]
-
-ame_no_ligand:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  metric_thresholds:
-    refolded_backbone_rmsd.rmsd:
-      max: 2.0
-    refolded_motif_allatom_rmsd.rmsd:
-      max: 1.5
-  required_tags_any: [ame_refolding]
-  required_tags_all: [no_ligand]
-
-disco:
-  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  metric_thresholds:
-    refolded_backbone_rmsd.rmsd:
-      max: 2.0
-    max_ligand_centroid_distance.ligand_centroid_distance:
-      max: 2.0
-  required_tags_any: [disco_refolding]
-
-# Classic monomer developability triage (half-life deliberately excluded).
+# --- General developability ---
 # Ideal SAP is often ~<20; 50 is a lenient triage bar.
 developability:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
   metric_thresholds:
-    rosetta_developability.sap_score:
+    atomworks_developability.sap_score:
       max: 50.0
-    rosetta_developability.hydrophobic_exposure_sasa:
+    atomworks_developability.hydrophobic_exposure_sasa:
       max: 1500.0
     sequence_developability.gravy:
       max: 0.1
     sequence_developability.instability_index:
       max: 40.0
   required_tags_any: [developability]
-
-# --- Reducing several metric keys into one threshold (example, commented out) ---
-# E.g. you have a multi-chain binder but only want to evaluate on the min ipae over all binder chains
-#   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-#   metric_thresholds:
-#     best_target_ipae:                # label only; output column is
-#       min_of:                        # `either_target_engaged.pass`
-#         - oracle_ppi.min_ipae_A_B
-#         - oracle_ppi.min_ipae_A_C
-#       max: 1.5
-#   required_tags_any: [ppi_refolding]

@@ -1,0 +1,58 @@
+# Antibody refolding metrics; CDR selections use North definitions.
+
+# --- Design vs holo refold: target-aligned backbone RMSDs ---
+antibody_target_aligned_cdr_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: "~is_chain_of_interest & is_protein_backbone"
+  subset_mask: "is_chain_of_interest & is_protein_backbone & is_north_cdr"
+  resolve_symmetry: []
+  aggregation: [median]
+  required_tags_any: [antibody_refolding]
+  required_tags_all: ["is_refold:untransformed"]
+
+antibody_target_aligned_backbone_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: "~is_chain_of_interest & is_protein_backbone"
+  subset_mask: "is_chain_of_interest & is_protein_backbone"
+  resolve_symmetry: []
+  aggregation: [median]
+  required_tags_any: [antibody_refolding]
+  required_tags_all: ["is_refold:untransformed"]
+
+# --- CDR confidence: holo and apo ---
+antibody_holo_cdr_confidence:
+  _target_: rfproteina.metrics.antibody_metrics.AntibodyCDRConfidence
+  required_tags_any: [antibody_refolding]
+  required_tags_all: ["is_refold:oracle_ppi"]
+
+antibody_apo_cdr_confidence:
+  _target_: rfproteina.metrics.antibody_metrics.AntibodyCDRConfidence
+  required_tags_any: [antibody_developability]
+  required_tags_all: ["is_refold:oracle_apo.apo"]
+
+# --- Apo/holo consistency: compare refolds ---
+antibody_apo_holo_cdr_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: "is_chain_of_interest & is_protein_backbone & ~is_north_cdr"
+  subset_mask: "is_chain_of_interest & is_protein_backbone & is_north_cdr"
+  restrict_to_common_atoms: true
+  resolve_symmetry: []
+  aggregation: [median]
+  input_kwarg_names:
+    ground_truth_atom_array: refold.oracle_apo.apo
+    predicted_atom_array: refold.oracle_ppi
+  required_tags_any: [antibody_developability]
+  required_tags_all: ["is_refold:oracle_apo.apo", "exists_refold:oracle_ppi"]
+
+antibody_apo_holo_rmsd:
+  _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
+  align_mask: "is_chain_of_interest & is_protein_backbone"
+  subset_mask: "is_chain_of_interest & is_protein_backbone"
+  restrict_to_common_atoms: true
+  resolve_symmetry: []
+  aggregation: [median]
+  input_kwarg_names:
+    ground_truth_atom_array: refold.oracle_apo.apo
+    predicted_atom_array: refold.oracle_ppi
+  required_tags_any: [antibody_developability]
+  required_tags_all: ["is_refold:oracle_apo.apo", "exists_refold:oracle_ppi"]

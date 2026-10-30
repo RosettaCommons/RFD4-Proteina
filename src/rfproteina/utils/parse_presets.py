@@ -68,6 +68,7 @@ ANNOTATED_CIF: ParseConfig = DISTILLATION.replace(
 STANDARD_ANNOTATIONS_ONLY: ParseConfig = DISTILLATION.replace(
     remove_waters=False,
     remove_ccds=(),
+    extra_fields=("b_factor",),
 )
 """Minimal config that loads StandardAnnotations with minimal intervention.
 

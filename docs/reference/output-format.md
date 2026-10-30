@@ -163,7 +163,7 @@ they are never something you add to `metrics_tags` yourself:
   running. You need it wherever a metric's `input_kwarg_names` reads a *different* refold than the one
   it is being scored on.
 
-The [default refolding metrics](metrics.md#refolding-metrics-after-the-oracle) all carry
+The [default refolding metrics](metrics.md#refolding-metrics) all carry
 `required_tags_all: ["is_refold:untransformed"]`, so by default none of them score a transformed
 refold — a transform can change the shape of what is being compared. A metric written for a
 transformed refold instead requires that refold's own address, as `is_refold:apo`, plus
@@ -197,7 +197,7 @@ what to build, these record what it actually built and where each piece came fro
 
 Read any of these off a parsed structure the same way, for example `SA_CRDSRC.mask(atom_array)` or
 `SA_SRC.annotation(atom_array)`. They are exactly the fields the [motif and unindexed RMSD
-metrics](metrics.md#design-metrics-inline-and-before-refolding) already consume — that is the whole
+metrics](metrics.md#design-metrics) already consume — that is the whole
 point of turning on `design_motif_allatom_rmsd` and `design_unindexed_motif_allatom_rmsd` instead of
 reading the CIF by hand; the pipeline does the bookkeeping for you. Generated CIFs already carry
 saved conditioning targets onto the matched atoms, and chaining a refinement run should preserve

@@ -1,6 +1,6 @@
 """Sample separated target hotspots around the centroid of annotated seed atoms."""
 
-from typing import Any, Literal
+from typing import Literal
 
 import numpy as np
 from atomworks.ml.transforms.base import Transform
@@ -10,22 +10,13 @@ from rfproteina.conditions import C_HOT
 
 
 class SampleNearbyHotspots(Transform):
-    """Replace seed hotspots with exposed atoms on their shared target chain.
+    """Sample 2-6 exposed atoms on distinct target residues near the seed centroid.
 
-    The patch is centered on the seed atoms' centroid; all seed residues are
-    excluded. Oval mode uses a randomly oriented ellipsoid along a PCA-estimated
-    local surface plane. Selected atoms occupy distinct residues. Sampling uses
-    NumPy's seeded RNG and copies the structure before changing its hotspots.
-
-    Args:
-        min_distance: Minimum pairwise separation in Angstroms.
-        patch_diameter: Sphere diameter, or oval minor diameters, in Angstroms.
-        min_atom_sasa: Minimum atom SASA in square Angstroms, with a 1.4 A probe.
-        num_hotspots: Allowed counts, sampled uniformly per example.
-        shape: Spherical patch or surface-aligned oval.
-        major_diameter: Oval major diameter in Angstroms.
-        orientation_attempts: Maximum random oval orientations to try before
-            raising if the requested count cannot fit. Counts are never reduced.
+    Excludes seed residues and enforces ``min_distance`` separation (Angstroms).
+    ``patch_diameter`` sets the sphere diameter or oval minor diameters;
+    ``major_diameter`` sets the oval's long axis in a random local surface direction.
+    ``min_atom_sasa`` is in square Angstroms (1.4 A probe). Uses NumPy's seeded RNG,
+    copies the input, and raises if the sampled count cannot fit; never reduces it.
     """
 
     def __init__(
@@ -62,8 +53,7 @@ class SampleNearbyHotspots(Transform):
             if needed == 0:
                 return []
             for position in range(len(available) - needed + 1):
-                first = int(available[position])
-                rest = available[position + 1 :]
+                first, rest = int(available[position]), available[position + 1 :]
                 selected = search(rest[compatible[first, rest]], needed - 1)
                 if selected is not None:
                     return [first, *selected]
@@ -71,7 +61,7 @@ class SampleNearbyHotspots(Transform):
 
         return search(np.random.permutation(len(compatible)), count)
 
-    def forward(self, data: dict[str, Any]) -> dict[str, Any]:
+    def forward(self, data: dict) -> dict:
         """Resample hotspots around one or more seeds on a single target chain."""
         array = data["atom_array"]
         seeds = C_HOT.mask(array, default="generate")
@@ -83,12 +73,12 @@ class SampleNearbyHotspots(Transform):
         starts = get_residue_starts(array, add_exclusive_stop=True)
         residues = np.repeat(np.arange(len(starts) - 1), np.diff(starts))
         offsets = array.coord.astype(np.float64) - array.coord[seeds].astype(np.float64).mean(axis=0)
-        radius = (self.major_diameter if self.shape == "oval" else self.patch_diameter) / 2
-        eligible = target & ~np.isin(residues, residues[seeds]) & (np.linalg.norm(offsets, axis=1) <= radius)
+        radii = np.full(3, self.patch_diameter / 2)
+        if self.shape == "oval":
+            radii[0] = self.major_diameter / 2
+        eligible = target & ~np.isin(residues, residues[seeds]) & (np.linalg.norm(offsets, axis=1) <= radii[0])
         if self.min_atom_sasa > 0:
-            exposed = np.zeros(len(array), dtype=bool)
-            exposed[target] = sasa(array[target], probe_radius=1.4) >= self.min_atom_sasa
-            eligible &= exposed
+            eligible[target] &= sasa(array[target], probe_radius=1.4) >= self.min_atom_sasa
         candidates = np.flatnonzero(eligible)
         xyz = offsets[candidates]
         count = int(np.random.choice(self.num_hotspots))
@@ -105,7 +95,7 @@ class SampleNearbyHotspots(Transform):
                 angle = np.random.uniform(0, 2 * np.pi)
                 major = axes[:, 1:] @ [np.cos(angle), np.sin(angle)]
                 frame = np.column_stack([major, np.cross(axes[:, 0], major), axes[:, 0]])
-                scaled = (xyz @ frame) / (np.array([self.major_diameter, self.patch_diameter, self.patch_diameter]) / 2)
+                scaled = (xyz @ frame) / radii
                 inside = np.flatnonzero(np.sum(scaled**2, axis=1) <= 1)
             selected = self._sample_clique(compatible[np.ix_(inside, inside)], count)
             if selected is not None:

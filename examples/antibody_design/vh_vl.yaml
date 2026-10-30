@@ -1,0 +1,24 @@
+defaults:
+  - common
+  - _self_
+
+hydra:
+  searchpath:
+    - file://${oc.env:PROJECT_ROOT}/configs
+
+inputs: ${oc.env:PROJECT_ROOT}/examples/antibody_design/structures/vh_vl
+run_name_: antibody_vh_vl
+
+# The developability checks are calibrated for single-domain VHHs and score one
+# chain of interest, so they are not meaningful for a paired Fv. Binding metrics
+# and the conditioning checks carry over unchanged.
+metrics_tags: [design, antibody_refolding, 3d_coordinate_conditioning, internal_coordinate_conditioning, hotspot_conditioning]
+
+generation:
+  dataset:
+    sampling_transforms:
+      - _target_: rfproteina.transforms.hotspot_sampling.SampleNearbyHotspots
+        num_hotspots: [2, 3]
+        min_distance: 5.0
+        patch_diameter: 15.0
+        min_atom_sasa: 1.0

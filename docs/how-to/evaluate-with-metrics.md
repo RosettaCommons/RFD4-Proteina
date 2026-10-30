@@ -1,56 +1,27 @@
 # Evaluate with metrics
 
-You should not have to hand parse output CIFs. You *can* reconstruct the unindexed mapping, or work
-out which chain an inserted region came from, or measure how closely a design followed its
-coordinate conditioning, all by reading raw CIF fields. Do that only when nothing else works.
-Turn on the metric that already computes it and let the pipeline run it. Metrics that run in the
-pipeline can also drive [reward guided search](../concepts/search.md), which finds good designs on far less
-compute than generating everything and filtering afterwards.
+Use the built-in metrics instead of parsing output CIFs by hand. They can check
+whether a motif was inserted correctly, measure agreement with conditioning,
+and compare a design with a predicted structure.
 
-For what each metric family actually measures, how binder and target selections resolve, and where
-in a run a metric can stop further work, see [Metrics](../concepts/metrics.md). The
-[metrics reference](../reference/metrics.md#every-metric-criteria-and-filter-that-ships) lists all
-of them, what each outputs, and the tag that turns it on. For the refolding family specifically — the
-oracle, the AF3/OF3 setup it needs, and how a design can carry more than one refold — see the
-[refolding guide](refolding.md).
+- **Design metrics** check the generated structure directly, including clashes,
+  sequence constraints, hotspots and motif coordinates.
+- **Refolding metrics** compare designs with predictions from a separate folding
+  model and report confidence and structural agreement.
+- **Pass criteria** combine metric thresholds into a pass/fail result.
+- **Pre-refolding filters** skip costly predictions when a design fails an earlier
+  check. Rejected designs still count as failed attempts in pass rates.
 
-## What the default metrics configuration registers
-
-With its default AF3 oracle group, `configs/metrics/all_metrics.yaml` registers **53 metric,
-oracle, pass-criterion and filter entries**. Registered entries do not all run on every design:
-most are gated by `metrics_tags`, and refolding metrics also depend on which refolds are available.
-Select tags on the command line:
-
-```bash
-rfd4-generate \
-    inputs=design.json num_replicates=50 metrics_tags='[unconditional_refolding]'
-```
-
-| Category | Count | Config |
-| --- | --- | --- |
-| Design and developability metrics, run inline before refolding | 22 | `configs/metrics/inline_metrics/design_metrics.yaml` and `developability_metrics.yaml` |
-| Antibody contact metrics | 1 | `configs/metrics/inline_metrics/antibody_metrics.yaml` |
-| Structure prediction metrics | 1 | `configs/metrics/inline_metrics/structure_prediction_metrics.yaml` |
-| Refolding metrics, design against refold or refold against refold | 8 | `configs/metrics/refolding_metrics/all_refolding_metrics.yaml` |
-| Refolding oracles, the default AF3 variants | 4 | `configs/metrics/refolding_oracles/af3.yaml` |
-| Pass criteria | 11 | `configs/metrics/pass_criteria/all_pass_criteria.yaml` |
-| Pre-oracle filters, which skip the oracle when a cheap check fails | 6 | `configs/metrics/pre_oracle_filters/all_pre_oracle_filters.yaml` |
-
-Selecting another oracle group or adding custom metrics changes this inventory. CDR torsion
-naturalness is opt-in through `inline_metrics/all_inline_metrics_with_cdr_torsion.yaml`; it is not
-part of the default count.
-
-Additional metrics are available in the codebase and opt-in config groups, including TMol interface
-energies and atom-pair distance constraints. Enable an existing metric with a YAML entry, as in the
-[worked example](advanced/custom-metrics.md#worked-example-an-existing-metric-your-own-config).
-See [Ready-made but opt-in](../reference/metrics.md#ready-made-but-opt-in).
-
-Write a new `Metric` subclass only when none of the existing metrics cover what you need.
-See [Writing your own](advanced/custom-metrics.md#writing-your-own).
+Metrics can also guide [reward-guided search](../concepts/search.md), rather than
+only filtering finished designs. See [Metrics](../concepts/metrics.md) for how
+these checks fit together and the [metrics reference](../reference/metrics.md)
+for all tags, output columns and thresholds.
 
 ## Running metrics inline
 
-:::{note}
+:::{admonition} Refolding setup
+:class: dropdown
+
 Refolding uses the configured oracle: AF3 by default, or OpenFold3/AlphaFold 2 through
 `metrics/refolding_oracles=of3` or `metrics/refolding_oracles=af2`. Each needs its own runtime
 and weights; see [oracle setup](refolding.md). Search only needs an oracle when a configured reward
@@ -62,11 +33,8 @@ Pass `metrics_tags` during inference and metrics get computed right after each d
 under `<out_dir>/inference_metrics/` in `per_example_metrics.csv` (or a per-job CSV for
 SLURM arrays), while structures go under `<out_dir>/inference_samples/`.
 
-The [metrics reference](../reference/metrics.md) covers every metric that ships enabled, what it
-outputs, and which tag turns it on. See the [custom metrics guide](advanced/custom-metrics.md) for
-how to layer your own config on top of an existing metric.
-
-`metrics_tags` takes a Hydra style list, so pass it bracketed and quoted.
+Pass `metrics_tags` as a bracketed, quoted list. Only checks matching the supplied
+tags run; including a metric in the configuration does not enable it by itself.
 
 ```bash
 # Single tag
@@ -78,27 +46,73 @@ rfd4-generate \
     inputs=design.json num_replicates=50 metrics_tags='[ppi_refolding,hotspot_conditioning]'
 ```
 
+:::{admonition} Common metric tags
+:class: dropdown
+
 | Tag | Activates |
 | --- | --- |
-| `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD for unconditional generation |
-| `ppi_refolding` | AF3 refolding, target templating and interface metrics for protein binder design |
-| `antibody` | Antibody contacts, templated refolding and antibody pass criteria; CDR torsions require the opt-in config above |
-| `motif_scaffold_refolding` | AF3 refolding plus motif RMSD for motif scaffolding and enzyme design |
-| `sm_binder_refolding` | AF3 refolding plus binding metrics for small molecule binder design |
-| `ame_refolding` | AF3 refolding for enzyme (MCSA) active site benchmarks |
+| `unconditional_refolding` | Refolding plus pLDDT and scRMSD for unconditional generation |
+| `ppi_refolding` | Refolding, target templating and interface metrics for protein binder design |
+| `dna_refolding` | Refolding and interface metrics for DNA binder design |
+| `antibody_refolding` | Antibody contacts, templated refolding, holo North-CDR pLDDT and antibody pass criteria; CDR torsion scores are opt-in |
+| `antibody_developability` | VHH SAP/charge/cysteine checks, apo and holo refolds, CDR confidence and apo/holo RMSDs, plus a combined pass criterion |
+| `motif_scaffold_refolding` | Refolding plus motif RMSD for motif scaffolding and enzyme design |
+| `sm_binder_refolding` | Refolding plus binding metrics for small molecule binder design |
+| `ame_refolding` | Refolding for enzyme (MCSA) active site benchmarks |
 | `hotspot_conditioning` | Hotspot obedience metrics, needs hotspot input |
 | `3d_coordinate_conditioning` | Motif coordinate RMSD metrics |
 | `rasa_conditioning` | RASA adherence metrics |
 | `interchain_interactions` | Interchain interaction adherence and counts, covering H-bonds, π-stacking, π-cation, salt bridges, hydrophobic contacts and metal coordination |
 
-A metric that needs a tag gets skipped silently when the tag is absent. The table above is a
-shortlist. The [metrics reference](../reference/metrics.md) covers everything that ships enabled
-plus every metric class that is ready made but opt in.
+This is a shortlist. The [metrics reference](../reference/metrics.md) also covers
+optional metrics and how to enable CDR torsion scores.
+:::
 
 ## Running metrics offline on a folder of structures
 
-See [Running metrics offline on a folder of structures](advanced/offline-metrics.md) for scoring
-structures you already have with `evaluate.py`, `task_csv`, and concatenating multi-job results.
+To score structures you already have:
+
+```bash
+rfd4-evaluate \
+    inputs=./runs/designs/inference_samples \
+    metrics_tags='[ppi_refolding,hotspot_conditioning]' \
+    out_dir=./runs/evaluation
+```
+
+Results go under `<out_dir>/evaluation_metrics/`. See
+[offline evaluation](advanced/offline-metrics.md) for assigning tasks with
+`task_csv`, and [multi-job runs](advanced/multi-job-runs.md) for combining results.
+
+## VHH developability
+
+To check both antibody binding and VHH developability, use:
+
+```bash
+metrics_tags='[antibody_refolding,antibody_developability]'
+```
+
+- **`antibody_refolding`** checks binding, target-aligned CDR and whole-binder RMSDs, and
+  CDR confidence in the target-bound (holo) refold. Binding passes are reported
+  as `antibody.pass`; holo CDR confidence is reported without a pass threshold.
+- **`antibody_developability`** checks surface and sequence properties and
+  compares the VHH refolded alone (apo) with its holo refold. It runs both refolds
+  and reports `antibody_developability.pass` separately from binding.
+- These developability checks use the default AF3 configuration and require
+  [refolding setup](refolding.md). Missing or NaN scores cannot pass.
+
+See [Antibody metrics](../reference/antibody-metrics.md) for the passing
+thresholds, score definitions and output columns.
+
+For campaign advice, see the
+[antibody design recommendations](https://github.com/RosettaCommons/RFD4-Proteina/blob/main/examples/antibody_design/README.md).
+
+## Custom metrics and thresholds
+
+Start with an [existing metric](../reference/metrics.md#optional-metrics) before
+writing a new one. Optional checks include interface energies and atom-pair
+distance constraints. The [custom metrics guide](advanced/custom-metrics.md)
+shows how to enable them, change pass thresholds, combine scores and add a new
+metric when needed.
 
 ```{toctree}
 :hidden:

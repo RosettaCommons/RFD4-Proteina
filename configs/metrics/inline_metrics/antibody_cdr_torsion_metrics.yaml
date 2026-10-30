@@ -3,4 +3,4 @@
 #   metrics/inline_metrics=all_inline_metrics_with_cdr_torsion
 cdr_torsion_naturalness:
   _target_: rfproteina.metrics.cdr_torsions.CDRTorsionNaturalness
-  required_tags_any: [antibody]
+  required_tags_any: [antibody_refolding]

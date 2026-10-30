@@ -59,7 +59,7 @@ rfd4-generate \
 | --- | --- |
 | `unconditional_refolding` | AF3 refolding plus pLDDT and scRMSD for unconditional generation |
 | `ppi_refolding` | AF3 refolding, target templating and interface metrics for protein binder design |
-| `antibody` | Antibody contacts, templated refolding and antibody pass criteria; CDR torsions require the opt-in config described in [Running metrics inline](evaluate-with-metrics.md) |
+| `antibody_refolding` | Antibody contacts, templated refolding and antibody pass criteria; CDR torsions require the opt-in config described in [Running metrics inline](evaluate-with-metrics.md) |
 | `dna_refolding` | AF3 refolding, DNA templating and interface metrics for DNA binder design |
 | `motif_scaffold_refolding` | AF3 refolding plus motif RMSD for motif scaffolding and enzyme design |
 | `internal_coordinate_motif_scaffold_refolding` | Same as above, for internal coordinate conditioned motifs |
