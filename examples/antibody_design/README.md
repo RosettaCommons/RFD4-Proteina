@@ -59,3 +59,28 @@ paired-Fv designs on binding and the CDR/backbone RMSDs above.
 
 See [Antibody metrics](../../docs/reference/antibody-metrics.md) for score
 definitions, passing thresholds and output columns.
+
+## Choosing the checkpoint
+
+These configs inherit the checkpoint from [configs/inference.yaml](../../configs/inference.yaml),
+which selects the general release on the Hugging Face Hub. That release is the
+starting point and works for every config here.
+
+An antibody fine-tune is also available: a LoRA fine-tune on a 33% general
+interface / 67% antibody PDB mixture, merged into its base and exported as EMA
+weights. It is a separate lineage from the general release — it was fine-tuned on
+a pretrained base trained without TED dimers — so it is a self-contained
+checkpoint rather than an adapter, and it cannot be layered onto the released
+base. Point at a local copy with:
+
+```bash
+rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name vhh \
+  hf_ckpt_path=null ckpt_path=/path/to/checkpoint_dir ckpt_name=<checkpoint>.ckpt \
+  num_replicates=1 batch_size=1 out_dir=./runs/vhh_pilot
+```
+
+Both `ckpt_path` and `ckpt_name` are required when `hf_ckpt_path=null`. Keep the
+matching autoencoder: this checkpoint pairs with the 2026-10-19 release AE, which
+`inference.yaml` already selects. The checkpoint carries
+`nn.attention_type=torch` from LoRA training; the merged weights do not depend on
+it, so override `nn.attention_type` if you want a fused backend.
