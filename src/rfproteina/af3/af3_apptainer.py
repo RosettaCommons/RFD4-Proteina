@@ -233,7 +233,15 @@ def build_native_fold_command(
         batch_script = _DEFAULT_BATCH_SCRIPT
     batch_path = Path(batch_script).resolve()
 
-    python_path = Path(python).expanduser()
+    # NB: deliberately not ``.resolve()``. A virtualenv's ``bin/python`` is a
+    # symlink to the base interpreter, and a venv is only active when its own
+    # path is the one executed (that is how ``sys.prefix`` is derived, via the
+    # adjacent ``pyvenv.cfg``). Resolving the symlink launches the base
+    # interpreter instead, silently dropping the venv's site-packages and
+    # failing with ``ModuleNotFoundError: No module named 'alphafold3'``.
+    # ``abspath`` normalises without following symlinks. ``is_file()`` does
+    # follow them, so a dangling link is still rejected here.
+    python_path = Path(os.path.abspath(Path(python).expanduser()))
     if not python_path.is_file():
         raise OSError(f"AF3_PYTHON does not point at an interpreter: {python!r}")
 
@@ -243,7 +251,7 @@ def build_native_fold_command(
         "XLA_PYTHON_CLIENT_PREALLOCATE=false",
         "JAX_PLATFORMS=cuda",
         f"AF3_MODEL_DIR={weights}",
-        str(python_path.resolve()),
+        str(python_path),
         str(batch_path),
         *_worker_args(
             manifest_path,
