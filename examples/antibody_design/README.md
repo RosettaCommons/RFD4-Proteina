@@ -75,12 +75,21 @@ base. Point at a local copy with:
 
 ```bash
 rfd4-generate --config-path "$PWD/examples/antibody_design" --config-name vhh \
-  hf_ckpt_path=null ckpt_path=/path/to/checkpoint_dir ckpt_name=<checkpoint>.ckpt \
+  hf_ckpt_path=null ckpt_path=/path/to/checkpoint_dir \
+  ckpt_name=rfd4-proteina-antibody-2026-10-30-ema.ckpt \
   num_replicates=1 batch_size=1 out_dir=./runs/vhh_pilot
 ```
 
-Both `ckpt_path` and `ckpt_name` are required when `hf_ckpt_path=null`. Keep the
-matching autoencoder: this checkpoint pairs with the 2026-10-19 release AE, which
-`inference.yaml` already selects. The checkpoint carries
+Both `ckpt_path` and `ckpt_name` are required when `hf_ckpt_path=null`.
+
+**Keep the `-ema.ckpt` suffix.** Inference needs EMA weights, and the loader
+picks them by filename: a name ending in `-ema.ckpt` is read as EMA weights
+directly, while any other name is searched for the `SimpleEMA` training state.
+Released exports carry EMA weights only — that state has been stripped — so
+renaming one to drop the suffix makes it fail to load rather than silently
+loading the wrong weights.
+
+Keep the matching autoencoder: this checkpoint pairs with the 2026-10-19 release
+AE, which `inference.yaml` already selects. The checkpoint carries
 `nn.attention_type=torch` from LoRA training; the merged weights do not depend on
 it, so override `nn.attention_type` if you want a fused backend.
