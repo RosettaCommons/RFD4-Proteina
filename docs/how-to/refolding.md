@@ -59,7 +59,7 @@ Steps 2 and 3 are the only oracle-specific ones, and neither needs Docker, Appta
 ```bash
 uv venv .venv-af3 --python 3.12
 uv pip install --python .venv-af3 \
-  'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/vX.Y.Z/alphafold3_open-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl'
+  'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/v3.0.5.post1/alphafold3_open-3.0.5.post1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl'
 .venv-af3/bin/build_data        # generates the CCD tables the package loads at import
 ./scripts/download_assets.sh "$DATA_PATH" --native-of3   # weights only, ~1.4 GB, no image
 ```
