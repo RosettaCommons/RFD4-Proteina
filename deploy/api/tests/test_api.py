@@ -314,9 +314,11 @@ def test_status_for_code_is_total_over_error_code() -> None:
 
 def test_info_reports_limits_and_tasks_before_the_model_is_ready() -> None:
     """/v1/info is how a client discovers limits, so it must answer during load."""
-    with TestClient(api.app) as client:
-        assert client.get("/health/ready").status_code == 503
-        body = client.get("/v1/info").raise_for_status().json()
+    # No lifespan: /v1/info must answer without a worker, and starting one here
+    # would import the real model stack just to read four constants.
+    client = TestClient(api.app)
+    assert client.get("/health/ready").status_code == 503
+    body = client.get("/v1/info").raise_for_status().json()
     assert body["limits"] == {
         "max_request_bytes": api.MAX_REQUEST_BYTES,
         "max_tokens": api.MAX_TOKENS,
@@ -337,16 +339,16 @@ def test_max_tokens_default_matches_the_repository_compile_buckets() -> None:
 def test_every_failure_uses_the_declared_error_body(tmp_path: Path) -> None:
     """Including framework validation and unknown routes, not just raised ApiErrors."""
     api.store = tmp_path
-    with TestClient(api.app) as client:
-        for response in (
-            client.get("/v1/designs/not-an-id"),
-            client.get("/no/such/route"),
-            client.post("/v1/designs", files={"file": ("x.cif", b"data_x")}, data={"num_replicates": 99}),
-        ):
-            assert response.status_code >= 400
-            error = response.json()["error"]
-            assert set(error) == {"code", "message", "details"}
-            assert error["code"] in set(ErrorCode)
+    client = TestClient(api.app)  # no lifespan: none of these paths need a worker
+    for response in (
+        client.get("/v1/designs/not-an-id"),
+        client.get("/no/such/route"),
+        client.post("/v1/designs", files={"file": ("x.cif", b"data_x")}, data={"num_replicates": 99}),
+    ):
+        assert response.status_code >= 400
+        error = response.json()["error"]
+        assert set(error) == {"code", "message", "details"}
+        assert error["code"] in set(ErrorCode)
 
 
 @pytest.mark.parametrize(
