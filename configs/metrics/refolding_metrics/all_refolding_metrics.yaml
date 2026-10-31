@@ -34,7 +34,10 @@ refolded_backbone_rmsd:
 refolded_target_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
   # Unfixed DNA is generated context: align on its design coordinates too.
-  align_mask: "~is_chain_of_interest & (sa_mask('C_CRD') | is_dna)"
+  # `SA_CRDSRC` flags atoms whose coordinates came from conditioning of either kind, so a target
+  # given as internal coordinates (`C_CRDGRP`, the PPI default) aligns on the same atoms an
+  # absolute one does; `sa_mask('C_CRD')` alone selects nothing for such a target.
+  align_mask: "~is_chain_of_interest & (sa_mask('C_CRD') | sa_mask('SA_CRDSRC') | is_dna)"
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
@@ -43,7 +46,9 @@ refolded_target_aligned_binder_rmsd:
 
 refolded_target_backbone_aligned_binder_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: "~is_chain_of_interest & sa_mask('C_CRD') & is_protein_backbone"
+  # ... `SA_CRDSRC` for the same reason as above: this feeds the `ppi` pass criterion, and the
+  # recommended PPI input conditions its target with `C_CRDGRP` rather than `C_CRD`.
+  align_mask: "~is_chain_of_interest & (sa_mask('C_CRD') | sa_mask('SA_CRDSRC')) & is_protein_backbone"
   subset_mask: is_chain_of_interest & is_protein
   metric_type: rmsd
   aggregation: [median]
