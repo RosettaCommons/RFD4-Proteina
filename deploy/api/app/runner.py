@@ -33,7 +33,14 @@ class Runner:
         self.device = torch.cuda.get_device_name(0)
         self.omega = OmegaConf
 
-    def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int]) -> list[Path]:
+    def generate(
+        self,
+        input_path: Path,
+        output_dir: Path,
+        settings: dict[str, int],
+        max_tokens: int,
+        max_samples: int,
+    ) -> list[Path]:
         """Keep upstream bucketing/cache behavior and isolate each request's outputs."""
         from rfproteina.generate import SampleLimitError, TokenLimitError, run_generation
 
@@ -45,7 +52,7 @@ class Runner:
         # Upstream exits if a results CSV exists in out_dir.parent. Each request
         # owns that parent, so another request cannot trigger its skip/exit path.
         try:
-            run_generation(cfg, model=self.model, max_tokens=512, max_samples=4)
+            run_generation(cfg, model=self.model, max_tokens=max_tokens, max_samples=max_samples)
         except TokenLimitError as exc:
             raise ValueError(f"This API accepts at most {exc.max_tokens} tokens per design") from exc
         except SampleLimitError as exc:

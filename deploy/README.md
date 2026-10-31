@@ -104,17 +104,21 @@ Poll until `status` is `succeeded`, then download an artifact using its returned
 To exercise two real designs, downloads, token limits, and recovery:
 
 ```bash
-python3 -m pip install httpx
-python3 deploy/api/smoke_test.py
+python3 -m pip install httpx pytest
+RUN_GPU_API_TESTS=1 API_URL=http://localhost:8000 \
+  PYTHONPATH=deploy/api pytest deploy/api/tests/test_gpu.py -m gpu
 ```
 
-Downloads go to a new temporary directory printed by the script; use `--out /path/to/results`
-to choose a directory and `API_URL` to test another endpoint. The same check is available to CI:
-`RUN_GPU_API_TESTS=1 PYTHONPATH=deploy/api pytest deploy/api/tests/test_gpu.py -m gpu`.
-This integration check complements the fake-runner HTTP tests; it requires a running GPU server.
+Set `API_URL` to test another endpoint. Downloaded artifacts and status JSON land in
+pytest's `tmp_path` for the run. This check needs a live GPU server and complements the
+fake-runner HTTP tests, which need neither weights nor a GPU.
 The server loads checkpoints once per startup and runs one design request at a time.
-It accepts eight waiting requests, 1–4 replicates, annotated mmCIF uploads up to
-4 MiB, and at most 512 transformed tokens. Upload admission checks CIF syntax and
+Limits are service policy rather than model limits, so they are configurable and
+reported to clients by `GET /v1/info` instead of being hard-coded: `RFD4_QUEUE_DEPTH`
+(8 waiting requests), `RFD4_MAX_REPLICATES` (4), `RFD4_MAX_REQUEST_BYTES` (32 MiB) and
+`RFD4_MAX_TOKENS` (1024). The token default is the repository's own ceiling —
+`configs/inference.yaml` compiles length buckets up to 1024, so a higher value would
+leave the compiled shapes behind. Upload admission checks CIF syntax and
 required coordinate columns; it does not guarantee valid design annotations. Upstream
 preprocessing and token checks run asynchronously, before DataLoader construction;
 semantic errors and oversized designs are accepted with 202 and later report `failed`. It uses the upstream default medium
@@ -142,6 +146,47 @@ Malformed statuses and mismatched request IDs are logged and skipped; they do no
 healthy requests from being recovered. Skipped files are retained for operator inspection.
 Manage disk retention yourself. The service has no built-in authentication;
 keep it internal or add authenticated HTTPS at your ingress before remote access.
+
+## Request vocabulary and errors
+
+The task names, error codes and status mapping match the downstream RFD4-Proteina
+service, so a client written against one handles the other without a translation
+table. `GET /v1/info` reports the vocabulary and the limits, and answers while the
+model is still loading.
+
+`task` is optional and may be any of `antibody_design`, `enzyme_design`,
+`generation`, `motif_scaffolding` or `small_molecule_binder`. It records the sampler
+mode; what is designed comes from the conditioning in the CIF either way.
+`partial_diffusion` and `inverse_folding` are **refused** with 400: both change the
+sampler call rather than the conditioning, and this sample passes neither argument,
+so accepting them would run an ordinary trajectory and return 200 for a design that
+was not requested.
+
+Every failure returns the same body:
+
+```json
+{"error": {"code": "service_busy", "message": "No free worker; route elsewhere or retry later.", "details": []}}
+```
+
+| code | status | |
+|---|---|---|
+| `schema_violation`, `invalid_input` | 422 | malformed request or unreadable CIF |
+| `invalid_request` | 400 | valid name, unsupported here |
+| `request_too_large`, `out_of_memory` | 413 | shrink the input or the replicate count |
+| `model_unavailable`, `service_busy` | 503 | not serving yet, or no free worker |
+| `not_found`, `conflict` | 404, 409 | unknown request, or results not ready |
+| `internal_error` | 500 | |
+
+Two of those look wrong and are not. `service_busy` is 503 rather than 429 because a
+full queue means this replica has no free worker, not that the caller is sending too
+fast — a load balancer should route elsewhere rather than ask the client to back off.
+`out_of_memory` is a 4xx because retrying the same job exhausts the same GPU.
+
+**One deliberate divergence:** submission here is asynchronous (202, poll, download),
+while the downstream service is a single synchronous POST with no job id. That service
+sits behind a gateway that supplies long-poll headers; this sample does not, and its
+first request for a new shape can take minutes to compile. `GET /v1/info` reports
+`"submission": "asynchronous"` so a client can tell the two apart.
 
 ## Test and cleanup
 

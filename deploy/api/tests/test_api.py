@@ -3,6 +3,7 @@
 import asyncio
 import json
 import queue
+import re
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -13,7 +14,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from app import api, runner
-from fastapi import HTTPException
+from app.errors import STATUS_FOR_CODE, ApiError, ErrorCode
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
@@ -51,7 +52,7 @@ def test_resident_worker_serializes_requests_and_persists_results(tmp_path: Path
         def __init__(self):
             type(self).instances += 1
 
-        def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int]) -> None:
+        def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int], *limits: int) -> None:
             cls = type(self)
             cls.active += 1
             cls.maximum = max(cls.maximum, cls.active)
@@ -68,7 +69,10 @@ def test_resident_worker_serializes_requests_and_persists_results(tmp_path: Path
     with TestClient(api.app) as client:
         wait_for(lambda: client.get("/health/ready").status_code == 200)
         assert client.post("/v1/designs", files={"file": ("bad.cif", b"bad")}).status_code == 422
-        assert client.post("/v1/designs", files={"file": ("big.cif", b"x" * (4 * 1024 * 1024 + 1))}).status_code == 413
+        oversized = b"x" * (api.MAX_REQUEST_BYTES + 1)
+        rejected = client.post("/v1/designs", files={"file": ("big.cif", oversized)})
+        assert rejected.status_code == 413
+        assert rejected.json()["error"]["code"] == "request_too_large"
         assert (
             client.post(
                 "/v1/designs",
@@ -138,7 +142,7 @@ def test_queue_applies_backpressure(tmp_path: Path, monkeypatch: MonkeyPatch) ->
         def __init__(self):
             pass
 
-        def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int]) -> None:
+        def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int], *limits: int) -> None:
             started.set()
             assert release.wait(timeout=5)
             output_dir.mkdir(parents=True)
@@ -158,7 +162,8 @@ def test_queue_applies_backpressure(tmp_path: Path, monkeypatch: MonkeyPatch) ->
         try:
             accepted = [client.post("/v1/designs", files=files) for _ in range(8)]
             assert all(response.status_code == 202 for response in accepted)
-            assert client.post("/v1/designs", files=files).status_code == 429
+            busy = client.post("/v1/designs", files=files)
+            assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
         finally:
             release.set()
         ids = [first.json()["id"], *[response.json()["id"] for response in accepted]]
@@ -187,9 +192,9 @@ def test_artifact_path_escape_is_rejected(tmp_path: Path) -> None:
     api.store = tmp_path
     request_id = "b" * 32
     api.save_status(request_id, {"id": request_id, "status": "succeeded", "artifacts": ["../private.txt"]})
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ApiError) as exc:
         api.artifact(request_id, "../private.txt")
-    assert exc.value.status_code == 404
+    assert exc.value.status == 404 and exc.value.code == ErrorCode.NOT_FOUND
 
 
 def test_slow_large_cif_admission_does_not_block_health(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -277,7 +282,8 @@ def test_full_queue_rejects_without_parsing_or_admission(monkeypatch: MonkeyPatc
     monkeypatch.setattr(api, "admit_request", admit)
     monkeypatch.setattr(api.CIFFile, "read", parse)
     client = TestClient(api.app)
-    assert client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}).status_code == 429
+    busy = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)})
+    assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
     admit.assert_not_called()
     parse.assert_not_called()
 
@@ -294,5 +300,83 @@ def test_locked_queue_check_handles_queue_filling_during_parse(tmp_path: Path, m
 
     monkeypatch.setattr(api.CIFFile, "read", fill_queue_during_parse)
     client = TestClient(api.app)
-    assert client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}).status_code == 429
+    busy = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)})
+    assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
     assert not api.store.exists(), "Rejection must precede persisting the request"
+
+
+def test_status_for_code_is_total_over_error_code() -> None:
+    """A handler never has to guess a status, and the two cannot drift apart."""
+    assert set(STATUS_FOR_CODE) == set(ErrorCode)
+    assert STATUS_FOR_CODE[ErrorCode.SERVICE_BUSY] == 503, "a full queue is not client rate limiting"
+    assert STATUS_FOR_CODE[ErrorCode.OUT_OF_MEMORY] == 413, "retrying the same job exhausts the same GPU"
+
+
+def test_info_reports_limits_and_tasks_before_the_model_is_ready() -> None:
+    """/v1/info is how a client discovers limits, so it must answer during load."""
+    with TestClient(api.app) as client:
+        assert client.get("/health/ready").status_code == 503
+        body = client.get("/v1/info").raise_for_status().json()
+    assert body["limits"] == {
+        "max_request_bytes": api.MAX_REQUEST_BYTES,
+        "max_tokens": api.MAX_TOKENS,
+        "max_replicates": api.MAX_REPLICATES,
+        "queue_depth": api.QUEUE_DEPTH,
+    }
+    assert set(body["tasks"]["supported"]) | set(body["tasks"]["unsupported"]) == set(api.TASKS)
+    assert set(body["tasks"]["unsupported"]) == api.UNSUPPORTED_TASKS
+
+
+def test_max_tokens_default_matches_the_repository_compile_buckets() -> None:
+    """The token ceiling is the repository's own: configs/inference.yaml tops out at 1024."""
+    config = (Path(__file__).resolve().parents[3] / "configs/inference.yaml").read_text()
+    buckets = [int(n) for n in re.search(r"compile_lengths: \[([^\]]*)\]", config).group(1).split(",")]
+    assert max(buckets) == api.MAX_TOKENS
+
+
+def test_every_failure_uses_the_declared_error_body(tmp_path: Path) -> None:
+    """Including framework validation and unknown routes, not just raised ApiErrors."""
+    api.store = tmp_path
+    with TestClient(api.app) as client:
+        for response in (
+            client.get("/v1/designs/not-an-id"),
+            client.get("/no/such/route"),
+            client.post("/v1/designs", files={"file": ("x.cif", b"data_x")}, data={"num_replicates": 99}),
+        ):
+            assert response.status_code >= 400
+            error = response.json()["error"]
+            assert set(error) == {"code", "message", "details"}
+            assert error["code"] in set(ErrorCode)
+
+
+@pytest.mark.parametrize(
+    "task,status,code",
+    [
+        ("generation", 202, None),
+        ("nonsense", 422, "schema_violation"),
+        # Changes the sampler call rather than the conditioning, so it cannot be
+        # silently downgraded to an ordinary trajectory.
+        ("partial_diffusion", 400, "invalid_request"),
+        ("inverse_folding", 400, "invalid_request"),
+    ],
+)
+def test_task_is_validated_and_unsupported_modes_are_refused(
+    tmp_path: Path, monkeypatch: MonkeyPatch, task: str, status: int, code: str | None
+) -> None:
+    class Idle:
+        loads, device = 1, "fake GPU"
+
+        def __init__(self) -> None: ...
+
+        def generate(self, *args: object) -> None: ...
+
+    monkeypatch.setenv("STORE_PATH", str(tmp_path / "store"))
+    monkeypatch.setattr(runner, "Runner", Idle)
+    with TestClient(api.app) as client:
+        wait_for(lambda: client.get("/health/ready").status_code == 200)
+        response = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}, data={"task": task})
+        assert response.status_code == status, response.json()
+        if code is None:
+            assert client.get(f"/v1/designs/{response.json()['id']}").json()["task"] == task
+        else:
+            assert response.json()["error"]["code"] == code
