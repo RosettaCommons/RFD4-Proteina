@@ -580,9 +580,7 @@ class AF3Oracle(OracleMetric):
         # Direct path: no pinned daemon worker, so resolve our own GPU.
         gpu_device = _resolve_gpu_device(_resolve_local_rank())
         backend = resolve_backend()
-        logger.info(
-            f"AF3 fold_batch: routing {n_designs} designs via direct {backend} call (gpu_device={gpu_device})"
-        )
+        logger.info(f"AF3 fold_batch: routing {n_designs} designs via direct {backend} call (gpu_device={gpu_device})")
         cmd = build_fold_command(
             manifest_path=manifest_path,
             gpu_device=gpu_device,
