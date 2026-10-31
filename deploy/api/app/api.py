@@ -1,0 +1,360 @@
+"""Single-replica asynchronous design API with durable disk artifacts."""
+
+import asyncio
+import io
+import json
+import logging
+import os
+import queue
+import re
+import shutil
+import threading
+import time
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Annotated, Any
+
+from biotite import InvalidFileError
+from biotite.structure.io.pdbx import CIFFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.errors import ApiError, ErrorCode
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+work = Path(os.environ.get("WORK_PATH", "/workspace/requests"))
+
+
+# Limits are service policy, not model limits, so they are configurable and
+# reported under /v1/info rather than buried in literals. The token default is
+# the repository's own ceiling: configs/inference.yaml compiles length buckets
+# up to 1024, so anything higher leaves the compiled shapes behind.
+def _limit(name: str, default: int) -> int:
+    value = int(os.environ.get(name, default))
+    if value < 1:
+        raise ValueError(f"{name} must be positive, got {value}")
+    return value
+
+
+MAX_REQUEST_BYTES = _limit("RFD4_MAX_REQUEST_BYTES", 32 * 1024 * 1024)
+MAX_TOKENS = _limit("RFD4_MAX_TOKENS", 1024)
+MAX_REPLICATES = _limit("RFD4_MAX_REPLICATES", 4)
+QUEUE_DEPTH = _limit("RFD4_QUEUE_DEPTH", 8)
+
+#: Task vocabulary shared with the downstream service, so one request body is
+#: portable between them. Conditioning still comes from the CIF: a task names
+#: the sampler mode, it does not select what is designed.
+TASKS = (
+    "antibody_design",
+    "enzyme_design",
+    "generation",
+    "inverse_folding",
+    "motif_scaffolding",
+    "partial_diffusion",
+    "small_molecule_binder",
+)
+#: These two change the sampler call itself -- partial start times, and the
+#: inverse-folding flag -- rather than being carried by the input. This sample
+#: passes neither, so accepting one would run an ordinary trajectory and return
+#: a 200 for a design the caller did not ask for. Refuse instead.
+UNSUPPORTED_TASKS = frozenset({"partial_diffusion", "inverse_folding"})
+
+pending: queue.Queue[str] = queue.Queue(maxsize=QUEUE_DEPTH)
+admission_lock = threading.Lock()
+state: dict[str, Any] = {
+    "ready": False,
+    "error": None,
+    "runner": None,
+    "stop": False,
+}
+instance_id = uuid.uuid4().hex
+store: Path | None = None
+state_lock = threading.Lock()
+
+
+def snapshot() -> dict[str, Any]:
+    with state_lock:
+        return state.copy()
+
+
+def update_state(**changes: Any) -> None:
+    with state_lock:
+        state.update(changes)
+
+
+def request_dir(request_id: str) -> Path:
+    if store is None:
+        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "Storage is not initialized yet.")
+    if not re.fullmatch(r"[0-9a-f]{32}", request_id):
+        raise ApiError(ErrorCode.NOT_FOUND, "Request not found.")
+    return store / "requests" / request_id
+
+
+def save_status(request_id: str, data: dict[str, Any]) -> None:
+    """Atomically persist a request status with its last update time."""
+    data["updated_at"] = time.time()
+    path = request_dir(request_id) / "status.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(".tmp")
+    temp.write_text(json.dumps(data))
+    temp.replace(path)
+
+
+def read_status(request_id: str) -> dict[str, Any]:
+    """Read a persisted request, rejecting invalid identifiers."""
+    path = request_dir(request_id) / "status.json"
+    if not path.is_file():
+        raise ApiError(ErrorCode.NOT_FOUND, "Request not found.")
+    return json.loads(path.read_text())
+
+
+def worker() -> None:
+    """Load one GPU model and execute queued requests serially."""
+    try:
+        # Defer GPU dependencies until startup; HTTP tests use a fake runner.
+        from app.runner import Runner
+
+        runner = Runner()
+        update_state(runner=runner)
+        # Scan historical status files before readiness. Startup is O(request history);
+        # operators should prune old requests according to their retention policy.
+        for path in store.glob("requests/*/status.json"):
+            try:
+                request_id = path.parent.name
+                request_dir(request_id)  # Validate the directory ID, not just the JSON.
+                data = json.loads(path.read_text())
+                if not isinstance(data, dict) or data.get("id") != request_id:
+                    raise ValueError("Status ID must match its request directory")
+                if data.get("status") not in ("queued", "running", "succeeded", "failed"):
+                    raise ValueError("Missing or invalid request status")
+                if data["status"] in ("queued", "running"):
+                    data.update(status="failed", error="Server restarted; submit a new request")
+                    save_status(request_id, data)
+            except (OSError, ValueError, ApiError) as exc:
+                log.warning("Skipping invalid request status %s: %s", path, exc)
+        update_state(ready=True)
+        log.info("Model ready on %s; checkpoint loads=%s", runner.device, runner.loads)
+        while not snapshot()["stop"]:
+            try:
+                request_id = pending.get(timeout=1)
+            except queue.Empty:
+                continue
+            data = {"id": request_id}
+            try:
+                data = read_status(request_id)
+                data.update(status="running", started_at=time.time())
+                save_status(request_id, data)
+                input_path = request_dir(request_id) / "input.cif"
+                output_dir = work / request_id / "outputs"
+                runner.generate(input_path, output_dir, data["settings"], MAX_TOKENS, MAX_REPLICATES)
+                artifacts = []
+                for path in sorted(output_dir.rglob("*")):
+                    if path.is_file():
+                        name = path.relative_to(output_dir).as_posix()
+                        target = request_dir(request_id) / "outputs" / name
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(path, target)
+                        artifacts.append(name)
+                data.update(
+                    status="succeeded",
+                    artifacts=artifacts,
+                    duration_seconds=round(time.time() - data["started_at"], 2),
+                    checkpoint_loads=runner.loads,
+                    server_instance_id=instance_id,
+                )
+                save_status(request_id, data)
+            except Exception as exc:
+                log.exception("Request %s failed", request_id)
+                data.update(status="failed", error=str(exc))
+                save_status(request_id, data)
+            finally:
+                shutil.rmtree(work / request_id, ignore_errors=True)
+                pending.task_done()
+    except Exception as exc:
+        log.exception("GPU worker stopped")
+        update_state(ready=False, error=str(exc))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Start and stop the single owner of the GPU and request queue."""
+    global store
+    update_state(ready=False, error=None, runner=None, stop=False)
+    store = Path(os.environ.get("STORE_PATH", "/workspace/store"))
+    store.mkdir(parents=True, exist_ok=True)
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        update_state(ready=False, stop=True)
+        thread.join(timeout=2)
+
+
+app = FastAPI(title="RFD4-Proteína", lifespan=lifespan)
+
+
+@app.exception_handler(ApiError)
+async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status, content=exc.body())
+
+
+@app.exception_handler(RequestValidationError)
+async def _schema_violation(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """Render framework validation failures in the declared error body."""
+    details = [f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()]
+    error = ApiError(ErrorCode.SCHEMA_VIOLATION, "Request does not match the schema.", details)
+    return JSONResponse(status_code=error.status, content=error.body())
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Unknown route or wrong method: one error shape for those too."""
+    code = ErrorCode.NOT_FOUND if exc.status_code == 404 else ErrorCode.INVALID_REQUEST
+    return JSONResponse(status_code=exc.status_code, content=ApiError(code, str(exc.detail)).body())
+
+
+@app.get("/v1/info")
+def info() -> dict[str, Any]:
+    """Report the task vocabulary and the limits, before the model is ready."""
+    return {
+        "tasks": {
+            "supported": sorted(set(TASKS) - UNSUPPORTED_TASKS),
+            "unsupported": sorted(UNSUPPORTED_TASKS),
+        },
+        "limits": {
+            "max_request_bytes": MAX_REQUEST_BYTES,
+            "max_tokens": MAX_TOKENS,
+            "max_replicates": MAX_REPLICATES,
+            "queue_depth": QUEUE_DEPTH,
+        },
+        "submission": "asynchronous",
+    }
+
+
+@app.get("/health/live")
+def live() -> dict[str, str]:
+    """Report whether the GPU worker has encountered a fatal error."""
+    if snapshot()["error"]:
+        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "The GPU worker stopped.")
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def ready() -> dict[str, Any]:
+    """Report readiness after checkpoint loading and restart recovery."""
+    current = snapshot()
+    if not current["ready"]:
+        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, current["error"] or "The model is still loading.")
+    runner = current["runner"]
+    return {
+        "status": "ready",
+        "gpu": runner.device,
+        "checkpoint_loads": runner.loads,
+        "server_instance_id": instance_id,
+    }
+
+
+@app.post("/v1/designs", status_code=202)
+async def submit(
+    file: Annotated[UploadFile, File()],
+    num_replicates: Annotated[int, Form(ge=1, le=MAX_REPLICATES)] = 1,
+    seed: Annotated[int, Form(ge=0, le=2147483647)] = 42,
+    task: Annotated[str | None, Form()] = None,
+) -> dict[str, Any]:
+    """Queue an annotated mmCIF design and return its polling identifier."""
+    if not snapshot()["ready"]:
+        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "The model is not ready.")
+    # Advisory fast path: avoid reading/parsing an upload when already overloaded.
+    # The worker may change the queue while we parse; the locked check remains authoritative.
+    if pending.full():
+        raise ApiError(ErrorCode.SERVICE_BUSY, "No free worker; route elsewhere or retry later.")
+    if task is not None:
+        if task not in TASKS:
+            raise ApiError(ErrorCode.SCHEMA_VIOLATION, f"Unknown task {task!r}.", sorted(TASKS))
+        if task in UNSUPPORTED_TASKS:
+            raise ApiError(
+                ErrorCode.INVALID_REQUEST,
+                f"Task {task!r} needs sampler arguments this deployment does not send.",
+                sorted(set(TASKS) - UNSUPPORTED_TASKS),
+            )
+    content = await file.read(MAX_REQUEST_BYTES + 1)
+    if len(content) > MAX_REQUEST_BYTES:
+        raise ApiError(ErrorCode.REQUEST_TOO_LARGE, f"Input exceeds {MAX_REQUEST_BYTES} bytes.")
+    # Keep CPU parsing and filesystem admission off the ASGI event loop.
+    return await asyncio.to_thread(admit_request, content, num_replicates, seed, task)
+
+
+def admit_request(content: bytes, num_replicates: int, seed: int, task: str | None = None) -> dict[str, Any]:
+    """Parse and persist an upload in a thread, serializing only queue admission."""
+    # Validate CIF syntax and required coordinate columns, not all design semantics.
+    # Upstream performs semantic checks and transformed-token admission in the worker.
+    try:
+        cif = CIFFile.read(io.StringIO(content.decode("utf-8")))
+        atoms = cif.block["atom_site"]
+        required = {"label_atom_id", "label_comp_id", "Cartn_x", "Cartn_y", "Cartn_z"}
+        if atoms.row_count == 0 or not required.issubset(atoms):
+            raise ValueError("Missing atom coordinates")
+    except (InvalidFileError, ValueError, KeyError) as exc:
+        raise ApiError(ErrorCode.INVALID_INPUT, "Upload a parseable mmCIF with atom coordinates.") from exc
+    request_id = uuid.uuid4().hex
+    with admission_lock:
+        if not snapshot()["ready"]:
+            raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "The model is not ready.")
+        if pending.full():
+            raise ApiError(ErrorCode.SERVICE_BUSY, "No free worker; route elsewhere or retry later.")
+        data = {
+            "id": request_id,
+            "status": "queued",
+            "created_at": time.time(),
+            "task": task,
+            "settings": {"num_replicates": num_replicates, "seed": seed},
+        }
+        directory = request_dir(request_id)
+        directory.mkdir(parents=True)
+        (directory / "input.cif").write_bytes(content)
+        save_status(request_id, data)
+        pending.put_nowait(request_id)
+    return data
+
+
+@app.get("/v1/designs/{request_id}")
+def status(request_id: str) -> dict[str, Any]:
+    """Return the current status of an accepted design request."""
+    return read_status(request_id)
+
+
+@app.get("/v1/designs/{request_id}/results")
+def results(request_id: str) -> dict[str, Any]:
+    """List downloadable artifacts for a completed design."""
+    data = read_status(request_id)
+    if data["status"] != "succeeded":
+        raise ApiError(ErrorCode.CONFLICT, "Results are available after successful generation.")
+    return {
+        "id": request_id,
+        "artifacts": [
+            {"name": name, "download": f"/v1/designs/{request_id}/artifacts/{name}"} for name in data["artifacts"]
+        ],
+    }
+
+
+@app.get("/v1/designs/{request_id}/artifacts/{name:path}")
+def artifact(request_id: str, name: str) -> Response:
+    """Download a file listed in the completed request manifest."""
+    data = read_status(request_id)
+    if data["status"] != "succeeded" or name not in data.get("artifacts", []):
+        raise ApiError(ErrorCode.NOT_FOUND, "Artifact not found.")
+    root = (request_dir(request_id) / "outputs").resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root):
+        raise ApiError(ErrorCode.NOT_FOUND, "Artifact not found.")
+    return Response(
+        path.read_bytes(),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{Path(name).name}"'},
+    )

@@ -14,6 +14,12 @@
 !data/cath_label_mapping.pkl
 !data/benchmarks/
 !data/benchmarks/**
+!deploy/
+!deploy/api/
+!deploy/api/app/
+!deploy/api/app/**
+!deploy/api/examples/
+!deploy/api/examples/**
 **/__pycache__
 **/*.pyc
 **/.DS_Store
