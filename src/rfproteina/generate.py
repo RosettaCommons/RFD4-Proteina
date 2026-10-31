@@ -30,6 +30,7 @@ with (
     from torch.utils.data import DataLoader, Subset
 
     from rfproteina.callbacks.generation_progress import GenerationProgressBar
+    from rfproteina.callbacks.generation_seed import GenerationRankSeedCallback
     from rfproteina.datapipes.collate import collate_batch
     from rfproteina.datapipes.pipeline import build_design_validation_pipeline
     from rfproteina.guidance.guidance_model import GuidanceModel, build_guidance_terms
@@ -712,7 +713,7 @@ def run_generation(
         default_root_dir=cfg.out_dir,
         logger=False,
         enable_model_summary=cfg.get("verbose", False),
-        callbacks=[GenerationProgressBar()],
+        callbacks=[GenerationProgressBar(), GenerationRankSeedCallback(job_seed=cfg.seed)],
         precision=precision,
     )
 

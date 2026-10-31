@@ -102,6 +102,15 @@ that refolding metrics and reward guided search need.
 See [Multi-job runs](advanced/multi-job-runs.md) for concatenating `per_example_metrics_job{N}.csv`
 files from parallel SLURM jobs.
 
+Direct multi-GPU generation uses distinct random streams for each global rank,
+derived reproducibly from `seed + job_id` and the rank. This applies to both native
+and BioIR inference. The effective rank seed is logged and written to the metrics
+CSV's `seed` column. Single-GPU runs, including each worker launched by
+`scripts/launch_generate.sh`, retain the existing `seed + job_id` behavior.
+Changing the number of ranks, batch size, or dataloader workers can change the
+generated designs; a rank seed alone does not identify a sample independently of
+those settings. Distinct streams do not guarantee distinct protein sequences.
+
 ### Adding custom metrics
 
 You can add your own metrics without touching a tracked file. Two **git ignored** directories hold
