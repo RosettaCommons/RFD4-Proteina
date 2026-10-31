@@ -34,10 +34,14 @@ from pathlib import Path
 
 from af3_apptainer import (
     AF3_NUM_RECYCLES,
-    build_apptainer_fold_command,
+    build_fold_command,
+    required_env_vars,
 )
 
-_REQUIRED_ENV_VARS = ("AF3_IMAGE", "AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
+# Which vars are required depends on the backend (apptainer needs AF3_IMAGE,
+# native needs AF3_PYTHON), so call ``required_env_vars()`` at each use site
+# rather than freezing a tuple at import time -- the launcher sources its env
+# file around us and AF3_RUNTIME_BACKEND may not be set yet when this imports.
 
 
 # ----------------------------------------------------------------------------
@@ -50,7 +54,7 @@ def _spawn_warm_worker(batch_script: str, gpu_device: int) -> subprocess.Popen:
 
     The worker loads AF3 once at startup and then loops reading manifest paths on stdin.
     """
-    cmd = build_apptainer_fold_command(
+    cmd = build_fold_command(
         manifest_path=None,
         gpu_device=gpu_device,
         save_full_outputs=False,
@@ -126,7 +130,7 @@ def _safe_unlink(path: str) -> None:
 
 
 def _serve(args: argparse.Namespace) -> int:
-    if args.skip_if_no_env and not all(os.environ.get(v) for v in _REQUIRED_ENV_VARS):
+    if args.skip_if_no_env and not all(os.environ.get(v) for v in required_env_vars()):
         print("[af3-daemon] AF3 env vars not set; not serving.", file=sys.stderr)
         return 0
 
@@ -345,7 +349,7 @@ def _spawn_one(rank: int, log_dir: Path, lazy_warmup: bool = False) -> subproces
 
 
 def _launch(args: argparse.Namespace) -> int:
-    if args.skip_if_no_env and not all(os.environ.get(v) for v in _REQUIRED_ENV_VARS):
+    if args.skip_if_no_env and not all(os.environ.get(v) for v in required_env_vars()):
         print("[af3-daemons] AF3 env vars not set; skipping daemon launch.", file=sys.stderr)
         return 0
 
@@ -422,7 +426,8 @@ def main() -> int:
     s.add_argument(
         "--skip-if-no-env",
         action="store_true",
-        help=f"Exit 0 without binding the socket if any of {', '.join(_REQUIRED_ENV_VARS)} is unset.",
+        help="Exit 0 without binding the socket if any required AF3 env var "
+        "(see required_env_vars(); backend-dependent) is unset.",
     )
     s.add_argument(
         "--lazy-warmup",
@@ -443,7 +448,7 @@ def main() -> int:
     l.add_argument(
         "--skip-if-no-env",
         action="store_true",
-        help=f"Exit 0 if any of {', '.join(_REQUIRED_ENV_VARS)} is unset.",
+        help="Exit 0 if any required AF3 env var (see required_env_vars(); backend-dependent) is unset.",
     )
     l.add_argument(
         "--lazy-warmup",

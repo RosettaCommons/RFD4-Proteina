@@ -4,18 +4,20 @@ set -euo pipefail
 
 DATA_PATH="${1:-}"
 if [ -z "$DATA_PATH" ] || [ "${DATA_PATH:0:1}" = "-" ]; then
-    echo "Usage: $0 <DATA_PATH> [--with-test-dataset] [--skip-of3] [--skip-benchmarks] [--cuda 12|13]" >&2
+    echo "Usage: $0 <DATA_PATH> [--with-test-dataset] [--skip-of3] [--native-of3] [--skip-benchmarks] [--cuda 12|13]" >&2
     exit 1
 fi
 shift
 WITH_TEST_DATASET=false
 SKIP_OF3=false
+NATIVE_OF3=false
 SKIP_BENCHMARKS=false
 CUDA_MAJOR=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --with-test-dataset) WITH_TEST_DATASET=true ;;
         --skip-of3) SKIP_OF3=true ;;
+        --native-of3) NATIVE_OF3=true ;;
         --skip-benchmarks) SKIP_BENCHMARKS=true ;;
         --cuda)
             if [[ $# -lt 2 || ( "$2" != 12 && "$2" != 13 ) ]]; then
@@ -66,9 +68,27 @@ if [ -n "${AF3_IMAGE:-}" ]; then
 fi
 if [ "$SKIP_OF3" = true ]; then
     echo ">>> Skipping OpenFold3 download (oracle image configured or --skip-of3)."
+elif [ "$NATIVE_OF3" = true ]; then
+    # No container: the worker runs under AF3_PYTHON, so fetch the weights only
+    # (~1.4 GB) and skip the ~5 GB runtime image entirely.
+    echo ">>> Downloading OpenFold3 weights only (native backend, Apache-licensed, ~1.4 GB)..."
+    hf download "$ORACLE_ARTIFACT_REPO" "${OF3_WEIGHTS_FILES[@]}" --revision "$ORACLE_ARTIFACT_REVISION" --local-dir "$DATA_PATH"
+    mkdir -p "$DATA_PATH/openfold3/jax_cache"
+    echo ">>> OpenFold3 weights ready. The native backend needs a second venv holding the"
+    echo "    OF3-capable alphafold3 fork (alphafold3-open) — see docs/how-to/refolding.md:"
+    echo "    uv venv .venv-af3 --python 3.12"
+    echo "    uv pip install --python .venv-af3 \\"
+    echo "      'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/v3.0.5.post1/alphafold3_open-3.0.5.post1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl'"
+    echo "    .venv-af3/bin/build_data"
+    echo "    Then export:"
+    echo "    export AF3_RUNTIME_BACKEND=native"
+    echo "    export AF3_PYTHON=\"$REPO_ROOT/.venv-af3/bin/python\""
+    echo "    export AF3_MODEL_DIR=\"$DATA_PATH/openfold3/weights\""
+    echo "    export AF3_JAX_CACHE_DIR=\"$DATA_PATH/openfold3/jax_cache\""
+    echo "    ...and pass metrics/refolding_oracles=of3 as a Hydra override."
 elif ! command -v apptainer &>/dev/null; then
     echo ">>> apptainer not found — skipping OpenFold3 download (it can't run without it)."
-    echo "    Install apptainer, then re-run this script to fetch it."
+    echo "    Install apptainer, or re-run with --native-of3 to set up the no-container route."
 else
     echo ">>> Downloading OpenFold3 (free, Apache-licensed refolding oracle, ~5 GB)..."
     select_of3_runtime "${CUDA_MAJOR:-$(detect_oracle_cuda)}"
