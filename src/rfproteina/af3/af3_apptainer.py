@@ -22,6 +22,16 @@ AF3_NUM_RECYCLES = 5
 # ``=triton`` only on a datacenter GPU. Lowercased: the container flag is a case-sensitive absl enum.
 AF3_FLASH_ATTENTION_IMPLEMENTATION = os.environ.get("AF3_FLASH_ATTENTION_IMPLEMENTATION", "cudnn").strip().lower()
 
+# XLA configuration for the fold worker. ``af3-open.def`` hardcodes this in the
+# image's ``%environment``, which is sourced at container start and therefore
+# overrides anything the host exports -- so passing it as ``--env`` does nothing.
+# Both routes below instead set it *inside* the invocation, after that block has
+# run, so the two backends provably share one XLA configuration. Without this the
+# native route silently ran with triton GEMM enabled while the container ran with
+# it disabled, which makes any container-vs-native comparison a comparison of two
+# different computations.
+AF3_XLA_FLAGS = os.environ.get("AF3_XLA_FLAGS", "--xla_gpu_enable_triton_gemm=false").strip()
+
 # Default location of the warm-worker entry script (sibling under scripts/).
 _DEFAULT_BATCH_SCRIPT = Path(__file__).resolve().parent / "run_alphafold_batch.py"
 
@@ -193,6 +203,8 @@ def build_apptainer_fold_command(
         "--bind",
         f"{batch_path.parent}:{batch_path.parent}",
         sif,
+        "env",
+        f"XLA_FLAGS={AF3_XLA_FLAGS}",
         "python",
         str(batch_script),
         *_worker_args(
@@ -250,6 +262,7 @@ def build_native_fold_command(
         f"CUDA_VISIBLE_DEVICES={int(gpu_device)}",
         "XLA_PYTHON_CLIENT_PREALLOCATE=false",
         "JAX_PLATFORMS=cuda",
+        f"XLA_FLAGS={AF3_XLA_FLAGS}",
         f"AF3_MODEL_DIR={weights}",
         str(python_path),
         str(batch_path),
