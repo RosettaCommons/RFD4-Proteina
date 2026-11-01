@@ -5,7 +5,7 @@ description = "Flow-matching foundation model for all-atom biomolecular design: 
 readme = "README.md"
 license-files = ["LICENSE"]
 license = "BSD-3-Clause"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.15"
 authors = [
     { name = "Institute for Protein Design", email = "contact@ipd.uw.edu" },
 ]
@@ -26,6 +26,8 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -99,7 +101,7 @@ all-cuda13 = [
     "cuequivariance-torch>=0.13.0,<0.14; sys_platform == 'linux'",
     "cuequivariance-ops-cu13>=0.13.0,<0.14; sys_platform == 'linux'",
     "cuequivariance-ops-torch-cu13>=0.13.0,<0.14; sys_platform == 'linux'",
-    "bionemo-ir>=0.2.0,<0.3; sys_platform == 'linux'",
+    "bionemo-ir>=0.2.1,<0.3; sys_platform == 'linux'",
 ]
 all-cuda12 = [
     "tmol[cu12]>=0.2.0,<0.3; sys_platform == 'linux'",
