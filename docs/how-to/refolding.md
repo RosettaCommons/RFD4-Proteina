@@ -59,7 +59,7 @@ Steps 2 and 3 are the only oracle-specific ones, and neither needs Docker, Appta
 ```bash
 uv venv .venv-af3 --python 3.12
 uv pip install --python .venv-af3 \
-  'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/v3.0.5.post1/alphafold3_open-3.0.5.post1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl'
+  'alphafold3-open @ https://github.com/kierandidi/alphafold3/releases/download/v3.0.5.post3/alphafold3_open-3.0.5.post3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl'
 .venv-af3/bin/build_data        # generates the CCD tables the package loads at import
 ./scripts/download_assets.sh "$DATA_PATH" --native-of3   # weights only, ~1.4 GB, no image
 ```
@@ -67,10 +67,19 @@ uv pip install --python .venv-af3 \
 `jax[cuda12]` is pinned as a dependency of `alphafold3-open`, so it arrives with the
 wheel; do not install it separately. `build_data` is a console script the package
 installs, and it must run once per venv — the wheel ships the CCD generators, not the
-generated tables. It parses the bundled CCD and writes `ccd.msgpack`,
-`chemical_component_sets.msgpack` and `ccd_codes.txt` (51,537 components) next to the
-installed package; it takes about 30 seconds. Skipping it leaves the first fold to fail
-with `FileNotFoundError` on `chemical_component_sets.msgpack`.
+generated tables. It downloads the Chemical Component Dictionary (~114 MB, from a
+pinned snapshot whose SHA-256 it verifies), then writes `ccd.msgpack`,
+`chemical_component_sets.msgpack`, `ccd_codes.txt` (51,537 components) and
+`ccd_provenance.json` next to the installed package. Budget a couple of minutes on a
+first run, mostly download. Skipping it leaves the first fold to fail with
+`FileNotFoundError` on `chemical_component_sets.msgpack`.
+
+The download needs outbound network access the first time. On a host without it, fetch
+`components.cif` elsewhere and point `LIBCIFPP_DATA_DIR` at the directory holding it;
+`build_data` then uses that copy and downloads nothing. To use a different CCD on
+purpose, set `AF3_CCD_URL` (and `AF3_CCD_SHA256` if you want it verified) — the hash
+actually used is always recorded in `ccd_provenance.json`, so two environments that
+disagree can be told apart.
 
 ```bash
 export AF3_RUNTIME_BACKEND=native
