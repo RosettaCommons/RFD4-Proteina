@@ -1,0 +1,30 @@
+{
+  "input_cif": {
+    "description": "S3 URI of one annotated CIF, optionally gzip- or zstd-compressed.",
+    "optional": false
+  },
+  "model_bundle": {
+    "description": "S3 prefix containing the matching config.json and model.safetensors exported by RFD4-Proteina.",
+    "optional": false
+  },
+  "settings": {
+    "description": "S3 URI of generation settings JSON: seed, num_replicates, batch_size and Hydra overrides.",
+    "optional": false
+  },
+  "container_image": {
+    "description": "RFD4-Proteina Linux amd64 CUDA image in ECR, preferably pinned by digest.",
+    "optional": false
+  },
+  "num_shards": {
+    "description": "Number of GPU tasks splitting the requested replicates. Must not exceed num_replicates.",
+    "optional": true
+  },
+  "generation_cpus": {
+    "description": "CPUs requested per GPU task (default 8). For example, 4 retains the L40S GPU with a smaller CPU allocation.",
+    "optional": true
+  },
+  "generation_accelerator": {
+    "description": "Explicit GPU selection: nvidia-l40s (default, 48GB) or nvidia-l4 (24GB). Validate memory use for the longest input before choosing L4.",
+    "optional": true
+  }
+}

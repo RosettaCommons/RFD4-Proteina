@@ -205,6 +205,7 @@ Training datasets are separate from model downloads: see the
 
 ## More workflows
 
+- **AWS HealthOmics:** run reproducible generation shards with a staged model bundle and collect structures and execution provenance; see the [Nextflow example](examples/healthomics/README.md).
 - **Binders and motif scaffolding:** condition on an annotated CIF or a YAML design spec; see [Running the model](https://rfd4-proteina.org/latest/how-to/run-the-model.html).
 - **Reward-guided search:** select a search `inference_experiment` config to branch and prune candidates against an oracle; see [Reward-guided search](https://rfd4-proteina.org/latest/how-to/search.html).
 - **Partial diffusion:** re-noise and refine an existing design; see [Partial diffusion](https://rfd4-proteina.org/latest/how-to/partial-diffusion.html).
