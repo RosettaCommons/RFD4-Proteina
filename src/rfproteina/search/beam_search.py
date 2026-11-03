@@ -46,6 +46,25 @@ from rfproteina.utils.torch import concat_dict_tensors
 
 logger = RankedLogger(__name__, rank_zero_only=True)
 
+_SEED_MASK = (1 << 63) - 1
+
+
+def _interval_seed(root: int, start_step: int) -> int:
+    """Seed one checkpoint interval from its start step, not from what ran before it.
+
+    Every denoising step draws from the global generator (rdn_flow_matcher
+    draws ``eps`` with no ``generator=``), so the stream position a run reaches
+    an interval at is a function of its whole history: the initial noise, the
+    branch simulations of every earlier interval, and each scoring rollout. A
+    resume cannot replay that history, so it entered the interval at position
+    zero and drew different noise from the uninterrupted run. Keying the stream
+    to the interval makes the two meet.
+    """
+    seed = (int(root) & _SEED_MASK) ^ ((int(start_step) + 0x9E3779B97F4A7C15) & _SEED_MASK)
+    seed = (seed * 0xBF58476D1CE4E5B9) & _SEED_MASK
+    seed ^= seed >> 30
+    return seed or 1
+
 
 def _select_batch_examples(batch: dict, indices: list[int], batch_size: int) -> dict:
     """Select collated example axes, including schema aliases, without changing padding."""
@@ -454,12 +473,15 @@ class BeamSearchStrategy(SearchStrategy):
         if self.resume_from is not None:
             batch_ids = [f"{name}_r{self.resume_seed}" for name in batch_ids]
 
+        root_seed = int(self.resume_seed) if self.resume_from is not None else torch.initial_seed()
+
         # Keep original checkpoint numbers and absolute schedule indices when continuing.
         end_step = start_step
         for i, checkpoint_step in enumerate(self.step_checkpoints[1:]):
             if checkpoint_step <= start_step:
                 continue
             end_step = checkpoint_step
+            torch.manual_seed(_interval_seed(root_seed, start_step))
             n_branch = self.checkpoints[end_step].get("n_branch", self.n_branch)
             logger.info(f"Checkpoint {i + 1}/{len(self.step_checkpoints) - 1}: steps {start_step} → {end_step}")
 
