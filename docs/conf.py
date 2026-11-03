@@ -14,6 +14,7 @@ from sphinx.builders.html._assets import _CascadingStyleSheet
 DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(DOCS_DIR / "_ext"))
 
 # Autodoc uses local settings without a private runtime profile.
 os.environ["CLUSTER"] = "local"
@@ -41,6 +42,7 @@ except PackageNotFoundError:
 version = release
 
 extensions = [
+    "architecture_assets",
     "myst_parser",
     "nbsphinx",
     "sphinx.ext.autodoc",
