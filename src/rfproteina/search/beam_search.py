@@ -25,6 +25,7 @@ or calling refolding models.
 import copy
 import math
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +84,18 @@ def _continuation_passes(criterion: PassCriterionMetric, metrics: list[dict], st
         and bool(criterion.compute(candidate)["pass"])
         for candidate in metrics
     ]
+
+
+def _check_rankable(
+    rewards: torch.Tensor, continuing_inputs: torch.Tensor, step: int, reward_keys: Iterable[str]
+) -> None:
+    """Raise if every candidate scored -inf: the prune would silently reduce to index order."""
+    if torch.isinf(rewards).all() and continuing_inputs.any():
+        raise ValueError(
+            f"Every candidate at step {step} scored -inf, so the prune would rank nothing: for a weighted key in "
+            f"{sorted(reward_keys)} the metric is either not produced by the checkpoint's explicit metrics list or "
+            f"NaN for every candidate. The warnings above name the key(s)."
+        )
 
 
 class BeamSearchStrategy(SearchStrategy):
@@ -471,14 +484,7 @@ class BeamSearchStrategy(SearchStrategy):
                 passes = _continuation_passes(criterion, candidate_metrics, end_step)
                 selected_passes = torch.tensor(passes, dtype=torch.bool, device=device)[select_indices]
                 continuing_inputs = selected_passes.view(self.beam_width, nsamples).any(dim=0)
-            # A weighted key that none of the selected metrics produces scores every
-            # candidate -inf, which would silently reduce the prune below to index order.
-            if torch.isinf(rewards).all() and continuing_inputs.any():
-                raise ValueError(
-                    f"Every candidate at step {end_step} scored -inf, so the prune would rank nothing: "
-                    f"a weighted key in {sorted(checkpoint_reward_model.weights)} is not produced by "
-                    f"the checkpoint's explicit metrics list. The warnings above name the missing key(s)."
-                )
+            _check_rankable(rewards, continuing_inputs, end_step, checkpoint_reward_model.weights)
 
             # Only survivors scored at the schedule end are returned directly as final designs.
             survivor_mask = torch.zeros_like(rewards, dtype=torch.bool)
