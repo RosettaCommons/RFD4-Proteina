@@ -482,6 +482,7 @@ def load_ckpt_n_configure_inference(cfg: dict, model: Proteina | None = None) ->
         ckpt_name=ckpt_name,
         save_chain_of_interest=cfg.get("save_chain_of_interest", False),
         compress_outputs=cfg.get("compress_outputs", False),
+        delete_failing_pre_oracle=cfg.get("delete_failing_pre_oracle"),
     )
 
     model.search_strategy = None
