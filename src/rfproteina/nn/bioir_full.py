@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import tempfile
 import weakref
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -526,13 +527,21 @@ class FullBioIRAdapter:
     def predict_step(self, batch: Mapping[str, Any]) -> list[dict[str, Any]]:
         features = _features(batch)
         if self.search is not None:
+            # BioIR numbers its requests from ``req0`` again in every search, so a request id
+            # cannot tell one invocation's cached refolds from another's: the second search would
+            # find the first's confidence JSON and skip its own fold. Give each invocation its own
+            # directory. Reuse within a single search is unaffected, and reuse across searches was
+            # never correct -- ``_fresh_seed()`` means a later batch is a different molecule.
+            search_root = Path(self.native.store_dir) / "bioir_search"
+            search_root.mkdir(parents=True, exist_ok=True)
+            output_dir = Path(tempfile.mkdtemp(prefix=f"batch{self.completed_calls}_", dir=search_root))
             # Search derives its own child streams from a root seed.
             output = self.model.search(
                 features,
                 self.search,
                 seed=_fresh_seed(),
                 partial_config=self.partial,
-                evaluators=(NativeMetricEvaluator(self.native, batch, Path(self.native.store_dir) / "bioir_search"),),
+                evaluators=(NativeMetricEvaluator(self.native, batch, output_dir),),
             )
             results = []
             example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
