@@ -330,8 +330,9 @@ def configure_search_strategy_from_cfg(search_cfg: DictConfig) -> SearchStrategy
     """Instantiate beam search, or leave it disabled when checkpoints are null."""
     config = OmegaConf.to_container(search_cfg, resolve=True)
     if config.get("checkpoints") is None:
-        if config.get("save_states") or config.get("resume_from") is not None or config.get("resume_seed") is not None:
-            raise ValueError("Saving or resuming beam candidates requires search.checkpoints.")
+        state_flags = ("save_states", "export_candidates", "resume_from", "resume_seed", "resume_selection")
+        if any(config.get(flag) is not None and config.get(flag) is not False for flag in state_flags):
+            raise ValueError("Saving, exporting or resuming beam candidates requires search.checkpoints.")
         return None
     return BeamSearchStrategy(**config)
 
