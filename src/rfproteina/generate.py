@@ -67,6 +67,22 @@ logger = RankedLogger(__name__, rank_zero_only=True)
 _config_path = os.path.join(os.environ["PROJECT_ROOT"], "configs")
 
 
+class TokenLimitError(ValueError):
+    """A transformed sample exceeds the caller's token budget."""
+
+    def __init__(self, max_tokens: int):
+        self.max_tokens = max_tokens
+        super().__init__(f"sample exceeds max_tokens={max_tokens}")
+
+
+class SampleLimitError(ValueError):
+    """A dataset exceeds the caller's transformed-sample budget."""
+
+    def __init__(self, max_samples: int):
+        self.max_samples = max_samples
+        super().__init__(f"dataset exceeds max_samples={max_samples}")
+
+
 def _extract_input_data(inputs: PathLike | list[PathLike]) -> tuple[Any, str]:
     """Resolve `inputs=` to a `DesignProblemDataset` (CIF) or `ConditionSpecDataset` source.
 
@@ -608,7 +624,13 @@ def _sort_dataset_by_length(dataset: torch.utils.data.Dataset) -> torch.utils.da
 
 @configured_verbosity(default=False)
 def run_generation(
-    cfg: DictConfig, job_id: int = 0, config_name: str | None = None, *, model: Proteina | None = None
+    cfg: DictConfig,
+    job_id: int = 0,
+    config_name: str | None = None,
+    *,
+    model: Proteina | None = None,
+    max_tokens: int | None = None,
+    max_samples: int | None = None,
 ) -> None:
     """
     Core generation function that runs inference given a Hydra config.
@@ -618,7 +640,22 @@ def run_generation(
         job_id: Job ID for parallel job splitting
         config_name: Name of the config (used for output directory naming)
         model: Optional model already loaded with ``Proteina.from_pretrained``.
+        max_tokens: Optional admission limit on transformed samples. Requires an explicit
+            positive max_samples and num_workers=0. Materializes at most max_samples
+            transformed samples in the caller, before compile setup and DataLoader creation;
+            memory use includes their full features, not just tokens. The loader consumes
+            these exact samples without rerunning stochastic transforms. Unset preserves
+            the ordinary streaming/worker behavior.
+        max_samples: Explicit dataset-size bound when using max_tokens. Oversized datasets
+            are rejected before materialization. Choose a bound appropriate to the memory
+            available for full transformed features.
     """
+    if max_tokens is not None:
+        if max_tokens < 1 or max_samples is None or max_samples < 1:
+            raise ValueError("max_tokens requires a positive max_tokens and an explicit positive max_samples")
+        if cfg.num_workers != 0:
+            raise ValueError("max_tokens prevalidation requires num_workers=0")
+
     precision = cfg.precision
     torch.set_float32_matmul_precision("high" if precision in ("32", "32-true") else "medium")
 
@@ -657,6 +694,9 @@ def run_generation(
         apply_torch_deterministic(logger)
 
     dataset = get_dataset_from_cfg(cfg, job_id)
+    if max_tokens is not None and len(dataset) > max_samples:
+        # Bound the full request before partitioning or sorting allocates index lists.
+        raise SampleLimitError(max_samples)
 
     # Optionally skip regenerating examples that already have outputs on disk. Skipped
     # designs are routed to an eval-only pass (below) so their metrics are always computed.
@@ -682,9 +722,22 @@ def run_generation(
         fixed_dimensions = {"I": compile_lengths}
         dataset = _sort_dataset_by_length(dataset)
 
-        # Configure torch.compile for inference + warm the local cache (before any compile).
+    if max_tokens is not None:
+        from atomworks.ml.utils.token import get_token_count
+
+        # Inspect exactly the bounded samples that will be generated. A second
+        # stochastic transform pass could sample different segment lengths.
+        checked_samples = []
+        for sample in dataset:
+            if get_token_count(sample["atom_array"]) > max_tokens:
+                raise TokenLimitError(max_tokens)
+            checked_samples.append(sample)
+        dataset = checked_samples
+
+    if compile_lengths:
+        # Admission runs before compile setup/cache loading, even for a resident model.
         setup_run_compile(inference=True)
-        model.reserve_shape_cache(compile_lengths)  # gate the flow model on for these buckets (AE stays eager)
+        model.reserve_shape_cache(compile_lengths)
         logger.info(f"Inference torch.compile ready with length buckets: {compile_lengths}")
 
     # Create dataloader

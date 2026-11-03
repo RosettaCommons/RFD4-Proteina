@@ -93,3 +93,10 @@ and verify required oracle metrics before scaling.
   never rename compressed bytes to `.cif`.
 - For code/config edits, run focused tests and config-composition checks. Never weaken
   regression assertions or regenerate baselines without explicit user approval.
+
+## API deployment
+
+`Dockerfile --target api` builds the single-worker GPU HTTP server; `runtime` remains
+its default CLI target. Portable serving code and CPU-only tests live in `deploy/api/`,
+and the Kubernetes base is in `deploy/kubernetes/`. See `deploy/README.md`.
+Keep cloud provisioning and provider-specific overlays in provider recipes.
