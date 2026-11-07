@@ -70,6 +70,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+esm = ["fair-esm==2.0.0"]
 docs = [
     "linkify-it-py>=2.0.0,<3",
     "myst-parser>=4.0.0,<5",
@@ -142,6 +143,7 @@ Issues = "https://github.com/RosettaCommons/RFD4-Proteina/issues"
 [project.scripts]
 rfd4-generate = "script_utils.entrypoints:generate"
 rfd4-evaluate = "rfproteina.evaluate:main_hydra"
+rfd4-fit-esm-reward = "rfproteina.rewards.esm_reward:main"
 rfd4-train = "rfproteina.train:main"
 rfd4-train-ae = "rfproteina.partial_autoencoder.train:main"
 

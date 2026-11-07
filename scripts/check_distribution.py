@@ -34,7 +34,7 @@ def check_distribution(path: Path) -> None:
         ), "Missing the quickstart example input"
         benchmark_dirs = {PurePosixPath(n).parts[3] for n in names if n.startswith("rfproteina/data/benchmarks/")}
         assert benchmark_dirs == {"monomer"}, f"Only the quickstart examples may ship in the wheel: {benchmark_dirs}"
-        for command in ("rfd4-generate", "rfd4-evaluate", "rfd4-train", "rfd4-train-ae"):
+        for command in ("rfd4-generate", "rfd4-evaluate", "rfd4-fit-esm-reward", "rfd4-train", "rfd4-train-ae"):
             assert f"{command} = ".encode() in entry_points, f"Missing entry point: {command}"
     else:
         with tarfile.open(path) as archive:

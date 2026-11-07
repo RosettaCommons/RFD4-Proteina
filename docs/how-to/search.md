@@ -83,6 +83,92 @@ see [Running metrics inline](evaluate-with-metrics.md#running-metrics-inline).
 The top-level `metrics_tags` continues to control ordinary output evaluation. It does not
 select search metrics.
 
+## ESM-2 sequence rewards
+
+`inference_esm_beam` ranks decoded protein sequences with a frozen ESM-2 encoder and a trained
+linear head. Install the optional `esm` extra in the inference environment with
+`pip install -e '.[esm]'` from the checkout.
+
+Fit directly from a completed generation or evaluation run by specifying a numeric target column.
+
+```bash
+rfd4-fit-esm-reward --run-dir /path/to/scored_run \
+    --target oracle.plddt_coi --output /path/to/esm_head.json
+```
+
+The command reads `inference_metrics/per_example_metrics.csv` or
+`evaluation_metrics/per_example_metrics.csv` and embeds the original designs from
+`designed_structure_path`. Use `--scores /path/to/metrics.csv` to pick a table explicitly,
+including a custom score table with one row per design. For a moved run, keep the
+`inference_samples` or `evaluation_samples` subtree and keep any evaluation symlink targets
+accessible. Consolidate per-job score tables before fitting on a multi-job run. Missing target
+values are skipped. A labeled row whose structure or chain cannot be resolved fails with its
+path in the error. The chain comes from the table or RFD4's chain-of-interest detection.
+Use `--chain-id` if you need to select it explicitly. The default encoder is ESM-2 650M on
+CUDA. `--model`, `--layer`, and `--device` override it.
+
+Use `--rewards` to fit to a composite score using the same [reward terms](../reference/search-parameters.md#reward-terms)
+as beam search. For example, save the following as `rewards.yaml`:
+
+```yaml
+rewards:
+  oracle.plddt_coi: {normalize_by: 100}
+  refolded_backbone_rmsd.rmsd:
+    weight: -1.0
+    clip: {max: 5.0}
+    normalize_by: 5.0
+```
+
+```bash
+rfd4-fit-esm-reward --run-dir /path/to/scored_run \
+    --rewards rewards.yaml --output /path/to/esm_head.json
+```
+
+The fitter applies the same clipping, normalization, and weights as search to the metric columns
+in the table. It skips rows with missing or nonfinite values in any nonzero term. The head
+predicts the combined reward, so a positive weight on `esm_reward.score` maximizes it. You can
+also pass an existing search config with `--rewards search_config.yaml --checkpoint 60` to use
+that checkpoint's reward terms. If the config inherits its reward terms through Hydra defaults,
+pass the composed config. The head records the resolved reward terms.
+
+You can also fit from raw [FAIR ESM-2 residue means](https://github.com/facebookresearch/esm#compute-embeddings-in-bulk-from-fasta)
+and candidate-level scores. The NPZ needs `embeddings` (one row per candidate), `candidate_ids`
+(unique Unicode IDs), `embedding_model` (such as `esm2_t33_650M_UR50D`) and `embedding_layer`
+(an integer). Pool the entire scored chain and exclude special tokens and padding. Join the
+scores through a CSV with a `candidate_id` column and a numeric target column. Aggregate
+repeated refolds per candidate before fitting.
+
+```bash
+rfd4-fit-esm-reward \
+    --embeddings embeddings.npz --scores candidate_scores.csv \
+    --target mean_graft_plddt --alpha 1.0 --output esm_head.json
+```
+
+This exports a JSON head for the specified encoder and layer. The fitter skips candidates
+without finite target values. Choose the target and regularization using held-out designs
+before fitting a head for search. A head can predict any numeric score. For an error target,
+set a negative weight on `esm_reward.score` at each checkpoint.
+
+```bash
+rfd4-generate inference_experiment=inference_esm_beam \
+    inputs=design.yaml out_dir=./runs/esm_search \
+    metrics.inline_metrics.esm_reward.artifact_path=/path/to/esm_head.json
+```
+
+The preset scores completed rollouts at step 40 and completed candidates at step 60. It uses
+only the ESM reward at those checkpoints. The first use loads the named FAIR ESM-2 checkpoint
+from the PyTorch Hub cache or downloads it from FAIR. The encoder runs on the current CUDA
+device by default. Set `metrics.inline_metrics.esm_reward.device=cpu` to place it on CPU.
+Repeated sequences reuse their scores within a validation epoch.
+
+The metric uses the full unambiguous chain of interest, with support for up to 1,022 canonical
+residues. Set `metrics.inline_metrics.esm_reward.chain_id` to select a chain explicitly, using
+its `chain_iid` when that annotation is present. Train on sequences extracted with the same
+scope. `esm_reward.score` is a prediction of the chosen training target. Add appropriate final
+refolding tags if you want to measure the resulting designs with an oracle. For an early
+checkpoint using `use_clean_prediction: true`, validate the head on those decoded predictions
+before using it to prune branches.
+
 ## Saving completed rollouts
 
 The final beam is always returned. Set `search.save_rollouts: true` to also return completed
