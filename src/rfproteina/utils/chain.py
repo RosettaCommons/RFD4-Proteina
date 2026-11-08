@@ -1,14 +1,31 @@
 """Utilities for identifying the chain of interest in a multi-chain structure."""
 
 import numpy as np
+from atomworks.constants import STANDARD_AA
 from atomworks.io.utils.annotator import _register_lazy_annotator, ensure_annotations
+from atomworks.io.utils.selection import get_residue_starts
 from atomworks.ml.conditions import C_CRD, C_SEQ
+from biotite.sequence import ProteinSequence
 from biotite.structure import AtomArray, AtomArrayStack
 
 from rfproteina.conditions import C_CRDGRP
 from rfproteina.utils.ddp import RankedLogger
 
 logger = RankedLogger(__name__, rank_zero_only=True)
+
+
+def get_protein_chain_sequence(atom_array: AtomArray, chain_id: str | None) -> str:
+    """Return the full sequence of one canonical chain, selecting by IID when available."""
+    if chain_id is None:
+        raise ValueError("An unambiguous chain of interest or an explicit chain_id is required.")
+    chain_attr = "chain_iid" if "chain_iid" in atom_array.get_annotation_categories() else "chain_id"
+    chain = atom_array[atom_array.get_annotation(chain_attr) == chain_id]
+    if not len(chain):
+        raise ValueError(f"Chain {chain_id!r} was not found in the structure.")
+    residues = chain.res_name[get_residue_starts(chain)]
+    if set(residues) - set(STANDARD_AA):
+        raise ValueError(f"Chain {chain_id!r} must contain only canonical amino acids.")
+    return "".join(ProteinSequence.convert_letter_3to1(name) for name in residues)
 
 
 @_register_lazy_annotator("is_chain_of_interest")

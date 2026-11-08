@@ -1,0 +1,34 @@
+# @package _global_
+# Rank completed candidates with a trained ESM-2 sequence reward head.
+defaults:
+  - inference_on_user_inputs
+  - _self_
+
+metrics_tags: [esm_reward]
+
+metrics:
+  inline_metrics:
+    esm_reward:
+      _target_: rfproteina.metrics.esm_reward_metric.ESMRewardMetric
+      artifact_path: ???
+      device: cuda
+      chain_id: null
+      cache_size: 4096
+      required_tags_any: [esm_reward]
+
+generation:
+  args:
+    nsteps: 60
+
+search:
+  n_branch: 2
+  beam_width: 2
+  checkpoints:
+    "40":
+      metrics: [esm_reward]
+      rewards:
+        esm_reward.score: {weight: 1.0}
+    "60":
+      metrics: [esm_reward]
+      rewards:
+        esm_reward.score: {weight: 1.0}
