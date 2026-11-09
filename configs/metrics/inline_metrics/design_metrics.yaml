@@ -38,7 +38,9 @@ interchain_interactions:
 # free to place. NaN when nothing is H-bond-conditioned.
 hbond_conditioning_proximity:
   _target_: rfproteina.metrics.hbond_proximity_metric.HBondConditioningProximityMetric
-  required_tags_any: ["hbond_conditioning", "design"]
+  # Opt-in: gated on "hbond_conditioning" alone, so it does not run on every design-tagged job.
+  # No config emits that tag, so pass it explicitly in metrics_tags to enable the metric.
+  required_tags_any: ["hbond_conditioning"]
 
 # Reports NaN when nothing was sequence-conditioned
 sequence_adherence:

@@ -2,7 +2,7 @@
 
 import numpy as np
 import torch
-from atomworks.ml.conditions import C_CRD, C_IDX, C_SEQ
+from atomworks.ml.conditions import C_CRD, C_IDX
 from atomworks.ml.utils.token import get_token_starts
 from biotite.structure import AtomArray
 from scipy.optimize import linear_sum_assignment
@@ -25,10 +25,10 @@ def build_predicted_insertion_mapping(
 ) -> dict[int, int]:
     """Match each unindexed token to a distinct, eligible generated token on the same chain.
 
-    A target is eligible when it carries no coordinate conditioning of its own and, for a
-    sequence-conditioned motif residue, when its generated identity matches that residue. Both
-    rule out targets whose transfer `annotate_unindexed_insertion` could not apply. An unindexed
-    token with no eligible target is omitted from the mapping and reported as unmapped.
+    A target is eligible when it carries no coordinate conditioning of its own, which rules out
+    the indexed-motif tokens whose transfer `annotate_unindexed_insertion` could not apply.
+    Identity is not part of eligibility (see the comment in the body). An unindexed token with no
+    eligible target is omitted from the mapping and reported as unmapped.
 
     Args:
       insertion_logits: ``[n_valid, n_valid]`` logits, ``n_valid = n_gen + n_unindexed``.
