@@ -622,9 +622,7 @@ def annotate_unindexed_insertion(
                 conditioned_source_indices = src_token_indices[carries]
                 values = cond.annotation(atom_array, default="generate")[conditioned_source_indices]
                 if not np.all(values == values[0]):
-                    raise ValueError(
-                        f"{cond.name} has inconsistent values on unindexed token {unindexed_token_id}."
-                    )
+                    raise ValueError(f"{cond.name} has inconsistent values on unindexed token {unindexed_token_id}.")
                 cond.transfer(
                     atom_array,
                     model_generated_atom_array,
