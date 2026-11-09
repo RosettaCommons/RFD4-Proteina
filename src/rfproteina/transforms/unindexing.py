@@ -473,6 +473,11 @@ def annotate_unindexed_insertion(
     - Every per-position (atom/token/residue-level) 1-body condition (coords, sequence, coord group,
       SSE, RASA, h-bond, interactions, ...) is additionally re-applied with the ORIGINAL-input value,
       copied through one per-token atom correspondence (source and target atoms line up 1:1).
+      When sequence is redesigned, this correspondence is restricted to atoms carrying atom-level
+      conditions. Unconditioned source sidechains need no target partner, so backbone-only motifs can
+      map onto residues with redesigned identities. Token/residue-level conditions are transferred
+      over the whole mapped target token, independently of its atom inventory. Unset conditions remain
+      unset.
 
     The mapped token is then marked indexed (``C_IDX`` = True): once an unindexed motif atom has a
     definite position it becomes a normal indexed atom, so a further round of partial diffusion treats
@@ -500,6 +505,8 @@ def annotate_unindexed_insertion(
         for cond in CONDITIONS
         if cond not in not_copied and cond.n_body == 1 and cond.level in (Level.ATOM, Level.TOKEN, Level.RESIDUE)
     )
+    atom_conditions_to_copy = tuple(cond for cond in conditions_to_copy if cond.level == Level.ATOM)
+    token_conditions_to_copy = tuple(cond for cond in conditions_to_copy if cond.level != Level.ATOM)
 
     has_index = C_IDX.mask(atom_array, default="generate")
     model_generated_atom_array = atom_array[has_index].copy()
@@ -558,6 +565,11 @@ def annotate_unindexed_insertion(
     is_coord_conditioned_in_context[~has_index] = has_3d_conditioning
 
     try:
+        atom_condition_masks = {cond: cond.mask(atom_array, default="generate") for cond in atom_conditions_to_copy}
+        requires_atom_partner = is_coord_conditioned_in_context.copy()
+        for mask in atom_condition_masks.values():
+            requires_atom_partner |= mask
+
         for unindexed_token_id, target_token_id in token_mapping.items():
             unindexed_token_mask = in_context_conditioning.token_id == unindexed_token_id
             unindexed_token = in_context_conditioning[unindexed_token_mask]
@@ -573,36 +585,64 @@ def annotate_unindexed_insertion(
             # Values come from the source's stored ANNOTATION (the frozen original input), not the live
             # coord / res_name. Source and target atoms line up (same residue, same atoms), so one name
             # correspondence carries every condition -- atom- and residue-level alike.
+            # With sequence redesign, the same-atom assumption no longer holds. Match only atoms
+            # carrying atom-level conditions; unconditioned source sidechains need no target partner.
+            # Transfer residue/token conditions separately over the whole mapped target token.
             target_mask_indexed = (atom_array.token_id == target_token_id) & has_index
             src_token_mask = ~has_index & (atom_array.token_id == unindexed_token_id)
             src_token_indices = np.where(src_token_mask)[0]
-            token_target_indices = generated_indices[target_mask_generated][
+            src_atom_mask = src_token_mask & requires_atom_partner
+            src_atom_indices = np.where(src_atom_mask)[0]
+            target_token_indices = generated_indices[target_mask_generated]
+            token_target_indices = target_token_indices[
                 _get_target_indices_corresponding_to_inserted(
-                    atom_array, src_token_mask, target_mask_indexed, allow_element_fallback=True
+                    atom_array, src_atom_mask, target_mask_indexed, allow_element_fallback=True
                 )
             ]
-            for cond in conditions_to_copy:
-                carries = cond.mask(atom_array, default="generate")[src_token_indices]
+
+            # Transfer frozen atom-level targets without borrowing unconditioned source geometry.
+            for cond in atom_conditions_to_copy:
+                carries = atom_condition_masks[cond][src_atom_indices]
                 if not carries.any():
                     continue
                 cond.transfer(
                     atom_array,
                     model_generated_atom_array,
-                    src_token_indices[carries],
+                    src_atom_indices[carries],
                     token_target_indices[carries],
+                    on_mismatch="raise",
+                )
+
+            # Residue/token conditions describe the whole mapped token, including newly generated
+            # sidechain atoms. Their values do not require an atom-for-atom correspondence.
+            for cond in token_conditions_to_copy:
+                carries = cond.mask(atom_array, default="generate")[src_token_indices]
+                if not carries.any():
+                    continue
+                conditioned_source_indices = src_token_indices[carries]
+                values = cond.annotation(atom_array, default="generate")[conditioned_source_indices]
+                if not np.all(values == values[0]):
+                    raise ValueError(
+                        f"{cond.name} has inconsistent values on unindexed token {unindexed_token_id}."
+                    )
+                cond.transfer(
+                    atom_array,
+                    model_generated_atom_array,
+                    np.full(target_token_indices.size, conditioned_source_indices[0], dtype=np.int64),
+                    target_token_indices,
                     on_mismatch="raise",
                 )
 
             # The motif's coord group is authoritative post-insertion: overwrite the target's default
             # UNKNOWN group rather than treating it as a conflict. C_CRDGRP's mask is always present, so
             # gate on the value -- skip tokens whose source carries no real group (all UNKNOWN).
-            src_group = C_CRDGRP.annotation(atom_array, default="generate")[src_token_indices]
+            src_group = C_CRDGRP.annotation(atom_array, default="generate")[src_atom_indices]
             if (src_group != C_CRDGRP.UNKNOWN_COORDS).any():
                 coordinate_groups = safe_scatter(src_group, token_target_indices, coordinate_groups)
 
             # Coord provenance / metric staging: reuse the token correspondence restricted to the
             # coord-conditioned atoms, so conditions and coords land on the same target atoms.
-            coord_target = token_target_indices[is_coord_conditioned_in_context[src_token_indices]]
+            coord_target = token_target_indices[is_coord_conditioned_in_context[src_atom_indices]]
             token_coord_mask = has_3d_conditioning[unindexed_token_mask]
             mapped_to_coordinate_conditioned_region[coord_target] = True
             src_coordinate_conditioned_region[coord_target] = token_src_id
