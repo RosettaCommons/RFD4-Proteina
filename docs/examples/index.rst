@@ -13,4 +13,5 @@ inspection only and mark where to stop. Oracle refolding is unsupported on Colab
    enzyme_design_tutorial
    ppi_specificity_tutorial
    antibody_design_tutorial
+   cyclic_peptide_tutorial
    cyclic_peptide_binder_tutorial
