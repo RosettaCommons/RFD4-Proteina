@@ -1201,6 +1201,9 @@ class Proteina(L.LightningModule):
                 task=metrics_output["task"],
             )
 
+            if "search_refolds" in generation_list[i]:
+                metrics_output["search_refolds"] = generation_list[i]["search_refolds"]
+
             # Store for epoch-end aggregation
             self.validation_output_generation.append(metrics_output)
             self._metrics_pool.submit_generated_structure(

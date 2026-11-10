@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import inspect
 import tempfile
 import weakref
@@ -190,14 +191,19 @@ def load_full_model(
         raise ValueError("Full BioIR currently requires bioir.dtype=bfloat16")
     states = _copy_loaded_states(native)
     alignment = _noise_alignment(native)
+    parameters = inspect.signature(RFProteina.from_reference_state_dicts).parameters
     return RFProteina.from_reference_state_dicts(
         states["flow"],
         states["autoencoder"],
         sampling_config=sampling_config,
         device=device,
         attention_backend=options.get("attention_backend"),
-        # Only a checkpoint trained with it names it, so a runtime without the option still loads the rest.
-        **{key: True for key in ("noise_align_chirality", "noise_align_chirality_translate") if alignment[key]},
+        # Override newer runtime defaults with explicit false, while accepting older factories without the option.
+        **{
+            key: alignment[key]
+            for key in ("noise_align_chirality", "noise_align_chirality_translate")
+            if alignment[key] or key in parameters
+        },
     )
 
 
@@ -354,8 +360,10 @@ class NativeMetricEvaluator:
 
     def __init__(self, native: Any, batch: Mapping[str, Any], output_dir: Path):
         self.native, self.batch, self.output_dir = native, batch, output_dir
+        self.refolds = {}
 
     def evaluate(self, prediction: Any, features: Mapping[str, torch.Tensor], context: Any) -> list[dict[str, Any]]:
+        from rfproteina.metrics.oracles.search_refold import SearchRefold
         from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_and_refolding_metrics
         from rfproteina.transforms.unindexing import annotate_unindexed_insertion
 
@@ -392,6 +400,13 @@ class NativeMetricEvaluator:
                     metric_names=names,
                 )
             )
+            if self.native.oracle_metric_manager is not None:
+                refolds = {}
+                for name, oracle in self.native.oracle_metric_manager.active_metrics(metric_names=names).items():
+                    refold = SearchRefold.capture(oracle, entry["generated_atom_array"], self.output_dir, example_id)
+                    if refold is not None:
+                        refolds[name] = refold
+                self.refolds[context.checkpoint, example_id] = refolds
             reward_model.aggregate_metrics_output(row)  # warns on a missing reward key, as native search does
             metrics.append(row)
         return metrics
@@ -536,12 +551,13 @@ class FullBioIRAdapter:
             search_root.mkdir(parents=True, exist_ok=True)
             output_dir = Path(tempfile.mkdtemp(prefix=f"batch{self.completed_calls}_", dir=search_root))
             # Search derives its own child streams from a root seed.
+            evaluator = NativeMetricEvaluator(self.native, batch, output_dir)
             output = self.model.search(
                 features,
                 self.search,
                 seed=_fresh_seed(),
                 partial_config=self.partial,
-                evaluators=(NativeMetricEvaluator(self.native, batch, output_dir),),
+                evaluators=(evaluator,),
             )
             results = []
             example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
@@ -558,6 +574,10 @@ class FullBioIRAdapter:
                     search_seed=candidate.seed,
                     is_intermediate=candidate.is_intermediate,
                 )
+                if not candidate.is_intermediate:
+                    entries[0]["search_refolds"] = evaluator.refolds.get(
+                        (candidate.checkpoint, candidate.candidate_id), {}
+                    )
                 results.extend(entries)
         else:
             decoder_presence = None
@@ -583,6 +603,7 @@ class FullBioIRAdapter:
         Requests longer than ``bioir.cuda_graph_max_tokens`` run the trunk eagerly.
         """
         if not self.options.get("cuda_graph", True):
+            self.model.reset_graphs()
             return
         # BioIR captures the trunk's recycle step, so a slot covers one ``(batch, tokens)`` shape
         # whatever depths the schedule asks for: a request needs its full batch and the singleton
@@ -644,8 +665,16 @@ def predict_full_bioir(native: Any, batch: Mapping[str, Any]) -> list[dict[str, 
     device = batch["padding_mask"].device
     if next(adapter.model.parameters()).device != device:
         raise RuntimeError("Full BioIR was initialized on a different device; reconfigure after moving the model")
-    with torch.no_grad(), torch.autocast(device_type=device.type, enabled=False):
-        return adapter.predict_step(batch)
+    # Cyclic finalizers can unload Triton CUDA modules, which is illegal during graph capture.
+    # Defer automatic collection until the request returns; tensor reference counting still runs.
+    gc_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        with torch.no_grad(), torch.autocast(device_type=device.type, enabled=False):
+            return adapter.predict_step(batch)
+    finally:
+        if gc_enabled:
+            gc.enable()
 
 
 def full_bioir_runtime(native: Any) -> dict[str, Any] | None:

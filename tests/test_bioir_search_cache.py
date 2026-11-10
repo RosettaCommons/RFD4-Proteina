@@ -199,6 +199,16 @@ def test_one_search_still_reuses_its_own_cache(tmp_path, formatting_seam):
     assert len(oracle.jobs) == 2, "the repeated evaluation refolded instead of hitting its own cache"
 
 
+def test_independent_adapters_with_repeated_sample_ids_do_not_share_refolds(tmp_path, formatting_seam):
+    """Ranks and restarted processes begin at batch zero, even when sample names repeat."""
+    oracle = CountingOracle()
+    arrays = [_structure(), _structure(offset=2.0), _structure(residue="SER")]
+    outputs = [_adapter(tmp_path, oracle).predict_step(_batch([array], names=["same_sample"]))[0] for array in arrays]
+
+    assert len(oracle.jobs) == len(arrays)
+    assert [output["reward"] for output in outputs] == pytest.approx([_score(array) for array in arrays])
+
+
 def test_allocating_the_cache_does_not_disturb_the_sampler_stream(tmp_path, formatting_seam):
     """The search seed must stay a pure function of the run seed and the batch index."""
     oracle = CountingOracle()
