@@ -1,6 +1,7 @@
 """Check the selected Python environment and released checkpoints without sampling."""
 
 import os
+import platform
 from pathlib import Path
 
 import atomworks
@@ -13,9 +14,12 @@ import rfproteina.conditions
 repo_root = Path(__file__).resolve().parents[3]
 print(f"AtomWorks: {atomworks.__file__}")
 print(f"RFProteina: {rfproteina.conditions.__file__}")
-if not torch.cuda.is_available():
+if torch.cuda.is_available():
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+elif torch.backends.mps.is_available():
+    print(f"GPU: Apple MPS (macOS {platform.mac_ver()[0]}, torch {torch.__version__})")
+else:
     raise SystemExit("FAIL: CUDA is unavailable in the selected environment.")
-print(f"GPU: {torch.cuda.get_device_name(0)}")
 config = yaml.safe_load((repo_root / "configs/inference.yaml").read_text())
 model_path = config.get("hf_ckpt_path")
 if model_path:
