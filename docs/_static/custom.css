@@ -174,11 +174,15 @@ a {
   margin-bottom: 10px;
   font-size: 0.95rem;
 }
-.bd-article .cloud-launch-box .badge-group {
+.bd-article .cloud-launch-box .badge-group,
+.bd-article .cloud-launch-box .badge-group > p {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+.bd-article .cloud-launch-box .badge-group > p {
+  margin: 0;
 }
 .bd-article .cloud-launch-box .badge-group img {
   height: 28px;
