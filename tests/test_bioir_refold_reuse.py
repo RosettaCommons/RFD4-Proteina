@@ -17,6 +17,7 @@ from rfproteina.metrics.utils.metrics_utils import (
     fold_designs_for_oracles,
     run_oracle_and_refolding_metrics,
 )
+from rfproteina.utils.parse_presets import ANNOTATED_CIF
 from tests.test_bioir_search_cache import SearchProbe, _adapter, _batch, _score, formatting_seam  # noqa: F401
 from tests.test_bioir_search_cache import _structure as _base_structure
 
@@ -286,7 +287,5 @@ def test_saving_aligned_cif_preserves_oracle_input(tmp_path, monkeypatch):
         }
     )
     np.testing.assert_array_equal(staged["designed_atom_array"].coord, array.coord)
-    saved = module._parse_structure(tmp_path / "aligned_generated.cif", config=module.ANNOTATED_CIF)["assemblies"]["1"][
-        0
-    ]
+    saved = module._parse_structure(tmp_path / "aligned_generated.cif", config=ANNOTATED_CIF)["assemblies"]["1"][0]
     np.testing.assert_allclose(saved.coord, array.coord + 10, atol=0.001)
