@@ -144,7 +144,7 @@ def test_changed_input_or_settings_refolds(oracle, handoff, change):
     elif change == "flags":
         oracle.extra_flags.append("--different")
     elif change == "exclude":
-        oracle.exclude_ccds.append("HOH")
+        oracle.exclude_ccds = [*getattr(oracle, "exclude_ccds", ()), "HOH"]
     elif change == "numbering":
         oracle.preserve_res_id = False
     assert not record.reuse(oracle, target)

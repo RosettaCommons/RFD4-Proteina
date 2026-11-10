@@ -44,7 +44,7 @@ def _identity(oracle: OracleMetric, array: AtomArray) -> tuple | None:
         oracle.seed,
         oracle.preserve_res_id,
         tuple(oracle.extra_flags),
-        tuple(oracle.exclude_ccds),
+        tuple(getattr(oracle, "exclude_ccds", ())),
         tuple(os.environ.get(key) for key in ("AF3_MODEL_DIR", "OF3_MODEL_DIR", "AF3_IMAGE")),
     )
     return digest.hexdigest(), settings
