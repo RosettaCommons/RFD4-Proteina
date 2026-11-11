@@ -33,8 +33,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    # AtomWorks pins the exact Biotite it supports, so Biotite is only given a floor here.
-    "atomworks[ml,openbabel]>=3.0.4,<4",
+    # AtomWorks 3.1 changes CIF IO and selects Biotite 2's incompatible structure API.
+    # Keep the supported 3.0 API; AtomWorks pins its compatible Biotite version.
+    "atomworks[ml,openbabel]>=3.0.4,<3.1",
     "biotite>=1.6.0",
     # Configuration & CLI (inherited from the root rc-foundry project)
     "rootutils>=1.0.7,<1.1",
@@ -70,6 +71,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.133,<1",
+    "uvicorn>=0.34,<1",
+]
 docs = [
     "linkify-it-py>=2.0.0,<3",
     "myst-parser>=4.0.0,<5",
@@ -124,6 +129,8 @@ dev = [
     "debugpy>=1.8.5,<2",
     "ipykernel>=6.31.0,<7",
     # Testing tools
+    "httpx>=0.28,<1",
+    "fastapi>=0.133,<1",
     "pytest>=8.2.0,<9",
     "pytest-testmon>=2.1.1,<3",
     "pytest-xdist>=3.6.1,<4",

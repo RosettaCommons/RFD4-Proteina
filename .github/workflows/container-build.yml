@@ -4,7 +4,7 @@ name: Container build
 # Inductor, CLI) runs at build time and needs no GPU.
 on:
   pull_request:
-    paths: [Dockerfile, .dockerignore, pyproject.toml, .github/workflows/container-build.yml]
+    paths: [Dockerfile, .dockerignore, pyproject.toml, "deploy/api/**", .github/workflows/container-build.yml]
   workflow_dispatch:
   push:
     branches: [ci/container-build-test]
@@ -35,5 +35,14 @@ jobs:
           build-args: RFD4_ACCELERATOR=${{ matrix.accelerator }}
           load: true
           tags: rfd4-proteina:${{ matrix.accelerator }}
+      - name: Build API target
+        if: matrix.accelerator != 'cpu'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: api
+          build-args: RFD4_ACCELERATOR=${{ matrix.accelerator }}
+          load: true
+          tags: rfd4-proteina:${{ matrix.accelerator }}-api
       - name: Image size
         run: docker images rfd4-proteina:${{ matrix.accelerator }}
