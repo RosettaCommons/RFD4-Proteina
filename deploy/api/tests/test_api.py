@@ -6,7 +6,6 @@ import queue
 import re
 import threading
 import time
-from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -15,30 +14,12 @@ import httpx
 import pytest
 from app import api, runner
 from app.errors import STATUS_FOR_CODE, ApiError, ErrorCode
+from conftest import design_request, wait_for
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 EXAMPLE = (Path(__file__).resolve().parents[1] / "examples/monomer-short.cif").read_bytes()
-
-
-@pytest.fixture(autouse=True)
-def isolated_service(tmp_path: Path, monkeypatch: MonkeyPatch) -> Iterator[None]:
-    """Restore all service globals after every test, including lifespan assignments."""
-    monkeypatch.setenv("STORE_PATH", str(tmp_path / "store"))
-    monkeypatch.setattr(api, "store", None)
-    monkeypatch.setattr(api, "work", tmp_path / "work")
-    monkeypatch.setattr(api, "pending", queue.Queue(maxsize=8))
-    monkeypatch.setattr(api, "state", {"ready": False, "error": None, "runner": None, "stop": False})
-    yield
-
-
-def wait_for(predicate: Callable[[], bool]) -> None:
-    deadline = time.monotonic() + 5
-    while time.monotonic() < deadline:
-        if predicate():
-            return
-        time.sleep(0.01)
-    raise AssertionError("Timed out")
+pytestmark = pytest.mark.usefixtures("isolated_service")
 
 
 def test_resident_worker_serializes_requests_and_persists_results(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -68,26 +49,24 @@ def test_resident_worker_serializes_requests_and_persists_results(tmp_path: Path
     monkeypatch.setattr(runner, "Runner", FakeRunner)
     with TestClient(api.app) as client:
         wait_for(lambda: client.get("/health/ready").status_code == 200)
-        assert client.post("/v1/designs", files={"file": ("bad.cif", b"bad")}).status_code == 422
+        assert client.post("/v1/designs", json=design_request(b"bad")).status_code == 422
         oversized = b"x" * (api.MAX_REQUEST_BYTES + 1)
-        rejected = client.post("/v1/designs", files={"file": ("big.cif", oversized)})
+        rejected = client.post("/v1/designs", json=design_request(oversized))
         assert rejected.status_code == 413
         assert rejected.json()["error"]["code"] == "request_too_large"
         assert (
             client.post(
                 "/v1/designs",
-                files={"file": ("input.cif", EXAMPLE)},
-                data={"num_replicates": 5},
+                json=design_request(num_replicates=api.MAX_REPLICATES + 1),
             ).status_code
-            == 422
+            == 413
         )
         assert client.get("/v1/designs/not-an-id").status_code == 404
         ids = []
         for seed in (42, 43, 99, 44):
             response = client.post(
                 "/v1/designs",
-                files={"file": ("input.cif", EXAMPLE)},
-                data={"seed": seed},
+                json=design_request(seed=seed),
             )
             assert response.status_code == 202
             ids.append(response.json()["id"])
@@ -123,7 +102,7 @@ def test_startup_failure_is_unready_and_not_live(tmp_path: Path, monkeypatch: Mo
         assert (
             client.post(
                 "/v1/designs",
-                files={"file": ("input.cif", EXAMPLE)},
+                json=design_request(),
             ).status_code
             == 503
         )
@@ -154,15 +133,15 @@ def test_queue_applies_backpressure(tmp_path: Path, monkeypatch: MonkeyPatch) ->
     monkeypatch.setattr(runner, "Runner", BlockingRunner)
     with TestClient(api.app) as client:
         wait_for(lambda: client.get("/health/ready").status_code == 200)
-        files = {"file": ("input.cif", EXAMPLE)}
-        first = client.post("/v1/designs", files=files)
+        request = design_request()
+        first = client.post("/v1/designs", json=request)
         assert first.status_code == 202
         assert started.wait(timeout=2)
         assert client.get(f"/v1/designs/{first.json()['id']}/results").status_code == 409
         try:
-            accepted = [client.post("/v1/designs", files=files) for _ in range(8)]
+            accepted = [client.post("/v1/designs", json=request) for _ in range(8)]
             assert all(response.status_code == 202 for response in accepted)
-            busy = client.post("/v1/designs", files=files)
+            busy = client.post("/v1/designs", json=request)
             assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
         finally:
             release.set()
@@ -185,7 +164,12 @@ def test_format_checks_reject_header_only_cif(monkeypatch: MonkeyPatch) -> None:
         b"\xff",
         b"_atom_site.id 1",
     ):
-        assert client.post("/v1/designs", files={"file": ("bad.cif", content)}).status_code == 422
+        assert (
+            client.post(
+                "/v1/designs", content=json.dumps(design_request(content)), headers={"Content-Type": "application/json"}
+            ).status_code
+            == 422
+        )
 
 
 def test_artifact_path_escape_is_rejected(tmp_path: Path) -> None:
@@ -219,7 +203,7 @@ def test_slow_large_cif_admission_does_not_block_health(tmp_path: Path, monkeypa
 
     async def scenario() -> None:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=api.app), base_url="http://test") as client:
-            submission = asyncio.create_task(client.post("/v1/designs", files={"file": ("large.cif", content)}))
+            submission = asyncio.create_task(client.post("/v1/designs", json=design_request(content)))
             try:
                 assert await asyncio.to_thread(started.wait, 3)
                 assert not finished.is_set()
@@ -282,7 +266,7 @@ def test_full_queue_rejects_without_parsing_or_admission(monkeypatch: MonkeyPatc
     monkeypatch.setattr(api, "admit_request", admit)
     monkeypatch.setattr(api.CIFFile, "read", parse)
     client = TestClient(api.app)
-    busy = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)})
+    busy = client.post("/v1/designs", json=design_request())
     assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
     admit.assert_not_called()
     parse.assert_not_called()
@@ -300,7 +284,7 @@ def test_locked_queue_check_handles_queue_filling_during_parse(tmp_path: Path, m
 
     monkeypatch.setattr(api.CIFFile, "read", fill_queue_during_parse)
     client = TestClient(api.app)
-    busy = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)})
+    busy = client.post("/v1/designs", json=design_request())
     assert busy.status_code == 503 and busy.json()["error"]["code"] == "service_busy"
     assert not api.store.exists(), "Rejection must precede persisting the request"
 
@@ -343,7 +327,7 @@ def test_every_failure_uses_the_declared_error_body(tmp_path: Path) -> None:
     for response in (
         client.get("/v1/designs/not-an-id"),
         client.get("/no/such/route"),
-        client.post("/v1/designs", files={"file": ("x.cif", b"data_x")}, data={"num_replicates": 99}),
+        client.post("/v1/designs", json=design_request(b"data_x", num_replicates=0)),
     ):
         assert response.status_code >= 400
         error = response.json()["error"]
@@ -376,7 +360,7 @@ def test_task_is_validated_and_unsupported_modes_are_refused(
     monkeypatch.setattr(runner, "Runner", Idle)
     with TestClient(api.app) as client:
         wait_for(lambda: client.get("/health/ready").status_code == 200)
-        response = client.post("/v1/designs", files={"file": ("input.cif", EXAMPLE)}, data={"task": task})
+        response = client.post("/v1/designs", json=design_request(task=task))
         assert response.status_code == status, response.json()
         if code is None:
             assert client.get(f"/v1/designs/{response.json()['id']}").json()["task"] == task

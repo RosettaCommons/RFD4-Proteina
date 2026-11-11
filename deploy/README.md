@@ -92,8 +92,21 @@ In another terminal, from the repository root:
 
 ```bash
 curl -fsS http://localhost:8000/health/ready
+python3 - <<'PY' > /tmp/rfd4-request.json
+import json
+from pathlib import Path
+print(json.dumps({
+    "task": "generation",
+    "input": {
+        "format": "annotated_cif",
+        "example_id": "monomer",
+        "file": {"filename": "monomer-short.cif", "content": Path("deploy/api/examples/monomer-short.cif").read_text()},
+    },
+    "sampling": {"seed": 42, "num_replicates": 1},
+}))
+PY
 curl -fsS -X POST http://localhost:8000/v1/designs \
-  -F file=@deploy/api/examples/monomer-short.cif -F seed=42 -F num_replicates=1
+  -H 'Content-Type: application/json' --data-binary @/tmp/rfd4-request.json
 export REQUEST_ID=RETURNED_ID
 curl -fsS "http://localhost:8000/v1/designs/$REQUEST_ID"
 curl -fsS "http://localhost:8000/v1/designs/$REQUEST_ID/results"
@@ -101,7 +114,7 @@ curl -fsS "http://localhost:8000/v1/designs/$REQUEST_ID/results"
 
 Poll until `status` is `succeeded`, then download an artifact using its returned
 `download` path. Failed inputs report `status: failed` with an error.
-To exercise two real designs, downloads, token limits, and recovery:
+To exercise two real designs, downloads, token limits, and recovery after a rejected design:
 
 ```bash
 python3 -m pip install httpx pytest
@@ -112,10 +125,14 @@ RUN_GPU_API_TESTS=1 API_URL=http://localhost:8000 \
 Set `API_URL` to test another endpoint. Downloaded artifacts and status JSON land in
 pytest's `tmp_path` for the run. This check needs a live GPU server and complements the
 fake-runner HTTP tests, which need neither weights nor a GPU.
+The live test derives its input lengths from the reported token limit. It checks
+checkpoint-load counts and process identity, but does not prove continuous GPU
+residency, compiled-graph reuse, or persistence across a container restart.
 The server loads checkpoints once per startup and runs one design request at a time.
 Limits are service policy rather than model limits, so they are configurable and
 reported to clients by `GET /v1/info` instead of being hard-coded: `RFD4_QUEUE_DEPTH`
-(8 waiting requests), `RFD4_MAX_REPLICATES` (4), `RFD4_MAX_REQUEST_BYTES` (32 MiB) and
+(8 waiting requests), `RFD4_MAX_REPLICATES` (4), `RFD4_MAX_REQUEST_BYTES` (32 MiB for
+the entire JSON body, including chunked transfers) and
 `RFD4_MAX_TOKENS` (1024). The token default is the repository's own ceiling —
 `configs/inference.yaml` compiles length buckets up to 1024, so a higher value would
 leave the compiled shapes behind. Upload admission checks CIF syntax and
@@ -149,12 +166,28 @@ keep it internal or add authenticated HTTPS at your ingress before remote access
 
 ## Request vocabulary and errors
 
-The task names, error codes and status mapping match the downstream RFD4-Proteina
-service, so a client written against one handles the other without a translation
-table. `GET /v1/info` reports the vocabulary and the limits, and answers while the
-model is still loading.
+The JSON request is a strict subset of the
+[NIM design request](https://docs.nvidia.com/nim/bionemo/rfd4-proteina/api-reference/generate-rfd-4-proteina-designs).
+It accepts `task`, `input` (`format: annotated_cif`, `file.content`, optional
+`file.filename` and `example_id`), and `sampling.seed` / `sampling.num_replicates`.
+The filename is a label, never a filesystem path; `example_id` names the staged
+CIF and therefore the upstream outputs. It defaults to `design` and must start
+with a letter, digit, underscore or hyphen, followed by up to 63 letters, digits,
+dots, underscores or hyphens. Unknown fields are rejected at every nesting level.
+This includes unsupported `partial`, `search`, `metrics`, `output`, and extra
+sampling options; they are never silently ignored. Multipart requests from the
+earlier PR revision must migrate to JSON.
 
-`task` is optional and may be any of `antibody_design`, `enzyme_design`,
+Omitting `seed` (or setting it to null) chooses a fresh seed, returned in the job's
+`settings`. Explicit seeds must be in 0–2147483647 for this upstream serving path.
+Replay the whole request with the same software, checkpoint and hardware; this
+API does not promise NIM's per-design seed or batching semantics. The replicate
+cap is deployment policy and exceeding it returns 413 `request_too_large`.
+`GET /v1/info` reports API version, supported/unsupported tasks and limits even
+while the model loads. `/openapi.json` describes requests, job states, results,
+health responses and structured HTTP errors.
+
+`task` is required and may be any of `antibody_design`, `enzyme_design`,
 `generation`, `motif_scaffolding` or `small_molecule_binder`. It records the sampler
 mode; what is designed comes from the conditioning in the CIF either way.
 `partial_diffusion` and `inverse_folding` are **refused** with 400: both change the
@@ -162,11 +195,18 @@ sampler call rather than the conditioning, and this sample passes neither argume
 so accepting them would run an ordinary trajectory and return 200 for a design that
 was not requested.
 
-Every failure returns the same body:
+HTTP failures return this envelope:
 
 ```json
 {"error": {"code": "service_busy", "message": "No free worker; route elsewhere or retry later.", "details": []}}
 ```
+
+An accepted job that fails is still retrieved with HTTP 200: its `status` is
+`failed` and its `error` contains the same `{code, message, details}` object.
+Token/sample limits use `request_too_large`; GPU allocation failures use
+`out_of_memory`; unexpected failures use `internal_error`, with details kept in
+server logs. Interrupted jobs use `model_unavailable`. Historical string errors
+remain readable as `internal_error` objects without rewriting their stored files.
 
 | code | status | |
 |---|---|---|
@@ -182,11 +222,17 @@ full queue means this replica has no free worker, not that the caller is sending
 fast — a load balancer should route elsewhere rather than ask the client to back off.
 `out_of_memory` is a 4xx because retrying the same job exhausts the same GPU.
 
-**One deliberate divergence:** submission here is asynchronous (202, poll, download),
-while the downstream service is a single synchronous POST with no job id. That service
-sits behind a gateway that supplies long-poll headers; this sample does not, and its
-first request for a new shape can take minutes to compile. `GET /v1/info` reports
-`"submission": "asynchronous"` so a client can tell the two apart.
+**Compatibility boundary:** this is not a drop-in NIM endpoint. Submission is
+asynchronous (202, poll, download), and `/v1/info` reports `"submission": "asynchronous"`.
+NIM returns a synchronous response containing designs, sequences, diagnostics,
+model/runtime metadata and the resolved schedule. Here, submission and polling
+return a job record; `/results` returns artifact names and download URLs. It uses
+the upstream preset and checkpoint rather than promising identical NIM outputs.
+Only annotated CIF input is supported; condition specs, search, metrics, output
+controls, batching controls, partial diffusion and inverse folding are not exposed.
+Clients can reuse the supported request fields and error codes, but must implement
+this job lifecycle and respect its declared limits. One replica and one worker
+remain the intended scope.
 
 ## Test and cleanup
 
@@ -194,7 +240,7 @@ API tests use a fake runner and need no GPU, checkpoints, or model dependencies:
 
 ```bash
 python3 -m venv /tmp/rfd4-api-tests
-/tmp/rfd4-api-tests/bin/pip install fastapi uvicorn python-multipart biotite hydra-core pytest httpx
+/tmp/rfd4-api-tests/bin/pip install fastapi uvicorn biotite hydra-core pytest httpx jsonschema
 PYTHONPATH=deploy/api /tmp/rfd4-api-tests/bin/pytest deploy/api/tests -q
 ```
 

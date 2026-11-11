@@ -7,6 +7,7 @@ import logging
 import os
 import queue
 import re
+import secrets
 import shutil
 import threading
 import time
@@ -14,16 +15,28 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
 from biotite import InvalidFileError
 from biotite.structure.io.pdbx import CIFFile
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.errors import ApiError, ErrorCode
+from app.errors import STATUS_FOR_CODE, ApiError, ErrorCode, ErrorResponse, error_body
+from app.models import (
+    MAX_SEED,
+    TASKS,
+    UNSUPPORTED_TASKS,
+    DesignRequest,
+    Info,
+    JobStatus,
+    Live,
+    Ready,
+    Results,
+)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -45,24 +58,6 @@ MAX_REQUEST_BYTES = _limit("RFD4_MAX_REQUEST_BYTES", 32 * 1024 * 1024)
 MAX_TOKENS = _limit("RFD4_MAX_TOKENS", 1024)
 MAX_REPLICATES = _limit("RFD4_MAX_REPLICATES", 4)
 QUEUE_DEPTH = _limit("RFD4_QUEUE_DEPTH", 8)
-
-#: Task vocabulary shared with the downstream service, so one request body is
-#: portable between them. Conditioning still comes from the CIF: a task names
-#: the sampler mode, it does not select what is designed.
-TASKS = (
-    "antibody_design",
-    "enzyme_design",
-    "generation",
-    "inverse_folding",
-    "motif_scaffolding",
-    "partial_diffusion",
-    "small_molecule_binder",
-)
-#: These two change the sampler call itself -- partial start times, and the
-#: inverse-folding flag -- rather than being carried by the input. This sample
-#: passes neither, so accepting one would run an ordinary trajectory and return
-#: a 200 for a design the caller did not ask for. Refuse instead.
-UNSUPPORTED_TASKS = frozenset({"partial_diffusion", "inverse_folding"})
 
 pending: queue.Queue[str] = queue.Queue(maxsize=QUEUE_DEPTH)
 admission_lock = threading.Lock()
@@ -110,7 +105,12 @@ def read_status(request_id: str) -> dict[str, Any]:
     path = request_dir(request_id) / "status.json"
     if not path.is_file():
         raise ApiError(ErrorCode.NOT_FOUND, "Request not found.")
-    return json.loads(path.read_text())
+    data = json.loads(path.read_text())
+    # Old deployments persisted untyped error strings. Keep their jobs readable
+    # without guessing a category from the wording or rewriting historical files.
+    if isinstance(data.get("error"), str):
+        data["error"] = ApiError(ErrorCode.INTERNAL_ERROR, data["error"]).body()["error"]
+    return data
 
 
 def worker() -> None:
@@ -133,7 +133,12 @@ def worker() -> None:
                 if data.get("status") not in ("queued", "running", "succeeded", "failed"):
                     raise ValueError("Missing or invalid request status")
                 if data["status"] in ("queued", "running"):
-                    data.update(status="failed", error="Server restarted; submit a new request")
+                    data.update(
+                        status="failed",
+                        error=error_body(
+                            ApiError(ErrorCode.MODEL_UNAVAILABLE, "Server restarted; submit a new request.")
+                        ),
+                    )
                     save_status(request_id, data)
             except (OSError, ValueError, ApiError) as exc:
                 log.warning("Skipping invalid request status %s: %s", path, exc)
@@ -149,7 +154,7 @@ def worker() -> None:
                 data = read_status(request_id)
                 data.update(status="running", started_at=time.time())
                 save_status(request_id, data)
-                input_path = request_dir(request_id) / "input.cif"
+                input_path = request_dir(request_id) / f"{data.get('example_id', 'input')}.cif"
                 output_dir = work / request_id / "outputs"
                 runner.generate(input_path, output_dir, data["settings"], MAX_TOKENS, MAX_REPLICATES)
                 artifacts = []
@@ -170,7 +175,7 @@ def worker() -> None:
                 save_status(request_id, data)
             except Exception as exc:
                 log.exception("Request %s failed", request_id)
-                data.update(status="failed", error=str(exc))
+                data.update(status="failed", error=error_body(exc))
                 save_status(request_id, data)
             finally:
                 shutil.rmtree(work / request_id, ignore_errors=True)
@@ -196,12 +201,64 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         thread.join(timeout=2)
 
 
-app = FastAPI(title="RFD4-Proteína", lifespan=lifespan)
+app = FastAPI(
+    title="RFD4-Proteína",
+    version="1.0.0",
+    lifespan=lifespan,
+    responses={int(status): {"model": ErrorResponse} for status in {*STATUS_FOR_CODE.values(), 405}},
+)
+
+
+class RequestLimit:
+    """Bound the JSON body, including chunked requests, before schema parsing."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != "/v1/designs":
+            await self.app(scope, receive, send)
+            return
+        chunks = []
+        size = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            chunk = message.get("body", b"")
+            size += len(chunk)
+            if size > MAX_REQUEST_BYTES:
+                error = ApiError(ErrorCode.REQUEST_TOO_LARGE, f"Request exceeds {MAX_REQUEST_BYTES} bytes.")
+                await JSONResponse(status_code=error.status, content=error.body())(scope, receive, send)
+                return
+            chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
+        body = b"".join(chunks)
+        delivered = False
+
+        async def buffered_receive() -> dict[str, Any]:
+            nonlocal delivered
+            if delivered:
+                return await receive()
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, buffered_receive, send)
+
+
+app.add_middleware(RequestLimit)
 
 
 @app.exception_handler(ApiError)
 async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
     return JSONResponse(status_code=exc.status, content=exc.body())
+
+
+@app.exception_handler(Exception)
+async def _internal_error(_: Request, exc: Exception) -> JSONResponse:
+    log.error("Unhandled HTTP error", exc_info=exc)
+    return JSONResponse(status_code=500, content={"error": error_body(exc)})
 
 
 @app.exception_handler(RequestValidationError)
@@ -219,7 +276,7 @@ async def _http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content=ApiError(code, str(exc.detail)).body())
 
 
-@app.get("/v1/info")
+@app.get("/v1/info", response_model=Info)
 def info() -> dict[str, Any]:
     """Report the task vocabulary and the limits, before the model is ready."""
     return {
@@ -237,7 +294,7 @@ def info() -> dict[str, Any]:
     }
 
 
-@app.get("/health/live")
+@app.get("/health/live", response_model=Live)
 def live() -> dict[str, str]:
     """Report whether the GPU worker has encountered a fatal error."""
     if snapshot()["error"]:
@@ -245,12 +302,13 @@ def live() -> dict[str, str]:
     return {"status": "alive"}
 
 
-@app.get("/health/ready")
+@app.get("/health/ready", response_model=Ready)
 def ready() -> dict[str, Any]:
     """Report readiness after checkpoint loading and restart recovery."""
     current = snapshot()
     if not current["ready"]:
-        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, current["error"] or "The model is still loading.")
+        message = "The GPU worker stopped." if current["error"] else "The model is still loading."
+        raise ApiError(ErrorCode.MODEL_UNAVAILABLE, message)
     runner = current["runner"]
     return {
         "status": "ready",
@@ -260,42 +318,35 @@ def ready() -> dict[str, Any]:
     }
 
 
-@app.post("/v1/designs", status_code=202)
-async def submit(
-    file: Annotated[UploadFile, File()],
-    num_replicates: Annotated[int, Form(ge=1, le=MAX_REPLICATES)] = 1,
-    seed: Annotated[int, Form(ge=0, le=2147483647)] = 42,
-    task: Annotated[str | None, Form()] = None,
-) -> dict[str, Any]:
+@app.post("/v1/designs", status_code=202, response_model=JobStatus, response_model_exclude_unset=True)
+async def submit(request: DesignRequest) -> dict[str, Any]:
     """Queue an annotated mmCIF design and return its polling identifier."""
     if not snapshot()["ready"]:
         raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "The model is not ready.")
-    # Advisory fast path: avoid reading/parsing an upload when already overloaded.
+    # Advisory fast path: avoid CIF parsing when already overloaded.
     # The worker may change the queue while we parse; the locked check remains authoritative.
     if pending.full():
         raise ApiError(ErrorCode.SERVICE_BUSY, "No free worker; route elsewhere or retry later.")
-    if task is not None:
-        if task not in TASKS:
-            raise ApiError(ErrorCode.SCHEMA_VIOLATION, f"Unknown task {task!r}.", sorted(TASKS))
-        if task in UNSUPPORTED_TASKS:
-            raise ApiError(
-                ErrorCode.INVALID_REQUEST,
-                f"Task {task!r} needs sampler arguments this deployment does not send.",
-                sorted(set(TASKS) - UNSUPPORTED_TASKS),
-            )
-    content = await file.read(MAX_REQUEST_BYTES + 1)
-    if len(content) > MAX_REQUEST_BYTES:
-        raise ApiError(ErrorCode.REQUEST_TOO_LARGE, f"Input exceeds {MAX_REQUEST_BYTES} bytes.")
+    if request.task in UNSUPPORTED_TASKS:
+        raise ApiError(
+            ErrorCode.INVALID_REQUEST, f"Task {request.task!r} is not supported by this deployment.", ["task"]
+        )
+    if request.sampling.num_replicates > MAX_REPLICATES:
+        raise ApiError(
+            ErrorCode.REQUEST_TOO_LARGE,
+            f"This API accepts at most {MAX_REPLICATES} design samples per request.",
+            ["sampling.num_replicates"],
+        )
     # Keep CPU parsing and filesystem admission off the ASGI event loop.
-    return await asyncio.to_thread(admit_request, content, num_replicates, seed, task)
+    return await asyncio.to_thread(admit_request, request)
 
 
-def admit_request(content: bytes, num_replicates: int, seed: int, task: str | None = None) -> dict[str, Any]:
+def admit_request(request: DesignRequest) -> dict[str, Any]:
     """Parse and persist an upload in a thread, serializing only queue admission."""
     # Validate CIF syntax and required coordinate columns, not all design semantics.
     # Upstream performs semantic checks and transformed-token admission in the worker.
     try:
-        cif = CIFFile.read(io.StringIO(content.decode("utf-8")))
+        cif = CIFFile.read(io.StringIO(request.input.file.content))
         atoms = cif.block["atom_site"]
         required = {"label_atom_id", "label_comp_id", "Cartn_x", "Cartn_y", "Cartn_z"}
         if atoms.row_count == 0 or not required.issubset(atoms):
@@ -312,24 +363,28 @@ def admit_request(content: bytes, num_replicates: int, seed: int, task: str | No
             "id": request_id,
             "status": "queued",
             "created_at": time.time(),
-            "task": task,
-            "settings": {"num_replicates": num_replicates, "seed": seed},
+            "task": request.task,
+            "example_id": request.input.example_id,
+            "settings": {
+                "num_replicates": request.sampling.num_replicates,
+                "seed": request.sampling.seed if request.sampling.seed is not None else secrets.randbelow(MAX_SEED + 1),
+            },
         }
         directory = request_dir(request_id)
         directory.mkdir(parents=True)
-        (directory / "input.cif").write_bytes(content)
+        (directory / f"{request.input.example_id}.cif").write_text(request.input.file.content, encoding="utf-8")
         save_status(request_id, data)
         pending.put_nowait(request_id)
     return data
 
 
-@app.get("/v1/designs/{request_id}")
+@app.get("/v1/designs/{request_id}", response_model=JobStatus, response_model_exclude_unset=True)
 def status(request_id: str) -> dict[str, Any]:
     """Return the current status of an accepted design request."""
     return read_status(request_id)
 
 
-@app.get("/v1/designs/{request_id}/results")
+@app.get("/v1/designs/{request_id}/results", response_model=Results)
 def results(request_id: str) -> dict[str, Any]:
     """List downloadable artifacts for a completed design."""
     data = read_status(request_id)
@@ -343,7 +398,11 @@ def results(request_id: str) -> dict[str, Any]:
     }
 
 
-@app.get("/v1/designs/{request_id}/artifacts/{name:path}")
+@app.get(
+    "/v1/designs/{request_id}/artifacts/{name:path}",
+    response_class=Response,
+    responses={200: {"content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}}},
+)
 def artifact(request_id: str, name: str) -> Response:
     """Download a file listed in the completed request manifest."""
     data = read_status(request_id)

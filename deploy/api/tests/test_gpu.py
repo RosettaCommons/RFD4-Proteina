@@ -14,10 +14,12 @@ from pathlib import Path
 
 import httpx
 import pytest
+from conftest import EXAMPLE, design_request
 
-EXAMPLE = (Path(__file__).resolve().parents[1] / "examples/monomer-short.cif").read_bytes()
-# Preserve the input grammar while asking for an over-limit expansion.
-OVERSIZED = EXAMPLE.replace(b"100", b"1025")
+
+def expansion(length: int) -> bytes:
+    """This example contains one variable-length segment, with no fixed residues."""
+    return EXAMPLE.replace(b"100", str(length).encode())
 
 
 @pytest.mark.gpu
@@ -29,18 +31,16 @@ def test_generation_reuses_resident_model_and_recovers(tmp_path: Path) -> None:
         limits = client.get("/v1/info").raise_for_status().json()["limits"]
         ready = client.get("/health/ready").raise_for_status().json()
         assert ready["checkpoint_loads"] == 1, ready
+        example = expansion(min(100, limits["max_tokens"]))
+        oversized = expansion(limits["max_tokens"] + 1)
 
         # The rejection sits between two real designs: the server must keep serving after it.
         for seed, payload, expected in (
-            (42, EXAMPLE, "succeeded"),
-            (44, OVERSIZED, "failed"),
-            (43, EXAMPLE, "succeeded"),
+            (42, example, "succeeded"),
+            (44, oversized, "failed"),
+            (43, example, "succeeded"),
         ):
-            submitted = (
-                client.post("/v1/designs", files={"file": ("input.cif", payload)}, data={"seed": seed})
-                .raise_for_status()
-                .json()
-            )
+            submitted = client.post("/v1/designs", json=design_request(payload, seed=seed)).raise_for_status().json()
             request_id = submitted["id"]
 
             deadline = time.monotonic() + 1800
@@ -55,10 +55,11 @@ def test_generation_reuses_resident_model_and_recovers(tmp_path: Path) -> None:
             assert status["status"] == expected, status
             (tmp_path / f"{request_id}.json").write_text(json.dumps(status, indent=2))
             if expected == "failed":
-                assert f"{limits['max_tokens']} tokens" in status["error"], status
+                assert status["error"]["code"] == "request_too_large", status
+                assert f"{limits['max_tokens']} tokens" in status["error"]["message"], status
                 continue
 
-            # Weights stay resident: no reload, same server process, across every request.
+            # Same loaded model and server process; this does not prove graph reuse or GPU residency.
             assert status["checkpoint_loads"] == 1, status
             assert status["server_instance_id"] == ready["server_instance_id"], status
 

@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+from app.errors import ApiError, ErrorCode
+
 
 class Runner:
     """Own the model; upstream owns request configuration, compilation, and sampling."""
@@ -42,6 +44,8 @@ class Runner:
         max_samples: int,
     ) -> list[Path]:
         """Keep upstream bucketing/cache behavior and isolate each request's outputs."""
+        from torch import OutOfMemoryError
+
         from rfproteina.generate import SampleLimitError, TokenLimitError, run_generation
 
         cfg = self.omega.create(self.omega.to_container(self.base, resolve=False))
@@ -54,9 +58,19 @@ class Runner:
         try:
             run_generation(cfg, model=self.model, max_tokens=max_tokens, max_samples=max_samples)
         except TokenLimitError as exc:
-            raise ValueError(f"This API accepts at most {exc.max_tokens} tokens per design") from exc
+            raise ApiError(
+                ErrorCode.REQUEST_TOO_LARGE, f"This API accepts at most {exc.max_tokens} tokens per design", ["input"]
+            ) from exc
         except SampleLimitError as exc:
-            raise ValueError(f"This API accepts at most {exc.max_samples} design samples per request") from exc
+            raise ApiError(
+                ErrorCode.REQUEST_TOO_LARGE,
+                f"This API accepts at most {exc.max_samples} design samples per request",
+                ["sampling.num_replicates"],
+            ) from exc
+        except OutOfMemoryError as exc:
+            raise ApiError(
+                ErrorCode.OUT_OF_MEMORY, "The design does not fit on the GPU; reduce the input size.", ["input"]
+            ) from exc
         generated = sorted(output_dir.rglob("*_generated.cif"))
         if not generated:
             raise RuntimeError("Generation completed without generated CIF files")

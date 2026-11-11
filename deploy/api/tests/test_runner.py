@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from app.errors import ApiError, ErrorCode
 from app.runner import Runner
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
@@ -22,6 +23,15 @@ class FakeSampleLimitError(ValueError):
     def __init__(self, max_samples: int):
         self.max_samples = max_samples
         super().__init__(f"dataset exceeds max_samples={max_samples}")
+
+
+class FakeOutOfMemoryError(RuntimeError):
+    pass
+
+
+@pytest.fixture(autouse=True)
+def torch_errors_without_model_dependencies(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(OutOfMemoryError=FakeOutOfMemoryError))
 
 
 def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -78,18 +88,24 @@ def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, monkeypatch
 
 
 @pytest.mark.parametrize(
-    "failure,expected",
+    "failure,expected,code",
     [
-        (FakeTokenLimitError(512), "This API accepts at most 512 tokens per design"),
-        (FakeSampleLimitError(4), "This API accepts at most 4 design samples per request"),
-        (ValueError("Unrelated inference failure"), "Unrelated inference failure"),
+        (FakeTokenLimitError(512), "This API accepts at most 512 tokens per design", ErrorCode.REQUEST_TOO_LARGE),
+        (FakeSampleLimitError(4), "This API accepts at most 4 design samples per request", ErrorCode.REQUEST_TOO_LARGE),
+        (
+            FakeOutOfMemoryError("CUDA allocation failed"),
+            "The design does not fit on the GPU; reduce the input size.",
+            ErrorCode.OUT_OF_MEMORY,
+        ),
+        (ValueError("Unrelated inference failure"), "Unrelated inference failure", None),
     ],
 )
 def test_admission_errors_are_worded_at_the_api_boundary(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
-    failure: ValueError,
+    failure: Exception,
     expected: str,
+    code: ErrorCode | None,
 ) -> None:
     monkeypatch.setitem(
         sys.modules,
@@ -104,10 +120,13 @@ def test_admission_errors_are_worded_at_the_api_boundary(
     runner.model = object()
     runner.base = OmegaConf.create({"inputs": None, "out_dir": None, "seed": None, "num_replicates": 1})
     runner.omega = OmegaConf
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ApiError if code else ValueError) as exc:
         runner.generate(tmp_path / "input.cif", tmp_path / "outputs", {"seed": 42, "num_replicates": 1}, 1024, 4)
     assert str(exc.value) == expected
-    if isinstance(failure, FakeTokenLimitError | FakeSampleLimitError):
+    if code:
         assert exc.value.__cause__ is failure
+        assert exc.value.code == code
+        assert exc.value.status == 413
+        assert exc.value.details
     else:
         assert exc.value is failure

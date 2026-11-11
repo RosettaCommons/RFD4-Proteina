@@ -18,6 +18,8 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 
 class ErrorCode(StrEnum):
     SCHEMA_VIOLATION = "schema_violation"
@@ -48,6 +50,16 @@ STATUS_FOR_CODE: dict[ErrorCode, int] = {
 }
 
 
+class ErrorBody(BaseModel):
+    code: ErrorCode
+    message: str
+    details: list[str] = Field(default_factory=list)
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorBody
+
+
 class ApiError(Exception):
     """A failure the caller can act on, rendered as the declared error body."""
 
@@ -63,3 +75,10 @@ class ApiError(Exception):
 
     def body(self) -> dict[str, Any]:
         return {"error": {"code": str(self.code), "message": self.message, "details": self.details}}
+
+
+def error_body(exc: Exception) -> dict[str, Any]:
+    """Preserve actionable failures; unexpected details belong in server logs."""
+    if isinstance(exc, ApiError):
+        return exc.body()["error"]
+    return ApiError(ErrorCode.INTERNAL_ERROR, "Internal error.").body()["error"]
