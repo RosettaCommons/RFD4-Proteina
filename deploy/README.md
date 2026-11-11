@@ -190,10 +190,10 @@ health responses and structured HTTP errors.
 `task` is required and may be any of `antibody_design`, `enzyme_design`,
 `generation`, `motif_scaffolding` or `small_molecule_binder`. It records the sampler
 mode; what is designed comes from the conditioning in the CIF either way.
-`partial_diffusion` and `inverse_folding` are **refused** with 400: both change the
-sampler call rather than the conditioning, and this sample passes neither argument,
-so accepting them would run an ordinary trajectory and return 200 for a design that
-was not requested.
+The task names `partial_diffusion` and `inverse_folding` return 400 because they
+require sampler arguments this deployment does not pass. Requests containing
+unsupported fields such as `partial` fail schema validation first with 422.
+Neither path can silently run an ordinary trajectory.
 
 HTTP failures return this envelope:
 
