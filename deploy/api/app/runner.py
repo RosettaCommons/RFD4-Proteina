@@ -24,6 +24,7 @@ class Runner:
                 overrides=[
                     "~metrics",
                     "num_workers=0",
+                    "skip_existing=false",
                     "inputs=null",
                     "out_dir=/workspace/startup",
                     "seed=42",
@@ -43,29 +44,37 @@ class Runner:
         max_samples: int,
     ) -> list[Path]:
         """Keep upstream bucketing/cache behavior and isolate each request's outputs."""
+        from atomworks.ml.utils.token import get_token_count
         from torch import OutOfMemoryError
+        from torch.utils.data import Dataset
 
-        from rfproteina.generate import SampleLimitError, TokenLimitError, run_generation
+        from rfproteina.generate import run_generation
 
         cfg = copy.deepcopy(self.base)
         cfg.inputs = str(input_path)
+        # Upstream exits if a results CSV exists in out_dir.parent. Each request
+        # owns that parent, so another request cannot trigger its skip/exit path.
         cfg.out_dir = str(output_dir)
         cfg.seed = settings["seed"]
         cfg.num_replicates = settings["num_replicates"]
-        # Upstream exits if a results CSV exists in out_dir.parent. Each request
-        # owns that parent, so another request cannot trigger its skip/exit path.
+
+        def prepare_dataset(dataset: Dataset) -> list[dict]:
+            if len(dataset) > max_samples:
+                raise ApiError(
+                    ErrorCode.REQUEST_TOO_LARGE,
+                    f"At most {max_samples} design samples per request.",
+                    ["sampling.num_replicates"],
+                )
+            # Cache the exact transformed samples: a second pass could sample different lengths.
+            samples = []
+            for sample in dataset:
+                if get_token_count(sample["atom_array"]) > max_tokens:
+                    raise ApiError(ErrorCode.REQUEST_TOO_LARGE, f"At most {max_tokens} tokens per design.", ["input"])
+                samples.append(sample)
+            return samples
+
         try:
-            run_generation(cfg, model=self.model, max_tokens=max_tokens, max_samples=max_samples)
-        except TokenLimitError as exc:
-            raise ApiError(
-                ErrorCode.REQUEST_TOO_LARGE, f"This API accepts at most {exc.max_tokens} tokens per design", ["input"]
-            ) from exc
-        except SampleLimitError as exc:
-            raise ApiError(
-                ErrorCode.REQUEST_TOO_LARGE,
-                f"This API accepts at most {exc.max_samples} design samples per request",
-                ["sampling.num_replicates"],
-            ) from exc
+            run_generation(cfg, model=self.model, prepare_dataset=prepare_dataset)
         except OutOfMemoryError as exc:
             raise ApiError(
                 ErrorCode.OUT_OF_MEMORY, "The design does not fit on the GPU; reduce the input size.", ["input"]

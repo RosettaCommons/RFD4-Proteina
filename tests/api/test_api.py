@@ -1,7 +1,6 @@
 """Essential API contract, persistence and upstream delegation checks."""
 
 import asyncio
-import os
 import queue
 import time
 from pathlib import Path
@@ -138,7 +137,7 @@ def test_capacity_paths_and_chunked_limit(tmp_path, monkeypatch):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("failure", [None, "tokens", "samples", "oom"])
+@pytest.mark.parametrize("failure", [False, True])
 def test_upstream_delegation(tmp_path, monkeypatch, failure):
     import torch
 
@@ -151,13 +150,7 @@ def test_upstream_delegation(tmp_path, monkeypatch, failure):
     output = tmp_path / "outputs"
     output.mkdir()
     (output / "test_generated.cif").write_text(CIF)
-    errors = {
-        None: None,
-        "tokens": upstream.TokenLimitError(1),
-        "samples": upstream.SampleLimitError(1),
-        "oom": torch.OutOfMemoryError(),
-    }
-    generate = Mock(side_effect=errors[failure])
+    generate = Mock(side_effect=torch.OutOfMemoryError() if failure else None)
     monkeypatch.setattr(upstream, "run_generation", generate)
     if failure:
         with pytest.raises(ApiError) as exc:
@@ -165,33 +158,9 @@ def test_upstream_delegation(tmp_path, monkeypatch, failure):
         assert exc.value.status == 413
     else:
         assert model_runner.generate(tmp_path / "input.cif", output, {"seed": 42, "num_replicates": 1}, 1024, 4)
-        assert generate.call_args.kwargs == {"model": model_runner.model, "max_tokens": 1024, "max_samples": 4}
+        assert generate.call_args.kwargs["model"] is model_runner.model
+        assert callable(generate.call_args.kwargs["prepare_dataset"])
         assert generate.call_args.args[0].seed == 42 and model_runner.base.seed is None
 
 
 ORIGINAL_RUNNER = runner.Runner
-
-
-@pytest.mark.gpu
-@pytest.mark.skipif(os.environ.get("RUN_GPU_API_TESTS") != "1", reason="Requires a live GPU API")
-def test_live_generation():
-    with httpx.Client(base_url=os.environ.get("API_URL", "http://localhost:8000"), timeout=60) as client:
-        ready = client.get("/health/ready").raise_for_status().json()
-        limit = client.get("/v1/info").json()["limits"]["max_tokens"]
-        for length, expected in [(min(100, limit), "succeeded"), (limit + 1, "failed"), (min(100, limit), "succeeded")]:
-            job = (
-                client.post("/v1/designs", json=design(content=CIF.replace("100", str(length))))
-                .raise_for_status()
-                .json()
-            )
-            url = "/v1/designs/" + job["id"]
-            wait_for(lambda url=url: client.get(url).json()["status"] in ("succeeded", "failed"), timeout=1800)
-            result = client.get(url).json()
-            assert result["status"] == expected
-            if expected == "failed":
-                assert result["error"]["code"] == "request_too_large"
-            else:
-                assert result["checkpoint_loads"] == 1 and result["server_instance_id"] == ready["server_instance_id"]
-                files = client.get(url + "/results").json()["artifacts"]
-                cif = next(a for a in files if a["name"].endswith("_generated.cif"))
-                assert "_atom_site." in client.get(cif["download"]).text

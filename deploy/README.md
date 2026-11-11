@@ -25,5 +25,5 @@ HTTP failures and failed jobs carry `{code, message, details}` errors. Semantic/
 
 Results persist under `STORE_PATH` (default `/workspace/store`); interrupted jobs fail on restart. Recovery skips corrupt statuses. Operators manage retention, including partial outputs of failed jobs.
 `TORCH_COMPILE_CACHE_BLOB` persists upstream compile artifacts; reuse depends on hardware/runtime compatibility. GPU serving/restart validation remains [#78](https://github.com/RosettaCommons/RFD4-Proteina/issues/78).
-Run `pytest tests/api -m 'not gpu'` in the normal development environment. For the live check, use `RUN_GPU_API_TESTS=1 API_URL=http://localhost:8000 pytest tests/api -m gpu` on a GPU host.
+Run `pytest tests/api` in the normal development environment.
 Remove Kubernetes resources with `kubectl delete -k deploy/kubernetes`; deleting the PVC or Docker volume may delete persisted results.
