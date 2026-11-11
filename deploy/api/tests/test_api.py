@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import queue
 import re
 import threading
 import time
@@ -14,11 +13,10 @@ import httpx
 import pytest
 from app import api, runner
 from app.errors import STATUS_FOR_CODE, ApiError, ErrorCode
-from conftest import design_request, wait_for
+from conftest import EXAMPLE, design_request, wait_for
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
-EXAMPLE = (Path(__file__).resolve().parents[1] / "examples/monomer-short.cif").read_bytes()
 pytestmark = pytest.mark.usefixtures("isolated_service")
 
 
@@ -89,11 +87,10 @@ def test_resident_worker_serializes_requests_and_persists_results(tmp_path: Path
         assert client.get(f"/v1/designs/{interrupted_id}").json()["status"] == "failed"
 
 
-def test_startup_failure_is_unready_and_not_live(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+def test_startup_failure_is_unready_and_not_live(monkeypatch: MonkeyPatch) -> None:
     def fail_startup() -> None:
         raise RuntimeError("Checkpoint unavailable")
 
-    monkeypatch.setenv("STORE_PATH", str(tmp_path / "store"))
     monkeypatch.setattr(runner, "Runner", fail_startup)
     with TestClient(api.app) as client:
         wait_for(lambda: api.state["error"] is not None)
@@ -108,9 +105,7 @@ def test_startup_failure_is_unready_and_not_live(tmp_path: Path, monkeypatch: Mo
         )
 
 
-def test_queue_applies_backpressure(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-    import threading
-
+def test_queue_applies_backpressure(monkeypatch: MonkeyPatch) -> None:
     started = threading.Event()
     release = threading.Event()
 
@@ -118,18 +113,12 @@ def test_queue_applies_backpressure(tmp_path: Path, monkeypatch: MonkeyPatch) ->
         loads = 1
         device = "fake GPU"
 
-        def __init__(self):
-            pass
-
         def generate(self, input_path: Path, output_dir: Path, settings: dict[str, int], *limits: int) -> None:
             started.set()
             assert release.wait(timeout=5)
             output_dir.mkdir(parents=True)
             (output_dir / "test_generated.cif").write_bytes(input_path.read_bytes())
 
-    monkeypatch.setenv("STORE_PATH", str(tmp_path / "store"))
-    monkeypatch.setattr(api, "work", tmp_path / "work")
-    monkeypatch.setattr(api, "pending", queue.Queue(maxsize=8))
     monkeypatch.setattr(runner, "Runner", BlockingRunner)
     with TestClient(api.app) as client:
         wait_for(lambda: client.get("/health/ready").status_code == 200)
@@ -347,22 +336,14 @@ def test_every_failure_uses_the_declared_error_body(tmp_path: Path) -> None:
     ],
 )
 def test_task_is_validated_and_unsupported_modes_are_refused(
-    tmp_path: Path, monkeypatch: MonkeyPatch, task: str, status: int, code: str | None
+    tmp_path: Path, task: str, status: int, code: str | None
 ) -> None:
-    class Idle:
-        loads, device = 1, "fake GPU"
-
-        def __init__(self) -> None: ...
-
-        def generate(self, *args: object) -> None: ...
-
-    monkeypatch.setenv("STORE_PATH", str(tmp_path / "store"))
-    monkeypatch.setattr(runner, "Runner", Idle)
-    with TestClient(api.app) as client:
-        wait_for(lambda: client.get("/health/ready").status_code == 200)
-        response = client.post("/v1/designs", json=design_request(task=task))
-        assert response.status_code == status, response.json()
-        if code is None:
-            assert client.get(f"/v1/designs/{response.json()['id']}").json()["task"] == task
-        else:
-            assert response.json()["error"]["code"] == code
+    api.store = tmp_path
+    api.update_state(ready=True)
+    client = TestClient(api.app)
+    response = client.post("/v1/designs", json=design_request(task=task))
+    assert response.status_code == status, response.json()
+    if code is None:
+        assert client.get(f"/v1/designs/{response.json()['id']}").json()["task"] == task
+    else:
+        assert response.json()["error"]["code"] == code

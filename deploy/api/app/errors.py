@@ -1,17 +1,6 @@
-"""One error body for every failure, with codes a caller can act on.
+"""NIM error vocabulary, plus not_found/conflict for asynchronous jobs.
 
-The code set and its status mapping follow the downstream RFD4-Proteina service,
-so a client can handle both without a translation table. Two choices look wrong
-and are not:
-
-- ``service_busy`` is **503, not 429**. A full queue means this replica has no
-  free worker, not that the caller is sending too fast; a load balancer should
-  route elsewhere rather than ask the client to back off.
-- ``out_of_memory`` is **413, a 4xx**. Retrying the same job exhausts the same
-  GPU again. What the caller can change is the input or the replicate count.
-
-``not_found`` and ``conflict`` are additions: this sample polls for a result,
-so it has request-scoped routes the synchronous service has no equivalent for.
+A full queue is service_busy (503); GPU OOM asks the caller to shrink the job (413).
 """
 
 from enum import StrEnum
@@ -34,8 +23,6 @@ class ErrorCode(StrEnum):
     INTERNAL_ERROR = "internal_error"
 
 
-#: Total over :class:`ErrorCode`, so a handler never has to guess a status and
-#: the two cannot drift. ``test_api.py`` pins the totality.
 STATUS_FOR_CODE: dict[ErrorCode, int] = {
     ErrorCode.SCHEMA_VIOLATION: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.INVALID_REQUEST: HTTPStatus.BAD_REQUEST,

@@ -1,6 +1,5 @@
 """Single-replica asynchronous design API with durable disk artifacts."""
 
-import asyncio
 import io
 import json
 import logging
@@ -43,10 +42,7 @@ log = logging.getLogger(__name__)
 work = Path(os.environ.get("WORK_PATH", "/workspace/requests"))
 
 
-# Limits are service policy, not model limits, so they are configurable and
-# reported under /v1/info rather than buried in literals. The token default is
-# the repository's own ceiling: configs/inference.yaml compiles length buckets
-# up to 1024, so anything higher leaves the compiled shapes behind.
+# Service limits are reported by /v1/info; the token default matches the compile buckets.
 def _limit(name: str, default: int) -> int:
     value = int(os.environ.get(name, default))
     if value < 1:
@@ -319,7 +315,7 @@ def ready() -> dict[str, Any]:
 
 
 @app.post("/v1/designs", status_code=202, response_model=JobStatus, response_model_exclude_unset=True)
-async def submit(request: DesignRequest) -> dict[str, Any]:
+def submit(request: DesignRequest) -> dict[str, Any]:
     """Queue an annotated mmCIF design and return its polling identifier."""
     if not snapshot()["ready"]:
         raise ApiError(ErrorCode.MODEL_UNAVAILABLE, "The model is not ready.")
@@ -337,8 +333,8 @@ async def submit(request: DesignRequest) -> dict[str, Any]:
             f"This API accepts at most {MAX_REPLICATES} design samples per request.",
             ["sampling.num_replicates"],
         )
-    # Keep CPU parsing and filesystem admission off the ASGI event loop.
-    return await asyncio.to_thread(admit_request, request)
+    # FastAPI runs this synchronous handler (including CIF parsing and disk IO) in its thread pool.
+    return admit_request(request)
 
 
 def admit_request(request: DesignRequest) -> dict[str, Any]:

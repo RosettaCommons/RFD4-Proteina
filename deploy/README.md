@@ -1,67 +1,43 @@
 # Run the protein-design API
 
-These assets run on Linux x86_64 with an NVIDIA GPU, using Docker or Kubernetes.
-The included plain CIF example is decompressed from this repository's short-monomer benchmark.
-Use the repository's [tested GPUs](../docs/installation.rst#supported-hardware).
-Profile GPU memory for your inputs. The image follows this checkout's PyTorch/CUDA dependencies.
+A single-replica Docker/Kubernetes service for Linux x86_64 with an NVIDIA GPU.
+Use a [tested GPU](../docs/installation.rst#supported-hardware), a compatible driver,
+and [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+Profile memory for your inputs; Docker Desktop on macOS cannot supply the required GPU.
 
-## Build
+## Docker
 
-From the repository root, with Docker BuildKit available:
+From the repository root, with BuildKit available:
 
 ```bash
-git clone https://github.com/RosettaCommons/RFD4-Proteina.git
-cd RFD4-Proteina
 docker build --platform linux/amd64 --target api -t rfd4-api:local .
-```
-
-The root Dockerfile has two targets: `runtime` provides the existing model CLI,
-and `api` adds FastAPI/Uvicorn on port 8000. The default target is `runtime`; select `api` explicitly.
-Dependencies come from `pyproject.toml`. At first startup, the upstream inference loader downloads
-the model and autoencoder from the Hugging Face repository and revision selected in
-`configs/inference.yaml`. Weights are cached on the mounted volume rather than embedded in the image.
-
-## Run locally
-
-Use a Linux NVIDIA GPU host with a driver compatible with the selected CUDA profile and
-[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-Docker Desktop on macOS does not provide the required NVIDIA GPU access.
-
-```bash
 docker volume create rfd4-data
 docker run --rm --name rfd4-api --gpus all --shm-size=2g \
   -p 127.0.0.1:8000:8000 -v rfd4-data:/workspace rfd4-api:local
 ```
 
-The first startup downloads the pinned Hugging Face bundle into
-`/workspace/cache/huggingface`. Wait for `/health/ready` to return 200;
-`/docs` provides interactive API documentation. Later startups reuse the cache.
-For offline operation, pre-populate this cache and set `HF_HUB_OFFLINE=1`.
-`HF_HOME`, `STORE_PATH`, and `WORK_PATH` override the cache, artifact store,
-and temporary request directories; keep them on persisted storage.
+Select `--target api` explicitly; the default `runtime` target retains the CLI.
+CUDA 13 is the default; add `--build-arg RFD4_ACCELERATOR=cu12` for CUDA 12.
+The CPU profile does not support serving. Dependencies come from `pyproject.toml`.
 
-The image uses the default CUDA 13 profile. CUDA 12 is available with
-`--build-arg RFD4_ACCELERATOR=cu12`; the CPU profile does not support the GPU API.
+Startup downloads the model/autoencoder pinned in `configs/inference.yaml` into
+`/workspace/cache/huggingface`. Wait for `/health/ready` to return 200. `/docs` and
+`/openapi.json` describe the interface; `/v1/info` reports tasks and limits during loading.
+Persist `/workspace` for weights, results and compilation caches. `HF_HOME`, `STORE_PATH`
+and `WORK_PATH` override cache, artifact and scratch locations. Prepopulate the cache
+and set `HF_HUB_OFFLINE=1` for offline use.
 
-## Run on Kubernetes
+## Kubernetes
 
-Prerequisites: GPU nodes with a compatible driver and the NVIDIA device plugin
-(or GPU Operator) advertising `nvidia.com/gpu`; a default StorageClass or an
-administrator-provisioned matching 100 GiB ReadWriteOnce PV; and a registry
-readable by the nodes. GPU model selection, runtime classes, storage provisioning,
-private-registry credentials, and ingress depend on the cluster.
-
-Push the image to your registry:
+Provide GPU nodes with the NVIDIA device plugin (or GPU Operator), a registry readable
+by those nodes, and a default StorageClass or matching 100 GiB ReadWriteOnce PV.
+Customize node selectors, tolerations, RuntimeClass, storage and imagePullSecrets for
+your cluster. The base creates a namespace, Deployment, internal Service and PVC.
 
 ```bash
 export IMAGE=YOUR_REGISTRY/rfd4-api:YOUR_TAG
 docker tag rfd4-api:local "$IMAGE"
 docker push "$IMAGE"
-```
-
-Render the base with the image you pushed (an immutable digest is preferred):
-
-```bash
 kubectl kustomize deploy/kubernetes > /tmp/rfd4-api.yaml
 python3 - <<'PYIMAGE'
 import os
@@ -74,21 +50,15 @@ kubectl rollout status deployment/api -n rfd4-proteina --timeout=1800s
 kubectl port-forward -n rfd4-proteina service/api 8000:8000
 ```
 
-The manifests create namespace `rfd4-proteina`, one GPU-backed Deployment, an
-internal ClusterIP Service, and a persistent volume claim. The PVC uses the
-cluster's default storage class. Customize the manifests or a Kustomize overlay
-for your StorageClass, GPU node selector, tolerations, RuntimeClass, and imagePullSecrets.
-A local cluster can instead load `rfd4-api:local` into its node image store and apply
-the base directly. Without a storage provisioner, bind a suitable PV first.
+Prefer an immutable image digest. Keep **one replica and one Uvicorn worker**: the
+queue and disk store have one owner. Recreate rollouts release the GPU and volume
+before replacement; volume topology may restrict scheduling. Scaling needs a different
+queue/storage design. There is no built-in authentication: keep access internal or
+provide authenticated HTTPS at ingress.
 
-Keep **one replica and one Uvicorn worker**: the in-process queue and disk store
-have a single owner. Recreate rollouts release the GPU and volume before starting
-the next pod. Scaling this manifest above one replica requires a different queue
-and storage design. Volume topology can restrict which GPU nodes can host the pod.
+## Submit and download
 
-## Submit a design
-
-In another terminal, from the repository root:
+The included CIF comes from the repository's short-monomer benchmark:
 
 ```bash
 curl -fsS http://localhost:8000/health/ready
@@ -100,152 +70,103 @@ print(json.dumps({
     "input": {
         "format": "annotated_cif",
         "example_id": "monomer",
-        "file": {"filename": "monomer-short.cif", "content": Path("deploy/api/examples/monomer-short.cif").read_text()},
+        "file": {"content": Path("deploy/api/examples/monomer-short.cif").read_text()},
     },
     "sampling": {"seed": 42, "num_replicates": 1},
 }))
 PY
-curl -fsS -X POST http://localhost:8000/v1/designs \
+curl -fsS http://localhost:8000/v1/designs \
   -H 'Content-Type: application/json' --data-binary @/tmp/rfd4-request.json
 export REQUEST_ID=RETURNED_ID
 curl -fsS "http://localhost:8000/v1/designs/$REQUEST_ID"
 curl -fsS "http://localhost:8000/v1/designs/$REQUEST_ID/results"
 ```
 
-Poll until `status` is `succeeded`, then download an artifact using its returned
-`download` path. Failed inputs report `status: failed` with an error.
-To exercise two real designs, downloads, token limits, and recovery after a rejected design:
+Submission returns 202. Poll until `succeeded` or `failed`; successful `/results`
+listings contain artifact `download` paths. Completed results survive restarts on
+persisted storage; interrupted jobs become failures and can be resubmitted. Recovery
+scans history, logs/skips corrupt or mismatched statuses, and retains them for inspection.
+Operators manage retention; startup time grows with request history.
 
-```bash
-python3 -m pip install httpx pytest
-RUN_GPU_API_TESTS=1 API_URL=http://localhost:8000 \
-  PYTHONPATH=deploy/api pytest deploy/api/tests/test_gpu.py -m gpu
-```
+## Contract and limits
 
-Set `API_URL` to test another endpoint. Downloaded artifacts and status JSON land in
-pytest's `tmp_path` for the run. This check needs a live GPU server and complements the
-fake-runner HTTP tests, which need neither weights nor a GPU.
-The live test derives its input lengths from the reported token limit. It checks
-checkpoint-load counts and process identity, but does not prove continuous GPU
-residency, compiled-graph reuse, or persistence across a container restart.
-The server loads checkpoints once per startup and runs one design request at a time.
-Limits are service policy rather than model limits, so they are configurable and
-reported to clients by `GET /v1/info` instead of being hard-coded: `RFD4_QUEUE_DEPTH`
-(8 waiting requests), `RFD4_MAX_REPLICATES` (4), `RFD4_MAX_REQUEST_BYTES` (32 MiB for
-the entire JSON body, including chunked transfers) and
-`RFD4_MAX_TOKENS` (1024). The token default is the repository's own ceiling —
-`configs/inference.yaml` compiles length buckets up to 1024, so a higher value would
-leave the compiled shapes behind. Upload admission checks CIF syntax and
-required coordinate columns; it does not guarantee valid design annotations. Upstream
-preprocessing and token checks run asynchronously, before DataLoader construction;
-semantic errors and oversized designs are accepted with 202 and later report `failed`. It uses the upstream default medium
-recycling preset
-without external refolding or reward-guided search. This token cap is an API
-policy, not a model limit or a guarantee that every design fits the selected GPU.
+This accepts a strict subset of the [NIM JSON request](https://docs.nvidia.com/nim/bionemo/rfd4-proteina/api-reference/generate-rfd-4-proteina-designs):
+`task`, annotated-CIF `input`, and `sampling.seed` / `sampling.num_replicates`.
+`input.file.content` contains UTF-8 CIF; optional `filename` is a label, never a path.
+`example_id` defaults to `design` and names the staged CIF/upstream outputs; its allowed
+characters and length are specified in OpenAPI. Unknown fields are rejected at every
+level, including `partial`, `search`, `metrics`, `output` and extra sampling options.
+Earlier multipart clients must migrate to JSON.
 
-This is a single-replica deployment sample, not a production service template.
-It uses the upstream compilation buckets and cache handling. The first request for a
-new shape can take minutes to compile; readiness means weights are loaded, not that
-all shapes are warmed. Buckets compile on demand as shapes are encountered, rather
-than all configured buckets compiling on the first request. Polling clients should allow
-at least 1800 seconds for a cold design (longer on slower hardware); the Kubernetes
-startup-probe budget covers model loading, not first-request compilation.
-Compiled graphs are reused while the process remains alive.
-The image also sets
-`TORCH_COMPILE_CACHE_BLOB=/workspace/cache/torch/compile` so upstream can save and
-restore compatible artifacts across restarts; reuse depends on hardware and runtime compatibility.
-Checkpoint-load counts do not measure host/device transfers or prove graph reuse.
+Supported tasks are `generation`, `antibody_design`, `enzyme_design`, `motif_scaffolding`
+and `small_molecule_binder`; conditioning in the CIF determines what is designed.
+`partial_diffusion` and `inverse_folding` return 400 because their sampler arguments
+are not exposed. Unsupported fields fail schema validation first with 422.
+Omitted/null seeds are randomized and recorded in job `settings`; explicit seeds span
+0–2147483647. Replay the whole request with the same software, checkpoint and hardware.
 
-Completed results survive container/pod restarts when `/workspace` is persisted.
-Interrupted requests are marked failed after restart and may be resubmitted.
-Restart recovery scans historical status files, so startup time grows with request history.
-Malformed statuses and mismatched request IDs are logged and skipped; they do not prevent
-healthy requests from being recovered. Skipped files are retained for operator inspection.
-Manage disk retention yourself. The service has no built-in authentication;
-keep it internal or add authenticated HTTPS at your ingress before remote access.
+**This is not a drop-in NIM endpoint.** NIM returns designs, sequences, diagnostics,
+metadata and the resolved schedule synchronously; this service returns jobs and artifact
+links. It uses the upstream medium preset and checkpoint without promising identical
+outputs or NIM's per-design seed/batching semantics. Condition specs, search, metrics,
+output/batching controls, partial diffusion and inverse folding are not exposed.
 
-## Request vocabulary and errors
+| Environment variable | Default |
+|---|---|
+| `RFD4_MAX_REQUEST_BYTES` | 32 MiB, entire JSON body including chunked transfers |
+| `RFD4_MAX_TOKENS` | 1024 transformed tokens, matching the largest compile bucket |
+| `RFD4_MAX_REPLICATES` | 4 samples |
+| `RFD4_QUEUE_DEPTH` | 8 waiting requests |
 
-The JSON request is a strict subset of the
-[NIM design request](https://docs.nvidia.com/nim/bionemo/rfd4-proteina/api-reference/generate-rfd-4-proteina-designs).
-It accepts `task`, `input` (`format: annotated_cif`, `file.content`, optional
-`file.filename` and `example_id`), and `sampling.seed` / `sampling.num_replicates`.
-The filename is a label, never a filesystem path; `example_id` names the staged
-CIF and therefore the upstream outputs. It defaults to `design` and must start
-with a letter, digit, underscore or hyphen, followed by up to 63 letters, digits,
-dots, underscores or hyphens. Unknown fields are rejected at every nesting level.
-This includes unsupported `partial`, `search`, `metrics`, `output`, and extra
-sampling options; they are never silently ignored. Multipart requests from the
-earlier PR revision must migrate to JSON.
+These are service policies, not model limits or memory guarantees. Admission checks CIF
+syntax/coordinate columns; semantic validation and token limits run asynchronously
+before DataLoader construction. Such failures can follow an accepted 202 response.
 
-Omitting `seed` (or setting it to null) chooses a fresh seed, returned in the job's
-`settings`. Explicit seeds must be in 0–2147483647 for this upstream serving path.
-Replay the whole request with the same software, checkpoint and hardware; this
-API does not promise NIM's per-design seed or batching semantics. The replicate
-cap is deployment policy and exceeding it returns 413 `request_too_large`.
-`GET /v1/info` reports API version, supported/unsupported tasks and limits even
-while the model loads. `/openapi.json` describes requests, job states, results,
-health responses and structured HTTP errors.
+HTTP errors use `{"error": {"code": "…", "message": "…", "details": []}}`.
+Failed jobs poll with HTTP 200, `status: failed`, and the same object under `error`.
 
-`task` is required and may be any of `antibody_design`, `enzyme_design`,
-`generation`, `motif_scaffolding` or `small_molecule_binder`. It records the sampler
-mode; what is designed comes from the conditioning in the CIF either way.
-The task names `partial_diffusion` and `inverse_folding` return 400 because they
-require sampler arguments this deployment does not pass. Requests containing
-unsupported fields such as `partial` fail schema validation first with 422.
-Neither path can silently run an ordinary trajectory.
+| Code | HTTP status |
+|---|---|
+| `schema_violation`, `invalid_input` | 422 |
+| `invalid_request` | 400 |
+| `request_too_large`, `out_of_memory` | 413 |
+| `model_unavailable`, `service_busy` | 503 |
+| `not_found`, `conflict` | 404, 409 |
+| `internal_error` | 500 |
 
-HTTP failures return this envelope:
+A full queue is unavailable capacity (503); OOM asks the caller to shrink the job (413).
+Interrupted jobs use `model_unavailable`; unexpected diagnostics stay in server logs.
+Historical string errors are read as `internal_error` without rewriting stored files.
 
-```json
-{"error": {"code": "service_busy", "message": "No free worker; route elsewhere or retry later.", "details": []}}
-```
+## Validation and operation
 
-An accepted job that fails is still retrieved with HTTP 200: its `status` is
-`failed` and its `error` contains the same `{code, message, details}` object.
-Token/sample limits use `request_too_large`; GPU allocation failures use
-`out_of_memory`; unexpected failures use `internal_error`, with details kept in
-server logs. Interrupted jobs use `model_unavailable`. Historical string errors
-remain readable as `internal_error` objects without rewriting their stored files.
+Readiness means weights are loaded, not compilation is warmed. Upstream compiles buckets
+on demand; allow at least 1800 seconds for a cold design, longer on slower hardware.
+The Kubernetes startup budget covers loading only. The image sets
+`TORCH_COMPILE_CACHE_BLOB=/workspace/cache/torch/compile` for upstream cache persistence;
+reuse depends on hardware/runtime compatibility. Checkpoint-load counts do not prove
+GPU residency or graph reuse. This is a deployment sample, not a production template.
 
-| code | status | |
-|---|---|---|
-| `schema_violation`, `invalid_input` | 422 | malformed request or unreadable CIF |
-| `invalid_request` | 400 | valid name, unsupported here |
-| `request_too_large`, `out_of_memory` | 413 | shrink the input or the replicate count |
-| `model_unavailable`, `service_busy` | 503 | not serving yet, or no free worker |
-| `not_found`, `conflict` | 404, 409 | unknown request, or results not ready |
-| `internal_error` | 500 | |
-
-Two of those look wrong and are not. `service_busy` is 503 rather than 429 because a
-full queue means this replica has no free worker, not that the caller is sending too
-fast — a load balancer should route elsewhere rather than ask the client to back off.
-`out_of_memory` is a 4xx because retrying the same job exhausts the same GPU.
-
-**Compatibility boundary:** this is not a drop-in NIM endpoint. Submission is
-asynchronous (202, poll, download), and `/v1/info` reports `"submission": "asynchronous"`.
-NIM returns a synchronous response containing designs, sequences, diagnostics,
-model/runtime metadata and the resolved schedule. Here, submission and polling
-return a job record; `/results` returns artifact names and download URLs. It uses
-the upstream preset and checkpoint rather than promising identical NIM outputs.
-Only annotated CIF input is supported; condition specs, search, metrics, output
-controls, batching controls, partial diffusion and inverse folding are not exposed.
-Clients can reuse the supported request fields and error codes, but must implement
-this job lifecycle and respect its declared limits. One replica and one worker
-remain the intended scope.
-
-## Test and cleanup
-
-API tests use a fake runner and need no GPU, checkpoints, or model dependencies:
+CPU tests need no weights or model dependencies:
 
 ```bash
 python3 -m venv /tmp/rfd4-api-tests
-/tmp/rfd4-api-tests/bin/pip install fastapi uvicorn biotite hydra-core pytest httpx jsonschema
+/tmp/rfd4-api-tests/bin/pip install fastapi uvicorn 'biotite==1.6.0' hydra-core pytest httpx jsonschema
 PYTHONPATH=deploy/api /tmp/rfd4-api-tests/bin/pytest deploy/api/tests -q
 ```
 
-Inspect startup failures with `kubectl logs -n rfd4-proteina deployment/api` and
+Against a running GPU server, the following checks two generations, downloads, token
+rejection and recovery. It does not test restart persistence, residency or graph reuse;
+real GPU serving validation remains tracked in [#78](https://github.com/RosettaCommons/RFD4-Proteina/issues/78).
+
+```bash
+RUN_GPU_API_TESTS=1 API_URL=http://localhost:8000 \
+  PYTHONPATH=deploy/api /tmp/rfd4-api-tests/bin/pytest deploy/api/tests/test_gpu.py -m gpu
+```
+
+Artifacts/status JSON are saved under pytest's `tmp_path`. Inspect deployment failures
+with `kubectl logs -n rfd4-proteina deployment/api` and
 `kubectl describe pod -n rfd4-proteina -l app=rfd4-api`.
-Remove the deployment and its claim with `kubectl delete -f /tmp/rfd4-api.yaml`.
-Deleting the claim may delete stored results, depending on your PV reclaim policy.
-For local Docker, `docker volume rm rfd4-data` deletes the persisted data.
+Remove Kubernetes resources with `kubectl delete -f /tmp/rfd4-api.yaml`; deleting the
+claim may delete results, depending on PV reclaim policy. Locally,
+`docker volume rm rfd4-data` deletes persisted data after stopping the container.

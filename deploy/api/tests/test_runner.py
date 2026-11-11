@@ -29,12 +29,27 @@ class FakeOutOfMemoryError(RuntimeError):
     pass
 
 
-@pytest.fixture(autouse=True)
-def torch_errors_without_model_dependencies(monkeypatch: MonkeyPatch) -> None:
+@pytest.fixture
+def pipeline(monkeypatch: MonkeyPatch) -> tuple[Runner, Mock]:
+    generate = Mock()
     monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(OutOfMemoryError=FakeOutOfMemoryError))
+    monkeypatch.setitem(
+        sys.modules,
+        "rfproteina.generate",
+        SimpleNamespace(
+            run_generation=generate, SampleLimitError=FakeSampleLimitError, TokenLimitError=FakeTokenLimitError
+        ),
+    )
+    runner = Runner.__new__(Runner)
+    runner.model = object()
+    runner.base = OmegaConf.create({"inputs": None, "out_dir": None, "seed": None, "num_replicates": 1})
+    runner.omega = OmegaConf
+    return runner, generate
 
 
-def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+def test_resident_model_uses_upstream_pipeline_and_default_buckets(
+    tmp_path: Path, monkeypatch: MonkeyPatch, pipeline: tuple[Runner, Mock]
+) -> None:
     root = Path(__file__).resolve().parents[3]
     monkeypatch.setenv("DATA_PATH", str(tmp_path))
     with initialize_config_dir(version_base="1.3", config_dir=str(root / "configs")):
@@ -50,17 +65,9 @@ def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Pat
         path.parent.mkdir(parents=True)
         path.write_text("data_generated")
 
-    monkeypatch.setitem(
-        sys.modules,
-        "rfproteina.generate",
-        SimpleNamespace(
-            run_generation=generate, SampleLimitError=FakeSampleLimitError, TokenLimitError=FakeTokenLimitError
-        ),
-    )
-    runner = Runner.__new__(Runner)
-    runner.model = object()
+    runner, upstream = pipeline
     runner.base = base
-    runner.omega = OmegaConf
+    upstream.side_effect = generate
     for seed in (42, 43):
         output = tmp_path / str(seed) / "outputs"
         result = runner.generate(tmp_path / "input.cif", output, {"seed": seed, "num_replicates": 2}, 1024, 4)
@@ -71,18 +78,8 @@ def test_resident_model_uses_upstream_pipeline_and_default_buckets(tmp_path: Pat
     assert base.inputs is None and base.seed is None
 
 
-def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setitem(
-        sys.modules,
-        "rfproteina.generate",
-        SimpleNamespace(
-            run_generation=Mock(), SampleLimitError=FakeSampleLimitError, TokenLimitError=FakeTokenLimitError
-        ),
-    )
-    runner = Runner.__new__(Runner)
-    runner.model = object()
-    runner.base = OmegaConf.create({"inputs": None, "out_dir": None, "seed": None, "num_replicates": 1})
-    runner.omega = OmegaConf
+def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, pipeline: tuple[Runner, Mock]) -> None:
+    runner, _ = pipeline
     with pytest.raises(RuntimeError, match="without generated CIF"):
         runner.generate(tmp_path / "input.cif", tmp_path / "outputs", {"seed": 42, "num_replicates": 1}, 1024, 4)
 
@@ -102,24 +99,13 @@ def test_missing_outputs_are_not_reported_as_success(tmp_path: Path, monkeypatch
 )
 def test_admission_errors_are_worded_at_the_api_boundary(
     tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+    pipeline: tuple[Runner, Mock],
     failure: Exception,
     expected: str,
     code: ErrorCode | None,
 ) -> None:
-    monkeypatch.setitem(
-        sys.modules,
-        "rfproteina.generate",
-        SimpleNamespace(
-            run_generation=Mock(side_effect=failure),
-            SampleLimitError=FakeSampleLimitError,
-            TokenLimitError=FakeTokenLimitError,
-        ),
-    )
-    runner = Runner.__new__(Runner)
-    runner.model = object()
-    runner.base = OmegaConf.create({"inputs": None, "out_dir": None, "seed": None, "num_replicates": 1})
-    runner.omega = OmegaConf
+    runner, upstream = pipeline
+    upstream.side_effect = failure
     with pytest.raises(ApiError if code else ValueError) as exc:
         runner.generate(tmp_path / "input.cif", tmp_path / "outputs", {"seed": 42, "num_replicates": 1}, 1024, 4)
     assert str(exc.value) == expected
