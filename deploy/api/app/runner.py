@@ -1,9 +1,10 @@
 """Serve the upstream generation entry point with one resident model."""
 
+import copy
 import os
 from pathlib import Path
 
-from app.errors import ApiError, ErrorCode
+from .errors import ApiError, ErrorCode
 
 
 class Runner:
@@ -13,7 +14,6 @@ class Runner:
         # Deferred imports keep HTTP-only tests independent of model dependencies.
         import torch
         from hydra import compose, initialize_config_dir
-        from omegaconf import OmegaConf
 
         from rfproteina.generate import load_ckpt_n_configure_inference
 
@@ -33,7 +33,6 @@ class Runner:
         self.model = load_ckpt_n_configure_inference(self.base).eval().to("cuda")
         self.loads = 1
         self.device = torch.cuda.get_device_name(0)
-        self.omega = OmegaConf
 
     def generate(
         self,
@@ -48,7 +47,7 @@ class Runner:
 
         from rfproteina.generate import SampleLimitError, TokenLimitError, run_generation
 
-        cfg = self.omega.create(self.omega.to_container(self.base, resolve=False))
+        cfg = copy.deepcopy(self.base)
         cfg.inputs = str(input_path)
         cfg.out_dir = str(output_dir)
         cfg.seed = settings["seed"]

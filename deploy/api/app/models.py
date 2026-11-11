@@ -4,7 +4,7 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.errors import ErrorBody
+from .errors import ErrorBody
 
 Task = Literal[
     "antibody_design",
@@ -43,13 +43,7 @@ class AnnotatedCifInput(StrictRequest):
 
 class Sampling(StrictRequest):
     num_replicates: int = Field(default=1, ge=1, strict=True)
-    seed: int | None = Field(
-        default=None,
-        ge=0,
-        le=MAX_SEED,
-        strict=True,
-        description="Omit for a fresh seed, recorded in the job's settings. Replays the whole request.",
-    )
+    seed: int | None = Field(default=None, ge=0, le=MAX_SEED, strict=True)
 
 
 class DesignRequest(StrictRequest):

@@ -4,7 +4,6 @@ A full queue is service_busy (503); GPU OOM asks the caller to shrink the job (4
 """
 
 from enum import StrEnum
-from http import HTTPStatus
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -24,16 +23,16 @@ class ErrorCode(StrEnum):
 
 
 STATUS_FOR_CODE: dict[ErrorCode, int] = {
-    ErrorCode.SCHEMA_VIOLATION: HTTPStatus.UNPROCESSABLE_ENTITY,
-    ErrorCode.INVALID_REQUEST: HTTPStatus.BAD_REQUEST,
-    ErrorCode.INVALID_INPUT: HTTPStatus.UNPROCESSABLE_ENTITY,
-    ErrorCode.REQUEST_TOO_LARGE: HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-    ErrorCode.OUT_OF_MEMORY: HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-    ErrorCode.MODEL_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
-    ErrorCode.SERVICE_BUSY: HTTPStatus.SERVICE_UNAVAILABLE,
-    ErrorCode.NOT_FOUND: HTTPStatus.NOT_FOUND,
-    ErrorCode.CONFLICT: HTTPStatus.CONFLICT,
-    ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,
+    ErrorCode.SCHEMA_VIOLATION: 422,
+    ErrorCode.INVALID_REQUEST: 400,
+    ErrorCode.INVALID_INPUT: 422,
+    ErrorCode.REQUEST_TOO_LARGE: 413,
+    ErrorCode.OUT_OF_MEMORY: 413,
+    ErrorCode.MODEL_UNAVAILABLE: 503,
+    ErrorCode.SERVICE_BUSY: 503,
+    ErrorCode.NOT_FOUND: 404,
+    ErrorCode.CONFLICT: 409,
+    ErrorCode.INTERNAL_ERROR: 500,
 }
 
 
@@ -52,16 +51,11 @@ class ApiError(Exception):
 
     def __init__(self, code: ErrorCode, message: str, details: list[str] | None = None):
         super().__init__(message)
-        self.code = code
-        self.message = message
-        self.details = details or []
-
-    @property
-    def status(self) -> int:
-        return int(STATUS_FOR_CODE[self.code])
+        self.status = STATUS_FOR_CODE[code]
+        self.error = {"code": str(code), "message": message, "details": details or []}
 
     def body(self) -> dict[str, Any]:
-        return {"error": {"code": str(self.code), "message": self.message, "details": self.details}}
+        return {"error": self.error}
 
 
 def error_body(exc: Exception) -> dict[str, Any]:
