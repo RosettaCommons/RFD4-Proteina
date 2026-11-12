@@ -1,0 +1,27 @@
+# Experimental native-only AF2 soft-sequence gradient guidance; see
+# examples/colabdesign_guidance/README.md. No optional model is loaded until active.
+metrics:
+  colabdesign:
+    _target_: rfproteina.guidance.colabdesign.ColabDesignSequenceMetric
+    objective:
+      _target_: rfproteina.guidance.colabdesign.ColabDesignBinderLoss
+      target_pdb: ???
+      data_dir: ???
+      binder_length: 60
+      target_chain: A
+      seed: 0
+      num_recycles: 0
+      weights:
+        plddt: 1.0
+        i_pae: 1.0
+
+terms:
+  colabdesign.loss:
+    local_latents:
+      _target_: rfproteina.guidance.schedules.window
+      _partial_: true
+      # Guidance maximizes; a negative weight minimizes the AF2 loss.
+      # A conservative mechanics starting point, NOT a tuned design protocol.
+      w: -0.001
+      t_start: 0.8
+      t_end: 0.85

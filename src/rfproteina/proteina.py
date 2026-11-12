@@ -1673,12 +1673,20 @@ class Proteina(L.LightningModule):
 
         Returns:
             Dict with ``atom37_coords`` ([b, n, 37, 3], Angstrom, grad), ``residue_type``
-            ([b, n], discrete), and ``padding_mask`` ([b, n]).
+            ([b, n], discrete), ``padding_mask`` ([b, n]), and ``sequence_logits``
+            ([b, n, vocabulary], grad). The logits are the AE readout, before argmax;
+            they do not replace exact sequence conditions during ordinary export.
         """
         decode_batch = {
             **extra_info["batch"],
             "sequence_logits": extra_info.get("sequence_logits"),
         }
+        # Lightning's prediction loop can create inference tensors. The decoder
+        # must save masks/features for backward even though they need no gradient.
+        decode_batch = tree_map(
+            lambda value: value.clone() if isinstance(value, torch.Tensor) and value.is_inference() else value,
+            decode_batch,
+        )
         formatted = self._format_sample_local_latents(
             x=state,
             ret_mode="coors37_n_aatype",
@@ -1686,6 +1694,7 @@ class Proteina(L.LightningModule):
         )
         return {
             "atom37_coords": formatted["coors"],
+            "sequence_logits": formatted["sequence_logits"],
             "residue_type": formatted["residue_type"],
             "padding_mask": formatted["padding_mask"],
         }
@@ -2098,6 +2107,7 @@ class Proteina(L.LightningModule):
 
             return {
                 "coors": nm_to_ang(coors_nm_full),  # [b, n, 37, 3] - padded, use mask to slice
+                "sequence_logits": output_decoder.get("seq_logits"),
                 "atom_mask": atom_mask,
                 "residue_type": residue_type_full,  # [b, n] - padded, use mask to slice
                 "padding_mask": padding_mask,  # [b, n] - True for non-padding tokens

@@ -93,8 +93,10 @@ metric output does not depend differentiably on that state leaf.
 
 ## Build a real objective
 
-The shipped source currently contains only one metric explicitly marked `differentiable=True`:
-`ContractCAMetric`. A real objective therefore usually requires a metric class of your own.
+`ContractCAMetric` provides a small differentiable example. The experimental
+[ColabDesign adapter](https://github.com/RosettaCommons/RFD4-Proteina/tree/example/colabdesign-gradient-guidance/examples/colabdesign_guidance)
+bridges an external sequence gradient into the decoder. Other objectives usually
+require a metric class of your own.
 
 1. Implement a `Metric` whose computation stays in PyTorch and returns a scalar tensor with its
    gradient intact. Set `differentiable = True`.
@@ -110,7 +112,8 @@ The shipped source currently contains only one metric explicitly marked `differe
    guidance, inspect the metric trajectory, and increase magnitude gradually.
 
 Do not convert the objective to Python floats, NumPy arrays, external programs, or detached
-tensors. Such operations break the gradient path. Ordinary reporting, refolding, and oracle metrics
+tensors without an explicit, correct backward/VJP, as in the ColabDesign adapter.
+Otherwise these operations break the gradient path. Ordinary reporting, refolding, and oracle metrics
 are generally not differentiable guidance objectives.
 
 ## Troubleshooting

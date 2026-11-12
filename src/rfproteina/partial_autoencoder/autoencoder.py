@@ -165,6 +165,7 @@ class AutoEncoder(L.LightningModule):
         coors_nm = output_dec["coors_nm"] * emit_mask[..., None, None] * atom_mask[..., None]  # [b, n, 37, 3]
         return {
             "coors_nm": coors_nm,
+            "seq_logits": output_dec["seq_logits"],
             "residue_type": residue_type * emit_mask,
             "emit_mask": emit_mask,
             "atom_mask": atom_mask,
