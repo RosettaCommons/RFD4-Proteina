@@ -130,6 +130,7 @@ from rfproteina.transforms.sequence_conditioning import (
     CanonicalizeSequenceProbabilityConditions,
     FinalizeSequenceConditioning,
 )
+from rfproteina.symmetry.transforms import SYM_ENTITY_GROUP_ANNOTATION, ExpandSymmetricASUTransform
 from rfproteina.transforms.unindexing import UnindexFlaggedTokens
 from rfproteina.utils.common import true_with_prob
 from rfproteina.utils.constants import DEFAULT_UNDESIRED_RES_NAMES, LOCAL_LATENT_RESIDUES
@@ -269,13 +270,24 @@ class ConvertToAtomLevelProteinaFeatures(Transform):
 
         _, entity_ids = np.unique(aa.molecule_entity, return_inverse=True)  # [L], contiguous 0..k-1
         if data.get("is_inference", False):
-            # Any masked sequence gives the entire chain a private entity.
-            # Fully sequence-conditioned chains retain their native entity relationships.
+            # Any masked sequence gives the entire chain a private entity, unless symmetric
+            # sequence tying is active (in which case symmetric copies of each ASU chain share
+            # one homomeric entity ID).
             masked_sequence = ~C_SEQ.mask(aa, default="raise")
             next_entity = int(entity_ids.max()) + 1 if entity_ids.size else 0
-            for chain in np.unique(aa.chain_iid[masked_sequence]):
-                entity_ids[aa.chain_iid == chain] = next_entity
-                next_entity += 1
+            sym_info = (data.get("extra_info") or {}).get("symmetry")
+            tie_sym_entities = SYM_ENTITY_GROUP_ANNOTATION in aa.get_annotation_categories() and (
+                sym_info.get("tie_sequence", True) if isinstance(sym_info, dict) else True
+            )
+            if tie_sym_entities:
+                sym_groups = aa.get_annotation(SYM_ENTITY_GROUP_ANNOTATION)
+                for sym_group in np.unique(sym_groups[masked_sequence]):
+                    entity_ids[sym_groups == sym_group] = next_entity
+                    next_entity += 1
+            else:
+                for chain in np.unique(aa.chain_iid[masked_sequence]):
+                    entity_ids[aa.chain_iid == chain] = next_entity
+                    next_entity += 1
 
         # TODO: Rename to molecule_entity after performing checkpoint surgery
         feats["molecule_entity_id"] = entity_ids.astype(np.int16)  # [L]
@@ -1328,6 +1340,7 @@ def build_design_train_pipeline(
     loss_weight_cfg: dict[str, float] | None = None,
     sampling_transforms: list[Transform] | None = None,
     expandable_segment_rng: np.random.Generator | None = None,
+    symmetry: Any = None,
 ) -> Transform:
     """Build training pipeline for protein design tasks.
 
@@ -1381,7 +1394,12 @@ def build_design_train_pipeline(
     transforms = [AddSrcComponentAnnotation()]
     if is_inference:
         transforms.append(RealizeExpandableSegments(rng=expandable_segment_rng))
-    transforms.extend(sampling_transforms or [])
+    user_sampling_transforms = list(sampling_transforms or [])
+    transforms.extend(user_sampling_transforms)
+    if (is_inference or symmetry is not None) and not any(
+        isinstance(t, ExpandSymmetricASUTransform) for t in user_sampling_transforms
+    ):
+        transforms.append(ExpandSymmetricASUTransform(symmetry=symmetry))
     if residue_names_supporting_local_latents is None:
         residue_names_supporting_local_latents = LOCAL_LATENT_RESIDUES
     transforms += _build_design_clean_and_sample_pipeline(
@@ -1425,6 +1443,7 @@ def build_design_validation_pipeline(
     precompute_atom_permutation: bool = False,
     sampling_transforms: list[Transform] | None = None,
     expandable_segment_rng: np.random.Generator | None = None,
+    symmetry: Any = None,
 ) -> Transform:
     """Build the validation/inference pipeline.
 
@@ -1442,6 +1461,7 @@ def build_design_validation_pipeline(
         sampling_transforms: Optional transforms applied immediately after segment expansion,
             before cleanup and featurization. Omit when validating inputs without sampling.
         expandable_segment_rng: Optional local RNG for segment expansion during prevalidation.
+        symmetry: Optional point-group symmetry configuration (e.g. ``"C3"`` or ``SymmetryConfig``).
     """
     return build_design_train_pipeline(
         is_inference=True,
@@ -1453,4 +1473,5 @@ def build_design_validation_pipeline(
         precompute_atom_permutation=precompute_atom_permutation,
         sampling_transforms=sampling_transforms,
         expandable_segment_rng=expandable_segment_rng,
+        symmetry=symmetry,
     )

@@ -34,6 +34,13 @@ from rfproteina.encoding import UNIFIED_ATOM37_ENCODING
 from rfproteina.flow_matching.product_space_flow_matcher import (
     ProductSpaceFlowMatcher,
 )
+from rfproteina.flow_matching.rdn_flow_matcher import (
+    normalize_symmetry_configs,
+    project_symmetric_3d_batched,
+    symmetrize_atom37_batched,
+    tie_invariant_batched,
+)
+from rfproteina.symmetry import SymmetryConfig
 from rfproteina.inference_utils.foldseek import (
     add_diversity_summary_metrics,
     apply_cluster_map_to_metrics,
@@ -1733,6 +1740,24 @@ class Proteina(L.LightningModule):
                 mappings.append({})
         return mappings
 
+    def resolve_batch_symmetry(
+        self,
+        batch: Mapping[str, Any] | None,
+        nsamples: int | None = None,
+    ) -> list[SymmetryConfig] | None:
+        """Resolve per-row :class:`SymmetryConfig` from ``batch`` or model inference/generation config."""
+        fallback: Any = None
+        inf_cfg = getattr(self, "inf_cfg", None)
+        if isinstance(inf_cfg, Mapping) and inf_cfg.get("symmetry") is not None:
+            fallback = inf_cfg.get("symmetry")
+        elif isinstance(getattr(self, "cfg_exp", None), Mapping):
+            gen_cfg = self.cfg_exp.get("generation")
+            if isinstance(gen_cfg, Mapping) and gen_cfg.get("symmetry") is not None:
+                fallback = gen_cfg.get("symmetry")
+            elif self.cfg_exp.get("symmetry") is not None:
+                fallback = self.cfg_exp.get("symmetry")
+        return normalize_symmetry_configs(batch, batch_size=nsamples, fallback=fallback)
+
     def preprocess_batch_for_generation(self, batch: dict) -> dict:
         """Preprocess batch from atom37 collate format for generation.
 
@@ -1746,6 +1771,9 @@ class Proteina(L.LightningModule):
         """
         batch["coords_nm"] = batch["coords"] / 10.0  # Convert Angstroms to nm
         batch["coord_mask"] = batch["atom37_mask"]
+        sym_cfgs = self.resolve_batch_symmetry(batch, nsamples=int(batch["coords"].shape[0]))
+        if sym_cfgs is not None:
+            batch["symmetry"] = sym_cfgs
 
         return batch
 
@@ -1974,7 +2002,12 @@ class Proteina(L.LightningModule):
         """
         data_modes = sorted(self.cfg_exp.product_flowmatcher)
         if data_modes == ["bb_ca"]:
-            return self._format_sample_bb_ca(x=x, ret_mode=ret_mode, padding_mask=batch["padding_mask"])
+            return self._format_sample_bb_ca(
+                x=x,
+                ret_mode=ret_mode,
+                padding_mask=batch["padding_mask"],
+                batch=batch,
+            )
         elif data_modes == ["bb_ca", "local_latents"]:
             return self._format_sample_local_latents(
                 x=x,
@@ -1989,9 +2022,19 @@ class Proteina(L.LightningModule):
         x: dict[str, torch.Tensor],
         ret_mode: str,
         padding_mask: Bool[torch.Tensor, "b n"],
+        batch: Mapping[str, Any] | None = None,
     ) -> dict:
         if ret_mode == "coors37_n_aatype":
-            coors = trans_nm_to_atom37(x["bb_ca"].float()) * padding_mask[..., None, None]  # [b, n, 37, 3]
+            bb_ca = x["bb_ca"].float()
+            sym_cfgs = self.resolve_batch_symmetry(batch, nsamples=int(bb_ca.shape[0])) if batch is not None else None
+            if sym_cfgs is not None:
+                gen_mask = (
+                    padding_mask & ~batch["is_in_context_conditioning"]
+                    if batch is not None and "is_in_context_conditioning" in batch
+                    else padding_mask
+                )
+                bb_ca = project_symmetric_3d_batched(bb_ca, sym_cfgs, gen_mask)
+            coors = trans_nm_to_atom37(bb_ca) * padding_mask[..., None, None]  # [b, n, 37, 3]
             residue_type = torch.full(coors[..., 0, 0].shape, -1, device=coors.device, dtype=torch.long)  # [b, n]
             return {
                 "coors": coors,  # [b, n, 37, 3]
@@ -2032,10 +2075,19 @@ class Proteina(L.LightningModule):
         """
         if ret_mode == "coors37_n_aatype":
             padding_mask = batch["padding_mask"]
+            sym_cfgs = self.resolve_batch_symmetry(batch, nsamples=int(padding_mask.shape[0]))
+            gen_mask = (
+                padding_mask & ~batch["is_in_context_conditioning"]
+                if "is_in_context_conditioning" in batch
+                else padding_mask
+            )
+            ca_coors_nm = (
+                project_symmetric_3d_batched(x["bb_ca"], sym_cfgs, gen_mask) if sym_cfgs is not None else x["bb_ca"]
+            )
             decode_batch = {
                 **batch,
                 "z_latent": x["local_latents"],
-                "ca_coors_nm": x["bb_ca"],
+                "ca_coors_nm": ca_coors_nm,
             }
 
             inf_cfg = getattr(self, "inf_cfg", None)
@@ -2055,7 +2107,11 @@ class Proteina(L.LightningModule):
                         f"got {sequence_logits.shape[-1]}."
                     )
 
-                logits_for_decode = sequence_logits
+                logits_for_decode = (
+                    tie_invariant_batched(sequence_logits, sym_cfgs, gen_mask)
+                    if sym_cfgs is not None
+                    else sequence_logits
+                )
                 allowed_residue_types = get_allowed_residue_type_mask(
                     device=logits_for_decode.device,
                 )
@@ -2080,19 +2136,87 @@ class Proteina(L.LightningModule):
                 )
 
             coord_groups = decode_batch.get(C_CRDGRP.full_name)
-            output_decoder = self.autoencoder.decode(
-                decode_batch, required_atom_mask=None if coord_groups is None else coord_groups >= 0
-            )
-            emit_mask = output_decoder["emit_mask"]
-            coors_nm_full = output_decoder["coors_nm"].clone()
-            residue_type_full = output_decoder["residue_type"].long()
-            atom_mask = output_decoder["atom_mask"].clone()
+            required_atom_mask = None if coord_groups is None else coord_groups >= 0
+
+            if sym_cfgs is None:
+                output_decoder = self.autoencoder.decode(decode_batch, required_atom_mask=required_atom_mask)
+                emit_mask = output_decoder["emit_mask"]
+                coors_nm_full = output_decoder["coors_nm"].clone()
+                residue_type_full = output_decoder["residue_type"].long()
+                atom_mask = output_decoder["atom_mask"].clone()
+            elif hasattr(self.autoencoder, "decoder"):
+                output_dec = self.autoencoder.decoder(decode_batch)
+                emit_mask = output_dec["emit_mask"]
+                seq_logits_sym = tie_invariant_batched(output_dec["seq_logits"], sym_cfgs, gen_mask)
+                aatype_max = torch.argmax(seq_logits_sym, dim=-1) * emit_mask
+                residue_type = aatype_max
+                if C_SEQ.full_name in decode_batch:
+                    sequence = decode_batch[C_SEQ.full_name]
+                    conditioned = (sequence != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]) & emit_mask
+                    residue_type = torch.where(conditioned, sequence, residue_type)
+                    if bool(conditioned.any().item()):
+                        for b_idx, cfg in enumerate(sym_cfgs):
+                            if not (cfg.is_active and cfg.tie_sequence) or not bool(conditioned[b_idx].any().item()):
+                                continue
+                            idx = torch.nonzero(gen_mask[b_idx], as_tuple=False).squeeze(-1)
+                            n_val = int(idx.numel())
+                            if n_val == 0 or n_val % cfg.order != 0:
+                                continue
+                            l_asu = n_val // cfg.order
+                            cond_b = conditioned[b_idx].index_select(0, idx).reshape(cfg.order, l_asu)
+                            if bool((cond_b.any(dim=0) & ~cond_b.all(dim=0)).any().item()):
+                                seq_b = sequence[b_idx].index_select(0, idx).reshape(cfg.order, l_asu)
+                                res_b = residue_type[b_idx].index_select(0, idx).reshape(cfg.order, l_asu)
+                                first_g = cond_b.int().argmax(dim=0, keepdim=True)
+                                chosen_seq = torch.gather(seq_b, dim=0, index=first_g).expand(cfg.order, l_asu)
+                                has_any = cond_b.any(dim=0, keepdim=True).expand(cfg.order, l_asu)
+                                res_b = torch.where(has_any, chosen_seq, res_b)
+                                residue_type = residue_type.clone()
+                                residue_type[b_idx].index_copy_(0, idx, res_b.reshape(n_val))
+
+                legal_slots = self.autoencoder.decoder.residue_atom_mask[residue_type]
+                atom_pres_sym = tie_invariant_batched(output_dec["atom_presence_logits"], sym_cfgs, gen_mask)
+                predicted_mask = atom_pres_sym > 0
+                predicted_mask[..., 1] = True
+                if required_atom_mask is not None:
+                    predicted_mask = predicted_mask | required_atom_mask
+                    predicted_mask = tie_invariant_batched(predicted_mask.float(), sym_cfgs, gen_mask) > 0
+                atom_mask = (legal_slots & predicted_mask & emit_mask[..., None]).clone()
+
+                coors_nm_sym = symmetrize_atom37_batched(
+                    output_dec["coors_nm"],
+                    sym_cfgs,
+                    ca_coors_nm=ca_coors_nm,
+                    atom_mask=atom_mask,
+                    mask=gen_mask,
+                )
+                coors_nm_full = (coors_nm_sym * emit_mask[..., None, None] * atom_mask[..., None]).clone()
+                residue_type_full = (residue_type * emit_mask).long()
+            else:
+                output_decoder = self.autoencoder.decode(decode_batch, required_atom_mask=required_atom_mask)
+                emit_mask = output_decoder["emit_mask"]
+                residue_type_full = tie_invariant_batched(
+                    output_decoder["residue_type"].long(), sym_cfgs, gen_mask
+                ).long()
+                atom_mask = (tie_invariant_batched(output_decoder["atom_mask"].float(), sym_cfgs, gen_mask) > 0).clone()
+                coors_nm_sym = symmetrize_atom37_batched(
+                    output_decoder["coors_nm"],
+                    sym_cfgs,
+                    ca_coors_nm=ca_coors_nm,
+                    atom_mask=atom_mask,
+                    mask=gen_mask,
+                )
+                coors_nm_full = (coors_nm_sym * emit_mask[..., None, None] * atom_mask[..., None]).clone()
 
             # Tokens with no latents (unfixed ligands, etc.): keep the sampled CA in slot 1 and
-            # mark them unencoded (residue_type -1).
+            # mark them unencoded (residue_type -1). Clone atom_mask first so in-place slot-1
+            # update does not mutate tensors saved on the decode_for_guidance autograd tape.
             no_latent_tokens = (~emit_mask) & padding_mask  # [b, n]
+            atom_mask = atom_mask.clone()
             atom_mask[..., 1] |= no_latent_tokens
-            coors_nm_full[..., 1, :] = torch.where(no_latent_tokens[..., None], x["bb_ca"], coors_nm_full[..., 1, :])
+            coors_nm_full[..., 1, :] = torch.where(
+                no_latent_tokens[..., None], ca_coors_nm, coors_nm_full[..., 1, :]
+            )
             # -1 marks every token outside the emitted set (unfilled / no-latent / padding).
             residue_type_full = torch.where(emit_mask, residue_type_full, torch.full_like(residue_type_full, -1))
 

@@ -47,6 +47,10 @@ autoencoder_ckpt_path: ${oc.env:DATA_PATH}/ae_checkpoints/rfd4-proteina-ae-relea
 
 num_replicates: 1 # Number of times to replicate each example
 
+# Point-group symmetry CLI shortcuts (merged into generation.symmetry when non-null)
+symmetry: null     # e.g. symmetry=C3, symmetry=D2, symmetry=T, symmetry=O, symmetry=I
+sym_radius: null   # Optional ASU radial offset in Angstroms (e.g. sym_radius=12.0)
+
 # Token counts to pad batches to for torch.compile. Multiples of 16; null disables.
 compile_lengths: [128, 160, 192, 224, 256, 288, 320, 352, 384, 448, 512, 640, 768, 896, 1024]
 

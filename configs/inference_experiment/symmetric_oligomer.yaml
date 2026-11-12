@@ -1,0 +1,18 @@
+# @package _global_
+# Preset for 3D point-group symmetric oligomer design (Cn, Dn, T, O, I).
+#
+# Example CLI usage:
+#   rfd4-generate inference_experiment=symmetric_oligomer inputs=asu.cif out_dir=runs/c3_homomer
+#   rfd4-generate inference_experiment=symmetric_oligomer symmetry=D2 sym_radius=12.0 inputs=spec.yaml out_dir=runs/d2
+
+defaults:
+  - inference_on_user_inputs
+  - _self_
+
+generation:
+  symmetry:
+    group: C3
+    radius: 0.0
+    input_is_asu: true
+    tie_sequence: true
+    decode_mode: asu_medoid

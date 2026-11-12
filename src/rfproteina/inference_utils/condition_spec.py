@@ -35,6 +35,7 @@ from rfproteina.conditions_reporting import (
     sync_index_groups,
 )
 from rfproteina.inference_utils.contig_spec import apply_contig
+from rfproteina.symmetry.transforms import merge_symmetry_config
 from rfproteina.transforms.utils.conditioning_utils import (
     separate_coordinate_groups,
     set_absolute_coordinate_conditioning,
@@ -72,14 +73,16 @@ _REMINDER = (
 # Every field name a condition_spec example dict consumes. `out_dir` is deliberately absent:
 # nothing reads it (the CLI owns the output directory), so accepting it silently discarded an
 # author's intent -- it is now rejected as an unrecognized field like any other typo.
-_CONDITION_SPEC_EXAMPLE_KEYS = frozenset({"input", "input_as_annotated_cif", "contig", "conditions"})
+_CONDITION_SPEC_EXAMPLE_KEYS = frozenset(
+    {"input", "input_as_annotated_cif", "contig", "conditions", "symmetry", "sym_radius"}
+)
 
 # Field names unique to the removed legacy `InputSpecification` (contig-JSON) dialect. The legacy
 # realization path (`input_parsing.py`) has been deleted, but any example naming one of these is
 # still detected here so it can be rejected with a clear "migrate to condition_spec/CIF" error
 # rather than misinterpreted as condition_spec. This is the legacy dialect's frozen vocabulary --
-# it never gains fields -- so it is listed explicitly (the two names it shared with condition_spec,
-# `input` and `contig`, are excluded).
+# it never gains fields -- so it is listed explicitly (the names it shared with condition_spec,
+# `input`, `contig`, and `symmetry`, are excluded).
 _LEGACY_ONLY_FIELDS = frozenset(
     {
         "add_cath_code",
@@ -105,7 +108,6 @@ _LEGACY_ONLY_FIELDS = frozenset(
         "select_hotspots",
         "select_partially_buried",
         "select_unfixed_sequence",
-        "symmetry",
         "unindex",
     }
 )
@@ -537,12 +539,26 @@ def build_annotated_atom_array_from_condition_spec(
 
     result = parse_atom_array(atom_array, config=_FINALIZE_PREPARE_CONFIG)
     built = result["assemblies"]["1"][0]
-    return {
+    out: dict[str, Any] = {
         "atom_array": built,
         "chain_info": result["chain_info"],
         "ligand_info": result["ligand_info"],
         "metadata": result["metadata"],
     }
+    raw_sym = spec.get("symmetry")
+    raw_sym_radius = spec.get("sym_radius")
+    if raw_sym is not None or raw_sym_radius is not None:
+        has_explicit_map_radius = isinstance(raw_sym, dict) and any(
+            raw_sym.get(k) is not None for k in ("radius", "sym_radius", "radius_nm")
+        )
+        effective_sym_radius = None if has_explicit_map_radius else raw_sym_radius
+        sym_cfg = merge_symmetry_config(None, raw_sym, sym_radius=effective_sym_radius)
+        if raw_sym is not None:
+            sym_entry: dict[str, Any] = sym_cfg.to_dict()
+        else:
+            sym_entry = {"radius": sym_cfg.radius}
+        out["extra_info"] = {"symmetry": sym_entry}
+    return out
 
 
 def load_spec_file(path: Path) -> dict:

@@ -3,7 +3,7 @@
 import json
 import pathlib
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from os import PathLike
 from typing import Any
 
@@ -229,8 +229,14 @@ class ConditionSpecDataset(MolecularDataset):
         data = TransformedDict(
             build_annotated_atom_array_from_condition_spec(spec, spec_dir=self.spec_dir, example_id=example_id)
         )
+        spec_meta: dict[str, Any] = {}
         if self.json_path is not None:
-            data["specification"] = {"input_json_path": str(pathlib.Path(self.json_path).resolve())}
+            spec_meta["input_json_path"] = str(pathlib.Path(self.json_path).resolve())
+        extra_sym = data.get("extra_info", {}).get("symmetry") if isinstance(data.get("extra_info"), Mapping) else None
+        if extra_sym is not None:
+            spec_meta["symmetry"] = extra_sym
+        if spec_meta:
+            data["specification"] = spec_meta
         return data
 
     def __getitem__(self, idx: int) -> Any:
@@ -419,7 +425,11 @@ class DesignProblemDataset(FileDataset):
         if self.transform is not None:
             data = self.transform(data)
 
-        data["specification"] = {
+        spec_dict: dict[str, Any] = {
             "input_cif": path,
         }
+        extra_sym = data.get("extra_info", {}).get("symmetry") if isinstance(data.get("extra_info"), Mapping) else None
+        if extra_sym is not None:
+            spec_dict["symmetry"] = extra_sym
+        data["specification"] = spec_dict
         return data

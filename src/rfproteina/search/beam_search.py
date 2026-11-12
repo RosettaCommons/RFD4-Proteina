@@ -31,6 +31,7 @@ from typing import Any
 import torch
 
 from rfproteina.flow_matching.product_space_flow_matcher import extract_groups
+from rfproteina.flow_matching.rdn_flow_matcher import project_symmetric_3d_batched
 from rfproteina.metrics.oracles.pass_criterion_metric import PassCriterionMetric
 from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_and_refolding_metrics
 from rfproteina.model_masks import compute_flow_emit_masks
@@ -66,6 +67,8 @@ def _select_batch_examples(batch: dict, indices: list[int], batch_size: int) -> 
         "task_batch",
         "metrics_tags_batch",
         "specification_batch",
+        "symmetry",
+        "symmetry_batch",
     ):
         if key in batch:
             fields[key] = batch[key]
@@ -267,6 +270,11 @@ class BeamSearchStrategy(SearchStrategy):
 
         start_step = 0
 
+        batch_symmetry = batch.get("symmetry")
+        tiled_symmetry = (
+            batch_symmetry * self.beam_width if isinstance(batch_symmetry, list) else batch_symmetry
+        )
+
         if self.resume_from is not None:
             state = torch.load(self.resume_from, map_location=device, weights_only=True)
             if not isinstance(state, dict) or "step" not in state or "x" not in state:
@@ -288,6 +296,9 @@ class BeamSearchStrategy(SearchStrategy):
                         f"Saved candidate {key} must be a finite floating tensor of shape {expected_shape}."
                     )
             xt = {key: value.repeat(self.beam_width, 1, 1) for key, value in candidate.items()}
+            if tiled_symmetry is not None and "bb_ca" in xt:
+                tiled_emit = (padding_mask & ~batch["is_in_context_conditioning"]).repeat(self.beam_width, 1)
+                xt["bb_ca"] = project_symmetric_3d_batched(xt["bb_ca"], tiled_symmetry, tiled_emit)
             torch.manual_seed(self.resume_seed)
             model.inference_seed = self.resume_seed
         else:
@@ -303,6 +314,7 @@ class BeamSearchStrategy(SearchStrategy):
                 "is_in_context_conditioning": batch["is_in_context_conditioning"].repeat(self.beam_width, 1),
                 "padding_mask": tiled_padding_mask,
             }
+            beam_emit_masks = compute_flow_emit_masks(beam_emit_mask_batch)
             coord_cond_mask = batch.get("coord_cond_mask")
             tiled_coord_cond_mask = coord_cond_mask.repeat(self.beam_width, 1) if coord_cond_mask is not None else None
             tiled_groups = {
@@ -314,10 +326,11 @@ class BeamSearchStrategy(SearchStrategy):
                 n,
                 shape=(nsamples * self.beam_width,),
                 device=device,
-                emit_masks=compute_flow_emit_masks(beam_emit_mask_batch),
+                emit_masks=beam_emit_masks,
                 training=False,
                 coord_cond_mask=tiled_coord_cond_mask,
                 groups=tiled_groups,
+                symmetry=tiled_symmetry,
             )
 
             if partial_t_dict:
@@ -325,6 +338,8 @@ class BeamSearchStrategy(SearchStrategy):
                 x_1 = batch["x_1"]  # {dm: [nsamples, n_tokens, ...]}
                 x_1_tiled = {dm: torch.cat([x_1[dm]] * self.beam_width, dim=0) for dm in partial_t_dict}
                 xt = {dm: (1.0 - pt_val) * x_0[dm] + pt_val * x_1_tiled[dm] for dm, pt_val in partial_t_dict.items()}
+                if tiled_symmetry is not None and "bb_ca" in xt:
+                    xt["bb_ca"] = project_symmetric_3d_batched(xt["bb_ca"], tiled_symmetry, beam_emit_masks["bb_ca"])
                 logger.info(
                     f"Partial diffusion: bb_ca t={partial_t_dict.get('bb_ca', 0):.4f}, "
                     f"local_latents t={partial_t_dict.get('local_latents', 0):.4f}"
@@ -384,6 +399,7 @@ class BeamSearchStrategy(SearchStrategy):
                         simulation_step_params=simulation_step_params,
                         device=model.device,
                         guidance_w=guidance_w,
+                        symmetry=batch.get("symmetry"),
                     )
 
                     all_xt_branches.append(branch_xt)
@@ -650,6 +666,12 @@ class BeamSearchStrategy(SearchStrategy):
             for i in range(0, batch_size, segment_size):
                 end_idx = min(i + segment_size, batch_size)
                 batch_xt = {key: value[i:end_idx] for key, value in xt.items()}
+                batch_sym = batch.get("symmetry")
+                seg_sym = (
+                    batch_sym[: end_idx - i]
+                    if isinstance(batch_sym, list) and len(batch_sym) >= end_idx - i
+                    else batch_sym
+                )
 
                 batch_final_xt, _, batch_extra_info = model.fm.partial_simulation(
                     batch=copy.deepcopy(batch),
@@ -665,6 +687,7 @@ class BeamSearchStrategy(SearchStrategy):
                     },
                     device=model.device,
                     guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
+                    symmetry=seg_sym,
                 )
                 final_xt_batches.append(batch_final_xt)
                 insertion_logits_batches.append(batch_extra_info.get("insertion_logits"))
@@ -686,7 +709,11 @@ class BeamSearchStrategy(SearchStrategy):
             k: (
                 v.repeat(num_repeats, *([1] * (v.dim() - 1)))[:batch_size]
                 if torch.is_tensor(v) and v.shape[0] == segment_size
-                else v
+                else (
+                    (v * num_repeats)[:batch_size]
+                    if k == "symmetry" and isinstance(v, list) and len(v) == segment_size
+                    else v
+                )
             )
             for k, v in batch.items()
         }

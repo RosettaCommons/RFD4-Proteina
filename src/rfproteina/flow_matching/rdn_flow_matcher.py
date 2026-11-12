@@ -1,16 +1,272 @@
+from collections.abc import Mapping, Sequence
 import logging
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
+from rfproteina.symmetry import (
+    SymmetryConfig,
+    has_active_symmetry,
+    project_invariant_symmetric,
+    project_symmetric,
+    resolve_batch_symmetry,
+    sample_symmetric_ca_noise,
+    symmetrize_decoded_atom37,
+    zero_global_com,
+)
 from rfproteina.utils.align import mean_w_mask
 
 _logger = logging.getLogger(__name__)
 
 VALID_GROUP_KEYS = ("chain_iid", "pn_unit_iid", "molecule_iid", "coord_group")
+_SYMMETRY_CONFIG_KEYS = ("group", "decode_mode", "input_is_asu", "tie_sequence")
+
+
+def _is_dict_like(obj: Any) -> bool:
+    """Return True for Mappings and custom dict-like batch containers (e.g. PaddedBatchedDataSample)."""
+    if isinstance(obj, Mapping):
+        return True
+    return (
+        hasattr(obj, "get")
+        and hasattr(obj, "__contains__")
+        and not isinstance(obj, (str, bytes, bytearray, Tensor, SymmetryConfig))
+    )
+
+
+def _infer_natural_batch_size(extracted: Any) -> int | None:
+    """Infer natural row count from a sequence or collated dict-of-lists symmetry payload."""
+    if isinstance(extracted, Sequence) and not isinstance(extracted, (str, bytes, bytearray, Tensor)):
+        return len(extracted)
+    if _is_dict_like(extracted):
+        group_val = extracted.get("group")
+        if isinstance(group_val, Tensor) and group_val.ndim >= 1:
+            return int(group_val.shape[0])
+        if isinstance(group_val, Sequence) and not isinstance(group_val, (str, bytes, bytearray)):
+            return len(group_val)
+        nested_sym = extracted.get("symmetry")
+        if nested_sym is not None and nested_sym is not extracted:
+            return _infer_natural_batch_size(nested_sym)
+    return None
+
+
+def normalize_symmetry_configs(
+    symmetry_or_batch: Any,
+    batch_size: int | None = None,
+    fallback: Any = None,
+) -> list[SymmetryConfig] | None:
+    """Resolve per-row :class:`SymmetryConfig` list, or ``None`` when no active symmetry (> C1) exists.
+
+    Handles ``None``, ``str``, :class:`SymmetryConfig`, single config ``Mapping``, collated
+    dict-of-lists from ``batch_dataclass_recursive``, ``PaddedBatchedDataSample``, per-sample lists,
+    and beam-search tiled batches where ``batch_size`` is an integer multiple of the natural batch length.
+    """
+    if symmetry_or_batch is None and fallback is None:
+        return None
+
+    target: Any = symmetry_or_batch
+    inferred_n: int | None = None
+
+    if _is_dict_like(symmetry_or_batch) and not any(k in symmetry_or_batch for k in _SYMMETRY_CONFIG_KEYS):
+        # Fast exit for standard non-symmetric batches when no model-level fallback is set.
+        sym_direct = symmetry_or_batch.get("symmetry")
+        if sym_direct is None:
+            sym_direct = symmetry_or_batch.get("symmetry_batch")
+        extra_info = symmetry_or_batch.get("extra_info")
+        spec_batch = symmetry_or_batch.get("specification_batch")
+        spec_single = symmetry_or_batch.get("specification")
+
+        if (
+            fallback is None
+            and sym_direct is None
+            and extra_info is None
+            and spec_batch is None
+            and spec_single is None
+        ):
+            return None
+
+        if sym_direct is not None:
+            target = sym_direct
+            inferred_n = _infer_natural_batch_size(sym_direct)
+        elif _is_dict_like(extra_info) and "symmetry" in extra_info:
+            target = extra_info["symmetry"]
+            inferred_n = _infer_natural_batch_size(target)
+        elif _is_dict_like(spec_batch) and "symmetry" in spec_batch:
+            target = spec_batch["symmetry"]
+            inferred_n = _infer_natural_batch_size(target)
+        elif spec_batch is None and _is_dict_like(spec_single) and "symmetry" in spec_single:
+            target = spec_single["symmetry"]
+            inferred_n = _infer_natural_batch_size(target)
+        else:
+            inferred_n = _infer_natural_batch_size(extra_info) or _infer_natural_batch_size(spec_batch)
+    else:
+        inferred_n = _infer_natural_batch_size(target)
+
+    resolve_n = inferred_n if inferred_n is not None and inferred_n > 0 else batch_size
+    cfgs = resolve_batch_symmetry(target, fallback=fallback, batch_size=resolve_n)
+
+    if batch_size is not None and len(cfgs) != batch_size:
+        if batch_size == 0:
+            cfgs = []
+        elif len(cfgs) == 1:
+            cfgs = cfgs * batch_size
+        elif len(cfgs) > 1 and batch_size % len(cfgs) == 0:
+            cfgs = (cfgs * (batch_size // len(cfgs)))[:batch_size]
+        else:
+            raise ValueError(f"Batch symmetry length {len(cfgs)} is incompatible with batch_size {batch_size}")
+
+    if not cfgs or not has_active_symmetry(cfgs):
+        return None
+    return cfgs
+
+
+def _row_has_abs_coord_cond(
+    coord_cond_mask: Tensor | None,
+    emit_mask: Tensor | None,
+    batch_size: int,
+) -> list[bool]:
+    """Return per-row boolean flags indicating whether fixed absolute coordinates are present."""
+    if coord_cond_mask is None or batch_size == 0:
+        return [False] * batch_size
+    eff = (coord_cond_mask.bool() & emit_mask.bool()) if emit_mask is not None else coord_cond_mask.bool()
+    if eff.ndim == 1:
+        val = bool(eff.any().item())
+        return [val] * batch_size
+    row_any = eff.reshape(batch_size, -1).any(dim=-1)
+    if not bool(row_any.any().item()):
+        return [False] * batch_size
+    return [bool(v) for v in row_any.tolist()]
+
+
+def project_symmetric_3d_batched(
+    x: Tensor,
+    sym_cfgs: list[SymmetryConfig] | None,
+    emit_mask: Tensor | None = None,
+    *,
+    zero_com: bool = False,
+    coord_cond_mask: Tensor | None = None,
+) -> Tensor:
+    """Project 3D Cartesian coordinates or velocities onto the per-row point-group subspace."""
+    if sym_cfgs is None:
+        return x
+
+    unbatched = x.ndim == 2
+    batch_size = 1 if unbatched else x.shape[0]
+    is_uniform = all(c == sym_cfgs[0] for c in sym_cfgs[1:])
+
+    if is_uniform:
+        out = project_symmetric(x, sym_cfgs[0], mask=emit_mask)
+    elif unbatched:
+        out = project_symmetric(x, sym_cfgs[0], mask=emit_mask)
+    else:
+        out = project_symmetric(x, sym_cfgs, mask=emit_mask)
+
+    if zero_com:
+        abs_flags = _row_has_abs_coord_cond(coord_cond_mask, emit_mask, batch_size)
+        if not any(abs_flags):
+            out = zero_global_com(out, mask=emit_mask)
+        elif not all(abs_flags) and not unbatched:
+            rows = []
+            for b_idx in range(batch_size):
+                row_m = None if emit_mask is None else emit_mask[b_idx]
+                if not abs_flags[b_idx]:
+                    rows.append(zero_global_com(out[b_idx], mask=row_m))
+                else:
+                    rows.append(out[b_idx])
+            out = torch.stack(rows, dim=0)
+
+    return out
+
+
+def tie_invariant_batched(
+    h: Tensor,
+    sym_cfgs: list[SymmetryConfig] | None,
+    emit_mask: Tensor | None = None,
+    *,
+    ignore_tie_sequence_flag: bool = False,
+) -> Tensor:
+    """Average and re-tile SE(3)-invariant per-token tensors across symmetric subunits."""
+    if sym_cfgs is None:
+        return h
+    if not ignore_tie_sequence_flag and not any(c.is_active and c.tie_sequence for c in sym_cfgs):
+        return h
+
+    is_uniform = all(c == sym_cfgs[0] for c in sym_cfgs[1:])
+    if is_uniform:
+        cfg0 = sym_cfgs[0]
+        eff_group: int | SymmetryConfig = (
+            cfg0.spec if ignore_tie_sequence_flag else (cfg0 if cfg0.tie_sequence else 1)
+        )
+        return project_invariant_symmetric(h, eff_group, mask=emit_mask)
+
+    if h.ndim < 2 or h.shape[0] != len(sym_cfgs):
+        raise ValueError(f"Expected leading batch dim {len(sym_cfgs)} for h shape {tuple(h.shape)}")
+
+    eff_groups = [c.spec if ignore_tie_sequence_flag else c for c in sym_cfgs]
+    return project_invariant_symmetric(h, eff_groups, mask=emit_mask)
+
+
+def symmetrize_atom37_batched(
+    coors_nm: Tensor,
+    sym_cfgs: list[SymmetryConfig] | None,
+    *,
+    ca_coors_nm: Tensor | None = None,
+    atom_mask: Tensor | None = None,
+    mask: Tensor | None = None,
+) -> Tensor:
+    """Symmetrize decoded ``[..., N, 37, 3]`` atom37 coordinates across symmetric subunits."""
+    if sym_cfgs is None:
+        return coors_nm
+
+    unbatched = coors_nm.ndim == 3
+    c_batch = coors_nm.unsqueeze(0) if unbatched else coors_nm
+    ca_batch = None if ca_coors_nm is None else (ca_coors_nm.unsqueeze(0) if unbatched else ca_coors_nm)
+    am_batch = None if atom_mask is None else (atom_mask.unsqueeze(0) if unbatched else atom_mask)
+    m_batch = None if mask is None else (mask.unsqueeze(0) if unbatched else mask)
+
+    batch_size = int(c_batch.shape[0])
+    if len(sym_cfgs) != batch_size:
+        raise ValueError(f"Expected {batch_size} SymmetryConfig entries, got {len(sym_cfgs)}")
+
+    rows: list[Tensor] = []
+    for b_idx, cfg in enumerate(sym_cfgs):
+        c_row = c_batch[b_idx]
+        ca_row = None if ca_batch is None else ca_batch[b_idx]
+        am_row = None if am_batch is None else am_batch[b_idx]
+        m_row = None if m_batch is None else m_batch[b_idx].to(device=coors_nm.device, dtype=torch.bool)
+
+        if m_row is None or bool(m_row.all().item()):
+            sym_row = symmetrize_decoded_atom37(
+                c_row.unsqueeze(0),
+                cfg,
+                ca_coors_nm=None if ca_row is None else ca_row.unsqueeze(0),
+                atom_mask=None if am_row is None else am_row.unsqueeze(0),
+                mask=None,
+                mode=cfg.decode_mode,
+            ).squeeze(0)
+            rows.append(sym_row)
+        else:
+            idx = torch.nonzero(m_row, as_tuple=False).squeeze(-1)
+            if int(idx.numel()) == 0:
+                rows.append(c_row)
+                continue
+            c_sub = c_row.index_select(0, idx).unsqueeze(0)
+            ca_sub = None if ca_row is None else ca_row.index_select(0, idx).unsqueeze(0)
+            am_sub = None if am_row is None else am_row.index_select(0, idx).unsqueeze(0)
+            sym_sub = symmetrize_decoded_atom37(
+                c_sub,
+                cfg,
+                ca_coors_nm=ca_sub,
+                atom_mask=am_sub,
+                mask=None,
+                mode=cfg.decode_mode,
+            ).squeeze(0)
+            rows.append(c_row.scatter(0, idx.view(-1, 1, 1).expand_as(sym_sub), sym_sub))
+
+    out = torch.stack(rows, dim=0)
+    return out.squeeze(0) if unbatched else out
 
 
 class RDNFlowMatcher(BaseFlowMatcher):
@@ -212,6 +468,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         training: bool = True,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
+        symmetry: Any = None,
+        apply_radius: bool = True,
     ) -> Float[Tensor, "* n d"]:
         """
         Samples reference distribution std Gaussian (possibly centered).
@@ -227,23 +485,78 @@ class RDNFlowMatcher(BaseFlowMatcher):
             groups (optional): Dict of token-level group tensors keyed by name
                 (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
                 Used by the ``"per_group"`` stochastic centering scope.
+            symmetry (optional): Point-group symmetry specification (single or per-row).
+            apply_radius (optional): If True, shift ASU initial noise by ``radius_nm * u_G``.
 
         Returns:
             Samples from refenrece [N(0, I_d)]^n shape [*shape, n, d]
         """
-        noise = torch.randn(
-            (*shape, n, self.dim),
-            device=device,
-        )
-        noise = self._apply_emit_mask(noise, emit_mask)
-        if self.zero_com_noise:
-            noise = self._force_zero_com(noise, emit_mask)
+        batch_size = int(shape[0]) if shape else 1
+        sym_cfgs = normalize_symmetry_configs(symmetry, batch_size=batch_size) if self.dim == 3 else None
 
-        # Apply stochastic centering at inference time if mode is x_0
-        if self.stochastic_centering_mode == "x_0" and not training:
-            noise = self.add_stochastic_noise(noise, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+        if sym_cfgs is None:
+            noise = torch.randn(
+                (*shape, n, self.dim),
+                device=device,
+            )
+            noise = self._apply_emit_mask(noise, emit_mask)
+            if self.zero_com_noise:
+                noise = self._force_zero_com(noise, emit_mask)
 
-        return noise
+            # Apply stochastic centering at inference time if mode is x_0
+            if self.stochastic_centering_mode == "x_0" and not training:
+                noise = self.add_stochastic_noise(noise, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+
+            return noise
+
+        abs_flags = _row_has_abs_coord_cond(coord_cond_mask, emit_mask, batch_size)
+        is_uniform = all(c == sym_cfgs[0] for c in sym_cfgs[1:]) and len(set(abs_flags)) == 1
+
+        if is_uniform:
+            cfg0 = sym_cfgs[0]
+            rad_nm = cfg0.radius_nm if apply_radius else 0.0
+            noise = sample_symmetric_ca_noise(
+                (*shape, n, 3),
+                cfg0,
+                mask=emit_mask,
+                radius_nm=rad_nm,
+                zero_com=bool(self.zero_com_noise and not abs_flags[0]),
+                device=device,
+                dtype=torch.float32,
+            )
+            return self._apply_emit_mask(noise, emit_mask)
+
+        # Heterogeneous batch (e.g. mixed symmetry groups or mixed C1 / symmetric rows)
+        has_inactive = any(not c.is_active for c in sym_cfgs)
+        if has_inactive:
+            noise = torch.randn((*shape, n, 3), device=device)
+            noise = self._apply_emit_mask(noise, emit_mask)
+            if self.zero_com_noise:
+                noise = self._force_zero_com(noise, emit_mask)
+            if self.stochastic_centering_mode == "x_0" and not training:
+                noise = self.add_stochastic_noise(noise, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+        else:
+            noise = torch.zeros((*shape, n, 3), device=device, dtype=torch.float32)
+
+        for b_idx, cfg in enumerate(sym_cfgs):
+            if not cfg.is_active:
+                continue
+            row_mask = None if emit_mask is None else (emit_mask if not shape else emit_mask[b_idx])
+            row_noise = sample_symmetric_ca_noise(
+                (n, 3) if shape else (*shape, n, 3),
+                cfg,
+                mask=row_mask,
+                radius_nm=cfg.radius_nm if apply_radius else 0.0,
+                zero_com=bool(self.zero_com_noise and not abs_flags[b_idx]),
+                device=device,
+                dtype=torch.float32,
+            )
+            if shape:
+                noise[b_idx] = row_noise
+            else:
+                noise = row_noise
+
+        return self._apply_emit_mask(noise, emit_mask)
 
     def interpolate(
         self,
@@ -253,6 +566,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
         emit_mask: Bool[Tensor, "* n"] | None = None,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
+        symmetry: Any = None,
     ) -> Float[Tensor, "* n d"]:
         """
         Interpolates between rigids x_0 (base) and x_1 (data) using t.
@@ -267,6 +581,7 @@ class RDNFlowMatcher(BaseFlowMatcher):
             groups (optional): Dict of token-level group tensors keyed by name
                 (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
                 Used by the ``"per_group"`` stochastic centering scope.
+            symmetry (optional): Point-group symmetry specification (single or per-row).
 
         Returns:
             x_t: Interpolated tensor, shape [*, n, d]
@@ -275,21 +590,51 @@ class RDNFlowMatcher(BaseFlowMatcher):
         # x_0 maybe centered (depends on input arg zero_com_noise), x_1 depends on dataloader
         x_0, x_1 = self._apply_emit_mask(x_0, emit_mask), self._apply_emit_mask(x_1, emit_mask)
 
-        # Apply stochastic centering based on mode (during training)
+        batch_size = int(x_0.shape[0]) if x_0.ndim >= 3 else 1
+        sym_cfgs = normalize_symmetry_configs(symmetry, batch_size=batch_size) if self.dim == 3 else None
+
+        if sym_cfgs is None:
+            # Apply stochastic centering based on mode (during training)
+            if self.stochastic_centering_mode == "x_0":
+                x_0 = self.add_stochastic_noise(x_0, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            elif self.stochastic_centering_mode == "x_1":
+                x_1 = self.add_stochastic_noise(x_1, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+
+            t_exp = t[..., None, None]
+            # No additional masking is needed because both endpoints already obey the emit mask.
+            x_t = (1.0 - t_exp) * x_0 + t_exp * x_1
+
+            # Apply stochastic centering to interpolated result if mode is x_t
+            if self.stochastic_centering_mode == "x_t":
+                x_t = self.add_stochastic_noise(x_t, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+
+            return x_t
+
+        # Never apply per-chain stochastic centering offsets on active symmetric rows.
+        if all(c.is_active for c in sym_cfgs):
+            t_exp = t[..., None, None]
+            x_t = (1.0 - t_exp) * x_0 + t_exp * x_1
+            x_t = project_symmetric_3d_batched(x_t, sym_cfgs, emit_mask)
+            return self._apply_emit_mask(x_t, emit_mask)
+
+        # Mixed batch with both C1 and active symmetric rows
+        x_0_std, x_1_std = x_0.clone(), x_1.clone()
         if self.stochastic_centering_mode == "x_0":
-            x_0 = self.add_stochastic_noise(x_0, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            x_0_std = self.add_stochastic_noise(x_0_std, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
         elif self.stochastic_centering_mode == "x_1":
-            x_1 = self.add_stochastic_noise(x_1, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
-
-        t = t[..., None, None]
-        # No additional masking is needed because both endpoints already obey the emit mask.
-        x_t = (1.0 - t) * x_0 + t * x_1
-
-        # Apply stochastic centering to interpolated result if mode is x_t
+            x_1_std = self.add_stochastic_noise(x_1_std, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+        t_exp = t[..., None, None]
+        x_t_std = (1.0 - t_exp) * x_0_std + t_exp * x_1_std
         if self.stochastic_centering_mode == "x_t":
-            x_t = self.add_stochastic_noise(x_t, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
+            x_t_std = self.add_stochastic_noise(x_t_std, emit_mask, coord_cond_mask=coord_cond_mask, groups=groups)
 
-        return x_t
+        x_t_raw = (1.0 - t_exp) * x_0 + t_exp * x_1
+        out = x_t_std.clone()
+        for b_idx, cfg in enumerate(sym_cfgs):
+            if cfg.is_active:
+                row_m = None if emit_mask is None else emit_mask[b_idx]
+                out[b_idx] = project_symmetric(x_t_raw[b_idx], cfg, mask=row_m)
+        return self._apply_emit_mask(out, emit_mask)
 
     def nn_out_add_clean_sample_prediction(
         self,
@@ -439,6 +784,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
         gt: float,
         emit_mask: Bool[Tensor, "* n"],
         simulation_step_params: dict,
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        symmetry: Any = None,
     ) -> Float[Tensor, "* n d"]:
         r"""
         Single integration step of ODE
@@ -478,6 +825,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
             emit_mask: Tokens emitted by this modality, shape [*, n].
             simulation_step_params: parameters for the simulation step, keys
                 sampling_mode, sc_scale_noise, t_lim_ode
+            coord_cond_mask (optional): Fixed-coordinate conditioning mask, shape [*, n].
+            symmetry (optional): Point-group symmetry specification (single or per-row).
 
         Returns:
             Updated values for x_t after an Euler integration step, shape [*, n, d].
@@ -505,6 +854,49 @@ class RDNFlowMatcher(BaseFlowMatcher):
         else:
             v = nn_out["v"]
 
+        batch_size = int(x_t.shape[0]) if x_t.ndim >= 3 else 1
+        sym_cfgs = normalize_symmetry_configs(symmetry, batch_size=batch_size) if self.dim == 3 else None
+
+        if sym_cfgs is not None:
+            x_t = project_symmetric_3d_batched(x_t, sym_cfgs, emit_mask)
+            v = project_symmetric_3d_batched(v, sym_cfgs, emit_mask)
+
+        def _sample_step_eps() -> Tensor:
+            if sym_cfgs is None:
+                return torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)
+            abs_flags = _row_has_abs_coord_cond(coord_cond_mask, emit_mask, batch_size)
+            is_uniform = all(c == sym_cfgs[0] for c in sym_cfgs[1:]) and len(set(abs_flags)) == 1
+            if is_uniform:
+                return sample_symmetric_ca_noise(
+                    x_t.shape,
+                    sym_cfgs[0],
+                    mask=emit_mask,
+                    radius_nm=0.0,
+                    zero_com=bool(self.zero_com_noise and not abs_flags[0]),
+                    device=x_t.device,
+                    dtype=x_t.dtype,
+                )
+            eps_out = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)
+            n_tok = x_t.shape[-2]
+            for b_idx, cfg in enumerate(sym_cfgs):
+                if not cfg.is_active:
+                    continue
+                row_m = None if emit_mask is None else (emit_mask if x_t.ndim == 2 else emit_mask[b_idx])
+                row_eps = sample_symmetric_ca_noise(
+                    (n_tok, 3) if x_t.ndim >= 3 else x_t.shape,
+                    cfg,
+                    mask=row_m,
+                    radius_nm=0.0,
+                    zero_com=bool(self.zero_com_noise and not abs_flags[b_idx]),
+                    device=x_t.device,
+                    dtype=x_t.dtype,
+                )
+                if x_t.ndim >= 3:
+                    eps_out[b_idx] = row_eps
+                else:
+                    eps_out = row_eps
+            return eps_out
+
         endpoint_score_scale = 1.5  # Preserve regular SDE's low-temperature ODE endpoint.
 
         if sampling_mode == "vf":  # ODE mode
@@ -518,8 +910,8 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 delta_x = v_scaled * dt
             else:
                 score = vf_to_score(x_t, v, t)  # get score from v, [*, dim]
-                eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
-                std_eps = torch.sqrt(2 * gt * sc_scale_noise * dt)
+                eps = _sample_step_eps()
+                std_eps = torch.sqrt(torch.as_tensor(2 * gt * sc_scale_noise * dt, device=x_t.device, dtype=x_t.dtype))
                 delta_x = (v + gt * score) * dt + std_eps * eps
 
         elif sampling_mode == "vf_tsr":  # ODE with time-scale-ratio scaling, optionally made stochastic
@@ -534,8 +926,10 @@ class RDNFlowMatcher(BaseFlowMatcher):
                 if t_element > t_lim_ode or t_element < t_lim_ode_below:
                     delta_x = v_scaled * dt
                 else:
-                    eps = torch.randn(x_t.shape, dtype=x_t.dtype, device=x_t.device)  # [*, dim]
-                    std_eps = torch.sqrt(torch.as_tensor(2 * gt * sc_scale_noise * dt))
+                    eps = _sample_step_eps()
+                    std_eps = torch.sqrt(
+                        torch.as_tensor(2 * gt * sc_scale_noise * dt, device=x_t.device, dtype=x_t.dtype)
+                    )
                     delta_x = (v_scaled + gt * scaled_score) * dt + std_eps * eps
 
         else:
@@ -545,6 +939,16 @@ class RDNFlowMatcher(BaseFlowMatcher):
 
         # Apply the emit mask and potentially center.
         x_next = self._apply_emit_mask(x_next, emit_mask)
+        if sym_cfgs is not None:
+            x_next = project_symmetric_3d_batched(
+                x_next,
+                sym_cfgs,
+                emit_mask,
+                zero_com=bool(center_every_step),
+                coord_cond_mask=coord_cond_mask,
+            )
+            return self._apply_emit_mask(x_next, emit_mask)
+
         if center_every_step:
             x_next = self._force_zero_com(x_next, emit_mask)
         return x_next

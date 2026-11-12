@@ -14,8 +14,24 @@ def inference_backend(cfg: Mapping) -> str:
     return backend
 
 
+def _has_active_symmetry(model: Any, cfg: Mapping) -> bool:
+    """Return True if non-trivial group symmetry (> C1) is configured on cfg or model.inf_cfg."""
+    from rfproteina.symmetry import SymmetryConfig
+
+    inf_cfg = getattr(model, "inf_cfg", None)
+    gen_cfg = cfg.get("generation") if isinstance(cfg, Mapping) else None
+    candidates = (
+        cfg.get("symmetry") if isinstance(cfg, Mapping) else None,
+        gen_cfg.get("symmetry") if isinstance(gen_cfg, Mapping) else None,
+        inf_cfg.get("symmetry") if isinstance(inf_cfg, Mapping) else None,
+    )
+    return any(c is not None and SymmetryConfig.from_any(c).is_active for c in candidates)
+
+
 def configure_bioir(model: Any, cfg: Mapping) -> None:
     """Route generation through the full BioIR workflow; the native blocks stay as loaded."""
+    if _has_active_symmetry(model, cfg):
+        raise ValueError("Group symmetry requires inference_backend=native")
     options = dict(cfg.get("bioir") or {})
     for key in ("max_graphs", "cuda_graph_max_tokens"):
         value = options.get(key)
@@ -29,7 +45,7 @@ def configure_bioir(model: Any, cfg: Mapping) -> None:
         raise ValueError("Differentiable guidance is not qualified against BioIR; use inference_backend=native")
     if cfg.get("adapter_path"):
         raise ValueError("LoRA adapters are not converted by BioIR; use inference_backend=native")
-    args = model.inf_cfg.args
+    args = model.inf_cfg["args"] if isinstance(model.inf_cfg, Mapping) else model.inf_cfg.args
     if args.get("guidance_w", 1.0) != 1.0:
         raise ValueError("Classifier-free guidance is not qualified against BioIR; use inference_backend=native")
     if args.get("save_trajectory_every", 0) or args.get("dump_noisy_trajectories", False):

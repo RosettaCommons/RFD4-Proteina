@@ -1,6 +1,7 @@
 import math
 from collections.abc import Callable, Sequence
 from functools import partial
+from typing import Any
 
 import lightning as L
 import torch
@@ -12,7 +13,13 @@ from torch import Tensor
 
 from rfproteina.conditions import C_CRDGRP
 from rfproteina.flow_matching.base_flow_matcher import BaseFlowMatcher
-from rfproteina.flow_matching.rdn_flow_matcher import RDNFlowMatcher, compute_tsr_ratio
+from rfproteina.flow_matching.rdn_flow_matcher import (
+    RDNFlowMatcher,
+    compute_tsr_ratio,
+    normalize_symmetry_configs,
+    project_symmetric_3d_batched,
+    tie_invariant_batched,
+)
 from rfproteina.flow_matching.signed_volume_loss import signed_volume_loss
 from rfproteina.model_masks import compute_flow_emit_masks, compute_flow_supervision_masks
 
@@ -55,6 +62,7 @@ def sample_noised_target_backbone(
     batch: dict,
     target_backbone: Float[Tensor, "n_samples n 3"],
     t_bb: Float[Tensor, "n_samples"],
+    symmetry: Any = None,
 ) -> Float[Tensor, "n_samples n 3"]:
     """Draw the target backbone from its forward marginal at ``t_bb``.
 
@@ -67,6 +75,10 @@ def sample_noised_target_backbone(
     batch_shape = target_backbone.shape[:-2]
     n = target_backbone.shape[-2]
     backbone_matcher = fm.base_flow_matchers["bb_ca"]
+    sym_cfgs = normalize_symmetry_configs(
+        symmetry if symmetry is not None else batch,
+        batch_size=int(batch_shape[0]) if batch_shape else 1,
+    )
 
     # ``interpolate`` applies x_0 stochastic centering. Using training=True here
     # prevents ``sample_noise`` from applying the same offset a second time.
@@ -78,6 +90,8 @@ def sample_noised_target_backbone(
         training=True,
         coord_cond_mask=coord_cond_mask,
         groups=groups,
+        symmetry=sym_cfgs,
+        apply_radius=False,
     )
     return backbone_matcher.interpolate(
         x_0=x_0,
@@ -86,6 +100,7 @@ def sample_noised_target_backbone(
         emit_mask=bb_ca_emit_mask,
         coord_cond_mask=coord_cond_mask,
         groups=groups,
+        symmetry=sym_cfgs,
     )
 
 
@@ -123,6 +138,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         training: bool = True,
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
+        symmetry: Any = None,
     ) -> dict[str, Tensor]:
         """
         Samples reference distribution (possibly centered).
@@ -137,6 +153,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 coordinate-conditioned tokens whose noise should not be offset.
             groups (optional): Dict of token-level group tensors keyed by name
                 (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` only
+                (leaving orientation-dependent ``local_latents`` un-averaged).
 
         Returns:
             Samples from refenrece with shape [*shape, n, ...]
@@ -150,6 +168,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 training=training,
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
+                symmetry=(symmetry if data_mode == "bb_ca" else None),
             )
             for data_mode in self.data_modes
         }
@@ -163,6 +182,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         emit_masks: dict[str, Bool[Tensor, "* n"]],
         coord_cond_mask: Bool[Tensor, "* n"] | None = None,
         groups: dict[str, Int[Tensor, "* n"] | None] | None = None,
+        symmetry: Any = None,
     ) -> dict[str, torch.Tensor]:
         """
         Interpolates between x_0 (base) and x_1 (data) using t.
@@ -176,6 +196,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 coordinate-conditioned tokens whose noise should not be offset.
             groups (optional): Dict of token-level group tensors keyed by name
                 (``chain_iid``, ``pn_unit_iid``, ``molecule_iid``, ``coord_group``).
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` only.
 
         Returns:
             x_t: Interpolated samples, same shape as x_0 and x_1
@@ -188,6 +209,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 emit_mask=emit_masks[data_mode],
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
+                symmetry=(symmetry if data_mode == "bb_ca" else None),
             )
             for data_mode in self.data_modes
         }
@@ -223,6 +245,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         self,
         batch: dict,
         t: dict[torch.Tensor] | None = None,
+        symmetry: Any = None,
     ) -> dict:
         """
         Runs forward process on x_1. Essentially samples reference and
@@ -235,6 +258,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         Args:
             batch: data batch
             t: t value to use for corruption. If None, will sample using `self.sample_t`.
+            symmetry (optional): Point-group symmetry applied to ``bb_ca``.
 
         Returns:
             The same data batch with additional entries t, x_t, x_1, x_0, all of which are
@@ -245,6 +269,13 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         flow_emit_masks = compute_flow_emit_masks(batch)
         coord_cond_mask = batch.get("coord_cond_mask")  # [b, n_tokens] or None
         groups = extract_groups(batch)
+        sym_cfgs = normalize_symmetry_configs(
+            symmetry if symmetry is not None else batch,
+            batch_size=int(batch_shape[0]) if batch_shape else 1,
+        )
+        if sym_cfgs is not None and "bb_ca" in x_1:
+            x_1 = dict(x_1)
+            x_1["bb_ca"] = project_symmetric_3d_batched(x_1["bb_ca"], sym_cfgs, flow_emit_masks["bb_ca"])
         if t is None:
             t = self.sample_t(shape=batch_shape, device=device)
         x_0 = self.sample_noise(
@@ -255,6 +286,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             training=True,
             coord_cond_mask=coord_cond_mask,
             groups=groups,
+            symmetry=sym_cfgs,
         )
         x_t = self.interpolate(
             x_0=x_0,
@@ -263,6 +295,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             emit_masks=flow_emit_masks,
             coord_cond_mask=coord_cond_mask,
             groups=groups,
+            symmetry=sym_cfgs,
         )
         # Apply emit masks last: centering/interpolation can reintroduce nonzeros at tokens that
         # must stay zero (padding and tokens without local latents).
@@ -512,6 +545,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         gt: dict[str, float],
         simulation_step_params: dict[str, dict],
         emit_masks: dict[str, Bool[Tensor, "* n"]],
+        coord_cond_mask: Bool[Tensor, "* n"] | None = None,
+        symmetry: Any = None,
     ) -> dict[str, torch.Tensor]:
         r"""
         Single integration step of ODE \dot{x_t} = v(x_t, t) using Euler integration scheme.
@@ -524,6 +559,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             gt: Noise injection schedule, float
             simulation_step_params contain extra simulation steps parameters
             emit_masks: Per-modality emit masks of shape [*, n].
+            coord_cond_mask (optional): Fixed-coordinate conditioning mask, shape [*, n].
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` only.
 
         Returns:
             Updated x_t after integration step, same shape as input
@@ -537,6 +574,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 gt=gt[data_mode],
                 simulation_step_params=simulation_step_params[data_mode],
                 emit_mask=emit_masks[data_mode],
+                coord_cond_mask=coord_cond_mask,
+                symmetry=(symmetry if data_mode == "bb_ca" else None),
             )
             for data_mode in self.data_modes
         }
@@ -643,6 +682,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         batch: dict,
         predict_for_sampling: Callable,
         guidance_w: float,
+        symmetry: Any = None,
     ) -> dict[str, dict[str, torch.Tensor]]:
         """
         This makes a prediction with the corresponding nn and conditioning, computes the
@@ -672,18 +712,41 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             predict_for_sampling: function that takes as input batch and mode, where the latter indicated
             what model to evaluate (supports "full", "ucond").
             guidance_w: guidance weights
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` and invariant ``sequence`` logits.
 
         Returns:
             an nn_out dictionary with keys "x_1", "v" (or "score") and "v_guided" (or "score_guided").
         """
+        batch_size = int(batch["padding_mask"].shape[0]) if "padding_mask" in batch else None
+        sym_cfgs = normalize_symmetry_configs(symmetry if symmetry is not None else batch, batch_size=batch_size)
+        bb_emit_mask = compute_flow_emit_masks(batch)["bb_ca"] if sym_cfgs is not None else None
 
         def _add_clean_n_sim_tensor(batch: dict, mode: str) -> dict[str, dict[str, torch.Tensor]]:
             """
             We will use this for each model (full, ucond).
             """
             nn_out_dict = predict_for_sampling(batch, mode=mode)
+            if sym_cfgs is not None:
+                if "bb_ca" in nn_out_dict:
+                    nn_out_dict["bb_ca"] = dict(nn_out_dict["bb_ca"])
+                    for key in ("x_1", "v"):
+                        if key in nn_out_dict["bb_ca"]:
+                            nn_out_dict["bb_ca"][key] = project_symmetric_3d_batched(
+                                nn_out_dict["bb_ca"][key], sym_cfgs, bb_emit_mask
+                            )
+                if "sequence" in nn_out_dict and "logits" in nn_out_dict["sequence"]:
+                    nn_out_dict["sequence"] = dict(nn_out_dict["sequence"])
+                    nn_out_dict["sequence"]["logits"] = tie_invariant_batched(
+                        nn_out_dict["sequence"]["logits"], sym_cfgs, bb_emit_mask
+                    )
             nn_out_dict = self.nn_out_add_clean_sample_prediction(batch, nn_out_dict)
             nn_out_dict = self.nn_out_add_simulation_tensor(batch, nn_out_dict)
+            if sym_cfgs is not None and "bb_ca" in nn_out_dict:
+                for key in ("x_1", "v"):
+                    if key in nn_out_dict["bb_ca"]:
+                        nn_out_dict["bb_ca"][key] = project_symmetric_3d_batched(
+                            nn_out_dict["bb_ca"][key], sym_cfgs, bb_emit_mask
+                        )
             return nn_out_dict
 
         nn_out = _add_clean_n_sim_tensor(batch, mode="full")
@@ -696,6 +759,10 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             nn_out_ucond=nn_out_ucond,
             guidance_w=guidance_w,
         )  # Adds guided tensor used for simulation ("guided_v", "guided_score", or whatever the base flow matcher uses)
+        if sym_cfgs is not None and "bb_ca" in nn_out and "v_guided" in nn_out["bb_ca"]:
+            nn_out["bb_ca"]["v_guided"] = project_symmetric_3d_batched(
+                nn_out["bb_ca"]["v_guided"], sym_cfgs, bb_emit_mask
+            )
         return nn_out
 
     def full_simulation(
@@ -712,6 +779,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         dump_noisy_trajectories: bool = False,
         guidance_w: float = 1.0,
         guidance_model: Callable | None = None,
+        symmetry: Any = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor | list[dict] | None]]:
         r"""
         Generates samples by simulating the
@@ -749,6 +817,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
             guidance_model: Optional differentiable-metric gradient guidance. Called each
                 step with the clean prediction ``x_1_pred``; returns a per-modality ``delta``
                 added to the integrated state.
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` and invariant ``sequence`` logits.
 
         Returns:
             Tuple of (x, additional_info) where:
@@ -773,6 +842,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
 
         # Get diffusion schedule using extracted method
         ts, gt = self.sample_schedule(nsteps=nsteps, sampling_model_args=sampling_model_args)
+        sym_cfgs = normalize_symmetry_configs(symmetry if symmetry is not None else batch, batch_size=nsamples)
 
         with torch.no_grad():
             coord_cond_mask = batch.get("coord_cond_mask")  # [nsamples, n_tokens] or None
@@ -786,6 +856,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 training=False,
                 coord_cond_mask=coord_cond_mask,
                 groups=groups,
+                symmetry=sym_cfgs,
             )
 
             # Keep only tokens that carry each modality.
@@ -810,6 +881,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     batch=batch,
                     predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
+                    symmetry=sym_cfgs,
                 )
                 # Dict[data_mode,
                 #   Dict[str, torch.Tensor]
@@ -830,6 +902,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     gt=gt_step,
                     emit_masks=flow_emit_masks,
                     simulation_step_params=simulation_step_params,
+                    coord_cond_mask=coord_cond_mask,
+                    symmetry=sym_cfgs,
                 )
 
                 # Differentiable-metric gradient guidance: nudge the integrated state along
@@ -848,8 +922,13 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                             "atom_array_batch": batch.get("atom_array"),
                         },
                     )
+                    if sym_cfgs is not None and "bb_ca" in delta:
+                        delta = dict(delta)
+                        delta["bb_ca"] = project_symmetric_3d_batched(delta["bb_ca"], sym_cfgs, flow_emit_masks["bb_ca"])
                     for data_mode, d in delta.items():
                         x[data_mode] = x[data_mode] + d.to(x[data_mode].dtype)
+                    if sym_cfgs is not None and "bb_ca" in x:
+                        x["bb_ca"] = project_symmetric_3d_batched(x["bb_ca"], sym_cfgs, flow_emit_masks["bb_ca"])
 
                 # Reapply emit masks after simulation and guidance updates.
                 x = self.apply_flow_emit_masks(x, batch)
@@ -953,6 +1032,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
         guidance_w: float = 1.0,
         resample_target_backbone: bool = False,
         target_backbone: Float[Tensor, "nsamples n 3"] | None = None,
+        symmetry: Any = None,
     ) -> tuple[dict[str, Tensor], dict[str, Tensor], dict[str, Tensor | list[dict] | None]]:
         """Run partial diffusion simulation for nsteps.
 
@@ -976,6 +1056,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 the model to update only the sequence latents.
             target_backbone: Clean target backbone used for inverse folding.
                 Defaults to ``batch['x_1']['bb_ca']`` when resampling is enabled.
+            symmetry (optional): Point-group symmetry applied to ``bb_ca`` and invariant ``sequence`` logits.
 
         Returns:
             Tuple of (x, x_1_pred, extra_info) where:
@@ -996,12 +1077,19 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                 f"{(nsamples, x[self.data_modes[0]].shape[1])}, got {padding_mask.dtype} "
                 f"and {tuple(padding_mask.shape)}"
             )
+        coord_cond_mask = batch.get("coord_cond_mask")
+        sym_cfgs = normalize_symmetry_configs(symmetry if symmetry is not None else batch, batch_size=nsamples)
         flow_emit_masks = compute_flow_emit_masks(batch)
         x = self.apply_flow_emit_masks(x, batch)
+        if sym_cfgs is not None and "bb_ca" in x:
+            x = dict(x)
+            x["bb_ca"] = project_symmetric_3d_batched(x["bb_ca"], sym_cfgs, flow_emit_masks["bb_ca"])
         if resample_target_backbone:
             if target_backbone is None:
                 target_backbone = batch["x_1"]["bb_ca"]
             target_backbone = target_backbone.clone()
+            if sym_cfgs is not None:
+                target_backbone = project_symmetric_3d_batched(target_backbone, sym_cfgs, flow_emit_masks["bb_ca"])
 
         nn_out = None
         x_1_pred = None
@@ -1012,6 +1100,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     batch,
                     target_backbone,
                     ts["bb_ca"][0] * torch.ones(nsamples, device=device),
+                    symmetry=sym_cfgs,
                 )
             for step in range(nsteps):
                 t = {
@@ -1031,6 +1120,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     batch=batch,
                     predict_for_sampling=partial(predict_for_sampling, recycle_depth=recycle_depths[step]),
                     guidance_w=guidance_w,
+                    symmetry=sym_cfgs,
                 )
 
                 # Track the clean prediction for output and trajectory snapshots.
@@ -1045,6 +1135,8 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                     gt=gt_step,
                     emit_masks=flow_emit_masks,
                     simulation_step_params=simulation_step_params,
+                    coord_cond_mask=coord_cond_mask,
+                    symmetry=sym_cfgs,
                 )
 
                 if resample_target_backbone:
@@ -1056,6 +1148,7 @@ class ProductSpaceFlowMatcher(L.LightningModule):
                             batch,
                             target_backbone,
                             ts["bb_ca"][step + 1] * torch.ones(nsamples, device=device),
+                            symmetry=sym_cfgs,
                         )
 
                 # Reapply emit masks after every state update, including target-backbone resampling.

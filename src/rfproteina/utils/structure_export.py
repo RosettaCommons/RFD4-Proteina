@@ -198,5 +198,13 @@ def write_input_structure_cif(atom_array: AtomArray, path: str | Path) -> None:
 
 def write_generated_structure_cif(atom_array: AtomArray, path: str | Path) -> None:
     """Write a generated AtomArray to CIF."""
-    atom_array = _prepare_bondless_atom_array_for_cif(align_atom_array_to_input_frame(atom_array))
+    categories = set(atom_array.get_annotation_categories())
+    has_symmetry = "symmetry_group" in categories or "sym_entity_group" in categories
+    has_abs_crd = bool(
+        SA_CWI.has_annotation(atom_array)
+        and (C_CRDGRP.annotation(atom_array, default="generate") == C_CRDGRP.KNOWN_ABSOLUTE_COORDS).any()
+    )
+    if not (has_symmetry and not has_abs_crd):
+        atom_array = align_atom_array_to_input_frame(atom_array)
+    atom_array = _prepare_bondless_atom_array_for_cif(atom_array)
     to_cif_file(atom_array, str(path), include_entity_categories=False)

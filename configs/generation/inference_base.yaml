@@ -14,6 +14,14 @@ condition_on_recycle_remaining: true  # Provide the remaining-pass feature after
 # Used for labeling output metrics if computed
 val_set_name_override: null
 
+# Point-group symmetry design (null or C1 disables; supports Cn, Dn, T, O, I)
+symmetry:
+  group: null          # Point group name: C2, C3, ..., D2, D3, ..., T, O, I (or null / C1 for none)
+  radius: 0.0          # Initial radial offset (Angstroms) of the ASU from the symmetry origin
+  input_is_asu: true   # If true, replicate input ASU K times; if false, expect pre-expanded K*L_asu input
+  tie_sequence: true   # Share sequence entity IDs and synchronize decoded residue types across subunits
+  decode_mode: asu_medoid  # Oligomer decode strategy: asu_medoid | replicate_asu | full_oligomer
+
 args:
   nsteps: 60
 

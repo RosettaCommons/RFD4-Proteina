@@ -229,6 +229,7 @@ class VanillaStrategy(SearchStrategy):
         bb_ca_only_trajectories = model.inf_cfg.args.get("bb_ca_only_trajectories", False)
         actual_nsteps = round(frac * nsteps) if partial_t_dict and frac is not None else nsteps
         recycle_depths = model.recycle_depths(actual_nsteps, full_nsteps=nsteps)
+        batch_symmetry = batch.get("symmetry")
         if len(partial_t_dict) > 0:
             # Default to full trajectory if not specified
             if "bb_ca" not in partial_t_dict:
@@ -241,7 +242,7 @@ class VanillaStrategy(SearchStrategy):
                 dm: torch.full(size=(nsamples,), fill_value=partial_t, device=device)
                 for dm, partial_t in partial_t_dict.items()
             }
-            batch = model.fm.corrupt_batch(batch, t=batched_partial_t)
+            batch = model.fm.corrupt_batch(batch, t=batched_partial_t, symmetry=batch_symmetry)
             target_backbone = (
                 batch["x_1"]["bb_ca"].clone() if inverse_folding_method == RESAMPLED_FORWARD_MARGINAL else None
             )
@@ -274,6 +275,7 @@ class VanillaStrategy(SearchStrategy):
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 resample_target_backbone=inverse_folding_method == RESAMPLED_FORWARD_MARGINAL,
                 target_backbone=target_backbone,
+                symmetry=batch_symmetry,
             )
 
         else:
@@ -290,6 +292,7 @@ class VanillaStrategy(SearchStrategy):
                 dump_noisy_trajectories=dump_noisy_trajectories,
                 guidance_w=model.inf_cfg.args.get("guidance_w", 1.0),
                 guidance_model=model.guidance_model,
+                symmetry=batch_symmetry,
             )
 
         batch["sequence_logits"] = extra_info.get("sequence_logits")
@@ -373,6 +376,7 @@ def _attach_trajectories(
                     x=x_step,
                     ret_mode="coors37_n_aatype",
                     padding_mask=batch["padding_mask"],
+                    batch=batch,
                 )
             else:
                 sequence_logits = step_snapshot.get("sequence_logits")

@@ -44,6 +44,8 @@ with (
     from rfproteina.proteina import Proteina
     from rfproteina.search.base_strategy import SearchStrategy
     from rfproteina.search.beam_search import BeamSearchStrategy
+    from rfproteina.symmetry.point_groups import SymmetryConfig
+    from rfproteina.symmetry.transforms import merge_symmetry_config
     from rfproteina.utils.ddp import RankedLogger
     from rfproteina.utils.env import load_dotenv
     from rfproteina.utils.hydra import training_path_length_search_cutoffs
@@ -150,7 +152,29 @@ def plan_job_split(num_replicates: int, job_id: int, njobs: int) -> tuple[int, i
     return num_replicates, job_id, njobs
 
 
+def _sync_symmetry_cfg(cfg: DictConfig | Mapping[str, Any]) -> SymmetryConfig:
+    """Resolve top-level CLI ``symmetry`` / ``sym_radius`` shortcuts into ``cfg.generation.symmetry``."""
+    if OmegaConf.is_config(cfg):
+        gen_sym_raw = OmegaConf.select(cfg, "generation.symmetry", default=None)
+    else:
+        gen_sym_raw = (cfg.get("generation") or {}).get("symmetry") if isinstance(cfg, Mapping) else None
+    gen_sym = OmegaConf.to_container(gen_sym_raw, resolve=True) if OmegaConf.is_config(gen_sym_raw) else gen_sym_raw
+
+    cli_sym = cfg.get("symmetry") if hasattr(cfg, "get") else None
+    if OmegaConf.is_config(cli_sym):
+        cli_sym = OmegaConf.to_container(cli_sym, resolve=True)
+    cli_sym_radius = cfg.get("sym_radius") if hasattr(cfg, "get") else None
+
+    sym_cfg = merge_symmetry_config(gen_sym, cli_sym, sym_radius=cli_sym_radius)
+    if OmegaConf.is_config(cfg) and "generation" in cfg and OmegaConf.is_config(cfg.generation):
+        with open_dict(cfg.generation):
+            cfg.generation.symmetry = sym_cfg.to_dict()
+    return sym_cfg
+
+
 def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Dataset:
+    sym_cfg = _sync_symmetry_cfg(cfg)
+
     # validate inputs
     cfg_gen = cfg.generation
     check_cfg_validity(cfg_gen.args)
@@ -201,6 +225,8 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
             metrics_tags = []
         if "partial_diffusion" not in metrics_tags:
             metrics_tags.append("partial_diffusion")
+    if "symmetry" in transform_overrides:
+        sym_cfg = merge_symmetry_config(sym_cfg, transform_overrides.pop("symmetry"))
     sampling_transforms = (
         hydra.utils.instantiate(cfg_gen.dataset.sampling_transforms)
         if "sampling_transforms" in cfg_gen.dataset
@@ -208,7 +234,10 @@ def get_dataset_from_cfg(cfg: DictConfig, job_id: int) -> torch.utils.data.Datas
     )
 
     inference_pipeline = build_design_validation_pipeline(
-        metrics_tags=metrics_tags, sampling_transforms=sampling_transforms, **transform_overrides
+        metrics_tags=metrics_tags,
+        sampling_transforms=sampling_transforms,
+        symmetry=sym_cfg,
+        **transform_overrides,
     )
 
     dataset = get_contig_or_design_problem_dataset(
@@ -469,6 +498,8 @@ def load_ckpt_n_configure_inference(cfg: dict, model: Proteina | None = None) ->
         {"inference_dataset": {"dataset": resolved_dataset, "compute_loss": False}}
     )
 
+    _sync_symmetry_cfg(cfg)
+
     metrics = cfg.get("metrics")
 
     model.configure_inference(
@@ -689,6 +720,10 @@ def run_generation(
 
     # Create dataloader
     num_workers = cfg.num_workers
+    hw_cfg = cfg.get("hardware")
+    accelerator = str(hw_cfg.get("accelerator", "gpu")) if hw_cfg is not None else "gpu"
+    devices = 1 if accelerator == "cpu" else cfg.hardware.ngpus_per_node_
+    num_nodes = 1 if accelerator == "cpu" else cfg.hardware.nnodes_
 
     def _make_dataloader(ds: torch.utils.data.Dataset) -> DataLoader:
         return DataLoader(
@@ -702,13 +737,13 @@ def run_generation(
             ),
             num_workers=num_workers,
             worker_init_fn=partial(initialize_worker_verbosity, verbose=cfg.get("verbose", False)),
-            pin_memory=True,
+            pin_memory=accelerator != "cpu",
         )
 
     trainer = L.Trainer(
-        accelerator="gpu",
-        devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
-        num_nodes=cfg.hardware.nnodes_,
+        accelerator=accelerator,
+        devices=devices,  # Number of gpus per node on GPU, or 1 on CPU
+        num_nodes=num_nodes,
         default_root_dir=cfg.out_dir,
         logger=False,
         enable_model_summary=cfg.get("verbose", False),
@@ -771,6 +806,8 @@ def main_hydra(cfg: DictConfig) -> None:
 
     if exists(cfg.get("data_path", None)):
         os.environ["DATA_PATH"] = cfg.data_path
+
+    _sync_symmetry_cfg(cfg)
 
     diagnostic_cfg = cfg
     if cfg.get("hf_ckpt_path"):
