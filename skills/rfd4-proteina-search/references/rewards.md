@@ -45,9 +45,11 @@ evaluation requests refolding.
 
 The reward is the sum of `weight * clipped_value / normalize_by`. Raw metric
 values remain unchanged. Each nonzero reward term requires its provider in the
-checkpoint's `metrics`. A weighted output that is missing or NaN at scoring gives
-that candidate `-inf`; if every candidate at a checkpoint scores `-inf`, search
-raises unless continuation criteria stop every input at that checkpoint.
+checkpoint's `metrics`. A weighted output that is missing or non-finite (NaN or
+±infinity) at scoring gives that candidate `-inf`. Non-finite values are rejected
+before clipping; a non-finite aggregated reward also becomes `-inf`. If every
+candidate at a checkpoint scores `-inf`, search raises unless continuation
+criteria stop every input at that checkpoint.
 
 Common outputs (`coi` means chain of interest):
 
