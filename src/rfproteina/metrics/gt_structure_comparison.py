@@ -154,6 +154,16 @@ def align_structures_by_annotations(
     else:
         pred_combined_mask = gt_combined_mask
 
+    # Alignment returns None below when either side selects nothing, and the callers turn that into
+    # an empty metric dict -- a missing column downstream, which a pass criterion can only treat as
+    # indeterminate. Name the query here so the cause is visible at the point it is decided.
+    if not gt_combined_mask.any() or not pred_combined_mask.any():
+        ranked_logger.warning(
+            f"The alignment mask {align_to!r} selected no atoms with finite coordinates "
+            f"(ground truth: {int(gt_combined_mask.sum())}, predicted: {int(pred_combined_mask.sum())}). "
+            "No metrics will be returned for this comparison."
+        )
+
     return align_structures_with_masks(
         gt_array_stack, pred_array_stack, gt_masks=[gt_combined_mask], pred_masks=[pred_combined_mask]
     )
