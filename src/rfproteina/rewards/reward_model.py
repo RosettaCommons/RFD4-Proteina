@@ -83,21 +83,18 @@ class RewardModel:
                 ``"metric_name.output_key"`` (e.g. ``"rf3.plddt"``).
 
         Returns:
-            Weighted scalar reward, or ``-inf`` if a weighted key is missing or
-            non-finite, or if the aggregated reward is non-finite.
+            Weighted scalar reward, or ``-inf`` if a weighted key is missing or NaN.
         """
         reward = 0.0
         for reward_key, weight in self.weights.items():
             if not weight:
                 continue
             if reward_key in metrics_output:
-                value = float(metrics_output[reward_key])
-                if not math.isfinite(value):
-                    ranked_logger.warning(
-                        "Reward metric output key '%s' is non-finite (%s). Returning -inf reward.", reward_key, value
-                    )
+                value = self._clip(reward_key, metrics_output[reward_key])
+                if math.isnan(value):
+                    ranked_logger.warning("Reward metric output key '%s' is NaN. Returning -inf reward.", reward_key)
                     return float("-inf")
-                reward += weight * self._clip(reward_key, value)
+                reward += weight * value
             else:
                 ranked_logger.warning(
                     "Reward metric output key '%s' not found in metrics output "
@@ -106,7 +103,4 @@ class RewardModel:
                 )
                 return float("-inf")
 
-        if not math.isfinite(reward):
-            ranked_logger.warning("Aggregated reward is non-finite (%s). Returning -inf reward.", reward)
-            return float("-inf")
         return reward
