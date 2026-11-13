@@ -8,13 +8,15 @@ unknown_residue_filter:
       max: 0
 
 # Sequence conditioning is a hard constraint, so a design that breaks it is almost never worth folding.
-# NOTE: Filters gate on the same tags as the metric they threshold -- a filter whose metric
-# never ran sees a missing key, which counts as a (non-deleting) failure and drops every design.
+# Run these checks for every design, regardless of metric tags.
 sequence_adherence_filter:
   _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
-  required_tags_any: ["design"]
   metric_thresholds:
     sequence_adherence.n_violations:
+      max: 0
+    sequence_probability_adherence.n_zero_violations:
+      max: 0
+    sequence_probability_adherence.n_one_violations:
       max: 0
 
 # Likewise for unindexed conditioning: an unindexed token that was never inserted, or was inserted
