@@ -32,14 +32,13 @@ interchain_interactions:
   required_tags_any: ["interchain_interactions"]
   prohibited_tags: ["small_molecule_only", "structure_prediction"]
 
+# Always compute sequence adherence for the pre-oracle filter, regardless of metric tags.
 # Reports NaN when nothing was sequence-conditioned
 sequence_adherence:
   _target_: rfproteina.metrics.sequence_adherence_metric.SequenceAdherenceMetric
-  required_tags_any: ["design"]
 
 sequence_probability_adherence:
   _target_: rfproteina.metrics.sequence_adherence_metric.SequenceProbabilityAdherenceMetric
-  required_tags_any: ["design"]
 
 sse_distribution:
   _target_: rfproteina.metrics.sse_metrics.SecondaryStructureDistribution
