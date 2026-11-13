@@ -16,6 +16,10 @@ sequence_adherence_filter:
   metric_thresholds:
     sequence_adherence.n_violations:
       max: 0
+    sequence_probability_adherence.n_zero_violations:
+      max: 0
+    sequence_probability_adherence.n_one_violations:
+      max: 0
 
 # Likewise for unindexed conditioning: an unindexed token that was never inserted, or was inserted
 # onto a residue of the wrong identity, means the design does not contain the requested motif.
