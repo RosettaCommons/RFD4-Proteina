@@ -152,6 +152,21 @@ directory for directory, plus `tests/e2e/` for entry-point and launcher-level te
 for small fixtures; CPU, GPU, regression, and cluster tests are separated by pytest markers rather
 than by directory.
 
+## Editing architecture diagrams
+
+The standalone diagrams in `docs/_static/architecture/ncd/` store their embedded JSON as
+indented objects, including nested subdiagrams. After editing or regenerating them, run
+`python scripts/format_architecture_html.py`; add `--check` to verify formatting without edits.
+
+The `architecture_assets` Sphinx extension serializes and compacts these payloads in the
+build output after static assets are copied. Source files stay readable, and the served pages
+use the renderer's existing format without browser-side conversion. Preview the built site,
+rather than serving the source diagram files directly.
+
+`docs/_ext/embedded_json.py` contains the reusable HTML/JSON rewriting helper. Diagram-specific
+serialization lives separately in `docs/_ext/architecture_assets.py`. Other embedded-JSON pages
+can reuse the helper with their own payload conversion; ordinary HTML formatting is separate.
+
 ## Where to go next
 
 - {doc}`index` — contributor workflow: branching, commits, pull requests, and docs builds
