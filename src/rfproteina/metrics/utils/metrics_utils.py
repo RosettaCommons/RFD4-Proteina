@@ -471,6 +471,7 @@ def run_oracle_and_refolding_metrics(
 def _build_applicable_oracle_jobs(
     val_outputs: list[ValOutput],
     oracle_metric: OracleMetric,
+    oracle_key: str | None = None,
 ) -> list[OracleJobInput]:
     """Filter ``val_outputs`` to those this oracle should refold and parse their CIFs.
 
@@ -490,13 +491,14 @@ def _build_applicable_oracle_jobs(
             logger.warning(f"fold_batch: no designed_atom_array for {v.get('example_id', 'sample')}, skipping.")
             continue
         atom_array = unwrap_atom_array(atom_array)
-        jobs.append(
-            OracleJobInput(
-                atom_array=atom_array,
-                example_id=v.get("example_id", "sample"),
-                out_dir=Path(output_base_dir),
-            )
+        job = OracleJobInput(
+            atom_array=atom_array,
+            example_id=v.get("example_id", "sample"),
+            out_dir=Path(output_base_dir),
         )
+        if refold := v.get("search_refolds", {}).get(oracle_key):
+            refold.reuse(oracle_metric, job)
+        jobs.append(job)
     return jobs
 
 
@@ -617,8 +619,8 @@ def fold_designs_for_oracles(
     dispatched design produced a refold. ``on_incomplete``: 'raise' (default) | 'warn'.
     """
     n_dispatched = n_refolded = 0
-    for _, oracle_metric in oracle_mm.metrics.items():
-        jobs = _build_applicable_oracle_jobs(val_outputs, oracle_metric)
+    for oracle_key, oracle_metric in oracle_mm.metrics.items():
+        jobs = _build_applicable_oracle_jobs(val_outputs, oracle_metric, oracle_key)
         # A pre_oracle_transform may fan each design out into several outputs
         n_dispatched += len(jobs) * len(oracle_metric.list_save_ids() or [None])
         jobs = oracle_metric.apply_transform(jobs)
@@ -792,7 +794,8 @@ def _stage_generated_structure(payload: dict, generated_structure_mm: MetricMana
                 # Stage on the same filesystem; keep the basename used for the CIF data block.
                 with tempfile.TemporaryDirectory(dir=gen_path.parent, prefix=".generated-cif-") as staging_dir:
                     staged_path = Path(staging_dir) / gen_path.name
-                    to_cif_file(align_atom_array_to_input_frame(generated_array), staged_path)
+                    # Alignment is cosmetic; keep the in-memory oracle input unchanged.
+                    to_cif_file(align_atom_array_to_input_frame(generated_array.copy()), staged_path)
                     os.replace(staged_path, gen_path)
             except Exception as e:
                 logger.warning(f"generated-structure worker: failed to save CIF for {example_id}: {e}")
