@@ -84,6 +84,59 @@ def _af3_resource_bind_args() -> list[str]:
     return _bind_args_for_specs(_deduped_bind_specs(*specs))
 
 
+def af3_runtime_mode() -> str:
+    """Return the AF3 runtime selected by ``AF3_RUNTIME``: ``apptainer`` (unset or empty) or ``native``."""
+    mode = os.environ.get("AF3_RUNTIME", "").strip().lower() or "apptainer"
+    if mode not in ("apptainer", "native"):
+        raise ValueError(f"AF3_RUNTIME must be 'apptainer' or 'native', got {mode!r}")
+    return mode
+
+
+def required_env_vars() -> tuple[str, ...]:
+    """Environment variables the selected AF3 runtime needs."""
+    if af3_runtime_mode() == "native":
+        return ("AF3_PYTHON", "AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
+    return ("AF3_IMAGE", "AF3_JAX_CACHE_DIR", "AF3_MODEL_DIR")
+
+
+def _build_native_fold_command(
+    manifest_path: str | Path | None,
+    save_full_outputs: bool,
+    batch_script: str | Path | None,
+    serve: bool,
+) -> list[str]:
+    """Build the native ``$AF3_PYTHON run_alphafold_batch.py`` argv for a single Metal or CPU device."""
+    python = _require("AF3_PYTHON")
+    jax_cache = _require("AF3_JAX_CACHE_DIR")
+    weights = _require("AF3_MODEL_DIR")
+    backend = os.environ.get("AF3_JAX_BACKEND", "").strip().lower() or "mps"
+    if backend not in ("mps", "cpu"):
+        raise ValueError(f"AF3_JAX_BACKEND must be 'mps' or 'cpu' when AF3_RUNTIME=native, got {backend!r}")
+    impl = os.environ.get("AF3_FLASH_ATTENTION_IMPLEMENTATION", "").strip().lower() or "xla"
+    if impl != "xla":
+        raise ValueError(f"AF3_FLASH_ATTENTION_IMPLEMENTATION must be 'xla' when AF3_RUNTIME=native, got {impl!r}")
+    batch_path = Path(batch_script if batch_script is not None else _DEFAULT_BATCH_SCRIPT).resolve()
+    cmd = [
+        python,
+        str(batch_path),
+        f"--num_recycles={AF3_NUM_RECYCLES}",
+        f"--flash_attention_implementation={impl}",
+        "--num_diffusion_samples=1",
+        "--gpu_device=0",
+        f"--jax_compilation_cache_dir={jax_cache}",
+        f"--model_dir={weights}",
+        f"--save_full_outputs={'true' if save_full_outputs else 'false'}",
+        f"--jax_backend={backend}",
+    ]
+    if serve:
+        cmd.append("--serve")
+    else:
+        if manifest_path is None:
+            raise ValueError("manifest_path is required when serve is False.")
+        cmd.append(f"--manifest={manifest_path}")
+    return cmd
+
+
 def build_apptainer_fold_command(
     manifest_path: str | Path | None,
     gpu_device: int,
@@ -112,6 +165,8 @@ def build_apptainer_fold_command(
             subprocess loads AF3 once and reads manifest paths on stdin
             instead of folding a single ``--manifest`` argument and exiting.
     """
+    if af3_runtime_mode() == "native":
+        return _build_native_fold_command(manifest_path, save_full_outputs, batch_script, serve)
     sif = _require("AF3_IMAGE")
     jax_cache = _require("AF3_JAX_CACHE_DIR")
     weights = _require("AF3_MODEL_DIR")

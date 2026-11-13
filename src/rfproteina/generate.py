@@ -715,7 +715,7 @@ def run_generation(
         )
 
     trainer = L.Trainer(
-        accelerator="gpu",
+        accelerator=cfg.hardware.accelerator,
         devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
         num_nodes=cfg.hardware.nnodes_,
         default_root_dir=cfg.out_dir,

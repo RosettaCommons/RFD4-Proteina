@@ -167,6 +167,20 @@ def _send_to_daemon(
             sock.close()
 
 
+def _fold_timeout_per_design_s() -> float | None:
+    """``AF3_FOLD_TIMEOUT_PER_DESIGN_S`` in seconds, or ``None`` when unset or empty."""
+    raw = os.environ.get("AF3_FOLD_TIMEOUT_PER_DESIGN_S", "").strip()
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        value = float("nan")
+    if not 0.0 < value < float("inf"):
+        raise ValueError(f"AF3_FOLD_TIMEOUT_PER_DESIGN_S must be a positive finite number of seconds, got {raw!r}")
+    return value
+
+
 def _prewarm_daemon(sock_path: str, timeout_s: float = 5.0) -> None:
     """Ask a pre-spawned daemon to start loading AF3 now.
 
@@ -554,12 +568,13 @@ class AF3Oracle(OracleMetric):
     def _dispatch_fold(self, manifest_path: Path, daemon_rank: int, n_designs: int) -> None:
         """Fold via the daemon (routes by daemon_rank, which pins the GPU) if
         AF3_LAUNCHER_SOCKET_TEMPLATE is set, else a direct apptainer call. Raises on failure."""
+        per_design_s = _fold_timeout_per_design_s()
         sock_template = os.environ.get("AF3_LAUNCHER_SOCKET_TEMPLATE")
 
         if sock_template:
             daemon_sock = sock_template.format(rank=daemon_rank)
-            # Extremely conservative limit of 2 min per design
-            timeout_s = max(3600.0, n_designs * 120.0)
+            # Default 2 min per design; AF3_FOLD_TIMEOUT_PER_DESIGN_S overrides it.
+            timeout_s = max(3600.0, n_designs * (120.0 if per_design_s is None else per_design_s))
             logger.info(
                 f"AF3 fold_batch: routing {n_designs} designs via daemon at {daemon_sock} "
                 f"(timeout={timeout_s / 3600:.1f}h)"
@@ -585,7 +600,11 @@ class AF3Oracle(OracleMetric):
             gpu_device=gpu_device,
             save_full_outputs=False,
         )
-        rc = subprocess.run(cmd).returncode
+        run_kwargs = {} if per_design_s is None else {"timeout": max(3600.0, n_designs * per_design_s)}
+        try:
+            rc = subprocess.run(cmd, **run_kwargs).returncode
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"AF3 direct fold timed out after {exc.timeout:.0f}s for {n_designs} designs") from exc
         if rc != 0:
             raise RuntimeError(f"AF3 apptainer subprocess failed with rc={rc}")
 
