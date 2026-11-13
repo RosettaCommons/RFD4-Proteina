@@ -22,6 +22,17 @@
         "Added confidence intervals and additional methodological details for calmodulin binding."
       ],
       "manuscript_commit": "92403e82ec162a380e21a05b6b4cc51669550cfa"
+    },
+    {
+      "number": 3,
+      "uploaded_at": "2026-11-13T07:04:35Z",
+      "pdf": "assets/paper/versions/RFD4-Proteina-v3-20261113T070435Z.pdf",
+      "sha256": "b581fc10da53e94b263c36a7871906f10ba6559f993c02e08f8b3de6b1d0347e",
+      "changes": [
+        "Updated the author list and affiliations.",
+        "Updated Figures 1 and 6, enzyme results, and associated manuscript text.",
+        "Combined the revised main manuscript and supplement into a single PDF."
+      ]
     }
   ]
 }
