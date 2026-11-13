@@ -2,20 +2,22 @@
   "source_repository": "kierandidi/RFD4-Proteina-paper",
   "source_commit": "47d6a4d648e33b91d0a5f1626bc98eaeb8e87ecb",
   "source_hashes": {
-    "authors.tex": "d4444d28392f1fe363bd72f39e6fcaec95ac4bd8807d7ffafa3b750b07c9435d",
-    "figures_raw/figure_1_concept.svg": "fa508917c7b9a931d69dd8ba1029ff5b54849a31b4a7bd6c0ef64c78ae6436a6",
+    "authors.tex": "67148c0421e79d99088d51169815bbd6c0da39459d0e289cc0cec1166b4465ec",
+    "figures_raw/figure_1_concept.svg": "451d1aa2768af34828d182488720be0925d83bb18ef5f24b460b810461e3b205",
     "drafting/figure4_cam/updated_20261016/selected_complex.cif": "481ac3ab9e268b4cc278138d5e548121773077edb923dd02b64531d70aaec3e4",
     "drafting/figure5_hbonds/updated_20261020/approved-style/H3T11_hit09.cif": "cb38ebc758f7385f98ce5468852a4d89d511dbf92a69b5bb0bf1f2cee06a4712",
-    "figures_raw/figure_1_concept.pdf": "8f27de2d2e43a45c976a452f90310376ace9c6493e7a3bf9645f3b41e57868f7",
-    "figures_tex/figure_1_concept.tex": "e204fe3794767656ef969cced69dd5855fcc5a014d16dfbde96ed98633c4fcd5",
+    "figures_raw/figure_1_concept.pdf": "da946211e729d06e6033873c3b375a0c0cac990bcee05705c6884f4de86c37c3",
+    "figures_tex/figure_1_concept.tex": "853e01c97a8c7348547bda7bf803f0ab6cb21cf5d0ec304038b025f09ce944a7",
     "figures_raw/figure_2_in_silico.pdf": "01febe4de463f8e074eb57208aa4b9354de0cabd1e419478e260155a7da7ad74",
     "figures_tex/figure_2_in_silico.tex": "417da733cb244a26d48e9cbbdb29f114be8772825ab44814b3aff00bde358c94",
     "figures_raw/figure_4_specificity.pdf": "27c7d38161fb663f766151ae9014ba971be9e67cf56b63e8f984d57e9a46225a",
     "figures_tex/figure_4_wetlab_overview.tex": "62d549a42130f67b704601b71c612b524ccb6f39dd907aa4a3250a9ae7f33693",
     "figures_raw/figure_5_ptm_glycosylation.pdf": "044b7cd9dff60a4d9869cd119d8df0afde272eb505047a76d86c9bc74268e611",
-    "figures_tex/figure_5_ptm_glycosylation.tex": "e5eb82b0d7ca0aa60bbcec3ccdcc66661ec169a3e8df884c198dd85f9ab123d5",
-    "figures_raw/figure_6_enzymes.pdf": "db4cd763ef03489e76d5a5f03734ae1f671b40c458735f08b1e2947fd93e2057",
-    "figures_tex/figure_6_enzymes.tex": "aff7e9ff9bf55012a17c616c389ad5bd9077e1e8ad72d51f510e4d7b759e8bb4"
+    "figures_tex/figure_5_ptm_glycosylation.tex": "73a921499db5ecee2194a801662edcdd6a19b1b2c7aa3cd10b2e33f2800d6acc",
+    "figures_raw/figure_6_enzymes.pdf": "ad00c3645716b039feac984de5f804b6265de6a638b765ddd869bd266d2d8e89",
+    "figures_tex/figure_6_enzymes.tex": "d8b23ee97aa8d7872bda15cbba6d1bbb40759917431dc3d3cbbb29cdea0acd48",
+    "figures_tex/supplementary_figure_enzyme_kinetics.tex": "7ce938918259713c862dbcf38f8b9371e977e71c43c12c77d3d61833de3cb816",
+    "appendices/wet_lab_methods/pte.tex": "3702ee5b7595ad1fcc45b990b3bcd857426d7e8533abc93b3767a75322bdee8d"
   },
   "dpi": 300,
   "authors": [
@@ -126,9 +128,22 @@
       "email": null
     },
     {
+      "name": "Andrew Favor",
+      "affiliations": [
+        1,
+        2,
+        7
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
       "name": "Maximilian Gantz",
       "affiliations": [
-        1
+        1,
+        23
       ],
       "equal_first": false,
       "equal_second": true,
@@ -140,6 +155,18 @@
       "affiliations": [
         11,
         12
+      ],
+      "equal_first": false,
+      "equal_second": true,
+      "corresponding": false,
+      "email": null
+    },
+    {
+      "name": "Paul Kim",
+      "affiliations": [
+        1,
+        2,
+        7
       ],
       "equal_first": false,
       "equal_second": true,
@@ -182,7 +209,7 @@
       "email": null
     },
     {
-      "name": "DéJenaé L. See",
+      "name": "D\u00e9Jena\u00e9 L. See",
       "affiliations": [
         1,
         2,
@@ -363,18 +390,6 @@
       "email": null
     },
     {
-      "name": "Andrew Favor",
-      "affiliations": [
-        1,
-        2,
-        7
-      ],
-      "equal_first": false,
-      "equal_second": false,
-      "corresponding": false,
-      "email": null
-    },
-    {
       "name": "Mariana Garcia Sanchez",
       "affiliations": [
         1,
@@ -418,6 +433,17 @@
       "email": null
     },
     {
+      "name": "Andrew C. Hunt",
+      "affiliations": [
+        1,
+        2
+      ],
+      "equal_first": false,
+      "equal_second": false,
+      "corresponding": false,
+      "email": null
+    },
+    {
       "name": "David E. Kim",
       "affiliations": [
         1,
@@ -434,18 +460,6 @@
       "affiliations": [
         1,
         2
-      ],
-      "equal_first": false,
-      "equal_second": false,
-      "corresponding": false,
-      "email": null
-    },
-    {
-      "name": "Paul Kim",
-      "affiliations": [
-        1,
-        2,
-        7
       ],
       "equal_first": false,
       "equal_second": false,
@@ -510,7 +524,7 @@
       "email": null
     },
     {
-      "name": "Edin Muratspahić",
+      "name": "Edin Muratspahi\u0107",
       "affiliations": [
         1,
         2
@@ -782,6 +796,10 @@
     {
       "id": 22,
       "name": "Institute for Innovations in Drug Disposition and Delivery, University of Washington, Seattle, WA, USA"
+    },
+    {
+      "id": 23,
+      "name": "Max Planck Institute for Terrestrial Microbiology, Marburg, Germany"
     }
   ],
   "figures": [
@@ -804,7 +822,10 @@
         1600,
         987
       ],
-      "sha256": "8b1c42b3d657a70fb16e919d58bde8805b26a56abd5de53adb8db9d1fa0b8607"
+      "sha256": "b81c756e70dd535d24f6650aaf3f72f795bd58ac2cfdb88cd1cd49f9ce3a468d",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "451d1aa2768af34828d182488720be0925d83bb18ef5f24b460b810461e3b205",
+      "caption_sha256": "853e01c97a8c7348547bda7bf803f0ab6cb21cf5d0ec304038b025f09ce944a7"
     },
     {
       "path": "assets/paper/figure1d-trajectory.png",
@@ -820,7 +841,10 @@
         2058,
         683
       ],
-      "sha256": "cc0e814819fb1fdd8c59be3930414889e285bb1c46a15390433a201f4a2cf74d"
+      "sha256": "0d7ad93cb13ea2e61a0b8fa93d820b07956e0daafa940c76210faa99056a976c",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "da946211e729d06e6033873c3b375a0c0cac990bcee05705c6884f4de86c37c3",
+      "caption_sha256": "853e01c97a8c7348547bda7bf803f0ab6cb21cf5d0ec304038b025f09ce944a7"
     },
     {
       "path": "assets/paper/figure1f-search.png",
@@ -836,7 +860,10 @@
         1396,
         257
       ],
-      "sha256": "590af6fbfb3eaa888cbf2209d3f8d963cd0a7434117b4624a37306d3aa55b212"
+      "sha256": "ec1781baded99f64be79bb8d8418ae70e9941b1fb2ae7e828c7c571c6cc52cbb",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "da946211e729d06e6033873c3b375a0c0cac990bcee05705c6884f4de86c37c3",
+      "caption_sha256": "853e01c97a8c7348547bda7bf803f0ab6cb21cf5d0ec304038b025f09ce944a7"
     },
     {
       "path": "assets/paper/fig2-in-silico.webp",
@@ -992,41 +1019,50 @@
       "crop_pdf_points": null,
       "pixels": [
         2162,
-        3625
+        3209
       ],
-      "sha256": "a0c3a4737d1c7159bac0d6c15aa7423e4f7e0157abac13dab3f293d45ad370de"
+      "sha256": "6b9086b41966490172eec108e7d4df3fc7e0faa72ff9ef123f72939902549b14",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "ad00c3645716b039feac984de5f804b6265de6a638b765ddd869bd266d2d8e89",
+      "caption_sha256": "d8b23ee97aa8d7872bda15cbba6d1bbb40759917431dc3d3cbbb29cdea0acd48"
     },
     {
-      "path": "assets/paper/fig6a-d-pte.webp",
+      "path": "assets/paper/fig6a-h-pte.webp",
       "source": "figures_raw/figure_6_enzymes.pdf",
       "caption": "figures_tex/figure_6_enzymes.tex",
       "crop_pdf_points": [
         0,
         0,
-        518.740173,
-        300
+        518.74,
+        443
       ],
       "pixels": [
         2161,
-        1250
+        1846
       ],
-      "sha256": "052a9f0f9b4e6949eff8633b4e8afb3ee00e6ac7c9706ce06ae7ae56e3d4cd55"
+      "sha256": "5df41959ff677b200b51a697343d6665acd76ff7a0ec1374b67cf1f46af7e9ff",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "ad00c3645716b039feac984de5f804b6265de6a638b765ddd869bd266d2d8e89",
+      "caption_sha256": "d8b23ee97aa8d7872bda15cbba6d1bbb40759917431dc3d3cbbb29cdea0acd48"
     },
     {
-      "path": "assets/paper/fig6h-n-ligase.webp",
+      "path": "assets/paper/fig6i-n-ligase.webp",
       "source": "figures_raw/figure_6_enzymes.pdf",
       "caption": "figures_tex/figure_6_enzymes.tex",
       "crop_pdf_points": [
         0,
-        444,
-        518.740173,
-        426
+        445,
+        518.74,
+        325
       ],
       "pixels": [
         2161,
-        1775
+        1354
       ],
-      "sha256": "cb6936a97dc34a968a111db0ebded155754dd8d76e88e6c3af06e982d34725e8"
+      "sha256": "ec75417676ef2aea3c9c30fcb20b7146a54e5b0136a06d244c7da68b69a3ac4a",
+      "source_snapshot": "november-working-tree",
+      "source_sha256": "ad00c3645716b039feac984de5f804b6265de6a638b765ddd869bd266d2d8e89",
+      "caption_sha256": "d8b23ee97aa8d7872bda15cbba6d1bbb40759917431dc3d3cbbb29cdea0acd48"
     },
     {
       "path": "../docs/_static/benchmark-figure.webp",
@@ -1078,9 +1114,25 @@
     "Surrounding captions and numerical statements were reviewed separately against the recorded caption sources."
   ],
   "latest_review": {
-    "source_commit": "670fc371b2e4bab2fe88f7ec066e0ee27ac5f3f0",
-    "unchanged_figures": [
-      "figures_raw/figure_4_specificity.pdf"
+    "source_snapshot": "november-working-tree",
+    "updated_figure_exports": [
+      "figure1a-latent-callouts.png",
+      "figure1d-trajectory.png",
+      "figure1f-search.png",
+      "fig6-enzymes-full.webp",
+      "fig6a-h-pte.webp",
+      "fig6i-n-ligase.webp"
+    ],
+    "unchanged_figure_sources": {
+      "figures_raw/figure_2_in_silico.pdf": "6f2574b7a7eabd0b0ab8e0374469e9d7912c397b4dce953980caa579276952c4",
+      "figures_raw/figure_4_specificity.pdf": "494cadff0ffc792fa59bb26f2bbaa92d195284189bdca9686201f493e8bcab8b",
+      "figures_raw/figure_5_ptm_glycosylation.pdf": "044b7cd9dff60a4d9869cd119d8df0afde272eb505047a76d86c9bc74268e611"
+    },
+    "notes": [
+      "Figure 6 layout reviewed and recropped to panels a\u2013h and i\u2013n.",
+      "Figure 1 native artwork refreshed; original isolated latent callouts and trajectory/search crops reviewed.",
+      "Phosphorylated peptide copy aligned to pS10 and pT11; PTE and ligase captions and kinetic values aligned to current manuscript.",
+      "BLITZ aliases are explicit in supplementary_figure_enzyme_kinetics.tex; existing structure identities and files are preserved."
     ]
   },
   "benchmark_review": {
@@ -1100,6 +1152,25 @@
       "targets_solved": 2,
       "targets": 3,
       "generation_timing": "Transferred from prior fixed-DNA cohort"
+    }
+  },
+  "source_snapshots": {
+    "november-working-tree": {
+      "source_repository": "kierandidi/RFD4-Proteina-paper",
+      "base_commit": "d6ef3362efa58a8f2ff57fc2cb95f9d4c0fc5796",
+      "dirty": true,
+      "description": "Reviewed current working-tree artwork, captions, author list, and enzyme kinetics. File hashes identify the snapshot; these files are not asserted to match the base commit. Earlier source_commit fields describe unchanged historical exports.",
+      "source_hashes": {
+        "figures_raw/figure_1_concept.svg": "451d1aa2768af34828d182488720be0925d83bb18ef5f24b460b810461e3b205",
+        "figures_tex/figure_1_concept.tex": "853e01c97a8c7348547bda7bf803f0ab6cb21cf5d0ec304038b025f09ce944a7",
+        "figures_raw/figure_1_concept.pdf": "da946211e729d06e6033873c3b375a0c0cac990bcee05705c6884f4de86c37c3",
+        "figures_raw/figure_6_enzymes.pdf": "ad00c3645716b039feac984de5f804b6265de6a638b765ddd869bd266d2d8e89",
+        "figures_tex/figure_6_enzymes.tex": "d8b23ee97aa8d7872bda15cbba6d1bbb40759917431dc3d3cbbb29cdea0acd48",
+        "authors.tex": "67148c0421e79d99088d51169815bbd6c0da39459d0e289cc0cec1166b4465ec",
+        "figures_tex/figure_5_ptm_glycosylation.tex": "73a921499db5ecee2194a801662edcdd6a19b1b2c7aa3cd10b2e33f2800d6acc",
+        "figures_tex/supplementary_figure_enzyme_kinetics.tex": "7ce938918259713c862dbcf38f8b9371e977e71c43c12c77d3d61833de3cb816",
+        "appendices/wet_lab_methods/pte.tex": "3702ee5b7595ad1fcc45b990b3bcd857426d7e8533abc93b3767a75322bdee8d"
+      }
     }
   }
 }
