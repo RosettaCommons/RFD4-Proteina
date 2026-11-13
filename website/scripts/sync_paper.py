@@ -51,8 +51,8 @@ exports = {
     "fig5abc-glycan.webp": ("5", [0, 0, 518.740157, 165]),
     "fig5def-phospho.webp": ("5", [0, 165, 518.740157, 185.078740]),
     "fig6-enzymes-full.webp": ("6", None),
-    "fig6a-d-pte.webp": ("6", [0, 0, 518.740173, 300]),
-    "fig6h-n-ligase.webp": ("6", [0, 444, 518.740173, 426]),
+    "fig6a-h-pte.webp": ("6", [0, 0, 518.74, 443]),
+    "fig6i-n-ligase.webp": ("6", [0, 445, 518.74, 325]),
 }
 structures = {
     "cam_resolved.cif.gz": "drafting/figure4_cam/second_hit.cif",
