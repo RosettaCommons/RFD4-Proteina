@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import tempfile
 import weakref
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -351,8 +352,9 @@ class NativeMetricEvaluator:
     checkpoint lists under ``metrics``. Oracle/refolding results are cached under ``output_dir``.
     """
 
-    def __init__(self, native: Any, batch: Mapping[str, Any], output_dir: Path):
+    def __init__(self, native: Any, batch: Mapping[str, Any], output_dir: Path, *, example_ids: Sequence[str]):
         self.native, self.batch, self.output_dir = native, batch, output_dir
+        self.example_ids = tuple(example_ids)
 
     def evaluate(self, prediction: Any, features: Mapping[str, torch.Tensor], context: Any) -> list[dict[str, Any]]:
         from rfproteina.metrics.utils.metrics_utils import run_metrics_for_result, run_oracle_and_refolding_metrics
@@ -362,14 +364,18 @@ class NativeMetricEvaluator:
         names = list(strategy.checkpoints[context.checkpoint].get("metrics", []))
         reward_model = strategy.reward_models[context.checkpoint]
         batch = _rows(self.batch, features["_native_row_index"])
-        entries = format_prediction(self.native, prediction, features, self.batch, list(context.request_ids))
+        example_ids = [
+            f"{self.example_ids[row]}_{request_id}"
+            for row, request_id in zip(features["_native_row_index"].tolist(), context.request_ids, strict=True)
+        ]
+        entries = format_prediction(self.native, prediction, features, self.batch, example_ids)
         metrics = []
         for index, entry in enumerate(entries):
             array = entry.get("full_array_with_unindexed") or entry["generated_atom_array"]
             entry["generated_atom_array"] = annotate_unindexed_insertion(
                 array, entry.get("predicted_insertion_mapping") or {}
             )
-            example_id = entry.get("example_id") or context.request_ids[index]
+            example_id = example_ids[index]
             row = {}
             if self.native.design_metric_manager is not None:
                 row = run_metrics_for_result(
@@ -526,16 +532,23 @@ class FullBioIRAdapter:
     def predict_step(self, batch: Mapping[str, Any]) -> list[dict[str, Any]]:
         features = _features(batch)
         if self.search is not None:
+            example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
+            # BioIR IDs restart for each search. Isolate batches, ranks and restarts without
+            # drawing from the sampler's RNG, while keeping reuse within this search call.
+            search_root = Path(self.native.store_dir) / "bioir_search"
+            search_root.mkdir(parents=True, exist_ok=True)
+            output_dir = Path(
+                tempfile.mkdtemp(prefix=f"rank{self.native.global_rank}_batch{self.completed_calls}_", dir=search_root)
+            )
             # Search derives its own child streams from a root seed.
             output = self.model.search(
                 features,
                 self.search,
                 seed=_fresh_seed(),
                 partial_config=self.partial,
-                evaluators=(NativeMetricEvaluator(self.native, batch, Path(self.native.store_dir) / "bioir_search"),),
+                evaluators=(NativeMetricEvaluator(self.native, batch, output_dir, example_ids=example_ids),),
             )
             results = []
-            example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
             for candidate in output.candidates:
                 index = candidate.request_index
                 one = {key: features[key][index : index + 1] for key in ("padding_mask", "_native_row_index")}
