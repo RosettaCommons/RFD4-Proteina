@@ -116,6 +116,11 @@ class ConditionSpecDataset(MolecularDataset):
         # Subset to requested keys
         if subset_to_keys is not None:
             assert len(subset_to_keys) > 0, "subset_to_keys must be a non-empty list of keys."
+            if missing := set(subset_to_keys) - set(self._data):
+                raise ValueError(
+                    f"subset_to_keys entries {sorted(missing)} match none of the {len(self._data)} examples "
+                    f"(e.g. {next(iter(self._data), None)!r})."
+                )
             self._data = {k: v for k, v in self._data.items() if k in subset_to_keys}
 
         if exists(global_prefix):
