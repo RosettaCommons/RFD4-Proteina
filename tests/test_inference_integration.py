@@ -395,7 +395,8 @@ class TestDatasetConstruction:
 
         This exercises the real ``subset_to_keys`` path of
         :class:`~rfproteina.inference_utils.datasets.ConditionSpecDataset` (each top-level
-        key is one design), not the CIF file-path notion of subsetting.
+        key is one design), not the CIF file-path notion of subsetting. A key that matches
+        nothing raises, as it does for CIF inputs.
         """
         spec = {
             "1ycr_motif": _motif_condition_spec(_1YCR_INPUT, "B19-27", "res_id >= 19 and res_id <= 22"),
@@ -421,6 +422,15 @@ class TestDatasetConstruction:
             subset_to_examples="1ycr_motif",
         )
         assert _get_example_ids_from_dataset(subset) == ["1ycr_motif_0"]
+
+        # A key that matches nothing is an error, also next to a key that matches.
+        with pytest.raises(ValueError, match="1ycr_motfi"):
+            get_contig_or_design_problem_dataset(
+                str(spec_path),
+                num_replicates=1,
+                transform=inference_pipeline,
+                subset_to_examples="1ycr_motif,1ycr_motfi",
+            )
 
 
 # ---------------------------------------------------------------------------
