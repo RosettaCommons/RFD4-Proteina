@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Dedicated resources for the RFD4-Proteina HealthOmics example.
+  Keeps model assets private and limits validation compute.
+Metadata:
+  com.aws.cloudformation.Context:
+    ref:
+      - at: README.md
+        has: setup, permissions, validation limits and resource lifecycle
+
+Parameters:
+  MaxRunDurationMinutes:
+    Type: Number
+    Default: 60
+    MinValue: 1
+    MaxValue: 1440
+    Description: Maximum duration of each run in the validation group, in minutes.
+
+Resources:
+  # Keep inputs/results and their versions when the setup stack is removed.
+  # The run role may read inputs/models and write only under outputs/.
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  # Retain the transport restriction along with the bucket.
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Bucket: !Ref ArtifactsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: RequireSecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt ArtifactsBucket.Arn
+              - !Sub '${ArtifactsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+                aws:PrincipalIsAWSService: false
+
+  # Image tags are immutable; use a new tag for every rebuild.
+  # Repository policies are scoped to this repository without a Resource field.
+  ImageRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ImageTagMutability: IMMUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      RepositoryPolicyText:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: HealthOmicsPull
+            Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action:
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchCheckLayerAvailability
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  # This is the run's execution role, not the human/CI deployment role.
+  # Run IDs are assigned later, so trust is limited by service, account and Region.
+  RunRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: omics.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:omics:${AWS::Region}:${AWS::AccountId}:*'
+      Policies:
+        - PolicyName: GenerationRun
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: InspectArtifactBucket
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                Resource: !GetAtt ArtifactsBucket.Arn
+              - Sid: ReadInputsAndModel
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub '${ArtifactsBucket.Arn}/inputs/*'
+                  - !Sub '${ArtifactsBucket.Arn}/models/*'
+              - Sid: ReadAndPublishOutputs
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:AbortMultipartUpload
+                  - s3:ListMultipartUploadParts
+                Resource: !Sub '${ArtifactsBucket.Arn}/outputs/*'
+              # ECR authorization does not support resource-level permissions.
+              - Sid: AuthorizeRegistryAccess
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Sid: PullTaskImage
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:DescribeImages
+                Resource: !GetAtt ImageRepository.Arn
+              - Sid: WriteWorkflowLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/WorkflowLog'
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/omics/WorkflowLog:*'
+
+  # A group does not provision compute. These bounds apply when a run is submitted.
+  # The default supports two one-GPU generation shards for the short example.
+  ValidationRunGroup:
+    Type: AWS::Omics::RunGroup
+    Properties:
+      Name: !Ref AWS::StackName
+      MaxCpus: 16
+      MaxGpus: 2
+      MaxRuns: 1
+      MaxDuration: !Ref MaxRunDurationMinutes
+
+Outputs:
+  BucketName:
+    Description: Dedicated bucket; use inputs/, models/ and outputs/ prefixes.
+    Value: !Ref ArtifactsBucket
+  RepositoryName:
+    Description: ECR repository name for image queries.
+    Value: !Ref ImageRepository
+  RepositoryUri:
+    Description: ECR URI without a tag or digest.
+    Value: !GetAtt ImageRepository.RepositoryUri
+  RunRoleArn:
+    Description: Pass this execution role when starting HealthOmics runs.
+    Value: !GetAtt RunRole.Arn
+  RunGroupId:
+    Description: Validation group with bounded compute and run duration.
+    Value: !GetAtt ValidationRunGroup.Id
