@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://rfd4-proteina.org/">Project page</a> ·
-  <a href="website/assets/paper/RFD4-Proteina.pdf">Paper</a> ·
+  <a href="https://www.biorxiv.org/content/10.64898/2026.11.12.766037v1">Paper</a> ·
   <a href="#try-it-now">Try it now</a> ·
   <a href="#system-requirements">Requirements</a> ·
   <a href="#install">Installation</a> ·
@@ -224,15 +224,16 @@ Training datasets are separate from model downloads: see the
 ## Citation
 
 If you use RFD4-Proteina in your research, please cite
-[*Biomolecular design through latent reasoning with RFD4-Proteina*](website/assets/paper/RFD4-Proteina.pdf):
+[*Biomolecular design through latent reasoning with RFD4-Proteina*](https://www.biorxiv.org/content/10.64898/2026.11.12.766037v1):
 
 ```bibtex
 @article{corley2026rfd4proteina,
   title        = {Biomolecular design through latent reasoning with {RFD4-Proteina}},
   author       = {Corley, Nathaniel and Didi, Kieran and Kazman, Maxwell W. and Brent, Rafael I. and others},
   year         = {2026},
-  note         = {Preprint},
-  url          = {https://rfd4-proteina.org/assets/paper/RFD4-Proteina.pdf}
+  journal      = {bioRxiv},
+  doi          = {10.64898/2026.11.12.766037},
+  url          = {https://www.biorxiv.org/content/10.64898/2026.11.12.766037v1}
 }
 ```
 
