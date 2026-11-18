@@ -91,8 +91,11 @@ refolded_backbone_aligned_ligand_rmsd:
 # Apo/holo consistency
 refolded_apo_holo_rmsd:
   _target_: rfproteina.metrics.gt_structure_comparison.StructureComparisonMetric
-  align_mask: "is_protein_backbone & ~sa_mask('C_CRD')"
-  subset_mask: "is_protein_backbone & ~sa_mask('C_CRD')"
+  # The designed chain only, minus absolute-coordinate conditioning: the apo refold has no target, so a mask
+  # keyed on `C_CRD` alone would select the target in the holo refold whenever it is conditioned with
+  # internal coordinates (`C_CRDGRP`).
+  align_mask: "is_chain_of_interest & is_protein_backbone & ~sa_mask('C_CRD')"
+  subset_mask: "is_chain_of_interest & is_protein_backbone & ~sa_mask('C_CRD')"
   metric_type: rmsd
   aggregation: [median]
   input_kwarg_names:
