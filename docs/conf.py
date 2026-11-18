@@ -184,11 +184,13 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 # _templates/layout.html marks the <body> of the latent explorer, which scopes its stylesheets.
 templates_path = ["_templates"]
-html_css_files = ["custom.css", "architecture/explorer.css"]
+html_css_files = ["custom.css", "architecture/explorer.css", "page_feedback.css"]
 # Sizes and themes the neural circuit diagrams framed in the architecture explorer.
 html_js_files = [
     ("architecture/ncd-frames.js", {"defer": "defer"}),
     ("https://scripts.simpleanalyticscdn.com/latest.js", {"async": "async", "defer": "defer"}),
+    # "Was this page helpful?" widget and popup (_templates/page.html).
+    ("page_feedback.js", {"defer": "defer"}),
 ]
 # The architecture explorer and the latent explorer give the full width to their diagrams and figures, so
 # neither shows the section navigation.
