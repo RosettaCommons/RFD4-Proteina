@@ -83,6 +83,19 @@ see [Running metrics inline](evaluate-with-metrics.md#running-metrics-inline).
 The top-level `metrics_tags` continues to control ordinary output evaluation. It does not
 select search metrics.
 
+### BioIR search caches
+
+With `inference_backend=bioir`, each search invocation writes scoring artifacts into its own
+directory under `out_dir/bioir_search/`. The directory includes the rank and batch counter plus
+a unique suffix, and candidate names include the original input sample ID. BioIR's local
+request IDs restart at each invocation, so they cannot identify cached refolds across batches,
+workers or restarted processes on their own.
+
+Repeated evaluation of the same candidate within one search can reuse its oracle result.
+A new search invocation uses a fresh namespace, including after restarting the program; older
+search caches are retained but are not reused. This does not change ordinary skipping of
+already-generated final outputs or the final design naming scheme.
+
 ## Saving completed rollouts
 
 The final beam is always returned. Set `search.save_rollouts: true` to also return completed
