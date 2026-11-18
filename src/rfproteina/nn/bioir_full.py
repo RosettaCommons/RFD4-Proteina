@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from rfproteina.utils.ddp import RankedLogger
+
 if TYPE_CHECKING:
     from bionemo_ir.models.rfproteina import RFProteina
     from bionemo_ir.models.rfproteina.config import (
@@ -19,6 +21,9 @@ if TYPE_CHECKING:
         RFProteinaPartialSimulationConfig,
         RFProteinaSamplingConfig,
     )
+
+
+logger = RankedLogger(__name__, rank_zero_only=True)
 
 
 def _flow_state_with_merged_lora(denoiser: torch.nn.Module) -> dict[str, torch.Tensor]:
@@ -448,10 +453,66 @@ def partial_from_native(native: Any) -> RFProteinaPartialSimulationConfig | None
     return RFProteinaPartialSimulationConfig(**values) if active else None
 
 
-def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
-    """Map native beam search onto BioIR's, rejecting options BioIR does not reproduce."""
-    from bionemo_ir.models.rfproteina.config import RFProteinaBeamSearchConfig
+_SEAM_PARAMETERS = frozenset({"resume_states", "resume_clean", "resume_step", "export_states"})
 
+# The seam landed after 0.2.0; name the first release that carries it rather than the commit.
+_SEAM_RELEASE = "0.3.0"
+
+
+def _require_resume_seam() -> None:
+    """Refuse an external prune on a BioIR that cannot hand the beam over.
+
+    Unlike the rejections above this one has to import ``bionemo_ir``: the question is what the
+    installed BioIR can do, not what the native strategy asked for.
+    """
+    import bionemo_ir
+    from bionemo_ir.models.rfproteina import RFProteina
+
+    if not set(inspect.signature(RFProteina.search).parameters) >= _SEAM_PARAMETERS:
+        raise NotImplementedError(
+            f"Full BioIR export and external pruning need bionemo-ir >= {_SEAM_RELEASE}, which carries "
+            f"RFProteina.search(export_states=..., resume_states=...); the installed bionemo-ir is "
+            f"{bionemo_ir.__version__}. Upgrade, or use inference_backend=native."
+        )
+
+
+def _bridged_checkpoints(strategy: Any) -> list[int]:
+    """The schedule BioIR runs for this strategy.
+
+    An export stops at the first interior checkpoint, which is the whole point: the caller is
+    about to replace the prune there, so the intervals after it would be spent on survivors it
+    discards. A resume starts at the step its candidates were exported at.
+    """
+    if strategy.export_candidates:
+        return list(strategy.step_checkpoints[:2])
+    if strategy.resume_selection is not None:
+        return [load_exported_candidates(strategy.resume_from)["step"], strategy.step_checkpoints[-1]]
+    return list(strategy.step_checkpoints)
+
+
+def load_exported_candidates(path: str) -> dict[str, Any]:
+    """Read a candidate batch this backend exported, rejecting one it did not write.
+
+    A native export carries only ``x_t``. BioIR's beam also carries ``x_1`` between checkpoints and
+    self-conditions the first resumed step on it, so resuming a native batch here would substitute
+    zeros and continue a different trajectory while still returning plausible structures.
+    """
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    if not isinstance(state, dict) or state.get("backend") != "bioir" or "clean" not in state:
+        raise NotImplementedError(
+            f"{path} was not exported by the bioir backend, so it carries no x_1 predictions. "
+            "A BioIR resume needs them; export again with inference_backend=bioir."
+        )
+    return state
+
+
+def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
+    """Map native beam search onto BioIR's, rejecting options BioIR does not reproduce.
+
+    Every rejection below reads the native strategy only, so it is raised before BioIR is
+    imported: a user who asked for an unbridgeable option gets that message even where
+    ``bionemo_ir`` is absent, and the rejections stay testable without it.
+    """
     from rfproteina.search.beam_search import BeamSearchStrategy
 
     strategy = native.search_strategy
@@ -465,10 +526,13 @@ def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
             f"Full BioIR does not bridge search.continuation_policy={policy!r}; it would stop failing "
             "originals instead. Use inference_backend=native."
         )
-    if strategy.save_states or strategy.resume_from is not None:
+    external = strategy.export_candidates or strategy.resume_selection is not None
+    if strategy.save_states or (strategy.resume_from is not None and not external):
         raise NotImplementedError("Full BioIR search does not save or resume candidate states")
     if strategy.step_checkpoints[-1] != int(native.inf_cfg.args.nsteps):
         raise NotImplementedError("Full BioIR search needs its last checkpoint at the end of the schedule")
+    if external:
+        _require_resume_seam()
     for step, config in strategy.checkpoints.items():
         if (
             config.get("use_clean_prediction")
@@ -485,6 +549,9 @@ def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
         if set(thresholds) != {"search.reward"} or set(thresholds["search.reward"]) != {"min"}:
             raise NotImplementedError("Full BioIR requires a scalar intermediate reward minimum")
         threshold = thresholds["search.reward"]["min"]
+
+    from bionemo_ir.models.rfproteina.config import RFProteinaBeamSearchConfig
+
     # Native checkpoints each own a reward model; BioIR takes one base objective plus per-step replacements.
     models = strategy.reward_models
     base = models[strategy.step_checkpoints[1]]
@@ -494,12 +561,80 @@ def search_from_native(native: Any) -> RFProteinaBeamSearchConfig | None:
         if (model.weights, model.clip_values) != (base.weights, base.clip_values)
     }
     return RFProteinaBeamSearchConfig(
-        step_checkpoints=list(strategy.step_checkpoints),
+        step_checkpoints=_bridged_checkpoints(strategy),
         n_branch=strategy.n_branch,
         beam_width=strategy.beam_width,
         intermediate_save_min_reward=threshold,
         rewards={"weights": base.weights, "clip_values": base.clip_values, "checkpoint_overrides": overrides},
     )
+
+
+def _write_exported_candidates(
+    candidates: Sequence[Any], store_dir: Path, example_ids: Sequence[str], nsamples: int
+) -> Path:
+    """Write every branch a stopped search returned, with both tensors a resume needs.
+
+    Candidates arrive request-fastest, which is the interleaved order ``resume_selection``
+    indexes: entry j names a candidate of input ``j % nsamples``.
+    """
+    state_dir = store_dir / "sampling_states"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    step = candidates[0].checkpoint
+    path = state_dir / f"{example_ids[0]}_step{step}_candidates.pt"
+    torch.save(
+        {
+            "candidates": _stack_states(candidate.state for candidate in candidates),
+            "clean": _stack_states(candidate.clean_prediction for candidate in candidates),
+            "step": step,
+            "example_ids": [example_ids[candidate.request_index] for candidate in candidates],
+            "nsamples": nsamples,
+            "beam_width": len(candidates) // nsamples,
+            "backend": "bioir",
+        },
+        path,
+    )
+    logger.info(f"Exported {len(candidates)} candidates at step {step}: {path}")
+    return path
+
+
+def _stack_states(states: Iterator[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+    rows = list(states)
+    return {key: torch.cat([row[key] for row in rows]).detach().cpu().clone() for key in rows[0]}
+
+
+def _resume_arguments(
+    state: Mapping[str, Any], selection: Sequence[int], nsamples: int, beam_width: int, device: torch.device
+) -> dict[str, Any]:
+    """Turn the caller's chosen candidates into BioIR's per-slot states.
+
+    BioIR takes one state per slot, each spanning every request; the export carries one row per
+    candidate. Stacking a slot's rows in any other order than request order keeps the shapes valid
+    and silently mixes results between inputs, so the interleaved rule is enforced here too.
+    """
+    if state["nsamples"] != nsamples:
+        raise ValueError(f"Exported batch holds {state['nsamples']} inputs; this batch has {nsamples}.")
+    total = len(state["example_ids"])
+    if len(selection) != beam_width * nsamples:
+        raise ValueError(
+            f"resume_selection must name beam_width x inputs = {beam_width * nsamples} candidates, "
+            f"got {len(selection)}."
+        )
+    if any(not 0 <= index < total for index in selection):
+        raise ValueError(f"resume_selection indices must lie in [0, {total}).")
+    if any(index % nsamples != position % nsamples for position, index in enumerate(selection)):
+        raise ValueError(
+            "resume_selection entry j must name a candidate of input j % nsamples; the beam is interleaved."
+        )
+
+    def slot(source: Mapping[str, torch.Tensor], rows: Sequence[int]) -> dict[str, torch.Tensor]:
+        return {key: value[list(rows)].to(device) for key, value in source.items()}
+
+    slots = [selection[index * nsamples : (index + 1) * nsamples] for index in range(beam_width)]
+    return {
+        "resume_states": [slot(state["candidates"], rows) for rows in slots],
+        "resume_clean": [slot(state["clean"], rows) for rows in slots],
+        "resume_step": state["step"],
+    }
 
 
 def _fresh_seed() -> int:
@@ -519,6 +654,9 @@ class FullBioIRAdapter:
         )
         self.partial = partial_from_native(native)
         self.search = search_from_native(native)
+        strategy = native.search_strategy
+        self.export_candidates = bool(self.search is not None and strategy.export_candidates)
+        self.resume_selection = None if self.search is None else strategy.resume_selection
         model.config.sampling = model.sampler.config = self.sampling
         self.graph_capacity = 0
         self.configure_graphs()
@@ -526,6 +664,16 @@ class FullBioIRAdapter:
     def predict_step(self, batch: Mapping[str, Any]) -> list[dict[str, Any]]:
         features = _features(batch)
         if self.search is not None:
+            nsamples = len(features["padding_mask"])
+            resume = {}
+            if self.resume_selection is not None:
+                resume = _resume_arguments(
+                    load_exported_candidates(self.native.search_strategy.resume_from),
+                    self.resume_selection,
+                    nsamples,
+                    self.search.beam_width,
+                    self.device,
+                )
             # Search derives its own child streams from a root seed.
             output = self.model.search(
                 features,
@@ -533,9 +681,13 @@ class FullBioIRAdapter:
                 seed=_fresh_seed(),
                 partial_config=self.partial,
                 evaluators=(NativeMetricEvaluator(self.native, batch, Path(self.native.store_dir) / "bioir_search"),),
+                export_states=self.export_candidates,
+                **resume,
             )
             results = []
             example_ids = batch.get("example_id_batch") or [f"sample{k}" for k in range(len(features["padding_mask"]))]
+            if self.export_candidates:
+                _write_exported_candidates(output.candidates, Path(self.native.store_dir), example_ids, nsamples)
             for candidate in output.candidates:
                 index = candidate.request_index
                 one = {key: features[key][index : index + 1] for key in ("padding_mask", "_native_row_index")}
