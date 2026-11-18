@@ -125,7 +125,10 @@ class PairBiasAttention(nn.Module):
             Updated node features of shape (b, n, d_s).
         """
         # Get target dtype for the attention kernel (handles autocast)
-        target_dtype = torch.get_autocast_dtype("cuda") if torch.is_autocast_enabled() else node_feats.dtype
+        device_type = node_feats.device.type
+        target_dtype = (
+            torch.get_autocast_dtype(device_type) if torch.is_autocast_enabled(device_type) else node_feats.dtype
+        )
 
         node_feats = self.node_norm(node_feats)
         h = self.heads

@@ -13,6 +13,7 @@ Prerequisites
 * An NVIDIA GPU and a driver compatible with CUDA 12 or CUDA 13. See :ref:`supported-hardware`.
 * A C++ compiler and the matching CUDA 12 or 13 development toolkit (``nvcc``) only if building TMol from source.
 * Enough storage for the Python environment and configured released model weights.
+* On Apple Silicon (macOS), use the MPS path instead of CUDA — see :ref:`macos-apple-silicon`.
 
 .. _supported-hardware:
 
@@ -40,6 +41,9 @@ RFD4-Proteina has been tested and confirmed to run on the following NVIDIA GPUs.
    * - Ampere
      - A100 SXM4 40GB and 80GB, A100 PCIe 40GB and 80GB
      -
+
+Apple Silicon (M-series) Macs are supported through the PyTorch MPS backend; see
+:ref:`macos-apple-silicon`.
 
 .. _native-python-installation:
 
@@ -178,6 +182,9 @@ Deployment options
    * - PyPI
      - ``uv pip install rfd4-proteina``
      - Add the ``all-cuda12`` or ``all-cuda13`` extra to match the driver. ``uv`` is about five times faster than ``pip`` for this environment; ``pip install`` also works.
+   * - Apple Silicon (macOS)
+     - ``uv pip install -e . "torch==2.14.1"``
+     - PyTorch MPS backend, no CUDA extra. See :ref:`macos-apple-silicon`.
 
 The CUDA profiles accept cuEquivariance 0.13.x and TMol 0.2.x with the CUDA-major operator package; the container images pin the exact versions.
 Linux x86_64 is the qualified platform; the pinned wheels also exist for aarch64 but are not
@@ -242,6 +249,93 @@ For native checkpoints, mount them read-only and pass ``hf_ckpt_path=null``,
 ``autoencoder_ckpt_path=/checkpoints/...``. The CPU image is intended for
 preprocessing and explicit CPU metrics; model generation requires a qualified
 NVIDIA runtime.
+
+.. _macos-apple-silicon:
+
+macOS and Apple Silicon (MPS)
+-------------------------------
+
+RFD4-Proteina runs on Apple Silicon (M-series) Macs, using the PyTorch **MPS**
+(Metal) backend for generation and a native **JAX-on-Metal** build of the
+refolding oracle instead of the Apptainer image. This path was validated on an
+Apple M2 Ultra Mac Studio (192 GiB unified memory, macOS 27.2). The CUDA operators
+(fused cuEquivariance / TMol kernels and the BioIR backend) are not available on
+Apple Silicon; for NVIDIA GPUs see :ref:`supported-hardware`.
+
+Prerequisites
+~~~~~~~~~~~~~~~
+
+* An Apple Silicon Mac (M-series) with the Xcode Command Line Tools installed.
+* Python 3.12 (validated on 3.12.10).
+* No CUDA: do **not** install a ``cuda12`` / ``cuda13`` extra.
+
+Generator environment
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install the base package (no CUDA extra) into a Python 3.12 environment; the macOS
+``arm64`` Torch wheel includes the MPS backend. Install ``uv`` first as in
+:ref:`native-python-installation`, then from the checkout root:
+
+.. code-block:: bash
+
+   uv pip install -e . "torch==2.14.1"
+   # add --group dev for pytest / ruff and the development tools
+
+Confirm the device:
+
+.. code-block:: bash
+
+   bash skills/rfd4-proteina-setup/scripts/preflight.sh
+   # prints, e.g.:  GPU: Apple MPS (macOS 27.2, torch 2.14.1)
+
+Generate on MPS. The default ``hardware.accelerator=gpu`` runs on the Apple GPU;
+use ``precision=32-true``, which is faster than ``bf16-mixed`` on MPS:
+
+.. code-block:: bash
+
+   rfd4-generate inputs=data/benchmarks/monomer/monomer-short.cif.zst \
+       num_replicates=1 precision=32-true compile_lengths=null \
+       num_workers=0 verbose=true out_dir=./runs/smoke
+
+Refolding oracle (native JAX on Metal)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Apptainer oracle image is Linux/CUDA only. On Apple Silicon the oracle runs
+natively from a **second** Python 3.12 environment that holds the
+``alphafold3-open`` fork built for macOS, together with ``jax`` / ``jaxlib`` and
+the Metal plugin ``jax-mps`` (validated with jax 0.10.2, jax-mps 0.10.9,
+alphafold3-open 3.0.5.post3). Select it in ``.env.local``:
+
+.. code-block:: bash
+
+   AF3_RUNTIME=native
+   AF3_JAX_BACKEND=mps              # or: cpu
+   AF3_PYTHON=/path/to/af3open/bin/python
+   AF3_MODEL_DIR=/path/to/weights   # AF3 or OpenFold3 weights
+   AF3_JAX_CACHE_DIR=/path/to/jax_compilation_cache
+   # AF3_FLASH_ATTENTION_IMPLEMENTATION=xla   # required in native mode (the default)
+   # AF3_FOLD_TIMEOUT_PER_DESIGN_S=900        # optional per-design fold timeout (seconds)
+
+Leave ``AF3_LAUNCHER_SOCKET_TEMPLATE`` unset to let the oracle start its own
+daemon. Then add ``metrics/refolding_oracles=of3`` (or ``=af3``) and the refolding
+metrics tags to score designability, exactly as on CUDA.
+
+Notes and limits
+~~~~~~~~~~~~~~~~~~
+
+* **Unified memory / no OOM-killer.** macOS does not kill an over-budget process;
+  a job that exceeds physical memory swaps and can hang the machine. Size runs
+  with headroom. On the 192 GiB M2 Ultra the largest co-resident
+  generate-plus-refold run (N=1024) peaked at about 134 GB.
+* **Monomer length ceiling.** Single-shot monomer generation is validated up to
+  **N <= 2047** residues; ``N = 2048`` fails inside MPSGraph (an INT_MAX limit).
+* **Precision.** ``precision=32-true`` is faster than ``bf16-mixed`` on MPS.
+* **Metrics.** Generation, the default inline metrics, and native AF3 / OpenFold3
+  refolding are validated on MPS. Metrics that require the CUDA TMol /
+  cuEquivariance operators or the BioIR backend are unavailable on Apple Silicon.
+* **Cross-backend reproducibility.** JAX on Metal and on CUDA/CPU use different
+  PRNGs, so refolds are not bit-identical across backends; agreement is by
+  metric / verdict equivalence, not a bitwise match.
 
 Environment files and paths
 ---------------------------
