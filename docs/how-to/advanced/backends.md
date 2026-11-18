@@ -32,6 +32,19 @@ the released checkpoints in bf16 (144 PPI designs), the median aligned CA RMSD b
 between basins after the first few steps and then neither grow nor heal. Compare designs by distribution,
 not one to one. The first velocity prediction from identical noise is the exception, and `test_bioir_first_step_velocity_matches_native` pins it.
 
+Each BioIR search writes oracle results to a fresh directory under `out_dir/bioir_search/`.
+Repeated scoring within that search reuses its own results; later batches, ranks, retries and
+restarted runs cannot reuse them. These directories remain on disk for inspection and can use
+substantial space in oracle-heavy runs. Final evaluation reuses an emitted final candidate's
+untransformed AF3/OF3 refold when its staged structure, conditioning and oracle settings match.
+The complete, readable CIF and confidence JSON are copied to its final output directory, preserving
+compression; final refolding metrics and pass criteria still run. Changed inputs/settings, incomplete
+artifacts, intermediate outputs, other oracles and pre-oracle transforms use ordinary refolding.
+
+Direct multi-GPU generation uses independent, reproducible rank seeds with both backends;
+see [Running the model](../run-the-model.md). Use `gen_njobs=1` for one direct DDP launch:
+`gen_njobs` partitions sampling starts across separately launched jobs, not GPU ranks.
+
 BioIR takes no padding buckets: `compile_lengths` is ignored, and each request runs at its own
 length. CUDA graphs are captured per `(batch, tokens)` shape. The settings live under `bioir:` in
 `configs/inference.yaml`:
