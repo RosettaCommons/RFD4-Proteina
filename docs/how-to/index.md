@@ -100,6 +100,7 @@ More guides are coming; this page will grow with them.
 
 binder-in-10-lines
 cookbook
+mcsa-task
 input_prep/index
 run-the-model
 partial-diffusion

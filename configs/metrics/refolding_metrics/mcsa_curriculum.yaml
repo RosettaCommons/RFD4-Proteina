@@ -1,0 +1,8 @@
+defaults:
+  - all_refolding_metrics
+  - _self_
+
+curriculum_geometry:
+  _target_: rfproteina.metrics.motif_geometry.MotifGeometryMetric
+  aggregation: [median]
+  required_tags_all: [mcsa_curriculum, "is_refold:untransformed"]

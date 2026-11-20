@@ -1,0 +1,23 @@
+defaults:
+  - all_pass_criteria
+  - _self_
+
+curriculum_backbone:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  required_tags_all: [mcsa_curriculum]
+  metric_thresholds:
+    curriculum_geometry.scaffold_ca_rmsd: {max: 2.0}
+    curriculum_geometry.motif_bb_rmsd: {max: 1.0}
+
+# A conservative, atom-labelled apo geometry screen, not proof of catalytic activity.
+curriculum_site_geometry:
+  _target_: rfproteina.metrics.oracles.pass_criterion_metric.PassCriterionMetric
+  required_tags_all: [mcsa_curriculum]
+  metric_thresholds:
+    curriculum_geometry.scaffold_ca_rmsd: {max: 2.0}
+    curriculum_geometry.motif_bb_rmsd: {max: 1.0}
+    curriculum_geometry.worst_segment_bb_rmsd: {max: 1.5}
+    curriculum_geometry.catalytic_rmsd: {max: 1.5}
+    curriculum_geometry.max_catalytic_displacement: {max: 2.0}
+    curriculum_geometry.max_catalytic_distance_error: {max: 1.0}
+    sequence_adherence.n_violations: {max: 0}

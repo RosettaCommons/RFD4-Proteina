@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "reference": {
+    "file": "2dhn.cif.zst",
+    "sha256": "7a187ad392b7d0abe6739428438427e62e716eed9def9e165037c017ccbb9d44",
+    "source_url": "https://files.rcsb.org/download/2DHN.cif",
+    "pdb_id": "2DHN",
+    "mcsa_id": 664,
+    "chain": "A",
+    "numbering": "label_seq_id",
+    "catalytic_residues": [
+      22,
+      100
+    ]
+  },
+  "tasks": [
+    {
+      "id": "mcsa_l1_08",
+      "level": 1,
+      "motif_size": 8,
+      "series": "fragmented",
+      "segments": [
+        [
+          18,
+          25
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l2_12",
+      "level": 2,
+      "motif_size": 12,
+      "series": "fragmented",
+      "segments": [
+        [
+          20,
+          25
+        ],
+        [
+          98,
+          103
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l3_16",
+      "level": 3,
+      "motif_size": 16,
+      "series": "fragmented",
+      "segments": [
+        [
+          20,
+          25
+        ],
+        [
+          70,
+          74
+        ],
+        [
+          98,
+          102
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l4_20",
+      "level": 4,
+      "motif_size": 20,
+      "series": "fragmented",
+      "segments": [
+        [
+          20,
+          24
+        ],
+        [
+          70,
+          74
+        ],
+        [
+          98,
+          102
+        ],
+        [
+          112,
+          116
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l5_24",
+      "level": 5,
+      "motif_size": 24,
+      "series": "fragmented",
+      "segments": [
+        [
+          15,
+          18
+        ],
+        [
+          20,
+          23
+        ],
+        [
+          65,
+          68
+        ],
+        [
+          71,
+          74
+        ],
+        [
+          98,
+          101
+        ],
+        [
+          112,
+          115
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l6_28",
+      "level": 6,
+      "motif_size": 28,
+      "series": "fragmented",
+      "segments": [
+        [
+          15,
+          18
+        ],
+        [
+          20,
+          23
+        ],
+        [
+          65,
+          68
+        ],
+        [
+          71,
+          74
+        ],
+        [
+          98,
+          101
+        ],
+        [
+          104,
+          107
+        ],
+        [
+          112,
+          115
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_l7_32",
+      "level": 7,
+      "motif_size": 32,
+      "series": "fragmented",
+      "segments": [
+        [
+          15,
+          18
+        ],
+        [
+          20,
+          23
+        ],
+        [
+          27,
+          30
+        ],
+        [
+          65,
+          68
+        ],
+        [
+          71,
+          74
+        ],
+        [
+          98,
+          101
+        ],
+        [
+          104,
+          107
+        ],
+        [
+          112,
+          115
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_08",
+      "level": 1,
+      "motif_size": 8,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          25
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_12",
+      "level": 2,
+      "motif_size": 12,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          29
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_16",
+      "level": 3,
+      "motif_size": 16,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          33
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_20",
+      "level": 4,
+      "motif_size": 20,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          37
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_24",
+      "level": 5,
+      "motif_size": 24,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          41
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_28",
+      "level": 6,
+      "motif_size": 28,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          45
+        ]
+      ]
+    },
+    {
+      "id": "mcsa_control_32",
+      "level": 7,
+      "motif_size": 32,
+      "series": "contiguous_control",
+      "segments": [
+        [
+          18,
+          49
+        ]
+      ]
+    }
+  ]
+}
