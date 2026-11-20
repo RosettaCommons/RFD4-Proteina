@@ -149,6 +149,7 @@ Issues = "https://github.com/RosettaCommons/RFD4-Proteina/issues"
 [project.scripts]
 rfd4-generate = "script_utils.entrypoints:generate"
 rfd4-evaluate = "rfproteina.evaluate:main_hydra"
+rfd4-mcsa = "script_utils.mcsa_curriculum:main"
 rfd4-train = "rfproteina.train:main"
 rfd4-train-ae = "rfproteina.partial_autoencoder.train:main"
 

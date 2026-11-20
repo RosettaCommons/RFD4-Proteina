@@ -1,5 +1,10 @@
 # MCSA benchmark inputs
 
+For the task definition, generation/refolding commands, metric interpretation, and
+the runnable 8–32-residue curriculum, see the
+[M-CSA task guide](../../../docs/how-to/mcsa-task.md) and
+[curriculum manifest](curriculum/README.md).
+
 Each of `mcsa_37`, `mcsa_37_fixed_ligand`, and `mcsa_37_no_ligand` contains the
 same 37 of the original 41 targets. The validation subsets contain 15 targets, including
 `M0907_1rbl` (Rubisco).
