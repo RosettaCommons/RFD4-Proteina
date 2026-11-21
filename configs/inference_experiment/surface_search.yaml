@@ -1,0 +1,34 @@
+# @package _global_
+# Retained-layout partial-diffusion search. Zero cost/geometry and random=1
+# gives an equal-branch-budget random-selection control.
+defaults:
+  - inference_on_user_inputs
+  - override /metrics: surface_preference
+  - _self_
+
+surface_selected_keys: ???
+surface_reference_file: ???
+surface_cost_weight: -1.0
+surface_geometry_weight: -0.5
+surface_random_weight: 0.0
+generation:
+  args:
+    partial_trajectory_fraction_steps: 0.35
+search:
+  beam_width: 2
+  n_branch: 2
+  save_rollouts: false
+  checkpoints:
+    "10":
+      metrics: [surface]
+      use_clean_prediction: true
+      rewards:
+        surface.cost: {weight: "${surface_cost_weight}"}
+        surface.backbone_rmsd: {weight: "${surface_geometry_weight}", clip: {max: 4.0}}
+        surface.random_score: {weight: "${surface_random_weight}"}
+    "21":
+      metrics: [surface]
+      rewards:
+        surface.cost: {weight: "${surface_cost_weight}"}
+        surface.backbone_rmsd: {weight: "${surface_geometry_weight}", clip: {max: 4.0}}
+        surface.random_score: {weight: "${surface_random_weight}"}

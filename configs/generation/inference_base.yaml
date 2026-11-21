@@ -19,6 +19,15 @@ args:
 
   condition_decoder_on_sequence_prediction: true
 
+  # Optional retained-layout surface steering before trunk argmax / decoder C_SEQ.
+  # Three-letter canonical AA -> additive logit bias. Token indices are zero-based
+  # in the prepared model input; fixed/context/padding tokens are never changed.
+  sequence_logit_bias: null
+  sequence_bias_token_indices: null
+  # Optional gradient-state scope for the AE sequence path (full generation).
+  # Requires condition_decoder_on_sequence_prediction=false.
+  sequence_guidance_token_indices: null
+
   # +---------- Guidance ----------+
   # TODO: Audit guidance_w and CFG usage
   guidance_w: 1.0   # classifier-free guidance weight, 1.0 for no CFG, 0.0 for excluding the main model

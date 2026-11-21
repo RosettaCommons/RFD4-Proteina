@@ -57,6 +57,7 @@ from rfproteina.nn.modules.pair_bias_attn import sdpa_training_context
 from rfproteina.partial_autoencoder.autoencoder import AutoEncoder
 from rfproteina.partial_autoencoder.decoder import get_allowed_residue_type_mask
 from rfproteina.rewards.reward_model import SEARCH_REWARD_KEY
+from rfproteina.surface_engineering import AA_NAMES, bias_sequence_logits
 from rfproteina.utils.common import design_output_dir, ensure_dir
 from rfproteina.utils.coors import nm_to_ang, trans_nm_to_atom37
 from rfproteina.utils.ddp import RankedLogger
@@ -1689,16 +1690,46 @@ class Proteina(L.LightningModule):
             **extra_info["batch"],
             "sequence_logits": extra_info.get("sequence_logits"),
         }
+        # Sampler features were created under inference_mode. Autograd may
+        # need to save masks/conditioning features for decoder backward, so
+        # materialize normal tensors inside the caller's grad-enabled context.
+        decode_batch = tree_map(
+            lambda value: value.clone() if isinstance(value, torch.Tensor) and value.is_inference() else value,
+            decode_batch,
+        )
+        # Decode the current state but block gradient propagation into every
+        # unselected/fixed state token, including through decoder attention.
+        inf_cfg = getattr(self, "inf_cfg", None)
+        indices = inf_cfg.args.get("sequence_guidance_token_indices") if inf_cfg is not None else None
+        if indices is not None:
+            if not indices or any(
+                not isinstance(i, int) or i < 0 or i >= state["local_latents"].shape[1] for i in indices
+            ):
+                raise ValueError("Invalid sequence_guidance_token_indices")
+            if inf_cfg.args.get("condition_decoder_on_sequence_prediction", False):
+                raise ValueError(
+                    "Sequence gradient guidance requires the AE decision path: "
+                    "condition_decoder_on_sequence_prediction=false"
+                )
+            selected = torch.zeros_like(decode_batch["padding_mask"])
+            selected[:, list(indices)] = True
+            _, emitted = compute_ae_masks(decode_batch)
+            fixed = decode_batch[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
+            selected &= emitted & ~fixed
+            state = {key: torch.where(selected[..., None], value, value.detach()) for key, value in state.items()}
         formatted = self._format_sample_local_latents(
             x=state,
             ret_mode="coors37_n_aatype",
             batch=decode_batch,
         )
-        return {
+        result = {
             "atom37_coords": formatted["coors"],
             "residue_type": formatted["residue_type"],
             "padding_mask": formatted["padding_mask"],
         }
+        if indices is not None:
+            result["sequence_logits"] = formatted["sequence_logits"]
+        return result
 
     def insertion_mapping_for_guidance(
         self,
@@ -2052,6 +2083,9 @@ class Proteina(L.LightningModule):
             condition_on_predicted_sequence = bool(
                 inf_cfg is not None and inf_cfg.args.get("condition_decoder_on_sequence_prediction", False)
             )
+            sequence_bias = inf_cfg.args.get("sequence_logit_bias") if inf_cfg is not None else None
+            if sequence_bias and not condition_on_predicted_sequence:
+                raise ValueError("sequence_logit_bias requires condition_decoder_on_sequence_prediction=true")
             if condition_on_predicted_sequence:
                 sequence_logits = batch.get("sequence_logits")
                 if sequence_logits is None:
@@ -2066,6 +2100,26 @@ class Proteina(L.LightningModule):
                     )
 
                 logits_for_decode = sequence_logits
+                if sequence_bias:
+                    indices = inf_cfg.args.get("sequence_bias_token_indices")
+                    if not indices or any(
+                        not isinstance(i, int) or i < 0 or i >= sequence_logits.shape[1] for i in indices
+                    ):
+                        raise ValueError("sequence_logit_bias needs explicit valid sequence_bias_token_indices")
+                    if set(sequence_bias) - set(AA_NAMES):
+                        raise ValueError("sequence_logit_bias must name canonical three-letter amino acids")
+                    bias = torch.zeros(
+                        sequence_logits.shape[-1], device=sequence_logits.device, dtype=sequence_logits.dtype
+                    )
+                    for name, value in sequence_bias.items():
+                        bias[UNIFIED_ATOM37_ENCODING.token_to_idx[name]] = float(value)
+                    selected = torch.zeros_like(padding_mask)
+                    selected[:, list(indices)] = True
+                    _, emit = compute_ae_masks(decode_batch)
+                    fixed = decode_batch[C_SEQ.full_name] != UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]
+                    logits_for_decode = bias_sequence_logits(
+                        sequence_logits, bias, selected & emit & padding_mask, fixed
+                    )
                 allowed_residue_types = get_allowed_residue_type_mask(
                     device=logits_for_decode.device,
                 )
@@ -2111,6 +2165,11 @@ class Proteina(L.LightningModule):
                 "atom_mask": atom_mask,
                 "residue_type": residue_type_full,  # [b, n] - padded, use mask to slice
                 "padding_mask": padding_mask,  # [b, n] - True for non-padding tokens
+                **(
+                    {"sequence_logits": output_decoder["sequence_logits"]}
+                    if "sequence_logits" in output_decoder
+                    else {}
+                ),
             }
         else:
             raise NotImplementedError(f"{ret_mode} format for data modes `[bb_ca, latent_locals]` not implemented")

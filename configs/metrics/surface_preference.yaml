@@ -1,0 +1,10 @@
+# Only native structure metrics; no oracle/container dependency.
+inline_metrics:
+  surface:
+    _target_: rfproteina.metrics.surface_preference.SurfacePreferenceMetric
+    selected_keys: ${surface_selected_keys}
+    reference_file: ${surface_reference_file}
+refolding_oracles: {}
+refolding_metrics: {}
+pass_criteria: {}
+pre_oracle_filters: {}

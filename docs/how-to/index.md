@@ -103,6 +103,7 @@ cookbook
 input_prep/index
 run-the-model
 partial-diffusion
+surface-engineering
 advanced/metric-guidance
 advanced/backends
 search
