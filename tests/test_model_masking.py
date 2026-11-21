@@ -28,7 +28,7 @@ Expected values below are literal and independent of the production mask formula
 Every behavioral test reuses this oracle so a failing assertion names the exact grid column.
 """
 
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -856,3 +856,100 @@ def test_sequence_prediction_conditions_decoder_through_batch(token_batch, flow_
     expected_values = torch.where(emit_mask, 4, batch[C_SEQ.full_name])
     expected_values[0, 0] = 7
     assert torch.equal(conditioned_batch[C_SEQ.full_name], expected_values)
+
+
+class TestSurfaceSequenceDecision:
+    @pytest.mark.parametrize("inference_batch", [False, True])
+    def test_guidance_logits_have_no_gradient_to_fixed_or_unselected_state(self, token_batch, inference_batch) -> None:
+        """A deliberately all-to-all decoder must not leak steering to fixed sites."""
+        batch = {
+            **token_batch,
+            C_SEQ.full_name: torch.full((2, len(TOKEN_NAMES)), UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]),
+        }
+        batch[C_SEQ.full_name][0, 0] = UNIFIED_ATOM37_ENCODING.token_to_idx["ALA"]
+        batch["guidance_feature_scale"] = torch.ones(2, len(TOKEN_NAMES), 2)
+        if inference_batch:
+            with torch.inference_mode():
+                batch = {key: value.clone() for key, value in batch.items()}
+
+        def decode(batch, required_atom_mask=None):
+            _, emit = compute_ae_masks(batch)
+            # Depend on ALL token latents, making a missing detach mask visible.
+            logits = (
+                (batch["z_latent"] * batch["guidance_feature_scale"])
+                .sum(dim=(1, 2))[:, None, None]
+                .expand(-1, len(TOKEN_NAMES), N_RESIDUE_TYPES)
+            )
+            return {
+                "coors_nm": torch.zeros(2, len(TOKEN_NAMES), 37, 3),
+                "residue_type": torch.zeros_like(emit, dtype=torch.long),
+                "emit_mask": emit,
+                "atom_mask": emit[..., None].expand(-1, -1, 37),
+                "sequence_logits": logits,
+            }
+
+        model = SimpleNamespace(
+            autoencoder=SimpleNamespace(decode=decode),
+            inf_cfg=OmegaConf.create(
+                {
+                    "args": {
+                        "condition_decoder_on_sequence_prediction": False,
+                        "sequence_guidance_token_indices": [0],
+                    }
+                }
+            ),
+        )
+        model._format_sample_local_latents = MethodType(Proteina._format_sample_local_latents, model)
+        state = {
+            "bb_ca": torch.ones(2, len(TOKEN_NAMES), 3, requires_grad=True),
+            "local_latents": torch.ones(2, len(TOKEN_NAMES), 2, requires_grad=True),
+        }
+        decoded = Proteina.decode_for_guidance(model, state, {"batch": batch})
+        (grad,) = torch.autograd.grad(decoded["sequence_logits"].sum(), state["local_latents"])
+        assert not grad[0].any(), "The only selected token in row zero is fixed"
+        assert grad[1, 0].abs().sum() > 0
+        assert not grad[1, 1:].any(), "Decoder attention must not leak to unselected state"
+
+    def test_bias_reaches_decoder_but_never_replaces_user_sequence(self, token_batch, flow_matcher) -> None:
+        """Catch a bias applied after argmax or only inside the AE decoder."""
+        captured = []
+
+        def decode(batch, required_atom_mask=None):
+            captured.append(batch[C_SEQ.full_name].clone())
+            _, emit = compute_ae_masks(batch)
+            return {
+                "coors_nm": torch.zeros(2, len(TOKEN_NAMES), 37, 3),
+                "residue_type": batch[C_SEQ.full_name] * emit,
+                "emit_mask": emit,
+                "atom_mask": emit[..., None].expand(-1, -1, 37),
+            }
+
+        ala = UNIFIED_ATOM37_ENCODING.token_to_idx["ALA"]
+        asp = UNIFIED_ATOM37_ENCODING.token_to_idx["ASP"]
+        batch = {
+            **token_batch,
+            C_SEQ.full_name: torch.full((2, len(TOKEN_NAMES)), UNIFIED_ATOM37_ENCODING.token_to_idx["<M>"]),
+            "token_type": torch.zeros(2, len(TOKEN_NAMES), dtype=torch.long),
+            "sequence_logits": torch.zeros(2, len(TOKEN_NAMES), N_RESIDUE_TYPES),
+        }
+        batch[C_SEQ.full_name][0, 0] = ala
+        batch["sequence_logits"][..., ala] = 1.0
+        state = flow_matcher.apply_flow_emit_masks(
+            {"bb_ca": torch.ones(2, len(TOKEN_NAMES), 3), "local_latents": torch.ones(2, len(TOKEN_NAMES), 2)}, batch
+        )
+        model = SimpleNamespace(
+            autoencoder=SimpleNamespace(decode=decode),
+            inf_cfg=OmegaConf.create(
+                {
+                    "args": {
+                        "condition_decoder_on_sequence_prediction": True,
+                        "sequence_logit_bias": {"ASP": 2.0},
+                        "sequence_bias_token_indices": [0],
+                    }
+                }
+            ),
+        )
+        Proteina._format_sample_local_latents(model, x=state, ret_mode="coors37_n_aatype", batch=batch)
+        assert captured[0][0, 0] == ala
+        assert captured[0][1, 0] == asp
+        assert captured[0][1, 2] == ala, "An unselected emitted residue must retain baseline prediction"

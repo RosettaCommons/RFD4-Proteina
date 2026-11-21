@@ -1,0 +1,24 @@
+# @package _global_
+defaults:
+  - inference_on_user_inputs
+  - override /metrics: surface_preference
+  - _self_
+
+surface_selected_keys: ???
+surface_reference_file: ???
+search:
+  beam_width: 2
+  n_branch: 2
+  save_rollouts: false
+  checkpoints:
+    "30":
+      metrics: [surface]
+      use_clean_prediction: true
+      rewards:
+        surface.cost: {weight: -1.0}
+        surface.backbone_rmsd: {weight: -0.5, clip: {max: 4.0}}
+    "60":
+      metrics: [surface]
+      rewards:
+        surface.cost: {weight: -1.0}
+        surface.backbone_rmsd: {weight: -0.5, clip: {max: 4.0}}

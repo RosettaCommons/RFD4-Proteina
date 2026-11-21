@@ -168,6 +168,7 @@ class AutoEncoder(L.LightningModule):
             "residue_type": residue_type * emit_mask,
             "emit_mask": emit_mask,
             "atom_mask": atom_mask,
+            **({"sequence_logits": output_dec["seq_logits"]} if "seq_logits" in output_dec else {}),
         }
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor | tuple[torch.Tensor, dict]:

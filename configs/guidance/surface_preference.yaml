@@ -1,0 +1,18 @@
+# Expected XTR preference on the AE sequence path; full generation only.
+# Supply generation.args.sequence_guidance_token_indices and explicitly set
+# generation.args.condition_decoder_on_sequence_prediction=false.
+weight: -0.05
+objective: xtr
+metrics:
+  surface:
+    _target_: rfproteina.metrics.surface_preference.ExpectedSurfacePreferenceMetric
+    token_indices: ${generation.args.sequence_guidance_token_indices}
+    objective: ${guidance.objective}
+terms:
+  surface.cost:
+    local_latents:
+      _target_: rfproteina.guidance.schedules.window
+      _partial_: true
+      w: ${guidance.weight}
+      t_start: 0.6
+      t_end: 0.9
