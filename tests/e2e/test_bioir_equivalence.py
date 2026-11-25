@@ -246,7 +246,8 @@ def test_bioir_graph_replay_follows_every_batch(tmp_path: Path):
 
         with mock.patch.object(rollout, "velocity_flow_step", record):
             overrides = (*extra, f"bioir.cuda_graph={str(graph).lower()}")
-            _generate("bioir", inputs, tmp_path / f"graph_{graph}", overrides, replicates=8, batch_size=8)
+            model, _ = _generate("bioir", inputs, tmp_path / f"graph_{graph}", overrides, replicates=8, batch_size=8)
+            assert model._full_bioir.model.graph_status()["enabled"] is graph
         return seen
 
     with_graphs, without_graphs = first_velocities(True), first_velocities(False)
