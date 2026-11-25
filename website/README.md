@@ -63,3 +63,8 @@ The homepage and repository README link to the [bioRxiv preprint](https://www.bi
 Its DOI is `10.64898/2026.11.12.766037`. bioRxiv hosts the manuscript and manages
 revision history; this website does not maintain separate PDF copies or versions.
 Keep the BibTeX citations in `website/index.html` and `README.md` consistent.
+
+The legacy `/assets/paper/RFD4-Proteina.pdf` URL is preserved as a directory
+with an HTML redirect to bioRxiv. Static hosting adds the trailing slash and
+serves `index.html`, which redirects without JavaScript and includes a fallback link.
+Keep this directory so existing paper links continue to work.
