@@ -52,6 +52,7 @@ _JAX_COMPILATION_CACHE_DIR = flags.DEFINE_string(
     "Persistent JAX compilation cache directory.",
 )
 _GPU_DEVICE = flags.DEFINE_integer("gpu_device", 0, "Visible JAX GPU index.")
+_JAX_BACKEND = flags.DEFINE_enum("jax_backend", "gpu", ["gpu", "mps", "cpu"], "JAX backend for the fold.")
 _BUCKETS = flags.DEFINE_list(
     "buckets",
     ["64", "128", "192", "256", "384", "512", "768", "1024", "1536", "2048", "2560", "3072"],
@@ -244,8 +245,14 @@ def _setup_runner() -> tuple[Any, datetime.date, bool]:
 
     max_template_date = datetime.date.fromisoformat(_MAX_TEMPLATE_DATE.value)
 
-    devices = jax.local_devices(backend="gpu")
+    backend = _JAX_BACKEND.value
+    if backend != "gpu" and _FLASH_ATTENTION_IMPLEMENTATION.value != "xla":
+        raise ValueError(f"--jax_backend={backend} requires --flash_attention_implementation=xla.")
+    devices = jax.local_devices(backend=backend)
     gpu_device = _GPU_DEVICE.value
+    if backend != "gpu":
+        # Upstream AF3 v3.0.5 does the same: tokamax picks kernels at trace time from JAX's default device.
+        jax.config.update("jax_default_device", devices[gpu_device])
     model_dir = _MODEL_DIR.value or os.environ.get("AF3_MODEL_DIR")
     if model_dir is None:
         raise ValueError("--model_dir or AF3_MODEL_DIR is required")
@@ -266,7 +273,12 @@ def _setup_runner() -> tuple[Any, datetime.date, bool]:
         ),
         device=devices[gpu_device],
         model_dir=pathlib.Path(model_dir),
-        cache_dir=(pathlib.Path(_JAX_COMPILATION_CACHE_DIR.value) if _JAX_COMPILATION_CACHE_DIR.value else None),
+        # ModelRunner uses cache_dir only for the tokamax autotune cache; autotune runs only on --jax_backend=gpu.
+        cache_dir=(
+            pathlib.Path(_JAX_COMPILATION_CACHE_DIR.value)
+            if _JAX_COMPILATION_CACHE_DIR.value and _JAX_BACKEND.value == "gpu"
+            else None
+        ),
     )
     _ = model_runner.model_params  # force weights load
     return model_runner, max_template_date, of3_weights
