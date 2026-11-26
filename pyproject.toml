@@ -108,6 +108,14 @@ all-cuda13 = [
     "cuequivariance-ops-torch-cu13>=0.13.0,<0.14; sys_platform == 'linux'",
     "bionemo-ir>=0.2.1,<0.3; sys_platform == 'linux'",
 ]
+# Apple Silicon (MPS) profile: no CUDA, cuEquivariance or BioIR packages. tmol ships CPU kernels with Metal offload.
+macos = [
+    "tmol>=0.2.0,<0.3",
+    "posebusters",
+    "matplotlib",
+    "scikit-learn",
+    "boto3>=1.34,<2",
+]
 all-cuda12 = [
     "tmol[cu12]>=0.2.0,<0.3; sys_platform == 'linux'",
     "posebusters",

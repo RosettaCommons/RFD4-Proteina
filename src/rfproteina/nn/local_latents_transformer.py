@@ -12,6 +12,7 @@ from rfproteina.nn.modules.norm import make_norm, set_norm_type
 from rfproteina.nn.modules.pair_rep_initial import PairReprBuilder
 from rfproteina.nn.modules.pair_update import PairReprUpdate
 from rfproteina.nn.modules.seq_transition_af3 import Transition
+from rfproteina.utils.device import prefer_eager_trunk
 from rfproteina.utils.torch import raise_dynamo_cache_for
 from rfproteina.utils.torch_compile import report_compile_progress, torch_compile_kwargs
 
@@ -346,6 +347,8 @@ class LocalLatentsTransformer(torch.nn.Module):
         a fixed shape (training or reserved eval buckets); otherwise, runs the registered eager layers.
         """
         use_compiled = bool(self._compiled_attn_blocks) and (self.training or self._shapes_reserved)
+        if use_compiled and not self.training and prefer_eager_trunk(s.shape[1], s.device):
+            use_compiled = False  # MPS: eager is faster and leaner for long padded lengths
         attn = self._compiled_attn_blocks if use_compiled else self.transformer_layers
 
         if not self.update_pair_repr:

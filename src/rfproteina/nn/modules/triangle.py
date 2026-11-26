@@ -9,6 +9,8 @@ from einops import rearrange
 from jaxtyping import Float
 from opt_einsum import contract as einsum
 
+from rfproteina.utils.device import autocast_dtype
+
 # from rfproteina import SHOULD_USE_CUEQUIVARIANCE
 # from rfproteina.utils.activation_checkpointing import activation_checkpointing
 
@@ -131,8 +133,7 @@ class TriangleAttention(nn.Module):
     def _forward_cuequivariance(self, pair: torch.Tensor, bias: torch.Tensor, mask_I: torch.Tensor) -> torch.Tensor:
         """cuEquivariance triangle attention implementation."""
         # Handle autocast conversion
-        if torch.is_autocast_enabled():
-            dtype = torch.get_autocast_dtype("cuda")
+        if (dtype := autocast_dtype(pair.device.type)) is not None:
             pair = pair.to(dtype=dtype)
             bias = bias.to(dtype=dtype)
 
@@ -339,8 +340,7 @@ class TriangleMultiplication(nn.Module):
         """cuEquivariance triangle multiplication implementation."""
         # Handle autocast conversion
         # (Use bfloat16 for optimal performance)
-        if torch.is_autocast_enabled():
-            dtype = torch.get_autocast_dtype("cuda")
+        if (dtype := autocast_dtype(pair.device.type)) is not None:
             pair = pair.to(dtype=dtype)
 
         assert pair.dtype == torch.bfloat16, "cuEquivariance requires bfloat16 inputs for optimal performance"

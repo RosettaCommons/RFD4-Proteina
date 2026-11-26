@@ -31,6 +31,8 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 import torch
 from torch.nn import functional as F
 
+from rfproteina.utils.device import prefer_eager_trunk
+
 logger = logging.getLogger(__name__)
 
 # Dimension name for the primary token/index dimension in jaxtyping annotations
@@ -384,6 +386,10 @@ class BatchedDataSample(ABC):
             if not isinstance(fixed_size, int):
                 buckets = sorted(int(b) for b in fixed_size)
                 fixed_size = next((b for b in buckets if b >= observed), None)
+                if dim_name == "I" and prefer_eager_trunk(observed):
+                    # MPS: long inputs run the eager trunk (see prefer_eager_trunk), so bucket padding only adds
+                    # n^2 pair cost; pad to the 16-aligned length instead.
+                    fixed_size = -(-observed // 16) * 16
                 if fixed_size is None:
                     raise ValueError(
                         f"Sample dimension {dim_name}={observed} exceeds the largest bucket "

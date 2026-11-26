@@ -35,6 +35,7 @@ from rfproteina.nn.modules.adaptive_ln_scale import (
 )
 from rfproteina.nn.modules.norm import make_norm
 from rfproteina.utils.common import default, exists
+from rfproteina.utils.device import autocast_dtype, has_sdpa_backend
 
 # Large negative value for masking (not -inf to avoid gradient issues)
 NEG_INF = -1e4
@@ -125,7 +126,7 @@ class PairBiasAttention(nn.Module):
             Updated node features of shape (b, n, d_s).
         """
         # Get target dtype for the attention kernel (handles autocast)
-        target_dtype = torch.get_autocast_dtype("cuda") if torch.is_autocast_enabled() else node_feats.dtype
+        target_dtype = autocast_dtype(node_feats.device.type) or node_feats.dtype
 
         node_feats = self.node_norm(node_feats)
         h = self.heads
@@ -170,7 +171,7 @@ class PairBiasAttention(nn.Module):
 
         # SDPA on GPU; explicit einsum fallback on CPU (CI / local dev only, not
         # intended for production CPU inference).
-        if not torch.cuda.is_available():
+        if not has_sdpa_backend(q.device):
             scale = self.dim_head**-0.5
             sim = einsum("b h i d, b h j d -> b h i j", q, k) * scale
             if attn_bias is not None:

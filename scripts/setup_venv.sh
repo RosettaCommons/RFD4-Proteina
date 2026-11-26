@@ -9,7 +9,9 @@ case "${1:-}" in
     "") ;;
     *) echo "Usage: bash scripts/setup_venv.sh [--runtime]" >&2; exit 2 ;;
 esac
-if [[ "$runtime" == true && ( "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ) ]]; then
+is_apple_silicon=false
+[[ "$(uname -s)" == Darwin && "$(uname -m)" == arm64 ]] && is_apple_silicon=true
+if [[ "$runtime" == true && "$is_apple_silicon" != true && ( "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ) ]]; then
     echo "The native CUDA 13 dependency profile currently supports Linux x86_64 only." >&2
     exit 1
 fi
@@ -22,7 +24,7 @@ if ! command -v uv &>/dev/null; then
     echo ">>> Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh
     # Add uv to PATH for the remainder of this script
-    source "$HOME/.local/bin/env"
+    export PATH="$HOME/.local/bin:$PATH"
 else
     echo ">>> uv already installed: $(uv --version)"
 fi
@@ -77,6 +79,15 @@ mkdir -p "$CUSTOM_SAMPLING_TRANSFORMS_PKG"
 # ── 6. Install dependencies ────────────────────────────────────────────────
 echo ">>> Installing dependencies..."
 build_torch_constraint=$(python -c "import tomllib; print(next(d for d in tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies'] if d.startswith('torch')))")
+if [[ "$is_apple_silicon" == true ]]; then
+    # Apple Silicon: default PyTorch wheels include the MPS backend.
+    extra_args=()
+    [[ "$runtime" != true ]] && extra_args=(--group dev)
+    "$runtime_uv" pip install -e ".[macos]" "${extra_args[@]}"
+    "$runtime_uv" pip check || echo ">>> pip check reported issues (see above)"
+    echo ">>> Native Apple Silicon (MPS) environment ready: source $repo_root/.venv/bin/activate"
+    exit 0
+fi
 if [[ "$runtime" == true ]]; then
     "$runtime_uv" pip install --build-constraint <(printf '%s\n' "$build_torch_constraint") --torch-backend cu132 -e ".[all-cuda13]"
     "$runtime_uv" pip check

@@ -66,7 +66,7 @@ Key features:
 
 - Linux x86_64, Python 3.12, and an NVIDIA GPU with a CUDA 13-compatible driver (CUDA 12 and CPU-only containers are also available).
 - Tested GPUs: see the [supported hardware table](https://rfd4-proteina.org/latest/installation.html#supported-hardware). Check yours with `nvidia-smi`.
-- macOS and Windows are not supported.
+- Apple Silicon (arm64 macOS) is supported for inference through PyTorch MPS; see [Running on Apple Silicon](docs/how-to/apple-silicon.md). Windows is not supported.
 
 ## Install
 
