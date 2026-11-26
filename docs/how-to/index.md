@@ -11,6 +11,11 @@ the model at all yet.
     <span class="wf-card-body">One YAML spec, one command, and a gallery of inputs and designs per
     task.</span>
   </a>
+  <a class="wf-card" href="apple-silicon.html">
+    <span class="wf-card-title">Apple Silicon (MPS)</span>
+    <span class="wf-card-body">Install, device and precision behaviour, CPU parity check, and the
+    refolding oracles that run on a Mac.</span>
+  </a>
   <a class="wf-card" href="cookbook.html">
     <span class="wf-card-title">Cookbook</span>
     <span class="wf-card-body">Copy-paste YAML specs and overrides for monomers, binders, enzymes,
@@ -100,6 +105,7 @@ More guides are coming; this page will grow with them.
 
 binder-in-10-lines
 cookbook
+apple-silicon
 input_prep/index
 run-the-model
 partial-diffusion

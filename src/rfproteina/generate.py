@@ -45,6 +45,7 @@ with (
     from rfproteina.search.base_strategy import SearchStrategy
     from rfproteina.search.beam_search import BeamSearchStrategy
     from rfproteina.utils.ddp import RankedLogger
+    from rfproteina.utils.device import accelerator_name, resolve_accelerator, resolve_precision
     from rfproteina.utils.env import load_dotenv
     from rfproteina.utils.hydra import training_path_length_search_cutoffs
     from rfproteina.utils.logging import print_config_tree
@@ -627,7 +628,12 @@ def run_generation(
         prepare_dataset: Optional callback to validate or replace the seeded dataset before
             partitioning, compilation and loading. The loader consumes the returned samples.
     """
-    precision = cfg.precision
+    accelerator = resolve_accelerator(cfg.hardware.get("accelerator"))
+    if accelerator != accelerator_name():
+        os.environ["RFP_DEVICE"] = accelerator  # the rest of the run (autocast, attention paths) follows the request
+    precision = resolve_precision(cfg.precision, accelerator)
+    if accelerator == "mps":
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
     torch.set_float32_matmul_precision("high" if precision in ("32", "32-true") else "medium")
 
     # Determine config name for output paths
@@ -712,12 +718,13 @@ def run_generation(
             ),
             num_workers=num_workers,
             worker_init_fn=partial(initialize_worker_verbosity, verbose=cfg.get("verbose", False)),
-            pin_memory=True,
+            pin_memory=accelerator == "cuda",
         )
 
     trainer = L.Trainer(
-        accelerator="gpu",
-        devices=cfg.hardware.ngpus_per_node_,  # This is number of gpus per node, not total
+        accelerator={"cuda": "gpu"}.get(accelerator, accelerator),
+        # ngpus_per_node_ is the number of gpus per node, not total; MPS and the CPU use one device.
+        devices=cfg.hardware.ngpus_per_node_ if accelerator == "cuda" else 1,
         num_nodes=cfg.hardware.nnodes_,
         default_root_dir=cfg.out_dir,
         logger=False,
