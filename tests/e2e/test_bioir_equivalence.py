@@ -13,9 +13,17 @@
 Run: RUN_GPU_E2E_TESTS=1 pytest tests/e2e/test_bioir_equivalence.py -m gpu -v
 Needs the BioIR runtime that provides ``bionemo_ir.models.rfproteina`` and the released checkpoints. Without
 it the equivalence tests skip.
+
+``RFD4_E2E_OVERRIDES`` is appended to every generation's Hydra overrides, so a checkpoint pair that is not
+laid out as ``$DATA_PATH/{flow,ae}_checkpoints/<release name>`` can still be used, for example an EMA export::
+
+    RFD4_E2E_OVERRIDES = (
+        "ckpt_path=/ckpt ckpt_name=flow-ema.ckpt autoencoder_ckpt_path=/ckpt/ae-ema.ckpt"
+    )
 """
 
 import os
+import shlex
 from pathlib import Path
 
 import numpy as np
@@ -27,6 +35,9 @@ from hydra import compose, initialize_config_dir
 from tests.e2e.helpers.gpu_e2e import ROOT, require_gpu_e2e
 
 BENCHMARKS = ROOT / "data" / "benchmarks"
+
+#: Appended to every generation, so a local checkpoint layout needs no edit here. See the module docstring.
+LOCAL_OVERRIDES = tuple(shlex.split(os.environ.get("RFD4_E2E_OVERRIDES", "")))
 
 #: workflow -> benchmark input
 WORKFLOWS = {
@@ -87,6 +98,7 @@ def _generate(
                 "compress_outputs=false",
                 *([] if metrics else ["~metrics"]),
                 *extra,
+                *LOCAL_OVERRIDES,
             ],
         )
     model = load_ckpt_n_configure_inference(cfg)
@@ -271,3 +283,65 @@ def test_bioir_search_is_sound(tmp_path: Path):
     runtime = full_bioir_runtime(model)
     assert runtime["completed_calls"] > 0 and runtime["graph_cache"]["fallback"] == 0
     _assert_sound(candidate, reference, "search")
+
+
+@pytest.mark.gpu
+def test_bioir_external_prune_round_trip(tmp_path: Path):
+    """Export the beam through BioIR, prune it outside the process, and continue what was kept.
+
+    This is the whole feature end to end on the released checkpoints: the
+    unit tests cover the seam and the stacking, but only a run proves the
+    exported blob is one the next run can actually resume from.
+    """
+    require_gpu_e2e(min_gpus=1)
+    _require_bioir_runtime()
+
+    inputs = BENCHMARKS / "monomer"
+    base = ("inference_experiment=inference_beam_regression", "subset_to_examples=monomer-short")
+
+    _, exported_designs = _generate(
+        "bioir", inputs, tmp_path / "exported", (*base, "search.export_candidates=true"), metrics=True
+    )
+    blob = next((tmp_path / "exported" / "sampling_states").glob("*_candidates.pt"))
+    state = torch.load(blob, map_location="cpu", weights_only=True)
+
+    # n_branch * beam_width candidates for one input, none pruned, both tensors present.
+    assert state["backend"] == "bioir"
+    assert state["step"] == 40 and state["nsamples"] == 1 and state["beam_width"] == 6
+    assert state["candidates"]["bb_ca"].shape[0] == 6
+    assert state["clean"]["bb_ca"].shape[0] == 6
+    assert len(exported_designs) == 6, "the external ranker needs a structure per candidate"
+
+    # Stand in for the external oracle: keep three of the six, in beam-slot order.
+    _, continued = _generate(
+        "bioir",
+        inputs,
+        tmp_path / "continued",
+        (*base, f"search.resume_from={blob}", "search.resume_seed=11", "search.resume_selection=[5,0,3]"),
+        metrics=True,
+    )
+    assert len(continued) == 3
+    for path in continued:
+        _, ca_bond = _backbone(path)
+        assert CA_BOND_RANGE[0] < ca_bond < CA_BOND_RANGE[1], f"{path.name}: mean CA-CA {ca_bond:.2f} A"
+
+
+@pytest.mark.gpu
+def test_bioir_refuses_a_native_exported_blob(tmp_path: Path):
+    """Both backends write *_candidates.pt and only one of them carries x_1."""
+    require_gpu_e2e(min_gpus=1)
+    _require_bioir_runtime()
+
+    inputs = BENCHMARKS / "monomer"
+    base = ("inference_experiment=inference_beam_regression", "subset_to_examples=monomer-short")
+    _generate("native", inputs, tmp_path / "native", (*base, "search.export_candidates=true"), metrics=True)
+    blob = next((tmp_path / "native" / "sampling_states").glob("*_candidates.pt"))
+
+    with pytest.raises(NotImplementedError, match="carries no x_1 predictions"):
+        _generate(
+            "bioir",
+            inputs,
+            tmp_path / "rejected",
+            (*base, f"search.resume_from={blob}", "search.resume_seed=11", "search.resume_selection=[5,0,3]"),
+            metrics=True,
+        )

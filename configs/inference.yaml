@@ -75,6 +75,8 @@ search:
   save_states: false
   resume_from: null
   resume_seed: null
+  export_candidates: false
+  resume_selection: null
 
 num_workers: 4  # Number of dataloader workers
 
