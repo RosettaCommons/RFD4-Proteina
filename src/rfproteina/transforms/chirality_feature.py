@@ -168,7 +168,7 @@ def _pack_chirality_frames(
     assert embed_dim % 3 == 0, f"embed_dim must be multiple of 3, got {embed_dim}"
     if rng is None:
         # Seed from the global (seed_everything) stream; an unseeded default_rng() ignores the seed.
-        rng = np.random.default_rng(np.random.randint(0, 2**32))
+        rng = np.random.default_rng(np.random.randint(0, 2**32, dtype=np.int64))  # int64: C long is 32-bit on Windows
     n = atom_array.array_length()
     output = np.zeros((n, embed_dim), dtype=np.float32)
     n_blocks = embed_dim // 3
