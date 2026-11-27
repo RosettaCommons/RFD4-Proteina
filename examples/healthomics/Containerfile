@@ -1,0 +1,10 @@
+# Nextflow's task monitoring requires ps, which the minimal application image does not ship.
+# Keep model dependencies in the repository's existing image; add only workflow host tools.
+ARG RFD4_IMAGE
+FROM ${RFD4_IMAGE}
+
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends procps && \
+    rm -rf /var/lib/apt/lists/* && \
+    ps -o pid= -p 1 >/dev/null
